@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from cos.Neb import NEB
+from cos.NEB import NEB
 
 class NoSpringNEB(NEB):
 

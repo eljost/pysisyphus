@@ -14,9 +14,7 @@ inp="""!BP86 def2-SV(P) def2/J TightSCF engrad
 %maxcore 1000
 
 *xyz 0 1
-O          0.00000        0.00000        0.11779
-H          0.00000        0.75545       -0.47116
-H          0.00000       -0.75545       -0.47116
+{}
 *
 """
 
@@ -32,8 +30,12 @@ class ORCA(Calculator):
     def get_energy(self, coords):
         raise Exception("Not implemented!")
 
-    def get_forces(self, coords):
-        results = self.run(inp)
+    def get_forces(self, atoms, coords):
+        coords = coords.reshape(-1, 3)
+        coords = "\n".join(
+            ["{} {} {} {}".format(a, *c) for a, c in zip(atoms, coords)]
+        )
+        results = self.run(inp.format(coords))
         return results
 
     def get_hessian(self, coords):
@@ -50,15 +52,11 @@ class ORCA(Calculator):
             engrad = re.findall("([\d\-\.]+)", engrad)
             atoms = int(engrad.pop(0))
             energy = float(engrad.pop(0))
-            force = np.array(engrad[:3*atoms], dtype=np.float)
+            force = np.array(engrad[:3*atoms], dtype=np.float) * 0.529177249
             results["energy"] = energy
-            results["force"] = force
+            results["forces"] = force
 
         return results
 
     def __str__(self):
         return "ORCA calculator"
-
-if __name__ == "__main__":
-    orca = ORCA()
-    orca.parse("/tmp/tmpoqcz2lce")
