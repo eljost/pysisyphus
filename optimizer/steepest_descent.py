@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from linesearch import abls
+#from linesearch import abls
 
 def steepest_descent(image, force, alpha=-0.05):
     # Step against the force

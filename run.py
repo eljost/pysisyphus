@@ -9,6 +9,10 @@ from cos.SimpleZTS import SimpleZTS
 
 from calculators.AnaPot import AnaPot
 
+from qchelper.geometry import parse_xyz_file
+from Geometry import Geometry
+from calculators.ORCA import ORCA
+
 def plot(neb):
     x = np.linspace(-2, 2.5, 100)
     y = np.linspace(0, 5, 100)
@@ -119,7 +123,21 @@ def run_szts():
         plt.close(fig)
         #plt.show()
 
+
+def run_new():
+    calc = ORCA()
+    fn = "h2o.xyz"
+    atoms, coords = parse_xyz_file(fn)
+    coords1d = coords.flatten()
+    geom = Geometry(atoms, coords1d)
+    geom.set_calculator(calc)
+    geom.calc_energy_and_forces()
+    print("energy", geom.energy)
+    print("force", geom.force)
+
+
 if __name__ == "__main__":
-    run_neb()
+    #run_neb()
     #run_szts()
+    run_new()
 
