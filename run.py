@@ -172,13 +172,13 @@ def run_anapot_neb():
     educt = np.array((-1.05274, 1.02776, 0))
     product = np.array((1.94101, 3.85427, 0))
     atoms = ("H", "H")
-    geoms = [Geometry(atoms, coords) for coord in (educt, product)]
+    geoms = [Geometry(atoms, coords) for coords in (educt, product)]
     neb = NEB(geoms)
     neb.interpolate_images(7)
     for img in neb.images[1:-1]:
         img.set_calculator(AnaPot())
 
-    steepest_descent(neb)
+    steepest_descent(neb, alpha=-0.05, max_cycles=20)
 
 
 def run_opt():
