@@ -168,6 +168,19 @@ def run_neb():
     steepest_descent(neb)
 
 
+def run_anapot_neb():
+    educt = np.array((-1.05274, 1.02776, 0))
+    product = np.array((1.94101, 3.85427, 0))
+    atoms = ("H", "H")
+    geoms = [Geometry(atoms, coords) for coord in (educt, product)]
+    neb = NEB(geoms)
+    neb.interpolate_images(7)
+    for img in neb.images[1:-1]:
+        img.set_calculator(AnaPot())
+
+    steepest_descent(neb)
+
+
 def run_opt():
     atoms, coords = parse_xyz_file("h2o_inv_educt.xyz")
     geoms = Geometry(atoms, coords.flatten())
@@ -176,5 +189,6 @@ def run_opt():
 
 if __name__ == "__main__":
     #run_neb()
-    run_opt()
+    #run_opt()
+    run_anapot_neb()
 
