@@ -4,16 +4,20 @@ import numpy as np
 
 class Optimizer:
 
-    def __init__(self, geometry, max_cycles=15):
+    def __init__(self, geometry, les=15, **kwargs):
         # https://stackoverflow.com/questions/5899185
         self.geometry = geometry
 
-        self.max_cycles = max_cycles
-        self.cur_cycle = 0
 
+        # Setting some default values
+        self.max_cycles = 15
         self.max_force_thresh = 0.01
         self.rms_force_thresh = 0.001
+        # Overwrite default values if they are supplied as kwargs
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
+        self.cur_cycle = 0
         self.coords = list()
 
         self.forces = list()
@@ -27,7 +31,7 @@ class Optimizer:
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
 
-        print("cycle: {:03d} max(force): {: .5f} rms(force): {: .5f}".format(
+        print("cycle: {:04d} max(force): {:.5f} rms(force): {:.5f}".format(
             self.cur_cycle, max_force, rms_force)
         )
 
@@ -38,7 +42,7 @@ class Optimizer:
     def optimize(self):
         raise Exception("Not implemented!")
 
-    def cycle(self):
+    def run(self):
         while self.cur_cycle < self.max_cycles:
             forces = self.geometry.forces
             self.forces.append(forces)
