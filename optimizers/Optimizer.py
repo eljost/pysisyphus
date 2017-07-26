@@ -13,8 +13,6 @@ class Optimizer:
         self.rms_force_thresh = 0.001
 
         self.max_step = 0.04
-        self.force_backtrack_in = 3
-        self.cycles_since_backtrack = self.force_backtrack_in
 
         # Overwrite default values if they are supplied as kwargs
         for key, value in kwargs.items():
@@ -46,38 +44,6 @@ class Optimizer:
                 (rms_force <= self.rms_force_thresh)
         )
 
-    def backtrack(self):
-        """Accelerated backtracking line search."""
-        epsilon = 1e-3
-        alpha0 = -0.05
-        scale_factor = 0.5
-
-        prev_rms_force, cur_rms_force = self.rms_forces[-2:]
-        # chk
-        rms_diff = (
-            (cur_rms_force - prev_rms_force) /
-            np.abs(cur_rms_force+prev_rms_force)
-        )
-        skip = False
-
-        # Slow alpha
-        if rms_diff > epsilon:
-            self.alpha *= scale_factor
-            skip = True
-            self.cycles_since_backtrack = self.force_backtrack_in
-        else:
-            self.cycles_since_backtrack -= 1
-            #print("cycles_since_backtrack", self.cycles_since_backtrack)
-            if self.cycles_since_backtrack < 0:
-                self.cycles_since_backtrack = self.force_backtrack_in
-                if self.alpha > alpha0:
-                    # Reset alpha
-                    alpha = alpha0
-                    skip = True
-                else:
-                    # Accelerate alpha
-                    self.alpha /= scale_factor
-        return skip
 
     def scale_by_max_step(self, step):
         step_max = step.max()

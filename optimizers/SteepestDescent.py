@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from optimizers.Optimizer import Optimizer
+from optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
-class SteepestDescent(Optimizer):
+class SteepestDescent(BacktrackingOptimizer):
 
     def __init__(self, geometry, **kwargs):
         self.alpha = -0.05
