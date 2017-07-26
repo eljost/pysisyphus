@@ -4,7 +4,8 @@
         - Wiederverwenden von Orbitalen
 - COS
     - Climbing image
-    - Zero temperature string
+    - Zero Temperature String
+        - So abwandenln, das alles wie NEB implementiert werden kann
     - Direkt drei Geometrie übergeben, also mit TS-Guess o.Ä.
 - Geometry
     - atoms, coords trennung irgendwie verbessern

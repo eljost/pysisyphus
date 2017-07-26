@@ -46,10 +46,7 @@ class NEB(ChainOfStates):
     def forces(self):
         inner_indices = list(range(1, len(self.images)-1))
         [self.images[i].calc_energy_and_forces() for i in inner_indices]
-        # Fix the educt and product
-        zero_forces = np.zeros_like(self.images[0].coords)
-        self.images[0].forces = zero_forces
-        self.images[-1].forces = zero_forces
+        self.fix_endpoints()
         
         self.make_tangents()
 

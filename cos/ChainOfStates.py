@@ -27,6 +27,10 @@ class ChainOfStates:
         for image, c in zip(self.images, coords):
             image.coords = c
 
+    @property
+    def forces(self):
+        raise Exception("Not implemented!")
+
     def interpolate_images(self, image_num=10):
         initial = self.images[0].coords
         final = self.images[-1].coords
@@ -43,3 +47,8 @@ class ChainOfStates:
         trj_str = make_trj_str(atoms, coords_list)
         with open(out_fn, "w") as handle:
             handle.write(trj_str)
+
+    def fix_endpoints(self):
+        zero_forces = np.zeros_like(self.images[0].coords)
+        self.images[0].forces = zero_forces
+        self.images[-1].forces = zero_forces
