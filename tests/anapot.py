@@ -44,20 +44,17 @@ def plot_anapot_neb(calculator, optimizer):
 
         plt.show()
 
-    # True force component
-    #C = np.hypot(true_forces[:,0], true_forces[:,1])
-    #ax.quiver(img_xs[1:-1], img_ys[1:-1], true_forces[:,0], true_forces[:,1], C)
 
-    # Total force component
-    #C = np.hypot(neb.total_forces[:,0], neb.total_forces[:,1])
-    #ax.quiver(img_xs[1:-1], img_ys[1:-1], neb.total_forces[:,0], neb.total_forces[:,1], C)
-
-
-def run_anapot_neb():
+def get_geoms():
     educt = np.array((-1.05274, 1.02776, 0))
     product = np.array((1.94101, 3.85427, 0))
     atoms = ("H", "H")
     geoms = [Geometry(atoms, coords) for coords in (educt, product)]
+    return geoms
+
+
+def run_anapot_neb():
+    geoms = get_geoms()
     neb = NEB(geoms)
     neb.interpolate_images(20)
     for img in neb.images[1:-1]:

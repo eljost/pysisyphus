@@ -11,6 +11,4 @@ class SteepestDescent(Optimizer):
         assert(self.alpha < 0), "Alpha should be negative!"
 
     def optimize(self):
-        step = self.alpha*self.forces[-1]
-        new_coords = self.geometry.coords + step
-        self.geometry.coords = new_coords
+        return self.alpha*self.forces[-1]

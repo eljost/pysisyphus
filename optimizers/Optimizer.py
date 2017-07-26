@@ -5,9 +5,7 @@ import numpy as np
 class Optimizer:
 
     def __init__(self, geometry, les=15, **kwargs):
-        # https://stackoverflow.com/questions/5899185
         self.geometry = geometry
-
 
         # Setting some default values
         self.max_cycles = 15
@@ -21,6 +19,7 @@ class Optimizer:
         self.coords = list()
 
         self.forces = list()
+        self.steps = list()
         self.max_forces = list()
         self.rms_forces = list()
 
@@ -49,5 +48,9 @@ class Optimizer:
             self.coords.append(self.geometry.coords)
             if self.check_convergence(forces):
                 break
-            self.optimize()
+            step = self.optimize()
+            self.steps.append(step)
+            new_coords = self.geometry.coords + step
+            self.geometry.coords = new_coords
+
             self.cur_cycle += 1
