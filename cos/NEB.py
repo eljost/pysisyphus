@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import copy
-
 import numpy as np
 
 from cos.ChainOfStates import ChainOfStates
-from optimizer.steepest_descent import steepest_descent
 
 # [1] http://aip.scitation.org/doi/pdf/10.1063/1.1323224
 # 
@@ -16,6 +13,10 @@ class NEB(ChainOfStates):
 
     def __init__(self, images):
         super(NEB, self).__init__(images)
+
+        self.perp_forces = list()
+        self.par_forces = list()
+        self.total_forces = list()
 
     def get_tangent(self, i):
         # [1], Eq. (2)
@@ -49,13 +50,19 @@ class NEB(ChainOfStates):
         
         self.make_tangents()
 
-        self.perp_forces = np.array([self.get_perpendicular_forces(i)
-                                     for i in inner_indices])
-        self.par_forces = np.array([self.get_parallel_forces(i)
-                                    for i in inner_indices])
-        self.total_forces = self.perp_forces + self.par_forces
+        perp_forces = np.array([self.get_perpendicular_forces(i)
+                                for i in inner_indices])
+        par_forces = np.array([self.get_parallel_forces(i)
+                               for i in inner_indices])
+        total_forces = perp_forces + par_forces
 
-        for ii, tf in zip(inner_indices, self.total_forces):
+        # Store the calculated forces so they can be used later on, e.g.
+        # for plotting.
+        self.perp_forces.append(perp_forces)
+        self.par_forces.append(par_forces)
+        self.total_forces.append(total_forces)
+
+        for ii, tf in zip(inner_indices, total_forces):
             self.images[ii].forces = tf
-        self._forces  = np.concatenate(self.total_forces)
+        self._forces  = np.concatenate(total_forces)
         return self._forces

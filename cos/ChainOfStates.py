@@ -15,12 +15,16 @@ class ChainOfStates:
 
     @property
     def coords(self):
+        """Return one big 1d array containing to coordinates of all
+        inner images."""
         inner_coords = [image.coords for image in self.images[1:-1]]
         self._coords = np.concatenate(inner_coords)
         return self._coords
 
     @coords.setter
     def coords(self, coords):
+        """Distribute the coords from one big 1d array over all
+        inner images."""
         coords = coords.reshape(-1, self.coord_length)
         for inner_image, c in zip(self.images[1:-1], coords):
             inner_image.coords = c
