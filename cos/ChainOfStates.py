@@ -11,7 +11,7 @@ class ChainOfStates:
         self.images = images
         self._coords = None
         self._forces = None
-        self.coord_length = self.images[0].coords.size
+        self.coords_length = self.images[0].coords.size
 
     @property
     def coords(self):
@@ -23,7 +23,7 @@ class ChainOfStates:
     @coords.setter
     def coords(self, coords):
         """Distribute the big 1d coords array over all images."""
-        coords = coords.reshape(-1, self.coord_length)
+        coords = coords.reshape(-1, self.coords_length)
         for image, c in zip(self.images, coords):
             image.coords = c
 

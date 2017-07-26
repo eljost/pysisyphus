@@ -10,6 +10,7 @@ from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 
 CYCLES = 5
+IMAGES = 7
 
 def plot_anapot():
     x = np.linspace(-2, 2.5, 100)
@@ -32,18 +33,16 @@ def plot_anapot():
 
     return fig, ax
 
-def plot_anapot_opt(optimizer, szts=False):
-    if szts:
-        coords = optimizer.all_coords
-        forces = optimizer.all_forces
-    else:
-        coords = optimizer.coords
-        forces = optimizer.forces
+
+def plot_anapot_opt(optimizer):
+    coords = optimizer.coords
+    forces = optimizer.forces
     coords = [c.reshape((-1, 3)) for c in coords]
     forces = [f.reshape((-1, 3)) for f in forces]
 
     for cycle in range(optimizer.cur_cycle):
         fig, ax = plot_anapot()
+        fig.suptitle("Cycle {}".format(cycle))
 
         imagex = coords[cycle][:,0]
         imagey = coords[cycle][:,1]
@@ -54,6 +53,7 @@ def plot_anapot_opt(optimizer, szts=False):
         forcesy = forces[cycle][:,1]
         ax.quiver(imagex, imagey, forcesx, forcesy)
 
+        #plt.tight_layout()
         plt.show()
 
 
@@ -68,24 +68,33 @@ def get_geoms():
 def run_anapot_neb():
     geoms = get_geoms()
     neb = NEB(geoms)
-    neb.interpolate_images(20)
+    neb.interpolate_images(IMAGES)
     for img in neb.images[1:-1]:
         img.set_calculator(AnaPot())
 
-    sd = SteepestDescent(neb, max_cycles=CYCLES, alpha=-0.05)
+    sd = SteepestDescent(neb,
+                         max_cycles=CYCLES,
+                         max_force_thresh=0.05,
+                         rms_force_thresh=0.01,
+                         alpha=-0.05)
     sd.run()
     plot_anapot_opt(sd)
+
 
 def run_anapot_szts():
     geoms = get_geoms()
     szts = SimpleZTS(geoms)
-    szts.interpolate_images(20)
+    szts.interpolate_images(IMAGES)
     for img in szts.images[1:-1]:
         img.set_calculator(AnaPot())
-    for i in range(CYCLES):
-        szts.run()
-    szts.cur_cycle = CYCLES
-    plot_anapot_opt(szts, szts=True)
+    sd = SteepestDescent(szts,
+                         max_cycles=CYCLES,
+                         max_force_thresh=0.05,
+                         rms_force_thresh=0.01,
+                         alpha=-0.05)
+    #sd.run()
+    sd.run(reparam=szts.reparametrize)
+    #plot_anapot_opt(sd)
 
 
 if __name__ == "__main__":

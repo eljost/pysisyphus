@@ -10,11 +10,7 @@ from cos.ChainOfStates import ChainOfStates
 class SimpleZTS(ChainOfStates):
 
     def __init__(self, images):
-        self.alpha = -0.05
         super(SimpleZTS, self).__init__(images)
-
-        self.all_coords = list()
-        self.all_forces = list()
 
     @property
     def forces(self):
@@ -22,20 +18,14 @@ class SimpleZTS(ChainOfStates):
         [self.images[i].calc_energy_and_forces() for i in inner_indices]
         self.fix_endpoints()
         self._forces  = np.concatenate([image.forces for image in self.images])
-        self.all_forces.append(self._forces)
         return self._forces
 
-    def run(self):
-        self.all_coords.append(self.coords)
-        # [1], Eq. (10)
-        steps = self.alpha*self.forces
-        self.coords = self.coords + steps
-
-        # Reparametrize mesh
-        # To use splprep we have to transpose the coords. 
-        transp_coords = np.array([image.coords for image in self.images]).transpose()
+    def reparametrize(self, coords):
+        reshaped = coords.reshape(-1, self.coords_length)
+        # To use splprep we have to transpose the coords.
+        transp_coords = reshaped.transpose()
         uniform_mesh = np.linspace(0, 1, num=len(self.images))
         tck, u = splprep(transp_coords, s=0)
+        # Reparametrize mesh
         new_points = np.array(splev(uniform_mesh, tck))
-        new_points = new_points.transpose()
-        self.coords = new_points.flatten()
+        return new_points.transpose().flatten()
