@@ -30,8 +30,8 @@ def run_new():
 """
 
 def run_neb():
-    educt = "h2o_inv_educt.xyz"
-    product = "h2o_inv_product.xyz" 
+    educt = "xyz_files/h2o_inv_educt.xyz"
+    product = "xyz_files/h2o_inv_product.xyz" 
     xyz_fns = [educt, product]
     atoms_coords = [parse_xyz_file(fn) for fn in xyz_fns]
     geoms = [Geometry(atoms, coords.flatten()) for atoms, coords in atoms_coords]
@@ -45,7 +45,7 @@ def run_neb():
 
 
 def run_opt():
-    atoms, coords = parse_xyz_file("h2o_inv_educt.xyz")
+    atoms, coords = parse_xyz_file("xyz_files/h2o_inv_educt.xyz")
     geom = Geometry(atoms, coords.flatten())
     geom.set_calculator(ORCA())
     sd = SteepestDescent(geom, max_cycles=10)
