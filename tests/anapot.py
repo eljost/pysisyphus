@@ -5,33 +5,45 @@ import numpy as np
 
 from calculators.AnaPot import AnaPot
 from cos.NEB import NEB
+from cos.SimpleZTS import SimpleZTS
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 
+CYCLES = 5
 
-def plot_anapot_neb(calculator, optimizer):
+def plot_anapot():
     x = np.linspace(-2, 2.5, 100)
     y = np.linspace(0, 5, 100)
     X, Y = np.meshgrid(x, y)
     Z = np.full_like(X, 0)
     fake_atoms = ("H", "H")
     pot_coords = np.stack((X, Y, Z))
-    pot = calculator.get_energy(fake_atoms, pot_coords)["energy"]
+    pot = AnaPot().get_energy(fake_atoms, pot_coords)["energy"]
 
     width = 8
     height = width
 
-    coords = optimizer.coords
-    coords = [c.reshape((-1, 3)) for c in coords]
-    forces = optimizer.forces
-    forces = [f.reshape((-1, 3)) for f in forces]
-    for cycle in range(optimizer.cur_cycle):
-        fig, ax = plt.subplots(figsize=(width, height))
+    fig, ax = plt.subplots(figsize=(width, height))
 
-        # Potential
-        levels = np.linspace(-4, 8, 20)
-        contours = ax.contour(X, Y, pot, levels)
-        ax.clabel(contours, inline=1, fontsize=10)
+    # Potential
+    levels = np.linspace(-4, 8, 20)
+    contours = ax.contour(X, Y, pot, levels)
+    ax.clabel(contours, inline=1, fontsize=10)
+
+    return fig, ax
+
+def plot_anapot_opt(optimizer, szts=False):
+    if szts:
+        coords = optimizer.all_coords
+        forces = optimizer.all_forces
+    else:
+        coords = optimizer.coords
+        forces = optimizer.forces
+    coords = [c.reshape((-1, 3)) for c in coords]
+    forces = [f.reshape((-1, 3)) for f in forces]
+
+    for cycle in range(optimizer.cur_cycle):
+        fig, ax = plot_anapot()
 
         imagex = coords[cycle][:,0]
         imagey = coords[cycle][:,1]
@@ -60,11 +72,23 @@ def run_anapot_neb():
     for img in neb.images[1:-1]:
         img.set_calculator(AnaPot())
 
-    sd = SteepestDescent(neb, max_cycles=5, alpha=-0.05)
+    sd = SteepestDescent(neb, max_cycles=CYCLES, alpha=-0.05)
     sd.run()
-    plot_anapot_neb(AnaPot(), sd)
+    plot_anapot_opt(sd)
+
+def run_anapot_szts():
+    geoms = get_geoms()
+    szts = SimpleZTS(geoms)
+    szts.interpolate_images(20)
+    for img in szts.images[1:-1]:
+        img.set_calculator(AnaPot())
+    for i in range(CYCLES):
+        szts.run()
+    szts.cur_cycle = CYCLES
+    plot_anapot_opt(szts, szts=True)
 
 
 if __name__ == "__main__":
-    run_anapot_neb()
+    #run_anapot_neb()
+    run_anapot_szts()
 
