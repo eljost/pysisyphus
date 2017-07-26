@@ -94,7 +94,7 @@ def run_anapot_szts():
                          alpha=-0.05)
     #sd.run()
     sd.run(reparam=szts.reparametrize)
-    #plot_anapot_opt(sd)
+    plot_anapot_opt(sd)
 
 
 if __name__ == "__main__":

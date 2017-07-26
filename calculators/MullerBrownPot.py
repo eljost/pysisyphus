@@ -30,15 +30,39 @@ class MullerBrownPot(Calculator):
             )
         return {"energy": energy}
 
-    """
     def get_forces(self, atoms, coords):
         x, y, z = coords
-        forces = (4.5 + 2*x -2*y + 4*x**3 - 4*x*y,
-                  -4 + 4*y - 2*x - 2*x**2,
-                  0
-        )
+        # https://www.wolframalpha.com/input/?i=derivative+of+(A*exp(a*(x-x0)**2+%2B+b*(x-x0)*(y-y0)+%2B+c*(y-y0)**2)
+        A  = (-200, -100, -170, 15)
+        x0 = (1.0, 0.0, -0.5, -1.0)
+        y0 = (0.0, 0.5, 1.5, 1.0)
+        a  = (-1.0, -1.0, -6.5, 0.7)
+        b  = (0.0, 0.0, 11.0, 0.6)
+        c  = (-10.0, -10.0, -6.5, 0.7)
+
+        forces = 0
+        dx = 0
+        dy = 0
+        for i in range(4):
+            dx += (A[i] *
+                    (2*a[i]*(x - x0[i]) + b[i]*(y - y0[i])) *
+                    np.exp(
+                        a[i] * (x - x0[i])**2 +
+                        b[i] * (x - x0[i]) * (y - y0[i]) +
+                        c[i] * (y - y0[i])**2
+                    )
+            )
+            dy += (A[i] *
+                    (b[i]*(x - x0[i]) + 2*c[i]*(y - y0[i])) *
+                    np.exp(
+                        a[i] * (x - x0[i])**2 +
+                        b[i] * (x - x0[i]) * (y - y0[i]) +
+                        c[i] * (y - y0[i])**2
+                    )
+            )
+        dz = np.zeros_like(dx)
+        forces = np.stack((dx, dy, dz), axis=-1)
         return {"forces": forces}
-    """
 
     """
     def get_hessian(self, atoms, coords):

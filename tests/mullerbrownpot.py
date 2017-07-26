@@ -41,7 +41,7 @@ def plot_anapot_opt(optimizer):
     forces = [f.reshape((-1, 3)) for f in forces]
 
     for cycle in range(optimizer.cur_cycle):
-        fig, ax = plot_anapot()
+        fig, ax = plot_mullerbrownpot()
         fig.suptitle("Cycle {}".format(cycle))
 
         imagex = coords[cycle][:,0]
@@ -58,8 +58,8 @@ def plot_anapot_opt(optimizer):
 
 
 def get_geoms():
-    educt = np.array((-1.05274, 1.02776, 0))
-    product = np.array((1.94101, 3.85427, 0))
+    educt = np.array((0.6215, 0.02838, 0))
+    product = np.array((-0.563526, 1.44104, 0))
     atoms = ("H", "H")
     geoms = [Geometry(atoms, coords) for coords in (educt, product)]
     return geoms
@@ -70,7 +70,7 @@ def run_anapot_neb():
     neb = NEB(geoms)
     neb.interpolate_images(IMAGES)
     for img in neb.images[1:-1]:
-        img.set_calculator(AnaPot())
+        img.set_calculator(MullerBrownPot())
 
     sd = SteepestDescent(neb,
                          max_cycles=CYCLES,
@@ -78,7 +78,7 @@ def run_anapot_neb():
                          rms_force_thresh=0.01,
                          alpha=-0.05)
     sd.run()
-    #plot_anapot_opt(sd)
+    plot_anapot_opt(sd)
 
 
 def run_anapot_szts():
@@ -86,7 +86,7 @@ def run_anapot_szts():
     szts = SimpleZTS(geoms)
     szts.interpolate_images(IMAGES)
     for img in szts.images[1:-1]:
-        img.set_calculator(AnaPot())
+        img.set_calculator(MullerBrownPot())
     sd = SteepestDescent(szts,
                          max_cycles=CYCLES,
                          max_force_thresh=0.05,
@@ -98,7 +98,7 @@ def run_anapot_szts():
 
 
 if __name__ == "__main__":
-    #run_anapot_neb()
+    run_anapot_neb()
     #print()
     #run_anapot_szts()
     plot_mullerbrownpot()
