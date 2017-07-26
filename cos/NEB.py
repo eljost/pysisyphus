@@ -16,7 +16,6 @@ class NEB(ChainOfStates):
 
         self.perp_forces = list()
         self.par_forces = list()
-        self.total_forces = list()
 
     def get_tangent(self, i):
         # [1], Eq. (2)
@@ -47,6 +46,10 @@ class NEB(ChainOfStates):
     def forces(self):
         inner_indices = list(range(1, len(self.images)-1))
         [self.images[i].calc_energy_and_forces() for i in inner_indices]
+        # Fix the educt and product
+        zero_forces = np.zeros_like(self.images[0].coords)
+        self.images[0].forces = zero_forces
+        self.images[-1].forces = zero_forces
         
         self.make_tangents()
 
@@ -57,12 +60,12 @@ class NEB(ChainOfStates):
         total_forces = perp_forces + par_forces
 
         # Store the calculated forces so they can be used later on, e.g.
-        # for plotting.
+        # for plotting. total_forces is saved in self._forces.
         self.perp_forces.append(perp_forces)
         self.par_forces.append(par_forces)
-        self.total_forces.append(total_forces)
 
         for ii, tf in zip(inner_indices, total_forces):
             self.images[ii].forces = tf
-        self._forces  = np.concatenate(total_forces)
+        # Here we also use the zero forces of educt and product
+        self._forces  = np.concatenate([image.forces for image in self.images])
         return self._forces

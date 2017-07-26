@@ -15,19 +15,17 @@ class ChainOfStates:
 
     @property
     def coords(self):
-        """Return one big 1d array containing to coordinates of all
-        inner images."""
-        inner_coords = [image.coords for image in self.images[1:-1]]
-        self._coords = np.concatenate(inner_coords)
+        """Return one big 1d array containing coordinates of all images."""
+        all_coords = [image.coords for image in self.images]
+        self._coords = np.concatenate(all_coords)
         return self._coords
 
     @coords.setter
     def coords(self, coords):
-        """Distribute the coords from one big 1d array over all
-        inner images."""
+        """Distribute the big 1d coords array over all images."""
         coords = coords.reshape(-1, self.coord_length)
-        for inner_image, c in zip(self.images[1:-1], coords):
-            inner_image.coords = c
+        for image, c in zip(self.images, coords):
+            image.coords = c
 
     def interpolate_images(self, image_num=10):
         initial = self.images[0].coords
