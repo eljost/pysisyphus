@@ -9,7 +9,7 @@ from cos.SimpleZTS import SimpleZTS
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 
-CYCLES = 5
+CYCLES = 10
 IMAGES = 7
 
 def plot_anapot():
@@ -78,7 +78,7 @@ def run_anapot_neb():
                          rms_force_thresh=0.01,
                          alpha=-0.05)
     sd.run()
-    plot_anapot_opt(sd)
+    #plot_anapot_opt(sd)
 
 
 def run_anapot_szts():
@@ -99,5 +99,6 @@ def run_anapot_szts():
 
 if __name__ == "__main__":
     #run_anapot_neb()
+    print()
     run_anapot_szts()
 

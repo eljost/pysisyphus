@@ -40,7 +40,7 @@ def run_neb():
     for img in neb.images[1:-1]:
         img.set_calculator(ORCA())
 
-    sd = SteepestDescent(neb, max_cycles=5)
+    sd = SteepestDescent(neb, max_cycles=10)
     sd.run()
 
 
@@ -48,10 +48,11 @@ def run_opt():
     atoms, coords = parse_xyz_file("xyz_files/h2o_inv_educt.xyz")
     geom = Geometry(atoms, coords.flatten())
     geom.set_calculator(ORCA())
-    sd = SteepestDescent(geom, max_cycles=10)
+    sd = SteepestDescent(geom, max_cycles=100)
     sd.run()
 
 if __name__ == "__main__":
-    run_neb()
+    #run_neb()
+    print()
     run_opt()
 
