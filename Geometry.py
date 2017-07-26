@@ -20,12 +20,15 @@ class Geometry:
     @coords.setter
     def coords(self, coords):
         self._coords = coords
+        # Reset all values because no calculations with the new coords
+        # have been performed yet.
+        self._energy = None
         self._forces = None
         self._hessian = None
 
     @property
     def energy(self):
-        if not self._energy:
+        if self._energy is None:
             results = self.calculator.get_energy(self.coords)
             self.set_results(results)
         return self._energy
@@ -36,7 +39,7 @@ class Geometry:
 
     @property
     def forces(self):
-        if not self._forces:
+        if self._forces is None:
             results = self.calculator.get_forces(self.atoms, self.coords)
             self.set_results(results)
         return self._forces
@@ -47,7 +50,7 @@ class Geometry:
 
     @property
     def hessian(self):
-        if not self._hessian:
+        if self._hessian is None:
             results = self.calculator.get_hessian(self.coords)
             self.set_results(results)
         return self._hessian
