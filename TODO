@@ -1,0 +1,13 @@
+- Calculators
+    - Muller brown potential
+    - ORCA
+        - Wiederverwenden von Orbitalen
+- COS
+    - Climbing image
+    - Zero temperature string
+    - Direkt drei Geometrie übergeben, also mit TS-Guess o.Ä.
+- Geometry
+    - atoms, coords trennung irgendwie verbessern
+- Optimizer
+    - sollte am Ende xyz ausgeben, oder trj für COS geometry
+    - Verwendung des exakten Hessian
