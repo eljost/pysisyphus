@@ -1,12 +1,12 @@
 - Calculators
-    - Muller brown potential
     - ORCA
         - Wiederverwenden von Orbitalen
 - COS
     - Climbing image
-    - Direkt drei Geometrie übergeben, also mit TS-Guess o.Ä.
     - Konvergenz-Kriterium, Gradient entlang MEP ist egal, nur Gradient
       senkrecht dazu ist wichtig
+    - Energieprofil entlang images ausgeben, Abszisse: Unterschied zw. Geometrien,
+      Ordinate: Energie
 - Geometry
     - atoms, coords trennung irgendwie verbessern
 - Optimizer
