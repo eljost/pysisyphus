@@ -61,7 +61,10 @@ class MullerBrownPot(Calculator):
             )
         dz = np.zeros_like(dx)
         forces = np.stack((dx, dy, dz), axis=-1)
-        return {"forces": forces}
+
+        results = self.get_energy(atoms, coords)
+        results["forces"] = forces
+        return results
 
     """
     def get_hessian(self, atoms, coords):
@@ -73,11 +76,3 @@ class MullerBrownPot(Calculator):
 
     def __str__(self):
         return "Müller-Brown-Potential"
-
-
-if __name__ == "__main__":
-    coords = (0.623, 0.028, 0)
-    mbp = MullerBrownPot()
-    atoms = ("H", )
-    f=mbp.get_forces(atoms, coords)
-    print(f)

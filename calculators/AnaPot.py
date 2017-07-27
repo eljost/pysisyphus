@@ -16,7 +16,9 @@ class AnaPot(Calculator):
                   -4 + 4*y - 2*x - 2*x**2,
                   0
         )
-        return {"forces": forces}
+        results = self.get_energy(atoms, coords)
+        results["forces"] = forces
+        return results
 
     """
     def get_hessian(self, atoms, coords):
