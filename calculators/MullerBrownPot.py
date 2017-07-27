@@ -74,3 +74,11 @@ class MullerBrownPot(Calculator):
 
     def __str__(self):
         return "Müller-Brown-Potential"
+
+
+if __name__ == "__main__":
+    coords = (0.623, 0.028, 0)
+    mbp = MullerBrownPot()
+    atoms = ("H", )
+    f=mbp.get_forces(atoms, coords)
+    print(f)

@@ -8,16 +8,17 @@ from cos.NEB import NEB
 from cos.SimpleZTS import SimpleZTS
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
+from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
-CYCLES = 10
-IMAGES = 7
+CYCLES = 2
+IMAGES = 20
 
 def plot_mullerbrownpot():
     x = np.linspace(-1.75, 1.25, 100)
     y = np.linspace(-0.5, 2.25, 100)
     X, Y = np.meshgrid(x, y)
     Z = np.full_like(X, 0)
-    fake_atoms = ("H", "H")
+    fake_atoms = ("H", )
     pot_coords = np.stack((X, Y, Z))
     pot = MullerBrownPot().get_energy(fake_atoms, pot_coords)["energy"]
 
@@ -34,7 +35,7 @@ def plot_mullerbrownpot():
     return fig, ax
 
 
-def plot_anapot_opt(optimizer):
+def plot_cos_opt(optimizer):
     coords = optimizer.coords
     forces = optimizer.forces
     coords = [c.reshape((-1, 3)) for c in coords]
@@ -58,49 +59,36 @@ def plot_anapot_opt(optimizer):
 
 
 def get_geoms():
-    educt = np.array((0.6215, 0.02838, 0))
-    product = np.array((-0.563526, 1.44104, 0))
-    atoms = ("H", "H")
+    educt = np.array((0.6215, 0.02838, 0)) # Minimum B
+    product = np.array((-0.558, 1.442, 0)) # Minimum A
+    #product = np.array((-0.05, 0.467, 0)) # Minimum C
+    #product = np.array((-0.822, 0.624, 0)) # Saddle point
+    atoms = ("H", )
     geoms = [Geometry(atoms, coords) for coords in (educt, product)]
     return geoms
 
-
-def run_anapot_neb():
+def run_cos_opt(cos_class, reparametrize=False):
     geoms = get_geoms()
-    neb = NEB(geoms)
-    neb.interpolate_images(IMAGES)
-    for img in neb.images[1:-1]:
+    cos = cos_class(geoms)
+    cos.interpolate_images(IMAGES)
+    for img in cos.images[1:-1]:
         img.set_calculator(MullerBrownPot())
 
-    sd = SteepestDescent(neb,
+    sd = NaiveSteepestDescent(cos,
                          max_cycles=CYCLES,
                          max_force_thresh=0.05,
                          rms_force_thresh=0.01,
-                         alpha=-0.05)
-    sd.run()
-    plot_anapot_opt(sd)
-
-
-def run_anapot_szts():
-    geoms = get_geoms()
-    szts = SimpleZTS(geoms)
-    szts.interpolate_images(IMAGES)
-    for img in szts.images[1:-1]:
-        img.set_calculator(MullerBrownPot())
-    sd = SteepestDescent(szts,
-                         max_cycles=CYCLES,
-                         max_force_thresh=0.05,
-                         rms_force_thresh=0.01,
-                         alpha=-0.05)
-    #sd.run()
-    sd.run(reparam=szts.reparametrize)
-    #plot_anapot_opt(sd)
+                         alpha=-0.005)
+    if reparametrize:
+        sd.run(reparam=cos.reparametrize)
+    else:
+        sd.run()
+    plot_cos_opt(sd)
 
 
 if __name__ == "__main__":
-    run_anapot_neb()
-    #print()
-    #run_anapot_szts()
-    plot_mullerbrownpot()
-    plt.show()
+    #run_cos_opt(NEB)
+    run_cos_opt(SimpleZTS, reparametrize=True)
+    #plot_mullerbrownpot()
+    #plt.show()
 

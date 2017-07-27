@@ -2,11 +2,11 @@
 
 from optimizers.Optimizer import Optimizer
 
-class SteepestDescent(Optimizer):
+class NaiveSteepestDescent(Optimizer):
 
     def __init__(self, geometry, **kwargs):
         self.alpha = -0.05
-        super(SteepestDescent, self).__init__(geometry, **kwargs)
+        super(NaiveSteepestDescent, self).__init__(geometry, **kwargs)
 
         assert(self.alpha < 0), "Alpha should be negative!"
 
