@@ -22,16 +22,6 @@ class SimpleZTS(ChainOfStates):
         self._forces  = np.concatenate([image.forces for image in self.images])
         return self._forces
 
-    def reparametrize(self, coords):
-        reshaped = coords.reshape(-1, self.coords_length)
-        # To use splprep we have to transpose the coords.
-        transp_coords = reshaped.transpose()
-        uniform_mesh = np.linspace(0, 1, num=len(self.images))
-        tck, u = splprep(transp_coords, s=0)
-        # Reparametrize mesh
-        new_points = np.array(splev(uniform_mesh, tck))
-        return new_points.transpose().flatten()
-
     def reparametrize(self, coords, param="equal"):
 
         def weight_function(mean_energies):
