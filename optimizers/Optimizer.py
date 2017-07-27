@@ -62,10 +62,10 @@ class Optimizer:
             self.coords.append(self.geometry.coords)
             if self.check_convergence(forces):
                 break
-            step = self.optimize()
-            step = self.scale_by_max_step(step)
-            self.steps.append(step)
-            new_coords = self.geometry.coords + step
+            steps = self.optimize()
+            steps = self.scale_by_max_step(steps)
+            self.steps.append(steps)
+            new_coords = self.geometry.coords + steps
             if reparam:
                 new_coords = reparam(new_coords)
             self.geometry.coords = new_coords
