@@ -34,7 +34,9 @@ class AnimPlot:
         # Draw the potentials contourlines
         levels = np.linspace(*levels)
         contours = self.ax.contour(X, Y, pot, levels)
-        self.ax.clabel(contours, inline=1, fontsize=5)
+        #self.ax.clabel(contours, inline=1, fontsize=5)
+        # How do you add a colorbar via the axis object?
+        plt.colorbar(contours)
 
         images_x = self.coords[0][:,0]
         images_y = self.coords[0][:,1]
