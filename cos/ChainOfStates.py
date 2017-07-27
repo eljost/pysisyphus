@@ -36,7 +36,7 @@ class ChainOfStates:
         final_coords = self.images[final_ind].coords
         step = (final_coords-initial_coords) / (image_num+1)
         # initial + i*step
-        i_array = np.arange(1, image_num)
+        i_array = np.arange(1, image_num+1)
         atoms = self.images[0].atoms
         new_coords = initial_coords + i_array[:, None]*step
         return [Geometry(atoms, nc) for nc in new_coords]
