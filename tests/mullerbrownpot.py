@@ -45,7 +45,7 @@ def run_cos_opt(cos_class, reparametrize=False):
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
     levels=(-150, 5, 20)
-    ap = AnimPlot(MullerBrownPot, sd, xlim=xlim, ylim=ylim, levels=levels)
+    ap = AnimPlot(MullerBrownPot(), sd, xlim=xlim, ylim=ylim, levels=levels)
     ap.animate()
 
 

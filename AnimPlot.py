@@ -29,7 +29,7 @@ class AnimPlot:
         Z = np.full_like(X, 0)
         fake_atoms = ("H", )
         pot_coords = np.stack((X, Y, Z))
-        pot = self.calculator().get_energy(fake_atoms, pot_coords)["energy"]
+        pot = self.calculator.get_energy(fake_atoms, pot_coords)["energy"]
 
         # Draw the potentials contourlines
         levels = np.linspace(*levels)
