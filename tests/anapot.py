@@ -9,8 +9,8 @@ from cos.SimpleZTS import SimpleZTS
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 
-CYCLES = 20
-IMAGES = 7
+CYCLES = 25
+IMAGES = 15
 
 def get_geoms():
     initial = np.array((-1.05274, 1.02776, 0))
@@ -20,11 +20,11 @@ def get_geoms():
     return geoms
 
 
-def run_cos_opt(cos_class, reparametrize=False):
+def run_cos_opt(cos_class, reparametrize=False, animate=False):
     geoms = get_geoms()
     cos = cos_class(geoms)
     cos.interpolate(IMAGES)
-    for img in cos.images[1:-1]:
+    for img in cos.images:
         img.set_calculator(AnaPot())
 
     #sd = NaiveSteepestDescent(cos,
@@ -38,15 +38,16 @@ def run_cos_opt(cos_class, reparametrize=False):
     else:
         sd.run()
 
-    xlim = (-2, 2.5)
-    ylim = (0, 5)
-    levels = (-4, 8, 20)
-    ap = AnimPlot(AnaPot(), sd, xlim=xlim, ylim=ylim, levels=levels)
-    ap.animate()
+    if animate:
+        xlim = (-2, 2.5)
+        ylim = (0, 5)
+        levels = (-4, 8, 20)
+        ap = AnimPlot(AnaPot(), sd, xlim=xlim, ylim=ylim, levels=levels)
+        ap.animate()
 
 
 if __name__ == "__main__":
-    run_cos_opt(NEB)
+    #run_cos_opt(NEB)
     print()
-    run_cos_opt(SimpleZTS, reparametrize=True)
+    run_cos_opt(SimpleZTS, reparametrize=True, animate=True)
 

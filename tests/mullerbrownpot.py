@@ -10,7 +10,7 @@ from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
-CYCLES = 20
+CYCLES = 15
 IMAGES = 7
 
 
@@ -29,7 +29,7 @@ def run_cos_opt(cos_class, reparametrize=False):
     geoms = get_geoms()
     cos = cos_class(geoms)
     cos.interpolate(IMAGES)
-    for img in cos.images[1:-1]:
+    for img in cos.images:
         img.set_calculator(MullerBrownPot())
 
     #sd = NaiveSteepestDescent(cos,
@@ -37,14 +37,14 @@ def run_cos_opt(cos_class, reparametrize=False):
                          max_cycles=CYCLES,
                          max_force_thresh=0.05,
                          rms_force_thresh=0.01,
-                         alpha=-0.005)
+                         alpha=-0.05)
     if reparametrize:
         sd.run(reparam=cos.reparametrize)
     else:
         sd.run()
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
-    levels=(-150, 5, 20)
+    levels=(-150, 5, 40)
     ap = AnimPlot(MullerBrownPot(), sd, xlim=xlim, ylim=ylim, levels=levels)
     ap.animate()
 
