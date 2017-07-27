@@ -29,7 +29,7 @@ class Geometry:
     @property
     def energy(self):
         if self._energy is None:
-            results = self.calculator.get_energy(self.coords)
+            results = self.calculator.get_energy(self.atoms, self.coords)
             self.set_results(results)
         return self._energy
 
