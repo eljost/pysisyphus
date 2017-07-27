@@ -10,8 +10,8 @@ from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
-CYCLES = 2
-IMAGES = 20
+CYCLES = 10
+IMAGES = 7
 
 def plot_mullerbrownpot():
     x = np.linspace(-1.75, 1.25, 100)
@@ -59,18 +59,19 @@ def plot_cos_opt(optimizer):
 
 
 def get_geoms():
-    educt = np.array((0.6215, 0.02838, 0)) # Minimum B
-    product = np.array((-0.558, 1.442, 0)) # Minimum A
-    #product = np.array((-0.05, 0.467, 0)) # Minimum C
-    #product = np.array((-0.822, 0.624, 0)) # Saddle point
+    min_a = np.array((-0.558, 1.442, 0)) # Minimum A
+    min_b = np.array((0.6215, 0.02838, 0)) # Minimum B
+    min_c = np.array((-0.05, 0.467, 0)) # Minimum C
+    saddle_a = np.array((-0.822, 0.624, 0)) # Saddle point A
+    coords = (min_b, min_c, saddle_a, min_a)
     atoms = ("H", )
-    geoms = [Geometry(atoms, coords) for coords in (educt, product)]
+    geoms = [Geometry(atoms, c) for c in coords]
     return geoms
 
 def run_cos_opt(cos_class, reparametrize=False):
     geoms = get_geoms()
     cos = cos_class(geoms)
-    cos.interpolate_images(IMAGES)
+    cos.interpolate(IMAGES)
     for img in cos.images[1:-1]:
         img.set_calculator(MullerBrownPot())
 
@@ -86,9 +87,20 @@ def run_cos_opt(cos_class, reparametrize=False):
     plot_cos_opt(sd)
 
 
+def interpolate_test():
+    minb = np.array((0.6215, 0.02838, 0)) # Minimum B
+    minc = np.array((-0.05, 0.467, 0)) # Minimum C
+    mina = np.array((-0.558, 1.442, 0)) # Minimum A
+    atoms = ("H", )
+    geoms = [Geometry(atoms, coords) for coords in (minb, minc, mina)]
+    neb = NEB(geoms)
+    neb.interpolate(10)
+
+
 if __name__ == "__main__":
-    #run_cos_opt(NEB)
-    run_cos_opt(SimpleZTS, reparametrize=True)
+    run_cos_opt(NEB)
+    #run_cos_opt(SimpleZTS, reparametrize=True)
     #plot_mullerbrownpot()
     #plt.show()
+    #interpolate_test()
 

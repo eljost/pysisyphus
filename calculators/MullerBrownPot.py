@@ -32,7 +32,6 @@ class MullerBrownPot(Calculator):
 
     def get_forces(self, atoms, coords):
         x, y, z = coords
-        # https://www.wolframalpha.com/input/?i=derivative+of+(A*exp(a*(x-x0)**2+%2B+b*(x-x0)*(y-y0)+%2B+c*(y-y0)**2)
         A  = (-200, -100, -170, 15)
         x0 = (1.0, 0.0, -0.5, -1.0)
         y0 = (0.0, 0.5, 1.5, 1.0)

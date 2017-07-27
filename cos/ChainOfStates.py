@@ -31,15 +31,27 @@ class ChainOfStates:
     def forces(self):
         raise Exception("Not implemented!")
 
-    def interpolate_images(self, image_num=10):
-        initial = self.images[0].coords
-        final = self.images[-1].coords
-        step = (final-initial) / (image_num+1)
+    def interpolate_between(self, initial_ind, final_ind, image_num):
+        initial_coords = self.images[initial_ind].coords
+        final_coords = self.images[final_ind].coords
+        step = (final_coords-initial_coords) / (image_num+1)
         # initial + i*step
-        i_array = np.arange(image_num+2)
+        i_array = np.arange(1, image_num)
         atoms = self.images[0].atoms
-        new_coords = initial + i_array[:, None]*step
-        self.images = [Geometry(atoms, nc) for nc in new_coords]
+        new_coords = initial_coords + i_array[:, None]*step
+        return [Geometry(atoms, nc) for nc in new_coords]
+
+    def interpolate(self, image_num=5):
+        new_images = list()
+        # Iterate over image pairs (i, i+1) and interpolate between them
+        for i in range(len(self.images)-1):
+            interpol_images = self.interpolate_between(i, i+1, image_num)
+            new_images.append(self.images[i])
+            new_images.extend(interpol_images)
+        # As we only added the i-th image and the new images we have to add
+        # the last (i+1)-th image at the end.
+        new_images.append(self.images[-1])
+        self.images = new_images
 
     def save(self, out_fn):
         atoms = self.images[0].atoms
