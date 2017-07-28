@@ -105,3 +105,11 @@ class ChainOfStates:
         trj_str = make_trj_str(atoms, coords_list)
         with open(out_fn, "w") as handle:
             handle.write(trj_str)
+
+    """
+    def get_coords_diffs(self):
+        return [
+            np.linalg.norm(self.images[i].coords - self.images[i-1].coords)
+            for i in range(1, len(self.images))
+        ]
+    """

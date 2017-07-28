@@ -15,6 +15,7 @@ class Optimizer:
         self.rms_force_thresh = 0.01
 
         self.max_step = 0.04
+        self.rel_step_thresh = 1e-3
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         self.is_zts = getattr(self.geometry, "reparametrize", None)
@@ -70,7 +71,7 @@ class Optimizer:
 
         step_change = np.linalg.norm(self.steps[-1] - self.steps[-2])
         self.step_changes.append(step_change)
-        self.is_converged = step_change < 1e-4
+        self.is_converged = step_change < self.rel_step_thresh
 
     def scale_by_max_step(self, steps):
         steps_max = steps.max()

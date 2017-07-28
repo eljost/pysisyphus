@@ -45,9 +45,10 @@ def run_cos_opt(cos):
 if __name__ == "__main__":
     geoms = get_geoms()
     neb = NEB(geoms)
-    szts = SimpleZTS(geoms, param="equal")
-    szts = SimpleZTS(geoms, param="energy")
+    szts_equal = SimpleZTS(geoms, param="equal")
+    szts_energy = SimpleZTS(geoms, param="energy")
 
     run_cos_opt(neb)
     print()
-    run_cos_opt(szts)
+    run_cos_opt(szts_equal)
+    run_cos_opt(szts_energy)

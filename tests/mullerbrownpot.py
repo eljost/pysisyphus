@@ -13,7 +13,7 @@ from optimizers.FIRE import FIRE
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
 CYCLES = 50
-IMAGES = 10
+IMAGES = 5
 
 
 def get_geoms():
@@ -38,9 +38,9 @@ def run_cos_opt(cos):
     for img in cos.images:
         img.set_calculator(MullerBrownPot())
 
-    #sd = NaiveSteepestDescent(cos,
-    #sd = SteepestDescent(cos,
-    opt = FIRE(cos,
+    #opt = NaiveSteepestDescent(cos,
+    opt = SteepestDescent(cos,
+    #opt = FIRE(cos,
                          max_cycles=CYCLES,
                          #max_step=0.5,
                          alpha=0.05)
@@ -55,7 +55,7 @@ def run_cos_opt(cos):
 if __name__ == "__main__":
     geoms = get_geoms()
     neb = NEB(geoms)
-    szts = SimpleZTS(geoms, param="equal")
+    #szts = SimpleZTS(geoms, param="equal")
     szts = SimpleZTS(geoms, param="energy")
 
     #run_cos_opt(neb)

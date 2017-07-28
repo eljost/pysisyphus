@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 
+
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+
+def get_coords_diffs(coords):
+    cds = [np.linalg.norm(coords[0]-coords[i])
+           for i in range(len(coords))
+    ]
+    cds = np.array(cds)
+    cds /= cds.max()
+    return cds
 
 class AnimPlot:
 
@@ -54,7 +63,7 @@ class AnimPlot:
         self.images, = self.ax.plot(images_x, images_y, "ro", ls="-")
         self.quiv = self.ax.quiver(images_x, images_y, forces_x, forces_y)
         self.energies_plot, = self.ax1.plot(
-            np.arange(len(energies)), energies, "ro", ls="-"
+            get_coords_diffs(self.coords[0]), energies, "ro", ls="-"
         )
 
     def func(self, frame):
@@ -73,7 +82,9 @@ class AnimPlot:
         self.quiv.set_offsets(offsets)
         self.quiv.set_UVC(forces_x, forces_y)
 
+        coords_diffs = get_coords_diffs(self.coords[frame])
         energies = self.energies[frame]
+        self.energies_plot.set_xdata(coords_diffs)
         self.energies_plot.set_ydata(energies)
 
         return self.images, self.quiv, self.energies
