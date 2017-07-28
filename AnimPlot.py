@@ -21,6 +21,8 @@ class AnimPlot:
         self.forces = forces
 
         self.fig, self.ax = plt.subplots(figsize=figsize)
+        self.pause = True
+        self.fig.canvas.mpl_connect('key_press_event', self.on_click)
 
         # Calculate the potential
         x = np.linspace(*xlim, 100)
@@ -66,8 +68,17 @@ class AnimPlot:
 
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)
-        an = animation.FuncAnimation(self.fig,
-                                     self.func,
-                                     frames=cycles,
-                                     interval=500)
+        self.animation = animation.FuncAnimation(self.fig,
+                                                 self.func,
+                                                 frames=cycles,
+                                                 interval=500)
         plt.show()
+
+    def on_click(self, event):
+        """Pause on any keypress."""
+        #https://stackoverflow.com/questions/41557578
+        if self.pause:
+            self.animation.event_source.stop()
+        else:
+            self.animation.event_source.start()
+        self.pause = not self.pause
