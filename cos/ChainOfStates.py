@@ -9,6 +9,7 @@ class ChainOfStates:
 
     def __init__(self, images):
         self.images = images
+
         self._coords = None
         self._forces = None
         self.coords_length = self.images[0].coords.size
@@ -72,7 +73,7 @@ class ChainOfStates:
         new_images.append(self.images[-1])
         self.images = new_images
 
-    def fix_endpoints(self):
+    def fix_ends(self):
         zero_forces = np.zeros_like(self.images[0].coords)
         self.images[0].forces = zero_forces
         self.images[-1].forces = zero_forces
@@ -105,11 +106,3 @@ class ChainOfStates:
         trj_str = make_trj_str(atoms, coords_list)
         with open(out_fn, "w") as handle:
             handle.write(trj_str)
-
-    """
-    def get_coords_diffs(self):
-        return [
-            np.linalg.norm(self.images[i].coords - self.images[i-1].coords)
-            for i in range(1, len(self.images))
-        ]
-    """

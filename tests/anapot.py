@@ -10,7 +10,7 @@ from optimizers.FIRE import FIRE
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 
-CYCLES = 50
+CYCLES = 10
 IMAGES = 15
 
 def get_geoms():
@@ -50,5 +50,5 @@ if __name__ == "__main__":
 
     run_cos_opt(neb)
     print()
-    run_cos_opt(szts_equal)
-    run_cos_opt(szts_energy)
+    #run_cos_opt(szts_equal)
+    #run_cos_opt(szts_energy)

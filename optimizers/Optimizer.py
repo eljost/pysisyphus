@@ -6,8 +6,9 @@ from cos.ChainOfStates import ChainOfStates
 
 class Optimizer:
 
-    def __init__(self, geometry, **kwargs):
+    def __init__(self, geometry, fix_ends=False, **kwargs):
         self.geometry = geometry
+        self.fix_ends = fix_ends
 
         # Setting some default values
         self.max_cycles = 50
