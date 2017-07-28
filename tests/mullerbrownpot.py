@@ -10,7 +10,7 @@ from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
-CYCLES = 15
+CYCLES = 50
 IMAGES = 7
 
 
@@ -19,13 +19,14 @@ def get_geoms():
     min_b = np.array((0.6215, 0.02838, 0)) # Minimum B
     min_c = np.array((-0.05, 0.467, 0)) # Minimum C
     saddle_a = np.array((-0.822, 0.624, 0)) # Saddle point A
-    coords = (min_b, min_c, saddle_a, min_a)
+    #coords = (min_b, min_c, saddle_a, min_a)
+    coords = (min_b, min_c)
     atoms = ("H", )
     geoms = [Geometry(atoms, c) for c in coords]
     return geoms
 
 
-def run_cos_opt(cos_class, reparametrize=False):
+def run_cos_opt(cos_class):
     geoms = get_geoms()
     cos = cos_class(geoms)
     cos.interpolate(IMAGES)
@@ -38,10 +39,7 @@ def run_cos_opt(cos_class, reparametrize=False):
                          max_force_thresh=0.05,
                          rms_force_thresh=0.01,
                          alpha=-0.05)
-    if reparametrize:
-        sd.run(reparam=cos.reparametrize)
-    else:
-        sd.run()
+    sd.run()
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
     levels=(-150, -15, 40)
@@ -51,4 +49,4 @@ def run_cos_opt(cos_class, reparametrize=False):
 
 if __name__ == "__main__":
     #run_cos_opt(NEB)
-    run_cos_opt(SimpleZTS, reparametrize=True)
+    run_cos_opt(SimpleZTS)

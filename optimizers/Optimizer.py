@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from cos.ChainOfStates import ChainOfStates
+
 class Optimizer:
 
     def __init__(self, geometry, **kwargs):
@@ -13,6 +15,9 @@ class Optimizer:
         self.rms_force_thresh = 0.001
 
         self.max_step = 0.04
+
+        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
+        self.is_zts = getattr(self.geometry, "reparametrize", None)
 
         # Overwrite default values if they are supplied as kwargs
         for key, value in kwargs.items():
@@ -26,48 +31,59 @@ class Optimizer:
         self.max_forces = list()
         self.rms_forces = list()
 
+        # Check if geometry defines it's own convergence check, e.g.
+        # as in CoS methods where we're interested in the perpendicular
+        # component of the force along the MEP.
+        geom_conv_check = getattr(self.geometry, "check_convergence", None)
+        if geom_conv_check:
+            self.check_convergence = geom_conv_check
+
     def print_convergence(self, cur_cycle, max_force, rms_force):
         print("cycle: {:04d} max(force): {:.5f} rms(force): {:.5f}".format(
             self.cur_cycle, max_force, rms_force)
         )
 
-    def check_convergence(self, forces):
+    def check_convergence(self):
+        # Only use forces perpendicular to the mep
+        if self.is_cos:
+            forces = self.geometry.perpendicular_forces
+
         max_force = forces.max()
         rms_force = np.sqrt(np.mean(np.square(forces)))
 
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
 
-        self.print_convergence(self.cur_cycle, max_force, rms_force)
-
-        return ((max_force <= self.max_force_thresh) and
-                (rms_force <= self.rms_force_thresh)
+        is_converged = ((max_force <= self.max_force_thresh) and
+                        (rms_force <= self.rms_force_thresh)
         )
 
+        return is_converged
 
-    def scale_by_max_step(self, step):
-        step_max = step.max()
-        if step_max > self.max_step:
-            step *= self.max_step / step_max
-        #print("step_max", step_max, "new", step.max())
-        return step
+
+    def scale_by_max_step(self, steps):
+        steps_max = steps.max()
+        if steps_max > self.max_step:
+            steps *= self.max_step / steps_max
+        return steps
 
     def optimize(self):
         raise Exception("Not implemented!")
 
-    def run(self, reparam=None):
+    def run(self):
         while self.cur_cycle < self.max_cycles:
             forces = self.geometry.forces
             self.forces.append(forces)
             self.coords.append(self.geometry.coords)
-            if self.check_convergence(forces):
+            if self.check_convergence():
                 break
+            self.print_convergence(self.cur_cycle, self.max_forces[-1],
+                                   self.rms_forces[-1])
             steps = self.optimize()
             steps = self.scale_by_max_step(steps)
             self.steps.append(steps)
             new_coords = self.geometry.coords + steps
-            if reparam:
-                new_coords = reparam(new_coords)
             self.geometry.coords = new_coords
-
+            if self.is_zts:
+                self.geometry.reparametrize()
             self.cur_cycle += 1
