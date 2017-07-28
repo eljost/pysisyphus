@@ -38,9 +38,9 @@ class Optimizer:
         if geom_conv_check:
             self.check_convergence = geom_conv_check
 
-    def print_convergence(self, cur_cycle, max_force, rms_force):
+    def print_convergence(self):
         print("cycle: {:04d} max(force): {:.5f} rms(force): {:.5f}".format(
-            self.cur_cycle, max_force, rms_force)
+            self.cur_cycle, self.max_forces[-1], self.rms_forces[-1])
         )
 
     def check_convergence(self):
@@ -48,8 +48,8 @@ class Optimizer:
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
 
-        max_force = forces.max()
-        rms_force = np.sqrt(np.mean(np.square(forces)))
+        max_force = self.forces[-1].max()
+        rms_force = np.sqrt(np.mean(np.square(self.forces[-1])))
 
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
@@ -75,15 +75,18 @@ class Optimizer:
             forces = self.geometry.forces
             self.forces.append(forces)
             self.coords.append(self.geometry.coords)
+
             if self.check_convergence():
                 break
-            self.print_convergence(self.cur_cycle, self.max_forces[-1],
-                                   self.rms_forces[-1])
+            self.print_convergence()
+
             steps = self.optimize()
             steps = self.scale_by_max_step(steps)
             self.steps.append(steps)
             new_coords = self.geometry.coords + steps
             self.geometry.coords = new_coords
+
             if self.is_zts:
                 self.geometry.reparametrize()
+
             self.cur_cycle += 1
