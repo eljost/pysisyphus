@@ -9,13 +9,12 @@ from cos.ChainOfStates import ChainOfStates
 
 class SimpleZTS(ChainOfStates):
 
-    def __init__(self, images):
+    def __init__(self, images, param="equal"):
+        self.param = param
         super(SimpleZTS, self).__init__(images)
 
-        inner_indices = list(range(1, len(self.images)-1))
 
-    def reparametrize(self, param="equal"):
-
+    def reparametrize(self):
         def weight_function(mean_energies):
             mean_energies = np.abs(mean_energies)
             weights = mean_energies / mean_energies.max()
@@ -26,7 +25,7 @@ class SimpleZTS(ChainOfStates):
         transp_coords = reshaped.transpose()
 
         # Energy weighted arc length parametrization
-        if param == "energy":
+        if self.param == "energy":
             energies = [img.energy for img in self.images]
             mean_energies = [(energies[i] + energies[i-1])/2
                              for i in range(1, len(self.images))
@@ -44,7 +43,7 @@ class SimpleZTS(ChainOfStates):
 
             tck, u = splprep(transp_coords, u=arc_segments, s=0)
         # Equal arc length parametrization
-        elif param == "equal":
+        elif self.param == "equal":
             tck, u = splprep(transp_coords, s=0)
 
         # Reparametrize mesh
