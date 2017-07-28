@@ -10,9 +10,9 @@ class Optimizer:
         self.geometry = geometry
 
         # Setting some default values
-        self.max_cycles = 15
-        self.max_force_thresh = 0.01
-        self.rms_force_thresh = 0.001
+        self.max_cycles = 50
+        self.max_force_thresh = 0.05
+        self.rms_force_thresh = 0.01
 
         self.max_step = 0.04
 
@@ -92,7 +92,6 @@ class Optimizer:
                 break
 
             steps = self.optimize()
-            steps = self.scale_by_max_step(steps)
             self.steps.append(steps)
             new_coords = self.geometry.coords + steps
             self.geometry.coords = new_coords

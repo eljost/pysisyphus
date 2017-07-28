@@ -8,10 +8,12 @@ from cos.NEB import NEB
 from cos.SimpleZTS import SimpleZTS
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
+#from optimizers.ConjugateGradient import ConjugateGradient
+from optimizers.FIRE import FIRE
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
 CYCLES = 50
-IMAGES = 7
+IMAGES = 10
 
 
 def get_geoms():
@@ -31,28 +33,31 @@ def get_geoms():
     return geoms
 
 
-def run_cos_opt(cos_class):
-    geoms = get_geoms()
-    cos = cos_class(geoms)
+def run_cos_opt(cos):
     cos.interpolate(IMAGES)
     for img in cos.images:
         img.set_calculator(MullerBrownPot())
 
     #sd = NaiveSteepestDescent(cos,
-    sd = SteepestDescent(cos,
+    #sd = SteepestDescent(cos,
+    opt = FIRE(cos,
                          max_cycles=CYCLES,
-                         max_force_thresh=0.05,
-                         rms_force_thresh=0.01,
-                         alpha=-0.05)
-    sd.run()
+                         #max_step=0.5,
+                         alpha=0.05)
+    opt.run()
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
     levels=(-150, -15, 40)
-    ap = AnimPlot(MullerBrownPot(), sd, xlim=xlim, ylim=ylim, levels=levels)
+    ap = AnimPlot(MullerBrownPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
     ap.animate()
 
 
 if __name__ == "__main__":
-    run_cos_opt(NEB)
-    #print()
-    run_cos_opt(SimpleZTS)
+    geoms = get_geoms()
+    neb = NEB(geoms)
+    szts = SimpleZTS(geoms, param="equal")
+    szts = SimpleZTS(geoms, param="energy")
+
+    #run_cos_opt(neb)
+    print()
+    run_cos_opt(szts)

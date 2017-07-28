@@ -53,7 +53,9 @@ class AnimPlot:
         # Create artists, so we can update their data later
         self.images, = self.ax.plot(images_x, images_y, "ro", ls="-")
         self.quiv = self.ax.quiver(images_x, images_y, forces_x, forces_y)
-        self.energies_plot, = self.ax1.plot(np.arange(len(energies)), energies)
+        self.energies_plot, = self.ax1.plot(
+            np.arange(len(energies)), energies, "ro", ls="-"
+        )
 
     def func(self, frame):
         self.fig.suptitle("Cycle {}".format(frame))
