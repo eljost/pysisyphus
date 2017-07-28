@@ -30,6 +30,7 @@ class Optimizer:
         self.steps = list()
         self.max_forces = list()
         self.rms_forces = list()
+        self.step_changes = [0, ]
 
         # Check if geometry defines it's own convergence check, e.g.
         # as in CoS methods where we're interested in the perpendicular
@@ -39,8 +40,10 @@ class Optimizer:
             self.check_convergence = geom_conv_check
 
     def print_convergence(self):
-        print("cycle: {:04d} max(force): {:.5f} rms(force): {:.5f}".format(
-            self.cur_cycle, self.max_forces[-1], self.rms_forces[-1])
+        print("cycle: {:04d} max(force): {:.5f} rms(force): {:.5f} "
+                "d(step): {:.5f}".format(
+            self.cur_cycle, self.max_forces[-1], self.rms_forces[-1],
+            self.step_changes[-1])
         )
 
     def check_convergence(self):
@@ -54,12 +57,17 @@ class Optimizer:
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
 
-        is_converged = ((max_force <= self.max_force_thresh) and
-                        (rms_force <= self.rms_force_thresh)
+        self.is_converged = ((max_force <= self.max_force_thresh) and
+                             (rms_force <= self.rms_force_thresh)
         )
 
-        return is_converged
+    def check_step_change(self):
+        if self.cur_cycle == 0:
+            return
 
+        step_change = np.linalg.norm(self.steps[-1] - self.steps[-2])
+        self.step_changes.append(step_change)
+        self.is_converged = step_change < 1e-4
 
     def scale_by_max_step(self, steps):
         steps_max = steps.max()
@@ -76,9 +84,9 @@ class Optimizer:
             self.forces.append(forces)
             self.coords.append(self.geometry.coords)
 
-            if self.check_convergence():
+            self.check_convergence()
+            if self.is_converged:
                 break
-            self.print_convergence()
 
             steps = self.optimize()
             steps = self.scale_by_max_step(steps)
@@ -88,5 +96,11 @@ class Optimizer:
 
             if self.is_zts:
                 self.geometry.reparametrize()
+
+            self.check_step_change()
+            if self.is_converged:
+                break
+
+            self.print_convergence()
 
             self.cur_cycle += 1

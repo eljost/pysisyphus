@@ -10,7 +10,7 @@ from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
-CYCLES = 10
+CYCLES = 50
 IMAGES = 7
 
 
@@ -54,4 +54,5 @@ def run_cos_opt(cos_class):
 
 if __name__ == "__main__":
     run_cos_opt(NEB)
-    #run_cos_opt(SimpleZTS)
+    print()
+    run_cos_opt(SimpleZTS)
