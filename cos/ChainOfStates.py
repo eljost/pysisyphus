@@ -28,6 +28,11 @@ class ChainOfStates:
             image.coords = c
 
     @property
+    def energy(self):
+        self._energy = [image.energy for image in self.images]
+        return self._energy
+
+    @property
     def forces(self):
         forces = [image.forces for image in self.images]
         self._forces  = np.concatenate(forces)

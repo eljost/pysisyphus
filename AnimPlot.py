@@ -16,11 +16,13 @@ class AnimPlot:
         coords = self.optimizer.coords
         coords = [c.reshape(-1, 3) for c in coords]
         self.coords = coords
+        self.energies = self.optimizer.energies
         forces = optimizer.forces
         forces = [f.reshape((-1, 3)) for f in forces]
         self.forces = forces
 
-        self.fig, self.ax = plt.subplots(figsize=figsize)
+        self.fig, (self.ax, self.ax1) = plt.subplots(2, figsize=figsize,
+                                        gridspec_kw = {'height_ratios':[3, 1]})
         self.pause = True
         self.fig.canvas.mpl_connect('key_press_event', self.on_click)
 
@@ -38,15 +40,20 @@ class AnimPlot:
         contours = self.ax.contour(X, Y, pot, levels)
         #self.ax.clabel(contours, inline=1, fontsize=5)
         # How do you add a colorbar via the axis object?
-        plt.colorbar(contours)
+        #plt.colorbar(contours)
+        self.fig.subplots_adjust(right=0.8)
+        cbar_ax = self.fig.add_axes([0.85, 0.15, 0.05, 0.7])
+        self.fig.colorbar(contours, cax=cbar_ax)
 
         images_x = self.coords[0][:,0]
         images_y = self.coords[0][:,1]
         forces_x = self.forces[0][:,0]
         forces_y = self.forces[0][:,1]
+        energies = self.energies[0]
         # Create artists, so we can update their data later
         self.images, = self.ax.plot(images_x, images_y, "ro", ls="-")
         self.quiv = self.ax.quiver(images_x, images_y, forces_x, forces_y)
+        self.energies_plot, = self.ax1.plot(np.arange(len(energies)), energies)
 
     def func(self, frame):
         self.fig.suptitle("Cycle {}".format(frame))
@@ -64,7 +71,10 @@ class AnimPlot:
         self.quiv.set_offsets(offsets)
         self.quiv.set_UVC(forces_x, forces_y)
 
-        return self.images, self.quiv
+        energies = self.energies[frame]
+        self.energies_plot.set_ydata(energies)
+
+        return self.images, self.quiv, self.energies
 
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)

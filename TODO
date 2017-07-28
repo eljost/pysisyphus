@@ -3,10 +3,9 @@
         - Wiederverwenden von Orbitalen
 - COS
     - Climbing image
-    - Energieprofil entlang images ausgeben, Abszisse: Unterschied zw. Geometrien,
-      Ordinate: Energie
     - SimpleZTS:
         - energy-weighted parametrization wieder nutzbar machen
+    - Erstes und letztes Image fixen
 - Geometry
     - atoms, coords trennung irgendwie verbessern
 - Optimizer

@@ -26,6 +26,7 @@ class Optimizer:
         self.cur_cycle = 0
         self.coords = list()
 
+        self.energies = list()
         self.forces = list()
         self.steps = list()
         self.max_forces = list()
@@ -82,9 +83,9 @@ class Optimizer:
 
     def run(self):
         while self.cur_cycle < self.max_cycles:
-            forces = self.geometry.forces
-            self.forces.append(forces)
             self.coords.append(self.geometry.coords)
+            self.energies.append(self.geometry.energy)
+            self.forces.append(self.geometry.forces)
 
             self.check_convergence()
             if self.is_converged:
