@@ -1,3 +1,5 @@
+import numpy as np
+
 from calculators.Calculator import Calculator
 
 class AnaPot(Calculator):
@@ -13,9 +15,10 @@ class AnaPot(Calculator):
     def get_forces(self, atoms, coords):
         x, y, z = coords
         forces = (4.5 + 2*x -2*y + 4*x**3 - 4*x*y,
-                  -4 + 4*y - 2*x - 2*x**2,
+                 (-4 + 4*y - 2*x - 2*x**2),
                   0
         )
+        forces = -np.array(forces)
         results = self.get_energy(atoms, coords)
         results["forces"] = forces
         return results

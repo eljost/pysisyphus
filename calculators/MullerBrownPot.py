@@ -60,7 +60,7 @@ class MullerBrownPot(Calculator):
                     )
             )
         dz = np.zeros_like(dx)
-        forces = np.stack((dx, dy, dz), axis=-1)
+        forces = -np.stack((dx, dy, dz), axis=-1)
 
         results = self.get_energy(atoms, coords)
         results["forces"] = forces
