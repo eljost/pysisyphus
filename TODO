@@ -2,9 +2,12 @@
     - ORCA
         - Wiederverwenden von Orbitalen
 - COS
+    - Auch erstes und letztes Images optimieren
+    - Auch erstes und letztes Images optimieren
     - Climbing image
     - Konvergenz-Kriterium, Gradient entlang MEP ist egal, nur Gradient
       senkrecht dazu ist wichtig
+        - check_convergence() sollte nur True/False zurückgeben
     - Energieprofil entlang images ausgeben, Abszisse: Unterschied zw. Geometrien,
       Ordinate: Energie
     - SimpleZTS
@@ -21,3 +24,4 @@
         - Konvergenz in COS-Methoden, im Gegensatz zu Optimierungen einer einzigen
           Geometry ist bei COS-Optimierungen nur der Gradient senkrecht zum MEP
           wichtig
+        - Optimierungs-Methode in Geometry/ChainOfStates-Klasse ansiedeln...
