@@ -53,6 +53,6 @@ def run_cos_opt(cos_class):
 
 
 if __name__ == "__main__":
-    run_cos_opt(NEB)
+    #run_cos_opt(NEB)
     print()
     run_cos_opt(SimpleZTS)

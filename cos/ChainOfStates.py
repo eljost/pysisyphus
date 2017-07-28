@@ -42,7 +42,8 @@ class ChainOfStates:
     @property
     def perpendicular_forces(self):
         indices = range(len(self.images))
-        return [self.get_perpendicular_forces(i) for i in indices]
+        perp_forces = [self.get_perpendicular_forces(i) for i in indices]
+        return np.array(perp_forces).flatten()
 
     def interpolate_between(self, initial_ind, final_ind, image_num):
         initial_coords = self.images[initial_ind].coords

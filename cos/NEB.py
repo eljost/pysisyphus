@@ -20,7 +20,8 @@ class NEB(ChainOfStates):
     @property
     def parallel_forces(self):
         indices = range(len(self.images))
-        return [self.get_parallel_forces(i) for i in indices]
+        par_forces = [self.get_parallel_forces(i) for i in indices]
+        return np.array(par_forces).flatten()
 
     def get_parallel_forces(self, i):
         k = 0.1

@@ -50,9 +50,11 @@ class Optimizer:
         # Only use forces perpendicular to the mep
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
+        else:
+            forces = self.forces[-1]
 
-        max_force = self.forces[-1].max()
-        rms_force = np.sqrt(np.mean(np.square(self.forces[-1])))
+        max_force = forces.max()
+        rms_force = np.sqrt(np.mean(np.square(forces)))
 
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
