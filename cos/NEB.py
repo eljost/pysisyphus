@@ -18,26 +18,34 @@ class NEB(ChainOfStates):
         self.par_forces = list()
 
     @property
+    def parallel_forces(self):
+        indices = range(len(self.images))
+        return [self.get_parallel_forces(i) for i in indices]
+
+    def get_parallel_forces(self, i):
+        k = 0.1
+        if (i is 0) or (i is len(self.images) - 1):
+            return k * self.get_tangent(i)
+
+        prev_image = self.images[i-1].coords
+        image = self.images[i].coords
+        next_image = self.images[i+1].coords
+        return (k * (np.linalg.norm(next_image-image) -
+                np.linalg.norm(image-prev_image)) *
+                self.get_tangent(i)
+        )
+
+    @property
     def forces(self):
-        inner_indices = list(range(1, len(self.images)-1))
-        [self.images[i].calc_energy_and_forces() for i in inner_indices]
-        self.fix_endpoints()
-        
-        self.make_tangents()
+        indices = range(len(self.images))
 
-        perp_forces = np.array([self.get_perpendicular_forces(i)
-                                for i in inner_indices])
-        par_forces = np.array([self.get_parallel_forces(i)
-                               for i in inner_indices])
+        perp_forces = np.array(
+            [self.get_perpendicular_forces(i) for i in indices]
+        )
+        par_forces = np.array(
+            [self.get_parallel_forces(i) for i in indices]
+        )
         total_forces = perp_forces + par_forces
+        self._forces = total_forces.flatten()
 
-        # Store the calculated forces so they can be used later on, e.g.
-        # for plotting. total_forces is saved in self._forces.
-        self.perp_forces.append(perp_forces)
-        self.par_forces.append(par_forces)
-
-        for ii, tf in zip(inner_indices, total_forces):
-            self.images[ii].forces = tf
-        # Here we also use the zero forces of educt and product
-        self._forces  = np.concatenate([image.forces for image in self.images])
         return self._forces

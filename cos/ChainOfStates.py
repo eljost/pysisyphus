@@ -15,26 +15,34 @@ class ChainOfStates:
 
     @property
     def coords(self):
-        """Return one big 1d array containing coordinates of all images."""
+        """Return a flat 1d array containing the coordinates of all images."""
         all_coords = [image.coords for image in self.images]
         self._coords = np.concatenate(all_coords)
         return self._coords
 
     @coords.setter
     def coords(self, coords):
-        """Distribute the big 1d coords array over all images."""
+        """Distribute the flat 1d coords array over all images."""
         coords = coords.reshape(-1, self.coords_length)
         for image, c in zip(self.images, coords):
             image.coords = c
 
     @property
     def forces(self):
-        raise Exception("Not implemented!")
+        forces = [image.forces for image in self.images]
+        self._forces  = np.concatenate(forces)
+        return self._forces
+
+    @forces.setter
+    def forces(self, forces):
+        forces = forces.reshape(-1, self.coords_length)
+        for image, f in zip(self.images, forces):
+            image.forces = f
 
     @property
     def perpendicular_forces(self):
-        inner_indices = list(range(1, len(self.images)-1))
-        return np.array([self.get_perpendicular_forces(i) for i in inner_indices])
+        indices = range(len(self.images))
+        return [self.get_perpendicular_forces(i) for i in indices]
 
     def interpolate_between(self, initial_ind, final_ind, image_num):
         initial_coords = self.images[initial_ind].coords
@@ -58,39 +66,36 @@ class ChainOfStates:
         new_images.append(self.images[-1])
         self.images = new_images
 
-    def save(self, out_fn):
-        atoms = self.images[0].atoms
-        coords_list = [image.coords.reshape((-1,3)) for image in self.images]
-        trj_str = make_trj_str(atoms, coords_list)
-        with open(out_fn, "w") as handle:
-            handle.write(trj_str)
-
     def fix_endpoints(self):
         zero_forces = np.zeros_like(self.images[0].coords)
         self.images[0].forces = zero_forces
         self.images[-1].forces = zero_forces
 
     def get_tangent(self, i):
+        # Use a one-sided difference for the first and last image
+        if i is 0:
+            prev_index = i
+            next_index = 1
+        elif i is (len(self.images) - 1):
+            prev_index = i - 1
+            next_index = len(self.images) - 1
+        # If i is an inner index use the image before and after i
+        else:
+            prev_index = i - 1
+            next_index = i + 1
         # [1], Eq. (2)
-        prev_image = self.images[i-1].coords
-        next_image = self.images[i+1].coords
+        prev_image = self.images[prev_index].coords
+        next_image = self.images[next_index].coords
         return (next_image-prev_image) / np.linalg.norm(next_image-prev_image)
-
-    def make_tangents(self):
-        self.tangents = np.array([self.get_tangent(i) for i
-                                  in range(1, len(self.images)-1)])
 
     def get_perpendicular_forces(self, i):
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
         return forces - (np.vdot(forces, tangent)*tangent)
 
-    def get_parallel_forces(self, i):
-        k = 0.1
-        prev_image = self.images[i-1].coords
-        image = self.images[i].coords
-        next_image = self.images[i+1].coords
-        return (k * (np.linalg.norm(next_image-image) -
-                np.linalg.norm(image-prev_image)) *
-                self.get_tangent(i)
-        )
+    def save(self, out_fn):
+        atoms = self.images[0].atoms
+        coords_list = [image.coords.reshape((-1,3)) for image in self.images]
+        trj_str = make_trj_str(atoms, coords_list)
+        with open(out_fn, "w") as handle:
+            handle.write(trj_str)

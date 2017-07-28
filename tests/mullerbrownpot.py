@@ -10,7 +10,7 @@ from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
-CYCLES = 50
+CYCLES = 10
 IMAGES = 7
 
 
@@ -19,8 +19,13 @@ def get_geoms():
     min_b = np.array((0.6215, 0.02838, 0)) # Minimum B
     min_c = np.array((-0.05, 0.467, 0)) # Minimum C
     saddle_a = np.array((-0.822, 0.624, 0)) # Saddle point A
-    #coords = (min_b, min_c, saddle_a, min_a)
-    coords = (min_b, min_c)
+    coords = (min_b, min_c, saddle_a, min_a)
+    #coords = (min_b, min_c)
+    """
+    t1 = np.array((0.4879, 0.4509, 0))
+    t2 = np.array((-0.2621, 0.1027, 0))
+    coords = (t1, t2)
+    """
     atoms = ("H", )
     geoms = [Geometry(atoms, c) for c in coords]
     return geoms
@@ -48,5 +53,5 @@ def run_cos_opt(cos_class):
 
 
 if __name__ == "__main__":
-    #run_cos_opt(NEB)
-    run_cos_opt(SimpleZTS)
+    run_cos_opt(NEB)
+    #run_cos_opt(SimpleZTS)

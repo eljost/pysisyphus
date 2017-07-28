@@ -2,16 +2,14 @@
     - ORCA
         - Wiederverwenden von Orbitalen
 - COS
-    - Auch erstes und letztes Images optimieren
-    - Auch erstes und letztes Images optimieren
     - Climbing image
-    - Konvergenz-Kriterium, Gradient entlang MEP ist egal, nur Gradient
-      senkrecht dazu ist wichtig
-        - check_convergence() sollte nur True/False zurückgeben
     - Energieprofil entlang images ausgeben, Abszisse: Unterschied zw. Geometrien,
       Ordinate: Energie
+    - SimpleZTS:
+        - energy-weighted parametrization wieder nutzbar machen
 - Geometry
     - atoms, coords trennung irgendwie verbessern
 - Optimizer
     - sollte am Ende xyz ausgeben, oder trj für COS geometry
     - Verwendung des exakten Hessian
+    - alternative konvergenzkriterium: rel änderung des aktuellen zum vorherigen step

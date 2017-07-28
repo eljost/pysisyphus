@@ -14,14 +14,6 @@ class SimpleZTS(ChainOfStates):
 
         inner_indices = list(range(1, len(self.images)-1))
 
-    @property
-    def forces(self):
-        inner_indices = list(range(1, len(self.images)-1))
-        [self.images[i].calc_energy_and_forces() for i in inner_indices]
-        self.fix_endpoints()
-        self._forces  = np.concatenate([image.forces for image in self.images])
-        return self._forces
-
     def reparametrize(self, param="equal"):
 
         def weight_function(mean_energies):
