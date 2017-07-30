@@ -10,3 +10,5 @@
     - sollte am Ende xyz ausgeben, oder trj für COS geometry
     - Verwendung des exakten Hessian
     - fixed ends in optimizer einbauen
+- AnimPlot
+    - Normierung der Energiedarstellung auf Bedard abschalten
