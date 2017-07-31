@@ -39,9 +39,6 @@ class ORCA(Calculator):
         results = self.run(inp.format(coords))
         return results
 
-    def get_hessian(self, atoms, coords):
-        raise Exception("Not implemented!")
-
     def parse(self, path):
         results = {}
         engrad_fn = glob.glob(os.path.join(path, "*.engrad"))

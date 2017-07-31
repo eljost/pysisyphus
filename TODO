@@ -7,12 +7,15 @@
     - Tangente für erstes und letztes image
         - Images sollen nicht zusammen rutschen
         - Tangente zeigt in Richtung der Federkraft
+    - Tangenten nur einmal berechnen
 - Geometry
     - atoms, coords trennung irgendwie verbessern
 - Optimizer
     - sollte am Ende xyz ausgeben, oder trj für COS geometry
     - Verwendung des exakten Hessian
     - fixed ends in optimizer einbauen
+    - Konvergenz-kriterien bestimmen die berücksichtigt werden; ähnlich Psi4: nur die
+      verwenden die übergeben werden
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
     - Energieachse updaten

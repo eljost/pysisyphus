@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from calculators.ORCA import ORCA
+from calculators.IDPP import idpp_interpolate
 from cos.NEB import NEB
 from cos.SimpleZTS import SimpleZTS
 from Geometry import Geometry
@@ -14,6 +15,7 @@ from qchelper.geometry import parse_xyz_file
 
 CYCLES = 50
 IMAGES = 3
+
 
 def get_geoms():
     educt = "xyz_files/hcn.xyz"
@@ -65,5 +67,6 @@ if __name__ == "__main__":
     run_cos_opt(szts_equal)
     print()
     """
-    neb = NEB(get_geoms())
-    procrustes_test(neb)
+    #neb = NEB(get_geoms())
+    #procrustes_test(neb)
+    idpp_interpolate(get_geoms(), images_between=IMAGES)
