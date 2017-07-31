@@ -33,7 +33,7 @@ class AnimPlot:
         self.fig, (self.ax, self.ax1) = plt.subplots(2, figsize=figsize,
                                         gridspec_kw = {'height_ratios':[3, 1]})
         self.pause = True
-        self.fig.canvas.mpl_connect('key_press_event', self.on_click)
+        self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
 
         # Calculate the potential
         x = np.linspace(*xlim, 100)
@@ -97,11 +97,12 @@ class AnimPlot:
                                                  interval=500)
         plt.show()
 
-    def on_click(self, event):
-        """Pause on any keypress."""
+    def on_keypress(self, event):
+        """Pause on SPACE press."""
         #https://stackoverflow.com/questions/41557578
-        if self.pause:
-            self.animation.event_source.stop()
-        else:
-            self.animation.event_source.start()
-        self.pause = not self.pause
+        if event.key == " ":
+            if self.pause:
+                self.animation.event_source.stop()
+            else:
+                self.animation.event_source.start()
+            self.pause = not self.pause
