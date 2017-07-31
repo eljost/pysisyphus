@@ -90,7 +90,7 @@ class AnimPlot:
         return self.images, self.quiv, self.energies
 
     def animate(self):
-        cycles = range(self.optimizer.cur_cycle)
+        cycles = range(self.optimizer.cur_cycle+1)
         self.animation = animation.FuncAnimation(self.fig,
                                                  self.func,
                                                  frames=cycles,

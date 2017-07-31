@@ -57,4 +57,3 @@ if __name__ == "__main__":
 
     szts_energy = SimpleZTS(geoms, param="energy")
     run_cos_opt(szts_energy)
-
