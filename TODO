@@ -4,6 +4,9 @@
 - COS
     - Climbing image
     - Erstes und letztes Image fixen
+    - Tangente für erstes und letztes image
+        - Images sollen nicht zusammen rutschen
+        - Tangente zeigt in Richtung der Federkraft
 - Geometry
     - atoms, coords trennung irgendwie verbessern
 - Optimizer
@@ -12,3 +15,4 @@
     - fixed ends in optimizer einbauen
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
+    - Energieachse updaten
