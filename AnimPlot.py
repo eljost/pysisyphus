@@ -86,11 +86,14 @@ class AnimPlot:
         energies = self.energies[frame]
         self.energies_plot.set_xdata(coords_diffs)
         self.energies_plot.set_ydata(energies)
+        self.ax1.relim()
+        self.ax1.autoscale_view()
 
         return self.images, self.quiv, self.energies
 
     def animate(self):
-        cycles = range(self.optimizer.cur_cycle+1)
+        cycles = range(self.optimizer.cur_cycle)
+        print("Showing {} cycles.".format(cycles))
         self.animation = animation.FuncAnimation(self.fig,
                                                  self.func,
                                                  frames=cycles,

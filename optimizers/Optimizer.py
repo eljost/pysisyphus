@@ -79,7 +79,10 @@ class Optimizer:
         raise Exception("Not implemented!")
 
     def run(self):
-        while self.cur_cycle < self.max_cycles:
+        while True:
+            if self.cur_cycle == self.max_cycles:
+                print("Number of cycles exceeded!")
+                break
             self.coords.append(self.geometry.coords)
             self.energies.append(self.geometry.energy)
             self.forces.append(self.geometry.forces)

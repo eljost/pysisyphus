@@ -53,17 +53,15 @@ def run_cos_opt(cos):
 
 
 if __name__ == "__main__":
-    geoms = get_geoms()
-
     """NEB doesn't converge with the default thresholds at all but the
     SimpleZTS methods converge fine."""
-    neb = NEB(geoms)
+    neb = NEB(get_geoms())
     run_cos_opt(neb)
     print()
 
-    szts_equal = SimpleZTS(geoms, param="equal")
+    szts_equal = SimpleZTS(get_geoms(), param="equal")
     run_cos_opt(szts_equal)
     print()
 
-    szts_energy = SimpleZTS(geoms, param="energy")
+    szts_energy = SimpleZTS(get_geoms(), param="energy")
     run_cos_opt(szts_energy)

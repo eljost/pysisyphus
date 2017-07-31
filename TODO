@@ -16,3 +16,5 @@
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
     - Energieachse updaten
+    - Letzter Frame fehlt: Wenn es nicht konvergiert ist letzter Frame
+      nicht mehr da. Wenn es konvergiert schon.

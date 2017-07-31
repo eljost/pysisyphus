@@ -10,7 +10,7 @@ from optimizers.FIRE import FIRE
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 
-CYCLES = 50
+CYCLES = 75
 IMAGES = 3
 
 def get_geoms():
@@ -18,8 +18,8 @@ def get_geoms():
     final = np.array((1.94101, 3.85427, 0))
     #initial = np.array((0.3, 2.46, 0))
     #final = np.array((0.8833, 0.5238, 0))
-    #initial = np.array((0.3167, 2.2381, 0.0))
-    #final = np.array((0.8583, 0.7381, 0.0))
+    initial = np.array((0.3167, 2.2381, 0.0))
+    final = np.array((0.8583, 0.7381, 0.0))
     atoms = ("H", "H")
     geoms = [Geometry(atoms, coords) for coords in (initial, final)]
     return geoms
@@ -45,15 +45,13 @@ def run_cos_opt(cos):
 
 
 if __name__ == "__main__":
-    geoms = get_geoms()
-
-    neb = NEB(geoms)
+    neb = NEB(get_geoms())
     run_cos_opt(neb)
     print()
 
-    szts_equal = SimpleZTS(geoms, param="equal")
+    szts_equal = SimpleZTS(get_geoms(), param="equal")
     run_cos_opt(szts_equal)
     print()
 
-    szts_energy = SimpleZTS(geoms, param="energy")
+    szts_energy = SimpleZTS(get_geoms(), param="energy")
     run_cos_opt(szts_energy)
