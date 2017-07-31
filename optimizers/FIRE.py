@@ -26,26 +26,33 @@ class FIRE(BacktrackingOptimizer):
 
     def optimize(self):
         forces = self.forces[-1]
-        mixed_velocity = (
+        mixed_v = (
+            # As 'a' gets bigger we keep less old v.
             (1.0 - self.a) * self.v +
+            # As 'a' gets bigger we emply more new v dervied
+            # from the current forces.
              self.a * np.sqrt(
                         np.vdot(self.v, self.v) / np.vdot(forces, forces)
                       ) * forces
         )
-        last_velocity = self.velocities[-1]
-        if (self.cur_cycle > 0) and (np.vdot(last_velocity, forces) > 0):
+        last_v = self.velocities[-1]
+        # Check if forces are still aligned with the last velocity
+        if (self.cur_cycle > 0) and (np.vdot(last_v, forces) > 0):
             if self.n_reset > self.N_acc:
                 self.dt = min(self.dt * self.f_inc, self.dt_max)
                 self.a *= self.f_acc
             self.n_reset += 1
         else:
-            mixed_velocity = np.zeros_like(forces)
+            # Reset everything when 'forces' and 'last_v' aren't
+            # aligned anymore.
+            mixed_v = np.zeros_like(forces)
             self.a = self.a_start
             self.dt *= self.f_acc
             self.n_reset = 0
-        velocity = mixed_velocity + self.dt * forces
-        self.velocities.append(velocity)
-        steps = self.dt * velocity
+
+        v = mixed_v + self.dt * forces
+        self.velocities.append(v)
+        steps = self.dt * v
         steps = self.scale_by_max_step(steps)
 
         return steps
