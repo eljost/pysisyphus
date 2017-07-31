@@ -18,6 +18,8 @@ class Optimizer:
         self.max_step = 0.04
         self.rel_step_thresh = 1e-3
 
+        assert(self.max_step > self.rel_step_thresh)
+
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         self.is_zts = getattr(self.geometry, "reparametrize", None)
 

@@ -10,12 +10,16 @@ from optimizers.FIRE import FIRE
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 
-CYCLES = 10
-IMAGES = 15
+CYCLES = 50
+IMAGES = 3
 
 def get_geoms():
     initial = np.array((-1.05274, 1.02776, 0))
     final = np.array((1.94101, 3.85427, 0))
+    #initial = np.array((0.3, 2.46, 0))
+    #final = np.array((0.8833, 0.5238, 0))
+    #initial = np.array((0.3167, 2.2381, 0.0))
+    #final = np.array((0.8583, 0.7381, 0.0))
     atoms = ("H", "H")
     geoms = [Geometry(atoms, coords) for coords in (initial, final)]
     return geoms
@@ -29,26 +33,28 @@ def run_cos_opt(cos):
     #opt = SteepestDescent(cos,
     opt = FIRE(cos,
                          max_cycles=CYCLES,
-                         max_step = 0.05,
-                         #max_force_thresh=0.05,
-                         #rms_force_thresh=0.01,
-                         alpha=0.1)
+                         dt_max=0.3,
+                         )
     opt.run()
 
     xlim = (-2, 2.5)
     ylim = (0, 5)
-    levels = (-4, 8, 20)
+    levels = (-6, 6, 50)
     ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
     ap.animate()
 
 
 if __name__ == "__main__":
     geoms = get_geoms()
-    neb = NEB(geoms)
-    szts_equal = SimpleZTS(geoms, param="equal")
-    szts_energy = SimpleZTS(geoms, param="energy")
 
+    neb = NEB(geoms)
     run_cos_opt(neb)
     print()
-    #run_cos_opt(szts_equal)
-    #run_cos_opt(szts_energy)
+
+    szts_equal = SimpleZTS(geoms, param="equal")
+    run_cos_opt(szts_equal)
+    print()
+
+    szts_energy = SimpleZTS(geoms, param="energy")
+    run_cos_opt(szts_energy)
+

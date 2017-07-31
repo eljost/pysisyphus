@@ -39,11 +39,11 @@ def run_cos_opt(cos):
         img.set_calculator(MullerBrownPot())
 
     #opt = NaiveSteepestDescent(cos,
-    opt = SteepestDescent(cos,
-    #opt = FIRE(cos,
-                         max_cycles=CYCLES,
-                         #max_step=0.5,
-                         alpha=0.05)
+    #opt = SteepestDescent(cos,
+    opt = FIRE(cos,
+                         max_cycles=CYCLES)
+                         #max_step=0.005,
+                         #dt_max=0.2)
     opt.run()
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
@@ -54,10 +54,16 @@ def run_cos_opt(cos):
 
 if __name__ == "__main__":
     geoms = get_geoms()
-    neb = NEB(geoms)
-    #szts = SimpleZTS(geoms, param="equal")
-    szts = SimpleZTS(geoms, param="energy")
 
-    #run_cos_opt(neb)
+    """NEB doesn't converge with the default thresholds at all but the
+    SimpleZTS methods converge fine."""
+    neb = NEB(geoms)
+    run_cos_opt(neb)
     print()
-    run_cos_opt(szts)
+
+    szts_equal = SimpleZTS(geoms, param="equal")
+    run_cos_opt(szts_equal)
+    print()
+
+    szts_energy = SimpleZTS(geoms, param="energy")
+    run_cos_opt(szts_energy)
