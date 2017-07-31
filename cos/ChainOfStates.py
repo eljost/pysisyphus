@@ -5,13 +5,16 @@ import numpy as np
 from Geometry import Geometry
 from qchelper.geometry import make_trj_str
 
+# [1] http://dx.doi.org/10.1063/1.1323224
 class ChainOfStates:
 
     def __init__(self, images):
+        assert(len(images) >= 2), "Need at least 2 images!"
         self.images = images
 
         self._coords = None
         self._forces = None
+        self._perp_forces = None
         self.coords_length = self.images[0].coords.size
 
     @property
@@ -48,8 +51,8 @@ class ChainOfStates:
     @property
     def perpendicular_forces(self):
         indices = range(len(self.images))
-        perp_forces = [self.get_perpendicular_forces(i) for i in indices]
-        return np.array(perp_forces).flatten()
+        self._perp_forces = [self.get_perpendicular_forces(i) for i in indices]
+        return np.array(self._perp_forces).flatten()
 
     def interpolate_between(self, initial_ind, final_ind, image_num):
         initial_coords = self.images[initial_ind].coords
@@ -79,23 +82,65 @@ class ChainOfStates:
         self.images[-1].forces = zero_forces
 
     def get_tangent(self, i):
-        # Use a one-sided difference for the first and last image
+        """ [1] Equations (8) - (11)"""
+        prev_index = max(i - 1, 0)
+        next_index = min(i + 1, len(self.images)-1)
+
+        prev_image = self.images[prev_index]
+        ith_image = self.images[i]
+        next_image = self.images[next_index]
+
+        prev_coords = prev_image.coords
+        ith_coords = ith_image.coords
+        next_coords = next_image.coords
+
+        # Handle first and last image
         if i is 0:
-            prev_index = i
-            next_index = 1
+            tangent = next_index - ith_coords
+            return tangent/np.linalg.norm(tangent)
         elif i is (len(self.images) - 1):
-            prev_index = i - 1
-            next_index = len(self.images) - 1
-        # If i is an inner index use the image before and after i
+            tangent = ith_coords - prev_index
+            return tangent/np.linalg.norm(tangent)
+
+        prev_energy = prev_image.energy
+        ith_energy = ith_image.energy
+        next_energy = next_image.energy
+
+        tangent_plus = next_coords - ith_coords
+        tangent_minus = ith_coords - prev_coords
+
+        next_energy_diff = abs(next_energy - ith_energy)
+        prev_energy_diff = abs(prev_energy - ith_energy)
+        delta_energy_max = max(next_energy_diff, prev_energy_diff)
+        delta_energy_min = min(next_energy_diff, prev_energy_diff)
+
+        # Uphill
+        if next_energy > ith_energy > prev_energy:
+            tangent = tangent_plus
+        # Downhill
+        elif next_energy < ith_energy < prev_energy:
+            tangent = tangent_minus
+        # Minimum or Maximum
+        elif ((next_energy > ith_energy < prev_energy) or
+              (next_energy < ith_energy > prev_energy)):
+            if next_energy > prev_energy:
+                tangent = (tangent_plus * delta_energy_max +
+                           tangent_minus * delta_energy_min
+                )
+            elif next_energy < prev_energy:
+                tangent = (tangent_plus * delta_energy_min +
+                           tangent_minus * delta_energy_max
+                )
+            else:
+                raise Exception("This should never happen!")
         else:
-            prev_index = i - 1
-            next_index = i + 1
-        # [1], Eq. (2)
-        prev_image = self.images[prev_index].coords
-        next_image = self.images[next_index].coords
-        return (next_image-prev_image) / np.linalg.norm(next_image-prev_image)
+            raise Exception("This should never happen!")
+
+        normalized_tangent = tangent/np.linalg.norm(tangent)
+        return normalized_tangent
 
     def get_perpendicular_forces(self, i):
+        """ [1] Eq. 12"""
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
         return forces - (np.vdot(forces, tangent)*tangent)
