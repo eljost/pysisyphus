@@ -18,3 +18,7 @@
     - Energieachse updaten
     - Letzter Frame fehlt: Wenn es nicht konvergiert ist letzter Frame
       nicht mehr da. Wenn es konvergiert schon.
+- run in Optimizer.py:
+    - Für NEB werden forces benötigt. Für die Berechnung von forces werden
+      die Energien benötigt. Wird jmethode: Berechnungn von forces vor energy, weil energy immer
+      in forces-Rechnung anfällt
