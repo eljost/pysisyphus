@@ -35,6 +35,7 @@ class ORCA(Calculator):
         coords = "\n".join(
             ["{} {} {} {}".format(a, *c) for a, c in zip(atoms, coords)]
         )
+        #import logging; logging.info("Running calculation!")
         results = self.run(inp.format(coords))
         return results
 

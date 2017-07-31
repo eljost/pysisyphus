@@ -21,6 +21,7 @@ class FIRE(BacktrackingOptimizer):
 
         self.v = np.zeros_like(geometry.coords)
         self.velocities = [self.v, ]
+        self.time_deltas = [self.dt, ]
 
         super(FIRE, self).__init__(geometry, **kwargs)
 
@@ -52,6 +53,7 @@ class FIRE(BacktrackingOptimizer):
 
         v = mixed_v + self.dt * forces
         self.velocities.append(v)
+        self.time_deltas.append(self.dt)
         steps = self.dt * v
         steps = self.scale_by_max_step(steps)
 
