@@ -7,9 +7,12 @@ from calculators.ORCA import ORCA
 from cos.NEB import NEB
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
+from optimizers.FIRE import FIRE
 
 from qchelper.geometry import parse_xyz_file
 
+CYCLES = 5
+IMAGES = 1
 
 """
 def run_new():
@@ -29,30 +32,26 @@ def run_new():
         handle.write(trj_str)
 """
 
-def run_neb():
+def get_geoms():
     educt = "xyz_files/h2o_inv_educt.xyz"
     product = "xyz_files/h2o_inv_product.xyz" 
-    xyz_fns = [educt, product]
+    xyz_fns = (educt, product)
     atoms_coords = [parse_xyz_file(fn) for fn in xyz_fns]
     geoms = [Geometry(atoms, coords.flatten()) for atoms, coords in atoms_coords]
-    neb = NEB(geoms)
-    neb.interpolate_images(2)
-    for img in neb.images[1:-1]:
+    return geoms
+
+
+def run_cos_opt(cos):
+    cos.interpolate(IMAGES)
+    for img in cos.images:
         img.set_calculator(ORCA())
 
-    sd = SteepestDescent(neb, max_cycles=10)
-    sd.run()
+    #opt = SteepestDescent(cos,
+    opt = FIRE(cos,
+               max_cycles=CYCLES)
+    opt.run()
 
-
-def run_opt():
-    atoms, coords = parse_xyz_file("xyz_files/h2o_inv_educt.xyz")
-    geom = Geometry(atoms, coords.flatten())
-    geom.set_calculator(ORCA())
-    sd = SteepestDescent(geom, max_cycles=100)
-    sd.run()
 
 if __name__ == "__main__":
-    #run_neb()
-    print()
-    run_opt()
-
+    neb = NEB(get_geoms())
+    run_cos_opt(neb)

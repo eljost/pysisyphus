@@ -31,6 +31,10 @@ class ChainOfStates:
         for image, c in zip(self.images, coords):
             image.coords = c
 
+        self._energy = None
+        self._forces = None
+        self._hessian = None
+
     @property
     def energy(self):
         self._energy = [image.energy for image in self.images]

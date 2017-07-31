@@ -27,7 +27,7 @@ class ORCA(Calculator):
         self.out_fn = "orca.out"
         self.base_cmd = "/scratch/programme/orca_4_0_0_2_linux_x86-64/orca"
 
-    def get_energy(self, coords):
+    def get_energy(self, atoms, coords):
         raise Exception("Not implemented!")
 
     def get_forces(self, atoms, coords):
@@ -38,7 +38,7 @@ class ORCA(Calculator):
         results = self.run(inp.format(coords))
         return results
 
-    def get_hessian(self, coords):
+    def get_hessian(self, atoms, coords):
         raise Exception("Not implemented!")
 
     def parse(self, path):

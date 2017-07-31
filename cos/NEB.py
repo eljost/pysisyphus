@@ -40,6 +40,12 @@ class NEB(ChainOfStates):
     def forces(self):
         indices = range(len(self.images))
 
+        # The calculation of the forces for every image is dependent on
+        # the energies of its neighbouring images via the calculation of
+        # the tangents.
+        if self._forces is None:
+            [image.calc_energy_and_forces() for image in self.images]
+
         perp_forces = np.array(
             [self.get_perpendicular_forces(i) for i in indices]
         )

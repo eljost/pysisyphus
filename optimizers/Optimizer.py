@@ -83,9 +83,10 @@ class Optimizer:
             if self.cur_cycle == self.max_cycles:
                 print("Number of cycles exceeded!")
                 break
+
             self.coords.append(self.geometry.coords)
-            self.energies.append(self.geometry.energy)
             self.forces.append(self.geometry.forces)
+            self.energies.append(self.geometry.energy)
 
             self.check_convergence()
             if self.is_converged:
