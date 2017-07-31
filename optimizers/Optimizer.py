@@ -35,13 +35,6 @@ class Optimizer:
         self.rms_forces = list()
         self.step_changes = [0, ]
 
-        # Check if geometry defines it's own convergence check, e.g.
-        # as in CoS methods where we're interested in the perpendicular
-        # component of the force along the MEP.
-        geom_conv_check = getattr(self.geometry, "check_convergence", None)
-        if geom_conv_check:
-            self.check_convergence = geom_conv_check
-
     def print_convergence(self):
         print("cycle: {:04d} max(force): {:.5f} rms(force): {:.5f} "
                 "d(step): {:.5f}".format(
@@ -91,6 +84,8 @@ class Optimizer:
 
             self.check_convergence()
             if self.is_converged:
+                print("Converged! Gradients below threshold.")
+                self.print_convergence()
                 break
 
             steps = self.optimize()
@@ -103,6 +98,8 @@ class Optimizer:
 
             self.check_step_change()
             if self.is_converged:
+                print("Converged! Rel. step change below threshold.")
+                self.print_convergence()
                 break
 
             self.print_convergence()
