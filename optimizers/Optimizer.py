@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import scipy as sp
 
 from cos.ChainOfStates import ChainOfStates
 from qchelper.geometry import make_trj_str
@@ -67,7 +68,7 @@ class Optimizer:
         )
 
     def print_convergence(self):
-        print("cycle: {:04d} max(force): {:.5f} rms(force): {:.5f} "
+        print("cycle: {:04d} max(force): {:03.5f} rms(force): {:.5f} "
                 "max(step): {:.5f} rms(step): {:.5f}".format(
             self.cur_cycle, self.max_forces[-1], self.rms_forces[-1],
             self.max_steps[-1], self.rms_steps[-1])
@@ -78,6 +79,24 @@ class Optimizer:
         if steps_max > self.max_step:
             steps *= self.max_step / steps_max
         return steps
+
+    def procrustes(self):
+        # https://github.com/pycogent/pycogent/blob/master/cogent/cluster/procrustes.py
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.procrustes.html#scipy.spatial.procrustes
+        # Center of geometry
+        first_coords = self.geometry.images[0].coords
+        first_centroid = np.mean(first_coords)
+        first_coords_centered = first_coords - first_centroid
+        print(first_coords_centered)
+
+        for i in range(0, len(self.geometry.images)-1):
+            ith_coords = self.geometry.images[i].coords
+            ith_centroid = np.mean(ith_coords)
+            ith_coords_centered = ith_coords - ith_centroid
+            matrix = np.dot(ith_coords_centered.transpose(), first_coords_centered)
+
+            U, W, Vt = sp.linalg.svd(matrix)
+            print(i)
 
     def optimize(self):
         raise Exception("Not implemented!")

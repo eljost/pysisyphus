@@ -5,14 +5,15 @@ import numpy as np
 
 from calculators.ORCA import ORCA
 from cos.NEB import NEB
+from cos.SimpleZTS import SimpleZTS
 from Geometry import Geometry
 from optimizers.SteepestDescent import SteepestDescent
 from optimizers.FIRE import FIRE
 
 from qchelper.geometry import parse_xyz_file
 
-CYCLES = 15
-IMAGES = 2
+CYCLES = 50
+IMAGES = 3
 
 def get_geoms():
     educt = "xyz_files/hcn.xyz"
@@ -37,6 +38,18 @@ def run_cos_opt(cos):
     opt.run()
 
 
+def procrustes_test(cos):
+    cos.interpolate(IMAGES)
+    for img in cos.images:
+        img.set_calculator(ORCA())
+
+    kwargs = {
+        "max_cycles":CYCLES,
+    }
+    opt = FIRE(cos, **kwargs)
+    opt.procrustes()
+
+
 if __name__ == "__main__":
     """
     try:
@@ -45,6 +58,12 @@ if __name__ == "__main__":
     except:
         import pdb
         pdb.set_trace()
-    """
     neb = NEB(get_geoms())
     run_cos_opt(neb)
+
+    szts_equal = SimpleZTS(get_geoms(), param="equal")
+    run_cos_opt(szts_equal)
+    print()
+    """
+    neb = NEB(get_geoms())
+    procrustes_test(neb)
