@@ -12,12 +12,13 @@ from optimizers.FIRE import FIRE
 from qchelper.geometry import parse_xyz_file
 
 CYCLES = 15
-IMAGES = 3
+IMAGES = 2
 
 def get_geoms():
     educt = "xyz_files/hcn.xyz"
+    ts_guess ="xyz_files/hcn_iso_ts.xyz"
     product = "xyz_files/nhc.xyz" 
-    xyz_fns = (educt, product)
+    xyz_fns = (educt, ts_guess, product)
     atoms_coords = [parse_xyz_file(fn) for fn in xyz_fns]
     geoms = [Geometry(atoms, coords.flatten()) for atoms, coords in atoms_coords]
     return geoms
@@ -29,11 +30,10 @@ def run_cos_opt(cos):
         img.set_calculator(ORCA())
 
     kwargs = {
-        "rel_step_thresh": 1e-3,
         "max_cycles":CYCLES,
     }
-    #opt = FIRE(cos, **kwargs)
-    opt = SteepestDescent(cos, **kwargs)
+    opt = FIRE(cos, **kwargs)
+    #opt = SteepestDescent(cos, **kwargs)
     opt.run()
 
 

@@ -13,7 +13,7 @@ class SteepestDescent(BacktrackingOptimizer):
         assert(self.alpha > 0), "Alpha should be positive!"
 
     def optimize(self):
-        if self.cur_cycle > 0:
+        if self.cur_cycle > 1:
             self.skip = self.backtrack()
         step = self.alpha*self.forces[-1]
         step = self.scale_by_max_step(step)

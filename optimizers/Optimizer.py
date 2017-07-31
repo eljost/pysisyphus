@@ -105,7 +105,6 @@ class Optimizer:
             self.forces.append(self.geometry.forces)
             self.energies.append(self.geometry.energy)
 
-
             steps = self.optimize()
             self.steps.append(steps)
 
