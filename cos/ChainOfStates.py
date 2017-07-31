@@ -127,7 +127,7 @@ class ChainOfStates:
         # Minimum or Maximum
         elif ((next_energy > ith_energy < prev_energy) or
               (next_energy < ith_energy > prev_energy)):
-            if next_energy > prev_energy:
+            if next_energy >= prev_energy:
                 tangent = (tangent_plus * delta_energy_max +
                            tangent_minus * delta_energy_min
                 )
@@ -149,9 +149,8 @@ class ChainOfStates:
         tangent = self.get_tangent(i)
         return forces - (np.vdot(forces, tangent)*tangent)
 
-    def save(self, out_fn):
+    def as_xyz(self):
         atoms = self.images[0].atoms
         coords_list = [image.coords.reshape((-1,3)) for image in self.images]
         trj_str = make_trj_str(atoms, coords_list)
-        with open(out_fn, "w") as handle:
-            handle.write(trj_str)
+        return trj_str
