@@ -93,7 +93,6 @@ class AnimPlot:
 
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)
-        print("Showing {} cycles.".format(cycles))
         self.animation = animation.FuncAnimation(self.fig,
                                                  self.func,
                                                  frames=cycles,
