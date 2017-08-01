@@ -4,8 +4,11 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from cos.ChainOfStates import ChainOfStates
+from cos.NEB import NEB
 from calculators.Calculator import Calculator
 from optimizers.FIRE import FIRE
+
+# [1] http://aip.scitation.org/doi/full/10.1063/1.4878664
 
 
 def idpp_interpolate(geometries, images_between):
@@ -21,13 +24,10 @@ def idpp_interpolate(geometries, images_between):
     print("pdists")
     for pd in pdists:
         print(pd)
-    """
-    from scipy.spatial.distance squareform
     squareforms = [squareform(pd) for pd in pdists]
     print("squareforms")
     for sq in squareforms:
         print(sq)
-    """
     chunk_length = images_between + 1
     for i in range(len(pdists)-1):
         from_pd = pdists[i]
@@ -43,9 +43,9 @@ def idpp_interpolate(geometries, images_between):
             image.set_calculator(IDPP(from_pd + j * pd_diff))
 
         kwargs = {
-            "max_cycles":10,
+            "max_cycles":100,
         }
-        opt = FIRE(ChainOfStates(images_slice), **kwargs)
+        opt = FIRE(NEB(images_slice), **kwargs)
         opt.run()
 
     # Add last images
@@ -53,8 +53,7 @@ def idpp_interpolate(geometries, images_between):
 class IDPP(Calculator):
 
     def __init__(self, target): 
-        self.target = target
-        print("target", target)
+        self.target = squareform(target)
 
         super(Calculator, self).__init__()
 
@@ -63,18 +62,34 @@ class IDPP(Calculator):
 
     def get_forces(self, atoms, coords):
         coords_reshaped = coords.reshape((-1, 3))
-        current_pdist = pdist(coords_reshaped)
-        square_dists = squareform(current_pdist)
-        diff = current_pdist - self.target
-        print(diff)
 
-        energy = 0.5 * (diff**2 / current_pdist**4).sum()
-        #forces = -2 * ((diff * (1 -2 * dd / current_pdist) / cur
-        forces = 0.1*coords
+        D = []
+        for c in coords_reshaped:
+            Di = coords_reshaped - c
+            D.append(Di)
+        D = np.array(D)
+
+        curr_pdist = pdist(coords_reshaped)
+        curr_square = squareform(curr_pdist)
+        curr_diff = curr_square - self.target
+
+        curr_square = curr_square + np.eye(curr_square.shape[0])
+
+
+        # The bigger the differences 'curr_diff', the bigger the energy.
+        # The smaller the current distances 'current_pdist', the bigger
+        # the energy.
+        energy = 0.5 * (curr_diff**2 / curr_square**4).sum()
+
+        forces = -2 * ((curr_diff *
+                       (1 - 2 * curr_diff / curr_square) /
+                        curr_square**5)[...,np.newaxis] * D).sum(0)
+        #print("forces")
+        #print(forces)
 
         results = {
             "energy" : energy,
-            "forces": forces
+            "forces": forces.flatten()
         }
         return results
 

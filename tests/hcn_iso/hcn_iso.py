@@ -13,7 +13,7 @@ from optimizers.FIRE import FIRE
 
 from qchelper.geometry import parse_xyz_file
 
-CYCLES = 50
+CYCLES = 5
 IMAGES = 3
 
 
@@ -22,6 +22,7 @@ def get_geoms():
     ts_guess ="xyz_files/hcn_iso_ts.xyz"
     product = "xyz_files/nhc.xyz" 
     xyz_fns = (educt, ts_guess, product)
+    xyz_fns = (educt, ts_guess)
     atoms_coords = [parse_xyz_file(fn) for fn in xyz_fns]
     geoms = [Geometry(atoms, coords.flatten()) for atoms, coords in atoms_coords]
     return geoms
