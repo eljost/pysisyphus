@@ -18,6 +18,7 @@ class SimpleZTS(ChainOfStates):
         def weight_function(mean_energies):
             mean_energies = np.abs(mean_energies)
             weights = mean_energies / mean_energies.max()
+            weights = np.sqrt(weights)
             return weights
 
         reshaped = self.coords.reshape(-1, self.coords_length)
