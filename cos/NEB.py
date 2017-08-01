@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from cos.ChainOfStates import ChainOfStates
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 # [1] http://aip.scitation.org/doi/pdf/10.1063/1.1323224
 # 

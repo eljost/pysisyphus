@@ -1,0 +1,5 @@
+cycle: 0000 max(force): 0.13656 rms(force): 0.04366 max(step): 0.00158 rms(step): 0.00047
+cycle: 0001 max(force): 0.13100 rms(force): 0.04224 max(step): 0.00152 rms(step): 0.00046
+cycle: 0002 max(force): 0.12572 rms(force): 0.04090 max(step): 0.00147 rms(step): 0.00044
+cycle: 0003 max(force): 0.12070 rms(force): 0.03962 max(step): 0.00142 rms(step): 0.00043
+cycle: 0004 max(force): 0.11592 rms(force): 0.03841 max(step): 0.00137 rms(step): 0.00042

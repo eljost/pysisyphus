@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.Optimizer import Optimizer
 
 class NaiveSteepestDescent(Optimizer):
 

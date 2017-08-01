@@ -3,10 +3,10 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
-from cos.ChainOfStates import ChainOfStates
-from cos.NEB import NEB
-from calculators.Calculator import Calculator
-from optimizers.FIRE import FIRE
+from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.cos.NEB import NEB
+from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.optimizers.FIRE import FIRE
 
 
 # [1] http://aip.scitation.org/doi/full/10.1063/1.4878664

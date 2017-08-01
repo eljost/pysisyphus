@@ -3,7 +3,7 @@
 import numpy as np
 from scipy.interpolate import splprep, splev
 
-from cos.ChainOfStates import ChainOfStates
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 # [1] http://aip.scitation.org/doi/abs/10.1063/1.2720838
 

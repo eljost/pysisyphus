@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from optimizers.BacktrackingOptimizer import BacktrackingOptimizer
+from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class SteepestDescent(BacktrackingOptimizer):
 

@@ -11,18 +11,10 @@
 - Geometry
     - atoms, coords trennung irgendwie verbessern
 - Optimizer
-    - sollte am Ende xyz ausgeben, oder trj für COS geometry
     - Verwendung des exakten Hessian
     - fixed ends in optimizer einbauen
-    - Konvergenz-kriterien bestimmen die berücksichtigt werden; ähnlich Psi4: nur die
-      verwenden die übergeben werden
-    - Ausgabe der Konvergenz in Tabelle
+    - Zeit pro Iteration ausgeben
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
-    - Energieachse updaten
     - Letzter Frame fehlt: Wenn es nicht konvergiert ist letzter Frame
       nicht mehr da. Wenn es konvergiert schon.
-- run in Optimizer.py:
-    - Für NEB werden forces benötigt. Für die Berechnung von forces werden
-      die Energien benötigt. Wird jmethode: Berechnungn von forces vor energy, weil energy immer
-      in forces-Rechnung anfällt

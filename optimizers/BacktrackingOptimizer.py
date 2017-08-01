@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.Optimizer import Optimizer
 
 class BacktrackingOptimizer(Optimizer):
 

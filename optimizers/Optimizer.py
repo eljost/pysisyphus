@@ -3,7 +3,7 @@
 import numpy as np
 import scipy as sp
 
-from cos.ChainOfStates import ChainOfStates
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 from qchelper.geometry import make_trj_str
 
 

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from optimizers.BacktrackingOptimizer import BacktrackingOptimizer
+from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class FIRE(BacktrackingOptimizer):
     # https://doi.org/10.1103/PhysRevLett.97.170201

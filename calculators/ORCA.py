@@ -7,9 +7,10 @@ import subprocess
 
 import numpy as np
 
-from calculators.Calculator import Calculator
+from pysisyphus.calculators.Calculator import Calculator
 
-inp="""!BP86 def2-SV(P) def2/J TightSCF engrad
+#inp="""!BP86 def2-SV(P) def2/J TightSCF engrad
+inp="""!HF-3c TightSCF engrad
 
 %maxcore 1000
 
