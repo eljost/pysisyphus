@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 
 logging.basicConfig()
@@ -43,8 +44,17 @@ class Calculator:
             result = subprocess.Popen(args, cwd=path, stdout=handle)
             result.wait()
         #logging.info("Calculation finished".format(path))
-        results = self.parse(path)
-        self.clean(path)
+        try:
+            results = self.parse(path)
+        except Exception as err:
+            print(err)
+            print()
+            print(inp)
+            sys.exit()
+        finally:
+            self.clean(path)
+
+
         return results
 
     def clean(self, path):
