@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import time
+
 import numpy as np
 import scipy as sp
 
@@ -46,6 +48,7 @@ class Optimizer:
         self.rms_forces = list()
         self.max_steps = list()
         self.rms_steps = list()
+        self.cycle_times = list()
 
     def check_convergence(self):
         # Only use forces perpendicular to the mep
@@ -80,16 +83,17 @@ class Optimizer:
         )
 
     def print_header(self):
-        hs = "max(force) rms(force) max(step) rms(step)".split()
+        hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
         header = "cycle" + " ".join([h.rjust(13) for h in hs])
         print(header)
 
     def print_convergence(self):
+        int_fmt = "{:>5d}"
         float_fmt = "{:>12.5f}"
-        conv_str = "{:>5d} " + (float_fmt + " ") * 4
+        conv_str = int_fmt + " " + (float_fmt + " ") * 4 + "{:>12.1f}"
         print(conv_str.format(
             self.cur_cycle, self.max_forces[-1], self.rms_forces[-1],
-            self.max_steps[-1], self.rms_steps[-1])
+            self.max_steps[-1], self.rms_steps[-1], self.cycle_times[-1])
         )
 
     def scale_by_max_step(self, steps):
@@ -135,6 +139,7 @@ class Optimizer:
     def run(self):
         self.print_header()
         while True:
+            start_time = time.time()
             if self.cur_cycle == self.max_cycles:
                 print("Number of cycles exceeded!")
                 break
@@ -151,6 +156,11 @@ class Optimizer:
             new_coords = self.geometry.coords + steps
             self.geometry.coords = new_coords
 
+            self.cur_cycle += 1
+            end_time = time.time()
+            elapsed_seconds = end_time - start_time
+            self.cycle_times.append(elapsed_seconds)
+
             self.save_cycle()
             self.print_convergence()
             if self.is_converged:
@@ -161,4 +171,3 @@ class Optimizer:
             if self.is_zts:
                 self.geometry.reparametrize()
 
-            self.cur_cycle += 1
