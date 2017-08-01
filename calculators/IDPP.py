@@ -43,7 +43,7 @@ def idpp_interpolate(geometries, images_between):
             image.set_calculator(IDPP(from_pd + j * pd_diff))
 
         kwargs = {
-            "max_cycles":20,
+            "max_cycles":100,
             # Use pretty loose convergence criteria for IDPP
             "convergence": {
                 "max_force_thresh": 0.1
@@ -58,7 +58,7 @@ def idpp_interpolate(geometries, images_between):
     assert(len(idpp_interpolated_images) == len(images))
 
     # Delete IDPP calculator, energies and forces
-    idpp_interpolated_images = [i.clear() for i in idpp_interpolated_images]
+    [image.clear() for image in idpp_interpolated_images]
 
     return idpp_interpolated_images
 

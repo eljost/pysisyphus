@@ -10,7 +10,14 @@ class Geometry:
         self._forces = None
         self._hessian = None
 
+    def clear(self):
+        self.calculator = None
+        self._energy = None
+        self._forces = None
+        self._hessian = None
+
     def set_calculator(self, calculator):
+        self.clear()
         self.calculator = calculator
 
     @property
@@ -58,7 +65,6 @@ class Geometry:
     @hessian.setter
     def hessian(self, hessian):
         self._hessian = hessian
-
 
     def calc_energy_and_forces(self):
         results = self.calculator.get_forces(self.atoms, self.coords)

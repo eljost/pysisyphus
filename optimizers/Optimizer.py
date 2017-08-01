@@ -79,14 +79,6 @@ class Optimizer:
             ]
         )
 
-        """
-        self.is_converged = ((max_force <= self.max_force_thresh) and
-                             (rms_force <= self.rms_force_thresh) and
-                             (max_step <= self.max_step_thresh) and
-                             (rms_step <= self.rms_step_thresh)
-        )
-        """
-
     def print_convergence(self):
         print("cycle: {:04d} max(force): {:03.5f} rms(force): {:.5f} "
                 "max(step): {:.5f} rms(step): {:.5f}".format(
@@ -102,7 +94,7 @@ class Optimizer:
 
     def procrustes(self):
         # https://github.com/pycogent/pycogent/blob/master/cogent/cluster/procrustes.py
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.procrustes.html#scipy.spatial.procrustes
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.procrustes.html
         # Center of geometry
         first_coords = self.geometry.images[0].coords
         first_centroid = np.mean(first_coords)

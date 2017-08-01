@@ -16,6 +16,7 @@
     - fixed ends in optimizer einbauen
     - Konvergenz-kriterien bestimmen die berücksichtigt werden; ähnlich Psi4: nur die
       verwenden die übergeben werden
+    - Ausgabe der Konvergenz in Tabelle
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
     - Energieachse updaten

@@ -22,14 +22,21 @@ def get_geoms():
     ts_guess ="xyz_files/hcn_iso_ts.xyz"
     product = "xyz_files/nhc.xyz" 
     xyz_fns = (educt, ts_guess, product)
-    xyz_fns = (educt, ts_guess)
+    #xyz_fns = (educt, ts_guess)
     atoms_coords = [parse_xyz_file(fn) for fn in xyz_fns]
     geoms = [Geometry(atoms, coords.flatten()) for atoms, coords in atoms_coords]
     return geoms
 
+def get_idpp_geoms():
+    geoms = get_geoms()
+    print("len geoms", len(geoms))
+    return idpp_interpolate(geoms, images_between=IMAGES)
 
-def run_cos_opt(cos):
-    cos.interpolate(IMAGES)
+
+def run_cos_opt(cos, idpp=False):
+    # Otherwise it's already interpolated
+    if not idpp:
+        cos.interpolate(IMAGES)
     for img in cos.images:
         img.set_calculator(ORCA())
 
@@ -68,6 +75,15 @@ if __name__ == "__main__":
     run_cos_opt(szts_equal)
     print()
     """
-    #neb = NEB(get_geoms())
     #procrustes_test(neb)
-    idpp_interpolate(get_geoms(), images_between=IMAGES)
+    """
+    # IDPP
+    neb = NEB(get_idpp_geoms())
+    run_cos_opt(neb, idpp=True)
+    """
+
+    """
+    # Linear
+    neb = NEB(get_geoms())
+    run_cos_opt(neb)
+    """
