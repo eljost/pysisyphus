@@ -29,7 +29,6 @@ def get_geoms():
 
 def get_idpp_geoms():
     geoms = get_geoms()
-    print("len geoms", len(geoms))
     return idpp_interpolate(geoms, images_between=IMAGES)
 
 
@@ -81,6 +80,7 @@ if __name__ == "__main__":
     neb = NEB(get_idpp_geoms())
     run_cos_opt(neb, idpp=True)
     """
+    get_idpp_geoms()
 
     """
     # Linear

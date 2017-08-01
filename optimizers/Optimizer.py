@@ -79,9 +79,15 @@ class Optimizer:
             ]
         )
 
+    def print_header(self):
+        hs = "max(force) rms(force) max(step) rms(step)".split()
+        header = "cycle" + " ".join([h.rjust(13) for h in hs])
+        print(header)
+
     def print_convergence(self):
-        print("cycle: {:04d} max(force): {:03.5f} rms(force): {:.5f} "
-                "max(step): {:.5f} rms(step): {:.5f}".format(
+        float_fmt = "{:>12.5f}"
+        conv_str = "{:>5d} " + (float_fmt + " ") * 4
+        print(conv_str.format(
             self.cur_cycle, self.max_forces[-1], self.rms_forces[-1],
             self.max_steps[-1], self.rms_steps[-1])
         )
@@ -127,6 +133,7 @@ class Optimizer:
                 handle.write("\n")
 
     def run(self):
+        self.print_header()
         while True:
             if self.cur_cycle == self.max_cycles:
                 print("Number of cycles exceeded!")
@@ -148,6 +155,7 @@ class Optimizer:
             self.print_convergence()
             if self.is_converged:
                 print("Converged!")
+                print()
                 break
 
             if self.is_zts:

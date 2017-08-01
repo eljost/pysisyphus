@@ -58,3 +58,6 @@ class FIRE(BacktrackingOptimizer):
         steps = self.scale_by_max_step(steps)
 
         return steps
+
+    def __str__(self):
+        return "FIRE optimizer"
