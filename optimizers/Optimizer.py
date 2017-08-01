@@ -6,20 +6,25 @@ import scipy as sp
 from cos.ChainOfStates import ChainOfStates
 from qchelper.geometry import make_trj_str
 
+
+gauss_loose = {
+    "max_force_thresh": 2.5e-3,
+    "rms_force_thresh": 1.7e-3,
+    "max_step_thresh": 1.0e-2,
+    "rms_step_thresh": 6.7e-3
+}
+
 class Optimizer:
 
-    def __init__(self, geometry, fix_ends=False, **kwargs):
+    def __init__(self, geometry, convergence=gauss_loose, **kwargs):
         self.geometry = geometry
-        self.fix_ends = fix_ends
+
+        self.convergence = convergence
+        for key, value in convergence.items():
+            setattr(self, key, value)
 
         # Setting some default values
         self.max_cycles = 50
-        # Gaussian loose
-        self.max_force_thresh = 2.5e-3
-        self.rms_force_thresh = 1.7e-3
-        self.max_step_thresh = 1.0e-2
-        self.rms_step_thresh = 6.7e-3
-
         self.max_step = 0.04
         self.rel_step_thresh = 1e-3
 
@@ -34,7 +39,6 @@ class Optimizer:
 
         self.cur_cycle = 0
         self.coords = list()
-
         self.energies = list()
         self.forces = list()
         self.steps = list()
@@ -61,11 +65,27 @@ class Optimizer:
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
 
+        keys = self.convergence.keys()
+        this_cycle = {
+            "max_force_thresh": max_force,
+            "rms_force_thresh": rms_force,
+            "max_step_thresh": max_step,
+            "rms_step_thresh": rms_step
+        }
+
+        self.is_converged = all(
+            [this_cycle[key] <= getattr(self, key)
+             for key in self.convergence.keys()
+            ]
+        )
+
+        """
         self.is_converged = ((max_force <= self.max_force_thresh) and
                              (rms_force <= self.rms_force_thresh) and
                              (max_step <= self.max_step_thresh) and
                              (rms_step <= self.rms_step_thresh)
         )
+        """
 
     def print_convergence(self):
         print("cycle: {:04d} max(force): {:03.5f} rms(force): {:.5f} "
