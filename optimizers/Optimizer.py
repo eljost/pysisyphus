@@ -89,7 +89,7 @@ class Optimizer:
 
     def print_convergence(self):
         int_fmt = "{:>5d}"
-        float_fmt = "{:>12.5f}"
+        float_fmt = "{:>12.6f}"
         conv_str = int_fmt + " " + (float_fmt + " ") * 4 + "{:>12.1f}"
         print(conv_str.format(
             self.cur_cycle, self.max_forces[-1], self.rms_forces[-1],
