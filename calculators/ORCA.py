@@ -43,17 +43,19 @@ class ORCA(Calculator):
     def parse(self, path):
         results = {}
         engrad_fn = glob.glob(os.path.join(path, "*.engrad"))
-        if engrad_fn:
-            assert(len(engrad_fn) == 1)
-            engrad_fn = engrad_fn[0]
-            with open(engrad_fn) as handle:
-                engrad = handle.read()
-            engrad = re.findall("([\d\-\.]+)", engrad)
-            atoms = int(engrad.pop(0))
-            energy = float(engrad.pop(0))
-            force = -np.array(engrad[:3*atoms], dtype=np.float) * 0.529177249
-            results["energy"] = energy
-            results["forces"] = force
+        if not engrad_fn:
+            raise Exception("ORCA calculation failed.")
+
+        assert(len(engrad_fn) == 1)
+        engrad_fn = engrad_fn[0]
+        with open(engrad_fn) as handle:
+            engrad = handle.read()
+        engrad = re.findall("([\d\-\.]+)", engrad)
+        atoms = int(engrad.pop(0))
+        energy = float(engrad.pop(0))
+        force = -np.array(engrad[:3*atoms], dtype=np.float) * 0.529177249
+        results["energy"] = energy
+        results["forces"] = force
 
         return results
 
