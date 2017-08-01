@@ -1,6 +1,6 @@
 import numpy as np
 
-from calculators.Calculator import Calculator
+from pysisyphus.calculators.Calculator import Calculator
 
 class AnaPot(Calculator):
 
