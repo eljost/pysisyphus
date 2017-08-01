@@ -3,7 +3,6 @@
         - Wiederverwenden von Orbitalen
 - COS
     - Climbing image
-    - Erstes und letztes Image fixen
     - Tangente für erstes und letztes image
         - Images sollen nicht zusammen rutschen
         - Tangente zeigt in Richtung der Federkraft
@@ -12,9 +11,9 @@
     - atoms, coords trennung irgendwie verbessern
 - Optimizer
     - Verwendung des exakten Hessian
-    - fixed ends in optimizer einbauen
-    - Zeit pro Iteration ausgeben
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
     - Letzter Frame fehlt: Wenn es nicht konvergiert ist letzter Frame
       nicht mehr da. Wenn es konvergiert schon.
+- Fix endpoints
+- Philipps Molekül und SZTS
