@@ -27,6 +27,7 @@ def get_geoms():
     geoms = [Geometry(atoms, coords.flatten()) for atoms, coords in atoms_coords]
     return geoms
 
+
 def get_idpp_geoms():
     geoms = get_geoms()
     return idpp_interpolate(geoms, images_between=IMAGES)

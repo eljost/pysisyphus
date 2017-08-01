@@ -13,8 +13,7 @@ from optimizers.FIRE import FIRE
 from optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
 CYCLES = 50
-IMAGES = 5
-
+IMAGES = 4
 
 def get_geoms():
     min_a = np.array((-0.558, 1.442, 0)) # Minimum A
@@ -40,11 +39,14 @@ def run_cos_opt(cos):
 
     #opt = NaiveSteepestDescent(cos,
     #opt = SteepestDescent(cos,
-    opt = FIRE(cos,
-                         max_cycles=CYCLES)
-                         #max_step=0.005,
-                         #dt_max=0.2)
+    kwargs = {
+        "max_cycles": CYCLES,
+        #"max_step": 0.01,
+        "dt_max": 0.5,
+    }
+    opt = FIRE(cos, **kwargs)
     opt.run()
+
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
     levels=(-150, -15, 40)
