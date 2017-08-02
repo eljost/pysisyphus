@@ -1,5 +1,7 @@
 import numpy as np
 
+from qchelper.geometry import make_xyz_str
+
 class Geometry:
 
     def __init__(self, atoms, coords):
@@ -58,7 +60,7 @@ class Geometry:
     @property
     def hessian(self):
         if self._hessian is None:
-            results = self.calculator.get_hessian(self.coords)
+            results = self.calculator.get_hessian(self.atoms, self.coords)
             self.set_results(results)
         return self._hessian
 
@@ -73,6 +75,9 @@ class Geometry:
     def set_results(self, results):
         for key in results:
             setattr(self, key, results[key])
+
+    def as_xyz(self):
+        return make_xyz_str(self.atoms, self.coords.reshape((-1,3)))
 
     def __str__(self):
         return "{} atoms".format(len(self.atoms))
