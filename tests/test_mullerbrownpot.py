@@ -6,7 +6,7 @@ import numpy as np
 from pytest import approx
 
 from pysisyphus.AnimPlot import AnimPlot
-from calculators.MullerBrownPot import MullerBrownPot
+from pysisyphus.calculators.MullerBrownPot import MullerBrownPot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.optimizers.FIRE import FIRE
