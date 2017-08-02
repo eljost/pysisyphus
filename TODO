@@ -11,6 +11,7 @@
     - atoms, coords trennung irgendwie verbessern
 - Optimizer
     - Verwendung des exakten Hessian
+    - default max_step of 0.04 maybe too low
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
     - Letzter Frame fehlt: Wenn es nicht konvergiert ist letzter Frame
@@ -23,3 +24,4 @@ Thoughts:
     - pretty curved, more images usually lead to better convergence
       maybe because the tangents are better?
 - Start with SimpleZTS and then continue with a NEB?
+

@@ -40,6 +40,11 @@ class ORCA(Calculator):
         results = self.run(inp.format(coords))
         return results
 
+    def get_hessian(self, atom, coords):
+        # Return a unit hessian for now
+        hessian = np.eye(coords.size)
+        return {"hessian": hessian}
+
     def parse(self, path):
         results = {}
         engrad_fn = glob.glob(os.path.join(path, "*.engrad"))
