@@ -12,14 +12,16 @@ from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
 KWARGS = {
     "images": 5,
     "max_cycles": 50,
     "convergence": {
-        "max_step_thresh": 1e-3,
-        "rms_step_thresh": 1.6e-4,
+        "max_step_thresh": 3e-3,
+        "rms_step_thresh": 7e-4,
     },
+    #"alpha": 0.05,
 }
 
 
@@ -51,7 +53,7 @@ def animate(opt):
 
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 30
+    kwargs["max_cycles"] = 27
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
@@ -62,8 +64,8 @@ def test_steepest_descent_neb():
 
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 32
-    kwargs["images"] = 15
+    kwargs["max_cycles"] = 24
+    kwargs["images"] = 10
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
@@ -86,10 +88,9 @@ def test_fire_neb():
 
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 37
+    kwargs["max_cycles"] = 26
     convergence = {
-        "max_step_thresh": 1e-3,
-        "rms_step_thresh": 3e-4,
+        "max_force_thresh": 0.1,
     }
     kwargs["convergence"] = convergence
     szts_equal = SimpleZTS(get_geoms(), param="equal")
@@ -102,11 +103,10 @@ def test_equal_szts():
 
 def test_equal_szts_more_images():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 38
+    kwargs["max_cycles"] = 28
     kwargs["images"] = 10
     convergence = {
-        "max_step_thresh": 4e-3,
-        "rms_step_thresh": 4e-4,
+        "max_force_thresh": 0.1,
     }
     kwargs["convergence"] = convergence
     szts_equal = SimpleZTS(get_geoms(), param="equal")
@@ -119,7 +119,11 @@ def test_equal_szts_more_images():
 
 def test_energy_szts():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 42
+    kwargs["max_cycles"] = 27
+    convergence = {
+        "max_force_thresh": 0.1,
+    }
+    kwargs["convergence"] = convergence
     szts_energy = SimpleZTS(get_geoms(), param="energy")
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
@@ -130,11 +134,10 @@ def test_energy_szts():
 
 def test_energy_szts_more_images():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 43
+    kwargs["max_cycles"] = 28
     kwargs["images"] = 10
     convergence = {
-        "max_step_thresh": 4e-3,
-        "rms_step_thresh": 3e-4,
+        "max_force_thresh": 0.1,
     }
     kwargs["convergence"] = convergence
     szts_energy = SimpleZTS(get_geoms(), param="energy")
