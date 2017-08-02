@@ -96,7 +96,7 @@ class AnimPlot:
         self.animation = animation.FuncAnimation(self.fig,
                                                  self.func,
                                                  frames=cycles,
-                                                 interval=500)
+                                                 interval=250)
         plt.show()
 
     def on_keypress(self, event):

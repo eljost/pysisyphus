@@ -17,3 +17,9 @@
       nicht mehr da. Wenn es konvergiert schon.
 - Fix endpoints
 - Philipps Molekül und SZTS
+
+Thoughts:
+- Muller Brown Potential
+    - pretty curved, more images usually lead to better convergence
+      maybe because the tangents are better?
+- Start with SimpleZTS and then continue with a NEB?
