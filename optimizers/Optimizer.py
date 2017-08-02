@@ -145,8 +145,6 @@ class Optimizer:
                 break
 
             self.coords.append(self.geometry.coords)
-            self.forces.append(self.geometry.forces)
-            self.energies.append(self.geometry.energy)
 
             steps = self.optimize()
             self.steps.append(steps)

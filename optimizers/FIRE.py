@@ -26,6 +26,8 @@ class FIRE(BacktrackingOptimizer):
         super(FIRE, self).__init__(geometry, **kwargs)
 
     def optimize(self):
+        self.forces.append(self.geometry.forces)
+        self.energies.append(self.geometry.energy)
         forces = self.forces[-1]
         mixed_v = (
             # As 'a' gets bigger we keep less old v.
