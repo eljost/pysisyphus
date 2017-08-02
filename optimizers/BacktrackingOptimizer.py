@@ -31,6 +31,8 @@ class BacktrackingOptimizer(Optimizer):
             (cur_rms_force - prev_rms_force) /
             np.abs(cur_rms_force+prev_rms_force)
         )
+
+        # skip tells us if we overshot
         skip = False
 
         # When the optimiziation is converging cur_forces will
