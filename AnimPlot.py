@@ -47,6 +47,8 @@ class AnimPlot:
         # Draw the potentials contourlines
         levels = np.linspace(*levels)
         contours = self.ax.contour(X, Y, pot, levels)
+        self.ax.set_xlabel("x")
+        self.ax.set_ylabel("y")
         #self.ax.clabel(contours, inline=1, fontsize=5)
         # How do you add a colorbar via the axis object?
         #plt.colorbar(contours)
@@ -65,6 +67,8 @@ class AnimPlot:
         self.energies_plot, = self.ax1.plot(
             get_coords_diffs(self.coords[0]), energies, "ro", ls="-"
         )
+        self.ax1.set_xlabel("q(x, y)")
+        self.ax1.set_ylabel("f(x, y)")
 
     def func(self, frame):
         self.fig.suptitle("Cycle {}".format(frame))
