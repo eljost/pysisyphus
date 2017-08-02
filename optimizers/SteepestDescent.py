@@ -10,6 +10,10 @@ class SteepestDescent(BacktrackingOptimizer):
         super(SteepestDescent, self).__init__(geometry, **kwargs)
 
     def optimize(self):
+        # !!!!!!!!!
+        # procrustes
+        # !!!!!!!!!
+
         self.forces.append(self.geometry.forces)
 
         if self.cur_cycle > 0:
