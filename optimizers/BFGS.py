@@ -12,22 +12,30 @@ class BFGS(BacktrackingOptimizer):
         self.inv_hessian = np.eye(self.geometry.coords.size)
 
     def optimize(self):
-        if len(self.forces) is 1:
-            # Cal
-            print("first iteration!")
-        import sys; sys.exit()
-        if self.cur_cycle > 0:
-            beta = (np.vdot(self.forces[-1], self.forces[-1]) /
-                    np.vdot(self.forces[-2], self.forces[-2])
-            )
-            steps = self.forces[-1] + beta*self.steps[-1]
-            #print("BETA", beta)
+        # Calculate initial forces in the first iteration
+        if len(self.forces) is 0:
+            last_forces = self.geometry.forces
         else:
-            steps = self.forces[-1]
-        
-        steps = self.alpha*steps
-        steps = self.scale_by_max_step(steps)
-        #new_coords = 
+            last_forces = self.forces[-1]
 
-        #    self.skip = self.backtrack()
+        steps = np.dot(self.inv_hessian, last_forces)
+        steps = self.scale_by_max_step(steps)
+
+        new_coords = self.coords + self.alpha * steps
+
+        #coords_hold = self.coords.copy()
+        #forces_hold = forces[-1].copy()
+
+        self.forces.append(self.geometry.forces)
+        self.energies.append(self.geometry.energy)
+        forces = self.forces[-1]
+
+
+        # !!!!!!!!!
+        # fit_rigid
+        # !!!!!!!!!
+
+        #import sys; sys.exit()
+
+
         return steps

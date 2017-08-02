@@ -12,6 +12,7 @@
 - Optimizer
     - Verwendung des exakten Hessian
     - default max_step of 0.04 maybe too low
+    - BFGS & co: fit_rigid/procrustes
 - AnimPlot
     - Normierung der Energiedarstellung auf Bedard abschalten
     - Letzter Frame fehlt: Wenn es nicht konvergiert ist letzter Frame
@@ -24,4 +25,11 @@ Thoughts:
     - pretty curved, more images usually lead to better convergence
       maybe because the tangents are better?
 - Start with SimpleZTS and then continue with a NEB?
-
+- SimpleZTS:
+    - wenn der ZTS konvergiert ist kann der max step immer noch sehr groß
+      sehr groß sein, da die einzelnen images an den "Flanken " eines
+      Potentialberges liegen und alle etwas näher Richtung jeweiligem Minimum
+      rutschen. Durch die Reparametrisierung werden sie aber wieder neu entlang
+      des MEP verteilt.
+    - Kein Backtracking verwenden. Der MEP ändert sich nicht mehr und alpha
+      wird immer größer

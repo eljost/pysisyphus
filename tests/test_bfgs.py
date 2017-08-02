@@ -10,6 +10,7 @@ from qchelper.geometry import parse_xyz_file
 
 @pytest.mark.skip(reason="just implementing this")
 def test_bfgs():
+    print("yolo")
     ethan_xyz = "xyz_files/ethan.xyz"
     atoms, coords = parse_xyz_file(ethan_xyz)
     ethan_geom = Geometry(atoms, coords.flatten())
@@ -20,3 +21,5 @@ def test_bfgs():
     }
     opt = BFGS(ethan_geom, **kwargs)
     opt.run()
+
+test_bfgs()
