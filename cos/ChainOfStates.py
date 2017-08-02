@@ -14,6 +14,7 @@ class ChainOfStates:
 
         self._coords = None
         self._forces = None
+        self._energy = None
         self._perp_forces = None
         self.coords_length = self.images[0].coords.size
 
@@ -39,6 +40,10 @@ class ChainOfStates:
     def energy(self):
         self._energy = [image.energy for image in self.images]
         return self._energy
+
+    @energy.setter
+    def energy(self, energy):
+        self._energy = energy
 
     @property
     def forces(self):

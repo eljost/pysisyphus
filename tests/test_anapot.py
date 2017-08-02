@@ -9,8 +9,9 @@ from pysisyphus.AnimPlot import AnimPlot
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
-from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.Geometry import Geometry
+from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
@@ -86,6 +87,30 @@ def test_fire_neb():
     return opt
 
 
+def test_bfgs_neb():
+    kwargs = copy.copy(KWARGS)
+    kwargs["max_cycles"] = 18
+    #kwargs["images"] = 10
+    neb = NEB(get_geoms())
+    opt = run_cos_opt(neb, BFGS, **kwargs)
+
+    assert(opt.is_converged)
+
+    return opt
+
+
+def test_bfgs_neb_more_images():
+    kwargs = copy.copy(KWARGS)
+    #kwargs["max_cycles"] = 18
+    kwargs["images"] = 10
+    neb = NEB(get_geoms())
+    opt = run_cos_opt(neb, BFGS, **kwargs)
+
+    assert(opt.is_converged)
+
+    return opt
+
+
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
     kwargs["max_cycles"] = 26
@@ -147,6 +172,7 @@ def test_energy_szts_more_images():
 
     return opt
 
+
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
@@ -155,10 +181,14 @@ if __name__ == "__main__":
     # FIRE
     #opt = test_fire_neb()
 
+    # BFGS
+    #opt = test_bfgs_neb()
+    opt = test_bfgs_neb_more_images()
+
     # SimpleZTS
     #opt = test_equal_szts()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()
-    opt = test_energy_szts_more_images()
+    #opt = test_energy_szts_more_images()
 
     animate(opt)
