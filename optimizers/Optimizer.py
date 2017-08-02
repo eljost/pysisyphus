@@ -148,6 +148,7 @@ class Optimizer:
 
             steps = self.optimize()
             self.steps.append(steps)
+            self.energies.append(self.geometry.energy)
 
             self.check_convergence()
 
