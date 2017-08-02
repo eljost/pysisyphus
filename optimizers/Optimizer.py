@@ -40,10 +40,12 @@ class Optimizer:
             setattr(self, key, value)
 
         self.cur_cycle = 0
+
         self.coords = list()
         self.energies = list()
         self.forces = list()
         self.steps = list()
+
         self.max_forces = list()
         self.rms_forces = list()
         self.max_steps = list()
@@ -147,6 +149,8 @@ class Optimizer:
             self.coords.append(self.geometry.coords)
 
             steps = self.optimize()
+            if steps is None:
+                continue
             self.steps.append(steps)
             self.energies.append(self.geometry.energy)
 
