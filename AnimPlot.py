@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 
-
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
+
 def get_coords_diffs(coords):
-    cds = [np.linalg.norm(coords[0]-coords[i])
-           for i in range(len(coords))
-    ]
-    cds = np.array(cds)
+    cds = [0, ]
+    for i in range(len(coords)-1):
+        diff = np.linalg.norm(coords[i+1]-coords[i])
+        cds.append(diff)
+    cds = np.cumsum(cds)
     cds /= cds.max()
     return cds
+
 
 class AnimPlot:
 
@@ -24,16 +26,16 @@ class AnimPlot:
         self.optimizer = optimizer
         self.interval = interval
 
-        coords = self.optimizer.coords
-        coords = [c.reshape(-1, 3) for c in coords]
-        self.coords = coords
+        self.coords = [c.reshape(-1, 3) for c in self.optimizer.coords]
+        self.forces = [f.reshape((-1, 3)) for f in self.optimizer.forces]
         self.energies = self.optimizer.energies
-        forces = optimizer.forces
-        forces = [f.reshape((-1, 3)) for f in forces]
-        self.forces = forces
+        self.tangents = self.optimizer.tangents
 
+        # ax: the contour plot
+        # ax1: energy along the path
         self.fig, (self.ax, self.ax1) = plt.subplots(2, figsize=figsize,
                                         gridspec_kw = {'height_ratios':[3, 1]})
+
         self.pause = True
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
 
@@ -46,14 +48,14 @@ class AnimPlot:
         pot_coords = np.stack((X, Y, Z))
         pot = self.calculator.get_energy(fake_atoms, pot_coords)["energy"]
 
-        # Draw the potentials contourlines
+        # Draw the contourlines of the potential
         levels = np.linspace(*levels)
         contours = self.ax.contour(X, Y, pot, levels)
+        #self.ax.clabel(contours, inline=1, fontsize=5)
         self.ax.set_xlabel("x")
         self.ax.set_ylabel("y")
-        #self.ax.clabel(contours, inline=1, fontsize=5)
-        # How do you add a colorbar via the axis object?
-        #plt.colorbar(contours)
+
+        # Create a colorbar
         self.fig.subplots_adjust(right=0.8)
         cbar_ax = self.fig.add_axes([0.85, 0.15, 0.05, 0.7])
         self.fig.colorbar(contours, cax=cbar_ax)
@@ -62,10 +64,21 @@ class AnimPlot:
         images_y = self.coords[0][:,1]
         forces_x = self.forces[0][:,0]
         forces_y = self.forces[0][:,1]
+        tangents_x = self.tangents[0][:,0]
+        tangents_y = self.tangents[0][:,1]
         energies = self.energies[0]
+
         # Create artists, so we can update their data later
+        # Image positions
         self.images, = self.ax.plot(images_x, images_y, "ro", ls="-")
-        self.quiv = self.ax.quiver(images_x, images_y, forces_x, forces_y)
+        # Total forces
+        self.total_forces_quiv = self.ax.quiver(images_x, images_y,
+                                                forces_x, forces_y)
+        # Tangents
+        self.tangent_quiv = self.ax.quiver(images_x, images_y,
+                                           tangents_x, tangents_y, color="b")
+
+        # Energy along the path
         self.energies_plot, = self.ax1.plot(
             get_coords_diffs(self.coords[0]), energies, "ro", ls="-"
         )
@@ -80,13 +93,20 @@ class AnimPlot:
         self.images.set_xdata(images_x)
         self.images.set_ydata(images_y)
 
+        # Update total forces quiver
         forces_x = self.forces[frame][:,0]
         forces_y = self.forces[frame][:,1]
         offsets = np.stack((images_x, images_y), axis=-1).flatten()
         # https://stackoverflow.com/questions/19329039
         # https://stackoverflow.com/questions/17758942
-        self.quiv.set_offsets(offsets)
-        self.quiv.set_UVC(forces_x, forces_y)
+        self.total_forces_quiv.set_offsets(offsets)
+        self.total_forces_quiv.set_UVC(forces_x, forces_y)
+
+        # Update tangent quiver
+        tangents_x = self.tangents[frame][:,0]
+        tangents_y = self.tangents[frame][:,1]
+        self.tangent_quiv.set_offsets(offsets)
+        self.tangent_quiv.set_UVC(tangents_x, tangents_y)
 
         coords_diffs = get_coords_diffs(self.coords[frame])
         energies = self.energies[frame]
@@ -95,7 +115,7 @@ class AnimPlot:
         self.ax1.relim()
         self.ax1.autoscale_view()
 
-        return self.images, self.quiv, self.energies
+        return self.images, self.total_forces_quiv, self.energies
 
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)
