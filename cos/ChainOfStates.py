@@ -111,7 +111,7 @@ class ChainOfStates:
         if i is 0:
             return tangent_plus/np.linalg.norm(tangent_plus)
         elif i is (len(self.images) - 1):
-            return = tangent_minus/np.linalg.norm(tangent_minus)
+            return tangent_minus/np.linalg.norm(tangent_minus)
 
         prev_energy = prev_image.energy
         ith_energy = ith_image.energy
