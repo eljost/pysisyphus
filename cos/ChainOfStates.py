@@ -104,20 +104,18 @@ class ChainOfStates:
         ith_coords = ith_image.coords
         next_coords = next_image.coords
 
+        tangent_plus = next_coords - ith_coords
+        tangent_minus = ith_coords - prev_coords
+
         # Handle first and last image
         if i is 0:
-            tangent = next_index - ith_coords
-            return tangent/np.linalg.norm(tangent)
+            return tangent_plus/np.linalg.norm(tangent_plus)
         elif i is (len(self.images) - 1):
-            tangent = ith_coords - prev_index
-            return tangent/np.linalg.norm(tangent)
+            return = tangent_minus/np.linalg.norm(tangent_minus)
 
         prev_energy = prev_image.energy
         ith_energy = ith_image.energy
         next_energy = next_image.energy
-
-        tangent_plus = next_coords - ith_coords
-        tangent_minus = ith_coords - prev_coords
 
         next_energy_diff = abs(next_energy - ith_energy)
         prev_energy_diff = abs(prev_energy - ith_energy)
@@ -145,11 +143,16 @@ class ChainOfStates:
         normalized_tangent = tangent/np.linalg.norm(tangent)
         return normalized_tangent
 
+    def get_tangents(self):
+        return np.array([self.get_tangent(i)
+                         for i in range(len(self.images))]
+        )
+
     def get_perpendicular_forces(self, i):
         """ [1] Eq. 12"""
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
-        return forces - (np.vdot(forces, tangent)*tangent)
+        return forces - (np.dot(forces, tangent)*tangent)
 
     def as_xyz(self):
         atoms = self.images[0].atoms
