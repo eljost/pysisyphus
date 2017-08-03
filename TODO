@@ -19,7 +19,7 @@
       nicht mehr da. Wenn es konvergiert schon.
 - Fix endpoints
 - Philipps Molekül und SZTS
-- Potential aus ͓DOI: 10.1063/1.2720838͔ implementieren
+- AnalyticalPot Base-Class
 
 Thoughts:
 - Muller Brown Potential

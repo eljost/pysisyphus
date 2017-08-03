@@ -22,7 +22,6 @@ KWARGS = {
         "max_step_thresh": 3e-3,
         "rms_step_thresh": 7e-4,
     },
-    #"alpha": 0.05,
 }
 
 
@@ -90,7 +89,6 @@ def test_fire_neb():
 def test_bfgs_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["max_cycles"] = 18
-    #kwargs["images"] = 10
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
@@ -101,7 +99,7 @@ def test_bfgs_neb():
 
 def test_bfgs_neb_more_images():
     kwargs = copy.copy(KWARGS)
-    #kwargs["max_cycles"] = 18
+    kwargs["max_cycles"] = 18
     kwargs["images"] = 10
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
@@ -183,12 +181,12 @@ if __name__ == "__main__":
 
     # BFGS
     #opt = test_bfgs_neb()
-    opt = test_bfgs_neb_more_images()
+    #opt = test_bfgs_neb_more_images()
 
     # SimpleZTS
     #opt = test_equal_szts()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()
-    #opt = test_energy_szts_more_images()
+    opt = test_energy_szts_more_images()
 
     animate(opt)
