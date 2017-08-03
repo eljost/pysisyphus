@@ -17,10 +17,12 @@ from pysisyphus.optimizers.NaiveSteepestDescent import NaiveSteepestDescent
 
 KWARGS = {
     "images": 5,
-    "max_cycles": 50,
+    "max_cycles": 100,
     "convergence": {
-        "max_step_thresh": 3e-3,
-        "rms_step_thresh": 7e-4,
+        "max_force_thresh": 6e-3,
+        "rms_force_thresh": 5e-3,
+        "max_step_thresh": 6e-4,
+        "rms_step_thresh": 3e-4,
     },
 }
 
@@ -53,23 +55,23 @@ def animate(opt):
 
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 27
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 23) # k = 0.01
 
     return opt
 
 
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 24
     kwargs["images"] = 10
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 21) # k = 0.01
 
     return opt
 
@@ -77,41 +79,40 @@ def test_steepest_descent_neb_more_images():
 
 def test_fire_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 21
+    kwargs["max_cycles"] = 23
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, FIRE, **kwargs)
     
-    assert(opt.rms_steps[-1] == approx(0.006848, rel=1e-4))
+    assert(opt.max_forces[-1] == approx(0.000909, rel=1e-4))
 
     return opt
 
 
 def test_bfgs_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 18
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 23) # k = 0.01
 
     return opt
 
 
 def test_bfgs_neb_more_images():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 18
     kwargs["images"] = 10
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 32) # k = 0.01
 
     return opt
 
 
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 26
     convergence = {
         "max_force_thresh": 0.1,
     }
@@ -120,13 +121,13 @@ def test_equal_szts():
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 26) # k = 0.01
 
     return opt
 
 
 def test_equal_szts_more_images():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 28
     kwargs["images"] = 10
     convergence = {
         "max_force_thresh": 0.1,
@@ -136,13 +137,13 @@ def test_equal_szts_more_images():
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 28) # k = 0.01
 
     return opt
 
 
 def test_energy_szts():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 27
     convergence = {
         "max_force_thresh": 0.1,
     }
@@ -151,13 +152,13 @@ def test_energy_szts():
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 27) # k = 0.01
 
     return opt
 
 
 def test_energy_szts_more_images():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 28
     kwargs["images"] = 10
     convergence = {
         "max_force_thresh": 0.1,
@@ -167,6 +168,7 @@ def test_energy_szts_more_images():
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
+    assert(opt.cur_cycle == 28) # k = 0.01
 
     return opt
 
