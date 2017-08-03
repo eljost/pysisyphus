@@ -152,11 +152,12 @@ class Optimizer:
 
             steps = self.optimize()
 
+            if steps is None:
+                continue
+
             if self.is_cos:
                 self.tangents.append(self.geometry.get_tangents())
 
-            if steps is None:
-                continue
             self.steps.append(steps)
             self.energies.append(self.geometry.energy)
 

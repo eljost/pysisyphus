@@ -24,7 +24,7 @@ class BFGS(BacktrackingOptimizer):
         else:
             last_coords = self.coords[-1]
             last_forces = self.forces[-1]
-            last_energies = self.energies[-1]
+            last_energy = self.energies[-1]
 
         steps = np.dot(self.inv_hessian, last_forces)
         steps = self.scale_by_max_step(steps)
