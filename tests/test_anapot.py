@@ -79,11 +79,21 @@ def test_steepest_descent_neb_more_images():
 
 def test_fire_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 23
+    #kwargs["max_cycles"] = 23
+    kwargs["dt"] = 0.05
+    kwargs["dt_max"] = 0.5
+    convergence = {
+        "max_force_thresh": 0.0013,
+        "rms_force_thresh": 0.0012,
+        "max_step_thresh": 2.1e-3,
+        "rms_step_thresh": 6.6e-4,
+    }
+    kwargs["convergence"] = convergence
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, FIRE, **kwargs)
     
-    assert(opt.max_forces[-1] == approx(0.000909, rel=1e-4))
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 30) # k = 0.01
 
     return opt
 
@@ -179,7 +189,7 @@ if __name__ == "__main__":
     #opt = test_steepest_descent_neb_more_images()
 
     # FIRE
-    #opt = test_fire_neb()
+    opt = test_fire_neb()
 
     # BFGS
     #opt = test_bfgs_neb()
@@ -189,6 +199,6 @@ if __name__ == "__main__":
     #opt = test_equal_szts()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()
-    opt = test_energy_szts_more_images()
+    #opt = test_energy_szts_more_images()
 
     animate(opt)
