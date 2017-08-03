@@ -6,6 +6,7 @@ from pysisyphus.Geometry import Geometry
 from qchelper.geometry import make_trj_str
 
 # [1] http://dx.doi.org/10.1063/1.1323224
+
 class ChainOfStates:
 
     def __init__(self, images):
@@ -130,20 +131,16 @@ class ChainOfStates:
         elif next_energy < ith_energy < prev_energy:
             tangent = tangent_minus
         # Minimum or Maximum
-        elif ((next_energy > ith_energy < prev_energy) or
-              (next_energy < ith_energy > prev_energy)):
+        else:
             if next_energy >= prev_energy:
                 tangent = (tangent_plus * delta_energy_max +
                            tangent_minus * delta_energy_min
                 )
-            elif next_energy < prev_energy:
+            # next_energy < prev_energy
+            else:
                 tangent = (tangent_plus * delta_energy_min +
                            tangent_minus * delta_energy_max
                 )
-            else:
-                raise Exception("This should never happen!")
-        else:
-            raise Exception("This should never happen!")
 
         normalized_tangent = tangent/np.linalg.norm(tangent)
         return normalized_tangent
