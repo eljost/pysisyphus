@@ -8,7 +8,7 @@ class AnaPotBase(Calculator):
     def __init__(self, V_str): 
         super(AnaPotBase, self).__init__()
         x, y = symbols("x y")
-        V = sympify(V_str)#(1 - x**2 - y**2)**2 + (y**2) / (x**2 + y**2)
+        V = sympify(V_str)
         dVdx = diff(V, x)
         dVdy = diff(V, y)
         self.V = lambdify((x, y), V, "numpy")
