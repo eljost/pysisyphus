@@ -52,6 +52,8 @@ class Optimizer:
         self.rms_steps = list()
         self.cycle_times = list()
 
+        self.tangents = list()
+
     def check_convergence(self):
         # Only use forces perpendicular to the mep
         if self.is_cos:
@@ -149,6 +151,10 @@ class Optimizer:
             self.coords.append(self.geometry.coords)
 
             steps = self.optimize()
+
+            if self.is_cos:
+                self.tangents.append(self.geometry.get_tangents())
+
             if steps is None:
                 continue
             self.steps.append(steps)

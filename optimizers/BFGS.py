@@ -52,10 +52,10 @@ class BFGS(BacktrackingOptimizer):
             self.forces.append(new_forces)
             sigma = new_coords - last_coords
             forces_diff = -new_forces - (-last_forces)
-            rho = 1.0 / np.vdot(forces_diff, sigma)
+            rho = 1.0 / np.dot(forces_diff, sigma)
             if np.array_equal(self.inv_hessian, self.eye):
-                self.inv_hessian = (np.vdot(forces_diff, sigma) /
-                                    np.vdot(forces_diff, forces_diff) *
+                self.inv_hessian = (np.dot(forces_diff, sigma) /
+                                    np.dot(forces_diff, forces_diff) *
                                     self.eye
                 )
             # Inverse hessian update

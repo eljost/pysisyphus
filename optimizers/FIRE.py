@@ -34,12 +34,12 @@ class FIRE(BacktrackingOptimizer):
             # As 'a' gets bigger we emply more new v dervied
             # from the current forces.
              self.a * np.sqrt(
-                        np.vdot(self.v, self.v) / np.vdot(forces, forces)
+                        np.dot(self.v, self.v) / np.dot(forces, forces)
                       ) * forces
         )
         last_v = self.velocities[-1]
         # Check if forces are still aligned with the last velocity
-        if (self.cur_cycle > 0) and (np.vdot(last_v, forces) > 0):
+        if (self.cur_cycle > 0) and (np.dot(last_v, forces) > 0):
             if self.n_reset > self.N_acc:
                 self.dt = min(self.dt * self.f_inc, self.dt_max)
                 self.a *= self.f_acc
