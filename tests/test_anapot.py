@@ -55,6 +55,7 @@ def animate(opt):
 
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 7
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
@@ -185,7 +186,7 @@ def test_energy_szts_more_images():
 
 if __name__ == "__main__":
     # Steepest Descent
-    #opt = test_steepest_descent_neb()
+    opt = test_steepest_descent_neb()
     #opt = test_steepest_descent_neb_more_images()
 
     # FIRE
@@ -199,6 +200,6 @@ if __name__ == "__main__":
     #opt = test_equal_szts()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()
-    opt = test_energy_szts_more_images()
+    #opt = test_energy_szts_more_images()
 
     animate(opt)

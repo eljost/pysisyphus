@@ -8,13 +8,16 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 # 
 # https://github.com/cstein/neb/blob/master/neb/neb.py
 
-
 class NEB(ChainOfStates):
 
-    def __init__(self, images, k=0.01):
+    def __init__(self, images, k=0.01, climb=False, climb_after=15):
         super(NEB, self).__init__(images)
 
         self.k = k
+        self.climb = climb
+        self.climb_after = climb_after
+        if not self.climb:
+            self.climb_after = -1
 
         self.perp_forces = list()
         self.par_forces = list()
@@ -38,6 +41,15 @@ class NEB(ChainOfStates):
                 ) * self.get_tangent(i)
         )
 
+    def get_climbing_forces(self):
+        max_energy_index = np.argmax(self.energy)
+        climbing_image = self.images[max_energy_index]
+        ci_forces = climbing_image.forces
+        tangent = self.get_tangent(max_energy_index)
+        climbing_forces = ci_forces * 2*np.dot(-ci_forces, tangent)*tangent
+
+        return max_energy_index, climbing_forces
+
     @property
     def forces(self):
         indices = range(len(self.images))
@@ -48,6 +60,28 @@ class NEB(ChainOfStates):
         if self._forces is None:
             [image.calc_energy_and_forces() for image in self.images]
 
+        climbing_index = -1
+        #print("index draussen: ", climbing_index)
+        if self.climb and self.climb_after <= 0:
+            #print("climben berechnen junge")
+            climbing_index, climbing_forces = self.get_climbing_forces()
+            #print("shape", climbing_forces.shape)
+            #print("type(ci_index)", type(climbing_index))
+            #print("index drinnen: ", climbing_index)
+        #print("index draussen: ", climbing_index)
+
+        total_forces = list()
+        for i in indices:
+            if i == climbing_index:
+                #print("climben anhaengen junge")
+                total_forces.append(climbing_forces)
+            else:
+                par_forces = self.get_parallel_forces(i)
+                perp_forces = self.get_perpendicular_forces(i)
+                total_forces.append(par_forces + perp_forces)
+        self._forces = np.array(total_forces).flatten()
+
+        """
         par_forces = np.array(
             [self.get_parallel_forces(i) for i in indices]
         )
@@ -56,5 +90,9 @@ class NEB(ChainOfStates):
         )
         total_forces = par_forces + perp_forces
         self._forces = total_forces.flatten()
+        """
+        #print(self.climb_after)
+        self.climb_after -= 1
+        #print()
 
         return self._forces
