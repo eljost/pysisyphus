@@ -17,10 +17,12 @@ class AnimPlot:
 
     def __init__(self, calculator, optimizer,
                  xlim=(-1, 1), ylim=(-1, 1), num=100,
-                 figsize=(8, 8), levels=(-150, 5, 30)):
+                 figsize=(8, 8), levels=(-150, 5, 30),
+                 interval=250):
 
         self.calculator = calculator
         self.optimizer = optimizer
+        self.interval = interval
 
         coords = self.optimizer.coords
         coords = [c.reshape(-1, 3) for c in coords]
@@ -100,7 +102,7 @@ class AnimPlot:
         self.animation = animation.FuncAnimation(self.fig,
                                                  self.func,
                                                  frames=cycles,
-                                                 interval=250)
+                                                 interval=self.interval)
         plt.show()
 
     def on_keypress(self, event):
