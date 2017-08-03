@@ -44,6 +44,8 @@ class ChainOfStates:
 
     @energy.setter
     def energy(self, energy):
+        for image, en in zip(self.images, energy):
+            image.energy = en
         self._energy = energy
 
     @property
