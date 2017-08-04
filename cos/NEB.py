@@ -12,10 +12,16 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 class NEB(ChainOfStates):
 
-    def __init__(self, images, k_def=0.01, climb=False, climb_after=15):
+    def __init__(self, images,
+                 k_max=0.3, k_min=0.01,
+                 climb=False, climb_after=15):
         super(NEB, self).__init__(images)
 
-        self.k_def = k_def
+        assert(k_max > k_min), "k_max has to be bigger than k_min!"
+        self.k_max = k_max
+        self.k_min = k_min
+        self.delta_k = self.k_max - self.k_min
+
         self.climb = climb
         self.climb_after = climb_after
         if not self.climb:
@@ -27,7 +33,24 @@ class NEB(ChainOfStates):
         self.par_forces = list()
 
     def update_springs(self):
-        self.k = np.full(len(self.images)-1, self.k_def)
+        self.k = np.full(len(self.images)-1, self.k_min)
+
+    def variable_springs(self):
+        shifted_energies = self.energy - self.energy.min()
+        energy_max = max(shifted_energies)
+        energy_ref = .75 * energy_max
+        for i in range(len(self.k)):
+            # The ith spring connects images i-1 and i.
+            e_i = i + 1
+            ith_energy = max(shifted_energies[e_i], shifted_energies[e_i-1])
+            if ith_energy < energy_ref:
+                self.k[i] = self.k_min
+            else:
+                self.k[i] = (self.k_max - self.delta_k
+                             * (energy_max - ith_energy)
+                             / (energy_max - energy_ref)
+                )
+            print("springs", self.k)
 
     @property
     def parallel_forces(self):
@@ -44,7 +67,6 @@ class NEB(ChainOfStates):
             # We can't use the last image index because there is one
             # spring less than there are images.
             spring_index = min(i, len(self.images)-2)
-            print(f"i: {i}, spring_index: {spring_index}")
             return self.k[spring_index] * self.get_tangent(i)
 
         prev_coords = self.images[i-1].coords
@@ -78,6 +100,7 @@ class NEB(ChainOfStates):
         climbing_index = -1
         #print("index draussen: ", climbing_index)
         if self.climb and self.climb_after <= 0:
+            self.variable_springs()
             #print("climben berechnen junge")
             climbing_index, climbing_forces = self.get_climbing_forces()
             #print("shape", climbing_forces.shape)

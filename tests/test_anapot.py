@@ -64,6 +64,19 @@ def test_steepest_descent_neb():
     return opt
 
 
+def test_climbing_neb():
+    kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 7
+    kwargs["max_cycles"] = 50
+    neb = NEB(get_geoms(), climb=True, climb_after=15)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    #assert(opt.is_converged)
+    #assert(opt.cur_cycle == 23) # k = 0.01
+
+    return opt
+
+
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
@@ -185,7 +198,8 @@ def test_energy_szts_more_images():
 
 if __name__ == "__main__":
     # Steepest Descent
-    opt = test_steepest_descent_neb()
+    #opt = test_steepest_descent_neb()
+    opt = test_climbing_neb()
     #opt = test_steepest_descent_neb_more_images()
 
     # FIRE

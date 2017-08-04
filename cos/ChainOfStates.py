@@ -39,7 +39,7 @@ class ChainOfStates:
 
     @property
     def energy(self):
-        self._energy = [image.energy for image in self.images]
+        self._energy = np.array([image.energy for image in self.images])
         return self._energy
 
     @energy.setter
