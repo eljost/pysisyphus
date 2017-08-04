@@ -5,22 +5,29 @@ import numpy as np
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 # [1] http://aip.scitation.org/doi/pdf/10.1063/1.1323224
-# 
+#     10.1063/1.1323224
+# [2] http://onlinelibrary.wiley.com/doi/10.1002/jcc.20780/pdf
+#     10.1002/jcc.20780
 # https://github.com/cstein/neb/blob/master/neb/neb.py
 
 class NEB(ChainOfStates):
 
-    def __init__(self, images, k=0.01, climb=False, climb_after=15):
+    def __init__(self, images, k_def=0.01, climb=False, climb_after=15):
         super(NEB, self).__init__(images)
 
-        self.k = k
+        self.k_def = k_def
         self.climb = climb
         self.climb_after = climb_after
         if not self.climb:
             self.climb_after = -1
 
+        self.update_springs()
+
         self.perp_forces = list()
         self.par_forces = list()
+
+    def update_springs(self):
+        self.k = np.full(len(self.images)-1, self.k_def)
 
     @property
     def parallel_forces(self):
@@ -29,15 +36,23 @@ class NEB(ChainOfStates):
         return np.array(par_forces).flatten()
 
     def get_parallel_forces(self, i):
+        # Check if there are enough springs
+        if (len(self.k) is not len(self.images)-1):
+            self.update_springs()
+
         if (i is 0) or (i is len(self.images) - 1):
-            return self.k * self.get_tangent(i)
+            # We can't use the last image index because there is one
+            # spring less than there are images.
+            spring_index = min(i, len(self.images)-2)
+            print(f"i: {i}, spring_index: {spring_index}")
+            return self.k[spring_index] * self.get_tangent(i)
 
         prev_coords = self.images[i-1].coords
         ith_coords = self.images[i].coords
         next_coords = self.images[i+1].coords
-        return (self.k
-                * (np.linalg.norm(next_coords-ith_coords)
-                -  np.linalg.norm(ith_coords-prev_coords)
+        # [2] Eq. 2
+        return ((self.k[i-1] * np.linalg.norm(next_coords-ith_coords)
+                - self.k[i] *  np.linalg.norm(ith_coords-prev_coords)
                 ) * self.get_tangent(i)
         )
 
