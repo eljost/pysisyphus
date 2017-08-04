@@ -28,6 +28,7 @@ class NEB(ChainOfStates):
             self.climb_after = -1
 
         self.update_springs()
+        self.varied_springs = False
 
         self.perp_forces = list()
         self.par_forces = list()
@@ -38,7 +39,7 @@ class NEB(ChainOfStates):
     def variable_springs(self):
         shifted_energies = self.energy - self.energy.min()
         energy_max = max(shifted_energies)
-        energy_ref = .75 * energy_max
+        energy_ref = .85 * energy_max
         for i in range(len(self.k)):
             # The ith spring connects images i-1 and i.
             e_i = i + 1
@@ -50,7 +51,6 @@ class NEB(ChainOfStates):
                              * (energy_max - ith_energy)
                              / (energy_max - energy_ref)
                 )
-            print("springs", self.k)
 
     @property
     def parallel_forces(self):
@@ -72,10 +72,9 @@ class NEB(ChainOfStates):
         prev_coords = self.images[i-1].coords
         ith_coords = self.images[i].coords
         next_coords = self.images[i+1].coords
-        # [2] Eq. 2
-        return ((self.k[i-1] * np.linalg.norm(next_coords-ith_coords)
-                - self.k[i] *  np.linalg.norm(ith_coords-prev_coords)
-                ) * self.get_tangent(i)
+        return (self.k[i] * (np.linalg.norm(next_coords-ith_coords)
+                           - np.linalg.norm(ith_coords-prev_coords)
+               ) * self.get_tangent(i)
         )
 
     def get_climbing_forces(self):
@@ -101,17 +100,11 @@ class NEB(ChainOfStates):
         #print("index draussen: ", climbing_index)
         if self.climb and self.climb_after <= 0:
             self.variable_springs()
-            #print("climben berechnen junge")
             climbing_index, climbing_forces = self.get_climbing_forces()
-            #print("shape", climbing_forces.shape)
-            #print("type(ci_index)", type(climbing_index))
-            #print("index drinnen: ", climbing_index)
-        #print("index draussen: ", climbing_index)
 
         total_forces = list()
         for i in indices:
             if i == climbing_index:
-                #print("climben anhaengen junge")
                 total_forces.append(climbing_forces)
             else:
                 par_forces = self.get_parallel_forces(i)
@@ -119,18 +112,6 @@ class NEB(ChainOfStates):
                 total_forces.append(par_forces + perp_forces)
         self._forces = np.array(total_forces).flatten()
 
-        """
-        par_forces = np.array(
-            [self.get_parallel_forces(i) for i in indices]
-        )
-        perp_forces = np.array(
-            [self.get_perpendicular_forces(i) for i in indices]
-        )
-        total_forces = par_forces + perp_forces
-        self._forces = total_forces.flatten()
-        """
-        #print(self.climb_after)
         self.climb_after -= 1
-        #print()
 
         return self._forces
