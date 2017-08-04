@@ -14,8 +14,8 @@ class NEB(ChainOfStates):
 
     def __init__(self, images,
                  k_max=0.3, k_min=0.01,
-                 climb=False, climb_after=15):
-        super(NEB, self).__init__(images)
+                 climb=False, climb_after=15, **kwargs):
+        super(NEB, self).__init__(images, **kwargs)
 
         assert(k_max > k_min), "k_max has to be bigger than k_min!"
         self.k_max = k_max

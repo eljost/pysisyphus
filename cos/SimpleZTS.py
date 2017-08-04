@@ -9,9 +9,9 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 class SimpleZTS(ChainOfStates):
 
-    def __init__(self, images, param="equal"):
+    def __init__(self, images, param="equal", **kwargs):
         self.param = param
-        super(SimpleZTS, self).__init__(images)
+        super(SimpleZTS, self).__init__(images, **kwargs)
 
 
     def reparametrize(self):

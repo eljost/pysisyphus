@@ -9,7 +9,7 @@ from qchelper.geometry import make_trj_str
 
 class ChainOfStates:
 
-    def __init__(self, images):
+    def __init__(self, images, fix_ends=False):
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = images
 
