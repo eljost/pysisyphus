@@ -27,11 +27,13 @@ KWARGS = {
 }
 
 
-def get_geoms():
-    initial = np.array((-1.05274, 1.02776, 0))
-    final = np.array((1.94101, 3.85427, 0))
+def get_geoms(coords=None):
+    if coords is None:
+        initial = np.array((-1.05274, 1.02776, 0))
+        final = np.array((1.94101, 3.85427, 0))
+        coords = (initial, final)
     atoms = ("H")
-    geoms = [Geometry(atoms, coords) for coords in (initial, final)]
+    geoms = [Geometry(atoms, c) for c in coords]
     return geoms
 
 
@@ -64,11 +66,43 @@ def test_steepest_descent_neb():
     return opt
 
 
+def test_fixed_ends_neb():
+    coords = np.array(((-0.916, 1.034, 0), (1.85, 3.57, 0)))
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms(coords), fix_ends=True)
+    convergence = {
+        "max_force_thresh": 2.3e-2,
+        "rms_force_thresh": 2.1e-2,
+        "max_step_thresh": 8.0e-4,
+        "rms_step_thresh": 5.2e-4,
+    }
+    kwargs["convergence"] = convergence
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 22) # k = 0.01
+
+    return opt
+
+
 def test_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 7
     kwargs["max_cycles"] = 50
     neb = NEB(get_geoms(), climb=True, climb_after=15)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    #assert(opt.is_converged)
+    #assert(opt.cur_cycle == 23) # k = 0.01
+
+    return opt
+
+
+def test_fixed_end_climbing_neb():
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms(), fix_ends=True,
+              k_max=1, k_min=0.5,
+              climb=True, climb_after=10)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     #assert(opt.is_converged)
@@ -199,7 +233,9 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
-    opt = test_climbing_neb()
+    #opt = test_fixed_ends_neb()
+    opt = test_fixed_end_climbing_neb()
+    #opt = test_climbing_neb()
     #opt = test_steepest_descent_neb_more_images()
 
     # FIRE

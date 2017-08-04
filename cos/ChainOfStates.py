@@ -12,6 +12,7 @@ class ChainOfStates:
     def __init__(self, images, fix_ends=False):
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = images
+        self.fix_ends = fix_ends
 
         self._coords = None
         self._forces = None
@@ -30,7 +31,11 @@ class ChainOfStates:
     def coords(self, coords):
         """Distribute the flat 1d coords array over all images."""
         coords = coords.reshape(-1, self.coords_length)
-        for image, c in zip(self.images, coords):
+        images = self.images
+        if self.fix_ends:
+            coords = coords[1:-1]
+            images = self.images[1:-1]
+        for image, c in zip(images, coords):
             image.coords = c
 
         self._energy = None
