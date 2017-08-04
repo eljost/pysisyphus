@@ -26,12 +26,13 @@ KWARGS = {
 }
 
 
-def get_geoms():
-    min_a = np.array((-0.558, 1.442, 0)) # Minimum A
-    min_b = np.array((0.6215, 0.02838, 0)) # Minimum B
-    min_c = np.array((-0.05, 0.467, 0)) # Minimum C
-    saddle_a = np.array((-0.822, 0.624, 0)) # Saddle point A
-    coords = (min_b, min_c, saddle_a, min_a)
+def get_geoms(coords=None):
+    if coords is None:
+        min_a = np.array((-0.558, 1.442, 0)) # Minimum A
+        min_b = np.array((0.6215, 0.02838, 0)) # Minimum B
+        min_c = np.array((-0.05, 0.467, 0)) # Minimum C
+        saddle_a = np.array((-0.822, 0.624, 0)) # Saddle point A
+        coords = (min_b, min_c, saddle_a, min_a)
     atoms = ("H")
     geoms = [Geometry(atoms, c) for c in coords]
     return geoms
@@ -65,7 +66,7 @@ def test_steepest_descent_neb():
 
     return opt
 
-
+    
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 7
@@ -110,6 +111,21 @@ def test_equal_szts():
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 18)
+
+    return opt
+
+
+def test_equal_szts_straight():
+    coords = np.array(((0, -0.25, 0), (0, 1.5, 0)))
+    kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 10
+    kwargs["max_step"] = 0.04
+    convergence = {
+        "rms_force_thresh": 2.4,
+    }
+    kwargs["convergence"] = convergence
+    szts_equal = SimpleZTS(get_geoms(coords), param="equal")
+    opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     return opt
 
@@ -170,8 +186,9 @@ if __name__ == "__main__":
 
     # SimpleZTS
     #opt = test_equal_szts()
+    opt = test_equal_szts_straight()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()
-    opt = test_energy_szts_more_images()
+    #opt = test_energy_szts_more_images()
 
     animate(opt)
