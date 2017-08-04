@@ -55,7 +55,6 @@ def animate(opt):
 
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["images"] = 7
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
