@@ -23,7 +23,7 @@ def parabolic_fit(xs, ys):
     return real_minima
 
 
-def imk_mod(geometry, desired_step=0.1, line_step_size=0.025):
+def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
     all_irc_coords = list()
 
     last_energy = None
@@ -34,7 +34,7 @@ def imk_mod(geometry, desired_step=0.1, line_step_size=0.025):
         energy_0 = geometry.energy
 
         if last_energy and (energy_0 > last_energy):
-            print("Iteration {:04d}: Energy incresed!".format(i))
+            print("Iteration {:04d}: Energy increased!".format(i))
             break
 
         all_irc_coords.append(geometry.coords)
@@ -54,6 +54,7 @@ def imk_mod(geometry, desired_step=0.1, line_step_size=0.025):
 
         # Determine bisector
         D = grad_0/grad_0_norm - grad_1/grad_1_norm
+        D_norm = D / np.linalg.norm(D)
 
         line_xs = [0, ]
         line_energies = [energy_1, ]
@@ -104,23 +105,23 @@ def imk_mod(geometry, desired_step=0.1, line_step_size=0.025):
 def run():
     atoms = ("H", )
 
-    #calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
-    #xlim = (-1.75, 1.25)
-    #ylim = (-0.5, 2.25)
-    #levels=(-150, -15, 40)
+    calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
+    xlim = (-1.75, 1.25)
+    ylim = (-0.5, 2.25)
+    levels=(-150, -15, 40)
 
-    xlim = (-2, 2.5)
-    ylim = (0, 5)
-    levels = (-3, 4, 80)
-    calc, ts_coords = (AnaPot(), np.array((0.6906, 1.5491, 0.)))
+    #xlim = (-2, 2.5)
+    #ylim = (0, 5)
+    #levels = (-3, 4, 80)
+    #calc, ts_coords = (AnaPot(), np.array((0.6906, 1.5491, 0.)))
 
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
     # Muller-Brown
-    #aic = imk_mod(geometry, desired_step=0.05)
+    aic = imk_mod(geometry, desired_step=0.1)
     # AnaPot
-    aic = imk_mod(geometry)
+    #aic = imk_mod(geometry)
 
     fig, ax = plt.subplots(figsize=(8,8))
 
