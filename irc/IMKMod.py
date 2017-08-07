@@ -23,7 +23,7 @@ def parabolic_fit(xs, ys):
     return real_minima
 
 
-def imk_mod(geometry, desired_step=0.15, line_step_size=0.025, fit_points=3):
+def imk_mod(geometry, desired_step=0.1, line_step_size=0.025):
     all_irc_coords = list()
 
     last_energy = None
@@ -58,7 +58,7 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025, fit_points=3):
         line_xs = [0, ]
         line_energies = [energy_1, ]
 
-        line_step_size_thresh = 2*line_step_size
+        line_step_size_thresh = 1.5*line_step_size
         # Try to find a useful point by projecting grad_1 on D.
         step_D1 = np.dot(grad_1, D) * D * line_step_size
         step_D1_norm = np.linalg.norm(step_D1)
@@ -76,25 +76,23 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025, fit_points=3):
             step_D2_energy = geometry.energy
             line_energies.append(step_D2_energy)
 
+        # Calculate a 3rd point
+        # Halve step size
+        if line_energies[1] >= line_energies[0]:
+            step_D3 = 0.5 * line_step_size * D
+        # Double step size
+        else:
+            step_D3 = 2 * line_step_size * D
+
+        geometry.coords = coords_1 + step_D3
+        step_D3_norm = np.linalg.norm(step_D3)
+        line_xs.append(step_D3_norm)
+        step_D3_energy = geometry.energy
+        line_energies.append(step_D3_energy)
+
         real_minimum = parabolic_fit(line_xs, line_energies)
-        print("real_minimum", real_minimum)
-        #if abs(real_minimum) > abs(line_step_size_thresh):
 
-        """
-        line_steps = [j * D for j in range(3)]
-        line_energies = list()
-        for line_step in line_steps:
-            line_search_coords = coords_1 + line_step
-            geometry.coords = line_search_coords
-            energy = geometry.energy
-            line_energies.append(energy)
-        line_xs = np.linalg.norm(line_steps, axis=-1)
-        line_energies = np.array(line_energies)
-
-        real_minimum = parabolic_fit(line_xs, line_energies)
-        """
-
-        irc_coords = coords_1 + (real_minimum*line_step_size*D)
+        irc_coords = coords_1 + (real_minimum*D)#line_step_size*D)
         geometry.coords = irc_coords
 
         last_energy = energy_0
@@ -104,20 +102,24 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025, fit_points=3):
 
 
 def run():
-    #ts_coords = np.array((-0.822, 0.624, 0.))
     atoms = ("H", )
-    calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
-    xlim = (-1.75, 1.25)
-    ylim = (-0.5, 2.25)
-    levels=(-150, -15, 40)
 
-    #xlim = (-2, 2.5)
-    #ylim = (0, 5)
-    #levels = (-3, 4, 80)
-    #calc, ts_coords = (AnaPot(), np.array((0.6906, 1.5491, 0.)))
+    #calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
+    #xlim = (-1.75, 1.25)
+    #ylim = (-0.5, 2.25)
+    #levels=(-150, -15, 40)
+
+    xlim = (-2, 2.5)
+    ylim = (0, 5)
+    levels = (-3, 4, 80)
+    calc, ts_coords = (AnaPot(), np.array((0.6906, 1.5491, 0.)))
+
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
+    # Muller-Brown
+    #aic = imk_mod(geometry, desired_step=0.05)
+    # AnaPot
     aic = imk_mod(geometry)
 
     fig, ax = plt.subplots(figsize=(8,8))
