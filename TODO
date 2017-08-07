@@ -21,6 +21,10 @@
 - Philipps Molekül und SZTS
 - AnalyticalPot Base-Class
 - IRC:
+    - BaseClass
+        - Argumente
+            - Geometry
+            - transition_vector
     - Gradient Attribute in Geometry nachrüsten
     - Transition vector aus Hessian bestimmen
 

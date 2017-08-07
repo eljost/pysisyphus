@@ -8,4 +8,4 @@ rm *.trj
 #python tests/h2o.py
 #python tests/hcn_iso/hcn_iso.py
 #python tests/i18i19/i18i19_pt.py
-python irc/IMK.py
+python irc/IMKMod.py

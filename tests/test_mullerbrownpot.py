@@ -7,6 +7,7 @@ from pytest import approx
 
 from pysisyphus.AnimPlot import AnimPlot
 from pysisyphus.calculators.MullerBrownPot import MullerBrownPot
+#from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.optimizers.FIRE import FIRE
