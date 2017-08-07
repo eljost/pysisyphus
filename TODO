@@ -20,6 +20,9 @@
 - Fix endpoints
 - Philipps Molekül und SZTS
 - AnalyticalPot Base-Class
+- IRC:
+    - Gradient Attribute in Geometry nachrüsten
+    - Transition vector aus Hessian bestimmen
 
 Thoughts:
 - Muller Brown Potential
