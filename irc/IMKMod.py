@@ -23,7 +23,13 @@ def parabolic_fit(xs, ys):
     return real_minima
 
 
-def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
+def imk_mod(geometry, desired_step=0.15, line_step_size=None):
+    assert(desired_step > 0), "desired_step has to be > 0"
+    if line_step_size is not None:
+        assert(line_step_size > 0), "line_step_size has to be > 0"
+    else:
+        line_step_size = 0.333 * desired_step
+
     all_irc_coords = list()
 
     last_energy = None
@@ -54,7 +60,7 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
 
         # Determine bisector
         D = grad_0/grad_0_norm - grad_1/grad_1_norm
-        D_norm = D / np.linalg.norm(D)
+        D_normed = D / np.linalg.norm(D)
 
         line_xs = [0, ]
         line_energies = [energy_1, ]
@@ -62,7 +68,7 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
         line_step_size_thresh = 1.5*line_step_size
         # Try to find a useful point by projecting grad_1 on D.
         grad_1_normed = grad_1 / grad_1_norm
-        step_D1 = np.dot(grad_1, D_norm) * D_norm * line_step_size
+        step_D1 = np.dot(grad_1, D_normed) * D_normed * line_step_size
         step_D1_norm = np.linalg.norm(step_D1)
         if step_D1_norm < line_step_size_thresh:
             geometry.coords = coords_1 + step_D1
@@ -71,7 +77,7 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
             line_energies.append(step_D1_energy)
         # Otherwise just take a step along D.
         else:
-            step_D2 = line_step_size * D_norm
+            step_D2 = line_step_size * D_normed
             geometry.coords = coords_1 + step_D2
             step_D2_norm = np.linalg.norm(step_D2)
             line_xs.append(step_D2_norm)
@@ -81,24 +87,30 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
         # Calculate a 3rd point
         # Halve step size
         if line_energies[1] >= line_energies[0]:
-            step_D3 = 0.5 * line_step_size * D_norm
+            print("halve")
+            step_D3 = 0.5 * line_step_size * D_normed
         # Double step size
         else:
-            step_D3 = 2 * line_step_size * D_norm
+            print("double")
+            step_D3 = 2 * line_step_size * D_normed
 
-        geometry.coords = coords_1 + step_D3
         step_D3_norm = np.linalg.norm(step_D3)
+        geometry.coords = coords_1 + step_D3
         line_xs.append(step_D3_norm)
         step_D3_energy = geometry.energy
         line_energies.append(step_D3_energy)
 
         real_minimum = parabolic_fit(line_xs, line_energies)
 
+        print("line_xs", line_xs)
+        print("real_minimum", real_minimum)
+        print("line_energies", line_energies)
         irc_coords = coords_1 + (real_minimum*D)#line_step_size*D)
         geometry.coords = irc_coords
 
         last_energy = energy_0
         i += 1
+        print()
 
     return np.array(all_irc_coords)
 
@@ -106,7 +118,9 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
 def run():
     atoms = ("H", )
 
-    calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
+    # True TS
+    calc, ts_coords = (MullerBrownPot(), np.array((-0.825, 0.624, 0.)))
+    #calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
     levels=(-150, -15, 40)
@@ -120,9 +134,10 @@ def run():
     geometry.set_calculator(calc)
 
     # Muller-Brown
-    aic = imk_mod(geometry, desired_step=0.1, line_step_size=0.05)
+    #aic = imk_mod(geometry, desired_step=0.15, line_step_size=0.05)
+    aic = imk_mod(geometry, desired_step=0.15)
     # AnaPot
-    #aic = imk_mod(geometry)
+    #aic = imk_mod(geometry, desired_step=0.075)
 
     fig, ax = plt.subplots(figsize=(8,8))
 
