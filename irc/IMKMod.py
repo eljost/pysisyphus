@@ -61,7 +61,8 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
 
         line_step_size_thresh = 1.5*line_step_size
         # Try to find a useful point by projecting grad_1 on D.
-        step_D1 = np.dot(grad_1, D) * D * line_step_size
+        grad_1_normed = grad_1 / grad_1_norm
+        step_D1 = np.dot(grad_1, D_norm) * D_norm * line_step_size
         step_D1_norm = np.linalg.norm(step_D1)
         if step_D1_norm < line_step_size_thresh:
             geometry.coords = coords_1 + step_D1
@@ -119,7 +120,7 @@ def run():
     geometry.set_calculator(calc)
 
     # Muller-Brown
-    aic = imk_mod(geometry, desired_step=0.1)
+    aic = imk_mod(geometry, desired_step=0.1, line_step_size=0.05)
     # AnaPot
     #aic = imk_mod(geometry)
 
