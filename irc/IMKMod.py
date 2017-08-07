@@ -87,11 +87,9 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=None):
         # Calculate a 3rd point
         # Halve step size
         if line_energies[1] >= line_energies[0]:
-            print("halve")
             step_D3 = 0.5 * line_step_size * D_normed
         # Double step size
         else:
-            print("double")
             step_D3 = 2 * line_step_size * D_normed
 
         step_D3_norm = np.linalg.norm(step_D3)
@@ -102,10 +100,12 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=None):
 
         real_minimum = parabolic_fit(line_xs, line_energies)
 
-        print("line_xs", line_xs)
-        print("real_minimum", real_minimum)
-        print("line_energies", line_energies)
-        irc_coords = coords_1 + (real_minimum*D)#line_step_size*D)
+        # ||step_norm|| = ||line_step_size * D_normed||
+        #               = line_step_size * ||D_normed||
+        #               = line_step_size * 1
+        # So the resulting real_minimum basically corresponds
+        # to a step size.
+        irc_coords = coords_1 + (real_minimum*D_normed)
         geometry.coords = irc_coords
 
         last_energy = energy_0
@@ -137,7 +137,7 @@ def run():
     #aic = imk_mod(geometry, desired_step=0.15, line_step_size=0.05)
     aic = imk_mod(geometry, desired_step=0.15)
     # AnaPot
-    #aic = imk_mod(geometry, desired_step=0.075)
+    #aic = imk_mod(geometry, desired_step=0.0125)
 
     fig, ax = plt.subplots(figsize=(8,8))
 
