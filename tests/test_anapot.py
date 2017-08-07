@@ -89,7 +89,7 @@ def test_fixed_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 15
     convergence = {
-        "max_force_thresh": 8.6e-1,
+        "max_force_thresh": 8.9e-1,
         "rms_force_thresh": 1.5e-1,
         "max_step_thresh": 5.0e-2,
         "rms_step_thresh": 8.2e-3,
