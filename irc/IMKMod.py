@@ -71,7 +71,7 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
             line_energies.append(step_D1_energy)
         # Otherwise just take a step along D.
         else:
-            step_D2 = line_step_size * D
+            step_D2 = line_step_size * D_norm
             geometry.coords = coords_1 + step_D2
             step_D2_norm = np.linalg.norm(step_D2)
             line_xs.append(step_D2_norm)
@@ -81,10 +81,10 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=0.025):
         # Calculate a 3rd point
         # Halve step size
         if line_energies[1] >= line_energies[0]:
-            step_D3 = 0.5 * line_step_size * D
+            step_D3 = 0.5 * line_step_size * D_norm
         # Double step size
         else:
-            step_D3 = 2 * line_step_size * D
+            step_D3 = 2 * line_step_size * D_norm
 
         geometry.coords = coords_1 + step_D3
         step_D3_norm = np.linalg.norm(step_D3)
