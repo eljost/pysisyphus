@@ -43,7 +43,10 @@ class AnaPotBase(Calculator):
         dVdxdx = self.dVdxdx(x, y)
         dVdxdy = self.dVdxdy(x, y)
         dVdydy = self.dVdydy(x, y)
-        hessian = np.array((dVdxdx, dVdxdy), (dVdxdy, dVdydy))
+        hessian = np.array(((dVdxdx, dVdxdy, 0),
+                            (dVdxdy, dVdydy, 0),
+                            (0, 0, 0))
+        )
         results = self.get_forces(atoms, coords)
         results["hessian"] = hessian
         return results

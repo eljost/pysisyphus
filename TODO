@@ -27,6 +27,7 @@
             - transition_vector
     - Gradient Attribute in Geometry nachrüsten
     - Transition vector aus Hessian bestimmen
+    - Gradient zu beginn checken und schauen ob man in nem stationary point ist
 
 Thoughts:
 - Muller Brown Potential
