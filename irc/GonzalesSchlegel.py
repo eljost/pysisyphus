@@ -14,10 +14,10 @@ warnings.simplefilter('ignore', np.RankWarning)
 
 # [1] http://pubs.acs.org/doi/pdf/10.1021/ja00295a002
 
-def bfgs_update(hessian, forces_diff, coords_diff):
+def bfgs_update(hessian, gradient_diff, coords_diff):
     return (hessian
-                + np.dot(forces_diff[:,None], forces_diff[None,:])
-                  / np.dot(forces_diff[None,:], coords_diff[:,None])
+                + np.dot(gradient_diff[:,None], gradient_diff[None,:])
+                  / np.dot(gradient_diff[None,:], coords_diff[:,None])
                 - np.dot(
                     np.dot(hessian, coords_diff[:,None]),
                     np.dot(coords_diff[None,:], hessian)
@@ -30,39 +30,68 @@ def bfgs_update(hessian, forces_diff, coords_diff):
     )
 
 
-def gonzales_schlegel(geometry, s=0.15):
-    assert(s > 0), "s has to be > 0"
+def gonzales_schlegel(geometry, max_step=0.15):
+    assert(max_step > 0), "max_step has to be > 0"
 
     all_coords = [geometry.coords, ]
-    all_forces = list()
+    all_gradients = list()
 
     # Determine pivot point x*_k+1.
     hessian = geometry.hessian
-    forces = geometry.forces
-    forces_norm = np.linalg.norm(forces)
-    all_forces.append(forces)
+    gradient = -geometry.forces
+    gradient_norm = np.linalg.norm(gradient)
+    all_gradients.append(gradient)
 
-    pivot_step = 0.5*s * forces/forces_norm
+    pivot_step = 0.5*max_step * gradient/gradient_norm
     pivot_coords = geometry.coords + pivot_step
 
     # Make initial guess for x'_k+1.
     # For now just do a full step along the initial gradient.
     geometry.coords = pivot_coords + pivot_step
+    # p'
+    displacement = geometry.coords - all_coords[-1]
+    print("displacement")
+    print(np.linalg.norm(displacement))
+    i = 0
     while True:
-        cur_forces = geometry.forces
-        forces_diff = cur_forces - all_forces[-1]
+        break
+        print(f"Macro: {i}")
+        cur_gradient = -geometry.forces
+        gradient_diff = cur_gradient - all_gradients[-1]
         coords_diff = geometry.coords - all_coords[-1]
         # Update hessian and diagonalize it.
-        hessian = bfgs_update(hessian, forces_diff, coords_diff)
+        hessian = bfgs_update(hessian, gradient_diff, coords_diff)
         eigvals, eigvecs = np.linalg.eig(hessian)
         # Project gradient and displacement onto eigenvectors of
         # the hessian.
-
+        gradients_proj = np.array([np.dot(cur_gradient, v) for v in eigvecs])
+        displacements_proj = np.array([np.dot(displacement, v) for v in eigvecs])
         # Find the lowest eigenvalue and use it to determine a first
         # guess for lambda.
         eigvals = np.sort(eigvals)
-        print(eigvals)
-        break
+        lambda_ = eigvals[1]*.9
+        #lambda_ = eigvals[0] - 0.1
+        prev_lambda = 0
+        # Newton-Raphson 
+        j = 0
+        while abs(prev_lambda - lambda_) > 1e-8:
+            print(f"Micro {j}")
+            # f(lambda)
+            func = np.sum(
+                    ((eigvals*displacements_proj-gradients_proj)
+                     /(eigvals-lambda_))**2
+            )
+            func -= 0.25 * max_step**2
+            # derivative of f(lambda)
+            deriv = np.sum(
+                        2*(eigvals*displacements_proj-gradients_proj)
+                        /(eigvals-lambda_)**3
+            )
+            prev_lambda = lambda_
+            lambda_ = prev_lambda - func/deriv
+            print(f"lambda: {lambda_}")
+            j += 1
+        i += 1
 
     return np.array(all_coords)
 
@@ -171,9 +200,9 @@ def run():
     geometry.set_calculator(calc)
 
     # Muller-Brown
-    aic = gonzales_schlegel(geometry, s=0.15)
+    aic = gonzales_schlegel(geometry, max_step=0.15)
     # AnaPot
-    #aic = gonzales_schlegel(geometry, s=0.0125)
+    #aic = gonzales_schlegel(geometry, max_step=0.0125)
 
     fig, ax = plt.subplots(figsize=(8,8))
 
