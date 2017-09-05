@@ -110,7 +110,6 @@ def imk_mod(geometry, desired_step=0.15, line_step_size=None):
 
         last_energy = energy_0
         i += 1
-        print()
 
     return np.array(all_irc_coords)
 

@@ -15,6 +15,14 @@ class AnaPotBase(Calculator):
         self.dVdx = lambdify((x, y), dVdx, "numpy")
         self.dVdy = lambdify((x, y), dVdy, "numpy")
 
+        dVdxdx = diff(V, x, x)
+        dVdxdy = diff(V, x, y)
+        dVdydy = diff(V, y, y)
+
+        self.dVdxdx = lambdify((x, y), dVdxdx, "numpy")
+        self.dVdxdy = lambdify((x, y), dVdxdy, "numpy")
+        self.dVdydy = lambdify((x, y), dVdydy, "numpy")
+
     def get_energy(self, atoms, coords):
         x, y, z = coords
         energy = self.V(x, y)
@@ -28,4 +36,14 @@ class AnaPotBase(Calculator):
         forces = -np.array((dVdx, dVdy, dVdz))
         results = self.get_energy(atoms, coords)
         results["forces"] = forces
+        return results
+
+    def get_hessian(self, atoms, coords):
+        x, y, z = coords
+        dVdxdx = self.dVdxdx(x, y)
+        dVdxdy = self.dVdxdy(x, y)
+        dVdydy = self.dVdydy(x, y)
+        hessian = np.array((dVdxdx, dVdxdy), (dVdxdy, dVdydy))
+        results = self.get_forces(atoms, coords)
+        results["hessian"] = hessian
         return results
