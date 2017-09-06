@@ -22,6 +22,7 @@ def bfgs_update(H, grad_diffs, coord_diffs):
     dH = first_term - second_term
     return H + dH
 
+
 def bfgs_update_ase(H, grad_diffs, coord_diffs):
     df = -grad_diffs
     dr = coord_diffs
@@ -32,6 +33,27 @@ def bfgs_update_ase(H, grad_diffs, coord_diffs):
     print("dH ase")
     print(dH)
     return H + dH
+
+
+def bracket(func, a, b):
+    max_cycles = 50
+    factor = 1.6
+    fa = func(a)
+    fb = func(b)
+    for i in range(max_cycles):
+        if fa*fb < 0.0:
+            break
+        if (abs(fa) < abs(fb)):
+            a += factor * (a-b)
+            fa = func(a)
+        else:
+            b += factor * (b-a)
+            fb = func(b)
+    if i > max_cycles:
+        a = None
+        b = None
+    return a, b
+
 
 
 def newton_raphson(f, df, a, b, tol=1e-8):
@@ -70,7 +92,7 @@ def newton_raphson(f, df, a, b, tol=1e-8):
 
 
 
-def gs_step(geometry, max_step=0.15):
+def gs_step(geometry, max_step):
     summary = False
     micro_coords = list()
     hessian = geometry.hessian
@@ -94,8 +116,8 @@ def gs_step(geometry, max_step=0.15):
     displacement = geometry.coords - pivot_coords
     init_displ = displacement
     i = 0
+    last_lambda = None
     while True:
-        #print(f"\tMicro: {i}")
         gradient = -geometry.forces
         gradient_diff = gradient - last_gradient
         coords_diff = geometry.coords - last_coords
@@ -104,57 +126,37 @@ def gs_step(geometry, max_step=0.15):
         # surface.
         last_gradient = gradient
         last_coords = geometry.coords
-        # Update hessian and diagonalize it.
-        #print(hessian)
-        #hessian = bfgs_update(hessian, gradient_diff, coords_diff)
-        #print("updated hessian")
-        #print(hessian)
-        anal_hessian = geometry.hessian
-        #print("analytical hessian")
-        #print(anal_hessian)
-        #print("diff")
-        #print(anal_hessian-hessian)
-        #print()
-        hessian = anal_hessian
+        hessian = bfgs_update(hessian, gradient_diff, coords_diff)
         eigvals, eigvecs = np.linalg.eig(hessian)
-        #print("eigvecs", eigvecs)
 
         # Project gradient and displacement onto eigenvectors of
         # the hessian.
         gradients_proj = np.array([np.dot(gradient, v) for v in eigvecs])
         displacements_proj = np.array([np.dot(displacement, v) for v in eigvecs])
-        # Find the lowest eigenvalue and use it to determine a first
-        # guess for lambda.
-        lambda_ = np.sort(eigvals)[0] - 0.1
 
         def func(lambda_):
             f = np.sum(
                     ((eigvals*displacements_proj-gradients_proj)
                      /(eigvals-lambda_))**2
             )
-            f -= 0.25 * max_step**2
-            return f
+            return f- 0.25 * max_step**2
 
-        def deriv(lambda_):
-            return np.sum(
-                        2*(eigvals*displacements_proj-gradients_proj)**2
-                        /(eigvals-lambda_)**3
-            )
-        #a, b = (-10, 10)
-        #lambda_ = newton_raphson(func, deriv, a, b, tol=1e-8)
-        """
-        print("diff", abs(lambda_ + 0.1))
-        if abs(lambda_ + 0.1) <= 1e-4:
-            print("EY")
-            lambda_ = eigvals[1]-0.1
-        """
-        print("lambda guess", lambda_)
+        # Find the lowest eigenvalue and use it to determine a first
+        # guess for lambda.
+        lambda_ = np.sort(eigvals)[0] - 0.1
+        bracket_guess = (2*lambda_, lambda_)
+        low_brack = min(bracket_guess)
+        up_brack = max(bracket_guess)
+        low_brack, up_brack = bracket(func, low_brack, up_brack)
+        print("low_brack", low_brack, "up_brack", up_brack)
+        if not last_lambda:
+            last_lambda = lambda_
+
         prev_lambda = 0
-        j = 0
-        lambda_lb = -10
-        lambda_ub = 10
         # Newton-Raphson to optimize lambda so f(lambda) = 0
-        while abs(prev_lambda - lambda_) > 1e-10:
+        j = 0
+        while abs(prev_lambda - lambda_) > 1e-8:
+            prev_lambda = lambda_
             # f(lambda)
             func = np.sum(
                     ((eigvals*displacements_proj-gradients_proj)
@@ -162,51 +164,42 @@ def gs_step(geometry, max_step=0.15):
             )
             func -= 0.25 * max_step**2
             # d(f(lambda))/(dlambda)
-            deriv = np.sum(
-                        2*(eigvals*displacements_proj-gradients_proj)**2
+            deriv = 2*np.sum(
+                        (eigvals*displacements_proj-gradients_proj)**2
                         /(eigvals-lambda_)**3
             )
-            prev_lambda = lambda_
             lambda_ = prev_lambda - func/deriv
-            #print(func)
             j += 1
-            if j >= 200:
+            if j >= 100:
                 logging.warning("Lambda search didn't converge!")
                 break
-        """
-        while True:
-            func = 0
-            df = 0
-            for k in range(eigvals.size):
-                bpgb = (eigvals[k]*displacements_proj[k]-gradients_proj[k])/(eigvals[k]-lambda_)
-                bl = eigvals[k]- lambda_
-                func += bpgb * bpgb
-                df += 2.0 * bpgb*bpgb / bl
-            func -= 0.25*max_step*max_step
-            prev_lambda = lambda_
-            lambda_ = lambda_ - func/df
-            #print(lambda_)
-            if abs(prev_lambda - lambda_) < 1e-8:
-                break
-        """
         print(f"NR lambda search converged after {j} iterations: "
               f"λ={lambda_:5.5f}, f(λ)={func:8.10f}")
+
+        print("last_lambda", last_lambda)
+        print("lambda_", lambda_)
+        print("l / ll", lambda_ / last_lambda)
+        if (lambda_ / last_lambda) > 5:
+            lambda_ = last_lambda
+            print("HMM!")
+        else:
+            last_lambda = lambda_
         # Calculate dx from optimized lambda
         dx = -np.dot(
                 np.linalg.inv(hessian-lambda_*np.eye(hessian.shape[0])),
                 gradient-lambda_*displacement
         )
-        print("dx", dx)
         displacement += dx
         geometry.coords = pivot_coords + displacement
         micro_coords.append(geometry.coords)
-        #all_coords.append(geometry.coords)
         
-        #break
+        """
+        Tangent is missing!
         tangent = (gradient - (gradient.dot(displacement)
                               / np.linalg.norm(displacement)**2) * gradient
         )
-        if (np.linalg.norm(dx) <= 1e-5):# and (np.linalg.norm(tangent) < 1e-6):
+        """
+        if (np.linalg.norm(dx) <= 1e-5):
             print("WIN")
             summary = True
         elif i >= 20:
@@ -220,7 +213,6 @@ def gs_step(geometry, max_step=0.15):
                 displacement[None,:].dot(displacement[:,None]) - 1/4*max_step**2
             )
             print("norm(dx)", np.linalg.norm(dx))
-            print("norm(tangent)", np.linalg.norm(tangent))
             print()
             break
 
@@ -270,7 +262,8 @@ def run():
     ylim = (0, 5)
     levels = (-3, 4, 80)
     #calc, ts_coords = (AnaPot(), np.array((0.6906, 1.5491, 0.)))
-    calc, ts_coords = (AnaPot2D(), np.array((0.6906, 1.5491)))
+    #calc, ts_coords = (AnaPot2D(), np.array((0.6906, 1.5491)))
+    calc, ts_coords = (AnaPot2D(), np.array((0.830, 1.67)))
 
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
