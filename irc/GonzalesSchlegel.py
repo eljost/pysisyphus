@@ -148,6 +148,7 @@ def gs_step(geometry, max_step):
         low_brack = min(bracket_guess)
         up_brack = max(bracket_guess)
         low_brack, up_brack = bracket(func, low_brack, up_brack)
+        #lambdas = np.linspace(low_brack, up_brack, 100)
         print("low_brack", low_brack, "up_brack", up_brack)
         if not last_lambda:
             last_lambda = lambda_
@@ -175,6 +176,10 @@ def gs_step(geometry, max_step):
                 break
         print(f"NR lambda search converged after {j} iterations: "
               f"λ={lambda_:5.5f}, f(λ)={func:8.10f}")
+
+        lambdas = np.linspace(-50, 50, 250)
+        plt.plot(lambdas, [func(l) for l in lambdas])
+        plt.show()
 
         print("last_lambda", last_lambda)
         print("lambda_", lambda_)
