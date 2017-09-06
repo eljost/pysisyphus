@@ -15,23 +15,23 @@ warnings.simplefilter('ignore', np.RankWarning)
 # [1] http://pubs.acs.org/doi/pdf/10.1021/ja00295a002
 
 def bfgs_update(hessian, gradient_diff, coords_diff):
-    print("bfgs")
-    print("grad diff")
-    print(gradient_diff)
-    print("coords diff")
-    print(coords_diff)
+    #print("bfgs")
+    #print("grad diff")
+    #print(gradient_diff)
+    #print("coords diff")
+    #print(coords_diff)
+    #yts
+    print("yTs", np.dot(gradient_diff, coords_diff))
     return (hessian
                 + np.dot(gradient_diff[:,None], gradient_diff[None,:])
                   / np.dot(gradient_diff[None,:], coords_diff[:,None])
                 - np.dot(
                     np.dot(hessian, coords_diff[:,None]),
                     np.dot(coords_diff[None,:], hessian)
-                )
-                / np.dot(
+                ) / np.dot(
                     np.dot(coords_diff[None,:], hessian),
                     coords_diff[:,None]
                 )
-                
     )
 
 
@@ -48,19 +48,18 @@ def gs_step(geometry, max_step=0.15):
     # Determine pivot point x*_k+1.
     pivot_step = 0.5*max_step * gradient0/gradient0_norm
 
-    # Take a step against the gradient to the pivot point
+    # Take a step against the gradient to the pivot point.
     pivot_coords = geometry.coords - pivot_step
 
     # Make initial guess for x'_k+1.
-    # For now just do a full step along the initial gradient.
+    # For now just do a full step against the initial gradient.
     geometry.coords = pivot_coords - pivot_step
-    # p'
-    displacement = geometry.coords - last_coords
-    print("displacement")
-    print(np.linalg.norm(displacement))
+    # Initial displacement p' from the pivot point
+    displacement = geometry.coords - pivot_coords
+    print("initial displacement", np.linalg.norm(displacement))
     i = 0
     while True:
-        print(f"Macro: {i}")
+        print(f"\tMicro: {i}")
         gradient = -geometry.forces
         print("gradient", gradient)
         gradient_diff = gradient - last_gradient
@@ -71,12 +70,12 @@ def gs_step(geometry, max_step=0.15):
         last_gradient = gradient
         last_coords = geometry.coords
         # Update hessian and diagonalize it.
-        print(hessian)
+        #print(hessian)
         hessian = bfgs_update(hessian, gradient_diff, coords_diff)
-        print(hessian)
+        #print(hessian)
         eigvals, eigvecs = np.linalg.eig(hessian)
         print("eigvals", eigvals)
-        print("eigvecs", eigvecs)
+        #print("eigvecs", eigvecs)
         # Project gradient and displacement onto eigenvectors of
         # the hessian.
         gradients_proj = np.array([np.dot(gradient, v) for v in eigvecs])
@@ -102,25 +101,35 @@ def gs_step(geometry, max_step=0.15):
             )
             prev_lambda = lambda_
             lambda_ = prev_lambda - func/deriv
-            print(f"\tMicro {j:03d}, λ={lambda_:5.2f}, f(λ)={func:8.5f}")
             j += 1
+        print(f"NR lambda search converged after {j} iterations: "
+              f"λ={lambda_:5.2f}, f(λ)={func:8.5f}")
         # Calculate dx from optimized lambda
         # Minus missing?
-        dx = np.dot(
+        dx = -np.dot(
                 np.linalg.inv(hessian-lambda_*np.eye(hessian.shape[0])),
                 gradient-lambda_*displacement
         )
         print("dx", dx)
+        displacement += dx
         geometry.coords = geometry.coords + dx
         print(geometry.coords)
         print("new displ:", np.linalg.norm(geometry.coords-pivot_coords))
         #all_coords.append(geometry.coords)
         
         #break
+        tangent = (gradient - (np.dot(gradient, displacement)
+                              / np.linalg.norm(displacement)) * gradient
+        )
+        print("norm(dx)", np.linalg.norm(dx))
+        print("norm(tangent)", np.linalg.norm(tangent))
+        if (np.linalg.norm(dx) <= 1e-6) and (np.linalg.norm(tangent) < 1e-6):
+            print("YOLOOO")
+            break
+        if i >= 10:
+            break
 
         i += 1
-        if i > 5:
-            break
 
     return geometry.coords
 
@@ -131,7 +140,8 @@ def gonzales_schlegel(geometry, max_step=0.15):
     all_coords = [geometry.coords, ]
 
     i = 0
-    while i < 5:
+    while i < 8:
+        print(f"Macro: {i}")
         new_coords = gs_step(geometry, max_step)
         all_coords.append(new_coords)
         i += 1
