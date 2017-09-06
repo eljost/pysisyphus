@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 import warnings
 
 import matplotlib.pyplot as plt
@@ -14,28 +15,20 @@ warnings.simplefilter('ignore', np.RankWarning)
 
 # [1] http://pubs.acs.org/doi/pdf/10.1021/ja00295a002
 
-def bfgs_update(hessian, gradient_diff, coords_diff):
-    #print("bfgs")
-    #print("grad diff")
-    #print(gradient_diff)
-    #print("coords diff")
-    #print(coords_diff)
-    #yts
-    print("yTs", np.dot(gradient_diff, coords_diff))
-    return (hessian
-                + np.dot(gradient_diff[:,None], gradient_diff[None,:])
-                  / np.dot(gradient_diff[None,:], coords_diff[:,None])
-                - np.dot(
-                    np.dot(hessian, coords_diff[:,None]),
-                    np.dot(coords_diff[None,:], hessian)
-                ) / np.dot(
-                    np.dot(coords_diff[None,:], hessian),
-                    coords_diff[:,None]
-                )
-    )
+def bfgs_update(H, grad_diffs, coord_diffs):
+    y = grad_diffs[:,None]
+    yT = grad_diffs[None,:]
+    s = coord_diffs[:,None]
+    sT = coord_diffs[None,:]
+    #print("yTs", np.dot(yT, s))
+    first_term = y.dot(yT) / yT.dot(s)
+    second_term = H.dot(s).dot(sT).dot(H) / sT.dot(H).dot(s)
+    dH = first_term - second_term
+    return H + dH
 
 
 def gs_step(geometry, max_step=0.15):
+    summary = False
     hessian = geometry.hessian
     gradient0 = -geometry.forces
     gradient0_norm = np.linalg.norm(gradient0)
@@ -59,9 +52,8 @@ def gs_step(geometry, max_step=0.15):
     print("initial displacement", np.linalg.norm(displacement))
     i = 0
     while True:
-        print(f"\tMicro: {i}")
+        #print(f"\tMicro: {i}")
         gradient = -geometry.forces
-        print("gradient", gradient)
         gradient_diff = gradient - last_gradient
         coords_diff = geometry.coords - last_coords
         # After the first step move more or less along the surface of the
@@ -74,7 +66,6 @@ def gs_step(geometry, max_step=0.15):
         hessian = bfgs_update(hessian, gradient_diff, coords_diff)
         #print(hessian)
         eigvals, eigvecs = np.linalg.eig(hessian)
-        print("eigvals", eigvals)
         #print("eigvecs", eigvecs)
         # Project gradient and displacement onto eigenvectors of
         # the hessian.
@@ -87,7 +78,7 @@ def gs_step(geometry, max_step=0.15):
         prev_lambda = 0
         # Newton-Raphson to optimize lambda so f(lambda) = 0
         j = 0
-        while abs(prev_lambda - lambda_) > 1e-8:
+        while abs(prev_lambda - lambda_) > 1e-10:
             # f(lambda)
             func = np.sum(
                     ((eigvals*displacements_proj-gradients_proj)
@@ -102,31 +93,38 @@ def gs_step(geometry, max_step=0.15):
             prev_lambda = lambda_
             lambda_ = prev_lambda - func/deriv
             j += 1
+            if j >= 100:
+                logging.warning("Lambda search didn't converge!")
+                break
         print(f"NR lambda search converged after {j} iterations: "
               f"λ={lambda_:5.2f}, f(λ)={func:8.5f}")
         # Calculate dx from optimized lambda
-        # Minus missing?
         dx = -np.dot(
                 np.linalg.inv(hessian-lambda_*np.eye(hessian.shape[0])),
                 gradient-lambda_*displacement
         )
-        print("dx", dx)
         displacement += dx
-        geometry.coords = geometry.coords + dx
-        print(geometry.coords)
-        print("new displ:", np.linalg.norm(geometry.coords-pivot_coords))
+        geometry.coords = pivot_coords + displacement
         #all_coords.append(geometry.coords)
         
         #break
-        tangent = (gradient - (np.dot(gradient, displacement)
-                              / np.linalg.norm(displacement)) * gradient
+        tangent = (gradient - (gradient.dot(displacement)
+                              / np.linalg.norm(displacement)**2) * gradient
         )
-        print("norm(dx)", np.linalg.norm(dx))
-        print("norm(tangent)", np.linalg.norm(tangent))
-        if (np.linalg.norm(dx) <= 1e-6) and (np.linalg.norm(tangent) < 1e-6):
-            print("YOLOOO")
-            break
-        if i >= 10:
+        if (np.linalg.norm(dx) <= 1e-6):# and (np.linalg.norm(tangent) < 1e-6):
+            print("WIN")
+            summary = True
+        if i >= 20:
+            print("FAIL")
+            summary = True
+        if summary:
+            print("new displ:", np.linalg.norm(displacement))
+            print("constraint pTp - (1/2s)**2:",
+                displacement[None,:].dot(displacement[:,None]) - 1/4*max_step**2
+            )
+            print("norm(dx)", np.linalg.norm(dx))
+            print("norm(tangent)", np.linalg.norm(tangent))
+            print()
             break
 
         i += 1
@@ -170,9 +168,11 @@ def run():
 
     # Muller-Brown
     aic = gonzales_schlegel(geometry, max_step=0.15)
+    """
     print("all coordinates")
     for c in aic:
         print(c)
+    """
     # AnaPot
     #aic = gonzales_schlegel(geometry, max_step=0.0125)
 
