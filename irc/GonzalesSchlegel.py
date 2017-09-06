@@ -15,6 +15,11 @@ warnings.simplefilter('ignore', np.RankWarning)
 # [1] http://pubs.acs.org/doi/pdf/10.1021/ja00295a002
 
 def bfgs_update(hessian, gradient_diff, coords_diff):
+    print("bfgs")
+    print("grad diff")
+    print(gradient_diff)
+    print("coords diff")
+    print(coords_diff)
     return (hessian
                 + np.dot(gradient_diff[:,None], gradient_diff[None,:])
                   / np.dot(gradient_diff[None,:], coords_diff[:,None])
@@ -30,154 +35,108 @@ def bfgs_update(hessian, gradient_diff, coords_diff):
     )
 
 
-def gonzales_schlegel(geometry, max_step=0.15):
-    assert(max_step > 0), "max_step has to be > 0"
-
-    all_coords = [geometry.coords, ]
-    all_gradients = list()
+def gs_step(geometry, max_step=0.15):
+    hessian = geometry.hessian
+    gradient0 = -geometry.forces
+    gradient0_norm = np.linalg.norm(gradient0)
+    # For the first BFGS update of the hessian we use differences
+    # between the starting point of this micro-step and the initial
+    # guess on the hypersphere.
+    last_gradient = gradient0
+    last_coords = geometry.coords
 
     # Determine pivot point x*_k+1.
-    hessian = geometry.hessian
-    gradient = -geometry.forces
-    gradient_norm = np.linalg.norm(gradient)
-    all_gradients.append(gradient)
+    pivot_step = 0.5*max_step * gradient0/gradient0_norm
 
-    pivot_step = 0.5*max_step * gradient/gradient_norm
-    pivot_coords = geometry.coords + pivot_step
+    # Take a step against the gradient to the pivot point
+    pivot_coords = geometry.coords - pivot_step
 
     # Make initial guess for x'_k+1.
     # For now just do a full step along the initial gradient.
-    geometry.coords = pivot_coords + pivot_step
+    geometry.coords = pivot_coords - pivot_step
     # p'
-    displacement = geometry.coords - all_coords[-1]
+    displacement = geometry.coords - last_coords
     print("displacement")
     print(np.linalg.norm(displacement))
     i = 0
     while True:
-        break
         print(f"Macro: {i}")
-        cur_gradient = -geometry.forces
-        gradient_diff = cur_gradient - all_gradients[-1]
-        coords_diff = geometry.coords - all_coords[-1]
+        gradient = -geometry.forces
+        print("gradient", gradient)
+        gradient_diff = gradient - last_gradient
+        coords_diff = geometry.coords - last_coords
+        # After the first step move more or less along the surface of the
+        # hypersphere. Now the BFGS updates are done between points on the
+        # surface.
+        last_gradient = gradient
+        last_coords = geometry.coords
         # Update hessian and diagonalize it.
+        print(hessian)
         hessian = bfgs_update(hessian, gradient_diff, coords_diff)
+        print(hessian)
         eigvals, eigvecs = np.linalg.eig(hessian)
+        print("eigvals", eigvals)
+        print("eigvecs", eigvecs)
         # Project gradient and displacement onto eigenvectors of
         # the hessian.
-        gradients_proj = np.array([np.dot(cur_gradient, v) for v in eigvecs])
+        gradients_proj = np.array([np.dot(gradient, v) for v in eigvecs])
         displacements_proj = np.array([np.dot(displacement, v) for v in eigvecs])
         # Find the lowest eigenvalue and use it to determine a first
         # guess for lambda.
-        eigvals = np.sort(eigvals)
-        lambda_ = eigvals[1]*.9
-        #lambda_ = eigvals[0] - 0.1
+        #lambda_ = eigvals[1]*.9
+        lambda_ = np.sort(eigvals)[0] - 0.1
         prev_lambda = 0
-        # Newton-Raphson 
+        # Newton-Raphson to optimize lambda so f(lambda) = 0
         j = 0
         while abs(prev_lambda - lambda_) > 1e-8:
-            print(f"Micro {j}")
             # f(lambda)
             func = np.sum(
                     ((eigvals*displacements_proj-gradients_proj)
                      /(eigvals-lambda_))**2
             )
             func -= 0.25 * max_step**2
-            # derivative of f(lambda)
+            # d(f(lambda))/(dlambda)
             deriv = np.sum(
-                        2*(eigvals*displacements_proj-gradients_proj)
+                        2*(eigvals*displacements_proj-gradients_proj)**2
                         /(eigvals-lambda_)**3
             )
             prev_lambda = lambda_
             lambda_ = prev_lambda - func/deriv
-            print(f"lambda: {lambda_}")
+            print(f"\tMicro {j:03d}, λ={lambda_:5.2f}, f(λ)={func:8.5f}")
             j += 1
+        # Calculate dx from optimized lambda
+        # Minus missing?
+        dx = np.dot(
+                np.linalg.inv(hessian-lambda_*np.eye(hessian.shape[0])),
+                gradient-lambda_*displacement
+        )
+        print("dx", dx)
+        geometry.coords = geometry.coords + dx
+        print(geometry.coords)
+        print("new displ:", np.linalg.norm(geometry.coords-pivot_coords))
+        #all_coords.append(geometry.coords)
+        
+        #break
+
+        i += 1
+        if i > 5:
+            break
+
+    return geometry.coords
+
+
+def gonzales_schlegel(geometry, max_step=0.15):
+    assert(max_step > 0), "max_step has to be > 0"
+
+    all_coords = [geometry.coords, ]
+
+    i = 0
+    while i < 5:
+        new_coords = gs_step(geometry, max_step)
+        all_coords.append(new_coords)
         i += 1
 
     return np.array(all_coords)
-
-
-    """
-    i = 0
-    while True:
-        # Get gradient at Q0
-        grad_0 = -geometry.forces
-        energy_0 = geometry.energy
-
-        if last_energy and (energy_0 > last_energy):
-            print("Iteration {:04d}: Energy increased!".format(i))
-            break
-
-        all_irc_coords.append(geometry.coords)
-
-        grad_0_norm = np.linalg.norm(grad_0)
-        step_size = np.linalg.norm(desired_step) / grad_0_norm
-        step = -step_size * grad_0
-
-        # Step to intermediate point Q1
-        coords_1 = geometry.coords + step
-        geometry.coords = coords_1
-
-        # Get gradient at Q1
-        grad_1 = -geometry.forces
-        energy_1 = geometry.energy
-        grad_1_norm = np.linalg.norm(grad_1)
-
-        # Determine bisector
-        D = grad_0/grad_0_norm - grad_1/grad_1_norm
-        D_normed = D / np.linalg.norm(D)
-
-        line_xs = [0, ]
-        line_energies = [energy_1, ]
-
-        line_step_size_thresh = 1.5*line_step_size
-        # Try to find a useful point by projecting grad_1 on D.
-        grad_1_normed = grad_1 / grad_1_norm
-        step_D1 = np.dot(grad_1, D_normed) * D_normed * line_step_size
-        step_D1_norm = np.linalg.norm(step_D1)
-        if step_D1_norm < line_step_size_thresh:
-            geometry.coords = coords_1 + step_D1
-            step_D1_energy = geometry.energy
-            line_xs.append(step_D1_norm)
-            line_energies.append(step_D1_energy)
-        # Otherwise just take a step along D.
-        else:
-            step_D2 = line_step_size * D_normed
-            geometry.coords = coords_1 + step_D2
-            step_D2_norm = np.linalg.norm(step_D2)
-            line_xs.append(step_D2_norm)
-            step_D2_energy = geometry.energy
-            line_energies.append(step_D2_energy)
-
-        # Calculate a 3rd point
-        # Halve step size
-        if line_energies[1] >= line_energies[0]:
-            step_D3 = 0.5 * line_step_size * D_normed
-        # Double step size
-        else:
-            step_D3 = 2 * line_step_size * D_normed
-
-        step_D3_norm = np.linalg.norm(step_D3)
-        geometry.coords = coords_1 + step_D3
-        line_xs.append(step_D3_norm)
-        step_D3_energy = geometry.energy
-        line_energies.append(step_D3_energy)
-
-        real_minimum = parabolic_fit(line_xs, line_energies)
-
-        # ||step_norm|| = ||line_step_size * D_normed||
-        #               = line_step_size * ||D_normed||
-        #               = line_step_size * 1
-        # So the resulting real_minimum basically corresponds
-        # to a step size.
-        irc_coords = coords_1 + (real_minimum*D_normed)
-        geometry.coords = irc_coords
-
-        last_energy = energy_0
-        i += 1
-        print()
-
-    return np.array(all_irc_coords)
-    """
 
 
 def run():
@@ -201,6 +160,9 @@ def run():
 
     # Muller-Brown
     aic = gonzales_schlegel(geometry, max_step=0.15)
+    print("all coordinates")
+    for c in aic:
+        print(c)
     # AnaPot
     #aic = gonzales_schlegel(geometry, max_step=0.0125)
 
