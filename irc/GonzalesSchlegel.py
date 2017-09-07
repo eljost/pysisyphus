@@ -106,7 +106,6 @@ def gs_step(geometry, max_step):
 
     # Determine pivot point x*_k+1.
     pivot_step = 0.5*max_step * gradient0/gradient0_norm
-    print("norm(pivot_step)", np.linalg.norm(pivot_step))
     # Take a step against the gradient to the pivot point.
     pivot_coords = geometry.coords - pivot_step
 
@@ -115,12 +114,12 @@ def gs_step(geometry, max_step):
     geometry.coords = pivot_coords - pivot_step
     # Initial displacement p' from the pivot point
     displacement = geometry.coords - pivot_coords
-    print("norm(displacement)", np.linalg.norm(displacement))
     init_displ = displacement
     i = 0
     last_lambda = None
     eye = np.eye(displacement.size)
     while True:
+        print(f"Micro {i}")
         gradient = -geometry.forces
         gradient_diff = gradient - last_gradient
         coords_diff = geometry.coords - last_coords
@@ -129,16 +128,23 @@ def gs_step(geometry, max_step):
         # surface.
         last_gradient = gradient
         last_coords = geometry.coords
-        hessian = bfgs_update(hessian, gradient_diff, coords_diff)
+        #hessian = bfgs_update(hessian, gradient_diff, coords_diff)
+        hessian = geometry.hessian
         eigvals, eigvecs = np.linalg.eig(hessian)
         smallest_eigval = np.sort(eigvals)
         lambda_ = np.sort(eigvals)[0]
-        lambda_ *= 1.25 if (lambda_ < 0) else 0.75
-        print("lambda_guess", lambda_)
+        lambda_guess = lambda_
+        lambda_ *= 1.5 if (lambda_ < 0) else 0.5
+        """
+        if abs(lambda_guess - lambda_) < 50:
+            print("small!")
+            lambda_ -= 1500
+        """
+        print("lambda_guess", lambda_, "eigvals", eigvals)
         hinv = np.linalg.inv(hessian)
-        print(hessian)
-        print(hinv)
-        print(hessian.dot(hinv))
+        #print(hessian)
+        #print(hinv)
+        #print(hessian.dot(hinv))
 
         """
         def ffunc(lambda_):
@@ -167,6 +173,7 @@ def gs_step(geometry, max_step):
             )
             return f- 0.25 * max_step**2
 
+        """
         # Find the lowest eigenvalue and use it to determine a first
         # guess for lambda.
         lambda_ = np.sort(eigvals)[0] - 0.1
@@ -178,11 +185,12 @@ def gs_step(geometry, max_step):
         print("low_brack", low_brack, "up_brack", up_brack)
         if not last_lambda:
             last_lambda = lambda_
+        """
 
         prev_lambda = 0
         # Newton-Raphson to optimize lambda so f(lambda) = 0
         j = 0
-        while abs(prev_lambda - lambda_) > 1e-8:
+        while abs(prev_lambda - lambda_) > 1e-12:
             prev_lambda = lambda_
             # f(lambda)
             func = np.sum(
@@ -205,11 +213,14 @@ def gs_step(geometry, max_step):
               f"λ={lambda_:5.5f}, f(λ)={func:8.10f}")
 
         """
-        lambdas = np.linspace(-50, 50, 250)
+        lambdas = np.linspace(-2000, 2000, 10000)
         plt.plot(lambdas, [ffunc(l) for l in lambdas])
+        ev_fmt = ", ".join(["{:.1f}".format(ev) for ev in eigvals])
+        plt.title("ev {}, λ {:.1f}".format(ev_fmt, lambda_guess))
         plt.show()
         """
 
+        """
         print("last_lambda", last_lambda)
         print("lambda_", lambda_)
         print("l / ll", lambda_ / last_lambda)
@@ -218,12 +229,15 @@ def gs_step(geometry, max_step):
             print("HMM!")
         else:
             last_lambda = lambda_
+        """
         # Calculate dx from optimized lambda
         dx = -np.dot(
                 np.linalg.inv(hessian-lambda_*np.eye(hessian.shape[0])),
                 gradient-lambda_*displacement
         )
+        print("norm(dx)", np.linalg.norm(dx))
         displacement += dx
+        print("norm(displacement)", np.linalg.norm(displacement))
         geometry.coords = pivot_coords + displacement
         micro_coords.append(geometry.coords)
         
@@ -236,7 +250,7 @@ def gs_step(geometry, max_step):
         if (np.linalg.norm(dx) <= 1e-5):
             print("WIN")
             summary = True
-        elif i >= 50:
+        elif i >= 10:
             print("FAIL")
             summary = True
             #import sys; sys.exit()
@@ -244,13 +258,14 @@ def gs_step(geometry, max_step):
         if summary:
             print("new displ:", np.linalg.norm(displacement))
             print("constraint pTp - (1/2s)**2:",
-                displacement[None,:].dot(displacement[:,None]) - 1/4*max_step**2
+                displacement.dot(displacement) - 1/4*max_step**2
             )
             print("norm(dx)", np.linalg.norm(dx))
             print()
             break
 
         i += 1
+        print()
 
     return geometry.coords, pivot_coords, init_displ, micro_coords
 
@@ -265,7 +280,7 @@ def gonzales_schlegel(geometry, max_step=0.15):
 
 
     i = 0
-    while i < 2:
+    while i < 3:
         print(f"Macro: {i}")
         new_coords, pv, init_displ, micro_coords = gs_step(geometry, max_step)
         all_coords.append(new_coords)
@@ -339,6 +354,9 @@ def run():
     for mc in mcl:
         mc = np.array(mc)
         ax.plot(mc[:, 0], mc[:, 1], "yo", ls="-")
+        for i, m in enumerate(mc):
+            print(m)
+            ax.text(*m, str(i))
     ax.plot(aic[:, 0], aic[:, 1], "ro", ls="-")
     plt.legend()
     plt.show()
