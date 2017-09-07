@@ -106,6 +106,7 @@ def gs_step(geometry, max_step):
 
     # Determine pivot point x*_k+1.
     pivot_step = 0.5*max_step * gradient0/gradient0_norm
+    print("norm(pivot_step)", np.linalg.norm(pivot_step))
     # Take a step against the gradient to the pivot point.
     pivot_coords = geometry.coords - pivot_step
 
@@ -114,9 +115,11 @@ def gs_step(geometry, max_step):
     geometry.coords = pivot_coords - pivot_step
     # Initial displacement p' from the pivot point
     displacement = geometry.coords - pivot_coords
+    print("norm(displacement)", np.linalg.norm(displacement))
     init_displ = displacement
     i = 0
     last_lambda = None
+    eye = np.eye(displacement.size)
     while True:
         gradient = -geometry.forces
         gradient_diff = gradient - last_gradient
@@ -128,13 +131,36 @@ def gs_step(geometry, max_step):
         last_coords = geometry.coords
         hessian = bfgs_update(hessian, gradient_diff, coords_diff)
         eigvals, eigvecs = np.linalg.eig(hessian)
+        smallest_eigval = np.sort(eigvals)
+        lambda_ = np.sort(eigvals)[0]
+        lambda_ *= 1.25 if (lambda_ < 0) else 0.75
+        print("lambda_guess", lambda_)
+        hinv = np.linalg.inv(hessian)
+        print(hessian)
+        print(hinv)
+        print(hessian.dot(hinv))
+
+        """
+        def ffunc(lambda_):
+            hmlinv = np.linalg.inv(hessian - eye*lambda_)
+            glp = gradient - displacement*lambda_
+            #print("hmlinv", hmlinv.dot(hessian - eye*lambda_))
+            tmp = displacement - hmlinv.dot(glp)
+            return tmp.dot(tmp) - 0.25*(max_step**2)
+
+        lambdas = np.linspace(-10000, 10000, 100000)
+        plt.plot(lambdas, [ffunc(l) for l in lambdas])
+        plt.show()
+        import sys; sys.exit()
+        """
+
 
         # Project gradient and displacement onto eigenvectors of
         # the hessian.
         gradients_proj = np.array([np.dot(gradient, v) for v in eigvecs])
         displacements_proj = np.array([np.dot(displacement, v) for v in eigvecs])
 
-        def func(lambda_):
+        def ffunc(lambda_):
             f = np.sum(
                     ((eigvals*displacements_proj-gradients_proj)
                      /(eigvals-lambda_))**2
@@ -147,7 +173,7 @@ def gs_step(geometry, max_step):
         bracket_guess = (2*lambda_, lambda_)
         low_brack = min(bracket_guess)
         up_brack = max(bracket_guess)
-        low_brack, up_brack = bracket(func, low_brack, up_brack)
+        low_brack, up_brack = bracket(ffunc, low_brack, up_brack)
         #lambdas = np.linspace(low_brack, up_brack, 100)
         print("low_brack", low_brack, "up_brack", up_brack)
         if not last_lambda:
@@ -174,12 +200,15 @@ def gs_step(geometry, max_step):
             if j >= 100:
                 logging.warning("Lambda search didn't converge!")
                 break
+        
         print(f"NR lambda search converged after {j} iterations: "
               f"λ={lambda_:5.5f}, f(λ)={func:8.10f}")
 
+        """
         lambdas = np.linspace(-50, 50, 250)
-        plt.plot(lambdas, [func(l) for l in lambdas])
+        plt.plot(lambdas, [ffunc(l) for l in lambdas])
         plt.show()
+        """
 
         print("last_lambda", last_lambda)
         print("lambda_", lambda_)
@@ -207,7 +236,7 @@ def gs_step(geometry, max_step):
         if (np.linalg.norm(dx) <= 1e-5):
             print("WIN")
             summary = True
-        elif i >= 20:
+        elif i >= 50:
             print("FAIL")
             summary = True
             #import sys; sys.exit()
@@ -236,7 +265,7 @@ def gonzales_schlegel(geometry, max_step=0.15):
 
 
     i = 0
-    while i < 1:
+    while i < 2:
         print(f"Macro: {i}")
         new_coords, pv, init_displ, micro_coords = gs_step(geometry, max_step)
         all_coords.append(new_coords)
@@ -255,33 +284,33 @@ def run():
     # True TS
     #calc, ts_coords = (MullerBrownPot(), np.array((-0.825, 0.624, 0.)))
     #calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
-    #calc, ts_coords = (MullerBrownSympyPot2D(), np.array((-0.845041, 0.663752)))
+    calc, ts_coords = (MullerBrownSympyPot2D(), np.array((-0.845041, 0.663752)))
     #calc, ts_coords = (MullerBrownPot(), np.array((-0.822, 0.624, 0.)))
     #xlim = (-1.75, 1.25)
     #ylim = (-0.5, 2.25)
-    #xlim = (-1.25, -.25)
-    #ylim = (0.5, 1.5)
-    #levels=(-150, -15, 40)
+    xlim = (-1.25, -.25)
+    ylim = (0.5, 1.5)
+    levels=(-150, -15, 40)
 
-    xlim = (-2, 2.5)
-    ylim = (0, 5)
-    levels = (-3, 4, 80)
+    #xlim = (-2, 2.5)
+    #ylim = (0, 5)
+    #levels = (-3, 4, 80)
     #calc, ts_coords = (AnaPot(), np.array((0.6906, 1.5491, 0.)))
     #calc, ts_coords = (AnaPot2D(), np.array((0.6906, 1.5491)))
-    calc, ts_coords = (AnaPot2D(), np.array((0.830, 1.67)))
+    #calc, ts_coords = (AnaPot2D(), np.array((0.830, 1.67)))
 
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
     # Muller-Brown
-    #aic, pc, igc, mcl = gonzales_schlegel(geometry, max_step=0.15)
+    aic, pc, igc, mcl = gonzales_schlegel(geometry, max_step=0.15)
     """
     print("all coordinates")
     for c in aic:
         print(c)
     """
     # AnaPot2D
-    aic, pc, igc, mcl = gonzales_schlegel(geometry, max_step=0.2)
+    #aic, pc, igc, mcl = gonzales_schlegel(geometry, max_step=0.2)
 
     fig, ax = plt.subplots(figsize=(8,8))
 
