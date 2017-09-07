@@ -134,7 +134,7 @@ def run():
 
     # Muller-Brown
     #aic = imk_mod(geometry, desired_step=0.15, line_step_size=0.05)
-    aic = imk_mod(geometry, desired_step=0.15)
+    aic = imk_mod(geometry, desired_step=0.3)
     # AnaPot
     #aic = imk_mod(geometry, desired_step=0.0125)
 

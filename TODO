@@ -21,13 +21,12 @@
 - Philipps Molekül und SZTS
 - AnalyticalPot Base-Class
 - IRC:
-    - BaseClass
-        - Argumente
-            - Geometry
-            - transition_vector
+    - IRC, BaseClass
+        - transition_vector/ aus hessian bestimmen
+        - forward/backward
     - Gradient Attribute in Geometry nachrüsten
-    - Transition vector aus Hessian bestimmen
-    - Gradient zu beginn checken und schauen ob man in nem stationary point ist
+    - Gonzalez-Schlegel:
+        - Tangente
 
 Thoughts:
 - Muller Brown Potential

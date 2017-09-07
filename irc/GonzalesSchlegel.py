@@ -1,366 +1,151 @@
 #!/usr/bin/env python3
 
-import logging
-import warnings
+import copy
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import newton
 
-#from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.MullerBrownSympyPot2D import MullerBrownSympyPot2D
 from pysisyphus.calculators.AnaPot2D import AnaPot2D
 from pysisyphus.Geometry import Geometry
+from pysisyphus.irc.IRC import IRC
+
+# [1] An improved algorithm for reaction path following
+# http://aip.scitation.org/doi/pdf/10.1063/1.456010
 
 
-def bfgs_update(H, grad_diffs, coord_diffs):
-    y = grad_diffs[:,None]
-    yT = grad_diffs[None,:]
-    s = coord_diffs[:,None]
-    sT = coord_diffs[None,:]
-    first_term = y.dot(yT) / yT.dot(s)
-    second_term = H.dot(s).dot(sT).dot(H) / sT.dot(H).dot(s)
-    dH = first_term - second_term
-    return H + dH
+class GonzalesSchlegel(IRC):
 
+    def __init__(self, geometry, **kwargs):
+        super(GonzalesSchlegel, self).__init__(geometry, **kwargs)
 
-def bfgs_update_ase(H, grad_diffs, coord_diffs):
-    df = -grad_diffs
-    dr = coord_diffs
-    a = np.dot(dr, df)
-    dg = np.dot(H, dr)
-    b = np.dot(dr, dg)
-    dH = -(np.outer(df, df) / a + np.outer(dg, dg) / b)
-    print("dH ase")
-    print(dH)
-    return H + dH
+        self.pivot_coords = list()
+        self.micro_coords = list()
 
+    def bfgs_update(self, grad_diffs, coord_diffs):
+        """BFGS update of the hessian as decribed in Eq. (16) of [1]."""
+        y = grad_diffs[:,None]
+        yT = grad_diffs[None,:]
+        s = coord_diffs[:,None]
+        sT = coord_diffs[None,:]
+        first_term = y.dot(yT) / yT.dot(s)
+        second_term = (self.hessian.dot(s).dot(sT).dot(self.hessian)
+                       / sT.dot(self.hessian).dot(s)
+        )
+        dH = first_term - second_term
+        return self.hessian + dH
 
-def bracket(func, a, b):
-    max_cycles = 50
-    factor = 1.6
-    fa = func(a)
-    fb = func(b)
-    for i in range(max_cycles):
-        if fa*fb < 0.0:
-            break
-        if (abs(fa) < abs(fb)):
-            a += factor * (a-b)
-            fa = func(a)
-        else:
-            b += factor * (b-a)
-            fb = func(b)
-    if i > max_cycles:
-        a = None
-        b = None
-    return a, b
+    def micro_step(self):
+        """Constrained optimization on a hypersphere."""
+        eye = np.eye(self.displacement.size)
 
+        gradient = -self.geometry.forces
+        gradient_diff = gradient - self.last_gradient
+        coords_diff = self.geometry.coords - self.last_coords
+        self.last_gradient = gradient
+        # Without copy we would only store the reference...
+        self.last_coords = copy.copy(self.geometry.coords)
 
+        self.hessian = self.bfgs_update(gradient_diff, coords_diff)
+        eigvals, eigvecs = np.linalg.eig(self.hessian)
+        hessian_inv = np.linalg.inv(self.hessian)
 
-def newton_raphson(f, df, a, b, tol=1e-8):
-    fa = f(a)
-    if fa == 0.0:
-        return a
-    fb = f(b)
-    if fb == 0.0:
-        return b
-    if fa*fb > 0.0:
-        raise Exception("Root is not bracketed!")
-    x = 0.5 * (a+b)
-    for i in range(30):
-        fx = f(x)
-        if abs(fx) < tol: return x
-        # Tighten the brackets on the root
-        if fa*fx < 0.0:
-            b = x
-        else:
-            a = x
-        # Try a Newton-Raphson step
-        dfx = df(x)
-        # If division by zero push out of bound
-        try:
-            dx = -fx/dfx
-        except ZeroDivisionError:
-            dx = b - a
-        x = x + dx
-        # If the result is outside the brackets, use bisection
-        if (b-x)*(x-a) < 0.0:
-            dx = 0.5*(b-a)
-            x = a + dx
-        # Check for convergence
-        if abs(dx) < tol*max(abs(b),1.0):
-            return x
+        def lambda_func(lambda_):
+            # Eq. (11) in [1]
+            # (H - λI)^-1
+            hmlinv = np.linalg.inv(self.hessian - eye*lambda_)
+            # (g - λp)
+            glp = gradient - self.displacement*lambda_
+            tmp = self.displacement - hmlinv.dot(glp)
+            return tmp.dot(tmp) - 0.25*(self.max_step**2)
 
-
-
-def gs_step(geometry, max_step):
-    summary = False
-    micro_coords = list()
-    hessian = geometry.hessian
-    gradient0 = -geometry.forces
-    gradient0_norm = np.linalg.norm(gradient0)
-    # For the first BFGS update of the hessian we use differences
-    # between the starting point of this micro-step and the initial
-    # guess on the hypersphere.
-    last_gradient = gradient0
-    last_coords = geometry.coords
-
-    # Determine pivot point x*_k+1.
-    pivot_step = 0.5*max_step * gradient0/gradient0_norm
-    # Take a step against the gradient to the pivot point.
-    pivot_coords = geometry.coords - pivot_step
-
-    # Make initial guess for x'_k+1.
-    # For now just do a full step against the initial gradient.
-    geometry.coords = pivot_coords - pivot_step
-    # Initial displacement p' from the pivot point
-    displacement = geometry.coords - pivot_coords
-    init_displ = displacement
-    i = 0
-    last_lambda = None
-    eye = np.eye(displacement.size)
-    while True:
-        print(f"Micro {i}")
-        gradient = -geometry.forces
-        gradient_diff = gradient - last_gradient
-        coords_diff = geometry.coords - last_coords
-        # After the first step move more or less along the surface of the
-        # hypersphere. Now the BFGS updates are done between points on the
-        # surface.
-        last_gradient = gradient
-        last_coords = geometry.coords
-        #hessian = bfgs_update(hessian, gradient_diff, coords_diff)
-        hessian = geometry.hessian
-        eigvals, eigvecs = np.linalg.eig(hessian)
-        smallest_eigval = np.sort(eigvals)
+        smallest_eigval = np.sort(eigvals)[0]
+        # Initial guess for λ.
+        # λ must be smaller then the smallest eigenvector
         lambda_ = np.sort(eigvals)[0]
-        lambda_guess = lambda_
         lambda_ *= 1.5 if (lambda_ < 0) else 0.5
-        """
-        if abs(lambda_guess - lambda_) < 50:
-            print("small!")
-            lambda_ -= 1500
-        """
-        print("lambda_guess", lambda_, "eigvals", eigvals)
-        hinv = np.linalg.inv(hessian)
-        #print(hessian)
-        #print(hinv)
-        #print(hessian.dot(hinv))
+        # Find the root with scipy
+        lambda_ = newton(lambda_func, lambda_)
 
-        """
-        def ffunc(lambda_):
-            hmlinv = np.linalg.inv(hessian - eye*lambda_)
-            glp = gradient - displacement*lambda_
-            #print("hmlinv", hmlinv.dot(hessian - eye*lambda_))
-            tmp = displacement - hmlinv.dot(glp)
-            return tmp.dot(tmp) - 0.25*(max_step**2)
-
-        lambdas = np.linspace(-10000, 10000, 100000)
-        plt.plot(lambdas, [ffunc(l) for l in lambdas])
-        plt.show()
-        import sys; sys.exit()
-        """
-
-
-        # Project gradient and displacement onto eigenvectors of
-        # the hessian.
-        gradients_proj = np.array([np.dot(gradient, v) for v in eigvecs])
-        displacements_proj = np.array([np.dot(displacement, v) for v in eigvecs])
-
-        def ffunc(lambda_):
-            f = np.sum(
-                    ((eigvals*displacements_proj-gradients_proj)
-                     /(eigvals-lambda_))**2
-            )
-            return f- 0.25 * max_step**2
-
-        """
-        # Find the lowest eigenvalue and use it to determine a first
-        # guess for lambda.
-        lambda_ = np.sort(eigvals)[0] - 0.1
-        bracket_guess = (2*lambda_, lambda_)
-        low_brack = min(bracket_guess)
-        up_brack = max(bracket_guess)
-        low_brack, up_brack = bracket(ffunc, low_brack, up_brack)
-        #lambdas = np.linspace(low_brack, up_brack, 100)
-        print("low_brack", low_brack, "up_brack", up_brack)
-        if not last_lambda:
-            last_lambda = lambda_
-        """
-
-        prev_lambda = 0
-        # Newton-Raphson to optimize lambda so f(lambda) = 0
-        j = 0
-        while abs(prev_lambda - lambda_) > 1e-12:
-            prev_lambda = lambda_
-            # f(lambda)
-            func = np.sum(
-                    ((eigvals*displacements_proj-gradients_proj)
-                     /(eigvals-lambda_))**2
-            )
-            func -= 0.25 * max_step**2
-            # d(f(lambda))/(dlambda)
-            deriv = 2*np.sum(
-                        (eigvals*displacements_proj-gradients_proj)**2
-                        /(eigvals-lambda_)**3
-            )
-            lambda_ = prev_lambda - func/deriv
-            j += 1
-            if j >= 100:
-                logging.warning("Lambda search didn't converge!")
-                break
-        
-        print(f"NR lambda search converged after {j} iterations: "
-              f"λ={lambda_:5.5f}, f(λ)={func:8.10f}")
-
-        """
-        lambdas = np.linspace(-2000, 2000, 10000)
-        plt.plot(lambdas, [ffunc(l) for l in lambdas])
-        ev_fmt = ", ".join(["{:.1f}".format(ev) for ev in eigvals])
-        plt.title("ev {}, λ {:.1f}".format(ev_fmt, lambda_guess))
-        plt.show()
-        """
-
-        """
-        print("last_lambda", last_lambda)
-        print("lambda_", lambda_)
-        print("l / ll", lambda_ / last_lambda)
-        if (lambda_ / last_lambda) > 5:
-            lambda_ = last_lambda
-            print("HMM!")
-        else:
-            last_lambda = lambda_
-        """
         # Calculate dx from optimized lambda
         dx = -np.dot(
-                np.linalg.inv(hessian-lambda_*np.eye(hessian.shape[0])),
-                gradient-lambda_*displacement
+                np.linalg.inv(self.hessian-lambda_*eye),
+                gradient-lambda_*self.displacement
         )
-        print("norm(dx)", np.linalg.norm(dx))
-        displacement += dx
-        print("norm(displacement)", np.linalg.norm(displacement))
-        geometry.coords = pivot_coords + displacement
-        micro_coords.append(geometry.coords)
-        
-        """
-        Tangent is missing!
-        tangent = (gradient - (gradient.dot(displacement)
-                              / np.linalg.norm(displacement)**2) * gradient
-        )
-        """
-        if (np.linalg.norm(dx) <= 1e-5):
-            print("WIN")
-            summary = True
-        elif i >= 10:
-            print("FAIL")
-            summary = True
-            #import sys; sys.exit()
+        self.displacement += dx
+        self.geometry.coords += dx
 
-        if summary:
-            print("new displ:", np.linalg.norm(displacement))
-            print("constraint pTp - (1/2s)**2:",
-                displacement.dot(displacement) - 1/4*max_step**2
-            )
-            print("norm(dx)", np.linalg.norm(dx))
-            print()
-            break
-
-        i += 1
+        print("norm(dx) = {:.2E}".format(np.linalg.norm(dx)))
+        """
+        displ_norm = np.linalg.norm(displacement)
+        tangent = gradient - gradient.dot(displacement)/displ_norm * gradient
+        print("tangent:", tangent, "norm(tangent)", np.linalg.norm(tangent))
         print()
+        """
 
-    return geometry.coords, pivot_coords, init_displ, micro_coords
+        return dx
+        
 
+    def step(self):
+        gradient0 = -self.geometry.forces
+        gradient0_norm = np.linalg.norm(gradient0)
+        # For the BFGS update in the first micro step we use the original
+        # point and the initial guess to calculate gradient and
+        # coordinate differences.
+        self.last_gradient = gradient0
+        self.last_coords = self.geometry.coords
 
-def gonzales_schlegel(geometry, max_step=0.15):
-    assert(max_step > 0), "max_step has to be > 0"
+        # Take a step against the gradient to the pivot point x*_k+1.
+        pivot_step = 0.5*self.max_step * gradient0/gradient0_norm
+        pivot_coords = self.geometry.coords - pivot_step
+        self.pivot_coords.append(pivot_coords)
 
-    all_coords = [geometry.coords, ]
-    pivot_coords = list()
-    init_guess_coords = list()
-    micro_coords_list = list()
+        # Make initial guess for x'_k+1. Here we take another half
+        # step from the pivot point.
+        self.geometry.coords = pivot_coords - pivot_step
+        # Initial displacement p' from the pivot point
+        self.displacement = self.geometry.coords - self.pivot_coords[-1]
 
+        these_micro_coords = list()
+        i = 0
+        while True:
+            #print(f"Micro {i}")
+            dx = self.micro_step()
+            these_micro_coords.append(self.geometry.coords)
 
-    i = 0
-    while i < 3:
-        print(f"Macro: {i}")
-        new_coords, pv, init_displ, micro_coords = gs_step(geometry, max_step)
-        all_coords.append(new_coords)
-        pivot_coords.append(pv)
-        init_guess_coords.append(pv+init_displ)
-        micro_coords_list.append(micro_coords)
-        i += 1
+            if (np.linalg.norm(dx) <= 1e-6):
+                break
+            i += 1
 
-    return (np.array(all_coords), np.array(pivot_coords),
-            np.array(init_guess_coords), np.array(micro_coords_list))
+        self.micro_coords.append(np.array(these_micro_coords))
 
+    def postprocess(self):
+        self.pivot_coords = np.array(self.pivot_coords)
+        self.micro_coords = np.array(self.micro_coords)
 
-def run():
-    atoms = ("H", )
+    def show2d(self):
+        fig, ax = plt.subplots(figsize=(8,8))
 
-    # True TS
-    #calc, ts_coords = (MullerBrownPot(), np.array((-0.825, 0.624, 0.)))
-    #calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
-    calc, ts_coords = (MullerBrownSympyPot2D(), np.array((-0.845041, 0.663752)))
-    #calc, ts_coords = (MullerBrownPot(), np.array((-0.822, 0.624, 0.)))
-    #xlim = (-1.75, 1.25)
-    #ylim = (-0.5, 2.25)
-    xlim = (-1.25, -.25)
-    ylim = (0.5, 1.5)
-    levels=(-150, -15, 40)
+        xlim = (-1.25, -.25)
+        ylim = (0.5, 1.5)
+        levels=(-150, -15, 40)
+        x = np.linspace(*xlim, 100)
+        y = np.linspace(*ylim, 100)
+        X, Y = np.meshgrid(x, y)
+        fake_atoms = ("H", )
+        pot_coords = np.stack((X, Y))
+        pot = self.geometry.calculator.get_energy(fake_atoms, pot_coords)["energy"]
+        levels = np.linspace(*levels)
+        contours = ax.contour(X, Y, pot, levels)
 
-    #xlim = (-2, 2.5)
-    #ylim = (0, 5)
-    #levels = (-3, 4, 80)
-    #calc, ts_coords = (AnaPot(), np.array((0.6906, 1.5491, 0.)))
-    #calc, ts_coords = (AnaPot2D(), np.array((0.6906, 1.5491)))
-    #calc, ts_coords = (AnaPot2D(), np.array((0.830, 1.67)))
-
-    geometry = Geometry(atoms, ts_coords)
-    geometry.set_calculator(calc)
-
-    # Muller-Brown
-    aic, pc, igc, mcl = gonzales_schlegel(geometry, max_step=0.15)
-    """
-    print("all coordinates")
-    for c in aic:
-        print(c)
-    """
-    # AnaPot2D
-    #aic, pc, igc, mcl = gonzales_schlegel(geometry, max_step=0.2)
-
-    fig, ax = plt.subplots(figsize=(8,8))
-
-    """
-    # Calculate the potential
-    # 3D
-    x = np.linspace(*xlim, 100)
-    y = np.linspace(*ylim, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = np.full_like(X, 0)
-    fake_atoms = ("H", )
-    pot_coords = np.stack((X, Y, Z))
-    """
-    # 2D
-    x = np.linspace(*xlim, 100)
-    y = np.linspace(*ylim, 100)
-    X, Y = np.meshgrid(x, y)
-    fake_atoms = ("H", )
-    pot_coords = np.stack((X, Y))
-    pot = calc.get_energy(fake_atoms, pot_coords)["energy"]
-    levels = np.linspace(*levels)
-    contours = ax.contour(X, Y, pot, levels)
-
-    ax.plot(pc[:, 0], pc[:, 1], "bo", ls="-", label="pivot")
-    ax.plot(igc[:, 0], igc[:, 1], "go", ls="-", label="initial guess")
-    for mc in mcl:
-        mc = np.array(mc)
-        ax.plot(mc[:, 0], mc[:, 1], "yo", ls="-")
-        for i, m in enumerate(mc):
-            print(m)
-            ax.text(*m, str(i))
-    ax.plot(aic[:, 0], aic[:, 1], "ro", ls="-")
-    plt.legend()
-    plt.show()
-
-
-if __name__ == "__main__":
-    run()
+        # Pivot points
+        ax.plot(*zip(*self.pivot_coords), "bo", ls="-", label="pivot")
+        # Constrained optmizations
+        for mc in self.micro_coords:
+            ax.plot(*zip(*mc), "yo", ls="-")
+            for i, m in enumerate(mc):
+                ax.text(*m, str(i))
+        ax.plot(*zip(*self.coords), "ro", ls="-")
+        plt.legend()
+        plt.show()
