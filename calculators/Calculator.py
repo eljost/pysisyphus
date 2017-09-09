@@ -36,7 +36,7 @@ class Calculator:
 
         return path
 
-    def run(self, inp):
+    def run(self, inp, calc):
         path = self.prepare(inp)
         args = [self.base_cmd, self.inp_fn]
         logging.debug("Running calculation in {}".format(path))
@@ -45,7 +45,7 @@ class Calculator:
             result.wait()
         #logging.info("Calculation finished".format(path))
         try:
-            results = self.parse(path)
+            results = self.parser_funcs[calc](path)
         except Exception as err:
             print(err)
             print()

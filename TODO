@@ -27,6 +27,8 @@
     - Gradient Attribute in Geometry nachrüsten
     - Gonzalez-Schlegel:
         - Tangente
+- configfile
+    - move configfile somewhere more accessible
 
 Thoughts:
 - Muller Brown Potential
@@ -41,3 +43,5 @@ Thoughts:
       des MEP verteilt.
     - Kein Backtracking verwenden. Der MEP ändert sich nicht mehr und alpha
       wird immer größer
+- Config file:
+    - Speicherort von ORCA usw.
