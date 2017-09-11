@@ -203,6 +203,5 @@ def run():
     anim_plot.animate()
 
 
-
 if __name__ == "__main__":
     run()
