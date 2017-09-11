@@ -1,4 +1,5 @@
 import numpy as np
+import periodictable as pt
 
 from qchelper.geometry import make_xyz_str
 
@@ -11,6 +12,9 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
+
+        self.masses = [getattr(pt, atom).mass for atom in self.atoms]
+        self.mass_mat = np.diag(np.repeat(self.masses, 3))
 
     def clear(self):
         self.calculator = None
@@ -56,6 +60,14 @@ class Geometry:
     @forces.setter
     def forces(self, forces):
         self._forces = forces
+
+    @property
+    def gradient(self):
+        return -self.forces
+
+    @gradient.setter
+    def gradient(self, gradient):
+        self._forces = -gradient
 
     @property
     def hessian(self):

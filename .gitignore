@@ -103,3 +103,4 @@ ENV/
 *.trj
 
 tests/i18i19/*
+config.ini

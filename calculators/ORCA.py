@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import configparser
 import glob
 import os
 import re
@@ -10,6 +9,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.config import Config
 
 #inp="""!BP86 def2-SV(P) def2/J TightSCF engrad
 inp="""!BP86 def2-SV(P) TightSCF {}
@@ -48,13 +48,7 @@ class ORCA(Calculator):
             "hessian": self.parse_hessian,
         }
 
-        config = configparser.ConfigParser()
-        config.read("config.ini")
-        print(config)
-        print(config.sections())
-        print(config["orca"]["cmd"])
-
-        self.base_cmd = config["orca"]["cmd"]
+        self.base_cmd = Config["orca"]["cmd"]
 
     def get_energy(self, atoms, coords):
         raise Exception("Not implemented!")
@@ -126,7 +120,6 @@ class ORCA(Calculator):
                   + pp.OneOrMore(comment_line) + atoms
         )
         parsed = parser.parseString(text)
-        print(parsed)
         results["hessian"] = make_sym_mat(parsed["hessian"])
         return results
 

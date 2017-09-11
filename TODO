@@ -24,7 +24,6 @@
     - IRC, BaseClass
         - transition_vector/ aus hessian bestimmen
         - forward/backward
-    - Gradient Attribute in Geometry nachrüsten
     - Gonzalez-Schlegel:
         - Tangente
 - configfile
