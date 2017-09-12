@@ -16,12 +16,13 @@ from qchelper.geometry import parse_xyz_file
 def test_hcn_iso_gs_irc():
     this_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
     ts_xyz_fn = this_dir / "hcn_ts_standard.xyz"
+    #ts_xyz_fn = this_dir / "01_hcn_optts.xyz"
     atoms, coords = parse_xyz_file(ts_xyz_fn)
     geometry = Geometry(atoms, coords.flatten())
     geometry.set_calculator(ORCA())
     hessian = geometry.hessian
 
-    gs_irc = GonzalesSchlegel(geometry, max_cycles=4, max_step=0.2, forward=True)
+    gs_irc = GonzalesSchlegel(geometry, max_cycles=4, max_step=0.1)#, backward=True)
     gs_irc.run()
     gs_irc.write_trj(this_dir)
 

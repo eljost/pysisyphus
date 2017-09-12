@@ -12,8 +12,7 @@ import pyparsing as pp
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 
-#inp="""!BP86 def2-SV(P) def2/J TightSCF engrad
-inp="""!HF def2-SV(P) TightSCF NoRI {}
+inp="""!HF def2-SV(P) TightSCF {}
 
 *xyz 0 1
 {}

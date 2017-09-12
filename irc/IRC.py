@@ -16,7 +16,7 @@ np.set_printoptions(suppress=True, precision=4)
 class IRC:
 
     def __init__(self, geometry, max_step=0.1, max_cycles=10,
-                 forward=False, backward=False, energy_lowering=5e-4):
+                 forward=False, backward=False, energy_lowering=1.25e-4):
         assert(max_step > 0), "max_step has to be > 0"
 
         self.geometry = geometry
@@ -33,7 +33,8 @@ class IRC:
         self.ts_hessian = copy.copy(self.hessian)
 
     def initial_displacement(self):
-        """Returns an inital displacement from the TS in angstrom."""
+        """Returns a step length in angstrom to perfom an inital displacement
+        from the TS."""
         mm_sqr_inv = self.geometry.mass_mat_sqr_inv
         eigvals, eigvecs = np.linalg.eig(self.geometry.mw_hessian)
 
