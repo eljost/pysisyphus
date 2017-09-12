@@ -6,7 +6,7 @@ import pathlib
 
 import numpy as np
 
-from pysisyphus.constants import BOHR2ANG
+#from pysisyphus.constants import BOHR2ANG
 
 np.set_printoptions(suppress=True, precision=4)
 
@@ -16,7 +16,7 @@ np.set_printoptions(suppress=True, precision=4)
 class IRC:
 
     def __init__(self, geometry, max_step=0.1, max_cycles=10,
-                 forward=False, backward=False, energy_lowering=1.25e-4):
+                 forward=False, backward=False, energy_lowering=2.5e-4):
         assert(max_step > 0), "max_step has to be > 0"
 
         self.geometry = geometry
@@ -83,14 +83,13 @@ class IRC:
         step_length = np.sqrt(self.energy_lowering*2
                               / np.abs(eigvals[img_index])
         )
-        step_length *= BOHR2ANG
+        #step_length *= BOHR2ANG
         logging.info(f"Inital step length of {step_length:.4f} "
                       "from the TS.")
 
         return step_length*transition_vector
 
     def irc(self):
-        print("initial coords", self.geometry.coords)
         irc_coords = list()
         self.irc_energies = [self.ts_energy]
         i = 0

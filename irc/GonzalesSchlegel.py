@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import newton
 
-from pysisyphus.calculators.MullerBrownSympyPot2D import MullerBrownSympyPot2D
-from pysisyphus.calculators.AnaPot2D import AnaPot2D
 from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.IRC import IRC
 
@@ -76,15 +74,10 @@ class GonzalesSchlegel(IRC):
         self.displacement += dx
         self.geometry.coords += dx
 
-        print("norm(dx) = {:.2E}".format(np.linalg.norm(dx)))
-        """
-        displ_norm = np.linalg.norm(displacement)
-        tangent = gradient - gradient.dot(displacement)/displ_norm * gradient
-        print("tangent:", tangent, "norm(tangent)", np.linalg.norm(tangent))
-        print()
-        """
+        displ_norm = np.linalg.norm(self.displacement)
+        tangent = gradient - gradient.dot(self.displacement)/displ_norm * gradient
 
-        return dx
+        return dx, tangent
         
 
     def step(self):
@@ -111,9 +104,14 @@ class GonzalesSchlegel(IRC):
         these_micro_coords = list()
         i = 0
         while True:
+            if i == 20:
+                logging.warning("Max micro cycles exceeded!")
+                break
             #print(f"Micro {i}")
-            dx = self.micro_step()
+            dx, tangent = self.micro_step()
             these_micro_coords.append(self.geometry.coords)
+            print("norm(dx) = {:.2E}".format(np.linalg.norm(dx)))
+            print("norm(tangent) = {:.2E}".format(np.linalg.norm(tangent)))
 
             if (np.linalg.norm(dx) <= 1e-3):
                 break
