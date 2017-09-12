@@ -64,8 +64,8 @@ class GonzalesSchlegel(IRC):
         # Initial guess for λ.
         # λ must be smaller then the smallest eigenvector
         lambda_ = np.sort(eigvals)[0]
-        #lambda_ *= 1.5 if (lambda_ < 0) else 0.5
-        lambda_ -= 20
+        lambda_ *= 1.5 if (lambda_ < 0) else 0.5
+        #lambda_ -= 20
         # Find the root with scipy
         lambda_ = newton(lambda_func, lambda_)
 

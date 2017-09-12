@@ -98,8 +98,8 @@ class Geometry:
         for key in results:
             setattr(self, key, results[key])
 
-    def as_xyz(self):
-        return make_xyz_str(self.atoms, self.coords.reshape((-1,3)))
+    def as_xyz(self, comment=""):
+        return make_xyz_str(self.atoms, self.coords.reshape((-1,3)), comment)
 
     def __str__(self):
         return "{} atoms".format(len(self.atoms))

@@ -8,18 +8,22 @@ import numpy as np
 
 class IRC:
 
-    def __init__(self, geometry, max_step=0.1, max_cycles=50):
+    def __init__(self, geometry, max_step=0.1, max_cycles=10,
+                 only_forward=False, only_backward=False):
+        assert(max_step > 0), "max_step has to be > 0"
+
         self.geometry = geometry
         self.max_step = max_step
         self.max_cycles = max_cycles
-        self.forward_backward = True
+        self.forward = not only_backward
+        self.backward = not only_forward
 
         self.hessian = self.geometry.hessian
-        # Backup data at the TS
+        # Backup TS data
         self.ts_coords = copy.copy(self.geometry.coords)
+        self.ts_energy = copy.copy(self.geometry.energy)
         self.ts_hessian = copy.copy(self.hessian)
 
-        assert(max_step > 0), "max_step has to be > 0"
 
         self.coords_list = list()
 
@@ -79,32 +83,23 @@ class IRC:
         """
         return step*transition_vector
 
-    def run(self):
-        init_displ = self.initial_displacement()
-        logging.warning("Conversion angstroem/bohr!")
-
-        ts_grad = self.geometry.gradient
-        print("norm(grad) at TS:", np.linalg.norm(ts_grad))
-
-        # Do inital displacement from the TS
-        self.geometry.coords = self.geometry.coords + init_displ
-        # Update hessian after initial displacement?
-        self.geometry.hessian = self.ts_hessian
-
+    def irc(self):
         last_energy = None
-        self.energies = list()
-        self.coords = [self.geometry.coords, ]
+        irc_coords = [self.geometry.coords, ]
+        irc_energies = []
         i = 0
         while True:
+            if i == self.max_cycles:
+                print("Cycles exceeded!")
+                break
+
             logging.info(f"Step {i}")
             # Do macroiteration/IRC step
             self.step()
-            self.coords.append(self.geometry.coords)
+            irc_coords.append(self.geometry.coords)
             this_energy = self.geometry.energy
-            self.energies.append(this_energy)
-            if i == self.max_cycles:
-                break
-            elif last_energy and (this_energy > last_energy):
+            irc_energies.append(this_energy)
+            if last_energy and (this_energy > last_energy):
                 print("Energy increased!")
                 break
             elif last_energy and abs(last_energy - this_energy) <= 1e-4:
@@ -113,7 +108,40 @@ class IRC:
             last_energy = this_energy
             i += 1
 
+        return irc_coords, irc_energies
+
+    def run(self):
+        self.coords = list()
+        self.energies = list()
+        init_displ = self.initial_displacement()
+        logging.warning("Conversion angstroem/bohr!")
+
+        if self.forward:
+            logging.info("IRC forward")
+            # Do inital displacement from the TS, forward
+            self.geometry.coords = self.ts_coords + init_displ
+            # Update hessian after initial displacement?
+            self.geometry.hessian = self.ts_hessian
+            forward_coords, forward_energies = self.irc()
+            self.coords.extend(forward_coords[::-1])
+            self.energies.extend(forward_energies[::-1])
+
+        # Add TS data
+        self.coords.append(self.ts_coords)
+        self.energies.append(self.ts_energy)
+
+        if self.backward:
+            logging.info("IRC backward")
+            # Do inital displacement from the TS, backward
+            self.geometry.coords = self.ts_coords - init_displ
+            # Update hessian after initial displacement?
+            self.geometry.hessian = self.ts_hessian
+            backward_coords, backward_energies = self.irc()
+            self.coords.extend(backward_coords)
+            self.energies.extend(backward_energies)
+
         self.coords = np.array(self.coords)
+        self.energies = np.array(self.energies)
         self.postprocess()
 
     def postprocess(self):

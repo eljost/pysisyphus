@@ -13,7 +13,7 @@ def run():
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
-    GS = GonzalesSchlegel(geometry, max_step=0.2)
+    GS = GonzalesSchlegel(geometry, max_step=0.2, only_backward=True)
     GS.run()
     GS.show2d()
 
