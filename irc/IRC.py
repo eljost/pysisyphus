@@ -2,21 +2,29 @@
 
 import copy
 import logging
+import pathlib
 
-import matplotlib.pyplot as plt
 import numpy as np
+
+from pysisyphus.constants import BOHR2ANG
+
+np.set_printoptions(suppress=True, precision=4)
+
+#https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
+#https://chemistry.stackexchange.com/questions/74639
 
 class IRC:
 
     def __init__(self, geometry, max_step=0.1, max_cycles=10,
-                 only_forward=False, only_backward=False):
+                 forward=False, backward=False, energy_lowering=5e-4):
         assert(max_step > 0), "max_step has to be > 0"
 
         self.geometry = geometry
         self.max_step = max_step
         self.max_cycles = max_cycles
-        self.forward = not only_backward
-        self.backward = not only_forward
+        self.forward = not backward
+        self.backward = not forward
+        self.energy_lowering = energy_lowering
 
         self.hessian = self.geometry.hessian
         # Backup TS data
@@ -24,11 +32,8 @@ class IRC:
         self.ts_energy = copy.copy(self.geometry.energy)
         self.ts_hessian = copy.copy(self.hessian)
 
-
-        self.coords_list = list()
-
-
-    def initial_displacement(self, energy_lowering=2.5e-4):
+    def initial_displacement(self):
+        """Returns an inital displacement from the TS in angstrom."""
         mm_sqr_inv = self.geometry.mass_mat_sqr_inv
         eigvals, eigvecs = np.linalg.eig(self.geometry.mw_hessian)
 
@@ -60,7 +65,8 @@ class IRC:
         cart_displs = [mm_sqr_inv.dot(nm) for nm in eigvecs.transpose()]
         cart_displs = [cd/np.linalg.norm(cd) for cd in cart_displs]
         transition_vector = cart_displs[img_index]
-        logging.info(f"Transition vector: {transition_vector}")
+        trans_vec_norm = np.linalg.norm(transition_vector)
+        logging.info(f"norm(trans. vec.)={trans_vec_norm:.4f}")
         """
         print("Cartesian displacement vectors, normalized:")
         for i, cd in enumerate(cart_displs):
@@ -69,24 +75,23 @@ class IRC:
         # Calculate the length of the initial step away from the TS to initiate
         # the IRC/MEP. We assume a quadratic potential and calculate the
         # displacement for a given energy lowering.
-        # dE = (k*dq**2)/2 (dE = energy lowering, k = eigenvalue corresponding to
-        # the transition vector/imaginary mode, dq = step length)
+        # dE = (k*dq**2)/2 (dE = energy lowering, k = eigenvalue corresponding
+        # to the transition vector/imaginary mode, dq = step length)
         # dq = sqrt(dE*2/k)
         # See 10.1021/ja00295a002 and 10.1063/1.462674
-        step = np.sqrt(energy_lowering*2/np.abs(eigvals[img_index]))
-        print(f"Inital step of {step:.4f} away from the TS.")
-        # Forward and backward step from the TS
-        """
-        ts_coords = geom.coords
-        forward_step = step*cart_displs[img_index]
-        backward_step = -forward_step
-        """
-        return step*transition_vector
+        step_length = np.sqrt(self.energy_lowering*2
+                              / np.abs(eigvals[img_index])
+        )
+        step_length *= BOHR2ANG
+        logging.info(f"Inital step length of {step_length:.4f} "
+                      "from the TS.")
+
+        return step_length*transition_vector
 
     def irc(self):
-        last_energy = None
-        irc_coords = [self.geometry.coords, ]
-        irc_energies = []
+        print("initial coords", self.geometry.coords)
+        irc_coords = list()
+        self.irc_energies = [self.ts_energy]
         i = 0
         while True:
             if i == self.max_cycles:
@@ -95,20 +100,20 @@ class IRC:
 
             logging.info(f"Step {i}")
             # Do macroiteration/IRC step
-            self.step()
             irc_coords.append(self.geometry.coords)
-            this_energy = self.geometry.energy
-            irc_energies.append(this_energy)
-            if last_energy and (this_energy > last_energy):
+            self.step()
+            last_energy = self.irc_energies[-2]
+            this_energy = self.irc_energies[-1]
+            if (this_energy > last_energy):
                 print("Energy increased!")
                 break
-            elif last_energy and abs(last_energy - this_energy) <= 1e-4:
+            elif abs(last_energy - this_energy) <= 1e-4:
                 print("Energy converged!")
                 break
-            last_energy = this_energy
             i += 1
 
-        return irc_coords, irc_energies
+        # Don't return the TS energy
+        return irc_coords, self.irc_energies[1:]
 
     def run(self):
         self.coords = list()
@@ -146,3 +151,19 @@ class IRC:
 
     def postprocess(self):
         pass
+
+    def write_trj(self, path):
+        path = pathlib.Path(path)
+        xyz_strings = list()
+        for coords, energy in zip(self.coords, self.energies):
+            self.geometry.coords = coords
+            # Use energy as comment
+            as_xyz = self.geometry.as_xyz(energy)
+            xyz_strings.append(as_xyz)
+
+        xyzs_joined = "\n".join(xyz_strings)
+        with open(path / "irc.trj", "w") as handle:
+            handle.write(xyzs_joined)
+
+        np.savetxt(path / "irc_energies", self.energies)
+

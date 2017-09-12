@@ -65,7 +65,6 @@ class GonzalesSchlegel(IRC):
         # λ must be smaller then the smallest eigenvector
         lambda_ = np.sort(eigvals)[0]
         lambda_ *= 1.5 if (lambda_ < 0) else 0.5
-        #lambda_ -= 20
         # Find the root with scipy
         lambda_ = newton(lambda_func, lambda_)
 
@@ -91,6 +90,7 @@ class GonzalesSchlegel(IRC):
     def step(self):
         gradient0 = -self.geometry.forces
         gradient0_norm = np.linalg.norm(gradient0)
+        self.irc_energies.append(self.geometry.energy)
         # For the BFGS update in the first micro step we use the original
         # point and the initial guess to calculate gradient and
         # coordinate differences.
@@ -115,7 +115,7 @@ class GonzalesSchlegel(IRC):
             dx = self.micro_step()
             these_micro_coords.append(self.geometry.coords)
 
-            if (np.linalg.norm(dx) <= 1e-6):
+            if (np.linalg.norm(dx) <= 1e-3):
                 break
             i += 1
 

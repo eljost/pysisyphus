@@ -47,12 +47,14 @@ class ORCA(Calculator):
         self.base_cmd = Config["orca"]["cmd"]
 
     def get_energy(self, atoms, coords):
+        print("Called energy, exiting!")
+        import sys; sys.exit()
         logging.info("orca, energy_calculation!")
         logging.warning("orca energy not implemented properly!")
         return self.get_forces(atoms, coords)
 
     def get_forces(self, atoms, coords):
-        logging.info("orca, forces_calculation!")
+        #logging.info("orca, forces_calculation!")
         coords = coords.reshape(-1, 3)
         coords = "\n".join(
             ["{} {} {} {}".format(a, *c) for a, c in zip(atoms, coords)]
@@ -122,9 +124,8 @@ class ORCA(Calculator):
         parsed = parser.parseString(text)
         results["hessian"] = make_sym_mat(parsed["hessian"])
 
-        """
         logging.warning("Hacky orca energy parsing in orca hessian calculation!")
-        orca_log_fn = glob.glob(os.path.join(path, self.out_fn))
+        orca_log_fn = os.path.join(path, self.out_fn)
         with open(orca_log_fn) as handle:
             log_text = handle.read()
 
@@ -132,7 +133,6 @@ class ORCA(Calculator):
         energy_mobj = re.search(energy_re, log_text)
         energy = float(energy_mobj.groups()[0])
         results["energy"] = energy
-        """
         return results
 
     def parse_engrad(self, path):
@@ -148,8 +148,7 @@ class ORCA(Calculator):
         engrad = re.findall("([\d\-\.]+)", engrad)
         atoms = int(engrad.pop(0))
         energy = float(engrad.pop(0))
-        force = -np.array(engrad[:3*atoms], dtype=np.float) * 0.529177249
-        import logging; logging.warning("still using angstroem internally for orca...")
+        force = -np.array(engrad[:3*atoms], dtype=np.float)
         results["energy"] = energy
         results["forces"] = force
 
