@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import periodictable as pt
 
+from pysisyphus.constants import BOHR2ANG
 from qchelper.geometry import make_xyz_str
 
 class Geometry:
@@ -99,7 +100,8 @@ class Geometry:
             setattr(self, key, results[key])
 
     def as_xyz(self, comment=""):
-        return make_xyz_str(self.atoms, self.coords.reshape((-1,3)), comment)
+        coords = self.coords * BOHR2ANG
+        return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
     def __str__(self):
         return "{} atoms".format(len(self.atoms))

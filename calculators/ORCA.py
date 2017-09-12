@@ -11,8 +11,13 @@ import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
+from pysisyphus.constants import BOHR2ANG
 
 inp="""!HF def2-SV(P) TightSCF {}
+
+%pal
+ nprocs 3
+end
 
 *xyz 0 1
 {}
@@ -45,28 +50,30 @@ class ORCA(Calculator):
 
         self.base_cmd = Config["orca"]["cmd"]
 
+    def prepare_coords(self, atoms, coords):
+        """Convert Bohr to Angstrom."""
+        coords = coords.reshape(-1, 3) * BOHR2ANG
+        coords = "\n".join(
+            ["{} {} {} {}".format(a, *c) for a, c in zip(atoms, coords)]
+        )
+        return coords
+
     def get_energy(self, atoms, coords):
-        print("Called energy, exiting!")
-        import sys; sys.exit()
         logging.info("orca, energy_calculation!")
         logging.warning("orca energy not implemented properly!")
+        logging.warning("Called energy, exiting!")
+        import sys; sys.exit()
         return self.get_forces(atoms, coords)
 
     def get_forces(self, atoms, coords):
         #logging.info("orca, forces_calculation!")
-        coords = coords.reshape(-1, 3)
-        coords = "\n".join(
-            ["{} {} {} {}".format(a, *c) for a, c in zip(atoms, coords)]
-        )
+        coords = self.prepare_coords(atoms, coords)
         results = self.run(inp.format("engrad", coords), calc="grad")
         return results
 
     def get_hessian(self, atoms, coords):
         logging.info("orca, hessian_calculation!")
-        coords = coords.reshape(-1, 3)
-        coords = "\n".join(
-            ["{} {} {} {}".format(a, *c) for a, c in zip(atoms, coords)]
-        )
+        coords = self.prepare_coords(atoms, coords)
         results = self.run(inp.format("freq", coords), calc="hessian")
         return results
 
