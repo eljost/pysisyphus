@@ -64,7 +64,8 @@ class GonzalesSchlegel(IRC):
         # Initial guess for λ.
         # λ must be smaller then the smallest eigenvector
         lambda_ = np.sort(eigvals)[0]
-        lambda_ *= 1.5 if (lambda_ < 0) else 0.5
+        #lambda_ *= 1.5 if (lambda_ < 0) else 0.5
+        lambda_ -= 20
         # Find the root with scipy
         lambda_ = newton(lambda_func, lambda_)
 
@@ -127,8 +128,8 @@ class GonzalesSchlegel(IRC):
     def show2d(self):
         fig, ax = plt.subplots(figsize=(8,8))
 
-        xlim = (-1.25, -.25)
-        ylim = (0.5, 1.5)
+        xlim = (-1.75, 1.25)
+        ylim = (-0.5, 2.25)
         levels=(-150, -15, 40)
         x = np.linspace(*xlim, 100)
         y = np.linspace(*ylim, 100)

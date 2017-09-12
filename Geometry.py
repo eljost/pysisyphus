@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import periodictable as pt
 
@@ -14,7 +16,10 @@ class Geometry:
         self._hessian = None
 
         self.masses = [getattr(pt, atom).mass for atom in self.atoms]
-        self.mass_mat = np.diag(np.repeat(self.masses, 3))
+        logging.warning("mass_mat hack for analytical potentials!")
+        mass_mat_repeat = 2 if (self._coords.size == 2) else 3
+        self.mass_mat = np.diag(np.repeat(self.masses, mass_mat_repeat))
+        self.mass_mat_sqr_inv = np.linalg.inv(np.sqrt(self.mass_mat))
 
     def clear(self):
         self.calculator = None
@@ -75,6 +80,11 @@ class Geometry:
             results = self.calculator.get_hessian(self.atoms, self.coords)
             self.set_results(results)
         return self._hessian
+
+    @property
+    def mw_hessian(self):
+        # M^(-1/2) H M^(-1/2)
+        return self.mass_mat_sqr_inv.dot(self.hessian).dot(self.mass_mat_sqr_inv)
 
     @hessian.setter
     def hessian(self, hessian):

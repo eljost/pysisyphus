@@ -8,14 +8,12 @@ from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 
 def run():
     atoms = ("H", )
-    calc, ts_coords = (MullerBrownSympyPot2D(), np.array((-0.845041, 0.663752)))
-    xlim = (-1.25, -.25)
-    ylim = (0.5, 1.5)
-    levels=(-150, -15, 40)
+    # Original ts coordinates
+    calc, ts_coords = (MullerBrownSympyPot2D(), np.array((-0.822, 0.624)))
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
-    GS = GonzalesSchlegel(geometry, max_step=0.35)
+    GS = GonzalesSchlegel(geometry, max_step=0.2)
     GS.run()
     GS.show2d()
 

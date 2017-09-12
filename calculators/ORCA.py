@@ -12,12 +12,7 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 
 #inp="""!BP86 def2-SV(P) def2/J TightSCF engrad
-inp="""!BP86 def2-SV(P) TightSCF {}
-
-%pal
- nprocs 3
-end
-%maxcore 1000
+inp="""!HF def2-SV(P) TightSCF NoRI {}
 
 *xyz 0 1
 {}
