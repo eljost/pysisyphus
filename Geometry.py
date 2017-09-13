@@ -17,7 +17,7 @@ class Geometry:
         self._hessian = None
 
         self.masses = [getattr(pt, atom).mass for atom in self.atoms]
-        logging.warning("mass_mat hack for analytical potentials!")
+        # Some of the analytical potentials are only 2D
         mass_mat_repeat = 2 if (self._coords.size == 2) else 3
         self.mass_mat = np.diag(np.repeat(self.masses, mass_mat_repeat))
         self.mass_mat_sqr_inv = np.linalg.inv(np.sqrt(self.mass_mat))
