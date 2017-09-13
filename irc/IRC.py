@@ -98,7 +98,7 @@ class IRC:
                 print("Cycles exceeded!")
                 break
 
-            print(f"IRC step {i} out of {self.max_steps}")
+            print(f"IRC step {i+1} out of {self.max_steps}")
             # Do macroiteration/IRC step
             irc_coords.append(self.geometry.coords)
             self.step()
@@ -106,9 +106,11 @@ class IRC:
             this_energy = self.irc_energies[-1]
             if (this_energy > last_energy):
                 print("Energy increased!")
+                print()
                 break
             elif abs(last_energy - this_energy) <= 1e-4:
                 print("Energy converged!")
+                print()
                 break
             i += 1
             print()

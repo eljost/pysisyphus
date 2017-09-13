@@ -112,14 +112,11 @@ class GonzalesSchlegel(IRC):
             if i == 20:
                 logging.warning("Max micro cycles exceeded!")
                 break
-            #print(f"Micro {i}")
             dx, tangent = self.micro_step()
             these_micro_coords.append(self.geometry.coords)
             norm_dx = np.linalg.norm(dx)
-            #print("norm(dx) = {:.2E}".format(norm_dx))
             norm_tangent = np.linalg.norm(tangent)
-            #print("norm(tangent) = {:.2E}".format(norm_tangent))
-            print(self.micro_formatter.line(i, norm_dx, norm_tangent))
+            print(self.micro_formatter.line(i+1, norm_dx, norm_tangent))
 
             if (np.linalg.norm(dx) <= 1e-3):
                 break
