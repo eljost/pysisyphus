@@ -13,14 +13,6 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
 
-#inp="""!HF def2-SV(P) TightSCF {}
-inp="""!HF STO-3G TightSCF {}
-
-*xyz 0 1
-{}
-*
-"""
-
 def make_sym_mat(table_block):
     mat_size = int(table_block[1])
     # Orca prints blocks of 5 columns
@@ -34,11 +26,20 @@ def make_sym_mat(table_block):
 
 class ORCA(Calculator):
 
-    def __init__(self): 
+    def __init__(self, keywords, charge, mult, blocks=""):
         super(ORCA, self).__init__()
 
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
+
+        self.orca_input=f"""!{keywords} {{}}
+
+        {blocks}
+
+        *xyz {charge} {mult}
+        {{}}
+        *
+        """
 
         self.parser_funcs = {
             "grad": self.parse_engrad,
@@ -65,13 +66,15 @@ class ORCA(Calculator):
     def get_forces(self, atoms, coords):
         #logging.info("orca, forces_calculation!")
         coords = self.prepare_coords(atoms, coords)
-        results = self.run(inp.format("engrad", coords), calc="grad")
+        inp = self.orca_input.format("engrad", coords)
+        results = self.run(inp, calc="grad")
         return results
 
     def get_hessian(self, atoms, coords):
         logging.info("orca, hessian_calculation!")
         coords = self.prepare_coords(atoms, coords)
-        results = self.run(inp.format("freq", coords), calc="hessian")
+        inp = self.orca_input.format("freq", coords)
+        results = self.run(inp, calc="hessian")
         return results
 
     def parse_hessian(self, path):
