@@ -94,7 +94,8 @@ class IRC:
         i = 0
         while True:
             if i == self.max_steps:
-                print("Cycles exceeded!")
+                print("IRC steps exceeded. Stopping.")
+                print()
                 break
 
             print(f"IRC step {i+1} out of {self.max_steps}")
@@ -114,7 +115,7 @@ class IRC:
             i += 1
             print()
 
-        # Don't return the TS energy
+        # Don't return the TS energy we added at the beginning
         return irc_coords, self.irc_energies[1:]
 
     def run(self):
@@ -126,8 +127,7 @@ class IRC:
             logging.info("IRC forward")
             # Do inital displacement from the TS, forward
             self.geometry.coords = self.ts_coords + init_displ
-            # Update hessian after initial displacement?
-            self.geometry.hessian = self.ts_hessian
+            self.hessian = self.ts_hessian
             forward_coords, forward_energies = self.irc()
             self.coords.extend(forward_coords[::-1])
             self.energies.extend(forward_energies[::-1])
@@ -140,8 +140,11 @@ class IRC:
             logging.info("IRC backward")
             # Do inital displacement from the TS, backward
             self.geometry.coords = self.ts_coords - init_displ
-            # Update hessian after initial displacement?
-            self.geometry.hessian = self.ts_hessian
+            # Over the course of the IRC the hessian usually gets updated.
+            # Copying the TS hessian here ensures a clean start in combined
+            # forward and backward runs. Otherwise self.hessian would resemble
+            # the hessian at the end of the forward run.
+            self.hessian = self.ts_hessian
             backward_coords, backward_energies = self.irc()
             self.coords.extend(backward_coords)
             self.energies.extend(backward_energies)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import logging
 
 import matplotlib.pyplot as plt
 import numpy as np

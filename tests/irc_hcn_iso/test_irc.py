@@ -26,7 +26,7 @@ def run_irc(xyz_fn, keywords):
     geometry.set_calculator(ORCA(keywords, charge=0, mult=1, blocks=blocks))
 
     hessian = geometry.hessian
-    gs_irc = GonzalesSchlegel(geometry, max_steps=2, step_length=0.1, backward=True)
+    gs_irc = GonzalesSchlegel(geometry, max_steps=4, step_length=0.4)
 
     gs_irc.run()
 

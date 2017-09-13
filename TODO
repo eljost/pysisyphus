@@ -23,6 +23,7 @@
     - Hessian projection to remove translation & rotation
     - Geometrie nach jedem Schritt speichern, nicht erst am ende
     - Restart? Save (updated) hessian and corresponding coordinates
+    - Update hessian after initial displacement?
 
 Thoughts:
 - Muller Brown Potential
