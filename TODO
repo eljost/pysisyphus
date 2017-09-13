@@ -1,6 +1,7 @@
 - Calculators
     - ORCA
-        - Wiederverwenden von Orbitalen
+        - Reuse orbital gbw files
+        - Reuse precalculated hessian
 - COS
     - Climbing image
     - Tangente für erstes und letztes image
@@ -17,17 +18,11 @@
     - Normierung der Energiedarstellung auf Bedard abschalten
     - Letzter Frame fehlt: Wenn es nicht konvergiert ist letzter Frame
       nicht mehr da. Wenn es konvergiert schon.
-- Fix endpoints
 - Philipps Molekül und SZTS
-- AnalyticalPot Base-Class
 - IRC:
-    - IRC, BaseClass
-        - transition_vector/ aus hessian bestimmen
-        - forward/backward
-    - Gonzalez-Schlegel:
-        - Tangente
-- configfile
-    - move configfile somewhere more accessible
+    - Hessian projection to remove translation & rotation
+    - Geometrie nach jedem Schritt speichern, nicht erst am ende
+    - Restart? Save (updated) hessian and corresponding coordinates
 
 Thoughts:
 - Muller Brown Potential
@@ -42,5 +37,3 @@ Thoughts:
       des MEP verteilt.
     - Kein Backtracking verwenden. Der MEP ändert sich nicht mehr und alpha
       wird immer größer
-- Config file:
-    - Speicherort von ORCA usw.

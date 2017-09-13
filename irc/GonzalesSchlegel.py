@@ -15,8 +15,10 @@ from pysisyphus.TableFormatter import TableFormatter
 
 class GonzalesSchlegel(IRC):
 
-    def __init__(self, geometry, **kwargs):
+    def __init__(self, geometry, max_micro_steps=20, **kwargs):
         super(GonzalesSchlegel, self).__init__(geometry, **kwargs)
+
+        self.max_micro_steps = max_micro_steps
 
         self.pivot_coords = list()
         self.micro_coords = list()
@@ -109,7 +111,7 @@ class GonzalesSchlegel(IRC):
         i = 0
         print(self.micro_formatter.header)
         while True:
-            if i == 20:
+            if i == self.max_micro_steps:
                 logging.warning("Max micro cycles exceeded!")
                 break
             dx, tangent = self.micro_step()

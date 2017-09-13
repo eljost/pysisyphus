@@ -13,34 +13,47 @@ from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 
 from qchelper.geometry import parse_xyz_file
 
-
-@pytest.mark.orca_irc
-def test_hcn_iso_gs_irc():
+def run_irc(xyz_fn, keywords):
     this_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
 
     #blocks = "%pal nprocs 3 end"
+    blocks = ""
 
-    #keywords = "HF def2-SV(P) TightSCF"
-    #ts_xyz_fn = this_dir / "hcn_ts_standard.xyz"
-
-    #keywords = "BP86 def2-SV(P) TightSCF"
-    #ts_xyz_fn = this_dir / "01_hcn_optts.xyz"
-
-    keywords = "HF STO-3G TightSCF"
-    ts_xyz_fn = this_dir / "hcn_gs_hfsto3g_ts.xyz"
-
-    atoms, coords = parse_xyz_file(ts_xyz_fn)
+    atoms, coords = parse_xyz_file(this_dir / xyz_fn)
     coords *= ANG2BOHR
     geometry = Geometry(atoms, coords.flatten())
 
-    geometry.set_calculator(ORCA(keywords, charge=0, mult=1))
+    geometry.set_calculator(ORCA(keywords, charge=0, mult=1, blocks=blocks))
 
     hessian = geometry.hessian
+    gs_irc = GonzalesSchlegel(geometry, max_steps=2, step_length=0.1, backward=True)
 
-    gs_irc = GonzalesSchlegel(geometry, max_steps=5, step_length=0.1)
     gs_irc.run()
-    gs_irc.write_trj(this_dir)
+
+    return gs_irc
+
+@pytest.mark.orca_irc
+def test_hcn_iso_hfsto3g():
+    keywords = "HF STO-3G TightSCF"
+    xyz_fn = "hcn_gs_hfsto3g_ts.xyz"
+    irc = run_irc(xyz_fn, keywords)
+
+
+@pytest.mark.orca_irc
+def test_hcn_iso_bp86def2sv_p():
+    keywords = "BP86 def2-SV(P) TightSCF"
+    xyz_fn = "01_hcn_ts_bp86def2sv_p_ts.xyz"
+    irc = run_irc(xyz_fn, keywords)
+
+
+@pytest.mark.orca_irc
+def test_hcn_iso_hfdef2sv_p():
+    keywords = "HF def2-SV(P) TightSCF"
+    xyz_fn = "02_hcn_ts_hfdef2sv_p_ts.xyz"
+    irc = run_irc(xyz_fn, keywords)
 
 
 if __name__ == "__main__":
-    test_hcn_iso_gs_irc()
+    test_hcn_iso_hfsto3g()
+    #test_hcn_iso_bp86def2sv_p()
+    #test_hcn_iso_hfdef2sv_p()

@@ -17,7 +17,7 @@ def test_mullerbrown_gs_irc():
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
-    gs_irc = GonzalesSchlegel(geometry, max_step=0.2, energy_lowering=5e-3)
+    gs_irc = GonzalesSchlegel(geometry, step_length=0.2, energy_lowering=5e-3)
     gs_irc.run()
 
     return gs_irc

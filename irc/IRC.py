@@ -122,7 +122,6 @@ class IRC:
         self.coords = list()
         self.energies = list()
         init_displ = self.initial_displacement()
-        logging.warning("Conversion angstroem/bohr!")
 
         if self.forward:
             logging.info("IRC forward")

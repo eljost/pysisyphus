@@ -64,14 +64,12 @@ class ORCA(Calculator):
         return self.get_forces(atoms, coords)
 
     def get_forces(self, atoms, coords):
-        #logging.info("orca, forces_calculation!")
         coords = self.prepare_coords(atoms, coords)
         inp = self.orca_input.format("engrad", coords)
         results = self.run(inp, calc="grad")
         return results
 
     def get_hessian(self, atoms, coords):
-        logging.info("orca, hessian_calculation!")
         coords = self.prepare_coords(atoms, coords)
         inp = self.orca_input.format("freq", coords)
         results = self.run(inp, calc="hessian")
