@@ -67,7 +67,6 @@ class IRC:
         cart_displs = [cd/np.linalg.norm(cd) for cd in cart_displs]
         transition_vector = cart_displs[img_index]
         trans_vec_norm = np.linalg.norm(transition_vector)
-        logging.info(f"norm(trans. vec.)={trans_vec_norm:.4f}")
         """
         print("Cartesian displacement vectors, normalized:")
         for i, cd in enumerate(cart_displs):
