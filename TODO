@@ -10,6 +10,9 @@
     - Tangenten nur einmal berechnen
 - Geometry
     - atoms, coords trennung irgendwie verbessern
+    - die ganzen mass_mat matrizen evt. nicht in Geometry speichern, weil
+      zu gross
+    - massmat iwi anders speichern da es im endeffekt nur eine diagnoalmatrix ist
 - Optimizer
     - Verwendung des exakten Hessian
     - default max_step of 0.04 maybe too low
@@ -24,6 +27,12 @@
     - Geometrie nach jedem Schritt speichern, nicht erst am ende
     - Restart? Save (updated) hessian and corresponding coordinates
     - Update hessian after initial displacement?
+    - print miscellaneous information, max_cycles, step_length etc.
+    - only use transition vector of gradient is small
+    - reset methode mit der man DVV und GS typ unter einen hut bringen kann
+        - also reset self.cur_step
+    - Formatter für step und microstep
+    - split up initial displacement and transition vector determination
 
 Thoughts:
 - Muller Brown Potential

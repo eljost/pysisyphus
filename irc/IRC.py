@@ -26,11 +26,20 @@ class IRC:
         self.backward = not forward
         self.energy_lowering = energy_lowering
 
-        self.hessian = self.geometry.hessian
         # Backup TS data
         self.ts_coords = copy.copy(self.geometry.coords)
         self.ts_energy = copy.copy(self.geometry.energy)
-        self.ts_hessian = copy.copy(self.hessian)
+        self.ts_hessian = copy.copy(self.geometry.hessian)
+
+        #self.reset()
+
+    def reset(self):
+        self.cur_step = 0
+        # Over the course of the IRC the hessian usually gets updated.
+        # Copying the TS hessian here ensures a clean start in combined
+        # forward and backward runs. Otherwise self.hessian would resemble
+        # the hessian at the end of the forward run.
+        self.hessian = self.ts_hessian
 
     def initial_displacement(self):
         """Returns a step length in angstrom to perfom an inital displacement
@@ -65,8 +74,7 @@ class IRC:
         # are mass-weighted.
         cart_displs = [mm_sqr_inv.dot(nm) for nm in eigvecs.transpose()]
         cart_displs = [cd/np.linalg.norm(cd) for cd in cart_displs]
-        transition_vector = cart_displs[img_index]
-        trans_vec_norm = np.linalg.norm(transition_vector)
+        self.transition_vector = cart_displs[img_index]
         """
         print("Cartesian displacement vectors, normalized:")
         for i, cd in enumerate(cart_displs):
@@ -86,19 +94,19 @@ class IRC:
         logging.info(f"Inital step length of {step_length:.4f} "
                       "from the TS.")
 
-        return step_length*transition_vector
+        return step_length*self.transition_vector
 
     def irc(self):
+        self.reset()
         irc_coords = list()
         self.irc_energies = [self.ts_energy]
-        i = 0
         while True:
-            if i == self.max_steps:
+            if self.cur_step == self.max_steps:
                 print("IRC steps exceeded. Stopping.")
                 print()
                 break
 
-            print(f"IRC step {i+1} out of {self.max_steps}")
+            print(f"IRC step {self.cur_step+1} out of {self.max_steps}")
             # Do macroiteration/IRC step
             irc_coords.append(self.geometry.coords)
             self.step()
@@ -112,7 +120,7 @@ class IRC:
                 print("Energy converged!")
                 print()
                 break
-            i += 1
+            self.cur_step += 1
             print()
 
         # Don't return the TS energy we added at the beginning
@@ -127,7 +135,6 @@ class IRC:
             logging.info("IRC forward")
             # Do inital displacement from the TS, forward
             self.geometry.coords = self.ts_coords + init_displ
-            self.hessian = self.ts_hessian
             forward_coords, forward_energies = self.irc()
             self.coords.extend(forward_coords[::-1])
             self.energies.extend(forward_energies[::-1])
@@ -140,11 +147,6 @@ class IRC:
             logging.info("IRC backward")
             # Do inital displacement from the TS, backward
             self.geometry.coords = self.ts_coords - init_displ
-            # Over the course of the IRC the hessian usually gets updated.
-            # Copying the TS hessian here ensures a clean start in combined
-            # forward and backward runs. Otherwise self.hessian would resemble
-            # the hessian at the end of the forward run.
-            self.hessian = self.ts_hessian
             backward_coords, backward_energies = self.irc()
             self.coords.extend(backward_coords)
             self.energies.extend(backward_energies)
