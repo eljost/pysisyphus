@@ -44,7 +44,7 @@ class GonzalesSchlegel(IRC):
         """Constrained optimization on a hypersphere."""
         eye = np.eye(self.displacement.size)
 
-        gradient = -self.geometry.forces
+        gradient = self.geometry.gradient
         gradient_diff = gradient - self.last_gradient
         coords_diff = self.geometry.coords - self.last_coords
         self.last_gradient = gradient
@@ -87,7 +87,7 @@ class GonzalesSchlegel(IRC):
         
 
     def step(self):
-        gradient0 = -self.geometry.forces
+        gradient0 = self.geometry.gradient
         gradient0_norm = np.linalg.norm(gradient0)
         self.irc_energies.append(self.geometry.energy)
         # For the BFGS update in the first micro step we use the original
