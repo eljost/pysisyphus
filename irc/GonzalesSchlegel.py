@@ -8,10 +8,10 @@ from scipy.optimize import newton
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.IRC import IRC
+from pysisyphus.TableFormatter import TableFormatter
 
 # [1] An improved algorithm for reaction path following
 # http://aip.scitation.org/doi/pdf/10.1063/1.456010
-
 
 class GonzalesSchlegel(IRC):
 
@@ -20,6 +20,10 @@ class GonzalesSchlegel(IRC):
 
         self.pivot_coords = list()
         self.micro_coords = list()
+
+        micro_header = "# |dx| |tangent|".split()
+        micro_fmts = ["d", ".2E", ".3E"]
+        self.micro_formatter = TableFormatter(micro_header, micro_fmts, 10)
 
     def bfgs_update(self, grad_diffs, coord_diffs):
         """BFGS update of the hessian as decribed in Eq. (16) of [1]."""
@@ -103,6 +107,7 @@ class GonzalesSchlegel(IRC):
 
         these_micro_coords = list()
         i = 0
+        print(self.micro_formatter.header)
         while True:
             if i == 20:
                 logging.warning("Max micro cycles exceeded!")
@@ -110,8 +115,11 @@ class GonzalesSchlegel(IRC):
             #print(f"Micro {i}")
             dx, tangent = self.micro_step()
             these_micro_coords.append(self.geometry.coords)
-            print("norm(dx) = {:.2E}".format(np.linalg.norm(dx)))
-            print("norm(tangent) = {:.2E}".format(np.linalg.norm(tangent)))
+            norm_dx = np.linalg.norm(dx)
+            #print("norm(dx) = {:.2E}".format(norm_dx))
+            norm_tangent = np.linalg.norm(tangent)
+            #print("norm(tangent) = {:.2E}".format(norm_tangent))
+            print(self.micro_formatter.line(i, norm_dx, norm_tangent))
 
             if (np.linalg.norm(dx) <= 1e-3):
                 break

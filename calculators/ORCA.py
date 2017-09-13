@@ -13,11 +13,8 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
 
-inp="""!HF def2-SV(P) TightSCF {}
-
-%pal
- nprocs 3
-end
+#inp="""!HF def2-SV(P) TightSCF {}
+inp="""!HF STO-3G TightSCF {}
 
 *xyz 0 1
 {}

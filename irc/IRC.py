@@ -98,7 +98,7 @@ class IRC:
                 print("Cycles exceeded!")
                 break
 
-            logging.info(f"Step {i}")
+            print(f"IRC step {i} out of {self.max_cycles}")
             # Do macroiteration/IRC step
             irc_coords.append(self.geometry.coords)
             self.step()
@@ -111,6 +111,7 @@ class IRC:
                 print("Energy converged!")
                 break
             i += 1
+            print()
 
         # Don't return the TS energy
         return irc_coords, self.irc_energies[1:]
