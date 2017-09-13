@@ -15,13 +15,13 @@ np.set_printoptions(suppress=True, precision=4)
 
 class IRC:
 
-    def __init__(self, geometry, max_step=0.1, max_cycles=10,
+    def __init__(self, geometry, step_length=0.1, max_steps=10,
                  forward=False, backward=False, energy_lowering=2.5e-4):
-        assert(max_step > 0), "max_step has to be > 0"
+        assert(step_length > 0), "step_length has to be > 0"
 
         self.geometry = geometry
-        self.max_step = max_step
-        self.max_cycles = max_cycles
+        self.step_length = step_length
+        self.max_steps = max_steps
         self.forward = not backward
         self.backward = not forward
         self.energy_lowering = energy_lowering
@@ -94,11 +94,11 @@ class IRC:
         self.irc_energies = [self.ts_energy]
         i = 0
         while True:
-            if i == self.max_cycles:
+            if i == self.max_steps:
                 print("Cycles exceeded!")
                 break
 
-            print(f"IRC step {i} out of {self.max_cycles}")
+            print(f"IRC step {i} out of {self.max_steps}")
             # Do macroiteration/IRC step
             irc_coords.append(self.geometry.coords)
             self.step()

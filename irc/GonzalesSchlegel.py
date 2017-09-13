@@ -60,7 +60,7 @@ class GonzalesSchlegel(IRC):
             # (g - λp)
             glp = gradient - self.displacement*lambda_
             tmp = self.displacement - hmlinv.dot(glp)
-            return tmp.dot(tmp) - 0.25*(self.max_step**2)
+            return tmp.dot(tmp) - 0.25*(self.step_length**2)
 
         smallest_eigval = np.sort(eigvals)[0]
         # Initial guess for λ.
@@ -95,7 +95,7 @@ class GonzalesSchlegel(IRC):
         self.last_coords = self.geometry.coords
 
         # Take a step against the gradient to the pivot point x*_k+1.
-        pivot_step = 0.5*self.max_step * gradient0/gradient0_norm
+        pivot_step = 0.5*self.step_length * gradient0/gradient0_norm
         pivot_coords = self.geometry.coords - pivot_step
         self.pivot_coords.append(pivot_coords)
 

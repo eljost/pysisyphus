@@ -22,10 +22,14 @@ def test_hcn_iso_gs_irc():
     atoms, coords = parse_xyz_file(ts_xyz_fn)
     coords *= ANG2BOHR
     geometry = Geometry(atoms, coords.flatten())
-    geometry.set_calculator(ORCA())
+
+    keywords = "HF STO-3G TightSCF"
+    #blocks = "%pal nprocs 3 end"
+    geometry.set_calculator(ORCA(keywords, charge=0, mult=1))
+
     hessian = geometry.hessian
 
-    gs_irc = GonzalesSchlegel(geometry, max_cycles=10, max_step=0.1)
+    gs_irc = GonzalesSchlegel(geometry, max_steps=2, step_length=0.1)
     gs_irc.run()
     gs_irc.write_trj(this_dir)
 
