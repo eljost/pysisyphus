@@ -31,15 +31,25 @@ class IRC:
         self.ts_energy = copy.copy(self.geometry.energy)
         self.ts_hessian = copy.copy(self.geometry.hessian)
 
-        #self.reset()
+        self.init_displ = self.initial_displacement()
 
-    def reset(self):
+    def prepare(self, direction):
         self.cur_step = 0
         # Over the course of the IRC the hessian usually gets updated.
         # Copying the TS hessian here ensures a clean start in combined
-        # forward and backward runs. Otherwise self.hessian would resemble
+        # forward and backward runs. Otherwise at the beginning of a
+        # backward run following a forward run self.hessian would be
         # the hessian at the end of the forward run.
         self.hessian = self.ts_hessian
+
+        # Do inital displacement from the TS
+        init_factor = 1 if (direction == "forward") else -1
+        initial_step = init_factor*self.init_displ
+        self.geometry.coords = self.ts_coords + initial_step
+        initial_step_length = np.linalg.norm(initial_step)
+        logging.info(f"Did inital step of {initial_step_length:.4f} "
+                      "from the TS.")
+        self.irc_energies = [self.ts_energy]
 
     def initial_displacement(self):
         """Returns a step length in angstrom to perfom an inital displacement
@@ -91,15 +101,11 @@ class IRC:
                               / np.abs(eigvals[img_index])
         )
         #step_length *= BOHR2ANG
-        logging.info(f"Inital step length of {step_length:.4f} "
-                      "from the TS.")
 
         return step_length*self.transition_vector
 
     def irc(self):
-        self.reset()
         irc_coords = list()
-        self.irc_energies = [self.ts_energy]
         while True:
             if self.cur_step == self.max_steps:
                 print("IRC steps exceeded. Stopping.")
@@ -116,7 +122,7 @@ class IRC:
                 print("Energy increased!")
                 print()
                 break
-            elif abs(last_energy - this_energy) <= 1e-4:
+            elif abs(last_energy - this_energy) <= 1e-5:
                 print("Energy converged!")
                 print()
                 break
@@ -127,32 +133,35 @@ class IRC:
         return irc_coords, self.irc_energies[1:]
 
     def run(self):
-        self.coords = list()
-        self.energies = list()
-        init_displ = self.initial_displacement()
+        self.all_coords = list()
+        self.all_energies = list()
 
         if self.forward:
             logging.info("IRC forward")
-            # Do inital displacement from the TS, forward
-            self.geometry.coords = self.ts_coords + init_displ
+            self.prepare("forward")
+            ## Do inital displacement from the TS, forward
+            #self.geometry.coords = self.ts_coords + self.init_displ
             forward_coords, forward_energies = self.irc()
-            self.coords.extend(forward_coords[::-1])
-            self.energies.extend(forward_energies[::-1])
+            self.all_coords.extend(forward_coords[::-1])
+            self.all_energies.extend(forward_energies[::-1])
+            self.forward_step = self.cur_step
 
         # Add TS data
-        self.coords.append(self.ts_coords)
-        self.energies.append(self.ts_energy)
+        self.all_coords.append(self.ts_coords)
+        self.all_energies.append(self.ts_energy)
 
         if self.backward:
             logging.info("IRC backward")
-            # Do inital displacement from the TS, backward
-            self.geometry.coords = self.ts_coords - init_displ
+            self.prepare("backward")
+            ## Do inital displacement from the TS, backward
+            #self.geometry.coords = self.ts_coords - self.init_displ
             backward_coords, backward_energies = self.irc()
-            self.coords.extend(backward_coords)
-            self.energies.extend(backward_energies)
+            self.all_coords.extend(backward_coords)
+            self.all_energies.extend(backward_energies)
+            self.backward_step = self.cur_step
 
-        self.coords = np.array(self.coords)
-        self.energies = np.array(self.energies)
+        self.all_coords = np.array(self.all_coords)
+        self.all_energies = np.array(self.all_energies)
         self.postprocess()
 
     def postprocess(self):
@@ -161,7 +170,7 @@ class IRC:
     def write_trj(self, path):
         path = pathlib.Path(path)
         xyz_strings = list()
-        for coords, energy in zip(self.coords, self.energies):
+        for coords, energy in zip(self.all_coords, self.all_energies):
             self.geometry.coords = coords
             # Use energy as comment
             as_xyz = self.geometry.as_xyz(energy)
@@ -171,5 +180,5 @@ class IRC:
         with open(path / "irc.trj", "w") as handle:
             handle.write(xyzs_joined)
 
-        np.savetxt(path / "irc_energies", self.energies)
+        np.savetxt(path / "irc_energies", self.all_energies)
 

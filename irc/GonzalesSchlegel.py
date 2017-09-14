@@ -153,6 +153,6 @@ class GonzalesSchlegel(IRC):
             ax.plot(*zip(*mc), "yo", ls="-")
             for i, m in enumerate(mc):
                 ax.text(*m, str(i))
-        ax.plot(*zip(*self.coords), "ro", ls="-")
+        ax.plot(*zip(*self.all_coords), "ro", ls="-")
         plt.legend()
         plt.show()

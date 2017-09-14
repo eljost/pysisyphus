@@ -29,10 +29,7 @@
     - Update hessian after initial displacement?
     - print miscellaneous information, max_cycles, step_length etc.
     - only use transition vector of gradient is small
-    - reset methode mit der man DVV und GS typ unter einen hut bringen kann
-        - also reset self.cur_step
-    - Formatter für step und microstep
-    - split up initial displacement and transition vector determination
+    - travel along reaction path: ideas quantum chem. 2ed p. 904 Eq. 14.25
 
 Thoughts:
 - Muller Brown Potential

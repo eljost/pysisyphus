@@ -14,7 +14,7 @@ from pysisyphus.irc.DampedVelocityVerlet import DampedVelocityVerlet
 
 from qchelper.geometry import parse_xyz_file
 
-def run_irc(irc, xyz_fn, keywords, **kwargs):
+def prepare_geometry(xyz_fn, keywords):
     this_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
 
     #blocks = "%pal nprocs 3 end"
@@ -27,48 +27,55 @@ def run_irc(irc, xyz_fn, keywords, **kwargs):
     geometry.set_calculator(ORCA(keywords, charge=0, mult=1, blocks=blocks))
 
     hessian = geometry.hessian
-    irc = irc(geometry, max_steps=4, step_length=0.4, **kwargs)
+    return geometry, this_dir
 
-    irc.run()
-
-    return irc
-
-def run_gs_irc(xyz_fn, keywords, **kwargs):
-    return run_irc(GonzalesSchlegel, xyz_fn, keywords, **kwargs)
-
-def run_dvv_irc(xyz_fn, keywords, **kwargs):
-    return run_irc(DampedVelocityVerlet, xyz_fn, keywords, **kwargs)
 
 @pytest.mark.orca_irc
 def test_hcn_iso_gs_hfsto3g():
     keywords = "HF STO-3G TightSCF"
     xyz_fn = "hcn_gs_hfsto3g_ts.xyz"
-    irc = run_gs_irc(xyz_fn, keywords)
+    geometry, this_dir = prepare_geometry(xyz_fn, keywords)
+
+    irc = GonzalesSchlegel(geometry, keywords, max_steps=5, step_length=0.3)
+    irc.run()
+    irc.write_trj(this_dir)
 
 
 @pytest.mark.orca_irc
 def test_hcn_iso_dvv_hfsto3g():
     keywords = "HF STO-3G TightSCF"
     xyz_fn = "hcn_gs_hfsto3g_ts.xyz"
-    irc = run_dvv_irc(xyz_fn, keywords, forward=True)
+    geometry, this_dir = prepare_geometry(xyz_fn, keywords)
+
+    irc = DampedVelocityVerlet(geometry, max_steps=5, v0=0.2)
+    irc.run()
+    irc.write_trj(this_dir)
 
 
 @pytest.mark.orca_irc
 def test_hcn_iso_gs_bp86def2sv_p():
     keywords = "BP86 def2-SV(P) TightSCF"
     xyz_fn = "01_hcn_ts_bp86def2sv_p_ts.xyz"
-    irc = run_gs_irc(xyz_fn, keywords)
+    geometry, this_dir = prepare_geometry(xyz_fn, keywords)
+
+    irc = GonzalesSchlegel(geometry, keywords, step_length=0.4)
+    irc.run()
+    irc.write_trj(this_dir)
 
 
 @pytest.mark.orca_irc
 def test_hcn_iso_gs_hfdef2sv_p():
     keywords = "HF def2-SV(P) TightSCF"
     xyz_fn = "02_hcn_ts_hfdef2sv_p_ts.xyz"
-    irc = run_gs_irc(xyz_fn, keywords)
+    geometry, this_dir = prepare_geometry(xyz_fn, keywords)
+
+    irc = GonzalesSchlegel(geometry, keywords, step_length=0.4)
+    irc.run()
+    irc.write_trj(this_dir)
 
 
 if __name__ == "__main__":
-    test_hcn_iso_gs_hfsto3g()
-    #test_hcn_iso_dvv_hfsto3g()
+    #test_hcn_iso_gs_hfsto3g()
+    test_hcn_iso_dvv_hfsto3g()
     #test_hcn_iso_gs_bp86def2sv_p()
     #test_hcn_iso_gs_hfdef2sv_p()

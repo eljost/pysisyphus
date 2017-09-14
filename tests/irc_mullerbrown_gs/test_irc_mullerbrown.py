@@ -18,8 +18,10 @@ def test_mullerbrown_gs_irc():
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
-    gs_irc = GonzalesSchlegel(geometry, step_length=0.1, energy_lowering=5e-3)
+    gs_irc = GonzalesSchlegel(geometry, step_length=0.3, max_steps=6)
     gs_irc.run()
+    assert(gs_irc.forward_step == 5)
+    assert(gs_irc.backward_step == 4)
 
     return gs_irc
 
@@ -31,13 +33,14 @@ def test_mullerbrown_dvv_irc():
     geometry = Geometry(atoms, ts_coords)
     geometry.set_calculator(calc)
 
-    dvv = DampedVelocityVerlet(geometry, v0=1, energy_lowering=1e-2, backward=True)
+    #dvv = DampedVelocityVerlet(geometry, v0=1, energy_lowering=1e-2, backward=True)
+    dvv = DampedVelocityVerlet(geometry, v0=0.04, max_steps=10)
     dvv.run()
 
     return dvv
 
 if __name__ == "__main__":
-    gs_irc = test_mullerbrown_gs_irc()
-    gs_irc.show2d()
+    #gs_irc = test_mullerbrown_gs_irc()
+    #gs_irc.show2d()
     dvv = test_mullerbrown_dvv_irc()
     dvv.show2d()

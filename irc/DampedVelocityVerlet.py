@@ -9,79 +9,95 @@ import numpy as np
 
 class DampedVelocityVerlet(IRC):
 
-    def __init__(self, geometry, v0=0.06, error_tol=0.003, **kwargs):
+    def __init__(self, geometry, v0=0.06, dt0=0.1, error_tol=0.003, **kwargs):
         super(DampedVelocityVerlet, self).__init__(geometry, **kwargs)
 
         self.v0 = v0
         self.error_tol = error_tol
+        self.dt0 = dt0
 
         self.mass_mat_inv = np.linalg.inv(self.geometry.mass_mat)
-        self.dvv_coords = [self.geometry.coords, self.geometry.coords]
-        zeros = np.zeros_like(self.geometry.coords)
-        import logging
-        logging.warning("use transition vector for intial velocity")
-        self.velocities = [zeros, zeros]
-        acceleration = self.mass_mat_inv.dot(self.geometry.forces)
-        #self.accelerations = [zeros, zeros]
-        self.accelerations = [zeros, acceleration]
-        self.time_steps = [0.1]
 
-        step_header = "# damping dt dt_new error".split()
-        step_fmts = ["d", ".2f", ".4f", ".4f", ".3E"]
+        step_header = "damping dt dt_new error".split()
+        step_fmts = [".2f", ".4f", ".4f", ".3E"]
         self.step_formatter = TableFormatter(step_header, step_fmts, 10)
+
+    def prepare(self, direction):
+        # In contrast to the paper we don't start from the TS geometry but
+        # instead do an initial displacement along the imaginary mode.
+        # We still consider the TS geometry and the transition vector.
+        super(DampedVelocityVerlet, self).prepare(direction)
+
+        self.coords = [self.ts_coords]
+        init_factor = 1 if (direction == "forward") else -1
+        initial_velocity, _ = self.damp_velocity(init_factor*self.transition_vector)
+        self.velocities = [initial_velocity]
+        acceleration = self.mass_mat_inv.dot(self.geometry.forces)
+        self.accelerations = [acceleration]
+        self.time_steps = [self.dt0]
+
+    def damp_velocity(self, velocity):
+        # Eq. (4) in [1]
+        damping_factor = self.v0 / np.linalg.norm(velocity)
+        damped_velocity = velocity * damping_factor
+        return damped_velocity, damping_factor
+
+    def estimate_error(self):
+        # See Fig. 1 and Eq. (5) in [1]
+        time_step_sum = self.time_steps[-2] + self.time_steps[-1]
+        # x'
+        ref_coords = (
+            self.coords[-2]
+            + self.velocities[-2]*time_step_sum
+            + 0.5*self.accelerations[-2]*time_step_sum**2
+        )
+        coords_diff = np.abs(self.geometry.coords - ref_coords)
+        largest_component = np.max(np.abs(coords_diff))
+        coords_diff_norm = np.linalg.norm(coords_diff)
+        estimated_error = max((largest_component, coords_diff_norm))
+        return estimated_error
 
     def step(self):
         last_acceleration = self.accelerations[-1]
-        self.irc_energies.append(self.geometry.energy)
         last_velocity = self.velocities[-1]
         time_step = self.time_steps[-1]
 
         # Get new acceleration
         acceleration = self.mass_mat_inv.dot(self.geometry.forces)
         self.accelerations.append(acceleration)
+        self.irc_energies.append(self.geometry.energy)
         # Calculate new coords and velocity
         # Eq. (2) in [1]
-        print("old coords", self.geometry.coords)
-        new_coords = (self.geometry.coords
+        coords = (self.geometry.coords
                       + last_velocity*time_step
                       + 0.5*last_acceleration*time_step**2
         )
-        print("new coords", new_coords)
+        self.geometry.coords = coords
+        self.coords.append(coords)
         # Update velocity
-        new_velocity = (last_velocity
-                        + 0.5*(last_acceleration+acceleration)*time_step
+        velocity = (last_velocity
+                    + 0.5*(last_acceleration+acceleration)*time_step
         )
+        # Damp velocity
+        damped_velocity, damping_factor = self.damp_velocity(velocity)
+        self.velocities.append(damped_velocity)
 
-        # Velocity damping
-        # Eq. (4) in [1]
-        damping_factor = self.v0 / np.linalg.norm(new_velocity)
-        new_velocity *= damping_factor
-        self.velocities.append(new_velocity)
+        if self.cur_step is 0:
+            # No error estimated after the first step
+            estimated_error = self.error_tol
+        else:
+            estimated_error = self.estimate_error()
 
         # Get next time step from error estimation
-        # See Fig. 1 and Eq. (5) in [1]
-        ref_coords = (
-            self.dvv_coords[-2]
-            + self.velocities[-2]*(self.time_steps[-1]+time_step)
-            + 0.5*self.accelerations[-2]*(self.time_steps[-1]+time_step)**2
-        )
-        coords_diff = np.abs(new_coords - ref_coords)
-        #print("coords_diff", coords_diff)
-        largest_component = np.max(np.abs(coords_diff))
-        #print("larg comp", largest_component)
-        coords_diff_norm = np.linalg.norm(coords_diff)
-        #print("coords diff norm", coords_diff_norm)
-        estimated_error = max((largest_component, coords_diff_norm))
-        new_time_step = time_step * np.linalg.norm(self.error_tol/estimated_error)**(1/3)
+        new_time_step = time_step * np.abs(self.error_tol/estimated_error)**(1/3)
         # Constrain time step between 0.0025 fs <= time_step <= 3.0 fs
         new_time_step = min(new_time_step, 3)
         new_time_step = max(new_time_step, 0.025)
         self.time_steps.append(new_time_step)
-        self.geometry.coords = new_coords
 
         print(self.step_formatter.header)
-        print(self.step_formatter.line(self.cur_step, damping_factor,
-                                    time_step, new_time_step, estimated_error))
+        print(self.step_formatter.line(damping_factor, time_step,
+                                       new_time_step, estimated_error))
 
     def show2d(self):
         fig, ax = plt.subplots(figsize=(8,8))
@@ -98,6 +114,5 @@ class DampedVelocityVerlet(IRC):
         levels = np.linspace(*levels)
         contours = ax.contour(X, Y, pot, levels)
 
-        ax.plot(*zip(*self.coords), "ro", ls="-")
-        plt.legend()
+        ax.plot(*zip(*self.all_coords), "ro", ls="-")
         plt.show()
