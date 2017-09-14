@@ -7,8 +7,9 @@ import numpy as np
 
 from pysisyphus.calculators.MullerBrownSympyPot2D import MullerBrownSympyPot2D
 from pysisyphus.Geometry import Geometry
-from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 from pysisyphus.irc.DampedVelocityVerlet import DampedVelocityVerlet
+from pysisyphus.irc.Euler import Euler
+from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 
 
 def prepare_geometry():
@@ -41,8 +42,18 @@ def test_mullerbrown_dvv_irc():
     return dvv
 
 
+def test_mullerbrown_euler_irc():
+    geometry = prepare_geometry()
+    euler = Euler(geometry, max_steps=150, mass_weight=True)
+    euler.run()
+
+    return euler
+
+
 if __name__ == "__main__":
-    gs_irc = test_mullerbrown_gs_irc()
-    gs_irc.show2d()
-    dvv = test_mullerbrown_dvv_irc()
-    dvv.show2d()
+    #gs = test_mullerbrown_gs_irc()
+    #gs.show2d()
+    #dvv = test_mullerbrown_dvv_irc()
+    #dvv.show2d()
+    euler = test_mullerbrown_euler_irc()
+    euler.show2d()

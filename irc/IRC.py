@@ -15,10 +15,13 @@ class IRC:
     def __init__(self, geometry, step_length=0.1, max_steps=10,
                  forward=False, backward=False, energy_lowering=2.5e-4,
                  mass_weight=True):
-        assert(step_length > 0), "step_length has to be > 0"
+        assert(step_length > 0), "step_length must be positive"
+        assert(max_steps > 0), "max_steps must be positive"
+        assert(energy_lowering > 0), "energy_lowering must be positive"
 
         self.geometry = geometry
         self.step_length = step_length
+        print("step_length", self.step_length)
         self.max_steps = max_steps
         self.forward = not backward
         self.backward = not forward
@@ -32,6 +35,44 @@ class IRC:
 
         self.init_displ = self.initial_displacement()
 
+
+    @property
+    def coords(self):
+        if self.mass_weight:
+            return self.geometry.mw_coords
+        return self.geometry.coords
+
+    @coords.setter
+    def coords(self, coords):
+        if self.mass_weight:
+            self.geometry.mw_coords = coords
+        else:
+            self.geometry.coords = coords
+
+    @property
+    def energy(self):
+        return self.geometry.energy
+
+    @property
+    def gradient(self):
+        if self.mass_weight:
+            return self.geometry.mw_gradient
+        return self.geometry.gradient
+
+    """
+    @property
+    def hessian(self):
+        if self.mass_weight:
+            return self.geometry.mw_hessian
+        return self.geometry.hessian
+
+    @hessian.setter
+    def hessian(self, hessian):
+        if self.mass_weight:
+            self.geometry.mw_hessian = hessian
+        else:
+            self.geometry.hessian = hessian
+    """
 
     def prepare(self, direction):
         self.cur_step = 0
@@ -97,6 +138,7 @@ class IRC:
         # to the transition vector/imaginary mode, dq = step length)
         # dq = sqrt(dE*2/k)
         # See 10.1021/ja00295a002 and 10.1063/1.462674
+        # 10.1002/jcc.540080808 proposes 3 kcal/mol as initial energy lowering
         step_length = np.sqrt(self.energy_lowering*2
                               / np.abs(eigvals[img_index])
         )

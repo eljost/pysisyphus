@@ -92,7 +92,7 @@ class Geometry:
 
     @property
     def mw_gradient(self):
-        return -self._forces / np.sqrt(self.masses_rep)
+        return -self.forces / np.sqrt(self.masses_rep)
 
     @property
     def hessian(self):
