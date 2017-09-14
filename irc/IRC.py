@@ -6,12 +6,11 @@ import pathlib
 
 import numpy as np
 
-#from pysisyphus.constants import BOHR2ANG
-
 np.set_printoptions(suppress=True, precision=4)
 
-#https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
-#https://chemistry.stackexchange.com/questions/74639
+# https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
+# https://chemistry.stackexchange.com/questions/74639
+
 
 class IRC:
 

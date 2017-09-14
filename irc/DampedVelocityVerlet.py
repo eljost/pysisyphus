@@ -7,6 +7,7 @@ import numpy as np
 # [1] Following Reaction Pathways Using a Damped Classical Trajectory Algorithm
 # 10.1021/jp012125b
 
+
 class DampedVelocityVerlet(IRC):
 
     def __init__(self, geometry, v0=0.06, dt0=0.1, error_tol=0.003, **kwargs):
@@ -30,7 +31,9 @@ class DampedVelocityVerlet(IRC):
 
         self.coords = [self.ts_coords]
         init_factor = 1 if (direction == "forward") else -1
-        initial_velocity, _ = self.damp_velocity(init_factor*self.transition_vector)
+        initial_velocity, _ = self.damp_velocity(
+                                        init_factor * self.transition_vector
+        )
         self.velocities = [initial_velocity]
         acceleration = self.mass_mat_inv.dot(self.geometry.forces)
         self.accelerations = [acceleration]
@@ -69,8 +72,8 @@ class DampedVelocityVerlet(IRC):
         # Calculate new coords and velocity
         # Eq. (2) in [1]
         coords = (self.geometry.coords
-                      + last_velocity*time_step
-                      + 0.5*last_acceleration*time_step**2
+                  + last_velocity*time_step
+                  + 0.5*last_acceleration*time_step**2
         )
         self.geometry.coords = coords
         self.coords.append(coords)
@@ -89,7 +92,8 @@ class DampedVelocityVerlet(IRC):
             estimated_error = self.estimate_error()
 
         # Get next time step from error estimation
-        new_time_step = time_step * np.abs(self.error_tol/estimated_error)**(1/3)
+        new_time_step = time_step * np.abs(self.error_tol
+                                           / estimated_error)**(1/3)
         # Constrain time step between 0.0025 fs <= time_step <= 3.0 fs
         new_time_step = min(new_time_step, 3)
         new_time_step = max(new_time_step, 0.025)
@@ -97,20 +101,22 @@ class DampedVelocityVerlet(IRC):
 
         print(self.step_formatter.header)
         print(self.step_formatter.line(damping_factor, time_step,
-                                       new_time_step, estimated_error))
+                                       new_time_step, estimated_error)
+        )
 
     def show2d(self):
-        fig, ax = plt.subplots(figsize=(8,8))
+        fig, ax = plt.subplots(figsize=(8, 8))
 
         xlim = (-1.75, 1.25)
         ylim = (-0.5, 2.25)
-        levels=(-150, -15, 40)
+        levels = (-150, -15, 40)
         x = np.linspace(*xlim, 100)
         y = np.linspace(*ylim, 100)
         X, Y = np.meshgrid(x, y)
         fake_atoms = ("H", )
         pot_coords = np.stack((X, Y))
-        pot = self.geometry.calculator.get_energy(fake_atoms, pot_coords)["energy"]
+        pot = self.geometry.calculator.get_energy(fake_atoms,
+                                                  pot_coords)["energy"]
         levels = np.linspace(*levels)
         contours = ax.contour(X, Y, pot, levels)
 
