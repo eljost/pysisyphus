@@ -54,7 +54,11 @@ class Geometry:
 
     @property
     def mw_coords(self):
-        return self._coords
+        return np.sqrt(self.masses_rep) * self._coords
+
+    @mw_coords.setter
+    def mw_coords(self, mw_coords):
+        self.coords = mw_coords / np.sqrt(self.masses_rep)
 
     @property
     def energy(self):
@@ -85,6 +89,10 @@ class Geometry:
     @gradient.setter
     def gradient(self, gradient):
         self._forces = -gradient
+
+    @property
+    def mw_gradient(self):
+        return -self._forces / np.sqrt(self.masses_rep)
 
     @property
     def hessian(self):
