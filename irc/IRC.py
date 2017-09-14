@@ -6,8 +6,6 @@ import pathlib
 
 import numpy as np
 
-np.set_printoptions(suppress=True, precision=4)
-
 # https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
 # https://chemistry.stackexchange.com/questions/74639
 
@@ -15,7 +13,8 @@ np.set_printoptions(suppress=True, precision=4)
 class IRC:
 
     def __init__(self, geometry, step_length=0.1, max_steps=10,
-                 forward=False, backward=False, energy_lowering=2.5e-4):
+                 forward=False, backward=False, energy_lowering=2.5e-4,
+                 mass_weight=True):
         assert(step_length > 0), "step_length has to be > 0"
 
         self.geometry = geometry
@@ -24,6 +23,7 @@ class IRC:
         self.forward = not backward
         self.backward = not forward
         self.energy_lowering = energy_lowering
+        self.mass_weight = True
 
         # Backup TS data
         self.ts_coords = copy.copy(self.geometry.coords)
@@ -31,6 +31,7 @@ class IRC:
         self.ts_hessian = copy.copy(self.geometry.hessian)
 
         self.init_displ = self.initial_displacement()
+
 
     def prepare(self, direction):
         self.cur_step = 0

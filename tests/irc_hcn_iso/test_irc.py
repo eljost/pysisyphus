@@ -75,7 +75,7 @@ def test_hcn_iso_gs_hfdef2sv_p():
 
 
 if __name__ == "__main__":
-    #test_hcn_iso_gs_hfsto3g()
-    test_hcn_iso_dvv_hfsto3g()
+    test_hcn_iso_gs_hfsto3g()
+    #test_hcn_iso_dvv_hfsto3g()
     #test_hcn_iso_gs_bp86def2sv_p()
     #test_hcn_iso_gs_hfdef2sv_p()

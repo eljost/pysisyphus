@@ -10,6 +10,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 from pysisyphus.irc.DampedVelocityVerlet import DampedVelocityVerlet
 
+
 def prepare_geometry():
     #this_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
     atoms = ("H", )
@@ -19,6 +20,7 @@ def prepare_geometry():
     geometry.set_calculator(calc)
 
     return geometry
+
 
 def test_mullerbrown_gs_irc():
     geometry = prepare_geometry()
@@ -30,12 +32,14 @@ def test_mullerbrown_gs_irc():
 
     return gs_irc
 
+
 def test_mullerbrown_dvv_irc():
     geometry = prepare_geometry()
     dvv = DampedVelocityVerlet(geometry, v0=0.04, max_steps=60)
     dvv.run()
 
     return dvv
+
 
 if __name__ == "__main__":
     gs_irc = test_mullerbrown_gs_irc()
