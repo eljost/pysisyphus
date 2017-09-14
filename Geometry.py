@@ -18,9 +18,8 @@ class Geometry:
 
         self.masses = [getattr(pt, atom).mass for atom in self.atoms]
         # Some of the analytical potentials are only 2D
-        mass_mat_repeat = 2 if (self._coords.size == 2) else 3
-        self.mass_mat = np.diag(np.repeat(self.masses, mass_mat_repeat))
-        self.mass_mat_sqr_inv = np.linalg.inv(np.sqrt(self.mass_mat))
+        repeat_masses = 2 if (self._coords.size == 2) else 3
+        self.masses_rep = np.repeat(self.masses, repeat_masses)
 
     def clear(self):
         self.calculator = None
@@ -31,6 +30,14 @@ class Geometry:
     def set_calculator(self, calculator):
         self.clear()
         self.calculator = calculator
+
+    @property
+    def mm_inv(self):
+        return np.linalg.inv(np.diag(self.masses_rep))
+
+    @property
+    def mm_sqrt_inv(self):
+        return np.linalg.inv(np.sqrt(np.diag(self.masses_rep)))
 
     @property
     def coords(self):
@@ -44,6 +51,10 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
+
+    @property
+    def mw_coords(self):
+        return self._coords
 
     @property
     def energy(self):
@@ -85,7 +96,7 @@ class Geometry:
     @property
     def mw_hessian(self):
         # M^(-1/2) H M^(-1/2)
-        return self.mass_mat_sqr_inv.dot(self.hessian).dot(self.mass_mat_sqr_inv)
+        return self.mm_sqrt_inv.dot(self.hessian).dot(self.mm_sqrt_inv)
 
     @hessian.setter
     def hessian(self, hessian):

@@ -17,7 +17,7 @@ class DampedVelocityVerlet(IRC):
         self.error_tol = error_tol
         self.dt0 = dt0
 
-        self.mass_mat_inv = np.linalg.inv(self.geometry.mass_mat)
+        self.mm_inv = self.geometry.mm_inv
 
         step_header = "damping dt dt_new error".split()
         step_fmts = [".2f", ".4f", ".4f", ".3E"]
@@ -35,7 +35,7 @@ class DampedVelocityVerlet(IRC):
                                         init_factor * self.transition_vector
         )
         self.velocities = [initial_velocity]
-        acceleration = self.mass_mat_inv.dot(self.geometry.forces)
+        acceleration = self.mm_inv.dot(self.geometry.forces)
         self.accelerations = [acceleration]
         self.time_steps = [self.dt0]
 
@@ -66,7 +66,7 @@ class DampedVelocityVerlet(IRC):
         time_step = self.time_steps[-1]
 
         # Get new acceleration
-        acceleration = self.mass_mat_inv.dot(self.geometry.forces)
+        acceleration = self.mm_inv.dot(self.geometry.forces)
         self.accelerations.append(acceleration)
         self.irc_energies.append(self.geometry.energy)
         # Calculate new coords and velocity

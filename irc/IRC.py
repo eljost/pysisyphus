@@ -53,7 +53,7 @@ class IRC:
     def initial_displacement(self):
         """Returns a step length in angstrom to perfom an inital displacement
         from the TS."""
-        mm_sqr_inv = self.geometry.mass_mat_sqr_inv
+        mm_sqr_inv = self.geometry.mm_sqrt_inv
         eigvals, eigvecs = np.linalg.eig(self.geometry.mw_hessian)
 
         # Find smallest eigenvalue to get the imaginary mode
@@ -99,7 +99,6 @@ class IRC:
         step_length = np.sqrt(self.energy_lowering*2
                               / np.abs(eigvals[img_index])
         )
-        #step_length *= BOHR2ANG
 
         return step_length*self.transition_vector
 
@@ -138,8 +137,6 @@ class IRC:
         if self.forward:
             logging.info("IRC forward")
             self.prepare("forward")
-            ## Do inital displacement from the TS, forward
-            #self.geometry.coords = self.ts_coords + self.init_displ
             forward_coords, forward_energies = self.irc()
             self.all_coords.extend(forward_coords[::-1])
             self.all_energies.extend(forward_energies[::-1])
@@ -152,8 +149,6 @@ class IRC:
         if self.backward:
             logging.info("IRC backward")
             self.prepare("backward")
-            ## Do inital displacement from the TS, backward
-            #self.geometry.coords = self.ts_coords - self.init_displ
             backward_coords, backward_energies = self.irc()
             self.all_coords.extend(backward_coords)
             self.all_energies.extend(backward_energies)
