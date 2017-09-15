@@ -71,7 +71,7 @@ class GonzalesSchlegel(IRC):
         lambda_ = np.sort(eigvals)[0]
         lambda_ *= 1.5 if (lambda_ < 0) else 0.5
         # Find the root with scipy
-        lambda_ = newton(lambda_func, lambda_)
+        lambda_ = newton(lambda_func, lambda_, maxiter=100)
 
         # Calculate dx from optimized lambda
         dx = -np.dot(
@@ -90,6 +90,7 @@ class GonzalesSchlegel(IRC):
     def step(self):
         gradient0 = self.geometry.gradient
         gradient0_norm = np.linalg.norm(gradient0)
+        self.irc_coords.append(self.geometry.coords)
         self.irc_energies.append(self.geometry.energy)
         # For the BFGS update in the first micro step we use the original
         # point and the initial guess to calculate gradient and
@@ -130,29 +131,3 @@ class GonzalesSchlegel(IRC):
     def postprocess(self):
         self.pivot_coords = np.array(self.pivot_coords)
         self.micro_coords = np.array(self.micro_coords)
-
-    def show2d(self):
-        fig, ax = plt.subplots(figsize=(8,8))
-
-        xlim = (-1.75, 1.25)
-        ylim = (-0.5, 2.25)
-        levels=(-150, -15, 40)
-        x = np.linspace(*xlim, 100)
-        y = np.linspace(*ylim, 100)
-        X, Y = np.meshgrid(x, y)
-        fake_atoms = ("H", )
-        pot_coords = np.stack((X, Y))
-        pot = self.geometry.calculator.get_energy(fake_atoms, pot_coords)["energy"]
-        levels = np.linspace(*levels)
-        contours = ax.contour(X, Y, pot, levels)
-
-        # Pivot points
-        ax.plot(*zip(*self.pivot_coords), "bo", ls="-", label="pivot")
-        # Constrained optmizations
-        for mc in self.micro_coords:
-            ax.plot(*zip(*mc), "yo", ls="-")
-            for i, m in enumerate(mc):
-                ax.text(*m, str(i))
-        ax.plot(*zip(*self.all_coords), "ro", ls="-")
-        plt.legend()
-        plt.show()

@@ -10,7 +10,8 @@ import numpy as np
 
 class DampedVelocityVerlet(IRC):
 
-    def __init__(self, geometry, v0=0.06, dt0=0.1, error_tol=0.003, **kwargs):
+    def __init__(self, geometry, v0=0.06, dt0=0.1, error_tol=0.003,
+                 energy_lowering=1e-4, **kwargs):
         super(DampedVelocityVerlet, self).__init__(geometry, **kwargs)
 
         self.v0 = v0
@@ -29,7 +30,7 @@ class DampedVelocityVerlet(IRC):
         # We still consider the TS geometry and the transition vector.
         super(DampedVelocityVerlet, self).prepare(direction)
 
-        self.coords = [self.ts_coords]
+        #self.irc_coords = [self.ts_coords]
         init_factor = 1 if (direction == "forward") else -1
         initial_velocity, _ = self.damp_velocity(
                                         init_factor * self.transition_vector
@@ -50,7 +51,7 @@ class DampedVelocityVerlet(IRC):
         time_step_sum = self.time_steps[-2] + self.time_steps[-1]
         # x'
         ref_coords = (
-            self.coords[-2]
+            self.irc_coords[-2]
             + self.velocities[-2]*time_step_sum
             + 0.5*self.accelerations[-2]*time_step_sum**2
         )
@@ -68,6 +69,7 @@ class DampedVelocityVerlet(IRC):
         # Get new acceleration
         acceleration = self.mm_inv.dot(self.geometry.forces)
         self.accelerations.append(acceleration)
+        self.irc_coords.append(self.geometry.coords)
         self.irc_energies.append(self.geometry.energy)
         # Calculate new coords and velocity
         # Eq. (2) in [1]
@@ -76,7 +78,7 @@ class DampedVelocityVerlet(IRC):
                   + 0.5*last_acceleration*time_step**2
         )
         self.geometry.coords = coords
-        self.coords.append(coords)
+        self.irc_coords.append(coords)
         # Update velocity
         velocity = (last_velocity
                     + 0.5*(last_acceleration+acceleration)*time_step
@@ -103,22 +105,3 @@ class DampedVelocityVerlet(IRC):
         print(self.step_formatter.line(damping_factor, time_step,
                                        new_time_step, estimated_error)
         )
-
-    def show2d(self):
-        fig, ax = plt.subplots(figsize=(8, 8))
-
-        xlim = (-1.75, 1.25)
-        ylim = (-0.5, 2.25)
-        levels = (-150, -15, 40)
-        x = np.linspace(*xlim, 100)
-        y = np.linspace(*ylim, 100)
-        X, Y = np.meshgrid(x, y)
-        fake_atoms = ("H", )
-        pot_coords = np.stack((X, Y))
-        pot = self.geometry.calculator.get_energy(fake_atoms,
-                                                  pot_coords)["energy"]
-        levels = np.linspace(*levels)
-        contours = ax.contour(X, Y, pot, levels)
-
-        ax.plot(*zip(*self.all_coords), "ro", ls="-")
-        plt.show()

@@ -104,3 +104,8 @@ ENV/
 
 tests/i18i19/*
 config.ini
+tests/param_plot/*.pdf
+tests/irc_hcn_iso/*.pdf
+tests/irc_hcn_iso/*.coords
+tests/irc_hcn_iso/*.energies
+tests/irc_hcn_iso/*.trj
