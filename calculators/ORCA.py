@@ -61,7 +61,6 @@ class ORCA(Calculator):
         logging.warning("orca energy not implemented properly!")
         logging.warning("Called energy, exiting!")
         import sys; sys.exit()
-        return self.get_forces(atoms, coords)
 
     def get_forces(self, atoms, coords):
         #print("forces calc!")

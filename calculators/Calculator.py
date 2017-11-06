@@ -36,9 +36,11 @@ class Calculator:
 
         return path
 
-    def run(self, inp, calc):
+    def run(self, inp, calc, add_args=None):
         path = self.prepare(inp)
         args = [self.base_cmd, self.inp_fn]
+        if add_args:
+            args.extend(add_args)
         logging.debug("Running calculation in {}".format(path))
         with open(os.path.join(path, self.out_fn), "w") as handle:
             result = subprocess.Popen(args, cwd=path, stdout=handle)
@@ -53,7 +55,6 @@ class Calculator:
             sys.exit()
         finally:
             self.clean(path)
-
 
         return results
 
