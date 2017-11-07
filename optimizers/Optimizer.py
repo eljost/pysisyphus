@@ -3,6 +3,7 @@
 import time
 
 import numpy as np
+import pandas as pd
 import scipy as sp
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
@@ -29,6 +30,7 @@ class Optimizer:
         self.max_cycles = 50
         self.max_step = 0.04
         self.rel_step_thresh = 1e-3
+        self.keep_cycles = True
 
         assert(self.max_step > self.rel_step_thresh)
 
@@ -127,7 +129,7 @@ class Optimizer:
     def optimize(self):
         raise Exception("Not implemented!")
 
-    def save_cycle(self):
+    def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
 
         if self.is_cos:
@@ -135,10 +137,15 @@ class Optimizer:
             with open(out_fn, "w") as handle:
                 handle.write(as_xyz_str)
         else:
+            # Append to .trj file
             out_fn = "opt.trj"
             with open(out_fn, "a") as handle:
                 handle.write(as_xyz_str)
                 handle.write("\n")
+
+    def write_opt_data_to_file(self):
+        energy_df = pd.DataFrame(self.energies)
+        energy_df.to_csv("energies.csv", index=False)
 
     def run(self):
         self.print_header()
@@ -171,7 +178,9 @@ class Optimizer:
             elapsed_seconds = end_time - start_time
             self.cycle_times.append(elapsed_seconds)
 
-            self.save_cycle()
+            if self.keep_cycles:
+                self.write_cycle_to_file()
+                self.write_opt_data_to_file()
             self.print_convergence()
             if self.is_converged:
                 print("Converged!")

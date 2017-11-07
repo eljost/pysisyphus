@@ -47,7 +47,8 @@ def idpp_interpolate(geometries, images_between):
             # Use pretty loose convergence criteria for IDPP
             "convergence": {
                 "max_force_thresh": 0.1
-            }
+            },
+            "keep_cycles": False,
         }
         opt = FIRE(NEB(images_slice), **kwargs)
         opt.run()
