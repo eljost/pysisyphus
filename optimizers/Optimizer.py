@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import os
+from pathlib import Path
 import time
 
 import numpy as np
@@ -31,6 +33,7 @@ class Optimizer:
         self.max_step = 0.04
         self.rel_step_thresh = 1e-3
         self.keep_cycles = True
+        self.out_dir = os.getcwd()
 
         assert(self.max_step > self.rel_step_thresh)
 
@@ -41,6 +44,9 @@ class Optimizer:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+        self.out_dir = Path(self.out_dir)
+        if not self.out_dir.exists():
+            os.mkdir(self.out_dir)
         self.cur_cycle = 0
 
         self.coords = list()
@@ -129,19 +135,21 @@ class Optimizer:
     def optimize(self):
         raise Exception("Not implemented!")
 
+    def write_to_out_dir(self, out_fn, content, mode="w"):
+        out_path = self.out_dir / out_fn
+        with open(out_path, mode) as handle:
+            handle.write(content)
+
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
 
         if self.is_cos:
             out_fn = "cycle_{:03d}.trj".format(self.cur_cycle)
-            with open(out_fn, "w") as handle:
-                handle.write(as_xyz_str)
+            self.write_to_out_dir(out_fn, as_xyz_str)
         else:
             # Append to .trj file
             out_fn = "opt.trj"
-            with open(out_fn, "a") as handle:
-                handle.write(as_xyz_str)
-                handle.write("\n")
+            self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode=a)
 
     def write_opt_data_to_file(self):
         energy_df = pd.DataFrame(self.energies)
