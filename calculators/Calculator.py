@@ -2,6 +2,7 @@
 
 import logging
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
@@ -52,6 +53,10 @@ class Calculator:
             print(err)
             print()
             print(inp)
+            backup_dir = Path(os.getcwd()) / "crashed"
+            if backup_dir.exists():
+                shutil.rmtree(backup_dir)
+            shutil.copytree(path, backup_dir)
             sys.exit()
         finally:
             self.clean(path)

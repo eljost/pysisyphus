@@ -8,6 +8,7 @@
         - Images sollen nicht zusammen rutschen
         - Tangente zeigt in Richtung der Federkraft
     - Tangenten nur einmal berechnen
+    - Check für gleiche Atomreihenfolge bei Interpolation
 - Geometry
     - atoms, coords trennung irgendwie verbessern
     - die ganzen mass_mat matrizen evt. nicht in Geometry speichern, weil
