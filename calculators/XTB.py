@@ -32,7 +32,6 @@ class XTB(Calculator):
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
     def get_forces(self, atoms, coords):
-        print("get forces")
         inp = self.prepare_coords(atoms, coords)
         results = self.run(inp, calc="grad", add_args=("-gfn", "-grad", ))
         return results
@@ -83,10 +82,8 @@ class XTB(Calculator):
         )
         parsed = parser.parseString(text)
         gradient = np.array(parsed["grad"].asList()).flatten()
-        print("gradient")
-        print(gradient)
 
-        results["energy"] = scf_energy
+        results["energy"] = parsed["scf_energy"]
         results["forces"] = -gradient
 
         return results
