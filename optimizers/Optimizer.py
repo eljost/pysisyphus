@@ -153,7 +153,7 @@ class Optimizer:
 
     def write_opt_data_to_file(self):
         energy_df = pd.DataFrame(self.energies)
-        energy_df.to_csv("energies.csv", index=False)
+        energy_df.to_csv(self.out_dir / "energies.csv", index=False)
 
     def run(self):
         self.print_header()

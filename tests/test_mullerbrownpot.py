@@ -191,14 +191,14 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
-    opt = test_climbing_neb()
+    #opt = test_climbing_neb()
     #opt = test_steepest_descent_neb_more_images()
 
     # FIRE
     #opt = test_fire_neb()
 
     # SimpleZTS
-    #opt = test_equal_szts()
+    opt = test_equal_szts()
     #opt = test_equal_szts_straight()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()

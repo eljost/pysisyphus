@@ -20,7 +20,7 @@ def plot_energies():
             colormap=cmap,
     )
     ax.set_xlabel("Image")
-    ax.set_ylabel("dE / au")
+    ax.set_ylabel("dE / kJ mol⁻¹")
     plt.show()
 
 
