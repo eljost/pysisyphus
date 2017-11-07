@@ -72,8 +72,14 @@ class ChainOfStates:
         return np.array(self._perp_forces).flatten()
 
     def interpolate_between(self, initial_ind, final_ind, image_num):
-        initial_coords = self.images[initial_ind].coords
-        final_coords = self.images[final_ind].coords
+        # Check for atom ordering
+        initial_image = self.images[initial_ind]
+        final_image = self.images[final_ind]
+        if not initial_image.atoms == final_image.atoms:
+            raise Exception("Wrong atom ordering between images. "
+                            "Check your input files!")
+        initial_coords = initial_image.coords
+        final_coords = final_image.coords
         step = (final_coords-initial_coords) / (image_num+1)
         # initial + i*step
         i_array = np.arange(1, image_num+1)

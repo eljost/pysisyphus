@@ -9,7 +9,6 @@ import pandas as pd
 import scipy as sp
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
-from qchelper.geometry import make_trj_str
 
 
 gauss_loose = {
@@ -18,6 +17,7 @@ gauss_loose = {
     "max_step_thresh": 1.0e-2,
     "rms_step_thresh": 6.7e-3
 }
+
 
 class Optimizer:
 
@@ -80,7 +80,6 @@ class Optimizer:
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
 
-        keys = self.convergence.keys()
         this_cycle = {
             "max_force_thresh": max_force,
             "rms_force_thresh": rms_force,
@@ -117,6 +116,7 @@ class Optimizer:
     def procrustes(self):
         # https://github.com/pycogent/pycogent/blob/master/cogent/cluster/procrustes.py
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.procrustes.html
+        # http://nghiaho.com/?page_id=671#comment-559906
         # Center of geometry
         first_coords = self.geometry.images[0].coords
         first_centroid = np.mean(first_coords)
@@ -149,7 +149,7 @@ class Optimizer:
         else:
             # Append to .trj file
             out_fn = "opt.trj"
-            self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode=a)
+            self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
     def write_opt_data_to_file(self):
         energy_df = pd.DataFrame(self.energies)
@@ -197,4 +197,3 @@ class Optimizer:
 
             if self.is_zts:
                 self.geometry.reparametrize()
-
