@@ -19,19 +19,24 @@ class FIRE(BacktrackingOptimizer):
         self.a_start = 0.1
         self.a = self.a_start
 
+        # The current velocity
         self.v = np.zeros_like(geometry.coords)
+        # Store the velocities for every step
         self.velocities = [self.v, ]
         self.time_deltas = [self.dt, ]
 
         super(FIRE, self).__init__(geometry, **kwargs)
 
     def optimize(self):
+        if self.is_cos and self.align:
+            self.v,  = self.fit_rigid((self.v, ))
+
         self.forces.append(self.geometry.forces)
         forces = self.forces[-1]
         mixed_v = (
             # As 'a' gets bigger we keep less old v.
             (1.0 - self.a) * self.v +
-            # As 'a' gets bigger we emply more new v dervied
+            # As 'a' gets bigger we use more new v
             # from the current forces.
              self.a * np.sqrt(
                         np.dot(self.v, self.v) / np.dot(forces, forces)

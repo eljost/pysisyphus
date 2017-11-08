@@ -189,7 +189,7 @@ if __name__ == "__main__":
     # FIRE
     #opt = test_fire_neb()
 
-    # BFGS completly fails here!
+    # BFGS fails completely here!
     #opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
 

@@ -47,6 +47,7 @@ def parse_args(args):
     parser.add_argument("--addimgs", type=int,
                         default=8, help="Interpolate additional images.")
     parser.add_argument("--idpp", action="store_true")
+    parser.add_argument("--align", action="store_true")
     parser.add_argument("--outdir")
     parser.add_argument("--irc", choices="".split())
 
@@ -73,7 +74,7 @@ def run_cos(args):
     for image in cos.images:
         image.set_calculator(CALC_DICT[args.calc]())
     #kwargs["out_dir"] = "neb_fire"
-    opt = OPT_DICT[args.opt](cos)  #, **kwargs)
+    opt = OPT_DICT[args.opt](cos, align=args.align)  #, **kwargs)
     opt.run()
 
 

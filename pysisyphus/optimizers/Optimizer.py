@@ -116,8 +116,7 @@ class Optimizer:
         return results
     """
 
-    def fit_rigid(self, vector):
-        rot_mats = self.procrustes()
+    def fit_rigid_vector(self, vector, rot_mats):
         image_num = len(self.geometry.images)
         coord_len = len(self.geometry.images[0].coords)
         # Reshape into a per image vectors
@@ -135,6 +134,12 @@ class Optimizer:
         results.append(np.array(rot).flatten())
         """
         return rotated_vector
+
+    def fit_rigid(self, vectors=(), hessian=None):
+        rot_mats = self.procrustes()
+        rotated_vectors = [self.fit_rigid_vector(vec, rot_mats)
+                           for vec in vectors]
+        return rotated_vectors
 
     def check_convergence(self):
         # Only use forces perpendicular to the mep

@@ -12,7 +12,7 @@ from pysisyphus.optimizers.FIRE import FIRE
 # [1] http://aip.scitation.org/doi/full/10.1063/1.4878664
 # See https://gitlab.com/ase/ase/blob/master/ase/neb.py
 
-def idpp_interpolate(geometries, images_between):
+def idpp_interpolate(geometries, images_between, keep_cycles=False):
     # Do an initial linear interpolation to generate all geometries/images
     # that will be refined later by IDPP interpolation.
     cos = ChainOfStates(geometries)
@@ -48,7 +48,8 @@ def idpp_interpolate(geometries, images_between):
             "convergence": {
                 "max_force_thresh": 0.1
             },
-            "keep_cycles": False,
+            "keep_cycles": keep_cycles,
+            "align": False,
         }
         opt = FIRE(NEB(images_slice), **kwargs)
         opt.run()

@@ -27,7 +27,7 @@ def plot_energies(df):
     x2 = np.linspace(0, images, 100)
     y2 = splev(x2, spl)
     # Only consider maxima
-    peak_inds, _ = peakdetect(y2, lookahead=5)
+    peak_inds, _ = peakdetect(y2, lookahead=2)
     peak_inds = np.array(peak_inds)[:,0].astype(int)
     peak_xs = x2[peak_inds]
     peak_ys = y2[peak_inds]
@@ -37,12 +37,15 @@ def plot_energies(df):
             ax=ax,
             title="Energies",
             colormap=cmap,
+            legend=False,
     )
     ax.plot(x2, y2, peak_xs, peak_ys, "x")
     kwargs = {
         "ls": ":",
         "color": "darkgrey",
     }
+    # Always draw a line at the minimum y=0
+    ax.axhline(y=0, **kwargs)
     for px, py in zip(peak_xs, peak_ys):
         ax.axhline(y=py, **kwargs)
         line = matplotlib.lines.Line2D([px, px], [0, py], **kwargs)
