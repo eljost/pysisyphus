@@ -21,10 +21,12 @@ gauss_loose = {
 
 class Optimizer:
 
-    def __init__(self, geometry, convergence=gauss_loose, **kwargs):
+    def __init__(self, geometry, convergence=gauss_loose,
+                 align=False, **kwargs):
         self.geometry = geometry
 
         self.convergence = convergence
+        self.align = align
         for key, value in convergence.items():
             setattr(self, key, value)
 
@@ -61,6 +63,78 @@ class Optimizer:
         self.cycle_times = list()
 
         self.tangents = list()
+
+    def procrustes(self):
+        # http://nghiaho.com/?page_id=671#comment-559906
+        image = self.geometry.images[0]
+        coords3d = image.coords.reshape(-1, 3)
+        centroid = coords3d.mean(axis=0)
+        last_centered = coords3d - centroid
+        image.coords = last_centered.flatten()
+
+        rot_mats = [np.eye(3), ]
+        for image in self.geometry.images[1:]:
+            coords3d = image.coords.reshape(-1, 3)
+            centroid = coords3d.mean(axis=0)
+            # Center next image
+            centered = coords3d - centroid
+            mat = centered.T.dot(last_centered)
+            U, W, Vt = np.linalg.svd(mat)
+            rot_mat = U.dot(Vt)
+            # Avoid reflections
+            if np.linalg.det(rot_mat) < 0:
+                U[:, -1] *= -1
+                rot_mat = U.dot(Vt)
+            # Rotate the coords
+            rotated3d = centered.dot(rot_mat)
+            image.coords = rotated3d.flatten()
+            last_centered = rotated3d
+            rot_mats.append(rot_mat)
+        return rot_mats
+
+    """
+    def fit_rigid(self, vectors=(), hessian=None):
+        rot_mats = self.procrustes()
+        image_num = len(self.geometry.images)
+        coord_len = len(self.geometry.images[0].coords)
+        # Iterate over all vectors to be rotated
+        results = list()
+        for vec in vectors:
+            # Reshape into a per image vectors
+            rvec = vec.reshape(image_num, -1)
+            rot = list()
+            for rv, rm in zip(rvec, rot_mats):
+                a = rv.dot(sp.linalg.block_diag(*([rm]*42)))
+                #print(a.shape)
+                rot.append(a)
+            results.append(np.array(rot).flatten())
+        return results
+
+        if hessian:
+            hessian = mat.dot(hessian).dot(mat.transpose())
+            results = (velocities, hessian)
+        return results
+    """
+
+    def fit_rigid(self, vector):
+        rot_mats = self.procrustes()
+        image_num = len(self.geometry.images)
+        coord_len = len(self.geometry.images[0].coords)
+        # Reshape into a per image vectors
+        per_image = vector.reshape(image_num, -1, 3)
+        rotated_vector = np.array(
+            [vec.dot(mat) for vec, mat in zip(per_image, rot_mats)]
+        ).flatten()
+        """
+        for rvec, mat in zip(vector.reshape(image_num, -1, 3), rot_mats):
+            print(rvec.dot(mat).shape)
+        for rv, rm in zip(rvec, rot_mats):
+            a = rv.dot(sp.linalg.block_diag(*([rm]*42)))
+            #print(a.shape)
+            rot.append(a)
+        results.append(np.array(rot).flatten())
+        """
+        return rotated_vector
 
     def check_convergence(self):
         # Only use forces perpendicular to the mep
@@ -112,25 +186,6 @@ class Optimizer:
         if steps_max > self.max_step:
             steps *= self.max_step / steps_max
         return steps
-
-    def procrustes(self):
-        # https://github.com/pycogent/pycogent/blob/master/cogent/cluster/procrustes.py
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.procrustes.html
-        # http://nghiaho.com/?page_id=671#comment-559906
-        # Center of geometry
-        first_coords = self.geometry.images[0].coords
-        first_centroid = np.mean(first_coords)
-        first_coords_centered = first_coords - first_centroid
-        print(first_coords_centered)
-
-        for i in range(0, len(self.geometry.images)-1):
-            ith_coords = self.geometry.images[i].coords
-            ith_centroid = np.mean(ith_coords)
-            ith_coords_centered = ith_coords - ith_centroid
-            matrix = np.dot(ith_coords_centered.transpose(), first_coords_centered)
-
-            U, W, Vt = sp.linalg.svd(matrix)
-            print(i)
 
     def optimize(self):
         raise Exception("Not implemented!")
