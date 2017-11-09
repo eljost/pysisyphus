@@ -28,26 +28,13 @@ class XTB(Calculator):
         self.base_cmd = Config["xtb"]["cmd"]
 
     def prepare_coords(self, atoms, coords):
-        coords = coords
+        coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
         results = self.run(inp, calc="grad", add_args=("-gfn", "-grad", ))
         return results
-
-    """
-    def get_hessian(self, atoms, coords):
-        coords = self.prepare_coords(atoms, coords)
-        inp = self.orca_input.format("freq", coords)
-        results = self.run(inp, calc="hessian")
-        return results
-
-        results["energy"] = energy
-        results["forces"] = force
-
-        return results
-    """
 
     def parse_gradient(self, path):
         results = {}

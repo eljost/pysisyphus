@@ -10,7 +10,6 @@ from pysisyphus.irc import *
 from pysisyphus.optimizers import *
 from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
 
-from qchelper.geometry import parse_xyz_file
 
 COS_DICT = {
     "neb": NEB.NEB,
@@ -43,10 +42,10 @@ def parse_args(args):
     parser.add_argument("--cos", choices=COS_DICT.keys(),
                         help="Chain of states method.")
     parser.add_argument("--opt", choices=OPT_DICT.keys(),
-                        default="fire", help="Optimization algorithm.")
+                        help="Optimization algorithm.")
     parser.add_argument("--calc", choices=CALC_DICT.keys(),
-                        default="xtb", help="Calculator.")
-    parser.add_argument("--addimgs", type=int,
+                        help="Calculator.")
+    parser.add_argument("--interpol", type=int,
                         help="Interpolate additional images.")
     parser.add_argument("--idpp", action="store_true",
                         help="Use Image Dependent Pair Potential instead "
@@ -60,24 +59,28 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def run_cos(args):
+def get_geoms(args):
+    # Read .xyz or .trj files
     if len(args.xyz) == 1 and args.xyz[0].endswith(".trj"):
         geoms = geoms_from_trj(args.xyz[0])
     else:
-        atoms_coords = [parse_xyz_file(fn) for fn in args.xyz]
-        geoms = [Geometry(atoms, coords.flatten())
-                 for atoms, coords in atoms_coords]
-    """Handle this differently.
-    Doing IDPP interpolation in a standalone calculator vs.
-    doing linear interpolation in the COS object prevents
-    a nice coherent treatment here. Maybe it's not that easy
-    right now, because moving IDPP to ChainOfStates may lead
-    to circular imports..."""
+        geoms = [geom_from_xyz_file(fn) for fn in args.xyz]
+
+    # Do IDPP interpolation if requested,
     if args.idpp:
-        geoms = IDPP.idpp_interpolate(geoms, images_between=args.addimgs)
+        geoms = IDPP.idpp_interpolate(geoms, images_between=args.interpol)
+    # or just linear interpolation.
+    elif args.interpol:
+        cos = ChainOfStates.ChainOfStates(geoms)
+        cos.interpolate(args.interpol)
+        geoms = cos.images
+
+    return geoms
+
+
+def run_cos(args):
+    geoms = get_geoms(args)
     cos = COS_DICT[args.cos](geoms)
-    if not args.idpp and args.addimgs:
-        cos.interpolate(args.addimgs)
     for image in cos.images:
         image.set_calculator(CALC_DICT[args.calc]())
     opt = OPT_DICT[args.opt](cos, align=args.align)
@@ -85,16 +88,27 @@ def run_cos(args):
 
 
 def run_irc(args):
-    geom = geom_from_xyz_file(args)
+    assert(len(arg.xyz) == 1)
+    geom = get_geoms(args)[0]
     irc = IRC_DICT[args.irc](geom)
     irc.run()
     #irc.write_trj(THIS_DIR, prefix)
 
 
 def run_opt(args):
-    geom = geom_from_xyz_file(args)
+    assert(len(arg.xyz) == 1)
+    geom = get_geoms(args)[0]
     opt = OPT_DICT[args.opt](geom)
     opt.run()
+
+
+def run_interpolation(args):
+    geoms = get_geoms(args)
+    trj_fn = "interpolated.trj"
+    trj_str = "\n".join([geom.as_xyz() for geom in geoms])
+    with open(trj_fn, "w") as handle:
+        handle.write(trj_str)
+    print(f"Wrote interpolated coordinates to {trj_fn}.")
 
 
 def run():
@@ -109,8 +123,11 @@ def run():
     # Do conventional optimization
     elif args.opt:
         run_opt(args)
+    # Just interpolate
+    elif args.interpol:
+        run_interpolation(args)
     else:
-        print("No run type specified!")
+        print("Please specify a run type!")
 
 if __name__ == "__main__":
     run()

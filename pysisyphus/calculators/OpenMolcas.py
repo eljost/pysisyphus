@@ -59,7 +59,7 @@ class OpenMolcas(Calculator):
         self.base_cmd = Config["openmolcas"]["cmd"]
 
     def prepare_coords(self, atoms, coords):
-        coords = coords
+        coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
     def get_forces(self, atoms, coords):

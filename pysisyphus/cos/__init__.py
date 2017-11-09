@@ -1,1 +1,5 @@
-__all__ = ["NEB", "SimpleZTS"]
+__all__ = [
+    "NEB",
+    "SimpleZTS",
+    "ChainOfStates",
+]
