@@ -14,16 +14,17 @@ from qchelper.geometry import make_xyz_str
 
 class OpenMolcas(Calculator):
 
-    def __init__(self, inporb):
-        super(OpenMolcas, self).__init__()
+    def __init__(self, **kwargs):
+        super(OpenMolcas, self).__init__(**kwargs)
 
+        inporb = "/scratch/molcas_jobs/excrp/backup/excrp.es_opt.RasOrb"
         self.inporb = inporb
 
         self.inp_fn = "openmolcas.in"
         self.out_fn = "openmolcas.out"
 
         self.openmolcas_input = """
-        >> copy /scratch/test/ommin/excrp.es_opt.RasOrb  $Project.RasOrb
+        >> copy {inporb}  $Project.RasOrb
         &gateway
          coord
           {xyz_str}
@@ -64,10 +65,18 @@ class OpenMolcas(Calculator):
 
     def get_forces(self, atoms, coords):
         xyz_str = self.prepare_coords(atoms, coords)
-        inp = self.openmolcas_input.format(xyz_str=xyz_str)
+        inp = self.openmolcas_input.format(
+                                        inporb=self.inporb,
+                                        xyz_str=xyz_str,
+        )
+        self.logger.debug(f"Using inporb: {self.inporb}")
         add_args = ("-clean", "-oe", self.out_fn)
         results = self.run(inp, calc="grad", add_args=add_args)
         return results
+
+    def keep(self, path):
+        kept_fns = super().keep(path, ("RasOrb", ))
+        self.inporb = kept_fns["RasOrb"]
 
     def parse_gradient(self, path):
         results = {}
@@ -105,7 +114,11 @@ class OpenMolcas(Calculator):
 
 if __name__ == "__main__":
     from pysisyphus.helpers import geom_from_library
-    om = OpenMolcas()
+    fileorb = "/scratch/test/ommin/excrp.es_opt.RasOrb"
+    om = OpenMolcas(fileorb)
     geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
     geom.set_calculator(om)
-    print(geom.forces)
+    #print(geom.forces)
+    from pathlib import Path
+    keep_path = Path("/scratch/programme/pysisyphus/tests/test_openmolcas/keep/crashed")
+    om.keep(keep_path)

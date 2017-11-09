@@ -81,8 +81,9 @@ def get_geoms(args):
 def run_cos(args):
     geoms = get_geoms(args)
     cos = COS_DICT[args.cos](geoms)
-    for image in cos.images:
-        image.set_calculator(CALC_DICT[args.calc]())
+    for i, image in enumerate(cos.images):
+        name = f"image_{i:03d}"
+        image.set_calculator(CALC_DICT[args.calc](name=name))
     opt = OPT_DICT[args.opt](cos, align=args.align)
     opt.run()
 
@@ -90,14 +91,16 @@ def run_cos(args):
 def run_irc(args):
     assert(len(arg.xyz) == 1)
     geom = get_geoms(args)[0]
+    geom.set_calculator(CALC_DICT[args.calc]())
     irc = IRC_DICT[args.irc](geom)
     irc.run()
     #irc.write_trj(THIS_DIR, prefix)
 
 
 def run_opt(args):
-    assert(len(arg.xyz) == 1)
+    assert(len(args.xyz) == 1)
     geom = get_geoms(args)[0]
+    geom.set_calculator(CALC_DICT[args.calc]())
     opt = OPT_DICT[args.opt](geom)
     opt.run()
 

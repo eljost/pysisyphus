@@ -4,6 +4,7 @@ import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from qchelper.geometry import make_trj_str
+from pysisyphus.constants import BOHR2ANG
 
 # [1] http://dx.doi.org/10.1063/1.1323224
 
@@ -169,6 +170,7 @@ class ChainOfStates:
 
     def as_xyz(self):
         atoms = self.images[0].atoms
-        coords_list = [image.coords.reshape((-1,3)) for image in self.images]
+        coords_list = [image.coords.reshape((-1,3)) * BOHR2ANG
+                       for image in self.images]
         trj_str = make_trj_str(atoms, coords_list)
         return trj_str
