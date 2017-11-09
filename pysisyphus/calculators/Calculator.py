@@ -8,8 +8,6 @@ import subprocess
 import sys
 import tempfile
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
 
 class Calculator:
 
@@ -21,6 +19,8 @@ class Calculator:
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
+
+        self.logger = logging.getLogger("calculator")
 
     def get_energy(self, coords):
         raise Exception("Not implemented!")
@@ -39,10 +39,10 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None):
         path = self.prepare(inp)
+        self.logger.debug(f"Calculation in {path}.")
         args = [self.base_cmd, self.inp_fn]
         if add_args:
             args.extend(add_args)
-        logging.debug("Running calculation in {}".format(path))
         with open(os.path.join(path, self.out_fn), "w") as handle:
             result = subprocess.Popen(args, cwd=path, stdout=handle)
             result.wait()
@@ -65,5 +65,6 @@ class Calculator:
         return results
 
     def clean(self, path):
+        self.logger.debug(f"Cleaning {path}.")
         shutil.rmtree(path)
         #logging.info("Removed {}".format(path))
