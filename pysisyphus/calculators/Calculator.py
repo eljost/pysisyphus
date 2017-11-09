@@ -46,7 +46,6 @@ class Calculator:
         with open(os.path.join(path, self.out_fn), "w") as handle:
             result = subprocess.Popen(args, cwd=path, stdout=handle)
             result.wait()
-        #logging.info("Calculation finished".format(path))
         try:
             results = self.parser_funcs[calc](path)
         except Exception as err:
@@ -67,4 +66,3 @@ class Calculator:
     def clean(self, path):
         self.logger.debug(f"Cleaning {path}.")
         shutil.rmtree(path)
-        #logging.info("Removed {}".format(path))

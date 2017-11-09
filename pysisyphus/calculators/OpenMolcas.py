@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-import glob
 import os
 import re
 
 import numpy as np
-import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
@@ -16,8 +14,10 @@ from qchelper.geometry import make_xyz_str
 
 class OpenMolcas(Calculator):
 
-    def __init__(self):
+    def __init__(self, inporb):
         super(OpenMolcas, self).__init__()
+
+        self.inporb = inporb
 
         self.inp_fn = "openmolcas.in"
         self.out_fn = "openmolcas.out"
@@ -104,11 +104,8 @@ class OpenMolcas(Calculator):
 
 
 if __name__ == "__main__":
-    path = "/scratch/test/openmolcas_calculator"
-    om = OpenMolcas()
-    #om.parse_gradient(path)
     from pysisyphus.helpers import geom_from_library
+    om = OpenMolcas()
     geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
     geom.set_calculator(om)
-    forces = geom.forces
-    print(forces)
+    print(geom.forces)
