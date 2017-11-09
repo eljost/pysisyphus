@@ -46,8 +46,10 @@ def parse_args(args):
     parser.add_argument("--calc", choices="orca xtb".split(),
                         default="xtb", help="Calculator.")
     parser.add_argument("--addimgs", type=int,
-                        default=8, help="Interpolate additional images.")
-    parser.add_argument("--idpp", action="store_true")
+                        help="Interpolate additional images.")
+    parser.add_argument("--idpp", action="store_true",
+                        help="Use Image Dependent Pair Potential instead "
+                        "of simple linear interpolation.")
     parser.add_argument("--align", action="store_true")
     parser.add_argument("--outdir")
     parser.add_argument("--irc", choices="".split())
