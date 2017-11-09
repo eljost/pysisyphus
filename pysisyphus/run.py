@@ -8,6 +8,7 @@ from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.irc import *
 from pysisyphus.optimizers import *
+from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
 
 from qchelper.geometry import parse_xyz_file
 
@@ -57,9 +58,12 @@ def parse_args(args):
 
 
 def run_cos(args):
-    atoms_coords = [parse_xyz_file(fn) for fn in args.xyz]
-    geoms = [Geometry(atoms, coords.flatten())
-             for atoms, coords in atoms_coords]
+    if len(args.xyz) == 1 and args.xyz[0].endswith(".trj"):
+        geoms = geoms_from_trj(args.xyz[0])
+    else:
+        atoms_coords = [parse_xyz_file(fn) for fn in args.xyz]
+        geoms = [Geometry(atoms, coords.flatten())
+                 for atoms, coords in atoms_coords]
     """Handle this differently.
     Doing IDPP interpolation in a standalone calculator vs.
     doing linear interpolation in the COS object prevents
@@ -73,28 +77,19 @@ def run_cos(args):
         cos.interpolate(args.addimgs)
     for image in cos.images:
         image.set_calculator(CALC_DICT[args.calc]())
-    #kwargs["out_dir"] = "neb_fire"
-    opt = OPT_DICT[args.opt](cos, align=args.align)  #, **kwargs)
+    opt = OPT_DICT[args.opt](cos, align=args.align)
     opt.run()
 
 
-def prepare_single_geom(args):
-    assert(len(args.xyz) == 1)
-    atoms, coords = parse_xyz_file(args.xyz[0])
-    geom = Geometry(atoms, coords.flatten())
-    geom.set_calculator(CALC_DICT[args.calc]())
-    return geom
-
-
 def run_irc(args):
-    geom = prepare_single_geom(args)
+    geom = geom_from_xyz_file(args)
     irc = IRC_DICT[args.irc](geom)
     irc.run()
     #irc.write_trj(THIS_DIR, prefix)
 
 
 def run_opt(args):
-    geom = prepare_single_geom(args)
+    geom = geom_from_xyz_file(args)
     opt = OPT_DICT[args.opt](geom)
     opt.run()
 
@@ -109,8 +104,10 @@ def run():
     elif args.irc:
         run_irc(args)
     # Do conventional optimization
-    else:
+    elif args.opt:
         run_opt(args)
+    else:
+        print("No run type specified!")
 
 if __name__ == "__main__":
     run()
