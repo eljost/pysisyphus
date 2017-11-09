@@ -37,7 +37,7 @@ def plot_energies(df):
             ax=ax,
             title="Energies",
             colormap=cmap,
-            legend=False,
+            #legend=False,
     )
     ax.plot(x2, y2, peak_xs, peak_ys, "x")
     kwargs = {
@@ -59,8 +59,10 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--energies", action="store_true",
                         help="Plot energies.")
-    parser.add_argument("--until", type=int, default=-1,
+    """
+    parser.add_argument("--until", type=int,
                         help="Only show until cycle [until].")
+    """
     return parser.parse_args(args)
 
 
@@ -68,7 +70,8 @@ def run():
     args = parse_args(sys.argv[1:])
     if args.energies:
         df = pd.read_csv("energies.csv")
-        plot_energies(df.head(args.until))
+        #plot_energies(df.head(args.until))
+        plot_energies(df)
 
 
 if __name__ == "__main__":

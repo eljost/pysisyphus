@@ -1,1 +1,6 @@
-__all__ = ["ORCA", "XTB", "IDPP"]
+__all__ = [
+    "ORCA",
+    "XTB",
+    "IDPP",
+    "OpenMolcas",
+]

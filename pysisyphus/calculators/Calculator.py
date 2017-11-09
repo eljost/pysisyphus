@@ -52,6 +52,7 @@ class Calculator:
         except Exception as err:
             print(err)
             print()
+            print("Crashed input:")
             print(inp)
             backup_dir = Path(os.getcwd()) / "crashed"
             if backup_dir.exists():

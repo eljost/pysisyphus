@@ -20,6 +20,7 @@ COS_DICT = {
 CALC_DICT = {
     "orca": ORCA.ORCA,
     "xtb": XTB.XTB,
+    "openmolcas": OpenMolcas.OpenMolcas
 }
 
 OPT_DICT = {
@@ -39,11 +40,11 @@ IRC_DICT = {
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--cos", choices="neb szts".split(),
+    parser.add_argument("--cos", choices=COS_DICT.keys(),
                         help="Chain of states method.")
-    parser.add_argument("--opt", choices="bfgs fire sd".split(),
+    parser.add_argument("--opt", choices=OPT_DICT.keys(),
                         default="fire", help="Optimization algorithm.")
-    parser.add_argument("--calc", choices="orca xtb".split(),
+    parser.add_argument("--calc", choices=CALC_DICT.keys(),
                         default="xtb", help="Calculator.")
     parser.add_argument("--addimgs", type=int,
                         help="Interpolate additional images.")
@@ -52,7 +53,7 @@ def parse_args(args):
                         "of simple linear interpolation.")
     parser.add_argument("--align", action="store_true")
     parser.add_argument("--outdir")
-    parser.add_argument("--irc", choices="".split())
+    parser.add_argument("--irc", choices=IRC_DICT.keys())
 
     parser.add_argument("xyz", nargs="+")
 
