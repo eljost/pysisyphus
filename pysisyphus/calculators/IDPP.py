@@ -7,6 +7,7 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.optimizers.FIRE import FIRE
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 
 
 # [1] http://aip.scitation.org/doi/full/10.1063/1.4878664
@@ -18,6 +19,12 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
     cos = ChainOfStates(geometries)
     cos.interpolate(image_num=images_between)
     images = cos.images
+
+    # Interestingly IDPP calculations work much better when done
+    # in Angstroem instead of in Bohr, because with Bohr the distances
+    # are 2 times as long as in Anstroem.
+    for image in cos.images:
+        image.coords *= BOHR2ANG
 
     coords = [geometry.coords.reshape((-1, 3)) for geometry in geometries]
     # Calculate the condensed distances matrices
@@ -59,8 +66,13 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
     idpp_interpolated_images.append(images[-1])
     assert(len(idpp_interpolated_images) == len(images))
 
+    """
     # Delete IDPP calculator, energies and forces
     [image.clear() for image in idpp_interpolated_images]
+    """
+    for image in idpp_interpolated_images:
+        image.clear()
+        image.coords *= ANG2BOHR
 
     return idpp_interpolated_images
 

@@ -43,7 +43,7 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None):
         path = self.prepare(inp)
-        self.logger.debug(f"Calculation in {path}.")
+        self.logger.debug(f"Calculator {self.name}, {path}.")
         args = [self.base_cmd, self.inp_fn]
         if add_args:
             args.extend(add_args)
