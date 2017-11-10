@@ -21,8 +21,7 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
     images = cos.images
 
     # Interestingly IDPP calculations work much better when done
-    # in Angstroem instead of in Bohr, because with Bohr the distances
-    # are 2 times as long as in Anstroem.
+    # in Angstroem instead of in Bohr.
     for image in cos.images:
         image.coords *= BOHR2ANG
 
@@ -58,7 +57,7 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
             "keep_cycles": keep_cycles,
             "align": False,
         }
-        opt = FIRE(NEB(images_slice), **kwargs)
+        opt = FIRE(NEB(images_slice, parallel=False), **kwargs)
         opt.run()
         idpp_interpolated_images.extend(images_slice)
 
@@ -66,11 +65,8 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
     idpp_interpolated_images.append(images[-1])
     assert(len(idpp_interpolated_images) == len(images))
 
-    """
-    # Delete IDPP calculator, energies and forces
-    [image.clear() for image in idpp_interpolated_images]
-    """
     for image in idpp_interpolated_images:
+        # Delete IDPP calculator, energies and forces
         image.clear()
         image.coords *= ANG2BOHR
 
@@ -82,7 +78,7 @@ class IDPP(Calculator):
     def __init__(self, target): 
         self.target = squareform(target)
 
-        super(Calculator, self).__init__()
+        super(IDPP, self).__init__(name="idpp")
 
     def get_forces(self, atoms, coords):
         coords_reshaped = coords.reshape((-1, 3))

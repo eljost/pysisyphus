@@ -15,7 +15,7 @@ class Calculator:
         self.name = name
 
         self.counter = 0
-        self.logger = logging.getLogger("calculator")
+        #self.logger = logging.getLogger("calculator")
         self._energy = None
         self._forces = None
         self._hessian = None
@@ -23,10 +23,10 @@ class Calculator:
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
 
-    def get_energy(self, coords):
+    def get_energy(self, atoms, coords):
         raise Exception("Not implemented!")
 
-    def get_hessian(self):
+    def get_hessian(self, atoms, coords):
         raise Exception("Not implemented!")
 
     def make_fn(self, ext):
@@ -41,14 +41,16 @@ class Calculator:
 
         return path
 
-    def run(self, inp, calc, add_args=None):
+    def run(self, inp, calc, add_args=None, env=None):
         path = self.prepare(inp)
-        self.logger.debug(f"Calculator {self.name}, {path}.")
+        #self.logger.debug(f"Calculator {self.name}, {path}.")
         args = [self.base_cmd, self.inp_fn]
         if add_args:
             args.extend(add_args)
+        if not env:
+            env = os.environ.copy()
         with open(path / self.out_fn, "w") as handle:
-            result = subprocess.Popen(args, cwd=path, stdout=handle)
+            result = subprocess.Popen(args, cwd=path, stdout=handle, env=env)
             result.wait()
         try:
             results = self.parser_funcs[calc](path)
@@ -84,5 +86,5 @@ class Calculator:
         return kept_fns
 
     def clean(self, path):
-        self.logger.debug(f"Cleaning {path}.")
+        #self.logger.debug(f"Cleaning {path}.")
         shutil.rmtree(path)

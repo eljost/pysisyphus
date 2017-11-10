@@ -53,6 +53,7 @@ def parse_args(args):
     parser.add_argument("--align", action="store_true")
     parser.add_argument("--outdir")
     parser.add_argument("--irc", choices=IRC_DICT.keys())
+    parser.add_argument("--parallel", type=int, default=0)
 
     parser.add_argument("xyz", nargs="+")
 
@@ -80,11 +81,14 @@ def get_geoms(args):
 
 def run_cos(args):
     geoms = get_geoms(args)
-    cos = COS_DICT[args.cos](geoms)
+    cos = COS_DICT[args.cos](geoms, parallel=args.parallel)
     for i, image in enumerate(cos.images):
         name = f"image_{i:03d}"
         image.set_calculator(CALC_DICT[args.calc](name=name))
-    opt = OPT_DICT[args.opt](cos, align=args.align)
+    kwargs = {
+        #"max_cycles": 2,
+    }
+    opt = OPT_DICT[args.opt](cos, align=args.align, **kwargs)
     opt.run()
 
 

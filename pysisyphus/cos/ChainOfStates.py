@@ -10,15 +10,15 @@ from pysisyphus.constants import BOHR2ANG
 
 class ChainOfStates:
 
-    def __init__(self, images, fix_ends=False):
+    def __init__(self, images, parallel=0, fix_ends=False):
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = images
+        self.parallel = parallel
         self.fix_ends = fix_ends
 
         self._coords = None
         self._forces = None
         self._energy = None
-        self._perp_forces = None
         self.coords_length = self.images[0].coords.size
 
     @property
@@ -69,8 +69,8 @@ class ChainOfStates:
     @property
     def perpendicular_forces(self):
         indices = range(len(self.images))
-        self._perp_forces = [self.get_perpendicular_forces(i) for i in indices]
-        return np.array(self._perp_forces).flatten()
+        perp_forces = [self.get_perpendicular_forces(i) for i in indices]
+        return np.array(perp_forces).flatten()
 
     def interpolate_between(self, initial_ind, final_ind, image_num):
         # Check for atom ordering

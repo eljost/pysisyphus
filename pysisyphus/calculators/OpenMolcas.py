@@ -69,9 +69,11 @@ class OpenMolcas(Calculator):
                                         inporb=self.inporb,
                                         xyz_str=xyz_str,
         )
-        self.logger.debug(f"Using inporb: {self.inporb}")
+        #self.logger.debug(f"Using inporb: {self.inporb}")
         add_args = ("-clean", "-oe", self.out_fn)
-        results = self.run(inp, calc="grad", add_args=add_args)
+        env = os.environ.copy()
+        env["MOLCAS_PROJECT"] = f"{self.name}_{self.counter}"
+        results = self.run(inp, calc="grad", add_args=add_args, env=env)
         return results
 
     def keep(self, path):

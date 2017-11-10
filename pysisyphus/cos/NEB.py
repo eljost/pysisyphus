@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from multiprocessing import Pool
+
 import numpy as np
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
@@ -9,6 +11,7 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 # [2] http://onlinelibrary.wiley.com/doi/10.1002/jcc.20780/pdf
 #     10.1002/jcc.20780
 # https://github.com/cstein/neb/blob/master/neb/neb.py
+
 
 class NEB(ChainOfStates):
 
@@ -73,7 +76,7 @@ class NEB(ChainOfStates):
         ith_coords = self.images[i].coords
         next_coords = self.images[i+1].coords
         return (self.k[i] * (np.linalg.norm(next_coords-ith_coords)
-                           - np.linalg.norm(ith_coords-prev_coords)
+                             - np.linalg.norm(ith_coords-prev_coords)
                ) * self.get_tangent(i)
         )
 
@@ -86,18 +89,31 @@ class NEB(ChainOfStates):
 
         return max_energy_index, climbing_forces
 
+    def par_calc(self, i):
+        image = self.images[i]
+        image.calc_energy_and_forces()
+        return image
+
     @property
     def forces(self):
         indices = range(len(self.images))
 
-        # The calculation of the forces for every image is dependent on
-        # the energies of its neighbouring images via the calculation of
-        # the tangents.
         if self._forces is None:
-            [image.calc_energy_and_forces() for image in self.images]
+            # Parallel calculation
+            if self.parallel != 0:
+                with Pool(processes=self.parallel) as pool:
+                    image_number = len(self.images)
+                    par_images = pool.map(self.par_calc, range(image_number))
+                    """
+                    for pi in par_images:
+                        print(pi.calculator.name)
+                    """
+                    self.images = par_images
+            # Serial calculation
+            else:
+                [image.calc_energy_and_forces() for image in self.images]
 
         climbing_index = -1
-        #print("index draussen: ", climbing_index)
         if self.climb and self.climb_after <= 0:
             self.variable_springs()
             climbing_index, climbing_forces = self.get_climbing_forces()
