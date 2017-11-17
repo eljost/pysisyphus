@@ -15,18 +15,18 @@ class BFGS(BacktrackingOptimizer):
     def reset_hessian(self):
         self.inv_hessian = np.eye(self.geometry.coords.size)
 
+    def prepare_opt(self):
+        # Calculate initial forces before the first iteration
+        if self.is_cos and self.align:
+            self.procrustes()
+        self.coords.append(self.geometry.coords)
+        self.forces.append(self.geometry.forces)
+        self.energies.append(self.geometry.energy)
+
     def optimize(self):
-        # Calculate initial forces in the first iteration
-        if len(self.forces) is 0:
-            if self.is_cos and self.align:
-                self.procrustes()
-            last_coords = self.geometry.coords
-            last_forces = self.geometry.forces
-            last_energy = self.geometry.energy
-        else:
-            last_coords = self.coords[-1]
-            last_forces = self.forces[-1]
-            last_energy = self.energies[-1]
+        last_coords = self.coords[-1]
+        last_forces = self.forces[-1]
+        last_energy = self.energies[-1]
 
         steps = self.inv_hessian.dot(last_forces)
         steps = self.scale_by_max_step(steps)

@@ -156,6 +156,9 @@ class Optimizer:
             steps *= self.max_step / steps_max
         return steps
 
+    def prepare_opt(self):
+        pass
+
     def optimize(self):
         raise Exception("Not implemented!")
 
@@ -180,6 +183,7 @@ class Optimizer:
         energy_df.to_csv(self.out_dir / "energies.csv", index=False)
 
     def run(self):
+        self.prepare_opt()
         self.print_header()
         while True:
             start_time = time.time()
