@@ -18,6 +18,8 @@ class BFGS(BacktrackingOptimizer):
     def optimize(self):
         # Calculate initial forces in the first iteration
         if len(self.forces) is 0:
+            if self.is_cos and self.align:
+                self.procrustes()
             last_coords = self.geometry.coords
             last_forces = self.geometry.forces
             last_energy = self.geometry.energy
@@ -26,16 +28,17 @@ class BFGS(BacktrackingOptimizer):
             last_forces = self.forces[-1]
             last_energy = self.energies[-1]
 
-        steps = np.dot(self.inv_hessian, last_forces)
+        steps = self.inv_hessian.dot(last_forces)
         steps = self.scale_by_max_step(steps)
         steps *= self.alpha
 
         new_coords = last_coords + steps
         self.geometry.coords = new_coords
 
-        # !!!!!!!!!
-        # fit_rigid
-        # !!!!!!!!!
+        if self.is_cos and self.align:
+            (last_coords, last_forces), self.inv_hessian = self.fit_rigid((last_coords,
+                                                                           last_forces),
+                                                                           self.inv_hessian)
 
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy

@@ -71,15 +71,18 @@ class Optimizer:
         centroid = coords3d.mean(axis=0)
         last_centered = coords3d - centroid
         image.coords = last_centered.flatten()
+        atoms_per_image = len(self.geometry.images[0].atoms)
 
-        rot_mats = [np.eye(3), ]
+        # Don't rotate the first image, so just add identitiy matrices
+        # for every atom.
+        rot_mats = [np.eye(3)]*atoms_per_image
         for image in self.geometry.images[1:]:
             coords3d = image.coords.reshape(-1, 3)
             centroid = coords3d.mean(axis=0)
             # Center next image
             centered = coords3d - centroid
-            mat = centered.T.dot(last_centered)
-            U, W, Vt = np.linalg.svd(mat)
+            tmp_mat = centered.T.dot(last_centered)
+            U, W, Vt = np.linalg.svd(tmp_mat)
             rot_mat = U.dot(Vt)
             # Avoid reflections
             if np.linalg.det(rot_mat) < 0:
@@ -89,57 +92,19 @@ class Optimizer:
             rotated3d = centered.dot(rot_mat)
             image.coords = rotated3d.flatten()
             last_centered = rotated3d
-            rot_mats.append(rot_mat)
+            # Append one rotation matrix per atom
+            rot_mats.extend([rot_mat]*atoms_per_image)
         return rot_mats
 
-    """
     def fit_rigid(self, vectors=(), hessian=None):
         rot_mats = self.procrustes()
-        image_num = len(self.geometry.images)
-        coord_len = len(self.geometry.images[0].coords)
-        # Iterate over all vectors to be rotated
-        results = list()
-        for vec in vectors:
-            # Reshape into a per image vectors
-            rvec = vec.reshape(image_num, -1)
-            rot = list()
-            for rv, rm in zip(rvec, rot_mats):
-                a = rv.dot(sp.linalg.block_diag(*([rm]*42)))
-                #print(a.shape)
-                rot.append(a)
-            results.append(np.array(rot).flatten())
-        return results
+        G = sp.linalg.block_diag(*rot_mats)
+        rotated_vectors = [vec.dot(G) for vec in vectors]
+        if hessian is None:
+            return rotated_vectors
 
-        if hessian:
-            hessian = mat.dot(hessian).dot(mat.transpose())
-            results = (velocities, hessian)
-        return results
-    """
-
-    def fit_rigid_vector(self, vector, rot_mats):
-        image_num = len(self.geometry.images)
-        coord_len = len(self.geometry.images[0].coords)
-        # Reshape into a per image vectors
-        per_image = vector.reshape(image_num, -1, 3)
-        rotated_vector = np.array(
-            [vec.dot(mat) for vec, mat in zip(per_image, rot_mats)]
-        ).flatten()
-        """
-        for rvec, mat in zip(vector.reshape(image_num, -1, 3), rot_mats):
-            print(rvec.dot(mat).shape)
-        for rv, rm in zip(rvec, rot_mats):
-            a = rv.dot(sp.linalg.block_diag(*([rm]*42)))
-            #print(a.shape)
-            rot.append(a)
-        results.append(np.array(rot).flatten())
-        """
-        return rotated_vector
-
-    def fit_rigid(self, vectors=(), hessian=None):
-        rot_mats = self.procrustes()
-        rotated_vectors = [self.fit_rigid_vector(vec, rot_mats)
-                           for vec in vectors]
-        return rotated_vectors
+        rotated_hessian = G.dot(hessian).dot(G.T)
+        return rotated_vectors, rotated_hessian
 
     def check_convergence(self):
         # Only use forces perpendicular to the mep
@@ -168,8 +133,7 @@ class Optimizer:
 
         self.is_converged = all(
             [this_cycle[key] <= getattr(self, key)
-             for key in self.convergence.keys()
-            ]
+             for key in self.convergence.keys()]
         )
 
     def print_header(self):
