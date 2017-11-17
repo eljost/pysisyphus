@@ -16,9 +16,9 @@ class BFGS(BacktrackingOptimizer):
         self.inv_hessian = np.eye(self.geometry.coords.size)
 
     def prepare_opt(self):
-        # Calculate initial forces before the first iteration
         if self.is_cos and self.align:
             self.procrustes()
+        # Calculate initial forces before the first iteration
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)

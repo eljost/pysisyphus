@@ -15,8 +15,12 @@ from qchelper.geometry import make_xyz_str
 
 class XTB(Calculator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, charge, mult, **kwargs):
         super(XTB, self).__init__(**kwargs)
+
+        self.charge = charge
+        self.mult = mult
+        self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
@@ -33,7 +37,8 @@ class XTB(Calculator):
 
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
-        results = self.run(inp, calc="grad", add_args=("-gfn", "-grad", ))
+        add_args = f"-gfn -chrg {self.charge} -uhf {self.uhf} -grad".split()
+        results = self.run(inp, calc="grad", add_args=add_args)
         return results
 
     def parse_gradient(self, path):

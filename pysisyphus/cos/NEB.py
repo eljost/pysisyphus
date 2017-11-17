@@ -100,7 +100,7 @@ class NEB(ChainOfStates):
 
         if self._forces is None:
             # Parallel calculation
-            if self.parallel != 0:
+            if self.parallel > 0:
                 with Pool(processes=self.parallel) as pool:
                     image_number = len(self.images)
                     par_images = pool.map(self.par_calc, range(image_number))
