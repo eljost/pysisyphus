@@ -70,13 +70,20 @@ def get_geoms(xyz_fns, idpp=False, between=0):
         geoms = [geom_from_xyz_file(fn) for fn in xyz_fns]
 
     # Do IDPP interpolation if requested,
+    trj = ""
     if idpp:
         geoms = IDPP.idpp_interpolate(geoms, images_between=between)
+        trj = "\n".join([geom.as_xyz() for geom in geoms])
     # or just linear interpolation.
-    elif interpol:
+    elif between != 0:
         cos = ChainOfStates.ChainOfStates(geoms)
         cos.interpolate(between)
         geoms = cos.images
+        trj = cos.as_xyz()
+
+    if trj:
+        with open("interpolated.trj", "w") as handle:
+            handle.write(trj)
 
     return geoms
 
@@ -140,8 +147,8 @@ def get_defaults(conf_dict):
             "align": True,
         }
         dd["interpol"] = {
-            "idpp": True,
-            "between": 8,
+            "idpp": False,
+            "between": 0,
         }
 
     return dd
@@ -156,7 +163,7 @@ def handle_yaml(yaml_str):
     for key in key_set & set(("cos", "opt", "interpol")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "charge", "mult", "xyz")):
+    for key in key_set & set(("calc", "xyz")):
         run_dict[key] = yaml_dict[key]
     print(run_dict)
 

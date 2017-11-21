@@ -35,12 +35,14 @@ class OpenMolcas(Calculator):
           {basis}
          group
           nosym
+        ricd
  
         &seward
+         doanalytical
 
         &rasscf
          charge
-          1
+          {charge}
          spin
           {mult}
          fileorb
@@ -71,9 +73,10 @@ class OpenMolcas(Calculator):
         inp = self.openmolcas_input.format(
                                         inporb=self.inporb,
                                         xyz_str=xyz_str,
-                                        basis=basis,
+                                        basis=self.basis,
+                                        charge=self.charge,
                                         mult=self.mult,
-                                        ciroot=self.ciroot,
+                                        roots=self.roots,
                                         rlxroot=self.rlxroot,
         )
         return inp
