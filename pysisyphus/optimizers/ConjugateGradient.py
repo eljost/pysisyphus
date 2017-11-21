@@ -9,24 +9,42 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 class ConjugateGradient(BacktrackingOptimizer):
 
     def __init__(self, geometry, **kwargs):
-        self.alpha = -0.05
-        super(ConjugateGradient, self).__init__(geometry, **kwargs)
+        super(ConjugateGradient, self).__init__(geometry, alpha=0.1, **kwargs)
 
-        assert(self.alpha < 0), "Alpha should be negative!"
+
+    def prepare_opt(self):
+        if self.is_cos and self.align:
+            self.procrustes()
+        # Calculate initial forces before the first iteration
+        self.coords.append(self.geometry.coords)
+        self.forces.append(self.geometry.forces)
 
     def optimize(self):
+        last_forces = self.forces[-1]
         if self.cur_cycle > 0:
-            beta = (np.vdot(self.forces[-1], self.forces[-1]) /
-                    np.vdot(self.forces[-2], self.forces[-2])
+            beta = (last_forces.dot(last_forces) /
+                    self.forces[-2].dot(self.forces[-2])
             )
-            steps = self.forces[-1] + beta*self.steps[-1]
-            #print("BETA", beta)
+            steps = last_forces + beta*self.steps[-1]
+            if np.isinf(beta):
+                beta = 1.0
+            steps = last_forces + beta*self.steps[-1]
         else:
-            steps = self.forces[-1]
-        
-        steps = self.alpha*steps
+            steps = last_forces
+        steps = self.alpha * steps
         steps = self.scale_by_max_step(steps)
-        #new_coords = 
 
-        #    self.skip = self.backtrack()
+        last_coords = self.coords[-1]
+        new_coords = last_coords + steps
+        self.geometry.coords = new_coords
+
+        new_forces = self.geometry.forces
+        self.forces.append(new_forces)
+        skip = self.backtrack(new_forces, last_forces)
+        if skip:
+            return None
+
+        if self.align and self.is_cos:
+            self.forces[-1], self.forces[-2], steps = self.fit_rigid((new_forces, last_forces, steps))
+        #print(steps)
         return steps

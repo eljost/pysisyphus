@@ -1,1 +1,1 @@
-__all__ = ["FIRE", "BFGS", "SteepestDescent"]
+__all__ = ["FIRE", "BFGS", "SteepestDescent", "ConjugateGradient"]

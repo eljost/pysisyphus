@@ -11,6 +11,7 @@ from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.NaiveSteepestDescent import NaiveSteepestDescent
@@ -114,6 +115,18 @@ def test_steepest_descent_neb_more_images():
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 21) # k = 0.01
+
+    return opt
+
+
+def test_cg_neb():
+    kwargs = copy.copy(KWARGS)
+    kwargs["max_cycles"] = 20
+    neb = NEB(get_geoms())
+    opt = run_cos_opt(neb, ConjugateGradient, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 20) # k = 0.01
 
     return opt
 
@@ -232,8 +245,11 @@ if __name__ == "__main__":
     #opt = test_fixed_end_climbing_neb()
     #opt = test_steepest_descent_neb_more_images()
 
+    # Conjugate Gradient
+    opt = test_cg_neb()
+
     # FIRE
-    opt = test_fire_neb()
+    #opt = test_fire_neb()
 
     # BFGS
     #opt = test_bfgs_neb()

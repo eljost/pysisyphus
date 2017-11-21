@@ -28,6 +28,7 @@ OPT_DICT = {
     "fire": FIRE.FIRE,
     "bfgs": BFGS.BFGS,
     "sd": SteepestDescent.SteepestDescent,
+    "cg": ConjugateGradient.ConjugateGradient,
 }
 
 IRC_DICT = {
