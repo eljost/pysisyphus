@@ -11,7 +11,9 @@ import tempfile
 
 class Calculator:
 
-    def __init__(self, name="calculator"):
+    def __init__(self, charge=0, mult=1, name="calculator"):
+        self.charge = charge
+        self.mult = mult
         self.name = name
 
         self.counter = 0

@@ -15,11 +15,9 @@ from qchelper.geometry import make_xyz_str
 
 class XTB(Calculator):
 
-    def __init__(self, charge, mult, **kwargs):
+    def __init__(self, **kwargs):
         super(XTB, self).__init__(**kwargs)
 
-        self.charge = charge
-        self.mult = mult
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"

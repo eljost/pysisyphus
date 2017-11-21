@@ -149,6 +149,7 @@ def get_defaults(conf_dict):
 
 def handle_yaml(yaml_str):
     yaml_dict = yaml.load(yaml_str)
+    # Load defaults to have a sane baseline
     run_dict = get_defaults(yaml_dict)
     # Update nested entries
     key_set = set(yaml_dict.keys())

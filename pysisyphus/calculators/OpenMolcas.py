@@ -14,14 +14,17 @@ from qchelper.geometry import make_xyz_str
 
 class OpenMolcas(Calculator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, basis, inporb, roots, rlxroot, **kwargs):
         super(OpenMolcas, self).__init__(**kwargs)
 
-        inporb = "/scratch/molcas_jobs/excrp/backup/excrp.es_opt.RasOrb"
+        self.basis = basis
         self.inporb = inporb
+        self.roots = roots
+        self.rlxroot = rlxroot
 
         self.inp_fn = "openmolcas.in"
         self.out_fn = "openmolcas.out"
+        self.float_regex = "([\d\.\-]+)"
 
         self.openmolcas_input = """
         >> copy {inporb}  $Project.RasOrb
@@ -29,7 +32,7 @@ class OpenMolcas(Calculator):
          coord
           {xyz_str}
          basis
-          6-31G*
+          {basis}
          group
           nosym
  
@@ -39,15 +42,15 @@ class OpenMolcas(Calculator):
          charge
           1
          spin
-          1
+          {mult}
          fileorb
           $Project.RasOrb
          thrs
           1.0e-6,1.0e-2,1.0e-2
          ciroot
-          2 2 1
+          {roots} {roots} 1
          rlxroot
-          2
+          {rlxroot}
 
         &alaska
          pnew
@@ -63,13 +66,21 @@ class OpenMolcas(Calculator):
         coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
-    def get_forces(self, atoms, coords):
+    def prepare_input(self, atoms, coords):
         xyz_str = self.prepare_coords(atoms, coords)
         inp = self.openmolcas_input.format(
                                         inporb=self.inporb,
                                         xyz_str=xyz_str,
+                                        basis=basis,
+                                        mult=self.mult,
+                                        ciroot=self.ciroot,
+                                        rlxroot=self.rlxroot,
         )
+        return inp
+
+    def get_forces(self, atoms, coords):
         #self.logger.debug(f"Using inporb: {self.inporb}")
+        inp = self.prepare_input(atoms, coords)
         add_args = ("-clean", "-oe", self.out_fn)
         env = os.environ.copy()
         env["MOLCAS_PROJECT"] = f"{self.name}_{self.counter}"
@@ -77,8 +88,21 @@ class OpenMolcas(Calculator):
         return results
 
     def keep(self, path):
-        kept_fns = super().keep(path, ("RasOrb", ))
+        kept_fns = super().keep(path, ("RasOrb", "out"))
         self.inporb = kept_fns["RasOrb"]
+
+
+    def parse_energies(self, text):
+        # Energy of root for which gradient was computed
+        energy_regex = "RASSCF state energy =\s*" + self.float_regex
+        energy = float(re.search(energy_regex, text).groups()[0])
+
+        # All state average energies
+        root_re = "RASSCF root number.+Total energy.+?" + self.float_regex
+        matches = re.findall(root_re, text)
+        sa_energies = np.array(matches, dtype=np.float)
+
+        return energy, sa_energies
 
     def parse_gradient(self, path):
         results = {}
@@ -88,11 +112,8 @@ class OpenMolcas(Calculator):
 
         # Search for the block containing the gradient table
         regex = "Molecular gradients(.+?)--- Stop Module:\s*alaska"
-        float_regex = "([\d\.\-]+)"
-        floats = [float_regex for i in range(3)]
+        floats = [self.float_regex for i in range(3)]
         line_regex = "([A-Z\d]+)\s*" + "\s*".join(floats)
-        energy_regex = "RASSCF state energy =\s*" + float_regex
-        energy = float(re.search(energy_regex, text).groups()[0])
 
         mobj = re.search(regex, text, re.DOTALL)
         gradient = list()
@@ -105,7 +126,10 @@ class OpenMolcas(Calculator):
             gradient.append(mobj.groups()[1:])
         gradient = np.array(gradient, dtype=np.float).flatten()
 
+        energy, sa_energies = self.parse_energies(text)
+
         results["energy"] = energy
+        results["sa_energies"] = sa_energies
         results["forces"] = -gradient
 
         return results
@@ -117,10 +141,11 @@ class OpenMolcas(Calculator):
 if __name__ == "__main__":
     from pysisyphus.helpers import geom_from_library
     fileorb = "/scratch/test/ommin/excrp.es_opt.RasOrb"
-    om = OpenMolcas(fileorb)
+    basis = "6-31G*"
+    roots = 2
+    rlxroot = 2
+    om = OpenMolcas(basis, fileorb, roots, rlxroot)
     geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
     geom.set_calculator(om)
     #print(geom.forces)
-    from pathlib import Path
-    keep_path = Path("/scratch/programme/pysisyphus/tests/test_openmolcas/keep/crashed")
-    om.keep(keep_path)
+    om.parse_gradient("/scratch/test/satest")

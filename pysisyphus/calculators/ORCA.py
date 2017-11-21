@@ -26,8 +26,8 @@ def make_sym_mat(table_block):
 
 class ORCA(Calculator):
 
-    def __init__(self, keywords, charge, mult, blocks=""):
-        super(ORCA, self).__init__()
+    def __init__(self, keywords, blocks="", **kwargs):
+        super(ORCA, self).__init__(**kwargs)
 
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
@@ -36,7 +36,7 @@ class ORCA(Calculator):
 
         {blocks}
 
-        *xyz {charge} {mult}
+        *xyz {self.charge} {self.mult}
         {{}}
         *
         """
