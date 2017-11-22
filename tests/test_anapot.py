@@ -122,19 +122,20 @@ def test_steepest_descent_neb_more_images():
 
 def test_cg_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 20
+    kwargs["max_cycles"] = 25
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, ConjugateGradient, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 20) # k = 0.01
+    assert(opt.cur_cycle == 25) # k = 0.01
 
     return opt
 
 
 def test_qm_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 10
+    #kwargs["max_cycles"] = 22
+    kwargs["dt"] = 0.1
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, QuickMin, **kwargs)
 

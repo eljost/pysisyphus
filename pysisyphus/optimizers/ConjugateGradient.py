@@ -11,7 +11,6 @@ class ConjugateGradient(BacktrackingOptimizer):
     def __init__(self, geometry, **kwargs):
         super(ConjugateGradient, self).__init__(geometry, alpha=0.1, **kwargs)
 
-
     def prepare_opt(self):
         if self.is_cos and self.align:
             self.procrustes()
@@ -20,17 +19,16 @@ class ConjugateGradient(BacktrackingOptimizer):
         self.forces.append(self.geometry.forces)
 
     def optimize(self):
-        last_forces = self.forces[-1]
+        cur_forces = self.forces[-1]
         if self.cur_cycle > 0:
-            beta = (last_forces.dot(last_forces) /
-                    self.forces[-2].dot(self.forces[-2])
-            )
-            steps = last_forces + beta*self.steps[-1]
+            prev_forces = self.forces[-2]
+            beta = (np.linalg.norm(cur_forces)
+                    / np.linalg.norm(prev_forces))
             if np.isinf(beta):
                 beta = 1.0
-            steps = last_forces + beta*self.steps[-1]
+            steps = cur_forces + beta*self.steps[-1]
         else:
-            steps = last_forces
+            steps = cur_forces
         steps = self.alpha * steps
         steps = self.scale_by_max_step(steps)
 
@@ -39,12 +37,18 @@ class ConjugateGradient(BacktrackingOptimizer):
         self.geometry.coords = new_coords
 
         new_forces = self.geometry.forces
-        self.forces.append(new_forces)
-        skip = self.backtrack(new_forces, last_forces)
+        new_energy = self.geometry.energy
+
+        skip = self.backtrack(new_forces, cur_forces)
         if skip:
+            print("skip")
             return None
 
         if self.align and self.is_cos:
-            self.forces[-1], self.forces[-2], steps = self.fit_rigid((new_forces, last_forces, steps))
-        #print(steps)
+            new_forces, cur_forces, steps = self.fit_rigid((new_forces, cur_forces, steps))
+            self.geometry.coords -= steps
+
+        self.forces[-1] = cur_forces
+        self.forces.append(new_forces)
+        self.geometry.energy = new_energy
         return steps

@@ -7,7 +7,7 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 class NaiveSteepestDescent(BacktrackingOptimizer):
 
     def __init__(self, geometry, **kwargs):
-        super(NaiveSteepestDescent, self).__init__(geometry, **kwargs)
+        super(NaiveSteepestDescent, self).__init__(geometry, alpha=0.1, **kwargs)
 
     def optimize(self):
         self.forces.append(self.geometry.forces)

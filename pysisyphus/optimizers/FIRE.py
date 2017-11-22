@@ -25,7 +25,7 @@ class FIRE(BacktrackingOptimizer):
         self.velocities = [self.v, ]
         self.time_deltas = [self.dt, ]
 
-        super(FIRE, self).__init__(geometry, **kwargs)
+        super(FIRE, self).__init__(geometry, alpha=0.1, **kwargs)
 
     def optimize(self):
         if self.is_cos and self.align:

@@ -7,7 +7,7 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 class SteepestDescent(BacktrackingOptimizer):
 
     def __init__(self, geometry, **kwargs):
-        super(SteepestDescent, self).__init__(geometry, **kwargs)
+        super(SteepestDescent, self).__init__(geometry, alpha=0.1, **kwargs)
 
     def optimize(self):
         if self.is_cos and self.align:

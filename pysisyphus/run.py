@@ -43,21 +43,11 @@ IRC_DICT = {
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--cos", choices=COS_DICT.keys(),
-                        help="Chain of states method.")
-    parser.add_argument("--opt", choices=OPT_DICT.keys(),
-                        help="Optimization algorithm.")
-    parser.add_argument("--calc", choices=CALC_DICT.keys(),
-                        help="Calculator.")
-    parser.add_argument("--interpol", type=int,
+    parser.add_argument("--between", type=int,
                         help="Interpolate additional images.")
     parser.add_argument("--idpp", action="store_true",
                         help="Use Image Dependent Pair Potential instead "
                         "of simple linear interpolation.")
-    parser.add_argument("--align", action="store_true")
-    parser.add_argument("--outdir")
-    parser.add_argument("--irc", choices=IRC_DICT.keys())
-    parser.add_argument("--parallel", type=int, default=0)
     parser.add_argument("--xyz", nargs="+")
     parser.add_argument("--yaml")
 
@@ -90,18 +80,6 @@ def get_geoms(xyz_fns, idpp=False, between=0):
     return geoms
 
 
-"""
-def run_cos(args):
-    geoms = get_geoms(args)
-    cos = COS_DICT[args.cos](geoms, parallel=args.parallel)
-    for i, image in enumerate(cos.images):
-        name = f"image_{i:03d}"
-        image.set_calculator(CALC_DICT[args.calc](name=name))
-    #opt = OPT_DICT[args.opt](cos, align=args.align, **kwargs)
-    opt = OPT_DICT[args.opt](cos, align=args.align)
-    opt.run()
-"""
-
 def run_cos(cos, get_calc, get_opt):
     for i, image in enumerate(cos.images):
         name = f"image_{i:03d}"
@@ -110,6 +88,7 @@ def run_cos(cos, get_calc, get_opt):
     opt.run()
 
 
+"""
 def run_irc(args):
     assert(len(arg.xyz) == 1)
     geom = get_geoms(args)[0]
@@ -125,10 +104,11 @@ def run_opt(args):
     geom.set_calculator(CALC_DICT[args.calc]())
     opt = OPT_DICT[args.opt](geom)
     opt.run()
+"""
 
 
 def run_interpolation(args):
-    geoms = get_geoms(args)
+    geoms = get_geoms(args.xyz, args.idpp, args.between)
     trj_fn = "interpolated.trj"
     trj_str = "\n".join([geom.as_xyz() for geom in geoms])
     with open(trj_fn, "w") as handle:
@@ -145,7 +125,7 @@ def get_defaults(conf_dict):
             "parallel": 0,
         }
         dd["opt"] = {
-            "type": "bfgs",
+            "type": "cg",
             "align": True,
         }
         dd["interpol"] = {
@@ -191,7 +171,6 @@ def handle_yaml(yaml_str):
         run_cos(cos, get_calc, get_opt)
 
 
-
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -200,19 +179,10 @@ def run():
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         handle_yaml(yaml_str)
-    elif args.cos:
-        run_cos(args)
-    # Do IRC
-    elif args.irc:
-        run_irc(args)
-    # Do conventional optimization
-    elif args.opt:
-        run_opt(args)
-    # Just interpolate
-    elif args.interpol:
+    elif args.between:
         run_interpolation(args)
     else:
-        print("Please specify a run type!")
+        print("Please specify a run type! Show help with -h.")
 
 if __name__ == "__main__":
     run()

@@ -6,7 +6,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class BacktrackingOptimizer(Optimizer):
 
-    def __init__(self, geometry, alpha=0.1, **kwargs):
+    def __init__(self, geometry, alpha, **kwargs):
         # Setting some default values
         self.alpha = alpha
         self.force_backtrack_in = 5
@@ -46,7 +46,6 @@ class BacktrackingOptimizer(Optimizer):
             self.cycles_since_backtrack = self.force_backtrack_in
         else:
             self.cycles_since_backtrack -= 1
-            #print("cycles_since_backtrack", self.cycles_since_backtrack)
             if self.cycles_since_backtrack < 0:
                 self.cycles_since_backtrack = self.force_backtrack_in
                 if self.alpha < self.alpha0:

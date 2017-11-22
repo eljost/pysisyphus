@@ -19,19 +19,6 @@ def plot_energies(df):
     df -= df.values.min()
     df *= AU2KJPERMOL
 
-    last_row = df.transpose().iloc[-1]
-    spl = splrep(last_row.index, last_row)
-    images = len(last_row.index)
-
-    # Calculate interpolated values
-    x2 = np.linspace(0, images, 100)
-    y2 = splev(x2, spl)
-    # Only consider maxima
-    peak_inds, _ = peakdetect(y2, lookahead=2)
-    peak_inds = np.array(peak_inds)[:,0].astype(int)
-    peak_xs = x2[peak_inds]
-    peak_ys = y2[peak_inds]
-
     fig, ax = plt.subplots()
     ax = df.plot(
             ax=ax,
@@ -39,17 +26,32 @@ def plot_energies(df):
             colormap=cmap,
             legend=True,
     )
-    ax.plot(x2, y2, peak_xs, peak_ys, "x")
     kwargs = {
         "ls": ":",
         "color": "darkgrey",
     }
+    try:
+        last_row = df.transpose().iloc[-1]
+        spl = splrep(last_row.index, last_row)
+        images = len(last_row.index)
+        # Calculate interpolated values
+        x2 = np.linspace(0, images, 100)
+        y2 = splev(x2, spl)
+        # Only consider maxima
+        peak_inds, _ = peakdetect(y2, lookahead=2)
+        peak_inds = np.array(peak_inds)[:,0].astype(int)
+        peak_xs = x2[peak_inds]
+        peak_ys = y2[peak_inds]
+        ax.plot(x2, y2, peak_xs, peak_ys, "x")
+        for px, py in zip(peak_xs, peak_ys):
+            ax.axhline(y=py, **kwargs)
+            line = matplotlib.lines.Line2D([px, px], [0, py], **kwargs)
+            ax.add_line(line)
+    except TypeError:
+        print("Not enough images for splining!")
+
     # Always draw a line at the minimum y=0
     ax.axhline(y=0, **kwargs)
-    for px, py in zip(peak_xs, peak_ys):
-        ax.axhline(y=py, **kwargs)
-        line = matplotlib.lines.Line2D([px, px], [0, py], **kwargs)
-        ax.add_line(line)
     ax.set_xlabel("Image")
     ax.set_ylabel("dE / kJ mol⁻¹")
     plt.show()
