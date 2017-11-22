@@ -29,15 +29,18 @@ class ORCA(Calculator):
     def __init__(self, keywords, blocks="", **kwargs):
         super(ORCA, self).__init__(**kwargs)
 
+        self.keywords = keywords
+        self.blocks = blocks
+
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
-        self.orca_input=f"""!{keywords} {{}}
+        self.orca_input="""!{keywords} {calc_type}
 
         {blocks}
 
-        *xyz {self.charge} {self.mult}
-        {{}}
+        *xyz {charge} {mult}
+        {coords}
         *
         """
 
@@ -56,6 +59,18 @@ class ORCA(Calculator):
         )
         return coords
 
+    def prepare_input(self, atoms, coords, calc_type):
+        coords = self.prepare_coords(atoms, coords)
+        inp = self.orca_input.format(
+                                keywords=self.keywords,
+                                calc_type=calc_type,
+                                blocks=self.blocks,
+                                coords=coords,
+                                charge=self.charge,
+                                mult=self.mult,
+        )
+        return inp
+
     def get_energy(self, atoms, coords):
         logging.info("orca, energy_calculation!")
         logging.warning("orca energy not implemented properly!")
@@ -63,16 +78,14 @@ class ORCA(Calculator):
         import sys; sys.exit()
 
     def get_forces(self, atoms, coords):
-        #print("forces calc!")
-        coords = self.prepare_coords(atoms, coords)
-        inp = self.orca_input.format("engrad", coords)
+        calc_type = "engrad"
+        inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="grad")
         return results
 
     def get_hessian(self, atoms, coords):
-        #print("hess calc!")
-        coords = self.prepare_coords(atoms, coords)
-        inp = self.orca_input.format("freq", coords)
+        calc_type = "freq"
+        inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="hessian")
         return results
 
@@ -159,5 +172,21 @@ class ORCA(Calculator):
 
         return results
 
+    def keep(self, path):
+        kept_fns = super().keep(path, ("out", ))
+
     def __str__(self):
         return "ORCA calculator"
+
+
+if __name__ == "__main__":
+    from pysisyphus.helpers import geom_from_library
+    geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
+    keywords = "BP86 def2-SV(P)"
+    blocks = ""
+    charge = 1
+    mult = 1
+    orca = ORCA(keywords, blocks, charge=charge, mult=mult)
+    geom.set_calculator(orca)
+    forces = geom.forces
+    print(forces)
