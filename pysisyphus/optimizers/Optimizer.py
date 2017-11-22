@@ -7,6 +7,7 @@ import time
 import numpy as np
 import pandas as pd
 import scipy as sp
+import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 
@@ -63,6 +64,7 @@ class Optimizer:
         self.cycle_times = list()
 
         self.tangents = list()
+        self.all_results = list()
 
     def procrustes(self):
         # http://nghiaho.com/?page_id=671#comment-559906
@@ -168,13 +170,17 @@ class Optimizer:
             handle.write(content)
 
     def write_image_trjs(self):
-        base_name = "image{:03d}.trj"
+        base_name = "image_{:03d}.trj"
         for i, image in enumerate(self.geometry.images):
             image_fn = base_name.format(i)
             comment = f"cycle {self.cur_cycle+1}"
             as_xyz = image.as_xyz(comment)
-            with open(image_fn, "a") as handle:
-                handle.write(as_xyz + "\n")
+            self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
+
+    def write_results(self):
+        self.all_results.append(self.geometry.results)
+        results_fn = "results.yaml".format(self.cur_cycle)
+        self.write_to_out_dir(results_fn, yaml.dump(self.all_results))
 
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
@@ -184,6 +190,7 @@ class Optimizer:
             self.write_to_out_dir(out_fn, as_xyz_str)
             # Also write separate .trj files for every image in the cos
             self.write_image_trjs()
+            self.write_results()
         else:
             # Append to .trj file
             out_fn = "opt.trj"

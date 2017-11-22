@@ -76,6 +76,10 @@ class ChainOfStates:
     def masses_rep(self):
         return np.array([image.masses_rep for image in self.images]).flatten()
 
+    @property
+    def results(self):
+        return [image.results for image in self.images]
+
     def interpolate_between(self, initial_ind, final_ind, image_num):
         # Check for atom ordering
         initial_image = self.images[initial_ind]

@@ -117,6 +117,7 @@ class Geometry:
     def set_results(self, results):
         for key in results:
             setattr(self, key, results[key])
+        self.results = results
 
     def as_xyz(self, comment=""):
         coords = self.coords * BOHR2ANG
