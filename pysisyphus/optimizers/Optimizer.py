@@ -22,11 +22,12 @@ gauss_loose = {
 class Optimizer:
 
     def __init__(self, geometry, convergence=gauss_loose,
-                 align=False, **kwargs):
+                 align=False, dump=False, **kwargs):
         self.geometry = geometry
 
         self.convergence = convergence
         self.align = align
+        self.dump = dump
         for key, value in convergence.items():
             setattr(self, key, value)
 
@@ -34,7 +35,6 @@ class Optimizer:
         self.max_cycles = 50
         self.max_step = 0.04
         self.rel_step_thresh = 1e-3
-        self.keep_cycles = True
         self.out_dir = os.getcwd()
 
         assert(self.max_step > self.rel_step_thresh)
@@ -213,7 +213,6 @@ class Optimizer:
                 self.tangents.append(self.geometry.get_tangents())
 
             self.steps.append(steps)
-            self.energies.append(self.geometry.energy)
 
             self.check_convergence()
 
@@ -225,7 +224,7 @@ class Optimizer:
             elapsed_seconds = end_time - start_time
             self.cycle_times.append(elapsed_seconds)
 
-            if self.keep_cycles:
+            if self.dump:
                 self.write_cycle_to_file()
                 self.write_opt_data_to_file()
             self.print_convergence()

@@ -14,6 +14,7 @@ class SteepestDescent(BacktrackingOptimizer):
             self.procrustes()
 
         self.forces.append(self.geometry.forces)
+        self.energies.append(self.geometry.energy)
 
         if self.cur_cycle > 0:
             self.skip = self.backtrack(self.forces[-1], self.forces[-2])

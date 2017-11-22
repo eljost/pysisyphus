@@ -6,7 +6,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class QuickMin(Optimizer):
 
-    def __init__(self, geometry, dt=0.25, **kwargs):
+    def __init__(self, geometry, dt=0.35, **kwargs):
         super(QuickMin, self).__init__(geometry, **kwargs)
 
         self.dt = dt
@@ -21,6 +21,7 @@ class QuickMin(Optimizer):
         cur_velocities = self.velocities[-1]
         cur_forces = self.geometry.forces
         self.forces.append(cur_forces)
+        self.energies.append(self.geometry.energy)
 
         if self.cur_cycle == 0:
             tmp_velocities = np.zeros_like(cur_velocities)

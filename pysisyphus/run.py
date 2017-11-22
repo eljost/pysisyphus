@@ -127,6 +127,7 @@ def get_defaults(conf_dict):
         dd["opt"] = {
             "type": "cg",
             "align": True,
+            "dump": True,
         }
         dd["interpol"] = {
             "idpp": False,

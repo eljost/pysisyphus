@@ -22,8 +22,7 @@ class ConjugateGradient(BacktrackingOptimizer):
         cur_forces = self.forces[-1]
         if self.cur_cycle > 0:
             prev_forces = self.forces[-2]
-            beta = (np.linalg.norm(cur_forces)
-                    / np.linalg.norm(prev_forces))
+            beta = cur_forces.dot(cur_forces) / prev_forces.dot(prev_forces)
             if np.isinf(beta):
                 beta = 1.0
             steps = cur_forces + beta*self.steps[-1]
@@ -40,9 +39,8 @@ class ConjugateGradient(BacktrackingOptimizer):
         new_energy = self.geometry.energy
 
         skip = self.backtrack(new_forces, cur_forces)
-        if skip:
-            print("skip")
-            return None
+        #if skip:
+        #    return None
 
         if self.align and self.is_cos:
             new_forces, cur_forces, steps = self.fit_rigid((new_forces, cur_forces, steps))
@@ -50,5 +48,7 @@ class ConjugateGradient(BacktrackingOptimizer):
 
         self.forces[-1] = cur_forces
         self.forces.append(new_forces)
+        self.energies.append(new_energy)
+
         self.geometry.energy = new_energy
         return steps

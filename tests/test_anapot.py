@@ -126,15 +126,14 @@ def test_steepest_descent_neb_more_images():
 
 
 @pytest.mark.cg
-@pytest.mark.skip
 def test_cg_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["max_cycles"] = 25
+    kwargs["max_cycles"] = 34
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, ConjugateGradient, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 25) # k = 0.01
+    assert(opt.cur_cycle == 34) # k = 0.01
 
     return opt
 
@@ -142,13 +141,13 @@ def test_cg_neb():
 @pytest.mark.qm
 def test_qm_neb():
     kwargs = copy.copy(KWARGS)
-    #kwargs["max_cycles"] = 22
+    kwargs["max_cycles"] = 27
     kwargs["dt"] = 0.1
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, QuickMin, **kwargs)
 
-    #assert(opt.is_converged)
-    #assert(opt.cur_cycle == 20) # k = 0.01
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 27) # k = 0.01
 
     return opt
 
@@ -270,10 +269,10 @@ if __name__ == "__main__":
     #opt = test_steepest_descent_neb_more_images()
 
     # Conjugate Gradient
-    #opt = test_cg_neb()
+    opt = test_cg_neb()
 
     # QuickMin
-    opt = test_qm_neb()
+    #opt = test_qm_neb()
 
     # FIRE
     #opt = test_fire_neb()
