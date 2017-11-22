@@ -104,10 +104,6 @@ class NEB(ChainOfStates):
                 with Pool(processes=self.parallel) as pool:
                     image_number = len(self.images)
                     par_images = pool.map(self.par_calc, range(image_number))
-                    """
-                    for pi in par_images:
-                        print(pi.calculator.name)
-                    """
                     self.images = par_images
             # Serial calculation
             else:

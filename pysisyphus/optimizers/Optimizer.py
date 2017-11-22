@@ -167,12 +167,23 @@ class Optimizer:
         with open(out_path, mode) as handle:
             handle.write(content)
 
+    def write_image_trjs(self):
+        base_name = "image{:03d}.trj"
+        for i, image in enumerate(self.geometry.images):
+            image_fn = base_name.format(i)
+            comment = f"cycle {self.cur_cycle+1}"
+            as_xyz = image.as_xyz(comment)
+            with open(image_fn, "a") as handle:
+                handle.write(as_xyz + "\n")
+
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
 
         if self.is_cos:
             out_fn = "cycle_{:03d}.trj".format(self.cur_cycle)
             self.write_to_out_dir(out_fn, as_xyz_str)
+            # Also write separate .trj files for every image in the cos
+            self.write_image_trjs()
         else:
             # Append to .trj file
             out_fn = "opt.trj"
