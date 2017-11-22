@@ -3,7 +3,7 @@
 import copy
 
 import numpy as np
-from pytest import approx
+import pytest
 
 from pysisyphus.AnimPlot import AnimPlot
 from pysisyphus.calculators.AnaPot import AnaPot
@@ -26,6 +26,7 @@ KWARGS = {
         "max_step_thresh": 6e-4,
         "rms_step_thresh": 3e-4,
     },
+    "dump": False,
 }
 
 
@@ -57,6 +58,7 @@ def animate(opt):
     ap.animate()
 
 
+@pytest.mark.sd
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms())
@@ -68,6 +70,7 @@ def test_steepest_descent_neb():
     return opt
 
 
+@pytest.mark.sd
 def test_fixed_ends_neb():
     coords = np.array(((-0.916, 1.034, 0), (1.85, 3.57, 0)))
     kwargs = copy.copy(KWARGS)
@@ -87,6 +90,7 @@ def test_fixed_ends_neb():
     return opt
 
 
+@pytest.mark.sd
 def test_fixed_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 15
@@ -108,6 +112,7 @@ def test_fixed_end_climbing_neb():
     return opt
 
 
+@pytest.mark.sd
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
@@ -120,6 +125,8 @@ def test_steepest_descent_neb_more_images():
     return opt
 
 
+@pytest.mark.cg
+@pytest.mark.skip
 def test_cg_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["max_cycles"] = 25
@@ -132,6 +139,7 @@ def test_cg_neb():
     return opt
 
 
+@pytest.mark.qm
 def test_qm_neb():
     kwargs = copy.copy(KWARGS)
     #kwargs["max_cycles"] = 22
@@ -145,6 +153,7 @@ def test_qm_neb():
     return opt
 
 
+@pytest.mark.fire
 def test_fire_neb():
     kwargs = copy.copy(KWARGS)
     #kwargs["max_cycles"] = 23
@@ -166,6 +175,7 @@ def test_fire_neb():
     return opt
 
 
+@pytest.mark.bfgs
 def test_bfgs_neb():
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms())
@@ -177,6 +187,7 @@ def test_bfgs_neb():
     return opt
 
 
+@pytest.mark.bfgs
 def test_bfgs_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10

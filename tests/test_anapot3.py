@@ -4,7 +4,6 @@ import copy
 
 import numpy as np
 import pytest
-from pytest import approx
 
 from pysisyphus.AnimPlot import AnimPlot
 from pysisyphus.calculators.AnaPot3 import AnaPot3
@@ -24,7 +23,8 @@ KWARGS = {
         "rms_force_thresh": 9.e-3,
         "max_step_thresh": 1.0e-2,
         "rms_step_thresh": 4e-3,
-    }
+    },
+    "dump": False,
 }
 
 
@@ -59,6 +59,7 @@ def animate(opt):
     ap.animate()
 
 
+@pytest.mark.sd
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms())
@@ -70,6 +71,7 @@ def test_steepest_descent_neb():
     return opt
 
 
+@pytest.mark.sd
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 20
@@ -83,6 +85,7 @@ def test_steepest_descent_neb_more_images():
 
 
 
+@pytest.mark.fire
 def test_fire_neb():
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms())
@@ -94,6 +97,7 @@ def test_fire_neb():
     return opt
 
 
+@pytest.mark.bfgs
 @pytest.mark.skip("Doesn't work at all!")
 def test_bfgs_neb():
     kwargs = copy.copy(KWARGS)
@@ -106,6 +110,7 @@ def test_bfgs_neb():
     return opt
 
 
+@pytest.mark.bfgs
 @pytest.mark.skip("Doesn't work at all!")
 def test_bfgs_neb_more_images():
     kwargs = copy.copy(KWARGS)

@@ -3,7 +3,7 @@
 import copy
 
 import numpy as np
-from pytest import approx
+import pytest
 
 from pysisyphus.AnimPlot import AnimPlot
 from pysisyphus.calculators.MullerBrownPot import MullerBrownPot
@@ -57,6 +57,7 @@ def animate(opt):
     ap.animate()
 
 
+@pytest.mark.sd
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms())
@@ -68,6 +69,7 @@ def test_steepest_descent_neb():
     return opt
 
 
+@pytest.mark.sd
 def test_climbing_neb():
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms(), climb=True, climb_after=15)
@@ -79,6 +81,7 @@ def test_climbing_neb():
     return opt
 
     
+@pytest.mark.sd
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 7
@@ -98,7 +101,7 @@ def test_steepest_descent_neb_more_images():
     return opt
 
 
-
+@pytest.mark.fire
 def test_fire_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["dt"] = 0.01
