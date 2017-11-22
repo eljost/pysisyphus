@@ -72,6 +72,10 @@ class ChainOfStates:
         perp_forces = [self.get_perpendicular_forces(i) for i in indices]
         return np.array(perp_forces).flatten()
 
+    @property
+    def masses_rep(self):
+        return np.array([image.masses_rep for image in self.images]).flatten()
+
     def interpolate_between(self, initial_ind, final_ind, image_num):
         # Check for atom ordering
         initial_image = self.images[initial_ind]

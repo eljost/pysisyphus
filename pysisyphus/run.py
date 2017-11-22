@@ -29,6 +29,7 @@ OPT_DICT = {
     "bfgs": BFGS.BFGS,
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
+    "qm": QuickMin.QuickMin,
 }
 
 IRC_DICT = {

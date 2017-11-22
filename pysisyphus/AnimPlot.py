@@ -115,8 +115,6 @@ class AnimPlot:
         self.ax1.relim()
         self.ax1.autoscale_view()
 
-        return self.images, self.total_forces_quiv, self.energies
-
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)
         self.animation = animation.FuncAnimation(self.fig,
