@@ -21,7 +21,6 @@ setup(
         "numpy",
         "pytest",
         "matplotlib",
-        "periodictable",
     ],
     entry_points={
         "console_scripts": [

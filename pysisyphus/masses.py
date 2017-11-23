@@ -1,11 +1,3 @@
-import os
-from pathlib import Path
-
-from pysisyphus.constants import ANG2BOHR
-from pysisyphus.Geometry import Geometry
-from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
-
-
 # Taken from periodictable-1.5.0
 MASS_DICT = {
     'n': 14.0067, 'h': 1.00794, 'he': 4.002602, 'li': 6.941, 'be': 9.012182,
@@ -31,31 +23,3 @@ MASS_DICT = {
     'bh': 264, 'hs': 277, 'mt': 268, 'ds': 281, 'rg': 272, 'cn': 285, 'nh': 286,
     'fl': 289,'mc': 289, 'lv': 293, 'ts': 294, 'og': 294
 }
-
-
-def geom_from_xyz_file(xyz_fn):
-    atoms, coords = parse_xyz_file(xyz_fn)
-    coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten())
-    return geom
-
-
-def geom_from_library(xyz_fn):
-    this_dir = os.path.abspath(os.path.dirname(__file__))
-    xyz_dir = Path(this_dir) / "../xyz_files/"
-    atoms, coords = parse_xyz_file(xyz_dir / xyz_fn)
-    coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten())
-    return geom
-
-
-def geoms_from_trj(trj_fn):
-    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR)
-             for atoms, coords in parse_trj_file(trj_fn)
-    ]
-    return geoms
-
-
-if __name__ == "__main__":
-    print(load_geometry("hcn.xyz"))
-    print(geoms_from_trj("cycle_040.trj"))

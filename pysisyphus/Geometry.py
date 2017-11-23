@@ -1,10 +1,10 @@
 import logging
 
 import numpy as np
-import periodictable as pt
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
+from pysisyphus.masses import MASS_DICT
 
 class Geometry:
 
@@ -16,7 +16,7 @@ class Geometry:
         self._forces = None
         self._hessian = None
 
-        self.masses = [getattr(pt, atom).mass for atom in self.atoms]
+        self.masses = [MASS_DICT[atom.lower()] for atom in self.atoms]
         # Some of the analytical potentials are only 2D
         repeat_masses = 2 if (self._coords.size == 2) else 3
         self.masses_rep = np.repeat(self.masses, repeat_masses)
