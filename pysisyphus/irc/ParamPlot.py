@@ -8,7 +8,7 @@ import numpy as np
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
 
-from qchelper.geometry import parse_xyz_file
+from pysisyphus.xyzloader import parse_xyz_file
 
 
 class ParamPlot:

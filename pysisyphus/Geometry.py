@@ -4,7 +4,7 @@ import numpy as np
 import periodictable as pt
 
 from pysisyphus.constants import BOHR2ANG
-from qchelper.geometry import make_xyz_str
+from pysisyphus.xyzloader import make_xyz_str
 
 class Geometry:
 

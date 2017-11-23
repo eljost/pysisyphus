@@ -3,7 +3,7 @@
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
-from qchelper.geometry import make_trj_str
+from pysisyphus.xyzloader import make_trj_str
 from pysisyphus.constants import BOHR2ANG
 
 # [1] http://dx.doi.org/10.1063/1.1323224
