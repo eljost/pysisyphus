@@ -3,8 +3,7 @@ from pathlib import Path
 
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
-from qchelper.geometry import parse_xyz_file, parse_trj_file
-
+from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
 def geom_from_xyz_file(xyz_fn):
     atoms, coords = parse_xyz_file(xyz_fn)
