@@ -45,10 +45,12 @@ class ConjugateGradient(BacktrackingOptimizer):
         if self.align and self.is_cos:
             new_forces, cur_forces, steps = self.fit_rigid((new_forces, cur_forces, steps))
             self.geometry.coords -= steps
+            # Set the calculated properties on the rotated geometries
+            self.geometry.energy = new_energy
+            self.geometry.forces = new_forces
 
         self.forces[-1] = cur_forces
         self.forces.append(new_forces)
         self.energies.append(new_energy)
 
-        self.geometry.energy = new_energy
         return steps

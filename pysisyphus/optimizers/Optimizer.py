@@ -109,7 +109,8 @@ class Optimizer:
         return rotated_vectors, rotated_hessian
 
     def check_convergence(self):
-        # Only use forces perpendicular to the mep
+        # When using a ChainOfStates method we are only interested
+        # in optimizing the forces perpendicular to the MEP.
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
         else:
@@ -201,7 +202,12 @@ class Optimizer:
         energy_df.to_csv(self.out_dir / "energies.csv", index=False)
 
     def run(self):
+        prep_start_time = time.time()
         self.prepare_opt()
+        prep_end_time = time.time()
+        prep_time = prep_end_time - prep_start_time
+        print(f"Spent {prep_time:.1f} s preparing the first cycle.")
+
         self.print_header()
         while True:
             start_time = time.time()

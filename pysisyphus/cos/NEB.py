@@ -94,7 +94,9 @@ class NEB(ChainOfStates):
         image.calc_energy_and_forces()
         return image
 
-    @property
+    # See https://stackoverflow.com/a/15786149
+    # This way we can reuse the parents setter.
+    @ChainOfStates.forces.getter
     def forces(self):
         indices = range(len(self.images))
 
