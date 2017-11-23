@@ -5,6 +5,7 @@ import sys
 
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import numpy as np
 import pandas as pd
 from scipy.interpolate import splrep, splev
@@ -58,24 +59,39 @@ def plot_energies(df):
     plt.show()
 
 
-def load_results(keys=()):
+def load_results(key):
     with open("results.yaml") as handle:
         all_results = yaml.load(handle.read())
-    print(f"Loaded informations of {len(all_results)} cycles.")
-    if len(keys) == 0:
-        return all_results
+    num_cycles = len(all_results)
+    print(f"Loaded informations of {num_cycles} cycle(s).")
 
-    tmp_dict = {k: [] for k in keys}
+    tmp_list = list()
     for res_per_cycle in all_results:
-        for k in keys:
-            tmp_dict[k].append([res[k] for res in res_per_cycle])
-
-    print(tmp_dict)
+            tmp_list.append([res[key] for res in res_per_cycle])
+    return np.array(tmp_list), num_cycles
 
 
 def plot_saras():
-    keys = ("energy", )
-    ens = load_results(keys)
+    key = "sa_energies"
+    sa_ens, num_cycles = load_results(key)
+    sa_ens -= sa_ens.min(axis=(2,1), keepdims=True)
+    first_cycle = sa_ens[0]
+
+    fig, ax = plt.subplots()
+    ax.set_xlabel("Image")
+    ax.set_ylabel("ΔE / au")
+    lines = ax.plot(first_cycle)
+
+    def animate(i):
+        fig.suptitle("Cycle {}".format(i+1))
+        for j, line in enumerate(lines):
+            line.set_ydata(sa_ens[i][:,j])
+
+    anim = FuncAnimation(
+            fig, animate, interval=500, frames=num_cycles
+    )
+
+    plt.show()
 
 
 def parse_args(args):

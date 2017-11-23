@@ -36,7 +36,8 @@ class Calculator:
 
     def prepare(self, inp, path=None):
         if not path:
-            path = Path(tempfile.mkdtemp())
+            prefix = f"{self.name}_{self.counter:03d}_"
+            path = Path(tempfile.mkdtemp(prefix=prefix))
         inp_path = path / self.inp_fn
         with open(inp_path, "w") as handle:
             handle.write(inp)
