@@ -22,7 +22,14 @@ class ChainOfStates:
         self._coords = None
         self._forces = None
         self._energy = None
+        # For an image of N atoms coords_lengths will be 3N
         self.coords_length = self.images[0].coords.size
+
+
+    def clear(self):
+        self._energy = None
+        self._forces = None
+        self._hessian = None
 
     def set_vector(self, name, vector, clear=False):
         vec_per_image = vector.reshape(-1, self.coords_length)
@@ -33,12 +40,11 @@ class ChainOfStates:
         if self.fix_last:
             vec_per_image = vec_per_image[:-1]
             images = images[:-1]
+        assert(len(images) == len(vec_per_image))
         for image, vec in zip(images, vec_per_image):
             setattr(image, name, vec)
         if clear:
-            self._energy = None
-            self._forces = None
-            self._hessian = None
+            self.clear()
 
     @property
     def coords(self):
@@ -58,10 +64,22 @@ class ChainOfStates:
         return self._energy
 
     @energy.setter
-    def energy(self, energy):
-        for image, en in zip(self.images, energy):
+    def energy(self, energies):
+        """This is needed for some optimizers like CG and BFGS."""
+        images = self.images
+        # Maybe unify this with set_vector to avoid code repetition
+        if self.fix_first:
+            energies  = energies[1:]
+            images = self.images[1:]
+        if self.fix_last:
+            energies = energies[:-1]
+            images = images[:-1]
+
+        assert(len(images) == len(energies))
+        for image, en in zip(images, energies):
             image.energy = en
-        self._energy = energy
+
+        self._energy = energies
 
     @property
     def forces(self):
@@ -71,9 +89,7 @@ class ChainOfStates:
 
     @forces.setter
     def forces(self, forces):
-        forces = forces.reshape(-1, self.coords_length)
-        for image, f in zip(self.images, forces):
-            image.forces = f
+        self.set_vector("forces", forces)
 
     @property
     def perpendicular_forces(self):

@@ -34,7 +34,7 @@ def test_mullerbrown_gs_irc():
     assert(gs.backward_step == 4)
 
     plotter.plot_gs(gs.all_coords, gs.pivot_coords, gs.micro_coords)
-    plotter.show()
+    #plotter.show()
 
 
 def test_mullerbrown_dvv_irc():
@@ -45,7 +45,7 @@ def test_mullerbrown_dvv_irc():
     assert(dvv.backward_step == 70)
 
     plotter.plot(dvv.all_coords)
-    plotter.show()
+    #plotter.show()
 
 
 def test_mullerbrown_euler_irc():
@@ -56,7 +56,7 @@ def test_mullerbrown_euler_irc():
     assert(euler.backward_step == 17)
 
     plotter.plot(euler.all_coords)
-    plotter.show()
+    #plotter.show()
 
 
 def test_mullerbrown_euler_no_mw_irc():
@@ -67,7 +67,7 @@ def test_mullerbrown_euler_no_mw_irc():
     #assert(euler.backward_step == 17)
 
     plotter.plot(euler.all_coords)
-    plotter.show()
+    #plotter.show()
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ THIS_DIR = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
 def run_param_plot(coords, p1inds, p2inds, prefix):
     param_plot = ParamPlot(coords, p1inds, p2inds)
     param_plot.plot()
-    param_plot.show()
+    #param_plot.show()
     param_plot.save(THIS_DIR, prefix)
 
     return param_plot
