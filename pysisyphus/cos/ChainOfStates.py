@@ -24,7 +24,25 @@ class ChainOfStates:
         self._energy = None
         # For an image of N atoms coords_lengths will be 3N
         self.coords_length = self.images[0].coords.size
+        self.zero_vec = np.zeros(self.coords_length)
 
+    @property
+    def moving_indices(self):
+        """Returns the indices of the images that aren't fixed and can be
+        optimized."""
+        indices = range(len(self.images))
+        if self.fix_first:
+            indices = indices[1:]
+        if self.fix_last:
+            indices = indices[:-1]
+        return indices
+
+    def zero_fixed_vector(self, vector):
+        if self.fix_first:
+            vector[0] = self.zero_vec
+        if self.fix_last:
+            vector[-1] = self.zero_vec
+        return vector
 
     def clear(self):
         self._energy = None
@@ -33,16 +51,9 @@ class ChainOfStates:
 
     def set_vector(self, name, vector, clear=False):
         vec_per_image = vector.reshape(-1, self.coords_length)
-        images = self.images
-        if self.fix_first:
-            vec_per_image  = vec_per_image[1:]
-            images = self.images[1:]
-        if self.fix_last:
-            vec_per_image = vec_per_image[:-1]
-            images = images[:-1]
-        assert(len(images) == len(vec_per_image))
-        for image, vec in zip(images, vec_per_image):
-            setattr(image, name, vec)
+        assert(len(self.images) == len(vec_per_image))
+        for i in self.moving_indices:
+            setattr(self.images[i], name, vec_per_image[i])
         if clear:
             self.clear()
 
@@ -66,24 +77,16 @@ class ChainOfStates:
     @energy.setter
     def energy(self, energies):
         """This is needed for some optimizers like CG and BFGS."""
-        images = self.images
-        # Maybe unify this with set_vector to avoid code repetition
-        if self.fix_first:
-            energies  = energies[1:]
-            images = self.images[1:]
-        if self.fix_last:
-            energies = energies[:-1]
-            images = images[:-1]
-
-        assert(len(images) == len(energies))
-        for image, en in zip(images, energies):
-            image.energy = en
+        assert(len(self.images) == len(energies))
+        for i in self.moving_indices:
+            self.images[i].energy = energies[i]
 
         self._energy = energies
 
     @property
     def forces(self):
         forces = [image.forces for image in self.images]
+        forces = self.zero_fixed_vector(forces)
         self._forces  = np.concatenate(forces)
         return self._forces
 
@@ -197,6 +200,13 @@ class ChainOfStates:
 
     def get_perpendicular_forces(self, i):
         """ [1] Eq. 12"""
+        # Our goal in optimizing a ChainOfStates is minimizing the
+        # perpendicular force. Alaways return zero perpendicular
+        # forces for fixed images, so that they don't interfere
+        # with the convergence check.
+        if i not in self.moving_indices:
+            return self.zero_vec
+
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
         return forces - (np.dot(forces, tangent)*tangent)

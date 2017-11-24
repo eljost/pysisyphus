@@ -72,28 +72,29 @@ def test_steepest_descent_neb():
 
 @pytest.mark.sd
 def test_fix_first_neb():
-    # First image is fix at a non equilibrium geometry
+    # First image is fixed at a non equilibrium geometry.
     coords = np.array(((-0.916, 1.034, 0), (1.94101, 3.85427, 0)))
     kwargs = copy.copy(KWARGS)
+    kwargs["max_cycles"] = 25
     neb = NEB(get_geoms(coords), fix_first=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
-    #assert(opt.is_converged)
-    #assert(opt.cur_cycle == 20) # k = 0.01
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 25) # k = 0.01
 
     return opt
 
 
 @pytest.mark.sd
 def test_fix_last_neb():
-    # Last image is fix at a non equilibrium geometry
+    # Last image is fixed at a non equilibrium geometry.
     coords = np.array(((-1.05274, 1.02776, 0), (1.85, 3.57, 0)))
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms(coords), fix_last=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
-    #assert(opt.is_converged)
-    #assert(opt.cur_cycle == 20) # k = 0.01
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 20) # k = 0.01
 
     return opt
 
@@ -125,11 +126,12 @@ def test_fix_displaced_ends_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 22) # k = 0.01
+    assert(opt.cur_cycle == 20) # k = 0.01
 
     return opt
 
 
+"""
 @pytest.mark.sd
 def test_fix_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
@@ -143,13 +145,14 @@ def test_fix_end_climbing_neb():
     kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True,
               k_max=5, k_min=1,
-              climb=True, climb_after=5)
+              climb=True, climb_after=10)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 29)
 
     return opt
+"""
 
 
 @pytest.mark.sd
@@ -304,11 +307,13 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
-    #opt = test_fix_first_neb()
-    #opt = test_fix_ends_neb()
+    opt = test_fix_first_neb()
     opt = test_fix_last_neb()
-    #opt = test_fix_displaced_ends_neb()
+    opt = test_fix_ends_neb()
+    opt = test_fix_displaced_ends_neb()
+
     #opt = test_fix_end_climbing_neb()
+
     #opt = test_steepest_descent_neb_more_images()
 
     # Conjugate Gradient

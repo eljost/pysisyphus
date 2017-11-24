@@ -66,6 +66,9 @@ class NEB(ChainOfStates):
         if (len(self.k) is not len(self.images)-1):
             self.update_springs()
 
+        if i not in self.moving_indices:
+            return self.zero_vec
+
         if (i is 0) or (i is len(self.images) - 1):
             # We can't use the last image index because there is one
             # spring less than there are images.
@@ -124,6 +127,7 @@ class NEB(ChainOfStates):
                 par_forces = self.get_parallel_forces(i)
                 perp_forces = self.get_perpendicular_forces(i)
                 total_forces.append(par_forces + perp_forces)
+
         self._forces = np.array(total_forces).flatten()
 
         self.climb_after -= 1

@@ -80,7 +80,7 @@ def plot_saras():
     fig, ax = plt.subplots()
     ax.set_xlabel("Image")
     ax.set_ylabel("ΔE / au")
-    lines = ax.plot(first_cycle)
+    lines = ax.plot(first_cycle, "o-")
 
     def animate(i):
         fig.suptitle("Cycle {}".format(i+1))

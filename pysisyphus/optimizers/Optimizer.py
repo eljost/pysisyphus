@@ -43,6 +43,11 @@ class Optimizer:
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         self.is_zts = getattr(self.geometry, "reparametrize", None)
 
+        self.image_num = 1
+        if self.is_cos:
+            self.image_num = len(self.geometry.moving_indices)
+        print(f"Path with {self.image_num} moving images.")
+
         # Overwrite default values if they are supplied as kwargs
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -68,12 +73,12 @@ class Optimizer:
 
     def procrustes(self):
         # http://nghiaho.com/?page_id=671#comment-559906
-        image = self.geometry.images[0]
-        coords3d = image.coords.reshape(-1, 3)
+        image0 = self.geometry.images[0]
+        coords3d = image0.coords.reshape(-1, 3)
         centroid = coords3d.mean(axis=0)
         last_centered = coords3d - centroid
-        image.coords = last_centered.flatten()
-        atoms_per_image = len(self.geometry.images[0].atoms)
+        image0.coords = last_centered.flatten()
+        atoms_per_image = len(image0.atoms)
 
         # Don't rotate the first image, so just add identitiy matrices
         # for every atom.
