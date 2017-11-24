@@ -69,6 +69,15 @@ class ChainOfStates:
         """Distribute the flat 1d coords array over all images."""
         self.set_vector("coords", coords, clear=True)
 
+    def set_coords_at(self, i, coords):
+        if i in self.moving_indices:
+            self.images[i].coords = coords
+        # When dealing with a fixed image don't set coords through the
+        # property, which would result in resetting the image's caluclated
+        # data. Instead assign coords directly.
+        else:
+            self.images[i]._coords = coords
+
     @property
     def energy(self):
         self._energy = np.array([image.energy for image in self.images])
@@ -78,7 +87,7 @@ class ChainOfStates:
     def energy(self, energies):
         """This is needed for some optimizers like CG and BFGS."""
         assert(len(self.images) == len(energies))
-        for i in range(len(self.images)):
+        for i in self.moving_indices:
             self.images[i].energy = energies[i]
 
         self._energy = energies

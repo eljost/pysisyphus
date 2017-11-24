@@ -77,13 +77,13 @@ class Optimizer:
         coords3d = image0.coords.reshape(-1, 3)
         centroid = coords3d.mean(axis=0)
         last_centered = coords3d - centroid
-        image0.coords = last_centered.flatten()
+        self.geometry.set_coords_at(0, last_centered.flatten())
         atoms_per_image = len(image0.atoms)
 
         # Don't rotate the first image, so just add identitiy matrices
         # for every atom.
         rot_mats = [np.eye(3)]*atoms_per_image
-        for image in self.geometry.images[1:]:
+        for i, image in enumerate(self.geometry.images[1:], 1):
             coords3d = image.coords.reshape(-1, 3)
             centroid = coords3d.mean(axis=0)
             # Center next image
@@ -97,7 +97,7 @@ class Optimizer:
                 rot_mat = U.dot(Vt)
             # Rotate the coords
             rotated3d = centered.dot(rot_mat)
-            image.coords = rotated3d.flatten()
+            self.geometry.set_coords_at(i, rotated3d.flatten())
             last_centered = rotated3d
             # Append one rotation matrix per atom
             rot_mats.extend([rot_mat]*atoms_per_image)
@@ -225,6 +225,8 @@ class Optimizer:
             steps = self.optimize()
 
             if steps is None:
+                # Remove the previously added coords
+                self.coords.pop(-1)
                 continue
 
             if self.is_cos:

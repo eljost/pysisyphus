@@ -50,8 +50,9 @@ class BFGS(BacktrackingOptimizer):
             return None
         else:
             # Because we add the step later on we restore the original
-            # coordinates and set the appropriate energies.
+            # coordinates and set the appropriate energies and forces.
             self.geometry.coords = last_coords
+            self.geometry.forces = new_forces
             self.geometry.energy = new_energy
 
             self.forces.append(new_forces)
