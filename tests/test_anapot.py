@@ -224,7 +224,7 @@ def test_bfgs_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 23) # k = 0.01
+    assert(opt.cur_cycle == 22) # k = 0.01
 
     return opt
 
@@ -237,7 +237,7 @@ def test_bfgs_neb_more_images():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 32) # k = 0.01
+    assert(opt.cur_cycle == 31) # k = 0.01
 
     return opt
 
