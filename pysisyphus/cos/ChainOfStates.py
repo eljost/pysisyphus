@@ -78,7 +78,7 @@ class ChainOfStates:
     def energy(self, energies):
         """This is needed for some optimizers like CG and BFGS."""
         assert(len(self.images) == len(energies))
-        for i in self.moving_indices:
+        for i in range(len(self.images)):
             self.images[i].energy = energies[i]
 
         self._energy = energies
