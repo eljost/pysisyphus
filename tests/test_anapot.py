@@ -71,7 +71,47 @@ def test_steepest_descent_neb():
 
 
 @pytest.mark.sd
-def test_fixed_ends_neb():
+def test_fix_first_neb():
+    # First image is fix at a non equilibrium geometry
+    coords = np.array(((-0.916, 1.034, 0), (1.94101, 3.85427, 0)))
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms(coords), fix_first=True)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    #assert(opt.is_converged)
+    #assert(opt.cur_cycle == 20) # k = 0.01
+
+    return opt
+
+
+@pytest.mark.sd
+def test_fix_last_neb():
+    # Last image is fix at a non equilibrium geometry
+    coords = np.array(((-1.05274, 1.02776, 0), (1.85, 3.57, 0)))
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms(coords), fix_last=True)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    #assert(opt.is_converged)
+    #assert(opt.cur_cycle == 20) # k = 0.01
+
+    return opt
+
+
+@pytest.mark.sd
+def test_fix_ends_neb():
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms(), fix_ends=True)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 23) # k = 0.01
+
+    return opt
+
+
+@pytest.mark.sd
+def test_fix_displaced_ends_neb():
     coords = np.array(((-0.916, 1.034, 0), (1.85, 3.57, 0)))
     kwargs = copy.copy(KWARGS)
     neb = NEB(get_geoms(coords), fix_ends=True)
@@ -91,7 +131,7 @@ def test_fixed_ends_neb():
 
 
 @pytest.mark.sd
-def test_fixed_end_climbing_neb():
+def test_fix_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 15
     convergence = {
@@ -264,12 +304,15 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
-    #opt = test_fixed_ends_neb()
-    #opt = test_fixed_end_climbing_neb()
+    #opt = test_fix_first_neb()
+    #opt = test_fix_ends_neb()
+    opt = test_fix_last_neb()
+    #opt = test_fix_displaced_ends_neb()
+    #opt = test_fix_end_climbing_neb()
     #opt = test_steepest_descent_neb_more_images()
 
     # Conjugate Gradient
-    opt = test_cg_neb()
+    #opt = test_cg_neb()
 
     # QuickMin
     #opt = test_qm_neb()

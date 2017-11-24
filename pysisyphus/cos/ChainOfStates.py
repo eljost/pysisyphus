@@ -10,16 +10,35 @@ from pysisyphus.constants import BOHR2ANG
 
 class ChainOfStates:
 
-    def __init__(self, images, parallel=0, fix_ends=False):
+    def __init__(self, images, parallel=0, fix_ends=False,
+                 fix_first=False, fix_last=False):
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = images
         self.parallel = parallel
+        self.fix_first = fix_ends or fix_first
+        self.fix_last = fix_ends or fix_last
         self.fix_ends = fix_ends
 
         self._coords = None
         self._forces = None
         self._energy = None
         self.coords_length = self.images[0].coords.size
+
+    def set_vector(self, name, vector, clear=False):
+        vec_per_image = vector.reshape(-1, self.coords_length)
+        images = self.images
+        if self.fix_first:
+            vec_per_image  = vec_per_image[1:]
+            images = self.images[1:]
+        if self.fix_last:
+            vec_per_image = vec_per_image[:-1]
+            images = images[:-1]
+        for image, vec in zip(images, vec_per_image):
+            setattr(image, name, vec)
+        if clear:
+            self._energy = None
+            self._forces = None
+            self._hessian = None
 
     @property
     def coords(self):
@@ -31,17 +50,7 @@ class ChainOfStates:
     @coords.setter
     def coords(self, coords):
         """Distribute the flat 1d coords array over all images."""
-        coords = coords.reshape(-1, self.coords_length)
-        images = self.images
-        if self.fix_ends:
-            coords = coords[1:-1]
-            images = self.images[1:-1]
-        for image, c in zip(images, coords):
-            image.coords = c
-
-        self._energy = None
-        self._forces = None
-        self._hessian = None
+        self.set_vector("coords", coords, clear=True)
 
     @property
     def energy(self):
