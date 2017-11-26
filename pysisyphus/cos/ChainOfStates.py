@@ -115,7 +115,12 @@ class ChainOfStates:
 
     @property
     def results(self):
-        return [image.results for image in self.images]
+        tmp_results = list()
+        for image in self.images:
+            res = image.results
+            res["coords"] = image.coords
+            tmp_results.append(res)
+        return tmp_results
 
     def interpolate_between(self, initial_ind, final_ind, image_num):
         # Check for atom ordering
