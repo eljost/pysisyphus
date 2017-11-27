@@ -4,4 +4,5 @@ __all__ = [
     "FIRE",
     "QuickMin",
     "SteepestDescent",
+    "SciPyOptimizer",
 ]

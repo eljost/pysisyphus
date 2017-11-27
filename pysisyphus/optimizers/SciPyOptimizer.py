@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+
+import time
+
+import numpy as np
+from scipy.optimize import minimize
+
+from pysisyphus.optimizers.Optimizer import Optimizer
+
+class SciPyOptimizer(Optimizer):
+
+    def __init__(self, geometry, method, **kwargs):
+        super(SciPyOptimizer, self).__init__(geometry, **kwargs)
+
+        if self.align:
+            print("Can't use align: True with SciPy optimizers.")
+        self.method = method
+        self.options = {
+            "disp": True,
+            "maxiter": self.max_cycles,
+            "gtol": 1e-2,
+        }
+
+    def callback(self, xk):
+        self.cur_cycle += 1
+        forces = self.geometry.forces
+        step = self.coords[-1] - xk
+
+        self.steps.append(step)
+
+        if self.is_cos:
+            self.tangents.append(self.geometry.get_tangents())
+
+        self.check_convergence()
+        self.print_convergence()
+
+        if self.dump:
+            self.write_cycle_to_file()
+            self.write_opt_data_to_file()
+
+        if self.is_zts:
+            self.geometry.reparametrize()
+
+    def fun(self, coords):
+        start_time = time.time()
+
+        self.coords.append(self.geometry.coords)
+        self.geometry.coords = coords
+        forces = self.geometry.forces
+        self.forces.append(forces)
+        self.energies.append(self.geometry.energy)
+        forces_rms = np.sqrt(np.mean(np.square(forces)))
+
+        end_time = time.time()
+        elapsed_seconds = end_time - start_time
+        self.cycle_times.append(elapsed_seconds)
+
+        # gradient = -forces
+        return forces_rms, -forces
+
+    def run(self):
+        self.cycle_times = [44, ]
+        self.print_header()
+        x0 = self.geometry.coords
+        opt_res = minimize(self.fun, x0, jac=True, method=self.method,
+                           callback=self.callback, options=self.options)
+        if self.is_converged:
+            print("Converged!")
+        else:
+            print("Didn't converge.")
+        # check if converged and print message

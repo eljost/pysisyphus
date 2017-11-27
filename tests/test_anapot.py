@@ -16,6 +16,7 @@ from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.NaiveSteepestDescent import NaiveSteepestDescent
+from pysisyphus.optimizers.SciPyOptimizer import SciPyOptimizer
 
 KWARGS = {
     "images": 5,
@@ -242,6 +243,18 @@ def test_bfgs_neb_more_images():
     return opt
 
 
+@pytest.mark.skip
+def test_scipy_bfgs_neb():
+    """It seems like the maximum step size can't be set
+    as of SciPy 1.0.0."""
+    kwargs = copy.copy(KWARGS)
+    kwargs["method"] = "BFGS"
+    neb = NEB(get_geoms())
+    opt = run_cos_opt(neb, SciPyOptimizer, **kwargs)
+
+    return opt
+
+
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
     convergence = {
@@ -307,10 +320,10 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
-    opt = test_fix_first_neb()
-    opt = test_fix_last_neb()
-    opt = test_fix_ends_neb()
-    opt = test_fix_displaced_ends_neb()
+    #opt = test_fix_first_neb()
+    #opt = test_fix_last_neb()
+    #opt = test_fix_ends_neb()
+    #opt = test_fix_displaced_ends_neb()
 
     #opt = test_fix_end_climbing_neb()
 
@@ -328,6 +341,7 @@ if __name__ == "__main__":
     # BFGS
     #opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
+    opt = test_scipy_bfgs_neb()
 
     # SimpleZTS
     #opt = test_equal_szts()

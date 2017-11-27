@@ -30,6 +30,7 @@ OPT_DICT = {
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
+    "scipy": SciPyOptimizer.SciPyOptimizer,
 }
 
 IRC_DICT = {
