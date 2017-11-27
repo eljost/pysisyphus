@@ -64,7 +64,7 @@ class BFGS(BacktrackingOptimizer):
                 # When align = True the above expression will evaluate to
                 # False. So we also check if we are in the first iteration.
                 or (self.cur_cycle == 0)):
-                self.log("setting initial guess for inverse hessian")
+                self.log("Using initial guess for inverse hessian")
                 self.inv_hessian = (np.dot(forces_diff, sigma) /
                                     np.dot(forces_diff, forces_diff) *
                                     self.eye

@@ -7,7 +7,6 @@ __all__ = [
     "OpenMolcas",
 ]
 
-
 logger = logging.getLogger("calculator")
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler("calculator.log", mode="w")
