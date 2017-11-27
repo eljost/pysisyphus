@@ -13,7 +13,7 @@ class SciPyOptimizer(Optimizer):
         super(SciPyOptimizer, self).__init__(geometry, **kwargs)
 
         if self.align:
-            print("Can't use align: True with SciPy optimizers.")
+            print("Ignoring align in SciPy optimizers.")
         self.method = method
         self.options = {
             "disp": True,
@@ -59,12 +59,11 @@ class SciPyOptimizer(Optimizer):
         return forces_rms, -forces
 
     def run(self):
-        self.cycle_times = [44, ]
         self.print_header()
         x0 = self.geometry.coords
-        opt_res = minimize(self.fun, x0, jac=True, method=self.method,
+        self.opt_res = minimize(self.fun, x0, jac=True, method=self.method,
                            callback=self.callback, options=self.options)
-        if self.is_converged:
+        if self.opt_res.success:
             print("Converged!")
         else:
             print("Didn't converge.")
