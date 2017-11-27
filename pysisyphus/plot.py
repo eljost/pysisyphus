@@ -15,9 +15,9 @@ from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG
 from pysisyphus.peakdetect import peakdetect
 
 
-
 class Plotter:
-    def __init__(self, data, ylabel, interval=750):
+    def __init__(self, coords, data, ylabel, interval=750):
+        self.coords = coords
         self.data = data
         self.ylabel = ylabel
         self.interval = interval
@@ -28,9 +28,9 @@ class Plotter:
         self.fig, self.ax = plt.subplots()
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
 
-        self.ax.set_xlabel("Image")
-        y_min = self.data.min()#*1.05
-        y_max = self.data.max()#*1.05
+        self.ax.set_xlabel("Path length / Bohr")
+        y_min = self.data.min()
+        y_max = self.data.max()
         self.ax.set_ylim(y_min, y_max)
         self.ax.set_ylabel(self.ylabel)
 
@@ -39,6 +39,21 @@ class Plotter:
         elif self.data.ndim == 3:
             self.update_func = self.update_plot2
 
+        self.coord_diffs = self.get_coord_diffs(self.coords)
+
+    def get_coord_diffs(self, coords, normalize=False):
+        coord_diffs = list()
+        for per_cycle in coords:
+            tmp_list = [0, ]
+            for i in range(len(per_cycle)-1):
+                diff = np.linalg.norm(per_cycle[i+1]-per_cycle[i])
+                tmp_list.append(diff)
+            tmp_list = np.cumsum(tmp_list)
+            if normalize:
+                tmp_list /= tmp_list.max()
+            coord_diffs.append(tmp_list)
+        return np.array(coord_diffs)
+
     def update_plot(self, i):
         self.fig.suptitle("Cycle {}".format(i+1))
         self.lines[0].set_ydata(self.data[i])
@@ -46,14 +61,15 @@ class Plotter:
     def update_plot2(self, i):
         self.fig.suptitle("Cycle {}".format(i+1))
         for j, line in enumerate(self.lines):
-            line.set_ydata(self.data[i][:,j])
+            line.set_ydata(self.data[i][:, j])
 
     def animate(self):
-        self.lines = self.ax.plot(self.data[0], "o-")
-        self.animation = matplotlib.animation.FuncAnimation(self.fig,
-                                                            self.update_func,
-                                                            frames=self.cycles,
-                                                            interval=self.interval)
+        self.lines = self.ax.plot(self.coord_diffs[0], self.data[0], "o-")
+        self.animation = matplotlib.animation.FuncAnimation(
+                                                self.fig,
+                                                self.update_func,
+                                                frames=self.cycles,
+                                                interval=self.interval)
         plt.show()
 
     def on_keypress(self, event):
@@ -93,14 +109,17 @@ def plot_energies(df):
         y2 = splev(x2, spl)
         # Only consider maxima
         peak_inds, _ = peakdetect(y2, lookahead=2)
-        peak_inds = np.array(peak_inds)[:, 0].astype(int)
-        peak_xs = x2[peak_inds]
-        peak_ys = y2[peak_inds]
-        ax.plot(x2, y2, peak_xs, peak_ys, "x")
-        for px, py in zip(peak_xs, peak_ys):
-            ax.axhline(y=py, **kwargs)
-            line = matplotlib.lines.Line2D([px, px], [0, py], **kwargs)
-            ax.add_line(line)
+        if not peak_inds:
+            ax.plot(x2, y2)
+        else:
+            peak_inds = np.array(peak_inds)[:, 0].astype(int)
+            peak_xs = x2[peak_inds]
+            peak_ys = y2[peak_inds]
+            ax.plot(x2, y2, peak_xs, peak_ys, "x")
+            for px, py in zip(peak_xs, peak_ys):
+                ax.axhline(y=py, **kwargs)
+                line = matplotlib.lines.Line2D([px, px], [0, py], **kwargs)
+                ax.add_line(line)
     except TypeError:
         print("Not enough images for splining!")
 
@@ -111,25 +130,35 @@ def plot_energies(df):
     plt.show()
 
 
-def load_results(key):
+def load_results(keys):
+    if isinstance(keys, str):
+        keys = (keys, )
     with open("results.yaml") as handle:
         all_results = yaml.load(handle.read())
     num_cycles = len(all_results)
-    print(f"Loaded informations of {num_cycles} cycle(s).")
 
-    tmp_list = list()
-    for res_per_cycle in all_results:
-            tmp_list.append([res[key] for res in res_per_cycle])
-    return np.array(tmp_list), num_cycles
+    results_list = list()
+    for key in keys:
+        tmp_list = list()
+        for res_per_cycle in all_results:
+                tmp_list.append([res[key] for res in res_per_cycle])
+        results_list.append(np.array(tmp_list))
+    # The length of the second axis correpsonds to the number of images
+    num_images = results_list[0].shape[1]
+    # Flatten the first axis when we got only a single key
+    if len(results_list) == 1:
+        results_list = results_list[0]
+    print(f"Found path with {num_images} images.")
+    print(f"Loaded {num_cycles} cycle(s).")
+    return results_list, num_cycles, num_images
 
 
 def plot_saras():
-    key = "sa_energies"
-    sa_ens, num_cycles = load_results(key)
-    sa_ens -= sa_ens.min(axis=(2,1), keepdims=True)
-    first_cycle = sa_ens[0]
+    keys = ("sa_energies", "coords")
+    (sa_ens, coords), num_cycles, num_images = load_results(keys)
+    sa_ens -= sa_ens.min(axis=(2, 1), keepdims=True)
 
-    plotter = Plotter(sa_ens, "ΔE / au")
+    plotter = Plotter(coords, sa_ens, "ΔE / au")
     plotter.animate()
 
 
@@ -153,7 +182,7 @@ def plot_params(inds):
     ylabel, func = type_dict[len(inds)]
 
     key = "coords"
-    coords, num_cycles = load_results(key)
+    coords, num_cycles, num_images = load_results(key)
     ac = list()
     for i, per_cycle in enumerate(coords):
         pc = list()
@@ -164,7 +193,7 @@ def plot_params(inds):
         ac.append(pc)
     ac_arr = np.array(ac)
 
-    plotter = Plotter(ac_arr, ylabel)
+    plotter = Plotter(coords, ac_arr, ylabel)
     plotter.animate()
 
 
