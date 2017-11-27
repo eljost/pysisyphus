@@ -32,11 +32,15 @@ class QuickMin(Optimizer):
                                   / cur_forces.dot(cur_forces))
             else:
                 tmp_velocities = np.zeros_like(cur_velocities)
+                self.log("resetted velocities")
 
         accelerations = cur_forces / self.geometry.masses_rep
         new_velocities = tmp_velocities + self.dt*accelerations
         steps = new_velocities*self.dt + 1/2*accelerations*self.dt**2
         steps = self.scale_by_max_step(steps)
         self.velocities.append(new_velocities)
+        velo_norm = np.linalg.norm(new_velocities)
+        acc_norm = np.linalg.norm(accelerations)
+        self.log(f"norm(v) = {velo_norm:.4f}, norm(a) = {acc_norm:.4f}")
 
         return steps

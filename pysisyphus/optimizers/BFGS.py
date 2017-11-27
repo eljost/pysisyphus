@@ -60,7 +60,11 @@ class BFGS(BacktrackingOptimizer):
             sigma = new_coords - last_coords
             forces_diff = -new_forces - (-last_forces)
             rho = 1.0 / np.dot(forces_diff, sigma)
-            if np.array_equal(self.inv_hessian, self.eye):
+            if ((np.array_equal(self.inv_hessian, self.eye))
+                # When align = True the above expression will evaluate to
+                # False. So we also check if we are in the first iteration.
+                or (self.cur_cycle == 0)):
+                self.log("setting initial guess for inverse hessian")
                 self.inv_hessian = (np.dot(forces_diff, sigma) /
                                     np.dot(forces_diff, forces_diff) *
                                     self.eye
@@ -73,7 +77,7 @@ class BFGS(BacktrackingOptimizer):
                  forces_diff[:,np.newaxis] * sigma[np.newaxis,:] * rho
             )
             self.inv_hessian = (
-                    np.dot(A, np.dot(self.inv_hessian, B)) +
+                    A.dot(self.inv_hessian.dot(B)) +
                     sigma[:,np.newaxis] * sigma[np.newaxis,:] * rho
             )
 

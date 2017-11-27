@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+
 import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -32,7 +34,7 @@ class BacktrackingOptimizer(Optimizer):
             np.abs(cur_rms_force+prev_rms_force)
         )
 
-        # skip tells us if we overshot
+        # Skip tells us if we overshot
         skip = False
 
         # When the optimiziation is converging cur_forces will
@@ -55,4 +57,5 @@ class BacktrackingOptimizer(Optimizer):
                 else:
                     # Accelerate alpha
                     self.alpha /= scale_factor
+        self.log(f"alpha = {self.alpha}, skip = {skip}")
         return skip

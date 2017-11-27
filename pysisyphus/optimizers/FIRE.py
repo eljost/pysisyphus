@@ -10,7 +10,8 @@ class FIRE(BacktrackingOptimizer):
     def __init__(self, geometry, **kwargs):
         self.dt = 0.1
         self.dt_max = 1
-        self.N_acc = 5
+        # Accelerate after N_acc cycles
+        self.N_acc = 2
         self.f_inc = 1.1
         self.f_acc = 0.99
         self.f_dec = 0.5
@@ -54,6 +55,7 @@ class FIRE(BacktrackingOptimizer):
             # Reset everything when 'forces' and 'last_v' aren't
             # aligned anymore.
             mixed_v = np.zeros_like(forces)
+            self.log("resetted velocities")
             self.a = self.a_start
             self.dt *= self.f_acc
             self.n_reset = 0
@@ -63,6 +65,9 @@ class FIRE(BacktrackingOptimizer):
         self.time_deltas.append(self.dt)
         steps = self.dt * v
         steps = self.scale_by_max_step(steps)
+
+        velo_norm = np.linalg.norm(v)
+        self.log(f"dt = {self.dt:.4f}, norm(v) {velo_norm:.4f}")
 
         return steps
 

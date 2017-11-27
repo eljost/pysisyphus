@@ -213,7 +213,7 @@ def test_fire_neb():
     opt = run_cos_opt(neb, FIRE, **kwargs)
     
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30) # k = 0.01
+    assert(opt.cur_cycle == 27) # k = 0.01
 
     return opt
 

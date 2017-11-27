@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+
 import os
 from pathlib import Path
 import time
@@ -56,6 +58,7 @@ class Optimizer:
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
         self.cur_cycle = 0
+        self.logger = logging.getLogger("optimizer")
 
         self.coords = list()
         self.energies = list()
@@ -70,6 +73,9 @@ class Optimizer:
 
         self.tangents = list()
         self.all_results = list()
+
+    def log(self, message):
+        self.logger.debug(f"Cycle {self.cur_cycle+1:03d}, {message}")
 
     def procrustes(self):
         # http://nghiaho.com/?page_id=671#comment-559906

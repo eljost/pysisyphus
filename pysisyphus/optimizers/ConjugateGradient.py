@@ -39,11 +39,13 @@ class ConjugateGradient(BacktrackingOptimizer):
         new_energy = self.geometry.energy
 
         skip = self.backtrack(new_forces, cur_forces)
+        # Imho backtracking gives bad results here, so we don't use it.
         #if skip:
         #    return None
 
         if self.align and self.is_cos:
-            new_forces, cur_forces, steps = self.fit_rigid((new_forces, cur_forces, steps))
+            new_forces, cur_forces, steps = self.fit_rigid((new_forces,
+                                                            cur_forces, steps))
             self.geometry.coords -= steps
             # Set the calculated properties on the rotated geometries
             self.geometry.energy = new_energy

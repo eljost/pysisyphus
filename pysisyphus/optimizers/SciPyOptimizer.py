@@ -13,7 +13,7 @@ class SciPyOptimizer(Optimizer):
         super(SciPyOptimizer, self).__init__(geometry, **kwargs)
 
         if self.align:
-            print("Ignoring align in SciPy optimizers.")
+            print("Ignoring align in SciPyOptimizer.")
         self.method = method
         self.options = {
             "disp": True,
