@@ -133,6 +133,7 @@ def plot_energies(df):
 def load_results(keys):
     if isinstance(keys, str):
         keys = (keys, )
+    results_fn = "results.yaml"
     with open("results.yaml") as handle:
         all_results = yaml.load(handle.read())
     num_cycles = len(all_results)
@@ -141,7 +142,11 @@ def load_results(keys):
     for key in keys:
         tmp_list = list()
         for res_per_cycle in all_results:
+            try:
                 tmp_list.append([res[key] for res in res_per_cycle])
+            except KeyError:
+                print(f"Key '{key}' not present in {results_fn}. Exiting.")
+                sys.exit()
         results_list.append(np.array(tmp_list))
     # The length of the second axis correpsonds to the number of images
     num_images = results_list[0].shape[1]

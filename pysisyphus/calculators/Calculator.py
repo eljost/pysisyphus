@@ -10,6 +10,7 @@ import tempfile
 
 
 class Calculator:
+    logger = logging.getLogger("calculator")
 
     def __init__(self, charge=0, mult=1, name="calculator"):
         self.charge = charge
@@ -17,13 +18,15 @@ class Calculator:
         self.name = name
 
         self.counter = 0
-        #self.logger = logging.getLogger("calculator")
         self._energy = None
         self._forces = None
         self._hessian = None
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
+
+    def log(self, message):
+        self.logger.debug(f"{self.name}_{self.counter:03d}, " + message)
 
     def get_energy(self, atoms, coords):
         raise Exception("Not implemented!")
@@ -46,7 +49,7 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None, env=None):
         path = self.prepare(inp)
-        #self.logger.debug(f"Calculator {self.name}, {path}.")
+        self.log(f"running in {path}")
         args = [self.base_cmd, self.inp_fn]
         if add_args:
             args.extend(add_args)
@@ -89,5 +92,5 @@ class Calculator:
         return kept_fns
 
     def clean(self, path):
-        #self.logger.debug(f"Cleaning {path}.")
         shutil.rmtree(path)
+        self.log(f"cleaned {path}.")
