@@ -83,7 +83,7 @@ class Calculator:
             pattern = f"*.{ext}"
             globbed = list(path.glob(pattern))
             assert(len(globbed) == 1), (f"Expected only one {pattern} in {path}."
-                                        " Found {len(globbed)}!"
+                                        f" Found {len(globbed)}!"
             )
             old_fn = globbed[0]
             new_fn = os.path.abspath(self.make_fn(ext))

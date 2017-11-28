@@ -82,7 +82,7 @@ class OpenMolcas(Calculator):
         return inp
 
     def get_forces(self, atoms, coords):
-        #self.logger.debug(f"Using inporb: {self.inporb}")
+        self.logger.debug(f"using inporb: {self.inporb}")
         inp = self.prepare_input(atoms, coords)
         add_args = ("-clean", "-oe", self.out_fn)
         env = os.environ.copy()
