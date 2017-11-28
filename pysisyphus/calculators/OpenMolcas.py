@@ -94,7 +94,6 @@ class OpenMolcas(Calculator):
         kept_fns = super().keep(path, ("RasOrb", "out"))
         self.inporb = kept_fns["RasOrb"]
 
-
     def parse_energies(self, text):
         # Energy of root for which gradient was computed
         energy_regex = "RASSCF state energy =\s*" + self.float_regex
