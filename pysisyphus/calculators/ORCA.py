@@ -3,6 +3,7 @@
 import glob
 import logging
 import os
+from pathlib import Path
 import re
 import subprocess
 
@@ -32,6 +33,10 @@ class ORCA(Calculator):
         self.keywords = keywords
         self.blocks = blocks
 
+        self.do_tddft = False
+        if "tddft" in self.blocks:
+            self.do_tddft = True
+            self.iroot = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
@@ -151,6 +156,12 @@ class ORCA(Calculator):
         energy_mobj = re.search(energy_re, log_text)
         energy = float(energy_mobj.groups()[0])
         results["energy"] = energy
+
+        if self.do_tddft:
+            """FIXME: Store the right energy etc. similar to
+            parse_engrad."""
+            raise Exception("Proper handling of TDDFT and hessian "
+                            " is not yet implemented.")
         return results
 
     def parse_engrad(self, path):
@@ -170,7 +181,31 @@ class ORCA(Calculator):
         results["energy"] = energy
         results["forces"] = force
 
+        if self.do_tddft:
+            # This sets the proper excited state energy in the
+            # results dict and also stores all energies.
+            excitation_ens = self.parse_tddft(path)
+            # ORCA iroot input is 1 based, so we substract 1 to get
+            # the right index here.
+            iroot_exc_en = excitation_ens[self.iroot-1]
+            gs_energy = results["energy"]
+            # Add excitation energy to ground state energy.
+            results["energy"] += iroot_exc_en
+            all_ens = np.full(len(excitation_ens)+1, gs_energy)
+            all_ens[1:] += excitation_ens
+            results["tddft_energies"] = all_ens
+
         return results
+
+    def parse_tddft(self, path):
+        results = {}
+        orca_out = Path(path) / self.out_fn
+        with open(orca_out) as handle:
+            text = handle.read()
+        tddft_re = re.compile("STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
+        excitation_ens = [float(en) for en in tddft_re.findall(text)]
+        return excitation_ens
+
 
     def keep(self, path):
         kept_fns = super().keep(path, ("out", ))
@@ -183,10 +218,13 @@ if __name__ == "__main__":
     from pysisyphus.helpers import geom_from_library
     geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
     keywords = "BP86 def2-SV(P)"
-    blocks = ""
+    blocks = "tddft iroot 1 end"
     charge = 1
     mult = 1
     orca = ORCA(keywords, blocks, charge=charge, mult=mult)
+    """
     geom.set_calculator(orca)
     forces = geom.forces
     print(forces)
+    """
+    res = orca.parse_engrad("/scratch/test/pysis_orca/neu")

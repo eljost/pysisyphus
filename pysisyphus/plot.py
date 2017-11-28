@@ -83,7 +83,10 @@ class Plotter:
             self.pause = not self.pause
 
 
-def plot_energies(df):
+def plot_energies():
+    keys = "energy"
+    energies, num_cycles, num_images = load_results(keys)
+    df = pd.DataFrame(energies)
     cmap = plt.get_cmap("Greys")
     df = df.transpose()
     df -= df.values.min()
@@ -159,11 +162,22 @@ def load_results(keys):
 
 
 def plot_saras():
+    """OpenMOLCAS state average NEB."""
     keys = ("sa_energies", "coords")
     (sa_ens, coords), num_cycles, num_images = load_results(keys)
     sa_ens -= sa_ens.min(axis=(2, 1), keepdims=True)
 
     plotter = Plotter(coords, sa_ens, "ΔE / au")
+    plotter.animate()
+
+
+def plot_tddft():
+    """ORCA TDDFT NEB."""
+    keys = ("tddft_energies", "coords")
+    (td_ens, coords), num_cycles, num_images = load_results(keys)
+    td_ens -= td_ens.min(axis=(2, 1), keepdims=True)
+
+    plotter = Plotter(coords, td_ens, "ΔE / au")
     plotter.animate()
 
 
@@ -208,8 +222,16 @@ def parse_args(args):
                         help="Plot energies.")
     parser.add_argument("--until", type=int,
                         help="Only show until cycle [until].")
-    parser.add_argument("--saras", action="store_true")
-    parser.add_argument("--params", type=int, nargs="+")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--saras", action="store_true",
+                       help="Plot OpenMolcas state average potential energy "
+                            "surfaces over the course of the NEB.")
+    group.add_argument("--tddft", action="store_true",
+                       help="Plot ORCA TDDFT potential energy surfaces "
+                            "over the course of the NEB.")
+    group.add_argument("--params", type=int, nargs="+")
+
     return parser.parse_args(args)
 
 
@@ -217,12 +239,18 @@ def run():
     args = parse_args(sys.argv[1:])
 
     if args.energies:
+        plot_energies()
+        """
         df = pd.read_csv("energies.csv")
         if args.until:
             df = df[:args.until]
+
         plot_energies(df)
+        """
     elif args.saras:
         plot_saras()
+    elif args.tddft:
+        plot_tddft()
     elif args.params:
         plot_params(args.params)
 
