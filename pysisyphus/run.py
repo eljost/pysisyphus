@@ -64,19 +64,29 @@ def get_geoms(xyz_fns, idpp=False, between=0):
 
     # Do IDPP interpolation if requested,
     trj = ""
+    xyz_per_image = list()
     if idpp:
         geoms = IDPP.idpp_interpolate(geoms, images_between=between)
-        trj = "\n".join([geom.as_xyz() for geom in geoms])
+        xyz_per_image = [geom.as_xyz() for geom in geoms]
+        trj = "\n".join(xyz_per_image)
     # or just linear interpolation.
     elif between != 0:
         cos = ChainOfStates.ChainOfStates(geoms)
         cos.interpolate(between)
         geoms = cos.images
+        xyz_per_image = [geom.as_xyz() for geom in geoms]
         trj = cos.as_xyz()
 
     if trj:
-        with open("interpolated.trj", "w") as handle:
+        trj_fn = "interpolated.trj"
+        with open(trj_fn, "w") as handle:
             handle.write(trj)
+        print(f"Wrote interpolated coordinates to {trj_fn}.")
+    for i, xyz in enumerate(xyz_per_image):
+        image_fn = f"interpolated.image_{i}.xyz"
+        with open(image_fn, "w") as handle:
+            handle.write(xyz)
+        print(f"Wrote image {i} to {image_fn}.")
 
     return geoms
 
@@ -110,11 +120,12 @@ def run_opt(args):
 
 def run_interpolation(args):
     geoms = get_geoms(args.xyz, args.idpp, args.between)
+    """
     trj_fn = "interpolated.trj"
     trj_str = "\n".join([geom.as_xyz() for geom in geoms])
     with open(trj_fn, "w") as handle:
         handle.write(trj_str)
-    print(f"Wrote interpolated coordinates to {trj_fn}.")
+    """
 
 
 def get_defaults(conf_dict):
