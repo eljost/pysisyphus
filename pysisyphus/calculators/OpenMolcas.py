@@ -67,13 +67,13 @@ class OpenMolcas(Calculator):
 
         self.base_cmd = Config["openmolcas"]["cmd"]
 
-    def build_supsym(self, supsym):
+    def build_supsym_str(self, supsym):
         """Can handle only one subgroup for now."""
         if not supsym:
             return ""
 
         num_orbitals = len(supsym.split())
-        return = f"supsym\n1\n{num_orbitals} {supsym};"
+        return f"supsym\n1\n{num_orbitals} {supsym};"
 
     def prepare_coords(self, atoms, coords):
         coords = coords * BOHR2ANG

@@ -55,6 +55,22 @@ def parse_args(args):
     return parser.parse_args()
 
 
+def get_calc(index, name_base, calc_key, calc_kwargs):
+    """
+    import copy
+    kwargs_copy = copy.copy(calc_kwargs)
+    for key in kwargs_copy:
+        val = kwargs_copy[key]
+        if "$IMAGE" in str(val):
+            kwargs_copy[key] = val.replace("$IMAGE", str(index))
+    kwargs_copy["name"] = f"{name_base}_{index:03d}"
+    """
+    kwargs = {key: str(calc_kwargs[key]).replace("$IMAGE", str(index))
+              for key in calc_kwargs}
+    kwargs["name"] = f"{name_base}_{index:03d}"
+    return CALC_DICT[calc_key](**kwargs)
+
+
 def get_geoms(xyz_fns, idpp=False, between=0):
     # Read .xyz or .trj files
     if len(xyz_fns) == 1 and args.xyz[0].endswith(".trj"):
@@ -91,10 +107,9 @@ def get_geoms(xyz_fns, idpp=False, between=0):
     return geoms
 
 
-def run_cos(cos, get_calc, get_opt):
+def run_cos(cos, calc_getter, get_opt):
     for i, image in enumerate(cos.images):
-        name = f"image_{i:03d}"
-        image.set_calculator(get_calc({"name":name}))
+        image.set_calculator(calc_getter(i))
     opt = get_opt(cos)
     opt.run()
 
@@ -175,13 +190,13 @@ def handle_yaml(yaml_str):
 
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
-    get_calc = lambda kw: CALC_DICT[calc_key](**kw, **calc_kwargs)
+    calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
     get_opt = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
     geoms = get_geoms(xyz, idpp, between)
     if run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
-        run_cos(cos, get_calc, get_opt)
+        run_cos(cos, calc_getter, get_opt)
 
 
 def run():
