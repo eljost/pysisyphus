@@ -27,11 +27,11 @@ def make_sym_mat(table_block):
 
 class ORCA(Calculator):
 
-    def __init__(self, keywords, moinp, blocks="", **kwargs):
+    def __init__(self, keywords, gbw="", blocks="", **kwargs):
         super(ORCA, self).__init__(**kwargs)
 
         self.keywords = keywords
-        self.moinp = moinp
+        self.moinp = self.get_moinp_str(gbw)
         self.blocks = blocks
 
         self.do_tddft = False
@@ -41,8 +41,8 @@ class ORCA(Calculator):
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
-        self.orca_input="""!{keywords} {calc_type} moread
-        %moinp "{moinp}"
+        self.orca_input="""!{keywords} {calc_type}
+        {moinp}
 
         {blocks}
 
@@ -57,6 +57,13 @@ class ORCA(Calculator):
         }
 
         self.base_cmd = Config["orca"]["cmd"]
+
+    def get_moinp_str(self, gbw):
+        if not gbw:
+            return ""
+        self.moinp = f"""!moread
+        %moinp "{gbw}"
+        """
 
     def prepare_coords(self, atoms, coords):
         """Convert Bohr to Angstrom."""
@@ -213,7 +220,7 @@ class ORCA(Calculator):
 
     def keep(self, path):
         kept_fns = super().keep(path, ("out", "gbw"))
-        self.moinp = kept_fns["gbw"]
+        self.moinp = self.get_moinp_str(kept_fns["gbw"])
 
     def __str__(self):
         return "ORCA calculator"
