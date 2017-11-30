@@ -135,7 +135,6 @@ def get_defaults(conf_dict):
         dd["cos"] = {
             "type": "neb",
             "parallel": 0,
-            "fix_ends": True,
         }
         dd["opt"] = {
             "type": "cg",

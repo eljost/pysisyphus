@@ -14,13 +14,15 @@ from pysisyphus.xyzloader import make_xyz_str
 
 class OpenMolcas(Calculator):
 
-    def __init__(self, basis, inporb, roots, rlxroot, **kwargs):
+    def __init__(self, basis, inporb, roots, rlxroot,
+                 supsym=None, **kwargs):
         super(OpenMolcas, self).__init__(**kwargs)
 
         self.basis = basis
         self.inporb = inporb
         self.roots = roots
         self.rlxroot = rlxroot
+        self.supsym = self.build_supsym_str(supsym)
 
         self.inp_fn = "openmolcas.in"
         self.out_fn = "openmolcas.out"
@@ -53,6 +55,7 @@ class OpenMolcas(Calculator):
           {roots} {roots} 1
          rlxroot
           {rlxroot}
+         {supsym}
 
         &alaska
          pnew
@@ -63,6 +66,14 @@ class OpenMolcas(Calculator):
         }
 
         self.base_cmd = Config["openmolcas"]["cmd"]
+
+    def build_supsym(self, supsym):
+        """Can handle only one subgroup for now."""
+        if not supsym:
+            return ""
+
+        num_orbitals = len(supsym.split())
+        return = f"supsym\n1\n{num_orbitals} {supsym};"
 
     def prepare_coords(self, atoms, coords):
         coords = coords * BOHR2ANG
@@ -78,6 +89,7 @@ class OpenMolcas(Calculator):
                                         mult=self.mult,
                                         roots=self.roots,
                                         rlxroot=self.rlxroot,
+                                        supsym=self.supsym,
         )
         return inp
 
