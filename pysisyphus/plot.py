@@ -12,6 +12,8 @@ from scipy.interpolate import splrep, splev
 import yaml
 
 from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG
+from pysisyphus.cos.NEB import NEB
+from pysisyphus.Geometry import Geometry
 from pysisyphus.peakdetect import peakdetect
 
 
@@ -161,23 +163,61 @@ def load_results(keys):
     return results_list, num_cycles, num_images
 
 
-def plot_saras():
-    """OpenMOLCAS state average NEB."""
-    keys = ("sa_energies", "coords")
-    (sa_ens, coords), num_cycles, num_images = load_results(keys)
-    sa_ens -= sa_ens.min(axis=(2, 1), keepdims=True)
+def plot_cosgrad():
+    keys = ("energy", "forces", "coords")
+    (energies, forces, coords), num_cycles, num_images = load_results(keys)
+    dummy_atoms = list()
 
-    plotter = Plotter(coords, sa_ens, "ΔE / au")
-    plotter.animate()
+    all_nebs = list()
+    all_perp_forces = list()
+    for i, per_cycle in enumerate(zip(energies, forces, coords), 1):
+        ens, frcs, crds = per_cycle
+        images = [Geometry(dummy_atoms, per_image) for per_image in crds]
+        neb = NEB(images)
+        neb._forces = frcs
+        neb.forces = frcs
+        neb._energy = ens
+        neb.energy = ens
+        all_nebs.append(neb)
+        pf = neb.perpendicular_forces.reshape(num_images, -1)
+        all_perp_forces.append(pf)
+    """
+    last_neb = all_nebs[-1]
+    for img in last_neb.images:
+        #print(last_forces.shape)
+        max_force = img.forces.max()
+        rms_force = np.sqrt(np.mean(np.square(img.forces)))
+        print(f"rms(force)={rms_force:.04f}, max(force)={max_force:.04}")
+    last_pf = all_perp_forces[-1]
+    for per_img in last_pf:
+        max_force = per_img.max()
+        rms_force = np.sqrt(np.mean(np.square(per_img.flatten())))
+        print(f"max(force)={max_force:.06}, rms(force)={rms_force:.06f}")
+    max_force = last_pf[1:].max()
+    rms_force = np.sqrt(np.mean(np.square(last_pf[1:].flatten())))
+    """
+    last_pf = all_perp_forces[-1]
+    max_forces = last_pf.max(axis=1)
+
+    rms = lambda arr: np.sqrt(np.mean(np.square(arr)))
+    rms_forces = np.apply_along_axis(rms, 1, last_pf)
+    fig, (ax1, ax2) = plt.subplots(2)
+    ax1.plot(max_forces, "o-")
+    ax1.set_yscale("log")
+    ax1.set_title("max")
+    ax2.plot(rms_forces, "o-")
+    ax2.set_yscale("log")
+    ax2.set_title("rms")
+    plt.show()
 
 
-def plot_tddft():
-    """ORCA TDDFT NEB."""
-    keys = ("tddft_energies", "coords")
-    (td_ens, coords), num_cycles, num_images = load_results(keys)
-    td_ens -= td_ens.min(axis=(2, 1), keepdims=True)
 
-    plotter = Plotter(coords, td_ens, "ΔE / au")
+
+def plot_multistate_pes(keys):
+    (pes_ens, coords), num_cycles, num_images = load_results(keys)
+    pes_ens -= pes_ens.min(axis=(2, 1), keepdims=True)
+
+    plotter = Plotter(coords, pes_ens, "ΔE / au")
     plotter.animate()
 
 
@@ -231,6 +271,8 @@ def parse_args(args):
                        help="Plot ORCA TDDFT potential energy surfaces "
                             "over the course of the NEB.")
     group.add_argument("--params", type=int, nargs="+")
+    group.add_argument("--cosgrad", action="store_true",
+                        help="Plot image gradients along the path.")
 
     return parser.parse_args(args)
 
@@ -248,11 +290,15 @@ def run():
         plot_energies(df)
         """
     elif args.saras:
-        plot_saras()
+        keys = ("sa_energies", "coords")
+        plot_multistate_pes(keys)
     elif args.tddft:
-        plot_tddft()
+        keys = ("tddft_energies", "coords")
+        plot_multistate_pes(keys)
     elif args.params:
         plot_params(args.params)
+    elif args.cosgrad:
+        plot_cosgrad()
 
 
 if __name__ == "__main__":
