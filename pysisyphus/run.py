@@ -65,7 +65,7 @@ def get_calc(index, name_base, calc_key, calc_kwargs):
             kwargs_copy[key] = val.replace("$IMAGE", str(index))
     kwargs_copy["name"] = f"{name_base}_{index:03d}"
     """
-    kwargs = {key: str(calc_kwargs[key]).replace("$IMAGE", str(index))
+    kwargs = {key: str(calc_kwargs[key]).replace("$IMAGE", "{index:03d}")
               for key in calc_kwargs}
     kwargs["name"] = f"{name_base}_{index:03d}"
     return CALC_DICT[calc_key](**kwargs)

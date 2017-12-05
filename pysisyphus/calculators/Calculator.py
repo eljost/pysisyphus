@@ -93,4 +93,4 @@ class Calculator:
 
     def clean(self, path):
         shutil.rmtree(path)
-        self.log(f"cleaned {path}.")
+        self.log(f"cleaned {path}")
