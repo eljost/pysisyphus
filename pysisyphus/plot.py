@@ -99,7 +99,7 @@ def plot_energies():
             ax=ax,
             title="Energies",
             colormap=cmap,
-            legend=True,
+            legend=False,
     )
     kwargs = {
         "ls": ":",
@@ -258,8 +258,6 @@ def plot_params(inds):
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--energies", action="store_true",
-                        help="Plot energies.")
     parser.add_argument("--until", type=int,
                         help="Only show until cycle [until].")
 
@@ -273,6 +271,8 @@ def parse_args(args):
     group.add_argument("--params", type=int, nargs="+")
     group.add_argument("--cosgrad", action="store_true",
                         help="Plot image gradients along the path.")
+    group.add_argument("--energies", action="store_true",
+                        help="Plot energies.")
 
     return parser.parse_args(args)
 

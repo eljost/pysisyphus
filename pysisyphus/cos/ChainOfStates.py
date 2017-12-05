@@ -119,6 +119,7 @@ class ChainOfStates:
         for image in self.images:
             res = image.results
             res["coords"] = image.coords
+            #res["perpendicular_forces"] = self.perpendicular_forces
             tmp_results.append(res)
         return tmp_results
 
