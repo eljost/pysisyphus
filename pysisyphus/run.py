@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
+from pathlib import Path
 import sys
 
 import yaml
@@ -51,6 +53,7 @@ def parse_args(args):
                         "of simple linear interpolation.")
     parser.add_argument("--xyz", nargs="+")
     parser.add_argument("--yaml")
+    parser.add_argument("--clean", action="store_true")
 
     return parser.parse_args()
 
@@ -199,6 +202,37 @@ def handle_yaml(yaml_str):
         run_cos(cos, calc_getter, get_opt)
 
 
+def clean():
+    """Deletes files from previous runs in the cwd.
+    A similar function could be used to store everything ..."""
+    cwd = Path(".").resolve()
+    rm_globs = (
+        "image*.trj",
+        "image*.RasOrb",
+        "image*.out",
+        "cycle*.trj",
+        "results.yaml",
+        "interpolated.trj",
+        "interpolated.image*.xyz",
+        "calculator.log",
+        "optimizer.log",
+        "image*.gbw",
+    )
+    to_rm_paths = list()
+    for glob in rm_globs:
+        to_rm_paths.extend(list(cwd.glob(glob)))
+    to_rm_strs = [str(p) for p in to_rm_paths]
+    for s in to_rm_strs:
+        print(s)
+    rly_delete = input("Delete these files? (yes/no)\n")
+    if rly_delete != "yes":
+        print("Aborting")
+        return
+    else:
+        for p in to_rm_paths:
+            os.remove(p)
+            print(f"Deleted {p}")
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -209,6 +243,8 @@ def run():
         handle_yaml(yaml_str)
     elif args.between:
         run_interpolation(args)
+    elif args.clean:
+        clean()
     else:
         print("Please specify a run type! Show help with -h.")
 
