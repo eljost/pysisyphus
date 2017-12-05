@@ -227,7 +227,7 @@ class ORCA(Calculator):
 
 
     def keep(self, path):
-        kept_fns = super().keep(path, ("out", "gbw"))
+        kept_fns = super().keep(path, ("out", "gbw", "engrad", "hessian"))
         self.set_moinp_str(kept_fns["gbw"])
 
     def __str__(self):

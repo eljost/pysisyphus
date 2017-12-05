@@ -208,9 +208,12 @@ class Optimizer:
             out_fn = "opt.trj"
             self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
+    """
+    # Not needed anymore as this is stored in results.yaml
     def write_opt_data_to_file(self):
         energy_df = pd.DataFrame(self.energies)
         energy_df.to_csv(self.out_dir / "energies.csv", index=False)
+    """
 
     def run(self):
         prep_start_time = time.time()
@@ -252,7 +255,7 @@ class Optimizer:
 
             if self.dump:
                 self.write_cycle_to_file()
-                self.write_opt_data_to_file()
+                # self.write_opt_data_to_file()
             self.print_convergence()
             if self.is_converged:
                 print("Converged!")
