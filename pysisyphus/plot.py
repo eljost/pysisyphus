@@ -196,21 +196,42 @@ def plot_cosgrad():
     max_force = last_pf[1:].max()
     rms_force = np.sqrt(np.mean(np.square(last_pf[1:].flatten())))
     """
-    last_pf = all_perp_forces[-1]
-    max_forces = last_pf.max(axis=1)
-
+    all_max_forces = list()
+    all_rms_forces = list()
     rms = lambda arr: np.sqrt(np.mean(np.square(arr)))
-    rms_forces = np.apply_along_axis(rms, 1, last_pf)
+    for pf in all_perp_forces:
+        max_forces = pf.max(axis=1)
+        all_max_forces.append(max_forces)
+        rms_forces = np.apply_along_axis(rms, 1, pf)
+        all_rms_forces.append(rms_forces)
+    all_max_forces = np.array(all_max_forces)
+    all_rms_forces = np.array(all_rms_forces)
+
+    cmap = plt.get_cmap("Greys")
     fig, (ax1, ax2) = plt.subplots(2)
-    ax1.plot(max_forces, "o-")
-    ax1.set_yscale("log")
-    ax1.set_title("max")
-    ax2.plot(rms_forces, "o-")
-    ax2.set_yscale("log")
-    ax2.set_title("rms")
+    # Using dataframes seems to be the easiest way to include
+    # the colormap... Axis.plot() cant be used with cmap.
+    max_df = pd.DataFrame(all_max_forces.T)
+    rms_df = pd.DataFrame(all_rms_forces.T)
+    kwargs = {
+        "colormap": cmap,
+        "logy": True,
+        "legend": False,
+        "ylim": (5e-4, 1e-1),
+        "marker": "o",
+    }
+    ax1 = max_df.plot(
+            ax=ax1,
+            title="max(perpendicular grad.)",
+            **kwargs,
+    )
+    ax2 = rms_df.plot(
+            ax=ax2,
+            title="rms(perpendicular grad.)",
+            **kwargs,
+    )
+    plt.tight_layout()
     plt.show()
-
-
 
 
 def plot_multistate_pes(keys):
@@ -282,13 +303,6 @@ def run():
 
     if args.energies:
         plot_energies()
-        """
-        df = pd.read_csv("energies.csv")
-        if args.until:
-            df = df[:args.until]
-
-        plot_energies(df)
-        """
     elif args.saras:
         keys = ("sa_energies", "coords")
         plot_multistate_pes(keys)

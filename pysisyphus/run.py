@@ -208,7 +208,6 @@ def clean():
     cwd = Path(".").resolve()
     rm_globs = (
         "image*.trj",
-        "image*.RasOrb",
         "image*.out",
         "cycle*.trj",
         "results.yaml",
@@ -216,7 +215,12 @@ def clean():
         "interpolated.image*.xyz",
         "calculator.log",
         "optimizer.log",
+        # ORCA specific
         "image*.gbw",
+        "image*.engrad",
+        "image*.hessian",
+        # OpenMOLCAS specific
+        "image*.RasOrb",
     )
     to_rm_paths = list()
     for glob in rm_globs:
