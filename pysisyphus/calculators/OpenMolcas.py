@@ -14,15 +14,17 @@ from pysisyphus.xyzloader import make_xyz_str
 
 class OpenMolcas(Calculator):
 
-    def __init__(self, basis, inporb, roots, rlxroot,
+    def __init__(self, basis, inporb, roots, mdrlxroot,
                  supsym=None, **kwargs):
         super(OpenMolcas, self).__init__(**kwargs)
 
         self.basis = basis
         self.inporb = inporb
         self.roots = roots
-        self.rlxroot = rlxroot
+        self.mdrlxroot = mdrlxroot
         self.supsym = self.build_supsym_str(supsym)
+        self.cur_jobiph = ""
+        self.prev_jobiph = ""
 
         self.inp_fn = "openmolcas.in"
         self.out_fn = "openmolcas.out"
@@ -53,9 +55,13 @@ class OpenMolcas(Calculator):
           1.0e-6,1.0e-2,1.0e-2
          ciroot
           {roots} {roots} 1
-         rlxroot
-          {rlxroot}
+         mdrlxroot
+          {mdrlxroot}
          {supsym}
+
+        >> copy $Project.JobIph $CurrDir/$Project.JobIph
+
+        {rassi}
 
         &alaska
          pnew
@@ -75,6 +81,17 @@ class OpenMolcas(Calculator):
         num_orbitals = len(supsym.split())
         return f"supsym\n1\n{num_orbitals} {supsym};"
 
+    def build_rassi_str(self):
+        if self.counter == 0:
+            return ""
+        else:
+            return f"""
+            >> copy $Project.JobIph JOB001
+            >> copy {self.prev_jobiph} JOB002
+            &rassi
+             track
+            """
+
     def prepare_coords(self, atoms, coords):
         coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
@@ -88,8 +105,9 @@ class OpenMolcas(Calculator):
                                         charge=self.charge,
                                         mult=self.mult,
                                         roots=self.roots,
-                                        rlxroot=self.rlxroot,
+                                        mdrlxroot=self.mdrlxroot,
                                         supsym=self.supsym,
+                                        rassi=self.build_rassi_str(),
         )
         return inp
 
@@ -103,8 +121,18 @@ class OpenMolcas(Calculator):
         return results
 
     def keep(self, path):
-        kept_fns = super().keep(path, ("RasOrb", "out"))
+        kept_fns = super().keep(path, ("RasOrb", "out", "in", "JobIph"))
         self.inporb = kept_fns["RasOrb"]
+        # Keep references to the current and the last .JobIph file
+        # to be used in &rassi to track our root in a state average
+        # calculation.
+        # In the first iteration self.cur_jobiph isn't set yet
+        if self.counter == 0:
+            self.prev_jobiph = kept_fns["JobIph"]
+        else:
+            self.prev_jobiph = self.cur_jobiph
+        self.cur_jobiph = kept_fns["JobIph"]
+        self.log(f"current JobIph {self.cur_jobiph}")
 
     def parse_energies(self, text):
         # Energy of root for which gradient was computed
@@ -140,6 +168,9 @@ class OpenMolcas(Calculator):
             gradient.append(mobj.groups()[1:])
         gradient = np.array(gradient, dtype=np.float).flatten()
 
+        if self.counter > 0:
+            self.parse_rassi_track(path)
+
         energy, sa_energies = self.parse_energies(text)
 
         results["energy"] = energy
@@ -147,6 +178,27 @@ class OpenMolcas(Calculator):
         results["forces"] = -gradient
 
         return results
+
+    def parse_rassi_track(self, path):
+        gradient_fn = path / self.out_fn
+        with open(gradient_fn) as handle:
+            text = handle.read()
+        track_re = "Initial root:\s*(\d+)\s*Overlaps with current " \
+                   "states:(.+)New root:\s*(\d+)"
+        #overlap_re = "OVERLAP MATRIX FOR THE ORIGINAL STATES:(.+?)##"
+        mobj = re.search(track_re, text, re.DOTALL)
+
+        initial_root, overlaps, new_root = mobj.groups()
+        overlaps = np.array(overlaps.strip().split(), dtype=float).reshape(-1, 2)
+        # Filters for overlaps > 10% (0.1**2 ~ 0.31622)
+        thresh = 0.1
+        inds = np.where(np.abs(overlaps[:,1]) > thresh**0.5)
+        ov_perc_str = ", ".join([f"{nr:.0f}: {ov**2:.2%}"
+                                 for nr, ov in overlaps[inds]])
+        self.log(f"Overlaps between previous root {initial_root} and "
+                 f"new roots bigger {thresh:.0%}:  {ov_perc_str}. Will "
+                 f"use root {new_root} for the following gradient calculation.")
+        self.mdrlxroot = new_root
 
     def __str__(self):
         return "OpenMolcas calculator"
@@ -156,10 +208,13 @@ if __name__ == "__main__":
     from pysisyphus.helpers import geom_from_library
     fileorb = "/scratch/test/ommin/excrp.es_opt.RasOrb"
     basis = "6-31G*"
-    roots = 2
-    rlxroot = 2
+    roots = 5
+    rlxroot = 5
     om = OpenMolcas(basis, fileorb, roots, rlxroot)
     geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
     geom.set_calculator(om)
     #print(geom.forces)
-    om.parse_gradient("/scratch/test/satest")
+    #om.parse_gradient("/scratch/test/satest")
+    from pathlib import Path
+    p = Path("/scratch/track_test/parse")
+    om.parse_rassi_track(p)

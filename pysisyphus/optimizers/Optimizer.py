@@ -48,7 +48,7 @@ class Optimizer:
         self.image_num = 1
         if self.is_cos:
             self.image_num = len(self.geometry.moving_indices)
-        print(f"Path with {self.image_num} moving images.")
+            print(f"Path with {self.image_num} moving images.")
 
         # Overwrite default values if they are supplied as kwargs
         for key, value in kwargs.items():
@@ -205,7 +205,7 @@ class Optimizer:
             self.write_results()
         else:
             # Append to .trj file
-            out_fn = "opt.trj"
+            out_fn = "optimized.trj"
             self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
     def run(self):
