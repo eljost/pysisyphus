@@ -9,7 +9,8 @@ __all__ = [
 
 logger = logging.getLogger("calculator")
 logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler("calculator.log", mode="w")
+# delay = True prevents creation of empty logfiles
+handler = logging.FileHandler("calculator.log", mode="w", delay=True)
 fmt_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 formatter = logging.Formatter(fmt_str)
 handler.setFormatter(formatter)
