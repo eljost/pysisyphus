@@ -3,6 +3,7 @@
 import argparse
 import os
 from pathlib import Path
+from pprint import pprint
 import sys
 
 import yaml
@@ -178,7 +179,7 @@ def handle_yaml(yaml_str):
     # Update non nested entries
     for key in key_set & set(("calc", "xyz")):
         run_dict[key] = yaml_dict[key]
-    print(run_dict)
+    pprint(run_dict)
 
     xyz = run_dict["xyz"]
     if run_dict["interpol"]:

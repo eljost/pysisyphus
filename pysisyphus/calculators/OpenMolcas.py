@@ -198,6 +198,8 @@ class OpenMolcas(Calculator):
         self.log(f"Overlaps between previous root {initial_root} and "
                  f"new roots bigger {thresh:.0%}:  {ov_perc_str}. Will "
                  f"use root {new_root} for the following gradient calculation.")
+        if new_root != initial_root:
+            self.log("Found a root flip!")
         self.mdrlxroot = new_root
 
     def __str__(self):
