@@ -13,8 +13,8 @@ class Calculator:
     logger = logging.getLogger("calculator")
 
     def __init__(self, charge=0, mult=1, name="calculator"):
-        self.charge = charge
-        self.mult = mult
+        self.charge = int(charge)
+        self.mult = int(mult)
         self.name = name
 
         self.counter = 0

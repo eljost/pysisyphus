@@ -264,3 +264,10 @@ class Optimizer:
 
             if self.is_zts:
                 self.geometry.reparametrize()
+
+            stop_signs = ("stop", "STOP")
+            for ss in stop_signs:
+                if os.path.exists(ss):
+                    print("Found stop sign. Stopping optimization.")
+                    os.remove(ss)
+                    return
