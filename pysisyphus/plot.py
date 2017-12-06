@@ -100,6 +100,9 @@ def plot_energies():
             title="Energies",
             colormap=cmap,
             legend=False,
+            marker="o",
+            xticks=range(num_images),
+            xlim=(0, num_images-1),
     )
     kwargs = {
         "ls": ":",
@@ -219,17 +222,21 @@ def plot_cosgrad():
         "legend": False,
         "ylim": (5e-4, 1e-1),
         "marker": "o",
+        "xticks": range(num_images),
+        "xlim": (0, num_images-1),
     }
     ax1 = max_df.plot(
             ax=ax1,
             title="max(perpendicular grad.)",
             **kwargs,
     )
+    ax1.set_xlabel("Image")
     ax2 = rms_df.plot(
             ax=ax2,
             title="rms(perpendicular grad.)",
             **kwargs,
     )
+    ax2.set_xlabel("Image")
     plt.tight_layout()
     plt.show()
 
@@ -275,6 +282,21 @@ def plot_params(inds):
 
     plotter = Plotter(coords, ac_arr, ylabel)
     plotter.animate()
+
+    df = pd.DataFrame(ac_arr.T)
+    cmap = plt.get_cmap("Greys")
+    ax = df.plot(
+            title=f"Params {inds}",
+            colormap=cmap,
+            legend=False,
+            marker="o",
+            xticks=range(num_images),
+            xlim=(0, num_images-1),
+    )
+    ax.set_xlabel("Image")
+    ax.set_ylabel(ylabel)
+    plt.tight_layout()
+    plt.show()
 
 
 def parse_args(args):
