@@ -33,6 +33,7 @@ def get_geoms(keys=("B","C","TSA","A")):
         "A": (-0.558, 1.442, 0), # Minimum A
         "B": (0.6215, 0.02838, 0), # Minimum B
         "C": (-0.05, 0.467, 0), # Minimum C
+        "AC": (-0.57, 0.8, 0), # Between A and C
         "TSA": (-0.822, 0.624, 0) # Saddle point A
     }
     coords = [np.array(coords_dict[k]) for k in keys]
@@ -85,18 +86,6 @@ def test_steepest_descent_straight_neb():
     return opt
 
 
-@pytest.mark.sd
-def test_climbing_neb():
-    kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms(), climb=True, climb_after=15)
-    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
-
-    #assert(opt.is_converged)
-    #assert(opt.cur_cycle == 23) # k = 0.01
-
-    return opt
-
-    
 @pytest.mark.sd
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
@@ -210,7 +199,6 @@ if __name__ == "__main__":
     # Steepest Descent
     opt = test_steepest_descent_neb()
     #opt = test_steepest_descent_straight_neb()
-    #opt = test_climbing_neb()
     #opt = test_steepest_descent_neb_more_images()
 
     # FIRE
