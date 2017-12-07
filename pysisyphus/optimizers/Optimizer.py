@@ -181,6 +181,7 @@ class Optimizer:
         self.geometry.climb = climb_now
         if climb_now:
             self.log("starting to climb in next iteration.")
+            print("starting to climb in next iteration.")
         return climb_now
 
     def print_header(self):

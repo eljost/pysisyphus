@@ -183,6 +183,32 @@ def test_fix_end_climbing_neb():
     return opt
 
 
+@pytest.mark.skip
+def test_fix_end_climbing_bfgs_neb():
+    kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 10
+    #kwargs["max_cycles"] = 20
+    kwargs["climb"] = True
+    kwargs["climb_rms"] = 0.01
+    kwargs["dump"] = True
+    convergence = {
+        "max_force_thresh": 8e-3,
+        "rms_force_thresh": 3e-3,
+        "max_step_thresh": 2e-3,
+        "rms_step_thresh": 2e-3,
+    }
+    kwargs["convergence"] = convergence
+    neb = NEB(get_geoms(), fix_ends=True,
+              k_max=5, k_min=1
+    )
+    opt = run_cos_opt(neb, BFGS, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 26)
+
+    return opt
+
+
 @pytest.mark.sd
 def test_fix_end_climbing_more_images_neb():
     """C1-NEB needs many images for good results.
@@ -383,7 +409,8 @@ if __name__ == "__main__":
     # Climbing Image
     #opt = test_fix_end_climbing_early_neb()
     #opt = test_fix_end_climbing_neb()
-    opt = test_fix_end_climbing_more_images_neb()
+    opt = test_fix_end_climbing_bfgs_neb()
+    #opt = test_fix_end_climbing_more_images_neb()
 
     #opt = test_steepest_descent_neb_more_images()
 

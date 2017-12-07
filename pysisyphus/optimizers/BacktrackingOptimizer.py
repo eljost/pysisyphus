@@ -22,6 +22,12 @@ class BacktrackingOptimizer(Optimizer):
 
     def backtrack(self, cur_forces, prev_forces):
         """Accelerated backtracking line search."""
+
+        if self.started_climbing:
+            self.log("backtracking disabled when climbing")
+            self.alpha = self.alpha0
+            return False
+
         epsilon = 1e-3
         scale_factor = 0.5
 
@@ -54,8 +60,10 @@ class BacktrackingOptimizer(Optimizer):
                     # Reset alpha
                     self.alpha = self.alpha0
                     skip = True
+                    self.log(f"reset alpha to alpha0 = {self.alpha0}")
                 else:
                     # Accelerate alpha
                     self.alpha /= scale_factor
+                    self.log("scaled alpha")
         self.log(f"alpha = {self.alpha}, skip = {skip}")
         return skip
