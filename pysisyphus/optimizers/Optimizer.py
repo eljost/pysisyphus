@@ -25,12 +25,16 @@ gauss_loose = {
 class Optimizer:
 
     def __init__(self, geometry, convergence=gauss_loose,
-                 align=False, dump=False, **kwargs):
+                 align=False, dump=False,
+                 climb=False, climb_multiple=3.0, **kwargs):
         self.geometry = geometry
 
         self.convergence = convergence
         self.align = align
         self.dump = dump
+        self.climb = climb
+        self.climb_multiple = climb_multiple
+
         for key, value in convergence.items():
             setattr(self, key, value)
 
@@ -119,7 +123,11 @@ class Optimizer:
         rotated_hessian = G.dot(hessian).dot(G.T)
         return rotated_vectors, rotated_hessian
 
-    def check_convergence(self):
+    def check_convergence(self, multiple=1.0):
+        """Check if the current convergence of the optimization
+        is equal to or below the required thresholds, or a multiple
+        thereof. The latter is used in initiating the climbing image.
+        """
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
         if self.is_cos:
@@ -145,8 +153,8 @@ class Optimizer:
             "rms_step_thresh": rms_step
         }
 
-        self.is_converged = all(
-            [this_cycle[key] <= getattr(self, key)
+        return all(
+            [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
 
@@ -236,7 +244,12 @@ class Optimizer:
 
             self.steps.append(steps)
 
-            self.check_convergence()
+            self.is_converged = self.check_convergence()
+
+            # Only initiate climbing on a sufficiently converged MEP.
+            if self.climb and self.check_convergence(self.climb_multiple):
+                print("Starting to climb!")
+                self.geometry.climb = True
 
             new_coords = self.geometry.coords + steps
             self.geometry.coords = new_coords
