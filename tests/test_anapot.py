@@ -20,7 +20,7 @@ from pysisyphus.optimizers.SciPyOptimizer import SciPyOptimizer
 
 KWARGS = {
     "images": 5,
-    "max_cycles": 100,
+    "max_cycles": 50,
     "convergence": {
         "max_force_thresh": 6e-3,
         "rms_force_thresh": 5e-3,
@@ -138,19 +138,10 @@ def test_fix_end_climbing_early_neb():
     """Climbing too early leads to a failure of convergence."""
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    kwargs["max_cycles"] = 27
+    kwargs["max_cycles"] = 30
     kwargs["climb"] = True
     kwargs["climb_multiple"] = 10.0
-    convergence = {
-        "max_force_thresh": 8.9e-2,
-        "rms_force_thresh": 3.2e-2,
-        "max_step_thresh": 4.0e-3,
-        "rms_step_thresh": 2.0e-3,
-    }
-    kwargs["convergence"] = convergence
-    neb = NEB(get_geoms(), fix_ends=True,
-              k_max=5, k_min=1
-    )
+    neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(not opt.is_converged)
@@ -162,23 +153,12 @@ def test_fix_end_climbing_early_neb():
 def test_fix_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    kwargs["max_cycles"] = 35
     kwargs["climb"] = True
-    kwargs["climb_rms"] = 0.01
-    convergence = {
-        "max_force_thresh": 8e-3,
-        "rms_force_thresh": 3e-3,
-        "max_step_thresh": 2e-3,
-        "rms_step_thresh": 2e-3,
-    }
-    kwargs["convergence"] = convergence
-    neb = NEB(get_geoms(), fix_ends=True,
-              k_max=5, k_min=1
-    )
+    neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 26)
+    assert(opt.cur_cycle == 21)
 
     return opt
 
@@ -187,52 +167,28 @@ def test_fix_end_climbing_neb():
 def test_fix_end_climbing_bfgs_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    #kwargs["max_cycles"] = 20
     kwargs["climb"] = True
-    kwargs["climb_rms"] = 0.01
     kwargs["dump"] = True
-    convergence = {
-        "max_force_thresh": 8e-3,
-        "rms_force_thresh": 3e-3,
-        "max_step_thresh": 2e-3,
-        "rms_step_thresh": 2e-3,
-    }
-    kwargs["convergence"] = convergence
-    neb = NEB(get_geoms(), fix_ends=True,
-              k_max=5, k_min=1
-    )
+    neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 26)
+    assert(opt.cur_cycle == 40)
 
     return opt
 
 
 @pytest.mark.sd
 def test_fix_end_climbing_more_images_neb():
-    """C1-NEB needs many images for good results.
-    Compared to test_fix_end_climbing_neb we have 5 more images
-    and achieve a tighter convergence, but need more cycles."""
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 15
-    kwargs["max_cycles"] = 31
+    kwargs["max_cycles"] = 30
     kwargs["climb"] = True
-    kwargs["climb_rms"] = 0.015
-    convergence = {
-        "max_force_thresh": 4e-3,
-        "rms_force_thresh": 1.2e-3,
-        "max_step_thresh": 7.0e-4,
-        "rms_step_thresh": 4.0e-4,
-    }
-    kwargs["convergence"] = convergence
-    neb = NEB(get_geoms(), fix_ends=True,
-              k_max=5, k_min=1,
-    )
+    neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
-    assert(opt.is_converged)
-    assert(opt.cur_cycle == 28)
+    #assert(opt.is_converged)
+    #assert(opt.cur_cycle == 28)
 
     return opt
 
@@ -296,6 +252,20 @@ def test_fire_neb():
     assert(opt.is_converged)
     assert(opt.cur_cycle == 27) # k = 0.01
 
+    return opt
+
+
+@pytest.mark.fire
+def test_fire_climb_neb():
+    kwargs = copy.copy(KWARGS)
+    #kwargs["max_cycles"] = 23
+    kwargs["images"] = 10
+    kwargs["dt"] = 0.05
+    kwargs["dt_max"] = 0.5
+    kwargs["climb"] = True
+    neb = NEB(get_geoms(), fix_ends=True)
+    opt = run_cos_opt(neb, FIRE, **kwargs)
+ 
     return opt
 
 
@@ -405,11 +375,9 @@ if __name__ == "__main__":
     #opt = test_fix_last_neb()
     #opt = test_fix_ends_neb()
     #opt = test_fix_displaced_ends_neb()
-
-    # Climbing Image
+    # Steepest descent + climbing Image
     #opt = test_fix_end_climbing_early_neb()
     #opt = test_fix_end_climbing_neb()
-    opt = test_fix_end_climbing_bfgs_neb()
     #opt = test_fix_end_climbing_more_images_neb()
 
     #opt = test_steepest_descent_neb_more_images()
@@ -422,11 +390,14 @@ if __name__ == "__main__":
 
     # FIRE
     #opt = test_fire_neb()
+    opt = test_fire_climb_neb()
 
     # BFGS
     #opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
+    # BFGS + climbing Image
+    #opt = test_fix_end_climbing_bfgs_neb()
 
     # SimpleZTS
     #opt = test_equal_szts()

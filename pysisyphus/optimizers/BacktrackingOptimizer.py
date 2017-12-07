@@ -19,7 +19,6 @@ class BacktrackingOptimizer(Optimizer):
         self.alpha0 = self.alpha
         assert(self.alpha > 0), "Alpha should be positive!"
 
-
     def backtrack(self, cur_forces, prev_forces):
         """Accelerated backtracking line search."""
 
