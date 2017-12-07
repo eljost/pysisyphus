@@ -166,14 +166,17 @@ def test_fix_end_climbing_neb():
 @pytest.mark.skip
 def test_fix_end_climbing_bfgs_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["images"] = 10
+    kwargs["images"] = 15
     kwargs["climb"] = True
-    kwargs["dump"] = True
+    # Comment for use with variable springs
+    #kwargs["max_cycles"] = 33
+    #kwargs["max_step_thresh"] = 3e-3
+    #kwargs["rms_step_thresh"] = 7e-4
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 40)
+    assert(opt.cur_cycle == 23)
 
     return opt
 
@@ -390,14 +393,14 @@ if __name__ == "__main__":
 
     # FIRE
     #opt = test_fire_neb()
-    opt = test_fire_climb_neb()
+    #opt = test_fire_climb_neb()
 
     # BFGS
     #opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
-    #opt = test_fix_end_climbing_bfgs_neb()
+    opt = test_fix_end_climbing_bfgs_neb()
 
     # SimpleZTS
     #opt = test_equal_szts()
