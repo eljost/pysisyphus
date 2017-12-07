@@ -66,8 +66,7 @@ class ORCA(Calculator):
             self.gbw = ""
         else:
             self.moinp = f"""!moread
-            %moinp "{gbw}"
-            """
+            %moinp "{gbw}" """
             self.gbw = gbw
 
     def prepare_coords(self, atoms, coords):
