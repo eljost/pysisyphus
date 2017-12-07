@@ -8,7 +8,7 @@ import time
 
 import numpy as np
 import pandas as pd
-import scipy as sp
+import scipy.linalg
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
@@ -118,7 +118,7 @@ class Optimizer:
 
     def fit_rigid(self, vectors=(), hessian=None):
         rot_mats = self.procrustes()
-        G = sp.linalg.block_diag(*rot_mats)
+        G = scipy.linalg.block_diag(*rot_mats)
         rotated_vectors = [vec.dot(G) for vec in vectors]
         if hessian is None:
             return rotated_vectors
@@ -161,7 +161,7 @@ class Optimizer:
              for key in self.convergence.keys()]
         )
     def check_for_climbing_start(self):
-        # Return if we don't want to climb or are already
+        # Return False if we don't want to climb or are already
         # climbing.
         if (not self.climb) or self.started_climbing:
             return False
@@ -169,8 +169,9 @@ class Optimizer:
         # Only initiate climbing on a sufficiently converged MEP,
         # determined by a supplied threshold for the rms_force,
         # or as a multiple of all given convergence thresholds.
+        #
         # If climb_rms was given we will use it for the check. Otherwise
-        # we use a multiple of all fource convergence thresholds.
+        # we use a multiple of all four convergence thresholds.
         if self.climb_rms:
             climb_now = self.rms_forces[-1] <= self.climb_rms
         else:

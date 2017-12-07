@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
@@ -9,6 +11,7 @@ from pysisyphus.constants import BOHR2ANG
 # [1] http://dx.doi.org/10.1063/1.1323224
 
 class ChainOfStates:
+    logger = logging.getLogger("cos")
 
     def __init__(self, images, parallel=0, fix_ends=False,
                  fix_first=False, fix_last=False):
@@ -25,6 +28,10 @@ class ChainOfStates:
         # For an image of N atoms coords_lengths will be 3N
         self.coords_length = self.images[0].coords.size
         self.zero_vec = np.zeros(self.coords_length)
+
+
+    def log(self, message):
+        self.logger.debug(message)
 
     @property
     def moving_indices(self):

@@ -220,7 +220,7 @@ def plot_cosgrad():
         "colormap": cmap,
         "logy": True,
         "legend": False,
-        "ylim": (5e-4, 1e-1),
+        #"ylim": (5e-4, 1e-1),
         "marker": "o",
         "xticks": range(num_images),
         "xlim": (0, num_images-1),

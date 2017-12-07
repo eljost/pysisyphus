@@ -86,7 +86,7 @@ class NEB(ChainOfStates):
         tangent = self.get_tangent(max_energy_index)
         climbing_forces = ci_forces * 2*np.dot(-ci_forces, tangent)*tangent
 
-        return max_energy_index, climbing_forces
+        return max_energy_index, climbing_forces, climbing_image.energy
 
     def par_calc(self, i):
         image = self.images[i]
@@ -110,15 +110,16 @@ class NEB(ChainOfStates):
             else:
                 [image.calc_energy_and_forces() for image in self.images]
 
-        climbing_index = -1
+        climb_index = -1
         if self.climb:
             self.variable_springs()
-            climbing_index, climbing_forces = self.get_climbing_forces()
+            climb_index, climb_forces, climb_en = self.get_climbing_forces()
+            self.log(f"climbing with image {climb_index}, E = {climb_en:.6f} au")
 
         total_forces = list()
         for i in indices:
-            if i == climbing_index:
-                total_forces.append(climbing_forces)
+            if i == climb_index:
+                total_forces.append(climb_forces)
             else:
                 par_forces = self.get_parallel_forces(i)
                 perp_forces = self.get_perpendicular_forces(i)

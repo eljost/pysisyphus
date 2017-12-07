@@ -216,6 +216,7 @@ def clean():
         "interpolated.image*.xyz",
         "calculator.log",
         "optimizer.log",
+        "optimized.trj",
         # ORCA specific
         "image*.gbw",
         "image*.engrad",
