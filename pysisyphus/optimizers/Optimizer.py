@@ -26,7 +26,8 @@ class Optimizer:
 
     def __init__(self, geometry, convergence=gauss_loose,
                  align=False, dump=False,
-                 climb=False, climb_multiple=3.0, **kwargs):
+                 climb=False, climb_multiple=5.0, climb_rms=False,
+                 **kwargs):
         self.geometry = geometry
 
         self.convergence = convergence
@@ -34,6 +35,8 @@ class Optimizer:
         self.dump = dump
         self.climb = climb
         self.climb_multiple = climb_multiple
+        self.climb_rms = climb_rms
+        self.started_climbing = False
 
         for key, value in convergence.items():
             setattr(self, key, value)
@@ -157,6 +160,27 @@ class Optimizer:
             [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
+    def check_for_climbing_start(self):
+        # Return if we don't want to climb or are already
+        # climbing.
+        if (not self.climb) or self.started_climbing:
+            return False
+
+        # Only initiate climbing on a sufficiently converged MEP,
+        # determined by a supplied threshold for the rms_force,
+        # or as a multiple of all given convergence thresholds.
+        # If climb_rms was given we will use it for the check. Otherwise
+        # we use a multiple of all fource convergence thresholds.
+        if self.climb_rms:
+            climb_now = self.rms_forces[-1] <= self.climb_rms
+        else:
+            climb_now = self.check_convergence(self.climb_multiple)
+
+        self.started_climbing = climb_now
+        self.geometry.climb = climb_now
+        if climb_now:
+            self.log("starting to climb in next iteration.")
+        return climb_now
 
     def print_header(self):
         hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
@@ -246,14 +270,7 @@ class Optimizer:
 
             self.is_converged = self.check_convergence()
 
-            # Only initiate climbing on a sufficiently converged MEP.
-            if self.climb and self.check_convergence(self.climb_multiple):
-                print("Starting to climb!")
-                self.geometry.climb = True
-
-            new_coords = self.geometry.coords + steps
-            self.geometry.coords = new_coords
-
+            self.check_for_climbing_start()
             self.cur_cycle += 1
             end_time = time.time()
             elapsed_seconds = end_time - start_time
@@ -267,6 +284,9 @@ class Optimizer:
                 print("Converged!")
                 print()
                 break
+
+            new_coords = self.geometry.coords + steps
+            self.geometry.coords = new_coords
 
             if self.is_zts:
                 self.geometry.reparametrize()

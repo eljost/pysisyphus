@@ -162,12 +162,14 @@ def test_fix_end_climbing_early_neb():
 def test_fix_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
+    kwargs["max_cycles"] = 35
     kwargs["climb"] = True
+    kwargs["climb_rms"] = 0.01
     convergence = {
-        "max_force_thresh": 8.9e-2,
-        "rms_force_thresh": 3.2e-2,
-        "max_step_thresh": 4.0e-3,
-        "rms_step_thresh": 2.0e-3,
+        "max_force_thresh": 8e-3,
+        "rms_force_thresh": 3e-3,
+        "max_step_thresh": 2e-3,
+        "rms_step_thresh": 2e-3,
     }
     kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True,
@@ -176,7 +178,7 @@ def test_fix_end_climbing_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 24)
+    assert(opt.cur_cycle == 26)
 
     return opt
 
@@ -185,16 +187,16 @@ def test_fix_end_climbing_neb():
 def test_fix_end_climbing_more_images_neb():
     """C1-NEB needs many images for good results.
     Compared to test_fix_end_climbing_neb we have 5 more images
-    and achieve a tighter convergence to the MEP, but need 3
-    additional cycles."""
+    and achieve a tighter convergence, but need more cycles."""
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 15
     kwargs["max_cycles"] = 31
     kwargs["climb"] = True
+    kwargs["climb_rms"] = 0.015
     convergence = {
         "max_force_thresh": 4e-3,
         "rms_force_thresh": 1.2e-3,
-        "max_step_thresh": 3.0e-4,
+        "max_step_thresh": 7.0e-4,
         "rms_step_thresh": 4.0e-4,
     }
     kwargs["convergence"] = convergence
@@ -203,8 +205,8 @@ def test_fix_end_climbing_more_images_neb():
     )
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
-    #assert(opt.is_converged)
-    #assert(opt.cur_cycle == 31)
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 28)
 
     return opt
 
