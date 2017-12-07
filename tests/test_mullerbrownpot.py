@@ -28,13 +28,14 @@ KWARGS = {
 }
 
 
-def get_geoms(coords=None):
-    if coords is None:
-        min_a = np.array((-0.558, 1.442, 0)) # Minimum A
-        min_b = np.array((0.6215, 0.02838, 0)) # Minimum B
-        min_c = np.array((-0.05, 0.467, 0)) # Minimum C
-        saddle_a = np.array((-0.822, 0.624, 0)) # Saddle point A
-        coords = (min_b, min_c, saddle_a, min_a)
+def get_geoms(keys=("B","C","TSA","A")):
+    coords_dict = {
+        "A": (-0.558, 1.442, 0), # Minimum A
+        "B": (0.6215, 0.02838, 0), # Minimum B
+        "C": (-0.05, 0.467, 0), # Minimum C
+        "TSA": (-0.822, 0.624, 0) # Saddle point A
+    }
+    coords = [np.array(coords_dict[k]) for k in keys]
     atoms = ("H")
     geoms = [Geometry(atoms, c) for c in coords]
     return geoms
@@ -66,6 +67,20 @@ def test_steepest_descent_neb():
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 26)
+
+    return opt
+
+
+@pytest.mark.sd
+def test_steepest_descent_straight_neb():
+    """Something is really really wrong here."""
+    kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 10
+    neb = NEB(get_geoms(("A", "B")))
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    #assert(opt.is_converged)
+    #assert(opt.cur_cycle == 26)
 
     return opt
 
@@ -132,7 +147,6 @@ def test_equal_szts():
 
 
 def test_equal_szts_straight():
-    coords = np.array(((0, -0.25, 0), (0, 1.5, 0)))
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
     kwargs["max_step"] = 0.04
@@ -140,7 +154,7 @@ def test_equal_szts_straight():
         "rms_force_thresh": 2.4,
     }
     kwargs["convergence"] = convergence
-    szts_equal = SimpleZTS(get_geoms(coords), param="equal")
+    szts_equal = SimpleZTS(get_geoms(("A", "B")), param="equal")
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     return opt
@@ -194,7 +208,8 @@ def test_energy_szts_more_images():
 
 if __name__ == "__main__":
     # Steepest Descent
-    #opt = test_steepest_descent_neb()
+    opt = test_steepest_descent_neb()
+    #opt = test_steepest_descent_straight_neb()
     #opt = test_climbing_neb()
     #opt = test_steepest_descent_neb_more_images()
 
@@ -202,7 +217,7 @@ if __name__ == "__main__":
     #opt = test_fire_neb()
 
     # SimpleZTS
-    opt = test_equal_szts()
+    #opt = test_equal_szts()
     #opt = test_equal_szts_straight()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()
