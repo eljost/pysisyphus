@@ -86,8 +86,9 @@ class Plotter:
 
 
 def plot_energies():
-    keys = "energy"
-    energies, num_cycles, num_images = load_results(keys)
+    keys = ("energy", "coords")
+    (energies, coords), num_cycles, num_images = load_results(keys)
+
     df = pd.DataFrame(energies)
     cmap = plt.get_cmap("Greys")
     df = df.transpose()
@@ -135,6 +136,10 @@ def plot_energies():
     ax.axhline(y=0, **kwargs)
     ax.set_xlabel("Image")
     ax.set_ylabel("dE / kJ mol⁻¹")
+
+    # Also do an animation
+    plotter = Plotter(coords, energies, "ΔE / au", interval=250)
+    plotter.animate()
     plt.show()
 
 

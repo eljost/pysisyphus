@@ -35,11 +35,12 @@ def test_xtb_hcn_iso():
         "dump": True,
         "align": True,
     }
-    opt = BFGS(neb, **opt_kwargs)
+    #opt = BFGS(neb, **opt_kwargs)
+    opt = ConjugateGradient(neb, **opt_kwargs)
     opt.run()
 
     assert (opt.is_converged)
-    assert (opt.cur_cycle == 27)
+    assert (opt.cur_cycle == 36)
 
 
 @pytest.mark.skip
@@ -49,16 +50,14 @@ def test_xtb_hcn_climb_iso():
         "dump": True,
         "align": True,
         "climb": True,
-        "climb_rms": 0.01,
-        "max_cycles": 35,
+        "max_cycles": 100,
     }
-    #opt = BFGS(neb, **opt_kwargs)
     opt = ConjugateGradient(neb, **opt_kwargs)
     #opt = SteepestDescent(neb, **opt_kwargs)
     opt.run()
 
-    #assert (opt.is_converged)
-    #assert (opt.cur_cycle == 27)
+    assert (opt.is_converged)
+    assert (opt.cur_cycle == 78)
 
 
 if __name__ == "__main__":

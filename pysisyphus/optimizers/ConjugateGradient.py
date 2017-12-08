@@ -23,6 +23,7 @@ class ConjugateGradient(BacktrackingOptimizer):
         if self.cur_cycle > 0:
             prev_forces = self.forces[-2]
             beta = cur_forces.dot(cur_forces) / prev_forces.dot(prev_forces)
+            self.log(f"beta = {beta:.06f}")
             if np.isinf(beta):
                 beta = 1.0
             steps = cur_forces + beta*self.steps[-1]
