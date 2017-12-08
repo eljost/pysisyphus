@@ -33,8 +33,6 @@ class NEB(ChainOfStates):
 
     def update_springs(self):
         self.k = np.full(len(self.images)-1, self.k_min)
-        if self.variable_springs:
-            self.set_variable_springs()
 
     def set_variable_springs(self):
         shifted_energies = self.energy - self.energy.min()
@@ -51,6 +49,10 @@ class NEB(ChainOfStates):
                              * (energy_max - ith_energy)
                              / (energy_max - energy_ref)
                 )
+        self.log("updated springs: " + self.fmt_k())
+
+    def fmt_k(self):
+        return ", ".join([str(f"{k:.03f}") for k in self.k])
 
     @property
     def parallel_forces(self):
@@ -113,6 +115,8 @@ class NEB(ChainOfStates):
 
         climb_index = -1
         if self.climb:
+            if self.variable_springs:
+                self.set_variable_springs()
             climb_index, climb_forces, climb_en = self.get_climbing_forces()
             self.log(f"climbing with image {climb_index}, E = {climb_en:.6f} au")
 

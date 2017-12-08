@@ -72,6 +72,28 @@ def test_steepest_descent_neb():
 
 
 @pytest.mark.sd
+def test_steepest_descent_var_springs_neb():
+    kwargs = copy.copy(KWARGS)
+    kwargs["climb"] = True
+    kwargs["climb_rms"] = 0.01
+    convergence = {
+        "max_force_thresh": 8e-3,
+        "rms_force_thresh": 3.3e-3,
+        "max_step_thresh": 3.2e-3,
+        "rms_step_thresh": 1.6e-2,
+    }
+    kwargs["convergence"] = convergence
+    var_springs = True
+    neb = NEB(get_geoms(), variable_springs=var_springs, fix_ends=True)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 22) # k = 0.01
+
+    return opt
+
+
+@pytest.mark.sd
 def test_fix_first_neb():
     # First image is fixed at a non equilibrium geometry.
     coords = np.array(((-0.916, 1.034, 0), (1.94101, 3.85427, 0)))
@@ -370,6 +392,7 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
+    opt = test_steepest_descent_var_springs_neb()
     #opt = test_fix_first_neb()
     #opt = test_fix_last_neb()
     #opt = test_fix_ends_neb()
@@ -396,7 +419,7 @@ if __name__ == "__main__":
     #opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
-    opt = test_fix_end_climbing_bfgs_neb()
+    #opt = test_fix_end_climbing_bfgs_neb()
 
     # SimpleZTS
     #opt = test_equal_szts()
