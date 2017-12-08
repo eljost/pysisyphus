@@ -86,7 +86,7 @@ class NEB(ChainOfStates):
         climbing_image = self.images[ind]
         ci_forces = climbing_image.forces
         tangent = self.get_tangent(ind)
-        climbing_forces = ci_forces * 2*np.dot(-ci_forces, tangent)*tangent
+        climbing_forces = ci_forces - 2*ci_forces.dot(tangent)*tangent
 
         return climbing_forces, climbing_image.energy
 
@@ -130,12 +130,6 @@ class NEB(ChainOfStates):
         # NEB.
         else:
             climb_indices = tuple()
-        """
-        if self.climb:
-            climb_indices = (hei_index, )
-        else:
-            climb_indices = tuple()
-        """
 
         total_forces = list()
         for i in indices:
