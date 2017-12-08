@@ -199,7 +199,7 @@ class Optimizer:
         )
 
     def scale_by_max_step(self, steps):
-        steps_max = steps.max()
+        steps_max = np.abs(steps).max()
         if steps_max > self.max_step:
             steps *= self.max_step / steps_max
         return steps
