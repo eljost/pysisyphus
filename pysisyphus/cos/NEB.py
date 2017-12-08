@@ -15,27 +15,28 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 class NEB(ChainOfStates):
 
-    def __init__(self, images,
+    def __init__(self, images, variable_springs=False,
                  k_max=0.3, k_min=0.01, **kwargs):
         super(NEB, self).__init__(images, **kwargs)
 
         assert(k_max > k_min), "k_max has to be bigger than k_min!"
+        self.variable_springs = variable_springs
         self.k_max = k_max
         self.k_min = k_min
-        self.delta_k = self.k_max - self.k_min
 
         self.climb = False
-
-        self.update_springs()
-        self.varied_springs = False
+        self.delta_k = self.k_max - self.k_min
+        self.k = list()
 
         self.perp_forces = list()
         self.par_forces = list()
 
     def update_springs(self):
         self.k = np.full(len(self.images)-1, self.k_min)
+        if self.variable_springs:
+            self.set_variable_springs()
 
-    def variable_springs(self):
+    def set_variable_springs(self):
         shifted_energies = self.energy - self.energy.min()
         energy_max = max(shifted_energies)
         energy_ref = .85 * energy_max
@@ -112,7 +113,6 @@ class NEB(ChainOfStates):
 
         climb_index = -1
         if self.climb:
-            self.variable_springs()
             climb_index, climb_forces, climb_en = self.get_climbing_forces()
             self.log(f"climbing with image {climb_index}, E = {climb_en:.6f} au")
 

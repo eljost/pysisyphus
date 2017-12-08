@@ -111,3 +111,4 @@ tests/irc_hcn_iso/*.energies
 tests/irc_hcn_iso/*.trj
 
 TODO
+.vscode/*

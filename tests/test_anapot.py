@@ -163,24 +163,6 @@ def test_fix_end_climbing_neb():
     return opt
 
 
-@pytest.mark.skip
-def test_fix_end_climbing_bfgs_neb():
-    kwargs = copy.copy(KWARGS)
-    kwargs["images"] = 15
-    kwargs["climb"] = True
-    # Comment for use with variable springs
-    #kwargs["max_cycles"] = 33
-    #kwargs["max_step_thresh"] = 3e-3
-    #kwargs["rms_step_thresh"] = 7e-4
-    neb = NEB(get_geoms(), fix_ends=True)
-    opt = run_cos_opt(neb, BFGS, **kwargs)
-
-    assert(opt.is_converged)
-    assert(opt.cur_cycle == 23)
-
-    return opt
-
-
 @pytest.mark.sd
 def test_fix_end_climbing_more_images_neb():
     kwargs = copy.copy(KWARGS)
@@ -293,6 +275,20 @@ def test_bfgs_neb_more_images():
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 31) # k = 0.01
+
+    return opt
+
+
+@pytest.mark.bfgs
+def test_fix_end_climbing_bfgs_neb():
+    kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 15
+    kwargs["climb"] = True
+    neb = NEB(get_geoms(), fix_ends=True)
+    opt = run_cos_opt(neb, BFGS, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 24)
 
     return opt
 
