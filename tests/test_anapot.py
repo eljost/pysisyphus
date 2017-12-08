@@ -175,6 +175,7 @@ def test_fix_end_climbing_early_neb():
     assert(not opt.is_converged)
 
     return opt
+"""
 
 
 @pytest.mark.sd
@@ -191,6 +192,7 @@ def test_fix_end_climbing_neb():
     return opt
 
 
+"""
 @pytest.mark.sd
 def test_fix_end_climbing_more_images_neb():
     kwargs = copy.copy(KWARGS)
@@ -383,7 +385,7 @@ if __name__ == "__main__":
     #opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
     #opt = test_fix_end_climbing_early_neb()
-    #opt = test_fix_end_climbing_neb()
+    opt = test_fix_end_climbing_neb()
     #opt = test_fix_end_climbing_more_images_neb()
 
     # Conjugate Gradient
@@ -406,7 +408,7 @@ if __name__ == "__main__":
     # SimpleZTS
     #opt = test_equal_szts()
     #opt = test_equal_szts_more_images()
-    opt = test_energy_szts()
-    opt = test_energy_szts_more_images()
+    #opt = test_energy_szts()
+    #opt = test_energy_szts_more_images()
 
     animate(opt)

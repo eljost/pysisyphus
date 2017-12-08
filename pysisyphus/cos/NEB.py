@@ -82,14 +82,13 @@ class NEB(ChainOfStates):
                ) * self.get_tangent(i)
         )
 
-    def get_climbing_forces(self):
-        max_energy_index = np.argmax(self.energy)
-        climbing_image = self.images[max_energy_index]
+    def get_climbing_forces(self, ind):
+        climbing_image = self.images[ind]
         ci_forces = climbing_image.forces
-        tangent = self.get_tangent(max_energy_index)
+        tangent = self.get_tangent(ind)
         climbing_forces = ci_forces * 2*np.dot(-ci_forces, tangent)*tangent
 
-        return max_energy_index, climbing_forces, climbing_image.energy
+        return climbing_forces, climbing_image.energy
 
     def par_calc(self, i):
         image = self.images[i]
@@ -113,16 +112,36 @@ class NEB(ChainOfStates):
             else:
                 [image.calc_energy_and_forces() for image in self.images]
 
-        climb_index = -1
+        hei_index = np.argmax([image.energy for image in self.images])
+
+        move_inds = self.moving_indices
+        # Don't climb it not yet enabled or requested.
+        if not self.climb:
+            climb_indices = tuple()
+        # We can do two climbing (C2) neb if the highest energy image (HEI)
+        # is in moving_indices but not as first or last image.
+        elif hei_index in move_inds[1:-1]:
+            climb_indices = (hei_index-1, hei_index+1)
+        # Do one image climbing (C1) neb if the HEI is the first or last
+        # movable image.
+        elif (hei_index == 1) or (hei_index == move_inds[-1]):
+            climb_indices = (hei_index, )
+        # Don't climb when the HEI is the first or last image of the whole
+        # NEB.
+        else:
+            climb_indices = tuple()
+        """
         if self.climb:
-            if self.variable_springs:
-                self.set_variable_springs()
-            climb_index, climb_forces, climb_en = self.get_climbing_forces()
-            self.log(f"climbing with image {climb_index}, E = {climb_en:.6f} au")
+            climb_indices = (hei_index, )
+        else:
+            climb_indices = tuple()
+        """
 
         total_forces = list()
         for i in indices:
-            if i == climb_index:
+            if i in climb_indices:
+                climb_forces, climb_en = self.get_climbing_forces(i)
+                self.log(f"climbing with image {i}, E = {climb_en:.6f} au")
                 total_forces.append(climb_forces)
             else:
                 par_forces = self.get_parallel_forces(i)
