@@ -11,6 +11,7 @@ from pysisyphus.calculators.MullerBrownPot import MullerBrownPot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.optimizers.FIRE import FIRE
+from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 
@@ -19,10 +20,10 @@ KWARGS = {
     "max_cycles": 100,
     "max_step": 0.02,
     "convergence": {
-        "max_force_thresh": 1.3,
-        "rms_force_thresh": 0.3,
-        "max_step_thresh": 5e-4,
-        "rms_step_thresh": 2e-4,
+        "max_force_thresh": 0.1,
+        "rms_force_thresh": 0.02,
+        "max_step_thresh": 0.005,
+        "rms_step_thresh": 0.001,
     },
     "dump": False,
 }
@@ -63,11 +64,12 @@ def animate(opt):
 @pytest.mark.sd
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 4
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 26)
+    assert(opt.cur_cycle == 57)
 
     return opt
 
@@ -77,11 +79,41 @@ def test_steepest_descent_straight_neb():
     """Something is really really wrong here."""
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
+    convergence = {
+        "max_force_thresh": 1.74,
+        "rms_force_thresh": 0.4,
+        "max_step_thresh": 0.01,
+        "rms_step_thresh": 0.0025,
+    }
+    kwargs["convergence"] = convergence
     neb = NEB(get_geoms(("A", "B")))
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
-    #assert(opt.is_converged)
-    #assert(opt.cur_cycle == 26)
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 58)
+
+    return opt
+
+
+@pytest.mark.bfgs
+def test_bfgs_straight_neb():
+    """Something is really really wrong here."""
+    kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 10
+    """
+    convergence = {
+        "max_force_thresh": 1.74,
+        "rms_force_thresh": 0.4,
+        "max_step_thresh": 0.01,
+        "rms_step_thresh": 0.0025,
+    }
+    kwargs["convergence"] = convergence
+    """
+    neb = NEB(get_geoms(("A", "B")))
+    opt = run_cos_opt(neb, BFGS, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 77)
 
     return opt
 
@@ -91,17 +123,17 @@ def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 7
     convergence = {
-        "max_force_thresh": 1.8,
-        "rms_force_thresh": 0.38,
-        "max_step_thresh": 3e-3,
-        "rms_step_thresh": 6e-4,
+        "max_force_thresh": 0.6,
+        "rms_force_thresh": 0.13,
+        "max_step_thresh": 0.015,
+        "rms_step_thresh": 0.0033,
     }
     kwargs["convergence"] = convergence
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 19)
+    assert(opt.cur_cycle == 42)
 
     return opt
 
@@ -115,7 +147,7 @@ def test_fire_neb():
     opt = run_cos_opt(neb, FIRE, **kwargs)
  
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 15)
+    assert(opt.cur_cycle == 77)
 
     return opt
 
@@ -197,9 +229,11 @@ def test_energy_szts_more_images():
 
 if __name__ == "__main__":
     # Steepest Descent
-    opt = test_steepest_descent_neb()
+    #opt = test_steepest_descent_neb()
     #opt = test_steepest_descent_straight_neb()
     #opt = test_steepest_descent_neb_more_images()
+
+    opt = test_bfgs_straight_neb()
 
     # FIRE
     #opt = test_fire_neb()

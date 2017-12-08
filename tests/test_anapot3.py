@@ -79,10 +79,9 @@ def test_steepest_descent_neb_more_images():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 37)
+    assert(opt.cur_cycle == 30)
 
     return opt
-
 
 
 @pytest.mark.fire
@@ -127,7 +126,7 @@ def test_bfgs_neb_more_images():
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
     convergence = {
-        "max_force_thresh": 0.051,
+        "max_force_thresh": 0.06,
     }
     kwargs["convergence"] = convergence
     szts_equal = SimpleZTS(get_geoms(), param="equal")
