@@ -112,3 +112,4 @@ tests/irc_hcn_iso/*.trj
 
 TODO
 .vscode/*
+results.yaml
