@@ -139,7 +139,7 @@ class Optimizer:
             forces = self.forces[-1]
         step = self.steps[-1]
 
-        max_force = forces.max()
+        max_force = np.abs(forces).max()
         rms_force = np.sqrt(np.mean(np.square(forces)))
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
