@@ -100,20 +100,18 @@ def test_bfgs_straight_neb():
     """Something is really really wrong here."""
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    """
     convergence = {
-        "max_force_thresh": 1.74,
-        "rms_force_thresh": 0.4,
-        "max_step_thresh": 0.01,
-        "rms_step_thresh": 0.0025,
+        "max_force_thresh": 5.0,
+        "rms_force_thresh": 1,
+        "max_step_thresh": 0.002,
+        "rms_step_thresh": 0.0006,
     }
     kwargs["convergence"] = convergence
-    """
     neb = NEB(get_geoms(("A", "B")))
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 77)
+    assert(opt.cur_cycle == 41)
 
     return opt
 

@@ -70,7 +70,6 @@ def test_steepest_descent_neb():
 
     return opt
 
-
 """
 @pytest.mark.sd
 def test_steepest_descent_var_springs_neb():
@@ -161,52 +160,42 @@ def test_fix_displaced_ends_neb():
     return opt
 
 
-"""
 @pytest.mark.sd
 def test_fix_end_climbing_early_neb():
     # Climbing too early leads to a failure of convergence.
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
     kwargs["climb"] = True
-    kwargs["climb_multiple"] = 50.0
+    kwargs["climb_multiple"] = 10.0
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(not opt.is_converged)
 
     return opt
-"""
 
 
 @pytest.mark.sd
 def test_fix_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
+    kwargs["max_cycles"] = 36
     kwargs["climb"] = True
+    kwargs["climb_rms"] = 0.02
+    convergence = {
+        "max_force_thresh": 0.040,
+        "rms_force_thresh": 0.012,
+        "max_step_thresh": 0.041,
+        "rms_step_thresh": 0.0076,
+    }
+    kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 21)
+    assert(opt.cur_cycle == 36)
 
     return opt
-
-
-"""
-@pytest.mark.sd
-def test_fix_end_climbing_more_images_neb():
-    kwargs = copy.copy(KWARGS)
-    kwargs["images"] = 15
-    #kwargs["max_cycles"] = 30
-    kwargs["climb"] = True
-    neb = NEB(get_geoms(), fix_ends=True)
-    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
-
-    #assert(opt.is_converged)
-    #assert(opt.cur_cycle == 28)
-
-    return opt
-"""
 
 
 @pytest.mark.cg
@@ -247,18 +236,27 @@ def test_fire_neb():
     return opt
 
 
-"""
 @pytest.mark.fire
 def test_fire_climb_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
     kwargs["dt_max"] = 0.2
     kwargs["climb"] = True
+    kwargs["climb_rms"] = 0.0065
+    convergence = {
+        "max_force_thresh": 0.040,
+        "rms_force_thresh": 0.012,
+        "max_step_thresh": 0.041,
+        "rms_step_thresh": 0.0076,
+    }
+    kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, FIRE, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 34) # k = 0.01
  
     return opt
-"""
 
 
 @pytest.mark.bfgs
@@ -268,7 +266,7 @@ def test_bfgs_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 24) # k = 0.01
+    assert(opt.cur_cycle == 37) # k = 0.01
 
     return opt
 
@@ -281,7 +279,7 @@ def test_bfgs_neb_more_images():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 29) # k = 0.01
+    assert(opt.cur_cycle == 44) # k = 0.01
 
     return opt
 
@@ -289,13 +287,20 @@ def test_bfgs_neb_more_images():
 @pytest.mark.bfgs
 def test_fix_end_climbing_bfgs_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["images"] = 15
     kwargs["climb"] = True
+    kwargs["climb_rms"] = 0.007
+    convergence = {
+        "max_force_thresh": 2.6e-2,
+        "rms_force_thresh": 6.3e-3,
+        "max_step_thresh": 1e-4,
+        "rms_step_thresh": 5e-5,
+    }
+    kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 27)
+    assert(opt.cur_cycle == 30)
 
     return opt
 
@@ -385,8 +390,7 @@ if __name__ == "__main__":
     #opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
     #opt = test_fix_end_climbing_early_neb()
-    opt = test_fix_end_climbing_neb()
-    #opt = test_fix_end_climbing_more_images_neb()
+    #opt = test_fix_end_climbing_neb()
 
     # Conjugate Gradient
     #opt = test_cg_neb()
@@ -403,7 +407,7 @@ if __name__ == "__main__":
     #opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
-    #opt = test_fix_end_climbing_bfgs_neb()
+    opt = test_fix_end_climbing_bfgs_neb()
 
     # SimpleZTS
     #opt = test_equal_szts()

@@ -33,7 +33,8 @@ or
 
 #### Nudged elastic band
 * Improved tangent (https://doi.org/10.1063/1.1323224)
-* Climbing Image (https://doi.org/10.1063/1.1329672)
+* 1 Climbing Image (https://doi.org/10.1063/1.1329672)
+* 2 Climbing Image (https://doi.org/10.1063/1.4905209)
 * Different optimizers (see below)
 
 #### Simple Zero Temperature String
@@ -90,7 +91,7 @@ or
 All coordinate input read from .xyz or .trj files is expected to be in Ångström. Internally atomic units (Hartree, Bohr, etc.) are used throughout. All coordinate output written is given in Ångström again.
 
 ## Roadmap
-* NEB with two climbing images (https://doi.org/10.1063/1.4905209)
+* Get everything to work very smoothly;)
 
 ## Special 
 

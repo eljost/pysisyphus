@@ -19,12 +19,14 @@ class BacktrackingOptimizer(Optimizer):
         self.alpha0 = self.alpha
         assert(self.alpha > 0), "Alpha should be positive!"
 
-    def backtrack(self, cur_forces, prev_forces):
+    def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
         """Accelerated backtracking line search."""
 
         if self.started_climbing:
             self.log("backtracking disabled when climbing")
             self.alpha = self.alpha0
+            if reset_hessian:
+                self.reset_hessian()
             return False
 
         epsilon = 1e-3

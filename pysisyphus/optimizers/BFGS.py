@@ -14,6 +14,7 @@ class BFGS(BacktrackingOptimizer):
 
     def reset_hessian(self):
         self.inv_hessian = np.eye(self.geometry.coords.size)
+        self.log("Resetted hessian")
 
     def prepare_opt(self):
         if self.is_cos and self.align:
@@ -29,8 +30,8 @@ class BFGS(BacktrackingOptimizer):
         last_energy = self.energies[-1]
 
         steps = self.inv_hessian.dot(last_forces)
-        steps = self.scale_by_max_step(steps)
         steps *= self.alpha
+        steps = self.scale_by_max_step(steps)
 
         new_coords = last_coords + steps
         self.geometry.coords = new_coords
@@ -42,7 +43,7 @@ class BFGS(BacktrackingOptimizer):
 
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy
-        skip = self.backtrack(new_forces, last_forces)
+        skip = self.backtrack(new_forces, last_forces, reset_hessian=True)
 
         if skip:
             self.reset_hessian()
