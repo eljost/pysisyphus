@@ -1,0 +1,16 @@
+cos:
+ type: neb
+ parallel: 4
+opt:
+ type: cg
+ max_cycles: 50
+ align: True
+ climb: True
+interpol:
+ idpp: True
+ between: 15
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+xyz: [15_tpss_tzvp_full_scan_acn_013_xtb.xyz, 15_tpss_tzvp_full_scan_acn_024_xtb.xyz]

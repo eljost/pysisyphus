@@ -217,6 +217,7 @@ def clean():
         "calculator.log",
         "optimizer.log",
         "optimized.trj",
+        "cos.log",
         # ORCA specific
         "image*.gbw",
         "image*.engrad",
