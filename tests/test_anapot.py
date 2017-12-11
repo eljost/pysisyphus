@@ -218,7 +218,7 @@ def test_qm_neb():
     opt = run_cos_opt(neb, QuickMin, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)  # k = 0.01
+    assert(opt.cur_cycle == 42)  # k = 0.01
 
     return opt
 
@@ -394,14 +394,14 @@ if __name__ == "__main__":
     #opt = test_cg_neb()
 
     # QuickMin
-    #opt = test_qm_neb()
+    opt = test_qm_neb()
 
     # FIRE
     #opt = test_fire_neb()
     #opt = test_fire_climb_neb()
 
     # BFGS
-    opt = test_bfgs_neb()
+    #opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image

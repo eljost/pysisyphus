@@ -26,7 +26,7 @@ class QuickMin(Optimizer):
         if self.cur_cycle == 0:
             tmp_velocities = np.zeros_like(cur_velocities)
         else:
-            overlap = self.velocities[-2].dot(cur_forces)
+            overlap = self.velocities[-1].dot(cur_forces)
             if overlap > 0:
                 tmp_velocities = (overlap * cur_forces
                                   / cur_forces.dot(cur_forces))
