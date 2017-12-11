@@ -66,7 +66,7 @@ class Calculator:
             print()
             print("Crashed input:")
             print(inp)
-            backup_dir = Path(os.getcwd()) / "crashed"
+            backup_dir = Path(os.getcwd()) / f"crashed_{name}"
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
             shutil.copytree(path, backup_dir)
