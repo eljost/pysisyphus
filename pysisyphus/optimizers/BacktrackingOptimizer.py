@@ -8,16 +8,22 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class BacktrackingOptimizer(Optimizer):
 
-    def __init__(self, geometry, alpha, **kwargs):
+    def __init__(self, geometry, alpha, dont_skip_after=2, **kwargs):
         # Setting some default values
         self.alpha = alpha
+        assert(self.alpha > 0), "Alpha should be positive!"
         self.force_backtrack_in = 5
+        self.dont_skip_after = dont_skip_after
+        assert(self.dont_skip_after >= 1)
         self.cycles_since_backtrack = self.force_backtrack_in
 
         super(BacktrackingOptimizer, self).__init__(geometry, **kwargs)
 
         self.alpha0 = self.alpha
-        assert(self.alpha > 0), "Alpha should be positive!"
+
+        # Keep the skipping history to avoid infinite skipping, e.g. always
+        # return skip = False if we already skipped in the last n iterations.
+        self.skip_log = list()
 
     def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
         """Accelerated backtracking line search."""
@@ -49,6 +55,7 @@ class BacktrackingOptimizer(Optimizer):
         # and hence always smaller than epsilon.
 
         # Slow alpha if we go uphill.
+        self.log(f"backtracking: rms_diff = {rms_diff:.04f}")
         if rms_diff > epsilon:
             self.alpha *= scale_factor
             skip = True
@@ -67,4 +74,15 @@ class BacktrackingOptimizer(Optimizer):
                     self.alpha /= scale_factor
                     self.log("scaled alpha")
         self.log(f"alpha = {self.alpha}, skip = {skip}")
+
+        # Don't skip if we already skipped the previous iterations.
+        if all(self.skip_log[-self.dont_skip_after:]):
+            self.log(f"already skipped last {self.dont_skip_after} "
+                      "iterations don't skip now.")
+            skip = False
+            if self.alpha > self.alpha0:
+                self.alpha = self.alpha0
+                self.log("resetted alpha to alpha0.")
+        self.skip_log.append(skip)
+
         return skip
