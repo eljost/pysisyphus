@@ -8,11 +8,12 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class BacktrackingOptimizer(Optimizer):
 
-    def __init__(self, geometry, alpha, dont_skip_after=2, **kwargs):
+    def __init__(self, geometry, alpha, force_backtrack_in=5,
+                 dont_skip_after=2, **kwargs):
         # Setting some default values
         self.alpha = alpha
         assert(self.alpha > 0), "Alpha should be positive!"
-        self.force_backtrack_in = 5
+        self.force_backtrack_in = force_backtrack_in
         self.dont_skip_after = dont_skip_after
         assert(self.dont_skip_after >= 1)
         self.cycles_since_backtrack = self.force_backtrack_in
@@ -20,6 +21,7 @@ class BacktrackingOptimizer(Optimizer):
         super(BacktrackingOptimizer, self).__init__(geometry, **kwargs)
 
         self.alpha0 = self.alpha
+        self.alpha_max = 4*self.alpha0
 
         # Keep the skipping history to avoid infinite skipping, e.g. always
         # return skip = False if we already skipped in the last n iterations.
@@ -52,10 +54,10 @@ class BacktrackingOptimizer(Optimizer):
 
         # When the optimiziation is converging cur_forces will
         # be smaller than prev_forces, so rms_diff will be negative
-        # and hence always smaller than epsilon.
+        # and hence smaller than epsilon.
 
         # Slow alpha if we go uphill.
-        self.log(f"backtracking: rms_diff = {rms_diff:.04f}")
+        self.log(f"backtracking: rms_diff = {rms_diff:.08f}")
         if rms_diff > epsilon:
             self.alpha *= scale_factor
             skip = True
@@ -73,10 +75,15 @@ class BacktrackingOptimizer(Optimizer):
                     # Accelerate alpha
                     self.alpha /= scale_factor
                     self.log("scaled alpha")
-        self.log(f"alpha = {self.alpha}, skip = {skip}")
+
+        # Avoid huge alphas
+        if self.alpha > self.alpha_max:
+            self.alpha = self.alpha_max
+            self.log(f"resetted alpha because it became too large.")
 
         # Don't skip if we already skipped the previous iterations.
-        if all(self.skip_log[-self.dont_skip_after:]):
+        if ((len(self.skip_log) >= self.dont_skip_after)
+            and all(self.skip_log[-self.dont_skip_after:])):
             self.log(f"already skipped last {self.dont_skip_after} "
                       "iterations don't skip now.")
             skip = False
@@ -84,5 +91,6 @@ class BacktrackingOptimizer(Optimizer):
                 self.alpha = self.alpha0
                 self.log("resetted alpha to alpha0.")
         self.skip_log.append(skip)
+        self.log(f"alpha = {self.alpha}, skip = {skip}")
 
         return skip

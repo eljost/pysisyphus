@@ -30,7 +30,6 @@ class ChainOfStates:
         self.coords_length = self.images[0].coords.size
         self.zero_vec = np.zeros(self.coords_length)
 
-
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
 
