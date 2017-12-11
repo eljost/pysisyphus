@@ -25,13 +25,14 @@ class ChainOfStates:
         self._coords = None
         self._forces = None
         self._energy = None
+        self.counter = 0
         # For an image of N atoms coords_lengths will be 3N
         self.coords_length = self.images[0].coords.size
         self.zero_vec = np.zeros(self.coords_length)
 
 
     def log(self, message):
-        self.logger.debug(message)
+        self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
 
     @property
     def moving_indices(self):
@@ -104,6 +105,7 @@ class ChainOfStates:
         forces = [image.forces for image in self.images]
         forces = self.zero_fixed_vector(forces)
         self._forces  = np.concatenate(forces)
+        self.counter += 1
         return self._forces
 
     @forces.setter

@@ -111,7 +111,9 @@ class NEB(ChainOfStates):
             # Serial calculation
             else:
                 [image.calc_energy_and_forces() for image in self.images]
+            self.counter += 1
 
+        # Index of the highest energy image (HEI)
         hei_index = np.argmax([image.energy for image in self.images])
 
         move_inds = self.moving_indices
@@ -119,11 +121,11 @@ class NEB(ChainOfStates):
         if not self.climb:
             climb_indices = tuple()
         # We can do two climbing (C2) neb if the highest energy image (HEI)
-        # is in moving_indices but not as first or last image.
+        # is in moving_indices but not the first or last item in this list.
         elif hei_index in move_inds[1:-1]:
             climb_indices = (hei_index-1, hei_index+1)
         # Do one image climbing (C1) neb if the HEI is the first or last
-        # movable image.
+        # item in moving_indices.
         elif (hei_index == 1) or (hei_index == move_inds[-1]):
             climb_indices = (hei_index, )
         # Don't climb when the HEI is the first or last image of the whole

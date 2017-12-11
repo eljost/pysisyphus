@@ -77,8 +77,10 @@ def get_calc(index, name_base, calc_key, calc_kwargs):
 
 def get_geoms(xyz_fns, idpp=False, between=0):
     # Read .xyz or .trj files
-    if len(xyz_fns) == 1 and args.xyz[0].endswith(".trj"):
-        geoms = geoms_from_trj(args.xyz[0])
+    if len(xyz_fns) == 1 and xyz_fns[0].endswith(".trj"):
+        geoms = geoms_from_trj(xyz_fns[0])
+    elif isinstance(xyz_fns, str) and xyz_fns.endswith(".trj"):
+        geoms = geoms_from_trj(xyz_fns)
     else:
         geoms = [geom_from_xyz_file(fn) for fn in xyz_fns]
 

@@ -13,7 +13,7 @@ from pysisyphus.calculators.XTB import XTB
 from pysisyphus.cos.NEB import NEB
 
 
-def prepare_opt():
+def prepare_opt(idpp=True):
     path = Path(os.path.dirname(os.path.abspath(__file__)))
     fns = ("hcn.xyz", "hcn_iso_ts.xyz", "nhc.xyz")
     geoms = [geom_from_library(fn) for fn in fns]
@@ -22,8 +22,12 @@ def prepare_opt():
         "charge": 0,
         "mult": 1,
     }
-    geoms = idpp_interpolate(geoms, 5)
-    neb = NEB(geoms)
+    if idpp:
+        geoms = idpp_interpolate(geoms, 5)
+        neb = NEB(geoms)
+    else:
+        neb = NEB(geoms)
+        neb.interpolate(5)
     for image in neb.images:
         image.set_calculator(XTB(**calc_kwargs))
     return neb
@@ -40,7 +44,7 @@ def test_xtb_hcn_iso():
     opt.run()
 
     assert (opt.is_converged)
-    assert (opt.cur_cycle == 36)
+    assert (opt.cur_cycle == 23)
 
 
 @pytest.mark.skip
@@ -57,9 +61,9 @@ def test_xtb_hcn_climb_iso():
     opt.run()
 
     assert (opt.is_converged)
-    assert (opt.cur_cycle == 78)
+    assert (opt.cur_cycle == 21)
 
 
 if __name__ == "__main__":
-    #test_xtb_hcn_iso()
-    test_xtb_hcn_climb_iso()
+    test_xtb_hcn_iso()
+    #test_xtb_hcn_climb_iso()
