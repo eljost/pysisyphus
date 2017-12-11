@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
+from pysisyphus.optimizers.Optimizer import Optimizer
 
-class FIRE(BacktrackingOptimizer):
+class FIRE(Optimizer):
     # https://doi.org/10.1103/PhysRevLett.97.170201
 
     def __init__(self, geometry, **kwargs):
@@ -26,7 +26,7 @@ class FIRE(BacktrackingOptimizer):
         self.velocities = [self.v, ]
         self.time_deltas = [self.dt, ]
 
-        super(FIRE, self).__init__(geometry, alpha=0.1, **kwargs)
+        super(FIRE, self).__init__(geometry, **kwargs)
 
     def optimize(self):
         if self.is_cos and self.align:

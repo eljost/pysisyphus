@@ -8,8 +8,10 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class ConjugateGradient(BacktrackingOptimizer):
 
-    def __init__(self, geometry, formula="FR", dont_skip=True, **kwargs):
-        super(ConjugateGradient, self).__init__(geometry, alpha=0.1, **kwargs)
+    def __init__(self, geometry, alpha=0.1, formula="FR", dont_skip=True,
+                 **kwargs):
+        super(ConjugateGradient, self).__init__(geometry, alpha=alpha,
+                                                **kwargs)
 
         self.formula = formula
         self.dont_skip = dont_skip

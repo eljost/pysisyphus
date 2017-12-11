@@ -6,8 +6,9 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class BFGS(BacktrackingOptimizer):
 
-    def __init__(self, geometry, **kwargs):
-        super(BFGS, self).__init__(geometry, alpha=1.0, **kwargs)
+    def __init__(self, geometry, alpha=1.0, **kwargs):
+        super(BFGS, self).__init__(geometry, alpha=alpha,
+                                   force_backtrack_in=10, **kwargs)
 
         self.reset_hessian()
         self.eye = self.inv_hessian.copy()
