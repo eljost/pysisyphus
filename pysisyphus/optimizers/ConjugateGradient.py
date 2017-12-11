@@ -8,8 +8,11 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class ConjugateGradient(BacktrackingOptimizer):
 
-    def __init__(self, geometry, **kwargs):
+    def __init__(self, geometry, formula="FR", dont_skip=True, **kwargs):
         super(ConjugateGradient, self).__init__(geometry, alpha=0.1, **kwargs)
+
+        self.formula = formula
+        self.dont_skip = dont_skip
 
     def prepare_opt(self):
         if self.is_cos and self.align:
@@ -18,16 +21,32 @@ class ConjugateGradient(BacktrackingOptimizer):
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
 
+    def get_beta(self, cur_forces, prev_forces):
+        # Fletcher-Reeves formula
+        if self.formula == "FR":
+            beta = cur_forces.dot(cur_forces) / prev_forces.dot(prev_forces)
+        # Polak-Ribiere
+        elif self.formula == "PR":
+            beta = (cur_forces.dot(cur_forces-prev_forces)
+                    / prev_forces.dot(prev_forces))
+            if beta < 0:
+                self.log(f"beta = {beta:.04f} < 0, resetting to 0")
+                # beta = 0 basically restarts CG, as no previous step
+                # information is mixed into the current step.
+                beta = 0
+        return beta
+
     def optimize(self):
         cur_forces = self.forces[-1]
         if self.cur_cycle > 0:
             prev_forces = self.forces[-2]
-            beta = cur_forces.dot(cur_forces) / prev_forces.dot(prev_forces)
+            beta = self.get_beta(cur_forces, prev_forces)
             self.log(f"beta = {beta:.06f}")
             if np.isinf(beta):
                 beta = 1.0
             steps = cur_forces + beta*self.steps[-1]
         else:
+            # Start with steepest descent in the first iteration
             steps = cur_forces
         steps = self.alpha * steps
         steps = self.scale_by_max_step(steps)
@@ -40,9 +59,11 @@ class ConjugateGradient(BacktrackingOptimizer):
         new_energy = self.geometry.energy
 
         skip = self.backtrack(new_forces, cur_forces)
-        # Imho backtracking gives bad results here, so we don't use it.
-        #if skip:
-        #    return None
+        # Imho backtracking gives bad results here, so only use it if
+        # explicitly requested (self.dont_skip == False).
+        if (not self.dont_skip) and skip:
+            self.geometry.coords = last_coords
+            return None
 
         if self.align and self.is_cos:
             new_forces, cur_forces, steps = self.fit_rigid((new_forces,
