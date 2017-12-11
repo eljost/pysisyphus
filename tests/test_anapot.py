@@ -65,7 +65,7 @@ def test_steepest_descent_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 35)  # k = 0.01
+    assert(opt.cur_cycle == 30)  # k = 0.01
 
     return opt
 
@@ -102,7 +102,7 @@ def test_steepest_descent_neb_more_images():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 48)  # k = 0.01
+    assert(opt.cur_cycle == 32)  # k = 0.01
 
     return opt
 
@@ -116,7 +116,7 @@ def test_fix_first_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 31)  # k = 0.01
+    assert(opt.cur_cycle == 30)  # k = 0.01
 
     return opt
 
@@ -130,7 +130,7 @@ def test_fix_last_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)  # k = 0.01
+    assert(opt.cur_cycle == 29)  # k = 0.01
 
     return opt
 
@@ -142,7 +142,7 @@ def test_fix_ends_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 34)  # k = 0.01
+    assert(opt.cur_cycle == 30)  # k = 0.01
 
     return opt
 
@@ -155,7 +155,7 @@ def test_fix_displaced_ends_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)  # k = 0.01
+    assert(opt.cur_cycle == 27)  # k = 0.01
 
     return opt
 
@@ -262,11 +262,14 @@ def test_fire_climb_neb():
 @pytest.mark.bfgs
 def test_bfgs_neb():
     kwargs = copy.copy(KWARGS)
+    #kwargs["dont_skip_after"] = 11
+    kwargs["dump"] = True
+    kwargs["alpha"] = 0.2
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 37)  # k = 0.01
+    assert(opt.cur_cycle == 26)  # k = 0.01
 
     return opt
 
@@ -275,27 +278,29 @@ def test_bfgs_neb():
 def test_bfgs_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
+    kwargs["alpha"] = 0.2
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 44)  # k = 0.01
+    assert(opt.cur_cycle == 47)  # k = 0.01
 
     return opt
 
 
+"""
 @pytest.mark.bfgs
 def test_fix_end_climbing_bfgs_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["climb"] = True
-    kwargs["climb_rms"] = 0.007
-    convergence = {
-        "max_force_thresh": 2.6e-2,
-        "rms_force_thresh": 6.3e-3,
-        "max_step_thresh": 1e-4,
-        "rms_step_thresh": 5e-5,
-    }
-    kwargs["convergence"] = convergence
+    #kwargs["climb_rms"] = 0.007
+    #convergence = {
+    #    "max_force_thresh": 2.6e-2,
+    #    "rms_force_thresh": 6.3e-3,
+    #    "max_step_thresh": 1e-4,
+    #    "rms_step_thresh": 5e-5,
+    #}
+    #kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
@@ -303,6 +308,7 @@ def test_fix_end_climbing_bfgs_neb():
     assert(opt.cur_cycle == 30)
 
     return opt
+"""
 
 
 @pytest.mark.skip
@@ -407,7 +413,7 @@ if __name__ == "__main__":
     #opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
-    opt = test_fix_end_climbing_bfgs_neb()
+    #opt = test_fix_end_climbing_bfgs_neb()
 
     # SimpleZTS
     #opt = test_equal_szts()

@@ -79,18 +79,19 @@ def test_steepest_descent_straight_neb():
     """Something is really really wrong here."""
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
+    kwargs["max_cycles"] = 100
     convergence = {
-        "max_force_thresh": 1.74,
-        "rms_force_thresh": 0.4,
-        "max_step_thresh": 0.01,
-        "rms_step_thresh": 0.0025,
+        "max_force_thresh": 1.16,
+        "rms_force_thresh": 0.27,
+        "max_step_thresh": 0.021,
+        "rms_step_thresh": 0.005,
     }
     kwargs["convergence"] = convergence
     neb = NEB(get_geoms(("A", "B")))
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 58)
+    assert(opt.cur_cycle == 63)
 
     return opt
 
@@ -111,7 +112,7 @@ def test_bfgs_straight_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 41)
+    assert(opt.cur_cycle == 40)
 
     return opt
 
@@ -228,10 +229,10 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
-    #opt = test_steepest_descent_straight_neb()
+    opt = test_steepest_descent_straight_neb()
     #opt = test_steepest_descent_neb_more_images()
 
-    opt = test_bfgs_straight_neb()
+    #opt = test_bfgs_straight_neb()
 
     # FIRE
     #opt = test_fire_neb()

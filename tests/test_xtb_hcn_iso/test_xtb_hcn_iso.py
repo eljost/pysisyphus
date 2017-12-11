@@ -38,13 +38,14 @@ def test_xtb_hcn_iso():
     opt_kwargs = {
         "dump": True,
         "align": True,
+        "dont_skip": False,
     }
     #opt = BFGS(neb, **opt_kwargs)
     opt = ConjugateGradient(neb, **opt_kwargs)
     opt.run()
 
     assert (opt.is_converged)
-    assert (opt.cur_cycle == 23)
+    assert (opt.cur_cycle == 22)
 
 
 @pytest.mark.skip
@@ -66,4 +67,4 @@ def test_xtb_hcn_climb_iso():
 
 if __name__ == "__main__":
     test_xtb_hcn_iso()
-    #test_xtb_hcn_climb_iso()
+    ##test_xtb_hcn_climb_iso()
