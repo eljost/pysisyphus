@@ -8,7 +8,7 @@ class BFGS(BacktrackingOptimizer):
 
     def __init__(self, geometry, alpha=1.0, **kwargs):
         super(BFGS, self).__init__(geometry, alpha=alpha,
-                                   force_backtrack_in=10, **kwargs)
+                                   force_backtrack_in=5, **kwargs)
 
         self.reset_hessian()
         self.eye = self.inv_hessian.copy()
@@ -30,9 +30,8 @@ class BFGS(BacktrackingOptimizer):
         last_forces = self.forces[-1]
         last_energy = self.energies[-1]
 
-        steps = self.inv_hessian.dot(last_forces)
-        steps *= self.alpha
-        steps = self.scale_by_max_step(steps)
+        unscaled_steps = self.inv_hessian.dot(last_forces)
+        steps = self.scale_by_max_step(self.alpha*unscaled_steps)
 
         new_coords = last_coords + steps
         self.geometry.coords = new_coords
@@ -45,10 +44,10 @@ class BFGS(BacktrackingOptimizer):
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy
         skip = self.backtrack(new_forces, last_forces, reset_hessian=True)
-
         if skip:
             self.reset_hessian()
             self.geometry.coords = last_coords
+            #self.scale_alpha(unscaled_steps, self.alpha)
             return None
 
         # Because we add the step later on we restore the original
