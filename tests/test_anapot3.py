@@ -194,11 +194,11 @@ if __name__ == "__main__":
     #opt = test_fire_neb()
 
     # BFGS fails completely here!
-    #opt = test_bfgs_neb()
+    opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
 
     # SimpleZTS
-    opt = test_equal_szts()
+    #opt = test_equal_szts()
     #opt = test_equal_szts_more_images()
     #opt = test_energy_szts()
     #opt = test_energy_szts_more_images()

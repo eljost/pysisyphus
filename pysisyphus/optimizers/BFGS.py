@@ -59,8 +59,8 @@ class BFGS(BacktrackingOptimizer):
         self.forces.append(new_forces)
         self.energies.append(new_energy)
         sigma = new_coords - last_coords
-        forces_diff = -new_forces - (-last_forces)
-        rho = 1.0 / np.dot(forces_diff, sigma)
+        forces_diff = -new_forces + last_forces
+        rho = 1.0 / forces_diff.dot(sigma)
         if ((np.array_equal(self.inv_hessian, self.eye))
             # When align = True the above expression will evaluate to
             # False. So we also check if we are in the first iteration.
@@ -71,15 +71,9 @@ class BFGS(BacktrackingOptimizer):
                                 self.eye
             )
         # Inverse hessian update
-        A = (self.eye -
-             sigma[:,np.newaxis] * forces_diff[np.newaxis,:] * rho
-        )
-        B = (self.eye -
-             forces_diff[:,np.newaxis] * sigma[np.newaxis,:] * rho
-        )
-        self.inv_hessian = (
-                A.dot(self.inv_hessian.dot(B)) +
-                sigma[:,np.newaxis] * sigma[np.newaxis,:] * rho
-        )
+        A = self.eye - np.outer(sigma, forces_diff) * rho
+        B = self.eye - np.outer(forces_diff, sigma) * rho
+        self.inv_hessian = (A.dot(self.inv_hessian).dot(B)
+                            + np.outer(sigma, sigma) * rho)
 
         return steps

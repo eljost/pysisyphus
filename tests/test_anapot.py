@@ -388,7 +388,7 @@ if __name__ == "__main__":
     #opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
     #opt = test_fix_end_climbing_early_neb()
-    opt = test_fix_end_climbing_neb()
+    #opt = test_fix_end_climbing_neb()
 
     # Conjugate Gradient
     #opt = test_cg_neb()
@@ -401,7 +401,7 @@ if __name__ == "__main__":
     #opt = test_fire_climb_neb()
 
     # BFGS
-    #opt = test_bfgs_neb()
+    opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
