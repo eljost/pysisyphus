@@ -69,7 +69,7 @@ def test_steepest_descent_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 57)
+    assert(opt.cur_cycle == 56)
 
     return opt
 
@@ -91,7 +91,7 @@ def test_steepest_descent_straight_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 63)
+    assert(opt.cur_cycle == 62)
 
     return opt
 
@@ -112,7 +112,7 @@ def test_bfgs_straight_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 40)
+    assert(opt.cur_cycle == 39)
 
     return opt
 
@@ -132,7 +132,7 @@ def test_steepest_descent_neb_more_images():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 42)
+    assert(opt.cur_cycle == 41)
 
     return opt
 
@@ -146,7 +146,7 @@ def test_fire_neb():
     opt = run_cos_opt(neb, FIRE, **kwargs)
  
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 77)
+    assert(opt.cur_cycle == 76)
 
     return opt
 
@@ -161,7 +161,7 @@ def test_equal_szts():
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 18)
+    assert(opt.cur_cycle == 17)
 
     return opt
 
@@ -191,7 +191,7 @@ def test_equal_szts_more_images():
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 22)
+    assert(opt.cur_cycle == 21)
 
     return opt
 
@@ -206,7 +206,7 @@ def test_energy_szts():
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 16)
+    assert(opt.cur_cycle == 15)
 
     return opt
 
@@ -222,7 +222,7 @@ def test_energy_szts_more_images():
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 23)
+    assert(opt.cur_cycle == 22)
 
     return opt
 

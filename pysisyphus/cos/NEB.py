@@ -132,6 +132,7 @@ class NEB(ChainOfStates):
         # NEB.
         else:
             climb_indices = tuple()
+            self.log("Want to climb but can't. HEI is first or last image!")
 
         total_forces = list()
         for i in indices:

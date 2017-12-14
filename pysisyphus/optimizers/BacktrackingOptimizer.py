@@ -28,6 +28,8 @@ class BacktrackingOptimizer(Optimizer):
         # return skip = False if we already skipped in the last n iterations.
         self.skip_log = list()
 
+        self.climbing_reset = False
+
     def scale_alpha(self, unscaled_steps, alpha):
         # When using an accelerated backtracking optimizer we will vary
         # alpha until a suitable step size is found. If we did a bad step
@@ -58,11 +60,15 @@ class BacktrackingOptimizer(Optimizer):
         self.alpha = new_alpha
         print(f"got alpha {alpha}, will use new alpha {new_alpha}")
 
+    def reset(self):
+        raise Exception("Not implemented!")
+
     def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
         """Accelerated backtracking line search."""
 
-        if self.started_climbing:
-            self.log("backtracking disabled when climbing")
+        if not self.climbing_reset and self.started_climbing:
+            self.log(f"started to climb, resetting alpha to {self.alpha0}")
+            self.climbing_reset = True
             self.alpha = self.alpha0
             if reset_hessian:
                 self.reset_hessian()
@@ -87,7 +93,7 @@ class BacktrackingOptimizer(Optimizer):
         # and hence smaller than epsilon.
 
         # Slow alpha if we go uphill.
-        self.log(f"backtracking: rms_diff = {rms_diff:.08f}")
+        self.log(f"backtracking: rms_diff = {rms_diff:.03f}")
         if rms_diff > epsilon:
             self.alpha *= self.scale_factor
             skip = True
@@ -109,7 +115,8 @@ class BacktrackingOptimizer(Optimizer):
         # Avoid huge alphas
         if self.alpha > self.alpha_max:
             self.alpha = self.alpha_max
-            self.log(f"resetted alpha because it became too large.")
+            self.log("didn't accelerate as alpha would become too large. "
+                     f"keeping it at {self.alpha}.")
 
         # Don't skip if we already skipped the previous iterations to
         # avoid infinite skipping.

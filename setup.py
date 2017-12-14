@@ -8,7 +8,7 @@ if sys.version_info.major < 3:
 
 setup(
     name="pysisyphus",
-    version="0.0.11",
+    version="0.0.12",
     description="Python implementation of NEB and IRC algorithms.",
     url="https://github.com/eljost/pysisyphus",
     maintainer="Johannes Steinmetzer",

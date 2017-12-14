@@ -9,6 +9,9 @@ class SteepestDescent(BacktrackingOptimizer):
     def __init__(self, geometry, alpha=0.1, **kwargs):
         super(SteepestDescent, self).__init__(geometry, alpha=alpha, **kwargs)
 
+    def prepare_opt(self):
+        self.log("no backtracking in cycle 0")
+
     def optimize(self):
         if self.is_cos and self.align:
             self.procrustes()

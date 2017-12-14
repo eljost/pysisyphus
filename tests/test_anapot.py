@@ -65,7 +65,7 @@ def test_steepest_descent_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)  # k = 0.01
+    assert(opt.cur_cycle == 29)  # k = 0.01
 
     return opt
 
@@ -102,7 +102,7 @@ def test_steepest_descent_neb_more_images():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 32)  # k = 0.01
+    assert(opt.cur_cycle == 31)  # k = 0.01
 
     return opt
 
@@ -116,7 +116,7 @@ def test_fix_first_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)  # k = 0.01
+    assert(opt.cur_cycle == 29)  # k = 0.01
 
     return opt
 
@@ -130,7 +130,7 @@ def test_fix_last_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 29)  # k = 0.01
+    assert(opt.cur_cycle == 28)  # k = 0.01
 
     return opt
 
@@ -142,7 +142,7 @@ def test_fix_ends_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)  # k = 0.01
+    assert(opt.cur_cycle == 29)  # k = 0.01
 
     return opt
 
@@ -155,7 +155,7 @@ def test_fix_displaced_ends_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 27)  # k = 0.01
+    assert(opt.cur_cycle == 26)  # k = 0.01
 
     return opt
 
@@ -193,7 +193,7 @@ def test_fix_end_climbing_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 36)
+    assert(opt.cur_cycle == 35)
 
     return opt
 
@@ -205,7 +205,7 @@ def test_cg_neb():
     opt = run_cos_opt(neb, ConjugateGradient, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 39)  # k = 0.01
+    assert(opt.cur_cycle == 38)  # k = 0.01
 
     return opt
 
@@ -218,7 +218,7 @@ def test_qm_neb():
     opt = run_cos_opt(neb, QuickMin, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 42)  # k = 0.01
+    assert(opt.cur_cycle == 41)  # k = 0.01
 
     return opt
 
@@ -231,7 +231,7 @@ def test_fire_neb():
     opt = run_cos_opt(neb, FIRE, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 40)  # k = 0.01
+    assert(opt.cur_cycle == 39)  # k = 0.01
 
     return opt
 
@@ -254,7 +254,7 @@ def test_fire_climb_neb():
     opt = run_cos_opt(neb, FIRE, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 34)  # k = 0.01
+    assert(opt.cur_cycle == 33)  # k = 0.01
 
     return opt
 
@@ -268,7 +268,7 @@ def test_bfgs_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 28)  # k = 0.01
+    assert(opt.cur_cycle == 27)  # k = 0.01
 
     return opt
 
@@ -282,7 +282,7 @@ def test_bfgs_neb_more_images():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 31)  # k = 0.01
+    assert(opt.cur_cycle == 30)  # k = 0.01
 
     return opt
 
@@ -325,7 +325,7 @@ def test_equal_szts():
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 45)  # k = 0.01
+    assert(opt.cur_cycle == 44)  # k = 0.01
 
     return opt
 
@@ -341,7 +341,7 @@ def test_equal_szts_more_images():
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 49)  # k = 0.01
+    assert(opt.cur_cycle == 48)  # k = 0.01
 
     return opt
 
@@ -356,7 +356,7 @@ def test_energy_szts():
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 39)  # k = 0.01
+    assert(opt.cur_cycle == 38)  # k = 0.01
 
     return opt
 
@@ -372,7 +372,7 @@ def test_energy_szts_more_images():
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 50)  # k = 0.01
+    assert(opt.cur_cycle == 49)  # k = 0.01
 
     return opt
 
@@ -388,13 +388,13 @@ if __name__ == "__main__":
     #opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
     #opt = test_fix_end_climbing_early_neb()
-    #opt = test_fix_end_climbing_neb()
+    opt = test_fix_end_climbing_neb()
 
     # Conjugate Gradient
     #opt = test_cg_neb()
 
     # QuickMin
-    opt = test_qm_neb()
+    #opt = test_qm_neb()
 
     # FIRE
     #opt = test_fire_neb()

@@ -66,7 +66,7 @@ class Calculator:
             print()
             print("Crashed input:")
             print(inp)
-            backup_dir = Path(os.getcwd()) / f"crashed_{name}"
+            backup_dir = Path(os.getcwd()) / f"crashed_{self.name}"
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
             shutil.copytree(path, backup_dir)
@@ -96,3 +96,9 @@ class Calculator:
     def clean(self, path):
         shutil.rmtree(path)
         self.log(f"cleaned {path}")
+
+
+if __name__ == "__main__":
+    calc = Calculator()
+    calc.base_cmd = "sleep"
+    calc.run("dummy_inp", "dummy_calc_type")

@@ -82,7 +82,7 @@ class Optimizer:
         self.all_results = list()
 
     def log(self, message):
-        self.logger.debug(f"Cycle {self.cur_cycle+1:03d}, {message}")
+        self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
 
     def procrustes(self):
         # http://nghiaho.com/?page_id=671#comment-559906
@@ -219,7 +219,7 @@ class Optimizer:
         base_name = "image_{:03d}.trj"
         for i, image in enumerate(self.geometry.images):
             image_fn = base_name.format(i)
-            comment = f"cycle {self.cur_cycle+1}"
+            comment = f"cycle {self.cur_cycle}"
             as_xyz = image.as_xyz(comment)
             self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
 
@@ -273,7 +273,6 @@ class Optimizer:
             self.is_converged = self.check_convergence()
 
             self.check_for_climbing_start()
-            self.cur_cycle += 1
             end_time = time.time()
             elapsed_seconds = end_time - start_time
             self.cycle_times.append(elapsed_seconds)
@@ -299,3 +298,5 @@ class Optimizer:
                     print("Found stop sign. Stopping optimization.")
                     os.remove(ss)
                     return
+
+            self.cur_cycle += 1
