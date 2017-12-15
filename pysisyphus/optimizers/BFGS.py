@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.helpers import fit_rigid, procrustes
 from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
+# [1] Nocedal, Wright - Numerical Optimization, 2006
+
 class BFGS(BacktrackingOptimizer):
 
-    def __init__(self, geometry, alpha=1.0, **kwargs):
+    def __init__(self, geometry, alpha=1.0, force_backtrack_in=20, **kwargs):
         super(BFGS, self).__init__(geometry, alpha=alpha,
-                                   force_backtrack_in=5, **kwargs)
+                                   force_backtrack_in=force_backtrack_in,
+                                   **kwargs)
 
-        self.reset_hessian()
-        self.eye = self.inv_hessian.copy()
+        self.eye = np.eye(self.geometry.coords.size)
+        self.inv_hessian = self.eye.copy()
 
     def reset_hessian(self):
-        self.inv_hessian = np.eye(self.geometry.coords.size)
+        self.inv_hessian = self.eye.copy()
         self.log("Resetted hessian")
 
     def prepare_opt(self):
@@ -25,6 +29,25 @@ class BFGS(BacktrackingOptimizer):
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)
+
+    def scale_by_max_step(self, steps):
+        steps_max = np.abs(steps).max()
+        if steps_max > self.max_step:
+            fact = self.max_step / steps_max
+            """
+            fig, ax = plt.subplots()
+            ax.hist(steps, bins=20)#"auto")
+            title = f"max(steps)={steps_max:.04f}, fact={fact:.06f}"
+            ax.set_title(title)
+            l1 = ax.axvline(x=self.max_step, c="k")
+            l2 = ax.axvline(x=-self.max_step, c="k")
+            ax.add_artist(l1)
+            ax.add_artist(l2)
+            fig.savefig(f"cycle_{self.cur_cycle:02d}.png")
+            plt.close(fig)
+            """
+            steps *= self.max_step / steps_max
+        return steps
 
     def optimize(self):
         last_coords = self.coords[-1]
@@ -37,12 +60,14 @@ class BFGS(BacktrackingOptimizer):
         new_coords = last_coords + steps
         self.geometry.coords = new_coords
 
-        if self.is_cos and self.align:
-            (last_coords, last_forces), self.inv_hessian = fit_rigid(
-                                                            self.geometry,
-                                                            (last_coords,
-                                                             last_forces),
-                                                             self.inv_hessian)
+        # Hessian rotation seems faulty right now ...
+        #if self.is_cos and self.align:
+        #    (last_coords, last_forces, steps), self.inv_hessian = fit_rigid(
+        #                                                    self.geometry,
+        #                                                    (last_coords,
+        #                                                     last_forces,
+        #                                                     steps),
+        #                                                     self.inv_hessian)
 
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy
@@ -61,21 +86,25 @@ class BFGS(BacktrackingOptimizer):
 
         self.forces.append(new_forces)
         self.energies.append(new_energy)
+        # [1] Eq. 6.5, gradient difference, minus force difference
+        y = -(new_forces - last_forces)
         sigma = new_coords - last_coords
-        forces_diff = -new_forces + last_forces
-        rho = 1.0 / forces_diff.dot(sigma)
+        # [1] Eq. 6.7, curvature condition
+        curv_cond = sigma.dot(y)
+        if curv_cond < 0:
+            self.log(f"curvature condition {curv_cond:.07} < 0!")
+        rho = 1.0 / y.dot(sigma)
         if ((np.array_equal(self.inv_hessian, self.eye))
             # When align = True the above expression will evaluate to
             # False. So we also check if we are in the first iteration.
             or (self.cur_cycle == 0)):
-            self.log("Using initial guess for inverse hessian")
-            self.inv_hessian = (np.dot(forces_diff, sigma) /
-                                np.dot(forces_diff, forces_diff) *
-                                self.eye
-            )
+            # [1] Eq. 6.20, p. 143
+            beta = y.dot(sigma)/y.dot(y)
+            self.inv_hessian = self.eye*beta
+            self.log(f"Using initial guess for inverse hessian, beta={beta}")
         # Inverse hessian update
-        A = self.eye - np.outer(sigma, forces_diff) * rho
-        B = self.eye - np.outer(forces_diff, sigma) * rho
+        A = self.eye - np.outer(sigma, y) * rho
+        B = self.eye - np.outer(y, sigma) * rho
         self.inv_hessian = (A.dot(self.inv_hessian).dot(B)
                             + np.outer(sigma, sigma) * rho)
 

@@ -91,6 +91,7 @@ def procrustes(geometry):
         rot_mats.extend([rot_mat]*atoms_per_image)
     return rot_mats
 
+
 def fit_rigid(geometry, vectors=(), hessian=None):
     rot_mats = procrustes(geometry)
     G = sp.linalg.block_diag(*rot_mats)
@@ -98,7 +99,9 @@ def fit_rigid(geometry, vectors=(), hessian=None):
     if hessian is None:
         return rotated_vectors
 
-    rotated_hessian = G.dot(hessian).dot(G.T)
+    #rotated_hessian = G.dot(hessian).dot(G.T)
+    rotated_hessian = G.T.dot(hessian).dot(G)
+    #rotated_hessian = G*hessian*G.T
     return rotated_vectors, rotated_hessian
 
 

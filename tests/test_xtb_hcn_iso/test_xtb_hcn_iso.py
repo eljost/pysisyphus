@@ -7,6 +7,7 @@ import pytest
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.calculators.IDPP import idpp_interpolate
 from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.optimizers.BFGSnb import BFGSnb
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.QuickMin import QuickMin
@@ -65,6 +66,25 @@ def test_xtb_hcn_iso_qm():
 
 
 @pytest.mark.skip
+def test_xtb_hcn_iso_bfgs():
+    neb = prepare_opt()
+    opt_kwargs = {
+        "dump": True,
+        "align": True,
+        "dont_skip": False,
+        "alpha": 1.0,
+    }
+    opt = BFGS(neb, **opt_kwargs)
+    #opt = SteepestDescent(neb, **opt_kwargs) # 17 iters mit alpha = 1.0
+    #opt = ConjugateGradient(neb, **opt_kwargs) # 13 iters mit alpha = 1.0
+    #opt = BFGSnb(neb, **opt_kwargs)
+    opt.run()
+
+    assert (opt.is_converged)
+    #assert (opt.cur_cycle == 24)
+
+
+@pytest.mark.skip
 def test_xtb_hcn_iso_spopt():
     neb = prepare_opt()
     opt_kwargs = {
@@ -97,7 +117,8 @@ def test_xtb_hcn_climb_iso():
 
 if __name__ == "__main__":
     #test_xtb_hcn_iso()
-    test_xtb_hcn_iso_qm()
+    #test_xtb_hcn_iso_qm()
+    test_xtb_hcn_iso_bfgs()
     # Doesn't converge
     #test_xtb_hcn_iso_spopt()
     #test_xtb_hcn_climb_iso()
