@@ -9,6 +9,8 @@ from pysisyphus.calculators.IDPP import idpp_interpolate
 from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.QuickMin import QuickMin
+from pysisyphus.optimizers.SciPyOptimizer import SciPyOptimizer
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.cos.NEB import NEB
 
@@ -49,6 +51,34 @@ def test_xtb_hcn_iso():
 
 
 @pytest.mark.skip
+def test_xtb_hcn_iso_qm():
+    neb = prepare_opt()
+    opt_kwargs = {
+        "dump": True,
+        "align": True,
+    }
+    opt = QuickMin(neb, **opt_kwargs)
+    opt.run()
+
+    assert (opt.is_converged)
+    assert (opt.cur_cycle == 20)
+
+
+@pytest.mark.skip
+def test_xtb_hcn_iso_spopt():
+    neb = prepare_opt()
+    opt_kwargs = {
+        "dump": True,
+        "align": True,
+        "method": "BFGS",
+    }
+    opt = SciPyOptimizer(neb, **opt_kwargs)
+    opt.run()
+
+    assert (opt.is_converged)
+
+
+@pytest.mark.skip
 def test_xtb_hcn_climb_iso():
     neb = prepare_opt()
     opt_kwargs = {
@@ -66,5 +96,8 @@ def test_xtb_hcn_climb_iso():
 
 
 if __name__ == "__main__":
-    test_xtb_hcn_iso()
-    ##test_xtb_hcn_climb_iso()
+    #test_xtb_hcn_iso()
+    test_xtb_hcn_iso_qm()
+    # Doesn't converge
+    #test_xtb_hcn_iso_spopt()
+    #test_xtb_hcn_climb_iso()

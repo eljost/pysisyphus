@@ -36,7 +36,6 @@ class SciPyOptimizer(Optimizer):
 
         if self.dump:
             self.write_cycle_to_file()
-            self.write_opt_data_to_file()
 
         if self.is_zts:
             self.geometry.reparametrize()

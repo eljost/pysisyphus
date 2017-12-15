@@ -11,6 +11,8 @@ import pandas as pd
 import scipy.linalg
 import yaml
 
+import matplotlib.pyplot as plt
+
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 
@@ -201,7 +203,20 @@ class Optimizer:
     def scale_by_max_step(self, steps):
         steps_max = np.abs(steps).max()
         if steps_max > self.max_step:
+            fact = self.max_step / steps_max
             steps *= self.max_step / steps_max
+            """
+            fig, ax = plt.subplots()
+            ax.hist(steps, bins=20)#"auto")
+            title = f"max(steps)={steps_max:.04f}, fact={fact:.06f}"
+            ax.set_title(title)
+            l1 = ax.axvline(x=self.max_step, c="k")
+            l2 = ax.axvline(x=-self.max_step, c="k")
+            ax.add_artist(l1)
+            ax.add_artist(l2)
+            fig.savefig(f"cycle_{self.cur_cycle:02d}.png")
+            plt.close(fig)
+            """
         return steps
 
     def prepare_opt(self):
