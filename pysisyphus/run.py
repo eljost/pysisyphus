@@ -11,7 +11,7 @@ import yaml
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
+from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj, procrustes
 from pysisyphus.irc import *
 from pysisyphus.optimizers import *
 
@@ -53,8 +53,12 @@ def parse_args(args):
                         help="Use Image Dependent Pair Potential instead "
                         "of simple linear interpolation.")
     parser.add_argument("--xyz", nargs="+")
-    parser.add_argument("--yaml")
+    parser.add_argument("--yaml", help="Start pysisyphus with input from a "
+                                       "YAML file.")
     parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--align", nargs="+",
+                        help="Align geometries onto the first geometry "
+                             "read from multiple .xyz or one .trj file.")
 
     return parser.parse_args()
 
@@ -75,7 +79,20 @@ def get_calc(index, name_base, calc_key, calc_kwargs):
     return CALC_DICT[calc_key](**kwargs)
 
 
-def get_geoms(xyz_fns, idpp=False, between=0):
+def dump_geometry_strings(base, trj, xyz_per_image):
+    if trj:
+        trj_fn = f"{base}.trj"
+        with open(trj_fn, "w") as handle:
+            handle.write(trj)
+        print(f"Wrote all geometries to {trj_fn}.")
+    for i, xyz in enumerate(xyz_per_image):
+        image_fn = f"{base}.image_{i}.xyz"
+        with open(image_fn, "w") as handle:
+            handle.write(xyz)
+        print(f"Wrote image {i} to {image_fn}.")
+
+
+def get_geoms(xyz_fns, idpp=False, between=0, dump=False):
     # Read .xyz or .trj files
     if len(xyz_fns) == 1 and xyz_fns[0].endswith(".trj"):
         geoms = geoms_from_trj(xyz_fns[0])
@@ -99,16 +116,8 @@ def get_geoms(xyz_fns, idpp=False, between=0):
         xyz_per_image = [geom.as_xyz() for geom in geoms]
         trj = cos.as_xyz()
 
-    if trj:
-        trj_fn = "interpolated.trj"
-        with open(trj_fn, "w") as handle:
-            handle.write(trj)
-        print(f"Wrote interpolated coordinates to {trj_fn}.")
-    for i, xyz in enumerate(xyz_per_image):
-        image_fn = f"interpolated.image_{i}.xyz"
-        with open(image_fn, "w") as handle:
-            handle.write(xyz)
-        print(f"Wrote image {i} to {image_fn}.")
+    if dump:
+        dump_geometry_strings("interpolated", trj, xyz_per_image)
 
     return geoms
 
@@ -140,7 +149,7 @@ def run_opt(args):
 
 
 def run_interpolation(args):
-    geoms = get_geoms(args.xyz, args.idpp, args.between)
+    geoms = get_geoms(args.xyz, args.idpp, args.between, dump=True)
     """
     trj_fn = "interpolated.trj"
     trj_str = "\n".join([geom.as_xyz() for geom in geoms])
@@ -199,7 +208,7 @@ def handle_yaml(yaml_str):
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
     get_opt = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
-    geoms = get_geoms(xyz, idpp, between)
+    geoms = get_geoms(xyz, idpp, between, dump=True)
     if run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, get_opt)
@@ -242,6 +251,17 @@ def clean():
             os.remove(p)
             print(f"Deleted {p}")
 
+
+def align(fns):
+    geoms = get_geoms(fns)
+    print(f"Read {len(geoms)} geometries.")
+    cos = ChainOfStates.ChainOfStates(geoms)
+    procrustes(cos)
+    trj = cos.as_xyz()
+    xyz_per_image = [image.as_xyz() for image in cos.images]
+    dump_geometry_strings("aligned", trj, xyz_per_image)
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -254,6 +274,8 @@ def run():
         run_interpolation(args)
     elif args.clean:
         clean()
+    elif args.align:
+        align(args.align)
     else:
         print("Please specify a run type! Show help with -h.")
 
