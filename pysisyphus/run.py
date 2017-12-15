@@ -51,15 +51,17 @@ def parse_args(args):
                         help="Interpolate additional images.")
     parser.add_argument("--idpp", action="store_true",
                         help="Use Image Dependent Pair Potential instead "
-                        "of simple linear interpolation.")
+                             "of simple linear interpolation.")
     parser.add_argument("--xyz", nargs="+")
-    parser.add_argument("--yaml", help="Start pysisyphus with input from a "
-                                       "YAML file.")
+    parser.add_argument("--yaml",
+                        help="Start pysisyphus with input from a YAML file.")
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--align", nargs="+",
                         help="Align geometries onto the first geometry "
                              "read from multiple .xyz or one .trj file.")
-
+    parser.add_argument("--split",
+                        help="Split a supplied .trj file in multiple "
+                             ".xyz files.")
     return parser.parse_args()
 
 
@@ -79,7 +81,7 @@ def get_calc(index, name_base, calc_key, calc_kwargs):
     return CALC_DICT[calc_key](**kwargs)
 
 
-def dump_geometry_strings(base, trj, xyz_per_image):
+def dump_geometry_strings(base, trj="", xyz_per_image=[]):
     if trj:
         trj_fn = f"{base}.trj"
         with open(trj_fn, "w") as handle:
@@ -100,6 +102,8 @@ def get_geoms(xyz_fns, idpp=False, between=0, dump=False):
         geoms = geoms_from_trj(xyz_fns)
     else:
         geoms = [geom_from_xyz_file(fn) for fn in xyz_fns]
+
+    print(f"Read {len(geoms)} geometries.")
 
     # Do IDPP interpolation if requested,
     trj = ""
@@ -254,12 +258,17 @@ def clean():
 
 def align(fns):
     geoms = get_geoms(fns)
-    print(f"Read {len(geoms)} geometries.")
     cos = ChainOfStates.ChainOfStates(geoms)
     procrustes(cos)
     trj = cos.as_xyz()
     xyz_per_image = [image.as_xyz() for image in cos.images]
     dump_geometry_strings("aligned", trj, xyz_per_image)
+
+
+def split(trj_fn):
+    geoms = get_geoms(trj_fn)
+    xyz_per_image = [geom.as_xyz() for geom in geoms]
+    dump_geometry_strings("split", xyz_per_image=xyz_per_image)
 
 
 def run():
@@ -276,6 +285,8 @@ def run():
         clean()
     elif args.align:
         align(args.align)
+    elif args.split:
+        split(args.split)
     else:
         print("Please specify a run type! Show help with -h.")
 
