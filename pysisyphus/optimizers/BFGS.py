@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from pysisyphus.helpers import fit_rigid, procrustes
 from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class BFGS(BacktrackingOptimizer):
@@ -19,7 +20,7 @@ class BFGS(BacktrackingOptimizer):
 
     def prepare_opt(self):
         if self.is_cos and self.align:
-            self.procrustes()
+            procrustes(self.geometry)
         # Calculate initial forces before the first iteration
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
@@ -37,9 +38,11 @@ class BFGS(BacktrackingOptimizer):
         self.geometry.coords = new_coords
 
         if self.is_cos and self.align:
-            (last_coords, last_forces), self.inv_hessian = self.fit_rigid((last_coords,
-                                                                           last_forces),
-                                                                           self.inv_hessian)
+            (last_coords, last_forces), self.inv_hessian = fit_rigid(
+                                                            self.geometry,
+                                                            (last_coords,
+                                                             last_forces),
+                                                             self.inv_hessian)
 
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy

@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from pysisyphus.helpers import procrustes
 from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class SteepestDescent(BacktrackingOptimizer):
@@ -14,7 +15,7 @@ class SteepestDescent(BacktrackingOptimizer):
 
     def optimize(self):
         if self.is_cos and self.align:
-            self.procrustes()
+            procrustes(self.geometry)
 
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)

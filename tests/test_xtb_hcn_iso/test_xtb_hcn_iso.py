@@ -47,7 +47,7 @@ def test_xtb_hcn_iso():
     opt.run()
 
     assert (opt.is_converged)
-    assert (opt.cur_cycle == 22)
+    assert (opt.cur_cycle == 24)
 
 
 @pytest.mark.skip

@@ -2,7 +2,9 @@
 
 import numpy as np
 
+from pysisyphus.helpers import fit_rigid
 from pysisyphus.optimizers.Optimizer import Optimizer
+
 
 class QuickMin(Optimizer):
 
@@ -16,7 +18,8 @@ class QuickMin(Optimizer):
 
     def optimize(self):
         if self.align and self.is_cos:
-            (self.velocities[-1], ) = self.fit_rigid((self.velocities[-1], ))
+            (self.velocities[-1], ) = fit_rigid(self.geometry,
+                                                (self.velocities[-1], ))
 
         prev_velocities = self.velocities[-1]
         cur_forces = self.geometry.forces

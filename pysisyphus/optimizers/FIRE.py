@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from pysisyphus.helpers import fit_rigid
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 class FIRE(Optimizer):
@@ -30,7 +31,7 @@ class FIRE(Optimizer):
 
     def optimize(self):
         if self.is_cos and self.align:
-            self.v,  = self.fit_rigid((self.v, ))
+            self.v,  = fit_rigid(self.geometry, (self.v, ))
 
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)

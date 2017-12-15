@@ -86,48 +86,6 @@ class Optimizer:
     def log(self, message):
         self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
 
-    def procrustes(self):
-        # http://nghiaho.com/?page_id=671#comment-559906
-        image0 = self.geometry.images[0]
-        coords3d = image0.coords.reshape(-1, 3)
-        centroid = coords3d.mean(axis=0)
-        last_centered = coords3d - centroid
-        self.geometry.set_coords_at(0, last_centered.flatten())
-        atoms_per_image = len(image0.atoms)
-
-        # Don't rotate the first image, so just add identitiy matrices
-        # for every atom.
-        rot_mats = [np.eye(3)]*atoms_per_image
-        for i, image in enumerate(self.geometry.images[1:], 1):
-            coords3d = image.coords.reshape(-1, 3)
-            centroid = coords3d.mean(axis=0)
-            # Center next image
-            centered = coords3d - centroid
-            tmp_mat = centered.T.dot(last_centered)
-            U, W, Vt = np.linalg.svd(tmp_mat)
-            rot_mat = U.dot(Vt)
-            # Avoid reflections
-            if np.linalg.det(rot_mat) < 0:
-                U[:, -1] *= -1
-                rot_mat = U.dot(Vt)
-            # Rotate the coords
-            rotated3d = centered.dot(rot_mat)
-            self.geometry.set_coords_at(i, rotated3d.flatten())
-            last_centered = rotated3d
-            # Append one rotation matrix per atom
-            rot_mats.extend([rot_mat]*atoms_per_image)
-        return rot_mats
-
-    def fit_rigid(self, vectors=(), hessian=None):
-        rot_mats = self.procrustes()
-        G = scipy.linalg.block_diag(*rot_mats)
-        rotated_vectors = [vec.dot(G) for vec in vectors]
-        if hessian is None:
-            return rotated_vectors
-
-        rotated_hessian = G.dot(hessian).dot(G.T)
-        return rotated_vectors, rotated_hessian
-
     def check_convergence(self, multiple=1.0):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple

@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from pysisyphus.helpers import fit_rigid, procrustes
 from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 # http://ikuz.eu/2015/04/15/the-concept-of-conjugate-gradient-descent-in-python/
@@ -18,7 +19,7 @@ class ConjugateGradient(BacktrackingOptimizer):
 
     def prepare_opt(self):
         if self.is_cos and self.align:
-            self.procrustes()
+            procrustes(self.geometry)
         # Calculate initial forces before the first iteration
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
@@ -68,8 +69,10 @@ class ConjugateGradient(BacktrackingOptimizer):
             return None
 
         if self.align and self.is_cos:
-            new_forces, cur_forces, steps = self.fit_rigid((new_forces,
-                                                            cur_forces, steps))
+            new_forces, cur_forces, steps = fit_rigid(self.geometry,
+                                                      (new_forces,
+                                                       cur_forces,
+                                                       steps))
             self.geometry.coords -= steps
             # Set the calculated properties on the rotated geometries
             self.geometry.energy = new_energy
