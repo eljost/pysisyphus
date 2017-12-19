@@ -15,9 +15,10 @@ from pysisyphus.xyzloader import make_xyz_str
 
 class XTB(Calculator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, gbsa="", **kwargs):
         super(XTB, self).__init__(**kwargs)
 
+        self.gbsa = gbsa
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
@@ -36,6 +37,10 @@ class XTB(Calculator):
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
         add_args = f"-gfn -chrg {self.charge} -uhf {self.uhf} -grad".split()
+        # Use solvent model if specified
+        if self.gbsa:
+            gbsa = f"-gbsa {self.gbsa}".split()
+            add_args = add_args + gbsa
         results = self.run(inp, calc="grad", add_args=add_args)
         return results
 
@@ -77,6 +82,9 @@ class XTB(Calculator):
         results["forces"] = -gradient
 
         return results
+
+    def keep(self, path):
+        kept_fns = super().keep(path, ("out", "gradient"))
 
     def __str__(self):
         return "XTB calculator"

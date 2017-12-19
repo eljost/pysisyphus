@@ -19,7 +19,7 @@ def prepare():
 
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
-    levels=(-150, -15, 40)
+    levels=(-150, -15, 80)
     plotter = PlotAnaPot(geometry, xlim, ylim, levels)
 
     return geometry, plotter
@@ -71,7 +71,7 @@ def test_mullerbrown_euler_no_mw_irc():
 
 
 if __name__ == "__main__":
-    #test_mullerbrown_gs_irc()
+    test_mullerbrown_gs_irc()
     #test_mullerbrown_dvv_irc()
     #test_mullerbrown_euler_irc()
-    test_mullerbrown_euler_no_mw_irc()
+    #test_mullerbrown_euler_no_mw_irc()

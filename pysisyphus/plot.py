@@ -316,7 +316,9 @@ def parse_args(args):
     group.add_argument("--tddft", action="store_true",
                        help="Plot ORCA TDDFT potential energy surfaces "
                             "over the course of the NEB.")
-    group.add_argument("--params", type=int, nargs="+")
+    group.add_argument("--params", type=int, nargs="+",
+                       help="Display bond or angle over the course of the "
+                            "NEB. Indices have to be 0-based.")
     group.add_argument("--cosgrad", action="store_true",
                         help="Plot image gradients along the path.")
     group.add_argument("--energies", action="store_true",
