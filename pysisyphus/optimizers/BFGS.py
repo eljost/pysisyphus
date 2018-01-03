@@ -17,6 +17,9 @@ class BFGS(BacktrackingOptimizer):
 
         self.eye = np.eye(self.geometry.coords.size)
         self.inv_hessian = self.eye.copy()
+        self.log("BFGS with align=True is somewhat broken right now, so "
+                 "the images will be aligned only in the first iteration. "
+        )
 
     def reset_hessian(self):
         self.inv_hessian = self.eye.copy()
