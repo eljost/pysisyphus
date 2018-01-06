@@ -121,6 +121,8 @@ class Geometry:
 
     def as_xyz(self, comment=""):
         coords = self.coords * BOHR2ANG
+        if (not comment) and self._energy:
+            comment = str(self._energy)
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
     def __str__(self):

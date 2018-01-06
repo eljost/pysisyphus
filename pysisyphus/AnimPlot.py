@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
@@ -20,11 +21,14 @@ class AnimPlot:
     def __init__(self, calculator, optimizer,
                  xlim=(-1, 1), ylim=(-1, 1), num=100,
                  figsize=(8, 8), levels=(-150, 5, 30),
-                 interval=250):
+                 interval=250,
+                 energy_profile=True, colorbar=True):
 
         self.calculator = calculator
         self.optimizer = optimizer
         self.interval = interval
+        self.energy_profile = energy_profile
+        self.colorbar = colorbar
 
         self.coords = [c.reshape(-1, 3) for c in self.optimizer.coords]
         self.forces = [f.reshape((-1, 3)) for f in self.optimizer.forces]
@@ -33,8 +37,11 @@ class AnimPlot:
 
         # ax: the contour plot
         # ax1: energy along the path
-        self.fig, (self.ax, self.ax1) = plt.subplots(2, figsize=figsize,
-                                        gridspec_kw = {'height_ratios':[3, 1]})
+        if self.energy_profile:
+            self.fig, (self.ax, self.ax1) = plt.subplots(2, figsize=figsize,
+                                            gridspec_kw = {'height_ratios':[3, 1]})
+        else:
+            self.fig, self.ax = plt.subplots(figsize=figsize)
 
         self.pause = True
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
@@ -55,10 +62,11 @@ class AnimPlot:
         self.ax.set_xlabel("x")
         self.ax.set_ylabel("y")
 
-        # Create a colorbar
-        self.fig.subplots_adjust(right=0.8)
-        cbar_ax = self.fig.add_axes([0.85, 0.15, 0.05, 0.7])
-        self.fig.colorbar(contours, cax=cbar_ax)
+        if self.colorbar:
+            # Create a colorbar
+            self.fig.subplots_adjust(right=0.8)
+            cbar_ax = self.fig.add_axes([0.85, 0.15, 0.05, 0.7])
+            self.fig.colorbar(contours, cax=cbar_ax)
 
         images_x = self.coords[0][:,0]
         images_y = self.coords[0][:,1]
@@ -79,11 +87,12 @@ class AnimPlot:
                                            tangents_x, tangents_y, color="b")
 
         # Energy along the path
-        self.energies_plot, = self.ax1.plot(
-            get_coords_diffs(self.coords[0]), energies, "ro", ls="-"
-        )
-        self.ax1.set_xlabel("q(x, y)")
-        self.ax1.set_ylabel("f(x, y)")
+        if self.energy_profile:
+            self.energies_plot, = self.ax1.plot(
+                get_coords_diffs(self.coords[0]), energies, "ro", ls="-"
+            )
+            self.ax1.set_xlabel("q(x, y)")
+            self.ax1.set_ylabel("f(x, y)")
 
     def func(self, frame):
         self.fig.suptitle("Cycle {}".format(frame))
@@ -108,12 +117,13 @@ class AnimPlot:
         self.tangent_quiv.set_offsets(offsets)
         self.tangent_quiv.set_UVC(tangents_x, tangents_y)
 
-        coords_diffs = get_coords_diffs(self.coords[frame])
-        energies = self.energies[frame]
-        self.energies_plot.set_xdata(coords_diffs)
-        self.energies_plot.set_ydata(energies)
-        self.ax1.relim()
-        self.ax1.autoscale_view()
+        if self.energy_profile:
+            coords_diffs = get_coords_diffs(self.coords[frame])
+            energies = self.energies[frame]
+            self.energies_plot.set_xdata(coords_diffs)
+            self.energies_plot.set_ydata(energies)
+            self.ax1.relim()
+            self.ax1.autoscale_view()
 
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)
@@ -121,7 +131,12 @@ class AnimPlot:
                                                  self.func,
                                                  frames=cycles,
                                                  interval=self.interval)
-        plt.show()
+
+    def as_html5(self, out_fn):
+        mpl.rcParams["animation.bitrate"] = 5000
+        html5 = self.animation.to_html5_video()
+        with open(out_fn, "w") as handle:
+            handle.write(html5)
 
     def on_keypress(self, event):
         """Pause on SPACE press."""

@@ -2,6 +2,7 @@
 
 import copy
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -56,6 +57,17 @@ def animate(opt):
     levels = (-3, 4, 80)
     ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
     ap.animate()
+    return ap
+
+
+def animate_bare(opt):
+    xlim = (-2, 2.5)
+    ylim = (0, 5)
+    levels = (-3, 4, 80)
+    ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels,
+                  energy_profile=False, colorbar=False, figsize=(8, 6))
+    ap.animate()
+    return ap
 
 
 @pytest.mark.sd
@@ -413,4 +425,7 @@ if __name__ == "__main__":
     #opt = test_energy_szts()
     #opt = test_energy_szts_more_images()
 
-    animate(opt)
+    ap = animate(opt)
+    #ap = animate_bare(opt)
+    #ap.as_html5("anim.html")
+    plt.show()
