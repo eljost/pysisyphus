@@ -6,6 +6,7 @@ from pathlib import Path
 from pprint import pprint
 import sys
 
+from distributed import LocalCluster, Client
 import yaml
 
 from pysisyphus.calculators import *
@@ -43,6 +44,11 @@ IRC_DICT = {
     #"imk": IMKMod.IMKMod,
 }
 
+CLUSTER = LocalCluster()
+print(CLUSTER)
+CLIENT = Client(CLUSTER)
+print(CLIENT)
+
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
@@ -78,6 +84,7 @@ def get_calc(index, name_base, calc_key, calc_kwargs):
     kwargs = {key: str(calc_kwargs[key]).replace("$IMAGE", "{index:03d}")
               for key in calc_kwargs}
     kwargs["name"] = f"{name_base}_{index:03d}"
+    kwargs["client"] = CLIENT
     return CALC_DICT[calc_key](**kwargs)
 
 
