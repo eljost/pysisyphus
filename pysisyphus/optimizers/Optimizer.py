@@ -73,6 +73,10 @@ class Optimizer:
         for la in self.list_attrs:
             setattr(self, la, list())
 
+        self.opt_results_fn = "optimizer_results.yaml"
+        self.image_results_fn = "image_results.yaml"
+        self.image_results = list()
+
         self.cur_cycle = 0
         if last_cycle:
             # Increase cycle number by one as we don't want to
@@ -81,7 +85,9 @@ class Optimizer:
             self.restart()
 
     def restart(self):
-        with open("optimizer_results.yaml") as handle:
+        with open(self.image_results_fn) as handle:
+            self.image_results = yaml.load(handle.read())
+        with open(self.opt_results_fn) as handle:
             yaml_str = handle.read()
         opt_results = yaml.load(yaml_str)
         for key, val in opt_results.items():
@@ -191,20 +197,14 @@ class Optimizer:
 
     def write_results(self):
         # Save results from the Geometry.
-        # For small fast test jobs this part is a real bottleneck.
-        try:
-            image_results_fn = "image_results.yaml"
-            with open(image_results_fn) as handle:
-                image_results = yaml.load(handle.read())
-        except FileNotFoundError:
-            image_results = list()
-        image_results.append(self.geometry.results)
-        self.write_to_out_dir(image_results_fn, yaml.dump(image_results))
+        self.image_results.append(self.geometry.results)
+        self.write_to_out_dir(self.image_results_fn,
+                              yaml.dump(self.image_results))
 
         # Save results from the Optimizer
         opt_results = {la: getattr(self, la) for la in self.list_attrs}
-        opt_results_fn = "optimizer_results.yaml"
-        self.write_to_out_dir(opt_results_fn, yaml.dump(opt_results))
+        self.write_to_out_dir(self.opt_results_fn,
+                              yaml.dump(opt_results))
 
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
