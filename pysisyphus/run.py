@@ -4,8 +4,10 @@ import argparse
 import os
 from pathlib import Path
 from pprint import pprint
+import re
 import sys
 
+from natsort import natsorted
 import yaml
 
 from pysisyphus.calculators import *
@@ -62,22 +64,17 @@ def parse_args(args):
     parser.add_argument("--split",
                         help="Split a supplied .trj file in multiple "
                              ".xyz files.")
+    parser.add_argument("--restart", action="store_true",
+                        help="Continue a previously crashed/aborted/... "
+                             "pysisphus run.")
     return parser.parse_args()
 
 
-def get_calc(index, name_base, calc_key, calc_kwargs):
-    """
-    import copy
-    kwargs_copy = copy.copy(calc_kwargs)
-    for key in kwargs_copy:
-        val = kwargs_copy[key]
-        if "$IMAGE" in str(val):
-            kwargs_copy[key] = val.replace("$IMAGE", str(index))
-    kwargs_copy["name"] = f"{name_base}_{index:03d}"
-    """
+def get_calc(index, base_name, calc_key, calc_kwargs):
     kwargs = {key: str(calc_kwargs[key]).replace("$IMAGE", "{index:03d}")
               for key in calc_kwargs}
-    kwargs["name"] = f"{name_base}_{index:03d}"
+    kwargs["base_name"] = base_name
+    kwargs["calc_number"] = index
     return CALC_DICT[calc_key](**kwargs)
 
 
@@ -183,7 +180,7 @@ def get_defaults(conf_dict):
     return dd
 
 
-def handle_yaml(yaml_str):
+def handle_yaml(yaml_str, restart):
     yaml_dict = yaml.load(yaml_str)
     # Load defaults to have a sane baseline
     run_dict = get_defaults(yaml_dict)
@@ -207,6 +204,22 @@ def handle_yaml(yaml_str):
         cos_key = run_dict["cos"].pop("type")
         cos_kwargs = run_dict["cos"]
 
+    if restart:
+        print("Trying to restart calculation. Skipping interpolation.")
+        idpp = False
+        between = 0
+        # Load geometries of latest cycle
+        cwd = Path(".")
+        trjs = [str(trj) for trj in cwd.glob("cycle_*.trj")]
+        if len(trjs) == 0:
+            print("Can't restart. Found no previous coordinates.")
+            sys.exit()
+        xyz = natsorted(trjs)[-1]
+        last_cycle = int(re.search("(\d+)", xyz)[0])
+        print(f"Last cycle was {last_cycle}.")
+        print(f"Using '{xyz}' as input geometries.")
+        opt_kwargs["last_cycle"] = last_cycle
+
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
@@ -226,20 +239,21 @@ def clean():
         "image*.trj",
         "image*.out",
         "cycle*.trj",
-        "results.yaml",
         "interpolated.trj",
         "interpolated.image*.xyz",
         "calculator.log",
         "optimizer.log",
         "optimized.trj",
         "cos.log",
+        "*.gradient",
+        "image_results.yaml",
+        "optimizer_results.yaml",
         # ORCA specific
         "image*.gbw",
         "image*.engrad",
         "image*.hessian",
         # OpenMOLCAS specific
         "image*.RasOrb",
-        "calculator*.gradient",
         "calculator*.out",
     )
     to_rm_paths = list()
@@ -280,7 +294,7 @@ def run():
     if args.yaml:
         with open(args.yaml) as handle:
             yaml_str = handle.read()
-        handle_yaml(yaml_str)
+        handle_yaml(yaml_str, args.restart)
     elif args.between:
         run_interpolation(args)
     elif args.clean:

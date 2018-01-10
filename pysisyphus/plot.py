@@ -157,8 +157,8 @@ def plot_energies():
 def load_results(keys):
     if isinstance(keys, str):
         keys = (keys, )
-    results_fn = "results.yaml"
-    with open("results.yaml") as handle:
+    image_results_fn = "image_results.yaml"
+    with open(image_results_fn) as handle:
         all_results = yaml.load(handle.read())
     num_cycles = len(all_results)
 

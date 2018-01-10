@@ -27,6 +27,7 @@ class Optimizer:
     def __init__(self, geometry, convergence=gauss_loose,
                  align=False, dump=False,
                  climb=False, climb_multiple=5.0, climb_rms=False,
+                 last_cycle=None,
                  **kwargs):
         self.geometry = geometry
 
@@ -36,12 +37,12 @@ class Optimizer:
         self.climb = climb
         self.climb_multiple = climb_multiple
         self.climb_rms = climb_rms
-        self.started_climbing = False
 
         for key, value in convergence.items():
             setattr(self, key, value)
 
         # Setting some default values
+        self.started_climbing = False
         self.max_cycles = 50
         self.max_step = 0.04
         self.rel_step_thresh = 1e-3
@@ -64,22 +65,28 @@ class Optimizer:
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
-        self.cur_cycle = 0
         self.logger = logging.getLogger("optimizer")
 
-        self.coords = list()
-        self.energies = list()
-        self.forces = list()
-        self.steps = list()
+        self.list_attrs = "coords energies forces steps " \
+                          "max_forces rms_forces max_steps rms_steps " \
+                          "cycle_times tangents".split()
+        for la in self.list_attrs:
+            setattr(self, la, list())
 
-        self.max_forces = list()
-        self.rms_forces = list()
-        self.max_steps = list()
-        self.rms_steps = list()
-        self.cycle_times = list()
+        self.cur_cycle = 0
+        if last_cycle:
+            # Increase cycle number by one as we don't want to
+            # redo the last cycle.
+            self.cur_cycle = last_cycle + 1
+            self.restart()
 
-        self.tangents = list()
-        self.all_results = list()
+    def restart(self):
+        with open("optimizer_results.yaml") as handle:
+            yaml_str = handle.read()
+        opt_results = yaml.load(yaml_str)
+        for key, val in opt_results.items():
+            setattr(self, key, val)
+        self.check_for_climbing_start()
 
     def log(self, message):
         self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
@@ -118,6 +125,7 @@ class Optimizer:
             [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
+
     def check_for_climbing_start(self):
         # Return False if we don't want to climb or are already
         # climbing.
@@ -179,12 +187,24 @@ class Optimizer:
             image_fn = base_name.format(i)
             comment = f"cycle {self.cur_cycle}"
             as_xyz = image.as_xyz(comment)
-            self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
+            self.write_to_out_dir(image_fn, as_xyz+"\n")
 
     def write_results(self):
-        self.all_results.append(self.geometry.results)
-        results_fn = "results.yaml".format(self.cur_cycle)
-        self.write_to_out_dir(results_fn, yaml.dump(self.all_results))
+        # Save results from the Geometry.
+        # For small fast test jobs this part is a real bottleneck.
+        try:
+            image_results_fn = "image_results.yaml"
+            with open(image_results_fn) as handle:
+                image_results = yaml.load(handle.read())
+        except FileNotFoundError:
+            image_results = list()
+        image_results.append(self.geometry.results)
+        self.write_to_out_dir(image_results_fn, yaml.dump(image_results))
+
+        # Save results from the Optimizer
+        opt_results = {la: getattr(self, la) for la in self.list_attrs}
+        opt_results_fn = "optimizer_results.yaml"
+        self.write_to_out_dir(opt_results_fn, yaml.dump(opt_results))
 
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
