@@ -78,7 +78,7 @@ class IDPP(Calculator):
     def __init__(self, target): 
         self.target = squareform(target)
 
-        super(IDPP, self).__init__(name="idpp")
+        super(IDPP, self).__init__(base_name="idpp")
 
     def get_forces(self, atoms, coords):
         coords_reshaped = coords.reshape((-1, 3))

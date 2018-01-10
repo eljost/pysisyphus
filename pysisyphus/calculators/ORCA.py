@@ -36,6 +36,7 @@ class ORCA(Calculator):
         self.set_moinp_str(gbw)
         self.blocks = blocks
 
+        self.to_keep = ("out", "gbw", "engrad", "hessian")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -226,7 +227,7 @@ class ORCA(Calculator):
 
 
     def keep(self, path):
-        kept_fns = super().keep(path, ("out", "gbw", "engrad", "hessian"))
+        kept_fns = super().keep(path)
         self.set_moinp_str(kept_fns["gbw"])
 
     def __str__(self):

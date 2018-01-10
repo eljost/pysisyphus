@@ -12,12 +12,18 @@ import tempfile
 class Calculator:
     logger = logging.getLogger("calculator")
 
-    def __init__(self, charge=0, mult=1, name="calculator"):
+    def __init__(self, calc_number=0, charge=0, mult=1, base_name="calculator"):
         self.charge = int(charge)
         self.mult = int(mult)
-        self.name = name
+        # Index of the image this calculator belongs too in
+        # in a ChainOfStates calculation.
+        self.calc_number = calc_number
+        self.base_name = base_name
+        self.name = f"{base_name}_{calc_number}"
 
-        self.counter = 0
+        # How many calculations were already run
+        self.to_keep = ()
+        self.calc_counter = 0
         self._energy = None
         self._forces = None
         self._hessian = None
@@ -26,7 +32,8 @@ class Calculator:
         self.out_fn = "calc.out"
 
     def log(self, message):
-        self.logger.debug(f"{self.name}_{self.counter:03d}, " + message)
+        self.logger.debug(f"{self.name}_{self.calc_counter:03d}, "
+                          + message)
 
     def get_energy(self, atoms, coords):
         raise Exception("Not implemented!")
@@ -35,11 +42,11 @@ class Calculator:
         raise Exception("Not implemented!")
 
     def make_fn(self, ext):
-        return f"{self.name}.{self.counter:03d}.{ext}"
+        return f"{self.name}.{self.calc_counter:03d}.{ext}"
 
     def prepare(self, inp, path=None):
         if not path:
-            prefix = f"{self.name}_{self.counter:03d}_"
+            prefix = f"{self.name}_{self.calc_counter:03d}_"
             path = Path(tempfile.mkdtemp(prefix=prefix))
         inp_path = path / self.inp_fn
         with open(inp_path, "w") as handle:
@@ -73,14 +80,14 @@ class Calculator:
             sys.exit()
         finally:
             self.clean(path)
-            self.counter += 1
+            self.calc_counter += 1
 
         return results
 
-    def keep(self, path, exts=()):
+    def keep(self, path):
         kept_fns = dict()
-        for ext in exts:
-            pattern = f"*.{ext}"
+        for ext in self.to_keep:
+            pattern = f"*{ext}"
             globbed = list(path.glob(pattern))
             assert(len(globbed) <= 1), (f"Expected at most one {pattern} in {path}."
                                         f" Found {len(globbed)} instead!"
@@ -96,6 +103,9 @@ class Calculator:
     def clean(self, path):
         shutil.rmtree(path)
         self.log(f"cleaned {path}")
+
+    def reattach(self, calc_counter):
+        self.calc_counter = calc_counter
 
 
 if __name__ == "__main__":

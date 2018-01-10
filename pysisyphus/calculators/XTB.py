@@ -23,6 +23,7 @@ class XTB(Calculator):
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
+        self.to_keep = ("out", "gradient")
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
@@ -84,7 +85,7 @@ class XTB(Calculator):
         return results
 
     def keep(self, path):
-        kept_fns = super().keep(path, ("out", "gradient"))
+        kept_fns = super().keep(path)
 
     def __str__(self):
         return "XTB calculator"

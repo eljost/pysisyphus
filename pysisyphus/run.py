@@ -239,6 +239,8 @@ def clean():
         "image*.hessian",
         # OpenMOLCAS specific
         "image*.RasOrb",
+        "calculator*.gradient",
+        "calculator*.out",
     )
     to_rm_paths = list()
     for glob in rm_globs:

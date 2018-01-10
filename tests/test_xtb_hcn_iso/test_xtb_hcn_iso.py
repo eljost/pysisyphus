@@ -31,8 +31,8 @@ def prepare_opt(idpp=True):
     else:
         neb = NEB(geoms)
         neb.interpolate(5)
-    for image in neb.images:
-        image.set_calculator(XTB(**calc_kwargs))
+    for i, image in enumerate(neb.images):
+        image.set_calculator(XTB(calc_number=i, **calc_kwargs))
     return neb
 
 @pytest.mark.skip
@@ -42,6 +42,7 @@ def test_xtb_hcn_iso():
         "dump": True,
         "align": True,
         "dont_skip": False,
+        "max_cycles": 5,
     }
     #opt = BFGS(neb, **opt_kwargs)
     opt = ConjugateGradient(neb, **opt_kwargs)
@@ -116,9 +117,9 @@ def test_xtb_hcn_climb_iso():
 
 
 if __name__ == "__main__":
-    #test_xtb_hcn_iso()
+    test_xtb_hcn_iso()
     #test_xtb_hcn_iso_qm()
-    test_xtb_hcn_iso_bfgs()
+    #test_xtb_hcn_iso_bfgs()
     # Doesn't converge
     #test_xtb_hcn_iso_spopt()
     #test_xtb_hcn_climb_iso()

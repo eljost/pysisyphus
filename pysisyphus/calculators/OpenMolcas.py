@@ -23,6 +23,8 @@ class OpenMolcas(Calculator):
         self.roots = roots
         self.mdrlxroot = mdrlxroot
         self.supsym = self.build_supsym_str(supsym)
+
+        self.to_keep = ("RasOrb", "out", "in", "JobIph")
         self.cur_jobiph = ""
         self.prev_jobiph = ""
 
@@ -121,7 +123,7 @@ class OpenMolcas(Calculator):
         return results
 
     def keep(self, path):
-        kept_fns = super().keep(path, ("RasOrb", "out", "in", "JobIph"))
+        kept_fns = super().keep(path)
         self.inporb = kept_fns["RasOrb"]
         # Keep references to the current and the last .JobIph file
         # to be used in &rassi to track our root in a state average
