@@ -16,13 +16,14 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 class NEB(ChainOfStates):
 
     def __init__(self, images, variable_springs=False,
-                 k_max=0.3, k_min=0.01, **kwargs):
+                 k_max=0.3, k_min=0.01, dask=False, **kwargs):
         super(NEB, self).__init__(images, **kwargs)
 
         assert(k_max > k_min), "k_max has to be bigger than k_min!"
         self.variable_springs = variable_springs
         self.k_max = k_max
         self.k_min = k_min
+        self.dask = dask
 
         self.climb = False
         self.delta_k = self.k_max - self.k_min
@@ -30,6 +31,21 @@ class NEB(ChainOfStates):
 
         self.perp_forces = list()
         self.par_forces = list()
+
+        """
+        print("starting cluster") 
+        self.cluster = LocalCluster()
+        print(self.cluster)
+        print("started cluster")
+        print("starting client")
+        self.client = Client(self.cluster)
+        print(self.client)
+        print("started client")
+        #workers = self.client.scheduler_info()["workers"]
+        #for i, w in enumerate(workers):
+        #    print(f"Worker {i}")
+        #    print(w)
+        """
 
     def update_springs(self):
         self.k = np.full(len(self.images)-1, self.k_min)
@@ -103,6 +119,14 @@ class NEB(ChainOfStates):
 
         if self._forces is None:
             # Parallel calculation
+            """
+            if (self.dask == True) and self.parallel > 0:
+                image_number = len(self.images)
+                tasks = [self.client.submit(self.par_calc, i)
+                         for i in range(image_number)]
+                self.images = self.client.gather(tasks)
+            elif self.parallel > 0:
+            """
             if self.parallel > 0:
                 with Pool(processes=self.parallel) as pool:
                     image_number = len(self.images)
