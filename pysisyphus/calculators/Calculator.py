@@ -8,25 +8,14 @@ import subprocess
 import sys
 import tempfile
 
-def run_ext(out_fn, args, path, env):
-    #print("out_fn", out_fn)
-    #print("args", args)
-    #print("path", path)
-    #print("env", env)
-    with open(path / out_fn, "w") as handle:
-        result = subprocess.Popen(args, cwd=path, stdout=handle, env=env)
-        result.wait()
-    #return result
-
 
 class Calculator:
     logger = logging.getLogger("calculator")
 
-    def __init__(self, charge=0, mult=1, name="calculator", client=None):
+    def __init__(self, charge=0, mult=1, name="calculator"):
         self.charge = int(charge)
         self.mult = int(mult)
         self.name = name
-        self.client = client
 
         self.counter = 0
         self._energy = None
@@ -66,18 +55,9 @@ class Calculator:
             args.extend(add_args)
         if not env:
             env = os.environ.copy()
-        # Use dask for parallel computing
-        if self.client:
-        #if False:
-            #print("using dask")
-            #print(self.client)
-            #import pdb; pdb.set_trace()
-            task = self.client.submit(run_ext, self.out_fn, args, path, env)
-            #print(self.client)
-            self.client.gather(task)
-            #run_ext(self.out_fn, args, path, env)
-        else:
-            run_ext(self.out_fn, args, path, env)
+        with open(path / self.out_fn, "w") as handle:
+            result = subprocess.Popen(args, cwd=path, stdout=handle, env=env)
+            result.wait()
         try:
             results = self.parser_funcs[calc](path)
             self.keep(path)
@@ -92,7 +72,7 @@ class Calculator:
             shutil.copytree(path, backup_dir)
             sys.exit()
         finally:
-            #self.clean(path)
+            self.clean(path)
             self.counter += 1
 
         return results

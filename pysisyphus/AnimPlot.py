@@ -130,7 +130,7 @@ class AnimPlot:
         if self.save:
             frame_fn = f"step{frame}.png"
             if not os.path.exists(frame_fn):
-            self.fig.savefig(frame_fn)
+                self.fig.savefig(frame_fn)
 
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)
