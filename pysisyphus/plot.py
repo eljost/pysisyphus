@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import sys
 
 import matplotlib
@@ -18,11 +19,12 @@ from pysisyphus.peakdetect import peakdetect
 
 
 class Plotter:
-    def __init__(self, coords, data, ylabel, interval=750):
+    def __init__(self, coords, data, ylabel, interval=750, save=None):
         self.coords = coords
         self.data = data
         self.ylabel = ylabel
         self.interval = interval
+        self.save = save
 
         self.cycles = len(self.data)
         self.pause = True
@@ -59,11 +61,20 @@ class Plotter:
     def update_plot(self, i):
         self.fig.suptitle("Cycle {}".format(i+1))
         self.lines[0].set_ydata(self.data[i])
+        if self.save:
+            self.save_png(i)
 
     def update_plot2(self, i):
         self.fig.suptitle("Cycle {}".format(i+1))
         for j, line in enumerate(self.lines):
             line.set_ydata(self.data[i][:, j])
+        if self.save:
+            self.save_png(i)
+
+    def save_png(self, frame):
+        frame_fn = f"step{i}.png"
+        if not os.path.exists(frame_fn):
+            self.fig.savefig(frame_fn)
 
     def animate(self):
         self.lines = self.ax.plot(self.coord_diffs[0], self.data[0], "o-")

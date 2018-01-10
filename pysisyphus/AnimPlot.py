@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import os
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -22,13 +24,14 @@ class AnimPlot:
                  xlim=(-1, 1), ylim=(-1, 1), num=100,
                  figsize=(8, 8), levels=(-150, 5, 30),
                  interval=250,
-                 energy_profile=True, colorbar=True):
+                 energy_profile=True, colorbar=True, save=None):
 
         self.calculator = calculator
         self.optimizer = optimizer
         self.interval = interval
         self.energy_profile = energy_profile
         self.colorbar = colorbar
+        self.save = save
 
         self.coords = [c.reshape(-1, 3) for c in self.optimizer.coords]
         self.forces = [f.reshape((-1, 3)) for f in self.optimizer.forces]
@@ -124,6 +127,10 @@ class AnimPlot:
             self.energies_plot.set_ydata(energies)
             self.ax1.relim()
             self.ax1.autoscale_view()
+        if self.save:
+            frame_fn = f"step{frame}.png"
+            if not os.path.exists(frame_fn):
+            self.fig.savefig(frame_fn)
 
     def animate(self):
         cycles = range(self.optimizer.cur_cycle)
