@@ -89,8 +89,9 @@ class Calculator:
         for ext in self.to_keep:
             pattern = f"*{ext}"
             globbed = list(path.glob(pattern))
-            assert(len(globbed) <= 1), (f"Expected at most one {pattern} in {path}."
-                                        f" Found {len(globbed)} instead!"
+            assert(len(globbed) <= 1), (f"Expected at most one file ending with "
+                                        f"{pattern} in {path}. Found {len(globbed)} "
+                                         "instead!"
             )
             if len(globbed) == 0:
                 continue
