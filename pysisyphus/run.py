@@ -31,7 +31,9 @@ CALC_DICT = {
 
 OPT_DICT = {
     "fire": FIRE.FIRE,
-    "bfgs": BFGS.BFGS,
+    # Removing BFGS for now until save_also is implemented
+    # and rotating the hessian works properly
+    #"bfgs": BFGS.BFGS,
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,

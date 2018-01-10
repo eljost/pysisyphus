@@ -37,6 +37,7 @@ class Optimizer:
         self.climb = climb
         self.climb_multiple = climb_multiple
         self.climb_rms = climb_rms
+        self.last_cycle = last_cycle
 
         for key, value in convergence.items():
             setattr(self, key, value)
@@ -78,11 +79,14 @@ class Optimizer:
         self.image_results = list()
 
         self.cur_cycle = 0
-        if last_cycle:
+        if self.last_cycle:
             # Increase cycle number by one as we don't want to
             # redo the last cycle.
             self.cur_cycle = last_cycle + 1
             self.restart()
+
+    def save_also(self):
+        pass
 
     def restart(self):
         with open(self.image_results_fn) as handle:
@@ -203,6 +207,7 @@ class Optimizer:
 
         # Save results from the Optimizer
         opt_results = {la: getattr(self, la) for la in self.list_attrs}
+        opt_results.update(self.save_also())
         self.write_to_out_dir(self.opt_results_fn,
                               yaml.dump(opt_results))
 
@@ -221,11 +226,12 @@ class Optimizer:
             self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
     def run(self):
-        prep_start_time = time.time()
-        self.prepare_opt()
-        prep_end_time = time.time()
-        prep_time = prep_end_time - prep_start_time
-        print(f"Spent {prep_time:.1f} s preparing the first cycle.")
+        if not self.last_cycle:
+            prep_start_time = time.time()
+            self.prepare_opt()
+            prep_end_time = time.time()
+            prep_time = prep_end_time - prep_start_time
+            print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
         self.print_header()
         while True:

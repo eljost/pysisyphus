@@ -2,6 +2,7 @@
 
 import copy
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -112,7 +113,7 @@ def test_bfgs_straight_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 39)
+    assert(opt.cur_cycle == 45)
 
     return opt
 
@@ -229,10 +230,10 @@ def test_energy_szts_more_images():
 if __name__ == "__main__":
     # Steepest Descent
     #opt = test_steepest_descent_neb()
-    opt = test_steepest_descent_straight_neb()
+    #opt = test_steepest_descent_straight_neb()
     #opt = test_steepest_descent_neb_more_images()
 
-    #opt = test_bfgs_straight_neb()
+    opt = test_bfgs_straight_neb()
 
     # FIRE
     #opt = test_fire_neb()
@@ -244,4 +245,5 @@ if __name__ == "__main__":
     #opt = test_energy_szts()
     #opt = test_energy_szts_more_images()
 
-    animate(opt)
+    ap = animate(opt)
+    plt.show()

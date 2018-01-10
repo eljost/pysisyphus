@@ -9,16 +9,19 @@ class FIRE(Optimizer):
     # https://doi.org/10.1103/PhysRevLett.97.170201
 
     def __init__(self, geometry, **kwargs):
-        self.dt = 0.1
-        self.dt_max = 1
-        # Accelerate after N_acc cycles
-        self.N_acc = 2
-        self.f_inc = 1.1
-        self.f_acc = 0.99
-        self.f_dec = 0.5
-
-        self.n_reset = 0
-        self.a_start = 0.1
+        self.defaults = {
+            "dt": 0.1,
+            "dt_max": 1,
+            # Accelerate after N_acc cycles
+            "N_acc": 2,
+            "f_inc": 1.1,
+            "f_acc": 0.99,
+            "f_dec": 0.5,
+            "n_reset": 0,
+            "a_start": 0.1
+        }
+        for key, val in self.defaults.items():
+            setattr(self, key, val)
         self.a = self.a_start
 
         # The current velocity
@@ -28,6 +31,17 @@ class FIRE(Optimizer):
         self.time_deltas = [self.dt, ]
 
         super(FIRE, self).__init__(geometry, **kwargs)
+
+    def save_also(self):
+        tmp_dict = {attr: getattr(self, attr)
+                    for attr in self.defaults.keys()}
+        tmp_dict.update({
+            "a": self.a,
+            "dt": self.dt,
+            "velocities": self.velocities,
+            "time_deltas": self.time_deltas,
+        })
+        return tmp_dict
 
     def optimize(self):
         if self.is_cos and self.align:

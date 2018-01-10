@@ -280,7 +280,7 @@ def test_bfgs_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 27)  # k = 0.01
+    assert(opt.cur_cycle == 41)  # k = 0.01
 
     return opt
 
@@ -294,7 +294,7 @@ def test_bfgs_neb_more_images():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)  # k = 0.01
+    assert(opt.cur_cycle == 43)  # k = 0.01
 
     return opt
 
@@ -403,7 +403,7 @@ if __name__ == "__main__":
     #opt = test_fix_end_climbing_neb()
 
     # Conjugate Gradient
-    opt = test_cg_neb()
+    #opt = test_cg_neb()
 
     # QuickMin
     #opt = test_qm_neb()
@@ -414,7 +414,7 @@ if __name__ == "__main__":
 
     # BFGS
     #opt = test_bfgs_neb()
-    #opt = test_bfgs_neb_more_images()
+    opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
     #opt = test_fix_end_climbing_bfgs_neb()

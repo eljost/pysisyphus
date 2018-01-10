@@ -13,6 +13,12 @@ class QuickMin(Optimizer):
 
         self.dt = dt
 
+    def save_also(self):
+        return {
+            "dt": self.dt,
+            "velocities": self.velocities,
+        }
+
     def prepare_opt(self):
         self.velocities = [np.zeros_like(self.geometry.coords), ]
 

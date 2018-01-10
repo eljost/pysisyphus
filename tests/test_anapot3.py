@@ -2,6 +2,7 @@
 
 import copy
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -187,14 +188,14 @@ def test_energy_szts_more_images():
 
 if __name__ == "__main__":
     # Steepest Descent
-    #opt = test_steepest_descent_neb()
+    opt = test_steepest_descent_neb()
     #opt = test_steepest_descent_neb_more_images()
 
     # FIRE
     #opt = test_fire_neb()
 
     # BFGS fails completely here!
-    opt = test_bfgs_neb()
+    #opt = test_bfgs_neb()
     #opt = test_bfgs_neb_more_images()
 
     # SimpleZTS
@@ -203,4 +204,5 @@ if __name__ == "__main__":
     #opt = test_energy_szts()
     #opt = test_energy_szts_more_images()
 
-    animate(opt)
+    ap = animate(opt)
+    plt.show()

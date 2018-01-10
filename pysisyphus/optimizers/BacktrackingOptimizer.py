@@ -30,6 +30,13 @@ class BacktrackingOptimizer(Optimizer):
 
         self.climbing_reset = False
 
+    def save_also(self):
+        return {
+            "cycles_since_backtrack": self.cycles_since_backtrack,
+            "alpha": self.alpha,
+            "alpha0": self.alpha0,
+        }
+
     def scale_alpha(self, unscaled_steps, alpha):
         # When using an accelerated backtracking optimizer we will vary
         # alpha until a suitable step size is found. If we did a bad step
