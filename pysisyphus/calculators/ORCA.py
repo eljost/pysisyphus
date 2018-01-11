@@ -32,8 +32,9 @@ class ORCA(Calculator):
         super(ORCA, self).__init__(**kwargs)
 
         self.keywords = keywords
-        # sets self.moinp
-        self.set_moinp_str(gbw)
+        # Only call when we are not restarting
+        if not ("last_calc_cycle" in kwargs):
+            self.set_moinp_str(gbw)
         self.blocks = blocks
 
         self.to_keep = ("out", "gbw", "engrad", "hessian")
@@ -60,6 +61,12 @@ class ORCA(Calculator):
         }
 
         self.base_cmd = Config["orca"]["cmd"]
+
+    def reattach(self, last_calc_cycle):
+        # Use the latest .gbw
+        gbw = os.path.abspath(self.make_fn("gbw", last_calc_cycle))
+        self.log(f"restarted. using {gbw}")
+        self.set_moinp_str(gbw)
 
     def set_moinp_str(self, gbw):
         if not gbw:

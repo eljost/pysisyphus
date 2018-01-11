@@ -27,12 +27,17 @@ class Calculator:
         self.calc_counter = 0
         if last_calc_cycle:
             self.calc_counter = int(last_calc_cycle)+1
+            self.reattach(int(last_calc_cycle))
+            self.log(f"set {self.calc_counter} for this calculation")
         self._energy = None
         self._forces = None
         self._hessian = None
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
+
+    def reattach(self, last_calc_cycle):
+        raise Exception("Not implemented!")
 
     def log(self, message):
         self.logger.debug(f"{self.name}_{self.calc_counter:03d}, "
@@ -44,8 +49,10 @@ class Calculator:
     def get_hessian(self, atoms, coords):
         raise Exception("Not implemented!")
 
-    def make_fn(self, ext):
-        return f"{self.name}.{self.calc_counter:03d}.{ext}"
+    def make_fn(self, ext, counter=None):
+        if not counter:
+            counter = self.calc_counter
+        return f"{self.name}.{counter:03d}.{ext}"
 
     def prepare(self, inp, path=None):
         if not path:

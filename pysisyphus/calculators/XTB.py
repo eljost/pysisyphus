@@ -31,6 +31,9 @@ class XTB(Calculator):
 
         self.base_cmd = Config["xtb"]["cmd"]
 
+    def reattach(self, last_calc_cycle):
+        pass
+
     def prepare_coords(self, atoms, coords):
         coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
