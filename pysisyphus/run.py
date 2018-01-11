@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import itertools
 import os
 from pathlib import Path
 from pprint import pprint
@@ -74,6 +75,10 @@ def parse_args(args):
 
 
 def get_calc(index, base_name, calc_key, calc_kwargs):
+    # Converting everything to string may give problems.
+    # It would be better to filter values that contain $IMAGE, expand
+    # these and then update the calc_kwargs with this keeping the
+    # remaining types intact.
     kwargs = {key: str(calc_kwargs[key]).replace("$IMAGE", "{index:03d}")
               for key in calc_kwargs}
     kwargs["base_name"] = base_name
@@ -183,6 +188,30 @@ def get_defaults(conf_dict):
     return dd
 
 
+def get_last_calc_cycle():
+    def keyfunc(path):
+        return re.match("image_\d+.(\d+).out", str(path))[1]
+    cwd = Path(".")
+    calc_logs = [str(cl) for cl in cwd.glob("image_*.*.out")]
+    calc_logs = sorted(calc_logs, key=keyfunc)
+    grouped = itertools.groupby(calc_logs, key=keyfunc)
+    # Find the last completly finished cycle.
+    last_length = 0
+    last_calc_cycle = 0
+    for calc_cycle, group in grouped:
+        cycle_length = len(list(group))
+        if cycle_length < last_length:
+            # When this is True we have a cycle that has less
+            # items than last one, that is an unfinished cycle.
+            break
+        last_length = cycle_length
+        last_calc_cycle = int(calc_cycle)
+    if last_calc_cycle == 0:
+        print("Can't find any old calculator logs.")
+    print(f"Last calculation counter is {last_calc_cycle}.")
+    return last_calc_cycle
+
+
 def handle_yaml(yaml_str, restart):
     yaml_dict = yaml.load(yaml_str)
     # Load defaults to have a sane baseline
@@ -222,7 +251,8 @@ def handle_yaml(yaml_str, restart):
         print(f"Last cycle was {last_cycle}.")
         print(f"Using '{xyz}' as input geometries.")
         opt_kwargs["last_cycle"] = last_cycle
-        run_dict["calc"]["last_cycle"] = last_cycle
+        last_calc_cycle = get_last_calc_cycle()
+        run_dict["calc"]["last_calc_cycle"] = last_calc_cycle
 
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]

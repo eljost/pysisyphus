@@ -12,7 +12,8 @@ import tempfile
 class Calculator:
     logger = logging.getLogger("calculator")
 
-    def __init__(self, calc_number=0, charge=0, mult=1, base_name="calculator"):
+    def __init__(self, calc_number=0, charge=0, mult=1,
+                 base_name="calculator", last_calc_cycle=None):
         self.charge = int(charge)
         self.mult = int(mult)
         # Index of the image this calculator belongs too in
@@ -24,6 +25,8 @@ class Calculator:
         # How many calculations were already run
         self.to_keep = ()
         self.calc_counter = 0
+        if last_calc_cycle:
+            self.calc_counter = int(last_calc_cycle)+1
         self._energy = None
         self._forces = None
         self._hessian = None
