@@ -51,14 +51,15 @@ IRC_DICT = {
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("yaml", nargs="?",
+                        help="Start pysisyphus with input from a YAML file.")
+
     parser.add_argument("--between", type=int,
                         help="Interpolate additional images.")
     parser.add_argument("--idpp", action="store_true",
                         help="Use Image Dependent Pair Potential instead "
                              "of simple linear interpolation.")
     parser.add_argument("--xyz", nargs="+")
-    parser.add_argument("--yaml",
-                        help="Start pysisyphus with input from a YAML file.")
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--align", nargs="+",
                         help="Align geometries onto the first geometry "
@@ -221,6 +222,7 @@ def handle_yaml(yaml_str, restart):
         print(f"Last cycle was {last_cycle}.")
         print(f"Using '{xyz}' as input geometries.")
         opt_kwargs["last_cycle"] = last_cycle
+        run_dict["calc"]["last_cycle"] = last_cycle
 
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]

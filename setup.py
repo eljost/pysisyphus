@@ -23,7 +23,7 @@ setup(
         "matplotlib",
         "pytest",
         "natsort",
-        "yaml",
+        "pyyaml",
     ],
     entry_points={
         "console_scripts": [
