@@ -64,7 +64,7 @@ class ORCA(Calculator):
 
     def reattach(self, last_calc_cycle):
         # Use the latest .gbw
-        gbw = os.path.abspath(self.make_fn("gbw", last_calc_cycle))
+        gbw = self.make_fn("gbw", last_calc_cycle, True)
         self.log(f"restarted. using {gbw}")
         self.set_moinp_str(gbw)
 

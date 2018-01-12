@@ -75,6 +75,13 @@ class OpenMolcas(Calculator):
 
         self.base_cmd = Config["openmolcas"]["cmd"]
 
+    def reattach(self, last_calc_cycle):
+        self.inporb = self.make_fn("RasOrb", last_calc_cycle, True)
+        self.prev_jobiph = self.make_fn("JobIph", last_calc_cycle-1, True)
+        self.cur_jobiph = self.make_fn("JobIph", last_calc_cycle, True)
+        self.log(f"restarted. using {self.inporb}, {self.prev_jobiph}, "
+                 f"{self.cur_jobiph}")
+
     def build_supsym_str(self, supsym):
         """Can handle only one subgroup for now."""
         if not supsym:

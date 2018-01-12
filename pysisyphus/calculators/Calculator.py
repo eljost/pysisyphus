@@ -49,10 +49,13 @@ class Calculator:
     def get_hessian(self, atoms, coords):
         raise Exception("Not implemented!")
 
-    def make_fn(self, ext, counter=None):
+    def make_fn(self, ext, counter=None, abspath=False):
         if not counter:
             counter = self.calc_counter
-        return f"{self.name}.{counter:03d}.{ext}"
+        fn = f"{self.name}.{counter:03d}.{ext}"
+        if abspath:
+            fn = os.path.abspath(fn)
+        return fn
 
     def prepare(self, inp, path=None):
         if not path:
