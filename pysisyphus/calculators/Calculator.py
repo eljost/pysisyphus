@@ -22,9 +22,12 @@ class Calculator:
         self.base_name = base_name
         self.name = f"{base_name}_{calc_number}"
 
-        # How many calculations were already run
+        # Extensions of the files to keep after running a calculation.
+        # Usually overridden in derived classes.
         self.to_keep = ()
+        # How many calculations were already run
         self.calc_counter = 0
+        # Handle restarts
         if last_calc_cycle:
             self.calc_counter = int(last_calc_cycle)+1
             self.reattach(int(last_calc_cycle))
