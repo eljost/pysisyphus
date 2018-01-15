@@ -59,13 +59,13 @@ class Plotter:
         return np.array(coord_diffs)
 
     def update_plot(self, i):
-        self.fig.suptitle("Cycle {}".format(i+1))
+        self.fig.suptitle("Cycle {}".format(i))
         self.lines[0].set_ydata(self.data[i])
         if self.save:
             self.save_png(i)
 
     def update_plot2(self, i):
-        self.fig.suptitle("Cycle {}".format(i+1))
+        self.fig.suptitle("Cycle {}".format(i))
         for j, line in enumerate(self.lines):
             line.set_ydata(self.data[i][:, j])
         if self.save:

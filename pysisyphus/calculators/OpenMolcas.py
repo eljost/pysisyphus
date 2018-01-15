@@ -91,7 +91,7 @@ class OpenMolcas(Calculator):
         return f"supsym\n1\n{num_orbitals} {supsym};"
 
     def build_rassi_str(self):
-        if self.counter == 0:
+        if self.calc_counter == 0:
             return ""
         else:
             return f"""
@@ -121,11 +121,11 @@ class OpenMolcas(Calculator):
         return inp
 
     def get_forces(self, atoms, coords):
-        self.logger.debug(f"using inporb: {self.inporb}")
+        self.log.debug(f"using inporb: {self.inporb}")
         inp = self.prepare_input(atoms, coords)
         add_args = ("-clean", "-oe", self.out_fn)
         env = os.environ.copy()
-        env["MOLCAS_PROJECT"] = f"{self.name}_{self.counter}"
+        env["MOLCAS_PROJECT"] = f"{self.name}_{self.calc_counter}"
         results = self.run(inp, calc="grad", add_args=add_args, env=env)
         return results
 
@@ -136,7 +136,7 @@ class OpenMolcas(Calculator):
         # to be used in &rassi to track our root in a state average
         # calculation.
         # In the first iteration self.cur_jobiph isn't set yet
-        if self.counter == 0:
+        if self.calc_counter == 0:
             self.prev_jobiph = kept_fns["JobIph"]
         else:
             self.prev_jobiph = self.cur_jobiph
@@ -177,7 +177,7 @@ class OpenMolcas(Calculator):
             gradient.append(mobj.groups()[1:])
         gradient = np.array(gradient, dtype=np.float).flatten()
 
-        if self.counter > 0:
+        if self.calc_counter > 0:
             self.parse_rassi_track(path)
 
         energy, sa_energies = self.parse_energies(text)
