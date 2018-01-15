@@ -67,9 +67,9 @@ class IRC:
         self.cur_step = 0
         # Over the course of the IRC the hessian usually gets updated.
         # Copying the TS hessian here ensures a clean start in combined
-        # forward and backward runs. Otherwise at the beginning of a
-        # backward run following a forward run self.hessian would be
-        # the hessian at the end of the forward run.
+        # forward and backward runs. Otherwise we would accidently use
+        # the updated hessian from the end of the first run for the second
+        # run.
         self.hessian = self.ts_hessian
 
         # Do inital displacement from the TS
