@@ -97,7 +97,7 @@ def dump_geometry_strings(base, trj="", xyz_per_image=[]):
         with open(image_fn, "w") as handle:
             handle.write(xyz)
         print(f"Wrote image {i} to {image_fn}.")
-        print()
+    print()
 
 
 def get_geoms(xyz_fns, idpp=False, between=0, dump=False):
