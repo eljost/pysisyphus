@@ -96,7 +96,7 @@ class OpenMolcas(Calculator):
         else:
             return f"""
             >> copy $Project.JobIph JOB001
-            >> copy {self.prev_jobiph} JOB002
+            >> copy {self.cur_jobiph} JOB002
             &rassi
              track
             """
@@ -121,7 +121,7 @@ class OpenMolcas(Calculator):
         return inp
 
     def get_forces(self, atoms, coords):
-        self.log.debug(f"using inporb: {self.inporb}")
+        self.log(f"using inporb: {self.inporb}")
         inp = self.prepare_input(atoms, coords)
         add_args = ("-clean", "-oe", self.out_fn)
         env = os.environ.copy()
@@ -141,8 +141,8 @@ class OpenMolcas(Calculator):
         else:
             self.prev_jobiph = self.cur_jobiph
         self.cur_jobiph = kept_fns["JobIph"]
-        self.log(f"kept current JobIph {self.cur_jobiph}")
         self.log(f"previous JobIph is now {self.prev_jobiph}")
+        self.log(f"current JobIph is now {self.cur_jobiph}")
 
     def parse_energies(self, text):
         # Energy of root for which gradient was computed
