@@ -141,7 +141,8 @@ class OpenMolcas(Calculator):
         else:
             self.prev_jobiph = self.cur_jobiph
         self.cur_jobiph = kept_fns["JobIph"]
-        self.log(f"current JobIph {self.cur_jobiph}")
+        self.log(f"kept current JobIph {self.cur_jobiph}")
+        self.log(f"previous JobIph is now {self.prev_jobiph}")
 
     def parse_energies(self, text):
         # Energy of root for which gradient was computed
