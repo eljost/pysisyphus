@@ -75,15 +75,14 @@ def parse_args(args):
 
 
 def get_calc(index, base_name, calc_key, calc_kwargs):
-    # Converting everything to string may give problems.
-    # It would be better to filter values that contain $IMAGE, expand
-    # these and then update the calc_kwargs with this keeping the
-    # remaining types intact.
-    kwargs = {key: str(calc_kwargs[key]).replace("$IMAGE", "{index:03d}")
-              for key in calc_kwargs}
-    kwargs["base_name"] = base_name
-    kwargs["calc_number"] = index
-    return CALC_DICT[calc_key](**kwargs)
+    # Expand values that contain the $IMAGE pattern over all images.
+    for key, value in calc_kwargs.items():
+        if not isinstance(value, str) or not ("$IMAGE" in value):
+            continue
+        calc_kwargs[key] = value.replace("$IMAGE", "{index:03d}")
+    calc_kwargs["base_name"] = base_name
+    calc_kwargs["calc_number"] = index
+    return CALC_DICT[calc_key](**calc_kwargs)
 
 
 def dump_geometry_strings(base, trj="", xyz_per_image=[]):
