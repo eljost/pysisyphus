@@ -289,7 +289,7 @@ def clean():
         # OpenMOLCAS specific
         "image*.RasOrb",
         "image*.in",
-        "image.*JobIph",
+        "image*.JobIph",
         "calculator*.out",
     )
     to_rm_paths = list()
