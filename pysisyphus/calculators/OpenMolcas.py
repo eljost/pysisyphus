@@ -173,7 +173,7 @@ class OpenMolcas(Calculator):
             gradient.append(mobj.groups()[1:])
         gradient = np.array(gradient, dtype=np.float).flatten()
 
-        if self.calc_counter > 0:
+        if self.track and self.calc_counter > 0:
             self.parse_rassi_track(path)
 
         energy, sa_energies = self.parse_energies(text)
