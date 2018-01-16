@@ -15,7 +15,7 @@ from pysisyphus.xyzloader import make_xyz_str
 class OpenMolcas(Calculator):
 
     def __init__(self, basis, inporb, roots, mdrlxroot,
-                 supsym=None, **kwargs):
+                 supsym=None, track=True, **kwargs):
         super(OpenMolcas, self).__init__(**kwargs)
 
         self.basis = basis
@@ -23,10 +23,10 @@ class OpenMolcas(Calculator):
         self.roots = roots
         self.mdrlxroot = mdrlxroot
         self.supsym = self.build_supsym_str(supsym)
+        self.track = track
 
         self.to_keep = ("RasOrb", "out", "in", "JobIph")
-        self.cur_jobiph = ""
-        self.prev_jobiph = ""
+        self.jobiph = ""
 
         self.inp_fn = "openmolcas.in"
         self.out_fn = "openmolcas.out"
@@ -77,10 +77,8 @@ class OpenMolcas(Calculator):
 
     def reattach(self, last_calc_cycle):
         self.inporb = self.make_fn("RasOrb", last_calc_cycle, True)
-        self.prev_jobiph = self.make_fn("JobIph", last_calc_cycle-1, True)
-        self.cur_jobiph = self.make_fn("JobIph", last_calc_cycle, True)
-        self.log(f"restarted. using {self.inporb}, {self.prev_jobiph}, "
-                 f"{self.cur_jobiph}")
+        self.jobiph = self.make_fn("JobIph", last_calc_cycle, True)
+        self.log(f"restarted. using {self.inporb}, {self.jobiph}")
 
     def build_supsym_str(self, supsym):
         """Can handle only one subgroup for now."""
@@ -91,12 +89,15 @@ class OpenMolcas(Calculator):
         return f"supsym\n1\n{num_orbitals} {supsym};"
 
     def build_rassi_str(self):
-        if self.calc_counter == 0:
+        # In the first iteration self.jobiph isn't set yet.
+        if (not self.track) or (self.calc_counter == 0):
             return ""
         else:
+            # JOB001 corresponds to the current iteration,
+            # JOB002 to the previous iteration.
             return f"""
             >> copy $Project.JobIph JOB001
-            >> copy {self.cur_jobiph} JOB002
+            >> copy {self.jobiph} JOB002
             &rassi
              track
             """
@@ -132,17 +133,11 @@ class OpenMolcas(Calculator):
     def keep(self, path):
         kept_fns = super().keep(path)
         self.inporb = kept_fns["RasOrb"]
-        # Keep references to the current and the last .JobIph file
-        # to be used in &rassi to track our root in a state average
+        # Keep references to the .JobIph file to be used in
+        # &rassi to track our root in a state average
         # calculation.
-        # In the first iteration self.cur_jobiph isn't set yet
-        if self.calc_counter == 0:
-            self.prev_jobiph = kept_fns["JobIph"]
-        else:
-            self.prev_jobiph = self.cur_jobiph
-        self.cur_jobiph = kept_fns["JobIph"]
-        self.log(f"previous JobIph is now {self.prev_jobiph}")
-        self.log(f"current JobIph is now {self.cur_jobiph}")
+        self.jobiph = kept_fns["JobIph"]
+        self.log(f"current JobIph is {self.jobiph}")
 
     def parse_energies(self, text):
         # Energy of root for which gradient was computed

@@ -43,7 +43,7 @@ class Calculator:
         raise Exception("Not implemented!")
 
     def log(self, message):
-        self.logger.debug(f"{self.name}_{self.calc_counter:03d}, "
+        self.logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, "
                           + message)
 
     def get_energy(self, atoms, coords):
