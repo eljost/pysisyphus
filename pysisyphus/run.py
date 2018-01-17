@@ -79,7 +79,7 @@ def get_calc(index, base_name, calc_key, calc_kwargs):
     for key, value in calc_kwargs.items():
         if not isinstance(value, str) or not ("$IMAGE" in value):
             continue
-        calc_kwargs[key] = value.replace("$IMAGE", "{index:03d}")
+        calc_kwargs[key] = value.replace("$IMAGE", f"{index:03d}")
     calc_kwargs["base_name"] = base_name
     calc_kwargs["calc_number"] = index
     return CALC_DICT[calc_key](**calc_kwargs)
