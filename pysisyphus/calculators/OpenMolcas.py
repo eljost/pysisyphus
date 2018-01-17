@@ -25,7 +25,7 @@ class OpenMolcas(Calculator):
         self.supsym = self.build_supsym_str(supsym)
         self.track = track
 
-        self.to_keep = ("RasOrb", "out", "in", "JobIph")
+        self.to_keep = ("RasOrb", "out", "in", "JobIph", "molden")
         self.jobiph = ""
 
         self.inp_fn = "openmolcas.in"
