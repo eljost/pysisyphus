@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import copy
 import itertools
 import os
 from pathlib import Path
@@ -76,13 +77,17 @@ def parse_args(args):
 
 def get_calc(index, base_name, calc_key, calc_kwargs):
     # Expand values that contain the $IMAGE pattern over all images.
-    for key, value in calc_kwargs.items():
+    # We have to use a copy of calc_kwargs to keep the $IMAGE pattern.
+    # Otherwise it would be replace at it's first occurence and would
+    # be gone in the following items.
+    kwargs_copy = copy.deepcopy(calc_kwargs)
+    for key, value in kwargs_copy.items():
         if not isinstance(value, str) or not ("$IMAGE" in value):
             continue
-        calc_kwargs[key] = value.replace("$IMAGE", f"{index:03d}")
-    calc_kwargs["base_name"] = base_name
-    calc_kwargs["calc_number"] = index
-    return CALC_DICT[calc_key](**calc_kwargs)
+        kwargs_copy[key] = value.replace("$IMAGE", f"{index:03d}")
+    kwargs_copy["base_name"] = base_name
+    kwargs_copy["calc_number"] = index
+    return CALC_DICT[calc_key](**kwargs_copy)
 
 
 def dump_geometry_strings(base, trj="", xyz_per_image=[]):
@@ -291,6 +296,7 @@ def clean():
         "image*.in",
         "image*.JobIph",
         "calculator*.out",
+        "*rasscf.molden",
     )
     to_rm_paths = list()
     for glob in rm_globs:
