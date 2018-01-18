@@ -260,8 +260,9 @@ def plot_cosgrad():
 def plot_multistate_pes(keys):
     (pes_ens, coords), num_cycles, num_images = load_results(keys)
     pes_ens -= pes_ens.min(axis=(2, 1), keepdims=True)
+    pes_ens *= 27.211396
 
-    plotter = Plotter(coords, pes_ens, "ΔE / au")
+    plotter = Plotter(coords, pes_ens, "ΔE / eV")
     plotter.animate()
 
 
