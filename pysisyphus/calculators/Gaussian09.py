@@ -10,6 +10,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.constants import AU2EV
 from pysisyphus.config import Config
 
 
@@ -34,7 +35,7 @@ class Gaussian09(Calculator):
         self.out_fn = f"{self.fn_base}.log"
         self.chk_fn = f"{self.fn_base}.chk"
 
-        self.gaussian09_input="""
+        self.gaussian09_input = """
         %chk={chk_fn}
         #T {calc_type} {method}/{basis} {td}
         # nosymm density=all pop=full
@@ -85,8 +86,10 @@ class Gaussian09(Calculator):
     def parse_fchk(self, fchk_path, keys):
         with open(fchk_path) as handle:
             text = handle.read()
+
         def to_float(s, loc, toks):
             return float(toks[0])
+
         # Matches -4.10693837E-16 and 1.60184209E-15
         float_ = pp.Word(pp.nums + "-E.").setParseAction(to_float)
         # Start with Empty so we can progessively build the
@@ -116,6 +119,18 @@ class Gaussian09(Calculator):
         results = self.run(inp, calc="force")
         return results
 
+    def parse_tddft(self, path):
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        td_re = "Excited State\s*\d+:\s*[\w\?-]+\s*([\d\.-]+?)\s*eV"
+        matches = re.findall(td_re, text)
+        assert len(matches) == self.nstates
+        # Excitation energies in eV
+        exc_energies = np.array(matches, dtype=np.float)
+        # Convert to Hartree
+        exc_energies /= AU2EV
+        return exc_energies
+
     def parse_force(self, path):
         results = {}
         keys = ("Total Energy", "Cartesian Gradient")
@@ -123,6 +138,23 @@ class Gaussian09(Calculator):
         fchk_dict = self.parse_fchk(fchk_path, keys)
         results["energy"] = fchk_dict["Total Energy"]
         results["forces"] = -fchk_dict["Cartesian Gradient"]
+
+        if self.nstates:
+            # This sets the proper excited state energy in the
+            # results dict and also stores all energies.
+            exc_energies = self.parse_tddft(path)
+            # G09 root input is 1 based, so we substract 1 to get
+            # the right index here.
+            root_exc_en = exc_energies[self.root-1]
+            gs_energy = results["energy"]
+            # Add excitation energy to ground state energy.
+            results["energy"] += root_exc_en
+            # Create a new array including the ground state energy
+            # to save the energies of all states.
+            all_ens = np.full(len(exc_energies)+1, gs_energy)
+            all_ens[1:] += exc_energies
+            results["tddft_energies"] = all_ens
+
         return results
 
         """
@@ -161,11 +193,14 @@ if __name__ == "__main__":
     mult = 1
     method = "b3lyp"
     basis = "sto-3g"
-    g09 = Gaussian09(method, basis, #nstates=nstates, root=root,
-                     charge=charge, mult=mult)
+    g09 = Gaussian09(method, basis, charge=charge, mult=mult)
     geom.set_calculator(g09)
-    forces = geom.forces
-    print(forces)
+    #forces = geom.forces
+    #print(forces)
     # Total SCF Density
     # Total CI Rho(1) Density
+    g09.nstates = 2
+    g09.root = 1
+    path = Path("/scratch/programme/pysisyphus/tests/test_g09_but2en_iso/crashed_image_0")
+    g09.parse_force(path)
 
