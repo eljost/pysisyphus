@@ -5,6 +5,7 @@ __all__ = [
     "XTB",
     "IDPP",
     "OpenMolcas",
+    "Gaussian09",
 ]
 
 logger = logging.getLogger("calculator")

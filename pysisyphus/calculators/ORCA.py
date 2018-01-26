@@ -12,7 +12,6 @@ import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
-from pysisyphus.constants import BOHR2ANG
 
 def make_sym_mat(table_block):
     mat_size = int(table_block[1])
@@ -76,14 +75,6 @@ class ORCA(Calculator):
             self.moinp = f"""!moread
             %moinp "{gbw}" """
             self.gbw = gbw
-
-    def prepare_coords(self, atoms, coords):
-        """Convert Bohr to Angstrom."""
-        coords = coords.reshape(-1, 3) * BOHR2ANG
-        coords = "\n".join(
-            ["{} {} {} {}".format(a, *c) for a, c in zip(atoms, coords)]
-        )
-        return coords
 
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)

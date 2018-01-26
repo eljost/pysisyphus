@@ -28,7 +28,8 @@ COS_DICT = {
 CALC_DICT = {
     "orca": ORCA.ORCA,
     "xtb": XTB.XTB,
-    "openmolcas": OpenMolcas.OpenMolcas
+    "openmolcas": OpenMolcas.OpenMolcas,
+    "g09": Gaussian09.Gaussian09,
 }
 
 OPT_DICT = {
@@ -297,6 +298,9 @@ def clean():
         "image*.JobIph",
         "calculator*.out",
         "*rasscf.molden",
+        # Gaussian specific
+        "image*.fchk",
+        "image*.log",
     )
     to_rm_paths = list()
     for glob in rm_globs:

@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 
+from pysisyphus.constants import BOHR2ANG
+
 
 class Calculator:
     logger = logging.getLogger("calculator")
@@ -70,6 +72,17 @@ class Calculator:
 
         return path
 
+    def prepare_coords(self, atoms, coords):
+        """Convert Bohr to Angstrom."""
+        coords = coords.reshape(-1, 3) * BOHR2ANG
+        coords = "\n".join(
+                ["{} {:10.08f} {:10.08f} {:10.08f}".format(a, *c) for a, c in zip(atoms, coords)]
+        )
+        return coords
+
+    def run_after(self, path):
+        pass
+
     def run(self, inp, calc, add_args=None, env=None):
         path = self.prepare(inp)
         self.log(f"running in {path}")
@@ -82,6 +95,7 @@ class Calculator:
             result = subprocess.Popen(args, cwd=path, stdout=handle, env=env)
             result.wait()
         try:
+            self.run_after(path)
             results = self.parser_funcs[calc](path)
             self.keep(path)
         except Exception as err:
