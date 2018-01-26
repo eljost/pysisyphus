@@ -197,7 +197,7 @@ class Optimizer:
             image_fn = base_name.format(i)
             comment = f"cycle {self.cur_cycle}"
             as_xyz = image.as_xyz(comment)
-            self.write_to_out_dir(image_fn, as_xyz+"\n")
+            self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
 
     def write_results(self):
         # Save results from the Geometry.
