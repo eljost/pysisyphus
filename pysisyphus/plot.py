@@ -19,12 +19,14 @@ from pysisyphus.peakdetect import peakdetect
 
 
 class Plotter:
-    def __init__(self, coords, data, ylabel, interval=750, save=None):
+    def __init__(self, coords, data, ylabel, interval=750, save=None,
+                 legend=None):
         self.coords = coords
         self.data = data
         self.ylabel = ylabel
         self.interval = interval
         self.save = save
+        self.legend = legend
 
         self.cycles = len(self.data)
         self.pause = True
@@ -38,12 +40,12 @@ class Plotter:
         self.ax.set_ylim(y_min, y_max)
         self.ax.set_ylabel(self.ylabel)
 
+        self.coord_diffs = self.get_coord_diffs(self.coords)
+
         if self.data.ndim == 2:
             self.update_func = self.update_plot
         elif self.data.ndim == 3:
             self.update_func = self.update_plot2
-
-        self.coord_diffs = self.get_coord_diffs(self.coords)
 
     def get_coord_diffs(self, coords, normalize=False):
         coord_diffs = list()
@@ -78,6 +80,8 @@ class Plotter:
 
     def animate(self):
         self.lines = self.ax.plot(self.coord_diffs[0], self.data[0], "o-")
+        if self.legend:
+            self.ax.legend(self.lines, self.legend)
         self.animation = matplotlib.animation.FuncAnimation(
                                                 self.fig,
                                                 self.update_func,
@@ -279,40 +283,61 @@ def plot_params(inds):
         radians = np.arccos(dotp / (vec1n * vec2n))
         return radians * 180 / np.pi
 
+    def get_dihedral(coords_slice):
+        raise Exception("Not implemented yet!")
+
     type_dict = {
         2: ("bond length / pm", get_bond_length),
         3: ("angle / °", get_angle),
+        4: ("dihedral / °", get_dihedral)
     }
-    ylabel, func = type_dict[len(inds)]
+    inds_list = [[int(i) for i in i_.split()] for i_ in inds.split(",")]
+    ylabels, funcs = zip(*[type_dict[len(inds)] for inds in inds_list])
+    assert all([len(inds_list[i]) == len(inds_list[i+1])
+                for i in range(len(inds_list)-1)]), "Can only display " \
+            "multiple coordinates of the same type (bond, angle or " \
+            "dihedral."
+    # Just use the first label because they all have to be the same
+    ylabel = ylabels[0]
 
     key = "coords"
+    # only allow same type of coordinate if multiple coordinates are given?
     coords, num_cycles, num_images = load_results(key)
+
+    # Coordinates for all images for all cycles
     ac = list()
     for i, per_cycle in enumerate(coords):
+        # Coordinates for all images per cycle
         pc = list()
         for j, per_image in enumerate(per_cycle):
-            coords_slice = per_image.reshape(-1, 3)[inds]
-            param = func(coords_slice)
-            pc.append(param)
+            # Coordinates per ind for all images
+            pi = list()
+            for inds, func in zip(inds_list, funcs):
+                coords_slice = per_image.reshape(-1, 3)[inds]
+                param = func(coords_slice)
+                pi.append(param)
+            pc.append(pi)
         ac.append(pc)
+
     ac_arr = np.array(ac)
 
-    plotter = Plotter(coords, ac_arr, ylabel)
+    legend = ["-".join([str(i) for i in inds]) for inds in inds_list]
+    plotter = Plotter(coords, ac_arr, ylabel, legend=legend)
     plotter.animate()
 
-    df = pd.DataFrame(ac_arr.T)
-    cmap = plt.get_cmap("Greys")
-    ax = df.plot(
-            title=f"Params {inds}",
-            colormap=cmap,
-            legend=False,
-            marker="o",
-            xticks=range(num_images),
-            xlim=(0, num_images-1),
-    )
-    ax.set_xlabel("Image")
-    ax.set_ylabel(ylabel)
-    plt.tight_layout()
+    #df = pd.DataFrame(ac_arr)
+    #cmap = plt.get_cmap("Greys")
+    #ax = df.plot(
+    #        title=f"Params {inds}",
+    #        colormap=cmap,
+    #        legend=False,
+    #        marker="o",
+    #        xticks=range(num_images),
+    #        xlim=(0, num_images-1),
+    #)
+    #ax.set_xlabel("Image")
+    #ax.set_ylabel(ylabel)
+    #plt.tight_layout()
     plt.show()
 
 
@@ -328,9 +353,13 @@ def parse_args(args):
     group.add_argument("--tddft", action="store_true",
                        help="Plot ORCA TDDFT potential energy surfaces "
                             "over the course of the NEB.")
-    group.add_argument("--params", type=int, nargs="+",
-                       help="Display bond or angle over the course of the "
-                            "NEB. Indices have to be 0-based.")
+    group.add_argument("--params",
+                       help="Follow internal coordinates over the course of "
+                            "the NEB. All atom indices have to be 0-based. "
+                            "Use two indices for a bond, three indices for "
+                            "an angle and four indices for a dihedral. "
+                            "The indices for different coordinates have to "
+                            "be separated by ','.")
     group.add_argument("--cosgrad", action="store_true",
                         help="Plot image gradients along the path.")
     group.add_argument("--energies", action="store_true",
