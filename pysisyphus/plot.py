@@ -321,6 +321,7 @@ def plot_params(inds):
 
     ac_arr = np.array(ac)
 
+    # Construct legend list
     legend = ["-".join([str(i) for i in inds]) for inds in inds_list]
     plotter = Plotter(coords, ac_arr, ylabel, legend=legend)
     plotter.animate()
