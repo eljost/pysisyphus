@@ -70,6 +70,10 @@ def parse_args(args):
     parser.add_argument("--split",
                         help="Split a supplied .trj file in multiple "
                              ".xyz files.")
+    parser.add_argument("--reverse",
+                        help="Reverse a .trj file.")
+    parser.add_argument("--cleantrj",
+                        help="Clean a .trj file.")
     parser.add_argument("--restart", action="store_true",
                         help="Continue a previously crashed/aborted/... "
                              "pysisphus run.")
@@ -333,6 +337,20 @@ def split(trj_fn):
     dump_geometry_strings("split", xyz_per_image=xyz_per_image)
 
 
+def reverse_trj(trj_fn):
+    geoms = get_geoms(trj_fn)
+    xyz_per_image = list(reversed([geom.as_xyz() for geom in geoms]))
+    reversed_trj = "\n".join(xyz_per_image)
+    dump_geometry_strings("reversed", trj=reversed_trj)
+
+
+def clean_trj(trj_fn):
+    geoms = get_geoms(trj_fn)
+    xyz_per_image = [geom.as_xyz() for geom in geoms]
+    trj = "\n".join(xyz_per_image)
+    dump_geometry_strings("cleaned", trj=trj)
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -349,6 +367,10 @@ def run():
         align(args.align)
     elif args.split:
         split(args.split)
+    elif args.reverse:
+        reverse_trj(args.reverse)
+    elif args.cleantrj:
+        clean_trj(args.cleantrj)
     else:
         print("Please specify a run type! Show help with -h.")
 
