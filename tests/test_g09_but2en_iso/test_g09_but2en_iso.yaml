@@ -1,0 +1,21 @@
+cos:
+ type: neb
+ parallel: 4
+ fix_ends: True 
+interpol:
+ idpp: True
+ between: 14
+opt:
+ type: cg
+ max_cycles: 25
+ align: True
+ alpha: 0.5
+calc:
+ type: g09
+ charge: 0
+ mult: 1
+ basis: sto-3g
+ method: hf
+ nstates: 2
+ root: 1
+xyz: [01_hfsto3g_transb2ene.xyz, 04_hfsto3g_cisb2ene_s1.xyz]
