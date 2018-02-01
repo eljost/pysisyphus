@@ -9,6 +9,7 @@ import pyparsing as pp
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.calculators.parser import parse_turbo_gradient
 
 from pysisyphus.xyzloader import make_xyz_str
 
@@ -49,46 +50,7 @@ class XTB(Calculator):
         return results
 
     def parse_gradient(self, path):
-        results = {}
-        gradient_fn = glob.glob(os.path.join(path, "gradient"))
-        if not gradient_fn:
-            raise Exception("XTB gradient file not found!")
-        assert(len(gradient_fn) == 1)
-        gradient_fn = gradient_fn[0]
-        with open(gradient_fn) as handle:
-            text = handle.read()
-
-        def to_float(s, loc, toks):
-            match = toks[0].replace("D", "E")
-            return float(match)
-        float_ = pp.Word(pp.nums + ".-D+").setParseAction(to_float)
-
-        cycle = pp.Word(pp.nums).setResultsName("cycle")
-        scf_energy = float_.setResultsName("scf_energy")
-        grad_norm = float_.setResultsName("grad_norm")
-        float_line = float_ + float_ + float_
-        coord_line = pp.Group(float_line + pp.Word(pp.alphas))
-        grad_line = pp.Group(float_line)
-
-        parser = (
-            pp.Literal("$grad") +
-            pp.Literal("cycle =") + cycle +
-            pp.Literal("SCF energy =") + scf_energy +
-            pp.Literal("|dE/dxyz| =") + grad_norm +
-            pp.OneOrMore(coord_line).setResultsName("coords") +
-            pp.OneOrMore(grad_line).setResultsName("grad") +
-            pp.Literal("$end")
-        )
-        parsed = parser.parseString(text)
-        gradient = np.array(parsed["grad"].asList()).flatten()
-
-        results["energy"] = parsed["scf_energy"]
-        results["forces"] = -gradient
-
-        return results
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
+        return parse_turbo_gradient(path)
 
     def __str__(self):
         return "XTB calculator"
