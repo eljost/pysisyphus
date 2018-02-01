@@ -42,7 +42,7 @@ def test_xtb_hcn_iso():
         "dump": True,
         "align": True,
         "dont_skip": False,
-        "max_cycles": 5,
+        #"max_cycles": 5,
     }
     #opt = BFGS(neb, **opt_kwargs)
     opt = ConjugateGradient(neb, **opt_kwargs)

@@ -109,7 +109,8 @@ class Calculator:
         if not env:
             env = os.environ.copy()
         with open(path / self.out_fn, "w") as handle:
-            result = subprocess.Popen(args, cwd=path, stdout=handle,
+            result = subprocess.Popen(args, cwd=path,
+                                      stdout=handle, stderr=subprocess.PIPE,
                                       env=env, shell=shell)
             result.wait()
         try:

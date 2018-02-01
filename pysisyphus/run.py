@@ -30,6 +30,7 @@ CALC_DICT = {
     "xtb": XTB.XTB,
     "openmolcas": OpenMolcas.OpenMolcas,
     "g09": Gaussian09.Gaussian09,
+    "turbomole": Turbomole.Turbomole,
 }
 
 OPT_DICT = {
@@ -305,6 +306,10 @@ def clean():
         # Gaussian specific
         "image*.fchk",
         "image*.log",
+        # Turbomole specific
+        "image*.mos",
+        "image*.alpha",
+        "image*.beta",
     )
     to_rm_paths = list()
     for glob in rm_globs:
