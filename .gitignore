@@ -123,3 +123,5 @@ results.yaml
 # Gaussian
 *.fchk
 *.chk
+# Orca
+*.engrad

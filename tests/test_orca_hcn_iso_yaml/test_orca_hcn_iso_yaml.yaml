@@ -1,0 +1,18 @@
+cos:
+ type: neb
+ parallel: 4
+interpol:
+ idpp: True
+ between: 5
+opt:
+ type: cg
+ max_cycles: 20
+ align: True
+ alpha: 0.5
+calc:
+ type: orca
+ charge: 0
+ mult: 1
+ keywords: BP86 def2-SV(P) D3BJ TightSCF
+ blocks: "%maxcore 4000"
+xyz: [hcn.xyz, hcn_iso_ts.xyz, nhc.xyz]
