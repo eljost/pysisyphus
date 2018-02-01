@@ -37,7 +37,7 @@ OPT_DICT = {
     "fire": FIRE.FIRE,
     # Removing BFGS for now until save_also is implemented
     # and rotating the hessian works properly
-    #"bfgs": BFGS.BFGS,
+    "bfgs": BFGS.BFGS,
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
@@ -112,7 +112,9 @@ def dump_geometry_strings(base, trj="", xyz_per_image=[]):
 
 def get_geoms(xyz_fns, idpp=False, between=0, dump=False):
     # Read .xyz or .trj files
-    if len(xyz_fns) == 1 and xyz_fns[0].endswith(".trj"):
+    if isinstance(xyz_fns, str) and xyz_fns.endswith(".xyz"):
+        geoms = [geom_from_xyz_file(xyz_fns), ]
+    elif len(xyz_fns) == 1 and xyz_fns[0].endswith(".trj"):
         geoms = geoms_from_trj(xyz_fns[0])
     elif isinstance(xyz_fns, str) and xyz_fns.endswith(".trj"):
         geoms = geoms_from_trj(xyz_fns)
@@ -136,16 +138,22 @@ def get_geoms(xyz_fns, idpp=False, between=0, dump=False):
         xyz_per_image = [geom.as_xyz() for geom in geoms]
         trj = cos.as_xyz()
 
-    if dump:
+    if dump and len(geoms) > 2:
         dump_geometry_strings("interpolated", trj, xyz_per_image)
 
     return geoms
 
 
-def run_cos(cos, calc_getter, get_opt):
+def run_cos(cos, calc_getter, opt_getter):
     for i, image in enumerate(cos.images):
         image.set_calculator(calc_getter(i))
-    opt = get_opt(cos)
+    opt = opt_getter(cos)
+    opt.run()
+
+
+def run_opt(geom, calc_getter, opt_getter):
+    geom.set_calculator(calc_getter(0))
+    opt = opt_getter(geom)
     opt.run()
 
 
@@ -157,14 +165,6 @@ def run_irc(args):
     irc = IRC_DICT[args.irc](geom)
     irc.run()
     #irc.write_trj(THIS_DIR, prefix)
-
-
-def run_opt(args):
-    assert(len(args.xyz) == 1)
-    geom = get_geoms(args)[0]
-    geom.set_calculator(CALC_DICT[args.calc]())
-    opt = OPT_DICT[args.opt](geom)
-    opt.run()
 """
 
 
@@ -179,8 +179,14 @@ def run_interpolation(args):
 
 
 def get_defaults(conf_dict):
-    # dd = default_dict
-    dd = dict()
+    # Defaults
+    dd = {
+        "interpol": {
+            "idpp": False,
+            "between": 0,
+        },
+        "cos": None,
+    }
     if "cos" in conf_dict:
         dd["cos"] = {
             "type": "neb",
@@ -194,6 +200,12 @@ def get_defaults(conf_dict):
         dd["interpol"] = {
             "idpp": False,
             "between": 0,
+        }
+    elif "opt" in conf_dict:
+        dd["opt"] = {
+            "type": "cg",
+            "dump": True,
+            "alpha": 0.25,
         }
 
     return dd
@@ -223,7 +235,7 @@ def get_last_calc_cycle():
     return last_calc_cycle
 
 
-def handle_yaml(yaml_str, restart):
+def handle_yaml(yaml_str):
     yaml_dict = yaml.load(yaml_str)
     # Load defaults to have a sane baseline
     run_dict = get_defaults(yaml_dict)
@@ -234,8 +246,10 @@ def handle_yaml(yaml_str, restart):
     # Update non nested entries
     for key in key_set & set(("calc", "xyz")):
         run_dict[key] = yaml_dict[key]
-    pprint(run_dict)
+    return run_dict
 
+
+def main(run_dict, restart):
     xyz = run_dict["xyz"]
     if run_dict["interpol"]:
         idpp = run_dict["interpol"]["idpp"]
@@ -268,12 +282,15 @@ def handle_yaml(yaml_str, restart):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
-    get_opt = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
+    opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
     geoms = get_geoms(xyz, idpp, between, dump=True)
     if run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
-        run_cos(cos, calc_getter, get_opt)
+        run_cos(cos, calc_getter, opt_getter)
+    elif run_dict["opt"]:
+        assert(len(geoms) == 1)
+        run_opt(geoms[0], calc_getter, opt_getter)
 
 
 def clean():
@@ -363,7 +380,9 @@ def run():
     if args.yaml:
         with open(args.yaml) as handle:
             yaml_str = handle.read()
-        handle_yaml(yaml_str, args.restart)
+        run_dict = handle_yaml(yaml_str)
+        pprint(run_dict)
+        main(run_dict, args.restart)
     elif args.between:
         run_interpolation(args)
     elif args.clean:

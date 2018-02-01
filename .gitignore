@@ -127,3 +127,5 @@ results.yaml
 *.engrad
 image_results.yaml
 optimizer_results.yaml
+
+interpolated.image_*.xyz
