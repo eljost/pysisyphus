@@ -1,0 +1,15 @@
+cos:
+ type: neb
+ parallel: 4
+interpol:
+ idpp: True
+ between: 5
+opt:
+ type: cg
+ max_cycles: 10
+ align: True
+ alpha: 0.5
+calc:
+ type: turbomole
+ control_path: /scratch/programme/pysisyphus/tests/test_turbomole_hcn_iso_yaml/control_path
+xyz: [hcn.xyz, hcn_iso_ts.xyz, nhc.xyz]
