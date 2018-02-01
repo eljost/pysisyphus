@@ -40,6 +40,10 @@ class Calculator:
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
+        # When this is set the run() method will use this path
+        # instead of creating a new one.
+        # Currently this is only used with the Turbomole calculator.
+        self.path_already_prepared = None
 
     def reattach(self, last_calc_cycle):
         raise Exception("Not implemented!")
@@ -62,10 +66,21 @@ class Calculator:
             fn = os.path.abspath(fn)
         return fn
 
-    def prepare(self, inp, path=None):
-        if not path:
-            prefix = f"{self.name}_{self.calc_counter:03d}_"
-            path = Path(tempfile.mkdtemp(prefix=prefix))
+    def prepare_path(self, use_in_run=False):
+        """When use_in_run is True run() will not create a new path
+        but reuse this path instead."""
+        prefix = f"{self.name}_{self.calc_counter:03d}_"
+        path = Path(tempfile.mkdtemp(prefix=prefix))
+        if use_in_run:
+            self.path_already_prepared = path
+        return path
+
+    def prepare(self, inp):
+        if not self.path_already_prepared:
+            path = self.prepare_path()
+        else:
+            path = self.path_already_prepared
+
         inp_path = path / self.inp_fn
         with open(inp_path, "w") as handle:
             handle.write(inp)
@@ -112,6 +127,7 @@ class Calculator:
             self.clean(path)
             self.calc_counter += 1
 
+        self.path_already_prepared = None
         return results
 
     def keep(self, path):
