@@ -81,9 +81,11 @@ class Calculator:
         else:
             path = self.path_already_prepared
 
-        inp_path = path / self.inp_fn
-        with open(inp_path, "w") as handle:
-            handle.write(inp)
+        # Calculators like Turbomole got no input.
+        if inp:
+            inp_path = path / self.inp_fn
+            with open(inp_path, "w") as handle:
+                handle.write(inp)
 
         return path
 
@@ -98,7 +100,7 @@ class Calculator:
     def run_after(self, path):
         pass
 
-    def run(self, inp, calc, add_args=None, env=None):
+    def run(self, inp, calc, add_args=None, env=None, shell=False):
         path = self.prepare(inp)
         self.log(f"running in {path}")
         args = [self.base_cmd, self.inp_fn]
@@ -107,7 +109,8 @@ class Calculator:
         if not env:
             env = os.environ.copy()
         with open(path / self.out_fn, "w") as handle:
-            result = subprocess.Popen(args, cwd=path, stdout=handle, env=env)
+            result = subprocess.Popen(args, cwd=path, stdout=handle,
+                                      env=env, shell=shell)
             result.wait()
         try:
             self.run_after(path)
@@ -136,8 +139,7 @@ class Calculator:
             pattern = f"*{ext}"
             globbed = list(path.glob(pattern))
             assert(len(globbed) <= 1), (f"Expected at most one file ending with "
-                                        f"{pattern} in {path}. Found {len(globbed)} "
-                                         "instead!"
+                f"{pattern} in {path}. Found {len(globbed)} instead!"
             )
             if len(globbed) == 0:
                 continue
