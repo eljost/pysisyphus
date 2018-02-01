@@ -125,3 +125,5 @@ results.yaml
 *.chk
 # Orca
 *.engrad
+image_results.yaml
+optimizer_results.yaml

@@ -1,0 +1,15 @@
+cos:
+ type: neb
+ parallel: 4
+interpol:
+ idpp: True
+ between: 5
+opt:
+ type: qm
+ max_cycles: 25
+ align: True
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+xyz: [hcn.xyz, hcn_iso_ts.xyz, nhc.xyz]
