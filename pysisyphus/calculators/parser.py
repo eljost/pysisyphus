@@ -6,6 +6,7 @@ import os
 import numpy as np
 import pyparsing as pp
 
+
 def parse_turbo_gradient(path):
     results = {}
     gradient_fn = glob.glob(os.path.join(path, "gradient"))
@@ -19,8 +20,8 @@ def parse_turbo_gradient(path):
     def to_float(s, loc, toks):
         match = toks[0].replace("D", "E")
         return float(match)
-    float_ = pp.Word(pp.nums + ".-D+").setParseAction(to_float)
 
+    float_ = pp.Word(pp.nums + ".-D+").setParseAction(to_float)
     cycle = pp.Word(pp.nums).setResultsName("cycle")
     scf_energy = float_.setResultsName("scf_energy")
     grad_norm = float_.setResultsName("grad_norm")
@@ -46,6 +47,7 @@ def parse_turbo_gradient(path):
     results["energy"] = parsed["scf_energy"]
     results["forces"] = -gradient
     return results
+
 
 if __name__ == "__main__":
     from pathlib import Path
