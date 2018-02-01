@@ -6,6 +6,7 @@ __all__ = [
     "IDPP",
     "OpenMolcas",
     "Gaussian09",
+    "Turbomole",
 ]
 
 logger = logging.getLogger("calculator")
