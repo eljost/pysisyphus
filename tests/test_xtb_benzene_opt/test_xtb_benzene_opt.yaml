@@ -1,0 +1,9 @@
+opt:
+ type: cg
+ max_cycles: 10
+ alpha: 0.25
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+xyz: benzene_distorted.xyz

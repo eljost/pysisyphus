@@ -305,7 +305,7 @@ def clean():
         "interpolated.image*.xyz",
         "calculator.log",
         "optimizer.log",
-        "optimized.trj",
+        "optimization.trj",
         "cos.log",
         "*.gradient",
         "image_results.yaml",

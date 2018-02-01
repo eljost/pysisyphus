@@ -222,7 +222,7 @@ class Optimizer:
             self.write_results()
         else:
             # Append to .trj file
-            out_fn = "optimized.trj"
+            out_fn = "optimization.trj"
             self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
     def run(self):
