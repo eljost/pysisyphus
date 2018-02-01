@@ -115,7 +115,11 @@ TODO
 results.yaml
 
 *.out
+# Turbomole
 *.gradient
 *.mos
 *.alpha
 *.beta
+# Gaussian
+*.fchk
+*.chk
