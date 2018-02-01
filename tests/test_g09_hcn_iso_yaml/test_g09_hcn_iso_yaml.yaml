@@ -1,0 +1,18 @@
+cos:
+ type: neb
+ parallel: 4
+interpol:
+ idpp: True
+ between: 5
+opt:
+ type: cg
+ max_cycles: 2
+ align: True
+ alpha: 0.5
+calc:
+ type: g09
+ charge: 0
+ mult: 1
+ basis: sto-3g
+ method: hf
+xyz: [hcn.xyz, hcn_iso_ts.xyz, nhc.xyz]
