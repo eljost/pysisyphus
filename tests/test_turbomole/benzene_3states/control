@@ -1,0 +1,88 @@
+$title
+$operating system unix
+$symmetry c1
+$user-defined bonds    file=coord
+$coord    file=coord
+$intdef    file=coord
+$optimize
+ internal   on
+ redundant  off
+ cartesian  off
+ global     off
+ basis      off
+$atoms
+c  1-6                                                                         \
+   basis =c sto-3g hondo                                                       \
+   jbas  =c universal
+h  7-12                                                                        \
+   basis =h sto-3g hondo                                                       \
+   jbas  =h universal
+$basis    file=basis
+$rundimensions
+   dim(fock,dens)=684
+   natoms=12
+   nshell=24
+   nbf(CAO)=36
+   dim(trafo[SAO<-->AO/CAO])=36
+   rhfshells=1
+   nbf(AO)=36
+$scfmo   file=mos
+$scfiterlimit      200
+$thize     0.10000000E-04
+$thime        5
+$scfdump
+$scfintunit
+ unit=30       size=0        file=twoint
+$scfdiis
+$maxcor    500 MiB  per_core
+$scforbitalshift  automatic=.1
+$drvopt
+   cartesian  on
+   basis      off
+   global     off
+   hessian    on
+   dipole     on
+   nuclear polarizability
+$interconversion  off
+   qconv=1.d-7
+   maxiter=25
+$coordinateupdate
+   dqmax=0.3
+   interpolate  on
+   statistics    5
+$forceupdate
+   ahlrichs numgeo=0  mingeo=3 maxgeo=4 modus=<g|dq> dynamic fail=0.3
+   threig=0.005  reseig=0.005  thrbig=3.0  scale=1.00  damping=0.0
+$forceinit on
+   diag=default
+$energy    file=energy
+$grad    file=gradient
+$forceapprox    file=forceapprox
+$dft
+   functional b-p
+   gridsize   m4
+$scfconv        8
+$scfdamp   start=0.700  step=0.050  min=0.050
+$ricore      500
+$rij
+$jbas    file=auxbasis
+$last SCF energy change = 0.16257218E-10
+$charge from ridft
+         -0.000 (not to be modified here)
+$dipole from ridft
+  x    -0.00000000033934    y     0.00000000036828    z     0.00000000000436    a.u.
+   | dipole | =    0.0000000013  debye
+$optinfo       file=optinfo
+$hessapprox   file=hessapprox
+$closed shells
+ a       1-21                                   ( 2 )
+$scfinstab ciss
+$soes
+ a           3
+$exopt 1
+$denconv 1d-7
+$last step     escf
+$orbital_max_rnorm 0.11509207540598E-07
+$subenergy  Etot         E1                  Ej                Ex                 Ec                 En
+-229.4332821667    -706.1152068578     311.0606317541    -33.17179489528    -1.537572804925     200.3306606373
+$end
