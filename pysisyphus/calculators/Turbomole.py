@@ -14,15 +14,18 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import AU2EV
 from pysisyphus.config import Config
 from pysisyphus.calculators.parser import parse_turbo_gradient
+from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
 class Turbomole(Calculator):
 
-    def __init__(self, control_path, root=None, **kwargs):
+    def __init__(self, control_path, root=None,
+                 track=False, **kwargs):
         super(Turbomole, self).__init__(**kwargs)
 
         self.control_path = Path(control_path)
         self.root = root
+        self.track = track
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
                         "ciss_a", "ucis_a")
 
@@ -45,30 +48,39 @@ class Turbomole(Calculator):
         if ("$rij" in text) or ("$rik" in text):
             base_cmd = ["ridft", "rdgrad"]
             self.log("Found RI calculation.")
-        # Check for excited state calculation
+
+        self.uhf = "$uhf" in text
+        assert self.uhf == False, "Implement occ for UHF!"
+
         self.td = False
+        # Check for excited state calculation
         if "$exopt" in text:
             base_cmd[1] = "egrad"
-            self.log("Using excited state gradients.")
-            self.td = True
-        self.uhf = "$uhf" in text
+            self.prepare_td(text)
+        if self.track:
+            assert self.td, "track=True can't be used without $exopt!"
         # Right now this can't handle a root flip from some excited state
         # to the ground state ... Then we would need grad/rdgrad again,
         # instead of egrad.
         self.base_cmd = ";".join(base_cmd)
         self.log(f"Using base_cmd {self.base_cmd}")
 
-        assert self.uhf == False, "Implement occ for UHF!"
-        """
-        $alpha shells
-         a       1-6                                    ( 1 )
-         $beta shells
-          a       1-4
-        """
+    def prepare_td(self, text):
+        self.log("Preparing for excited state gradient calculations")
+        self.td = True
         # Determine number of occupied orbitals
         occ_re = "closed shells\s+(\w)\s*\d+-(\d+)"
         self.occ_mos = int(re.search(occ_re, text)[2])
         self.log(f"Found {self.occ_mos} occupied MOs.")
+        # Number of spherical basis functions. May be different from CAO
+        nbf_re = "nbf\(AO\)=(\d+)"
+        nbf = int(re.search(nbf_re, text)[1])
+        # Determine number of virtual orbitals
+        self.virt_mos = nbf - self.occ_mos
+        self.wfow = WFOWrapper(self.occ_mos, self.virt_mos)
+        self.td_vec_fn = None
+        self.ci_coeffs = None
+        self.mo_inds = None
 
     def prepare_coords(self, atoms, coords):
         fmt = "{:<20.014f}"
@@ -114,6 +126,8 @@ class Turbomole(Calculator):
         # Use inp=None because we got no special input...
         # Use shell=True because we have to chain commands like ridft;rdgrad
         results = self.run(None, calc="force", shell=True)
+        if self.track:
+            self.get_wf_overlap(atoms, coords)
         return results
 
     def parse_force(self, path):
@@ -163,17 +177,37 @@ class Turbomole(Calculator):
         eigenpair_list = [eigenpairs[i].asDict() for i in range(states)]
         return eigenpair_list
 
-    def ci_coeffs_from_eigenpair(self, eigenpair):
+    def ci_coeffs_above_thresh(self, eigenpair, thresh=1e-5):
         arr = np.array(eigenpair["vector"])
         arr = arr.reshape(self.occ_mos, -1)
-        thresh = .2
-        inds = np.where(np.abs(arr) > thresh)
-        vals = arr[inds]
-        vals_sq = vals**2
+        mo_inds = np.where(np.abs(arr) > thresh)
+        ci_coeffs = arr[mo_inds]
+        #vals_sq = vals**2
+        #for from_mo, to_mo, vsq, v in zip(*inds, vals_sq, vals):
+        #    print(f"\t{from_mo+1} -> {to_mo+1+self.occ_mos} {v:.04f} {vsq:.02f}")
+        return ci_coeffs, mo_inds
+
+    def get_wf_overlap(self, atoms, coords):
+        if not self.td_vec_fn:
+            self.log("No overlap calculation for the first calculation.")
+            return None
+
+        with open(self.td_vec_fn) as handle:
+            text = handle.read()
+        # Parse the eigenvectors
+        eigenpair_list = self.parse_td_vectors(text)
+        # Filter for relevant MO indices and corresponding CI coefficients
+        coeffs_inds = [self.ci_coeffs_above_thresh(ep)
+                       for ep in eigenpair_list]
+        ci_coeffs, mo_inds = zip(*coeffs_inds)
+        f, t = zip(*mo_inds)
         #import pdb; pdb.set_trace()
-        for from_mo, to_mo, vsq in zip(*inds, vals_sq):
-            print(f"\t{from_mo+1} -> {to_mo+1+self.occ_mos} {vsq:.02f}")
-        # Always 2d
+        self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
+        self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
+        new_root = self.wfow.track()
+        #for i, epl in enumerate(eigenpair_list, 1):
+        #    self.ci_coeffs_above_thresh(epl)
+        #ci_coeffs = ci_coeffs_above_threshs(eigenpair_list)
 
     def keep(self, path):
         kept_fns = super().keep(path)
@@ -185,15 +219,8 @@ class Turbomole(Calculator):
         # Maybe copy more files like the vectors from egrad
         # sing_a, trip_a, dipl_a etc.
         assert"ucis_a" not in kept_fns, "Implement for UKS TDA"
-        if self.td:
-            ciss_fn = kept_fns["ciss_a"]
-            with open(ciss_fn) as handle:
-                text = handle.read()
-            eigenpair_list = self.parse_td_vectors(text)
-            for i, epl in enumerat(eigenpair_list, 1):
-                print(f"state {i}")
-                ci_coeffs_from_eigenpair(epl)
-            #ci_coeffs = ci_coeffs_from_eigenpairs(eigenpair_list)
+        if self.track:
+            self.td_vec_fn = kept_fns["ciss_a"]
 
 
     def __str__(self):
@@ -202,10 +229,10 @@ class Turbomole(Calculator):
 
 if __name__ == "__main__":
     from pysisyphus.helpers import geom_from_library
-    geom = geom_from_library("h2o.xyz")
-    control_path = Path("/scratch/wfoverlap_1.0/pyscf/h2o_pure")
-    turbo = Turbomole(control_path)
-    atoms, coords = geom.atoms, geom.coords
+    #geom = geom_from_library("h2o.xyz")
+    #control_path = Path("/scratch/wfoverlap_1.0/pyscf/h2o_pure")
+    #turbo = Turbomole(control_path)
+    #atoms, coords = geom.atoms, geom.coords
     #turbo.prepare_input(atoms, coords, "inp_type")
     #coord_str = turbo.prepare_coords(atoms, coords)
     #print(coord_str)
@@ -216,15 +243,33 @@ if __name__ == "__main__":
     #turbo.parse_force(p)
 
     #fn = "/scratch/test_/ciss_a"
+
+    """
     np.set_printoptions(precision=4, suppress=True)
     turbo.occ_mos = 21
     fn = "/scratch/benzene/opt/ciss_a"
     with open(fn) as handle:
         text = handle.read()
     eigenpair_list = turbo.parse_td_vectors(text)
-    #turbo.ci_coeffs_from_eigenpair(epl[0])
+    #turbo.ci_coeffs_above_thresh(epl[0])
     for i, epl in enumerate(eigenpair_list, 1):
         print(f"state {i}")
-        turbo.ci_coeffs_from_eigenpair(epl)
-        if i == 2:
-            break
+        turbo.ci_coeffs_above_thresh(epl)
+    """
+
+    fn = "/scratch/benzene/benzene_tda"
+    control_path = Path(fn)
+    turbo = Turbomole(control_path)
+    geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
+    geom.set_calculator(turbo)
+    fn = "/scratch/benzene/opt/ciss_a"
+    turbo.td_vec_fn = fn
+    turbo.mos = "/scratch/benezne/opt/mos"
+    turbo.get_wf_overlap(geom.atoms, geom.coords)
+    #with open(fn) as handle:
+    #    text = handle.read()
+    #eigenpair_list = turbo.parse_td_vectors(text)
+    #for i, epl in enumerate(eigenpair_list, 1):
+    #    print(f"state {i}")
+    #    turbo.ci_coeffs_above_thresh(epl)
+    #import pdb; pdb.set_trace()

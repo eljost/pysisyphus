@@ -55,6 +55,9 @@ class Calculator:
     def get_energy(self, atoms, coords):
         raise Exception("Not implemented!")
 
+    def get_forces(self, atoms, coords):
+        raise Exception("Not implemented!")
+
     def get_hessian(self, atoms, coords):
         raise Exception("Not implemented!")
 

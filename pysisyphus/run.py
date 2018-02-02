@@ -327,6 +327,8 @@ def clean():
         "image*.mos",
         "image*.alpha",
         "image*.beta",
+        "image*.control",
+        "image*.ciss_a",
     )
     to_rm_paths = list()
     for glob in rm_globs:
