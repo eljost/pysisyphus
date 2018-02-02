@@ -1,0 +1,8 @@
+opt:
+ type: cg
+ max_cycles: 5
+ alpha: 0.25
+calc:
+ type: turbomole
+ control_path: /scratch/programme/pysisyphus/tests/test_turbomole_benzene_tda_yaml/control_path_tda
+xyz: benzene_bp86sto3g_opt.xyz
