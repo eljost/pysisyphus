@@ -9,6 +9,7 @@ import tempfile
 
 import numpy as np
 from pyscf import gto
+import pyparsing as pp
 
 from pysisyphus.config import Config
 
@@ -131,7 +132,24 @@ class WFOWrapper:
     def make_dets_header(self, cic, dets_list):
         return f"{len(cic)} {self.mos} {len(dets_list)}"
 
-    def track(self):
+    def parse_wfoverlap(self, text):
+        """Returns overlap matrix."""
+        header = pp.Literal("Overlap matrix <PsiA_i|PsiB_j>")
+        float_ = pp.Word(pp.nums+"-.")
+        psi_bra = pp.Literal("<Psi") + pp.Word(pp.alphas) \
+                  + pp.Word(pp.nums) + pp.Literal("|")
+        psi_ket = pp.Literal("|Psi") + pp.Word(pp.alphas) \
+                  + pp.Word(pp.nums) + pp.Literal(">")
+        matrix_line = pp.Suppress(psi_bra) + pp.OneOrMore(float_)
+
+        parser = pp.SkipTo(header, include=True) \
+                 + psi_ket + psi_ket \
+                 + pp.OneOrMore(matrix_line).setResultsName("overlap")
+
+        result = parser.parseString(text)
+        return np.array(list(result["overlap"]), dtype=np.float)
+
+    def track(self, old_root=None):
         mos1, coords1, cic1, moi1, fs1, ts1 = self.get_iteration(-2)
         mos2, coords2, cic2, moi2, fs2, ts2 = self.get_iteration(-1)
         # Create a fake array for the ground state where all CI coefficients
@@ -183,6 +201,8 @@ class WFOWrapper:
                                       stdout=subprocess.PIPE)
             result.wait()
             stdout = result.stdout.read().decode("utf-8")
-            print(stdout)
+        print(stdout)
+        overlap_matrix = self.parse_wfoverlap(stdout)
+        print(overlap_matrix)
 
         return None
