@@ -13,6 +13,15 @@ from pyscf import gto
 from pysisyphus.config import Config
 
 
+CIOVL="""mix_aoovl=ao_ovl
+a_mo=mos.1
+b_mo=mos.2
+a_det=dets.1
+b_det=dets.2
+a_mo_read=2
+b_mo_read=2"""
+
+
 class WFOWrapper:
     def __init__(self, occ_mos, virt_mos):
         self.base_cmd = Config["wfoverlap"]["cmd"]
@@ -123,9 +132,6 @@ class WFOWrapper:
         return f"{len(cic)} {self.mos} {len(dets_list)}"
 
     def track(self):
-        if len(self.ci_coeffs_list) < 2:
-            print("can't track yet!")
-            return None
         mos1, coords1, cic1, moi1, fs1, ts1 = self.get_iteration(-2)
         mos2, coords2, cic2, moi2, fs2, ts2 = self.get_iteration(-1)
         # Create a fake array for the ground state where all CI coefficients
@@ -155,8 +161,6 @@ class WFOWrapper:
                                                      cic2_with_gs)
         header1 = self.make_dets_header(cic1_with_gs, dets1)
         header2 = self.make_dets_header(cic2_with_gs, dets2)
-        #print(header1)
-        #print("\n".join(dets1[:20]))
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
@@ -171,25 +175,14 @@ class WFOWrapper:
             ao_ovl_path = tmp_path / "ao_ovl"
             np.savetxt(ao_ovl_path, ao_ovlp, fmt="%+22.15E", header=ao_header,
                        comments="")
-            wfo_file = "/scratch/programme/pysisyphus/ciovl.in"
-            shutil.copy(wfo_file, tmp_path)
-            cmd = f"{self.base_cmd} -f ciovl.in".split()
-            #import pdb; pdb.set_trace()
-            result = subprocess.Popen(cmd, cwd=tmp_path)
+            ciovl_fn = "ciovl.in"
+            with open(tmp_path / ciovl_fn, "w") as handle:
+                handle.write(CIOVL)
+            cmd = f"{self.base_cmd} -f {ciovl_fn}".split()
+            result = subprocess.Popen(cmd, cwd=tmp_path,
+                                      stdout=subprocess.PIPE)
             result.wait()
-
-            pass
+            stdout = result.stdout.read().decode("utf-8")
+            print(stdout)
 
         return None
-
-
-
-if __name__ == "__main__":
-    oc1 = np.arange(5)
-    oc2 = oc1.copy()
-    vs1 = np.arange(2)
-    vs2 = vs1.copy()
-    occ_mos = len(oc1)
-    virt_mos = len(vs1)
-    wfow = WFOWrapper(occ_mos, virt_mos)
-    all_inds, det_strings = wfow.generate_all_dets(oc1, vs1, oc2, vs2)

@@ -55,6 +55,8 @@ class Turbomole(Calculator):
         self.td = False
         # Check for excited state calculation
         if "$exopt" in text:
+            exopt_re = "\$exopt\s*(\d+)"
+            self.root = int(re.search(exopt_re, text)[1])
             base_cmd[1] = "egrad"
             self.prepare_td(text)
         if self.track:
@@ -127,7 +129,7 @@ class Turbomole(Calculator):
         # Use shell=True because we have to chain commands like ridft;rdgrad
         results = self.run(None, calc="force", shell=True)
         if self.track:
-            self.get_wf_overlap(atoms, coords)
+            self.check_for_root_flip(atoms, coords)
         return results
 
     def parse_force(self, path):
@@ -188,11 +190,7 @@ class Turbomole(Calculator):
         #return ci_coeffs, mo_inds
         return arr, mo_inds
 
-    def get_wf_overlap(self, atoms, coords):
-        if not self.td_vec_fn:
-            self.log("No overlap calculation for the first calculation.")
-            return None
-
+    def check_for_root_flip(self, atoms, coords):
         with open(self.td_vec_fn) as handle:
             text = handle.read()
         # Parse the eigenvectors
@@ -202,14 +200,12 @@ class Turbomole(Calculator):
                        for ep in eigenpair_list]
         ci_coeffs, mo_inds = zip(*coeffs_inds)
         ci_coeffs = np.array(ci_coeffs)
-        f, t = zip(*mo_inds)
-        #import pdb; pdb.set_trace()
         self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
-        #self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
-        #new_root = self.wfow.track()
-        #for i, epl in enumerate(eigenpair_list, 1):
-        #    self.ci_coeffs_above_thresh(epl)
-        #ci_coeffs = ci_coeffs_above_threshs(eigenpair_list)
+        if self.calc_counter >= 1:
+            new_root = self.wfow.track()
+            if new_root != self.root:
+                self.log("Found a root flip from {self.root} to {new_root}")
+                self.root = new_root
 
     def keep(self, path):
         kept_fns = super().keep(path)
@@ -227,78 +223,3 @@ class Turbomole(Calculator):
 
     def __str__(self):
         return "Turbomole calculator"
-
-
-if __name__ == "__main__":
-    from pysisyphus.helpers import geom_from_library
-    #geom = geom_from_library("h2o.xyz")
-    #control_path = Path("/scratch/wfoverlap_1.0/pyscf/h2o_pure")
-    #turbo = Turbomole(control_path)
-    #atoms, coords = geom.atoms, geom.coords
-    #turbo.prepare_input(atoms, coords, "inp_type")
-    #coord_str = turbo.prepare_coords(atoms, coords)
-    #print(coord_str)
-    #geom.set_calculator(turbo)
-    #forces = geom.forces
-    #print(forces)
-    #p = Path("/tmp/calculator_0_000_11vo_teg")
-    #turbo.parse_force(p)
-
-    #fn = "/scratch/test_/ciss_a"
-
-    """
-    np.set_printoptions(precision=4, suppress=True)
-    turbo.occ_mos = 21
-    fn = "/scratch/benzene/opt/ciss_a"
-    with open(fn) as handle:
-        text = handle.read()
-    eigenpair_list = turbo.parse_td_vectors(text)
-    #turbo.ci_coeffs_above_thresh(epl[0])
-    for i, epl in enumerate(eigenpair_list, 1):
-        print(f"state {i}")
-        turbo.ci_coeffs_above_thresh(epl)
-    """
-
-    #fn = "/scratch/benzene/benzene_tda"
-    fn = "/scratch/benzene/opt_3states"
-    td_vec_fn = "/scratch/benzene/opt_3states/ciss_a"
-    mos_fn = "/scratch/benzene/opt_3states/mos"
-    control_path = Path(fn)
-    turbo = Turbomole(control_path)
-    geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
-    geom.set_calculator(turbo)
-    #fn = "/scratch/benzene/opt/ciss_a"
-    turbo.td_vec_fn = td_vec_fn
-    turbo.mos = mos_fn
-    turbo.get_wf_overlap(geom.atoms, geom.coords)
-    turbo.get_wf_overlap(geom.atoms, geom.coords)
-    turbo.wfow.track()
-    #with open(fn) as handle:
-    #    text = handle.read()
-    #eigenpair_list = turbo.parse_td_vectors(text)
-    #for i, epl in enumerate(eigenpair_list, 1):
-    #    print(f"state {i}")
-    #    turbo.ci_coeffs_above_thresh(epl)
-    #import pdb; pdb.set_trace()
-
-    """
-    from pysisyphus.helpers import geom_from_xyz_file
-    path1 = Path("/scratch/holy/h2o1")
-    path2 = Path("/scratch/holy/h2o2")
-    geom1 = geom_from_xyz_file(path1 / "h2o1.xyz")
-    geom2 = geom_from_xyz_file(path2 / "h2o2.xyz")
-    turbo = Turbomole(path1)
-    get_mos_ciss = lambda path: (str(path / "mos"), str(path / "ciss_a"))
-    mos1, ciss1 = get_mos_ciss(path1)
-    mos2, ciss2 = get_mos_ciss(path2)
-
-    turbo.td_vec_fn = ciss1
-    turbo.mos = mos1
-    turbo.get_wf_overlap(geom1.atoms, geom1.coords)
-
-    turbo.td_vec_fn = ciss2
-    turbo.mos = mos2
-    turbo.get_wf_overlap(geom2.atoms, geom2.coords)
-
-    turbo.wfow.track()
-    """
