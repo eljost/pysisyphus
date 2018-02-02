@@ -2,6 +2,10 @@
 
 import itertools
 import logging
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 
 import numpy as np
 from pyscf import gto
@@ -11,12 +15,12 @@ from pysisyphus.config import Config
 
 class WFOWrapper:
     def __init__(self, occ_mos, virt_mos):
-        #self.base_cmd = Config["wfoverlap"]["cmd"]
-        #self.atoms = atoms
+        self.base_cmd = Config["wfoverlap"]["cmd"]
         self.occ_mos = occ_mos
         self.virt_mos = virt_mos
+        self.mos = self.occ_mos + self.virt_mos
         self.base_det_str = "d"*self.occ_mos + "e"*self.virt_mos
-        self.fmt = "{: .12f}"
+        self.fmt = "{: .10f}"
 
         # Molecule coordinates
         self.coords_list = list()
@@ -36,6 +40,7 @@ class WFOWrapper:
             mol = gto.Mole()
             mol.atom = atom
             mol.basis = basis
+            mol.unit = "bohr"
             # Charge or spin aren't needed for overlap integrals
             mol.build()
             return mol
@@ -77,7 +82,8 @@ class WFOWrapper:
         det_strings = [self.make_det_string(inds) for inds in all_inds]
         return all_inds, det_strings
 
-    def make_full_dets_string(self, all_inds, det_strings, ci_coeffs):
+    def make_full_dets_list(self, all_inds, det_strings, ci_coeffs):
+        dets_list = list()
         for inds, det_string in zip(all_inds, det_strings):
             ab, ba = det_string
             from_mo, to_mo = inds
@@ -85,11 +91,12 @@ class WFOWrapper:
             # See 10.1063/1.3000012 Eq. (5) and 10.1021/acs.jpclett.7b01479 SI
             per_state *= 1/2**0.5
             as_str = lambda arr: " ".join([self.fmt.format(cic)
-                                           for cic in per_state])
+                                           for cic in arr])
             ps_str = as_str(per_state)
             mps_str = as_str(-per_state)
-            print(f"{ab}\t{ps_str}")
-            print(f"{ba}\t{mps_str}")
+            dets_list.append(f"{ab}\t{ps_str}")
+            dets_list.append(f"{ba}\t{mps_str}")
+        return dets_list
 
     def set_from_nested_list(self, nested):
         return set([i for i in itertools.chain(*nested)])
@@ -100,7 +107,7 @@ class WFOWrapper:
         to_set = self.set_from_nested_list(to_mos)
 
         self.atoms = atoms
-        self.mos_list = mos
+        self.mos_list.append(mos)
         self.coords_list.append(coords)
         self.ci_coeffs_list.append(ci_coeffs)
         self.mo_inds_list.append(mo_inds)
@@ -111,6 +118,9 @@ class WFOWrapper:
         return (self.mos_list[ind], self.coords_list[ind],
                 self.ci_coeffs_list[ind], self.mo_inds_list[ind],
                 self.from_set_list[ind], self.to_set_list[ind])
+
+    def make_dets_header(self, cic, dets_list):
+        return f"{len(cic)} {self.mos} {len(dets_list)}"
 
     def track(self):
         if len(self.ci_coeffs_list) < 2:
@@ -126,7 +136,9 @@ class WFOWrapper:
         a1 = self.build_mole(coords1)
         a2 = self.build_mole(coords2)
         ao_ovlp = self.overlap(a1, a2, basis="sto-3g")
+        ao_header = "{} {}".format(*ao_ovlp.shape)
         logging.warning("!using sto3g! for ao overlaps")
+
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
         # Prepare line for ground state
         gs_coeffs = np.zeros(len(cic1_with_gs))
@@ -135,12 +147,39 @@ class WFOWrapper:
         gs_coeffs_str = " ".join([self.fmt.format(c)
                                   for c in gs_coeffs])
         gs_line = f"{self.base_det_str}\t{gs_coeffs_str}"
-
-        dets1 = gs_line + self.make_full_dets_string(all_inds, det_strings,
+        dets1 = [gs_line] + self.make_full_dets_list(all_inds,
+                                                     det_strings,
                                                      cic1_with_gs)
-        dets2 = gs_line + self.make_full_dets_string(all_inds, det_strings,
+        dets2 = [gs_line] + self.make_full_dets_list(all_inds,
+                                                     det_strings,
                                                      cic2_with_gs)
-        #import pdb; pdb.set_trace()
+        header1 = self.make_dets_header(cic1_with_gs, dets1)
+        header2 = self.make_dets_header(cic2_with_gs, dets2)
+        #print(header1)
+        #print("\n".join(dets1[:20]))
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            mos1_path = shutil.copy(mos1, tmp_path / "mos.1")
+            mos2_path = shutil.copy(mos2, tmp_path / "mos.2")
+            dets1_path = tmp_path / "dets.1"
+            with open(dets1_path, "w") as handle:
+                handle.write(header1+"\n"+"\n".join(dets1))
+            dets2_path = tmp_path / "dets.2"
+            with open(dets2_path, "w") as handle:
+                handle.write(header2+"\n"+"\n".join(dets2))
+            ao_ovl_path = tmp_path / "ao_ovl"
+            np.savetxt(ao_ovl_path, ao_ovlp, fmt="%+22.15E", header=ao_header,
+                       comments="")
+            wfo_file = "/scratch/programme/pysisyphus/ciovl.in"
+            shutil.copy(wfo_file, tmp_path)
+            cmd = f"{self.base_cmd} -f ciovl.in".split()
+            #import pdb; pdb.set_trace()
+            result = subprocess.Popen(cmd, cwd=tmp_path)
+            result.wait()
+
+            pass
+
         return None
 
 
