@@ -181,11 +181,12 @@ class Turbomole(Calculator):
         arr = np.array(eigenpair["vector"])
         arr = arr.reshape(self.occ_mos, -1)
         mo_inds = np.where(np.abs(arr) > thresh)
-        ci_coeffs = arr[mo_inds]
+        #ci_coeffs = arr[mo_inds]
         #vals_sq = vals**2
         #for from_mo, to_mo, vsq, v in zip(*inds, vals_sq, vals):
         #    print(f"\t{from_mo+1} -> {to_mo+1+self.occ_mos} {v:.04f} {vsq:.02f}")
-        return ci_coeffs, mo_inds
+        #return ci_coeffs, mo_inds
+        return arr, mo_inds
 
     def get_wf_overlap(self, atoms, coords):
         if not self.td_vec_fn:
@@ -200,6 +201,7 @@ class Turbomole(Calculator):
         coeffs_inds = [self.ci_coeffs_above_thresh(ep)
                        for ep in eigenpair_list]
         ci_coeffs, mo_inds = zip(*coeffs_inds)
+        ci_coeffs = np.array(ci_coeffs)
         f, t = zip(*mo_inds)
         #import pdb; pdb.set_trace()
         self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
@@ -257,14 +259,17 @@ if __name__ == "__main__":
         turbo.ci_coeffs_above_thresh(epl)
     """
 
-    fn = "/scratch/benzene/benzene_tda"
+    #fn = "/scratch/benzene/benzene_tda"
+    fn = "/scratch/benzene/opt_3states"
+    td_vec_fn = "/scratch/benzene/opt_3states/ciss_a"
+    mos_fn = "/scratch/benzene/opt_3states/mos"
     control_path = Path(fn)
     turbo = Turbomole(control_path)
     geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
     geom.set_calculator(turbo)
-    fn = "/scratch/benzene/opt/ciss_a"
-    turbo.td_vec_fn = fn
-    turbo.mos = "/scratch/benezne/opt/mos"
+    #fn = "/scratch/benzene/opt/ciss_a"
+    turbo.td_vec_fn = td_vec_fn
+    turbo.mos = mos_fn
     turbo.get_wf_overlap(geom.atoms, geom.coords)
     #with open(fn) as handle:
     #    text = handle.read()

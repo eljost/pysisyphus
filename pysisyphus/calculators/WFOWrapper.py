@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import itertools
+import logging
 
 import numpy as np
 from pyscf import gto
@@ -15,6 +16,7 @@ class WFOWrapper:
         self.occ_mos = occ_mos
         self.virt_mos = virt_mos
         self.base_det_str = "d"*self.occ_mos + "e"*self.virt_mos
+        self.fmt = "{: .12f}"
 
         # Molecule coordinates
         self.coords_list = list()
@@ -75,6 +77,20 @@ class WFOWrapper:
         det_strings = [self.make_det_string(inds) for inds in all_inds]
         return all_inds, det_strings
 
+    def make_full_dets_string(self, all_inds, det_strings, ci_coeffs):
+        for inds, det_string in zip(all_inds, det_strings):
+            ab, ba = det_string
+            from_mo, to_mo = inds
+            per_state =  ci_coeffs[:,from_mo,to_mo]
+            # See 10.1063/1.3000012 Eq. (5) and 10.1021/acs.jpclett.7b01479 SI
+            per_state *= 1/2**0.5
+            as_str = lambda arr: " ".join([self.fmt.format(cic)
+                                           for cic in per_state])
+            ps_str = as_str(per_state)
+            mps_str = as_str(-per_state)
+            print(f"{ab}\t{ps_str}")
+            print(f"{ba}\t{mps_str}")
+
     def set_from_nested_list(self, nested):
         return set([i for i in itertools.chain(*nested)])
 
@@ -102,11 +118,29 @@ class WFOWrapper:
             return None
         mos1, coords1, cic1, moi1, fs1, ts1 = self.get_iteration(-2)
         mos2, coords2, cic2, moi2, fs2, ts2 = self.get_iteration(-1)
+        # Create a fake array for the ground state where all CI coefficients
+        # are zero and add it.
+        gs_cic = np.zeros_like(cic1[0])
+        cic1_with_gs = np.concatenate((gs_cic[None,:,:], cic1))
+        cic2_with_gs = np.concatenate((gs_cic[None,:,:], cic2))
         a1 = self.build_mole(coords1)
         a2 = self.build_mole(coords2)
         ao_ovlp = self.overlap(a1, a2, basis="sto-3g")
+        logging.warning("!using sto3g! for ao overlaps")
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
-        import pdb; pdb.set_trace()
+        # Prepare line for ground state
+        gs_coeffs = np.zeros(len(cic1_with_gs))
+        # Ground state is 100% HF configuration
+        gs_coeffs[0] = 1
+        gs_coeffs_str = " ".join([self.fmt.format(c)
+                                  for c in gs_coeffs])
+        gs_line = f"{self.base_det_str}\t{gs_coeffs_str}"
+
+        dets1 = gs_line + self.make_full_dets_string(all_inds, det_strings,
+                                                     cic1_with_gs)
+        dets2 = gs_line + self.make_full_dets_string(all_inds, det_strings,
+                                                     cic2_with_gs)
+        #import pdb; pdb.set_trace()
         return None
 
 
@@ -120,4 +154,3 @@ if __name__ == "__main__":
     virt_mos = len(vs1)
     wfow = WFOWrapper(occ_mos, virt_mos)
     all_inds, det_strings = wfow.generate_all_dets(oc1, vs1, oc2, vs2)
-    import pdb; pdb.set_trace()
