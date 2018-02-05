@@ -4,7 +4,7 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
-from pysisyphus.masses import MASS_DICT
+from pysisyphus.elem_data import MASS_DICT
 
 class Geometry:
 
