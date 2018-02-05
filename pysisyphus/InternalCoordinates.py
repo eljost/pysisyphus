@@ -74,7 +74,7 @@ def get_dihedral_indices(bond_inds, bend_inds):
         if (len(bes & bois) == 1) and (central not in bois):
             (intersect,)  = set(bond) & set(bend)
             intersect_ind = list(bond).index(intersect)
-            term_ind = 0 if intersect_ind else 1
+            term_ind = 1 - intersect_ind
             terminal = bond[term_ind]
             if intersect == bend[0]:
                 dihedral_ind = [terminal] + list(bend)
@@ -108,4 +108,4 @@ if __name__ == "__main__":
     fe_bends = get_bending_indices(fe_inds)
     assert len(fe_bends) == 6
     fe_dihedrals = get_dihedral_indices(fe_inds, fe_bends)
-    print(fe_dihedrals)
+    assert len(fe_dihedrals) == 4
