@@ -8,7 +8,11 @@ import subprocess
 import tempfile
 
 import numpy as np
-from pyscf import gto
+try:
+    from pyscf import gto
+except ImportError:
+    print("Couldn't import pyscf!")
+    raise Exception
 import pyparsing as pp
 
 from pysisyphus.config import Config
@@ -203,6 +207,10 @@ class WFOWrapper:
             stdout = result.stdout.read().decode("utf-8")
         print(stdout)
         overlap_matrix = self.parse_wfoverlap(stdout)
+        overlap_matrix = overlap_matrix.reshape(-1, len(cic2_with_gs))
         print(overlap_matrix)
 
-        return None
+        if old_root:
+            return overlap_matrix[old_root]
+        else:
+            return overlap_matrix
