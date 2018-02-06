@@ -31,8 +31,9 @@ def merge_fragments(fragments):
 
 def connect_fragments(cdm, fragments):
     # Or as Philipp proposed: two loops over the fragments and only
-    # generate the distances when it is an interfragment distance.
-    # So we get a full matrix with the original indices.
+    # generate the distance when it is an interfragment distance.
+    # So we get a full matrix with the original indices but only the
+    # distances we are interested in.
     dist_mat = squareform(cdm)
     interfragment_indices = list()
     for frag1, frag2 in itertools.combinations(fragments, 2):
@@ -73,11 +74,9 @@ def get_bond_indices(geom, factor=1.3):
     fragments = merge_fragments(bond_ind_sets)
     if len(fragments) != 1:
         interfragment_inds = connect_fragments(cdm, fragments)
-        import pdb; pdb.set_trace()
-        print("whoot")
         bond_indices = np.concatenate((bond_indices, interfragment_inds))
 
-    logging.warning("No check for hydrogen bonds or disconnected fragments!")
+    logging.warning("No check for hydrogen bonds!")
     return bond_indices
 
 
