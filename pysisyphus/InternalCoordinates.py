@@ -30,10 +30,8 @@ def merge_fragments(fragments):
 
 
 def connect_fragments(cdm, fragments):
-    # Or as Philipp proposed: two loops over the fragments and only
-    # generate the distance when it is an interfragment distance.
-    # So we get a full matrix with the original indices but only the
-    # distances we are interested in.
+    """Determine the smallest interfragment bond for a list
+    of fragments and a condensed distance matrix."""
     dist_mat = squareform(cdm)
     interfragment_indices = list()
     for frag1, frag2 in itertools.combinations(fragments, 2):
@@ -43,6 +41,9 @@ def connect_fragments(cdm, fragments):
         distances = np.array([dist_mat[ind] for ind in indices])
         min_index = indices[distances.argmin()]
         interfragment_indices.append(min_index)
+    # Or as Philipp proposed: two loops over the fragments and only
+    # generate interfragment distances. So we get a full matrix with
+    # the original indices but only the required distances.
     return interfragment_indices
 
 
@@ -76,6 +77,7 @@ def get_bond_indices(geom, factor=1.3):
         interfragment_inds = connect_fragments(cdm, fragments)
         bond_indices = np.concatenate((bond_indices, interfragment_inds))
 
+    logging.warning("No check for single atoms!")
     logging.warning("No check for hydrogen bonds!")
     return bond_indices
 
@@ -125,7 +127,8 @@ def get_dihedral_indices(bond_inds, bend_inds):
             if dihedral_set not in dihedral_sets:
                 dihedral_inds.append(dihedral_ind)
                 dihedral_sets.append(dihedral_set)
-    logging.warning("No check for dihedrals near 180° or -180°!")
+    logging.warning("No brute force method for molecules that should have a "
+                    "dihedral but where no one can be found.")
     return np.array(dihedral_inds)
 
 
@@ -258,6 +261,17 @@ def get_B_mat(geom, save=None, tm_format=False):
     return B_mat
 
 
+def make_G_mat(B_mat):
+    G = B_mat.dot(B_mat.T)
+    w, v = np.linalg.eigh(G)
+    print(w)
+    print(w.shape)
+    print(v.T)
+    non_zero_inds = np.where(abs(w) > 1e-6)
+    eigenvecs = v.T[non_zero_inds]
+    import pdb; pdb.set_trace()
+
+
 if __name__ == "__main__":
     np.set_printoptions(suppress=True, precision=4)
 
@@ -270,14 +284,17 @@ if __name__ == "__main__":
     benzene_geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
     benezen_B = get_B_mat(benzene_geom)
     #assert len(benzene_inds) == 12
+    """
 
     # Fluorethylene, see [2] for geometry
     fe_geom = geom_from_library("fluorethylene.xyz")
     fe_B = get_B_mat(fe_geom)
+    make_G_mat(fe_B)
     #assert len(fe_inds) == 5
     #assert len(fe_bends) == 6
     #assert len(fe_dihedrals) == 4
 
+    """
     # PT H2O
     pt_geom = geom_from_library("h2o_pt.xyz")
     h2o_pt_B = get_B_mat(pt_geom)
@@ -288,7 +305,9 @@ if __name__ == "__main__":
     h2o2_B = get_B_mat(h2o2_geom)#, save="h2o2.bmat", tm_format=True)
     """
 
+    """
     # Two fragments
-    print("two frags")
+    print("Two fragments")
     two_frags = geom_from_library("h2o2_h2o_fragments.xyz")
     two_frags_B = get_B_mat(two_frags)
+    """
