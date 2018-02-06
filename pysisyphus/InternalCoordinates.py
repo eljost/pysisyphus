@@ -125,25 +125,24 @@ def get_angle_B(geom, angle_ind):
         w_dash = np.cross(u, v)
     w_norm = np.linalg.norm(w_dash)
     w = w_dash / w_norm
-    uxw_dash = np.cross(u, w)
-    wxv_dash = np.cross(w, v)
-    uxw = uxw_dash / u_norm
-    wxv = wxv_dash / v_norm
+    uxw = np.cross(u, w)
+    wxv = np.cross(w, v)
 
     row = np.zeros_like(coords)
     #                  |  m  |  n  |  o  |
     # -----------------------------------
-    # sign_factor(amo) |  1  |  0  | -1  |
-    # sign_factor(ano) |  0  |  1  | -1  |
-    row[m,:] = uxw
-    row[o,:] = -uxw - wxv
-    row[n,:] = wxv
+    # sign_factor(amo) |  1  |  0  | -1  | first_term
+    # sign_factor(ano) |  0  |  1  | -1  | second_term
+    first_term = uxw / u_norm
+    second_term = wxv / v_norm
+    row[m,:] = first_term
+    row[o,:] = -first_term - second_term
+    row[n,:] = second_term
     row = row.flatten()
     return row
 
 
-def get_dihedral_b(geom, dihedral_ind):
-    print(dihedral_ind)
+def get_dihedral_B(geom, dihedral_ind):
     coords = geom.coords.reshape(-1, 3)
     m, o, p, n = dihedral_ind
     u_dash = coords[m] - coords[o]
@@ -186,7 +185,21 @@ def get_dihedral_b(geom, dihedral_ind):
     return row
 
 
+def get_B_mat(geom, save=None):
+    bond_inds = get_bond_indices(geom)
+    bend_inds = get_bending_indices(bond_inds)
+    dihedral_inds = get_dihedral_indices(bond_inds, bend_inds)
 
+    bond_rows = [get_bond_B(geom, ind) for ind in bond_inds]
+    bend_rows = [get_angle_B(geom, ind) for ind in bend_inds]
+    dihed_rows = [get_dihedral_B(geom, ind) for ind in dihedral_inds]
+
+    B_mat = np.array((*bond_rows, *bend_rows, *dihed_rows))
+    print(B_mat)
+    if save:
+        fmt = "% 1.4f"
+        np.savetxt(save, B_mat, fmt=fmt)
+    return B_mat
 
 
 if __name__ == "__main__":
@@ -206,6 +219,8 @@ if __name__ == "__main__":
 
     # See [2] for geometry
     fe_geom = geom_from_library("fluorethylene.xyz")
+    #fe_B = get_B_mat(fe_geom)
+    """
     fe_inds = get_bond_indices(fe_geom)
     assert len(fe_inds) == 5
     fe_bends = get_bending_indices(fe_inds)
@@ -213,6 +228,7 @@ if __name__ == "__main__":
     fe_dihedrals = get_dihedral_indices(fe_inds, fe_bends)
     assert len(fe_dihedrals) == 4
     [get_dihedral_b(fe_geom, ind) for ind in fe_dihedrals]
+    """
 
     pt_geom = geom_from_library("h2o_pt.xyz")
     pt_inds = get_bond_indices(pt_geom)
@@ -224,3 +240,6 @@ if __name__ == "__main__":
     bmat = np.array((*bbonds, *bbends))
     #print(bmat)
     #np.savetxt("pt", bmat)
+
+    h2o2_geom = geom_from_library("h2o2_hf_321g_opt.xyz")
+    h2o2_B = get_B_mat(h2o2_geom, save="h2o2.bmat")
