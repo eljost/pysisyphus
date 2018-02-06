@@ -71,3 +71,24 @@ COVALENT_RADII = {
     'pa': 3.7795, 'u': 3.7039, 'np': 3.5905, 'pu': 3.5338, 'am': 3.4015,
     'cm': 3.1936
 }
+
+# Taken from mendeleev 0.41
+# CRC Handbook of Chem. and Phys 95th ed.
+# for e in element(["H", "N", "O", "F", "P", "S", "Cl"]):
+#   print(e.symbol, e.vdw_radius)
+# pm -> Bohr
+# {key: f"{value/100*ANG2BOHR:.4f}" for key, value in VDW_RADII.items()}
+# VDW_RADII = { # In pm
+#    "h": 110.0000,
+#    "n": 155.0,
+#    "o": 152.0,
+#    "f": 147.0,
+#    "p": 180.0,
+#    "s": 180.0,
+#    "cl": 175.0,
+# }
+# In Bohr, for hydrogen bonds
+VDW_RADII = {
+    'h': '2.0787', 'n': '2.9291', 'o': '2.8724', 'f': '2.7779',
+    'p': '3.4015', 's': '3.4015', 'cl': '3.3070'
+}
