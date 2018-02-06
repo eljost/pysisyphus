@@ -56,6 +56,6 @@ def test_h2o_wfoverlap():
     turbo.wfow.track()
 
 if __name__ == "__main__":
-    #test_forces()
+    test_forces()
     #test_benzene_wfoverlap()
-    test_h2o_wfoverlap()
+    #test_h2o_wfoverlap()
