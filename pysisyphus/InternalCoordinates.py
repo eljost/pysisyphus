@@ -133,8 +133,8 @@ def get_angle_B(geom, angle_ind):
     row = np.zeros_like(coords)
     #                  |  m  |  n  |  o  |
     # -----------------------------------
-    # sign_factor(amo) |  1  |  0  | -1 |
-    # sign_factor(ano) |  0  |  1  | -1 |
+    # sign_factor(amo) |  1  |  0  | -1  |
+    # sign_factor(ano) |  0  |  1  | -1  |
     row[m,:] = uxw
     row[o,:] = -uxw - wxv
     row[n,:] = wxv
@@ -159,10 +159,32 @@ def get_dihedral_b(geom, dihedral_ind):
     phi_v = np.arccos(w.dot(v))
     uxw = np.cross(u, w)
     vxw = np.cross(v, w)
-    dihed = np.arccos(uxw.dot(vxw)/(np.sin(phi_u)*np.sin(phi_v)))
-    print(dihed)
-    print(np.rad2deg(dihed))
-    print()
+    cos_dihed = uxw.dot(vxw)/(np.sin(phi_u)*np.sin(phi_v))
+    # Restrict cos_dihed to [-1, 1]
+    cos_dihed = min(cos_dihed, 1)
+    cos_dihed = max(cos_dihed, -1)
+    dihedral = np.arccos(cos_dihed)
+
+    row = np.zeros_like(coords)
+    #                  |  m  |  n  |  o  |  p  |
+    # ------------------------------------------
+    # sign_factor(amo) |  1  |  0  | -1  |  0  | 1st term
+    # sign_factor(apn) |  0  | -1  |  0  |  1  | 2nd term
+    # sign_factor(aop) |  0  |  0  |  1  | -1  | 3rd term
+    sin2_u = np.sin(phi_u)**2
+    sin2_v = np.sin(phi_v)**2
+    first_term  = uxw/(u_norm*sin2_u)
+    second_term = vxw/(v_norm*sin2_v)
+    third_term  = (uxw*np.cos(phi_u)/(w_norm*sin2_u)
+                  -vxw*np.cos(phi_v)/(w_norm*sin2_v)
+    )
+    row[m,:] = first_term
+    row[n,:] = -second_term
+    row[o,:] = -first_term + third_term
+    row[p,:] = second_term - third_term
+    row = row.flatten()
+    return row
+
 
 
 

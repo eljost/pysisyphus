@@ -12,7 +12,7 @@ try:
     from pyscf import gto
 except ImportError:
     print("Couldn't import pyscf!")
-    raise Exception
+    #raise Exception
 import pyparsing as pp
 
 from pysisyphus.config import Config
