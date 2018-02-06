@@ -7,32 +7,43 @@ import itertools
 import logging
 
 import numpy as np
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.elem_data import COVALENT_RADII as CR
 
 
-def make_fragments(geom, bond_indices):
-    bond_indices_list = list(bond_indices)
-    print(bond_indices_list)
-    # kann nicht nur bond_indices verwenden, weil sonst ein einzelnes
-    # atom übersehen werden könnte, das erstmal keine bindung eingeht
-    first_fragment = set(bond_indices_list.pop(0))
-    fragments = [first_fragment, ]
-    for bi in bond_indices_list:
-        for fragment in fragments:
-            bi_set = set(bi)
-            if bi_set & fragment:
-                fragment |= bi_set
-            else:
-                fragments.append(bi_set)
-    fragment_num = len(fragments)
-    print(fragments)
-    print(f"found {fragment_num} fragments")
-    if fragment_num != 1:
-        print("OHOHOHO!")
-    print()
+def merge_fragments(fragments):
+    if len(fragments) == 1:
+        return fragments
+    popped = fragments.pop(0)
+    for i, frag in enumerate(fragments):
+        merged = popped & frag
+        if merged:
+            fragments.remove(frag)
+            fragments.append(popped | frag)
+            break
+    if merged:
+        return merge_fragments(fragments)
+    fragments.append(popped)
+    return fragments
+
+
+def connect_fragments(cdm, fragments):
+    # Or as Philipp proposed: two loops over the fragments and only
+    # generate the distances when it is an interfragment distance.
+    # So we get a full matrix with the original indices.
+    dist_mat = squareform(cdm)
+    interfragment_indices = list()
+    for frag1, frag2 in itertools.combinations(fragments, 2):
+        arr1 = np.array(list(frag1))[None,:]
+        arr2 = np.array(list(frag2))[:,None]
+        indices = [(i1, i2) for i1, i2 in itertools.product(frag1, frag2)]
+        distances = np.array([dist_mat[ind] for ind in indices])
+        min_index = indices[distances.argmin()]
+        interfragment_indices.append(min_index)
+    return interfragment_indices
+
 
 def get_bond_indices(geom, factor=1.3):
     """
@@ -56,7 +67,16 @@ def get_bond_indices(geom, factor=1.3):
     cov_rad_sums = np.array(cov_rad_sums)
     bond_flags = cdm <= cov_rad_sums
     bond_indices = atom_indices[bond_flags]
-    make_fragments(geom, bond_indices)
+
+    # Check if there are any disconnected fragments
+    bond_ind_sets = [frozenset(bi) for bi in bond_indices]
+    fragments = merge_fragments(bond_ind_sets)
+    if len(fragments) != 1:
+        interfragment_inds = connect_fragments(cdm, fragments)
+        import pdb; pdb.set_trace()
+        print("whoot")
+        bond_indices = np.concatenate((bond_indices, interfragment_inds))
+
     logging.warning("No check for hydrogen bonds or disconnected fragments!")
     return bond_indices
 
@@ -242,6 +262,7 @@ def get_B_mat(geom, save=None, tm_format=False):
 if __name__ == "__main__":
     np.set_printoptions(suppress=True, precision=4)
 
+    """
     h2o_geom = geom_from_library("h2o.xyz") 
     h2o_B = get_B_mat(h2o_geom)
     #assert len(h2o_inds) == 2
@@ -263,5 +284,12 @@ if __name__ == "__main__":
     h2o_pt_B = get_B_mat(pt_geom)
 
     # H2O2, 1 Dihedral
+    print("h2o2")
     h2o2_geom = geom_from_library("h2o2_hf_321g_opt.xyz")
     h2o2_B = get_B_mat(h2o2_geom)#, save="h2o2.bmat", tm_format=True)
+    """
+
+    # Two fragments
+    print("two frags")
+    two_frags = geom_from_library("h2o2_h2o_fragments.xyz")
+    two_frags_B = get_B_mat(two_frags)
