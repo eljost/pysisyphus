@@ -18,14 +18,14 @@ def test_fluorethylene():
     #forces = fe_geom.forces
     #np.savetxt(forces_fn, forces)
     forces = np.loadtxt(forces_fn)
-    print(forces)
+    #print(forces)
     ic = InternalCoordinates(geom)
 
     #fe_B = get_B_mat(geom)
     #B_mat_inv = get_B_inv(fe_B, geom.atoms)
     # Transform forces to internal coordinates
     int_forces = ic.B_inv.dot(forces)
-    print(int_forces)
+    #print(int_forces)
     int_step = 0.5*int_forces
     #max_step = max(abs(step))
     #if max_step > 0.04:

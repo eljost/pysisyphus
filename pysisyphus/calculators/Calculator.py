@@ -103,7 +103,7 @@ class Calculator:
     def run_after(self, path):
         pass
 
-    def run(self, inp, calc, add_args=None, env=None, shell=False):
+    def run(self, inp, calc, add_args=None, env=None, shell=False, hold=False):
         path = self.prepare(inp)
         self.log(f"running in {path}")
         args = [self.base_cmd, self.inp_fn]
@@ -131,8 +131,9 @@ class Calculator:
             shutil.copytree(path, backup_dir)
             sys.exit()
         finally:
-            self.clean(path)
-            self.calc_counter += 1
+            if not hold:
+                self.clean(path)
+                self.calc_counter += 1
 
         self.path_already_prepared = None
         return results

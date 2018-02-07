@@ -22,11 +22,10 @@ class InternalCoordinates:
         self.bending_indices = list()
         self.dihedral_indices = list()
 
-        self.set_bond_indices()
-        self.set_bending_indices()
-        self.set_dihedral_indices()
-        B_prim = self.make_B_prim()
-        self.set_B_inv(B_prim)
+        self.set_primitive_indices()
+        self.primitives = self.get_primitives()
+        self.set_B_prim()
+        self.set_delocalized_vectors()
 
     def merge_fragments(self, fragments):
         """Merge a list of sets recursively. Pop the first element
@@ -68,12 +67,12 @@ class InternalCoordinates:
 
     def set_bond_indices(self, factor=1.3):
         """
-        Default factor taken from [1] A.1.
+        Default factor of 1.3 taken from [1] A.1.
         """
         coords = self.geom.coords.reshape(-1, 3)
         # Condensed distance matrix
         cdm = pdist(coords)
-        # Generate indices corresponding to the atom pairs in
+        # Generate indices corresponding to the atom pairs in the
         # condensed distance matrix cdm.
         atom_indices = list(itertools.combinations(range(len(coords)),2))
         atom_indices = np.array(atom_indices, dtype=int)
@@ -118,7 +117,7 @@ class InternalCoordinates:
             if len(union) == 3:
                 as_tpl, _ = self.sort_by_central(bond_set1, bond_set2)
                 self.bending_indices.append(as_tpl)
-        logging.warning("No check for (nearly) linear angles!"
+        logging.warning("No check for (nearly) linear angles! "
                         "No additional orthogonal bending coordinates.")
         self.bending_indices = np.array(self.bending_indices, dtype=int)
 
@@ -146,20 +145,36 @@ class InternalCoordinates:
                         "dihedral but where no one can be found.")
         self.dihedral_indices = np.array(self.dihedral_indices)
 
-    def get_bond_B(self, bond_ind):
+    def set_primitive_indices(self):
+        self.set_bond_indices()
+        self.set_bending_indices()
+        self.set_dihedral_indices()
+
+    def get_primitives(self):
+        stretches = [self.calc_stretch(ind) for ind in self.bond_indices]
+        angles = [self.calc_bend(ind) for ind in self.bending_indices]
+        dihedrals = [self.calc_dihedral(ind) for ind in self.dihedral_indices]
+        #return np.array((*stretches, *angles, *dihedrals))
+        prims = np.array((*stretches, *angles, *dihedrals))
+        print("primitives", prims)
+        return prims
+
+    def calc_stretch(self, bond_ind, grad=False):
         coords = self.geom.coords.reshape(-1, 3)
         n, m = bond_ind
         bond = coords[m] - coords[n]
         bond_length = np.linalg.norm(bond)
-        bond_normed = bond / bond_length
-        row = np.zeros_like(coords)
-        # 1 / -1 correspond to the sign factor [1] Eq. 18
-        row[m,:] = 1 * bond_normed
-        row[n,:] = -1 * bond_normed
-        row = row.flatten()
-        return row
+        if grad:
+            bond_normed = bond / bond_length
+            row = np.zeros_like(coords)
+            # 1 / -1 correspond to the sign factor [1] Eq. 18
+            row[m,:] = 1 * bond_normed
+            row[n,:] = -1 * bond_normed
+            row = row.flatten()
+            return bond_length, row
+        return bond_length
 
-    def get_angle_B(self, angle_ind):
+    def calc_bend(self, angle_ind, grad=False):
         def are_parallel(vec1, vec2, thresh=1e-6):
             rad = np.arccos(vec1.dot(vec2))
             return abs(rad) > (np.pi - thresh)
@@ -171,34 +186,36 @@ class InternalCoordinates:
         v_norm = np.linalg.norm(v_dash)
         u = u_dash / u_norm
         v = v_dash / v_norm
-        rad = np.arccos(u.dot(v))
-        # Eq. (24) in [1]
-        if are_parallel(u, v):
-            tmp_vec = np.array((1, -1, 1))
-            par = are_parallel(u, tmp_vec) and are_parallel(v, tmp_vec)
-            tmp_vec = np.array((-1, 1, 1)) if par else tmp_vec
-            w_dash = np.cross(u, tmp_vec)
-        else:
-            w_dash = np.cross(u, v)
-        w_norm = np.linalg.norm(w_dash)
-        w = w_dash / w_norm
-        uxw = np.cross(u, w)
-        wxv = np.cross(w, v)
+        angle_rad = np.arccos(u.dot(v))
+        if grad:
+            # Eq. (24) in [1]
+            if are_parallel(u, v):
+                tmp_vec = np.array((1, -1, 1))
+                par = are_parallel(u, tmp_vec) and are_parallel(v, tmp_vec)
+                tmp_vec = np.array((-1, 1, 1)) if par else tmp_vec
+                w_dash = np.cross(u, tmp_vec)
+            else:
+                w_dash = np.cross(u, v)
+            w_norm = np.linalg.norm(w_dash)
+            w = w_dash / w_norm
+            uxw = np.cross(u, w)
+            wxv = np.cross(w, v)
 
-        row = np.zeros_like(coords)
-        #                  |  m  |  n  |  o  |
-        # -----------------------------------
-        # sign_factor(amo) |  1  |  0  | -1  | first_term
-        # sign_factor(ano) |  0  |  1  | -1  | second_term
-        first_term = uxw / u_norm
-        second_term = wxv / v_norm
-        row[m,:] = first_term
-        row[o,:] = -first_term - second_term
-        row[n,:] = second_term
-        row = row.flatten()
-        return row
+            row = np.zeros_like(coords)
+            #                  |  m  |  n  |  o  |
+            # -----------------------------------
+            # sign_factor(amo) |  1  |  0  | -1  | first_term
+            # sign_factor(ano) |  0  |  1  | -1  | second_term
+            first_term = uxw / u_norm
+            second_term = wxv / v_norm
+            row[m,:] = first_term
+            row[o,:] = -first_term - second_term
+            row[n,:] = second_term
+            row = row.flatten()
+            return angle_rad, row
+        return angle_rad
 
-    def get_dihedral_B(self, dihedral_ind):
+    def calc_dihedral(self, dihedral_ind, grad=False):
         coords = self.geom.coords.reshape(-1, 3)
         m, o, p, n = dihedral_ind
         u_dash = coords[m] - coords[o]
@@ -218,42 +235,45 @@ class InternalCoordinates:
         # Restrict cos_dihed to [-1, 1]
         cos_dihed = min(cos_dihed, 1)
         cos_dihed = max(cos_dihed, -1)
-        dihedral = np.arccos(cos_dihed)
+        dihedral_rad = np.arccos(cos_dihed)
+        if grad:
+            row = np.zeros_like(coords)
+            #                  |  m  |  n  |  o  |  p  |
+            # ------------------------------------------
+            # sign_factor(amo) |  1  |  0  | -1  |  0  | 1st term
+            # sign_factor(apn) |  0  | -1  |  0  |  1  | 2nd term
+            # sign_factor(aop) |  0  |  0  |  1  | -1  | 3rd term
+            sin2_u = np.sin(phi_u)**2
+            sin2_v = np.sin(phi_v)**2
+            first_term  = uxw/(u_norm*sin2_u)
+            second_term = vxw/(v_norm*sin2_v)
+            third_term  = (uxw*np.cos(phi_u)/(w_norm*sin2_u)
+                          -vxw*np.cos(phi_v)/(w_norm*sin2_v)
+            )
+            row[m,:] = first_term
+            row[n,:] = -second_term
+            row[o,:] = -first_term + third_term
+            row[p,:] = second_term - third_term
+            row = row.flatten()
+            return dihedral_rad, row
+        return dihedral_rad
 
-        row = np.zeros_like(coords)
-        #                  |  m  |  n  |  o  |  p  |
-        # ------------------------------------------
-        # sign_factor(amo) |  1  |  0  | -1  |  0  | 1st term
-        # sign_factor(apn) |  0  | -1  |  0  |  1  | 2nd term
-        # sign_factor(aop) |  0  |  0  |  1  | -1  | 3rd term
-        sin2_u = np.sin(phi_u)**2
-        sin2_v = np.sin(phi_v)**2
-        first_term  = uxw/(u_norm*sin2_u)
-        second_term = vxw/(v_norm*sin2_v)
-        third_term  = (uxw*np.cos(phi_u)/(w_norm*sin2_u)
-                      -vxw*np.cos(phi_v)/(w_norm*sin2_v)
-        )
-        row[m,:] = first_term
-        row[n,:] = -second_term
-        row[o,:] = -first_term + third_term
-        row[p,:] = second_term - third_term
-        row = row.flatten()
-        return row
-
-    def make_B_prim(self, save=None, tm_format=False):
-        bond_rows = [self.get_bond_B(ind) for ind in self.bond_indices]
-        bend_rows = [self.get_angle_B(ind) for ind in self.bending_indices]
-        dihed_rows = [self.get_dihedral_B(ind) for ind in self.dihedral_indices]
-
-        B = np.array((*bond_rows, *bend_rows, *dihed_rows))
+    def set_B_prim(self, save=None, tm_format=False):
+        _, bond_B_rows = zip(*[self.calc_stretch(ind, grad=True)
+                               for ind in self.bond_indices])
+        _, bend_B_rows = zip(*[self.calc_bend(ind, grad=True)
+                               for ind in self.bending_indices])
+        _, dihedral_B_rows = zip(*[self.calc_dihedral(ind, grad=True)
+                                   for ind in self.dihedral_indices])
+        self.B_prim = np.array((*bond_B_rows, *bend_B_rows, *dihedral_B_rows))
         if save:
             fmt = "% 1.4f"
-            np.savetxt(save, B_mat, fmt=fmt)
+            np.savetxt(save, self.B_prim, fmt=fmt)
             if tm_format:
                 atm_fmt = " {: .04f}"
                 tm_str = ""
                 col = 1
-                for row in B_mat:
+                for row in self.B_prim:
                     per_atom = row.reshape(-1, 3)
                     tm_str += f"\ncolumn{col:3d}\n"
                     col += 1
@@ -265,35 +285,52 @@ class InternalCoordinates:
                         atom += 1
                 with open(save + ".tm", "w") as handle:
                     handle.write(tm_str)
-        return B
 
-    def set_B_inv(self, B_prim):
-        G = B_prim.dot(B_prim.T)
+    def set_delocalized_vectors(self, thresh=1e-6):
+        G = self.B_prim.dot(self.B_prim.T)
         w, v = np.linalg.eigh(G)
         #print(w)
         #print(w.shape)
         #print(v.T)
-        import pdb; pdb.set_trace()
-        non_zero_inds = np.where(abs(w) > 1e-6)
+        #import pdb; pdb.set_trace()
+        non_zero_inds = np.where(abs(w) > thresh)
         degrees_of_freedom = 3*len(self.geom.atoms)-6
         assert(len(non_zero_inds[0]) == degrees_of_freedom)
-        eigenvecs = v.T[non_zero_inds]
+        self.delocalized_vectors = v[:,non_zero_inds[0]]
         # Eq. 3 in [2], transformation of B to the active coordinate set
-        B = eigenvecs.dot(B_prim)
-        self.B_inv = np.linalg.pinv(B.dot(B.T)).dot(B)
+        self.B = self.delocalized_vectors.T.dot(self.B_prim)
+        self.B_inv = np.linalg.pinv(self.B.dot(self.B.T)).dot(self.B)
 
-    # internal indices entkoppeln und in objekt speichern
-    # bei bedarf b-matrix regenerieren
+    def get_delocalized(self):
+        primitives = self.get_primitives()
+        return primitives.dot(self.delocalized_vectors)
 
     def backtransform(self, int_step):
         def rms(coords1, coords2):
             return np.sqrt(np.mean((coords1-coords2)**2))
-        #x_new = coords + B_mat_inv.dot(int_step)
-        tmp_coords = self.geom.coords.copy()
+        #tmp_coords = self.geom.coords.copy()
         last_int_step = int_step
+        delocalized_start = self.get_delocalized()
+        print(delocalized_start)
+        k = 0
         while True:
-            break
             cart_step =  self.B_inv.T.dot(last_int_step)
-            new_coords = tmp_coords + cart_step
+            #print("cart_step", cart_step)
+            self.geom.coords += cart_step
+            #B_prim = self.get_B_prim()
+            #eigenvecs, eigenvals = self.make_delocalized(B_prim)
+            #last_int_step = int_step - (eigenvals-self.eigenvals)
+            #self.set_B_prim()
+            #self.set_delocalized_vectors()
+            delocalized = self.get_delocalized()
+            deloc_diff = delocalized - delocalized_start
+            #print(deloc_diff)
+            last_int_step = last_int_step - deloc_diff
             #import pdb; pdb.set_trace()
+            last_int_step_norm = np.linalg.norm(last_int_step)
+            print(f"cycle {k}:", last_int_step_norm)
+            k += 1
+            print()
+            if k == 5:
+                break
         pass
