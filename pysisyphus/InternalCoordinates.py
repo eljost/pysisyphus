@@ -3,6 +3,7 @@
 # [1] https://doi.org/10.1063/1.1515483
 # [2] https://doi.org/10.1063/1.471864 delocalized internal coordinates
 
+from collections import namedtuple
 import itertools
 import logging
 
@@ -13,19 +14,39 @@ from pysisyphus.helpers import geom_from_library
 from pysisyphus.elem_data import COVALENT_RADII as CR
 
 
-class InternalCoordinates:
+PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
+
+
+class RedundantCoords:
 
     def __init__(self, geom):
         self.geom = geom
+        self._coords = list()
 
         self.bond_indices = list()
         self.bending_indices = list()
         self.dihedral_indices = list()
 
         self.set_primitive_indices()
-        self.primitives = self.get_primitives()
-        self.set_B_prim()
-        self.set_delocalized_vectors()
+        self._coords = self.calculate(self.geom.coords)
+
+    def __iter__(self):
+        return self._coords.__iter__()
+
+    def append(self, coord):
+        self._coords.append(coord)
+
+    def extend(self, coords):
+        self._coords.extend(coords)
+
+    @property
+    def B(self):
+        return np.array([c.grad for c in self._coords])
+
+    @property
+    def B_inv(self):
+        B = self.B
+        return np.linalg.pinv(B.dot(B.T)).dot(B)
 
     def merge_fragments(self, fragments):
         """Merge a list of sets recursively. Pop the first element
@@ -150,6 +171,7 @@ class InternalCoordinates:
         self.set_bending_indices()
         self.set_dihedral_indices()
 
+    """
     def get_primitives(self):
         stretches = [self.calc_stretch(ind) for ind in self.bond_indices]
         angles = [self.calc_bend(ind) for ind in self.bending_indices]
@@ -158,9 +180,23 @@ class InternalCoordinates:
         prims = np.array((*stretches, *angles, *dihedrals))
         print("primitives", prims)
         return prims
+    """
 
-    def calc_stretch(self, bond_ind, grad=False):
-        coords = self.geom.coords.reshape(-1, 3)
+    def calculate(self, coords):
+        coords3d = coords.reshape(-1, 3)
+        def per_type(func, ind):
+            val, grad = func(coords3d, ind, True)
+            return PrimitiveCoord(ind, val, grad)
+        coords = list()
+        for ind in self.bond_indices:
+            coords.append(per_type(self.calc_stretch, ind))
+        for ind in self.bending_indices:
+            coords.append(per_type(self.calc_bend, ind))
+        for ind in self.dihedral_indices:
+            coords.append(per_type(self.calc_dihedral, ind))
+        return coords
+
+    def calc_stretch(self, coords, bond_ind, grad=False):
         n, m = bond_ind
         bond = coords[m] - coords[n]
         bond_length = np.linalg.norm(bond)
@@ -174,11 +210,10 @@ class InternalCoordinates:
             return bond_length, row
         return bond_length
 
-    def calc_bend(self, angle_ind, grad=False):
+    def calc_bend(self, coords, angle_ind, grad=False):
         def are_parallel(vec1, vec2, thresh=1e-6):
             rad = np.arccos(vec1.dot(vec2))
             return abs(rad) > (np.pi - thresh)
-        coords = self.geom.coords.reshape(-1, 3)
         m, o, n = angle_ind
         u_dash = coords[m] - coords[o]
         v_dash = coords[n] - coords[o]
@@ -215,8 +250,7 @@ class InternalCoordinates:
             return angle_rad, row
         return angle_rad
 
-    def calc_dihedral(self, dihedral_ind, grad=False):
-        coords = self.geom.coords.reshape(-1, 3)
+    def calc_dihedral(self, coords, dihedral_ind, grad=False):
         m, o, p, n = dihedral_ind
         u_dash = coords[m] - coords[o]
         v_dash = coords[n] - coords[p]
@@ -258,33 +292,45 @@ class InternalCoordinates:
             return dihedral_rad, row
         return dihedral_rad
 
-    def set_B_prim(self, save=None, tm_format=False):
-        _, bond_B_rows = zip(*[self.calc_stretch(ind, grad=True)
-                               for ind in self.bond_indices])
-        _, bend_B_rows = zip(*[self.calc_bend(ind, grad=True)
-                               for ind in self.bending_indices])
-        _, dihedral_B_rows = zip(*[self.calc_dihedral(ind, grad=True)
-                                   for ind in self.dihedral_indices])
-        self.B_prim = np.array((*bond_B_rows, *bend_B_rows, *dihedral_B_rows))
-        if save:
-            fmt = "% 1.4f"
-            np.savetxt(save, self.B_prim, fmt=fmt)
-            if tm_format:
-                atm_fmt = " {: .04f}"
-                tm_str = ""
-                col = 1
-                for row in self.B_prim:
-                    per_atom = row.reshape(-1, 3)
-                    tm_str += f"\ncolumn{col:3d}\n"
-                    col += 1
-                    atom = 1
-                    for per_atom in row.reshape(-1, 3):
-                        tm_str += f"atom {atom:3d}"
+    #def transform_step(self, int_step):
+    def transform(self, step, cart_thresh=1e-6):
+        def rms(coords1, coords2):
+            return np.sqrt(np.mean((coords1-coords2)**2))
+        B_inv = self.B_inv
+        #print("B_inv")
+        #print(B_inv)
+        #int_step = np.array((0.0587,  0.0587, -0.1987))
+        last_step = step
+        last_coords = self.geom.coords.copy()
+        last_vals = np.array([pc.val for pc in self.calculate(last_coords)])
+        for i in range(25):
+            cart_step = B_inv.T.dot(last_step)
+            #print("cart_step")
+            #print(cart_step.reshape(-1,3))
+            new_coords = last_coords + cart_step
+            #print("new_coords")
+            #print(new_coords.reshape(-1,3))
+            cart_rms = rms(last_coords, new_coords)
+            last_coords = new_coords
+            #print("cart_rms", cart_rms)
+            new_pc = self.calculate(last_coords)
+            new_vals = np.array([pc.val for pc in new_pc])
+            #print("coords_diff", new_vals - last_vals)
+            #print("new_internal_coordinates", new_vals)
+            #q, dq = q_new, dq-(q_new-q)
+            last_step = last_step - (new_vals - last_vals)
+            last_vals = new_vals
+            #print("dq", last_step)
+            #import pdb; pdb.set_trace()
+            print(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
+            if cart_rms < cart_thresh:
+                print("Converged!")
+                break
 
-                        tm_str += (atm_fmt*3+"\n").format(*per_atom)
-                        atom += 1
-                with open(save + ".tm", "w") as handle:
-                    handle.write(tm_str)
+
+class DelocalizedCoords(RedundantCoords):
+    def __init__(self, geom):
+        super().__init__(geom)
 
     def set_delocalized_vectors(self, thresh=1e-6):
         G = self.B_prim.dot(self.B_prim.T)
@@ -305,32 +351,10 @@ class InternalCoordinates:
         primitives = self.get_primitives()
         return primitives.dot(self.delocalized_vectors)
 
-    def backtransform(self, int_step):
-        def rms(coords1, coords2):
-            return np.sqrt(np.mean((coords1-coords2)**2))
-        #tmp_coords = self.geom.coords.copy()
-        last_int_step = int_step
-        delocalized_start = self.get_delocalized()
-        print(delocalized_start)
-        k = 0
-        while True:
-            cart_step =  self.B_inv.T.dot(last_int_step)
-            #print("cart_step", cart_step)
-            self.geom.coords += cart_step
-            #B_prim = self.get_B_prim()
-            #eigenvecs, eigenvals = self.make_delocalized(B_prim)
-            #last_int_step = int_step - (eigenvals-self.eigenvals)
-            #self.set_B_prim()
-            #self.set_delocalized_vectors()
-            delocalized = self.get_delocalized()
-            deloc_diff = delocalized - delocalized_start
-            #print(deloc_diff)
-            last_int_step = last_int_step - deloc_diff
-            #import pdb; pdb.set_trace()
-            last_int_step_norm = np.linalg.norm(last_int_step)
-            print(f"cycle {k}:", last_int_step_norm)
-            k += 1
-            print()
-            if k == 5:
-                break
-        pass
+    """
+    @property
+    def G(self):
+        B = self.B
+        return B.dot(B.T)
+    """
+

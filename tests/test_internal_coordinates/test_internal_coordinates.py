@@ -3,7 +3,7 @@
 import numpy as np
 
 from pysisyphus.helpers import geom_from_library
-from pysisyphus.InternalCoordinates import InternalCoordinates
+from pysisyphus.InternalCoordinates import RedundantCoords, DelocalizedCoords
 from pysisyphus.calculators.XTB import XTB
 
 
@@ -17,31 +17,41 @@ def test_fluorethylene():
     #fe_geom.set_calculator(XTB())
     #forces = fe_geom.forces
     #np.savetxt(forces_fn, forces)
+    ic = RedundantCoords(geom)
     forces = np.loadtxt(forces_fn)
     #print(forces)
-    ic = InternalCoordinates(geom)
-
-    #fe_B = get_B_mat(geom)
-    #B_mat_inv = get_B_inv(fe_B, geom.atoms)
-    # Transform forces to internal coordinates
-    int_forces = ic.B_inv.dot(forces)
-    #print(int_forces)
-    int_step = 0.5*int_forces
+    forces *= 1.0
+    step = ic.B_inv.dot(forces)
     #max_step = max(abs(step))
     #if max_step > 0.04:
     #        step /= max_step
-    ic.backtransform(int_step)
+    ic.transform(step)
     #assert len(fe_inds) == 5
     #assert len(fe_bends) == 6
     #assert len(fe_dihedrals) == 4
 
 
-def run():
-    """
-    h2o_geom = geom_from_library("h2o.xyz")
-    h2o_B = get_B_mat(h2o_geom)
+def test_h2o():
+    geom = geom_from_library("h2o.xyz")
+    forces_fn = "h2o_forces"
+    #geom.set_calculator(XTB())
+    #forces = geom.forces
+    #np.savetxt(forces_fn, forces)
+    ic = RedundantCoords(geom)
+    forces = np.loadtxt(forces_fn)
+    #print(forces)
+    forces *= 1#0.2
+    step = ic.B_inv.dot(forces)
+    #max_step = max(abs(step))
+    #if max_step > 0.04:
+    #        step /= max_step
+    ic.transform(step)
     #assert len(h2o_inds) == 2
     #assert len(h2o_bends) == 1
+
+
+def run():
+    """
 
     benzene_geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
     benezen_B = get_B_mat(benzene_geom)
@@ -68,5 +78,6 @@ def test_two_fragments():
 
 if __name__ == "__main__":
     test_fluorethylene()
+    #test_h2o()
     #test_two_fragments()
     #run()
