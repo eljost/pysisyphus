@@ -261,53 +261,35 @@ def get_B_mat(geom, save=None, tm_format=False):
     return B_mat
 
 
-def make_G_mat(B_mat):
-    G = B_mat.dot(B_mat.T)
+def get_B_inv(B_mat_prim, atoms):
+    G = B_mat_prim.dot(B_mat_prim.T)
     w, v = np.linalg.eigh(G)
-    print(w)
-    print(w.shape)
-    print(v.T)
+    #print(w)
+    #print(w.shape)
+    #print(v.T)
     non_zero_inds = np.where(abs(w) > 1e-6)
+    degrees_of_freedom = 3*len(atoms)-6
+    assert(len(non_zero_inds[0]) == degrees_of_freedom)
     eigenvecs = v.T[non_zero_inds]
-    import pdb; pdb.set_trace()
+    # Eq. 3 in [2], transformation of B to the active coordinate set
+    B_mat = eigenvecs.dot(B_mat_prim)
+    B_mat_inv = np.linalg.pinv(B_mat.dot(B_mat.T)).dot(B_mat)
+    return B_mat_inv
+
+# intenral indices entkoppeln und in objekt speichern
+# bei bedarf b-matrix regenerieren
 
 
-if __name__ == "__main__":
-    np.set_printoptions(suppress=True, precision=4)
+def backtransform(coords, int_step, B_mat_inv):
+    def rms(coords1, coords2):
+        return np.sqrt(np.mean((coords1-coords2)**2))
+    #x_new = coords + B_mat_inv.dot(int_step)
+    tmp_coords = coords.copy()
+    last_int_step = int_step
+    while True:
+        break
+        cart_step =  B_mat_inv.T.dot(last_int_step)
+        new_coords = tmp_coords + cart_step
+        #import pdb; pdb.set_trace()
+    pass
 
-    """
-    h2o_geom = geom_from_library("h2o.xyz") 
-    h2o_B = get_B_mat(h2o_geom)
-    #assert len(h2o_inds) == 2
-    #assert len(h2o_bends) == 1
-
-    benzene_geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
-    benezen_B = get_B_mat(benzene_geom)
-    #assert len(benzene_inds) == 12
-    """
-
-    # Fluorethylene, see [2] for geometry
-    fe_geom = geom_from_library("fluorethylene.xyz")
-    fe_B = get_B_mat(fe_geom)
-    make_G_mat(fe_B)
-    #assert len(fe_inds) == 5
-    #assert len(fe_bends) == 6
-    #assert len(fe_dihedrals) == 4
-
-    """
-    # PT H2O
-    pt_geom = geom_from_library("h2o_pt.xyz")
-    h2o_pt_B = get_B_mat(pt_geom)
-
-    # H2O2, 1 Dihedral
-    print("h2o2")
-    h2o2_geom = geom_from_library("h2o2_hf_321g_opt.xyz")
-    h2o2_B = get_B_mat(h2o2_geom)#, save="h2o2.bmat", tm_format=True)
-    """
-
-    """
-    # Two fragments
-    print("Two fragments")
-    two_frags = geom_from_library("h2o2_h2o_fragments.xyz")
-    two_frags_B = get_B_mat(two_frags)
-    """
