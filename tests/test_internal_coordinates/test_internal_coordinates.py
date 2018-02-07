@@ -3,7 +3,7 @@
 import numpy as np
 
 from pysisyphus.helpers import geom_from_library
-from pysisyphus.InternalCoordinates import get_B_mat, get_B_inv, backtransform
+from pysisyphus.InternalCoordinates import InternalCoordinates
 from pysisyphus.calculators.XTB import XTB
 
 
@@ -19,17 +19,18 @@ def test_fluorethylene():
     #np.savetxt(forces_fn, forces)
     forces = np.loadtxt(forces_fn)
     print(forces)
+    ic = InternalCoordinates(geom)
 
-    fe_B = get_B_mat(geom)
-    B_mat_inv = get_B_inv(fe_B, geom.atoms)
+    #fe_B = get_B_mat(geom)
+    #B_mat_inv = get_B_inv(fe_B, geom.atoms)
     # Transform forces to internal coordinates
-    int_forces = B_mat_inv.dot(forces)
+    int_forces = ic.B_inv.dot(forces)
     print(int_forces)
     int_step = 0.5*int_forces
     #max_step = max(abs(step))
     #if max_step > 0.04:
     #        step /= max_step
-    backtransform(geom.coords, int_step, B_mat_inv)
+    ic.backtransform(int_step)
     #assert len(fe_inds) == 5
     #assert len(fe_bends) == 6
     #assert len(fe_dihedrals) == 4
@@ -59,13 +60,13 @@ def run():
     h2o2_B = get_B_mat(h2o2_geom)#, save="h2o2.bmat", tm_format=True)
     """
 
-    """
+def test_two_fragments():
     # Two fragments
     print("Two fragments")
     two_frags = geom_from_library("h2o2_h2o_fragments.xyz")
     two_frags_B = get_B_mat(two_frags)
-    """
 
 if __name__ == "__main__":
     test_fluorethylene()
+    #test_two_fragments()
     #run()
