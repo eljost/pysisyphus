@@ -23,24 +23,64 @@ class RedundantCoords:
 
     def __init__(self, geom):
         self.geom = geom
-        self._coords = list()
+        self._prim_coords = list()
+        self._forces = None
+        self._hessian = None
 
         self.bond_indices = list()
         self.bending_indices = list()
         self.dihedral_indices = list()
 
         self.set_primitive_indices()
-        self._coords = self.calculate(self.geom.coords)
+        self._prim_coords = self.calculate(self.geom.coords)
         self.set_rho()
 
+    @property
+    def coords(self):
+        # Calcualte if not set?
+        return np.array([pc.val for pc in self._prim_coords])
+
+    @coords.setter
+    def coords(self, coords):
+        #print("setting coords", coords)
+        old_prim_coords = self.coords.copy()
+        diff = old_prim_coords - coords
+        cart_step = self.transform_int_step(diff)
+        self.geom.coords += cart_step
+        self._prim_coords = self.calculate(self.geom.coords)
+        self._forces = None
+        self._hessian = None
+
+    @property
+    def energy(self):
+        return self.geom.energy
+
+    @energy.setter
+    def energy(self, energy):
+        self.geom.energy = energy
+
+    @property
+    def forces(self):
+        if self._forces is None:
+            cart_forces = self.geom.forces
+            self._forces = self.B_inv.dot(cart_forces)
+        #print("internal forces", self._forces)
+        return self._forces
+
+    @forces.setter
+    def forces(self, forces):
+        self._forces = forces
+
+    """
     def __iter__(self):
-        return self._coords.__iter__()
+        return self._prim_coords.__iter__()
 
     def append(self, coord):
-        self._coords.append(coord)
+        self._prim_coords.append(coord)
 
     def extend(self, coords):
-        self._coords.extend(coords)
+        self._prim_coords.extend(coords)
+    """
 
     def set_rho(self):
         """Calculated rho values as required for the Lindh model hessian
@@ -82,7 +122,7 @@ class RedundantCoords:
             4: 0.005,
         }
         k_diag = list()
-        for primitive in self._coords:
+        for primitive in self._prim_coords:
             rho_product = 1
             for i1, i2 in it.combinations(primitive.inds, 2):
                 rho_product *= self.rho[i1, i2]
@@ -94,13 +134,13 @@ class RedundantCoords:
             3: 0.2,
             4: 0.1,
         }
-        k_diag = [k_dict[len(prim.inds)] for prim in self._coords]
+        k_diag = [k_dict[len(prim.inds)] for prim in self._prim_coords]
         logging.warning("Using simple 0.5/0.2/0.1 model hessian!")
         return np.diagflat(k_diag)
 
     @property
     def B(self):
-        return np.array([c.grad for c in self._coords])
+        return np.array([c.grad for c in self._prim_coords])
 
     @property
     def B_inv(self):
@@ -362,19 +402,23 @@ class RedundantCoords:
             return dihedral_rad, row
         return dihedral_rad
 
-    def transform(self, step, cart_rms_thresh=1e-6):
+    def transform_int_step(self, step, cart_rms_thresh=1e-6):
         def rms(coords1, coords2):
             return np.sqrt(np.mean((coords1-coords2)**2))
         B_inv = self.B_inv
-        #print("B_inv")
-        #print(B_inv)
+        print("B_inv")
+        print(B_inv)
+        print("step")
+        print(step)
         last_step = step
         last_coords = self.geom.coords.copy()
         last_vals = self.calculate(last_coords, attr="val")
+        full_cart_step = np.zeros_like(self.geom.coords)
         for i in range(25):
-            cartesian_step = B_inv.T.dot(last_step)
-            new_coords = last_coords + cartesian_step
-            cartesian_rms = rms(last_coords, new_coords)
+            cart_step = B_inv.T.dot(last_step)
+            full_cart_step += cart_step
+            new_coords = last_coords + cart_step
+            cart_rms = rms(last_coords, new_coords)
             new_vals = self.calculate(new_coords, attr="val")
 
             last_step -= new_vals - last_vals
@@ -392,11 +436,12 @@ class RedundantCoords:
             #assert(new_vals == val_diffs + last_vals)
             #print("dq", last_step)
             #import pdb; pdb.set_trace()
-            print(f"Cycle {i}: rms(ΔCart) = {cartesian_rms:1.4e}")
-            if cartesian_rms < cart_rms_thresh:
+            print(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
+            if cart_rms < cart_rms_thresh:
                 print("Converged!")
                 break
-        self.geom.coords = last_coords
+        #self.geom.coords = last_coords
+        return -full_cart_step#, last_coords
         #return last_coords
 
 

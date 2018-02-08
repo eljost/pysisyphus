@@ -5,6 +5,8 @@ import numpy as np
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.InternalCoordinates import RedundantCoords, DelocalizedCoords
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.BFGS import BFGS
 
 
 np.set_printoptions(suppress=True, precision=4)
@@ -26,7 +28,7 @@ def test_fluorethylene():
     forces = np.loadtxt(forces_fn)
     #print(forces)
     step = rc.B_inv.dot(forces)
-    rc.transform(step)
+    rc.transform_int_step(step)
     init_hess = rc.get_initial_hessian()
     #print("rho")
     #print(rc.rho)
@@ -38,6 +40,34 @@ def test_fluorethylene():
     #assert len(fe_dihedrals) == 4
 
 
+def test_fluorethylene_opt():
+    geom = geom_from_library("fluorethylene.xyz")
+    geom.set_calculator(XTB())
+    rc = RedundantCoords(geom)
+    for i in range(25):
+        forces = rc.forces
+        print("forces", forces)
+        forces_norm = np.linalg.norm(forces)
+        print(f"norm(forces) = {forces_norm:1.4f}")
+        if forces_norm < 1e-3:
+            print("fertig")
+            break
+        rc.coords -= forces
+        #break
+    print(i)
+
+def test_fluorethylene_opt2():
+    geom = geom_from_library("fluorethylene.xyz")
+    geom.set_calculator(XTB())
+    rc = RedundantCoords(geom)
+    #opt = SteepestDescent(rc)
+    #opt = SteepestDescent(geom)
+    #opt.run()
+    #opt = BFGS(rc)
+    opt = BFGS(geom)
+    opt.run()
+
+
 def test_h2o():
     xyz_fn = "h2o.xyz"
     geom, rc = base(xyz_fn)
@@ -46,7 +76,7 @@ def test_h2o():
     forces = np.loadtxt(forces_fn)
     #print(forces)
     step = rc.B_inv.dot(forces)
-    rc.transform(step)
+    rc.transform_int_step(step)
     init_hess = rc.get_initial_hessian()
     #print("rho")
     #print(rc.rho)
@@ -60,15 +90,27 @@ def test_h2o():
 def test_h2o_opt():
     geom = geom_from_library("h2o.xyz")
     geom.set_calculator(XTB())
-    ic = RedundantCoords(geom)
+    rc = RedundantCoords(geom)
     for i in range(25):
-        forces = geom.forces
+        forces = rc.forces
+        print("forces", forces)
         forces_norm = np.linalg.norm(forces)
         print(f"norm(forces) = {forces_norm:1.4f}")
         if forces_norm < 1e-3:
+            print("fertig")
             break
-        internal_step = ic.B_inv.dot(forces)
-        ic.transform(internal_step)
+        rc.coords -= forces
+        #break
+
+
+def test_h2o_opt2():
+    geom = geom_from_library("h2o.xyz")
+    geom.set_calculator(XTB())
+    rc = RedundantCoords(geom)
+    #opt = SteepestDescent(rc, alpha=1.0)
+    #opt.run()
+    opt = BFGS(rc)
+    opt.run()
 
 
 def run():
@@ -98,8 +140,11 @@ def test_two_fragments():
     two_frags_B = get_B_mat(two_frags)
 
 if __name__ == "__main__":
-    test_fluorethylene()
-    test_h2o()
+    #test_fluorethylene()
+    #test_h2o()
     #test_h2o_opt()
+    #test_fluorethylene_opt()
+    test_fluorethylene_opt2()
+    #test_h2o_opt2()
     #test_two_fragments()
     #run()
