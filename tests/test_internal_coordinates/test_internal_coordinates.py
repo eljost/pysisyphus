@@ -56,6 +56,18 @@ def test_fluorethylene_opt():
         #break
     print(i)
 
+
+def test_opt(xyz_fn, fact=None):
+    geom = geom_from_library(xyz_fn)
+    if fact:
+        geom.coords *= fact
+    geom.set_calculator(XTB())
+    rc = RedundantCoords(geom)
+    opt = BFGS(rc, dump=True)
+    #opt = SteepestDescent(rc)
+    opt.run()
+
+
 def test_fluorethylene_opt2():
     geom = geom_from_library("fluorethylene.xyz")
     geom.set_calculator(XTB())
@@ -144,7 +156,10 @@ if __name__ == "__main__":
     #test_h2o()
     #test_h2o_opt()
     #test_fluorethylene_opt()
-    test_fluorethylene_opt2()
+    #test_fluorethylene_opt2()
+    test_opt("fluorethylene.xyz")
+    #test_opt("menthone.xyz", fact=0.529177249)
+    #test_opt("h2o.xyz")
     #test_h2o_opt2()
     #test_two_fragments()
     #run()
