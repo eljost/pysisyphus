@@ -50,6 +50,20 @@ def test_h2o():
     #assert len(h2o_bends) == 1
 
 
+def test_h2o_opt():
+    geom = geom_from_library("h2o.xyz")
+    geom.set_calculator(XTB())
+    ic = RedundantCoords(geom)
+    for i in range(25):
+        forces = geom.forces
+        forces_norm = np.linalg.norm(forces)
+        print(f"norm(forces) = {forces_norm:1.4f}")
+        if forces_norm < 1e-3:
+            break
+        internal_step = ic.B_inv.dot(forces)
+        ic.transform(internal_step)
+
+
 def run():
     """
 
@@ -77,7 +91,8 @@ def test_two_fragments():
     two_frags_B = get_B_mat(two_frags)
 
 if __name__ == "__main__":
-    test_fluorethylene()
-    #test_h2o()
+    #test_fluorethylene()
+    test_h2o()
+    #test_h2o_opt()
     #test_two_fragments()
     #run()

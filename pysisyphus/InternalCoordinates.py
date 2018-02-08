@@ -338,7 +338,8 @@ class RedundantCoords:
             if cartesian_rms < cart_rms_thresh:
                 print("Converged!")
                 break
-        return last_coords
+        self.geom.coords = last_coords
+        #return last_coords
 
 
 class DelocalizedCoords(RedundantCoords):
