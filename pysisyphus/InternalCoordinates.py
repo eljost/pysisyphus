@@ -67,6 +67,9 @@ class RedundantCoords:
         cov_radii = np.array([CR[a.lower()] for a in atoms])
         coords3d = self.geom.coords.reshape(-1, 3)
         cdm = pdist(coords3d)
+        # It shouldn't be a problem that the diagonal is 0 because
+        # no primitive internal coordinates will ever access a diagonal
+        # element.
         self.rho = squareform(np.exp(alphas*(cov_radii**2-cdm**2)))
 
     @property
