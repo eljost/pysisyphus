@@ -49,15 +49,6 @@ class RedundantCoords:
     def coords(self):
         return np.array([pc.val for pc in self.calculate(self.cart_coords)])
 
-    #@coords.setter
-    #def coords(self, coords):
-    #    #print("setting coords", coords)
-    #    old_prim_coords = self.coords.copy()
-    #    diff = coords - old_prim_coords
-    #    cart_step = self.transform_int_step(diff)
-    #    self.cart_coords += cart_step
-    #    self._prim_coords = self.calculate(self.cart_coords)
-
     def set_rho(self):
         """Calculated rho values as required for the Lindh model hessian
         as described in [3], similar to pyberny.

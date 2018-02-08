@@ -35,7 +35,7 @@ class Geometry:
         self.masses_rep = np.repeat(self.masses, repeat_masses)
 
     def clear(self):
-        self.calculator = None
+        #self.calculator = None
         self._energy = None
         self._forces = None
         self._hessian = None
@@ -102,7 +102,6 @@ class Geometry:
 
     @forces.setter
     def forces(self, forces):
-        print("got forces", forces)
         if self.internal:
             raise Exception("Setting forces in internal coordinates not "
                             "yet implemented!")
