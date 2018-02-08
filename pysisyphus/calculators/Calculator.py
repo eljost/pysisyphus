@@ -34,9 +34,6 @@ class Calculator:
             self.calc_counter = int(last_calc_cycle)+1
             self.reattach(int(last_calc_cycle))
             self.log(f"set {self.calc_counter} for this calculation")
-        self._energy = None
-        self._forces = None
-        self._hessian = None
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"

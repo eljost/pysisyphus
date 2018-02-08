@@ -196,7 +196,7 @@ class ORCA(Calculator):
         energy = float(engrad.pop(0))
         force = -np.array(engrad[:3*atoms], dtype=np.float)
         results["energy"] = energy
-        results["forces"] = force
+        results["cart_forces"] = force
 
         if self.do_tddft:
             # This sets the proper excited state energy in the

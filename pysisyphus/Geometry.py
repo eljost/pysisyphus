@@ -75,8 +75,8 @@ class Geometry:
     @property
     def forces(self):
         if self._cart_forces is None:
-            results = self.calculator.get_cart_forces(self.atoms,
-                                                      self._cart_coords)
+            results = self.calculator.get_forces(self.atoms,
+                                                 self._cart_coords)
             self.set_results(results)
         return self._cart_forces
 
@@ -99,8 +99,8 @@ class Geometry:
     @property
     def hessian(self):
         if self._cart_hessian is None:
-            results = self.calculator.get_cart_hessian(self.atoms,
-                                                       self._cart_coords)
+            results = self.calculator.get_hessian(self.atoms,
+                                                  self._cart_coords)
             self.set_results(results)
         return self._cart_hessian
 
@@ -114,8 +114,8 @@ class Geometry:
         self._cart_hessian = hessian
 
     def calc_energy_and_forces(self):
-        results = self.calculator.get_cart_forces(self.atoms,
-                                                  self._cart_coords)
+        results = self.calculator.get_forces(self.atoms,
+                                             self._cart_coords)
         self.set_results(results)
 
     def set_results(self, results):

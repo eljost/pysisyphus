@@ -45,7 +45,7 @@ def parse_turbo_gradient(path):
     gradient = np.array(parsed["grad"].asList()).flatten()
 
     results["energy"] = parsed["scf_energy"]
-    results["forces"] = -gradient
+    results["cart_forces"] = -gradient
     return results
 
 

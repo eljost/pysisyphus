@@ -106,7 +106,7 @@ class IDPP(Calculator):
 
         results = {
             "energy" : energy,
-            "forces": forces.flatten()
+            "cart_forces": forces.flatten()
         }
         return results
 
