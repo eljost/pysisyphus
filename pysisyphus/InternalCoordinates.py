@@ -4,6 +4,7 @@
 # [2] https://doi.org/10.1063/1.471864 delocalized internal coordinates
 
 from collections import namedtuple
+from functools import reduce
 import itertools
 import logging
 
@@ -116,9 +117,13 @@ class RedundantCoords:
             interfragment_inds = connect_fragments(cdm, fragments)
             bond_indices = np.concatenate((bond_indices, interfragment_inds))
 
-        logging.warning("No check for single atoms!")
+        logging.warning("No check for unbonded single atoms!")
         logging.warning("No check for hydrogen bonds!")
         self.bond_indices = bond_indices
+        bonded_set = reduce(lambda x, y: set(x) | set(y), bond_indices)
+        assert bonded_set == set(range(len(self.geom.atoms))), \
+               "Found unbonded atoms!"
+        #import pdb; pdb.set_trace()
 
     def sort_by_central(self, set1, set2):
         """Determines a common index in two sets and returns a length 3
@@ -182,19 +187,26 @@ class RedundantCoords:
         return prims
     """
 
-    def calculate(self, coords):
+    def calculate(self, coords, attr=None):
         coords3d = coords.reshape(-1, 3)
         def per_type(func, ind):
             val, grad = func(coords3d, ind, True)
             return PrimitiveCoord(ind, val, grad)
-        coords = list()
+        int_coords = list()
         for ind in self.bond_indices:
-            coords.append(per_type(self.calc_stretch, ind))
+            int_coords.append(per_type(self.calc_stretch, ind))
         for ind in self.bending_indices:
-            coords.append(per_type(self.calc_bend, ind))
+            int_coords.append(per_type(self.calc_bend, ind))
         for ind in self.dihedral_indices:
-            coords.append(per_type(self.calc_dihedral, ind))
-        return coords
+            int_coords.append(per_type(self.calc_dihedral, ind))
+        if attr:
+            return np.array([getattr(ic,attr) for ic in int_coords])
+        return int_coords
+
+    def calculate_val_diffs(self, coords1, coords2):
+        vals1 = np.array(self.calculate(coords1, attr="val"))
+        vals2 = np.array(self.calculate(coords2, attr="val"))
+        return vals1-vals2
 
     def calc_stretch(self, coords, bond_ind, grad=False):
         n, m = bond_ind
@@ -292,40 +304,41 @@ class RedundantCoords:
             return dihedral_rad, row
         return dihedral_rad
 
-    #def transform_step(self, int_step):
-    def transform(self, step, cart_thresh=1e-6):
+    def transform(self, step, cart_rms_thresh=1e-6):
         def rms(coords1, coords2):
             return np.sqrt(np.mean((coords1-coords2)**2))
         B_inv = self.B_inv
         #print("B_inv")
         #print(B_inv)
-        #int_step = np.array((0.0587,  0.0587, -0.1987))
         last_step = step
         last_coords = self.geom.coords.copy()
-        last_vals = np.array([pc.val for pc in self.calculate(last_coords)])
+        last_vals = self.calculate(last_coords, attr="val")
         for i in range(25):
-            cart_step = B_inv.T.dot(last_step)
+            cartesian_step = B_inv.T.dot(last_step)
+            new_coords = last_coords + cartesian_step
+            cartesian_rms = rms(last_coords, new_coords)
+            new_vals = self.calculate(new_coords, attr="val")
+
+            last_step -= new_vals - last_vals
+            last_coords = new_coords
+            last_vals = new_vals
             #print("cart_step")
             #print(cart_step.reshape(-1,3))
-            new_coords = last_coords + cart_step
             #print("new_coords")
             #print(new_coords.reshape(-1,3))
-            cart_rms = rms(last_coords, new_coords)
-            last_coords = new_coords
             #print("cart_rms", cart_rms)
-            new_pc = self.calculate(last_coords)
-            new_vals = np.array([pc.val for pc in new_pc])
+            #new_pc = self.calculate(last_coords)
             #print("coords_diff", new_vals - last_vals)
             #print("new_internal_coordinates", new_vals)
             #q, dq = q_new, dq-(q_new-q)
-            last_step = last_step - (new_vals - last_vals)
-            last_vals = new_vals
+            #assert(new_vals == val_diffs + last_vals)
             #print("dq", last_step)
             #import pdb; pdb.set_trace()
-            print(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
-            if cart_rms < cart_thresh:
+            print(f"Cycle {i}: rms(ΔCart) = {cartesian_rms:1.4e}")
+            if cartesian_rms < cart_rms_thresh:
                 print("Converged!")
                 break
+        return last_coords
 
 
 class DelocalizedCoords(RedundantCoords):
