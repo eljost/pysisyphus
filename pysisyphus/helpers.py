@@ -9,24 +9,24 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
 
-def geom_from_xyz_file(xyz_fn):
+def geom_from_xyz_file(xyz_fn, **kwargs):
     atoms, coords = parse_xyz_file(xyz_fn)
     coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten())
+    geom = Geometry(atoms, coords.flatten(), **kwargs)
     return geom
 
 
-def geom_from_library(xyz_fn):
+def geom_from_library(xyz_fn, **kwargs):
     this_dir = os.path.abspath(os.path.dirname(__file__))
     xyz_dir = Path(this_dir) / "../xyz_files/"
     atoms, coords = parse_xyz_file(xyz_dir / xyz_fn)
     coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten())
+    geom = Geometry(atoms, coords.flatten(), **kwargs)
     return geom
 
 
-def geoms_from_trj(trj_fn):
-    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR)
+def geoms_from_trj(trj_fn, **kwargs):
+    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, **kwargs)
              for atoms, coords in parse_trj_file(trj_fn)
     ]
     return geoms
