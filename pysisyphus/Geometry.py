@@ -6,6 +6,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
 from pysisyphus.elem_data import MASS_DICT
 
+
 class Geometry:
 
     def __init__(self, atoms, coords):
@@ -13,8 +14,8 @@ class Geometry:
         self._cart_coords = coords
 
         self._energy = None
-        self._forces = None
-        self._hessian = None
+        self._cart_forces = None
+        self._cart_hessian = None
 
         self.masses = [MASS_DICT[atom.lower()] for atom in self.atoms]
         # Some of the analytical potentials are only 2D
@@ -24,8 +25,8 @@ class Geometry:
     def clear(self):
         self.calculator = None
         self._energy = None
-        self._forces = None
-        self._hessian = None
+        self._cart_forces = None
+        self._cart_hessian = None
 
     def set_calculator(self, calculator):
         self.clear()
@@ -49,8 +50,8 @@ class Geometry:
         # Reset all values because no calculations with the new coords
         # have been performed yet.
         self._energy = None
-        self._forces = None
-        self._hessian = None
+        self._cart_forces = None
+        self._cart_hessian = None
 
     @property
     def mw_coords(self):
@@ -73,14 +74,15 @@ class Geometry:
 
     @property
     def forces(self):
-        if self._forces is None:
-            results = self.calculator.get_forces(self.atoms, self._cart_coords)
+        if self._cart_forces is None:
+            results = self.calculator.get_cart_forces(self.atoms,
+                                                      self._cart_coords)
             self.set_results(results)
-        return self._forces
+        return self._cart_forces
 
     @forces.setter
     def forces(self, forces):
-        self._forces = forces
+        self._cart_forces = forces
 
     @property
     def gradient(self):
@@ -88,7 +90,7 @@ class Geometry:
 
     @gradient.setter
     def gradient(self, gradient):
-        self._forces = -gradient
+        self._cart_forces = -gradient
 
     @property
     def mw_gradient(self):
@@ -96,22 +98,24 @@ class Geometry:
 
     @property
     def hessian(self):
-        if self._hessian is None:
-            results = self.calculator.get_hessian(self.atoms, self._cart_coords)
+        if self._cart_hessian is None:
+            results = self.calculator.get_cart_hessian(self.atoms,
+                                                       self._cart_coords)
             self.set_results(results)
-        return self._hessian
+        return self._cart_hessian
 
     @property
-    def mw_hessian(self):
+    def mw_cart_hessian(self):
         # M^(-1/2) H M^(-1/2)
         return self.mm_sqrt_inv.dot(self.hessian).dot(self.mm_sqrt_inv)
 
     @hessian.setter
     def hessian(self, hessian):
-        self._hessian = hessian
+        self._cart_hessian = hessian
 
     def calc_energy_and_forces(self):
-        results = self.calculator.get_forces(self.atoms, self._cart_coords)
+        results = self.calculator.get_cart_forces(self.atoms,
+                                                  self._cart_coords)
         self.set_results(results)
 
     def set_results(self, results):
@@ -123,7 +127,7 @@ class Geometry:
         coords = self._cart_coords * BOHR2ANG
         if self._energy:
             comment = f"{comment} {self._energy}"
-        return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
+        return make_xyz_str(self.atoms, coords.reshape((-1, 3)), comment)
 
     def __str__(self):
         return "Geometry with {} atoms".format(len(self.atoms))
