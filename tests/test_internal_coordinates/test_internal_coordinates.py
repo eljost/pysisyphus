@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import logging; logging.disable(logging.DEBUG)
+#import logging; logging.disable(logging.DEBUG)
 import numpy as np
 
 from pysisyphus.helpers import geom_from_library

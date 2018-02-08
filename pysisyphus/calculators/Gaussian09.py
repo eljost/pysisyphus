@@ -137,7 +137,7 @@ class Gaussian09(Calculator):
         fchk_path = Path(path) / f"{self.fn_base}.fchk"
         fchk_dict = self.parse_fchk(fchk_path, keys)
         results["energy"] = fchk_dict["Total Energy"]
-        results["cart_forces"] = -fchk_dict["Cartesian Gradient"]
+        results["forces"] = -fchk_dict["Cartesian Gradient"]
 
         if self.nstates:
             # This sets the proper excited state energy in the

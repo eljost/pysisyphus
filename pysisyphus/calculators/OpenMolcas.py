@@ -180,7 +180,7 @@ class OpenMolcas(Calculator):
 
         results["energy"] = energy
         results["sa_energies"] = sa_energies
-        results["cart_forces"] = -gradient
+        results["forces"] = -gradient
 
         return results
 

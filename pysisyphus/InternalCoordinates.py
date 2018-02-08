@@ -43,6 +43,7 @@ class RedundantCoords:
         return np.linalg.pinv(B.dot(B.T)).dot(B)
 
     def transform_forces(self, cart_forces):
+        #import pdb; pdb.set_trace()
         return self.B_inv.dot(cart_forces)
 
     @property

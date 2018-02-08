@@ -103,8 +103,9 @@ class Geometry:
     @forces.setter
     def forces(self, forces):
         if self.internal:
-            raise Exception("Setting forces in internal coordinates not "
-                            "yet implemented!")
+            #raise Exception("Setting forces in internal coordinates not "
+            #                "yet implemented!")
+            pass
         self._forces = forces
 
     @property
