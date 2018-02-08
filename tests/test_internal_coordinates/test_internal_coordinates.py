@@ -22,11 +22,11 @@ def test_fluorethylene():
     # Fluorethylene, see [2] for geometry
     xyz_fn = "fluorethylene.xyz"
     geom, rc = base(xyz_fn)
-    #forces_fn = "fe_forces"
-    #forces = np.loadtxt(forces_fn)
+    forces_fn = "fe_forces"
+    forces = np.loadtxt(forces_fn)
     #print(forces)
-    #step = cc.B_inv.dot(forces)
-    #ic.transform(step)
+    step = rc.B_inv.dot(forces)
+    rc.transform(step)
     init_hess = rc.get_initial_hessian()
     #print("rho")
     #print(rc.rho)
@@ -41,17 +41,17 @@ def test_fluorethylene():
 def test_h2o():
     xyz_fn = "h2o.xyz"
     geom, rc = base(xyz_fn)
-    #forces_fn = "h2o_forces"
+    forces_fn = "h2o_forces"
     #forces = geom.forces
-    #forces = np.loadtxt(forces_fn)
+    forces = np.loadtxt(forces_fn)
     #print(forces)
-    #step = ic.B_inv.dot(forces)
-    #ic.transform(step)
+    step = rc.B_inv.dot(forces)
+    rc.transform(step)
     init_hess = rc.get_initial_hessian()
-    print("rho")
-    print(rc.rho)
-    print("guess_hessian")
-    print(init_hess)
+    #print("rho")
+    #print(rc.rho)
+    #print("guess_hessian")
+    #print(init_hess)
 
     #assert len(h2o_inds) == 2
     #assert len(h2o_bends) == 1
@@ -99,7 +99,7 @@ def test_two_fragments():
 
 if __name__ == "__main__":
     test_fluorethylene()
-    #test_h2o()
+    test_h2o()
     #test_h2o_opt()
     #test_two_fragments()
     #run()
