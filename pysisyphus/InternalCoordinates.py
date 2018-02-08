@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-# [1] https://doi.org/10.1063/1.1515483
+# [1] https://doi.org/10.1063/1.1515483 optimization review
 # [2] https://doi.org/10.1063/1.471864 delocalized internal coordinates
+# [3] https://doi.org/10.1016/0009-2614(95)00646-L lindh model hessian
 
 from collections import namedtuple
 from functools import reduce
@@ -30,6 +31,7 @@ class RedundantCoords:
 
         self.set_primitive_indices()
         self._coords = self.calculate(self.geom.coords)
+        self.set_rho()
 
     def __iter__(self):
         return self._coords.__iter__()
@@ -39,6 +41,33 @@ class RedundantCoords:
 
     def extend(self, coords):
         self._coords.extend(coords)
+
+    def set_rho(self):
+        """Calculated rho values as required for the Lindh model hessian
+        as described in [3], similar to pyberny.
+        Instead of using the tabulated r_ref,ij values we will use the covalent
+        radii as in pyberny. The tabulated r_ref,ij value for two carbons
+        (2nd period) is 2.87 Bohr. Carbons covalent radius is ~ 1.44 Bohr,
+        so two times it is 2.88 Bohr which fits nicely with the tabulate value.
+        Hydrogens covalent radius is 0.59 bohr, so C-H gives 2.03 Bohr
+        (tabulated 2.10). If values for elements > 3rd are requested the alpha
+        values for the 3rd period will be (re)used.
+        """
+        first_period = "h he".split()
+        def get_alpha(atom1, atom2):
+            if (atom1 in first_period) and (atom2 in first_period):
+                return 1.
+            elif (atom1 in first_period) or (atom2 in first_period):
+                return 0.3949
+            else:
+                return 0.28
+        atoms = [a.lower() for a in self.geom.atoms]
+        alphas = [get_alpha(a1, a2)
+                  for a1, a2 in itertools.combinations(atoms, 2)]
+        cov_radii = np.array([CR[a.lower()] for a in atoms])
+        coords3d = self.geom.coords.reshape(-1, 3)
+        cdm = pdist(coords3d)
+        self.rho = squareform(np.exp(alphas*(cov_radii**2-cdm**2)))
 
     @property
     def B(self):
