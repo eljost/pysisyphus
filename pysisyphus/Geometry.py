@@ -10,7 +10,7 @@ class Geometry:
 
     def __init__(self, atoms, coords):
         self.atoms = atoms
-        self._coords = coords
+        self._cart_coords = coords
 
         self._energy = None
         self._forces = None
@@ -18,7 +18,7 @@ class Geometry:
 
         self.masses = [MASS_DICT[atom.lower()] for atom in self.atoms]
         # Some of the analytical potentials are only 2D
-        repeat_masses = 2 if (self._coords.size == 2) else 3
+        repeat_masses = 2 if (self._cart_coords.size == 2) else 3
         self.masses_rep = np.repeat(self.masses, repeat_masses)
 
     def clear(self):
@@ -41,11 +41,11 @@ class Geometry:
 
     @property
     def coords(self):
-        return self._coords
+        return self._cart_coords
 
     @coords.setter
     def coords(self, coords):
-        self._coords = coords
+        self._cart_coords = coords
         # Reset all values because no calculations with the new coords
         # have been performed yet.
         self._energy = None
@@ -54,7 +54,7 @@ class Geometry:
 
     @property
     def mw_coords(self):
-        return np.sqrt(self.masses_rep) * self._coords
+        return np.sqrt(self.masses_rep) * self._cart_coords
 
     @mw_coords.setter
     def mw_coords(self, mw_coords):
@@ -63,7 +63,7 @@ class Geometry:
     @property
     def energy(self):
         if self._energy is None:
-            results = self.calculator.get_energy(self.atoms, self.coords)
+            results = self.calculator.get_energy(self.atoms, self._cart_coords)
             self.set_results(results)
         return self._energy
 
@@ -74,7 +74,7 @@ class Geometry:
     @property
     def forces(self):
         if self._forces is None:
-            results = self.calculator.get_forces(self.atoms, self.coords)
+            results = self.calculator.get_forces(self.atoms, self._cart_coords)
             self.set_results(results)
         return self._forces
 
@@ -97,7 +97,7 @@ class Geometry:
     @property
     def hessian(self):
         if self._hessian is None:
-            results = self.calculator.get_hessian(self.atoms, self.coords)
+            results = self.calculator.get_hessian(self.atoms, self._cart_coords)
             self.set_results(results)
         return self._hessian
 
@@ -111,7 +111,7 @@ class Geometry:
         self._hessian = hessian
 
     def calc_energy_and_forces(self):
-        results = self.calculator.get_forces(self.atoms, self.coords)
+        results = self.calculator.get_forces(self.atoms, self._cart_coords)
         self.set_results(results)
 
     def set_results(self, results):
@@ -120,7 +120,7 @@ class Geometry:
         self.results = results
 
     def as_xyz(self, comment=""):
-        coords = self.coords * BOHR2ANG
+        coords = self._cart_coords * BOHR2ANG
         if self._energy:
             comment = f"{comment} {self._energy}"
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
