@@ -6,7 +6,7 @@
 
 from collections import namedtuple
 from functools import reduce
-import itertools
+import itertools as it
 import logging
 
 import numpy as np
@@ -63,16 +63,40 @@ class RedundantCoords:
                 return 0.28
         atoms = [a.lower() for a in self.geom.atoms]
         alphas = [get_alpha(a1, a2)
-                  for a1, a2 in itertools.combinations(atoms, 2)]
+                  for a1, a2 in it.combinations(atoms, 2)]
         cov_radii = np.array([CR[a.lower()] for a in atoms])
         rref = np.array([r1+r2
-                         for r1, r2 in itertools.combinations(cov_radii, 2)])
+                         for r1, r2 in it.combinations(cov_radii, 2)])
         coords3d = self.geom.coords.reshape(-1, 3)
         cdm = pdist(coords3d)
         # It shouldn't be a problem that the diagonal is 0 because
         # no primitive internal coordinates will ever access a diagonal
         # element.
         self.rho = squareform(np.exp(alphas*(rref**2-cdm**2)))
+
+    def get_initial_hessian(self):
+        """
+        k_dict = {
+            2: 0.45,
+            3: 0.15,
+            4: 0.005,
+        }
+        k_diag = list()
+        for primitive in self._coords:
+            rho_product = 1
+            for i1, i2 in it.combinations(primitive.inds, 2):
+                rho_product *= self.rho[i1, i2]
+            k_diag.append(k_dict[len(primitive.inds)] * rho_product)
+        return np.diagflat(k_diag)
+        """
+        k_dict = {
+            2: 0.5,
+            3: 0.2,
+            4: 0.1,
+        }
+        k_diag = [k_dict[len(prim.inds)] for prim in self._coords]
+        logging.warning("Using simple 0.5/0.2/0.1 model hessian!")
+        return np.diagflat(k_diag)
 
     @property
     def B(self):
@@ -109,10 +133,10 @@ class RedundantCoords:
         of fragments and a condensed distance matrix."""
         dist_mat = squareform(cdm)
         interfragment_indices = list()
-        for frag1, frag2 in itertools.combinations(fragments, 2):
+        for frag1, frag2 in it.combinations(fragments, 2):
             arr1 = np.array(list(frag1))[None,:]
             arr2 = np.array(list(frag2))[:,None]
-            indices = [(i1, i2) for i1, i2 in itertools.product(frag1, frag2)]
+            indices = [(i1, i2) for i1, i2 in it.product(frag1, frag2)]
             distances = np.array([dist_mat[ind] for ind in indices])
             min_index = indices[distances.argmin()]
             interfragment_indices.append(min_index)
@@ -130,7 +154,7 @@ class RedundantCoords:
         cdm = pdist(coords)
         # Generate indices corresponding to the atom pairs in the
         # condensed distance matrix cdm.
-        atom_indices = list(itertools.combinations(range(len(coords)),2))
+        atom_indices = list(it.combinations(range(len(coords)),2))
         atom_indices = np.array(atom_indices, dtype=int)
         cov_rad_sums = list()
         for i, j in atom_indices:
@@ -172,7 +196,7 @@ class RedundantCoords:
 
     def set_bending_indices(self):
         bond_sets = {frozenset(bi) for bi in self.bond_indices}
-        for bond_set1, bond_set2 in itertools.combinations(bond_sets, 2):
+        for bond_set1, bond_set2 in it.combinations(bond_sets, 2):
             union = bond_set1 | bond_set2
             if len(union) == 3:
                 as_tpl, _ = self.sort_by_central(bond_set1, bond_set2)
@@ -183,7 +207,7 @@ class RedundantCoords:
 
     def set_dihedral_indices(self):
         dihedral_sets = list()
-        for bond, bend in itertools.product(self.bond_indices,
+        for bond, bend in it.product(self.bond_indices,
                                             self.bending_indices):
             central = bend[1]
             bes = set((bend[0], bend[2]))

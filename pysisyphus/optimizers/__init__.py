@@ -7,6 +7,7 @@ __all__ = [
     "QuickMin",
     "SteepestDescent",
     "SciPyOptimizer",
+    "RFOptimizer",
 ]
 
 logger = logging.getLogger("optimizer")

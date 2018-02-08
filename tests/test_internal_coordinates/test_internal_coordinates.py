@@ -10,42 +10,49 @@ from pysisyphus.calculators.XTB import XTB
 np.set_printoptions(suppress=True, precision=4)
 
 
+def base(xyz_fn):
+    geom = geom_from_library(xyz_fn)
+    geom.set_calculator(XTB())
+    rc = RedundantCoords(geom)
+
+    return geom, rc
+
+
 def test_fluorethylene():
     # Fluorethylene, see [2] for geometry
-    geom = geom_from_library("fluorethylene.xyz")
-    forces_fn = "fe_forces"
-    #fe_geom.set_calculator(XTB())
-    #forces = fe_geom.forces
-    #np.savetxt(forces_fn, forces)
-    ic = RedundantCoords(geom)
-    forces = np.loadtxt(forces_fn)
+    xyz_fn = "fluorethylene.xyz"
+    geom, rc = base(xyz_fn)
+    #forces_fn = "fe_forces"
+    #forces = np.loadtxt(forces_fn)
     #print(forces)
-    forces *= 1.0
-    step = ic.B_inv.dot(forces)
-    #max_step = max(abs(step))
-    #if max_step > 0.04:
-    #        step /= max_step
-    ic.transform(step)
+    #step = cc.B_inv.dot(forces)
+    #ic.transform(step)
+    init_hess = rc.get_initial_hessian()
+    #print("rho")
+    #print(rc.rho)
+    #print("guess_hessian")
+    #print(init_hess)
+
     #assert len(fe_inds) == 5
     #assert len(fe_bends) == 6
     #assert len(fe_dihedrals) == 4
 
 
 def test_h2o():
-    geom = geom_from_library("h2o.xyz")
-    forces_fn = "h2o_forces"
-    #geom.set_calculator(XTB())
+    xyz_fn = "h2o.xyz"
+    geom, rc = base(xyz_fn)
+    #forces_fn = "h2o_forces"
     #forces = geom.forces
-    #np.savetxt(forces_fn, forces)
-    ic = RedundantCoords(geom)
-    forces = np.loadtxt(forces_fn)
+    #forces = np.loadtxt(forces_fn)
     #print(forces)
-    forces *= 1#0.2
-    step = ic.B_inv.dot(forces)
-    #max_step = max(abs(step))
-    #if max_step > 0.04:
-    #        step /= max_step
-    ic.transform(step)
+    #step = ic.B_inv.dot(forces)
+    #ic.transform(step)
+    init_hess = rc.get_initial_hessian()
+    print("rho")
+    print(rc.rho)
+    print("guess_hessian")
+    print(init_hess)
+
     #assert len(h2o_inds) == 2
     #assert len(h2o_bends) == 1
 
@@ -91,8 +98,8 @@ def test_two_fragments():
     two_frags_B = get_B_mat(two_frags)
 
 if __name__ == "__main__":
-    #test_fluorethylene()
-    test_h2o()
+    test_fluorethylene()
+    #test_h2o()
     #test_h2o_opt()
     #test_two_fragments()
     #run()

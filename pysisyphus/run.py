@@ -42,6 +42,7 @@ OPT_DICT = {
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
     "scipy": SciPyOptimizer.SciPyOptimizer,
+    "rfo": RFOptimizer.RFOptimizer,
 }
 
 IRC_DICT = {
