@@ -5,6 +5,7 @@ import numpy as np
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.InternalCoordinates import RedundantCoords, DelocalizedCoords
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 
 
 np.set_printoptions(suppress=True, precision=4)
@@ -26,7 +27,7 @@ def test_fluorethylene():
     forces = np.loadtxt(forces_fn)
     #print(forces)
     step = rc.B_inv.dot(forces)
-    rc.transform(step)
+    rc.transform_int_step(step)
     init_hess = rc.get_initial_hessian()
     #print("rho")
     #print(rc.rho)
@@ -46,7 +47,7 @@ def test_h2o():
     forces = np.loadtxt(forces_fn)
     #print(forces)
     step = rc.B_inv.dot(forces)
-    rc.transform(step)
+    rc.transform_int_step(step)
     init_hess = rc.get_initial_hessian()
     #print("rho")
     #print(rc.rho)
@@ -55,6 +56,20 @@ def test_h2o():
 
     #assert len(h2o_inds) == 2
     #assert len(h2o_bends) == 1
+
+
+def test_internal_h2o():
+    xyz_fn = "h2o.xyz"
+    geom = geom_from_library(xyz_fn)
+    rc = RedundantCoords(geom.atoms, geom.coords)
+    rc.set_calculator(XTB())
+    #forces_fn = "h2o_forces"
+    #forces = np.loadtxt(forces_fn)
+    opt = SteepestDescent(rc)
+    opt.run()
+    #step = rc.B_inv.dot(forces)
+    #rc.transform_int_step(step)
+    #init_hess = rc.get_initial_hessian()
 
 
 def test_h2o_opt():
@@ -98,8 +113,9 @@ def test_two_fragments():
     two_frags_B = get_B_mat(two_frags)
 
 if __name__ == "__main__":
-    test_fluorethylene()
-    test_h2o()
+    #test_fluorethylene()
+    #test_h2o()
+    test_internal_h2o()
     #test_h2o_opt()
     #test_two_fragments()
     #run()

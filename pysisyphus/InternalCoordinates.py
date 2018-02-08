@@ -14,33 +14,70 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.elem_data import COVALENT_RADII as CR
+from pysisyphus.Geometry import Geometry
 
 
 PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
 
 
-class RedundantCoords:
+class RedundantCoords(Geometry):
 
-    def __init__(self, geom):
-        self.geom = geom
-        self._coords = list()
+    def __init__(self, atoms, coords):
+        super().__init__(atoms, coords)
+        self._prim_coords = list()
+        self._int_forces = None
+        self._int_hessian = None
 
         self.bond_indices = list()
         self.bending_indices = list()
         self.dihedral_indices = list()
 
         self.set_primitive_indices()
-        self._coords = self.calculate(self.geom.coords)
+        self._prim_coords = self.calculate(self._cart_coords)
         self.set_rho()
 
+    @property
+    def coords(self):
+        return self._prim_coords
+
+    @coords.setter
+    def coords(self, coords):
+        old_coords = self.coords.copy()
+        int_diff = old_coords - coords
+        self.transform_int_step(int_diff)
+        self._prim_coords = coords
+        logging.warning("reset the B matrices ...")
+
+        self._int_forces = None
+        self._int_hessian = None
+
+    @property
+    def forces(self):
+        if not self._int_forces:
+            # the following line calls set_results which calls the setter
+            # defined below. so the forces call on the Parent getter saves
+            # the cartesian forces in self._int_forces ... bad.
+            forces = Geometry.forces.fget(self)
+            import pdb; pdb.set_trace()
+            self._int_forces = self.B_inv.dot(forces)
+        # Convert to internal coordinates
+        logging.warning("Projector!")
+        return self._int_forces
+
+    @forces.setter
+    def forces(self, int_forces):
+        self._int_forces = int_forces
+
+    """
     def __iter__(self):
-        return self._coords.__iter__()
+        return self._prim_coords.__iter__()
 
     def append(self, coord):
-        self._coords.append(coord)
+        self._prim_coords.append(coord)
 
     def extend(self, coords):
-        self._coords.extend(coords)
+        self._prim_coords.extend(coords)
+    """
 
     def set_rho(self):
         """Calculated rho values as required for the Lindh model hessian
@@ -61,13 +98,13 @@ class RedundantCoords:
                 return 0.3949
             else:
                 return 0.28
-        atoms = [a.lower() for a in self.geom.atoms]
+        atoms = [a.lower() for a in self.atoms]
         alphas = [get_alpha(a1, a2)
                   for a1, a2 in it.combinations(atoms, 2)]
         cov_radii = np.array([CR[a.lower()] for a in atoms])
         rref = np.array([r1+r2
                          for r1, r2 in it.combinations(cov_radii, 2)])
-        coords3d = self.geom.coords.reshape(-1, 3)
+        coords3d = self._cart_coords.reshape(-1, 3)
         cdm = pdist(coords3d)
         # It shouldn't be a problem that the diagonal is 0 because
         # no primitive internal coordinates will ever access a diagonal
@@ -82,7 +119,7 @@ class RedundantCoords:
             4: 0.005,
         }
         k_diag = list()
-        for primitive in self._coords:
+        for primitive in self._prim_coords:
             rho_product = 1
             for i1, i2 in it.combinations(primitive.inds, 2):
                 rho_product *= self.rho[i1, i2]
@@ -94,13 +131,13 @@ class RedundantCoords:
             3: 0.2,
             4: 0.1,
         }
-        k_diag = [k_dict[len(prim.inds)] for prim in self._coords]
+        k_diag = [k_dict[len(prim.inds)] for prim in self._prim_coords]
         logging.warning("Using simple 0.5/0.2/0.1 model hessian!")
         return np.diagflat(k_diag)
 
     @property
     def B(self):
-        return np.array([c.grad for c in self._coords])
+        return np.array([c.grad for c in self._prim_coords])
 
     @property
     def B_inv(self):
@@ -149,7 +186,7 @@ class RedundantCoords:
         """
         Default factor of 1.3 taken from [1] A.1.
         """
-        coords = self.geom.coords.reshape(-1, 3)
+        coords = self._cart_coords.reshape(-1, 3)
         # Condensed distance matrix
         cdm = pdist(coords)
         # Generate indices corresponding to the atom pairs in the
@@ -158,8 +195,8 @@ class RedundantCoords:
         atom_indices = np.array(atom_indices, dtype=int)
         cov_rad_sums = list()
         for i, j in atom_indices:
-            atom1 = self.geom.atoms[i].lower()
-            atom2 = self.geom.atoms[j].lower()
+            atom1 = self.atoms[i].lower()
+            atom2 = self.atoms[j].lower()
             cov_rad1 = CR[atom1]
             cov_rad2 = CR[atom2]
             cov_rad_sum = factor * (cov_rad1 + cov_rad2)
@@ -179,9 +216,8 @@ class RedundantCoords:
         logging.warning("No check for hydrogen bonds!")
         self.bond_indices = bond_indices
         bonded_set = reduce(lambda x, y: set(x) | set(y), bond_indices)
-        assert bonded_set == set(range(len(self.geom.atoms))), \
+        assert bonded_set == set(range(len(self.atoms))), \
                "Found unbonded atoms!"
-        #import pdb; pdb.set_trace()
 
     def sort_by_central(self, set1, set2):
         """Determines a common index in two sets and returns a length 3
@@ -244,27 +280,6 @@ class RedundantCoords:
         print("primitives", prims)
         return prims
     """
-
-    def calculate(self, coords, attr=None):
-        coords3d = coords.reshape(-1, 3)
-        def per_type(func, ind):
-            val, grad = func(coords3d, ind, True)
-            return PrimitiveCoord(ind, val, grad)
-        int_coords = list()
-        for ind in self.bond_indices:
-            int_coords.append(per_type(self.calc_stretch, ind))
-        for ind in self.bending_indices:
-            int_coords.append(per_type(self.calc_bend, ind))
-        for ind in self.dihedral_indices:
-            int_coords.append(per_type(self.calc_dihedral, ind))
-        if attr:
-            return np.array([getattr(ic,attr) for ic in int_coords])
-        return int_coords
-
-    def calculate_val_diffs(self, coords1, coords2):
-        vals1 = np.array(self.calculate(coords1, attr="val"))
-        vals2 = np.array(self.calculate(coords2, attr="val"))
-        return vals1-vals2
 
     def calc_stretch(self, coords, bond_ind, grad=False):
         n, m = bond_ind
@@ -362,24 +377,48 @@ class RedundantCoords:
             return dihedral_rad, row
         return dihedral_rad
 
-    def transform(self, step, cart_rms_thresh=1e-6):
+    def calculate(self, coords, attr=None):
+        coords3d = coords.reshape(-1, 3)
+        def per_type(func, ind):
+            val, grad = func(coords3d, ind, True)
+            return PrimitiveCoord(ind, val, grad)
+        int_coords = list()
+        for ind in self.bond_indices:
+            int_coords.append(per_type(self.calc_stretch, ind))
+        for ind in self.bending_indices:
+            int_coords.append(per_type(self.calc_bend, ind))
+        for ind in self.dihedral_indices:
+            int_coords.append(per_type(self.calc_dihedral, ind))
+        if attr:
+            return np.array([getattr(ic,attr) for ic in int_coords])
+        return int_coords
+
+    def calculate_val_diffs(self, coords1, coords2):
+        vals1 = np.array(self.calculate(coords1, attr="val"))
+        vals2 = np.array(self.calculate(coords2, attr="val"))
+        return vals1-vals2
+
+
+    def transform_int_step(self, step, cart_rms_thresh=1e-6):
         def rms(coords1, coords2):
             return np.sqrt(np.mean((coords1-coords2)**2))
         B_inv = self.B_inv
         #print("B_inv")
         #print(B_inv)
-        last_step = step
-        last_coords = self.geom.coords.copy()
-        last_vals = self.calculate(last_coords, attr="val")
+        last_int_step = step
+        last_cart_coords = self._cart_coords.copy()
+        last_int_vals = self.calculate(last_cart_coords, attr="val")
+        full_cart_step = np.zeros_like(self._cart_coords)
         for i in range(25):
-            cartesian_step = B_inv.T.dot(last_step)
-            new_coords = last_coords + cartesian_step
-            cartesian_rms = rms(last_coords, new_coords)
-            new_vals = self.calculate(new_coords, attr="val")
+            cart_step = B_inv.T.dot(last_int_step)
+            full_cart_step += cart_step
+            new_cart_coords = last_cart_coords + cart_step
+            cart_rms = rms(last_cart_coords, new_cart_coords)
+            new_int_vals = self.calculate(new_cart_coords, attr="val")
 
-            last_step -= new_vals - last_vals
-            last_coords = new_coords
-            last_vals = new_vals
+            last_int_step -= new_int_vals - last_int_vals
+            last_cart_coords = new_cart_coords
+            last_int_vals = new_int_vals
             #print("cart_step")
             #print(cart_step.reshape(-1,3))
             #print("new_coords")
@@ -392,12 +431,12 @@ class RedundantCoords:
             #assert(new_vals == val_diffs + last_vals)
             #print("dq", last_step)
             #import pdb; pdb.set_trace()
-            print(f"Cycle {i}: rms(ΔCart) = {cartesian_rms:1.4e}")
-            if cartesian_rms < cart_rms_thresh:
+            print(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
+            if cart_rms < cart_rms_thresh:
                 print("Converged!")
                 break
-        self.geom.coords = last_coords
-        #return last_coords
+        self._cart_coords = last_cart_coords
+        return full_cart_step
 
 
 class DelocalizedCoords(RedundantCoords):
@@ -412,7 +451,7 @@ class DelocalizedCoords(RedundantCoords):
         #print(v.T)
         #import pdb; pdb.set_trace()
         non_zero_inds = np.where(abs(w) > thresh)
-        degrees_of_freedom = 3*len(self.geom.atoms)-6
+        degrees_of_freedom = 3*len(self.atoms)-6
         assert(len(non_zero_inds[0]) == degrees_of_freedom)
         self.delocalized_vectors = v[:,non_zero_inds[0]]
         # Eq. 3 in [2], transformation of B to the active coordinate set
