@@ -63,8 +63,8 @@ def test_fluorethylene_opt2():
     #opt = SteepestDescent(rc)
     #opt = SteepestDescent(geom)
     #opt.run()
-    #opt = BFGS(rc)
-    opt = BFGS(geom)
+    opt = BFGS(rc)
+    #opt = BFGS(geom)
     opt.run()
 
 

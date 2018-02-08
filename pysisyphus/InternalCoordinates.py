@@ -44,7 +44,7 @@ class RedundantCoords:
     def coords(self, coords):
         #print("setting coords", coords)
         old_prim_coords = self.coords.copy()
-        diff = old_prim_coords - coords
+        diff = coords - old_prim_coords
         cart_step = self.transform_int_step(diff)
         self.geom.coords += cart_step
         self._prim_coords = self.calculate(self.geom.coords)
@@ -441,7 +441,7 @@ class RedundantCoords:
                 print("Converged!")
                 break
         #self.geom.coords = last_coords
-        return -full_cart_step#, last_coords
+        return full_cart_step#, last_coords
         #return last_coords
 
 
