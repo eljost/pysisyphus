@@ -5,12 +5,25 @@ import numpy as np
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
 from pysisyphus.elem_data import MASS_DICT
+from pysisyphus.InternalCoordinates import RedundantCoords
 
 class Geometry:
 
-    def __init__(self, atoms, coords):
+    coord_types = {
+        "cart": None,
+        "redund": RedundantCoords,
+    }
+
+    def __init__(self, atoms, coords, coord_type="cart"):
         self.atoms = atoms
+        # self._coords always holds cartesian coordinates.
         self._coords = coords
+
+        coord_class = self.coord_types[coord_type]
+        if coord_class:
+            self.internal = coord_class(atoms, coords)
+        else:
+            self.internal = None
 
         self._energy = None
         self._forces = None
@@ -41,10 +54,17 @@ class Geometry:
 
     @property
     def coords(self):
+        if self.internal:
+            return self.internal.coords
         return self._coords
 
     @coords.setter
     def coords(self, coords):
+        # Do the backtransformation from internal to cartesian.
+        if self.internal:
+            int_step = coords - self.internal.coords
+            cart_diff = self.internal.transform_int_step(int_step)
+            coords = self._coords + cart_diff
         self._coords = coords
         # Reset all values because no calculations with the new coords
         # have been performed yet.
@@ -63,7 +83,7 @@ class Geometry:
     @property
     def energy(self):
         if self._energy is None:
-            results = self.calculator.get_energy(self.atoms, self.coords)
+            results = self.calculator.get_energy(self.atoms, self._coords)
             self.set_results(results)
         return self._energy
 
@@ -74,12 +94,18 @@ class Geometry:
     @property
     def forces(self):
         if self._forces is None:
-            results = self.calculator.get_forces(self.atoms, self.coords)
+            results = self.calculator.get_forces(self.atoms, self._coords)
             self.set_results(results)
+        if self.internal:
+            return self.internal.transform_forces(self._forces)
         return self._forces
 
     @forces.setter
     def forces(self, forces):
+        print("got forces", forces)
+        if self.internal:
+            raise Exception("Setting forces in internal coordinates not "
+                            "yet implemented!")
         self._forces = forces
 
     @property
@@ -97,8 +123,10 @@ class Geometry:
     @property
     def hessian(self):
         if self._hessian is None:
-            results = self.calculator.get_hessian(self.atoms, self.coords)
+            results = self.calculator.get_hessian(self.atoms, self._coords)
             self.set_results(results)
+        if self.internal:
+            raise Exception("Hessian in internal coordinates not implemented!")
         return self._hessian
 
     @property

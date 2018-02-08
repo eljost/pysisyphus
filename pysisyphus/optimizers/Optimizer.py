@@ -270,7 +270,6 @@ class Optimizer:
                 print()
                 break
 
-            #import pdb; pdb.set_trace()
             new_coords = self.geometry.coords + steps
             self.geometry.coords = new_coords
 
