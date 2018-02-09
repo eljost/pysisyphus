@@ -15,6 +15,6 @@ class AnaPot4(AnaPotBase):
 
 if __name__ == "__main__":
     ap4 = AnaPot4()
-    fig, ax = ap4.plot()
+    ap4.plot()
     import matplotlib.pyplot as plt
     plt.show()

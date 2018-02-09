@@ -55,7 +55,7 @@ class AnaPotBase(Calculator):
         return results
 
     def plot(self):
-        fig, ax = plt.subplots()
+        self.fig, self.ax = plt.subplots()
         x = np.linspace(*self.xlim, 100)
         y = np.linspace(*self.ylim, 100)
         X, Y = np.meshgrid(x, y)
@@ -66,5 +66,13 @@ class AnaPotBase(Calculator):
 
         # Draw the contourlines of the potential
         levels = np.linspace(pot.min(), pot.max(), 50)
-        contours = ax.contour(X, Y, pot, levels)
-        return fig, ax
+        contours = self.ax.contour(X, Y, pot, levels)
+
+    def plot_opt(self, opt):
+        self.plot()
+        # We only do 2d contour plots
+        coords = np.array(opt.coords)[:,:2]
+        self.ax.plot(*coords.T, "X-")
+        # Highlight start and end
+        self.ax.plot(*coords[0], "X-", ms=10, c="r")
+        self.ax.plot(*coords[-1], "X-", ms=10, c="r")
