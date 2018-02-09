@@ -3,6 +3,7 @@ from pysisyphus.constants import ANG2BOHR
 
 # Taken from periodictable-1.5.0
 MASS_DICT = {
+    'x': 1, # dummy atom
     'n': 14.0067, 'h': 1.00794, 'he': 4.002602, 'li': 6.941, 'be': 9.012182,
     'b': 10.811, 'c': 12.0107, 'o': 15.9994, 'f': 18.9984032, 'ne': 20.1797,
     'na': 22.98977, 'mg': 24.305, 'al': 26.981538, 'si': 28.0855, 'p': 30.973761,
