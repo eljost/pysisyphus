@@ -76,3 +76,5 @@ class AnaPotBase(Calculator):
         # Highlight start and end
         self.ax.plot(*coords[0], "X-", ms=10, c="r")
         self.ax.plot(*coords[-1], "X-", ms=10, c="r")
+        for i in range(len(coords)):
+            self.ax.annotate(f"{i}", xy=coords[i])

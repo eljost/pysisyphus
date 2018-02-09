@@ -8,6 +8,7 @@ from pysisyphus.InternalCoordinates import RedundantCoords, DelocalizedCoords
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 
 np.set_printoptions(suppress=True, precision=4)
@@ -17,6 +18,7 @@ def run_opt(xyz_fn, coord_type="redund"):
     geom = geom_from_library(xyz_fn, coord_type=coord_type)
     geom.set_calculator(XTB())
     opt = BFGS(geom)
+    #opt = RFOptimizer(geom)
     opt.run()
 
     return geom
@@ -65,6 +67,6 @@ def run():
 
 
 if __name__ == "__main__":
-    #test_fluorethylene()
-    test_h2o()
+    test_fluorethylene()
+    #test_h2o()
     #run()

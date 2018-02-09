@@ -11,7 +11,8 @@ from pysisyphus.optimizers.BFGS import BFGS
 
 def test_rfoptimizer():
     kwargs = {
-        "max_cycles": 10,
+        #"max_cycles": 10,
+        "trust_radius": 0.5,
         "max_step": 0.5,
     }
     atoms = ("X", )
@@ -22,7 +23,7 @@ def test_rfoptimizer():
     geom.set_calculator(ap4)
     opt = RFOptimizer(geom, **kwargs)
     #opt = SteepestDescent(geom, **kwargs)
-    #opt = BFGS(geom, **kwargs)
+    #opt = BFGS(geom, max_step=1.0)
     opt.run()
     ap4.plot_opt(opt)
     plt.show()
