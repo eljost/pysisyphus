@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# [1] http://aip.scitation.org/doi/10.1063/1.1515483
+
 import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -10,18 +12,29 @@ class RFOptimizer(Optimizer):
         super().__init__(geometry, **kwargs)
 
     def prepare_opt(self):
-        self.hessian = self.geometry.get_initial_hessian()
+        self.H = self.geometry.get_initial_hessian()
 
-    #def scale_by_max_step(self, steps):
-    #    return steps
+    def bfgs_update(self):
+        # Eq. (44) in [1]
+        dx = self.coords[-1] - self.coords[-2]
+        dg = -(self.forces[-1] - self.forces[-2])
+        second_term = np.outer(dg, dg) / np.inner(dg, dx)
+        third_term = (self.H.dot(np.outer(dx, dx)).dot(self.H)
+                      / dx.dot(self.H.dot(dx)))
+        self.H += second_term - third_term
 
     def optimize(self):
         gradient = self.geometry.gradient
-        self.coords.append(self.geometry.coords)
         self.forces.append(-self.geometry.gradient)
         self.energies.append(self.geometry.energy)
+
+        # Update hessian
+        if self.cur_cycle > 0:
+            self.bfgs_update()
+
+        # Eq. (56) in [1]
         aug_hess = np.bmat(
-                    ((self.hessian, gradient[:,None]),
+                    ((self.H, gradient[:,None]),
                      (gradient[None,:], [[0]]))
         )
         np.testing.assert_allclose(aug_hess, aug_hess.T)
@@ -35,11 +48,5 @@ class RFOptimizer(Optimizer):
         # Scale aug_step so the last element equals 1
         aug_step /= aug_step[-1]
         step = self.scale_by_max_step(aug_step[:-1])
-        #import pdb; pdb.set_trace()
+        #step = aug_step[:-1]
         return step
-
-        pass
-        #self.forces.append(self.geometry.forces)
-        #self.energies.append(self.geometry.energy)
-
-        #return step
