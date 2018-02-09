@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from sympy import symbols, diff, lambdify, sympify
 
@@ -5,8 +6,10 @@ from pysisyphus.calculators.Calculator import Calculator
 
 class AnaPotBase(Calculator):
 
-    def __init__(self, V_str): 
+    def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1)): 
         super(AnaPotBase, self).__init__()
+        self.xlim = xlim
+        self.ylim = ylim
         x, y = symbols("x y")
         V = sympify(V_str)
         dVdx = diff(V, x)
@@ -50,3 +53,18 @@ class AnaPotBase(Calculator):
         results = self.get_forces(atoms, coords)
         results["hessian"] = hessian
         return results
+
+    def plot(self):
+        fig, ax = plt.subplots()
+        x = np.linspace(*self.xlim, 100)
+        y = np.linspace(*self.ylim, 100)
+        X, Y = np.meshgrid(x, y)
+        Z = np.full_like(X, 0)
+        fake_atoms = ("H", )
+        pot_coords = np.stack((X, Y, Z))
+        pot = self.get_energy(fake_atoms, pot_coords)["energy"]
+
+        # Draw the contourlines of the potential
+        levels = np.linspace(pot.min(), pot.max(), 50)
+        contours = ax.contour(X, Y, pot, levels)
+        return fig, ax
