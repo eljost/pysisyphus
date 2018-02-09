@@ -137,6 +137,11 @@ class Geometry:
     def hessian(self, hessian):
         self._hessian = hessian
 
+    def get_initial_hessian(self):
+        if self.internal:
+            return self.internal.get_initial_hessian()
+        return np.eye(self.coords.size)
+
     def calc_energy_and_forces(self):
         results = self.calculator.get_forces(self.atoms, self.coords)
         self.set_results(results)
