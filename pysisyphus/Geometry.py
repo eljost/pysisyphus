@@ -17,7 +17,7 @@ class Geometry:
     def __init__(self, atoms, coords, coord_type="cart"):
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
-        self._coords = coords
+        self._coords = np.array(coords)
 
         coord_class = self.coord_types[coord_type]
         if coord_class:
@@ -102,10 +102,9 @@ class Geometry:
 
     @forces.setter
     def forces(self, forces):
-        if self.internal:
-            #raise Exception("Setting forces in internal coordinates not "
-            #                "yet implemented!")
-            pass
+        #if self.internal:
+        #    raise Exception("Setting forces in internal coordinates not "
+        #                    "yet implemented!")
         self._forces = forces
 
     @property
