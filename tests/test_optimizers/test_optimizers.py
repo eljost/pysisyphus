@@ -26,6 +26,9 @@ def test_rfoptimizer():
     #opt = BFGS(geom, max_step=1.0)
     opt.run()
     ap4.plot_opt(opt)
+    #ap4.plot_rf_opt(opt)
+    #ap4.plot()
+    #ap4.animate(ap4.anim_rfo, opt.cur_cycle)
     plt.show()
 
 
