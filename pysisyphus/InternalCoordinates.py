@@ -112,20 +112,17 @@ class RedundantCoords:
         """Merge a list of sets recursively. Pop the first element
         of the list and check if it intersects with one of the remaining
         elements. If yes, delete the intersecting set from the list, form
-        the union of both sets and append it at the end of the list. If
-        it doesn't intersect with any of the remaining sets append the
-        popped set at the end of the list."""
+        the union of both sets and append it at the end of the list.
+        If the popped set doesn't intersect with any of the remaining sets
+        append the it at the end of the list."""
         if len(fragments) == 1:
             return fragments
         popped = fragments.pop(0)
-        for i, frag in enumerate(fragments):
-            merged = popped & frag
-            if merged:
+        for frag in fragments:
+            if popped & frag:
                 fragments.remove(frag)
                 fragments.append(popped | frag)
-                break
-        if merged:
-            return self.merge_fragments(fragments)
+                return self.merge_fragments(fragments)
         fragments.append(popped)
         return fragments
 
