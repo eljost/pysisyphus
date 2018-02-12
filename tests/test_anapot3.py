@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pysisyphus.AnimPlot import AnimPlot
+from pysisyphus.plotters.AnimPlot import AnimPlot
 from pysisyphus.calculators.AnaPot3 import AnaPot3
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
