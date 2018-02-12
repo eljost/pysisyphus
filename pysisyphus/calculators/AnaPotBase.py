@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import numpy as np
 from sympy import symbols, diff, lambdify, sympify
 
@@ -61,57 +60,10 @@ class AnaPotBase(Calculator):
         y = np.linspace(*self.ylim, 100)
         X, Y = np.meshgrid(x, y)
         Z = np.full_like(X, 0)
-        fake_atoms = ("H", )
+        fake_atoms = ("X", ) # X, dummy atom
         pot_coords = np.stack((X, Y, Z))
         pot = self.get_energy(fake_atoms, pot_coords)["energy"]
 
         # Draw the contourlines of the potential
-        levels = np.linspace(pot.min(), pot.max(), 25)
+        levels = np.linspace(pot.min(), pot.max(), 35)
         contours = self.ax.contour(X, Y, pot, levels)
-
-    def plot_opt(self, opt):
-        self.plot()
-        # We only do 2d contour plots
-        coords = np.array(opt.coords)[:,:2]
-        self.ax.plot(*coords.T, "X-")
-        # Highlight start and end
-        self.ax.plot(*coords[0], "X-", ms=10, c="r")
-        self.ax.plot(*coords[-1], "X-", ms=10, c="r")
-        for i in range(len(coords)):
-            self.ax.annotate(f"{i}", xy=coords[i])
-
-    def plot_rf_opt(self, opt):
-        self.plot()
-        # We only do 2d contour plots
-        self.opt_steps = np.array(opt.coords)[:,:2]
-        self.opt_step_lines, = self.ax.plot(*self.opt_steps[0], "X-")
-        import pdb; pdb.set_trace()
-
-
-
-        #self.images, = self.ax.plot(images_x, images_y, "ro", ls="-")
-        #images_x = self.coords[frame][:,0]
-        #images_y = self.coords[frame][:,1]
-        #self.images.set_xdata(images_x)
-        #self.images.set_ydata(images_y)
-
-        ## Highlight start and end
-        #self.ax.plot(*coords[0], "X-", ms=10, c="r")
-        #self.ax.plot(*coords[-1], "X-", ms=10, c="r")
-        #for i in range(len(coords)):
-        #    self.ax.annotate(f"{i}", xy=coords[i])
-
-    def anim_rfo(self, frame):
-        opt_steps_x = self.opt_steps[:frame, 0]
-        opt_steps_y = self.opt_steps[:frame, 1]
-        self.opt_step_lines.set_xdata(opt_steps_x)
-        self.opt_step_lines.set_ydata(opt_steps_y)
-        print(f"frame {frame}")
-
-    def animate(self, func, cycles):
-        self.interval = 500
-        frames = range(cycles)
-        self.animation = animation.FuncAnimation(self.fig,
-                                                 func,
-                                                 frames=frames,
-                                                 interval=self.interval)
