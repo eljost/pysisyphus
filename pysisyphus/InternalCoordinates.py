@@ -3,6 +3,8 @@
 # [1] https://doi.org/10.1063/1.1515483 optimization review
 # [2] https://doi.org/10.1063/1.471864 delocalized internal coordinates
 # [3] https://doi.org/10.1016/0009-2614(95)00646-L lindh model hessian
+# [4] 10.1002/(SICI)1096-987X(19990730)20:10<1067::AID-JCC9>3.0.CO;2-V
+#     Handling of corner cases
 
 from collections import namedtuple
 from functools import reduce
@@ -12,7 +14,7 @@ import logging
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
-from pysisyphus.elem_data import COVALENT_RADII as CR
+from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 
 
 PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
@@ -28,6 +30,7 @@ class RedundantCoords:
         self.bond_indices = list()
         self.bending_indices = list()
         self.dihedral_indices = list()
+        self.hydrogen_bond_indices = list()
 
         self.set_primitive_indices()
         self._prim_coords = self.calculate(self.cart_coords)
@@ -143,16 +146,47 @@ class RedundantCoords:
         # the original indices but only the required distances.
         return interfragment_indices
 
+    def set_hydrogen_bond_indices(self, bond_indices):
+        coords3d = self.cart_coords.reshape(-1, 3)
+        tmp_sets = [frozenset(bi) for bi in bond_indices]
+        # Check for hydrogen bonds as described in [1] A.1 .
+        # Find hydrogens bonded to small electronegative atoms X = (N, O
+        # F, P, S, Cl).
+        hydrogen_inds = [i for i, a in enumerate(self.atoms)
+                         if a.lower() == "h"]
+        x_inds = [i for i, a in enumerate(self.atoms)
+                  if a.lower() in "n o f p s cl".split()]
+        hydrogen_bond_inds = list()
+        for h_ind, x_ind in it.product(hydrogen_inds, x_inds):
+            as_set = set((h_ind, x_ind))
+            if not as_set in tmp_sets:
+                continue
+            # Check if distance of H to another electronegative atom Y is
+            # greater than the sum of their covalent radii but smaller than
+            # the 0.9 times the sum of their van der Waals radii. If the
+            # angle X-H-Y is greater than 90° a hydrogen bond is asigned.
+            y_inds = set(x_inds) - set((x_ind, ))
+            for y_ind in y_inds:
+                y_atom = self.atoms[y_ind].lower()
+                cov_rad_sum = CR["h"] + CR[y_atom]
+                distance = self.calc_stretch(coords3d, (h_ind, y_ind))
+                vdw = 0.9 * (VDW_RADII["h"] + VDW_RADII[y_atom])
+                angle = self.calc_bend(coords3d, (x_ind, h_ind, y_ind))
+                if (cov_rad_sum < distance < vdw) and (angle > np.pi/2):
+                    self.hydrogen_bond_indices.append((h_ind, y_ind))
+                    logging.debug("Added hydrogen bond between {h_ind} and {y_ind}")
+        self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
+
     def set_bond_indices(self, factor=1.3):
         """
         Default factor of 1.3 taken from [1] A.1.
         """
-        coords = self.cart_coords.reshape(-1, 3)
+        coords3d = self.cart_coords.reshape(-1, 3)
         # Condensed distance matrix
-        cdm = pdist(coords)
+        cdm = pdist(coords3d)
         # Generate indices corresponding to the atom pairs in the
         # condensed distance matrix cdm.
-        atom_indices = list(it.combinations(range(len(coords)),2))
+        atom_indices = list(it.combinations(range(len(coords3d)),2))
         atom_indices = np.array(atom_indices, dtype=int)
         cov_rad_sums = list()
         for i, j in atom_indices:
@@ -166,7 +200,13 @@ class RedundantCoords:
         bond_flags = cdm <= cov_rad_sums
         bond_indices = atom_indices[bond_flags]
 
-        # Check if there are any disconnected fragments
+        # Look for hydrogen bonds
+        self.set_hydrogen_bond_indices(bond_indices)
+        if self.hydrogen_bond_indices.size > 0:
+            bond_indices = np.concatenate((bond_indices,
+                                           self.hydrogen_bond_indices))
+
+        # Merge bond index sets into fragments
         bond_ind_sets = [frozenset(bi) for bi in bond_indices]
         fragments = self.merge_fragments(bond_ind_sets)
 
@@ -177,13 +217,12 @@ class RedundantCoords:
             [frozenset((atom, )) for atom in unbonded_set]
         )
 
+        # Check if there are any disconnected fragments
         if len(fragments) != 1:
             interfragment_inds = self.connect_fragments(cdm, fragments)
             bond_indices = np.concatenate((bond_indices, interfragment_inds))
 
-        logging.warning("No check for hydrogen bonds!")
         self.bond_indices = bond_indices
-        print(bond_indices)
 
     def sort_by_central(self, set1, set2):
         """Determines a common index in two sets and returns a length 3
@@ -207,11 +246,14 @@ class RedundantCoords:
 
     def set_dihedral_indices(self):
         dihedral_sets = list()
+        coords3d = self.cart_coords.reshape(-1, 3)
         for bond, bend in it.product(self.bond_indices,
                                             self.bending_indices):
             central = bend[1]
             bes = set((bend[0], bend[2]))
             bois = set(bond)
+            # Check if the two sets share a common terminal (not the
+            # central) atom.
             if (len(bes & bois) == 1) and (central not in bois):
                 (intersect,)  = set(bond) & set(bend)
                 intersect_ind = list(bond).index(intersect)
@@ -222,9 +264,20 @@ class RedundantCoords:
                 else:
                     dihedral_ind = list(bend) + [terminal]
                 dihedral_set = set(dihedral_ind)
-                if dihedral_set not in dihedral_sets:
-                    self.dihedral_indices.append(dihedral_ind)
-                    dihedral_sets.append(dihedral_set)
+                if dihedral_set in dihedral_sets:
+                    continue
+                # Check for linear atoms
+                first_angle = self.calc_bend(coords3d, dihedral_ind[:3])
+                second_angle = self.calc_bend(coords3d, dihedral_ind[1:])
+                if (abs(first_angle) > (np.pi-1e-6)) or \
+                        (abs(second_angle) > (np.pi-1e-6)):
+                    logging.warning("Skipping generation of dihedral "
+                                   f"{dihedral_inds} as some of the the atoms "
+                                    "are (nearly) linear."
+                    )
+                    continue
+                self.dihedral_indices.append(dihedral_ind)
+                dihedral_sets.append(dihedral_set)
         logging.warning("No brute force method for molecules that should have a "
                         "dihedral but where no one can be found.")
         self.dihedral_indices = np.array(self.dihedral_indices)
@@ -272,6 +325,9 @@ class RedundantCoords:
     def calc_bend(self, coords, angle_ind, grad=False):
         def are_parallel(vec1, vec2, thresh=1e-6):
             rad = np.arccos(vec1.dot(vec2))
+            # angle > 175°
+            if abs(rad) > (np.pi - 0.088):
+                logging.warning("Found nearly linear angle, may give problems!")
             return abs(rad) > (np.pi - thresh)
         m, o, n = angle_ind
         u_dash = coords[m] - coords[o]

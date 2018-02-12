@@ -52,6 +52,21 @@ def test_single_atom_fragments():
     assert ([4, 5] in bi) and ([3, 6] in bi) and ([5, 6] in bi)
 
 
+def test_sf6():
+    xyz_fn = "sf6.xyz"
+    geom = geom_from_library(xyz_fn, coord_type="redund")
+    #import pdb; pdb.set_trace()
+    for pc in geom.internal._prim_coords:
+        print(pc.inds, pc.val)
+
+
+def test_hydrogen_bonds():
+    xyz_fn = "hydrogen_bond.xyz"
+    geom = geom_from_library(xyz_fn, coord_type="redund")
+    h_bonds = geom.internal.hydrogen_bond_indices
+    assert(len(h_bonds) == 2)
+
+
 def run():
     """
     benzene_geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
@@ -76,5 +91,7 @@ def run():
 if __name__ == "__main__":
     #test_fluorethylene()
     #test_h2o()
-    test_single_atom_fragments()
+    #test_single_atom_fragments()
+    #test_sf6()
+    test_hydrogen_bonds()
     #run()
