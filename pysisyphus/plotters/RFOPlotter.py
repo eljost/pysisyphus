@@ -22,23 +22,18 @@ class RFOPlotter():
         self.get_frame = itertools.cycle(range(self.opt.cur_cycle))
 
     def plot(self):
-        x = np.linspace(*self.xlim, 100)
-        y = np.linspace(*self.ylim, 100)
-        X, Y = np.meshgrid(x, y)
+        # Draw potential as contour lines
+        self.xs = np.linspace(*self.xlim, 100)
+        self.ys = np.linspace(*self.ylim, 100)
+        X, Y = np.meshgrid(self.xs, self.ys)
         Z = np.full_like(X, 0)
         fake_atoms = ("X", )
         pot_coords = np.stack((X, Y, Z))
         pot = self.calc.get_energy(fake_atoms, pot_coords)["energy"]
-
-        # Draw the contourlines of the potential
         levels = np.linspace(pot.min(), pot.max(), 25)
         contours = self.ax.contour(X, Y, pot, levels)
 
-        # We only do 2d contour plots
-        self.coord_lines, = self.ax.plot(*self.coords[0], "X-", label="Geometry")
-        self.rfo_lines, = self.ax.plot(*self.rfo_steps[0], "x--", c="r",
-                                       label="Pure RFO step")
-
+        # Calculate the LQA potentials for every cycle (frame)
         def quadratic_approx(cycle, step):
             E0 = self.opt.energies[cycle]
             g = -self.opt.forces[cycle]
@@ -46,8 +41,6 @@ class RFOPlotter():
             return E0 + np.inner(g, step) + 0.5*step.dot(H.dot(step))
 
         self.lqa_pots = list()
-        self.xs = np.linspace(*self.xlim, 100)
-        self.ys = np.linspace(*self.ylim, 100)
         for cycle in range(self.opt.cur_cycle):
             cycle_pot = list()
             for x in self.xs:
@@ -58,8 +51,32 @@ class RFOPlotter():
             cycle_pot = np.array(cycle_pot).reshape(-1, self.ys.size)
             self.lqa_pots.append(cycle_pot)
         self.lqa_pots = np.array(self.lqa_pots)
+        # Draw LQA potential as contour lines
         self.lqa_contour = self.ax2.contour(self.xs, self.ys, self.lqa_pots[0])
-        #import pdb; pdb.set_trace()
+
+        # Draw the actual geometries
+        self.coord_lines, = self.ax.plot(*self.coords[0], "X",
+                                         label="Geometry")
+        # Draw the pure RFO steps
+        rfo_kwargs = {
+            "marker": "x",
+            "c": "r",
+            "label": "Pure RFO step",
+        }
+        self.rfo_lines, = self.ax.plot(*self.rfo_steps[0], **rfo_kwargs)
+        self.rfo_lines2, = self.ax2.plot(*self.rfo_steps2[0], **rfo_kwargs)
+
+        # Draw the actual steps taken
+        actual_kwargs = {
+            "marker": "x",
+            "c": "k",
+            "label": "Actual step",
+        }
+        self.steps = np.array(self.opt.steps)[:,:2]
+        act_steps1 = self.steps[0] + self.coords[0]
+        self.actual_step_lines, = self.ax.plot(*act_steps1, **actual_kwargs)
+        self.actual_step_lines2, = self.ax2.plot(*self.steps[0], **actual_kwargs)
+
 
         circle_kwargs = {
             "fill": False,
@@ -67,50 +84,36 @@ class RFOPlotter():
         }
         #self.trust_region = Circle(self.coords[0], radius=self.opt.trust_radii[0],
         #                           **circle_kwargs)
+        #self.ax.add_patch(self.trust_region)
         self.trust_region2 = Circle((0, 0), radius=self.opt.trust_radii[0],
                                    **circle_kwargs)
-        #self.ax.add_patch(self.trust_region)
         self.ax2.add_patch(self.trust_region2)
-        # Actual steps
-        self.steps = np.array(self.opt.steps)[:,:2]
-        act_steps1 = self.steps[0] + self.coords[0]
-        self.actual_step_lines, = self.ax.plot(*act_steps1, "x", c="k",
-                                               label="Actual step")
-        self.actual_step_lines2, = self.ax2.plot(*self.steps[0], "x", c="k")
+        self.ax2.plot(0, 0, "X")
 
-        self.rfo_lines2, = self.ax2.plot(*self.rfo_steps2[0], "x--", c="r",
-                                       label="Pure RFO step")
         self.ax.legend()
 
     def update_plot(self, frame):
         self.fig.suptitle(f"Cycle {frame}")
+
+        # Update the geometry in ax
         coords_x = self.coords[frame, 0]
         coords_y = self.coords[frame, 1]
         self.coord_lines.set_xdata(coords_x)
         self.coord_lines.set_ydata(coords_y)
-        #plt.pause(1)
 
-        # Draw alls steps
-        rfo_x = self.rfo_steps[frame, 0]
-        rfo_y = self.rfo_steps[frame, 1]
-        # Draw only latest step
-        #rfo_x = self.rfo_steps[frame, 0]
-        #rfo_y = self.rfo_steps[frame, 1]
-        self.rfo_lines.set_xdata(rfo_x)
-        self.rfo_lines.set_ydata(rfo_y)
-
+        # Update LQA contours in ax2
         self.lqa_contour.set_array(self.lqa_pots[frame])
         for tp in self.lqa_contour.collections:
             tp.remove()
         cycle_x, cycle_y = self.coords[frame]
         self.lqa_contour = self.ax2.contour(self.xs, self.ys, self.lqa_pots[frame])
-        #self.lqa_contour = self.ax2.contour(self.xs+cycle_x,
-        #                                    self.ys+cycle_y, self.lqa_pots[frame])
-        #self.ax2.plot(0, 0, "X", c="r") # Highlight center of LQA potential
         #self.trust_region.center = (cycle_x, cycle_y)
         #self.trust_region.set_radius(self.opt.trust_radii[frame])
+
+        # Update trust region in ax2
         self.trust_region2.set_radius(self.opt.trust_radii[frame])
 
+        # Update the actual steps taken
         actual_step_x = self.steps[frame, 0]
         actual_step_y = self.steps[frame, 1]
         self.actual_step_lines.set_xdata(actual_step_x+cycle_x)
@@ -118,6 +121,11 @@ class RFOPlotter():
         self.actual_step_lines2.set_xdata(actual_step_x)
         self.actual_step_lines2.set_ydata(actual_step_y)
 
+        # Update the (potentially bigger than allowed) RFO steps
+        rfo_x = self.rfo_steps[frame, 0]
+        rfo_y = self.rfo_steps[frame, 1]
+        self.rfo_lines.set_xdata(rfo_x)
+        self.rfo_lines.set_ydata(rfo_y)
         rfo2_x = self.rfo_steps2[frame, 0]
         rfo2_y = self.rfo_steps2[frame, 1]
         self.rfo_lines2.set_xdata(rfo2_x)
