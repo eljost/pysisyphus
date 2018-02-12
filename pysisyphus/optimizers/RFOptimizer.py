@@ -108,10 +108,11 @@ class RFOptimizer(Optimizer):
         aug_step /= aug_step[-1]
         step = aug_step[:-1]
 
-        #self.keep()
-        #self.rfo_steps.append(step)
+        self.keep()
+        self.rfo_steps.append(step)
 
         step_norm = np.linalg.norm(step)
+        # We use a trust region method instead
         #step = self.scale_by_max_step(step)
         if step_norm > self.trust_radius:
             step = self.find_step(step)

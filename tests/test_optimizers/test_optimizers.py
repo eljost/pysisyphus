@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pysisyphus.calculators.AnaPot4 import AnaPot4
 from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.plotters.RFOPlotter import RFOPlotter
 
 
 def test_rfoptimizer():
@@ -25,10 +27,8 @@ def test_rfoptimizer():
     #opt = SteepestDescent(geom, **kwargs)
     #opt = BFGS(geom, max_step=1.0)
     opt.run()
-    ap4.plot_opt(opt)
-    #ap4.plot_rf_opt(opt)
-    #ap4.plot()
-    #ap4.animate(ap4.anim_rfo, opt.cur_cycle)
+    rfop = RFOPlotter(ap4, opt)
+    rfop.plot()
     plt.show()
 
 

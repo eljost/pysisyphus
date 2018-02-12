@@ -254,6 +254,7 @@ class Optimizer:
 
             self.steps.append(steps)
 
+            # Convergence check
             self.is_converged = self.check_convergence()
 
             self.check_for_climbing_start()
