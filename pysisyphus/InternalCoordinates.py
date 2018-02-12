@@ -214,7 +214,8 @@ class RedundantCoords:
             [frozenset((atom, )) for atom in unbonded_set]
         )
 
-        # Check if there are any disconnected fragments
+        # Check if there are any disconnected fragments. If there are some
+        # create interfragment bonds between all of them.
         if len(fragments) != 1:
             interfragment_inds = self.connect_fragments(cdm, fragments)
             bond_indices = np.concatenate((bond_indices, interfragment_inds))
@@ -241,6 +242,16 @@ class RedundantCoords:
                 self.bending_indices.append(as_tpl)
         self.bending_indices = np.array(self.bending_indices, dtype=int)
 
+    def is_valid_dihedral(self, dihedral_ind, thresh=1e-6):
+        coords3d = self.cart_coords.reshape(-1, 3)
+        # Check for linear atoms
+        first_angle = self.calc_bend(coords3d, dihedral_ind[:3])
+        second_angle = self.calc_bend(coords3d, dihedral_ind[1:])
+        pi_thresh = np.pi - thresh
+        return ((abs(first_angle) < pi_thresh)
+                and (abs(second_angle) < pi_thresh)
+        )
+
     def set_dihedral_indices(self):
         dihedral_sets = list()
         coords3d = self.cart_coords.reshape(-1, 3)
@@ -263,14 +274,10 @@ class RedundantCoords:
                 dihedral_set = set(dihedral_ind)
                 if dihedral_set in dihedral_sets:
                     continue
-                # Check for linear atoms
-                first_angle = self.calc_bend(coords3d, dihedral_ind[:3])
-                second_angle = self.calc_bend(coords3d, dihedral_ind[1:])
-                if (abs(first_angle) > (np.pi-1e-6)) or \
-                        (abs(second_angle) > (np.pi-1e-6)):
+                if not self.is_valid_dihedral(dihedral_ind):
                     logging.warning("Skipping generation of dihedral "
-                                   f"{dihedral_inds} as some of the the atoms "
-                                    "are (nearly) linear."
+                                   f"{dihedral_ind} as some of the the atoms "
+                                    "are linear."
                     )
                     continue
                 self.dihedral_indices.append(dihedral_ind)
