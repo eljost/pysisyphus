@@ -17,6 +17,7 @@ class RFOptimizer(Optimizer):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
+        self.min_trust_radius = 0.25*self.trust_radius
         self.trust_radius_max = 5*self.trust_radius
         self.predicted_energies = list()
 
@@ -71,7 +72,8 @@ class RFOptimizer(Optimizer):
         reduction_ratio = actual_reduction / predicted_reduction
         self.log(f"reduction_ratio: {reduction_ratio:.3f}")
         if reduction_ratio < 0.25:
-            self.trust_radius *= 0.25
+            self.trust_radius = max(0.25*self.trust_radius,
+                                    self.min_trust_radius)
         elif reduction_ratio > 0.5:
             self.trust_radius = min(2*self.trust_radius, self.trust_radius_max)
         if reduction_ratio < 0:
