@@ -61,7 +61,8 @@ def test_sf6():
     xyz_fn = "sf6.xyz"
     geom = geom_from_library(xyz_fn, coord_type="redund")
     for pc in geom.internal._prim_coords:
-        print(pc.inds, pc.val)
+        print(pc.inds+1, pc.val)
+    assert(len(geom.internal.bond_indices) == 6)
 
 
 def test_hydrogen_bonds():
@@ -96,9 +97,9 @@ def run():
 if __name__ == "__main__":
     #test_fluorethylene()
     #test_h2o()
-    test_single_atom_fragments()
+    #test_single_atom_fragments()
     #test_two_fragments()
     #test_hydrogen_bonds()
     #test_co2_linear()
-    #test_sf6()
+    test_sf6()
     #run()
