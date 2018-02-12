@@ -169,17 +169,21 @@ class RedundantCoords:
         # Check if there are any disconnected fragments
         bond_ind_sets = [frozenset(bi) for bi in bond_indices]
         fragments = self.merge_fragments(bond_ind_sets)
+
+        # Look for unbonded single atoms and create fragments for them.
+        bonded_set = reduce(lambda x, y: set(x) | set(y), bond_indices)
+        unbonded_set = set(range(len(self.atoms))) - bonded_set
+        fragments.extend(
+            [frozenset((atom, )) for atom in unbonded_set]
+        )
+
         if len(fragments) != 1:
-            interfragment_inds = connect_fragments(cdm, fragments)
+            interfragment_inds = self.connect_fragments(cdm, fragments)
             bond_indices = np.concatenate((bond_indices, interfragment_inds))
 
-        logging.warning("No check for unbonded single atoms!")
         logging.warning("No check for hydrogen bonds!")
         self.bond_indices = bond_indices
-        bonded_set = reduce(lambda x, y: set(x) | set(y), bond_indices)
-        assert bonded_set == set(range(len(self.atoms))), \
-               "Found unbonded atoms!"
-        #import pdb; pdb.set_trace()
+        print(bond_indices)
 
     def sort_by_central(self, set1, set2):
         """Determines a common index in two sets and returns a length 3
@@ -199,8 +203,6 @@ class RedundantCoords:
             if len(union) == 3:
                 as_tpl, _ = self.sort_by_central(bond_set1, bond_set2)
                 self.bending_indices.append(as_tpl)
-        logging.warning("No check for (nearly) linear angles! "
-                        "No additional orthogonal bending coordinates.")
         self.bending_indices = np.array(self.bending_indices, dtype=int)
 
     def set_dihedral_indices(self):

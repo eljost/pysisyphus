@@ -45,6 +45,13 @@ def test_h2o():
     #assert len(h2o_bends) == 1
 
 
+def test_single_atom_fragments():
+    xyz_fn = "single_atom_fragments.xyz"
+    geom = geom_from_library(xyz_fn, coord_type="redund")
+    bi = geom.internal.bond_indices
+    assert ([4, 5] in bi) and ([3, 6] in bi) and ([5, 6] in bi)
+
+
 def run():
     """
     benzene_geom = geom_from_library("benzene_bp86sto3g_opt.xyz")
@@ -67,6 +74,7 @@ def run():
 
 
 if __name__ == "__main__":
-    test_fluorethylene()
+    #test_fluorethylene()
     #test_h2o()
+    test_single_atom_fragments()
     #run()
