@@ -304,6 +304,8 @@ class RedundantCoords:
         if (len(self.atoms) >= 4) and (len(self.dihedral_indices) == 0):
             for improp in improper_dihedrals:
                 set_dihedral_index(improp)
+            logging.warning("Permutational symmetry not considerd in "
+                            "generation of improper dihedrals.")
 
         self.dihedral_indices = np.array(self.dihedral_indices)
 
