@@ -34,5 +34,5 @@ def opt_sf6():
 
 
 if __name__ == "__main__":
-    #opt_h2o()
-    opt_sf6()
+    opt_h2o()
+    #opt_sf6()

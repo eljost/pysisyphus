@@ -5,6 +5,7 @@
 # [3] https://doi.org/10.1016/0009-2614(95)00646-L lindh model hessian
 # [4] 10.1002/(SICI)1096-987X(19990730)20:10<1067::AID-JCC9>3.0.CO;2-V
 #     Handling of corner cases
+# [5] https://doi.org/10.1063/1.462844
 
 from collections import namedtuple
 from functools import reduce
@@ -38,15 +39,23 @@ class RedundantCoords:
 
     @property
     def B(self):
+        """Wilson B-Matrix"""
         return np.array([c.grad for c in self.calculate(self.cart_coords)])
 
     @property
-    def B_inv(self):
+    def Bt_inv(self):
+        """Generalized inverse of the transposed Wilson B-Matrix."""
         B = self.B
         return np.linalg.pinv(B.dot(B.T)).dot(B)
 
+    @property
+    def P(self):
+        """Projection matrix onto B. See [1] Eq. (4)."""
+        return self.B.dot(self.Bt_inv.T)
+
     def transform_forces(self, cart_forces):
-        return self.B_inv.dot(cart_forces)
+        """Combination of Eq. (9) and (11) in [1]."""
+        return self.P.dot(self.Bt_inv.dot(cart_forces))
 
     @property
     def coords(self):
@@ -442,9 +451,9 @@ class RedundantCoords:
         last_coords = self.cart_coords.copy()
         last_vals = self.calculate(last_coords, attr="val")
         full_cart_step = np.zeros_like(self.cart_coords)
-        B_inv = self.B_inv
+        Bt_inv = self.Bt_inv
         for i in range(25):
-            cart_step = B_inv.T.dot(last_step)
+            cart_step = Bt_inv.T.dot(last_step)
             full_cart_step += cart_step
             new_coords = last_coords + cart_step
             cart_rms = rms(last_coords, new_coords)
@@ -479,6 +488,8 @@ class DelocalizedCoords(RedundantCoords):
         super().__init__(geom)
 
     def set_delocalized_vectors(self, thresh=1e-6):
+        """See [5] between Eq. (7) and Eq. (8) for advice regarding
+        the threshold."""
         G = self.B_prim.dot(self.B_prim.T)
         w, v = np.linalg.eigh(G)
         #print(w)
@@ -491,7 +502,7 @@ class DelocalizedCoords(RedundantCoords):
         self.delocalized_vectors = v[:,non_zero_inds[0]]
         # Eq. 3 in [2], transformation of B to the active coordinate set
         self.B = self.delocalized_vectors.T.dot(self.B_prim)
-        self.B_inv = np.linalg.pinv(self.B.dot(self.B.T)).dot(self.B)
+        self.Bt_inv = np.linalg.pinv(self.B.dot(self.B.T)).dot(self.B)
 
     def get_delocalized(self):
         primitives = self.get_primitives()

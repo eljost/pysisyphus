@@ -76,8 +76,8 @@ class RFOptimizer(Optimizer):
                                     self.min_trust_radius)
         elif reduction_ratio > 0.5:
             self.trust_radius = min(2*self.trust_radius, self.trust_radius_max)
-        if reduction_ratio < 0:
-            self.log("step rejected")
+        #if reduction_ratio < 0:
+        #    self.log("step rejected")
         self.log(f"trust_radius {self.trust_radius:.2f}")
 
     def optimize(self):

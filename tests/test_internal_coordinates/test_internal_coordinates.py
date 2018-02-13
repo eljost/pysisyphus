@@ -25,7 +25,8 @@ def get_geom(xyz_fn, coord_type="redund", debug=False):
 def get_opt(xyz_fn, coord_type="redund"):
     geom = get_geom(xyz_fn, coord_type)
     geom.set_calculator(XTB())
-    return BFGS(geom)
+    #return BFGS(geom)
+    return RFOptimizer(geom)
 
 
 def assert_internals(geom, lengths):
@@ -45,9 +46,13 @@ def test_fluorethylene_opt():
     xyz_fn = "fluorethylene.xyz"
     opt = get_opt(xyz_fn)
     opt.run()
+    #with open("fe_opt.xyz", "w") as handle:
+    #    handle.write(opt.geometry.as_xyz())
 
-    cart_opt = get_opt(xyz_fn, "cart")
-    cart_opt.run()
+    #cart_opt = get_opt(xyz_fn, "cart")
+    #cart_opt.run()
+    #with open("fe_opt_cart.xyz", "w") as handle:
+    #    handle.write(cart_opt.geometry.as_xyz())
 
 
 def test_h2o():
@@ -68,8 +73,14 @@ def test_h2o_opt():
 def test_h2o_rfopt():
     xyz_fn = "h2o.xyz"
     geom = get_geom(xyz_fn)
+    #print(geom.internal.B)
+    #print()
+    #print(geom.internal.Bt_inv)
+    #print()
+    #print(geom.internal.P)
     geom.set_calculator(XTB())
     opt = RFOptimizer(geom)
+    #import pdb; pdb.set_trace()
     opt.run()
 
 
@@ -131,10 +142,10 @@ def run():
 
 if __name__ == "__main__":
     #test_fluorethylene()
-    #test_fluorethylene_opt()
+    test_fluorethylene_opt()
     #test_h2o()
     #test_h2o_opt()
-    test_h2o_rfopt()
+    #test_h2o_rfopt()
     #test_single_atom_fragments()
     #test_two_fragments()
     #test_hydrogen_bonds()
