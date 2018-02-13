@@ -213,6 +213,7 @@ class RedundantCoords:
         fragments.extend(
             [frozenset((atom, )) for atom in unbonded_set]
         )
+        self.fragments = fragments
 
         # Check if there are any disconnected fragments. If there are some
         # create interfragment bonds between all of them.
