@@ -65,6 +65,7 @@ class Geometry:
             int_step = coords - self.internal.coords
             cart_diff = self.internal.transform_int_step(int_step)
             coords = self._coords + cart_diff
+            self.internal.cart_coords = coords
         self._coords = coords
         # Reset all values because no calculations with the new coords
         # have been performed yet.
@@ -152,7 +153,7 @@ class Geometry:
         self.results = results
 
     def as_xyz(self, comment=""):
-        coords = self.coords * BOHR2ANG
+        coords = self._coords * BOHR2ANG
         if self._energy:
             comment = f"{comment} {self._energy}"
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
