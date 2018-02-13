@@ -254,36 +254,66 @@ class RedundantCoords:
 
     def set_dihedral_indices(self):
         dihedral_sets = list()
+        def set_dihedral_index(dihedral_ind):
+            dihedral_set = set(dihedral_ind)
+            # Check if this dihedral is already present
+            if dihedral_set in dihedral_sets:
+                return
+            # Assure that there are no linear angles
+            if not self.is_valid_dihedral(dihedral_ind):
+                logging.warning("Skipping generation of dihedral "
+                               f"{dihedral_ind} as some of the the atoms "
+                                "are linear."
+                )
+                return
+            self.dihedral_indices.append(dihedral_ind)
+            dihedral_sets.append(dihedral_set)
         coords3d = self.cart_coords.reshape(-1, 3)
-        for bond, bend in it.product(self.bond_indices,
-                                            self.bending_indices):
+        for bond, bend in it.product(self.bond_indices, self.bending_indices):
             central = bend[1]
-            bes = set((bend[0], bend[2]))
-            bois = set(bond)
-            # Check if the two sets share a common terminal (not the
-            # central) atom.
-            if (len(bes & bois) == 1) and (central not in bois):
-                (intersect,)  = set(bond) & set(bend)
-                intersect_ind = list(bond).index(intersect)
+            bend_set = set(bend)
+            bond_set = set(bond)
+            # Check if the two sets share one common atom. If not continue.
+            intersect = bend_set & bond_set
+            if len(intersect) != 1:
+                continue
+            # When the common atom is a terminal atom of the bend, that is
+            # it's not the central atom of the bend, we create a
+            # proper dihedral.
+            if central not in bond_set:
+                intersect_ind = list(bond).index(list(intersect)[0])
                 term_ind = 1 - intersect_ind
                 terminal = bond[term_ind]
                 if intersect == bend[0]:
                     dihedral_ind = [terminal] + list(bend)
                 else:
                     dihedral_ind = list(bend) + [terminal]
-                dihedral_set = set(dihedral_ind)
-                if dihedral_set in dihedral_sets:
-                    continue
-                if not self.is_valid_dihedral(dihedral_ind):
-                    logging.warning("Skipping generation of dihedral "
-                                   f"{dihedral_ind} as some of the the atoms "
-                                    "are linear."
-                    )
-                    continue
-                self.dihedral_indices.append(dihedral_ind)
-                dihedral_sets.append(dihedral_set)
-        logging.warning("No brute force method for molecules that should have a "
-                        "dihedral but where no one can be found.")
+                set_dihedral_index(dihedral_ind)
+            # If the common atom is the central atom we try to form an out
+            # of plane bend / improper torsion.
+            """
+            else:
+                #assert(central in bond_set)
+                #assert(set((central,)) == intersect)
+                fourth_atom = list(bond_set - intersect)
+                dihedral_ind = bend.tolist() + fourth_atom
+            fourth_atom = list(bond_set - intersect)
+            dihedral_ind = bend.tolist() + fourth_atom
+
+            dihedral_set = set(dihedral_ind)
+            # Check if this dihedral is already present
+            if dihedral_set in dihedral_sets:
+                continue
+            # Assure that there are no linear angles
+            if not self.is_valid_dihedral(dihedral_ind):
+                logging.warning("Skipping generation of dihedral "
+                               f"{dihedral_ind} as some of the the atoms "
+                                "are linear."
+                )
+                continue
+            self.dihedral_indices.append(dihedral_ind)
+            dihedral_sets.append(dihedral_set)
+            """
         self.dihedral_indices = np.array(self.dihedral_indices)
 
     def set_primitive_indices(self):
@@ -320,8 +350,8 @@ class RedundantCoords:
             bond_normed = bond / bond_length
             row = np.zeros_like(coords)
             # 1 / -1 correspond to the sign factor [1] Eq. 18
-            row[m,:] = 1 * bond_normed
-            row[n,:] = -1 * bond_normed
+            row[m,:] =  bond_normed
+            row[n,:] = -bond_normed
             row = row.flatten()
             return bond_length, row
         return bond_length

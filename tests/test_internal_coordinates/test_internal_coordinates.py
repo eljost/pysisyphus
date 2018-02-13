@@ -34,6 +34,13 @@ def test_fluorethylene():
     #assert len(fe_bends) == 6
     #assert len(fe_dihedrals) == 4
 
+def test_fluorethylene():
+    xyz_fn = "fluorethylene.xyz"
+    geom = geom_from_library(xyz_fn, coord_type="redund")
+    for pc in geom.internal._prim_coords:
+        print(pc.inds+1, pc.val)
+    #import pdb; pdb.set_trace()
+
 
 def test_h2o():
     xyz_fn = "h2o.xyz"
@@ -65,11 +72,20 @@ def test_sf6():
     assert(len(geom.internal.bond_indices) == 6)
 
 
+def test_ch4():
+    xyz_fn = "methane.xyz"
+    geom = geom_from_library(xyz_fn, coord_type="redund")
+    for pc in geom.internal._prim_coords:
+        print(pc.inds+1, pc.val)
+    #assert(len(geom.internal.bond_indices) == 6)
+
+
 def test_hydrogen_bonds():
     xyz_fn = "hydrogen_bond.xyz"
     geom = geom_from_library(xyz_fn, coord_type="redund")
     h_bonds = geom.internal.hydrogen_bond_indices.tolist()
     assert ([7, 9] in h_bonds) and ([8, 5] in h_bonds)
+
 
 def test_co2_linear():
     xyz_fn = "co2_linear.xyz"
@@ -95,11 +111,12 @@ def run():
 
 
 if __name__ == "__main__":
-    #test_fluorethylene()
+    test_fluorethylene()
     #test_h2o()
     #test_single_atom_fragments()
     #test_two_fragments()
     #test_hydrogen_bonds()
     #test_co2_linear()
-    test_sf6()
+    #test_sf6()
+    #test_ch4()
     #run()
