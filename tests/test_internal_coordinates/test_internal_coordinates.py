@@ -65,6 +65,14 @@ def test_h2o_opt():
     cart_opt.run()
 
 
+def test_h2o_rfopt():
+    xyz_fn = "h2o.xyz"
+    geom = get_geom(xyz_fn)
+    geom.set_calculator(XTB())
+    opt = RFOptimizer(geom)
+    opt.run()
+
+
 def test_single_atom_fragments():
     xyz_fn = "single_atom_fragments.xyz"
     geom = get_geom(xyz_fn)
@@ -126,6 +134,7 @@ if __name__ == "__main__":
     #test_fluorethylene_opt()
     #test_h2o()
     #test_h2o_opt()
+    test_h2o_rfopt()
     #test_single_atom_fragments()
     #test_two_fragments()
     #test_hydrogen_bonds()
