@@ -55,6 +55,17 @@ def test_fluorethylene_opt():
     #    handle.write(cart_opt.geometry.as_xyz())
 
 
+def test_azetidine_opt():
+    """See https://doi.org/10.1063/1.462844 Section. III Examples."""
+    xyz_fn = "azetidine_not_opt.xyz"
+    #geom = get_geom(xyz_fn)
+    opt = get_opt(xyz_fn)
+    geom = opt.geometry
+    print("internal coordinates", len(geom.internal._prim_coords))
+    import pdb; pdb.set_trace()
+    opt.run()
+
+
 def test_h2o():
     xyz_fn = "h2o.xyz"
     geom = get_geom(xyz_fn)
@@ -142,7 +153,8 @@ def run():
 
 if __name__ == "__main__":
     #test_fluorethylene()
-    test_fluorethylene_opt()
+    #test_fluorethylene_opt()
+    test_azetidine_opt()
     #test_h2o()
     #test_h2o_opt()
     #test_h2o_rfopt()

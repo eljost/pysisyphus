@@ -57,6 +57,11 @@ class RedundantCoords:
         """Combination of Eq. (9) and (11) in [1]."""
         return self.P.dot(self.Bt_inv.dot(cart_forces))
 
+    def project_hessian(self, H):
+        """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
+        P = self.P
+        return self.P.dot(H).dot(P)
+
     @property
     def coords(self):
         return np.array([pc.val for pc in self.calculate(self.cart_coords)])
@@ -457,6 +462,7 @@ class RedundantCoords:
             full_cart_step += cart_step
             new_coords = last_coords + cart_step
             cart_rms = rms(last_coords, new_coords)
+            print(cart_rms)
             new_vals = self.calculate(new_coords, attr="val")
 
             last_step -= new_vals - last_vals

@@ -20,6 +20,9 @@ class BFGS(BacktrackingOptimizer):
         self.log("BFGS with align=True is somewhat broken right now, so "
                  "the images will be aligned only in the first iteration. "
         )
+        if self.geometry.internal:
+            raise Exception("Doesn't work with redundant int. coordinates "
+                            "yet, as the inverse hessian isn't transformed.")
 
     def reset_hessian(self):
         self.inv_hessian = self.eye.copy()

@@ -62,7 +62,7 @@ class RFOptimizer(Optimizer):
         self.log(f"optimized step norm: {np.linalg.norm(step):.4f}")
         if not res.success:
             raise Exception("LQA optimization failed!")
-        return res.x
+        return step
 
     def update_trust_radius(self):
         # [3] Chapter 4, Algorithm 4.1
@@ -91,6 +91,11 @@ class RFOptimizer(Optimizer):
         if self.cur_cycle > 0:
             self.bfgs_update()
             self.update_trust_radius()
+
+        if self.geometry.internal:
+            self.H = self.geometry.internal.project_hessian(self.H)
+            # Symmetrize hessian, as the projection probably breaks it.
+            self.H = (self.H + self.H.T) / 2
 
         # Eq. (56) in [1]
         aug_hess = np.bmat(
