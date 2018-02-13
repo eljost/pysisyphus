@@ -24,7 +24,7 @@ def run_opt(xyz_fn, coord_type="redund"):
     return geom
 
 
-def test_fluorethylene():
+def test_fluorethylene_opt():
     xyz_fn = "fluorethylene.xyz"
     geom = run_opt(xyz_fn)
 
@@ -42,7 +42,7 @@ def test_fluorethylene():
     #import pdb; pdb.set_trace()
 
 
-def test_h2o():
+def test_h2o_opt():
     xyz_fn = "h2o.xyz"
     geom = run_opt(xyz_fn)
 

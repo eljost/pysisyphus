@@ -268,6 +268,8 @@ class RedundantCoords:
                 return
             self.dihedral_indices.append(dihedral_ind)
             dihedral_sets.append(dihedral_set)
+
+        improper_dihedrals = list()
         coords3d = self.cart_coords.reshape(-1, 3)
         for bond, bend in it.product(self.bond_indices, self.bending_indices):
             central = bend[1]
@@ -279,41 +281,30 @@ class RedundantCoords:
                 continue
             # When the common atom is a terminal atom of the bend, that is
             # it's not the central atom of the bend, we create a
-            # proper dihedral.
+            # proper dihedral. Before we create any improper dihedrals we
+            # create these proper dihedrals.
             if central not in bond_set:
-                intersect_ind = list(bond).index(list(intersect)[0])
-                term_ind = 1 - intersect_ind
-                terminal = bond[term_ind]
-                if intersect == bend[0]:
-                    dihedral_ind = [terminal] + list(bend)
+                # The new terminal atom in the dihedral is the one that
+                # doesn' intersect.
+                terminal = tuple(bond_set - intersect)[0]
+                intersecting_atom = tuple(intersect)[0]
+                if intersecting_atom == bend[0]:
+                    dihedral_ind = [terminal] + bend.tolist()
                 else:
-                    dihedral_ind = list(bend) + [terminal]
+                    dihedral_ind = bend.tolist() + [terminal]
                 set_dihedral_index(dihedral_ind)
             # If the common atom is the central atom we try to form an out
-            # of plane bend / improper torsion.
-            """
+            # of plane bend / improper torsion. They may be created later on.
             else:
-                #assert(central in bond_set)
-                #assert(set((central,)) == intersect)
                 fourth_atom = list(bond_set - intersect)
                 dihedral_ind = bend.tolist() + fourth_atom
-            fourth_atom = list(bond_set - intersect)
-            dihedral_ind = bend.tolist() + fourth_atom
+                improper_dihedrals.append(dihedral_ind)
 
-            dihedral_set = set(dihedral_ind)
-            # Check if this dihedral is already present
-            if dihedral_set in dihedral_sets:
-                continue
-            # Assure that there are no linear angles
-            if not self.is_valid_dihedral(dihedral_ind):
-                logging.warning("Skipping generation of dihedral "
-                               f"{dihedral_ind} as some of the the atoms "
-                                "are linear."
-                )
-                continue
-            self.dihedral_indices.append(dihedral_ind)
-            dihedral_sets.append(dihedral_set)
-            """
+        # Now try to create the remaining improper dihedrals.
+        if (len(self.atoms) >= 4) and (len(self.dihedral_indices) == 0):
+            for improp in improper_dihedrals:
+                set_dihedral_index(improp)
+
         self.dihedral_indices = np.array(self.dihedral_indices)
 
     def set_primitive_indices(self):
