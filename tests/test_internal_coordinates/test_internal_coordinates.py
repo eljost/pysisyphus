@@ -62,7 +62,7 @@ def test_azetidine_opt():
     opt = get_opt(xyz_fn)
     geom = opt.geometry
     print("internal coordinates", len(geom.internal._prim_coords))
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     opt.run()
 
 

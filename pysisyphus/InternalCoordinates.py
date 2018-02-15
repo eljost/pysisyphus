@@ -26,7 +26,6 @@ class RedundantCoords:
     def __init__(self, atoms, cart_coords):
         self.atoms = atoms
         self.cart_coords = cart_coords
-        self._prim_coords = list()
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -462,8 +461,10 @@ class RedundantCoords:
             full_cart_step += cart_step
             new_coords = last_coords + cart_step
             cart_rms = rms(last_coords, new_coords)
-            print(cart_rms)
             new_vals = self.calculate(new_coords, attr="val")
+            print(cart_rms, new_vals.max())
+
+            #import pdb; pdb.set_trace()
 
             last_step -= new_vals - last_vals
             last_coords = new_coords
