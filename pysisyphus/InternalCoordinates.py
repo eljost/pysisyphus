@@ -17,6 +17,7 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 
+#logging.basicConfig(level=logging.INFO)
 
 PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
 
@@ -448,46 +449,56 @@ class RedundantCoords:
             return dihedral_rad, row
         return dihedral_rad
 
+    def get_internal_diffs(self, new_coords, last_vals):
+        new_internals = self.calculate(new_coords)
+        diffs = list()
+        for new_i, last_val in zip(new_internals, last_vals):
+            diff = new_i.val - last_val
+            # Remove multiples of 2pi from angles and dihedrals
+            if new_i.inds.size > 2:
+                pre_diff = diff
+                diff = np.sign(diff) * (abs(diff) % (2*np.pi))
+            diffs.append(diff)
+        return np.array(diffs)
+
     def transform_int_step(self, step, cart_rms_thresh=1e-6):
         def rms(coords1, coords2):
             return np.sqrt(np.mean((coords1-coords2)**2))
         last_step = step
         last_coords = self.cart_coords.copy()
         last_vals = self.calculate(last_coords, attr="val")
+        last_rms = None
         full_cart_step = np.zeros_like(self.cart_coords)
         Bt_inv = self.Bt_inv
+
+        first_cart_step = None
         for i in range(25):
             cart_step = Bt_inv.T.dot(last_step)
-            full_cart_step += cart_step
             new_coords = last_coords + cart_step
             cart_rms = rms(last_coords, new_coords)
-            new_vals = self.calculate(new_coords, attr="val")
-            print(cart_rms, new_vals.max())
+            if i == 0:
+                # Store the first converted cartesian step if the
+                # transformation goes wrong.
+                first_cart_step = cart_step
+            elif cart_rms > last_rms:
+                # If the conversion somehow fails we return the step
+                # saved above.
+                full_cart_step = first_cart_step
+                break
+            full_cart_step += cart_step
+            new_vals = self.calculate(new_coords)
+            int_diffs = self.get_internal_diffs(new_coords, last_vals)
+            tmp_vals = self.calculate(last_coords)
 
-            #import pdb; pdb.set_trace()
-
-            last_step -= new_vals - last_vals
+            last_step -= int_diffs
             last_coords = new_coords
-            last_vals = new_vals
-            #print("cart_step")
-            #print(cart_step.reshape(-1,3))
-            #print("new_coords")
-            #print(new_coords.reshape(-1,3))
-            #print("cart_rms", cart_rms)
-            #new_pc = self.calculate(last_coords)
-            #print("coords_diff", new_vals - last_vals)
-            #print("new_internal_coordinates", new_vals)
-            #q, dq = q_new, dq-(q_new-q)
-            #assert(new_vals == val_diffs + last_vals)
-            #print("dq", last_step)
-            #import pdb; pdb.set_trace()
+            last_vals += int_diffs
+            last_rms = cart_rms
             logging.info(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
             if cart_rms < cart_rms_thresh:
                 logging.info("Internal to cartesian transformation converged!")
                 break
-        #self.cart_coords = last_coords
-        return full_cart_step#, last_coords
-        #return last_coords
+        return full_cart_step
 
 
 class DelocalizedCoords(RedundantCoords):

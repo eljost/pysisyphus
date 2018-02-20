@@ -51,7 +51,20 @@ def opt_azetidine():
     mol1 = optimize(mf)
 
 
+def opt_fluorethylene():
+    mol = gto.M(atom="""
+        C       -0.061684   0.673790    0.000000
+        C       -0.061684  -0.726210    0.000000
+        F        1.174443   1.331050    0.000000
+        H       -0.927709   1.173790    0.000000
+        H       -0.927709  -1.226210    0.000000
+        H        0.804342  -1.226210    0.000000
+    """, basis="sto-3g")
+    mf = scf.RHF(mol)
+    mol1 = optimize(mf)
+
 if __name__ == "__main__":
     #opt_h2o()
     #opt_sf6()
-    opt_azetidine()
+    #opt_azetidine()
+    opt_fluorethylene()
