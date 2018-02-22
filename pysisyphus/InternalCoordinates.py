@@ -188,10 +188,10 @@ class RedundantCoords:
                     logging.debug("Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
-    def set_bond_indices(self, factor=1.2):
+    def set_bond_indices(self, factor=1.3):
         """
         Default factor of 1.3 taken from [1] A.1.
-        Gaussian uses somewhat less, like 1.2?
+        Gaussian uses somewhat less, like 1.2, or different radii than we do.
         """
         coords3d = self.cart_coords.reshape(-1, 3)
         # Condensed distance matrix
@@ -275,8 +275,8 @@ class RedundantCoords:
             # Check if this dihedral is already present
             if dihedral_set in dihedral_sets:
                 return
-            # Assure that there are no linear angles
-            if not self.is_valid_dihedral(dihedral_ind):
+            # Assure that the angles are below 175° (3.054326 rad)
+            if not self.is_valid_dihedral(dihedral_ind, thresh=0.0873):
                 logging.warning("Skipping generation of dihedral "
                                f"{dihedral_ind} as some of the the atoms "
                                 "are linear."
@@ -367,7 +367,8 @@ class RedundantCoords:
 
     def calc_bend(self, coords, angle_ind, grad=False):
         def are_parallel(vec1, vec2, thresh=1e-6):
-            rad = np.arccos(vec1.dot(vec2))
+            dot = max(min(vec1.dot(vec2), 1), -1)
+            rad = np.arccos(dot)#vec1.dot(vec2))
             # angle > 175°
             if abs(rad) > (np.pi - 0.088):
                 logging.warning(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")

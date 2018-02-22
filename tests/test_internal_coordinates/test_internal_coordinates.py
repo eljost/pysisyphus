@@ -68,6 +68,11 @@ def test_azetidine():
     """See https://doi.org/10.1063/1.462844 Section. III Examples."""
     xyz_fn = "azetidine_not_opt.xyz"
     geom = get_geom(xyz_fn)
+    #import pdb; pdb.set_trace()
+    #geom.dihedral_indices
+    dihed_inds = geom.internal.dihedral_indices
+    dihed_inds = np.concatenate((dihed_inds, ((3,0,8,5), (0,3,5,8), (3,5,8,0))))
+    geom.internal.dihedral_indices = dihed_inds
     gaussian_str, pysis_dict = print_gaussian_ints(geom)
 
     fn = "azetidine_gaussian_internals"
@@ -82,8 +87,27 @@ def test_azetidine():
 @pytest.mark.skip(reason="This fails for now ...")
 def test_azetidine_opt():
     """See https://doi.org/10.1063/1.462844 Section. III Examples."""
-    xyz_fn = "azetidine_not_opt.xyz"
-    opt = get_opt(xyz_fn)
+    #xyz_fn = "azetidine_not_opt.xyz"
+    #xyz_fn = "azetidine_xtbopt.xyz"
+    xyz_fn = "xtbopt_mod2.xyz"
+    geom = get_geom(xyz_fn)
+    dihed_inds = geom.internal.dihedral_indices
+    dihed_inds = np.concatenate((dihed_inds, ((3,0,8,5), (0,3,5,8), (3,5,8,0))))
+    geom.internal.dihedral_indices = dihed_inds
+    geom.internal._prim_coords = geom.internal.calculate(geom._coords)
+    print(geom.internal._prim_coords, len(geom.internal._prim_coords))
+    print(dihed_inds)
+    print(geom.internal.dihedral_indices)
+    geom.set_calculator(XTB())
+    #return BFGS(geom)
+    opt = RFOptimizer(geom)
+    #opt = get_opt(xyz_fn)
+
+    #dihed_inds = opt.geometry.internal.dihedral_indices
+    #dihed_inds = np.concatenate((dihed_inds, ((3,0,8,5), (0,3,5,8), (3,5,8,0))))
+    #opt.geometry.internal.dihedral_indices = dihed_inds
+
+    opt.max_cycles = 75
     opt.dump = True
     opt.run()
 
@@ -144,6 +168,12 @@ def test_co2_linear():
     assert_internals(geom, (2, 1, 0))
 
 
+def test_co2_linear_opt():
+    xyz_fn = "co2_linear.xyz"
+    opt = get_opt(xyz_fn)
+    opt.run()
+
+
 def test_ch4():
     xyz_fn = "methane.xyz"
     geom = get_geom(xyz_fn)
@@ -176,7 +206,7 @@ def run():
 if __name__ == "__main__":
     #test_fluorethylene()
     #test_fluorethylene_opt()
-    test_azetidine()
+    #test_azetidine()
     #test_azetidine_opt()
     #test_h2o()
     #test_h2o_opt()
@@ -185,6 +215,7 @@ if __name__ == "__main__":
     #test_two_fragments()
     #test_hydrogen_bonds()
     #test_co2_linear()
+    test_co2_linear_opt()
     #test_ch4()
     #test_sf6()
     pass
