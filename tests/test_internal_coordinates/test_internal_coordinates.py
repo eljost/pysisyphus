@@ -12,6 +12,7 @@ from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 
+from printer import print_gaussian_ints, read_gaussian_ints, compare_to_gaussian
 
 np.set_printoptions(suppress=True, precision=4)
 
@@ -63,15 +64,27 @@ def test_fluorethylene_opt():
     #    handle.write(cart_opt.geometry.as_xyz())
 
 
+def test_azetidine():
+    """See https://doi.org/10.1063/1.462844 Section. III Examples."""
+    xyz_fn = "azetidine_not_opt.xyz"
+    geom = get_geom(xyz_fn)
+    gaussian_str, pysis_dict = print_gaussian_ints(geom)
+
+    fn = "azetidine_gaussian_internals"
+    with open(fn) as handle:
+        text = handle.read()
+    gaussian_dict = read_gaussian_ints(text)
+    #import pdb; pdb.set_trace()
+    compare_to_gaussian(pysis_dict, gaussian_dict)
+    print("\n".join(gaussian_str))
+
+
 @pytest.mark.skip(reason="This fails for now ...")
 def test_azetidine_opt():
     """See https://doi.org/10.1063/1.462844 Section. III Examples."""
     xyz_fn = "azetidine_not_opt.xyz"
-    #geom = get_geom(xyz_fn)
     opt = get_opt(xyz_fn)
     opt.dump = True
-    geom = opt.geometry
-    print("internal coordinates", len(geom.internal._prim_coords))
     opt.run()
 
 
@@ -162,7 +175,8 @@ def run():
 
 if __name__ == "__main__":
     #test_fluorethylene()
-    test_fluorethylene_opt()
+    #test_fluorethylene_opt()
+    test_azetidine()
     #test_azetidine_opt()
     #test_h2o()
     #test_h2o_opt()

@@ -188,9 +188,10 @@ class RedundantCoords:
                     logging.debug("Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
-    def set_bond_indices(self, factor=1.3):
+    def set_bond_indices(self, factor=1.2):
         """
         Default factor of 1.3 taken from [1] A.1.
+        Gaussian uses somewhat less, like 1.2?
         """
         coords3d = self.cart_coords.reshape(-1, 3)
         # Condensed distance matrix
