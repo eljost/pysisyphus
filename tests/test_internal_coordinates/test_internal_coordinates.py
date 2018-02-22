@@ -48,8 +48,12 @@ def test_fluorethylene():
 
 def test_fluorethylene_opt():
     xyz_fn = "fluorethylene.xyz"
-    opt = get_opt(xyz_fn)
-    opt.run()
+    #opt = get_opt(xyz_fn)
+    #opt.run()
+
+    cart_opt = get_opt(xyz_fn, coord_type="cart")
+    cart_opt.dump = True
+    cart_opt.run()
     #with open("fe_opt.xyz", "w") as handle:
     #    handle.write(opt.geometry.as_xyz())
 
