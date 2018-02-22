@@ -13,7 +13,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class RFOptimizer(Optimizer):
 
-    def __init__(self, geometry, trust_radius=0.5, **kwargs):
+    def __init__(self, geometry, trust_radius=0.3, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
@@ -123,5 +123,6 @@ class RFOptimizer(Optimizer):
         #step = self.scale_by_max_step(step)
         if step_norm > self.trust_radius:
             step = self.find_step(step)
+        self.log(f"norm(step) {np.linalg.norm(step):.4f}")
 
         return step

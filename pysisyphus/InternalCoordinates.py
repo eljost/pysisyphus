@@ -370,7 +370,7 @@ class RedundantCoords:
             rad = np.arccos(vec1.dot(vec2))
             # angle > 175°
             if abs(rad) > (np.pi - 0.088):
-                logging.warning("Found nearly linear angle, may give problems!")
+                logging.warning(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
             return abs(rad) > (np.pi - thresh)
         m, o, n = angle_ind
         u_dash = coords[m] - coords[o]
