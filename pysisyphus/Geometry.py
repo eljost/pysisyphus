@@ -159,4 +159,4 @@ class Geometry:
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
     def __str__(self):
-        return "Geometry with {} atoms".format(len(self.atoms))
+        return "Geometry, {} atoms".format(len(self.atoms))

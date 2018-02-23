@@ -14,10 +14,9 @@ import yaml
 
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
-from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj, procrustes
 from pysisyphus.irc import *
 from pysisyphus.optimizers import *
+from pysisyphus.trj import get_geoms
 
 
 COS_DICT = {
@@ -56,26 +55,12 @@ IRC_DICT = {
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("yaml", nargs="?",
-                        help="Start pysisyphus with input from a YAML file.")
+    action_group = parser.add_mutually_exclusive_group(required=True)
+    action_group.add_argument("yaml", nargs="?",
+                              help="Start pysisyphus with input from a "
+                                   "YAML file.")
+    action_group.add_argument("--clean", action="store_true")
 
-    parser.add_argument("--between", type=int,
-                        help="Interpolate additional images.")
-    parser.add_argument("--idpp", action="store_true",
-                        help="Use Image Dependent Pair Potential instead "
-                             "of simple linear interpolation.")
-    parser.add_argument("--xyz", nargs="+")
-    parser.add_argument("--clean", action="store_true")
-    parser.add_argument("--align", nargs="+",
-                        help="Align geometries onto the first geometry "
-                             "read from multiple .xyz or one .trj file.")
-    parser.add_argument("--split",
-                        help="Split a supplied .trj file in multiple "
-                             ".xyz files.")
-    parser.add_argument("--reverse",
-                        help="Reverse a .trj file.")
-    parser.add_argument("--cleantrj",
-                        help="Clean a .trj file.")
     parser.add_argument("--restart", action="store_true",
                         help="Continue a previously crashed/aborted/... "
                              "pysisphus run.")
@@ -96,53 +81,6 @@ def get_calc(index, base_name, calc_key, calc_kwargs):
     kwargs_copy["calc_number"] = index
     return CALC_DICT[calc_key](**kwargs_copy)
 
-
-def dump_geometry_strings(base, trj="", xyz_per_image=[]):
-    if trj:
-        trj_fn = f"{base}.trj"
-        with open(trj_fn, "w") as handle:
-            handle.write(trj)
-        print(f"Wrote all geometries to {trj_fn}.")
-    for i, xyz in enumerate(xyz_per_image):
-        image_fn = f"{base}.image_{i}.xyz"
-        with open(image_fn, "w") as handle:
-            handle.write(xyz)
-        print(f"Wrote image {i} to {image_fn}.")
-    print()
-
-
-def get_geoms(xyz_fns, idpp=False, between=0, dump=False):
-    # Read .xyz or .trj files
-    if isinstance(xyz_fns, str) and xyz_fns.endswith(".xyz"):
-        geoms = [geom_from_xyz_file(xyz_fns), ]
-    elif len(xyz_fns) == 1 and xyz_fns[0].endswith(".trj"):
-        geoms = geoms_from_trj(xyz_fns[0])
-    elif isinstance(xyz_fns, str) and xyz_fns.endswith(".trj"):
-        geoms = geoms_from_trj(xyz_fns)
-    else:
-        geoms = [geom_from_xyz_file(fn) for fn in xyz_fns]
-
-    print(f"Read {len(geoms)} geometries.")
-
-    # Do IDPP interpolation if requested,
-    trj = ""
-    xyz_per_image = list()
-    if idpp:
-        geoms = IDPP.idpp_interpolate(geoms, images_between=between)
-        xyz_per_image = [geom.as_xyz() for geom in geoms]
-        trj = "\n".join(xyz_per_image)
-    # or just linear interpolation.
-    elif between != 0:
-        cos = ChainOfStates.ChainOfStates(geoms)
-        cos.interpolate(between)
-        geoms = cos.images
-        xyz_per_image = [geom.as_xyz() for geom in geoms]
-        trj = cos.as_xyz()
-
-    if dump and len(geoms) > 2:
-        dump_geometry_strings("interpolated", trj, xyz_per_image)
-
-    return geoms
 
 
 def run_cos(cos, calc_getter, opt_getter):
@@ -167,16 +105,6 @@ def run_irc(args):
     irc.run()
     #irc.write_trj(THIS_DIR, prefix)
 """
-
-
-def run_interpolation(args):
-    geoms = get_geoms(args.xyz, args.idpp, args.between, dump=True)
-    """
-    trj_fn = "interpolated.trj"
-    trj_str = "\n".join([geom.as_xyz() for geom in geoms])
-    with open(trj_fn, "w") as handle:
-        handle.write(trj_str)
-    """
 
 
 def get_defaults(conf_dict):
@@ -347,59 +275,17 @@ def clean():
             print(f"Deleted {p}")
 
 
-def align(fns):
-    geoms = get_geoms(fns)
-    cos = ChainOfStates.ChainOfStates(geoms)
-    procrustes(cos)
-    trj = cos.as_xyz()
-    xyz_per_image = [image.as_xyz() for image in cos.images]
-    dump_geometry_strings("aligned", trj, xyz_per_image)
-
-
-def split(trj_fn):
-    geoms = get_geoms(trj_fn)
-    xyz_per_image = [geom.as_xyz() for geom in geoms]
-    dump_geometry_strings("split", xyz_per_image=xyz_per_image)
-
-
-def reverse_trj(trj_fn):
-    geoms = get_geoms(trj_fn)
-    xyz_per_image = list(reversed([geom.as_xyz() for geom in geoms]))
-    reversed_trj = "\n".join(xyz_per_image)
-    dump_geometry_strings("reversed", trj=reversed_trj)
-
-
-def clean_trj(trj_fn):
-    geoms = get_geoms(trj_fn)
-    xyz_per_image = [geom.as_xyz() for geom in geoms]
-    trj = "\n".join(xyz_per_image)
-    dump_geometry_strings("cleaned", trj=trj)
-
-
 def run():
     args = parse_args(sys.argv[1:])
 
-    # Do ChainOfStates method
     if args.yaml:
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         run_dict = handle_yaml(yaml_str)
         pprint(run_dict)
         main(run_dict, args.restart)
-    elif args.between:
-        run_interpolation(args)
     elif args.clean:
         clean()
-    elif args.align:
-        align(args.align)
-    elif args.split:
-        split(args.split)
-    elif args.reverse:
-        reverse_trj(args.reverse)
-    elif args.cleantrj:
-        clean_trj(args.cleantrj)
-    else:
-        print("Please specify a run type! Show help with -h.")
 
 if __name__ == "__main__":
     run()
