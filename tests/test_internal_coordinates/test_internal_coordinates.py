@@ -29,9 +29,9 @@ def get_opt(xyz_fn, coord_type="redund"):
     geom = get_geom(xyz_fn, coord_type)
     geom.set_calculator(XTB())
     #return BFGS(geom)
-    return RFOptimizer(geom)
+    #return RFOptimizer(geom)
     #return ConjugateGradient(geom)
-    #return SteepestDescent(geom)
+    return SteepestDescent(geom)
 
 
 def assert_internals(geom, lengths):
@@ -91,6 +91,7 @@ def test_azetidine_opt():
     #xyz_fn = "azetidine_xtbopt.xyz"
     xyz_fn = "xtbopt_mod2.xyz"
     geom = get_geom(xyz_fn)
+    geom = get_geom("/scratch/programme/pysisyphus/xyz_files/azet_bad.xyz")
     dihed_inds = geom.internal.dihedral_indices
     dihed_inds = np.concatenate((dihed_inds, ((3,0,8,5), (0,3,5,8), (3,5,8,0))))
     geom.internal.dihedral_indices = dihed_inds
@@ -107,7 +108,7 @@ def test_azetidine_opt():
     #dihed_inds = np.concatenate((dihed_inds, ((3,0,8,5), (0,3,5,8), (3,5,8,0))))
     #opt.geometry.internal.dihedral_indices = dihed_inds
 
-    opt.max_cycles = 75
+    opt.max_cycles = 100
     opt.dump = True
     opt.run()
 
@@ -183,6 +184,9 @@ def test_ch4():
 def test_sf6():
     xyz_fn = "sf6.xyz"
     geom = get_geom(xyz_fn)
+    #print(geom.internal.prim_indices)
+    gaussian_str, pysis_dict = print_gaussian_ints(geom)
+    print("\n".join(gaussian_str))
     assert_internals(geom, (6, 15, 20))
 
 
@@ -207,7 +211,7 @@ if __name__ == "__main__":
     #test_fluorethylene()
     #test_fluorethylene_opt()
     #test_azetidine()
-    #test_azetidine_opt()
+    test_azetidine_opt()
     #test_h2o()
     #test_h2o_opt()
     #test_h2o_rfopt()
@@ -215,7 +219,6 @@ if __name__ == "__main__":
     #test_two_fragments()
     #test_hydrogen_bonds()
     #test_co2_linear()
-    test_co2_linear_opt()
+    #test_co2_linear_opt()
     #test_ch4()
     #test_sf6()
-    pass

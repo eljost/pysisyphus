@@ -38,6 +38,10 @@ class RedundantCoords:
         self.set_rho()
 
     @property
+    def prim_indices(self):
+        return [self.bond_indices, self.bending_indices, self.dihedral_indices]
+
+    @property
     def B(self):
         """Wilson B-Matrix"""
         return np.array([c.grad for c in self.calculate(self.cart_coords)])
