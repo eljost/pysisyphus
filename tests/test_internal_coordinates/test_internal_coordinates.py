@@ -113,6 +113,19 @@ def test_azetidine_opt():
     opt.run()
 
 
+def test_runo():
+    xyz_fn = "01_run6fbpb_photoprod_guess.xyz"
+    geom = get_geom(xyz_fn)
+    #import pdb; pdb.set_trace()
+    #geom.dihedral_indices
+    dihed_inds = geom.internal.dihedral_indices
+    dihed_inds = np.concatenate((dihed_inds, ((3,0,8,5), (0,3,5,8), (3,5,8,0))))
+    geom.internal.dihedral_indices = dihed_inds
+    gaussian_str, pysis_dict = print_gaussian_ints(geom)
+
+    print("\n".join(gaussian_str))
+
+
 def test_h2o():
     xyz_fn = "h2o.xyz"
     geom = get_geom(xyz_fn)
@@ -211,7 +224,8 @@ if __name__ == "__main__":
     #test_fluorethylene()
     #test_fluorethylene_opt()
     #test_azetidine()
-    test_azetidine_opt()
+    #test_azetidine_opt()
+    test_runo()
     #test_h2o()
     #test_h2o_opt()
     #test_h2o_rfopt()
