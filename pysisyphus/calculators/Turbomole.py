@@ -222,10 +222,9 @@ class Turbomole(Calculator):
         # In the first iteration we have nothing to compare to
         old_root = self.root
         if self.calc_counter >= 1:
-            new_root = self.wfow.track(old_root=self.root)
-            if new_root != self.root:
-                self.log("Found a root flip from {self.root} to {new_root}")
-                self.root = new_root
+            self.root = self.wfow.track(old_root=self.root)
+            if self.root != old_root:
+                self.log("Found a root flip from {old_root} to {self.root}!")
 
         # True if a root flip occured
         return not (self.root == old_root)

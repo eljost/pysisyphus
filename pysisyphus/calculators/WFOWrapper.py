@@ -240,10 +240,14 @@ class WFOWrapper:
 
         overlap_matrix = self.parse_wfoverlap_out(stdout)
         overlap_matrix = overlap_matrix.reshape(-1, len(cic2_with_gs))
-        new_root = (overlap_matrix[old_root]**2).argmax()
-        max_overlap = overlap_matrix[old_root][new_root]**2
-
-        msg = f"Old root was {old_root}, new root is {new_root} with " \
-              f"overlap of {max_overlap:.2%}."
+        old_root_col = overlap_matrix[old_root]**2
+        new_root = old_root_col.argmax()
+        max_overlap = old_root_col[new_root]
+        old_root_col_str = ", ".join(
+            [f"{i}: {ov:.2%}" for i, ov in enumerate(old_root_col)]
+        )
+        self.log(f"Overlaps: {old_root_col_str}")
+        msg = f"New root {new_root} has {max_overlap:.2%} overlap with " \
+              f"old root {old_root}."
         self.log(msg)
         return new_root
