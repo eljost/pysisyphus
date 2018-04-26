@@ -15,7 +15,8 @@ class Calculator:
     logger = logging.getLogger("calculator")
 
     def __init__(self, calc_number=0, charge=0, mult=1,
-                 base_name="calculator", last_calc_cycle=None):
+                 base_name="calculator", last_calc_cycle=None,
+                 clean_after=True):
         self.charge = int(charge)
         self.mult = int(mult)
         # Index of the image this calculator belongs too in
@@ -34,6 +35,7 @@ class Calculator:
             self.calc_counter = int(last_calc_cycle)+1
             self.reattach(int(last_calc_cycle))
             self.log(f"set {self.calc_counter} for this calculation")
+        self.clean_after = clean_after
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
@@ -97,9 +99,6 @@ class Calculator:
         )
         return coords
 
-    def run_after(self, path):
-        pass
-
     def run(self, inp, calc, add_args=None, env=None, shell=False, hold=False):
         path = self.prepare(inp)
         self.log(f"running in {path}")
@@ -128,12 +127,15 @@ class Calculator:
             shutil.copytree(path, backup_dir)
             sys.exit()
         finally:
-            if not hold:
+            if (not hold) and self.clean_after:
                 self.clean(path)
                 self.calc_counter += 1
 
         self.path_already_prepared = None
         return results
+
+    def run_after(self, path):
+        pass
 
     def keep(self, path):
         kept_fns = dict()
