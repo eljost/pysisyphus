@@ -63,7 +63,6 @@ class WFOWrapper:
         ao_ovlp = gto.mole.intor_cross("int1e_ovlp_sph", mol1, mol2)
         return ao_ovlp
 
-
     def make_det_string(self, inds):
         """Return spin adapted strings."""
         from_mo, to_mo = inds
@@ -102,6 +101,12 @@ class WFOWrapper:
             ab, ba = det_string
             from_mo, to_mo = inds
             per_state =  ci_coeffs[:,from_mo,to_mo]
+            # A singlet determinant can be formed in two ways:
+            # (up down) (up down) (up down) ...
+            # or
+            # (down up) (down up) (down up) ...
+            # We take this into account by expanding the singlet determinants
+            # and using a proper normalization constant.
             # See 10.1063/1.3000012 Eq. (5) and 10.1021/acs.jpclett.7b01479 SI
             per_state *= 1/2**0.5
             as_str = lambda arr: " ".join([self.fmt.format(cic)

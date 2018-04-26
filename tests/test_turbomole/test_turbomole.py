@@ -35,6 +35,7 @@ def test_benzene_wfoverlap():
     turbo.check_for_root_flip(geom.atoms, geom.coords)
     turbo.wfow.track()
 
+
 def test_h2o_wfoverlap():
     path1 = THIS_DIR / "h2o1_wfoverlap"
     path2 = THIS_DIR / "h2o2_wfoverlap"
