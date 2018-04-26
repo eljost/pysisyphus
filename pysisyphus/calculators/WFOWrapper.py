@@ -11,8 +11,8 @@ import numpy as np
 try:
     from pyscf import gto
 except ImportError:
-    print("Couldn't import pyscf!")
-    #raise Exception
+    pass
+    #print("Couldn't import pyscf!")
 import pyparsing as pp
 
 from pysisyphus.config import Config
@@ -28,13 +28,26 @@ b_mo_read=2"""
 
 
 class WFOWrapper:
-    def __init__(self, occ_mos, virt_mos):
+    logger = logging.getLogger("wfoverlap")
+    matrix_types = {
+        "ovlp": "Overlap matrix",
+        "renorm": "Renormalized overlap matrix",
+        "ortho": "Orthonormalized overlap matrix",
+    }
+
+    def __init__(self, occ_mos, virt_mos, basis, calc_number=0):
         self.base_cmd = Config["wfoverlap"]["cmd"]
         self.occ_mos = occ_mos
         self.virt_mos = virt_mos
+        self.basis = basis
+        # Should correspond to the attribute of the parent calculator
+        self.calc_number = calc_number
+        self.name = f"WFOWrapper_{self.calc_number}"
         self.mos = self.occ_mos + self.virt_mos
         self.base_det_str = "d"*self.occ_mos + "e"*self.virt_mos
         self.fmt = "{: .10f}"
+
+        self.iter_counter = 0
 
         # Molecule coordinates
         self.coords_list = list()
@@ -45,22 +58,29 @@ class WFOWrapper:
         self.from_set_list = list()
         self.to_set_list = list()
 
+    def log(self, message):
+        self.logger.debug(f"{self.name}, " + message)
+
     def build_mole(self, coords):
         coords3d = coords.reshape(-1, 3)
         return [[atom, c] for atom, c in zip(self.atoms, coords3d)]
 
-    def overlap(self, a1, a2, basis="sto-3g"):
+    def overlap(self, a1, a2, sphere=True):
         def prepare(atom):
             mol = gto.Mole()
             mol.atom = atom
-            mol.basis = basis
+            mol.basis = self.basis
             mol.unit = "bohr"
             # Charge or spin aren't needed for overlap integrals
             mol.build()
             return mol
         mol1 = prepare(a1)
         mol2 = prepare(a2)
-        ao_ovlp = gto.mole.intor_cross("int1e_ovlp_sph", mol1, mol2)
+        if sphere:
+            ao_ovlp = gto.mole.intor_cross("int1e_ovlp_sph", mol1, mol2)
+        else:
+            # Cartesian functions otherwise
+            ao_ovlp = gto.mole.intor_cross("int1e_ovlp_cart", mol1, mol2)
         return ao_ovlp
 
     def make_det_string(self, inds):
@@ -132,6 +152,8 @@ class WFOWrapper:
         self.mo_inds_list.append(mo_inds)
         self.from_set_list.append(from_set)
         self.to_set_list.append(to_set)
+        self.iter_counter += 1
+        self.log(f"Stored iteration {self.iter_counter}")
 
     def get_iteration(self, ind):
         return (self.mos_list[ind], self.coords_list[ind],
@@ -141,9 +163,10 @@ class WFOWrapper:
     def make_dets_header(self, cic, dets_list):
         return f"{len(cic)} {self.mos} {len(dets_list)}"
 
-    def parse_wfoverlap(self, text):
+    def parse_wfoverlap_out(self, text, type_="ortho"):
         """Returns overlap matrix."""
-        header = pp.Literal("Overlap matrix <PsiA_i|PsiB_j>")
+        header_str = self.matrix_types[type_] + " <PsiA_i|PsiB_j>"
+        header = pp.Literal(header_str)
         float_ = pp.Word(pp.nums+"-.")
         psi_bra = pp.Literal("<Psi") + pp.Word(pp.alphas) \
                   + pp.Word(pp.nums) + pp.Literal("|")
@@ -152,13 +175,13 @@ class WFOWrapper:
         matrix_line = pp.Suppress(psi_bra) + pp.OneOrMore(float_)
 
         parser = pp.SkipTo(header, include=True) \
-                 + psi_ket + psi_ket \
+                 + pp.OneOrMore(psi_ket) \
                  + pp.OneOrMore(matrix_line).setResultsName("overlap")
 
         result = parser.parseString(text)
         return np.array(list(result["overlap"]), dtype=np.float)
 
-    def track(self, old_root=None):
+    def track(self, old_root):
         mos1, coords1, cic1, moi1, fs1, ts1 = self.get_iteration(-2)
         mos2, coords2, cic2, moi2, fs2, ts2 = self.get_iteration(-1)
         # Create a fake array for the ground state where all CI coefficients
@@ -168,9 +191,8 @@ class WFOWrapper:
         cic2_with_gs = np.concatenate((gs_cic[None,:,:], cic2))
         a1 = self.build_mole(coords1)
         a2 = self.build_mole(coords2)
-        ao_ovlp = self.overlap(a1, a2, basis="sto-3g")
+        ao_ovlp = self.overlap(a1, a2)
         ao_header = "{} {}".format(*ao_ovlp.shape)
-        logging.warning("!using sto3g! for ao overlaps")
 
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
         # Prepare line for ground state
@@ -191,6 +213,7 @@ class WFOWrapper:
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
+            self.log(f"Calculation in {tmp_dir}")
             mos1_path = shutil.copy(mos1, tmp_path / "mos.1")
             mos2_path = shutil.copy(mos2, tmp_path / "mos.2")
             dets1_path = tmp_path / "dets.1"
@@ -210,12 +233,17 @@ class WFOWrapper:
                                       stdout=subprocess.PIPE)
             result.wait()
             stdout = result.stdout.read().decode("utf-8")
-        print(stdout)
-        overlap_matrix = self.parse_wfoverlap(stdout)
-        overlap_matrix = overlap_matrix.reshape(-1, len(cic2_with_gs))
-        print(overlap_matrix)
 
-        if old_root:
-            return overlap_matrix[old_root]
-        else:
-            return overlap_matrix
+        wfo_log_fn = f"wfo_{self.calc_number}.{self.iter_counter:03d}.out"
+        with open(wfo_log_fn, "w") as handle:
+            handle.write(stdout)
+
+        overlap_matrix = self.parse_wfoverlap_out(stdout)
+        overlap_matrix = overlap_matrix.reshape(-1, len(cic2_with_gs))
+        new_root = (overlap_matrix[old_root]**2).argmax()
+        max_overlap = overlap_matrix[old_root][new_root]**2
+
+        msg = f"Old root was {old_root}, new root is {new_root} with " \
+              f"overlap of {max_overlap:.2%}."
+        self.log(msg)
+        return new_root
