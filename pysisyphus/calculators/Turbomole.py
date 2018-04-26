@@ -20,12 +20,13 @@ from pysisyphus.calculators.WFOWrapper import WFOWrapper
 class Turbomole(Calculator):
 
     def __init__(self, control_path, root=None,
-                 track=False, **kwargs):
+                 track=False, wfo_basis=None, **kwargs):
         super(Turbomole, self).__init__(**kwargs)
 
         self.control_path = Path(control_path)
         self.root = root
         self.track = track
+        self.wfo_basis = wfo_basis
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
                         "ciss_a", "ucis_a")
 
@@ -33,6 +34,7 @@ class Turbomole(Calculator):
             "force": self.parse_force,
         }
 
+        # Turbomole uses the 'control' file implicitly
         self.inp_fn = ""
         self.out_fn = "turbomole.out"
         # MO coefficient files
@@ -60,7 +62,10 @@ class Turbomole(Calculator):
             base_cmd[1] = "egrad"
             self.prepare_td(text)
         if self.track:
-            assert self.td, "track=True can't be used without $exopt!"
+            assert self.td, "track=True can't be used without '$exopt n'. " \
+                            "Please add it manually with n being the state " \
+                            "to optimize!"
+            assert self.wfo_basis != None
         # Right now this can't handle a root flip from some excited state
         # to the ground state ... Then we would need grad/rdgrad again,
         # instead of egrad.
@@ -79,7 +84,8 @@ class Turbomole(Calculator):
         nbf = int(re.search(nbf_re, text)[1])
         # Determine number of virtual orbitals
         self.virt_mos = nbf - self.occ_mos
-        self.wfow = WFOWrapper(self.occ_mos, self.virt_mos)
+        self.wfow = WFOWrapper(self.occ_mos, self.virt_mos, self.wfo_basis,
+                               calc_number=self.calc_number)
         self.td_vec_fn = None
         self.ci_coeffs = None
         self.mo_inds = None
@@ -95,7 +101,7 @@ class Turbomole(Calculator):
 
     def prepare_input(self, atoms, coords, calc_type):
         if calc_type != "force":
-            raise Exception("Can only do force now.")
+            raise Exception("Can only do force for now.")
             """To rectify this we have to construct the basecmd
             dynamically and construct it ad hoc. We could set a RI flag
             in the beginning and select the correct scf binary here from
@@ -105,7 +111,8 @@ class Turbomole(Calculator):
         # Copy everything from the reference control_dir into this path
         all_src_paths = self.control_path.glob("./*")
         """Maybe we shouldn't copy everything because it may give convergence
-        problems?"""
+        problems? Right now we use the initial MO guess generated in the
+        reference path for all images along the path."""
         globs = [p for p in all_src_paths]
         for glob in self.control_path.glob("./*"):
             shutil.copy(glob, path)
@@ -127,9 +134,15 @@ class Turbomole(Calculator):
         self.prepare_input(atoms, coords, "force")
         # Use inp=None because we got no special input...
         # Use shell=True because we have to chain commands like ridft;rdgrad
-        results = self.run(None, calc="force", shell=True)
+        kwargs = {
+                "calc": "force",
+                "shell": True,
+                "hold": self.track, # Keep the files for WFOverlap
+        }
+        results = self.run(None, **kwargs)
         if self.track:
             self.check_for_root_flip(atoms, coords)
+            self.calc_counter += 1
         return results
 
     def parse_force(self, path):
@@ -191,9 +204,12 @@ class Turbomole(Calculator):
         return arr, mo_inds
 
     def check_for_root_flip(self, atoms, coords):
+        """Call WFOverlap, store the information of the current iteration and
+        calculate the overlap with the previous iteration, if possible."""
+
+        # Parse the eigenvectors
         with open(self.td_vec_fn) as handle:
             text = handle.read()
-        # Parse the eigenvectors
         eigenpair_list = self.parse_td_vectors(text)
         # Filter for relevant MO indices and corresponding CI coefficients
         coeffs_inds = [self.ci_coeffs_above_thresh(ep)
@@ -201,8 +217,9 @@ class Turbomole(Calculator):
         ci_coeffs, mo_inds = zip(*coeffs_inds)
         ci_coeffs = np.array(ci_coeffs)
         self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
+        # In the first iteration we have nothing to compare to
         if self.calc_counter >= 1:
-            new_root = self.wfow.track()
+            new_root = self.wfow.track(old_root=self.root)
             if new_root != self.root:
                 self.log("Found a root flip from {self.root} to {new_root}")
                 self.root = new_root
@@ -219,7 +236,6 @@ class Turbomole(Calculator):
         assert"ucis_a" not in kept_fns, "Implement for UKS TDA"
         if self.track:
             self.td_vec_fn = kept_fns["ciss_a"]
-
 
     def __str__(self):
         return "Turbomole calculator"
