@@ -141,7 +141,9 @@ class Turbomole(Calculator):
         }
         results = self.run(None, **kwargs)
         if self.track:
-            self.check_for_root_flip(atoms, coords)
+            if self.check_for_root_flip(atoms, coords):
+                # Redo the calculation with the updated root
+                results = self.get_forces(atoms, coords)
             self.calc_counter += 1
         return results
 
@@ -218,11 +220,15 @@ class Turbomole(Calculator):
         ci_coeffs = np.array(ci_coeffs)
         self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
         # In the first iteration we have nothing to compare to
+        old_root = self.root
         if self.calc_counter >= 1:
             new_root = self.wfow.track(old_root=self.root)
             if new_root != self.root:
                 self.log("Found a root flip from {self.root} to {new_root}")
                 self.root = new_root
+
+        # True if a root flip occured
+        return not (self.root == old_root)
 
     def keep(self, path):
         kept_fns = super().keep(path)
