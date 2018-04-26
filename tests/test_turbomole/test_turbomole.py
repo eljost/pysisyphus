@@ -41,7 +41,7 @@ def test_h2o_wfoverlap():
     path2 = THIS_DIR / "h2o2_wfoverlap"
     geom1 = geom_from_xyz_file(path1 / "h2o1.xyz")
     geom2 = geom_from_xyz_file(path2 / "h2o2.xyz")
-    turbo = Turbomole(path1)
+    turbo = Turbomole(path1, wfo_basis="sto-3g")
     get_mos_ciss = lambda path: (str(path / "mos"), str(path / "ciss_a"))
     mos1, ciss1 = get_mos_ciss(path1)
     mos2, ciss2 = get_mos_ciss(path2)
@@ -55,8 +55,10 @@ def test_h2o_wfoverlap():
     turbo.check_for_root_flip(geom2.atoms, geom2.coords)
 
     turbo.wfow.track()
+    #fn = "/scratch/programme/pysisyphus/tests/test_turbomole/wfo_backup.out"
+
 
 if __name__ == "__main__":
-    test_forces()
+    #test_forces()
     #test_benzene_wfoverlap()
-    #test_h2o_wfoverlap()
+    test_h2o_wfoverlap()

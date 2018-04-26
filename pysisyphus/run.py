@@ -238,6 +238,7 @@ def clean(force=False):
         "calculator.log",
         "optimizer.log",
         "wfoverlap.log",
+        "wfo_*.out"
         "optimization.trj",
         "cos.log",
         "*.gradient",

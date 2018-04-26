@@ -1,0 +1,72 @@
+$title
+$operating system unix
+$symmetry c1
+$user-defined bonds    file=coord
+$coord    file=coord
+$optimize
+ internal   off
+ redundant  off
+ cartesian  on
+ global     off
+ basis      off
+$atoms
+c  1,4,6,8                                                                     \
+   basis =c def2-SVP
+h  2-3,5,7,9-10                                                                \
+   basis =h def2-SVP
+$basis    file=basis
+$rundimensions
+   dim(fock,dens)=4197
+   natoms=10
+   nshell=42
+   nbf(CAO)=90
+   dim(trafo[SAO<-->AO/CAO])=98
+   rhfshells=1
+   nbf(AO)=86
+$scfmo   file=mos
+$closed shells
+ a       1-15                                   ( 2 )
+$scfiterlimit       30
+$thize     0.10000000E-04
+$thime        5
+$scfdump
+$scfintunit
+ unit=30       size=0        file=twoint
+$scfdiis
+$maxcor    500 MiB  per_core
+$scforbitalshift  automatic=.1
+$drvopt
+   cartesian  on
+   basis      off
+   global     off
+   hessian    on
+   dipole     on
+   nuclear polarizability
+$interconversion  off
+   qconv=1.d-7
+   maxiter=25
+$coordinateupdate
+   dqmax=0.3
+   interpolate  on
+   statistics    5
+$forceupdate
+   ahlrichs numgeo=0  mingeo=3 maxgeo=4 modus=<g|dq> dynamic fail=0.3
+   threig=0.005  reseig=0.005  thrbig=3.0  scale=1.00  damping=0.0
+$forceinit on
+   diag=default
+$energy    file=energy
+$grad    file=gradient
+$forceapprox    file=forceapprox
+$dft
+   functional b-p
+   gridsize   m3
+$scfconv   6
+$scfdamp   start=0.700  step=0.050  min=0.050
+$scfinstab ciss
+$soes
+ a            5
+$rpacor   4000
+$exopt 1
+$denconv 1d-7
+$last step     define
+$end
