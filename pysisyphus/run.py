@@ -59,7 +59,10 @@ def parse_args(args):
     action_group.add_argument("yaml", nargs="?",
                               help="Start pysisyphus with input from a "
                                    "YAML file.")
-    action_group.add_argument("--clean", action="store_true")
+    action_group.add_argument("--clean", action="store_true",
+                              help="Ask for confirmation before cleaning.")
+    action_group.add_argument("--fclean", action="store_true",
+                              help="Force cleaning without prior confirmation.")
 
     parser.add_argument("--restart", action="store_true",
                         help="Continue a previously crashed/aborted/... "
@@ -222,7 +225,7 @@ def main(run_dict, restart):
         run_opt(geoms[0], calc_getter, opt_getter)
 
 
-def clean():
+def clean(force=False):
     """Deletes files from previous runs in the cwd.
     A similar function could be used to store everything ..."""
     cwd = Path(".").resolve()
@@ -258,6 +261,9 @@ def clean():
         "image*.beta",
         "image*.control",
         "image*.ciss_a",
+        "calculator_*.control",
+        "calculator_*.mos",
+        "calculator_*.ciss_a",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -265,14 +271,21 @@ def clean():
     to_rm_strs = [str(p) for p in to_rm_paths]
     for s in to_rm_strs:
         print(s)
-    rly_delete = input("Delete these files? (yes/no)\n")
-    if rly_delete != "yes":
-        print("Aborting")
-        return
-    else:
+
+    def delete():
         for p in to_rm_paths:
             os.remove(p)
             print(f"Deleted {p}")
+    if force:
+        delete()
+        return
+    # If we dont force the cleaning ask for confirmation first
+    rly_delete = input("Delete these files? (yes/no)\n")
+    if rly_delete == "yes":
+        delete()
+    else:
+        print("Aborting")
+        return
 
 
 def run():
@@ -286,6 +299,8 @@ def run():
         main(run_dict, args.restart)
     elif args.clean:
         clean()
+    elif args.fclean:
+        clean(force=True)
 
 if __name__ == "__main__":
     run()
