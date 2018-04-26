@@ -237,6 +237,7 @@ def clean(force=False):
         "interpolated.image*.xyz",
         "calculator.log",
         "optimizer.log",
+        "wfoverlap.log",
         "optimization.trj",
         "cos.log",
         "*.gradient",
