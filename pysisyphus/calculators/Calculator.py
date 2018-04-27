@@ -34,7 +34,7 @@ class Calculator:
         if last_calc_cycle:
             self.calc_counter = int(last_calc_cycle)+1
             self.reattach(int(last_calc_cycle))
-            self.log(f"set {self.calc_counter} for this calculation")
+            self.log(f"Set {self.calc_counter} for this calculation")
         self.clean_after = clean_after
 
         self.inp_fn = "calc.inp"
@@ -101,7 +101,7 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None, env=None, shell=False, hold=False):
         path = self.prepare(inp)
-        self.log(f"running in {path}")
+        self.log(f"Running in {path}")
         args = [self.base_cmd, self.inp_fn]
         if add_args:
             args.extend(add_args)
