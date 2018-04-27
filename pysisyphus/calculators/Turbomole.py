@@ -32,6 +32,7 @@ class Turbomole(Calculator):
 
         self.parser_funcs = {
             "force": self.parse_force,
+            "tddft": self.parse_tddft,
         }
 
         # Turbomole uses the 'control' file implicitly
@@ -45,10 +46,12 @@ class Turbomole(Calculator):
         # Prepare base_cmd
         with open(self.control_path / "control") as handle:
             text = handle.read()
-        base_cmd = ["dscf", "grad"]
+        scf_cmd = "dscf"
+        second_cmd = "grad"
         # Check for RI
         if ("$rij" in text) or ("$rik" in text):
-            base_cmd = ["ridft", "rdgrad"]
+            scf_cmd = "ridft"
+            second_cmd = "rdgrad"
             self.log("Found RI calculation.")
 
         self.uhf = "$uhf" in text
@@ -59,21 +62,25 @@ class Turbomole(Calculator):
         if "$exopt" in text:
             exopt_re = "\$exopt\s*(\d+)"
             self.root = int(re.search(exopt_re, text)[1])
-            base_cmd[1] = "egrad"
+            second_cmd = "egrad"
+            self.prepare_td(text)
+        elif "$soes" in text:
+            second_cmd = "escf"
             self.prepare_td(text)
         if self.track:
-            assert self.td, "track=True can't be used without '$exopt n'. " \
-                            "Please add it manually with n being the state " \
-                            "to optimize!"
+            assert self.td, "track=True can only be used in connection " \
+                            "with excited state calculations."
             assert self.wfo_basis != None
         # Right now this can't handle a root flip from some excited state
         # to the ground state ... Then we would need grad/rdgrad again,
         # instead of egrad.
-        self.base_cmd = ";".join(base_cmd)
+        self.scf_cmd = scf_cmd
+        self.second_cmd = second_cmd
+        self.base_cmd = ";".join((self.scf_cmd, self.second_cmd))
         self.log(f"Using base_cmd {self.base_cmd}")
 
     def prepare_td(self, text):
-        self.log("Preparing for excited state gradient calculations")
+        self.log("Preparing for excited state (gradient) calculations")
         self.td = True
         # Determine number of occupied orbitals
         occ_re = "closed shells\s+(\w)\s*\d+-(\d+)"
@@ -100,8 +107,8 @@ class Turbomole(Calculator):
         return coord_str
 
     def prepare_input(self, atoms, coords, calc_type):
-        if calc_type != "force":
-            raise Exception("Can only do force for now.")
+        if calc_type not in ("force", "tddft"):
+            raise Exception("Can only do force and tddft for now.")
             """To rectify this we have to construct the basecmd
             dynamically and construct it ad hoc. We could set a RI flag
             in the beginning and select the correct scf binary here from
@@ -147,8 +154,27 @@ class Turbomole(Calculator):
             self.calc_counter += 1
         return results
 
+    def get_tddft(self, atoms, coords):
+        self.prepare_input(atoms, coords, "tddft")
+        # Use inp=None because we got no special input...
+        # Use shell=True because we have to chain commands like ridft;rdgrad
+        kwargs = {
+                "calc": "tddft",
+                "shell": True,
+                "hold": self.track, # Keep the files for WFOverlap
+        }
+        results = self.run(None, **kwargs)
+        if self.track:
+            print("track tddft")
+            self.check_for_root_flip(atoms, coords)
+            self.calc_counter += 1
+        return results
+
     def parse_force(self, path):
         return parse_turbo_gradient(path)
+
+    def parse_tddft(self, path):
+        return None
 
     def parse_td_vectors(self, text):
         def to_float(s, loc, toks):
