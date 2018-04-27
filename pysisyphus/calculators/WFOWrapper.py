@@ -65,7 +65,7 @@ class WFOWrapper:
         coords3d = coords.reshape(-1, 3)
         return [[atom, c] for atom, c in zip(self.atoms, coords3d)]
 
-    def overlap(self, a1, a2, sphere=True):
+    def get_ao_overlap(self, a1, a2, sphere=True):
         def prepare(atom):
             mol = gto.Mole()
             mol.atom = atom
@@ -121,6 +121,9 @@ class WFOWrapper:
             ab, ba = det_string
             from_mo, to_mo = inds
             per_state =  ci_coeffs[:,from_mo,to_mo]
+            # Drop unimportant configurations
+            if np.sum(per_state**2) < 1e-4:
+                continue
             # A singlet determinant can be formed in two ways:
             # (up down) (up down) (up down) ...
             # or
@@ -181,9 +184,9 @@ class WFOWrapper:
         result = parser.parseString(text)
         return np.array(list(result["overlap"]), dtype=np.float)
 
-    def track(self, old_root):
-        mos1, coords1, cic1, moi1, fs1, ts1 = self.get_iteration(-2)
-        mos2, coords2, cic2, moi2, fs2, ts2 = self.get_iteration(-1)
+    def wf_overlap(self, iter1, iter2):
+        mos1, coords1, cic1, moi1, fs1, ts1 = iter1
+        mos2, coords2, cic2, moi2, fs2, ts2 = iter2
         # Create a fake array for the ground state where all CI coefficients
         # are zero and add it.
         gs_cic = np.zeros_like(cic1[0])
@@ -191,7 +194,7 @@ class WFOWrapper:
         cic2_with_gs = np.concatenate((gs_cic[None,:,:], cic2))
         a1 = self.build_mole(coords1)
         a2 = self.build_mole(coords2)
-        ao_ovlp = self.overlap(a1, a2)
+        ao_ovlp = self.get_ao_overlap(a1, a2)
         ao_header = "{} {}".format(*ao_ovlp.shape)
 
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
@@ -228,7 +231,7 @@ class WFOWrapper:
             ciovl_fn = "ciovl.in"
             with open(tmp_path / ciovl_fn, "w") as handle:
                 handle.write(CIOVL)
-            cmd = f"{self.base_cmd} -f {ciovl_fn}".split()
+            cmd = f"{self.base_cmd} -m 4000 -f {ciovl_fn}".split()
             result = subprocess.Popen(cmd, cwd=tmp_path,
                                       stdout=subprocess.PIPE)
             result.wait()
@@ -240,6 +243,14 @@ class WFOWrapper:
 
         overlap_matrix = self.parse_wfoverlap_out(stdout)
         overlap_matrix = overlap_matrix.reshape(-1, len(cic2_with_gs))
+        return overlap_matrix
+
+    def track(self, old_root):
+        """Return the root with the highest overlap in the latest iteration
+        compared to old_root in the previous to last iteration."""
+        iter1 = self.get_iteration(-2)
+        iter2 = self.get_iteration(-1)
+        overlap_matrix = self.wf_overlap(iter1, iter2)
         old_root_col = overlap_matrix[old_root]**2
         new_root = old_root_col.argmax()
         max_overlap = old_root_col[new_root]
@@ -251,3 +262,21 @@ class WFOWrapper:
               f"old root {old_root}."
         self.log(msg)
         return new_root
+
+    def compare(self, wfow2):
+        """Calculate wavefunction overlaps between the two WFOWrapper objects,
+        using the last stored iterations respectively."""
+        iter1 = self.get_iteration(-1)
+        iter2 = wfow2.get_iteration(-1)
+        overlap_matrix = self.wf_overlap(iter1, iter2)
+        max_ovlp_inds = (overlap_matrix**2).argmax(axis=1)
+        ovlps = (overlap_matrix**2).max(axis=1)
+        inds1 = np.arange(max_ovlp_inds.size)
+        print(overlap_matrix)
+        print()
+        for i1, i2, o in zip(inds1, max_ovlp_inds, ovlps):
+            print(f"{i1} -> {i2} ({o:.1%} overlap)")
+        return max_ovlp_inds
+
+    def __str__(self):
+        return self.name
