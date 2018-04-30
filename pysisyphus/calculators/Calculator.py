@@ -60,10 +60,14 @@ class Calculator:
     def get_hessian(self, atoms, coords):
         raise Exception("Not implemented!")
 
-    def make_fn(self, ext, counter=None, abspath=False):
+    def make_fn(self, ext, counter=None, abspath=False, base=""):
         if not counter:
             counter = self.calc_counter
-        fn = f"{self.name}.{counter:03d}.{ext}"
+        if ext:
+            ext = f".{ext}"
+        if base:
+            base = f"{base}."
+        fn = f"{self.name}.{base}{counter:03d}{ext}"
         if abspath:
             fn = os.path.abspath(fn)
         return fn
@@ -137,20 +141,43 @@ class Calculator:
     def run_after(self, path):
         pass
 
+    def prepare_pattern(self, raw_pat):
+        # Indicates if multiple files are expected
+        multi = "*" in raw_pat
+        # Drop '*' as it just indicates if we expect multiple matches
+        raw_pat = raw_pat.replace("*", "")
+        # Interpret it as prefix and drop the two underscores
+        if raw_pat.startswith("__"):
+            pattern = f"{raw_pat[2:]}*"
+            pattern_key = f"{raw_pat[2:]}s"
+        # Use raw_pat as suffix
+        else:
+            pattern = f"*{raw_pat}"
+            pattern_key = f"{raw_pat}"
+        pattern_key = pattern_key.lower()
+        return pattern, multi, pattern_key
+
     def keep(self, path):
         kept_fns = dict()
-        for ext in self.to_keep:
-            pattern = f"*{ext}"
+        for raw_pattern in self.to_keep:
+            pattern, multi, key = self.prepare_pattern(raw_pattern)
             globbed = list(path.glob(pattern))
-            assert(len(globbed) <= 1), (f"Expected at most one file ending with "
-                f"{pattern} in {path}. Found {len(globbed)} instead!"
-            )
-            if len(globbed) == 0:
-                continue
-            old_fn = globbed[0]
-            new_fn = os.path.abspath(self.make_fn(ext))
-            shutil.copy(old_fn, new_fn)
-            kept_fns[ext] = new_fn
+            if not multi:
+                assert(len(globbed) <= 1), f"Expected at most one file " \
+                 f"matching {pattern} in {path}. Found {len(globbed)} instead!"
+                if len(globbed) == 0:
+                    continue
+                new_fn = os.path.abspath(self.make_fn(raw_pattern))
+                tmp_fn = globbed[0]
+                shutil.copy(tmp_fn, new_fn)
+                kept_fns[key] = new_fn
+            else:
+                kept_fns[key] = list()
+                for tmp_fn in globbed:
+                    base = tmp_fn.name
+                    new_fn = os.path.abspath(self.make_fn(ext="", base=base))
+                    shutil.copy(tmp_fn, new_fn)
+                    kept_fns[key].append(new_fn)
         return kept_fns
 
     def clean(self, path):
