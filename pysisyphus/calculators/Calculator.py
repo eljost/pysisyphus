@@ -60,14 +60,12 @@ class Calculator:
     def get_hessian(self, atoms, coords):
         raise Exception("Not implemented!")
 
-    def make_fn(self, ext, counter=None, abspath=False, base=""):
+    def make_fn(self, base, counter=None, abspath=False):
         if not counter:
             counter = self.calc_counter
-        if ext:
-            ext = f".{ext}"
-        if base:
-            base = f"{base}."
-        fn = f"{self.name}.{base}{counter:03d}{ext}"
+        # Old
+        #fn = f"{self.name}.{base}{counter:03d}{ext}"
+        fn = f"{self.name}.{counter:03d}.{base}"
         if abspath:
             fn = os.path.abspath(fn)
         return fn
@@ -165,19 +163,16 @@ class Calculator:
             if not multi:
                 assert(len(globbed) <= 1), f"Expected at most one file " \
                  f"matching {pattern} in {path}. Found {len(globbed)} instead!"
-                if len(globbed) == 0:
-                    continue
-                new_fn = os.path.abspath(self.make_fn(raw_pattern))
-                tmp_fn = globbed[0]
-                shutil.copy(tmp_fn, new_fn)
-                kept_fns[key] = new_fn
             else:
                 kept_fns[key] = list()
-                for tmp_fn in globbed:
-                    base = tmp_fn.name
-                    new_fn = os.path.abspath(self.make_fn(ext="", base=base))
-                    shutil.copy(tmp_fn, new_fn)
+            for tmp_fn in globbed:
+                base = tmp_fn.name
+                new_fn = os.path.abspath(self.make_fn(base=base))
+                shutil.copy(tmp_fn, new_fn)
+                if multi:
                     kept_fns[key].append(new_fn)
+                else:
+                    kept_fns[key] = new_fn
         return kept_fns
 
     def clean(self, path):
