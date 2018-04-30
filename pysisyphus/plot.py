@@ -344,8 +344,10 @@ def plot_params(inds):
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--until", type=int,
-                        help="Only show until cycle [until].")
+    parser.add_argument("--first", type=int,
+                        help="Only consider the first [first] cycles.")
+    parser.add_argument("--last", type=int,
+                        help="Only consider the last [last] cycles.")
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--saras", action="store_true",

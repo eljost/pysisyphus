@@ -162,7 +162,8 @@ class Calculator:
             globbed = list(path.glob(pattern))
             if not multi:
                 assert(len(globbed) <= 1), f"Expected at most one file " \
-                 f"matching {pattern} in {path}. Found {len(globbed)} instead!"
+                 f"matching {pattern} in {path}. Found {len(globbed)} " \
+                 f"files instead ({', '.join([g.name for g in globbed])})!"
             else:
                 kept_fns[key] = list()
             for tmp_fn in globbed:

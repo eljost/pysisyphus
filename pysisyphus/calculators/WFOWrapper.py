@@ -35,13 +35,15 @@ class WFOWrapper:
         "ortho": "Orthonormalized overlap matrix",
     }
 
-    def __init__(self, occ_mos, virt_mos, basis, calc_number=0):
+    def __init__(self, occ_mos, virt_mos, basis, calc_number=0,
+                 conf_thresh=1e-4):
         self.base_cmd = Config["wfoverlap"]["cmd"]
         self.occ_mos = occ_mos
         self.virt_mos = virt_mos
         self.basis = basis
         # Should correspond to the attribute of the parent calculator
         self.calc_number = calc_number
+        self.conf_thresh = conf_thresh
         self.name = f"WFOWrapper_{self.calc_number}"
         self.mos = self.occ_mos + self.virt_mos
         self.base_det_str = "d"*self.occ_mos + "e"*self.virt_mos
@@ -121,8 +123,9 @@ class WFOWrapper:
             ab, ba = det_string
             from_mo, to_mo = inds
             per_state =  ci_coeffs[:,from_mo,to_mo]
-            # Drop unimportant configurations
-            if np.sum(per_state**2) < 1e-4:
+            # Drop unimportant configurations, that are configurations
+            # having low weights in all states under consideration.
+            if np.sum(per_state**2) < self.conf_thresh:
                 continue
             # A singlet determinant can be formed in two ways:
             # (up down) (up down) (up down) ...
@@ -213,10 +216,13 @@ class WFOWrapper:
                                                      cic2_with_gs)
         header1 = self.make_dets_header(cic1_with_gs, dets1)
         header2 = self.make_dets_header(cic2_with_gs, dets2)
+        print("header1", header1)
+        print("header2", header2)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             self.log(f"Calculation in {tmp_dir}")
+            #import pdb; pdb.set_trace()
             mos1_path = shutil.copy(mos1, tmp_path / "mos.1")
             mos2_path = shutil.copy(mos2, tmp_path / "mos.2")
             dets1_path = tmp_path / "dets.1"
@@ -225,12 +231,23 @@ class WFOWrapper:
             dets2_path = tmp_path / "dets.2"
             with open(dets2_path, "w") as handle:
                 handle.write(header2+"\n"+"\n".join(dets2))
+
+
             ao_ovl_path = tmp_path / "ao_ovl"
-            np.savetxt(ao_ovl_path, ao_ovlp, fmt="%+22.15E", header=ao_header,
+            np.savetxt(ao_ovl_path, ao_ovlp, fmt="%22.15E", header=ao_header,
                        comments="")
             ciovl_fn = "ciovl.in"
             with open(tmp_path / ciovl_fn, "w") as handle:
                 handle.write(CIOVL)
+
+            # Create a backup of the whole input
+            backup_path = f"wfo_{self.calc_number}.{self.iter_counter:03d}"
+            try:
+                shutil.rmtree(backup_path)
+            except FileNotFoundError:
+                pass
+            shutil.copytree(tmp_dir, backup_path)
+
             cmd = f"{self.base_cmd} -m 4000 -f {ciovl_fn}".split()
             result = subprocess.Popen(cmd, cwd=tmp_path,
                                       stdout=subprocess.PIPE)
@@ -241,16 +258,19 @@ class WFOWrapper:
         with open(wfo_log_fn, "w") as handle:
             handle.write(stdout)
 
-        overlap_matrix = self.parse_wfoverlap_out(stdout)
-        overlap_matrix = overlap_matrix.reshape(-1, len(cic2_with_gs))
-        return overlap_matrix
+        matrices = [self.parse_wfoverlap_out(stdout, type_=key)
+                    for key in ("ovlp", "renorm", "ortho")]
+
+        reshaped_mats = [mat.reshape(-1, len(cic2_with_gs))
+                         for mat in matrices]
+        return reshaped_mats
 
     def track(self, old_root):
         """Return the root with the highest overlap in the latest iteration
         compared to old_root in the previous to last iteration."""
         iter1 = self.get_iteration(-2)
         iter2 = self.get_iteration(-1)
-        overlap_matrix = self.wf_overlap(iter1, iter2)
+        overlap_matrix = self.wf_overlap(iter1, iter2)[2]
         old_root_col = overlap_matrix[old_root]**2
         new_root = old_root_col.argmax()
         max_overlap = old_root_col[new_root]
@@ -268,12 +288,13 @@ class WFOWrapper:
         using the last stored iterations respectively."""
         iter1 = self.get_iteration(-1)
         iter2 = wfow2.get_iteration(-1)
-        overlap_matrix = self.wf_overlap(iter1, iter2)
+        overlap_mats = self.wf_overlap(iter1, iter2)
+        for mat in overlap_mats:
+            print(mat)
+        overlap_matrix = overlap_mats[2]
         max_ovlp_inds = (overlap_matrix**2).argmax(axis=1)
         ovlps = (overlap_matrix**2).max(axis=1)
         inds1 = np.arange(max_ovlp_inds.size)
-        print(overlap_matrix)
-        print()
         for i1, i2, o in zip(inds1, max_ovlp_inds, ovlps):
             print(f"{i1} -> {i2} ({o:.1%} overlap)")
         return max_ovlp_inds
