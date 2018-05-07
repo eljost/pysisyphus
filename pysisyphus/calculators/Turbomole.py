@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import struct
+import subprocess
 
 import numpy as np
 import pyparsing as pp
@@ -14,26 +15,28 @@ import pyparsing as pp
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import AU2EV
 from pysisyphus.config import Config
-from pysisyphus.calculators.parser import parse_turbo_gradient
+from pysisyphus.calculators.parser import (parse_turbo_gradient,
+                                           parse_turbo_ccre0_ascii,)
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
 class Turbomole(Calculator):
 
     def __init__(self, control_path, root=None,
-                 track=False, wfo_basis=None, **kwargs):
+                 track=False, wfo_basis=None, wfo_charge=None, **kwargs):
         super(Turbomole, self).__init__(**kwargs)
 
         self.control_path = Path(control_path)
         self.root = root
         self.track = track
         self.wfo_basis = wfo_basis
+        self.wfo_charge = wfo_charge
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
-                        "ciss_a", "ucis_a", "__CCRE*")
+                        "ciss_a", "ucis_a", "__ccre*")
 
         self.parser_funcs = {
             "force": self.parse_force,
-            "tddft": self.parse_tddft,
+            "noparse": lambda path: None,
         }
 
         # Turbomole uses the 'control' file implicitly
@@ -84,11 +87,15 @@ class Turbomole(Calculator):
             self.ricc2 = True
             second_cmd = "ricc2"
             self.prepare_td(text)
+            self.root = self.get_ricc2_root(text)
+            self.frozen_mos = int(re.search("implicit core=\s*(\d+)", text)[1])
+            self.log(f"Found {self.frozen_mos} frozen orbitals.")
         if self.track:
             assert (self.td or self.ricc2), "track=True can only be used " \
                 "in connection with excited state calculations."
             assert self.wfo_basis != None, "Please supply a valid basis " \
                 "supported by pyscf, to calculate the AO overlaps."
+            assert self.wfo_charge != None, "Please supply a charge!"
         # Right now this can't handle a root flip from some excited state
         # to the ground state ... Then we would need grad/rdgrad again,
         # instead of egrad.
@@ -97,9 +104,22 @@ class Turbomole(Calculator):
         self.base_cmd = ";".join((self.scf_cmd, self.second_cmd))
         self.log(f"Using base_cmd {self.base_cmd}")
 
+    def get_ricc2_root(self, text):
+        regex = "geoopt.+?state=\((.+?)\)"
+        mobj = re.search(regex, text)
+        if not mobj:
+            root = None
+        elif mobj[1] == "x":
+            root = 0
+        else:
+            assert mobj[1].startswith("a "), "symmetry isn't supported!"
+            root = int(mobj[1][-1])
+        return root
+
     def prepare_td(self, text):
         self.log("Preparing for excited state (gradient) calculations")
-        self.wfow = WFOWrapper(self.occ_mos, self.virt_mos, self.wfo_basis,
+        self.wfow = WFOWrapper(self.occ_mos, self.virt_mos,
+                               self.wfo_basis, self.wfo_charge,
                                calc_number=self.calc_number)
         self.td_vec_fn = None
         self.ci_coeffs = None
@@ -115,7 +135,7 @@ class Turbomole(Calculator):
         return coord_str
 
     def prepare_input(self, atoms, coords, calc_type):
-        if calc_type not in ("force", "tddft"):
+        if calc_type not in ("force", "noparse"):
             raise Exception("Can only do force and tddft for now.")
             """To rectify this we have to construct the basecmd
             dynamically and construct it ad hoc. We could set a RI flag
@@ -162,11 +182,12 @@ class Turbomole(Calculator):
             self.calc_counter += 1
         return results
 
-    def get_tddft(self, atoms, coords):
-        """See get_forces"""
-        self.prepare_input(atoms, coords, "tddft")
+    def run_calculation(self, atoms, coords):
+        """Basically some kind of dummy method that can be called
+        to execute Turbomole with the stored cmd of this calculator."""
+        self.prepare_input(atoms, coords, "noparse")
         kwargs = {
-                "calc": "tddft",
+                "calc": "noparse",
                 "shell": True,
                 "hold": self.track, # Keep the files for WFOverlap
         }
@@ -178,9 +199,6 @@ class Turbomole(Calculator):
 
     def parse_force(self, path):
         return parse_turbo_gradient(path)
-
-    def parse_tddft(self, path):
-        return None
 
     def parse_td_vectors(self, text):
         def to_float(s, loc, toks):
@@ -227,34 +245,20 @@ class Turbomole(Calculator):
         return eigenpair_list
 
     def parse_cc2_vectors(self, ccre):
-        """Adapted from TheoDORE 1.6 lib/file_parser.py
-        https://sourceforge.net/projects/theodore-qc/
-        
-        Maybe there is a mistake in TheoDORE as only 20 bytes are skipped
-        before reading the coeffs. Maybe we have to skip 28 bytes?!"""
+        with open(ccre) as handle:
+            text = handle.read()
+        coeffs = parse_turbo_ccre0_ascii(text)
+        coeffs = coeffs.reshape(-1, self.virt_mos)
 
-        with open(ccre, "rb") as handle:
-            handle.read(8)
-            method = struct.unpack('8s', handle.read(8))[0]
-            handle.read(8)
-            nentry = struct.unpack('i', handle.read(4))[0]
-            handle.read(28) 
+        eigenpairs_full = np.zeros((self.occ_mos, self.virt_mos))
+        eigenpairs_full[self.frozen_mos:,:] = coeffs
+        from_inds, to_inds = np.where(np.abs(eigenpairs_full) > .1)
 
-            assert(nentry % self.virt_mos == 0)
-            active_mos = nentry // self.virt_mos
-            frozen_mos = self.occ_mos - active_mos
+        # for i, (from_, to_) in enumerate(zip(from_inds, to_inds)):
+            # sq = eigenpairs_full[from_, to_]**2
+            # print(f"{from_+1:02d} -> {to_+self.occ_mos+1:02d}: {sq:.2%}")
+        # print()
 
-            coeffs = [struct.unpack("d", handle.read(8))[0]
-                      for _ in range(active_mos*self.virt_mos)]
-            eigenpairs = np.array(coeffs).reshape(-1, self.virt_mos)
-            # 'eigenpairs' has the shape (active occ. MOs x virtual MOs)
-            # and doesn't include the frozen orbitals.
-            # In the end we need an array with the shape
-            #  (occ. MOs x virt. MOs), that is including frozen orbitals.
-            # Right now we are basically missing some columns, so we create
-            # the full array and add the previous 'eigenpairs' block.
-            eigenpairs_full = np.zeros((self.occ_mos, self.virt_mos))
-            eigenpairs_full[frozen_mos:,:] = eigenpairs
         return eigenpairs_full
 
     def ci_coeffs_above_thresh(self, eigenpair, thresh=1e-5):
@@ -315,6 +319,14 @@ class Turbomole(Calculator):
                 self.ccres = kept_fns["ccres"]
             else:
                 raise Exception("Something went wrong!")
+
+    def run_after(self, path):
+        for ccre in path.glob("CCRE0-*"):
+            cmd = f"ricctools -dump {ccre.name}".split()
+            result = subprocess.Popen(cmd, cwd=path,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+            result.wait()
 
     def __str__(self):
         return "Turbomole calculator"
