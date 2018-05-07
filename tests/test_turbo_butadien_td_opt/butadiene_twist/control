@@ -68,5 +68,12 @@ $soes
 $rpacor   4000
 $exopt 1
 $denconv 1d-7
-$last step     define
+$last step     dscf
+$last SCF energy change = 0.14764908E-07
+$charge from dscf
+          0.000 (not to be modified here)
+$dipole from dscf
+  x    -0.00087027421324    y     0.02882569618102    z     0.02970719074007    a.u.
+   | dipole | =    0.1052363227  debye
+$orbital_max_rnorm 0.34508964682051E-05
 $end

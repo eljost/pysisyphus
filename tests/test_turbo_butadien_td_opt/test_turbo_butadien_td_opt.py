@@ -13,7 +13,9 @@ from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 
+
 THIS_DIR = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
+np.set_printoptions(suppress=True, precision=4)
 
 
 def check():
@@ -74,6 +76,19 @@ def test_butadiene_twist_track_opt():
     opt.run()
 
 
+def test_butadiene_twist_track_cc2_opt():
+    in_path = THIS_DIR / "butadiene_twist_cc2"
+    geom = geom_from_xyz_file(in_path / "02_buta_twist.xyz")
+    turbo = Turbomole(in_path, track=True, wfo_basis="def2-svp")
+    geom.set_calculator(turbo)
+
+    opt_kwargs = {
+        "max_cycles": 3,
+        "dump": True,
+    }
+    opt = SteepestDescent(geom, **opt_kwargs)
+    opt.run()
+
 
 def test_wfo_ref():
     in_path = THIS_DIR / "butadiene_twist"
@@ -114,6 +129,90 @@ def test_wfo_compare():
     wfow.compare(wfow)
 
 
+def test_wfo_compare_butadiene_cc2_sto3g():
+    in_path = THIS_DIR / "butadiene_cc2_sto3g"
+    geom = geom_from_xyz_file(in_path / "buta.xyz")
+    turbo = Turbomole(in_path, track=True, wfo_basis="sto3g")
+    geom.set_calculator(turbo)
+
+    # opt_kwargs = {
+        # "max_cycles": 1,
+        # "dump": True,
+    # }
+    # opt = SteepestDescent(geom, **opt_kwargs)
+    # opt.run()
+    turbo.run_calculation(geom.atoms, geom.coords)
+    wfow = turbo.wfow
+    wfow.compare(wfow)
+
+def test_wfo_compare_butadiene_cc2():
+    in_path = THIS_DIR / "butadiene_cc2"
+    geom = geom_from_xyz_file(in_path / "buta.xyz")
+    turbo = Turbomole(in_path, track=True, wfo_basis="def2-svp")
+    geom.set_calculator(turbo)
+
+    opt_kwargs = {
+        "max_cycles": 1,
+        "dump": True,
+    }
+    opt = SteepestDescent(geom, **opt_kwargs)
+    opt.run()
+    wfow = turbo.wfow
+    wfow.compare(wfow)
+
+def test_wfo_compare_neon():
+    in_path = THIS_DIR / "neon"
+    geom = geom_from_xyz_file(in_path / "neon.xyz")
+    turbo = Turbomole(in_path, track=True, wfo_basis="def2-svp")
+    geom.set_calculator(turbo)
+
+    opt_kwargs = {
+        "max_cycles": 1,
+        "dump": True,
+    }
+    opt = SteepestDescent(geom, **opt_kwargs)
+    opt.run()
+    wfow = turbo.wfow
+    wfow.compare(wfow)
+
+
+def test_wfo_compare_neon_dimer():
+    in_path = THIS_DIR / "neon_dimer"
+    geom = geom_from_xyz_file(in_path / "neon_dimer.xyz")
+    turbo = Turbomole(in_path, track=True, wfo_basis="def2-svp")
+    geom.set_calculator(turbo)
+
+    opt_kwargs = {
+        "max_cycles": 5,
+        "dump": True,
+        "track": True,
+        # "convergence": {
+            # "max_force_thresh": 2.5e-8,
+        # }
+    }
+    opt = SteepestDescent(geom, **opt_kwargs)
+    #import pdb; pdb.set_trace()
+    opt.run()
+    # wfow = turbo.wfow
+    # wfow.compare(wfow)
+
+
+def test_wfo_compare_sto3g():
+    in_path = THIS_DIR / "butadiene_twist_sto3g"
+    geom = geom_from_xyz_file(in_path / "02_buta_twist.xyz")
+    turbo = Turbomole(in_path, track=True, wfo_basis="sto-3g")
+    geom.set_calculator(turbo)
+
+    opt_kwargs = {
+        "max_cycles": 1,
+        "dump": True,
+    }
+    opt = SteepestDescent(geom, **opt_kwargs)
+    opt.run()
+    wfow = turbo.wfow
+    wfow.compare(wfow)
+
+
 def test_diabatize():
     geoms = geoms_from_trj(THIS_DIR / "ma_proton_transfer/interpolated.trj")
     in_path = THIS_DIR / "ma_turbo"
@@ -136,20 +235,20 @@ def test_diabatize():
 
 
 def test_diabatize():
-    # geoms = geoms_from_trj(THIS_DIR / "ma_proton_transfer/interpolated.trj")[:4]
-    # #in_path = THIS_DIR / "ma_turbo"
-    # in_path = THIS_DIR / "ma_turbo_no_exopt"
-    # calc_kwargs = {
-        # "track": True,
-        # "wfo_basis": "sto-3g",
-    # }
-    
-    geoms = geoms_from_trj(THIS_DIR / "biaryl_trj/biaryl_first_13.trj")[:4]
-    in_path = THIS_DIR / "biaryl"
+    geoms = geoms_from_trj(THIS_DIR / "ma_proton_transfer/interpolated.trj")[:4]
+    #in_path = THIS_DIR / "ma_turbo"
+    in_path = THIS_DIR / "ma_turbo_no_exopt"
     calc_kwargs = {
         "track": True,
-        "wfo_basis": "def2-svp",
+        "wfo_basis": "sto-3g",
     }
+    
+    #geoms = geoms_from_trj(THIS_DIR / "biaryl_trj/biaryl_first_13.trj")[:4]
+    #in_path = THIS_DIR / "biaryl"
+    #calc_kwargs = {
+    #    "track": True,
+    #    "wfo_basis": "def2-svp",
+    #}
 
     turbos = list()
     wfos = list()
@@ -232,9 +331,15 @@ def diabatize_pickled():
 if __name__ == "__main__":
     #test_butadiene_track_opt()
     #test_butadiene_twist_track_opt()
+    #test_butadiene_twist_track_cc2_opt()
     #check()
     #test_wfo_ref()
     #test_wfo_compare()
-    test_diabatize()
+    #print()
+    # test_wfo_compare_neon()
+    #test_wfo_compare_neon_dimer()
+    #test_wfo_compare_butadiene_cc2()
+    test_wfo_compare_butadiene_cc2_sto3g()
+    #test_wfo_compare_sto3g()
+    #test_diabatize()
     #diabatize_pickled()
-    pass

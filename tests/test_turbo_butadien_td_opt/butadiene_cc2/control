@@ -66,26 +66,26 @@ $freeze
 $cbas    file=auxbasis
 $ricc2
   cc2
-  geoopt model=cc2       state=(a 1)
+  geoopt model=cc2       state=(x)
 $excitations
-  irrep=a  multiplicity=  1  nexc=  3  npre=  0  nstart=  0
-$closed shells
- a       1-15                                   ( 2 )
-$last step     ricc2
-$orbital_max_rnorm 0.27500172166864E-05
+  irrep=a  multiplicity=  1  nexc=  2  npre=  0  nstart=  0
 $last SCF energy change = -154.80226
 $charge from dscf
          -0.000 (not to be modified here)
 $dipole from ricc2
-  x     0.01317546725574    y     0.00608978359753    z    -0.00000000000000    a.u.
-   | dipole | =    0.0368931314  debye
-$excitation_energies_CCS_____1^a___ file=exstates
-$excitation_energies_CC2_____1^a___ file=exstates
-$t2_norm_of_re0_CC2_____1^a___ file=exstates
+  x    -0.00135490036621    y    -0.00073791761255    z     0.00000000000003    a.u.
+   | dipole | =    0.0039214736  debye
 $t2_norm_of_le0_CC2_____1^a___ file=exstates
 $<le0|re0>-overlap_CC2_____1^a___ file=exstates
 $<le01|re01>-overlap_CC2_____1^a___ file=exstates
 $<le02|re02>-overlap_CC2_____1^a___ file=exstates
-$last CC2 energy change= -.28870677
+$last CC2 energy change= -.53938018
 $exstprop_CC2______1^a_____1 file=exstates
+$closed shells
+ a       1-15                                   ( 2 )
+$last step     ricc2
+$orbital_max_rnorm 0.28245261768275E-06
+$excitation_energies_CCS_____1^a___ file=exstates
+$excitation_energies_CC2_____1^a___ file=exstates
+$t2_norm_of_re0_CC2_____1^a___ file=exstates
 $end
