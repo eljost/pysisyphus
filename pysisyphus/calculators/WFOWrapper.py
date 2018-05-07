@@ -15,6 +15,7 @@ except ImportError:
 import pyparsing as pp
 
 from pysisyphus.config import Config
+from pysisyphus.helpers import chunks
 
 
 CIOVL="""mix_aoovl=ao_ovl
@@ -63,6 +64,35 @@ class WFOWrapper:
     def log(self, message):
         self.logger.debug(f"{self.name}, " + message)
 
+    def fake_turbo_mos(self, mo_coeffs):
+        """Create a mos file suitable for TURBOMOLE input. All MO eigenvalues
+        are set to 0.0. There is also a little deviation in the formatting
+        (see turbo_fmt()) but it works ..."""
+
+        def turbo_fmt(num):
+            """Not quite the real TURBOMOLE format, but it works ...
+            In TURBOMOLE the first character is always 0 for positive doubles
+            and - for negative doubles."""
+            return f"{num:+20.13E}".replace("E", "D")
+
+        base = "$scfmo    scfconv=7  format(4d20.14)\n# from pysisyphus\n" \
+               "{mo_strings}\n$end"
+
+        mo_str = "{mo_index}  a      eigenvalue=-.00000000000000D+00   " \
+                 "nsaos={nsaos}\n{joined}"
+        nsaos = coeffs.shape[0]
+
+        mo_strings = list()
+        for mo_index, mo in enumerate(mo_coeffs, 1):
+            in_turbo_fmt = [self.turbo_fmt(c) for c in mo]
+            # Combine into chunks of four
+            lines = ["".join(chnk) for chnk in chunks(in_turbo_fmt, 4)]
+            # Join the lines
+            joined = "\n".join(lines)
+            mo_strings.append(mo_str.format(mo_index=mo_index, nsaos=nsaos,
+                                            joined=joined))
+        return base.format(mo_strings="\n".join(mo_strings))
+
     def build_mole(self, coords):
         coords3d = coords.reshape(-1, 3)
         return [[atom, c] for atom, c in zip(self.atoms, coords3d)]
@@ -83,8 +113,6 @@ class WFOWrapper:
         else:
             # Cartesian functions otherwise
             ao_ovlp = gto.mole.intor_cross("int1e_ovlp_cart", mol1, mol2)
-        # np.set_printoptions(suppress=True, precision=2)
-        # print(ao_ovlp)
         return ao_ovlp
 
     def make_det_string(self, inds):

@@ -78,6 +78,14 @@ def fit_rigid(geometry, vectors=(), hessian=None):
     return rotated_vectors, rotated_hessian
 
 
+def chunks(l, n):
+    """Yield successive n-sized chunks from l.
+    https://stackoverflow.com/a/312464
+    """
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
 if __name__ == "__main__":
     print(load_geometry("hcn.xyz"))
     print(geoms_from_trj("cycle_040.trj"))
