@@ -26,6 +26,15 @@ b_det=dets.2
 a_mo_read=2
 b_mo_read=2"""
 
+# CIOVL="""ao_read=-1
+# same_aos=.true.
+# a_mo=mos.1
+# b_mo=mos.2
+# a_det=dets.1
+# b_det=dets.2
+# a_mo_read=2
+# b_mo_read=2"""
+
 
 class WFOWrapper:
     logger = logging.getLogger("wfoverlap")
