@@ -7,6 +7,14 @@ import numpy as np
 import pyparsing as pp
 
 
+def to_float(s, loc, toks):
+    match = toks[0].replace("D", "E")
+    return float(match)
+
+def make_float_class(**kwargs):
+    return pp.Word(pp.nums + ".-D+", **kwargs).setParseAction(to_float)
+
+
 def parse_turbo_gradient(path):
     results = {}
     gradient_fn = glob.glob(os.path.join(path, "gradient"))
@@ -17,11 +25,7 @@ def parse_turbo_gradient(path):
     with open(gradient_fn) as handle:
         text = handle.read()
 
-    def to_float(s, loc, toks):
-        match = toks[0].replace("D", "E")
-        return float(match)
-
-    float_ = pp.Word(pp.nums + ".-D+").setParseAction(to_float)
+    float_ = make_float_class()
     cycle = pp.Word(pp.nums).setResultsName("cycle")
     scf_energy = float_.setResultsName("scf_energy")
     grad_norm = float_.setResultsName("grad_norm")
@@ -30,7 +34,10 @@ def parse_turbo_gradient(path):
     grad_line = pp.Group(float_line)
     cart_grads = pp.Literal("cartesian gradients")
     energy_type = pp.Or((pp.Literal("SCF energy"),
-                        pp.Literal("ex. state energy")))
+                        pp.Literal("ex. state energy"),
+                        pp.Literal("CC2 energy"),
+                        pp.Literal("MP2 energy"),
+    ))
 
     parser = (
         pp.Literal("$grad") + pp.Optional(cart_grads) +
@@ -47,6 +54,27 @@ def parse_turbo_gradient(path):
     results["energy"] = parsed["scf_energy"]
     results["forces"] = -gradient
     return results
+
+
+def parse_turbo_ccre0_ascii(text):
+    float_ = make_float_class()
+    float_20 = make_float_class(exact=20)
+    int_ = pp.Word(pp.nums).setParseAction(lambda s, loc, toks: int(toks[0]))
+
+    title = pp.Literal("$CCRE0-") + pp.Word(pp.nums + "-")
+    method = pp.Word(pp.alphanums + "()") + float_ + float_ + int_ + int_ + int_
+    data = pp.Group(pp.OneOrMore(float_20))
+    end = pp.Literal("$end")
+
+    parser = (title
+              + method
+              + data.setResultsName("data")
+              + end
+
+    )
+    result = parser.parseString(text)
+    data = np.array(result["data"].asList())
+    return data
 
 
 if __name__ == "__main__":
