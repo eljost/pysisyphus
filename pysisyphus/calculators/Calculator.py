@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 
+from natsort import natsorted
+
 from pysisyphus.constants import BOHR2ANG
 
 
@@ -119,15 +121,13 @@ class Calculator:
             results = self.parser_funcs[calc](path)
             self.keep(path)
         except Exception as err:
-            print(err)
-            print()
             print("Crashed input:")
             print(inp)
             backup_dir = Path(os.getcwd()) / f"crashed_{self.name}"
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
             shutil.copytree(path, backup_dir)
-            sys.exit()
+            raise err
         finally:
             if (not hold) and self.clean_after:
                 self.clean(path)
@@ -159,7 +159,7 @@ class Calculator:
         kept_fns = dict()
         for raw_pattern in self.to_keep:
             pattern, multi, key = self.prepare_pattern(raw_pattern)
-            globbed = list(path.glob(pattern))
+            globbed = natsorted(path.glob(pattern))
             if not multi:
                 assert(len(globbed) <= 1), f"Expected at most one file " \
                  f"matching {pattern} in {path}. Found {len(globbed)} " \
