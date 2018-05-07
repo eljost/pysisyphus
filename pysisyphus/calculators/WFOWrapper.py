@@ -11,8 +11,7 @@ import numpy as np
 try:
     from pyscf import gto
 except ImportError:
-    pass
-    #print("Couldn't import pyscf!")
+    print("Couldn't import pyscf!")
 import pyparsing as pp
 
 from pysisyphus.config import Config
@@ -35,12 +34,13 @@ class WFOWrapper:
         "ortho": "Orthonormalized overlap matrix",
     }
 
-    def __init__(self, occ_mos, virt_mos, basis, calc_number=0,
+    def __init__(self, occ_mos, virt_mos, basis, charge, calc_number=0,
                  conf_thresh=1e-4):
         self.base_cmd = Config["wfoverlap"]["cmd"]
         self.occ_mos = occ_mos
         self.virt_mos = virt_mos
         self.basis = basis
+        self.charge = charge
         # Should correspond to the attribute of the parent calculator
         self.calc_number = calc_number
         self.conf_thresh = conf_thresh
@@ -73,7 +73,7 @@ class WFOWrapper:
             mol.atom = atom
             mol.basis = self.basis
             mol.unit = "bohr"
-            # Charge or spin aren't needed for overlap integrals
+            mol.charge = self.charge
             mol.build()
             return mol
         mol1 = prepare(a1)
@@ -83,6 +83,8 @@ class WFOWrapper:
         else:
             # Cartesian functions otherwise
             ao_ovlp = gto.mole.intor_cross("int1e_ovlp_cart", mol1, mol2)
+        # np.set_printoptions(suppress=True, precision=2)
+        # print(ao_ovlp)
         return ao_ovlp
 
     def make_det_string(self, inds):
@@ -195,9 +197,9 @@ class WFOWrapper:
         gs_cic = np.zeros_like(cic1[0])
         cic1_with_gs = np.concatenate((gs_cic[None,:,:], cic1))
         cic2_with_gs = np.concatenate((gs_cic[None,:,:], cic2))
-        a1 = self.build_mole(coords1)
-        a2 = self.build_mole(coords2)
-        ao_ovlp = self.get_ao_overlap(a1, a2)
+        mol1 = self.build_mole(coords1)
+        mol2 = self.build_mole(coords2)
+        ao_ovlp = self.get_ao_overlap(mol1, mol2)
         ao_header = "{} {}".format(*ao_ovlp.shape)
 
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
@@ -216,8 +218,6 @@ class WFOWrapper:
                                                      cic2_with_gs)
         header1 = self.make_dets_header(cic1_with_gs, dets1)
         header2 = self.make_dets_header(cic2_with_gs, dets2)
-        print("header1", header1)
-        print("header2", header2)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
@@ -240,7 +240,7 @@ class WFOWrapper:
             with open(tmp_path / ciovl_fn, "w") as handle:
                 handle.write(CIOVL)
 
-            # Create a backup of the whole input
+            # Create a backup of the whole temporary directory
             backup_path = f"wfo_{self.calc_number}.{self.iter_counter:03d}"
             try:
                 shutil.rmtree(backup_path)
@@ -257,6 +257,8 @@ class WFOWrapper:
         wfo_log_fn = f"wfo_{self.calc_number}.{self.iter_counter:03d}.out"
         with open(wfo_log_fn, "w") as handle:
             handle.write(stdout)
+        # Also copy the WFO-output to the input backup
+        shutil.copy(wfo_log_fn, backup_path)
 
         matrices = [self.parse_wfoverlap_out(stdout, type_=key)
                     for key in ("ovlp", "renorm", "ortho")]
@@ -268,9 +270,15 @@ class WFOWrapper:
     def track(self, old_root):
         """Return the root with the highest overlap in the latest iteration
         compared to old_root in the previous to last iteration."""
+
+        if not isinstance(old_root, int):
+            raise Exception("Please provide an integer value for old_root!")
+        self.log(f"Previous root is {old_root}.")
+
         iter1 = self.get_iteration(-2)
         iter2 = self.get_iteration(-1)
-        overlap_matrix = self.wf_overlap(iter1, iter2)[2]
+        overlap_mats = self.wf_overlap(iter1, iter2)
+        overlap_matrix = overlap_mats[2]
         old_root_col = overlap_matrix[old_root]**2
         new_root = old_root_col.argmax()
         max_overlap = old_root_col[new_root]
@@ -278,10 +286,14 @@ class WFOWrapper:
             [f"{i}: {ov:.2%}" for i, ov in enumerate(old_root_col)]
         )
         self.log(f"Overlaps: {old_root_col_str}")
-        msg = f"New root {new_root} has {max_overlap:.2%} overlap with " \
-              f"old root {old_root}."
+        if new_root == old_root:
+            msg = f"Keeping previous root {old_root}. Overlap is " \
+                  f"{max_overlap:.2%}."
+        else:
+            msg = f"New root {new_root} has {max_overlap:.2%} overlap with " \
+                  f"previous root {old_root}."
         self.log(msg)
-        return new_root
+        return int(new_root)
 
     def compare(self, wfow2):
         """Calculate wavefunction overlaps between the two WFOWrapper objects,
@@ -295,8 +307,8 @@ class WFOWrapper:
         max_ovlp_inds = (overlap_matrix**2).argmax(axis=1)
         ovlps = (overlap_matrix**2).max(axis=1)
         inds1 = np.arange(max_ovlp_inds.size)
-        for i1, i2, o in zip(inds1, max_ovlp_inds, ovlps):
-            print(f"{i1} -> {i2} ({o:.1%} overlap)")
+        #for i1, i2, o in zip(inds1, max_ovlp_inds, ovlps):
+        #    print(f"{i1} -> {i2} ({o:.1%} overlap)")
         return max_ovlp_inds
 
     def __str__(self):
