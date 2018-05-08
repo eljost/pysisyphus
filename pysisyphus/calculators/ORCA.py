@@ -28,7 +28,9 @@ def make_sym_mat(table_block):
 
 class ORCA(Calculator):
 
-    def __init__(self, keywords, gbw="", blocks="", **kwargs):
+    def __init__(self, keywords, gbw="", blocks="",
+                 track=False, wfo_basis=None, wfo_charge=None,
+                 **kwargs):
         super(ORCA, self).__init__(**kwargs)
 
         self.keywords = keywords
@@ -36,8 +38,11 @@ class ORCA(Calculator):
         if not ("last_calc_cycle" in kwargs):
             self.set_moinp_str(gbw)
         self.blocks = blocks
+        self.track = track
+        self.wfo_basis = wfo_basis
+        self.wfo_charge = wfo_charge
 
-        self.to_keep = ("out", "gbw", "engrad", "hessian")
+        self.to_keep = ("out", "gbw", "engrad", "hessian", "cis")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -58,6 +63,7 @@ class ORCA(Calculator):
         self.parser_funcs = {
             "grad": self.parse_engrad,
             "hessian": self.parse_hessian,
+            "noparse": lambda path: None,
         }
 
         self.base_cmd = Config["orca"]["cmd"]
@@ -83,6 +89,8 @@ class ORCA(Calculator):
             self.log(f"using {self.gbw}")
         else:
             self.log("using initial guess provided by ORCA")
+        if calc_type == "noparse":
+            calc_type = ""
         inp = self.orca_input.format(
                                 keywords=self.keywords,
                                 calc_type=calc_type,
@@ -110,6 +118,20 @@ class ORCA(Calculator):
         calc_type = "freq"
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="hessian")
+        return results
+
+    def run_calculation(self, atoms, coords):
+        """Basically some kind of dummy method that can be called
+        to execute ORCA with the stored cmd of this calculator."""
+        inp = self.prepare_input(atoms, coords, "noparse")
+        kwargs = {
+                "calc": "noparse",
+                "hold": self.track, # Keep the files for WFOverlap
+        }
+        results = self.run(inp, **kwargs)
+        if self.track:
+            self.track_root(atoms, coords)
+            self.calc_counter += 1
         return results
 
     def parse_hessian(self, path):
