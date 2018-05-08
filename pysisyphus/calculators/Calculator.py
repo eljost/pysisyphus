@@ -103,10 +103,14 @@ class Calculator:
         )
         return coords
 
-    def run(self, inp, calc, add_args=None, env=None, shell=False, hold=False):
+    def run(self, inp, calc, add_args=None, env=None, shell=False,
+            hold=False, keep=True, cmd=None):
         path = self.prepare(inp)
         self.log(f"Running in {path}")
-        args = [self.base_cmd, self.inp_fn]
+        if cmd:
+            args = [cmd, self.inp_fn]
+        else:
+            args = [self.base_cmd, self.inp_fn]
         if add_args:
             args.extend(add_args)
         if not env:
@@ -119,7 +123,8 @@ class Calculator:
         try:
             self.run_after(path)
             results = self.parser_funcs[calc](path)
-            self.keep(path)
+            if keep:
+                self.keep(path)
         except Exception as err:
             print("Crashed input:")
             print(inp)
