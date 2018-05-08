@@ -26,14 +26,14 @@ b_det=dets.2
 a_mo_read=2
 b_mo_read=2"""
 
-# CIOVL="""ao_read=-1
-# same_aos=.true.
-# a_mo=mos.1
-# b_mo=mos.2
-# a_det=dets.1
-# b_det=dets.2
-# a_mo_read=2
-# b_mo_read=2"""
+CIOVL_NO_SAO="""ao_read=-1
+same_aos=.true.
+a_mo=mos.1
+b_mo=mos.2
+a_det=dets.1
+b_det=dets.2
+a_mo_read=2
+b_mo_read=2"""
 
 
 class WFOWrapper:
@@ -70,6 +70,10 @@ class WFOWrapper:
         self.from_set_list = list()
         self.to_set_list = list()
 
+    @property
+    def last_two_coords(self):
+        return self.coords_list[-2:]
+
     def log(self, message):
         self.logger.debug(f"{self.name}, " + message)
 
@@ -87,13 +91,14 @@ class WFOWrapper:
         base = "$scfmo    scfconv=7  format(4d20.14)\n# from pysisyphus\n" \
                "{mo_strings}\n$end"
 
-        mo_str = "{mo_index}  a      eigenvalue=-.00000000000000D+00   " \
+        # WFOverlap expects the string eigenvalue starting at 16, so we have
+        mo_str = "{mo_index:>6d}  a      eigenvalue=-.00000000000000D+00   " \
                  "nsaos={nsaos}\n{joined}"
-        nsaos = coeffs.shape[0]
+        nsaos = mo_coeffs.shape[0]
 
         mo_strings = list()
         for mo_index, mo in enumerate(mo_coeffs, 1):
-            in_turbo_fmt = [self.turbo_fmt(c) for c in mo]
+            in_turbo_fmt = [turbo_fmt(c) for c in mo]
             # Combine into chunks of four
             lines = ["".join(chnk) for chnk in chunks(in_turbo_fmt, 4)]
             # Join the lines
@@ -242,7 +247,7 @@ class WFOWrapper:
         result = parser.parseString(text)
         return np.array(list(result["overlap"]), dtype=np.float)
 
-    def wf_overlap(self, iter1, iter2):
+    def wf_overlap(self, iter1, iter2, ao_ovlp=None):
         mos1, coords1, cic1, moi1, fs1, ts1 = iter1
         mos2, coords2, cic2, moi2, fs2, ts2 = iter2
         # Create a fake array for the ground state where all CI coefficients
@@ -252,8 +257,8 @@ class WFOWrapper:
         cic2_with_gs = np.concatenate((gs_cic[None,:,:], cic2))
         mol1 = self.build_mole(coords1)
         mol2 = self.build_mole(coords2)
-        ao_ovlp = self.get_ao_overlap(mol1, mol2)
-        ao_header = "{} {}".format(*ao_ovlp.shape)
+
+        #ao_ovlp = self.get_ao_overlap(mol1, mol2)
 
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
         # Prepare line for ground state
@@ -285,13 +290,23 @@ class WFOWrapper:
             with open(dets2_path, "w") as handle:
                 handle.write(header2+"\n"+"\n".join(dets2))
 
+            # Decide wether to use a double molecule overlap matrix or
+            # (approximately) reconstruct the ao_ovlp matrix from the MO
+            # coefficients.
+            if ao_ovlp is None:
+                ciovl_in = CIOVL_NO_SAO
+                self.log("Got no ao_ovl-matrix. Using ao_read=-1 and "
+                         "same_aos=.true. to reconstruct the AO-overlap matrix!")
+            else:
+                ciovl_in = CIOVL
+                ao_header = "{} {}".format(*ao_ovlp.shape)
+                ao_ovl_path = tmp_path / "ao_ovl"
+                np.savetxt(ao_ovl_path, ao_ovlp, fmt="%22.15E", header=ao_header,
+                           comments="")
 
-            ao_ovl_path = tmp_path / "ao_ovl"
-            np.savetxt(ao_ovl_path, ao_ovlp, fmt="%22.15E", header=ao_header,
-                       comments="")
             ciovl_fn = "ciovl.in"
             with open(tmp_path / ciovl_fn, "w") as handle:
-                handle.write(CIOVL)
+                handle.write(ciovl_in)
 
             # Create a backup of the whole temporary directory
             backup_path = f"wfo_{self.calc_number}.{self.iter_counter:03d}"
@@ -318,9 +333,11 @@ class WFOWrapper:
 
         reshaped_mats = [mat.reshape(-1, len(cic2_with_gs))
                          for mat in matrices]
+        for mat in reshaped_mats:
+            print(mat)
         return reshaped_mats
 
-    def track(self, old_root):
+    def track(self, old_root, ao_ovlp=None):
         """Return the root with the highest overlap in the latest iteration
         compared to old_root in the previous to last iteration."""
 
@@ -330,7 +347,7 @@ class WFOWrapper:
 
         iter1 = self.get_iteration(-2)
         iter2 = self.get_iteration(-1)
-        overlap_mats = self.wf_overlap(iter1, iter2)
+        overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp=ao_ovlp)
         overlap_matrix = overlap_mats[2]
         old_root_col = overlap_matrix[old_root]**2
         new_root = old_root_col.argmax()
@@ -348,14 +365,12 @@ class WFOWrapper:
         self.log(msg)
         return int(new_root)
 
-    def compare(self, wfow2):
+    def compare(self, wfow2, ao_ovlp=None):
         """Calculate wavefunction overlaps between the two WFOWrapper objects,
         using the last stored iterations respectively."""
         iter1 = self.get_iteration(-1)
         iter2 = wfow2.get_iteration(-1)
-        overlap_mats = self.wf_overlap(iter1, iter2)
-        for mat in overlap_mats:
-            print(mat)
+        overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
         overlap_matrix = overlap_mats[2]
         max_ovlp_inds = (overlap_matrix**2).argmax(axis=1)
         ovlps = (overlap_matrix**2).max(axis=1)
