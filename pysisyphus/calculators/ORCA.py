@@ -5,6 +5,7 @@ import logging
 import os
 from pathlib import Path
 import re
+import struct
 import subprocess
 
 import numpy as np
@@ -12,6 +13,7 @@ import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
+from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
 def make_sym_mat(table_block):
@@ -50,6 +52,11 @@ class ORCA(Calculator):
                 self.iroot = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
+        if self.track:
+            # Defer the creation of the WFOWrapper object until the after the
+            # calculation as then the number of occupied/virtual MOs are
+            # available.
+            self.wfow = None
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
@@ -133,7 +140,7 @@ class ORCA(Calculator):
         }
         results = self.run(inp, **kwargs)
         if self.track:
-            self.track_root(atoms, coords)
+            #self.track_root(atoms, coords)
             self.calc_counter += 1
         return results
 
@@ -240,6 +247,128 @@ class ORCA(Calculator):
 
         return results
 
+    def parse_cis(self, cis_handle):
+        """
+        Read binary CI vector file from ORCA.
+            Adapted from TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
+            https://sourceforge.net/p/theodore-qc
+        """
+        self.log(f"Parsing CI vectors from {cis_handle}")
+
+        # the header consists of 9 4-byte integers, the first 5
+        # of which give useful info.
+        nvec  = struct.unpack('i', cis_handle.read(4))[0]
+        # header array contains:
+        # [0] index of first alpha occ,  is equal to number of frozen alphas
+        # [1] index of last  alpha occ
+        # [2] index of first alpha virt
+        # [3] index of last  alpha virt, header[3]+1 is equal to number of bfs
+        # [4] index of first beta  occ,  for restricted equal to -1
+        # [5] index of last  beta  occ,  for restricted equal to -1
+        # [6] index of first beta  virt, for restricted equal to -1
+        # [7] index of last  beta  virt, for restricted equal to -1
+        header = [struct.unpack('i', cis_handle.read(4))[0]
+                  for i in range(8)]
+
+        if any([flag != -1 for flag in header[4:8]]):
+            raise Exception("parse_cis, no support for unrestricted MOs")
+
+        nfrzc = header[0]
+        nocc = header[1] + 1
+        nact = nocc - nfrzc
+        nmo  = header[3] + 1
+        nvir = nmo - header[2]
+        lenci = nact * nvir
+        self.log(f"nmo = {nmo}, nocc = {nocc}, nact = {nact}, nvir = {nvir}")
+
+        # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
+        # X+Y of 2, X-Y of 2, ...
+        prevroot = -1
+        istate = 0
+        coeffs = list()
+        for ivec in range(nvec):
+            # header of each vector
+            # contains 6 4-byte ints, then 1 8-byte double, then 8 byte unknown
+            nele,d1,mult,d2,iroot,d3 = struct.unpack('iiiiii', cis_handle.read(24))
+            ene,d3 = struct.unpack('dd', cis_handle.read(16))
+            self.log(f"nele = {nele}, mult = {mult}, iroot = {iroot}")
+            # then comes nact * nvirt 8-byte doubles with the coefficients
+            coeff = struct.unpack(lenci*'d', cis_handle.read(lenci*8))
+            coeff = np.array(coeff).reshape(-1, nvir)
+            coeff = np.array(coeff).reshape(-1, nvir)
+            # create full array, i.e nocc x nvirt
+            coeff_full = np.zeros((nocc, nvir))
+            coeff_full[nfrzc:] = coeff
+
+            # in this case, we have a non-TDA state!
+            # and we need to compute (prevvector+currentvector)/2 = X vector
+            if prevroot == iroot:
+                self.log('Constructing X-vector of RPA state')
+                x_plus_y = coeffs[-1]
+                x_minus_y = coeff_full
+                x = 0.5*(x_plus_y + x_minus_y)
+                coeffs[-1] = x
+            else:
+                coeffs.append(coeff_full)
+
+            prevroot=iroot
+        return np.array(coeffs)
+
+    def parse_gbw(self, gbw_fn):
+        """Adapted from
+        https://orcaforum.cec.mpg.de/viewtopic.php?f=8&t=3299&hilit=perl&start=20#p13273
+
+        The first 5 long int values represent pointers into the file:
+
+        Pointer @+0:  Internal ORCA data structures
+        Pointer @+8:  Geometry
+        Pointer @+16: BasisSet
+        Pointer @+24: Orbitals
+        Pointer @+32: ECP data
+        """
+
+        with open(gbw_fn, 'rb') as handle:
+            handle.seek(24)
+            offset = struct.unpack('<q', handle.read(8))[0]
+            handle.seek(offset)
+            operators = struct.unpack('<i', handle.read(4))[0]
+            dimension = struct.unpack('<i', handle.read(4))[0]
+
+            # print('Offset: {}'.format(offset))
+            # print('Number of Operators: {}'.format(operators))
+            # print('Basis Dimension: {}'.format(dimension))
+
+            coeffs_fmt = "<" + dimension**2 * "d"
+
+            assert operators == 1, "Unrestricted case is not implemented!"
+
+            for i in range(operators):
+                #print('\nOperator: {}'.format(i))
+                coeffs = struct.unpack(coeffs_fmt, handle.read(8*dimension**2))
+                occupations = struct.iter_unpack('<d', handle.read(8*dimension))
+                energies = struct.iter_unpack('<d', handle.read(8*dimension))
+                irreps = struct.iter_unpack('<i', handle.read(4*dimension))
+                cores = struct.iter_unpack('<i', handle.read(4*dimension))
+
+                coeffs = np.array(coeffs).reshape(-1, dimension).T
+
+                # print('Coefficients')
+                # for coef in coefficients:
+                    # print('{:16.12f}'.format(*coef))
+                # print('Occupations')
+                # for occupation in occupations:
+                    # print('{:16.12f}'.format(*occupation))
+                # print('Energies')
+                # for energy in energies:
+                    # print('{:16.12f}'.format(*energy))
+                # print('Irreps')
+                # for irrep in irreps:
+                    # print('{}'.format(*irrep))
+                # print('Core')
+                # for core in cores:
+                    # print('{}'.format(*core))
+            return coeffs
+
     def parse_tddft(self, path):
         results = {}
         orca_out = Path(path) / self.out_fn
@@ -249,10 +378,45 @@ class ORCA(Calculator):
         excitation_ens = [float(en) for en in tddft_re.findall(text)]
         return excitation_ens
 
+    def parse_mo_numbers(self, out_fn):
+        with open(out_fn) as handle:
+            text = handle.read()
+        electron_re = "NEL\s*....\s*(\d+)"
+        electrons = int(re.search(electron_re, text)[1])
+        assert(electrons % 2 == 0), "unrestricted is not yet supported!"
+        occ_num = int(electrons / 2)
+
+        mo_re = "Dim\s*....\s*(\d+)"
+        mo_num = int(re.search(mo_re, text)[1])
+        virt_num = mo_num - occ_num
+        self.log(f"found {electrons} electrons, {mo_num} MOs, with "
+                 f"{occ_num} occupied and {virt_num} virtual.")
+        return occ_num, virt_num
+
+    def store_wfo_data(self, atoms, coords):
+        # Create the WFOWrapper object if it is not already there
+        if self.wfow == None:
+            occ_num, virt_num = self.parse_mo_numbers(self.out)
+            self.wfow = WFOWrapper(occ_num, virt_num,
+                                   self.wfo_basis, self.wfo_charge)
+        # Parse eigenvectors from tda/tddft calculation
+        with open(self.cis, "rb") as handle:
+            eigenpair_list = self.parse_cis(handle)
+        # Parse mo coefficients from gbw file and write a 'fake' turbomole
+        # mos file.
+        mo_coeffs = self.parse_gbw(self.gbw)
+        fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
+        fake_mos_fn = self.make_fn("mos")
+        with open(fake_mos_fn, "w") as handle:
+            handle.write(fake_mos_str)
+        self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
 
     def keep(self, path):
         kept_fns = super().keep(path)
         self.set_moinp_str(kept_fns["gbw"])
+        self.out = kept_fns["out"]
+        if self.do_tddft:
+            self.cis = kept_fns["cis"]
 
     def __str__(self):
         return "ORCA calculator"
