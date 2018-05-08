@@ -46,7 +46,10 @@ class ORCA(Calculator):
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
-            self.iroot = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
+            try:
+                self.iroot = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
+            except AttributeError:
+                self.log("Doing TDA/TDDFT calculation without gradient.")
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 

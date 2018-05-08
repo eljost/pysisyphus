@@ -13,6 +13,7 @@ GEOM = geom_from_library("ch2s_bp86def2sv_opt.xyz")
 def self_compare_base(geom, wfo_basis):
     calc_kwargs = {
         "keywords": "BP86 def2-SVP",
+        "blocks": "%tddft nroots 2 maxdim 5 end",
         "track": False,
         "wfo_basis": wfo_basis,
         "wfo_charge": 0,
