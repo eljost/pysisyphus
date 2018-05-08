@@ -176,7 +176,7 @@ class Turbomole(Calculator):
         # the previously prepared control file and the current coords.
         results = self.run(None, **kwargs)
         if self.track:
-            if self.check_for_root_flip(atoms, coords):
+            if self.track_root(atoms, coords):
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
             self.calc_counter += 1
@@ -193,7 +193,7 @@ class Turbomole(Calculator):
         }
         results = self.run(None, **kwargs)
         if self.track:
-            self.check_for_root_flip(atoms, coords)
+            self.track_root(atoms, coords)
             self.calc_counter += 1
         return results
 
@@ -261,10 +261,7 @@ class Turbomole(Calculator):
 
         return eigenpairs_full
 
-    def check_for_root_flip(self, atoms, coords):
-        """Call WFOverlap, store the information of the current iteration and
-        calculate the overlap with the previous iteration, if possible."""
-
+    def store_wfo_data(self, atoms, coords):
         # Parse eigenvectors from escf/egrad calculation
         if self.second_cmd != "ricc2":
             with open(self.td_vec_fn) as handle:
@@ -276,6 +273,11 @@ class Turbomole(Calculator):
             eigenpair_list = [self.parse_cc2_vectors(ccre)
                               for ccre in self.ccres]
         self.wfow.store_iteration(atoms, coords, self.mos, eigenpair_list)
+
+    def track_root(self, atoms, coords):
+        """Store the information of the current iteration and if possible
+        calculate the overlap with the previous iteration."""
+        self.store_wfo_data(atoms, coords)
         # In the first iteration we have nothing to compare to
         old_root = self.root
         if self.calc_counter >= 1:

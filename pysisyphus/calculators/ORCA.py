@@ -13,6 +13,7 @@ import pyparsing as pp
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 
+
 def make_sym_mat(table_block):
     mat_size = int(table_block[1])
     # Orca prints blocks of 5 columns
