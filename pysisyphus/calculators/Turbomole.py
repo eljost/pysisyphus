@@ -261,17 +261,6 @@ class Turbomole(Calculator):
 
         return eigenpairs_full
 
-    def ci_coeffs_above_thresh(self, eigenpair, thresh=1e-5):
-        arr = np.array(eigenpair)
-        arr = arr.reshape(self.occ_mos, -1)
-        mo_inds = np.where(np.abs(arr) > thresh)
-        #ci_coeffs = arr[mo_inds]
-        #vals_sq = vals**2
-        #for from_mo, to_mo, vsq, v in zip(*inds, vals_sq, vals):
-        #    print(f"\t{from_mo+1} -> {to_mo+1+self.occ_mos} {v:.04f} {vsq:.02f}")
-        #return ci_coeffs, mo_inds
-        return arr, mo_inds
-
     def check_for_root_flip(self, atoms, coords):
         """Call WFOverlap, store the information of the current iteration and
         calculate the overlap with the previous iteration, if possible."""
@@ -286,12 +275,7 @@ class Turbomole(Calculator):
         else:
             eigenpair_list = [self.parse_cc2_vectors(ccre)
                               for ccre in self.ccres]
-        # Filter for relevant MO indices and corresponding CI coefficients
-        coeffs_inds = [self.ci_coeffs_above_thresh(ep)
-                       for ep in eigenpair_list]
-        ci_coeffs, mo_inds = zip(*coeffs_inds)
-        ci_coeffs = np.array(ci_coeffs)
-        self.wfow.store_iteration(atoms, coords, self.mos, ci_coeffs, mo_inds)
+        self.wfow.store_iteration(atoms, coords, self.mos, eigenpair_list)
         # In the first iteration we have nothing to compare to
         old_root = self.root
         if self.calc_counter >= 1:

@@ -124,6 +124,17 @@ class WFOWrapper:
             ao_ovlp = gto.mole.intor_cross("int1e_ovlp_cart", mol1, mol2)
         return ao_ovlp
 
+    def ci_coeffs_above_thresh(self, eigenpair, thresh=1e-5):
+        arr = np.array(eigenpair)
+        arr = arr.reshape(self.occ_mos, -1)
+        mo_inds = np.where(np.abs(arr) > thresh)
+        #ci_coeffs = arr[mo_inds]
+        #vals_sq = vals**2
+        #for from_mo, to_mo, vsq, v in zip(*inds, vals_sq, vals):
+        #    print(f"\t{from_mo+1} -> {to_mo+1+self.occ_mos} {v:.04f} {vsq:.02f}")
+        #return ci_coeffs, mo_inds
+        return arr, mo_inds
+
     def make_det_string(self, inds):
         """Return spin adapted strings."""
         from_mo, to_mo = inds
@@ -185,7 +196,12 @@ class WFOWrapper:
     def set_from_nested_list(self, nested):
         return set([i for i in itertools.chain(*nested)])
 
-    def store_iteration(self, atoms, coords, mos, ci_coeffs, mo_inds):
+    def store_iteration(self, atoms, coords, mos, eigenpair_list):
+        coeffs_inds = [self.ci_coeffs_above_thresh(ep)
+                       for ep in eigenpair_list]
+        ci_coeffs, mo_inds = zip(*coeffs_inds)
+        ci_coeffs = np.array(ci_coeffs)
+
         from_mos, to_mos = zip(*mo_inds)
         from_set = self.set_from_nested_list(from_mos)
         to_set = self.set_from_nested_list(to_mos)
