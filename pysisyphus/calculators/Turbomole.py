@@ -326,7 +326,9 @@ class Turbomole(Calculator):
         # In the first iteration we have nothing to compare to
         old_root = self.root
         if self.calc_counter >= 1:
-            self.root = self.wfow.track(old_root=self.root)
+            last_two_coords = self.wfow.last_two_coords
+            ao_ovlp = self.run_double_mol_calculation(atoms, *last_two_coords)
+            self.root = self.wfow.track(old_root=self.root, ao_ovlp=ao_ovlp)
             if self.root != old_root:
                 self.log("Found a root flip from {old_root} to {self.root}!")
 
