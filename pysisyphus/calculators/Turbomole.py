@@ -23,19 +23,29 @@ from pysisyphus.calculators.WFOWrapper import WFOWrapper
 class Turbomole(Calculator):
 
     def __init__(self, control_path, root=None,
-                 track=False, wfo_basis=None, wfo_charge=None, **kwargs):
+                 track=False, double_mol_path=None, **kwargs):
         super(Turbomole, self).__init__(**kwargs)
 
         self.control_path = Path(control_path)
         self.root = root
         self.track = track
-        self.wfo_basis = wfo_basis
-        self.wfo_charge = wfo_charge
+        self.double_mol_path = Path(double_mol_path)
+
+        # Check if the overlap matrix will be printed and assert
+        # that no SCF iterations are done.
+        if self.double_mol_path:
+            with open(self.double_mol_path / "control") as handle:
+                text = handle.read()
+            assert (re.search("\$intsdebug\s*sao", text) and
+                    re.search("\$scfiterlimit\s*0", text)), "Please set " \
+                   "$intsdebug sao and $scfiterlimit 0 !"
+
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
                         "ciss_a", "ucis_a", "__ccre*")
 
         self.parser_funcs = {
             "force": self.parse_force,
+            "double_mol": self.parse_double_mol,
             "noparse": lambda path: None,
         }
 
@@ -93,9 +103,6 @@ class Turbomole(Calculator):
         if self.track:
             assert (self.td or self.ricc2), "track=True can only be used " \
                 "in connection with excited state calculations."
-            assert self.wfo_basis != None, "Please supply a valid basis " \
-                "supported by pyscf, to calculate the AO overlaps."
-            assert self.wfo_charge != None, "Please supply a charge!"
         # Right now this can't handle a root flip from some excited state
         # to the ground state ... Then we would need grad/rdgrad again,
         # instead of egrad.
@@ -119,7 +126,7 @@ class Turbomole(Calculator):
     def prepare_td(self, text):
         self.log("Preparing for excited state (gradient) calculations")
         self.wfow = WFOWrapper(self.occ_mos, self.virt_mos,
-                               self.wfo_basis, self.wfo_charge,
+                               basis=None, charge=None,
                                calc_number=self.calc_number)
         self.td_vec_fn = None
         self.ci_coeffs = None
@@ -135,7 +142,7 @@ class Turbomole(Calculator):
         return coord_str
 
     def prepare_input(self, atoms, coords, calc_type):
-        if calc_type not in ("force", "noparse"):
+        if calc_type not in ("force", "double_mol", "noparse"):
             raise Exception("Can only do force and tddft for now.")
             """To rectify this we have to construct the basecmd
             dynamically and construct it ad hoc. We could set a RI flag
@@ -143,20 +150,27 @@ class Turbomole(Calculator):
             it. Then we select the following binary on demand, e.g. aoforce
             or rdgrad or egrad etc."""
         path = self.prepare_path(use_in_run=True)
+        if calc_type == "double_mol":
+            copy_from = self.double_mol_path
+        else:
+            copy_from = self.control_path
         # Copy everything from the reference control_dir into this path
-        all_src_paths = self.control_path.glob("./*")
+        # Use self.control_path for all calculations except the double
+        # molecule calculation.
+        all_src_paths = copy_from.glob("./*")
         """Maybe we shouldn't copy everything because it may give convergence
         problems? Right now we use the initial MO guess generated in the
         reference path for all images along the path."""
         globs = [p for p in all_src_paths]
-        for glob in self.control_path.glob("./*"):
+        for glob in copy_from.glob("./*"):
             shutil.copy(glob, path)
         # Write coordinates
         coord_str = self.prepare_coords(atoms, coords)
         coord_fn = path / "coord"
         with open(coord_fn, "w") as handle:
             handle.write(coord_str)
-        # Copy MO coefficients from previous calculation if present
+        # Copy MO coefficients from previous cycle with this calculator
+        # if present.
         if self.mos:
             shutil.copy(self.mos, path / "mos")
             self.log(f"Using {self.mos}")
@@ -196,6 +210,37 @@ class Turbomole(Calculator):
             self.track_root(atoms, coords)
             self.calc_counter += 1
         return results
+
+    def run_double_mol_calculation(self, atoms, coords1, coords2):
+        self.log("Running double molecule calculation")
+        double_atoms = atoms + atoms
+        double_coords = np.hstack((coords1, coords2))
+        self.prepare_input(double_atoms, double_coords, "double_mol")
+        kwargs = {
+                "calc": "double_mol",
+                "shell": True,
+                "keep": False,
+                "hold": True,
+                "cmd": self.scf_cmd,
+        }
+        results = self.run(None, **kwargs)
+        self.calc_counter -= 1
+        return results
+
+    def parse_double_mol(self, path):
+        """Parse a double molecule overlap matrix from Turbomole output
+        to be used with WFOWrapper."""
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        regex = "OVERLAP\(SAO\)\s+-+([\d\.E\-\s*\+]+)\s+-+"
+        ovlp_str = re.search(regex, text)[1]
+        ovlp = np.array(ovlp_str.strip().split(), dtype=np.float64)
+        mo_num = self.occ_mos + self.virt_mos
+        double_mo_num = 2 * mo_num
+        full_ovlp = np.zeros((double_mo_num, double_mo_num))
+        full_ovlp[np.tril_indices(double_mo_num)] = ovlp
+        double_mol_S = full_ovlp[mo_num:,:mo_num]
+        return double_mol_S
 
     def parse_force(self, path):
         return parse_turbo_gradient(path)
@@ -307,6 +352,7 @@ class Turbomole(Calculator):
                 raise Exception("Something went wrong!")
 
     def run_after(self, path):
+        # Convert binary CCRE0 files to ASCII for easier parsing
         for ccre in path.glob("CCRE0-*"):
             cmd = f"ricctools -dump {ccre.name}".split()
             result = subprocess.Popen(cmd, cwd=path,
