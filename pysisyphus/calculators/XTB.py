@@ -2,6 +2,7 @@
 
 import glob
 import os
+import re
 
 import numpy as np
 import pyparsing as pp
@@ -24,7 +25,7 @@ class XTB(Calculator):
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out", "gradient")
+        self.to_keep = ("out", "grad")
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
@@ -50,13 +51,25 @@ class XTB(Calculator):
         return results
 
     def parse_gradient(self, path):
-        return parse_turbo_gradient(path)
+        results = dict()
+        with open(path / "grad") as handle:
+            grad = [line.split()[1] for line in handle]
+        gradient = np.array(grad, dtype=float)
+        results["forces"] = -gradient
+
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        energy_re = "total E\s*:\s*([-\d\.]+)"
+        energy = float(re.search(energy_re, text)[1])
+        results["energy"] = energy
+        return results
 
     def __str__(self):
         return "XTB calculator"
 
 
 if __name__ == "__main__":
-    path = "/scratch/test/xtbtest"
+    from pathlib import Path
+    path = Path("/scratch/programme/pysisyphus/tests_staging/neb/test")
     xtb = XTB()
     xtb.parse_gradient(path)
