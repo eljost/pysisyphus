@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import OrderedDict
 import itertools
 import logging
 from pathlib import Path
@@ -38,11 +39,11 @@ b_mo_read=2"""
 
 class WFOWrapper:
     logger = logging.getLogger("wfoverlap")
-    matrix_types = {
-        "ovlp": "Overlap matrix",
-        "renorm": "Renormalized overlap matrix",
-        "ortho": "Orthonormalized overlap matrix",
-    }
+    matrix_types = OrderedDict((
+        ("ovlp", "Overlap matrix"),
+        ("renorm", "Renormalized overlap matrix"),
+        ("ortho", "Orthonormalized overlap matrix")
+    ))
 
     def __init__(self, occ_mos, virt_mos, basis, charge, calc_number=0,
                  conf_thresh=1e-4):
@@ -277,6 +278,7 @@ class WFOWrapper:
         header1 = self.make_dets_header(cic1_with_gs, dets1)
         header2 = self.make_dets_header(cic2_with_gs, dets2)
 
+        backup_path = Path(f"wfo_{self.calc_number}.{self.iter_counter:03d}")
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             self.log(f"Calculation in {tmp_dir}")
@@ -309,7 +311,6 @@ class WFOWrapper:
                 handle.write(ciovl_in)
 
             # Create a backup of the whole temporary directory
-            backup_path = f"wfo_{self.calc_number}.{self.iter_counter:03d}"
             try:
                 shutil.rmtree(backup_path)
             except FileNotFoundError:
@@ -329,12 +330,16 @@ class WFOWrapper:
         shutil.copy(wfo_log_fn, backup_path)
 
         matrices = [self.parse_wfoverlap_out(stdout, type_=key)
-                    for key in ("ovlp", "renorm", "ortho")]
+                    for key in self.matrix_types.keys()]
 
         reshaped_mats = [mat.reshape(-1, len(cic2_with_gs))
                          for mat in matrices]
-        for mat in reshaped_mats:
-            print(mat)
+        for key, mat in zip(self.matrix_types.keys(), reshaped_mats):
+            mat_fn = backup_path / f"{key}_mat.dat"
+            np.savetxt(mat_fn, mat)
+
+        # for mat in reshaped_mats:
+            # print(mat)
         return reshaped_mats
 
     def track(self, old_root, ao_ovlp=None):
