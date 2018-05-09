@@ -25,7 +25,7 @@ class Calculator:
         # in a ChainOfStates calculation.
         self.calc_number = calc_number
         self.base_name = base_name
-        self.name = f"{base_name}_{calc_number}"
+        self.name = f"{base_name}_{calc_number:03d}"
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
