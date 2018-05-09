@@ -30,9 +30,7 @@ def make_sym_mat(table_block):
 
 class ORCA(Calculator):
 
-    def __init__(self, keywords, gbw="", blocks="",
-                 track=False, wfo_basis=None, wfo_charge=None,
-                 **kwargs):
+    def __init__(self, keywords, gbw="", blocks="", track=False, **kwargs):
         super(ORCA, self).__init__(**kwargs)
 
         self.keywords = keywords
@@ -41,8 +39,6 @@ class ORCA(Calculator):
             self.set_moinp_str(gbw)
         self.blocks = blocks
         self.track = track
-        self.wfo_basis = wfo_basis
-        self.wfo_charge = wfo_charge
 
         self.to_keep = ("out", "gbw", "engrad", "hessian", "cis")
         self.do_tddft = False
@@ -397,8 +393,8 @@ class ORCA(Calculator):
         # Create the WFOWrapper object if it is not already there
         if self.wfow == None:
             occ_num, virt_num = self.parse_mo_numbers(self.out)
-            self.wfow = WFOWrapper(occ_num, virt_num,
-                                   self.wfo_basis, self.wfo_charge)
+            self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
+                                   basis=None, charge=None)
         # Parse eigenvectors from tda/tddft calculation
         with open(self.cis, "rb") as handle:
             eigenpair_list = self.parse_cis(handle)
@@ -419,7 +415,7 @@ class ORCA(Calculator):
             self.cis = kept_fns["cis"]
 
     def __str__(self):
-        return "ORCA calculator"
+        return f"ORCA({self.name})"
 
 
 if __name__ == "__main__":
