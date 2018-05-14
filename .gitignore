@@ -130,3 +130,5 @@ optimizer_results.yaml
 
 interpolated.image_*.xyz
 image*.control
+*.pdf
+tests_staging/*
