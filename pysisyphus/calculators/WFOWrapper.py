@@ -322,6 +322,10 @@ class WFOWrapper:
                                       stdout=subprocess.PIPE)
             result.wait()
             stdout = result.stdout.read().decode("utf-8")
+        if "differs significantly" in stdout:
+            self.log("WARNING: Orthogonalized matrix differs significantly "
+                     "from original matrix! There is probably mixing with "
+		     "external states.")
 
         wfo_log_fn = f"wfo_{self.calc_number}.{self.iter_counter:03d}.out"
         with open(wfo_log_fn, "w") as handle:
@@ -353,7 +357,7 @@ class WFOWrapper:
         iter1 = self.get_iteration(-2)
         iter2 = self.get_iteration(-1)
         overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp=ao_ovlp)
-        overlap_matrix = overlap_mats[2]
+        overlap_matrix = overlap_mats[1]
         old_root_col = overlap_matrix[old_root]**2
         new_root = old_root_col.argmax()
         max_overlap = old_root_col[new_root]
@@ -370,14 +374,27 @@ class WFOWrapper:
         self.log(msg)
         return int(new_root)
 
-    def compare(self, wfow2, ao_ovlp=None):
+    def compare(self, wfow_B, ao_ovlp=None):
         """Calculate wavefunction overlaps between the two WFOWrapper objects,
         using the last stored iterations respectively."""
         iter1 = self.get_iteration(-1)
-        iter2 = wfow2.get_iteration(-1)
+        iter2 = wfow_B.get_iteration(-1)
         overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
-        overlap_matrix = overlap_mats[2]
+        overlap_matrix = overlap_mats[1]
+        """argmax(axis=1) returns the index of the highest overlap
+        along every column, that is for every state in wfow_B.
+        The n-th item in max_ovlp_inds gives the index of the highest
+        overlap in wfow_A with the n-th state in wfow_B.
+
+        Using argmax(axis=0) would yield the highest overlap along
+        every row. The n-th item in max_ovlp_inds would give the index
+        of the highest overlapping state of wfow_B with the n-th state
+        in wfow_A.
+        """
         max_ovlp_inds = (overlap_matrix**2).argmax(axis=1)
+        if np.unique(max_ovlp_inds).size != max_ovlp_inds.size:
+            self.log("Assignment of states is ambiguous! Check the results "
+                     "carefully!")
         ovlps = (overlap_matrix**2).max(axis=1)
         inds1 = np.arange(max_ovlp_inds.size)
         #for i1, i2, o in zip(inds1, max_ovlp_inds, ovlps):
