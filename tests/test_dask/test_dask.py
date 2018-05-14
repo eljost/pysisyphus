@@ -8,7 +8,6 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file
 from pysisyphus.cos.NEB import NEB
 
-from distributed import LocalCluster
 import numpy as np
 
 np.set_printoptions(suppress=True, precision=4)

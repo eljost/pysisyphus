@@ -109,7 +109,7 @@ class NEB(ChainOfStates):
             # Parallel calculation
             if self.dask_cluster:
                 client = self.get_dask_client()
-                print(client)
+                self.log(client)
                 image_futures = client.map(self.par_image_calc, self.images)
                 self.images = client.gather(image_futures)
             elif self.parallel > 0:
