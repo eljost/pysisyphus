@@ -95,6 +95,10 @@ class NEB(ChainOfStates):
         image.calc_energy_and_forces()
         return image
 
+    def par_image_calc(self, image):
+        image.calc_energy_and_forces()
+        return image
+
     # See https://stackoverflow.com/a/15786149
     # This way we can reuse the parents setter.
     @ChainOfStates.forces.getter
@@ -103,7 +107,12 @@ class NEB(ChainOfStates):
 
         if self._forces is None:
             # Parallel calculation
-            if self.parallel > 0:
+            if self.dask_cluster:
+                client = self.get_dask_client()
+                print(client)
+                image_futures = client.map(self.par_image_calc, self.images)
+                self.images = client.gather(image_futures)
+            elif self.parallel > 0:
                 with Pool(processes=self.parallel) as pool:
                     image_number = len(self.images)
                     par_images = pool.map(self.par_calc, range(image_number))

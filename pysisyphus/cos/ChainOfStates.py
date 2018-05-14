@@ -2,6 +2,7 @@
 
 import logging
 
+from distributed import Client
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
@@ -14,13 +15,16 @@ class ChainOfStates:
     logger = logging.getLogger("cos")
 
     def __init__(self, images, parallel=0, fix_ends=False,
-                 fix_first=False, fix_last=False):
+                 fix_first=False, fix_last=False,
+                 dask_cluster=None):
+
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = images
         self.parallel = parallel
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
         self.fix_ends = fix_ends
+        self.dask_cluster = dask_cluster
 
         self._coords = None
         self._forces = None
@@ -239,3 +243,6 @@ class ChainOfStates:
                        for image in self.images]
         trj_str = make_trj_str(atoms, coords_list)
         return trj_str
+
+    def get_dask_client(self):
+        return Client(self.dask_cluster)
