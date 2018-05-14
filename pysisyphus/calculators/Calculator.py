@@ -18,7 +18,7 @@ class Calculator:
 
     def __init__(self, calc_number=0, charge=0, mult=1,
                  base_name="calculator", last_calc_cycle=None,
-                 clean_after=True):
+                 clean_after=True, out_dir="./"):
         self.charge = int(charge)
         self.mult = int(mult)
         # Index of the image this calculator belongs too in
@@ -38,6 +38,7 @@ class Calculator:
             self.reattach(int(last_calc_cycle))
             self.log(f"Set {self.calc_counter} for this calculation")
         self.clean_after = clean_after
+        self.out_dir = Path(out_dir)
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
@@ -173,7 +174,7 @@ class Calculator:
                 kept_fns[key] = list()
             for tmp_fn in globbed:
                 base = tmp_fn.name
-                new_fn = os.path.abspath(self.make_fn(base=base))
+                new_fn = self.out_dir / self.make_fn(base=base)
                 shutil.copy(tmp_fn, new_fn)
                 if multi:
                     kept_fns[key].append(new_fn)
