@@ -41,7 +41,8 @@ class Turbomole(Calculator):
                    "$intsdebug sao and $scfiterlimit 0 !"
 
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
-                        "ciss_a", "ucis_a", "__ccre*")
+                        "ciss_a", "ucis_a",
+                        "__ccre*", "exstates")
 
         self.parser_funcs = {
             "force": self.parse_force,
