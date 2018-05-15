@@ -125,6 +125,8 @@ results.yaml
 *.chk
 # Orca
 *.engrad
+*.gbw
+*.cis
 image_results.yaml
 optimizer_results.yaml
 

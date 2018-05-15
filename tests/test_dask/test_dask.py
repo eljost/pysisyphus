@@ -12,7 +12,7 @@ import numpy as np
 
 np.set_printoptions(suppress=True, precision=4)
 
-def run_distributed(dask_cluster):
+def run_distributed(scheduler=None):
     atoms = ("H", "H")
     geoms = list()
     for i in range(7):
@@ -33,7 +33,7 @@ def run_distributed(dask_cluster):
         geoms.append(geom)
 
     neb_kwargs = {
-        "dask_cluster": dask_cluster,
+        "dask_cluster": scheduler,
     }
     neb = NEB(geoms, **neb_kwargs)
     forces = neb.forces
@@ -43,7 +43,7 @@ def run_distributed(dask_cluster):
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
-    parser.add_argument("scheduler")
+    parser.add_argument("--scheduler")
     return parser.parse_args(args)
 
 
