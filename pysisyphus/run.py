@@ -245,9 +245,10 @@ def clean(force=False):
         "image_results.yaml",
         "optimizer_results.yaml",
         # ORCA specific
-        "image*.gbw",
-        "image*.engrad",
-        "image*.hessian",
+        "*orca.gbw",
+        "*orca.cis",
+        "*orca.engrad",
+        "*orca.hessian",
         # OpenMOLCAS specific
         "image*.RasOrb",
         "image*.in",
@@ -266,6 +267,8 @@ def clean(force=False):
         "calculator_*.control",
         "calculator_*.mos",
         "calculator_*.ciss_a",
+        # WFOverlap specific
+        "wfo_*.*.out",
     )
     to_rm_paths = list()
     for glob in rm_globs:

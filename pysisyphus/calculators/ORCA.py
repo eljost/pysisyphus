@@ -45,7 +45,7 @@ class ORCA(Calculator):
         if "tddft" in self.blocks:
             self.do_tddft = True
             try:
-                self.iroot = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
+                self.root = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
         if self.track:
@@ -117,7 +117,16 @@ class ORCA(Calculator):
     def get_forces(self, atoms, coords):
         calc_type = "engrad"
         inp = self.prepare_input(atoms, coords, calc_type)
-        results = self.run(inp, calc="grad")
+        kwargs = {
+            "calc": "grad",
+            "hold": self.track,
+        }
+        results = self.run(inp, **kwargs)
+        if self.track:
+            if self.track_root(atoms, coords):
+                # Redo the calculation with the updated root
+                results = self.get_forces(atoms, coords)
+            self.calc_counter += 1
         return results
 
     def get_hessian(self, atoms, coords):
@@ -233,7 +242,7 @@ class ORCA(Calculator):
             excitation_ens = self.parse_tddft(path)
             # ORCA iroot input is 1 based, so we substract 1 to get
             # the right index here.
-            iroot_exc_en = excitation_ens[self.iroot-1]
+            iroot_exc_en = excitation_ens[self.root-1]
             gs_energy = results["energy"]
             # Add excitation energy to ground state energy.
             results["energy"] += iroot_exc_en
@@ -402,10 +411,25 @@ class ORCA(Calculator):
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
         fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
-        fake_mos_fn = self.make_fn("mos")
+        fake_mos_fn = self.out_dir / self.make_fn("mos")
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
         self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
+
+    def track_root(self, atoms, coords):
+        """Store the information of the current iteration and if possible
+        calculate the overlap with the previous iteration."""
+        self.store_wfo_data(atoms, coords)
+        # In the first iteration we have nothing to compare to
+        old_root = self.root
+        if self.calc_counter >= 1:
+            last_two_coords = self.wfow.last_two_coords
+            self.root = self.wfow.track(old_root=self.root)
+            if self.root != old_root:
+                self.log("Found a root flip from {old_root} to {self.root}!")
+
+        # True if a root flip occured
+        return not (self.root == old_root)
 
     def keep(self, path):
         kept_fns = super().keep(path)

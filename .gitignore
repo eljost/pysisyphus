@@ -134,3 +134,4 @@ interpolated.image_*.xyz
 image*.control
 *.pdf
 tests_staging/*
+wfo_*.*
