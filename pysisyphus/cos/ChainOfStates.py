@@ -245,5 +245,4 @@ class ChainOfStates:
         return trj_str
 
     def get_dask_client(self):
-        return Client(self.dask_cluster, pure=False,
-                      silence_logs=False)
+        return Client(self.dask_cluster, pure=False, silence_logs=False)
