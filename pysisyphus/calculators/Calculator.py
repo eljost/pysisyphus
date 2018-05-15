@@ -19,14 +19,15 @@ class Calculator:
     def __init__(self, calc_number=0, charge=0, mult=1,
                  base_name="calculator", last_calc_cycle=None,
                  clean_after=True, out_dir="./"):
-        self.charge = int(charge)
-        self.mult = int(mult)
         # Index of the image this calculator belongs too in
         # in a ChainOfStates calculation.
         self.calc_number = calc_number
+        self.charge = int(charge)
+        self.mult = int(mult)
         self.base_name = base_name
-        self.name = f"{base_name}_{calc_number:03d}"
+        self.out_dir = Path(out_dir)
 
+        self.name = f"{base_name}_{calc_number:03d}"
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
         self.to_keep = ()
@@ -38,7 +39,6 @@ class Calculator:
             self.reattach(int(last_calc_cycle))
             self.log(f"Set {self.calc_counter} for this calculation")
         self.clean_after = clean_after
-        self.out_dir = Path(out_dir)
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
