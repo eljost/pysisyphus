@@ -4,5 +4,6 @@ __all__ = [
     "IDPP",
     "OpenMolcas",
     "Gaussian09",
+    "Gaussian16",
     "Turbomole",
 ]

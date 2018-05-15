@@ -29,6 +29,7 @@ CALC_DICT = {
     "xtb": XTB.XTB,
     "openmolcas": OpenMolcas.OpenMolcas,
     "g09": Gaussian09.Gaussian09,
+    "g16": Gaussian16.Gaussian16,
     "turbomole": Turbomole.Turbomole,
 }
 

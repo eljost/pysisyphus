@@ -201,7 +201,7 @@ Usually called wit multiple .xyz files or a single .trj file.
 * Density functional methods 
 * Recognizes TDDFT optimizations
 
-### Gaussian
+### Gaussian 09 and 16
 * (Probably) All methods that support Force run
 * Recognizes TDDFT optimizations
 
