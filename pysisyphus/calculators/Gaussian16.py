@@ -28,16 +28,17 @@ class Gaussian16(Calculator):
             assert (root and nstates), "nstates and root have to "\
                                        "be given together!"
 
-        self.to_keep = ("fchk", "log")
+        self.to_keep = ("fchk", "log", "635r")
 
         self.fn_base = "gaussian16"
         self.inp_fn = f"{self.fn_base}.com"
         self.out_fn = f"{self.fn_base}.log"
         self.chk_fn = f"{self.fn_base}.chk"
+        self.dump_base_fn = f"{self.fn_base}_rwfdump"
 
         self.gaussian_input = """
         %chk={chk_fn}
-        #T {calc_type} {method}/{basis} {td}
+        #P {calc_type} {method}/{basis} {td} iop(9/40=4)
         # nosymm density=all pop=full
         
         title
@@ -79,10 +80,21 @@ class Gaussian16(Calculator):
     def make_fchk(self, path):
         cmd = f"{self.formchk_cmd} {self.chk_fn}".split()
         result = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
+        self.log("Created .fchk")
+
+    def run_rwfdump(self, path, rwf_index):
+        chk_path = path / self.chk_fn
+        dump_fn = path / f"{self.dump_base_fn}_{rwf_index}"
+        cmd = f"rwfdump {chk_path} {dump_fn} {rwf_index}".split()
+        proc = subprocess.run(cmd)
+        self.log(f"Dumped {rwf_index} from RWF.")
+        return dump_fn
 
     def run_after(self, path):
         # Create the .fchk file so we can keep it and parse it later on.
         self.make_fchk(path)
+        if self.root:
+            self.run_rwfdump(path, "635r")
 
     def parse_fchk(self, fchk_path, keys):
         with open(fchk_path) as handle:
