@@ -300,7 +300,6 @@ class ORCA(Calculator):
             # then comes nact * nvirt 8-byte doubles with the coefficients
             coeff = struct.unpack(lenci*'d', cis_handle.read(lenci*8))
             coeff = np.array(coeff).reshape(-1, nvir)
-            coeff = np.array(coeff).reshape(-1, nvir)
             # create full array, i.e nocc x nvirt
             coeff_full = np.zeros((nocc, nvir))
             coeff_full[nfrzc:] = coeff
