@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import namedtuple
 import logging
 import os
 from pathlib import Path
@@ -87,7 +88,7 @@ class Gaussian16(Calculator):
         dump_fn = path / f"{self.dump_base_fn}_{rwf_index}"
         cmd = f"rwfdump {chk_path} {dump_fn} {rwf_index}".split()
         proc = subprocess.run(cmd)
-        self.log(f"Dumped {rwf_index} from RWF.")
+        self.log(f"Dumped {rwf_index} from .chk.")
         return dump_fn
 
     def run_after(self, path):
@@ -95,6 +96,7 @@ class Gaussian16(Calculator):
         self.make_fchk(path)
         if self.root:
             self.run_rwfdump(path, "635r")
+            self.nmos, self.roots = self.parse_log(path)
 
     def parse_fchk(self, fchk_path, keys):
         with open(fchk_path) as handle:
@@ -147,6 +149,45 @@ class Gaussian16(Calculator):
         # Convert to Hartree
         exc_energies /= AU2EV
         return exc_energies
+
+    def parse_log(self, path):
+        self.log(f"Parsing {self.out_fn}")
+
+        def parse(text, regex, func):
+            mobj = re.search(regex, text)
+            return func(mobj[1])
+
+        log_path = path / self.out_fn
+        with open(log_path) as handle:
+            text = handle.read()
+
+        roots_re = "Root\s+(\d+)"
+        roots = np.array(re.findall(roots_re, text), dtype=int).max()
+
+        # NBasis=    16 NAE=    12 NBE=    12 NFC=     6 NFV=     0
+        basis_re = "NBasis=(.+)NAE=(.+)NBE=(.+)NFC=(.+)NFV=(.+)"
+        basis_mobj = re.search(basis_re, text)
+        basis_funcs, alpha, beta, _, _ = [int(n) for n in basis_mobj.groups()]
+        a_occ = alpha
+        b_occ = beta
+        a_vir = basis_funcs - a_occ
+        b_vir = basis_funcs - b_occ
+        restricted = alpha == beta
+        act_re = "NROrb=(.*)NOA=(.*)NOB=(.*)NVA=(.*)NVB=(.*)"
+        act_mobj = re.search(act_re, text)
+        _, a_act, b_act, _, _ = [int(n) for n in act_mobj.groups()]
+        a_core = a_occ - a_act
+        b_core = b_occ - b_act
+
+        NMOs = namedtuple("NMOs", "a_core, a_occ a_act a_vir "
+                                  "b_core b_occ b_act b_vir "
+                                  "restricted")
+
+        nmos = NMOs(a_core, a_occ, a_act, a_vir,
+                    b_core, b_occ, b_act, b_vir,
+                    restricted)
+        self.log(str(nmos))
+        return nmos, roots
 
     def parse_force(self, path):
         results = {}
