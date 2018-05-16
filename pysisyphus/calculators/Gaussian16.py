@@ -11,6 +11,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
 from pysisyphus.config import Config
 
@@ -28,8 +29,9 @@ class Gaussian16(Calculator):
         if root or nstates:
             assert (root and nstates), "nstates and root have to "\
                                        "be given together!"
+            self.wfow = None
 
-        self.to_keep = ("fchk", "log", "635r")
+        self.to_keep = ("fchk", "log", "dump_635r")
 
         self.fn_base = "gaussian16"
         self.inp_fn = f"{self.fn_base}.com"
@@ -85,7 +87,7 @@ class Gaussian16(Calculator):
 
     def run_rwfdump(self, path, rwf_index):
         chk_path = path / self.chk_fn
-        dump_fn = path / f"{self.dump_base_fn}_{rwf_index}"
+        dump_fn = path / f"{self.dump_base_fn}_dump_{rwf_index}"
         cmd = f"rwfdump {chk_path} {dump_fn} {rwf_index}".split()
         proc = subprocess.run(cmd)
         self.log(f"Dumped {rwf_index} from .chk.")
@@ -136,6 +138,8 @@ class Gaussian16(Calculator):
             "hold": True,
         }
         results = self.run(inp, **kwargs)
+        if self.root:
+            self.store_wfo_data(atoms, coords)
         return results
 
     def parse_tddft(self, path):
@@ -189,6 +193,74 @@ class Gaussian16(Calculator):
         self.log(str(nmos))
         return nmos, roots
 
+    def parse_635r_dump(self, dump_path, roots, nmos):
+        self.log(f"Parsing 635r dump '{dump_path}'")
+        with open(dump_path) as handle:
+            text = handle.read()
+        regex = "read left to right\):\s*(.+)"
+        mobj = re.search(regex, text, re.DOTALL)
+        arr_str = mobj[1].replace("D", "E")
+        # Drop the first 12 items as they are always 0
+        tmp = np.array(arr_str.split()[12:], dtype=np.float64)
+
+        # the core electrons are frozen in TDDFT/TDA
+        expected = (nmos.a_act*nmos.a_vir + nmos.b_act*nmos.b_vir) * roots * 2
+        print(f"Expecting {expected} items. There are {tmp.size} elements.")
+        coeffs = tmp[:expected]
+        # 1. dim: X+Y, X-Y -> 2
+        # 2. dim: roots -> variable
+        # 3. dim: alpha, beta -> 2
+        # the rest depends on the number of alpha and beta electrons
+        if nmos.restricted:
+            XpY, XmY = coeffs.reshape(2, roots, 2, -1)
+            X = 0.5 * (XpY + XmY)
+        # In the unrestricted case we can't use 2 for the 3. dimension anymore
+        # (same number of alpha and beta electrons). The sizes for the respective
+        # spins would be (a_act*a_vir) and (b_act*b_vir).
+        else:
+            raise Exception("Unrestricted not supported yet!")
+
+        # xpy_fn = f"{dump_fn}_XpY"
+        # np.save(xpy_fn, XpY)
+        # xmy_fn = f"{dump_fn}_XmY"
+        # np.save(xmy_fn, XmY)
+        # x_fn = f"{dump_fn}_X"
+        # np.save(x_fn, X)
+
+        # Drop duplicate entries
+        if self.nmos.restricted:
+            # Drop beta part and restrict to the requested states
+            X = X[:self.nstates, 0, :]
+
+        X_full = np.zeros((self.nstates, nmos.a_occ, nmos.a_vir))
+        X_full[:, nmos.a_act:] = X.reshape(-1, nmos.a_act, nmos.a_vir)
+
+        return X_full
+
+    def store_wfo_data(self, atoms, coords):
+        # Create the WFOWrapper object if it is not already there
+        if self.wfow == None:
+            assert (self.nmos.restricted)
+            occ_num, virt_num = self.nmos.a_occ, self.nmos.a_vir
+            self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
+                                   basis=None, charge=None)
+        # Parse X eigenvector from 635r dump
+        eigenpair_list = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
+        print(eigenpair_list)
+        # Parse mo coefficients from .fchk file and write a 'fake' turbomole
+        # mos file.
+        keys = ("Alpha Orbital Energies", "Alpha MO coefficients")
+        energies_key, mo_key = keys
+        fchk_dict = self.parse_fchk(self.fchk, keys=keys)
+        mo_coeffs = fchk_dict[mo_key]
+        mo_energies = fchk_dict[energies_key]
+        mo_coeffs = mo_coeffs.reshape(-1, mo_energies.size)
+        fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
+        fake_mos_fn = self.out_dir / self.make_fn("mos")
+        with open(fake_mos_fn, "w") as handle:
+            handle.write(fake_mos_str)
+        self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
+
     def parse_force(self, path):
         results = {}
         keys = ("Total Energy", "Cartesian Gradient")
@@ -232,6 +304,12 @@ class Gaussian16(Calculator):
         results["forces"] = force
         return results
         """
+
+    def keep(self, path):
+        kept_fns = super().keep(path)
+        self.fchk = kept_fns["fchk"]
+        if self.root:
+            self.dump_635r = kept_fns["dump_635r"]
 
     def __str__(self):
         return "Gaussian16 calculator"
