@@ -305,8 +305,8 @@ def run():
     args = parse_args(sys.argv[1:])
 
     if args.yaml:
-        yaml_dir = Path(os.path.abspath(args.yaml))
-        init_logging(yaml_dir.parent, args.scheduler)
+        yaml_dir = Path(os.path.abspath(args.yaml)).parent
+        init_logging(yaml_dir, args.scheduler)
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         run_dict = handle_yaml(yaml_str)

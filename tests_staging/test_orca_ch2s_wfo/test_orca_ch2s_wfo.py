@@ -3,15 +3,18 @@
 import numpy as np
 
 from pysisyphus.helpers import geom_from_library
+from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators.ORCA import ORCA
 
 
 np.set_printoptions(precision=4, suppress=True)
+init_logging()
 GEOM = geom_from_library("ch2s_bp86def2sv_opt.xyz")
 #GEOM = geom_from_library("h2.xyz")
 
 
 def self_compare_base(geom, wfo_basis):
+
     calc_kwargs = {
         "keywords": "BP86 def2-SVP",
         "blocks": "%tddft nroots 2 maxdim 5 end",

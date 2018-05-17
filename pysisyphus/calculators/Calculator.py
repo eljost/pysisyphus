@@ -3,6 +3,7 @@
 import logging
 import os
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 import sys
@@ -107,7 +108,7 @@ class Calculator:
     def run(self, inp, calc, add_args=None, env=None, shell=False,
             hold=False, keep=True, cmd=None, inc_counter=True):
         path = self.prepare(inp)
-        self.log(f"Running in {path}")
+        self.log(f"Running in {path} on {platform.node()}")
         if cmd:
             args = [cmd, self.inp_fn]
         else:
