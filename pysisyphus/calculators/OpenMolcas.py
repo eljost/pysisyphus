@@ -138,16 +138,19 @@ class OpenMolcas(Calculator):
             "add_args": add_args,
             "env": env_copy,
         }
+        raise Exception("RI SA-CASSCF analytical gradients do not work "
+                        "correctly in parallel (yet). Consider using "
+                       f"pal=1 instead of the current pal={self.pal}!")
         results = self.run(inp, **kwargs)
         return results
 
     def keep(self, path):
         kept_fns = super().keep(path)
-        self.inporb = kept_fns["RasOrb"]
+        self.inporb = kept_fns["rasorb"]
         # Keep references to the .JobIph file to be used in
         # &rassi to track our root in a state average
         # calculation.
-        self.jobiph = kept_fns["JobIph"]
+        self.jobiph = kept_fns["jobiph"]
         self.log(f"current JobIph is {self.jobiph}")
 
     def parse_energies(self, text):

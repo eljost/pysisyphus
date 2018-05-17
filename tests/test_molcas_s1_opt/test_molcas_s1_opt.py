@@ -7,6 +7,7 @@ import pytest
 from pysisyphus.helpers import geom_from_xyz_file
 from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.calculators.OpenMolcas import OpenMolcas
+from pysisyphus.init_logging import init_logging
 
 
 @pytest.mark.skip
@@ -49,4 +50,5 @@ def test_molcas_s1_opt():
 
 
 if __name__ == "__main__":
+    init_logging()
     test_molcas_s1_opt()
