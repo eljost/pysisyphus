@@ -205,7 +205,8 @@ class Gaussian16(Calculator):
 
         # the core electrons are frozen in TDDFT/TDA
         expected = (nmos.a_act*nmos.a_vir + nmos.b_act*nmos.b_vir) * roots * 2
-        print(f"Expecting {expected} items. There are {tmp.size} elements.")
+        self.log(f"Expecting {expected} ci coefficients in {dump_path}. "
+                 f"There are {tmp.size} items (including eigenvalues).")
         coeffs = tmp[:expected]
         # 1. dim: X+Y, X-Y -> 2
         # 2. dim: roots -> variable
@@ -252,7 +253,8 @@ class Gaussian16(Calculator):
         # coefficients are not shown).'
         #
         # Right now we only deal with restricted calculatios, so alpha == beta
-        # and we ignore beta. So we are lacking a factor of sqrt(2).
+        # and we ignore beta. So we are lacking a factor of sqrt(2). Another
+        # option would be to normalize all states to 1.
         eigenpair_list *= 2**0.5
         # Parse mo coefficients from .fchk file and write a 'fake' turbomole
         # mos file.
