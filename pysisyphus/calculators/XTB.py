@@ -42,8 +42,10 @@ class XTB(Calculator):
 
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
-        add_args = f"-gfn -chrg {self.charge} -uhf {self.uhf} -grad".split()
+        add_args = f"-gfn2 -chrg {self.charge} -uhf {self.uhf} -grad"
+        self.log(f"Executing {self.base_cmd} {add_args}")
         # Use solvent model if specified
+        add_args = add_args.split()
         if self.gbsa:
             gbsa = f"-gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
