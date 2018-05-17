@@ -135,7 +135,6 @@ class Gaussian16(Calculator):
         inp = self.prepare_input(atoms, coords, "force")
         kwargs = {
             "calc": "force",
-            "hold": True,
         }
         results = self.run(inp, **kwargs)
         if self.root:

@@ -105,7 +105,7 @@ class Calculator:
         return coords
 
     def run(self, inp, calc, add_args=None, env=None, shell=False,
-            hold=False, keep=True, cmd=None):
+            hold=False, keep=True, cmd=None, inc_counter=True):
         path = self.prepare(inp)
         self.log(f"Running in {path}")
         if cmd:
@@ -137,7 +137,8 @@ class Calculator:
         finally:
             if (not hold) and self.clean_after:
                 self.clean(path)
-                self.calc_counter += 1
+                if inc_counter:
+                    self.calc_counter += 1
 
         self.path_already_prepared = None
         return results

@@ -16,8 +16,6 @@ def self_compare_base(geom, wfo_basis):
         "keywords": "BP86 def2-SVP",
         "blocks": "%tddft nroots 2 maxdim 5 end",
         "track": True,
-        "wfo_basis": wfo_basis,
-        "wfo_charge": 0,
     }
 
     orca = ORCA(**calc_kwargs)
@@ -31,7 +29,8 @@ def self_compare_base(geom, wfo_basis):
 
     orca.store_wfo_data(geom.atoms, geom.coords)
     wfow = orca.wfow
-    wfow.compare(wfow)
+    res = wfow.compare(wfow)
+    print(res)
 
     # mo_coeffs = orca.parse_gbw(gbw)
     # print(mo_coeffs)

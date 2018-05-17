@@ -119,14 +119,12 @@ class ORCA(Calculator):
         inp = self.prepare_input(atoms, coords, calc_type)
         kwargs = {
             "calc": "grad",
-            "hold": self.track,
         }
         results = self.run(inp, **kwargs)
         if self.track:
             if self.track_root(atoms, coords):
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
-            self.calc_counter += 1
         return results
 
     def get_hessian(self, atoms, coords):
@@ -141,12 +139,8 @@ class ORCA(Calculator):
         inp = self.prepare_input(atoms, coords, "noparse")
         kwargs = {
                 "calc": "noparse",
-                "hold": self.track, # Keep the files for WFOverlap
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            #self.track_root(atoms, coords)
-            self.calc_counter += 1
         return results
 
     def parse_hessian(self, path):
