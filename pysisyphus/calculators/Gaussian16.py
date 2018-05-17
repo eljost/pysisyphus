@@ -246,7 +246,14 @@ class Gaussian16(Calculator):
                                    basis=None, charge=None)
         # Parse X eigenvector from 635r dump
         eigenpair_list = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
-        print(eigenpair_list)
+        # From http://gaussian.com/cis/, Examples tab, Normalization
+        # 'For closed shell calculations, the sum of the squares of the
+        # expansion coefficients is normalized to total 1/2 (as the beta
+        # coefficients are not shown).'
+        #
+        # Right now we only deal with restricted calculatios, so alpha == beta
+        # and we ignore beta. So we are lacking a factor of sqrt(2).
+        eigenpair_list *= 2**0.5
         # Parse mo coefficients from .fchk file and write a 'fake' turbomole
         # mos file.
         keys = ("Alpha Orbital Energies", "Alpha MO coefficients")
