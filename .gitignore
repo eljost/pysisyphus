@@ -135,3 +135,4 @@ image*.control
 *.pdf
 tests_staging/*
 wfo_*.*
+dask-worker-space*

@@ -297,6 +297,26 @@ class Gaussian16(Calculator):
 
         return results
 
+    def parse_double_mol(self, path):
+        # Gaussian prints a triangular matrix including the diagonal
+        pp.ParserElement.setDefaultWhitespaceChars(' \t')
+        int_ = pp.Suppress(pp.Word(pp.nums))
+        float_ = pp.Word(pp.nums + ".D+-")
+        nl = pp.Suppress(pp.Literal("\n"))
+        header = pp.OneOrMore(int_) + nl
+        line = int_ + pp.OneOrMore(float_) + nl
+
+        block = header + pp.OneOrMore(~header + line)
+
+        parser = (pp.Suppress(pp.SkipTo("*** Overlap *** \n", include=True))
+                  + pp.OneOrMore(block)
+        )
+        result = parser.parseFile(path / self.out_fn)
+        # Convert to python notation
+        result = [num.replace("D", "E") for num in result]
+        arr = np.array(result, dtype=np.float64)
+        return arr
+
         """
         # Parse the .log
         path = Path(path) / self.out_fn
