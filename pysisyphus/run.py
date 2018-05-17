@@ -122,6 +122,7 @@ def get_defaults(conf_dict):
             "between": 0,
         },
         "cos": None,
+        "pal": 1,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -180,7 +181,7 @@ def handle_yaml(yaml_str):
     for key in key_set & set(("cos", "opt", "interpol")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "xyz")):
+    for key in key_set & set(("calc", "xyz", "pal")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 

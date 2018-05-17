@@ -40,6 +40,7 @@ class Gaussian16(Calculator):
         self.dump_base_fn = f"{self.fn_base}_rwfdump"
 
         self.gaussian_input = """
+        %nproc={pal}
         %chk={chk_fn}
         #P {calc_type} {method}/{basis} {td} iop(9/40=4)
         # nosymm density=all pop=full
@@ -69,6 +70,7 @@ class Gaussian16(Calculator):
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)
         inp = self.gaussian_input.format(
+                        pal=self.pal,
                         chk_fn=self.chk_fn,
                         calc_type=calc_type,
                         method=self.method,

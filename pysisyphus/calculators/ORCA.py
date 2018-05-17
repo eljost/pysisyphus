@@ -59,6 +59,8 @@ class ORCA(Calculator):
         self.orca_input="""!{keywords} {calc_type}
         {moinp}
 
+        %pal nprocs {pal} end
+
         {blocks}
 
         *xyz {charge} {mult}
@@ -101,6 +103,7 @@ class ORCA(Calculator):
                                 keywords=self.keywords,
                                 calc_type=calc_type,
                                 moinp=self.moinp,
+                                pal=self.pal,
                                 blocks=self.blocks,
                                 coords=coords,
                                 charge=self.charge,

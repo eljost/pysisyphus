@@ -18,15 +18,18 @@ class Calculator:
     logger = logging.getLogger("calculator")
 
     def __init__(self, calc_number=0, charge=0, mult=1,
-                 base_name="calculator", last_calc_cycle=None,
-                 clean_after=True, out_dir="./"):
+                 base_name="calculator", pal=1,
+                 last_calc_cycle=None, clean_after=True, out_dir="./"):
         # Index of the image this calculator belongs too in
         # in a ChainOfStates calculation.
         self.calc_number = calc_number
         self.charge = int(charge)
         self.mult = int(mult)
         self.base_name = base_name
+        self.pal = int(pal)
         self.out_dir = Path(out_dir)
+
+        assert pal > 0, "pal must be a non-negative integer!"
 
         self.name = f"{base_name}_{calc_number:03d}"
         # Extensions of the files to keep after running a calculation.
