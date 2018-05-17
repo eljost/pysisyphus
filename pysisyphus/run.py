@@ -15,6 +15,7 @@ import yaml
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.irc import *
+from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
 from pysisyphus.trj import get_geoms
 
@@ -68,6 +69,8 @@ def parse_args(args):
     parser.add_argument("--restart", action="store_true",
                         help="Continue a previously crashed/aborted/... "
                              "pysisphus run.")
+    parser.add_argument("--scheduler", default=None,
+                        help="Address of the dask scheduler.")
     return parser.parse_args()
 
 
@@ -182,7 +185,7 @@ def handle_yaml(yaml_str):
     return run_dict
 
 
-def main(run_dict, restart):
+def main(run_dict, restart=False, scheduler=None):
     xyz = run_dict["xyz"]
     if run_dict["interpol"]:
         idpp = run_dict["interpol"]["idpp"]
@@ -193,6 +196,7 @@ def main(run_dict, restart):
     if run_dict["cos"]:
         cos_key = run_dict["cos"].pop("type")
         cos_kwargs = run_dict["cos"]
+        cos_kwargs["scheduler"] = scheduler
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -270,6 +274,8 @@ def clean(force=False):
         "calculator_*.ciss_a",
         # WFOverlap specific
         "wfo_*.*.out",
+        # XTB specific
+        "image*.grad",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -298,11 +304,13 @@ def run():
     args = parse_args(sys.argv[1:])
 
     if args.yaml:
+        yaml_dir = Path(os.path.abspath(args.yaml))
+        init_logging(yaml_dir.parent, args.scheduler)
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         run_dict = handle_yaml(yaml_str)
         pprint(run_dict)
-        main(run_dict, args.restart)
+        main(run_dict, args.restart, args.scheduler)
     elif args.clean:
         clean()
     elif args.fclean:
