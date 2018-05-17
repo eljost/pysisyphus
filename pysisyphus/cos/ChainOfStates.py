@@ -16,7 +16,7 @@ class ChainOfStates:
 
     def __init__(self, images, parallel=0, fix_ends=False,
                  fix_first=False, fix_last=False,
-                 dask_cluster=None):
+                 scheduler=None):
 
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = images
@@ -24,7 +24,7 @@ class ChainOfStates:
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
         self.fix_ends = fix_ends
-        self.dask_cluster = dask_cluster
+        self.scheduler = scheduler
 
         self._coords = None
         self._forces = None
@@ -245,4 +245,4 @@ class ChainOfStates:
         return trj_str
 
     def get_dask_client(self):
-        return Client(self.dask_cluster, pure=False, silence_logs=False)
+        return Client(self.scheduler, pure=False, silence_logs=False)
