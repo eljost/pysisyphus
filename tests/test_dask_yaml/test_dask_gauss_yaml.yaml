@@ -1,0 +1,17 @@
+cos:
+ type: neb
+interpol:
+ idpp: True
+ between: 5
+opt:
+ type: sd
+ max_cycles: 5
+ align: True
+ alpha: 0.5
+calc:
+ type: g16
+ charge: 0
+ mult: 1
+ method: HF
+ basis: STO-3G
+xyz: [hcn.xyz, hcn_iso_ts.xyz, nhc.xyz]
