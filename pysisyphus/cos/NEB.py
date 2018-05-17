@@ -107,7 +107,7 @@ class NEB(ChainOfStates):
 
         if self._forces is None:
             # Parallel calculation
-            if self.dask_cluster:
+            if self.scheduler:
                 client = self.get_dask_client()
                 self.log(client)
                 image_futures = client.map(self.par_image_calc, self.images)
