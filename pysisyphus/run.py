@@ -185,7 +185,7 @@ def handle_yaml(yaml_str):
     return run_dict
 
 
-def main(run_dict, restart=False, scheduler=None):
+def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     xyz = run_dict["xyz"]
     if run_dict["interpol"]:
         idpp = run_dict["interpol"]["idpp"]
@@ -218,6 +218,7 @@ def main(run_dict, restart=False, scheduler=None):
 
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
+    calc_kwargs["out_dir"] = yaml_dir
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
@@ -310,7 +311,7 @@ def run():
             yaml_str = handle.read()
         run_dict = handle_yaml(yaml_str)
         pprint(run_dict)
-        main(run_dict, args.restart, args.scheduler)
+        main(run_dict, args.restart, yaml_dir, args.scheduler)
     elif args.clean:
         clean()
     elif args.fclean:
