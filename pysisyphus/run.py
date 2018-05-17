@@ -261,6 +261,8 @@ def clean(force=False):
         "image*.in",
         "image*.JobIph",
         "calculator*.out",
+        "calculator*.JobIph",
+        "calculator*.RasOrb",
         "*rasscf.molden",
         # Gaussian specific
         "image*.fchk",
