@@ -102,6 +102,12 @@ class OpenMolcas(Calculator):
              track
             """
 
+    def get_pal_env(self):
+        env_copy = os.environ.copy()
+        env_copy["MOLCAS_NPROCS"] = str(self.pal)
+
+        return env_copy
+
     def prepare_coords(self, atoms, coords):
         coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
@@ -125,9 +131,14 @@ class OpenMolcas(Calculator):
         self.log(f"using inporb: {self.inporb}")
         inp = self.prepare_input(atoms, coords)
         add_args = ("-clean", "-oe", self.out_fn)
-        env = os.environ.copy()
-        env["MOLCAS_PROJECT"] = f"{self.name}_{self.calc_counter}"
-        results = self.run(inp, calc="grad", add_args=add_args, env=env)
+        env_copy = self.get_pal_env()
+        env_copy["MOLCAS_PROJECT"] = f"{self.name}_{self.calc_counter}"
+        kwargs = {
+            "calc": "grad",
+            "add_args": add_args,
+            "env": env_copy,
+        }
+        results = self.run(inp, **kwargs)
         return results
 
     def keep(self, path):

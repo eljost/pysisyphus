@@ -180,12 +180,21 @@ class Turbomole(Calculator):
             shutil.copy(self.beta, path / "beta")
             self.log(f"Using {self.alpha} and {self.beta}")
 
+    def get_pal_env(self):
+        env_copy = os.environ.copy()
+        env_copy["PARA_ARCH"] = "SMP"
+        env_copy["PARNODES"] = str(self.pal)
+        env_copy["SMPCPUS"] = str(self.pal)
+
+        return env_copy
+
     def get_forces(self, atoms, coords):
         self.prepare_input(atoms, coords, "force")
         kwargs = {
                 "calc": "force",
                 "shell": True, # To allow 'ridft; rdgrad' etc.
                 "hold": self.track, # Keep the files for WFOverlap
+                "env": self.get_pal_env(),
         }
         # Use inp=None because we don't use any dedicated input besides
         # the previously prepared control file and the current coords.
@@ -205,6 +214,7 @@ class Turbomole(Calculator):
                 "calc": "noparse",
                 "shell": True,
                 "hold": self.track, # Keep the files for WFOverlap
+                "env": self.get_pal_env(),
         }
         results = self.run(None, **kwargs)
         if self.track:
@@ -223,6 +233,7 @@ class Turbomole(Calculator):
                 "keep": False,
                 "hold": True,
                 "cmd": self.scf_cmd,
+                "env": self.get_pal_env(),
         }
         results = self.run(None, **kwargs)
         self.calc_counter -= 1
