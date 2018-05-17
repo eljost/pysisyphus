@@ -9,10 +9,10 @@ import subprocess
 import tempfile
 
 import numpy as np
-try:
-    from pyscf import gto
-except ImportError:
-    print("Couldn't import pyscf!")
+# try:
+    # from pyscf import gto
+# except ImportError:
+    # print("Couldn't import pyscf!")
 import pyparsing as pp
 
 from pysisyphus.config import Config
