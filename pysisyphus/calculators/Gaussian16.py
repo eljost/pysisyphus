@@ -298,6 +298,9 @@ class Gaussian16(Calculator):
         return results
 
     def parse_double_mol(self, path):
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        basis_funcs = int(re.search("NBasis =\s*(\d+)", text)[1])
         # Gaussian prints a triangular matrix including the diagonal
         pp.ParserElement.setDefaultWhitespaceChars(' \t')
         int_ = pp.Suppress(pp.Word(pp.nums))
@@ -315,7 +318,11 @@ class Gaussian16(Calculator):
         # Convert to python notation
         result = [num.replace("D", "E") for num in result]
         arr = np.array(result, dtype=np.float64)
-        return arr
+
+        import pdb; pdb.set_trace()
+        full_ovlp = np.zeros((basis_funcs, basis_funcs))
+        full_ovlp[np.tril_indices(basis_funcs)] = arr
+        return full_ovlp
 
         """
         # Parse the .log
