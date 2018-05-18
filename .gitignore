@@ -138,3 +138,4 @@ wfo_*.*
 dask-worker-space*
 
 fabfile.py
+.pytest_cache/*
