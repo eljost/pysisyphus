@@ -306,6 +306,7 @@ def clean(force=False):
 
 
 def print_header():
+    """Generated from https://asciiartgen.now.sh/?s=pysisyphus&style=colossal"""
     logo = """                           d8b                            888
                            Y8P                            888
                                                           888
