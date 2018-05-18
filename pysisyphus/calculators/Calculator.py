@@ -100,6 +100,11 @@ class Calculator:
 
         return path
 
+    def print_out_fn(self, path):
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        print(text)
+
     def prepare_coords(self, atoms, coords):
         """Convert Bohr to Angstrom."""
         coords = coords.reshape(-1, 3) * BOHR2ANG

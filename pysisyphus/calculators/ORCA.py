@@ -220,11 +220,14 @@ class ORCA(Calculator):
                             " is not yet implemented.")
         return results
 
+
+
     def parse_engrad(self, path):
         results = {}
         engrad_fn = glob.glob(os.path.join(path, "*.engrad"))
         if not engrad_fn:
             raise Exception("ORCA calculation failed.")
+            self.print_out_fn(path)
 
         assert(len(engrad_fn) == 1)
         engrad_fn = engrad_fn[0]
