@@ -221,6 +221,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
+    calc_kwargs["pal"] = run_dict["pal"]
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 

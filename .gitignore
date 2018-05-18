@@ -139,3 +139,4 @@ dask-worker-space*
 
 fabfile.py
 .pytest_cache/*
+*.grad

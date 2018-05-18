@@ -317,6 +317,8 @@ class Gaussian16(Calculator):
         result = parser.parseFile(path / self.out_fn)
         # Convert to python notation
         result = [num.replace("D", "E") for num in result]
+        raise Exception("Completly faulty from here on! WTF.")
+
         arr = np.array(result, dtype=np.float64)
 
         import pdb; pdb.set_trace()
