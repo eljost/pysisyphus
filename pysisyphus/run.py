@@ -18,6 +18,7 @@ from pysisyphus.irc import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
 from pysisyphus.trj import get_geoms
+from ._version import get_versions
 
 
 COS_DICT = {
@@ -304,8 +305,26 @@ def clean(force=False):
         return
 
 
+def print_header():
+    logo = """                           d8b                            888
+                           Y8P                            888
+                                                          888
+88888b.  888  888 .d8888b  888 .d8888b  888  888 88888b.  88888b.  888  888 .d8888b
+888 "88b 888  888 88K      888 88K      888  888 888 "88b 888 "88b 888  888 88K
+888  888 888  888 "Y8888b. 888 "Y8888b. 888  888 888  888 888  888 888  888 "Y8888b.
+888 d88P Y88b 888      X88 888      X88 Y88b 888 888 d88P 888  888 Y88b 888      X88
+88888P"   "Y88888  88888P' 888  88888P'  "Y88888 88888P"  888  888  "Y88888  88888P'
+888           888                            888 888
+888      Y8b d88P                       Y8b d88P 888
+888       "Y88P"                         "Y88P"  888                            """
+    version = f"Version {get_versions()['version']}"
+    print(f"{logo}\n\n{version}\n")
+
+
 def run():
     args = parse_args(sys.argv[1:])
+
+    print_header()
 
     if args.yaml:
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
