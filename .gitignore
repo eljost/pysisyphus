@@ -136,3 +136,5 @@ image*.control
 tests_staging/*
 wfo_*.*
 dask-worker-space*
+
+fabfile.py
