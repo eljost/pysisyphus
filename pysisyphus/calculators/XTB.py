@@ -17,10 +17,15 @@ from pysisyphus.xyzloader import make_xyz_str
 
 class XTB(Calculator):
 
-    def __init__(self, gbsa="", **kwargs):
+    def __init__(self, gbsa="", gfn="gfn2", **kwargs):
         super(XTB, self).__init__(**kwargs)
 
         self.gbsa = gbsa
+        self.gfn = gfn
+
+        valid_gfns = ("gfn1", "gfn2", "gfn2d3")
+        assert self.gfn in valid_gfns, "Invalid gfn argument. " \
+            f"Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
@@ -40,16 +45,29 @@ class XTB(Calculator):
         coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
+    def get_pal_env(self):
+        env_copy = os.environ.copy()
+        env_copy["OMP_NUM_THREADS"] = str(self.pal)
+        env_copy["MKL_NUM_THREADS"] = str(self.pal)
+        env_copy["OMP_STACKSIZE"] = "1000m"
+
+        return env_copy
+
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
-        add_args = f"-gfn2 -chrg {self.charge} -uhf {self.uhf} -grad"
+        add_args = f"-{self.gfn} -chrg {self.charge} -uhf {self.uhf} -grad"
         self.log(f"Executing {self.base_cmd} {add_args}")
         # Use solvent model if specified
         add_args = add_args.split()
         if self.gbsa:
             gbsa = f"-gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
-        results = self.run(inp, calc="grad", add_args=add_args)
+        kwargs = {
+            "calc": "grad",
+            "add_args": add_args,
+            "env": self.get_pal_env(),
+        }
+        results = self.run(inp, **kwargs)
         return results
 
     def parse_gradient(self, path):

@@ -18,14 +18,15 @@ THIS_DIR = Path(os.path.dirname(__file__))
 @pytest.mark.skip
 def test_gradient():
     geom = geom_from_library("benzene.xyz")
-    geom.set_calculator(XTB())
+    geom.set_calculator(XTB(gfn="gfn1"))
     grad = geom.gradient
 
 
     reference_fn = THIS_DIR / "gradient.reference"
     reference = np.loadtxt(reference_fn)
 
-    np.testing.assert_allclose(reference.flatten(), grad)
+    # Quite some difference between xTB 5.8 and 4.9.4 ...
+    np.testing.assert_allclose(reference.flatten(), grad, rtol=1e-5)
 
 
 if __name__ == "__main__":
