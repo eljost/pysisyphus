@@ -237,11 +237,11 @@ class ChainOfStates:
         tangent = self.get_tangent(i)
         return forces - (np.dot(forces, tangent)*tangent)
 
-    def as_xyz(self):
+    def as_xyz(self, comments=None):
         atoms = self.images[0].atoms
         coords_list = [image.coords.reshape((-1,3)) * BOHR2ANG
                        for image in self.images]
-        trj_str = make_trj_str(atoms, coords_list)
+        trj_str = make_trj_str(atoms, coords_list, comments=comments)
         return trj_str
 
     def get_dask_client(self):

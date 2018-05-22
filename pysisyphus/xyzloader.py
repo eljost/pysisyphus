@@ -2,6 +2,7 @@ import numpy as np
 
 def make_xyz_str(atoms, coords, comment=""):
     assert(len(atoms) == len(coords))
+    print("comment is", comment)
 
     coord_fmt = "{: 03.8f}"
     line_fmt = "{:>3s} " + " ".join([coord_fmt, ]*3)
@@ -14,8 +15,11 @@ def make_xyz_str(atoms, coords, comment=""):
     return "{}\n{}\n{}".format(len(atoms), comment, body)
 
 
-def make_trj_str(atoms, coords_list):
-    xyz_strings = [make_xyz_str(atoms, coords) for coords in coords_list]
+def make_trj_str(atoms, coords_list, comments=None):
+    if comments is None:
+        comments = ["" for _ in coords_list]
+    xyz_strings = [make_xyz_str(atoms, coords, comment)
+                   for coords, comment in zip(coords_list, comments)]
     return "\n".join(xyz_strings)
 
 

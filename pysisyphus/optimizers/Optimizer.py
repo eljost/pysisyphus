@@ -68,6 +68,7 @@ class Optimizer:
             os.mkdir(self.out_dir)
         self.logger = logging.getLogger("optimizer")
 
+        # Setting some empty lists as default
         self.list_attrs = "coords energies forces steps " \
                           "max_forces rms_forces max_steps rms_steps " \
                           "cycle_times tangents".split()
@@ -212,7 +213,12 @@ class Optimizer:
                               yaml.dump(opt_results))
 
     def write_cycle_to_file(self):
-        as_xyz_str = self.geometry.as_xyz()
+        if len(self.energies) > 0:
+            comments = self.energies[-1]
+        else:
+            comments = None
+        print("comments", comments)
+        as_xyz_str = self.geometry.as_xyz(comments)
 
         if self.is_cos:
             out_fn = "cycle_{:03d}.trj".format(self.cur_cycle)

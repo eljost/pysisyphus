@@ -30,7 +30,8 @@ def get_fh_logger(name, log_fn):
         formatter = logging.Formatter(fmt_str)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
-        logger.debug(f"Initialized logging on {platform.node()}")
+        # Uncommented this for now as the host is already in the filename
+        # logger.debug(f"Initialized logging on {platform.node()}")
 
 
 def init_logging_base(dask_worker, log_path):
