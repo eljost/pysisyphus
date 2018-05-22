@@ -15,7 +15,6 @@ from pysisyphus.constants import BOHR2ANG
 
 
 class Calculator:
-    logger = logging.getLogger("calculator")
 
     def __init__(self, calc_number=0, charge=0, mult=1,
                  base_name="calculator", pal=1,
@@ -55,8 +54,8 @@ class Calculator:
         raise Exception("Not implemented!")
 
     def log(self, message):
-        self.logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, "
-                          + message)
+        logger = logging.getLogger("calculator")
+        logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, {message}")
 
     def get_energy(self, atoms, coords):
         raise Exception("Not implemented!")

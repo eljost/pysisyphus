@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import re
 
 import numpy as np
 import scipy as sp
@@ -84,6 +85,13 @@ def chunks(l, n):
     """
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+
+def slugify_worker(dask_worker):
+    slug = re.sub("tcp://", "host_", dask_worker)
+    slug = re.sub("\.", "_", slug)
+    slug = re.sub(":", "-", slug)
+    return slug
 
 
 if __name__ == "__main__":

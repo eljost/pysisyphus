@@ -3,36 +3,46 @@
 import logging
 import os
 from pathlib import Path
+import pickle
 import platform
+import socketserver
+import struct
+import threading
 
 from distributed import Client
 
-
-def init_logging(log_dir="./", scheduler=None):
-    log_dir = Path(log_dir)
-    init_logging_base("calculator", log_dir / "calculator.log",
-                      scheduler=scheduler)
-    init_logging_base("wfoverlap", log_dir / "wfoverlap.log",
-                      scheduler=scheduler)
+from pysisyphus.helpers import slugify_worker
 
 
-def init_logging_base(name, log_path, mode="w", scheduler=None):
+def get_fh_logger(name, log_fn):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    """If we reuse an existing scheduler we have to reset the handlers
-    everytime. This shouldn't be an issue in production calculations,
-    as we always start a new scheduler."""
-    logger.handlers = []
-    if not len(logger.handlers):
-        fh = logging.FileHandler(log_path, mode=mode)
+    if len(logger.handlers) == 0:
+        fh = logging.FileHandler(log_fn, mode="w", delay=True)
         fh.setLevel(logging.DEBUG)
         fmt_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         formatter = logging.Formatter(fmt_str)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
         logger.debug(f"Initialized logging on {platform.node()}")
-    # Also initalize logging on all connected workers, but now we append
-    # the the previously created logfile.
+
+
+def init_logging_base(dask_worker, log_path):
+    slug = slugify_worker(dask_worker.worker_address)
+    log_fn = log_path / f"{slug}_calculator.log"
+    get_fh_logger("calculator", log_fn)
+    log_fn = log_path / f"{slug}_wfoverlap.log"
+    get_fh_logger("wfoverlap", log_fn)
+
+
+def init_logging(log_dir="./", scheduler=None):
+    log_path = Path(log_dir)
     if scheduler:
         client = Client(scheduler)
-        client.run(init_logging_base, name, log_path, "a")
+        client.restart()
+        client.run(init_logging_base, log_path=log_path)
+    else:
+        log_fn = log_path / "calculator.log"
+        get_fh_logger("calculator", log_fn)
+        log_fn = log_path / "wfoverlap.log"
+        get_fh_logger("wfoverlap", log_fn)
