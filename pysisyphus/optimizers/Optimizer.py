@@ -217,7 +217,6 @@ class Optimizer:
             comments = self.energies[-1]
         else:
             comments = None
-        print("comments", comments)
         as_xyz_str = self.geometry.as_xyz(comments)
 
         if self.is_cos:

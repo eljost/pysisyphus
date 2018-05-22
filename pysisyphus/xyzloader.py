@@ -2,7 +2,6 @@ import numpy as np
 
 def make_xyz_str(atoms, coords, comment=""):
     assert(len(atoms) == len(coords))
-    print("comment is", comment)
 
     coord_fmt = "{: 03.8f}"
     line_fmt = "{:>3s} " + " ".join([coord_fmt, ]*3)
