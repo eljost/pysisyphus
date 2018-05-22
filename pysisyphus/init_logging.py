@@ -13,8 +13,14 @@ from distributed import Client
 
 from pysisyphus.helpers import slugify_worker
 
+LOGGERS = {
+    "calculator": "calculator.log",
+    "wfoverlap": "wfoverlap.log",
+}
+
 
 def get_fh_logger(name, log_fn):
+    """Initialize a logger with level DEBUG and a FileHandler."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     if len(logger.handlers) == 0:
@@ -28,21 +34,22 @@ def get_fh_logger(name, log_fn):
 
 
 def init_logging_base(dask_worker, log_path):
+    """Prepare individual loggers for dask_worker."""
     slug = slugify_worker(dask_worker.worker_address)
-    log_fn = log_path / f"{slug}_calculator.log"
-    get_fh_logger("calculator", log_fn)
-    log_fn = log_path / f"{slug}_wfoverlap.log"
-    get_fh_logger("wfoverlap", log_fn)
+    for name, log_fn_base in LOGGERS.items():
+        log_fn = log_path / f"{slug}_{log_fn_base}"
+        get_fh_logger(name, log_fn)
 
 
 def init_logging(log_dir="./", scheduler=None):
+    """Prepare the logger in log_path. When called with scheduler
+    loggers for every worker are prepared."""
     log_path = Path(log_dir)
     if scheduler:
         client = Client(scheduler)
         client.restart()
         client.run(init_logging_base, log_path=log_path)
     else:
-        log_fn = log_path / "calculator.log"
-        get_fh_logger("calculator", log_fn)
-        log_fn = log_path / "wfoverlap.log"
-        get_fh_logger("wfoverlap", log_fn)
+        for name, log_fn_base in LOGGERS.items():
+            log_fn = log_path / log_fn_base
+            get_fh_logger(name, log_fn)
