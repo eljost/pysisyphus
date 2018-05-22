@@ -248,6 +248,8 @@ def clean(force=False):
         "calculator.log",
         "optimizer.log",
         "wfoverlap.log",
+        "host_*.calculator.log",
+        "host_*.wfoverlap.log",
         "wfo_*.out"
         "optimization.trj",
         "cos.log",

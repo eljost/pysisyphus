@@ -47,7 +47,6 @@ def init_logging(log_dir="./", scheduler=None):
     log_path = Path(log_dir)
     if scheduler:
         client = Client(scheduler)
-        client.restart()
         client.run(init_logging_base, log_path=log_path)
     else:
         for name, log_fn_base in LOGGERS.items():
