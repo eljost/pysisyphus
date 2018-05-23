@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 import logging
-
 import os
 from pathlib import Path
+import sys
 import time
 
 import numpy as np
-import pandas as pd
 import scipy.linalg
 import yaml
 
@@ -282,6 +281,7 @@ class Optimizer:
             if self.is_zts:
                 self.geometry.reparametrize()
 
+            sys.stdout.flush()
             stop_signs = ("stop", "STOP")
             for ss in stop_signs:
                 if os.path.exists(ss):
