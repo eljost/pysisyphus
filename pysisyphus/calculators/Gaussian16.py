@@ -18,13 +18,15 @@ from pysisyphus.config import Config
 
 class Gaussian16(Calculator):
 
-    def __init__(self, method, basis, nstates=None, root=None, **kwargs):
+    def __init__(self, method, basis, nstates=None, root=None,
+                 track=False, **kwargs):
         super(Gaussian16, self).__init__(**kwargs)
 
         self.method = method
         self.basis = basis
         self.nstates = nstates
         self.root = root
+        self.track = track
         # When root or nstates is set, the other option is required too!
         if root or nstates:
             assert (root and nstates), "nstates and root have to "\
@@ -98,7 +100,7 @@ class Gaussian16(Calculator):
     def run_after(self, path):
         # Create the .fchk file so we can keep it and parse it later on.
         self.make_fchk(path)
-        if self.root:
+        if self.track:
             self.run_rwfdump(path, "635r")
             self.nmos, self.roots = self.parse_log(path)
 
@@ -139,8 +141,10 @@ class Gaussian16(Calculator):
             "calc": "force",
         }
         results = self.run(inp, **kwargs)
-        if self.root:
-            self.store_wfo_data(atoms, coords)
+        if self.track:
+            if self.track_root(atoms, coords):
+                # Redo the calculation with the updated root
+                results = self.get_forces(atoms, coords)
         return results
 
     def parse_tddft(self, path):
@@ -270,6 +274,20 @@ class Gaussian16(Calculator):
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
         self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
+
+    def track_root(self, atoms, coords):
+        """Store the information of the current iteration and if possible
+        calculate the overlap with the previous iteration."""
+        self.store_wfo_data(atoms, coords)
+        # In the first iteration we have nothing to compare to
+        old_root = self.root
+        if self.calc_counter > 1:
+            self.root = self.wfow.track(old_root=self.root)
+            if self.root != old_root:
+                self.log(f"Found a root flip from {old_root} to {self.root}!")
+
+        # True if a root flip occured
+        return not (self.root == old_root)
 
     def parse_force(self, path):
         results = {}
