@@ -366,7 +366,7 @@ class WFOWrapper:
         )
         self.log(f"Overlaps: {old_root_col_str}")
         if new_root == old_root:
-            msg = f"Keeping previous root {old_root}. Overlap is " \
+            msg = f"New root is {new_root}, keeping previous root. Overlap is " \
                   f"{max_overlap:.2%}."
         else:
             msg = f"New root {new_root} has {max_overlap:.2%} overlap with " \

@@ -330,6 +330,7 @@ def run():
     args = parse_args(sys.argv[1:])
 
     print_header()
+    sys.stdout.flush()
 
     if args.yaml:
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
