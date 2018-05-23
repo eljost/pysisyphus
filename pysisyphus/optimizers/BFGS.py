@@ -20,7 +20,7 @@ class BFGS(BacktrackingOptimizer):
         self.log("BFGS with align=True is somewhat broken right now, so "
                  "the images will be aligned only in the first iteration. "
         )
-        if self.geometry.internal:
+        if hasattr(self.geometry, "internal") and self.geometry.internal:
             raise Exception("Doesn't work with redundant int. coordinates "
                             "yet, as the inverse hessian isn't transformed.")
 

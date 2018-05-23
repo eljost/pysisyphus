@@ -29,7 +29,9 @@ class Turbomole(Calculator):
         self.control_path = Path(control_path)
         self.root = root
         self.track = track
-        self.double_mol_path = Path(double_mol_path)
+        self.double_mol_path = double_mol_path
+        if self.double_mol_path:
+            self.double_mol_path = Path(self.double_mol_path)
 
         # Check if the overlap matrix will be printed and assert
         # that no SCF iterations are done.
