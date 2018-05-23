@@ -20,7 +20,7 @@ LOGGERS = {
 
 
 def get_fh_logger(name, log_fn):
-    """Initialize a logger with level DEBUG and a FileHandler."""
+    """Initialize a logger with 'name', level DEBUG and a FileHandler."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     if len(logger.handlers) == 0:
@@ -35,7 +35,7 @@ def get_fh_logger(name, log_fn):
 
 
 def init_logging_base(dask_worker, log_path):
-    """Prepare individual loggers for dask_worker."""
+    """Prepare individual loggers for one dask_worker."""
     slug = slugify_worker(dask_worker.worker_address)
     for name, log_fn_base in LOGGERS.items():
         log_fn = log_path / f"{slug}_{log_fn_base}"
