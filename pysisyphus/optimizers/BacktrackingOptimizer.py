@@ -12,7 +12,7 @@ class BacktrackingOptimizer(Optimizer):
                  dont_skip_after=2, **kwargs):
         # Setting some default values
         self.alpha = alpha
-        assert(self.alpha > 0), "Alpha should be positive!"
+        assert(self.alpha > 0), "Alpha must be positive!"
         self.force_backtrack_in = force_backtrack_in
         self.dont_skip_after = dont_skip_after
         assert(self.dont_skip_after >= 1)
@@ -97,14 +97,16 @@ class BacktrackingOptimizer(Optimizer):
 
         # When the optimiziation is converging cur_forces will
         # be smaller than prev_forces, so rms_diff will be negative
-        # and hence smaller than epsilon.
+        # and hence smaller than epsilon, which is a positive number.
 
-        # Slow alpha if we go uphill.
+        # We went uphill, slow alpha
         self.log(f"backtracking: rms_diff = {rms_diff:.03f}")
         if rms_diff > epsilon:
-            self.alpha *= self.scale_factor
+            self.log("Scaling alpha to with {self.scale_factor:.03f}")
+            self.alpha *= max(self.alpha0, self.scale_factor)
             skip = True
             self.cycles_since_backtrack = self.force_backtrack_in
+        # We continnue going downhill, rms_diff is smaller than epsilon
         else:
             self.cycles_since_backtrack -= 1
             if self.cycles_since_backtrack < 0:
