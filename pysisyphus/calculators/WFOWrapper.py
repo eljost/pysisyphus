@@ -369,8 +369,8 @@ class WFOWrapper:
             msg = f"New root is {new_root}, keeping previous root. Overlap is " \
                   f"{max_overlap:.2%}."
         else:
-            msg = f"New root {new_root} has {max_overlap:.2%} overlap with " \
-                  f"previous root {old_root}."
+            msg = f"Root flip! New root {new_root} has {max_overlap:.2%} " \
+                  f"overlap with previous root {old_root}."
         self.log(msg)
         return int(new_root)
 
