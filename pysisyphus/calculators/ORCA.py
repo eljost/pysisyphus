@@ -425,7 +425,7 @@ class ORCA(Calculator):
         self.store_wfo_data(atoms, coords)
         # In the first iteration we have nothing to compare to
         old_root = self.root
-        if self.calc_counter >= 1:
+        if self.calc_counter > 1:
             last_two_coords = self.wfow.last_two_coords
             self.root = self.wfow.track(old_root=self.root)
             if self.root != old_root:
