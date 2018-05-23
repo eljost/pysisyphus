@@ -154,7 +154,7 @@ class Geometry:
 
     def as_xyz(self, comment=""):
         coords = self._coords * BOHR2ANG
-        if self._energy:
+        if self._energy and (comment == ""):
             comment = f"{comment} {self._energy}"
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 

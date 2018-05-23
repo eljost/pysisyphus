@@ -429,7 +429,7 @@ class ORCA(Calculator):
             last_two_coords = self.wfow.last_two_coords
             self.root = self.wfow.track(old_root=self.root)
             if self.root != old_root:
-                self.log("Found a root flip from {old_root} to {self.root}!")
+                self.log(f"Found a root flip from {old_root} to {self.root}!")
 
         # True if a root flip occured
         return not (self.root == old_root)
