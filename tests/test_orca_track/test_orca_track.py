@@ -6,6 +6,7 @@ from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 
 import numpy as np
+import pytest
 
 np.set_printoptions(suppress=True, precision=4)
 
@@ -33,6 +34,7 @@ def test_orca_track():
     np.testing.assert_allclose(res, [0, 1, 2])
 
 
+@pytest.mark.skip
 def test_orca_tracked_opt():
     geom = get_geom()
     opt = ConjugateGradient(geom)

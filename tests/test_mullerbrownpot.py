@@ -113,7 +113,7 @@ def test_bfgs_straight_neb():
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 45)
+    assert(opt.cur_cycle == 37)
 
     return opt
 

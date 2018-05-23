@@ -6,8 +6,9 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.Turbomole import Turbomole
 
 
+@pytest.mark.skip
 def test_keep_ccre():
-    path = Path("../test_turbo_butadien_td_opt/butadiene")
+    path = Path("../../tests_staging/test_turbo_butadien_td_opt/butadiene")
     calc = Turbomole(path)
     ccre_pattern = "__ccre*"
 

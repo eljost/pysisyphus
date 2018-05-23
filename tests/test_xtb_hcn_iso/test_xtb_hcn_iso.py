@@ -7,7 +7,6 @@ import pytest
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.calculators.IDPP import idpp_interpolate
 from pysisyphus.optimizers.BFGS import BFGS
-from pysisyphus.optimizers.BFGSnb import BFGSnb
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.QuickMin import QuickMin
@@ -78,7 +77,6 @@ def test_xtb_hcn_iso_bfgs():
     opt = BFGS(neb, **opt_kwargs)
     #opt = SteepestDescent(neb, **opt_kwargs) # 17 iters mit alpha = 1.0
     #opt = ConjugateGradient(neb, **opt_kwargs) # 13 iters mit alpha = 1.0
-    #opt = BFGSnb(neb, **opt_kwargs)
     opt.run()
 
     assert (opt.is_converged)
