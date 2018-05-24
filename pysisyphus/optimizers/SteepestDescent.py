@@ -8,7 +8,7 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 class SteepestDescent(BacktrackingOptimizer):
 
     def __init__(self, geometry, alpha=0.1, **kwargs):
-        super(SteepestDescent, self).__init__(geometry, alpha=alpha, **kwargs)
+        super().__init__(geometry, alpha=alpha, **kwargs)
 
     def prepare_opt(self):
         self.log("no backtracking in cycle 0")

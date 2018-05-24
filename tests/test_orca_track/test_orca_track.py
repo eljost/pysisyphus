@@ -26,6 +26,7 @@ def get_geom():
     return geom
 
 
+@pytest.mark.skip
 def test_orca_track():
     geom = get_geom()
     forces = geom.forces

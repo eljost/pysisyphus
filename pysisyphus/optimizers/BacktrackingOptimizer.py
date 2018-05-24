@@ -103,7 +103,8 @@ class BacktrackingOptimizer(Optimizer):
         self.log(f"backtracking: rms_diff = {rms_diff:.03f}")
         if rms_diff > epsilon:
             self.log(f"Scaling alpha to with {self.scale_factor:.03f}")
-            self.alpha = max(self.alpha0, self.alpha*self.scale_factor)
+            # self.alpha = max(self.alpha0*.5, self.alpha*self.scale_factor)
+            self.alpha *= self.scale_factor
             skip = True
             self.cycles_since_backtrack = self.force_backtrack_in
         # We continnue going downhill, rms_diff is smaller than epsilon
