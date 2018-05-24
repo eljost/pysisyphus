@@ -18,22 +18,29 @@ from pysisyphus.config import Config
 
 class Gaussian16(Calculator):
 
-    def __init__(self, method, basis, nstates=None, root=None,
-                 track=False, **kwargs):
-        super(Gaussian16, self).__init__(**kwargs)
+    def __init__(self, route, gbs=None, track=False, **kwargs):
+        super().__init__(**kwargs)
 
-        self.method = method
-        self.basis = basis
-        self.nstates = nstates
-        self.root = root
+        self.route = route
+        assert ("symmetry" not in self.route) and ("nosymm" not in self.route)
+        self.gbs = gbs
         self.track = track
+
+        if any([key in self.route for key in "td tda cis".split()]):
+            route_lower = self.route.lower()
+            self.root = int(re.search("root=(\d+)", route_lower)[1])
+            self.nstates = int(re.search("nstates=(\d+)", route_lower)[1])
+        else:
+            self.root = None
+            self.nstates = None
+
         # When root or nstates is set, the other option is required too!
-        if root or nstates:
-            assert (root and nstates), "nstates and root have to "\
-                                       "be given together!"
+        if self.root or self.nstates:
+            assert (self.root and self.nstates), "nstates and root have to "\
+                                                 "be given together!"
             self.wfow = None
 
-        self.to_keep = ("fchk", "log", "dump_635r")
+        self.to_keep = ("com", "fchk", "log", "dump_635r")
 
         self.fn_base = "gaussian16"
         self.inp_fn = f"{self.fn_base}.com"
@@ -44,13 +51,15 @@ class Gaussian16(Calculator):
         self.gaussian_input = """
         %nproc={pal}
         %chk={chk_fn}
-        #P {calc_type} {method}/{basis} {td} iop(9/40=4)
-        # nosymm density=all pop=full
+        #P {calc_type} {route}
+        # nosymm
         
         title
 
         {charge} {mult}
         {coords}
+
+        {gbs}
 
 
 
@@ -63,11 +72,11 @@ class Gaussian16(Calculator):
         self.base_cmd = Config["gaussian16"]["cmd"]
         self.formchk_cmd = Config["gaussian16"]["formchk_cmd"]
 
-    def make_td_str(self):
-        if not self.root:
+    def make_gbs_str(self):
+        if self.gbs:
+            return f"@{self.gbs}"
+        else:
             return ""
-        td = f"td=(nstates={self.nstates},root={self.root})"
-        return td
 
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)
@@ -75,12 +84,11 @@ class Gaussian16(Calculator):
                         pal=self.pal,
                         chk_fn=self.chk_fn,
                         calc_type=calc_type,
-                        method=self.method,
-                        basis=self.basis,
+                        route=self.route,
                         charge=self.charge,
                         mult=self.mult,
                         coords=coords,
-                        td=self.make_td_str(),
+                        gbs=self.make_gbs_str(),
         )
         return inp
 
