@@ -99,6 +99,9 @@ class Calculator:
 
         return path
 
+    def prepare_input(self, atoms, coords, calc_type):
+        raise Exception("Not implemented!")
+
     def print_out_fn(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()

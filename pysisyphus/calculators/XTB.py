@@ -45,6 +45,9 @@ class XTB(Calculator):
         coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
+    def prepare_input(self, atoms, coords, calc_type):
+        return None
+
     def get_pal_env(self):
         env_copy = os.environ.copy()
         env_copy["OMP_NUM_THREADS"] = str(self.pal)
