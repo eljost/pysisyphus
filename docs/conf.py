@@ -27,7 +27,7 @@ copyright = '2018, Johannes Steinmetzer'
 author = 'Johannes Steinmetzer'
 
 # The short X.Y version
-version = "{}".format(get_versions()['version']})
+version = "{}".format(get_versions()['version'])
 # The full version, including alpha/beta/rc tags
 release = version
 
