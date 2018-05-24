@@ -45,8 +45,6 @@ class Calculator:
         out_dir : str
             Path that is prepended to generated filenames.
         """
-        # Index of the image this calculator belongs too in
-        # in a ChainOfStates calculation.
         self.calc_number = calc_number
         self.charge = int(charge)
         self.mult = int(mult)
@@ -76,35 +74,80 @@ class Calculator:
         # Currently this is only used with the Turbomole calculator.
         self.path_already_prepared = None
 
-    def reattach(self, last_calc_cycle):
-        raise Exception("Not implemented!")
-
     def log(self, message):
+        """Write a log message.
+
+        Wraps the logger variable.
+
+        Parameters
+        ----------
+        message : str
+            Message to be logged.
+        """
+
         logger = logging.getLogger("calculator")
         logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, {message}")
 
     def get_energy(self, atoms, coords):
+        """Meant to be extended.."""
         raise Exception("Not implemented!")
 
     def get_forces(self, atoms, coords):
+        """Meant to be extended.."""
         raise Exception("Not implemented!")
 
     def get_hessian(self, atoms, coords):
+        """Meant to be extended.."""
         raise Exception("Not implemented!")
 
-    def make_fn(self, base, counter=None, abspath=False):
+    def make_fn(self, name, counter=None, abspath=False):
+        """Make a full filename.
+
+        Return a full filename including the calculator name and the
+        current counter given a suffix.
+
+        Parameters
+        ----------
+        name: str
+            Suffix of the filename.
+        counter : int, optional
+            If not given use the current calc_counter.
+        abspath : bool, optional
+            Return a absolute path if True.
+
+
+        Returns
+        -------
+        fn : str
+            Filename.
+        """            
+
         if not counter:
             counter = self.calc_counter
-        # Old
-        #fn = f"{self.name}.{base}{counter:03d}{ext}"
-        fn = f"{self.name}.{counter:03d}.{base}"
+        fn = f"{self.name}.{counter:03d}.{name}"
         if abspath:
             fn = os.path.abspath(fn)
         return fn
 
     def prepare_path(self, use_in_run=False):
-        """When use_in_run is True run() will not create a new path
-        but reuse this path instead."""
+        """Get a temporary directory handle.
+
+        Create a temporary directory that can later be used in a calculation.
+
+
+        Parameters
+        ----------
+            use_in_run : bool, option
+                Sets the internal variable ``self.path_already_prepared`` that
+                is later read by ``self.run()``. No new temporary directory will
+                be created in ``self.run()``.
+
+        Returns
+        -------
+            path: Path
+                Prepared directory.
+        """
+        
         prefix = f"{self.name}_{self.calc_counter:03d}_"
         path = Path(tempfile.mkdtemp(prefix=prefix))
         if use_in_run:
@@ -112,6 +155,20 @@ class Calculator:
         return path
 
     def prepare(self, inp):
+        """Prepare a temporary directory and write input into it.
+
+        Paramters
+        ---------
+        inp : str
+            Input to be written into the file ``self.inp_fn`` in
+            the prepared directory.
+
+        Returns
+        -------
+            path: Path
+                Prepared directory.
+        """
+
         if not self.path_already_prepared:
             path = self.prepare_path()
         else:
@@ -126,15 +183,40 @@ class Calculator:
         return path
 
     def prepare_input(self, atoms, coords, calc_type):
+        """Meant to be extended."""
         raise Exception("Not implemented!")
 
     def print_out_fn(self, path):
+        """Print calculation output.
+
+        Prints the output of a calculator after a calculation.
+
+        Parameters
+        ----------
+        path : Path
+            Temporary directory of the calculation.
+        """
         with open(path / self.out_fn) as handle:
             text = handle.read()
         print(text)
 
     def prepare_coords(self, atoms, coords):
-        """Convert Bohr to Angstrom."""
+        """Get 3d coords in Angstrom.
+
+        Reshape internal 1d coords to 3d and convert to Angstrom.
+
+        Parameters
+        ----------
+        atoms : iterable
+            Atom descriptors (element symbols).
+        coords: np.array, 1d
+            1D-array holding coordinates in Bohr.
+
+        Returns
+        -------
+        coords: np.array, 3d
+            3D-array holding coordinates in Angstrom.
+        """
         coords = coords.reshape(-1, 3) * BOHR2ANG
         coords = "\n".join(
                 ["{} {:10.08f} {:10.08f} {:10.08f}".format(a, *c) for a, c in zip(atoms, coords)]
@@ -143,6 +225,43 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None, env=None, shell=False,
             hold=False, keep=True, cmd=None, inc_counter=True):
+        """Run a calculation.
+
+        The bread-and-butter method to actually run an external quantum
+        chemistry code.
+
+        Parameters
+        ----------
+        inp : str
+            Input for the external program that is written to the temp-dir.
+        calc : str, hashable
+            Key (and more or less type of calculation) to select the right
+            parsing function from ``self.parser_funcs``.
+        add_args : iterable, optional
+            Additional arguments that will be appended to the program call.
+        env : Environment, optional
+            A potentially modified environment for the subprocess call.
+        shell : bool, optional
+            Use a shell to execute the program call. Need for Turbomole were
+            we chain program calls like dscf; escf.
+        hold : bool, optional
+            Wether to remove the temporary directory after the calculation.
+        keep : bool, optional
+            Wether to backup files as specified in ``self.to_keep()``. Usually
+            you want this.
+        cmd : str, optional
+            Overwrites ``self.base_cmd``.
+        inc_counter : bool, optional
+            Wether to increment the counter after a calculation.
+
+        Returns
+        -------
+        results : dict
+            Dictionary holding all applicable results of the calculations
+            like the energy, a forces vector and/or excited state energies
+            from TDDFT.
+        """
+
         path = self.prepare(inp)
         self.log(f"Running in {path} on {platform.node()}")
         if cmd:
@@ -181,9 +300,33 @@ class Calculator:
         return results
 
     def run_after(self, path):
-        pass
+        """Meant to be extended.
+
+        This method is called after a calculation was done, but before
+        entering ``self.keep()`` and ``self.clean()``. Can be used to call
+        tools like formchk or ricctools.
+        """
 
     def prepare_pattern(self, raw_pat):
+        """Prepare globs.
+
+        Transforms an entry of ``self.to_keep`` into a glob and a key
+        suitable for the use in ``self.keep()``.
+
+        Parameters
+        ----------
+        raw_pat : str
+            Entry of ``self.to_keep``
+
+        Returns
+        -------
+        pattern : str
+            Glob that can be used in Path.glob()
+        multi : bool
+            Flag if glob may match multiple files.
+        key : str
+            A key to be used in the ``kept_fns`` dict.
+        """
         # Indicates if multiple files are expected
         multi = "*" in raw_pat
         # Drop '*' as it just indicates if we expect multiple matches
@@ -200,6 +343,20 @@ class Calculator:
         return pattern, multi, pattern_key
 
     def keep(self, path):
+        """Backup calculation results.
+
+        Parameters
+        ----------
+        path : Path
+            Temporary directory of the calculation.
+
+        Returns
+        -------
+        kept_fns : dict
+            Dictonary holding the filenames that were backed up. The keys
+            correspond to the type of file.
+        """
+
         kept_fns = dict()
         for raw_pattern in self.to_keep:
             pattern, multi, key = self.prepare_pattern(raw_pattern)
@@ -221,14 +378,19 @@ class Calculator:
         return kept_fns
 
     def clean(self, path):
+        """Delete the temporary directory.
+
+        Parameters
+        ----------
+        path : Path
+            Directory to delete.
+        """
         shutil.rmtree(path)
         self.log(f"cleaned {path}")
 
-    def reattach(self, calc_counter):
-        self.calc_counter = calc_counter
-
-
-if __name__ == "__main__":
-    calc = Calculator()
-    calc.base_cmd = "sleep"
-    calc.run("dummy_inp", "dummy_calc_type")
+    def reattach(self, last_calc_cycle):
+        """Meant to be extended.
+        
+        When restarting the calculator set all attributes to restore the
+        previous state."""
+        self.calc_counter = last_calc_cycle
