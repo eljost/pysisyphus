@@ -18,12 +18,14 @@ from pysisyphus.config import Config
 
 class Gaussian16(Calculator):
 
-    def __init__(self, route, gbs=None, track=False, **kwargs):
+    def __init__(self, route, gbs="", track=False, **kwargs):
         super().__init__(**kwargs)
 
         self.route = route
         assert ("symmetry" not in self.route) and ("nosymm" not in self.route)
         self.gbs = gbs
+        assert "@" not in gbs, "Give only the path to the .gbs file, " \
+                               "without the @!"
         self.track = track
 
         if any([key in self.route for key in "td tda cis".split()]):
