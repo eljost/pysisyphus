@@ -8,6 +8,6 @@ calc:
  charge: 0
  mult: 1
  route: HF/STO-3G
- gbs: "/home/ca82pez/gaussian/gbs/631GdMWB28.gbs"
+ gbs: "/home/xxx/gaussian/gbs/631GdMWB28.gbs"
  pal: 4
 xyz: ch2s_bp86def2sv_opt.xyz
