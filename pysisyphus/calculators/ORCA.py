@@ -44,7 +44,7 @@ class ORCA(Calculator):
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
                 "allowed! Use 'pal: n' in the 'calc' section instead."
 
-        self.to_keep = ("out", "gbw", "engrad", "hessian", "cis")
+        self.to_keep = ("inp", "out", "gbw", "engrad", "hessian", "cis")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
