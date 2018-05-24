@@ -17,7 +17,8 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 
 import sphinx_rtd_theme
-from pysisyphus._version import get_versions
+
+from pysisyphus import _version
 
 
 # -- Project information -----------------------------------------------------
@@ -27,7 +28,7 @@ copyright = '2018, Johannes Steinmetzer'
 author = 'Johannes Steinmetzer'
 
 # The short X.Y version
-version = "{}".format(get_versions()['version'])
+version = "{}".format(_version.get_versions()['version'])
 # The full version, including alpha/beta/rc tags
 release = version
 
