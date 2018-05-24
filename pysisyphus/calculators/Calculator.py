@@ -19,6 +19,32 @@ class Calculator:
     def __init__(self, calc_number=0, charge=0, mult=1,
                  base_name="calculator", pal=1,
                  last_calc_cycle=None, clean_after=True, out_dir="./"):
+        """Base-class of all calculators.
+
+        Base-class of all calculators that is meant to be extended.
+
+        Parameters
+        ----------
+        calc_number : int
+            Identifier of the Calculator. Used in distinguishing it from
+            other Calculators, e.g. in ChainOfStates calculations. Also
+            used in the creation of filenames.
+        charge : int
+            Molecular charge.
+        mult : int
+            Molecular multiplicity (1 = singlet, 2 = doublet, ...)
+        base_name : str
+            Generated filenames will start with this string.
+        pal : int
+            Positive integer that gives the number of physical cores to
+            use on 1 node.
+        last_calc_cycle : int
+            Internal variable used in restarts.
+        clean_after : bool
+            Delete the temporary directory after calculations.
+        out_dir : str
+            Path that is prepended to generated filenames.
+        """
         # Index of the image this calculator belongs too in
         # in a ChainOfStates calculation.
         self.calc_number = calc_number

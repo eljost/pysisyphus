@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from Geometry import Geometry
+from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import make_trj_str
 
 class ChainOfStates:

@@ -3,51 +3,6 @@ pysisphus implements Chain Of States (COS) methods like Nudged Elastic Band (NEB
 
 **This software is still work in progress and shouldn't be used for production runs. Use at your own risk.**
 
-## Dependencies
-
-	python3.6+
-	scipy
-	numpy
-	matplotlib
-	pytest
-	natsort
-	pyyaml
-	
-Usage of pysisyphus within the **anaconda** distribution is recommended.
-
-## Installation
-### Install the code
-The **recommended way**, as the version on pypi may be outdated:
-
-    cd [root dir where you want to keep pysisyphus]
-	git clone https://github.com/eljost/pysisyphus
-	cd pysisyphus
-	python setup.py develop
-	
-or **(not recommended)**:
-
-	pip install pysisyphus
-
-### Tell pysisyphus how to call your calculators	
-Create a file called `.pysisyphusrc` in your $HOME-directory containing the commands the call your installed calculators, e.g.:
-
-    [orca]
-    cmd=/scratch/programme/orca-4.0.1.2/orca
-    
-    [xtb]
-    cmd=xtb
-    
-    [openmolcas]
-    cmd=pymolcas
-    
-    [gaussian09]
-    cmd=/usr/local/gaussian/g09/g09
-    
-    [wfoverlap]
-    cmd=/scratch/wfoverlap_1.0/bin/wfoverlap.x
-
-When the specified path is not absolute but relative (as in the example config for xtb and openmolcas) the corresponding binaries have to be available on the $PATH! The **Turbomole** binaries are hardcoded and don't have to be specified here. 
-
 ## Usage
 pysisyphus provides three hooks that can be called from the shell (command line). The available commandas can be queried with the `-h` or `--help` arguments:
 

@@ -12,9 +12,12 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
+
+import sphinx_rtd_theme
+from pysisyphus._version import get_versions
 
 
 # -- Project information -----------------------------------------------------
@@ -24,9 +27,9 @@ copyright = '2018, Johannes Steinmetzer'
 author = 'Johannes Steinmetzer'
 
 # The short X.Y version
-version = ''
+version = f"{get_versions()['version']}"
 # The full version, including alpha/beta/rc tags
-release = ''
+release = version
 
 
 # -- General configuration ---------------------------------------------------
@@ -41,6 +44,9 @@ release = ''
 extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -76,7 +82,7 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -97,7 +103,9 @@ html_static_path = ['_static']
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-# html_sidebars = {}
+html_sidebars = { '**': ['globaltoc.html', 'relations.html',
+                         'sourcelink.html', 'searchbox.html']
+}
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
@@ -158,3 +166,9 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+
+autosummary_generate = True
+autodoc_default_flags = ['members', ]
+
+napoleon_google_docstring = False
+napoleon_include_init_with_doc = True

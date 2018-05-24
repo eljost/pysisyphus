@@ -22,7 +22,6 @@ setup(
     install_requires=[
         "scipy",
         "numpy",
-        "pytest",
         "matplotlib",
         "pytest",
         "natsort",
