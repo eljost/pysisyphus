@@ -67,7 +67,11 @@ def parse_args(args):
     action_group.add_argument("--fclean", action="store_true",
                               help="Force cleaning without prior confirmation.")
 
-    parser.add_argument("--restart", action="store_true",
+    run_type_group = parser.add_mutually_exclusive_group(required=False)
+    run_type_group.add_argument("--dryrun", action="store_true",
+                        help="Only generate a sample input (if meaningful) "
+                             "for checking.")
+    run_type_group.add_argument("--restart", action="store_true",
                         help="Continue a previously crashed/aborted/... "
                              "pysisphus run.")
     parser.add_argument("--scheduler", default=None,
@@ -189,7 +193,18 @@ def handle_yaml(yaml_str):
     return run_dict
 
 
-def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
+def dry_run(calc, geom):
+    atoms, coords = geom.atoms, geom.coords
+    inp = calc.prepare_input(atoms, coords, "force")
+    if not inp:
+        print("Calculator does not use an explicit input file!")
+        return
+    with open(calc.inp_fn, "w") as handle:
+        handle.write(inp)
+    print(f"Wrote input to {calc.inp_fn}.")
+
+
+def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     xyz = run_dict["xyz"]
     if run_dict["interpol"]:
         idpp = run_dict["interpol"]["idpp"]
@@ -227,7 +242,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
     geoms = get_geoms(xyz, idpp, between, dump=True)
-    if run_dict["cos"]:
+    if dryrun:
+        calc = calc_getter(0)
+        dry_run(calc, geoms[0])
+        return
+    elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
     elif run_dict["opt"]:
@@ -285,6 +304,7 @@ def clean(force=False):
         "wfo_*.*.out",
         # XTB specific
         "image*.grad",
+        "calculator*.grad",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -330,7 +350,6 @@ def run():
     args = parse_args(sys.argv[1:])
 
     print_header()
-    sys.stdout.flush()
 
     if args.yaml:
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
@@ -339,7 +358,8 @@ def run():
             yaml_str = handle.read()
         run_dict = handle_yaml(yaml_str)
         pprint(run_dict)
-        main(run_dict, args.restart, yaml_dir, args.scheduler)
+        sys.stdout.flush()
+        main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     elif args.clean:
         clean()
     elif args.fclean:
