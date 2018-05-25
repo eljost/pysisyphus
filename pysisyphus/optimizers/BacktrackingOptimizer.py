@@ -75,7 +75,7 @@ class BacktrackingOptimizer(Optimizer):
 
     def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
         """Accelerated backtracking line search."""
-        if self.no_backtrack:
+        if self.bt_disable:
             return False
 
         if not self.climbing_reset and self.started_climbing:

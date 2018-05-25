@@ -123,7 +123,7 @@ class NEB(ChainOfStates):
             self.counter += 1
 
         # Index of the highest energy image (HEI)
-        hei_index = np.argmax([image.energy for image in self.images])
+        hei_index = self.get_hei_index()
 
         move_inds = self.moving_indices
         # Don't climb it not yet enabled or requested.
