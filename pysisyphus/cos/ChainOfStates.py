@@ -34,6 +34,10 @@ class ChainOfStates:
         self.coords_length = self.images[0].coords.size
         self.zero_vec = np.zeros(self.coords_length)
 
+        self.coords_list = list()
+        self.forces_list = list()
+        self.energies_list = list()
+
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
 
@@ -246,3 +250,23 @@ class ChainOfStates:
 
     def get_dask_client(self):
         return Client(self.scheduler, pure=False, silence_logs=False)
+
+    def prepare_opt_cycle(self, last_coords, last_energies, last_forces):
+        """Implements additional logic in preparation of the next
+        optimization cycle.
+
+        Should be called by the optimizer at the beginning of a new
+        optimization cycle. Can be used to implement additional logic
+        as needed for AdaptiveNEB etc.
+        """
+        self.coords_list.append(last_coords)
+        self.forces_list.append(last_forces)
+        self.energies_list.append(last_energies)
+
+        return None
+
+    def get_hei_index(self, energies=None):
+        """Return index of highest energy image."""
+        if energies is None:
+            energies = [image.energy for image in self.images]
+        return np.argmax(energies)
