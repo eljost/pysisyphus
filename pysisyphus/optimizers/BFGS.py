@@ -10,9 +10,9 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 class BFGS(BacktrackingOptimizer):
 
-    def __init__(self, geometry, alpha=1.0, force_backtrack_in=20, **kwargs):
+    def __init__(self, geometry, alpha=1.0, bt_force=20, **kwargs):
         super(BFGS, self).__init__(geometry, alpha=alpha,
-                                   force_backtrack_in=force_backtrack_in,
+                                   bt_force=bt_force,
                                    **kwargs)
 
         self.eye = np.eye(self.geometry.coords.size)

@@ -369,7 +369,7 @@ class Calculator:
                 kept_fns[key] = list()
             for tmp_fn in globbed:
                 base = tmp_fn.name
-                new_fn = (self.out_dir / self.make_fn(base=base)).absolute()
+                new_fn = (self.out_dir / self.make_fn(base)).absolute()
                 shutil.copy(tmp_fn, new_fn)
                 if multi:
                     kept_fns[key].append(new_fn)

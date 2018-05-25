@@ -8,21 +8,24 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class BacktrackingOptimizer(Optimizer):
 
-    def __init__(self, geometry, alpha, force_backtrack_in=5,
-                 dont_skip_after=2, **kwargs):
+    def __init__(self, geometry, alpha, bt_force=5,
+                 dont_skip_after=2, bt_max_scale=4,
+                 bt_disable=False, **kwargs):
         # Setting some default values
         self.alpha = alpha
         assert(self.alpha > 0), "Alpha must be positive!"
-        self.force_backtrack_in = force_backtrack_in
+        self.bt_force = bt_force
         self.dont_skip_after = dont_skip_after
+        self.bt_max_scale = bt_max_scale
+        self.bt_disable = bt_disable
         assert(self.dont_skip_after >= 1)
-        self.cycles_since_backtrack = self.force_backtrack_in
+        self.cycles_since_backtrack = self.bt_force
         self.scale_factor = 0.5
 
         super(BacktrackingOptimizer, self).__init__(geometry, **kwargs)
 
         self.alpha0 = self.alpha
-        self.alpha_max = 4*self.alpha0
+        self.alpha_max = self.bt_max_scale * self.alpha0
 
         # Keep the skipping history to avoid infinite skipping, e.g. always
         # return skip = False if we already skipped in the last n iterations.
@@ -72,6 +75,8 @@ class BacktrackingOptimizer(Optimizer):
 
     def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
         """Accelerated backtracking line search."""
+        if self.no_backtrack:
+            return False
 
         if not self.climbing_reset and self.started_climbing:
             self.log(f"started to climb, resetting alpha to {self.alpha0}")
@@ -89,7 +94,7 @@ class BacktrackingOptimizer(Optimizer):
 
         rms_diff = (
             (cur_rms_force - prev_rms_force) /
-            np.abs(cur_rms_force+prev_rms_force)
+            np.abs(cur_rms_force + prev_rms_force)
         )
 
         # Skip tells us if we overshot
@@ -106,12 +111,13 @@ class BacktrackingOptimizer(Optimizer):
             # self.alpha = max(self.alpha0*.5, self.alpha*self.scale_factor)
             self.alpha *= self.scale_factor
             skip = True
-            self.cycles_since_backtrack = self.force_backtrack_in
+            self.cycles_since_backtrack = self.bt_force
         # We continnue going downhill, rms_diff is smaller than epsilon
         else:
             self.cycles_since_backtrack -= 1
+            # Check if we didn't accelerate in the previous cycles
             if self.cycles_since_backtrack < 0:
-                self.cycles_since_backtrack = self.force_backtrack_in
+                self.cycles_since_backtrack = self.bt_force
                 if self.alpha < self.alpha0:
                     # Reset alpha
                     self.alpha = self.alpha0
