@@ -275,8 +275,8 @@ class Optimizer:
                 print()
                 break
 
-            new_coords = self.geometry.coords + steps
-            self.geometry.coords = new_coords
+            # Update coordinates
+            self.geometry.coords += steps
 
             if self.is_zts:
                 self.geometry.reparametrize()
