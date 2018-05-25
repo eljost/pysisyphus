@@ -23,6 +23,7 @@ from ._version import get_versions
 
 COS_DICT = {
     "neb": NEB.NEB,
+    "aneb": AdaptiveNEB.AdaptiveNEB,
     "szts": SimpleZTS.SimpleZTS,
 }
 

@@ -244,6 +244,10 @@ class Optimizer:
                 print("Number of cycles exceeded!")
                 break
 
+            if self.cur_cycle > 0 and self.is_cos:
+                reset = self.geometry.prepare_opt_cycle(self.coords[-1],
+                                                        self.energies[-1],
+                                                        self.forces[-1])
             self.coords.append(self.geometry.coords)
 
             steps = self.optimize()
