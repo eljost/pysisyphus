@@ -139,6 +139,7 @@ class ChainOfStates:
         return tmp_results
 
     def interpolate_between(self, initial_ind, final_ind, image_num):
+        assert (final_ind > initial_ind), "You're interpolating backwards!"
         # Check for atom ordering
         initial_image = self.images[initial_ind]
         final_image = self.images[final_ind]
