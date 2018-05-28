@@ -119,7 +119,7 @@ class Optimizer:
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
 
-        max_step = step.max()
+        max_step = np.abs(step).max()
         rms_step = np.sqrt(np.mean(np.square(step)))
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
@@ -244,10 +244,18 @@ class Optimizer:
                 print("Number of cycles exceeded!")
                 break
 
+            # Check if something considerably changed in the optimization,
+            # e.g. new images were added/interpolated. Then the optimizer
+            # should be reset.
             if self.cur_cycle > 0 and self.is_cos:
-                reset = self.geometry.prepare_opt_cycle(self.coords[-1],
-                                                        self.energies[-1],
-                                                        self.forces[-1])
+                reset_flag = self.geometry.prepare_opt_cycle(self.coords[-1],
+                                                             self.energies[-1],
+                                                             self.forces[-1])
+            else:
+                reset_flag = False
+            if reset_flag:
+                self.reset()
+
             self.coords.append(self.geometry.coords)
 
             steps = self.optimize()
