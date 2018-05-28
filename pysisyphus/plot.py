@@ -28,6 +28,8 @@ class Plotter:
         self.save = save
         self.legend = legend
 
+        # First image of the first cycle
+        self.anchor = self.coords[0][0]
         self.cycles = len(self.data)
         self.pause = True
 
@@ -55,18 +57,23 @@ class Plotter:
                 diff = np.linalg.norm(per_cycle[i+1]-per_cycle[i])
                 tmp_list.append(diff)
             tmp_list = np.cumsum(tmp_list)
+            offset = np.linalg.norm(self.anchor-per_cycle[0])
+            tmp_list += offset
             if normalize:
                 tmp_list /= tmp_list.max()
             coord_diffs.append(tmp_list)
         return np.array(coord_diffs)
 
     def update_plot(self, i):
+        """Use this when only 1 state is present."""
         self.fig.suptitle("Cycle {}".format(i))
+        self.lines[0].set_xdata(self.coord_diffs[i])
         self.lines[0].set_ydata(self.data[i])
         if self.save:
             self.save_png(i)
 
     def update_plot2(self, i):
+        """Use this when several states are present."""
         self.fig.suptitle("Cycle {}".format(i))
         for j, line in enumerate(self.lines):
             line.set_ydata(self.data[i][:, j])
@@ -87,6 +94,7 @@ class Plotter:
                                                 self.update_func,
                                                 frames=self.cycles,
                                                 interval=self.interval)
+        self.animation.save("animation.gif", writer='imagemagick', fps=5)
         plt.show()
 
     def on_keypress(self, event):
@@ -104,12 +112,17 @@ def plot_energies():
     keys = ("energy", "coords")
     (energies, coords), num_cycles, num_images = load_results(keys)
 
+    if isinstance(num_images, list):
+        print("Please use --aneb instead of --energies")
+        return
+
     df = pd.DataFrame(energies)
     cmap = plt.get_cmap("Greys")
     df = df.transpose()
     df -= df.values.min()
     df *= AU2KJPERMOL
 
+    # Static plot of path with equally spaced images
     fig, ax = plt.subplots()
     ax = df.plot(
             ax=ax,
