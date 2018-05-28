@@ -11,7 +11,8 @@ from pysisyphus.cos.NEB import NEB
 
 class AdaptiveNEB(NEB):
 
-    def __init__(self, images, adapt_fact=.25, adapt_between=1, **kwargs):
+    def __init__(self, images, adapt_fact=.25, adapt_between=1,
+                 scale_fact=False, **kwargs):
         """Adaptive Nudged Elastic Band.
 
         Parameters
@@ -35,10 +36,11 @@ class AdaptiveNEB(NEB):
 
         self.adapt_fact = adapt_fact
         self.adapt_between = adapt_between
+        self.scale_fact = scale_fact
 
         self.adapt_thresh = None
         self.level = 1
-
+        self.coords_backup = list()
 
     def rms(self, arr):
         """Root mean square
@@ -66,7 +68,22 @@ class AdaptiveNEB(NEB):
         """
         old_thresh = self.adapt_thresh
 
-        self.adapt_thresh = self.rms(forces) * self.adapt_fact
+        # Dividing by (1 / level)**1/2 scales the adapt_fact as
+        # level 1: 1. (No scaling)
+        # level 2: 1.414
+        # level 3: 1.732
+        # level 4: 2.
+        # level 5: 2.236
+        # ...
+        # This ensures that the adapt_fact increases as we recurse
+        # deeper.
+        if self.scale_fact:
+            self.adapt_thresh = (self.rms(forces) * self.adapt_fact
+                                 / np.sqrt(1 / self.level)
+            )
+        else:
+            self.adapt_thresh = self.rms(forces) * self.adapt_fact
+        #arr / np.sqrt(1/np.arange(1, 6))
         self.log(f"Updating adapt_thres. Old thresh was {old_thresh:}. "
                  f"New threshold is {self.adapt_thresh:.03f}")
 
@@ -115,7 +132,12 @@ class AdaptiveNEB(NEB):
         if not self.adapt_this_cycle(self.forces_list[-1]):
             return
 
+        #
         # Adapation from here on
+        #
+        print("Adapting")
+        # Backup coords if we have to step back
+        self.coords_backup.append(self.coords)
         # Determine highest energy index and image (HEI)
         hei_index = self.get_hei_index(self.energies_list[-1])
         self.log(f"Index of highest energy image is {hei_index}")
@@ -145,10 +167,16 @@ class AdaptiveNEB(NEB):
 
         # Backup old calculators
         calcs = [img.calculator for img in self.images]
+        # Get numbered indices of the current calcs, so we can continue with
+        # higher numbers for the new images.
+        calc_numbers = [calc.calc_number for calc in calcs]
+        new_calc_number_start = max(calc_numbers) + 1
         # Transfer calculators to the new images
-        for new_image, calc in zip(all_new_images, calcs):
+        for i, (new_image, calc) in enumerate(zip(all_new_images, calcs)):
+            calc.calc_number = new_calc_number_start + i
             new_image.set_calculator(calc)
         self.images = all_new_images
+        self.set_zero_forces_for_fixed_images()
 
         # Reset adapt_thresh so it will be set again in the beginning
         # of the next iteration.
