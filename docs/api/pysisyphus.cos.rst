@@ -4,6 +4,14 @@ pysisyphus.cos package
 Submodules
 ----------
 
+pysisyphus.cos.AdaptiveNEB module
+---------------------------------
+
+.. automodule:: pysisyphus.cos.AdaptiveNEB
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 pysisyphus.cos.ChainOfStates module
 -----------------------------------
 
