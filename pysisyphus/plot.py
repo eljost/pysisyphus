@@ -158,6 +158,16 @@ def plot_energies():
     plt.show()
 
 
+def plot_aneb():
+    keys = ("energy", "coords")
+    (energies, coords), num_cycles, num_images = load_results(keys)
+
+    # Use coordinates of the first image in the first cycle as
+    # anchor for all following cycles.
+    first_coords = coords[0][0]
+    raise Exception("Implement me!")
+
+
 def load_results(keys):
     if isinstance(keys, str):
         keys = (keys, )
@@ -177,11 +187,16 @@ def load_results(keys):
                 sys.exit()
         results_list.append(np.array(tmp_list))
     # The length of the second axis correpsonds to the number of images
-    num_images = results_list[0].shape[1]
+    # Determine the number of images. If we have the same number of images
+    # set num_images to this number. Otherwise return a list containing
+    # the number of images.
+    num_images = np.array([len(cycle) for cycle in results_list[0]])
+    if all(num_images[0] == num_images):
+        num_images = num_images[0]
+        print(f"Found path with {num_images} images.")
     # Flatten the first axis when we got only a single key
     if len(results_list) == 1:
         results_list = results_list[0]
-    print(f"Found path with {num_images} images.")
     print(f"Loaded {num_cycles} cycle(s).")
     return results_list, num_cycles, num_images
 
@@ -367,6 +382,9 @@ def parse_args(args):
                         help="Plot image gradients along the path.")
     group.add_argument("--energies", action="store_true",
                         help="Plot energies.")
+    group.add_argument("--aneb", action="store_true",
+                        help="Plot Adaptive NEB.")
+
 
     return parser.parse_args(args)
 
@@ -386,6 +404,8 @@ def run():
         plot_params(args.params)
     elif args.cosgrad:
         plot_cosgrad()
+    elif args.aneb:
+        plot_aneb()
 
 
 if __name__ == "__main__":
