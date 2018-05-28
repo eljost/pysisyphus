@@ -1,0 +1,14 @@
+cos:
+ type: aneb
+interpol:
+ idpp: True
+ between: 1
+opt:
+ type: cg
+ align: True
+ alpha: 0.5
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+xyz: [hcn.xyz, hcn_iso_ts.xyz, nhc.xyz]

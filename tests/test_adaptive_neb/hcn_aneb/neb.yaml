@@ -1,0 +1,15 @@
+cos:
+ type: neb
+interpol:
+ idpp: True
+ between: 3
+opt:
+ type: cg
+ align: True
+ alpha: 0.5
+ dump: False
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+xyz: [hcn.xyz, hcn_iso_ts.xyz, nhc.xyz]
