@@ -71,7 +71,10 @@ class BacktrackingOptimizer(Optimizer):
         print(f"got alpha {alpha}, will use new alpha {new_alpha}")
 
     def reset(self):
-        raise Exception("Not implemented!")
+        if self.alpha > self.alpha0:
+            self.alpha = self.alpha0
+            self.log(f"Resetting! Current alpha is {self.alpha}. Lowering "
+                     f"it to {self.alpha0}.")
 
     def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
         """Accelerated backtracking line search."""
