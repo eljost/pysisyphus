@@ -14,12 +14,12 @@ from pysisyphus.cos.NEB import NEB
 
 class AdaptiveNEB(NEB):
 
-    def __init__(self, images, adapt_fact=.25, adapt_moving=3, **kwargs):
+    def __init__(self, images, adapt_fact=.25, adapt_between=1, **kwargs):
         kwargs["fix_ends"] = True
         super().__init__(images, **kwargs)
 
         self.adapt_fact = adapt_fact
-        self.adapt_moving = adapt_moving
+        self.adapt_between = adapt_between
 
         self.adapt_thresh = None
         self.level = 1
@@ -75,14 +75,18 @@ class AdaptiveNEB(NEB):
         # of the next iteration.
         self.adapt_thresh = None
 
-        new_images_1 = self.interpolate_between(prev_index, hei_index, 1)
-        new_images_2 = self.interpolate_between(hei_index, next_index, 1)
+        new_images_1 = self.interpolate_between(prev_index, hei_index,
+                                                self.adapt_between)
+        new_images_2 = self.interpolate_between(hei_index, next_index,
+                                                self.adapt_between)
 
         all_new_images = ([prev_image] + new_images_1
                           + [hei_image]
                           + new_images_2 + [next_image])
-        assert len(all_new_images) == len(self.images), "This needs some " \
-            "additional thought"
+        assert len(all_new_images) <= len(self.images), "The number of new " \
+            f"images ({len(all_new_images)}) is smaller than the number of " \
+            f"current images ({len(self.images)}). Increase the number of " \
+             "starting images or decrease 'adapt_between'."
 
         # Backup old calculators
         calcs = [img.calculator for img in self.images]
