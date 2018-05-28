@@ -12,6 +12,7 @@ from pysisyphus.calculators.MullerBrownPot import MullerBrownPot
 from pysisyphus.cos.AdaptiveNEB import AdaptiveNEB
 from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 
 KWARGS = {
     "images": 3,
@@ -87,8 +88,14 @@ def animate_mueller_brown(opt):
 
 def test_mueller_brown_steepest_descent_aneb():
     kwargs = copy.copy(KWARGS)
-    aneb = AdaptiveNEB(get_muller_brown_geoms(("B", "A")))
-    #kwargs["max_cycles"] = 11
+    aneb = AdaptiveNEB(get_muller_brown_geoms(("B", "A")), adapt_between=1)
+
+    kwargs["convergence"] = {
+        "max_force_thresh": 0.03,
+        "rms_force_thresh": 0.011,
+        "max_step_thresh": 3e-5,
+        "rms_step_thresh": 1e-5,
+    }
 
     aneb.interpolate(3)
     opt = SteepestDescent(aneb, **kwargs)
@@ -96,11 +103,10 @@ def test_mueller_brown_steepest_descent_aneb():
         img.set_calculator(MullerBrownPot())
     opt.run()
 
-    # assert opt.is_converged
-    # assert opt.cur_cycle == 35
+    assert opt.is_converged
+    assert opt.cur_cycle == 33
 
     animate_mueller_brown(opt)
-
 
     return opt
 
