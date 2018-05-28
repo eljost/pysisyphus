@@ -257,7 +257,6 @@ class Optimizer:
             if reset_flag:
                 self.reset()
 
-
             steps = self.optimize()
 
             if steps is None:
