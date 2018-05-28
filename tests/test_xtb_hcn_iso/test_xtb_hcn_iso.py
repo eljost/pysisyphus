@@ -24,11 +24,15 @@ def prepare_opt(idpp=True):
         "charge": 0,
         "mult": 1,
     }
+    cos_kwargs = {
+        #"parallel": 4,
+        #"fix_ends": True,
+    }
     if idpp:
         geoms = idpp_interpolate(geoms, 5)
-        neb = NEB(geoms)
+        neb = NEB(geoms, **cos_kwargs)
     else:
-        neb = NEB(geoms)
+        neb = NEB(geoms, **cos_kwargs)
         neb.interpolate(5)
     for i, image in enumerate(neb.images):
         image.set_calculator(XTB(calc_number=i, **calc_kwargs))
