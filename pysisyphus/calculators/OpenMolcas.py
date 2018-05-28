@@ -127,6 +127,11 @@ class OpenMolcas(Calculator):
         )
         return inp
 
+    def get_energy(self, atoms, coords):
+        results = self.get_forces(atoms, coords)
+        del results["forces"]
+        return results
+
     def get_forces(self, atoms, coords):
         self.log(f"using inporb: {self.inporb}")
         inp = self.prepare_input(atoms, coords)

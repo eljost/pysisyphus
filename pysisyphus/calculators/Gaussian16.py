@@ -145,6 +145,11 @@ class Gaussian16(Calculator):
                 results_dict[key] = np.array(res[2:])
         return results_dict
 
+    def get_energy(self, atoms, coords):
+        results = self.get_forces(atoms, coords)
+        del results["forces"]
+        return results
+
     def get_forces(self, atoms, coords):
         inp = self.prepare_input(atoms, coords, "force")
         kwargs = {

@@ -190,6 +190,11 @@ class Turbomole(Calculator):
 
         return env_copy
 
+    def get_energy(self, atoms, coords):
+        results = self.get_forces(atoms, coords)
+        del results["forces"]
+        return results
+
     def get_forces(self, atoms, coords):
         self.prepare_input(atoms, coords, "force")
         kwargs = {

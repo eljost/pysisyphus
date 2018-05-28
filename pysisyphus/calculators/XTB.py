@@ -56,6 +56,11 @@ class XTB(Calculator):
 
         return env_copy
 
+    def get_energy(self, atoms, coords):
+        results = self.get_forces(atoms, coords)
+        del results["forces"]
+        return results
+
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
         add_args = f"-{self.gfn} -chrg {self.charge} -uhf {self.uhf} -grad"

@@ -116,10 +116,9 @@ class ORCA(Calculator):
         return inp
 
     def get_energy(self, atoms, coords):
-        logging.info("orca, energy_calculation!")
-        logging.warning("orca energy not implemented properly!")
-        logging.warning("Called energy, exiting!")
-        import sys; sys.exit()
+        results = self.get_forces(atoms, coords)
+        del results["forces"]
+        return results
 
     def get_forces(self, atoms, coords):
         calc_type = "engrad"
