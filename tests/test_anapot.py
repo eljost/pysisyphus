@@ -191,7 +191,7 @@ def test_fix_end_climbing_early_neb():
 def test_fix_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    kwargs["max_cycles"] = 40
+    kwargs["max_cycles"] == 39
     kwargs["climb"] = True
     kwargs["climb_rms"] = 0.02
     convergence = {
