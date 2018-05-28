@@ -57,13 +57,6 @@ class ChainOfStates:
     def moving_images(self):
         return [self.images[i] for i in self.moving_indices]
 
-    @moving_images.setter
-    def moving_images(self, images):
-        start_ind = 1 if self.fix_first else 0
-        end_ind = -1 if self.fix_last else len(self.images) + 1
-        assert len(self.images[start_ind:end_ind]) == len(images)
-        self.images[start_ind:end_ind] = images
-
     def zero_fixed_vector(self, vector):
         if self.fix_first:
             vector[0] = self.zero_vec
@@ -123,32 +116,40 @@ class ChainOfStates:
         image.calc_energy_and_forces()
         return image
 
+    def set_images(self, indices, images):
+        for ind, image in zip(indices, images):
+            self.images[ind] = image
+
     def calculate_forces(self):
         # Determine the number of images for which we have to do calculations.
         # There may also be calculations for fixed images, as they need an
         # energy value. But every fixed image only needs a calculation once.
         images_to_calculate = self.moving_images
+        image_indices = self.moving_indices
         if self.fix_first and (self.images[0]._energy is None):
             images_to_calculate = [self.images[0]] + images_to_calculate
+            image_indices = [0] + list(image_indices)
         if self.fix_last and (self.images[-1]._energy is None):
             images_to_calculate = images_to_calculate + [self.images[-1]]
-        self.set_zero_forces_for_fixed_images()
+            image_indices = list(image_indices) + [-1]
         assert len(images_to_calculate) <= len(self.images)
+
 
         # Parallel calculation with dask
         if self.scheduler:
             client = self.get_dask_client()
             self.log(client)
             image_futures = client.map(self.par_image_calc, images_to_calculate)
-            self.moving_images = client.gather(image_futures)
+            self.set_images(image_indices, client.gather(image_futures))
         # Parallel calculation with multiprocessing
         elif self.parallel > 0:
             with Pool(processes=self.parallel) as pool:
                 par_images = pool.map(self.par_image_calc, images_to_calculate)
-                self.moving_images = par_images
+                self.set_images(image_indices, par_images)
         # Serial calculation
         else:
             [image.calc_energy_and_forces() for image in images_to_calculate]
+        self.set_zero_forces_for_fixed_images()
         self.counter += 1
 
     @property
@@ -168,6 +169,20 @@ class ChainOfStates:
         indices = range(len(self.images))
         perp_forces = [self.get_perpendicular_forces(i) for i in indices]
         return np.array(perp_forces).flatten()
+
+    def get_perpendicular_forces(self, i):
+        """ [1] Eq. 12"""
+        # Our goal in optimizing a ChainOfStates is minimizing the
+        # perpendicular force. Alaways return zero perpendicular
+        # forces for fixed images, so that they don't interfere
+        # with the convergence check.
+        if i not in self.moving_indices:
+            return self.zero_vec
+
+        forces = self.images[i].forces
+        tangent = self.get_tangent(i)
+        return forces - (np.dot(forces, tangent)*tangent)
+
 
     @property
     def masses_rep(self):
@@ -276,19 +291,6 @@ class ChainOfStates:
         return np.array([self.get_tangent(i)
                          for i in range(len(self.images))]
         )
-
-    def get_perpendicular_forces(self, i):
-        """ [1] Eq. 12"""
-        # Our goal in optimizing a ChainOfStates is minimizing the
-        # perpendicular force. Alaways return zero perpendicular
-        # forces for fixed images, so that they don't interfere
-        # with the convergence check.
-        if i not in self.moving_indices:
-            return self.zero_vec
-
-        forces = self.images[i].forces
-        tangent = self.get_tangent(i)
-        return forces - (np.dot(forces, tangent)*tangent)
 
     def as_xyz(self, comments=None):
         atoms = self.images[0].atoms

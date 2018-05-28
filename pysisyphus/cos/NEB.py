@@ -94,6 +94,7 @@ class NEB(ChainOfStates):
     def forces(self):
         indices = range(len(self.images))
 
+
         if self._forces is None:
             self.calculate_forces()
 
