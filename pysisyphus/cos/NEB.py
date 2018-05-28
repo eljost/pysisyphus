@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from multiprocessing import Pool
-
 import numpy as np
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
@@ -90,15 +88,6 @@ class NEB(ChainOfStates):
 
         return climbing_forces, climbing_image.energy
 
-    def par_calc(self, i):
-        image = self.images[i]
-        image.calc_energy_and_forces()
-        return image
-
-    def par_image_calc(self, image):
-        image.calc_energy_and_forces()
-        return image
-
     # See https://stackoverflow.com/a/15786149
     # This way we can reuse the parents setter.
     @ChainOfStates.forces.getter
@@ -106,21 +95,7 @@ class NEB(ChainOfStates):
         indices = range(len(self.images))
 
         if self._forces is None:
-            # Parallel calculation
-            if self.scheduler:
-                client = self.get_dask_client()
-                self.log(client)
-                image_futures = client.map(self.par_image_calc, self.images)
-                self.images = client.gather(image_futures)
-            elif self.parallel > 0:
-                with Pool(processes=self.parallel) as pool:
-                    image_number = len(self.images)
-                    par_images = pool.map(self.par_calc, range(image_number))
-                    self.images = par_images
-            # Serial calculation
-            else:
-                [image.calc_energy_and_forces() for image in self.images]
-            self.counter += 1
+            self.calculate_forces()
 
         # Index of the highest energy image (HEI)
         hei_index = self.get_hei_index()

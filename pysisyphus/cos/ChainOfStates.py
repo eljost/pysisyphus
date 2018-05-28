@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+from multiprocessing import Pool
 
 from distributed import Client
 import numpy as np
@@ -51,6 +52,17 @@ class ChainOfStates:
         if self.fix_last:
             indices = indices[:-1]
         return indices
+
+    @property
+    def moving_images(self):
+        return [self.images[i] for i in self.moving_indices]
+
+    @moving_images.setter
+    def moving_images(self, images):
+        start_ind = 1 if self.fix_first else 0
+        end_ind = -1 if self.fix_last else len(self.images) + 1
+        assert len(self.images[start_ind:end_ind]) == len(images)
+        self.images[start_ind:end_ind] = images
 
     def zero_fixed_vector(self, vector):
         if self.fix_first:
@@ -107,10 +119,42 @@ class ChainOfStates:
 
         self._energy = energies
 
+    def par_image_calc(self, image):
+        image.calc_energy_and_forces()
+        return image
+
+    def calculate_forces(self):
+        # Determine the number of images for which we have to do calculations.
+        # There may also be calculations for fixed images, as they need an
+        # energy value. But every fixed image only needs a calculation once.
+        images_to_calculate = self.moving_images
+        if self.fix_first and (self.images[0]._energy is None):
+            images_to_calculate = [self.images[0]] + images_to_calculate
+        if self.fix_last and (self.images[-1]._energy is None):
+            images_to_calculate = images_to_calculate + [self.images[-1]]
+        self.set_zero_forces_for_fixed_images()
+        assert len(images_to_calculate) <= len(self.images)
+
+        # Parallel calculation with dask
+        if self.scheduler:
+            client = self.get_dask_client()
+            self.log(client)
+            image_futures = client.map(self.par_image_calc, images_to_calculate)
+            self.moving_images = client.gather(image_futures)
+        # Parallel calculation with multiprocessing
+        elif self.parallel > 0:
+            with Pool(processes=self.parallel) as pool:
+                par_images = pool.map(self.par_image_calc, images_to_calculate)
+                self.moving_images = par_images
+        # Serial calculation
+        else:
+            [image.calc_energy_and_forces() for image in images_to_calculate]
+        self.counter += 1
+
     @property
     def forces(self):
+        self.set_zero_forces_for_fixed_images()
         forces = [image.forces for image in self.images]
-        forces = self.zero_fixed_vector(forces)
         self._forces  = np.concatenate(forces)
         self.counter += 1
         return self._forces
@@ -167,10 +211,14 @@ class ChainOfStates:
         new_images.append(self.images[-1])
         self.images = new_images
 
-    def fix_ends(self):
+    def set_zero_forces_for_fixed_images(self):
         zero_forces = np.zeros_like(self.images[0].coords)
-        self.images[0].forces = zero_forces
-        self.images[-1].forces = zero_forces
+        if self.fix_first:
+            self.images[0].forces = zero_forces
+            self.log("Zeroed forces on fixed first image.")
+        if self.fix_last:
+            self.images[-1].forces = zero_forces
+            self.log("Zeroed forces on fixed last image.")
 
     def get_tangent(self, i):
         """ [1] Equations (8) - (11)"""
