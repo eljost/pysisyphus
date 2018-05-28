@@ -42,6 +42,7 @@ class Optimizer:
             setattr(self, key, value)
 
         # Setting some default values
+        self.resetted = False
         self.started_climbing = False
         self.max_cycles = 50
         self.max_step = 0.04
@@ -53,10 +54,10 @@ class Optimizer:
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         self.is_zts = getattr(self.geometry, "reparametrize", None)
 
-        self.image_num = 1
+        image_num = 1
         if self.is_cos:
-            self.image_num = len(self.geometry.moving_indices)
-            print(f"Path with {self.image_num} moving images.")
+            image_num = len(self.geometry.moving_indices)
+            print(f"Path with {image_num} moving images.")
 
         # Overwrite default values if they are supplied as kwargs
         for key, value in kwargs.items():
@@ -247,16 +248,15 @@ class Optimizer:
             # Check if something considerably changed in the optimization,
             # e.g. new images were added/interpolated. Then the optimizer
             # should be reset.
+            reset_flag = False
             if self.cur_cycle > 0 and self.is_cos:
                 reset_flag = self.geometry.prepare_opt_cycle(self.coords[-1],
                                                              self.energies[-1],
                                                              self.forces[-1])
-            else:
-                reset_flag = False
+            self.coords.append(self.geometry.coords)
             if reset_flag:
                 self.reset()
 
-            self.coords.append(self.geometry.coords)
 
             steps = self.optimize()
 
