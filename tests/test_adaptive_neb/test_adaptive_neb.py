@@ -104,7 +104,7 @@ def test_mueller_brown_steepest_descent_aneb():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 33
+    assert opt.cur_cycle == 40
 
     animate_mueller_brown(opt)
 
@@ -112,8 +112,8 @@ def test_mueller_brown_steepest_descent_aneb():
 
 
 if __name__ == "__main__":
-    # opt = test_steepest_descent_aneb()
-    # ap = animate_bare(opt)
-    # plt.show()
+    opt = test_steepest_descent_aneb()
+    ap = animate_bare(opt)
+    plt.show()
     test_mueller_brown_steepest_descent_aneb()
     plt.show()

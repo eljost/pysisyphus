@@ -191,21 +191,21 @@ def test_fix_end_climbing_early_neb():
 def test_fix_end_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    kwargs["max_cycles"] = 36
+    kwargs["max_cycles"] = 40
     kwargs["climb"] = True
     kwargs["climb_rms"] = 0.02
     convergence = {
-        "max_force_thresh": 0.040,
-        "rms_force_thresh": 0.012,
-        "max_step_thresh": 0.041,
-        "rms_step_thresh": 0.0076,
+        "max_force_thresh": 0.080,
+        "rms_force_thresh": 0.033,
+        "max_step_thresh": 0.014,
+        "rms_step_thresh": 0.0070,
     }
     kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 35)
+    assert(opt.cur_cycle == 38)
 
     return opt
 
@@ -400,7 +400,7 @@ if __name__ == "__main__":
     #opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
     #opt = test_fix_end_climbing_early_neb()
-    #opt = test_fix_end_climbing_neb()
+    opt = test_fix_end_climbing_neb()
 
     # Conjugate Gradient
     #opt = test_cg_neb()
@@ -414,7 +414,7 @@ if __name__ == "__main__":
 
     # BFGS
     #opt = test_bfgs_neb()
-    opt = test_bfgs_neb_more_images()
+    # opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
     #opt = test_fix_end_climbing_bfgs_neb()
