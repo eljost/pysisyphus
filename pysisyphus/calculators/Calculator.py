@@ -54,7 +54,6 @@ class Calculator:
 
         assert pal > 0, "pal must be a non-negative integer!"
 
-        self.name = f"{base_name}_{calc_number:03d}"
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
         self.to_keep = ()
@@ -73,6 +72,10 @@ class Calculator:
         # instead of creating a new one.
         # Currently this is only used with the Turbomole calculator.
         self.path_already_prepared = None
+
+    @property
+    def name(self):
+        return f"{self.base_name}_{self.calc_number:03d}"
 
     def log(self, message):
         """Write a log message.
