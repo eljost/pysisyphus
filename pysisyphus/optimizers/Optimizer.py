@@ -115,13 +115,24 @@ class Optimizer:
             forces = self.forces[-1]
         step = self.steps[-1]
 
+        # The forces of fixed images may be zero and this may distort the RMS
+        # values. So we take into account the number of moving images with
+        # non-zero forces vectors.
+        if self.is_cos:
+            non_zero_elements = (len(self.geometry.moving_indices)
+                                 * self.geometry.coords_length
+            )
+            rms_force = np.sqrt(np.sum(np.square(forces))/non_zero_elements)
+            rms_step = np.sqrt(np.sum(np.square(step))/non_zero_elements)
+        else:
+            rms_force = np.sqrt(np.mean(np.square(forces)))
+            rms_step = np.sqrt(np.mean(np.square(step)))
+
         max_force = np.abs(forces).max()
-        rms_force = np.sqrt(np.mean(np.square(forces)))
+        max_step = np.abs(step).max()
+
         self.max_forces.append(max_force)
         self.rms_forces.append(rms_force)
-
-        max_step = np.abs(step).max()
-        rms_step = np.sqrt(np.mean(np.square(step)))
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
 
