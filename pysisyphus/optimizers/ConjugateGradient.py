@@ -24,6 +24,14 @@ class ConjugateGradient(BacktrackingOptimizer):
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
 
+    def reset(self):
+        super().reset()
+        # Check if the number of images changed
+        if self.forces[-1].shape != self.coords[-1].shape:
+            new_forces = self.geometry.forces
+            self.forces.append(new_forces)
+        self.resetted = True
+
     def get_beta(self, cur_forces, prev_forces):
         # Fletcher-Reeves formula
         if self.formula == "FR":
@@ -41,7 +49,8 @@ class ConjugateGradient(BacktrackingOptimizer):
 
     def optimize(self):
         cur_forces = self.forces[-1]
-        if self.cur_cycle > 0:
+
+        if not self.resetted and self.cur_cycle > 0:
             prev_forces = self.forces[-2]
             beta = self.get_beta(cur_forces, prev_forces)
             self.log(f"beta = {beta:.06f}")
@@ -51,6 +60,7 @@ class ConjugateGradient(BacktrackingOptimizer):
         else:
             # Start with steepest descent in the first iteration
             steps = cur_forces
+            self.resetted = False
         steps = self.alpha * steps
         steps = self.scale_by_max_step(steps)
 
