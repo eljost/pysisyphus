@@ -94,7 +94,8 @@ class Plotter:
                                                 self.update_func,
                                                 frames=self.cycles,
                                                 interval=self.interval)
-        self.animation.save("animation.gif", writer='imagemagick', fps=5)
+        if self.save:
+            self.animation.save("animation.gif", writer='imagemagick', fps=5)
         plt.show()
 
     def on_keypress(self, event):
