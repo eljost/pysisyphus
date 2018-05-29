@@ -360,3 +360,40 @@ class ChainOfStates:
         rms_forces = self.rms(self.forces_list[-1])
         return rms_forces <= self.climb_rms
 
+    def get_climbing_indices(self):
+        # Index of the highest energy image (HEI)
+        hei_index = self.get_hei_index()
+
+        move_inds = self.moving_indices
+        # Don't climb it not yet enabled or requested.
+        if not self.climb:
+            climb_indices = tuple()
+        # We can do two climbing (C2) neb if the highest energy image (HEI)
+        # is in moving_indices but not the first or last item in this list.
+        elif hei_index in move_inds[1:-1]:
+            climb_indices = (hei_index-1, hei_index+1)
+        # Do one image climbing (C1) neb if the HEI is the first or last
+        # item in moving_indices.
+        elif (hei_index == 1) or (hei_index == move_inds[-1]):
+            climb_indices = (hei_index, )
+        # Don't climb when the HEI is the first or last image of the whole
+        # NEB.
+        else:
+            climb_indices = tuple()
+            self.log("Want to climb but can't. HEI is first or last image!")
+        return climb_indices
+
+    def get_climbing_forces(self, ind):
+        climbing_image = self.images[ind]
+        ci_forces = climbing_image.forces
+        tangent = self.get_tangent(ind)
+        climbing_forces = ci_forces - 2*ci_forces.dot(tangent)*tangent
+
+        return climbing_forces, climbing_image.energy
+
+    def set_climbing_forces(self, forces):
+        for i in self.get_climbing_indices():
+            climb_forces, climb_en = self.get_climbing_forces(i)
+            forces[i] = climb_forces
+            self.log(f"climbing with image {i}, E = {climb_en:.6f} au")
+        return forces
