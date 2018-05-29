@@ -185,6 +185,7 @@ def load_results(keys):
     if isinstance(keys, str):
         keys = (keys, )
     image_results_fn = "image_results.yaml"
+    print(f"Reading {image_results_fn}")
     with open(image_results_fn) as handle:
         all_results = yaml.load(handle.read())
     num_cycles = len(all_results)

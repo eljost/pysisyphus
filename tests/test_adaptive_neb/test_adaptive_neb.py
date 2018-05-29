@@ -54,6 +54,8 @@ def animate_bare(opt):
 
 def test_steepest_descent_aneb():
     kwargs = copy.copy(KWARGS)
+    # keep_hei is a bad idea. needs 44 cycles
+    # aneb = AdaptiveNEB(get_geoms(), keep_hei=False)
     aneb = AdaptiveNEB(get_geoms())
     opt = run_cos_opt(aneb, SteepestDescent, **kwargs)
 
@@ -88,7 +90,9 @@ def animate_mueller_brown(opt):
 
 def test_mueller_brown_steepest_descent_aneb():
     kwargs = copy.copy(KWARGS)
-    aneb = AdaptiveNEB(get_muller_brown_geoms(("B", "A")), adapt_between=1)
+    # Needs 49 cycles with keep_hei=False
+    aneb = AdaptiveNEB(get_muller_brown_geoms(("B", "A")),
+                       adapt_between=1, keep_hei=True)
 
     kwargs["convergence"] = {
         "max_force_thresh": 0.03,
@@ -112,8 +116,8 @@ def test_mueller_brown_steepest_descent_aneb():
 
 
 if __name__ == "__main__":
-    opt = test_steepest_descent_aneb()
-    ap = animate_bare(opt)
-    plt.show()
+    # opt = test_steepest_descent_aneb()
+    # ap = animate_bare(opt)
+    # plt.show()
     test_mueller_brown_steepest_descent_aneb()
     plt.show()

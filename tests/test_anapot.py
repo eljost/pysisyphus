@@ -425,6 +425,8 @@ if __name__ == "__main__":
     #opt = test_energy_szts()
     #opt = test_energy_szts_more_images()
 
+    # opt = test_scipy_bfgs_neb()
+
     #ap = animate(opt)
     ap = animate_bare(opt)
     #ap.as_html5("anim.html")
