@@ -31,8 +31,6 @@ class BacktrackingOptimizer(Optimizer):
         # return skip = False if we already skipped in the last n iterations.
         self.skip_log = list()
 
-        self.climbing_reset = False
-
     def save_also(self):
         return {
             "cycles_since_backtrack": self.cycles_since_backtrack,
@@ -79,14 +77,6 @@ class BacktrackingOptimizer(Optimizer):
     def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
         """Accelerated backtracking line search."""
         if self.bt_disable:
-            return False
-
-        if not self.climbing_reset and self.started_climbing:
-            self.log(f"started to climb, resetting alpha to {self.alpha0}")
-            self.climbing_reset = True
-            self.alpha = self.alpha0
-            if reset_hessian:
-                self.reset_hessian()
             return False
 
         epsilon = 1e-3

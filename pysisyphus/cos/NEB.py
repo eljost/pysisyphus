@@ -22,7 +22,6 @@ class NEB(ChainOfStates):
         self.k_max = k_max
         self.k_min = k_min
 
-        self.climb = False
         self.delta_k = self.k_max - self.k_min
         self.k = list()
 

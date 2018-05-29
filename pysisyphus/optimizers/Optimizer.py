@@ -24,18 +24,13 @@ gauss_loose = {
 class Optimizer:
 
     def __init__(self, geometry, convergence=gauss_loose,
-                 align=False, dump=False,
-                 climb=False, climb_multiple=5.0, climb_rms=False,
-                 last_cycle=None,
+                 align=False, dump=False, last_cycle=None,
                  **kwargs):
         self.geometry = geometry
 
         self.convergence = convergence
         self.align = align
         self.dump = dump
-        self.climb = climb
-        self.climb_multiple = climb_multiple
-        self.climb_rms = climb_rms
         self.last_cycle = last_cycle
 
         for key, value in convergence.items():
@@ -43,7 +38,6 @@ class Optimizer:
 
         # Setting some default values
         self.resetted = False
-        self.started_climbing = False
         self.max_cycles = 50
         self.max_step = 0.04
         self.rel_step_thresh = 1e-3
@@ -97,7 +91,6 @@ class Optimizer:
         opt_results = yaml.load(yaml_str)
         for key, val in opt_results.items():
             setattr(self, key, val)
-        self.check_for_climbing_start()
 
     def log(self, message):
         self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
@@ -105,7 +98,7 @@ class Optimizer:
     def check_convergence(self, multiple=1.0):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple
-        thereof. The latter is used in initiating the climbing image.
+        thereof. The latter may be used in initiating the climbing image.
         """
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
@@ -147,30 +140,6 @@ class Optimizer:
             [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
-
-    def check_for_climbing_start(self):
-        # Return False if we don't want to climb or are already
-        # climbing.
-        if (not self.climb) or self.started_climbing:
-            return False
-
-        # Only initiate climbing on a sufficiently converged MEP,
-        # determined by a supplied threshold for the rms_force,
-        # or as a multiple of all given convergence thresholds.
-        #
-        # If climb_rms was given we will use it for the check. Otherwise
-        # we use a multiple of all four convergence thresholds.
-        if self.climb_rms:
-            climb_now = self.rms_forces[-1] <= self.climb_rms
-        else:
-            climb_now = self.check_convergence(self.climb_multiple)
-
-        self.started_climbing = climb_now
-        self.geometry.climb = climb_now
-        if climb_now:
-            self.log("starting to climb in next iteration.")
-            print("starting to climb in next iteration.")
-        return climb_now
 
     def print_header(self):
         hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
@@ -283,7 +252,6 @@ class Optimizer:
             # Convergence check
             self.is_converged = self.check_convergence()
 
-            self.check_for_climbing_start()
             end_time = time.time()
             elapsed_seconds = end_time - start_time
             self.cycle_times.append(elapsed_seconds)

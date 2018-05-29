@@ -91,8 +91,13 @@ def animate_mueller_brown(opt):
 def test_mueller_brown_steepest_descent_aneb():
     kwargs = copy.copy(KWARGS)
     # Needs 49 cycles with keep_hei=False
-    aneb = AdaptiveNEB(get_muller_brown_geoms(("B", "A")),
-                       adapt_between=1, keep_hei=True)
+    cos_kwargs = {
+        # "climb": True,
+        # "climb_rms": 20,
+        "keep_hei": True,
+        "adapt_between": 1,
+    }
+    aneb = AdaptiveNEB(get_muller_brown_geoms(("B", "A")), **cos_kwargs)
 
     kwargs["convergence"] = {
         "max_force_thresh": 0.03,

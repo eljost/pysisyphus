@@ -17,6 +17,7 @@ class ChainOfStates:
 
     def __init__(self, images, parallel=0, fix_ends=False,
                  fix_first=False, fix_last=False,
+                 climb=False, climb_rms=0.02,
                  scheduler=None):
 
         assert(len(images) >= 2), "Need at least 2 images!"
@@ -25,6 +26,8 @@ class ChainOfStates:
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
         self.fix_ends = fix_ends
+        self.climb = climb
+        self.climb_rms = climb_rms
         self.scheduler = scheduler
 
         self._coords = None
@@ -38,6 +41,8 @@ class ChainOfStates:
         self.coords_list = list()
         self.forces_list = list()
         self.energies_list = list()
+
+        self.started_climbing = False
 
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
@@ -302,6 +307,12 @@ class ChainOfStates:
     def get_dask_client(self):
         return Client(self.scheduler, pure=False, silence_logs=False)
 
+    def get_hei_index(self, energies=None):
+        """Return index of highest energy image."""
+        if energies is None:
+            energies = [image.energy for image in self.images]
+        return np.argmax(energies)
+
     def prepare_opt_cycle(self, last_coords, last_energies, last_forces):
         """Implements additional logic in preparation of the next
         optimization cycle.
@@ -314,10 +325,38 @@ class ChainOfStates:
         self.forces_list.append(last_forces)
         self.energies_list.append(last_energies)
 
-        return None
+        # Return False if we don't want to climb or are already
+        # climbing.
+        climbing = self.started_climbing
+        if self.climb and not self.started_climbing:
+            self.started_climbing = self.check_for_climbing_start()
+            if self.started_climbing and not climbing:
+                self.log("starting to climb in next iteration.")
+                print("starting to climb in next iteration.")
+        return self.started_climbing
 
-    def get_hei_index(self, energies=None):
-        """Return index of highest energy image."""
-        if energies is None:
-            energies = [image.energy for image in self.images]
-        return np.argmax(energies)
+    def rms(self, arr):
+        """Root mean square
+
+        Returns the root mean square of the given array.
+
+        Parameters
+        ----------
+        arr : iterable of numbers
+
+        Returns
+        -------
+        rms : float
+            Root mean square of the given array.
+        """
+        return np.sqrt(np.mean(np.square(arr)))
+
+
+    def check_for_climbing_start(self):
+        # Only initiate climbing on a sufficiently converged MEP.
+        # This can be determined from a supplied threshold for the
+        # RMS force (rms_force) or from a multiple of the
+        # RMS force convergence threshold (rms_multiple, default).
+        rms_forces = self.rms(self.forces_list[-1])
+        return rms_forces <= self.climb_rms
+

@@ -46,22 +46,6 @@ class AdaptiveNEB(NEB):
         self.level = 1
         self.coords_backup = list()
 
-    def rms(self, arr):
-        """Root mean square
-
-        Returns the root mean square of the given array.
-
-        Parameters
-        ----------
-        arr : iterable of numbers
-
-        Returns
-        -------
-        rms : float
-            Root mean square of the given array.
-        """
-        return np.sqrt(np.mean(np.square(arr)))
-
     def update_adapt_thresh(self, forces):
         """Update the adaption threshold.
 
@@ -115,7 +99,7 @@ class AdaptiveNEB(NEB):
 
         See ChainOfStates.prepare_opt_cycle for a complete docstring.
         """
-        super().prepare_opt_cycle(*args, **kwargs)
+        base_reset = super().prepare_opt_cycle(*args, **kwargs)
 
         # Transferring Calculators including WFOWrapper objects
         # in excited state calculations may be problematic.
@@ -134,7 +118,7 @@ class AdaptiveNEB(NEB):
             self.update_adapt_thresh(self.forces_list[-1])
 
         if not self.adapt_this_cycle(self.forces_list[-1]):
-            return
+            return base_reset
 
         #
         # Adapation from here on
@@ -147,7 +131,7 @@ class AdaptiveNEB(NEB):
         self.log(f"Index of highest energy image is {hei_index}")
         if (hei_index == 0) or (hei_index == len(self.images)-1):
             self.log("Cant adapt, HEI is first or last!")
-            return False
+            return base_reset
         prev_index = hei_index - 1
         next_index = hei_index + 1
         prev_image = self.images[prev_index]
