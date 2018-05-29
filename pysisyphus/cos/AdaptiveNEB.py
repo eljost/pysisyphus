@@ -12,7 +12,7 @@ from pysisyphus.cos.NEB import NEB
 class AdaptiveNEB(NEB):
 
     def __init__(self, images, adapt_fact=.25, adapt_between=1,
-                 scale_fact=False, **kwargs):
+                 scale_fact=False, keep_hei=True, **kwargs):
         """Adaptive Nudged Elastic Band.
 
         Parameters
@@ -30,6 +30,9 @@ class AdaptiveNEB(NEB):
             must be higher or equal then 2*adapt_between+3, as we
             reuse/transfer the calculators from the starting images onto
             the new ones.
+        keep_hei : bool, optional
+            Wether to keep the highest energy image (usually a very good
+            idea) or to interpolate only between the neighbouring images.
         """
         kwargs["fix_ends"] = True
         super().__init__(images, **kwargs)
@@ -37,6 +40,7 @@ class AdaptiveNEB(NEB):
         self.adapt_fact = adapt_fact
         self.adapt_between = adapt_between
         self.scale_fact = scale_fact
+        self.keep_hei = keep_hei
 
         self.adapt_thresh = None
         self.level = 1
@@ -150,20 +154,32 @@ class AdaptiveNEB(NEB):
         hei_image = self.images[hei_index]
         next_image = self.images[next_index]
 
-        # Interpolation of new images between previous neighbour
-        # and the HEI.
-        new_images_1 = self.interpolate_between(prev_index, hei_index,
-                                                self.adapt_between)
-        # Between next neighbour and the HEI.
-        new_images_2 = self.interpolate_between(hei_index, next_index,
-                                                self.adapt_between)
-        all_new_images = ([prev_image] + new_images_1
-                          + [hei_image]
-                          + new_images_2 + [next_image])
+        # Two interpolations
+        #   prev. neighbour - HEI
+        #   HEI - next neighbour
+        # Usually the better idea
+        if self.keep_hei:
+            # Interpolation of new images between previous neighbour
+            # and the HEI.
+            new_images_1 = self.interpolate_between(prev_index, hei_index,
+                                                    self.adapt_between)
+            # Between next neighbour and the HEI.
+            new_images_2 = self.interpolate_between(hei_index, next_index,
+                                                    self.adapt_between)
+            all_new_images = ([prev_image] + new_images_1
+                              + [hei_image]
+                              + new_images_2 + [next_image])
+        # One interpolation
+        #   prev. neighbour - next neighbour
+        else:
+            new_images = self.interpolate_between(prev_index, next_index,
+                                                  2*self.adapt_between + 1)
+            all_new_images = [prev_image] + new_images + [next_image]
+
         assert len(all_new_images) <= len(self.images), "The number of new " \
             f"images ({len(all_new_images)}) is smaller than the number of " \
-            f"current images ({len(self.images)}). Increase the number of " \
-             "starting images or decrease 'adapt_between'."
+        f"current images ({len(self.images)}). Increase the number of " \
+         "starting images or decrease 'adapt_between'."
 
         # Backup old calculators
         calcs = [img.calculator for img in self.images]
