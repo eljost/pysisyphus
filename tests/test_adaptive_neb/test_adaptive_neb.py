@@ -92,8 +92,8 @@ def test_mueller_brown_steepest_descent_aneb():
     kwargs = copy.copy(KWARGS)
     # Needs 49 cycles with keep_hei=False
     cos_kwargs = {
-        # "climb": True,
-        # "climb_rms": 20,
+        #"climb": True,
+        "climb_rms": 20,
         "keep_hei": True,
         "adapt_between": 1,
     }
@@ -105,6 +105,13 @@ def test_mueller_brown_steepest_descent_aneb():
         "max_step_thresh": 3e-5,
         "rms_step_thresh": 1e-5,
     }
+    # Climbing threshs
+    # kwargs["convergence"] = {
+        # "max_force_thresh": 0.008,
+        # "rms_force_thresh": 0.004,
+        # "max_step_thresh": 6e-4,
+        # "rms_step_thresh": 3e-4,
+    # }
 
     aneb.interpolate(3)
     opt = SteepestDescent(aneb, **kwargs)
