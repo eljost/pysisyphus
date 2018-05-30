@@ -388,20 +388,6 @@ class ChainOfStates:
         self.log(f"Climbing indices are {climb_indices}.")
         return climb_indices
 
-    def get_climbing_indices1(self):
-        # Index of the highest energy image (HEI)
-        hei_index = self.get_hei_index()
-
-        move_inds = self.moving_indices
-        if not (self.climb and self.started_climbing):
-            climb_indices = tuple()
-        elif hei_index in self.moving_indices:
-            climb_indices = (hei_index, )
-        else:
-            climb_indices = tuple()
-            self.log("Want to climb but can't. HEI is first or last image!")
-        return climb_indices
-
     def get_climbing_forces(self, ind):
         climbing_image = self.images[ind]
         ci_forces = climbing_image.forces
