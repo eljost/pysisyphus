@@ -42,7 +42,11 @@ class ChainOfStates:
         self.forces_list = list()
         self.energies_list = list()
 
-        self.started_climbing = False
+        # Start climbing immediateley with climb_rms == -1
+        self.started_climbing = self.climb_rms == -1
+        if self.started_climbing:
+            self.log("Will start climbing immediately.")
+
 
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
@@ -330,9 +334,9 @@ class ChainOfStates:
         climbing = self.started_climbing
         if self.climb and not self.started_climbing:
             self.started_climbing = self.check_for_climbing_start()
-            if self.started_climbing and not climbing:
-                self.log("starting to climb in next iteration.")
-                print("starting to climb in next iteration.")
+        if self.started_climbing and not climbing:
+            self.log("Starting to climb in next iteration.")
+            print("Starting to climb in next iteration.")
         return self.started_climbing
 
     def rms(self, arr):
@@ -381,6 +385,7 @@ class ChainOfStates:
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
+        self.log(f"Climbing indices are {climb_indices}.")
         return climb_indices
 
     def get_climbing_indices1(self):
@@ -409,5 +414,5 @@ class ChainOfStates:
         for i in self.get_climbing_indices():
             climb_forces, climb_en = self.get_climbing_forces(i)
             forces[i] = climb_forces
-            self.log(f"climbing with image {i}, E = {climb_en:.6f} au")
+            self.log(f"Climbing with image {i}, E = {climb_en:.6f} au")
         return forces

@@ -173,33 +173,7 @@ def test_fix_displaced_ends_neb():
 
 
 @pytest.mark.sd
-def test_fix_end_climbing_early_neb():
-    # Climbing too early leads to a failure of convergence.
-    kwargs = copy.copy(KWARGS)
-    kwargs["images"] = 10
-    convergence = {
-        "max_force_thresh": 0.04,
-        "rms_force_thresh": 0.011,
-        "max_step_thresh": 0.007,
-        "rms_step_thresh": 0.0015,
-    }
-    kwargs["convergence"] = convergence
-    cos_kwargs = {
-        "climb": True,
-        "climb_rms": 0.5,
-        "fix_ends": True,
-    }
-    neb = NEB(get_geoms(), **cos_kwargs)
-    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
-
-    assert opt.is_converged
-    assert opt.cur_cycle == 33
-
-    return opt
-
-
-@pytest.mark.sd
-def test_fix_end_climbing_neb():
+def test_fix_end_immediate_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
     kwargs["max_cycles"] == 33
@@ -212,7 +186,7 @@ def test_fix_end_climbing_neb():
     kwargs["convergence"] = convergence
     cos_kwargs = {
         "climb": True,
-        "climb_rms": 0.2,
+        "climb_rms": -1,
         "fix_ends": True,
     }
     neb = NEB(get_geoms(), **cos_kwargs)
@@ -411,10 +385,9 @@ if __name__ == "__main__":
     #opt = test_fix_first_neb()
     #opt = test_fix_last_neb()
     #opt = test_fix_ends_neb()
-    #opt = test_fix_displaced_ends_neb()
+    # opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
-    # opt = test_fix_end_climbing_early_neb()
-    opt = test_fix_end_climbing_neb()
+    opt = test_fix_end_immediate_climbing_neb()
 
     # Conjugate Gradient
     #opt = test_cg_neb()
