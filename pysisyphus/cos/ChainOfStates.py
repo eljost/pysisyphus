@@ -6,9 +6,9 @@ from multiprocessing import Pool
 from distributed import Client
 import numpy as np
 
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import make_trj_str
-from pysisyphus.constants import BOHR2ANG
 
 # [1] http://dx.doi.org/10.1063/1.1323224
 
@@ -397,6 +397,10 @@ class ChainOfStates:
         return climbing_forces, climbing_image.energy
 
     def set_climbing_forces(self, forces):
+        # Avoids calling the other methods with their logging output etc.
+        if not self.started_climbing:
+            return forces
+
         for i in self.get_climbing_indices():
             climb_forces, climb_en = self.get_climbing_forces(i)
             forces[i] = climb_forces
