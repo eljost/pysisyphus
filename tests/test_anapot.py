@@ -186,7 +186,7 @@ def test_fix_end_climbing_early_neb():
     kwargs["convergence"] = convergence
     cos_kwargs = {
         "climb": True,
-        "climb_rms": 1,
+        "climb_rms": 0.5,
         "fix_ends": True,
     }
     neb = NEB(get_geoms(), **cos_kwargs)
@@ -413,8 +413,8 @@ if __name__ == "__main__":
     #opt = test_fix_ends_neb()
     #opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
-    opt = test_fix_end_climbing_early_neb()
-    #opt = test_fix_end_climbing_neb()
+    # opt = test_fix_end_climbing_early_neb()
+    opt = test_fix_end_climbing_neb()
 
     # Conjugate Gradient
     #opt = test_cg_neb()

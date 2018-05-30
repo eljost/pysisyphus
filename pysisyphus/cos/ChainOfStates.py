@@ -366,7 +366,7 @@ class ChainOfStates:
 
         move_inds = self.moving_indices
         # Don't climb it not yet enabled or requested.
-        if not self.climb:
+        if not (self.climb and self.started_climbing):
             climb_indices = tuple()
         # We can do two climbing (C2) neb if the highest energy image (HEI)
         # is in moving_indices but not the first or last item in this list.
@@ -378,6 +378,20 @@ class ChainOfStates:
             climb_indices = (hei_index, )
         # Don't climb when the HEI is the first or last image of the whole
         # NEB.
+        else:
+            climb_indices = tuple()
+            self.log("Want to climb but can't. HEI is first or last image!")
+        return climb_indices
+
+    def get_climbing_indices1(self):
+        # Index of the highest energy image (HEI)
+        hei_index = self.get_hei_index()
+
+        move_inds = self.moving_indices
+        if not (self.climb and self.started_climbing):
+            climb_indices = tuple()
+        elif hei_index in self.moving_indices:
+            climb_indices = (hei_index, )
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
