@@ -54,7 +54,7 @@ class AnaPotBase(Calculator):
         results["hessian"] = hessian
         return results
 
-    def plot(self):
+    def plot(self, levels=None):
         self.fig, self.ax = plt.subplots()
         x = np.linspace(*self.xlim, 100)
         y = np.linspace(*self.ylim, 100)
@@ -64,6 +64,8 @@ class AnaPotBase(Calculator):
         pot_coords = np.stack((X, Y, Z))
         pot = self.get_energy(fake_atoms, pot_coords)["energy"]
 
+        if levels is None:
+            levels = np.linspace(pot.min(), pot.max(), 35)
         # Draw the contourlines of the potential
-        levels = np.linspace(pot.min(), pot.max(), 35)
         contours = self.ax.contour(X, Y, pot, levels)
+        self.fig.colorbar(contours)
