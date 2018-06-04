@@ -45,6 +45,7 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
+        self.calculator = None
 
         self.masses = [MASS_DICT[atom.lower()] for atom in self.atoms]
         # Some of the analytical potentials are only 2D

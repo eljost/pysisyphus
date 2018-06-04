@@ -26,6 +26,8 @@ setup(
         "pytest",
         "natsort",
         "pyyaml",
+        "dask",
+        "distributed",
     ],
     entry_points={
         "console_scripts": [

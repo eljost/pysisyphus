@@ -143,7 +143,6 @@ class ChainOfStates:
             image_indices = list(image_indices) + [-1]
         assert len(images_to_calculate) <= len(self.images)
 
-
         # Parallel calculation with dask
         if self.scheduler:
             client = self.get_dask_client()
