@@ -130,7 +130,8 @@ class Turbomole(Calculator):
         self.log("Preparing for excited state (gradient) calculations")
         self.wfow = WFOWrapper(self.occ_mos, self.virt_mos,
                                basis=None, charge=None,
-                               calc_number=self.calc_number)
+                               calc_number=self.calc_number,
+                               out_dir=self.out_dir)
         self.td_vec_fn = None
         self.ci_coeffs = None
         self.mo_inds = None

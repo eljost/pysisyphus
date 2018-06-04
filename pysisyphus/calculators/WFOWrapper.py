@@ -46,7 +46,7 @@ class WFOWrapper:
     ))
 
     def __init__(self, occ_mos, virt_mos, basis, charge, calc_number=0,
-                 conf_thresh=1e-4):
+                 conf_thresh=1e-4, out_dir="./"):
         self.base_cmd = Config["wfoverlap"]["cmd"]
         self.occ_mos = occ_mos
         self.virt_mos = virt_mos
@@ -55,6 +55,7 @@ class WFOWrapper:
         # Should correspond to the attribute of the parent calculator
         self.calc_number = calc_number
         self.conf_thresh = conf_thresh
+        self.out_dir = Path(out_dir).resolve()
         self.name = f"WFOWrapper_{self.calc_number}"
         self.mos = self.occ_mos + self.virt_mos
         self.base_det_str = "d"*self.occ_mos + "e"*self.virt_mos
@@ -278,7 +279,7 @@ class WFOWrapper:
         header1 = self.make_dets_header(cic1_with_gs, dets1)
         header2 = self.make_dets_header(cic2_with_gs, dets2)
 
-        backup_path = Path(f"wfo_{self.calc_number}.{self.iter_counter:03d}")
+        backup_path = self.out_dir / f"wfo_{self.calc_number}.{self.iter_counter:03d}"
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             self.log(f"Calculation in {tmp_dir}")
@@ -327,7 +328,7 @@ class WFOWrapper:
                      "from original matrix! There is probably mixing with "
 		     "external states.")
 
-        wfo_log_fn = f"wfo_{self.calc_number}.{self.iter_counter:03d}.out"
+        wfo_log_fn = self.out_dir / f"wfo_{self.calc_number}.{self.iter_counter:03d}.out"
         with open(wfo_log_fn, "w") as handle:
             handle.write(stdout)
         # Also copy the WFO-output to the input backup
