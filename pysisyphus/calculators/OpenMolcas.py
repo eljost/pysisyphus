@@ -76,8 +76,8 @@ class OpenMolcas(Calculator):
         self.base_cmd = Config["openmolcas"]["cmd"]
 
     def reattach(self, last_calc_cycle):
-        self.inporb = self.make_fn("RasOrb", last_calc_cycle, True)
-        self.jobiph = self.make_fn("JobIph", last_calc_cycle, True)
+        self.inporb = self.make_fn("RasOrb", last_calc_cycle)
+        self.jobiph = self.make_fn("JobIph", last_calc_cycle)
         self.log(f"restarted. using {self.inporb}, {self.jobiph}")
 
     def build_supsym_str(self, supsym):

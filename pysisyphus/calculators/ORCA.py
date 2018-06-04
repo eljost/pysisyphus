@@ -82,7 +82,7 @@ class ORCA(Calculator):
 
     def reattach(self, last_calc_cycle):
         # Use the latest .gbw
-        gbw = self.make_fn("gbw", last_calc_cycle, True)
+        gbw = self.make_fn("gbw", last_calc_cycle)
         self.log(f"restarted. using {gbw}")
         self.set_moinp_str(gbw)
 
@@ -405,7 +405,7 @@ class ORCA(Calculator):
         if self.wfow == None:
             occ_num, virt_num = self.parse_mo_numbers(self.out)
             self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
-                                   basis=None, charge=None)
+                                   basis=None, charge=None, out_dir=self.out_dir)
         # Parse eigenvectors from tda/tddft calculation
         with open(self.cis, "rb") as handle:
             eigenpair_list = self.parse_cis(handle)
@@ -413,7 +413,7 @@ class ORCA(Calculator):
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
         fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
-        fake_mos_fn = self.out_dir / self.make_fn("mos")
+        fake_mos_fn = self.make_fn("mos")
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
         self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
