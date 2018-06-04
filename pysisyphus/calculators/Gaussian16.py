@@ -21,7 +21,7 @@ class Gaussian16(Calculator):
     def __init__(self, route, gbs="", track=False, **kwargs):
         super().__init__(**kwargs)
 
-        self.route = route
+        self.route = route.lower()
         assert ("symmetry" not in self.route) and ("nosymm" not in self.route)
         self.gbs = gbs
         assert "@" not in gbs, "Give only the path to the .gbs file, " \
@@ -30,17 +30,20 @@ class Gaussian16(Calculator):
 
         if any([key in self.route for key in "td tda cis".split()]):
             route_lower = self.route.lower()
-            self.root = int(re.search("root=(\d+)", route_lower)[1])
             self.nstates = int(re.search("nstates=(\d+)", route_lower)[1])
+            try:
+                self.root = int(re.search("root=(\d+)", route_lower)[1])
+            except TypeError:
+                self.root = None
         else:
             self.root = None
             self.nstates = None
 
-        # When root or nstates is set, the other option is required too!
-        if self.root or self.nstates:
-            assert (self.root and self.nstates), "nstates and root have to "\
-                                                 "be given together!"
-            self.wfow = None
+        # # When root or nstates is set, the other option is required too!
+        # if self.root or self.nstates:
+            # assert (self.root and self.nstates), "nstates and root have to "\
+                                                 # "be given together!"
+        self.wfow = None
 
         self.to_keep = ("com", "fchk", "log", "dump_635r")
 
@@ -69,6 +72,7 @@ class Gaussian16(Calculator):
 
         self.parser_funcs = {
             "force": self.parse_force,
+            "noparse": lambda path: None,
         }
 
         self.base_cmd = Config["gaussian16"]["cmd"]
@@ -162,6 +166,15 @@ class Gaussian16(Calculator):
                 results = self.get_forces(atoms, coords)
         return results
 
+    def run_calculation(self, atoms, coords):
+        inp = self.prepare_input(atoms, coords, "")
+        kwargs = {
+            "calc": "noparse",
+        }
+        results = self.run(inp, **kwargs)
+        if self.track:
+            self.track_root(atoms, coords)
+
     def parse_tddft(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()
@@ -181,7 +194,10 @@ class Gaussian16(Calculator):
             mobj = re.search(regex, text)
             return func(mobj[1])
 
-        log_path = path / self.out_fn
+        if path.is_dir():
+            log_path = path / self.out_fn
+        else:
+            log_path = path
         with open(log_path) as handle:
             text = handle.read()
 
@@ -254,7 +270,7 @@ class Gaussian16(Calculator):
             X = X[:self.nstates, 0, :]
 
         X_full = np.zeros((self.nstates, nmos.a_occ, nmos.a_vir))
-        X_full[:, nmos.a_act:] = X.reshape(-1, nmos.a_act, nmos.a_vir)
+        X_full[:, nmos.a_core:] = X.reshape(-1, nmos.a_act, nmos.a_vir)
 
         return X_full
 
@@ -264,7 +280,7 @@ class Gaussian16(Calculator):
             assert (self.nmos.restricted)
             occ_num, virt_num = self.nmos.a_occ, self.nmos.a_vir
             self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
-                                   basis=None, charge=None)
+                                   basis=None, charge=None, out_dir=self.out_dir)
         # Parse X eigenvector from 635r dump
         eigenpair_list = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
         # From http://gaussian.com/cis/, Examples tab, Normalization
@@ -285,7 +301,7 @@ class Gaussian16(Calculator):
         mo_energies = fchk_dict[energies_key]
         mo_coeffs = mo_coeffs.reshape(-1, mo_energies.size)
         fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
-        fake_mos_fn = self.out_dir / self.make_fn("mos")
+        fake_mos_fn = self.make_fn("mos")
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
         self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
@@ -380,7 +396,7 @@ class Gaussian16(Calculator):
     def keep(self, path):
         kept_fns = super().keep(path)
         self.fchk = kept_fns["fchk"]
-        if self.root:
+        if self.nstates:
             self.dump_635r = kept_fns["dump_635r"]
 
     def __str__(self):
