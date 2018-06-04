@@ -50,7 +50,7 @@ class Calculator:
         self.mult = int(mult)
         self.base_name = base_name
         self.pal = int(pal)
-        self.out_dir = Path(out_dir)
+        self.out_dir = Path(out_dir).resolve()
 
         assert pal > 0, "pal must be a non-negative integer!"
 
@@ -103,7 +103,7 @@ class Calculator:
         """Meant to be extended.."""
         raise Exception("Not implemented!")
 
-    def make_fn(self, name, counter=None, abspath=False):
+    def make_fn(self, name, counter=None):
         """Make a full filename.
 
         Return a full filename including the calculator name and the
@@ -115,9 +115,6 @@ class Calculator:
             Suffix of the filename.
         counter : int, optional
             If not given use the current calc_counter.
-        abspath : bool, optional
-            Return a absolute path if True.
-
 
         Returns
         -------
@@ -127,9 +124,7 @@ class Calculator:
 
         if not counter:
             counter = self.calc_counter
-        fn = f"{self.name}.{counter:03d}.{name}"
-        if abspath:
-            fn = os.path.abspath(fn)
+        fn = self.out_dir / f"{self.name}.{counter:03d}.{name}"
         return fn
 
     def prepare_path(self, use_in_run=False):
@@ -372,7 +367,7 @@ class Calculator:
                 kept_fns[key] = list()
             for tmp_fn in globbed:
                 base = tmp_fn.name
-                new_fn = (self.out_dir / self.make_fn(base)).absolute()
+                new_fn = self.make_fn(base)
                 shutil.copy(tmp_fn, new_fn)
                 if multi:
                     kept_fns[key].append(new_fn)
