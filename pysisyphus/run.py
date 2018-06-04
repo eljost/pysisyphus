@@ -14,6 +14,7 @@ import yaml
 
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
+from pysisyphus.diabatize.Diabatizer import Diabatizer
 from pysisyphus.irc import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
@@ -103,6 +104,16 @@ def run_cos(cos, calc_getter, opt_getter):
     opt.run()
 
 
+def run_diabatize(geoms, calc_getter, path, calc_key, calc_kwargs):
+    for i, geom in enumerate(geoms):
+        geom.set_calculator(calc_getter(i))
+        geom.calculator.run_calculation(geom.atoms, geom.coords)
+        print("Ran calculation {i:03d} of {len(geoms):03d}.")
+    diabatizer = Diabatizer(path, calc_key, calc_kwargs)
+    geoms = diabatizer.discover_geometries(diabatizer.path)
+    diabatizer.diabatize(geoms)
+
+
 def run_opt(geom, calc_getter, opt_getter):
     geom.set_calculator(calc_getter(0))
     opt = opt_getter(geom)
@@ -130,7 +141,9 @@ def get_defaults(conf_dict):
         "cos": None,
         "calc": {
             "pal": 1,
-        }
+        },
+        "opt": None,
+        "diabatize": False,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -189,7 +202,7 @@ def handle_yaml(yaml_str):
     for key in key_set & set(("cos", "opt", "interpol")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "xyz", "pal")):
+    for key in key_set & set(("calc", "xyz", "pal", "diabatize")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -247,6 +260,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         calc = calc_getter(0)
         dry_run(calc, geoms[0])
         return
+    elif run_dict["diabatize"]:
+        run_diabatize(geoms, calc_getter, yaml_dir, calc_key, calc_kwargs)
     elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
