@@ -100,6 +100,8 @@ class IDPP(Calculator):
         # the energy.
         energy = 0.5 * (curr_diff**2 / curr_square**4).sum()
 
+        # Adapted from ASE IDPP calculator
+        # https://gitlab.com/ase/ase/blob/master/ase/neb.py, GPL2
         forces = -2 * ((curr_diff *
                        (1 - 2 * curr_diff / curr_square) /
                         curr_square**5)[...,np.newaxis] * D).sum(0)
