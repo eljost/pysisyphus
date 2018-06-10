@@ -84,7 +84,9 @@ def animate_mueller_brown(opt):
     xlim = (-1.75, 1.25)
     ylim = (-0.5, 2.25)
     levels=(-150, -15, 40)
-    ap = AnimPlot(MullerBrownPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
+    ap = AnimPlot(MullerBrownPot(), opt, xlim=xlim, ylim=ylim,
+                  energy_profile=False, colorbar=False,
+                  levels=levels, save=False, figsize=(8,6), title=False)
     ap.animate()
 
 

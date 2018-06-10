@@ -25,13 +25,19 @@ def get_geom(xyz_fn, coord_type="redund", debug=False):
     return geom
 
 
-def get_opt(xyz_fn, coord_type="redund"):
+def get_opt(xyz_fn, coord_type="redund", opt_key="sd"):
     geom = get_geom(xyz_fn, coord_type)
     geom.set_calculator(XTB())
     #return BFGS(geom)
     #return RFOptimizer(geom)
     #return ConjugateGradient(geom)
-    return SteepestDescent(geom)
+    opt_dict = {
+        "sd": SteepestDescent,
+        "cg": ConjugateGradient,
+        "rfo": RFOptimizer,
+    }
+    Opt = opt_dict[opt_key]
+    return Opt(geom)
 
 
 def assert_internals(geom, lengths):
@@ -49,11 +55,11 @@ def test_fluorethylene():
 
 def test_fluorethylene_opt():
     xyz_fn = "fluorethylene.xyz"
-    #opt = get_opt(xyz_fn)
-    #opt.run()
+    opt = get_opt(xyz_fn, opt_key="cg")
+    opt.run()
 
-    cart_opt = get_opt(xyz_fn, coord_type="cart")
-    cart_opt.dump = True
+    cart_opt = get_opt(xyz_fn, coord_type="cart", opt_key="cg")
+    # cart_opt.dump = True
     cart_opt.run()
     #with open("fe_opt.xyz", "w") as handle:
     #    handle.write(opt.geometry.as_xyz())
@@ -62,6 +68,16 @@ def test_fluorethylene_opt():
     #cart_opt.run()
     #with open("fe_opt_cart.xyz", "w") as handle:
     #    handle.write(cart_opt.geometry.as_xyz())
+
+
+def test_biaryl_opt():
+    xyz_fn = "mecn_cycloadd_guess.xyz"
+    opt = get_opt(xyz_fn, opt_key="rfo")
+    opt.run()
+
+    cart_opt = get_opt(xyz_fn, coord_type="cart", opt_key="rfo")
+    # cart_opt.dump = True
+    cart_opt.run()
 
 
 def test_azetidine():
@@ -222,10 +238,10 @@ def run():
 
 if __name__ == "__main__":
     #test_fluorethylene()
-    #test_fluorethylene_opt()
+    test_fluorethylene_opt()
     #test_azetidine()
     #test_azetidine_opt()
-    test_runo()
+    #test_runo()
     #test_h2o()
     #test_h2o_opt()
     #test_h2o_rfopt()
@@ -236,3 +252,4 @@ if __name__ == "__main__":
     #test_co2_linear_opt()
     #test_ch4()
     #test_sf6()
+    #test_biaryl_opt()

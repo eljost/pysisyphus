@@ -65,7 +65,9 @@ def animate_bare(opt):
     ylim = (0, 5)
     levels = (-3, 4, 80)
     ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels,
-                  energy_profile=False, colorbar=False, figsize=(8, 6))
+                  energy_profile=False, colorbar=False, figsize=(8, 6),
+                  save=False, title=False,
+    )
     ap.animate()
     return ap
 
