@@ -6,9 +6,13 @@ from matplotlib.patches import Circle
 import numpy as np
 
 class RFOPlotter():
-    def __init__(self, calc, opt):
+    def __init__(self, calc, opt, figsize=(8, 6),
+                 save=False, title=True):
         self.opt = opt
         self.calc = calc
+        self.figsize = figsize
+        self.save = save
+        self.title = title
 
         self.xlim = calc.xlim
         self.ylim = calc.ylim
@@ -16,7 +20,10 @@ class RFOPlotter():
         self.rfo_steps2 = np.array(opt.rfo_steps)[:,:2]
         self.rfo_steps = self.rfo_steps2 + self.coords
 
-        self.fig, (self.ax, self.ax2) = plt.subplots(ncols=2)
+        self.fig, (self.ax, self.ax2) = plt.subplots(ncols=2,
+                                                     figsize=figsize)
+        self.ax.set_title("True potential")
+        self.ax2.set_title("Local quadratic approximation")
         self.pause = True
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
         self.get_frame = itertools.cycle(range(self.opt.cur_cycle))
@@ -93,7 +100,8 @@ class RFOPlotter():
         self.ax.legend()
 
     def update_plot(self, frame):
-        self.fig.suptitle(f"Cycle {frame}")
+        if self.title:
+            self.fig.suptitle(f"Cycle {frame}")
 
         # Update the geometry in ax
         coords_x = self.coords[frame, 0]
@@ -130,14 +138,21 @@ class RFOPlotter():
         rfo2_y = self.rfo_steps2[frame, 1]
         self.rfo_lines2.set_xdata(rfo2_x)
         self.rfo_lines2.set_ydata(rfo2_y)
+        plt.tight_layout()
 
-    def animate(self):
-        self.interval = 2000
-        frames = range(self.opt.cur_cycle)
-        self.animation = animation.FuncAnimation(self.fig,
-                                                 self.update_plot,
-                                                 frames=frames,
-                                                 interval=self.interval)
+        if self.save:
+            frame_fn = f"step{frame}.png"
+            self.fig.savefig(frame_fn)
+            # if not os.path.exists(frame_fn):
+                # self.fig.savefig(frame_fn)
+
+    # def animate(self):
+        # self.interval = 2000
+        # frames = range(self.opt.cur_cycle)
+        # self.animation = animation.FuncAnimation(self.fig,
+                                                 # self.update_plot,
+                                                 # frames=frames,
+                                                 # interval=self.interval)
 
     def on_keypress(self, event):
         """Advance the plot by one cycle (frame)."""

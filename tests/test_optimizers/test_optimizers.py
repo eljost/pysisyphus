@@ -27,7 +27,7 @@ def test_rfoptimizer():
     #opt = SteepestDescent(geom, **kwargs)
     #opt = BFGS(geom, max_step=1.0)
     opt.run()
-    rfop = RFOPlotter(ap4, opt)
+    rfop = RFOPlotter(ap4, opt, save=True, title=False)
     rfop.plot()
     plt.show()
 
