@@ -24,7 +24,8 @@ class AnimPlot:
                  xlim=(-1, 1), ylim=(-1, 1), num=100,
                  figsize=(8, 8), levels=(-150, 5, 30),
                  interval=250,
-                 energy_profile=True, colorbar=True, save=None):
+                 energy_profile=True, colorbar=True, save=None,
+                 title=True):
 
         self.calculator = calculator
         self.optimizer = optimizer
@@ -32,6 +33,7 @@ class AnimPlot:
         self.energy_profile = energy_profile
         self.colorbar = colorbar
         self.save = save
+        self.title = title
 
         self.coords = [c.reshape(-1, 3) for c in self.optimizer.coords]
         self.forces = [f.reshape((-1, 3)) for f in self.optimizer.forces]
@@ -98,7 +100,8 @@ class AnimPlot:
             self.ax1.set_ylabel("f(x, y)")
 
     def func(self, frame):
-        self.fig.suptitle("Cycle {}".format(frame))
+        if self.title:
+            self.fig.suptitle("Cycle {}".format(frame))
 
         images_x = self.coords[frame][:,0]
         images_y = self.coords[frame][:,1]
@@ -127,6 +130,7 @@ class AnimPlot:
             self.energies_plot.set_ydata(energies)
             self.ax1.relim()
             self.ax1.autoscale_view()
+        plt.tight_layout()
         if self.save:
             frame_fn = f"step{frame}.png"
             if not os.path.exists(frame_fn):
