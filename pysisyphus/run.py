@@ -130,6 +130,9 @@ def get_overlaps(run_dict):
 
     cwd = Path(".")
     paths = natsorted([p for p in cwd.glob(glob)])
+    if len(paths) == 0:
+        raise Exception("Couldn't find any paths! Are you sure that your "
+                       f"glob '{glob}' is right?")
 
     diabatizer = Diabatizer(cwd, calc_key, calc_kwargs)
 

@@ -92,10 +92,10 @@ def dump_geometry_strings(base, trj="", xyz_per_image=[]):
             handle.write(trj)
         print(f"Wrote all geometries to {trj_fn}.")
     for i, xyz in enumerate(xyz_per_image):
-        image_fn = f"{base}.image_{i}.xyz"
+        image_fn = f"{base}.image_{i:03d}.xyz"
         with open(image_fn, "w") as handle:
             handle.write(xyz)
-        print(f"Wrote image {i} to {image_fn}.")
+        print(f"Wrote image {i:03d} to {image_fn}.")
     print()
 
 
