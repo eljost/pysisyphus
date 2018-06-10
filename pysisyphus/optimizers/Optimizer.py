@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 import logging
 import os
 from pathlib import Path
@@ -266,7 +267,8 @@ class Optimizer:
                 break
 
             # Update coordinates
-            self.geometry.coords += steps
+            new_coords = copy.copy(self.geometry.coords) + steps
+            self.geometry.coords = new_coords
 
             if self.is_zts:
                 self.geometry.reparametrize()
