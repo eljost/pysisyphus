@@ -81,7 +81,7 @@ class Plotter:
             self.save_png(i)
 
     def save_png(self, frame):
-        frame_fn = f"step{i}.png"
+        frame_fn = f"step{frame}.png"
         if not os.path.exists(frame_fn):
             self.fig.savefig(frame_fn)
 
@@ -167,7 +167,7 @@ def plot_energies():
     ax.set_ylabel("dE / kJ mol⁻¹")
 
     # Also do an animation
-    plotter = Plotter(coords, energies, "ΔE / au", interval=250)
+    plotter = Plotter(coords, energies, "ΔE / au", interval=250, save=False)
     plotter.animate()
     plt.show()
 
