@@ -16,6 +16,7 @@ from pysisyphus.helpers import geom_from_xyz_file
 
 
 class Diabatizer:
+    orca_exts = ("out", "gbw", "cis")
 
     def __init__(self, path, calc_key, calc_kwargs):
         self.path = Path(path)
@@ -29,6 +30,9 @@ class Diabatizer:
             "orca": self.set_orca_files,
             "turbo": self.set_turbo_files,
         }
+        self.files_from_dir_dict = {
+            "orca": self.set_orca_files_from_dir,
+        }
 
     def keyfunc(self, element):
         regex = "_(\d+)\.(\d+)\."
@@ -38,12 +42,10 @@ class Diabatizer:
     def discover_files(self, path):
         image_str = "image_"
         calc_str = "calculator_"
-        # files = [f for f in os.listdir(path) if f.startswith(image_str)]
         files = [str(f) for f in path.glob(image_str + "*")]
         if len(files) > 1:
             base_str = image_str
         else:
-            # files = [f for f in os.listdir(path) if f.startswith(calc_str)]
             files = [str(f) for f in path.glob(calc_str + "*")]
             base_str = calc_str
         print(f"Found {len(files)} files starting with '{base_str}'. "
@@ -53,6 +55,16 @@ class Diabatizer:
         for key, elements in it.groupby(files, self.keyfunc):
             files_dict[key] = list(elements)
         return files_dict
+
+    def disover_files_in_dir(self, path, exts):
+        files_list = list()
+        for ext in exts:
+            glob = f"*{ext}"
+            fns = [_ for _ in path.glob(glob)]
+            assert len(fns) == 1
+            fn = str(fns[0])
+            files_list.append(fn)
+        return files_list
 
     def discover_geometries(self, path):
         xyz_fns = natsorted(path.glob("*.xyz"))
@@ -68,29 +80,47 @@ class Diabatizer:
         assert len(matches) == 1
         return matches[0]
 
-    def set_files_on_calculator(self, geoms, files_dict, calc_class,
+    def set_files_on_calculator(self, geom, files_dict, calc_class, exts,
+                                calc_number, cycle_number=0):
+        key = (calc_number, cycle_number)
+        files = files_dict[key]
+        calc = calc_class(calc_number=calc_number, **self.calc_kwargs)
+        geom.set_calculator(calc)
+        print(f"Setting files on calculator_{calc_number:03d}:")
+        for ext in exts:
+            file_ext = self.file_by_ext(files, ext)
+            setattr(calc, ext, file_ext)
+            print(f"\t{file_ext}")
+
+    def set_files_on_calculators(self, geoms, files_dict, calc_class,
                                 exts):
         for i, geom in enumerate(geoms):
-            key = (i, 0)
-            calc_number, cycle_number = key
-            files = files_dict[key]
-            calc = calc_class(calc_number=calc_number, **self.calc_kwargs)
-            geom.set_calculator(calc)
-            print(f"Setting files on calculator_{i:03d}:")
-            for ext in exts:
-                file_ext = self.file_by_ext(files, ext)
-                setattr(calc, ext, file_ext)
-                print(f"\t{file_ext}")
+            calc_number, cycle_number = i, 0
+            self.set_files_on_calculator(geom, files_dict, calc_class, exts,
+                                         calc_number, cycle_number)
+
+    def set_files_from_dir(self, geom, path, calc_number):
+        func = self.files_from_dir_dict[self.calc_key]
+        func(geom, path, calc_number)
+
+    def set_orca_files_from_dir(self, geom, path, calc_number):
+        exts = self.orca_exts
+        files_list = self.disover_files_in_dir(path, exts)
+        files_dict = {
+            (calc_number, 0): files_list,
+        }
+        self.set_files_on_calculator(geom, files_dict, ORCA, exts, calc_number)
+        geom.calculator.store_wfo_data(geom.atoms, geom.coords)
 
     def set_orca_files(self, geoms, files_dict):
-        exts = ("out", "gbw", "cis")
-        self.set_files_on_calculator(geoms, files_dict, ORCA, exts)
+        self.set_files_on_calculators(geoms, files_dict, ORCA, self.orca_exts)
         for geom in geoms:
             geom.calculator.store_wfo_data(geom.atoms, geom.coords)
 
+
     def set_g16_files(self, geoms, files_dict):
         exts = ("fchk", "dump_635r")
-        self.set_files_on_calculator(geoms, files_dict, Gaussian16, exts)
+        self.set_files_on_calculators(geoms, files_dict, Gaussian16, exts)
 
         first_log = Path(self.file_by_ext(files_dict[(0, 0)], ".log"))
         nmos, roots = geoms[0].calculator.parse_log(first_log)
@@ -102,7 +132,7 @@ class Diabatizer:
 
     def set_turbo_files(self, geoms, files_dict):
         exts = ("mos", "ciss_a", "out")
-        self.set_files_on_calculator(geoms, files_dict, Turbomole, exts)
+        self.set_files_on_calculators(geoms, files_dict, Turbomole, exts)
     
     def restore_calculators(self, geoms, calc_key):
         files_dict = self.discover_files(self.path)

@@ -15,6 +15,7 @@ import yaml
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.diabatize.Diabatizer import Diabatizer
+from pysisyphus.helpers import geom_from_xyz_file
 from pysisyphus.irc import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
@@ -62,22 +63,30 @@ def parse_args(args):
 
     action_group = parser.add_mutually_exclusive_group(required=True)
     action_group.add_argument("yaml", nargs="?",
-                              help="Start pysisyphus with input from a "
-                                   "YAML file.")
+        help="Start pysisyphus with input from a YAML file."
+    )
     action_group.add_argument("--clean", action="store_true",
-                              help="Ask for confirmation before cleaning.")
+        help="Ask for confirmation before cleaning."
+    )
     action_group.add_argument("--fclean", action="store_true",
-                              help="Force cleaning without prior confirmation.")
+        help="Force cleaning without prior confirmation."
+    )
+    #action_group.add_argument("--overlaps", choices=("discover", "calc"),
 
     run_type_group = parser.add_mutually_exclusive_group(required=False)
     run_type_group.add_argument("--dryrun", action="store_true",
-                        help="Only generate a sample input (if meaningful) "
-                             "for checking.")
+        help="Only generate a sample input (if meaningful) for checking."
+    )
     run_type_group.add_argument("--restart", action="store_true",
-                        help="Continue a previously crashed/aborted/... "
-                             "pysisphus run.")
+        help="Continue a previously crashed/aborted/... pysisphus run."
+    )
+    run_type_group.add_argument("--overlaps", action="store_true",
+        help="Calculate wavefunction overlaps."
+    )
+
     parser.add_argument("--scheduler", default=None,
-                        help="Address of the dask scheduler.")
+        help="Address of the dask scheduler."
+    )
     return parser.parse_args()
 
 
@@ -108,9 +117,29 @@ def run_diabatize(geoms, calc_getter, path, calc_key, calc_kwargs):
     for i, geom in enumerate(geoms):
         geom.set_calculator(calc_getter(i))
         geom.calculator.run_calculation(geom.atoms, geom.coords)
-        print("Ran calculation {i:03d} of {len(geoms):03d}.")
+        print(f"Ran calculation {i:03d} of {len(geoms):03d}.")
     diabatizer = Diabatizer(path, calc_key, calc_kwargs)
     geoms = diabatizer.discover_geometries(diabatizer.path)
+    diabatizer.diabatize(geoms)
+
+
+def get_overlaps(run_dict):
+    glob = f"{run_dict['glob']}*"
+    calc_key = run_dict["calc"].pop("type")
+    calc_kwargs = run_dict["calc"]
+
+    cwd = Path(".")
+    paths = natsorted([p for p in cwd.glob(glob)])
+
+    diabatizer = Diabatizer(cwd, calc_key, calc_kwargs)
+
+    geoms = list()
+    for calc_number, p in enumerate(paths):
+        xyz_fns = [_ for _ in p.glob("*.xyz")]
+        xyz_fn = xyz_fns[0]
+        geom = geom_from_xyz_file(xyz_fn)
+        diabatizer.set_files_from_dir(geom, p, calc_number)
+        geoms.append(geom)
     diabatizer.diabatize(geoms)
 
 
@@ -202,7 +231,7 @@ def handle_yaml(yaml_str):
     for key in key_set & set(("cos", "opt", "interpol")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "xyz", "pal", "diabatize")):
+    for key in key_set & set(("calc", "xyz", "pal", "diabatize", "glob")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -218,7 +247,8 @@ def dry_run(calc, geom):
     print(f"Wrote input to {calc.inp_fn}.")
 
 
-def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
+def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
+         dryrun=None):
     xyz = run_dict["xyz"]
     if run_dict["interpol"]:
         idpp = run_dict["interpol"]["idpp"]
@@ -375,11 +405,15 @@ def run():
         run_dict = handle_yaml(yaml_str)
         pprint(run_dict)
         sys.stdout.flush()
-        main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
-    elif args.clean:
+
+    if args.clean:
         clean()
     elif args.fclean:
         clean(force=True)
+    elif args.overlaps:
+        get_overlaps(run_dict)
+    else:
+        main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
 
 if __name__ == "__main__":
     run()
