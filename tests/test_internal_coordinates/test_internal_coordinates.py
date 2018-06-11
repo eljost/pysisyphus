@@ -58,11 +58,12 @@ def test_fluorethylene():
 
 def test_fluorethylene_opt():
     xyz_fn = "fluorethylene.xyz"
-    opt = get_opt(xyz_fn, opt_key="rfo")
-    opt.run()
+    # opt = get_opt(xyz_fn, opt_key="rfo")
+    # opt.dump = True
+    # opt.run()
 
     cart_opt = get_opt(xyz_fn, coord_type="cart", opt_key="rfo")
-    # cart_opt.dump = True
+    cart_opt.dump = True
     cart_opt.run()
     #with open("fe_opt.xyz", "w") as handle:
     #    handle.write(opt.geometry.as_xyz())
@@ -241,7 +242,7 @@ def run():
 
 if __name__ == "__main__":
     #test_fluorethylene()
-    #test_fluorethylene_opt()
+    test_fluorethylene_opt()
     #test_azetidine()
     #test_azetidine_opt()
     #test_runo()
@@ -255,4 +256,4 @@ if __name__ == "__main__":
     #test_co2_linear_opt()
     #test_ch4()
     #test_sf6()
-    test_biaryl_opt()
+    #test_biaryl_opt()

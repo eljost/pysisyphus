@@ -151,7 +151,7 @@ class Diabatizer:
             wfow_B = geom.calculator.wfow
             max_ovlp_inds = wfow_A.compare(wfow_B)
             max_ovlp_inds_list.append(max_ovlp_inds)
-            print(f"step {i:03d}", max_ovlp_inds)
+            print(f"step {i:03d}", max_ovlp_inds+1)
         max_ovlp = np.array(max_ovlp_inds_list, dtype=int)
         np.savetxt(self.path / "overlap_matrix", max_ovlp, fmt="%i")
 
