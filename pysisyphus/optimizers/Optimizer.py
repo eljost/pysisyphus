@@ -21,6 +21,13 @@ gauss_loose = {
     "rms_step_thresh": 6.7e-3
 }
 
+gauss_tight = {
+    "max_force_thresh": 1.5e-5,
+    "rms_force_thresh": 1.0e-5,
+    "max_step_thresh": 6.0e-6,
+    "rms_step_thresh": 4.0e-6
+}
+
 
 class Optimizer:
 

@@ -37,7 +37,10 @@ def get_opt(xyz_fn, coord_type="redund", opt_key="sd"):
         "rfo": RFOptimizer,
     }
     Opt = opt_dict[opt_key]
-    return Opt(geom)
+    opt_kwargs = {
+        "dump": False,
+    }
+    return Opt(geom, **opt_kwargs)
 
 
 def assert_internals(geom, lengths):
@@ -55,10 +58,10 @@ def test_fluorethylene():
 
 def test_fluorethylene_opt():
     xyz_fn = "fluorethylene.xyz"
-    opt = get_opt(xyz_fn, opt_key="cg")
+    opt = get_opt(xyz_fn, opt_key="rfo")
     opt.run()
 
-    cart_opt = get_opt(xyz_fn, coord_type="cart", opt_key="cg")
+    cart_opt = get_opt(xyz_fn, coord_type="cart", opt_key="rfo")
     # cart_opt.dump = True
     cart_opt.run()
     #with open("fe_opt.xyz", "w") as handle:
@@ -71,7 +74,7 @@ def test_fluorethylene_opt():
 
 
 def test_biaryl_opt():
-    xyz_fn = "mecn_cycloadd_guess.xyz"
+    xyz_fn = "01_opt_aus_04_b3lyp_scan_min.xyz"
     opt = get_opt(xyz_fn, opt_key="rfo")
     opt.run()
 
@@ -238,7 +241,7 @@ def run():
 
 if __name__ == "__main__":
     #test_fluorethylene()
-    test_fluorethylene_opt()
+    #test_fluorethylene_opt()
     #test_azetidine()
     #test_azetidine_opt()
     #test_runo()
@@ -252,4 +255,4 @@ if __name__ == "__main__":
     #test_co2_linear_opt()
     #test_ch4()
     #test_sf6()
-    #test_biaryl_opt()
+    test_biaryl_opt()
