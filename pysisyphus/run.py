@@ -14,7 +14,7 @@ import yaml
 
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
-from pysisyphus.diabatize.Diabatizer import Diabatizer
+from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.helpers import geom_from_xyz_file
 from pysisyphus.irc import *
 from pysisyphus.init_logging import init_logging
@@ -113,14 +113,16 @@ def run_cos(cos, calc_getter, opt_getter):
     opt.run()
 
 
-def run_diabatize(geoms, calc_getter, path, calc_key, calc_kwargs):
+def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs):
     for i, geom in enumerate(geoms):
         geom.set_calculator(calc_getter(i))
+        assert geom.calculator.track
         geom.calculator.run_calculation(geom.atoms, geom.coords)
         print(f"Ran calculation {i:03d} of {len(geoms):03d}.")
-    diabatizer = Diabatizer(path, calc_key, calc_kwargs)
-    geoms = diabatizer.discover_geometries(diabatizer.path)
-    diabatizer.diabatize(geoms)
+    overlapper = Overlapper(path, calc_key, calc_kwargs)
+    # overlapper.restore_calculators(geoms)
+    # geoms = overlapper.discover_geometries(overlapper.path)
+    overlapper.overlaps(geoms)
 
 
 def get_overlaps(run_dict):
@@ -134,16 +136,16 @@ def get_overlaps(run_dict):
         raise Exception("Couldn't find any paths! Are you sure that your "
                        f"glob '{glob}' is right?")
 
-    diabatizer = Diabatizer(cwd, calc_key, calc_kwargs)
+    overlapper = Overlapper(cwd, calc_key, calc_kwargs)
 
     geoms = list()
     for calc_number, p in enumerate(paths):
         xyz_fns = [_ for _ in p.glob("*.xyz")]
         xyz_fn = xyz_fns[0]
         geom = geom_from_xyz_file(xyz_fn)
-        diabatizer.set_files_from_dir(geom, p, calc_number)
+        overlapper.set_files_from_dir(geom, p, calc_number)
         geoms.append(geom)
-    diabatizer.diabatize(geoms)
+    overlapper.overlaps(geoms)
 
 
 def run_opt(geom, calc_getter, opt_getter):
@@ -175,7 +177,7 @@ def get_defaults(conf_dict):
             "pal": 1,
         },
         "opt": None,
-        "diabatize": False,
+        "overlaps": False,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -234,7 +236,7 @@ def handle_yaml(yaml_str):
     for key in key_set & set(("cos", "opt", "interpol")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "xyz", "pal", "diabatize", "glob")):
+    for key in key_set & set(("calc", "xyz", "pal", "overlaps", "glob")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -293,8 +295,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         calc = calc_getter(0)
         dry_run(calc, geoms[0])
         return
-    elif run_dict["diabatize"]:
-        run_diabatize(geoms, calc_getter, yaml_dir, calc_key, calc_kwargs)
+    elif run_dict["overlaps"]:
+        run_overlaps(geoms, calc_getter, yaml_dir, calc_key, calc_kwargs)
     elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)

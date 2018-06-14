@@ -15,7 +15,7 @@ from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.helpers import geom_from_xyz_file
 
 
-class Diabatizer:
+class Overlapper:
     orca_exts = ("out", "gbw", "cis")
 
     def __init__(self, path, calc_key, calc_kwargs):
@@ -134,17 +134,17 @@ class Diabatizer:
         exts = ("mos", "ciss_a", "out")
         self.set_files_on_calculators(geoms, files_dict, Turbomole, exts)
     
-    def restore_calculators(self, geoms, calc_key):
+    def restore_calculators(self, geoms):
         files_dict = self.discover_files(self.path)
         unique_calculators = set([calc_num for calc_num, cycle_num in files_dict])
         assert len(unique_calculators) == len(geoms), ("Number of discovered "
             f"unique calculators ({len(unique_calculators)}) doesn't match the "
             f"number of discovered geometries ({len(geoms)})."
         )
-        setter_func = self.setter_dict[calc_key]
+        setter_func = self.setter_dict[self.calc_key]
         setter_func(geoms, files_dict)
 
-    def diabatize(self, geoms):
+    def overlaps(self, geoms):
         max_ovlp_inds_list = list()
         for i, geom in enumerate(geoms[1:]):
             wfow_A = geoms[i].calculator.wfow
@@ -166,8 +166,8 @@ if __name__ == "__main__":
         "pal": 4,
     }
     calc_key = "orca"
-    dia = Diabatizer(path, calc_key, calc_kwargs)
-    geoms = dia.discover_geometries(dia.path)
+    ovl = Overlapper(path, calc_key, calc_kwargs)
+    geoms = ovl.discover_geometries(dia.path)
     # files_dict = dia.discover_files(path)
     # dia.restore_calculators("orca")
-    dia.diabatize(geoms)
+    ovl.overlaps(geoms)
