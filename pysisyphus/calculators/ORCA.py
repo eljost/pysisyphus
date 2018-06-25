@@ -147,6 +147,8 @@ class ORCA(Calculator):
                 "calc": "noparse",
         }
         results = self.run(inp, **kwargs)
+        if self.track:
+            self.store_wfo_data(atoms, coords)
         return results
 
     def parse_hessian(self, path):

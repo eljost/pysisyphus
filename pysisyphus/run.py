@@ -116,9 +116,10 @@ def run_cos(cos, calc_getter, opt_getter):
 def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs):
     for i, geom in enumerate(geoms):
         geom.set_calculator(calc_getter(i))
-        assert geom.calculator.track
+        assert geom.calculator.track, "'track: True' must be present in " \
+                                      "calc section."
         geom.calculator.run_calculation(geom.atoms, geom.coords)
-        print(f"Ran calculation {i:03d} of {len(geoms):03d}.")
+        print(f"Ran calculation {i+1:02d}/{len(geoms):02d}")
     overlapper = Overlapper(path, calc_key, calc_kwargs)
     # overlapper.restore_calculators(geoms)
     # geoms = overlapper.discover_geometries(overlapper.path)
@@ -126,25 +127,26 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs):
 
 
 def get_overlaps(run_dict):
-    glob = f"{run_dict['glob']}*"
+    cwd = Path(".")
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
-
-    cwd = Path(".")
-    paths = natsorted([p for p in cwd.glob(glob)])
-    if len(paths) == 0:
-        raise Exception("Couldn't find any paths! Are you sure that your "
-                       f"glob '{glob}' is right?")
-
     overlapper = Overlapper(cwd, calc_key, calc_kwargs)
 
-    geoms = list()
-    for calc_number, p in enumerate(paths):
-        xyz_fns = [_ for _ in p.glob("*.xyz")]
-        xyz_fn = xyz_fns[0]
-        geom = geom_from_xyz_file(xyz_fn)
-        overlapper.set_files_from_dir(geom, p, calc_number)
-        geoms.append(geom)
+    glob = run_dict["glob"]
+    if glob is None:
+        xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
+        geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
+        overlapper.restore_calculators(geoms)
+    else:
+        paths = natsorted([p for p in cwd.glob(glob)])
+        if len(paths) == 0:
+            raise Exception("Couldn't find any paths! Are you sure that your "
+                           f"glob '{glob}' is right?")
+        xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
+        geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
+        [overlapper.set_files_from_dir(geom, p, calc_number)
+         for calc_number, (geom, p) in enumerate(zip(geoms, paths))]
+
     overlapper.overlaps(geoms)
 
 
@@ -178,6 +180,7 @@ def get_defaults(conf_dict):
         },
         "opt": None,
         "overlaps": False,
+        "glob": None,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
