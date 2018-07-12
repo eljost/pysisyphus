@@ -347,33 +347,11 @@ class WFOWrapper:
             # print(mat)
         return reshaped_mats
 
-    def track(self, old_root, ao_ovlp=None):
-        """Return the root with the highest overlap in the latest iteration
-        compared to old_root in the previous to last iteration."""
-
-        if not isinstance(old_root, int):
-            raise Exception("Please provide an integer value for old_root!")
-        self.log(f"Previous root is {old_root}.")
-
+    def overlaps(ao_ovlp=None):
         iter1 = self.get_iteration(-2)
         iter2 = self.get_iteration(-1)
-        overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp=ao_ovlp)
-        overlap_matrix = overlap_mats[1]
-        old_root_col = overlap_matrix[old_root]**2
-        new_root = old_root_col.argmax()
-        max_overlap = old_root_col[new_root]
-        old_root_col_str = ", ".join(
-            [f"{i}: {ov:.2%}" for i, ov in enumerate(old_root_col)]
-        )
-        self.log(f"Overlaps: {old_root_col_str}")
-        if new_root == old_root:
-            msg = f"New root is {new_root}, keeping previous root. Overlap is " \
-                  f"{max_overlap:.2%}."
-        else:
-            msg = f"Root flip! New root {new_root} has {max_overlap:.2%} " \
-                  f"overlap with previous root {old_root}."
-        self.log(msg)
-        return int(new_root)
+        overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
+        return overlap_mats
 
     def compare(self, wfow_B, ao_ovlp=None):
         """Calculate wavefunction overlaps between the two WFOWrapper objects,
