@@ -77,6 +77,38 @@ def parse_turbo_ccre0_ascii(text):
     return data
 
 
+def parse_turbo_mos(text):
+    float_ = make_float_class()
+    float_20 = make_float_class(exact=20)
+    int_ = pp.Word(pp.nums)
+    comment = pp.Literal("#") + pp.restOfLine
+
+    mo_num = int_
+    sym = pp.Word(pp.alphanums)
+    eigenvalue = pp.Literal("eigenvalue=") + float_20
+    nsaos = pp.Literal("nsaos=") + int_
+    mo_coeffs = pp.OneOrMore(float_20)
+
+    mo = pp.Group(
+        mo_num + sym + eigenvalue + nsaos +
+        mo_coeffs.setResultsName("mo_coeffs")
+    )
+
+    parser = (
+        pp.Literal("$scfmo") + pp.Literal("scfconv=") + pp.Word(pp.nums)
+        + pp.Literal("format(4d20.14) ")
+        + pp.ZeroOrMore(comment)
+        + pp.OneOrMore(mo).setResultsName("mos")
+        + pp.Literal("$end")
+    )
+    parsed = parser.parseString(text)
+    mo_coeffs = np.array(
+        [mo.mo_coeffs.asList() for mo in parsed.mos]
+    )
+
+    return mo_coeffs
+
+
 if __name__ == "__main__":
     from pathlib import Path
     fn = "/tmp/calculator_0_000_ab7q7o9y"

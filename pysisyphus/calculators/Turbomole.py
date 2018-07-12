@@ -16,7 +16,8 @@ from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import AU2EV
 from pysisyphus.config import Config
 from pysisyphus.calculators.parser import (parse_turbo_gradient,
-                                           parse_turbo_ccre0_ascii,)
+                                           parse_turbo_ccre0_ascii,
+                                           parse_turbo_mos)
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
@@ -261,6 +262,9 @@ class Turbomole(OverlapCalculator):
         double_mol_S = full_ovlp[mo_num:,:mo_num]
         return double_mol_S
 
+    def parse_mos(self):
+        pass
+
     def parse_force(self, path):
         return parse_turbo_gradient(path)
 
@@ -325,18 +329,21 @@ class Turbomole(OverlapCalculator):
 
         return eigenpairs_full
 
-    def store_wfo_data(self, atoms, coords):
+    def prepare_overlap_data(self):
         # Parse eigenvectors from escf/egrad calculation
         if self.second_cmd != "ricc2":
             with open(self.td_vec_fn) as handle:
                 text = handle.read()
-            eigenpair_list = self.parse_td_vectors(text)
-            eigenpair_list = [ep["vector"] for ep in eigenpair_list]
+            ci_coeffs = self.parse_td_vectors(text)
+            ci_coeffs = [cc["vector"] for cc in ci_coeffs]
         # Parse eigenvectors from ricc2 calculation
         else:
-            eigenpair_list = [self.parse_cc2_vectors(ccre)
-                              for ccre in self.ccres]
-        self.wfow.store_iteration(atoms, coords, self.mos, eigenpair_list)
+            ci_coeffs = [self.parse_cc2_vectors(ccre)
+                         for ccre in self.ccres]
+        with open(self.mos) as handle:
+            text = handle.read()
+        mo_coeffs = parse_turbo_mos(text)
+        return self.mos, mo_coeffs, ci_coeffs
 
     def keep(self, path):
         kept_fns = super().keep(path)

@@ -11,7 +11,7 @@ import subprocess
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.config import Config
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
@@ -28,10 +28,10 @@ def make_sym_mat(table_block):
     return np.concatenate(cbs, axis=1)
 
 
-class ORCA(Calculator):
+class ORCA(OverlapCalculator):
 
     def __init__(self, keywords, gbw="", blocks="", track=False, **kwargs):
-        super(ORCA, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.keywords = keywords
         # Only call when we are not restarting
@@ -148,7 +148,7 @@ class ORCA(Calculator):
         }
         results = self.run(inp, **kwargs)
         if self.track:
-            self.store_wfo_data(atoms, coords)
+            self.store_overlap_data(atoms, coords)
         return results
 
     def parse_hessian(self, path):
@@ -257,12 +257,13 @@ class ORCA(Calculator):
 
         return results
 
-    def parse_cis(self, cis_handle):
+    def parse_cis(self, cis):
         """
         Read binary CI vector file from ORCA.
             Adapted from TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
             https://sourceforge.net/p/theodore-qc
         """
+        cis_handle = open(cis, "rb")
         self.log(f"Parsing CI vectors from {cis_handle}")
 
         # the header consists of 9 4-byte integers, the first 5
@@ -321,6 +322,7 @@ class ORCA(Calculator):
                 coeffs.append(coeff_full)
 
             prevroot=iroot
+        cis_handle.close()
         return np.array(coeffs)
 
     def parse_gbw(self, gbw_fn):
@@ -402,15 +404,36 @@ class ORCA(Calculator):
                  f"{occ_num} occupied and {virt_num} virtual.")
         return occ_num, virt_num
 
-    def store_wfo_data(self, atoms, coords):
+    def set_mo_coeffs(self, mo_coeffs=None, gbw=None):
+        if mo_coeffs is not None:
+            self.mo_coeffs = mo_coeffs
+            return
+        if not gbw and self.gbw:
+            gbw = self.gbw
+        else:
+            raise Exception("Got no .gbw file to parse!")
+        self.log(f"Setting MO coefficients from {gbw}.")
+        self.mo_coeffs = self.parse_gbw(self.gbw)
+
+    def set_ci_coeffs(self, ci_coeffs=None, cis=None):
+        if ci_coeffs is not None:
+            self.ci_coeffs = ci_coeffs
+            return
+        if not cis and self.cis:
+            cis = self.cis
+        else:
+            raise Exception("Got no .cis file to parse!")
+        self.log(f"Setting CI coefficients from {cis}.")
+        self.ci_coeffs = self.parse_cis(cis)
+
+    def prepare_overlap_data(self):
         # Create the WFOWrapper object if it is not already there
         if self.wfow == None:
             occ_num, virt_num = self.parse_mo_numbers(self.out)
             self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
                                    basis=None, charge=None, out_dir=self.out_dir)
         # Parse eigenvectors from tda/tddft calculation
-        with open(self.cis, "rb") as handle:
-            eigenpair_list = self.parse_cis(handle)
+        ci_coeffs = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
@@ -418,21 +441,7 @@ class ORCA(Calculator):
         fake_mos_fn = self.make_fn("mos")
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
-        self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
-
-    def track_root(self, atoms, coords):
-        """Store the information of the current iteration and if possible
-        calculate the overlap with the previous iteration."""
-        self.store_wfo_data(atoms, coords)
-        # In the first iteration we have nothing to compare to
-        old_root = self.root
-        if self.calc_counter > 1:
-            self.root = self.wfow.track(old_root=self.root)
-            if self.root != old_root:
-                self.log(f"Found a root flip from {old_root} to {self.root}!")
-
-        # True if a root flip occured
-        return not (self.root == old_root)
+        return fake_mos_fn, mo_coeffs, ci_coeffs
 
     def keep(self, path):
         kept_fns = super().keep(path)

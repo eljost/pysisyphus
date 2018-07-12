@@ -274,7 +274,7 @@ class Gaussian16(OverlapCalculator):
 
         return X_full
 
-    def store_wfo_data(self, atoms, coords):
+    def prepare_overlap_data(self):
         # Create the WFOWrapper object if it is not already there
         if self.wfow == None:
             assert (self.nmos.restricted)
@@ -282,7 +282,7 @@ class Gaussian16(OverlapCalculator):
             self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
                                    basis=None, charge=None, out_dir=self.out_dir)
         # Parse X eigenvector from 635r dump
-        eigenpair_list = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
+        ci_coeffs = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
         # From http://gaussian.com/cis/, Examples tab, Normalization
         # 'For closed shell calculations, the sum of the squares of the
         # expansion coefficients is normalized to total 1/2 (as the beta
@@ -291,7 +291,7 @@ class Gaussian16(OverlapCalculator):
         # Right now we only deal with restricted calculatios, so alpha == beta
         # and we ignore beta. So we are lacking a factor of sqrt(2). Another
         # option would be to normalize all states to 1.
-        eigenpair_list *= 2**0.5
+        ci_coeffs *= 2**0.5
         # Parse mo coefficients from .fchk file and write a 'fake' turbomole
         # mos file.
         keys = ("Alpha Orbital Energies", "Alpha MO coefficients")
@@ -304,7 +304,7 @@ class Gaussian16(OverlapCalculator):
         fake_mos_fn = self.make_fn("mos")
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
-        self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
+        return fake_mos_fn, mo_coeffs, ci_coeffs
 
     def parse_force(self, path):
         results = {}
