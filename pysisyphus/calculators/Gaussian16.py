@@ -10,13 +10,13 @@ import subprocess
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
 from pysisyphus.config import Config
 
 
-class Gaussian16(Calculator):
+class Gaussian16(OverlapCalculator):
 
     def __init__(self, route, gbs="", track=False, **kwargs):
         super().__init__(**kwargs)
@@ -305,20 +305,6 @@ class Gaussian16(Calculator):
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
         self.wfow.store_iteration(atoms, coords, fake_mos_fn, eigenpair_list)
-
-    def track_root(self, atoms, coords):
-        """Store the information of the current iteration and if possible
-        calculate the overlap with the previous iteration."""
-        self.store_wfo_data(atoms, coords)
-        # In the first iteration we have nothing to compare to
-        old_root = self.root
-        if self.calc_counter > 1:
-            self.root = self.wfow.track(old_root=self.root)
-            if self.root != old_root:
-                self.log(f"Found a root flip from {old_root} to {self.root}!")
-
-        # True if a root flip occured
-        return not (self.root == old_root)
 
     def parse_force(self, path):
         results = {}

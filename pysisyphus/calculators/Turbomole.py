@@ -12,7 +12,7 @@ import subprocess
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import AU2EV
 from pysisyphus.config import Config
 from pysisyphus.calculators.parser import (parse_turbo_gradient,
@@ -20,7 +20,7 @@ from pysisyphus.calculators.parser import (parse_turbo_gradient,
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
-class Turbomole(Calculator):
+class Turbomole(OverlapCalculator):
 
     def __init__(self, control_path, root=None,
                  track=False, double_mol_path=None, **kwargs):
@@ -244,7 +244,6 @@ class Turbomole(Calculator):
                 "env": self.get_pal_env(),
         }
         results = self.run(None, **kwargs)
-        self.calc_counter -= 1
         return results
 
     def parse_double_mol(self, path):
@@ -338,22 +337,6 @@ class Turbomole(Calculator):
             eigenpair_list = [self.parse_cc2_vectors(ccre)
                               for ccre in self.ccres]
         self.wfow.store_iteration(atoms, coords, self.mos, eigenpair_list)
-
-    def track_root(self, atoms, coords):
-        """Store the information of the current iteration and if possible
-        calculate the overlap with the previous iteration."""
-        self.store_wfo_data(atoms, coords)
-        # In the first iteration we have nothing to compare to
-        old_root = self.root
-        if self.calc_counter >= 1:
-            last_two_coords = self.wfow.last_two_coords
-            ao_ovlp = self.run_double_mol_calculation(atoms, *last_two_coords)
-            self.root = self.wfow.track(old_root=self.root, ao_ovlp=ao_ovlp)
-            if self.root != old_root:
-                self.log("Found a root flip from {old_root} to {self.root}!")
-
-        # True if a root flip occured
-        return not (self.root == old_root)
 
     def keep(self, path):
         kept_fns = super().keep(path)
