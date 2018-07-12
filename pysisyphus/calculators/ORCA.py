@@ -30,7 +30,7 @@ def make_sym_mat(table_block):
 
 class ORCA(OverlapCalculator):
 
-    def __init__(self, keywords, gbw="", blocks="", track=False, **kwargs):
+    def __init__(self, keywords, gbw="", blocks="", **kwargs):
         super().__init__(**kwargs)
 
         self.keywords = keywords
@@ -38,7 +38,6 @@ class ORCA(OverlapCalculator):
         if not ("last_calc_cycle" in kwargs):
             self.set_moinp_str(gbw)
         self.blocks = blocks
-        self.track = track
 
         assert (("pal" not in keywords.lower())
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \

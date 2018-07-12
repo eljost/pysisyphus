@@ -24,12 +24,11 @@ from pysisyphus.calculators.WFOWrapper import WFOWrapper
 class Turbomole(OverlapCalculator):
 
     def __init__(self, control_path, root=None,
-                 track=False, double_mol_path=None, **kwargs):
+                 double_mol_path=None, **kwargs):
         super(Turbomole, self).__init__(**kwargs)
 
         self.control_path = Path(control_path)
         self.root = root
-        self.track = track
         self.double_mol_path = double_mol_path
         if self.double_mol_path:
             self.double_mol_path = Path(self.double_mol_path)

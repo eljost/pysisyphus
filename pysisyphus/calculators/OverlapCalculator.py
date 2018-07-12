@@ -3,7 +3,8 @@ from pysisyphus.calculators.Calculator import Calculator
 
 class OverlapCalculator(Calculator):
 
-    def __init__(self, *args, ovlp_type="wf", **kwargs, ):
+    def __init__(self, *args, track=False, ovlp_type="tden", **kwargs, ):
+        self.track = track
         self.ovlp_type = ovlp_type
         self.mo_coeff_list = list()
         self.ci_coeff_list = list()
@@ -96,9 +97,3 @@ class OverlapCalculator(Calculator):
 
         # True if a root flip occured
         return not (self.root == old_root)
-
-    def set_mo_coeffs(self):
-        raise Exception("Implement me!")
-
-    def set_ci_coeffs(self):
-        raise Exception("Implement me!")

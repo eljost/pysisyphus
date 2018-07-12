@@ -18,7 +18,7 @@ from pysisyphus.config import Config
 
 class Gaussian16(OverlapCalculator):
 
-    def __init__(self, route, gbs="", track=False, **kwargs):
+    def __init__(self, route, gbs="", **kwargs):
         super().__init__(**kwargs)
 
         self.route = route.lower()
@@ -26,7 +26,6 @@ class Gaussian16(OverlapCalculator):
         self.gbs = gbs
         assert "@" not in gbs, "Give only the path to the .gbs file, " \
                                "without the @!"
-        self.track = track
 
         if any([key in self.route for key in "td tda cis".split()]):
             route_lower = self.route.lower()
