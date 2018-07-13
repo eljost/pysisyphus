@@ -67,7 +67,7 @@ class OverlapCalculator(Calculator):
 
         return overlaps
 
-    def track_tden_root(self, S_AO=None):
+    def last_two_tdens_overlap(self, S_AO=None):
         mo_coeffs1 = self.mo_coeff_list[-1]
         ci_coeffs1 = self.ci_coeff_list[-1]
         mo_coeffs2 = self.mo_coeff_list[-2]
@@ -76,6 +76,19 @@ class OverlapCalculator(Calculator):
                                       mo_coeffs2, ci_coeffs2,
                                       S_AO)
         return overlaps
+
+    def tdens_overlap_with_calculator(self, calc):
+        mo_coeffs1 = self.mo_coeff_list[-1]
+        ci_coeffs1 = self.ci_coeff_list[-1]
+        mo_coeffs2 = calc.mo_coeff_list[-1]
+        ci_coeffs2 = calc.ci_coeff_list[-1]
+        overlaps = self.tden_overlaps(mo_coeffs1, ci_coeffs1,
+                                      mo_coeffs2, ci_coeffs2)
+        return overlaps
+
+    def index_array_from_overlaps(self, overlaps):
+        indices = np.argmax(np.abs(overlaps), axis=0)
+        return indices
 
     def prepare_overlap_data(self):
         """Implement calculator specific parsing of MO coefficients and CI
@@ -114,7 +127,7 @@ class OverlapCalculator(Calculator):
             overlaps = overlap_mats[0]
             # overlaps = overlaps**2
         elif ovlp_type == "tden":
-            overlaps = self.track_tden_root(ao_ovlp)
+            overlaps = self.last_two_tdens_overlap(ao_ovlp)
             overlaps = np.abs(overlaps)
         else:
             raise Exception("Invalid overlap specifier! Use one of "

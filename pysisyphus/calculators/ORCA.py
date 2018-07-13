@@ -436,10 +436,14 @@ class ORCA(OverlapCalculator):
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
-        fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
-        fake_mos_fn = self.make_fn("mos")
-        with open(fake_mos_fn, "w") as handle:
-            handle.write(fake_mos_str)
+        fake_mos_fn = Path(self.make_fn("mos"))
+        if not fake_mos_fn.exists:
+            fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
+            with open(fake_mos_fn, "w") as handle:
+                handle.write(fake_mos_str)
+        else:
+            print("Skipping creation of MOs in TURBOMOLE format, as the file "
+                 f"'{fake_mos_fn}' already exists.")
         return fake_mos_fn, mo_coeffs, ci_coeffs
 
     def keep(self, path):

@@ -110,12 +110,12 @@ class Overlapper:
             (calc_number, 0): files_list,
         }
         self.set_files_on_calculator(geom, files_dict, ORCA, exts, calc_number)
-        geom.calculator.store_wfo_data(geom.atoms, geom.coords)
+        geom.calculator.store_overlap_data(geom.atoms, geom.coords)
 
     def set_orca_files(self, geoms, files_dict):
         self.set_files_on_calculators(geoms, files_dict, ORCA, self.orca_exts)
         for geom in geoms:
-            geom.calculator.store_wfo_data(geom.atoms, geom.coords)
+            geom.calculator.store_overlap_data(geom.atoms, geom.coords)
 
 
     def set_g16_files(self, geoms, files_dict):
@@ -128,7 +128,7 @@ class Overlapper:
             calc = geom.calculator
             calc.nmos = nmos
             calc.roots = roots
-            calc.store_wfo_data(geom.atoms, geom.coords)
+            calc.store_overlap_data(geom.atoms, geom.coords)
 
     def set_turbo_files(self, geoms, files_dict):
         exts = ("mos", "ciss_a", "out")
@@ -144,7 +144,7 @@ class Overlapper:
         setter_func = self.setter_dict[self.calc_key]
         setter_func(geoms, files_dict)
 
-    def overlaps(self, geoms):
+    def overlaps_for_geoms(self, geoms):
         max_ovlp_inds_list = list()
         for i, geom in enumerate(geoms[1:]):
             wfow_A = geoms[i].calculator.wfow
@@ -152,6 +152,20 @@ class Overlapper:
             max_ovlp_inds = wfow_A.compare(wfow_B)
             max_ovlp_inds_list.append(max_ovlp_inds)
             print(f"step {i:03d}", max_ovlp_inds+1)
+        max_ovlp = np.array(max_ovlp_inds_list, dtype=int)
+        np.savetxt(self.path / "overlap_matrix", max_ovlp, fmt="%i")
+
+    def tden_overlaps_for_geoms(self, geoms):
+        np.set_printoptions(suppress=True, precision=2)
+        max_ovlp_inds_list = list()
+        for i, geom in enumerate(geoms[1:]):
+            calc_1 = geoms[i].calculator
+            calc_2 = geom.calculator
+            overlaps = calc_1.tdens_overlap_with_calculator(calc_2)
+            index_array = calc_1.index_array_from_overlaps(overlaps)
+            print(index_array)
+            max_ovlp_inds_list.append(index_array)
+            np.savetxt(f"overlap{i:02d}.dat", overlaps)
         max_ovlp = np.array(max_ovlp_inds_list, dtype=int)
         np.savetxt(self.path / "overlap_matrix", max_ovlp, fmt="%i")
 

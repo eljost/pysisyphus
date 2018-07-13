@@ -71,7 +71,6 @@ def parse_args(args):
     action_group.add_argument("--fclean", action="store_true",
         help="Force cleaning without prior confirmation."
     )
-    #action_group.add_argument("--overlaps", choices=("discover", "calc"),
 
     run_type_group = parser.add_mutually_exclusive_group(required=False)
     run_type_group.add_argument("--dryrun", action="store_true",
@@ -83,6 +82,9 @@ def parse_args(args):
     run_type_group.add_argument("--overlaps", action="store_true",
         help="Calculate wavefunction overlaps."
     )
+    # run_type_group.add_argument("--tden_overlaps", action="store_true",
+        # help="Calculate transition density overlaps."
+    # )
 
     parser.add_argument("--scheduler", default=None,
         help="Address of the dask scheduler."
@@ -126,7 +128,7 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs):
     overlapper.overlaps(geoms)
 
 
-def get_overlaps(run_dict):
+def overlaps(run_dict):
     cwd = Path(".")
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
@@ -146,8 +148,9 @@ def get_overlaps(run_dict):
         geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
         [overlapper.set_files_from_dir(geom, p, calc_number)
          for calc_number, (geom, p) in enumerate(zip(geoms, paths))]
+    # overlapper.overlap_for_geoms(geoms)
+    overlapper.tden_overlaps_for_geoms(geoms)
 
-    overlapper.overlaps(geoms)
 
 
 def run_opt(geom, calc_getter, opt_getter):
@@ -419,7 +422,7 @@ def run():
     elif args.fclean:
         clean(force=True)
     elif args.overlaps:
-        get_overlaps(run_dict)
+        overlaps(run_dict)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
 
