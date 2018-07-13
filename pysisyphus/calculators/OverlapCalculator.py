@@ -7,6 +7,11 @@ np.set_printoptions(suppress=True, precision=3)
 
 
 class OverlapCalculator(Calculator):
+    ovlp_type_verbose = {
+        "wf": "wavefunction overlap",
+        "tden": "transition densisty matrix overlap",
+    }
+
 
     def __init__(self, *args, track=False, ovlp_type="wf", **kwargs, ):
         self.track = track
@@ -15,6 +20,10 @@ class OverlapCalculator(Calculator):
         self.ci_coeff_list = list()
 
         super().__init__(*args, **kwargs)
+
+        if track:
+            self.log("Tracking excited states with "
+                    f"{self.ovlp_type_verbose[ovlp_type]}s")
 
     def blowup_ci_coeffs(self, ci_coeffs):
         states, occ, virt = ci_coeffs.shape
@@ -111,7 +120,6 @@ class OverlapCalculator(Calculator):
             raise Exception("Invalid overlap specifier! Use one of "
                             "'tden'/'wf'!")
 
-        # import pdb; pdb.set_trace()
         old_root = self.root
         self.log(f"Previous root is {old_root}.")
         old_root_col = overlaps[old_root-1]
