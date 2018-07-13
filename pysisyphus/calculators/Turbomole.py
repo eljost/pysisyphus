@@ -231,6 +231,10 @@ class Turbomole(OverlapCalculator):
         return results
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
+        if not self.double_mol_path:
+            self.log("Skipping double molecule calculations as double mol "
+                     "path is not specified.!")
+            return None
         self.log("Running double molecule calculation")
         double_atoms = atoms + atoms
         double_coords = np.hstack((coords1, coords2))
@@ -339,6 +343,9 @@ class Turbomole(OverlapCalculator):
         else:
             ci_coeffs = [self.parse_cc2_vectors(ccre)
                          for ccre in self.ccres]
+        ci_coeffs = np.array(ci_coeffs)
+        states = ci_coeffs.shape[0]
+        ci_coeffs = ci_coeffs.reshape(states, self.occ_mos, self.virt_mos)
         with open(self.mos) as handle:
             text = handle.read()
         mo_coeffs = parse_turbo_mos(text)
