@@ -347,7 +347,7 @@ class WFOWrapper:
             # print(mat)
         return reshaped_mats
 
-    def overlaps(ao_ovlp=None):
+    def overlaps(self, ao_ovlp=None):
         iter1 = self.get_iteration(-2)
         iter2 = self.get_iteration(-1)
         overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
