@@ -9,6 +9,7 @@ from pprint import pprint
 import re
 import sys
 
+from distributed import Client
 from natsort import natsorted
 import yaml
 
@@ -115,17 +116,29 @@ def run_cos(cos, calc_getter, opt_getter):
     opt.run()
 
 
-def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs):
+def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
+                 scheduler=None):
+    def par_calc(geom):
+        geom.calculator.run_calculation(geom.atoms, geom.coords)
+        return geom
+
     for i, geom in enumerate(geoms):
         geom.set_calculator(calc_getter(i))
         assert geom.calculator.track, "'track: True' must be present in " \
                                       "calc section."
-        geom.calculator.run_calculation(geom.atoms, geom.coords)
-        print(f"Ran calculation {i+1:02d}/{len(geoms):02d}")
+
+    if scheduler:
+        client =  Client(scheduler, pure=False, silence_logs=False)
+        geom_futures = client.map(par_calc, geoms)
+        geoms = client.gather(geom_futures)
+    else:
+        for i, geom in enumerate(geoms):
+            geom.calculator.run_calculation(geom.atoms, geom.coords)
+            print(f"Ran calculation {i+1:02d}/{len(geoms):02d}")
+
+    path = Path(".")
     overlapper = Overlapper(path, calc_key, calc_kwargs)
-    # overlapper.restore_calculators(geoms)
-    # geoms = overlapper.discover_geometries(overlapper.path)
-    overlapper.overlaps(geoms)
+    overlapper.tden_overlaps_for_geoms(geoms)
 
 
 def overlaps(run_dict):
@@ -302,7 +315,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         dry_run(calc, geoms[0])
         return
     elif run_dict["overlaps"]:
-        run_overlaps(geoms, calc_getter, yaml_dir, calc_key, calc_kwargs)
+        run_overlaps(geoms, calc_getter, yaml_dir, calc_key, calc_kwargs,
+                     scheduler)
     elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
