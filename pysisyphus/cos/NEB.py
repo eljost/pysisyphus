@@ -26,7 +26,11 @@ class NEB(ChainOfStates):
         self.k = list()
 
     def update_springs(self):
-        self.k = np.full(len(self.images)-1, self.k_min)
+        # Check if there are enough springs
+        if (len(self.k) is not len(self.images)-1):
+            self.k = np.full(len(self.images)-1, self.k_min)
+        if self.variable_springs:
+            self.set_variable_springs()
 
     def set_variable_springs(self):
         shifted_energies = self.energy - self.energy.min()
@@ -55,10 +59,6 @@ class NEB(ChainOfStates):
         return np.array(par_forces).flatten()
 
     def get_parallel_forces(self, i):
-        # Check if there are enough springs
-        if (len(self.k) is not len(self.images)-1):
-            self.update_springs()
-
         if i not in self.moving_indices:
             return self.zero_vec
 
@@ -82,6 +82,8 @@ class NEB(ChainOfStates):
     def forces(self):
         if self._forces is None:
             self.calculate_forces()
+
+        self.update_springs()
 
         indices = range(len(self.images))
         total_forces = np.array(
