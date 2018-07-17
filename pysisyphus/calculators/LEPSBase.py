@@ -9,7 +9,15 @@ from pysisyphus.calculators.AnaPotBase import AnaPotBase
 
 class LEPSBase(AnaPotBase):
 
-    def __init__(self): 
+    choices = {
+        "leps": "get_leps",
+        "harmonic": "get_harmonic",
+        "tot": "get_tot",
+    }
+
+    def __init__(self, pot_type="leps"):
+        self.pot_type = pot_type
+
         self.abc = (0.05, 0.80, 0.05)
         self.ds = (4.746, 4.746, 3.445)
         self.rac = 3.473
@@ -19,24 +27,31 @@ class LEPSBase(AnaPotBase):
         self.kc = 0.2025
         self.c_ = 1.154
 
-        x, y = symbols("x y")
-
-        V_str = str(self.V_LEPS(self.abc, self.ds, self.alpha, self.r0,
-                                (x, y, self.rac))) 
-        # xlim = (0, 6)
-        # ylim = (0, 4)
-        # levels = np.linspace(-5, 5, 250)
-
-        # V_str = str(self.V_harmonic())
-        # levels = np.linspace(-20, 20, 250)
-
-        V_str = str(self.V_tot())
-        levels = np.linspace(-5, 2, 75)
-
-        xlim = (0.4, 3.2)
-        ylim = (-2, 2)
+        assert self.pot_type in self.choices
+        V_str, xlim, ylim, levels = getattr(self, self.choices[pot_type])()
 
         super().__init__(V_str=V_str, xlim=xlim, ylim=ylim, levels=levels)
+
+    def get_leps(self):
+        V_str = str(self.V_LEPS())
+        xlim = (0, 6)
+        ylim = (0, 4)
+        levels = np.linspace(-5, 5, 250)
+        return V_str, xlim, ylim, levels
+
+    def get_harmonic(self):
+        V_str = str(self.V_harmonic())
+        levels = np.linspace(-20, 20, 250)
+        xlim = (0.4, 3.2)
+        ylim = (-2, 2)
+        return V_str, xlim, ylim, levels
+
+    def get_tot(self):
+        V_str = str(self.V_tot())
+        levels = np.linspace(-5, 2, 75)
+        xlim = (0.4, 3.2)
+        ylim = (-2, 2)
+        return V_str, xlim, ylim, levels
 
     def Q(self, d, alpha, r0, r):
         """Coulomb interactions."""
@@ -50,17 +65,21 @@ class LEPSBase(AnaPotBase):
         "Gaussian function."""
         return exp(-0.5*((a/0.1)**2 +(b/0.35)**2))
 
-    def V_LEPS(self, abc, ds, alpha, r0, rs):
+    def V_LEPS(self, x=None, y=None):
         """Equation (A.1) in [1].
         Mimics reaction involving three atoms confined to motion along
         a line."""
-        a, b, c = abc
-        dab, dbc, dac = ds
-        rab, rbc, rac = rs
-        rs = (rab, rbc, rac)
+        a, b, c = self.abc
+        if x is None:
+            x = symbols("x")
+        if y is None:
+            y = symbols("y")
+        rs = (x, y, self.rac)
         
-        Qab, Qbc, Qac = [self.Q(d, alpha, r0, r) for d, r in zip(ds, rs)]
-        Jab, Jbc, Jac = [self.J(d, alpha, r0, r) for d, r in zip(ds, rs)]
+        Qab, Qbc, Qac = [self.Q(d, self.alpha, self.r0, r)
+                         for d, r in zip(self.ds, rs)]
+        Jab, Jbc, Jac = [self.J(d, self.alpha, self.r0, r)
+                         for d, r in zip(self.ds, rs)]
         
         first_term = Qab/(1+a) + Qbc/(1+b) + Qac/(1+c)
         second_term = Jab**2/(1+a)**2 + Jbc**2/(1+b)**2 + Jac**2/(1+c)**2
@@ -75,9 +94,9 @@ class LEPSBase(AnaPotBase):
         A and C are fixed, only B can move. A condensed phase environment
         is represented by adding a harmonic oscillator degree of freedom."""
         x, y = symbols("x y")
-        return (self.V_LEPS(self.abc, self.ds, self.alpha, self.r0,
-                            (x, self.rac-x, self.rac))
-               + 2*self.kc*(x-(self.rac/2 - y/self.c_))**2)
+        return (self.V_LEPS(x, self.rac-x)
+                + 2*self.kc*(x-(self.rac/2 - y/self.c_))**2
+        )
 
     def V_tot(self):
         """Equation (A.3) in [1].
@@ -85,13 +104,14 @@ class LEPSBase(AnaPotBase):
         x, y = symbols("x y")
         return self.V_harmonic() + 1.5 * self.G(x-2.02083, y+0.272881)
 
-
     def __str__(self):
         return "LEPSBase calculator"
 
 
 if __name__ == "__main__":
-    lp = LEPSBase()
-    lp.plot()
     import matplotlib.pyplot as plt
-    plt.show()
+    choices = "leps harmonic tot".split()
+    for c in choices:
+        lp = LEPSBase(pot_type=c)
+        lp.plot()
+        plt.show()
