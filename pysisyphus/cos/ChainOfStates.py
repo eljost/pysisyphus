@@ -63,6 +63,10 @@ class ChainOfStates:
         return indices
 
     @property
+    def last_index(self):
+        return len(self.images) - 1
+
+    @property
     def moving_images(self):
         return [self.images[i] for i in self.moving_indices]
 

@@ -25,7 +25,7 @@ class AnimPlot:
                  figsize=(8, 8), levels=(-150, 5, 30),
                  interval=250,
                  energy_profile=True, colorbar=True, save=None,
-                 title=True, tight_layout=True):
+                 title=True, tight_layout=False):
 
         self.calculator = calculator
         self.optimizer = optimizer

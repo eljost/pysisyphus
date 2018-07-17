@@ -4,10 +4,12 @@ from sympy import atan, symbols
 from pysisyphus.calculators.AnaPotBase import AnaPotBase
 from pysisyphus.calculators.LEPSExpr import LEPSExpr
 
+# [1] 10.1063/1.4962019 Free-end adaptive NEB
 
 class FreeEndNEBPot(AnaPotBase):
 
     def __init__(self):
+        """Analyitcal potential as described in [1] Appendix A"""
         leps_expr = LEPSExpr()
         V_expr, xlim, ylim, levels = leps_expr.get_expr("harmonic")
 
