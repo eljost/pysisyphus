@@ -3,6 +3,7 @@ import logging
 __all__ = [
     "NEB",
     "AdaptiveNEB",
+    "FreeEndNEB",
     "SimpleZTS",
     "ChainOfStates",
 ]

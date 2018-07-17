@@ -6,10 +6,11 @@ from pysisyphus.calculators.Calculator import Calculator
 
 class AnaPotBase(Calculator):
 
-    def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1)): 
+    def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1), levels=None):
         super(AnaPotBase, self).__init__()
         self.xlim = xlim
         self.ylim = ylim
+        self.levels = levels
         x, y = symbols("x y")
         V = sympify(V_str)
         dVdx = diff(V, x)
@@ -65,7 +66,11 @@ class AnaPotBase(Calculator):
         pot = self.get_energy(fake_atoms, pot_coords)["energy"]
 
         if levels is None:
-            levels = np.linspace(pot.min(), pot.max(), 35)
+            if self.levels is None:
+                levels = np.linspace(pot.min(), pot.max(), 35)
+            else:
+                levels = self.levels
+
         # Draw the contourlines of the potential
         contours = self.ax.contour(X, Y, pot, levels)
         self.fig.colorbar(contours)

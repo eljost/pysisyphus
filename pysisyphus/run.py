@@ -27,6 +27,7 @@ from ._version import get_versions
 COS_DICT = {
     "neb": NEB.NEB,
     "aneb": AdaptiveNEB.AdaptiveNEB,
+    "feneb": FreeEndNEB.FreeEndNEB,
     "szts": SimpleZTS.SimpleZTS,
 }
 
@@ -142,6 +143,7 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
 
 
 def overlaps(run_dict):
+    # import pdb; pdb.set_trace()
     cwd = Path(".")
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]

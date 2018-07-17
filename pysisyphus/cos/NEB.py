@@ -25,9 +25,6 @@ class NEB(ChainOfStates):
         self.delta_k = self.k_max - self.k_min
         self.k = list()
 
-        self.perp_forces = list()
-        self.par_forces = list()
-
     def update_springs(self):
         self.k = np.full(len(self.images)-1, self.k_min)
 
