@@ -113,6 +113,10 @@ class Geometry:
         self.clear()
 
     @property
+    def coords3d(self):
+        return self._coords.reshape(-1, 3)
+
+    @property
     def mw_coords(self):
         """Mass-weighted coordinates.
 

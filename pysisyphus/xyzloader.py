@@ -1,4 +1,5 @@
 import numpy as np
+from pysisyphus.constants import BOHR2ANG
 
 def make_xyz_str(atoms, coords, comment=""):
     assert(len(atoms) == len(coords))
@@ -20,6 +21,15 @@ def make_trj_str(atoms, coords_list, comments=None):
     xyz_strings = [make_xyz_str(atoms, coords, comment)
                    for coords, comment in zip(coords_list, comments)]
     return "\n".join(xyz_strings)
+
+def make_trj_str_from_geoms(geoms, comments=None):
+    atoms = geoms[0].atoms
+    if comments is None:
+        energies = [geom._energy for geom in geoms]
+        if all(energies):
+            comments = [f"{energy}" for energy in energies]
+    coords_list = [geom.coords.reshape(-1, 3)*BOHR2ANG for geom in geoms]
+    return make_trj_str(atoms, coords_list, comments)
 
 
 def parse_xyz_str(xyz_str):

@@ -11,6 +11,7 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.parser import parse_turbo_gradient
+from pysisyphus.helpers import geom_from_xyz_file
 
 from pysisyphus.xyzloader import make_xyz_str
 
@@ -30,10 +31,11 @@ class XTB(Calculator):
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out", "grad")
+        self.to_keep = ("out", "grad", "xtbopt.xyz")
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
+            "opt": self.parse_opt,
         }
 
         self.base_cmd = Config["xtb"]["cmd"]
@@ -47,6 +49,14 @@ class XTB(Calculator):
 
     def prepare_input(self, atoms, coords, calc_type):
         return None
+
+    def prepare_add_args(self):
+        add_args = f"-{self.gfn} -chrg {self.charge} -uhf {self.uhf}".split()
+        # Use solvent model if specified
+        if self.gbsa:
+            gbsa = f"-gbsa {self.gbsa}".split()
+            add_args = add_args + gbsa
+        return add_args
 
     def get_pal_env(self):
         env_copy = os.environ.copy()
@@ -63,13 +73,8 @@ class XTB(Calculator):
 
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
-        add_args = f"-{self.gfn} -chrg {self.charge} -uhf {self.uhf} -grad"
+        add_args = self.prepare_add_args() + ["-grad"]
         self.log(f"Executing {self.base_cmd} {add_args}")
-        # Use solvent model if specified
-        add_args = add_args.split()
-        if self.gbsa:
-            gbsa = f"-gbsa {self.gbsa}".split()
-            add_args = add_args + gbsa
         kwargs = {
             "calc": "grad",
             "add_args": add_args,
@@ -78,6 +83,34 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
+    def run_opt(self, atoms, coords, keep=True):
+        inp = self.prepare_coords(atoms, coords)
+        add_args = self.prepare_add_args() + ["-opt", "tight"]
+        self.log(f"Executing {self.base_cmd} {add_args}")
+        kwargs = {
+            "calc": "opt",
+            "add_args": add_args,
+            "env": self.get_pal_env(),
+            "keep": keep,
+        }
+        opt_geom = self.run(inp, **kwargs)
+        return opt_geom
+
+    def parse_opt(self, path):
+        xtbopt = path / "xtbopt.xyz"
+        if not xtbopt.exists():
+            return None
+        opt_geom = geom_from_xyz_file(xtbopt)
+        opt_geom.energy = self.parse_energy(path)
+        return opt_geom
+
+    def parse_energy(self, path):
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        energy_re = "total E\s*:\s*([-\d\.]+)"
+        energy = float(re.search(energy_re, text)[1])
+        return energy
+
     def parse_gradient(self, path):
         results = dict()
         with open(path / "grad") as handle:
@@ -85,11 +118,7 @@ class XTB(Calculator):
         gradient = np.array(grad, dtype=float)
         results["forces"] = -gradient
 
-        with open(path / self.out_fn) as handle:
-            text = handle.read()
-        energy_re = "total E\s*:\s*([-\d\.]+)"
-        energy = float(re.search(energy_re, text)[1])
-        results["energy"] = energy
+        results["energy"] = self.parse_energy(path)
         return results
 
     def __str__(self):
