@@ -8,7 +8,6 @@ import numpy as np
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
-
 from pysisyphus.xyzloader import make_xyz_str
 
 

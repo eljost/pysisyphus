@@ -99,6 +99,7 @@ class XTB(Calculator):
     def parse_opt(self, path):
         xtbopt = path / "xtbopt.xyz"
         if not xtbopt.exists():
+            print(f"{self.calc_number:03d} failed")
             return None
         opt_geom = geom_from_xyz_file(xtbopt)
         opt_geom.energy = self.parse_energy(path)

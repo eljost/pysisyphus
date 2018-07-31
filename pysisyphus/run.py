@@ -161,11 +161,11 @@ def overlaps(run_dict):
                            f"glob '{glob}' is right?")
         xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
         geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
+        # geoms = geoms[:17]
         [overlapper.set_files_from_dir(geom, p, calc_number)
          for calc_number, (geom, p) in enumerate(zip(geoms, paths))]
     # overlapper.overlap_for_geoms(geoms)
     overlapper.tden_overlaps_for_geoms(geoms)
-
 
 
 def run_opt(geom, calc_getter, opt_getter):

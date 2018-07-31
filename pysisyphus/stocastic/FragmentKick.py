@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
-from math import sin, cos
+import bisect
+from math import cos, sin
 
 import numpy as np
 import rmsd
 
 from pysisyphus.Geometry import Geometry
+from pysisyphus.calculators.XTB import XTB
 from pysisyphus.stocastic.Kick import Kick
+from pysisyphus.xyzloader import make_trj_str_from_geoms
 
 
 
@@ -21,6 +24,18 @@ class FragmentKick(Kick):
         # self.fragment_atoms = [atoms_arr[frag].tolist()
                                # for frag in self.fragments]
         super().__init__(geom, rmsd_thresh=rmsd_thresh, **kwargs)
+
+        frag_coords = self.get_frag_coords(self.initial_geom)
+        self.frag_coords = [fc - fc.mean(axis=0) for fc in frag_coords]
+
+        new_coords3d = np.concatenate(self.frag_coords)
+        geom = Geometry(self.atoms, new_coords3d.flatten())
+        with open("origin.xyz", "w") as handle:
+            handle.write(geom.as_xyz())
+
+        self.energies = list()
+        self.opt_geoms = list()
+
 
     def get_rot_mat(self):
         # Euler angles
@@ -50,12 +65,100 @@ class FragmentKick(Kick):
     def get_frag_coords(self, geom):
         return [geom.coords3d[frag] for frag in self.fragments]
 
-    def get_kicked_geom(self, geom):
-        frag_coords = self.get_frag_coords(geom)
+    def get_kick(self):
+        # Interval [0, 1)
+        kick = np.random.random(self.coords_size)
+        # Stretch [0, 1) to  [-r ... r)
+        kick = self.radius * (2*kick - 1)
+        kick = kick.reshape(-1, 3)
+        return kick.flatten()
+
+    def get_kicked_geom(self):
+        # frag_coords = self.get_frag_coords()
+        frag_coords = self.frag_coords
         kicked_frags = [self.kick_fragment(fc) for fc in frag_coords]
         new_coords3d = np.concatenate(kicked_frags)
         new_coords = rmsd.kabsch_rotate(new_coords3d,
                                         self.initial_coords3d
         ).flatten()
-        new_geom = Geometry(geom.atoms, new_coords)
+        new_geom = Geometry(self.atoms, new_coords)
         return new_geom
+
+    def run_kicked_geom(self, geom):
+        calc = XTB(calc_number=self.calc_counter)
+        self.calc_counter += 1
+        opt_geom = calc.run_opt(geom.atoms, geom.coords, keep=False)
+        return opt_geom
+
+    def geoms_to_trj(self, geoms, fn):
+        with open(fn, "w") as handle:
+            handle.write(make_trj_str_from_geoms(geoms))
+
+    def run(self):
+        def are_close(en1, en2, thresh=1e-4):
+            return abs(en1 - en2) < thresh
+        while self.cur_cycle < self.cycles:
+            print(f"Starting cycle {self.cur_cycle} with " \
+                  f"{len(self.geoms_to_kick)} geometries.")
+            kicked_geoms = [self.get_kicked_geom() for _ in range(self.cycle_size)]
+            self.geoms_to_trj(kicked_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
+            opt_geoms = [self.run_kicked_geom(geom) for geom in kicked_geoms]
+            # Filter out None
+            opt_geoms = [geom for geom in opt_geoms if geom]
+            opt_num = len(opt_geoms)
+            print(f"Kicks in cycle {self.cur_cycle} produced "
+                  f"{opt_num} new geometries.")
+
+            # sorted_geoms = sorted(opt_geoms, key=lambda g: g.energy)
+            # ens = [geom.energy for geom in sorted_geoms]
+            # en_diffs = np.abs(np.diff(ens))
+            # import pdb; pdb.set_trace()
+
+            inds = list()
+            for geom in opt_geoms:
+                energy = geom.energy
+                ind = bisect.bisect_left(self.energies, energy)
+                try:
+                    en_before= self.energies[ind-1]
+                    if are_close(energy, en_before):
+                        print("close energy before")
+                        print(ind, energy, en_before)
+                        continue
+                except IndexError:
+                    pass
+                try:
+                    en_after = self.energies[ind+1]
+                    if are_close(energy, en_after):
+                        print("close energy after")
+                        print(ind, energy, en_after)
+                        continue
+                except IndexError:
+                    pass
+                bisect.insort(self.energies, energy)
+                self.opt_geoms.insert(ind, geom)
+                # if ind == 0 and self.energies and are_close(energy, self.energies[0]):
+                    # print("low")
+                    # continue
+                # elif ind == len(self.energies) and are_close(energy, self.energies[-1]):
+                    # print("high")
+                    # continue
+                # elif are_close(energy, self.energies[ind-1]) or are_close(energy, self.energies[ind+1]):
+                    # print("middle")
+                    # continue
+                # else:
+                    # bisect.insort(self.energies, energy)
+                    # self.opt_geoms.insert(ind, geom)
+            gens = [geom.energy for geom in self.opt_geoms]
+            print("gens", gens)
+            print("self.energies", self.energies)
+
+            # import pdb; pdb.set_trace()
+            trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
+            self.geoms_to_trj(opt_geoms, trj_filtered_fn)
+
+            self.cur_cycle += 1
+        fn = "final.trj"
+        self.geoms_to_trj(self.opt_geoms, fn)
+        en_diffs = np.abs(np.diff(self.energies))
+        print(en_diffs)
+        assert en_diffs > 1e-4

@@ -159,11 +159,16 @@ class Overlapper:
         np.set_printoptions(suppress=True, precision=2)
         max_ovlp_inds_list = list()
         for i, geom in enumerate(geoms[1:]):
+            # i-1 -> calc_1
             calc_1 = geoms[i].calculator
+            # i -> calc_2
             calc_2 = geom.calculator
             overlaps = calc_1.tdens_overlap_with_calculator(calc_2)
             index_array = calc_1.index_array_from_overlaps(overlaps)
-            print(index_array)
+            print(f"Comparing {i:03d} and {i+1:03d}")
+            print("\t", index_array)
+            print(overlaps**2)
+            print()
             max_ovlp_inds_list.append(index_array)
             np.savetxt(f"overlap{i:02d}.dat", overlaps)
         max_ovlp = np.array(max_ovlp_inds_list, dtype=int)

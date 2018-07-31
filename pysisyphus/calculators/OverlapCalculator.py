@@ -3,7 +3,7 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 
-np.set_printoptions(suppress=True, precision=3)
+np.set_printoptions(suppress=True, precision=1)
 
 
 class OverlapCalculator(Calculator):
@@ -86,8 +86,23 @@ class OverlapCalculator(Calculator):
                                       mo_coeffs2, ci_coeffs2)
         return overlaps
 
-    def index_array_from_overlaps(self, overlaps):
-        indices = np.argmax(np.abs(overlaps), axis=0)
+    def index_array_from_overlaps(self, overlaps, axis=1):
+        """It is assumed that the overlaps between two points with indices
+        i and j with (j > i) are computed and that i changes along the first
+        axis (axis=0) and j changes along the second axis (axis=1).
+
+        So the first row of the overlap matrix (overlaps[0]) should contain
+        the overlaps between state 0 at index i and all states at index j.
+
+        argmax along axis 1 returns the indices of the most overlapping states
+        at index j with the states at index i, given by the item index in the
+        indices array. E.g.:
+            [0 1 3 2] indicates a root flip in a system with four states when
+            going from index i to index j. Root 2 at i became root 3 at j and
+            vice versa.
+        """
+        # indices = np.argmax(np.abs(overlaps), axis=1)
+        indices = np.argmax(overlaps**2, axis=1)
         return indices
 
     def prepare_overlap_data(self):
