@@ -144,28 +144,30 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
 
 
 def overlaps(run_dict):
-    # import pdb; pdb.set_trace()
+    print("Running calculations to get state/wavefunction overlaps.")
     cwd = Path(".")
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     overlapper = Overlapper(cwd, calc_key, calc_kwargs)
 
     glob = run_dict["glob"]
-    if glob is None:
-        xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
-        geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-        overlapper.restore_calculators(geoms)
-    else:
+    if glob:
         paths = natsorted([p for p in cwd.glob(glob)])
         if len(paths) == 0:
             raise Exception("Couldn't find any paths! Are you sure that your "
                            f"glob '{glob}' is right?")
         xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
         geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-        # geoms = geoms[:17]
         [overlapper.set_files_from_dir(geom, p, calc_number)
          for calc_number, (geom, p) in enumerate(zip(geoms, paths))]
-    # overlapper.overlap_for_geoms(geoms)
+    else:
+        if run_dict["xyz"]:
+            geoms = get_geoms(run_dict["xyz"])
+        else:
+            xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
+            geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
+        calc_num = overlapper.restore_calculators(geoms)
+        geoms = geoms[:calc_num]
     overlapper.tden_overlaps_for_geoms(geoms)
 
 
@@ -327,8 +329,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         assert(len(geoms) == 1)
         run_opt(geoms[0], calc_getter, opt_getter)
     else:
-        print("Nothing to do! Please supply either: 'overlaps: True' or a "
-              "'cos: ...' and/or an 'opt: ...'block. Exiting!")
+        print("Trying to run calculations but got nothing to do! Please "
+              "supply either: 'overlaps: True' or a 'cos: ...' and/or an "
+              "'opt: ...'block. Exiting!")
 
 
 def clean(force=False):

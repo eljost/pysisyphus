@@ -137,12 +137,15 @@ class Overlapper:
     def restore_calculators(self, geoms):
         files_dict = self.discover_files(self.path)
         unique_calculators = set([calc_num for calc_num, cycle_num in files_dict])
-        assert len(unique_calculators) == len(geoms), ("Number of discovered "
-            f"unique calculators ({len(unique_calculators)}) doesn't match the "
+        assert len(unique_calculators) <= len(geoms), ("Number of discovered "
+            f"unique calculators ({len(unique_calculators)}) is bigger than the "
             f"number of discovered geometries ({len(geoms)})."
         )
+        calc_num = len(unique_calculators)
         setter_func = self.setter_dict[self.calc_key]
-        setter_func(geoms, files_dict)
+        setter_func(geoms[:calc_num], files_dict)
+        print(f"Restored {calc_num} calculators.")
+        return calc_num
 
     def overlaps_for_geoms(self, geoms):
         max_ovlp_inds_list = list()
