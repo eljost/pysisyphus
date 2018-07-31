@@ -136,6 +136,7 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
         for i, geom in enumerate(geoms):
             geom.calculator.run_calculation(geom.atoms, geom.coords)
             print(f"Ran calculation {i+1:02d}/{len(geoms):02d}")
+            sys.stdout.flush()
 
     path = Path(".")
     overlapper = Overlapper(path, calc_key, calc_kwargs)
@@ -325,6 +326,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         run_opt(geoms[0], calc_getter, opt_getter)
+    else:
+        print("Nothing to do! Please supply either: 'overlaps: True' or a "
+              "'cos: ...' and/or an 'opt: ...'block. Exiting!")
 
 
 def clean(force=False):
