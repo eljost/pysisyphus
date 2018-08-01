@@ -260,6 +260,12 @@ class Geometry:
         results = self.calculator.get_forces(self.atoms, self.coords)
         self.set_results(results)
 
+    def calc_double_ao_overlap(self, geom2):
+        return self.calculator.run_double_mol_calculation(self.atoms,
+                                                          self.coords,
+                                                          geom2.coords
+        )
+
     def set_results(self, results):
         """Save the results from a dictionary.
 
