@@ -149,14 +149,15 @@ class Overlapper:
         print(f"Restored {calc_num} calculators.")
         return calc_num
 
-    def overlaps_for_geoms(self, geoms, ovlp_type="wf"):
-        def wf_ovlp(calc1, calc2):
-            ovlp_mats = calc1.wfow.overlaps_with(calc2.wfow)
+    def overlaps_for_geoms(self, geoms, ovlp_type="wf", double_mol=False):
+        def wf_ovlp(calc1, calc2, ao_ovlp):
+            ovlp_mats = calc1.wfow.overlaps_with(calc2.wfow, ao_ovlp=ao_ovlp)
             ovlp_mat = ovlp_mats[0]
             return ovlp_mat
 
-        def tden_ovlp(calc1, calc2):
-                return calc1.tdens_overlap_with_calculator(calc2)
+        def tden_ovlp(calc1, calc2, ao_ovlp=None):
+            return calc1.tdens_overlap_with_calculator(calc2,
+                                                       ao_ovlp=ao_ovlp)
 
         ovlp_dict = {
             "wf": wf_ovlp,
@@ -168,16 +169,28 @@ class Overlapper:
             valid_ovlps = "/".join([str(k) for k in ovlp_dict.keys()])
             print(f"Please supply a valid ovlp_type ({valid_ovlps})! Exiting!")
             return
+        if double_mol:
+            assert hasattr(geoms[0].calculator, "run_double_mol_calculation"), \
+                   "Double molecule calculation not implemented for " \
+                  f"{self.calc_key}."
+
         print(f"Doing {ovlp_type.upper()}-overlaps.")
 
         inds_list = list()
         for i, geom in enumerate(geoms[1:]):
+            ao_ovlp = None
+            if double_mol:
+                prev_geom = geoms[i]
+                ao_ovlp = geom.calc_double_ao_overlap(prev_geom)
+                np.savetxt(f"double_ovlp_{i:03d}", ao_ovlp)
+
             prev_calc = geoms[i].calculator
             cur_calc = geom.calculator
             print(f"Step {i:02d}, comparing Calculator {prev_calc.calc_number:02d} "
                   f"with Calculator {cur_calc.calc_number:02d}:"
             )
-            ovlp_mat = ovlp_func(prev_calc, cur_calc)
+            ovlp_mat = ovlp_func(prev_calc, cur_calc, ao_ovlp)
+            print(ovlp_mat)
             # Determine indices of maximum overlap
             index_array = prev_calc.index_array_from_overlaps(ovlp_mat)
             inds_list.append(index_array)
@@ -190,37 +203,6 @@ class Overlapper:
         print()
         print("Max overlap indices.")
         print(inds_arr)
-
-
-    def wf_overlaps_for_geoms(self, geoms):
-        max_ovlp_inds_list = list()
-        for i, geom in enumerate(geoms[1:]):
-            wfow_A = geoms[i].calculator.wfow
-            wfow_B = geom.calculator.wfow
-            max_ovlp_inds = wfow_A.compare(wfow_B)
-            max_ovlp_inds_list.append(max_ovlp_inds)
-            print(f"step {i:03d}", max_ovlp_inds+1)
-        max_ovlp = np.array(max_ovlp_inds_list, dtype=int)
-        np.savetxt(self.path / "overlap_matrix", max_ovlp, fmt="%i")
-
-    def tden_overlaps_for_geoms(self, geoms):
-        np.set_printoptions(suppress=True, precision=2)
-        max_ovlp_inds_list = list()
-        for i, geom in enumerate(geoms[1:]):
-            # i-1 -> calc_1
-            calc_1 = geoms[i].calculator
-            # i -> calc_2
-            calc_2 = geom.calculator
-            overlaps = calc_1.tdens_overlap_with_calculator(calc_2)
-            index_array = calc_1.index_array_from_overlaps(overlaps)
-            print(f"Comparing {i:03d} and {i+1:03d}")
-            print("\t", index_array)
-            print(overlaps**2)
-            print()
-            max_ovlp_inds_list.append(index_array)
-            np.savetxt(f"overlap{i:02d}.dat", overlaps)
-        max_ovlp = np.array(max_ovlp_inds_list, dtype=int)
-        np.savetxt(self.path / "overlap_matrix", max_ovlp, fmt="%i")
 
 
 if __name__ == "__main__":

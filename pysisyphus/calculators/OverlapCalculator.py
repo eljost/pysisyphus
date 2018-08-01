@@ -32,7 +32,7 @@ class OverlapCalculator(Calculator):
         return full
 
     def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2,
-                      S_AO=None):
+                      ao_ovlp=None):
         """
         Parameters
         ----------
@@ -45,7 +45,7 @@ class OverlapCalculator(Calculator):
             CI-coefficient matrix.
         ci_coeffs2 : ndarray, shape(occ. MOs, MOs)
             See ci_coeffs1.
-        S_AO : ndarray, shape(AOs1, AOs2)
+        ao_ovlp : ndarray, shape(AOs1, AOs2)
             Double molcule AO overlaps.
         """
         states, occ, virt = ci_coeffs1.shape
@@ -54,10 +54,10 @@ class OverlapCalculator(Calculator):
 
         mo_coeffs1_inv = np.linalg.inv(mo_coeffs1)
         # AO overlaps
-        if S_AO is None:
-            S_AO = mo_coeffs1_inv.dot(mo_coeffs1_inv.T)
+        if ao_ovlp is None:
+            ao_ovlp = mo_coeffs1_inv.dot(mo_coeffs1_inv.T)
         # MO overlaps
-        S_MO = mo_coeffs1.dot(S_AO).dot(mo_coeffs2.T)
+        S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
 
         overlaps = [np.sum(S_MO_occ.dot(state1).dot(S_MO) * state2)
@@ -67,23 +67,24 @@ class OverlapCalculator(Calculator):
 
         return overlaps
 
-    def last_two_tdens_overlap(self, S_AO=None):
+    def last_two_tdens_overlap(self, ao_ovlp=None):
         mo_coeffs1 = self.mo_coeff_list[-1]
         ci_coeffs1 = self.ci_coeff_list[-1]
         mo_coeffs2 = self.mo_coeff_list[-2]
         ci_coeffs2 = self.ci_coeff_list[-2]
         overlaps = self.tden_overlaps(mo_coeffs1, ci_coeffs1,
                                       mo_coeffs2, ci_coeffs2,
-                                      S_AO)
+                                      ao_ovlp=ao_ovlp)
         return overlaps
 
-    def tdens_overlap_with_calculator(self, calc):
+    def tdens_overlap_with_calculator(self, calc, ao_ovlp=None):
         mo_coeffs1 = self.mo_coeff_list[-1]
         ci_coeffs1 = self.ci_coeff_list[-1]
         mo_coeffs2 = calc.mo_coeff_list[-1]
         ci_coeffs2 = calc.ci_coeff_list[-1]
         overlaps = self.tden_overlaps(mo_coeffs1, ci_coeffs1,
-                                      mo_coeffs2, ci_coeffs2)
+                                      mo_coeffs2, ci_coeffs2,
+                                      ao_ovlp=ao_ovlp)
         return overlaps
 
     def index_array_from_overlaps(self, overlaps, axis=1):

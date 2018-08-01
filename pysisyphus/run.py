@@ -8,6 +8,7 @@ from pathlib import Path
 from pprint import pprint
 import re
 import sys
+import time
 
 from distributed import Client
 from natsort import natsorted
@@ -116,6 +117,7 @@ def run_cos(cos, calc_getter, opt_getter):
 
 def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
                  scheduler=None):
+    print("Running calculations to get state/wavefunction overlaps.")
     def par_calc(geom):
         geom.calculator.run_calculation(geom.atoms, geom.coords)
         return geom
@@ -131,23 +133,29 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
         geoms = client.gather(geom_futures)
     else:
         for i, geom in enumerate(geoms):
+            start = time.time()
             geom.calculator.run_calculation(geom.atoms, geom.coords)
-            print(f"Ran calculation {i+1:02d}/{len(geoms):02d}")
+            end = time.time()
+            diff = end - start
+            print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
             sys.stdout.flush()
 
     path = Path(".")
     overlapper = Overlapper(path, calc_key, calc_kwargs)
-    overlapper.tden_overlaps_for_geoms(geoms)
+    ovlp_type = "tden"
+    double_mol = True
+    overlapper.overlaps_for_geoms(geoms,
+                                  ovlp_type=ovlp_type,
+                                  double_mol=double_mol)
 
 
-def overlaps(run_dict, ovlp_type):
-    print("Running calculations to get state/wavefunction overlaps.")
+def overlaps(run_dict):
     cwd = Path(".")
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     overlapper = Overlapper(cwd, calc_key, calc_kwargs)
 
-    glob = run_dict["glob"]
+    glob = run_dict["overlaps"]["glob"]
     # First try globbing
     if glob:
         paths = natsorted([p for p in cwd.glob(glob)])
@@ -170,9 +178,11 @@ def overlaps(run_dict, ovlp_type):
         calc_num = overlapper.restore_calculators(geoms)
         geoms = geoms[:calc_num]
 
-    # overlapper.tden_overlaps_for_geoms(geoms)
-    # overlapper.wf_overlaps_for_geoms(geoms)
-    overlapper.overlaps_for_geoms(geoms, ovlp_type=ovlp_type)
+    ovlp_type = run_dict["overlaps"]["type"]
+    double_mol = run_dict["overlaps"]["ao_ovlps"]
+    overlapper.overlaps_for_geoms(geoms,
+                                  ovlp_type=ovlp_type,
+                                  double_mol=double_mol)
 
 
 def run_opt(geom, calc_getter, opt_getter):
@@ -204,7 +214,7 @@ def get_defaults(conf_dict):
             "pal": 1,
         },
         "opt": None,
-        "overlaps": False,
+        "overlaps": None,
         "glob": None,
     }
     if "cos" in conf_dict:
@@ -226,6 +236,12 @@ def get_defaults(conf_dict):
             "type": "cg",
             "dump": True,
             "alpha": 0.25,
+        }
+    elif "overlaps" in conf_dict:
+        dd["overlaps"] = {
+            "type": "tden",
+            "ao_ovlps": None,
+            "glob": None,
         }
 
     return dd
@@ -261,10 +277,10 @@ def handle_yaml(yaml_str):
     run_dict = get_defaults(yaml_dict)
     # Update nested entries
     key_set = set(yaml_dict.keys())
-    for key in key_set & set(("cos", "opt", "interpol")):
+    for key in key_set & set(("cos", "opt", "interpol", "overlaps")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "xyz", "pal", "overlaps", "glob")):
+    for key in key_set & set(("calc", "xyz", "pal")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -449,7 +465,7 @@ def run():
     elif args.fclean:
         clean(force=True)
     elif args.overlaps:
-        overlaps(run_dict, args.overlaps)
+        overlaps(run_dict)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
 
