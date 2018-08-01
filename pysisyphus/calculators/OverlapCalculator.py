@@ -101,8 +101,8 @@ class OverlapCalculator(Calculator):
             going from index i to index j. Root 2 at i became root 3 at j and
             vice versa.
         """
-        # indices = np.argmax(np.abs(overlaps), axis=1)
-        indices = np.argmax(overlaps**2, axis=1)
+        # indices = np.argmax(overlaps**2, axis=1)
+        indices = np.argmax(np.abs(overlaps), axis=1)
         return indices
 
     def prepare_overlap_data(self):

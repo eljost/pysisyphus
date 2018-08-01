@@ -137,17 +137,62 @@ class Overlapper:
     def restore_calculators(self, geoms):
         files_dict = self.discover_files(self.path)
         unique_calculators = set([calc_num for calc_num, cycle_num in files_dict])
-        assert len(unique_calculators) <= len(geoms), ("Number of discovered "
-            f"unique calculators ({len(unique_calculators)}) is bigger than the "
-            f"number of discovered geometries ({len(geoms)})."
-        )
-        calc_num = len(unique_calculators)
+        # assert len(unique_calculators) <= len(geoms), ("Number of discovered "
+            # f"unique calculators ({len(unique_calculators)}) is bigger than the "
+            # f"number of discovered geometries ({len(geoms)})."
+        # )
+        print(f"Found {len(unique_calculators)} unique calculators.")
+        print(f"Found {len(geoms)} geometries.")
+        calc_num = min(len(unique_calculators), len(geoms))
         setter_func = self.setter_dict[self.calc_key]
         setter_func(geoms[:calc_num], files_dict)
         print(f"Restored {calc_num} calculators.")
         return calc_num
 
-    def overlaps_for_geoms(self, geoms):
+    def overlaps_for_geoms(self, geoms, ovlp_type="wf"):
+        def wf_ovlp(calc1, calc2):
+            ovlp_mats = calc1.wfow.overlaps_with(calc2.wfow)
+            ovlp_mat = ovlp_mats[0]
+            return ovlp_mat
+
+        def tden_ovlp(calc1, calc2):
+                return calc1.tdens_overlap_with_calculator(calc2)
+
+        ovlp_dict = {
+            "wf": wf_ovlp,
+            "tden": tden_ovlp,
+        }
+        try:
+            ovlp_func = ovlp_dict[ovlp_type]
+        except KeyError as err:
+            valid_ovlps = "/".join([str(k) for k in ovlp_dict.keys()])
+            print(f"Please supply a valid ovlp_type ({valid_ovlps})! Exiting!")
+            return
+        print(f"Doing {ovlp_type.upper()}-overlaps.")
+
+        inds_list = list()
+        for i, geom in enumerate(geoms[1:]):
+            prev_calc = geoms[i].calculator
+            cur_calc = geom.calculator
+            print(f"Step {i:02d}, comparing Calculator {prev_calc.calc_number:02d} "
+                  f"with Calculator {cur_calc.calc_number:02d}:"
+            )
+            ovlp_mat = ovlp_func(prev_calc, cur_calc)
+            # Determine indices of maximum overlap
+            index_array = prev_calc.index_array_from_overlaps(ovlp_mat)
+            inds_list.append(index_array)
+            ovlp_mat_fn = f"{ovlp_type}_ovlp_mat_{i:03d}"
+            np.savetxt(self.path / ovlp_mat_fn, ovlp_mat)
+            print(index_array)
+        inds_arr = np.array(inds_list)
+        max_ovlp_inds_fn = f"{ovlp_type}_max_ovlp_inds"
+        np.savetxt(self.path / max_ovlp_inds_fn, inds_arr, fmt="%i")
+        print()
+        print("Max overlap indices.")
+        print(inds_arr)
+
+
+    def wf_overlaps_for_geoms(self, geoms):
         max_ovlp_inds_list = list()
         for i, geom in enumerate(geoms[1:]):
             wfow_A = geoms[i].calculator.wfow

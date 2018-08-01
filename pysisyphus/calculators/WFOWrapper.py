@@ -353,12 +353,16 @@ class WFOWrapper:
         overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
         return overlap_mats
 
-    def compare(self, wfow_B, ao_ovlp=None):
-        """Calculate wavefunction overlaps between the two WFOWrapper objects,
-        using the last stored iterations respectively."""
+    def overlaps_with(self, wfow_B, ao_ovlp=None):
         iter1 = self.get_iteration(-1)
         iter2 = wfow_B.get_iteration(-1)
         overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
+        return overlap_mats
+
+    def compare(self, wfow_B, ao_ovlp=None):
+        """Calculate wavefunction overlaps between the two WFOWrapper objects,
+        using the last stored iterations respectively."""
+        overlap_mats = self.overlaps_with(wfow_B, ao_ovlp)
         overlap_matrix = overlap_mats[1]
         """argmax(axis=1) returns the index of the highest overlap
         along every column, that is for every state in wfow_B.

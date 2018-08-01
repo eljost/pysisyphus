@@ -81,13 +81,10 @@ def parse_args(args):
     run_type_group.add_argument("--restart", action="store_true",
         help="Continue a previously crashed/aborted/... pysisphus run."
     )
-    run_type_group.add_argument("--overlaps", action="store_true",
-        help="Calculate wavefunction overlaps."
+    run_type_group.add_argument("--overlaps", choices="tden wf".split(),
+        help="Calculate overlaps between transition density matrices "
+             "(tden) or wavefunctions (wf)."
     )
-    # run_type_group.add_argument("--tden_overlaps", action="store_true",
-        # help="Calculate transition density overlaps."
-    # )
-
     parser.add_argument("--scheduler", default=None,
         help="Address of the dask scheduler."
     )
@@ -143,7 +140,7 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
     overlapper.tden_overlaps_for_geoms(geoms)
 
 
-def overlaps(run_dict):
+def overlaps(run_dict, ovlp_type):
     print("Running calculations to get state/wavefunction overlaps.")
     cwd = Path(".")
     calc_key = run_dict["calc"].pop("type")
@@ -151,6 +148,7 @@ def overlaps(run_dict):
     overlapper = Overlapper(cwd, calc_key, calc_kwargs)
 
     glob = run_dict["glob"]
+    # First try globbing
     if glob:
         paths = natsorted([p for p in cwd.glob(glob)])
         if len(paths) == 0:
@@ -161,14 +159,20 @@ def overlaps(run_dict):
         [overlapper.set_files_from_dir(geom, p, calc_number)
          for calc_number, (geom, p) in enumerate(zip(geoms, paths))]
     else:
+        # Otherwise check if geometries are defined in the run_dict
         if run_dict["xyz"]:
             geoms = get_geoms(run_dict["xyz"])
         else:
+            # Else resort to globbing arbitrary xyz files
             xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
             geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
+        # geoms = geoms[:2]
         calc_num = overlapper.restore_calculators(geoms)
         geoms = geoms[:calc_num]
-    overlapper.tden_overlaps_for_geoms(geoms)
+
+    # overlapper.tden_overlaps_for_geoms(geoms)
+    # overlapper.wf_overlaps_for_geoms(geoms)
+    overlapper.overlaps_for_geoms(geoms, ovlp_type=ovlp_type)
 
 
 def run_opt(geom, calc_getter, opt_getter):
@@ -445,7 +449,7 @@ def run():
     elif args.fclean:
         clean(force=True)
     elif args.overlaps:
-        overlaps(run_dict)
+        overlaps(run_dict, args.overlaps)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
 
