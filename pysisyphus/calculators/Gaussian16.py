@@ -54,7 +54,8 @@ class Gaussian16(OverlapCalculator):
 
         self.gaussian_input = """
         %nproc={pal}
-        %chk={chk_fn}
+        {chk_link0}
+        {add_link0}
         #P {calc_type} {route}
         # nosymm
         
@@ -72,6 +73,7 @@ class Gaussian16(OverlapCalculator):
         self.parser_funcs = {
             "force": self.parse_force,
             "noparse": lambda path: None,
+            "double_mol": self.parse_double_mol,
         }
 
         self.base_cmd = Config["gaussian16"]["cmd"]
@@ -85,16 +87,26 @@ class Gaussian16(OverlapCalculator):
 
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)
-        inp = self.gaussian_input.format(
-                        pal=self.pal,
-                        chk_fn=self.chk_fn,
-                        calc_type=calc_type,
-                        route=self.route,
-                        charge=self.charge,
-                        mult=self.mult,
-                        coords=coords,
-                        gbs=self.make_gbs_str(),
-        )
+        kwargs = {
+            "pal": self.pal,
+            "chk_link0": f"%chk={self.chk_fn}",
+            "add_link0": "",
+            "route": self.route,
+            "calc_type": calc_type,
+            "charge": self.charge,
+            "mult": self.mult,
+            "coords": coords,
+            "gbs": self.make_gbs_str(),
+        }
+        if calc_type == "double_mol":
+            update = {
+                "chk_link0": "",
+                "add_link0": "%KJob L302 1",
+                "route": self.route + " iop(3/33=1) geom=notest",
+                "calc_type": "",
+            }
+            kwargs.update(update)
+        inp = self.gaussian_input.format(**kwargs)
         return inp
 
     def make_fchk(self, path):
@@ -111,6 +123,10 @@ class Gaussian16(OverlapCalculator):
         return dump_fn
 
     def run_after(self, path):
+        chk_path = path / self.chk_fn
+        if not chk_path.exists():
+            self.log("No .chk file found.")
+            return
         # Create the .fchk file so we can keep it and parse it later on.
         self.make_fchk(path)
         if self.track:
@@ -173,6 +189,19 @@ class Gaussian16(OverlapCalculator):
         results = self.run(inp, **kwargs)
         if self.track:
             self.track_root(atoms, coords)
+
+    def run_double_mol_calculation(self, atoms, coords1, coords2):
+        self.log("Running double molecule calculation")
+        double_atoms = atoms + atoms
+        double_coords = np.hstack((coords1, coords2))
+        inp = self.prepare_input(double_atoms, double_coords, "double_mol")
+        kwargs = {
+                "calc": "double_mol",
+                "keep": False,
+                "inc_counter": False,
+        }
+        double_mol_ovlps = self.run(inp, **kwargs)
+        return double_mol_ovlps
 
     def parse_tddft(self, path):
         with open(path / self.out_fn) as handle:
@@ -332,55 +361,75 @@ class Gaussian16(OverlapCalculator):
         return results
 
     def parse_double_mol(self, path):
+        def repl_double(s, loc, toks):
+            return toks[0].replace("D", "E")
+
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        basis_funcs = int(re.search("NBasis =\s*(\d+)", text)[1])
-        # Gaussian prints a triangular matrix including the diagonal
+        # Number of basis functions in the double molecule
+        nbas = int(re.search("NBasis =\s*(\d+)", text)[1])
+        assert nbas % 2 == 0
+        # Gaussian prints columns of a triangular matrix including
+        # the diagonal
         pp.ParserElement.setDefaultWhitespaceChars(' \t')
         int_ = pp.Suppress(pp.Word(pp.nums))
-        float_ = pp.Word(pp.nums + ".D+-")
+        float_ = pp.Word(pp.nums + ".D+-").setParseAction(repl_double)
         nl = pp.Suppress(pp.Literal("\n"))
         header = pp.OneOrMore(int_) + nl
         line = int_ + pp.OneOrMore(float_) + nl
 
-        block = header + pp.OneOrMore(~header + line)
+        block = pp.Group(header + pp.OneOrMore(~header + line))
 
         parser = (pp.Suppress(pp.SkipTo("*** Overlap *** \n", include=True))
-                  + pp.OneOrMore(block)
+                  + pp.OneOrMore(block).setResultsName("blocks")
         )
         result = parser.parseFile(path / self.out_fn)
-        # Convert to python notation
-        result = [num.replace("D", "E") for num in result]
-        raise Exception("Completly faulty from here on! WTF.")
 
-        arr = np.array(result, dtype=np.float64)
+        # The full double molecule overlap matrix (square)
+        full_mat = np.zeros((nbas, nbas))
 
-        import pdb; pdb.set_trace()
-        full_ovlp = np.zeros((basis_funcs, basis_funcs))
-        full_ovlp[np.tril_indices(basis_funcs)] = arr
-        return full_ovlp
+        def get_block_inds(block_ind, nbas, cols=5):
+            """Returns the indices as required to assign the matrix
+            printed by Gaussian. Gaussian prints a lower triangle
+            matrix in blocks of five columns each."""
+            start_row = block_ind*cols
+            start_col = start_row
+            inds = list()
+            for row in range(start_row, nbas):
+                col = start_col
+                while (col <= row) and (col < start_row + cols):
+                    inds.append((row, col))
+                    col += 1
+            return inds
 
+        for i, block in enumerate(result["blocks"]):
+            rows, cols = zip(*get_block_inds(i, nbas))
+            full_mat[rows, cols] = block.asList()
+
+        fst = full_mat[:,0][:,None]
+        nbas_single = nbas // 2
+        double_mol_ovlp = full_mat[nbas_single:, :nbas_single]
+        """The whole matrix consists of four blocks:
+            Original overlaps of molecule 1
+                b1 = full_mat[:nbas_single, :nbas_single]
+            Zero, as we only get the lower triangle
+                b2 = full_mat[:nbas_single, nbas_single:]
+            Double molecule overlaps between basis functions of
+            molecule 1 and molecule 2
+                b3 = full_mat[nbas_single:, :nbas_single]
+            Original overlaps of molecule 2
+                b4 = full_mat[nbas_single:, nbas_single:]
         """
-        # Parse the .log
-        path = Path(path) / self.out_fn
-        with open(path) as handle:
-            text = handle.read()
-        force_re = "\(Quad\)   \(Total\)(.+?)Item"
-        mobj = re.search(force_re, text, re.DOTALL)
-        force_table = mobj[1].strip()
-        force = [line.strip().split()[2] for line in force_table.split("\n")]
-        force = np.array(force, dtype=np.float)
-        energy_re = "SCF Done:\s*E\(.+?\)\s*=\s*([\d\.\-]+)\s*A\.U."
-        mobj = re.search(energy_re, text)
-        energy = float(mobj[1])
-        results["energy"] = energy
-        results["forces"] = force
-        return results
-        """
+        double_mol_ovlp = full_mat[nbas_single:, :nbas_single]
+        return double_mol_ovlp
 
     def keep(self, path):
         kept_fns = super().keep(path)
-        self.fchk = kept_fns["fchk"]
+        try:
+            self.fchk = kept_fns["fchk"]
+        except KeyError:
+            self.log("No .fchk file found!")
+            return
         if self.nstates:
             self.dump_635r = kept_fns["dump_635r"]
 
