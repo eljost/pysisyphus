@@ -28,7 +28,7 @@ setup(
         "pyyaml",
         "dask",
         "distributed",
-        "rmsd",
+        #"rmsd",
     ],
     entry_points={
         "console_scripts": [
