@@ -367,10 +367,6 @@ class Gaussian16(OverlapCalculator):
 
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        double_fn = self.make_fn("double_mol")
-        cwd = Path("/scratch/programme/pysisyphus/tests_staging/test_ch4_td_opt")
-        with open(cwd / double_fn, "w") as handle:
-            handle.write(text)
         # Number of basis functions in the double molecule
         nbas = int(re.search("NBasis =\s*(\d+)", text)[1])
         assert nbas % 2 == 0
