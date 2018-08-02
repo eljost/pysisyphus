@@ -182,7 +182,7 @@ class Overlapper:
             if double_mol:
                 prev_geom = geoms[i]
                 ao_ovlp = geom.calc_double_ao_overlap(prev_geom)
-                np.savetxt(f"double_ovlp_{i:03d}", ao_ovlp)
+                np.savetxt(f"ao_ovlp_true_{i:03d}", ao_ovlp)
 
             prev_calc = geoms[i].calculator
             cur_calc = geom.calculator

@@ -33,7 +33,8 @@ class Gaussian16(OverlapCalculator):
             try:
                 self.root = int(re.search("root=(\d+)", route_lower)[1])
             except TypeError:
-                self.root = None
+                self.root = 1
+                self.log("No explicit root was specified! Using root=1 as default!")
         else:
             self.root = None
             self.nstates = None
@@ -57,7 +58,7 @@ class Gaussian16(OverlapCalculator):
         {chk_link0}
         {add_link0}
         #P {calc_type} {route}
-        # nosymm
+        # Symmetry=None
         
         title
 
@@ -366,13 +367,19 @@ class Gaussian16(OverlapCalculator):
 
         with open(path / self.out_fn) as handle:
             text = handle.read()
+        double_fn = self.make_fn("double_mol")
+        cwd = Path("/scratch/programme/pysisyphus/tests_staging/test_ch4_td_opt")
+        with open(cwd / double_fn, "w") as handle:
+            handle.write(text)
         # Number of basis functions in the double molecule
         nbas = int(re.search("NBasis =\s*(\d+)", text)[1])
         assert nbas % 2 == 0
         # Gaussian prints columns of a triangular matrix including
         # the diagonal
+        backup_white = pp.ParserElement.DEFAULT_WHITE_CHARS
         pp.ParserElement.setDefaultWhitespaceChars(' \t')
         int_ = pp.Suppress(pp.Word(pp.nums))
+
         float_ = pp.Word(pp.nums + ".D+-").setParseAction(repl_double)
         nl = pp.Suppress(pp.Literal("\n"))
         header = pp.OneOrMore(int_) + nl
@@ -383,7 +390,10 @@ class Gaussian16(OverlapCalculator):
         parser = (pp.Suppress(pp.SkipTo("*** Overlap *** \n", include=True))
                   + pp.OneOrMore(block).setResultsName("blocks")
         )
+
+
         result = parser.parseFile(path / self.out_fn)
+        pp.ParserElement.setDefaultWhitespaceChars(backup_white)
 
         # The full double molecule overlap matrix (square)
         full_mat = np.zeros((nbas, nbas))

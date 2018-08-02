@@ -13,9 +13,11 @@ class OverlapCalculator(Calculator):
     }
 
 
-    def __init__(self, *args, track=False, ovlp_type="wf", **kwargs, ):
+    def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
+                 **kwargs, ):
         self.track = track
         self.ovlp_type = ovlp_type
+        self.double_mol = double_mol
         self.mo_coeff_list = list()
         self.ci_coeff_list = list()
 
@@ -52,10 +54,12 @@ class OverlapCalculator(Calculator):
         ci_full1 = self.blowup_ci_coeffs(ci_coeffs1)
         ci_full2 = self.blowup_ci_coeffs(ci_coeffs2)
 
-        mo_coeffs1_inv = np.linalg.inv(mo_coeffs1)
         # AO overlaps
         if ao_ovlp is None:
+            mo_coeffs1_inv = np.linalg.inv(mo_coeffs1)
             ao_ovlp = mo_coeffs1_inv.dot(mo_coeffs1_inv.T)
+            ao_ovlp_fn = self.make_fn("ao_ovlp_rec")
+            np.savetxt(ao_ovlp_fn, ao_ovlp)
         # MO overlaps
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
@@ -121,8 +125,7 @@ class OverlapCalculator(Calculator):
         self.wfow.store_iteration(atoms, coords, mos_fn, ci_coeffs)
 
 
-    def track_root(self, atoms, coords, double_mol=True,
-                   ovlp_type=None):
+    def track_root(self, atoms, coords, ovlp_type=None):
         """Store the information of the current iteration and if possible
         calculate the overlap with the previous iteration."""
         self.store_overlap_data(atoms, coords)
@@ -134,7 +137,7 @@ class OverlapCalculator(Calculator):
             return False
 
         ao_ovlp = None
-        if double_mol and hasattr(self, "run_double_mol_calculation"):
+        if self.double_mol and hasattr(self, "run_double_mol_calculation"):
             last_two_coords = self.wfow.last_two_coords
             ao_ovlp = self.run_double_mol_calculation(atoms, *last_two_coords)
 

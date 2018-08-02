@@ -190,6 +190,10 @@ def overlaps(run_dict, geoms=None):
         overlapper = get_overlapper(run_dict)
     ovlp_type = run_dict["overlaps"]["type"]
     double_mol = run_dict["overlaps"]["ao_ovlps"]
+    if ovlp_type == "wf" and double_mol:
+        print("!"*10)
+        print("WFOverlaps with true AO overlaps seem faulty right now!")
+        print("!"*10)
     overlapper.overlaps_for_geoms(geoms,
                                   ovlp_type=ovlp_type,
                                   double_mol=double_mol)
