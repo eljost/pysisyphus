@@ -18,10 +18,11 @@ from pysisyphus.config import Config
 
 class Gaussian16(OverlapCalculator):
 
-    def __init__(self, route, gbs="", **kwargs):
+    def __init__(self, route, mem=3500, gbs="", **kwargs):
         super().__init__(**kwargs)
 
         self.route = route.lower()
+        self.mem = mem
         assert ("symmetry" not in self.route) and ("nosymm" not in self.route)
         self.gbs = gbs
         assert "@" not in gbs, "Give only the path to the .gbs file, " \
@@ -55,6 +56,7 @@ class Gaussian16(OverlapCalculator):
 
         self.gaussian_input = """
         %nproc={pal}
+        %mem={mem}MB
         {chk_link0}
         {add_link0}
         #P {calc_type} {route}
@@ -90,6 +92,7 @@ class Gaussian16(OverlapCalculator):
         coords = self.prepare_coords(atoms, coords)
         kwargs = {
             "pal": self.pal,
+            "mem": self.pal*self.mem,
             "chk_link0": f"%chk={self.chk_fn}",
             "add_link0": "",
             "route": self.route,
