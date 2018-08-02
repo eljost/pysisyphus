@@ -10,17 +10,15 @@ def sort_cut(cut, max_overlap_inds, consider_first=None):
         consider_first = cut.shape[1]
     cut_sorted = cut.copy()
     cur_inds = np.arange(cut.shape[1])
-    print("cur_inds")
     # Start from index 1, as we keep the first row
     all_inds = [cur_inds, ]
     for i, inds in enumerate(max_overlap_inds, 1):
         jumps = [(j, s) for j, s in enumerate(inds) if s != j]
-        print(f"from {i-1:02d} to {i:02d}", jumps)
 
         unique_inds = np.unique(inds[:consider_first])
+        # if jumps:
+            # print(f"from {i-1:02d} to {i:02d}", jumps)
 
-        if i== 9:
-            import pdb; pdb.set_trace()
         new_inds = cur_inds.copy()
         if unique_inds.size != consider_first:
             print("inds are non-unique! not skipping!")
@@ -30,8 +28,7 @@ def sort_cut(cut, max_overlap_inds, consider_first=None):
                 new_inds[j] = cur_inds[s]
         
         cur_inds = new_inds
-        cut_sorted[i:] = cut[i:,cur_inds]
-        print(f"{i:02d}: {cur_inds}")
+        cut_sorted[i:,cur_inds] = cut[i:]
         all_inds.append(cur_inds)
     all_inds = np.array(all_inds)
     return cut_sorted, all_inds
