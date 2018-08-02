@@ -82,7 +82,7 @@ def parse_args(args):
     run_type_group.add_argument("--restart", action="store_true",
         help="Continue a previously crashed/aborted/... pysisphus run."
     )
-    run_type_group.add_argument("--overlaps", choices="tden wf".split(),
+    run_type_group.add_argument("--overlaps", action="store_true",
         help="Calculate overlaps between transition density matrices "
              "(tden) or wavefunctions (wf)."
     )
@@ -115,9 +115,9 @@ def run_cos(cos, calc_getter, opt_getter):
     opt.run()
 
 
-def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
-                 scheduler=None):
-    print("Running calculations to get state/wavefunction overlaps.")
+def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
+                     scheduler=None):
+    print("Running calculations")
     def par_calc(geom):
         geom.calculator.run_calculation(geom.atoms, geom.coords)
         return geom
@@ -139,22 +139,25 @@ def run_overlaps(geoms, calc_getter, path, calc_key, calc_kwargs,
             diff = end - start
             print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
             sys.stdout.flush()
-
-    path = Path(".")
-    overlapper = Overlapper(path, calc_key, calc_kwargs)
-    ovlp_type = "tden"
-    double_mol = True
-    overlapper.overlaps_for_geoms(geoms,
-                                  ovlp_type=ovlp_type,
-                                  double_mol=double_mol)
+    return geoms
 
 
-def overlaps(run_dict):
-    cwd = Path(".")
-    calc_key = run_dict["calc"].pop("type")
+def get_overlapper(run_dict):
+    try:
+        calc_key = run_dict["calc"].pop("type")
+    except KeyError:
+        print("Creating Overlapper without calc_key.")
+        calc_key = None
     calc_kwargs = run_dict["calc"]
+    cwd = Path(".")
     overlapper = Overlapper(cwd, calc_key, calc_kwargs)
+    return overlapper
 
+
+def restore_calculators(run_dict):
+    overlapper = get_overlapper(run_dict)
+
+    cwd = Path(".")
     glob = run_dict["overlaps"]["glob"]
     # First try globbing
     if glob:
@@ -177,7 +180,14 @@ def overlaps(run_dict):
         # geoms = geoms[:2]
         calc_num = overlapper.restore_calculators(geoms)
         geoms = geoms[:calc_num]
+    return overlapper, geoms
 
+
+def overlaps(run_dict, geoms=None):
+    if not geoms:
+        overlapper, geoms = restore_calculators(run_dict)
+    else:
+        overlapper = get_overlapper(run_dict)
     ovlp_type = run_dict["overlaps"]["type"]
     double_mol = run_dict["overlaps"]["ao_ovlps"]
     overlapper.overlaps_for_geoms(geoms,
@@ -340,8 +350,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         dry_run(calc, geoms[0])
         return
     elif run_dict["overlaps"]:
-        run_overlaps(geoms, calc_getter, yaml_dir, calc_key, calc_kwargs,
-                     scheduler)
+        geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
+                                 calc_kwargs, scheduler)
+        overlaps(run_dict, geoms)
     elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)

@@ -18,7 +18,7 @@ from pysisyphus.helpers import geom_from_xyz_file
 class Overlapper:
     orca_exts = ("out", "gbw", "cis")
 
-    def __init__(self, path, calc_key, calc_kwargs):
+    def __init__(self, path, calc_key=None, calc_kwargs=None):
         self.path = Path(path)
         self.calc_key = calc_key
         self.calc_kwargs = calc_kwargs

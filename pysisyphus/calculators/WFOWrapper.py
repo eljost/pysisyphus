@@ -242,11 +242,17 @@ class WFOWrapper:
                   + pp.Word(pp.nums) + pp.Literal(">")
         matrix_line = pp.Suppress(psi_bra) + pp.OneOrMore(float_)
 
+        # I really don't know why this is needed but otherwise I can't parse
+        # overlap calculations with the true AO overlap matrix, even though
+        # the files appear completely similar regarding printing of the matrices.
+        # WTF. WTF!
+        text = text.replace("\n", " ")
         parser = pp.SkipTo(header, include=True) \
                  + pp.OneOrMore(psi_ket) \
                  + pp.OneOrMore(matrix_line).setResultsName("overlap")
 
         result = parser.parseString(text)
+
         return np.array(list(result["overlap"]), dtype=np.float)
 
     def wf_overlap(self, iter1, iter2, ao_ovlp=None):
