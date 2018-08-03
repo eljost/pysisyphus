@@ -17,6 +17,7 @@ import yaml
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.overlaps.Overlapper import Overlapper
+from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.helpers import geom_from_xyz_file
 from pysisyphus.irc import *
 from pysisyphus.init_logging import init_logging
@@ -86,6 +87,10 @@ def parse_args(args):
         help="Calculate overlaps between transition density matrices "
              "(tden) or wavefunctions (wf)."
     )
+    run_type_group.add_argument("--couplings", type=int, nargs="+",
+        help="Create coupling elements."
+    )
+
     parser.add_argument("--scheduler", default=None,
         help="Address of the dask scheduler."
     )
@@ -197,7 +202,6 @@ def overlaps(run_dict, geoms=None):
     overlapper.overlaps_for_geoms(geoms,
                                   ovlp_type=ovlp_type,
                                   double_mol=double_mol)
-
 
 def run_opt(geom, calc_getter, opt_getter):
     geom.set_calculator(calc_getter(0))
@@ -462,6 +466,7 @@ def print_header():
 
 
 def run():
+    start_time = time.time()
     args = parse_args(sys.argv[1:])
 
     print_header()
@@ -481,8 +486,13 @@ def run():
         clean(force=True)
     elif args.overlaps:
         overlaps(run_dict)
+    elif args.couplings:
+        couplings(args.couplings)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
+    end_time = time.time()
+    diff_time = end_time - start_time()
+    print(f"pysisyphus run took {diff:.1f}s.")
 
 if __name__ == "__main__":
     run()
