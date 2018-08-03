@@ -121,7 +121,7 @@ def run_cos(cos, calc_getter, opt_getter):
 
 
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
-                     scheduler=None):
+                     scheduler=None, assert_track=False):
     print("Running calculations")
     def par_calc(geom):
         geom.calculator.run_calculation(geom.atoms, geom.coords)
@@ -129,8 +129,9 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
 
     for i, geom in enumerate(geoms):
         geom.set_calculator(calc_getter(i))
-        assert geom.calculator.track, "'track: True' must be present in " \
-                                      "calc section."
+    if assert_track:
+        assert all([geom.calculator.track for geom in geoms]), \
+            "'track: True' must be present in calc section."
 
     if scheduler:
         client =  Client(scheduler, pure=False, silence_logs=False)
@@ -359,7 +360,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         return
     elif run_dict["overlaps"]:
         geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
-                                 calc_kwargs, scheduler)
+                                 calc_kwargs, scheduler, assert_track=True)
         overlaps(run_dict, geoms)
     elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
@@ -368,9 +369,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         assert(len(geoms) == 1)
         run_opt(geoms[0], calc_getter, opt_getter)
     else:
-        print("Trying to run calculations but got nothing to do! Please "
-              "supply either: 'overlaps: True' or a 'cos: ...' and/or an "
-              "'opt: ...'block. Exiting!")
+        print("Running created inputs.")
+        geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
+                                 calc_kwargs, scheduler)
 
 
 def clean(force=False):
@@ -491,8 +492,8 @@ def run():
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     end_time = time.time()
-    diff_time = end_time - start_time
-    print(f"pysisyphus run took {diff_time:.1f}s.")
+    duration = int(end_time - start_time)
+    print(f"pysisyphus run took {duration}s.")
 
 if __name__ == "__main__":
     run()

@@ -177,6 +177,7 @@ class Overlapper:
         print(f"Doing {ovlp_type.upper()}-overlaps.")
 
         inds_list = list()
+        ovlp_mats = list()
         for i, geom in enumerate(geoms[1:]):
             ao_ovlp = None
             if double_mol:
@@ -191,6 +192,7 @@ class Overlapper:
             )
             ovlp_mat = ovlp_func(prev_calc, cur_calc, ao_ovlp)
             print(ovlp_mat)
+            ovlp_mats.append(ovlp_mat)
             # Determine indices of maximum overlap
             index_array = prev_calc.index_array_from_overlaps(ovlp_mat)
             inds_list.append(index_array)
@@ -198,11 +200,15 @@ class Overlapper:
             np.savetxt(self.path / ovlp_mat_fn, ovlp_mat)
             print(index_array)
         inds_arr = np.array(inds_list)
+        ovlp_mats = np.array(ovlp_mats)
         max_ovlp_inds_fn = f"{ovlp_type}_max_ovlp_inds"
+        ovlp_mats_fn = f"{ovlp_type}_ovlp_mats"
         np.savetxt(self.path / max_ovlp_inds_fn, inds_arr, fmt="%i")
+        np.save(ovlp_mats_fn, ovlp_mats)
         print()
         print("Max overlap indices.")
-        print(inds_arr)
+        for i, row in enumerate(inds_arr):
+            print(f"Step {i:02d}: {row}")
 
 
 if __name__ == "__main__":
