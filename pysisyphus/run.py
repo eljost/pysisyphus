@@ -491,7 +491,7 @@ def run():
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     end_time = time.time()
-    diff_time = end_time - start_time()
+    diff_time = end_time - start_time
     print(f"pysisyphus run took {diff_time:.1f}s.")
 
 if __name__ == "__main__":
