@@ -18,6 +18,7 @@ from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.overlaps.couplings import couplings
+from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.helpers import geom_from_xyz_file
 from pysisyphus.irc import *
 from pysisyphus.init_logging import init_logging
@@ -75,6 +76,14 @@ def parse_args(args):
     action_group.add_argument("--fclean", action="store_true",
         help="Force cleaning without prior confirmation."
     )
+    action_group.add_argument("--couplings", type=int, nargs="+",
+        help="Create coupling elements."
+    )
+    action_group.add_argument("--sort-by-overlaps", nargs=2,
+                              metavar=("ENERGIES", "OVERLAPS"),
+        help="Sort precomputed energies of (excited) states by precomputed "
+             "overlaps."
+    )
 
     run_type_group = parser.add_mutually_exclusive_group(required=False)
     run_type_group.add_argument("--dryrun", action="store_true",
@@ -87,13 +96,15 @@ def parse_args(args):
         help="Calculate overlaps between transition density matrices "
              "(tden) or wavefunctions (wf)."
     )
-    run_type_group.add_argument("--couplings", type=int, nargs="+",
-        help="Create coupling elements."
-    )
 
     parser.add_argument("--scheduler", default=None,
         help="Address of the dask scheduler."
     )
+    parser.add_argument("--consider-first", type=int, default=None,
+        help="Consider the first N states for sorting according "
+             "to overlaps."
+    )
+
     return parser.parse_args()
 
 
@@ -110,7 +121,6 @@ def get_calc(index, base_name, calc_key, calc_kwargs):
     kwargs_copy["base_name"] = base_name
     kwargs_copy["calc_number"] = index
     return CALC_DICT[calc_key](**kwargs_copy)
-
 
 
 def run_cos(cos, calc_getter, opt_getter):
@@ -489,6 +499,11 @@ def run():
         overlaps(run_dict)
     elif args.couplings:
         couplings(args.couplings)
+    elif args.sort_by_overlaps:
+        energies_fn, max_ovlp_inds_fn = args.sort_by_overlaps
+        # energies_fn, max_ovlp_inds_fn, consider_first
+        consider_first = args.consider_first
+        sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     end_time = time.time()
