@@ -114,7 +114,44 @@ class Geometry:
 
     @property
     def coords3d(self):
+        """Coordinates in 3d.
+
+        Returns
+        -------
+        coords3d : np.array
+            Coordinates of the Geometry as 2D array.
+        """
         return self._coords.reshape(-1, 3)
+
+    # @coords3d.setter
+    # def coords3d(self, coords3d):
+        # self.coords = coords3d.flatten()
+
+    @property
+    def coords_by_type(self):
+        """Coordinates in 3d by atom type and their corresponding indices.
+
+        Returns
+        -------
+        cbt : dict
+            Dictionary with the unique atom types of the Geometry as keys.
+            It's values are the 3d coordinates of the corresponding atom type.
+        inds : dict
+            Dictionary with the unique atom types of the Geometry as keys.
+            It's values are the original indices of the 3d coordinates in the
+            whole coords3d array.
+        """
+        cbt = dict()
+        inds = dict()
+        # for i, (atom, c3d) in enumerate(zip(self.atoms, self.coords3d)):
+            # cbt.setdefault(atom, list()).append((i, c3d.tolist()))
+        for i, (atom, c3d) in enumerate(zip(self.atoms, self.coords3d)):
+            cbt.setdefault(atom, list()).append((c3d))
+            inds.setdefault(atom, list()).append(i)
+        for atom, c3d in cbt.items():
+            cbt[atom] = np.array(c3d)
+            inds[atom] = np.array(inds[atom])
+        return cbt, inds
 
     @property
     def mw_coords(self):

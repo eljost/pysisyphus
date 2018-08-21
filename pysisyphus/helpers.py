@@ -4,6 +4,8 @@ import re
 
 import numpy as np
 import scipy as sp
+from scipy.optimize import linear_sum_assignment
+from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
@@ -92,6 +94,43 @@ def slugify_worker(dask_worker):
     slug = re.sub("\.", "_", slug)
     slug = re.sub(":", "-", slug)
     return slug
+
+
+def match_geoms(ref_geom, geom_to_match, hydrogen=False):
+    # assert (ref_geom.atoms == geom_to_match.atoms)
+    ref_coords, _ = ref_geom.coords_by_type
+    coords_to_match, inds_to_match = geom_to_match.coords_by_type
+    atoms = ref_coords.keys()
+    for atom in atoms:
+        # Only match hydrogens if explicitly requested
+        if atom == "H" and not hydrogen:
+            continue
+        print("atom", atom)
+        ref_coords_for_atom = ref_coords[atom]
+        coords_to_match_for_atom = coords_to_match[atom]
+        # Pairwise distances between two collections
+        # Atoms of ref_geom are along the rows, atoms of geom_to_match
+        # along the columns.
+        cd = cdist(ref_coords_for_atom, coords_to_match_for_atom)
+        print(cd)
+        # Hungarian method, row_inds are returned already sorted.
+        row_inds, col_inds = linear_sum_assignment(cd)
+        print("col_inds", col_inds)
+        old_inds = inds_to_match[atom]
+        new_inds = old_inds[col_inds]
+        print("old_inds", old_inds)
+        print("new_inds", new_inds)
+        new_coords_for_atom = coords_to_match_for_atom[new_inds]
+        # print(ref_coords_for_atom)
+        # print(new_coords_for_atom)
+        # print(ref_coords_for_atom-new_coords_for_atom)
+        # Update coordinates
+        print("old coords")
+        c3d = geom_to_match.coords3d
+        print(c3d)
+        # Modify the coordinates directly
+        c3d[old_inds] = new_coords_for_atom
+        # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ class FragmentKick(Kick):
                                # for frag in self.fragments]
         super().__init__(geom, rmsd_thresh=rmsd_thresh, **kwargs)
 
+        # Shift fragment coordinates into their centroid
         frag_coords = self.get_frag_coords(self.initial_geom)
         self.frag_coords = [fc - fc.mean(axis=0) for fc in frag_coords]
 
