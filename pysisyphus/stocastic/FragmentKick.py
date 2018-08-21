@@ -6,11 +6,10 @@ from math import cos, sin
 import numpy as np
 import rmsd
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.Geometry import Geometry
 from pysisyphus.stocastic.Kick import Kick
 from pysisyphus.xyzloader import make_trj_str_from_geoms
-
 
 
 np.set_printoptions(suppress=True, precision=2)
@@ -18,8 +17,10 @@ np.set_printoptions(suppress=True, precision=2)
 
 class FragmentKick(Kick):
 
-    def __init__(self, geom, fragments, rmsd_thresh=0.25, **kwargs):
+    def __init__(self, geom, fragments, rmsd_thresh=0.25,
+                 fix_fragments=list(), **kwargs):
         self.fragments = [np.array(frag) for frag in fragments]
+        self.fix_fragments = fix_fragments
         # atoms_arr = np.array(geom.atoms)
         # self.fragment_atoms = [atoms_arr[frag].tolist()
                                # for frag in self.fragments]
@@ -77,8 +78,17 @@ class FragmentKick(Kick):
     def get_kicked_geom(self):
         # frag_coords = self.get_frag_coords()
         frag_coords = self.frag_coords
-        kicked_frags = [self.kick_fragment(fc) for fc in frag_coords]
+        # kicked_frags = [self.kick_fragment(fc) for fc in frag_coords]
+        kicked_frags = list()
+        for i, fc in enumerate(frag_coords):
+            if i in self.fix_fragments:
+                kicked_frag = fc
+                print(f"keep fragment {i} fixed.")
+            else:
+                kicked_frag = self.kick_fragment(fc)
+            kicked_frags.append(kicked_frag)
         new_coords3d = np.concatenate(kicked_frags)
+        print(new_coords3d)
         new_coords = rmsd.kabsch_rotate(new_coords3d,
                                         self.initial_coords3d
         ).flatten()
@@ -102,10 +112,13 @@ class FragmentKick(Kick):
             print(f"Starting cycle {self.cur_cycle} with " \
                   f"{len(self.geoms_to_kick)} geometries.")
             kicked_geoms = [self.get_kicked_geom() for _ in range(self.cycle_size)]
+            # Write input geometries to disk
             self.geoms_to_trj(kicked_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
             opt_geoms = [self.run_kicked_geom(geom) for geom in kicked_geoms]
-            # Filter out None
-            opt_geoms = [geom for geom in opt_geoms if geom]
+            # Filter out None and reject geoms where atoms are too close
+            opt_geoms = [geom for geom in opt_geoms
+                         if geom and not self.reject_by_distance(geom)]
+            # opt_geoms = opt_geoms[not to_reject]
             opt_num = len(opt_geoms)
             print(f"Kicks in cycle {self.cur_cycle} produced "
                   f"{opt_num} new geometries.")
@@ -155,6 +168,8 @@ class FragmentKick(Kick):
 
             # import pdb; pdb.set_trace()
             trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
+            # Sort by energy
+            opt_geoms = sorted(opt_geoms, key=lambda g: g.energy)
             self.geoms_to_trj(opt_geoms, trj_filtered_fn)
 
             self.cur_cycle += 1

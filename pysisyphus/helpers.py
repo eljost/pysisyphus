@@ -97,7 +97,12 @@ def slugify_worker(dask_worker):
 
 
 def match_geoms(ref_geom, geom_to_match, hydrogen=False):
-    # assert (ref_geom.atoms == geom_to_match.atoms)
+    """
+    See
+        [1] 10.1021/ci400534h
+        [2] 10.1021/acs.jcim.6b00516
+    """
+
     ref_coords, _ = ref_geom.coords_by_type
     coords_to_match, inds_to_match = geom_to_match.coords_by_type
     atoms = ref_coords.keys()

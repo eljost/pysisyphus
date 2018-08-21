@@ -5,9 +5,11 @@ import time
 
 import numpy as np
 import rmsd
+from scipy.spatial.distance import pdist, squareform
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.Geometry import Geometry
+from pysisyphus.InternalCoordinates import get_cov_radii_sum_array
 from pysisyphus.xyzloader import make_trj_str_from_geoms
 
 
@@ -120,6 +122,13 @@ class Kick:
         # print("similar inds", similar_inds)
         # print(f"Keeping {kept_num}/{geom_num} geometries.")
         return kept_geoms
+
+    def reject_by_distance(self, geom, factor=.7):
+        """Reject Geometry when atoms are too close."""
+        dist_mat = pdist(geom.coords3d)
+        cov_rad_mat = get_cov_radii_sum_array(geom.atoms, geom.coords)
+        to_reject = dist_mat < factor*cov_rad_mat
+        return any(to_reject)
 
     def run_cycle(self, geom):
         print(f"##### Cycle {self.cur_cycle:03d}, "

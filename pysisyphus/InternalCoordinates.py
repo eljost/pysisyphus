@@ -22,6 +22,19 @@ from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
 
 
+def get_cov_radii_sum_array(atoms, coords):
+    coords3d = coords.reshape(-1, 3)
+    atom_indices = list(it.combinations(range(len(coords3d)),2))
+    atom_indices = np.array(atom_indices, dtype=int)
+    cov_rad_sums = list()
+    for i, j in atom_indices:
+        atom1 = atoms[i].lower()
+        atom2 = atoms[j].lower()
+        cov_rad_sums.append(CR[atom1] + CR[atom2])
+    cov_rad_sums = np.array(cov_rad_sums)
+    return cov_rad_sums
+
+
 class RedundantCoords:
 
     def __init__(self, atoms, cart_coords):
@@ -204,15 +217,8 @@ class RedundantCoords:
         # condensed distance matrix cdm.
         atom_indices = list(it.combinations(range(len(coords3d)),2))
         atom_indices = np.array(atom_indices, dtype=int)
-        cov_rad_sums = list()
-        for i, j in atom_indices:
-            atom1 = self.atoms[i].lower()
-            atom2 = self.atoms[j].lower()
-            cov_rad1 = CR[atom1]
-            cov_rad2 = CR[atom2]
-            cov_rad_sum = factor * (cov_rad1 + cov_rad2)
-            cov_rad_sums.append(cov_rad_sum)
-        cov_rad_sums = np.array(cov_rad_sums)
+        cov_rad_sums = get_cov_radii_sum_array(self.atoms, self.cart_coords)
+        cov_rad_sums *= factor
         bond_flags = cdm <= cov_rad_sums
         bond_indices = atom_indices[bond_flags]
 
