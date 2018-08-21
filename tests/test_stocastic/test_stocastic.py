@@ -26,11 +26,12 @@ def test_fragment_kick():
     chlorine_frag = (12, 13)
     fragments = (benz_frag, chlorine_frag)
     kwargs = {
-        "cycle_size": 10,
+        "cycle_size": 50,
         "radius": 3.5,#1.25,
-        "cycles": 1,
+        "cycles": 10,
         "seed": 1532002565,
         "fix_fragments": (0, ),
+        "energy_thresh": 1e-4,
     }
     fkick = FragmentKick(geom, fragments, **kwargs)
     fkick.run()

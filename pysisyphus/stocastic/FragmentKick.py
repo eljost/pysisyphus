@@ -18,9 +18,10 @@ np.set_printoptions(suppress=True, precision=2)
 class FragmentKick(Kick):
 
     def __init__(self, geom, fragments, rmsd_thresh=0.25,
-                 fix_fragments=list(), **kwargs):
+                 fix_fragments=list(), energy_thresh=1e-5, **kwargs):
         self.fragments = [np.array(frag) for frag in fragments]
         self.fix_fragments = fix_fragments
+        self.energy_thresh = energy_thresh
         # atoms_arr = np.array(geom.atoms)
         # self.fragment_atoms = [atoms_arr[frag].tolist()
                                # for frag in self.fragments]
@@ -32,7 +33,7 @@ class FragmentKick(Kick):
 
         new_coords3d = np.concatenate(self.frag_coords)
         geom = Geometry(self.atoms, new_coords3d.flatten())
-        with open("origin.xyz", "w") as handle:
+        with open("fragments_in_origin.xyz", "w") as handle:
             handle.write(geom.as_xyz())
 
         self.energies = list()
@@ -83,12 +84,10 @@ class FragmentKick(Kick):
         for i, fc in enumerate(frag_coords):
             if i in self.fix_fragments:
                 kicked_frag = fc
-                print(f"keep fragment {i} fixed.")
             else:
                 kicked_frag = self.kick_fragment(fc)
             kicked_frags.append(kicked_frag)
         new_coords3d = np.concatenate(kicked_frags)
-        print(new_coords3d)
         new_coords = rmsd.kabsch_rotate(new_coords3d,
                                         self.initial_coords3d
         ).flatten()
@@ -106,8 +105,6 @@ class FragmentKick(Kick):
             handle.write(make_trj_str_from_geoms(geoms))
 
     def run(self):
-        def are_close(en1, en2, thresh=1e-4):
-            return abs(en1 - en2) < thresh
         while self.cur_cycle < self.cycles:
             print(f"Starting cycle {self.cur_cycle} with " \
                   f"{len(self.geoms_to_kick)} geometries.")
@@ -115,66 +112,40 @@ class FragmentKick(Kick):
             # Write input geometries to disk
             self.geoms_to_trj(kicked_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
             opt_geoms = [self.run_kicked_geom(geom) for geom in kicked_geoms]
-            # Filter out None and reject geoms where atoms are too close
-            opt_geoms = [geom for geom in opt_geoms
-                         if geom and not self.reject_by_distance(geom)]
-            # opt_geoms = opt_geoms[not to_reject]
-            opt_num = len(opt_geoms)
-            print(f"Kicks in cycle {self.cur_cycle} produced "
-                  f"{opt_num} new geometries.")
 
-            # sorted_geoms = sorted(opt_geoms, key=lambda g: g.energy)
-            # ens = [geom.energy for geom in sorted_geoms]
-            # en_diffs = np.abs(np.diff(ens))
-            # import pdb; pdb.set_trace()
-
-            inds = list()
+            kept_geoms = list()
+            rejected_geoms = 0
             for geom in opt_geoms:
+                # Filter out None and reject geoms where atoms are too close
+                if (geom is None) or self.reject_by_distance(geom):
+                    continue
                 energy = geom.energy
-                ind = bisect.bisect_left(self.energies, energy)
-                try:
-                    en_before= self.energies[ind-1]
-                    if are_close(energy, en_before):
-                        print("close energy before")
-                        print(ind, energy, en_before)
-                        continue
-                except IndexError:
-                    pass
-                try:
-                    en_after = self.energies[ind+1]
-                    if are_close(energy, en_after):
-                        print("close energy after")
-                        print(ind, energy, en_after)
-                        continue
-                except IndexError:
-                    pass
-                bisect.insort(self.energies, energy)
-                self.opt_geoms.insert(ind, geom)
-                # if ind == 0 and self.energies and are_close(energy, self.energies[0]):
-                    # print("low")
-                    # continue
-                # elif ind == len(self.energies) and are_close(energy, self.energies[-1]):
-                    # print("high")
-                    # continue
-                # elif are_close(energy, self.energies[ind-1]) or are_close(energy, self.energies[ind+1]):
-                    # print("middle")
-                    # continue
-                # else:
-                    # bisect.insort(self.energies, energy)
-                    # self.opt_geoms.insert(ind, geom)
-            gens = [geom.energy for geom in self.opt_geoms]
-            print("gens", gens)
-            print("self.energies", self.energies)
+                i = bisect.bisect_left(self.energies, energy)
+                energies_arr = np.array(self.energies)
+                diffs = np.abs(energies_arr - energy)
+                if len(self.energies) > 0 and diffs.min() < self.energy_thresh:
+                    #print("min(diffs) is", diffs.min())
+                    rejected_geoms += 1
+                    continue
+                self.energies.insert(i, energy)
+                self.opt_geoms.insert(i, geom)
+                kept_geoms.append(geom)
 
-            # import pdb; pdb.set_trace()
+            kept_num = len(kept_geoms)
+            print(f"Kicks in cycle {self.cur_cycle} produced "
+                  f"{kept_num} new geometries.")
+            if rejected_geoms:
+                print(f"{rejected_geoms} geometries were rejected by energy criteria.")
+
             trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
             # Sort by energy
-            opt_geoms = sorted(opt_geoms, key=lambda g: g.energy)
-            self.geoms_to_trj(opt_geoms, trj_filtered_fn)
+            kept_geoms = sorted(kept_geoms, key=lambda g: g.energy)
+            self.geoms_to_trj(kept_geoms, trj_filtered_fn)
+            print()
+
+            # diffs = np.diff(self.energies)
+            # print(f"min(diffs) {diffs.min():.4f}")
 
             self.cur_cycle += 1
         fn = "final.trj"
         self.geoms_to_trj(self.opt_geoms, fn)
-        en_diffs = np.abs(np.diff(self.energies))
-        print(en_diffs)
-        assert en_diffs > 1e-4
