@@ -26,9 +26,9 @@ def test_fragment_kick():
     chlorine_frag = (12, 13)
     fragments = (benz_frag, chlorine_frag)
     kwargs = {
-        "cycle_size": 50,
+        "cycle_size": 100,
         "radius": 3.5,#1.25,
-        "cycles": 10,
+        "cycles": 25,
         "seed": 1532002565,
         "fix_fragments": (0, ),
         "energy_thresh": 1e-4,

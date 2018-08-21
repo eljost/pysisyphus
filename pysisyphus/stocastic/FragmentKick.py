@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# See [1] 10.1002/jcc.21026
+
 import bisect
 from math import cos, sin
 
