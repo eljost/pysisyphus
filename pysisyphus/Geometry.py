@@ -47,7 +47,8 @@ class Geometry:
         self._hessian = None
         self.calculator = None
 
-        self.masses = [MASS_DICT[atom.lower()] for atom in self.atoms]
+        self.masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+        self.total_mass = sum(self.masses)
         # Some of the analytical potentials are only 2D
         repeat_masses = 2 if (self._coords.size == 2) else 3
         self.masses_rep = np.repeat(self.masses, repeat_masses)
@@ -152,6 +153,18 @@ class Geometry:
             cbt[atom] = np.array(c3d)
             inds[atom] = np.array(inds[atom])
         return cbt, inds
+
+    @property
+    def center_of_mass(self):
+        """Returns the center of mass.
+
+        Returns
+        -------
+        R : np.array, shape(3, )
+            Center of mass.
+        """
+        return 1/self.total_mass * np.sum(self.coords3d*self.masses[:,None],
+                                          axis=0)
 
     @property
     def mw_coords(self):
