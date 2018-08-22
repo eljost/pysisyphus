@@ -69,8 +69,17 @@ def test_reject_by_distance():
     assert inds == [6, 9, 14, 19, 20, 23, 28]
 
 
+def test_rmsd():
+    from pysisyphus.stocastic.align import rmsd
+    from pysisyphus.helpers import geom_from_xyz_file
+    geom1 = geom_from_xyz_file("eins.xyz")
+    geom2 = geom_from_xyz_file("zwei.xyz")
+    rmsd(geom1, geom2)
+
+
 if __name__ == "__main__":
     # test_kick()
-    test_fragment_kick()
+    # test_fragment_kick()
     # test_toluene()
     # test_reject_by_distance()
+    test_rmsd()
