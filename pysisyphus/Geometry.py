@@ -167,6 +167,10 @@ class Geometry:
                                           axis=0)
 
     @property
+    def centroid(self):
+        return self.coords3d.mean(axis=0)
+
+    @property
     def mw_coords(self):
         """Mass-weighted coordinates.
 
