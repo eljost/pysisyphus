@@ -124,9 +124,9 @@ class Geometry:
         """
         return self._coords.reshape(-1, 3)
 
-    # @coords3d.setter
-    # def coords3d(self, coords3d):
-        # self.coords = coords3d.flatten()
+    @coords3d.setter
+    def coords3d(self, coords3d):
+        self.coords = coords3d.flatten()
 
     @property
     def coords_by_type(self):
@@ -168,6 +168,13 @@ class Geometry:
 
     @property
     def centroid(self):
+        """Geometric center of the Geometry.
+
+        Returns
+        -------
+        R : np.array, shape(3, )
+            Geometric center of the Geometry.
+        """
         return self.coords3d.mean(axis=0)
 
     @property
@@ -185,6 +192,80 @@ class Geometry:
     def mw_coords(self, mw_coords):
         """Set mass-weighted coordinates."""
         self.coords = mw_coords / np.sqrt(self.masses_rep)
+
+    @property
+    def inertia_tensor(self):
+        """Inertita tensor.
+
+                              | x² xy xz |
+        (x y z)^T . (x y z) = | xy y² yz |
+                              | xz yz z² |
+        """
+        x, y, z = self.coords3d.T
+        squares = np.sum(self.coords3d**2 * self.masses[:,None], axis=0)
+        I_xx = squares[1] + squares[2]
+        I_yy = squares[0] + squares[2]
+        I_zz = squares[0] + squares[1]
+        I_xy = -np.sum(self.masses*x*y)
+        I_xz = -np.sum(self.masses*x*z)
+        I_yz = -np.sum(self.masses*y*z)
+        I = np.array((
+                (I_xx, I_xy, I_xz),
+                (I_xy, I_yy, I_yz),
+                (I_xz, I_yz, I_zz)
+        ))
+        return I
+
+    def principal_axes_are_aligned(self):
+        """Check if the principal axes are aligned with the cartesian axes.
+
+        Returns
+        -------
+        aligned : bool
+            Wether the principal axes are aligned or not.
+        """
+        w, v = np.linalg.eigh(self.inertia_tensor)
+        return np.allclose(v, np.eye(3)), v
+
+    def align_principal_axes(self):
+        """Align the principal axes to the cartesian axes.
+
+        https://math.stackexchange.com/questions/145023
+        """
+        I = self.inertia_tensor
+        w, v = np.linalg.eigh(I)
+        # rot = np.linalg.solve(v, np.eye(3))
+        # self.coords3d = rot.dot(self.coords3d.T).T
+        self.coords3d = v.T.dot(self.coords3d.T).T
+
+    @property
+    def std_orient(self):
+        # Translate center of mass to cartesian origin
+        self.coords3d -= self.center_of_mass
+        # Try to rotate the principal axes onto the cartesian axes
+        for i in range(5):
+            self.align_principal_axes()
+            aligned, vecs = self.principal_axes_are_aligned()
+            if aligned:
+                break
+        # else:
+            # print(vecs)
+        return aligned
+
+        I = self.inertia_tensor
+        w, v = np.linalg.eigh(I)
+        rot = np.linalg.solve(v, np.eye(3))
+        rot_c3d = rot.dot(c3d.T).T
+
+        # print(c3d)
+        # print()
+        # print(rot_c3d)
+        # print()
+        # print()
+        # import pdb; pdb.set_trace()
+        self.coords3d = rot_c3d
+        assert self.principal_axes_are_aligned()
+        return self.coords3d
 
     @property
     def energy(self):
