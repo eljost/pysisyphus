@@ -66,7 +66,9 @@ class Pipeline:
         energy = geom.energy
         i = bisect.bisect_left(self.new_energies, energy)
         # Determine if there are neighbours that are close in energy
-        valid_inds = set(range(len(self.new_energies))) & set((i-1, i+1))
+        # as we insert left/before the most similary energy the neighbours
+        # are i-1 and i.
+        valid_inds = set(range(len(self.new_energies))) & set((i-1, i))
         diffs = [abs(self.new_energies[j] - energy) for j in valid_inds]
         return len(diffs) > 0 and min(diffs) < self.energy_thresh
 
@@ -189,12 +191,12 @@ class Pipeline:
             # Sort by energy
             kept_geoms = sorted(kept_geoms, key=lambda g: g.energy)
             self.geoms_to_trj(kept_geoms, trj_filtered_fn)
-            print()
 
-            # diffs = np.diff(self.new_energies)
-            # print(f"min(diffs) {diffs.min():.4f}")
+            diffs = np.diff(self.new_energies)
+            print(f"min(diffs) {diffs.min():.4f}")
 
             self.cur_cycle += 1
+            print()
         fn = "final.trj"
         self.geoms_to_trj(self.new_geoms, fn)
         # self.new_energies = np.array(new_energies)

@@ -38,7 +38,7 @@ def test_fragment_kick():
     # }
     kwargs = {
         "cycle_size": 5,
-        "cycles": 1,
+        "cycles": 2,
         "radius": 4.5,
         "seed": 1532002565,
         "fragments": fragments,
