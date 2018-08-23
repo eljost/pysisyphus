@@ -13,6 +13,8 @@ from pysisyphus.stocastic.FragmentKick import FragmentKick
 np.set_printoptions(suppress=True, precision=4)
 THIS_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
 
+# Input fragments have to be reasonable
+
 
 @pytest.mark.skip
 def test_kick():
@@ -22,27 +24,41 @@ def test_kick():
 
 
 @pytest.mark.skip
-def test_fragment_kick():
+def test_benz_chlorine_fragment_kick():
     geom = geom_from_library("benzene_and_chlorine.xyz")
     benz_frag = range(12)
     chlorine_frag = (12, 13)
     fragments = (benz_frag, chlorine_frag)
-    # kwargs = {
-        # "cycle_size": 100,
-        # "radius": 3.5,  #1.25,
-        # "cycles": 25,
-        # "seed": 1532002565,
-        # "fragments": fragments,
-        # "fix_fragments": (0, ),
-        # "energy_thresh": 1e-4,
-    # }
     kwargs = {
-        "cycle_size": 5,
-        "cycles": 2,
+        "cycle_size": 30,
+        "cycles": 10,
+        # "cycle_size": 10,
+        # "cycles": 5,
         "radius": 4.5,
         "seed": 1532002565,
         "fragments": fragments,
         "fix_fragments": (0, ),
+        "rmsd_thresh": .2,
+    }
+    fkick = FragmentKick(geom, **kwargs)
+    fkick.run()
+
+
+@pytest.mark.skip
+def test_benz_no_plus_fragment_kick():
+    geom = geom_from_library("benzene_and_no.xyz")
+    benz_frag = range(12)
+    no_frag = (12, 13)
+    fragments = (benz_frag, no_frag)
+    kwargs = {
+        "cycle_size": 10,
+        "cycles": 3,
+        "radius": 4.5,
+        "seed": 1532002565,
+        "fragments": fragments,
+        "fix_fragments": (0, ),
+        "rmsd_thresh": .2,
+        "charge": 1,
     }
     fkick = FragmentKick(geom, **kwargs)
     fkick.run()
@@ -83,6 +99,7 @@ def test_atoms_are_too_close():
 
 if __name__ == "__main__":
     # test_kick()
-    test_fragment_kick()
+    # test_benz_chlorine_fragment_kick()
+    test_benz_no_plus_fragment_kick()
     # test_toluene()
     # test_atoms_are_too_close()

@@ -9,13 +9,15 @@ from scipy.spatial.distance import pdist
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.InternalCoordinates import get_cov_radii_sum_array
 from pysisyphus.xyzloader import make_trj_str_from_geoms
+from pysisyphus.stocastic.align import matched_rmsd
 
 
 class Pipeline:
 
     def __init__(self, geom, seed=None, cycles=5, cycle_size=15,
                  rmsd_thresh=.1, energy_thresh=1e-3,
-                 compare_num=25):
+                 compare_num=25, break_after=2,
+                 charge=0, mult=1):
         self.initial_geom = geom
         self.cycles = cycles
         self.cycle_size = cycle_size
@@ -26,6 +28,9 @@ class Pipeline:
         self.rmsd_thresh = rmsd_thresh
         self.energy_thresh = energy_thresh
         self.compare_num = compare_num
+        self.break_after = break_after
+        self.charge = charge
+        self.mult = mult
 
         np.random.seed(self.seed)
         print(f"Seed: {self.seed}")
@@ -34,6 +39,8 @@ class Pipeline:
         self.calc_counter = 0
         self.cur_cycle = 0
         self.cur_micro_cycle = 0
+        # Indicates if the next cycle is the last one
+        self.break_in = self.break_after
 
         self.new_geoms = []
         self.new_energies = []
@@ -44,6 +51,9 @@ class Pipeline:
     def __str__(self):
         return f"Pipeline(seed={self.seed})"
 
+    def get_valid_index_set(self, to_intersect):
+        return set(range(len(self.new_energies))) & set(to_intersect)
+
     def atoms_are_too_close(self, geom, factor=.7):
         """Determine if atoms are too close."""
         dist_mat = pdist(geom.coords3d)
@@ -51,26 +61,35 @@ class Pipeline:
         too_close = dist_mat < factor*cov_rad_mat
         return any(too_close)
 
-    def geom_is_new(self, geom):
-        """Determine if geometry is not already known."""
-        if len(self.new_geoms) == 0:
-            return True
-
-        # i = bisect.bisect_left(self.new_energies, energy)
-
-        is_new = True
-
-        return is_new
-
     def geom_is_close_in_energy(self, geom):
         energy = geom.energy
         i = bisect.bisect_left(self.new_energies, energy)
         # Determine if there are neighbours that are close in energy
-        # as we insert left/before the most similary energy the neighbours
+        # as we insert left/before the most similary energy the indices
+        # of the (to be) neighbours in the current self.new_energies list
         # are i-1 and i.
-        valid_inds = set(range(len(self.new_energies))) & set((i-1, i))
+        valid_inds = self.get_valid_index_set((i-1, i))
         diffs = [abs(self.new_energies[j] - energy) for j in valid_inds]
         return len(diffs) > 0 and min(diffs) < self.energy_thresh
+
+    def geom_is_new(self, geom):
+        """Determine if geometry is not already known."""
+        if len(self.new_geoms) == 0:
+            print("Found first geometry!")
+            return True
+
+        i = bisect.bisect_left(self.new_energies, geom.energy)
+        to_intersect = range(i-self.compare_num, i+self.compare_num)
+        valid_inds = self.get_valid_index_set(to_intersect)
+        # print("valid_inds", valid_inds)
+        rmsds = [matched_rmsd(geom, self.new_geoms[i])[0] for i in valid_inds]
+        rmsds = np.array(rmsds)
+        is_new = rmsds.min() > self.rmsd_thresh
+        if is_new:
+            print(f"Found new geometry! min(RMSD)={rmsds.min():.3f}")
+        # verbose = "" if is_new else "not"
+        # print(f"Geometry is {verbose} new. min(RMSD)={rmsds.min():.2f}")
+        return is_new
 
     def geom_is_valid(self, geom):
         """Filter out geometries that are None, or were the atoms are too close
@@ -123,7 +142,12 @@ class Pipeline:
         return unique_geoms
 
     def run_geom_opt(self, geom):
-        calc = XTB(calc_number=self.calc_counter)
+        calc_kwargs = {
+                "calc_number": self.calc_counter,
+                "charge": self.charge,
+                "mult": self.mult,
+        }
+        calc = XTB(**calc_kwargs)
         self.calc_counter += 1
         opt_geom = calc.run_opt(geom.atoms, geom.coords, keep=False)
         return opt_geom
@@ -156,9 +180,9 @@ class Pipeline:
         # energie einbeziehen
     """
 
-    def geoms_to_trj(self, geoms, fn):
+    def write_geoms_to_trj(self, geoms, fn, comments=None):
         with open(fn, "w") as handle:
-            handle.write(make_trj_str_from_geoms(geoms))
+            handle.write(make_trj_str_from_geoms(geoms, comments))
 
     def run(self):
         while self.cur_cycle < self.cycles:
@@ -166,7 +190,7 @@ class Pipeline:
             input_geoms = [self.get_input_geom(self.initial_geom)
                            for _ in range(self.cycle_size)]
             # Write input geometries to disk
-            self.geoms_to_trj(input_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
+            self.write_geoms_to_trj(input_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
             # Run optimizations on input geometries
             opt_geoms = [self.run_geom_opt(geom) for geom in input_geoms]
 
@@ -184,24 +208,44 @@ class Pipeline:
                 kept_geoms.append(geom)
 
             kept_num = len(kept_geoms)
-            print(f"Kicks in cycle {self.cur_cycle} produced "
-                  f"{kept_num} new geometries.")
 
             trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
             # Sort by energy
             kept_geoms = sorted(kept_geoms, key=lambda g: g.energy)
-            self.geoms_to_trj(kept_geoms, trj_filtered_fn)
+            if kept_geoms:
+                self.write_geoms_to_trj(kept_geoms, trj_filtered_fn)
+                print(f"Kicks in cycle {self.cur_cycle} produced "
+                      f"{kept_num} new geometries.")
+                self.break_in = self.break_after
+            elif self.break_in == 0:
+                print("Didn't find any new geometries in the last "
+                      f"{self.break_after} cycles. Exiting!")
+                break
+            else:
+                print(f"Cycle {self.cur_cycle} produced no new geometries.")
+                self.break_in -= 1
 
-            diffs = np.diff(self.new_energies)
-            print(f"min(diffs) {diffs.min():.4f}")
+            # diffs = np.diff(self.new_energies)
+            # print(f"min(diffs) {diffs.min():.4f}")
 
             self.cur_cycle += 1
             print()
         fn = "final.trj"
-        self.geoms_to_trj(self.new_geoms, fn)
+        self.write_geoms_to_trj(self.new_geoms, fn)
         # self.new_energies = np.array(new_energies)
         np.savetxt("energies.dat", self.new_energies)
-
+        print(f"Run produced {len(self.new_energies)} geometries!")
+        first_geom = self.new_geoms[0]
+        first_geom.standard_orientation()
+        first_geom.energy = self.new_energies[0]
+        matched_geoms = [first_geom, ]
+        for geom, energy in zip(self.new_geoms[1:], self.new_energies):
+            rmsd, (_, matched_geom) = matched_rmsd(first_geom, geom)
+            matched_geom.energy = energy
+            matched_geoms.append(matched_geom)
+        fn_matched = "final_matched.trj"
+        self.write_geoms_to_trj(matched_geoms, fn_matched)
+        return matched_geoms
 
 
 if __name__ == "__main__":
