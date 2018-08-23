@@ -42,10 +42,13 @@ def test_inertia_tensor():
 
 def test_standard_orientation():
     geoms = geoms_from_trj(THIS_DIR / "std_orient.trj")
-    aligned = [geom.std_orient for geom in geoms]
+    geoms_aligned = list()
+    for geom in geoms:
+        geom.standard_orientation()
+        geoms_aligned.append(geom.principal_axes_are_aligned)
     # with open("stdorient.trj", "w") as handle:
         # handle.write(make_trj_str_from_geoms(geoms))
-    assert all(aligned)
+    assert all(geoms_aligned)
 
 
 def test_copy():
@@ -54,7 +57,6 @@ def test_copy():
     org_coords = geom.coords.copy()
     geom.coords += 1
     np.testing.assert_allclose(geom_copy.coords, org_coords)
-    # import pdb; pdb.set_trace()
 
 
 if __name__ == "__main__":

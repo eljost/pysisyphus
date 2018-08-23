@@ -249,8 +249,7 @@ class Geometry:
         # self.coords3d = rot.dot(self.coords3d.T).T
         self.coords3d = v.T.dot(self.coords3d.T).T
 
-    @property
-    def std_orient(self):
+    def standard_orientation(self):
         # Translate center of mass to cartesian origin
         self.coords3d -= self.center_of_mass
         # Try to rotate the principal axes onto the cartesian axes
@@ -259,9 +258,10 @@ class Geometry:
             aligned, vecs = self.principal_axes_are_aligned()
             if aligned:
                 break
+        """
         # else:
             # print(vecs)
-        return aligned
+        # return aligned
 
         I = self.inertia_tensor
         w, v = np.linalg.eigh(I)
@@ -277,6 +277,7 @@ class Geometry:
         self.coords3d = rot_c3d
         assert self.principal_axes_are_aligned()
         return self.coords3d
+        """
 
     @property
     def energy(self):
