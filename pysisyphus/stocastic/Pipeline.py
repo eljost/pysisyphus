@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 
+import bisect
 import time
 
 import numpy as np
 from scipy.spatial.distance import pdist
 
+from pysisyphus.calculators.XTB import XTB
 from pysisyphus.InternalCoordinates import get_cov_radii_sum_array
+from pysisyphus.xyzloader import make_trj_str_from_geoms
 
 
 class Pipeline:
 
     def __init__(self, geom, seed=None, cycles=5, cycle_size=15,
-                 rmsd_thresh=.1, energy_thresh=1e-3):
+                 rmsd_thresh=.1, energy_thresh=1e-3,
+                 compare_num=25):
         self.initial_geom = geom
         self.cycles = cycles
         self.cycle_size = cycle_size
@@ -21,6 +25,7 @@ class Pipeline:
             self.seed = seed
         self.rmsd_thresh = rmsd_thresh
         self.energy_thresh = energy_thresh
+        self.compare_num = compare_num
 
         np.random.seed(self.seed)
         print(f"Seed: {self.seed}")
@@ -33,7 +38,7 @@ class Pipeline:
         self.new_geoms = []
         self.new_energies = []
 
-        self.initial_coords3d = self.initial_geom.copy()
+        self.initial_coords3d = self.initial_geom.coords3d
         self.atoms = self.initial_geom.atoms
 
     def __str__(self):
@@ -46,9 +51,32 @@ class Pipeline:
         too_close = dist_mat < factor*cov_rad_mat
         return any(too_close)
 
-    def geometry_is_new(self, geom):
+    def geom_is_new(self, geom):
         """Determine if geometry is not already known."""
-        return True
+        if len(self.new_geoms) == 0:
+            return True
+
+        # i = bisect.bisect_left(self.new_energies, energy)
+
+        is_new = True
+
+        return is_new
+
+    def geom_is_close_in_energy(self, geom):
+        energy = geom.energy
+        i = bisect.bisect_left(self.new_energies, energy)
+        # Determine if there are neighbours that are close in energy
+        valid_inds = set(range(len(self.new_energies))) & set((i-1, i+1))
+        diffs = [abs(self.new_energies[j] - energy) for j in valid_inds]
+        return len(diffs) > 0 and min(diffs) < self.energy_thresh
+
+    def geom_is_valid(self, geom):
+        """Filter out geometries that are None, or were the atoms are too close
+        or when they are already known."""
+        return (geom is not None
+                and not self.geom_is_close_in_energy(geom)
+                and not self.atoms_are_too_close(geom)
+                and self.geom_is_new(geom))
     
     def get_input_geom(self):
         raise Exception("Implement me!")
@@ -98,6 +126,7 @@ class Pipeline:
         opt_geom = calc.run_opt(geom.atoms, geom.coords, keep=False)
         return opt_geom
 
+    """
     def run(self):
         while self.cur_cycle < self.cycles:
             print(f"Starting cycle {self.cur_cycle} with " \
@@ -123,6 +152,7 @@ class Pipeline:
         # keine optimierungen von bereits bekannten startgeometrien starten
         #                                           endgeometrien starten
         # energie einbeziehen
+    """
 
     def geoms_to_trj(self, geoms, fn):
         with open(fn, "w") as handle:
@@ -131,29 +161,22 @@ class Pipeline:
     def run(self):
         while self.cur_cycle < self.cycles:
             print(f"Cycle {self.cur_cycle}")
-            input_geoms = [self.get_input_geom() for _ in range(self.cycle_size)]
+            input_geoms = [self.get_input_geom(self.initial_geom)
+                           for _ in range(self.cycle_size)]
             # Write input geometries to disk
             self.geoms_to_trj(input_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
+            # Run optimizations on input geometries
             opt_geoms = [self.run_geom_opt(geom) for geom in input_geoms]
 
             kept_geoms = list()
             rejected_geoms = 0
             for geom in opt_geoms:
-                # Filter out None and reject geoms where atoms are too close
-                # or geometries already known
-                if (geom is None
-                    or self.atoms_are_too_close(geom)
-                    or not self.geom_is_new(geom)):
+                # Reject all invalid geometries
+                if not self.geom_is_valid(geom):
                     continue
 
                 energy = geom.energy
                 i = bisect.bisect_left(self.new_energies, energy)
-                energies_arr = np.array(self.new_energies)
-                diffs = np.abs(energies_arr - energy)
-                if len(self.new_energies) > 0 and diffs.min() < self.energy_thresh:
-                    #print("min(diffs) is", diffs.min())
-                    rejected_geoms += 1
-                    continue
                 self.new_energies.insert(i, energy)
                 self.new_geoms.insert(i, geom)
                 kept_geoms.append(geom)
@@ -161,8 +184,6 @@ class Pipeline:
             kept_num = len(kept_geoms)
             print(f"Kicks in cycle {self.cur_cycle} produced "
                   f"{kept_num} new geometries.")
-            if rejected_geoms:
-                print(f"{rejected_geoms} geometries were rejected by energy criteria.")
 
             trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
             # Sort by energy
@@ -176,6 +197,9 @@ class Pipeline:
             self.cur_cycle += 1
         fn = "final.trj"
         self.geoms_to_trj(self.new_geoms, fn)
+        # self.new_energies = np.array(new_energies)
+        np.savetxt("energies.dat", self.new_energies)
+
 
 
 if __name__ == "__main__":

@@ -6,11 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pysisyphus.helpers import (geom_from_library, geoms_from_trj,
-                                geom_from_xyz_file)
+from pysisyphus.helpers import geom_from_library, geoms_from_trj
 from pysisyphus.stocastic.Kick import Kick
 from pysisyphus.stocastic.FragmentKick import FragmentKick
-from pysisyphus.stocastic.align import matched_rmsd
 
 np.set_printoptions(suppress=True, precision=4)
 THIS_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -29,15 +27,24 @@ def test_fragment_kick():
     benz_frag = range(12)
     chlorine_frag = (12, 13)
     fragments = (benz_frag, chlorine_frag)
+    # kwargs = {
+        # "cycle_size": 100,
+        # "radius": 3.5,  #1.25,
+        # "cycles": 25,
+        # "seed": 1532002565,
+        # "fragments": fragments,
+        # "fix_fragments": (0, ),
+        # "energy_thresh": 1e-4,
+    # }
     kwargs = {
-        "cycle_size": 100,
-        "radius": 3.5,  #1.25,
-        "cycles": 25,
+        "cycle_size": 5,
+        "cycles": 1,
+        "radius": 4.5,
         "seed": 1532002565,
+        "fragments": fragments,
         "fix_fragments": (0, ),
-        "energy_thresh": 1e-4,
     }
-    fkick = FragmentKick(geom, fragments, **kwargs)
+    fkick = FragmentKick(geom, **kwargs)
     fkick.run()
 
 
@@ -74,21 +81,8 @@ def test_atoms_are_too_close():
     assert inds == [6, 9, 14, 19, 20, 23, 28]
 
 
-def test_match_rmsd():
-    geom1 = geom_from_xyz_file("eins.xyz")
-    # Calling with the identical geometries should return RMSD of 0.
-    min_rmsd, (geom1_matched, geom2_matched) = matched_rmsd(geom1, geom1)
-    np.testing.assert_allclose(min_rmsd, 0.0, atol=1e-10)
-    np.testing.assert_allclose(geom1_matched.coords, geom2_matched.coords)
-
-    geom2 = geom_from_xyz_file("zwei.xyz")
-    min_rmsd, _ = matched_rmsd(geom1, geom2)
-    np.testing.assert_allclose(min_rmsd, 0.057049, atol=1e-5)
-
-
 if __name__ == "__main__":
     # test_kick()
-    # test_fragment_kick()
+    test_fragment_kick()
     # test_toluene()
     # test_atoms_are_too_close()
-    test_match_rmsd()

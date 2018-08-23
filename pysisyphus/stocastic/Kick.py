@@ -7,14 +7,14 @@ import numpy as np
 import rmsd
 from scipy.spatial.distance import pdist, squareform
 
-from pysisyphus.calculators.XTB import XTB
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import make_trj_str_from_geoms
+from pysisyphus.stocastic.Pipeline import Pipeline
 
 
 np.set_printoptions(suppress=True, precision=2)
 
-class Kick:
+class Kick(Pipeline):
 
     def __init__(self, geom, radius=0.5, **kwargs):
         super().__init__(geom, **kwargs)
@@ -91,28 +91,28 @@ class Kick:
 
         return kept_geoms
 
-    def run(self):
-        while self.cur_cycle < self.cycles:
-            print(f"Starting cycle {self.cur_cycle} with " \
-                  f"{len(self.geoms_to_kick)} geometries.")
-            new_geoms = list(
-                it.chain(
-                    *[self.run_cycle(geom) for geom in self.geoms_to_kick]
-                )
-            )
-            new_num = len(new_geoms)
-            print(f"Kicks in cycle {self.cur_cycle} produced "
-                  f"{new_num} new geometries.")
-            kept_geoms = self.get_unique_geometries(new_geoms)
-            kept_num = len(kept_geoms)
-            self.geoms_to_kick = kept_geoms
-            self.cur_cycle += 1
-            self.cur_micro_cycle = 0
-            print()
-            geoms_sorted = sorted(kept_geoms, key=lambda g: g._energy)
-            trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
-            with open(trj_filtered_fn, "w") as handle:
-                handle.write(make_trj_str_from_geoms(geoms_sorted))
-        # keine optimierungen von bereits bekannten startgeometrien starten
-        #                                           endgeometrien starten
-        # energie einbeziehen
+    # def run(self):
+        # while self.cur_cycle < self.cycles:
+            # print(f"Starting cycle {self.cur_cycle} with " \
+                  # f"{len(self.geoms_to_kick)} geometries.")
+            # new_geoms = list(
+                # it.chain(
+                    # *[self.run_cycle(geom) for geom in self.geoms_to_kick]
+                # )
+            # )
+            # new_num = len(new_geoms)
+            # print(f"Kicks in cycle {self.cur_cycle} produced "
+                  # f"{new_num} new geometries.")
+            # kept_geoms = self.get_unique_geometries(new_geoms)
+            # kept_num = len(kept_geoms)
+            # self.geoms_to_kick = kept_geoms
+            # self.cur_cycle += 1
+            # self.cur_micro_cycle = 0
+            # print()
+            # geoms_sorted = sorted(kept_geoms, key=lambda g: g._energy)
+            # trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
+            # with open(trj_filtered_fn, "w") as handle:
+                # handle.write(make_trj_str_from_geoms(geoms_sorted))
+        # # keine optimierungen von bereits bekannten startgeometrien starten
+        # #                                           endgeometrien starten
+        # # energie einbeziehen

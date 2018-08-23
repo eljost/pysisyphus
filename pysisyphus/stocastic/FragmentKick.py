@@ -2,16 +2,13 @@
 
 # See [1] 10.1002/jcc.21026
 
-import bisect
 from math import cos, sin
 
 import numpy as np
 import rmsd
 
-from pysisyphus.calculators.XTB import XTB
 from pysisyphus.Geometry import Geometry
 from pysisyphus.stocastic.Kick import Kick
-from pysisyphus.xyzloader import make_trj_str_from_geoms
 
 
 np.set_printoptions(suppress=True, precision=2)
@@ -26,7 +23,7 @@ class FragmentKick(Kick):
         self.fix_fragments = fix_fragments
 
         # Shift fragment coordinates into their centroid
-        frag_coords = self.get_frag_coords(self.initial_geom)
+        frag_coords = [self.initial_geom.coords3d[frag] for frag in self.fragments]
         self.frag_coords = [fc - fc.mean(axis=0) for fc in frag_coords]
 
         new_coords3d = np.concatenate(self.frag_coords)
@@ -59,23 +56,9 @@ class FragmentKick(Kick):
         rot_kicked_coords = rot_coords + kick
         return rot_kicked_coords
 
-    def get_frag_coords(self, geom):
-        return [geom.coords3d[frag] for frag in self.fragments]
-
-    # def get_kick(self):
-        # # Interval [0, 1)
-        # kick = np.random.random(self.coords_size)
-        # # Stretch [0, 1) to  [-r ... r)
-        # kick = self.radius * (2*kick - 1)
-        # kick = kick.reshape(-1, 3)
-        # return kick.flatten()
-
     def get_input_geom(self, geom):
-        # frag_coords = self.get_frag_coords()
-        frag_coords = self.frag_coords
-        # kicked_frags = [self.kick_fragment(fc) for fc in frag_coords]
         kicked_frags = list()
-        for i, fc in enumerate(frag_coords):
+        for i, fc in enumerate(self.frag_coords):
             if i in self.fix_fragments:
                 kicked_frag = fc
             else:
