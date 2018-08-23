@@ -36,7 +36,8 @@ class Geometry:
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords)
 
-        coord_class = self.coord_types[coord_type]
+        self.coord_type = coord_type
+        coord_class = self.coord_types[self.coord_type]
         if coord_class:
             self.internal = coord_class(atoms, coords)
         else:
@@ -52,6 +53,16 @@ class Geometry:
         # Some of the analytical potentials are only 2D
         repeat_masses = 2 if (self._coords.size == 2) else 3
         self.masses_rep = np.repeat(self.masses, repeat_masses)
+
+    def copy(self):
+        """Returns a new Geometry object with same atoms and coordinates.
+
+        Returns
+        -------
+        geom : Geometry
+            New Geometry object with the same atoms and coordinates.
+        """
+        return Geometry(self.atoms, self.coords, self.coord_type)
 
     def clear(self):
         """Reset the object state."""

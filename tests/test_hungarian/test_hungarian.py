@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import os
+from pathlib import Path
+
 import numpy as np
 import rmsd
 
@@ -7,12 +10,13 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, match_geoms
 from pysisyphus.stocastic.align import match_geom_atoms
 
+THIS_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
 
 
 def get_geoms():
-    benz = geom_from_xyz_file("benzene.xyz")
+    benz = geom_from_xyz_file(THIS_DIR / "benzene.xyz")
     # Here the atom at index 3 was moved to index 5
-    benz_mod = geom_from_xyz_file("benzene_mod.xyz")
+    benz_mod = geom_from_xyz_file(THIS_DIR / "benzene_mod.xyz")
 
     return benz, benz_mod
 

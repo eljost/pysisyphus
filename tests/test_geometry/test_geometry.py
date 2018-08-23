@@ -12,14 +12,18 @@ from pysisyphus.xyzloader import make_trj_str_from_geoms
 
 THIS_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
 
-def test_center_of_mass():
+def get_geom():
     geom = geom_from_xyz_file(THIS_DIR / "benzene.xyz")
+    return geom
+
+def test_center_of_mass():
+    geom = get_geom()
     R = geom.center_of_mass
     np.testing.assert_allclose(R, np.zeros(3), atol=1e-10)
 
 
 def test_centroid():
-    geom = geom_from_xyz_file(THIS_DIR / "benzene.xyz")
+    geom = get_geom()
     ref = np.zeros(3)
     np.testing.assert_allclose(geom.centroid, ref, atol=1e-10)
     c3d = geom.coords3d
@@ -30,7 +34,7 @@ def test_centroid():
 
 
 def test_inertia_tensor():
-    geom = geom_from_xyz_file(THIS_DIR / "benzene.xyz")
+    geom = get_geom()
     I = geom.inertia_tensor
     ref = (317.59537834, 317.59537834, 635.19075413)
     np.testing.assert_allclose(np.diag(I), ref)
@@ -44,8 +48,18 @@ def test_standard_orientation():
     assert all(aligned)
 
 
+def test_copy():
+    geom = get_geom()
+    geom_copy = geom.copy()
+    org_coords = geom.coords.copy()
+    geom.coords += 1
+    np.testing.assert_allclose(geom_copy.coords, org_coords)
+    # import pdb; pdb.set_trace()
+
+
 if __name__ == "__main__":
     # test_center_of_mass()
     # test_centroid()
     # test_inertia_tensor()
-    test_standard_orientation()
+    # test_standard_orientation()
+    test_copy()
