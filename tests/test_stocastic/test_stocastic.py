@@ -65,11 +65,11 @@ def test_toluene():
     fkick.run()
 
 
-def test_reject_by_distance():
+def test_atoms_are_too_close():
     trj_fn = THIS_DIR / "test_reject.trj"
     geoms = geoms_from_trj(trj_fn)
     kick = Kick(geoms[0])
-    reject = [kick.reject_by_distance(geom, factor=.7) for geom in geoms]
+    reject = [kick.atoms_are_too_close(geom, factor=.7) for geom in geoms]
     inds = [i for i, r in enumerate(reject) if r]
     assert inds == [6, 9, 14, 19, 20, 23, 28]
 
@@ -90,5 +90,5 @@ if __name__ == "__main__":
     # test_kick()
     # test_fragment_kick()
     # test_toluene()
-    # test_reject_by_distance()
+    # test_atoms_are_too_close()
     test_match_rmsd()

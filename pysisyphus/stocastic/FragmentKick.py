@@ -119,7 +119,7 @@ class FragmentKick(Kick):
             rejected_geoms = 0
             for geom in opt_geoms:
                 # Filter out None and reject geoms where atoms are too close
-                if (geom is None) or self.reject_by_distance(geom):
+                if (geom is None) or self.atoms_are_too_clos(geom):
                     continue
                 energy = geom.energy
                 i = bisect.bisect_left(self.energies, energy)

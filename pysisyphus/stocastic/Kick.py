@@ -123,8 +123,8 @@ class Kick:
         # print(f"Keeping {kept_num}/{geom_num} geometries.")
         return kept_geoms
 
-    def reject_by_distance(self, geom, factor=.7):
-        """Reject Geometry when atoms are too close."""
+    def atoms_are_too_close(self, geom, factor=.7):
+        """Determine if atoms are too close."""
         dist_mat = pdist(geom.coords3d)
         cov_rad_mat = get_cov_radii_sum_array(geom.atoms, geom.coords)
         to_reject = dist_mat < factor*cov_rad_mat
