@@ -9,7 +9,6 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.Geometry import Geometry
-from pysisyphus.InternalCoordinates import get_cov_radii_sum_array
 from pysisyphus.xyzloader import make_trj_str_from_geoms
 
 
@@ -17,32 +16,10 @@ np.set_printoptions(suppress=True, precision=2)
 
 class Kick:
 
-    def __init__(self, geom, radius=0.5, cycles=5, cycle_size=15,
-                 seed=None, rmsd_thresh=1):
-        self.initial_geom = geom
+    def __init__(self, geom, radius=0.5, **kwargs):
+        super().__init__(geom, **kwargs)
+
         self.radius = radius
-        self.cycles = cycles
-        self.cycle_size = cycle_size
-        if seed is None:
-            self.seed = int(time.time())
-        else:
-            self.seed = seed
-        self.rmsd_thresh = rmsd_thresh
-
-        np.random.seed(self.seed)
-        print("seed", self.seed)
-        self.coords_size = self.initial_geom.coords.size
-        self.calc_counter = 0
-        self.cur_cycle = 0
-        self.cur_micro_cycle = 0
-
-        self.initial_coords3d = geom.coords3d
-        self.atoms = self.initial_geom.atoms
-        self.geoms_to_kick = [geom]
-        self.kept_geoms = [geom]
-        self.starting_coords = [self.initial_geom.coords]
-
-        self.similar_ind = 0
 
     def get_kick(self):
         # Interval [0, 1)
@@ -53,82 +30,24 @@ class Kick:
         # Filter for kicks within a sphere with radius self.radius
         kick_lengths = np.linalg.norm(kick, axis=1)
         valid_kicks = kick[kick_lengths <= self.radius].flatten()
+        # Do a recursion when not enough valid kicks were found
         if valid_kicks.size < self.coords_size:
-            print("not enough kicks, recursing")
             valid_kicks = self.get_kick()
         # Don't return more than we need
         return valid_kicks[:self.coords_size]
 
-    def get_kicked_geom(self, geom):
+    def get_input_geom(self, geom):
         kick = self.get_kick()
-        new_geom = Geometry(geom.atoms, geom.coords)
+        new_geom = geom.copy()
         new_coords = new_geom.coords + kick
         # Rotate the newly generated coordinates on the initial
         # coordinates.
+        # TODO: this may be not needed as we align+match later on ...
         new_coords = rmsd.kabsch_rotate(new_coords.reshape(-1, 3),
                                         self.initial_coords3d
         ).flatten()
         new_geom.coords = new_coords
         return new_geom
-
-    def run_kicked_geom(self, geom):
-        new_geom = self.get_kicked_geom(geom)
-        new_coords = new_geom.coords.copy()
-        # Check if the geometry is similar to an already known starting
-        # geometry.
-        overlaps = new_coords.dot(np.array(self.starting_coords).T)/self.coords_size
-        # print("overlaps with already known starting coordinates")
-        # print(overlaps)
-        max_overlap_ind = overlaps.argmax()
-        max_overlap = overlaps[max_overlap_ind]
-        similar_fn = f"similar_{self.similar_ind:03d}.trj"
-        # print(f"max overlap is {max_overlap:.1f}, {similar_fn}, index {max_overlap_ind}")
-        max_coords = self.starting_coords[max_overlap_ind]
-        # with open(similar_fn, "w") as handle:
-            # ovlp_geom = Geometry(self.atoms, max_coords)
-            # handle.write(make_trj_str_from_geoms((new_geom, ovlp_geom)))
-        self.similar_ind += 1
-        rmsds = list()
-        for sc in self.starting_coords:
-            sc3d = sc.reshape(-1, 3)
-            rm = rmsd.kabsch_rmsd(new_coords.reshape(-1,3), sc3d)
-            rmsds.append(rm)
-        rmsds = np.array(rmsds)
-        # print(f"RMSDs, min_rmsds with {rmsds.argmin()}")
-        # print(rmsds)
-        # print("Quotient")
-        # print(rmsds/overlaps)
-        # import pdb; pdb.set_trace()
-        self.starting_coords.append(new_coords)
-        calc = XTB(calc_number=self.calc_counter)
-        self.calc_counter += 1
-        opt_geom = calc.run_opt(new_geom.atoms, new_geom.coords, keep=False)
-        # print()
-        return opt_geom
-
-    def get_unique_geometries(self, geoms):
-        geom_num = len(geoms)
-        rmsds = np.full((geom_num, geom_num), np.inf)
-        for i, j in it.combinations(range(geom_num), 2):
-            coords1 = geoms[i].coords.reshape(-1, 3)
-            coords2 = geoms[j].coords.reshape(-1, 3)
-            rmsds[i, j] = rmsd.kabsch_rmsd(coords1, coords2)
-        is_, js = np.where(rmsds < self.rmsd_thresh)
-        similar_inds = np.unique(js)
-        all_inds = np.arange(geom_num)
-        kept_geoms = [geoms[i] for i in range(geom_num) if not i in similar_inds]
-        kept_num = len(kept_geoms)
-        # print(rmsds)
-        # print("similar inds", similar_inds)
-        # print(f"Keeping {kept_num}/{geom_num} geometries.")
-        return kept_geoms
-
-    def atoms_are_too_close(self, geom, factor=.7):
-        """Determine if atoms are too close."""
-        dist_mat = pdist(geom.coords3d)
-        cov_rad_mat = get_cov_radii_sum_array(geom.atoms, geom.coords)
-        to_reject = dist_mat < factor*cov_rad_mat
-        return any(to_reject)
 
     def run_cycle(self, geom):
         print(f"##### Cycle {self.cur_cycle:03d}, "
