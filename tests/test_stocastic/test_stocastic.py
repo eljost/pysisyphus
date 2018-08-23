@@ -3,12 +3,13 @@
 import os
 from pathlib import Path
 
-from pysisyphus.helpers import geom_from_library, geoms_from_trj
-from pysisyphus.stocastic.Kick import Kick
-from pysisyphus.stocastic.FragmentKick import FragmentKick
-
 import numpy as np
 
+from pysisyphus.helpers import (geom_from_library, geoms_from_trj,
+                                geom_from_xyz_file)
+from pysisyphus.stocastic.Kick import Kick
+from pysisyphus.stocastic.FragmentKick import FragmentKick
+from pysisyphus.stocastic.align import match_rmsd
 
 np.set_printoptions(suppress=True, precision=4)
 THIS_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -27,7 +28,7 @@ def test_fragment_kick():
     fragments = (benz_frag, chlorine_frag)
     kwargs = {
         "cycle_size": 100,
-        "radius": 3.5,#1.25,
+        "radius": 3.5,  #1.25,
         "cycles": 25,
         "seed": 1532002565,
         "fix_fragments": (0, ),
@@ -69,12 +70,15 @@ def test_reject_by_distance():
     assert inds == [6, 9, 14, 19, 20, 23, 28]
 
 
-def test_rmsd():
-    from pysisyphus.stocastic.align import rmsd
-    from pysisyphus.helpers import geom_from_xyz_file
+def test_match_rmsd():
     geom1 = geom_from_xyz_file("eins.xyz")
+    # Calling with the identical geometries should return RMSD of 0.
+    min_rmsd, _ = match_rmsd(geom1, geom1)
+    np.testing.assert_allclose(min_rmsd, 0.0, atol=1e-10)
+
     geom2 = geom_from_xyz_file("zwei.xyz")
-    rmsd(geom1, geom2)
+    min_rmsd, _ = match_rmsd(geom1, geom2)
+    np.testing.assert_allclose(min_rmsd, 0.057049, atol=1e-5)
 
 
 if __name__ == "__main__":
@@ -82,4 +86,4 @@ if __name__ == "__main__":
     # test_fragment_kick()
     # test_toluene()
     # test_reject_by_distance()
-    test_rmsd()
+    test_match_rmsd()
