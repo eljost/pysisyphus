@@ -3,7 +3,7 @@
 import itertools as it
 
 import numpy as np
-import rmsd as rmsd_ext
+import rmsd as rmsd
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
@@ -41,9 +41,11 @@ def match_geom_atoms(ref_geom, geom_to_match, hydrogen=True):
         # Hungarian method, row_inds are returned already sorted, so
         # we only have to consider col_inds.
         row_inds, col_inds = linear_sum_assignment(cd)
-        old_inds = inds_to_match[atom]
-        new_inds = old_inds[col_inds]
+        # Resort the coordinates
         new_coords_for_atom = coords_to_match_for_atom[col_inds]
+        # Original indices of the coordinates in the full coords array
+        # in the Geometry object.
+        old_inds = inds_to_match[atom]
         # Update coordinates and modify the array directly
         c3d = geom_matched.coords3d
         c3d[old_inds] = new_coords_for_atom
@@ -51,6 +53,7 @@ def match_geom_atoms(ref_geom, geom_to_match, hydrogen=True):
 
 
 def apply_transform(coords3d, swap, reflection):
+    """Apply axis swaps and reflections to a coordinate array."""
     # Swap axes
     coords3d = coords3d[:, swap]
     # Reflect
@@ -58,11 +61,34 @@ def apply_transform(coords3d, swap, reflection):
     return coords3d
 
 
-def match_rmsd(geom1, geom2):
+def matched_rmsd(geom1, geom2, thresh=5e-2):
+    """RMSD for optimally aligned and matched geometries.
+
+    Returns
+    -------
+    matched_rmsd : float
+        RMSD of optimally aligned and matched geometries.
+    matched_geoms : tuple(Geometry, Geometry)
+        Tuple of the optimally aligned and matched geometries.
+    """
+
+    # Work on copies of the Geometries, as calling standard_orientation
+    # moves their coordinates.
+    geom1_copy = geom1.copy()
+    geom1_copy.standard_orientation()
+    coords3d_1 = geom1_copy.coords3d
+    geom2_copy = geom2.copy()
+    geom2_copy.standard_orientation()
+    coords3d_2 = geom2_copy.coords3d.copy()
+
+    # After bringing the Geometries into standard orientation we may
+    # still have to consider additional axis swaps and reflections to
+    # allow optimal atom matching using the Hungarian method.
+
     # Six possible axis swaps, (3*2, (x, y, z)*((x), (y), (z))).
     axes = (0, 1, 2)
     swaps =  list(it.permutations(axes))
-    # Eight possible reflections, (±x * ±y * ±z).
+    # Eight possible reflections, (±x, ±y, ±z).
     reflections = (
             ( 1,  1,  1),  # no reflection
             (-1,  1,  1),  # reflect on yz plane
@@ -76,41 +102,27 @@ def match_rmsd(geom1, geom2):
     # 48 combinations of six axis swaps and eight reflections.
     transforms = list(it.product(swaps, reflections))
 
-    # Work on copies as calling standard_orientation moves the
-    # geometries's coordinates.
-    geom1_copy = geom1.copy()
-    geom1_copy.standard_orientation()
-    coords3d_1 = geom1_copy.coords3d
-    geom2_copy = geom2.copy()
-    geom2_copy.standard_orientation()
-    coords3d_2 = geom2_copy.coords3d.copy()
-
-    # rmsd_before = rmsd_ext.rmsd(coords3d_1, coords3d_2)
-    # rmsd_before_kabsch = rmsd_ext.kabsch_rmsd(coords3d_1, coords3d_2)
-    # print("Moved geometries into standard orientation.")
-    # print(f"Normal RMSD before transformation: {rmsd_before:.3f}")
-    # print(f"Kabsch RMSD before transformation: {rmsd_before_kabsch:.3f}")
     matched_rmsds = list()
     matched_coords = list()
     for i, transform in enumerate(transforms):
-        # print(f"Cycle {i}, transformation {transform}")
-        c3d = coords3d_2.copy()
-        c3d_trans = apply_transform(c3d, *transform)
-        # print("Applied transformation to geom_2")
-        rmsd_trans = rmsd_ext.kabsch_rmsd(coords3d_1, c3d_trans)
-
-        tmp = geom2.copy()
-        tmp.coords3d = c3d_trans
-        geom2_matched = match_geom_atoms(geom1_copy, tmp)
-        rmsd_after = rmsd_ext.kabsch_rmsd(coords3d_1, geom2_matched.coords3d)
-        matched_rmsds.append(rmsd_after)
+        # Apply swap and reflection
+        c3d_trans = apply_transform(coords3d_2.copy(), *transform)
+        geom2_to_match = geom2.copy()
+        geom2_to_match.coords3d = c3d_trans
+        # Apply Hungarian method to the transformed Geometry
+        geom2_matched = match_geom_atoms(geom1_copy, geom2_to_match)
+        mrmsd = rmsd.kabsch_rmsd(coords3d_1, geom2_matched.coords3d)
+        matched_rmsds.append(mrmsd)
         matched_coords.append(geom2_matched.coords)
-        # print(f"RMSD transformed: {rmsd_trans:.3f}, after matching: {rmsd_after:.3f}")
-        # print()
+
+        # Break when the two geometries are similar. Then we don't have to
+        # apply the remaining transformations.
+        if mrmsd <= thresh:
+            break
+
     matched_rmsds = np.array(matched_rmsds)
     min_rmsd_ind = matched_rmsds.argmin()
     min_rmsd = matched_rmsds.min()
     best_matching_coords = matched_coords[min_rmsd_ind]
     geom2_copy.coords = best_matching_coords
-    # import pdb; pdb.set_trace()
-    return min_rmsd, geom2_copy
+    return min_rmsd, (geom1_copy, geom2_copy)
