@@ -58,7 +58,9 @@ def test_benz_no_plus_fragment_kick():
         "fragments": fragments,
         "fix_fragments": (0, ),
         "rmsd_thresh": .2,
-        "charge": 1,
+        "calc_kwargs": {
+            "charge": 1,
+        },
     }
     fkick = FragmentKick(geom, **kwargs)
     fkick.run()

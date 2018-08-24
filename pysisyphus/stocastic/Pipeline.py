@@ -17,7 +17,7 @@ class Pipeline:
     def __init__(self, geom, seed=None, cycles=5, cycle_size=15,
                  rmsd_thresh=.1, energy_thresh=1e-3,
                  compare_num=25, break_after=2,
-                 charge=0, mult=1):
+                 calc_kwargs={}):
         self.initial_geom = geom
         self.cycles = cycles
         self.cycle_size = cycle_size
@@ -29,8 +29,11 @@ class Pipeline:
         self.energy_thresh = energy_thresh
         self.compare_num = compare_num
         self.break_after = break_after
-        self.charge = charge
-        self.mult = mult
+        self.calc_kwargs = {
+                "charge": 0,
+                "mult": 1,
+        }
+        self.calc_kwargs.update(calc_kwargs)
 
         np.random.seed(self.seed)
         print(f"Seed: {self.seed}")
@@ -142,12 +145,7 @@ class Pipeline:
         return unique_geoms
 
     def run_geom_opt(self, geom):
-        calc_kwargs = {
-                "calc_number": self.calc_counter,
-                "charge": self.charge,
-                "mult": self.mult,
-        }
-        calc = XTB(**calc_kwargs)
+        calc = XTB(calc_number=self.calc_counter, **self.calc_kwargs)
         self.calc_counter += 1
         opt_geom = calc.run_opt(geom.atoms, geom.coords, keep=False)
         return opt_geom
