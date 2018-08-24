@@ -1,3 +1,4 @@
+from collections import Counter
 import logging
 
 import numpy as np
@@ -53,6 +54,11 @@ class Geometry:
         # Some of the analytical potentials are only 2D
         repeat_masses = 2 if (self._coords.size == 2) else 3
         self.masses_rep = np.repeat(self.masses, repeat_masses)
+
+        atom_counter = Counter(self.atoms)
+        self.sum_formula = "_".join(
+                [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
+        )
 
     def copy(self):
         """Returns a new Geometry object with same atoms and coordinates.
@@ -447,4 +453,7 @@ class Geometry:
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
     def __str__(self):
-        return "Geometry, {} atoms".format(len(self.atoms))
+        return f"Geometry({self.sum_formula})"
+
+    def __repr__(self):
+        return self.__str__()
