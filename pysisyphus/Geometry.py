@@ -70,6 +70,21 @@ class Geometry:
         """
         return Geometry(self.atoms, self.coords, self.coord_type)
 
+    def atom_indices(self):
+        """Dict with atom types as key and corresponding indices as values.
+
+        Returns
+        -------
+        inds_dict : dict
+            Unique atom types as keys, corresponding indices as values.
+        """
+        unique_atoms = set(self.atoms)
+        inds_dict = {}
+        for atom_type in set(self.atoms):
+            inds_dict[atom_type] = [i for i, atom in enumerate(self.atoms)
+                                    if atom == atom_type]
+        return inds_dict
+
     def clear(self):
         """Reset the object state."""
 
