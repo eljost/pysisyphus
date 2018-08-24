@@ -139,13 +139,19 @@ class RedundantCoords:
         logging.warning("Using simple 0.5/0.2/0.1 model hessian!")
         return np.diagflat(k_diag)
 
-    def merge_fragments(self, fragments):
+    def merge_fragments(self, fragments, to_pop=None):
         """Merge a list of sets recursively. Pop the first element
         of the list and check if it intersects with one of the remaining
         elements. If yes, delete the intersecting set from the list, form
         the union of both sets and append it at the end of the list.
         If the popped set doesn't intersect with any of the remaining sets
-        append the it at the end of the list."""
+        append the it at the end of the list.
+
+        Merge fragment has to be applied at least len(fragments) - 1 times,
+        otherwise it may happen that not all unmerged fragments are tested.
+        This is tracked with to_pop."""
+        if to_pop is None:
+            to_pop = len(fragments) - 1
         if len(fragments) == 1:
             return fragments
         popped = fragments.pop(0)
@@ -153,8 +159,12 @@ class RedundantCoords:
             if popped & frag:
                 fragments.remove(frag)
                 fragments.append(popped | frag)
-                return self.merge_fragments(fragments)
+                return self.merge_fragments(fragments, to_pop-1)
         fragments.append(popped)
+        # If this evaluated to true there are still untested unmerged
+        # fragments.
+        if to_pop > 0:
+            fragments = self.merge_fragments(fragments, to_pop-1)
         return fragments
 
     def connect_fragments(self, cdm, fragments):
