@@ -21,7 +21,7 @@ class FragmentKick(Kick):
                  **kwargs):
         super().__init__(geom, **kwargs)
 
-        self.fragments = [np.array(frag) for frag in fragments]
+        self.fragments = self.get_fragments(fragments)
         self.fix_fragments = fix_fragments
         self.displace_from = displace_from
         # True when displace_from is given
@@ -35,6 +35,16 @@ class FragmentKick(Kick):
         geom = Geometry(self.atoms, new_coords3d.flatten())
         with open("fragments_in_origin.xyz", "w") as handle:
             handle.write(geom.as_xyz())
+
+    def get_fragments(self, fragments):
+        if len(fragments) == 1:
+            fragment = fragments[0]
+            self.log("Fragments were not fully specified. "
+                     "Determining remaining fragment.")
+            all_indices = set(range(len(self.initial_geom.atoms)))
+            second_frag = tuple(all_indices - set(fragment))
+            fragments = (fragment, second_frag)
+        return [np.array(frag) for frag in fragments]
 
     def get_origin(self):
         if not self.random_displacement:

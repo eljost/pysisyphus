@@ -100,9 +100,22 @@ def test_atoms_are_too_close():
     assert inds == [6, 9, 14, 19, 20, 23, 28]
 
 
+def test_get_fragments():
+    geom = geom_from_library("benzene_and_chlorine.xyz")
+    # Only define chlorine fragment and determine second fragment automatically
+    fragments = ((12, 13), )
+    kwargs = {
+        "fragments": fragments,
+    }
+    fkick = FragmentKick(geom, **kwargs)
+    _, benz_frag = fkick.fragments
+    assert benz_frag.tolist() == list(range(12))
+
+
 if __name__ == "__main__":
     # test_kick()
     # test_benz_chlorine_fragment_kick()
-    test_benz_no_plus_fragment_kick()
+    # test_benz_no_plus_fragment_kick()
     # test_toluene()
     # test_atoms_are_too_close()
+    test_get_fragments()
