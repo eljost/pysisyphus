@@ -61,7 +61,7 @@ def test_benz_no_plus_fragment_kick():
         "calc_kwargs": {
             "charge": 1,
         },
-        "random_origin": True,
+        "random_displacement": True,
     }
     fkick = FragmentKick(geom, **kwargs)
     fkick.run()

@@ -224,7 +224,7 @@ class Pipeline:
                 if i == 0 and len(self.new_energies) > 1:
                     last_minimum = self.new_energies[1]
                     diff = energy + last_minimum
-                    print(f"Found new global minimum at {energy:.4f} au! "
+                    print(f"It is a new global minimum at {energy:.4f} au! "
                           f"Last one was at {last_minimum:.4f} au "
                           f"({diff:.4f} au higher).")
 
