@@ -37,7 +37,10 @@ class Pipeline:
         self.calc_kwargs.update(calc_kwargs)
 
         np.random.seed(self.seed)
+        self.logger = logging.getLogger("pipeline")
+
         print(f"Seed: {self.seed}")
+        self.log(f"Seed: {self.seed}")
         self.coords_size = self.initial_geom.coords.size
 
         self.calc_counter = 0
@@ -51,7 +54,6 @@ class Pipeline:
 
         self.initial_coords3d = self.initial_geom.coords3d
         self.atoms = self.initial_geom.atoms
-        self.logger = logging.getLogger("pipeline")
 
     def __str__(self):
         return f"Pipeline(seed={self.seed})"

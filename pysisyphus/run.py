@@ -21,18 +21,12 @@ from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.helpers import geom_from_xyz_file
 from pysisyphus.irc import *
+from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
 from pysisyphus.trj import get_geoms
 from ._version import get_versions
 
-
-COS_DICT = {
-    "neb": NEB.NEB,
-    "aneb": AdaptiveNEB.AdaptiveNEB,
-    "feneb": FreeEndNEB.FreeEndNEB,
-    "szts": SimpleZTS.SimpleZTS,
-}
 
 CALC_DICT = {
     "orca": ORCA.ORCA,
@@ -41,6 +35,13 @@ CALC_DICT = {
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16.Gaussian16,
     "turbomole": Turbomole.Turbomole,
+}
+
+COS_DICT = {
+    "neb": NEB.NEB,
+    "aneb": AdaptiveNEB.AdaptiveNEB,
+    "feneb": FreeEndNEB.FreeEndNEB,
+    "szts": SimpleZTS.SimpleZTS,
 }
 
 OPT_DICT = {
@@ -60,6 +61,11 @@ IRC_DICT = {
     "euler": Euler.Euler,
     "gs": GonzalesSchlegel.GonzalesSchlegel,
     #"imk": IMKMod.IMKMod,
+}
+
+STOCASTIC_DICT = {
+    "frag": FragmentKick.FragmentKick,
+    "kick": Kick.Kick,
 }
 
 
@@ -220,6 +226,10 @@ def run_opt(geom, calc_getter, opt_getter):
     opt.run()
 
 
+def run_stocastic(stoc):#geom, calc_kwargs):
+    # Fragment
+    stoc.run()
+
 """
 def run_irc(args):
     assert(len(arg.xyz) == 1)
@@ -272,6 +282,10 @@ def get_defaults(conf_dict):
             "ao_ovlps": None,
             "glob": None,
         }
+    elif "stocastic" in conf_dict:
+        dd["stocastic"] = {
+            "type": "frag",
+        }
 
     return dd
 
@@ -306,7 +320,8 @@ def handle_yaml(yaml_str):
     run_dict = get_defaults(yaml_dict)
     # Update nested entries
     key_set = set(yaml_dict.keys())
-    for key in key_set & set(("cos", "opt", "interpol", "overlaps")):
+    for key in key_set & set(("cos", "opt", "interpol", "overlaps",
+                              "stocastic")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal")):
@@ -338,6 +353,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         cos_key = run_dict["cos"].pop("type")
         cos_kwargs = run_dict["cos"]
         cos_kwargs["scheduler"] = scheduler
+    if run_dict["stocastic"]:
+        stoc_key = run_dict["stocastic"].pop("type")
+        stoc_kwargs = run_dict["stocastic"]
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -378,6 +396,12 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         run_opt(geoms[0], calc_getter, opt_getter)
+    elif run_dict["stocastic"]:
+        assert len(geoms) == 1
+        geom = geoms[0]
+        stoc_kwargs["calc_kwargs"] = calc_kwargs
+        stoc = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
+        run_stocastic(stoc)
     else:
         print("Running created inputs.")
         geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
