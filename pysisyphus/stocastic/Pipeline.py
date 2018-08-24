@@ -37,7 +37,7 @@ class Pipeline:
         self.calc_kwargs.update(calc_kwargs)
 
         np.random.seed(self.seed)
-        self.logger = logging.getLogger("pipeline")
+        self.logger = logging.getLogger("stocastic")
 
         print(f"Seed: {self.seed}")
         self.log(f"Seed: {self.seed}")
@@ -245,11 +245,13 @@ class Pipeline:
 
             self.cur_cycle += 1
             print()
+        print(f"Run produced {len(self.new_energies)} geometries!")
+        if not self.new_energies:
+            return []
         fn = "final.trj"
         self.write_geoms_to_trj(self.new_geoms, fn)
         # self.new_energies = np.array(new_energies)
         np.savetxt("energies.dat", self.new_energies)
-        print(f"Run produced {len(self.new_energies)} geometries!")
         first_geom = self.new_geoms[0]
         first_geom.standard_orientation()
         first_geom.energy = self.new_energies[0]
