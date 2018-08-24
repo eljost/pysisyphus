@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import bisect
+import logging
 import time
 
 import numpy as np
@@ -50,9 +51,23 @@ class Pipeline:
 
         self.initial_coords3d = self.initial_geom.coords3d
         self.atoms = self.initial_geom.atoms
+        self.logger = logging.getLogger("pipeline")
 
     def __str__(self):
         return f"Pipeline(seed={self.seed})"
+
+    def log(self, message):
+        """Write a log message.
+
+        Wraps the logger variable.
+
+        Parameters
+        ----------
+        message : str
+            Message to be logged.
+        """
+
+        self.logger.debug(f"{message}")
 
     def get_valid_index_set(self, to_intersect):
         return set(range(len(self.new_energies))) & set(to_intersect)

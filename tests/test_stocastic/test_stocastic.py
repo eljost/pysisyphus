@@ -53,7 +53,7 @@ def test_benz_no_plus_fragment_kick():
     kwargs = {
         "cycle_size": 10,
         "cycles": 3,
-        "radius": 4.5,
+        "radius": 2.5,
         "seed": 1532002565,
         "fragments": fragments,
         "fix_fragments": (0, ),
@@ -61,6 +61,7 @@ def test_benz_no_plus_fragment_kick():
         "calc_kwargs": {
             "charge": 1,
         },
+        "random_origin": True,
     }
     fkick = FragmentKick(geom, **kwargs)
     fkick.run()

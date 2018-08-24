@@ -16,11 +16,13 @@ np.set_printoptions(suppress=True, precision=2)
 
 class FragmentKick(Kick):
 
-    def __init__(self, geom, fragments, fix_fragments=list(), **kwargs):
+    def __init__(self, geom, fragments, fix_fragments=list(),
+                 random_origin=False, **kwargs):
         super().__init__(geom, **kwargs)
 
         self.fragments = [np.array(frag) for frag in fragments]
         self.fix_fragments = fix_fragments
+        self.random_origin = random_origin
 
         # Shift fragment coordinates into their centroid
         frag_coords = [self.initial_geom.coords3d[frag] for frag in self.fragments]
@@ -30,6 +32,16 @@ class FragmentKick(Kick):
         geom = Geometry(self.atoms, new_coords3d.flatten())
         with open("fragments_in_origin.xyz", "w") as handle:
             handle.write(geom.as_xyz())
+
+    def get_origin(self):
+        if not self.random_origin:
+            return (0, 0, 0)
+
+        # Select random atom of fixed fragment
+        frag_coords = self.frag_coords[self.fix_fragments[0]]
+        frag_indices = np.arange(frag_coords.shape[0])
+        random_ind = np.random.choice(frag_indices, size=1)[0]
+        return frag_coords[random_ind]
 
     def get_rot_mat(self):
         # Euler angles
@@ -53,7 +65,7 @@ class FragmentKick(Kick):
         # Fragment rotation
         rot_coords = R.dot(frag_coords.T).T
         # Fragment translation
-        rot_kicked_coords = rot_coords + kick
+        rot_kicked_coords = rot_coords + self.get_origin() + kick
         return rot_kicked_coords
 
     def get_input_geom(self, geom):
