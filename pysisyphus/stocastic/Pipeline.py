@@ -55,7 +55,7 @@ class Pipeline:
         self.atoms = self.initial_geom.atoms
 
     def __str__(self):
-        return f"Pipeline(seed={self.seed})"
+        return f"{self.__class__.__name__}(seed={self.seed})"
 
     def log(self, message):
         """Write a log message.

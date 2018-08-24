@@ -12,7 +12,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.stocastic.Kick import Kick
 
 
-np.set_printoptions(suppress=True, precision=2)
+np.set_printoptions(suppress=True, precision=6)
 
 
 class FragmentKick(Kick):
@@ -28,9 +28,11 @@ class FragmentKick(Kick):
         # True when displace_from is given
         self.random_displacement = self.displace_from or random_displacement
 
-        # Shift fragment coordinates into their centroid
         frag_coords = [self.initial_geom.coords3d[frag] for frag in self.fragments]
+        # Shift centroids of the fragment into the cartesian origin
         self.frag_coords = [fc - fc.mean(axis=0) for fc in frag_coords]
+        atoms_arr = np.array(self.initial_geom.atoms)
+        self.frag_atoms = [atoms_arr[frag] for frag in self.fragments]
 
         new_coords3d = np.concatenate(self.frag_coords)
         geom = Geometry(self.atoms, new_coords3d.flatten())
@@ -41,6 +43,14 @@ class FragmentKick(Kick):
         # Given an array with fragment coordinates these indices will sort the
         # array into the original atom order.
         self.sort_inds = np.argsort(self.frag_inds_flat)
+        self.print_fragments()
+
+    def print_fragments(self):
+        lines = self.initial_geom.as_xyz().split("\n")[2:]
+        for i, fragment in enumerate(self.fragments):
+            self.log(f"Fragment {i}:")
+            frag_lines = [lines[j] for j in fragment]
+            self.log("\n".join(frag_lines) + "\n")
 
     def get_fragments(self, fragments):
         if len(fragments) == 1:
@@ -50,7 +60,8 @@ class FragmentKick(Kick):
             all_indices = set(range(len(self.initial_geom.atoms)))
             second_frag = tuple(all_indices - set(fragment))
             fragments = (fragment, second_frag)
-        return [np.array(frag) for frag in fragments]
+        fragments = [np.array(frag) for frag in fragments]
+        return fragments
 
     def get_origin(self):
         if not self.random_displacement:
