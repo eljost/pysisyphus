@@ -207,7 +207,11 @@ class Pipeline:
             # Write input geometries to disk
             self.write_geoms_to_trj(input_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
             # Run optimizations on input geometries
+            calc_start = time.time()
             opt_geoms = [self.run_geom_opt(geom) for geom in input_geoms]
+            calc_end = time.time()
+            calc_duration = calc_end - calc_start
+            print(f"Optimizations took {calc_duration:.0f} s.")
 
             kept_geoms = list()
             rejected_geoms = 0
@@ -223,7 +227,7 @@ class Pipeline:
                 kept_geoms.append(geom)
                 if i == 0 and len(self.new_energies) > 1:
                     last_minimum = self.new_energies[1]
-                    diff = energy + last_minimum
+                    diff = abs(energy - last_minimum)
                     print(f"It is a new global minimum at {energy:.4f} au! "
                           f"Last one was at {last_minimum:.4f} au "
                           f"({diff:.4f} au higher).")
