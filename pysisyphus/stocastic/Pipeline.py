@@ -39,7 +39,6 @@ class Pipeline:
         np.random.seed(self.seed)
         self.logger = logging.getLogger("stocastic")
 
-        print(f"Seed: {self.seed}")
         self.log(f"Seed: {self.seed}")
         self.coords_size = self.initial_geom.coords.size
 
@@ -95,20 +94,17 @@ class Pipeline:
     def geom_is_new(self, geom):
         """Determine if geometry is not already known."""
         if len(self.new_geoms) == 0:
-            print("Found first geometry!")
+            self.log("Found first geometry!")
             return True
 
         i = bisect.bisect_left(self.new_energies, geom.energy)
         to_intersect = range(i-self.compare_num, i+self.compare_num)
         valid_inds = self.get_valid_index_set(to_intersect)
-        # print("valid_inds", valid_inds)
         rmsds = [matched_rmsd(geom, self.new_geoms[i])[0] for i in valid_inds]
         rmsds = np.array(rmsds)
         is_new = rmsds.min() > self.rmsd_thresh
         if is_new:
-            print(f"Found new geometry! min(RMSD)={rmsds.min():.3f}")
-        # verbose = "" if is_new else "not"
-        # print(f"Geometry is {verbose} new. min(RMSD)={rmsds.min():.2f}")
+            self.log(f"Found new geometry! min(RMSD)={rmsds.min():.3f}")
         return is_new
 
     def geom_is_valid(self, geom):
@@ -201,7 +197,7 @@ class Pipeline:
 
     def run(self):
         while self.cur_cycle < self.cycles:
-            print(f"Cycle {self.cur_cycle}")
+            self.log(f"Cycle {self.cur_cycle}")
             input_geoms = [self.get_input_geom(self.initial_geom)
                            for _ in range(self.cycle_size)]
             # Write input geometries to disk
@@ -211,7 +207,7 @@ class Pipeline:
             opt_geoms = [self.run_geom_opt(geom) for geom in input_geoms]
             calc_end = time.time()
             calc_duration = calc_end - calc_start
-            print(f"Optimizations took {calc_duration:.0f} s.")
+            self.log(f"Optimizations took {calc_duration:.0f} s.")
 
             kept_geoms = list()
             rejected_geoms = 0
@@ -228,9 +224,9 @@ class Pipeline:
                 if i == 0 and len(self.new_energies) > 1:
                     last_minimum = self.new_energies[1]
                     diff = abs(energy - last_minimum)
-                    print(f"It is a new global minimum at {energy:.4f} au! "
-                          f"Last one was at {last_minimum:.4f} au "
-                          f"({diff:.4f} au higher).")
+                    self.log(f"It is a new global minimum at {energy:.4f} au! "
+                             f"Last one was at {last_minimum:.4f} au "
+                             f"({diff:.4f} au higher).")
 
             kept_num = len(kept_geoms)
 
@@ -239,21 +235,21 @@ class Pipeline:
             kept_geoms = sorted(kept_geoms, key=lambda g: g.energy)
             if kept_geoms:
                 self.write_geoms_to_trj(kept_geoms, trj_filtered_fn)
-                print(f"Kicks in cycle {self.cur_cycle} produced "
-                      f"{kept_num} new geometries.")
+                self.log(f"Kicks in cycle {self.cur_cycle} produced "
+                         f"{kept_num} new geometries.")
                 self.break_in = self.break_after
             elif self.break_in == 0:
-                print("Didn't find any new geometries in the last "
+                self.log("Didn't find any new geometries in the last "
                       f"{self.break_after} cycles. Exiting!")
                 break
             else:
-                print(f"Cycle {self.cur_cycle} produced no new geometries.")
+                self.log(f"Cycle {self.cur_cycle} produced no new geometries.")
                 self.break_in -= 1
 
             self.cur_cycle += 1
-            print()
+            self.log("")
 
-        print(f"Run produced {len(self.new_energies)} geometries!")
+        self.log(f"Run produced {len(self.new_energies)} geometries!")
         # Return empty list of nothing was found
         if not self.new_energies:
             return []

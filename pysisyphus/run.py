@@ -513,6 +513,7 @@ def run():
             yaml_str = handle.read()
         run_dict = handle_yaml(yaml_str)
         pprint(run_dict)
+        print()
         sys.stdout.flush()
 
     if args.clean:

@@ -2,6 +2,7 @@
 
 # See [1] 10.1002/jcc.21026
 
+import itertools as it
 from math import cos, sin
 
 import numpy as np
@@ -35,6 +36,11 @@ class FragmentKick(Kick):
         geom = Geometry(self.atoms, new_coords3d.flatten())
         with open("fragments_in_origin.xyz", "w") as handle:
             handle.write(geom.as_xyz())
+
+        self.frag_inds_flat = list(it.chain(*self.fragments))
+        # Given an array with fragment coordinates these indices will sort the
+        # array into the original atom order.
+        self.sort_inds = np.argsort(self.frag_inds_flat)
 
     def get_fragments(self, fragments):
         if len(fragments) == 1:
@@ -110,6 +116,12 @@ class FragmentKick(Kick):
                 kicked_frag = self.kick_fragment(fc)
             kicked_frags.append(kicked_frag)
         new_coords3d = np.concatenate(kicked_frags)
+        # As the fragments are not necessarily defined in order, especially
+        # when we generate the second fragment automatically, we have to
+        # sort the coordinates, so they are in the original order. E.g. the
+        # fragments ((4, 3), (2, 1, 0)) would result 'new_coords3d' with the
+        # coordinates of atom 4 at index 0, coordinates of atom 3 at index 1, etc.
+        new_coords3d = new_coords3d[self.sort_inds]
         new_coords = rmsd.kabsch_rotate(new_coords3d,
                                         self.initial_coords3d
         ).flatten()
