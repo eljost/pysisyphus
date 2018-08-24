@@ -221,6 +221,12 @@ class Pipeline:
                 self.new_energies.insert(i, energy)
                 self.new_geoms.insert(i, geom)
                 kept_geoms.append(geom)
+                if i == 0 and len(self.new_energies) > 1:
+                    last_minimum = self.new_energies[1]
+                    diff = energy + last_minimum
+                    print(f"Found new global minimum at {energy:.4f} au! "
+                          f"Last one was at {last_minimum:.4f} au "
+                          f"({diff:.4f} au higher).")
 
             kept_num = len(kept_geoms)
 
@@ -240,14 +246,14 @@ class Pipeline:
                 print(f"Cycle {self.cur_cycle} produced no new geometries.")
                 self.break_in -= 1
 
-            # diffs = np.diff(self.new_energies)
-            # print(f"min(diffs) {diffs.min():.4f}")
-
             self.cur_cycle += 1
             print()
+
         print(f"Run produced {len(self.new_energies)} geometries!")
+        # Return empty list of nothing was found
         if not self.new_energies:
             return []
+
         fn = "final.trj"
         self.write_geoms_to_trj(self.new_geoms, fn)
         # self.new_energies = np.array(new_energies)

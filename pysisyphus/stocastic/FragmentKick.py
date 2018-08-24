@@ -17,12 +17,15 @@ np.set_printoptions(suppress=True, precision=2)
 class FragmentKick(Kick):
 
     def __init__(self, geom, fragments, fix_fragments=list(),
-                 random_origin=False, **kwargs):
+                 displace_from=list(), random_displacement=False,
+                 **kwargs):
         super().__init__(geom, **kwargs)
 
         self.fragments = [np.array(frag) for frag in fragments]
         self.fix_fragments = fix_fragments
-        self.random_origin = random_origin
+        self.displace_from = displace_from
+        # True when displace_from is given
+        self.random_displacement = self.displace_from or random_displacement
 
         # Shift fragment coordinates into their centroid
         frag_coords = [self.initial_geom.coords3d[frag] for frag in self.fragments]
@@ -34,12 +37,24 @@ class FragmentKick(Kick):
             handle.write(geom.as_xyz())
 
     def get_origin(self):
-        if not self.random_origin:
+        if not self.random_displacement:
             return (0, 0, 0)
 
         # Select random atom of fixed fragment
         frag_coords = self.frag_coords[self.fix_fragments[0]]
-        frag_indices = np.arange(frag_coords.shape[0])
+
+        # Use all possible atom indices in fragment
+        if not self.displace_from:
+            frag_indices = np.arange(frag_coords.shape[0])
+        # Otherwise restrict the number of valid atom. This way
+        # one could consider symmetry. Consider a stocastic search
+        # for minima between benzene and a chlorine molecule. As
+        # all carbons/hydrogens in the benzene are equivalent one
+        # could greatly reduce the number of calculations, by always
+        # displacing only from one carbon and one hydrogen.
+        else:
+            frag_indices = self.displace_from
+
         random_ind = np.random.choice(frag_indices, size=1)[0]
         return frag_coords[random_ind]
 
