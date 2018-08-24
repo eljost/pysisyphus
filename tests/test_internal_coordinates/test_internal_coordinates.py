@@ -242,7 +242,7 @@ def run():
 
 if __name__ == "__main__":
     #test_fluorethylene()
-    test_fluorethylene_opt()
+    # test_fluorethylene_opt()
     #test_azetidine()
     #test_azetidine_opt()
     #test_runo()

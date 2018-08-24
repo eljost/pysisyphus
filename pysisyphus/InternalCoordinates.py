@@ -139,33 +139,25 @@ class RedundantCoords:
         logging.warning("Using simple 0.5/0.2/0.1 model hessian!")
         return np.diagflat(k_diag)
 
-    def merge_fragments(self, fragments, to_pop=None):
-        """Merge a list of sets recursively. Pop the first element
-        of the list and check if it intersects with one of the remaining
-        elements. If yes, delete the intersecting set from the list, form
-        the union of both sets and append it at the end of the list.
-        If the popped set doesn't intersect with any of the remaining sets
-        append the it at the end of the list.
-
-        Merge fragment has to be applied at least len(fragments) - 1 times,
-        otherwise it may happen that not all unmerged fragments are tested.
-        This is tracked with to_pop."""
-        if to_pop is None:
-            to_pop = len(fragments) - 1
-        if len(fragments) == 1:
-            return fragments
-        popped = fragments.pop(0)
-        for frag in fragments:
-            if popped & frag:
-                fragments.remove(frag)
-                fragments.append(popped | frag)
-                return self.merge_fragments(fragments, to_pop-1)
-        fragments.append(popped)
-        # If this evaluated to true there are still untested unmerged
-        # fragments.
-        if to_pop > 0:
-            fragments = self.merge_fragments(fragments, to_pop-1)
-        return fragments
+    def merge_fragments(self, fragments):
+        """Merge a list of sets."""
+        merged = list()
+        while len(fragments) > 0:
+            popped = fragments.pop(0)
+            # Look for an intersection between the popped unmerged fragment
+            # and the remaining unmerged fragments.
+            for frag in fragments:
+                if popped & frag:
+                    fragments.remove(frag)
+                    # If a intersecting unmerged fragment is found merge
+                    # both fragments and append them at the end.
+                    fragments.append(popped | frag)
+                    break
+            else:
+                # Add the unmerged fragment into merged if it doesn't
+                # intersect with any other unmerged fragment.
+                merged.append(popped)
+        return merged
 
     def connect_fragments(self, cdm, fragments):
         """Determine the smallest interfragment bond for a list
