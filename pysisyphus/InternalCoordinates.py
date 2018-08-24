@@ -141,6 +141,8 @@ class RedundantCoords:
 
     def merge_fragments(self, fragments):
         """Merge a list of sets."""
+        # Hold the final fragments that can't be merged further, as they
+        # contain distinct atoms.
         merged = list()
         while len(fragments) > 0:
             popped = fragments.pop(0)
