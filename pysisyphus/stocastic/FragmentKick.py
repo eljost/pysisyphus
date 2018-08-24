@@ -40,21 +40,29 @@ class FragmentKick(Kick):
         if not self.random_displacement:
             return (0, 0, 0)
 
-        # Select random atom of fixed fragment
+        # Coordinates of fixed fragment
         frag_coords = self.frag_coords[self.fix_fragments[0]]
+        """Here we have two options:
+        1.) displace_from is not given, so we use all possible
+            atom indices in the fragment.
+        2.) displace_from is given, so we restrict the valid
+            atom indices. This way some degree of symmetry can
+            be considered and the generated structures should
+            be more similar. This should reduce the effort in
+            matching the geometries later on with the hungarian
+            method.
 
-        # Use all possible atom indices in fragment
+        Consider a stocastic search for minima between benzene and
+        a chlorine molecule. As all carbons/hydrogens in the benzene
+        are equivalent one could greatly reduce the effort of matching
+        atoms later on, when displacing only from one carbon and one
+        hydrogen."""
         if not self.displace_from:
             frag_indices = np.arange(frag_coords.shape[0])
-        # Otherwise restrict the number of valid atom. This way
-        # one could consider symmetry. Consider a stocastic search
-        # for minima between benzene and a chlorine molecule. As
-        # all carbons/hydrogens in the benzene are equivalent one
-        # could greatly reduce the number of calculations, by always
-        # displacing only from one carbon and one hydrogen.
         else:
             frag_indices = self.displace_from
 
+        # Select random atom of fixed fragment
         random_ind = np.random.choice(frag_indices, size=1)[0]
         return frag_coords[random_ind]
 
