@@ -82,11 +82,11 @@ def test_toluene():
     # fkick = FragmentKick(geom, fragments, **kwargs)
     # fkick.run()
     kwargs = {
-        # "cycle_size": 75,
-        "cycle_size": 5,
+        "cycle_size": 75,
+        # "cycle_size": 15,
         "radius": 3,
-        # "cycles": 3,
-        "cycles": 1,
+        "cycles": 15,
+        # "cycles": 5,
         "seed": 1532002565,
     }
     fkick = FragmentKick(geom, fragments, **kwargs)

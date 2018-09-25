@@ -16,7 +16,7 @@ from pysisyphus.stocastic.align import matched_rmsd
 class Pipeline:
 
     def __init__(self, geom, seed=None, cycles=5, cycle_size=15,
-                 rmsd_thresh=.1, energy_thresh=1e-3,
+                 rmsd_thresh=.1, energy_thresh=1e-3, energy_range=.125,
                  compare_num=25, break_after=2,
                  calc_kwargs={}):
         self.initial_geom = geom
@@ -28,6 +28,7 @@ class Pipeline:
             self.seed = seed
         self.rmsd_thresh = rmsd_thresh
         self.energy_thresh = energy_thresh
+        self.energy_range = energy_range
         self.compare_num = compare_num
         self.break_after = break_after
         self.calc_kwargs = {
@@ -99,12 +100,29 @@ class Pipeline:
 
         i = bisect.bisect_left(self.new_energies, geom.energy)
         to_intersect = range(i-self.compare_num, i+self.compare_num)
-        valid_inds = self.get_valid_index_set(to_intersect)
-        rmsds = [matched_rmsd(geom, self.new_geoms[i])[0] for i in valid_inds]
-        rmsds = np.array(rmsds)
-        is_new = rmsds.min() > self.rmsd_thresh
+        valid_inds = np.array(list(self.get_valid_index_set(to_intersect)))
+        new_energies = np.array(self.new_energies)[valid_inds]
+        # Restrict geometries for RMSD comparison to an energy range
+        # around the energy of the geometry to check.
+        in_range = np.abs(new_energies - geom.energy) < self.energy_range
+        valid_inds = valid_inds[in_range]
+        # If this evalutes to True the energy of the current in geometry is
+        # quite different and we add the geometry.
+        if valid_inds.size == 0:
+            # print("Energy of geometry is very different from the remaining "
+                  # "ones. Adding geometry!")
+            reason = "different energy."
+            is_new = True
+        # Otherwise check the RMSD values for the remaining geometries that
+        # are close in energy.
+        else:
+            rmsds = [matched_rmsd(geom, self.new_geoms[i])[0] for i in valid_inds]
+            rmsds = np.array(rmsds)
+            is_new = rmsds.min() > self.rmsd_thresh
+            reason = f"different RMSD (min(RMSD) = {rmsds.min():.3f})"
+
         if is_new:
-            self.log(f"Found new geometry! min(RMSD)={rmsds.min():.3f}")
+            self.log(f"Found new geometry based on {reason}")
         return is_new
 
     def geom_is_valid(self, geom):
@@ -197,6 +215,7 @@ class Pipeline:
 
     def run(self):
         while self.cur_cycle < self.cycles:
+            cycle_start = time.time()
             self.log(f"Cycle {self.cur_cycle}")
             input_geoms = [self.get_input_geom(self.initial_geom)
                            for _ in range(self.cycle_size)]
@@ -206,8 +225,9 @@ class Pipeline:
             calc_start = time.time()
             opt_geoms = list()
             for i, geom in enumerate(input_geoms, 1):
-                print(f"Optimizing geometry {i}/{self.cycle_size}", end="\r")
+                print(f"Optimizing geometry {i:03d}/{self.cycle_size:03d}", end="\r")
                 opt_geoms.append(self.run_geom_opt(geom))
+            print()
             calc_end = time.time()
             calc_duration = calc_end - calc_start
             self.log(f"Optimizations took {calc_duration:.0f} s.")
@@ -215,7 +235,7 @@ class Pipeline:
             kept_geoms = list()
             rejected_geoms = 0
             for geom in opt_geoms:
-                # Reject all invalid geometries
+                # Do all the filtering and reject all invalid geometries
                 if not self.geom_is_valid(geom):
                     continue
 
@@ -250,6 +270,9 @@ class Pipeline:
                 self.break_in -= 1
 
             self.cur_cycle += 1
+            cycle_end = time.time()
+            cycle_duration = cycle_end - cycle_start
+            self.log(f"Cycle {i} took {cycle_duration:.0f} s.")
             self.log("")
 
         self.log(f"Run produced {len(self.new_energies)} geometries!")
