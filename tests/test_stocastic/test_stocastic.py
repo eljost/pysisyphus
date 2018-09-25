@@ -82,9 +82,11 @@ def test_toluene():
     # fkick = FragmentKick(geom, fragments, **kwargs)
     # fkick.run()
     kwargs = {
-        "cycle_size": 75,
+        # "cycle_size": 75,
+        "cycle_size": 5,
         "radius": 3,
-        "cycles": 3,
+        # "cycles": 3,
+        "cycles": 1,
         "seed": 1532002565,
     }
     fkick = FragmentKick(geom, fragments, **kwargs)
@@ -116,6 +118,6 @@ if __name__ == "__main__":
     # test_kick()
     # test_benz_chlorine_fragment_kick()
     # test_benz_no_plus_fragment_kick()
-    # test_toluene()
+    test_toluene()
     # test_atoms_are_too_close()
-    test_get_fragments()
+    # test_get_fragments()

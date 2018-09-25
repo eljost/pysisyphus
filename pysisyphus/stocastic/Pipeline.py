@@ -204,7 +204,10 @@ class Pipeline:
             self.write_geoms_to_trj(input_geoms, f"cycle_{self.cur_cycle:03d}_input.trj")
             # Run optimizations on input geometries
             calc_start = time.time()
-            opt_geoms = [self.run_geom_opt(geom) for geom in input_geoms]
+            opt_geoms = list()
+            for i, geom in enumerate(input_geoms, 1):
+                print(f"Optimizing geometry {i}/{self.cycle_size}", end="\r")
+                opt_geoms.append(self.run_geom_opt(geom))
             calc_end = time.time()
             calc_duration = calc_end - calc_start
             self.log(f"Optimizations took {calc_duration:.0f} s.")
