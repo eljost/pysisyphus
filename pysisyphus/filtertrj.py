@@ -72,5 +72,5 @@ def run():
     print(f"Found {len(valid_geoms)} valid geometries.")
     print(f"Found {len(invalid_geoms)} invalid geometries.")
 
-    write_geoms_to_trj(valid_geoms, "valid_geom.trj")
-    write_geoms_to_trj(invalid_geoms, "invalid_geom.trj")
+    write_geoms_to_trj(valid_geoms, "filtered_valid.trj")
+    write_geoms_to_trj(invalid_geoms, "filtered_invalid.trj")
