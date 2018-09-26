@@ -20,9 +20,9 @@ def parse_args(args):
     parser.add_argument("--first", type=int, metavar="N", default=None,
                         help="Only consider first N geometries in .trj."
     )
-    parser.add_argument("--cov_rad_factor", type=float, default=1.3,
-                        help="Factor to determine bonds."
-    )
+    # parser.add_argument("--cov_rad_factor", type=float, default=1.3,
+                        # help="Factor to determine bonds."
+    # )
 
     return parser.parse_args(args)
 
@@ -41,7 +41,7 @@ def parse_filter(raw_filter):
 
 
 def get_unique_internals(geom):
-    attrs = ("bond_indices", "bending_indices", "dihedral_indices")
+    attrs = ("bare_bond_indices", "bending_indices", "dihedral_indices")
     atoms_arr = np.array(geom.atoms)
     unique_internals = list()
     for attr in attrs:
@@ -55,17 +55,18 @@ def get_unique_internals(geom):
 def run():
     args = parse_args(sys.argv[1:])
 
-    internal_kwargs = {
-        "cov_rad_factor": args.cov_rad_factor,
-    }
-    geoms = geoms_from_trj(args.trj, first=args.first, coord_type="redund",
-                           internal_kwargs=internal_kwargs)
+    # internal_kwargs = {
+        # "cov_rad_factor": args.cov_rad_factor,
+    # }
+    geoms = geoms_from_trj(args.trj, first=args.first, coord_type="redund",)
+                           # internal_kwargs=internal_kwargs)
     atoms = geoms[0].atoms
     filters = parse_filter(args.filter)
     print("Filters", filters)
     # print(ai)
     # geoms = [geoms[19], ]
     gui = get_unique_internals
+    invalids = 0
     for i, geom in enumerate(geoms):
         internals = get_unique_internals(geom)
         valid = all([is_present == (internal in internals)
@@ -74,5 +75,6 @@ def run():
         # print(valid)
         if not valid:
             print(f"geom {i+1} is not valid.")
-            print(internals)
+            invalids += 1
     # import pdb; pdb.set_trace()
+    print(f"Found {invalids} invalid geometries.")
