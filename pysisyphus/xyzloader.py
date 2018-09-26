@@ -22,14 +22,20 @@ def make_trj_str(atoms, coords_list, comments=None):
                    for coords, comment in zip(coords_list, comments)]
     return "\n".join(xyz_strings)
 
+
 def make_trj_str_from_geoms(geoms, comments=None):
     atoms = geoms[0].atoms
     if comments is None:
         energies = [geom._energy for geom in geoms]
         if all(energies):
             comments = [f"{energy}" for energy in energies]
-    coords_list = [geom.coords.reshape(-1, 3)*BOHR2ANG for geom in geoms]
+    coords_list = [geom._coords.reshape(-1, 3)*BOHR2ANG for geom in geoms]
     return make_trj_str(atoms, coords_list, comments)
+
+
+def write_geoms_to_trj(geoms, fn, comments=None):
+    with open(fn, "w") as handle:
+        handle.write(make_trj_str_from_geoms(geoms, comments))
 
 
 def parse_xyz_str(xyz_str):
