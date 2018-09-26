@@ -37,9 +37,11 @@ def get_cov_radii_sum_array(atoms, coords):
 
 class RedundantCoords:
 
-    def __init__(self, atoms, cart_coords):
+    def __init__(self, atoms, cart_coords, cov_rad_factor=1.3):
         self.atoms = atoms
         self.cart_coords = cart_coords
+        self.cov_rad_factor = cov_rad_factor
+        print("cov rad factor", cov_rad_factor)
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -209,7 +211,7 @@ class RedundantCoords:
                     logging.debug("Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
-    def set_bond_indices(self, factor=1.3):
+    def set_bond_indices(self):
         """
         Default factor of 1.3 taken from [1] A.1.
         Gaussian uses somewhat less, like 1.2, or different radii than we do.
@@ -222,7 +224,7 @@ class RedundantCoords:
         atom_indices = list(it.combinations(range(len(coords3d)),2))
         atom_indices = np.array(atom_indices, dtype=int)
         cov_rad_sums = get_cov_radii_sum_array(self.atoms, self.cart_coords)
-        cov_rad_sums *= factor
+        cov_rad_sums *= self.cov_rad_factor
         bond_flags = cdm <= cov_rad_sums
         bond_indices = atom_indices[bond_flags]
 

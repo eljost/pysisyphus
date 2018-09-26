@@ -15,7 +15,8 @@ class Geometry:
         "redund": RedundantCoords,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart"):
+    def __init__(self, atoms, coords, coord_type="cart",
+                 internal_kwargs={},):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -40,7 +41,7 @@ class Geometry:
         self.coord_type = coord_type
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            self.internal = coord_class(atoms, coords)
+            self.internal = coord_class(atoms, coords, **internal_kwargs)
         else:
             self.internal = None
 
