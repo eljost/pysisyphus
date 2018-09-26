@@ -11,7 +11,7 @@ from pysisyphus.calculators.XTB import XTB
 from pysisyphus.InternalCoordinates import get_cov_radii_sum_array
 from pysisyphus.xyzloader import make_trj_str_from_geoms
 from pysisyphus.stocastic.align import matched_rmsd
-
+from pysisyphus.helpers import check_for_stop_sign
 
 class Pipeline:
 
@@ -274,6 +274,8 @@ class Pipeline:
             cycle_duration = cycle_end - cycle_start
             self.log(f"Cycle {i} took {cycle_duration:.0f} s.")
             self.log("")
+            if check_for_stop_sign():
+                break
 
         self.log(f"Run produced {len(self.new_energies)} geometries!")
         # Return empty list of nothing was found

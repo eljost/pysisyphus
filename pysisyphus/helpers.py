@@ -137,6 +137,17 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         c3d[old_inds] = new_coords_for_atom
         # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
 
+def check_for_stop_sign():
+    stop_signs = ("stop", "STOP")
+    stop_sign_found = False
+
+    for ss in stop_signs:
+        if os.path.exists(ss):
+            print("Found stop sign. Stopping run.")
+            os.remove(ss)
+            stop_sign_found = True
+    return stop_sign_found
+
 
 if __name__ == "__main__":
     print(load_geometry("hcn.xyz"))

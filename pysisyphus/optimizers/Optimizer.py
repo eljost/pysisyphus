@@ -12,6 +12,7 @@ import scipy.linalg
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.helpers import check_for_stop_sign
 
 
 gauss_loose = {
@@ -281,11 +282,7 @@ class Optimizer:
                 self.geometry.reparametrize()
 
             sys.stdout.flush()
-            stop_signs = ("stop", "STOP")
-            for ss in stop_signs:
-                if os.path.exists(ss):
-                    print("Found stop sign. Stopping optimization.")
-                    os.remove(ss)
-                    return
+            if check_for_stop_sign():
+                return
 
             self.cur_cycle += 1
