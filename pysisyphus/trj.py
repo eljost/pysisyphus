@@ -42,6 +42,8 @@ def parse_args(args):
     action_group.add_argument("--spline",
                               help="Evenly redistribute geometries along a "
                                    "splined path.")
+    action_group.add_argument("--first", type=int,
+                              help="Copy the first N geometries to a new file.")
     return parser.parse_args()
 
 
@@ -165,6 +167,14 @@ def spline(trj_fn):
     dump_geometry_strings("splined", trj=trj)
 
 
+def first(trj_fn, first_n):
+    geoms = get_geoms(trj_fn, multiple_geoms=True)[:first_n]
+    xyz_per_image = [geom.as_xyz() for geom in geoms]
+    trj = "\n".join(xyz_per_image)
+    out_fn = f"first_{first_n:03d}"
+    dump_geometry_strings(out_fn, trj=trj)
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -180,6 +190,8 @@ def run():
         clean_trj(args.cleantrj)
     elif args.spline:
         spline(args.spline)
+    elif args.first:
+        first(args.xyz, args.first)
 
 if __name__ == "__main__":
     run()
