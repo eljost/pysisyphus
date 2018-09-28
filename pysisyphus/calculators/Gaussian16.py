@@ -18,7 +18,7 @@ from pysisyphus.config import Config
 
 class Gaussian16(OverlapCalculator):
 
-    def __init__(self, route, mem=3500, gbs="", **kwargs):
+    def __init__(self, route, mem=3500, gbs="", gen="", **kwargs):
         super().__init__(**kwargs)
 
         self.route = route.lower()
@@ -27,6 +27,7 @@ class Gaussian16(OverlapCalculator):
         self.gbs = gbs
         assert "@" not in gbs, "Give only the path to the .gbs file, " \
                                "without the @!"
+        self.gen = gen
 
         if any([key in self.route for key in "td tda cis".split()]):
             route_lower = self.route.lower()
@@ -67,6 +68,8 @@ class Gaussian16(OverlapCalculator):
         {charge} {mult}
         {coords}
 
+        {gen}
+
         {gbs}
 
 
@@ -101,6 +104,7 @@ class Gaussian16(OverlapCalculator):
             "mult": self.mult,
             "coords": coords,
             "gbs": self.make_gbs_str(),
+            "gen": self.gen,
         }
         if calc_type == "double_mol":
             update = {
