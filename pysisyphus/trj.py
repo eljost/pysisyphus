@@ -58,7 +58,7 @@ def get_geoms(xyz_fns, idpp=False, between=0, dump=False, multiple_geoms=False):
     # How is this different from above?
     elif isinstance(xyz_fns, str) and xyz_fns.endswith(".trj"):
         geoms = geoms_from_trj(xyz_fns)
-    elif multiple_geoms:
+    elif not multiple_geoms:
         geoms = geoms_from_trj(xyz_fns[0])
     # Handle multiple .xyz files
     else:
