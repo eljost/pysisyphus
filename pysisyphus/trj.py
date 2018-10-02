@@ -47,22 +47,26 @@ def parse_args(args):
     return parser.parse_args()
 
 
+def read_geoms(xyz_fns):
+    if isinstance(xyz_fns, str):
+        xyz_fns = [xyz_fns, ]
+
+    geoms = list()
+    for fn in xyz_fns:
+        if fn.endswith(".xyz"):
+            geom = [geom_from_xyz_file(fn), ]
+        elif fn.endswith(".trj"):
+            geom = geom_from_trj_file(fn)
+        else:
+            raise Exception("Only .xyz and .trj files are supported!")
+        geoms.extend(geom)
+    return geoms
+
+
 def get_geoms(xyz_fns, idpp=False, between=0, dump=False, multiple_geoms=False):
     """Returns a list of Geometry objects."""
-    # Handle a single .xyz file
-    if isinstance(xyz_fns, str) and xyz_fns.endswith(".xyz"):
-        geoms = [geom_from_xyz_file(xyz_fns), ]
-    # Handle a single .trj file
-    elif len(xyz_fns) == 1 and xyz_fns[0].endswith(".trj"):
-        geoms = geoms_from_trj(xyz_fns[0])
-    # How is this different from above?
-    elif isinstance(xyz_fns, str) and xyz_fns.endswith(".trj"):
-        geoms = geoms_from_trj(xyz_fns)
-    elif not multiple_geoms:
-        geoms = geoms_from_trj(xyz_fns[0])
-    # Handle multiple .xyz files
-    else:
-        geoms = [geom_from_xyz_file(fn) for fn in xyz_fns]
+
+    geoms = read_geoms(xyz_fns)
 
     print(f"Read {len(geoms)} geometries.")
 
