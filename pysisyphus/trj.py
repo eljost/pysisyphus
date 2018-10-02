@@ -56,7 +56,7 @@ def read_geoms(xyz_fns):
         if fn.endswith(".xyz"):
             geom = [geom_from_xyz_file(fn), ]
         elif fn.endswith(".trj"):
-            geom = geom_from_trj_file(fn)
+            geom = geoms_from_trj(fn)
         else:
             raise Exception("Only .xyz and .trj files are supported!")
         geoms.extend(geom)
