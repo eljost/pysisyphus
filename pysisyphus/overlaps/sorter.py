@@ -23,7 +23,7 @@ def sort_cut(cut, max_overlap_inds, consider_first=None):
 
         new_inds = cur_inds.copy()
         if unique_inds.size != consider_first:
-            print("Step {:i02d}, indices are non-unique! Not skipping!")
+            print(f"Step {i:02d}, indices are non-unique! Not skipping!")
             print(f"\t ({i-1} -> {i}): {inds}")
         else:
             for j, s in jumps:
