@@ -256,6 +256,7 @@ def get_defaults(conf_dict):
         "overlaps": None,
         "glob": None,
         "stocastic": None,
+        "xyz": None,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
