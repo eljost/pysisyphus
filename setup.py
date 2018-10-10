@@ -29,6 +29,7 @@ setup(
         "dask",
         "distributed",
         "rmsd",
+        "pandas",
     ],
     entry_points={
         "console_scripts": [

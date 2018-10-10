@@ -63,7 +63,7 @@ def sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first=None):
     np.savetxt(f"{ens_sorted_fn}.dat", energies_sorted)
     np.save(ens_sorted_fn, energies_sorted)
     inds_sorted_fn = "all_inds_sorted"
-    np.savetxt(f"{inds_sorted_fn}.dat", inds_sorted)
+    np.savetxt(f"{inds_sorted_fn}.dat", inds_sorted, fmt="%d")
     np.save(inds_sorted_fn, inds_sorted)
     print()
     print("Indices, sorted")
