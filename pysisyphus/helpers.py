@@ -35,6 +35,39 @@ def geoms_from_trj(trj_fn, first=None, **kwargs):
     return geoms
 
 
+def align_geoms(geoms):
+    # http://nghiaho.com/?page_id=671#comment-559906
+    first_geom = geoms[0]
+    coords3d = first_geom.coords.reshape(-1, 3)
+    centroid = coords3d.mean(axis=0)
+    last_centered = coords3d - centroid
+    first_geom.coords3d = last_centered
+    atoms_per_image = len(first_geom.atoms)
+
+    # Don't rotate the first image, so just add identitiy matrices
+    # for every atom.
+    rot_mats = [np.eye(3)]*atoms_per_image
+    for i, geom in enumerate(geoms[1:], 1):
+        coords3d = geom.coords3d
+        centroid = coords3d.mean(axis=0)
+        # Center next image
+        centered = coords3d - centroid
+        tmp_mat = centered.T.dot(last_centered)
+        U, W, Vt = np.linalg.svd(tmp_mat)
+        rot_mat = U.dot(Vt)
+        # Avoid reflections
+        if np.linalg.det(rot_mat) < 0:
+            U[:, -1] *= -1
+            rot_mat = U.dot(Vt)
+        # Rotate the coords
+        rotated3d = centered.dot(rot_mat)
+        geom.coords3d = rotated3d
+        last_centered = rotated3d
+        # Append one rotation matrix per atom
+        rot_mats.extend([rot_mat]*atoms_per_image)
+    return rot_mats
+
+
 def procrustes(geometry):
     # http://nghiaho.com/?page_id=671#comment-559906
     image0 = geometry.images[0]
@@ -136,6 +169,7 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         # Modify the coordinates directly
         c3d[old_inds] = new_coords_for_atom
         # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
+
 
 def check_for_stop_sign():
     stop_signs = ("stop", "STOP")
