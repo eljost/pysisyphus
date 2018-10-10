@@ -53,13 +53,16 @@ class FragmentKick(Kick):
             self.log("\n".join(frag_lines) + "\n")
 
     def get_fragments(self, fragments):
-        if len(fragments) == 1:
-            fragment = fragments[0]
+        # Compare number of atoms defined in fragments with the total
+        # number of atoms in the molecule.
+        fragment_atoms = list(it.chain(*fragments))
+        if len(fragment_atoms) != len(self.atoms):
             self.log("Fragments were not fully specified. "
                      "Determining remaining fragment.")
-            all_indices = set(range(len(self.initial_geom.atoms)))
-            second_frag = tuple(all_indices - set(fragment))
-            fragments = (fragment, second_frag)
+            all_indices = set(range(len(self.atoms)))
+            new_fragment = list(all_indices - set(fragment_atoms))
+            fragments.append(new_fragment)
+
         fragments = [np.array(frag) for frag in fragments]
         return fragments
 
