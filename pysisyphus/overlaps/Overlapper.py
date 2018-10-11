@@ -17,6 +17,7 @@ from pysisyphus.helpers import geom_from_xyz_file
 
 class Overlapper:
     orca_exts = ("out", "gbw", "cis")
+    gaussian_exts = ("log", "fchk", "dump_635r")
 
     def __init__(self, path, calc_key=None, calc_kwargs=None):
         self.path = Path(path)
@@ -25,13 +26,15 @@ class Overlapper:
         self.calc_kwargs["out_dir"] = path
 
         self.setter_dict = {
-            "g09": self.set_g16_files,
-            "g16": self.set_g16_files,
+            "gaussian09": self.set_g16_files,
+            "gaussian16": self.set_g16_files,
             "orca": self.set_orca_files,
             "turbo": self.set_turbo_files,
         }
         self.files_from_dir_dict = {
             "orca": self.set_orca_files_from_dir,
+            "gaussian09": self.set_gaussian16_files_from_dir,
+            "gaussian16": self.set_gaussian16_files_from_dir,
         }
 
     def keyfunc(self, element):
@@ -56,7 +59,7 @@ class Overlapper:
             files_dict[key] = list(elements)
         return files_dict
 
-    def disover_files_in_dir(self, path, exts):
+    def discover_files_in_dir(self, path, exts):
         files_list = list()
         for ext in exts:
             glob = f"*{ext}"
@@ -105,7 +108,7 @@ class Overlapper:
 
     def set_orca_files_from_dir(self, geom, path, calc_number):
         exts = self.orca_exts
-        files_list = self.disover_files_in_dir(path, exts)
+        files_list = self.discover_files_in_dir(path, exts)
         files_dict = {
             (calc_number, 0): files_list,
         }
@@ -117,6 +120,26 @@ class Overlapper:
         for geom in geoms:
             geom.calculator.store_overlap_data(geom.atoms, geom.coords)
 
+    def set_gaussian16_files_from_dir(self, geom, path, calc_number):
+        exts = self.gaussian_exts
+
+        files_list = self.discover_files_in_dir(path, exts)
+        log_file, *files_list = files_list
+        files_dict = {
+            (calc_number, 0): files_list,
+        }
+        exts_without_log = exts[1:]
+        assert "log" not in exts_without_log
+        self.set_files_on_calculator(geom, files_dict, Gaussian16,
+                                     exts_without_log,
+                                     calc_number
+        )
+        log_path = Path(log_file)
+        nmos, roots = geom.calculator.parse_log(log_path)
+        calc = geom.calculator
+        calc.nmos = nmos
+        calc.roots = roots
+        calc.store_overlap_data(geom.atoms, geom.coords)
 
     def set_g16_files(self, geoms, files_dict):
         exts = ("fchk", "dump_635r")
