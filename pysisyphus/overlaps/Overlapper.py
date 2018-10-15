@@ -12,7 +12,7 @@ from pysisyphus.calculators.Gaussian09 import Gaussian09
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.Turbomole import Turbomole
-from pysisyphus.helpers import geom_from_xyz_file
+from pysisyphus.helpers import geom_from_xyz_file, index_array_from_overlaps
 
 
 class Overlapper:
@@ -172,26 +172,79 @@ class Overlapper:
         print(f"Restored {calc_num} calculators.")
         return calc_num
 
-    def overlaps_for_geoms(self, geoms, ovlp_type="wf", double_mol=False):
+    def similar_overlaps(self, overlaps_for_state, ovlp_thresh=.1, diff_thresh=.1):
+        """Return True if overlaps for a state are similar."""
+        # Find overlaps above ovlp_thresh
+        above_inds = np.where(np.abs(overlaps_for_state) > ovlp_thresh)[0]
+        # Unambiguous assignment. There is a one to one correspondence between
+        # the states.
+        if len(above_inds) == 1:
+            return False
+        # Given the a full row containing overlaps this may evaluate to True if
+        # something went wrong and the overlaps ARE that small. Given only a subset
+        # of a full row, e.g. when only the first N states are considered this may
+        # evaluate to True if the index of the current state lies below N. E.g. if we
+        # check state 6, but got only the overlaps from state 1 to 5.
+        elif len(above_inds) == 0:
+            return False
+
+        above_thresh = np.abs(overlaps_for_state[above_inds])
+        max_ovlp_ind = above_thresh.argmax()
+        max_ovlp = above_thresh[max_ovlp_ind]
+        without_max = np.delete(above_thresh, max_ovlp_ind)
+        # Consider the differences between the maximum overlap and the smaller ones.
+        diffs = np.abs(max_ovlp - without_max)
+        # Return True if any difference is below the threshold
+        return any(diffs < diff_thresh)
+
+    def get_ovlp_func(self, ovlp_type, double_mol=False, recursive=False,
+                      consider_first=None):
         def wf_ovlp(calc1, calc2, ao_ovlp):
             ovlp_mats = calc1.wfow.overlaps_with(calc2.wfow, ao_ovlp=ao_ovlp)
             ovlp_mat = ovlp_mats[0]
             return ovlp_mat
 
-        def tden_ovlp(calc1, calc2, ao_ovlp=None):
+        def tden_ovlp(calc1, calc2, ao_ovlp):
             return calc1.tdens_overlap_with_calculator(calc2,
                                                        ao_ovlp=ao_ovlp)
-
         ovlp_dict = {
             "wf": wf_ovlp,
             "tden": tden_ovlp,
         }
-        try:
-            ovlp_func = ovlp_dict[ovlp_type]
-        except KeyError as err:
-            valid_ovlps = "/".join([str(k) for k in ovlp_dict.keys()])
-            print(f"Please supply a valid ovlp_type ({valid_ovlps})! Exiting!")
-            return
+        valid_ovlps = "/".join([str(k) for k in ovlp_dict.keys()])
+        assert ovlp_type in ovlp_dict.keys(), \
+            f"Invalid ovlp_type! Valid keys are {valid_ovlps}."
+
+        ovlp_func_ = ovlp_dict[ovlp_type]
+
+        def ovlp_func(geoms, i, j, depth=3, ao_ovlp=None):
+            ith_geom = geoms[i]
+            jth_geom = geoms[j]
+            ith_calc = geoms[i].calculator
+            jth_calc = geoms[j].calculator
+            if double_mol:
+                ao_ovlp = jth_geom.calc_double_ao_overlap(ith_geom)
+                np.savetxt(f"ao_ovlp_true_{i:03d}_{j:03d}", ao_ovlp)
+            ovlp_mat = ovlp_func_(ith_calc, jth_calc, ao_ovlp)
+
+            ovlp_mat_fn = f"{ovlp_type}_ovlp_mat_{i:03d}_{j:03d}"
+            np.savetxt(self.path / ovlp_mat_fn, ovlp_mat)
+
+            similar = any(
+                [self.similar_overlaps(per_state)
+                 for per_state in ovlp_mat[:,:consider_first]]
+            )
+            if recursive and similar and depth > 0:
+                return ovlp_func(geoms, i-1, j, depth-1)
+            return ovlp_mat
+
+        return ovlp_func
+
+    def overlaps_for_geoms(self, geoms, ovlp_type="wf", double_mol=False,
+                           recursive=False, consider_first=None):
+        ovlp_func = self.get_ovlp_func(ovlp_type, double_mol, recursive,
+                                       consider_first)
+
         if double_mol:
             assert hasattr(geoms[0].calculator, "run_double_mol_calculation"), \
                    "Double molecule calculation not implemented for " \
@@ -201,26 +254,16 @@ class Overlapper:
 
         inds_list = list()
         ovlp_mats = list()
-        for i, geom in enumerate(geoms[1:]):
-            ao_ovlp = None
-            if double_mol:
-                prev_geom = geoms[i]
-                ao_ovlp = geom.calc_double_ao_overlap(prev_geom)
-                np.savetxt(f"ao_ovlp_true_{i:03d}", ao_ovlp)
-
-            prev_calc = geoms[i].calculator
-            cur_calc = geom.calculator
-            print(f"Step {i:02d}, comparing Calculator {prev_calc.calc_number:02d} "
-                  f"with Calculator {cur_calc.calc_number:02d}:"
-            )
-            ovlp_mat = ovlp_func(prev_calc, cur_calc, ao_ovlp)
+        is_similar = lambda ovlp_mat: any([self.similar_overlaps(per_state)
+                                           for per_state in ovlp_mat[:,:consider_first]]
+        )
+        for i in range(len(geoms)-1):
+            j = i+1
+            ovlp_mat = ovlp_func(geoms, i,  j)
             print(ovlp_mat)
             ovlp_mats.append(ovlp_mat)
-            # Determine indices of maximum overlap
-            index_array = prev_calc.index_array_from_overlaps(ovlp_mat)
+            index_array = index_array_from_overlaps(ovlp_mat)
             inds_list.append(index_array)
-            ovlp_mat_fn = f"{ovlp_type}_ovlp_mat_{i:03d}"
-            np.savetxt(self.path / ovlp_mat_fn, ovlp_mat)
             print(index_array)
         inds_arr = np.array(inds_list)
         ovlp_mats = np.array(ovlp_mats)
