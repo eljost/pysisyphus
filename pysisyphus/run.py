@@ -210,15 +210,30 @@ def overlaps(run_dict, geoms=None):
         overlapper, geoms = restore_calculators(run_dict)
     else:
         overlapper = get_overlapper(run_dict)
-    ovlp_type = run_dict["overlaps"]["type"]
-    double_mol = run_dict["overlaps"]["ao_ovlps"]
+    ovlp_dict = run_dict["overlaps"]
+    ovlp_type = ovlp_dict["type"]
+    double_mol = ovlp_dict["ao_ovlps"]
+    recursive = ovlp_dict["recursive"]
+    consider_first = ovlp_dict["consider_first"]
+
     if ovlp_type == "wf" and double_mol:
         print("!"*10)
         print("WFOverlaps with true AO overlaps seem faulty right now!")
         print("!"*10)
+
+    # import cloudpickle
+    # pickle_fn = "pickles"
+    # with open(pickle_fn, "rb") as handle:
+        # overlapper, *geoms = cloudpickle.load(handle)
+    # to_pickle = [overlapper] + geoms
+    # with open(pickle_fn, "wb") as handle:
+        # cloudpickle.dump(to_pickle, handle)
+
     overlapper.overlaps_for_geoms(geoms,
                                   ovlp_type=ovlp_type,
-                                  double_mol=double_mol)
+                                  double_mol=double_mol,
+                                  recursive=recursive,
+                                  consider_first=consider_first)
 
 def run_opt(geom, calc_getter, opt_getter):
     geom.set_calculator(calc_getter(0))
@@ -283,6 +298,8 @@ def get_defaults(conf_dict):
             "type": "tden",
             "ao_ovlps": None,
             "glob": None,
+            "recursive": False,
+            "consider_first": None,
         }
     elif "stocastic" in conf_dict:
         dd["stocastic"] = {
