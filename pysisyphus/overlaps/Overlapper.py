@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import itertools as it
+import logging
 import os
 from pathlib import Path
 import re
@@ -19,6 +20,8 @@ class Overlapper:
     orca_exts = ("out", "gbw", "cis")
     gaussian_exts = ("log", "fchk", "dump_635r")
 
+    logger = logging.getLogger("overlapper")
+
     def __init__(self, path, calc_key=None, calc_kwargs=None):
         self.path = Path(path)
         self.calc_key = calc_key
@@ -36,6 +39,10 @@ class Overlapper:
             "gaussian09": self.set_gaussian16_files_from_dir,
             "gaussian16": self.set_gaussian16_files_from_dir,
         }
+
+    def log(self, message, lvl="info"):
+        func = getattr(self.logger, lvl)
+        func(message)
 
     def keyfunc(self, element):
         regex = "_(\d+)\.(\d+)\."
@@ -223,9 +230,15 @@ class Overlapper:
             ith_calc = geoms[i].calculator
             jth_calc = geoms[j].calculator
             if double_mol:
+                self.logger.info("Doing double molecule calculation to get "
+                                 "AO overlaps."
+                )
                 ao_ovlp = jth_geom.calc_double_ao_overlap(ith_geom)
                 np.savetxt(f"ao_ovlp_true_{i:03d}_{j:03d}", ao_ovlp)
+            self.log(f"Calculationg overlaps for steps {i:03d} and {j:03d}.")
             ovlp_mat = ovlp_func_(ith_calc, jth_calc, ao_ovlp)
+
+            self.log(ovlp_mat)
 
             ovlp_mat_fn = f"{ovlp_type}_ovlp_mat_{i:03d}_{j:03d}"
             np.savetxt(self.path / ovlp_mat_fn, ovlp_mat)
@@ -235,6 +248,9 @@ class Overlapper:
                  for per_state in ovlp_mat[:,:consider_first]]
             )
             if recursive and similar and depth > 0:
+                self.log(f"Overlaps for steps {i:03d} and {j:03d} are "
+                         f"too similar! Comparing {i-1:03d} and {j:03d} now."
+                )
                 return ovlp_func(geoms, i-1, j, depth-1)
             return ovlp_mat
 
@@ -250,7 +266,7 @@ class Overlapper:
                    "Double molecule calculation not implemented for " \
                   f"{self.calc_key}."
 
-        print(f"Doing {ovlp_type.upper()}-overlaps.")
+        self.log(f"Doing {ovlp_type.upper()}-overlaps.")
 
         inds_list = list()
         ovlp_mats = list()
@@ -260,21 +276,20 @@ class Overlapper:
         for i in range(len(geoms)-1):
             j = i+1
             ovlp_mat = ovlp_func(geoms, i,  j)
-            print(ovlp_mat)
             ovlp_mats.append(ovlp_mat)
             index_array = index_array_from_overlaps(ovlp_mat)
             inds_list.append(index_array)
-            print(index_array)
+            self.log(index_array)
         inds_arr = np.array(inds_list)
         ovlp_mats = np.array(ovlp_mats)
         max_ovlp_inds_fn = f"{ovlp_type}_max_ovlp_inds"
         ovlp_mats_fn = f"{ovlp_type}_ovlp_mats"
         np.savetxt(self.path / max_ovlp_inds_fn, inds_arr, fmt="%i")
         np.save(ovlp_mats_fn, ovlp_mats)
-        print()
-        print("Max overlap indices.")
+        self.log("")
+        self.log("Max overlap indices.")
         for i, row in enumerate(inds_arr):
-            print(f"Step {i:02d}: {row}")
+            self.log(f"Step {i:02d}: {row}")
 
 
 if __name__ == "__main__":
