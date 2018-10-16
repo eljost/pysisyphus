@@ -223,11 +223,12 @@ def overlaps(run_dict, geoms=None):
 
     # import cloudpickle
     # pickle_fn = "pickles"
-    # with open(pickle_fn, "rb") as handle:
-        # overlapper, *geoms = cloudpickle.load(handle)
     # to_pickle = [overlapper] + geoms
     # with open(pickle_fn, "wb") as handle:
         # cloudpickle.dump(to_pickle, handle)
+
+    # with open(pickle_fn, "rb") as handle:
+        # overlapper, *geoms = cloudpickle.load(handle)
 
     overlapper.overlaps_for_geoms(geoms,
                                   ovlp_type=ovlp_type,

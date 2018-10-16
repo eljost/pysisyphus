@@ -13,7 +13,9 @@ from pysisyphus.calculators.Gaussian09 import Gaussian09
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.Turbomole import Turbomole
-from pysisyphus.helpers import geom_from_xyz_file, index_array_from_overlaps
+from pysisyphus.helpers import (geom_from_xyz_file, index_array_from_overlaps,
+                                np_print
+)
 
 
 class Overlapper:
@@ -256,6 +258,7 @@ class Overlapper:
 
         return ovlp_func
 
+    @np_print
     def overlaps_for_geoms(self, geoms, ovlp_type="wf", double_mol=False,
                            recursive=False, consider_first=None):
         ovlp_func = self.get_ovlp_func(ovlp_type, double_mol, recursive,

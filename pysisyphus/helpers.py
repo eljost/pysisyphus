@@ -203,6 +203,18 @@ def index_array_from_overlaps(overlaps, axis=1):
     return indices
 
 
+def np_print(func, precision=2, suppress=True, linewidth=120):
+    def wrapped(*args, **kwargs):
+        org_print_dict = dict(np.get_printoptions())
+        np.set_printoptions(suppress=suppress,
+                            precision=precision,
+                            linewidth=linewidth)
+        result = func(*args, **kwargs)
+        np.set_printoptions(**org_print_dict)
+        return result
+    return wrapped
+
+
 if __name__ == "__main__":
     print(load_geometry("hcn.xyz"))
     print(geoms_from_trj("cycle_040.trj"))

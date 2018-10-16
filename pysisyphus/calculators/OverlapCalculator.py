@@ -3,8 +3,6 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 
-np.set_printoptions(suppress=True, precision=1)
-
 
 class OverlapCalculator(Calculator):
     ovlp_type_verbose = {
