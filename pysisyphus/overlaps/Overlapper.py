@@ -226,7 +226,7 @@ class Overlapper:
 
         ovlp_func_ = ovlp_dict[ovlp_type]
 
-        def ovlp_func(geoms, i, j, depth=3, ao_ovlp=None):
+        def ovlp_func(geoms, i, j, depth=2, ao_ovlp=None):
             ith_geom = geoms[i]
             jth_geom = geoms[j]
             ith_calc = geoms[i].calculator
@@ -249,7 +249,7 @@ class Overlapper:
                 [self.similar_overlaps(per_state)
                  for per_state in ovlp_mat[:,:consider_first]]
             )
-            if recursive and similar and depth > 0:
+            if recursive and similar and (i > 0) and depth > 0:
                 self.log(f"Overlaps for steps {i:03d} and {j:03d} are "
                          f"too similar! Comparing {i-1:03d} and {j:03d} now."
                 )
@@ -260,7 +260,7 @@ class Overlapper:
 
     @np_print
     def overlaps_for_geoms(self, geoms, ovlp_type="wf", double_mol=False,
-                           recursive=False, consider_first=None):
+                           recursive=False, consider_first=None, skip=0):
         ovlp_func = self.get_ovlp_func(ovlp_type, double_mol, recursive,
                                        consider_first)
 
@@ -277,7 +277,10 @@ class Overlapper:
                                            for per_state in ovlp_mat[:,:consider_first]]
         )
         for i in range(len(geoms)-1):
-            j = i+1
+            # We can be sure that i is always a valid index.
+            j = i+(1+skip)
+            if j >= len(geoms):
+                break
             ovlp_mat = ovlp_func(geoms, i,  j)
             ovlp_mats.append(ovlp_mat)
             index_array = index_array_from_overlaps(ovlp_mat)
