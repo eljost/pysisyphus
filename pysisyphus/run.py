@@ -215,17 +215,18 @@ def overlaps(run_dict, geoms=None):
     double_mol = ovlp_dict["ao_ovlps"]
     recursive = ovlp_dict["recursive"]
     consider_first = ovlp_dict["consider_first"]
+    skip = ovlp_dict["skip"]
 
     if ovlp_type == "wf" and double_mol:
         print("!"*10)
         print("WFOverlaps with true AO overlaps seem faulty right now!")
         print("!"*10)
 
-    # import cloudpickle
-    # pickle_fn = "pickles"
-    # to_pickle = [overlapper] + geoms
-    # with open(pickle_fn, "wb") as handle:
-        # cloudpickle.dump(to_pickle, handle)
+    import cloudpickle
+    pickle_fn = "pickles"
+    to_pickle = [overlapper] + geoms
+    with open(pickle_fn, "wb") as handle:
+        cloudpickle.dump(to_pickle, handle)
 
     # with open(pickle_fn, "rb") as handle:
         # overlapper, *geoms = cloudpickle.load(handle)
@@ -234,7 +235,8 @@ def overlaps(run_dict, geoms=None):
                                   ovlp_type=ovlp_type,
                                   double_mol=double_mol,
                                   recursive=recursive,
-                                  consider_first=consider_first)
+                                  consider_first=consider_first,
+                                  skip=skip,)
 
 def run_opt(geom, calc_getter, opt_getter):
     geom.set_calculator(calc_getter(0))
