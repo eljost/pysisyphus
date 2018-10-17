@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import cloudpickle
 import copy
 import itertools
 import os
@@ -19,7 +20,7 @@ from pysisyphus.cos import *
 from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
-from pysisyphus.helpers import geom_from_xyz_file
+from pysisyphus.helpers import geom_from_xyz_file, confirm_input
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -213,10 +214,20 @@ def restore_calculators(run_dict):
 
 
 def overlaps(run_dict, geoms=None):
-    if not geoms:
-        overlapper, geoms = restore_calculators(run_dict)
+    pickle_path = Path("pickles")
+    if pickle_path.is_file() and confirm_input("Load pickled geoms?"):
+        with open(pickle_path, "rb") as handle:
+            overlapper, *geoms = cloudpickle.load(handle)
     else:
-        overlapper = get_overlapper(run_dict)
+        if not geoms:
+            overlapper, geoms = restore_calculators(run_dict)
+        else:
+            overlapper = get_overlapper(run_dict)
+
+        to_pickle = [overlapper] + geoms
+        with open(pickle_path, "wb") as handle:
+            cloudpickle.dump(to_pickle, handle)
+
     ovlp_dict = run_dict["overlaps"]
     ovlp_type = ovlp_dict["type"]
     double_mol = ovlp_dict["ao_ovlps"]
@@ -229,14 +240,6 @@ def overlaps(run_dict, geoms=None):
         print("WFOverlaps with true AO overlaps seem faulty right now!")
         print("!"*10)
 
-    import cloudpickle
-    pickle_fn = "pickles"
-    to_pickle = [overlapper] + geoms
-    with open(pickle_fn, "wb") as handle:
-        cloudpickle.dump(to_pickle, handle)
-
-    # with open(pickle_fn, "rb") as handle:
-        # overlapper, *geoms = cloudpickle.load(handle)
 
     overlapper.overlaps_for_geoms(geoms,
                                   ovlp_type=ovlp_type,
@@ -506,12 +509,10 @@ def clean(force=False):
         delete()
         return
     # If we dont force the cleaning ask for confirmation first
-    rly_delete = input("Delete these files? (yes/no)\n")
-    if rly_delete == "yes":
+    if confirm_input("Delete these files?"):
         delete()
     else:
         print("Aborting")
-        return
 
 
 def print_header():

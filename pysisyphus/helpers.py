@@ -215,6 +215,12 @@ def np_print(func, precision=2, suppress=True, linewidth=120):
     return wrapped
 
 
+def confirm_input(message):
+    full_message = message + " (yes/no)\n"
+    inp = input(full_message)
+    return inp == "yes"
+
+
 if __name__ == "__main__":
     print(load_geometry("hcn.xyz"))
     print(geoms_from_trj("cycle_040.trj"))
