@@ -218,6 +218,7 @@ def overlaps(run_dict, geoms=None):
     if pickle_path.is_file() and confirm_input("Load pickled geoms?"):
         with open(pickle_path, "rb") as handle:
             overlapper, *geoms = cloudpickle.load(handle)
+        print(f"Loaded overlap and {len(geoms)} from {str(pickle_path)}.")
     else:
         if not geoms:
             overlapper, geoms = restore_calculators(run_dict)
