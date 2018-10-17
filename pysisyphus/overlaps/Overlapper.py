@@ -231,18 +231,20 @@ class Overlapper:
             jth_geom = geoms[j]
             ith_calc = geoms[i].calculator
             jth_calc = geoms[j].calculator
+            icn = ith_calc.calc_number
+            jcn = jth_calc.calc_number
             if double_mol:
                 self.logger.info("Doing double molecule calculation to get "
                                  "AO overlaps."
                 )
                 ao_ovlp = jth_geom.calc_double_ao_overlap(ith_geom)
-                np.savetxt(f"ao_ovlp_true_{i:03d}_{j:03d}", ao_ovlp)
-            self.log(f"Calculationg overlaps for steps {i:03d} and {j:03d}.")
+                np.savetxt(f"ao_ovlp_true_{icn:03d}_{jcn:03d}", ao_ovlp)
+            self.log(f"Calculationg overlaps for steps {icn:03d} and {jcn:03d}.")
             ovlp_mat = ovlp_func_(ith_calc, jth_calc, ao_ovlp)
 
             self.log(ovlp_mat)
 
-            ovlp_mat_fn = f"{ovlp_type}_ovlp_mat_{i:03d}_{j:03d}"
+            ovlp_mat_fn = f"{ovlp_type}_ovlp_mat_{icn:03d}_{jcn:03d}"
             np.savetxt(self.path / ovlp_mat_fn, ovlp_mat)
 
             similar = any(
@@ -250,8 +252,8 @@ class Overlapper:
                  for per_state in ovlp_mat[:,:consider_first]]
             )
             if recursive and similar and (i > 0) and depth > 0:
-                self.log(f"Overlaps for steps {i:03d} and {j:03d} are "
-                         f"too similar! Comparing {i-1:03d} and {j:03d} now."
+                self.log(f"Overlaps for steps {icn:03d} and {jcn:03d} are "
+                         f"too similar! Comparing {icn-1:03d} and {jcn:03d} now."
                 )
                 return ovlp_func(geoms, i-1, j, depth-1)
             return ovlp_mat
@@ -261,6 +263,10 @@ class Overlapper:
     @np_print
     def overlaps_for_geoms(self, geoms, ovlp_type="wf", double_mol=False,
                            recursive=False, consider_first=None, skip=0):
+        # if skip > 0 and recursive:
+            # raise Exception("recursive = True and skip > 0 can't be used "
+                            # "together."
+            # )
         ovlp_func = self.get_ovlp_func(ovlp_type, double_mol, recursive,
                                        consider_first)
 

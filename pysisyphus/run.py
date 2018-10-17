@@ -181,6 +181,7 @@ def restore_calculators(run_dict):
 
     cwd = Path(".")
     glob = run_dict["overlaps"]["glob"]
+    regex = run_dict["overlaps"]["regex"]
     # First try globbing
     if glob:
         paths = natsorted([p for p in cwd.glob(glob)])
@@ -189,8 +190,14 @@ def restore_calculators(run_dict):
                            f"glob '{glob}' is right?")
         xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
         geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-        [overlapper.set_files_from_dir(geom, p, calc_number)
-         for calc_number, (geom, p) in enumerate(zip(geoms, paths))]
+        if regex:
+            mobjs = [re.search(regex, str(path)) for path in paths]
+            calc_numbers = [int(mobj[1]) for mobj in mobjs]
+            assert len(calc_numbers) == len(paths)
+        else:
+            calc_numbers = range(len(paths))
+        [overlapper.set_files_from_dir(geom, path, calc_number)
+         for calc_number, geom, path in zip(calc_numbers, geoms, paths)]
     else:
         # Otherwise check if geometries are defined in the run_dict
         if run_dict["xyz"]:
@@ -303,6 +310,8 @@ def get_defaults(conf_dict):
             "glob": None,
             "recursive": False,
             "consider_first": None,
+            "skip": 0,
+            "regex": None,
         }
     elif "stocastic" in conf_dict:
         dd["stocastic"] = {
