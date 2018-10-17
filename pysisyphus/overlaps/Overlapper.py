@@ -73,7 +73,9 @@ class Overlapper:
         for ext in exts:
             glob = f"*{ext}"
             fns = [_ for _ in path.glob(glob)]
-            assert len(fns) == 1
+            assert len(fns) == 1, f"Searched for *.{ext} and was expecting " \
+                                  f"one file but found {len(fns)} files " \
+                                  f"instead: {fns}"
             fn = str(fns[0])
             files_list.append(fn)
         return files_list
@@ -251,9 +253,13 @@ class Overlapper:
                 [self.similar_overlaps(per_state)
                  for per_state in ovlp_mat[:,:consider_first]]
             )
+            if similar:
+                self.log(f"Overlaps for steps {icn:03d} and {jcn:03d} "
+                          "are very similar!"                 )
             if recursive and similar and (i > 0) and depth > 0:
-                self.log(f"Overlaps for steps {icn:03d} and {jcn:03d} are "
-                         f"too similar! Comparing {icn-1:03d} and {jcn:03d} now."
+                self.log(f"Comparing {icn-1:03d} and {jcn:03d} now, "
+                         f"because steps {icn:03d} and {jcn:03d} were "
+                          "too similar."
                 )
                 return ovlp_func(geoms, i-1, j, depth-1)
             return ovlp_mat
