@@ -183,7 +183,7 @@ class Overlapper:
         print(f"Restored {calc_num} calculators.")
         return calc_num
 
-    def similar_overlaps(self, overlaps_for_state, ovlp_thresh=.1, diff_thresh=.1):
+    def similar_overlaps(self, overlaps_for_state, ovlp_thresh=.1, diff_thresh=.2):
         """Return True if overlaps for a state are similar."""
         # Find overlaps above ovlp_thresh
         above_inds = np.where(np.abs(overlaps_for_state) > ovlp_thresh)[0]
