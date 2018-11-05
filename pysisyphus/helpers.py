@@ -29,9 +29,9 @@ def geom_from_library(xyz_fn, **kwargs):
 
 
 def geoms_from_trj(trj_fn, first=None, **kwargs):
-    atoms_coords = parse_trj_file(trj_fn)[:first]
-    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, **kwargs)
-             for atoms, coords in atoms_coords
+    atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
+    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, comment=comment, **kwargs)
+             for atoms, coords, comment in atoms_coords_comments
     ]
     return geoms
 
