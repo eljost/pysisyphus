@@ -16,38 +16,50 @@ from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj, procrustes
 from pysisyphus.calculators.IDPP import idpp_interpolate
+from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--idpp", action="store_true",
-                        help="Use Image Dependent Pair Potential instead "
-                             "of simple linear interpolation.")
-    parser.add_argument("--xyz", nargs="+")
+    parser.add_argument("fns", nargs="+",
+            help="Filenames of .xyz and/or .trj files (xyz and trj can be mixed)."
+    )
 
     action_group = parser.add_mutually_exclusive_group(required=True)
     action_group.add_argument("--between", type=int,
-                              help="Interpolate additional images.")
-    action_group.add_argument("--align", nargs="+",
-                              help="Align geometries onto the first geometry "
-                                   "read from multiple .xyz or one .trj file.")
-    action_group.add_argument("--split",
-                              help="Split a supplied .trj file in multiple "
-                                   ".xyz files.")
-    action_group.add_argument("--reverse",
-                              help="Reverse a .trj file.")
-    action_group.add_argument("--cleantrj",
-                              help="Clean a .trj file.")
-    action_group.add_argument("--spline",
-                              help="Evenly redistribute geometries along a "
-                                   "splined path.")
+                    help="Interpolate additional images."
+    )
+    action_group.add_argument("--align", action="store_true",
+                    help="Align geometries onto the first geometry read from "
+                         " multiple .xyz  or one .trj file."
+    )
+    action_group.add_argument("--split", action="store_true",
+                    help="Split a supplied .trj file in multiple .xyz files."
+    )
+    action_group.add_argument("--reverse", action="store_true",
+                    help="Reverse a .trj file."
+    )
+    action_group.add_argument("--cleantrj", action="store_true",
+                    help="Clean a .trj file."
+    )
+    action_group.add_argument("--spline", action="store_true",
+                    help="Evenly redistribute geometries along a splined path."
+    )
     action_group.add_argument("--first", type=int,
-                              help="Copy the first N geometries to a new file.")
+                    help="Copy the first N geometries to a new file."
+    )
     action_group.add_argument("--every", type=int,
-                              help="Create new .trj with every N-th geometry. "
-                                   "Always include the first and last point.")
-    action_group.add_argument("--bohr2ang", action="store_true")
+                    help="Create new .trj with every N-th geometry. "
+                         "Always include the first and last point."
+    )
+    action_group.add_argument("--bohr2ang", action="store_true",
+                    help="Convert geometries from Bohr to Angstrom."
+    )
+
+    parser.add_argument("--idpp", action="store_true",
+        help="Use Image Dependent Pair Potential instead "
+             "of simple linear interpolation.")
     return parser.parse_args()
 
 
@@ -67,7 +79,7 @@ def read_geoms(xyz_fns):
     return geoms
 
 
-def get_geoms(xyz_fns, idpp=False, between=0, dump=False, multiple_geoms=False):
+def get_geoms(xyz_fns, idpp=False, between=0, multiple_geoms=False):
     """Returns a list of Geometry objects."""
 
     geoms = read_geoms(xyz_fns)
@@ -89,67 +101,33 @@ def get_geoms(xyz_fns, idpp=False, between=0, dump=False, multiple_geoms=False):
         xyz_per_image = [geom.as_xyz() for geom in geoms]
         trj = cos.as_xyz()
 
-    if dump and len(geoms) > 2:
-        dump_geometry_strings("interpolated", trj, xyz_per_image)
-
     return geoms
 
 
-def dump_geometry_strings(base, trj="", xyz_per_image=[]):
-    if trj:
-        trj_fn = f"{base}.trj"
+def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True):
+    xyz_per_geom = [geom.as_xyz() for geom in geoms]
+    if dump_trj:
+        trj_str = "\n".join(xyz_per_geom)
+        trj_fn = f"{fn_base}{trj_infix}.trj"
         with open(trj_fn, "w") as handle:
-            handle.write(trj)
+            handle.write(trj_str)
         print(f"Wrote all geometries to {trj_fn}.")
-    for i, xyz in enumerate(xyz_per_image):
-        image_fn = f"{base}.image_{i:03d}.xyz"
-        with open(image_fn, "w") as handle:
+    for i, xyz in enumerate(xyz_per_geom):
+        geom_fn = f"{fn_base}.geom_{i:03d}.xyz"
+        with open(geom_fn, "w") as handle:
             handle.write(xyz)
-        print(f"Wrote image {i:03d} to {image_fn}.")
+        print(f"Wrote geom {i:03d} to {geom_fn}.")
     print()
 
 
-def run_interpolation(args):
-    """Interpolate between given geometries."""
-    geoms = get_geoms(args.xyz, args.idpp, args.between, dump=True)
-
-
-def align(fns):
+def align(geoms):
     """Align all geometries onto the first using partical procrustes."""
-    geoms = get_geoms(fns, multiple_geoms=True)
     cos = ChainOfStates.ChainOfStates(geoms)
     procrustes(cos)
-    trj = cos.as_xyz()
-    xyz_per_image = [image.as_xyz() for image in cos.images]
-    dump_geometry_strings("aligned", trj, xyz_per_image)
+    return [geom for geom in cos.images]
 
 
-def split(trj_fn):
-    """Split a .trj in several .xyz files."""
-    geoms = get_geoms(trj_fn, multiple_geoms=True)
-    xyz_per_image = [geom.as_xyz() for geom in geoms]
-    dump_geometry_strings("split", xyz_per_image=xyz_per_image)
-
-
-def reverse_trj(trj_fn):
-    """Reverse the ordering of the geometries in a .trj file."""
-    geoms = get_geoms(trj_fn, multiple_geoms=True)
-    xyz_per_image = list(reversed([geom.as_xyz() for geom in geoms]))
-    reversed_trj = "\n".join(xyz_per_image)
-    dump_geometry_strings("reversed", trj=reversed_trj)
-
-
-def clean_trj(trj_fn):
-    """Drops everything from an extended .trj file, e.g. additional columns
-    containing gradients and so on. Keeps only the first four columns
-    specifying the atom and xyz coordinates."""
-    geoms = get_geoms(trj_fn, multiple_geoms=True)
-    xyz_per_image = [geom.as_xyz() for geom in geoms]
-    trj = "\n".join(xyz_per_image)
-    dump_geometry_strings("cleaned", trj=trj)
-
-
-def spline(trj_fn):
+def spline_redistribute(geoms):
     import numpy as np
     def get_coords_diffs(coords):
         cds = [0, ]
@@ -159,7 +137,6 @@ def spline(trj_fn):
         cds = np.cumsum(cds)
         cds /= cds.max()
         return cds
-    geoms = get_geoms(trj_fn, multiple_geoms=True)
     szts = SimpleZTS.SimpleZTS(geoms)
     pre_diffs = get_coords_diffs([image.coords for image in szts.images])
     szts.reparametrize()
@@ -170,54 +147,68 @@ def spline(trj_fn):
     print(cds_str(pre_diffs))
     print("Normalized path segments after redistribution along spline:")
     print(cds_str(post_diffs))
-    xyz_per_image = [image.as_xyz() for image in szts.images]
-    trj = "\n".join(xyz_per_image)
-    dump_geometry_strings("splined", trj=trj)
+    return szts.images
 
 
-def first(trj_fn, first_n):
-    geoms = get_geoms(trj_fn, multiple_geoms=True)[:first_n]
-    xyz_per_image = [geom.as_xyz() for geom in geoms]
-    trj = "\n".join(xyz_per_image)
-    out_fn = f"first_{first_n:03d}"
-    dump_geometry_strings(out_fn, trj=trj)
-
-
-def every(trj_fn, every_nth):
-    import pdb; pdb.set_trace()
-    geoms = get_geoms(trj_fn, multiple_geoms=True)
-    import pdb; pdb.set_trace()
+def every(geoms, every_nth):
+    # every_nth_geom = geoms[::every_nth]
+    # The first geometry is always present, but the last geometry
+    # may be missing.
+    sampled_indices = list(range(0, len(geoms), every_nth))
+    if sampled_indices[-1] != len(geoms)-1:
+        sampled_indices.append(len(geoms)-1)
+    sampled_inds_str = ", ".join([str(i) for i in sampled_indices])
+    print(f"Sampled indices {sampled_inds_str}")
+    # if every_nth_geom[-1] != geoms[-1]:
+        # every_nth_geom.append(geoms[-1])
+    every_nth_geom = [geoms[i] for i in sampled_indices]
+    return every_nth_geom
 
 
 def bohr2ang(xyzs):
-    geoms = get_geoms(xyzs, multiple_geoms=True)
-    print(geoms)
-    import pdb; pdb.set_trace()
     coords_angstrom = [geom.coords*0.529177249 for geom in geoms]
+    raise Exception("Implement me")
+
 
 def run():
     args = parse_args(sys.argv[1:])
 
+    geoms = get_geoms(args.fns, multiple_geoms=True)
+
+    dump_trj = True
+    trj_infix = ""
     if args.between:
-        run_interpolation(args)
+        to_dump = get_geoms(args.fns, args.idpp, args.between)
+        fn_base = "interpolated"
     elif args.align:
-        align(args.align)
+        to_dump = align(geoms)
+        fn_base = "aligned"
     elif args.split:
-        split(args.split)
+        to_dump = geoms
+        fn_base = "split"
+        dump_trj = False
     elif args.reverse:
-        reverse_trj(args.reverse)
+        to_dump = geoms[::-1]
+        fn_base = "reversed"
     elif args.cleantrj:
-        clean_trj(args.cleantrj)
-    elif args.spline:
-        spline(args.spline)
+        to_dump = geoms
+        fn_base = "cleaned"
     elif args.first:
-        first(args.xyz, args.first)
-    """
+        to_dump = geoms[:args.first]
+        fn_base = "first"
+        trj_infix = f"_{args.first}"
+    elif args.spline:
+        to_dump = spline_redistribute(geoms)
+        fn_base = "splined"
     elif args.every:
-        every(args.xyz, args.every)
+        to_dump = every(geoms, args.every)
+        fn_base = "every"
+        trj_infix = f"_{args.every}th"
     elif args.bohr2ang:
-        bohr2ang(args.xyz)
-    """
+        to_dump = bohr2ang(args.xyz)
+        fn_base = "angstrom"
+
+    dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj)
 
 if __name__ == "__main__":
     run()

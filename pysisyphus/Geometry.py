@@ -60,6 +60,9 @@ class Geometry:
                 [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
 
+    def __eq__(self, other):
+        return (self.atoms == other.atoms) and all(self.coords == other.coords)
+
     def copy(self):
         """Returns a new Geometry object with same atoms and coordinates.
 
