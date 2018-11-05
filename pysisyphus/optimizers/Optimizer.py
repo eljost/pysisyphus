@@ -202,11 +202,7 @@ class Optimizer:
                               yaml.dump(opt_results))
 
     def write_cycle_to_file(self):
-        if len(self.energies) > 0:
-            comments = self.energies[-1]
-        else:
-            comments = None
-        as_xyz_str = self.geometry.as_xyz(comments)
+        as_xyz_str = self.geometry.as_xyz()
 
         if self.is_cos:
             out_fn = "cycle_{:03d}.trj".format(self.cur_cycle)
