@@ -13,7 +13,7 @@ def make_xyz_str(atoms, coords, comment=""):
             in zip(atoms, coords)]
     body = "\n".join(body)
  
-    return "{}\n{}\n{}".format(len(atoms), comment, body)
+    return f"{len(atoms)}\n{comment}\n{body}"
 
 
 def make_trj_str(atoms, coords_list, comments=None):
@@ -26,26 +26,31 @@ def make_trj_str(atoms, coords_list, comments=None):
 
 def make_trj_str_from_geoms(geoms, comments=None):
     atoms = geoms[0].atoms
-    if comments is None:
-        energies = [geom._energy for geom in geoms]
-        if all(energies):
-            comments = [f"{energy}" for energy in energies]
     coords_list = [geom._coords.reshape(-1, 3)*BOHR2ANG for geom in geoms]
+    if comments is not None:
+        assert len(comments) == len(geoms)
+        geom_comments = [geom.comment for geom in geoms]
+        comments = [f"{geom_comment}, {comment}"
+                    for geom_comment, comment in zip(geom_comments, comments)
+        ]
     return make_trj_str(atoms, coords_list, comments)
 
 
 def write_geoms_to_trj(geoms, fn, comments=None):
+    trj_str = make_trj_str_from_geoms(geoms, comments)
     with open(fn, "w") as handle:
-        handle.write(make_trj_str_from_geoms(geoms, comments))
+        handle.write(trj_str)
 
 
-def parse_xyz_str(xyz_str):
+def parse_xyz_str(xyz_str, with_comment):
     """Parse a xyz string.
 
     Paramters
     ---------
     xyz_str : str
         The contents of a .xyz file.
+    with_comment : bool
+        Return comment line if True.
 
     Returns
     -------
@@ -54,7 +59,13 @@ def parse_xyz_str(xyz_str):
         element symbols.
     coords: np.array
         An array of shape (N, 3) holding the xyz coordinates.
+    comment_line : str, optional
+        Comment line if with_comment argument was True.
     """
+
+    xyz_lines = xyz_str.strip().split("\n")
+    atom_num = int(xyz_lines[0].strip())
+    comment_line = xyz_lines[1]
 
     # Only consider the first four items on a line
     atoms_coords = [line.strip().split()[:4]
@@ -62,31 +73,35 @@ def parse_xyz_str(xyz_str):
     ]
     atoms, coords = zip(*[(a, c) for a, *c in atoms_coords])
     coords = np.array(coords, dtype=np.float)
-    return atoms, coords
+    if with_comment:
+        return atoms, coords, comment_line
+    else:
+        return atoms, coords
 
 
-def parse_xyz_file(xyz_fn):
+def parse_xyz_file(xyz_fn, with_comment=False):
     with open(xyz_fn) as handle:
         xyz_str = handle.read()
 
-    return parse_xyz_str(xyz_str)
+    return parse_xyz_str(xyz_str, with_comment)
 
 
-def parse_trj_file(trj_fn):
+def parse_trj_file(trj_fn, with_comments=False):
     with open(trj_fn) as handle:
         trj_str = handle.read()
 
-    return parse_trj_str(trj_str)
+    return parse_trj_str(trj_str, with_comments)
 
 
-def parse_trj_str(trj_str):
+def parse_trj_str(trj_str, with_comments=False):
     trj_lines = trj_str.strip().split("\n")
     number_of_atoms = int(trj_lines[0].strip())
     xyz_lines = number_of_atoms + 2
     # Split the trj file in evenly sized strings
     xyz_strs = ["\n".join(trj_lines[i:i+xyz_lines])
                 for i in range(0, len(trj_lines), xyz_lines)]
-    xyzs = [parse_xyz_str(xyz_str) for xyz_str in xyz_strs]
+    xyzs = [parse_xyz_str(xyz_str, with_comments)
+            for xyz_str in xyz_strs]
 
     assert(len(xyzs) == (len(trj_lines) / xyz_lines))
     return xyzs
