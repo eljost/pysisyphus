@@ -25,7 +25,7 @@ from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
-from pysisyphus.trj import get_geoms
+from pysisyphus.trj import get_geoms, dump_geoms
 from ._version import get_versions
 
 
@@ -416,7 +416,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
-    geoms = get_geoms(xyz, idpp, between, dump=True)
+    geoms = get_geoms(xyz, idpp, between)
+    dump_geoms(geoms, "interpolated")
     if dryrun:
         calc = calc_getter(0)
         dry_run(calc, geoms[0])
