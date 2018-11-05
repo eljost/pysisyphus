@@ -15,7 +15,7 @@ class Geometry:
         "redund": RedundantCoords,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart"):
+    def __init__(self, atoms, coords, coord_type="cart", comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -32,6 +32,8 @@ class Geometry:
         coord_type : {"cart", "redund"}, optional
             Type of coordinate system to use. Right now cartesian (cart)
             and redundand (redund) are supported.
+        comment : str, optional
+            Comment string.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
@@ -43,6 +45,7 @@ class Geometry:
             self.internal = coord_class(atoms, coords)
         else:
             self.internal = None
+        self.comment = comment
 
         self._energy = None
         self._forces = None
@@ -188,6 +191,15 @@ class Geometry:
             cbt[atom] = np.array(c3d)
             inds[atom] = np.array(inds[atom])
         return cbt, inds
+
+    @property
+    def comment(self):
+        energy_str = f"{self._energy}, " if self._energy else ""
+        return f"{energy_str}{self._comment}"
+
+    @comment.setter
+    def comment(self, new_comment):
+        self._comment = new_comment
 
     @property
     def center_of_mass(self):
@@ -466,9 +478,7 @@ class Geometry:
             Current geometry as string in XYZ-format.
         """
         coords = self._coords * BOHR2ANG
-        if self._energy and (comment == ""):
-            comment = f"{comment} {self._energy}"
-        return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
+        return make_xyz_str(self.atoms, coords.reshape((-1,3)), self.comment)
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"
