@@ -27,7 +27,7 @@ def parse_args(args):
     )
 
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("--between", type=int,
+    action_group.add_argument("--between", type=int, default=0,
                     help="Interpolate additional images."
     )
     action_group.add_argument("--align", action="store_true",
@@ -63,7 +63,7 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def read_geoms(xyz_fns, comments=False):
+def read_geoms(xyz_fns):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
@@ -82,7 +82,7 @@ def read_geoms(xyz_fns, comments=False):
 def get_geoms(xyz_fns, idpp=False, between=0, comments=False):
     """Returns a list of Geometry objects."""
 
-    geoms = read_geoms(xyz_fns, comments=comments)
+    geoms = read_geoms(xyz_fns)
 
     print(f"Read {len(geoms)} geometries.")
 
@@ -173,25 +173,24 @@ def bohr2ang(xyzs):
 def run():
     args = parse_args(sys.argv[1:])
 
-    geoms = get_geoms(args.fns, comments=True)
+    # Read supplied files and create Geometry objects
+    geoms = get_geoms(args.fns, args.idpp, args.between)
 
+    to_dump = geoms
     dump_trj = True
     trj_infix = ""
     if args.between:
-        to_dump = get_geoms(args.fns, args.idpp, args.between)
         fn_base = "interpolated"
     elif args.align:
         to_dump = align(geoms)
         fn_base = "aligned"
     elif args.split:
-        to_dump = geoms
         fn_base = "split"
         dump_trj = False
     elif args.reverse:
         to_dump = geoms[::-1]
         fn_base = "reversed"
     elif args.cleantrj:
-        to_dump = geoms
         fn_base = "cleaned"
     elif args.first:
         to_dump = geoms[:args.first]
@@ -208,6 +207,7 @@ def run():
         to_dump = bohr2ang(args.xyz)
         fn_base = "angstrom"
 
+    # Write transformed geometries
     dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj)
 
 if __name__ == "__main__":
