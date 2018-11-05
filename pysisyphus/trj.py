@@ -63,7 +63,7 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def read_geoms(xyz_fns):
+def read_geoms(xyz_fns, comments=False):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
@@ -79,10 +79,10 @@ def read_geoms(xyz_fns):
     return geoms
 
 
-def get_geoms(xyz_fns, idpp=False, between=0, multiple_geoms=False):
+def get_geoms(xyz_fns, idpp=False, between=0, comments=False):
     """Returns a list of Geometry objects."""
 
-    geoms = read_geoms(xyz_fns)
+    geoms = read_geoms(xyz_fns, comments=comments)
 
     print(f"Read {len(geoms)} geometries.")
 
@@ -173,7 +173,7 @@ def bohr2ang(xyzs):
 def run():
     args = parse_args(sys.argv[1:])
 
-    geoms = get_geoms(args.fns, multiple_geoms=True)
+    geoms = get_geoms(args.fns, comments=True)
 
     dump_trj = True
     trj_infix = ""
