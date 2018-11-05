@@ -305,11 +305,7 @@ class ChainOfStates:
         )
 
     def as_xyz(self, comments=None):
-        atoms = self.images[0].atoms
-        coords_list = [image.coords.reshape((-1,3)) * BOHR2ANG
-                       for image in self.images]
-        trj_str = make_trj_str(atoms, coords_list, comments=comments)
-        return trj_str
+        return "\n".join([image.as_xyz() for image in self.images])
 
     def get_dask_client(self):
         return Client(self.scheduler, pure=False, silence_logs=False)
