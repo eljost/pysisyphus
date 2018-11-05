@@ -44,6 +44,10 @@ def parse_args(args):
                                    "splined path.")
     action_group.add_argument("--first", type=int,
                               help="Copy the first N geometries to a new file.")
+    action_group.add_argument("--every", type=int,
+                              help="Create new .trj with every N-th geometry. "
+                                   "Always include the first and last point.")
+    action_group.add_argument("--bohr2ang", action="store_true")
     return parser.parse_args()
 
 
@@ -179,6 +183,18 @@ def first(trj_fn, first_n):
     dump_geometry_strings(out_fn, trj=trj)
 
 
+def every(trj_fn, every_nth):
+    import pdb; pdb.set_trace()
+    geoms = get_geoms(trj_fn, multiple_geoms=True)
+    import pdb; pdb.set_trace()
+
+
+def bohr2ang(xyzs):
+    geoms = get_geoms(xyzs, multiple_geoms=True)
+    print(geoms)
+    import pdb; pdb.set_trace()
+    coords_angstrom = [geom.coords*0.529177249 for geom in geoms]
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -196,6 +212,12 @@ def run():
         spline(args.spline)
     elif args.first:
         first(args.xyz, args.first)
+    """
+    elif args.every:
+        every(args.xyz, args.every)
+    elif args.bohr2ang:
+        bohr2ang(args.xyz)
+    """
 
 if __name__ == "__main__":
     run()
