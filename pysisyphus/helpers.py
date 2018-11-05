@@ -13,9 +13,9 @@ from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
 
 def geom_from_xyz_file(xyz_fn, **kwargs):
-    atoms, coords = parse_xyz_file(xyz_fn)
+    atoms, coords, comment = parse_xyz_file(xyz_fn, comment=True)
     coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten(), **kwargs)
+    geom = Geometry(atoms, coords.flatten(), comment=comment, **kwargs)
     return geom
 
 
@@ -29,8 +29,9 @@ def geom_from_library(xyz_fn, **kwargs):
 
 
 def geoms_from_trj(trj_fn, first=None, **kwargs):
+    atoms_coords = parse_trj_file(trj_fn)[:first]
     geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, **kwargs)
-             for atoms, coords in parse_trj_file(trj_fn)[:first]
+             for atoms, coords in atoms_coords
     ]
     return geoms
 
