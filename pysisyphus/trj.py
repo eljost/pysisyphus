@@ -17,10 +17,11 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj, procrustes
 from pysisyphus.calculators.IDPP import idpp_interpolate
 from pysisyphus.xyzloader import write_geoms_to_trj
+from pysisyphus.constants import BOHR2ANG
 
 
 def parse_args(args):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser("Utility to transform .xyz and .trj files.")
 
     parser.add_argument("fns", nargs="+",
             help="Filenames of .xyz and/or .trj files (xyz and trj can be mixed)."
@@ -31,30 +32,30 @@ def parse_args(args):
                     help="Interpolate additional images."
     )
     action_group.add_argument("--align", action="store_true",
-                    help="Align geometries onto the first geometry read from "
-                         " multiple .xyz  or one .trj file."
+                    help="Align geometries onto the first geometry."
     )
     action_group.add_argument("--split", action="store_true",
-                    help="Split a supplied .trj file in multiple .xyz files."
+                    help="Split a supplied geometries in multiple .xyz files."
     )
     action_group.add_argument("--reverse", action="store_true",
                     help="Reverse a .trj file."
     )
     action_group.add_argument("--cleantrj", action="store_true",
-                    help="Clean a .trj file."
+                    help="Keep only the first four columns of xyz/trj files."
     )
     action_group.add_argument("--spline", action="store_true",
                     help="Evenly redistribute geometries along a splined path."
     )
     action_group.add_argument("--first", type=int,
-                    help="Copy the first N geometries to a new file."
+                    help="Copy the first N geometries to a new .trj file."
     )
     action_group.add_argument("--every", type=int,
                     help="Create new .trj with every N-th geometry. "
-                         "Always include the first and last point."
+                         "Always includes the first and last point."
     )
-    action_group.add_argument("--bohr2ang", action="store_true",
-                    help="Convert geometries from Bohr to Angstrom."
+
+    parser.add_argument("--bohr", action="store_true",
+                    help="Input geometries are in Bohr instead of Angstrom."
     )
 
     parser.add_argument("--idpp", action="store_true",
@@ -63,7 +64,7 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def read_geoms(xyz_fns):
+def read_geoms(xyz_fns, in_bohr=False):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
@@ -76,13 +77,19 @@ def read_geoms(xyz_fns):
         else:
             raise Exception("Only .xyz and .trj files are supported!")
         geoms.extend(geom)
+    # Original coordinates are in bohr, but pysisyphus expects them
+    # to be in Angstrom, so right now they are already multiplied
+    # by ANG2BOHR. We revert this by multip
+    if in_bohr:
+        for geom in geoms:
+            geom.coords *= BOHR2ANG
     return geoms
 
 
-def get_geoms(xyz_fns, idpp=False, between=0, comments=False):
+def get_geoms(xyz_fns, idpp=False, between=0, comments=False, in_bohr=False):
     """Returns a list of Geometry objects."""
 
-    geoms = read_geoms(xyz_fns)
+    geoms = read_geoms(xyz_fns, in_bohr)
 
     print(f"Read {len(geoms)} geometries.")
 
@@ -104,7 +111,7 @@ def get_geoms(xyz_fns, idpp=False, between=0, comments=False):
     return geoms
 
 
-def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True):
+def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, ang=False):
     xyz_per_geom = [geom.as_xyz() for geom in geoms]
     if dump_trj:
         trj_str = "\n".join(xyz_per_geom)
@@ -165,8 +172,9 @@ def every(geoms, every_nth):
     return every_nth_geom
 
 
-def bohr2ang(xyzs):
+def bohr2ang(geoms):
     coords_angstrom = [geom.coords*0.529177249 for geom in geoms]
+    import pdb; pdb.set_trace()
     raise Exception("Implement me")
 
 
@@ -174,7 +182,7 @@ def run():
     args = parse_args(sys.argv[1:])
 
     # Read supplied files and create Geometry objects
-    geoms = get_geoms(args.fns, args.idpp, args.between)
+    geoms = get_geoms(args.fns, args.idpp, args.between, in_bohr=args.bohr)
 
     to_dump = geoms
     dump_trj = True
@@ -203,9 +211,6 @@ def run():
         to_dump = every(geoms, args.every)
         fn_base = "every"
         trj_infix = f"_{args.every}th"
-    elif args.bohr2ang:
-        to_dump = bohr2ang(args.xyz)
-        fn_base = "angstrom"
 
     # Write transformed geometries
     dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj)
