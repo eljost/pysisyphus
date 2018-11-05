@@ -194,7 +194,7 @@ class Geometry:
 
     @property
     def comment(self):
-        energy_str = f"{self._energy}, " if self._energy else ""
+        energy_str = f"{self._energy} , " if self._energy else ""
         return f"{energy_str}{self._comment}"
 
     @comment.setter
