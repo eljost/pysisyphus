@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import textwrap
 
 import numpy as np
 import pyparsing as pp
@@ -68,13 +69,12 @@ class Gaussian16(OverlapCalculator):
         {charge} {mult}
         {coords}
 
-        {gen}
-
-        {gbs}
+        {gen}{gbs}
 
 
 
         """
+        self.gaussian_input = textwrap.dedent(self.gaussian_input)
 
         self.parser_funcs = {
             "force": self.parse_force,
