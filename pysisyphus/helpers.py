@@ -13,7 +13,7 @@ from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
 
 def geom_from_xyz_file(xyz_fn, **kwargs):
-    atoms, coords, comment = parse_xyz_file(xyz_fn, comment=True)
+    atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
     coords *= ANG2BOHR
     geom = Geometry(atoms, coords.flatten(), comment=comment, **kwargs)
     return geom
@@ -22,10 +22,8 @@ def geom_from_xyz_file(xyz_fn, **kwargs):
 def geom_from_library(xyz_fn, **kwargs):
     this_dir = os.path.abspath(os.path.dirname(__file__))
     xyz_dir = Path(this_dir) / "../xyz_files/"
-    atoms, coords = parse_xyz_file(xyz_dir / xyz_fn)
-    coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten(), **kwargs)
-    return geom
+    xyz_fn = xyz_dir / xyz_fn
+    return geom_from_xyz_file(xyz_fn, **kwargs)
 
 
 def geoms_from_trj(trj_fn, first=None, **kwargs):
