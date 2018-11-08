@@ -26,7 +26,7 @@ from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
-from ._version import get_versions
+from pysisyphus._version import get_versions
 
 
 CALC_DICT = {
