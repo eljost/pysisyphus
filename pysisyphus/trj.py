@@ -54,13 +54,16 @@ def parse_args(args):
                          "Always includes the first and last point."
     )
 
-    parser.add_argument("--bohr", action="store_true",
-                    help="Input geometries are in Bohr instead of Angstrom."
-    )
-
     parser.add_argument("--idpp", action="store_true",
         help="Use Image Dependent Pair Potential instead "
              "of simple linear interpolation.")
+    parser.add_argument("--bohr", action="store_true",
+                    help="Input geometries are in Bohr instead of Angstrom."
+    )
+    parser.add_argument("--noxyz", action="store_false",
+                    help="Disable dumping of single .xyz files."
+    )
+
     return parser.parse_args()
 
 
@@ -111,7 +114,8 @@ def get_geoms(xyz_fns, idpp=False, between=0, comments=False, in_bohr=False):
     return geoms
 
 
-def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, ang=False):
+def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, dump_xyz=True,
+               ang=False):
     xyz_per_geom = [geom.as_xyz() for geom in geoms]
     if dump_trj:
         trj_str = "\n".join(xyz_per_geom)
@@ -119,11 +123,12 @@ def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, ang=False):
         with open(trj_fn, "w") as handle:
             handle.write(trj_str)
         print(f"Wrote all geometries to {trj_fn}.")
-    for i, xyz in enumerate(xyz_per_geom):
-        geom_fn = f"{fn_base}.geom_{i:03d}.xyz"
-        with open(geom_fn, "w") as handle:
-            handle.write(xyz)
-        print(f"Wrote geom {i:03d} to {geom_fn}.")
+    if dump_xyz:
+        for i, xyz in enumerate(xyz_per_geom):
+            geom_fn = f"{fn_base}.geom_{i:03d}.xyz"
+            with open(geom_fn, "w") as handle:
+                handle.write(xyz)
+            print(f"Wrote geom {i:03d} to {geom_fn}.")
     print()
 
 
@@ -186,6 +191,7 @@ def run():
 
     to_dump = geoms
     dump_trj = True
+    dump_xyz = args.noxyz
     trj_infix = ""
     if args.between:
         fn_base = "interpolated"
@@ -213,7 +219,8 @@ def run():
         trj_infix = f"_{args.every}th"
 
     # Write transformed geometries
-    dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj)
+    dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj,
+               dump_xyz=dump_xyz)
 
 if __name__ == "__main__":
     run()
