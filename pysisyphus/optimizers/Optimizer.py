@@ -15,34 +15,25 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign
 
 
-gauss_loose = {
-    "max_force_thresh": 2.5e-3,
-    "rms_force_thresh": 1.7e-3,
-    "max_step_thresh": 1.0e-2,
-    "rms_step_thresh": 6.7e-3
-}
-
-gauss_tight = {
-    "max_force_thresh": 1.5e-5,
-    "rms_force_thresh": 1.0e-5,
-    "max_step_thresh": 6.0e-6,
-    "rms_step_thresh": 4.0e-6
-}
-
-
 class Optimizer:
+    CONV_THRESHS = {
+        "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
+        "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
+        "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
+    }
 
-    def __init__(self, geometry, convergence=gauss_loose,
+    def __init__(self, geometry, thresh="gau_loose",
                  align=False, dump=False, last_cycle=None,
                  **kwargs):
         self.geometry = geometry
 
-        self.convergence = convergence
+        assert thresh in self.CONV_THRESHS.keys()
+        self.convergence = self.make_conv_dict(thresh)
         self.align = align
         self.dump = dump
         self.last_cycle = last_cycle
 
-        for key, value in convergence.items():
+        for key, value in self.convergence.items():
             setattr(self, key, value)
 
         # Setting some default values
@@ -88,6 +79,18 @@ class Optimizer:
             # redo the last cycle.
             self.cur_cycle = last_cycle + 1
             self.restart()
+
+    def make_conv_dict(self, key):
+        threshs = self.CONV_THRESHS[key]
+        keys = ("max_force_thresh",
+                "rms_force_thresh",
+                "max_step_thresh",
+                "rms_step_thresh",
+        )
+        conv_dict = {
+            k: v for k, v in zip(keys, threshs)
+        }
+        return conv_dict
 
     def save_also(self):
         pass
