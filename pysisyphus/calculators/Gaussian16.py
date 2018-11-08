@@ -5,6 +5,7 @@ import logging
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import textwrap
 
@@ -20,7 +21,8 @@ class Gaussian16(OverlapCalculator):
 
     conf_key = "gaussian16"
 
-    def __init__(self, route, mem=3500, gbs="", gen="", **kwargs):
+    def __init__(self, route, mem=3500, gbs="", gen="",
+                 keep_chk=False, **kwargs):
         super().__init__(**kwargs)
 
         self.route = route.lower()
@@ -30,6 +32,7 @@ class Gaussian16(OverlapCalculator):
         assert "@" not in gbs, "Give only the path to the .gbs file, " \
                                "without the @!"
         self.gen = gen
+        self.keep_chk = keep_chk
 
         if any([key in self.route for key in "td tda cis".split()]):
             route_lower = self.route.lower()
@@ -50,6 +53,8 @@ class Gaussian16(OverlapCalculator):
         self.wfow = None
 
         self.to_keep = ("com", "fchk", "log", "dump_635r")
+        if self.keep_chk:
+            self.to_keep += (".chk",)
 
         self.fn_base = "gaussian16"
         self.inp_fn = f"{self.fn_base}.com"
@@ -63,7 +68,7 @@ class Gaussian16(OverlapCalculator):
         {chk_link0}
         {add_link0}
         #P {calc_type} {route}
-        # Symmetry=None
+        # Symmetry=None {reuse_data}
         
         title
 
@@ -85,6 +90,26 @@ class Gaussian16(OverlapCalculator):
 
         self.base_cmd = self.get_cmd("cmd")
         self.formchk_cmd = self.get_cmd("formchk_cmd")
+        self.unfchk_cmd = self.get_cmd("unfchk_cmd")
+
+    def reuse_data(self, path):
+        if not hasattr(self, "fchk") and not hasattr(self, "chk"):
+            return ""
+        new_chk = path / self.chk_fn
+        prev_fchk = new_chk.with_suffix(".fchk")
+        shutil.copy(self.fchk, prev_fchk)
+        cmd = f"{self.unfchk_cmd} {prev_fchk}".split()
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
+        self.log("Using previous MOs as guess.")
+
+        reuse_str = "guess=read"
+        # Also try to reuse information of previous TD calculation
+        if self.nstates and hasattr(self, "chk"):
+            shutil.copy(self.chk, new_chk)
+            reuse_str += " td=read"
+            self.log("Using td=read")
+
+        return reuse_str
 
     def make_gbs_str(self):
         if self.gbs:
@@ -94,12 +119,14 @@ class Gaussian16(OverlapCalculator):
 
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)
+        path = self.prepare_path(use_in_run=True)
         kwargs = {
             "pal": self.pal,
             "mem": self.pal*self.mem,
             "chk_link0": f"%chk={self.chk_fn}",
             "add_link0": "",
             "route": self.route,
+            "reuse_data": self.reuse_data(path),
             "calc_type": calc_type,
             "charge": self.charge,
             "mult": self.mult,
@@ -439,12 +466,14 @@ class Gaussian16(OverlapCalculator):
 
     def keep(self, path):
         kept_fns = super().keep(path)
+        if self.keep_chk:
+            self.chk = kept_fns[".chk"]
         try:
             self.fchk = kept_fns["fchk"]
         except KeyError:
             self.log("No .fchk file found!")
             return
-        if self.nstates:
+        if self.track:
             self.dump_635r = kept_fns["dump_635r"]
 
     def __str__(self):
