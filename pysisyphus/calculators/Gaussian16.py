@@ -93,6 +93,7 @@ class Gaussian16(OverlapCalculator):
         self.unfchk_cmd = self.get_cmd("unfchk_cmd")
 
     def reuse_data(self, path):
+        # Nothing to reuse if no fchk or chk present
         if not hasattr(self, "fchk") and not hasattr(self, "chk"):
             return ""
         new_chk = path / self.chk_fn
