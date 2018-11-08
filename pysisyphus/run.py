@@ -286,6 +286,7 @@ def get_defaults(conf_dict):
         "glob": None,
         "stocastic": None,
         "xyz": None,
+        "coord_type": "cart",
     }
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -359,7 +360,7 @@ def handle_yaml(yaml_str):
                               "stocastic")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "xyz", "pal")):
+    for key in key_set & set(("calc", "xyz", "pal", "coord_type")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -416,8 +417,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
-    geoms = get_geoms(xyz, idpp, between)
-    dump_geoms(geoms, "interpolated")
+    coord_type = run_dict["coord_type"]
+    geoms = get_geoms(xyz, idpp, between, coord_type=coord_type)
+    if len(geoms) > 1:
+        dump_geoms(geoms, "interpolated")
     if dryrun:
         calc = calc_getter(0)
         dry_run(calc, geoms[0])

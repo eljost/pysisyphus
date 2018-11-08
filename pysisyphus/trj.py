@@ -67,16 +67,16 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def read_geoms(xyz_fns, in_bohr=False):
+def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
     geoms = list()
     for fn in xyz_fns:
         if fn.endswith(".xyz"):
-            geom = [geom_from_xyz_file(fn), ]
+            geom = [geom_from_xyz_file(fn, coord_type=coord_type), ]
         elif fn.endswith(".trj"):
-            geom = geoms_from_trj(fn)
+            geom = geoms_from_trj(fn, coord_type=coord_type)
         else:
             raise Exception("Only .xyz and .trj files are supported!")
         geoms.extend(geom)
@@ -89,10 +89,11 @@ def read_geoms(xyz_fns, in_bohr=False):
     return geoms
 
 
-def get_geoms(xyz_fns, idpp=False, between=0, comments=False, in_bohr=False):
+def get_geoms(xyz_fns, idpp=False, between=0,
+              coord_type="cart", comments=False, in_bohr=False):
     """Returns a list of Geometry objects."""
 
-    geoms = read_geoms(xyz_fns, in_bohr)
+    geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type)
 
     print(f"Read {len(geoms)} geometries.")
 
