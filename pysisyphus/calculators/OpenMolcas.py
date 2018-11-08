@@ -6,12 +6,13 @@ import re
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
 
 
 class OpenMolcas(Calculator):
+
+    conf_key = "openmolcas"
 
     def __init__(self, basis, inporb, roots, mdrlxroot,
                  supsym=None, track=True, **kwargs):
@@ -72,7 +73,7 @@ class OpenMolcas(Calculator):
             "grad": self.parse_gradient,
         }
 
-        self.base_cmd = Config["openmolcas"]["cmd"]
+        self.base_cmd = self.get_cmd("cmd")
 
     def reattach(self, last_calc_cycle):
         self.inporb = self.make_fn("RasOrb", last_calc_cycle)

@@ -8,15 +8,15 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.helpers import geom_from_xyz_file
-
 from pysisyphus.xyzloader import make_xyz_str
 
 
 class XTB(Calculator):
+
+    conf_key = "xtb"
 
     def __init__(self, gbsa="", gfn="gfn2", **kwargs):
         super(XTB, self).__init__(**kwargs)
@@ -38,7 +38,7 @@ class XTB(Calculator):
             "opt": self.parse_opt,
         }
 
-        self.base_cmd = Config["xtb"]["cmd"]
+        self.base_cmd = self.get_cmd("cmd")
 
     def reattach(self, last_calc_cycle):
         pass

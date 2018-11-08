@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 from pysisyphus.calculators.Gaussian16 import Gaussian16
-from pysisyphus.config import Config
-
 
 
 class Gaussian09(Gaussian16):
+
+    conf_key = "gaussian09"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -13,8 +13,8 @@ class Gaussian09(Gaussian16):
         self.inp_fn = f"{self.fn_base}.com"
         self.out_fn = f"{self.fn_base}.log"
         self.chk_fn = f"{self.fn_base}.chk"
-        self.base_cmd = Config["gaussian09"]["cmd"]
-        self.formchk_cmd = Config["gaussian09"]["formchk_cmd"]
+        self.base_cmd = self.get_cmd("cmd")
+        self.formchk_cmd = self.get_cmd("formchk_cmd")
 
     def __str__(self):
         return "Gaussian09 calculator"

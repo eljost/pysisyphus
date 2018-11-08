@@ -11,10 +11,13 @@ import tempfile
 
 from natsort import natsorted
 
+from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
 
 
 class Calculator:
+
+    conf_key = None
 
     def __init__(self, calc_number=0, charge=0, mult=1,
                  base_name="calculator", pal=1,
@@ -72,6 +75,18 @@ class Calculator:
         # instead of creating a new one.
         # Currently this is only used with the Turbomole calculator.
         self.path_already_prepared = None
+
+    def get_cmd(self, key):
+        assert self.conf_key, \
+            "Tried loading a cmd from the config file but no conf_key " \
+            "was specified in the Calculator!"
+
+        try:
+            return Config[self.conf_key][key]
+        except KeyError:
+            print(f"Failed to load key '{key}' from section '{self.conf_key}'. "
+                   "Exiting!")
+            sys.exit()
 
     @property
     def name(self):

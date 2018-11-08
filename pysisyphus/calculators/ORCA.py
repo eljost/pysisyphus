@@ -12,7 +12,6 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.config import Config
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
@@ -77,7 +76,7 @@ class ORCA(OverlapCalculator):
             "noparse": lambda path: None,
         }
 
-        self.base_cmd = Config["orca"]["cmd"]
+        self.base_cmd = self.get_cmd("cmd")
 
     def reattach(self, last_calc_cycle):
         # Use the latest .gbw

@@ -14,10 +14,11 @@ import pyparsing as pp
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
-from pysisyphus.config import Config
 
 
 class Gaussian16(OverlapCalculator):
+
+    conf_key = "gaussian16"
 
     def __init__(self, route, mem=3500, gbs="", gen="", **kwargs):
         super().__init__(**kwargs)
@@ -82,8 +83,8 @@ class Gaussian16(OverlapCalculator):
             "double_mol": self.parse_double_mol,
         }
 
-        self.base_cmd = Config["gaussian16"]["cmd"]
-        self.formchk_cmd = Config["gaussian16"]["formchk_cmd"]
+        self.base_cmd = self.get_cmd("cmd")
+        self.formchk_cmd = self.get_cmd("formchk_cmd")
 
     def make_gbs_str(self):
         if self.gbs:

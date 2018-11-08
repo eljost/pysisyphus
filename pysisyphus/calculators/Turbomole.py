@@ -14,7 +14,6 @@ import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import AU2EV
-from pysisyphus.config import Config
 from pysisyphus.calculators.parser import (parse_turbo_gradient,
                                            parse_turbo_ccre0_ascii,
                                            parse_turbo_mos)
