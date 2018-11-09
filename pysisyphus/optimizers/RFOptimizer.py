@@ -4,7 +4,6 @@
 # [2] https://doi.org/10.1063/1.450914 Trust region method
 # [3] 10.1007/978-0-387-40065-5 Numerical optimization
 
-import logging
 
 import numpy as np
 from scipy.optimize import minimize
