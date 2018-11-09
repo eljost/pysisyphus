@@ -30,6 +30,7 @@ setup(
         "distributed",
         "rmsd",
         "pandas",
+        "sympy",
     ],
     entry_points={
         "console_scripts": [
