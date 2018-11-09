@@ -31,6 +31,7 @@ setup(
         "rmsd",
         "pandas",
         "sympy",
+        "attrs",
     ],
     entry_points={
         "console_scripts": [

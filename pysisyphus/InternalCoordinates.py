@@ -11,13 +11,13 @@ from collections import namedtuple
 from functools import reduce
 import itertools as it
 import logging
+import typing
 
+import attr
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
-
-PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
 
 
 def get_cov_radii_sum_array(atoms, coords):
@@ -33,7 +33,18 @@ def get_cov_radii_sum_array(atoms, coords):
     return cov_rad_sums
 
 
+# PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
+
+@attr.s(auto_attribs=True)
+class PrimitiveCoord:
+    inds : typing.List[int]
+    val : float
+    grad : np.ndarray
+
+
 class RedundantCoords:
+
+    RAD_175 = 3.05432619
 
     def __init__(self, atoms, cart_coords):
         self.atoms = atoms
@@ -256,6 +267,15 @@ class RedundantCoords:
 
         self.bond_indices = bond_indices
 
+    def are_parallel(self, vec1, vec2, thresh=1e-6):
+        dot = max(min(vec1.dot(vec2), 1), -1)
+        rad = np.arccos(dot)#vec1.dot(vec2))
+        # angle > 175°
+        if abs(rad) > self.RAD_175:
+            # self.log(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
+            self.log(f"Nearly linear angle: {np.rad2deg(rad)}")
+        return abs(rad) > (np.pi - thresh)
+
     def sort_by_central(self, set1, set2):
         """Determines a common index in two sets and returns a length 3
         tuple with the central index at the middle position and the two
@@ -384,13 +404,6 @@ class RedundantCoords:
         return bond_length
 
     def calc_bend(self, coords, angle_ind, grad=False):
-        def are_parallel(vec1, vec2, thresh=1e-6):
-            dot = max(min(vec1.dot(vec2), 1), -1)
-            rad = np.arccos(dot)#vec1.dot(vec2))
-            # angle > 175°
-            if abs(rad) > (np.pi - 0.088):
-                self.log(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
-            return abs(rad) > (np.pi - thresh)
         m, o, n = angle_ind
         u_dash = coords[m] - coords[o]
         v_dash = coords[n] - coords[o]
@@ -401,9 +414,9 @@ class RedundantCoords:
         angle_rad = np.arccos(u.dot(v))
         if grad:
             # Eq. (24) in [1]
-            if are_parallel(u, v):
+            if self.are_parallel(u, v):
                 tmp_vec = np.array((1, -1, 1))
-                par = are_parallel(u, tmp_vec) and are_parallel(v, tmp_vec)
+                par = self.are_parallel(u, tmp_vec) and self.are_parallel(v, tmp_vec)
                 tmp_vec = np.array((-1, 1, 1)) if par else tmp_vec
                 w_dash = np.cross(u, tmp_vec)
             else:
