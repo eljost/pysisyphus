@@ -11,6 +11,8 @@ from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
+THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
+
 
 def geom_from_xyz_file(xyz_fn, **kwargs):
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
@@ -20,8 +22,7 @@ def geom_from_xyz_file(xyz_fn, **kwargs):
 
 
 def geom_from_library(xyz_fn, **kwargs):
-    this_dir = os.path.abspath(os.path.dirname(__file__))
-    xyz_dir = Path(this_dir) / "../xyz_files/"
+    xyz_dir = THIS_DIR / "../xyz_files/"
     xyz_fn = xyz_dir / xyz_fn
     return geom_from_xyz_file(xyz_fn, **kwargs)
 
@@ -31,6 +32,13 @@ def geoms_from_trj(trj_fn, first=None, **kwargs):
     geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, comment=comment, **kwargs)
              for atoms, coords, comment in atoms_coords_comments
     ]
+    return geoms
+
+
+def get_baker_geoms(**kwargs):
+    baker_path = THIS_DIR / "../xyz_files/baker"
+    xyz_fns = baker_path.glob("*.xyz")
+    geoms = [geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns]
     return geoms
 
 
