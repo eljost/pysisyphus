@@ -17,8 +17,6 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 
-#logging.basicConfig(level=logging.INFO)
-
 PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
 
 
@@ -49,6 +47,10 @@ class RedundantCoords:
         self.set_primitive_indices()
         self._prim_coords = self.calculate(self.cart_coords)
         self.set_rho()
+
+    def log(self, message):
+        logger = logging.getLogger("internal_coords")
+        logger.debug(message)
 
     @property
     def prim_indices(self):
@@ -136,7 +138,7 @@ class RedundantCoords:
             4: 0.1,
         }
         k_diag = [k_dict[len(prim.inds)] for prim in self._prim_coords]
-        logging.warning("Using simple 0.5/0.2/0.1 model hessian!")
+        self.log("Using simple 0.5/0.2/0.1 model hessian!")
         return np.diagflat(k_diag)
 
     def merge_fragments(self, fragments):
@@ -206,7 +208,7 @@ class RedundantCoords:
                 angle = self.calc_bend(coords3d, (x_ind, h_ind, y_ind))
                 if (cov_rad_sum < distance < vdw) and (angle > np.pi/2):
                     self.hydrogen_bond_indices.append((h_ind, y_ind))
-                    logging.debug("Added hydrogen bond between {h_ind} and {y_ind}")
+                    self.log("Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
     def set_bond_indices(self, factor=1.3):
@@ -293,7 +295,7 @@ class RedundantCoords:
                 return
             # Assure that the angles are below 175° (3.054326 rad)
             if not self.is_valid_dihedral(dihedral_ind, thresh=0.0873):
-                logging.warning("Skipping generation of dihedral "
+                self.log("Skipping generation of dihedral "
                                f"{dihedral_ind} as some of the the atoms "
                                 "are linear."
                 )
@@ -336,7 +338,7 @@ class RedundantCoords:
         if (len(self.atoms) >= 4) and (len(self.dihedral_indices) == 0):
             for improp in improper_dihedrals:
                 set_dihedral_index(improp)
-            logging.warning("Permutational symmetry not considerd in "
+            self.log("Permutational symmetry not considerd in "
                             "generation of improper dihedrals.")
 
         self.dihedral_indices = np.array(self.dihedral_indices)
@@ -387,7 +389,7 @@ class RedundantCoords:
             rad = np.arccos(dot)#vec1.dot(vec2))
             # angle > 175°
             if abs(rad) > (np.pi - 0.088):
-                logging.warning(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
+                self.log(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
             return abs(rad) > (np.pi - thresh)
         m, o, n = angle_ind
         u_dash = coords[m] - coords[o]
@@ -512,9 +514,9 @@ class RedundantCoords:
             last_coords = new_coords
             last_vals += int_diffs
             last_rms = cart_rms
-            logging.info(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
+            self.log(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
             if cart_rms < cart_rms_thresh:
-                logging.info("Internal to cartesian transformation converged!")
+                self.log("Internal to cartesian transformation converged!")
                 break
         return full_cart_step
 
