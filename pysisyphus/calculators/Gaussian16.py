@@ -22,7 +22,7 @@ class Gaussian16(OverlapCalculator):
     conf_key = "gaussian16"
 
     def __init__(self, route, mem=3500, gbs="", gen="",
-                 keep_chk=False, **kwargs):
+                 keep_chk=False, stable="", **kwargs):
         super().__init__(**kwargs)
 
         self.route = route.lower()
@@ -33,6 +33,7 @@ class Gaussian16(OverlapCalculator):
                                "without the @!"
         self.gen = gen
         self.keep_chk = keep_chk
+        self.stable = stable
 
         if any([key in self.route for key in "td tda cis".split()]):
             route_lower = self.route.lower()
@@ -84,6 +85,7 @@ class Gaussian16(OverlapCalculator):
 
         self.parser_funcs = {
             "force": self.parse_force,
+            "stable": self.parse_stable,
             "noparse": lambda path: None,
             "double_mol": self.parse_double_mol,
         }
@@ -207,6 +209,9 @@ class Gaussian16(OverlapCalculator):
         return results
 
     def get_forces(self, atoms, coords):
+        if self.stable:
+            is_stable = self.run_stable(atoms, coords)
+            self.log(f"Wavefunction is now stable: {is_stable}")
         inp = self.prepare_input(atoms, coords, "force")
         kwargs = {
             "calc": "force",
@@ -217,6 +222,28 @@ class Gaussian16(OverlapCalculator):
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
         return results
+
+    def run_stable(self, atoms, coords):
+        inp = self.prepare_input(atoms, coords, self.stable)
+        self.log(f"Running stability analysis with {self.stable}")
+        kwargs = {
+            "calc": "stable",
+        }
+        results = self.run(inp, **kwargs)
+        return results
+
+    def parse_stable(self, path):
+        log_path = path / self.out_fn
+        with open(log_path) as handle:
+            text = handle.read()
+        instab_re = "wavefunction.*instability.*"
+        instab_mobj = re.search(instab_re, text)
+        if instab_mobj:
+            self.log("Found instability!")
+        stable_re = "wavefunction is stable"
+        mobj = re.search(stable_re, text)
+        is_stable = bool(mobj)
+        return is_stable
 
     def run_calculation(self, atoms, coords):
         inp = self.prepare_input(atoms, coords, "")

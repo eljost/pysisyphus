@@ -399,7 +399,7 @@ class Calculator:
             Directory to delete.
         """
         shutil.rmtree(path)
-        self.log(f"cleaned {path}")
+        self.log(f"Cleaned {path}")
 
     def reattach(self, last_calc_cycle):
         """Meant to be extended.
