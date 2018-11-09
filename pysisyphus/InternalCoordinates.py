@@ -518,6 +518,13 @@ class RedundantCoords:
                 break
         return full_cart_step
 
+    def __str__(self):
+        bonds = len(self.bond_indices)
+        bends = len(self.bending_indices)
+        dihedrals = len(self.dihedral_indices)
+        name = self.__class__.__name__
+        return f"{name}({bonds} bonds, {bends} bends, {dihedrals} dihedrals)"
+
 
 class DelocalizedCoords(RedundantCoords):
     def __init__(self, geom):
