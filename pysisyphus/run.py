@@ -484,6 +484,10 @@ def clean(force=False):
         # Gaussian specific
         "image*.fchk",
         "image*.log",
+        "image*.chk",
+        "image*.com",
+        "image*.*dump_635r",
+        "image*ao_ovlp_rec"
         # Turbomole specific
         "image*.mos",
         "image*.alpha",
