@@ -58,7 +58,6 @@ class Gaussian16(OverlapCalculator):
             # Delete exc keyword, as we build it later on
             self.route = re.sub("((?:td|cis|tda).+?(:?\s|$))", "", self.route)
 
-
         self.wfow = None
 
         self.to_keep = ("com", "fchk", "log", "dump_635r")
@@ -150,7 +149,9 @@ class Gaussian16(OverlapCalculator):
             "chk_link0": f"%chk={self.chk_fn}",
             "add_link0": "",
             "route": self.route,
+            # td/tda/cis(...)
             "exc": self.make_exc_str(),
+            # guess=read td=read
             "reuse_data": self.reuse_data(path),
             "calc_type": calc_type,
             "charge": self.charge,
