@@ -18,10 +18,11 @@ class OpenMolcas(Calculator):
                  supsym=None, track=True, **kwargs):
         super(OpenMolcas, self).__init__(**kwargs)
 
-        assert self.pal == 1, \
+        assert self.pal == 1, (
             "RI SA-CASSCF analytical gradients do not work correctly in "
             "parallel (yet). Consider using pal=1 instead of the current "
            f"pal={self.pal}!"
+        )
 
         self.basis = basis
         self.inporb = inporb

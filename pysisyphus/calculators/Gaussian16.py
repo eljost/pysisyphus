@@ -35,22 +35,30 @@ class Gaussian16(OverlapCalculator):
         self.keep_chk = keep_chk
         self.stable = stable
 
-        if any([key in self.route for key in "td tda cis".split()]):
-            route_lower = self.route.lower()
-            self.nstates = int(re.search("nstates=(\d+)", route_lower)[1])
+        keywords = {kw: option
+                    for kw, option in [self.parse_keyword(kw)
+                                       for kw in self.route.split()]
+        }
+        exc_keyword = [key for key in "td tda cis".split()
+                       if key in keywords]
+        self.root = None
+        self.nstates = None
+        if exc_keyword:
+            self.exc_key = exc_keyword[0]
+            exc_dict = keywords[self.exc_key]
+            self.nstates = int(exc_dict["nstates"])
             try:
-                self.root = int(re.search("root=(\d+)", route_lower)[1])
+                self.root = int(exc_dict["root"])
             except TypeError:
                 self.root = 1
                 self.log("No explicit root was specified! Using root=1 as default!")
-        else:
-            self.root = None
-            self.nstates = None
+            # Collect remaining options if specified
+            self.exc_args = {k:v for k, v in exc_dict.items()
+                             if k not in ("nstates", "root")}
+            # Delete exc keyword, as we build it later on
+            self.route = re.sub("((?:td|cis|tda).+?(:?\s|$))", "", self.route)
 
-        # # When root or nstates is set, the other option is required too!
-        # if self.root or self.nstates:
-            # assert (self.root and self.nstates), "nstates and root have to "\
-                                                 # "be given together!"
+
         self.wfow = None
 
         self.to_keep = ("com", "fchk", "log", "dump_635r")
@@ -68,7 +76,7 @@ class Gaussian16(OverlapCalculator):
         %mem={mem}MB
         {chk_link0}
         {add_link0}
-        #P {calc_type} {route}
+        #P {calc_type} {route} {exc}
         # Symmetry=None {reuse_data}
         
         title
@@ -93,6 +101,19 @@ class Gaussian16(OverlapCalculator):
         self.base_cmd = self.get_cmd("cmd")
         self.formchk_cmd = self.get_cmd("formchk_cmd")
         self.unfchk_cmd = self.get_cmd("unfchk_cmd")
+
+    def make_exc_str(self):
+        # Ground state calculation
+        if not self.root:
+            return ""
+        root = f"root={self.root}"
+        nstates = f"nstates={self.nstates}"
+        pair2str = lambda k, v: f"{k}" + (f"={v}" if v else "")
+        arg_str = ",".join([pair2str(k, v)
+                            for k, v  in self.exc_args.items()])
+        exc_str = f"{self.exc_key}=({root},{nstates},{arg_str})"
+        return exc_str
+
 
     def reuse_data(self, path):
         # Nothing to reuse if no fchk or chk present
@@ -129,6 +150,7 @@ class Gaussian16(OverlapCalculator):
             "chk_link0": f"%chk={self.chk_fn}",
             "add_link0": "",
             "route": self.route,
+            "exc": self.make_exc_str(),
             "reuse_data": self.reuse_data(path),
             "calc_type": calc_type,
             "charge": self.charge,
@@ -171,6 +193,35 @@ class Gaussian16(OverlapCalculator):
         if self.track:
             self.run_rwfdump(path, "635r")
             self.nmos, self.roots = self.parse_log(path)
+
+    def parse_keyword(self, text):
+        word = pp.Word(pp.alphanums + "-" + "/")
+
+        keyword = word.setResultsName("keyword")
+        equals = pp.Literal("=")
+        option_key = word
+        option = pp.Group(
+            word
+            + pp.Suppress(pp.Optional(equals))
+            + pp.Optional(word, default="")
+            + pp.Suppress(pp.Optional(","))
+        )
+        options = (
+            pp.Suppress(pp.Optional(equals))
+            + pp.Suppress(pp.Optional("("))
+            + pp.OneOrMore(option)
+            + pp.Suppress(pp.Optional(")"))
+        ).setResultsName("options")
+
+        parser = (
+            keyword + pp.Optional(options, default=[])
+        )
+
+        result = parser.parseString(text)
+        as_dict = result.asDict()
+        kw = as_dict["keyword"]
+        opt_dict = {key: value for key, value in as_dict["options"]}
+        return kw, opt_dict
 
     def parse_fchk(self, fchk_path, keys):
         with open(fchk_path) as handle:
