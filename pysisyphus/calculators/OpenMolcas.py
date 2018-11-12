@@ -18,6 +18,11 @@ class OpenMolcas(Calculator):
                  supsym=None, track=True, **kwargs):
         super(OpenMolcas, self).__init__(**kwargs)
 
+        assert self.pal == 1, \
+            "RI SA-CASSCF analytical gradients do not work correctly in "
+            "parallel (yet). Consider using pal=1 instead of the current "
+           f"pal={self.pal}!"
+
         self.basis = basis
         self.inporb = inporb
         self.roots = roots
@@ -143,9 +148,6 @@ class OpenMolcas(Calculator):
             "add_args": add_args,
             "env": env_copy,
         }
-        raise Exception("RI SA-CASSCF analytical gradients do not work "
-                        "correctly in parallel (yet). Consider using "
-                       f"pal=1 instead of the current pal={self.pal}!")
         results = self.run(inp, **kwargs)
         return results
 

@@ -141,7 +141,8 @@ class OverlapCalculator(Calculator):
             [f"{i}: {ov:.2%}" for i, ov in enumerate(old_root_col)]
         )
         self.log(f"Overlaps: {old_root_col_str}")
-        if self.root == old_root:
+        root_flip = self.root != old_root
+        if not root_flip:
             msg = f"New root is {self.root}, keeping previous root. Overlap is " \
                   f"{max_overlap:.2%}."
         else:
@@ -149,9 +150,5 @@ class OverlapCalculator(Calculator):
                   f"overlap with previous root {old_root}."
         self.log(msg)
 
-
-        if self.root != old_root:
-            self.log(f"Found a root flip from {old_root} to {self.root}!")
-
         # True if a root flip occured
-        return not (self.root == old_root)
+        return root_flip
