@@ -127,10 +127,13 @@ class Gaussian16(OverlapCalculator):
 
         reuse_str = "guess=read"
         # Also try to reuse information of previous TD calculation
-        if self.nstates and hasattr(self, "chk"):
-            shutil.copy(self.chk, new_chk)
-            reuse_str += " td=read"
-            self.log("Using td=read")
+        # if self.nstates and hasattr(self, "chk"):
+        # DISABLED for now, as gaussian also resorts the states
+        # internally, which then messes up our internal numbering
+        # of states.
+            # shutil.copy(self.chk, new_chk)
+            # reuse_str += " td=read"
+            # self.log("Using td=read")
 
         return reuse_str
 
@@ -166,6 +169,8 @@ class Gaussian16(OverlapCalculator):
                 "add_link0": "%KJob L302 1",
                 "route": self.route + " iop(3/33=1) geom=notest",
                 "calc_type": "",
+                "reuse_data": "",
+                "exc": "",
             }
             kwargs.update(update)
         inp = self.gaussian_input.format(**kwargs)
@@ -269,10 +274,9 @@ class Gaussian16(OverlapCalculator):
             "calc": "force",
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            if self.track_root(atoms, coords):
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
+        if self.track and self.track_root(atoms, coords):
+            # Redo the calculation with the updated root
+            results = self.get_forces(atoms, coords)
         return results
 
     def run_stable(self, atoms, coords):
@@ -315,6 +319,7 @@ class Gaussian16(OverlapCalculator):
                 "calc": "double_mol",
                 "keep": False,
                 "inc_counter": False,
+                "run_after": False,
         }
         double_mol_ovlps = self.run(inp, **kwargs)
         return double_mol_ovlps
@@ -345,6 +350,12 @@ class Gaussian16(OverlapCalculator):
         with open(log_path) as handle:
             text = handle.read()
 
+        # Depending on wether we did the calculation with td=read or not
+        # roots will be at a different value. Without reading the CI coeffs
+        # from the checkpoint Gaussian will calculate four times as much roots
+        # as requested in the first iterations of the calculation. This will
+        # lead to a much higher number of expected number of CI-coefficients
+        # when parsing the 635r dump later on.
         roots_re = "Root\s+(\d+)"
         roots = np.array(re.findall(roots_re, text), dtype=int).max()
 
