@@ -10,20 +10,26 @@ class OverlapCalculator(Calculator):
         "tden": "transition densisty matrix overlap",
     }
 
-
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
-                 **kwargs, ):
+                 ovlp_with="previous", **kwargs):
         self.track = track
         self.ovlp_type = ovlp_type
         self.double_mol = double_mol
+        assert ovlp_with in ("previous", "first")
+        self.ovlp_with = ovlp_with
+
         self.mo_coeff_list = list()
         self.ci_coeff_list = list()
+        self.coords_list = list()
+        self.first_root = None
 
         super().__init__(*args, **kwargs)
 
         if track:
             self.log("Tracking excited states with "
-                    f"{self.ovlp_type_verbose[ovlp_type]}s")
+                    f"{self.ovlp_type_verbose[ovlp_type]}s using overlaps "
+                    f"between the current and the {self.ovlp_with} geometry."
+            )
 
     def blowup_ci_coeffs(self, ci_coeffs):
         states, occ, virt = ci_coeffs.shape
@@ -69,11 +75,16 @@ class OverlapCalculator(Calculator):
 
         return overlaps
 
-    def last_two_tdens_overlap(self, ao_ovlp=None):
-        mo_coeffs1 = self.mo_coeff_list[-1]
-        ci_coeffs1 = self.ci_coeff_list[-1]
-        mo_coeffs2 = self.mo_coeff_list[-2]
-        ci_coeffs2 = self.ci_coeff_list[-2]
+    def get_tden_overlaps(self, ao_ovlp=None):
+        # Overlap with previous cycle is the default
+        indices = (-1, -2)
+        if self.ovlp_with == "first":
+            indices = (-1, 0)
+        cur, prev = indices
+        mo_coeffs1 = self.mo_coeff_list[cur]
+        ci_coeffs1 = self.ci_coeff_list[cur]
+        mo_coeffs2 = self.mo_coeff_list[prev]
+        ci_coeffs2 = self.ci_coeff_list[prev]
         overlaps = self.tden_overlaps(mo_coeffs1, ci_coeffs1,
                                       mo_coeffs2, ci_coeffs2,
                                       ao_ovlp=ao_ovlp)
@@ -97,16 +108,19 @@ class OverlapCalculator(Calculator):
 
     def store_overlap_data(self, atoms, coords):
         mos_fn, mo_coeffs, ci_coeffs = self.prepare_overlap_data()
+        if self.first_root is None:
+            self.first_root = self.root
+            self.log(f"Set first root to root {self.first_root}.")
         # Used for transition density overlaps
         self.mo_coeff_list.append(mo_coeffs)
         self.ci_coeff_list.append(ci_coeffs)
+        self.coords_list.append(coords)
         # Used for WFOverlap
         self.wfow.store_iteration(atoms, coords, mos_fn, ci_coeffs)
 
-
     def track_root(self, atoms, coords, ovlp_type=None):
         """Store the information of the current iteration and if possible
-        calculate the overlap with the previous iteration."""
+        calculate the overlap with a previous/the first iteration."""
         self.store_overlap_data(atoms, coords)
         old_root = self.root
         if not ovlp_type:
@@ -116,39 +130,49 @@ class OverlapCalculator(Calculator):
             return False
 
         ao_ovlp = None
+        # We can only run a double molecule calculation if it is
+        # implemented for the specific calculator, so we have to check it.
         if self.double_mol and hasattr(self, "run_double_mol_calculation"):
-            last_two_coords = self.wfow.last_two_coords
-            ao_ovlp = self.run_double_mol_calculation(atoms, *last_two_coords)
+            # Overlap with previous cycle is the default
+            indices = (-1, -2)
+            if self.ovlp_with == "first":
+                indices = (-1, 0)
+            cur, prev = indices
+            two_coords = self.coords_list[cur], self.coords_list[prev]
+            ao_ovlp = self.run_double_mol_calculation(atoms, *two_coords)
 
         if ovlp_type == "wf":
             overlap_mats = self.wfow.overlaps(ao_ovlp)
             overlaps = overlap_mats[0]
             # overlaps = overlaps**2
         elif ovlp_type == "tden":
-            overlaps = self.last_two_tdens_overlap(ao_ovlp)
+            overlaps = self.get_tden_overlaps(ao_ovlp)
             overlaps = np.abs(overlaps)
         else:
             raise Exception("Invalid overlap specifier! Use one of "
                             "'tden'/'wf'!")
 
-        old_root = self.root
-        self.log(f"Previous root is {old_root}.")
-        old_root_col = overlaps[old_root-1]
-        new_root = old_root_col.argmax()
-        max_overlap = old_root_col[new_root]
+        prev_root = self.root
+        self.log(f"Previous root is {prev_root}.")
+        if self.ovlp_with == "first":
+            prev_root_col = overlaps[self.first_root-1]
+        elif self.ovlp_with == "previous":
+            prev_root_col = overlaps[prev_root-1]
+        new_root = prev_root_col.argmax()
+        max_overlap = prev_root_col[new_root]
         self.root = new_root + 1
-        old_root_col_str = ", ".join(
-            [f"{i}: {ov:.2%}" for i, ov in enumerate(old_root_col)]
+        prev_root_col_str = ", ".join(
+            [f"{i}: {ov:.2%}" for i, ov in enumerate(prev_root_col)]
         )
-        self.log(f"Overlaps: {old_root_col_str}")
-        root_flip = self.root != old_root
+        self.log(f"Overlaps: {prev_root_col_str}")
+        root_flip = self.root != prev_root
+        self.log(f"Highest overlap is {max_overlap:.2%}.")
         if not root_flip:
-            msg = f"New root is {self.root}, keeping previous root. Overlap is " \
-                  f"{max_overlap:.2%}."
+            self.log(f"Keeping current root {self.root}.")
         else:
-            msg = f"Root flip! New root {self.root} has {max_overlap:.2%} " \
-                  f"overlap with previous root {old_root}."
-        self.log(msg)
+            self.log(f"Root flip! New root is {self.root}. Root at previous "
+                     f"step was {prev_root}."
+            )
 
         # True if a root flip occured
         return root_flip
