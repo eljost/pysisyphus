@@ -7,7 +7,7 @@ from pysisyphus.calculators.Calculator import Calculator
 class OverlapCalculator(Calculator):
     ovlp_type_verbose = {
         "wf": "wavefunction overlap",
-        "tden": "transition densisty matrix overlap",
+        "tden": "transition density matrix overlap",
     }
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
