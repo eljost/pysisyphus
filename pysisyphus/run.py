@@ -502,6 +502,8 @@ def clean(force=False):
         # XTB specific
         "image*.grad",
         "calculator*.grad",
+        "image_*.*.mos",
+        "image*.*.ao_ovlp_rec",
     )
     to_rm_paths = list()
     for glob in rm_globs:
