@@ -237,7 +237,8 @@ class Calculator:
         return coords
 
     def run(self, inp, calc, add_args=None, env=None, shell=False,
-            hold=False, keep=True, cmd=None, inc_counter=True):
+            hold=False, keep=True, cmd=None, inc_counter=True,
+            run_after=True):
         """Run a calculation.
 
         The bread-and-butter method to actually run an external quantum
@@ -291,7 +292,8 @@ class Calculator:
                                       env=env, shell=shell)
             result.wait()
         try:
-            self.run_after(path)
+            if run_after:
+                self.run_after(path)
             results = self.parser_funcs[calc](path)
             if keep:
                 self.keep(path)
