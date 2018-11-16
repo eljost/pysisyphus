@@ -12,6 +12,7 @@ from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.Geometry import Geometry
 from pysisyphus.cos.GrowingNT import GrowingNT
 from pysisyphus.cos.GrowingString import GrowingString
+from pysisyphus.plotters.AnimGS import AnimGS
 
 
 def get_geoms(coords, calc_getter):
@@ -106,15 +107,15 @@ def test_anapot_growingstring():
         (-1.05274, 1.02776, 0),
         (1.94101, 3.85427, 0),
     )
-    levels = np.linspace(-3, 4, 80)
     calc_getter = AnaPot
     eps = .05
     damp = .05
     images = get_geoms(coords, calc_getter)
     gs = GrowingString(images, calc_getter)
-
     gs.run()
-    plot(gs, calc_getter(), levels)
+    anim = AnimGS(gs, calc_getter)
+    # anim.update_func(10)
+    anim.animate()
 
 
 if __name__ == "__main__":
@@ -122,3 +123,4 @@ if __name__ == "__main__":
     # test_mullerbrown_growingnt()
     # test_four_well_growingnt()
     test_anapot_growingstring()
+    plt.show()

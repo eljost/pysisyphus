@@ -12,14 +12,19 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 class GrowingString(GrowingChainOfStates):
 
-    def __init__(self, images, calc_getter, **kwargs):
+    def __init__(self, images, calc_getter, max_cycles=25, **kwargs):
         assert len(images) == 2, "Can only start from 2 images for now"
         super().__init__(images, calc_getter, **kwargs)
 
+        self.max_cycles = max_cycles
         left_img, right_img = self.images
 
         self.left_string = [left_img, ]
         self.right_string = [right_img, ]
+
+        self.tangent_list = list()
+        self.perp_force_list = list()
+        self.coords_list = list()
 
     @property
     def left_size(self):
@@ -89,9 +94,9 @@ class GrowingString(GrowingChainOfStates):
         # Step length on the normalized arclength
         sk = 1 / (self.max_nodes+1)
         tcks, us = self.spline()
-        for i in range(17):
+        for self.cur_cycle in range(self.max_cycles):
             Sk, cur_mesh = self.arc_dims
-            print(f"Cycle {i:03d}, total arclength Sk={Sk:.4f}")
+            print(f"Cycle {self.cur_cycle:03d}, total arclength Sk={Sk:.4f}")
             forces = self.forces
             self.cur_forces = forces.reshape(-1, 3)
             tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
@@ -100,6 +105,7 @@ class GrowingString(GrowingChainOfStates):
             # Tangents of the right string shall point towards the center.
             tangents[self.rf_ind:] *= -1
             self.tangents = tangents
+            self.tangent_list.append(self.tangents)
 
             # Perpendicular force component
             # Dot product between rows in one line
@@ -109,12 +115,14 @@ class GrowingString(GrowingChainOfStates):
                 [force - force.dot(tangent)*tangent
                  for force, tangent in zip(force_per_img, tangents)]
             )
+            self.perp_force_list.append(self.perp_forces)
             perp_norms = np.linalg.norm(self.perp_forces, axis=1)
 
             # Take step
             step = 0.05 * self.perp_forces.flatten()
             step_norms = np.linalg.norm(step.reshape(-1, 3), axis=1)
             self.coords += step
+            self.coords_list.append(self.coords)
             # Spline displaced coordinates
             tcks, us = self.spline()
 
@@ -140,6 +148,3 @@ class GrowingString(GrowingChainOfStates):
             param_density = sk*param_inds
             print("New param density", np.array2string(param_density, precision=2))
             self.reparam(tcks, param_density)
-            print()
-
-        self.conv_points = [i.coords for i in self.images]
