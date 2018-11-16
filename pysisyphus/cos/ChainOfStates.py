@@ -193,8 +193,7 @@ class ChainOfStates:
 
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
-        return forces - (np.dot(forces, tangent)*tangent)
-
+        return forces - forces.dot(tangent)*tangent
 
     @property
     def masses_rep(self):
