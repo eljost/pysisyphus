@@ -29,8 +29,10 @@ class MullerBrownPot(AnaPotBase):
                   for i in range(4)
         ]
         V_str = " + ".join(V_strs)
-                                        
-        super(MullerBrownPot, self).__init__(V_str=V_str)
+        xlim = (-1.75, 1.25)
+        ylim = (-0.5, 2.25)
+
+        super(MullerBrownPot, self).__init__(V_str=V_str, xlim=xlim, ylim=ylim)
 
     def __str__(self):
         return "MullerBrownPot calculator"
