@@ -65,25 +65,17 @@ class GrowingString(GrowingChainOfStates):
         self.coords = new_points.transpose().flatten()
 
     def run(self):
-        add_ks = np.arange(self.max_nodes)
-
-        self.points = [self.images[0].coords]
-        self.conv_points = [self.images[0].coords]
-
         # To add nodes we need a direction/tangent. As we start
-        # from two images we can't spline yet, so we got no splined
-        # tangents.
-        # Instead we use the unit vector pointing from the
-        # left image to the right image.
+        # from two images we can't do a cubic spline yet, so we
+        # can't use splined tangents.
+        # To start off we use a "classic" tangent instead, that
+        # is the unit vector pointing from the left image, to
+        # the right image.
         init_tangent = super().get_tangent(0)
-        # S = .75
         Sk, _ = self.arc_dims
         S = Sk / (self.max_nodes+1)
-        print("S", S)
         # Create first two mobile nodes
         left_img, right_img = self.images
-        # new_left_coords = left_img.coords + sk*init_tangent
-        # new_right_coords = right_img.coords - sk*init_tangent
         new_left_coords = left_img.coords + S*init_tangent
         new_right_coords = right_img.coords - S*init_tangent
         left_frontier = self.get_new_image(new_left_coords, 1)
@@ -94,16 +86,12 @@ class GrowingString(GrowingChainOfStates):
         def ind_func(perp_force, tol=0.5):
             return int(np.linalg.norm(perp_force) <= tol)
 
+        # Step length on the normalized arclength
+        sk = 1 / (self.max_nodes+1)
         tcks, us = self.spline()
-        print("us", us)
-        for i in range(35):
+        for i in range(30):
             Sk, cur_mesh = self.arc_dims
-            print("cur_mesh", cur_mesh)
-            a1, a2 = cur_mesh[self.lf_ind], cur_mesh[self.lf_ind+1]
-            # Step length on the normalized arclength
-            S = Sk / (self.max_nodes+1)
-            sk = S / Sk
-            print(f"cycle {i}, total arclength Sk={Sk:.4f}, sk={sk:.4f}")
+            print(f"cycle {i}, total arclength Sk={Sk:.4f}")
             forces = self.forces
             # print("forces")
             # print(forces.reshape(-1, 3))
@@ -112,9 +100,8 @@ class GrowingString(GrowingChainOfStates):
             tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
             norms = np.linalg.norm(tangents, axis=1)
             tangents = tangents / norms[:,None]
-            right = len(self.left_string)
-            # Right tangents shall point inward
-            tangents[right:] *= -1
+            # Tangents of the right string shall point towards the center.
+            tangents[self.rf_ind:] *= -1
             self.tangents = tangents
             # print("tangents")
             # print(tangents)
@@ -130,46 +117,31 @@ class GrowingString(GrowingChainOfStates):
             perp_forces = np.array(perp_forces).flatten()
             self.perp_forces = perp_forces.reshape(-1, 3)
             perp_norms = np.linalg.norm(self.perp_forces, axis=1)
-            print("perp_norms")
-            print(np.array2string(perp_norms, precision=2))
             step = 0.05 * perp_forces
             step_norms = np.linalg.norm(step.reshape(-1, 3), axis=1)
-            # print("step_norms")
-            # print(step_norms)
-            # print()
 
             self.coords += step
+            # Spline displaced coordinates
             tcks, us = self.spline()
 
-            print(f"a1={a1}, a2={a2}")
-            # a1 += ind_func(self.perp_forces[self.lf_ind])*sk
-            # a2 -= ind_func(self.perp_forces[self.rf_ind])*sk
             if self.images_left and ind_func(self.perp_forces[self.lf_ind]):
                 # Insert at the end of the left string, just before the 
                 # right frontier node.
                 new_left_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
                 self.left_string.append(new_left_frontier)
-                a1 += sk
-                # print("perp force norm on left frontier is below threshold!")
-                # print("propagate left, a1")
-                print("adding new left frontier node.")
+                print("Added new left frontier node.")
             if self.images_left and ind_func(self.perp_forces[self.rf_ind]):
                 # Insert at the end of the right string, just before the 
                 # current right frontier node.
                 new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
                 self.right_string.append(new_right_frontier)
-                a2 -= sk
-                print("adding new right frontier node.")
-                # print("perp force norm on right frontier is below threshold!")
-                # print("propagate right, a2")
-            print("string size:", self.left_size, "+", self.right_size)
-            # print(f"got {self.left_size} images in left string")
-            # print(f"got {self.right_size} images in right string")
-            # print(f"a1={a1}, a2={a2}")
-            left_density = np.linspace(0, a1, self.left_size)
-            right_density = np.linspace(a2, 1, self.right_size)
-            param_density = np.concatenate((left_density, right_density))
-            print("new param density", param_density)
+                print("Added new right frontier node.")
+            print("Current string size:", self.left_size, "+", self.right_size)
+            left_inds = np.arange(self.left_size)
+            right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
+            param_inds = np.concatenate((left_inds, right_inds))
+            param_density = sk*param_inds
+            print("New param density", np.array2string(param_density, precision=2))
             self.reparam(tcks, param_density)
             print()
 

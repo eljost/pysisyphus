@@ -24,16 +24,16 @@ def get_geoms(coords, calc_getter):
 
 def plot(gnt, calc, levels=None):
     calc.plot(levels)
-    points = np.array(gnt.points)
     conv = np.array(gnt.conv_points)
-    # for i, p in enumerate(points):
-        # print(i, p)
-    px = points[:,0]
-    py = points[:,1]
+
+    if hasattr(gnt, "points"):
+        points = np.array(gnt.points)
+        px = points[:,0]
+        py = points[:,1]
+        ax.plot(px, py, "o-", c="r")
     cx = conv[:,0]
     cy = conv[:,1]
     ax = calc.ax
-    ax.plot(px, py, "o-", c="r")
     ax.plot(cx, cy, "X-", ms="8", c="k")
     if hasattr(gnt, "tangents"):
         tangents = gnt.tangents
