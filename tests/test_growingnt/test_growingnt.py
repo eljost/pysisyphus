@@ -40,11 +40,11 @@ def plot(gnt, calc, levels=None):
         tx = tangents[:,0]
         ty = tangents[:,1]
         ax.quiver(cx, cy, tx, ty)
-    if hasattr(gnt, "cur_forces"):
-        forces = gnt.cur_forces
-        fx = forces[:,0]
-        fy = forces[:,1]
-        ax.quiver(cx, cy, fx, fy, color="b")
+    # if hasattr(gnt, "cur_forces"):
+        # forces = gnt.cur_forces
+        # fx = forces[:,0]
+        # fy = forces[:,1]
+        # ax.quiver(cx, cy, fx, fy, color="b")
     if hasattr(gnt, "perp_forces"):
         perp_forces = gnt.perp_forces
         px = perp_forces[:,0]

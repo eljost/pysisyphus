@@ -89,13 +89,10 @@ class GrowingString(GrowingChainOfStates):
         # Step length on the normalized arclength
         sk = 1 / (self.max_nodes+1)
         tcks, us = self.spline()
-        for i in range(30):
+        for i in range(17):
             Sk, cur_mesh = self.arc_dims
-            print(f"cycle {i}, total arclength Sk={Sk:.4f}")
+            print(f"Cycle {i:03d}, total arclength Sk={Sk:.4f}")
             forces = self.forces
-            # print("forces")
-            # print(forces.reshape(-1, 3))
-            # print()
             self.cur_forces = forces.reshape(-1, 3)
             tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
             norms = np.linalg.norm(tangents, axis=1)
@@ -103,27 +100,25 @@ class GrowingString(GrowingChainOfStates):
             # Tangents of the right string shall point towards the center.
             tangents[self.rf_ind:] *= -1
             self.tangents = tangents
-            # print("tangents")
-            # print(tangents)
-            # print()
-            # Perp forces = org. forces - parallel part
-            tf = tangents.flatten()
-            perp_forces = list()
-            force_per_img = forces.reshape(-1, 3)
-            for i, (force, tang) in enumerate(zip(force_per_img, tangents)):
-                pf = force - force.dot(tang)*tang
-                # print(i, pf)
-                perp_forces.append(pf)
-            perp_forces = np.array(perp_forces).flatten()
-            self.perp_forces = perp_forces.reshape(-1, 3)
-            perp_norms = np.linalg.norm(self.perp_forces, axis=1)
-            step = 0.05 * perp_forces
-            step_norms = np.linalg.norm(step.reshape(-1, 3), axis=1)
 
+            # Perpendicular force component
+            # Dot product between rows in one line
+            # np.einsum("ij,ij->i", tangents, forces.reshape(-1, 3))
+            force_per_img = forces.reshape(-1, 3)
+            self.perp_forces = np.array(
+                [force - force.dot(tangent)*tangent
+                 for force, tangent in zip(force_per_img, tangents)]
+            )
+            perp_norms = np.linalg.norm(self.perp_forces, axis=1)
+
+            # Take step
+            step = 0.05 * self.perp_forces.flatten()
+            step_norms = np.linalg.norm(step.reshape(-1, 3), axis=1)
             self.coords += step
             # Spline displaced coordinates
             tcks, us = self.spline()
 
+            # Check if we can add new nodes
             if self.images_left and ind_func(self.perp_forces[self.lf_ind]):
                 # Insert at the end of the left string, just before the 
                 # right frontier node.
@@ -136,7 +131,9 @@ class GrowingString(GrowingChainOfStates):
                 new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
                 self.right_string.append(new_right_frontier)
                 print("Added new right frontier node.")
+
             print("Current string size:", self.left_size, "+", self.right_size)
+            # Reparametrize nodes
             left_inds = np.arange(self.left_size)
             right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
             param_inds = np.concatenate((left_inds, right_inds))
@@ -145,7 +142,4 @@ class GrowingString(GrowingChainOfStates):
             self.reparam(tcks, param_density)
             print()
 
-
         self.conv_points = [i.coords for i in self.images]
-        # import pdb; pdb.set_trace()
-        # print("diffs", np.diff(self.conv_points))
