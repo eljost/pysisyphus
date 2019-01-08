@@ -49,9 +49,10 @@ def get_geom_getter(ref_geom, calc_setter):
     return geom_from_coords
 
 
-def dimer_method(geoms, calc_getter,
-                 max_step=0.3, max_cycles=50,
-                 trial_angle=5, angle_thresh=5, ana_2dpot=False):
+def dimer_method(geoms, calc_getter, N_init=None,
+                 max_step=0.1, max_cycles=50,
+                 trial_angle=5, angle_thresh=5, dR_base=0.01,
+                 dx=0.001, ana_2dpot=False):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -66,13 +67,15 @@ def dimer_method(geoms, calc_getter,
 
         To add:
             Comparing curvatures and adding π/2 if appropriate.
+
+        Default parameters from [1]
+            max_step = 0.1 bohr
+            dx = 0.01 bohr
+            dR_base = = 0.01 bohr
     """
     # Parameters
-    max_cycles = 50
-    dR_base = 0.1
     trial_rad = np.deg2rad(trial_angle)
     angle_thresh_rad = np.deg2rad(angle_thresh)
-    dx = 0.05
 
     header = "Cycle Curvature max(f0) rms(f0)".split()
     col_fmts = "int float float float".split()
@@ -95,7 +98,9 @@ def dimer_method(geoms, calc_getter,
         geom0 = geoms[0]
         # Assign random unit vector and use dR_base to for dR
         coord_size = geom0.coords.size
-        N = np.random.rand(coord_size)
+        N = N_init
+        if N is None:
+            N = np.random.rand(coord_size)
         if ana_2dpot:
             N[2] = 0
         N /= np.linalg.norm(N)
@@ -180,8 +185,11 @@ def dimer_method(geoms, calc_getter,
         F_mod = (trial_f0_mod + f0_mod).dot(N0_mod) / 2
         C_mod = (trial_f0_mod - f0_mod).dot(N0_mod) / dx
         step = (-F_mod/C_mod + dx/2)*N0_mod
-        if np.linalg.norm(step) > max_step:
+        step_norm = np.linalg.norm(step)
+        if step_norm > max_step:
             step = max_step * f0_mod
+            table.print(f"Step norm {step_norm:.2f} is too large. Scaling down!")
+        # step = f0_mod * dx
 
         # Small displacement of midpoint
         coords0_trans = coords0 + step
