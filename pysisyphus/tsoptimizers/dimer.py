@@ -1,77 +1,12 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
+import sys
 
-from pysisyphus.calculators.AnaPot import AnaPot
-from pysisyphus.Geometry import Geometry
-from pysisyphus.TablePrinter import TablePrinter
-
-import matplotlib.pyplot as plt
 import numpy as np
 
-
-def get_geoms(coords=None):
-    if coords is None:
-        # left = np.array((0.188646, 1.45698, 0))
-        # right = np.array((0.950829, 1.54153, 0))
-        # left = np.array((0.354902, 1.34229, 0))
-        # right = np.array((0.881002, 1.71074, 0))
-        left = np.array((0.531642, 1.41899, 0))
-        right = np.array((0.702108, 1.57077, 0))
-        coords = (right, left)
-
-        # near_ts = np.array((0.553726, 1.45458, 0))
-        # coords = (near_ts, )
-
-        # left_far = np.array((-0.455116, 0.926978, 0))
-        # right_far = np.array((-0.185653, 1.02486, 0))
-        # coords = (left_far, right_far)
-
-    atoms = ("H")
-    geoms = [Geometry(atoms, c) for c in coords]
-    for geom in geoms:
-        geom.set_calculator(AnaPot())
-    return geoms
-
-
-def plot_dimer(dimer, ax, label=None, color=None, marker="o"):
-    lines = ax.plot(dimer[:,0], dimer[:,1], marker=marker,
-                    label=label, color=color)
-    return lines
-
-
-def plot_dimer_cycles(dimer_cycles):
-    pot = AnaPot()
-    levels = np.linspace(-2.8, 3.6, 50)
-    pot.plot(levels=levels)
-
-    ax = pot.ax
-    for i, dc in enumerate(dimer_cycles):
-        label = f"Cycle {i}"
-        org_lbl = f"Org {i}"
-        trial_lbl = f"Trial {i}"
-        rot_lbl = f"Rot {i}"
-        # org = plot_dimer(dc.org_coords, ax, label=org_lbl)
-        # color = org[0].get_color()
-        # trial = plot_dimer(dc.trial_coords, ax,
-                         # label=trial_lbl, color=color, marker="x")
-        # rot = plot_dimer(dc.rot_coords, ax,
-                         # label=rot_lbl, color=color, marker=".")
-        rot = plot_dimer(dc.rot_coords, ax,
-                         label=rot_lbl, marker=".")
-    pot.ax.legend()
-    plt.show()
-
-
-def run():
-    geoms = get_geoms()
-    calc_getter = AnaPot
-    dimer_kwargs = {
-        "max_step": 0.1,
-        "ana_2dpot": True,
-    }
-    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    plot_dimer_cycles(dimer_cycles[-5:])
+from pysisyphus.TablePrinter import TablePrinter
+from pysisyphus.helpers import check_for_stop_sign
 
 
 DimerCycle = namedtuple("DimerCycle",
@@ -272,6 +207,8 @@ def dimer_method(geoms, calc_getter,
             w, v = np.linalg.eig(hess)
             trans_mode = v[:,0]
             mode_ovlp = trans_mode.dot(N_rot)
+        if check_for_stop_sign():
+            break
     return dimer_cycles
 
 
