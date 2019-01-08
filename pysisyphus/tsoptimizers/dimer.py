@@ -13,10 +13,10 @@ def get_geoms(coords=None):
     if coords is None:
         left = np.array((0.188646, 1.45698, 0))
         right = np.array((0.950829, 1.54153, 0))
-        left = np.array((0.354902, 1.34229, 0))
-        right = np.array((0.881002, 1.71074, 0))
-        left = np.array((0.531642, 1.41899, 0))
-        right = np.array((0.702108, 1.57077, 0))
+        # left = np.array((0.354902, 1.34229, 0))
+        # right = np.array((0.881002, 1.71074, 0))
+        # left = np.array((0.531642, 1.41899, 0))
+        # right = np.array((0.702108, 1.57077, 0))
         coords = (right, left)
         # near_ts = np.array((0.553726, 1.45458, 0))
         # coords = (near_ts, )
@@ -59,26 +59,15 @@ def plot_dimer_cycles(dimer_cycles):
     plt.show()
 
 
-def plot_geoms(dimer_cycles):
-    coords = np.array([geom.coords for geom in geoms])
-    pot = AnaPot()
-    levels = np.linspace(-2.8, 3.6, 50)
-    pot.plot(levels=levels)
-    xs = coords[:,0]
-    ys = coords[:,1]
-    pot.ax.scatter(coords[:,0], coords[:,1])
-    for i, (x, y) in enumerate(zip(xs, ys)):
-        pot.ax.scatter(x, y, label=f"{i}")
-    pot.ax.legend()
-    plt.show()
-
-
 def run():
     geoms = get_geoms()
     calc_getter = AnaPot
-    dimer_cycles = dimer_method(geoms, calc_getter, ana_2dpot=True)
+    dimer_kwargs = {
+        "max_step": 0.1,
+        "ana_2dpot": True,
+    }
+    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     plot_dimer_cycles(dimer_cycles)
-
 
 
 DimerCycle = namedtuple("DimerCycle",
@@ -96,13 +85,20 @@ def perpendicular_force(force, vec):
     return force - force.dot(vec)*vec
 
 
-def rotate_R1(coords, angle, N, theta, dR):
+def rotate_R1(coords, rad, N, theta, dR):
     """Only valid for rotation of R1!"""
-    return coords + (N*np.cos(angle) + theta*np.sin(angle)) * dR
+    return coords + (N*np.cos(rad) + theta*np.sin(rad)) * dR
 
 
 def get_curvature(f1, f2, N, dR):
     return (f2 - f1).dot(N) / (2*dR)
+
+
+def get_f_mod(f, N, C):
+    f_mod = -f.dot(N)*N
+    if C < 0:
+        f_mod = f + 2*f_mod
+    return f_mod
 
 
 def get_geom_getter(ref_geom, calc_setter):
@@ -114,7 +110,9 @@ def get_geom_getter(ref_geom, calc_setter):
     return geom_from_coords
 
 
-def dimer_method(geoms, calc_getter, ana_2dpot=False):
+def dimer_method(geoms, calc_getter,
+                 max_step=0.3, max_cycles=50,
+                 trial_angle=5, angle_thresh=5, ana_2dpot=False):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -126,13 +124,16 @@ def dimer_method(geoms, calc_getter, ana_2dpot=False):
         [3] https://doi.org/10.1063/1.1809574
         # Superlinear dimer
         [4] https://doi.org/10.1063/1.2815812
+
+        To add:
+            Comparing curvatures and adding π/2 if appropriate.
     """
     # Parameters
-    trial_angle = np.deg2rad(5)
-    angle_thresh = np.deg2rad(5)
-    trial_step = 0.05
+    max_cycles = 50
     dR_base = 0.1
-    max_cycles = 15
+    trial_rad = np.deg2rad(trial_angle)
+    angle_thresh_rad = np.deg2rad(angle_thresh)
+    dx = 0.05
 
     geom_getter = get_geom_getter(geoms[0], calc_getter)
 
@@ -183,7 +184,7 @@ def dimer_method(geoms, calc_getter, ana_2dpot=False):
         theta = f_perp / np.linalg.norm(f_perp)
         # Trial rotation for finite difference calculation of rotational force
         # and rotational curvature.
-        coords1_star = rotate_R1(coords0, trial_angle, N, theta, dR)
+        coords1_star = rotate_R1(coords0, trial_rad, N, theta, dR)
         N_star = make_unit_vec(coords1_star, coords0)
         coords2_star = coords0 - N_star*dR
         geom1_star = geom_getter(coords1_star)
@@ -197,10 +198,10 @@ def dimer_method(geoms, calc_getter, ana_2dpot=False):
         # Rotational force
         F = (rot_diff + org_diff) / 2
         # Rotational curvature
-        F_dash = (rot_diff - org_diff) / trial_angle
-        angle_min = -0.5*np.arctan2(F_dash, 2*F) - trial_angle/2
-        if angle_min > angle_thresh:
-            coords1_rot = rotate_R1(coords0, angle_min, N, theta, dR)
+        F_dash = (rot_diff - org_diff) / trial_rad
+        rad_min = -0.5*np.arctan2(F_dash, 2*F) - trial_rad/2
+        if rad_min > angle_thresh_rad:
+            coords1_rot = rotate_R1(coords0, rad_min, N, theta, dR)
             N_rot = make_unit_vec(coords1_rot, coords0)
             coords2_rot = coords0 - N_rot*dR
             geom1.coords = coords1_rot
@@ -210,45 +211,58 @@ def dimer_method(geoms, calc_getter, ana_2dpot=False):
             N_rot = N
             coords1_rot = coords1
             coords2_rot = coords2
-            print("angle_min below threshold! no rotation!")
+            print("Rotation angle too small. Skipping rotation.")
 
         # Translation
         f0 = geom0.forces
-        nr0 = np.linalg.norm(f0)
+        f0_rms = np.sqrt(np.power(f0, 2).mean())
+        f0_max = f0.max()
+        if f0_rms <= 1e-3 and f0_max <= 1.5e-3:
+            print(f"max(f0): {f0_max:.4f} rms(f0): {f0_rms:.4f}")
+            print("Converged!")
+            break
         f0_mod = -f0.dot(N_rot)*N_rot
-        if C < 0:
-            f0_mod = f0 + 2*f0_mod
+        f0_mod = get_f_mod(f0, N_rot, C)
         N0_mod = f0_mod / np.linalg.norm(f0_mod)
+        trial_step = N0_mod * dx
+
+        trial_coords0 = coords0 + trial_step*f0_mod
+        trial_geom0 = geom_getter(trial_coords0)
+        trial_f0 = trial_geom0.forces
+        trial_f0_mod = get_f_mod(trial_f0, N_rot, C)
+        F_mod = (trial_f0_mod + f0_mod).dot(N0_mod) / 2
+        C_mod = (trial_f0_mod - f0_mod).dot(N0_mod) / dx
+        step = (-F_mod/C_mod + dx/2)*N0_mod
+        if np.linalg.norm(step) > max_step:
+            step = max_step * f0_mod
 
         # Small displacement of midpoint
-        geom0_mod = geom0.copy()
-        trans_midpoint_coords = coords0 + trial_step * f0_mod
-
-        coords1_trans = trans_midpoint_coords + dR*N_rot
-        coords2_trans = trans_midpoint_coords - dR*N_rot
+        coords0_trans = coords0 + step
+        coords1_trans = coords0_trans + dR*N_rot
+        coords2_trans = coords0_trans - dR*N_rot
 
         # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
         rot_coords = np.array((coords1_rot, coords0, coords2_rot))
-        trans_coords = np.array((coords1_trans, trans_midpoint_coords, coords2_trans))
+        trans_coords = np.array((coords1_trans, coords0_trans, coords2_trans))
         dc = DimerCycle(org_coords, trial_coords, rot_coords, trans_coords, f0, f0_mod)
         dimer_cycles.append(dc)
 
         # Update dimer coordinates for next cycle
         geom1.coords = coords1_trans
         geom2.coords = coords2_trans
-        geom0.coords = trans_midpoint_coords
+        geom0.coords = coords0_trans
         N = N_rot
 
         print(f"Cycle {i}")
         print(f"Initial curvature: {C:.4f}")
-        print(f"norm(f0): {nr0:.4f}")
         if ana_2dpot:
             hess = geom0.hessian
             w, v = np.linalg.eig(hess)
             trans_mode = v[:,0]
             mode_ovlp = trans_mode.dot(N_rot)
             print(f"Overlap: {mode_ovlp:.4f}")
+        print(f"max(f0): {f0_max:.4f} rms(f0): {f0_rms:.4f}")
         print()
     return dimer_cycles
 
