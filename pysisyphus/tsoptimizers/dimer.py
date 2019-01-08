@@ -4,6 +4,7 @@ from collections import namedtuple
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.Geometry import Geometry
+from pysisyphus.TablePrinter import TablePrinter
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,15 +12,21 @@ import numpy as np
 
 def get_geoms(coords=None):
     if coords is None:
-        left = np.array((0.188646, 1.45698, 0))
-        right = np.array((0.950829, 1.54153, 0))
+        # left = np.array((0.188646, 1.45698, 0))
+        # right = np.array((0.950829, 1.54153, 0))
         # left = np.array((0.354902, 1.34229, 0))
         # right = np.array((0.881002, 1.71074, 0))
-        # left = np.array((0.531642, 1.41899, 0))
-        # right = np.array((0.702108, 1.57077, 0))
+        left = np.array((0.531642, 1.41899, 0))
+        right = np.array((0.702108, 1.57077, 0))
         coords = (right, left)
+
         # near_ts = np.array((0.553726, 1.45458, 0))
         # coords = (near_ts, )
+
+        # left_far = np.array((-0.455116, 0.926978, 0))
+        # right_far = np.array((-0.185653, 1.02486, 0))
+        # coords = (left_far, right_far)
+
     atoms = ("H")
     geoms = [Geometry(atoms, c) for c in coords]
     for geom in geoms:
@@ -39,14 +46,11 @@ def plot_dimer_cycles(dimer_cycles):
     pot.plot(levels=levels)
 
     ax = pot.ax
-    cycs = len(dimer_cycles)
-    last = 5
-    for i, dc in enumerate(dimer_cycles[-last:]):
-        cyc = cycs - last + i
-        label = f"Cycle {cyc}"
-        org_lbl = f"Org {cyc}"
-        trial_lbl = f"Trial {cyc}"
-        rot_lbl = f"Rot {cyc}"
+    for i, dc in enumerate(dimer_cycles):
+        label = f"Cycle {i}"
+        org_lbl = f"Org {i}"
+        trial_lbl = f"Trial {i}"
+        rot_lbl = f"Rot {i}"
         # org = plot_dimer(dc.org_coords, ax, label=org_lbl)
         # color = org[0].get_color()
         # trial = plot_dimer(dc.trial_coords, ax,
@@ -67,7 +71,7 @@ def run():
         "ana_2dpot": True,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    plot_dimer_cycles(dimer_cycles)
+    plot_dimer_cycles(dimer_cycles[-5:])
 
 
 DimerCycle = namedtuple("DimerCycle",
@@ -135,6 +139,10 @@ def dimer_method(geoms, calc_getter,
     angle_thresh_rad = np.deg2rad(angle_thresh)
     dx = 0.05
 
+    header = "Cycle Curvature max(f0) rms(f0)".split()
+    col_fmts = "int float float float".split()
+    table = TablePrinter(header, col_fmts)
+
     geom_getter = get_geom_getter(geoms[0], calc_getter)
 
     assert len(geoms) in (1, 2), "geoms argument must be of length 1 or 2!"
@@ -162,6 +170,7 @@ def dimer_method(geoms, calc_getter,
         geom2 = geom_getter(coords2)
         dR = dR_base
 
+    table.print_header()
     dimer_cycles = list()
     for i in range(max_cycles):
         coords0 = geom0.coords
@@ -211,15 +220,18 @@ def dimer_method(geoms, calc_getter,
             N_rot = N
             coords1_rot = coords1
             coords2_rot = coords2
-            print("Rotation angle too small. Skipping rotation.")
+            table.print("Rotation angle too small. Skipping rotation.")
 
         # Translation
         f0 = geom0.forces
         f0_rms = np.sqrt(np.power(f0, 2).mean())
         f0_max = f0.max()
+
+        row_args = [i, C, f0_rms, f0_max]
+        table.print_row(row_args)
+
         if f0_rms <= 1e-3 and f0_max <= 1.5e-3:
-            print(f"max(f0): {f0_max:.4f} rms(f0): {f0_rms:.4f}")
-            print("Converged!")
+            table.print("Converged!")
             break
         f0_mod = -f0.dot(N_rot)*N_rot
         f0_mod = get_f_mod(f0, N_rot, C)
@@ -254,16 +266,12 @@ def dimer_method(geoms, calc_getter,
         geom0.coords = coords0_trans
         N = N_rot
 
-        print(f"Cycle {i}")
-        print(f"Initial curvature: {C:.4f}")
+        header = "Cycle Curvature max(f0) rms(f0)".split()
         if ana_2dpot:
             hess = geom0.hessian
             w, v = np.linalg.eig(hess)
             trans_mode = v[:,0]
             mode_ovlp = trans_mode.dot(N_rot)
-            print(f"Overlap: {mode_ovlp:.4f}")
-        print(f"max(f0): {f0_max:.4f} rms(f0): {f0_rms:.4f}")
-        print()
     return dimer_cycles
 
 
