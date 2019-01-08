@@ -12,7 +12,7 @@ class TablePrinter:
 
         self.fmts = {
                 "int": "{:>" + w + "d}",
-                "float": "{:>" + w + ".4f}",
+                "float": "{:>" + w + ".6f}",
                 "str": "{:>" + w + "s}",
         }
 

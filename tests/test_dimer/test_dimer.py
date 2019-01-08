@@ -66,9 +66,10 @@ def run():
     dimer_kwargs = {
         "max_step": 0.1,
         "ana_2dpot": True,
+        # "max_cycles": 5,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    plot_dimer_cycles(dimer_cycles[-5:])
+    plot_dimer_cycles(dimer_cycles)#[-5:])
 
 
 def test_hcn_iso_dimer():
@@ -94,12 +95,12 @@ def test_hcn_iso_dimer():
         "ana_2dpot": False,
         "dR_base": 0.01,
         "dx": 0.001,
-        "max_cycles": 5,
+        # "max_cycles": 5,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     # plot_dimer_cycles(dimer_cycles[-5:])
 
 
 if __name__ == "__main__":
-    # run()
-    test_hcn_iso_dimer()
+    run()
+    # test_hcn_iso_dimer()

@@ -52,7 +52,8 @@ def get_geom_getter(ref_geom, calc_setter):
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
                  trial_angle=5, angle_thresh=5, dR_base=0.01,
-                 dx=0.001, ana_2dpot=False):
+                 dx=0.001, alpha=0.1,
+                 ana_2dpot=False):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -112,6 +113,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
     table.print_header()
     dimer_cycles = list()
+    forces0 = [geom0.forces, ]
+    directions = []
+    betas = []
     for i in range(max_cycles):
         coords0 = geom0.coords
         coords1 = geom1.coords
@@ -162,37 +166,54 @@ def dimer_method(geoms, calc_getter, N_init=None,
             coords2_rot = coords2
             table.print("Rotation angle too small. Skipping rotation.")
 
-        # Translation
-        f0 = geom0.forces
+        f0 = forces0[-1]
+        # f0 = geom0.forces
         f0_rms = np.sqrt(np.power(f0, 2).mean())
         f0_max = f0.max()
 
-        row_args = [i, C, f0_rms, f0_max]
+        row_args = [i, C, f0_max, f0_rms]
         table.print_row(row_args)
-
         if f0_rms <= 1e-3 and f0_max <= 1.5e-3:
             table.print("Converged!")
             break
-        f0_mod = -f0.dot(N_rot)*N_rot
+
+        # Translation
         f0_mod = get_f_mod(f0, N_rot, C)
-        N0_mod = f0_mod / np.linalg.norm(f0_mod)
-        trial_step = N0_mod * dx
 
-        trial_coords0 = coords0 + trial_step*f0_mod
-        trial_geom0 = geom_getter(trial_coords0)
-        trial_f0 = trial_geom0.forces
-        trial_f0_mod = get_f_mod(trial_f0, N_rot, C)
-        F_mod = (trial_f0_mod + f0_mod).dot(N0_mod) / 2
-        C_mod = (trial_f0_mod - f0_mod).dot(N0_mod) / dx
-        step = (-F_mod/C_mod + dx/2)*N0_mod
-        step_norm = np.linalg.norm(step)
-        if step_norm > max_step:
-            step = max_step * f0_mod
-            table.print(f"Step norm {step_norm:.2f} is too large. Scaling down!")
-        # step = f0_mod * dx
+        # Conjugate gradient
+        if i == 0:
+            directions.append(f0_mod/np.linalg.norm(f0_mod))
 
-        # Small displacement of midpoint
-        coords0_trans = coords0 + step
+        direction = directions[-1]
+        # Use constant alpha of 0.001
+        alpha = dx
+        coords0_trans = coords0 + alpha*direction
+        geom0_star = geom_getter(coords0_trans)
+        f0_mod_star = get_f_mod(geom0_star.forces, N_rot, C)
+        forces0.append(f0_mod_star)
+        beta = f0_mod_star.dot(f0_mod_star - f0_mod) / np.sqrt(f0_mod.dot(f0_mod))
+        beta = max(beta, 0.0)
+        print(f"beta {beta:.4f}")
+        # betas.append(beta)
+        direction = f0_mod_star + beta*direction
+        direction /= np.linalg.norm(direction)
+        directions.append(direction)
+
+        # N0_mod = f0_mod / np.linalg.norm(f0_mod)
+        # trial_coords0 = coords0 + dx*N0_mod
+        # trial_geom0 = geom_getter(trial_coords0)
+        # trial_f0 = trial_geom0.forces
+        # trial_f0_mod = get_f_mod(trial_f0, N_rot, C)
+        # F_mod = (trial_f0_mod + f0_mod).dot(N0_mod) / 2
+        # C_mod = (trial_f0_mod - f0_mod).dot(N0_mod) / dx
+        # step = (-F_mod/C_mod + dx/2)*N0_mod
+        # step_norm = np.linalg.norm(step)
+        # if step_norm > max_step:
+            # step = max_step * f0_mod
+            # table.print(f"Step norm {step_norm:.2f} is too large. Scaling down!")
+
+        # # Small displacement of midpoint
+        # coords0_trans = coords0 + step
         coords1_trans = coords0_trans + dR*N_rot
         coords2_trans = coords0_trans - dR*N_rot
 
@@ -204,9 +225,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
         dimer_cycles.append(dc)
 
         # Update dimer coordinates for next cycle
+        geom0.coords = coords0_trans
         geom1.coords = coords1_trans
         geom2.coords = coords2_trans
-        geom0.coords = coords0_trans
         N = N_rot
 
         header = "Cycle Curvature max(f0) rms(f0)".split()
