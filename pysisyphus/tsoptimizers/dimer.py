@@ -10,19 +10,16 @@ import numpy as np
 
 
 def get_geoms(coords=None):
-    # if coords is None:
-        # initial = np.array((-1.05274, 1.02776, 0))
-        # final = np.array((1.94101, 3.85427, 0))
-        # coords = (initial, final)
     if coords is None:
         left = np.array((0.188646, 1.45698, 0))
         right = np.array((0.950829, 1.54153, 0))
         left = np.array((0.354902, 1.34229, 0))
         right = np.array((0.881002, 1.71074, 0))
-        # left = np.array((0.531642, 1.41899, 0))
-        # right = np.array((0.702108, 1.57077, 0))
-        # coords = (left, right)
+        left = np.array((0.531642, 1.41899, 0))
+        right = np.array((0.702108, 1.57077, 0))
         coords = (right, left)
+        # near_ts = np.array((0.553726, 1.45458, 0))
+        # coords = (near_ts, )
     atoms = ("H")
     geoms = [Geometry(atoms, c) for c in coords]
     for geom in geoms:
@@ -79,12 +76,20 @@ def plot_geoms(dimer_cycles):
 def run():
     geoms = get_geoms()
     calc_getter = AnaPot
-    dimer_method(geoms, calc_getter)
+    dimer_cycles = dimer_method(geoms, calc_getter, ana_2dpot=True)
+    plot_dimer_cycles(dimer_cycles)
+
 
 
 DimerCycle = namedtuple("DimerCycle",
                         "org_coords trial_coords rot_coords trans_coords f0 f0_mod",
 )
+
+
+def make_unit_vec(vec1, vec2):
+    """Return unit vector pointing from vec2 to vec1."""
+    diff = vec1 - vec2
+    return diff / np.linalg.norm(diff)
 
 
 def perpendicular_force(force, vec):
@@ -96,47 +101,77 @@ def rotate_R1(coords, angle, N, theta, dR):
     return coords + (N*np.cos(angle) + theta*np.sin(angle)) * dR
 
 
-def dimer_method(geoms, calc_getter):
-    """1 oder 2 startpunkte.
-    bei 2 startpunkten dR bestimmen, be 1 startpunkt muss N zufällig? bestimmt
-    werden und dR gegeben sein.
+def get_curvature(f1, f2, N, dR):
+    return (f2 - f1).dot(N) / (2*dR)
 
-    Params
-        trial_angle
-        tiral_angle_base
-        rot_trials              Max. anzahl rotationsversuche
-        rot_force_thresh
+
+def get_geom_getter(ref_geom, calc_setter):
+    def geom_from_coords(coords):
+        new_geom = ref_geom.copy()
+        new_geom.coords = coords
+        new_geom.set_calculator(calc_setter())
+        return new_geom
+    return geom_from_coords
+
+
+def dimer_method(geoms, calc_getter, ana_2dpot=False):
+    """Dimer method using steepest descent for rotation and translation.
+
+    See
+        # Original paper
+        [1] https://doi.org/10.1063/1.480097
+        # Improved dimer
+        [2] https://doi.org/10.1063/1.2104507
+        # Several trial rotations
+        [3] https://doi.org/10.1063/1.1809574
+        # Superlinear dimer
+        [4] https://doi.org/10.1063/1.2815812
     """
-
-    geom1, geom2 = geoms 
-
-    # N points from geom2 to geom1
-    N = geom1.coords - geom2.coords
-    N /= np.linalg.norm(N)
-
-    dR = np.linalg.norm(geom1.coords - geom2.coords) / 2
-
-    geom0 = geom2.copy()
-    geom0.coords += dR*N
-    geom0.set_calculator(calc_getter())
-
     # Parameters
-    angle_base = np.deg2rad(5)
-    step_base = 0.05
+    trial_angle = np.deg2rad(5)
+    angle_thresh = np.deg2rad(5)
+    trial_step = 0.05
+    dR_base = 0.1
+    max_cycles = 15
+
+    geom_getter = get_geom_getter(geoms[0], calc_getter)
+
+    assert len(geoms) in (1, 2), "geoms argument must be of length 1 or 2!"
+    if len(geoms) == 2:
+        geom1, geom2 = geoms
+        dR = np.linalg.norm(geom1.coords - geom2.coords) / 2
+        # N points from geom2 to geom1
+        N = make_unit_vec(geom1.coords, geom2.coords)
+        coords0 = geom2.coords + dR*N
+        geom0 = geom_getter(coords0)
+    # This handles cases where only one geometry is supplied. We use the
+    # geometry as midpoint, select a random dimer direction and derive
+    # geom1 and geom2 from it.
+    else:
+        geom0 = geoms[0]
+        # Assign random unit vector and use dR_base to for dR
+        coord_size = geom0.coords.size
+        N = np.random.rand(coord_size)
+        if ana_2dpot:
+            N[2] = 0
+        N /= np.linalg.norm(N)
+        coords1 = geom0.coords + dR_base*N
+        geom1 = geom_getter(coords1)
+        coords2 = geom0.coords - dR_base*N
+        geom2 = geom_getter(coords2)
+        dR = dR_base
 
     dimer_cycles = list()
-    for i in range(25):
-        coords1 = geom1.coords
+    for i in range(max_cycles):
         coords0 = geom0.coords
+        coords1 = geom1.coords
         coords2 = geom2.coords
 
         # Forces at geom1 and geom2
         f1 = geom1.forces
         f2 = geom2.forces
 
-        print(f"Cycle {i}")
-        C = (f2 - f1).dot(N) / (2*dR)
-        print(f"Curvature: {C:.4f}")
+        C = get_curvature(f1, f2, N, dR)
 
         # Get rotated endpoint geometries. The rotation takes place in a plane
         # spanned by N and theta. Theta is a unit vector perpendicular to N that
@@ -146,85 +181,76 @@ def dimer_method(geoms, calc_getter):
         f2_perp = perpendicular_force(f2, N)
         f_perp = f1_perp - f2_perp
         theta = f_perp / np.linalg.norm(f_perp)
-        for i in range(5):
-            angle = angle_base * (i+1)
-            # print(f"{i}: {angle}")
-            coords1_star = rotate_R1(coords0, angle, N, theta, dR)
-            N_star = coords1_star - coords0
-            N_star /= np.linalg.norm(N_star)
-            coords2_star = coords0 - N_star*dR
-            rg1 = geom0.copy()
-            rg1.set_calculator(calc_getter())
-            rg1.coords = coords1_star
-            rg2 = geom0.copy()
-            rg2.set_calculator(calc_getter())
-            rg2.coords = coords2_star
-            fr1 = rg1.forces
-            fr2 = rg2.forces
-            nr1 = np.linalg.norm(fr1)
-            nr2 = np.linalg.norm(fr2)
-            trial_coords = np.array((coords1_star, coords0, coords2_star))
-            # print(f"\t forces1: {fr1}, {nr1}")
-            # print(f"\t forces2: {fr1}, {nr2}")
-            # print("Breaking after first rotation!")
-            # print()
-            break
-        rot_diff = (fr1 - fr2).dot(theta)
+        # Trial rotation for finite difference calculation of rotational force
+        # and rotational curvature.
+        coords1_star = rotate_R1(coords0, trial_angle, N, theta, dR)
+        N_star = make_unit_vec(coords1_star, coords0)
+        coords2_star = coords0 - N_star*dR
+        geom1_star = geom_getter(coords1_star)
+        geom2_star = geom_getter(coords2_star)
+        f1_star = geom1_star.forces
+        f2_star = geom2_star.forces
+        trial_coords = np.array((coords1_star, coords0, coords2_star))
+
+        rot_diff = (f1_star - f2_star).dot(theta)
         org_diff = (f1 - f2).dot(theta)
+        # Rotational force
         F = (rot_diff + org_diff) / 2
-        F_dash = (rot_diff - org_diff) / angle
-        # angle_min = -0.5*np.arctan2(2*F, F_dash) - angle/2
-        angle_min = -0.5*np.arctan2(F_dash, 2*F) - angle/2
-        # print("angle", angle, "angle_min", angle_min)
-        # print("angle", np.rad2deg(angle), "angle_min", np.rad2deg(angle_min))
-        coords1_rot = rotate_R1(coords0, angle_min, N, theta, dR)
-        hess = geom0.hessian
-        w, v = np.linalg.eig(hess)
-        trans_mode = v[:,0]
-        # coords1_rot = rotate_R1(coords0, angle_base, N, theta, dR)
-        N_rot = coords1_rot - coords0
-        N_rot /= np.linalg.norm(N_rot)
-        mode_ovlp = trans_mode.dot(N_rot)
-        coords2_rot = coords0 - N_rot*dR
-        geom1.coords = coords1_rot
-        geom2.coords = coords2_rot
+        # Rotational curvature
+        F_dash = (rot_diff - org_diff) / trial_angle
+        angle_min = -0.5*np.arctan2(F_dash, 2*F) - trial_angle/2
+        if angle_min > angle_thresh:
+            coords1_rot = rotate_R1(coords0, angle_min, N, theta, dR)
+            N_rot = make_unit_vec(coords1_rot, coords0)
+            coords2_rot = coords0 - N_rot*dR
+            geom1.coords = coords1_rot
+            geom2.coords = coords2_rot
+        else:
+            # Don't do rotation for small angles
+            N_rot = N
+            coords1_rot = coords1
+            coords2_rot = coords2
+            print("angle_min below threshold! no rotation!")
 
         # Translation
-        # f0 = (f1 + f2) / 2
         f0 = geom0.forces
         nr0 = np.linalg.norm(f0)
-        if C > 0:
-            f0_mod = -f0.dot(N_rot) * N_rot
-        else:
-            f0_mod = f0 - 2*f0.dot(N_rot) * N_rot
+        f0_mod = -f0.dot(N_rot)*N_rot
+        if C < 0:
+            f0_mod = f0 + 2*f0_mod
         N0_mod = f0_mod / np.linalg.norm(f0_mod)
 
         # Small displacement of midpoint
         geom0_mod = geom0.copy()
-        trans_midpoint_coords = coords0 + step_base * f0_mod
-
+        trans_midpoint_coords = coords0 + trial_step * f0_mod
 
         coords1_trans = trans_midpoint_coords + dR*N_rot
         coords2_trans = trans_midpoint_coords - dR*N_rot
 
-
+        # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
         rot_coords = np.array((coords1_rot, coords0, coords2_rot))
         trans_coords = np.array((coords1_trans, trans_midpoint_coords, coords2_trans))
-
         dc = DimerCycle(org_coords, trial_coords, rot_coords, trans_coords, f0, f0_mod)
         dimer_cycles.append(dc)
 
+        # Update dimer coordinates for next cycle
         geom1.coords = coords1_trans
         geom2.coords = coords2_trans
         geom0.coords = trans_midpoint_coords
         N = N_rot
-        print(f"Overlap: {mode_ovlp:.4f}")
-        print(f"norm(f0): {nr0:.4f}")
-        print()
 
-    # plot_geoms(dimer_cycles)
-    plot_dimer_cycles(dimer_cycles)
+        print(f"Cycle {i}")
+        print(f"Initial curvature: {C:.4f}")
+        print(f"norm(f0): {nr0:.4f}")
+        if ana_2dpot:
+            hess = geom0.hessian
+            w, v = np.linalg.eig(hess)
+            trans_mode = v[:,0]
+            mode_ovlp = trans_mode.dot(N_rot)
+            print(f"Overlap: {mode_ovlp:.4f}")
+        print()
+    return dimer_cycles
 
 
 if __name__ == "__main__":
