@@ -443,6 +443,12 @@ class Geometry:
         results = self.calculator.get_forces(self.atoms, self.coords)
         self.set_results(results)
 
+    def get_energy_and_forces_at(self, coords):
+        """Calculate forces and energies at the given coordinates.
+        
+        The results are not saved in the Geometry object."""
+        return self.calculator.get_forces(self.atoms, coords)
+
     def calc_double_ao_overlap(self, geom2):
         return self.calculator.run_double_mol_calculation(self.atoms,
                                                           self.coords,
