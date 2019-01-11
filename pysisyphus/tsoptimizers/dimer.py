@@ -51,6 +51,14 @@ def make_theta(f1, f2, N):
     return theta
 
 
+def write_progress(geom0):
+    ts_fn = "dimer_ts.xyz"
+    ts_xyz_str = geom0.as_xyz()
+    with open(ts_fn, "w") as handle:
+        handle.write(ts_xyz_str)
+    print(f"Wrote current TS geometry to '{ts_fn}'.")
+
+
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
                  trial_angle=5, angle_thresh=0.5, dR_base=0.01,
@@ -114,8 +122,11 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
     print("Using N:", N)
     def f0_mod_getter(coords, N, C):
-        results = geom0.get_energy_and_forces_at(coords)
-        forces = results["forces"]
+        # results = geom0.get_energy_and_forces_at(coords)
+        # forces = results["forces"]
+        # return get_f_mod(forces, N, C)
+        geom0.coords = coords
+        forces = geom0.forces
         return get_f_mod(forces, N, C)
 
     def restrict_max_step_comp(step, max_step=max_step):
@@ -148,37 +159,56 @@ def dimer_method(geoms, calc_getter, N_init=None,
         coords1 = geom1.coords
         coords2 = geom2.coords
 
+        C = get_curvature(f1, f2, N, dR)
+
+        f0_rms = np.sqrt(np.power(f0, 2).mean())
+        f0_max = np.abs(f0).max()
+        row_args = [i, C, f0_max, f0_rms]
+        table.print_row(row_args)
+        # Gaussian tight
+        # if C y 0 and f0_rms <= 3e-4 and f0_max <= 4.5e-4:
+        if C < 0 and f0_rms <= 1e-3 and f0_max <= 1.5e-3:
+            write_progress(geom0)
+            table.print("Converged!")
+            break
+
         # Get rotated endpoint geometries. The rotation takes place in a plane
         # spanned by N and theta. Theta is a unit vector perpendicular to N that
         # can be formed from the perpendicular components of the forces at the
         # endpoints.
         theta = make_theta(f1, f2, N)
 
-        C = get_curvature(f1, f2, N, dR)
         # Derivative of the curvature, Eq. (29) in [2]
         # (f2 - f1) or -(f1 - f2)
         dC = 2*(f0-f1).dot(theta)/dR
-        trial_rad = -0.5*np.arctan2(dC, 2*abs(C))
+        rad_trial = -0.5*np.arctan2(dC, 2*abs(C))
 
         # Trial rotation for finite difference calculation of rotational force
         # and rotational curvature.
-        coords1_star = rotate_R1(coords0, trial_rad, N, theta, dR)
-        f1_star = geom1.get_energy_and_forces_at(coords1_star)["forces"]
-        f2_star = 2*f0 - f1_star
-        N_star = make_unit_vec(coords1_star, coords0)
-        coords2_star = coords0 - N_star*dR
+        coords1_trial = rotate_R1(coords0, rad_trial, N, theta, dR)
+        f1_trial = geom1.get_energy_and_forces_at(coords1_trial)["forces"]
+        f2_trial = 2*f0 - f1_trial
+        N_trial = make_unit_vec(coords1_trial, coords0)
+        coords2_trial = coords0 - N_trial*dR
 
-        C_star = get_curvature(f1_star, f2_star, N_star, dR)
-        theta_star = make_theta(f1_star, f2_star, N_star)
+        C_trial = get_curvature(f1_trial, f2_trial, N_trial, dR)
+        theta_trial = make_theta(f1_trial, f2_trial, N_trial)
 
         b1 = 0.5 * dC
-        a1 = (C - C_star + b1*np.sin(2*trial_rad)) / (1-np.cos(2*trial_rad))
+        a1 = (C - C_trial + b1*np.sin(2*rad_trial)) / (1-np.cos(2*rad_trial))
         a0 = 2 * (C - a1)
 
         rad_min = 0.5 * np.arctan(b1/a1)
         C_min = a0/2 + a1*np.cos(2*rad_min) + b1*np.sin(2*rad_min)
         if C_min > C:
             rad_min += np.deg2rad(90)
+
+        # TODO: Multiple rotations after another with L-BFGS
+        f1_extrapol = (np.sin(rad_trial-rad_min)/np.sin(rad_trial)*f1
+                       + np.sin(rad_min)/np.sin(rad_trial)*f1_trial
+                       + (1 - np.cos(rad_min) - np.sin(rad_min)
+                          * np.tan(rad_trial/2))*f0
+        )
 
         # TODO: handle cases where the curvature is still positive, but
         # the angle is small, so the rotation gets skipped.
@@ -202,8 +232,13 @@ def dimer_method(geoms, calc_getter, N_init=None,
             N_trans /= np.linalg.norm(N_trans)
             step = max_step*N_trans
         else:
+            # TODO: somehow get the unmodified f0 so we can reuse
+            # it later. For now the force returned is the modified
+            # force.
             coords0_trans, step, f0 = trans_lbfgs(coords0, N, C_min)
 
+        # The coordinates of geom0 get already updated in the f0_mod_getter
+        # call.
         coords1_trans = coords0_trans + dR*N
         coords2_trans = coords0_trans - dR*N
 
@@ -215,28 +250,14 @@ def dimer_method(geoms, calc_getter, N_init=None,
         dimer_cycles.append(dc)
 
         # Update dimer coordinates for next cycle
-        geom0.coords = coords0_trans
+        # geom0.coords = coords0_trans
         geom1.coords = coords1_trans
         geom2.coords = coords2_trans
 
-        f0_rms = np.sqrt(np.power(f0, 2).mean())
-        f0_max = np.abs(f0).max()
-        row_args = [i, C, f0_max, f0_rms]
-        table.print_row(row_args)
-
-        # Gaussian tight
-        # if f0_rms <= 3e-4 and f0_max <= 4.5e-4:
-        if f0_rms <= 1e-3 and f0_max <= 1.5e-3:
-            ts_fn = "dimer_ts.xyz"
-            ts_xyz_str = geom0.as_xyz()
-            with open(ts_fn, "w") as handle:
-                handle.write(ts_xyz_str)
-            table.print("Converged!")
-            table.print(f"Wrote converged TS geometry to '{ts_fn}'.")
-            break
-
         if check_for_stop_sign():
+            write_progress(geom0)
             break
+
     return dimer_cycles
 
 

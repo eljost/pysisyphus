@@ -106,4 +106,4 @@ def test_hcn_iso_dimer():
 
 if __name__ == "__main__":
     run()
-    # test_hcn_iso_dimer()
+    test_hcn_iso_dimer()
