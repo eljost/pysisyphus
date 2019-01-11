@@ -53,25 +53,6 @@ def get_geom_getter(ref_geom, calc_setter):
     return geom_from_coords
 
 
-def cg_closure(first_force):
-    prev_force = first_force
-    prev_p = prev_force / np.linalg.norm(prev_force)
-
-    def cg(cur_force):
-        nonlocal prev_force
-        nonlocal prev_p
-        # Polak-Ribiere formula
-        beta = cur_force.dot(cur_force - prev_force) / cur_force.dot(cur_force)
-        beta = max(beta, 0)
-        cur_p = cur_force + beta*prev_p
-
-        prev_force = prev_force
-        prev_p = cur_p
-
-        return cur_p
-    return cg
-
-
 def bfgs_multiply(s_list, y_list, force):
     """Get a L-BFGS step.
     
@@ -164,20 +145,8 @@ def plot_modes(trans_mode, N, N_trial, N_rot, coords0):
         n_line = mpl.lines.Line2D(xn_data, yn_data, label=l, color=f"C{i}")
         ax.add_line(n_line)
 
-    # dimer_x, dimer_y = N[:2]
-    # xn = np.array((x, x+dimer_x))
-    # yn = np.array((y, y+dimer_y))
-    # dimer_line = mpl.lines.Line2D(xdata=xn, ydata=yn, label="Dimer", color="red")
-
-    # trial_x, trial_y = N_trial[:2]
-    # xt_ = np.array((x, x+trial_x))
-    # yt_ = np.array((y, y+trial_y))
-    # trial_line = mpl.lines.Line2D(xdata=xt_, ydata=yt_, label="Trial", color="green")
-
     ax.scatter(x, y)
     ax.add_line(trans_line)
-    # ax.add_line(dimer_line)
-    # ax.add_line(trial_line)
     ax.legend()
     ax.set_xlim(-0.5, 2)
     ax.set_ylim(0, 3)
@@ -211,7 +180,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
             dR_base = = 0.01 bohr
     """
     # Parameters
-    # trial_rad = np.deg2rad(trial_angle)
     angle_thresh_rad = np.deg2rad(angle_thresh)
 
     header = "Cycle Curvature max(f0) rms(f0)".split()
@@ -247,10 +215,11 @@ def dimer_method(geoms, calc_getter, N_init=None,
         geom2 = geom_getter(coords2)
         dR = dR_base
 
-    table.print_header()
     dimer_cycles = list()
     directions = []
     betas = []
+
+    print("Using N:", N)
     def f0_mod_getter(coords, N, C):
         results = geom0.get_energy_and_forces_at(coords)
         forces = results["forces"]
@@ -263,6 +232,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             step *= factor
         return step
 
+    table.print_header()
     for i in range(max_cycles):
         f0 = geom0.forces
         f1 = geom1.forces
@@ -278,24 +248,11 @@ def dimer_method(geoms, calc_getter, N_init=None,
         # endpoints.
         theta = make_theta(f1, f2, N)
 
-        C = get_curvature(f1, f2, N, dR)
-        C_ = (f0 - f1).dot(N)/dR
-        assert C == C_
+        C = (f0 - f1).dot(N)/dR
         # Derivative of the curvature, Eq. (29) in [2]
         # (f2 - f1) or -(f1 - f2)
-        dC = (f2 - f1).dot(theta) / dR
-        dC_ = 2*(f0-f1).dot(theta)/dR
-        assert dC == dC_
-        # table.print(f"C={C:.4f}, dC={dC:.4f}")
-        trial_rad = -0.5*np.arctan2(dC_, 2*abs(C))
-        # print("trial_rad", np.rad2deg(trial_rad), "°")
-
-        if ana_2dpot:
-            hess = geom0.hessian
-            w, v = np.linalg.eig(hess)
-            trans_mode = v[:,0]
-            mode_ovlp = trans_mode.dot(N)
-            # print("mode_ovlp", mode_ovlp)
+        dC = 2*(f0-f1).dot(theta)/dR
+        trial_rad = -0.5*np.arctan2(dC, 2*abs(C))
 
         # Trial rotation for finite difference calculation of rotational force
         # and rotational curvature.
@@ -307,23 +264,16 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
         trial_coords = np.array((coords1_star, coords0, coords2_star))
         C_star = get_curvature(f1_star, f2_star, N_star, dR)
-        # print("C_star", C_star)
         theta_star = make_theta(f1_star, f2_star, N_star)
-        # dC_star = (f2_star - f1_star).dot(theta_star) / dR
 
-        # a1 = (dC * np.cos(2*trial_rad) - dC_star) / (2*np.sin(2*trial_rad))
         b1 = 0.5 * dC
         a1 = (C - C_star + b1*np.sin(2*trial_rad)) / (1-np.cos(2*trial_rad))
         a0 = 2 * (C - a1)
 
         rad_min = 0.5 * np.arctan(b1/a1)
-        # print("rad_min", np.rad2deg(rad_min), "°")
         C_min = a0/2 + a1*np.cos(2*rad_min) + b1*np.sin(2*rad_min)
-        # print("C_min", C_min)
         if C_min > C:
             rad_min += np.deg2rad(90)
-        # table.print("C_min", C_min)
-        # table.print(f"trial: {np.rad2deg(trial_rad):.1f}°, rot: {np.rad2deg(rad_min):.1f}°")
 
         if np.abs(rad_min) > angle_thresh_rad:
             coords1_rot = rotate_R1(coords0, rad_min, N, theta, dR)
@@ -338,53 +288,25 @@ def dimer_method(geoms, calc_getter, N_init=None,
             coords2_rot = coords2
             table.print("Rotation angle too small. Skipping rotation.")
 
-        # plot_modes(trans_mode, N, N_star, N_rot, coords0)
-
         # Translation
         f0_mod = get_f_mod(f0, N_rot, C_min)
-        # print("f0_mod", f0_mod)
 
         # Initialize conjugate gradient optimizer
         if i == 0:
-            cg = cg_closure(f0_mod)
             trans_lbfgs = lbfgs_closure(f0_mod, f0_mod_getter,
                                         restrict_step=restrict_step)
         # Use conjugate gradient to determine the step direction
         # direction = cg(f0_mod)
         N_trans = f0_mod.copy()
         N_trans /= np.linalg.norm(N_trans)
-        # import pdb; pdb.set_trace()
 
         if C > 0:
             step = max_step*N_trans
             table.print("curv positive!")
         else:
-            # trial_coords0 = coords0 + dx*N_trans
-            # trial_f0 = geom0.get_energy_and_forces_at(trial_coords0)["forces"]
-            # trial_f0_mod = get_f_mod(trial_f0, N_rot, C_min)
-            # F_mod = (trial_f0_mod + f0_mod).dot(N_trans) / 2
-            # C_mod = (trial_f0_mod - f0_mod).dot(N_trans) / dx
-            # step_lengths = (-F_mod/C_mod)# + dx/2)*N0_trans
-            # table.print(f"step_lengths {step_lengths}")
-            # step = step_lengths * N_trans
-            # print("step", step)
-            # if np.linalg.norm(step) > max_step:
-                # step = N_trans * max_step
-                # table.print("scaling down step")
-            bfgs_x, bfgs_step, bfgs_force = trans_lbfgs(coords0, N_rot, C_min)
-            # print()
-            # print("BFGS")
-            # print(bfgs_step)
-            # print()
-            step = bfgs_step
-        # max_step_comp = np.abs(step).max()
-        # table.print(f"max step comp is {max_step_comp}")
-        # if max_step_comp > max_step:
-            # factor = max_step / max_step_comp
-            # step *= factor
-            # table.print(f"scaled down with factor {factor}")
+            lbfgs_res = trans_lbfgs(coords0, N_rot, C_min)
+            step = lbfgs_res[1]
 
-        # # Small displacement of midpoint
         coords0_trans = coords0 + step
         coords1_trans = coords0_trans + dR*N_rot
         coords2_trans = coords0_trans - dR*N_rot
