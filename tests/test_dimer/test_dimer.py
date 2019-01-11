@@ -5,16 +5,20 @@ import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.Geometry import Geometry
-from pysisyphus.tsoptimizers.dimer import dimer_method
+from pysisyphus.tsoptimizers.dimer_imp import dimer_method
+
 
 def get_geoms(coords=None):
     if coords is None:
         # left = np.array((0.188646, 1.45698, 0))
         # right = np.array((0.950829, 1.54153, 0))
-        # left = np.array((0.354902, 1.34229, 0))
-        # right = np.array((0.881002, 1.71074, 0))
-        left = np.array((0.531642, 1.41899, 0))
-        right = np.array((0.702108, 1.57077, 0))
+        left = np.array((0.354902, 1.34229, 0))
+        right = np.array((0.881002, 1.71074, 0))
+        right = np.array((0.77, 1.97, 0))
+
+        # Very close
+        # left = np.array((0.531642, 1.41899, 0))
+        # right = np.array((0.702108, 1.57077, 0))
         coords = (right, left)
 
         # near_ts = np.array((0.553726, 1.45458, 0))
@@ -56,6 +60,7 @@ def plot_dimer_cycles(dimer_cycles):
                          # label=rot_lbl, color=color, marker=".")
         rot = plot_dimer(dc.rot_coords, ax,
                          label=rot_lbl, marker=".")
+    ax.scatter(0.61173, 1.49297, s=20, zorder=25, c="k")
     pot.ax.legend()
     plt.show()
 
@@ -65,8 +70,9 @@ def run():
     calc_getter = AnaPot
     dimer_kwargs = {
         "max_step": 0.1,
+        "dx": 0.1,
         "ana_2dpot": True,
-        # "max_cycles": 5,
+        "max_cycles": 15,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     plot_dimer_cycles(dimer_cycles)#[-5:])
@@ -91,7 +97,7 @@ def test_hcn_iso_dimer():
     geoms = [geom, ]
 
     dimer_kwargs = {
-        #"max_step": 0.1,
+        # "max_step": 0.001,
         "ana_2dpot": False,
         "dR_base": 0.01,
         "dx": 0.001,

@@ -31,7 +31,8 @@ class TablePrinter:
     def print_row(self, args):
         print(self.conv_str.format(*args))
 
-    def print(self, text):
+    def print(self, *args):
+        text = " ".join([str(a) for a in args])
         print(textwrap.indent(text, self.prefix))
 
 

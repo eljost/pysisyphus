@@ -49,10 +49,29 @@ def get_geom_getter(ref_geom, calc_setter):
     return geom_from_coords
 
 
+def cg_closure(first_force):
+    prev_force = first_force
+    prev_p = prev_force / np.linalg.norm(prev_force)
+
+    def cg(cur_force):
+        nonlocal prev_force
+        nonlocal prev_p
+        # Polak-Ribiere formula
+        beta = cur_force.dot(cur_force - prev_force) / cur_force.dot(cur_force)
+        beta = max(beta, 0)
+        cur_p = cur_force + beta*prev_p
+
+        prev_force = prev_force
+        prev_p = cur_p
+
+        return cur_p
+    return cg
+
+
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
                  trial_angle=5, angle_thresh=5, dR_base=0.01,
-                 dx=0.001, alpha=0.1,
+                 dx=0.01, alpha=0.1,
                  ana_2dpot=False):
     """Dimer method using steepest descent for rotation and translation.
 
@@ -113,7 +132,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
     table.print_header()
     dimer_cycles = list()
-    forces0 = [geom0.forces, ]
     directions = []
     betas = []
     for i in range(max_cycles):
@@ -140,10 +158,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
         coords1_star = rotate_R1(coords0, trial_rad, N, theta, dR)
         N_star = make_unit_vec(coords1_star, coords0)
         coords2_star = coords0 - N_star*dR
-        geom1_star = geom_getter(coords1_star)
-        geom2_star = geom_getter(coords2_star)
-        f1_star = geom1_star.forces
-        f2_star = geom2_star.forces
+        f1_star = geom1.get_energy_and_forces_at(coords1_star)["forces"]
+        f2_star = geom2.get_energy_and_forces_at(coords2_star)["forces"]
         trial_coords = np.array((coords1_star, coords0, coords2_star))
 
         rot_diff = (f1_star - f2_star).dot(theta)
@@ -159,17 +175,16 @@ def dimer_method(geoms, calc_getter, N_init=None,
             coords2_rot = coords0 - N_rot*dR
             geom1.coords = coords1_rot
             geom2.coords = coords2_rot
+        # Don't do rotation for small angles
         else:
-            # Don't do rotation for small angles
             N_rot = N
             coords1_rot = coords1
             coords2_rot = coords2
             table.print("Rotation angle too small. Skipping rotation.")
 
-        f0 = forces0[-1]
-        # f0 = geom0.forces
+        f0 = geom0.forces
         f0_rms = np.sqrt(np.power(f0, 2).mean())
-        f0_max = f0.max()
+        f0_max = np.abs(f0).max()
 
         row_args = [i, C, f0_max, f0_rms]
         table.print_row(row_args)
@@ -180,40 +195,39 @@ def dimer_method(geoms, calc_getter, N_init=None,
         # Translation
         f0_mod = get_f_mod(f0, N_rot, C)
 
-        # Conjugate gradient
-        if i == 0:
-            directions.append(f0_mod/np.linalg.norm(f0_mod))
-
-        direction = directions[-1]
-        # Use constant alpha of 0.001
-        alpha = dx
-        coords0_trans = coords0 + alpha*direction
-        geom0_star = geom_getter(coords0_trans)
-        f0_mod_star = get_f_mod(geom0_star.forces, N_rot, C)
-        forces0.append(f0_mod_star)
-        beta = f0_mod_star.dot(f0_mod_star - f0_mod) / np.sqrt(f0_mod.dot(f0_mod))
-        beta = max(beta, 0.0)
-        print(f"beta {beta:.4f}")
-        # betas.append(beta)
-        direction = f0_mod_star + beta*direction
+        # # Initialize conjugate gradient optimizer
+        # if i == 0:
+            # cg = cg_closure(f0_mod)
+        # # Use conjugate gradient to determine the step direction
+        # direction = cg(f0_mod)
+        direction = f0_mod
         direction /= np.linalg.norm(direction)
-        directions.append(direction)
 
-        # N0_mod = f0_mod / np.linalg.norm(f0_mod)
-        # trial_coords0 = coords0 + dx*N0_mod
-        # trial_geom0 = geom_getter(trial_coords0)
-        # trial_f0 = trial_geom0.forces
-        # trial_f0_mod = get_f_mod(trial_f0, N_rot, C)
-        # F_mod = (trial_f0_mod + f0_mod).dot(N0_mod) / 2
-        # C_mod = (trial_f0_mod - f0_mod).dot(N0_mod) / dx
-        # step = (-F_mod/C_mod + dx/2)*N0_mod
-        # step_norm = np.linalg.norm(step)
-        # if step_norm > max_step:
-            # step = max_step * f0_mod
-            # table.print(f"Step norm {step_norm:.2f} is too large. Scaling down!")
+        if C > 0:
+            step = direction*max_step
+            table.print("curv positive!")
+        else:
+            N0_mod = f0_mod / np.linalg.norm(f0_mod)
+            trial_coords0 = coords0 + dx*N0_mod
+            trial_f0 = geom0.get_energy_and_forces_at(trial_coords0)["forces"]
+            trial_f0_mod = get_f_mod(trial_f0, N_rot, C)
+            F_mod = (trial_f0_mod + f0_mod).dot(N0_mod) / 2
+            C_mod = (trial_f0_mod - f0_mod).dot(N0_mod) / dx
+            step_lengths = (-F_mod/C_mod + dx/2)*N0_mod
+            # table.print(f"step_lengths {step_lengths}")
+            step = step_lengths * direction
+            if np.linalg.norm(step) > max_step:
+                step = direction * max_step
+                table.print("scaling down step")
+        # max_step_comp = np.abs(step).max()
+        # table.print(f"max step comp is {max_step_comp}")
+        # if max_step_comp > max_step:
+            # factor = max_step / max_step_comp
+            # step *= factor
+            # table.print(f"scaled down with factor {factor}")
 
         # # Small displacement of midpoint
-        # coords0_trans = coords0 + step
+        coords0_trans = coords0 + step
         coords1_trans = coords0_trans + dR*N_rot
         coords2_trans = coords0_trans - dR*N_rot
 
