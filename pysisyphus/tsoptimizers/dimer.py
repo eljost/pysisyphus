@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
-import sys
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
 from pysisyphus.optimizers.closures import lbfgs_closure
 from pysisyphus.TablePrinter import TablePrinter
 
+
 DimerCycle = namedtuple("DimerCycle",
                         "org_coords rot_coords trans_coords f0 f0_mod",
 )
-
 
 def make_unit_vec(vec1, vec2):
     """Return unit vector pointing from vec2 to vec1."""
