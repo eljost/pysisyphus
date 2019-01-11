@@ -69,10 +69,7 @@ def run():
     geoms = get_geoms()
     calc_getter = AnaPot
     dimer_kwargs = {
-        "max_step": 0.1,
-        "dx": 0.1,
         "ana_2dpot": True,
-        "max_cycles": 15,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     plot_dimer_cycles(dimer_cycles)#[-5:])
@@ -96,11 +93,15 @@ def test_hcn_iso_dimer():
     geom.set_calculator(calc_getter())
     geoms = [geom, ]
 
+    N_init = np.array(
+        (0.6333, 0.1061, 0.5678, 0.171, 0.11, 0.3373, 0.0308, 0.1721, 0.282)
+    )
     dimer_kwargs = {
-        # "max_step": 0.001,
+        "max_step": 0.04,
         "ana_2dpot": False,
         "dR_base": 0.01,
         "dx": 0.001,
+        "N_init": N_init,
         # "max_cycles": 5,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
