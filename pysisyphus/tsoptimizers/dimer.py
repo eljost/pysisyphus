@@ -180,21 +180,18 @@ def dimer_method(geoms, calc_getter, N_init=None,
         if C_min > C:
             rad_min += np.deg2rad(90)
 
+        # TODO: handle cases where the curvature is still positive, but
+        # the angle is small, so the rotation gets skipped.
         if np.abs(rad_min) > angle_thresh_rad:
             coords1_rot = rotate_R1(coords0, rad_min, N, theta, dR)
-            N_rot = make_unit_vec(coords1_rot, coords0)
-            coords2_rot = coords0 - N_rot*dR
-            geom1.coords = coords1_rot
-            geom2.coords = coords2_rot
+            N = make_unit_vec(coords1_rot, coords0)
+            coords2_rot = coords0 - N*dR
         # Don't do rotation for small angles
         else:
-            N_rot = N
-            coords1_rot = coords1
-            coords2_rot = coords2
             table.print("Rotation angle too small. Skipping rotation.")
 
-        # Translation
-        f0_mod = get_f_mod(f0, N_rot, C_min)
+        # Translation using L-BFGS as described in [4]
+        f0_mod = get_f_mod(f0, N, C_min)
 
         if i == 0:
             trans_lbfgs = lbfgs_closure(f0_mod, f0_mod_getter,
@@ -205,10 +202,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
             N_trans /= np.linalg.norm(N_trans)
             step = max_step*N_trans
         else:
-            coords0_trans, step, f0 = trans_lbfgs(coords0, N_rot, C_min)
+            coords0_trans, step, f0 = trans_lbfgs(coords0, N, C_min)
 
-        coords1_trans = coords0_trans + dR*N_rot
-        coords2_trans = coords0_trans - dR*N_rot
+        coords1_trans = coords0_trans + dR*N
+        coords2_trans = coords0_trans - dR*N
 
         # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
@@ -221,15 +218,15 @@ def dimer_method(geoms, calc_getter, N_init=None,
         geom0.coords = coords0_trans
         geom1.coords = coords1_trans
         geom2.coords = coords2_trans
-        N = N_rot
 
         f0_rms = np.sqrt(np.power(f0, 2).mean())
         f0_max = np.abs(f0).max()
         row_args = [i, C, f0_max, f0_rms]
         table.print_row(row_args)
 
-        if f0_rms <= 1e-3 and f0_max <= 1.5e-3:
+        # Gaussian tight
         # if f0_rms <= 3e-4 and f0_max <= 4.5e-4:
+        if f0_rms <= 1e-3 and f0_max <= 1.5e-3:
             ts_fn = "dimer_ts.xyz"
             ts_xyz_str = geom0.as_xyz()
             with open(ts_fn, "w") as handle:
