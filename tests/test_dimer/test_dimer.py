@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import geom_from_library
 from pysisyphus.tsoptimizers.dimer import dimer_method
 
 
@@ -70,14 +72,14 @@ def run():
     calc_getter = AnaPot
     dimer_kwargs = {
         "ana_2dpot": True,
+        "restrict_step": "max",
+        # "restrict_step": "scale",
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     plot_dimer_cycles(dimer_cycles)#[-5:])
 
 
 def test_hcn_iso_dimer():
-    from pysisyphus.helpers import geom_from_library
-    from pysisyphus.calculators.Gaussian16 import Gaussian16
 
     calc_kwargs = {
         "route": "PM6",
@@ -87,8 +89,6 @@ def test_hcn_iso_dimer():
     def calc_getter():
         return Gaussian16(**calc_kwargs)
 
-    geom = geom_from_library("hcn_iso_ts_guess.xyz")
-    geom = geom_from_library("hcn_iso_pm6_ts.xyz")
     geom = geom_from_library("hcn_iso_pm6_near_ts.xyz")
     geom.set_calculator(calc_getter())
     geoms = [geom, ]
@@ -102,7 +102,6 @@ def test_hcn_iso_dimer():
         "N_init": N_init,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    # plot_dimer_cycles(dimer_cycles[-5:])
 
 
 if __name__ == "__main__":

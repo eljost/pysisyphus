@@ -7,15 +7,12 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pysisyphus.TablePrinter import TablePrinter
-from pysisyphus.helpers import check_for_stop_sign
+from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
 from pysisyphus.optimizers.closures import lbfgs_closure
-
-np.set_printoptions(suppress=True, precision=4)
-
+from pysisyphus.TablePrinter import TablePrinter
 
 DimerCycle = namedtuple("DimerCycle",
-                        "org_coords trial_coords rot_coords trans_coords f0 f0_mod",
+                        "org_coords rot_coords trans_coords f0 f0_mod",
 )
 
 
@@ -26,12 +23,15 @@ def make_unit_vec(vec1, vec2):
 
 
 def perpendicular_force(force, vec):
+    """Return the perpendicular component of force along vec."""
     return force - force.dot(vec)*vec
 
 
-def rotate_R1(coords, rad, N, theta, dR):
-    """Only valid for rotation of R1!"""
-    return coords + (N*np.cos(rad) + theta*np.sin(rad)) * dR
+def rotate_R1(coords0, rad, N, theta, dR):
+    """Rotate dimer at coords0 to get a new coords1.
+
+    Only valid for rotation of R1!"""
+    return coords0 + (N*np.cos(rad) + theta*np.sin(rad)) * dR
 
 
 def get_curvature(f1, f2, N, dR):
@@ -45,16 +45,8 @@ def get_f_mod(f, N, C):
     return f_mod
 
 
-def get_geom_getter(ref_geom, calc_setter):
-    def geom_from_coords(coords):
-        new_geom = ref_geom.copy()
-        new_geom.coords = coords
-        new_geom.set_calculator(calc_setter())
-        return new_geom
-    return geom_from_coords
-
-
 def make_theta(f1, f2, N):
+    """Construct vector theta from f1 and f2."""
     f1_perp = perpendicular_force(f1, N)
     f2_perp = perpendicular_force(f2, N)
     f_perp = f1_perp - f2_perp
@@ -62,35 +54,10 @@ def make_theta(f1, f2, N):
     return theta
 
 
-def plot_modes(trans_mode, N, N_trial, N_rot, coords0):
-    fig, ax = plt.subplots()
-
-    x, y = coords0[:2]
-    trans_x, trans_y = trans_mode[:2]
-    xt = np.array((x, x+trans_x))
-    yt = np.array((y, y+trans_y))
-    trans_line = mpl.lines.Line2D(xdata=xt, ydata=yt, label="Trans mode")
-    lbls = "N N_trial N_rot".split()
-    for i, (N_, l) in enumerate(zip((N, N_trial, N_rot), lbls)):
-        xn, yn = N_[:2]
-        xn_data = np.array((x, x+xn))
-        yn_data = np.array((y, y+yn))
-        n_line = mpl.lines.Line2D(xn_data, yn_data, label=l, color=f"C{i}")
-        ax.add_line(n_line)
-
-    ax.scatter(x, y)
-    ax.add_line(trans_line)
-    ax.legend()
-    ax.set_xlim(-0.5, 2)
-    ax.set_ylim(0, 3)
-
-    plt.show()
-
-
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
                  trial_angle=5, angle_thresh=0.5, dR_base=0.01,
-                 ana_2dpot=False):
+                 restrict_step="scale", ana_2dpot=False):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -154,12 +121,25 @@ def dimer_method(geoms, calc_getter, N_init=None,
         forces = results["forces"]
         return get_f_mod(forces, N, C)
 
-    def restrict_step(step, max_step=max_step):
+    def restrict_max_step_comp(step, max_step=max_step):
         step_max = np.abs(step).max()
         if step_max > max_step:
             factor = max_step / step_max
             step *= factor
         return step
+
+    def restrict_step_length(step, max_step_length=max_step):
+        step_norm = np.linalg.norm(step)
+        if step_norm > max_step_length:
+            step_direction = step / step_norm
+            step = step_direction * max_step_length
+        return step
+
+    rstr_dict = {
+        "max": restrict_max_step_comp,
+        "scale": restrict_step_length,
+    }
+    rstr_func = rstr_dict[restrict_step]
 
     table.print_header()
     for i in range(max_cycles):
@@ -191,7 +171,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
         N_star = make_unit_vec(coords1_star, coords0)
         coords2_star = coords0 - N_star*dR
 
-        trial_coords = np.array((coords1_star, coords0, coords2_star))
         C_star = get_curvature(f1_star, f2_star, N_star, dR)
         theta_star = make_theta(f1_star, f2_star, N_star)
 
@@ -222,17 +201,15 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
         if i == 0:
             trans_lbfgs = lbfgs_closure(f0_mod, f0_mod_getter,
-                                        restrict_step=restrict_step)
-        N_trans = f0_mod.copy()
-        N_trans /= np.linalg.norm(N_trans)
+                                        restrict_step=rstr_func)
 
         if C > 0:
+            N_trans = f0_mod.copy()
+            N_trans /= np.linalg.norm(N_trans)
             step = max_step*N_trans
         else:
-            lbfgs_res = trans_lbfgs(coords0, N_rot, C_min)
-            step = lbfgs_res[1]
+            coords0_trans, step, f0 = trans_lbfgs(coords0, N_rot, C_min)
 
-        coords0_trans = coords0 + step
         coords1_trans = coords0_trans + dR*N_rot
         coords2_trans = coords0_trans - dR*N_rot
 
@@ -240,7 +217,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         org_coords = np.array((coords1, coords0, coords2))
         rot_coords = np.array((coords1_rot, coords0, coords2_rot))
         trans_coords = np.array((coords1_trans, coords0_trans, coords2_trans))
-        dc = DimerCycle(org_coords, trial_coords, rot_coords, trans_coords, f0, f0_mod)
+        dc = DimerCycle(org_coords, rot_coords, trans_coords, f0, f0_mod)
         dimer_cycles.append(dc)
 
         # Update dimer coordinates for next cycle
@@ -253,8 +230,15 @@ def dimer_method(geoms, calc_getter, N_init=None,
         f0_max = np.abs(f0).max()
         row_args = [i, C, f0_max, f0_rms]
         table.print_row(row_args)
+
         if f0_rms <= 1e-3 and f0_max <= 1.5e-3:
+        # if f0_rms <= 3e-4 and f0_max <= 4.5e-4:
+            ts_fn = "dimer_ts.xyz"
+            ts_xyz_str = geom0.as_xyz()
+            with open(ts_fn, "w") as handle:
+                handle.write(ts_xyz_str)
             table.print("Converged!")
+            table.print(f"Wrote converged TS geometry to '{ts_fn}'.")
             break
 
         if check_for_stop_sign():

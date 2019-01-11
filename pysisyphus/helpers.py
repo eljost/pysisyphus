@@ -228,6 +228,10 @@ def confirm_input(message):
     return inp == "yes"
 
 
-if __name__ == "__main__":
-    print(load_geometry("hcn.xyz"))
-    print(geoms_from_trj("cycle_040.trj"))
+def get_geom_getter(ref_geom, calc_setter):
+    def geom_from_coords(coords):
+        new_geom = ref_geom.copy()
+        new_geom.coords = coords
+        new_geom.set_calculator(calc_setter())
+        return new_geom
+    return geom_from_coords
