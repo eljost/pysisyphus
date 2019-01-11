@@ -5,7 +5,7 @@ import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.Geometry import Geometry
-from pysisyphus.tsoptimizers.dimer_imp import dimer_method
+from pysisyphus.tsoptimizers.dimer import dimer_method
 
 
 def get_geoms(coords=None):
@@ -98,11 +98,8 @@ def test_hcn_iso_dimer():
     )
     dimer_kwargs = {
         "max_step": 0.04,
-        "ana_2dpot": False,
         "dR_base": 0.01,
-        "dx": 0.001,
         "N_init": N_init,
-        # "max_cycles": 5,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     # plot_dimer_cycles(dimer_cycles[-5:])
