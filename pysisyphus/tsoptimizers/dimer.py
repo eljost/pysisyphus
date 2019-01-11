@@ -232,9 +232,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
             N_trans /= np.linalg.norm(N_trans)
             step = max_step*N_trans
         else:
-            # TODO: somehow get the unmodified f0 so we can reuse
-            # it later. For now the force returned is the modified
-            # force.
             coords0_trans, step, f0 = trans_lbfgs(coords0, N, C_min)
 
         # The coordinates of geom0 get already updated in the f0_mod_getter
