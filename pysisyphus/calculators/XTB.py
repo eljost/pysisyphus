@@ -8,6 +8,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.helpers import geom_from_xyz_file
@@ -18,13 +19,13 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn="gfn2", **kwargs):
+    def __init__(self, gbsa="", gfn=2, **kwargs):
         super(XTB, self).__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
 
-        valid_gfns = ("gfn1", "gfn2", "gfn2d3")
+        valid_gfns = (1, 2)
         assert self.gfn in valid_gfns, "Invalid gfn argument. " \
             f"Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
@@ -51,10 +52,10 @@ class XTB(Calculator):
         return None
 
     def prepare_add_args(self):
-        add_args = f"-{self.gfn} -chrg {self.charge} -uhf {self.uhf}".split()
+        add_args = f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf}".split()
         # Use solvent model if specified
         if self.gbsa:
-            gbsa = f"-gbsa {self.gbsa}".split()
+            gbsa = f"--gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
         return add_args
 
@@ -73,7 +74,7 @@ class XTB(Calculator):
 
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
-        add_args = self.prepare_add_args() + ["-grad"]
+        add_args = self.prepare_add_args() + ["--grad"]
         self.log(f"Executing {self.base_cmd} {add_args}")
         kwargs = {
             "calc": "grad",
@@ -85,7 +86,7 @@ class XTB(Calculator):
 
     def run_opt(self, atoms, coords, keep=True):
         inp = self.prepare_coords(atoms, coords)
-        add_args = self.prepare_add_args() + ["-opt", "tight"]
+        add_args = self.prepare_add_args() + ["--opt", "tight"]
         self.log(f"Executing {self.base_cmd} {add_args}")
         kwargs = {
             "calc": "opt",
@@ -113,14 +114,7 @@ class XTB(Calculator):
         return energy
 
     def parse_gradient(self, path):
-        results = dict()
-        with open(path / "grad") as handle:
-            grad = [line.split()[1] for line in handle]
-        gradient = np.array(grad, dtype=float)
-        results["forces"] = -gradient
-
-        results["energy"] = self.parse_energy(path)
-        return results
+        return parse_turbo_gradient(path)
 
     def __str__(self):
         return "XTB calculator"
