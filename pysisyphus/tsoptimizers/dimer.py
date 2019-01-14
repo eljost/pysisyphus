@@ -211,7 +211,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         )
 
         # TODO: handle cases where the curvature is still positive, but
-        # the angle is small, so the rotation gets skipped.
+        # the angle is small, so the rotation is skipped.
         if np.abs(rad_min) > angle_thresh_rad:
             coords1_rot = rotate_R1(coords0, rad_min, N, theta, dR)
             N = make_unit_vec(coords1_rot, coords0)
@@ -220,9 +220,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
         else:
             table.print("Rotation angle too small. Skipping rotation.")
 
-        # Translation using L-BFGS as described in [4]
         f0_mod = get_f_mod(f0, N, C_min)
 
+        # Create the translation optimizer in the first cycle of the loop.
         if i == 0:
             trans_lbfgs = lbfgs_closure(f0_mod, f0_mod_getter,
                                         restrict_step=rstr_func)
@@ -232,9 +232,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
             N_trans /= np.linalg.norm(N_trans)
             step = max_step*N_trans
         else:
+            # Translation using L-BFGS as described in [4]
             coords0_trans, step, f0 = trans_lbfgs(coords0, N, C_min)
 
-        # The coordinates of geom0 get already updated in the f0_mod_getter
+        # The coordinates of geom0 were already updated in the f0_mod_getter
         # call.
         coords1_trans = coords0_trans + dR*N
         coords2_trans = coords0_trans - dR*N
