@@ -4,10 +4,11 @@ __all__ = [
     "BFGS",
     "ConjugateGradient",
     "FIRE",
+    "LBFGS",
     "QuickMin",
+    "RFOptimizer",
     "SteepestDescent",
     "SciPyOptimizer",
-    "RFOptimizer",
 ]
 
 logger = logging.getLogger("optimizer")
