@@ -85,7 +85,6 @@ class Optimizer:
         if not rms_force:
             threshs = self.CONV_THRESHS[key]
         else:
-            # self.log(f"Deriving threshold from supplied rms_force={rms_force}.")
             print(f"Deriving threshold from supplied rms_force={rms_force}.")
             threshs = (1.5*rms_force,
                        rms_force,
