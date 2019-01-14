@@ -60,9 +60,9 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
         y = prev_forces - new_forces
         y_list.append(y)
         forces.append(new_forces)
-        if cur_cycle > m:
-            s_list = s_list[:-m]
-            y_list = y_list[:-m]
+        # Only keep last m cycles
+        s_list = s_list[-m:]
+        y_list = y_list[-m:]
         cur_cycle += 1
         return new_x, step, new_forces
     return lbfgs
