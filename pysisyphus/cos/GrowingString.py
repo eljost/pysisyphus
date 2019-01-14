@@ -13,7 +13,12 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, max_cycles=25, **kwargs):
-        assert len(images) == 2, "Can only start from 2 images for now"
+        assert len(images) >= 2, "Need at least 2 images for GrowingString."
+        if len(images) >= 2:
+            images = [images[0], images[-1]]
+            print("More than 2 images were supplied! Will only use the "
+                  "first and last images to start the GrowingString."
+            )
         super().__init__(images, calc_getter, **kwargs)
 
         self.max_cycles = max_cycles
