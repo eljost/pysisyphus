@@ -50,6 +50,7 @@ OPT_DICT = {
     # Removing BFGS for now until save_also is implemented
     # and rotating the hessian works properly
     "bfgs": BFGS.BFGS,
+    "lbfgs": LBFGS.LBFGS,
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
