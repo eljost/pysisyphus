@@ -3,11 +3,12 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
+from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.NEB import NEB
-from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.optimizers.FIRE import FIRE
-from pysisyphus.constants import BOHR2ANG, ANG2BOHR
+from pysisyphus.helpers import procrustes
 
 
 # [1] http://aip.scitation.org/doi/full/10.1063/1.4878664
@@ -17,6 +18,7 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
     # Do an initial linear interpolation to generate all geometries/images
     # that will be refined later by IDPP interpolation.
     cos = ChainOfStates(geometries)
+    procrustes(cos)
     cos.interpolate(image_num=images_between)
     images = cos.images
 
