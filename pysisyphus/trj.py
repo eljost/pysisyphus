@@ -14,7 +14,8 @@ import yaml
 
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj, procrustes
+from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
+                                get_coords_diffs)
 from pysisyphus.calculators.IDPP import idpp_interpolate
 from pysisyphus.xyzloader import write_geoms_to_trj
 from pysisyphus.constants import BOHR2ANG
@@ -141,15 +142,6 @@ def align(geoms):
 
 
 def spline_redistribute(geoms):
-    import numpy as np
-    def get_coords_diffs(coords):
-        cds = [0, ]
-        for i in range(len(coords)-1):
-            diff = np.linalg.norm(coords[i+1]-coords[i])
-            cds.append(diff)
-        cds = np.cumsum(cds)
-        cds /= cds.max()
-        return cds
     szts = SimpleZTS.SimpleZTS(geoms)
     pre_diffs = get_coords_diffs([image.coords for image in szts.images])
     szts.reparametrize()

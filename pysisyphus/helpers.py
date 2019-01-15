@@ -108,17 +108,22 @@ def procrustes(geometry):
     return rot_mats
 
 
-def fit_rigid(geometry, vectors=(), hessian=None):
+def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
+    rotated_vector_lists = list()
+    rotated_hessian = None
+
     rot_mats = procrustes(geometry)
     G = sp.linalg.block_diag(*rot_mats)
     rotated_vectors = [vec.dot(G) for vec in vectors]
-    if hessian is None:
-        return rotated_vectors
+    for vl in vector_lists:
+        rvl = [vec.dot(G) for vec in vl]
+        rotated_vector_lists.append(rvl)
 
-    #rotated_hessian = G.dot(hessian).dot(G.T)
-    rotated_hessian = G.T.dot(hessian).dot(G)
-    #rotated_hessian = G*hessian*G.T
-    return rotated_vectors, rotated_hessian
+    if hessian:
+        #rotated_hessian = G.dot(hessian).dot(G.T)
+        rotated_hessian = G.T.dot(hessian).dot(G)
+        #rotated_hessian = G*hessian*G.T
+    return rotated_vectors, rotated_vector_lists, rotated_hessian
 
 
 def chunks(l, n):
@@ -235,3 +240,13 @@ def get_geom_getter(ref_geom, calc_setter):
         new_geom.set_calculator(calc_setter())
         return new_geom
     return geom_from_coords
+
+
+def get_coords_diffs(coords):
+    cds = [0, ]
+    for i in range(len(coords)-1):
+        diff = np.linalg.norm(coords[i+1]-coords[i])
+        cds.append(diff)
+    cds = np.cumsum(cds)
+    cds /= cds.max()
+    return cds

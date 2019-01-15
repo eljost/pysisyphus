@@ -45,23 +45,18 @@ class LBFGS(Optimizer):
         coords_tmp = prev_coords.copy()
         forces_tmp = prev_forces.copy()
 
-        # if self.sigmas:
-            # import pdb; pdb.set_trace()
-
-        if self.is_cos and self.align:
-           aligned = fit_rigid(self.geometry,
-                               (new_coords,
-                                prev_coords,
-                                prev_forces,
-                                self.sigmas,
-                                self.grad_diffs,
-           )) 
-
         self.geometry.coords = new_coords
+        if self.is_cos and self.align:
+            rot_vecs, rot_vec_lists, _ = fit_rigid(
+                self.geometry,
+                (prev_coords, prev_forces),
+                vector_lists=(self.sigmas, self.grad_diffs)
+            )
+            prev_coords, prev_forces = rot_vecs
+            self.sigmas, self.grad_diffs = rot_vec_lists
+
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy
-
-        skip = False
 
         sigma = new_coords - prev_coords
         self.sigmas.append(sigma)
@@ -81,3 +76,8 @@ class LBFGS(Optimizer):
         self.energies.append(new_energy)
 
         return step
+
+    def save_also(self):
+        return {
+            "alpha": self.alpha,
+        }
