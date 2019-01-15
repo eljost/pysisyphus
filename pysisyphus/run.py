@@ -20,7 +20,7 @@ from pysisyphus.cos import *
 from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
-from pysisyphus.helpers import geom_from_xyz_file, confirm_input
+from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -288,6 +288,7 @@ def get_defaults(conf_dict):
         "stocastic": None,
         "xyz": None,
         "coord_type": "cart",
+        "shake": None,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -322,6 +323,11 @@ def get_defaults(conf_dict):
     elif "stocastic" in conf_dict:
         dd["stocastic"] = {
             "type": "frag",
+        }
+    if "shake" in conf_dict:
+        dd["shake"] = {
+            "scale": 0.1,
+            "seed": None,
         }
 
     return dd
@@ -358,7 +364,7 @@ def handle_yaml(yaml_str):
     # Update nested entries
     key_set = set(yaml_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
-                              "stocastic")):
+                              "stocastic", "shake")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type")):
@@ -435,7 +441,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         run_cos(cos, calc_getter, opt_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
-        run_opt(geoms[0], calc_getter, opt_getter)
+        geom = geoms[0]
+        if run_dict["shake"]:
+            shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
+            geom.coords = shaked_coords
+        run_opt(geom, calc_getter, opt_getter)
     elif run_dict["stocastic"]:
         assert len(geoms) == 1
         geom = geoms[0]

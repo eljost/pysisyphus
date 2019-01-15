@@ -24,6 +24,7 @@ KWARGS = {
     "max_cycles": 50,
     "rms_force": 5e-3,
     "dump": False,
+    "align": False,
 }
 
 
@@ -334,6 +335,10 @@ def test_scipy_bfgs_neb():
 @pytest.mark.lbfgs
 def test_lbfgs_neb():
     kwargs = copy.copy(KWARGS)
+    # kwargs["bt_disable"] = True
+    # kwargs["rms_force"] = 1e-5
+    # kwargs["alpha"] = 0.5
+    kwargs["max_cycles"] = 25
 
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, LBFGS, **kwargs)
@@ -424,7 +429,7 @@ if __name__ == "__main__":
     # opt = test_fix_end_climbing_bfgs_neb()
 
     # LBFGS
-    # opt = test_lbfgs_neb()
+    opt = test_lbfgs_neb()
 
     # SimpleZTS
     # opt = test_equal_szts()
@@ -434,9 +439,10 @@ if __name__ == "__main__":
 
     # opt = test_scipy_bfgs_neb()
 
-    test_spline_hei()
+    # NEB with Dimer
+    # test_spline_hei()
 
-    #ap = animate(opt)
+    ap = animate(opt)
     # ap = animate_bare(opt)
-    #ap.as_html5("anim.html")
-    # plt.show()
+    # ap.as_html5("anim.html")
+    plt.show()

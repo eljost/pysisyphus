@@ -250,3 +250,10 @@ def get_coords_diffs(coords):
     cds = np.cumsum(cds)
     cds /= cds.max()
     return cds
+
+
+def shake_coords(coords, scale=0.1, seed=None):
+    if seed:
+        np.random.seed(seed)
+    offset = np.random.normal(scale=scale, size=coords.size)
+    return coords + offset

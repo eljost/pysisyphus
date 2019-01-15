@@ -9,7 +9,6 @@ from pysisyphus.optimizers.closures import bfgs_multiply
 # [1] Nocedal, Wright - Numerical Optimization, 2006
 
 class LBFGS(Optimizer):
-
     def __init__(self, geometry, alpha=1.0, keep_last=15, **kwargs):
         self.alpha = alpha
         self.keep_last = keep_last
