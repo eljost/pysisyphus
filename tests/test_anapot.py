@@ -67,7 +67,6 @@ def animate_bare(opt):
     ap.animate()
     return ap
 
-
 @pytest.mark.sd
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
@@ -76,6 +75,45 @@ def test_steepest_descent_neb():
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 29)  # k = 0.01
+
+    return opt
+
+
+@pytest.mark.sd
+def test_spline_hei():
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms())
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 29)  # k = 0.01
+
+    hei_coords, hei_energy, hei_tangent = neb.get_splined_hei()
+    # ap = animate(opt)
+    # hei = hei_coords[:2]
+    # heit = hei_tangent[:2]
+    # ap.ax.scatter(*hei, s=15, c="k")
+    # ap.ax.quiver(*hei, *heit)
+    # plt.show()
+    print(f"Interpolated HEI: {hei_coords}")
+    print(f"HEI tangent: {hei_tangent}")
+
+    from pysisyphus.tsoptimizers.dimer import dimer_method
+    calc_getter = AnaPot
+    ts_geom = neb.images[0].copy()
+    ts_geom.coords = hei_coords
+    ts_geom.set_calculator(calc_getter())
+    geoms = [ts_geom, ]
+    dimer_kwargs = {
+        "ana_2dpot": True,
+        "restrict_step": "max",
+        "N_init": hei_tangent,
+        "calc_getter": calc_getter,
+    }
+    dimer_cycles = dimer_method(geoms, **dimer_kwargs)
+    last_cycle = dimer_cycles[-1]
+    ts_coords = last_cycle.trans_coords[1]
+    print(f"Optimized TS coord: {ts_coords}")
 
     return opt
 
@@ -383,10 +421,10 @@ if __name__ == "__main__":
     # opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
-    opt = test_fix_end_climbing_bfgs_neb()
+    # opt = test_fix_end_climbing_bfgs_neb()
 
     # LBFGS
-    opt = test_lbfgs_neb()
+    # opt = test_lbfgs_neb()
 
     # SimpleZTS
     # opt = test_equal_szts()
@@ -396,7 +434,9 @@ if __name__ == "__main__":
 
     # opt = test_scipy_bfgs_neb()
 
+    test_spline_hei()
+
     #ap = animate(opt)
-    ap = animate_bare(opt)
+    # ap = animate_bare(opt)
     #ap.as_html5("anim.html")
-    plt.show()
+    # plt.show()

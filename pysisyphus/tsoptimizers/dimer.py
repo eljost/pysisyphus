@@ -231,6 +231,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
             N_trans = f0_mod.copy()
             N_trans /= np.linalg.norm(N_trans)
             step = max_step*N_trans
+            # TODO: geom0 coords aren't updated here ...
+            # coords0_trans = coords0 + step
+            # geom0.coords = coords0_trans
         else:
             # Translation using L-BFGS as described in [4]
             coords0_trans, step, f0 = trans_lbfgs(coords0, N, C_min)
