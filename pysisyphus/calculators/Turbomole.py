@@ -22,6 +22,8 @@ from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 class Turbomole(OverlapCalculator):
 
+    conf_key = "turbomole"
+
     def __init__(self, control_path, root=None,
                  double_mol_path=None, **kwargs):
         super(Turbomole, self).__init__(**kwargs)

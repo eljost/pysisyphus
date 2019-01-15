@@ -342,6 +342,9 @@ class Calculator:
         key : str
             A key to be used in the ``kept_fns`` dict.
         """
+        key_given = None
+        if ":" in raw_pat:
+            key_given, raw_pat = raw_pat.split(":")
         # Indicates if multiple files are expected
         multi = "*" in raw_pat
         # Drop '*' as it just indicates if we expect multiple matches
@@ -354,6 +357,8 @@ class Calculator:
         else:
             pattern = f"*{raw_pat}"
             pattern_key = f"{raw_pat}"
+        if key_given:
+            pattern_key = key_given
         pattern_key = pattern_key.lower()
         return pattern, multi, pattern_key
 
