@@ -5,6 +5,7 @@ __all__ = [
     "ConjugateGradient",
     "FIRE",
     "LBFGS",
+    "LBFGS_mod",
     "QuickMin",
     "RFOptimizer",
     "SteepestDescent",
