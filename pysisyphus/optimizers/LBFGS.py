@@ -8,6 +8,7 @@ from pysisyphus.optimizers.closures import bfgs_multiply
 
 # [1] Nocedal, Wright - Numerical Optimization, 2006
 
+
 class LBFGS(Optimizer):
     def __init__(self, geometry, alpha=1.0, keep_last=15, **kwargs):
         self.alpha = alpha
@@ -27,9 +28,14 @@ class LBFGS(Optimizer):
 
     def scale_by_max_step(self, steps):
         steps_max = np.abs(steps).max()
+        step_norm = np.linalg.norm(steps)
+        self.log(f"Unscaled norm(step)={step_norm:.4f}")
         if steps_max > self.max_step:
             fact = self.max_step / steps_max
+            self.log(f"Scaling step with factor={fact:.4f}")
             steps *= self.max_step / steps_max
+            step_norm = np.linalg.norm(steps)
+            self.log(f"Scaled norm(step)={step_norm:.4f}")
         return steps
 
     def optimize(self):
@@ -52,7 +58,15 @@ class LBFGS(Optimizer):
                 vector_lists=(self.sigmas, self.grad_diffs)
             )
             prev_coords, prev_forces = rot_vecs
-            self.sigmas, self.grad_diffs = rot_vec_lists
+            rot_sigmas, rot_grad_diffs = rot_vec_lists
+            np.testing.assert_allclose(np.linalg.norm(rot_sigmas),
+                                       np.linalg.norm(self.sigmas)
+            )
+            np.testing.assert_allclose(np.linalg.norm(rot_grad_diffs),
+                                       np.linalg.norm(self.grad_diffs)
+            )
+            self.sigmas = rot_sigmas
+            self.grad_diffs = rot_grad_diffs
 
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy
