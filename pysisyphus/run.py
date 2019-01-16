@@ -51,6 +51,7 @@ OPT_DICT = {
     # and rotating the hessian works properly
     "bfgs": BFGS.BFGS,
     "lbfgs": LBFGS.LBFGS,
+    "lbfgsm": LBFGS_mod.LBFGS,
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
@@ -484,6 +485,7 @@ def clean(force=False):
         "*orca.cis",
         "*orca.engrad",
         "*orca.hessian",
+        "*orca.inp",
         # OpenMOLCAS specific
         "image*.RasOrb",
         "image*.in",
