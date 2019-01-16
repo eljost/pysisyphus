@@ -23,8 +23,8 @@ class Optimizer:
         "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
     }
 
-    def __init__(self, geometry, thresh="gau_loose", rms_force=None,
-                 align=False, dump=False, last_cycle=None,
+    def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
+                 rms_force=None, align=False, dump=False, last_cycle=None,
                  **kwargs):
         self.geometry = geometry
 
@@ -40,7 +40,7 @@ class Optimizer:
         # Setting some default values
         self.resetted = False
         self.max_cycles = 50
-        self.max_step = 0.04
+        self.max_step = max_step
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
 
