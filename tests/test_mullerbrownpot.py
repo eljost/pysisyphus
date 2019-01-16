@@ -13,6 +13,7 @@ from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 
@@ -114,6 +115,24 @@ def test_bfgs_straight_neb():
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 45)
+
+    return opt
+
+
+@pytest.mark.lbfgs
+def test_lbfgs_neb():
+    kwargs = copy.copy(KWARGS)
+    kwargs["images"] = 3
+    kwargs["fix_ends"] = True
+    k_min = 1000
+    k_max = k_min+10
+    neb = NEB(get_geoms(("A", "B")), k_min=k_min, k_max=k_max, fix_ends=True)
+    from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
+    # from pysisyphus.optimizers.LBFGS_mod import LBFGS
+    opt = run_cos_opt(neb, LBFGS, **kwargs)
+
+    # assert(opt.is_converged)
+    # assert(opt.cur_cycle == 45)
 
     return opt
 
@@ -229,11 +248,13 @@ def test_energy_szts_more_images():
 
 if __name__ == "__main__":
     # Steepest Descent
-    #opt = test_steepest_descent_neb()
+    opt = test_steepest_descent_neb()
     #opt = test_steepest_descent_straight_neb()
     #opt = test_steepest_descent_neb_more_images()
 
-    opt = test_bfgs_straight_neb()
+    # opt = test_bfgs_straight_neb()
+
+    # opt = test_lbfgs_neb()
 
     # FIRE
     #opt = test_fire_neb()

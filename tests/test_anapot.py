@@ -349,6 +349,35 @@ def test_lbfgs_neb():
     return opt
 
 
+@pytest.mark.lbfgs
+def test_lbfgs_mod_neb():
+    from pysisyphus.optimizers.LBFGS_mod import LBFGS as LBFGSm
+    kwargs = copy.copy(KWARGS)
+    # kwargs["bt_disable"] = True
+    kwargs["rms_force"] = 1e-5
+    # kwargs["alpha"] = 0.5
+    kwargs["max_cycles"] = 25
+    kwargs["images"] = 3
+    # kwargs["bt_disable"] = True
+
+    coords = (
+        (-1.05274, 1.02776, 0),
+        # (0.2166, 1.2619, 0),
+        (0.625, 1.476, 0),
+        # (1.4, 2.45, 0),
+        (1.94101, 3.85427, 0),
+    )
+
+    neb = NEB(get_geoms(coords), fix_ends=True)
+    # opt = run_cos_opt(neb, LBFGSm, **kwargs)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    # assert(opt.is_converged)
+    # assert(opt.cur_cycle == 22)  # k = 0.01
+
+    return opt
+
+
 @pytest.mark.skip
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
@@ -429,7 +458,8 @@ if __name__ == "__main__":
     # opt = test_fix_end_climbing_bfgs_neb()
 
     # LBFGS
-    opt = test_lbfgs_neb()
+    # opt = test_lbfgs_neb()
+    opt = test_lbfgs_mod_neb()
 
     # SimpleZTS
     # opt = test_equal_szts()
