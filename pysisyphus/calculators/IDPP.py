@@ -7,6 +7,7 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.NEB import NEB
+from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.helpers import procrustes
 
@@ -51,15 +52,13 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
             image.set_calculator(IDPP(from_pd + j * pd_diff))
 
         kwargs = {
-            "max_cycles":100,
-            # Use pretty loose convergence criteria for IDPP
-            "convergence": {
-                "max_force_thresh": 0.1
-            },
+            "max_cycles":1000,
+            "rms_force": 1e-2,
             "keep_cycles": keep_cycles,
             "align": False,
         }
-        opt = FIRE(NEB(images_slice, parallel=False), **kwargs)
+        # opt = FIRE(NEB(images_slice, parallel=False), **kwargs)
+        opt = BFGS(NEB(images_slice, parallel=False), **kwargs)
         opt.run()
         idpp_interpolated_images.extend(images_slice)
 
