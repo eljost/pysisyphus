@@ -91,6 +91,10 @@ class Geometry:
                                     if atom == atom_type]
         return inds_dict
 
+    @property
+    def atom_types(self):
+        return set(self.atoms)
+
     def clear(self):
         """Reset the object state."""
 
