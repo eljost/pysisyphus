@@ -2,7 +2,7 @@
 
 import argparse
 import copy
-import itertools
+import itertools as it
 import os
 from pathlib import Path
 from pprint import pprint
@@ -10,15 +10,18 @@ import re
 import sys
 
 from natsort import natsorted
+import numpy as np
+import rmsd as rmsd
 import yaml
 
+from pysisyphus.calculators.IDPP import idpp_interpolate
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
                                 get_coords_diffs)
-from pysisyphus.calculators.IDPP import idpp_interpolate
 from pysisyphus.xyzloader import write_geoms_to_trj
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.stocastic.align import match_geom_atoms
 
 
 def parse_args(args):
@@ -54,6 +57,17 @@ def parse_args(args):
                     help="Create new .trj with every N-th geometry. "
                          "Always includes the first and last point."
     )
+    action_group.add_argument("--center", action="store_true",
+                    help="Move the molecules centroid into the origin."
+    )
+    action_group.add_argument("--translate", nargs=3, type=float,
+                    help="Translate the molecule by the given vector given " \
+                         "in Ångström."
+    )
+    action_group.add_argument("--append", action="store_true",
+                    help="Combine the given molecules in one .trj file."
+    )
+    action_group.add_argument("--match", action="store_true",)
 
     parser.add_argument("--idpp", action="store_true",
         help="Use Image Dependent Pair Potential instead "
@@ -170,10 +184,56 @@ def every(geoms, every_nth):
     return every_nth_geom
 
 
+def center(geoms):
+    for geom in geoms:
+        geom.coords3d = geom.coords3d - geom.centroid
+    return geoms
+
+
+def translate(geoms, trans):
+    for geom in geoms:
+        geom.coords3d += trans
+    return geoms
+
+
+def append(geoms):
+    atoms = geoms[0].atoms * len(geoms)
+    coords = list(it.chain([geom.coords for geom in geoms]))
+    return [Geometry(atoms, coords), ]
+
+
 def bohr2ang(geoms):
     coords_angstrom = [geom.coords*0.529177249 for geom in geoms]
     import pdb; pdb.set_trace()
     raise Exception("Implement me")
+
+
+def match(ref_geom, geom_to_match):
+    rmsd_before = rmsd.kabsch_rmsd(ref_geom.coords3d, geom_to_match.coords3d)
+    print(f"Kabsch RMSD before: {rmsd_before:.4f}")
+    matched_geom = match_geom_atoms(ref_geom, geom_to_match, hydrogen=True)
+
+    # Right now the atoms are not in the right order as we only sorted the
+    # individual coord blocks by atom.
+    # This dictionary will hold the counter indices for the individual atom
+    atom_type_inds = {atom: 0 for atom in ref_geom.atom_types}
+    matched_coord_blocks, _ = matched_geom.coords_by_type
+    new_coords = list()
+    for atom in ref_geom.atoms:
+        # Get the current counter/index from the dicitonary for the given atom
+        cur_atom_ind = atom_type_inds[atom]
+        # Select the appropriate atom from the coords block
+        atom_coords = matched_coord_blocks[atom][cur_atom_ind]
+        new_coords.append(atom_coords)
+        # Increment the counter so the next time the same atom type comes up
+        # we fetch the next entry of the coord block.
+        atom_type_inds[atom] += 1
+    # Assign the updated atom order and corresponding coordinates
+    matched_geom.atoms = ref_geom.atoms
+    matched_geom.coords = np.array(new_coords).flatten()
+    rmsd_after = rmsd.kabsch_rmsd(ref_geom.coords3d, matched_geom.coords3d)
+    print(f"Kabsch RMSD after: {rmsd_after:.4f}")
+    return [matched_geom, ]
 
 
 def run():
@@ -210,8 +270,23 @@ def run():
         to_dump = every(geoms, args.every)
         fn_base = "every"
         trj_infix = f"_{args.every}th"
+    elif args.center:
+        to_dump = center(geoms)
+        fn_base = "centered"
+    elif args.translate:
+        trans = np.array(args.translate) / BOHR2ANG
+        to_dump = translate(geoms, trans)
+        fn_base = "translated"
+    elif args.append:
+        to_dump = append(geoms)
+        fn_base = "appended"
+    elif args.match:
+        to_dump = match(*geoms)
+        fn_base = "matched"
 
     # Write transformed geometries
+    dump_trj = dump_trj and (len(to_dump) > 1)
+
     dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj,
                dump_xyz=dump_xyz)
 
