@@ -175,7 +175,8 @@ def get_overlapper(run_dict):
         calc_key = None
     calc_kwargs = run_dict["calc"]
     cwd = Path(".")
-    overlapper = Overlapper(cwd, calc_key, calc_kwargs)
+    ovlp_with = run_dict["overlaps"]["ovlp_with"]
+    overlapper = Overlapper(cwd, ovlp_with, calc_key, calc_kwargs)
     return overlapper
 
 
@@ -320,6 +321,7 @@ def get_defaults(conf_dict):
             "consider_first": None,
             "skip": 0,
             "regex": None,
+            "ovlp_with": "previous",
         }
     elif "stocastic" in conf_dict:
         dd["stocastic"] = {
