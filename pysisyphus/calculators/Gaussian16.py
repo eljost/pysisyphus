@@ -49,7 +49,7 @@ class Gaussian16(OverlapCalculator):
             self.nstates = int(exc_dict["nstates"])
             try:
                 self.root = int(exc_dict["root"])
-            except TypeError:
+            except KeyError:
                 self.root = 1
                 self.log("No explicit root was specified! Using root=1 as default!")
             # Collect remaining options if specified
