@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 import re
@@ -147,6 +148,12 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         [1] 10.1021/ci400534h
         [2] 10.1021/acs.jcim.6b00516
     """
+
+    logging.warning("helpers.match_geoms is deprecated!"
+                    "Use stocastic.align.match_geom_atoms instead!")
+
+    assert len(ref_geom.atoms) == len(geom_to_match.atoms), \
+        "Atom numbers don't match!"
 
     ref_coords, _ = ref_geom.coords_by_type
     coords_to_match, inds_to_match = geom_to_match.coords_by_type
