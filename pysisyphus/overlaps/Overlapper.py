@@ -24,8 +24,11 @@ class Overlapper:
 
     logger = logging.getLogger("overlapper")
 
-    def __init__(self, path, calc_key=None, calc_kwargs=None):
+    def __init__(self, path, ovlp_with="previous",
+                 calc_key=None, calc_kwargs=None):
         self.path = Path(path)
+        assert ovlp_with in ("previous", "first")
+        self.ovlp_with = ovlp_with
         self.calc_key = calc_key
         self.calc_kwargs = calc_kwargs
         self.calc_kwargs["out_dir"] = path
@@ -236,11 +239,16 @@ class Overlapper:
             icn = ith_calc.calc_number
             jcn = jth_calc.calc_number
             if double_mol:
-                self.logger.info("Doing double molecule calculation to get "
-                                 "AO overlaps."
-                )
-                ao_ovlp = jth_geom.calc_double_ao_overlap(ith_geom)
-                np.savetxt(f"ao_ovlp_true_{icn:03d}_{jcn:03d}", ao_ovlp)
+                true_ovlp_mat_fn = f"ao_ovlp_true_{icn:03d}_{jcn:03d}"
+                try:
+                    ao_ovlp = np.loadtxt(true_ovlp_mat_fn)
+                    self.logger.info(f"Using true AO overlaps from {true_ovlp_mat_fn}.")
+                except:
+                    self.logger.info("Doing double molecule calculation to get "
+                                     "AO overlaps."
+                    )
+                    ao_ovlp = jth_geom.calc_double_ao_overlap(ith_geom)
+                    np.savetxt(f"ao_ovlp_true_{icn:03d}_{jcn:03d}", ao_ovlp)
             self.log(f"Calculationg overlaps for steps {icn:03d} and {jcn:03d}.")
             ovlp_mat = ovlp_func_(ith_calc, jth_calc, ao_ovlp)
 
@@ -254,8 +262,8 @@ class Overlapper:
                  for per_state in ovlp_mat[:,:consider_first]]
             )
             if similar:
-                self.log(f"Overlaps for steps {icn:03d} and {jcn:03d} "
-                          "are very similar!"                 )
+                self.log( "Some entries of the overlap matrix between steps "
+                         f"{icn:03d} and {jcn:03d} are very similar!")
             if recursive and similar and (i > 0) and depth > 0:
                 self.log(f"Comparing {icn-1:03d} and {jcn:03d} now, "
                          f"because steps {icn:03d} and {jcn:03d} were "
@@ -291,6 +299,8 @@ class Overlapper:
         for i in range(len(geoms)-1):
             # We can be sure that i is always a valid index.
             j = i+(1+skip)
+            if self.ovlp_with == "first":
+                i = 0
             if j >= len(geoms):
                 break
             ovlp_mat = ovlp_func(geoms, i,  j)
