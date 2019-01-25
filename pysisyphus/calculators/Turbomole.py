@@ -44,7 +44,7 @@ class Turbomole(OverlapCalculator):
                    "$intsdebug sao and $scfiterlimit 0 !"
 
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
-                        "ciss_a", "ucis_a",
+                        "ciss_a", "ucis_a", "gradient",
                         "__ccre*", "exstates")
 
         self.parser_funcs = {
