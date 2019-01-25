@@ -69,7 +69,8 @@ def parse_args(args):
     )
     action_group.add_argument("--match", action="store_true",
             help="Resort the second .xyz file so the atom order matched the "
-                 "first one .xyz file. Uses the hungarian method.")
+                 "first one .xyz file. Uses the hungarian method."
+    )
 
     parser.add_argument("--idpp", action="store_true",
         help="Use Image Dependent Pair Potential instead "

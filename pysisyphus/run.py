@@ -26,6 +26,7 @@ from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
+from pysisyphus.tsoptimizers.dimer import dimer_method
 from pysisyphus._version import get_versions
 
 
@@ -132,11 +133,59 @@ def get_calc(index, base_name, calc_key, calc_kwargs):
     return CALC_DICT[calc_key](**kwargs_copy)
 
 
+def get_calc_closure(base_name, calc_key, calc_kwargs):
+    index = 0
+    def calc_getter():
+        nonlocal index
+        # Expand values that contain the $IMAGE pattern over all images.
+        # We have to use a copy of calc_kwargs to keep the $IMAGE pattern.
+        # Otherwise it would be replace at it's first occurence and would
+        # be gone in the following items.
+        kwargs_copy = copy.deepcopy(calc_kwargs)
+        for key, value in kwargs_copy.items():
+            if not isinstance(value, str) or not ("$IMAGE" in value):
+                continue
+            kwargs_copy[key] = value.replace("$IMAGE", f"{index:03d}")
+        kwargs_copy["base_name"] = base_name
+        kwargs_copy["calc_number"] = index
+        index += 1
+        return CALC_DICT[calc_key](**kwargs_copy)
+    return calc_getter
+
+
 def run_cos(cos, calc_getter, opt_getter):
     for i, image in enumerate(cos.images):
         image.set_calculator(calc_getter(i))
     opt = opt_getter(cos)
     opt.run()
+
+
+def run_cos_dimer(cos, dimer_kwargs, calc_getter):
+    print("Starting dimer method")
+    hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
+
+    ts_geom = cos.images[0].copy()
+    ts_geom.coords = hei_coords
+    ts_geom.set_calculator(calc_getter())
+    print("Splined TS guess")
+    print(ts_geom.as_xyz())
+    with open("splined_ts_guess.xyz", "w") as handle:
+        handle.write(ts_geom.as_xyz())
+
+    print(f"Interpolated HEI: {hei_coords}")
+
+    ts_geom.set_calculator(calc_getter())
+    geoms = [ts_geom, ]
+    dimer_kwargs.update({
+        "restrict_step": "max",
+        "N_init": hei_tangent,
+        "calc_getter": calc_getter,
+    })
+    dimer_cycles = dimer_method(geoms, **dimer_kwargs)
+    last_cycle = dimer_cycles[-1]
+    ts_coords = last_cycle.trans_coords[1]
+    print(f"Optimized TS coord: {ts_coords}")
+    print(ts_geom.as_xyz())
 
 
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
@@ -281,6 +330,7 @@ def get_defaults(conf_dict):
             "between": 0,
         },
         "cos": None,
+        "dimer": None,
         "calc": {
             "pal": 1,
         },
@@ -327,6 +377,16 @@ def get_defaults(conf_dict):
         dd["stocastic"] = {
             "type": "frag",
         }
+
+    if "dimer" in conf_dict:
+        dd["dimer"] = {
+            "max_step": 0.1,
+            "max_cycles": 50,
+            "trial_angle": 5,
+            "angle_thresh": 0.5,
+            "dR_base": 0.01,
+        }
+
     if "shake" in conf_dict:
         dd["shake"] = {
             "scale": 0.1,
@@ -367,7 +427,7 @@ def handle_yaml(yaml_str):
     # Update nested entries
     key_set = set(yaml_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
-                              "stocastic", "shake")):
+                              "stocastic", "dimer", "shake")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type")):
@@ -402,6 +462,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     if run_dict["stocastic"]:
         stoc_key = run_dict["stocastic"].pop("type")
         stoc_kwargs = run_dict["stocastic"]
+    if run_dict["dimer"]:
+        dimer_kwargs = run_dict["dimer"]
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -429,7 +491,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
 
     coord_type = run_dict["coord_type"]
     geoms = get_geoms(xyz, idpp, between, coord_type=coord_type)
-    if len(geoms) > 1:
+    if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
     if dryrun:
         calc = calc_getter(0)
@@ -442,6 +504,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
+        if run_dict["dimer"]:
+            dimer_calc_getter = get_calc_closure("dimer", calc_key, calc_kwargs)
+            run_cos_dimer(cos, dimer_kwargs, dimer_calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]

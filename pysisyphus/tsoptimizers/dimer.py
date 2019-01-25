@@ -62,7 +62,8 @@ def write_progress(geom0):
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
                  trial_angle=5, angle_thresh=0.5, dR_base=0.01,
-                 restrict_step="scale", ana_2dpot=False):
+                 restrict_step="scale", ana_2dpot=False,
+                 f_thresh=1e-3):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -84,6 +85,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
     """
     # Parameters
     angle_thresh_rad = np.deg2rad(angle_thresh)
+    rms_f_thresh = float(f_thresh)
+    max_f_thresh = 1.5 * rms_f_thresh
 
     header = "Cycle Curvature max(f0) rms(f0)".split()
     col_fmts = "int float float float".split()
@@ -119,6 +122,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
         dR = dR_base
 
     dimer_cycles = list()
+    coords0_list = [coords0.copy(), ]
+    N_list = [N.copy(), ]
 
     print("Using N:", N)
     def f0_mod_getter(coords, N, C):
@@ -165,9 +170,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         f0_max = np.abs(f0).max()
         row_args = [i, C, f0_max, f0_rms]
         table.print_row(row_args)
-        # Gaussian tight
-        # if C y 0 and f0_rms <= 3e-4 and f0_max <= 4.5e-4:
-        if C < 0 and f0_rms <= 1e-3 and f0_max <= 1.5e-3:
+        if C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh:
             write_progress(geom0)
             table.print("Converged!")
             break
@@ -232,8 +235,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
             N_trans /= np.linalg.norm(N_trans)
             step = max_step*N_trans
             # TODO: geom0 coords aren't updated here ...
-            # coords0_trans = coords0 + step
-            # geom0.coords = coords0_trans
+            coords0_trans = coords0 + step
+            geom0.coords = coords0_trans
         else:
             # Translation using L-BFGS as described in [4]
             coords0_trans, step, f0 = trans_lbfgs(coords0, N, C_min)
