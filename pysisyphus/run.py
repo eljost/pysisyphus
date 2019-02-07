@@ -209,6 +209,9 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
         for i, geom in enumerate(geoms):
             start = time.time()
             geom.calculator.run_calculation(geom.atoms, geom.coords)
+            if i < (len(geoms)-2) and hasattr(geom.calculator, "propagate_wavefunction"):
+                next_calculator = geoms[i+1].calculator
+                geom.calculator.propagate_wavefunction(next_calculator)
             end = time.time()
             diff = end - start
             print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
@@ -225,7 +228,8 @@ def get_overlapper(run_dict):
     calc_kwargs = run_dict["calc"]
     cwd = Path(".")
     ovlp_with = run_dict["overlaps"]["ovlp_with"]
-    overlapper = Overlapper(cwd, ovlp_with, calc_key, calc_kwargs)
+    prev_n = run_dict["overlaps"]["prev_n"]
+    overlapper = Overlapper(cwd, ovlp_with, prev_n, calc_key, calc_kwargs)
     return overlapper
 
 
@@ -280,6 +284,8 @@ def overlaps(run_dict, geoms=None):
         to_pickle = [overlapper] + geoms
         with open(pickle_path, "wb") as handle:
             cloudpickle.dump(to_pickle, handle)
+    print("DEBUG Recreating overlapper!")
+    overlapper = get_overlapper(run_dict)
 
     ovlp_dict = run_dict["overlaps"]
     ovlp_type = ovlp_dict["type"]
@@ -372,6 +378,7 @@ def get_defaults(conf_dict):
             "skip": 0,
             "regex": None,
             "ovlp_with": "previous",
+            "prev_n": 0,
         }
     elif "stocastic" in conf_dict:
         dd["stocastic"] = {
@@ -521,7 +528,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         stoc = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
         run_stocastic(stoc)
     else:
-        print("Running created inputs.")
         geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
                                  calc_kwargs, scheduler)
 
