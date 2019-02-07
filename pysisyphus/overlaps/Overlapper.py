@@ -24,20 +24,24 @@ class Overlapper:
 
     logger = logging.getLogger("overlapper")
 
-    def __init__(self, path, ovlp_with="previous",
+    def __init__(self, path, ovlp_with="previous", prev_n=0,
                  calc_key=None, calc_kwargs=None):
         self.path = Path(path)
-        assert ovlp_with in ("previous", "first")
         self.ovlp_with = ovlp_with
+        assert ovlp_with in ("previous", "first")
         self.calc_key = calc_key
         self.calc_kwargs = calc_kwargs
         self.calc_kwargs["out_dir"] = path
+
+        mobj = re.match("previous(\d+)", self.ovlp_with)
+        self.prev_n = prev_n
+        assert self.prev_n >= 0
 
         self.setter_dict = {
             "gaussian09": self.set_g16_files,
             "gaussian16": self.set_g16_files,
             "orca": self.set_orca_files,
-            "turbo": self.set_turbo_files,
+            "turbomole": self.set_turbo_files,
         }
         self.files_from_dir_dict = {
             "orca": self.set_orca_files_from_dir,
@@ -93,7 +97,7 @@ class Overlapper:
     def file_by_ext(self, iterable, ext):
         matches = [f for f in iterable if f.endswith(ext)]
         if len(matches) == 0:
-            raise Excep
+            raise Exception(f"Couldn't file with extension '{ext}'!")
         assert len(matches) == 1
         return matches[0]
 
@@ -170,6 +174,14 @@ class Overlapper:
     def set_turbo_files(self, geoms, files_dict):
         exts = ("mos", "ciss_a", "out")
         self.set_files_on_calculators(geoms, files_dict, Turbomole, exts)
+
+        for geom in geoms:
+            calc = geom.calculator
+            if hasattr(calc, "ciss_a"):
+                calc.td_vec_fn = calc.ciss_a
+            elif hasattr(calc, "ccres"):
+                calc.td_vec_fn = calc.ccres
+            calc.store_overlap_data(geom.atoms, geom.coords)
     
     def restore_calculators(self, geoms):
         files_dict = self.discover_files(self.path)
@@ -301,6 +313,8 @@ class Overlapper:
             j = i+(1+skip)
             if self.ovlp_with == "first":
                 i = 0
+            elif self.prev_n:
+                i = max(i - self.prev_n, 0)
             if j >= len(geoms):
                 break
             ovlp_mat = ovlp_func(geoms, i,  j)
