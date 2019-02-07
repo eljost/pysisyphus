@@ -91,7 +91,11 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
 
     geoms = list()
     for fn in xyz_fns:
-        if fn.endswith(".xyz"):
+        if "*" in fn:
+            cwd = Path(".")
+            geom = [geom_from_xyz_file(xyz_fn)
+                    for xyz_fn in natsorted(cwd.glob(fn))]
+        elif fn.endswith(".xyz"):
             geom = [geom_from_xyz_file(fn, coord_type=coord_type), ]
         elif fn.endswith(".trj"):
             geom = geoms_from_trj(fn, coord_type=coord_type)
