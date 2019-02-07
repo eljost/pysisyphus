@@ -379,5 +379,12 @@ class Turbomole(OverlapCalculator):
                                       stderr=subprocess.PIPE)
             result.wait()
 
+    def propagate_wavefunction(self, calc):
+        if self.mos:
+            calc.mos = self.mos
+        elif self.uhf and self.alpha and self.beta:
+            calc.alpha = self.alpha
+            calc.beta = self.beta
+
     def __str__(self):
         return "Turbomole calculator"
