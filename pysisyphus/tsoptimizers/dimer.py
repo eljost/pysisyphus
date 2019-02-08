@@ -107,6 +107,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
     # geom1 and geom2 from it.
     else:
         geom0 = geoms[0]
+        coords0 = geom0.coords
         # Assign random unit vector and use dR_base to for dR
         coord_size = geom0.coords.size
         N = N_init
