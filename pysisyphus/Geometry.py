@@ -2,6 +2,7 @@ from collections import Counter
 import logging
 
 import numpy as np
+import rmsd
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
@@ -489,6 +490,31 @@ class Geometry:
         """
         coords = self._coords * BOHR2ANG
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), self.comment)
+
+    def get_subgeom(self, indices, coord_type="cart"):
+        """Return a Geometry containing a subset of the current Geometry.
+
+        Parameters
+        ----------
+        indices : iterable of ints
+            Atomic indices that the define the subset of the current Geometry.
+        coord_type : str, ("cart", "redund"), optional
+            Coordinate system of the new Geometry.
+
+        Returns
+        -------
+        sub_geom : Geometry
+            Subset of the current Geometry.
+        """
+        ind_list = list(indices)
+        sub_atoms = [self.atoms[i] for i in ind_list]
+        sub_coords = self.coords3d[ind_list]
+        sub_geom = Geometry(sub_atoms, sub_coords.flatten(), coord_type=coord_type)
+        return sub_geom
+
+    def rmsd(self, geom):
+        return rmsd.kabsch_rmsd(self.coords3d-self.centroid,
+                                geom.coords3d-geom.centroid)
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"
