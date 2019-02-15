@@ -264,3 +264,13 @@ def shake_coords(coords, scale=0.1, seed=None):
         np.random.seed(seed)
     offset = np.random.normal(scale=scale, size=coords.size)
     return coords + offset
+
+
+def highlight_text(text, width=80):
+    full_length = len(text) + 4
+    pad_len = width - full_length
+    pad_len = (pad_len - (pad_len % 2)) // 2
+    pad = " " * pad_len
+    full_row = "#" * full_length
+    highlight = f"""{pad}{full_row}\n{pad}# {text.upper()} #\n{pad}{full_row}"""
+    return highlight
