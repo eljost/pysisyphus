@@ -6,6 +6,9 @@ import pathlib
 
 import numpy as np
 
+from pysisyphus.xyzloader import make_trj_str
+from pysisyphus.constants import BOHR2ANG
+
 # https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
 # https://chemistry.stackexchange.com/questions/74639
 
@@ -13,25 +16,29 @@ import numpy as np
 class IRC:
 
     def __init__(self, geometry, step_length=0.1, max_steps=10,
-                 forward=False, backward=False, energy_lowering=2.5e-4,
-                 mass_weight=True):
+                 forward=True, backward=True, energy_lowering=2.5e-4):
         assert(step_length > 0), "step_length must be positive"
         assert(max_steps > 0), "max_steps must be positive"
         assert(energy_lowering > 0), "energy_lowering must be positive"
 
+        self.logger = logging.getLogger("irc")
+
         self.geometry = geometry
+        # Non-mass-weighted, in bohr
         self.step_length = step_length
+        self.mw_step_length = self.step_length
+
         self.max_steps = max_steps
-        self.forward = not backward
-        self.backward = not forward
+        self.forward = forward
+        self.backward = backward
         self.energy_lowering = energy_lowering
-        self.mass_weight = mass_weight
 
         self.all_coords = list()
         self.all_energies = list()
 
         # Backup TS data
-        self.ts_coords = copy.copy(self.geometry.coords)
+        self.ts_coords = self.coords.copy()
+        self.ts_mw_coords = self.mw_coords.copy()
         self.ts_energy = copy.copy(self.geometry.energy)
         self.ts_hessian = copy.copy(self.geometry.hessian)
 
@@ -39,18 +46,19 @@ class IRC:
 
     @property
     def coords(self):
-        if self.mass_weight:
-            print("get mw coords")
-            return self.geometry.mw_coords
-        return copy.copy(self.geometry.coords)
+        return self.geometry.coords
 
     @coords.setter
     def coords(self, coords):
-        if self.mass_weight:
-            print("set mw coords")
-            self.geometry.mw_coords = coords
-        else:
-            self.geometry.coords = coords
+        self.geometry.coords = coords
+
+    @property
+    def mw_coords(self):
+        return self.geometry.mw_coords
+
+    @mw_coords.setter
+    def mw_coords(self, mw_coords):
+        self.geometry.mw_coords = mw_coords
 
     @property
     def energy(self):
@@ -58,10 +66,17 @@ class IRC:
 
     @property
     def gradient(self):
-        if self.mass_weight:
-            print("get mw gradient")
-            return self.geometry.mw_gradient
         return self.geometry.gradient
+
+    @property
+    def mw_gradient(self):
+        return self.geometry.mw_gradient
+
+    def log(self, msg):
+        self.logger.debug(f"step {self.cur_step}, {msg}")
+
+    # def un_massweight(self, vec):
+        # return vec * np.sqrt(self.geometry.masses_rep)
 
     def prepare(self, direction):
         self.cur_step = 0
@@ -75,24 +90,24 @@ class IRC:
         # Do inital displacement from the TS
         init_factor = 1 if (direction == "forward") else -1
         initial_step = init_factor*self.init_displ
-        self.geometry.coords = self.ts_coords + initial_step
+        self.coords = self.ts_coords + initial_step
         initial_step_length = np.linalg.norm(initial_step)
-        logging.info(f"Did inital step of {initial_step_length:.4f} "
-                      "from the TS.")
-        self.irc_coords = [self.ts_coords]
+        self.logger.info(f"Did inital step of {initial_step_length:.4f} "
+                          "from the TS.")
+        self.irc_coords = [self.ts_mw_coords]
         self.irc_energies = [self.ts_energy]
 
     def initial_displacement(self):
-        """Returns a step length in angstrom to perfom an inital displacement
-        from the TS."""
+        """Returns a non-mass-weighted step in angstrom for an initial
+        displacement from the TS along the transition vector."""
         mm_sqr_inv = self.geometry.mm_sqrt_inv
         eigvals, eigvecs = np.linalg.eig(self.geometry.mw_hessian)
 
         # Find smallest eigenvalue to get the imaginary mode
-        logging.warning("Only considering smallest eigenvalue for now!")
+        self.logger.warning("Only considering smallest eigenvalue for now!")
         eigval_min = np.min(eigvals)
         img_index = np.where(eigvals == eigval_min)[0][0]
-        logging.info(f"Smallest eigenvalue: {eigval_min}, index {img_index}")
+        self.logger.info(f"Smallest eigenvalue: {eigval_min}, index {img_index}")
         """
         # Zero small eigenvalues
         eigvals = np.abs(eigvals)
@@ -136,7 +151,7 @@ class IRC:
         return step_length*self.transition_vector
 
     def irc(self, direction):
-        logging.info(f"IRC {direction}")
+        self.logger.info(f"IRC {direction}")
         self.prepare(direction)
         while True:
             if self.cur_step == self.max_steps:
@@ -144,7 +159,7 @@ class IRC:
                 print()
                 break
 
-            print(f"IRC step {self.cur_step+1} out of {self.max_steps}")
+            print(f"IRC step {self.cur_step} out of {self.max_steps}")
             # Do macroiteration/IRC step
             self.step()
             last_energy = self.irc_energies[-2]
@@ -153,7 +168,7 @@ class IRC:
                 print("Energy increased!")
                 print()
                 break
-            elif abs(last_energy - this_energy) <= 1e-5:
+            elif abs(last_energy - this_energy) <= 1e-6:
                 print("Energy converged!")
                 print()
                 break
@@ -169,6 +184,7 @@ class IRC:
 
     def run(self):
         if self.forward:
+            print("Forward")
             self.irc("forward")
             self.forward_coords = self.irc_coords
             self.forward_energies = self.irc_energies
@@ -177,10 +193,11 @@ class IRC:
             self.forward_step = self.cur_step
 
         # Add TS data
-        self.all_coords.append(self.ts_coords)
+        self.all_coords.append(self.ts_mw_coords)
         self.all_energies.append(self.ts_energy)
 
         if self.backward:
+            print("Backward")
             self.irc("backward")
             self.backward_coords = self.irc_coords
             self.backward_energies = self.irc_energies
@@ -191,23 +208,33 @@ class IRC:
         self.all_coords = np.array(self.all_coords)
         self.all_energies = np.array(self.all_energies)
         self.postprocess()
+        self.write_trj(".", "finished")
 
     def postprocess(self):
         pass
 
     def write_trj(self, path, prefix):
         path = pathlib.Path(path)
-        xyz_strings = list()
-        for coords, energy in zip(self.all_coords, self.all_energies):
-            self.geometry.coords = coords
-            # Use energy as comment
-            as_xyz = self.geometry.as_xyz(energy)
-            xyz_strings.append(as_xyz)
-
-        xyzs_joined = "\n".join(xyz_strings)
+        # all_atoms = self.geometry.atoms * len(self.all_coords)
+        atoms = self.geometry.atoms
+        # mw_coords = self.all_coords.reshape(-1, len(atoms), 3)
+        coords = self.all_coords / self.geometry.masses_rep**0.5
+        coords = coords.reshape(-1, len(atoms), 3) * BOHR2ANG
+        # all_coords = self.all_coords.flatten()
+        trj_string = make_trj_str(atoms, coords)#self.all_coords.reshape(-1, len(atoms), 3))
         trj_fn = f"{prefix}_irc.trj"
-        energies_fn = f"{prefix}_irc.energies"
         with open(path / trj_fn, "w") as handle:
-            handle.write(xyzs_joined)
+            handle.write(trj_string)
+        # xyz_strings = list()
+        # for coords, energy in zip(self.all_coords, self.all_energies):
+            # self.geometry.coords = coords
+            # Use energy as comment
+            # as_xyz = self.geometry.as_xyz(energy)
+            # xyz_strings.append(as_xyz)
 
-        np.savetxt(path / energies_fn, self.all_energies)
+        # xyzs_joined = "\n".join(xyz_strings)
+        # energies_fn = f"{prefix}_irc.energies"
+        # with open(path / trj_fn, "w") as handle:
+            # handle.write(xyzs_joined)
+
+        # np.savetxt(path / energies_fn, self.all_energies)

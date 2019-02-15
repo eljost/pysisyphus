@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import copy
-import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -114,7 +113,7 @@ class GonzalesSchlegel(IRC):
         print(self.micro_formatter.header)
         while True:
             if i == self.max_micro_steps:
-                logging.warning("Max micro cycles exceeded!")
+                self.logger.warning("Max micro cycles exceeded!")
                 break
             dx, tangent = self.micro_step()
             these_micro_coords.append(self.geometry.coords)

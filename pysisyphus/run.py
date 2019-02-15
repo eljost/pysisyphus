@@ -64,7 +64,7 @@ IRC_DICT = {
     "dvv": DampedVelocityVerlet.DampedVelocityVerlet,
     "euler": Euler.Euler,
     "gs": GonzalesSchlegel.GonzalesSchlegel,
-    #"imk": IMKMod.IMKMod,
+    "imk": IMKMod.IMKMod,
 }
 
 STOCASTIC_DICT = {
@@ -317,6 +317,13 @@ def run_stocastic(stoc):#geom, calc_kwargs):
     # Fragment
     stoc.run()
 
+
+def run_irc(geom, irc_kwargs):
+    irc_type = irc_kwargs.pop("type")
+    irc = IRC_DICT[irc_type](geom, **irc_kwargs)
+    irc.run()
+
+
 """
 def run_irc(args):
     assert(len(arg.xyz) == 1)
@@ -347,6 +354,7 @@ def get_defaults(conf_dict):
         "xyz": None,
         "coord_type": "cart",
         "shake": None,
+        "irc": None,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -400,6 +408,11 @@ def get_defaults(conf_dict):
             "seed": None,
         }
 
+    if "irc" in conf_dict:
+        dd["irc"] = {
+            "type": "euler",
+        }
+
     return dd
 
 
@@ -434,7 +447,7 @@ def handle_yaml(yaml_str):
     # Update nested entries
     key_set = set(yaml_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
-                              "stocastic", "dimer", "shake")):
+                              "stocastic", "dimer", "shake", "irc")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type")):
@@ -471,6 +484,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         stoc_kwargs = run_dict["stocastic"]
     if run_dict["dimer"]:
         dimer_kwargs = run_dict["dimer"]
+    if run_dict["irc"]:
+        irc_kwargs = run_dict["irc"]
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -527,6 +542,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         stoc_kwargs["calc_kwargs"] = calc_kwargs
         stoc = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
         run_stocastic(stoc)
+    elif run_dict["irc"]:
+        assert len(geoms) == 1
+        geom = geoms[0]
+        geom.set_calculator(calc_getter(0))
+        run_irc(geom, irc_kwargs)
     else:
         geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
                                  calc_kwargs, scheduler)
