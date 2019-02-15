@@ -38,6 +38,7 @@ class XTB(Calculator):
             "grad": self.parse_gradient,
             "hess": self.parse_hessian,
             "opt": self.parse_opt,
+            "noparse": lambda path: None,
         }
 
         self.base_cmd = self.get_cmd("cmd")
@@ -93,6 +94,15 @@ class XTB(Calculator):
             "calc": "hess",
             "add_args": add_args,
             "env": self.get_pal_env(),
+        }
+        results = self.run(inp, **kwargs)
+        return results
+
+    def run_calculation(self, atoms, coords):
+        inp = self.prepare_coords(atoms, coords)
+        kwargs = {
+                "calc": "noparse",
+                "env": self.get_pal_env(),
         }
         results = self.run(inp, **kwargs)
         return results
