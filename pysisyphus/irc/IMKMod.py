@@ -54,7 +54,7 @@ class IMKMod(IRC):
             mw_coords_1_corr = mw_coords_0 + corr_step
             self.mw_coords = mw_coords_1_corr
             energy_1_corr = self.energy
-            x_corr = (0, 0.5, 1)
+            x_corr = np.array((0, 0.5, 1)) * self.step_length
             y_corr = (energy_0, energy_1_corr, energy_1)
             min_ = self.fit_parabola(x_corr, y_corr)
             step_corr = min_ * -grad_0 / grad_0_norm
@@ -84,18 +84,14 @@ class IMKMod(IRC):
         self.mw_coords = mw_coords_3
         energy_3 = self.energy
         # x = (0, 1, factor)
-        x = (0, self.line_step_size, factor*self.line_step_size)
+        x = np.array((0, 1, factor)) * self.line_step_size
         y = (energy_1, energy_2, energy_3)
         min_ = self.fit_parabola(x, y)
         step_corr = min_ * D
         mw_coords_4 = mw_coords_1 + step_corr
         self.mw_coords = mw_coords_4
-
-        self.irc_coords.append(self.mw_coords)
-        # self.irc_grads.append(self.gradient)
-        self.irc_energies.append(self.energy)
-
         return
+
         # Project g1 along D
         grad_1_proj = grad_1.dot(D)
         """Fit parabel with 2 energies and 1 projected gradient.
@@ -133,73 +129,3 @@ class IMKMod(IRC):
             real_minimum = 0
 
         self.mw_coords = mw_coords_1 + (real_minimum*D)
-
-
-def run():
-    from pysisyphus.calculators.MullerBrownPot import MullerBrownPot
-    from pysisyphus.calculators.AnaPot import AnaPot
-    atoms = ("H", )
-
-    # True TS
-    # calc, ts_coords = (MullerBrownPot(), np.array((-0.825, 0.624, 0.)))
-    #calc, ts_coords = (MullerBrownPot(), np.array((-0.845041, 0.663752, 0.)))
-    # xlim = (-1.75, 1.25)
-    # ylim = (-0.5, 2.25)
-    # levels=(-150, -15, 40)
-
-    xlim = (-2, 2.5)
-    ylim = (0, 5)
-    levels = (-3, 4, 80)
-    calc, ts_coords = (AnaPot(), np.array((0.61173, 1.49297, 0.)))
-
-    geometry = Geometry(atoms, ts_coords)
-    geometry.set_calculator(calc)
-
-    # Muller-Brown
-    #aic = imk_mod(geometry, desired_step=0.15, line_step_size=0.05)
-    # aic = imk_mod(geometry, desired_step=0.3)
-    # AnaPot
-    aic = IMKMod(geometry, step_length=0.2, max_steps=50)#, backward=False)
-    from pysisyphus.irc.Euler import Euler
-    # aic = Euler(geometry, step_length=0.2, max_steps=75)
-    aic.run()
-    
-    fig, ax = plt.subplots(figsize=(8,8))
-
-    # Calculate the potential
-    x = np.linspace(*xlim, 100)
-    y = np.linspace(*ylim, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = np.full_like(X, 0)
-    fake_atoms = ("H", )
-    pot_coords = np.stack((X, Y, Z))
-    pot = calc.get_energy(fake_atoms, pot_coords)["energy"]
-    levels = np.linspace(*levels)
-    contours = ax.contour(X, Y, pot, levels)
-
-    ax.scatter(*ts_coords[:2], s=75, c="k")
-    ax.scatter(-1.05274, 1.02776, s=75, c="k")
-    ax.scatter(1.94101, 3.85427, s=75, c="k")
-
-    def label_steps(ax, xs, ys):
-        for i, (x, y) in enumerate(zip(xs, ys)):
-            ax.annotate(f"{i}", (x, y))
-
-    try:
-        fw_coords = np.array(aic.forward_coords)
-        ax.plot(fw_coords[:, 0], fw_coords[:, 1], "ro", ls="-", label="forward")
-        label_steps(ax, fw_coords[:,0][::-1], fw_coords[:,1][::-1])
-    except AttributeError:
-        pass
-    try:
-        bw_coords = np.array(aic.backward_coords)
-        ax.plot(bw_coords[:, 0], bw_coords[:, 1], "bo", ls="-", label="backward")
-        label_steps(ax, bw_coords[:,0], bw_coords[:,1])
-    except AttributeError:
-        pass
-    ax.legend()
-    plt.show()
-
-
-if __name__ == "__main__":
-    run()

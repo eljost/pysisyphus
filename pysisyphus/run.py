@@ -61,7 +61,7 @@ OPT_DICT = {
 }
 
 IRC_DICT = {
-    "dvv": DampedVelocityVerlet.DampedVelocityVerlet,
+    # "dvv": DampedVelocityVerlet.DampedVelocityVerlet,
     "euler": Euler.Euler,
     "gs": GonzalesSchlegel.GonzalesSchlegel,
     "imk": IMKMod.IMKMod,

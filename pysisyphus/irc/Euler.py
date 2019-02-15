@@ -17,14 +17,13 @@ class Euler(IRC):
     def step(self):
         grad = self.mw_gradient
         grad_norm = np.linalg.norm(grad)
+        energy = self.energy
+
         # Step downhill, against the gradient
         step_direction = -grad / grad_norm
-        energy = self.energy
-        self.irc_coords.append(self.mw_coords)
-        self.irc_energies.append(energy)
-        energy_diff = self.irc_energies[0] - energy
-
-        print(self.step_formatter.header)
-        print(self.step_formatter.line(energy, energy_diff, grad_norm))
-
         self.mw_coords += self.step_length*step_direction
+        # energy_diff = self.irc_energies[0] - energy
+
+        # print(self.step_formatter.header)
+        # print(self.step_formatter.line(energy, energy_diff, grad_norm))
+

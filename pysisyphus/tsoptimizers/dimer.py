@@ -249,7 +249,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
         # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
-        rot_coords = np.array((coords1_rot, coords0, coords2_rot))
+        try:
+            rot_coords = np.array((coords1_rot, coords0, coords2_rot))
+        except:
+            rot_coords = np.array((coords1, coords0, coords2))
         trans_coords = np.array((coords1_trans, coords0_trans, coords2_trans))
         dc = DimerCycle(org_coords, rot_coords, trans_coords, f0, f0_mod)
         dimer_cycles.append(dc)
