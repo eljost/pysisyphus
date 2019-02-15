@@ -32,10 +32,11 @@ class XTB(Calculator):
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out", "grad", "xtbopt.xyz")
+        self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz")
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
+            "hess": self.parse_hessian,
             "opt": self.parse_opt,
         }
 
@@ -84,6 +85,18 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
+    def get_hessian(self, atoms, coords):
+        inp = self.prepare_coords(atoms, coords)
+        add_args = self.prepare_add_args() + ["--hess"]
+        self.log(f"Executing {self.base_cmd} {add_args}")
+        kwargs = {
+            "calc": "hess",
+            "add_args": add_args,
+            "env": self.get_pal_env(),
+        }
+        results = self.run(inp, **kwargs)
+        return results
+
     def run_opt(self, atoms, coords, keep=True):
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--opt", "tight"]
@@ -116,12 +129,25 @@ class XTB(Calculator):
     def parse_gradient(self, path):
         return parse_turbo_gradient(path)
 
+    def parse_hessian(self, path):
+        with open(path / "hessian") as handle:
+            text = handle.read()
+        hessian = np.array(text.split()[1:], dtype=float)
+        coord_num = int(hessian.size**0.5)
+        hessian = hessian.reshape(coord_num, coord_num)
+        energy = self.parse_energy(path)
+        results = {
+            "energy": energy,
+            "hessian": hessian,
+        }
+        return results
+
     def __str__(self):
         return "XTB calculator"
 
 
 if __name__ == "__main__":
     from pathlib import Path
-    path = Path("/scratch/programme/pysisyphus/tests_staging/neb/test")
+    path = Path("/scratch/projekte/phosphor_fprakt/07_09_neb/02_irc/tmpo")
     xtb = XTB()
-    xtb.parse_gradient(path)
+    xtb.parse_hessian(path)
