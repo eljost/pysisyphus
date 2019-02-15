@@ -21,6 +21,9 @@ def match_geom_atoms(ref_geom, geom_to_match, hydrogen=True):
         [2] 10.1021/acs.jcim.6b00516
     """
 
+    assert len(ref_geom.atoms) == len(geom_to_match.atoms), \
+        "Atom numbers don't match!"
+
     ref_coords, _ = ref_geom.coords_by_type
     coords_to_match, inds_to_match = geom_to_match.coords_by_type
     atoms = ref_coords.keys()

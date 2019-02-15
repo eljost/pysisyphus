@@ -46,9 +46,10 @@ class RedundantCoords:
 
     RAD_175 = 3.05432619
 
-    def __init__(self, atoms, cart_coords):
+    def __init__(self, atoms, cart_coords, bond_factor=1.3):
         self.atoms = atoms
         self.cart_coords = cart_coords
+        self.bond_factor = bond_factor
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -222,11 +223,12 @@ class RedundantCoords:
                     self.log("Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
-    def set_bond_indices(self, factor=1.3):
+    def set_bond_indices(self, factor=None):
         """
         Default factor of 1.3 taken from [1] A.1.
         Gaussian uses somewhat less, like 1.2, or different radii than we do.
         """
+        bond_factor = factor if factor else self.bond_factor
         coords3d = self.cart_coords.reshape(-1, 3)
         # Condensed distance matrix
         cdm = pdist(coords3d)
@@ -235,7 +237,7 @@ class RedundantCoords:
         atom_indices = list(it.combinations(range(len(coords3d)),2))
         atom_indices = np.array(atom_indices, dtype=int)
         cov_rad_sums = get_cov_radii_sum_array(self.atoms, self.cart_coords)
-        cov_rad_sums *= factor
+        cov_rad_sums *= bond_factor
         bond_flags = cdm <= cov_rad_sums
         bond_indices = atom_indices[bond_flags]
 

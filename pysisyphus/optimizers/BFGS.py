@@ -68,12 +68,12 @@ class BFGS(BacktrackingOptimizer):
 
         # Hessian rotation seems faulty right now ...
         #if self.is_cos and self.align:
-        #    (last_coords, last_forces, steps), self.inv_hessian = fit_rigid(
+        #    (last_coords, last_forces, steps), _, self.inv_hessian = fit_rigid(
         #                                                    self.geometry,
         #                                                    (last_coords,
         #                                                     last_forces,
         #                                                     steps),
-        #                                                     self.inv_hessian)
+        #                                                    hessian=self.inv_hessian)
 
         new_forces = self.geometry.forces
         new_energy = self.geometry.energy

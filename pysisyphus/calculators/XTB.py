@@ -8,6 +8,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.helpers import geom_from_xyz_file
@@ -18,24 +19,26 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn="gfn2", **kwargs):
+    def __init__(self, gbsa="", gfn=2, **kwargs):
         super(XTB, self).__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
 
-        valid_gfns = ("gfn1", "gfn2", "gfn2d3")
+        valid_gfns = (1, 2)
         assert self.gfn in valid_gfns, "Invalid gfn argument. " \
             f"Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out", "grad", "xtbopt.xyz")
+        self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz")
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
+            "hess": self.parse_hessian,
             "opt": self.parse_opt,
+            "noparse": lambda path: None,
         }
 
         self.base_cmd = self.get_cmd("cmd")
@@ -51,10 +54,10 @@ class XTB(Calculator):
         return None
 
     def prepare_add_args(self):
-        add_args = f"-{self.gfn} -chrg {self.charge} -uhf {self.uhf}".split()
+        add_args = f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf}".split()
         # Use solvent model if specified
         if self.gbsa:
-            gbsa = f"-gbsa {self.gbsa}".split()
+            gbsa = f"--gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
         return add_args
 
@@ -73,7 +76,7 @@ class XTB(Calculator):
 
     def get_forces(self, atoms, coords):
         inp = self.prepare_coords(atoms, coords)
-        add_args = self.prepare_add_args() + ["-grad"]
+        add_args = self.prepare_add_args() + ["--grad"]
         self.log(f"Executing {self.base_cmd} {add_args}")
         kwargs = {
             "calc": "grad",
@@ -83,9 +86,30 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
+    def get_hessian(self, atoms, coords):
+        inp = self.prepare_coords(atoms, coords)
+        add_args = self.prepare_add_args() + ["--hess"]
+        self.log(f"Executing {self.base_cmd} {add_args}")
+        kwargs = {
+            "calc": "hess",
+            "add_args": add_args,
+            "env": self.get_pal_env(),
+        }
+        results = self.run(inp, **kwargs)
+        return results
+
+    def run_calculation(self, atoms, coords):
+        inp = self.prepare_coords(atoms, coords)
+        kwargs = {
+                "calc": "noparse",
+                "env": self.get_pal_env(),
+        }
+        results = self.run(inp, **kwargs)
+        return results
+
     def run_opt(self, atoms, coords, keep=True):
         inp = self.prepare_coords(atoms, coords)
-        add_args = self.prepare_add_args() + ["-opt", "tight"]
+        add_args = self.prepare_add_args() + ["--opt", "tight"]
         self.log(f"Executing {self.base_cmd} {add_args}")
         kwargs = {
             "calc": "opt",
@@ -113,13 +137,19 @@ class XTB(Calculator):
         return energy
 
     def parse_gradient(self, path):
-        results = dict()
-        with open(path / "grad") as handle:
-            grad = [line.split()[1] for line in handle]
-        gradient = np.array(grad, dtype=float)
-        results["forces"] = -gradient
+        return parse_turbo_gradient(path)
 
-        results["energy"] = self.parse_energy(path)
+    def parse_hessian(self, path):
+        with open(path / "hessian") as handle:
+            text = handle.read()
+        hessian = np.array(text.split()[1:], dtype=float)
+        coord_num = int(hessian.size**0.5)
+        hessian = hessian.reshape(coord_num, coord_num)
+        energy = self.parse_energy(path)
+        results = {
+            "energy": energy,
+            "hessian": hessian,
+        }
         return results
 
     def __str__(self):
@@ -128,6 +158,6 @@ class XTB(Calculator):
 
 if __name__ == "__main__":
     from pathlib import Path
-    path = Path("/scratch/programme/pysisyphus/tests_staging/neb/test")
+    path = Path("/scratch/projekte/phosphor_fprakt/07_09_neb/02_irc/tmpo")
     xtb = XTB()
-    xtb.parse_gradient(path)
+    xtb.parse_hessian(path)

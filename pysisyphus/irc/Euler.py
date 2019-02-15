@@ -11,18 +11,19 @@ class Euler(IRC):
         super(Euler, self).__init__(geometry, step_length, **kwargs)
 
         step_header = "E/au ΔE(TS)/au |gradient|".split()
-        step_fmts = [".4f", ".4f", ".4f"]
+        step_fmts = [".6f", ".6f", ".4f"]
         self.step_formatter = TableFormatter(step_header, step_fmts, 10)
 
     def step(self):
-        gradient = self.gradient
-        gradient_norm = np.linalg.norm(gradient)
+        grad = self.mw_gradient
+        grad_norm = np.linalg.norm(grad)
         energy = self.energy
-        self.irc_coords.append(self.geometry.coords)
-        self.irc_energies.append(energy)
-        energy_diff = self.irc_energies[0] - energy
 
-        print(self.step_formatter.header)
-        print(self.step_formatter.line(energy, energy_diff, gradient_norm))
+        # Step downhill, against the gradient
+        step_direction = -grad / grad_norm
+        self.mw_coords += self.step_length*step_direction
+        # energy_diff = self.irc_energies[0] - energy
 
-        self.coords -= self.step_length*gradient/gradient_norm
+        # print(self.step_formatter.header)
+        # print(self.step_formatter.line(energy, energy_diff, grad_norm))
+

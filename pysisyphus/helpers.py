@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 import re
@@ -108,17 +109,22 @@ def procrustes(geometry):
     return rot_mats
 
 
-def fit_rigid(geometry, vectors=(), hessian=None):
+def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
+    rotated_vector_lists = list()
+    rotated_hessian = None
+
     rot_mats = procrustes(geometry)
     G = sp.linalg.block_diag(*rot_mats)
     rotated_vectors = [vec.dot(G) for vec in vectors]
-    if hessian is None:
-        return rotated_vectors
+    for vl in vector_lists:
+        rvl = [vec.dot(G) for vec in vl]
+        rotated_vector_lists.append(rvl)
 
-    #rotated_hessian = G.dot(hessian).dot(G.T)
-    rotated_hessian = G.T.dot(hessian).dot(G)
-    #rotated_hessian = G*hessian*G.T
-    return rotated_vectors, rotated_hessian
+    if hessian:
+        #rotated_hessian = G.dot(hessian).dot(G.T)
+        rotated_hessian = G.T.dot(hessian).dot(G)
+        #rotated_hessian = G*hessian*G.T
+    return rotated_vectors, rotated_vector_lists, rotated_hessian
 
 
 def chunks(l, n):
@@ -142,6 +148,12 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         [1] 10.1021/ci400534h
         [2] 10.1021/acs.jcim.6b00516
     """
+
+    logging.warning("helpers.match_geoms is deprecated!"
+                    "Use stocastic.align.match_geom_atoms instead!")
+
+    assert len(ref_geom.atoms) == len(geom_to_match.atoms), \
+        "Atom numbers don't match!"
 
     ref_coords, _ = ref_geom.coords_by_type
     coords_to_match, inds_to_match = geom_to_match.coords_by_type
@@ -228,6 +240,37 @@ def confirm_input(message):
     return inp == "yes"
 
 
-if __name__ == "__main__":
-    print(load_geometry("hcn.xyz"))
-    print(geoms_from_trj("cycle_040.trj"))
+def get_geom_getter(ref_geom, calc_setter):
+    def geom_from_coords(coords):
+        new_geom = ref_geom.copy()
+        new_geom.coords = coords
+        new_geom.set_calculator(calc_setter())
+        return new_geom
+    return geom_from_coords
+
+
+def get_coords_diffs(coords):
+    cds = [0, ]
+    for i in range(len(coords)-1):
+        diff = np.linalg.norm(coords[i+1]-coords[i])
+        cds.append(diff)
+    cds = np.cumsum(cds)
+    cds /= cds.max()
+    return cds
+
+
+def shake_coords(coords, scale=0.1, seed=None):
+    if seed:
+        np.random.seed(seed)
+    offset = np.random.normal(scale=scale, size=coords.size)
+    return coords + offset
+
+
+def highlight_text(text, width=80):
+    full_length = len(text) + 4
+    pad_len = width - full_length
+    pad_len = (pad_len - (pad_len % 2)) // 2
+    pad = " " * pad_len
+    full_row = "#" * full_length
+    highlight = f"""{pad}{full_row}\n{pad}# {text.upper()} #\n{pad}{full_row}"""
+    return highlight

@@ -64,7 +64,7 @@ class BacktrackingOptimizer(Optimizer):
         # Check which alpha produces steps below the maximum size.
         below_max_step = np.argmax(max_steps < self.max_step)
         new_alpha = scaled_alphas[below_max_step]
-        print(f"first improvement is expected for {new_alpha:.06f}")
+        print(f"First improvement is expected for {new_alpha:.06f}")
         self.alpha = new_alpha
         print(f"got alpha {alpha}, will use new alpha {new_alpha}")
 
@@ -98,7 +98,7 @@ class BacktrackingOptimizer(Optimizer):
         # and hence smaller than epsilon, which is a positive number.
 
         # We went uphill, slow alpha
-        self.log(f"backtracking: rms_diff = {rms_diff:.03f}")
+        self.log(f"Backtracking: rms_diff = {rms_diff:.03f}")
         if rms_diff > epsilon:
             self.log(f"Scaling alpha with {self.scale_factor:.03f}")
             # self.alpha = max(self.alpha0*.5, self.alpha*self.scale_factor)
@@ -115,16 +115,16 @@ class BacktrackingOptimizer(Optimizer):
                     # Reset alpha
                     self.alpha = self.alpha0
                     skip = True
-                    self.log(f"reset alpha to alpha0 = {self.alpha0}")
+                    self.log(f"Reset alpha to alpha0 = {self.alpha0:.4f}")
                 else:
                     # Accelerate alpha
                     self.alpha /= self.scale_factor
-                    self.log("scaled alpha")
+                    self.log(f"Scaled alpha to {self.alpha:.4f}")
 
         # Avoid huge alphas
         if self.alpha > self.alpha_max:
             self.alpha = self.alpha_max
-            self.log("didn't accelerate as alpha would become too large. "
+            self.log("Didn't accelerate as alpha would become too large. "
                      f"keeping it at {self.alpha}.")
 
         # Don't skip if we already skipped the previous iterations to
@@ -136,8 +136,8 @@ class BacktrackingOptimizer(Optimizer):
             skip = False
             if self.alpha > self.alpha0:
                 self.alpha = self.alpha0
-                self.log("resetted alpha to alpha0.")
+                self.log("Resetted alpha to alpha0.")
         self.skip_log.append(skip)
-        self.log(f"alpha = {self.alpha}, skip = {skip}")
+        self.log(f"alpha = {self.alpha:.4f}, skip = {skip}")
 
         return skip

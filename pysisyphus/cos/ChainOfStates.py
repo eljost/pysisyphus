@@ -5,9 +5,11 @@ from multiprocessing import Pool
 
 from distributed import Client
 import numpy as np
+from scipy.interpolate import interp1d, splprep, splev
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import get_coords_diffs
 from pysisyphus.xyzloader import make_trj_str
 
 # [1] http://dx.doi.org/10.1063/1.1323224
@@ -193,8 +195,7 @@ class ChainOfStates:
 
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
-        return forces - (np.dot(forces, tangent)*tangent)
-
+        return forces - forces.dot(tangent)*tangent
 
     @property
     def masses_rep(self):
@@ -405,3 +406,30 @@ class ChainOfStates:
             forces[i] = climb_forces
             self.log(f"Climbing with image {i}, E = {climb_en:.6f} au")
         return forces
+
+    def get_splined_hei(self):
+        # Interpolate energies
+        coord_diffs = get_coords_diffs([image.coords for image in self.images])
+        energies_spline = interp1d(coord_diffs, self.energy, kind="cubic")
+        x_fine = np.linspace(0, 1, 500)
+        energies_fine = energies_spline(x_fine)
+        # Determine index that yields the highest energy
+        hei_ind = energies_fine.argmax()
+        hei_x = x_fine[hei_ind]
+        hei_energy = energies_fine[hei_ind]
+
+        reshaped = self.coords.reshape(-1, self.coords_length)
+        # To use splprep we have to transpose the coords.
+        transp_coords = reshaped.transpose()
+        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3)
+                         for i in range(0, len(transp_coords), 9)]
+        )
+
+        # Reparametrize mesh
+        hei_coords = np.vstack([splev([hei_x, ], tck) for tck in tcks])
+        hei_coords = hei_coords.flatten()
+
+        hei_tangent = np.vstack([splev([hei_x, ], tck, der=1) for tck in tcks]).T
+        hei_tangent = hei_tangent.flatten()
+        hei_tangent /= np.linalg.norm(hei_tangent)
+        return hei_coords, hei_energy, hei_tangent

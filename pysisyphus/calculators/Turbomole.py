@@ -22,6 +22,8 @@ from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 class Turbomole(OverlapCalculator):
 
+    conf_key = "turbomole"
+
     def __init__(self, control_path, root=None,
                  double_mol_path=None, **kwargs):
         super(Turbomole, self).__init__(**kwargs)
@@ -42,7 +44,7 @@ class Turbomole(OverlapCalculator):
                    "$intsdebug sao and $scfiterlimit 0 !"
 
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
-                        "ciss_a", "ucis_a",
+                        "ciss_a", "ucis_a", "gradient",
                         "__ccre*", "exstates")
 
         self.parser_funcs = {
@@ -376,6 +378,13 @@ class Turbomole(OverlapCalculator):
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
             result.wait()
+
+    def propagate_wavefunction(self, calc):
+        if self.mos:
+            calc.mos = self.mos
+        elif self.uhf and self.alpha and self.beta:
+            calc.alpha = self.alpha
+            calc.beta = self.beta
 
     def __str__(self):
         return "Turbomole calculator"

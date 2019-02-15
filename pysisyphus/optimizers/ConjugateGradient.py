@@ -38,8 +38,11 @@ class ConjugateGradient(BacktrackingOptimizer):
             beta = cur_forces.dot(cur_forces) / prev_forces.dot(prev_forces)
         # Polak-Ribiere
         elif self.formula == "PR":
-            beta = (cur_forces.dot(cur_forces-prev_forces)
+            beta = (-cur_forces.dot(prev_forces-cur_forces)
                     / prev_forces.dot(prev_forces))
+            beta_old = (cur_forces.dot(cur_forces-prev_forces)
+                    / prev_forces.dot(prev_forces))
+            self.log(f"beta_old={beta_old:.4f}, beta={beta:.4f}")
             if beta < 0:
                 self.log(f"beta = {beta:.04f} < 0, resetting to 0")
                 # beta = 0 basically restarts CG, as no previous step
@@ -79,10 +82,10 @@ class ConjugateGradient(BacktrackingOptimizer):
             return None
 
         if self.align and self.is_cos:
-            new_forces, cur_forces, steps = fit_rigid(self.geometry,
-                                                      (new_forces,
-                                                       cur_forces,
-                                                       steps))
+            (new_forces, cur_forces, steps), _, _ = fit_rigid(self.geometry,
+                                                              (new_forces,
+                                                               cur_forces,
+                                                               steps))
             self.geometry.coords -= steps
             # Set the calculated properties on the rotated geometries
             self.geometry.energy = new_energy

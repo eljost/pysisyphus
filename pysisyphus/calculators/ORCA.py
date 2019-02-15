@@ -29,6 +29,8 @@ def make_sym_mat(table_block):
 
 class ORCA(OverlapCalculator):
 
+    conf_key = "orca"
+
     def __init__(self, keywords, gbw="", blocks="", **kwargs):
         super().__init__(**kwargs)
 
@@ -42,7 +44,7 @@ class ORCA(OverlapCalculator):
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
                 "allowed! Use 'pal: n' in the 'calc' section instead."
 
-        self.to_keep = ("inp", "out", "gbw", "engrad", "hessian", "cis")
+        self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian", "cis")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True

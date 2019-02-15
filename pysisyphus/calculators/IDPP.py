@@ -3,11 +3,13 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
+from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.NEB import NEB
-from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.optimizers.FIRE import FIRE
-from pysisyphus.constants import BOHR2ANG, ANG2BOHR
+from pysisyphus.helpers import procrustes
 
 
 # [1] http://aip.scitation.org/doi/full/10.1063/1.4878664
@@ -17,6 +19,7 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
     # Do an initial linear interpolation to generate all geometries/images
     # that will be refined later by IDPP interpolation.
     cos = ChainOfStates(geometries)
+    procrustes(cos)
     cos.interpolate(image_num=images_between)
     images = cos.images
 
@@ -49,15 +52,13 @@ def idpp_interpolate(geometries, images_between, keep_cycles=False):
             image.set_calculator(IDPP(from_pd + j * pd_diff))
 
         kwargs = {
-            "max_cycles":100,
-            # Use pretty loose convergence criteria for IDPP
-            "convergence": {
-                "max_force_thresh": 0.1
-            },
+            "max_cycles":1000,
+            "rms_force": 1e-2,
             "keep_cycles": keep_cycles,
             "align": False,
         }
-        opt = FIRE(NEB(images_slice, parallel=False), **kwargs)
+        # opt = FIRE(NEB(images_slice, parallel=False), **kwargs)
+        opt = BFGS(NEB(images_slice, parallel=False), **kwargs)
         opt.run()
         idpp_interpolated_images.extend(images_slice)
 

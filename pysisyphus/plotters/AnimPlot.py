@@ -7,15 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
-
-def get_coords_diffs(coords):
-    cds = [0, ]
-    for i in range(len(coords)-1):
-        diff = np.linalg.norm(coords[i+1]-coords[i])
-        cds.append(diff)
-    cds = np.cumsum(cds)
-    cds /= cds.max()
-    return cds
+from pysisyphus.helpers import get_coords_diffs
 
 
 class AnimPlot:

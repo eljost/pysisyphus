@@ -2,6 +2,7 @@ from collections import Counter
 import logging
 
 import numpy as np
+import rmsd
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
@@ -90,6 +91,10 @@ class Geometry:
             inds_dict[atom_type] = [i for i, atom in enumerate(self.atoms)
                                     if atom == atom_type]
         return inds_dict
+
+    @property
+    def atom_types(self):
+        return set(self.atoms)
 
     def clear(self):
         """Reset the object state."""
@@ -443,6 +448,12 @@ class Geometry:
         results = self.calculator.get_forces(self.atoms, self.coords)
         self.set_results(results)
 
+    def get_energy_and_forces_at(self, coords):
+        """Calculate forces and energies at the given coordinates.
+        
+        The results are not saved in the Geometry object."""
+        return self.calculator.get_forces(self.atoms, coords)
+
     def calc_double_ao_overlap(self, geom2):
         return self.calculator.run_double_mol_calculation(self.atoms,
                                                           self.coords,
@@ -479,6 +490,31 @@ class Geometry:
         """
         coords = self._coords * BOHR2ANG
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), self.comment)
+
+    def get_subgeom(self, indices, coord_type="cart"):
+        """Return a Geometry containing a subset of the current Geometry.
+
+        Parameters
+        ----------
+        indices : iterable of ints
+            Atomic indices that the define the subset of the current Geometry.
+        coord_type : str, ("cart", "redund"), optional
+            Coordinate system of the new Geometry.
+
+        Returns
+        -------
+        sub_geom : Geometry
+            Subset of the current Geometry.
+        """
+        ind_list = list(indices)
+        sub_atoms = [self.atoms[i] for i in ind_list]
+        sub_coords = self.coords3d[ind_list]
+        sub_geom = Geometry(sub_atoms, sub_coords.flatten(), coord_type=coord_type)
+        return sub_geom
+
+    def rmsd(self, geom):
+        return rmsd.kabsch_rmsd(self.coords3d-self.centroid,
+                                geom.coords3d-geom.centroid)
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"

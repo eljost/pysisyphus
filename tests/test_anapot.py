@@ -12,6 +12,7 @@ from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.FIRE import FIRE
@@ -21,13 +22,9 @@ from pysisyphus.optimizers.SciPyOptimizer import SciPyOptimizer
 KWARGS = {
     "images": 5,
     "max_cycles": 50,
-    "convergence": {
-        "max_force_thresh": 6e-3,
-        "rms_force_thresh": 5e-3,
-        "max_step_thresh": 6e-4,
-        "rms_step_thresh": 3e-4,
-    },
+    "rms_force": 5e-3,
     "dump": False,
+    "align": False,
 }
 
 
@@ -71,7 +68,6 @@ def animate_bare(opt):
     ap.animate()
     return ap
 
-
 @pytest.mark.sd
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
@@ -80,6 +76,45 @@ def test_steepest_descent_neb():
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == 29)  # k = 0.01
+
+    return opt
+
+
+@pytest.mark.sd
+def test_spline_hei():
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms())
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 29)  # k = 0.01
+
+    hei_coords, hei_energy, hei_tangent = neb.get_splined_hei()
+    # ap = animate(opt)
+    # hei = hei_coords[:2]
+    # heit = hei_tangent[:2]
+    # ap.ax.scatter(*hei, s=15, c="k")
+    # ap.ax.quiver(*hei, *heit)
+    # plt.show()
+    print(f"Interpolated HEI: {hei_coords}")
+    print(f"HEI tangent: {hei_tangent}")
+
+    from pysisyphus.tsoptimizers.dimer import dimer_method
+    calc_getter = AnaPot
+    ts_geom = neb.images[0].copy()
+    ts_geom.coords = hei_coords
+    ts_geom.set_calculator(calc_getter())
+    geoms = [ts_geom, ]
+    dimer_kwargs = {
+        "ana_2dpot": True,
+        "restrict_step": "max",
+        "N_init": hei_tangent,
+        "calc_getter": calc_getter,
+    }
+    dimer_cycles = dimer_method(geoms, **dimer_kwargs)
+    last_cycle = dimer_cycles[-1]
+    ts_coords = last_cycle.trans_coords[1]
+    print(f"Optimized TS coord: {ts_coords}")
 
     return opt
 
@@ -169,7 +204,7 @@ def test_fix_displaced_ends_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 26)  # k = 0.01
+    assert(opt.cur_cycle == 25)  # k = 0.01
 
     return opt
 
@@ -178,14 +213,7 @@ def test_fix_displaced_ends_neb():
 def test_fix_end_immediate_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    kwargs["max_cycles"] == 33
-    convergence = {
-        "max_force_thresh": 0.04,
-        "rms_force_thresh": 0.011,
-        "max_step_thresh": 0.007,
-        "rms_step_thresh": 0.0015,
-    }
-    kwargs["convergence"] = convergence
+    kwargs["rms_force"] = 2e-2
     cos_kwargs = {
         "climb": True,
         "climb_rms": -1,
@@ -195,7 +223,7 @@ def test_fix_end_immediate_climbing_neb():
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 33)
+    assert(opt.cur_cycle == 35)
 
     return opt
 
@@ -207,7 +235,7 @@ def test_cg_neb():
     opt = run_cos_opt(neb, ConjugateGradient, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 38)  # k = 0.01
+    assert(opt.cur_cycle == 37)  # k = 0.01
 
     return opt
 
@@ -220,7 +248,7 @@ def test_qm_neb():
     opt = run_cos_opt(neb, QuickMin, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 41)  # k = 0.01
+    assert(opt.cur_cycle == 25)  # k = 0.01
 
     return opt
 
@@ -233,7 +261,7 @@ def test_fire_neb():
     opt = run_cos_opt(neb, FIRE, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 39)  # k = 0.01
+    assert(opt.cur_cycle == 38)  # k = 0.01
 
     return opt
 
@@ -245,18 +273,11 @@ def test_fire_climb_neb():
     kwargs["dt_max"] = 0.2
     kwargs["climb"] = True
     kwargs["climb_rms"] = 0.0065
-    convergence = {
-        "max_force_thresh": 0.040,
-        "rms_force_thresh": 0.012,
-        "max_step_thresh": 0.041,
-        "rms_step_thresh": 0.0076,
-    }
-    kwargs["convergence"] = convergence
     neb = NEB(get_geoms(), fix_ends=True)
     opt = run_cos_opt(neb, FIRE, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 33)  # k = 0.01
+    assert(opt.cur_cycle == 39)  # k = 0.01
 
     return opt
 
@@ -264,13 +285,11 @@ def test_fire_climb_neb():
 @pytest.mark.bfgs
 def test_bfgs_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["dump"] = True
-    kwargs["alpha"] = 0.1
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 41)  # k = 0.01
+    assert(opt.cur_cycle == 35)  # k = 0.01
 
     return opt
 
@@ -279,30 +298,26 @@ def test_bfgs_neb():
 def test_bfgs_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    kwargs["alpha"] = 0.1
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 43)  # k = 0.01
+    assert(opt.cur_cycle == 36)  # k = 0.01
 
     return opt
 
 
-"""
-@pytest.mark.bfgs
+@pytest.mark.skip
 def test_fix_end_climbing_bfgs_neb():
     kwargs = copy.copy(KWARGS)
-    kwargs["climb"] = True
-    kwargs["alpha"] = 0.1
-    neb = NEB(get_geoms(), fix_ends=True)
+    # kwargs["bt_disable"] = True
+    neb = NEB(get_geoms(), climb=True, fix_ends=True)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 30)
+    assert(opt.cur_cycle == 32)
 
     return opt
-"""
 
 
 @pytest.mark.skip
@@ -317,12 +332,55 @@ def test_scipy_bfgs_neb():
     return opt
 
 
+@pytest.mark.lbfgs
+def test_lbfgs_neb():
+    kwargs = copy.copy(KWARGS)
+    # kwargs["bt_disable"] = True
+    # kwargs["rms_force"] = 1e-5
+    # kwargs["alpha"] = 0.5
+    kwargs["max_cycles"] = 25
+
+    neb = NEB(get_geoms())
+    opt = run_cos_opt(neb, LBFGS, **kwargs)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == 22)  # k = 0.01
+
+    return opt
+
+
+@pytest.mark.lbfgs
+def test_lbfgs_mod_neb():
+    from pysisyphus.optimizers.LBFGS_mod import LBFGS as LBFGSm
+    kwargs = copy.copy(KWARGS)
+    # kwargs["bt_disable"] = True
+    kwargs["rms_force"] = 1e-5
+    # kwargs["alpha"] = 0.5
+    kwargs["max_cycles"] = 25
+    kwargs["images"] = 3
+    # kwargs["bt_disable"] = True
+
+    coords = (
+        (-1.05274, 1.02776, 0),
+        # (0.2166, 1.2619, 0),
+        (0.625, 1.476, 0),
+        # (1.4, 2.45, 0),
+        (1.94101, 3.85427, 0),
+    )
+
+    neb = NEB(get_geoms(coords), fix_ends=True)
+    # opt = run_cos_opt(neb, LBFGSm, **kwargs)
+    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
+
+    # assert(opt.is_converged)
+    # assert(opt.cur_cycle == 22)  # k = 0.01
+
+    return opt
+
+
+@pytest.mark.skip
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
-    convergence = {
-        "max_force_thresh": 0.1,
-    }
-    kwargs["convergence"] = convergence
     szts_equal = SimpleZTS(get_geoms(), param="equal")
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
@@ -332,13 +390,10 @@ def test_equal_szts():
     return opt
 
 
+@pytest.mark.skip
 def test_equal_szts_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    convergence = {
-        "max_force_thresh": 0.1,
-    }
-    kwargs["convergence"] = convergence
     szts_equal = SimpleZTS(get_geoms(), param="equal")
     opt = run_cos_opt(szts_equal, SteepestDescent, **kwargs)
 
@@ -348,12 +403,9 @@ def test_equal_szts_more_images():
     return opt
 
 
+@pytest.mark.skip
 def test_energy_szts():
     kwargs = copy.copy(KWARGS)
-    convergence = {
-        "max_force_thresh": 0.1,
-    }
-    kwargs["convergence"] = convergence
     szts_energy = SimpleZTS(get_geoms(), param="energy")
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
@@ -363,13 +415,10 @@ def test_energy_szts():
     return opt
 
 
+@pytest.mark.skip
 def test_energy_szts_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    convergence = {
-        "max_force_thresh": 0.1,
-    }
-    kwargs["convergence"] = convergence
     szts_energy = SimpleZTS(get_geoms(), param="energy")
     opt = run_cos_opt(szts_energy, SteepestDescent, **kwargs)
 
@@ -381,42 +430,49 @@ def test_energy_szts_more_images():
 
 if __name__ == "__main__":
     # Steepest Descent
-    #opt = test_steepest_descent_neb()
-    #opt = test_steepest_descent_var_springs_neb()
-    #opt = test_steepest_descent_neb_more_images()
-    #opt = test_fix_first_neb()
-    #opt = test_fix_last_neb()
-    #opt = test_fix_ends_neb()
+    # opt = test_steepest_descent_neb()
+    # opt = test_steepest_descent_var_springs_neb()
+    # opt = test_steepest_descent_neb_more_images()
+    # opt = test_fix_first_neb()
+    # opt = test_fix_last_neb()
+    # opt = test_fix_ends_neb()
     # opt = test_fix_displaced_ends_neb()
     # Steepest descent + climbing Image
-    opt = test_fix_end_immediate_climbing_neb()
+    # opt = test_fix_end_immediate_climbing_neb()
 
     # Conjugate Gradient
-    #opt = test_cg_neb()
+    # opt = test_cg_neb()
 
     # QuickMin
-    #opt = test_qm_neb()
+    # opt = test_qm_neb()
 
     # FIRE
-    #opt = test_fire_neb()
-    #opt = test_fire_climb_neb()
+    # opt = test_fire_neb()
+    # opt = test_fire_climb_neb()
 
     # BFGS
-    #opt = test_bfgs_neb()
+    # opt = test_bfgs_neb()
     # opt = test_bfgs_neb_more_images()
     #opt = test_scipy_bfgs_neb()
     # BFGS + climbing Image
-    #opt = test_fix_end_climbing_bfgs_neb()
+    # opt = test_fix_end_climbing_bfgs_neb()
+
+    # LBFGS
+    # opt = test_lbfgs_neb()
+    opt = test_lbfgs_mod_neb()
 
     # SimpleZTS
-    #opt = test_equal_szts()
-    #opt = test_equal_szts_more_images()
-    #opt = test_energy_szts()
-    #opt = test_energy_szts_more_images()
+    # opt = test_equal_szts()
+    # opt = test_equal_szts_more_images()
+    # opt = test_energy_szts()
+    # opt = test_energy_szts_more_images()
 
     # opt = test_scipy_bfgs_neb()
 
-    #ap = animate(opt)
-    ap = animate_bare(opt)
-    #ap.as_html5("anim.html")
+    # NEB with Dimer
+    # test_spline_hei()
+
+    ap = animate(opt)
+    # ap = animate_bare(opt)
+    # ap.as_html5("anim.html")
     plt.show()

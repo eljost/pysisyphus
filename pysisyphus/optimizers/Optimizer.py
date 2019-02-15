@@ -17,18 +17,19 @@ from pysisyphus.helpers import check_for_stop_sign
 
 class Optimizer:
     CONV_THRESHS = {
+        # max_force, rms_force, max_step, rms_step
         "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
         "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
         "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
     }
 
-    def __init__(self, geometry, thresh="gau_loose",
-                 align=False, dump=False, last_cycle=None,
+    def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
+                 rms_force=None, align=False, dump=False, last_cycle=None,
                  **kwargs):
         self.geometry = geometry
 
         assert thresh in self.CONV_THRESHS.keys()
-        self.convergence = self.make_conv_dict(thresh)
+        self.convergence = self.make_conv_dict(thresh, rms_force)
         self.align = align
         self.dump = dump
         self.last_cycle = last_cycle
@@ -39,7 +40,7 @@ class Optimizer:
         # Setting some default values
         self.resetted = False
         self.max_cycles = 50
-        self.max_step = 0.04
+        self.max_step = max_step
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
 
@@ -80,8 +81,16 @@ class Optimizer:
             self.cur_cycle = last_cycle + 1
             self.restart()
 
-    def make_conv_dict(self, key):
-        threshs = self.CONV_THRESHS[key]
+    def make_conv_dict(self, key, rms_force=None):
+        if not rms_force:
+            threshs = self.CONV_THRESHS[key]
+        else:
+            print(f"Deriving threshold from supplied rms_force={rms_force}.")
+            threshs = (1.5*rms_force,
+                       rms_force,
+                       6*rms_force,
+                       4*rms_force,
+            )
         keys = ("max_force_thresh",
                 "rms_force_thresh",
                 "max_step_thresh",

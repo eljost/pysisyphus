@@ -3,6 +3,7 @@ import numpy as np
 from sympy import symbols, diff, lambdify, sympify
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.Geometry import Geometry
 
 class AnaPotBase(Calculator):
 
@@ -74,3 +75,8 @@ class AnaPotBase(Calculator):
         # Draw the contourlines of the potential
         contours = self.ax.contour(X, Y, pot, levels)
         self.fig.colorbar(contours)
+
+    def get_geom(self, coords, atoms=("H", )):
+        geom = Geometry(atoms, coords)
+        geom.set_calculator(self)
+        return geom
