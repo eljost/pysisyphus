@@ -513,7 +513,7 @@ class RedundantCoords:
             cart_rms = rms(last_coords, new_coords)
             if i == 0:
                 # Store the first converted cartesian step if the
-                # transformation goes wrong.
+                # transformation goes awry.
                 first_cart_step = cart_step
             elif cart_rms > last_rms:
                 # If the conversion somehow fails we return the step

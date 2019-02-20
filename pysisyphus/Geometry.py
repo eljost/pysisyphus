@@ -75,7 +75,7 @@ class Geometry:
         geom : Geometry
             New Geometry object with the same atoms and coordinates.
         """
-        return Geometry(self.atoms, self.coords, self.coord_type)
+        return Geometry(self.atoms, self._coords, self.coord_type)
 
     def atom_indices(self):
         """Dict with atom types as key and corresponding indices as values.
