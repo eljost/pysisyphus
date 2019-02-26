@@ -65,11 +65,11 @@ def parse_args(args):
                          "in Ångström."
     )
     action_group.add_argument("--append", action="store_true",
-                    help="Combine the given molecules in one .trj file."
+                    help="Combine the given .xyz files into one .xyz file."
     )
     action_group.add_argument("--match", action="store_true",
-            help="Resort the second .xyz file so the atom order matched the "
-                 "first one .xyz file. Uses the hungarian method."
+            help="Resort the second .xyz file so the atom order matches the "
+                 "first .xyz file. Uses the hungarian method."
     )
 
     parser.add_argument("--idpp", action="store_true",
