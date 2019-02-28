@@ -44,7 +44,7 @@ class Turbomole(OverlapCalculator):
                    "$intsdebug sao and $scfiterlimit 0 !"
 
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
-                        "ciss_a", "ucis_a", "gradient",
+                        "ciss_a", "ucis_a", "gradient", "sing_a",
                         "__ccre*", "exstates")
 
         self.parser_funcs = {
@@ -178,11 +178,18 @@ class Turbomole(OverlapCalculator):
         # if present.
         if self.mos:
             shutil.copy(self.mos, path / "mos")
-            self.log(f"Using {self.mos}")
+            self.log(f"Using {self.mos} as MO guess.")
         elif self.alpha and self.beta:
             shutil.copy(self.alpha, path / "alpha")
             shutil.copy(self.beta, path / "beta")
-            self.log(f"Using {self.alpha} and {self.beta}")
+            self.log(f"Using {self.alpha} and {self.beta} as MO guesses.")
+        if self.td_vec_fn:
+            # The suffix contains the true name with a leading
+            # dot, that we drop.
+            td_vec_fn = self.td_vec_fn.suffix[1:]
+            shutil.copy(self.td_vec_fn, path / td_vec_fn)
+            self.log(f"Using {td_vec_fn} as escf guess.")
+
 
     def get_pal_env(self):
         env_copy = os.environ.copy()
@@ -346,6 +353,12 @@ class Turbomole(OverlapCalculator):
                          for ccre in self.ccres]
         ci_coeffs = np.array(ci_coeffs)
         states = ci_coeffs.shape[0]
+        X_len = self.occ_mos * self.virt_mos
+        if ci_coeffs.shape[1] == (2*X_len):
+            self.log("TDDFT calculation with X and Y vectors present. "
+                     "Will only consider X for now and neglect Y!"
+            )
+            ci_coeffs = ci_coeffs[:,:X_len]
         ci_coeffs = ci_coeffs.reshape(states, self.occ_mos, self.virt_mos)
         with open(self.mos) as handle:
             text = handle.read()
@@ -364,7 +377,9 @@ class Turbomole(OverlapCalculator):
         assert"ucis_a" not in kept_fns, "Implement for UKS TDA"
         if self.track:
             if self.td:
-                self.td_vec_fn = kept_fns["ciss_a"]
+                td_key_present = [k for k in ("ciss_a", "sing_a", "ucis_a")
+                                  if k in kept_fns][0]
+                self.td_vec_fn = kept_fns[td_key_present]
             elif self.ricc2:
                 self.ccres = kept_fns["ccres"]
             else:
