@@ -220,6 +220,7 @@ class Turbomole(OverlapCalculator):
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
             self.calc_counter += 1
+            shutil.rmtree(self.last_run_path)
         return results
 
     def run_calculation(self, atoms, coords):

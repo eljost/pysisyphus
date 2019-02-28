@@ -75,6 +75,7 @@ class Calculator:
         # instead of creating a new one.
         # Currently this is only used with the Turbomole calculator.
         self.path_already_prepared = None
+        self.last_run_path = None
 
     def get_cmd(self, key):
         assert self.conf_key, \
@@ -312,6 +313,7 @@ class Calculator:
                     self.calc_counter += 1
 
         self.path_already_prepared = None
+        self.last_run_path = path
         return results
 
     def run_after(self, path):
