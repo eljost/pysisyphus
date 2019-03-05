@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
+import logging
 
 import numpy as np
 
 from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
 from pysisyphus.optimizers.closures import lbfgs_closure
 from pysisyphus.TablePrinter import TablePrinter
+
+
+logger = logging.getLogger("tsoptimizer")
 
 
 DimerCycle = namedtuple("DimerCycle",
@@ -42,11 +46,16 @@ def get_f_mod(f, N, C):
     return f_mod
 
 
-def make_theta(f1, f2, N):
-    """Construct vector theta from f1 and f2."""
+def get_f_perp(f1, f2, N):
     f1_perp = perpendicular_force(f1, N)
     f2_perp = perpendicular_force(f2, N)
     f_perp = f1_perp - f2_perp
+    return f_perp
+
+
+def make_theta(f1, f2, N):
+    """Construct vector theta from f1 and f2."""
+    f_perp = get_f_perp(f1, f2, N)
     theta = f_perp / np.linalg.norm(f_perp)
     return theta
 
@@ -61,7 +70,8 @@ def write_progress(geom0):
 
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
-                 trial_angle=5, angle_thresh=0.5, dR_base=0.01,
+                 max_rots=10, interpolate=True,
+                 trial_angle=5, angle_tol=5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
                  f_thresh=1e-3):
     """Dimer method using steepest descent for rotation and translation.
@@ -84,7 +94,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             dR_base = = 0.01 bohr
     """
     # Parameters
-    angle_thresh_rad = np.deg2rad(angle_thresh)
+    rad_tol = np.deg2rad(angle_tol)
     rms_f_thresh = float(f_thresh)
     max_f_thresh = 1.5 * rms_f_thresh
 
@@ -103,8 +113,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
         coords0 = geom2.coords + dR*N
         geom0 = geom_getter(coords0)
     # This handles cases where only one geometry is supplied. We use the
-    # geometry as midpoint, select a random dimer direction and derive
-    # geom1 and geom2 from it.
+    # given geometry as midpoint, and use the given N_init. If N_init is
+    # none, we select a random direction and derive geom1 and geom2 from it.
     else:
         geom0 = geoms[0]
         coords0 = geom0.coords
@@ -157,6 +167,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
     table.print_header()
     for i in range(max_cycles):
+        logger.debug(f"Dimer macro cycle {i:03d}")
         f0 = geom0.forces
         f1 = geom1.forces
         f2 = 2*f0 - f1
@@ -176,53 +187,81 @@ def dimer_method(geoms, calc_getter, N_init=None,
             table.print("Converged!")
             break
 
-        # Get rotated endpoint geometries. The rotation takes place in a plane
-        # spanned by N and theta. Theta is a unit vector perpendicular to N that
-        # can be formed from the perpendicular components of the forces at the
-        # endpoints.
-        theta = make_theta(f1, f2, N)
+        rot_force_evals = 0
+        for j in range(max_rots):
+            logger.debug(f"Rotation cycle {j:02d}")
+            C = get_curvature(f1, f2, N, dR)
+            logger.debug(f"C={C:.6f}")
 
-        # Derivative of the curvature, Eq. (29) in [2]
-        # (f2 - f1) or -(f1 - f2)
-        dC = 2*(f0-f1).dot(theta)/dR
-        rad_trial = -0.5*np.arctan2(dC, 2*abs(C))
+            # Get rotated endpoint geometries. The rotation takes place in a plane
+            # spanned by N and theta. Theta is a unit vector perpendicular to N that
+            # can be formed from the perpendicular components of the forces at the
+            # endpoints.
+            theta = make_theta(f1, f2, N)
 
-        # Trial rotation for finite difference calculation of rotational force
-        # and rotational curvature.
-        coords1_trial = rotate_R1(coords0, rad_trial, N, theta, dR)
-        f1_trial = geom1.get_energy_and_forces_at(coords1_trial)["forces"]
-        f2_trial = 2*f0 - f1_trial
-        N_trial = make_unit_vec(coords1_trial, coords0)
-        coords2_trial = coords0 - N_trial*dR
+            # Derivative of the curvature, Eq. (29) in [2]
+            # (f2 - f1) or -(f1 - f2)
+            dC = 2*(f0-f1).dot(theta)/dR
+            rad_trial = -0.5*np.arctan2(dC, 2*abs(C))
+            logger.debug(f"rad_trial={rad_trial:.2f}")
+            # print(f"rad_trial={rad_trial:.2f} rad_tol={rad_tol:.2f}")
+            if np.abs(rad_trial) < rad_tol:
+                logger.debug(f"rad_trial={rad_trial:.2f} below threshold. Breaking.")
+                break
 
-        C_trial = get_curvature(f1_trial, f2_trial, N_trial, dR)
-        theta_trial = make_theta(f1_trial, f2_trial, N_trial)
+            # Trial rotation for finite difference calculation of rotational force
+            # and rotational curvature.
+            coords1_trial = rotate_R1(coords0, rad_trial, N, theta, dR)
+            f1_trial = geom1.get_energy_and_forces_at(coords1_trial)["forces"]
+            rot_force_evals += 1
+            f2_trial = 2*f0 - f1_trial
+            N_trial = make_unit_vec(coords1_trial, coords0)
+            coords2_trial = coords0 - N_trial*dR
 
-        b1 = 0.5 * dC
-        a1 = (C - C_trial + b1*np.sin(2*rad_trial)) / (1-np.cos(2*rad_trial))
-        a0 = 2 * (C - a1)
+            C_trial = get_curvature(f1_trial, f2_trial, N_trial, dR)
+            theta_trial = make_theta(f1_trial, f2_trial, N_trial)
 
-        rad_min = 0.5 * np.arctan(b1/a1)
-        C_min = a0/2 + a1*np.cos(2*rad_min) + b1*np.sin(2*rad_min)
-        if C_min > C:
-            rad_min += np.deg2rad(90)
+            b1 = 0.5 * dC
+            a1 = (C - C_trial + b1*np.sin(2*rad_trial)) / (1-np.cos(2*rad_trial))
+            a0 = 2 * (C - a1)
 
-        # TODO: Multiple rotations after another with L-BFGS
-        f1_extrapol = (np.sin(rad_trial-rad_min)/np.sin(rad_trial)*f1
-                       + np.sin(rad_min)/np.sin(rad_trial)*f1_trial
-                       + (1 - np.cos(rad_min) - np.sin(rad_min)
-                          * np.tan(rad_trial/2))*f0
-        )
+            rad_min = 0.5 * np.arctan(b1/a1)
+            logger.debug(f"rad_min={rad_min:.2f}")
+            def get_C(theta_rad):
+                return a0/2 + a1*np.cos(2*theta_rad) + b1*np.sin(2*theta_rad)
+            C_min = get_C(rad_min)
+            if C_min > C:
+                rad_min += np.deg2rad(90)
+                C_min_new = get_C(rad_min)
+                logger.debug( "Predicted theta_min lead us to a curvature maximum "
+                             f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
+                             f"(C(theta+pi/2)={C_min_new:.6f})"
+                )
 
-        # TODO: handle cases where the curvature is still positive, but
-        # the angle is small, so the rotation is skipped.
-        if np.abs(rad_min) > angle_thresh_rad:
+            # TODO: handle cases where the curvature is still positive, but
+            # the angle is small, so the rotation is skipped.
+            # Don't do rotation for small angles
+            # print(f"rad_min={rad_min:.2f} rad_tol={rad_tol:.2f}")
+            if np.abs(rad_min) < rad_tol:
+                logger.debug(f"rad_min={rad_min:.2f} below threshold. Breaking.")
+                break
             coords1_rot = rotate_R1(coords0, rad_min, N, theta, dR)
             N = make_unit_vec(coords1_rot, coords0)
             coords2_rot = coords0 - N*dR
-        # Don't do rotation for small angles
-        else:
-            table.print("Rotation angle too small. Skipping rotation.")
+
+            # Interpolate force at coords1_rot; see Eq. (12) in [4]
+            if interpolate:
+                f1 = (np.sin(rad_trial-rad_min)/np.sin(rad_trial)*f1
+                       + np.sin(rad_min)/np.sin(rad_trial)*f1_trial
+                       + (1 - np.cos(rad_min) - np.sin(rad_min)
+                          * np.tan(rad_trial/2))*f0
+                )
+            else:
+                f1 = geom1.get_energy_and_forces_at(coords1_rot)["forces"]
+                rot_force_evals += 1
+            f2 = 2*f0 - f1
+        logger.debug(f"Did {j} rotation(s) using {rot_force_evals} "
+                      "force evaluations.")
 
         f0_mod = get_f_mod(f0, N, C_min)
 

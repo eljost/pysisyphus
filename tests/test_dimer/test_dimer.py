@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.AnaPotCBM import AnaPotCBM
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library
@@ -43,10 +45,8 @@ def plot_dimer(dimer, ax, label=None, color=None, marker="o"):
     return lines
 
 
-def plot_dimer_cycles(dimer_cycles):
-    pot = AnaPot()
-    levels = np.linspace(-2.8, 3.6, 50)
-    pot.plot(levels=levels)
+def plot_dimer_cycles(dimer_cycles, pot, true_ts=None):
+    pot.plot()
 
     ax = pot.ax
     for i, dc in enumerate(dimer_cycles):
@@ -62,21 +62,60 @@ def plot_dimer_cycles(dimer_cycles):
                          # label=rot_lbl, color=color, marker=".")
         rot = plot_dimer(dc.rot_coords, ax,
                          label=rot_lbl, marker=".")
-    ax.scatter(0.61173, 1.49297, s=20, zorder=25, c="k")
+    if true_ts:
+        ts_x, ts_y = true_ts
+        ax.scatter(ts_x, ts_y, s=20, zorder=25, c="k")
     pot.ax.legend()
     plt.show()
 
 
-def run():
+def test_anapot():
     geoms = get_geoms()
     calc_getter = AnaPot
     dimer_kwargs = {
         "ana_2dpot": True,
         "restrict_step": "max",
         # "restrict_step": "scale",
+        #"angle_tol": 0.5,
+        "max_cycles": 10,
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    plot_dimer_cycles(dimer_cycles)#[-5:])
+    true_ts = (0.61173, 1.49297)
+    plot_dimer_cycles(dimer_cycles, pot=AnaPot(), true_ts=true_ts)
+
+def plot_anapotcbm_curvature():
+    pot = AnaPotCBM()
+    pot.plot()
+    xs = np.linspace(-1.25, 1.25, num=50)
+    ys = np.linspace(-0.75, 0.75, num=50)
+    X, Y = np.meshgrid(xs, ys)
+    z = list()
+    for x_, y_ in zip(X.flatten(), Y.flatten()):
+        g = pot.get_geom((x_, y_, 0))
+        H = g.hessian
+        w, v = np.linalg.eigh(H)
+        z.append(
+            1 if (w < 0).any() else 0
+        )
+    Z = np.array(z).reshape(X.shape)
+    ax = pot.ax
+    ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
+    plt.show()
+
+
+def test_anapotcbm():
+    calc_getter = AnaPotCBM
+    # geom = AnaPotCBM().get_geom((0.818, 0.2233, 0.0))
+    geom = AnaPotCBM().get_geom((0.2, 0.2, 0.0))
+    # v, w = np.linalg.eigh(geom.hessian)
+    geoms = [geom, ]
+    dimer_kwargs = {
+        "ana_2dpot": True,
+        "restrict_step": "max",
+    }
+    true_ts = (0, 0)
+    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    plot_dimer_cycles(dimer_cycles, pot=AnaPotCBM(), true_ts=true_ts)
 
 
 def test_hcn_iso_dimer():
@@ -105,5 +144,7 @@ def test_hcn_iso_dimer():
 
 
 if __name__ == "__main__":
-    run()
-    test_hcn_iso_dimer()
+    test_anapot()
+    # plot_anapotcbm_curvature()
+    # test_anapotcbm()
+    # test_hcn_iso_dimer()
