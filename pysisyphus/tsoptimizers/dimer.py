@@ -3,6 +3,7 @@
 from collections import namedtuple
 import logging
 
+import cloudpickle
 import numpy as np
 
 from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
@@ -15,6 +16,10 @@ logger = logging.getLogger("tsoptimizer")
 
 DimerCycle = namedtuple("DimerCycle",
                         "org_coords rot_coords trans_coords f0 f0_mod",
+)
+
+DimerPickle = namedtuple("DimerPickle",
+                         "coords0 N dR"
 )
 
 def make_unit_vec(vec1, vec2):
@@ -53,7 +58,7 @@ def get_f_perp(f1, f2, N):
     return f_perp
 
 
-def make_theta(f1, f2, N):
+def get_theta0(f1, f2, N):
     """Construct vector theta from f1 and f2."""
     f_perp = get_f_perp(f1, f2, N)
     theta = f_perp / np.linalg.norm(f_perp)
@@ -70,10 +75,11 @@ def write_progress(geom0):
 
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
-                 max_rots=10, interpolate=True,
+                 max_rots=10, interpolate=True, rot_opt="lbfgs",
                  trial_angle=5, angle_tol=5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
-                 f_thresh=1e-3):
+                 f_thresh=1e-3, do_hess=False,
+                 zero_weights=[], dimer_pickle=None):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -97,6 +103,23 @@ def dimer_method(geoms, calc_getter, N_init=None,
     rad_tol = np.deg2rad(angle_tol)
     rms_f_thresh = float(f_thresh)
     max_f_thresh = 1.5 * rms_f_thresh
+    assert rot_opt in ("sd", "lbfgs", "cg")
+    # Construct weight matrix
+    # if zero_weights and geoms[0].coord_type != "cart":
+        # raise Exception("Weighting works onyl with cartesian coordinates for now!")
+    # weights = np.ones(geoms[0].coords.size)
+    # for zw in zero_weights:
+        # weights[zw*3:zw*3+3] = 0
+    # print("Using weights:", weights)
+    # weights = np.diag(weights)
+
+    rot_opt_dict = {
+        "sd": "steepst descent",
+        "cg": "conjugate gradient",
+        "lbfgs": "L-BFGS",
+    }
+
+    print(f"Using {rot_opt_dict[rot_opt]} direction to optimize rotations.")
 
     header = "Cycle Curvature max(f0) rms(f0)".split()
     col_fmts = "int float float float".split()
@@ -105,6 +128,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
     geom_getter = get_geom_getter(geoms[0], calc_getter)
 
     assert len(geoms) in (1, 2), "geoms argument must be of length 1 or 2!"
+    # if dimer_pickle:
+        # with open(dimer_pickle, "rb") as handle:
+            # dimer_tuple = cloudpickle.load(handle)
     if len(geoms) == 2:
         geom1, geom2 = geoms
         dR = np.linalg.norm(geom1.coords - geom2.coords) / 2
@@ -132,15 +158,16 @@ def dimer_method(geoms, calc_getter, N_init=None,
         geom2 = geom_getter(coords2)
         dR = dR_base
 
+    dimer_pickle = DimerPickle(coords0, N, dR)
+    with open("dimer_pickle", "wb") as handle:
+        cloudpickle.dump(dimer_pickle, handle)
+
     dimer_cycles = list()
     coords0_list = [coords0.copy(), ]
     N_list = [N.copy(), ]
 
     print("Using N:", N)
     def f0_mod_getter(coords, N, C):
-        # results = geom0.get_energy_and_forces_at(coords)
-        # forces = results["forces"]
-        # return get_f_mod(forces, N, C)
         geom0.coords = coords
         forces = geom0.forces
         return get_f_mod(forces, N, C)
@@ -188,16 +215,50 @@ def dimer_method(geoms, calc_getter, N_init=None,
             break
 
         rot_force_evals = 0
+        rot_force0 = get_f_perp(f1, f2, N)
+        # Initialize some data structure for the rotation optimizers
+        if rot_opt == "cg":
+            # Lists for conjugate gradient
+            G_perps = [rot_force0, ]
+            F_rots = [rot_force0, ]
+        # LBFGS optimizer
+        elif rot_opt == "lbfgs" :
+            def rot_force_getter(N, f1, f2):
+                # return weights.dot(get_f_perp(f1, f2, N))
+                return get_f_perp(f1, f2, N)
+            rot_restrs = lambda step: restrict_step_length(step, 0.1)
+            rot_lbfgs = lbfgs_closure(rot_force0, rot_force_getter)#,
+                                      #restrict_step=rot_restrs)
+
         for j in range(max_rots):
             logger.debug(f"Rotation cycle {j:02d}")
             C = get_curvature(f1, f2, N, dR)
             logger.debug(f"C={C:.6f}")
+            # Theta from L-BFGS as implemented in DL-FIND dlf_dimer.f90
+            if j > 0 and rot_opt == "lbfgs":
+                N_new, N_step, _ = rot_lbfgs(N, f1, f2)
+                theta_dir = N_new - N_new.dot(N)*N
+            # Theta from conjugate gradient
+            elif j > 0 and rot_opt == "cg":
+                # f_perp = weights.dot(get_f_perp(f1, f2, N))
+                f_perp = get_f_perp(f1, f2, N)
+                gamma = (f_perp - F_rots[-1]).dot(f_perp) / f_perp.dot(f_perp)
+                G_last = G_perps[-1]
+                G_perp = f_perp + gamma * np.linalg.norm(G_last)*theta
+                theta_dir = G_perp
+                F_rots.append(f_perp)
+                G_perps.append(G_perp)
+            # Theta from plain steepest descent F_rot/|F_rot|
+            else:
+                # theta_dir = weights.dot(get_f_perp(f1, f2, N))
+                theta_dir = get_f_perp(f1, f2, N)
+            theta = theta_dir / np.linalg.norm(theta_dir)
+            # theta = get_theta0(f1, f2, N)
 
             # Get rotated endpoint geometries. The rotation takes place in a plane
             # spanned by N and theta. Theta is a unit vector perpendicular to N that
             # can be formed from the perpendicular components of the forces at the
             # endpoints.
-            theta = make_theta(f1, f2, N)
 
             # Derivative of the curvature, Eq. (29) in [2]
             # (f2 - f1) or -(f1 - f2)
@@ -219,7 +280,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             coords2_trial = coords0 - N_trial*dR
 
             C_trial = get_curvature(f1_trial, f2_trial, N_trial, dR)
-            theta_trial = make_theta(f1_trial, f2_trial, N_trial)
+            theta_trial = get_theta0(f1_trial, f2_trial, N_trial)
 
             b1 = 0.5 * dC
             a1 = (C - C_trial + b1*np.sin(2*rad_trial)) / (1-np.cos(2*rad_trial))
@@ -241,7 +302,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
             # TODO: handle cases where the curvature is still positive, but
             # the angle is small, so the rotation is skipped.
             # Don't do rotation for small angles
-            # print(f"rad_min={rad_min:.2f} rad_tol={rad_tol:.2f}")
             if np.abs(rad_min) < rad_tol:
                 logger.debug(f"rad_min={rad_min:.2f} below threshold. Breaking.")
                 break
@@ -262,6 +322,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
             f2 = 2*f0 - f1
         logger.debug(f"Did {j} rotation(s) using {rot_force_evals} "
                       "force evaluations.")
+        # print(f"Did {j} rotation(s) using {rot_force_evals} "
+                      # "force evaluations.")
 
         f0_mod = get_f_mod(f0, N, C_min)
 
@@ -304,6 +366,14 @@ def dimer_method(geoms, calc_getter, N_init=None,
         if check_for_stop_sign():
             write_progress(geom0)
             break
+
+    if do_hess:
+        hessian = geom0.hessian
+        eigvals, eigvecs = np.linalg.eigh(hessian)
+        ev_thresh = -1e-4
+        neg_eigvals = eigvals[eigvals < ev_thresh]
+        print(f"Self found {neg_eigvals.size} eigenvalues < {ev_thresh}.")
+        print("Negative eigenvalues: ", neg_eigvals)
 
     return dimer_cycles
 

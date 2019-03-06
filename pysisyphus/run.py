@@ -184,7 +184,7 @@ def run_cos_dimer(cos, dimer_kwargs, calc_getter):
     dimer_cycles = dimer_method(geoms, **dimer_kwargs)
     last_cycle = dimer_cycles[-1]
     ts_coords = last_cycle.trans_coords[1]
-    print(f"Optimized TS coord: {ts_coords}")
+    print(f"Optimized TS coord:")
     print(ts_geom.as_xyz())
 
 
@@ -398,7 +398,7 @@ def get_defaults(conf_dict):
             "max_step": 0.1,
             "max_cycles": 50,
             "trial_angle": 5,
-            "angle_thresh": 0.5,
+            "angle_tol": 5,
             "dR_base": 0.01,
         }
 
@@ -515,6 +515,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     geoms = get_geoms(xyz, idpp, between, coord_type=coord_type)
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
+
     if dryrun:
         calc = calc_getter(0)
         dry_run(calc, geoms[0])

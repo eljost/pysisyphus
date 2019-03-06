@@ -78,6 +78,7 @@ def test_anapot():
         # "restrict_step": "scale",
         #"angle_tol": 0.5,
         "max_cycles": 10,
+        "rot_opt": "cg",
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     true_ts = (0.61173, 1.49297)
@@ -118,7 +119,7 @@ def test_anapotcbm():
     plot_dimer_cycles(dimer_cycles, pot=AnaPotCBM(), true_ts=true_ts)
 
 
-def test_hcn_iso_dimer():
+def test_hcn_iso_dimer(rot_opt="cg"):
 
     calc_kwargs = {
         "route": "PM6",
@@ -139,6 +140,8 @@ def test_hcn_iso_dimer():
         "max_step": 0.04,
         "dR_base": 0.01,
         "N_init": N_init,
+        "rot_opt": rot_opt,
+        # "zero_weights": [1],
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
 
@@ -147,4 +150,5 @@ if __name__ == "__main__":
     test_anapot()
     # plot_anapotcbm_curvature()
     # test_anapotcbm()
-    # test_hcn_iso_dimer()
+    # test_hcn_iso_dimer("cg")
+    # test_hcn_iso_dimer("lbfgs")
