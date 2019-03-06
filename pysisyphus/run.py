@@ -604,6 +604,8 @@ def clean(force=False):
         "calculator_*.control",
         "calculator_*.mos",
         "calculator_*.ciss_a",
+        "image*.sing_a",
+        "calculator*.sing_a",
         # WFOverlap specific
         "wfo_*.*.out",
         # XTB specific

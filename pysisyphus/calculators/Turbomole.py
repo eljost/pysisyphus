@@ -208,7 +208,7 @@ class Turbomole(OverlapCalculator):
         self.prepare_input(atoms, coords, "force")
         kwargs = {
                 "calc": "force",
-                "shell": True, # To allow 'ridft; rdgrad' etc.
+                "shell": True, # To allow chained commands like 'ridft; rdgrad'
                 "hold": self.track, # Keep the files for WFOverlap
                 "env": self.get_pal_env(),
         }
@@ -216,11 +216,13 @@ class Turbomole(OverlapCalculator):
         # the previously prepared control file and the current coords.
         results = self.run(None, **kwargs)
         if self.track:
+            prev_run_path = self.last_run_path
             if self.track_root(atoms, coords):
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
             self.calc_counter += 1
-            shutil.rmtree(self.last_run_path)
+            self.last_run_path = prev_run_path
+        shutil.rmtree(self.last_run_path)
         return results
 
     def run_calculation(self, atoms, coords):

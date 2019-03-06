@@ -13,13 +13,15 @@ class OverlapCalculator(Calculator):
         "wf": "wavefunction overlap",
         "tden": "transition density matrix overlap",
         "nto": "natural transition orbital overlap",
+        # As described in 10.1002/jcc.25800
+        "nto_org": "original natural transition orbital overlap",
     }
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", use_ntos=4, **kwargs):
         self.track = track
         self.ovlp_type = ovlp_type
-        assert self.ovlp_type in ("tden", "wf", "nto")
+        assert self.ovlp_type in ("tden", "wf", "nto", "nto_org")
         self.double_mol = double_mol
         assert ovlp_with in ("previous", "first")
         self.ovlp_with = ovlp_with
@@ -119,7 +121,7 @@ class OverlapCalculator(Calculator):
         vir_ntos = vir_mos.T.dot(vh)
         return occ_ntos, vir_ntos, lambdas
 
-    def get_nto_overlaps(self, ao_ovlp=None):
+    def get_nto_overlaps(self, ao_ovlp=None, org=False):
         if ao_ovlp is None:
             mos_inv = np.linalg.inv(self.mo_coeff_list[-1])
             ao_ovlp = mos_inv.dot(mos_inv.T)
@@ -130,7 +132,10 @@ class OverlapCalculator(Calculator):
         ind_1, ind_2 = indices
         ntos_1 = self.nto_list[ind_1]
         ntos_2 = self.nto_list[ind_2]
-        overlaps = self.nto_overlaps(ntos_1, ntos_2, ao_ovlp)
+        if org:
+            overlaps = self.nto_org_overlaps(ntos_1, ntos_2, ao_ovlp)
+        else:
+            overlaps = self.nto_overlaps(ntos_1, ntos_2, ao_ovlp)
         return overlaps
 
     def nto_overlaps(self, ntos_1, ntos_2, ao_ovlp):
@@ -147,6 +152,25 @@ class OverlapCalculator(Calculator):
                 l_j = n_j.lambdas[:,None]
                 ntos_j = l_j*n_j.ntos
                 ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
+                ovlps[i, j] = ovlp
+
+        return ovlps
+
+    def nto_org_overlaps(self, ntos_1, ntos_2, ao_ovlp, nto_thresh=.3):
+        states_1 = len(ntos_1)
+        states_2 = len(ntos_2)
+        ovlps = np.zeros((states_1, states_2))
+
+        for i in range(states_1):
+            n_i = ntos_1[i]
+            l_i = n_i.lambdas[:,None]
+            ntos_i = n_i.ntos[(l_i >= nto_thresh).flatten()]
+            l_i_big = l_i[l_i >= nto_thresh]
+            for j in range(i, states_2):
+                n_j = ntos_2[j]
+                l_j = n_j.lambdas[:,None]
+                ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
+                ovlp = np.sum(l_i_big * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
                 ovlps[i, j] = ovlp
 
         return ovlps
@@ -169,7 +193,7 @@ class OverlapCalculator(Calculator):
         # Used for WFOverlap
         self.wfow.store_iteration(atoms, coords, mos_fn, ci_coeffs)
         # Also store NTOs if requested
-        if self.ovlp_type == "nto":
+        if self.ovlp_type in ("nto", "nto_org"):
             roots = ci_coeffs.shape[0]
             ntos_for_cycle = list()
             for root in range(roots):
@@ -219,6 +243,9 @@ class OverlapCalculator(Calculator):
             overlaps = np.abs(overlaps)
         elif ovlp_type == "nto":
             overlaps = self.get_nto_overlaps(ao_ovlp)
+            overlaps = np.abs(overlaps)
+        elif ovlp_type == "nto_org":
+            overlaps = self.get_nto_overlaps(ao_ovlp, org=True)
             overlaps = np.abs(overlaps)
         else:
             raise Exception("Invalid overlap specifier! Use one of "
