@@ -170,7 +170,7 @@ class OverlapCalculator(Calculator):
                 n_j = ntos_2[j]
                 l_j = n_j.lambdas[:,None]
                 ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
-                ovlp = np.sum(l_i_big * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
+                ovlp = np.sum(l_i_big[:,None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
                 ovlps[i, j] = ovlp
 
         return ovlps
