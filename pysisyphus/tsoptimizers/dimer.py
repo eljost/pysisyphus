@@ -75,8 +75,8 @@ def write_progress(geom0):
 
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
-                 max_rots=10, interpolate=True, rot_opt="lbfgs",
-                 trial_angle=5, angle_tol=5, dR_base=0.01,
+                 max_rots=10, interpolate=True, rot_opt="cg",
+                 trial_angle=5, angle_tol=0.5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
                  f_thresh=1e-3, do_hess=False,
                  zero_weights=[], dimer_pickle=None):
