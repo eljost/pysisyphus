@@ -69,20 +69,43 @@ def plot_dimer_cycles(dimer_cycles, pot, true_ts=None):
     plt.show()
 
 
-def test_anapot():
+def test_anapot(rot_opt, assert_cycles):
     geoms = get_geoms()
+    calc_getter = AnaPot
+    # geoms = (AnaPot().get_geom((-0.66, 0.84, 0)), )
+    # geoms = (AnaPot().get_geom((-1.346, 2.06, 0)), )
+    dimer_kwargs = {
+        "ana_2dpot": True,
+        "restrict_step": "max",
+        "angle_tol": 5,
+        "rot_opt": rot_opt,
+        "f_thresh": 1e-4,
+    }
+    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    true_ts = (0.61173, 1.49297)
+
+    assert len(dimer_cycles)+1 == assert_cycles
+    plot_dimer_cycles(dimer_cycles, pot=AnaPot(), true_ts=true_ts)
+
+
+def test_anapot_rotation():
+    pot = AnaPot()
+    geoms = (pot.get_geom((0.506, 1.557, 0)), pot.get_geom((0.55, 1.2788, 0)))
     calc_getter = AnaPot
     dimer_kwargs = {
         "ana_2dpot": True,
         "restrict_step": "max",
         # "restrict_step": "scale",
-        #"angle_tol": 0.5,
-        "max_cycles": 10,
-        "rot_opt": "cg",
+        "angle_tol": 5,
+        # "max_cycles": 3,
+        "rot_opt": "lbfgs",
+        # "rot_opt": "sd",
+        # "rot_opt": "cg",
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
     true_ts = (0.61173, 1.49297)
-    plot_dimer_cycles(dimer_cycles, pot=AnaPot(), true_ts=true_ts)
+    # plot_dimer_cycles(dimer_cycles[-8:], pot=AnaPot(), true_ts=true_ts)
+
 
 def plot_anapotcbm_curvature():
     pot = AnaPotCBM()
@@ -141,14 +164,20 @@ def test_hcn_iso_dimer(rot_opt="cg"):
         "dR_base": 0.01,
         "N_init": N_init,
         "rot_opt": rot_opt,
+        "angle_tol": 5,
+        "f_thresh": 1e-4,
         # "zero_weights": [1],
     }
     dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
 
 
 if __name__ == "__main__":
-    test_anapot()
+    # test_anapot("sd", 9)
+    # test_anapot("cg", 9)
+    test_anapot("lbfgs", 9)
+    # test_anapot_rotation()
     # plot_anapotcbm_curvature()
     # test_anapotcbm()
+    # test_hcn_iso_dimer("sd")
     # test_hcn_iso_dimer("cg")
     # test_hcn_iso_dimer("lbfgs")

@@ -7,7 +7,7 @@ import cloudpickle
 import numpy as np
 
 from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
-from pysisyphus.optimizers.closures import lbfgs_closure
+from pysisyphus.optimizers.closures import lbfgs_closure_
 from pysisyphus.TablePrinter import TablePrinter
 
 
@@ -21,6 +21,9 @@ DimerCycle = namedtuple("DimerCycle",
 DimerPickle = namedtuple("DimerPickle",
                          "coords0 N dR"
 )
+
+DimerResult = namedtuple("DimerResult",
+                         "dimer_cycles force_evals geom0 converged")
 
 def make_unit_vec(vec1, vec2):
     """Return unit vector pointing from vec2 to vec1."""
@@ -158,6 +161,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
         geom2 = geom_getter(coords2)
         dR = dR_base
 
+    geom0.calculator.base_name = "image0"
+    geom1.calculator.base_name = "image1"
+    geom2.calculator.base_name = "image2"
+
     dimer_pickle = DimerPickle(coords0, N, dR)
     with open("dimer_pickle", "wb") as handle:
         cloudpickle.dump(dimer_pickle, handle)
@@ -168,9 +175,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
     print("Using N:", N)
     def f0_mod_getter(coords, N, C):
-        geom0.coords = coords
-        forces = geom0.forces
-        return get_f_mod(forces, N, C)
+        np.testing.assert_allclose(geom0.coords, coords)
+        # This should alrady be set
+        return get_f_mod(geom0.forces, N, C)
 
     def restrict_max_step_comp(step, max_step=max_step):
         step_max = np.abs(step).max()
@@ -193,6 +200,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
     rstr_func = rstr_dict[restrict_step]
 
     table.print_header()
+    tot_rot_force_evals = 0
+    # Create the translation optimizer in the first cycle of the loop.
+    trans_lbfgs = lbfgs_closure_(f0_mod_getter, restrict_step=rstr_func)
+
     for i in range(max_cycles):
         logger.debug(f"Dimer macro cycle {i:03d}")
         f0 = geom0.forces
@@ -209,7 +220,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
         f0_max = np.abs(f0).max()
         row_args = [i, C, f0_max, f0_rms]
         table.print_row(row_args)
-        if C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh:
+        converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
+        if converged:
             write_progress(geom0)
             table.print("Converged!")
             break
@@ -227,17 +239,15 @@ def dimer_method(geoms, calc_getter, N_init=None,
                 # return weights.dot(get_f_perp(f1, f2, N))
                 return get_f_perp(f1, f2, N)
             rot_restrs = lambda step: restrict_step_length(step, 0.1)
-            rot_lbfgs = lbfgs_closure(rot_force0, rot_force_getter)#,
-                                      #restrict_step=rot_restrs)
+            rot_lbfgs = lbfgs_closure_(rot_force_getter)
 
         for j in range(max_rots):
             logger.debug(f"Rotation cycle {j:02d}")
             C = get_curvature(f1, f2, N, dR)
             logger.debug(f"C={C:.6f}")
             # Theta from L-BFGS as implemented in DL-FIND dlf_dimer.f90
-            if j > 0 and rot_opt == "lbfgs":
-                N_new, N_step, _ = rot_lbfgs(N, f1, f2)
-                theta_dir = N_new - N_new.dot(N)*N
+            if rot_opt == "lbfgs":
+                theta_dir, _ = rot_lbfgs(N, f1, f2)
             # Theta from conjugate gradient
             elif j > 0 and rot_opt == "cg":
                 # f_perp = weights.dot(get_f_perp(f1, f2, N))
@@ -252,6 +262,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
             else:
                 # theta_dir = weights.dot(get_f_perp(f1, f2, N))
                 theta_dir = get_f_perp(f1, f2, N)
+            # Remove component that is parallel to N
+            theta_dir = theta_dir - theta_dir.dot(N)*N
             theta = theta_dir / np.linalg.norm(theta_dir)
             # theta = get_theta0(f1, f2, N)
 
@@ -298,6 +310,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
                              f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
                              f"(C(theta+pi/2)={C_min_new:.6f})"
                 )
+                C_min = C_min_new
 
             # TODO: handle cases where the curvature is still positive, but
             # the angle is small, so the rotation is skipped.
@@ -320,28 +333,23 @@ def dimer_method(geoms, calc_getter, N_init=None,
                 f1 = geom1.get_energy_and_forces_at(coords1_rot)["forces"]
                 rot_force_evals += 1
             f2 = 2*f0 - f1
+            C = get_curvature(f1, f2, N, dR)
+            logger.debug("")
+        tot_rot_force_evals += rot_force_evals
+        table.print(f"Did {j} rotation(s) using {rot_force_evals} "
+                      "force evaluations.")
         logger.debug(f"Did {j} rotation(s) using {rot_force_evals} "
                       "force evaluations.")
-        # print(f"Did {j} rotation(s) using {rot_force_evals} "
-                      # "force evaluations.")
 
-        f0_mod = get_f_mod(f0, N, C_min)
-
-        # Create the translation optimizer in the first cycle of the loop.
-        if i == 0:
-            trans_lbfgs = lbfgs_closure(f0_mod, f0_mod_getter,
-                                        restrict_step=rstr_func)
+        f0_mod = get_f_mod(f0, N, C)
 
         if C > 0:
-            N_trans = f0_mod.copy()
-            N_trans /= np.linalg.norm(N_trans)
-            step = max_step*N_trans
-            # TODO: geom0 coords aren't updated here ...
-            coords0_trans = coords0 + step
-            geom0.coords = coords0_trans
+            step = max_step * (f0_mod / np.linalg.norm(f0_mod))
         else:
             # Translation using L-BFGS as described in [4]
-            coords0_trans, step, f0 = trans_lbfgs(coords0, N, C_min)
+            step, f0 = trans_lbfgs(coords0, N, C)
+        coords0_trans = coords0 + step
+        geom0.coords = coords0_trans
 
         # The coordinates of geom0 were already updated in the f0_mod_getter
         # call.
@@ -366,6 +374,13 @@ def dimer_method(geoms, calc_getter, N_init=None,
         if check_for_stop_sign():
             write_progress(geom0)
             break
+        logger.debug("")
+    print(f"Did {tot_rot_force_evals} force evaluations in the rotation steps "
+          f"using the {rot_opt_dict[rot_opt]} optimizer.")
+    add_force_evals = 2*i + 2
+    tot_force_evals = tot_rot_force_evals + add_force_evals
+    print(f"Used {add_force_evals} additional force evaluations for a total of "
+          f"{tot_force_evals} force evaluations.")
 
     if do_hess:
         hessian = geom0.hessian
@@ -375,7 +390,12 @@ def dimer_method(geoms, calc_getter, N_init=None,
         print(f"Self found {neg_eigvals.size} eigenvalues < {ev_thresh}.")
         print("Negative eigenvalues: ", neg_eigvals)
 
-    return dimer_cycles
+    dimer_results = DimerResult(dimer_cycles=dimer_cycles,
+                                force_evals=tot_force_evals,
+                                geom0=geom0,
+                                converged=converged)
+
+    return dimer_results
 
 
 if __name__ == "__main__":
