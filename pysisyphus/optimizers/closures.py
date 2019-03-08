@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 def bfgs_multiply(s_list, y_list, force):
     """Get a L-BFGS step.
     
@@ -65,4 +66,41 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
         y_list = y_list[-m:]
         cur_cycle += 1
         return new_x, step, new_forces
+    return lbfgs
+
+
+def lbfgs_closure_(force_getter, m=10, restrict_step=None):
+    x_list = list()
+    s_list = list()
+    y_list = list()
+    force_list = list()
+    cur_cycle = 0
+
+    if restrict_step is None:
+        restrict_step = lambda x: x
+
+    def lbfgs(x, *getter_args):
+        nonlocal x_list
+        nonlocal cur_cycle
+        nonlocal s_list
+        nonlocal y_list
+
+        force = force_getter(x, *getter_args)
+        if cur_cycle > 0:
+            prev_x = x_list[-1]
+            s = x - prev_x
+            s_list.append(s)
+            prev_force = force_list[-1]
+            y = prev_force - force
+            y_list.append(y)
+        x_list.append(x)
+        force_list.append(force)
+
+        step = -bfgs_multiply(s_list, y_list, force)
+        step = restrict_step(step)
+        # Only keep last m cycles
+        s_list = s_list[-m:]
+        y_list = y_list[-m:]
+        cur_cycle += 1
+        return step, force
     return lbfgs
