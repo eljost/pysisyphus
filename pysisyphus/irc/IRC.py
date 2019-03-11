@@ -6,7 +6,7 @@ import pathlib
 
 import numpy as np
 
-from pysisyphus.xyzloader import make_trj_str
+from pysisyphus.xyzloader import make_trj_str, make_xyz_str
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import check_for_stop_sign, highlight_text
 from pysisyphus.TablePrinter import TablePrinter
@@ -212,6 +212,7 @@ class IRC:
             self.all_coords.extend(self.forward_coords)
             self.all_energies.extend(self.forward_energies)
             self.forward_step = self.cur_step
+            self.write_trj(".", "forward", self.forward_coords)
 
         # Add TS data
         self.all_coords.append(self.ts_mw_coords)
@@ -225,6 +226,7 @@ class IRC:
             self.all_coords.extend(self.backward_coords)
             self.all_energies.extend(self.backward_energies)
             self.backward_step = self.cur_step
+            self.write_trj(".", "backward", self.backward_coords)
 
         self.all_coords = np.array(self.all_coords)
         self.all_energies = np.array(self.all_energies)
@@ -235,15 +237,26 @@ class IRC:
     def postprocess(self):
         pass
 
-    def write_trj(self, path, prefix):
+    def write_trj(self, path, prefix, coords=None):
         path = pathlib.Path(path)
-        # all_atoms = self.geometry.atoms * len(self.all_coords)
         atoms = self.geometry.atoms
-        # mw_coords = self.all_coords.reshape(-1, len(atoms), 3)
-        coords = self.all_coords / self.geometry.masses_rep**0.5
+        if coords is None:
+            coords = self.all_coords
+        coords = coords.copy()
+        coords /= self.geometry.masses_rep**0.5
         coords = coords.reshape(-1, len(atoms), 3) * BOHR2ANG
         # all_coords = self.all_coords.flatten()
         trj_string = make_trj_str(atoms, coords, comments=self.all_energies)
         trj_fn = f"{prefix}_irc.trj"
         with open(path / trj_fn, "w") as handle:
             handle.write(trj_string)
+
+        first_coords = coords[0]
+        first_fn = f"{prefix}_first.xyz"
+        with open(path / first_fn, "w") as handle:
+            handle.write(make_xyz_str(atoms, first_coords))
+
+        last_coords = coords[-1]
+        first_fn = f"{prefix}_last.xyz"
+        with open(path / first_fn, "w") as handle:
+            handle.write(make_xyz_str(atoms, last_coords))
