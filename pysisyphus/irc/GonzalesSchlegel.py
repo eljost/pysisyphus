@@ -70,7 +70,7 @@ class GonzalesSchlegel(IRC):
         lambda_ = np.sort(eigvals)[0]
         lambda_ *= 1.5 if (lambda_ < 0) else 0.5
         # Find the root with scipy
-        lambda_ = newton(lambda_func, lambda_, maxiter=100)
+        lambda_ = newton(lambda_func, lambda_, maxiter=1000)
 
         # Calculate dx from optimized lambda
         dx = -np.dot(
@@ -84,7 +84,6 @@ class GonzalesSchlegel(IRC):
         tangent = gradient - gradient.dot(self.displacement)/displ_norm * gradient
 
         return dx, tangent
-        
 
     def step(self):
         gradient0 = self.gradient
