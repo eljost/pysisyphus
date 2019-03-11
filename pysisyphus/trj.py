@@ -67,6 +67,9 @@ def parse_args(args):
     action_group.add_argument("--append", action="store_true",
                     help="Combine the given .xyz files into one .xyz file."
     )
+    action_group.add_argument("--join", action="store_true",
+                    help="Combine the given .xyz/.trj files into one .trj file."
+    )
     action_group.add_argument("--match", action="store_true",
             help="Resort the second .xyz file so the atom order matches the "
                  "first .xyz file. Uses the hungarian method."
@@ -287,6 +290,9 @@ def run():
     elif args.append:
         to_dump = append(geoms)
         fn_base = "appended"
+    elif args.join:
+        to_dump = geoms
+        fn_base = "joined"
     elif args.match:
         to_dump = match(*geoms)
         fn_base = "matched"

@@ -181,7 +181,8 @@ def run_cos_dimer(cos, dimer_kwargs, calc_getter):
         "N_init": hei_tangent,
         "calc_getter": calc_getter,
     })
-    dimer_cycles = dimer_method(geoms, **dimer_kwargs)
+    dimer_result = dimer_method(geoms, **dimer_kwargs)
+    dimer_cycles = dimer_result.dimer_cycles
     last_cycle = dimer_cycles[-1]
     ts_coords = last_cycle.trans_coords[1]
     print(f"Optimized TS coord:")

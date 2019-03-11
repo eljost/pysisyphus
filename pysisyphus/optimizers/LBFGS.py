@@ -94,3 +94,6 @@ class LBFGS(Optimizer):
         return {
             "alpha": self.alpha,
         }
+
+    def reset(self):
+        pass
