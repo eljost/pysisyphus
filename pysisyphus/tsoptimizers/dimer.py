@@ -73,7 +73,7 @@ def write_progress(geom0):
     ts_xyz_str = geom0.as_xyz()
     with open(ts_fn, "w") as handle:
         handle.write(ts_xyz_str)
-    print(f"Wrote current TS geometry to '{ts_fn}'.")
+    logger.debug(f"Wrote current TS geometry to '{ts_fn}'.")
 
 
 def dimer_method(geoms, calc_getter, N_init=None,
@@ -222,7 +222,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
         table.print_row(row_args)
         converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
         if converged:
-            write_progress(geom0)
             table.print("Converged!")
             break
 
@@ -371,8 +370,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
         geom1.coords = coords1_trans
         geom2.coords = coords2_trans
 
+        write_progress(geom0)
+
         if check_for_stop_sign():
-            write_progress(geom0)
             break
         logger.debug("")
     print(f"Did {tot_rot_force_evals} force evaluations in the rotation steps "
