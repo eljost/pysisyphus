@@ -82,6 +82,7 @@ def test_anapot(trans_opt, trans_memory):
         "rot_opt": "mb",
         "trans_opt": trans_opt,
         "trans_memory": trans_memory,
+        "f_tran_mod": False,
     }
     result = dimer_method(geoms, calc_getter, **dimer_kwargs)
     return result
@@ -90,6 +91,8 @@ def test_anapot(trans_opt, trans_memory):
 def anapot_tester():
     trans_opts = ("lbfgs", "mb")
     trans_memories = range(2, 8)
+    # trans_opts = ("mb", )
+    # trans_memories = (4, )
     results = dict()
     true_ts = (0.61173, 1.49297, 0.)
     ref_cycles = {
@@ -101,10 +104,10 @@ def anapot_tester():
         'lbfgs_7': 7,
         'mb_2': 5,
         'mb_3': 5,
-        'mb_4': 7,
-        'mb_5': 7,
-        'mb_6': 8,
-        'mb_7': 8,
+        'mb_4': 5,
+        'mb_5': 5,
+        'mb_6': 5,
+        'mb_7': 5,
     }
     for to, tm in it.product(trans_opts, trans_memories):
         dimer_result = test_anapot(to, tm)
@@ -113,7 +116,7 @@ def anapot_tester():
         np.testing.assert_allclose(dimer_result.geom0.coords, true_ts, atol=1e-4)
         assert ref_cycles[key] == len(dimer_result.dimer_cycles)
     print(results)
-    # plot_dimer_cycles(dimer_cycles, pot=AnaPot(), true_ts=true_ts)
+    # plot_dimer_cycles(dimer_result.dimer_cycles, pot=AnaPot(), true_ts=true_ts[:2])
 
 
 
@@ -121,7 +124,8 @@ def plot_anapotcbm_curvature():
     pot = AnaPotCBM()
     pot.plot()
     xs = np.linspace(-1.25, 1.25, num=50)
-    ys = np.linspace(-0.75, 0.75, num=50)
+    # ys = np.linspace(-0.75, 0.75, num=50)
+    ys = np.linspace(-1, 1, num=50)
     X, Y = np.meshgrid(xs, ys)
     z = list()
     for x_, y_ in zip(X.flatten(), Y.flatten()):
@@ -141,14 +145,20 @@ def test_anapotcbm():
     calc_getter = AnaPotCBM
     # geom = AnaPotCBM().get_geom((0.818, 0.2233, 0.0))
     geom = AnaPotCBM().get_geom((0.2, 0.2, 0.0))
-    # v, w = np.linalg.eigh(geom.hessian)
+    # geom = AnaPotCBM().get_geom((0.5, 0.2, 0.0))
+    geom = AnaPotCBM().get_geom((0.9, 0.8, 0.0))
+    v, w = np.linalg.eigh(geom.hessian)
+    N_imag = w[:,0]
     geoms = [geom, ]
     dimer_kwargs = {
         "ana_2dpot": True,
         "restrict_step": "max",
+        "N_init": N_imag,
+        "trans_opt": "mb",
     }
     true_ts = (0, 0)
-    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    dimer_result = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    dimer_cycles = dimer_result.dimer_cycles
     plot_dimer_cycles(dimer_cycles, pot=AnaPotCBM(), true_ts=true_ts)
 
 
@@ -185,8 +195,10 @@ def test_hcn_iso_dimer(trans_opt, trans_memory):
 
 def hcn_tester():
     trans_opts = ("lbfgs", "mb")
+    # trans_opts = ("mb", )
     trans_memories = range(3, 6)
 
+    # Original f_trans
     ref_evals = {
         'lbfgs_3': 18,
         'lbfgs_4': 18,
@@ -195,18 +207,26 @@ def hcn_tester():
         'mb_4': 16,
         'mb_5': 16,
     }
+    # Modified f_trans
+    ref_evals = {
+        'lbfgs_3': 18,
+        'lbfgs_4': 18,
+        'lbfgs_5': 18,
+        'mb_3': 16,
+        'mb_4': 18,
+        'mb_5': 18,
+    }
     results = dict()
     for to, tm in it.product(trans_opts, trans_memories):
         dimer_result = test_hcn_iso_dimer(to, tm)
         key = f"{to}_{tm}"
         results[key] = dimer_result.force_evals
-        # np.testing.assert_allclose(dimer_result.geom0.coords, true_ts, atol=1e-4)
         assert ref_evals[key] == dimer_result.force_evals
     print(results)
 
 
 if __name__ == "__main__":
-    # anapot_tester()
+    anapot_tester()
     hcn_tester()
     # plot_anapotcbm_curvature()
     # test_anapotcbm()

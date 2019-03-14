@@ -6,6 +6,7 @@ import logging
 import cloudpickle
 import numpy as np
 
+from pysisyphus.constants import EVANG2AUBOHR
 from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
 from pysisyphus.optimizers.closures import lbfgs_closure_
 import pysisyphus.optimizers.closures as closures
@@ -16,7 +17,7 @@ logger = logging.getLogger("tsoptimizer")
 
 
 DimerCycle = namedtuple("DimerCycle",
-                        "org_coords rot_coords trans_coords f0 f0_mod",
+                        "org_coords rot_coords trans_coords f0 f_tran",
 )
 
 DimerPickle = namedtuple("DimerPickle",
@@ -48,11 +49,61 @@ def get_curvature(f1, f2, N, dR):
     return (f2 - f1).dot(N) / (2*dR)
 
 
-def get_f_mod(f, N, C):
-    f_mod = -f.dot(N)*N
+def get_rms(arr):
+    return np.sqrt(np.mean(np.square(arr)))
+
+
+def get_lambda(f_parallel):
+    rms = get_rms(f_parallel)
+
+
+    if rms < 0.5*EVANG2AUBOHR:
+        l_ = 1.
+    elif rms < 1.0*EVANG2AUBOHR:
+        l_ = 0.5
+    elif rms < 2.0*EVANG2AUBOHR:
+        l_ = 0.25
+    else:
+        l_ = 0.1
+    return l_
+
+
+def get_f_tran_mod(f, N, C):
+    """Eq. (15) and (16) from [5]."""
+    f_parallel = f.dot(N)*N
+    f_perp = f - f_parallel
     if C < 0:
-        f_mod = f + 2*f_mod
-    return f_mod
+        lambda_ = get_lambda(f_parallel)
+        f_tran = f_perp - lambda_ * f_parallel
+    else:
+        perp_rms =  get_rms(f_perp)
+        if perp_rms < 2*EVANG2AUBOHR:
+            f_tran = 0.5*f_perp - f_parallel
+        else:
+            f_tran = f_perp - 0.5*f_perp
+    return f_tran
+
+
+def get_f_tran_org(f, N, C):
+    f_parallel = f.dot(N)*N
+    f_perp = f - f_parallel
+    if C < 0:
+        f_tran = f_perp - f_parallel
+    else:
+        f_tran = -f_parallel
+    return f_tran
+
+    # return f_tran
+    # WTH; It seems to make a difference if I return f_tran
+    # or f_mod here ... wtf? This only happens when MB is used
+    # for the translation...
+    # f_mod = -f.dot(N)*N
+    # if C < 0:
+        # f_mod = f + 2*f_mod
+    # np.testing.assert_allclose(f_mod, f_tran)
+    # print(f"diff={np.linalg.norm(f_tran-f_mod):.4e}")
+    # print(f"type(f_mod)={type(f_mod)}")
+    # return f_mod
 
 
 def get_f_perp(f1, f2, N):
@@ -85,7 +136,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
                  trial_angle=5, angle_tol=0.5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
                  f_thresh=1e-3, do_hess=False,
-                 zero_weights=[], dimer_pickle=None):
+                 zero_weights=[], dimer_pickle=None,
+                 f_tran_mod=True):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -133,11 +185,16 @@ def dimer_method(geoms, calc_getter, N_init=None,
         "lbfgs": closures.lbfgs_closure_,
         "mb": closures.modified_broyden_closure,
     }
-
     print(f"Using {opt_name_dict[rot_opt]} for dimer rotation.")
     print(f"Using {opt_name_dict[trans_opt]} for dimer translation.")
     print(f"Keeping information of last {trans_memory} cycles for "
            "translation optimization.")
+
+    f_tran_dict = {
+        True: get_f_tran_mod,
+        False: get_f_tran_org
+    }
+    get_f_tran = f_tran_dict[f_tran_mod]
 
     header = "Cycle Curvature max(f0) rms(f0)".split()
     col_fmts = "int float float float".split()
@@ -189,10 +246,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
     N_list = [N.copy(), ]
 
     print("Using N:", N)
-    def f0_mod_getter(coords, N, C):
+    def f_tran_getter(coords, N, C):
         np.testing.assert_allclose(geom0.coords, coords)
         # This should alrady be set
-        return get_f_mod(geom0.forces, N, C)
+        return get_f_tran(geom0.forces, N, C)
 
     def rot_force_getter(N, f1, f2):
         # return weights.dot(get_f_perp(f1, f2, N))
@@ -221,7 +278,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
     table.print_header()
     tot_rot_force_evals = 0
     # Create the translation optimizer in the first cycle of the loop.
-    trans_optimizer = trans_closures[trans_opt](f0_mod_getter, restrict_step=rstr_func,
+    trans_optimizer = trans_closures[trans_opt](f_tran_getter, restrict_step=rstr_func,
                                                 M=trans_memory)
 
     for i in range(max_cycles):
@@ -360,17 +417,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
         logger.debug(f"Did {j} rotation(s) using {rot_force_evals} "
                       "force evaluations.")
 
-        f0_mod = get_f_mod(f0, N, C)
-
-        if C > 0:
-            step = max_step * (f0_mod / np.linalg.norm(f0_mod))
-        else:
-            step, f0 = trans_optimizer(coords0, N, C)
+        step, f_tran = trans_optimizer(coords0, N, C)
         coords0_trans = coords0 + step
         geom0.coords = coords0_trans
-
-        # The coordinates of geom0 were already updated in the f0_mod_getter
-        # call.
         coords1_trans = coords0_trans + dR*N
         coords2_trans = coords0_trans - dR*N
 
@@ -381,7 +430,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         except:
             rot_coords = np.array((coords1, coords0, coords2))
         trans_coords = np.array((coords1_trans, coords0_trans, coords2_trans))
-        dc = DimerCycle(org_coords, rot_coords, trans_coords, f0, f0_mod)
+        dc = DimerCycle(org_coords, rot_coords, trans_coords, f0, f_tran)
         dimer_cycles.append(dc)
 
         # Update dimer coordinates for next cycle
