@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import numpy as np
+
 
 def bfgs_multiply(s_list, y_list, force):
     """Get a L-BFGS step.
@@ -69,7 +71,7 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
     return lbfgs
 
 
-def lbfgs_closure_(force_getter, m=10, restrict_step=None):
+def lbfgs_closure_(force_getter, M=10, restrict_step=None):
     x_list = list()
     s_list = list()
     y_list = list()
@@ -99,8 +101,68 @@ def lbfgs_closure_(force_getter, m=10, restrict_step=None):
         step = -bfgs_multiply(s_list, y_list, force)
         step = restrict_step(step)
         # Only keep last m cycles
-        s_list = s_list[-m:]
-        y_list = y_list[-m:]
+        s_list = s_list[-M:]
+        y_list = y_list[-M:]
         cur_cycle += 1
         return step, force
     return lbfgs
+
+
+def modified_broyden_closure(force_getter, M=5, restrict_step=None):
+    """https://doi.org/10.1006/jcph.1996.0059
+    F corresponds to the residual gradient, so we after calling
+    force_getter we multiply the force by -1 to get the gradient."""
+
+    dxs = list()
+    dFs = list()
+    # As used in scipy
+    x = None
+    F = None
+    # The next line is used in SciPy, but then beta strongly depends
+    # on the magnitude of x, which is quite weird. Disregarding the
+    # analytical potentials the electronic energy is usually
+    # invariant under translation and rotation and doesn't depend on
+    # the magnitude of x.
+    # beta = 0.5 * max(np.linalg.norm(x), 1) / np.linalg.norm(F)
+    beta = 1
+    a = None
+
+    if restrict_step is None:
+        restrict_step = lambda x: x
+
+    def modified_broyden(x, *getter_args):
+        nonlocal dxs
+        nonlocal dFs
+        nonlocal F
+        nonlocal beta
+        nonlocal a
+
+        F_new = -force_getter(x, *getter_args)
+        if F is not None:
+            dF = F_new - F
+            dFs.append(dF)
+            dFs = dFs[-M:]
+            # Overlap matrix
+            a = np.zeros((len(dFs), len(dFs)))
+            for k, dF_k in enumerate(dFs):
+                for m, dF_m in enumerate(dFs):
+                    a[k, m] = dF_k.dot(dF_m)
+        F = F_new
+        dx = -beta*F
+
+        if len(dxs) > 0:
+            # Calculate gamma
+            dF_F = [dF_k.dot(F) for dF_k in dFs]
+            gammas = np.linalg.solve(a, dF_F)[:,None]
+            _ = np.array(dxs) - beta*np.array(dFs)
+            # Substract step correction
+            dx = dx - np.sum(gammas * _, axis=0)
+        dx = restrict_step(dx)
+        x_new = x + dx
+        dxs.append(dx)
+
+        # Keep only informations of the last M cycles
+        dxs = dxs[-M:]
+
+        return dx, -F
+    return modified_broyden

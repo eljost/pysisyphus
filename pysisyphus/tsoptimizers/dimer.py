@@ -8,6 +8,7 @@ import numpy as np
 
 from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
 from pysisyphus.optimizers.closures import lbfgs_closure_
+import pysisyphus.optimizers.closures as closures
 from pysisyphus.TablePrinter import TablePrinter
 
 
@@ -78,7 +79,9 @@ def write_progress(geom0):
 
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
-                 max_rots=10, interpolate=True, rot_opt="cg",
+                 max_rots=10, interpolate=True,
+                 rot_opt="lbfgs", trans_opt="mb",
+                 trans_memory=5,
                  trial_angle=5, angle_tol=0.5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
                  f_thresh=1e-3, do_hess=False,
@@ -94,6 +97,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
         [3] https://doi.org/10.1063/1.1809574
         # Superlinear dimer
         [4] https://doi.org/10.1063/1.2815812
+        # Modified Broyden
+        [5] https://doi.org/10.1021/ct9005147
 
         To add:
             Comparing curvatures and adding π/2 if appropriate.
@@ -106,7 +111,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
     rad_tol = np.deg2rad(angle_tol)
     rms_f_thresh = float(f_thresh)
     max_f_thresh = 1.5 * rms_f_thresh
-    assert rot_opt in ("sd", "lbfgs", "cg")
     # Construct weight matrix
     # if zero_weights and geoms[0].coord_type != "cart":
         # raise Exception("Weighting works onyl with cartesian coordinates for now!")
@@ -116,13 +120,24 @@ def dimer_method(geoms, calc_getter, N_init=None,
     # print("Using weights:", weights)
     # weights = np.diag(weights)
 
-    rot_opt_dict = {
-        "sd": "steepst descent",
+    opt_name_dict = {
         "cg": "conjugate gradient",
         "lbfgs": "L-BFGS",
+        "mb": "modified Broyden",
+        "sd": "steepst descent",
+    }
+    assert rot_opt in opt_name_dict.keys()
+    # Translation using L-BFGS as described in [4]
+    # Modified broyden as proposed in [5] 10.1021/ct9005147
+    trans_closures = {
+        "lbfgs": closures.lbfgs_closure_,
+        "mb": closures.modified_broyden_closure,
     }
 
-    print(f"Using {rot_opt_dict[rot_opt]} direction to optimize rotations.")
+    print(f"Using {opt_name_dict[rot_opt]} for dimer rotation.")
+    print(f"Using {opt_name_dict[trans_opt]} for dimer translation.")
+    print(f"Keeping information of last {trans_memory} cycles for "
+           "translation optimization.")
 
     header = "Cycle Curvature max(f0) rms(f0)".split()
     col_fmts = "int float float float".split()
@@ -179,6 +194,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
         # This should alrady be set
         return get_f_mod(geom0.forces, N, C)
 
+    def rot_force_getter(N, f1, f2):
+        # return weights.dot(get_f_perp(f1, f2, N))
+        return get_f_perp(f1, f2, N)
+
     def restrict_max_step_comp(step, max_step=max_step):
         step_max = np.abs(step).max()
         if step_max > max_step:
@@ -202,7 +221,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
     table.print_header()
     tot_rot_force_evals = 0
     # Create the translation optimizer in the first cycle of the loop.
-    trans_lbfgs = lbfgs_closure_(f0_mod_getter, restrict_step=rstr_func)
+    trans_optimizer = trans_closures[trans_opt](f0_mod_getter, restrict_step=rstr_func,
+                                                M=trans_memory)
 
     for i in range(max_cycles):
         logger.debug(f"Dimer macro cycle {i:03d}")
@@ -234,11 +254,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
             F_rots = [rot_force0, ]
         # LBFGS optimizer
         elif rot_opt == "lbfgs" :
-            def rot_force_getter(N, f1, f2):
-                # return weights.dot(get_f_perp(f1, f2, N))
-                return get_f_perp(f1, f2, N)
-            rot_restrs = lambda step: restrict_step_length(step, 0.1)
             rot_lbfgs = lbfgs_closure_(rot_force_getter)
+        # Modified broyden
+        elif rot_opt == "mb":
+            rot_mb = closures.modified_broyden_closure(rot_force_getter)
 
         for j in range(max_rots):
             logger.debug(f"Rotation cycle {j:02d}")
@@ -247,6 +266,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
             # Theta from L-BFGS as implemented in DL-FIND dlf_dimer.f90
             if rot_opt == "lbfgs":
                 theta_dir, _ = rot_lbfgs(N, f1, f2)
+            elif rot_opt == "mb":
+                theta_dir, _ = rot_mb(N, f1, f2)
             # Theta from conjugate gradient
             elif j > 0 and rot_opt == "cg":
                 # f_perp = weights.dot(get_f_perp(f1, f2, N))
@@ -264,7 +285,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
             # Remove component that is parallel to N
             theta_dir = theta_dir - theta_dir.dot(N)*N
             theta = theta_dir / np.linalg.norm(theta_dir)
-            # theta = get_theta0(f1, f2, N)
 
             # Get rotated endpoint geometries. The rotation takes place in a plane
             # spanned by N and theta. Theta is a unit vector perpendicular to N that
@@ -345,8 +365,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         if C > 0:
             step = max_step * (f0_mod / np.linalg.norm(f0_mod))
         else:
-            # Translation using L-BFGS as described in [4]
-            step, f0 = trans_lbfgs(coords0, N, C)
+            step, f0 = trans_optimizer(coords0, N, C)
         coords0_trans = coords0 + step
         geom0.coords = coords0_trans
 
@@ -376,7 +395,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             break
         logger.debug("")
     print(f"Did {tot_rot_force_evals} force evaluations in the rotation steps "
-          f"using the {rot_opt_dict[rot_opt]} optimizer.")
+          f"using the {opt_name_dict[rot_opt]} optimizer.")
     add_force_evals = 2*i + 2
     tot_force_evals = tot_rot_force_evals + add_force_evals
     print(f"Used {add_force_evals} additional force evaluations for a total of "

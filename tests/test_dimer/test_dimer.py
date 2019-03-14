@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import itertools as it
+
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
@@ -69,42 +71,50 @@ def plot_dimer_cycles(dimer_cycles, pot, true_ts=None):
     plt.show()
 
 
-def test_anapot(rot_opt, assert_cycles):
+def test_anapot(trans_opt, trans_memory):
     geoms = get_geoms()
     calc_getter = AnaPot
-    # geoms = (AnaPot().get_geom((-0.66, 0.84, 0)), )
-    # geoms = (AnaPot().get_geom((-1.346, 2.06, 0)), )
     dimer_kwargs = {
         "ana_2dpot": True,
         "restrict_step": "max",
-        "angle_tol": 5,
-        "rot_opt": rot_opt,
+        "angle_tol": 0.5,
         "f_thresh": 1e-4,
+        "rot_opt": "mb",
+        "trans_opt": trans_opt,
+        "trans_memory": trans_memory,
     }
-    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    true_ts = (0.61173, 1.49297)
-
-    assert len(dimer_cycles)+1 == assert_cycles
-    plot_dimer_cycles(dimer_cycles, pot=AnaPot(), true_ts=true_ts)
+    result = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    return result
 
 
-def test_anapot_rotation():
-    pot = AnaPot()
-    geoms = (pot.get_geom((0.506, 1.557, 0)), pot.get_geom((0.55, 1.2788, 0)))
-    calc_getter = AnaPot
-    dimer_kwargs = {
-        "ana_2dpot": True,
-        "restrict_step": "max",
-        # "restrict_step": "scale",
-        "angle_tol": 5,
-        # "max_cycles": 3,
-        "rot_opt": "lbfgs",
-        # "rot_opt": "sd",
-        # "rot_opt": "cg",
+def anapot_tester():
+    trans_opts = ("lbfgs", "mb")
+    trans_memories = range(2, 8)
+    results = dict()
+    true_ts = (0.61173, 1.49297, 0.)
+    ref_cycles = {
+        'lbfgs_2': 9,
+        'lbfgs_3': 9,
+        'lbfgs_4': 7,
+        'lbfgs_5': 7,
+        'lbfgs_6': 7,
+        'lbfgs_7': 7,
+        'mb_2': 5,
+        'mb_3': 5,
+        'mb_4': 7,
+        'mb_5': 7,
+        'mb_6': 8,
+        'mb_7': 8,
     }
-    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    true_ts = (0.61173, 1.49297)
-    # plot_dimer_cycles(dimer_cycles[-8:], pot=AnaPot(), true_ts=true_ts)
+    for to, tm in it.product(trans_opts, trans_memories):
+        dimer_result = test_anapot(to, tm)
+        key = f"{to}_{tm}"
+        results[key] = len(dimer_result.dimer_cycles)
+        np.testing.assert_allclose(dimer_result.geom0.coords, true_ts, atol=1e-4)
+        assert ref_cycles[key] == len(dimer_result.dimer_cycles)
+    print(results)
+    # plot_dimer_cycles(dimer_cycles, pot=AnaPot(), true_ts=true_ts)
+
 
 
 def plot_anapotcbm_curvature():
@@ -142,7 +152,7 @@ def test_anapotcbm():
     plot_dimer_cycles(dimer_cycles, pot=AnaPotCBM(), true_ts=true_ts)
 
 
-def test_hcn_iso_dimer(rot_opt="cg"):
+def test_hcn_iso_dimer(trans_opt, trans_memory):
 
     calc_kwargs = {
         "route": "PM6",
@@ -163,21 +173,40 @@ def test_hcn_iso_dimer(rot_opt="cg"):
         "max_step": 0.04,
         "dR_base": 0.01,
         "N_init": N_init,
-        "rot_opt": rot_opt,
+        # "rot_opt": "mb",
+        "trans_opt": trans_opt,
+        "trans_memory": trans_memory,
         "angle_tol": 5,
         "f_thresh": 1e-4,
-        # "zero_weights": [1],
     }
-    dimer_cycles = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    dimer_result = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    return dimer_result
+
+
+def hcn_tester():
+    trans_opts = ("lbfgs", "mb")
+    trans_memories = range(3, 6)
+
+    ref_evals = {
+        'lbfgs_3': 18,
+        'lbfgs_4': 18,
+        'lbfgs_5': 18,
+        'mb_3': 16,
+        'mb_4': 16,
+        'mb_5': 16,
+    }
+    results = dict()
+    for to, tm in it.product(trans_opts, trans_memories):
+        dimer_result = test_hcn_iso_dimer(to, tm)
+        key = f"{to}_{tm}"
+        results[key] = dimer_result.force_evals
+        # np.testing.assert_allclose(dimer_result.geom0.coords, true_ts, atol=1e-4)
+        assert ref_evals[key] == dimer_result.force_evals
+    print(results)
 
 
 if __name__ == "__main__":
-    # test_anapot("sd", 9)
-    # test_anapot("cg", 9)
-    test_anapot("lbfgs", 9)
-    # test_anapot_rotation()
+    # anapot_tester()
+    hcn_tester()
     # plot_anapotcbm_curvature()
     # test_anapotcbm()
-    # test_hcn_iso_dimer("sd")
-    # test_hcn_iso_dimer("cg")
-    # test_hcn_iso_dimer("lbfgs")

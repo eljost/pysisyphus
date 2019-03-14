@@ -18,6 +18,8 @@ from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.SciPyOptimizer import SciPyOptimizer
+from pysisyphus.optimizers.closures import modified_broyden_closure
+
 
 KWARGS = {
     "images": 5,
@@ -378,6 +380,36 @@ def test_lbfgs_mod_neb():
     return opt
 
 
+@pytest.mark.modified_broyden
+def test_modified_broyden():
+    pot = AnaPot()
+    geom = pot.get_geom((-0.8333, 2, 0))
+    force_getter = lambda x: geom.get_energy_and_forces_at(x)["forces"]
+    def restrict_step(step, max_len=0.5):
+        norm = np.linalg.norm(step)
+        if norm > max_len:
+            step = max_len * step / norm
+        return step
+    mod_broyden = modified_broyden_closure(force_getter, restrict_step=restrict_step)
+    coords = [geom.coords.copy(), ]
+    for i in range(50):
+        step, forces = mod_broyden(geom.coords)
+        geom.coords += step
+        coords.append(geom.coords.copy())
+        norm = np.linalg.norm(forces)
+        print(f"Cycle {i:02d}: norm={norm:.4e}")
+        if norm < 1e-12:
+            print("Converged")
+            break
+    pot.plot()
+    ax = pot.ax
+    coords = np.array(coords)
+    xs, ys = coords.T[:2]
+    ax.plot(xs, ys, "ro-")
+    plt.show()
+
+
+
 @pytest.mark.skip
 def test_equal_szts():
     kwargs = copy.copy(KWARGS)
@@ -459,7 +491,10 @@ if __name__ == "__main__":
 
     # LBFGS
     # opt = test_lbfgs_neb()
-    opt = test_lbfgs_mod_neb()
+    # opt = test_lbfgs_mod_neb()
+
+    # Modified broyden
+    test_modified_broyden()
 
     # SimpleZTS
     # opt = test_equal_szts()
