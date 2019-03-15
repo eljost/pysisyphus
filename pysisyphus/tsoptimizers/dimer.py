@@ -81,7 +81,7 @@ def get_f_tran_mod(f, N, C):
             f_tran = 0.5*f_perp - f_parallel
         else:
             f_tran = f_perp - 0.5*f_perp
-    return f_tran
+    return f_tran, f_parallel, f_perp
 
 
 def get_f_tran_org(f, N, C):
@@ -91,7 +91,7 @@ def get_f_tran_org(f, N, C):
         f_tran = f_perp - f_parallel
     else:
         f_tran = -f_parallel
-    return f_tran
+    return f_tran, f_parallel, f_perp
 
     # return f_tran
     # WTH; It seems to make a difference if I return f_tran
@@ -137,7 +137,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
                  restrict_step="scale", ana_2dpot=False,
                  f_thresh=1e-3, do_hess=False,
                  zero_weights=[], dimer_pickle=None,
-                 f_tran_mod=True):
+                 f_tran_mod=True, multiple_translations=False):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -247,9 +247,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
     print("Using N:", N)
     def f_tran_getter(coords, N, C):
+        # The force for the given coord should be already set.
         np.testing.assert_allclose(geom0.coords, coords)
-        # This should alrady be set
-        return get_f_tran(geom0.forces, N, C)
+        # Only return f_tran and drop the parallel and perpendicular component.
+        return get_f_tran(geom0.forces, N, C)[0]
 
     def rot_force_getter(N, f1, f2):
         # return weights.dot(get_f_perp(f1, f2, N))
@@ -281,10 +282,12 @@ def dimer_method(geoms, calc_getter, N_init=None,
     trans_optimizer = trans_closures[trans_opt](f_tran_getter, restrict_step=rstr_func,
                                                 M=trans_memory)
 
+    add_evals = 0
     for i in range(max_cycles):
         logger.debug(f"Dimer macro cycle {i:03d}")
         f0 = geom0.forces
         f1 = geom1.forces
+        add_evals += 2
         f2 = 2*f0 - f1
 
         coords0 = geom0.coords
@@ -293,7 +296,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
         C = get_curvature(f1, f2, N, dR)
 
-        f0_rms = np.sqrt(np.power(f0, 2).mean())
+        f0_rms = get_rms(f0)
         f0_max = np.abs(f0).max()
         row_args = [i, C, f0_max, f0_rms]
         table.print_row(row_args)
@@ -423,6 +426,51 @@ def dimer_method(geoms, calc_getter, N_init=None,
         coords1_trans = coords0_trans + dR*N
         coords2_trans = coords0_trans - dR*N
 
+        # f0_alt = f0.copy()
+        # d_alt = f0_alt / np.linalg.norm(f0)
+        # _, f_parallel, f_perp = get_f_tran(f0, N, C)
+        # fp_alt = f_parallel.copy()
+        # prev_f_par_rms = get_rms(f_parallel)
+        # prev_f_perp_rms = get_rms(f_perp)
+        # for trans_i in range(10):
+            # f0_rms = get_rms(f0)
+            # f0_max = max(np.abs(f0))
+            # converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
+            # if converged:
+                # table.print("Converged!")
+                # break
+            # print(f"Translation {trans_i:02d}")
+            # step, f_tran = trans_optimizer(coords0, N, C)
+            # coords0_trans = coords0 + step
+            # coords1_trans = coords0_trans + dR*N
+            # coords2_trans = coords0_trans - dR*N
+            # geom0.coords = coords0_trans
+            # geom1.coords = coords1_trans
+            # geom2.coords = coords2_trans
+            # coords0 = geom0.coords
+            # # Calculate new forces for translated dimer
+            # f0 = geom0.forces
+            # d_neu = f0 / np.linalg.norm(f0)
+            # f1 = geom1.forces
+            # add_evals += 2
+            # f2 = 2*f0 - f1
+            # C = get_curvature(f1, f2, N, dR)
+            # _, f_parallel, f_perp = get_f_tran(f0, N, C)
+            # f_par_rms = get_rms(f_parallel)
+            # f_perp_rms = get_rms(f_perp)
+            # # print("f_par_rms", f_par_rms)
+            # # print("prev_f_par_rms", prev_f_par_rms)
+            # if (C < 0) and (f_par_rms > prev_f_par_rms):
+                # # print("brik")
+                # break
+            # elif ((C > 0) and (f_par_rms < prev_f_par_rms)
+                  # or (f_perp_rms > prev_f_perp_rms)):
+                # # print("brok")
+                # break
+            # prev_f_par_rms = f_par_rms
+            # prev_f_perp_rms = f_perp_rms
+
+
         # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
         try:
@@ -434,7 +482,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
         dimer_cycles.append(dc)
 
         # Update dimer coordinates for next cycle
-        # geom0.coords = coords0_trans
         geom1.coords = coords1_trans
         geom2.coords = coords2_trans
 
@@ -449,6 +496,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
     tot_force_evals = tot_rot_force_evals + add_force_evals
     print(f"Used {add_force_evals} additional force evaluations for a total of "
           f"{tot_force_evals} force evaluations.")
+    print(f"Counted add forces: {add_evals}; total={add_evals+tot_rot_force_evals}")
 
     if do_hess:
         hessian = geom0.hessian

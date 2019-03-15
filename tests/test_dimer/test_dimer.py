@@ -119,13 +119,13 @@ def anapot_tester():
     # plot_dimer_cycles(dimer_result.dimer_cycles, pot=AnaPot(), true_ts=true_ts[:2])
 
 
-
 def plot_anapotcbm_curvature():
     pot = AnaPotCBM()
     pot.plot()
-    xs = np.linspace(-1.25, 1.25, num=50)
+    num = 100
+    xs = np.linspace(-1.25, 1.25, num=num)
     # ys = np.linspace(-0.75, 0.75, num=50)
-    ys = np.linspace(-1, 1, num=50)
+    ys = np.linspace(-1, 1, num=num)
     X, Y = np.meshgrid(xs, ys)
     z = list()
     for x_, y_ in zip(X.flatten(), Y.flatten()):
@@ -144,17 +144,20 @@ def plot_anapotcbm_curvature():
 def test_anapotcbm():
     calc_getter = AnaPotCBM
     # geom = AnaPotCBM().get_geom((0.818, 0.2233, 0.0))
-    geom = AnaPotCBM().get_geom((0.2, 0.2, 0.0))
+    # geom = AnaPotCBM().get_geom((0.2, 0.2, 0.0))
     # geom = AnaPotCBM().get_geom((0.5, 0.2, 0.0))
-    geom = AnaPotCBM().get_geom((0.9, 0.8, 0.0))
-    v, w = np.linalg.eigh(geom.hessian)
-    N_imag = w[:,0]
+    # geom = AnaPotCBM().get_geom((0.9, 0.8, 0.0))
+    geom = AnaPotCBM().get_geom((0.8, 0.7, 0.0))
+    geom = AnaPotCBM().get_geom((0.65, 0.7, 0.0))
+    w, v = np.linalg.eigh(geom.hessian)
+    print("eigenvals", w)
+    N_imag = v[:,0]
     geoms = [geom, ]
     dimer_kwargs = {
         "ana_2dpot": True,
-        "restrict_step": "max",
         "N_init": N_imag,
         "trans_opt": "mb",
+        "f_tran_mod": False,
     }
     true_ts = (0, 0)
     dimer_result = dimer_method(geoms, calc_getter, **dimer_kwargs)
@@ -213,8 +216,8 @@ def hcn_tester():
         'lbfgs_4': 18,
         'lbfgs_5': 18,
         'mb_3': 16,
-        'mb_4': 18,
-        'mb_5': 18,
+        'mb_4': 16,
+        'mb_5': 16,
     }
     results = dict()
     for to, tm in it.product(trans_opts, trans_memories):
@@ -226,7 +229,7 @@ def hcn_tester():
 
 
 if __name__ == "__main__":
-    anapot_tester()
+    # anapot_tester()
     hcn_tester()
     # plot_anapotcbm_curvature()
     # test_anapotcbm()
