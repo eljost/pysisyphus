@@ -196,7 +196,7 @@ class IRC:
 
             self.cur_step += 1
             if check_for_stop_sign():
-                return
+                break
             print()
 
         if direction == "forward":
