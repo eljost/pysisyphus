@@ -46,11 +46,26 @@ def run():
         "24_h2cnh.xyz": (0, 1, -93.33296),
         "25_hcnh2.xyz": (0, 1, -93.28172),
     }
+
+    dimer_kwargs = {
+        "max_step": 0.5,
+        # 1e-2 Angstroem
+        "dR_base": 0.0189,
+        "rot_opt": "lbfgs",
+        # "trans_opt": "mb",
+        "trans_opt": "lbfgs",
+        "angle_tol": 5,
+        "f_thresh": 1e-3,
+        "max_cycles": 100,
+        "f_tran_mod": False,
+        "multiple_translations": True,
+    }
+
     results_list = list()
     for f, g in zip(xyzs, geoms):
         print(f)
         charge, mult, ref_en = baker_dict[f.name]
-        results = run_geom(f.stem, g, charge, mult)
+        results = run_geom(f.stem, g, charge, mult, dimer_kwargs=dimer_kwargs)
         g0 = results.geom0
         ts_en = g0.energy
         en_diff = ref_en - ts_en
@@ -64,7 +79,7 @@ def run():
             cloudpickle.dump(results_list, handle)
 
 
-def run_geom(stem, geom, charge, mult):
+def run_geom(stem, geom, charge, mult, dimer_kwargs=None):
     calc_kwargs = {
         "route": "HF/3-21G",
         "pal": 4,
@@ -78,15 +93,16 @@ def run_geom(stem, geom, charge, mult):
     geom.set_calculator(calc_getter())
     geoms = [geom, ]
 
-    dimer_kwargs = {
-        "max_step": 0.5,
-        # 1e-2 Angstroem
-        "dR_base": 0.0189,
-        "rot_opt": "lbfgs",
-        "angle_tol": 5,
-        "f_thresh": 1e-3,
-        "max_cycles": 100,
-    }
+    if dimer_kwargs is None:
+        dimer_kwargs = {
+            "max_step": 0.5,
+            # 1e-2 Angstroem
+            "dR_base": 0.0189,
+            "rot_opt": "lbfgs",
+            "angle_tol": 5,
+            "f_thresh": 1e-3,
+            "max_cycles": 100,
+        }
     results = dimer_method(geoms, calc_getter, **dimer_kwargs)
     geom0 = results.geom0
     ts_xyz = geom0.as_xyz()
