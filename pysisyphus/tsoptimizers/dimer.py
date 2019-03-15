@@ -7,7 +7,8 @@ import cloudpickle
 import numpy as np
 
 from pysisyphus.constants import EVANG2AUBOHR
-from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
+from pysisyphus.helpers import (check_for_stop_sign, get_geom_getter,
+                                highlight_text)
 from pysisyphus.optimizers.closures import lbfgs_closure_
 import pysisyphus.optimizers.closures as closures
 from pysisyphus.TablePrinter import TablePrinter
@@ -137,7 +138,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
                  restrict_step="scale", ana_2dpot=False,
                  f_thresh=1e-3, do_hess=False,
                  zero_weights=[], dimer_pickle=None,
-                 f_tran_mod=True, multiple_translations=False):
+                 f_tran_mod=True,
+                 multiple_translations=False, max_translations=10):
     """Dimer method using steepest descent for rotation and translation.
 
     See
@@ -163,14 +165,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
     rad_tol = np.deg2rad(angle_tol)
     rms_f_thresh = float(f_thresh)
     max_f_thresh = 1.5 * rms_f_thresh
-    # Construct weight matrix
-    # if zero_weights and geoms[0].coord_type != "cart":
-        # raise Exception("Weighting works onyl with cartesian coordinates for now!")
-    # weights = np.ones(geoms[0].coords.size)
-    # for zw in zero_weights:
-        # weights[zw*3:zw*3+3] = 0
-    # print("Using weights:", weights)
-    # weights = np.diag(weights)
+    max_translations = max_translations if multiple_translations else 1
 
     opt_name_dict = {
         "cg": "conjugate gradient",
@@ -196,9 +191,12 @@ def dimer_method(geoms, calc_getter, N_init=None,
     }
     get_f_tran = f_tran_dict[f_tran_mod]
 
-    header = "Cycle Curvature max(f0) rms(f0)".split()
-    col_fmts = "int float float float".split()
-    table = TablePrinter(header, col_fmts)
+    rot_header = "Rot._cycle Curvature".split()
+    rot_fmts = "int float".split()
+    rot_table = TablePrinter(rot_header, rot_fmts, width=16, shift_left=2)
+    trans_header = "Trans._cycle Curvature max(|f0|) rms(f0)".split()
+    trans_fmts = "int float float float".split()
+    trans_table = TablePrinter(trans_header, trans_fmts, width=16)
 
     geom_getter = get_geom_getter(geoms[0], calc_getter)
 
@@ -253,7 +251,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
         return get_f_tran(geom0.forces, N, C)[0]
 
     def rot_force_getter(N, f1, f2):
-        # return weights.dot(get_f_perp(f1, f2, N))
         return get_f_perp(f1, f2, N)
 
     def restrict_max_step_comp(step, max_step=max_step):
@@ -276,18 +273,20 @@ def dimer_method(geoms, calc_getter, N_init=None,
     }
     rstr_func = rstr_dict[restrict_step]
 
-    table.print_header()
     tot_rot_force_evals = 0
     # Create the translation optimizer in the first cycle of the loop.
     trans_optimizer = trans_closures[trans_opt](f_tran_getter, restrict_step=rstr_func,
                                                 M=trans_memory)
 
-    add_evals = 0
+    converged = False
+    # In the first dimer cycle f0 and f1 aren't set and have to be calculated.
+    # For cycles i > 0 f0 and f1 will be already set here.
+    add_force_evals = 2
     for i in range(max_cycles):
         logger.debug(f"Dimer macro cycle {i:03d}")
+        print(highlight_text(f"Dimer Cycle {i:03d}"))
         f0 = geom0.forces
         f1 = geom1.forces
-        add_evals += 2
         f2 = 2*f0 - f1
 
         coords0 = geom0.coords
@@ -298,11 +297,12 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
         f0_rms = get_rms(f0)
         f0_max = np.abs(f0).max()
-        row_args = [i, C, f0_max, f0_rms]
-        table.print_row(row_args)
+        row_args = [C, f0_max, f0_rms]
+        trans_table.print(f"@ {i:03d}: C={C:.6f}; max(|f0|)={f0_max:.6f}; rms(f0)={f0_rms:.6f}")
+        print()
         converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
         if converged:
-            table.print("Converged!")
+            rot_table.print("@ Converged!")
             break
 
         rot_force_evals = 0
@@ -414,61 +414,61 @@ def dimer_method(geoms, calc_getter, N_init=None,
             f2 = 2*f0 - f1
             C = get_curvature(f1, f2, N, dR)
             logger.debug("")
+            if j == 0:
+                rot_table.print_header()
+            rot_table.print_row((j, C))
         tot_rot_force_evals += rot_force_evals
-        table.print(f"Did {j} rotation(s) using {rot_force_evals} "
-                      "force evaluations.")
-        logger.debug(f"Did {j} rotation(s) using {rot_force_evals} "
-                      "force evaluations.")
+        rot_str = (f"Did {rot_force_evals} force evaluation(s) and {j} "
+                    "dimer rotation(s).")
+        rot_table.print(rot_str)
+        logger.debug(rot_str)
+        print()
 
-        step, f_tran = trans_optimizer(coords0, N, C)
-        coords0_trans = coords0 + step
-        geom0.coords = coords0_trans
-        coords1_trans = coords0_trans + dR*N
-        coords2_trans = coords0_trans - dR*N
-
-        # f0_alt = f0.copy()
-        # d_alt = f0_alt / np.linalg.norm(f0)
-        # _, f_parallel, f_perp = get_f_tran(f0, N, C)
-        # fp_alt = f_parallel.copy()
-        # prev_f_par_rms = get_rms(f_parallel)
-        # prev_f_perp_rms = get_rms(f_perp)
-        # for trans_i in range(10):
-            # f0_rms = get_rms(f0)
-            # f0_max = max(np.abs(f0))
-            # converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
-            # if converged:
-                # table.print("Converged!")
-                # break
-            # print(f"Translation {trans_i:02d}")
-            # step, f_tran = trans_optimizer(coords0, N, C)
-            # coords0_trans = coords0 + step
-            # coords1_trans = coords0_trans + dR*N
-            # coords2_trans = coords0_trans - dR*N
-            # geom0.coords = coords0_trans
-            # geom1.coords = coords1_trans
-            # geom2.coords = coords2_trans
-            # coords0 = geom0.coords
-            # # Calculate new forces for translated dimer
-            # f0 = geom0.forces
-            # d_neu = f0 / np.linalg.norm(f0)
-            # f1 = geom1.forces
-            # add_evals += 2
-            # f2 = 2*f0 - f1
-            # C = get_curvature(f1, f2, N, dR)
-            # _, f_parallel, f_perp = get_f_tran(f0, N, C)
-            # f_par_rms = get_rms(f_parallel)
-            # f_perp_rms = get_rms(f_perp)
-            # # print("f_par_rms", f_par_rms)
-            # # print("prev_f_par_rms", prev_f_par_rms)
-            # if (C < 0) and (f_par_rms > prev_f_par_rms):
-                # # print("brik")
-                # break
-            # elif ((C > 0) and (f_par_rms < prev_f_par_rms)
-                  # or (f_perp_rms > prev_f_perp_rms)):
-                # # print("brok")
-                # break
-            # prev_f_par_rms = f_par_rms
-            # prev_f_perp_rms = f_perp_rms
+        # If multiple_translations == False then max_translations is 1
+        # and we will do only one iteration.
+        for trans_i in range(max_translations):
+            _, f_parallel, f_perp = get_f_tran(f0, N, C)
+            prev_f_par_rms = get_rms(f_parallel)
+            prev_f_perp_rms = get_rms(f_perp)
+            f0_rms = get_rms(f0)
+            f0_max = max(np.abs(f0))
+            converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
+            if converged:
+                break
+            step, f_tran = trans_optimizer(coords0, N, C)
+            coords0_trans = coords0 + step
+            coords1_trans = coords0_trans + dR*N
+            coords2_trans = coords0_trans - dR*N
+            geom0.coords = coords0_trans
+            geom1.coords = coords1_trans
+            geom2.coords = coords2_trans
+            coords0 = geom0.coords
+            # Calculate new forces for translated dimer
+            f0 = geom0.forces
+            d_neu = f0 / np.linalg.norm(f0)
+            f1 = geom1.forces
+            add_force_evals += 2
+            f2 = 2*f0 - f1
+            C = get_curvature(f1, f2, N, dR)
+            f0_rms = get_rms(f0)
+            f0_max = max(np.abs(f0))
+            if multiple_translations:
+                if trans_i == 0:
+                    trans_table.print_header()
+                trans_args = (trans_i, C, f0_max, f0_rms)
+                trans_table.print_row(trans_args)
+            else:
+                trans_table.print("Did dimer translation.")
+            _, f_parallel, f_perp = get_f_tran(f0, N, C)
+            f_par_rms = get_rms(f_parallel)
+            f_perp_rms = get_rms(f_perp)
+            if (C < 0) and (f_par_rms > prev_f_par_rms):
+                break
+            elif ((C > 0) and (f_par_rms < prev_f_par_rms)
+                  or (f_perp_rms > prev_f_perp_rms)):
+                break
+            prev_f_par_rms = f_par_rms
+            prev_f_perp_rms = f_perp_rms
 
 
         # Save cycle information
@@ -481,22 +481,17 @@ def dimer_method(geoms, calc_getter, N_init=None,
         dc = DimerCycle(org_coords, rot_coords, trans_coords, f0, f_tran)
         dimer_cycles.append(dc)
 
-        # Update dimer coordinates for next cycle
-        geom1.coords = coords1_trans
-        geom2.coords = coords2_trans
-
         write_progress(geom0)
 
         if check_for_stop_sign():
             break
         logger.debug("")
+        print()
     print(f"Did {tot_rot_force_evals} force evaluations in the rotation steps "
           f"using the {opt_name_dict[rot_opt]} optimizer.")
-    add_force_evals = 2*i + 2
     tot_force_evals = tot_rot_force_evals + add_force_evals
     print(f"Used {add_force_evals} additional force evaluations for a total of "
           f"{tot_force_evals} force evaluations.")
-    print(f"Counted add forces: {add_evals}; total={add_evals+tot_rot_force_evals}")
 
     if do_hess:
         hessian = geom0.hessian
@@ -512,7 +507,3 @@ def dimer_method(geoms, calc_getter, N_init=None,
                                 converged=converged)
 
     return dimer_results
-
-
-if __name__ == "__main__":
-    run()

@@ -83,6 +83,7 @@ def test_anapot(trans_opt, trans_memory):
         "trans_opt": trans_opt,
         "trans_memory": trans_memory,
         "f_tran_mod": False,
+        # "multiple_translations": True,
     }
     result = dimer_method(geoms, calc_getter, **dimer_kwargs)
     return result
@@ -191,6 +192,8 @@ def test_hcn_iso_dimer(trans_opt, trans_memory):
         "trans_memory": trans_memory,
         "angle_tol": 5,
         "f_thresh": 1e-4,
+        "f_tran_mod": True,
+        "multiple_translations": True,
     }
     dimer_result = dimer_method(geoms, calc_getter, **dimer_kwargs)
     return dimer_result
