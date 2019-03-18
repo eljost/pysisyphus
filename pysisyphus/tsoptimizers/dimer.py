@@ -57,7 +57,6 @@ def get_rms(arr):
 def get_lambda(f_parallel):
     rms = get_rms(f_parallel)
 
-
     if rms < 0.5*EVANG2AUBOHR:
         l_ = 1.
     elif rms < 1.0*EVANG2AUBOHR:
@@ -132,11 +131,12 @@ def write_progress(geom0):
 def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
                  max_rots=10, interpolate=True,
+                 rot_type="fourier",
                  rot_opt="lbfgs", trans_opt="mb",
                  trans_memory=5,
                  trial_angle=5, angle_tol=0.5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
-                 f_thresh=1e-3, do_hess=False,
+                 f_thresh=1e-3, rot_f_thresh=2e-3, do_hess=False,
                  zero_weights=[], dimer_pickle=None,
                  f_tran_mod=True,
                  multiple_translations=False, max_translations=10):
@@ -174,6 +174,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         "sd": "steepst descent",
     }
     assert rot_opt in opt_name_dict.keys()
+    assert rot_type in "fourier direct".split()
     # Translation using L-BFGS as described in [4]
     # Modified broyden as proposed in [5] 10.1021/ct9005147
     trans_closures = {
@@ -191,8 +192,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
     }
     get_f_tran = f_tran_dict[f_tran_mod]
 
-    rot_header = "Rot._cycle Curvature".split()
-    rot_fmts = "int float".split()
+    rot_header = "Rot._cycle Curvature rms(f_rot)".split()
+    rot_fmts = "int float float".split()
     rot_table = TablePrinter(rot_header, rot_fmts, width=16, shift_left=2)
     trans_header = "Trans._cycle Curvature max(|f0|) rms(f0)".split()
     trans_fmts = "int float float float".split()
@@ -219,7 +220,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         coords0 = geom0.coords
         # Assign random unit vector and use dR_base to for dR
         coord_size = geom0.coords.size
-        N = N_init
+        N = np.array(N_init)
         if N is None:
             N = np.random.rand(coord_size)
         if ana_2dpot:
@@ -253,14 +254,14 @@ def dimer_method(geoms, calc_getter, N_init=None,
     def rot_force_getter(N, f1, f2):
         return get_f_perp(f1, f2, N)
 
-    def restrict_max_step_comp(step, max_step=max_step):
+    def restrict_max_step_comp(x, step, max_step=max_step):
         step_max = np.abs(step).max()
         if step_max > max_step:
             factor = max_step / step_max
             step *= factor
         return step
 
-    def restrict_step_length(step, max_step_length=max_step):
+    def restrict_step_length(x, step, max_step_length=max_step):
         step_norm = np.linalg.norm(step)
         if step_norm > max_step_length:
             step_direction = step / step_norm
@@ -278,6 +279,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
     trans_optimizer = trans_closures[trans_opt](f_tran_getter, restrict_step=rstr_func,
                                                 M=trans_memory)
 
+    def cbm_rot_force_getter(coords1, N, f1, f2):
+        return get_f_perp(f1, f2, N)
     converged = False
     # In the first dimer cycle f0 and f1 aren't set and have to be calculated.
     # For cycles i > 0 f0 and f1 will be already set here.
@@ -319,110 +322,139 @@ def dimer_method(geoms, calc_getter, N_init=None,
         elif rot_opt == "mb":
             rot_mb = closures.modified_broyden_closure(rot_force_getter)
 
+        def cbm_restrict(coords1, step, coords0=coords0, dR=dR):
+            """Constrain of R1 back on hypersphere."""
+            coords1_rot = coords1 + step
+            coords1_dir = coords1_rot - coords0
+            coords1_dir /= np.linalg.norm(coords1_dir)
+            coords1_rot = coords0 + coords1_dir*dR
+            return coords1_rot - coords1
+        rot_cbm = closures.modified_broyden_closure(cbm_rot_force_getter, restrict_step=cbm_restrict)
         for j in range(max_rots):
             logger.debug(f"Rotation cycle {j:02d}")
-            C = get_curvature(f1, f2, N, dR)
-            logger.debug(f"C={C:.6f}")
-            # Theta from L-BFGS as implemented in DL-FIND dlf_dimer.f90
-            if rot_opt == "lbfgs":
-                theta_dir, _ = rot_lbfgs(N, f1, f2)
-            elif rot_opt == "mb":
-                theta_dir, _ = rot_mb(N, f1, f2)
-            # Theta from conjugate gradient
-            elif j > 0 and rot_opt == "cg":
-                # f_perp = weights.dot(get_f_perp(f1, f2, N))
-                f_perp = get_f_perp(f1, f2, N)
-                gamma = (f_perp - F_rots[-1]).dot(f_perp) / f_perp.dot(f_perp)
-                G_last = G_perps[-1]
-                G_perp = f_perp + gamma * np.linalg.norm(G_last)*theta
-                theta_dir = G_perp
-                F_rots.append(f_perp)
-                G_perps.append(G_perp)
-            # Theta from plain steepest descent F_rot/|F_rot|
+            if rot_type == "fourier":
+                C = get_curvature(f1, f2, N, dR)
+                logger.debug(f"C={C:.6f}")
+                # Theta from L-BFGS as implemented in DL-FIND dlf_dimer.f90
+                if rot_opt == "lbfgs":
+                    theta_dir, rot_force = rot_lbfgs(N, f1, f2)
+                elif rot_opt == "mb":
+                    theta_dir, rot_force = rot_mb(N, f1, f2)
+                # Theta from conjugate gradient
+                elif j > 0 and rot_opt == "cg":
+                    # f_perp = weights.dot(get_f_perp(f1, f2, N))
+                    f_perp = get_f_perp(f1, f2, N)
+                    rot_force = f_perp
+                    gamma = (f_perp - F_rots[-1]).dot(f_perp) / f_perp.dot(f_perp)
+                    G_last = G_perps[-1]
+                    G_perp = f_perp + gamma * np.linalg.norm(G_last)*theta
+                    theta_dir = G_perp
+                    F_rots.append(f_perp)
+                    G_perps.append(G_perp)
+                # Theta from plain steepest descent F_rot/|F_rot|
+                else:
+                    # theta_dir = weights.dot(get_f_perp(f1, f2, N))
+                    theta_dir = get_f_perp(f1, f2, N)
+                # Remove component that is parallel to N
+                theta_dir = theta_dir - theta_dir.dot(N)*N
+                theta = theta_dir / np.linalg.norm(theta_dir)
+
+                # Get rotated endpoint geometries. The rotation takes place in a plane
+                # spanned by N and theta. Theta is a unit vector perpendicular to N that
+                # can be formed from the perpendicular components of the forces at the
+                # endpoints.
+
+                # Derivative of the curvature, Eq. (29) in [2]
+                # (f2 - f1) or -(f1 - f2)
+                dC = 2*(f0-f1).dot(theta)/dR
+                rad_trial = -0.5*np.arctan2(dC, 2*abs(C))
+                logger.debug(f"rad_trial={rad_trial:.2f}")
+                # print(f"rad_trial={rad_trial:.2f} rad_tol={rad_tol:.2f}")
+                if np.abs(rad_trial) < rad_tol:
+                    logger.debug(f"rad_trial={rad_trial:.2f} below threshold. Breaking.")
+                    break
+
+                # Trial rotation for finite difference calculation of rotational force
+                # and rotational curvature.
+                coords1_trial = rotate_R1(coords0, rad_trial, N, theta, dR)
+                f1_trial = geom1.get_energy_and_forces_at(coords1_trial)["forces"]
+                rot_force_evals += 1
+                f2_trial = 2*f0 - f1_trial
+                N_trial = make_unit_vec(coords1_trial, coords0)
+                coords2_trial = coords0 - N_trial*dR
+
+                C_trial = get_curvature(f1_trial, f2_trial, N_trial, dR)
+                theta_trial = get_theta0(f1_trial, f2_trial, N_trial)
+
+                b1 = 0.5 * dC
+                a1 = (C - C_trial + b1*np.sin(2*rad_trial)) / (1-np.cos(2*rad_trial))
+                a0 = 2 * (C - a1)
+
+                rad_min = 0.5 * np.arctan(b1/a1)
+                logger.debug(f"rad_min={rad_min:.2f}")
+                def get_C(theta_rad):
+                    return a0/2 + a1*np.cos(2*theta_rad) + b1*np.sin(2*theta_rad)
+                C_min = get_C(rad_min)
+                if C_min > C:
+                    rad_min += np.deg2rad(90)
+                    C_min_new = get_C(rad_min)
+                    logger.debug( "Predicted theta_min lead us to a curvature maximum "
+                                 f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
+                                 f"(C(theta+pi/2)={C_min_new:.6f})"
+                    )
+                    C_min = C_min_new
+
+                # TODO: handle cases where the curvature is still positive, but
+                # the angle is small, so the rotation is skipped.
+                # Don't do rotation for small angles
+                if np.abs(rad_min) < rad_tol:
+                    logger.debug(f"rad_min={rad_min:.2f} below threshold. Breaking.")
+                    break
+                coords1_rot = rotate_R1(coords0, rad_min, N, theta, dR)
+
+                # Interpolate force at coords1_rot; see Eq. (12) in [4]
+                if interpolate:
+                    f1 = (np.sin(rad_trial-rad_min)/np.sin(rad_trial)*f1
+                           + np.sin(rad_min)/np.sin(rad_trial)*f1_trial
+                           + (1 - np.cos(rad_min) - np.sin(rad_min)
+                              * np.tan(rad_trial/2))*f0
+                    )
+                else:
+                    f1 = geom1.get_energy_and_forces_at(coords1_rot)["forces"]
+                    rot_force_evals += 1
+            elif rot_type == "direct":
+                rot_force = get_f_perp(f1, f2, N)
+                rot_force_rms = get_rms(rot_force)
+                if rot_force_rms <= rot_f_thresh:
+                    break
+                rot_step, rot_f = rot_cbm(coords1, N, f1, f2)
+                coords1_rot = coords1 + rot_step
+                geom1.coords = coords1_rot
+                coords1 = coords1_rot
+                f1 = geom1.forces
+                rot_force_evals += 1
             else:
-                # theta_dir = weights.dot(get_f_perp(f1, f2, N))
-                theta_dir = get_f_perp(f1, f2, N)
-            # Remove component that is parallel to N
-            theta_dir = theta_dir - theta_dir.dot(N)*N
-            theta = theta_dir / np.linalg.norm(theta_dir)
+                raise NotImplementedError("Invalid 'rot_type'!")
 
-            # Get rotated endpoint geometries. The rotation takes place in a plane
-            # spanned by N and theta. Theta is a unit vector perpendicular to N that
-            # can be formed from the perpendicular components of the forces at the
-            # endpoints.
-
-            # Derivative of the curvature, Eq. (29) in [2]
-            # (f2 - f1) or -(f1 - f2)
-            dC = 2*(f0-f1).dot(theta)/dR
-            rad_trial = -0.5*np.arctan2(dC, 2*abs(C))
-            logger.debug(f"rad_trial={rad_trial:.2f}")
-            # print(f"rad_trial={rad_trial:.2f} rad_tol={rad_tol:.2f}")
-            if np.abs(rad_trial) < rad_tol:
-                logger.debug(f"rad_trial={rad_trial:.2f} below threshold. Breaking.")
-                break
-
-            # Trial rotation for finite difference calculation of rotational force
-            # and rotational curvature.
-            coords1_trial = rotate_R1(coords0, rad_trial, N, theta, dR)
-            f1_trial = geom1.get_energy_and_forces_at(coords1_trial)["forces"]
-            rot_force_evals += 1
-            f2_trial = 2*f0 - f1_trial
-            N_trial = make_unit_vec(coords1_trial, coords0)
-            coords2_trial = coords0 - N_trial*dR
-
-            C_trial = get_curvature(f1_trial, f2_trial, N_trial, dR)
-            theta_trial = get_theta0(f1_trial, f2_trial, N_trial)
-
-            b1 = 0.5 * dC
-            a1 = (C - C_trial + b1*np.sin(2*rad_trial)) / (1-np.cos(2*rad_trial))
-            a0 = 2 * (C - a1)
-
-            rad_min = 0.5 * np.arctan(b1/a1)
-            logger.debug(f"rad_min={rad_min:.2f}")
-            def get_C(theta_rad):
-                return a0/2 + a1*np.cos(2*theta_rad) + b1*np.sin(2*theta_rad)
-            C_min = get_C(rad_min)
-            if C_min > C:
-                rad_min += np.deg2rad(90)
-                C_min_new = get_C(rad_min)
-                logger.debug( "Predicted theta_min lead us to a curvature maximum "
-                             f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
-                             f"(C(theta+pi/2)={C_min_new:.6f})"
-                )
-                C_min = C_min_new
-
-            # TODO: handle cases where the curvature is still positive, but
-            # the angle is small, so the rotation is skipped.
-            # Don't do rotation for small angles
-            if np.abs(rad_min) < rad_tol:
-                logger.debug(f"rad_min={rad_min:.2f} below threshold. Breaking.")
-                break
-            coords1_rot = rotate_R1(coords0, rad_min, N, theta, dR)
             N = make_unit_vec(coords1_rot, coords0)
             coords2_rot = coords0 - N*dR
-
-            # Interpolate force at coords1_rot; see Eq. (12) in [4]
-            if interpolate:
-                f1 = (np.sin(rad_trial-rad_min)/np.sin(rad_trial)*f1
-                       + np.sin(rad_min)/np.sin(rad_trial)*f1_trial
-                       + (1 - np.cos(rad_min) - np.sin(rad_min)
-                          * np.tan(rad_trial/2))*f0
-                )
-            else:
-                f1 = geom1.get_energy_and_forces_at(coords1_rot)["forces"]
-                rot_force_evals += 1
             f2 = 2*f0 - f1
             C = get_curvature(f1, f2, N, dR)
+            rof_force = get_f_perp(f1, f2, N)
+            rot_force_norm = np.linalg.norm(rot_force)
             logger.debug("")
             if j == 0:
                 rot_table.print_header()
-            rot_table.print_row((j, C))
+            rot_table.print_row((j, C, rot_force_norm))
         tot_rot_force_evals += rot_force_evals
         rot_str = (f"Did {rot_force_evals} force evaluation(s) and {j} "
                     "dimer rotation(s).")
         rot_table.print(rot_str)
         logger.debug(rot_str)
         print()
+
+        # if i == 16:
+            # import pdb; pdb.set_trace()
 
         # If multiple_translations == False then max_translations is 1
         # and we will do only one iteration.

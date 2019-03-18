@@ -120,6 +120,30 @@ def anapot_tester():
     # plot_dimer_cycles(dimer_result.dimer_cycles, pot=AnaPot(), true_ts=true_ts[:2])
 
 
+def test_anapot_cbm_rot():
+    pot = AnaPot()
+    geoms = (pot.get_geom((0.44, 1.54, 0)), )
+    N_init = (-0.2, 1, 0)
+    calc_getter = AnaPot
+    dimer_kwargs = {
+        "ana_2dpot": True,
+        "restrict_step": "max",
+        "angle_tol": 0.5,
+        "f_thresh": 1e-4,
+        "rot_opt": "lbfgs",
+        "trans_opt": "lbfgs",
+        "trans_memory": 5,
+        "f_tran_mod": False,
+        "N_init": N_init,
+        "rot_f_thresh": 1e-2,
+        # "multiple_translations": True,
+    }
+    result = dimer_method(geoms, calc_getter, **dimer_kwargs)
+    true_ts = (0.61173, 1.49297, 0.)
+    # plot_dimer_cycles(result.dimer_cycles, pot=AnaPot(), true_ts=true_ts[:2])
+    return result
+
+
 def plot_anapotcbm_curvature():
     pot = AnaPotCBM()
     pot.plot()
@@ -145,11 +169,13 @@ def plot_anapotcbm_curvature():
 def test_anapotcbm():
     calc_getter = AnaPotCBM
     # geom = AnaPotCBM().get_geom((0.818, 0.2233, 0.0))
-    # geom = AnaPotCBM().get_geom((0.2, 0.2, 0.0))
+    geom = AnaPotCBM().get_geom((0.2, 0.2, 0.0))
+    # geom = AnaPotCBM().get_geom((0.3, 0.3, 0.0))
+    # geom = AnaPotCBM().get_geom((0.4, 0.4, 0.0))
     # geom = AnaPotCBM().get_geom((0.5, 0.2, 0.0))
-    # geom = AnaPotCBM().get_geom((0.9, 0.8, 0.0))
-    geom = AnaPotCBM().get_geom((0.8, 0.7, 0.0))
-    geom = AnaPotCBM().get_geom((0.65, 0.7, 0.0))
+    geom = AnaPotCBM().get_geom((0.9, 0.8, 0.0))
+    # geom = AnaPotCBM().get_geom((0.8, 0.7, 0.0))
+    # geom = AnaPotCBM().get_geom((0.65, 0.7, 0.0))
     w, v = np.linalg.eigh(geom.hessian)
     print("eigenvals", w)
     N_imag = v[:,0]
@@ -157,13 +183,14 @@ def test_anapotcbm():
     dimer_kwargs = {
         "ana_2dpot": True,
         "N_init": N_imag,
-        "trans_opt": "mb",
+        "rot_type": "fourier",
+        "trans_opt": "lbfgs",
         "f_tran_mod": False,
     }
     true_ts = (0, 0)
     dimer_result = dimer_method(geoms, calc_getter, **dimer_kwargs)
     dimer_cycles = dimer_result.dimer_cycles
-    plot_dimer_cycles(dimer_cycles, pot=AnaPotCBM(), true_ts=true_ts)
+    plot_dimer_cycles(dimer_cycles[-10:], pot=AnaPotCBM(), true_ts=true_ts)
 
 
 def test_hcn_iso_dimer(trans_opt, trans_memory):
@@ -191,6 +218,8 @@ def test_hcn_iso_dimer(trans_opt, trans_memory):
         "trans_opt": trans_opt,
         "trans_memory": trans_memory,
         "angle_tol": 5,
+        # "rot_f_thresh": 1e-4,
+        # "rot_type": "direct",
         "f_thresh": 1e-4,
         "f_tran_mod": True,
         "multiple_translations": True,
@@ -232,7 +261,8 @@ def hcn_tester():
 
 
 if __name__ == "__main__":
-    # anapot_tester()
-    hcn_tester()
+    anapot_tester()
+    # test_anapot_cbm_rot()
+    # hcn_tester()
     # plot_anapotcbm_curvature()
     # test_anapotcbm()

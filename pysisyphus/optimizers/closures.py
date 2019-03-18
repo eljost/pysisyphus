@@ -46,7 +46,7 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
     cur_cycle = 0
 
     if restrict_step is None:
-        restrict_step = lambda x: x
+        restrict_step = lambda x, dx: dx
 
     def lbfgs(x, *getter_args):
         nonlocal cur_cycle
@@ -55,7 +55,7 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
 
         prev_forces = forces[-1]
         step = -bfgs_multiply(s_list, y_list, prev_forces)
-        step = restrict_step(step)
+        step = restrict_step(x, step)
         new_x = x + step
         new_forces = force_getter(new_x, *getter_args)
         s = new_x - x
@@ -79,7 +79,7 @@ def lbfgs_closure_(force_getter, M=10, restrict_step=None):
     cur_cycle = 0
 
     if restrict_step is None:
-        restrict_step = lambda x: x
+        restrict_step = lambda x, dx: dx
 
     def lbfgs(x, *getter_args):
         nonlocal x_list
@@ -99,7 +99,7 @@ def lbfgs_closure_(force_getter, M=10, restrict_step=None):
         force_list.append(force)
 
         step = -bfgs_multiply(s_list, y_list, force)
-        step = restrict_step(step)
+        step = restrict_step(x, step)
         # Only keep last m cycles
         s_list = s_list[-M:]
         y_list = y_list[-M:]
@@ -128,7 +128,7 @@ def modified_broyden_closure(force_getter, M=5, restrict_step=None):
     a = None
 
     if restrict_step is None:
-        restrict_step = lambda x: x
+        restrict_step = lambda x, dx: dx
 
     def modified_broyden(x, *getter_args):
         nonlocal dxs
@@ -157,7 +157,7 @@ def modified_broyden_closure(force_getter, M=5, restrict_step=None):
             _ = np.array(dxs) - beta*np.array(dFs)
             # Substract step correction
             dx = dx - np.sum(gammas * _, axis=0)
-        dx = restrict_step(dx)
+        dx = restrict_step(x, dx)
         x_new = x + dx
         dxs.append(dx)
 
