@@ -92,7 +92,7 @@ def run():
 
     dimer_kwargs = {
         "max_step": 0.5,
-        # 1e-2 Angstroem
+        # 1e-2 Angstroem in bohr
         "dR_base": 0.0189,
         "rot_opt": "lbfgs",
         # "trans_opt": "mb",

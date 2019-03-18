@@ -453,9 +453,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
         logger.debug(rot_str)
         print()
 
-        # if i == 16:
-            # import pdb; pdb.set_trace()
-
         # If multiple_translations == False then max_translations is 1
         # and we will do only one iteration.
         for trans_i in range(max_translations):
