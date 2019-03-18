@@ -57,7 +57,7 @@ def run():
         "angle_tol": 5,
         "f_thresh": 1e-3,
         "max_cycles": 100,
-        "f_tran_mod": False,
+        "f_tran_mod": True,
         "multiple_translations": True,
     }
 
