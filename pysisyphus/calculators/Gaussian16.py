@@ -92,6 +92,7 @@ class Gaussian16(OverlapCalculator):
 
         self.parser_funcs = {
             "force": self.parse_force,
+            "hessian": self.parse_hessian,
             "stable": self.parse_stable,
             "noparse": lambda path: None,
             "double_mol": self.parse_double_mol,
@@ -277,6 +278,14 @@ class Gaussian16(OverlapCalculator):
         if self.track and self.track_root(atoms, coords):
             # Redo the calculation with the updated root
             results = self.get_forces(atoms, coords)
+        return results
+
+    def get_hessian(self, atoms, coords):
+        inp = self.prepare_input(atoms, coords, "freq")
+        kwargs = {
+            "calc": "hessian",
+        }
+        results = self.run(inp, **kwargs)
         return results
 
     def run_stable(self, atoms, coords):
@@ -487,6 +496,29 @@ class Gaussian16(OverlapCalculator):
 
         return results
 
+    def parse_hessian(self, path):
+        keys = (
+            "Total Energy",
+            "Cartesian Gradient",
+            "Cartesian Force Constants",
+        )
+        fchk_path = Path(path) / f"{self.fn_base}.fchk"
+        fchk_dict = self.parse_fchk(fchk_path, keys=keys)
+        en_key, grad_key, hess_key = keys
+        grad = fchk_dict[grad_key]
+        tril_hess = fchk_dict[hess_key]
+        tril_inds = np.tril_indices(grad.size)
+        full_hessian = np.zeros((grad.size, grad.size))
+        full_hessian[tril_inds] = tril_hess
+        triu_inds = np.triu_indices(grad.size, k=1)
+        full_hessian[triu_inds] = full_hessian.T[triu_inds]
+        results = {
+            "energy": fchk_dict[en_key],
+            "forces": -grad,
+            "hessian": full_hessian,
+        }
+        return results
+
     def parse_double_mol(self, path):
         def repl_double(s, loc, toks):
             return toks[0].replace("D", "E")
@@ -572,27 +604,9 @@ class Gaussian16(OverlapCalculator):
 
 
 if __name__ == "__main__":
-    from pysisyphus.helpers import geom_from_library
-    """
-    geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
-    charge = 1
-    mult = 1
-    root = 1
-    nstates = 1
-    """
-    geom = geom_from_library("hcn.xyz")
-    charge = 0
-    mult = 1
-    method = "b3lyp"
-    basis = "sto-3g"
-    g16 = Gaussian16(method, basis, charge=charge, mult=mult)
+    from pysisyphus.helpers import geom_from_xyz_file
+    geom = geom_from_xyz_file("/scratch/baker_ircs/15/15_hocl_ts_opt.xyz")
+    g16 = Gaussian16(route="HF/3-21G", pal=4)
     geom.set_calculator(g16)
-    #forces = geom.forces
-    #print(forces)
-    # Total SCF Density
-    # Total CI Rho(1) Density
-    g16.nstates = 2
-    g16.root = 1
-    path = Path("/scratch/programme/pysisyphus/tests/test_g16_but2en_iso/crashed_image_0")
-    g16.parse_force(path)
-
+    hess = geom.hessian
+    print(hess)
