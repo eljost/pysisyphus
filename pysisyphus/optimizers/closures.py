@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def bfgs_multiply(s_list, y_list, force):
+def bfgs_multiply(s_list, y_list, force, beta=1):
     """Get a L-BFGS step.
     
     Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
@@ -30,6 +30,8 @@ def bfgs_multiply(s_list, y_list, force):
         y = y_list[-1]
         gamma = s.dot(y) / y.dot(y)
         r = gamma * q
+    else:
+        r = beta * q
     for i in range(cycles):
         s = s_list[i]
         y = y_list[i]
@@ -71,7 +73,7 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
     return lbfgs
 
 
-def lbfgs_closure_(force_getter, M=10, restrict_step=None):
+def lbfgs_closure_(force_getter, M=10, beta=1, restrict_step=None):
     x_list = list()
     s_list = list()
     y_list = list()
@@ -98,7 +100,7 @@ def lbfgs_closure_(force_getter, M=10, restrict_step=None):
         x_list.append(x)
         force_list.append(force)
 
-        step = -bfgs_multiply(s_list, y_list, force)
+        step = -bfgs_multiply(s_list, y_list, force, beta=beta)
         step = restrict_step(x, step)
         # Only keep last m cycles
         s_list = s_list[-M:]
@@ -108,7 +110,7 @@ def lbfgs_closure_(force_getter, M=10, restrict_step=None):
     return lbfgs
 
 
-def modified_broyden_closure(force_getter, M=5, restrict_step=None):
+def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
     """https://doi.org/10.1006/jcph.1996.0059
     F corresponds to the residual gradient, so we after calling
     force_getter we multiply the force by -1 to get the gradient."""
@@ -124,7 +126,6 @@ def modified_broyden_closure(force_getter, M=5, restrict_step=None):
     # invariant under translation and rotation and doesn't depend on
     # the magnitude of x.
     # beta = 0.5 * max(np.linalg.norm(x), 1) / np.linalg.norm(F)
-    beta = 1
     a = None
 
     if restrict_step is None:
