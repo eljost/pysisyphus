@@ -80,7 +80,8 @@ def get_f_tran_mod(f, N, C):
         if perp_rms < 2*EVANG2AUBOHR:
             f_tran = 0.5*f_perp - f_parallel
         else:
-            f_tran = f_perp - 0.5*f_perp
+            f_tran = f_perp - 0.5*f_parallel
+        # f_tran = -f_parallel
     return f_tran, f_parallel, f_perp
 
 
@@ -132,7 +133,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
                  max_step=0.1, max_cycles=50,
                  max_rots=10, interpolate=True,
                  rot_type="fourier",
-                 rot_opt="lbfgs", trans_opt="mb",
+                 rot_opt="lbfgs", trans_opt="lbfgs",
                  trans_memory=5,
                  trial_angle=5, angle_tol=0.5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
@@ -195,8 +196,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
     rot_header = "Rot._cycle Curvature rms(f_rot)".split()
     rot_fmts = "int float float".split()
     rot_table = TablePrinter(rot_header, rot_fmts, width=16, shift_left=2)
-    trans_header = "Trans._cycle Curvature max(|f0|) rms(f0)".split()
-    trans_fmts = "int float float float".split()
+    trans_header = "Trans._cycle Curvature max(|f0|) rms(f0) rms(step)".split()
+    trans_fmts = "int float float float float".split()
     trans_table = TablePrinter(trans_header, trans_fmts, width=16)
 
     geom_getter = get_geom_getter(geoms[0], calc_getter)
@@ -276,8 +277,12 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
     tot_rot_force_evals = 0
     # Create the translation optimizer in the first cycle of the loop.
-    trans_optimizer = trans_closures[trans_opt](f_tran_getter, restrict_step=rstr_func,
-                                                M=trans_memory)
+    trans_opt_kwargs = {
+        "restrict_step": rstr_func,
+        "M": trans_memory,
+        # "beta": 0.01,
+    }
+    trans_optimizer = trans_closures[trans_opt](f_tran_getter, **trans_opt_kwargs)
 
     def cbm_rot_force_getter(coords1, N, f1, f2):
         return get_f_perp(f1, f2, N)
@@ -329,7 +334,12 @@ def dimer_method(geoms, calc_getter, N_init=None,
             coords1_dir /= np.linalg.norm(coords1_dir)
             coords1_rot = coords0 + coords1_dir*dR
             return coords1_rot - coords1
-        rot_cbm = closures.modified_broyden_closure(cbm_rot_force_getter, restrict_step=cbm_restrict)
+        rot_cbm_kwargs = {
+            "restrict_step": cbm_restrict,
+            "beta": 0.01,
+            "M": 3,
+        }
+        rot_cbm = closures.modified_broyden_closure(cbm_rot_force_getter, **rot_cbm_kwargs)
         for j in range(max_rots):
             logger.debug(f"Rotation cycle {j:02d}")
             if rot_type == "fourier":
@@ -425,6 +435,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             elif rot_type == "direct":
                 rot_force = get_f_perp(f1, f2, N)
                 rot_force_rms = get_rms(rot_force)
+                # print(f"rot_force_rms={rot_force_rms:.4e}, thresh={rot_f_thresh:.4e}")
                 if rot_force_rms <= rot_f_thresh:
                     break
                 rot_step, rot_f = rot_cbm(coords1, N, f1, f2)
@@ -442,10 +453,11 @@ def dimer_method(geoms, calc_getter, N_init=None,
             C = get_curvature(f1, f2, N, dR)
             rof_force = get_f_perp(f1, f2, N)
             rot_force_norm = np.linalg.norm(rot_force)
+            rot_force_rms = get_rms(rot_force)
             logger.debug("")
             if j == 0:
                 rot_table.print_header()
-            rot_table.print_row((j, C, rot_force_norm))
+            rot_table.print_row((j, C, rot_force_rms))
         tot_rot_force_evals += rot_force_evals
         rot_str = (f"Did {rot_force_evals} force evaluation(s) and {j} "
                     "dimer rotation(s).")
@@ -459,12 +471,14 @@ def dimer_method(geoms, calc_getter, N_init=None,
             _, f_parallel, f_perp = get_f_tran(f0, N, C)
             prev_f_par_rms = get_rms(f_parallel)
             prev_f_perp_rms = get_rms(f_perp)
+            prev_C = C
             f0_rms = get_rms(f0)
             f0_max = max(np.abs(f0))
             converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
             if converged:
                 break
             step, f_tran = trans_optimizer(coords0, N, C)
+            step_rms = get_rms(step)
             coords0_trans = coords0 + step
             coords1_trans = coords0_trans + dR*N
             coords2_trans = coords0_trans - dR*N
@@ -484,17 +498,22 @@ def dimer_method(geoms, calc_getter, N_init=None,
             if multiple_translations:
                 if trans_i == 0:
                     trans_table.print_header()
-                trans_args = (trans_i, C, f0_max, f0_rms)
+                trans_args = (trans_i, C, f0_max, f0_rms, step_rms)
                 trans_table.print_row(trans_args)
             else:
                 trans_table.print("Did dimer translation.")
             _, f_parallel, f_perp = get_f_tran(f0, N, C)
             f_par_rms = get_rms(f_parallel)
             f_perp_rms = get_rms(f_perp)
+            # Check for sign change of curvature
+            if (prev_C < 0) and (np.sign(C/prev_C) < 0):
+                trans_table.print("Curvature changed!")
+                break
             if (C < 0) and (f_par_rms > prev_f_par_rms):
                 break
-            elif ((C > 0) and (f_par_rms < prev_f_par_rms)
-                  or (f_perp_rms > prev_f_perp_rms)):
+            # elif ((C > 0) and (f_par_rms < prev_f_par_rms)
+                  # or (f_perp_rms > prev_f_perp_rms)):
+            elif (C > 0) and (f_par_rms < prev_f_par_rms):
                 break
             prev_f_par_rms = f_par_rms
             prev_f_perp_rms = f_perp_rms
