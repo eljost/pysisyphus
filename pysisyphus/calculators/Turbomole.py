@@ -86,6 +86,7 @@ class Turbomole(OverlapCalculator):
         self.virt_mos = nbf - self.occ_mos
 
         self.td = False
+        self.ricc2 = False
         # Check for excited state calculation
         if "$exopt" in text:
             exopt_re = "\$exopt\s*(\d+)"
@@ -189,7 +190,25 @@ class Turbomole(OverlapCalculator):
             td_vec_fn = self.td_vec_fn.suffix[1:]
             shutil.copy(self.td_vec_fn, path / td_vec_fn)
             self.log(f"Using {td_vec_fn} as escf guess.")
+        if self.root and self.td:
+            repl = f"$exopt {self.root}"
+            self.sub_control("\$exopt\s*(\d+)", f"$exopt {self.root}")
+            self.log(f"Using '{repl}'")
+        if self.root and self.ricc2:
+            repl = f"state=(a {self.root})"
+            self.sub_control("state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})")
+            self.log(f"Using '{repl}' for geoopt.")
 
+    def sub_control(self, pattern, repl, **kwargs):
+        path = self.path_already_prepared
+        assert path
+        self.log(f"Updating control file in '{path}'")
+        control_path = path / "control"
+        with open(control_path) as handle:
+            text = handle.read()
+        text = re.sub(pattern, repl, text, **kwargs)
+        with open(control_path, "w") as handle:
+            handle.write(text)
 
     def get_pal_env(self):
         env_copy = os.environ.copy()
@@ -217,10 +236,11 @@ class Turbomole(OverlapCalculator):
         results = self.run(None, **kwargs)
         if self.track:
             prev_run_path = self.last_run_path
-            if self.track_root(atoms, coords):
+            root_flipped = self.track_root(atoms, coords)
+            self.calc_counter += 1
+            if root_flipped:
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
-            self.calc_counter += 1
             self.last_run_path = prev_run_path
         shutil.rmtree(self.last_run_path)
         return results
