@@ -27,6 +27,7 @@ def plot(gnt, calc, levels=None):
     calc.plot(levels)
     conv = np.array(gnt.conv_points)
 
+    ax = calc.ax
     if hasattr(gnt, "points"):
         points = np.array(gnt.points)
         px = points[:,0]
@@ -34,7 +35,6 @@ def plot(gnt, calc, levels=None):
         ax.plot(px, py, "o-", c="r")
     cx = conv[:,0]
     cy = conv[:,1]
-    ax = calc.ax
     ax.plot(cx, cy, "X-", ms="8", c="k")
     if hasattr(gnt, "tangents"):
         tangents = gnt.tangents
