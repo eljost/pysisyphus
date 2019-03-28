@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, namedtuple
 import logging
 
 import numpy as np
@@ -6,8 +6,9 @@ import rmsd
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.xyzloader import make_xyz_str
-from pysisyphus.elem_data import MASS_DICT
+from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
 from pysisyphus.InternalCoordinates import RedundantCoords
+
 
 class Geometry:
 
@@ -515,6 +516,26 @@ class Geometry:
     def rmsd(self, geom):
         return rmsd.kabsch_rmsd(self.coords3d-self.centroid,
                                 geom.coords3d-geom.centroid)
+
+    def as_g98_list(self):
+        """Returns data for fake Gaussian98 standard orientation output.
+
+        Returns
+        -------
+        g98_list : list
+            List with one row per atom. Every row contains [center number,
+            atomic number, atomic type (always 0 for now), X Y Z coordinates
+            in Angstrom.
+        """
+        Atom = namedtuple("Atom",
+                          "center_num atom_num atom_type x y z")
+        atoms = list()
+        for i, (a, c) in enumerate(zip(self.atoms, self.coords3d), 1):
+            x, y, z = c*BOHR2ANG
+            atom = Atom(i, ATOMIC_NUMBERS[a.lower()], 0, x, y, z)
+            atoms.append(atom)
+        return atoms
+
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"
