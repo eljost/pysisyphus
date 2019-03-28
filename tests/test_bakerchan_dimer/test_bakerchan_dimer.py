@@ -74,14 +74,13 @@ def run():
     }
 
     dimer_kwargs = {
-        "max_step": 0.1,
+        "max_step": 0.25,
         # 1e-2 Angstroem in bohr
         "dR_base": 0.0189,
         "rot_opt": "lbfgs",
         # "trans_opt": "mb",
         "trans_opt": "lbfgs",
         # "trans_memory": 10, # bad idea
-        "trans_memory": 3,
         "angle_tol": 5,
         "f_thresh": 1e-3,
         "max_cycles": 50,

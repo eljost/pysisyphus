@@ -282,6 +282,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
         "M": trans_memory,
         # "beta": 0.01,
     }
+    if trans_opt == "mb":
+        trans_opt_kwargs["beta"] = 0.01
     trans_optimizer = trans_closures[trans_opt](f_tran_getter, **trans_opt_kwargs)
 
     def cbm_rot_force_getter(coords1, N, f1, f2):
