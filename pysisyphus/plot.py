@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 
+import h5py
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -12,7 +13,7 @@ import pandas as pd
 from scipy.interpolate import splrep, splev
 import yaml
 
-from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG
+from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG, AU2EV
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.Geometry import Geometry
 from pysisyphus.peakdetect import peakdetect
@@ -372,6 +373,24 @@ def plot_params(inds):
     plt.show()
 
 
+def plot_all_energies():
+    dump_fn = "overlap_data.h5"
+    with h5py.File(dump_fn) as handle:
+        energies = handle["all_energies"][:]
+        roots = handle["roots"][:]
+
+    energies -= energies.min()
+    energies *= AU2EV
+
+    fig, ax = plt.subplots()
+    for i, state in enumerate(energies.T):
+        ax.plot(state, "o-", label=f"State {i:03d}")
+    ax.legend()
+    root_ens = [s[r] for s, r in zip(energies, roots)]
+    ax.plot(root_ens, "--k")
+    plt.show()
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--first", type=int,
@@ -399,7 +418,9 @@ def parse_args(args):
                         help="Plot energies.")
     group.add_argument("--aneb", action="store_true",
                         help="Plot Adaptive NEB.")
-
+    group.add_argument("--all_energies", action="store_true",
+        help="Plot ground and excited state energies from 'overlap_data.h5'."
+    )
 
     return parser.parse_args(args)
 
@@ -421,6 +442,8 @@ def run():
         plot_cosgrad()
     elif args.aneb:
         plot_aneb()
+    elif args.all_energies:
+        plot_all_energies()
 
 
 if __name__ == "__main__":

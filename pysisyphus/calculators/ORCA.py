@@ -253,7 +253,7 @@ class ORCA(OverlapCalculator):
             results["energy"] += iroot_exc_en
             all_ens = np.full(len(excitation_ens)+1, gs_energy)
             all_ens[1:] += excitation_ens
-            results["tddft_energies"] = all_ens
+            results["all_energies"] = all_ens
 
         return results
 

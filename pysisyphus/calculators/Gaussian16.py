@@ -459,17 +459,29 @@ class Gaussian16(OverlapCalculator):
         ci_coeffs *= 2**0.5
         # Parse mo coefficients from .fchk file and write a 'fake' turbomole
         # mos file.
-        keys = ("Alpha Orbital Energies", "Alpha MO coefficients")
-        energies_key, mo_key = keys
+        keys = (
+            "SCF Energy",
+            "Alpha Orbital Energies",
+            "Alpha MO coefficients",
+            "ETran state values"
+        )
+        scf_key, mo_energies_key, mo_key, exc_key = keys
         fchk_dict = self.parse_fchk(self.fchk, keys=keys)
         mo_coeffs = fchk_dict[mo_key]
-        mo_energies = fchk_dict[energies_key]
+        mo_energies = fchk_dict[mo_energies_key]
         mo_coeffs = mo_coeffs.reshape(-1, mo_energies.size)
         fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
         fake_mos_fn = self.make_fn("mos")
         with open(fake_mos_fn, "w") as handle:
             handle.write(fake_mos_str)
-        return fake_mos_fn, mo_coeffs, ci_coeffs
+
+        gs_energy = fchk_dict[scf_key]
+        exc_data = fchk_dict[exc_key].reshape(-1, 16)
+        exc_energies = exc_data[:,0]
+        all_energies = np.zeros(len(exc_energies)+1)
+        all_energies[0] = gs_energy
+        all_energies[1:] += exc_energies
+        return fake_mos_fn, mo_coeffs, ci_coeffs, all_energies
 
     def parse_force(self, path):
         results = {}
@@ -493,7 +505,7 @@ class Gaussian16(OverlapCalculator):
             # to save the energies of all states.
             all_ens = np.full(len(exc_energies)+1, gs_energy)
             all_ens[1:] += exc_energies
-            results["tddft_energies"] = all_ens
+            results["all_energies"] = all_ens
 
         return results
 

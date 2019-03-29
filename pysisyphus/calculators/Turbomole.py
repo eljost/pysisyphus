@@ -305,7 +305,8 @@ class Turbomole(OverlapCalculator):
         pass
 
     def parse_force(self, path):
-        return parse_turbo_gradient(path)
+        results = parse_turbo_gradient(path)
+        return results
 
     def parse_td_vectors(self, text):
         def to_float(s, loc, toks):
@@ -368,18 +369,31 @@ class Turbomole(OverlapCalculator):
 
         return eigenpairs_full
 
+    def parse_gs_energy(self):
+        with open(self.control) as handle:
+            text = handle.read()
+        mobj = re.search("En\s+Disp\s+([\d\-\.E]+)", text)
+        gs_energy = float(mobj[1])
+        return gs_energy
+
     def prepare_overlap_data(self):
         # Parse eigenvectors from escf/egrad calculation
+        gs_energy = self.parse_gs_energy()
         if self.second_cmd != "ricc2":
             self.log(f"Reading CI coefficients from '{self.td_vec_fn}'.")
             with open(self.td_vec_fn) as handle:
                 text = handle.read()
             ci_coeffs = self.parse_td_vectors(text)
+            exc_energies = [cc["eigenvalue"] for cc in ci_coeffs]
             ci_coeffs = [cc["vector"] for cc in ci_coeffs]
+            all_energies = np.full(len(exc_energies)+1, gs_energy)
+            all_energies[1:] += exc_energies
         # Parse eigenvectors from ricc2 calculation
         else:
             ci_coeffs = [self.parse_cc2_vectors(ccre)
                          for ccre in self.ccres]
+            exc_energies = list()
+            self.log("Parsing of all energies for ricc2 is not yet implemented!")
         ci_coeffs = np.array(ci_coeffs)
         states = ci_coeffs.shape[0]
         X_len = self.occ_mos * self.virt_mos
@@ -393,10 +407,13 @@ class Turbomole(OverlapCalculator):
         with open(self.mos) as handle:
             text = handle.read()
         mo_coeffs = parse_turbo_mos(text)
-        return self.mos, mo_coeffs, ci_coeffs
+        self.log(f"Reading electronic energies from '{self.out}'.")
+        return self.mos, mo_coeffs, ci_coeffs, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)
+        self.out = kept_fns["out"]
+        self.control = kept_fns["control"]
         if self.uhf:
             self.alpha = kept_fns["alpha"]
             self.beta = kept_fns["beta"]

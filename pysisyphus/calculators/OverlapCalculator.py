@@ -1,4 +1,8 @@
+#!/usr/bin/env python3
+
 from collections import namedtuple
+
+import h5py
 import itertools as it
 import numpy as np
 
@@ -32,7 +36,10 @@ class OverlapCalculator(Calculator):
         self.nto_list = list()
         self.coords_list = list()
         self.roots_list = list()
+        self.all_energies_list = list()
         self.first_root = None
+
+        self.dump_fn = "overlap_data.h5"
 
         super().__init__(*args, **kwargs)
 
@@ -184,8 +191,26 @@ class OverlapCalculator(Calculator):
         like mos, a MO coefficient array and a CI coefficient array."""
         raise Exception("Implement me!")
 
+    def dump_overlap_data(self):
+        data_dict = {
+            "mo_coeffs": np.array(self.mo_coeff_list, dtype=float),
+            "ci_coeffs": np.array(self.ci_coeff_list, dtype=float),
+            "coords": np.array(self.coords_list, dtype=float),
+            "roots": np.array(self.roots_list, dtype=int),
+            "all_energies": np.array(self.all_energies_list, dtype=float),
+        }
+        # if self.nto_list:
+            # data_dict["ntos"] = self.nto_list
+
+        # with open(self.dump_fn, "w") as handle:
+            # yaml.dump(data_dict, handle)
+        # self.log(f"Saved OverlapCalculator data to '{self.dump_fn}'")
+        with h5py.File(self.dump_fn, "w") as handle:
+            for key, val in data_dict.items():
+                handle.create_dataset(name=key, dtype=val.dtype, data=val)
+
     def store_overlap_data(self, atoms, coords):
-        mos_fn, mo_coeffs, ci_coeffs = self.prepare_overlap_data()
+        mos_fn, mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data()
         if self.first_root is None:
             self.first_root = self.root
             self.log(f"Set first root to root {self.first_root}.")
@@ -197,6 +222,7 @@ class OverlapCalculator(Calculator):
         # Used for WFOverlap
         self.wfow.store_iteration(atoms, coords, mos_fn, ci_coeffs)
         # Also store NTOs if requested
+        self.all_energies_list.append(all_ens)
         if self.ovlp_type in ("nto", "nto_org"):
             roots = ci_coeffs.shape[0]
             ntos_for_cycle = list()
@@ -214,6 +240,7 @@ class OverlapCalculator(Calculator):
                 ntos = NTOs(ntos=ovlp_ntos, lambdas=ovlp_lambdas)
                 ntos_for_cycle.append(ntos)
             self.nto_list.append(ntos_for_cycle)
+        self.dump_overlap_data()
 
     def track_root(self, atoms, coords, ovlp_type=None):
         """Store the information of the current iteration and if possible
