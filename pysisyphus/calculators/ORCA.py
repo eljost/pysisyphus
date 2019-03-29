@@ -108,12 +108,18 @@ class ORCA(OverlapCalculator):
                                 calc_type=calc_type,
                                 moinp=self.moinp,
                                 pal=self.pal,
-                                blocks=self.blocks,
+                                blocks=self.get_block_str(),
                                 coords=coords,
                                 charge=self.charge,
                                 mult=self.mult,
         )
         return inp
+
+    def get_block_str(self):
+        if self.track:
+            block_str = re.sub("iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
+            self.log(f"Using iroot '{self.root}' for excited state gradient.")
+        return block_str
 
     def get_energy(self, atoms, coords):
         results = self.get_forces(atoms, coords)
@@ -241,20 +247,6 @@ class ORCA(OverlapCalculator):
         results["energy"] = energy
         results["forces"] = force
 
-        if self.do_tddft:
-            # This sets the proper excited state energy in the
-            # results dict and also stores all energies.
-            excitation_ens = self.parse_tddft(path)
-            # ORCA iroot input is 1 based, so we substract 1 to get
-            # the right index here.
-            iroot_exc_en = excitation_ens[self.root-1]
-            gs_energy = results["energy"]
-            # Add excitation energy to ground state energy.
-            results["energy"] += iroot_exc_en
-            all_ens = np.full(len(excitation_ens)+1, gs_energy)
-            all_ens[1:] += excitation_ens
-            results["all_energies"] = all_ens
-
         return results
 
     def parse_cis(self, cis):
@@ -380,14 +372,21 @@ class ORCA(OverlapCalculator):
                     # print('{}'.format(*core))
             return coeffs
 
-    def parse_tddft(self, path):
-        results = {}
-        orca_out = Path(path) / self.out_fn
-        with open(orca_out) as handle:
+    def parse_all_energies(self):
+        with open(self.out) as handle:
             text = handle.read()
-        tddft_re = re.compile("STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
-        excitation_ens = [float(en) for en in tddft_re.findall(text)]
-        return excitation_ens
+
+        energy_re = "FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
+        energy_mobj = re.search(energy_re, text)
+        gs_energy = float(energy_mobj.groups()[0])
+        all_energies = [gs_energy]
+
+        if self.do_tddft:
+            tddft_re = re.compile("STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
+            excitation_ens = [float(en) for en in tddft_re.findall(text)]
+            all_energies += (np.array(excitation_ens) + gs_energy).tolist()
+        all_energies = np.array(all_energies)
+        return all_energies
 
     def parse_mo_numbers(self, out_fn):
         with open(out_fn) as handle:
@@ -443,9 +442,11 @@ class ORCA(OverlapCalculator):
             with open(fake_mos_fn, "w") as handle:
                 handle.write(fake_mos_str)
         else:
-            print("Skipping creation of MOs in TURBOMOLE format, as the file "
-                 f"'{fake_mos_fn}' already exists.")
-        return fake_mos_fn, mo_coeffs, ci_coeffs
+            self.log("Skipping creation of MOs in TURBOMOLE format, as the file "
+                     f"'{fake_mos_fn}' already exists.")
+
+        all_energies = self.parse_all_energies()
+        return fake_mos_fn, mo_coeffs, ci_coeffs, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)
