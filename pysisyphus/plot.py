@@ -386,6 +386,8 @@ def plot_all_energies():
     for i, state in enumerate(energies.T):
         ax.plot(state, "o-", label=f"State {i:03d}")
     ax.legend()
+    ax.set_xlabel("Step")
+    ax.set_ylabel("$\Delta E / eV$")
     root_ens = [s[r] for s, r in zip(energies, roots)]
     ax.plot(root_ens, "--k")
     plt.show()
