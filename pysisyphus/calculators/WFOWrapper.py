@@ -47,7 +47,10 @@ class WFOWrapper:
 
     def __init__(self, occ_mos, virt_mos, basis, charge, calc_number=0,
                  conf_thresh=1e-4, out_dir="./"):
-        self.base_cmd = Config["wfoverlap"]["cmd"]
+        try:
+            self.base_cmd = Config["wfoverlap"]["cmd"]
+        except KeyError:
+            self.log("WFOverlap cmd not found in ~/.pysisyphusrc!")
         self.occ_mos = occ_mos
         self.virt_mos = virt_mos
         self.basis = basis

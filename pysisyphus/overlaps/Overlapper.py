@@ -172,7 +172,7 @@ class Overlapper:
             calc.store_overlap_data(geom.atoms, geom.coords)
 
     def set_turbo_files(self, geoms, files_dict):
-        exts = ("mos", "ciss_a", "out")
+        exts = ("mos", "ciss_a", "out", "control")
         self.set_files_on_calculators(geoms, files_dict, Turbomole, exts)
 
         for geom in geoms:
