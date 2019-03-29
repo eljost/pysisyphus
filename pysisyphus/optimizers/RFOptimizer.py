@@ -20,7 +20,7 @@ class RFOptimizer(Optimizer):
         self.trust_radius_max = 5*self.trust_radius
         self.predicted_energies = list()
 
-        self.hessians = list()
+        # self.hessians = list()
         self.trust_radii = list()
         self.rfo_steps = list()
         self.predicted_energies = list()#[self.quadratic_approx(self.geometry.coords), ]
@@ -29,9 +29,9 @@ class RFOptimizer(Optimizer):
         self.H = self.geometry.get_initial_hessian()
 
     def keep(self):
-        self.hessians.append(self.H.copy())
+        # self.hessians.append(self.H.copy())
         self.trust_radii.append(self.trust_radius)
-        self.log("!Saving hessian every iteration!")
+        # self.log("!Saving hessian every iteration!")
 
     def bfgs_update(self):
         # Eq. (44) in [1]
