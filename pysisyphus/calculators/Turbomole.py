@@ -45,7 +45,7 @@ class Turbomole(OverlapCalculator):
 
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
                         "ciss_a", "ucis_a", "gradient", "sing_a",
-                        "__ccre*", "exstates")
+                        "__ccre*", "exstates", "coord")
 
         self.parser_funcs = {
             "force": self.parse_force,
@@ -189,20 +189,24 @@ class Turbomole(OverlapCalculator):
             # dot, that we drop.
             td_vec_fn = self.td_vec_fn.suffix[1:]
             shutil.copy(self.td_vec_fn, path / td_vec_fn)
-            self.log(f"Using {td_vec_fn} as escf guess.")
+            self.log(f"Using '{self.td_vec_fn}' as escf guess.")
+        root_log_msg = "with current root information."
         if self.root and self.td:
             repl = f"$exopt {self.root}"
-            self.sub_control("\$exopt\s*(\d+)", f"$exopt {self.root}")
+            self.sub_control("\$exopt\s*(\d+)", f"$exopt {self.root}",
+                             root_log_msg)
             self.log(f"Using '{repl}'")
         if self.root and self.ricc2:
             repl = f"state=(a {self.root})"
-            self.sub_control("state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})")
+            log_msg = " with current root."
+            self.sub_control("state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})",
+                             root_log_msg)
             self.log(f"Using '{repl}' for geoopt.")
 
-    def sub_control(self, pattern, repl, **kwargs):
+    def sub_control(self, pattern, repl, log_msg="", **kwargs):
         path = self.path_already_prepared
         assert path
-        self.log(f"Updating control file in '{path}'")
+        self.log(f"Updating control file in '{path}' {log_msg}")
         control_path = path / "control"
         with open(control_path) as handle:
             text = handle.read()
@@ -223,13 +227,14 @@ class Turbomole(OverlapCalculator):
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, cmd=None):
         self.prepare_input(atoms, coords, "force")
         kwargs = {
                 "calc": "force",
                 "shell": True, # To allow chained commands like 'ridft; rdgrad'
                 "hold": self.track, # Keep the files for WFOverlap
                 "env": self.get_pal_env(),
+                "cmd": cmd,
         }
         # Use inp=None because we don't use any dedicated input besides
         # the previously prepared control file and the current coords.
@@ -239,8 +244,8 @@ class Turbomole(OverlapCalculator):
             root_flipped = self.track_root(atoms, coords)
             self.calc_counter += 1
             if root_flipped:
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
+                # Redo gradient calculation for new root.
+                results = self.get_forces(atoms, coords, cmd=self.second_cmd)
             self.last_run_path = prev_run_path
         shutil.rmtree(self.last_run_path)
         return results
@@ -366,6 +371,7 @@ class Turbomole(OverlapCalculator):
     def prepare_overlap_data(self):
         # Parse eigenvectors from escf/egrad calculation
         if self.second_cmd != "ricc2":
+            self.log(f"Reading CI coefficients from '{self.td_vec_fn}'.")
             with open(self.td_vec_fn) as handle:
                 text = handle.read()
             ci_coeffs = self.parse_td_vectors(text)
@@ -383,6 +389,7 @@ class Turbomole(OverlapCalculator):
             )
             ci_coeffs = ci_coeffs[:,:X_len]
         ci_coeffs = ci_coeffs.reshape(states, self.occ_mos, self.virt_mos)
+        self.log(f"Reading MO coefficients from '{self.mos}'.")
         with open(self.mos) as handle:
             text = handle.read()
         mo_coeffs = parse_turbo_mos(text)
