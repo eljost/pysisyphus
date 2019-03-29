@@ -22,7 +22,7 @@ class Gaussian16(OverlapCalculator):
     conf_key = "gaussian16"
 
     def __init__(self, route, mem=3500, gbs="", gen="",
-                 keep_chk=False, stable="", **kwargs):
+                 keep_chk=False, stable="", fchk=None, **kwargs):
         super().__init__(**kwargs)
 
         self.route = route.lower()
@@ -34,6 +34,7 @@ class Gaussian16(OverlapCalculator):
         self.gen = gen
         self.keep_chk = keep_chk
         self.stable = stable
+        self.fchk = fchk
 
         keywords = {kw: option
                     for kw, option in [self.parse_keyword(kw)
@@ -117,14 +118,14 @@ class Gaussian16(OverlapCalculator):
 
     def reuse_data(self, path):
         # Nothing to reuse if no fchk or chk present
-        if not hasattr(self, "fchk") and not hasattr(self, "chk"):
+        if (self.fchk is None) and not hasattr(self, "chk"):
             return ""
         new_chk = path / self.chk_fn
         prev_fchk = new_chk.with_suffix(".fchk")
         shutil.copy(self.fchk, prev_fchk)
         cmd = f"{self.unfchk_cmd} {prev_fchk}".split()
         result = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
-        self.log("Using previous MOs as guess.")
+        self.log(f"Using MO guess from '{self.fchk}'.")
 
         reuse_str = "guess=read"
         # Also try to reuse information of previous TD calculation
