@@ -31,6 +31,7 @@ class OverlapCalculator(Calculator):
         self.ci_coeff_list = list()
         self.nto_list = list()
         self.coords_list = list()
+        self.roots_list = list()
         self.first_root = None
 
         super().__init__(*args, **kwargs)
@@ -192,6 +193,7 @@ class OverlapCalculator(Calculator):
         self.mo_coeff_list.append(mo_coeffs)
         self.ci_coeff_list.append(ci_coeffs)
         self.coords_list.append(coords)
+        self.roots_list.append(self.root)
         # Used for WFOverlap
         self.wfow.store_iteration(atoms, coords, mos_fn, ci_coeffs)
         # Also store NTOs if requested
@@ -221,7 +223,7 @@ class OverlapCalculator(Calculator):
         if not ovlp_type:
             ovlp_type = self.ovlp_type
         # Nothing to compare to if only one calculation was done yet
-        if self.calc_counter == 0:
+        if len(self.ci_coeff_list) < 2:
             return False
 
         ao_ovlp = None
