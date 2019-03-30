@@ -19,11 +19,12 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn=2, **kwargs):
+    def __init__(self, gbsa="", gfn=2, acc=1.0, **kwargs):
         super(XTB, self).__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
+        self.acc = acc
 
         valid_gfns = (1, 2)
         assert self.gfn in valid_gfns, "Invalid gfn argument. " \
@@ -54,7 +55,7 @@ class XTB(Calculator):
         return None
 
     def prepare_add_args(self):
-        add_args = f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf}".split()
+        add_args = f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
         # Use solvent model if specified
         if self.gbsa:
             gbsa = f"--gbsa {self.gbsa}".split()
