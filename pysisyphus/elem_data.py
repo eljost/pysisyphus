@@ -28,9 +28,9 @@ MASS_DICT = {
     'fl': 289,'mc': 289, 'lv': 293, 'ts': 294, 'og': 294
 }
 
+# See 10.1039/b801115j
 # {el.symbol: el.covalent_radius for el  in periodictable.elements
 #  if el.covalent_radius}
-# In Angstroem
 COVALENT_RADII_ANG = {
     'n': 0.71, 'h': 0.31, 'he': 0.28, 'li': 1.28, 'be': 0.96, 'b': 0.84,
     'c': 0.76, 'o': 0.66, 'f': 0.57, 'ne': 0.58, 'na': 1.66, 'mg': 1.41,
