@@ -17,6 +17,7 @@ from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.SciPyOptimizer import SciPyOptimizer
 from pysisyphus.optimizers.closures import modified_broyden_closure
 
@@ -409,6 +410,19 @@ def test_modified_broyden():
     plt.show()
 
 
+def test_rfo_optimizer():
+    pot = AnaPot()
+    # geom = pot.get_geom((-0.8333, 2, 0))
+    geom = pot.get_geom((-1, 3, 0))
+    # geom = pot.get_geom((0, 3, 0))
+    opt = RFOptimizer(geom, thresh="gau_tight")
+    opt.run()
+    coords = np.array(opt.coords)
+    pot.plot()
+    ax = pot.ax
+    ax.plot(coords[:,0], coords[:,1], "ro-")
+    plt.show()
+
 
 @pytest.mark.skip
 def test_equal_szts():
@@ -494,7 +508,10 @@ if __name__ == "__main__":
     # opt = test_lbfgs_mod_neb()
 
     # Modified broyden
-    test_modified_broyden()
+    # test_modified_broyden()
+
+    # Rational function optimization
+    test_rfo_optimizer()
 
     # SimpleZTS
     # opt = test_equal_szts()
@@ -507,7 +524,7 @@ if __name__ == "__main__":
     # NEB with Dimer
     # test_spline_hei()
 
-    ap = animate(opt)
+    # ap = animate(opt)
     # ap = animate_bare(opt)
     # ap.as_html5("anim.html")
-    plt.show()
+    # plt.show()

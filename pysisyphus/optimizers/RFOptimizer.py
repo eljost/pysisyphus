@@ -121,6 +121,7 @@ class RFOptimizer(Optimizer):
         )
         eigvals, eigvecs = np.linalg.eigh(aug_hess)
         self.log(f"First 5 eigenvalues: {np.array2string(eigvals[:5], precision=2, suppress_small=True)}")
+        self.log(f"Number of negative eigenvalues: {eigvals[eigvals < 0].size}")
         self.log(f"Lowest eigenvalue: {eigvals[0]:.6f}")
         # Select eigenvector corresponding to smallest eigenvalue.
         # As the eigenvalues are sorted in ascending order eigvals.argmin()
