@@ -91,55 +91,65 @@ class RedundantCoords:
     def project_hessian(self, H):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
         P = self.P
-        return self.P.dot(H).dot(P)
+        return P.dot(H).dot(P) + 1000*(np.eye(P.shape[0]) - P)
 
     @property
     def coords(self):
         return np.array([pc.val for pc in self.calculate(self.cart_coords)])
 
+    # def set_rho(self):
+        # """Calculated rho values as required for the Lindh model hessian
+        # as described in [3], similar to pyberny.
+        # Instead of using the tabulated r_ref,ij values we will use the covalent
+        # radii as in pyberny. The tabulated r_ref,ij value for two carbons
+        # (2nd period) is 2.87 Bohr. Carbons covalent radius is ~ 1.44 Bohr,
+        # so two times it is 2.88 Bohr which fits nicely with the tabulate value.
+        # Hydrogens covalent radius is 0.59 bohr, so C-H gives 2.03 Bohr
+        # (tabulated 2.10). If values for elements > 3rd are requested the alpha
+        # values for the 3rd period will be (re)used.
+        # """
+        # first_period = "h he".split()
+        # def get_alpha(atom1, atom2):
+            # if (atom1 in first_period) and (atom2 in first_period):
+                # return 1.
+            # elif (atom1 in first_period) or (atom2 in first_period):
+                # return 0.3949
+            # else:
+                # return 0.28
+        # atoms = [a.lower() for a in self.atoms]
+        # alphas = [get_alpha(a1, a2)
+                  # for a1, a2 in it.combinations(atoms, 2)]
+        # cov_radii = np.array([CR[a.lower()] for a in atoms])
+        # rref = np.array([r1+r2
+                         # for r1, r2 in it.combinations(cov_radii, 2)])
+        # coords3d = self.cart_coords.reshape(-1, 3)
+        # cdm = pdist(coords3d)
+        # # It shouldn't be a problem that the diagonal is 0 because
+        # # no primitive internal coordinates will ever access a diagonal
+        # # element.
+        # diff = rref**2 - cdm**2
+        # self.rho = squareform(np.exp(alphas*diff))
+
     def set_rho(self):
-        """Calculated rho values as required for the Lindh model hessian
-        as described in [3], similar to pyberny.
-        Instead of using the tabulated r_ref,ij values we will use the covalent
-        radii as in pyberny. The tabulated r_ref,ij value for two carbons
-        (2nd period) is 2.87 Bohr. Carbons covalent radius is ~ 1.44 Bohr,
-        so two times it is 2.88 Bohr which fits nicely with the tabulate value.
-        Hydrogens covalent radius is 0.59 bohr, so C-H gives 2.03 Bohr
-        (tabulated 2.10). If values for elements > 3rd are requested the alpha
-        values for the 3rd period will be (re)used.
-        """
-        first_period = "h he".split()
-        def get_alpha(atom1, atom2):
-            if (atom1 in first_period) and (atom2 in first_period):
-                return 1.
-            elif (atom1 in first_period) or (atom2 in first_period):
-                return 0.3949
-            else:
-                return 0.28
         atoms = [a.lower() for a in self.atoms]
-        alphas = [get_alpha(a1, a2)
-                  for a1, a2 in it.combinations(atoms, 2)]
         cov_radii = np.array([CR[a.lower()] for a in atoms])
         rref = np.array([r1+r2
                          for r1, r2 in it.combinations(cov_radii, 2)])
         coords3d = self.cart_coords.reshape(-1, 3)
         cdm = pdist(coords3d)
-        # It shouldn't be a problem that the diagonal is 0 because
-        # no primitive internal coordinates will ever access a diagonal
-        # element.
-        self.rho = squareform(np.exp(alphas*(rref**2-cdm**2)))
+        self.rho = squareform(np.exp(-cdm/rref + 1))
 
     def get_initial_hessian(self):
-        """
         k_dict = {
-            2: 0.45,
+            2: 0.35,
             3: 0.15,
             4: 0.005,
         }
         k_diag = list()
         for primitive in self._prim_coords:
             rho_product = 1
-            for i1, i2 in it.combinations(primitive.inds, 2):
+            for i in range(primitive.inds.size-1):
+                i1, i2 = primitive.inds[i:i+2]
                 rho_product *= self.rho[i1, i2]
             k_diag.append(k_dict[len(primitive.inds)] * rho_product)
         return np.diagflat(k_diag)
@@ -152,6 +162,7 @@ class RedundantCoords:
         k_diag = [k_dict[len(prim.inds)] for prim in self._prim_coords]
         self.log("Using simple 0.5/0.2/0.1 model hessian!")
         return np.diagflat(k_diag)
+        """
 
     def merge_fragments(self, fragments):
         """Merge a list of sets."""
