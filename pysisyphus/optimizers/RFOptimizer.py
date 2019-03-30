@@ -58,7 +58,8 @@ class RFOptimizer(Optimizer):
                  method="SLSQP",
                  constraints=constr)
         step = res.x
-        self.log(f"optimized step norm: {np.linalg.norm(step):.4f}")
+        self.log(f"LQA minimum: {res.fun:.6f}")
+        self.log(f"Optimized step norm: {np.linalg.norm(step):.4f}")
         if not res.success:
             raise Exception("LQA optimization failed!")
         return step
@@ -69,15 +70,17 @@ class RFOptimizer(Optimizer):
         predicted_reduction = (self.predicted_energies[-2]
                                - self.predicted_energies[-1])
         reduction_ratio = actual_reduction / predicted_reduction
-        self.log(f"reduction_ratio: {reduction_ratio:.3f}")
+        self.log(f"Reduction ratio: {reduction_ratio:.5f}")
         if reduction_ratio < 0.25:
             self.trust_radius = max(0.25*self.trust_radius,
                                     self.min_trust_radius)
+            self.log("Decreasing trust radius.")
         elif reduction_ratio > 0.5:
             self.trust_radius = min(2*self.trust_radius, self.trust_radius_max)
+            self.log("Increasing trust radius.")
         #if reduction_ratio < 0:
         #    self.log("step rejected")
-        self.log(f"trust_radius {self.trust_radius:.2f}")
+        self.log(f"Trust radius: {self.trust_radius:.3f}")
 
     def optimize(self):
         gradient = self.geometry.gradient
@@ -101,13 +104,12 @@ class RFOptimizer(Optimizer):
                     ((self.H, gradient[:,None]),
                      (gradient[None,:], [[0]]))
         )
-        #aug_hess = (aug_hess+aug_hess.T)/2
-        np.testing.assert_allclose(aug_hess, aug_hess.T)
         eigvals, eigvecs = np.linalg.eigh(aug_hess)
         # Select eigenvector corresponding to smallest eigenvalue.
         # As the eigenvalues are sorted in ascending order eigvals.argmin()
         # should always give 0...
-        aug_step = eigvecs[:,eigvals.argmin()]
+        assert eigvals.argmin() == 0
+        aug_step = eigvecs[:,0]
         # aug_step is currently a matrix. Convert it to an array.
         aug_step = np.asarray(aug_step).flatten()
         # Scale aug_step so the last element equals 1
@@ -118,10 +120,12 @@ class RFOptimizer(Optimizer):
         self.rfo_steps.append(step)
 
         step_norm = np.linalg.norm(step)
+        self.log(f"Unscaled norm(step): {step_norm:.4f}")
         # We use a trust region method instead
         #step = self.scale_by_max_step(step)
         if step_norm > self.trust_radius:
             step = self.find_step(step)
-        self.log(f"norm(step) {np.linalg.norm(step):.4f}")
+        self.log(f"norm(step): {np.linalg.norm(step):.4f}")
+        self.log("")
 
         return step
