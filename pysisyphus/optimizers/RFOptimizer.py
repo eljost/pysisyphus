@@ -139,10 +139,12 @@ class RFOptimizer(Optimizer):
         self.keep()
         self.rfo_steps.append(step)
 
+        # Restrict elements of the the step vector to an allowed maximum
+        # if they exceed it.
+        # step[np.abs(step) > 0.3] = 0.3
         step_norm = np.linalg.norm(step)
         self.log(f"Unscaled norm(step): {step_norm:.4f}")
         # We use a trust region method instead
-        #step = self.scale_by_max_step(step)
         if step_norm > self.trust_radius:
             step = self.find_step(step)
         self.log(f"norm(step): {np.linalg.norm(step):.4f}")
