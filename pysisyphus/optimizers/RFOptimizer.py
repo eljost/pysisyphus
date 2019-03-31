@@ -64,11 +64,11 @@ class RFOptimizer(Optimizer):
                  step_guess,
                  method="SLSQP",
                  constraints=constr)
+        if not res.success:
+            self.log("LQA optimization failed!")
         step = res.x
         self.log(f"LQA minimum: {res.fun:.6f} au")
         self.log(f"Optimized step norm: {np.linalg.norm(step):.4f}")
-        if not res.success:
-            raise Exception("LQA optimization failed!")
         return step
 
     def update_trust_radius(self):
