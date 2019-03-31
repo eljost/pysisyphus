@@ -69,6 +69,11 @@ class RFOptimizer(Optimizer):
         step = res.x
         self.log(f"LQA minimum: {res.fun:.6f} au")
         self.log(f"Optimized step norm: {np.linalg.norm(step):.4f}")
+        original_direction = step_guess / np.linalg.norm(step_guess)
+        new_direction = step / np.linalg.norm(step)
+        dir_rad = np.arccos(original_direction.dot(new_direction))
+        dir_deg = np.rad2deg(dir_rad)
+        self.log(f"Angle between original and new direction: {dir_deg:.2f}°")
         return step
 
     def update_trust_radius(self):
