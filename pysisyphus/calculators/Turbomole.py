@@ -309,6 +309,14 @@ class Turbomole(OverlapCalculator):
         return results
 
     def parse_td_vectors(self, text):
+        """For TDA calculations only the X vector is present in the
+        ciss_a/etc. file. In TDDFT calculations there are twise as
+        much items compared with TDA. The first half corresponds to
+        (X-Y) and the second half to (X+Y). X can be calculated as
+        X = ((X-Y)+(X+Y))/2. Y is then given as Y = (X+Y)-X. The
+        normalization can then by checked as
+            np.concatenate((X, Y)).dot(np.concatenate((X, -Y)))
+        and should be 1."""
         def to_float(s, loc, toks):
             match = toks[0].replace("D", "E")
             return float(match)
@@ -388,6 +396,10 @@ class Turbomole(OverlapCalculator):
             ci_coeffs = [cc["vector"] for cc in ci_coeffs]
             all_energies = np.full(len(exc_energies)+1, gs_energy)
             all_energies[1:] += exc_energies
+            # s1 = np.array(ci_coeffs[0])
+            # XmY, XpY = s1.reshape(2, -1)
+            # X = (XmY+XpY)/2
+            # Y = XpY-X
         # Parse eigenvectors from ricc2 calculation
         else:
             ci_coeffs = [self.parse_cc2_vectors(ccre)
