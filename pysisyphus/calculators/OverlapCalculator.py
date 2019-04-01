@@ -37,6 +37,7 @@ class OverlapCalculator(Calculator):
         self.coords_list = list()
         self.roots_list = list()
         self.all_energies_list = list()
+        self.root_flips_list = [False, ]
         self.first_root = None
 
         self.dump_fn = "overlap_data.h5"
@@ -206,6 +207,7 @@ class OverlapCalculator(Calculator):
             "coords": np.array(self.coords_list, dtype=float),
             "roots": np.array(self.roots_list, dtype=int),
             "all_energies": np.array(self.all_energies_list, dtype=float),
+            "root_flips": np.array(self.root_flips_list, dtype=bool),
         }
         # if self.nto_list:
             # data_dict["ntos"] = self.nto_list
@@ -248,7 +250,6 @@ class OverlapCalculator(Calculator):
                 ntos = NTOs(ntos=ovlp_ntos, lambdas=ovlp_lambdas)
                 ntos_for_cycle.append(ntos)
             self.nto_list.append(ntos_for_cycle)
-        self.dump_overlap_data()
 
     def track_root(self, atoms, coords, ovlp_type=None):
         """Store the information of the current iteration and if possible
@@ -311,6 +312,9 @@ class OverlapCalculator(Calculator):
             self.log(f"Root flip! New root is {self.root}. Root at previous "
                      f"step was {prev_root}."
             )
+
+        self.root_flips_list.append(root_flip)
+        self.dump_overlap_data()
 
         # True if a root flip occured
         return root_flip

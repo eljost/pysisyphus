@@ -378,18 +378,39 @@ def plot_all_energies():
     with h5py.File(dump_fn) as handle:
         energies = handle["all_energies"][:]
         roots = handle["roots"][:]
+        flips = handle["root_flips"][:]
 
     energies -= energies.min()
     energies *= AU2EV
 
+    # Don't plot steps where flips occured
+    # energies = np.concatenate((energies[0][None,:], energies[1:,:][~flips]), axis=0)
+    energies_ = list()
+    roots_ = list()
+    steps = list()
+    for i, root_flip in enumerate(flips):
+        if root_flip:
+            print(f"Root flip occured between {i} and {i+1}.")
+            continue
+        print(f"Using step {i}")
+        energies_.append(energies[i])
+        roots_.append(roots[i])
+        steps.append(i)
+    energies_.append(energies[-1])
+    roots_.append(roots[-1])
+    steps.append(i+1)
+
+    energies = np.array(energies_)
+    roots = np.array(roots_)
+
     fig, ax = plt.subplots()
     for i, state in enumerate(energies.T):
-        ax.plot(state, "o-", label=f"State {i:03d}")
+        ax.plot(steps, state, "o-", label=f"State {i:03d}")
     ax.legend()
     ax.set_xlabel("Step")
     ax.set_ylabel("$\Delta E / eV$")
     root_ens = [s[r] for s, r in zip(energies, roots)]
-    ax.plot(root_ens, "--k")
+    ax.plot(steps, root_ens, "--k")
     plt.show()
 
 
