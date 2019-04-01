@@ -415,8 +415,9 @@ def test_rfo_optimizer():
     # geom = pot.get_geom((-0.8333, 2, 0))
     geom = pot.get_geom((-1, 3, 0))
     # geom = pot.get_geom((0, 3, 0))
-    opt = RFOptimizer(geom, thresh="gau_tight")
+    opt = RFOptimizer(geom, thresh="gau_tight", max_cycles=15)
     opt.run()
+    # return
     coords = np.array(opt.coords)
     pot.plot()
     ax = pot.ax
