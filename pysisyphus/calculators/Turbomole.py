@@ -312,8 +312,8 @@ class Turbomole(OverlapCalculator):
         """For TDA calculations only the X vector is present in the
         ciss_a/etc. file. In TDDFT calculations there are twise as
         much items compared with TDA. The first half corresponds to
-        (X-Y) and the second half to (X+Y). X can be calculated as
-        X = ((X-Y)+(X+Y))/2. Y is then given as Y = (X+Y)-X. The
+        (X+Y) and the second half to (X-Y). X can be calculated as
+        X = ((X+Y)+(X-Y))/2. Y is then given as Y = (X+Y)-X. The
         normalization can then by checked as
             np.concatenate((X, Y)).dot(np.concatenate((X, -Y)))
         and should be 1."""
@@ -396,10 +396,11 @@ class Turbomole(OverlapCalculator):
             ci_coeffs = [cc["vector"] for cc in ci_coeffs]
             all_energies = np.full(len(exc_energies)+1, gs_energy)
             all_energies[1:] += exc_energies
-            # s1 = np.array(ci_coeffs[0])
+            s1 = np.array(ci_coeffs[0])
             # XmY, XpY = s1.reshape(2, -1)
-            # X = (XmY+XpY)/2
-            # Y = XpY-X
+            XpY, XmY = s1.reshape(2, -1)
+            X = (XmY+XpY)/2
+            Y = XpY-X
         # Parse eigenvectors from ricc2 calculation
         else:
             ci_coeffs = [self.parse_cc2_vectors(ccre)
@@ -411,7 +412,6 @@ class Turbomole(OverlapCalculator):
         X_len = self.occ_mos * self.virt_mos
         if ci_coeffs.shape[1] == (2*X_len):
             self.log("TDDFT calculation with X and Y vectors present. "
-                     "Will only consider X for now and neglect Y!"
             )
             ci_coeffs = ci_coeffs[:,:X_len]
         ci_coeffs = ci_coeffs.reshape(states, self.occ_mos, self.virt_mos)
