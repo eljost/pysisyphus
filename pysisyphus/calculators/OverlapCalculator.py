@@ -119,8 +119,16 @@ class OverlapCalculator(Calculator):
         return overlaps
 
     def calculate_state_ntos(self, state_ci_coeffs, mos):
-        u, s, vh = np.linalg.svd(state_ci_coeffs)
+        normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
+        # u, s, vh = np.linalg.svd(state_ci_coeffs)
+        u, s, vh = np.linalg.svd(normed)
         lambdas = s**2
+        self.log("Calculating NTOs")
+        self.log("Normalized transition density vector to 1.")
+        self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
+        lambdas_str = np.array2string(lambdas[:3], precision=4,
+                                      suppress_small=True)
+        self.log(f"First three lambdas: {lambdas_str}")
 
         occ_mo_num = state_ci_coeffs.shape[0]
         occ_mos = mos[:occ_mo_num]
