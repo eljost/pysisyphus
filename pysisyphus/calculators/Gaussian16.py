@@ -410,17 +410,27 @@ class Gaussian16(OverlapCalculator):
                  f"There are {tmp.size} items (including eigenvalues).")
         coeffs = tmp[:expected]
         # 1. dim: X+Y, X-Y -> 2
-        # 2. dim: roots -> variable
+        # 2. dim: roots -> variable, usually higher than Nstates as gaussian
+        #         calculates more roots in the first iteration of TDDFT
         # 3. dim: alpha, beta -> 2
-        # the rest depends on the number of alpha and beta electrons
+        # The remainder depends on the number of alpha and beta electrons.
+        # The vectors are given for active orbs. x virt. obs that is the
+        # core orbitals are neglected.
         if nmos.restricted:
             XpY, XmY = coeffs.reshape(2, roots, 2, -1)
             X = 0.5 * (XpY + XmY)
+            # Within a TDA calculation XpY and XmY are the same and
+            # Y will only contain zeros.
+            Y = XpY - X
         # In the unrestricted case we can't use 2 for the 3. dimension anymore
         # (same number of alpha and beta electrons). The sizes for the respective
         # spins would be (a_act*a_vir) and (b_act*b_vir).
         else:
             raise Exception("Unrestricted not supported yet!")
+        # Shapes of X and Y
+        # 1. dim: roots (more than initially requested) -> variable
+        # 2. dim: alpha, beta                           -> 2
+        # 3. dim: act. x virt.                          -> variable
 
         # xpy_fn = f"{dump_fn}_XpY"
         # np.save(xpy_fn, XpY)
@@ -429,15 +439,19 @@ class Gaussian16(OverlapCalculator):
         # x_fn = f"{dump_fn}_X"
         # np.save(x_fn, X)
 
-        # Drop duplicate entries
+        # As we only handle restricted calculations for now the alpha
+        # and beta part are identical. So we only keep the alpha part.
         if self.nmos.restricted:
             # Drop beta part and restrict to the requested states
             X = X[:self.nstates, 0, :]
+            Y = Y[:self.nstates, 0, :]
 
         X_full = np.zeros((self.nstates, nmos.a_occ, nmos.a_vir))
         X_full[:, nmos.a_core:] = X.reshape(-1, nmos.a_act, nmos.a_vir)
+        Y_full = np.zeros((self.nstates, nmos.a_occ, nmos.a_vir))
+        Y_full[:, nmos.a_core:] = Y.reshape(-1, nmos.a_act, nmos.a_vir)
 
-        return X_full
+        return X_full, Y_full
 
     def prepare_overlap_data(self):
         # Create the WFOWrapper object if it is not already there
@@ -447,7 +461,8 @@ class Gaussian16(OverlapCalculator):
             self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
                                    basis=None, charge=None, out_dir=self.out_dir)
         # Parse X eigenvector from 635r dump
-        ci_coeffs = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
+        X, Y = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
+        ci_coeffs = X+Y
         # From http://gaussian.com/cis/, Examples tab, Normalization
         # 'For closed shell calculations, the sum of the squares of the
         # expansion coefficients is normalized to total 1/2 (as the beta
