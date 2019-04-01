@@ -21,7 +21,8 @@ class RFOptimizer(Optimizer):
         self.gdiis_thresh = gdiis_thresh
 
         self.min_trust_radius = 0.25*self.trust_radius
-        self.trust_radius_max = 5*self.trust_radius
+        # self.trust_radius_max = 5*self.trust_radius
+        self.trust_radius_max = 2*self.trust_radius
         self.predicted_energy_changes = list()
         self.actual_energy_changes = list()
 
@@ -115,20 +116,22 @@ class RFOptimizer(Optimizer):
             self.log("Increasing trust radius.")
         self.log(f"Trust radius: {self.trust_radius:.3f}")
 
-    def gdiis(self, ref_step, max_err_vecs=5):
+    def gdiis(self, ref_step, lambda_, max_err_vecs=5):
         np.set_printoptions(suppress=True, precision=4)
         # max of 5 diis vectors as proposed by swart 2006
         max_vecs = min(max_err_vecs, len(self.error_vecs))
         valid_diis_step = None
         valid_A = None
         ref_step_dir = ref_step / np.linalg.norm(ref_step)
-        for i in range(max_vecs):#len(self.error_vecs)):
+        self.log("Starting GDIIS.")
+        for i in range(max_vecs):
             inds = list(range(i+1))
             if i == 0:
                 continue
             A = np.zeros((i+1, i+1))
             # Start with the latest point and add previous points one by one
             err_vecs = np.array(self.error_vecs[::-1])[inds]
+            # err_vecs = np.array(self.forces[::-1])[inds]
             # Scale error vector so that norm of smallest error vector is 1
             err_norms = np.linalg.norm(err_vecs, axis=1)
             # print("unscaled error vector norms", err_norms)
@@ -141,46 +144,52 @@ class RFOptimizer(Optimizer):
                     e2 = err_vecs[j]
                     A[i, j] = e1.dot(e2)
                     A[j, i] = A[i, j]
+            self.log(f"Trying GDIIS with last {A.shape[0]} error vectors.")
 
-            vec_num = len(err_vecs)
-            A_ = np.ones((vec_num+1, vec_num+1))
-            for i, g1 in enumerate(err_vecs):
-                for j, g2 in enumerate(err_vecs):
-                    A_[i, j] = g1.dot(g2)
-            A_[-1, -1] = 0
-            b = np.zeros(vec_num+1)
-            b[-1] = 1
-            cs_lambda = np.linalg.solve(A_, b)
-            *cs_, lam_ = cs_lambda
-
+            # Convential DIIS solution
+            # vec_num = len(err_vecs)
+            # A_ = np.ones((vec_num+1, vec_num+1))
+            # for i, g1 in enumerate(err_vecs):
+                # for j, g2 in enumerate(err_vecs):
+                    # A_[i, j] = g1.dot(g2)
+            # A_[-1, -1] = 0
+            # b = np.zeros(vec_num+1)
+            # b[-1] = 1
+            # cs_lambda = np.linalg.solve(A_, b)
+            # *cs_, lam_ = cs_lambda
 
             # print(f"gdiis, using {len(err_vecs)} error vector(s).")
             # print("A")
             # print(A)
             cr = np.linalg.solve(A, np.ones(A.shape[0]))
             # Rule 1: Check for c/|r²| elements > 1e8
-            # print("cr", cr, "sum", np.sum(cr))
             if any(np.abs(cr) > 1e8):
-                # print("Found big cr element!")
+                self.log("c/|r²| > 1e8! GDIIS failed.")
                 break
             cs = cr / np.sum(cr)
-            np.testing.assert_allclose(cs_, cs)
-            # print("normalized c", cs)
+            cs_str = np.array2string(cs, precision=4)
+            self.log(f"GDIIS coefficients: {cs_str}")
+
             # Rule 2: Absolute value of sum of pos. (neg.) coefficients < 15
             pos_c_sum = np.sum(cs[cs > 0])
             neg_c_sum = np.sum(cs[cs < 0])
             if (pos_c_sum > 15) or (np.abs(neg_c_sum) > 15):
-                # print("Sum of coefficients > 15!")
+                self.log("Sum of GDIIS coefficients > 15! GDIIS failed.")
                 break
-            # print("sum pos c", pos_c_sum)
-            # print("sum neg c", neg_c_sum)
             last_coords = np.array(self.coords[::-1])[inds]
+            last_forces = np.array(self.forces[::-1])[inds]
             last_steps = np.array([ref_step] + self.steps[::-1])[inds]
             diis_coords = np.sum(cs[:,None]*last_coords, axis=0)
             diis_step = np.sum(cs[:,None]*last_steps, axis=0)
+
+            diis_force = np.sum(cs[:,None]*last_forces, axis=0)
+            # _ = diis_coords + np.linalg.inv(self.H+np.eye(self.H.shape[0])*lambda_).dot(diis_force)
+            # diis_step = _ - self.coords[-1]
+
             # _ = self.coords[-1] - diis_coords
+            # diis_step = diis_coords - self.coords[-1]
             # diis_step = self.coords[-1] - diis_coords
-            # import pdb; pdb.set_trace()
+
             # Rule 3: Compare magnitude of reference and DIIS step and
             # allow only 10 times the magnitude of the reference step
             # for the DIIS step.
@@ -189,20 +198,21 @@ class RFOptimizer(Optimizer):
             if diis_step_norm > 10*ref_step_norm:
                 factor = (10*ref_step_norm) / diis_step_norm
                 diis_step *= factor
-                print("scaled down diis step")
+                self.log("Proposed GDIIS step is too big. Scaling it down.")
 
             # Rule 4: Similar direction as reference step
             diis_step_dir =  diis_step / np.linalg.norm(diis_step)
             cos_cutoff = self.gdiis_cos_cutoffs[cs.size]
             cos_ = diis_step_dir.dot(ref_step_dir)
             if cos_ < cos_cutoff:
-                print("cos_=", cos_, "cutoff", cos_cutoff)
-                # print("directions of reference and diis differ too much. breaking!")
+                self.log("GDIIS step direction deviates too strongly from "
+                        f"reference step. cos(theta)={cos_:.2f}, allowed cutoff "
+                        f"is {cos_cutoff:.2f}.")
                 break
             valid_diis_step = diis_step
             valid_A = A
         if valid_diis_step is not None:
-            print(f"Did GDIIS with {valid_A.shape[0]} error vectors.")
+            self.log(f"Did GDIIS with {valid_A.shape[0]} error vectors.")
         return valid_diis_step
 
     def optimize(self):
@@ -233,7 +243,7 @@ class RFOptimizer(Optimizer):
                      (gradient[None,:], [[0]]))
         )
         eigvals, eigvecs = np.linalg.eigh(aug_hess)
-        self.log(f"First 5 eigenvalues: {np.array2string(eigvals[:5], precision=2, suppress_small=True)}")
+        self.log(f"First 5 eigenvalues: {np.array2string(eigvals[:5], precision=4, suppress_small=True)}")
         self.log(f"Number of negative eigenvalues: {eigvals[eigvals < 0].size}")
         self.log(f"Lowest eigenvalue: {eigvals[0]:.6f}")
         # Select eigenvector corresponding to smallest eigenvalue.
@@ -256,21 +266,21 @@ class RFOptimizer(Optimizer):
         # if they exceed it.
         # step[np.abs(step) > 0.3] = 0.3
         step_norm = np.linalg.norm(step)
-        self.log(f"Unscaled norm(step): {step_norm:.4f}")
         # We use a trust region method instead
         if step_norm > self.trust_radius:
+            self.log(f"Unscaled norm(step): {step_norm:.4f}")
+            self.log(f"Searching LQA minimum.")
             step = self.find_step(step)
         self.log(f"norm(step): {np.linalg.norm(step):.4f}")
-        self.log("")
 
-        self.error_vecs.append(step)
         rms_rfo_step = np.sqrt(np.mean(step**2))
         # Start GDIIS
         if rms_rfo_step < self.gdiis_thresh:
-            diis_step = self.gdiis(step)
-            # print(diis_step)
+            diis_step = self.gdiis(step, lambda_)
             if diis_step is not None:
-                print("found valid diis step")
+                self.log("Found valid GDIIS step.")
                 step = diis_step
+        self.error_vecs.append(step)
+        self.log("")
 
         return step

@@ -2,7 +2,7 @@
 
 from pysisyphus.constants import ANG2BOHR, BOHR2ANG
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_from_library, shake_coords
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
@@ -17,8 +17,12 @@ from berny import Berny, geomlib, optimize
 def run():
     fn = "codein.xyz"
     # fn = "h2o2_guess.xyz"
+
+    # geom = geom_from_library(fn)
+    # shaked = shake_coords(geom.coords, seed=12345)
+    # geom = Geometry(geom.atoms, shaked, coord_type="redund")
+
     geom = geom_from_library(fn, coord_type="redund")
-    # geom = geom_from_library(fn)#, coord_type="redund")
     # ints = geom.internal
     # bonds, bends, tors = ints.prim_indices
     # geom = geom_from_xyz_file(fn)
@@ -28,6 +32,7 @@ def run():
         # "max_cycles": 3,
         "dump": True,
         # "thresh": "gau",
+        "gdiis_thresh": 3e-3,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     # opt = SteepestDescent(geom, **opt_kwargs)
