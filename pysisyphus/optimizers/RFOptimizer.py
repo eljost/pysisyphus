@@ -62,20 +62,16 @@ class RFOptimizer(Optimizer):
                       / dx.dot(self.H.dot(dx)))
         self.H += second_term - third_term
 
-    # def quadratic_approx(self, step):
-        # E0 = self.energies[-1]
-        # g = -self.forces[-1]
-        # H_proj = self.geometry.internal.project_hessian(self.H)
-        # H_proj = (H_proj + H_proj.T) / 2
-        # # return E0 + np.inner(g, step) + 0.5*step.dot(self.H.dot(step))
-        # return E0 + np.inner(g, step) + 0.5*step.dot(H_proj.dot(step))
+    def quadratic_approx(self, step):
+        E0 = self.energies[-1]
+        g = -self.forces[-1]
+        return E0 + np.inner(g, step) + 0.5*step.dot(self.H.dot(step))
 
     def predicted_change(self, step):
         E0 = self.energies[-1]
         g = -self.forces[-1]
         H_proj = self.geometry.internal.project_hessian(self.H)
         H_proj = (H_proj + H_proj.T) / 2
-        # return np.inner(g, step) + 0.5*step.dot(self.H.dot(step))
         return np.inner(g, step) + 0.5*step.dot(H_proj.dot(step))
 
     def find_step(self, step_guess):
@@ -233,16 +229,6 @@ class RFOptimizer(Optimizer):
         return valid_diis_step
 
     def optimize(self):
-        if self.steps:
-            np.set_printoptions(suppress=True, precision=5)
-            actual_steps = np.diff(self.coords[::-1], axis=0)
-            actual_norms = np.linalg.norm(actual_steps, axis=1)
-            intended_norms = np.linalg.norm(self.steps, axis=1)
-            act_str = np.array2string(actual_norms, precision=4)
-            int_str = np.array2string(intended_norms[::-1], precision=4)
-            # self.log("Actual step norms: " + act_str)
-            # self.log("Intended step norms: " + int_str)
-            # import pdb; pdb.set_trace()
         gradient = self.geometry.gradient
         self.forces.append(-self.geometry.gradient)
         self.energies.append(self.geometry.energy)
@@ -306,6 +292,7 @@ class RFOptimizer(Optimizer):
             self.log(f"Unscaled norm(step): {step_norm:.4f}")
             self.log(f"Searching LQA minimum.")
             step = self.find_step(step)
+            # Only scale down step to the trust region
             # step_dir = step / np.linalg.norm(step)
             # step = self.trust_radius * step_dir
         self.log(f"norm(step): {np.linalg.norm(step):.4f}")
