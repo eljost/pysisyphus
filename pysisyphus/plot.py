@@ -379,6 +379,8 @@ def plot_all_energies():
         energies = handle["all_energies"][:]
         roots = handle["roots"][:]
         flips = handle["root_flips"][:]
+    print(f"Found a total of {len(roots)} steps.")
+    print(f"{flips} root flips occured.")
 
     energies -= energies.min()
     energies *= AU2EV
@@ -396,9 +398,13 @@ def plot_all_energies():
         energies_.append(energies[i])
         roots_.append(roots[i])
         steps.append(i)
-    energies_.append(energies[-1])
-    roots_.append(roots[-1])
-    steps.append(i+1)
+    # Don't append last step if a root flip occured there.
+    if not flips[-1]:
+        energies_.append(energies[-1])
+        roots_.append(roots[-1])
+        steps.append(i+1)
+    else:
+        print("Root flip occured in the last step. Not showing the last step.")
 
     energies = np.array(energies_)
     roots = np.array(roots_)
@@ -441,7 +447,7 @@ def parse_args(args):
                         help="Plot energies.")
     group.add_argument("--aneb", action="store_true",
                         help="Plot Adaptive NEB.")
-    group.add_argument("--all_energies", action="store_true",
+    group.add_argument("--all_energies", "-a", action="store_true",
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
 
