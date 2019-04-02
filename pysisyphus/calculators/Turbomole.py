@@ -380,7 +380,8 @@ class Turbomole(OverlapCalculator):
     def parse_gs_energy(self):
         with open(self.control) as handle:
             text = handle.read()
-        mobj = re.search("En\s+Disp\s+([\d\-\.E]+)", text)
+        en_re = re.compile("\$subenergy.*$\s*([\d\-\.E]+)", flags=re.MULTILINE)
+        mobj = en_re.search(text)
         gs_energy = float(mobj[1])
         return gs_energy
 

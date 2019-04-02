@@ -10,7 +10,7 @@ from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 import numpy as np
 
 import sys
-sys.path.insert(0, "/home/carpx/Code/pyberny")
+sys.path.insert(0, "/scratch/programme/pyberny-master")
 from berny import Berny, geomlib, optimize
 
 
@@ -24,8 +24,10 @@ def run():
     # geom = Geometry(geom.atoms, shaked, coord_type="redund")
 
     geom = geom_from_library(fn, coord_type="redund")
-    # ints = geom.internal
-    # bonds, bends, tors = ints.prim_indices
+    ints = geom.internal
+    bonds, bends, tors = ints.prim_indices
+    print("Formed {len(bonds)} stretches, {len(bends)} bends and {len(tors)} dihedrals")
+    import pdb; pdb.set_trace()
     # geom = geom_from_xyz_file(fn)
     xtb = XTB(acc=0.1)
     geom.set_calculator(xtb)
@@ -43,8 +45,9 @@ def run():
 
 
 def test_pyberny():
-    fn = "codein.xyz"
+    # fn = "codein.xyz"
     # fn = "h2o2_guess.xyz"
+    fn = "runo_nto_track.xyz"
 
     def solver():
         atoms, _ = yield
