@@ -18,7 +18,7 @@ class RFOptimizer(Optimizer):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
-        self.gdiis_thresh = gdiis_thresh
+        self.gdiis_thresh = float(gdiis_thresh)
 
         self.min_trust_radius = 0.25*self.trust_radius
         # self.trust_radius_max = 5*self.trust_radius
@@ -212,7 +212,7 @@ class RFOptimizer(Optimizer):
             valid_diis_step = diis_step
             valid_A = A
         if valid_diis_step is not None:
-            self.log(f"Did GDIIS with {valid_A.shape[0]} error vectors.")
+            self.log(f"Doing GDIIS with {valid_A.shape[0]} error vectors.")
         return valid_diis_step
 
     def optimize(self):
@@ -278,7 +278,6 @@ class RFOptimizer(Optimizer):
         if rms_rfo_step < self.gdiis_thresh:
             diis_step = self.gdiis(step, lambda_)
             if diis_step is not None:
-                self.log("Found valid GDIIS step.")
                 step = diis_step
         self.error_vecs.append(step)
         self.log("")

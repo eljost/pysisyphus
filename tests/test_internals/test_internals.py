@@ -16,6 +16,7 @@ from berny import Berny, geomlib, optimize
 
 def run():
     fn = "codein.xyz"
+    fn = "runo_nto_track.xyz"
     # fn = "h2o2_guess.xyz"
 
     # geom = geom_from_library(fn)
@@ -32,7 +33,7 @@ def run():
         # "max_cycles": 3,
         "dump": True,
         # "thresh": "gau",
-        "gdiis_thresh": 3e-3,
+        # "gdiis_thresh": 3e-3,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     # opt = SteepestDescent(geom, **opt_kwargs)
