@@ -19,6 +19,31 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 
+from pysisyphus.constants import BOHR2ANG
+
+# different sets of covalent radii for testing
+# # pyberny
+# pyb_cr = {
+    # "h": 0.38 / BOHR2ANG,
+    # "c": 0.77 / BOHR2ANG,
+    # "n": 0.75 / BOHR2ANG,
+    # "o": 0.73 / BOHR2ANG,
+    # "cl": 0.99 / BOHR2ANG,
+    # "ru": 1.26 / BOHR2ANG,
+# }
+# # dalton
+pyb_cr = {
+    "h": 0.40 / BOHR2ANG,
+    "c": 0.75 / BOHR2ANG,
+    "n": 0.71 / BOHR2ANG,
+    "o": 0.63 / BOHR2ANG,
+    "cl": 0.99 / BOHR2ANG,
+    "ru": 1.25 / BOHR2ANG,
+}
+from pysisyphus.elem_data import COVALENT_RADII as CR
+old_vals = [CR[k] for k in pyb_cr.keys()]
+CR.update(pyb_cr)
+
 
 def get_cov_radii_sum_array(atoms, coords):
     coords3d = coords.reshape(-1, 3)
@@ -301,11 +326,18 @@ class RedundantCoords:
         return (terminal1, central, terminal2), central
 
     def set_bending_indices(self):
+        c3d = self.cart_coords.reshape(-1, 3)
         bond_sets = {frozenset(bi) for bi in self.bond_indices}
         for bond_set1, bond_set2 in it.combinations(bond_sets, 2):
             union = bond_set1 | bond_set2
             if len(union) == 3:
                 as_tpl, _ = self.sort_by_central(bond_set1, bond_set2)
+                val = self.calc_bend(c3d, as_tpl)
+                deg = np.rad2deg(val)
+                if (deg > 170) or (deg < 45):
+                    self.log(f"Didn't create bend ({as_tpl}) with "
+                             f"value of {deg:.2f}°")
+                    continue
                 self.bending_indices.append(as_tpl)
         self.bending_indices = np.array(self.bending_indices, dtype=int)
 
@@ -522,6 +554,7 @@ class RedundantCoords:
             cart_step = Bt_inv.T.dot(last_step)
             new_coords = last_coords + cart_step
             cart_rms = rms(last_coords, new_coords)
+            # print(f"cart_rms={cart_rms:.4e}")
             if i == 0:
                 # Store the first converted cartesian step if the
                 # transformation goes awry.
