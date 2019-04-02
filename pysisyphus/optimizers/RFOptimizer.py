@@ -21,8 +21,7 @@ class RFOptimizer(Optimizer):
         self.gdiis_thresh = float(gdiis_thresh)
 
         self.min_trust_radius = 0.25*self.trust_radius
-        # self.trust_radius_max = 5*self.trust_radius
-        self.trust_radius_max = 2*self.trust_radius
+        self.trust_radius_max = self.trust_radius
         self.predicted_energy_changes = list()
         self.actual_energy_changes = list()
 
@@ -63,15 +62,21 @@ class RFOptimizer(Optimizer):
                       / dx.dot(self.H.dot(dx)))
         self.H += second_term - third_term
 
-    def quadratic_approx(self, step):
-        E0 = self.energies[-1]
-        g = -self.forces[-1]
-        return E0 + np.inner(g, step) + 0.5*step.dot(self.H.dot(step))
+    # def quadratic_approx(self, step):
+        # E0 = self.energies[-1]
+        # g = -self.forces[-1]
+        # H_proj = self.geometry.internal.project_hessian(self.H)
+        # H_proj = (H_proj + H_proj.T) / 2
+        # # return E0 + np.inner(g, step) + 0.5*step.dot(self.H.dot(step))
+        # return E0 + np.inner(g, step) + 0.5*step.dot(H_proj.dot(step))
 
     def predicted_change(self, step):
         E0 = self.energies[-1]
         g = -self.forces[-1]
-        return np.inner(g, step) + 0.5*step.dot(self.H.dot(step))
+        H_proj = self.geometry.internal.project_hessian(self.H)
+        H_proj = (H_proj + H_proj.T) / 2
+        # return np.inner(g, step) + 0.5*step.dot(self.H.dot(step))
+        return np.inner(g, step) + 0.5*step.dot(H_proj.dot(step))
 
     def find_step(self, step_guess):
         ineq_fun = lambda step: self.trust_radius - np.linalg.norm(step)
@@ -79,7 +84,15 @@ class RFOptimizer(Optimizer):
                 "type": "ineq",
                 "fun": ineq_fun,
         }
-        res = minimize(self.quadratic_approx,
+        H_proj = self.geometry.internal.project_hessian(self.H)
+        H_proj = (H_proj + H_proj.T) / 2
+        E0 = self.energies[-1]
+        g = -self.forces[-1]
+        def quadratic_approx(step):
+            return E0 + np.inner(g, step) + 0.5*step.dot(H_proj.dot(step))
+
+        # res = minimize(self.quadratic_approx,
+        res = minimize(quadratic_approx,
                  step_guess,
                  method="SLSQP",
                  constraints=constr)
@@ -87,18 +100,22 @@ class RFOptimizer(Optimizer):
             self.log("LQA optimization failed!")
         step = res.x
         self.log(f"LQA minimum: {res.fun:.6f} au")
+        lqa_change = "higher" if res.fun > self.energies[-1] else "lower"
+        self.log(f"LQA minimum is {lqa_change} than last energy.")
         self.log(f"Optimized step norm: {np.linalg.norm(step):.4f}")
         original_direction = step_guess / np.linalg.norm(step_guess)
         new_direction = step / np.linalg.norm(step)
         dir_rad = np.arccos(original_direction.dot(new_direction))
         dir_deg = np.rad2deg(dir_rad)
         self.log(f"Angle between original and new direction: {dir_deg:.2f}°")
+        if dir_deg > 45:
+            step = self.trust_radius * (step_guess / np.linalg.norm(step_guess))
         return step
 
     def update_trust_radius(self):
         # [3] Chapter 4, Algorithm 4.1
         actual_reduction = self.energies[-2] - self.energies[-1]
-        predicted = self.predicted_energy_changes[-1]
+        predicted = -self.predicted_energy_changes[-1]
         actual = self.actual_energy_changes[-1]
         reduction_ratio = actual / predicted
         self.log(f"Predicted energy reduction: {predicted:.4e} au")
@@ -216,6 +233,16 @@ class RFOptimizer(Optimizer):
         return valid_diis_step
 
     def optimize(self):
+        if self.steps:
+            np.set_printoptions(suppress=True, precision=5)
+            actual_steps = np.diff(self.coords[::-1], axis=0)
+            actual_norms = np.linalg.norm(actual_steps, axis=1)
+            intended_norms = np.linalg.norm(self.steps, axis=1)
+            act_str = np.array2string(actual_norms, precision=4)
+            int_str = np.array2string(intended_norms[::-1], precision=4)
+            # self.log("Actual step norms: " + act_str)
+            # self.log("Intended step norms: " + int_str)
+            # import pdb; pdb.set_trace()
         gradient = self.geometry.gradient
         self.forces.append(-self.geometry.gradient)
         self.energies.append(self.geometry.energy)
@@ -227,26 +254,34 @@ class RFOptimizer(Optimizer):
             self.predicted_energy_changes.append(predicted_energy_change)
             # Actual change
             self.log(f"Last two energies: {self.energies[-2:]}")
-            actual_energy_change = self.energies[-1] - self.energies[-2]
+            actual_energy_change = self.energies[-2] - self.energies[-1]
             self.actual_energy_changes.append(actual_energy_change)
             self.update_trust_radius()
             self.bfgs_update()
 
         if self.geometry.internal:
-            self.H = self.geometry.internal.project_hessian(self.H)
+            # import pdb; pdb.set_trace()
+            # self.H = self.geometry.internal.project_hessian(self.H)
+            # # Symmetrize hessian, as the projection probably breaks it.
+            # self.H = (self.H + self.H.T) / 2
+            H_proj = self.geometry.internal.project_hessian(self.H)
+            # import pdb; pdb.set_trace()
             # Symmetrize hessian, as the projection probably breaks it.
-            self.H = (self.H + self.H.T) / 2
+            H_proj = (H_proj + H_proj.T) / 2
+        H_eigvals, _ = np.linalg.eigh(H_proj)
+        H_eigval_str = np.array2string(H_eigvals[:5], precision=4,
+                                       suppress_small=True)
+        self.log(f"First 5 eigenvalues: {H_eigval_str}")
+        self.log(f"Number of negative eigenvalues: {H_eigvals[H_eigvals < 0].size}")
+        self.log(f"Lowest eigenvalue: {H_eigvals[0]:.6f}")
 
         # Eq. (56) in [1]
         aug_hess = np.bmat(
-                    ((self.H, gradient[:,None]),
+                    ((H_proj, gradient[:,None]),
                      (gradient[None,:], [[0]]))
         )
         eigvals, eigvecs = np.linalg.eigh(aug_hess)
-        self.log(f"First 5 eigenvalues: {np.array2string(eigvals[:5], precision=4, suppress_small=True)}")
-        self.log(f"Number of negative eigenvalues: {eigvals[eigvals < 0].size}")
-        self.log(f"Lowest eigenvalue: {eigvals[0]:.6f}")
-        # Select eigenvector corresponding to smallest eigenvalue.
+        self.log(f"Lowest eigenvalue of augmented hessian: {eigvals[0]:.4f}") # Select eigenvector corresponding to smallest eigenvalue.
         # As the eigenvalues are sorted in ascending order eigvals.argmin()
         # should always give 0...
         assert eigvals.argmin() == 0
@@ -271,6 +306,8 @@ class RFOptimizer(Optimizer):
             self.log(f"Unscaled norm(step): {step_norm:.4f}")
             self.log(f"Searching LQA minimum.")
             step = self.find_step(step)
+            # step_dir = step / np.linalg.norm(step)
+            # step = self.trust_radius * step_dir
         self.log(f"norm(step): {np.linalg.norm(step):.4f}")
 
         rms_rfo_step = np.sqrt(np.mean(step**2))
