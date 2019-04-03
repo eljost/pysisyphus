@@ -124,7 +124,6 @@ class OverlapCalculator(Calculator):
         # u, s, vh = np.linalg.svd(state_ci_coeffs)
         u, s, vh = np.linalg.svd(normed)
         lambdas = s**2
-        self.log("Calculating NTOs")
         self.log("Normalized transition density vector to 1.")
         self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
         lambdas_str = np.array2string(lambdas[:3], precision=4,
@@ -238,6 +237,7 @@ class OverlapCalculator(Calculator):
             ntos_for_cycle = list()
             for root in range(roots):
                 sn_ci_coeffs = ci_coeffs[root]
+                self.log("Calculating NTOs for root {root+1}")
                 occ_ntos, vir_ntos, lambdas = self.calculate_state_ntos(
                                                         sn_ci_coeffs,
                                                         mo_coeffs,

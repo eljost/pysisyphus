@@ -22,7 +22,8 @@ b_mo=mos.2
 a_det=dets.1
 b_det=dets.2
 a_mo_read=2
-b_mo_read=2"""
+b_mo_read=2
+"""
 
 CIOVL_NO_SAO="""ao_read=-1
 same_aos=.true.
@@ -61,20 +62,17 @@ class WFOWrapper2:
         self.mo_inds_list = list()
         self.from_set_list = list()
         self.to_set_list = list()
+        self.turbo_mos_list = list()
 
         self.name = f"WFOWrapper2_{self.calc_number}"
-        # derive from mo_coeffs
-        self.occ_mos, self.virt_mos = self.mo_coeffs_list[0].shape
-        self.base_det_str = "d"*self.occ_mos + "e"*self.virt_mos
+        self.occ_mo_num, self.virt_mo_num = self.ci_coeffs_list[0,0].shape
+        self.mo_num = self.occ_mo_num + self.virt_mo_num
+        self.base_det_str = "d"*self.occ_mo_num + "e"*self.virt_mo_num
         self.fmt = "{: .10f}"
 
         self.iter_counter = 0
 
-        # Molecule coordinates
-        self.coords_list = list()
-        # MO coefficients
-        self.from_set_list = list()
-        self.to_set_list = list()
+        self.set_data()
 
     @property
     def last_two_coords(self):
@@ -113,38 +111,9 @@ class WFOWrapper2:
                                             joined=joined))
         return base.format(mo_strings="\n".join(mo_strings))
 
-    def build_mole(self, coords):
-        coords3d = coords.reshape(-1, 3)
-        return [[atom, c] for atom, c in zip(self.atoms, coords3d)]
-
-    def get_ao_overlap(self, a1, a2, sphere=True):
-        def prepare(atom):
-            mol = gto.Mole()
-            mol.atom = atom
-            mol.basis = self.basis
-            mol.unit = "bohr"
-            mol.charge = self.charge
-            mol.build()
-            return mol
-        mol1 = prepare(a1)
-        mol2 = prepare(a2)
-        if sphere:
-            ao_ovlp = gto.mole.intor_cross("int1e_ovlp_sph", mol1, mol2)
-        else:
-            # Cartesian functions otherwise
-            ao_ovlp = gto.mole.intor_cross("int1e_ovlp_cart", mol1, mol2)
-        return ao_ovlp
-
-    def ci_coeffs_above_thresh(self, eigenpair, thresh=1e-5):
-        arr = np.array(eigenpair)
-        arr = arr.reshape(self.occ_mos, -1)
-        mo_inds = np.where(np.abs(arr) > thresh)
-        #ci_coeffs = arr[mo_inds]
-        #vals_sq = vals**2
-        #for from_mo, to_mo, vsq, v in zip(*inds, vals_sq, vals):
-        #    print(f"\t{from_mo+1} -> {to_mo+1+self.occ_mos} {v:.04f} {vsq:.02f}")
-        #return ci_coeffs, mo_inds
-        return arr, mo_inds
+    def ci_coeffs_above_thresh(self, ci_coeffs, thresh=1e-5):
+        mo_inds = np.where(np.abs(ci_coeffs) > thresh)
+        return mo_inds
 
     def make_det_string(self, inds):
         """Return spin adapted strings."""
@@ -152,7 +121,7 @@ class WFOWrapper2:
         # Until now the first virtual MO (to_mo) has index 0. To subsitute
         # the base_str at the correct index we have to increase all to_mo
         # indices by the number off occupied MO.
-        to_mo += self.occ_mos
+        to_mo += self.occ_mo_num
         # Make string for excitation of an alpha electron
         ab = list(self.base_det_str)
         ab[from_mo] = "b"
@@ -207,33 +176,31 @@ class WFOWrapper2:
     def set_from_nested_list(self, nested):
         return set([i for i in itertools.chain(*nested)])
 
-    def store_iteration(self, atoms, coords, mos, eigenpair_list):
-        coeffs_inds = [self.ci_coeffs_above_thresh(ep)
-                       for ep in eigenpair_list]
-        ci_coeffs, mo_inds = zip(*coeffs_inds)
-        ci_coeffs = np.array(ci_coeffs)
+    def set_data(self):
+        for ci_coeffs in self.ci_coeffs_list:
+            mo_inds = [self.ci_coeffs_above_thresh(state)
+                       for state in ci_coeffs]
+            from_mos, to_mos = zip(*mo_inds)
+            from_set = self.set_from_nested_list(from_mos)
+            to_set = self.set_from_nested_list(to_mos)
+            mo_coeffs = self.mo_coeffs_list[self.iter_counter]
+            turbo_mos_fn = f"mos.{self.iter_counter}"
+            with open(turbo_mos_fn, "w") as handle:
+                handle.write(self.fake_turbo_mos(mo_coeffs))
+            self.turbo_mos_list.append(turbo_mos_fn)
 
-        from_mos, to_mos = zip(*mo_inds)
-        from_set = self.set_from_nested_list(from_mos)
-        to_set = self.set_from_nested_list(to_mos)
-
-        self.atoms = atoms
-        self.mo_coeffs_list.append(mos)
-        self.coords_list.append(coords)
-        self.ci_coeffs_list.append(ci_coeffs)
-        self.mo_inds_list.append(mo_inds)
-        self.from_set_list.append(from_set)
-        self.to_set_list.append(to_set)
-        self.iter_counter += 1
-        self.log(f"Stored iteration {self.iter_counter}")
+            self.mo_inds_list.append(mo_inds)
+            self.from_set_list.append(from_set)
+            self.to_set_list.append(to_set)
+            self.iter_counter += 1
 
     def get_iteration(self, ind):
-        return (self.mo_coeffs_list[ind], self.coords_list[ind],
+        return (self.turbo_mos_list[ind], self.coords_list[ind],
                 self.ci_coeffs_list[ind], self.mo_inds_list[ind],
                 self.from_set_list[ind], self.to_set_list[ind])
 
     def make_dets_header(self, cic, dets_list):
-        return f"{len(cic)} {self.mos} {len(dets_list)}"
+        return f"{len(cic)} {self.mo_num} {len(dets_list)}"
 
     def parse_wfoverlap_out(self, text, type_="ortho"):
         """Returns overlap matrix."""
@@ -259,7 +226,16 @@ class WFOWrapper2:
 
         return np.array(list(result["overlap"]), dtype=np.float)
 
-    def wf_overlap(self, iter1, iter2, ao_ovlp=None):
+    def wf_overlap(self, ind1=-2, ind2=-1, ao_ovlp=None):
+        iter1 = self.get_iteration(ind1)
+        iter2 = self.get_iteration(ind2)
+
+        if ao_ovlp is None:
+            mo_coeffs_1 = self.mo_coeffs_list[ind1]
+            mo_coeffs_2 = self.mo_coeffs_list[ind2]
+            mo_coeffs_1_inv = np.linalg.inv(mo_coeffs_1)
+            ao_ovlp = mo_coeffs_1_inv.dot(mo_coeffs_1_inv.T)
+
         mos1, coords1, cic1, moi1, fs1, ts1 = iter1
         mos2, coords2, cic2, moi2, fs2, ts2 = iter2
         # Create a fake array for the ground state where all CI coefficients
@@ -267,10 +243,6 @@ class WFOWrapper2:
         gs_cic = np.zeros_like(cic1[0])
         cic1_with_gs = np.concatenate((gs_cic[None,:,:], cic1))
         cic2_with_gs = np.concatenate((gs_cic[None,:,:], cic2))
-        mol1 = self.build_mole(coords1)
-        mol2 = self.build_mole(coords2)
-
-        #ao_ovlp = self.get_ao_overlap(mol1, mol2)
 
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
         # Prepare line for ground state
@@ -289,11 +261,11 @@ class WFOWrapper2:
         header1 = self.make_dets_header(cic1_with_gs, dets1)
         header2 = self.make_dets_header(cic2_with_gs, dets2)
 
-        backup_path = self.out_dir / f"wfo_{self.calc_number}.{self.iter_counter:03d}"
+        backup_path = self.out_dir / f"wfo_{self.calc_number}.{ind1:03d}_{ind2:03d}"
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             self.log(f"Calculation in {tmp_dir}")
-            #import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             mos1_path = shutil.copy(mos1, tmp_path / "mos.1")
             mos2_path = shutil.copy(mos2, tmp_path / "mos.2")
             dets1_path = tmp_path / "dets.1"
@@ -338,7 +310,7 @@ class WFOWrapper2:
                      "from original matrix! There is probably mixing with "
 		     "external states.")
 
-        wfo_log_fn = self.out_dir / f"wfo_{self.calc_number}.{self.iter_counter:03d}.out"
+        wfo_log_fn = self.out_dir / f"wfo_{self.calc_number}.{ind1:03d}_{ind2:03d}.out"
         with open(wfo_log_fn, "w") as handle:
             handle.write(stdout)
         # Also copy the WFO-output to the input backup
@@ -357,42 +329,15 @@ class WFOWrapper2:
             # print(mat)
         return reshaped_mats
 
-    def overlaps(self, ao_ovlp=None):
-        iter1 = self.get_iteration(-2)
-        iter2 = self.get_iteration(-1)
-        overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
-        return overlap_mats
-
-    def overlaps_with(self, wfow_B, ao_ovlp=None):
-        iter1 = self.get_iteration(-1)
-        iter2 = wfow_B.get_iteration(-1)
-        overlap_mats = self.wf_overlap(iter1, iter2, ao_ovlp)
-        return overlap_mats
-
-    def compare(self, wfow_B, ao_ovlp=None):
-        """Calculate wavefunction overlaps between the two WFOWrapper objects,
-        using the last stored iterations respectively."""
-        overlap_mats = self.overlaps_with(wfow_B, ao_ovlp)
-        overlap_matrix = overlap_mats[1]
-        """argmax(axis=1) returns the index of the highest overlap
-        along every column, that is for every state in wfow_B.
-        The n-th item in max_ovlp_inds gives the index of the highest
-        overlap in wfow_A with the n-th state in wfow_B.
-
-        Using argmax(axis=0) would yield the highest overlap along
-        every row. The n-th item in max_ovlp_inds would give the index
-        of the highest overlapping state of wfow_B with the n-th state
-        in wfow_A.
-        """
-        max_ovlp_inds = (overlap_matrix**2).argmax(axis=1)
-        if np.unique(max_ovlp_inds).size != max_ovlp_inds.size:
-            self.log("Assignment of states is ambiguous! Check the results "
-                     "carefully!")
-        ovlps = (overlap_matrix**2).max(axis=1)
-        inds1 = np.arange(max_ovlp_inds.size)
-        #for i1, i2, o in zip(inds1, max_ovlp_inds, ovlps):
-        #    print(f"{i1} -> {i2} ({o:.1%} overlap)")
-        return max_ovlp_inds
+    def all_overlaps(self):
+        for i in range(self.iter_counter-1):
+            ind1 = i
+            ind2 = i+1
+            print(f"Doing overlaps between {ind1} and {ind2}")
+            overlap_mats = self.wf_overlap(ind1, ind2)
+            ovlp_mat_fn = f"wf_ovlp_mat_{ind1:03d}_{ind2:03d}.dat"
+            np.savetxt(ovlp_mat_fn, overlap_mats[-1])
+            print(f"Wrote '{ovlp_mat_fn}'")
 
     def __str__(self):
         return self.name
