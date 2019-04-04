@@ -210,35 +210,6 @@ class ChainOfStates:
             tmp_results.append(res)
         return tmp_results
 
-    def interpolate_between(self, initial_ind, final_ind, image_num):
-        assert (final_ind > initial_ind), "You're interpolating backwards!"
-        # Check for atom ordering
-        initial_image = self.images[initial_ind]
-        final_image = self.images[final_ind]
-        if not initial_image.atoms == final_image.atoms:
-            raise Exception("Wrong atom ordering between images. "
-                            "Check your input files!")
-        initial_coords = initial_image.coords
-        final_coords = final_image.coords
-        step = (final_coords-initial_coords) / (image_num+1)
-        # initial + i*step
-        i_array = np.arange(1, image_num+1)
-        atoms = self.images[0].atoms
-        new_coords = initial_coords + i_array[:, None]*step
-        return [Geometry(atoms, nc) for nc in new_coords]
-
-    def interpolate(self, image_num=5):
-        new_images = list()
-        # Iterate over image pairs (i, i+1) and interpolate between them
-        for i in range(len(self.images)-1):
-            interpol_images = self.interpolate_between(i, i+1, image_num)
-            new_images.append(self.images[i])
-            new_images.extend(interpol_images)
-        # As we only added the i-th image and the new images we have to add
-        # the last (i+1)-th image at the end.
-        new_images.append(self.images[-1])
-        self.images = new_images
-
     def set_zero_forces_for_fixed_images(self):
         zero_forces = np.zeros_like(self.images[0].coords)
         if self.fix_first:
