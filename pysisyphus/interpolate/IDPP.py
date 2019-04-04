@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import numpy as np
 from scipy.spatial.distance import pdist
 
 # from pysisyphus.constants import BOHR2ANG, ANG2BOHR
@@ -28,19 +27,18 @@ class IDPP(Interpolator):
         # for geom in idpp_geoms:
             # geom.coords *= BOHR2ANG
 
-        # A chunk consists of an initial image and the interpolated images.
-        chunk_length = 1 + self.between
         # We want to interpolate between these two condensed distance matrices
         initial_pd = pdist(initial_geom.coords3d)
         final_pd = pdist(final_geom.coords3d)
-        pd_diff = (final_pd - initial_pd) / chunk_length
+        steps = 1 + self.between
+        pd_diff = (final_pd - initial_pd) / steps
 
         for i, geom in enumerate(idpp_geoms):
             geom.set_calculator(IDPPCalculator(initial_pd + i * pd_diff))
 
         neb = NEB(idpp_geoms, parallel=False, fix_ends=True)
         opt_kwargs = {
-            "max_cycles":1000,
+            "max_cycles": 1000,
             "rms_force": 1e-2,
             "keep_cycles": False,
             "align": False,
@@ -50,9 +48,9 @@ class IDPP(Interpolator):
         opt.run()
 
         for geom in idpp_geoms:
-            # geom.coords *= ANG2BOHR
             # Delete IDPP calculator, energies and forces
             geom.clear()
+            # geom.coords *= ANG2BOHR
 
         interpolated_geoms = idpp_geoms[1:-1]
         return interpolated_geoms
