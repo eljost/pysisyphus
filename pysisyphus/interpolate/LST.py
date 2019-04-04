@@ -14,6 +14,9 @@ from pysisyphus.interpolate.Interpolator import Interpolator
 
 class LST(Interpolator):
 
+    def __init__(self, geoms, between, align=True):
+        super().__init__(geoms, between, align)
+
     def cost_function(self, wa_c, f, rab, wab):
         wa_c = wa_c.reshape(-1, 3)
         rab_c = pdist(wa_c)
