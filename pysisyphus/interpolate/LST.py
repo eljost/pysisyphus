@@ -61,7 +61,7 @@ class LST(Interpolator):
             res = minimize(self.cost_function, x0=x0_flat, args=(f, rab, wab),
                            **minimize_kwargs)
             x0_flat = res.x
-            print(f"{f:.04f}, success: {res.success}")
+            print(f"f={f:.04f}, success: {res.success}")
             interpolated_geoms.append(
                 Geometry(self.atoms, res.x)
             )

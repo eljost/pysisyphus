@@ -14,7 +14,6 @@ import numpy as np
 import rmsd as rmsd
 import yaml
 
-from pysisyphus.calculators.IDPP import idpp_interpolate
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
@@ -22,6 +21,14 @@ from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
                                 get_coords_diffs)
 from pysisyphus.xyzloader import write_geoms_to_trj
 from pysisyphus.stocastic.align import match_geom_atoms
+from pysisyphus.interpolate import *
+
+
+INTERPOLATE = {
+    "idpp": IDPP.IDPP,
+    "lst": LST.LST,
+    "linear": Interpolator.Interpolator,
+}
 
 
 def parse_args(args):
@@ -75,9 +82,13 @@ def parse_args(args):
                  "first .xyz file. Uses the hungarian method."
     )
 
-    parser.add_argument("--idpp", action="store_true",
-        help="Use Image Dependent Pair Potential instead "
-             "of simple linear interpolation.")
+    interpolate_group = parser.add_mutually_exclusive_group()
+    interpolate_group.add_argument("--idpp", action="store_true",
+        help="Interpolate using Image Dependent Pair Potential."
+    )
+    interpolate_group.add_argument("--lst", action="store_true",
+        help="Interpolate by linear synchronous transit."
+    )
     parser.add_argument("--bohr", action="store_true",
                     help="Input geometries are in Bohr instead of Angstrom."
     )
@@ -114,7 +125,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
     return geoms
 
 
-def get_geoms(xyz_fns, idpp=False, between=0,
+def get_geoms(xyz_fns, interpolate=None, between=0,
               coord_type="cart", comments=False, in_bohr=False):
     """Returns a list of Geometry objects."""
 
@@ -125,17 +136,10 @@ def get_geoms(xyz_fns, idpp=False, between=0,
     # Do IDPP interpolation if requested,
     trj = ""
     xyz_per_image = list()
-    if idpp:
-        geoms = idpp_interpolate(geoms, images_between=between)
-        xyz_per_image = [geom.as_xyz() for geom in geoms]
-        trj = "\n".join(xyz_per_image)
-    # or just linear interpolation.
-    elif between != 0:
-        cos = ChainOfStates.ChainOfStates(geoms)
-        cos.interpolate(between)
-        geoms = cos.images
-        xyz_per_image = [geom.as_xyz() for geom in geoms]
-        trj = cos.as_xyz()
+
+    if interpolate:
+        interpolator = interpolate(geoms, between)
+        geoms = interpolator.interpolate_all()
 
     return geoms
 
@@ -249,8 +253,17 @@ def match(ref_geom, geom_to_match):
 def run():
     args = parse_args(sys.argv[1:])
 
+    if args.idpp:
+        interpolate = INTERPOLATE["idpp"]
+    elif args.lst:
+        interpolate = INTERPOLATE["lst"]
+    elif args.between:
+        interpolate = INTERPOLATE["linear"]
+    else:
+        interpolate = None
+
     # Read supplied files and create Geometry objects
-    geoms = get_geoms(args.fns, args.idpp, args.between, in_bohr=args.bohr)
+    geoms = get_geoms(args.fns, interpolate, args.between, in_bohr=args.bohr)
 
     to_dump = geoms
     dump_trj = True
