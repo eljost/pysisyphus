@@ -127,18 +127,18 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
 
 def get_geoms(xyz_fns, interpolate=None, between=0,
               coord_type="cart", comments=False, in_bohr=False):
-    """Returns a list of Geometry objects."""
+    """Returns a list of Geometry objects in the given coordinate system
+    and interpolates if necessary."""
+
+    assert interpolate in list(INTERPOLATE.keys()) + [None]
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type)
 
     print(f"Read {len(geoms)} geometries.")
 
-    # Do IDPP interpolation if requested,
-    trj = ""
-    xyz_per_image = list()
-
     if interpolate:
-        interpolator = interpolate(geoms, between)
+        interpolate_class = INTERPOLATE[interpolate]
+        interpolator = interpolate_class(geoms, between)
         geoms = interpolator.interpolate_all()
 
     return geoms

@@ -22,6 +22,9 @@ class QuickMin(Optimizer):
     def prepare_opt(self):
         self.velocities = [np.zeros_like(self.geometry.coords), ]
 
+    def reset(self):
+        pass
+
     def optimize(self):
         if self.align and self.is_cos:
             (self.velocities[-1], ), _, _ = fit_rigid(self.geometry,

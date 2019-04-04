@@ -4,7 +4,9 @@ from scipy.spatial.distance import pdist
 
 # from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.calculators.IDPPCalculator import IDPPCalculator
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.cos.NEB import NEB
+from pysisyphus.helpers import align_geoms
 from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.interpolate.Interpolator import Interpolator
@@ -21,11 +23,12 @@ class IDPP(Interpolator):
         # that will be refined later by IDPP interpolation.
         linear_interpol = super().interpolate(initial_geom, final_geom)
         idpp_geoms = [initial_geom] + linear_interpol + [final_geom]
+        align_geoms(idpp_geoms)
 
         # Interestingly IDPP calculations work much better when done
         # in Angstroem instead of in Bohr.
-        # for geom in idpp_geoms:
-            # geom.coords *= BOHR2ANG
+        for geom in idpp_geoms:
+            geom.coords *= BOHR2ANG
 
         # We want to interpolate between these two condensed distance matrices
         initial_pd = pdist(initial_geom.coords3d)
@@ -43,14 +46,14 @@ class IDPP(Interpolator):
             "keep_cycles": False,
             "align": False,
         }
-        opt = FIRE(neb, **opt_kwargs)
-        # opt = BFGS(neb, **opt_kwargs)
+        # opt = FIRE(neb, **opt_kwargs)
+        opt = BFGS(neb, **opt_kwargs)
         opt.run()
 
         for geom in idpp_geoms:
             # Delete IDPP calculator, energies and forces
             geom.clear()
-            # geom.coords *= ANG2BOHR
+            geom.coords *= ANG2BOHR
 
         interpolated_geoms = idpp_geoms[1:-1]
         return interpolated_geoms

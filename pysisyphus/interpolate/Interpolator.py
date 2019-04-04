@@ -12,6 +12,7 @@ class Interpolator:
     def __init__(self, geoms, between, align=False):
         self.geoms = geoms
         self.between = between
+        self.align = align
 
         assert len(geoms) >= 2, "Need at least two geometries to interpolate!"
 
@@ -26,7 +27,7 @@ class Interpolator:
                 f"Different atom ordering in geometries {i} and {i+1}!"
 
         self.atoms = self.geoms[0].atoms
-        if align:
+        if self.align:
             align_geoms(geoms)
         self.all_geoms = None
 
@@ -43,6 +44,8 @@ class Interpolator:
         # ((i+1)-th) geometry at the end.
         all_geoms.append(self.geoms[-1])
         self.all_geoms = all_geoms
+        if self.align:
+            align_geoms(self.all_geoms)
         return all_geoms
 
     def interpolate(self, initial_geom, final_geom):

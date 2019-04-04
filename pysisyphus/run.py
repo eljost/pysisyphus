@@ -340,7 +340,7 @@ def get_defaults(conf_dict):
     # Defaults
     dd = {
         "interpol": {
-            "idpp": False,
+            "type": None,
             "between": 0,
         },
         "cos": None,
@@ -363,13 +363,9 @@ def get_defaults(conf_dict):
             "parallel": 0,
         }
         dd["opt"] = {
-            "type": "cg",
+            "type": "qm",
             "align": True,
             "dump": True,
-        }
-        dd["interpol"] = {
-            "idpp": False,
-            "between": 0,
         }
     elif "opt" in conf_dict:
         dd["opt"] = {
@@ -401,6 +397,8 @@ def get_defaults(conf_dict):
             "trial_angle": 5,
             "angle_tol": 5,
             "dR_base": 0.01,
+            "f_tran_mod": False,
+            "multiple_translations": False,
         }
 
     if "shake" in conf_dict:
@@ -471,7 +469,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
          dryrun=None):
     xyz = run_dict["xyz"]
     if run_dict["interpol"]:
-        idpp = run_dict["interpol"]["idpp"]
+        interpolate = run_dict["interpol"]["type"]
         between = run_dict["interpol"]["between"]
     if run_dict["opt"]:
         opt_key = run_dict["opt"].pop("type")
@@ -513,7 +511,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
     coord_type = run_dict["coord_type"]
-    geoms = get_geoms(xyz, idpp, between, coord_type=coord_type)
+    geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type)
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
 
@@ -566,6 +564,7 @@ def clean(force=False):
         "interpolated.image*.xyz",
         "calculator.log",
         "optimizer.log",
+        "tsoptimizer.log",
         "wfoverlap.log",
         "host_*.calculator.log",
         "host_*.wfoverlap.log",
@@ -614,6 +613,10 @@ def clean(force=False):
         "calculator*.grad",
         "image_*.*.mos",
         "image*.*.ao_ovlp_rec",
+        "splined_ts_guess.xyz",
+        "dimer_ts.xyz",
+        "dimer_pickle",
+        "interpolated.geom_*.xyz",
     )
     to_rm_paths = list()
     for glob in rm_globs:
