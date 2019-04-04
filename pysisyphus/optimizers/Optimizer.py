@@ -85,7 +85,8 @@ class Optimizer:
         if not rms_force:
             threshs = self.CONV_THRESHS[key]
         else:
-            print(f"Deriving threshold from supplied rms_force={rms_force}.")
+            print( "Deriving convergence threshold from supplied "
+                  f"rms_force={rms_force}.")
             threshs = (1.5*rms_force,
                        rms_force,
                        6*rms_force,

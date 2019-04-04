@@ -20,10 +20,11 @@ from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.SciPyOptimizer import SciPyOptimizer
 from pysisyphus.optimizers.closures import modified_broyden_closure
+from pysisyphus.interpolate.Interpolator import Interpolator
 
 
 KWARGS = {
-    "images": 5,
+    "between": 5,
     "max_cycles": 50,
     "rms_force": 5e-3,
     "dump": False,
@@ -41,8 +42,10 @@ def get_geoms(coords=None):
     return geoms
 
 
-def run_cos_opt(cos, Opt, images, **kwargs):
-    cos.interpolate(images)
+def run_cos_opt(cos, Opt, between, **kwargs):
+    interpol = Interpolator(cos.images, between=between)
+    all_images = interpol.interpolate_all()
+    cos.images = all_images
     opt = Opt(cos, **kwargs)
     for img in cos.images:
         img.set_calculator(AnaPot())
@@ -342,6 +345,8 @@ def test_lbfgs_neb():
     # kwargs["rms_force"] = 1e-5
     # kwargs["alpha"] = 0.5
     kwargs["max_cycles"] = 25
+    # kwargs["thresh"] = "gau"
+    # del kwargs["rms_force"]
 
     neb = NEB(get_geoms())
     opt = run_cos_opt(neb, LBFGS, **kwargs)
@@ -505,14 +510,14 @@ if __name__ == "__main__":
     # opt = test_fix_end_climbing_bfgs_neb()
 
     # LBFGS
-    # opt = test_lbfgs_neb()
+    opt = test_lbfgs_neb()
     # opt = test_lbfgs_mod_neb()
 
     # Modified broyden
     # test_modified_broyden()
 
     # Rational function optimization
-    test_rfo_optimizer()
+    # test_rfo_optimizer()
 
     # SimpleZTS
     # opt = test_equal_szts()
@@ -525,7 +530,7 @@ if __name__ == "__main__":
     # NEB with Dimer
     # test_spline_hei()
 
-    # ap = animate(opt)
+    ap = animate(opt)
     # ap = animate_bare(opt)
     # ap.as_html5("anim.html")
-    # plt.show()
+    plt.show()
