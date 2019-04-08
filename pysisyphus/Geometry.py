@@ -170,7 +170,7 @@ class Geometry:
 
     @coords3d.setter
     def coords3d(self, coords3d):
-        self.coords = coords3d.flatten()
+        self._coords = coords3d.flatten()
 
     @property
     def coords_by_type(self):
