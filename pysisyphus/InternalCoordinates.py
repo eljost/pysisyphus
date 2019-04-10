@@ -83,6 +83,8 @@ class RedundantCoords:
 
         self.set_primitive_indices()
         self._prim_coords = self.calculate(self.cart_coords)
+        self._coords = [pc.val for pc in self._prim_coords]
+
         self.set_rho()
 
     def log(self, message):
@@ -100,14 +102,20 @@ class RedundantCoords:
 
     @property
     def Bt_inv(self):
-        """Generalized inverse of the transposed Wilson B-Matrix."""
+        """Transposed generalized inverse of the Wilson B-Matrix."""
         B = self.B
         return np.linalg.pinv(B.dot(B.T)).dot(B)
 
     @property
+    def B_inv(self):
+        """Generalized inverse of the Wilson B-Matrix."""
+        B = self.B
+        return B.T.dot(np.linalg.pinv(B.dot(B.T)))
+
+    @property
     def P(self):
         """Projection matrix onto B. See [1] Eq. (4)."""
-        return self.B.dot(self.Bt_inv.T)
+        return self.B.dot(self.B_inv)
 
     def transform_forces(self, cart_forces):
         """Combination of Eq. (9) and (11) in [1]."""
@@ -120,7 +128,16 @@ class RedundantCoords:
 
     @property
     def coords(self):
-        return np.array([pc.val for pc in self.calculate(self.cart_coords)])
+        if self._coords is None:
+           self._coords = np.array(
+                            [pc.val for pc in self.calculate(self.cart_coords)]
+            )
+        return self._coords
+
+    @property
+    def coord_indices(self):
+        ic_ind_tuples = [tuple(ic.inds) for ic in self._prim_coords]
+        return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
 
     # def set_rho(self):
         # """Calculated rho values as required for the Lindh model hessian
@@ -485,7 +502,7 @@ class RedundantCoords:
             return angle_rad, row
         return angle_rad
 
-    def calc_dihedral(self, coords, dihedral_ind, grad=False):
+    def calc_dihedral(self, coords, dihedral_ind, grad=False, cos_tol=1e-9):
         m, o, p, n = dihedral_ind
         u_dash = coords[m] - coords[o]
         v_dash = coords[n] - coords[p]
@@ -497,14 +514,24 @@ class RedundantCoords:
         v = v_dash / v_norm
         w = w_dash / w_norm
         phi_u = np.arccos(u.dot(w))
-        phi_v = np.arccos(w.dot(v))
+        phi_v = np.arccos(-w.dot(v))
         uxw = np.cross(u, w)
         vxw = np.cross(v, w)
         cos_dihed = uxw.dot(vxw)/(np.sin(phi_u)*np.sin(phi_v))
+
         # Restrict cos_dihed to [-1, 1]
-        cos_dihed = min(cos_dihed, 1)
-        cos_dihed = max(cos_dihed, -1)
-        dihedral_rad = np.arccos(cos_dihed)
+        if cos_dihed >= 1 - cos_tol:
+            dihedral_rad = 0
+        elif cos_dihed <= -1 + cos_tol:
+            dihedral_rad = np.arccos(-1)
+        else:
+            dihedral_rad = np.arccos(cos_dihed)
+
+        if dihedral_rad != np.pi:
+            # wxv = np.cross(w, v)
+            # if wxv.dot(u) < 0:
+            if vxw.dot(u) < 0:
+                dihedral_rad *= -1
         if grad:
             row = np.zeros_like(coords)
             #                  |  m  |  n  |  o  |  p  |
@@ -512,72 +539,86 @@ class RedundantCoords:
             # sign_factor(amo) |  1  |  0  | -1  |  0  | 1st term
             # sign_factor(apn) |  0  | -1  |  0  |  1  | 2nd term
             # sign_factor(aop) |  0  |  0  |  1  | -1  | 3rd term
+            # sign_factor(apo) |  0  |  0  | -1  |  1  | 4th term
             sin2_u = np.sin(phi_u)**2
             sin2_v = np.sin(phi_v)**2
             first_term  = uxw/(u_norm*sin2_u)
             second_term = vxw/(v_norm*sin2_v)
-            third_term  = (uxw*np.cos(phi_u)/(w_norm*sin2_u)
-                          -vxw*np.cos(phi_v)/(w_norm*sin2_v)
-            )
+            third_term  = uxw*np.cos(phi_u)/(w_norm*sin2_u)
+            fourth_term = -vxw*np.cos(phi_v)/(w_norm*sin2_v)
             row[m,:] = first_term
             row[n,:] = -second_term
-            row[o,:] = -first_term + third_term
-            row[p,:] = second_term - third_term
+            row[o,:] = -first_term + third_term - fourth_term
+            row[p,:] = second_term - third_term + fourth_term
             row = row.flatten()
             return dihedral_rad, row
         return dihedral_rad
 
-    def get_internal_diffs(self, new_coords, last_vals):
-        new_internals = self.calculate(new_coords)
-        diffs = list()
-        for new_i, last_val in zip(new_internals, last_vals):
-            diff = new_i.val - last_val
-            # Remove multiples of 2pi from angles and dihedrals
-            if new_i.inds.size > 2:
-                pre_diff = diff
-                diff = np.sign(diff) * (abs(diff) % (2*np.pi))
-            diffs.append(diff)
-        return np.array(diffs)
+    def update_internals(self, new_cartesians, prev_internals):
+        new_internals = self.calculate(new_cartesians, attr="val")
+        internal_diffs = np.array(new_internals - prev_internals)
+        _, _, dihedrals = self.prim_indices
+        dihedral_diffs = internal_diffs[-len(dihedrals):]
+        # Find differences that are shifted by 2*pi
+        shifted_by_2pi = np.abs(np.abs(dihedral_diffs) - 2*np.pi) < np.pi/2
+        org = dihedral_diffs.copy()
+        new_dihedrals = new_internals[-len(dihedrals):]
+        new_dihedrals[shifted_by_2pi] -= 2*np.pi * np.sign(dihedral_diffs[shifted_by_2pi])
+        new_internals[-len(dihedrals):] = new_dihedrals
+        return new_internals
 
     def transform_int_step(self, step, cart_rms_thresh=1e-6):
-        def rms(coords1, coords2):
-            return np.sqrt(np.mean((coords1-coords2)**2))
-        last_step = step
-        last_coords = self.cart_coords.copy()
-        last_vals = self.calculate(last_coords, attr="val")
-        last_rms = None
-        full_cart_step = np.zeros_like(self.cart_coords)
+        remaining_int_step = step
+        cur_cart_coords = self.cart_coords.copy()
+        cur_internals = self.calculate(cur_cart_coords, attr="val")
+        np.savetxt("pysis_initial_interals", cur_internals)
+        target_internals = cur_internals + step
         Bt_inv = self.Bt_inv
 
-        first_cart_step = None
+        diheds = len(self.bond_indices) + len(self.bending_indices)
+
+        last_rms = None
+        prev_internals = cur_internals
         for i in range(25):
-            cart_step = Bt_inv.T.dot(last_step)
-            new_coords = last_coords + cart_step
-            cart_rms = rms(last_coords, new_coords)
-            # print(f"cart_rms={cart_rms:.4e}")
+            cart_step = Bt_inv.T.dot(remaining_int_step)
+            cart_rms = np.sqrt(np.mean(cart_step**2))
+            self.log(f"Cycle {i}: rms(Δcart) = {cart_rms:1.5e}")
+
+            # Update cartesian coordinates
+            cur_cart_coords += cart_step
+            # Determine new internal coordinates
+            new_internals = self.update_internals(cur_cart_coords, prev_internals)
+            remaining_int_step = target_internals - new_internals
+
             if i == 0:
-                # Store the first converted cartesian step if the
-                # transformation goes awry.
-                first_cart_step = cart_step
-            elif cart_rms > last_rms:
+                # Store results of the first conversion cycle for laster use, if
+                # the internal -> cartesian optimization goes awry.
+                first_cycle = (cur_cart_coords.copy(), new_internals.copy())
+            elif i > 0 and (cart_rms > last_rms):
                 # If the conversion somehow fails we return the step
                 # saved above.
-                full_cart_step = first_cart_step
+                self.log("Internal to cartesian failed! Using first step.")
+                print("Internal to cartesian failed! Using first step.")
+                cur_cart_coords, new_internals = first_cycle
                 break
-            full_cart_step += cart_step
-            new_vals = self.calculate(new_coords)
-            int_diffs = self.get_internal_diffs(new_coords, last_vals)
-            tmp_vals = self.calculate(last_coords)
+            # diheds = 9
+            # prev_diheds = prev_internals[-diheds:]
+            # new_diheds = new_internals[-diheds:]
+            # dihed_step = new_diheds - prev_diheds
+            # print("previous")
+            # print(prev_diheds)
+            # print("new")
+            # print(new_diheds)
+            # print("step")
+            # print(dihed_step)
+            prev_internals = new_internals
 
-            last_step -= int_diffs
-            last_coords = new_coords
-            last_vals += int_diffs
             last_rms = cart_rms
-            self.log(f"Cycle {i}: rms(ΔCart) = {cart_rms:1.4e}")
             if cart_rms < cart_rms_thresh:
                 self.log("Internal to cartesian transformation converged!")
                 break
-        return full_cart_step
+            self._coords = new_internals
+        return cur_cart_coords - self.cart_coords
 
     def __str__(self):
         bonds = len(self.bond_indices)
@@ -599,7 +640,6 @@ class DelocalizedCoords(RedundantCoords):
         #print(w)
         #print(w.shape)
         #print(v.T)
-        #import pdb; pdb.set_trace()
         non_zero_inds = np.where(abs(w) > thresh)
         degrees_of_freedom = 3*len(self.atoms)-6
         assert(len(non_zero_inds[0]) == degrees_of_freedom)
