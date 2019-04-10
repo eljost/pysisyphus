@@ -254,11 +254,11 @@ def run():
     args = parse_args(sys.argv[1:])
 
     if args.idpp:
-        interpolate = INTERPOLATE["idpp"]
+        interpolate = "idpp"
     elif args.lst:
-        interpolate = INTERPOLATE["lst"]
+        interpolate = "lst"
     elif args.between:
-        interpolate = INTERPOLATE["linear"]
+        interpolate = "linear"
     else:
         interpolate = None
 
