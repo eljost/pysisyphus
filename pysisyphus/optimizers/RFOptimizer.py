@@ -70,9 +70,11 @@ class RFOptimizer(Optimizer):
     def predicted_change(self, step):
         E0 = self.energies[-1]
         g = -self.forces[-1]
-        H_proj = self.geometry.internal.project_hessian(self.H)
-        H_proj = (H_proj + H_proj.T) / 2
-        return np.inner(g, step) + 0.5*step.dot(H_proj.dot(step))
+        H = self.H
+        if self.geometry.internal:
+            H_proj = self.geometry.internal.project_hessian(self.H)
+            H = (H_proj + H_proj.T) / 2
+        return np.inner(g, step) + 0.5*step.dot(H.dot(step))
 
     def find_step(self, step_guess):
         ineq_fun = lambda step: self.trust_radius - np.linalg.norm(step)
@@ -245,6 +247,7 @@ class RFOptimizer(Optimizer):
             self.update_trust_radius()
             self.bfgs_update()
 
+        H = self.H
         if self.geometry.internal:
             # import pdb; pdb.set_trace()
             # self.H = self.geometry.internal.project_hessian(self.H)
@@ -253,8 +256,8 @@ class RFOptimizer(Optimizer):
             H_proj = self.geometry.internal.project_hessian(self.H)
             # import pdb; pdb.set_trace()
             # Symmetrize hessian, as the projection probably breaks it.
-            H_proj = (H_proj + H_proj.T) / 2
-        H_eigvals, _ = np.linalg.eigh(H_proj)
+            H = (H_proj + H_proj.T) / 2
+        H_eigvals, _ = np.linalg.eigh(H)
         H_eigval_str = np.array2string(H_eigvals[:5], precision=4,
                                        suppress_small=True)
         self.log(f"First 5 eigenvalues: {H_eigval_str}")
@@ -262,11 +265,11 @@ class RFOptimizer(Optimizer):
         self.log(f"Lowest eigenvalue: {H_eigvals[0]:.6f}")
 
         # Eq. (56) in [1]
-        aug_hess = np.bmat(
-                    ((H_proj, gradient[:,None]),
+        H_aug = np.bmat(
+                    ((H, gradient[:,None]),
                      (gradient[None,:], [[0]]))
         )
-        eigvals, eigvecs = np.linalg.eigh(aug_hess)
+        eigvals, eigvecs = np.linalg.eigh(H_aug)
         self.log(f"Lowest eigenvalue of augmented hessian: {eigvals[0]:.4f}") # Select eigenvector corresponding to smallest eigenvalue.
         # As the eigenvalues are sorted in ascending order eigvals.argmin()
         # should always give 0...
@@ -291,18 +294,18 @@ class RFOptimizer(Optimizer):
         if step_norm > self.trust_radius:
             self.log(f"Unscaled norm(step): {step_norm:.4f}")
             self.log(f"Searching LQA minimum.")
-            step = self.find_step(step)
+            # step = self.find_step(step)
             # Only scale down step to the trust region
-            # step_dir = step / np.linalg.norm(step)
-            # step = self.trust_radius * step_dir
+            step_dir = step / np.linalg.norm(step)
+            step = self.trust_radius * step_dir
         self.log(f"norm(step): {np.linalg.norm(step):.4f}")
 
-        rms_rfo_step = np.sqrt(np.mean(step**2))
-        # Start GDIIS
-        if rms_rfo_step < self.gdiis_thresh:
-            diis_step = self.gdiis(step, lambda_)
-            if diis_step is not None:
-                step = diis_step
+        # rms_rfo_step = np.sqrt(np.mean(step**2))
+        # # Start GDIIS
+        # if rms_rfo_step < self.gdiis_thresh:
+            # diis_step = self.gdiis(step, lambda_)
+            # if diis_step is not None:
+                # step = diis_step
         self.error_vecs.append(step)
         self.log("")
 
