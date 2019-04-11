@@ -281,7 +281,7 @@ class OverlapCalculator(Calculator):
 
         if ovlp_type == "wf":
             overlap_mats = self.wfow.overlaps(ao_ovlp)
-            overlaps = overlap_mats[0]
+            overlaps = np.abs(overlap_mats[2])
             # overlaps = overlaps**2
         elif ovlp_type == "tden":
             overlaps = self.get_tden_overlaps(ao_ovlp)
