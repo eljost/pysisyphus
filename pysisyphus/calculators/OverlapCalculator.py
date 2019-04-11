@@ -294,16 +294,24 @@ class OverlapCalculator(Calculator):
         prev_root = self.root
         self.log(f"Previous root is {prev_root}.")
         if self.ovlp_with == "first":
-            prev_root_col = overlaps[self.first_root-1]
+            row_ind = self.first_root-1
         elif self.ovlp_with == "previous":
-            prev_root_col = overlaps[prev_root-1]
-        new_root = prev_root_col.argmax()
-        max_overlap = prev_root_col[new_root]
+            row_ind = prev_root - 1
+        # With WFOverlaps the ground state is also present and the overlap
+        # matrix has an additional row.
+        if self.ovlp_type == "wf":
+            row_ind += 1
+
+        prev_root_row = overlaps[row_ind]
+        new_root = prev_root_row.argmax()
+        max_overlap = prev_root_row[new_root]
+        if self.ovlp_type == "wf":
+            new_root -= 1
         self.root = new_root + 1
-        prev_root_col_str = ", ".join(
-            [f"{i}: {ov:.2%}" for i, ov in enumerate(prev_root_col)]
+        prev_root_row_str = ", ".join(
+            [f"{i}: {ov:.2%}" for i, ov in enumerate(prev_root_row)]
         )
-        self.log(f"Overlaps: {prev_root_col_str}")
+        self.log(f"Overlaps: {prev_root_row_str}")
         root_flip = self.root != prev_root
         self.log(f"Highest overlap is {max_overlap:.2%}.")
         if not root_flip:
