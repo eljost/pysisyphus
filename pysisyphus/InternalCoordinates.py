@@ -582,13 +582,15 @@ class RedundantCoords:
         for i in range(25):
             cart_step = Bt_inv.T.dot(remaining_int_step)
             cart_rms = np.sqrt(np.mean(cart_step**2))
-            self.log(f"Cycle {i}: rms(Δcart) = {cart_rms:1.5e}")
-
             # Update cartesian coordinates
             cur_cart_coords += cart_step
             # Determine new internal coordinates
             new_internals = self.update_internals(cur_cart_coords, prev_internals)
             remaining_int_step = target_internals - new_internals
+            internal_rms = np.sqrt(np.mean(remaining_int_step**2))
+            self.log(f"Cycle {i}: rms(Δcart)={cart_rms:1.4e}, "
+                     f"rms(Δinternal) = {internal_rms:1.5e}"
+            )
 
             if i == 0:
                 # Store results of the first conversion cycle for laster use, if
@@ -598,7 +600,6 @@ class RedundantCoords:
                 # If the conversion somehow fails we return the step
                 # saved above.
                 self.log("Internal to cartesian failed! Using first step.")
-                print("Internal to cartesian failed! Using first step.")
                 cur_cart_coords, new_internals = first_cycle
                 break
             # diheds = 9
