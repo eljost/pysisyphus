@@ -222,7 +222,7 @@ class OverlapCalculator(Calculator):
         mos_fn, mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data()
         if self.first_root is None:
             self.first_root = self.root
-            self.log(f"Set first root to root {self.first_root}.")
+            self.log(f"Set first root to {self.first_root}.")
         # Used for transition density overlaps
         self.mo_coeff_list.append(mo_coeffs)
         self.ci_coeff_list.append(ci_coeffs)
@@ -273,6 +273,11 @@ class OverlapCalculator(Calculator):
             cur, prev = indices
             two_coords = self.coords_list[cur], self.coords_list[prev]
             ao_ovlp = self.run_double_mol_calculation(atoms, *two_coords)
+        elif (self.double_mol is False) and (self.ovlp_type == "wf"):
+            mos_inv = np.linalg.inv(self.mo_coeff_list[-1])
+            ao_ovlp = mos_inv.dot(mos_inv.T)
+            self.log("Creating S_AO by myself to avoid its creation in "
+                     "WFOverlap.")
 
         if ovlp_type == "wf":
             overlap_mats = self.wfow.overlaps(ao_ovlp)
