@@ -52,7 +52,7 @@ OPT_DICT = {
     # and rotating the hessian works properly
     "bfgs": BFGS.BFGS,
     "lbfgs": LBFGS.LBFGS,
-    "lbfgsm": LBFGS_mod.LBFGS,
+    #"lbfgsm": LBFGS_mod.LBFGS,
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
