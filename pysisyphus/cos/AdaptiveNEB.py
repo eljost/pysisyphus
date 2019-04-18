@@ -3,6 +3,7 @@
 import numpy as np
 
 from pysisyphus.cos.NEB import NEB
+from pysisyphus.interpolate import interpolate
 
 
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.1495401
@@ -123,7 +124,6 @@ class AdaptiveNEB(NEB):
         #
         # Adapation from here on
         #
-        print("Adapting")
         # Backup coords if we have to step back
         self.coords_backup.append(self.coords)
         # Determine highest energy index and image (HEI)
@@ -132,6 +132,12 @@ class AdaptiveNEB(NEB):
         if (hei_index == 0) or (hei_index == len(self.images)-1):
             self.log("Cant adapt, HEI is first or last!")
             return base_reset
+        else:
+            print("Adapting")
+            self.fix_first = False
+            self.fix_last = False
+            self.fix_ends = False
+            self.log("First and last image are now free to move.")
         prev_index = hei_index - 1
         next_index = hei_index + 1
         prev_image = self.images[prev_index]
@@ -145,19 +151,20 @@ class AdaptiveNEB(NEB):
         if self.keep_hei:
             # Interpolation of new images between previous neighbour
             # and the HEI.
-            new_images_1 = self.interpolate_between(prev_index, hei_index,
-                                                    self.adapt_between)
+            new_images_1 = interpolate(prev_image, hei_image, self.adapt_between,
+                                       kind="lst", only_between=True)
+            new_images_2 = interpolate(hei_image, next_image, self.adapt_between,
+                                       kind="lst", only_between=True)
             # Between next neighbour and the HEI.
-            new_images_2 = self.interpolate_between(hei_index, next_index,
-                                                    self.adapt_between)
             all_new_images = ([prev_image] + new_images_1
                               + [hei_image]
                               + new_images_2 + [next_image])
         # One interpolation
         #   prev. neighbour - next neighbour
         else:
-            new_images = self.interpolate_between(prev_index, next_index,
-                                                  2*self.adapt_between + 1)
+            new_images = interpolate(prev_image, next_image, 2*self.adapt_between+1,
+                                     kind="lst", only_between=True
+            )
             all_new_images = [prev_image] + new_images + [next_image]
 
         assert len(all_new_images) <= len(self.images), "The number of new " \
