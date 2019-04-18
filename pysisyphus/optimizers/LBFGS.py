@@ -10,8 +10,11 @@ from pysisyphus.optimizers.closures import bfgs_multiply
 
 
 class LBFGS(Optimizer):
-    def __init__(self, geometry, alpha=1.0, keep_last=15, **kwargs):
+    def __init__(self, geometry, alpha=1.0, keep_last=15,
+                 beta=1, **kwargs):
         self.alpha = alpha
+        self.beta = beta
+        assert isinstance(keep_last, int) and keep_last > 0
         self.keep_last = keep_last
         super().__init__(geometry, **kwargs)
 
@@ -38,12 +41,30 @@ class LBFGS(Optimizer):
             self.log(f"Scaled norm(step)={step_norm:.4f}")
         return steps
 
+    def restrict_step_components(self, steps):
+        too_big = np.abs(steps) > self.max_step
+        self.log(f"Found {np.sum(too_big)} big step components.")
+        signs = np.sign(steps[too_big])
+        # import pdb; pdb.set_trace()
+        steps[too_big] = signs * self.max_step
+        return steps
+
     def optimize(self):
         prev_coords = self.coords[-1]
         prev_forces = self.forces[-1]
 
-        step = -bfgs_multiply(self.sigmas, self.grad_diffs, prev_forces)
-        step = self.scale_by_max_step(step)
+        step = -bfgs_multiply(self.sigmas, self.grad_diffs, prev_forces,
+                              beta=self.beta)
+        step = self.alpha * self.restrict_step_components(step)
+
+        # step = self.scale_by_max_step(step)
+        # norm = np.linalg.norm(step)
+        # self.log(f"unscaled norm(step)={norm:.4f}")
+        # if norm > 0.1:
+            # step = 0.1 * step / norm
+        # norm = np.linalg.norm(step)
+        # self.log(f"scaled norm(step)={norm:.4f}")
+
 
         new_coords = prev_coords + self.alpha*step
 
@@ -88,6 +109,8 @@ class LBFGS(Optimizer):
         self.forces.append(new_forces)
         self.energies.append(new_energy)
 
+        self.log("")
+
         return step
 
     def save_also(self):
@@ -96,4 +119,5 @@ class LBFGS(Optimizer):
         }
 
     def reset(self):
-        pass
+        self.sigmas = list()
+        self.grad_diffs = list()
