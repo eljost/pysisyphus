@@ -180,7 +180,43 @@ def plot_aneb():
     # Use coordinates of the first image in the first cycle as
     # anchor for all following cycles.
     first_coords = coords[0][0]
-    raise Exception("Implement me!")
+
+    coord_diffs = list()
+    min_ = 0
+    for en, c in zip(energies, coords):
+        cd = np.linalg.norm(c - first_coords, axis=1)
+        min_ = min(0, min(en))
+        coord_diffs.append(cd)
+
+    energies_ = list()
+    for en in energies:
+        en = np.array(en)
+        en -= min_
+        en *= 2625.499638
+        energies_.append(en)
+
+    fig, ax = plt.subplots()
+    # Initial energies
+    lines = ax.plot(coord_diffs[0], energies_[0], "o-")
+
+    ax.set_xlabel("Coordinate differences / Bohr")
+    ax.set_ylabel("$\Delta$J / kJ $\cdot$ mol$^{-1}$")
+
+    def update_func(i):
+        fig.suptitle("Cycle {}".format(i))
+        lines[0].set_xdata(coord_diffs[i])
+        lines[0].set_ydata(energies_[i])
+
+    def animate():
+        animation = matplotlib.animation.FuncAnimation(
+                                            fig,
+                                            update_func,
+                                            frames=num_cycles,
+                                            interval=250,
+        )
+        return animation
+    anim = animate()
+    plt.show()
 
 
 def load_results(keys):
