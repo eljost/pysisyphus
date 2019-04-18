@@ -302,13 +302,13 @@ class ChainOfStates:
 
         # Return False if we don't want to climb or are already
         # climbing.
-        climbing = self.started_climbing
-        if self.climb and not self.started_climbing:
+        already_climbing = self.started_climbing
+        if self.climb and not already_climbing:
             self.started_climbing = self.check_for_climbing_start()
-        if self.started_climbing and not climbing:
-            self.log("Starting to climb in next iteration.")
-            print("Starting to climb in next iteration.")
-        return self.started_climbing
+            if self.started_climbing:
+                self.log("Starting to climb in next iteration.")
+                print("Starting to climb in next iteration.")
+        return not already_climbing and self.started_climbing
 
     def rms(self, arr):
         """Root mean square
