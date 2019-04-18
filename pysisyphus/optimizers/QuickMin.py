@@ -12,6 +12,7 @@ class QuickMin(Optimizer):
         super(QuickMin, self).__init__(geometry, **kwargs)
 
         self.dt = dt
+        self.velocities = list()
 
     def save_also(self):
         return {
@@ -20,10 +21,14 @@ class QuickMin(Optimizer):
         }
 
     def prepare_opt(self):
-        self.velocities = [np.zeros_like(self.geometry.coords), ]
+        self.velocities.append(np.zeros_like(self.geometry.coords))
 
     def reset(self):
-        pass
+        if self.coords[-1].size != self.coords[-2].size:
+            self.log("Number of coordinates changed. Adapting velocity vector "
+                     "to new coordinate number.")
+            self.prepare_opt()
+        self.log("Resetted optimizer")
 
     def optimize(self):
         if self.align and self.is_cos:
@@ -39,12 +44,13 @@ class QuickMin(Optimizer):
             tmp_velocities = np.zeros_like(prev_velocities)
         else:
             overlap = prev_velocities.dot(cur_forces)
+            self.log(f"Overlap of previous and current forces: {overlap:.6f}")
             if overlap > 0:
                 tmp_velocities = (overlap * cur_forces
                                   / cur_forces.dot(cur_forces))
             else:
                 tmp_velocities = np.zeros_like(prev_velocities)
-                self.log("resetted velocities")
+                self.log("Zeroed velocities")
 
         accelerations = cur_forces / self.geometry.masses_rep
         cur_velocities = tmp_velocities + self.dt*accelerations
