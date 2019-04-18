@@ -116,6 +116,7 @@ class ORCA(OverlapCalculator):
         return inp
 
     def get_block_str(self):
+        block_str = ""
         if self.track:
             block_str = re.sub("iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
             self.log(f"Using iroot '{self.root}' for excited state gradient.")
