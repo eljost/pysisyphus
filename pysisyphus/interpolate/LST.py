@@ -56,7 +56,11 @@ class LST(Interpolator):
                "gtol": 1e-4,
             }
         }
-        for f in np.linspace(0, 1, self.between):
+        # We only have to interpolate between the two provided geometries.
+        # So we consider the total number of geometries (self.between + 2)
+        # to get the correct spacing, but we neglect the first and the last
+        # number (0 and 1), as they correspond to the two already known geometries.
+        for f in np.linspace(0, 1, self.between+2)[1:-1]:
             x0_flat = wab(f)
             res = minimize(self.cost_function, x0=x0_flat, args=(f, rab, wab),
                            **minimize_kwargs)

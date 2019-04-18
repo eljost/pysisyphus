@@ -37,6 +37,10 @@ class Interpolator:
         for i, initial_geom in enumerate(self.geoms[:-1]):
             final_geom = self.geoms[i+1]
             interpolated_geoms = self.interpolate(initial_geom, final_geom)
+            assert len(interpolated_geoms) == self.between, \
+                "Something is wrong with the number of interpolated " \
+                "geometries. Maybe you accidentally also return the " \
+                "initial and final geometry?"
             all_geoms.append(self.geoms[i])
             all_geoms.extend(interpolated_geoms)
         # As we only added the i-th geometry and the new interpolated
