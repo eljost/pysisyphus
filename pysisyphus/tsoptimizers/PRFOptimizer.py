@@ -4,6 +4,7 @@
 #         Banerjee, 1985
 #     [2] https://aip.scitation.org/doi/abs/10.1063/1.2104507
 #         Heyden, 2005
+# TODO: 10.1007/s002140050387
 
 import numpy as np
 
