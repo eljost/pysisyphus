@@ -12,11 +12,13 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class PRFOptimizer(Optimizer):
 
-    def __init__(self, geometry, root=-1, max_size=.1, **kwargs):
+    def __init__(self, geometry, root=-1, max_size=.3, recalc_hess=None,
+                 **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.root = root
         self.max_size = max_size
+        self.recalc_hess = recalc_hess
 
     def prepare_opt(self):
         self.H = self.geometry.hessian
@@ -45,10 +47,17 @@ class PRFOptimizer(Optimizer):
         self.forces.append(forces)
         self.energies.append(self.geometry.energy)
 
-        if len(self.coords) > 1:
+        if (self.recalc_hess and (self.cur_cycle > 1)
+            and (self.cur_cycle % self.recalc_hess) == 0):
+            self.log("Recalculating exact hessian")
+            self.H = self.geometry.hessian
+        elif len(self.coords) > 1:
+            # Gradient difference
             dg = -(self.forces[-1] - self.forces[-2])
+            # Coordinate difference
             dx = self.coords[-1] - self.coords[-2]
             self.H += self.bofill_update(self.H, dx, dg)
+            self.log("Did Bofill hessian update.")
 
         eigvals, eigvecs = np.linalg.eigh(self.H)
         neg_eigvals = eigvals < -1e-8
@@ -95,4 +104,5 @@ class PRFOptimizer(Optimizer):
         norm = np.linalg.norm(step)
         if norm > self.max_size:
             step = self.max_size * step / norm
+        self.log("")
         return step
