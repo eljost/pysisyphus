@@ -96,7 +96,6 @@ class XTB(Calculator):
             "add_args": add_args,
             "env": self.get_pal_env(),
         }
-        print("hess calc")
         results = self.run(inp, **kwargs)
         return results
 
