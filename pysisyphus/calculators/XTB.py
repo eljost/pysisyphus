@@ -96,6 +96,7 @@ class XTB(Calculator):
             "add_args": add_args,
             "env": self.get_pal_env(),
         }
+        print("hess calc")
         results = self.run(inp, **kwargs)
         return results
 
@@ -133,7 +134,7 @@ class XTB(Calculator):
     def parse_energy(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        energy_re = "total E\s*:\s*([-\d\.]+)"
+        energy_re = "TOTAL ENERGY\s*([-\d\.]+) Eh"
         energy = float(re.search(energy_re, text)[1])
         return energy
 
