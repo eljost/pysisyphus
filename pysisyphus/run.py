@@ -14,6 +14,7 @@ import time
 
 from distributed import Client
 from natsort import natsorted
+import numpy as np
 import yaml
 
 from pysisyphus.calculators import *
@@ -184,12 +185,15 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     ts_geom = cos.images[0].copy()
     ts_geom.coords = hei_coords
     ts_geom.set_calculator(calc_getter())
-    print("Splined TS guess")
+    print("Splined HEI (TS guess)")
     print(ts_geom.as_xyz())
-    with open("splined_ts_guess.xyz", "w") as handle:
+    hei_xyz_fn = "splined_hei.xyz"
+    with open(hei_xyz_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
-
-    print(f"Interpolated HEI: {hei_coords}")
+    print(f"Wrote splined HEI coordinates to '{hei_xyz_fn}'")
+    hei_tangent_fn = "splined_hei_tangent"
+    np.savetxt("hei_tangent", hei_tangent)
+    print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
 
     ts_geom.set_calculator(calc_getter())
     ts_optimizer = TSOPT_DICT[tsopt_key]
@@ -206,11 +210,25 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         last_cycle = dimer_cycles[-1]
         ts_coords = last_cycle.trans_coords[1]
     elif tsopt_key == "prfo":
+        # Determine which imaginary mode has the highest overlap
+        # with the splined HEI tangent.
+        eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
+        neg_inds = eigvals < 0
+        eigval_str = np.array2string(eigvals[neg_inds], precision=6)
+        print(f"Negative eigenvalues at splined HEI: {eigval_str}")
+        neg_eigvecs = eigvecs.T[neg_inds]
+        ovlps = [np.abs(imag_mode.dot(hei_tangent)) for imag_mode in neg_eigvecs]
+        print("Overlaps between HEI tangent and imaginary modes:")
+        for i, ov in enumerate(ovlps):
+            print(f"\t{i:02d}: {ov:.6f}")
+        root = np.argmax(ovlps)
+        print(f"Imaginary mode {root} has highest overlap with splined HEI tangent")
+        # Use mode with highest overlap as initial root
+        tsopt_kwargs["root"] = root
         prfo = ts_optimizer(ts_geom, **tsopt_kwargs)
-        # Use mode with highest overlap with tangent
         prfo.run()
 
-    print(f"Optimized TS coord:")
+    print(f"Optimized TS coords:")
     print(ts_geom.as_xyz())
     with open("ts_opt.xyz", "w") as handle:
         handle.write(ts_geom.as_xyz())
@@ -478,7 +496,6 @@ def get_defaults(conf_dict):
             },
             "prfo": {
                 "type": "prfo",
-                "root": 0,
                 "max_size": .3,
                 "recalc_hess": None,
             },
