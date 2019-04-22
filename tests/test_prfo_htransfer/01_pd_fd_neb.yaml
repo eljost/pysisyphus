@@ -12,8 +12,9 @@ opt:
  #do_hess: True
 tsopt:
  type: prfo
- #recalc_hess: 3
+ recalc_hess: 1
  max_cycles: 10
+ max_size: 0.2
 calc:
  type: xtb
  pal: 4

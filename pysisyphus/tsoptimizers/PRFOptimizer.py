@@ -111,15 +111,21 @@ class PRFOptimizer(Optimizer):
         # eigenvector corresponding to the biggest eigenvalue.
         max_step = max_evecs.T[-1]
         lambda_max = max_step[-1]
+        self.log(f"lambda_max={lambda_max:.4e}")
         # Drop last element
         max_step = max_step[:-1] / lambda_max
+        max_shift = max_eigvals[-1] / lambda_max
+        self.log(f"shift_maximize={max_shift:.4e}")
 
         min_eigvals, min_evecs = np.linalg.eigh(min_mat)
         # Again, as everything is sorted we use the (smalelst) first eigenvalue.
         min_step = np.asarray(min_evecs.T[0]).flatten()
         lambda_min = min_step[-1]
+        self.log(f"lambda_min={lambda_min:.4e}")
         # Drop last element
         min_step = min_step[:-1] / lambda_min
+        min_shift = min_eigvals[0] / lambda_min
+        self.log(f"shift_minimize={min_shift:.4e}")
 
         # Create the full PRFO step
         prfo_step = np.zeros_like(forces)
@@ -129,7 +135,13 @@ class PRFOptimizer(Optimizer):
         # transform it back now.
         step = eigvecs.dot(prfo_step)
         norm = np.linalg.norm(step)
+        prfo_dir = step / norm
         if norm > self.max_size:
+            self.log(f"norm(step, unscaled)={norm:.6f}")
+            self.log("Scaling down step")
             step = self.max_size * step / norm
+            norm = np.linalg.norm(step)
+        self.log(f"norm(step)={norm:6f}")
+
         self.log("")
         return step
