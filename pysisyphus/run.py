@@ -469,7 +469,7 @@ def get_last_calc_cycle():
 
 
 def handle_yaml(yaml_str):
-    yaml_dict = yaml.load(yaml_str)
+    yaml_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
     # Load defaults to have a sane baseline
     run_dict = get_defaults(yaml_dict)
     # Update nested entries
