@@ -178,7 +178,7 @@ class RSPRFOptimizer(Optimizer):
             # min subspace
             dstep2_dalpha_min = (2*eigval_min/(1+step_min.dot(step_min) * alpha)
                                  * np.sum(forces_trans[min_indices]**2
-                                          /(eigvals[min_indices] - eigval_min * alpha)**3
+                                          / (eigvals[min_indices] - eigval_min * alpha)**3
                                  )
             )
             print("d2da_min", dstep2_dalpha_min)
@@ -190,7 +190,7 @@ class RSPRFOptimizer(Optimizer):
             )
             print("alpha_step", alpha_step)
             # alpha += alpha_step
-            alpha *= 0.8#1.1
+            # alpha *= 0.8#1.1
 
         predicted_energy_change = 1/2 * eigval_max / nu_max**2 + eigval_min / nu_min**2
         self.predicted_energy_changes.append(predicted_energy_change)
