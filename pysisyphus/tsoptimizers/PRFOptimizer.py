@@ -74,7 +74,7 @@ class PRFOptimizer(Optimizer):
         self.log(f"Found {neg_num} negative eigenvalue(s): {eigval_str}")
         # Select TS mode with biggest overlap to the previous TS mode
         self.log("Overlaps of previous TS mode with current imaginary mode(s):")
-        ovlps = [imag_mode.dot(self.ts_mode) for imag_mode in eigvecs.T[:neg_num]]
+        ovlps = [np.abs(imag_mode.dot(self.ts_mode)) for imag_mode in eigvecs.T[:neg_num]]
         for i, ovlp in enumerate(ovlps):
             self.log(f"{i:02d}: {ovlp:.6f}")
         max_ovlp_ind = np.argmax(ovlps)

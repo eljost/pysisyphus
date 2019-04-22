@@ -26,6 +26,7 @@ from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers import *
+from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
 from pysisyphus.tsoptimizers.dimer import dimer_method
 from pysisyphus._version import get_versions
@@ -59,6 +60,11 @@ OPT_DICT = {
     "qm": QuickMin.QuickMin,
     "scipy": SciPyOptimizer.SciPyOptimizer,
     "rfo": RFOptimizer.RFOptimizer,
+}
+
+TSOPT_DICT = {
+    "dimer": dimer_method,
+    "prfo": PRFOptimizer,
 }
 
 IRC_DICT = {
@@ -171,9 +177,8 @@ def run_cos(cos, calc_getter, opt_getter):
         handle.write(hei_geom.as_xyz())
     print(f"Wrote splined HEI to '{hei_fn}'")
 
-
-def run_cos_dimer(cos, dimer_kwargs, calc_getter):
-    print("Starting dimer method")
+def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
+    print("Starting TS optimization after chain of states method.")
     hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
 
     ts_geom = cos.images[0].copy()
@@ -187,18 +192,57 @@ def run_cos_dimer(cos, dimer_kwargs, calc_getter):
     print(f"Interpolated HEI: {hei_coords}")
 
     ts_geom.set_calculator(calc_getter())
-    geoms = [ts_geom, ]
-    dimer_kwargs.update({
-        "restrict_step": "max",
-        "N_init": hei_tangent,
-        "calc_getter": calc_getter,
-    })
-    dimer_result = dimer_method(geoms, **dimer_kwargs)
-    dimer_cycles = dimer_result.dimer_cycles
-    last_cycle = dimer_cycles[-1]
-    ts_coords = last_cycle.trans_coords[1]
+    ts_optimizer = TSOPT_DICT[tsopt_key]
+
+    if tsopt_key == "dimer":
+        geoms = [ts_geom, ]
+        tsopt_kwargs.update({
+            "restrict_step": "max",
+            "N_init": hei_tangent,
+            "calc_getter": calc_getter,
+        })
+        dimer_result = ts_optimizer(geoms, **tsopt_kwargs)
+        dimer_cycles = dimer_result.dimer_cycles
+        last_cycle = dimer_cycles[-1]
+        ts_coords = last_cycle.trans_coords[1]
+    elif tsopt_key == "prfo":
+        prfo = ts_optimizer(ts_geom, **tsopt_kwargs)
+        # Use mode with highest overlap with tangent
+        prfo.run()
+
     print(f"Optimized TS coord:")
     print(ts_geom.as_xyz())
+    with open("ts_opt.xyz", "w") as handle:
+        handle.write(ts_geom.as_xyz())
+
+
+# def run_cos_dimer(cos, dimer_kwargs, calc_getter):
+    # print("Starting dimer method")
+    # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
+
+    # ts_geom = cos.images[0].copy()
+    # ts_geom.coords = hei_coords
+    # ts_geom.set_calculator(calc_getter())
+    # print("Splined TS guess")
+    # print(ts_geom.as_xyz())
+    # with open("splined_ts_guess.xyz", "w") as handle:
+        # handle.write(ts_geom.as_xyz())
+
+    # print(f"Interpolated HEI: {hei_coords}")
+
+    # ts_geom.set_calculator(calc_getter())
+    # geoms = [ts_geom, ]
+    # dimer_kwargs.update({
+        # "restrict_step": "max",
+        # "N_init": hei_tangent,
+        # "calc_getter": calc_getter,
+    # })
+    # dimer_result = dimer_method(geoms, **dimer_kwargs)
+    # dimer_cycles = dimer_result.dimer_cycles
+    # last_cycle = dimer_cycles[-1]
+    # ts_coords = last_cycle.trans_coords[1]
+    # print(f"Optimized TS coord:")
+    # print(ts_geom.as_xyz())
 
 
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
@@ -419,16 +463,27 @@ def get_defaults(conf_dict):
             "type": "frag",
         }
 
-    if "dimer" in conf_dict:
-        dd["dimer"] = {
-            "max_step": 0.1,
-            "max_cycles": 50,
-            "trial_angle": 5,
-            "angle_tol": 5,
-            "dR_base": 0.01,
-            "f_tran_mod": False,
-            "multiple_translations": False,
+    if "tsopt" in conf_dict:
+        type_ = conf_dict["tsopt"]["type"]
+        tsopt_dicts = {
+            "dimer": {
+                "type": "dimer",
+                "max_step": 0.1,
+                "max_cycles": 50,
+                "trial_angle": 5,
+                "angle_tol": 1,
+                "dR_base": 0.01,
+                "f_tran_mod": False,
+                "multiple_translations": False,
+            },
+            "prfo": {
+                "type": "prfo",
+                "root": 0,
+                "max_size": .3,
+                "recalc_hess": None,
+            },
         }
+        dd["tsopt"] = tsopt_dicts[type_]
 
     if "shake" in conf_dict:
         dd["shake"] = {
@@ -475,7 +530,7 @@ def handle_yaml(yaml_str):
     # Update nested entries
     key_set = set(yaml_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
-                              "stocastic", "dimer", "shake", "irc")):
+                              "stocastic", "tsopt", "shake", "irc")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type")):
@@ -510,8 +565,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     if run_dict["stocastic"]:
         stoc_key = run_dict["stocastic"].pop("type")
         stoc_kwargs = run_dict["stocastic"]
-    if run_dict["dimer"]:
-        dimer_kwargs = run_dict["dimer"]
+    if run_dict["tsopt"]:
+        tsopt_key = run_dict["tsopt"].pop("type")
+        tsopt_kwargs = run_dict["tsopt"]
     if run_dict["irc"]:
         irc_kwargs = run_dict["irc"]
 
@@ -555,9 +611,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     elif run_dict["cos"]:
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
-        if run_dict["dimer"]:
-            dimer_calc_getter = get_calc_closure("dimer", calc_key, calc_kwargs)
-            run_cos_dimer(cos, dimer_kwargs, dimer_calc_getter)
+        if run_dict["tsopt"]:
+            calc_getter = get_calc_closure("dimer", calc_key, calc_kwargs)
+            run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
@@ -711,7 +767,6 @@ def run():
         couplings(args.couplings)
     elif args.sort_by_overlaps:
         energies_fn, max_ovlp_inds_fn = args.sort_by_overlaps
-        # energies_fn, max_ovlp_inds_fn, consider_first
         consider_first = args.consider_first
         sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
     elif args.cp:
