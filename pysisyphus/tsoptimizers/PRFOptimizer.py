@@ -4,7 +4,10 @@
 #         Banerjee, 1985
 #     [2] https://aip.scitation.org/doi/abs/10.1063/1.2104507
 #         Heyden, 2005
+#     [3] https://onlinelibrary.wiley.com/doi/abs/10.1002/jcc.540070402
+#         Baker, 1985
 # TODO: 10.1007/s002140050387
+
 
 import numpy as np
 
@@ -12,6 +15,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 
 class PRFOptimizer(Optimizer):
+    """Optimizer to find first-order saddle points."""
 
     def __init__(self, geometry, root=0, max_size=.3, recalc_hess=None,
                  **kwargs):
@@ -87,7 +91,8 @@ class PRFOptimizer(Optimizer):
         # Transform to eigensystem of hessian
         forces_trans = eigvecs.T.dot(forces)
 
-        # Maximize energy along the chosen TS mode
+        # Maximize energy along the chosen TS mode. The matrix is hardcoded
+        # as 2x2, so only first-order saddle point searches are supported.
         max_mat = np.array(((eigvals[self.root], -forces_trans[self.root]),
                            (-forces_trans[self.root], 0)))
         # Minimize energy along all modes, except the TS mode
@@ -98,18 +103,22 @@ class PRFOptimizer(Optimizer):
         ))
 
         # Scale eigenvectors of the largest (smallest) eigenvector
-        # of max_mat (min_mat) so the last item is 1.
+        # of max_mat (min_mat) so the last item equals to 1.
+        # An alternative route is given in [3] Sec. II.3 by solving
+        # a quadratic equation for lambda_max.
         max_eigvals, max_evecs = np.linalg.eigh(max_mat)
         # Eigenvalues and -values are sorted, so we just use the last
         # eigenvector corresponding to the biggest eigenvalue.
         max_step = max_evecs.T[-1]
         lambda_max = max_step[-1]
+        # Drop last element
         max_step = max_step[:-1] / lambda_max
 
         min_eigvals, min_evecs = np.linalg.eigh(min_mat)
         # Again, as everything is sorted we use the (smalelst) first eigenvalue.
         min_step = np.asarray(min_evecs.T[0]).flatten()
         lambda_min = min_step[-1]
+        # Drop last element
         min_step = min_step[:-1] / lambda_min
 
         # Create the full PRFO step
