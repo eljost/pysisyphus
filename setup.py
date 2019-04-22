@@ -36,7 +36,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "pysisrun = pysisyphus.run:run",
+            "pysis = pysisyphus.run:run",
             "pysisplot = pysisyphus.plot:run",
             "pysistrj = pysisyphus.trj:run",
             "pysisfilter = pysisyphus.filtertrj:run",
