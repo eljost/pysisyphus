@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from pprint import pprint
 import re
+import shutil
 import sys
 import time
 
@@ -105,6 +106,10 @@ def parse_args(args):
     run_type_group.add_argument("--overlaps", action="store_true",
         help="Calculate overlaps between transition density matrices "
              "(tden) or wavefunctions (wf)."
+    )
+    run_type_group.add_argument("--cp", "--copy",
+        help="Copy .yaml file and corresponding geometries to a "
+             "new directory. Similar to TURBOMOLEs cpc command."
     )
 
     parser.add_argument("--scheduler", default=None,
@@ -330,6 +335,23 @@ def run_irc(geom, irc_kwargs):
     irc_type = irc_kwargs.pop("type")
     irc = IRC_DICT[irc_type](geom, **irc_kwargs)
     irc.run()
+
+def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
+    try:
+        print(f"Trying to create directory '{destination}' ... ", end="")
+        os.mkdir(destination)
+        print("done")
+    except FileExistsError:
+        print("already exists")
+    xyzs = run_dict["xyz"]
+    print("Copying:")
+    if isinstance(xyzs, str):
+        xyzs = [xyzs, ]
+    for xyz in xyzs:
+        shutil.copy(xyz, destination)
+        print("\t", xyz)
+    shutil.copy(yaml_fn, destination)
+    print("\t", yaml_fn)
 
 
 """
@@ -692,6 +714,8 @@ def run():
         # energies_fn, max_ovlp_inds_fn, consider_first
         consider_first = args.consider_first
         sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
+    elif args.cp:
+        copy_yaml_and_geometries(run_dict, args.yaml, args.cp)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     end_time = time.time()
