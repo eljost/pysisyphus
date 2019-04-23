@@ -34,8 +34,12 @@ class Psi4(Calculator):
         self.inp = """
         molecule mol{{
           {xyz}
+          {charge} {mult}
         symmetry c1
         }}
+
+        set_num_threads({pal})
+        memory {mem} MB
 
 
         set basis {basis}
@@ -58,8 +62,12 @@ class Psi4(Calculator):
 
         inp = self.inp.format(
                 xyz=xyz,
+                charge=self.charge,
+                mult=self.mult,
                 basis=self.basis,
                 method=method,
+                pal=self.pal,
+                mem=self.mem,
         )
         inp = "\n".join([line.strip() for line in inp.split("\n")])
         return inp
