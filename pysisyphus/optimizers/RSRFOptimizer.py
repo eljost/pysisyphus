@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.hessian_updates import flowchart_update
+from pysisyphus.optimizers.hessian_updates import (flowchart_update,
+                                                   mod_flowchart_update)
 
 
 class RSRFOptimizer(Optimizer):
@@ -25,15 +26,21 @@ class RSRFOptimizer(Optimizer):
         "min": (0, "min"),
         "max": (-1, "max"),
     }
+    update_dict = {
+        "flowchart": flowchart_update,
+        "mod_flowchart": mod_flowchart_update,
+    }
 
     def __init__(self, geometry, trust_radius=.1, recalc_hess=None,
-                 max_micro_cycles=50,
+                 max_micro_cycles=50, hess_update="flowchart",
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius0 = trust_radius
         self.recalc_hess = recalc_hess
         self.max_micro_cycles = max_micro_cycles
+        self.hess_update = hess_update
+        self.update_func = self.update_dict[self.hess_update]
         # Trust radius thresholds
         self.min_trust_radius = 0.25 * self.trust_radius0
         self.max_trust_radius = 4 * self.trust_radius0
@@ -93,7 +100,6 @@ class RSRFOptimizer(Optimizer):
     def optimize(self):
         forces = self.geometry.forces
         fn = np.linalg.norm(forces)
-        print(f"norm(forces)={fn:.4e}")
         self.forces.append(forces)
         self.energies.append(self.geometry.energy)
 
@@ -106,7 +112,7 @@ class RSRFOptimizer(Optimizer):
             dg = -(self.forces[-1] - self.forces[-2])
             # Coordinate difference
             dx = self.coords[-1] - self.coords[-2]
-            H_update, key = flowchart_update(self.H, dx, dg)
+            H_update, key = self.update_func(self.H, dx, dg)
             self.H += H_update
             self.log(f"{key} hessian update")
         if self.cur_cycle > 1:
@@ -128,41 +134,17 @@ class RSRFOptimizer(Optimizer):
             (np.diag(eigvals), -forces_trans[:,None]),
             (-forces_trans[None,:], [[0]])
         )))
-        # min_mat_ = np.asarray(np.bmat((
-            # ([[0]], -forces_trans[None,:]),
-            # (-forces_trans[:,None], np.diag(eigvals))
-        # )))
-        # min_mat_ = np.asarray(np.bmat((
-            # (self.H, -forces[:,None]),
-            # (-forces[None,:], [[0]])
-        # )))
-
 
         alpha = self.alpha0
-        np.set_printoptions(suppress=True, precision=4)
         min_diag_indices = np.diag_indices(eigvals.size)
         for mu in range(self.max_micro_cycles):
-            # self.log(f"RS-RFO micro cycle {mu:02d}, alpha={alpha:.6f}")
+            assert alpha > 0, "alpha should not be negative"
             self.log(f"RS-RFO micro cycle {mu:02d}, alpha={alpha:.6f}")
-            print(f"alphaIter {mu} alpha {alpha:.8f}")
             # We only have to update one eigenvalue
             min_mat_scaled = min_mat.copy()
             min_mat_scaled[min_diag_indices] /= alpha
             min_mat_scaled[:-1,-1] /= alpha
-            # min_mat_scaled_ = min_mat_.copy()
-            # min_mat_scaled_[:-1,:] /= alpha
-            # min_mat_scaled[min_diag_indices] = scaled_min_eigenvalues
             rfo_step, eigval_min, nu_min = self.solve_rfo(min_mat_scaled, "min")
-            # rfo_step_, eigval_min_, nu_min_ = self.solve_rfo(min_mat_scaled_, "min")
-            # print("step", rfo_step)
-            # trans_norm = np.linalg.norm(eigvecs.dot(rfo_step))
-            # print("step trans", eigvecs.dot(rfo_step), "norm=", trans_norm)
-
-            # min_mat_scaled_ = min_mat_.copy()
-            # scaled_min_eigenvalues_ = np.zeros(eigvals.size+1)
-            # scaled_min_eigenvalues_[1:] = eigvals / alpha
-            # min_mat_scaled_[min_diag_indices] = scaled_min_eigenvalues_
-            # rfo_step, eigval_min, nu_min = self.solve_rfo(min_mat_scaled_, "min")
 
             # As of Eq. (8a) of [4] max_eigval and min_eigval also
             # correspond to:
@@ -223,18 +205,12 @@ class RSRFOptimizer(Optimizer):
 
         predicted_energy_change = 1/2 * eigval_min / nu_min**2
         self.predicted_energy_changes.append(predicted_energy_change)
-        self.log(f"predicted_energy_change={predicted_energy_change:.6f}")
+        self.log(f"predicted_energy_change={predicted_energy_change:.6e}")
         # Right now the step is still given in the Hessians eigensystem. We
         # transform it back now.
         step = eigvecs.dot(rfo_step)
         step_norm = np.linalg.norm(step)
-        print("step_norm", step_norm)
-
-        # print("trust", self.trust_radius)
-        # if step_norm > self.trust_radius:
-            # step_dir = step / np.linalg.norm(step)
-            # step = self.trust_radius * step_dir
+        self.log(f"norm(step)={step_norm:.6f}")
 
         self.log("")
-        print()
         return step

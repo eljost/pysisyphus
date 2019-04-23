@@ -41,9 +41,9 @@ def flowchart_update(H, dx, dg):
     return update, key
 
 
-"""
 def mod_flowchart_update(H, dx, dg):
-    # This version seems to work too ...
+    # This version seems to work too ... at least for minimizations
+    # starting from a geometry near a transition state. Interesing.
     z = dg - H.dot(dx)
     quot = z.dot(dx) / (np.linalg.norm(z) * np.linalg.norm(dx))
     if quot < -0.1:
@@ -56,7 +56,6 @@ def mod_flowchart_update(H, dx, dg):
         update = psb_update(z, dx)
         key = "PSB"
     return update, key
-"""
 
 
 def bofill_update(H, dx, dg):
