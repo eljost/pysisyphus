@@ -32,3 +32,7 @@ end = time()
 print(h)
 dur = end - start
 print("hess calc took", int(dur), "seconds")
+
+import numpy as np
+det = np.linalg.det(h)
+print("det", det)
