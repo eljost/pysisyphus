@@ -411,7 +411,7 @@ class Geometry:
         Returns
         -------
         hessian : np.array
-            2d array containing the second derivatives of the energy in respect
+            2d array containing the second derivatives of the energy with respect
             to atomic displacements.
         """
         if self._hessian is None:

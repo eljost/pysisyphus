@@ -21,10 +21,12 @@ class Psi4(Calculator):
 
         self.inp_fn = "psi4.inp"
         self.out_fn = "psi4.out"
+        self.to_keep = ("inp", "psi4.out", "grad.npy", "hessian.npy")
 
         self.parser_funcs = {
             "energy": self.parse_energy,
             "grad": self.parse_grad,
+            "hessian": self.parse_hessian,
         }
 
         self.base_cmd = self.get_cmd("cmd")
@@ -44,10 +46,13 @@ class Psi4(Calculator):
         xyz = self.prepare_coords(atoms, coords)
 
         calc_types = {
+            "energy": "energy('{}')",
             "grad": "G, wfn = gradient('{}', return_wfn=True)\n" \
                     "G_arr = np.array(G)\n" \
                     "np.save('grad', G_arr)",
-            "energy": "energy('{}')",
+            "hessian": "H, wfn = hessian('{}', return_wfn=True)\n" \
+                       "H_arr = np.array(H)\n" \
+                       "np.save('hessian', H_arr)",
         }
         method = calc_types[calc_type].format(self.method)
 
@@ -72,7 +77,7 @@ class Psi4(Calculator):
         return results
 
     def get_hessian(self, atoms, coords):
-        calc_type = "freq"
+        calc_type = "hessian"
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="hessian")
         return results
@@ -98,8 +103,12 @@ class Psi4(Calculator):
         return result
 
     def parse_hessian(self, path):
-        pass
-        # return results
+        hessian = np.load(path / "hessian.npy")
+        result = {
+            "hessian": hessian,
+        }
+        result.update(self.parse_energy(path))
+        return result
 
     def keep(self, path):
         kept_fns = super().keep(path)
