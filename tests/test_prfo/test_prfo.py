@@ -9,6 +9,7 @@ from pysisyphus.calculators.XTB import XTB
 
 
 geom = geom_from_library("hcn_iso_ts.xyz")
+# geom = geom_from_library("codein.xyz")
 xtb = XTB()
 geom.set_calculator(xtb)
 
@@ -26,12 +27,11 @@ geom.set_calculator(xtb)
 
 min_opt_kwargs = {
     # "max_cycles": 3,
-    # "thresh": "gau",
-    # "max_size": 0.4,
     "recalc_hess": 10,
-    # "thresh": "gau",
+    # "hess_update": "flowchart",
+    "hess_update": "flowchart",
+    # "thresh": "gau_tight",
     # "max_micro_cycles": 1,
-    # "trust_radius": 0.06,
     "trust_radius": 0.1,
 }
 opt = RSRFOptimizer(geom, **min_opt_kwargs)
