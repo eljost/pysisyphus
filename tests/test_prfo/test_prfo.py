@@ -10,7 +10,7 @@ from pysisyphus.calculators.XTB import XTB
 
 geom = geom_from_library("hcn_iso_ts.xyz")
 # geom = geom_from_library("codein.xyz")
-xtb = XTB()
+xtb = XTB(pal=1)
 geom.set_calculator(xtb)
 
 # opt_kwargs = {
@@ -27,10 +27,10 @@ geom.set_calculator(xtb)
 
 min_opt_kwargs = {
     # "max_cycles": 3,
-    "recalc_hess": 10,
+    "recalc_hess": 1,
     # "hess_update": "flowchart",
     "hess_update": "flowchart",
-    # "thresh": "gau_tight",
+    "thresh": "gau",
     # "max_micro_cycles": 1,
     "trust_radius": 0.1,
 }
@@ -40,3 +40,13 @@ opt.run()
 
 with open("opt.xyz", "w") as handle:
     handle.write(geom.as_xyz())
+
+H = geom.hessian
+f = geom.forces
+import numpy as np
+import pdb; pdb.set_trace()
+step = np.linalg.inv(H).dot(f)
+step_rms = np.sqrt(np.mean(step**2))
+step_max = np.abs(step).max()
+step_norm = np.linalg.norm(step)
+print(f"rms(step)={step_rms:.6f}, max(step)={step_max:.6f}, norm(step)={step_norm:.6f}")

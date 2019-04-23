@@ -6,3 +6,5 @@ __all__ = [
     "Gaussian16",
     "Turbomole",
 ]
+
+from pysisyphus.calculators.Psi4 import Psi4
