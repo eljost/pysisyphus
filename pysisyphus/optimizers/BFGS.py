@@ -15,14 +15,12 @@ class BFGS(BacktrackingOptimizer):
                                    bt_force=bt_force,
                                    **kwargs)
 
-        self.eye = np.eye(self.geometry.coords.size)
-        self.inv_hessian = self.eye.copy()
+        self.eye = np.eye(len(self.geometry.coords))
+        # self.inv_hessian = self.eye.copy()
+        self.inv_hessian = self.geometry.get_initial_hessian()
         self.log("BFGS with align=True is somewhat broken right now, so "
                  "the images will be aligned only in the first iteration. "
         )
-        if hasattr(self.geometry, "internal") and self.geometry.internal:
-            raise Exception("Doesn't work with redundant int. coordinates "
-                            "yet, as the inverse hessian isn't transformed.")
 
     def reset_hessian(self):
         self.inv_hessian = self.eye.copy()
