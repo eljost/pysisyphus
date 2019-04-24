@@ -44,14 +44,11 @@ def mod_flowchart_update(H, dx, dg):
     z = dg - H.dot(dx)
     quot = z.dot(dx) / (np.linalg.norm(z) * np.linalg.norm(dx))
     if quot < -0.1:
-        update = bfgs_update(H, dx, dg)
-        key = "BFGS"
+        update, key = bfgs_update(H, dx, dg)
     elif quot > 0.1:
-        update = sr1_update(z, dx)
-        key = "SR1"
+        update, key = sr1_update(z, dx)
     else:
-        update = psb_update(z, dx)
-        key = "PSB"
+        update, key = psb_update(z, dx)
     return update, key
 
 

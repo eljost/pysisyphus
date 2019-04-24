@@ -57,8 +57,6 @@ class RSRFOptimizer(Optimizer):
 
     def prepare_opt(self):
         if self.calc_hess:
-            # if self.geometry.internal:
-                # raise Exception("Can't use true hessian in internal coordinates yet.")
             self.H = self.geometry.hessian
         else:
             self.H = self.geometry.get_initial_hessian()
@@ -119,7 +117,7 @@ class RSRFOptimizer(Optimizer):
             and (self.cur_cycle % self.recalc_hess) == 0):
             self.log("Recalculating exact hessian")
             self.H = self.geometry.hessian
-        elif self.cur_cycle > 1:
+        elif self.cur_cycle > 0:
             # Gradient difference
             dg = -(self.forces[-1] - self.forces[-2])
             # Coordinate difference
@@ -128,7 +126,7 @@ class RSRFOptimizer(Optimizer):
             self.H += H_update
             self.log(f"{key} hessian update")
 
-        if self.cur_cycle > 1:
+        if self.cur_cycle > 0:
             actual_energy_change = self.energies[-1] - self.energies[-2]
             self.log(f"actual energy change: {actual_energy_change:.4e}")
             predicted_energy_change = self.predicted_energy_changes[-1]
