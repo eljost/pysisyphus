@@ -398,6 +398,12 @@ def run_irc(geom, irc_kwargs):
     irc = IRC_DICT[irc_type](geom, **irc_kwargs)
     irc.run()
 
+
+def run_tsopt(geom, tsopt_key, tsopt_kwargs):
+    tsopt = TSOPT_DICT[tsopt_key](geom, **tsopt_kwargs)
+    tsopt.run()
+
+
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
     try:
         print(f"Trying to create directory '{destination}' ... ", end="")
@@ -440,6 +446,7 @@ def get_defaults(conf_dict):
             "pal": 1,
         },
         "opt": None,
+        "tsopt": None,
         "overlaps": None,
         "glob": None,
         "stocastic": None,
@@ -649,6 +656,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         geom = geoms[0]
         geom.set_calculator(calc_getter(0))
         run_irc(geom, irc_kwargs)
+    elif run_dict["tsopt"]:
+        assert len(geoms) == 1
+        geom = geoms[0]
+        geom.set_calculator(calc_getter(0))
+        run_tsopt(geom, tsopt_key, tsopt_kwargs)
     else:
         geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
                                  calc_kwargs, scheduler)
