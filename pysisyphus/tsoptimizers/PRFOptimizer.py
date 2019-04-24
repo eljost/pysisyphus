@@ -17,12 +17,12 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 class PRFOptimizer(Optimizer):
     """Optimizer to find first-order saddle points."""
 
-    def __init__(self, geometry, root=0, max_size=.3, recalc_hess=None,
+    def __init__(self, geometry, root=0, max_step_length=.3, recalc_hess=None,
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.root = int(root)
-        self.max_size = max_size
+        self.max_step_length = max_step_length
         self.recalc_hess = recalc_hess
 
         self.H = None
@@ -136,10 +136,10 @@ class PRFOptimizer(Optimizer):
         step = eigvecs.dot(prfo_step)
         norm = np.linalg.norm(step)
         prfo_dir = step / norm
-        if norm > self.max_size:
+        if norm > self.max_step_length:
             self.log(f"norm(step, unscaled)={norm:.6f}")
             self.log("Scaling down step")
-            step = self.max_size * step / norm
+            step = self.max_step_length * step / norm
             norm = np.linalg.norm(step)
         self.log(f"norm(step)={norm:6f}")
 
