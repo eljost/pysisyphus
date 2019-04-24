@@ -10,15 +10,18 @@ import numpy as np
 from scipy.optimize import minimize
 
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.hessian_updates import bfgs_update
 
 
 class RFOptimizer(Optimizer):
 
-    def __init__(self, geometry, trust_radius=0.3, gdiis_thresh=-1, **kwargs):
+    def __init__(self, geometry, trust_radius=0.3, gdiis_thresh=-1,
+                 fix_trust=False, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
         self.gdiis_thresh = float(gdiis_thresh)
+        self.fix_trust = fix_trust
 
         self.min_trust_radius = 0.25*self.trust_radius
         self.trust_radius_max = self.trust_radius
@@ -49,18 +52,7 @@ class RFOptimizer(Optimizer):
         self.H = self.geometry.get_initial_hessian()
 
     def keep(self):
-        # self.hessians.append(self.H.copy())
         self.trust_radii.append(self.trust_radius)
-        # self.log("!Saving hessian every iteration!")
-
-    def bfgs_update(self):
-        # Eq. (44) in [1]
-        dx = self.coords[-1] - self.coords[-2]
-        dg = -(self.forces[-1] - self.forces[-2])
-        second_term = np.outer(dg, dg) / np.inner(dg, dx)
-        third_term = (self.H.dot(np.outer(dx, dx)).dot(self.H)
-                      / dx.dot(self.H.dot(dx)))
-        self.H += second_term - third_term
 
     def quadratic_approx(self, step):
         E0 = self.energies[-1]
@@ -244,8 +236,12 @@ class RFOptimizer(Optimizer):
             self.log(f"Last two energies: {self.energies[-2:]}")
             actual_energy_change = self.energies[-2] - self.energies[-1]
             self.actual_energy_changes.append(actual_energy_change)
-            self.update_trust_radius()
-            self.bfgs_update()
+            if not self.fix_trust:
+                self.update_trust_radius()
+            dx = self.coords[-1] - self.coords[-2]
+            dg = -(self.forces[-1] - self.forces[-2])
+            dH, _ = bfgs_update(self.H, dx, dg)
+            self.H += dH
 
         H = self.H
         if self.geometry.internal:
@@ -293,7 +289,7 @@ class RFOptimizer(Optimizer):
         # We use a trust region method instead
         if step_norm > self.trust_radius:
             self.log(f"Unscaled norm(step): {step_norm:.4f}")
-            self.log(f"Searching LQA minimum.")
+            # self.log(f"Searching LQA minimum.")
             # step = self.find_step(step)
             # Only scale down step to the trust region
             step_dir = step / np.linalg.norm(step)
