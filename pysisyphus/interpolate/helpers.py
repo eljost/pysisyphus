@@ -20,3 +20,10 @@ def interpolate(initial_geom, final_geom, between, kind="linear",
         return interpolator.interpolate(initial_geom, final_geom)
     else:
         return interpolator.interpolate_all()
+
+
+def interpolate_all(geoms, between, kind="linear", align=False):
+    interpolate_class = INTERPOLATE[kind]
+    interpolator = interpolate_class(geoms, between, align=align)
+
+    return interpolator.interpolate_all()
