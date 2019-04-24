@@ -1,10 +1,11 @@
 __all__ = [
-    "ORCA",
-    "XTB",
-    "OpenMolcas",
     "Gaussian09",
     "Gaussian16",
+    "OpenMolcas",
+    "ORCA",
+    "Psi4",
     "Turbomole",
+    "XTB",
 ]
 
 from pysisyphus.calculators.Psi4 import Psi4
