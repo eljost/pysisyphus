@@ -11,17 +11,17 @@ def bfgs_update(H, dx, dg):
     second_term = (H.dot(np.outer(dx, dx)).dot(H)
                   / dx.dot(H).dot(dx)
     )
-    return first_term - second_term
+    return first_term - second_term, "BFGS"
 
 
 def sr1_update(z, dx):
-    return np.outer(z, z) / z.dot(dx)
+    return np.outer(z, z) / z.dot(dx), "SR1"
 
 
 def psb_update(z, dx):
     first_term = (np.outer(dx, z) + np.outer(z, dx)) / dx.dot(dx)
     sec_term = dx.dot(z) * np.outer(dx, dx) / dx.dot(dx)**2
-    return first_term - sec_term
+    return first_term - sec_term, "PSB"
 
 
 def flowchart_update(H, dx, dg):
@@ -30,14 +30,11 @@ def flowchart_update(H, dx, dg):
     sr1_quot = z.dot(dx) / (np.linalg.norm(z) * np.linalg.norm(dx))
     bfgs_quot = dg.dot(dx) / (np.linalg.norm(dg) * np.linalg.norm(dx))
     if sr1_quot < -0.1:
-        update = sr1_update(z, dx)
-        key = "SR1"
+        update, key = sr1_update(z, dx)
     elif bfgs_quot > 0.1:
-        update = bfgs_update(H, dx, dg)
-        key = "BFGS"
+        update, key = bfgs_update(H, dx, dg)
     else:
-        update = psb_update(z, dx)
-        key = "PSB"
+        update, key = psb_update(z, dx)
     return update, key
 
 
@@ -62,10 +59,10 @@ def bofill_update(H, dx, dg):
     z = dg - H.dot(dx)
 
     # Symmetric, rank-one (SR1) update
-    sr1 = sr1_update(z, dx)
+    sr1, _ = sr1_update(z, dx)
 
     # Powell (PSB) update
-    powell = psb_update(z, dx)
+    powell, _ = psb_update(z, dx)
 
     # Bofill mixing-factor
     mix = z.dot(dx)**2 / (z.dot(z) * dx.dot(dx))

@@ -1,4 +1,5 @@
 import logging
+from .RSRFOptimizer import RSRFOptimizer
 
 __all__ = [
     "BFGS",
@@ -10,6 +11,7 @@ __all__ = [
     "RFOptimizer",
     "SteepestDescent",
     "SciPyOptimizer",
+    "RSRFOptimizer",
 ]
 
 logger = logging.getLogger("optimizer")

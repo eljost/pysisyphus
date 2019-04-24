@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.hessian_updates import (flowchart_update,
+from pysisyphus.optimizers.hessian_updates import (bfgs_update,
+                                                   flowchart_update,
                                                    mod_flowchart_update)
 
 
@@ -29,14 +30,17 @@ class RSRFOptimizer(Optimizer):
     update_dict = {
         "flowchart": flowchart_update,
         "mod_flowchart": mod_flowchart_update,
+        "bfgs": bfgs_update,
     }
 
-    def __init__(self, geometry, trust_radius=.1, recalc_hess=None,
+    def __init__(self, geometry, trust_radius=.1, calc_hess=None,
+                 recalc_hess=None,
                  max_micro_cycles=50, hess_update="flowchart",
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius0 = trust_radius
+        self.calc_hess = calc_hess
         self.recalc_hess = recalc_hess
         self.max_micro_cycles = max_micro_cycles
         self.hess_update = hess_update
@@ -52,7 +56,10 @@ class RSRFOptimizer(Optimizer):
         self.predicted_energy_changes = list()
 
     def prepare_opt(self):
-        self.H = self.geometry.hessian
+        if self.calc_hess:
+            self.H = self.geometry.hessian
+        else:
+            self.H = np.eye(self.geometry.coords.size)
 
     def update_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
@@ -64,7 +71,7 @@ class RSRFOptimizer(Optimizer):
             self.log("Decreasing trust radius.")
         # Only increase trust radius if last step norm was at least 80% of it
         # See [5], Appendix, step size and direction control
-        elif coeff > 0.5 and (last_step_norm >= .8*self.trust_radius):
+        elif coeff > 0.75 and (last_step_norm >= .8*self.trust_radius):
             self.trust_radius = min(self.trust_radius*2,
                                     self.max_trust_radius)
             self.log("Increasing trust radius.")
@@ -78,6 +85,8 @@ class RSRFOptimizer(Optimizer):
         # my bad, ahhh! The unscaled RFO matrix may be symmetric,
         # but the scaled ones aren't anymore.
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
+        eigenvalues = eigenvalues.real
+        eigenvectors = eigenvectors.real
         sorted_inds = np.argsort(eigenvalues)
 
         # Depending on wether we want to minimize (maximize) along
@@ -117,7 +126,9 @@ class RSRFOptimizer(Optimizer):
             self.log(f"{key} hessian update")
         if self.cur_cycle > 1:
             actual_energy_change = self.energies[-1] - self.energies[-2]
+            self.log(f"actual energy change: {actual_energy_change:.4e}")
             predicted_energy_change = self.predicted_energy_changes[-1]
+            self.log(f"predicted energy change: {predicted_energy_change:.4e}")
             coeff = actual_energy_change / predicted_energy_change
             self.log(f"energy change, actual/predicted={coeff:.6f}")
             last_step_norm = np.linalg.norm(self.steps[-1])

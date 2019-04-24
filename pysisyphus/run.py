@@ -62,6 +62,7 @@ OPT_DICT = {
     "qm": QuickMin.QuickMin,
     "scipy": SciPyOptimizer.SciPyOptimizer,
     "rfo": RFOptimizer.RFOptimizer,
+    "rsrfo": RSRFOptimizer,
 }
 
 TSOPT_DICT = {
