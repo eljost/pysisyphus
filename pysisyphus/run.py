@@ -34,12 +34,13 @@ from pysisyphus._version import get_versions
 
 
 CALC_DICT = {
-    "orca": ORCA.ORCA,
-    "xtb": XTB.XTB,
-    "openmolcas": OpenMolcas.OpenMolcas,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16.Gaussian16,
+    "openmolcas": OpenMolcas.OpenMolcas,
+    "orca": ORCA.ORCA,
+    "psi4": Psi4,
     "turbomole": Turbomole.Turbomole,
+    "xtb": XTB.XTB,
 }
 
 COS_DICT = {
@@ -503,8 +504,9 @@ def get_defaults(conf_dict):
             },
             "prfo": {
                 "type": "prfo",
-                "max_size": .3,
+                "max_step_length": .3,
                 "recalc_hess": None,
+                "dump": True,
             },
         }
         dd["tsopt"] = tsopt_dicts[type_]
@@ -774,23 +776,29 @@ def run():
     start_time = time.time()
     args = parse_args(sys.argv[1:])
 
-    print_header()
-
     if args.yaml:
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
         init_logging(yaml_dir, args.scheduler)
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         run_dict = handle_yaml(yaml_str)
-        pprint(run_dict)
-        print()
         sys.stdout.flush()
 
-    if args.clean:
+    if args.cp:
+        copy_yaml_and_geometries(run_dict, args.yaml, args.cp)
+        return
+    elif args.clean:
         clean()
+        return
     elif args.fclean:
         clean(force=True)
-    elif args.overlaps:
+        return
+
+    print_header()
+    pprint(run_dict)
+    print()
+
+    if args.overlaps:
         overlaps(run_dict)
     elif args.couplings:
         couplings(args.couplings)
@@ -798,8 +806,6 @@ def run():
         energies_fn, max_ovlp_inds_fn = args.sort_by_overlaps
         consider_first = args.consider_first
         sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
-    elif args.cp:
-        copy_yaml_and_geometries(run_dict, args.yaml, args.cp)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     end_time = time.time()
