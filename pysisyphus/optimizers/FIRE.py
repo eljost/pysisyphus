@@ -43,6 +43,9 @@ class FIRE(Optimizer):
         })
         return tmp_dict
 
+    def reset(self):
+        pass
+
     def optimize(self):
         if self.is_cos and self.align:
             (self.v, ), _, _  = fit_rigid(self.geometry, (self.v, ))
