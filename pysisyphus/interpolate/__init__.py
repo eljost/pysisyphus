@@ -1,4 +1,4 @@
-from pysisyphus.interpolate.helpers import interpolate
+from pysisyphus.interpolate.helpers import interpolate, interpolate_all
 
 __all__ = [
     "Interpolator",
