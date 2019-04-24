@@ -5,6 +5,7 @@ import logging
 import os
 from pathlib import Path
 import sys
+import textwrap
 import time
 
 import numpy as np
@@ -228,6 +229,19 @@ class Optimizer:
             out_fn = "optimization.trj"
             self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
+    def final_summary(self):
+        forces = self.geometry.forces
+        max_forces = np.abs(forces).max()
+        rms_forces = np.sqrt(np.mean(forces**2))
+        energy = self.geometry.energy
+        final_summary = f"""
+        Final summary:
+        \tmax(forces): {max_forces:.6f} hartree/bohr
+        \trms(forces): {rms_forces:.6f} hartree/bohr
+        \tenergy: {energy:.8f} hartree
+        """
+        return textwrap.dedent(final_summary.strip())
+
     def run(self):
         if not self.last_cycle:
             prep_start_time = time.time()
@@ -295,3 +309,6 @@ class Optimizer:
                 return
 
             self.cur_cycle += 1
+
+        if not self.is_cos:
+            print(self.final_summary())
