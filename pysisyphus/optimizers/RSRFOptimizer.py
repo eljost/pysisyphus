@@ -47,7 +47,7 @@ class RSRFOptimizer(Optimizer):
         self.update_func = self.update_dict[self.hess_update]
         # Trust radius thresholds
         self.min_trust_radius = 0.25 * self.trust_radius0
-        self.max_trust_radius = 4 * self.trust_radius0
+        self.max_trust_radius = 2 * self.trust_radius0
 
         self.alpha0 = 1
         self.alpha_max = 1e8
@@ -57,9 +57,11 @@ class RSRFOptimizer(Optimizer):
 
     def prepare_opt(self):
         if self.calc_hess:
+            # if self.geometry.internal:
+                # raise Exception("Can't use true hessian in internal coordinates yet.")
             self.H = self.geometry.hessian
         else:
-            self.H = np.eye(self.geometry.coords.size)
+            self.H = self.geometry.get_initial_hessian()
 
     def update_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
@@ -112,11 +114,12 @@ class RSRFOptimizer(Optimizer):
         self.forces.append(forces)
         self.energies.append(self.geometry.energy)
 
+        # Hessian recalculation/update
         if (self.recalc_hess and (self.cur_cycle > 0)
             and (self.cur_cycle % self.recalc_hess) == 0):
             self.log("Recalculating exact hessian")
             self.H = self.geometry.hessian
-        elif len(self.coords) > 1:
+        elif self.cur_cycle > 1:
             # Gradient difference
             dg = -(self.forces[-1] - self.forces[-2])
             # Coordinate difference
@@ -124,6 +127,7 @@ class RSRFOptimizer(Optimizer):
             H_update, key = self.update_func(self.H, dx, dg)
             self.H += H_update
             self.log(f"{key} hessian update")
+
         if self.cur_cycle > 1:
             actual_energy_change = self.energies[-1] - self.energies[-2]
             self.log(f"actual energy change: {actual_energy_change:.4e}")
@@ -134,7 +138,10 @@ class RSRFOptimizer(Optimizer):
             last_step_norm = np.linalg.norm(self.steps[-1])
             self.update_trust_radius(coeff, last_step_norm)
 
-        eigvals, eigvecs = np.linalg.eigh(self.H)
+        H = self.H
+        if self.geometry.internal:
+            H = self.geometry.internal.project_hessian(self.H)
+        eigvals, eigvecs = np.linalg.eigh(H)
         np.savetxt("pysis_eigvals", eigvals)
 
         # Transform to eigensystem of hessian
@@ -166,27 +173,7 @@ class RSRFOptimizer(Optimizer):
             rfo_norm = np.linalg.norm(rfo_step)
             self.log(f"rfo_norm={rfo_norm:.6f}")
 
-            # fig, ax = plt.subplots()
-            # nus = np.linspace(-10.5, 0, 150)
-            # dq2s = list()
-            # for nu in nus:
-                # dq2 = np.sum((forces_trans / (eigvals - nu))**2)
-                # dq2s.append(dq2)
-            # ax.plot(nus, dq2s)
-            # ax.set_xlim(-1, nus.max())
-            # ax.set_ylim(0, 3)
-            # ax.axhline(self.trust_radius**2, linestyle="--", color="k")
-            # for ev in eigvals:
-                # ax.axvline(ev, linestyle="--", color="k")
-            # ax.axvline(eigval_min, linestyle="-", color="r")
-            # plt.show()
-            # trust_min = self.trust_radius - 1e-5
-            # trust_max = self.trust_radius + 1e-5
-            # if self.cur_cycle == 6:
-                # import pdb; pdb.set_trace()
-                # pass
             inside_trust = rfo_norm < self.trust_radius + 1e-3
-            # inside_trust = trust_min < rfo_norm < trust_max
             if inside_trust:
                 self.log("step is inside trust radius. breaking.")
                 break
