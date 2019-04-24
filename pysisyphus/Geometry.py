@@ -418,7 +418,7 @@ class Geometry:
             results = self.calculator.get_hessian(self.atoms, self._coords)
             self.set_results(results)
         if self.internal:
-            raise Exception("Hessian in internal coordinates not implemented!")
+            return self.internal.transform_hessian(self._hessian)
         return self._hessian
 
     @property

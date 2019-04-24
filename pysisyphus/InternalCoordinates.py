@@ -119,7 +119,14 @@ class RedundantCoords:
 
     def transform_forces(self, cart_forces):
         """Combination of Eq. (9) and (11) in [1]."""
-        return self.P.dot(self.Bt_inv.dot(cart_forces))
+        # return self.P.dot(self.Bt_inv.dot(cart_forces))
+        return self.Bt_inv.dot(cart_forces)
+
+    def transform_hessian(self, cart_hessian):
+        self.log("Derivative of the Wilson-B-matrix is neglected in hessian "
+                 "transformation right now!"
+        )
+        return self.Bt_inv.dot(cart_hessian).dot(self.B_inv)
 
     def project_hessian(self, H):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
