@@ -51,10 +51,17 @@ class Psi4(Calculator):
 
         calc_types = {
             "energy": "energy('{}')",
-            "grad": "G, wfn = gradient('{}', return_wfn=True)\n" \
+            # Right now we don't need the wavefunction
+            # "grad": "G, wfn = gradient('{}', return_wfn=True)\n" \
+                    # "G_arr = np.array(G)\n" \
+                    # "np.save('grad', G_arr)",
+            # "hessian": "H, wfn = hessian('{}', return_wfn=True)\n" \
+                       # "H_arr = np.array(H)\n" \
+                       # "np.save('hessian', H_arr)",
+            "grad": "G = gradient('{}')\n" \
                     "G_arr = np.array(G)\n" \
                     "np.save('grad', G_arr)",
-            "hessian": "H, wfn = hessian('{}', return_wfn=True)\n" \
+            "hessian": "H = hessian('{}')\n" \
                        "H_arr = np.array(H)\n" \
                        "np.save('hessian', H_arr)",
         }
