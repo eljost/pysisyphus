@@ -119,7 +119,6 @@ class RedundantCoords:
 
     def transform_forces(self, cart_forces):
         """Combination of Eq. (9) and (11) in [1]."""
-        # return self.P.dot(self.Bt_inv.dot(cart_forces))
         return self.Bt_inv.dot(cart_forces)
 
     def transform_hessian(self, cart_hessian):

@@ -242,15 +242,11 @@ class RFOptimizer(Optimizer):
             dg = -(self.forces[-1] - self.forces[-2])
             dH, _ = bfgs_update(self.H, dx, dg)
             self.H += dH
+            # self.H = self.geometry.hessian
 
         H = self.H
         if self.geometry.internal:
-            # import pdb; pdb.set_trace()
-            # self.H = self.geometry.internal.project_hessian(self.H)
-            # # Symmetrize hessian, as the projection probably breaks it.
-            # self.H = (self.H + self.H.T) / 2
             H_proj = self.geometry.internal.project_hessian(self.H)
-            # import pdb; pdb.set_trace()
             # Symmetrize hessian, as the projection probably breaks it.
             H = (H_proj + H_proj.T) / 2
         H_eigvals, _ = np.linalg.eigh(H)
