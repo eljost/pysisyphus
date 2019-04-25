@@ -27,6 +27,8 @@ class BFGS(BacktrackingOptimizer):
         self.log("Resetted hessian")
 
     def prepare_opt(self):
+        if self.geometry.internal:
+            raise Exception("Have to add hessian projections etc.")
         if self.is_cos and self.align:
             procrustes(self.geometry)
         # Calculate initial forces before the first iteration
