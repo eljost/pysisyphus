@@ -269,9 +269,9 @@ class Optimizer:
             if reset_flag:
                 self.reset()
 
-            steps = self.optimize()
+            step = self.optimize()
 
-            if steps is None:
+            if step is None:
                 # Remove the previously added coords
                 self.coords.pop(-1)
                 continue
@@ -279,7 +279,7 @@ class Optimizer:
             if self.is_cos:
                 self.tangents.append(self.geometry.get_tangents())
 
-            self.steps.append(steps)
+            self.steps.append(step)
 
             # Convergence check
             self.is_converged = self.check_convergence()
@@ -298,7 +298,7 @@ class Optimizer:
                 break
 
             # Update coordinates
-            new_coords = copy.copy(self.geometry.coords) + steps
+            new_coords = copy.copy(self.geometry.coords) + step
             self.geometry.coords = new_coords
 
             if self.is_zts:
@@ -310,5 +310,6 @@ class Optimizer:
 
             self.cur_cycle += 1
 
+        # Outside loop
         if not self.is_cos:
             print(self.final_summary())
