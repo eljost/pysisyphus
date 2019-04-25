@@ -121,7 +121,7 @@ class RSRFOptimizer(Optimizer):
             # Gradient difference
             dg = -(self.forces[-1] - self.forces[-2])
             # Coordinate difference
-            dx = self.coords[-1] - self.coords[-2]
+            dx = self.steps[-1]
             H_update, key = self.update_func(self.H, dx, dg)
             self.H += H_update
             self.log(f"{key} hessian update")
