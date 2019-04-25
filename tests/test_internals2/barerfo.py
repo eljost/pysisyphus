@@ -59,7 +59,6 @@ def run():
               f"max(step)={max_s:.6f}, rms(step)={rms_s:.6f}")
         new_coords = geom.coords + step
         geom.coords = new_coords
-        # geom.coords += step
 
 
 if __name__ == "__main__":

@@ -65,7 +65,8 @@ class PRFOptimizer(Optimizer):
             # Gradient difference
             dg = -(self.forces[-1] - self.forces[-2])
             # Coordinate difference
-            dx = self.coords[-1] - self.coords[-2]
+            # dx = self.coords[-1] - self.coords[-2]
+            dx = self.steps[-1]
             self.H += self.bofill_update(self.H, dx, dg)
             self.log("Did Bofill hessian update.")
 

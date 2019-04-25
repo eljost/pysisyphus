@@ -238,7 +238,8 @@ class RFOptimizer(Optimizer):
             self.actual_energy_changes.append(actual_energy_change)
             if not self.fix_trust:
                 self.update_trust_radius()
-            dx = self.coords[-1] - self.coords[-2]
+            # dx = self.coords[-1] - self.coords[-2]
+            dx = self.steps[-1]
             dg = -(self.forces[-1] - self.forces[-2])
             dH, _ = bfgs_update(self.H, dx, dg)
             self.H += dH
