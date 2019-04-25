@@ -262,9 +262,10 @@ class RFOptimizer(Optimizer):
                      (gradient[None,:], [[0]]))
         )
         eigvals, eigvecs = np.linalg.eigh(H_aug)
-        self.log(f"Lowest eigenvalue of augmented hessian: {eigvals[0]:.4f}") # Select eigenvector corresponding to smallest eigenvalue.
-        # As the eigenvalues are sorted in ascending order eigvals.argmin()
-        # should always give 0...
+        self.log(f"Lowest eigenvalue of augmented hessian: {eigvals[0]:.4f}")
+        # Select eigenvector corresponding to smallest eigenvalue. As the
+        # eigenvalues are sorted in ascending order eigvals.argmin() should
+        # always give 0...
         assert eigvals.argmin() == 0
         aug_step = eigvecs[:,0]
         # aug_step is currently a matrix. Convert it to an array.
