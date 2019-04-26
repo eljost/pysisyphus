@@ -33,16 +33,18 @@ class RSRFOptimizer(Optimizer):
         "bfgs": bfgs_update,
     }
 
-    def __init__(self, geometry, trust_radius=.1, calc_hess=None,
-                 recalc_hess=None,
+    def __init__(self, geometry, trust_radius=.1, update_trust=True,
+                 calc_hess=None, recalc_hess=None,
                  max_micro_cycles=50, hess_update="flowchart",
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius0 = trust_radius
+        self.update_trust = update_trust
         self.calc_hess = calc_hess
         self.recalc_hess = recalc_hess
-        self.max_micro_cycles = max_micro_cycles
+        self.max_micro_cycles = int(max_micro_cycles)
+        assert max_micro_cycles >= 1
         self.hess_update = hess_update
         self.update_func = self.update_dict[self.hess_update]
         # Trust radius thresholds
@@ -127,7 +129,7 @@ class RSRFOptimizer(Optimizer):
             self.H += H_update
             self.log(f"{key} hessian update")
 
-        if self.cur_cycle > 0:
+        if self.update_trust and self.cur_cycle > 0:
             actual_energy_change = self.energies[-1] - self.energies[-2]
             self.log(f"actual energy change: {actual_energy_change:.4e}")
             predicted_energy_change = self.predicted_energy_changes[-1]
@@ -207,6 +209,14 @@ class RSRFOptimizer(Optimizer):
         # transform it back now.
         step = eigvecs.dot(rfo_step)
         step_norm = np.linalg.norm(step)
+        # This would correspond to "pure" RFO without the iterative
+        # step-restriction. Here we will just scale down the step, if it
+        # is too big.
+        if self.max_micro_cycles == 1 and step_norm > self.trust_radius:
+            self.log("Scaled down step")
+            step = step / step_norm * self.trust_radius
+            step_norm = np.linalg.norm(step)
+
         self.log(f"norm(step)={step_norm:.6f}")
 
         self.log("")
