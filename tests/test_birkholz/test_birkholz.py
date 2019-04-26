@@ -9,7 +9,6 @@ import cloudpickle
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.optimizers.RSRFOptimizer import RSRFOptimizer
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 
 GEOMS = {
@@ -51,9 +50,12 @@ def test_birkholz():
             "max_cycles": 150,
             "thresh": "gau",
             "trust_radius": 0.5,
+            # "update_trust": False,
+            # "max_micro_cycles": 1,
+            # "hess_update": "bfgs",
+            "hess_update": "flowchart",
         }
         opt = RSRFOptimizer(geom, **opt_kwargs)
-        opt = RFOptimizer(geom, **opt_kwargs)
         opt.run()
 
         converged = opt.is_converged
@@ -66,7 +68,6 @@ def test_birkholz():
         else:
             fails += 1
         print()
-        break
     end = time.time()
     print()
 

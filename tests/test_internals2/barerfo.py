@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 
+import logging
+import os
+from pprint import pprint
+
 import numpy as np
 
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.optimizers.hessian_updates import bfgs_update
+from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.optimizers.hessian_updates import bfgs_update, flowchart_update
 
 
 np.set_printoptions(suppress=True, precision=4)
@@ -25,31 +30,27 @@ def rfo(gradient, H, trust=0.3):
     return step
 
 
-def run():
-    fn = "codein.xyz"
-    geom = geom_from_library(fn, coord_type="redund")
-    geom.set_calculator(XTB(pal=4))
-    max_cycles = 50
+def run_bare_rfo(xyz_fn, charge, mult, trust=0.3, max_cycles=150):
+    geom = geom_from_library(xyz_fn, coord_type="redund")
+    geom.set_calculator(XTB(pal=4, charge=charge, mult=mult))
+    # geom.set_calculator(Gaussian16(pal=3, route="HF 3-21G", charge=charge, mult=mult))
     grads = list()
     steps = list()
     H = geom.get_initial_hessian()
+    converged = False
     for i in range(max_cycles):
         grad = -geom.forces
         grads.append(grad)
 
-        norm = np.linalg.norm(grad)
-        if norm < 1e-4:
-            print("Converged")
-            break
-
         if i > 0:
             dx = steps[-1]
             dg = grads[-1] - grads[-2]
-            dH, _ = bfgs_update(H, dx, dg)
+            # dH, _ = bfgs_update(H, dx, dg)
+            dH, _ = flowchart_update(H, dx, dg)
             H += dH
         H_proj = H.copy()
         H_proj = geom.internal.project_hessian(H_proj)
-        step = rfo(grad, H_proj, trust=0.3)
+        step = rfo(grad, H_proj, trust=trust)
         steps.append(step)
         max_g = np.abs(grad).max()
         rms_g = np.sqrt(np.mean(grad**2))
@@ -57,8 +58,66 @@ def run():
         rms_s = np.sqrt(np.mean(step**2))
         print(f"{i:02d}: max(f)={max_g:.6f}, rms(f)={rms_g:.6f}, "
               f"max(step)={max_s:.6f}, rms(step)={rms_s:.6f}")
+        converged = ((max_g < 4.5e-4) and (rms_g < 1.5e-4)
+                     and (max_s < 1.8e-3) and (rms_s < 1.2e-3))
+        if converged:
+            print("Converged")
+            break
         new_coords = geom.coords + step
         geom.coords = new_coords
+    return converged, i+1
+
+
+def run():
+    GEOMS = {
+        "artemisin.xyz": (0, 1),
+        "avobenzone.xyz": (0, 1),
+        "azadirachtin.xyz": (0, 1),
+        "bisphenol_a.xyz": (0, 1),
+        "cetirizine.xyz": (0, 1),
+        "codeine.xyz": (0, 1),
+        "diisobutyl_phthalate.xyz": (0, 1),
+        "easc.xyz": (0, 1),
+        "estradiol.xyz": (0, 1),
+        "inosine.xyz": (1, 1),
+        "maltose.xyz": (0, 1),
+        "mg_porphin.xyz": (0, 1),
+        "ochratoxin_a.xyz": (0, 1),
+        "penicillin_v.xyz": (0, 1),
+        "raffinose.xyz": (0, 1),
+        "sphingomyelin.xyz": (0, 1),
+        "tamoxifen.xyz": (0, 1),
+        "vitamin_c.xyz": (0, 1),
+        "zn_edta.xyz": (-2, 1)
+    }
+
+    results = dict()
+    tot_cycles = 0
+    fails = 0
+    for xyz_fn, (charge, mult) in GEOMS.items():
+        full_xyz = "/scratch/programme/pysisyphus/xyz_files/birkholz/" + xyz_fn
+        try:
+            converged, cycles = run_bare_rfo(full_xyz, charge, mult, trust=0.5)
+        except:
+            logging.exception("Something went wrong")
+            converged = False
+            cycles = 0
+        results[xyz_fn] = (converged, cycles)
+        pprint(results)
+
+        if converged:
+            tot_cycles += cycles
+        else:
+            fails += 1
+        print()
+        if os.path.isfile("stop"):
+            print("Found stop file")
+            break
+    print()
+
+    pprint(results)
+    print("Total cycles", tot_cycles)
+    print("Fails", fails)
 
 
 if __name__ == "__main__":
