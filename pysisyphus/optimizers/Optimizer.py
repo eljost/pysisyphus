@@ -265,7 +265,7 @@ class Optimizer:
                 reset_flag = self.geometry.prepare_opt_cycle(self.coords[-1],
                                                              self.energies[-1],
                                                              self.forces[-1])
-            self.coords.append(self.geometry.coords)
+            self.coords.append(self.geometry.coords.copy())
             if reset_flag:
                 self.reset()
 
@@ -298,7 +298,7 @@ class Optimizer:
                 break
 
             # Update coordinates
-            new_coords = copy.copy(self.geometry.coords) + step
+            new_coords = self.geometry.coords.copy() + step
             self.geometry.coords = new_coords
 
             if self.is_zts:
@@ -306,10 +306,14 @@ class Optimizer:
 
             sys.stdout.flush()
             if check_for_stop_sign():
-                return
+                break
 
             self.cur_cycle += 1
 
         # Outside loop
         if not self.is_cos:
             print(self.final_summary())
+        opt_fn = "optimized.xyz"
+        with open(opt_fn, "w") as handle:
+            handle.write(self.geometry.as_xyz())
+        print(f"Wrote optimized geometry to '{opt_fn}'")

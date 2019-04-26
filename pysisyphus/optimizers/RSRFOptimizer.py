@@ -47,7 +47,8 @@ class RSRFOptimizer(Optimizer):
         self.update_func = self.update_dict[self.hess_update]
         # Trust radius thresholds
         self.min_trust_radius = 0.25 * self.trust_radius0
-        self.max_trust_radius = 2 * self.trust_radius0
+        # self.max_trust_radius = 2 * self.trust_radius0
+        self.max_trust_radius = 2
 
         self.alpha0 = 1
         self.alpha_max = 1e8
@@ -134,13 +135,13 @@ class RSRFOptimizer(Optimizer):
             coeff = actual_energy_change / predicted_energy_change
             self.log(f"energy change, actual/predicted={coeff:.6f}")
             last_step_norm = np.linalg.norm(self.steps[-1])
+            self.log(f"Current trust radius is {self.trust_radius}")
             self.update_trust_radius(coeff, last_step_norm)
 
         H = self.H
         if self.geometry.internal:
             H = self.geometry.internal.project_hessian(self.H)
         eigvals, eigvecs = np.linalg.eigh(H)
-        np.savetxt("pysis_eigvals", eigvals)
 
         # Transform to eigensystem of hessian
         forces_trans = eigvecs.T.dot(forces)
