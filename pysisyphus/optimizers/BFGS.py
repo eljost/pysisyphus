@@ -16,8 +16,13 @@ class BFGS(BacktrackingOptimizer):
                                    **kwargs)
 
         self.eye = np.eye(len(self.geometry.coords))
-        # self.inv_hessian = self.eye.copy()
-        self.inv_hessian = self.geometry.get_initial_hessian()
+        try:
+            self.inv_hessian = self.geometry.get_initial_hessian()
+        # ChainOfStates objects may not have get_initial_hessian
+        except AttributeError:
+            self.inv_hessian = self.eye.copy()
+        if hasattr(self.geometry, "internal"):
+            raise Exception("Have to add hessian projections etc.")
         self.log("BFGS with align=True is somewhat broken right now, so "
                  "the images will be aligned only in the first iteration. "
         )
@@ -27,8 +32,6 @@ class BFGS(BacktrackingOptimizer):
         self.log("Resetted hessian")
 
     def prepare_opt(self):
-        if self.geometry.internal:
-            raise Exception("Have to add hessian projections etc.")
         if self.is_cos and self.align:
             procrustes(self.geometry)
         # Calculate initial forces before the first iteration
