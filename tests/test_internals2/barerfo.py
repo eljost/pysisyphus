@@ -32,6 +32,7 @@ def rfo(gradient, H, trust=0.3):
 
 def run_bare_rfo(xyz_fn, charge, mult, trust=0.3, max_cycles=150):
     geom = geom_from_library(xyz_fn, coord_type="redund")
+    # geom = geom_from_library(xyz_fn)
     geom.set_calculator(XTB(pal=4, charge=charge, mult=mult))
     # geom.set_calculator(Gaussian16(pal=3, route="HF 3-21G", charge=charge, mult=mult))
     grads = list()
@@ -45,11 +46,11 @@ def run_bare_rfo(xyz_fn, charge, mult, trust=0.3, max_cycles=150):
         if i > 0:
             dx = steps[-1]
             dg = grads[-1] - grads[-2]
-            # dH, _ = bfgs_update(H, dx, dg)
-            dH, _ = flowchart_update(H, dx, dg)
+            dH, _ = bfgs_update(H, dx, dg)
             H += dH
         H_proj = H.copy()
-        H_proj = geom.internal.project_hessian(H_proj)
+        if geom.internal:
+            H_proj = geom.internal.project_hessian(H_proj)
         step = rfo(grad, H_proj, trust=trust)
         steps.append(step)
         max_g = np.abs(grad).max()
