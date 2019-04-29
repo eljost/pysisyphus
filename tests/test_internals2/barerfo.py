@@ -3,6 +3,7 @@
 import logging
 import os
 from pprint import pprint
+import sys
 
 import numpy as np
 
@@ -96,7 +97,7 @@ def run():
     tot_cycles = 0
     fails = 0
     for xyz_fn, (charge, mult) in GEOMS.items():
-        full_xyz = "/scratch/programme/pysisyphus/xyz_files/birkholz/" + xyz_fn
+        full_xyz = "birkholz/" + xyz_fn
         try:
             converged, cycles = run_bare_rfo(full_xyz, charge, mult, trust=0.5)
         except:
@@ -114,6 +115,7 @@ def run():
         if os.path.isfile("stop"):
             print("Found stop file")
             break
+        sys.stdout.flush()
     print()
 
     pprint(results)
