@@ -15,15 +15,15 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update
 
 class RFOptimizer(Optimizer):
 
-    def __init__(self, geometry, trust_radius=0.3, fix_trust=False,
+    def __init__(self, geometry, trust_radius=0.3, update_trust=True,
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
-        self.fix_trust = fix_trust
+        self.update_trust = update_trust
 
         self.min_trust_radius = 0.25*self.trust_radius
-        self.trust_radius_max = 2
+        self.max_trust_radius = 2
         self.predicted_energy_changes = list()
         self.actual_energy_changes = list()
 
@@ -55,7 +55,7 @@ class RFOptimizer(Optimizer):
         if self.cur_cycle > 0:
             predicted_energy_change = self.predicted_energy_changes[-1]
             actual_energy_change = self.energies[-2] - self.energies[-1]
-            if not self.fix_trust:
+            if self.update_trust:
                 coeff = actual_energy_change / predicted_energy_change
                 last_step_norm = np.linalg.norm(self.steps[-1])
                 self.update_trust_radius(coeff, last_step_norm)
