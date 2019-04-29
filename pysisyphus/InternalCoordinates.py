@@ -85,8 +85,6 @@ class RedundantCoords:
         self._prim_coords = self.calculate(self.cart_coords)
         self._coords = [pc.val for pc in self._prim_coords]
 
-        self.set_rho()
-
     def log(self, message):
         logger = logging.getLogger("internal_coords")
         logger.debug(message)
@@ -188,6 +186,7 @@ class RedundantCoords:
         self.rho = squareform(np.exp(-cdm/rref + 1))
 
     def get_initial_hessian(self):
+        self.set_rho()
         k_dict = {
             2: 0.35,
             3: 0.15,
