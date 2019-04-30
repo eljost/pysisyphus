@@ -76,7 +76,8 @@ class AnaPotBase(Calculator):
         contours = self.ax.contour(X, Y, pot, levels)
         self.fig.colorbar(contours)
 
-    def get_geom(self, coords, atoms=("H", )):
+    @classmethod
+    def get_geom(cls, coords, atoms=("H", )):
         geom = Geometry(atoms, coords)
-        geom.set_calculator(self)
+        geom.set_calculator(cls())
         return geom
