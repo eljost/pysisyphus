@@ -116,12 +116,12 @@ class Geometry:
         Returns a diagonal matrix containing the inverted atomic
         masses.
         """
-        return np.linalg.inv(np.diag(self.masses_rep))
+        return np.diag(1/self.masses_rep)
 
     @property
     def mm_sqrt_inv(self):
         """Inverted square root of the mass matrix."""
-        return np.linalg.inv(np.sqrt(np.diag(self.masses_rep)))
+        return np.diag(1/(self.masses_rep**0.5))
 
     @property
     def coords(self):
