@@ -230,6 +230,9 @@ class Optimizer:
             self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
     def final_summary(self):
+        # If the optimization was stopped _forces may not be set, so
+        # then we force a calculation if it was not already set.
+        _ = self.geometry.forces
         cart_forces = self.geometry._forces
         max_cart_forces = np.abs(cart_forces).max()
         rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
@@ -321,7 +324,7 @@ class Optimizer:
         # Outside loop
         if not self.is_cos:
             print(self.final_summary())
-        opt_fn = "optimized_geometry.xyz"
+        opt_fn = "final_geometry.xyz"
         with open(opt_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
-        print(f"Wrote optimized geometry to '{opt_fn}'")
+        print(f"Wrote final, hopefully optimized, geometry to '{opt_fn}'")
