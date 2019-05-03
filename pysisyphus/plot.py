@@ -225,7 +225,7 @@ def load_results(keys):
     image_results_fn = "image_results.yaml"
     print(f"Reading {image_results_fn}")
     with open(image_results_fn) as handle:
-        all_results = yaml.load(handle.read())
+        all_results = yaml.load(handle.read(), Loader=yaml.Loader)
     num_cycles = len(all_results)
 
     results_list = list()
