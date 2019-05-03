@@ -199,6 +199,7 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
 
     ts_geom.set_calculator(calc_getter())
     ts_optimizer = TSOPT_DICT[tsopt_key]
+    do_hess = tsopt_kwargs.pop("do_hess")
 
     if tsopt_key == "dimer":
         geoms = [ts_geom, ]
@@ -234,6 +235,14 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     print(ts_geom.as_xyz())
     with open("ts_opt.xyz", "w") as handle:
         handle.write(ts_geom.as_xyz())
+
+    if do_hess:
+        hessian = ts_geom.hessian
+        eigvals, eigvecs = np.linalg.eigh(hessian)
+        ev_thresh = -1e-4
+        neg_eigvals = eigvals[eigvals < ev_thresh]
+        print(f"Self found {neg_eigvals.size} eigenvalues < {ev_thresh}.")
+        print("Negative eigenvalues: ", neg_eigvals)
 
 
 # def run_cos_dimer(cos, dimer_kwargs, calc_getter):
@@ -510,7 +519,9 @@ def get_defaults(conf_dict):
                 "dump": True,
             },
         }
-        dd["tsopt"] = tsopt_dicts[type_]
+        tsopt_dict = tsopt_dicts[type_]
+        tsopt_dict["do_hess"] = False
+        dd["tsopt"] = tsopt_dict
 
     if "shake" in conf_dict:
         dd["shake"] = {

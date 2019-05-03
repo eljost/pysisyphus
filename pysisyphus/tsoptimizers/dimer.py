@@ -137,7 +137,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
                  trans_memory=5,
                  trial_angle=5, angle_tol=0.5, dR_base=0.01,
                  restrict_step="scale", ana_2dpot=False,
-                 f_thresh=1e-3, rot_f_thresh=2e-3, do_hess=False,
+                 f_thresh=1e-3, rot_f_thresh=2e-3,
                  zero_weights=[], dimer_pickle=None,
                  f_tran_mod=True,
                  multiple_translations=False, max_translations=10):
@@ -542,14 +542,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
     tot_force_evals = tot_rot_force_evals + add_force_evals
     print(f"Used {add_force_evals} additional force evaluations for a total of "
           f"{tot_force_evals} force evaluations.")
-
-    if do_hess:
-        hessian = geom0.hessian
-        eigvals, eigvecs = np.linalg.eigh(hessian)
-        ev_thresh = -1e-4
-        neg_eigvals = eigvals[eigvals < ev_thresh]
-        print(f"Self found {neg_eigvals.size} eigenvalues < {ev_thresh}.")
-        print("Negative eigenvalues: ", neg_eigvals)
 
     dimer_results = DimerResult(dimer_cycles=dimer_cycles,
                                 force_evals=tot_force_evals,
