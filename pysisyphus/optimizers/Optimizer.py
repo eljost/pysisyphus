@@ -313,7 +313,7 @@ class Optimizer:
         # Outside loop
         if not self.is_cos:
             print(self.final_summary())
-        opt_fn = "optimized.xyz"
+        opt_fn = "optimized_geometry.xyz"
         with open(opt_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
         print(f"Wrote optimized geometry to '{opt_fn}'")
