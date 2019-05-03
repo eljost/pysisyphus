@@ -230,14 +230,22 @@ class Optimizer:
             self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
 
     def final_summary(self):
-        forces = self.geometry.forces
-        max_forces = np.abs(forces).max()
-        rms_forces = np.sqrt(np.mean(forces**2))
+        cart_forces = self.geometry._forces
+        max_cart_forces = np.abs(cart_forces).max()
+        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
+        int_str = ""
+        if self.geometry.coord_type != "cart":
+            int_forces = self.geometry.forces
+            max_int_forces = np.abs(int_forces).max()
+            rms_int_forces = np.sqrt(np.mean(int_forces**2))
+            int_str = f"""
+            \tmax(forces,internal): {max_int_forces:.6f} hartree/(bohr,rad)
+            \trms(forces,internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
         energy = self.geometry.energy
         final_summary = f"""
-        Final summary:
-        \tmax(forces): {max_forces:.6f} hartree/bohr
-        \trms(forces): {rms_forces:.6f} hartree/bohr
+        Final summary:{int_str}
+        \tmax(forces,cartesian): {max_cart_forces:.6f} hartree/bohr
+        \trms(forces,cartesian): {rms_cart_forces:.6f} hartree/bohr
         \tenergy: {energy:.8f} hartree
         """
         return textwrap.dedent(final_summary.strip())
