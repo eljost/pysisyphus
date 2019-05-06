@@ -54,9 +54,12 @@ class RFOptimizer(Optimizer):
 
         if self.cur_cycle > 0:
             predicted_energy_change = self.predicted_energy_changes[-1]
-            actual_energy_change = self.energies[-2] - self.energies[-1]
+            actual_energy_change = self.energies[-1] - self.energies[-2]
             if self.update_trust:
                 coeff = actual_energy_change / predicted_energy_change
+                self.log(f"Predicted change: {predicted_energy_change:.4e} au")
+                self.log(f"Actual change: {actual_energy_change:.4e} au")
+                self.log(f"Coefficient: {coeff:.2%}")
                 last_step_norm = np.linalg.norm(self.steps[-1])
                 self.update_trust_radius(coeff, last_step_norm)
             dx = self.steps[-1]
