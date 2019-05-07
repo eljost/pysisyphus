@@ -444,8 +444,8 @@ class Geometry:
             return self.internal.get_initial_hessian()
         return np.eye(self.coords.size)
 
-    def unweigh_mw_hessian(self, mw_hessian):
-        """Unweigh a mass-weighted hessian.
+    def unweight_mw_hessian(self, mw_hessian):
+        """Unweight a mass-weighted hessian.
 
         Parameters
         ----------
