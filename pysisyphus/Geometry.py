@@ -465,6 +465,10 @@ class Geometry:
 
         These vectors are used in the Eckart projection.
 
+        See Martin J. Field - A Pratcial Introduction to the simulation
+        of Molecular Systems, 2007, Cambridge University Press, Eq. (8.23),
+        (8.24) and (8.26) for the actual projection.
+
         Returns
         -------
         ortho_vecs : np.array(6, atoms*3)
