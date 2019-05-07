@@ -9,6 +9,9 @@ class ANCOptimizer(HessianOptimizer):
 
     def __init__(self, geometry, **kwargs):
         super().__init__(geometry, **kwargs)
+        assert not self.is_cos and self.geometry.coord_type == "cart", \
+            "ANCOptimizer can't be used with ChainOfStates-methods and " \
+            "coordinate systems beside cartesians ('coord_type: cart')."
 
     def prepare_opt(self):
         super().prepare_opt()
