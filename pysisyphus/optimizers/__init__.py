@@ -12,6 +12,7 @@ __all__ = [
     "SteepestDescent",
     "SciPyOptimizer",
     "RSRFOptimizer",
+    "RSAlgorithm",
 ]
 
 logger = logging.getLogger("optimizer")

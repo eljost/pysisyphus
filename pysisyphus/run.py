@@ -63,6 +63,7 @@ OPT_DICT = {
     "scipy": SciPyOptimizer.SciPyOptimizer,
     "rfo": RFOptimizer.RFOptimizer,
     "rsrfo": RSRFOptimizer,
+    "rsa": RSAlgorithm.RSAlgorithm,
 }
 
 TSOPT_DICT = {
