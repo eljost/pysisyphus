@@ -43,7 +43,7 @@ class RFOptimizer(Optimizer):
                                     self.max_trust_radius)
             self.log("Increasing trust radius.")
         else:
-            self.log("Keeping current trust radius")
+            self.log(f"Keeping current trust radius at {self.trust_radius:.6f}")
             return
         self.log(f"Updated trust radius: {self.trust_radius:.6f}")
 

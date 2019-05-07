@@ -12,6 +12,7 @@ from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
+
 THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 
 
