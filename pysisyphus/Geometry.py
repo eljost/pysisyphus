@@ -5,9 +5,10 @@ import numpy as np
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.xyzloader import make_xyz_str
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.linalg import gram_schmidt
+from pysisyphus.xyzloader import make_xyz_str
 
 
 class Geometry:
@@ -407,7 +408,6 @@ class Geometry:
         """Matrix of second derivatives of the energy in respect to atomic
         displacements.
 
-
         Returns
         -------
         hessian : np.array
@@ -443,6 +443,63 @@ class Geometry:
         if self.internal:
             return self.internal.get_initial_hessian()
         return np.eye(self.coords.size)
+
+    def unweigh_mw_hessian(self, mw_hessian):
+        """Unweigh a mass-weighted hessian.
+
+        Parameters
+        ----------
+        mw_hessian : np.array
+            Mass-weighted hessian to be unweighted.
+
+        Returns
+        -------
+        hessian : np.array
+            2d array containing the hessian.
+        """
+        mm_sqrt = np.diag(self.masses_rep**0.5)
+        return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
+
+    def get_trans_rot_vectors(self):
+        """Orthonormal vectors describing translation and rotation.
+
+        These vectors are used in the Eckart projection.
+
+        Returns
+        -------
+        ortho_vecs : np.array(6, atoms*3)
+            2d array containing row vectors describing translations
+            and rotations.
+        """
+        M_sqrt = np.sqrt(self.masses_rep)
+        num = len(self.atoms)
+        def get_trans_vecs():
+            """Mass-weighted unit vectors of the three cartesian axes."""
+            for vec in ((1, 0, 0), (0, 1, 0), (0, 0, 1)):
+                _ = M_sqrt * np.tile(vec, num)
+                yield _ / np.linalg.norm(_)
+        trans_vecs = list(get_trans_vecs())
+
+        x, y, z = self.coords3d.T
+        zeros = np.zeros(x.size)
+
+        def get_rot_vecs():
+            """Mass-weighted unit vectors Rx ~ (0, -z, y, 0, -z, y, ...)
+            Ry ~ (z, 0, -x, z, 0, -x, ...) and Rz ~ (-y, x, 0, -y, x, 0)."""
+            for c3d in ((zeros, -z, y), (z, zeros, -x), (-y, x, zeros)):
+                _ = np.array(c3d).T.flatten()
+                _ *= M_sqrt
+                yield _ / np.linalg.norm(_)
+        rot_vecs = list(get_rot_vecs())
+        ortho_vecs = np.array(gram_schmidt(trans_vecs + rot_vecs))
+
+        return ortho_vecs
+
+    def eckart_projection(self, mw_hessian):
+        P = np.eye(self._coords.size)
+        for vec in self.get_trans_rot_vectors():
+            P -= np.outer(vec, vec)
+        return P.T.dot(mw_hessian).dot(P)
 
     def calc_energy_and_forces(self):
         """Force a calculation of the current energy and forces."""
