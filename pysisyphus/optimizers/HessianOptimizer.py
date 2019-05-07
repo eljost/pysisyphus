@@ -37,7 +37,10 @@ class HessianOptimizer(Optimizer):
             # Approximate hessian
             "guess": (self.geometry.get_initial_hessian(), "approximate guess"),
             # Unit hessian
-            "unit": (np.eye(self.geometry.coords.size), "unit")
+            "unit": (np.eye(self.geometry.coords.size), "unit"),
+            # Gauss-Newton
+            "gn": (self.gauss_newton_hessian(), "Gauss-Newton"),
+
         }
         try:
             self.H, hess_str = hess_funcs[self.hessian_init]
@@ -45,6 +48,14 @@ class HessianOptimizer(Optimizer):
         except KeyError:
             self.log(f"Trying to load saved hessian from '{self.hessian_init}'.")
             self.H = np.loadtxt(self.hessian_init)
+        if self.hessian_init == "calc":
+            hess_fn = "calculated_init_hessian"
+            np.savetxt(hess_fn, self.H)
+            self.log(f"Wrote calculated hessian to '{hess_fn}'")
+
+    def gauss_newton_hessian(self):
+        grad = self.geometry.gradient
+        return np.outer(grad, grad)
 
     def update_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
