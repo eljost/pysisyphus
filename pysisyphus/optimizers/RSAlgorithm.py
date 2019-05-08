@@ -5,23 +5,13 @@
 import numpy as np
 from scipy.optimize import root_scalar
 
-from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.hessian_updates import bfgs_update
+from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 
 
-class RSAlgorithm(Optimizer):
+class RSAlgorithm(HessianOptimizer):
 
-    def __init__(self, geometry, trust_radius=0.3, calc_hess=False, **kwargs):
+    def __init__(self, geometry, **kwargs):
         super().__init__(geometry, **kwargs)
-
-        self.trust_radius = trust_radius
-        self.calc_hess = calc_hess
-
-    def prepare_opt(self):
-        if self.calc_hess:
-            self.H = self.geometry.hessian
-        else:
-            self.H = self.geometry.get_initial_hessian()
 
     def optimize(self):
         g = self.geometry.gradient
@@ -30,10 +20,7 @@ class RSAlgorithm(Optimizer):
         self.energies.append(self.geometry.energy)
 
         if self.cur_cycle > 0:
-            dg = -self.forces[-1] + self.forces[-2]
-            dx = self.steps[-1]
-            dH, _ = bfgs_update(self.H, dx, dg)
-            self.H = self.H + dH
+            self.update_hessian()
 
         vals, vecsT = np.linalg.eigh(self.H)
         # Exclude small eigenvalues and corresponding -vectors
