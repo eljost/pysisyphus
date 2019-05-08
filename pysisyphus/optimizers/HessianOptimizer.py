@@ -30,7 +30,6 @@ class HessianOptimizer(Optimizer):
         self.hessian_recalc = hessian_recalc
 
         self.predicted_energy_changes = list()
-        self.actual_energy_changes = list()
 
     def prepare_opt(self):
         # We use lambdas to avoid premature evaluation of the dict items.
@@ -55,6 +54,22 @@ class HessianOptimizer(Optimizer):
             np.savetxt(hess_fn, self.H)
             self.log(f"Wrote calculated hessian to '{hess_fn}'")
 
+    def update_trust_radius(self):
+        assert len(self.predicted_energy_changes) == len(self.forces)-1, \
+            "Did you forget to append to self.predicted_energy_changes?"
+        predicted_change = self.predicted_energy_changes[-1]
+        actual_change = self.energies[-1] - self.energies[-2]
+        coeff = actual_change / predicted_change
+        self.log(f"Predicted change: {predicted_change:.4e} au")
+        self.log(f"Actual change: {actual_change:.4e} au")
+        self.log(f"Coefficient: {coeff:.2%}")
+        if self.trust_update:
+            step = self.steps[-1]
+            last_step_norm = np.linalg.norm(step)
+            self.get_new_trust_radius(coeff, last_step_norm)
+        else:
+            self.log("Skipping trust radius update")
+
     def get_new_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
         if coeff < 0.25:
@@ -71,22 +86,6 @@ class HessianOptimizer(Optimizer):
             self.log(f"Keeping current trust radius at {self.trust_radius:.6f}")
             return
         self.log(f"Updated trust radius: {self.trust_radius:.6f}")
-
-    def update_trust_radius(self):
-        assert len(self.predicted_energy_changes) == len(self.forces)-1, \
-            "Did you forget to append to self.predicted_energy_changes?"
-        predicted_change = self.predicted_energy_changes[-1]
-        actual_change = self.energies[-1] - self.energies[-2]
-        coeff = actual_change / predicted_change
-        self.log(f"Predicted change: {predicted_change:.4e} au")
-        self.log(f"Actual change: {actual_change:.4e} au")
-        self.log(f"Coefficient: {coeff:.2%}")
-        if self.trust_update:
-            step = self.steps[-1]
-            last_step_norm = np.linalg.norm(step)
-            self.get_new_trust_radius(coeff, last_step_norm)
-        else:
-            self.log("Skipping trust radius update")
 
     def update_hessian(self):
         if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc) == 0:

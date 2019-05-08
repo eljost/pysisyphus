@@ -8,6 +8,7 @@ import cloudpickle
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import geom_from_library
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.RSRFOptimizer import RSRFOptimizer
 
 
@@ -40,26 +41,33 @@ def test_birkholz():
     tot_cycles = 0
     fails = 0
     start = time.time()
+    # GEOMS = { "bisphenol_a.xyz": (0, 1), }
     for xyz_fn, (charge, mult) in GEOMS.items():
         print(xyz_fn, charge, mult)
         geom = geom_from_library(base_path / xyz_fn, coord_type="redund")
         xtb = XTB(charge=charge, mult=mult, pal=4)
         geom.set_calculator(xtb)
 
-        opt_kwargs = {
+        opt_kwargs_base = {
             "max_cycles": 150,
             "thresh": "gau",
             "trust_radius": 0.5,
-            # "update_trust": False,
-            # "max_micro_cycles": 1,
-            # "hess_update": "bfgs",
-            "hess_update": "flowchart",
+            "trust_update": True,
+            "hess_update": "bfgs",
         }
-        opt = RSRFOptimizer(geom, **opt_kwargs)
+        rsrfo_kwargs = opt_kwargs_base.copy()
+        rsrfo_kwargs.update({
+            "max_micro_cycles": 1,
+        })
+        opt = RSRFOptimizer(geom, **rsrfo_kwargs)
         opt.run()
 
+        # rfo_kwargs = opt_kwargs_base.copy()
+        # opt = RFOptimizer(geom, **rfo_kwargs)
+        # opt.run()
+
         converged = opt.is_converged
-        cycles = opt.cur_cycle
+        cycles = opt.cur_cycle+1
         results[xyz_fn] = (converged, cycles)
         pprint(results)
 

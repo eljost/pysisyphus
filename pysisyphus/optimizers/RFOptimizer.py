@@ -51,7 +51,7 @@ class RFOptimizer(HessianOptimizer):
         # Restrict step_norm to the current trust radius
         if step_norm > self.trust_radius:
             step = step / step_norm * self.trust_radius
-        self.log(f"norm(step): {np.linalg.norm(step):.4f}")
+        self.log(f"norm(step)={np.linalg.norm(step):.6f}")
 
         predicted_change = step.dot(gradient) + 0.5 * step.dot(self.H).dot(step)
         self.predicted_energy_changes.append(predicted_change)
