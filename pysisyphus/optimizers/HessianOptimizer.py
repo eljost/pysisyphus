@@ -15,7 +15,7 @@ class HessianOptimizer(Optimizer):
         "flowchart": flowchart_update,
     }
 
-    def __init__(self, geometry, trust_radius=0.3, trust_update=True,
+    def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.01, trust_max=1, hessian_update="bfgs",
                  hessian_init="guess", hessian_recalc=None, **kwargs):
         super().__init__(geometry, **kwargs)
@@ -73,6 +73,8 @@ class HessianOptimizer(Optimizer):
         self.log(f"Updated trust radius: {self.trust_radius:.6f}")
 
     def update_trust_radius(self):
+        assert len(self.predicted_energy_changes) == len(self.forces)-1, \
+            "Did you forget to append to self.predicted_energy_changes?"
         predicted_change = self.predicted_energy_changes[-1]
         actual_change = self.energies[-1] - self.energies[-2]
         coeff = actual_change / predicted_change
