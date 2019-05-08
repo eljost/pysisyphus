@@ -29,7 +29,7 @@ class RFOptimizer(HessianOptimizer):
         H = self.H
         if self.geometry.internal:
             H_proj = self.geometry.internal.project_hessian(self.H)
-            # Symmetrize hessian, as the projection probably breaks it.
+            # Symmetrize hessian, as the projection probably breaks it?!
             H = (H_proj + H_proj.T) / 2
         # Eq. (56) in [1]
         H_aug = np.bmat(
