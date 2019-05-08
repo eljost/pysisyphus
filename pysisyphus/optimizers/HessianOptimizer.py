@@ -6,6 +6,7 @@ import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update, flowchart_update
+from pysisyphus.optimizers.guess_hessians import lindh_guess
 
 
 class HessianOptimizer(Optimizer):
@@ -16,7 +17,7 @@ class HessianOptimizer(Optimizer):
 
     def __init__(self, geometry, trust_radius=0.3, trust_update=True,
                  trust_min=0.01, trust_max=1, hessian_update="bfgs",
-                 hessian_init="init", **kwargs):
+                 hessian_init="guess", hessian_recalc=None, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
@@ -26,24 +27,25 @@ class HessianOptimizer(Optimizer):
         self.hessian_update = hessian_update
         self.hessian_update_func = self.hessian_update_funcs[hessian_update]
         self.hessian_init = hessian_init
+        self.hessian_recalc = hessian_recalc
 
         self.predicted_energy_changes = list()
         self.actual_energy_changes = list()
 
     def prepare_opt(self):
+        # We use lambdas to avoid premature evaluation of the dict items.
         hess_funcs = {
             # Calculate true hessian
-            "calc": (self.geometry.hessian, "calculated exact"),
+            "calc": lambda: (self.geometry.hessian, "calculated exact"),
             # Approximate hessian
-            "guess": (self.geometry.get_initial_hessian(), "approximate guess"),
+            "guess": lambda: (self.geometry.get_initial_hessian(), "approximate guess"),
             # Unit hessian
-            "unit": (np.eye(self.geometry.coords.size), "unit"),
-            # Gauss-Newton
-            "gn": (self.gauss_newton_hessian(), "Gauss-Newton"),
-
+            "unit": lambda: (np.eye(self.geometry.coords.size), "unit"),
+            # Lindh model hessian
+            "lindh": lambda: (lindh_guess(self.geometry), "Lindh"),
         }
         try:
-            self.H, hess_str = hess_funcs[self.hessian_init]
+            self.H, hess_str = hess_funcs[self.hessian_init]()
             self.log(f"Using {hess_str} hessian.")
         except KeyError:
             self.log(f"Trying to load saved hessian from '{self.hessian_init}'.")
@@ -53,11 +55,7 @@ class HessianOptimizer(Optimizer):
             np.savetxt(hess_fn, self.H)
             self.log(f"Wrote calculated hessian to '{hess_fn}'")
 
-    def gauss_newton_hessian(self):
-        grad = self.geometry.gradient
-        return np.outer(grad, grad)
-
-    def update_trust_radius(self, coeff, last_step_norm):
+    def get_new_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
         if coeff < 0.25:
             self.trust_radius = max(self.trust_radius/4,
@@ -74,12 +72,31 @@ class HessianOptimizer(Optimizer):
             return
         self.log(f"Updated trust radius: {self.trust_radius:.6f}")
 
+    def update_trust_radius(self):
+        predicted_change = self.predicted_energy_changes[-1]
+        actual_change = self.energies[-1] - self.energies[-2]
+        coeff = actual_change / predicted_change
+        self.log(f"Predicted change: {predicted_change:.4e} au")
+        self.log(f"Actual change: {actual_change:.4e} au")
+        self.log(f"Coefficient: {coeff:.2%}")
+        if self.trust_update:
+            step = self.steps[-1]
+            last_step_norm = np.linalg.norm(step)
+            self.get_new_trust_radius(coeff, last_step_norm)
+        else:
+            self.log("Skipping trust radius update")
+
     def update_hessian(self):
-        dx = self.steps[-1]
-        dg = -(self.forces[-1] - self.forces[-2])
-        dH, key = self.hessian_update_func(self.H, dx, dg)
-        self.H = self.H + dH
-        self.log(f"Did {key} hessian update.")
+        if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc) == 0:
+            self.H = self.geometry.hessian
+            if not (self.cur_cycle == 0):
+                self.log(f"Recalculated exact hessian in cycle {self.cur_cycle}.")
+        else:
+            dx = self.steps[-1]
+            dg = -(self.forces[-1] - self.forces[-2])
+            dH, key = self.hessian_update_func(self.H, dx, dg)
+            self.H = self.H + dH
+            self.log(f"Did {key} hessian update.")
 
     @abstractmethod
     def optimize(self):
