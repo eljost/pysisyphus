@@ -53,18 +53,20 @@ def test_birkholz():
             "thresh": "gau",
             "trust_radius": 0.5,
             "trust_update": True,
-            "hess_update": "bfgs",
+            # "trust_min": 0.1,
+            "hess_update": "flowchart",
+            "hessian_init": "guess",
         }
-        rsrfo_kwargs = opt_kwargs_base.copy()
-        rsrfo_kwargs.update({
-            "max_micro_cycles": 1,
-        })
-        opt = RSRFOptimizer(geom, **rsrfo_kwargs)
-        opt.run()
-
-        # rfo_kwargs = opt_kwargs_base.copy()
-        # opt = RFOptimizer(geom, **rfo_kwargs)
+        # opt_kwargs = opt_kwargs_base.copy()
+        # opt_kwargs.update({
+            # "max_micro_cycles": 1,
+        # })
+        # opt = RSRFOptimizer(geom, **opt_kwargs)
         # opt.run()
+
+        opt_kwargs = opt_kwargs_base.copy()
+        opt = RFOptimizer(geom, **opt_kwargs)
+        opt.run()
 
         converged = opt.is_converged
         cycles = opt.cur_cycle+1
