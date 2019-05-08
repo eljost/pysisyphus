@@ -118,6 +118,13 @@ def run():
     # geom.coords = shake_coords(geom.coords, seed=25032019)
     calc = XTB(charge=0, mult=1, pal=4)
     geom.set_calculator(calc)
+    from pysisyphus.optimizers.RSAlgorithm import RSAlgorithm
+    rsa_kwargs = {
+        "hessian_recalc": 5,
+    }
+    opt = RSAlgorithm(geom, **rsa_kwargs)
+    opt.run()
+    return
     # g = geom.gradient
     # np.savetxt("gradient", g)
     # H = geom.hessian

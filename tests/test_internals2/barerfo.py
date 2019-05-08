@@ -113,21 +113,21 @@ def run():
                             # hess_update="flowchart", max_micro_cycles=25)
         # opt.run()
 
-        # try:
-            # converged, cycles = run_bare_rfo(full_xyz, charge, mult, trust=0.5)
-        # except:
-            # logging.exception("Something went wrong")
-            # converged = False
-            # cycles = 0
-        geom = geom_from_library(full_xyz, coord_type="redund")
-        geom.set_calculator(XTB(pal=2, charge=charge, mult=mult))
-        opt = RSRFOptimizer(geom, trust_radius=0.5, update_trust=False,
-                            # hess_update="flowchart", max_micro_cycles=25,
-                            hess_update="flowchart", max_micro_cycles=1,
-                            max_cycles=150, thresh="gau")
-        opt.run()
-        converged = opt.is_converged
-        cycles = opt.cur_cycle + 1
+        try:
+            converged, cycles = run_bare_rfo(full_xyz, charge, mult, trust=0.5)
+        except:
+            logging.exception("Something went wrong")
+            converged = False
+            cycles = 0
+        # geom = geom_from_library(full_xyz, coord_type="redund")
+        # geom.set_calculator(XTB(pal=2, charge=charge, mult=mult))
+        # opt = RSRFOptimizer(geom, trust_radius=0.5, update_trust=False,
+                            # # hess_update="flowchart", max_micro_cycles=25,
+                            # hess_update="flowchart", max_micro_cycles=1,
+                            # max_cycles=150, thresh="gau")
+        # opt.run()
+        # converged = opt.is_converged
+        # cycles = opt.cur_cycle + 1
 
         results[xyz_fn] = (converged, cycles)
         pprint(results)
