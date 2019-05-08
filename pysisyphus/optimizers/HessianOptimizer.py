@@ -16,7 +16,7 @@ class HessianOptimizer(Optimizer):
     }
 
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
-                 trust_min=0.01, trust_max=1, hessian_update="bfgs",
+                 trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_init="guess", hessian_recalc=None, **kwargs):
         super().__init__(geometry, **kwargs)
 
@@ -55,10 +55,16 @@ class HessianOptimizer(Optimizer):
             self.log(f"Wrote calculated hessian to '{hess_fn}'")
 
     def update_trust_radius(self):
+        # The predicted change should be calculated at the end of optimize
+        # of the previous cycle.
         assert len(self.predicted_energy_changes) == len(self.forces)-1, \
             "Did you forget to append to self.predicted_energy_changes?"
         predicted_change = self.predicted_energy_changes[-1]
         actual_change = self.energies[-1] - self.energies[-2]
+        if actual_change > 0:
+            print(f"Energy increased by {actual_change:.6f} au! " \
+                  f"Cur. trust={self.trust_radius:.6f}.")
+            self.log(f"Energy increased by {actual_change:.6f} au!")
         coeff = actual_change / predicted_change
         self.log(f"Predicted change: {predicted_change:.4e} au")
         self.log(f"Actual change: {actual_change:.4e} au")
@@ -78,7 +84,8 @@ class HessianOptimizer(Optimizer):
             self.log("Decreasing trust radius.")
         # Only increase trust radius if last step norm was at least 80% of it
         # See [5], Appendix, step size and direction control
-        elif coeff > 0.75 and (last_step_norm >= .8*self.trust_radius):
+        # elif coeff > 0.75 and (last_step_norm >= .8*self.trust_radius):
+        elif coeff > 0.75 and abs(self.trust_radius - last_step_norm) <= 1e-3:
             self.trust_radius = min(self.trust_radius*2,
                                     self.trust_max)
             self.log("Increasing trust radius.")
