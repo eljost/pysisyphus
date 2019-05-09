@@ -320,6 +320,7 @@ class Optimizer:
                 break
 
             self.cur_cycle += 1
+            self.log("")
 
         # Outside loop
         if not self.is_cos:
