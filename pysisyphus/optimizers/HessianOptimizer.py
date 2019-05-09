@@ -6,7 +6,8 @@ import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update, flowchart_update
-from pysisyphus.optimizers.guess_hessians import lindh_guess
+from pysisyphus.optimizers.guess_hessians import (fischer_guess, lindh_guess,
+                                                  simple_guess, swart_guess)
 
 
 class HessianOptimizer(Optimizer):
@@ -17,7 +18,7 @@ class HessianOptimizer(Optimizer):
 
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
-                 hessian_init="guess", hessian_recalc=None, **kwargs):
+                 hessian_init="fischer", hessian_recalc=None, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
@@ -36,12 +37,16 @@ class HessianOptimizer(Optimizer):
         hess_funcs = {
             # Calculate true hessian
             "calc": lambda: (self.geometry.hessian, "calculated exact"),
-            # Approximate hessian
-            "guess": lambda: (self.geometry.get_initial_hessian(), "approximate guess"),
             # Unit hessian
             "unit": lambda: (np.eye(self.geometry.coords.size), "unit"),
+            # Fischer model hessian
+            "fischer": lambda: (fischer_guess(self.geometry), "Fischer"),
             # Lindh model hessian
             "lindh": lambda: (lindh_guess(self.geometry), "Lindh"),
+            # Simple (0.5, 0.2, 0.1) model hessian
+            "simple": lambda: (simple_guess(self.geometry), "simple"),
+            # Swart model hessian
+            "swart": lambda: (swart_guess(self.geometry), "Swart"),
         }
         try:
             self.H, hess_str = hess_funcs[self.hessian_init]()
