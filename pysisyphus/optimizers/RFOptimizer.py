@@ -7,15 +7,11 @@
 
 
 import numpy as np
-from scipy.optimize import minimize
 
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 
 
 class RFOptimizer(HessianOptimizer):
-
-    def __init__(self, geometry, **kwargs):
-        super().__init__(geometry, **kwargs)
 
     def optimize(self):
         gradient = self.geometry.gradient
