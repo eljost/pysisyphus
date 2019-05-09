@@ -1,59 +1,45 @@
 #!/usr/bin/env python3
 
-from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import geom_from_library
-from pysisyphus.optimizers.guess_hessians import lindh_guess
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.optimizers.guess_hessians import (lindh_guess, fischer_guess,
+                                                  simple_guess, swart_guess)
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_hessian(H):
+def plot_hessian(H, title=""):
     fig, ax = plt.subplots()
-    im = ax.imshow(H)
+    im = ax.imshow(H, vmin=0, vmax=1)
     fig.colorbar(im)
+    fig.suptitle(title)
+
+
+def test_guess_hessians():
+    geom = geom_from_library("birkholz/vitamin_c.xyz", coord_type="redund")
+
+    H_lindh = lindh_guess(geom)
+    print("Lindh")
+    print(np.diag(H_lindh))
+    plot_hessian(H_lindh, "Lindh")
+
+    H_fischer = fischer_guess(geom)
+    print("Fischer")
+    print(np.diag(H_fischer))
+    plot_hessian(H_fischer, "Fischer")
+
+    H_simple = simple_guess(geom)
+    print("Simple")
+    print(np.diag(H_simple))
+    plot_hessian(H_simple, "Simple 0.5/0.2/0.1")
+
+    H_swart = swart_guess(geom)
+    print("Swart")
+    print(np.diag(H_swart))
+    plot_hessian(H_swart, "Swart")
+
     plt.show()
 
 
-
-def test_lindh_hessian():
-    geom = geom_from_library("birkholz/vitamin_c.xyz", coord_type="redund")
-    geom.set_calculator(XTB())
-    opt_kwargs = {
-        "max_cycles": 125,
-        "thresh": "gau",
-        "trust_update": True,
-        "hessian_init": "lindh",
-        # "hessian_init": "guess",
-        "trust_radius": 0.5,
-        # "hessian_update": "flowchart",
-        "hessian_update": "bfgs",
-    }
-    opt = RFOptimizer(geom, **opt_kwargs)
-    opt.run()
-
-    from pysisyphus.optimizers.RFOptimizer_org import RFOptimizer as RFOptimizer_
-    geom = geom_from_library("birkholz/vitamin_c.xyz", coord_type="redund")
-    geom.set_calculator(XTB())
-    opt_kwargs = {
-        "max_cycles": 125,
-        "thresh": "gau",
-        "trust_update": True,
-        "trust_radius": 0.5,
-    }
-    opt = RFOptimizer_(geom, **opt_kwargs)
-    opt.run()
-    return
-    # H = geom.hessian
-    # np.savetxt("vc_xtb_hess", H)
-    # calc = geom.calculator
-    # og = calc.run_opt(geom.atoms, geom.coords)
-    # import pdb; pdb.set_trace()
-    H_lindh = lindh_guess(geom)
-    print(np.diag(H_lindh))
-    plot_hessian(H_lindh)
-
-
 if __name__ == "__main__":
-    test_lindh_hessian()
+    test_guess_hessians()
