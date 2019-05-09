@@ -1,5 +1,7 @@
 from collections import Counter, namedtuple
 import logging
+import subprocess
+import tempfile
 
 import numpy as np
 import rmsd
@@ -597,6 +599,13 @@ class Geometry:
             atoms.append(atom)
         return atoms
 
+    def jmol(self):
+        """Show geometry in jmol."""
+        tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
+        tmp_xyz.write(self.as_xyz().encode("utf-8"))
+        tmp_xyz.flush()
+        subprocess.run(f"jmol {tmp_xyz.name}".split())
+        tmp_xyz.close()
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"
