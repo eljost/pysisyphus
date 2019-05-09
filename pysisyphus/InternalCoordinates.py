@@ -143,40 +143,8 @@ class RedundantCoords:
         ic_ind_tuples = [tuple(ic.inds) for ic in self._prim_coords]
         return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
 
-    # def set_rho(self):
-        # """Calculated rho values as required for the Lindh model hessian
-        # as described in [3], similar to pyberny.
-        # Instead of using the tabulated r_ref,ij values we will use the covalent
-        # radii as in pyberny. The tabulated r_ref,ij value for two carbons
-        # (2nd period) is 2.87 Bohr. Carbons covalent radius is ~ 1.44 Bohr,
-        # so two times it is 2.88 Bohr which fits nicely with the tabulate value.
-        # Hydrogens covalent radius is 0.59 bohr, so C-H gives 2.03 Bohr
-        # (tabulated 2.10). If values for elements > 3rd are requested the alpha
-        # values for the 3rd period will be (re)used.
-        # """
-        # first_period = "h he".split()
-        # def get_alpha(atom1, atom2):
-            # if (atom1 in first_period) and (atom2 in first_period):
-                # return 1.
-            # elif (atom1 in first_period) or (atom2 in first_period):
-                # return 0.3949
-            # else:
-                # return 0.28
-        # atoms = [a.lower() for a in self.atoms]
-        # alphas = [get_alpha(a1, a2)
-                  # for a1, a2 in it.combinations(atoms, 2)]
-        # cov_radii = np.array([CR[a.lower()] for a in atoms])
-        # rref = np.array([r1+r2
-                         # for r1, r2 in it.combinations(cov_radii, 2)])
-        # coords3d = self.cart_coords.reshape(-1, 3)
-        # cdm = pdist(coords3d)
-        # # It shouldn't be a problem that the diagonal is 0 because
-        # # no primitive internal coordinates will ever access a diagonal
-        # # element.
-        # diff = rref**2 - cdm**2
-        # self.rho = squareform(np.exp(alphas*diff))
-
     def set_rho(self):
+        # TODO: remove this as it is already in optimizers/guess_hessians
         atoms = [a.lower() for a in self.atoms]
         cov_radii = np.array([CR[a.lower()] for a in atoms])
         rref = np.array([r1+r2
@@ -186,6 +154,7 @@ class RedundantCoords:
         self.rho = squareform(np.exp(-cdm/rref + 1))
 
     def get_initial_hessian(self):
+        # TODO: remove this as it is already in optimizers/guess_hessians
         self.set_rho()
         k_dict = {
             2: 0.35,
@@ -200,16 +169,6 @@ class RedundantCoords:
                 rho_product *= self.rho[i1, i2]
             k_diag.append(k_dict[len(primitive.inds)] * rho_product)
         return np.diagflat(k_diag)
-        """
-        k_dict = {
-            2: 0.5,
-            3: 0.2,
-            4: 0.1,
-        }
-        k_diag = [k_dict[len(prim.inds)] for prim in self._prim_coords]
-        self.log("Using simple 0.5/0.2/0.1 model hessian!")
-        return np.diagflat(k_diag)
-        """
 
     def merge_fragments(self, fragments):
         """Merge a list of sets."""
@@ -440,13 +399,19 @@ class RedundantCoords:
         def per_type(func, ind):
             val, grad = func(coords3d, ind, True)
             return PrimitiveCoord(ind, val, grad)
-        int_coords = list()
+        self.bonds = list()
+        self.bends = list()
+        self.dihedrals = list()
         for ind in self.bond_indices:
-            int_coords.append(per_type(self.calc_stretch, ind))
+            bonds = per_type(self.calc_stretch, ind)
+            self.bonds.append(bonds)
         for ind in self.bending_indices:
-            int_coords.append(per_type(self.calc_bend, ind))
+            bend = per_type(self.calc_bend, ind)
+            self.bends.append(bend)
         for ind in self.dihedral_indices:
-            int_coords.append(per_type(self.calc_dihedral, ind))
+            dihedral = per_type(self.calc_dihedral, ind)
+            self.dihedrals.append(dihedral)
+        int_coords = self.bonds + self.bends + self.dihedrals
         if attr:
             return np.array([getattr(ic,attr) for ic in int_coords])
         return int_coords
