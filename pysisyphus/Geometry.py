@@ -604,7 +604,11 @@ class Geometry:
         tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
         tmp_xyz.write(self.as_xyz().encode("utf-8"))
         tmp_xyz.flush()
-        subprocess.run(f"jmol {tmp_xyz.name}".split())
+        jmol_cmd = "jmol"
+        try:
+            subprocess.run([jmol_cmd, tmp_xyz.name])
+        except FileNotFoundError:
+            print(f"'{jmol_cmd}' seems not to be on your path!")
         tmp_xyz.close()
 
     def __str__(self):
