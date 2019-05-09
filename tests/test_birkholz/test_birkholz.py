@@ -49,7 +49,10 @@ def test_birkholz():
         print(xyz_fn, charge, mult)
         geom = geom_from_library(base_path / xyz_fn, coord_type="redund")
         # calc = XTB(charge=charge, mult=mult, pal=4)
-        calc = Gaussian16(route="HF/3-21G", charge=charge, mult=mult, pal=4)
+        route = "HF/3-21G"
+        if xyz_fn in ("vitamin_c.xyz", "easc.xyz"):
+            route = "B3LYP/6-31G**"
+        calc = Gaussian16(route=route, charge=charge, mult=mult, pal=4)
         geom.set_calculator(calc)
 
         opt_kwargs_base = {
