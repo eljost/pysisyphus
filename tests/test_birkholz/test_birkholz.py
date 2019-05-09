@@ -6,10 +6,12 @@ import time
 
 import cloudpickle
 
+from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.RSRFOptimizer import RSRFOptimizer
+from pysisyphus.optimizers.RSAlgorithm import RSAlgorithm
 
 
 GEOMS = {
@@ -42,11 +44,13 @@ def test_birkholz():
     fails = 0
     start = time.time()
     # GEOMS = { "bisphenol_a.xyz": (0, 1), }
+    # GEOMS = { "sphingomyelin.xyz": (0, 1), }
     for xyz_fn, (charge, mult) in GEOMS.items():
         print(xyz_fn, charge, mult)
         geom = geom_from_library(base_path / xyz_fn, coord_type="redund")
-        xtb = XTB(charge=charge, mult=mult, pal=4)
-        geom.set_calculator(xtb)
+        # calc = XTB(charge=charge, mult=mult, pal=4)
+        calc = Gaussian16(route="HF/3-21G", charge=charge, mult=mult, pal=4)
+        geom.set_calculator(calc)
 
         opt_kwargs_base = {
             "max_cycles": 150,
@@ -57,14 +61,19 @@ def test_birkholz():
             "hessian_init": "fischer",
         }
         opt_kwargs = opt_kwargs_base.copy()
-        opt_kwargs.update({
-            "max_micro_cycles": 1,
-        })
-        opt = RSRFOptimizer(geom, **opt_kwargs)
+
+        # opt_kwargs.update({
+            # "max_micro_cycles": 1,
+        # })
+        # opt = RSRFOptimizer(geom, **opt_kwargs)
+        # opt.run()
+
+        opt_kwargs = opt_kwargs_base.copy()
+        opt = RFOptimizer(geom, **opt_kwargs)
         opt.run()
 
         # opt_kwargs = opt_kwargs_base.copy()
-        # opt = RFOptimizer(geom, **opt_kwargs)
+        # opt = RSAlgorithm(geom, **opt_kwargs)
         # opt.run()
 
         converged = opt.is_converged
