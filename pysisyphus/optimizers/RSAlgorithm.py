@@ -10,19 +10,20 @@ from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 
 class RSAlgorithm(HessianOptimizer):
 
-    def __init__(self, geometry, **kwargs):
-        super().__init__(geometry, **kwargs)
-
     def optimize(self):
         g = self.geometry.gradient
-        norm_g = np.linalg.norm(g)
         self.forces.append(-self.geometry.gradient.copy())
         self.energies.append(self.geometry.energy)
 
         if self.cur_cycle > 0:
+            self.update_trust_radius()
             self.update_hessian()
 
-        vals, vecsT = np.linalg.eigh(self.H)
+        H = self.H
+        if self.geometry.internal:
+            H = self.geometry.internal.project_hessian(H)
+
+        vals, vecsT = np.linalg.eigh(H)
         # Exclude small eigenvalues and corresponding -vectors
         # small_inds = np.abs(vals) < 1e-6
         small_inds = np.abs(vals) < 1e-10
@@ -49,6 +50,8 @@ class RSAlgorithm(HessianOptimizer):
             step_norm = np.linalg.norm(step)
             if step_norm <= self.trust_radius:
                 self.log(f"norm(step)={step_norm:.6f} is fine")
+                predicted_change = step.dot(g) + 0.5 * step.dot(self.H).dot(step)
+                self.predicted_energy_changes.append(predicted_change)
                 return step
             self.log(f"norm(QN-step)={step_norm:.6f} is too big.")
         else:
@@ -84,6 +87,8 @@ class RSAlgorithm(HessianOptimizer):
             step = get_step(lambda_)
             step_norm = np.linalg.norm(step)
             self.log(f"Found valid step with λ={lambda_:.6f} and norm={step_norm:.6f}")
+            predicted_change = step.dot(g) + 0.5 * step.dot(self.H).dot(step)
+            self.predicted_energy_changes.append(predicted_change)
             return step
 
         import pdb; pdb.set_trace()
@@ -101,4 +106,8 @@ class RSAlgorithm(HessianOptimizer):
         raise Exception("first term is in original space, second term is "\
                         "is still in eigenspace of hessian.")
         step = get_step(lambda_) + tau*g_[:,0]
+
+        predicted_change = step.dot(g) + 0.5 * step.dot(self.H).dot(step)
+        self.predicted_energy_changes.append(predicted_change)
+
         return step
