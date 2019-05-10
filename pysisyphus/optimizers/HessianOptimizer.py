@@ -5,7 +5,9 @@ from abc import abstractmethod
 import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.hessian_updates import bfgs_update, flowchart_update
+from pysisyphus.optimizers.hessian_updates import (bfgs_update, flowchart_update,
+                                                   damped_bfgs_update,
+                                                   multi_step_update)
 from pysisyphus.optimizers.guess_hessians import (fischer_guess, lindh_guess,
                                                   simple_guess, swart_guess)
 
@@ -13,12 +15,15 @@ from pysisyphus.optimizers.guess_hessians import (fischer_guess, lindh_guess,
 class HessianOptimizer(Optimizer):
     hessian_update_funcs = {
         "bfgs": bfgs_update,
+        "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
+        "mult": multi_step_update,
     }
 
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
-                 hessian_init="fischer", hessian_recalc=None, **kwargs):
+                 hessian_multi_update=False, hessian_init="fischer",
+                 hessian_recalc=None, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_radius = trust_radius
@@ -27,8 +32,18 @@ class HessianOptimizer(Optimizer):
         self.trust_max = trust_max
         self.hessian_update = hessian_update
         self.hessian_update_func = self.hessian_update_funcs[hessian_update]
+        self.hessian_multi_update = hessian_multi_update
+        if self.hessian_multi_update:
+            raise Exception("hessian_multi_update=True doesn't work yet!")
         self.hessian_init = hessian_init
         self.hessian_recalc = hessian_recalc
+
+        # Allow only calculated or unit hessian for geometries that don't
+        # use internal coordinates.
+        if (not hasattr(self.geometry, "internal")
+            or (self.geometry.internal is None)):
+            if self.hessian_init != "calc":
+                self.hessian_init = "unit"
 
         self.predicted_energy_changes = list()
 
@@ -104,6 +119,9 @@ class HessianOptimizer(Optimizer):
             self.H = self.geometry.hessian
             if not (self.cur_cycle == 0):
                 self.log(f"Recalculated exact hessian in cycle {self.cur_cycle}.")
+        elif self.hessian_multi_update:
+            gradients = -np.array(self.forces)
+            self.H = multi_step_update(self.H, self.steps, gradients, self.energies)
         else:
             dx = self.steps[-1]
             dg = -(self.forces[-1] - self.forces[-2])
