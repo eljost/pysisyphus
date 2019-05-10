@@ -479,7 +479,7 @@ def parse_args(args):
                             "be separated by ','.")
     group.add_argument("--cosgrad", action="store_true",
                         help="Plot image gradients along the path.")
-    group.add_argument("--energies", action="store_true",
+    group.add_argument("--energies", "-e", action="store_true",
                         help="Plot energies.")
     group.add_argument("--aneb", action="store_true",
                         help="Plot Adaptive NEB.")
