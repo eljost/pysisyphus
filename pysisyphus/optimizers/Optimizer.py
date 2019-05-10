@@ -9,7 +9,6 @@ import textwrap
 import time
 
 import numpy as np
-import scipy.linalg
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates

@@ -19,7 +19,7 @@ class ChainOfStates:
 
     def __init__(self, images, parallel=0, fix_ends=False,
                  fix_first=False, fix_last=False,
-                 climb=False, climb_rms=0.02,
+                 climb=False, climb_rms=5e-3,
                  scheduler=None):
 
         assert(len(images) >= 2), "Need at least 2 images!"
