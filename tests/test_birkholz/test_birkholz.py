@@ -45,14 +45,15 @@ def test_birkholz():
     start = time.time()
     # GEOMS = { "bisphenol_a.xyz": (0, 1), }
     # GEOMS = { "sphingomyelin.xyz": (0, 1), }
+    # GEOMS = { "vitamin_c.xyz": (0, 1), }
     for xyz_fn, (charge, mult) in GEOMS.items():
         print(xyz_fn, charge, mult)
         geom = geom_from_library(base_path / xyz_fn, coord_type="redund")
-        # calc = XTB(charge=charge, mult=mult, pal=4)
-        route = "HF/3-21G"
-        if xyz_fn in ("vitamin_c.xyz", "easc.xyz"):
-            route = "B3LYP/6-31G**"
-        calc = Gaussian16(route=route, charge=charge, mult=mult, pal=4)
+        calc = XTB(charge=charge, mult=mult, pal=4)
+        # route = "HF/3-21G"
+        # if xyz_fn in ("vitamin_c.xyz", "easc.xyz"):
+            # route = "B3LYP/6-31G**"
+        # calc = Gaussian16(route=route, charge=charge, mult=mult, pal=4)
         geom.set_calculator(calc)
 
         opt_kwargs_base = {
@@ -60,7 +61,9 @@ def test_birkholz():
             "thresh": "gau",
             "trust_radius": 0.5,
             "trust_update": True,
-            "hess_update": "flowchart",
+            # "hessian_update": "flowchart",
+            "hessian_update": "bfgs",
+            # "hessian_update": "damped_bfgs",
             "hessian_init": "fischer",
         }
         opt_kwargs = opt_kwargs_base.copy()
