@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 
+# [1] https://pubs.rsc.org/en/content/articlepdf/2002/cp/b108658h
+# [2] http://www.acme.byu.edu/wp-content/uploads/2014/09/Krylov1.pdf
+# [3] https://www.youtube.com/watch?v=0t7WJybTmFg
+# [4] Improved mode following
+#     https://pubs.acs.org/doi/abs/10.1021/acs.jctc.5b01216
+
 from collections import namedtuple
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+from scipy.spatial.distance import pdist
+from scipy.optimize import minimize
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.calculators.AnaPot import AnaPot
 
-# [1] https://pubs.rsc.org/en/content/articlepdf/2002/cp/b108658h
+np.set_printoptions(suppress=True, precision=4)
 
 
 RotResult = namedtuple("RotResult",
@@ -218,18 +227,16 @@ def run_dimer():
     plt.show()
 
 
-def lanczos(geom, dx=1e-4):
-    r_prev = np.random.rand(*geom.coords.shape)
-    q_prev = np.zeros_like(r_prev)
+def lanczos(geom, dx=1e-4, dl=1e-2, r_prev=None, max_cycles=10):
+    if r_prev is None:
+        r_prev = np.random.rand(*geom.coords.shape)
     beta_prev = np.linalg.norm(r_prev)
+    q_prev = np.zeros_like(r_prev)
+
     alphas = list()
     betas = list()
-    np.set_printoptions(suppress=True, precision=4)
-    # import pdb; pdb.set_trace()
-    H = geom.hessian
-    w_ref, v_ref = np.linalg.eigh(H)
-    w_min_ref = w_ref.min()
-    for i in range(10):
+    w_mins = list()
+    for i in range(max_cycles):
         q = r_prev / beta_prev
         # Finite difference
         grad_l = geom.gradient
@@ -237,8 +244,9 @@ def lanczos(geom, dx=1e-4):
         coords_k = geom.coords + dx*q
         results_k = geom.get_energy_and_forces_at(coords_k)
         grad_k = -results_k["forces"]
-        # u = (grad_k - grad_l) / dx
-        u = H.dot(q)
+        # u = H.dot(q)
+        # Finite difference alternative
+        u = (grad_k - grad_l) / dx
         r = u - beta_prev*q_prev
         alpha = q.dot(r)
         r = r - alpha*q
@@ -259,20 +267,68 @@ def lanczos(geom, dx=1e-4):
         q_prev = q
         r_prev = r
         w, v = np.linalg.eig(T)
-        print(f"w_min={w.min(): .6f} w_min_ref={w_min_ref: .6f}")
-
-    pass
+        min_ind = w.argmin()
+        w_min = w[min_ind]
+        w_mins.append(w_min)
+        print(f"w_min={w_min: .6f}")
+        try:
+            w_diff = abs(w_min - w_mins[-2])
+            if w_diff < dl:
+                print("Converged")
+                break
+        except IndexError:
+            pass
+    w_min = w_mins[-1]
+    v_min = v[:,min_ind]
+    return w_min, v_min
 
 
 def run_lanczos():
     x0 = (-0.5767, 1.6810, 0)
     geom0 = AnaPot.get_geom(x0)
-    lanczos(geom0)
+    w_min, v_min = lanczos(geom0, dx=1e-5)
+    H = geom0.hessian
+    w, v = np.linalg.eigh(H)
+    w_min_ref = w[0]
+    print(f"w_min_ref={w_min_ref:.6f}")
+
+
+def hypersphere_displacement(size, samples=50, radius=0.3):
+    # https://www.sciencedirect.com/science/article/pii/S0378437116001230
+    coords = np.random.rand(samples, size) - 0.5
+    norms = np.linalg.norm(coords, axis=1)
+    # coords = radius * coords / norms[:,None]
+    coords = radius * coords / norms[:,None]
+    # print("norms", np.linalg.norm(coords, axis=1))
+
+    cdm = pdist(coords)
+
+    def energy(coords, shape=coords.shape):
+        _ = coords.reshape(shape)
+        norms = np.linalg.norm(_, axis=1)
+        cdm = pdist(coords.reshape(shape))
+        return np.sum(1/cdm) + np.sum((norms-radius)**8)
+    res = minimize(energy, coords)
+    print(res)
+    x = res.x.reshape(coords.shape)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(*coords.T)
+    ax.scatter(*x.T, color="r")
+
+    xnorms = np.linalg.norm(x, axis=1)
+    print("xnorms", xnorms)
+
+    plt.show()
+
+
 
 
 def run():
     # run_dimer()
-    run_lanczos()
+    # run_lanczos()
+    hypersphere_displacement(3)
 
 
 if __name__ == "__main__":
