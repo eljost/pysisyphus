@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 from sympy import symbols, diff, lambdify, sympify
@@ -27,6 +30,8 @@ class AnaPotBase(Calculator):
         self.dVdxdx = lambdify((x, y), dVdxdx, "numpy")
         self.dVdxdy = lambdify((x, y), dVdxdy, "numpy")
         self.dVdydy = lambdify((x, y), dVdydy, "numpy")
+
+        self.fake_atoms = ("X", ) # X, dummy atom
 
     def get_energy(self, atoms, coords):
         x, y, z = coords
@@ -62,9 +67,8 @@ class AnaPotBase(Calculator):
         y = np.linspace(*self.ylim, 100)
         X, Y = np.meshgrid(x, y)
         Z = np.full_like(X, 0)
-        fake_atoms = ("X", ) # X, dummy atom
         pot_coords = np.stack((X, Y, Z))
-        pot = self.get_energy(fake_atoms, pot_coords)["energy"]
+        pot = self.get_energy(self.fake_atoms, pot_coords)["energy"]
 
         if levels is None:
             if self.levels is None:
@@ -75,6 +79,22 @@ class AnaPotBase(Calculator):
         # Draw the contourlines of the potential
         contours = self.ax.contour(X, Y, pot, levels)
         self.fig.colorbar(contours)
+
+    def plot_eigenvalue_structure(self, grid=50, levels=None):
+        self.plot(levels=levels)
+        xs = np.linspace(*self.xlim, grid)
+        ys = np.linspace(*self.ylim, grid)
+        X, Y = np.meshgrid(xs, ys)
+        z = list()
+        for x_, y_ in zip(X.flatten(), Y.flatten()):
+            H = self.get_hessian(self.fake_atoms,  (x_, y_, 0))["hessian"]
+            w, v = np.linalg.eigh(H)
+            z.append(
+                1 if (w < 0).any() else 0
+            )
+        Z = np.array(z).reshape(X.shape)
+        self.ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
+
 
     @classmethod
     def get_geom(cls, coords, atoms=("H", )):
