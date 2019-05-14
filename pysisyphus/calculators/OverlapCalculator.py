@@ -39,6 +39,7 @@ class OverlapCalculator(Calculator):
         self.all_energies_list = list()
         self.root_flips_list = [False, ]
         self.first_root = None
+        self.overlap_matrices = list()
 
         self.dump_fn = "overlap_data.h5"
 
@@ -55,6 +56,29 @@ class OverlapCalculator(Calculator):
         full = np.zeros((states, occ, occ+virt))
         full[:,:,occ:] = ci_coeffs
         return full
+
+    def get_indices(self):
+        """
+        A new root is determined by selecting the overlap matrix row
+        corresponding to the old root and checking for the new root
+        with the highest overlap (at the new geometry).
+
+        The overlap matrix is usually formed by a double loop like:
+
+        overlap_matrix = np.empty((old_states, new_states))
+        for i, old_state in enumerate(old_states):
+            for j, new_state in enumerate(new_states):
+                overlap_matrix[i, j] = make_overlap(old_state, new_state)
+
+        So the old states run along the rows. Thats why the old_state index
+        comes first in the 'indices' tuple.
+        """
+
+        # Overlap with previous cycle is the default
+        indices = (-2, -1)
+        if self.ovlp_with == "first":
+            indices = (-1, 0)
+        return indices
 
     def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2,
                       ao_ovlp=None):
@@ -95,15 +119,11 @@ class OverlapCalculator(Calculator):
         return overlaps
 
     def get_tden_overlaps(self, ao_ovlp=None):
-        # Overlap with previous cycle is the default
-        indices = (-1, -2)
-        if self.ovlp_with == "first":
-            indices = (-1, 0)
-        cur, prev = indices
-        mo_coeffs1 = self.mo_coeff_list[cur]
-        ci_coeffs1 = self.ci_coeff_list[cur]
-        mo_coeffs2 = self.mo_coeff_list[prev]
-        ci_coeffs2 = self.ci_coeff_list[prev]
+        old, new = self.get_indices()
+        mo_coeffs1 = self.mo_coeff_list[old]
+        ci_coeffs1 = self.ci_coeff_list[old]
+        mo_coeffs2 = self.mo_coeff_list[new]
+        ci_coeffs2 = self.ci_coeff_list[new]
         overlaps = self.tden_overlaps(mo_coeffs1, ci_coeffs1,
                                       mo_coeffs2, ci_coeffs2,
                                       ao_ovlp=ao_ovlp)
@@ -142,12 +162,9 @@ class OverlapCalculator(Calculator):
             mos_inv = np.linalg.inv(self.mo_coeff_list[-1])
             ao_ovlp = mos_inv.dot(mos_inv.T)
 
-        indices = (-1, -2)
-        if self.ovlp_with == "first":
-            indices = (-1, 0)
-        ind_1, ind_2 = indices
-        ntos_1 = self.nto_list[ind_1]
-        ntos_2 = self.nto_list[ind_2]
+        old, new = self.get_indices()
+        ntos_1 = self.nto_list[old]
+        ntos_2 = self.nto_list[new]
         if org:
             overlaps = self.nto_org_overlaps(ntos_1, ntos_2, ao_ovlp)
         else:
@@ -207,16 +224,14 @@ class OverlapCalculator(Calculator):
             "roots": np.array(self.roots_list, dtype=int),
             "all_energies": np.array(self.all_energies_list, dtype=float),
             "root_flips": np.array(self.root_flips_list, dtype=bool),
+            "overlap_matrices": np.array(self.overlap_matrices, dtype=float),
         }
-        # if self.nto_list:
-            # data_dict["ntos"] = self.nto_list
 
-        # with open(self.dump_fn, "w") as handle:
-            # yaml.dump(data_dict, handle)
-        # self.log(f"Saved OverlapCalculator data to '{self.dump_fn}'")
         with h5py.File(self.dump_fn, "w") as handle:
             for key, val in data_dict.items():
                 handle.create_dataset(name=key, dtype=val.dtype, data=val)
+            handle.create_dataset(name="ovlp_type", data=np.string_(self.ovlp_type))
+            handle.create_dataset(name="ovlp_with", data=np.string_(self.ovlp_with))
 
     def store_overlap_data(self, atoms, coords):
         mos_fn, mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data()
@@ -266,12 +281,8 @@ class OverlapCalculator(Calculator):
         # We can only run a double molecule calculation if it is
         # implemented for the specific calculator, so we have to check it.
         if self.double_mol and hasattr(self, "run_double_mol_calculation"):
-            # Overlap with previous cycle is the default
-            indices = (-1, -2)
-            if self.ovlp_with == "first":
-                indices = (-1, 0)
-            cur, prev = indices
-            two_coords = self.coords_list[cur], self.coords_list[prev]
+            old, new = self.get_indices()
+            two_coords = self.coords_list[old], self.coords_list[new]
             ao_ovlp = self.run_double_mol_calculation(atoms, *two_coords)
         elif (self.double_mol is False) and (self.ovlp_type == "wf"):
             mos_inv = np.linalg.inv(self.mo_coeff_list[-1])
@@ -295,7 +306,12 @@ class OverlapCalculator(Calculator):
         else:
             raise Exception("Invalid overlap specifier! Use one of "
                             "'tden'/'wf'/'nto'!")
+        self.overlap_matrices.append(overlaps)
 
+        # Now we have to select the row of the overlap matrix, that
+        # corresponds to the previous root and find out which root
+        # at the current geometry has the highest overlap. We then continue
+        # with the new root.
         prev_root = self.root
         self.log(f"Previous root is {prev_root}.")
         if self.ovlp_with == "first":

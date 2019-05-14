@@ -456,6 +456,60 @@ def plot_all_energies():
     plt.show()
 
 
+def plot_overlaps(thresh=.1):
+    dump_fn = "overlap_data.h5"
+    with h5py.File(dump_fn) as handle:
+        overlaps = handle["overlap_matrices"][:]
+        ovlp_type = handle["ovlp_type"][()].decode()
+        ovlp_with = handle["ovlp_with"][()].decode()
+    overlaps[np.abs(overlaps) < thresh] = np.nan
+
+    fig, ax = plt.subplots()
+
+    n_states = overlaps[0].shape[0]
+    def between(i):
+        if ovlp_with == "first":
+            return (0, i+1)
+        elif ovlp_with == "previous":
+            return (i, i+1)
+        else:
+            raise Exception("I didn't expect that ;)")
+
+    def draw(i):
+        fig.clf()
+        ax = fig.add_subplot("111")
+        o = overlaps[i]
+        im = ax.imshow(o, vmin=0, vmax=1)
+        # fig.colorbar(im)
+        ax.grid(color="#CCCCCC", linestyle='--', linewidth=1)
+        ax.set_xticks(np.arange(n_states, dtype=np.int))
+        ax.set_yticks(np.arange(n_states, dtype=np.int))
+        ax.set_xlabel("new states")
+        ax.set_ylabel("old states")
+        for (l,k), value in np.ndenumerate(o):
+            if np.isnan(value):
+                continue
+            value_str = f"{abs(value):.2f}"
+            ax.text(k, l, value_str, ha='center', va='center')
+        i, j = between(i)
+        fig.suptitle(f"{ovlp_type} overlap between {i:03d} and {j:03d}")
+        fig.canvas.draw()
+    draw(0)
+
+    i = 0
+    def press(event):
+        nonlocal i
+        if event.key == "left":
+            i = max(0, i-1)
+        elif event.key == "right":
+            i = min(len(overlaps)-1, i+1)
+        else:
+            return
+        draw(i)
+    fig.canvas.mpl_connect("key_press_event", press)
+    plt.show()
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--first", type=int,
@@ -486,6 +540,7 @@ def parse_args(args):
     group.add_argument("--all_energies", "-a", action="store_true",
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
+    group.add_argument("--overlaps", "-o", action="store_true")
 
     return parser.parse_args(args)
 
@@ -509,6 +564,8 @@ def run():
         plot_aneb()
     elif args.all_energies:
         plot_all_energies()
+    elif args.overlaps:
+        plot_overlaps()
 
 
 if __name__ == "__main__":
