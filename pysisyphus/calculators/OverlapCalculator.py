@@ -80,6 +80,10 @@ class OverlapCalculator(Calculator):
             indices = (-1, 0)
         return indices
 
+    def get_wfow_overlaps(self, ao_ovlp=None):
+        old, new = self.get_indices()
+        return self.wfow.overlaps(old, new, ao_ovlp)
+
     def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2,
                       ao_ovlp=None):
         """
@@ -291,7 +295,7 @@ class OverlapCalculator(Calculator):
                      "WFOverlap.")
 
         if ovlp_type == "wf":
-            overlap_mats = self.wfow.overlaps(ao_ovlp)
+            overlap_mats = self.get_wfow_overlaps(ao_ovlp)
             overlaps = np.abs(overlap_mats[2])
             # overlaps = overlaps**2
         elif ovlp_type == "tden":
