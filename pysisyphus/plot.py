@@ -495,7 +495,10 @@ def plot_overlaps(thresh=.1):
             value_str = f"{abs(value):.2f}"
             ax.text(k, l, value_str, ha='center', va='center')
         i, j = between(i)
-        fig.suptitle(f"{ovlp_type} overlap between {i:03d} and {j:03d}")
+        root_i = roots[i]
+        root_j = roots[j]
+        fig.suptitle(f"{ovlp_type} overlap between {i:03d} and {j:03d}\n"
+                     f"old root: {root_i}, new root: {root_j}")
         fig.canvas.draw()
     draw(0)
 
