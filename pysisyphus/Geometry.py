@@ -1,5 +1,4 @@
 from collections import Counter, namedtuple
-import logging
 import subprocess
 import tempfile
 
@@ -20,7 +19,8 @@ class Geometry:
         "redund": RedundantCoords,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart", comment=""):
+    def __init__(self, atoms, coords, coord_type="cart", comment="",
+                 prim_indices=None):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -39,15 +39,25 @@ class Geometry:
             and redundand (redund) are supported.
         comment : str, optional
             Comment string.
+        prim_indices : iterable of shape (3, (bonds, bends, dihedrals))
+            Iterable containing definitions for primitive internal coordinates.
+            Three items are expected in the iterable: the first one should
+            contain integer pairs, defining bonds between atoms, the next one
+            should contain integer triples containing bends, and finally
+            integer quadrupel for dihedrals.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords)
 
+        if (prim_indices is not None) and coord_type == "cart":
+            coord_type = "redund"
+            print("coord_type is set to 'cart' but primitive indices were "
+                  "provided. Using 'redund' coord_type.")
         self.coord_type = coord_type
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            self.internal = coord_class(atoms, coords)
+            self.internal = coord_class(atoms, coords, prim_indices=prim_indices)
         else:
             self.internal = None
         self.comment = comment
@@ -79,7 +89,11 @@ class Geometry:
         geom : Geometry
             New Geometry object with the same atoms and coordinates.
         """
-        return Geometry(self.atoms, self._coords, self.coord_type)
+        prim_indices = None
+        if self.coord_type != "cart":
+            prim_indices = self.internal.prim_indices
+        return Geometry(self.atoms, self._coords, self.coord_type,
+                        prim_indices=prim_indices)
 
     def atom_indices(self):
         """Dict with atom types as key and corresponding indices as values.
@@ -174,6 +188,14 @@ class Geometry:
     @coords3d.setter
     def coords3d(self, coords3d):
         self._coords = coords3d.flatten()
+
+    @property
+    def cart_coords(self):
+        return self._coords
+
+    @cart_coords.setter
+    def cart_coords(self, coords):
+        self._coords = coords
 
     @property
     def coords_by_type(self):

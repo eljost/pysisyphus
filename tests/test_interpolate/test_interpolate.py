@@ -3,6 +3,7 @@
 from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
 from pysisyphus.interpolate.LST import LST
 from pysisyphus.interpolate.IDPP import IDPP
+from pysisyphus.interpolate import interpolate_all
 
 
 def test_lst():
@@ -28,6 +29,97 @@ def test_idpp():
     idpp.all_geoms_to_trj("idpp_opt.trj")
 
 
+def test_redund():
+    import numpy as np
+
+    from pysisyphus.InternalCoordinates import RedundantCoords
+    from pysisyphus.Geometry import Geometry
+    from pysisyphus.xyzloader import write_geoms_to_trj
+
+    np.set_printoptions(suppress=True, precision=4)
+
+    # initial = geom_from_xyz_file("bare_split.image_000.xyz", coord_type="redund")
+    # final = geom_from_xyz_file("bare_split.image_056.xyz", coord_type="redund")
+
+    initial = geom_from_xyz_file("01_ed.xyz", coord_type="redund")
+    final = geom_from_xyz_file("01_prod.xyz", coord_type="redund")
+
+    # initial = geom_from_library("hcn.xyz", coord_type="redund")
+    # final = geom_from_library("nhc.xyz", coord_type="redund")
+
+    def to_set(iterable):
+        return set([tuple(_) for _ in iterable])
+
+    def get_ind_sets(geom):
+        bonds, bends, dihedrals = geom.internal.prim_indices
+        return to_set(bonds), to_set(bends), to_set(dihedrals)
+
+    def merge_coordinate_definitions(geom1, geom2):
+        bonds1, bends1, dihedrals1 = get_ind_sets(initial)
+        bonds2, bends2, dihedrals2 = get_ind_sets(final)
+        # Form new superset of coordinate definitions that contain
+        # all definitions from geom1 and geom2.
+        all_bonds = bonds1 | bonds2
+        all_bends = bends1 | bends2
+        all_dihedrals = dihedrals1 | dihedrals2
+        all_prim_indices = (all_bonds, all_bends, all_dihedrals)
+        # Check if internal coordinates that are only present in one
+        # of the two geometries are valid in the other. If not we omit
+        # this coordinate definition in the end.
+        redundant = RedundantCoords(geom1.atoms, geom1.cart_coords,
+                                    prim_indices=all_prim_indices)
+        bonds, bends, dihedrals = redundant.prim_indices
+        return to_set(bonds), to_set(bends), to_set(dihedrals)
+
+    bonds1, bends1, dihedrals1 = merge_coordinate_definitions(initial, final)
+    bonds2, bends2, dihedrals2 = merge_coordinate_definitions(final, initial)
+    # Only use primitive coordinate definitions that are valid for both
+    valid_bonds = bonds1 & bonds2
+    valid_bends = bends1 & bends2
+    valid_dihedrals = dihedrals1 & dihedrals2
+    prim_indices = (valid_bonds, valid_bends, valid_dihedrals)
+
+    geom1 = Geometry(initial.atoms, initial.cart_coords,
+                     coord_type="redund", prim_indices=prim_indices
+    )
+    geom2 = Geometry(final.atoms, final.cart_coords,
+                     coord_type="redund", prim_indices=prim_indices
+    )
+    d = geom2.coords - geom1.coords
+    c1 = geom1.coords.copy()
+    c2 = geom2.coords.copy()
+    import pdb; pdb.set_trace()
+
+    def update_internals(prev_internals, new_internals, bonds_bends, d):
+        internal_diffs = np.array(new_internals - prev_internals)
+        dihedral_diffs = internal_diffs[bonds_bends:]
+        # Find differences that are shifted by 2*pi
+        shifted_by_2pi = np.abs(np.abs(dihedral_diffs) - 2*np.pi) < np.pi/2
+        new_dihedrals = new_internals[bonds_bends:]
+        new_dihedrals[shifted_by_2pi] -= 2*np.pi * np.sign(dihedral_diffs[shifted_by_2pi])
+
+        new_internals[bonds_bends:] = new_dihedrals
+        return new_internals
+
+    bonds_bends = len(valid_bonds) + len(valid_bends)
+    d_diheds = d[bonds_bends:]
+    coords2_ = update_internals(geom1.coords, geom2.coords, bonds_bends, d)
+    d_ = coords2_ - geom1.coords
+    num = 20
+    base_step = d_ / (num-1)
+    # import pdb; pdb.set_trace()
+    geoms = [geom1, ]
+    for i in range(num):
+        print(i)
+        step = i*base_step
+        new_geom = geoms[-1].copy()
+        new_coords = new_geom.coords + step
+        new_geom.coords = new_coords
+        geoms.append(new_geom)
+        write_geoms_to_trj(geoms, f"redund_{i:02d}.trj")
+
+
 if __name__ == "__main__":
     # test_lst()
-    test_idpp()
+    # test_idpp()
+    test_redund()

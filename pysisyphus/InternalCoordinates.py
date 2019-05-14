@@ -70,8 +70,11 @@ class PrimitiveCoord:
 class RedundantCoords:
 
     RAD_175 = 3.05432619
+    BEND_MIN_DEG = 45
+    BEND_MAX_DEG = 170
 
-    def __init__(self, atoms, cart_coords, bond_factor=1.3):
+    def __init__(self, atoms, cart_coords, bond_factor=1.3,
+                 prim_indices=None):
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
@@ -81,9 +84,21 @@ class RedundantCoords:
         self.dihedral_indices = list()
         self.hydrogen_bond_indices = list()
 
-        self.set_primitive_indices()
+        if prim_indices is None:
+            self.set_primitive_indices()
+        else:
+            to_arr = lambda _: np.array(list(_), dtype=int)
+            bonds, bends, dihedrals = prim_indices
+            # We accept all bond indices. What could possibly go wrong?! :)
+            self.bond_indices = to_arr(bonds)
+            valid_bends = [inds for inds in bends
+                           if self.is_valid_bend(inds)]
+            self.bending_indices = to_arr(valid_bends)
+            valid_dihedrals = [inds for inds in dihedrals if
+                               self.is_valid_dihedral(inds)]
+            self.dihedral_indices = to_arr(valid_dihedrals)
         self._prim_coords = self.calculate(self.cart_coords)
-        self._coords = [pc.val for pc in self._prim_coords]
+        self._coords = np.array([pc.val for pc in self._prim_coords])
 
     def log(self, message):
         logger = logging.getLogger("internal_coords")
@@ -142,6 +157,10 @@ class RedundantCoords:
     def coord_indices(self):
         ic_ind_tuples = [tuple(ic.inds) for ic in self._prim_coords]
         return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
+
+    @property
+    def c3d(self):
+        return self.cart_coords.reshape(-1, 3)
 
     def set_rho(self):
         # TODO: remove this as it is already in optimizers/guess_hessians
@@ -306,27 +325,28 @@ class RedundantCoords:
         (central, ) = central_set
         return (terminal1, central, terminal2), central
 
+    def is_valid_bend(self, bend_ind):
+        val = self.calc_bend(self.c3d, bend_ind)
+        deg = np.rad2deg(val)
+        return self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
+
     def set_bending_indices(self):
-        c3d = self.cart_coords.reshape(-1, 3)
         bond_sets = {frozenset(bi) for bi in self.bond_indices}
         for bond_set1, bond_set2 in it.combinations(bond_sets, 2):
             union = bond_set1 | bond_set2
             if len(union) == 3:
                 as_tpl, _ = self.sort_by_central(bond_set1, bond_set2)
-                val = self.calc_bend(c3d, as_tpl)
-                deg = np.rad2deg(val)
-                if (deg > 170) or (deg < 45):
-                    self.log(f"Didn't create bend ({as_tpl}) with "
-                             f"value of {deg:.2f}°")
+                if not self.is_valid_bend(as_tpl):
+                    self.log(f"Didn't create bend ({as_tpl})")
+                             # f" with value of {deg:.3f}°")
                     continue
                 self.bending_indices.append(as_tpl)
         self.bending_indices = np.array(self.bending_indices, dtype=int)
 
     def is_valid_dihedral(self, dihedral_ind, thresh=1e-6):
-        coords3d = self.cart_coords.reshape(-1, 3)
         # Check for linear atoms
-        first_angle = self.calc_bend(coords3d, dihedral_ind[:3])
-        second_angle = self.calc_bend(coords3d, dihedral_ind[1:])
+        first_angle = self.calc_bend(self.c3d, dihedral_ind[:3])
+        second_angle = self.calc_bend(self.c3d, dihedral_ind[1:])
         pi_thresh = np.pi - thresh
         return ((abs(first_angle) < pi_thresh)
                 and (abs(second_angle) < pi_thresh)
@@ -588,7 +608,7 @@ class RedundantCoords:
             if cart_rms < cart_rms_thresh:
                 self.log("Internal to cartesian transformation converged!")
                 break
-            self._coords = new_internals
+            self._coords = np.array(new_internals)
         return cur_cart_coords - self.cart_coords
 
     def __str__(self):
