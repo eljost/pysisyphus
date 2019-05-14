@@ -96,15 +96,23 @@ class PySCF(OverlapCalculator):
 
 
 if __name__ == "__main__":
+    import numpy as np
+
+    from pysisyphus.constants import ANG2BOHR
     from pysisyphus.helpers import geom_from_library
     from pysisyphus.Geometry import Geometry
     from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
-    pyscf_ = PySCF(method="dft", xc="b3lyp", basis="631g", pal=8)
+    pyscf_ = PySCF(method="dft", xc="b3lyp", basis="631g", pal=1)
     # geom = geom_from_library("birkholz/artemisin.xyz")
-    geom = geom_from_library("hcn.xyz")
+    # geom = geom_from_library("hcn.xyz")
+    atoms = "O H H".split()
+    coords = np.array(((0, 0, 0), (0., -0.757, 0.587), (0., 0.757, 0.587)))*ANG2BOHR
+    geom = Geometry(atoms, coords)
     print(geom)
     geom.set_calculator(pyscf_)
-    geom.forces
-    opt = RFOptimizer(geom)
-    opt.run()
+    np.set_printoptions(suppress=True, precision=4)
+    f = geom.forces.reshape(-1, 3)
+    print(f)
+    # opt = RFOptimizer(geom)
+    # opt.run()
