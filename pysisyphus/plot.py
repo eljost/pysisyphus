@@ -462,7 +462,10 @@ def plot_overlaps(thresh=.1):
         overlaps = handle["overlap_matrices"][:]
         ovlp_type = handle["ovlp_type"][()].decode()
         ovlp_with = handle["ovlp_with"][()].decode()
+        roots = handle["roots"][:]
     overlaps[np.abs(overlaps) < thresh] = np.nan
+    print(f"Found {len(overlaps)} overlap matrices.")
+    print(f"Roots: {roots}")
 
     fig, ax = plt.subplots()
 
