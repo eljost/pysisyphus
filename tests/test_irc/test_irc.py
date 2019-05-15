@@ -8,6 +8,7 @@ from pysisyphus.irc.Euler import Euler
 from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 from pysisyphus.irc.IMKMod import IMKMod
+from pysisyphus.irc import RK4
 
 
 def get_geom():
@@ -37,6 +38,17 @@ def test_imk():
     # }
     irc_kwargs = {}
     irc = IMKMod(geom, **irc_kwargs)
+    irc.run()
+
+    return irc
+
+
+def test_rk4():
+    geom = AnaPot.get_geom((0.61173, 1.49297, 0))
+    irc_kwargs = {
+        "step_length": 0.2,
+    }
+    irc = RK4(geom, **irc_kwargs)
     irc.run()
 
     return irc
@@ -72,7 +84,8 @@ def plot_anapot_irc(irc):
 
 
 if __name__ == "__main__":
-    irc = test_imk()
+    # irc = test_imk()
+    irc = test_rk4()
     plot_anapot_irc(irc)
     # irc = test_gs()
     # plot_anapot_irc(irc)
