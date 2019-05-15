@@ -397,11 +397,11 @@ class Turbomole(OverlapCalculator):
             ci_coeffs = [cc["vector"] for cc in ci_coeffs]
             all_energies = np.full(len(exc_energies)+1, gs_energy)
             all_energies[1:] += exc_energies
-            s1 = np.array(ci_coeffs[0])
-            # XmY, XpY = s1.reshape(2, -1)
-            XpY, XmY = s1.reshape(2, -1)
-            X = (XmY+XpY)/2
-            Y = XpY-X
+            # s1 = np.array(ci_coeffs[0])
+            # # XmY, XpY = s1.reshape(2, -1)
+            # XpY, XmY = s1.reshape(2, -1)
+            # X = (XmY+XpY)/2
+            # Y = XpY-X
         # Parse eigenvectors from ricc2 calculation
         else:
             ci_coeffs = [self.parse_cc2_vectors(ccre)
