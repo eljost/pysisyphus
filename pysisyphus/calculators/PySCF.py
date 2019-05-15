@@ -10,29 +10,22 @@ class PySCF(OverlapCalculator):
 
     conf_key = "pyscf"
     drivers = {
+        # key: (method, unrestricted?)
         ("dft", False): pyscf.dft.RKS,
         ("dft", True): pyscf.dft.UKS,
         ("scf", False): pyscf.scf.RHF,
         ("scf", True): pyscf.scf.UHF,
     }
-    # grad_drivers = {
-        # ("dft", False): pyscf.grad.RKS,
-        # ("dft", True): pyscf.grad.UKS,
-        # ("scf", False): pyscf.grad.RHF,
-        # ("scf", True): pyscf.grad.UHF,
-    # }
 
-    def __init__(self, method, basis, xc=None, mem=2000, **kwargs):
+    def __init__(self, basis, xc=None, mem=2000, **kwargs):
         super().__init__(**kwargs)
 
-        self.method = method
         self.basis = basis
         self.xc = xc
         self.mem = mem
 
         self.out_fn = "pyscf.out"
         self.unrestricted = self.mult > 1
-        # self.to_keep = ("pyscf.inp", "pyscf.out", )
 
         lib.num_threads(self.pal)
 
@@ -44,24 +37,20 @@ class PySCF(OverlapCalculator):
         else:
             driver = self.drivers[("scf", self.unrestricted)]
             mf = driver(mol)
+        mf.conv_tol = 1e-8
+        mf.max_cycle = 150
         return mf
-
-    # def get_grad_driver(self):
-        # if self.xc:
-            # driver = self.grad_drivers[("dft", self.unrestricted)]
-        # else:
-            # driver = self.grad_drivers[("scf", self.unrestricted)]
-        # return driver
 
     def prepare_input(self, atoms, coords):
         mol = gto.Mole()
-        mol.atom = [(atom, c) for atom, c in zip(atoms, coords)]
+        mol.atom = [(atom, c) for atom, c
+                    in zip(atoms, coords.reshape(-1, 3))]
         mol.basis = self.basis
         mol.unit = "Bohr"
         mol.charge = self.charge
         mol.spin = self.mult - 1
         mol.symmetry = False
-        mol.verbose = 5
+        mol.verbose = 4
         mol.output = self.out_fn
         mol.max_memory = self.mem * self.pal
         mol.build()
@@ -80,6 +69,8 @@ class PySCF(OverlapCalculator):
     def get_forces(self, atoms, coords):
         mol = self.prepare_input(atoms, coords)
         mf = self.get_driver(mol)
+        # >>> mf.chkfile = '/path/to/chkfile'
+        # >>> mf.init_guess = 'chkfile'
         mf.kernel()
         grad_driver = mf.Gradients()
         gradient = grad_driver.kernel()
@@ -97,22 +88,22 @@ class PySCF(OverlapCalculator):
 
 if __name__ == "__main__":
     import numpy as np
-
-    from pysisyphus.constants import ANG2BOHR
-    from pysisyphus.helpers import geom_from_library
-    from pysisyphus.Geometry import Geometry
-    from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-
-    pyscf_ = PySCF(method="dft", xc="b3lyp", basis="631g", pal=1)
-    # geom = geom_from_library("birkholz/artemisin.xyz")
-    # geom = geom_from_library("hcn.xyz")
-    atoms = "O H H".split()
-    coords = np.array(((0, 0, 0), (0., -0.757, 0.587), (0., 0.757, 0.587)))*ANG2BOHR
-    geom = Geometry(atoms, coords)
-    print(geom)
-    geom.set_calculator(pyscf_)
     np.set_printoptions(suppress=True, precision=4)
+    from pysisyphus.helpers import geom_from_library
+
+    pyscf_ = PySCF(basis="3-21g", pal=4)
+    geom = geom_from_library("birkholz/vitamin_c.xyz")
+    geom.set_calculator(pyscf_)
     f = geom.forces.reshape(-1, 3)
+    print("PySCF")
     print(f)
-    # opt = RFOptimizer(geom)
-    # opt.run()
+
+    ref_geom = geom.copy()
+    from pysisyphus.calculators.Gaussian16 import Gaussian16
+    g16 = Gaussian16("hf/3-21G", pal=4)
+    ref_geom.set_calculator(g16)
+    f_ref = ref_geom.forces.reshape(-1, 3)
+    print("Gaussian16")
+    print(f_ref)
+
+    np.testing.assert_allclose(f, f_ref, rtol=5e-3)
