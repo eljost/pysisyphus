@@ -271,6 +271,10 @@ def plot_cosgrad():
         all_nebs.append(neb)
         pf = neb.perpendicular_forces.reshape(num_images, -1)
         all_perp_forces.append(pf)
+
+    # Calculate norms of true force
+    # Shape (cycles, images, coords)
+    force_norms = np.linalg.norm(forces, axis=2)
     """
     last_neb = all_nebs[-1]
     for img in last_neb.images:
@@ -298,11 +302,13 @@ def plot_cosgrad():
     all_rms_forces = np.array(all_rms_forces)
 
     cmap = plt.get_cmap("Greys")
-    fig, (ax1, ax2) = plt.subplots(2)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
     # Using dataframes seems to be the easiest way to include
     # the colormap... Axis.plot() cant be used with cmap.
     max_df = pd.DataFrame(all_max_forces.T)
     rms_df = pd.DataFrame(all_rms_forces.T)
+    norm_df = pd.DataFrame(force_norms.T)
+
     kwargs = {
         "colormap": cmap,
         "logy": True,
@@ -317,13 +323,20 @@ def plot_cosgrad():
             title="max(perpendicular grad.)",
             **kwargs,
     )
-    ax1.set_xlabel("Image")
+
     ax2 = rms_df.plot(
             ax=ax2,
             title="rms(perpendicular grad.)",
             **kwargs,
     )
-    ax2.set_xlabel("Image")
+
+    ax3 =norm_df.plot(
+            ax=ax3,
+            title="norm(true grad.)",
+            **kwargs,
+    )
+    ax3.set_xlabel("Image")
+
     plt.tight_layout()
     plt.show()
 
