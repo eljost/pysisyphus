@@ -31,6 +31,7 @@ class OverlapCalculator(Calculator):
         self.ovlp_with = ovlp_with
         self.use_ntos = use_ntos
 
+        self.wfow = None
         self.mo_coeff_list = list()
         self.ci_coeff_list = list()
         self.nto_list = list()
