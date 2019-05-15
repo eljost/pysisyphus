@@ -78,7 +78,7 @@ class OverlapCalculator(Calculator):
         # Overlap with previous cycle is the default
         indices = (-2, -1)
         if self.ovlp_with == "first":
-            indices = (-1, 0)
+            indices = (0, -1)
         return indices
 
     def get_wfow_overlaps(self, ao_ovlp=None):
