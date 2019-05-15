@@ -103,7 +103,7 @@ class Optimizer:
         return conv_dict
 
     def save_also(self):
-        pass
+        return {}
 
     def restart(self):
         with open(self.image_results_fn) as handle:
