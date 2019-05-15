@@ -561,7 +561,6 @@ class RedundantCoords:
         remaining_int_step = step
         cur_cart_coords = self.cart_coords.copy()
         cur_internals = self.calculate(cur_cart_coords, attr="val")
-        np.savetxt("pysis_initial_interals", cur_internals)
         target_internals = cur_internals + step
         Bt_inv = self.Bt_inv
 
