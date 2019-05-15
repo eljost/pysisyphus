@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
+import numpy as np
 import pyscf
-from pyscf import gto, grad, lib
+from pyscf import gto, grad, lib, hessian
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 
@@ -15,16 +16,25 @@ class PySCF(OverlapCalculator):
         ("dft", True): pyscf.dft.UKS,
         ("scf", False): pyscf.scf.RHF,
         ("scf", True): pyscf.scf.UHF,
-        # ("mp2", False): pyscf.mp.MP2,
-        # ("mp2", True): pyscf.mp.UMP2,
+        ("mp2", False): pyscf.mp.MP2,
+        ("mp2", True): pyscf.mp.UMP2,
+    }
+    multisteps = {
+        "scf": ("scf", ),
+        "dft": ("dft", ),
+        "mp2": ("scf", "mp2"),
+        "tddft": ("dft", "tddft"),
     }
 
-    def __init__(self, basis, xc=None, method=None,  mem=2000, **kwargs):
+    def __init__(self, basis, xc=None, method="scf",  mem=2000, **kwargs):
         super().__init__(**kwargs)
 
         self.basis = basis
         self.xc = xc
         self.method = method
+        if self.xc and self.method != "tddft":
+            self.method = "dft"
+        # self.multistep = self.method in ("mp2 tddft".split())
         self.mem = mem
 
         self.out_fn = "pyscf.out"
@@ -32,21 +42,23 @@ class PySCF(OverlapCalculator):
 
         lib.num_threads(self.pal)
 
-    def get_driver(self, mol):
-        if self.xc:
-            driver = self.drivers[("dft", self.unrestricted)]
+    def get_driver(self, step, mol=None, mf=None):
+        if mol and (step == "dft"):
+            driver = self.drivers[(step, self.unrestricted)]
             driver.xc = self.xc
             mf = driver(mol)
-        # elif self.method == "mp2":
-            # hf_driver = self.drivers[("scf", self.unrestricted)]
-            # mf = hf_driver(mol)
-            # mp2_driver = self.drivers[("mp2", self.unrestricted)]
-            # mf = mp2_driver(mf)
-        else:
-            driver = self.drivers[("scf", self.unrestricted)]
+            mf.conv_tol = 1e-8
+            mf.max_cycle = 150
+        elif mol and (step == "scf"):
+            driver = self.drivers[(step, self.unrestricted)]
             mf = driver(mol)
-        mf.conv_tol = 1e-8
-        mf.max_cycle = 150
+            mf.conv_tol = 1e-8
+            mf.max_cycle = 150
+        elif mf and (step == "mp2"):
+            mp2_mf = self.drivers[(step, self.unrestricted)]
+            mf = mp2_mf(mf)
+        else:
+            raise Exception("Unknown method!")
         return mf
 
     def prepare_input(self, atoms, coords):
@@ -58,7 +70,7 @@ class PySCF(OverlapCalculator):
         mol.charge = self.charge
         mol.spin = self.mult - 1
         mol.symmetry = False
-        mol.verbose = 4
+        mol.verbose = 5
         mol.output = self.out_fn
         mol.max_memory = self.mem * self.pal
         mol.build()
@@ -67,53 +79,53 @@ class PySCF(OverlapCalculator):
 
     def get_energy(self, atoms, coords):
         mol = self.prepare_input(atoms, coords)
-        mf = self.get_driver(mol)
-        mf.kernel()
+        mf = self.run(mol)
         results = {
-            "energy": mf.energy_tot(),
+            "energy": mf.e_tot,
         }
         return results
 
     def get_forces(self, atoms, coords):
         mol = self.prepare_input(atoms, coords)
-        mf = self.get_driver(mol)
+        mf = self.run(mol)
         # >>> mf.chkfile = '/path/to/chkfile'
         # >>> mf.init_guess = 'chkfile'
-        mf.kernel()
         grad_driver = mf.Gradients()
         gradient = grad_driver.kernel()
 
         results = {
-            "energy": mf.energy_tot(),
+            "energy": mf.e_tot,
             "forces": -gradient.flatten(),
         }
 
         return results
 
+    def get_hessian(self, atoms, coords):
+        mol = self.prepare_input(atoms, coords)
+        mf = self.run(mol)
+        H = mf.Hessian().kernel()
+
+        # The returned hessian is 4d ... ok. This probably serves a purpose
+        # that I don't understand. We transform H to a nice 2d array.
+        H = np.hstack(np.concatenate(H, axis=1))
+        results = {
+            "energy": mf.e_tot,
+            "hessian": H,
+        }
+        return results
+
+    def run(self, mol):
+        steps = self.multisteps[self.method]
+        self.log(f"Running steps '{steps}' for method {self.method}")
+        for i, step in enumerate(steps):
+            if i == 0:
+                mf = self.get_driver(step, mol=mol)
+            else:
+                mf = self.get_driver(step, mf=prev_mf)
+            mf.kernel()
+            self.log(f"Completed {step} step")
+            prev_mf = mf
+        return mf
+
     def __str__(self):
         return f"PySCF({self.name})"
-
-
-if __name__ == "__main__":
-    import numpy as np
-    np.set_printoptions(suppress=True, precision=4)
-    from pysisyphus.helpers import geom_from_library
-
-    # pyscf_ = PySCF(method="mp2", basis="3-21g", pal=4)
-    pyscf_ = PySCF(basis="3-21g", pal=4)
-    geom = geom_from_library("birkholz/vitamin_c.xyz")
-    geom.set_calculator(pyscf_)
-    f = geom.forces.reshape(-1, 3)
-    print("PySCF")
-    print(f)
-
-    ref_geom = geom.copy()
-    from pysisyphus.calculators.Gaussian16 import Gaussian16
-    g16 = Gaussian16("hf/3-21G", pal=4)
-    # g16 = Gaussian16("mp2/3-21G", pal=4)
-    ref_geom.set_calculator(g16)
-    f_ref = ref_geom.forces.reshape(-1, 3)
-    print("Gaussian16")
-    print(f_ref)
-
-    np.testing.assert_allclose(f, f_ref, rtol=5e-3)
