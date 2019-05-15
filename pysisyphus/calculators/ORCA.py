@@ -438,7 +438,7 @@ class ORCA(OverlapCalculator):
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
         fake_mos_fn = Path(self.make_fn("mos"))
-        if not fake_mos_fn.exists:
+        if not fake_mos_fn.exists():
             fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
             with open(fake_mos_fn, "w") as handle:
                 handle.write(fake_mos_str)
