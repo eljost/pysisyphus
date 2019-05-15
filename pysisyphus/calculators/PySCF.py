@@ -91,7 +91,13 @@ class PySCF(OverlapCalculator):
         mol.spin = self.mult - 1
         mol.symmetry = False
         mol.verbose = 4
-        mol.output = self.out_fn
+        # Personally, I patched mole.py so it doesn't print
+        # messages regarding the output-file for verbose > QUIET.
+        # Just uncomment the lines after
+        #   if self.verbose > logger.QUIET:
+        #       ...
+        # in 'mole.Mole.build'.
+        mol.output = self.make_fn(self.out_fn)
         mol.max_memory = self.mem * self.pal
         mol.build()
 
@@ -157,7 +163,7 @@ class PySCF(OverlapCalculator):
             mf.kernel()
             self.log(f"Completed {step} step")
             prev_mf = mf
-        self.calc_number += 1
+        self.calc_counter += 1
         return mf
 
     def prepare_overlap_data(self):
