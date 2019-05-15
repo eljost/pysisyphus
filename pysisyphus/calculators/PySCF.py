@@ -15,13 +15,16 @@ class PySCF(OverlapCalculator):
         ("dft", True): pyscf.dft.UKS,
         ("scf", False): pyscf.scf.RHF,
         ("scf", True): pyscf.scf.UHF,
+        # ("mp2", False): pyscf.mp.MP2,
+        # ("mp2", True): pyscf.mp.UMP2,
     }
 
-    def __init__(self, basis, xc=None, mem=2000, **kwargs):
+    def __init__(self, basis, xc=None, method=None,  mem=2000, **kwargs):
         super().__init__(**kwargs)
 
         self.basis = basis
         self.xc = xc
+        self.method = method
         self.mem = mem
 
         self.out_fn = "pyscf.out"
@@ -34,6 +37,11 @@ class PySCF(OverlapCalculator):
             driver = self.drivers[("dft", self.unrestricted)]
             driver.xc = self.xc
             mf = driver(mol)
+        # elif self.method == "mp2":
+            # hf_driver = self.drivers[("scf", self.unrestricted)]
+            # mf = hf_driver(mol)
+            # mp2_driver = self.drivers[("mp2", self.unrestricted)]
+            # mf = mp2_driver(mf)
         else:
             driver = self.drivers[("scf", self.unrestricted)]
             mf = driver(mol)
@@ -91,6 +99,7 @@ if __name__ == "__main__":
     np.set_printoptions(suppress=True, precision=4)
     from pysisyphus.helpers import geom_from_library
 
+    # pyscf_ = PySCF(method="mp2", basis="3-21g", pal=4)
     pyscf_ = PySCF(basis="3-21g", pal=4)
     geom = geom_from_library("birkholz/vitamin_c.xyz")
     geom.set_calculator(pyscf_)
@@ -101,6 +110,7 @@ if __name__ == "__main__":
     ref_geom = geom.copy()
     from pysisyphus.calculators.Gaussian16 import Gaussian16
     g16 = Gaussian16("hf/3-21G", pal=4)
+    # g16 = Gaussian16("mp2/3-21G", pal=4)
     ref_geom.set_calculator(g16)
     f_ref = ref_geom.forces.reshape(-1, 3)
     print("Gaussian16")
