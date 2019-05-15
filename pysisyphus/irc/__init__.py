@@ -1,10 +1,13 @@
 import logging
 
+from pysisyphus.irc.RK4 import RK4
+
 __all__ = [
     "DampedVelocityVerlet",
     "Euler",
     "GonzalesSchlegel",
     "IMKMod",
+    "RK4",
 ]
 
 logger = logging.getLogger("irc")

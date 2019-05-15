@@ -114,7 +114,10 @@ class IRC:
 
     def initial_displacement(self):
         """Returns a non-mass-weighted step in angstrom for an initial
-        displacement from the TS along the transition vector."""
+        displacement from the TS along the transition vector.
+
+        See https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
+        """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
         eigvals, eigvecs = np.linalg.eigh(self.geometry.mw_hessian)
         assert eigvals[0] < 0, "The hessian does not have any negative eigenvalues!"
