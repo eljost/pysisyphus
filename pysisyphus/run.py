@@ -39,6 +39,7 @@ CALC_DICT = {
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA.ORCA,
     "psi4": Psi4,
+    "pyscf": PySCF,
     "turbomole": Turbomole.Turbomole,
     "xtb": XTB.XTB,
 }
@@ -77,6 +78,7 @@ IRC_DICT = {
     "euler": Euler.Euler,
     "gs": GonzalesSchlegel.GonzalesSchlegel,
     "imk": IMKMod.IMKMod,
+    "rk4": RK4,
 }
 
 STOCASTIC_DICT = {
