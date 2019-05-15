@@ -9,7 +9,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class SciPyOptimizer(Optimizer):
 
-    def __init__(self, geometry, method, **kwargs):
+    def __init__(self, geometry, method="l-bfgs-b", **kwargs):
         super(SciPyOptimizer, self).__init__(geometry, **kwargs)
 
         if self.align:
@@ -18,7 +18,7 @@ class SciPyOptimizer(Optimizer):
         self.options = {
             "disp": True,
             "maxiter": self.max_cycles,
-            "gtol": 1e-2,
+            "gtol": 1e-3,
         }
 
     def callback(self, xk):
@@ -32,7 +32,6 @@ class SciPyOptimizer(Optimizer):
             self.tangents.append(self.geometry.get_tangents())
 
         self.check_convergence()
-        self.print_convergence()
 
         if self.dump:
             self.write_cycle_to_file()
@@ -58,7 +57,7 @@ class SciPyOptimizer(Optimizer):
         return forces_rms, -forces
 
     def run(self):
-        self.print_header()
+        # self.print_header()
         x0 = self.geometry.coords
         self.opt_res = minimize(self.fun, x0, jac=True, method=self.method,
                            callback=self.callback, options=self.options)
@@ -66,4 +65,3 @@ class SciPyOptimizer(Optimizer):
             print("Converged!")
         else:
             print("Didn't converge.")
-        # check if converged and print message
