@@ -4,13 +4,12 @@ import numpy as np
 
 from pysisyphus.helpers import fit_rigid, procrustes
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.closures import bfgs_multiply
 
 # [1] Nocedal, Wright - Numerical Optimization, 2006
 
 
 class LBFGS(Optimizer):
-    def __init__(self, geometry, alpha=1.0, keep_last=15,
+    def __init__(self, geometry, alpha=1.0, keep_last=10,
                  beta=1, **kwargs):
         self.alpha = alpha
         self.beta = beta
@@ -18,30 +17,10 @@ class LBFGS(Optimizer):
         self.keep_last = keep_last
         super().__init__(geometry, **kwargs)
 
-        self.sigmas = list()
+        self.steps_ = list()
         self.grad_diffs = list()
 
-    def prepare_opt(self):
-        if self.is_cos and self.align:
-            procrustes(self.geometry)
-        # Calculate initial forces before the first iteration
-        self.coords.append(self.geometry.coords)
-        self.forces.append(self.geometry.forces)
-        self.energies.append(self.geometry.energy)
-
-    def scale_by_max_step(self, steps):
-        steps_max = np.abs(steps).max()
-        step_norm = np.linalg.norm(steps)
-        self.log(f"Unscaled norm(step)={step_norm:.4f}")
-        if steps_max > self.max_step:
-            fact = self.max_step / steps_max
-            self.log(f"Scaling step with factor={fact:.4f}")
-            steps *= self.max_step / steps_max
-            step_norm = np.linalg.norm(steps)
-            self.log(f"Scaled norm(step)={step_norm:.4f}")
-        return steps
-
-    def restrict_step_components(self, steps):
+    def restrict_step(self, steps):
         too_big = np.abs(steps) > self.max_step
         self.log(f"Found {np.sum(too_big)} big step components.")
         signs = np.sign(steps[too_big])
@@ -49,75 +28,69 @@ class LBFGS(Optimizer):
         steps[too_big] = signs * self.max_step
         return steps
 
+    def bfgs_multiply(self, s_list, y_list, force, beta=1):
+        """Get a L-BFGS step.
+        
+        Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
+        q = -force
+        cycles = len(s_list)
+        alphas = list()
+        rhos = list()
+        # Store rho and alphas as they are also needed in the second loop
+        for i in reversed(range(cycles)):
+            s = s_list[i]
+            y = y_list[i]
+            rho = 1/y.dot(s)
+            rhos.append(rho)
+            alpha = rho * s.dot(q)
+            alphas.append(alpha)
+            q = q - alpha*y
+        # Restore original order, so that rho[i] = 1/s_list[i].dot(y_list[i]) etc.
+        alphas = alphas[::-1]
+        rhos = rhos[::-1]
+
+        r = q
+        if cycles > 0:
+            s = s_list[-1]
+            y = y_list[-1]
+            gamma = s.dot(y) / y.dot(y)
+            r = gamma * q
+        else:
+            r = beta * q
+        for i in range(cycles):
+            s = s_list[i]
+            y = y_list[i]
+            beta = rhos[i] * y.dot(r)
+            r = r + s*(alphas[i] - beta)
+
+        return r
+
     def optimize(self):
-        prev_coords = self.coords[-1]
-        prev_forces = self.forces[-1]
-
-        step = -bfgs_multiply(self.sigmas, self.grad_diffs, prev_forces,
-                              beta=self.beta)
-        step = self.alpha * self.restrict_step_components(step)
-
-        # step = self.scale_by_max_step(step)
-        # norm = np.linalg.norm(step)
-        # self.log(f"unscaled norm(step)={norm:.4f}")
-        # if norm > 0.1:
-            # step = 0.1 * step / norm
-        # norm = np.linalg.norm(step)
-        # self.log(f"scaled norm(step)={norm:.4f}")
-
-
-        new_coords = prev_coords + self.alpha*step
-
-        coords_tmp = prev_coords.copy()
-        forces_tmp = prev_forces.copy()
-
-        self.geometry.coords = new_coords
         if self.is_cos and self.align:
             rot_vecs, rot_vec_lists, _ = fit_rigid(
                 self.geometry,
-                (prev_coords, prev_forces),
-                vector_lists=(self.sigmas, self.grad_diffs)
+                vector_lists=(self.steps, self.forces, self.steps_, self.grad_diffs)
             )
-            prev_coords, prev_forces = rot_vecs
-            rot_sigmas, rot_grad_diffs = rot_vec_lists
-            np.testing.assert_allclose(np.linalg.norm(rot_sigmas),
-                                       np.linalg.norm(self.sigmas)
-            )
-            np.testing.assert_allclose(np.linalg.norm(rot_grad_diffs),
-                                       np.linalg.norm(self.grad_diffs)
-            )
-            self.sigmas = rot_sigmas
+            rot_steps, rot_forces, rot_steps_, rot_grad_diffs = rot_vec_lists
+            self.steps = rot_steps
+            self.forces = rot_forces
+            self.steps_ = rot_steps_
             self.grad_diffs = rot_grad_diffs
 
-        new_forces = self.geometry.forces
-        new_energy = self.geometry.energy
+        forces = self.geometry.forces
+        self.forces.append(forces)
+        energy = self.geometry.energy
+        self.energies.append(energy)
 
-        sigma = new_coords - prev_coords
-        self.sigmas.append(sigma)
-        grad_diff = prev_forces - new_forces
-        self.grad_diffs.append(grad_diff)
+        if self.cur_cycle > 0:
+            prev_forces = self.forces[-2]
+            grad_diff = prev_forces - forces
+            self.grad_diffs.append(grad_diff)
 
-        self.sigmas = self.sigmas[-self.keep_last:]
+        step = -self.bfgs_multiply(self.steps_, self.grad_diffs, forces, beta=self.beta)
+        step = self.scale_by_max_step(step)
+        # step = self.restrict_step(step)
+        # Only keep 'keep_last' cycles
+        self.steps_ = self.steps.copy()[-self.keep_last:]
         self.grad_diffs = self.grad_diffs[-self.keep_last:]
-
-        # Because we add the step later on we restore the original
-        # coordinates and set the appropriate energies and forces.
-        self.geometry.coords = prev_coords
-        self.geometry.forces = new_forces
-        self.geometry.energy = new_energy
-
-        self.forces.append(new_forces)
-        self.energies.append(new_energy)
-
-        self.log("")
-
         return step
-
-    def save_also(self):
-        return {
-            "alpha": self.alpha,
-        }
-
-    def reset(self):
-        self.sigmas = list()
-        self.grad_diffs = list()
