@@ -39,10 +39,16 @@ CALC_DICT = {
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA.ORCA,
     "psi4": Psi4,
-    "pyscf": PySCF,
+    # "pyscf": PySCF,
     "turbomole": Turbomole.Turbomole,
     "xtb": XTB.XTB,
 }
+
+try:
+    from pysisyphus.calculators.PySCF import PySCF
+    CALC_DICT["pyscf"] = PySCF
+except ModuleNotFoundError:
+    pass
 
 COS_DICT = {
     "neb": NEB.NEB,
