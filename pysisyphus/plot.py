@@ -550,7 +550,7 @@ def parse_args(args):
                             "an angle and four indices for a dihedral. "
                             "The indices for different coordinates have to "
                             "be separated by ','.")
-    group.add_argument("--cosgrad", action="store_true",
+    group.add_argument("--cosgrad", "--cg", action="store_true",
                         help="Plot image gradients along the path.")
     group.add_argument("--energies", "-e", action="store_true",
                         help="Plot energies.")
