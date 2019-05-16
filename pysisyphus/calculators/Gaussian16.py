@@ -145,7 +145,7 @@ class Gaussian16(OverlapCalculator):
         else:
             return ""
 
-    def prepare_input(self, atoms, coords, calc_type):
+    def prepare_input(self, atoms, coords, calc_type, did_stable=False):
         coords = self.prepare_coords(atoms, coords)
         path = self.prepare_path(use_in_run=True)
         kwargs = {
@@ -175,6 +175,14 @@ class Gaussian16(OverlapCalculator):
                 "exc": "",
             }
             kwargs.update(update)
+        # stable and td/tda can't be used together, so we omit the
+        # td/tda string here
+        if "stable" in calc_type.lower():
+            kwargs["exc"] = ""
+        # after a stability analysis we already got a converged wavefuntion
+        # and we dont want to 'optimize' it any further
+        if did_stable:
+            kwargs["route"] += " scf=maxcycles=0"
         inp = self.gaussian_input.format(**kwargs)
         return inp
 
@@ -268,10 +276,13 @@ class Gaussian16(OverlapCalculator):
         return results
 
     def get_forces(self, atoms, coords):
+        did_stable = False
         if self.stable:
             is_stable = self.run_stable(atoms, coords)
             self.log(f"Wavefunction is now stable: {is_stable}")
-        inp = self.prepare_input(atoms, coords, "force")
+            did_stable = True
+        inp = self.prepare_input(atoms, coords, "force",
+                                 did_stable=did_stable)
         kwargs = {
             "calc": "force",
         }
