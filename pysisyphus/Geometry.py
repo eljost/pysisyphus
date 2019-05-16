@@ -48,7 +48,7 @@ class Geometry:
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
-        self._coords = np.array(coords)
+        self._coords = np.array(coords, dtype=np.float)
 
         if (prim_indices is not None) and coord_type == "cart":
             coord_type = "redund"
