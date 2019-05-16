@@ -187,7 +187,7 @@ class ChainOfStates:
     def get_perpendicular_forces(self, i):
         """ [1] Eq. 12"""
         # Our goal in optimizing a ChainOfStates is minimizing the
-        # perpendicular force. Alaways return zero perpendicular
+        # perpendicular force. Always return zero perpendicular
         # forces for fixed images, so that they don't interfere
         # with the convergence check.
         if i not in self.moving_indices:
