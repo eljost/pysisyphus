@@ -5,6 +5,7 @@ import time
 import numpy as np
 from scipy.optimize import minimize
 
+from pysisyphus.helpers import check_for_stop_sign
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 class SciPyOptimizer(Optimizer):
@@ -38,6 +39,9 @@ class SciPyOptimizer(Optimizer):
 
         if self.is_zts:
             self.geometry.reparametrize()
+
+        # Optimization will stop if True is returned
+        return check_for_stop_sign()
 
     def fun(self, coords):
         start_time = time.time()
