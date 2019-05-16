@@ -8,6 +8,11 @@ from scipy.optimize import minimize
 from pysisyphus.helpers import check_for_stop_sign
 from pysisyphus.optimizers.Optimizer import Optimizer
 
+
+class StopOptException(Exception):
+    pass
+
+
 class SciPyOptimizer(Optimizer):
 
     def __init__(self, geometry, method="l-bfgs-b", **kwargs):
@@ -40,8 +45,8 @@ class SciPyOptimizer(Optimizer):
         if self.is_zts:
             self.geometry.reparametrize()
 
-        # Optimization will stop if True is returned
-        return check_for_stop_sign()
+        if check_for_stop_sign():
+            raise StopOptException()
 
     def fun(self, coords):
         start_time = time.time()
@@ -63,9 +68,12 @@ class SciPyOptimizer(Optimizer):
     def run(self):
         # self.print_header()
         x0 = self.geometry.coords
-        self.opt_res = minimize(self.fun, x0, jac=True, method=self.method,
-                           callback=self.callback, options=self.options)
-        if self.opt_res.success:
-            print("Converged!")
-        else:
-            print("Didn't converge.")
+        try:
+            self.opt_res = minimize(self.fun, x0, jac=True, method=self.method,
+                               callback=self.callback, options=self.options)
+            if self.opt_res.success:
+                print("Converged!")
+            else:
+                print("Didn't converge.")
+        except StopOptException:
+            self.log("Caught StopOptException. Stopping.")
