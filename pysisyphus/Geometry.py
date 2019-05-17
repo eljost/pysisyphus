@@ -174,6 +174,19 @@ class Geometry:
         # have been performed yet.
         self.clear()
 
+    def set_coord(self, ind, coord):
+        """Set a coordinate by index.
+
+        Parameters
+        ----------
+        ind : int
+            Index in of the coordinate to set in the self.coords array.
+        coord : float
+            Coordinate value.
+        """
+        self.coords[ind] = coord
+        self.clear()
+
     @property
     def coords3d(self):
         """Coordinates in 3d.

@@ -44,7 +44,6 @@ def run():
     # geom = AnaPot.get_geom((-1, 1, 0))
 
     ref_ind = 1
-    # ref_coords = geom.coords.copy()
     free_inds = np.arange(geom.coords.size) != ref_ind
     free_ref_coords = ref_coords[free_inds]
     ref_coord = ref_coords[ref_ind]
@@ -55,35 +54,27 @@ def run():
         sqrt = np.sqrt(_)
         return ref_coord + sqrt
 
-    c = list()
     dR = 0.01
     alpha = 0.01
     R = dR
-    rs = [R, ]
-    # import pdb; pdb.set_trace()
-    for i in range(150):
-        c.append(geom.coords.copy())
+    all_coords = list()
+    radii = [R, ]
+    for i in range(15):
+        all_coords.append(geom.coords.copy())
         print(f"Cycle {i:02d}, R={R:.04f}")
         constr_coord = get_constr_coord(geom.coords, R)
+
         # Set constrained coordinate
-        new_coords = geom.coords.copy()
-        new_coords[ref_ind] = constr_coord
-        geom.coords = new_coords
+        geom.set_coord(ref_ind, constr_coord)
+
         diff = R - np.linalg.norm(geom.coords - ref_coords)
-        print("\t coords", geom.coords)
-        geom.clear()
 
         # Optimize remaining coordinates
         forces = geom.forces
-        print("\t forces", forces)
         norm_forces = np.linalg.norm(forces)
-        # free_forces = forces[free_inds]
-        # norm_free_forces = np.linalg.norm(free_forces)
-        # print(f"{i:02d}: {geom.coords} norm(f)={norm_forces:.6f} "
 
-        # free_coords = geom.coords[free_inds]
+        # Force acting on the constrained coordinate
         ref_force = forces[ref_ind]
-        # _ = free_forces - ref_force*(free_coords-free_ref_coords)/(constr_coord-ref_coord)
         forces_mod = forces - ref_force*(geom.coords-ref_coords)/(constr_coord-ref_coord)
         norm_forces_mod = np.linalg.norm(forces_mod)
 
@@ -93,36 +84,28 @@ def run():
         if norm_forces_mod < alpha:
             # Increase radius
             R += dR
-            rs.append(R)
+            radii.append(R)
             continue
 
         dir_ = forces_mod / np.linalg.norm(forces_mod)
         step = 0.01 * dir_
-        # step = _
-        new_coords = geom.coords.copy() + step
-        # new_coords[free_inds] += step
+        new_coords = geom.coords + step
         geom.coords = new_coords
-    print(ref_coords)
 
     pot = geom.calculator
     pot.plot()
-    c = np.array(c)
-    rs = np.array(rs)
-    pot.ax.plot(c[:,0], c[:,1], "o-")
+    all_coords = np.array(all_coords)
+    radii = np.array(radii)
+    pot.ax.plot(all_coords[:,0], all_coords[:,1], "o-")
     pot.ax.scatter(ref_coords[0], ref_coords[1], s=20, c="r")
-    for rad in rs:
-        circle = Circle(ref_coords[:2], radius=rad, fill=False)
+    for radius in radii:
+        circle = Circle(ref_coords[:2], radius=radius, fill=False)
         pot.ax.add_artist(circle)
-    for i, xy in enumerate(c[:,:2]):
+    for i, xy in enumerate(all_coords[:,:2]):
         pot.ax.annotate(i, xy)
-    # pot.ax.set_xlim(-0.2, 0.2)
-    # pot.ax.set_ylim(-0.2, 0.2)
+    pot.ax.set_xlim(-0.2, 0.2)
+    pot.ax.set_ylim(-0.2, 0.2)
     plt.show()
-
-    # from pysisyphus.calculators.AnaPot import AnaPot
-    # g = AnaPot.get_geom((-1, 1, 0))
-    # g.calculator.plot()
-    # plt.show()
 
 
 if __name__ == "__main__":
