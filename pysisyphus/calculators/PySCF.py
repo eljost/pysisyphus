@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
+import shutil
 
 import numpy as np
 import pyscf
@@ -32,12 +33,12 @@ class PySCF(OverlapCalculator):
     }
 
     def __init__(self, basis, xc=None, method="scf",  mem=2000,
-                 root=None, nstates=None, **kwargs):
+                 root=None, nstates=None, auxbasis=None, **kwargs):
         super().__init__(**kwargs)
 
         self.basis = basis
         self.xc = xc
-        self.method = method
+        self.method = method.lower()
         if self.xc and self.method != "tddft":
             self.method = "dft"
         # self.multistep = self.method in ("mp2 tddft".split())
@@ -47,9 +48,11 @@ class PySCF(OverlapCalculator):
         if self.method == "tddft":
             assert self.nstates, "nstates must be set with method='tddft'!"
         if self.track:
-            assert self.root <= self.nstates, "Please supply 'root' with " \
-                "'track: True'!"
+            assert self.root <= self.nstates, "'root' must not be smaller " \
+                "than 'nstates'!"
+        self.auxbasis = auxbasis
 
+        self.chkfile = None
         self.out_fn = "pyscf.out"
         self.unrestricted = self.mult > 1
 
@@ -120,6 +123,7 @@ class PySCF(OverlapCalculator):
         if self.root:
             grad_driver.state = self.root
         gradient = grad_driver.kernel()
+        self.log(f"Completed gradient step")
 
         try:
             e_tot = mf._scf.e_tot
@@ -158,8 +162,25 @@ class PySCF(OverlapCalculator):
         for i, step in enumerate(steps):
             if i == 0:
                 mf = self.get_driver(step, mol=mol)
+                assert step in ("scf", "dft")
+                if self.chkfile:
+                    # Copy old chkfile to new chkfile
+                    new_chkfile = self.make_fn("chkfile")
+                    shutil.copy(self.chkfile, new_chkfile)
+                    self.chkfile = new_chkfile
+                    mf.chkfile = self.chkfile
+                    mf.init_guess = "chkfile"
+                    self.log(f"Using '{self.chkfile}' as initial guess for {step} calculation.")
+                if self.auxbasis:
+                    mf.density_fit(auxbasis=self.auxbasis)
+                    self.log(f"Using density fitting with auxbasis {self.auxbasis}.")
             else:
                 mf = self.get_driver(step, mf=prev_mf)
+
+            if (self.chkfile is None) and (step in ("dft", "scf")):
+                self.chkfile = self.make_fn("chkfile")
+                self.log(f"Created chkfile '{self.chkfile}'")
+                mf.chkfile = self.chkfile
             mf.kernel()
             self.log(f"Completed {step} step")
             prev_mf = mf

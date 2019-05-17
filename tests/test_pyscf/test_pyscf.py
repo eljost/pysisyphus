@@ -2,9 +2,14 @@
 
 import numpy as np
 
+from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators.Turbomole import Turbomole
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
+
+
+init_logging()
 
 
 np.set_printoptions(suppress=True, precision=4)
@@ -61,6 +66,28 @@ def test_pyscf_tddft():
     print(f)
 
 
+def test_pyscf_cytosin_td_opt():
+    calc_kwargs = {
+        "xc": "pbe0",
+        "method": "tddft",
+        # "method": "dft",
+        "basis": "def2SVP",
+        "auxbasis": "weigend",
+        # "basis": "sto3g",
+        "pal": 1,
+        "nstates": 2,
+        "root": 1,
+        "track": True,
+        "ovlp_with": "adapt",
+        "ovlp_type": "tden",
+    }
+    pyscf_ = PySCF(**calc_kwargs)
+    geom = geom_from_library("cytosin.xyz", coord_type="redund")
+    geom.set_calculator(pyscf_)
+    opt = RFOptimizer(geom)
+    opt.run()
+
+
 def turbo_comp():
     calc_kwargs = {
         "xc": "pbe",
@@ -96,4 +123,5 @@ def turbo_comp():
 if __name__ == "__main__":
     # test_pyscf()
     # test_pyscf_tddft()
-    turbo_comp()
+    test_pyscf_cytosin_td_opt()
+    # turbo_comp()
