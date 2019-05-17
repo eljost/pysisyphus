@@ -476,9 +476,11 @@ def plot_overlaps(thresh=.1):
         ovlp_type = handle["ovlp_type"][()].decode()
         ovlp_with = handle["ovlp_with"][()].decode()
         roots = handle["roots"][:]
+        root_ref_cycles = handle["root_ref_cycles"][:]
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Found {len(overlaps)} overlap matrices.")
     print(f"Roots: {roots}")
+    print(f"Reference cycles: {root_ref_cycles}")
 
     fig, ax = plt.subplots()
 
@@ -488,6 +490,8 @@ def plot_overlaps(thresh=.1):
             return (0, i+1)
         elif ovlp_with == "previous":
             return (i, i+1)
+        elif ovlp_with == "adapt":
+            return (root_ref_cycles[i], i+1)
         else:
             raise Exception("I didn't expect that ;)")
 
