@@ -47,13 +47,13 @@ class OverlapCalculator(Calculator):
         self.first_root = None
         self.overlap_matrices = list()
         self.row_inds = list()
-        self.root_ref_cycles = {
+        self.initial_root_ref_cycles = {
             "first": 0,
             "previous": -1,
-            "adapt": 0,
+            "adapt": 0,  # This value may change in later cycles.
         }
-        self.root_ref_cycle = self.root_ref_cycles[self.ovlp_with]
-
+        self.root_ref_cycle = self.initial_root_ref_cycles[self.ovlp_with]
+        self.root_ref_cycles = [self.root_ref_cycle, ]
         self.dump_fn = "overlap_data.h5"
 
         super().__init__(*args, **kwargs)
@@ -87,13 +87,17 @@ class OverlapCalculator(Calculator):
         comes first in the 'indices' tuple.
         """
 
-        REF_INDS = {
+        ref_inds = {
             "first": 0,
+            # Data of the current cycle is saved before this method is called,
+            # so the current cycle resides at -1 and the previous cycle is at -2.
             "previous": -2,
-            "adapt": 0,
+            "adapt": self.root_ref_cycle,
         }
-        ref_ind = REF_INDS[self.ovlp_with]
+        ref_ind = ref_inds[self.ovlp_with]
 
+        # We always compare against the current cycle, so the second index
+        # is always -1.
         return (ref_ind, -1)
 
     def get_wfow_overlaps(self, ao_ovlp=None):
@@ -245,7 +249,8 @@ class OverlapCalculator(Calculator):
             "all_energies": np.array(self.all_energies_list, dtype=float),
             "root_flips": np.array(self.root_flips, dtype=bool),
             "overlap_matrices": np.array(self.overlap_matrices, dtype=float),
-            "row_inds": np.array(self.row_inds, dtype=int)
+            "row_inds": np.array(self.row_inds, dtype=int),
+            "root_ref_cycles": np.array(self.root_ref_cycles, dtype=int),
         }
 
         with h5py.File(self.dump_fn, "w") as handle:
@@ -334,10 +339,9 @@ class OverlapCalculator(Calculator):
         # in between), by determining the biggest number (overlap) in a given row
         # of the overlap matrix.
         #
-        # The row index depends on the root of the reference cycle.
         ref_root = self.roots_list[self.root_ref_cycle]
-        # The row index in the overlap matrix that corresponds to the old
-        # root.
+        # The row index depends on the root of the reference cycle
+        # and corresponds to the old root.
         row_ind = ref_root - 1
         # With WFOverlaps the ground state is also present and the overlap
         # matrix has shape (N+1, N+1) instead of (N, N), with N being the
@@ -345,8 +349,9 @@ class OverlapCalculator(Calculator):
         if self.ovlp_type == "wf":
             row_ind += 1
         self.row_inds.append(row_ind)
-        self.log(f"Reference root is {ref_root}. Using row {row_ind} of the "
-                  "overlap matrix to determine the new root."
+        self.root_ref_cycles.append(self.root_ref_cycle)
+        self.log(f"Reference is cycle {self.root_ref_cycle}, root {ref_root}. "
+                 f"Analyzing row {row_ind} of the overlap matrix."
         )
 
         ref_root_row = overlaps[row_ind]
@@ -371,8 +376,18 @@ class OverlapCalculator(Calculator):
             )
         # Look for a new reference state if requested. We want to avoid
         # overlap matrices just after a root flip.
-        if (self.ovlp_with == "adapt") and (self.root_flips[-1] is not True):
-            pass
+        # if self.calc_counter == 5:
+            # import pdb; pdb.set_trace()
+        if (self.ovlp_with == "adapt") and not root_flip:
+            sorted_inds = ref_root_row.argsort()
+            sec_highest, highest = ref_root_row[sorted_inds[-2:]]
+            # ratio = highest / sec_highest
+            ratio = sec_highest / highest
+            self.log(f"Two highest overlaps: {sec_highest:.2%}, {highest:.2%}, "
+                     f"ratio={ratio:.6f}")
+            if abs(highest) > 0.5 and (1e-3 < ratio < 0.5):
+                self.root_ref_cycle = len(self.roots_list) - 1
+                self.log(f"New reference cycle is {self.root_ref_cycle}.")
 
         self.root_flips.append(root_flip)
         self.dump_overlap_data()
