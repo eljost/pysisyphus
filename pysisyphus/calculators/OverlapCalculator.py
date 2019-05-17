@@ -13,22 +13,25 @@ NTOs = namedtuple("NTOs", "ntos lambdas")
 
 
 class OverlapCalculator(Calculator):
-    ovlp_type_verbose = {
+    OVLP_TYPE_VERBOSE = {
         "wf": "wavefunction overlap",
         "tden": "transition density matrix overlap",
         "nto": "natural transition orbital overlap",
         # As described in 10.1002/jcc.25800
         "nto_org": "original natural transition orbital overlap",
     }
+    VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", use_ntos=4, **kwargs):
         self.track = track
         self.ovlp_type = ovlp_type
-        assert self.ovlp_type in ("tden", "wf", "nto", "nto_org")
+        assert self.ovlp_type in self.OVLP_TYPE_VERBOSE.keys(), \
+		f"Valid overlap types are {self.VALID_KEYS}"
         self.double_mol = double_mol
-        assert ovlp_with in ("previous", "first")
+        assert ovlp_with in ("previous", "first", "adapt")
         self.ovlp_with = ovlp_with
+
         self.use_ntos = use_ntos
 
         self.wfow = None
@@ -38,9 +41,18 @@ class OverlapCalculator(Calculator):
         self.coords_list = list()
         self.roots_list = list()
         self.all_energies_list = list()
-        self.root_flips_list = [False, ]
+        # Why did is there already False in the list? Probably related
+        # to plotting...
+        self.root_flips = [False, ]
         self.first_root = None
         self.overlap_matrices = list()
+        self.row_inds = list()
+        self.root_ref_cycles = {
+            "first": 0,
+            "previous": -1,
+            "adapt": 0,
+        }
+        self.root_ref_cycle = self.root_ref_cycles[self.ovlp_with]
 
         self.dump_fn = "overlap_data.h5"
 
@@ -48,7 +60,7 @@ class OverlapCalculator(Calculator):
 
         if track:
             self.log("Tracking excited states with "
-                    f"{self.ovlp_type_verbose[ovlp_type]}s "
+                    f"{self.OVLP_TYPE_VERBOSE[ovlp_type]}s "
                     f"between the current and the {self.ovlp_with} geometry."
             )
 
@@ -75,11 +87,14 @@ class OverlapCalculator(Calculator):
         comes first in the 'indices' tuple.
         """
 
-        # Overlap with previous cycle is the default
-        indices = (-2, -1)
-        if self.ovlp_with == "first":
-            indices = (0, -1)
-        return indices
+        REF_INDS = {
+            "first": 0,
+            "previous": -2,
+            "adapt": 0,
+        }
+        ref_ind = REF_INDS[self.ovlp_with]
+
+        return (ref_ind, -1)
 
     def get_wfow_overlaps(self, ao_ovlp=None):
         old, new = self.get_indices()
@@ -228,8 +243,9 @@ class OverlapCalculator(Calculator):
             "coords": np.array(self.coords_list, dtype=float),
             "roots": np.array(self.roots_list, dtype=int),
             "all_energies": np.array(self.all_energies_list, dtype=float),
-            "root_flips": np.array(self.root_flips_list, dtype=bool),
+            "root_flips": np.array(self.root_flips, dtype=bool),
             "overlap_matrices": np.array(self.overlap_matrices, dtype=float),
+            "row_inds": np.array(self.row_inds, dtype=int)
         }
 
         with h5py.File(self.dump_fn, "w") as handle:
@@ -301,43 +317,50 @@ class OverlapCalculator(Calculator):
             # overlaps = overlaps**2
         elif ovlp_type == "tden":
             overlaps = self.get_tden_overlaps(ao_ovlp)
-            overlaps = np.abs(overlaps)
         elif ovlp_type == "nto":
             overlaps = self.get_nto_overlaps(ao_ovlp)
-            overlaps = np.abs(overlaps)
         elif ovlp_type == "nto_org":
             overlaps = self.get_nto_overlaps(ao_ovlp, org=True)
-            overlaps = np.abs(overlaps)
         else:
-            raise Exception("Invalid overlap specifier! Use one of "
-                            "'tden'/'wf'/'nto'!")
+            raise Exception("Invalid overlap type key! Use one of "
+			    + ", ".join(self.VALID_KEYS))
         self.overlap_matrices.append(overlaps)
+        overlaps = np.abs(overlaps)
 
-        # Now we have to select the row of the overlap matrix, that
-        # corresponds to the previous root and find out which root
-        # at the current geometry has the highest overlap. We then continue
-        # with the new root.
-        prev_root = self.root
-        self.log(f"Previous root is {prev_root}.")
-        if self.ovlp_with == "first":
-            row_ind = self.first_root-1
-        elif self.ovlp_with == "previous":
-            row_ind = prev_root - 1
+        # In the end we are looking for a root flip compared to the
+        # previous cycle.
+        # This is done by comparing the excited states at the current cycle
+        # to some older cycle (the first, the previous, or some cycle
+        # in between), by determining the biggest number (overlap) in a given row
+        # of the overlap matrix.
+        #
+        # The row index depends on the root of the reference cycle.
+        ref_root = self.roots_list[self.root_ref_cycle]
+        # The row index in the overlap matrix that corresponds to the old
+        # root.
+        row_ind = ref_root - 1
         # With WFOverlaps the ground state is also present and the overlap
-        # matrix has an additional row.
+        # matrix has shape (N+1, N+1) instead of (N, N), with N being the
+        # number of excited states.
         if self.ovlp_type == "wf":
             row_ind += 1
+        self.row_inds.append(row_ind)
+        self.log(f"Reference root is {ref_root}. Using row {row_ind} of the "
+                  "overlap matrix to determine the new root."
+        )
 
-        prev_root_row = overlaps[row_ind]
-        new_root = prev_root_row.argmax()
-        max_overlap = prev_root_row[new_root]
+        ref_root_row = overlaps[row_ind]
+        new_root = ref_root_row.argmax()
+        max_overlap = ref_root_row[new_root]
         if self.ovlp_type == "wf":
             new_root -= 1
+        prev_root = self.root
+        self.log(f"Root at previous cycle is {prev_root}.")
         self.root = new_root + 1
-        prev_root_row_str = ", ".join(
-            [f"{i}: {ov:.2%}" for i, ov in enumerate(prev_root_row)]
+        ref_root_row_str = ", ".join(
+            [f"{i}: {ov:.2%}" for i, ov in enumerate(ref_root_row)]
         )
-        self.log(f"Overlaps: {prev_root_row_str}")
+        self.log(f"Overlaps: {ref_root_row_str}")
         root_flip = self.root != prev_root
         self.log(f"Highest overlap is {max_overlap:.2%}.")
         if not root_flip:
@@ -346,8 +369,12 @@ class OverlapCalculator(Calculator):
             self.log(f"Root flip! New root is {self.root}. Root at previous "
                      f"step was {prev_root}."
             )
+        # Look for a new reference state if requested. We want to avoid
+        # overlap matrices just after a root flip.
+        if (self.ovlp_with == "adapt") and (self.root_flips[-1] is not True):
+            pass
 
-        self.root_flips_list.append(root_flip)
+        self.root_flips.append(root_flip)
         self.dump_overlap_data()
 
         # True if a root flip occured
