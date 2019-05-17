@@ -38,13 +38,13 @@ def run():
     from matplotlib.patches import Circle
     from pysisyphus.calculators.CerjanMiller import CerjanMiller
     from pysisyphus.calculators.AnaPot import AnaPot
-    # geom = CerjanMiller.get_geom((0.00, 0, 0))
-    geom = CerjanMiller.get_geom((-0.15, 0, 0))
+
+    ref_coords = np.array((0.05, 0, 0))
+    geom = CerjanMiller.get_geom(ref_coords)
     # geom = AnaPot.get_geom((-1, 1, 0))
 
     ref_ind = 1
     # ref_coords = geom.coords.copy()
-    ref_coords = np.array((-0.15, 0, 0))
     free_inds = np.arange(geom.coords.size) != ref_ind
     free_ref_coords = ref_coords[free_inds]
     ref_coord = ref_coords[ref_ind]
@@ -56,11 +56,12 @@ def run():
         return ref_coord + sqrt
 
     c = list()
-    dR = 0.1
-    alpha = 0.1
+    dR = 0.01
+    alpha = 0.01
     R = dR
     rs = [R, ]
-    for i in range(6):
+    # import pdb; pdb.set_trace()
+    for i in range(150):
         c.append(geom.coords.copy())
         print(f"Cycle {i:02d}, R={R:.04f}")
         constr_coord = get_constr_coord(geom.coords, R)
@@ -76,26 +77,30 @@ def run():
         forces = geom.forces
         print("\t forces", forces)
         norm_forces = np.linalg.norm(forces)
-        free_forces = forces[free_inds]
-        norm_free_forces = np.linalg.norm(free_forces)
+        # free_forces = forces[free_inds]
+        # norm_free_forces = np.linalg.norm(free_forces)
         # print(f"{i:02d}: {geom.coords} norm(f)={norm_forces:.6f} "
+
+        # free_coords = geom.coords[free_inds]
+        ref_force = forces[ref_ind]
+        # _ = free_forces - ref_force*(free_coords-free_ref_coords)/(constr_coord-ref_coord)
+        forces_mod = forces - ref_force*(geom.coords-ref_coords)/(constr_coord-ref_coord)
+        norm_forces_mod = np.linalg.norm(forces_mod)
+
         print(f"\tnorm(f)={norm_forces:.6f} "
-              f"norm(ff)={norm_free_forces:.6f} dR={diff:.6f}"
+              f"norm(fm)={norm_forces_mod:.6f} dR={diff:.6f}"
         )
-        if norm_free_forces < alpha:
+        if norm_forces_mod < alpha:
             # Increase radius
             R += dR
             rs.append(R)
             continue
 
-        free_coords = geom.coords[free_inds]
-        ref_force = forces[ref_ind]
-        _ = free_forces - ref_force*(free_coords-free_ref_coords)/(constr_coord-ref_coord)
-        dir_ = _ / np.linalg.norm(_)
+        dir_ = forces_mod / np.linalg.norm(forces_mod)
         step = 0.01 * dir_
         # step = _
-        new_coords = geom.coords.copy()
-        new_coords[free_inds] += step
+        new_coords = geom.coords.copy() + step
+        # new_coords[free_inds] += step
         geom.coords = new_coords
     print(ref_coords)
 
@@ -104,6 +109,7 @@ def run():
     c = np.array(c)
     rs = np.array(rs)
     pot.ax.plot(c[:,0], c[:,1], "o-")
+    pot.ax.scatter(ref_coords[0], ref_coords[1], s=20, c="r")
     for rad in rs:
         circle = Circle(ref_coords[:2], radius=rad, fill=False)
         pot.ax.add_artist(circle)
