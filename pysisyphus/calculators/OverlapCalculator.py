@@ -408,7 +408,7 @@ class OverlapCalculator(Calculator):
                      f"{above_thresh}")
             valid_ratio = self.adpt_min < ratio < self.adpt_max
             self.log(f"Ratio is valid? (between {self.adpt_min:.4f} and "
-                     f"{self.adpt_max:.4f}): {above_thresh}"
+                     f"{self.adpt_max:.4f}): {above_ratio}"
             )
             """Only adapt the reference cycle when the overlaps are well
             behaved and the following two conditions are True:
