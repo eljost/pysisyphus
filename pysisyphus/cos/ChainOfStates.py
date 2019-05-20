@@ -83,6 +83,11 @@ class ChainOfStates:
         self._energy = None
         self._forces = None
         self._hessian = None
+        try:
+            self._tangents = None
+        except AttributeError:
+            # TODO: move this to another logging level?!
+            self.log("There are no tangents to reset.")
 
     def set_vector(self, name, vector, clear=False):
         vec_per_image = vector.reshape(-1, self.coords_length)
