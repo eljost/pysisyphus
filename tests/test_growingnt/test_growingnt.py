@@ -13,6 +13,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.cos.GrowingNT import GrowingNT
 from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.plotters.AnimGS import AnimGS
+from pysisyphus.plotters.AnimPlot import AnimPlot
 
 
 def get_geoms(coords, calc_getter):
@@ -102,7 +103,7 @@ def test_four_well_growingnt():
     plot(gnt, calc_getter())
 
 
-def test_anapot_growingstring():
+def test_anapot_growingstring_opt():
     coords = (
         (-1.05274, 1.02776, 0),
         (1.94101, 3.85427, 0),
@@ -111,16 +112,25 @@ def test_anapot_growingstring():
     eps = .05
     damp = .05
     images = get_geoms(coords, calc_getter)
+    gs_kwargs = {
+        "max_nodes": 10,
+        "perp_thresh": 0.5,
+    }
     gs = GrowingString(images, calc_getter)
-    gs.run()
-    anim = AnimGS(gs, calc_getter)
-    # anim.update_func(10)
-    anim.animate()
+    from pysisyphus.optimizers.QuickMin import QuickMin
+    opt = QuickMin(gs)
+    opt.run()
+
+    xlim = (-2, 2.5)
+    ylim = (0, 5)
+    levels = (-3, 4, 80)
+    ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
+    ap.animate()
 
 
 if __name__ == "__main__":
     # test_anapot_growingnt()
     # test_mullerbrown_growingnt()
     # test_four_well_growingnt()
-    test_anapot_growingstring()
-    plt.show()
+    test_anapot_growingstring_opt()
+    # plt.show()

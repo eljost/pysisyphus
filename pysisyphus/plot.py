@@ -118,6 +118,13 @@ def plot_energies():
         print("Please use --aneb instead of --energies")
         return
 
+    lengths = np.array([len(e) for e in energies])
+    equal_lengths = lengths == lengths[-1]
+    # Hack to support growing string calculations
+    energies = np.array([e for e, l in zip(energies, equal_lengths) if l])
+    coords = np.array([c for c, l in zip(coords, equal_lengths) if l])
+    num_cycles, num_images = energies.shape
+
     df = pd.DataFrame(energies)
     cmap = plt.get_cmap("Greys")
     df = df.transpose()

@@ -311,7 +311,7 @@ class Optimizer:
             new_coords = self.geometry.coords.copy() + step
             self.geometry.coords = new_coords
 
-            if self.is_zts:
+            if hasattr(self.geometry, "reparametrize"):
                 self.geometry.reparametrize()
 
             sys.stdout.flush()
