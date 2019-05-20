@@ -39,9 +39,6 @@ class OverlapCalculator(Calculator):
         self.ovlp_with = ovlp_with
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
-        if self.ovlp_with == "adapt":
-            self.log("Adapt args: {self.adapt_args}")
-
 
         self.use_ntos = use_ntos
 
@@ -75,6 +72,8 @@ class OverlapCalculator(Calculator):
                     f"{self.OVLP_TYPE_VERBOSE[ovlp_type]}s "
                     f"between the current and the {self.ovlp_with} geometry."
             )
+            if self.ovlp_with == "adapt":
+                self.log(f"Adapt args: {self.adapt_args}")
 
     def blowup_ci_coeffs(self, ci_coeffs):
         states, occ, virt = ci_coeffs.shape
@@ -320,6 +319,9 @@ class OverlapCalculator(Calculator):
             ovlp_type = self.ovlp_type
         # Nothing to compare to if only one calculation was done yet
         if len(self.ci_coeff_list) < 2:
+            self.log("Skipping overlap calculation in the first cycle "
+                     "as there is nothing to compare to."
+            )
             return False
 
         ao_ovlp = None
@@ -408,7 +410,7 @@ class OverlapCalculator(Calculator):
                      f"{above_thresh}")
             valid_ratio = self.adpt_min < ratio < self.adpt_max
             self.log(f"Ratio is valid? (between {self.adpt_min:.4f} and "
-                     f"{self.adpt_max:.4f}): {above_ratio}"
+                     f"{self.adpt_max:.4f}): {valid_ratio}"
             )
             """Only adapt the reference cycle when the overlaps are well
             behaved and the following two conditions are True:
@@ -425,9 +427,11 @@ class OverlapCalculator(Calculator):
             """
             if above_thresh and valid_ratio:
                 self.ref_cycle = len(self.calculated_roots) - 1
-                self.log(f"New reference cycle is {self.ref_cycle}.")
-            else:
-                self.log(f"Keeping old reference cycle {self.ref_cycle}.")
+
+        if self.ref_cycle != self.ref_cycles[-1]:
+            self.log(f"New reference cycle is {self.ref_cycle}.")
+        else:
+            self.log(f"Keeping old reference cycle {self.ref_cycle}.")
 
         self.root_flips.append(root_flip)
         self.roots_list.append(self.root)
