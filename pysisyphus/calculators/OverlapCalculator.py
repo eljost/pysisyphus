@@ -424,8 +424,10 @@ class OverlapCalculator(Calculator):
             we dont't want to update the reference cycle.
             """
             if above_thresh and valid_ratio:
-                self.ref_cycle = len(self.roots_list) - 1
+                self.ref_cycle = len(self.calculated_roots) - 1
                 self.log(f"New reference cycle is {self.ref_cycle}.")
+            else:
+                self.log(f"Keeping old reference cycle {self.ref_cycle}.")
 
         self.root_flips.append(root_flip)
         self.roots_list.append(self.root)
