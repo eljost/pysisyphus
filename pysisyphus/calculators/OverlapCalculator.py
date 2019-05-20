@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# [1] https://pubs.acs.org/doi/pdf/10.1021/acs.jctc.5b01148
+#     Plasser, 2016
+
 from collections import namedtuple
 
 import h5py
@@ -23,7 +26,10 @@ class OverlapCalculator(Calculator):
     VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
-                 ovlp_with="previous", use_ntos=4, **kwargs):
+                 ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
+                 use_ntos=4, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self.track = track
         self.ovlp_type = ovlp_type
         assert self.ovlp_type in self.OVLP_TYPE_VERBOSE.keys(), \
@@ -31,6 +37,11 @@ class OverlapCalculator(Calculator):
         self.double_mol = double_mol
         assert ovlp_with in ("previous", "first", "adapt")
         self.ovlp_with = ovlp_with
+        self.adapt_args = np.abs(adapt_args, dtype=float)
+        self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
+        if self.ovlp_with == "adapt":
+            self.log("Adapt args: {self.adapt_args}")
+
 
         self.use_ntos = use_ntos
 
@@ -39,6 +50,12 @@ class OverlapCalculator(Calculator):
         self.ci_coeff_list = list()
         self.nto_list = list()
         self.coords_list = list()
+        # This list will hold the root indices at the beginning of the cycle
+        # before any overlap calculation.
+        self.calculated_roots = list()
+        # This list will hold the (potentially) updated root after an overlap
+        # calculation and it may differ from the value stored in
+        # self.calculated_roots.
         self.roots_list = list()
         self.all_energies_list = list()
         # Why did is there already False in the list? Probably related
@@ -47,16 +64,11 @@ class OverlapCalculator(Calculator):
         self.first_root = None
         self.overlap_matrices = list()
         self.row_inds = list()
-        self.initial_root_ref_cycles = {
-            "first": 0,
-            "previous": -1,
-            "adapt": 0,  # This value may change in later cycles.
-        }
-        self.root_ref_cycle = self.initial_root_ref_cycles[self.ovlp_with]
-        self.root_ref_cycles = [self.root_ref_cycle, ]
+        # The first overlap calculation can be done in cycle 1, and then
+        # we compare cycle 1 to cycle 0, regardless of the ovlp_with.
+        self.ref_cycle = 0
+        self.ref_cycles = list()
         self.dump_fn = "overlap_data.h5"
-
-        super().__init__(*args, **kwargs)
 
         if track:
             self.log("Tracking excited states with "
@@ -87,18 +99,19 @@ class OverlapCalculator(Calculator):
         comes first in the 'indices' tuple.
         """
 
-        ref_inds = {
-            "first": 0,
-            # Data of the current cycle is saved before this method is called,
-            # so the current cycle resides at -1 and the previous cycle is at -2.
-            "previous": -2,
-            "adapt": self.root_ref_cycle,
-        }
-        ref_ind = ref_inds[self.ovlp_with]
+        # ref_inds = {
+            # "first": 0,
+            # # Data of the current cycle is saved before this method is called,
+            # # so the current cycle resides at -1 and the previous cycle is at -2.
+            # "previous": -2,
+            # "adapt": self.ref_cycle,
+        # }
+        # ref_ind = ref_inds[self.ovlp_with]
+        # ref_ind =
 
         # We always compare against the current cycle, so the second index
         # is always -1.
-        return (ref_ind, -1)
+        return (self.ref_cycle, -1)
 
     def get_wfow_overlaps(self, ao_ovlp=None):
         old, new = self.get_indices()
@@ -245,12 +258,13 @@ class OverlapCalculator(Calculator):
             "mo_coeffs": np.array(self.mo_coeff_list, dtype=float),
             "ci_coeffs": np.array(self.ci_coeff_list, dtype=float),
             "coords": np.array(self.coords_list, dtype=float),
+            "calculated_roots": np.array(self.calculated_roots, dtype=int),
             "roots": np.array(self.roots_list, dtype=int),
             "all_energies": np.array(self.all_energies_list, dtype=float),
             "root_flips": np.array(self.root_flips, dtype=bool),
             "overlap_matrices": np.array(self.overlap_matrices, dtype=float),
             "row_inds": np.array(self.row_inds, dtype=int),
-            "root_ref_cycles": np.array(self.root_ref_cycles, dtype=int),
+            "ref_cycles": np.array(self.ref_cycles, dtype=int),
         }
 
         with h5py.File(self.dump_fn, "w") as handle:
@@ -268,7 +282,12 @@ class OverlapCalculator(Calculator):
         self.mo_coeff_list.append(mo_coeffs)
         self.ci_coeff_list.append(ci_coeffs)
         self.coords_list.append(coords)
-        self.roots_list.append(self.root)
+        self.calculated_roots.append(self.root)
+        # We can't calculate any overlaps in the first cycle, so we can't
+        # compute a new root value. So we store the same value as for
+        # calculated_roots.
+        if len(self.ci_coeff_list) < 2:
+            self.roots_list.append(self.root)
         # Used for WFOverlap
         self.wfow.store_iteration(atoms, coords, mos_fn, ci_coeffs)
         # Also store NTOs if requested
@@ -336,12 +355,11 @@ class OverlapCalculator(Calculator):
         # previous cycle.
         # This is done by comparing the excited states at the current cycle
         # to some older cycle (the first, the previous, or some cycle
-        # in between), by determining the biggest number (overlap) in a given row
+        # in between), by determining the highest overlap in a given row
         # of the overlap matrix.
-        #
-        ref_root = self.roots_list[self.root_ref_cycle]
-        # The row index depends on the root of the reference cycle
-        # and corresponds to the old root.
+        ref_root = self.roots_list[self.ref_cycle]
+        # Row index in the overlap matrix. Depends on the root of the reference
+        # cycle and corresponds to the old root.
         row_ind = ref_root - 1
         # With WFOverlaps the ground state is also present and the overlap
         # matrix has shape (N+1, N+1) instead of (N, N), with N being the
@@ -349,8 +367,8 @@ class OverlapCalculator(Calculator):
         if self.ovlp_type == "wf":
             row_ind += 1
         self.row_inds.append(row_ind)
-        self.root_ref_cycles.append(self.root_ref_cycle)
-        self.log(f"Reference is cycle {self.root_ref_cycle}, root {ref_root}. "
+        self.ref_cycles.append(self.ref_cycle)
+        self.log(f"Reference is cycle {self.ref_cycle}, root {ref_root}. "
                  f"Analyzing row {row_ind} of the overlap matrix."
         )
 
@@ -376,20 +394,42 @@ class OverlapCalculator(Calculator):
             )
         # Look for a new reference state if requested. We want to avoid
         # overlap matrices just after a root flip.
-        # if self.calc_counter == 5:
-            # import pdb; pdb.set_trace()
-        if (self.ovlp_with == "adapt") and not root_flip:
+        if self.ovlp_with == "previous":
+            self.ref_cycle += 1
+        elif (self.ovlp_with == "adapt") and not root_flip:
+            self.log("Checking wether the reference cycle has to be adapted.")
             sorted_inds = ref_root_row.argsort()
             sec_highest, highest = ref_root_row[sorted_inds[-2:]]
-            # ratio = highest / sec_highest
             ratio = sec_highest / highest
             self.log(f"Two highest overlaps: {sec_highest:.2%}, {highest:.2%}, "
-                     f"ratio={ratio:.6f}")
-            if abs(highest) > 0.5 and (1e-3 < ratio < 0.5):
-                self.root_ref_cycle = len(self.roots_list) - 1
-                self.log(f"New reference cycle is {self.root_ref_cycle}.")
+                     f"ratio={ratio:.4f}")
+            above_thresh = highest >= self.adpt_thresh
+            self.log(f"Highest overlap is above threshold? (>= {self.adpt_thresh:.4f}): "
+                     f"{above_thresh}")
+            valid_ratio = self.adpt_min < ratio < self.adpt_max
+            self.log(f"Ratio is valid? (between {self.adpt_min:.4f} and "
+                     f"{self.adpt_max:.4f}): {above_thresh}"
+            )
+            """Only adapt the reference cycle when the overlaps are well
+            behaved and the following two conditions are True:
+
+            1.) The highest overlap is above the threshold.
+
+            2.) The ratio value of (second highest)/(highest) is valid. A small
+            value indicates cleary separated states and we probably
+            don't have to update the reference cycle as the overlaps are still
+            big enough.
+            As the overlaps between two states become more similar the ratio
+            approaches 1. This may occur in regions of state crossings and then
+            we dont't want to update the reference cycle.
+            """
+            if above_thresh and valid_ratio:
+                self.ref_cycle = len(self.roots_list) - 1
+                self.log(f"New reference cycle is {self.ref_cycle}.")
 
         self.root_flips.append(root_flip)
+        self.roots_list.append(self.root)
+        assert len(self.roots_list) == len(self.calculated_roots)
         self.dump_overlap_data()
 
         # True if a root flip occured
