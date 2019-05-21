@@ -176,6 +176,12 @@ class Optimizer:
             self.cur_cycle, self.max_forces[-1], self.rms_forces[-1],
             self.max_steps[-1], self.rms_steps[-1], self.cycle_times[-1])
         )
+        try:
+            # Geometries/ChainOfStates objects can also do some printing.
+            add_info = self.geometry.get_additional_print()
+            print(add_info)
+        except AttributeError:
+            pass
 
     def scale_by_max_step(self, steps):
         steps_max = np.abs(steps).max()
