@@ -74,6 +74,7 @@ OPT_DICT = {
     "rsrfo": RSRFOptimizer,
     "rsa": RSAlgorithm.RSAlgorithm,
     "anc": ANCOptimizer.ANCOptimizer,
+    "string": StringOptimizer.StringOptimizer,
 }
 
 TSOPT_DICT = {

@@ -422,3 +422,6 @@ class ChainOfStates:
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
         return hei_coords, hei_energy, hei_tangent
+
+    def get_image_calc_counter_sum(self):
+        return sum([image.calculator.calc_counter for image in self.images])

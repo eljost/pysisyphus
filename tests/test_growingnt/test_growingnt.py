@@ -145,7 +145,9 @@ def test_mb_gs_opt():
     }
     gs = GrowingString(images, calc_getter, **gs_kwargs)
     from pysisyphus.optimizers.QuickMin import QuickMin
-    opt = QuickMin(gs)
+    from pysisyphus.optimizers.SteepestDescent import SteepestDescent as SD
+    # opt = QuickMin(gs)
+    opt = SD(gs, alpha=0.4, bt_disable=True)
     opt.run()
 
     ap = AnimPlot(calc_getter(), opt)

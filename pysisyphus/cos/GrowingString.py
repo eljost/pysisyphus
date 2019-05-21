@@ -186,4 +186,11 @@ class GrowingString(GrowingChainOfStates):
         max_en_ind = energies.argmax()
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL
         barrier_info = f"(E_max-E_0)={barrier:.1f} kJ/mol"
-        return "\t" + " ".join((size_info, barrier_info))
+        tot = f"Grads={self.get_image_calc_counter_sum()}"
+
+        strs = (
+            size_info,
+            barrier_info,
+            tot,
+        )
+        return "\t" + " ".join(strs)
