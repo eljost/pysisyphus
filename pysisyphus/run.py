@@ -19,6 +19,7 @@ import yaml
 
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
+from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
@@ -55,6 +56,7 @@ COS_DICT = {
     "aneb": AdaptiveNEB.AdaptiveNEB,
     "feneb": FreeEndNEB.FreeEndNEB,
     "szts": SimpleZTS.SimpleZTS,
+    "gs": GrowingString.GrowingString,
 }
 
 OPT_DICT = {
@@ -72,6 +74,7 @@ OPT_DICT = {
     "rsrfo": RSRFOptimizer,
     "rsa": RSAlgorithm.RSAlgorithm,
     "anc": ANCOptimizer.ANCOptimizer,
+    "string": StringOptimizer.StringOptimizer,
 }
 
 TSOPT_DICT = {
@@ -657,6 +660,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
                                  calc_kwargs, scheduler, assert_track=True)
         overlaps(run_dict, geoms)
     elif run_dict["cos"]:
+        cos_cls = COS_DICT[cos_key]
+        if issubclass(cos_cls, GrowingChainOfStates):
+            cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
         if run_dict["tsopt"]:

@@ -42,12 +42,19 @@ class ChainOfStates:
 
         self.coords_list = list()
         self.forces_list = list()
-        self.energies_list = list()
+        self.all_energies = list()
+        self.all_true_forces = list()
 
         # Start climbing immediateley with climb_rms == -1
         self.started_climbing = self.climb_rms == -1
         if self.started_climbing:
             self.log("Will start climbing immediately.")
+
+        # fixed = list()
+        # if self.fix_first:
+            # fixed.append(0)
+        # if self.fix_last:
+            # fixed.append(
 
 
     def log(self, message):
@@ -57,6 +64,8 @@ class ChainOfStates:
     def moving_indices(self):
         """Returns the indices of the images that aren't fixed and can be
         optimized."""
+        # fixed = [i for i, fix in zip((0, len(self.images)-1),
+                                     # (self.fix_first, self.fix_last)) if fix]
         indices = range(len(self.images))
         if self.fix_first:
             indices = indices[1:]
@@ -83,6 +92,11 @@ class ChainOfStates:
         self._energy = None
         self._forces = None
         self._hessian = None
+        try:
+            self._tangents = None
+        except AttributeError:
+            # TODO: move this to another logging level?!
+            self.log("There are no tangents to reset.")
 
     def set_vector(self, name, vector, clear=False):
         vec_per_image = vector.reshape(-1, self.coords_length)
@@ -165,6 +179,11 @@ class ChainOfStates:
             [image.calc_energy_and_forces() for image in images_to_calculate]
         self.set_zero_forces_for_fixed_images()
         self.counter += 1
+
+        energies = [image.energy for image in self.images]
+        forces = [image.forces for image in self.images]
+        self.all_energies.append(energies)
+        self.all_true_forces.append(forces)
 
     @property
     def forces(self):
@@ -298,7 +317,6 @@ class ChainOfStates:
         """
         self.coords_list.append(last_coords)
         self.forces_list.append(last_forces)
-        self.energies_list.append(last_energies)
 
         # Return False if we don't want to climb or are already
         # climbing.
@@ -404,3 +422,6 @@ class ChainOfStates:
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
         return hei_coords, hei_energy, hei_tangent
+
+    def get_image_calc_counter_sum(self):
+        return sum([image.calculator.calc_counter for image in self.images])

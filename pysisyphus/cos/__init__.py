@@ -6,6 +6,7 @@ __all__ = [
     "FreeEndNEB",
     "SimpleZTS",
     "ChainOfStates",
+    "GrowingString",
 ]
 
 logger = logging.getLogger("cos")

@@ -55,3 +55,13 @@ class GrowingChainOfStates(ChainOfStates):
         new_node.set_calculator(self.calc_getter())
         self.images.insert(k+1, new_node)
         return new_node
+
+    def prepare_opt_cycle(self, *args, **kwargs):
+        parent_result = super().prepare_opt_cycle(*args, **kwargs)
+
+        # Compare size of coords arrays to determine if new nodes
+        # were added in the last reparametrization.
+        last_size = self.coords_list[-1].size
+        length_changed = last_size != self.coords.size
+        return parent_result or length_changed
+        coords_change

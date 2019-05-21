@@ -127,7 +127,7 @@ class AdaptiveNEB(NEB):
         # Backup coords if we have to step back
         self.coords_backup.append(self.coords)
         # Determine highest energy index and image (HEI)
-        hei_index = self.get_hei_index(self.energies_list[-1])
+        hei_index = self.get_hei_index(self.all_energies[-1])
         self.log(f"Index of highest energy image is {hei_index}")
         if (hei_index == 0) or (hei_index == len(self.images)-1):
             self.log("Cant adapt, HEI is first or last!")

@@ -30,6 +30,9 @@ KWARGS = {
     "dump": False,
     "align": False,
 }
+NEB_KWARGS = {
+    "k_min": 0.01,
+}
 
 
 def get_geoms(coords=None):
@@ -77,7 +80,7 @@ def animate_bare(opt):
 @pytest.mark.sd
 def test_steepest_descent_neb():
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
@@ -86,10 +89,9 @@ def test_steepest_descent_neb():
     return opt
 
 
-@pytest.mark.sd
 def test_spline_hei():
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
@@ -117,7 +119,8 @@ def test_spline_hei():
         "N_init": hei_tangent,
         "calc_getter": calc_getter,
     }
-    dimer_cycles = dimer_method(geoms, **dimer_kwargs)
+    dimer_result = dimer_method(geoms, **dimer_kwargs)
+    dimer_cycles = dimer_result.dimer_cycles
     last_cycle = dimer_cycles[-1]
     ts_coords = last_cycle.trans_coords[1]
     print(f"Optimized TS coord: {ts_coords}")
@@ -125,39 +128,15 @@ def test_spline_hei():
     return opt
 
 
-"""
-@pytest.mark.sd
-def test_steepest_descent_var_springs_neb():
-    kwargs = copy.copy(KWARGS)
-    kwargs["climb"] = True
-    kwargs["climb_rms"] = 0.01
-    convergence = {
-        "max_force_thresh": 8e-3,
-        "rms_force_thresh": 3.3e-3,
-        "max_step_thresh": 3.2e-3,
-        "rms_step_thresh": 1.6e-2,
-    }
-    kwargs["convergence"] = convergence
-    var_springs = True
-    neb = NEB(get_geoms(), variable_springs=var_springs, fix_ends=True)
-    opt = run_cos_opt(neb, SteepestDescent, **kwargs)
-
-    assert(opt.is_converged)
-    assert(opt.cur_cycle == 22) # k = 0.01
-
-    return opt
-"""
-
-
 @pytest.mark.sd
 def test_steepest_descent_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 31)  # k = 0.01
+    assert(opt.cur_cycle == 29)  # k = 0.01
 
     return opt
 
@@ -167,7 +146,7 @@ def test_fix_first_neb():
     # First image is fixed at a non equilibrium geometry.
     coords = np.array(((-0.916, 1.034, 0), (1.94101, 3.85427, 0)))
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms(coords), fix_first=True)
+    neb = NEB(get_geoms(coords), fix_first=True, **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
@@ -181,7 +160,7 @@ def test_fix_last_neb():
     # Last image is fixed at a non equilibrium geometry.
     coords = np.array(((-1.05274, 1.02776, 0), (1.85, 3.57, 0)))
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms(coords), fix_last=True)
+    neb = NEB(get_geoms(coords), fix_last=True, **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
@@ -193,7 +172,7 @@ def test_fix_last_neb():
 @pytest.mark.sd
 def test_fix_ends_neb():
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms(), fix_ends=True)
+    neb = NEB(get_geoms(), fix_ends=True, **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
@@ -206,7 +185,7 @@ def test_fix_ends_neb():
 def test_fix_displaced_ends_neb():
     coords = np.array(((-0.916, 1.034, 0), (1.85, 3.57, 0)))
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms(coords), fix_ends=True)
+    neb = NEB(get_geoms(coords), fix_ends=True, **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
@@ -219,17 +198,18 @@ def test_fix_displaced_ends_neb():
 def test_fix_end_immediate_climbing_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    kwargs["rms_force"] = 2e-2
+    kwargs["rms_force"] = 4e-2
+
     cos_kwargs = {
         "climb": True,
         "climb_rms": -1,
         "fix_ends": True,
     }
-    neb = NEB(get_geoms(), **cos_kwargs)
+    neb = NEB(get_geoms(), **cos_kwargs, **NEB_KWARGS)
     opt = run_cos_opt(neb, SteepestDescent, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 35)
+    assert(opt.cur_cycle == 39)
 
     return opt
 
@@ -237,7 +217,7 @@ def test_fix_end_immediate_climbing_neb():
 @pytest.mark.cg
 def test_cg_neb():
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, ConjugateGradient, **kwargs)
 
     assert(opt.is_converged)
@@ -250,7 +230,7 @@ def test_cg_neb():
 def test_qm_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["dt"] = 0.1
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, QuickMin, **kwargs)
 
     assert(opt.is_converged)
@@ -263,7 +243,7 @@ def test_qm_neb():
 def test_fire_neb():
     kwargs = copy.copy(KWARGS)
     kwargs["dt_max"] = 0.2
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, FIRE, **kwargs)
 
     assert(opt.is_converged)
@@ -279,11 +259,11 @@ def test_fire_climb_neb():
     kwargs["dt_max"] = 0.2
     kwargs["climb"] = True
     kwargs["climb_rms"] = 0.0065
-    neb = NEB(get_geoms(), fix_ends=True)
+    neb = NEB(get_geoms(), fix_ends=True, **NEB_KWARGS)
     opt = run_cos_opt(neb, FIRE, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 39)  # k = 0.01
+    assert(opt.cur_cycle == 38)  # k = 0.01
 
     return opt
 
@@ -291,7 +271,7 @@ def test_fire_climb_neb():
 @pytest.mark.bfgs
 def test_bfgs_neb():
     kwargs = copy.copy(KWARGS)
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
@@ -304,11 +284,11 @@ def test_bfgs_neb():
 def test_bfgs_neb_more_images():
     kwargs = copy.copy(KWARGS)
     kwargs["images"] = 10
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
-    assert(opt.cur_cycle == 36)  # k = 0.01
+    assert(opt.cur_cycle == 35)  # k = 0.01
 
     return opt
 
@@ -317,7 +297,7 @@ def test_bfgs_neb_more_images():
 def test_fix_end_climbing_bfgs_neb():
     kwargs = copy.copy(KWARGS)
     # kwargs["bt_disable"] = True
-    neb = NEB(get_geoms(), climb=True, fix_ends=True)
+    neb = NEB(get_geoms(), climb=True, fix_ends=True, **NEB_KWARGS)
     opt = run_cos_opt(neb, BFGS, **kwargs)
 
     assert(opt.is_converged)
@@ -332,23 +312,24 @@ def test_scipy_bfgs_neb():
     as of SciPy 1.0.0."""
     kwargs = copy.copy(KWARGS)
     kwargs["method"] = "BFGS"
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, SciPyOptimizer, **kwargs)
 
     return opt
 
 
-@pytest.mark.lbfgs
+@pytest.mark.skip
 def test_lbfgs_neb():
     kwargs = copy.copy(KWARGS)
     # kwargs["bt_disable"] = True
     # kwargs["rms_force"] = 1e-5
     # kwargs["alpha"] = 0.5
-    kwargs["max_cycles"] = 25
+    # kwargs["max_cycles"] = 25
     # kwargs["thresh"] = "gau"
     # del kwargs["rms_force"]
+    kwargs["between"] = 10
 
-    neb = NEB(get_geoms())
+    neb = NEB(get_geoms(), **NEB_KWARGS)
     opt = run_cos_opt(neb, LBFGS, **kwargs)
 
     assert(opt.is_converged)
@@ -391,7 +372,7 @@ def test_modified_broyden():
     pot = AnaPot()
     geom = pot.get_geom((-0.8333, 2, 0))
     force_getter = lambda x: geom.get_energy_and_forces_at(x)["forces"]
-    def restrict_step(step, max_len=0.5):
+    def restrict_step(x, step, max_len=0.5):
         norm = np.linalg.norm(step)
         if norm > max_len:
             step = max_len * step / norm
@@ -404,15 +385,17 @@ def test_modified_broyden():
         coords.append(geom.coords.copy())
         norm = np.linalg.norm(forces)
         print(f"Cycle {i:02d}: norm={norm:.4e}")
-        if norm < 1e-12:
+        converged = norm < 1e-12
+        if converged:
             print("Converged")
             break
+    assert converged
     pot.plot()
     ax = pot.ax
     coords = np.array(coords)
     xs, ys = coords.T[:2]
     ax.plot(xs, ys, "ro-")
-    plt.show()
+    # plt.show()
 
 
 def test_rfo_optimizer():
@@ -427,7 +410,7 @@ def test_rfo_optimizer():
     pot.plot()
     ax = pot.ax
     ax.plot(coords[:,0], coords[:,1], "ro-")
-    plt.show()
+    # plt.show()
 
 
 @pytest.mark.skip

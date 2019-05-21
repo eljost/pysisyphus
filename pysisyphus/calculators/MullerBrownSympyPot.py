@@ -1,6 +1,11 @@
-from pysisyphus.calculators.AnaPotBase import AnaPotBase
+#!/usr/bin/env/python3
 
 # [1] http://www.cims.nyu.edu/~eve2/string_jcp_simplified07.pdf
+
+import numpy as np
+
+from pysisyphus.calculators.AnaPotBase import AnaPotBase
+
 
 class MullerBrownPot(AnaPotBase):
 
@@ -31,8 +36,10 @@ class MullerBrownPot(AnaPotBase):
         V_str = " + ".join(V_strs)
         xlim = (-1.75, 1.25)
         ylim = (-0.5, 2.25)
+        levels = np.linspace(-200, 400, 100)
 
-        super(MullerBrownPot, self).__init__(V_str=V_str, xlim=xlim, ylim=ylim)
+        super(MullerBrownPot, self).__init__(V_str=V_str, xlim=xlim, ylim=ylim,
+                                             levels=levels)
 
     def __str__(self):
         return "MullerBrownPot calculator"

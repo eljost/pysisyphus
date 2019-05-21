@@ -118,6 +118,13 @@ def plot_energies():
         print("Please use --aneb instead of --energies")
         return
 
+    lengths = np.array([len(e) for e in energies])
+    equal_lengths = lengths == lengths[-1]
+    # Hack to support growing string calculations
+    energies = np.array([e for e, l in zip(energies, equal_lengths) if l])
+    coords = np.array([c for c, l in zip(coords, equal_lengths) if l])
+    num_cycles, num_images = energies.shape
+
     df = pd.DataFrame(energies)
     cmap = plt.get_cmap("Greys")
     df = df.transpose()
@@ -183,21 +190,26 @@ def plot_aneb():
 
     coord_diffs = list()
     min_ = 0
+    max_ = max(energies[0])
     for en, c in zip(energies, coords):
         cd = np.linalg.norm(c - first_coords, axis=1)
-        min_ = min(0, min(en))
+        min_ = min(min_, min(en))
+        max_ = max(max_, max(en))
         coord_diffs.append(cd)
 
     energies_ = list()
+    au2kJmol = 2625.499638
     for en in energies:
         en = np.array(en)
         en -= min_
-        en *= 2625.499638
+        en *= au2kJmol
         energies_.append(en)
 
     fig, ax = plt.subplots()
     # Initial energies
     lines = ax.plot(coord_diffs[0], energies_[0], "o-")
+    y_max = (max_ - min_) * au2kJmol
+    ax.set_ylim(0, y_max)
 
     ax.set_xlabel("Coordinate differences / Bohr")
     ax.set_ylabel("$\Delta$J / kJ $\cdot$ mol$^{-1}$")
@@ -422,9 +434,8 @@ def plot_params(inds):
     plt.show()
 
 
-def plot_all_energies():
-    dump_fn = "overlap_data.h5"
-    with h5py.File(dump_fn) as handle:
+def plot_all_energies(h5):
+    with h5py.File(h5) as handle:
         energies = handle["all_energies"][:]
         roots = handle["roots"][:]
         flips = handle["root_flips"][:]
@@ -469,31 +480,22 @@ def plot_all_energies():
     plt.show()
 
 
-def plot_overlaps(thresh=.1):
-    dump_fn = "overlap_data.h5"
-    with h5py.File(dump_fn) as handle:
+def plot_overlaps(h5, thresh=.1):
+    with h5py.File(h5) as handle:
         overlaps = handle["overlap_matrices"][:]
         ovlp_type = handle["ovlp_type"][()].decode()
         ovlp_with = handle["ovlp_with"][()].decode()
         roots = handle["roots"][:]
-        root_ref_cycles = handle["root_ref_cycles"][:]
+        calculated_roots = handle["calculated_roots"][:]
+        ref_cycles = handle["ref_cycles"][:]
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Found {len(overlaps)} overlap matrices.")
     print(f"Roots: {roots}")
-    print(f"Reference cycles: {root_ref_cycles}")
+    print(f"Reference cycles: {ref_cycles}")
 
     fig, ax = plt.subplots()
 
     n_states = overlaps[0].shape[0]
-    def between(i):
-        if ovlp_with == "first":
-            return (0, i+1)
-        elif ovlp_with == "previous":
-            return (i, i+1)
-        elif ovlp_with == "adapt":
-            return (root_ref_cycles[i], i+1)
-        else:
-            raise Exception("I didn't expect that ;)")
 
     def draw(i):
         fig.clf()
@@ -511,11 +513,12 @@ def plot_overlaps(thresh=.1):
                 continue
             value_str = f"{abs(value):.2f}"
             ax.text(k, l, value_str, ha='center', va='center')
-        i, j = between(i)
-        root_i = roots[i]
-        root_j = roots[j]
-        fig.suptitle(f"{ovlp_type} overlap between {i:03d} and {j:03d}\n"
-                     f"old root: {root_i}, new root: {root_j}")
+        j, k = ref_cycles[i], i+1
+        old_root = calculated_roots[i+1]
+        new_root = roots[i+1]
+        fig.suptitle(f"overlap {i:03d}\n"
+                     f"{ovlp_type} overlap between {j:03d} and {k:03d}\n"
+                     f"old root: {old_root}, new root: {new_root}")
         fig.canvas.draw()
     draw(0)
 
@@ -539,6 +542,7 @@ def parse_args(args):
                         help="Only consider the first [first] cycles.")
     parser.add_argument("--last", type=int,
                         help="Only consider the last [last] cycles.")
+    parser.add_argument("--h5", default=None)
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--saras", action="store_true",
@@ -571,6 +575,8 @@ def parse_args(args):
 def run():
     args = parse_args(sys.argv[1:])
 
+    h5 = args.h5
+
     if args.energies:
         plot_energies()
     elif args.saras:
@@ -586,9 +592,13 @@ def run():
     elif args.aneb:
         plot_aneb()
     elif args.all_energies:
-        plot_all_energies()
+        if h5 is None:
+            h5 = "overlap_data.h5"
+        plot_all_energies(h5=h5)
     elif args.overlaps:
-        plot_overlaps()
+        if h5 is None:
+            h5 = "overlap_data.h5"
+        plot_overlaps(h5=h5)
 
 
 if __name__ == "__main__":
