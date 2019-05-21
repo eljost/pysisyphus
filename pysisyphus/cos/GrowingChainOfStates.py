@@ -61,7 +61,6 @@ class GrowingChainOfStates(ChainOfStates):
 
         # Compare size of coords arrays to determine if new nodes
         # were added in the last reparametrization.
-        # import pdb; pdb.set_trace()
         last_size = self.coords_list[-1].size
         length_changed = last_size != self.coords.size
         return parent_result or length_changed
