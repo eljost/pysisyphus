@@ -143,8 +143,9 @@ class GrowingString(GrowingChainOfStates):
 
             # Calculate the norm of the perpendicular force for every
             # node/image on the string.
-            perp_forces  = self.perp_forces_list[-1].reshape(-1, len(self.images))
+            perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
             perp_norms = np.linalg.norm(perp_forces, axis=1)
+
             # We can add a new node if the norm of the perpendicular force
             # on the frontier node(s) is below a threshold.
             def converged(i):
