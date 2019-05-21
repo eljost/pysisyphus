@@ -128,9 +128,34 @@ def test_anapot_growingstring_opt():
     ap.animate()
 
 
+def test_mb_gs_opt():
+    coords = (
+        (0.614, 0.031, 0),
+        (-.563, 1.43, 0),
+    )
+    calc_getter = MullerBrownPot
+    # pot = calc_getter()
+    # pot.plot()
+    # plt.show()
+    images = get_geoms(coords, calc_getter)
+    gs_kwargs = {
+        "max_nodes": 16,
+        "perp_thresh": 50,
+        "fix_ends": True,
+    }
+    gs = GrowingString(images, calc_getter, **gs_kwargs)
+    from pysisyphus.optimizers.QuickMin import QuickMin
+    opt = QuickMin(gs)
+    opt.run()
+
+    ap = AnimPlot(calc_getter(), opt)
+    ap.animate()
+
+
 if __name__ == "__main__":
     # test_anapot_growingnt()
     # test_mullerbrown_growingnt()
     # test_four_well_growingnt()
-    test_anapot_growingstring_opt()
-    # plt.show()
+    # test_anapot_growingstring_opt()
+    test_mb_gs_opt()
+    plt.show()
