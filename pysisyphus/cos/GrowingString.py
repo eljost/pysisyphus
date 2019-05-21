@@ -139,49 +139,49 @@ class GrowingString(GrowingChainOfStates):
         return self._forces
 
     def reparametrize(self):
-            # Spline displaced coordinates
-            tcks, us = self.spline()
+        # Spline displaced coordinates
+        tcks, us = self.spline()
 
-            # Calculate the norm of the perpendicular force for every
-            # node/image on the string.
-            perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
-            perp_norms = np.linalg.norm(perp_forces, axis=1)
+        # Calculate the norm of the perpendicular force for every
+        # node/image on the string.
+        perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
+        perp_norms = np.linalg.norm(perp_forces, axis=1)
 
-            # We can add a new node if the norm of the perpendicular force
-            # on the frontier node(s) is below a threshold.
-            def converged(i):
-                return perp_norms[i] <= self.perp_thresh
-            
-            # Check if we can add new nodes
-            if self.images_left and converged(self.lf_ind):
-                # Insert at the end of the left string, just before the 
-                # right frontier node.
-                new_left_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
-                self.left_string.append(new_left_frontier)
-                self.log("Added new left frontier node.")
-            if self.images_left and converged(self.rf_ind):
-                # Insert at the end of the right string, just before the 
-                # current right frontier node.
-                new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
-                self.right_string.append(new_right_frontier)
-                self.log("Added new right frontier node.")
+        # We can add a new node if the norm of the perpendicular force
+        # on the frontier node(s) is below a threshold.
+        def converged(i):
+            return perp_norms[i] <= self.perp_thresh
 
-            self.log(f"Current string size: {self.left_size}+{self.right_size}")
-            # Reparametrize nodes
-            left_inds = np.arange(self.left_size)
-            right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
-            param_inds = np.concatenate((left_inds, right_inds))
-            param_density = self.sk*param_inds
-            self.log(f"New param density: " + np.array2string(param_density, precision=2))
-            self.reparam(tcks, param_density)
+        # Check if we can add new nodes
+        if self.images_left and converged(self.lf_ind):
+            # Insert at the end of the left string, just before the
+            # right frontier node.
+            new_left_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
+            self.left_string.append(new_left_frontier)
+            self.log("Added new left frontier node.")
+        if self.images_left and converged(self.rf_ind):
+            # Insert at the end of the right string, just before the
+            # current right frontier node.
+            new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
+            self.right_string.append(new_right_frontier)
+            self.log("Added new right frontier node.")
 
-            self.set_tangents()
+        self.log(f"Current string size: {self.left_size}+{self.right_size}")
+        # Reparametrize nodes
+        left_inds = np.arange(self.left_size)
+        right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
+        param_inds = np.concatenate((left_inds, right_inds))
+        param_density = self.sk*param_inds
+        self.log(f"New param density: " + np.array2string(param_density, precision=2))
+        self.reparam(tcks, param_density)
+
+        self.set_tangents()
 
     def get_additional_print(self):
         size_str = f"{self.left_size}+{self.right_size}"
         if self.images_left == 0:
             size_str = "Full"
-        size_info = f"Size={size_str}"
+        size_info = f"String={size_str}"
         energies = np.array(self.all_energies[-1])
         max_en_ind = energies.argmax()
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL

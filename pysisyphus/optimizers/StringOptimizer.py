@@ -46,6 +46,8 @@ class StringOptimizer(Optimizer):
         self.energies.append(self.geometry.energy)
         self.forces.append(forces)
 
+        # Raises IndexError in cycle 0 and evaluates to False when the
+        # string size changed after the last cycle.
         try:
             string_size_changed = forces.size != self.forces[-2].size
         except IndexError:
@@ -65,7 +67,8 @@ class StringOptimizer(Optimizer):
 
         sd_step = forces / self.gamma
         # Steepest descent in the first cbeginning
-        if (self.cur_cycle == 0) or string_size_changed:
+        # if (self.cur_cycle == 0) or string_size_changed:
+        if True:
             step = sd_step
             self.log("Taking steepest descent step.")
         # Conjugate Gradient later one
