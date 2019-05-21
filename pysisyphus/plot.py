@@ -190,21 +190,26 @@ def plot_aneb():
 
     coord_diffs = list()
     min_ = 0
+    max_ = max(energies[0])
     for en, c in zip(energies, coords):
         cd = np.linalg.norm(c - first_coords, axis=1)
-        min_ = min(0, min(en))
+        min_ = min(min_, min(en))
+        max_ = max(max_, max(en))
         coord_diffs.append(cd)
 
     energies_ = list()
+    au2kJmol = 2625.499638
     for en in energies:
         en = np.array(en)
         en -= min_
-        en *= 2625.499638
+        en *= au2kJmol
         energies_.append(en)
 
     fig, ax = plt.subplots()
     # Initial energies
     lines = ax.plot(coord_diffs[0], energies_[0], "o-")
+    y_max = (max_ - min_) * au2kJmol
+    ax.set_ylim(0, y_max)
 
     ax.set_xlabel("Coordinate differences / Bohr")
     ax.set_ylabel("$\Delta$J / kJ $\cdot$ mol$^{-1}$")
