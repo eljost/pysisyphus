@@ -13,15 +13,31 @@ from pysisyphus.helpers import get_coords_diffs
 class AnimPlot:
 
     def __init__(self, calculator, optimizer,
-                 xlim=(-1, 1), ylim=(-1, 1), num=100,
-                 figsize=(8, 8), levels=(-150, 5, 30),
-                 interval=250,
+                 xlim=None, ylim=None, levels=None,
+                 num=100, figsize=(8, 8), interval=250,
                  energy_profile=True, colorbar=True, save=None,
                  title=True, tight_layout=False):
 
         self.calculator = calculator
         self.optimizer = optimizer
         self.interval = interval
+        if xlim is None:
+            try:
+                xlim = calculator.xlim
+            except AttributeError:
+                xlim = (-1, 1)
+        if ylim is None:
+            try:
+                ylim = calculator.ylim
+            except AttributeError:
+                ylim = (-1, 1)
+        if levels is None:
+            try:
+                lvls = calculator.levels
+                levels = (lvls.min(), lvls.max(), lvls.size)
+            except AttributeError:
+                levels = (-150, 5, 30)
+
         self.energy_profile = energy_profile
         self.colorbar = colorbar
         self.save = save
