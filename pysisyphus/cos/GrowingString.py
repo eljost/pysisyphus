@@ -5,6 +5,7 @@
 import numpy as np
 from scipy.interpolate import splprep, splev
 
+from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
@@ -175,3 +176,14 @@ class GrowingString(GrowingChainOfStates):
             self.reparam(tcks, param_density)
 
             self.set_tangents()
+
+    def get_additional_print(self):
+        size_str = f"{self.left_size}+{self.right_size}"
+        if self.images_left == 0:
+            size_str = "Full"
+        size_info = f"Size={size_str}"
+        energies = np.array(self.all_energies[-1])
+        max_en_ind = energies.argmax()
+        barrier = (energies.max() - energies[0]) * AU2KJPERMOL
+        barrier_info = f"(E_max-E_0)={barrier:.1f} kJ/mol"
+        return "\t" + " ".join((size_info, barrier_info))
