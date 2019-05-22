@@ -14,7 +14,7 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import AU2EV
-from pysisyphus.misc.mwfn import make_cdd
+from pysisyphus.wrapper.mwfn import make_cdd
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -32,7 +32,7 @@ class OverlapCalculator(Calculator):
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
-                 use_ntos=4, **kwargs):
+                 use_ntos=4, make_cubes=False, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.track = track
@@ -44,8 +44,8 @@ class OverlapCalculator(Calculator):
         self.ovlp_with = ovlp_with
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
-
         self.use_ntos = use_ntos
+        self.make_cubes = make_cubes
 
         self.wfow = None
         self.mo_coeff_list = list()
@@ -319,7 +319,11 @@ class OverlapCalculator(Calculator):
         """Store the information of the current iteration and if possible
         calculate the overlap with a previous/the first iteration."""
         self.store_overlap_data(atoms, coords)
-        self.render_cdd_cube(self.root, cycle=-1)
+        # Calculated root and self.root are still the same right now.
+        assert self.calculated_roots == self.root
+        if self.make_cubes and len(self.ci_coeff_list >= 1):
+            self.make_cdd_cube(self.root, cycle=-1)
+
         old_root = self.root
         if not ovlp_type:
             ovlp_type = self.ovlp_type
@@ -469,7 +473,9 @@ class OverlapCalculator(Calculator):
             exc_str += "\n"
         return exc_str
 
-    def render_cdd_cube(self, root, cycle=-1):
+    def make_cdd_cube(self, root, cycle=-1):
+        if cycle != -1:
+            self.log("'cycle' argument to make_cdd_cube is currently ignored!")
         exc_str = self.get_mwfn_exc_str(cycle)
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
