@@ -4,12 +4,17 @@
 #     Plasser, 2016
 
 from collections import namedtuple
+from pathlib import Path
+import shutil
+import tempfile
 
 import h5py
 import itertools as it
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.constants import AU2EV
+from pysisyphus.misc.mwfn import make_cdd
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -314,6 +319,7 @@ class OverlapCalculator(Calculator):
         """Store the information of the current iteration and if possible
         calculate the overlap with a previous/the first iteration."""
         self.store_overlap_data(atoms, coords)
+        self.render_cdd_cube(self.root, cycle=-1)
         old_root = self.root
         if not ovlp_type:
             ovlp_type = self.ovlp_type
@@ -440,3 +446,38 @@ class OverlapCalculator(Calculator):
 
         # True if a root flip occured
         return root_flip
+
+    def get_mwfn_exc_str(self, cycle, thresh=1e-3):
+        energies = self.all_energies_list[cycle]
+        # Cycle, states, occ, virt
+        ci_coeffs = self.ci_coeff_list[cycle]
+        exc_energies = (energies[1:] - energies[0]) * AU2EV
+        above_thresh = np.abs(ci_coeffs) > thresh
+        occ_mos, virt_mos = ci_coeffs.shape[:2]
+
+        exc_str = ""
+        mult = 1
+        self.log("Assuming mult={mult} in get_mwfn_exc_str")
+        for root_, (ci_coeffs, exc_en) in enumerate(zip(ci_coeffs, exc_energies), 1):
+            exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
+            for (occ, virt), coeff in np.ndenumerate(ci_coeffs):
+                if abs(coeff) < thresh:
+                    continue
+                occ_mo = occ+1
+                virt_mo = occ_mos + 1 + virt
+                exc_str += f"{occ_mo:>8d} -> {virt_mo}       {coeff: .5f}\n"
+            exc_str += "\n"
+        return exc_str
+
+    def render_cdd_cube(self, root, cycle=-1):
+        exc_str = self.get_mwfn_exc_str(cycle)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            exc_path = tmp_path / "exc_input"
+            with open(exc_path, "w") as handle:
+                handle.write(exc_str)
+            cubes = make_cdd(self.mwfn_wf, root, str(exc_path), tmp_path)
+            assert len(cubes) == 1
+            cube = cubes[0]
+            cube_fn = cubes[0].name
+            shutil.copy(cube, self.make_fn(cube_fn))

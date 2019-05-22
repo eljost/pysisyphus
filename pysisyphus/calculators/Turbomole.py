@@ -45,7 +45,9 @@ class Turbomole(OverlapCalculator):
 
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
                         "ciss_a", "ucis_a", "gradient", "sing_a",
-                        "__ccre*", "exstates", "coord")
+                        "__ccre*", "exstates", "coord",
+                        "mwfn_wf:wavefunction.molden",
+        )
 
         self.parser_funcs = {
             "force": self.parse_force,
@@ -440,6 +442,7 @@ class Turbomole(OverlapCalculator):
                 td_key_present = [k for k in ("ciss_a", "sing_a", "ucis_a")
                                   if k in kept_fns][0]
                 self.td_vec_fn = kept_fns[td_key_present]
+                self.mwfn_wf = kept_fns["mwfn_wf"]
             elif self.ricc2:
                 self.ccres = kept_fns["ccres"]
             else:
@@ -453,6 +456,19 @@ class Turbomole(OverlapCalculator):
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
             result.wait()
+
+        if self.td:
+            cmd = "tm2molden norm".split()
+            fn = "wavefunction.molden"
+            stdin = f"""{fn}
+
+            """
+            res = subprocess.Popen(cmd, cwd=path, universal_newlines=True,
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+            stdout, stderr = res.communicate(stdin)
+            res.terminate()
 
     def propagate_wavefunction(self, calc):
         if self.mos:
