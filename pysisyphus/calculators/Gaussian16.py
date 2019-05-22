@@ -348,7 +348,7 @@ class Gaussian16(OverlapCalculator):
     def parse_tddft(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        td_re = "Excited State\s*\d+:\s*[\w\?-]+\s*([\d\.-]+?)\s*eV"
+        td_re = "Excited State\s*\d+:\s*[\.\w\?-]+\s*([\d\.-]+?)\s*eV"
         matches = re.findall(td_re, text)
         assert len(matches) == self.nstates
         # Excitation energies in eV
