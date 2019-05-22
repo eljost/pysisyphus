@@ -341,7 +341,6 @@ class ChainOfStates:
         """
         return np.sqrt(np.mean(np.square(arr)))
 
-
     def check_for_climbing_start(self):
         # Only initiate climbing on a sufficiently converged MEP.
         # This can be determined from a supplied threshold for the
