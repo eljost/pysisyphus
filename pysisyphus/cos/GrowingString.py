@@ -200,14 +200,16 @@ class GrowingString(GrowingChainOfStates):
             size_str = "Full"
         size_info = f"String={size_str}"
         energies = np.array(self.all_energies[-1])
-        max_en_ind = energies.argmax()
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL
         barrier_info = f"(E_max-E_0)={barrier:.1f} kJ/mol"
+        hei_ind = energies.argmax()
+        hei_str = f"HEI={hei_ind+1}/{energies.size}"
+
         tot = f"Grads={self.get_image_calc_counter_sum()}"
 
         strs = (
             size_info,
+            hei_str,
             barrier_info,
-            tot,
         )
         return "\t" + " ".join(strs)
