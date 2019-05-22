@@ -18,7 +18,7 @@ class ChainOfStates:
     logger = logging.getLogger("cos")
 
     def __init__(self, images, parallel=0, fix_ends=False,
-                 fix_first=False, fix_last=False, fix_after=None, fix_rms=None,
+                 fix_first=False, fix_last=False,
                  climb=False, climb_rms=5e-3,
                  scheduler=None):
 
@@ -28,8 +28,6 @@ class ChainOfStates:
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
         self.fix_ends = fix_ends
-        self.fix_after = fix_after
-        self.fix_rms = fix_rms
         self.climb = climb
         self.climb_rms = climb_rms
         self.scheduler = scheduler

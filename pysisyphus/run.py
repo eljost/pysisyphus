@@ -57,6 +57,7 @@ COS_DICT = {
     "feneb": FreeEndNEB.FreeEndNEB,
     "szts": SimpleZTS.SimpleZTS,
     "gs": GrowingString.GrowingString,
+    "fs": FreezingString.FreezingString,
 }
 
 OPT_DICT = {
@@ -661,7 +662,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         overlaps(run_dict, geoms)
     elif run_dict["cos"]:
         cos_cls = COS_DICT[cos_key]
-        if issubclass(cos_cls, GrowingChainOfStates):
+        if (issubclass(cos_cls, GrowingChainOfStates)
+            or isinstance(cos_cls, FreezingString)):
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)

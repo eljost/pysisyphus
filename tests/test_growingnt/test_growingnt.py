@@ -155,7 +155,7 @@ def test_mb_gs_opt():
     ap.animate()
 
 
-def test_fsm():
+def test_gs():
     from pysisyphus.calculators.XTB import XTB
     educt = geom_from_library("ciscis_24hexadiene_xtbopt.xyz")
     product = geom_from_library("trans34dimethylcyclobutene.xyz")
@@ -183,6 +183,32 @@ def test_fsm():
     opt.run()
 
 
+def test_fs():
+    from pysisyphus.calculators.XTB import XTB
+    from pysisyphus.cos.FreezingString import FreezingString
+    # educt = geom_from_library("ciscis_24hexadiene_xtbopt.xyz")
+    # product = geom_from_library("trans34dimethylcyclobutene.xyz")
+
+    educt = AnaPot.get_geom((-1.05274, 1.02776, 0))
+    product = AnaPot.get_geom((1.94101, 3.85427, 0))
+    images = (educt, product)
+    
+    def calc_getter():
+        return AnaPot()
+
+    fs = FreezingString(images, calc_getter, max_nodes=10)
+    from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+    sd = SteepestDescent(fs)
+    sd.run()
+    pot = AnaPot()
+    pot.plot()
+    crds = fs.allcoords.reshape(-1, 3)
+    # pot.ax.plot(c[:,0], c[:,1], "o-")
+    pot.ax.plot(*crds[:,:2].T, "o-")
+    plt.show()
+    from pysisyphus.optimizers.StringOptimizer import StringOptimizer
+
+
 if __name__ == "__main__":
     # test_anapot_growingnt()
     # test_mullerbrown_growingnt()
@@ -190,4 +216,5 @@ if __name__ == "__main__":
     # test_anapot_growingstring_opt()
     # test_mb_gs_opt()
     # plt.show()
-    test_fsm()
+    # test_gs()
+    test_fs()

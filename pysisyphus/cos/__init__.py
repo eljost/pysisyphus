@@ -7,6 +7,7 @@ __all__ = [
     "SimpleZTS",
     "ChainOfStates",
     "GrowingString",
+    "FreezingString",
 ]
 
 logger = logging.getLogger("cos")
