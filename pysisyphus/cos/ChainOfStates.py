@@ -23,7 +23,7 @@ class ChainOfStates:
                  scheduler=None):
 
         assert(len(images) >= 2), "Need at least 2 images!"
-        self.images = images
+        self.images = list(images)
         self.parallel = parallel
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
