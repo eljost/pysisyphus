@@ -18,7 +18,7 @@ class ChainOfStates:
     logger = logging.getLogger("cos")
 
     def __init__(self, images, parallel=0, fix_ends=False,
-                 fix_first=False, fix_last=False,
+                 fix_first=False, fix_last=False, fix_after=None, fix_rms=None,
                  climb=False, climb_rms=5e-3,
                  scheduler=None):
 
@@ -28,6 +28,8 @@ class ChainOfStates:
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
         self.fix_ends = fix_ends
+        self.fix_after = fix_after
+        self.fix_rms = fix_rms
         self.climb = climb
         self.climb_rms = climb_rms
         self.scheduler = scheduler
@@ -50,28 +52,24 @@ class ChainOfStates:
         if self.started_climbing:
             self.log("Will start climbing immediately.")
 
-        # fixed = list()
-        # if self.fix_first:
-            # fixed.append(0)
-        # if self.fix_last:
-            # fixed.append(
-
-
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
+
+    def get_fixed_indices(self):
+        fixed = list()
+        if self.fix_first:
+            fixed.append(0)
+        if self.fix_last:
+            fixed.append(len(self.images)-1)
+        return fixed
 
     @property
     def moving_indices(self):
         """Returns the indices of the images that aren't fixed and can be
         optimized."""
-        # fixed = [i for i, fix in zip((0, len(self.images)-1),
-                                     # (self.fix_first, self.fix_last)) if fix]
-        indices = range(len(self.images))
-        if self.fix_first:
-            indices = indices[1:]
-        if self.fix_last:
-            indices = indices[:-1]
-        return indices
+        fixed = self.get_fixed_indices()
+        return [i for i in range(len(self.images))
+                if i not in fixed]
 
     @property
     def last_index(self):
@@ -82,10 +80,9 @@ class ChainOfStates:
         return [self.images[i] for i in self.moving_indices]
 
     def zero_fixed_vector(self, vector):
-        if self.fix_first:
-            vector[0] = self.zero_vec
-        if self.fix_last:
-            vector[-1] = self.zero_vec
+        fixed = self.get_fixed_indices()
+        for i in fixed:
+            vector[i] = self.zero_vec
         return vector
 
     def clear(self):
