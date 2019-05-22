@@ -12,7 +12,8 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 class GrowingString(GrowingChainOfStates):
 
-    def __init__(self, images, calc_getter, perp_thresh=0.05, **kwargs):
+    def __init__(self, images, calc_getter, perp_thresh=0.05,
+                 reparam_every=3, **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
@@ -21,12 +22,15 @@ class GrowingString(GrowingChainOfStates):
             )
         super().__init__(images, calc_getter, **kwargs)
         self.perp_thresh = perp_thresh
+        self.reparam_every = int(reparam_every)
+        assert self.reparam_every >= 1
 
         left_img, right_img = self.images
 
         self.left_string = [left_img, ]
         self.right_string = [right_img, ]
 
+        self.reparam_in = reparam_every
         self._tangents = None
         self.tangent_list = list()
         self.perp_forces_list = list()
@@ -139,6 +143,16 @@ class GrowingString(GrowingChainOfStates):
         return self._forces
 
     def reparametrize(self):
+        # Non-fully-grown strings are reparametrized every cycle
+        can_reparametrize = True
+        self.reparam_in -= 1
+        # Fully-grown strings are reparametrized only every n-th cycle
+        if (self.images_left == 0) and not (self.reparam_in == 0):
+            self.log("Skipping reparametrization. Next reparametrization in "
+                     f"{self.reparam_in} cycles.")
+            self.set_tangents()
+            return False
+
         # Spline displaced coordinates
         tcks, us = self.spline()
 
@@ -176,6 +190,9 @@ class GrowingString(GrowingChainOfStates):
         self.reparam(tcks, param_density)
 
         self.set_tangents()
+        self.reparam_in = self.reparam_every
+
+        return True
 
     def get_additional_print(self):
         size_str = f"{self.left_size}+{self.right_size}"

@@ -27,12 +27,12 @@ class StringOptimizer(Optimizer):
     def reset(self):
         pass
 
-    def fit_rigid(self, vectors=None):
-        rot_mats = procrustes(self.geometry)
-        G = sp.linalg.block_diag(*rot_mats)
-        rotated_vectors = [vec.dot(G) for vec in vectors]
+    # def fit_rigid(self, vectors=None):
+        # rot_mats = procrustes(self.geometry)
+        # G = sp.linalg.block_diag(*rot_mats)
+        # rotated_vectors = [vec.dot(G) for vec in vectors]
 
-        return rotated_vectors
+        # return rotated_vectors
 
     def restrict_step_components(self, steps):
         too_big = np.abs(steps) > self.max_step
@@ -42,33 +42,25 @@ class StringOptimizer(Optimizer):
         return steps
 
     def optimize(self):
+        # Raises IndexError in cycle 0 and evaluates to False when the
+        # string size changed (grew) compared to the previous cycle.
+        try:
+            string_size_changed = self.geometry.coords.size != self.coords[-2].size
+        except IndexError:
+            string_size_changed = True
+
+        if string_size_changed and self.is_cos and self.align:
+            procrustes(self.geometry)
+            self.log("Aligned string.")
+
         forces = self.geometry.forces
         self.energies.append(self.geometry.energy)
         self.forces.append(forces)
 
-        # Raises IndexError in cycle 0 and evaluates to False when the
-        # string size changed after the last cycle.
-        try:
-            string_size_changed = forces.size != self.forces[-2].size
-        except IndexError:
-            string_size_changed = True
-        # string_size_changed = True
-
-
-        # if not string_size_changed and self.is_cos and self.align:
-            # prev_forces = self.forces[-1]
-            # prev_step = self.steps[-1]
-            # vectors = (forces, prev_forces, prev_step)
-            # forces, prev_forces, prev_step = self.fit_rigid(vectors)
-            # self.forces[-1] = prev_forces
-            # self.steps[-1] = prev_step
-            # self.log("Aligned geometries")
-        # self.forces.append(forces)
 
         sd_step = forces / self.gamma
         # Steepest descent in the first cbeginning
-        # if (self.cur_cycle == 0) or string_size_changed:
-        if True:
+        if (self.cur_cycle == 0) or string_size_changed:
             step = sd_step
             self.log("Taking steepest descent step.")
         # Conjugate Gradient later one

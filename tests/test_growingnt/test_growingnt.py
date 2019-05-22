@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from pysisyphus.helpers import geom_from_library
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
@@ -154,10 +155,39 @@ def test_mb_gs_opt():
     ap.animate()
 
 
+def test_fsm():
+    from pysisyphus.calculators.XTB import XTB
+    educt = geom_from_library("ciscis_24hexadiene_xtbopt.xyz")
+    product = geom_from_library("trans34dimethylcyclobutene.xyz")
+    images = (educt, product)
+
+    def calc_getter():
+        return XTB(pal=4)
+
+    for img in images:
+        img.set_calculator(calc_getter())
+
+    gs_kwargs = {
+        "max_nodes": 9,
+        "reparam_every": 3,
+    }
+    gs = GrowingString(images, calc_getter, **gs_kwargs)
+    from pysisyphus.optimizers.StringOptimizer import StringOptimizer
+
+    opt_kwargs = {
+        "dump": True,
+        "max_cycles": 40,
+        "align": True,
+    }
+    opt = StringOptimizer(gs, **opt_kwargs)
+    opt.run()
+
+
 if __name__ == "__main__":
     # test_anapot_growingnt()
     # test_mullerbrown_growingnt()
     # test_four_well_growingnt()
     # test_anapot_growingstring_opt()
-    test_mb_gs_opt()
-    plt.show()
+    # test_mb_gs_opt()
+    # plt.show()
+    test_fsm()

@@ -318,7 +318,9 @@ class Optimizer:
             self.geometry.coords = new_coords
 
             if hasattr(self.geometry, "reparametrize"):
-                self.geometry.reparametrize()
+                reparametrized = self.geometry.reparametrize()
+                if reparametrized:
+                    self.log("Did reparametrization")
 
             sys.stdout.flush()
             if check_for_stop_sign():
