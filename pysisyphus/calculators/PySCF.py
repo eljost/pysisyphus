@@ -48,7 +48,7 @@ class PySCF(OverlapCalculator):
         if self.method == "tddft":
             assert self.nstates, "nstates must be set with method='tddft'!"
         if self.track:
-            assert self.root <= self.nstates, "'root' must not be smaller " \
+            assert self.root <= self.nstates, "'root' must be smaller " \
                 "than 'nstates'!"
         self.auxbasis = auxbasis
 
@@ -81,7 +81,7 @@ class PySCF(OverlapCalculator):
             mf = pyscf.tddft.TDA(mf)
             mf.nstates = self.nstates
         else:
-            raise Exception("Unknown method!")
+            raise Exception("Unknown method '{step}'!")
         return mf
 
     def prepare_input(self, atoms, coords):
