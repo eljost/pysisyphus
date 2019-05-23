@@ -237,6 +237,24 @@ class Calculator:
         )
         return coords
 
+    def prepare_xyz_string(self, atoms, coords):
+        """Returns a xyz string in Angstrom.
+
+        Parameters
+        ----------
+        atoms : iterable
+            Atom descriptors (element symbols).
+        coords: np.array, 1d
+            1D-array holding coordinates in Bohr.
+
+        Returns
+        -------
+        xyz_str: string
+            Coordinates in .xyz format.
+        """
+
+        return f"{len(atoms)}\n\n{self.prepare_coords(atoms, coords)}"
+
     def run(self, inp, calc, add_args=None, env=None, shell=False,
             hold=False, keep=True, cmd=None, inc_counter=True,
             run_after=True):
