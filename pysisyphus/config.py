@@ -27,6 +27,4 @@ def get_cmd(key, use_defaults=True):
                    "in ~/.pysisyphusrc and no default was specified. Exiting!"
             )
             sys.exit()
-        return DEFAULTS[key]["cmd"]
-
-    return Config[y][key]
+        return DEFAULTS[key]

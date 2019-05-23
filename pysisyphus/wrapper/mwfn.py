@@ -10,7 +10,7 @@ from pysisyphus.config import get_cmd
 def call_mwfn(inp_fn, stdin, cwd=None):
     if cwd is None:
         cwd = Path(".")
-    mwfn_cmd = [get_cmd("mwfn", inp_fn]
+    mwfn_cmd = [get_cmd("mwfn"), inp_fn]
     proc = Popen(mwfn_cmd, universal_newlines=True,
                  stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=cwd)
     stdout, stderr = proc.communicate(stdin)

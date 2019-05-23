@@ -59,6 +59,8 @@ class OverlapCalculator(Calculator):
         # calculation and it may differ from the value stored in
         # self.calculated_roots.
         self.roots_list = list()
+        # Roots at the reference states that are used for comparison
+        self.reference_roots = list()
         self.all_energies_list = list()
         # Why did is there already False in the list? Probably related
         # to plotting...
@@ -269,6 +271,7 @@ class OverlapCalculator(Calculator):
             "overlap_matrices": np.array(self.overlap_matrices, dtype=float),
             "row_inds": np.array(self.row_inds, dtype=int),
             "ref_cycles": np.array(self.ref_cycles, dtype=int),
+            "ref_roots": np.array(self.reference_roots, dtype=int),
         }
 
         with h5py.File(self.dump_fn, "w") as handle:
@@ -319,10 +322,6 @@ class OverlapCalculator(Calculator):
         """Store the information of the current iteration and if possible
         calculate the overlap with a previous/the first iteration."""
         self.store_overlap_data(atoms, coords)
-        # Calculated root and self.root are still the same right now.
-        assert self.calculated_roots == self.root
-        if self.make_cubes and len(self.ci_coeff_list >= 1):
-            self.make_cdd_cube(self.root, cycle=-1)
 
         old_root = self.root
         if not ovlp_type:
@@ -370,6 +369,7 @@ class OverlapCalculator(Calculator):
         # in between), by determining the highest overlap in a given row
         # of the overlap matrix.
         ref_root = self.roots_list[self.ref_cycle]
+        self.reference_roots.append(ref_root)
         # Row index in the overlap matrix. Depends on the root of the reference
         # cycle and corresponds to the old root.
         row_ind = ref_root - 1
@@ -447,6 +447,9 @@ class OverlapCalculator(Calculator):
         self.roots_list.append(self.root)
         assert len(self.roots_list) == len(self.calculated_roots)
         self.dump_overlap_data()
+
+        if self.make_cubes:
+            self.make_cdd_cube(self.root)
 
         # True if a root flip occured
         return root_flip
