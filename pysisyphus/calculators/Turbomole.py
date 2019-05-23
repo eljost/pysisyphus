@@ -47,6 +47,7 @@ class Turbomole(OverlapCalculator):
                         "ciss_a", "ucis_a", "gradient", "sing_a",
                         "__ccre*", "exstates", "coord",
                         "mwfn_wf:wavefunction.molden",
+                        "input.xyz",
         )
 
         self.parser_funcs = {
@@ -140,7 +141,7 @@ class Turbomole(OverlapCalculator):
         self.ci_coeffs = None
         self.mo_inds = None
 
-    def prepare_coords(self, atoms, coords):
+    def prepare_turbo_coords(self, atoms, coords):
         fmt = "{:<20.014f}"
         coord_str = "$coord\n"
         for atom, coord in zip(atoms, coords.reshape(-1, 3)):
@@ -172,8 +173,11 @@ class Turbomole(OverlapCalculator):
         globs = [p for p in all_src_paths]
         for glob in copy_from.glob("./*"):
             shutil.copy(glob, path)
+        xyz_str = self.prepare_xyz_string(atoms, coords)
+        with open(path / "input.xyz", "w") as handle:
+            handle.write(xyz_str)
         # Write coordinates
-        coord_str = self.prepare_coords(atoms, coords)
+        coord_str = self.prepare_turbo_coords(atoms, coords)
         coord_fn = path / "coord"
         with open(coord_fn, "w") as handle:
             handle.write(coord_str)
