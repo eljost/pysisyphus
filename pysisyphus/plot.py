@@ -564,7 +564,9 @@ def plot_overlaps(h5, thresh=.1):
 def render_cdds(h5):
     with h5py.File(h5) as handle:
         cdd_img_fns = handle["cdd_imgs"][:]
-    import pdb; pdb.set_trace()
+        orient = handle["orient"][:]
+    png_fns = [render_cdd_cube(fn) for fn in cdd_img_fns]
+    print(png_fns)
     pass
 
 
@@ -600,7 +602,7 @@ def parse_args(args):
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
     group.add_argument("--overlaps", "-o", action="store_true")
-    group.add_argument("--render_ccds", action="store_true")
+    group.add_argument("--render_cdds", action="store_true")
 
     return parser.parse_args(args)
 

@@ -278,6 +278,7 @@ class OverlapCalculator(Calculator):
             "row_inds": np.array(self.row_inds, dtype=int),
             "ref_cycles": np.array(self.ref_cycles, dtype=int),
             "ref_roots": np.array(self.reference_roots, dtype=int),
+            "orient" = np.array(self.orient, dtype="S")
         }
         if self.cdd_cubes:
             data_dict["cdd_cubes"] = np.array(self.cdd_cubes, dtype="S")
