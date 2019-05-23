@@ -61,7 +61,7 @@ class Gaussian16(OverlapCalculator):
 
         self.wfow = None
 
-        self.to_keep = ("com", "fchk", "log", "dump_635r")
+        self.to_keep = ("com", "fchk", "log", "dump_635r", "input.xyz")
         if self.keep_chk:
             self.to_keep += (".chk",)
 
@@ -146,8 +146,12 @@ class Gaussian16(OverlapCalculator):
             return ""
 
     def prepare_input(self, atoms, coords, calc_type, did_stable=False):
-        coords = self.prepare_coords(atoms, coords)
         path = self.prepare_path(use_in_run=True)
+        xyz_str = self.prepare_xyz_string(atoms, coords)
+        with open(path / "input.xyz", "w") as handle:
+            handle.write(xyz_str)
+
+        coords = self.prepare_coords(atoms, coords)
         kwargs = {
             "pal": self.pal,
             "mem": self.pal*self.mem,
@@ -632,6 +636,7 @@ class Gaussian16(OverlapCalculator):
             self.chk = kept_fns[".chk"]
         try:
             self.fchk = kept_fns["fchk"]
+            self.mwfn_wf = self.fchk
         except KeyError:
             self.log("No .fchk file found!")
             return
