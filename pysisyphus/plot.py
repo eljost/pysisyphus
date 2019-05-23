@@ -22,6 +22,9 @@ from pysisyphus.peakdetect import peakdetect
 from pysisyphus.wrapper.jmol import render_cdd_cube
 
 
+CDD_PNG_FNS = "cdd_png_fns"
+
+
 class Plotter:
     def __init__(self, coords, data, ylabel, interval=750, save=None,
                  legend=None):
@@ -494,10 +497,18 @@ def plot_overlaps(h5, thresh=.1):
         ref_roots = handle["ref_roots"][:]
         try:
             cdd_img_fns = handle["cdd_imgs"][:]
-            print("CDD images:", cdd_img_fns)
-            cdd_imgs = [mpimg.imread(fn) for fn in cdd_img_fns]
         except KeyError:
-            cdd_imgs = None
+            print(f"Couldn't find image data in '{h5}'.")
+            try:
+                with open(CDD_PNG_FNS) as handle:
+                    cdd_img_fns = handle.read().split()
+                print(f"Found image data in '{CDD_PNG_FNS}'")
+            except FileNotFoundError:
+                cdd_img_fns = None
+    cdd_imgs = None
+    if cdd_img_fns is not None:
+        cdd_imgs = [mpimg.imread(fn) for fn in cdd_img_fns]
+
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Found {len(overlaps)} overlap matrices.")
     print(f"Roots: {roots}")
@@ -563,11 +574,14 @@ def plot_overlaps(h5, thresh=.1):
 
 def render_cdds(h5):
     with h5py.File(h5) as handle:
-        cdd_img_fns = handle["cdd_imgs"][:]
-        orient = handle["orient"][:]
-    png_fns = [render_cdd_cube(fn) for fn in cdd_img_fns]
-    print(png_fns)
-    pass
+        cdd_cubes = handle["cdd_cubes"][:].astype(str)
+        orient = handle["orient"][()].decode()
+    png_fns = [render_cdd_cube(fn, orient=orient) for fn in cdd_cubes]
+    joined = "\n".join([str(fn) for fn in png_fns])
+    with open(CDD_PNG_FNS, "w") as handle:
+        handle.write(joined)
+    print(joined)
+    print(f"Wrote list of rendered PNGs to '{CDD_PNG_FNS}'")
 
 
 def parse_args(args):
