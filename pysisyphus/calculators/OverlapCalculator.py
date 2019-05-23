@@ -510,5 +510,8 @@ class OverlapCalculator(Calculator):
 
     def render_cdd_cube(self):
         cdd_cube = self.cdd_cubes[-1]
-        cdd_img = render_cdd_cube_jmol(cdd_cube, orient=self.orient)
-        self.cdd_imgs.append(cdd_img)
+        try:
+            cdd_img = render_cdd_cube_jmol(cdd_cube, orient=self.orient)
+            self.cdd_imgs.append(cdd_img)
+        except:
+            self.log("Something went wrong while rendering the CDD cube.")

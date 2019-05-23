@@ -19,6 +19,7 @@ from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG, AU2EV
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.Geometry import Geometry
 from pysisyphus.peakdetect import peakdetect
+from pysisyphus.wrapper.jmol import render_cdd_cube
 
 
 class Plotter:
@@ -560,13 +561,20 @@ def plot_overlaps(h5, thresh=.1):
     plt.show()
 
 
+def render_cdds(h5):
+    with h5py.File(h5) as handle:
+        cdd_img_fns = handle["cdd_imgs"][:]
+    import pdb; pdb.set_trace()
+    pass
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--first", type=int,
                         help="Only consider the first [first] cycles.")
     parser.add_argument("--last", type=int,
                         help="Only consider the last [last] cycles.")
-    parser.add_argument("--h5", default=None)
+    parser.add_argument("--h5", default="overlap_data.h5")
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--saras", action="store_true",
@@ -592,6 +600,7 @@ def parse_args(args):
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
     group.add_argument("--overlaps", "-o", action="store_true")
+    group.add_argument("--render_ccds", action="store_true")
 
     return parser.parse_args(args)
 
@@ -616,13 +625,11 @@ def run():
     elif args.aneb:
         plot_aneb()
     elif args.all_energies:
-        if h5 is None:
-            h5 = "overlap_data.h5"
         plot_all_energies(h5=h5)
     elif args.overlaps:
-        if h5 is None:
-            h5 = "overlap_data.h5"
         plot_overlaps(h5=h5)
+    elif args.render_cdds:
+        render_cdds(h5=h5)
 
 
 if __name__ == "__main__":
