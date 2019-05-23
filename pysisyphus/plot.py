@@ -6,6 +6,7 @@ import sys
 
 import h5py
 import matplotlib
+from matplotlib.patches import Rectangle
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
@@ -488,10 +489,12 @@ def plot_overlaps(h5, thresh=.1):
         roots = handle["roots"][:]
         calculated_roots = handle["calculated_roots"][:]
         ref_cycles = handle["ref_cycles"][:]
+        ref_roots = handle["ref_roots"][:]
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Found {len(overlaps)} overlap matrices.")
     print(f"Roots: {roots}")
     print(f"Reference cycles: {ref_cycles}")
+    print(f"Reference roots: {ref_roots}")
 
     fig, ax = plt.subplots()
 
@@ -514,8 +517,15 @@ def plot_overlaps(h5, thresh=.1):
             value_str = f"{abs(value):.2f}"
             ax.text(k, l, value_str, ha='center', va='center')
         j, k = ref_cycles[i], i+1
+        ref_root = ref_roots[i]
         old_root = calculated_roots[i+1]
         new_root = roots[i+1]
+        ref_overlaps = o[ref_root]
+        argmax = np.nanargmax(ref_overlaps)
+        xy = (argmax-0.5, ref_root-0.5)
+        highlight = Rectangle(xy, 1, 1,
+                              fill=False, color="red", lw="4")
+        ax.add_artist(highlight)
         fig.suptitle(f"overlap {i:03d}\n"
                      f"{ovlp_type} overlap between {j:03d} and {k:03d}\n"
                      f"old root: {old_root}, new root: {new_root}")
