@@ -522,7 +522,7 @@ def plot_overlaps(h5, thresh=.1):
         ax.set_xticks(np.arange(n_states, dtype=np.int))
         ax.set_yticks(np.arange(n_states, dtype=np.int))
         ax.set_xlabel("new states")
-        ax.set_ylabel("old states")
+        ax.set_ylabel("reference states")
         for (l,k), value in np.ndenumerate(o):
             if np.isnan(value):
                 continue
