@@ -15,6 +15,7 @@ import numpy as np
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import AU2EV
 from pysisyphus.wrapper.mwfn import make_cdd
+from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -32,7 +33,7 @@ class OverlapCalculator(Calculator):
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
-                 use_ntos=4, make_cubes=False, **kwargs):
+                 use_ntos=4, cdds=None, orient="", **kwargs):
         super().__init__(*args, **kwargs)
 
         self.track = track
@@ -45,7 +46,10 @@ class OverlapCalculator(Calculator):
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
         self.use_ntos = use_ntos
-        self.make_cubes = make_cubes
+        self.cdds = cdds
+        self.orient = orient
+        if self.cdds:
+            assert self.cdds in "calc render".split()
 
         self.wfow = None
         self.mo_coeff_list = list()
@@ -61,6 +65,8 @@ class OverlapCalculator(Calculator):
         self.roots_list = list()
         # Roots at the reference states that are used for comparison
         self.reference_roots = list()
+        self.cdd_cubes = list()
+        self.cdd_imgs = list()
         self.all_energies_list = list()
         # Why did is there already False in the list? Probably related
         # to plotting...
@@ -273,6 +279,10 @@ class OverlapCalculator(Calculator):
             "ref_cycles": np.array(self.ref_cycles, dtype=int),
             "ref_roots": np.array(self.reference_roots, dtype=int),
         }
+        if self.cdd_cubes:
+            data_dict["cdd_cubes"] = np.array(self.cdd_cubes, dtype="S")
+            if self.cdd_imgs:
+                data_dict["cdd_imgs"] = np.array(self.cdd_imgs, dtype="S")
 
         with h5py.File(self.dump_fn, "w") as handle:
             for key, val in data_dict.items():
@@ -446,10 +456,13 @@ class OverlapCalculator(Calculator):
         self.root_flips.append(root_flip)
         self.roots_list.append(self.root)
         assert len(self.roots_list) == len(self.calculated_roots)
-        self.dump_overlap_data()
 
-        if self.make_cubes:
-            self.make_cdd_cube(self.root)
+        if self.cdds:
+            self.calc_cdd_cube(self.root)
+            if self.cdds == "render":
+                self.render_cdd_cube()
+
+        self.dump_overlap_data()
 
         # True if a root flip occured
         return root_flip
@@ -460,14 +473,14 @@ class OverlapCalculator(Calculator):
         ci_coeffs = self.ci_coeff_list[cycle]
         exc_energies = (energies[1:] - energies[0]) * AU2EV
         above_thresh = np.abs(ci_coeffs) > thresh
-        occ_mos, virt_mos = ci_coeffs.shape[:2]
+        _, occ_mos, virt_mos = ci_coeffs.shape
 
         exc_str = ""
         mult = 1
         self.log("Assuming mult={mult} in get_mwfn_exc_str")
-        for root_, (ci_coeffs, exc_en) in enumerate(zip(ci_coeffs, exc_energies), 1):
+        for root_, (root_ci_coeffs, exc_en) in enumerate(zip(ci_coeffs, exc_energies), 1):
             exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
-            for (occ, virt), coeff in np.ndenumerate(ci_coeffs):
+            for (occ, virt), coeff in np.ndenumerate(root_ci_coeffs):
                 if abs(coeff) < thresh:
                     continue
                 occ_mo = occ+1
@@ -476,7 +489,9 @@ class OverlapCalculator(Calculator):
             exc_str += "\n"
         return exc_str
 
-    def make_cdd_cube(self, root, cycle=-1):
+    def calc_cdd_cube(self, root, cycle=-1):
+        if (not hasattr(self, "mwfn_wf")):
+            self.log("self.mwfn_wf is not set! Skipping CDD cube generation!")
         if cycle != -1:
             self.log("'cycle' argument to make_cdd_cube is currently ignored!")
         exc_str = self.get_mwfn_exc_str(cycle)
@@ -489,4 +504,11 @@ class OverlapCalculator(Calculator):
             assert len(cubes) == 1
             cube = cubes[0]
             cube_fn = cubes[0].name
-            shutil.copy(cube, self.make_fn(cube_fn))
+            new_cube_fn = self.make_fn(cube_fn)
+            shutil.copy(cube, new_cube_fn)
+            self.cdd_cubes.append(new_cube_fn)
+
+    def render_cdd_cube(self):
+        cdd_cube = self.cdd_cubes[-1]
+        cdd_img = render_cdd_cube_jmol(cdd_cube, orient=self.orient)
+        self.cdd_imgs.append(cdd_img)

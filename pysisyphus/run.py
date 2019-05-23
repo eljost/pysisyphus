@@ -828,7 +828,9 @@ def run():
         return
 
     print_header()
-    pprint(run_dict)
+    run_dict_without_none = {k: v for k, v in run_dict.items()
+                             if v is not None}
+    pprint(run_dict_without_none)
     print()
 
     if args.overlaps:

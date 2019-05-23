@@ -6,9 +6,10 @@ import sys
 
 import h5py
 import matplotlib
-from matplotlib.patches import Rectangle
-import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Rectangle
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.interpolate import splrep, splev
@@ -490,6 +491,12 @@ def plot_overlaps(h5, thresh=.1):
         calculated_roots = handle["calculated_roots"][:]
         ref_cycles = handle["ref_cycles"][:]
         ref_roots = handle["ref_roots"][:]
+        try:
+            cdd_img_fns = handle["cdd_imgs"][:]
+            print("CDD images:", cdd_img_fns)
+            cdd_imgs = [mpimg.imread(fn) for fn in cdd_img_fns]
+        except KeyError:
+            cdd_imgs = None
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Found {len(overlaps)} overlap matrices.")
     print(f"Roots: {roots}")
@@ -502,7 +509,12 @@ def plot_overlaps(h5, thresh=.1):
 
     def draw(i):
         fig.clf()
-        ax = fig.add_subplot("111")
+        if cdd_imgs is not None:
+            ax = fig.add_subplot(121)
+            ax1 = fig.add_subplot(122)
+        else:
+            ax = fig.add_subplot(111)
+            ax1 = None
         o = overlaps[i]
         im = ax.imshow(o, vmin=0, vmax=1)
         # fig.colorbar(im)
@@ -526,6 +538,8 @@ def plot_overlaps(h5, thresh=.1):
         highlight = Rectangle(xy, 1, 1,
                               fill=False, color="red", lw="4")
         ax.add_artist(highlight)
+        if ax1:
+            ax1.imshow(cdd_imgs[i])
         fig.suptitle(f"overlap {i:03d}\n"
                      f"{ovlp_type} overlap between {j:03d} and {k:03d}\n"
                      f"old root: {old_root}, new root: {new_root}")
