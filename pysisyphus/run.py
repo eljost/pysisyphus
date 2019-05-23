@@ -752,6 +752,9 @@ def clean(force=False):
         "calculator_*.ciss_a",
         "image*.sing_a",
         "calculator*.sing_a",
+        "*wavefunction.molden",
+        "*input.xyz",
+        "*.coord"
         # WFOverlap specific
         "wfo_*.*.out",
         # XTB specific
