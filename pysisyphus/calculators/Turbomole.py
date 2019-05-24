@@ -385,24 +385,32 @@ class Turbomole(OverlapCalculator):
         return eigenpairs_full
 
     def parse_gs_energy(self):
+        """Several places are possible:
+            $subenergy from control file
+            total energy from turbomole.out
+            Final MP2 energy from turbomole.out with ADC(2)
+            Final CC2 energy from turbomole.out with CC(2)
+        """
         float_re = "([\d\-\.E]+)"
-        with open(self.control) as handle:
-            text = handle.read()
-        en_re = re.compile("\$subenergy.*$\s*" + float_re, flags=re.MULTILINE)
-        mobj = en_re.search(text)
-        try:
-            gs_energy = float(mobj[1])
-        # Calls to dscf don't put '$subenergy ...' into the control file
-        except TypeError:
-            self.log("Couldn't parse ground state energy from control file.")
-
-        with open(self.out) as handle:
-            text = handle.read()
-        en_re = re.compile("total energy\s*=\s*" + float_re)
-        mobj = en_re.search(text)
-        gs_energy = float(mobj[1])
-        self.log("Parsed ground state energy from logfile.")
-        return gs_energy
+        regexs = [("control", "\$subenergy.*$\s*" + float_re, re.MULTILINE),
+                  # CC2 ground state energy
+                  ("out", "Final CC2 energy\s*:\s*" + float_re, 0),
+                  # ADC(2) ground state energy
+                  ("out", "Final MP2 energy\s*:\s*" + float_re, 0),
+                  # DSCF ground state energy
+                  ("out", "total energy\s*=\s*" + float_re, 0),
+        ]
+        for file_attr, regex, flag in regexs:
+            regex_ = re.compile(regex, flags=flag)
+            with open(getattr(self, file_attr)) as handle:
+                text = handle.read()
+            mobj = regex_.search(text)
+            try:
+                gs_energy = float(mobj[1])
+                return gs_energy
+            except TypeError:
+                continue
+        raise Exception("Couldn't parse ground state energy!")
 
     def prepare_overlap_data(self):
         # Parse eigenvectors from escf/egrad calculation
@@ -468,12 +476,12 @@ class Turbomole(OverlapCalculator):
                 td_key_present = [k for k in ("ciss_a", "sing_a", "ucis_a")
                                   if k in kept_fns][0]
                 self.td_vec_fn = kept_fns[td_key_present]
-                self.mwfn_wf = kept_fns["mwfn_wf"]
             elif self.ricc2:
                 self.ccres = kept_fns["ccres"]
                 self.exstates = kept_fns["exstates"]
             else:
                 raise Exception("Something went wrong!")
+            self.mwfn_wf = kept_fns["mwfn_wf"]
 
     def run_after(self, path):
         # Convert binary CCRE0 files to ASCII for easier parsing
@@ -485,17 +493,34 @@ class Turbomole(OverlapCalculator):
             result.wait()
 
         if self.td:
-            cmd = "tm2molden norm".split()
-            fn = "wavefunction.molden"
-            stdin = f"""{fn}
+            self.make_molden(path)
+        elif self.ricc2:
+            # Backup original control file
+            ctrl_backup = path / "control.backup"
+            shutil.copy(path / "control", ctrl_backup)
+            # We have to remove line with implicit core in the control file
+            with open(path / "control") as handle:
+                text = handle.read()
+            lines = text.split("\n")
+            lines = [l for l in lines if "implicit core" not in l]
+            with open(path / "control", "w") as handle:
+                handle.write("\n".join(lines))
+            self.make_molden(path)
+            # Restore control backup
+            shutil.copy(ctrl_backup, path / "control")
 
-            """
-            res = subprocess.Popen(cmd, cwd=path, universal_newlines=True,
-                                   stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-            stdout, stderr = res.communicate(stdin)
-            res.terminate()
+    def make_molden(self, path):
+        cmd = "tm2molden norm".split()
+        fn = "wavefunction.molden"
+        stdin = f"""{fn}
+
+        """
+        res = subprocess.Popen(cmd, cwd=path, universal_newlines=True,
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+        stdout, stderr = res.communicate(stdin)
+        res.terminate()
 
     def propagate_wavefunction(self, calc):
         if self.mos:
