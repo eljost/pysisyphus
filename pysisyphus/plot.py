@@ -576,7 +576,12 @@ def render_cdds(h5):
     with h5py.File(h5) as handle:
         cdd_cubes = handle["cdd_cubes"][:].astype(str)
         orient = handle["orient"][()].decode()
-    png_fns = [render_cdd_cube(fn, orient=orient) for fn in cdd_cubes]
+    # png_fns = [render_cdd_cube(fn, orient=orient) for fn in cdd_cubes]
+    png_fns = list()
+    for i, cube in enumerate(cdd_cubes):
+        print(f"Rendering cube {i+1:03d}/{len(cdd_cubes):03d}")
+        png_fn = render_cdd_cube(cube, orient=orient)
+        png_fns.append(png_fn)
     joined = "\n".join([str(fn) for fn in png_fns])
     with open(CDD_PNG_FNS, "w") as handle:
         handle.write(joined)
@@ -591,6 +596,7 @@ def parse_args(args):
     parser.add_argument("--last", type=int,
                         help="Only consider the last [last] cycles.")
     parser.add_argument("--h5", default="overlap_data.h5")
+    parser.add_argument("--orient", default="")
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--saras", action="store_true",
