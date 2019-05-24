@@ -12,7 +12,7 @@ def to_float(s, loc, toks):
     return float(match)
 
 def make_float_class(**kwargs):
-    return pp.Word(pp.nums + ".-D+", **kwargs).setParseAction(to_float)
+    return pp.Word(pp.nums + ".-DE+", **kwargs).setParseAction(to_float)
 
 
 def parse_turbo_gradient(path):
@@ -36,6 +36,7 @@ def parse_turbo_gradient(path):
     energy_type = pp.Or((pp.Literal("SCF energy"),
                         pp.Literal("ex. state energy"),
                         pp.Literal("CC2 energy"),
+                        pp.Literal("ADC(2) energy"),
                         pp.Literal("MP2 energy"),
     ))
 
@@ -109,8 +110,25 @@ def parse_turbo_mos(text):
     return mo_coeffs
 
 
+def parse_turbo_exstates(text):
+    float_ = make_float_class()
+    exc_energies_line = (pp.Literal("$excitation_energies_")
+                         + pp.Word(pp.alphanums + "()").setResultsName("model")
+                         + pp.Word("_")
+                         + pp.restOfLine
+    )
+    exc_energy = pp.Suppress(pp.Word(pp.nums)) + float_
+    exc_energies_block = pp.Group(exc_energies_line + pp.Group(pp.OneOrMore(exc_energy)).setResultsName("ee"))
+
+    parser = pp.OneOrMore(exc_energies_block).setResultsName("exc_blocks")
+    result = parser.parseString(text)
+    exc_energies_by_model = [(b.model, b.ee.asList()) for b in result.exc_blocks]
+    return exc_energies_by_model
+
+
 if __name__ == "__main__":
     from pathlib import Path
-    fn = "/tmp/calculator_0_000_ab7q7o9y"
-    path = Path(fn)
-    parse_turbo_gradient(path)
+    with open("image_000.000.exstates") as handle:
+        text = handle.read()
+    ee = parse_turbo_exstates(text)
+    print(ee)

@@ -16,7 +16,8 @@ from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import AU2EV
 from pysisyphus.calculators.parser import (parse_turbo_gradient,
                                            parse_turbo_ccre0_ascii,
-                                           parse_turbo_mos)
+                                           parse_turbo_mos,
+                                           parse_turbo_exstates)
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
@@ -384,11 +385,23 @@ class Turbomole(OverlapCalculator):
         return eigenpairs_full
 
     def parse_gs_energy(self):
+        float_re = "([\d\-\.E]+)"
         with open(self.control) as handle:
             text = handle.read()
-        en_re = re.compile("\$subenergy.*$\s*([\d\-\.E]+)", flags=re.MULTILINE)
+        en_re = re.compile("\$subenergy.*$\s*" + float_re, flags=re.MULTILINE)
+        mobj = en_re.search(text)
+        try:
+            gs_energy = float(mobj[1])
+        # Calls to dscf don't put '$subenergy ...' into the control file
+        except TypeError:
+            self.log("Couldn't parse ground state energy from control file.")
+
+        with open(self.out) as handle:
+            text = handle.read()
+        en_re = re.compile("total energy\s*=\s*" + float_re)
         mobj = en_re.search(text)
         gs_energy = float(mobj[1])
+        self.log("Parsed ground state energy from logfile.")
         return gs_energy
 
     def prepare_overlap_data(self):
@@ -412,7 +425,16 @@ class Turbomole(OverlapCalculator):
         else:
             ci_coeffs = [self.parse_cc2_vectors(ccre)
                          for ccre in self.ccres]
-            exc_energies = list()
+            with open(self.exstates) as handle:
+                exstates_text = handle.read()
+            exc_energies_by_model = parse_turbo_exstates(exstates_text)
+            # Drop CCS and take energies from whatever model was used
+            exc_energies = [(model, exc_ens) for model, exc_ens in exc_energies_by_model
+                            if model != "CCS"]
+            assert len(exc_energies) == 1
+            model, exc_energies = exc_energies[0]
+            all_energies = np.full(len(exc_energies)+1, gs_energy)
+            all_energies[1:] += exc_energies
             self.log("Parsing of all energies for ricc2 is not yet implemented!")
         ci_coeffs = np.array(ci_coeffs)
         states = ci_coeffs.shape[0]
@@ -449,6 +471,7 @@ class Turbomole(OverlapCalculator):
                 self.mwfn_wf = kept_fns["mwfn_wf"]
             elif self.ricc2:
                 self.ccres = kept_fns["ccres"]
+                self.exstates = kept_fns["exstates"]
             else:
                 raise Exception("Something went wrong!")
 
