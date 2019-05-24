@@ -478,7 +478,7 @@ def plot_all_energies(h5):
     fig, ax = plt.subplots()
     for i, state in enumerate(energies.T):
         ax.plot(steps, state, "o-", label=f"State {i:03d}")
-    ax.legend()
+    ax.legend(loc="lower center", ncol=3)
     ax.set_xlabel("Step")
     ax.set_ylabel("$\Delta E / eV$")
     root_ens = [s[r] for s, r in zip(energies, roots)]
