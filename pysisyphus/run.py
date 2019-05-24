@@ -663,7 +663,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     elif run_dict["cos"]:
         cos_cls = COS_DICT[cos_key]
         if (issubclass(cos_cls, GrowingChainOfStates)
-            or isinstance(cos_cls, FreezingString)):
+            or isinstance(cos_cls, type(FreezingString))):
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
