@@ -33,4 +33,6 @@ class RK4(IRC):
         k4 = self.get_k(mw_coords_4)
 
         step = (k1 + 2*k2 + 2*k3 + k4) / 6
+        step_norm = np.linalg.norm(step)
+        self.log(f"norm(step)={step_norm:.6f}")
         self.mw_coords = mw_coords_1 + step
