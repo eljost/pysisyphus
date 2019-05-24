@@ -392,11 +392,12 @@ class Turbomole(OverlapCalculator):
             Final CC2 energy from turbomole.out with CC(2)
         """
         float_re = "([\d\-\.E]+)"
-        regexs = [("control", "\$subenergy.*$\s*" + float_re, re.MULTILINE),
+        regexs = [
                   # CC2 ground state energy
                   ("out", "Final CC2 energy\s*:\s*" + float_re, 0),
                   # ADC(2) ground state energy
                   ("out", "Final MP2 energy\s*:\s*" + float_re, 0),
+                  ("control", "\$subenergy.*$\s*" + float_re, re.MULTILINE),
                   # DSCF ground state energy
                   ("out", "total energy\s*=\s*" + float_re, 0),
         ]
@@ -407,6 +408,8 @@ class Turbomole(OverlapCalculator):
             mobj = regex_.search(text)
             try:
                 gs_energy = float(mobj[1])
+                self.log(f"Parsed ground state energy from '{file_attr}' using "
+                         f"regex '{regex[:11]}'.")
                 return gs_energy
             except TypeError:
                 continue

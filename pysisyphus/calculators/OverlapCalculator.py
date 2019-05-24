@@ -478,7 +478,7 @@ class OverlapCalculator(Calculator):
 
         exc_str = ""
         mult = 1
-        self.log("Assuming mult={mult} in get_mwfn_exc_str")
+        self.log(f"Using dummy multiplicity={mult} in get_mwfn_exc_str")
         for root_, (root_ci_coeffs, exc_en) in enumerate(zip(ci_coeffs, exc_energies), 1):
             exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
             for (occ, virt), coeff in np.ndenumerate(root_ci_coeffs):
