@@ -111,6 +111,7 @@ def parse_turbo_mos(text):
 
 
 def parse_turbo_exstates(text):
+    """Parse excitation energies (first blocks) from an exstates file."""
     float_ = make_float_class()
     exc_energies_line = (pp.Literal("$excitation_energies_")
                          + pp.Word(pp.alphanums + "()").setResultsName("model")
@@ -118,11 +119,12 @@ def parse_turbo_exstates(text):
                          + pp.restOfLine
     )
     exc_energy = pp.Suppress(pp.Word(pp.nums)) + float_
-    exc_energies_block = pp.Group(exc_energies_line + pp.Group(pp.OneOrMore(exc_energy)).setResultsName("ee"))
+    exc_energies_block = pp.Group(exc_energies_line
+                                  + pp.Group(pp.OneOrMore(exc_energy)).setResultsName("exc_ens"))
 
     parser = pp.OneOrMore(exc_energies_block).setResultsName("exc_blocks")
     result = parser.parseString(text)
-    exc_energies_by_model = [(b.model, b.ee.asList()) for b in result.exc_blocks]
+    exc_energies_by_model = [(b.model, b.exc_ens.asList()) for b in result.exc_blocks]
     return exc_energies_by_model
 
 
