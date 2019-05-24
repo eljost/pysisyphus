@@ -456,7 +456,7 @@ def plot_all_energies(h5):
     energies_ = list()
     roots_ = list()
     steps = list()
-    for i, root_flip in enumerate(flips):
+    for i, root_flip in enumerate(flips[:-1]):
         if root_flip:
             print(f"Root flip occured between {i} and {i+1}.")
             continue
