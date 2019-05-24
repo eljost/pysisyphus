@@ -17,18 +17,18 @@ from pysisyphus.TablePrinter import TablePrinter
 
 class IRC:
 
-    def __init__(self, geometry, step_length=0.1, max_steps=75,
+    def __init__(self, geometry, step_length=0.1, max_cycles=75,
                  forward=True, backward=True,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
                  rms_grad_thresh=5e-4):
         assert(step_length > 0), "step_length must be positive"
-        assert(max_steps > 0), "max_steps must be positive"
+        assert(max_cycles > 0), "max_cycles must be positive"
 
         self.logger = logging.getLogger("irc")
 
         self.geometry = geometry
         self.step_length = step_length
-        self.max_steps = max_steps
+        self.max_cycles = max_cycles
         self.forward = forward
         self.backward = backward
         self.displ = displ
@@ -160,7 +160,7 @@ class IRC:
         self.irc_gradients.append(self.gradient)
 
         while True:
-            if self.cur_step == self.max_steps:
+            if self.cur_step == self.max_cycles:
                 print("IRC steps exceeded. Stopping.")
                 print()
                 break
