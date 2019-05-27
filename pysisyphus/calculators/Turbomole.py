@@ -497,6 +497,9 @@ class Turbomole(OverlapCalculator):
 
         if self.td:
             self.make_molden(path)
+        # With ricc2 we probably have a frozen core that we have to disable
+        # temporarily before creating the molden file. Afterwards we restore
+        # the original control file with the frozen core.
         elif self.ricc2:
             # Backup original control file
             ctrl_backup = path / "control.backup"
