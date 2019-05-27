@@ -275,3 +275,7 @@ def highlight_text(text, width=80):
     full_row = "#" * full_length
     highlight = f"""{pad}{full_row}\n{pad}# {text.upper()} #\n{pad}{full_row}"""
     return highlight
+
+
+def rms(arr):
+    return np.sqrt(np.mean(arr**2))
