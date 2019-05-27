@@ -116,7 +116,8 @@ class ORCA(OverlapCalculator):
         return inp
 
     def get_block_str(self):
-        block_str = ""
+        block_str = self.blocks
+        # Use the correct root if we track it
         if self.track:
             block_str = re.sub("iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
             self.log(f"Using iroot '{self.root}' for excited state gradient.")
@@ -157,6 +158,9 @@ class ORCA(OverlapCalculator):
         if self.track:
             self.store_overlap_data(atoms, coords)
         return results
+
+    def run_after(self, path):
+        pass
 
     def parse_hessian(self, path):
         results = {}
@@ -227,8 +231,6 @@ class ORCA(OverlapCalculator):
             raise Exception("Proper handling of TDDFT and hessian "
                             " is not yet implemented.")
         return results
-
-
 
     def parse_engrad(self, path):
         results = {}
@@ -453,7 +455,7 @@ class ORCA(OverlapCalculator):
         kept_fns = super().keep(path)
         self.set_moinp_str(kept_fns["gbw"])
         self.out = kept_fns["out"]
-        if self.do_tddft:
+        if self.track and self.do_tddft:
             self.cis = kept_fns["cis"]
 
     def __str__(self):
