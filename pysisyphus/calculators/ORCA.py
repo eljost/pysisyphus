@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import struct
+import shutil
 import subprocess
 
 import numpy as np
@@ -44,7 +45,8 @@ class ORCA(OverlapCalculator):
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
                 "allowed! Use 'pal: n' in the 'calc' section instead."
 
-        self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian", "cis")
+        self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian",
+                        "cis", "molden:orca.molden")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -160,7 +162,14 @@ class ORCA(OverlapCalculator):
         return results
 
     def run_after(self, path):
-        pass
+        # Create .molden file when CDDs are requested
+        if self.cdds:
+            cmd = "orca_2mkl orca -molden".split()
+            proc = subprocess.Popen(cmd, cwd=path, universal_newlines=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+            proc.wait()
+            shutil.copy(path / "orca.molden.input", path / "orca.molden")
 
     def parse_hessian(self, path):
         results = {}
@@ -457,6 +466,10 @@ class ORCA(OverlapCalculator):
         self.out = kept_fns["out"]
         if self.track and self.do_tddft:
             self.cis = kept_fns["cis"]
+        try:
+            self.mwfn_wf = kept_fns["molden"]
+        except KeyError:
+            self.log("Didn't set 'mwfn_wf'. No .molden file in kept_fns.")
 
     def __str__(self):
         return f"ORCA({self.name})"
