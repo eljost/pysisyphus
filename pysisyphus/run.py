@@ -766,6 +766,15 @@ def clean(force=False):
         "dimer_ts.xyz",
         "dimer_pickle",
         "interpolated.geom_*.xyz",
+        # Wavefunction overlap
+        "wfo_*",
+        "image*.molden",
+        "crashed_*",
+        "jmol.spt",
+        # "overlap_data.h5",
+        "*_CDD.png",
+        "*_CDD.cub",
+        "internal_coords.log",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -776,7 +785,11 @@ def clean(force=False):
 
     def delete():
         for p in to_rm_paths:
-            os.remove(p)
+            try:
+                os.remove(p)
+            except OSError:
+                # os.rmdir(p)
+                shutil.rmtree(p)
             print(f"Deleted {p}")
     if force:
         delete()
