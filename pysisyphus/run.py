@@ -194,6 +194,7 @@ def run_cos(cos, calc_getter, opt_getter):
         handle.write(hei_geom.as_xyz())
     print(f"Wrote splined HEI to '{hei_fn}'")
 
+
 def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     print("Starting TS optimization after chain of states method.")
     hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
