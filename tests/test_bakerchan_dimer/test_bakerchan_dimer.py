@@ -14,6 +14,7 @@ from pysisyphus.calculators.XTB import XTB
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, geom_from_library
 from pysisyphus.tsoptimizers.dimer import dimer_method
+from pysisyphus.tsoptimizers.dimerv2 import dimer_method as dimer_method_v2
 
 
 def make_N_init_dict():
@@ -45,7 +46,7 @@ def run():
     xyzs = natsorted(xyz_path.glob("*.xyz"))
     geoms = [geom_from_xyz_file(fn) for fn in xyzs]
 
-    baker_dict = {
+    BAKER_DICT = {
         "01": ("01_hcn.xyz", 0, 1, -92.24604),
         "02": ("02_hcch.xyz", 0, 1, -76.29343),
         "03": ("03_h2co.xyz", 0, 1, -113.05003),
@@ -89,19 +90,33 @@ def run():
         "multiple_translations": True,
     }
 
+    dimv2_kwargs = {
+        "max_step": 0.25,
+        "R": 0.0189,
+        "max_cycles": 1,
+        "rot_kwargs": {
+            "max_cycles": 15,
+            "alpha": 0.05,
+        }
+    }
+
     N_init_dict = make_N_init_dict()
     N_init_10_11_15 = get_N_10_11_15_dict()
     N_init_dict.update(N_init_10_11_15)
     results_list = list()
     # for f, g in zip(xyzs, geoms):
-    for num in baker_dict.keys():
-        xyz_fn, charge, mult, ref_en = baker_dict[num]
+    for num in BAKER_DICT.keys():
+        xyz_fn, charge, mult, ref_en = BAKER_DICT[num]
         geom = geom_from_library(f"baker_ts/{xyz_fn}")
         f = Path(xyz_fn)
         print(f.stem)
-        dim_kwargs = dimer_kwargs.copy()
-        dim_kwargs["N_init"] = N_init_dict[num]
-        results = run_geom(f.stem, geom, charge, mult, dimer_kwargs=dim_kwargs)
+        # dim_kwargs = dimer_kwargs.copy()
+        # dim_kwargs["N_init"] = N_init_dict[num]
+        # results = run_geom(f.stem, geom, charge, mult, dimer_kwargs=dim_kwargs)
+        # break
+        v2_kwargs = dimv2_kwargs.copy()
+        v2_kwargs["N"]= N_init_dict[num]
+        results = run_geomv2(f.stem, geom, charge, mult, dimer_kwargs=v2_kwargs)
         g0 = results.geom0
         ts_en = g0.energy
         en_diff = ref_en - ts_en
@@ -161,6 +176,31 @@ def run_geom(stem, geom, charge, mult, dimer_kwargs=None):
         }
     results = dimer_method(geoms, calc_getter, **dimer_kwargs)
     geom0 = results.geom0
+    ts_xyz = geom0.as_xyz()
+    ts_fn = f"{stem}_dimer_ts.xyz"
+    with open(ts_fn, "w") as handle:
+        handle.write(ts_xyz)
+    print(f"Wrote dimer result to {ts_fn}")
+    return results
+
+
+def run_geomv2(stem, geom, charge, mult, dimer_kwargs):
+    # Gaussian 16
+    calc_kwargs = {
+        "route": "HF/3-21G",
+        "pal": 4,
+        "mem": 1000,
+        "charge": charge,
+        "mult": mult,
+    }
+    def calc_getter():
+        return Gaussian16(**calc_kwargs)
+
+    geom.set_calculator(calc_getter())
+
+    dimer_kwargs["calc_getter"] = calc_getter
+    coords = dimer_method_v2(geom, **dimer_kwargs)
+    geom0 = geom
     ts_xyz = geom0.as_xyz()
     ts_fn = f"{stem}_dimer_ts.xyz"
     with open(ts_fn, "w") as handle:

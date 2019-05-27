@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 
 # [1] https://pubs.rsc.org/en/content/articlepdf/2002/cp/b108658h
+#     Farkas, 2001, GDIIS
+# [2] https://aip.scitation.org/doi/abs/10.1063/1.4878944
+#     Schaefer, 2014, DIIS + Dimer
 
 from collections import namedtuple
+from functools import partial
 
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import rms
+from pysisyphus.optimizers.closures import lbfgs_closure_ as lbfgs_closure
 
 
 RotResult = namedtuple("RotResult",
                        "geom1 geom2 N C coords",
-)
-TransResult = namedtuple("TransResult",
-                         "geom0",
 )
 
 
@@ -31,6 +33,7 @@ def get_dimer_ends(geom0, N, R, calc_getter):
     geom2 = Geometry(geom0.atoms, dummy_coords)
     update_dimer_ends(geom0, geom1, geom2, N, R)
     geom1.set_calculator(calc_getter())
+    # We don't need a calculator on geom2
 
     return geom1, geom2
 
@@ -44,8 +47,9 @@ class DIISError(Exception):
     pass
 
 
-def diis(error_vecs, coords, forces):
+def diis(error_vecs, coords, forces, max_vecs=7):
     cycles = len(error_vecs)
+    use_at_most = min(cycles, max_vecs)
 
     last_cr = None
     for use_last in range(2, cycles+1):
@@ -63,6 +67,8 @@ def diis(error_vecs, coords, forces):
                 e2 = err_vecs[j]
                 A[i, j] = e1.dot(e2)
                 A[j, i] = A[i, j]
+        det = np.linalg.norm(A)
+        print(f"det(A)={det:.6f}")
         cr = np.linalg.solve(A, np.ones(A.shape[0]))
         if any(np.abs(cr) > 1e8):
             break
@@ -71,6 +77,7 @@ def diis(error_vecs, coords, forces):
         raise DIISError("DIIS failed!")
     used_last = len(last_cr)
     cs = last_cr / np.sum(last_cr)
+    print(f"DIIS with {used_last} vectors. Coeffs: ", cs)
     last_coords = coords[::-1][:used_last]
     last_error_vecs = error_vecs[::-1][:used_last]
     last_forces = forces[::-1][:used_last]
@@ -132,8 +139,9 @@ def curvature(f0, f1, N, R):
     return C
 
 
-def rotate_dimer(geom0, geom1, geom2, N, R, f_thresh=1e-3, max_cycles=10):
-    rot_optimizer = get_rot_optimizer()
+def rotate_dimer(geom0, geom1, geom2, N, R, f_thresh=2.5e-3, max_cycles=10,
+                 alpha=0.05):
+    rot_optimizer = get_rot_optimizer(alpha=alpha)
     f0 = geom0.forces
 
     coords = list()
@@ -161,25 +169,28 @@ def rotate_dimer(geom0, geom1, geom2, N, R, f_thresh=1e-3, max_cycles=10):
     return rot_result
 
 
-def translate_dimer(geom0, N, C):
+def get_f_trans(geom0, N, C):
     f0 = geom0.forces
 
     f_parallel = f0.dot(N)*N
     if C > 0:
-        f_eff = -f_parallel
+        f_trans = -f_parallel
     else:
-        f_eff = f0 - 2*f_parallel
-    alpha = 0.5
-    step = alpha * f_eff
-    new_coords0 = geom0.coords + alpha*step
-    geom0.coords = new_coords0
-    trans_result = TransResult(
-                    geom0=geom0,
-    )
-    return trans_result
+        f_trans = f0 - 2*f_parallel
+
+    return f_trans
 
 
-def dimer_method(geom0, N, R, calc_getter, max_cycles=50,
+def restrict_step_length(_, step, max_length):
+    norm = np.linalg.norm(step)
+    if norm > max_length:
+        direction = step / norm
+        step = direction * max_length
+    return step
+
+
+def dimer_method(geom0, N, R, calc_getter, max_cycles=50, f_thresh=1e-3,
+                 max_step=0.3,
                  rot_kwargs=None, trans_kwargs=None):
     if rot_kwargs is None:
         rot_kwargs = {}
@@ -187,21 +198,37 @@ def dimer_method(geom0, N, R, calc_getter, max_cycles=50,
         trans_kwars = {}
 
     geom1, geom2 = get_dimer_ends(geom0, N, R, calc_getter)
-    coords = list()
+    coords = [(geom1.coords, geom0.coords, geom2.coords), ]
+    restrict_step = partial(restrict_step_length, max_length=max_step)
+    trans_optimizer = lbfgs_closure(lambda _, *args: get_f_trans(*args),
+                                    restrict_step=restrict_step)
     for i in range(max_cycles):
         f0 = geom0.forces
         f0_rms = rms(f0)
         print(f"{i:0d} rms(f0)={f0_rms:.6f}")
-        if f0_rms < 1e-3:
+        if f0_rms < f_thresh:
             print("Converged!")
             break
+
         # Rotation
         rot_result = rotate_dimer(geom0, geom1, geom2, N, R, **rot_kwargs)
         geom1, geom2, N, C, _ = rot_result
+
         # Translation
-        trans_result = translate_dimer(geom0, N, C)
+        step, f_trans = trans_optimizer(geom0.coords, geom0, N, C)
+        new_coords0 = geom0.coords + step
+        geom0.coords = new_coords0
+
+        # Steepet descent
+        # f_trans = get_f_trans(geom0, N, C)
+        # alpha = 0.5
+        # step = alpha * f_trans
+        # new_coords0 = geom0.coords + alpha*step
+        # geom0.coords = new_coords0
+
         update_dimer_ends(geom0, geom1, geom2, N, R)
 
-        _ = (geom1.coords, geom0.coords, geom2.coords)
-        coords.append(_)
+        coords.append(
+            (geom1.coords, geom0.coords, geom2.coords)
+        )
     return coords
