@@ -2,6 +2,8 @@
 
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.1515483
 
+import itertools as it
+
 import numpy as np
 
 from pysisyphus.helpers import geom_from_library
@@ -11,10 +13,14 @@ from wilson_gen import dq_b, d2q_b, dq_a, d2q_a, dq_d, d2q_d
 
 def test_wilson():
     geom = geom_from_library("split.image_021.xyz", coord_type="redund")
-    fn = "forces"
+    forces_fn = "forces"
+    hessian_fn = "hessian"
     # geom.set_calculator(XTB(pal=4))
     # forces = geom.forces
-    # np.savetxt(fn, forces)
+    # _ = geom.hessian
+    # hessian = geom._hessian
+    # np.savetxt(forces_fn, forces)
+    # np.savetxt(hessian_fn, hessian)
     int_ = geom.internal
     c3d = geom.coords3d
 
@@ -46,9 +52,6 @@ def test_wilson():
         except:
             np.testing.assert_allclose(g, -g_)
 
-    # def s(stre, bend, tors):
-        # return 8*(stre*36 + bend*81 + tors*144) / 1e6
-
     dg_funcs = {
         2: d2q_b,
         3: d2q_a,
@@ -59,18 +62,38 @@ def test_wilson():
         dgrad = dg_funcs[len(inds)](*coords_flat)
         return dgrad
 
-    # dgs = [grad_deriv_wrapper(pc.inds) for pc in int_._prim_coords]
+    gradient = -np.loadtxt(forces_fn)
+    hessian = np.loadtxt(hessian_fn)
+    size_ = geom.cart_coords.size
+    K_flat = np.zeros(size_ * size_)
 
-    grad = -np.loadtxt(fn)
-    # Contract values with internal gradient, Eq. (8) in [1]
-    dgs = [g*grad_deriv_wrapper(pc.inds) for pc, g in zip(int_._prim_coords, grad)]
+    assert len(gradient) == len(int_._prim_coords)
+    for pc, g in zip(int_._prim_coords, gradient):
+        # Contract with gradient
+        dg = g * grad_deriv_wrapper(pc.inds)
+        # Depending on the type of internal coordinate dg is a flat array
+        # of size 36 (stretch), 81 (bend) or 144 (torsion).
+        #
+        # An internal coordinate contributes to an element K[j, k] of the
+        # K matrix if the cartesian coordinate indices j and k belong to an
+        # atom that contributes to the respective internal coordinate.
+        #
+        # As for now we build up the K matrix as flat array. To add the dg
+        # entries at the appropriate places in K_flat we have to calculate
+        # the corresponding flat indices of dg in K_flat.
+        cart_inds = list(it.chain(*[range(3*i,3*i+3) for i in pc.inds]))
+        flat_inds = [row*size_ + col for row, col in it.product(cart_inds, cart_inds)]
+        K_flat[flat_inds] += dg
+    K = K_flat.reshape(-1, size_)
+
+    # K[np.abs(K) < 1e-10] = np.nan
+    # np.testing.assert_allclose(K,K.T)
+
+    # Transform hessian
+    H_int_ = int_.transform_hessian(hessian)
+    H_int = int_.transform_hessian(hessian - K)
     import pdb; pdb.set_trace()
     pass
-    # for i, pc in enumerate(int_._prim_coords):
-        # inds = pc.inds
-        # dg = grad_deriv_wrapper(pc.inds)
-        # import pdb; pdb.set_trace()
-        # pass
 
 
 if __name__ == "__main__":
