@@ -78,7 +78,7 @@ def fischer_guess(geom):
     for primitive in geom.internal._prim_coords:
         f = h_funcs[len(primitive.inds)]
         h_diag.append(f(primitive))
-    H = np.diagflat(h_diag)
+    H = np.array(np.diagflat(h_diag))
     return H
 
 

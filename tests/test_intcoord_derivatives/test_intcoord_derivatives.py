@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 
 np.set_printoptions(precision=2, linewidth=120)
@@ -44,12 +44,18 @@ def bond_ref():
 
 
 def test_base(xyz_fn):
-    geom = geom_from_library(xyz_fn, coord_type="redund")
+    try:
+        geom = geom_from_library(xyz_fn, coord_type="redund")
+    except FileNotFoundError:
+        geom = geom_from_xyz_file(xyz_fn, coord_type="redund")
 
+    import pdb; pdb.set_trace()
     calc_kwargs = {
-        "route": "HF/3-21G",
+        # "route": "HF/3-21G",
+        "route": "B3LYP/6-31G*",
         "charge": 0,
         "mult": 1,
+        "pal": 4,
     }
     calc = Gaussian16(**calc_kwargs)
     geom.set_calculator(calc)
@@ -77,8 +83,20 @@ def test_h2o2():
     test_base(xyz_fn)
 
 
+def test_bz():
+    xyz_fn = "benzene_ref.xyz"
+    test_base(xyz_fn)
+
+
+def test_dopamine():
+    xyz_fn = "dopamine.xyz"
+    import pdb; pdb.set_trace()
+    test_base(xyz_fn)
+
 if __name__ == "__main__":
-    bond_ref()
-    test_h2()
+    # bond_ref()
+    # test_h2()
     # test_h2o()
     # test_h2o2()
+    # test_bz()
+    test_dopamine()
