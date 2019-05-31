@@ -135,6 +135,7 @@ class RedundantCoords:
         return self.Bt_inv.dot(cart_forces)
 
     def get_K_matrix(self, int_gradient=None):
+        assert len(int_gradient) == len(self._prim_coords)
         size_ = self.cart_coords.size
         if int_gradient is None:
             return np.zeros((size_, size_))
@@ -150,7 +151,6 @@ class RedundantCoords:
             return dgrad
 
         K_flat = np.zeros(size_ * size_)
-        assert len(int_gradient) == len(self._prim_coords)
         for pc, g in zip(self._prim_coords, int_gradient):
             # Contract with gradient
             dg = g * grad_deriv_wrapper(pc.inds)
@@ -171,9 +171,11 @@ class RedundantCoords:
         return K
 
     def transform_hessian(self, cart_hessian, int_gradient=None):
-        self.log("Derivative of the Wilson-B-matrix is neglected in hessian "
-                 "transformation right now!"
-        )
+        if int_gradient is None:
+            self.log("Supplied 'int_gradient' is None. K matrix will be zero, "
+                     "so derivatives of the Wilson-B-matrix are neglected in "
+                     "the hessian transformation."
+            )
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
 

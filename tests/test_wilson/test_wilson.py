@@ -8,7 +8,7 @@ import numpy as np
 
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.calculators.XTB import XTB
-from wilson_gen import dq_b, d2q_b, dq_a, d2q_a, dq_d, d2q_d
+from pysisyphus.intcoords.derivatives import dq_b, d2q_b, dq_a, d2q_a, dq_d, d2q_d
 
 
 def test_wilson():
