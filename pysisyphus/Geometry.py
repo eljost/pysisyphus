@@ -449,13 +449,15 @@ class Geometry:
         -------
         hessian : np.array
             2d array containing the second derivatives of the energy with respect
-            to atomic displacements.
+            to atomic/coordinate displacements depending on the type of
+            coordiante system.
         """
         if self._hessian is None:
             results = self.calculator.get_hessian(self.atoms, self._coords)
             self.set_results(results)
         if self.internal:
-            return self.internal.transform_hessian(self._hessian)
+            int_gradient = self.gradient
+            return self.internal.transform_hessian(self._hessian, int_gradient)
         return self._hessian
 
     @property

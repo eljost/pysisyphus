@@ -2,6 +2,8 @@
 # Johannes Steinmetzer 2019
 # As describend in:
 #   V. Bakken, T. Helgaker, J. Chem. Phys., 117, 20, 2002
+# [1] https://aip.scitation.org/doi/abs/10.1063/1.1515483
+# [2] https://doi.org/10.1002/(SICI)1096-987X(19960115)17:1<49::AID-JCC5>3.0.CO;2-0
 
 from collections import namedtuple
 import textwrap

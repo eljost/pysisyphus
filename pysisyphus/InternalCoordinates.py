@@ -17,9 +17,9 @@ import attr
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
-from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
-
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
+from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 
 # different sets of covalent radii for testing
 # # pyberny
@@ -134,11 +134,48 @@ class RedundantCoords:
         """Combination of Eq. (9) and (11) in [1]."""
         return self.Bt_inv.dot(cart_forces)
 
-    def transform_hessian(self, cart_hessian):
+    def get_K_matrix(self, int_gradient=None):
+        size_ = self.cart_coords.size
+        if int_gradient is None:
+            return np.zeros((size_, size_))
+
+        dg_funcs = {
+            2: d2q_b,
+            3: d2q_a,
+            4: d2q_d,
+        }
+        def grad_deriv_wrapper(inds):
+            coords_flat = self.c3d[inds].flatten()
+            dgrad = dg_funcs[len(inds)](*coords_flat)
+            return dgrad
+
+        K_flat = np.zeros(size_ * size_)
+        assert len(int_gradient) == len(self._prim_coords)
+        for pc, g in zip(self._prim_coords, int_gradient):
+            # Contract with gradient
+            dg = g * grad_deriv_wrapper(pc.inds)
+            # Depending on the type of internal coordinate dg is a flat array
+            # of size 36 (stretch), 81 (bend) or 144 (torsion).
+            #
+            # An internal coordinate contributes to an element K[j, k] of the
+            # K matrix if the cartesian coordinate indices j and k belong to an
+            # atom that contributes to the respective internal coordinate.
+            #
+            # As for now we build up the K matrix as flat array. To add the dg
+            # entries at the appropriate places in K_flat we have to calculate
+            # the corresponding flat indices of dg in K_flat.
+            cart_inds = list(it.chain(*[range(3*i,3*i+3) for i in pc.inds]))
+            flat_inds = [row*size_ + col for row, col in it.product(cart_inds, cart_inds)]
+            K_flat[flat_inds] += dg
+        K = K_flat.reshape(size_, size_)
+        return K
+
+    def transform_hessian(self, cart_hessian, int_gradient=None):
         self.log("Derivative of the Wilson-B-matrix is neglected in hessian "
                  "transformation right now!"
         )
-        return self.Bt_inv.dot(cart_hessian).dot(self.B_inv)
+        K = self.get_K_matrix(int_gradient)
+        return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
 
     def project_hessian(self, H):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
@@ -290,7 +327,7 @@ class RedundantCoords:
         fragments = self.merge_fragments(bond_ind_sets)
 
         # Look for unbonded single atoms and create fragments for them.
-        bonded_set = reduce(lambda x, y: set(x) | set(y), bond_indices)
+        bonded_set = set(tuple(bond_indices.flatten()))
         unbonded_set = set(range(len(self.atoms))) - bonded_set
         fragments.extend(
             [frozenset((atom, )) for atom in unbonded_set]
