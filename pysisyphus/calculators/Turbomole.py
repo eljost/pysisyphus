@@ -260,14 +260,12 @@ class Turbomole(OverlapCalculator):
         kwargs = {
                 "calc": "noparse",
                 "shell": True,
-                "hold": self.track, # Keep the files for WFOverlap
+                # "hold": self.track, # Keep the files for WFOverlap
                 "env": self.get_pal_env(),
         }
         results = self.run(None, **kwargs)
         if self.track:
             self.store_overlap_data(atoms, coords)
-            self.track_root()
-            self.calc_counter += 1
         return results
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
