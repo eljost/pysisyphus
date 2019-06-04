@@ -486,6 +486,24 @@ def plot_all_energies(h5):
     plt.show()
 
 
+def plot_bare_energies(h5):
+    with h5py.File(h5) as handle:
+        energies = handle["all_energies"][:]
+    print(f"Found a total of {len(energies)} steps.")
+
+    energies -= energies.min()
+    energies *= AU2EV
+    steps = np.arange(len(energies))
+
+    fig, ax = plt.subplots()
+    for i, state in enumerate(energies.T):
+        ax.plot(steps, state, "o-", label=f"State {i:03d}")
+    ax.legend(loc="lower center", ncol=3)
+    ax.set_xlabel("Step")
+    ax.set_ylabel("$\Delta E / eV$")
+    plt.show()
+
+
 def plot_overlaps(h5, thresh=.1):
     with h5py.File(h5) as handle:
         overlaps = handle["overlap_matrices"][:]
@@ -621,6 +639,9 @@ def parse_args(args):
     group.add_argument("--all_energies", "-a", action="store_true",
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
+    group.add_argument("--bare_energies", "-b", action="store_true",
+        help="Plot ground and excited state energies from 'overlap_data.h5'."
+    )
     group.add_argument("--overlaps", "-o", action="store_true")
     group.add_argument("--render_cdds", action="store_true")
 
@@ -652,6 +673,8 @@ def run():
         plot_overlaps(h5=h5)
     elif args.render_cdds:
         render_cdds(h5=h5)
+    elif args.bare_energies:
+        plot_bare_energies(h5=h5)
 
 
 if __name__ == "__main__":
