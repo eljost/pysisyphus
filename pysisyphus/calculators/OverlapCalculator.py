@@ -34,7 +34,8 @@ class OverlapCalculator(Calculator):
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
-                 use_ntos=4, cdds=None, orient="", **kwargs):
+                 use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
+                 **kwargs):
         super().__init__(*args, **kwargs)
 
         self.track = track
@@ -79,7 +80,7 @@ class OverlapCalculator(Calculator):
         # we compare cycle 1 to cycle 0, regardless of the ovlp_with.
         self.ref_cycle = 0
         self.ref_cycles = list()
-        self.dump_fn = "overlap_data.h5"
+        self.dump_fn = dump_fn
         self.atoms = None
 
         if track:
@@ -313,12 +314,34 @@ class OverlapCalculator(Calculator):
         calc.mo_coeff_list = list(mo_coeffs)
         calc.ci_coeff_list = list(ci_coeffs)
         calc.all_energies_list = list(all_energies)
-        calc.first_root = ref_roots[0]
-        calc.root = calc.first_root
         calc.roots_list = list(roots)
         calc.calculated_roots = list(calculated_roots)
+        try:
+            calc.first_root = ref_roots[0]
+            calc.root = calc.first_root
+        except IndexError:
+            calc.log("Skipped setting 'first_root' and 'root'!")
 
         return calc
+
+    def set_ntos(self, mo_coeffs, ci_coeffs):
+        roots = ci_coeffs.shape[0]
+        ntos_for_cycle = list()
+        for root in range(roots):
+            sn_ci_coeffs = ci_coeffs[root]
+            self.log("Calculating NTOs for root {root+1}")
+            occ_ntos, vir_ntos, lambdas = self.calculate_state_ntos(
+                                                    sn_ci_coeffs,
+                                                    mo_coeffs,
+            )
+            ovlp_occ_ntos = occ_ntos.T[:self.use_ntos]
+            ovlp_vir_ntos = vir_ntos.T[:self.use_ntos]
+            ovlp_lambdas = lambdas[:self.use_ntos]
+            ovlp_lambdas = np.concatenate((ovlp_lambdas, ovlp_lambdas))
+            ovlp_ntos = np.concatenate((ovlp_occ_ntos, ovlp_vir_ntos), axis=0)
+            ntos = NTOs(ntos=ovlp_ntos, lambdas=ovlp_lambdas)
+            ntos_for_cycle.append(ntos)
+        self.nto_list.append(ntos_for_cycle)
 
     def store_overlap_data(self, atoms, coords):
         if self.atoms is None:
@@ -345,23 +368,7 @@ class OverlapCalculator(Calculator):
         # Also store NTOs if requested
         self.all_energies_list.append(all_ens)
         if self.ovlp_type in ("nto", "nto_org"):
-            roots = ci_coeffs.shape[0]
-            ntos_for_cycle = list()
-            for root in range(roots):
-                sn_ci_coeffs = ci_coeffs[root]
-                self.log("Calculating NTOs for root {root+1}")
-                occ_ntos, vir_ntos, lambdas = self.calculate_state_ntos(
-                                                        sn_ci_coeffs,
-                                                        mo_coeffs,
-                )
-                ovlp_occ_ntos = occ_ntos.T[:self.use_ntos]
-                ovlp_vir_ntos = vir_ntos.T[:self.use_ntos]
-                ovlp_lambdas = lambdas[:self.use_ntos]
-                ovlp_lambdas = np.concatenate((ovlp_lambdas, ovlp_lambdas))
-                ovlp_ntos = np.concatenate((ovlp_occ_ntos, ovlp_vir_ntos), axis=0)
-                ntos = NTOs(ntos=ovlp_ntos, lambdas=ovlp_lambdas)
-                ntos_for_cycle.append(ntos)
-            self.nto_list.append(ntos_for_cycle)
+            self.set_ntos(mo_coeffs, ci_coeffs)
 
     def track_root(self, ovlp_type=None):
         """Check if a root flip occured occured compared to the previous cycle
