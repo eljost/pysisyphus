@@ -18,7 +18,6 @@ from pysisyphus.calculators.parser import (parse_turbo_gradient,
                                            parse_turbo_ccre0_ascii,
                                            parse_turbo_mos,
                                            parse_turbo_exstates)
-from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
 class Turbomole(OverlapCalculator):
@@ -134,10 +133,6 @@ class Turbomole(OverlapCalculator):
 
     def prepare_td(self, text):
         self.log("Preparing for excited state (gradient) calculations")
-        self.wfow = WFOWrapper(self.occ_mos, self.virt_mos,
-                               basis=None, charge=None,
-                               calc_number=self.calc_number,
-                               out_dir=self.out_dir)
         self.td_vec_fn = None
         self.ci_coeffs = None
         self.mo_inds = None
@@ -248,7 +243,8 @@ class Turbomole(OverlapCalculator):
         results = self.run(None, **kwargs)
         if self.track:
             prev_run_path = self.last_run_path
-            root_flipped = self.track_root(atoms, coords)
+            self.store_overlap_data(atoms, coords)
+            root_flipped = self.track_root()
             self.calc_counter += 1
             if root_flipped:
                 # Redo gradient calculation for new root.
@@ -269,7 +265,8 @@ class Turbomole(OverlapCalculator):
         }
         results = self.run(None, **kwargs)
         if self.track:
-            self.track_root(atoms, coords)
+            self.store_overlap_data(atoms, coords)
+            self.track_root()
             self.calc_counter += 1
         return results
 
@@ -460,7 +457,7 @@ class Turbomole(OverlapCalculator):
             text = handle.read()
         mo_coeffs = parse_turbo_mos(text)
         self.log(f"Reading electronic energies from '{self.out}'.")
-        return self.mos, mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, ci_coeffs, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)

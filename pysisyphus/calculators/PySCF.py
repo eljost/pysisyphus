@@ -9,7 +9,6 @@ from pyscf import gto, grad, lib, hessian, tddft
 from pyscf.dft import xcfun
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
 class PySCF(OverlapCalculator):
@@ -137,7 +136,8 @@ class PySCF(OverlapCalculator):
 
         self.mf = mf
         if self.track:
-            if self.track_root(atoms, coords):
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
         return results
@@ -191,21 +191,8 @@ class PySCF(OverlapCalculator):
         gs_mf = self.mf._scf
         exc_mf = self.mf
 
-        if self.wfow == None:
-            occ_num, virt_num = exc_mf.xy[0][0].shape
-            self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
-                                   basis=None, charge=None, out_dir=self.out_dir)
         gs_energy = gs_mf.e_tot
         mo_coeffs = gs_mf.mo_coeff
-
-        fake_mos_fn = Path(self.make_fn("mos"))
-        if not fake_mos_fn.exists():
-            fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
-            with open(fake_mos_fn, "w") as handle:
-                handle.write(fake_mos_str)
-        else:
-            self.log("Skipping creation of MOs in TURBOMOLE format, as the file "
-                     f"'{fake_mos_fn}' already exists.")
 
         # Shape = (nstates, 2 (X,Y), occ, virt)
         ci_coeffs = np.array(exc_mf.xy)
@@ -224,7 +211,7 @@ class PySCF(OverlapCalculator):
         all_energies = np.zeros(exc_energies.size + 1)
         all_energies[0] = gs_energy
         all_energies[1:] = exc_energies
-        return fake_mos_fn, mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, ci_coeffs, all_energies
 
     def __str__(self):
         return f"PySCF({self.name})"

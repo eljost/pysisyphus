@@ -13,7 +13,6 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
 
 
@@ -59,7 +58,6 @@ class Gaussian16(OverlapCalculator):
             # Delete exc keyword, as we build it later on
             self.route = re.sub("((?:td|cis|tda).+?(:?\s|$))", "", self.route)
 
-        self.wfow = None
 
         self.to_keep = ("com", "fchk", "log", "dump_635r", "input.xyz")
         if self.keep_chk:
@@ -291,9 +289,11 @@ class Gaussian16(OverlapCalculator):
             "calc": "force",
         }
         results = self.run(inp, **kwargs)
-        if self.track and self.track_root(atoms, coords):
-            # Redo the calculation with the updated root
-            results = self.get_forces(atoms, coords)
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = self.get_forces(atoms, coords)
         return results
 
     def get_hessian(self, atoms, coords):
@@ -333,7 +333,11 @@ class Gaussian16(OverlapCalculator):
         }
         results = self.run(inp, **kwargs)
         if self.track:
-            self.track_root(atoms, coords)
+            self.store_overlap_data(atoms, coords)
+            self.track_root()
+            self.log("This track_root() call is a bit superfluous as the "
+                     "as the result is ignored :)"
+            )
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
         self.log("Running double molecule calculation")
@@ -469,12 +473,6 @@ class Gaussian16(OverlapCalculator):
         return X_full, Y_full
 
     def prepare_overlap_data(self):
-        # Create the WFOWrapper object if it is not already there
-        if self.wfow == None:
-            assert (self.nmos.restricted)
-            occ_num, virt_num = self.nmos.a_occ, self.nmos.a_vir
-            self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
-                                   basis=None, charge=None, out_dir=self.out_dir)
         # Parse X eigenvector from 635r dump
         X, Y = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
         ci_coeffs = X+Y
@@ -500,10 +498,6 @@ class Gaussian16(OverlapCalculator):
         mo_coeffs = fchk_dict[mo_key]
         mo_energies = fchk_dict[mo_energies_key]
         mo_coeffs = mo_coeffs.reshape(-1, mo_energies.size)
-        fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
-        fake_mos_fn = self.make_fn("mos")
-        with open(fake_mos_fn, "w") as handle:
-            handle.write(fake_mos_str)
 
         gs_energy = fchk_dict[scf_key]
         exc_data = fchk_dict[exc_key].reshape(-1, 16)
@@ -511,7 +505,7 @@ class Gaussian16(OverlapCalculator):
         all_energies = np.zeros(len(exc_energies)+1)
         all_energies[0] = gs_energy
         all_energies[1:] += exc_energies
-        return fake_mos_fn, mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, ci_coeffs, all_energies
 
     def parse_force(self, path):
         results = {}

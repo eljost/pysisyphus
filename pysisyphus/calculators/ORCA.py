@@ -13,7 +13,6 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.calculators.WFOWrapper import WFOWrapper
 
 
 def make_sym_mat(table_block):
@@ -54,11 +53,6 @@ class ORCA(OverlapCalculator):
                 self.root = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
-        if self.track:
-            # Defer the creation of the WFOWrapper object until the after the
-            # calculation as then the number of occupied/virtual MOs are
-            # available.
-            self.wfow = None
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
@@ -138,7 +132,8 @@ class ORCA(OverlapCalculator):
         }
         results = self.run(inp, **kwargs)
         if self.track:
-            if self.track_root(atoms, coords):
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
                 # Redo the calculation with the updated root
                 results = self.get_forces(atoms, coords)
         return results
@@ -438,27 +433,13 @@ class ORCA(OverlapCalculator):
         self.ci_coeffs = self.parse_cis(cis)
 
     def prepare_overlap_data(self):
-        # Create the WFOWrapper object if it is not already there
-        if self.wfow == None:
-            occ_num, virt_num = self.parse_mo_numbers(self.out)
-            self.wfow = WFOWrapper(occ_num, virt_num, calc_number=self.calc_number,
-                                   basis=None, charge=None, out_dir=self.out_dir)
         # Parse eigenvectors from tda/tddft calculation
         ci_coeffs = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
-        fake_mos_fn = Path(self.make_fn("mos"))
-        if not fake_mos_fn.exists():
-            fake_mos_str = self.wfow.fake_turbo_mos(mo_coeffs)
-            with open(fake_mos_fn, "w") as handle:
-                handle.write(fake_mos_str)
-        else:
-            self.log("Skipping creation of MOs in TURBOMOLE format, as the file "
-                     f"'{fake_mos_fn}' already exists.")
-
         all_energies = self.parse_all_energies()
-        return fake_mos_fn, mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, ci_coeffs, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)

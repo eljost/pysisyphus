@@ -13,6 +13,7 @@ import itertools as it
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
 from pysisyphus.wrapper.mwfn import make_cdd
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
@@ -79,6 +80,7 @@ class OverlapCalculator(Calculator):
         self.ref_cycle = 0
         self.ref_cycles = list()
         self.dump_fn = "overlap_data.h5"
+        self.atoms = None
 
         if track:
             self.log("Tracking excited states with "
@@ -94,7 +96,7 @@ class OverlapCalculator(Calculator):
         full[:,:,occ:] = ci_coeffs
         return full
 
-    def get_indices(self):
+    def get_indices(self, indices=None):
         """
         A new root is determined by selecting the overlap matrix row
         corresponding to the old root and checking for the new root
@@ -111,23 +113,20 @@ class OverlapCalculator(Calculator):
         comes first in the 'indices' tuple.
         """
 
-        # ref_inds = {
-            # "first": 0,
-            # # Data of the current cycle is saved before this method is called,
-            # # so the current cycle resides at -1 and the previous cycle is at -2.
-            # "previous": -2,
-            # "adapt": self.ref_cycle,
-        # }
-        # ref_ind = ref_inds[self.ovlp_with]
-        # ref_ind =
+        if indices is None:
+            # By default we compare a reference cycle with the current (last)
+            # cycle, so the second index is -1.
+            old, new = self.ref_cycle, -1
+        else:
+            assert len(indices) == 2
+            old, new = [int(i) for i in indices]
+        return (old, new)
 
-        # We always compare against the current cycle, so the second index
-        # is always -1.
-        return (self.ref_cycle, -1)
-
-    def get_wfow_overlaps(self, ao_ovlp=None):
-        old, new = self.get_indices()
-        return self.wfow.overlaps(old, new, ao_ovlp)
+    def get_wf_overlaps(self, indices=None, ao_ovlp=None):
+        old, new = self.get_indices(indices)
+        old_cycle = (self.mo_coeff_list[old], self.ci_coeff_list[old])
+        new_cycle = (self.mo_coeff_list[new], self.ci_coeff_list[new])
+        return self.wfow.wf_overlap(old_cycle, new_cycle, ao_ovlp)
 
     def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2,
                       ao_ovlp=None):
@@ -152,8 +151,8 @@ class OverlapCalculator(Calculator):
 
         # AO overlaps
         if ao_ovlp is None:
-            mo_coeffs1_inv = np.linalg.inv(mo_coeffs1)
-            ao_ovlp = mo_coeffs1_inv.dot(mo_coeffs1_inv.T)
+            mo_coeffs2_inv = np.linalg.inv(mo_coeffs2)
+            ao_ovlp = mo_coeffs2_inv.dot(mo_coeffs2_inv.T)
             ao_ovlp_fn = self.make_fn("ao_ovlp_rec")
             np.savetxt(ao_ovlp_fn, ao_ovlp)
         # MO overlaps
@@ -167,8 +166,8 @@ class OverlapCalculator(Calculator):
 
         return overlaps
 
-    def get_tden_overlaps(self, ao_ovlp=None):
-        old, new = self.get_indices()
+    def get_tden_overlaps(self, indices=None, ao_ovlp=None):
+        old, new = self.get_indices(indices)
         mo_coeffs1 = self.mo_coeff_list[old]
         ci_coeffs1 = self.ci_coeff_list[old]
         mo_coeffs2 = self.mo_coeff_list[new]
@@ -206,12 +205,13 @@ class OverlapCalculator(Calculator):
         vir_ntos = vir_mos.T.dot(vh)
         return occ_ntos, vir_ntos, lambdas
 
-    def get_nto_overlaps(self, ao_ovlp=None, org=False):
+    def get_nto_overlaps(self, indices=None, ao_ovlp=None, org=False):
+        old, new = self.get_indices(indices)
+
         if ao_ovlp is None:
-            mos_inv = np.linalg.inv(self.mo_coeff_list[-1])
+            mos_inv = np.linalg.inv(self.mo_coeff_list[new])
             ao_ovlp = mos_inv.dot(mos_inv.T)
 
-        old, new = self.get_indices()
         ntos_1 = self.nto_list[old]
         ntos_2 = self.nto_list[new]
         if org:
@@ -279,6 +279,7 @@ class OverlapCalculator(Calculator):
             "ref_cycles": np.array(self.ref_cycles, dtype=int),
             "ref_roots": np.array(self.reference_roots, dtype=int),
             "orient": np.array(self.orient, dtype="S"),
+            "atoms": np.array(self.atoms, dtype="S")
         }
         if self.cdd_cubes:
             data_dict["cdd_cubes"] = np.array(self.cdd_cubes, dtype="S")
@@ -291,8 +292,43 @@ class OverlapCalculator(Calculator):
             handle.create_dataset(name="ovlp_type", data=np.string_(self.ovlp_type))
             handle.create_dataset(name="ovlp_with", data=np.string_(self.ovlp_with))
 
+    @staticmethod
+    def from_overlap_data(h5_fn):
+        with h5py.File(h5_fn) as handle:
+            ovlp_with = handle["ovlp_with"][()].decode()
+            ovlp_type = handle["ovlp_type"][()].decode()
+            mo_coeffs = handle["mo_coeffs"][:]
+            ci_coeffs = handle["ci_coeffs"][:]
+            all_energies = handle["all_energies"][:]
+            ref_roots = handle["ref_roots"][:]
+            roots = handle["roots"][:]
+            calculated_roots = handle["calculated_roots"][:]
+
+        calc_kwargs = {
+            "track": True,
+            "ovlp_with": ovlp_with,
+            "ovlp_type": ovlp_type,
+        }
+        calc = OverlapCalculator(**calc_kwargs)
+        calc.mo_coeff_list = list(mo_coeffs)
+        calc.ci_coeff_list = list(ci_coeffs)
+        calc.all_energies_list = list(all_energies)
+        calc.first_root = ref_roots[0]
+        calc.root = calc.first_root
+        calc.roots_list = list(roots)
+        calc.calculated_roots = list(calculated_roots)
+
+        return calc
+
     def store_overlap_data(self, atoms, coords):
-        mos_fn, mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data()
+        if self.atoms is None:
+            self.atoms = atoms
+        mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data()
+
+        if self.wfow is None:
+            occ_mo_num, virt_mo_num = ci_coeffs[0].shape
+            self.wfow = WFOWrapper(occ_mo_num, virt_mo_num, calc_number=self.calc_number)
+
         if self.first_root is None:
             self.first_root = self.root
             self.log(f"Set first root to {self.first_root}.")
@@ -306,8 +342,6 @@ class OverlapCalculator(Calculator):
         # calculated_roots.
         if len(self.ci_coeff_list) < 2:
             self.roots_list.append(self.root)
-        # Used for WFOverlap
-        self.wfow.store_iteration(atoms, coords, mos_fn, ci_coeffs)
         # Also store NTOs if requested
         self.all_energies_list.append(all_ens)
         if self.ovlp_type in ("nto", "nto_org"):
@@ -329,13 +363,11 @@ class OverlapCalculator(Calculator):
                 ntos_for_cycle.append(ntos)
             self.nto_list.append(ntos_for_cycle)
 
-    def track_root(self, atoms, coords, ovlp_type=None):
-        """Store the information of the current iteration and if possible
-        calculate the overlap with a previous/the first iteration."""
-        self.store_overlap_data(atoms, coords)
+    def track_root(self, ovlp_type=None):
+        """Check if a root flip occured occured compared to the previous cycle
+        by calculating the overlap matrix wrt. a reference cycle."""
 
-        old_root = self.root
-        if not ovlp_type:
+        if ovlp_type is None:
             ovlp_type = self.ovlp_type
         # Nothing to compare to if only one calculation was done yet
         if len(self.ci_coeff_list) < 2:
@@ -346,11 +378,11 @@ class OverlapCalculator(Calculator):
 
         ao_ovlp = None
         # We can only run a double molecule calculation if it is
-        # implemented for the specific calculator, so we have to check it.
+        # implemented for the specific calculator.
         if self.double_mol and hasattr(self, "run_double_mol_calculation"):
             old, new = self.get_indices()
             two_coords = self.coords_list[old], self.coords_list[new]
-            ao_ovlp = self.run_double_mol_calculation(atoms, *two_coords)
+            ao_ovlp = self.run_double_mol_calculation(self.atoms, *two_coords)
         elif (self.double_mol is False) and (self.ovlp_type == "wf"):
             mos_inv = np.linalg.inv(self.mo_coeff_list[-1])
             ao_ovlp = mos_inv.dot(mos_inv.T)
@@ -358,15 +390,15 @@ class OverlapCalculator(Calculator):
                      "WFOverlap.")
 
         if ovlp_type == "wf":
-            overlap_mats = self.get_wfow_overlaps(ao_ovlp)
+            overlap_mats = self.get_wf_overlaps(ao_ovlp=ao_ovlp)
             overlaps = np.abs(overlap_mats[2])
             # overlaps = overlaps**2
         elif ovlp_type == "tden":
-            overlaps = self.get_tden_overlaps(ao_ovlp)
+            overlaps = self.get_tden_overlaps(ao_ovlp=ao_ovlp)
         elif ovlp_type == "nto":
-            overlaps = self.get_nto_overlaps(ao_ovlp)
+            overlaps = self.get_nto_overlaps(ao_ovlp=ao_ovlp)
         elif ovlp_type == "nto_org":
-            overlaps = self.get_nto_overlaps(ao_ovlp, org=True)
+            overlaps = self.get_nto_overlaps(ao_ovlp=ao_ovlp, org=True)
         else:
             raise Exception("Invalid overlap type key! Use one of "
 			    + ", ".join(self.VALID_KEYS))
