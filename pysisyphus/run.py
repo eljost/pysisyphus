@@ -749,6 +749,7 @@ def clean(force=False):
         "image*.control",
         "image*.ciss_a",
         "calculator_*.control",
+        "calculator_*.coord"
         "calculator_*.mos",
         "calculator_*.ciss_a",
         "image*.sing_a",

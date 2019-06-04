@@ -30,6 +30,7 @@ def get_calc(ovlp_type, ovlp_with):
 
 def run():
     ovlp_types = "wf tden nto_org nto".split()
+    # ovlp_types = ("nto", )
     ovlp_withs = "adapt first previous".split()
     for i, (ovlp_type, ovlp_with) in enumerate(it.product(ovlp_types, ovlp_withs)):
         # ovlp_type = "wf"
