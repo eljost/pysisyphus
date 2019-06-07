@@ -82,6 +82,7 @@ class OverlapCalculator(Calculator):
         self.ref_cycles = list()
         self.dump_fn = dump_fn
         self.atoms = None
+        self.root = None
 
         if track:
             self.log("Tracking excited states with "
@@ -271,17 +272,22 @@ class OverlapCalculator(Calculator):
             "mo_coeffs": np.array(self.mo_coeff_list, dtype=float),
             "ci_coeffs": np.array(self.ci_coeff_list, dtype=float),
             "coords": np.array(self.coords_list, dtype=float),
-            "calculated_roots": np.array(self.calculated_roots, dtype=int),
-            "roots": np.array(self.roots_list, dtype=int),
             "all_energies": np.array(self.all_energies_list, dtype=float),
-            "root_flips": np.array(self.root_flips, dtype=bool),
-            "overlap_matrices": np.array(self.overlap_matrices, dtype=float),
-            "row_inds": np.array(self.row_inds, dtype=int),
-            "ref_cycles": np.array(self.ref_cycles, dtype=int),
-            "ref_roots": np.array(self.reference_roots, dtype=int),
             "orient": np.array(self.orient, dtype="S"),
             "atoms": np.array(self.atoms, dtype="S")
         }
+        if self.root:
+            root_dict = {
+                "calculated_roots": np.array(self.calculated_roots, dtype=int),
+                "roots": np.array(self.roots_list, dtype=int),
+                "root_flips": np.array(self.root_flips, dtype=bool),
+                "overlap_matrices": np.array(self.overlap_matrices, dtype=float),
+                "row_inds": np.array(self.row_inds, dtype=int),
+                "ref_cycles": np.array(self.ref_cycles, dtype=int),
+                "ref_roots": np.array(self.reference_roots, dtype=int),
+            }
+            data_dict.update(root_dict)
+
         if self.cdd_cubes:
             data_dict["cdd_cubes"] = np.array(self.cdd_cubes, dtype="S")
             if self.cdd_imgs:
