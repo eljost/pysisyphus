@@ -81,6 +81,9 @@ def parse_args(args):
             help="Resort the second .xyz file so the atom order matches the "
                  "first .xyz file. Uses the hungarian method."
     )
+    action_group.add_argument("--std", action="store_true",
+                    help="Move supplied geometry to its standard orientation."
+    )
 
     interpolate_group = parser.add_mutually_exclusive_group()
     interpolate_group.add_argument("--idpp", action="store_true",
@@ -250,6 +253,11 @@ def match(ref_geom, geom_to_match):
     return [matched_geom, ]
 
 
+def standard_orientation(geoms):
+    [geom.standard_orientation() for geom in geoms]
+    return geoms
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -309,6 +317,9 @@ def run():
     elif args.match:
         to_dump = match(*geoms)
         fn_base = "matched"
+    elif args.std:
+        to_dump = standard_orientation(geoms)
+        fn_base = "standard"
 
     # Write transformed geometries
     dump_trj = dump_trj and (len(to_dump) > 1)
