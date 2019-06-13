@@ -80,7 +80,7 @@ class OverlapCalculator(Calculator):
         # we compare cycle 1 to cycle 0, regardless of the ovlp_with.
         self.ref_cycle = 0
         self.ref_cycles = list()
-        self.dump_fn = dump_fn
+        self.dump_fn = self.out_dir / dump_fn
         self.atoms = None
         self.root = None
 
@@ -301,32 +301,36 @@ class OverlapCalculator(Calculator):
 
     @staticmethod
     def from_overlap_data(h5_fn):
+        calc_kwargs = {
+            "track": True,
+            # "ovlp_with": ovlp_with,
+            # "ovlp_type": ovlp_type,
+        }
+        calc = OverlapCalculator(**calc_kwargs)
+
+        root_info = False
         with h5py.File(h5_fn) as handle:
             ovlp_with = handle["ovlp_with"][()].decode()
             ovlp_type = handle["ovlp_type"][()].decode()
             mo_coeffs = handle["mo_coeffs"][:]
             ci_coeffs = handle["ci_coeffs"][:]
             all_energies = handle["all_energies"][:]
-            ref_roots = handle["ref_roots"][:]
-            roots = handle["roots"][:]
-            calculated_roots = handle["calculated_roots"][:]
+            try:
+                ref_roots = handle["ref_roots"][:]
+                roots = handle["roots"][:]
+                calculated_roots = handle["calculated_roots"][:]
+                root_info = True
+            except KeyError:
+                print(f"Couldn't find root information in '{h5_fn}'.")
 
-        calc_kwargs = {
-            "track": True,
-            "ovlp_with": ovlp_with,
-            "ovlp_type": ovlp_type,
-        }
-        calc = OverlapCalculator(**calc_kwargs)
         calc.mo_coeff_list = list(mo_coeffs)
         calc.ci_coeff_list = list(ci_coeffs)
         calc.all_energies_list = list(all_energies)
-        calc.roots_list = list(roots)
-        calc.calculated_roots = list(calculated_roots)
-        try:
+        if root_info:
+            calc.roots_list = list(roots)
+            calc.calculated_roots = list(calculated_roots)
             calc.first_root = ref_roots[0]
             calc.root = calc.first_root
-        except IndexError:
-            calc.log("Skipped setting 'first_root' and 'root'!")
 
         return calc
 
