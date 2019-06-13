@@ -592,8 +592,8 @@ def handle_yaml(yaml_str):
 
 
 def dry_run(calc, geom):
-    atoms, coords = geom.atoms, geom.coords
-    inp = calc.prepare_input(atoms, coords, "force")
+    atoms, c3d = geom.atoms, geom.coords3d
+    inp = calc.prepare_input(atoms, c3d.flatten(), "force")
     if not inp:
         print("Calculator does not use an explicit input file!")
         return
