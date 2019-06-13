@@ -7,6 +7,7 @@ import numpy as np
 
 from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
 from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.calculators.Psi4 import Psi4
 
 np.set_printoptions(precision=2, linewidth=120)
 
@@ -90,8 +91,30 @@ def test_bz():
 
 def test_dopamine():
     xyz_fn = "dopamine.xyz"
-    import pdb; pdb.set_trace()
     test_base(xyz_fn)
+
+
+def test_h2o2_opt():
+    xyz_fn = "h2o2_hf_def2svp_opt.xyz"
+    geom = geom_from_xyz_file(xyz_fn, coord_type="redund")
+
+    calc_kwargs = {
+        "method": "HF",
+        "basis": "def2-svp",
+        "charge": 0,
+        "mult": 1,
+        "pal": 4,
+    }
+    calc = Psi4(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    H = geom.hessian
+    xyz_path = Path(xyz_fn)
+    H_fn = xyz_path.with_suffix(".hessian")
+    np.savetxt(H_fn, H)
+    np.savetxt("h2o2_opt_cart.hessian", geom._hessian)
+    print(f"Wrote hessian of '{xyz_fn}' to '{H_fn}'")
+    # import pdb; pdb.set_trace()
 
 if __name__ == "__main__":
     # bond_ref()
@@ -99,4 +122,5 @@ if __name__ == "__main__":
     # test_h2o()
     # test_h2o2()
     # test_bz()
-    test_dopamine()
+    # test_dopamine()
+    test_h2o2_opt()
