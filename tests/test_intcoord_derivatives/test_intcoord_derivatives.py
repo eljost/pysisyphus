@@ -98,6 +98,12 @@ def test_h2o2_opt():
     xyz_fn = "h2o2_hf_def2svp_opt.xyz"
     geom = geom_from_xyz_file(xyz_fn, coord_type="redund")
 
+    cart_H_fn = "h2o2_opt_cart.hessian"
+    xyz_path = Path(xyz_fn)
+    H_fn = xyz_path.with_suffix(".hessian")
+    cart_forces_fn = "h2o2_opt_cart.forces"
+
+
     calc_kwargs = {
         "method": "HF",
         "basis": "def2-svp",
@@ -108,11 +114,16 @@ def test_h2o2_opt():
     calc = Psi4(**calc_kwargs)
     geom.set_calculator(calc)
 
+    cart_H = np.loadtxt(cart_H_fn)
+    cart_f = np.loadtxt(cart_forces_fn)
+    geom._forces = cart_f
+    geom._hessian = cart_H
+    import pdb; pdb.set_trace()
+
     H = geom.hessian
-    xyz_path = Path(xyz_fn)
-    H_fn = xyz_path.with_suffix(".hessian")
     np.savetxt(H_fn, H)
-    np.savetxt("h2o2_opt_cart.hessian", geom._hessian)
+    np.savetxt(cart_H_fn, geom._hessian)
+    np.savetxt(cart_forces_fn, geom._forces)
     print(f"Wrote hessian of '{xyz_fn}' to '{H_fn}'")
     # import pdb; pdb.set_trace()
 
