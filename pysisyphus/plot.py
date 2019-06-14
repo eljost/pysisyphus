@@ -579,13 +579,15 @@ def plot_overlaps(h5, thresh=.1):
 
     i = 0
     i_backup = i
+    i_last = len(overlaps)-1
     def press(event):
         nonlocal i
         nonlocal i_backup
         if event.key == "left":
             i = max(0, i-1)
         elif event.key == "right":
-            i = min(len(overlaps)-1, i+1)
+            i = min(i_last, i+1)
+        # Switch between current and first cycle
         elif event.key == "i":
             if i == 0:
                 # Restore previous cycle
@@ -594,6 +596,15 @@ def plot_overlaps(h5, thresh=.1):
                 # Save current i and jump to the first cycle/image
                 i_backup = i
                 i = 0
+        # Switch between current and last cycle
+        elif event.key == "e":
+            if i == i_last:
+                # Restore previous cycle
+                i = i_backup
+            else:
+                # Save current i and jump to the first cycle/image
+                i_backup = i
+                i = i_last
         else:
             return
         draw(i)
