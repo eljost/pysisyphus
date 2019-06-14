@@ -2,6 +2,7 @@
 
 import argparse
 import os
+from pathlib import Path
 import sys
 
 import h5py
@@ -577,12 +578,22 @@ def plot_overlaps(h5, thresh=.1):
     draw(0)
 
     i = 0
+    i_backup = i
     def press(event):
         nonlocal i
+        nonlocal i_backup
         if event.key == "left":
             i = max(0, i-1)
         elif event.key == "right":
             i = min(len(overlaps)-1, i+1)
+        elif event.key == "i":
+            if i == 0:
+                # Restore previous cycle
+                i = i_backup
+            else:
+                # Save current i and jump to the first cycle/image
+                i_backup = i
+                i = 0
         else:
             return
         draw(i)
@@ -594,15 +605,27 @@ def render_cdds(h5):
     with h5py.File(h5) as handle:
         cdd_cubes = handle["cdd_cubes"][:].astype(str)
         orient = handle["orient"][()].decode()
-    # png_fns = [render_cdd_cube(fn, orient=orient) for fn in cdd_cubes]
-    png_fns = list()
+    print(f"Found {len(cdd_cubes)} CDD cube filenames in {h5}")
+
+    # Create list of all final PNG filenames
+    png_fns = [Path(cube).with_suffix(".png") for cube in cdd_cubes]
+    # Check which cubes are already rendered
+    png_stems = [png.stem for png in png_fns
+                 if png.exists()]
+    print(f"{len(png_stems)} cubes seem already rendered.")
+
+    # Only render cubes that are not yet rendered
+    cdd_cubes = [cube for cube in cdd_cubes
+                 if Path(cube).stem not in png_stems]
+    print(f"Rendering {len(cdd_cubes)} CDD cubes.")
+
     for i, cube in enumerate(cdd_cubes):
         print(f"Rendering cube {i+1:03d}/{len(cdd_cubes):03d}")
-        png_fn = render_cdd_cube(cube, orient=orient)
-        png_fns.append(png_fn)
+        _ = render_cdd_cube(cube, orient=orient)
     joined = "\n".join([str(fn) for fn in png_fns])
     with open(CDD_PNG_FNS, "w") as handle:
         handle.write(joined)
+    print("Rendered PNGs:")
     print(joined)
     print(f"Wrote list of rendered PNGs to '{CDD_PNG_FNS}'")
 
