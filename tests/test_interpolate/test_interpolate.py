@@ -41,11 +41,15 @@ def test_redund():
     # initial = geom_from_xyz_file("bare_split.image_000.xyz", coord_type="redund")
     # final = geom_from_xyz_file("bare_split.image_056.xyz", coord_type="redund")
 
-    initial = geom_from_xyz_file("01_ed.xyz", coord_type="redund")
-    final = geom_from_xyz_file("01_prod.xyz", coord_type="redund")
+    # initial = geom_from_xyz_file("01_ed.xyz", coord_type="redund")
+    # final = geom_from_xyz_file("01_prod.xyz", coord_type="redund")
+    # initial = geom_from_xyz_file("h2o2_hf_321g_opt.xyz", coord_type="redund")
+    # final = geom_from_xyz_file("h2o2_rot.xyz", coord_type="redund")
+    # initial = geom_from_xyz_file("min115.xyz", coord_type="redund")
+    # final = geom_from_xyz_file("plu115.xyz", coord_type="redund")
 
-    # initial = geom_from_library("hcn.xyz", coord_type="redund")
-    # final = geom_from_library("nhc.xyz", coord_type="redund")
+    initial = geom_from_xyz_file("hcn.xyz", coord_type="redund")
+    final = geom_from_xyz_file("nhc.xyz", coord_type="redund")
 
     def to_set(iterable):
         return set([tuple(_) for _ in iterable])
@@ -88,7 +92,6 @@ def test_redund():
     d = geom2.coords - geom1.coords
     c1 = geom1.coords.copy()
     c2 = geom2.coords.copy()
-    import pdb; pdb.set_trace()
 
     def update_internals(prev_internals, new_internals, bonds_bends, d):
         internal_diffs = np.array(new_internals - prev_internals)
@@ -109,12 +112,15 @@ def test_redund():
     base_step = d_ / (num-1)
     # import pdb; pdb.set_trace()
     geoms = [geom1, ]
+    # import pdb; pdb.set_trace()
+    print("base_step", base_step)
     for i in range(num):
         print(i)
-        step = i*base_step
+        # step = base_step
         new_geom = geoms[-1].copy()
-        new_coords = new_geom.coords + step
+        new_coords = new_geom.coords + base_step
         new_geom.coords = new_coords
+        # print(i, new_coords)
         geoms.append(new_geom)
         write_geoms_to_trj(geoms, f"redund_{i:02d}.trj")
 

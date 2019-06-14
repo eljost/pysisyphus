@@ -8,6 +8,7 @@ import rmsd
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.DLC import DLC
 from pysisyphus.linalg import gram_schmidt
 from pysisyphus.xyzloader import make_xyz_str
 
@@ -17,6 +18,7 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
+        "dlc": DLC,
     }
 
     def __init__(self, atoms, coords, coord_type="cart", comment="",
