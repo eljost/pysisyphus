@@ -599,7 +599,7 @@ class RedundantCoords:
     def transform_int_step(self, step, cart_rms_thresh=1e-6):
         remaining_int_step = step
         cur_cart_coords = self.cart_coords.copy()
-        cur_internals = self.calculate(cur_cart_coords, attr="val")
+        cur_internals = self.coords
         target_internals = cur_internals + step
         Bt_inv = self.Bt_inv
 
@@ -655,36 +655,3 @@ class RedundantCoords:
         dihedrals = len(self.dihedral_indices)
         name = self.__class__.__name__
         return f"{name}({bonds} bonds, {bends} bends, {dihedrals} dihedrals)"
-
-
-class DelocalizedCoords(RedundantCoords):
-    def __init__(self, geom):
-        super().__init__(geom)
-
-    def set_delocalized_vectors(self, thresh=1e-6):
-        """See [5] between Eq. (7) and Eq. (8) for advice regarding
-        the threshold."""
-        G = self.B_prim.dot(self.B_prim.T)
-        w, v = np.linalg.eigh(G)
-        #print(w)
-        #print(w.shape)
-        #print(v.T)
-        non_zero_inds = np.where(abs(w) > thresh)
-        degrees_of_freedom = 3*len(self.atoms)-6
-        assert(len(non_zero_inds[0]) == degrees_of_freedom)
-        self.delocalized_vectors = v[:,non_zero_inds[0]]
-        # Eq. 3 in [2], transformation of B to the active coordinate set
-        self.B = self.delocalized_vectors.T.dot(self.B_prim)
-        self.Bt_inv = np.linalg.pinv(self.B.dot(self.B.T)).dot(self.B)
-
-    def get_delocalized(self):
-        primitives = self.get_primitives()
-        return primitives.dot(self.delocalized_vectors)
-
-    """
-    @property
-    def G(self):
-        B = self.B
-        return B.dot(B.T)
-    """
-
