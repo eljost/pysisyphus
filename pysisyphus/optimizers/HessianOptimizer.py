@@ -74,6 +74,11 @@ class HessianOptimizer(Optimizer):
             np.savetxt(hess_fn, self.H)
             self.log(f"Wrote calculated hessian to '{hess_fn}'")
 
+        if (hasattr(self.geometry, "coord_type")
+            and self.geometry.coord_type == "dlc"):
+            U = self.geometry.internal.active_set
+            self.H = U.T.dot(self.H).dot(U)
+
     def update_trust_radius(self):
         # The predicted change should be calculated at the end of optimize
         # of the previous cycle.
