@@ -2,6 +2,7 @@
 
 
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.calculators.Psi4 import Psi4
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_from_library
 
@@ -25,10 +26,18 @@ def run():
     # int_ = geom.internal
     # int_.B
     # int_.set_delocalized_vectors()
-    geom.set_calculator(XTB())
+    calc = XTB()
+    # psi4_kwargs = {
+        # "method": "hf",
+        # "basis": "def2-svp",
+    # }
+    # calc = Psi4(**psi4_kwargs)
+    geom.set_calculator(calc)
     opt_kwargs = {
         # "max_cycles": 1,
         "thresh": "gau_tight",
+        "trust_max": 0.3,
+        "trust_radius": 0.1,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()

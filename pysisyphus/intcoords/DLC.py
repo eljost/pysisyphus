@@ -28,7 +28,7 @@ class DLC(RedundantCoords):
 
     @property
     def B(self):
-        """Wilson B-Matrix"""
+        """Wilson B-Matrix in the non-redundant subspace."""
         return self.U.T.dot(self.B_prim)
 
     def project_hessian(self, H):
