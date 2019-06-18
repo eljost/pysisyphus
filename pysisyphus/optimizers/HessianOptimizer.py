@@ -9,7 +9,8 @@ from pysisyphus.optimizers.hessian_updates import (bfgs_update, flowchart_update
                                                    damped_bfgs_update,
                                                    multi_step_update)
 from pysisyphus.optimizers.guess_hessians import (fischer_guess, lindh_guess,
-                                                  simple_guess, swart_guess)
+                                                  simple_guess, swart_guess,
+                                                  xtb_hessian,)
 
 
 class HessianOptimizer(Optimizer):
@@ -62,6 +63,8 @@ class HessianOptimizer(Optimizer):
             "simple": lambda: (simple_guess(self.geometry), "simple"),
             # Swart model hessian
             "swart": lambda: (swart_guess(self.geometry), "Swart"),
+            # XTB hessian
+            "xtb": lambda: (xtb_hessian(self.geometry), "XTB"),
         }
         try:
             self.H, hess_str = hess_funcs[self.hessian_init]()

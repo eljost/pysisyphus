@@ -13,6 +13,7 @@ import itertools as it
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
+from pysisyphus.calculators.XTB import XTB
 from pysisyphus.elem_data import COVALENT_RADII
 
 
@@ -150,3 +151,16 @@ def swart_guess(geom):
             rho_product *= rhos[i1, i2]
         k_diag.append(k_dict[len(primitive.inds)] * rho_product)
     return np.diagflat(k_diag)
+
+
+def xtb_hessian(geom):
+    calc = geom.calculator
+    xtb_kwargs = {
+        "charge": calc.charge,
+        "mult": calc.mult,
+        "pal": calc.pal
+    }
+    xtb_calc = XTB(**xtb_kwargs)
+    geom_ = geom.copy()
+    geom_.set_calculator(xtb_calc)
+    return geom_.hessian
