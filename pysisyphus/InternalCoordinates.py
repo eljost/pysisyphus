@@ -97,8 +97,8 @@ class RedundantCoords:
             valid_dihedrals = [inds for inds in dihedrals if
                                self.is_valid_dihedral(inds)]
             self.dihedral_indices = to_arr(valid_dihedrals)
-        self._prim_coords = self.calculate(self.cart_coords)
-        self._coords = np.array([pc.val for pc in self._prim_coords])
+        self._prim_internals = self.calculate(self.cart_coords)
+        self._prim_coords = np.array([pc.val for pc in self._prim_internals])
 
     def log(self, message):
         logger = logging.getLogger("internal_coords")
@@ -109,9 +109,35 @@ class RedundantCoords:
         return [self.bond_indices, self.bending_indices, self.dihedral_indices]
 
     @property
-    def B(self):
+    def prim_coords(self):
+        if self._prim_coords is None:
+           self._prim_coords = np.array(
+                            [pc.val for pc in self.calculate(self.cart_coords)]
+            )
+        return self._prim_coords
+
+    @property
+    def coords(self):
+        return self.prim_coords
+
+    @property
+    def coord_indices(self):
+        ic_ind_tuples = [tuple(ic.inds) for ic in self._prim_internals]
+        return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
+
+    @property
+    def c3d(self):
+        return self.cart_coords.reshape(-1, 3)
+
+    @property
+    def B_prim(self):
         """Wilson B-Matrix"""
         return np.array([c.grad for c in self.calculate(self.cart_coords)])
+
+    @property
+    def B(self):
+        """Wilson B-Matrix"""
+        return self.B_prim
 
     @property
     def Bt_inv(self):
@@ -135,7 +161,7 @@ class RedundantCoords:
         return self.Bt_inv.dot(cart_forces)
 
     def get_K_matrix(self, int_gradient=None):
-        assert len(int_gradient) == len(self._prim_coords)
+        assert len(int_gradient) == len(self._prim_internals)
         size_ = self.cart_coords.size
         if int_gradient is None:
             return np.zeros((size_, size_))
@@ -151,7 +177,7 @@ class RedundantCoords:
             return dgrad
 
         K_flat = np.zeros(size_ * size_)
-        for pc, g in zip(self._prim_coords, int_gradient):
+        for pc, g in zip(self._prim_internals, int_gradient):
             # Contract with gradient
             dg = g * grad_deriv_wrapper(pc.inds)
             # Depending on the type of internal coordinate dg is a flat array
@@ -184,23 +210,6 @@ class RedundantCoords:
         P = self.P
         return P.dot(H).dot(P) + 1000*(np.eye(P.shape[0]) - P)
 
-    @property
-    def coords(self):
-        if self._coords is None:
-           self._coords = np.array(
-                            [pc.val for pc in self.calculate(self.cart_coords)]
-            )
-        return self._coords
-
-    @property
-    def coord_indices(self):
-        ic_ind_tuples = [tuple(ic.inds) for ic in self._prim_coords]
-        return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
-
-    @property
-    def c3d(self):
-        return self.cart_coords.reshape(-1, 3)
-
     def set_rho(self):
         # TODO: remove this as it is already in optimizers/guess_hessians
         atoms = [a.lower() for a in self.atoms]
@@ -220,7 +229,7 @@ class RedundantCoords:
             4: 0.005,
         }
         k_diag = list()
-        for primitive in self._prim_coords:
+        for primitive in self._prim_internals:
             rho_product = 1
             for i in range(primitive.inds.size-1):
                 i1, i2 = primitive.inds[i:i+2]
@@ -597,18 +606,21 @@ class RedundantCoords:
         return new_internals
 
     def transform_int_step(self, step, cart_rms_thresh=1e-6):
+        """This is always done in primitive internal coordinates so care
+        has to be taken that the supplied step is given in primitive internal
+        coordinates."""
+
         remaining_int_step = step
         cur_cart_coords = self.cart_coords.copy()
-        cur_internals = self.coords
+        cur_internals = self.prim_coords
         target_internals = cur_internals + step
-        Bt_inv = self.Bt_inv
-
-        diheds = len(self.bond_indices) + len(self.bending_indices)
+        B_prim = self.B_prim
+        Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
 
         last_rms = None
         prev_internals = cur_internals
         for i in range(25):
-            cart_step = Bt_inv.T.dot(remaining_int_step)
+            cart_step = Bt_inv_prim.T.dot(remaining_int_step)
             cart_rms = np.sqrt(np.mean(cart_step**2))
             # Update cartesian coordinates
             cur_cart_coords += cart_step
@@ -630,23 +642,13 @@ class RedundantCoords:
                 self.log("Internal to cartesian failed! Using first step.")
                 cur_cart_coords, new_internals = first_cycle
                 break
-            # diheds = 9
-            # prev_diheds = prev_internals[-diheds:]
-            # new_diheds = new_internals[-diheds:]
-            # dihed_step = new_diheds - prev_diheds
-            # print("previous")
-            # print(prev_diheds)
-            # print("new")
-            # print(new_diheds)
-            # print("step")
-            # print(dihed_step)
             prev_internals = new_internals
 
             last_rms = cart_rms
             if cart_rms < cart_rms_thresh:
                 self.log("Internal to cartesian transformation converged!")
                 break
-            self._coords = np.array(new_internals)
+            self._prim_coords = np.array(new_internals)
         return cur_cart_coords - self.cart_coords
 
     def __str__(self):
