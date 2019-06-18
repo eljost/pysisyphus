@@ -76,7 +76,7 @@ class HessianOptimizer(Optimizer):
 
         if (hasattr(self.geometry, "coord_type")
             and self.geometry.coord_type == "dlc"):
-            U = self.geometry.internal.active_set
+            U = self.geometry.internal.U
             self.H = U.T.dot(self.H).dot(U)
 
     def update_trust_radius(self):

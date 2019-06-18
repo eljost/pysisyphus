@@ -9,13 +9,14 @@ class DLC(RedundantCoords):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.active_set = self.set_active_set(self.B_prim)
-
-        self._Ut_inv = np.linalg.pinv(self.active_set.T)
+        # U
+        self._U = self.set_active_set(self.B_prim)
+        # Need for the back-transformation to primitive internals
+        self._Ut_inv = np.linalg.pinv(self.U.T)
 
     @property
     def U(self):
-        return self.active_set
+        return self._U
 
     @property
     def Ut_inv(self):
@@ -23,12 +24,12 @@ class DLC(RedundantCoords):
 
     @property
     def coords(self):
-        return self.active_set.T.dot(self.prim_coords)
+        return self.U.T.dot(self.prim_coords)
 
     @property
     def B(self):
         """Wilson B-Matrix"""
-        return self.active_set.T.dot(self.B_prim)
+        return self.U.T.dot(self.B_prim)
 
     def project_hessian(self, H):
         """As we work in the non-redundant subspace we don't have to project
@@ -44,13 +45,9 @@ class DLC(RedundantCoords):
     def set_active_set(self, B, thresh=1e-6):
         """See [5] between Eq. (7) and Eq. (8) for advice regarding
         the threshold."""
-        # Original Wilson B-matrix
-        np.savetxt("B_pysis", B)
         G = B.dot(B.T)
-        np.savetxt("G_pysis", G)
         eigvals, eigvectors = np.linalg.eigh(G)
 
         nonzero_inds = np.abs(eigvals) > thresh
         active_eigvals = eigvals[nonzero_inds]
-        # self.active_set = eigvectors[:,nonzero_inds]
         return eigvectors[:,nonzero_inds]
