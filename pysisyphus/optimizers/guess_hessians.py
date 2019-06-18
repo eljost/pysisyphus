@@ -75,7 +75,7 @@ def fischer_guess(geom):
     }
 
     h_diag = list()
-    for primitive in geom.internal._prim_coords:
+    for primitive in geom.internal._prim_internals:
         f = h_funcs[len(primitive.inds)]
         h_diag.append(f(primitive))
     H = np.array(np.diagflat(h_diag))
@@ -113,7 +113,7 @@ def lindh_guess(geom):
         4: 0.005,  # Torsions/dihedrals
     }
     k_diag = list()
-    for primitive in geom.internal._prim_coords:
+    for primitive in geom.internal._prim_internals:
         rho_product = 1
         for i in range(primitive.inds.size-1):
             i1, i2 = primitive.inds[i:i+2]
@@ -129,7 +129,7 @@ def simple_guess(geom):
         3: 0.2,  # Bends/angles
         4: 0.1,  # Torsions/dihedrals
     }
-    h_diag = [h_dict[len(prim.inds)] for prim in geom.internal._prim_coords]
+    h_diag = [h_dict[len(prim.inds)] for prim in geom.internal._prim_internals]
     return np.diagflat(h_diag)
 
 
@@ -143,7 +143,7 @@ def swart_guess(geom):
         4: 0.005,
     }
     k_diag = list()
-    for primitive in geom.internal._prim_coords:
+    for primitive in geom.internal._prim_internals:
         rho_product = 1
         for i in range(primitive.inds.size-1):
             i1, i2 = primitive.inds[i:i+2]
