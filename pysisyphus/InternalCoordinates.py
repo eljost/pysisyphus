@@ -615,6 +615,8 @@ class RedundantCoords:
         cur_internals = self.prim_coords
         target_internals = cur_internals + step
         B_prim = self.B_prim
+        # Bt_inv may be overriden in other coordiante systems so we
+        # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
 
         last_rms = None
