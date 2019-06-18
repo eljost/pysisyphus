@@ -17,7 +17,7 @@ def print_gaussian_ints(geom):
     angles = 1
     dihedrals = 1
     string_list = []
-    for pc in geom.internal._prim_coords:
+    for pc in geom.internal._prim_internals:
         if len(pc.inds) == 2:
             base = "R"
             val = pc.val*BOHR2ANG

@@ -49,6 +49,7 @@ def test_birkholz():
     for xyz_fn, (charge, mult) in GEOMS.items():
         print(xyz_fn, charge, mult)
         geom = geom_from_library(base_path / xyz_fn, coord_type="redund")
+        # geom = geom_from_library(base_path / xyz_fn, coord_type="dlc")
         calc = XTB(charge=charge, mult=mult, pal=4)
         # route = "HF/3-21G"
         # if xyz_fn in ("vitamin_c.xyz", "easc.xyz"):

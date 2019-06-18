@@ -42,7 +42,7 @@ def test_wilson():
         3: "bend",
         4: "torsion",
     }
-    for i, pc in enumerate(int_._prim_coords):
+    for i, pc in enumerate(int_._prim_internals):
         inds = pc.inds
         print(f"{i:02d}: {v[len(inds)]}")
         g = pc.grad
@@ -67,8 +67,8 @@ def test_wilson():
     size_ = geom.cart_coords.size
     K_flat = np.zeros(size_ * size_)
 
-    assert len(gradient) == len(int_._prim_coords)
-    for pc, g in zip(int_._prim_coords, gradient):
+    assert len(gradient) == len(int_._prim_internals)
+    for pc, g in zip(int_._prim_internals, gradient):
         # Contract with gradient
         dg = g * grad_deriv_wrapper(pc.inds)
         # Depending on the type of internal coordinate dg is a flat array

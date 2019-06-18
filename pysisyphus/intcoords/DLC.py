@@ -9,7 +9,7 @@ class DLC(RedundantCoords):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.set_active_set()
+        self.active_set = self.set_active_set(self.B_prim)
 
         self._Ut_inv = np.linalg.pinv(self.active_set.T)
 
@@ -23,41 +23,34 @@ class DLC(RedundantCoords):
 
     @property
     def coords(self):
-        import pdb; pdb.set_trace()
-        coords_org = super().coords
-        return self.active_set.T.dot(coords_org)
+        return self.active_set.T.dot(self.prim_coords)
 
     @property
     def B(self):
         """Wilson B-Matrix"""
-        B_org = super().B
-        print("Call DLC B")
-        return self.active_set.T.dot(B_org)
+        return self.active_set.T.dot(self.B_prim)
 
     def project_hessian(self, H):
         """As we work in the non-redundant subspace we don't have to project
         the hessian."""
         return H
 
-    def update_internals(self, new_cartesians, prev_internals):
-        # Transform prev_internals to primitive internals
-        prev_internals_prim = self.Ut_inv.dot(prev_internals)
-        updated_internals = super().update_internals(new_cartesians, prev_internals_prim)
-        return self.U.T.dot(updated_internals)
+    def transform_int_step(self, step, *args, **kwargs):
+        """As the transformation is done in primitive internal coordinates
+        we convert the DLC back to primitive coordinates."""
+        prim_step = self.Ut_inv.dot(step)
+        return super().transform_int_step(prim_step, *args, **kwargs)
 
-    def set_active_set(self, thresh=1e-6):
+    def set_active_set(self, B, thresh=1e-6):
         """See [5] between Eq. (7) and Eq. (8) for advice regarding
         the threshold."""
         # Original Wilson B-matrix
-        B = super().B
+        np.savetxt("B_pysis", B)
         G = B.dot(B.T)
+        np.savetxt("G_pysis", G)
         eigvals, eigvectors = np.linalg.eigh(G)
 
         nonzero_inds = np.abs(eigvals) > thresh
-        # sum_ = np.sum(nonzero_inds)
         active_eigvals = eigvals[nonzero_inds]
-        self.active_set = eigvectors[:,nonzero_inds]
-        # B = active_vecs.T.dot(B)
-        # Bt_inv = np.linalg.pinv(B.dot(B.T)).dot(B)
-        # self.B = self.delocalized_vectors.T.dot(self.B_prim)
-        # self.Bt_inv = np.linalg.pinv(self.B.dot(self.B.T)).dot(self.B)
+        # self.active_set = eigvectors[:,nonzero_inds]
+        return eigvectors[:,nonzero_inds]

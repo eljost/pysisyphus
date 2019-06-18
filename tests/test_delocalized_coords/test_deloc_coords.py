@@ -20,12 +20,14 @@ def run():
     xyz_fn = "fluorethylene.xyz"
     # xyz_fn = "split.image_021.xyz"
     geom = geom_from_library(xyz_fn, coord_type="dlc")
+    # geom = geom_from_library(xyz_fn, coord_type="redund")
     # int_ = geom.internal
     # int_.B
     # int_.set_delocalized_vectors()
     geom.set_calculator(XTB())
     opt_kwargs = {
         # "max_cycles": 1,
+        "thresh": "gau_tight",
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()

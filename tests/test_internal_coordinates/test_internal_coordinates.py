@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import itertools as it
 import logging; logging.disable(logging.DEBUG)
 import numpy as np
 import pytest
 
 from pysisyphus.helpers import geom_from_library
-from pysisyphus.InternalCoordinates import RedundantCoords, DelocalizedCoords
+from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.BFGS import BFGS
@@ -20,7 +21,7 @@ np.set_printoptions(suppress=True, precision=4)
 def get_geom(xyz_fn, coord_type="redund", debug=False):
     geom = geom_from_library(xyz_fn, coord_type=coord_type)
     if debug:
-        for pc in geom.internal._prim_coords:
+        for pc in geom.internal._prim_internals:
             print(pc.inds+1, pc.val)
     return geom
 
@@ -115,8 +116,8 @@ def test_azetidine_opt():
     dihed_inds = geom.internal.dihedral_indices
     dihed_inds = np.concatenate((dihed_inds, ((3,0,8,5), (0,3,5,8), (3,5,8,0))))
     geom.internal.dihedral_indices = dihed_inds
-    geom.internal._prim_coords = geom.internal.calculate(geom._coords)
-    print(geom.internal._prim_coords, len(geom.internal._prim_coords))
+    geom.internal._prim_internals = geom.internal.calculate(geom._coords)
+    print(geom.internal._prim_internals, len(geom.internal._prim_internals))
     print(dihed_inds)
     print(geom.internal.dihedral_indices)
     geom.set_calculator(XTB())
@@ -256,5 +257,5 @@ if __name__ == "__main__":
     #test_co2_linear_opt()
     #test_ch4()
     #test_sf6()
-    #test_biaryl_opt()
+    # test_biaryl_opt()
     pass
