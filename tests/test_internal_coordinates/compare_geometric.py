@@ -29,6 +29,8 @@ def h2o_comp():
         val = int_geom.value(xyz)
         der = int_geom.derivative(xyz)
         print(int_geom, val)
+        # if inds.size == 4:
+            # import pdb; pdb.set_trace()
         np.testing.assert_allclose(der.flatten(), prim.grad)
 
 

@@ -11,7 +11,7 @@ class DLC(RedundantCoords):
 
         # U
         self._U = self.set_active_set(self.B_prim)
-        # Need for the back-transformation to primitive internals
+        # Needed for back-transformation to primitive internals
         self._Ut_inv = np.linalg.pinv(self.U.T)
 
     @property
