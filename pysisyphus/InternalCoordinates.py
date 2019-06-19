@@ -177,9 +177,9 @@ class RedundantCoords:
             return dgrad
 
         K_flat = np.zeros(size_ * size_)
-        for pc, g in zip(self._prim_internals, int_gradient):
+        for pc, int_grad_item in zip(self._prim_internals, int_gradient):
             # Contract with gradient
-            dg = g * grad_deriv_wrapper(pc.inds)
+            dg = int_grad_item * grad_deriv_wrapper(pc.inds)
             # Depending on the type of internal coordinate dg is a flat array
             # of size 36 (stretch), 81 (bend) or 144 (torsion).
             #
