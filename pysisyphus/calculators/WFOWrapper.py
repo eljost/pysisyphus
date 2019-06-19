@@ -44,7 +44,7 @@ class WFOWrapper:
     ))
 
     def __init__(self, occ_mo_num, virt_mo_num, conf_thresh=1e-4,
-                 calc_number=0, out_dir="./"):
+                 calc_number=0, out_dir="./", wfow_mem=8000):
         try:
             self.base_cmd = Config["wfoverlap"]["cmd"]
         except KeyError:
@@ -53,13 +53,16 @@ class WFOWrapper:
         self.calc_number = calc_number
         self.conf_thresh = conf_thresh
         self.out_dir = Path(out_dir).resolve()
+        self.wfow_mem = int(wfow_mem)
+
+        self.name = f"WFOWrapper_{self.calc_number}"
+        self.log(f"Using -m {self.wfow_mem} for wfoverlap.")
 
         self.mo_inds_list = list()
         self.from_set_list = list()
         self.to_set_list = list()
         self.turbo_mos_list = list()
 
-        self.name = f"WFOWrapper_{self.calc_number}"
         self.occ_mo_num = int(occ_mo_num)
         self.virt_mo_num = int(virt_mo_num)
         self.mo_num = self.occ_mo_num + self.virt_mo_num

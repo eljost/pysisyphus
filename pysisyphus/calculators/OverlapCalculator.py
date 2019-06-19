@@ -360,7 +360,12 @@ class OverlapCalculator(Calculator):
 
         if self.wfow is None:
             occ_mo_num, virt_mo_num = ci_coeffs[0].shape
-            self.wfow = WFOWrapper(occ_mo_num, virt_mo_num, calc_number=self.calc_number)
+            try:
+                wfow_mem = self.pal * self.mem
+            except AttributeError:
+                wfow_mem = 8000
+            self.wfow = WFOWrapper(occ_mo_num, virt_mo_num, calc_number=self.calc_number,
+                                   wfow_mem=wfow_mem)
 
         if self.first_root is None:
             self.first_root = self.root
