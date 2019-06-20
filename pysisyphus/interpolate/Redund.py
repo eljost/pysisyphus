@@ -5,6 +5,7 @@ import numpy as np
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 class Redund(Interpolator):
@@ -40,8 +41,8 @@ class Redund(Interpolator):
         return self.to_set(bonds), self.to_set(bends), self.to_set(dihedrals)
 
     def interpolate(self, initial_geom, final_geom):
-        print("initial primitives", initial_geom.coords.size)
-        print("final primitives", final_geom.coords.size)
+        print(f"No. of primitives at initial structure: {initial_geom.coords.size}")
+        print(f"No. of primitives at final structure: {final_geom.coords.size}")
 
         bonds1, bends1, dihedrals1 = self.merge_coordinate_definitions(initial_geom, final_geom)
         bonds2, bends2, dihedrals2 = self.merge_coordinate_definitions(final_geom, initial_geom)
@@ -51,7 +52,8 @@ class Redund(Interpolator):
         valid_bends = bends1 & bends2
         valid_dihedrals = dihedrals1 & dihedrals2
         prim_indices = (valid_bonds, valid_bends, valid_dihedrals)
-        print("union of primitives", len(valid_bonds) + len(valid_bends) + len(valid_dihedrals))
+        print("Union of primitives",
+              len(valid_bonds) + len(valid_bends) + len(valid_dihedrals))
 
         geom1 = Geometry(initial_geom.atoms, initial_geom.cart_coords,
                          coord_type="redund", prim_indices=prim_indices
@@ -91,6 +93,7 @@ class Redund(Interpolator):
 
         geoms = [geom1, ]
         for i in range(self.between):
+            print(f"interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
             prim_tangent = get_tangent(new_geom.coords, final_prims, bonds_bends)
             # Form active set
@@ -101,7 +104,17 @@ class Redund(Interpolator):
             reduced_tangent = (np.einsum("i,ij->j", prim_tangent, U) * U).sum(axis=1)
             reduced_tangent /= np.linalg.norm(reduced_tangent)
             step = approx_stepsize * reduced_tangent
-            new_coords = new_geom.coords + step
+            try:
+                new_coords = new_geom.coords + step
+            except ValueError as err:
+                fn = "redund_interpol_fail.trj"
+                write_geoms_to_trj(geoms, fn)
+                print(f"Chosen set of primitives is not valid for step {i} "
+                      f"of {self.between}. Wrote interpolation progress to "
+                       "'{fn}'."
+                )
+                raise err
+
             new_geom.coords = new_coords
             geoms.append(new_geom)
         return geoms[1:]
