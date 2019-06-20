@@ -47,7 +47,7 @@ def get_baker_geoms(**kwargs):
 def align_geoms(geoms):
     # http://nghiaho.com/?page_id=671#comment-559906
     first_geom = geoms[0]
-    coords3d = first_geom.coords.reshape(-1, 3)
+    coords3d = first_geom.coords3d
     centroid = coords3d.mean(axis=0)
     last_centered = coords3d - centroid
     first_geom.coords3d = last_centered
