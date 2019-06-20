@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 
+import numpy as np
+
+from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.Geometry import Geometry
+from pysisyphus.xyzloader import write_geoms_to_trj
 from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
 from pysisyphus.interpolate.LST import LST
 from pysisyphus.interpolate.IDPP import IDPP
-from pysisyphus.interpolate import interpolate_all
+
+
+np.set_printoptions(suppress=True, precision=4)
 
 
 def test_lst():
@@ -29,39 +36,9 @@ def test_idpp():
     idpp.all_geoms_to_trj("idpp_opt.trj")
 
 
-def test_redund():
-    import numpy as np
-
-    from pysisyphus.InternalCoordinates import RedundantCoords
-    from pysisyphus.Geometry import Geometry
-    from pysisyphus.xyzloader import write_geoms_to_trj
-
-    np.set_printoptions(suppress=True, precision=4)
-
-    # initial = geom_from_xyz_file("bare_split.image_000.xyz", coord_type="redund")
-    # final = geom_from_xyz_file("bare_split.image_056.xyz", coord_type="redund")
-
-    # initial = geom_from_xyz_file("01_ed.xyz", coord_type="redund")
-    # final = geom_from_xyz_file("01_prod.xyz", coord_type="redund")
-    # initial = geom_from_xyz_file("h2o2_hf_321g_opt.xyz", coord_type="redund")
-    # final = geom_from_xyz_file("h2o2_rot.xyz", coord_type="redund")
-    # initial = geom_from_xyz_file("min115.xyz", coord_type="redund")
-    # final = geom_from_xyz_file("plu115.xyz", coord_type="redund")
-
-    # initial = geom_from_xyz_file("hcn.xyz", coord_type="redund")
-    # final = geom_from_xyz_file("nhc.xyz", coord_type="redund")
-
-    # initial = geom_from_xyz_file("h2_sih2_start.xyz", coord_type="redund")
-    # final = geom_from_xyz_file("h2_sih2_end.xyz", coord_type="redund")
-
-    # initial = geom_from_library("dipeptide_init.xyz", coord_type="redund")
-    # final = geom_from_library("dipeptide_fin.xyz", coord_type="redund")
-
-    initial = geom_from_xyz_file("butadiene_ethene.xyz", coord_type="redund")
-    final = geom_from_xyz_file("cyclohexene.xyz", coord_type="redund")
+def dlc_interpolate(initial, final, between=18):
     print("initial primitives", initial.coords.size)
     print("final primitives", final.coords.size)
-
     def to_set(iterable):
         return set([tuple(_) for _ in iterable])
 
@@ -101,9 +78,6 @@ def test_redund():
     geom2 = Geometry(final.atoms, final.cart_coords,
                      coord_type="redund", prim_indices=prim_indices
     )
-    d = geom2.coords - geom1.coords
-    c1 = geom1.coords.copy()
-    c2 = geom2.coords.copy()
 
     def update_internals(prev_internals, new_internals, bonds_bends, d):
         internal_diffs = np.array(new_internals - prev_internals)
@@ -116,41 +90,53 @@ def test_redund():
         new_internals[bonds_bends:] = new_dihedrals
         return new_internals
 
+    def get_tangent(prims1, prims2, bonds_bends):
+        diff = prims2 - prims1
+        diheds = diff[bonds_bends:].copy()
+        diheds_plus = diheds.copy() + 2*np.pi
+        diheds_minus = diheds.copy() - 2*np.pi
+        bigger = np.abs(diheds) > np.abs(diheds_plus)
+        diheds[bigger] = diheds_plus[bigger]
+        bigger = np.abs(diheds) > np.abs(diheds_minus)
+        diheds[bigger] = diheds_minus[bigger]
+        diff[bonds_bends:] = diheds
+        return diff
+
     bonds_bends = len(valid_bonds) + len(valid_bends)
-    d_diheds = d[bonds_bends:]
-    coords2_ = update_internals(geom1.coords, geom2.coords, bonds_bends, d)
-    d_ = coords2_ - geom1.coords
-    num = 20
-    bl = len(valid_bonds)
-    ba = len(valid_bends)
-    bd = len(valid_dihedrals)
-    bo1 = geom1.coords[:bl]
-    bo2 = coords2_[:bl]
-    be1 = geom1.coords[bl:bl+ba]
-    be2 = coords2_[bl:bl+ba]
-    d1 = geom1.coords[bl+ba:]
-    d2 = coords2_[bl+ba:]
-    import pdb; pdb.set_trace()
-    base_step = d_ / (num-1)
-    # import pdb; pdb.set_trace()
+    initial_tangent = get_tangent(geom1.coords, geom2.coords, bonds_bends)
+    initial_diff = np.linalg.norm(initial_tangent)
+    approx_stepsize = initial_diff / (between+1)
+    final_prims = geom2.internal.prim_coords
+
     geoms = [geom1, ]
-    # import pdb; pdb.set_trace()
-    print("base_step", base_step)
-    for i in range(num):
-        print(i)
-        # step = base_step
-        # if i == 11:
-            # import pdb; pdb.set_trace()
+    for i in range(between+1):
         new_geom = geoms[-1].copy()
-        try:
-            new_coords = new_geom.coords + base_step
-        except ValueError:
-            import pdb; pdb.set_trace()
+        prim_tangent = get_tangent(new_geom.coords, final_prims, bonds_bends)
+        # Form active set
+        B = new_geom.internal.B_prim
+        G = B.dot(B.T)
+        eigvals, eigvectors = np.linalg.eigh(G)
+        U = eigvectors[:, np.abs(eigvals) > 1e-6]
+        reduced_tangent = (np.einsum("i,ij->j", prim_tangent, U) * U).sum(axis=1)
+        reduced_tangent /= np.linalg.norm(reduced_tangent)
+        step = approx_stepsize * reduced_tangent
+        new_coords = new_geom.coords + step
         new_geom.coords = new_coords
-        # print(i, new_coords)
         geoms.append(new_geom)
-        write_geoms_to_trj(geoms, f"redund_{i:02d}.trj")
-    write_geoms_to_trj(geoms, f"liiic_{i:02d}.trj")
+    return geoms
+
+
+def test_redund():
+    initial = geom_from_xyz_file("bare_split.image_000.xyz", coord_type="redund")
+    final = geom_from_xyz_file("bare_split.image_056.xyz", coord_type="redund")
+
+    # initial = geom_from_xyz_file("h2_sih2_start.xyz", coord_type="redund")
+    # final = geom_from_xyz_file("h2_sih2_end.xyz", coord_type="redund")
+
+    geoms = dlc_interpolate(initial, final)
+    out_fn = "dlc_interpolate.trj"
+    write_geoms_to_trj(geoms, out_fn)
+    print("Wrote ", out_fn)
 
 
 if __name__ == "__main__":
