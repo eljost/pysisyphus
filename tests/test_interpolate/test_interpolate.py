@@ -130,13 +130,17 @@ def test_redund():
     initial = geom_from_xyz_file("bare_split.image_000.xyz", coord_type="redund")
     final = geom_from_xyz_file("bare_split.image_056.xyz", coord_type="redund")
 
-    # initial = geom_from_xyz_file("h2_sih2_start.xyz", coord_type="redund")
-    # final = geom_from_xyz_file("h2_sih2_end.xyz", coord_type="redund")
+    from pysisyphus.interpolate.helpers import interpolate_all
 
-    geoms = dlc_interpolate(initial, final)
+    geoms = interpolate_all((initial, final), 18, kind="redund", align=True)
     out_fn = "dlc_interpolate.trj"
     write_geoms_to_trj(geoms, out_fn)
     print("Wrote ", out_fn)
+
+    # geoms_ref = dlc_interpolate(initial, final)
+    # out_fn = "dlc_interpolate_ref.trj"
+    # write_geoms_to_trj(geoms_ref, out_fn)
+    # print("Wrote ", out_fn)
 
 
 if __name__ == "__main__":

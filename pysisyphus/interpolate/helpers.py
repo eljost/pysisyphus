@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-from pysisyphus.interpolate import IDPP, LST, Interpolator
+from pysisyphus.interpolate import IDPP, LST, Interpolator, Redund
 
 
 INTERPOLATE = {
     "idpp": IDPP.IDPP,
     "lst": LST.LST,
+    "redund": Redund.Redund,
     "linear": Interpolator.Interpolator,
 }
 
