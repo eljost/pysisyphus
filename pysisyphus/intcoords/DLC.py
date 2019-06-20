@@ -10,7 +10,7 @@ class DLC(RedundantCoords):
         super().__init__(*args, **kwargs)
 
         # U
-        self._U = self.set_active_set(self.B_prim)
+        self._U = self.get_active_set(self.B_prim)
         # Needed for back-transformation to primitive internals
         self._Ut_inv = np.linalg.pinv(self.U.T)
 
@@ -39,10 +39,11 @@ class DLC(RedundantCoords):
     def transform_int_step(self, step, *args, **kwargs):
         """As the transformation is done in primitive internal coordinates
         we convert the DLC back to primitive coordinates."""
+        # Or: prim_step = (step*self.U).sum(axis=1)
         prim_step = self.Ut_inv.dot(step)
         return super().transform_int_step(prim_step, *args, **kwargs)
 
-    def set_active_set(self, B, thresh=1e-6):
+    def get_active_set(self, B, thresh=1e-6):
         """See [5] between Eq. (7) and Eq. (8) for advice regarding
         the threshold."""
         G = B.dot(B.T)
