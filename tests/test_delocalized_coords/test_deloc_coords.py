@@ -20,7 +20,7 @@ def run():
 
     xyz_fn = "fluorethylene.xyz"
     # xyz_fn = "split.image_021.xyz"
-    xyz_fn = "h2o2_hf_321g_opt.xyz"
+    # xyz_fn = "h2o2_hf_321g_opt.xyz"
     geom = geom_from_library(xyz_fn, coord_type="dlc")
     # geom = geom_from_library(xyz_fn, coord_type="redund")
     # int_ = geom.internal
