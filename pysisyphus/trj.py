@@ -28,6 +28,7 @@ INTERPOLATE = {
     "idpp": IDPP.IDPP,
     "lst": LST.LST,
     "linear": Interpolator.Interpolator,
+    "redund": Redund.Redund,
 }
 
 
@@ -91,6 +92,9 @@ def parse_args(args):
     )
     interpolate_group.add_argument("--lst", action="store_true",
         help="Interpolate by linear synchronous transit."
+    )
+    interpolate_group.add_argument("--redund", action="store_true",
+        help="Interpolate in internal coordinates."
     )
     parser.add_argument("--bohr", action="store_true",
                     help="Input geometries are in Bohr instead of Angstrom."
@@ -265,6 +269,8 @@ def run():
         interpolate = "idpp"
     elif args.lst:
         interpolate = "lst"
+    elif args.redund:
+        interpolate = "redund"
     elif args.between:
         interpolate = "linear"
     else:
