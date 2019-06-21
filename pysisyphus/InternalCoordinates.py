@@ -489,13 +489,13 @@ class RedundantCoords:
         vals2 = np.array(self.calculate(coords2, attr="val"))
         return vals1-vals2
 
-    def calc_stretch(self, coords, bond_ind, grad=False):
+    def calc_stretch(self, coords3d, bond_ind, grad=False):
         n, m = bond_ind
-        bond = coords[m] - coords[n]
+        bond = coords3d[m] - coords3d[n]
         bond_length = np.linalg.norm(bond)
         if grad:
             bond_normed = bond / bond_length
-            row = np.zeros_like(coords)
+            row = np.zeros_like(coords3d)
             # 1 / -1 correspond to the sign factor [1] Eq. 18
             row[m,:] =  bond_normed
             row[n,:] = -bond_normed
@@ -503,10 +503,10 @@ class RedundantCoords:
             return bond_length, row
         return bond_length
 
-    def calc_bend(self, coords, angle_ind, grad=False):
+    def calc_bend(self, coords3d, angle_ind, grad=False):
         m, o, n = angle_ind
-        u_dash = coords[m] - coords[o]
-        v_dash = coords[n] - coords[o]
+        u_dash = coords3d[m] - coords3d[o]
+        v_dash = coords3d[n] - coords3d[o]
         u_norm = np.linalg.norm(u_dash)
         v_norm = np.linalg.norm(v_dash)
         u = u_dash / u_norm
@@ -526,7 +526,7 @@ class RedundantCoords:
             uxw = np.cross(u, w)
             wxv = np.cross(w, v)
 
-            row = np.zeros_like(coords)
+            row = np.zeros_like(coords3d)
             #                  |  m  |  n  |  o  |
             # -----------------------------------
             # sign_factor(amo) |  1  |  0  | -1  | first_term
@@ -540,11 +540,11 @@ class RedundantCoords:
             return angle_rad, row
         return angle_rad
 
-    def calc_dihedral(self, coords, dihedral_ind, grad=False, cos_tol=1e-9):
+    def calc_dihedral(self, coords3d, dihedral_ind, grad=False, cos_tol=1e-9):
         m, o, p, n = dihedral_ind
-        u_dash = coords[m] - coords[o]
-        v_dash = coords[n] - coords[p]
-        w_dash = coords[p] - coords[o]
+        u_dash = coords3d[m] - coords3d[o]
+        v_dash = coords3d[n] - coords3d[p]
+        w_dash = coords3d[p] - coords3d[o]
         u_norm = np.linalg.norm(u_dash)
         v_norm = np.linalg.norm(v_dash)
         w_norm = np.linalg.norm(w_dash)
@@ -571,7 +571,7 @@ class RedundantCoords:
             if vxw.dot(u) < 0:
                 dihedral_rad *= -1
         if grad:
-            row = np.zeros_like(coords)
+            row = np.zeros_like(coords3d)
             #                  |  m  |  n  |  o  |  p  |
             # ------------------------------------------
             # sign_factor(amo) |  1  |  0  | -1  |  0  | 1st term
