@@ -13,7 +13,7 @@ np.set_printoptions(suppress=True, precision=6)
 
 
 def prim_findiff(prim, coords3d, redund, delta=1e-4):
-    """Derivatives of the primitive internal wrt the cartesian coordinates
+    """Derivatives of a primitive internal wrt its defining cartesian coordinates
     by finite differences."""
 
     inds = prim.inds
@@ -42,7 +42,8 @@ def prim_findiff(prim, coords3d, redund, delta=1e-4):
 
 
 def B_findiff(prim, coords3d, redund, delta=1e-4):
-    """Derivatives of the Wilson B-Matrix by finite differences."""
+    """Derivatives of a primitive internal gradient wrt its defining
+    cartesian coordinates."""
     inds = prim.inds
     displacement_inds = [(i, j) for i, j in it.product(inds, (0, 1, 2))]
 
@@ -72,7 +73,7 @@ def B_findiff(prim, coords3d, redund, delta=1e-4):
     return B_grads
 
 
-def test_geom(geom):
+def verify_geom(geom):
     # Recreate the geometry in the correct coordinate system
     geom = Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
     c3d = geom.coords3d
@@ -84,12 +85,17 @@ def test_geom(geom):
         4: lambda coords: d2q_d(*coords),
     }
 
+    B_items = list()
+    dB_items = list()
     for prim in geom.internal._prim_internals:
         # Wilson B-matrix
-        prim_grad = prim_findiff(prim, c3d, rc)
-        np.testing.assert_allclose(prim_grad.flatten(), prim.grad)
+        fd_prim_grad = prim_findiff(prim, c3d, rc)
+        # np.testing.assert_allclose(prim_grad.flatten(), prim.grad)
+        B_items.append(np.allclose(fd_prim_grad.flatten(), prim.grad))
 
         # Derivatives of the Wilson B-matrix
         B_grads_ref = ref_funcs[len(prim.inds)](c3d[prim.inds].flatten())
-        B_grad = B_findiff(prim, c3d, rc, delta=1e-6)
-        np.testing.assert_allclose(B_grad, B_grads_ref, atol=1e-8)
+        fd_B_grads = B_findiff(prim, c3d, rc, delta=1e-6)
+        # np.testing.assert_allclose(B_grad, B_grads_ref, atol=1e-8)
+        dB_items.append(np.allclose(fd_B_grads, B_grads_ref, atol=1e-8))
+    return all(B_items) and all(dB_items)
