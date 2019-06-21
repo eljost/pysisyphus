@@ -241,6 +241,23 @@ def run():
     """
 
 
+def test_h2o2_opt():
+    geom = geom_from_library("h2o2_hf_321g_opt.xyz", coord_type="redund")
+    calc = XTB()
+    geom.set_calculator(calc)
+    H_start = geom.hessian
+    ws, vs = np.linalg.eigh(H_start)
+    opt_kwargs = {
+        "thresh": "gau_tight",
+        # "hessian_init": "calc",
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
+    opt.run()
+    H_end = geom.hessian
+    we, ve = np.linalg.eigh(H_end)
+    assert (we > 0).all()
+
+
 if __name__ == "__main__":
     #test_fluorethylene()
     # test_fluorethylene_opt()
@@ -258,4 +275,5 @@ if __name__ == "__main__":
     #test_ch4()
     #test_sf6()
     # test_biaryl_opt()
+    test_h2o2_opt()
     pass
