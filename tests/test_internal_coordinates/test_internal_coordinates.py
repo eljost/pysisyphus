@@ -249,7 +249,8 @@ def test_h2o2_opt():
     ws, vs = np.linalg.eigh(H_start)
     opt_kwargs = {
         "thresh": "gau_tight",
-        # "hessian_init": "calc",
+        "hessian_init": "calc",
+        # "hessian_recalc": 1,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
