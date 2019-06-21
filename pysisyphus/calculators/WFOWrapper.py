@@ -277,7 +277,7 @@ class WFOWrapper:
                 pass
             shutil.copytree(tmp_dir, backup_path)
 
-            cmd = f"{self.base_cmd} -m 4000 -f {ciovl_fn}".split()
+            cmd = f"{self.base_cmd} -m {self.wfow_mem} -f {ciovl_fn}".split()
             result = subprocess.Popen(cmd, cwd=tmp_path,
                                       stdout=subprocess.PIPE)
             result.wait()
