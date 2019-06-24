@@ -51,7 +51,26 @@ class StabilizedQNMethod(Optimizer):
         hess_approx = (hess_approx + hess_approx.T) / 2
         hess_w, hess_v = np.linalg.eigh(hess_approx)
 
+        # Eq. (15)
+        proj_v = np.einsum("ki,jk->ji", hess_v, sig_subspace)
+
+        residuals = np.linalg.norm(
+            # First term
+            np.einsum("ki,jk->jk", hess_v, sig_grad_diffs)
+            # Second term, kappa_j * v_tilde_j
+             - np.einsum("j,ij->ij", hess_w, proj_v), axis=0
+        )
+        eigvals_mod = np.sqrt(hess_w**2 + residuals**2)
+        cur_grad = -self.forces[-1]
+        # precon_grad = np.einsum( c
+        precon_grad = np.einsum("i,j,ij,ij->i", cur_grad, 1/eigvals_mod, proj_v, proj_v)
+
+        # perpendicular gradient component by projection
+        # projector = np.einsum("ij,ji->ij", proj_v, proj_v.T)
+        # projector = np.einsum("ij,kl->il", proj_v, proj_v.T)
         import pdb; pdb.set_trace()
+        # perp_projector = np.eye(cur_grad.size) - projector
+
         pass
 
     def optimize(self):
@@ -64,7 +83,7 @@ class StabilizedQNMethod(Optimizer):
             grad_diff = -self.forces[-1] + self.forces[-2]
             self.grad_diffs.append(grad_diff)
 
-        if len(self.steps_normed) > 3:
+        if len(self.steps_normed) > 2:
             self.get_significant_subspace()
 
         dir_ = forces / np.linalg.norm(forces)
