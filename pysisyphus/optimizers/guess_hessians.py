@@ -24,6 +24,13 @@ def get_pair_covalent_radii(geom):
     return pair_cov_radii
 
 
+def get_bond_mat(geom, bond_factor=1.2):
+    cdm = pdist(geom.coords3d)
+    pair_cov_radii = get_pair_covalent_radii(geom)
+    bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
+    return bond_mat
+
+
 def fischer_guess(geom):
     cdm = pdist(geom.coords3d)
     pair_cov_radii = get_pair_covalent_radii(geom)
@@ -35,6 +42,8 @@ def fischer_guess(geom):
     central_atoms = [dh.inds[1:3] for dh in dihedrals]
     bond_factor = geom.internal.bond_factor
     bond_mat = squareform(cdm <= (pair_cov_radii * geom.internal.bond_factor))
+    bm = get_bond_mat(geom, geom.internal.bond_factor)
+    np.testing.assert_allclose(bm, bond_mat)
     tors_atom_bonds = dict()
     for a, b in central_atoms:
         # Substract 2, as we don't want the bond between a and b,
