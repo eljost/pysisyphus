@@ -21,7 +21,8 @@ class BFGS(BacktrackingOptimizer):
         # ChainOfStates objects may not have get_initial_hessian
         except AttributeError:
             self.inv_hessian = self.eye.copy()
-        if hasattr(self.geometry, "internal"):
+        if (hasattr(self.geometry, "internal")
+            and (self.geometry.internal is not None)):
             raise Exception("Have to add hessian projections etc.")
         self.log("BFGS with align=True is somewhat broken right now, so "
                  "the images will be aligned only in the first iteration. "
