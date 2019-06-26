@@ -4,9 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.StabilizedQNMethod import StabilizedQNMethod
+from pysisyphus.optimizers.StabilizedQNMethod2 import StabilizedQNMethod as SQNM2
+from pysisyphus.optimizers.SQNM_ref import StabilizedQNMethod as SQNM3
 from pysisyphus.calculators.XTB import XTB
 
 
@@ -17,12 +20,15 @@ def test_sqnm():
     opt_kwargs = {
         "max_cycles": 15,
         # "max_cycles": 5,
-        "eps": 2e-4,
+        "eps": 1e-4,
         "E_thresh": 1e-4,
-        "alpha": 0.01,
-        "hist_max": 5,
+        "alpha": 0.5,
+        "hist_max": 10,
+        "thresh": "gau_tight",
+        "trust_radius": 0.1,
     }
     opt = StabilizedQNMethod(geom, **opt_kwargs)
+    # opt = SQNM3(geom, **opt_kwargs)
     opt.run()
     c = np.array(opt.coords)
     calc = geom.calculator
@@ -33,22 +39,43 @@ def test_sqnm():
     plt.show()
 
 
+def test_sqnm_bio_mode():
+    atoms = "h h".split()
+    coords = ((0, 0, 0), (0, 0, 1))
+    geom = Geometry(atoms, coords)
+    xtb = XTB()
+    geom.set_calculator(xtb)
+
+    opt = StabilizedQNMethod(geom)
+    cur_grad = geom.gradient
+    stretch_grad, rem_grad = opt.bio_mode(cur_grad)
+    # In H2 there is only one bond, so stretch_gradient == cur_grad and the
+    # remainder should be the zero vector.
+    np.testing.assert_allclose(stretch_grad, cur_grad)
+    np.testing.assert_allclose(np.linalg.norm(rem_grad), 0.)
+    return
+
+
 def test_sqnm_xtb():
-    geom = geom_from_library("split.image_021.xyz", coord_type="redund")
+    geom = geom_from_library("split.image_021.xyz")
+    # geom = geom_from_library("split.image_021.xyz", coord_type="redund")
     xtb = XTB()
     geom.set_calculator(xtb)
 
     opt_kwargs = {
-        "max_cycles": 150,
+        "max_cycles": 93,
         "eps": 1e-4,
         "E_thresh": 1e-6,
         "alpha": 0.5,
+        "alpha_stretch": 0.5,
         "hist_max": 10,
         "dump": True,
+        "bio": False,
+        "trust_radius": 0.1,
     }
     opt = StabilizedQNMethod(geom, **opt_kwargs)
-    opt.bio_mode()
-    return
+    # # opt = SQNM2(geom, **opt_kwargs)
+    # opt = SQNM3(geom, **opt_kwargs)
 
     # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
     # opt = RFOptimizer(geom)
@@ -64,4 +91,5 @@ def test_sqnm_xtb():
 
 if __name__ == "__main__":
     # test_sqnm()
+    # test_sqnm_bio_mode()
     test_sqnm_xtb()
