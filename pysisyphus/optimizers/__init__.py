@@ -15,6 +15,7 @@ __all__ = [
     "RSAlgorithm",
     "ANCOptimizer",
     "StringOptimizer",
+    "StabilizedQNMethod",
 ]
 
 logger = logging.getLogger("optimizer")
