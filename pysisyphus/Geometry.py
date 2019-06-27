@@ -555,6 +555,9 @@ class Geometry:
         """Calculate forces and energies at the given coordinates.
         
         The results are not saved in the Geometry object."""
+        assert coords.size == self.cart_coords.size, \
+            "This method only works with cartesian coordinate input. " \
+            "Did you accidentally provide internal coordinates?"
         return self.calculator.get_forces(self.atoms, coords)
 
     def calc_double_ao_overlap(self, geom2):
