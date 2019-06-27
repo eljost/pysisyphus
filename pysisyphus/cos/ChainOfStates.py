@@ -93,6 +93,11 @@ class ChainOfStates:
             # TODO: move this to another logging level?!
             self.log("There are no tangents to reset.")
 
+    @property
+    def atoms(self):
+        atoms_ = self.images[0].atoms
+        return len(self.images) * atoms_
+
     def set_vector(self, name, vector, clear=False):
         vec_per_image = vector.reshape(-1, self.coords_length)
         assert(len(self.images) == len(vec_per_image))
@@ -112,6 +117,11 @@ class ChainOfStates:
     def coords(self, coords):
         """Distribute the flat 1d coords array over all images."""
         self.set_vector("coords", coords, clear=True)
+
+    @property
+    def coords3d(self):
+        assert self.images[0].coord_type == "cart"
+        return self.coords.reshape(-1, 3)
 
     def set_coords_at(self, i, coords):
         if i in self.moving_indices:
@@ -210,6 +220,14 @@ class ChainOfStates:
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
         return forces - forces.dot(tangent)*tangent
+
+    @property
+    def gradient(self):
+        return -self.forces
+
+    @gradient.setter
+    def gradient(self, gradient):
+        self.forces = -gradient
 
     @property
     def masses_rep(self):
