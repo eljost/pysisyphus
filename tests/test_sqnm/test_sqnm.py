@@ -8,9 +8,8 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.StabilizedQNMethod import StabilizedQNMethod
-from pysisyphus.optimizers.StabilizedQNMethod2 import StabilizedQNMethod as SQNM2
-from pysisyphus.optimizers.SQNM_ref import StabilizedQNMethod as SQNM3
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.calculators.Gaussian16 import Gaussian16
 
 
 def test_sqnm():
@@ -19,13 +18,14 @@ def test_sqnm():
 
     opt_kwargs = {
         "max_cycles": 15,
-        # "max_cycles": 5,
         "eps": 1e-4,
         "E_thresh": 1e-4,
         "alpha": 0.5,
         "hist_max": 10,
-        "thresh": "gau_tight",
+        # "thresh": "gau_tight",
         "trust_radius": 0.1,
+        # "bio": False,
+        "dump": True,
     }
     opt = StabilizedQNMethod(geom, **opt_kwargs)
     # opt = SQNM3(geom, **opt_kwargs)
@@ -49,7 +49,7 @@ def test_sqnm_bio_mode():
     opt = StabilizedQNMethod(geom)
     cur_grad = geom.gradient
     stretch_grad, rem_grad = opt.bio_mode(cur_grad)
-    # In H2 there is only one bond, so stretch_gradient == cur_grad and the
+    # There is only one bond in H2, so stretch_gradient == cur_grad and the
     # remainder should be the zero vector.
     np.testing.assert_allclose(stretch_grad, cur_grad)
     np.testing.assert_allclose(np.linalg.norm(rem_grad), 0.)
@@ -63,33 +63,67 @@ def test_sqnm_xtb():
     geom.set_calculator(xtb)
 
     opt_kwargs = {
-        "max_cycles": 93,
-        "eps": 1e-4,
-        "E_thresh": 1e-6,
-        "alpha": 0.5,
-        "alpha_stretch": 0.5,
+        "max_cycles": 100,
         "hist_max": 10,
         "dump": True,
-        "bio": False,
         "trust_radius": 0.1,
     }
     opt = StabilizedQNMethod(geom, **opt_kwargs)
-    # # opt = SQNM2(geom, **opt_kwargs)
-    # opt = SQNM3(geom, **opt_kwargs)
 
     # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
     # opt = RFOptimizer(geom)
 
-    # from pysisyphus.optimizers.SteepestDescent import SteepestDescent
-    # opt = SteepestDescent(geom, max_cycles=150)
+    opt.run()
 
-    # from pysisyphus.optimizers.BFGS import BFGS
-    # opt = BFGS(geom, max_cycles=150)
+
+def test_mecoome_sqnm_xtb():
+    geom = geom_from_library("mecoome_split.image_010.xyz")
+    xtb = XTB()
+    geom.set_calculator(xtb)
+
+    opt_kwargs = {
+        # "alpha": 0.5,
+        # "alpha_stretch": 0.5,
+        "alpha": 0.5,
+        "alpha_stretch": 0.5,
+        "hist_max": 5,
+        "dump": True,
+        "trust_radius": 0.5,
+        "bio": False,
+        # "thresh": "gau",
+    }
+    opt = StabilizedQNMethod(geom, **opt_kwargs)
+
+    # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+    # opt = RFOptimizer(geom)
 
     opt.run()
 
 
+def test_mecoome_sqnm_g16():
+    geom = geom_from_library("mecoome_split.image_010.xyz")
+    calc = Gaussian16("PM6", pal=4)
+    geom.set_calculator(calc)
+
+    opt_kwargs = {
+        # "alpha": 0.5,
+        # "alpha_stretch": 0.5,
+        "alpha": 0.5,
+        "alpha_stretch": 0.5,
+        "hist_max": 5,
+        "dump": True,
+        "trust_radius": 0.5,
+        # "thresh": "gau",
+    }
+    opt = StabilizedQNMethod(geom, **opt_kwargs)
+
+    # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+    # opt = RFOptimizer(geom)
+
+    opt.run()
 if __name__ == "__main__":
     # test_sqnm()
     # test_sqnm_bio_mode()
-    test_sqnm_xtb()
+    # test_sqnm_xtb()
+    test_mecoome_sqnm_xtb()
+    # test_mecoome_sqnm_g16()
