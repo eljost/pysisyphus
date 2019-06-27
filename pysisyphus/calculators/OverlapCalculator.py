@@ -35,7 +35,7 @@ class OverlapCalculator(Calculator):
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
                  use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
-                 ncore=0, conf_thresh=1e-4,
+                 ncore=0, conf_thresh=1e-4, dyn_roots=0,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -54,6 +54,10 @@ class OverlapCalculator(Calculator):
         self.dump_fn = self.out_dir / dump_fn
         self.ncore = int(ncore)
         self.conf_thresh = float(conf_thresh)
+        self.dyn_roots = int(dyn_roots)
+        if self.dyn_roots != 0:
+            self.dyn_roots = 0
+            self.log("dyn_roots = 0 is hardcoded right now")
 
         assert self.ncore >= 0, "ncore must be a >= 0!"
         if self.cdds:
@@ -96,6 +100,10 @@ class OverlapCalculator(Calculator):
             )
             if self.ovlp_with == "adapt":
                 self.log(f"Adapt args: {self.adapt_args}")
+
+    @property
+    def roots_number(self):
+        return self.root + self.dyn_roots
 
     def blowup_ci_coeffs(self, ci_coeffs):
         states, occ, virt = ci_coeffs.shape
@@ -228,10 +236,9 @@ class OverlapCalculator(Calculator):
         return overlaps
 
     def nto_overlaps(self, ntos_1, ntos_2, ao_ovlp):
-        assert len(ntos_1) == len(ntos_2), "For now only the same number of "\
-                                           "states is required."
-        states = len(ntos_1)
-        ovlps = np.zeros((states, states))
+        states1 = len(ntos_1)
+        states2 = len(ntos_2)
+        ovlps = np.zeros((states1, states2))
         for i in range(states):
             n_i = ntos_1[i]
             l_i = n_i.lambdas[:,None]
@@ -243,7 +250,6 @@ class OverlapCalculator(Calculator):
                 ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
                 ovlps[i, j] = ovlp
                 ovlps[j, i] = ovlp
-
         return ovlps
 
     def nto_org_overlaps(self, ntos_1, ntos_2, ao_ovlp, nto_thresh=.3):
@@ -263,7 +269,6 @@ class OverlapCalculator(Calculator):
                 ovlp = np.sum(l_i_big[:,None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
                 ovlps[i, j] = ovlp
                 ovlps[j, i] = ovlp
-
         return ovlps
 
     def prepare_overlap_data(self):
@@ -358,6 +363,33 @@ class OverlapCalculator(Calculator):
             ntos_for_cycle.append(ntos)
         self.nto_list.append(ntos_for_cycle)
 
+    def update_array_dims(self):
+        """Assure consistent array shapes when the number of calculated
+        roots changed."""
+        raise Exception("This method is not functional right now!")
+
+        # We only have to update the first dimension
+        to_update = (
+            "all_energies_list",
+            "overlap_matrices",
+            "ci_coeff_list",
+        )
+        for name in to_update:
+            arr_list = getattr(self, name)
+            first_dims = [arr.shape[0] for arr in arr_list]
+            max_ = max(first_dims)
+            print(f"name: {name} first_dims: {first_dims}")
+
+        # try:
+            # # With dyn_root > 0 the size of all_ens may be different from cycle to
+            # # cycle. Here we assure that the stored array will always have the same
+            # # size and shape as the first array in the list.
+            # all_ens_zero = np.full_like(self.all_energies_list[0], np.nan, dtype=float)
+            # all_ens_zero[:all_ens.size] = all_ens
+            # all_ens = all_ens_zero
+        # except IndexError:
+            # pass
+
     def store_overlap_data(self, atoms, coords):
         if self.atoms is None:
             self.atoms = atoms
@@ -387,10 +419,12 @@ class OverlapCalculator(Calculator):
         # calculated_roots.
         if len(self.ci_coeff_list) < 2:
             self.roots_list.append(self.root)
-        # Also store NTOs if requested
         self.all_energies_list.append(all_ens)
+        # Also store NTOs if requested
         if self.ovlp_type in ("nto", "nto_org"):
             self.set_ntos(mo_coeffs, ci_coeffs)
+
+        # self.update_array_dims()
 
     def track_root(self, ovlp_type=None):
         """Check if a root flip occured occured compared to the previous cycle

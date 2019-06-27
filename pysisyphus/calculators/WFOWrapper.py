@@ -210,6 +210,15 @@ class WFOWrapper:
 
         return from_set, to_set
 
+    def get_gs_line(self, ci_coeffs_with_gs):
+        gs_coeffs = np.zeros(len(ci_coeffs_with_gs))
+        # Ground state is 100% HF configuration
+        gs_coeffs[0] = 1
+        gs_coeffs_str = " ".join([self.fmt.format(c)
+                                  for c in gs_coeffs])
+        gs_line = f"{self.base_det_str}\t{gs_coeffs_str}"
+        return gs_line
+
     def wf_overlap(self, cycle1, cycle2, ao_ovlp=None):
         mos1, cic1 = cycle1
         mos2, cic2 = cycle2
@@ -224,17 +233,13 @@ class WFOWrapper:
         cic2_with_gs = np.concatenate((gs_cic[None,:,:], cic2))
 
         all_inds, det_strings = self.generate_all_dets(fs1, ts1, fs2, ts2)
-        # Prepare line for ground state
-        gs_coeffs = np.zeros(len(cic1_with_gs))
-        # Ground state is 100% HF configuration
-        gs_coeffs[0] = 1
-        gs_coeffs_str = " ".join([self.fmt.format(c)
-                                  for c in gs_coeffs])
-        gs_line = f"{self.base_det_str}\t{gs_coeffs_str}"
-        dets1 = [gs_line] + self.make_full_dets_list(all_inds,
+        # Prepare lines for ground state
+        gs_line1 = self.get_gs_line(cic1_with_gs)
+        gs_line2 = self.get_gs_line(cic2_with_gs)
+        dets1 = [gs_line1] + self.make_full_dets_list(all_inds,
                                                      det_strings,
                                                      cic1_with_gs)
-        dets2 = [gs_line] + self.make_full_dets_list(all_inds,
+        dets2 = [gs_line2] + self.make_full_dets_list(all_inds,
                                                      det_strings,
                                                      cic2_with_gs)
         header1 = self.make_dets_header(cic1_with_gs, dets1)
