@@ -7,6 +7,7 @@ from scipy.spatial.distance import squareform
 
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.guess_hessians import get_bond_mat
+from pysisyphus.optimizers.step_restriction import scale_by_max_step
 
 
 class StabilizedQNMethod(Optimizer):
@@ -172,15 +173,13 @@ class StabilizedQNMethod(Optimizer):
             grad_diffs = np.diff(self.gradients_for_precon, axis=0)[-self.hist_max:]
 
             self.log( "Preconditioning gradient with information from "
-                     f"{len(self.gradients_for_precon)} previous cycles.")
+                     f"{len(steps)+1} previous cycles.")
             precon_grad = self.precondition_gradient(-forces, steps,
                                                      grad_diffs, self.eps)
             step = -precon_grad
         else:
             step = self.alpha * forces
-            if np.linalg.norm(step) > self.trust_radius:
-                dir_ = forces / np.linalg.norm(forces)
-                step = self.trust_radius * dir_
+            scale_by_max_step(step, self.trust_radius)
 
         # Calculate energy at new geometry
         new_coords = self.geometry.coords + step
@@ -200,8 +199,8 @@ class StabilizedQNMethod(Optimizer):
             # self.geometry.coords = self.coords[-1].copy()
             # self.geometry.forces = self.forces[-1]
             # self.geometry.energy = self.energies[-1]
-            self.gradients_for_precon = self.gradients_for_precon[-1:]
-            self.coords_for_precon = self.coords_for_precon[-1:]
+            self.gradients_for_precon = self.gradients_for_precon[-2:-1]
+            self.coords_for_precon = self.coords_for_precon[-2:-1]
             self.alpha /= 2
             self.log(f"Decreased alpha to {self.alpha}")
             self.log("Reverting bad step")
