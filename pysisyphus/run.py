@@ -76,6 +76,7 @@ OPT_DICT = {
     "rsa": RSAlgorithm.RSAlgorithm,
     "anc": ANCOptimizer.ANCOptimizer,
     "string": StringOptimizer.StringOptimizer,
+    "sqnm": StabilizedQNMethod.StabilizedQNMethod,
 }
 
 TSOPT_DICT = {
