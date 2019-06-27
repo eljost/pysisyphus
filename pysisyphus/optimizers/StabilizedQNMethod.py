@@ -35,9 +35,6 @@ class StabilizedQNMethod(Optimizer):
 
         self.gradients_for_precon = list()
         self.coords_for_precon = list()
-        # self.step_norms = list()
-        # self.steps_normed = list()
-        # self.grad_diffs = list()
 
     def prepare_opt(self):
         pass
@@ -131,39 +128,37 @@ class StabilizedQNMethod(Optimizer):
         residuals = np.linalg.norm(proj_dg - hess_w*proj_v, axis=0)
         eigvals_mod = np.sqrt(hess_w**2 + residuals**2)
 
-        # cur_grad = -self.forces[-1]
         # precon_grad = np.einsum("i,j,ij,ij->i", cur_grad, 1/eigvals_mod, proj_v, proj_v)
         precon_grad = np.einsum("i,j,ij,ij->i", gradient, 1/eigvals_mod, proj_v, proj_v)
 
-        # projector = proj_v @ proj_v.T
         projector = proj_v.dot(proj_v.T)
         perp_projector = np.eye(gradient.size) - projector
         perp_grad = perp_projector.dot(gradient)
         # Alternative formulation
-        # perp_grad_ = cur_grad - (proj_v.T.dot(cur_grad) * proj_v).sum(axis=1)
-        # np.testing.assert_allclose(perp_grad_, perp_grad)
+        # perp_grad_ = gradient - (proj_v.T.dot(gradient) * proj_v).sum(axis=1)
+        # np.testing.assert_allclose(perp_grad_, perp_grad, atol=1e-16)
 
         self.adjust_alpha(gradient, precon_grad)
         tot_precon_gradient = precon_grad + self.alpha*perp_grad
         return tot_precon_gradient
 
     def optimize(self):
-        forces = self.geometry.forces
+        gradient = self.geometry.gradient
         energy = self.geometry.energy
-        self.forces.append(forces)
+        self.forces.append(-gradient)
         self.energies.append(energy)
 
         if self.bio:
-            stretch_gradient, remainder_gradient = self.bio_mode(-forces)
+            stretch_gradient, remainder_gradient = self.bio_mode(gradient)
             self.adjust_alpha_stretch(stretch_gradient)
-            # Steepest descent against the gradient
+            # Steepest descent against the stretch_gradient
             stretch_step = -self.alpha_stretch * stretch_gradient
             new_coords = self.geometry.coords + stretch_step
             self.geometry.coords = new_coords
             # Use only the remaining gradient for the rest of this method
-            forces = -remainder_gradient
+            gradient = remainder_gradient
 
-        self.gradients_for_precon.append(-forces)
+        self.gradients_for_precon.append(gradient)
         self.coords_for_precon.append(self.geometry.coords.copy())
 
 
@@ -174,11 +169,12 @@ class StabilizedQNMethod(Optimizer):
 
             self.log( "Preconditioning gradient with information from "
                      f"{len(steps)+1} previous cycles.")
-            precon_grad = self.precondition_gradient(-forces, steps,
+            precon_grad = self.precondition_gradient(gradient, steps,
                                                      grad_diffs, self.eps)
             step = -precon_grad
         else:
-            step = self.alpha * forces
+            self.log("Took pure steepest descent step.")
+            step = self.alpha * -gradient
             scale_by_max_step(step, self.trust_radius)
 
         # Calculate energy at new geometry
@@ -192,29 +188,14 @@ class StabilizedQNMethod(Optimizer):
         energy_rise_too_big = new_energy > (energy + self.E_thresh)
         alpha_still_big_enough = self.alpha > (self.alpha_start / 10)
         if energy_rise_too_big and alpha_still_big_enough:
-            print(f"Energy increased by {delta_energy:.6f} au")
-            # self.step_norms = self.step_norms[-1:]
-            # self.steps_normed = self.steps_normed[-1:]
-            # self.grad_diffs = self.grad_diffs[-1:]
-            # self.geometry.coords = self.coords[-1].copy()
-            # self.geometry.forces = self.forces[-1]
-            # self.geometry.energy = self.energies[-1]
+            self.log(f"Energy increased by {delta_energy:.6f} au")
             self.gradients_for_precon = self.gradients_for_precon[-2:-1]
             self.coords_for_precon = self.coords_for_precon[-2:-1]
+            self.log("Resetted history.")
             self.alpha /= 2
+
             self.log(f"Decreased alpha to {self.alpha}")
             self.log("Reverting bad step")
             return None
-
-        # step_norm = np.linalg.norm(step)
-        # self.step_norms.append(step_norm)
-        # step_normed = step / step_norm
-        # self.steps_normed.append(step_normed)
-
-        # self.step_norms = self.step_norms[-self.hist_max:]
-        # self.steps_normed = self.steps_normed[-self.hist_max:]
-        # self.grad_diffs = self.grad_diffs[-self.hist_max+1:]
-        # self.gradients_for_precon = self.gradients_for_precon[-self.hist_max:]
-        # self.geometry.coords = old_coords
 
         return step
