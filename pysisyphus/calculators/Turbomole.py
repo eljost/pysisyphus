@@ -193,7 +193,8 @@ class Turbomole(OverlapCalculator):
             td_vec_fn = self.td_vec_fn.suffix[1:]
             shutil.copy(self.td_vec_fn, path / td_vec_fn)
             self.log(f"Using '{self.td_vec_fn}' as escf guess.")
-        root_log_msg = "with current root information: {self.root}"
+
+        root_log_msg = f"with current root information: {self.root}"
         if self.root and self.td:
             repl = f"$exopt {self.root}"
             self.sub_control("\$exopt\s*(\d+)", f"$exopt {self.root}",
@@ -201,12 +202,12 @@ class Turbomole(OverlapCalculator):
             self.log(f"Using '{repl}'")
 
             # Adapt number of roots
-            roots_number_repl = "\$soes\s+a\s+(\d+)"
-            self.sub_control(roots_number_repl,
-                             f"$soes\n a {self.roots_number}",
-                              "with number of roots to be calculated: "
-                             f"{self.roots_number}"
-            )
+            # roots_number_repl = "\$soes\s+a\s+(\d+)"
+            # self.sub_control(roots_number_repl,
+                             # f"$soes\n a {self.roots_number}",
+                              # "with number of roots to be calculated: "
+                             # f"{self.roots_number}"
+            # )
         if self.root and self.ricc2:
             repl = f"state=(a {self.root})"
             log_msg = " with current root."
