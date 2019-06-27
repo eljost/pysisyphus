@@ -15,7 +15,7 @@ class StabilizedQNMethod(Optimizer):
     def __init__(self, geometry, alpha=0.5, alpha_max=1,
                  alpha_stretch=0.5, alpha_stretch_max=1,
                  eps=1e-4, hist_max=10, E_thresh=1e-6, bio=True,
-                 trust_radius=0.1, **kwargs):
+                 trust_radius=0.1, linesearch=True, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.alpha = alpha
@@ -27,6 +27,7 @@ class StabilizedQNMethod(Optimizer):
         self.E_thresh = E_thresh
         self.bio = bio
         self.trust_radius = trust_radius
+        self.linesearch = linesearch
 
         self.log(f"Keeping at most information from {self.hist_max} "
                   "previous cycles.")
@@ -80,6 +81,11 @@ class StabilizedQNMethod(Optimizer):
             mult = self.stretch_proj_signs[-1] * self.stretch_proj_signs[-2]
         except IndexError:
             self.log("Can't update alpha_stretch yet!")
+            return
+        except ValueError:
+            self.log("Number of bonds found changed between cycles! Skipping "
+                     "adjustment of alpha_stretch."
+            )
             return
         constant_signs = np.sum(mult == 1)
         fraction = constant_signs / mult.size
@@ -194,27 +200,28 @@ class StabilizedQNMethod(Optimizer):
             step = self.alpha * -gradient
             scale_by_max_step(step, self.trust_radius)
 
-        # Calculate energy at new geometry
-        new_coords = self.geometry.coords + step
-        _ = self.geometry.get_energy_and_forces_at(new_coords)
-        new_energy = _["energy"]
-        delta_energy = new_energy - energy
-        self.log(f"Current energy is {energy:.6f} au. New energy is "
-                 f"{new_energy:.6f} au, ΔE={delta_energy:.6f} au.")
+        if self.linesearch:
+            # Calculate energy at new geometry
+            new_coords = self.geometry.coords + step
+            _ = self.geometry.get_energy_and_forces_at(new_coords)
+            new_energy = _["energy"]
+            delta_energy = new_energy - energy
+            self.log(f"Current energy is {energy:.6f} au. New energy is "
+                     f"{new_energy:.6f} au, ΔE={delta_energy:.6f} au.")
 
-        energy_rise_too_big = new_energy > (energy + self.E_thresh)
-        alpha_still_big_enough = self.alpha > (self.alpha_start / 10)
-        alpha_stre_still_big_enough = self.alpha_stretch > (self.alpha_stretch_start / 10)
-        if energy_rise_too_big and alpha_still_big_enough and alpha_stre_still_big_enough:
-            self.log(f"Energy increased by {delta_energy:.6f} au")
-            self.gradients_for_precon = self.gradients_for_precon[-2:-1]
-            self.coords_for_precon = self.coords_for_precon[-2:-1]
-            self.log("Resetted history.")
-            self.alpha /= 2
-            self.alpha_stretch /= 2
+            energy_rise_too_big = new_energy > (energy + self.E_thresh)
+            alpha_still_big_enough = self.alpha > (self.alpha_start / 10)
+            alpha_stre_still_big_enough = self.alpha_stretch > (self.alpha_stretch_start / 10)
+            if energy_rise_too_big and alpha_still_big_enough and alpha_stre_still_big_enough:
+                self.log(f"Energy increased by {delta_energy:.6f} au")
+                self.gradients_for_precon = self.gradients_for_precon[-2:-1]
+                self.coords_for_precon = self.coords_for_precon[-2:-1]
+                self.log("Resetted history.")
+                self.alpha /= 2
+                self.alpha_stretch /= 2
 
-            self.log(f"Decreased alpha to {self.alpha}")
-            self.log("Reverting bad step")
-            return None
+                self.log(f"Decreased alpha to {self.alpha}")
+                self.log("Reverting bad step")
+                return None
 
         return step
