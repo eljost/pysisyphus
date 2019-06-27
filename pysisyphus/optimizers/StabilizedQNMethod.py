@@ -12,10 +12,10 @@ from pysisyphus.optimizers.step_restriction import scale_by_max_step
 
 class StabilizedQNMethod(Optimizer):
 
-    def __init__(self, geometry, alpha=0.1, alpha_max=1,
-                 alpha_stretch=0.1, alpha_stretch_max=1,
+    def __init__(self, geometry, alpha=1, alpha_max=1,
+                 alpha_stretch=1, alpha_stretch_max=1,
                  eps=1e-4, hist_max=10, E_thresh=1e-6, bio=True,
-                 trust_radius=0.04, **kwargs):
+                 trust_radius=0.1, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.alpha = alpha
