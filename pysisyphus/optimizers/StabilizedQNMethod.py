@@ -32,6 +32,7 @@ class StabilizedQNMethod(Optimizer):
                   "previous cycles.")
 
         self.alpha_start = self.alpha
+        self.alpha_stretch_start = self.alpha_stretch
 
         self.gradients_for_precon = list()
         self.coords_for_precon = list()
@@ -163,6 +164,7 @@ class StabilizedQNMethod(Optimizer):
         energy = self.geometry.energy
         self.forces.append(-gradient)
         self.energies.append(energy)
+        self.log(f"norm(forces)={np.linalg.norm(gradient):.4e}")
 
         if self.bio:
             stretch_gradient, remainder_gradient = self.bio_mode(gradient)
@@ -202,7 +204,8 @@ class StabilizedQNMethod(Optimizer):
 
         energy_rise_too_big = new_energy > (energy + self.E_thresh)
         alpha_still_big_enough = self.alpha > (self.alpha_start / 10)
-        if energy_rise_too_big and alpha_still_big_enough:
+        alpha_stre_still_big_enough = self.alpha_stretch > (self.alpha_stretch_start / 10)
+        if energy_rise_too_big and alpha_still_big_enough and alpha_stre_still_big_enough:
             self.log(f"Energy increased by {delta_energy:.6f} au")
             self.gradients_for_precon = self.gradients_for_precon[-2:-1]
             self.coords_for_precon = self.coords_for_precon[-2:-1]
