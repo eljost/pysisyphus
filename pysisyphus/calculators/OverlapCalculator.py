@@ -35,6 +35,7 @@ class OverlapCalculator(Calculator):
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
                  use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
+                 ncore=0,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -50,6 +51,9 @@ class OverlapCalculator(Calculator):
         self.use_ntos = use_ntos
         self.cdds = cdds
         self.orient = orient
+        self.dump_fn = self.out_dir / dump_fn
+        self.ncore = int(ncore)
+        assert self.ncore >= 0, "ncore must be a >= 0!"
         if self.cdds:
             assert self.cdds in "calc render".split()
 
@@ -80,7 +84,6 @@ class OverlapCalculator(Calculator):
         # we compare cycle 1 to cycle 0, regardless of the ovlp_with.
         self.ref_cycle = 0
         self.ref_cycles = list()
-        self.dump_fn = self.out_dir / dump_fn
         self.atoms = None
         self.root = None
 
@@ -365,7 +368,7 @@ class OverlapCalculator(Calculator):
             except AttributeError:
                 wfow_mem = 8000
             self.wfow = WFOWrapper(occ_mo_num, virt_mo_num, calc_number=self.calc_number,
-                                   wfow_mem=wfow_mem)
+                                   wfow_mem=wfow_mem, ncore=self.ncore)
 
         if self.first_root is None:
             self.first_root = self.root

@@ -19,6 +19,7 @@ from pysisyphus.helpers import chunks
 CIOVL="""mix_aoovl=ao_ovl
 a_mo=mos.1
 b_mo=mos.2
+ncore={ncore}
 a_det=dets.1
 b_det=dets.2
 a_mo_read=2
@@ -29,6 +30,7 @@ CIOVL_NO_SAO="""ao_read=-1
 same_aos=.true.
 a_mo=mos.1
 b_mo=mos.2
+ncore={ncore}
 a_det=dets.1
 b_det=dets.2
 a_mo_read=2
@@ -44,7 +46,8 @@ class WFOWrapper:
     ))
 
     def __init__(self, occ_mo_num, virt_mo_num, conf_thresh=1e-4,
-                 calc_number=0, out_dir="./", wfow_mem=8000):
+                 calc_number=0, out_dir="./", wfow_mem=8000,
+                 ncore=0,):
         try:
             self.base_cmd = Config["wfoverlap"]["cmd"]
         except KeyError:
@@ -54,6 +57,7 @@ class WFOWrapper:
         self.conf_thresh = conf_thresh
         self.out_dir = Path(out_dir).resolve()
         self.wfow_mem = int(wfow_mem)
+        self.ncore = int(ncore)
 
         self.name = f"WFOWrapper_{self.calc_number}"
         self.log(f"Using -m {self.wfow_mem} for wfoverlap.")
@@ -266,9 +270,10 @@ class WFOWrapper:
                 np.savetxt(ao_ovl_path, ao_ovlp, fmt="%22.15E", header=ao_header,
                            comments="")
 
+            ciovl_in_rendered = ciovl_in.format(ncore=self.ncore)
             ciovl_fn = "ciovl.in"
             with open(tmp_path / ciovl_fn, "w") as handle:
-                handle.write(ciovl_in)
+                handle.write(ciovl_in_rendered)
 
             # Create a backup of the whole temporary directory
             try:
