@@ -12,8 +12,8 @@ from pysisyphus.optimizers.step_restriction import scale_by_max_step
 
 class StabilizedQNMethod(Optimizer):
 
-    def __init__(self, geometry, alpha=1, alpha_max=1,
-                 alpha_stretch=1, alpha_stretch_max=1,
+    def __init__(self, geometry, alpha=0.5, alpha_max=1,
+                 alpha_stretch=0.5, alpha_stretch_max=1,
                  eps=1e-4, hist_max=10, E_thresh=1e-6, bio=True,
                  trust_radius=0.1, **kwargs):
         super().__init__(geometry, **kwargs)
@@ -35,6 +35,7 @@ class StabilizedQNMethod(Optimizer):
 
         self.gradients_for_precon = list()
         self.coords_for_precon = list()
+        self.stretch_proj_signs = list()
 
     def prepare_opt(self):
         pass
@@ -64,6 +65,7 @@ class StabilizedQNMethod(Optimizer):
         # dot products (see [1] (27)).
         bond_vectors = np.array(bond_vectors).reshape(-1, gradient.size)
         lhs = bond_vectors.dot(gradient)
+        self.stretch_proj_signs.append(np.sign(lhs).astype(int))
         # Bond-vector overlap matrix.
         rhs = bond_vectors.dot(bond_vectors.T)
         coeffs = np.linalg.solve(rhs, lhs)
@@ -71,8 +73,22 @@ class StabilizedQNMethod(Optimizer):
         remainder_gradient = gradient - stretch_gradient
         return stretch_gradient, remainder_gradient
 
-    def adjust_alpha_stretch(self, stretch_gradient):
-        self.log("Implement adjust_alpha_stretch!")
+    def adjust_alpha_stretch(self):
+        try:
+            # -1 when signs changed, 1 when sign is constant
+            mult = self.stretch_proj_signs[-1] * self.stretch_proj_signs[-2]
+        except IndexError:
+            self.log("Can't update alpha_stretch yet!")
+            return
+        constant_signs = np.sum(mult == 1)
+        fraction = constant_signs / mult.size
+        if fraction >= (2/3):
+            self.alpha_stretch = min(self.alpha_stretch_max, 1.1*self.alpha_stretch)
+            msg = "Increased"
+        else:
+            self.alpha_stretch *= 1/1.1
+            msg = "Decreased"
+        self.log(f"{msg} alpha_stretch to {self.alpha_stretch:.6f}")
 
     def adjust_alpha(self, gradient, precon_gradient):
         # Overlap between full and preconditioned gradient.
@@ -150,7 +166,7 @@ class StabilizedQNMethod(Optimizer):
 
         if self.bio:
             stretch_gradient, remainder_gradient = self.bio_mode(gradient)
-            self.adjust_alpha_stretch(stretch_gradient)
+            self.adjust_alpha_stretch()
             # Steepest descent against the stretch_gradient
             stretch_step = -self.alpha_stretch * stretch_gradient
             new_coords = self.geometry.coords + stretch_step
@@ -163,7 +179,6 @@ class StabilizedQNMethod(Optimizer):
 
 
         if len(self.coords_for_precon) > 2:
-        # if False:
             steps = np.diff(self.coords_for_precon, axis=0)[-self.hist_max:]
             grad_diffs = np.diff(self.gradients_for_precon, axis=0)[-self.hist_max:]
 
@@ -193,6 +208,7 @@ class StabilizedQNMethod(Optimizer):
             self.coords_for_precon = self.coords_for_precon[-2:-1]
             self.log("Resetted history.")
             self.alpha /= 2
+            self.alpha_stretch /= 2
 
             self.log(f"Decreased alpha to {self.alpha}")
             self.log("Reverting bad step")
