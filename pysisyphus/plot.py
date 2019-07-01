@@ -550,7 +550,7 @@ def plot_overlaps(h5, thresh=.1):
         else:
             ax = fig.add_subplot(111)
             ax1 = None
-        o = overlaps[i]
+        o = np.abs(overlaps[i])
         im = ax.imshow(o, vmin=0, vmax=1)
         # fig.colorbar(im)
         ax.grid(color="#CCCCCC", linestyle='--', linewidth=1)
@@ -571,7 +571,7 @@ def plot_overlaps(h5, thresh=.1):
         ref_overlaps = o[ref_ind]
         if ovlp_type == "wf":
             ref_ind += 1
-        argmax = np.nanargmax(np.abs(ref_overlaps))
+        argmax = np.nanargmax(ref_overlaps)
         xy = (argmax-0.5, ref_ind-0.5)
         highlight = Rectangle(xy, 1, 1,
                               fill=False, color="red", lw="4")
