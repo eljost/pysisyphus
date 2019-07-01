@@ -526,7 +526,11 @@ def plot_overlaps(h5, thresh=.1):
                 cdd_img_fns = None
     cdd_imgs = None
     if cdd_img_fns is not None:
-        cdd_imgs = [mpimg.imread(fn) for fn in cdd_img_fns]
+        try:
+            cdd_imgs = [mpimg.imread(fn) for fn in cdd_img_fns]
+        except FileNotFoundError:
+            png_paths = [Path(fn.decode()).name for fn in cdd_img_fns]
+            cdd_imgs = [mpimg.imread(fn) for fn in png_paths]
 
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Found {len(overlaps)} overlap matrices.")
@@ -561,11 +565,14 @@ def plot_overlaps(h5, thresh=.1):
             ax.text(k, l, value_str, ha='center', va='center')
         j, k = ref_cycles[i], i+1
         ref_root = ref_roots[i]
+        ref_ind = ref_root - 1
         old_root = calculated_roots[i+1]
         new_root = roots[i+1]
-        ref_overlaps = o[ref_root]
-        argmax = np.nanargmax(ref_overlaps)
-        xy = (argmax-0.5, ref_root-0.5)
+        ref_overlaps = o[ref_ind]
+        if ovlp_type == "wf":
+            ref_ind += 1
+        argmax = np.nanargmax(np.abs(ref_overlaps))
+        xy = (argmax-0.5, ref_ind-0.5)
         highlight = Rectangle(xy, 1, 1,
                               fill=False, color="red", lw="4")
         ax.add_artist(highlight)
