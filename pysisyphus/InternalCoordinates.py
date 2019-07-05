@@ -125,6 +125,17 @@ class RedundantCoords:
         ic_ind_tuples = [tuple(ic.inds) for ic in self._prim_internals]
         return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
 
+    def get_index_of_prim_coord(self, prim_ind):
+        """Index of primitive internal for the given atom indices."""
+        prim_ind_set = set(prim_ind)
+        index = [i for i, pi in enumerate(it.chain(*self.prim_indices))
+                 if set(pi) == prim_ind_set]
+        if len(index) == 0:
+            raise Exception(f"Primitive internal with indices {prim_ind} "
+                             "is not defined!")
+        else:
+            return index[0]
+
     @property
     def c3d(self):
         return self.cart_coords.reshape(-1, 3)
