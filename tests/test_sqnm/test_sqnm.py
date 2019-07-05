@@ -121,9 +121,33 @@ def test_mecoome_sqnm_g16():
     # opt = RFOptimizer(geom)
 
     opt.run()
+
+
+# def test_abnr_xtb():
+    # from pysisyphus.optimizers.ABNR import ABNR
+    # geom = geom_from_library("split.image_021.xyz")
+    # # geom = geom_from_library("split.image_021.xyz", coord_type="redund")
+    # xtb = XTB()
+    # geom.set_calculator(xtb)
+
+    # opt_kwargs = {
+        # "max_cycles": 15,
+        # # "hist_max": 10,
+        # # "dump": True,
+        # # "trust_radius": 0.1,
+    # }
+    # opt = ABNR(geom, **opt_kwargs)
+
+    # # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+    # # opt = RFOptimizer(geom)
+
+    # opt.run()
+
+
 if __name__ == "__main__":
     # test_sqnm()
     # test_sqnm_bio_mode()
     # test_sqnm_xtb()
     test_mecoome_sqnm_xtb()
     # test_mecoome_sqnm_g16()
+    # test_abnr_xtb()

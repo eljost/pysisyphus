@@ -60,6 +60,7 @@ COS_DICT = {
     "fs": FreezingString.FreezingString,
 }
 
+from pysisyphus.optimizers.BFGS_ import BFGS_
 OPT_DICT = {
     "fire": FIRE.FIRE,
     # Removing BFGS for now until save_also is implemented
@@ -77,6 +78,7 @@ OPT_DICT = {
     "anc": ANCOptimizer.ANCOptimizer,
     "string": StringOptimizer.StringOptimizer,
     "sqnm": StabilizedQNMethod.StabilizedQNMethod,
+    "bfgs_": BFGS_,
 }
 
 TSOPT_DICT = {
