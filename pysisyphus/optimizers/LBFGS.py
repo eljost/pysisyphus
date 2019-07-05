@@ -9,8 +9,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 
 class LBFGS(Optimizer):
-    def __init__(self, geometry, alpha=1.0, keep_last=7,
-                 max_step=0.1, beta=1, **kwargs):
+    def __init__(self, geometry, alpha=1.0, keep_last=7, beta=1, **kwargs):
         self.alpha = alpha
         self.beta = beta
         assert isinstance(keep_last, int) and keep_last > 0
@@ -90,10 +89,10 @@ class LBFGS(Optimizer):
 
         step = -self.bfgs_multiply(self.steps_, self.grad_diffs, forces, beta=self.beta)
         # step = self.scale_by_max_step(step)
-        norm = np.linalg.norm(step)
-        if norm > self.max_step:
-            step = step / norm * self.max_step
-        # step = self.restrict_step(step)
+        # norm = np.linalg.norm(step)
+        # if norm > self.max_step:
+            # step = step / norm * self.max_step
+        step = self.restrict_step(step)
         # Only keep 'keep_last' cycles
         self.steps_ = self.steps.copy()[-self.keep_last:]
         self.grad_diffs = self.grad_diffs[-self.keep_last:]
