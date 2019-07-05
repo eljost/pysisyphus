@@ -3,6 +3,7 @@
 import numpy as np
 
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.linalg import gram_schmidt
 
 
 class DLC(RedundantCoords):
@@ -52,3 +53,13 @@ class DLC(RedundantCoords):
         nonzero_inds = np.abs(eigvals) > thresh
         active_eigvals = eigvals[nonzero_inds]
         return eigvectors[:,nonzero_inds]
+
+    def project_primitive_on_active_set(self, prim_ind):
+        prim_vec = np.zeros(self.U.shape[0])
+        prim_vec[prim_ind] = 1
+        c_proj = (np.einsum("i,ij->j", prim_vec, self.U) * self.U).sum(axis=1)
+        c_proj /= np.linalg.norm(c_proj)
+        return c_proj
+
+    def constrain_active_set(self, constraint_vecs):
+        pass
