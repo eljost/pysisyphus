@@ -9,7 +9,7 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_from_library
 
 
-np.set_printoptions(suppress=True, precision=6)
+np.set_printoptions(suppress=True, precision=3, linewidth=150)
 
 
 def test_dlc_constraints():
@@ -24,8 +24,18 @@ def test_dlc_constraints():
     V = np.concatenate((c1[:,None], c2[:,None], U), axis=1)
     b0 = V[0,:].copy()
     from pysisyphus.linalg import gram_schmidt
-    gs = np.array(gram_schmidt(V))
+    gs = gram_schmidt(V.T).T
+    # Remove constraint vectors
+    print()
+
     b0_ = gs[0,:].copy()
+
+    ui = [0, 1, 2, 3, 4, 7, 8, 9, 10]
+    U_ = U.copy()[:,ui]
+    V_ = np.concatenate((c1[:,None], c2[:,None], U_), axis=1)
+    gs_ = gram_schmidt(V_.T).T
+    Q, R = np.linalg.qr(V)
+
     import pdb; pdb.set_trace()
 
 
