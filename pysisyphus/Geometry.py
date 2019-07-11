@@ -1,6 +1,7 @@
 from collections import Counter, namedtuple
 import subprocess
 import tempfile
+import warnings
 
 import numpy as np
 import rmsd
@@ -481,9 +482,19 @@ class Geometry:
 
     def get_initial_hessian(self):
         """Return and initial guess for the hessian."""
+        warnings.warn(
+                "This method will be removed in the future. Get hessians from "
+                "'pysisyphus.optimizers.guess_hessians' instead.",
+                DeprecationWarning
+        )
         if self.internal:
-            return self.internal.get_initial_hessian()
-        return np.eye(self.coords.size)
+            H = self.internal.get_initial_hessian()
+        if self.coord_type == "dlc":
+            U = self.internal.U
+            H = U.T.dot(H).dot(U)
+        else:
+            H = np.eye(self.coords.size)
+        return H
 
     def unweight_mw_hessian(self, mw_hessian):
         """Unweight a mass-weighted hessian.
