@@ -5,6 +5,7 @@ import numpy as np
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.xyzloader import write_geoms_to_trj
 
 
@@ -62,20 +63,8 @@ class Redund(Interpolator):
                          coord_type="redund", prim_indices=prim_indices
         )
 
-        def get_tangent(prims1, prims2, bonds_bends):
-            diff = prims2 - prims1
-            diheds = diff[bonds_bends:].copy()
-            diheds_plus = diheds.copy() + 2*np.pi
-            diheds_minus = diheds.copy() - 2*np.pi
-            bigger = np.abs(diheds) > np.abs(diheds_plus)
-            diheds[bigger] = diheds_plus[bigger]
-            bigger = np.abs(diheds) > np.abs(diheds_minus)
-            diheds[bigger] = diheds_minus[bigger]
-            diff[bonds_bends:] = diheds
-            return diff
-
-        bonds_bends = len(valid_bonds) + len(valid_bends)
-        initial_tangent = get_tangent(geom1.coords, geom2.coords, bonds_bends)
+        dihed_start = len(valid_bonds) + len(valid_bends)
+        initial_tangent = get_tangent(geom1.coords, geom2.coords, dihed_start)
         initial_diff = np.linalg.norm(initial_tangent)
         approx_stepsize = initial_diff / (self.between+1)
         final_prims = geom2.internal.prim_coords
@@ -84,7 +73,7 @@ class Redund(Interpolator):
         for i in range(self.between):
             print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
-            prim_tangent = get_tangent(new_geom.coords, final_prims, bonds_bends)
+            prim_tangent = get_tangent(new_geom.coords, final_prims, dihed_start)
             # Form active set
             B = new_geom.internal.B_prim
             G = B.dot(B.T)
