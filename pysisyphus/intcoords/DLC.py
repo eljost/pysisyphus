@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# [1] https://aip.scitation.org/doi/10.1063/1.471864
+#     The generation and use of delocalized internal coordinates in geometry
+#     optimization.
+#     Baker, 1996
+
 import numpy as np
 
 from pysisyphus.InternalCoordinates import RedundantCoords
@@ -74,6 +79,10 @@ class DLC(RedundantCoords):
         # the total shape of should not change.
         assert orthonormalized.shape[1] == original_U_shape[1]
         # Remove constraint vectors
+        # [1] states that we somehow have to keep the constraint vectors
+        # (or the corresponding unit vectors) for the iterative
+        # back-transformation. Right now I don't understand why we would
+        # have to do this ([1], p. 10 (200), right column).
         U_proj = orthonormalized[:,constr_num:]
         return U_proj
 
