@@ -11,7 +11,6 @@ def gram_schmidt(vecs, thresh=1e-8):
         for v2 in ortho:
             tmp -= proj(v2, v1)*v2
         norm = np.linalg.norm(tmp)
-        print("norm:", norm)
         # Don't append linear dependent vectors, as their norm will be
         # near zero. Renormalizing them to unity would lead to numerical
         # garbage and to erronous results later on, when we orthgonalize

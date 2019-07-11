@@ -10,14 +10,17 @@ class DLC(RedundantCoords):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # U
-        self._U = self.get_active_set(self.B_prim)
-        # Needed for back-transformation to primitive internals
-        self._Ut_inv = np.linalg.pinv(self.U.T)
+        self.U = self.get_active_set(self.B_prim)
 
     @property
     def U(self):
         return self._U
+
+    @U.setter
+    def U(self, U):
+        self._U = U
+        # Needed for back-transformation to primitive internals
+        self._Ut_inv = np.linalg.pinv(self.U.T)
 
     @property
     def Ut_inv(self):
@@ -61,5 +64,26 @@ class DLC(RedundantCoords):
         c_proj /= np.linalg.norm(c_proj)
         return c_proj
 
-    def constrain_active_set(self, constraint_vecs):
-        pass
+    def apply_constraints(self, constraint_vecs):
+        original_U_shape = self.U.shape
+        constr_num = constraint_vecs.shape[1]
+        V = np.concatenate((constraint_vecs, self.U), axis=1)
+        orthonormalized = gram_schmidt(V.T).T
+        # During Gram-Schmidt a number of columns of U should have
+        # dropped out. They are replaced by the constraint_vecs, so
+        # the total shape of should not change.
+        assert orthonormalized.shape[1] == original_U_shape[1]
+        # Remove constraint vectors
+        U_proj = orthonormalized[:,constr_num:]
+        return U_proj
+
+    def freeze_primitives(self, prim_atom_indices):
+        prim_indices = [self.get_index_of_prim_coord(pai)
+                        for pai in prim_atom_indices
+        ]
+        _ = [self.project_primitive_on_active_set(pi)
+                                for pi in prim_indices
+        ]
+        projected_primitives = np.stack(_, axis=-1)
+        U_proj = self.apply_constraints(projected_primitives)
+        self.U = U_proj
