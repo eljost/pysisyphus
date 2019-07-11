@@ -62,17 +62,6 @@ class Redund(Interpolator):
                          coord_type="redund", prim_indices=prim_indices
         )
 
-        def update_internals(prev_internals, new_internals, bonds_bends, d):
-            internal_diffs = np.array(new_internals - prev_internals)
-            dihedral_diffs = internal_diffs[bonds_bends:]
-            # Find differences that are shifted by 2*pi
-            shifted_by_2pi = np.abs(np.abs(dihedral_diffs) - 2*np.pi) < np.pi/2
-            new_dihedrals = new_internals[bonds_bends:]
-            new_dihedrals[shifted_by_2pi] -= 2*np.pi * np.sign(dihedral_diffs[shifted_by_2pi])
-
-            new_internals[bonds_bends:] = new_dihedrals
-            return new_internals
-
         def get_tangent(prims1, prims2, bonds_bends):
             diff = prims2 - prims1
             diheds = diff[bonds_bends:].copy()
@@ -93,7 +82,7 @@ class Redund(Interpolator):
 
         geoms = [geom1, ]
         for i in range(self.between):
-            print(f"interpolating {i+1:03d}/{self.between:03d}")
+            print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
             prim_tangent = get_tangent(new_geom.coords, final_prims, bonds_bends)
             # Form active set
