@@ -28,7 +28,13 @@ def run():
     geom = geom_from_library(xyz_fn, coord_type="dlc")
     # freeze = ((0, 1), (2, 0, 3))
     # geom.internal.freeze_primitives(freeze)
+
+    # XTB
     calc = XTB()
+    # Psi4
+    # from pysisyphus.calculators.Psi4 import Psi4
+    # calc = Psi4(method="hf", basis="sto-3g")
+
     geom.set_calculator(calc)
     opt_kwargs = {
         # "max_cycles": 1,
