@@ -16,7 +16,7 @@ class Redund(Interpolator):
     def __init__(self, geoms, between, align=True):
         super().__init__(geoms, between, align)
 
-        self.geoms = [Geometry(geom.atoms, geom.coords, coord_type="redund")
+        self.geoms = [Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
                       for geom in self.geoms]
 
     def interpolate(self, initial_geom, final_geom):
