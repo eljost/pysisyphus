@@ -163,9 +163,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
                  for geom, pi in zip(geoms, prim_indices)]
 
     # TODO: Right now this just captures the total number of coordinates but
-    # internal structure may still be different, e.g. different number of
-    # stretches and bends between two geometries, but overall same number of
-    # primitives.
+    # their internal makeup may still be different, e.g. there may be a
+    # different number of stretches and bends between two geometries, even
+    # though the overall number of primitives is the same.
     coord_lengths = np.array([geom.coords.size for geom in geoms])
     assert (coord_lengths == coord_lengths[0]).all(), \
         "The number of coordinates defined at each geometry is not " \
