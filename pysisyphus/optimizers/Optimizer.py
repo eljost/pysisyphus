@@ -38,6 +38,7 @@ class Optimizer:
             setattr(self, key, value)
 
         # Setting some default values
+        self.final_fn = "final_geometry.xyz"
         self.resetted = False
         self.max_cycles = 50
         self.max_step = max_step
@@ -334,7 +335,6 @@ class Optimizer:
         # Outside loop
         if (not self.is_cos) and (not stopped):
             print(self.final_summary())
-        opt_fn = "final_geometry.xyz"
-        with open(opt_fn, "w") as handle:
+        with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
-        print(f"Wrote final, hopefully optimized, geometry to '{opt_fn}'")
+        print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn}'")
