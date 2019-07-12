@@ -53,6 +53,10 @@ class Geometry:
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords, dtype=np.float)
+        assert self._coords.size == (3*len(self.atoms)), \
+            f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
+            f"{self._coords.size}. Did you accidentally supply internal " \
+             "coordinates?"
 
         if (prim_indices is not None) and coord_type == "cart":
             coord_type = "redund"
