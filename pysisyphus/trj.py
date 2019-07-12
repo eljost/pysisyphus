@@ -142,11 +142,35 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type)
 
     print(f"Read {len(geoms)} geometries.")
-
+    # TODO: Multistep interpolation (when more than two geometries are specified)
+    # in internal coordinates may lead to a different number of defined coordinates.
+    # Maybe the union between geom0 and geom1 contains 6 internals and the union
+    # betweeen geom1 and geom2 contains 8 primtives. Then the number of coordinates
+    # at all images in the final list may be non-constant.
     if interpolate:
         interpolate_class = INTERPOLATE[interpolate]
         interpolator = interpolate_class(geoms, between)
         geoms = interpolator.interpolate_all()
+    if coord_type != geoms[0].coord_type:
+        # Recreate Geometries so they have the correct coord_type. There may
+        # be a difference between the coord_type used for interpolation and
+        # the desired coord_type as specified in the function arguments.
+        prim_indices = [None for geom in geoms]
+        if coord_type != "cart":
+            prim_indices = [geom.internal.prim_indices for geom in geoms]
+        geoms = [Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type,
+                          comment=geom.comment, prim_indices=pi)
+                 for geom, pi in zip(geoms, prim_indices)]
+
+    # TODO: Right now this just captures the total number of coordinates but
+    # internal structure may still be different, e.g. different number of
+    # stretches and bends between two geometries, but overall same number of
+    # primitives.
+    coord_lengths = np.array([geom.coords.size for geom in geoms])
+    assert (coord_lengths == coord_lengths[0]).all(), \
+        "The number of coordinates defined at each geometry is not " \
+       f"consistent ({coord_lengths})!"
+
 
     return geoms
 
