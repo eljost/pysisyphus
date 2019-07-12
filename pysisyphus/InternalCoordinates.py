@@ -125,6 +125,10 @@ class RedundantCoords:
         ic_ind_tuples = [tuple(ic.inds) for ic in self._prim_internals]
         return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
 
+    @property
+    def dihed_start(self):
+        return len(self.bond_indices) + len(self.bending_indices)
+
     def get_index_of_prim_coord(self, prim_ind):
         """Index of primitive internal for the given atom indices."""
         prim_ind_set = set(prim_ind)
