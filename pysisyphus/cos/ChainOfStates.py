@@ -246,7 +246,10 @@ class ChainOfStates:
         return tmp_results
 
     def set_zero_forces_for_fixed_images(self):
-        zero_forces = np.zeros_like(self.images[0].coords)
+        """This is always done in cartesian coordinates, independent
+        of the actual coord_type of the images as setting forces only
+        work with cartesian forces."""
+        zero_forces = np.zeros_like(self.images[0].cart_coords)
         if self.fix_first:
             self.images[0].forces = zero_forces
             self.log("Zeroed forces on fixed first image.")

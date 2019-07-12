@@ -585,14 +585,14 @@ class Geometry:
         return ortho_vecs
 
     def eckart_projection(self, mw_hessian):
-        P = np.eye(self._coords.size)
+        P = np.eye(self.cart_coords.size)
         for vec in self.get_trans_rot_vectors():
             P -= np.outer(vec, vec)
         return P.T.dot(mw_hessian).dot(P)
 
     def calc_energy_and_forces(self):
         """Force a calculation of the current energy and forces."""
-        results = self.calculator.get_forces(self.atoms, self.coords)
+        results = self.calculator.get_forces(self.atoms, self.cart_coords)
         self.set_results(results)
 
     def get_energy_and_forces_at(self, coords):
