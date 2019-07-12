@@ -225,7 +225,6 @@ def append(geoms):
 
 def bohr2ang(geoms):
     coords_angstrom = [geom.coords*0.529177249 for geom in geoms]
-    import pdb; pdb.set_trace()
     raise Exception("Implement me")
 
 
