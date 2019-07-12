@@ -10,9 +10,12 @@ from scipy.interpolate import interp1d, splprep, splev
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import get_coords_diffs
+from pysisyphus.intcoords.helpers import get_tangent as get_dlc_tangent
 from pysisyphus.xyzloader import make_trj_str
 
+
 # [1] http://dx.doi.org/10.1063/1.1323224
+
 
 class ChainOfStates:
     logger = logging.getLogger("cos")
@@ -251,8 +254,12 @@ class ChainOfStates:
             self.images[-1].forces = zero_forces
             self.log("Zeroed forces on fixed last image.")
 
-    def get_tangent(self, i):
+    def get_tangent(self, i, kind="upwinding"):
         """ [1] Equations (8) - (11)"""
+
+        tangent_kinds = "upwinding simple bisect".split()
+        assert kind in tangent_kinds, "Invalid tangent kind! Valid " \
+            f"tangent kinds are {self.tangent_kinds}"
         prev_index = max(i - 1, 0)
         next_index = min(i + 1, len(self.images)-1)
 
@@ -264,6 +271,8 @@ class ChainOfStates:
         ith_coords = ith_image.coords
         next_coords = next_image.coords
 
+        # If (i == 0) or (i == len(self.images)-1) then one
+        # of this tangents is zero.
         tangent_plus = next_coords - ith_coords
         tangent_minus = ith_coords - prev_coords
 
@@ -273,6 +282,21 @@ class ChainOfStates:
         elif i is (len(self.images) - 1):
             return tangent_minus/np.linalg.norm(tangent_minus)
 
+        # [1], Eq. (1)
+        if kind == "simple":
+            tangent = next_coords - prev_coords
+            tangent /= np.linalg.norm(tangent)
+            return tangent
+        # [1], Eq. (2)
+        elif kind == "bisect":
+            first_term = tangent_minus / np.linalg.norm(tangent_minus)
+            sec_term = tangent_plus / np.linalg.norm(tangent_plus)
+            tangent = first_term + sec_term
+            tangent /= np.linalg.norm(tangent)
+            return tangent
+
+        # Upwinding tangent from now on
+        # [1], Eq. (8) and so on
         prev_energy = prev_image.energy
         ith_energy = ith_image.energy
         next_energy = next_image.energy

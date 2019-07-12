@@ -463,6 +463,23 @@ def test_energy_szts_more_images():
     return opt
 
 
+def test_cos():
+    kwargs = copy.copy(KWARGS)
+    neb = NEB(get_geoms(), **NEB_KWARGS)
+    interpol = Interpolator(neb.images, between=10)
+    all_images = interpol.interpolate_all()
+    for img in all_images:
+        img.set_calculator(AnaPot())
+    neb.images = all_images
+    kinds = "upwinding simple bisect".split()
+    opt = SteepestDescent(neb, max_cycles=15)
+    opt.run()
+    for k in kinds:
+        tangent = neb.get_tangent(3, kind=k)
+        print(k, tangent)
+    neb.get_tangent(len(all_images)-1)
+
+
 if __name__ == "__main__":
     # Steepest Descent
     # opt = test_steepest_descent_neb()
@@ -493,7 +510,7 @@ if __name__ == "__main__":
     # opt = test_fix_end_climbing_bfgs_neb()
 
     # LBFGS
-    opt = test_lbfgs_neb()
+    # opt = test_lbfgs_neb()
     # opt = test_lbfgs_mod_neb()
 
     # Modified broyden
@@ -513,7 +530,9 @@ if __name__ == "__main__":
     # NEB with Dimer
     # test_spline_hei()
 
-    ap = animate(opt)
+    # ap = animate(opt)
     # ap = animate_bare(opt)
     # ap.as_html5("anim.html")
-    plt.show()
+    # plt.show()
+
+    test_cos()
