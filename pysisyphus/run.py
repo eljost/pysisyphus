@@ -184,6 +184,38 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
     return calc_getter
 
 
+def preopt_ends(xyz, calc_getter):
+    """Run optimization on first and last geometry in xyz and return
+    updated xyz variable."""
+    geoms = get_geoms(xyz, coord_type="redund")
+    assert len(geoms) >= 2, "Need at least two geometries!"
+
+    def opt_getter(geom):
+        opt_kwargs = {
+            "max_cycles": 150,
+            "thresh": "gau",
+            "trust_max": 0.3,
+        }
+        opt = RFOptimizer.RFOptimizer(geom, **opt_kwargs)
+        return opt
+
+    out_xyz = xyz.copy()
+    for ind, str_ in ((0, "first"), (-1, "last")):
+        print(f"Preoptimizing {str_} geometry.")
+        geom = geoms[ind]
+        opt = run_opt(geom, calc_getter, opt_getter)
+        if not opt.is_converged:
+            print("Problem in preoptimization of {str_}. Exiting!")
+            sys.exit()
+        print(f"Preoptimization of {str_} geometry converged!")
+        opt_fn = f"{str_}_preopt.xyz"
+        shutil.move("final_geometry.xyz", opt_fn)
+        print(f"Saved final preoptimized structure to '{opt_fn}'.")
+        out_xyz[ind] = opt_fn
+        print()
+    return out_xyz
+
+
 def run_cos(cos, calc_getter, opt_getter):
     for i, image in enumerate(cos.images):
         image.set_calculator(calc_getter(i))
@@ -415,6 +447,7 @@ def run_opt(geom, calc_getter, opt_getter):
     geom.set_calculator(calc_getter(0))
     opt = opt_getter(geom)
     opt.run()
+    return opt
 
 
 def run_stocastic(stoc):#geom, calc_kwargs):
@@ -483,11 +516,13 @@ def get_defaults(conf_dict):
         "coord_type": "cart",
         "shake": None,
         "irc": None,
+        "preopt_ends": False,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
             "type": "neb",
             "parallel": 0,
+            "fix_ends": True,
         }
         dd["opt"] = {
             "type": "qm",
@@ -589,7 +624,8 @@ def handle_yaml(yaml_str):
                               "stocastic", "tsopt", "shake", "irc")):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
-    for key in key_set & set(("calc", "xyz", "pal", "coord_type")):
+    for key in key_set & set(("calc", "xyz", "pal", "coord_type",
+                              "preopt_ends", )):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -645,13 +681,19 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         last_calc_cycle = get_last_calc_cycle()
         run_dict["calc"]["last_calc_cycle"] = last_calc_cycle
 
+    # Prepare calculator
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
+
+    # Prepare optimizer
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
     coord_type = run_dict["coord_type"]
+    if run_dict["preopt_ends"]:
+        # Update xyz list with optimized endpoint filenames
+        xyz = preopt_ends(xyz, calc_getter)
     geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type)
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
