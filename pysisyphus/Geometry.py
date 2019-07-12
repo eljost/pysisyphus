@@ -83,6 +83,13 @@ class Geometry:
         )
 
     def assert_compatibility(self, other):
+        """Assert that two Geometries can be substracted from each other.
+
+        Parameters
+        ----------
+        other : Geometry
+            Geometry for comparison.
+        """
         same_atoms = self.atoms == other.atoms
         same_coord_type = self.coord_type == other.coord_type
         same_coord_length = len(self.coords) == len(other.coords)
