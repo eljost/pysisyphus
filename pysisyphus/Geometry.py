@@ -10,6 +10,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
 from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.DLC import DLC
+from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
 from pysisyphus.xyzloader import make_xyz_str
 
@@ -81,8 +82,33 @@ class Geometry:
                 [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
 
+    def assert_compatibility(self, other):
+        same_atoms = self.atoms == other.atoms
+        same_coord_type = self.coord_type == other.coord_type
+        same_coord_length = len(self.coords) == len(other.coords)
+        assert same_atoms, "Atom number/ordering is incompatible!"
+        assert same_coord_type, "coord_types are incompatible!"
+        assert same_coord_length, "Different length of coordinate vectors!"
+
     def __eq__(self, other):
         return (self.atoms == other.atoms) and all(self.coords == other.coords)
+
+    def __sub__(self, other):
+        self.assert_compatibility(other)
+        if self.coord_type == "cart":
+            diff = self.coords - other.coords
+        elif self.coord_type in ("redund", "dlc"):
+            # Take periodicity of dihedrals into account
+            diff = get_tangent(self.coords, other.coords,
+                                  self.internal.dihed_start)
+        else:
+            raise Exception("Invalid coord_type!")
+
+        if self.coord_type == "dlc":
+            U = self.internal.U
+            # Convert to DLC
+            diff = (np.einsum("i,ij->j", diff, U) * U).sum(axis=1)
+        return diff
 
     def copy(self):
         """Returns a new Geometry object with same atoms and coordinates.
