@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import itertools as it
+
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
 from pysisyphus.InternalCoordinates import RedundantCoords
-from pysisyphus.intcoords.helpers import get_tangent
+from pysisyphus.intcoords.helpers import get_tangent, form_coordinate_union
 from pysisyphus.xyzloader import write_geoms_to_trj
 
 
@@ -17,44 +19,13 @@ class Redund(Interpolator):
         self.geoms = [Geometry(geom.atoms, geom.coords, coord_type="redund")
                       for geom in self.geoms]
 
-    def to_set(self, iterable):
-        return set([tuple(_) for _ in iterable])
-
-    def get_ind_sets(self, geom):
-        bonds, bends, dihedrals = geom.internal.prim_indices
-        return self.to_set(bonds), self.to_set(bends), self.to_set(dihedrals)
-
-    def merge_coordinate_definitions(self, geom1, geom2):
-        bonds1, bends1, dihedrals1 = self.get_ind_sets(geom1)
-        bonds2, bends2, dihedrals2 = self.get_ind_sets(geom2)
-        # Form new superset of coordinate definitions that contain
-        # all definitions from geom1 and geom2.
-        all_bonds = bonds1 | bonds2
-        all_bends = bends1 | bends2
-        all_dihedrals = dihedrals1 | dihedrals2
-        all_prim_indices = (all_bonds, all_bends, all_dihedrals)
-        # Check if internal coordinates that are only present in one
-        # of the two geometries are valid in the other. If not we omit
-        # this coordinate definition in the end.
-        redundant = RedundantCoords(geom1.atoms, geom1.cart_coords,
-                                    prim_indices=all_prim_indices)
-        bonds, bends, dihedrals = redundant.prim_indices
-        return self.to_set(bonds), self.to_set(bends), self.to_set(dihedrals)
-
     def interpolate(self, initial_geom, final_geom):
         print(f"No. of primitives at initial structure: {initial_geom.coords.size}")
         print(f"No. of primitives at final structure: {final_geom.coords.size}")
 
-        bonds1, bends1, dihedrals1 = self.merge_coordinate_definitions(initial_geom, final_geom)
-        bonds2, bends2, dihedrals2 = self.merge_coordinate_definitions(final_geom, initial_geom)
-
-        # Only use primitive coordinate definitions that are valid for both
-        valid_bonds = bonds1 & bonds2
-        valid_bends = bends1 & bends2
-        valid_dihedrals = dihedrals1 & dihedrals2
-        prim_indices = (valid_bonds, valid_bends, valid_dihedrals)
-        print("Union of primitives",
-              len(valid_bonds) + len(valid_bends) + len(valid_dihedrals))
+        prim_indices = form_coordinate_union(initial_geom, final_geom)
+        union_length = len(list(it.chain(*prim_indices)))
+        print("Union of primitives: ", union_length)
 
         geom1 = Geometry(initial_geom.atoms, initial_geom.cart_coords,
                          coord_type="redund", prim_indices=prim_indices
@@ -63,7 +34,7 @@ class Redund(Interpolator):
                          coord_type="redund", prim_indices=prim_indices
         )
 
-        dihed_start = len(valid_bonds) + len(valid_bends)
+        dihed_start = geom1.internal.dihed_start
         initial_tangent = get_tangent(geom1.coords, geom2.coords, dihed_start)
         initial_diff = np.linalg.norm(initial_tangent)
         approx_stepsize = initial_diff / (self.between+1)

@@ -1,4 +1,8 @@
+#!/usr/bin/env python3
+
 import numpy as np
+
+from pysisyphus.InternalCoordinates import RedundantCoords
 
 
 def get_tangent(prims1, prims2, dihed_start, normalize=False):
@@ -35,3 +39,49 @@ def get_tangent(prims1, prims2, dihed_start, normalize=False):
     if normalize:
         tangent /= np.linalg.norm(tangent)
     return tangent
+
+
+def to_set(iterable):
+    """Convert iterable of iterable to a set of tuples."""
+    return set([tuple(_) for _ in iterable])
+
+
+def get_ind_sets(geom):
+    """Convert RedundandCoords.prim_indices to sets of tuples."""
+    bonds, bends, dihedrals = geom.internal.prim_indices
+    return to_set(bonds), to_set(bends), to_set(dihedrals)
+
+
+def merge_coordinate_definitions(geom1, geom2):
+    bonds1, bends1, dihedrals1 = get_ind_sets(geom1)
+    bonds2, bends2, dihedrals2 = get_ind_sets(geom2)
+    # Form new superset of coordinate definitions that contain
+    # all definitions from geom1 and geom2.
+    all_bonds = bonds1 | bonds2
+    all_bends = bends1 | bends2
+    all_dihedrals = dihedrals1 | dihedrals2
+    all_prim_indices = (all_bonds, all_bends, all_dihedrals)
+    # Check if internal coordinates that are only present in one
+    # of the two geometries are valid in the other. If not we omit
+    # this coordinate definition in the end.
+    redundant = RedundantCoords(geom1.atoms, geom1.cart_coords,
+                                prim_indices=all_prim_indices)
+    bonds, bends, dihedrals = redundant.prim_indices
+    return to_set(bonds), to_set(bends), to_set(dihedrals)
+
+
+def form_coordinate_union(geom1, geom2):
+    # The first call yields all primitives from geom1 that are also
+    # valid at geom2.
+    bonds1, bends1, dihedrals1 = merge_coordinate_definitions(geom1, geom2)
+    # The second call yields all primitives from geom2 that are also
+    # valid at geom1.
+    bonds2, bends2, dihedrals2 = merge_coordinate_definitions(geom2, geom1)
+
+    # Only use primitive coordinate definitions that are valid for both
+    valid_bonds = bonds1 & bonds2
+    valid_bends = bends1 & bends2
+    valid_dihedrals = dihedrals1 & dihedrals2
+    prim_indices = (valid_bonds, valid_bends, valid_dihedrals)
+    # return valid_bonds, valid_bends, valid_dihedrals
+    return prim_indices
