@@ -267,14 +267,10 @@ class ChainOfStates:
         ith_image = self.images[i]
         next_image = self.images[next_index]
 
-        prev_coords = prev_image.coords
-        ith_coords = ith_image.coords
-        next_coords = next_image.coords
-
         # If (i == 0) or (i == len(self.images)-1) then one
         # of this tangents is zero.
-        tangent_plus = next_coords - ith_coords
-        tangent_minus = ith_coords - prev_coords
+        tangent_plus = next_image - ith_image
+        tangent_minus = ith_image - prev_image
 
         # Handle first and last image
         if i is 0:
@@ -284,7 +280,7 @@ class ChainOfStates:
 
         # [1], Eq. (1)
         if kind == "simple":
-            tangent = next_coords - prev_coords
+            tangent = next_image - prev_image
             tangent /= np.linalg.norm(tangent)
             return tangent
         # [1], Eq. (2)
