@@ -39,11 +39,12 @@ class GrowingString(GrowingChainOfStates):
         # Adding nodes requires a direction/tangent. As we start
         # from two images we can't do a cubic spline yet, so there are also
         # no splined tangents.
-        # For the first two new nodes we use a "classic" tangent, the
+        # For the first two new nodes we use a simple tangent: the
         # unit vector pointing from the left to the right image.
-        # As we this class calculates its own tangent as derivative of the
-        # spline we get the original tangent from the parent ChainOfStates class.
+        # As "get_tangent" is reimplemented in this class we call the
+        # implementation of the parent ChainOfStates class.
         init_tangent = super().get_tangent(0)
+        # Initial distances between left and right image
         Sk, _ = self.arc_dims
         S = Sk / (self.max_nodes+1)
         # Create first two mobile nodes
@@ -55,7 +56,8 @@ class GrowingString(GrowingChainOfStates):
         right_frontier = self.get_new_image(new_right_coords, 2)
         self.right_string.append(right_frontier)
 
-        # Set initial tangents
+        # Now we have four images and can calculate an initial set of tangents
+        # as first derivative of the cubic spline.
         self.set_tangents()
         # The desired spacing of the nodes in the final string on the
         # normalized arclength.
@@ -106,11 +108,16 @@ class GrowingString(GrowingChainOfStates):
         self.coords = new_points.transpose().flatten()
 
     def set_tangents(self):
-        """This method may be considerd hacky as calculates all
+        """Set tangents as given by the first derivative of a cubic spline.
+
+        This method may be considerd hacky as it calculates all
         tangents at once, and not one-by-one as the parent class
-        implementation. Right now one must not forget to call this method
+        implementation.
+
+        !!! Right now one must not forget to call this method
         after coordinate modification, e.g. after
-        reparametrization. Otherwise some wrong old tangets are used.
+        reparametrization!
+        Otherwise some wrong old tangets are used.
         """
 
         self.log("Setting tangents using hacky method :)")
