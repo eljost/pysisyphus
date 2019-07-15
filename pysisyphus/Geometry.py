@@ -115,10 +115,9 @@ class Geometry:
         else:
             raise Exception("Invalid coord_type!")
 
+        # Convert to DLC
         if self.coord_type == "dlc":
-            U = self.internal.U
-            # Convert to DLC
-            diff = (np.einsum("i,ij->j", diff, U) * U).sum(axis=1)
+            diff = self.internal.U.T.dot(diff)
         return diff
 
     def copy(self):
