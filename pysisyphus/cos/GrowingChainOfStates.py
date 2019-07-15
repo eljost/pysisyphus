@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from copy import copy
-
 import numpy as np
 from scipy.interpolate import splprep, splev
 
@@ -17,25 +15,27 @@ class GrowingChainOfStates(ChainOfStates):
 
         self.max_nodes = max_nodes
         self.calc_getter = calc_getter
-        self.image_atoms = copy(self.images[0].atoms)
-    
-    def get_new_image(self, coords, index):
-        new_image = Geometry(self.image_atoms, coords)
+
+    def get_new_image(self, step, before_index, ref_index):
+        ref_image = self.images[ref_index]
+        new_image = ref_image.copy()
+        new_coords = new_image.coords + step
+        new_image.coords = new_coords
         new_image.set_calculator(self.calc_getter())
-        self.images.insert(index, new_image)
-        self.log(f"Create new image; insert it before index {index}.")
+        self.images.insert(before_index, new_image)
+        self.log(f"Created new image; inserted it before index {before_index}.")
         return new_image
 
     @property
     def dummy_coords(self):
-        return np.empty_like(self.images[0].coords)
+        return np.empty_like(self.images[0].cart_coords)
 
     @property
     def arc_dims(self):
-        coords = [image.coords for image in self.images]
         cds = [0, ]
-        for i in range(len(coords)-1):
-            diff = np.linalg.norm(coords[i+1]-coords[i])
+        for i, image in enumerate(self.images[:-1]):
+            next_image = self.images[i+1]
+            diff = np.linalg.norm(next_image - image)
             cds.append(diff)
         cds = np.cumsum(cds)
         tot_length = cds[-1]

@@ -49,11 +49,11 @@ class GrowingString(GrowingChainOfStates):
         S = Sk / (self.max_nodes+1)
         # Create first two mobile nodes
         left_img, right_img = self.images
-        new_left_coords = left_img.coords + S*init_tangent
-        new_right_coords = right_img.coords - S*init_tangent
-        left_frontier = self.get_new_image(new_left_coords, 1)
+        left_step = S*init_tangent
+        right_step = -S*init_tangent
+        left_frontier = self.get_new_image(left_step, 1, 0)
         self.left_string.append(left_frontier)
-        right_frontier = self.get_new_image(new_right_coords, 2)
+        right_frontier = self.get_new_image(right_step, 2, 2)
         self.right_string.append(right_frontier)
 
         # Now we have four images and can calculate an initial set of tangents
@@ -110,9 +110,10 @@ class GrowingString(GrowingChainOfStates):
     def set_tangents(self):
         """Set tangents as given by the first derivative of a cubic spline.
 
-        This method may be considerd hacky as it calculates all
-        tangents at once, and not one-by-one as the parent class
-        implementation.
+        Tangent-calculation by splines requires the information of all
+        images at once. To avoid the repeated splining of all images whenever
+        a tangent is requested this method calculates all tangents and stores
+        them in the self._tangents, that can be accessed via self.tangents.
 
         !!! Right now one must not forget to call this method
         after coordinate modification, e.g. after
@@ -177,13 +178,15 @@ class GrowingString(GrowingChainOfStates):
         if self.images_left and converged(self.lf_ind):
             # Insert at the end of the left string, just before the
             # right frontier node.
-            new_left_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
+            new_left_frontier = self.get_new_image(self.dummy_coords,
+                                                   self.rf_ind, self.lf_ind)
             self.left_string.append(new_left_frontier)
             self.log("Added new left frontier node.")
         if self.images_left and converged(self.rf_ind):
             # Insert at the end of the right string, just before the
             # current right frontier node.
-            new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind)
+            new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind,
+                                                    self.rf_ind)
             self.right_string.append(new_right_frontier)
             self.log("Added new right frontier node.")
 
@@ -210,7 +213,7 @@ class GrowingString(GrowingChainOfStates):
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL
         barrier_info = f"(E_max-E_0)={barrier:.1f} kJ/mol"
         hei_ind = energies.argmax()
-        hei_str = f"HEI={hei_ind+1}/{energies.size}"
+        hei_str = f"HEI={hei_ind+1:02d}/{energies.size:02d}"
 
         tot = f"Grads={self.get_image_calc_counter_sum()}"
 
