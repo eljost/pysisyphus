@@ -186,7 +186,7 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 def preopt_ends(xyz, calc_getter):
     """Run optimization on first and last geometry in xyz and return
-    updated xyz variable."""
+    updated xyz variable containing the optimized ends."""
     geoms = get_geoms(xyz, coord_type="redund")
     assert len(geoms) >= 2, "Need at least two geometries!"
 
@@ -199,7 +199,7 @@ def preopt_ends(xyz, calc_getter):
         opt = RFOptimizer.RFOptimizer(geom, **opt_kwargs)
         return opt
 
-    out_xyz = xyz.copy()
+    out_xyz = list()
     for ind, str_ in ((0, "first"), (-1, "last")):
         print(f"Preoptimizing {str_} geometry.")
         geom = geoms[ind]
@@ -211,7 +211,7 @@ def preopt_ends(xyz, calc_getter):
         opt_fn = f"{str_}_preopt.xyz"
         shutil.move("final_geometry.xyz", opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
-        out_xyz[ind] = opt_fn
+        out_xyz.append(opt_fn)
         print()
     return out_xyz
 
