@@ -180,7 +180,9 @@ class GrowingString(GrowingChainOfStates):
             self.set_tangents()
             return False
 
-        # Spline displaced coordinates
+        # Spline displaced coordinates. 'tcks' contains all relevant information.
+        # These splines will be used to interpolate all present
+        # (already existing and new) images.
         tcks, us = self.spline()
 
         # Calculate the norm of the perpendicular force for every
@@ -216,9 +218,21 @@ class GrowingString(GrowingChainOfStates):
         param_inds = np.concatenate((left_inds, right_inds))
         param_density = self.sk*param_inds
         self.log(f"New param density: " + np.array2string(param_density, precision=2))
-        self.reparam(tcks, param_density)
 
-        self.set_tangents()
+        if self.coord_type == "cart":
+            self.reparam(tcks, param_density)
+            self.set_tangents()
+        elif self.coord_type == "dlc":
+            # coord_diffs = np.diff([image.coords for image in self.images], axis=0)
+            coords_ = self.coords.reshape(len(self.images), -1)
+            diffs = coords_ - coords_[0]
+            norms = np.linalg.norm(diffs, axis=1)
+            # Assert that the last images is also the one that is the farthest
+            assert norms[-1] == norms.max()
+            cur_param_density = norms / norms.max()
+            import pdb; pdb.set_trace()
+        else:
+            raise Execption()
         self.reparam_in = self.reparam_every
 
         return True
