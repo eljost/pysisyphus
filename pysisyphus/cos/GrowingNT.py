@@ -22,7 +22,6 @@ class GrowingNT(ChainOfStates):
         self.damp = damp
         self.readjust = readjust
 
-        self.atoms = copy(self.images[0].atoms)
         self.I = np.eye(self.images[0].coords.size)
 
     def new_node_coords(self, k):
@@ -34,7 +33,7 @@ class GrowingNT(ChainOfStates):
 
     def set_new_node(self, k):
         new_coords = self.new_node_coords(k)
-        new_node = Geometry(self.atoms, new_coords)
+        new_node = Geometry(self.image_atoms, new_coords)
         new_node.set_calculator(self.calc_getter())
         self.images.insert(k+1, new_node)
         # print(f"made node {k+1}")

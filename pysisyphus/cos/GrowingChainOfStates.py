@@ -17,10 +17,10 @@ class GrowingChainOfStates(ChainOfStates):
 
         self.max_nodes = max_nodes
         self.calc_getter = calc_getter
-        self.atoms = copy(self.images[0].atoms)
+        self.image_atoms = copy(self.images[0].atoms)
     
     def get_new_image(self, coords, index):
-        new_image = Geometry(self.atoms, coords)
+        new_image = Geometry(self.image_atoms, coords)
         new_image.set_calculator(self.calc_getter())
         self.images.insert(index, new_image)
         self.log(f"Create new image; insert it before index {index}.")
@@ -51,7 +51,7 @@ class GrowingChainOfStates(ChainOfStates):
 
     def set_new_node(self, k):
         new_coords = self.new_node_coords(k)
-        new_node = Geometry(self.atoms, new_coords)
+        new_node = Geometry(self.image_atoms, new_coords)
         new_node.set_calculator(self.calc_getter())
         self.images.insert(k+1, new_node)
         return new_node

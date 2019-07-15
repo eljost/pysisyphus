@@ -108,8 +108,8 @@ class GrowingString(GrowingChainOfStates):
     def set_tangents(self):
         """This method may be considerd hacky as calculates all
         tangents at once, and not one-by-one as the parent class
-        implementation. Right now one must not forget to call this method at
-        after the coordinates were modified somehow, e.g. after
+        implementation. Right now one must not forget to call this method
+        after coordinate modification, e.g. after
         reparametrization. Otherwise some wrong old tangets are used.
         """
 
