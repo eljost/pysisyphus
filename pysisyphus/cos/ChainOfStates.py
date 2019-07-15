@@ -11,7 +11,6 @@ from scipy.interpolate import interp1d, splprep, splev
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import get_coords_diffs
-from pysisyphus.intcoords.helpers import get_tangent as get_dlc_tangent
 from pysisyphus.xyzloader import make_trj_str
 
 
