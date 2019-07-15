@@ -139,6 +139,13 @@ class ChainOfStates:
         return self.coords.reshape(-1, 3)
 
     def set_coords_at(self, i, coords):
+        """Called from helpers.procrustes with cartesian coordinates.
+        Then tries to set cartesian coordinate as self.images[i].coords
+        which will raise an error when coord_type != "cart".
+        """
+        assert self.images[i].coord_type == "cart", \
+            "ChainOfStates.set_coords_at() has to be reworked to support " \
+            "internal coordiantes. Try to set 'align: False' in the .yaml file."
         if i in self.moving_indices:
             self.images[i].coords = coords
         # When dealing with a fixed image don't set coords through the
