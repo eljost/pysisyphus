@@ -132,7 +132,28 @@ class GrowingString(GrowingChainOfStates):
         self._tangents = tangents
 
     def get_tangent(self, i):
-        return self._tangents[i]
+        # Use splined tangents with cartesian coordinates
+        if self.coord_type == "cart":
+            return self._tangents[i]
+
+        # With DLC we can use conventional tangents that aren't splined.
+
+        # Upwinding tangent when the string is fully grown.
+        if self.fully_grown:
+            return super().get_tangent(i, kind="upwinding")
+
+        # By definition the tangents shall point inwards during the
+        # growth phase.
+        cur_image = self.images[i]
+        # next_ind = (i + 1) if (i <= self.lf_ind) else (i - 1)
+        if i <= self.lf_ind:
+            next_ind = i + 1
+        else:
+            next_ind = i - 1
+        next_image = self.images[next_ind]
+        tangent = next_image - cur_image
+        tangent /= np.linalg.norm(tangent)
+        return tangent
 
     @ChainOfStates.forces.getter
     def forces(self):
@@ -176,14 +197,14 @@ class GrowingString(GrowingChainOfStates):
         if (not self.fully_grown) and converged(self.lf_ind):
             # Insert at the end of the left string, just before the
             # right frontier node.
-            new_left_frontier = self.get_new_image(self.dummy_coords,
+            new_left_frontier = self.get_new_image(self.zero_step,
                                                    self.rf_ind, self.lf_ind)
             self.left_string.append(new_left_frontier)
             self.log("Added new left frontier node.")
         if (not self.fully_grown) and converged(self.rf_ind):
             # Insert at the end of the right string, just before the
             # current right frontier node.
-            new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind,
+            new_right_frontier = self.get_new_image(self.zero_step, self.rf_ind,
                                                     self.rf_ind)
             self.right_string.append(new_right_frontier)
             self.log("Added new right frontier node.")
