@@ -76,9 +76,9 @@ class GrowingString(GrowingChainOfStates):
         return self.left_size + self.right_size
 
     @property
-    def images_left(self):
-        """Returns wether we already created all images."""
-        return (self.left_size-1 + self.right_size-1) < self.max_nodes
+    def fully_grown(self):
+        """Returns wether the string is fully grown."""
+        return not ((self.left_size-1 + self.right_size-1) < self.max_nodes)
 
     @property
     def lf_ind(self):
@@ -117,11 +117,9 @@ class GrowingString(GrowingChainOfStates):
 
         !!! Right now one must not forget to call this method
         after coordinate modification, e.g. after
-        reparametrization!
-        Otherwise some wrong old tangets are used.
+        reparametrization!  Otherwise some wrong old tangets are used. !!!
         """
 
-        self.log("Setting tangents using hacky method :)")
         tcks, us = self.spline()
         Sk, cur_mesh = self.arc_dims
         self.log(f"Total arclength Sk={Sk:.4f}")
@@ -155,7 +153,7 @@ class GrowingString(GrowingChainOfStates):
         can_reparametrize = True
         self.reparam_in -= 1
         # Fully-grown strings are reparametrized only every n-th cycle
-        if (self.images_left == 0) and not (self.reparam_in == 0):
+        if self.fully_grown and not (self.reparam_in == 0):
             self.log("Skipping reparametrization. Next reparametrization in "
                      f"{self.reparam_in} cycles.")
             self.set_tangents()
@@ -175,14 +173,14 @@ class GrowingString(GrowingChainOfStates):
             return perp_norms[i] <= self.perp_thresh
 
         # Check if we can add new nodes
-        if self.images_left and converged(self.lf_ind):
+        if (not self.fully_grown) and converged(self.lf_ind):
             # Insert at the end of the left string, just before the
             # right frontier node.
             new_left_frontier = self.get_new_image(self.dummy_coords,
                                                    self.rf_ind, self.lf_ind)
             self.left_string.append(new_left_frontier)
             self.log("Added new left frontier node.")
-        if self.images_left and converged(self.rf_ind):
+        if (not self.fully_grown) and converged(self.rf_ind):
             # Insert at the end of the right string, just before the
             # current right frontier node.
             new_right_frontier = self.get_new_image(self.dummy_coords, self.rf_ind,
@@ -206,7 +204,7 @@ class GrowingString(GrowingChainOfStates):
 
     def get_additional_print(self):
         size_str = f"{self.left_size}+{self.right_size}"
-        if self.images_left == 0:
+        if self.fully_grown:
             size_str = "Full"
         size_info = f"String={size_str}"
         energies = np.array(self.all_energies[-1])
