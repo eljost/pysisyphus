@@ -19,9 +19,10 @@ from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
                                 get_coords_diffs)
-from pysisyphus.xyzloader import write_geoms_to_trj
-from pysisyphus.stocastic.align import match_geom_atoms
 from pysisyphus.interpolate import *
+from pysisyphus.intcoords.helpers import form_coordinate_union
+from pysisyphus.stocastic.align import match_geom_atoms
+from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 INTERPOLATE = {
@@ -140,8 +141,13 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     assert interpolate in list(INTERPOLATE.keys()) + [None]
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type)
-
     print(f"Read {len(geoms)} geometries.")
+
+    all_atoms = [geom.atoms for geom in geoms]
+    atoms_0 = all_atoms[0]
+    assert all([atoms_i == atoms_0 for atoms_i in all_atoms]), \
+        "Atom ordering/numbering in the geometries is inconsistent!"
+
     # TODO: Multistep interpolation (when more than two geometries are specified)
     # in internal coordinates may lead to a different number of defined coordinates.
     # Maybe the union between geom0 and geom1 contains 6 internals and the union
@@ -167,11 +173,14 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     # different number of stretches and bends between two geometries, even
     # though the overall number of primitives is the same.
     coord_lengths = np.array([geom.coords.size for geom in geoms])
-    assert (coord_lengths == coord_lengths[0]).all(), \
-        "The number of coordinates defined at each geometry is not " \
-       f"consistent ({coord_lengths})!"
-
-
+    coord_lengths_differ = not (coord_lengths == coord_lengths[0]).all()
+    # Recreate geometries with the same primitive internal coordinates
+    if coord_type != "cart" and coord_lengths_differ:
+        prim_indices = form_coordinate_union(geoms[0], geoms[1])
+        geoms = [Geometry(atoms_0, geom.cart_coords,
+                         coord_type=coord_type, prim_indices=prim_indices)
+                 for geom in geoms]
+        coord_lengths_ = np.array([geom.coords.size for geom in geoms])
     return geoms
 
 
