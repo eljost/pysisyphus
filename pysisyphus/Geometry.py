@@ -110,7 +110,7 @@ class Geometry:
             diff = self.coords - other.coords
         elif self.coord_type in ("redund", "dlc"):
             # Take periodicity of dihedrals into account
-            diff = get_tangent(self.coords, other.coords,
+            diff = get_tangent(self.internal.prim_coords, other.internal.prim_coords,
                                   self.internal.dihed_start)
         else:
             raise Exception("Invalid coord_type!")
