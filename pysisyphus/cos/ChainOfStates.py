@@ -20,6 +20,7 @@ from pysisyphus.xyzloader import make_trj_str
 
 class ChainOfStates:
     logger = logging.getLogger("cos")
+    valid_coord_types = "cart dlc".split()
 
     def __init__(self, images, parallel=0, fix_ends=False,
                  fix_first=False, fix_last=False,
@@ -57,6 +58,8 @@ class ChainOfStates:
         img0 = self.images[0]
         self.image_atoms = copy(img0.atoms)
         self.coord_type = img0.coord_type
+        assert self.coord_type in self.valid_coord_types, \
+                "Invalid coord_type! Supported types are: {self.valid_coord_types}"
         try:
             self.prim_indices = img0.internal.prim_indices
         except AttributeError:
