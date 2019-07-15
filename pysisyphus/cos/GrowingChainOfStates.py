@@ -15,6 +15,7 @@ class GrowingChainOfStates(ChainOfStates):
 
         self.max_nodes = max_nodes
         self.calc_getter = calc_getter
+        self.zero_step = np.zeros_like(self.images[0].coords)
 
     def get_new_image(self, step, before_index, ref_index):
         ref_image = self.images[ref_index]
@@ -35,9 +36,9 @@ class GrowingChainOfStates(ChainOfStates):
         self.log(f"Create new image; insert it before index {index}.")
         return new_image
 
-    @property
-    def dummy_coords(self):
-        return np.empty_like(self.images[0].cart_coords)
+    # @property
+    # def dummy_coords(self):
+        # return np.empty_like(self.images[0].cart_coords)
 
     @property
     def arc_dims(self):
