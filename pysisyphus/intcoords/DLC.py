@@ -16,6 +16,9 @@ class DLC(RedundantCoords):
         super().__init__(*args, **kwargs)
 
         self.U = self.get_active_set(self.B_prim)
+        # Keep a copy of the original active set, in case self.U gets
+        # modified by applying some constraints.
+        self.U_unconstrained = self.U.copy()
 
     @property
     def U(self):
@@ -41,8 +44,9 @@ class DLC(RedundantCoords):
         return self.U.T.dot(self.B_prim)
 
     def project_hessian(self, H):
-        """As we work in the non-redundant subspace we don't have to project
-        the hessian."""
+        """As we already work in the non-redundant subspace we don't have
+        to project/shift the hessian as we do it for simple redundant
+        internal coordinates."""
         return H
 
     def transform_int_step(self, step, *args, **kwargs):
@@ -70,7 +74,7 @@ class DLC(RedundantCoords):
         return c_proj
 
     def apply_constraints(self, constraint_vecs):
-        original_U_shape = self.U.shape
+        original_U_shape = self.U_unconstrained.shape
         constr_num = constraint_vecs.shape[1]
         V = np.concatenate((constraint_vecs, self.U), axis=1)
         orthonormalized = gram_schmidt(V.T).T
@@ -87,12 +91,20 @@ class DLC(RedundantCoords):
         return U_proj
 
     def freeze_primitives(self, prim_atom_indices):
+        """Freeze primitive internal coordinates.
+
+        Parameters
+        ----------
+        prim_atom_indices : iterable of atom index iterables
+            Iterable containing atom index iterables that define the primitive
+            internal to be frozen.
+        """
         prim_indices = [self.get_index_of_prim_coord(pai)
                         for pai in prim_atom_indices
         ]
         _ = [self.project_primitive_on_active_set(pi)
                                 for pi in prim_indices
         ]
-        projected_primitives = np.stack(_, axis=-1)
+        projected_primitives = np.array(_).T
         U_proj = self.apply_constraints(projected_primitives)
         self.U = U_proj
