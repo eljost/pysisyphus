@@ -14,8 +14,10 @@ from pysisyphus.interpolate.Interpolator import Interpolator
 
 class LST(Interpolator):
 
-    def __init__(self, geoms, between, align=True):
+    def __init__(self, geoms, between, align=True, gtol=1e-4):
         super().__init__(geoms, between, align)
+
+        self.gtol = float(gtol)
 
     def cost_function(self, wa_c, f, rab, wab):
         wa_c = wa_c.reshape(-1, 3)
@@ -53,7 +55,7 @@ class LST(Interpolator):
         minimize_kwargs = {
             "method": "L-BFGS-B",
             "options": {
-               "gtol": 1e-4,
+               "gtol": self.gtol,
             }
         }
         # We only have to interpolate between the two provided geometries.
