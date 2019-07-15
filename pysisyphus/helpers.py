@@ -80,7 +80,7 @@ def align_geoms(geoms):
 def procrustes(geometry):
     # http://nghiaho.com/?page_id=671#comment-559906
     image0 = geometry.images[0]
-    coords3d = image0.coords.reshape(-1, 3)
+    coords3d = image0.coords3d
     centroid = coords3d.mean(axis=0)
     last_centered = coords3d - centroid
     geometry.set_coords_at(0, last_centered.flatten())
@@ -90,7 +90,7 @@ def procrustes(geometry):
     # for every atom.
     rot_mats = [np.eye(3)]*atoms_per_image
     for i, image in enumerate(geometry.images[1:], 1):
-        coords3d = image.coords.reshape(-1, 3)
+        coords3d = image.coords3d
         centroid = coords3d.mean(axis=0)
         # Center next image
         centered = coords3d - centroid
