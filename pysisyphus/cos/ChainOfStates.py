@@ -40,7 +40,6 @@ class ChainOfStates:
         self._forces = None
         self._energy = None
         self.counter = 0
-        # For an image of N atoms coords_lengths will be 3N
         self.coords_length = self.images[0].coords.size
         self.zero_vec = np.zeros(self.coords_length)
 
