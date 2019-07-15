@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from copy import copy
 import logging
 from multiprocessing import Pool
 
@@ -52,6 +53,14 @@ class ChainOfStates:
         self.started_climbing = self.climb_rms == -1
         if self.started_climbing:
             self.log("Will start climbing immediately.")
+
+        img0 = self.images[0]
+        self.image_atoms = copy(img0.atoms)
+        self.coord_type = img0.coord_type
+        try:
+            self.prim_indices = img0.internal.prim_indices
+        except AttributeError:
+            self.prim_indices = None
 
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
