@@ -222,7 +222,8 @@ class ChainOfStates:
 
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
-        return forces - forces.dot(tangent)*tangent
+        perp_forces = forces - forces.dot(tangent)*tangent
+        return perp_forces
 
     @property
     def gradient(self):

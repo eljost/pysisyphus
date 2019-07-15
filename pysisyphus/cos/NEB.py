@@ -12,6 +12,8 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 #     Sheppard, 2008
 # [4] https://aip.scitation.org/doi/pdf/10.1063/1.1636455
 #     Trygubenko, 2004
+# [5] Nudged Elastic Band Method for Finding Minimum Energy Paths of Transitions
+#     Hannes Jónsson , Greg Mills , Karsten W. Jacobsen
 # https://github.com/cstein/neb/blob/master/neb/neb.py
 
 
@@ -105,6 +107,12 @@ class NEB(ChainOfStates):
         # perpendicular force the DNEB forces is nearly fully quenched.
         dneb_factor = 2/np.pi * np.arctan2(perp_norm**2, perp_spring_norm**2)
         dneb_forces_quenched = dneb_factor * dneb_forces
+
+        # An alternative switchting function is given in [5], Eq. (10)
+        # f(phi) = 1/2 * (1 + cos(pi*cos(theta)))
+        # f -> 0 for a straight path (theta -> 0°)
+        # f -> 1 for a perpendicular path (theta -> 90°)
+        # cos(theta) = (R_(i+1) - R_i) * (R_i - R_(i-1)) / (norm of numerator)
 
         return dneb_forces_quenched
 
