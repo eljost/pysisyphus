@@ -17,17 +17,22 @@ def test_dlc_constraints():
     xyz_fn = "fluorethylene.xyz"
     geom = geom_from_library(xyz_fn, coord_type="dlc")
     freeze = ((0, 1), (2, 0, 3))
-    geom.internal.freeze_primitives(freeze)
-    U = geom.internal.U
+    int_ = geom.internal
+    int_.freeze_primitives(freeze)
+    U = int_.U
+    # import pdb; pdb.set_trace()
     assert U[0].sum() == approx(0)
     assert U[8].sum() == approx(0)
+    constraints = int_.constraints
+    int_.reset_constraints()
+    constraints_ = int_.constraints
 
 
 def run():
     xyz_fn = "fluorethylene.xyz"
     geom = geom_from_library(xyz_fn, coord_type="dlc")
-    # freeze = ((0, 1), (2, 0, 3))
-    # geom.internal.freeze_primitives(freeze)
+    freeze = ((0, 1), (2, 0, 3))
+    geom.internal.freeze_primitives(freeze)
 
     # XTB
     calc = XTB()
