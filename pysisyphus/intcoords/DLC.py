@@ -17,8 +17,10 @@ class DLC(RedundantCoords):
 
         self.U = self.get_active_set(self.B_prim)
         # Keep a copy of the original active set, in case self.U gets
-        # modified by applying some constraints.
+        # modified by constraint application.
         self.U_unconstrained = self.U.copy()
+        self.original_U_shape = self.U_unconstrained.shape
+        self._constraints = tuple()
 
     @property
     def U(self):
@@ -33,6 +35,24 @@ class DLC(RedundantCoords):
     @property
     def Ut_inv(self):
         return self._Ut_inv
+
+    @property
+    def constraints(self):
+        return self._constraints
+
+    @constraints.setter
+    def constraints(self, constraints):
+        constraints = np.array(constraints)
+        constraints.flags.writeable = False
+        # Constraint columns should be same length as columns of U.
+        assert constraints.shape[0] == self.U.shape[0]
+        self._constraints = constraints
+        U_constrained = self.get_constrained_U(self._constraints)
+        self.U = U_constrained
+
+    def reset_constraints(self):
+        self._constraints = tuple()
+        self.U = self.U_unconstrained
 
     @property
     def coords(self):
@@ -73,15 +93,15 @@ class DLC(RedundantCoords):
         c_proj /= np.linalg.norm(c_proj)
         return c_proj
 
-    def apply_constraints(self, constraint_vecs):
-        original_U_shape = self.U_unconstrained.shape
+    def get_constrained_U(self, constraint_vecs):
+        # Constraints are organized in columns
         constr_num = constraint_vecs.shape[1]
         V = np.concatenate((constraint_vecs, self.U), axis=1)
         orthonormalized = gram_schmidt(V.T).T
         # During Gram-Schmidt a number of columns of U should have
         # dropped out. They are replaced by the constraint_vecs, so
         # the total shape of should not change.
-        assert orthonormalized.shape[1] == original_U_shape[1]
+        assert orthonormalized.shape[1] == self.original_U_shape[1]
         # Remove constraint vectors
         # [1] states that we somehow have to keep the constraint vectors
         # (or the corresponding unit vectors) for the iterative
@@ -106,5 +126,4 @@ class DLC(RedundantCoords):
                                 for pi in prim_indices
         ]
         projected_primitives = np.array(_).T
-        U_proj = self.apply_constraints(projected_primitives)
-        self.U = U_proj
+        self.constraints = projected_primitives
