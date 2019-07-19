@@ -120,9 +120,9 @@ class GrowingString(GrowingChainOfStates):
 
     @property
     def fully_grown(self):
-        """Returns wether the string is fully grown."""
-        # return not ((self.left_size-1 + self.right_size-1) < self.max_nodes)
-        return not (self.string_size < self.max_nodes)
+        """Returns wether the string is fully grown. Don't count the first
+        and last node."""
+        return not ((self.string_size - 2) < self.max_nodes)
 
     @property
     def lf_ind(self):
@@ -241,7 +241,8 @@ class GrowingString(GrowingChainOfStates):
         def converged(i):
             return perp_norms[i] <= self.perp_thresh
 
-        # Check if we can add new nodes
+        # We can add new nodes if the string is not yet fully grown
+        # and if the frontier nodes are converged below self.perp_thresh.
         if (not self.fully_grown) and converged(self.lf_ind):
             # Insert at the end of the left string, just before the
             # right frontier node.
@@ -262,22 +263,16 @@ class GrowingString(GrowingChainOfStates):
         left_inds = np.arange(self.left_size)
         right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
         param_inds = np.concatenate((left_inds, right_inds))
-        param_density = self.sk*param_inds
-        self.log(f"New param density: " + np.array2string(param_density, precision=2))
+        desired_param_density = self.sk*param_inds
+        pd_str = np.array2string(desired_param_density, precision=2)
+        self.log(f"Desired param density: {pd_str}")
 
         if self.coord_type == "cart":
-            self.reparam(tcks, param_density)
+            self.reparam(tcks, desired_param_density)
             self.set_tangents()
         elif self.coord_type == "dlc":
-            # coord_diffs = np.diff([image.coords for image in self.images], axis=0)
-            coords_ = self.coords.reshape(len(self.images), -1)
-            diffs = coords_ - coords_[0]
-            norms = np.linalg.norm(diffs, axis=1)
-            # Assert that the last images is also the one that is the farthest
-            assert norms[-1] == norms.max()
-            cur_param_density = norms / norms.max()
-        else:
-            raise Execption()
+            cur_param_density = self.get_cur_param_density("coords")
+            import pdb; pdb.set_trace()
         self.reparam_in = self.reparam_every
 
         return True
