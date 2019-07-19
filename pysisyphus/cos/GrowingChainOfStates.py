@@ -18,8 +18,7 @@ class GrowingChainOfStates(ChainOfStates):
         self.zero_step = np.zeros_like(self.images[0].coords)
 
     def get_new_image(self, step, before_index, ref_index):
-        ref_image = self.images[ref_index]
-        new_image = ref_image.copy()
+        new_image = self.images[ref_index].copy()
         new_coords = new_image.coords + step
         new_image.coords = new_coords
         new_image.set_calculator(self.calc_getter())
