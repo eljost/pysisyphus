@@ -116,17 +116,30 @@ def test_anapot_growingstring_opt():
     gs_kwargs = {
         "max_nodes": 10,
         "perp_thresh": 0.5,
+        # "perp_thresh": 1,
     }
     gs = GrowingString(images, calc_getter)
-    from pysisyphus.optimizers.QuickMin import QuickMin
-    opt = QuickMin(gs)
-    opt.run()
+    from pysisyphus.cos.GSref import GrowingString as GS
+    # from pysisyphus.optimizers.QuickMin import QuickMin
+    # opt = QuickMin(gs)
+    # self.coords = [c.reshape(-1, 3) for c in self.gs.coords_list]
+    # self.tangents = self.gs.tangent_list
+    # self.perp_forces = self.gs.perp_force_list
 
+    from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+    # opt = SteepestDescent(gs, alpha=0.05, bt_disable=True, max_cycles=175)
+    opt = SteepestDescent(gs, alpha=0.05, bt_disable=True, max_cycles=70)
+    opt.run()
     xlim = (-2, 2.5)
     ylim = (0, 5)
     levels = (-3, 4, 80)
     ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
     ap.animate()
+
+    # gs_ = GS(images, AnaPot, )
+    # gs_.run()
+    # ap = AnimGS(gs_, AnaPot)
+    # ap.animate()
 
 
 def test_mb_gs_opt():
@@ -213,8 +226,8 @@ if __name__ == "__main__":
     # test_anapot_growingnt()
     # test_mullerbrown_growingnt()
     # test_four_well_growingnt()
-    # test_anapot_growingstring_opt()
+    test_anapot_growingstring_opt()
     # test_mb_gs_opt()
-    # plt.show()
+    plt.show()
     # test_gs()
-    test_fs()
+    # test_fs()
