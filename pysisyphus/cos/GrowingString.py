@@ -36,25 +36,50 @@ class GrowingString(GrowingChainOfStates):
         self.perp_forces_list = list()
         self.coords_list = list()
 
+        left_img, right_img = self.images
         # Adding nodes requires a direction/tangent. As we start
         # from two images we can't do a cubic spline yet, so there are also
         # no splined tangents.
         # For the first two new nodes we use a simple tangent: the
         # unit vector pointing from the left to the right image.
-        # As "get_tangent" is reimplemented in this class we call the
-        # implementation of the parent ChainOfStates class.
-        init_tangent = super().get_tangent(0)
-        # Initial distances between left and right image
-        Sk, _ = self.arc_dims
-        S = Sk / (self.max_nodes+1)
-        # Create first two mobile nodes
-        left_img, right_img = self.images
-        left_step = S*init_tangent
-        right_step = -S*init_tangent
+        #
+        # With cartesian coordinate we can use the same tangent for both
+        # sides of the string.
+        if self.coord_type == "cart":
+            # As "get_tangent" is reimplemented in this class we call the
+            # implementation of the parent ChainOfStates class.
+            init_tangent = super().get_tangent(0)
+            # Initial distances between left and right image
+            Sk, _ = self.arc_dims
+            S = Sk / (self.max_nodes+1)
+            # Create first two mobile nodes
+            left_step = S*init_tangent
+            right_step = -S*init_tangent
+        # With DLC we can't use the same tangent for both sides of the string.
+        # While left_img and right_img got the same set of primitive internals,
+        # they don't share the same active set U. As the DLC tangent is given
+        # in the respective active set U, we have to calculate a different tanget
+        # for each image.
+        # TODO: Use a primitive tangent, instead of a DLC tangent.
+        elif self.coord_type == "dlc":
+            left_right_tangent = left_img - right_img
+            l_norm = np.linalg.norm(left_right_tangent)
+            Sl = l_norm / (self.max_nodes+1)
+            left_step = Sl*left_right_tangent/l_norm
+
+            right_left_tangent = right_img - left_img
+            r_norm = np.linalg.norm(right_left_tangent)
+            Sr = r_norm / (self.max_nodes+1)
+            right_step = Sr*right_left_tangent/r_norm
+        else:
+            raise Exception("Iohoh")
+
         left_frontier = self.get_new_image(left_step, 1, 0)
         self.left_string.append(left_frontier)
         right_frontier = self.get_new_image(right_step, 2, 2)
         self.right_string.append(right_frontier)
+        capd = self.get_cur_param_density("cart")
+        copd = self.get_cur_param_density("coords")
 
         # Now we have four images and can calculate an initial set of tangents
         # as first derivative of the cubic spline.
@@ -62,6 +87,24 @@ class GrowingString(GrowingChainOfStates):
         # The desired spacing of the nodes in the final string on the
         # normalized arclength.
         self.sk = 1 / (self.max_nodes+1)
+
+    def get_cur_param_density(self, kind="cart"):
+        if kind == "cart":
+            coords = np.array([image.cart_coords for image in self.images])
+            coords_ = coords.reshape(len(self.images), -1)
+            diffs = coords_ - coords_[0]
+        elif kind == "coords":
+            image0 = self.images[0]
+            diffs = np.array([image-image0 for image in self.images])
+        else:
+            raise Exception("Invalid kind")
+
+        norms = np.linalg.norm(diffs, axis=1)
+        # Assert that the last (rightmost) image is also the one that is the
+        # farthest away from the first (leftmost) image.
+        assert norms[-1] == norms.max()
+        cur_param_density = norms / norms.max()
+        return cur_param_density
 
     @property
     def left_size(self):
@@ -78,7 +121,8 @@ class GrowingString(GrowingChainOfStates):
     @property
     def fully_grown(self):
         """Returns wether the string is fully grown."""
-        return not ((self.left_size-1 + self.right_size-1) < self.max_nodes)
+        # return not ((self.left_size-1 + self.right_size-1) < self.max_nodes)
+        return not (self.string_size < self.max_nodes)
 
     @property
     def lf_ind(self):
@@ -110,14 +154,15 @@ class GrowingString(GrowingChainOfStates):
     def set_tangents(self):
         """Set tangents as given by the first derivative of a cubic spline.
 
-        Tangent-calculation by splines requires the information of all
+        Tangent-calculation by splining requires the information of all
         images at once. To avoid the repeated splining of all images whenever
         a tangent is requested this method calculates all tangents and stores
-        them in the self._tangents, that can be accessed via self.tangents.
+        them in the self._tangents, that can be accessed via the self.tangents
+        property.
 
         !!! Right now one must not forget to call this method
         after coordinate modification, e.g. after
-        reparametrization!  Otherwise some wrong old tangets are used. !!!
+        reparametrization!  Otherwise wrong (old) tangets are used. !!!
         """
 
         tcks, us = self.spline()
@@ -167,6 +212,7 @@ class GrowingString(GrowingChainOfStates):
         # TODO: Add climbing modification
         # total_forces = self.set_climbing_forces(total_forces)
 
+        np.save("gs_perp.npy", self._forces)
         return self._forces
 
     def reparametrize(self):
@@ -230,7 +276,6 @@ class GrowingString(GrowingChainOfStates):
             # Assert that the last images is also the one that is the farthest
             assert norms[-1] == norms.max()
             cur_param_density = norms / norms.max()
-            import pdb; pdb.set_trace()
         else:
             raise Execption()
         self.reparam_in = self.reparam_every
