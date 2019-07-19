@@ -30,6 +30,10 @@ class GrowingString(GrowingChainOfStates):
         self.left_string = [left_img, ]
         self.right_string = [right_img, ]
 
+        # The desired spacing of the nodes in the final string on the
+        # normalized arclength.
+        self.sk = 1 / (self.max_nodes+1)
+
         self.reparam_in = reparam_every
         self._tangents = None
         self.tangent_list = list()
@@ -37,56 +41,71 @@ class GrowingString(GrowingChainOfStates):
         self.coords_list = list()
 
         left_img, right_img = self.images
-        # Adding nodes requires a direction/tangent. As we start
-        # from two images we can't do a cubic spline yet, so there are also
-        # no splined tangents.
-        # For the first two new nodes we use a simple tangent: the
-        # unit vector pointing from the left to the right image.
-        #
-        # With cartesian coordinate we can use the same tangent for both
-        # sides of the string.
-        if self.coord_type == "cart":
-            # As "get_tangent" is reimplemented in this class we call the
-            # implementation of the parent ChainOfStates class.
-            init_tangent = super().get_tangent(0)
-            # Initial distances between left and right image
-            Sk, _ = self.arc_dims
-            S = Sk / (self.max_nodes+1)
-            # Create first two mobile nodes
-            left_step = S*init_tangent
-            right_step = -S*init_tangent
-        # With DLC we can't use the same tangent for both sides of the string.
-        # While left_img and right_img got the same set of primitive internals,
-        # they don't share the same active set U. As the DLC tangent is given
-        # in the respective active set U, we have to calculate a different tanget
-        # for each image.
-        # TODO: Use a primitive tangent, instead of a DLC tangent.
-        elif self.coord_type == "dlc":
-            left_right_tangent = left_img - right_img
-            l_norm = np.linalg.norm(left_right_tangent)
-            Sl = l_norm / (self.max_nodes+1)
-            left_step = Sl*left_right_tangent/l_norm
 
-            right_left_tangent = right_img - left_img
-            r_norm = np.linalg.norm(right_left_tangent)
-            Sr = r_norm / (self.max_nodes+1)
-            right_step = Sr*right_left_tangent/r_norm
-        else:
-            raise Exception("Invalid coord_type.")
+        # # Adding nodes requires a direction/tangent. As we start
+        # # from two images we can't do a cubic spline yet, so there are also
+        # # no splined tangents.
+        # # For the first two new nodes we use a simple tangent: the
+        # # unit vector pointing from the left to the right image.
+        # #
+        # # With cartesian coordinate we can use the same tangent for both
+        # # sides of the string.
+        # if self.coord_type == "cart":
+            # # As "get_tangent" is reimplemented in this class we call the
+            # # implementation of the parent ChainOfStates class.
+            # init_tangent = super().get_tangent(0)
+            # # Initial distances between left and right image
+            # Sk, _ = self.arc_dims
+            # S = Sk / (self.max_nodes+1)
+            # # Create first two mobile nodes
+            # left_step = S*init_tangent
+            # right_step = -S*init_tangent
+        # # With DLC we can't use the same tangent for both sides of the string.
+        # # While left_img and right_img got the same set of primitive internals,
+        # # they don't share the same active set U. As the DLC tangent is given
+        # # in the respective active set U, we have to calculate a different tanget
+        # # for each image.
+        # # TODO: Use a primitive tangent, instead of a DLC tangent.
+        # elif self.coord_type == "dlc":
+            # left_right_tangent = left_img - right_img
+            # print("left right tangent", left_right_tangent)
+            # l_norm = np.linalg.norm(left_right_tangent)
+            # Sl = l_norm / (self.max_nodes+1)
+            # left_step = Sl*left_right_tangent/l_norm
+            # ls = left_right_tangent/(self.max_nodes+1)
 
-        left_frontier = self.get_new_image(left_step, 1, 0)
+            # right_left_tangent = right_img - left_img
+            # r_norm = np.linalg.norm(right_left_tangent)
+            # Sr = r_norm / (self.max_nodes+1)
+            # right_step = Sr*right_left_tangent/r_norm
+        # else:
+            # raise Exception("Invalid coord_type.")
+
+        # print("left_step", left_step)
+        # print("ls", ls)
+        # left_frontier = super().get_new_image(left_step, 1, 0)
+        # left_frontier = self.get_new_image(left_step, 1, 0)
+        # lf = self.get_new_image(0)
+        # import pdb; pdb.set_trace()
+
+        # s = (right_img - left_img) / (self.max_nodes+1)
+        left_frontier = self.get_new_image(self.lf_ind)
         self.left_string.append(left_frontier)
-        right_frontier = self.get_new_image(right_step, 2, 2)
+        # pd = self.get_cur_param_density("coords")
+        # pda = self.get_cur_param_density("cart")
+        # import pdb; pdb.set_trace()
+        right_frontier = self.get_new_image(self.rf_ind)
         self.right_string.append(right_frontier)
+        # right_frontier = self.get_new_image(right_step, 2, 2)
+        # self.right_string.insert(right_frontier)
+        pd = self.get_cur_param_density("coords")
+        pda = self.get_cur_param_density("cart")
         # cart_param_density = self.get_cur_param_density("cart")
         # coord_param_density = self.get_cur_param_density("coords")
 
         # Now we have four images and can calculate an initial set of tangents
         # as first derivative of the cubic spline.
         self.set_tangents()
-        # The desired spacing of the nodes in the final string on the
-        # normalized arclength.
-        self.sk = 1 / (self.max_nodes+1)
 
     def get_cur_param_density(self, kind="cart"):
         if kind == "cart":
@@ -105,6 +124,32 @@ class GrowingString(GrowingChainOfStates):
         assert norms[-1] == norms.max()
         cur_param_density = norms / norms.max()
         return cur_param_density
+
+    def get_new_image(self, ref_index):
+        """Get new image by taking a step from self.images[ref_index] towards
+        the center of the string."""
+        new_img = self.images[ref_index].copy()
+
+        if ref_index <= self.lf_ind:
+            tangent_ind = ref_index + 1
+            insert_ind = tangent_ind
+        else:
+            tangent_ind = ref_index - 1
+            insert_ind = ref_index
+        tangent_img = self.images[tangent_ind]
+        distance = new_img - tangent_img
+        cpd = self.get_cur_param_density("coords")
+        param_dens_diff = abs(cpd[ref_index] - cpd[tangent_ind])
+        step_length = self.sk / param_dens_diff
+        step = step_length * distance
+
+        new_coords = new_img.coords + step
+        new_img.coords = new_coords
+        new_img.set_calculator(self.calc_getter())
+        self.images.insert(insert_ind, new_img)
+        self.log(f"Created new image; inserted it before index {insert_ind}.")
+        return new_img
+
 
     @property
     def left_size(self):
@@ -134,6 +179,13 @@ class GrowingString(GrowingChainOfStates):
         """Index of the right frontier node in self.images."""
         return self.lf_ind+1
 
+    @property
+    def full_string_image_inds(self):
+        left_inds = np.arange(self.left_size)
+        right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
+        image_inds = np.concatenate((left_inds, right_inds))
+        return image_inds
+
     def spline(self):
         reshaped = self.coords.reshape(-1, self.coords_length)
         # To use splprep we have to transpose the coords.
@@ -145,11 +197,62 @@ class GrowingString(GrowingChainOfStates):
         return tcks, us
 
     def reparam(self, tcks, param_density):
+        print("reparam")
         # Reparametrize mesh
         new_points = np.vstack([splev(param_density, tck) for tck in tcks])
         # Flatten along first dimension.
         new_points = new_points.reshape(-1, len(self.images))
         self.coords = new_points.transpose().flatten()
+
+    def reparam_dlc(self, cur_param_density, desired_param_density):
+        # Reparametrization will take place between two images. The index
+        # of the second image depends on wether the image is above or below
+        # the desired param_density.
+        diffs = desired_param_density - cur_param_density
+        # Negative sign: image is too far right and has to be shifted left.
+        # Positive sign: image is too far left and has to be shifted right.
+        signs = np.sign(diffs).astype(int)
+        need_reparam = signs != 0
+        image_inds = np.arange(len(self.images), dtype=int)
+        inds_to_reparam = image_inds[need_reparam]
+        tangent_inds = inds_to_reparam + signs[need_reparam]
+        zipped = zip(inds_to_reparam, tangent_inds, diffs[need_reparam])
+        for reparam_ind, tangent_ind, diff in zipped:
+            reparam_img = self.images[reparam_ind]
+            tangent_img = self.images[tangent_ind]
+            distance = reparam_img - tangent_img
+            print(reparam_ind, tangent_ind)
+            import pdb; pdb.set_trace()
+        pass
+
+    def reparam_dlc(self, cur_param_density, desired_param_density):
+        # Reparametrization will take place between two images. The index
+        # of the second image depends on wether the image is above or below
+        # the desired param_density.
+        diffs = desired_param_density - cur_param_density
+        signs = np.sign(diffs).astype(int)
+        for i, (diff, sign) in enumerate(zip(diffs, signs)):
+            if abs(diff) < 1e-3:
+                continue
+            tangent_ind = i + sign
+            reparam_image = self.images[i]
+            distance = reparam_iamge - tangent_ind
+            import pdb; pdb.set_trace()
+        # Negative sign: image is too far right and has to be shifted left.
+        # Positive sign: image is too far left and has to be shifted right.
+        signs = np.sign(diffs).astype(int)
+        need_reparam = signs != 0
+        image_inds = np.arange(len(self.images), dtype=int)
+        inds_to_reparam = image_inds[need_reparam]
+        tangent_inds = inds_to_reparam + signs[need_reparam]
+        zipped = zip(inds_to_reparam, tangent_inds, diffs[need_reparam])
+        for reparam_ind, tangent_ind, diff in zipped:
+            reparam_img = self.images[reparam_ind]
+            tangent_img = self.images[tangent_ind]
+            distance = reparam_img - tangent_img
+            print(reparam_ind, tangent_ind)
+            import pdb; pdb.set_trace()
+        pass
 
     def set_tangents(self):
         """Set tangents as given by the first derivative of a cubic spline.
@@ -243,36 +346,44 @@ class GrowingString(GrowingChainOfStates):
 
         # We can add new nodes if the string is not yet fully grown
         # and if the frontier nodes are converged below self.perp_thresh.
+        # Right now we add the new image(s) with a zero step, so they got
+        # the same coordinates as the respective frontier geometry.
+        # We then rely on reparametrization to assign the correct coordinates.
         if (not self.fully_grown) and converged(self.lf_ind):
             # Insert at the end of the left string, just before the
             # right frontier node.
-            new_left_frontier = self.get_new_image(self.zero_step,
-                                                   self.rf_ind, self.lf_ind)
+            # new_left_frontier = self.get_new_image(self.zero_step,
+                                                   # self.rf_ind, self.lf_ind)
+            # self.left_string.append(new_left_frontier)
+            new_left_frontier = self.get_new_image(self.lf_ind)
             self.left_string.append(new_left_frontier)
             self.log("Added new left frontier node.")
         if (not self.fully_grown) and converged(self.rf_ind):
             # Insert at the end of the right string, just before the
             # current right frontier node.
-            new_right_frontier = self.get_new_image(self.zero_step, self.rf_ind,
-                                                    self.rf_ind)
+            # new_right_frontier = self.get_new_image(self.zero_step, self.rf_ind,
+                                                    # self.rf_ind)
+            # self.right_string.append(new_right_frontier)
+            new_right_frontier = self.get_new_image(self.rf_ind)
             self.right_string.append(new_right_frontier)
             self.log("Added new right frontier node.")
 
         self.log(f"Current string size: {self.left_size}+{self.right_size}")
-        # Reparametrize nodes
-        left_inds = np.arange(self.left_size)
-        right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
-        param_inds = np.concatenate((left_inds, right_inds))
-        desired_param_density = self.sk*param_inds
+
+        # Prepare node reparametrization
+        desired_param_density = self.sk*self.full_string_image_inds
         pd_str = np.array2string(desired_param_density, precision=2)
         self.log(f"Desired param density: {pd_str}")
 
+        # TODO: Add some kind of threshold and only reparametrize when
+        # the deviation from the desired param_density is above the threshold.
         if self.coord_type == "cart":
             self.reparam(tcks, desired_param_density)
             self.set_tangents()
         elif self.coord_type == "dlc":
             cur_param_density = self.get_cur_param_density("coords")
-            import pdb; pdb.set_trace()
+            self.reparam_dlc(cur_param_density, desired_param_density)
+        import pdb; pdb.set_trace()
         self.reparam_in = self.reparam_every
 
         return True
