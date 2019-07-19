@@ -72,14 +72,14 @@ class GrowingString(GrowingChainOfStates):
             Sr = r_norm / (self.max_nodes+1)
             right_step = Sr*right_left_tangent/r_norm
         else:
-            raise Exception("Iohoh")
+            raise Exception("Invalid coord_type.")
 
         left_frontier = self.get_new_image(left_step, 1, 0)
         self.left_string.append(left_frontier)
         right_frontier = self.get_new_image(right_step, 2, 2)
         self.right_string.append(right_frontier)
-        capd = self.get_cur_param_density("cart")
-        copd = self.get_cur_param_density("coords")
+        # cart_param_density = self.get_cur_param_density("cart")
+        # coord_param_density = self.get_cur_param_density("coords")
 
         # Now we have four images and can calculate an initial set of tangents
         # as first derivative of the cubic spline.
