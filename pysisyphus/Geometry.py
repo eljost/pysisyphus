@@ -109,9 +109,18 @@ class Geometry:
         if self.coord_type == "cart":
             diff = self.coords - other.coords
         elif self.coord_type in ("redund", "dlc"):
-            # Take periodicity of dihedrals into account
-            diff = get_tangent(self.internal.prim_coords, other.internal.prim_coords,
-                                  self.internal.dihed_start)
+            # Take periodicity of dihedrals into account by calling
+            # get_tangent(). Care has to be taken regarding the orientation
+            # of the returned tangent vector. It points from self to other.
+            #
+            # As we want to return the difference between two vectors we
+            # have to reverse the direction of the tangent by multiplying it
+            # with -1 to be consistent with basic subtraction laws ...
+            # A - B = C, where C is a vector pointing from B to A (B + C = A)
+            # In our case get_tangent returns B - A, that is a vector pointing
+            # from A to B.
+            diff = -get_tangent(self.internal.prim_coords, other.internal.prim_coords,
+                               self.internal.dihed_start)
         else:
             raise Exception("Invalid coord_type!")
 
