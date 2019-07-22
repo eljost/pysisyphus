@@ -137,6 +137,13 @@ class GrowingString(GrowingChainOfStates):
             tangent_ind = ref_index - 1
             insert_ind = ref_index
         tangent_img = self.images[tangent_ind]
+        # The desired step(_length) for the new image be can be easily determined
+        # from a simple rule of proportion by relating the actual distance between
+        # two images to their parametrization density difference on the normalized
+        # arclength and the desired spacing given by self.sk.
+        #
+        # Δparam_density / distance = self.sk / step
+        # step = self.sk / Δparam_density * distance
         distance = new_img - tangent_img
         cpd = self.get_cur_param_density("coords")
         param_dens_diff = abs(cpd[ref_index] - cpd[tangent_ind])
@@ -149,7 +156,6 @@ class GrowingString(GrowingChainOfStates):
         self.images.insert(insert_ind, new_img)
         self.log(f"Created new image; inserted it before index {insert_ind}.")
         return new_img
-
 
     @property
     def left_size(self):
@@ -196,63 +202,38 @@ class GrowingString(GrowingChainOfStates):
         )
         return tcks, us
 
-    def reparam(self, tcks, param_density):
-        print("reparam")
+    def reparam_cart(self, tcks, param_density):
         # Reparametrize mesh
         new_points = np.vstack([splev(param_density, tck) for tck in tcks])
         # Flatten along first dimension.
         new_points = new_points.reshape(-1, len(self.images))
         self.coords = new_points.transpose().flatten()
 
-    def reparam_dlc(self, cur_param_density, desired_param_density):
-        # Reparametrization will take place between two images. The index
-        # of the second image depends on wether the image is above or below
-        # the desired param_density.
+    def reparam_dlc(self, cur_param_density, desired_param_density, thresh=1e-3):
+        # Reparametrization will take place along the tangent between two
+        # images. The index of the tangent image depends on wether the image
+        # is above or below the desired param_density on the normalized arc.
         diffs = desired_param_density - cur_param_density
         # Negative sign: image is too far right and has to be shifted left.
         # Positive sign: image is too far left and has to be shifted right.
-        signs = np.sign(diffs).astype(int)
-        need_reparam = signs != 0
-        image_inds = np.arange(len(self.images), dtype=int)
-        inds_to_reparam = image_inds[need_reparam]
-        tangent_inds = inds_to_reparam + signs[need_reparam]
-        zipped = zip(inds_to_reparam, tangent_inds, diffs[need_reparam])
-        for reparam_ind, tangent_ind, diff in zipped:
-            reparam_img = self.images[reparam_ind]
-            tangent_img = self.images[tangent_ind]
-            distance = reparam_img - tangent_img
-            print(reparam_ind, tangent_ind)
-            import pdb; pdb.set_trace()
-        pass
-
-    def reparam_dlc(self, cur_param_density, desired_param_density):
-        # Reparametrization will take place between two images. The index
-        # of the second image depends on wether the image is above or below
-        # the desired param_density.
-        diffs = desired_param_density - cur_param_density
         signs = np.sign(diffs).astype(int)
         for i, (diff, sign) in enumerate(zip(diffs, signs)):
-            if abs(diff) < 1e-3:
+            if abs(diff) < thresh:
                 continue
-            tangent_ind = i + sign
             reparam_image = self.images[i]
-            distance = reparam_iamge - tangent_ind
-            import pdb; pdb.set_trace()
-        # Negative sign: image is too far right and has to be shifted left.
-        # Positive sign: image is too far left and has to be shifted right.
-        signs = np.sign(diffs).astype(int)
-        need_reparam = signs != 0
-        image_inds = np.arange(len(self.images), dtype=int)
-        inds_to_reparam = image_inds[need_reparam]
-        tangent_inds = inds_to_reparam + signs[need_reparam]
-        zipped = zip(inds_to_reparam, tangent_inds, diffs[need_reparam])
-        for reparam_ind, tangent_ind, diff in zipped:
-            reparam_img = self.images[reparam_ind]
-            tangent_img = self.images[tangent_ind]
-            distance = reparam_img - tangent_img
-            print(reparam_ind, tangent_ind)
-            import pdb; pdb.set_trace()
-        pass
+            # Index of the tangent image. reparam_image will be shifted along
+            # this direction to achieve the desired parametirzation density.
+            tangent_ind = i + sign
+            tangent_image = self.images[tangent_ind]
+            distance = reparam_image - tangent_image
+
+            param_dens_diff = cur_param_density[tangent_ind] - cur_param_density[i]
+            step_length = diff / param_dens_diff
+            step = step_length * distance
+            reparam_coords = reparam_image.coords + step
+            reparam_image.coords = reparam_coords
+            cur_param_density = self.get_cur_param_density("coords")
+        np.testing.assert_allclose(cur_param_density, desired_param_density, atol=thresh)
 
     def set_tangents(self):
         """Set tangents as given by the first derivative of a cubic spline.
@@ -315,7 +296,6 @@ class GrowingString(GrowingChainOfStates):
         # TODO: Add climbing modification
         # total_forces = self.set_climbing_forces(total_forces)
 
-        np.save("gs_perp.npy", self._forces)
         return self._forces
 
     def reparametrize(self):
@@ -378,12 +358,11 @@ class GrowingString(GrowingChainOfStates):
         # TODO: Add some kind of threshold and only reparametrize when
         # the deviation from the desired param_density is above the threshold.
         if self.coord_type == "cart":
-            self.reparam(tcks, desired_param_density)
+            self.reparam_cart(tcks, desired_param_density)
             self.set_tangents()
         elif self.coord_type == "dlc":
             cur_param_density = self.get_cur_param_density("coords")
             self.reparam_dlc(cur_param_density, desired_param_density)
-        import pdb; pdb.set_trace()
         self.reparam_in = self.reparam_every
 
         return True
