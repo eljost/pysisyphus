@@ -115,8 +115,8 @@ def test_anapot_growingstring_opt():
     images = get_geoms(coords, calc_getter)
     gs_kwargs = {
         "max_nodes": 10,
-        # "perp_thresh": 0.5,
-        "perp_thresh": 1,
+        "perp_thresh": 0.5,
+        # "perp_thresh": 1,
     }
     gs = GrowingString(images, calc_getter, reparam_every=1)
     from pysisyphus.cos.GSref import GrowingString as GS

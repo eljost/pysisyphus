@@ -42,69 +42,10 @@ class GrowingString(GrowingChainOfStates):
 
         left_img, right_img = self.images
 
-        # # Adding nodes requires a direction/tangent. As we start
-        # # from two images we can't do a cubic spline yet, so there are also
-        # # no splined tangents.
-        # # For the first two new nodes we use a simple tangent: the
-        # # unit vector pointing from the left to the right image.
-        # #
-        # # With cartesian coordinate we can use the same tangent for both
-        # # sides of the string.
-        # if self.coord_type == "cart":
-            # # As "get_tangent" is reimplemented in this class we call the
-            # # implementation of the parent ChainOfStates class.
-            # init_tangent = super().get_tangent(0)
-            # # Initial distances between left and right image
-            # Sk, _ = self.arc_dims
-            # S = Sk / (self.max_nodes+1)
-            # # Create first two mobile nodes
-            # left_step = S*init_tangent
-            # right_step = -S*init_tangent
-        # # With DLC we can't use the same tangent for both sides of the string.
-        # # While left_img and right_img got the same set of primitive internals,
-        # # they don't share the same active set U. As the DLC tangent is given
-        # # in the respective active set U, we have to calculate a different tanget
-        # # for each image.
-        # # TODO: Use a primitive tangent, instead of a DLC tangent.
-        # elif self.coord_type == "dlc":
-            # left_right_tangent = left_img - right_img
-            # print("left right tangent", left_right_tangent)
-            # l_norm = np.linalg.norm(left_right_tangent)
-            # Sl = l_norm / (self.max_nodes+1)
-            # left_step = Sl*left_right_tangent/l_norm
-            # ls = left_right_tangent/(self.max_nodes+1)
-
-            # right_left_tangent = right_img - left_img
-            # r_norm = np.linalg.norm(right_left_tangent)
-            # Sr = r_norm / (self.max_nodes+1)
-            # right_step = Sr*right_left_tangent/r_norm
-        # else:
-            # raise Exception("Invalid coord_type.")
-
-        # print("left_step", left_step)
-        # print("ls", ls)
-        # left_frontier = super().get_new_image(left_step, 1, 0)
-        # left_frontier = self.get_new_image(left_step, 1, 0)
-        # lf = self.get_new_image(0)
-        # import pdb; pdb.set_trace()
-
-        # s = (right_img - left_img) / (self.max_nodes+1)
         left_frontier = self.get_new_image(self.lf_ind)
         self.left_string.append(left_frontier)
-        # pd = self.get_cur_param_density("coords")
-        # pda = self.get_cur_param_density("cart")
-        # import pdb; pdb.set_trace()
         right_frontier = self.get_new_image(self.rf_ind)
         self.right_string.append(right_frontier)
-        # right_frontier = self.get_new_image(right_step, 2, 2)
-        # self.right_string.insert(right_frontier)
-        pd = self.get_cur_param_density("coords")
-        pda = self.get_cur_param_density("cart")
-        # cart_param_density = self.get_cur_param_density("cart")
-        # coord_param_density = self.get_cur_param_density("coords")
-
-        # Now we have four images and can calculate an initial set of tangents
-        # as first derivative of the cubic spline.
         self.set_tangents()
 
     def get_cur_param_density(self, kind="cart"):
@@ -119,10 +60,14 @@ class GrowingString(GrowingChainOfStates):
             raise Exception("Invalid kind")
 
         norms = np.linalg.norm(diffs, axis=1)
+        cur_param_density = norms / norms.max()
         # Assert that the last (rightmost) image is also the one that is the
         # farthest away from the first (leftmost) image.
-        assert norms[-1] == norms.max()
-        cur_param_density = norms / norms.max()
+        assert norms[-1] == norms.max(), \
+            "Unexpected parametrization density. Expected the last " \
+            "(rightmost) image to be the farthest image, but this is " \
+            "not the case. Current parametrization density is: " \
+           f"{cur_param_density}."
         return cur_param_density
 
     def get_new_image(self, ref_index):
@@ -137,6 +82,12 @@ class GrowingString(GrowingChainOfStates):
             tangent_ind = ref_index - 1
             insert_ind = ref_index
         tangent_img = self.images[tangent_ind]
+
+        # (new_img - tangent_img) points from tangent_img towards new_img.
+        # As we want to derive a new image from new_img, we have to step
+        # against this vector, so we have to multiply by -1.
+        distance = -(new_img - tangent_img)
+
         # The desired step(_length) for the new image be can be easily determined
         # from a simple rule of proportion by relating the actual distance between
         # two images to their parametrization density difference on the normalized
@@ -144,8 +95,10 @@ class GrowingString(GrowingChainOfStates):
         #
         # Δparam_density / distance = self.sk / step
         # step = self.sk / Δparam_density * distance
-        distance = new_img - tangent_img
         cpd = self.get_cur_param_density("coords")
+        # As we always want to step in the direction of 'distance' we just take
+        # the absolute value of the difference, as we are not interested in the
+        # sign.
         param_dens_diff = abs(cpd[ref_index] - cpd[tangent_ind])
         step_length = self.sk / param_dens_diff
         step = step_length * distance
@@ -225,10 +178,10 @@ class GrowingString(GrowingChainOfStates):
             # this direction to achieve the desired parametirzation density.
             tangent_ind = i + sign
             tangent_image = self.images[tangent_ind]
-            distance = reparam_image - tangent_image
+            distance = -(reparam_image - tangent_image)
 
-            param_dens_diff = cur_param_density[tangent_ind] - cur_param_density[i]
-            step_length = diff / param_dens_diff
+            param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
+            step_length = abs(diff) / param_dens_diff
             step = step_length * distance
             reparam_coords = reparam_image.coords + step
             reparam_image.coords = reparam_coords
@@ -295,7 +248,6 @@ class GrowingString(GrowingChainOfStates):
         self.perp_forces_list.append(self._forces.copy())
         # TODO: Add climbing modification
         # total_forces = self.set_climbing_forces(total_forces)
-
         return self._forces
 
     def reparametrize(self):
