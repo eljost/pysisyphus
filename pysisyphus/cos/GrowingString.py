@@ -86,6 +86,11 @@ class GrowingString(GrowingChainOfStates):
         # (new_img - tangent_img) points from tangent_img towards new_img.
         # As we want to derive a new image from new_img, we have to step
         # against this vector, so we have to multiply by -1.
+        # We don't we just do (tangent_img - new_img) to get the right
+        # direction? With DLC the resulting distance would then be given in
+        # the active set U of tangent_img, but we need it in the active set U
+        # of new_img.
+        # The formulation below can be used for all coord_types.
         distance = -(new_img - tangent_img)
 
         # The desired step(_length) for the new image be can be easily determined
@@ -218,16 +223,16 @@ class GrowingString(GrowingChainOfStates):
         if self.coord_type == "cart":
             return self._tangents[i]
 
-        # With DLC we can use conventional tangents that aren't splined.
+        # With DLC we can use conventional tangents that can be calculated
+        # without splining.
 
         # Upwinding tangent when the string is fully grown.
         if self.fully_grown:
             return super().get_tangent(i, kind="upwinding")
 
-        # By definition the tangents shall point inwards during the
-        # growth phase.
+        # During the growth phase we use simple tangents that always point
+        # towards the center of the string.
         cur_image = self.images[i]
-        # next_ind = (i + 1) if (i <= self.lf_ind) else (i - 1)
         if i <= self.lf_ind:
             next_ind = i + 1
         else:
