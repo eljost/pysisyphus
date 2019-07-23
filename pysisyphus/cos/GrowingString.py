@@ -191,7 +191,11 @@ class GrowingString(GrowingChainOfStates):
             reparam_coords = reparam_image.coords + step
             reparam_image.coords = reparam_coords
             cur_param_density = self.get_cur_param_density("coords")
-        np.testing.assert_allclose(cur_param_density, desired_param_density, atol=thresh)
+        np.testing.assert_allclose(cur_param_density, desired_param_density,
+                                   atol=5*thresh)
+
+        # Regenerate active set after reparametrization
+        # [image.internal.set_active_set() for image in self.moving_images]
 
     def set_tangents(self):
         """Set tangents as given by the first derivative of a cubic spline.
@@ -289,18 +293,12 @@ class GrowingString(GrowingChainOfStates):
         if (not self.fully_grown) and converged(self.lf_ind):
             # Insert at the end of the left string, just before the
             # right frontier node.
-            # new_left_frontier = self.get_new_image(self.zero_step,
-                                                   # self.rf_ind, self.lf_ind)
-            # self.left_string.append(new_left_frontier)
             new_left_frontier = self.get_new_image(self.lf_ind)
             self.left_string.append(new_left_frontier)
             self.log("Added new left frontier node.")
         if (not self.fully_grown) and converged(self.rf_ind):
             # Insert at the end of the right string, just before the
             # current right frontier node.
-            # new_right_frontier = self.get_new_image(self.zero_step, self.rf_ind,
-                                                    # self.rf_ind)
-            # self.right_string.append(new_right_frontier)
             new_right_frontier = self.get_new_image(self.rf_ind)
             self.right_string.append(new_right_frontier)
             self.log("Added new right frontier node.")
