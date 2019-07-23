@@ -109,6 +109,10 @@ class RedundantCoords:
         return [self.bond_indices, self.bending_indices, self.dihedral_indices]
 
     @property
+    def prim_indices_set(self):
+        return set([tuple(prim_ind) for prim_ind in it.chain(*self.prim_indices)])
+
+    @property
     def prim_coords(self):
         if self._prim_coords is None:
            self._prim_coords = np.array(
