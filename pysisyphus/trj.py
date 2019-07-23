@@ -168,15 +168,14 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
                           comment=geom.comment, prim_indices=pi)
                  for geom, pi in zip(geoms, prim_indices)]
 
-    # TODO: Right now this just captures the total number of coordinates but
-    # their internal makeup may still be different, e.g. there may be a
-    # different number of stretches and bends between two geometries, even
-    # though the overall number of primitives is the same.
-    coord_lengths = np.array([geom.coords.size for geom in geoms])
-    coord_lengths_differ = not (coord_lengths == coord_lengths[0]).all()
+    same_prim_inds = True
+    if coord_type != "cart":
+        geom_prim_inds = [geom.internal.prim_indices_set for geom in geoms]
+        first_set = geom_prim_inds[0]
+        same_prim_inds = all([ith_set == first_set for ith_set in geom_prim_inds[1:]])
     # Recreate geometries with the same primitive internal coordinates
-    if coord_type != "cart" and coord_lengths_differ:
-        prim_indices = form_coordinate_union(geoms[0], geoms[1])
+    if not same_prim_inds:
+        prim_indices = form_coordinate_union(geoms[0], geoms[-1])
         geoms = [Geometry(atoms_0, geom.cart_coords,
                          coord_type=coord_type, prim_indices=prim_indices)
                  for geom in geoms]
