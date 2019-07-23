@@ -26,7 +26,7 @@ def make_trj_str(atoms, coords_list, comments=None):
 
 def make_trj_str_from_geoms(geoms, comments=None):
     atoms = geoms[0].atoms
-    coords_list = [geom._coords.reshape(-1, 3)*BOHR2ANG for geom in geoms]
+    coords_list = [geom.coords3d*BOHR2ANG for geom in geoms]
     if comments is not None:
         assert len(comments) == len(geoms)
         geom_comments = [geom.comment for geom in geoms]
