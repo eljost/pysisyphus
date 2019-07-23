@@ -20,10 +20,9 @@ def test_dlc_constraints():
     int_ = geom.internal
     int_.freeze_primitives(freeze)
     U = int_.U
-    # import pdb; pdb.set_trace()
-    assert U[0].sum() == approx(0)
-    assert U[8].sum() == approx(0)
     constraints = int_.constraints
+    assert U[0,len(freeze):].sum() == approx(0)
+    assert U[8,len(freeze):].sum() == approx(0)
     int_.reset_constraints()
     constraints_ = int_.constraints
 
@@ -78,6 +77,6 @@ def run():
 
 
 if __name__ == "__main__":
-    # run()
-    # test_dlc_constraints()
+    run()
+    test_dlc_constraints()
     test_h2o2_dlc_constraints()
