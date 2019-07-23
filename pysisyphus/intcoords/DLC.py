@@ -15,12 +15,7 @@ class DLC(RedundantCoords):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.U = self.get_active_set(self.B_prim)
-        # Keep a copy of the original active set, in case self.U gets
-        # modified by constraint application.
-        self.U_unconstrained = self.U.copy()
-        self.original_U_shape = self.U_unconstrained.shape
-        self._constraints = tuple()
+        self.set_active_set()
 
     @property
     def U(self):
@@ -30,6 +25,9 @@ class DLC(RedundantCoords):
     def U(self, U):
         self._U = U
         # Needed for back-transformation to primitive internals
+        # For now we use a pseudo-inverse instead of a regular inverse,
+        # as some columns of U may be zero from constraints (resulting in
+        # singular U matrix that cannot be readily inverted).
         self._Ut_inv = np.linalg.pinv(self.U.T)
 
     @property
@@ -42,12 +40,20 @@ class DLC(RedundantCoords):
 
     @constraints.setter
     def constraints(self, constraints):
+        self.U = self.U_unconstrained.copy()
         constraints = np.array(constraints)
         constraints.flags.writeable = False
         # Constraint columns should be same length as columns of U.
         assert constraints.shape[0] == self.U.shape[0]
         self._constraints = constraints
         U_constrained = self.get_constrained_U(self._constraints)
+
+        # # Replace the constraint-columns with zeros vectors, so the total
+        # # number of coords doesn't change. This also zeros any force components
+        # # that belong to the constraints.
+        # zero_arr = np.zeros_like(constraints)
+        # self.U = np.concatenate((zero_arr, U_constrained), axis=1)
+        U_constrained = np.concatenate((constraints, U_constrained), axis=1)
         self.U = U_constrained
 
     def reset_constraints(self):
@@ -85,6 +91,14 @@ class DLC(RedundantCoords):
         nonzero_inds = np.abs(eigvals) > thresh
         active_eigvals = eigvals[nonzero_inds]
         return eigvectors[:,nonzero_inds]
+
+    def set_active_set(self):
+        self.U = self.get_active_set(self.B_prim)
+        # Keep a copy of the original active set, in case self.U gets
+        # modified by constraint application.
+        self.U_unconstrained = self.U.copy()
+        self.original_U_shape = self.U_unconstrained.shape
+        self._constraints = tuple()
 
     def project_primitive_on_active_set(self, prim_ind):
         prim_vec = np.zeros(self.U.shape[0])
