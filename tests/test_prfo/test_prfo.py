@@ -1,52 +1,69 @@
 #!/usr/bin/env python3
 
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from pysisyphus.calculators.CerjanMiller import CerjanMiller
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.tsoptimizers.PRFOptimizer import PRFOptimizer
 from pysisyphus.optimizers.RSRFOptimizer import RSRFOptimizer
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
+from pysisyphus.tsoptimizers.PRFOptimizer import PRFOptimizer
 from pysisyphus.calculators.XTB import XTB
 
 
-geom = geom_from_library("hcn_iso_ts.xyz")
-# geom = geom_from_library("codein.xyz")
-xtb = XTB(pal=1)
-geom.set_calculator(xtb)
+def check_eigvals(H):
+    w, v = np.linalg.eigh(H)
+    neg_inds = w < -1e-8
+    neg_num = neg_inds.sum()
+    eigval_str = np.array2string(w[neg_inds], precision=6)
+    print(f"Found {neg_num} negative eigenvalue(s): {eigval_str}")
 
-# opt_kwargs = {
-    # "max_cycles": 5,
-    # # "thresh": "gau",
-    # "max_size": 0.4,
-    # # "recalc_hess": 2,
-    # "max_micro_cycles": 15,
-    # # "trust_radius": 0.06,
-    # "trust_radius": 0.3,
-# }
-# opt = RSPRFOptimizer(geom, **opt_kwargs)
-# opt.run()
 
-min_opt_kwargs = {
-    # "max_cycles": 3,
-    "recalc_hess": 1,
-    # "hess_update": "flowchart",
-    "hess_update": "flowchart",
-    "thresh": "gau",
-    # "max_micro_cycles": 1,
-    "trust_radius": 0.1,
-}
-opt = RSRFOptimizer(geom, **min_opt_kwargs)
-# opt = RFOptimizer(geom, **min_opt_kwargs)
-opt.run()
+def test_rsprfo_hcn_ts_xtb():
+    geom = geom_from_library("hcn_iso_ts.xyz", coord_type="redund")
+    # geom = geom_from_library("hcn_iso_ts.xyz")
+    xtb = XTB()
+    geom.set_calculator(xtb)
 
-with open("opt.xyz", "w") as handle:
-    handle.write(geom.as_xyz())
+    print("Start")
+    check_eigvals(geom.hessian)
 
-H = geom.hessian
-f = geom.forces
-import numpy as np
-import pdb; pdb.set_trace()
-step = np.linalg.inv(H).dot(f)
-step_rms = np.sqrt(np.mean(step**2))
-step_max = np.abs(step).max()
-step_norm = np.linalg.norm(step)
-print(f"rms(step)={step_rms:.6f}, max(step)={step_max:.6f}, norm(step)={step_norm:.6f}")
+    opt_kwargs = {
+        "trust_max": 0.1,
+        # "hessian_recalc": 2,
+        "thresh": "gau",
+    }
+    opt = PRFOptimizer(geom, **opt_kwargs)
+    opt.run()
+    assert opt.is_converged
+
+    print()
+    print("End")
+    check_eigvals(geom.hessian)
+
+
+def test_prfo_analytical():
+    geom = CerjanMiller.get_geom((0.559714, -0.4885, 0))
+    opt_kwargs = {
+        "trust_max": 0.1,
+        # "hessian_recalc": 1,
+    }
+    opt = PRFOptimizer(geom, **opt_kwargs)
+    try:
+        opt.run()
+    except AssertionError as err:
+        print(err)
+    cs = np.array(opt.coords)
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    ax.plot(*cs.T[:2], "ro-")
+    plt.show()
+
+
+if __name__ == "__main__":
+    # test_rsprfo_hcn_ts_xtb()
+    test_prfo_analytical()
