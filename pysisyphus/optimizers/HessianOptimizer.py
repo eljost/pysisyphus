@@ -7,7 +7,8 @@ import numpy as np
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.hessian_updates import (bfgs_update, flowchart_update,
                                                    damped_bfgs_update,
-                                                   multi_step_update)
+                                                   multi_step_update,
+                                                   bofill_update)
 from pysisyphus.optimizers.guess_hessians import (fischer_guess, lindh_guess,
                                                   simple_guess, swart_guess,
                                                   xtb_hessian,)
@@ -19,6 +20,7 @@ class HessianOptimizer(Optimizer):
         "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
         "mult": multi_step_update,
+        "bofill": bofill_update,
     }
 
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
@@ -27,10 +29,13 @@ class HessianOptimizer(Optimizer):
                  hessian_recalc=None, **kwargs):
         super().__init__(geometry, **kwargs)
 
-        self.trust_radius = trust_radius
-        self.trust_update = trust_update
-        self.trust_min = trust_min
-        self.trust_max = trust_max
+        self.trust_update = bool(trust_update)
+        assert trust_min <= trust_max, \
+                "trust_min must be <= trust_max!"
+        self.trust_min = float(trust_min)
+        self.trust_max = float(trust_max)
+        # Constrain initial trust radius if trust_max > trust_radius
+        self.trust_radius = min(trust_radius, trust_max)
         self.hessian_update = hessian_update
         self.hessian_update_func = self.hessian_update_funcs[hessian_update]
         self.hessian_multi_update = hessian_multi_update

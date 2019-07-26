@@ -87,7 +87,7 @@ def bofill_update(H, dx, dg):
     # Bofill update
     bofill_update = (mix * sr1) + (1 - mix)*(powell)
 
-    return bofill_update
+    return bofill_update, "Bofill"
 
 
 """
