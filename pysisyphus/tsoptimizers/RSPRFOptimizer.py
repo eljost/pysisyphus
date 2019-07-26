@@ -182,6 +182,9 @@ class RSPRFOptimizer(HessianOptimizer):
             assert small_num in (5, 6), \
                  "Expected 5 or 6 small eigenvalues in cartesian hessian " \
                 f"but found {small_num}!"
+
+        # Calculate overlaps between (updated) hessian and current TS-mode to
+        # determine new TS-mode.
         self.update_ts_mode(eigvals, eigvecs)
 
         # Transform gradient to eigensystem of hessian
