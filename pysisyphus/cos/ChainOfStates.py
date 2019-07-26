@@ -41,6 +41,7 @@ class ChainOfStates:
         self._energy = None
         self.counter = 0
         self.coords_length = self.images[0].coords.size
+        self.cart_coords_length = self.images[0].cart_coords.size
         self.zero_vec = np.zeros(self.coords_length)
 
         self.coords_list = list()
@@ -130,6 +131,12 @@ class ChainOfStates:
     def coords(self, coords):
         """Distribute the flat 1d coords array over all images."""
         self.set_vector("coords", coords, clear=True)
+
+    @property
+    def cart_coords(self):
+        """Return a flat 1d array containing the cartesian coordinates of all
+        images."""
+        return np.concatenate([image.cart_coords for image in self.images])
 
     @property
     def coords3d(self):
@@ -260,6 +267,7 @@ class ChainOfStates:
         for image in self.images:
             res = image.results
             res["coords"] = image.coords
+            res["cart_coords"] = image.cart_coords
             tmp_results.append(res)
         return tmp_results
 
@@ -451,7 +459,8 @@ class ChainOfStates:
 
     def get_splined_hei(self):
         # Interpolate energies
-        coord_diffs = get_coords_diffs([image.coords for image in self.images])
+        cart_coords = np.array([image.cart_coords for image in self.images])
+        coord_diffs = get_coords_diffs(cart_coords)
         energies_spline = interp1d(coord_diffs, self.energy, kind="cubic")
         x_fine = np.linspace(0, 1, 500)
         energies_fine = energies_spline(x_fine)
@@ -460,7 +469,7 @@ class ChainOfStates:
         hei_x = x_fine[hei_ind]
         hei_energy = energies_fine[hei_ind]
 
-        reshaped = self.coords.reshape(-1, self.coords_length)
+        reshaped = cart_coords.reshape(-1, self.cart_coords_length)
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
         tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3)

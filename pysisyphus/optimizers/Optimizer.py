@@ -64,7 +64,7 @@ class Optimizer:
         self.logger = logging.getLogger("optimizer")
 
         # Setting some empty lists as default
-        self.list_attrs = "coords energies forces steps " \
+        self.list_attrs = "cart_coords coords energies forces steps " \
                           "max_forces rms_forces max_steps rms_steps " \
                           "cycle_times tangents".split()
         for la in self.list_attrs:
@@ -284,6 +284,7 @@ class Optimizer:
                                                              self.energies[-1],
                                                              self.forces[-1])
             self.coords.append(self.geometry.coords.copy())
+            self.cart_coords.append(self.geometry.cart_coords.copy())
             if reset_flag:
                 self.reset()
 
@@ -292,6 +293,7 @@ class Optimizer:
             if step is None:
                 # Remove the previously added coords
                 self.coords.pop(-1)
+                self.cart_coords.pop(-1)
                 continue
 
             if self.is_cos:

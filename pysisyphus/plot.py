@@ -118,7 +118,7 @@ class Plotter:
 
 
 def plot_energies():
-    keys = ("energy", "coords")
+    keys = ("energy", "cart_coords")
     (energies, coords), num_cycles, num_images = load_results(keys)
 
     if isinstance(num_images, list):
@@ -188,7 +188,7 @@ def plot_energies():
 
 
 def plot_aneb():
-    keys = ("energy", "coords")
+    keys = ("energy", "cart_coords")
     (energies, coords), num_cycles, num_images = load_results(keys)
 
     # Use coordinates of the first image in the first cycle as
