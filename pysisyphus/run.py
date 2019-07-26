@@ -19,10 +19,12 @@ import yaml
 
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
@@ -186,9 +188,12 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 def preopt_ends(xyz, calc_getter):
     """Run optimization on first and last geometry in xyz and return
-    updated xyz variable containing the optimized ends."""
+    updated xyz variable containing the optimized ends and any
+    intermediate image that was present in the original list."""
     geoms = get_geoms(xyz, coord_type="redund")
     assert len(geoms) >= 2, "Need at least two geometries!"
+
+    # middle = geoms[1:-1]
 
     def opt_getter(geom):
         opt_kwargs = {
@@ -222,7 +227,7 @@ def run_cos(cos, calc_getter, opt_getter):
     opt = opt_getter(cos)
     opt.run()
     hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
-    hei_geom = cos.images[0].copy()
+    hei_geom = Geometry(cos.images[0].atoms, hei_coords)
     hei_geom.coords = hei_coords
     hei_fn = "splined_hei.xyz"
     with open(hei_fn, "w") as handle:
@@ -232,10 +237,28 @@ def run_cos(cos, calc_getter, opt_getter):
 
 def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     print("Starting TS optimization after chain of states method.")
-    hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
 
-    ts_geom = cos.images[0].copy()
-    ts_geom.coords = hei_coords
+    # Use plain HEI
+    hei_index = cos.get_hei_index()
+    hei_image = cos.images[hei_index]
+    prim_indices = (None if cos.coord_type == "cart"
+                    else hei_image.internal.prim_indices
+    )
+    ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
+                       coord_type="redund", prim_indices=prim_indices)
+
+    hei_tangent = cos.get_tangent(hei_index)
+    # Convert tangent to redundant internals
+    if cos.coord_type == "dlc":
+        redund_tangent = hei_image.internal.Ut_inv @ hei_tangent
+    elif cos.coord_type == "cart":
+        redund_tangent = ts_geom.internal.B_prim @ hei_tangent
+    else:
+        raise Exception("Unknown coord_type!")
+
+    # Use splined HEI
+    # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
+    # ts_geom = Geometry(cos.images[0].atoms, hei_coords, coord_type="redund")
     ts_geom.set_calculator(calc_getter())
     print("Splined HEI (TS guess)")
     print(ts_geom.as_xyz())
@@ -247,7 +270,6 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     np.savetxt("hei_tangent", hei_tangent)
     print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
 
-    ts_geom.set_calculator(calc_getter())
     ts_optimizer = TSOPT_DICT[tsopt_key]
     do_hess = tsopt_kwargs.pop("do_hess")
 
@@ -262,15 +284,15 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         dimer_cycles = dimer_result.dimer_cycles
         last_cycle = dimer_cycles[-1]
         ts_coords = last_cycle.trans_coords[1]
-    elif tsopt_key == "prfo":
-        # Determine which imaginary mode has the highest overlap
-        # with the splined HEI tangent.
+    elif tsopt_key == "rsprfo":
+        # # Determine which imaginary mode has the highest overlap
+        # # with the splined HEI tangent.
         eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
         neg_inds = eigvals < 0
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
         print(f"Negative eigenvalues at splined HEI: {eigval_str}")
         neg_eigvecs = eigvecs.T[neg_inds]
-        ovlps = [np.abs(imag_mode.dot(hei_tangent)) for imag_mode in neg_eigvecs]
+        ovlps = [np.abs(imag_mode.dot(redund_tangent)) for imag_mode in neg_eigvecs]
         print("Overlaps between HEI tangent and imaginary modes:")
         for i, ov in enumerate(ovlps):
             print(f"\t{i:02d}: {ov:.6f}")
@@ -565,10 +587,10 @@ def get_defaults(conf_dict):
                 "f_tran_mod": False,
                 "multiple_translations": False,
             },
-            "prfo": {
-                "type": "prfo",
-                "max_step_length": .3,
-                "recalc_hess": None,
+            "rsprfo": {
+                "type": "rsprfo",
+                # "max_step_length": .3,
+                # "recalc_hess": None,
                 "dump": True,
             },
         }
@@ -714,7 +736,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
         if run_dict["tsopt"]:
-            calc_getter = get_calc_closure("dimer", calc_key, calc_kwargs)
+            calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
             run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
@@ -822,6 +844,12 @@ def clean(force=False):
         "*_CDD.png",
         "*_CDD.cub",
         "internal_coords.log",
+        "hei_tangent",
+        "optimization.trj",
+        "splined_hei.xyz",
+        "ts_opt.xyz",
+        "final_geometry.xyz",
+        "calculated_init_hessian",
     )
     to_rm_paths = list()
     for glob in rm_globs:
