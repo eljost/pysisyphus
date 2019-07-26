@@ -83,7 +83,7 @@ OPT_DICT = {
 
 TSOPT_DICT = {
     "dimer": dimer_method,
-    "prfo": PRFOptimizer,
+    "rsprfo": RSPRFOptimizer,
 }
 
 IRC_DICT = {

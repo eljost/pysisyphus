@@ -1,6 +1,6 @@
 import logging
 
-from pysisyphus.tsoptimizers.PRFOptimizer import PRFOptimizer
+from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
 from pysisyphus.tsoptimizers.dimer import dimer_method
 
 logger = logging.getLogger("tsoptimizer")

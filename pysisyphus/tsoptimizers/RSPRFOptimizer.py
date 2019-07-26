@@ -6,15 +6,16 @@
 #         Heyden, 2005
 #     [3] https://onlinelibrary.wiley.com/doi/abs/10.1002/jcc.540070402
 #         Baker, 1985
-#     [4] 10.1007/s002140050387
-#         Bofill, 1998, Restricted-Step-RFO
+#     [4] https://link.springer.com/article/10.1007/s002140050387
+#         Besalu, 1998
+
 
 import numpy as np
 
-from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 
 
-class RSPRFOptimizer(Optimizer):
+class RSPRFOptimizer(HessianOptimizer):
     """Optimizer to find first-order saddle points."""
 
     rfo_dict = {
@@ -22,88 +23,61 @@ class RSPRFOptimizer(Optimizer):
         "max": (-1, "max"),
     }
 
-    def __init__(self, geometry, root=0, trust_radius=.1, recalc_hess=None,
-                 scaling_factor=2, max_micro_cycles=50,
-                 **kwargs):
-        super().__init__(geometry, **kwargs)
+    def __init__(self, geometry, root=0,
+                 hessian_init="calc", hessian_update="bofill",
+                 neg_eigval_thresh=-1e-8, max_micro_cycles=50, **kwargs):
+
+        assert hessian_init == "calc", \
+            "TS-optimization should be started from a calculated hessian " \
+            "(hessian_init=\"calc\")!"
+        assert hessian_update == "bofill", \
+            "Bofill update is recommended in a TS-optimization."
+
+        super().__init__(geometry, hessian_init=hessian_init,
+                         hessian_update=hessian_update, **kwargs)
 
         self.root = int(root)
-        self.trust_radius0 = trust_radius
-        self.recalc_hess = recalc_hess
-        self.scaling_factor = scaling_factor
+        self.ts_mode = None
+        self.neg_eigval_thresh = float(neg_eigval_thresh)
         self.max_micro_cycles = max_micro_cycles
 
         self.alpha0 = 1
-        self.trust_radius = self.trust_radius0
-        self.H = None
-        self.ts_mode = None
-        self.predicted_energy_changes = list()
 
     def prepare_opt(self):
-        self.H = self.geometry.hessian
+        super().prepare_opt()
         eigvals, eigvecs = np.linalg.eigh(self.H)
+        # Check if the selected mode is a sensible choice
+        assert eigvals[self.root] < self.neg_eigval_thresh, \
+             "Expected negative eigenvalue! Eigenvalue of selected TS-mode " \
+            f"{self.root:02d} is above the the threshold of " \
+            f"{self.neg_eigval_thresh:.6e}!"
+        # Select an initial TS-mode
         self.ts_mode = eigvecs[:,self.root]
 
-    def bofill_update(self, H, dx, dg):
-        dgHdx = dg - H.dot(dx)
-
-        # Symmetric, rank-one (SR1) update
-        sr1 = np.outer(dgHdx, dgHdx) / dgHdx.dot(dx)
-
-        # Powell update
-        powell_1 = (np.outer(dgHdx, dx) + np.outer(dx, dgHdx)) / dx.dot(dx)
-        powell_2 = dgHdx.dot(dx) * np.outer(dx, dx) / dx.dot(dx)**2
-        powell = powell_1 - powell_2
-
-        # Bofill mixing-factor
-        mix = dgHdx.dot(dx)**2 / (dgHdx.dot(dgHdx) * dx.dot(dx))
-
-        # Bofill update
-        bofill_update = (mix * sr1) + (1 - mix)*(powell)
-
-        return bofill_update
-
     def solve_rfo(self, rfo_mat, kind="min"):
-        eigenvalues, eigenvectors = np.linalg.eigh(rfo_mat)
-        ind, verbose = self.rfo_dict[kind]
-        # Eigenvalues and -values are sorted, so either use the first
-        # (for minimization) or the last (for maximization) eigenvalue
-        # and eigenvector.
-        step = eigenvectors.T[ind]
-        nu = step[-1]
+        eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
+        eigenvalues = eigenvalues.real
+        eigenvectors = eigenvectors.real
+        sorted_inds = np.argsort(eigenvalues)
+
+        # Depending on wether we want to minimize (maximize) along
+        # the mode(s) in the rfo mat we have to select the smallest
+        # (biggest) eigenvalue and corresponding eigenvector.
+        first_or_last, verbose = self.rfo_dict[kind]
+        ind = sorted_inds[first_or_last]
+        # Given sorted eigenvalue-indices (sorted_inds) use the first
+        # (smallest eigenvalue) or the last (largest eigenvalue) index.
+        step_nu = eigenvectors.T[ind]
+        nu = step_nu[-1]
         self.log(f"nu_{verbose}={nu:.4e}")
-        # Scale eigenvectors corresponding to the largest (maximization)
-        # or smallest (minimization) eigenvalue, so the last entry is 1.
-        # The step then corresponds to the scaled eigenvector, without
-        # the last element.
-        step = step[:-1] / nu
+        # Scale eigenvector so that its last element equals 1. The
+        # final is step is the scaled eigenvector without the last element.
+        step = step_nu[:-1] / nu
         eigval = eigenvalues[ind]
         self.log(f"eigenvalue_{verbose}={eigval:.4e}")
         return step, eigval, nu
 
-    def optimize(self):
-        forces = self.geometry.forces
-        self.forces.append(forces)
-        self.energies.append(self.geometry.energy)
-
-        if (self.recalc_hess and (self.cur_cycle > 1)
-            and (self.cur_cycle % self.recalc_hess) == 0):
-            self.log("Recalculating exact hessian")
-            self.H = self.geometry.hessian
-        elif len(self.coords) > 1:
-            # Gradient difference
-            dg = -(self.forces[-1] - self.forces[-2])
-            # Coordinate difference
-            dx = self.coords[-1] - self.coords[-2]
-            self.H += self.bofill_update(self.H, dx, dg)
-            self.log("Did Bofill hessian update.")
-        if self.cur_cycle > 1:
-            actual_energy_change = self.energies[-1] - self.energies[-2]
-            predicted_energy_change = self.predicted_energy_changes[-1]
-            coeff = actual_energy_change / predicted_energy_change
-            print("coeff", coeff)
-
-        eigvals, eigvecs = np.linalg.eigh(self.H)
+    def update_ts_mode(self, eigvals, eigvecs):
         neg_eigval_inds = eigvals < -1e-8
         neg_num = neg_eigval_inds.sum()
         assert neg_num >= 1, \
@@ -114,7 +88,7 @@ class RSPRFOptimizer(Optimizer):
         self.log("Overlaps of previous TS mode with current imaginary mode(s):")
         ovlps = [np.abs(imag_mode.dot(self.ts_mode)) for imag_mode in eigvecs.T[:neg_num]]
         for i, ovlp in enumerate(ovlps):
-            self.log(f"{i:02d}: {ovlp:.6f}")
+            self.log(f"\t{i:02d}: {ovlp:.6f}")
         max_ovlp_ind = np.argmax(ovlps)
         max_ovlp = ovlps[max_ovlp_ind]
         self.log(f"Highest overlap: {max_ovlp:.6f}, mode {max_ovlp_ind}")
@@ -122,33 +96,131 @@ class RSPRFOptimizer(Optimizer):
         self.root = max_ovlp_ind
         self.ts_mode = eigvecs.T[max_ovlp_ind]
 
-        # Transform to eigensystem of hessian
-        forces_trans = eigvecs.T.dot(forces)
+    def optimize(self):
+        gradient = self.geometry.gradient
+        self.forces.append(-self.geometry.gradient)
+        self.energies.append(self.geometry.energy)
 
+        if self.cur_cycle > 0:
+            self.update_trust_radius()
+            self.update_hessian()
+
+        H = self.H
+        if self.geometry.coord_type == "redund":
+            H_proj = self.geometry.internal.project_hessian(self.H)
+            # Symmetrize hessian, as the projection probably breaks it?!
+            H = (H_proj + H_proj.T) / 2
+
+        eigvals, eigvecs = np.linalg.eigh(H)
+        self.update_ts_mode(eigvals, eigvecs)
+
+        # Transform gradient to eigensystem of hessian
+        gradient_trans = eigvecs.T.dot(gradient)
+
+        # Minimize energy along all modes, except the TS-mode
+        min_indices = [i for i in range(gradient_trans.size) if i != self.root]
+        min_mat = np.asarray(np.bmat((
+            (np.diag(eigvals[min_indices]), gradient_trans[min_indices,None]),
+            (gradient_trans[None,min_indices], [[0]])
+        )))
         # Maximize energy along the chosen TS mode. The matrix is hardcoded
         # as 2x2, so only first-order saddle point searches are supported.
-        max_mat = np.array(((eigvals[self.root], -forces_trans[self.root]),
-                           (-forces_trans[self.root], 0)))
-        # Minimize energy along all modes, except the TS mode
-        min_indices = [i for i in range(forces.size) if i != self.root]
-        min_mat = np.asarray(np.bmat((
-            (np.diag(eigvals[min_indices]), -forces_trans[min_indices,None]),
-            (-forces_trans[None,min_indices], [[0]])
-        )))
+        max_mat = np.array(((eigvals[self.root], gradient_trans[self.root]),
+                           (gradient_trans[self.root], 0)))
 
-        alpha = self.alpha0
+        step_max, eigval_max, nu_max = self.solve_rfo(max_mat, "max")
+        step_max = step_max[0]
+        step_min, eigval_min, nu_min = self.solve_rfo(min_mat, "min")
+
+        # Assemble step from step_max and step_min
+        step = np.zeros_like(gradient_trans)
+        step[self.root] = step_max
+        step[min_indices] = step_min
+        # Right now the step is still given in the Hessians eigensystem. We
+        # transform it back now.
+        step = eigvecs.dot(step)
+        step_norm = np.linalg.norm(step)
+
+        # Restrict step_norm to the current trust radius
+        if step_norm > self.trust_radius:
+            step = step / step_norm * self.trust_radius
+        self.log(f"norm(step)={np.linalg.norm(step):.6f}")
+
+        predicted_change = step.dot(gradient) + 0.5 * step.dot(self.H).dot(step)
+        self.predicted_energy_changes.append(predicted_change)
+
+        self.log("")
+        return step
+
+    def optimize(self):
+        gradient = self.geometry.gradient
+        self.forces.append(-self.geometry.gradient)
+        self.energies.append(self.geometry.energy)
+
+        if self.cur_cycle > 0:
+            self.update_trust_radius()
+            self.update_hessian()
+
+        H = self.H
+        if self.geometry.internal:
+            H_proj = self.geometry.internal.project_hessian(self.H)
+            # Symmetrize hessian, as the projection probably breaks it?!
+            H = (H_proj + H_proj.T) / 2
+
+        eigvals, eigvecs = np.linalg.eigh(H)
+        self.update_ts_mode(eigvals, eigvecs)
+
+        # Transform gradient to eigensystem of hessian
+        gradient_trans = eigvecs.T.dot(gradient)
+
+        # Minimize energy along all modes, except the TS-mode
+        min_indices = [i for i in range(gradient_trans.size) if i != self.root]
+        min_mat = np.asarray(np.bmat((
+            (np.diag(eigvals[min_indices]), gradient_trans[min_indices,None]),
+            (gradient_trans[None,min_indices], [[0]])
+        )))
+        # Maximize energy along the chosen TS mode. The matrix is hardcoded
+        # as 2x2, so only first-order saddle point searches are supported.
+        max_mat = np.array(((eigvals[self.root], gradient_trans[self.root]),
+                           (gradient_trans[self.root], 0)))
+
         min_diag_indices = np.diag_indices(min_mat.shape[0])
+
+        """In the RS-(P)RFO method we have to scale the matrices with alpha.
+        Unscaled matrix (Eq. 8) in [1]:
+            (H  g) (x)          (S 0) (x)
+                       = lambda
+            (g+ 0) (1)          (0 1) (1)
+        with
+            S = alpha * Identity matrix
+        and multiplying from the left with the inverse of the scaling matrix
+            (1/alpha 0)
+
+            (0       1)
+        we get
+            (1/alpha 0) (H  g) (x)          (x)
+                                   = lambda
+            (0       1) (g+ 0) (1)          (1)
+        eventually leading to the scaled matrix:
+            (H/alpha  g/alpha) (x)          (x)
+                                   = lambda     .
+            (g+             0) (1)          (1)
+        """
+        alpha = self.alpha0
         for mu in range(self.max_micro_cycles):
-            self.log(f"RS-RFO micro cycle {mu:02d}")
+            self.log(f"RS-PRFO micro cycle {mu:02d}, alpha={alpha:.6f}")
             max_mat_scaled = max_mat.copy()
-            # We only have to update one eigenvalue
+            # Create the scaled max. matrix
             max_mat_scaled[0, 0] /= alpha
+            max_mat_scaled[0, 1] /= alpha
             step_max, eigval_max, nu_max = self.solve_rfo(max_mat_scaled, "max")
             step_max = step_max[0]
+            # Create the scaled min. matrix
             scaled_min_eigenvalues = np.zeros_like(eigvals)
             scaled_min_eigenvalues[:-1] = eigvals[min_indices] / alpha
             min_mat_scaled = min_mat.copy()
             min_mat_scaled[min_diag_indices] = scaled_min_eigenvalues
+            min_mat_scaled[:-1,-1] /= alpha
             step_min, eigval_min, nu_min = self.solve_rfo(min_mat_scaled, "min")
 
             # As of Eq. (8a) of [4] max_eigval and min_eigval also
@@ -157,54 +229,52 @@ class RSPRFOptimizer(Optimizer):
             # min_eigval = -forces_trans[min_indices].dot(min_step)
 
             # Create the full PRFO step
-            prfo_step = np.zeros_like(forces)
-            prfo_step[self.root] = step_max
-            prfo_step[min_indices] = step_min
-            prfo_norm = np.linalg.norm(prfo_step)
-            print("prfo_norm", prfo_norm)
+            step = np.zeros_like(gradient_trans)
+            step[self.root] = step_max
+            step[min_indices] = step_min
+            step_norm = np.linalg.norm(step)
 
-            inside_trust = prfo_norm <= self.trust_radius
+            inside_trust = step_norm <= self.trust_radius
             if inside_trust:
-                print("PASST")
+                self.log("Restricted step satisfied the trust radius.")
+                self.log(f"Micro-cycles converged in cycle {mu:02d} with "
+                         f"alpha={alpha:.6f}!")
                 break
 
             # Derivative of the squared step w.r.t. alpha
             # max subspace
             dstep2_dalpha_max = (2*eigval_max/(1+step_max**2 * alpha)
-                                 * forces_trans[self.root]**2
+                                 * gradient_trans[self.root]**2
                                  / (eigvals[self.root] - eigval_max * alpha)**3
             )
-            print("d2da_max", dstep2_dalpha_max)
             # min subspace
             dstep2_dalpha_min = (2*eigval_min/(1+step_min.dot(step_min) * alpha)
-                                 * np.sum(forces_trans[min_indices]**2
+                                 * np.sum(gradient_trans[min_indices]**2
                                           / (eigvals[min_indices] - eigval_min * alpha)**3
                                  )
             )
-            print("d2da_min", dstep2_dalpha_min)
             dstep2_dalpha = dstep2_dalpha_max + dstep2_dalpha_min
-            print("d2da", dstep2_dalpha)
             # Update alpha
-            alpha_step = (2*(self.trust_radius*prfo_norm - prfo_norm**2)
+            alpha_step = (2*(self.trust_radius*step_norm - step_norm**2)
                           / dstep2_dalpha
             )
-            print("alpha_step", alpha_step)
-            # alpha += alpha_step
-            # alpha *= 0.8#1.1
+            alpha += alpha_step
+            assert alpha > 0, "alpha must not be negative!"
+
+        # Right now the step is still given in the Hessians eigensystem. We
+        # transform it back now.
+        step = eigvecs.dot(step)
+        step_norm = np.linalg.norm(step)
+
+        # With max_micro_cycles = 1 the RS part is disabled and the step
+        # probably isn't scaled correctly in the one micro cycle.
+        # In this case we use a naive scaling if the step is too big.
+        if (self.max_micro_cycles == 1) and (step_norm > self.trust_radius):
+            step = step / step_norm * self.trust_radius
+        self.log(f"norm(step)={np.linalg.norm(step):.6f}")
 
         predicted_energy_change = 1/2 * eigval_max / nu_max**2 + eigval_min / nu_min**2
         self.predicted_energy_changes.append(predicted_energy_change)
-        print("predicted_energy_change", predicted_energy_change)
-        # Right now the step is still given in the Hessians eigensystem. We
-        # transform it back now.
-        step = eigvecs.dot(prfo_step)
-        # norm = np.linalg.norm(step)
-        # if norm > self.max_size:
-            # self.log(f"norm(step, unscaled)={norm:.6f}")
-            # self.log("Scaling down step")
-            # step = self.max_size * step / norm
-            # norm = np.linalg.norm(step)
-        # self.log(f"norm(step)={norm:6f}")
 
         self.log("")
         return step
