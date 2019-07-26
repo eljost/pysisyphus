@@ -123,8 +123,9 @@ class RSPRFOptimizer(HessianOptimizer):
             eigvals = eigvals[~small_inds]
             eigvecs = eigvecs[:,~small_inds]
             small_num = sum(small_inds)
-            assert small_num in (5, 6), \
-                 "Expected 5 or 6 small eigenvalues in cartesian hessian " \
+            self.log(f"Found {small_num} small eigenvalues in cartesian hessian.")
+            assert small_num <= 6, \
+                 "Expected at most 6 small eigenvalues in cartesian hessian " \
                 f"but found {small_num}!"
 
         # Calculate overlaps between (updated) hessian and current TS-mode to
