@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pysisyphus.calculators.CerjanMiller import CerjanMiller
 from pysisyphus.helpers import geom_from_library
-from pysisyphus.tsoptimizers.PRFOptimizer import PRFOptimizer
-from pysisyphus.optimizers.RSRFOptimizer import RSRFOptimizer
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
+from pysisyphus.calculators.CerjanMiller import CerjanMiller
 from pysisyphus.tsoptimizers.PRFOptimizer import PRFOptimizer
 from pysisyphus.calculators.XTB import XTB
 
