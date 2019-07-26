@@ -28,6 +28,8 @@ class Optimizer:
                  **kwargs):
         self.geometry = geometry
 
+        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
+
         assert thresh in self.CONV_THRESHS.keys()
         self.convergence = self.make_conv_dict(thresh, rms_force)
         self.align = align
@@ -38,7 +40,7 @@ class Optimizer:
             setattr(self, key, value)
 
         # Setting some default values
-        self.final_fn = "final_geometry.xyz"
+        self.final_fn = "final_geometries.trj" if self.is_cos else "final_geometry.xyz"
         self.resetted = False
         self.max_cycles = 50
         self.max_step = max_step
@@ -46,9 +48,6 @@ class Optimizer:
         self.out_dir = os.getcwd()
 
         assert(self.max_step > self.rel_step_thresh)
-
-        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
-        self.is_zts = getattr(self.geometry, "reparametrize", None)
 
         image_num = 1
         if self.is_cos:
@@ -93,11 +92,12 @@ class Optimizer:
                        6*rms_force,
                        4*rms_force,
             )
-        keys = ("max_force_thresh",
+        keys = ["max_force_thresh",
                 "rms_force_thresh",
-                "max_step_thresh",
-                "rms_step_thresh",
-        )
+        ]
+        # Only used gradient information for CoS optimizations
+        if not self.is_cos:
+            keys += ["max_step_thresh", "rms_step_thresh"]
         conv_dict = {
             k: v for k, v in zip(keys, threshs)
         }
