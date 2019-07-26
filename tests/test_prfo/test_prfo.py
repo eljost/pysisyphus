@@ -24,7 +24,6 @@ def check_eigvals(H):
 
 def test_rsprfo_hcn_ts_xtb():
     geom = geom_from_library("hcn_iso_ts.xyz", coord_type="redund")
-    # geom = geom_from_library("hcn_iso_ts.xyz")
     xtb = XTB()
     geom.set_calculator(xtb)
 
@@ -32,13 +31,12 @@ def test_rsprfo_hcn_ts_xtb():
     check_eigvals(geom.hessian)
 
     opt_kwargs = {
-        "trust_max": 0.1,
-        # "hessian_recalc": 2,
-        "thresh": "gau",
+        "thresh": "gau_tight",
     }
     opt = PRFOptimizer(geom, **opt_kwargs)
     opt.run()
     assert opt.is_converged
+    assert opt.cur_cycle == 7
 
     print()
     print("End")
@@ -52,18 +50,17 @@ def test_prfo_analytical():
         # "hessian_recalc": 1,
     }
     opt = PRFOptimizer(geom, **opt_kwargs)
-    try:
-        opt.run()
-    except AssertionError as err:
-        print(err)
-    cs = np.array(opt.coords)
-    calc = geom.calculator
-    calc.plot()
-    ax = calc.ax
-    ax.plot(*cs.T[:2], "ro-")
-    plt.show()
+    opt.run()
+    assert opt.is_converged
+    assert opt.cur_cycle == 9
+    # cs = np.array(opt.coords)
+    # calc = geom.calculator
+    # calc.plot()
+    # ax = calc.ax
+    # ax.plot(*cs.T[:2], "ro-")
+    # plt.show()
 
 
 if __name__ == "__main__":
-    # test_rsprfo_hcn_ts_xtb()
+    test_rsprfo_hcn_ts_xtb()
     test_prfo_analytical()
