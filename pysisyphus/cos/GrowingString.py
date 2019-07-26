@@ -192,7 +192,7 @@ class GrowingString(GrowingChainOfStates):
             reparam_image.coords = reparam_coords
             cur_param_density = self.get_cur_param_density("coords")
         np.testing.assert_allclose(cur_param_density, desired_param_density,
-                                   atol=5*thresh)
+                                   atol=max(5e-2, 5*thresh))
 
         # Regenerate active set after reparametrization
         # [image.internal.set_active_set() for image in self.moving_images]
