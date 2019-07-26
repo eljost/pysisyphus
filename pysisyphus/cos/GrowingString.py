@@ -175,6 +175,8 @@ class GrowingString(GrowingChainOfStates):
         # Negative sign: image is too far right and has to be shifted left.
         # Positive sign: image is too far left and has to be shifted right.
         signs = np.sign(diffs).astype(int)
+        # TODO: multiple passes of this loop to get a tighter convergence,
+        # so a lower atol can used in the np.testing method.
         for i, (diff, sign) in enumerate(zip(diffs, signs)):
             if abs(diff) < thresh:
                 continue
