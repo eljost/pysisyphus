@@ -9,6 +9,7 @@
 import numpy as np
 import scipy as sp
 
+from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import procrustes
 from pysisyphus.optimizers.Optimizer import Optimizer
 
@@ -57,6 +58,7 @@ class StringOptimizer(Optimizer):
         self.energies.append(self.geometry.energy)
         self.forces.append(forces)
 
+        self.log(f"norm(forces)={np.linalg.norm(forces)*ANG2BOHR:.6f} hartree/Å")
 
         sd_step = forces / self.gamma
         # Steepest descent in the first cbeginning
