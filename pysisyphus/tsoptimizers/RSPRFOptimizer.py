@@ -96,62 +96,6 @@ class RSPRFOptimizer(HessianOptimizer):
         self.root = max_ovlp_ind
         self.ts_mode = eigvecs.T[max_ovlp_ind]
 
-    # def optimize(self):
-        # gradient = self.geometry.gradient
-        # self.forces.append(-self.geometry.gradient)
-        # self.energies.append(self.geometry.energy)
-
-        # if self.cur_cycle > 0:
-            # self.update_trust_radius()
-            # self.update_hessian()
-
-        # H = self.H
-        # if self.geometry.coord_type == "redund":
-            # H_proj = self.geometry.internal.project_hessian(self.H)
-            # # Symmetrize hessian, as the projection probably breaks it?!
-            # H = (H_proj + H_proj.T) / 2
-
-        # eigvals, eigvecs = np.linalg.eigh(H)
-        # self.update_ts_mode(eigvals, eigvecs)
-
-        # # Transform gradient to eigensystem of hessian
-        # gradient_trans = eigvecs.T.dot(gradient)
-
-        # # Minimize energy along all modes, except the TS-mode
-        # min_indices = [i for i in range(gradient_trans.size) if i != self.root]
-        # min_mat = np.asarray(np.bmat((
-            # (np.diag(eigvals[min_indices]), gradient_trans[min_indices,None]),
-            # (gradient_trans[None,min_indices], [[0]])
-        # )))
-        # # Maximize energy along the chosen TS mode. The matrix is hardcoded
-        # # as 2x2, so only first-order saddle point searches are supported.
-        # max_mat = np.array(((eigvals[self.root], gradient_trans[self.root]),
-                           # (gradient_trans[self.root], 0)))
-
-        # step_max, eigval_max, nu_max = self.solve_rfo(max_mat, "max")
-        # step_max = step_max[0]
-        # step_min, eigval_min, nu_min = self.solve_rfo(min_mat, "min")
-
-        # # Assemble step from step_max and step_min
-        # step = np.zeros_like(gradient_trans)
-        # step[self.root] = step_max
-        # step[min_indices] = step_min
-        # # Right now the step is still given in the Hessians eigensystem. We
-        # # transform it back now.
-        # step = eigvecs.dot(step)
-        # step_norm = np.linalg.norm(step)
-
-        # # Restrict step_norm to the current trust radius
-        # if step_norm > self.trust_radius:
-            # step = step / step_norm * self.trust_radius
-        # self.log(f"norm(step)={np.linalg.norm(step):.6f}")
-
-        # predicted_change = step.dot(gradient) + 0.5 * step.dot(self.H).dot(step)
-        # self.predicted_energy_changes.append(predicted_change)
-
-        # self.log("")
-        # return step
-
     def optimize(self):
         gradient = self.geometry.gradient
         self.forces.append(-self.geometry.gradient)
