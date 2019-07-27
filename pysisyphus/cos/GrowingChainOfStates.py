@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from scipy.interpolate import splprep, splev
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.Geometry import Geometry
@@ -34,10 +33,6 @@ class GrowingChainOfStates(ChainOfStates):
         self.images.insert(index, new_image)
         self.log(f"Create new image; insert it before index {index}.")
         return new_image
-
-    # @property
-    # def dummy_coords(self):
-        # return np.empty_like(self.images[0].cart_coords)
 
     @property
     def arc_dims(self):
