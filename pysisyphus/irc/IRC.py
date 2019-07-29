@@ -211,7 +211,10 @@ class IRC:
     def run(self):
         if self.forward:
             print(highlight_text("Forward"))
-            self.irc("forward")
+            try:
+                self.irc("forward")
+            except Exception as error:
+                logging.error(error)
             self.forward_coords = self.irc_mw_coords
             self.forward_energies = self.irc_energies
             self.all_coords.extend(self.forward_coords)
@@ -225,7 +228,10 @@ class IRC:
 
         if self.backward:
             print(highlight_text("Backward"))
-            self.irc("backward")
+            try:
+                self.irc("backward")
+            except Exception as error:
+                logging.error(error)
             self.backward_coords = self.irc_mw_coords
             self.backward_energies = self.irc_energies
             self.all_coords.extend(self.backward_coords)
