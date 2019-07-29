@@ -167,20 +167,50 @@ class GrowingString(GrowingChainOfStates):
         new_points = new_points.reshape(-1, len(self.images))
         self.coords = new_points.transpose().flatten()
 
+    # def reparam_dlc(self, cur_param_density, desired_param_density, thresh=1e-3):
+        # # Reparametrization will take place along the tangent between two
+        # # images. The index of the tangent image depends on wether the image
+        # # is above or below the desired param_density on the normalized arc.
+        # diffs = desired_param_density - cur_param_density
+        # # Negative sign: image is too far right and has to be shifted left.
+        # # Positive sign: image is too far left and has to be shifted right.
+        # signs = np.sign(diffs).astype(int)
+        # # TODO: multiple passes of this loop to get a tighter convergence,
+        # # so a lower atol can used in the np.testing method.
+        # for i, (diff, sign) in enumerate(zip(diffs, signs)):
+            # if abs(diff) < thresh:
+                # continue
+            # reparam_image = self.images[i]
+            # # Index of the tangent image. reparam_image will be shifted along
+            # # this direction to achieve the desired parametirzation density.
+            # tangent_ind = i + sign
+            # tangent_image = self.images[tangent_ind]
+            # distance = -(reparam_image - tangent_image)
+
+            # param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
+            # step_length = abs(diff) / param_dens_diff
+            # step = step_length * distance
+            # reparam_coords = reparam_image.coords + step
+            # reparam_image.coords = reparam_coords
+            # cur_param_density = self.get_cur_param_density("coords")
+        # np.testing.assert_allclose(cur_param_density, desired_param_density,
+                                   # # atol=max(5e-2, 5*thresh))
+                                   # atol=thresh)
+
+        # # Regenerate active set after reparametrization
+        # # [image.internal.set_active_set() for image in self.moving_images]
+
     def reparam_dlc(self, cur_param_density, desired_param_density, thresh=1e-3):
         # Reparametrization will take place along the tangent between two
         # images. The index of the tangent image depends on wether the image
         # is above or below the desired param_density on the normalized arc.
-        diffs = desired_param_density - cur_param_density
-        # Negative sign: image is too far right and has to be shifted left.
-        # Positive sign: image is too far left and has to be shifted right.
-        signs = np.sign(diffs).astype(int)
-        # TODO: multiple passes of this loop to get a tighter convergence,
-        # so a lower atol can used in the np.testing method.
-        for i, (diff, sign) in enumerate(zip(diffs, signs)):
+        for i, reparam_image in enumerate(self.images[1:-1], 1):
+            diff = (desired_param_density - cur_param_density)[i]
+            # Negative sign: image is too far right and has to be shifted left.
+            # Positive sign: image is too far left and has to be shifted right.
+            sign = int(np.sign(diff))
             if abs(diff) < thresh:
                 continue
-            reparam_image = self.images[i]
             # Index of the tangent image. reparam_image will be shifted along
             # this direction to achieve the desired parametirzation density.
             tangent_ind = i + sign
@@ -194,7 +224,7 @@ class GrowingString(GrowingChainOfStates):
             reparam_image.coords = reparam_coords
             cur_param_density = self.get_cur_param_density("coords")
         np.testing.assert_allclose(cur_param_density, desired_param_density,
-                                   atol=max(5e-2, 5*thresh))
+                                   atol=thresh)
 
         # Regenerate active set after reparametrization
         # [image.internal.set_active_set() for image in self.moving_images]
