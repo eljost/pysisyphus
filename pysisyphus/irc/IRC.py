@@ -34,10 +34,10 @@ class IRC:
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
-        self.displ_energy = displ_energy
+        self.displ_energy = float(displ_energy)
         # assert self.displ_energy > 0, \
             # "displ_energy must be positive"
-        self.displ_length = displ_length
+        self.displ_length = float(displ_length)
         # assert self.displ_length > 0, \
             # "displ_displ must be positive"
         self.rms_grad_thresh = float(rms_grad_thresh)
@@ -119,8 +119,10 @@ class IRC:
         See https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
         """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
-        eigvals, eigvecs = np.linalg.eigh(self.geometry.mw_hessian)
-        assert eigvals[0] < 0, "The hessian does not have any negative eigenvalues!"
+        proj_hessian = self.geometry.eckart_projection(self.geometry.mw_hessian)
+        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+        neg_inds = eigvals < -1e-10
+        assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
         min_eigval = eigvals[0]
         mw_trans_vec = eigvecs[:,0]
         # Un-mass-weight the transition vector
