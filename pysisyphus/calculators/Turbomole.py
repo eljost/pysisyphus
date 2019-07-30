@@ -138,15 +138,6 @@ class Turbomole(OverlapCalculator):
         self.ci_coeffs = None
         self.mo_inds = None
 
-    def prepare_turbo_coords(self, atoms, coords):
-        fmt = "{:<20.014f}"
-        coord_str = "$coord\n"
-        for atom, coord in zip(atoms, coords.reshape(-1, 3)):
-            coord_line = (fmt+fmt+fmt).format(*coord) + atom.lower() + "\n"
-            coord_str += coord_line
-        coord_str += "$end"
-        return coord_str
-
     def prepare_input(self, atoms, coords, calc_type):
         if calc_type not in ("force", "double_mol", "noparse"):
             raise Exception("Can only do force and tddft for now.")
