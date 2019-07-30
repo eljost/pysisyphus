@@ -305,8 +305,10 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
 
     print(f"Optimized TS coords:")
     print(ts_geom.as_xyz())
-    with open("ts_opt.xyz", "w") as handle:
+    ts_opt_fn = "ts_opt.xyz"
+    with open(ts_opt_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
+    print(f"Wrote TS geometry to '{ts_opt_fn}'")
 
     if do_hess:
         hessian = ts_geom.hessian
