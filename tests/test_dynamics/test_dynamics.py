@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# [1] https://doi.org/10.1063/1.5082885
+
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 import numpy as np
@@ -81,9 +83,13 @@ def test_mdp():
 
 
 def test_so3hcl_diss():
-    geom = geom_from_xyz_file("so3hcl_diss_ts_opt.xyz")
-    geom.set_calculator(XTB(pal=4))
+    """See [1]"""
+    def get_geom():
+        geom = geom_from_xyz_file("so3hcl_diss_ts_opt.xyz")
+        geom.set_calculator(XTB(pal=4))
+        return geom
 
+    geom = get_geom()
     mdp_kwargs = {
         # About 5 kcal/mol
         "E_excess": 0.0079,
@@ -95,6 +101,10 @@ def test_so3hcl_diss():
         "dt": .5*FS2AU,
     }
     res = mdp(geom, **mdp_kwargs)
+
+    geom = get_geom()
+    mdp_kwargs["E_excess"] = 0
+    res_ee = mdp(geom, **mdp_kwargs)
 
 
 def test_so3hcl_md():
