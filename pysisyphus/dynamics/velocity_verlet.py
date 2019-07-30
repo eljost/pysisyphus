@@ -11,6 +11,7 @@ MDResult = namedtuple("MDResult",
 
 
 def md(geom, v0, t, dt, term_funcs=None):
+    """TODO: dump coords, velocities; check energy conservation"""
     if term_funcs is None:
         term_funcs = list()
     m = geom.masses_rep
