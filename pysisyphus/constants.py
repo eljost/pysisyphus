@@ -4,3 +4,5 @@ AU2KJPERMOL = 2625.499
 AU2EV = 27.211386
 # eV/Å -> Hartree/Bohr
 EVANG2AUBOHR = 1/AU2EV/ANG2BOHR
+# fs -> Bohr * sqrt(amu/Hartree)
+FS2AU = 0.99189815
