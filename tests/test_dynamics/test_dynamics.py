@@ -4,10 +4,13 @@ from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 import numpy as np
 
+from pysisyphus.constants import FS2AU, BOHR2ANG
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
+from pysisyphus.calculators.XTB import XTB
 from pysisyphus.dynamics.velocity_verlet import md
 from pysisyphus.dynamics.mdp import mdp
+from pysisyphus.helpers import geom_from_xyz_file
 
 
 def test_velocity_verlet():
@@ -77,8 +80,46 @@ def test_mdp():
     plt.show()
 
 
+def test_so3hcl_diss():
+    geom = geom_from_xyz_file("so3hcl_diss_ts_opt.xyz")
+    geom.set_calculator(XTB(pal=4))
 
+    mdp_kwargs = {
+        # About 5 kcal/mol
+        "E_excess": 0.0079,
+        "term_funcs": list(),
+        "epsilon": 5e-4,
+        "ascent_alpha": 0.05,
+        "t_init": 20*FS2AU,
+        "t": 200*FS2AU,
+        "dt": .5*FS2AU,
+    }
+    res = mdp(geom, **mdp_kwargs)
+
+
+def test_so3hcl_md():
+    geom = geom_from_xyz_file("so3hcl_diss_ts_opt.xyz")
+    geom.set_calculator(XTB(pal=4))
+
+    v0 = .025 * np.random.rand(*geom.coords.shape)
+    md_kwargs = {
+        "v0": v0,
+        "t": 400*FS2AU,
+        "dt": 1*FS2AU,
+    }
+    res = md(geom, **md_kwargs)
+
+    from pysisyphus.xyzloader import make_trj_str
+    def dump_coords(coords, trj_fn):
+        coords = np.array(coords)
+        coords = coords.reshape(-1, len(geom.atoms), 3) * BOHR2ANG
+        trj_str = make_trj_str(geom.atoms, coords)
+        with open(trj_fn, "w") as handle:
+            handle.write(trj_str)
+    dump_coords(res.coords, "md.trj")
 
 if __name__ == "__main__":
-    test_velocity_verlet()
-    test_mdp()
+    # test_velocity_verlet()
+    # test_mdp()
+    test_so3hcl_diss()
+    # test_so3hcl_md()
