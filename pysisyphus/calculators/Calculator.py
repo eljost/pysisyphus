@@ -214,6 +214,29 @@ class Calculator:
             text = handle.read()
         print(text)
 
+    def prepare_turbo_coords(self, atoms, coords):
+        """Get a Turbomole coords string.
+
+        Parameters
+        ----------
+        atoms : iterable
+            Atom descriptors (element symbols).
+        coords: np.array, 1d
+            1D-array holding coordinates in Bohr.
+
+        Returns
+        -------
+        coords: str
+            String holding coordinates in Turbomole coords format.
+        """
+        fmt = "{:<20.014f}"
+        coord_str = "$coord\n"
+        for atom, coord in zip(atoms, coords.reshape(-1, 3)):
+            coord_line = (fmt+fmt+fmt).format(*coord) + atom.lower() + "\n"
+            coord_str += coord_line
+        coord_str += "$end"
+        return coord_str
+
     def prepare_coords(self, atoms, coords):
         """Get 3d coords in Angstrom.
 
