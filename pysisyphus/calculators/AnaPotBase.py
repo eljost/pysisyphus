@@ -97,7 +97,7 @@ class AnaPotBase(Calculator):
 
 
     @classmethod
-    def get_geom(cls, coords, atoms=("H", )):
+    def get_geom(cls, coords, atoms=("X", )):
         geom = Geometry(atoms, coords)
         geom.set_calculator(cls())
         return geom
