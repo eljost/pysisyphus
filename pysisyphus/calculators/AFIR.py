@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# [1] https://pubs.acs.org/doi/pdf/10.1021/ct200290m?rand=dcfwsf09
+# [2] https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.23481
+# [3] https://onlinelibrary.wiley.com/doi/epdf/10.1002/tcr.201600043
+
 import itertools as it
 
 import autograd
@@ -44,17 +48,21 @@ def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6):
 
 class AFIR(Calculator):
 
-    def __init__(self, calculator, atoms, fragment_indices, gamma):
+    def __init__(self, calculator, atoms, fragment_indices, gamma, rho=1, p=6):
         super().__init__()
 
         self.calculator = calculator
         self.fragment_indices = fragment_indices
         self.gamma = gamma
+        self.rho = rho
+        self.p
 
         self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms]) 
         self.afir_func = afir_closure(self.fragment_indices,
                                       self.cov_radii,
-                                      self.gamma)
+                                      self.gamma,
+                                      rho=self.rho
+                                      p=self.p)
         self.afir_grad_func = autograd.grad(self.afir_func)
 
     def get_energy(self, atoms, coords):
