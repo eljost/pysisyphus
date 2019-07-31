@@ -3,7 +3,6 @@
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.Geometry import Geometry
 
 class LennardJones(Calculator):
 
