@@ -32,6 +32,7 @@ MASS_DICT = {
 # {el.symbol: el.covalent_radius for el  in periodictable.elements
 #  if el.covalent_radius}
 COVALENT_RADII_ANG = {
+    'x': 0.529,
     'n': 0.71, 'h': 0.31, 'he': 0.28, 'li': 1.28, 'be': 0.96, 'b': 0.84,
     'c': 0.76, 'o': 0.66, 'f': 0.57, 'ne': 0.58, 'na': 1.66, 'mg': 1.41,
     'al': 1.21, 'si': 1.11, 'p': 1.07, 's': 1.05, 'cl': 1.02, 'ar': 1.06,
@@ -51,6 +52,7 @@ COVALENT_RADII_ANG = {
 }
 # In Bohr
 COVALENT_RADII = {
+    'x': 1.0,
     'n': 1.3417, 'h': 0.5858, 'he': 0.5291, 'li': 2.4188, 'be': 1.8141,
     'b': 1.5874, 'c': 1.4362, 'o': 1.2472, 'f': 1.0771, 'ne': 1.096,
     'na': 3.1369, 'mg': 2.6645, 'al': 2.2866, 'si': 2.0976, 'p': 2.022,
