@@ -52,7 +52,7 @@ class Geometry:
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
-        self._coords = np.array(coords, dtype=np.float)
+        self._coords = np.array(coords, dtype=np.float).flatten()
         assert self._coords.size == (3*len(self.atoms)), \
             f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
             f"{self._coords.size}. Did you accidentally supply internal " \
@@ -212,6 +212,7 @@ class Geometry:
             may vary depending on the chosen coordinate system.
         """
         # Do the backtransformation from internal to cartesian.
+        coords = np.array(coords).flatten()
         if self.internal:
             int_step = coords - self.internal.coords
             cart_diff = self.internal.transform_int_step(int_step)
