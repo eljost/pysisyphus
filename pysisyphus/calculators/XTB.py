@@ -3,6 +3,7 @@
 import glob
 import os
 import re
+import textwrap
 
 import numpy as np
 import pyparsing as pp
@@ -11,7 +12,7 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.parser import parse_turbo_gradient
-from pysisyphus.helpers import geom_from_xyz_file
+from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -33,12 +34,14 @@ class XTB(Calculator):
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz", "g98.out")
+        self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz", "g98.out",
+                        "xtb.trj", )
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
             "hess": self.parse_hessian,
             "opt": self.parse_opt,
+            "md": self.parse_md,
             "noparse": lambda path: None,
         }
 
@@ -107,6 +110,43 @@ class XTB(Calculator):
         }
         results = self.run(inp, **kwargs)
         return results
+
+    def run_md(self, atoms, coords, time, step, dump=1, velocities=None):
+        assert velocities is None, "Setting initial velocities is not yet supported!"
+        restart = "true" if (velocities is not None) else "false"
+        md_str = textwrap.dedent("""
+        $md
+            hmass=1
+            dump={dump}  # fs
+            nvt=false
+            restart={restart}
+            time={time}  # ps
+            shake=0
+            step={step}  # fs
+            velo=false
+        $end""")
+        md_str_fmt = md_str.format(restart=restart, time=time, step=step,
+                                   dump=dump)
+        path = self.prepare_path(use_in_run=True)
+        with open(path / "xcontrol", "w") as handle:
+            handle.write(md_str_fmt)
+        inp = self.prepare_turbo_coords(atoms, coords)
+
+        add_args = self.prepare_add_args() + ["--input", "xcontrol", "--md"]
+        self.log(f"Executing {self.base_cmd} {add_args}")
+        kwargs = {
+            "calc": "md",
+            "add_args": add_args,
+            "env": self.get_pal_env(),
+            "keep": True,
+        }
+        geoms = self.run(inp, **kwargs)
+        return geoms
+
+    def parse_md(self, path):
+        assert (path / "xtbmdok").exists(), "File xtbmdok does not exist!"
+        geoms = geoms_from_trj(path / "xtb.trj")
+        return geoms
 
     def run_opt(self, atoms, coords, keep=True):
         inp = self.prepare_coords(atoms, coords)

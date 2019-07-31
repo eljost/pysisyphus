@@ -12,7 +12,7 @@ from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.dynamics.velocity_verlet import md
 from pysisyphus.dynamics.mdp import mdp
-from pysisyphus.helpers import geom_from_xyz_file
+from pysisyphus.helpers import geom_from_library
 
 
 def test_velocity_verlet():
@@ -85,7 +85,7 @@ def test_mdp():
 def test_so3hcl_diss():
     """See [1]"""
     def get_geom():
-        geom = geom_from_xyz_file("so3hcl_diss_ts_opt.xyz")
+        geom = geom_from_library("so3hcl_diss_ts_opt.xyz")
         geom.set_calculator(XTB(pal=4))
         return geom
 
@@ -108,7 +108,7 @@ def test_so3hcl_diss():
 
 
 def test_so3hcl_md():
-    geom = geom_from_xyz_file("so3hcl_diss_ts_opt.xyz")
+    geom = geom_from_library("so3hcl_diss_ts_opt.xyz")
     geom.set_calculator(XTB(pal=4))
 
     v0 = .025 * np.random.rand(*geom.coords.shape)
@@ -128,8 +128,16 @@ def test_so3hcl_md():
             handle.write(trj_str)
     dump_coords(res.coords, "md.trj")
 
+
+def test_xtb_md():
+    geom = geom_from_library("so3hcl_diss_ts_opt.xyz")
+    calc = XTB(pal=4)
+    geoms = calc.run_md(geom.atoms, geom.coords, time=0.2, step=0.1)
+
+
 if __name__ == "__main__":
     # test_velocity_verlet()
     # test_mdp()
-    test_so3hcl_diss()
+    # test_so3hcl_diss()
     # test_so3hcl_md()
+    test_xtb_md()
