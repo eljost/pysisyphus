@@ -3,7 +3,7 @@
 import numpy as np
 
 from pysisyphus.xyzloader import make_trj_str
-from pysisyphus.constants import AMU2KG, BOHR2ANG, KB, MPERSEC2AU
+from pysisyphus.constants import AMU2KG, BOHR2ANG, KB, MPERSEC2AU, AU2J
 
 
 def dump_coords(atoms, coords, trj_fn):
@@ -35,6 +35,14 @@ def kinetic_energy_from_velocities(masses, velocities):
 
 def kinetic_energy_for_temperature(atom_number, T):
     return 3/2 * atom_number * T * KB
+
+
+def temperature_for_kinetic_energy(atom_number, E_kin):
+    return 2/3 * E_kin / (atom_number * KB)
+
+
+def temperature_for_kinetic_energy_au(atom_number, E_kin):
+    return temperature_for_kinetic_energy(atom_number, E_kin*AU2J)
 
 
 def get_velocities(geom, T=298.15):
