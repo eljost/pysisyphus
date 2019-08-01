@@ -6,7 +6,7 @@ from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pysisyphus.constants import FS2AU, BOHR2ANG
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.XTB import XTB
@@ -20,7 +20,7 @@ def test_velocity_verlet():
     geom = AnaPot.get_geom((0.52, 1.80, 0))
     x0 = geom.coords.copy()
     v0 = .1 * np.random.rand(*geom.coords.shape)
-    t = 25
+    t = 3
     dts = (.005, .01, .02, .04, .08)
     all_xs = list()
     for dt in dts:
@@ -97,15 +97,19 @@ def test_so3hcl_diss():
         "term_funcs": list(),
         "epsilon": 5e-4,
         "ascent_alpha": 0.05,
-        "t_init": 20*FS2AU,
-        "t": 200*FS2AU,
-        "dt": .5*FS2AU,
+        "t_init": 20,
+        # Paper uses 200
+        "t": 100,
+        "dt": .5,
+        "seed": 25032018,
+        # "external_md": True,
+        "max_init_trajs": 1,
     }
     res = mdp(geom, **mdp_kwargs)
 
-    geom = get_geom()
-    mdp_kwargs["E_excess"] = 0
-    res_ee = mdp(geom, **mdp_kwargs)
+    # geom = get_geom()
+    # mdp_kwargs["E_excess"] = 0
+    # res_ee = mdp(geom, **mdp_kwargs)
 
 
 def test_so3hcl_md():
@@ -115,8 +119,8 @@ def test_so3hcl_md():
     v0 = .025 * np.random.rand(*geom.coords.shape)
     md_kwargs = {
         "v0": v0,
-        "t": 400*FS2AU,
-        "dt": 1*FS2AU,
+        "t": 400,
+        "dt": 1,
     }
     res = md(geom, **md_kwargs)
 
@@ -136,13 +140,13 @@ def test_xtb_md():
 
     T = 298.15
     velocities = get_velocities(geom, T=T)
-    geoms = calc.run_md(geom.atoms, geom.coords, time=0.2, step=0.1,
+    geoms = calc.run_md(geom.atoms, geom.coords, t=200, step=0.1,
                         velocities=velocities)
 
 
 if __name__ == "__main__":
     # test_velocity_verlet()
     # test_mdp()
-    # test_so3hcl_diss()
+    test_so3hcl_diss()
     # test_so3hcl_md()
-    test_xtb_md()
+    # test_xtb_md()
