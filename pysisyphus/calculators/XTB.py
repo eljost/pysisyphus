@@ -128,7 +128,9 @@ class XTB(Calculator):
         with open(path / "mdrestart", "wb") as handle:
             handle.write(mdrestart_str.encode("ascii"))
 
-    def run_md(self, atoms, coords, time, step, dump=1, velocities=None):
+    def run_md(self, atoms, coords, t, dt, velocities=None, dump=1):
+        """Expecting t and dt in fs, even though xtb wants t in ps!"""
+
         restart = "false"
         path = self.prepare_path(use_in_run=True)
         if velocities is not None:
@@ -150,7 +152,8 @@ class XTB(Calculator):
             step={step}  # fs
             velo=false
         $end""")
-        md_str_fmt = md_str.format(restart=restart, time=time, step=step,
+        t_fs = t / 1000
+        md_str_fmt = md_str.format(restart=restart, time=t_fs, step=dt,
                                    dump=dump)
         with open(path / "xcontrol", "w") as handle:
             handle.write(md_str_fmt)
