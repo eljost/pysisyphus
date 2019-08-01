@@ -6,7 +6,7 @@ AU2EV = 27.211386
 # eV/Å -> Hartree/Bohr
 EVANG2AUBOHR = 1/AU2EV/ANG2BOHR
 # fs -> Bohr * sqrt(amu/Hartree)
-FS2AU = 0.99189815
+FS2AU = 0.9682885864793366
 # Boltzman constant
 KB = 1.38064852E-23  # m² kg s⁻² K⁻¹
 # Atomic mass unit to kg
