@@ -10,8 +10,9 @@ from pysisyphus.constants import FS2AU, BOHR2ANG
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.dynamics.velocity_verlet import md
+from pysisyphus.dynamics.helpers import get_velocities
 from pysisyphus.dynamics.mdp import mdp
+from pysisyphus.dynamics.velocity_verlet import md
 from pysisyphus.helpers import geom_from_library
 
 
@@ -132,7 +133,11 @@ def test_so3hcl_md():
 def test_xtb_md():
     geom = geom_from_library("so3hcl_diss_ts_opt.xyz")
     calc = XTB(pal=4)
-    geoms = calc.run_md(geom.atoms, geom.coords, time=0.2, step=0.1)
+
+    T = 298.15
+    velocities = get_velocities(geom, T=T)
+    geoms = calc.run_md(geom.atoms, geom.coords, time=0.2, step=0.1,
+                        velocities=velocities)
 
 
 if __name__ == "__main__":
