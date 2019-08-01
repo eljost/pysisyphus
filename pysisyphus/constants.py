@@ -6,3 +6,10 @@ AU2EV = 27.211386
 EVANG2AUBOHR = 1/AU2EV/ANG2BOHR
 # fs -> Bohr * sqrt(amu/Hartree)
 FS2AU = 0.99189815
+# Boltzman constant
+KB = 1.38064852E-23  # m² kg s⁻² K⁻¹
+# Atomic mass unit to kg
+AMU2KG = 1.660539066E-27
+SEC2AU = 2.4188843265857e-17
+# Velocity from m/s to au
+MPERSEC2AU = 1 / (BOHR2ANG * 1e-10 / SEC2AU)
