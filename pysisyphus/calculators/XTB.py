@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
+import io
 import os
 import re
 import textwrap
@@ -111,9 +112,33 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
+    def get_mdrestart_str(self, coords, velocities):
+        """coords and velocities have to given in au!"""
+        vals = np.concatenate((coords, velocities), axis=1)
+
+        with io.StringIO() as io_stream:
+            np.savetxt(io_stream, vals, fmt="% .14e")
+            mdrestart = io_stream.getvalue()
+        # What does the -1.0 mean?
+        mdrestart = "-1.0\n" + mdrestart.replace("e", "D")
+        mdrestart = textwrap.indent(mdrestart, " ")
+        return mdrestart
+
+    def write_mdrestart(self, path, mdrestart_str):
+        with open(path / "mdrestart", "wb") as handle:
+            handle.write(mdrestart_str.encode("ascii"))
+
     def run_md(self, atoms, coords, time, step, dump=1, velocities=None):
-        assert velocities is None, "Setting initial velocities is not yet supported!"
-        restart = "true" if (velocities is not None) else "false"
+        restart = "false"
+        path = self.prepare_path(use_in_run=True)
+        if velocities is not None:
+            coords3d = coords.reshape(-1, 3)
+            velocities3d = velocities.reshape(-1, 3)
+            assert coords3d.shape == velocities3d.shape, \
+                "Shape of coordinates and velocities doesn't match!"
+            mdrestart_str = self.get_mdrestart_str(coords3d, velocities3d)
+            self.write_mdrestart(path, mdrestart_str)
+            restart = "true"
         md_str = textwrap.dedent("""
         $md
             hmass=1
@@ -127,7 +152,6 @@ class XTB(Calculator):
         $end""")
         md_str_fmt = md_str.format(restart=restart, time=time, step=step,
                                    dump=dump)
-        path = self.prepare_path(use_in_run=True)
         with open(path / "xcontrol", "w") as handle:
             handle.write(md_str_fmt)
         inp = self.prepare_turbo_coords(atoms, coords)
