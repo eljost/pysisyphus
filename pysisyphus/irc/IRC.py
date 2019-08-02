@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
+# https://chemistry.stackexchange.com/questions/74639
+
 import copy
 import logging
 import pathlib
@@ -11,16 +14,13 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import check_for_stop_sign, highlight_text
 from pysisyphus.TablePrinter import TablePrinter
 
-# https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
-# https://chemistry.stackexchange.com/questions/74639
-
 
 class IRC:
 
-    def __init__(self, geometry, step_length=0.1, max_cycles=75,
+    def __init__(self, geometry, step_length=0.1, max_cycles=150,
                  forward=True, backward=True,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=5e-4):
+                 rms_grad_thresh=1e-4):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
 
@@ -119,8 +119,13 @@ class IRC:
         See https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
         """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
-        proj_hessian = self.geometry.eckart_projection(self.geometry.mw_hessian)
-        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+        mw_hessian = self.geometry.mw_hessian
+        try:
+            if not self.geometry.calculator.analytical_2d:
+                mw_hessian = self.geometry.eckart_projection(mw_hessian)
+        except AttributeError:
+            pass
+        eigvals, eigvecs = np.linalg.eigh(mw_hessian)
         neg_inds = eigvals < -1e-10
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
         min_eigval = eigvals[0]
@@ -211,10 +216,11 @@ class IRC:
     def run(self):
         if self.forward:
             print(highlight_text("Forward"))
-            try:
-                self.irc("forward")
-            except Exception as error:
-                logging.error(error)
+            # try:
+                # self.irc("forward")
+            # except Exception as error:
+                # logging.error(error)
+            self.irc("forward")
             self.forward_coords = self.irc_mw_coords
             self.forward_energies = self.irc_energies
             self.all_coords.extend(self.forward_coords)
@@ -228,10 +234,11 @@ class IRC:
 
         if self.backward:
             print(highlight_text("Backward"))
-            try:
-                self.irc("backward")
-            except Exception as error:
-                logging.error(error)
+            # try:
+                # self.irc("backward")
+            # except Exception as error:
+                # logging.error(error)
+            self.irc("backward")
             self.backward_coords = self.irc_mw_coords
             self.backward_energies = self.irc_energies
             self.all_coords.extend(self.backward_coords)
@@ -243,6 +250,10 @@ class IRC:
         self.all_energies = np.array(self.all_energies)
         self.postprocess()
         self.write_trj(".", "finished")
+
+        # Right now self.all_coords is still in mass-weighted coordinates.
+        # Convert them to un-mass-weighted coordinates.
+        self.all_coords_umw = self.all_coords / self.geometry.masses_rep**0.5
 
 
     def postprocess(self):
