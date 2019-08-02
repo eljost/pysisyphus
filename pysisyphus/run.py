@@ -94,6 +94,7 @@ IRC_DICT = {
     "gs": GonzalesSchlegel.GonzalesSchlegel,
     "imk": IMKMod.IMKMod,
     "rk4": RK4,
+    "lqa": LQA,
 }
 
 STOCASTIC_DICT = {
@@ -214,7 +215,7 @@ def preopt_ends(xyz, calc_getter):
             sys.exit()
         print(f"Preoptimization of {str_} geometry converged!")
         opt_fn = f"{str_}_preopt.xyz"
-        shutil.move("final_geometry.xyz", opt_fn)
+        shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
         out_xyz.append(opt_fn)
         print()
@@ -467,6 +468,11 @@ def overlaps(run_dict, geoms=None):
                                   consider_first=consider_first,
                                   skip=skip,)
 
+def run_stocastic(stoc):
+    # Fragment
+    stoc.run()
+
+
 def run_opt(geom, calc_getter, opt_getter):
     geom.set_calculator(calc_getter(0))
     opt = opt_getter(geom)
@@ -474,20 +480,51 @@ def run_opt(geom, calc_getter, opt_getter):
     return opt
 
 
-def run_stocastic(stoc):#geom, calc_kwargs):
-    # Fragment
-    stoc.run()
-
-
-def run_irc(geom, irc_kwargs):
-    irc_type = irc_kwargs.pop("type")
-    irc = IRC_DICT[irc_type](geom, **irc_kwargs)
-    irc.run()
-
-
 def run_tsopt(geom, tsopt_key, tsopt_kwargs):
     tsopt = TSOPT_DICT[tsopt_key](geom, **tsopt_kwargs)
     tsopt.run()
+
+    ts_opt_fn = "ts_opt.xyz"
+    shutil.copy(tsopt.final_fn, ts_opt_fn)
+    print(f"Copied '{tsopt.final_fn}' to '{ts_opt_fn}'.")
+
+
+def run_irc(geom, irc_kwargs, calc_getter):
+    calc_number = 0
+    def set_calc(geom):
+        nonlocal calc_number
+        calc_number += 1
+        geom.set_calculator(calc_getter(calc_number))
+    set_calc(geom)
+
+    irc_type = irc_kwargs.pop("type")
+    opt_ends = irc_kwargs.pop("opt_ends")
+
+    irc = IRC_DICT[irc_type](geom, **irc_kwargs)
+    irc.run()
+
+    to_opt = list()
+    if opt_ends and irc.forward:
+        coords = irc.all_coords_umw[0]
+        to_opt.append((coords, "forward_end"))
+    if opt_ends and irc.backward:
+        coords = irc.all_coords_umw[-1]
+        to_opt.append((coords, "backward_end"))
+
+    opt_kwargs = {
+        "max_cycles": 150,
+        "thresh": "gau",
+        "trust_max": 0.3,
+    }
+    for coords, name in to_opt:
+        geom = Geometry(geom.atoms, coords, coord_type="redund")
+        set_calc(geom)
+
+        opt = RFOptimizer.RFOptimizer(geom, **opt_kwargs)
+        opt.run()
+        opt_fn = f"{name}_opt.xyz"
+        shutil.move(opt.final_fn, opt_fn)
+        print(f"Moved '{opt.final_fn}' to '{opt_fn}'.")
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
@@ -506,17 +543,6 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
         print("\t", xyz)
     shutil.copy(yaml_fn, destination)
     print("\t", yaml_fn)
-
-
-"""
-def run_irc(args):
-    assert(len(arg.xyz) == 1)
-    geom = get_geoms(args)[0]
-    geom.set_calculator(CALC_DICT[args.calc]())
-    irc = IRC_DICT[args.irc](geom)
-    irc.run()
-    #irc.write_trj(THIS_DIR, prefix)
-"""
 
 
 def get_defaults(conf_dict):
@@ -609,6 +635,7 @@ def get_defaults(conf_dict):
     if "irc" in conf_dict:
         dd["irc"] = {
             "type": "euler",
+            "opt_ends": False,
         }
 
     return dd
@@ -756,8 +783,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     elif run_dict["irc"]:
         assert len(geoms) == 1
         geom = geoms[0]
-        geom.set_calculator(calc_getter(0))
-        run_irc(geom, irc_kwargs)
+        run_irc(geom, irc_kwargs, calc_getter)
     elif run_dict["tsopt"]:
         assert len(geoms) == 1
         geom = geoms[0]

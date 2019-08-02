@@ -1,6 +1,7 @@
 import logging
 
 from pysisyphus.irc.RK4 import RK4
+from pysisyphus.irc.LQA import LQA
 
 __all__ = [
     "DampedVelocityVerlet",
@@ -8,6 +9,7 @@ __all__ = [
     "GonzalesSchlegel",
     "IMKMod",
     "RK4",
+    "LQA",
 ]
 
 logger = logging.getLogger("irc")

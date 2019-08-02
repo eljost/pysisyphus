@@ -83,9 +83,25 @@ def plot_anapot_irc(irc):
     plt.show()
 
 
+def test_lqa():
+    from pysisyphus.irc.LQA import LQA
+    ts_coords = (0.61173, 1.49297, 0.)
+    geom = AnaPot.get_geom(ts_coords)
+    irc = LQA(geom, step_length=.2)
+    irc.run()
+
+    coords = irc.all_coords
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    ax.plot(*coords.T[:2], "ro-")
+    plt.show()
+
+
 if __name__ == "__main__":
     # irc = test_imk()
-    irc = test_rk4()
-    plot_anapot_irc(irc)
+    # irc = test_rk4()
+    # plot_anapot_irc(irc)
     # irc = test_gs()
     # plot_anapot_irc(irc)
+    test_lqa()
