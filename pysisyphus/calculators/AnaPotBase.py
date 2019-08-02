@@ -33,6 +33,8 @@ class AnaPotBase(Calculator):
 
         self.fake_atoms = ("X", ) # X, dummy atom
 
+        self.analytical_2d = True
+
     def get_energy(self, atoms, coords):
         x, y, z = coords
         energy = self.V(x, y)
