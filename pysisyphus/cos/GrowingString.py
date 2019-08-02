@@ -13,7 +13,7 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, perp_thresh=0.05,
-                 reparam_every=3, reparam_tol=5e-3, **kwargs):
+                 reparam_every=3, reparam_tol=None, **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
@@ -24,8 +24,12 @@ class GrowingString(GrowingChainOfStates):
         self.perp_thresh = perp_thresh
         self.reparam_every = int(reparam_every)
         assert self.reparam_every >= 1
-        self.reparam_tol = float(reparam_tol)
-        assert self.reparam_tol > 0
+        if reparam_tol is not None:
+            self.reparam_tol = float(reparam_tol)
+            assert self.reparam_tol > 0
+        else:
+            self.reparam_tol = 1 / (self.max_nodes + 2) / 2
+        self.log("Using reparametrization tolerance of {self.reparam_tol:.4e}")
 
         left_img, right_img = self.images
 
