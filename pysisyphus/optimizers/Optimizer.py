@@ -25,7 +25,7 @@ class Optimizer:
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
                  rms_force=None, align=False, dump=False, last_cycle=None,
-                 **kwargs):
+                 prefix="", **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -35,6 +35,7 @@ class Optimizer:
         self.align = align
         self.dump = dump
         self.last_cycle = last_cycle
+        self.prefix = prefix
 
         for key, value in self.convergence.items():
             setattr(self, key, value)
