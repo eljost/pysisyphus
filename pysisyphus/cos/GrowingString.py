@@ -29,7 +29,7 @@ class GrowingString(GrowingChainOfStates):
             assert self.reparam_tol > 0
         else:
             self.reparam_tol = 1 / (self.max_nodes + 2) / 2
-        self.log("Using reparametrization tolerance of {self.reparam_tol:.4e}")
+        self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4e}")
 
         left_img, right_img = self.images
 
