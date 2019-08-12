@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
-import logging
+# import logging
 import os
 from pathlib import Path
 import re
@@ -45,7 +45,7 @@ class ORCA(OverlapCalculator):
                 "allowed! Use 'pal: n' in the 'calc' section instead."
 
         self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian",
-                        "cis", "molden:orca.molden")
+                        "cis", "molden:orca.molden", "hess")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -219,7 +219,7 @@ class ORCA(OverlapCalculator):
         parsed = parser.parseString(text)
         results["hessian"] = make_sym_mat(parsed["hessian"])
 
-        logging.warning("Hacky orca energy parsing in orca hessian calculation!")
+        # logging.warning("Hacky orca energy parsing in orca hessian calculation!")
         orca_log_fn = os.path.join(path, self.out_fn)
         with open(orca_log_fn) as handle:
             log_text = handle.read()
