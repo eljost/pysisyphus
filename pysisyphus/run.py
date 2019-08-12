@@ -312,12 +312,27 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     print(f"Wrote TS geometry to '{ts_opt_fn}'")
 
     if do_hess:
-        hessian = ts_geom.hessian
-        eigvals, eigvecs = np.linalg.eigh(hessian)
-        ev_thresh = -1e-4
-        neg_eigvals = eigvals[eigvals < ev_thresh]
-        print(f"Self found {neg_eigvals.size} eigenvalues < {ev_thresh}.")
+        print()
+        do_final_hessian(ts_geom)
+
+
+def do_final_hessian(ts_geom):
+    print("Calculating hessian at final geometry.")
+
+    hessian = ts_geom.hessian
+    eigvals, eigvecs = np.linalg.eigh(hessian)
+    ev_thresh = -1e-4
+
+    neg_inds = eigvals < ev_thresh
+    neg_eigvals = eigvals[neg_inds]
+    neg_num = sum(neg_inds)
+    print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
+    if neg_num > 0:
         print("Negative eigenvalues: ", neg_eigvals)
+
+    final_hessian_fn = "final_hessian"
+    np.savetxt(final_hessian_fn, hessian)
+    print(f"Wrote final hessian to '{final_hessian_fn}'.")
 
 
 # def run_cos_dimer(cos, dimer_kwargs, calc_getter):
@@ -481,12 +496,18 @@ def run_opt(geom, calc_getter, opt_getter):
 
 
 def run_tsopt(geom, tsopt_key, tsopt_kwargs):
+    do_hess = tsopt_kwargs.pop("do_hess")
+
     tsopt = TSOPT_DICT[tsopt_key](geom, **tsopt_kwargs)
     tsopt.run()
 
     ts_opt_fn = "ts_opt.xyz"
     shutil.copy(tsopt.final_fn, ts_opt_fn)
     print(f"Copied '{tsopt.final_fn}' to '{ts_opt_fn}'.")
+
+    if do_hess:
+        print()
+        do_final_hessian(geom)
 
 
 def run_irc(geom, irc_kwargs, calc_getter):
