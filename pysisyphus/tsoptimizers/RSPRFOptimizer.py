@@ -23,9 +23,9 @@ class RSPRFOptimizer(HessianOptimizer):
         "max": (-1, "max"),
     }
 
-    def __init__(self, geometry, root=0,
+    def __init__(self, geometry, root=0, hessian_ref=None,
                  hessian_init="calc", hessian_update="bofill",
-                 neg_eigval_thresh=-1e-8, max_micro_cycles=50, **kwargs):
+                 max_micro_cycles=50, **kwargs):
 
         assert hessian_init == "calc", \
             "TS-optimization should be started from a calculated hessian " \
@@ -37,22 +37,67 @@ class RSPRFOptimizer(HessianOptimizer):
                          hessian_update=hessian_update, **kwargs)
 
         self.root = int(root)
+        self.hessian_ref = hessian_ref
+        try:
+            self.hessian_ref = np.loadtxt(self.hessian_ref)
+            _ = self.geometry.coords.size
+            expected_shape = (_, _)
+            shape = self.hessian_ref.shape
+            assert shape == expected_shape, \
+                f"Shape of reference hessian {shape} doesn't match the expected "  \
+                 "shape {expected_shape} of the hessian for the current coordinates!"
+        except OSError as err:
+            self.log(f"Tried to load reference hessian from '{self.hessian_ref}' "
+                      "but the file could not be found.")
+        except ValueError as err:
+            self.log(f"No reference hessian provided. Using root={self.root} to " \
+                      "determine initial mode.")
         self.ts_mode = None
-        self.neg_eigval_thresh = float(neg_eigval_thresh)
         self.max_micro_cycles = max_micro_cycles
 
         self.alpha0 = 1
 
     def prepare_opt(self):
         super().prepare_opt()
+
+        # Determiniation of initial mode either by using a provided
+        # reference hessian, or by using a supplied root.
+
         eigvals, eigvecs = np.linalg.eigh(self.H)
-        # Check if the selected mode is a sensible choice
-        assert eigvals[self.root] < self.neg_eigval_thresh, \
+
+        self.log("Determining initial TS mode to follow.")
+        # Select an initial TS-mode by highest overlap with eigenvectors from
+        # reference hessian.
+        if self.hessian_ref is not None:
+            eigvals_ref, eigvecs_ref = np.linalg.eigh(self.hessian_ref)
+            assert eigvals_ref[0] < -self.small_eigval_thresh
+            ref_mode = eigvecs_ref[:,0]
+            overlaps = np.einsum("ij,j->i", eigvecs.T, ref_mode)
+            ovlp_str = np.array2string(overlaps, precision=4)
+            self.log( "Overlaps between eigenvectors of current hessian "
+                     f"TS mode from reference hessian:")
+            self.log(f"\t{ovlp_str}")
+
+            self.root = np.abs(overlaps).argmax()
+            print( "Highest overlap between reference TS mode and "
+                  f"eigenvector {self.root:02d}.")
+
+        # Check if the selected mode (root) is a sensible choice.
+        #
+        # small_eigval_thresh is positive and we dont take the absolute value
+        # of the eigenvalues. So we multiply small_eigval_thresh to get a
+        # negative number.
+        assert eigvals[self.root] < -self.small_eigval_thresh, \
              "Expected negative eigenvalue! Eigenvalue of selected TS-mode " \
             f"{self.root:02d} is above the the threshold of " \
-            f"{self.neg_eigval_thresh:.6e}!"
-        # Select an initial TS-mode
+            f"{self.small_eigval_thresh:.6e}!"
+
+        # import pdb; pdb.set_trace()
+        # Select an initial TS-mode by root index. self.root may have been
+        # modified by using a reference hessian.
         self.ts_mode = eigvecs[:,self.root]
+        self.log(f"Using mode {self.root:02d} as TS mode.")
+        self.log("")
 
     def solve_rfo(self, rfo_mat, kind="min"):
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
@@ -114,19 +159,10 @@ class RSPRFOptimizer(HessianOptimizer):
         eigvals, eigvecs = np.linalg.eigh(H)
 
         if self.geometry.coord_type == "cart":
-            # Poor mans Eckart projection ... or how to neglect translation
-            # and rotation.
-            #
             # Don't use eigenvectors that belong to very small eigenvalues,
-            # as they belong to overall translations/rotations of the molecule
-            small_inds = np.abs(eigvals) < 1e-8
-            eigvals = eigvals[~small_inds]
-            eigvecs = eigvecs[:,~small_inds]
-            small_num = sum(small_inds)
-            self.log(f"Found {small_num} small eigenvalues in cartesian hessian.")
-            assert small_num <= 6, \
-                 "Expected at most 6 small eigenvalues in cartesian hessian " \
-                f"but found {small_num}!"
+            # as they probably belong to overall translations/rotations of
+            # the molecule and may mess up the stepsize, by producing large steps.
+            eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
         # Calculate overlaps between (updated) hessian and current TS-mode to
         # determine new TS-mode.
