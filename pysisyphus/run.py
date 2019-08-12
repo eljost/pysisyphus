@@ -25,7 +25,8 @@ from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords
+from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords, \
+                               highlight_text
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -195,17 +196,24 @@ def preopt_ends(xyz, calc_getter):
     geoms = get_geoms(xyz, coord_type="redund")
     assert len(geoms) >= 2, "Need at least two geometries!"
 
+    middle_geoms = geoms[1:-1]
+    middle_fn = None
+    if len(middle_geoms) > 0:
+        middle_fn = "middle_for_preopt.trj"
+        write_geoms_to_trj(middle_geoms, middle_fn)
+
     def opt_getter(geom, prefix):
         opt_kwargs = {
             "max_cycles": 150,
             "thresh": "gau",
             "trust_max": 0.3,
             "prefix": prefix,
+            "dump": True,
         }
         opt = RFOptimizer.RFOptimizer(geom, **opt_kwargs)
         return opt
 
-    out_xyz = xyz.copy()
+    out_xyz = list()
     for ind, str_ in ((0, "first"), (-1, "last")):
         print(f"Preoptimizing {str_} geometry.")
         geom = geoms[ind]
@@ -218,8 +226,11 @@ def preopt_ends(xyz, calc_getter):
         opt_fn = f"{str_}_preopt.xyz"
         shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
-        out_xyz[ind] = opt_fn
+        out_xyz.append(opt_fn)
         print()
+
+    if middle_fn:
+        out_xyz.insert(1, middle_fn)
 
     return out_xyz
 
@@ -491,6 +502,7 @@ def run_stocastic(stoc):
 
 
 def run_opt(geom, calc_getter, opt_getter):
+    print(highlight_text(f"Running optimization"))
     geom.set_calculator(calc_getter(0))
     opt = opt_getter(geom)
     opt.run()
@@ -498,6 +510,8 @@ def run_opt(geom, calc_getter, opt_getter):
 
 
 def run_tsopt(geom, tsopt_key, tsopt_kwargs):
+    print(highlight_text(f"Running TS-optimization"))
+
     do_hess = tsopt_kwargs.pop("do_hess")
 
     tsopt = TSOPT_DICT[tsopt_key](geom, **tsopt_kwargs)
@@ -513,6 +527,8 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
 
 
 def run_irc(geom, irc_kwargs, calc_getter):
+    print(highlight_text(f"Running IRC"))
+
     calc_number = 0
     def set_calc(geom):
         nonlocal calc_number
@@ -538,16 +554,19 @@ def run_irc(geom, irc_kwargs, calc_getter):
         "max_cycles": 150,
         "thresh": "gau",
         "trust_max": 0.3,
+        "dump": True,
     }
     for coords, name in to_opt:
+        print(highlight_text(f"Optimizing {name}"))
         geom = Geometry(geom.atoms, coords, coord_type="redund")
         set_calc(geom)
 
-        opt = RFOptimizer.RFOptimizer(geom, **opt_kwargs)
+        prefix = f"{name}_"
+        opt = RFOptimizer.RFOptimizer(geom, prefix=prefix, **opt_kwargs)
         opt.run()
         opt_fn = f"{name}_opt.xyz"
         shutil.move(opt.final_fn, opt_fn)
-        print(f"Moved '{opt.final_fn}' to '{opt_fn}'.")
+        print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
