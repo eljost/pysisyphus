@@ -41,7 +41,6 @@ class Optimizer:
             setattr(self, key, value)
 
         # Setting some default values
-        self.final_fn = "final_geometries.trj" if self.is_cos else "final_geometry.xyz"
         self.resetted = False
         self.max_cycles = 50
         self.max_step = max_step
@@ -62,6 +61,10 @@ class Optimizer:
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
+
+        final_fn = "final_geometries.trj" if self.is_cos else "final_geometry.xyz"
+        self.final_fn = self.get_path_for_fn(final_fn)
+
         self.logger = logging.getLogger("optimizer")
 
         # Setting some empty lists as default
@@ -81,6 +84,13 @@ class Optimizer:
             # redo the last cycle.
             self.cur_cycle = last_cycle + 1
             self.restart()
+
+        if self.dump:
+            out_trj_fn = self.get_path_for_fn("optimization.trj")
+            self.out_trj_handle= open(out_trj_fn, "w")
+
+    def get_path_for_fn(self, fn):
+        return self.out_dir / (self.prefix + fn)
 
     def make_conv_dict(self, key, rms_force=None):
         if not rms_force:
@@ -233,8 +243,7 @@ class Optimizer:
             self.write_results()
         else:
             # Append to .trj file
-            out_fn = "optimization.trj"
-            self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
+            self.out_trj_handle.write(as_xyz_str+"\n")
 
     def final_summary(self):
         # If the optimization was stopped _forces may not be set, so
@@ -334,6 +343,9 @@ class Optimizer:
 
             self.cur_cycle += 1
             self.log("")
+
+        if self.dump:
+            self.out_trj_handle.close()
 
         # Outside loop
         if (not self.is_cos) and (not stopped):

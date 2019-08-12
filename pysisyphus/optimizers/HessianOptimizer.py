@@ -80,7 +80,7 @@ class HessianOptimizer(Optimizer):
             self.log(f"Trying to load saved hessian from '{self.hessian_init}'.")
             self.H = np.loadtxt(self.hessian_init)
         if self.hessian_init == "calc":
-            hess_fn = "calculated_init_hessian"
+            hess_fn = self.get_path_for_fn("calculated_init_hessian")
             np.savetxt(hess_fn, self.H)
             self.log(f"Wrote calculated hessian to '{hess_fn}'")
 
