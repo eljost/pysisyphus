@@ -35,6 +35,12 @@ class RFOptimizer(HessianOptimizer):
                      (gradient[None, :], [[0]]))
         )
         eigvals, eigvecs = np.linalg.eigh(H_aug)
+
+        neg_eigval_inds = eigvals < -self.small_eigval_thresh
+        neg_num = neg_eigval_inds.sum()
+        eigval_str = np.array2string(eigvals[neg_eigval_inds], precision=6)
+        self.log(f"Found {neg_num} negative eigenvalue(s): {eigval_str}")
+
         # Select eigenvector corresponding to smallest eigenvalue. Eigen-
         # values and -vectors are sorted, so we take the first one.
         aug_step = eigvecs[:, 0]
