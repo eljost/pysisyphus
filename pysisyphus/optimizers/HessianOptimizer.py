@@ -26,7 +26,7 @@ class HessianOptimizer(Optimizer):
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
-                 hessian_recalc=None, **kwargs):
+                 hessian_recalc=None, small_eigval_thresh=1e-8, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
@@ -43,6 +43,8 @@ class HessianOptimizer(Optimizer):
             raise Exception("hessian_multi_update=True doesn't work yet!")
         self.hessian_init = hessian_init
         self.hessian_recalc = hessian_recalc
+        self.small_eigval_thresh = float(small_eigval_thresh)
+        assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
 
         # Allow only calculated or unit hessian for geometries that don't
         # use internal coordinates.
@@ -141,6 +143,18 @@ class HessianOptimizer(Optimizer):
             dH, key = self.hessian_update_func(self.H, dx, dg)
             self.H = self.H + dH
             self.log(f"Did {key} hessian update.")
+
+    def filter_small_eigvals(self, eigvals, eigvecs):
+        small_inds = np.abs(eigvals) < self.small_eigval_thresh
+        eigvals = eigvals[~small_inds]
+        eigvecs = eigvecs[:,~small_inds]
+        small_num = sum(small_inds)
+        self.log(f"Found {small_num} small eigenvalues in hessian. Removed "
+                  "corresponding eigenvalues and eigenvectors.")
+        assert small_num <= 6, \
+             "Expected at most 6 small eigenvalues in cartesian hessian " \
+            f"but found {small_num}!"
+        return eigvals, eigvecs
 
     @abstractmethod
     def optimize(self):
