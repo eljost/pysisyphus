@@ -122,7 +122,7 @@ class RSPRFOptimizer(HessianOptimizer):
         return step, eigval, nu
 
     def update_ts_mode(self, eigvals, eigvecs):
-        neg_eigval_inds = eigvals < -1e-8
+        neg_eigval_inds = eigvals < -self.small_eigval_thresh
         neg_num = neg_eigval_inds.sum()
         assert neg_num >= 1, \
             "Need at least 1 negative eigenvalue for TS optimization."
