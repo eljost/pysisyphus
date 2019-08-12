@@ -23,6 +23,14 @@ class RFOptimizer(HessianOptimizer):
             self.update_hessian()
 
         H = self.H
+
+        eigvals, _ = np.linalg.eigh(H)
+        neg_eigval_inds = eigvals < -self.small_eigval_thresh
+        neg_num = neg_eigval_inds.sum()
+        eigval_str = np.array2string(eigvals[neg_eigval_inds], precision=6)
+        self.log(f"Found {neg_num} negative eigenvalue(s): {eigval_str}")
+
+
         if self.geometry.internal:
             H_proj = self.geometry.internal.project_hessian(self.H)
             # Symmetrize hessian, as the projection probably breaks it?!
@@ -32,26 +40,12 @@ class RFOptimizer(HessianOptimizer):
         # or use eckard projection.
 
         # Eq. (56) in [1]
-        H_aug = np.bmat(
-                    ((H, gradient[:, None]),
-                     (gradient[None, :], [[0]]))
-        )
-        eigvals, eigvecs = np.linalg.eigh(H_aug)
+        H_aug = np.array(np.bmat(
+                            ((H, gradient[:, None]),
+                             (gradient[None, :], [[0]]))
+        ))
 
-        neg_eigval_inds = eigvals < -self.small_eigval_thresh
-        neg_num = neg_eigval_inds.sum()
-        eigval_str = np.array2string(eigvals[neg_eigval_inds], precision=6)
-        self.log(f"Found {neg_num} negative eigenvalue(s): {eigval_str}")
-
-        # Select eigenvector corresponding to smallest eigenvalue. Eigen-
-        # values and -vectors are sorted, so we take the first one.
-        aug_step = eigvecs[:, 0]
-        # aug_step is currently a matrix. Convert it to an array.
-        aug_step = np.asarray(aug_step).flatten()
-        lambda_ = aug_step[-1]
-        # Scale aug_step so the last element equals 1, then neglect the last
-        # item.
-        step = aug_step[:-1] / lambda_
+        step, eigval, nu = self.solve_rfo(H_aug, "min")
 
         step_norm = np.linalg.norm(step)
         # Restrict step_norm to the current trust radius

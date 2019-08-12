@@ -23,6 +23,11 @@ class HessianOptimizer(Optimizer):
         "bofill": bofill_update,
     }
 
+    rfo_dict = {
+        "min": (0, "min"),
+        "max": (-1, "max"),
+    }
+
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
@@ -143,6 +148,29 @@ class HessianOptimizer(Optimizer):
             dH, key = self.hessian_update_func(self.H, dx, dg)
             self.H = self.H + dH
             self.log(f"Did {key} hessian update.")
+
+    def solve_rfo(self, rfo_mat, kind="min"):
+        eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
+        eigenvalues = eigenvalues.real
+        eigenvectors = eigenvectors.real
+        sorted_inds = np.argsort(eigenvalues)
+
+        # Depending on wether we want to minimize (maximize) along
+        # the mode(s) in the rfo mat we have to select the smallest
+        # (biggest) eigenvalue and corresponding eigenvector.
+        first_or_last, verbose = self.rfo_dict[kind]
+        ind = sorted_inds[first_or_last]
+        # Given sorted eigenvalue-indices (sorted_inds) use the first
+        # (smallest eigenvalue) or the last (largest eigenvalue) index.
+        step_nu = eigenvectors.T[ind]
+        nu = step_nu[-1]
+        self.log(f"nu_{verbose}={nu:.4e}")
+        # Scale eigenvector so that its last element equals 1. The
+        # final is step is the scaled eigenvector without the last element.
+        step = step_nu[:-1] / nu
+        eigval = eigenvalues[ind]
+        self.log(f"eigenvalue_{verbose}={eigval:.4e}")
+        return step, eigval, nu
 
     def filter_small_eigvals(self, eigvals, eigvecs):
         small_inds = np.abs(eigvals) < self.small_eigval_thresh

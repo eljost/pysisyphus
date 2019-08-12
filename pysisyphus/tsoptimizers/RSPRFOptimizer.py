@@ -18,11 +18,6 @@ from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 class RSPRFOptimizer(HessianOptimizer):
     """Optimizer to find first-order saddle points."""
 
-    rfo_dict = {
-        "min": (0, "min"),
-        "max": (-1, "max"),
-    }
-
     def __init__(self, geometry, root=0, hessian_ref=None,
                  hessian_init="calc", hessian_update="bofill",
                  max_micro_cycles=50, **kwargs):
@@ -97,29 +92,6 @@ class RSPRFOptimizer(HessianOptimizer):
         self.ts_mode = eigvecs[:,self.root]
         self.log(f"Using mode {self.root:02d} as TS mode.")
         self.log("")
-
-    def solve_rfo(self, rfo_mat, kind="min"):
-        eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
-        eigenvalues = eigenvalues.real
-        eigenvectors = eigenvectors.real
-        sorted_inds = np.argsort(eigenvalues)
-
-        # Depending on wether we want to minimize (maximize) along
-        # the mode(s) in the rfo mat we have to select the smallest
-        # (biggest) eigenvalue and corresponding eigenvector.
-        first_or_last, verbose = self.rfo_dict[kind]
-        ind = sorted_inds[first_or_last]
-        # Given sorted eigenvalue-indices (sorted_inds) use the first
-        # (smallest eigenvalue) or the last (largest eigenvalue) index.
-        step_nu = eigenvectors.T[ind]
-        nu = step_nu[-1]
-        self.log(f"nu_{verbose}={nu:.4e}")
-        # Scale eigenvector so that its last element equals 1. The
-        # final is step is the scaled eigenvector without the last element.
-        step = step_nu[:-1] / nu
-        eigval = eigenvalues[ind]
-        self.log(f"eigenvalue_{verbose}={eigval:.4e}")
-        return step, eigval, nu
 
     def update_ts_mode(self, eigvals, eigvecs):
         neg_eigval_inds = eigvals < -self.small_eigval_thresh
