@@ -34,6 +34,7 @@ from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
 from pysisyphus.tsoptimizers.dimer import dimer_method
 from pysisyphus._version import get_versions
+from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 CALC_DICT = {
@@ -194,22 +195,22 @@ def preopt_ends(xyz, calc_getter):
     geoms = get_geoms(xyz, coord_type="redund")
     assert len(geoms) >= 2, "Need at least two geometries!"
 
-    # middle = geoms[1:-1]
-
-    def opt_getter(geom):
+    def opt_getter(geom, prefix):
         opt_kwargs = {
             "max_cycles": 150,
             "thresh": "gau",
             "trust_max": 0.3,
+            "prefix": prefix,
         }
         opt = RFOptimizer.RFOptimizer(geom, **opt_kwargs)
         return opt
 
-    out_xyz = list()
+    out_xyz = xyz.copy()
     for ind, str_ in ((0, "first"), (-1, "last")):
         print(f"Preoptimizing {str_} geometry.")
         geom = geoms[ind]
-        opt = run_opt(geom, calc_getter, opt_getter)
+        prefix = f"{str_}_"
+        opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix))
         if not opt.is_converged:
             print("Problem in preoptimization of {str_}. Exiting!")
             sys.exit()
@@ -217,8 +218,9 @@ def preopt_ends(xyz, calc_getter):
         opt_fn = f"{str_}_preopt.xyz"
         shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
-        out_xyz.append(opt_fn)
+        out_xyz[ind] = opt_fn
         print()
+
     return out_xyz
 
 
