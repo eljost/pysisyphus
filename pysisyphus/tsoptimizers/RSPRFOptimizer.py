@@ -92,7 +92,6 @@ class RSPRFOptimizer(HessianOptimizer):
             f"{self.root:02d} is above the the threshold of " \
             f"{self.small_eigval_thresh:.6e}!"
 
-        # import pdb; pdb.set_trace()
         # Select an initial TS-mode by root index. self.root may have been
         # modified by using a reference hessian.
         self.ts_mode = eigvecs[:,self.root]
