@@ -40,7 +40,7 @@ class RSPRFOptimizer(HessianOptimizer):
             shape = self.hessian_ref.shape
             assert shape == expected_shape, \
                 f"Shape of reference hessian {shape} doesn't match the expected "  \
-                 "shape {expected_shape} of the hessian for the current coordinates!"
+                f"shape {expected_shape} of the hessian for the current coordinates!"
         except OSError as err:
             self.log(f"Tried to load reference hessian from '{self.hessian_ref}' "
                       "but the file could not be found.")
