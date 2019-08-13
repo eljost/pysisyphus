@@ -217,10 +217,10 @@ def preopt_ends(xyz, calc_getter):
     for ind, str_ in ((0, "first"), (-1, "last")):
         print(f"Preoptimizing {str_} geometry.")
         geom = geoms[ind]
-        prefix = f"{str_}_"
+        prefix = f"{str_}_pre"
         opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix))
         if not opt.is_converged:
-            print("Problem in preoptimization of {str_}. Exiting!")
+            print(f"Problem in preoptimization of {str_}. Exiting!")
             sys.exit()
         print(f"Preoptimization of {str_} geometry converged!")
         opt_fn = f"{str_}_preopt.xyz"
@@ -567,6 +567,7 @@ def run_irc(geom, irc_kwargs, calc_getter):
         opt_fn = f"{name}_opt.xyz"
         shutil.move(opt.final_fn, opt_fn)
         print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
+        print()
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
