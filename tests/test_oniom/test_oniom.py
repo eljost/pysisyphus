@@ -61,11 +61,11 @@ def test_biaryl_solvated():
     geom.set_calculator(oniom)
 
     opt_kwargs = {
-        "trust_max": .3,
+        # "trust_max": .3,
         "dump": True,
         # "thresh": "gau",
         "prefix": "pm6_biaryl_",
-        "max_cycles": 75,
+        "max_cycles": 200,
     }
     rfo = RFOptimizer(geom, **opt_kwargs)
     rfo.run()
