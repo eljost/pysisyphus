@@ -463,6 +463,14 @@ class Geometry:
         self._forces = forces
 
     @property
+    def cart_forces(self):
+        return self._forces
+
+    @cart_forces.setter
+    def cart_forces(self, forces):
+        self._forces = forces
+
+    @property
     def gradient(self):
         """Negative of the force.
 
