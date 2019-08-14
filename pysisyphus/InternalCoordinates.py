@@ -58,8 +58,6 @@ def get_cov_radii_sum_array(atoms, coords):
     return cov_rad_sums
 
 
-# PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
-
 @attr.s(auto_attribs=True)
 class PrimitiveCoord:
     inds : typing.List[int]
