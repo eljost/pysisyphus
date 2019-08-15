@@ -244,6 +244,7 @@ class Optimizer:
         else:
             # Append to .trj file
             self.out_trj_handle.write(as_xyz_str+"\n")
+            self.out_trj_handle.flush()
 
     def final_summary(self):
         # If the optimization was stopped _forces may not be set, so
@@ -317,7 +318,6 @@ class Optimizer:
             end_time = time.time()
             elapsed_seconds = end_time - start_time
             self.cycle_times.append(elapsed_seconds)
-
 
             if self.dump:
                 self.write_cycle_to_file()
