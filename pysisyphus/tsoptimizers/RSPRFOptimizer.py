@@ -18,7 +18,7 @@ from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 class RSPRFOptimizer(HessianOptimizer):
     """Optimizer to find first-order saddle points."""
 
-    def __init__(self, geometry, root=0, hessian_ref=None,
+    def __init__(self, geometry, root=0, hessian_ref=None, prim_coord=None,
                  hessian_init="calc", hessian_update="bofill",
                  max_micro_cycles=50, **kwargs):
 
@@ -45,10 +45,12 @@ class RSPRFOptimizer(HessianOptimizer):
             self.log(f"Tried to load reference hessian from '{self.hessian_ref}' "
                       "but the file could not be found.")
         except ValueError as err:
-            self.log(f"No reference hessian provided. Using root={self.root} to " \
-                      "determine initial mode.")
+            self.log(f"No reference hessian provided.")
+        self.prim_coord = prim_coord
+
         self.ts_mode = None
         self.max_micro_cycles = max_micro_cycles
+        self.prim_contrib_thresh = 0.05
 
         self.alpha0 = 1
 
@@ -62,10 +64,29 @@ class RSPRFOptimizer(HessianOptimizer):
 
         self.log_negative_eigenvalues(eigvals, "Initial ")
 
-        self.log("Determining initial TS mode to follow.")
+        self.log("Determining initial TS mode to follow uphill.")
         # Select an initial TS-mode by highest overlap with eigenvectors from
         # reference hessian.
-        if self.hessian_ref is not None:
+        if self.prim_coord:
+            prim_ind = self.geometry.internal.get_index_of_prim_coord(self.prim_coord)
+            # Select row of eigenvector-matrix that corresponds to this coordinate
+            prim_row = eigvecs[prim_ind]
+            max_contrib_ind = np.abs(prim_row).argmax()
+            self.root = max_contrib_ind
+
+            big_contribs = np.abs(prim_row) > self.prim_contrib_thresh
+            big_inds = np.arange(prim_row.size)[big_contribs]
+            contrib_str = "\n".join(
+                [f"\t{ind:02d}: {contrib:.4f}"
+                 for ind, contrib in zip(big_inds, np.abs(prim_row)[big_contribs])]
+            )
+
+            self.log( "Highest absolute contribution of primitive internal coordinate "
+                     f"{self.prim_coord} in mode {self.root:02d}.")
+            self.log(f"Absolute contributions > {self.prim_contrib_thresh:.04f}"
+                     f"\n{contrib_str}")
+            used_str = f"Contribution of primitive coordinate {self.prim_coord}"
+        elif self.hessian_ref is not None:
             eigvals_ref, eigvecs_ref = np.linalg.eigh(self.hessian_ref)
             self.log_negative_eigenvalues(eigvals_ref, "Reference ")
             assert eigvals_ref[0] < -self.small_eigval_thresh
@@ -79,6 +100,10 @@ class RSPRFOptimizer(HessianOptimizer):
             self.root = np.abs(overlaps).argmax()
             print( "Highest overlap between reference TS mode and "
                   f"eigenvector {self.root:02d}.")
+            used_str = "overlap with reference TS mode"
+        else:
+            used_str = f"root={self.root}"
+        self.log(f"Used {used_str} to select inital TS mode.")
 
         # Check if the selected mode (root) is a sensible choice.
         #
@@ -93,7 +118,8 @@ class RSPRFOptimizer(HessianOptimizer):
         # Select an initial TS-mode by root index. self.root may have been
         # modified by using a reference hessian.
         self.ts_mode = eigvecs[:,self.root]
-        self.log(f"Using mode {self.root:02d} as TS mode.")
+        self.log(f"Using mode {self.root:02d} with eigenvalue "
+                 f"{eigvals[self.root]:.6f} as TS mode.")
         self.log("")
 
     def update_ts_mode(self, eigvals, eigvecs):
