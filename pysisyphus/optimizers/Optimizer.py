@@ -180,7 +180,7 @@ class Optimizer:
         header = "cycle" + " ".join([h.rjust(13) for h in hs])
         print(header)
 
-    def print_convergence(self):
+    def print_opt_progress(self):
         int_fmt = "{:>5d}"
         float_fmt = "{:>12.6f}"
         conv_str = int_fmt + " " + (float_fmt + " ") * 4 + "{:>12.1f}"
@@ -318,10 +318,11 @@ class Optimizer:
             elapsed_seconds = end_time - start_time
             self.cycle_times.append(elapsed_seconds)
 
+
             if self.dump:
                 self.write_cycle_to_file()
 
-            self.print_convergence()
+            self.print_opt_progress()
             if self.is_converged:
                 print("Converged!")
                 print()
