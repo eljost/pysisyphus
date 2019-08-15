@@ -60,6 +60,8 @@ class RSPRFOptimizer(HessianOptimizer):
 
         eigvals, eigvecs = np.linalg.eigh(self.H)
 
+        self.log_negative_eigenvalues(eigvals)
+
         self.log("Determining initial TS mode to follow.")
         # Select an initial TS-mode by highest overlap with eigenvectors from
         # reference hessian.
@@ -98,8 +100,8 @@ class RSPRFOptimizer(HessianOptimizer):
         neg_num = neg_eigval_inds.sum()
         assert neg_num >= 1, \
             "Need at least 1 negative eigenvalue for TS optimization."
-        eigval_str = np.array2string(eigvals[neg_eigval_inds], precision=6)
-        self.log(f"Found {neg_num} negative eigenvalue(s): {eigval_str}")
+        self.log_negative_eigenvalues(eigvals)
+
         # Select TS mode with biggest overlap to the previous TS mode
         self.log("Overlaps of previous TS mode with current imaginary mode(s):")
         ovlps = [np.abs(imag_mode.dot(self.ts_mode)) for imag_mode in eigvecs.T[:neg_num]]
