@@ -60,13 +60,14 @@ class RSPRFOptimizer(HessianOptimizer):
 
         eigvals, eigvecs = np.linalg.eigh(self.H)
 
-        self.log_negative_eigenvalues(eigvals)
+        self.log_negative_eigenvalues(eigvals, "Initial ")
 
         self.log("Determining initial TS mode to follow.")
         # Select an initial TS-mode by highest overlap with eigenvectors from
         # reference hessian.
         if self.hessian_ref is not None:
             eigvals_ref, eigvecs_ref = np.linalg.eigh(self.hessian_ref)
+            self.log_negative_eigenvalues(eigvals_ref, "Reference ")
             assert eigvals_ref[0] < -self.small_eigval_thresh
             ref_mode = eigvecs_ref[:,0]
             overlaps = np.einsum("ij,j->i", eigvecs.T, ref_mode)
@@ -126,7 +127,7 @@ class RSPRFOptimizer(HessianOptimizer):
         H = self.H
         if self.geometry.internal:
             H_proj = self.geometry.internal.project_hessian(self.H)
-            # Symmetrize hessian, as the projection probably breaks it?!
+            # Symmetrize hessian, as the projection may break it?!
             H = (H_proj + H_proj.T) / 2
 
         eigvals, eigvecs = np.linalg.eigh(H)

@@ -184,10 +184,10 @@ class HessianOptimizer(Optimizer):
             f"but found {small_num}!"
         return eigvals, eigvecs
 
-    def log_negative_eigenvalues(self, eigvals):
+    def log_negative_eigenvalues(self, eigvals, pre_str=""):
         neg_inds = eigvals < -self.small_eigval_thresh
         neg_eigval_str = np.array2string(eigvals[neg_inds], precision=6)
-        self.log(f"Found {neg_inds.sum()} negative eigenvalue(s).")
+        self.log(f"{pre_str}hessian has {neg_inds.sum()} negative eigenvalue(s).")
         self.log(f"\t{neg_eigval_str}")
 
     @abstractmethod
