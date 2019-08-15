@@ -345,10 +345,10 @@ class Optimizer:
             self.cur_cycle += 1
             self.log("")
 
+        # Outside loop
         if self.dump:
             self.out_trj_handle.close()
 
-        # Outside loop
         if (not self.is_cos) and (not stopped):
             print(self.final_summary())
         with open(self.final_fn, "w") as handle:
