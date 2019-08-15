@@ -279,7 +279,7 @@ class Optimizer:
             print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
         self.print_header()
-        stopped = False
+        self.stopped = False
         while True:
             start_time = time.time()
             if self.cur_cycle == self.max_cycles:
@@ -339,7 +339,7 @@ class Optimizer:
 
             sys.stdout.flush()
             if check_for_stop_sign():
-                stopped = True
+                self.stopped = True
                 break
 
             self.cur_cycle += 1
@@ -349,7 +349,7 @@ class Optimizer:
         if self.dump:
             self.out_trj_handle.close()
 
-        if (not self.is_cos) and (not stopped):
+        if (not self.is_cos) and (not self.stopped):
             print(self.final_summary())
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())

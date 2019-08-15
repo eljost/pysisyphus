@@ -219,7 +219,8 @@ def preopt_ends(xyz, calc_getter):
         geom = geoms[ind]
         prefix = f"{str_}_pre"
         opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix))
-        if not opt.is_converged:
+        # Continue when preoptimization was stopped manually
+        if not opt.stopped and not opt.is_converged:
             print(f"Problem in preoptimization of {str_}. Exiting!")
             sys.exit()
         print(f"Preoptimization of {str_} geometry converged!")
