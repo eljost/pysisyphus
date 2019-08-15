@@ -48,8 +48,10 @@ class RFOptimizer(HessianOptimizer):
         step, eigval, nu = self.solve_rfo(H_aug, "min")
 
         step_norm = np.linalg.norm(step)
+        self.log(f"norm(step,unscaled)={np.linalg.norm(step):.6f}")
         # Restrict step_norm to the current trust radius
         if step_norm > self.trust_radius:
+            self.log(f"step-norm exceeds trust radius; scaling step.")
             step = step / step_norm * self.trust_radius
         self.log(f"norm(step)={np.linalg.norm(step):.6f}")
 
