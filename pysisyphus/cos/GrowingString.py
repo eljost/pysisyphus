@@ -128,29 +128,29 @@ class GrowingString(GrowingChainOfStates):
         self.log(f"Created new image; inserted it before index {insert_ind}.")
         return new_img
 
-        self.images.insert(insert_ind, new_img)
-        # Take smaller steps, as the internal-cartesian-backconversion may be
-        # unstable for bigger steps.
-        steps = 10
-        step = step_length * distance/steps
-        for i in range(steps):
-            new_coords = new_img.coords + step
-            new_img.coords = new_coords
-            cpd = self.get_cur_param_density("coords")
-            try:
-                if new_img.internal.backtransform_failed:
-                    import pdb; pdb.set_trace()
-            except AttributeError:
-                pass
-            print(f"{i:02d}: {cpd}")
-
         # self.images.insert(insert_ind, new_img)
-        # self.log(f"Created new image; inserted it before index {insert_ind}.")
+        # # Take smaller steps, as the internal-cartesian-backconversion may be
+        # # unstable for bigger steps.
+        # steps = 10
+        # step = step_length * distance/steps
+        # for i in range(steps):
+            # new_coords = new_img.coords + step
+            # new_img.coords = new_coords
+            # cpd = self.get_cur_param_density("coords")
+            # try:
+                # if new_img.internal.backtransform_failed:
+                    # import pdb; pdb.set_trace()
+            # except AttributeError:
+                # pass
+            # print(f"{i:02d}: {cpd}")
 
-        cpd = self.get_cur_param_density("coords")
-        self.log(f"Current param_density: {cpd}")
+        # # self.images.insert(insert_ind, new_img)
+        # # self.log(f"Created new image; inserted it before index {insert_ind}.")
 
-        return new_img
+        # cpd = self.get_cur_param_density("coords")
+        # self.log(f"Current param_density: {cpd}")
+
+        # return new_img
 
     @property
     def left_size(self):
