@@ -55,7 +55,8 @@ class RFOptimizer(HessianOptimizer):
             step = step / step_norm * self.trust_radius
         self.log(f"norm(step)={np.linalg.norm(step):.6f}")
 
-        predicted_change = step.dot(gradient) + 0.5 * step.dot(self.H).dot(step)
-        self.predicted_energy_changes.append(predicted_change)
+        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
+        rfo_prediction = quadratic_prediction / (1 + step @ step)
+        self.predicted_energy_changes.append(rfo_prediction)
 
         return step

@@ -271,8 +271,14 @@ class RSPRFOptimizer(HessianOptimizer):
             step = step / step_norm * self.trust_radius
         self.log(f"norm(step)={np.linalg.norm(step):.6f}")
 
-        predicted_energy_change = 1/2 * eigval_max / nu_max**2 + eigval_min / nu_min**2
-        self.predicted_energy_changes.append(predicted_energy_change)
+        # Eq. (6) from [4] seems erronous ... the prediction is usually only ~50%
+        # of the actual change ...
+        # predicted_energy_change = 1/2 * (eigval_max / nu_max**2 + eigval_min / nu_min**2)
+        # self.predicted_energy_changes.append(predicted_energy_change)
+
+        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
+        rfo_prediction = quadratic_prediction / (1 + step @ step)
+        self.predicted_energy_changes.append(rfo_prediction)
 
         self.log("")
         return step
