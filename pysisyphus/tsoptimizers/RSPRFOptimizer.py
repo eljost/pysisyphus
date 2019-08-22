@@ -77,7 +77,7 @@ class RSPRFOptimizer(HessianOptimizer):
             big_contribs = np.abs(prim_row) > self.prim_contrib_thresh
             big_inds = np.arange(prim_row.size)[big_contribs]
             contrib_str = "\n".join(
-                [f"\t{ind:02d}: {contrib:.4f}"
+                [f"\t{ind:03d}: {contrib:.4f}"
                  for ind, contrib in zip(big_inds, np.abs(prim_row)[big_contribs])]
             )
 
