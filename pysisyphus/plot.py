@@ -538,6 +538,10 @@ def plot_overlaps(h5, thresh=.1):
     print(f"Reference cycles: {ref_cycles}")
     print(f"Reference roots: {ref_roots}")
 
+    print("Key-bindings:")
+    print("i: switch between current and first cycle.")
+    print("e: switch between current and last cycle.")
+
     fig, ax = plt.subplots()
 
     n_states = overlaps[0].shape[0]
@@ -623,7 +627,19 @@ def render_cdds(h5):
     with h5py.File(h5) as handle:
         cdd_cubes = handle["cdd_cubes"][:].astype(str)
         orient = handle["orient"][()].decode()
+    cdd_cubes = [Path(cub) for cub in cdd_cubes]
     print(f"Found {len(cdd_cubes)} CDD cube filenames in {h5}")
+    # Check if cubes exist
+    non_existant_cubes = [cub for cub in cdd_cubes if not cub.exists()]
+    existing_cubes = [str(cub) for cub in set(cdd_cubes) - set(non_existant_cubes)]
+    if any(non_existant_cubes):
+        print("Couldn't find cubes:")
+        print("\n".join(["\t" + str(cub) for cub in non_existant_cubes]))
+        print("Dropping full path and looking only for cube names.")
+        cub_names = [cub.name for cub in non_existant_cubes]
+        _ = [cub for cub in cub_names if Path(cub).exists()]
+        existing_cubes = existing_cubes + _
+        cdd_cubes = existing_cubes
 
     # Create list of all final PNG filenames
     png_fns = [Path(cube).with_suffix(".png") for cube in cdd_cubes]
