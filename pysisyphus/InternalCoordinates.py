@@ -636,8 +636,9 @@ class RedundantCoords:
         # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
 
-        last_rms = None
+        last_rms = 9999
         prev_internals = cur_internals
+        self.backtransform_failed = True
         for i in range(25):
             cart_step = Bt_inv_prim.T.dot(remaining_int_step)
             cart_rms = np.sqrt(np.mean(cart_step**2))
@@ -651,23 +652,29 @@ class RedundantCoords:
                      f"rms(Δinternal) = {internal_rms:1.5e}"
             )
 
-            if i == 0:
-                # Store results of the first conversion cycle for laster use, if
-                # the internal -> cartesian optimization goes awry.
-                first_cycle = (cur_cart_coords.copy(), new_internals.copy())
-            elif i > 0 and (cart_rms > last_rms):
+            # This assumes the first cart_rms won't be > 9999 ;)
+            if (cart_rms < last_rms):
+                # Store results of the conversion cycle for laster use, if
+                # the internal-cartesian-transformation goes bad.
+                best_cycle = (cur_cart_coords.copy(), new_internals.copy())
+                best_cycle_ind = i
+            else:
                 # If the conversion somehow fails we return the step
                 # saved above.
-                self.log("Internal to cartesian failed! Using first step.")
-                cur_cart_coords, new_internals = first_cycle
+                self.log( "Internal to cartesian failed! Using from step "
+                         f"from cycle {best_cycle_ind}."
+                )
+                cur_cart_coords, new_internals = best_cycle
                 break
             prev_internals = new_internals
 
             last_rms = cart_rms
             if cart_rms < cart_rms_thresh:
                 self.log("Internal to cartesian transformation converged!")
+                self.backtransform_failed = False
                 break
             self._prim_coords = np.array(new_internals)
+        self.log("")
         return cur_cart_coords - self.cart_coords
 
     def __str__(self):
