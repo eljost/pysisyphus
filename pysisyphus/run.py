@@ -30,6 +30,7 @@ from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords, 
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
+from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.optimizers import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
@@ -257,9 +258,10 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     # Use plain HEI
     hei_index = cos.get_hei_index()
     hei_image = cos.images[hei_index]
-    prim_indices = (None if cos.coord_type == "cart"
-                    else hei_image.internal.prim_indices
-    )
+    try:
+        prim_indices = hei_image.internal.prim_indices
+    except AttributeError:
+        prim_indices = form_coordinate_union(cos.images[0], cos.images[-1])
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
                        coord_type="redund", prim_indices=prim_indices)
 
