@@ -354,3 +354,4 @@ class Optimizer:
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
+        sys.stdout.flush()
