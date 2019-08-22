@@ -65,7 +65,7 @@ class Geometry:
         self.coord_type = coord_type
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            self.internal = coord_class(atoms, coords, prim_indices=prim_indices)
+            self.internal = coord_class(atoms, self._coords, prim_indices=prim_indices)
         else:
             self.internal = None
         self.comment = comment
