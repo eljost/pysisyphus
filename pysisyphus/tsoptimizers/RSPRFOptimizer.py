@@ -20,7 +20,7 @@ class RSPRFOptimizer(HessianOptimizer):
 
     def __init__(self, geometry, root=0, hessian_ref=None, prim_coord=None,
                  hessian_init="calc", hessian_update="bofill",
-                 max_micro_cycles=50, **kwargs):
+                 max_micro_cycles=50, trust_radius=0.3, **kwargs):
 
         assert hessian_init == "calc", \
             "TS-optimization should be started from a calculated hessian " \
@@ -85,7 +85,7 @@ class RSPRFOptimizer(HessianOptimizer):
                      f"{self.prim_coord} in mode {self.root:02d}.")
             self.log(f"Absolute contributions > {self.prim_contrib_thresh:.04f}"
                      f"\n{contrib_str}")
-            used_str = f"Contribution of primitive coordinate {self.prim_coord}"
+            used_str = f"contribution of primitive coordinate {self.prim_coord}"
         elif self.hessian_ref is not None:
             eigvals_ref, eigvecs_ref = np.linalg.eigh(self.hessian_ref)
             self.log_negative_eigenvalues(eigvals_ref, "Reference ")
