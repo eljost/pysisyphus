@@ -101,7 +101,9 @@ class HessianOptimizer(Optimizer):
             "Did you forget to append to self.predicted_energy_changes?"
         predicted_change = self.predicted_energy_changes[-1]
         actual_change = self.energies[-1] - self.energies[-2]
-        if actual_change > 0:
+        # Only report an unexpected increase if we actually predicted a
+        # decrease.
+        if (actual_change > 0) and (predicted_change < 0):
             print(f"Energy increased by {actual_change:.6f} au! " \
                   f"Cur. trust={self.trust_radius:.6f}.")
             self.log(f"Energy increased by {actual_change:.6f} au!")
@@ -118,6 +120,10 @@ class HessianOptimizer(Optimizer):
 
     def get_new_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
+
+        # If actual and predicted energy change have different signs
+        # coeff will be negative and lead to a decreased trust radius,
+        # which is fine.
         if coeff < 0.25:
             self.trust_radius = max(self.trust_radius/4,
                                     self.trust_min)
@@ -125,6 +131,9 @@ class HessianOptimizer(Optimizer):
         # Only increase trust radius if last step norm was at least 80% of it
         # See [5], Appendix, step size and direction control
         # elif coeff > 0.75 and (last_step_norm >= .8*self.trust_radius):
+        #
+        # Only increase trust radius if last step norm corresponded approximately
+        # to the trust radius.
         elif coeff > 0.75 and abs(self.trust_radius - last_step_norm) <= 1e-3:
             self.trust_radius = min(self.trust_radius*2,
                                     self.trust_max)
