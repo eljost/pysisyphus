@@ -13,6 +13,7 @@ import numpy as np
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.elem_data import COVALENT_RADII
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import complete_fragments
 
 
@@ -70,7 +71,17 @@ class AFIR(Calculator):
             self.log(f"Fragment {i:02d}, {len(frag)} atoms:")
             self.log(f"\t{frag}")
 
-    def set_atoms_and_funcs(self, atoms):
+
+    def write_fragment_geoms(self, atoms, coords):
+        geom = Geometry(atoms, coords)
+        for i, frag in enumerate(self.fragment_indices):
+            frag_geom = geom.get_subgeom(frag)
+            fn = f"frag_geom_{i:02d}.xyz"
+            with open(fn, "w") as handle:
+                handle.write(frag_geom.as_xyz())
+            self.log(f"Wrote geometry of fragment {i:02d} to {fn}.")
+
+    def set_atoms_and_funcs(self, atoms, coords):
         """Initially atoms was also an argument to the constructor of AFIR.
         I removed it so creation becomes easier.
         The first time a calculation is requested with a proper atom set
@@ -92,6 +103,7 @@ class AFIR(Calculator):
         self.atoms = atoms
         self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
         self.log_fragments()
+        self.write_fragment_geoms(atoms, coords)
         self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms]) 
         self.log("Set covalent radii")
         self.afir_func = afir_closure(self.fragment_indices,
@@ -114,7 +126,7 @@ class AFIR(Calculator):
         }
 
     def get_forces(self, atoms, coords):
-        self.set_atoms_and_funcs(atoms)
+        self.set_atoms_and_funcs(atoms, coords)
 
         coords3d = coords.reshape(-1, 3)
         results = self.calculator.get_forces(atoms, coords)
