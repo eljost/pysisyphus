@@ -223,8 +223,11 @@ class Optimizer:
     def write_results(self):
         # Save results from the Geometry.
         results = self.geometry.results
-        results["cart_coords"] = self.cart_coords[-1]
-        results["atoms"] = self.geometry.atoms
+        # Results will be a list for COS geometries, instead of a
+        # dictionary.
+        if not self.is_cos:
+            results["cart_coords"] = self.cart_coords[-1]
+            results["atoms"] = self.geometry.atoms
         self.image_results.append(results)
         self.write_to_out_dir(self.image_results_fn,
                               yaml.dump(self.image_results))
