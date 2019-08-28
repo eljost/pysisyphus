@@ -222,7 +222,10 @@ class Optimizer:
 
     def write_results(self):
         # Save results from the Geometry.
-        self.image_results.append(self.geometry.results)
+        results = self.geometry.results
+        results["cart_coords"] = self.cart_coords[-1]
+        results["atoms"] = self.geometry.atoms
+        self.image_results.append(results)
         self.write_to_out_dir(self.image_results_fn,
                               yaml.dump(self.image_results))
 
@@ -240,11 +243,11 @@ class Optimizer:
             self.write_to_out_dir(out_fn, as_xyz_str)
             # Also write separate .trj files for every image in the cos
             self.write_image_trjs()
-            self.write_results()
         else:
             # Append to .trj file
             self.out_trj_handle.write(as_xyz_str+"\n")
             self.out_trj_handle.flush()
+        self.write_results()
 
     def final_summary(self):
         # If the optimization was stopped _forces may not be set, so
