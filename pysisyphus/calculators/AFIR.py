@@ -52,32 +52,41 @@ class AFIR(Calculator):
         super().__init__()
 
         self.calculator = calculator
+        self.atoms = atoms
         self.fragment_indices = fragment_indices
         self.gamma = gamma
         self.rho = rho
-        self.p
+        self.p = p
 
         self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms]) 
         self.afir_func = afir_closure(self.fragment_indices,
                                       self.cov_radii,
                                       self.gamma,
-                                      rho=self.rho
+                                      rho=self.rho,
                                       p=self.p)
         self.afir_grad_func = autograd.grad(self.afir_func)
 
     def get_energy(self, atoms, coords):
-        energy = self.calculator.get_energy(atoms, coords)["energy"]
+        assert self.atoms == atoms
+        true_energy = self.calculator.get_energy(atoms, coords)["energy"]
         afir_energy = self.afir_func(coords.reshape(-1, 3))
-        return {"energy": energy+afir_energy}
+        return {
+            "energy": true_energy+afir_energy,
+            "true_energy": true_energy,
+        }
 
     def get_forces(self, atoms, coords):
+        assert self.atoms == atoms
         coords3d = coords.reshape(-1, 3)
         results = self.calculator.get_forces(atoms, coords)
-        energy = results["energy"]
-        forces = results["forces"]
+        true_energy = results["energy"]
+        true_forces = results["forces"]
 
         afir_energy = self.afir_func(coords3d)
         afir_forces = -self.afir_grad_func(coords3d).flatten()
-        return {"energy": energy+afir_energy,
-                "forces": forces+afir_forces,
+        return {
+            "energy": true_energy+afir_energy,
+            "forces": true_forces+afir_forces,
+            "true_forces": true_forces,
+            "true_energy": true_energy,
         }
