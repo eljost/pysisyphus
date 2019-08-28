@@ -11,6 +11,7 @@ import autograd.numpy as anp
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.elem_data import COVALENT_RADII
 
 
@@ -54,7 +55,8 @@ class AFIR(Calculator):
         self.calculator = calculator
         self.atoms = atoms
         self.fragment_indices = fragment_indices
-        self.gamma = gamma
+        # gamma is expected to be given in kJ/mol. convert it to au.
+        self.gamma = gamma / AU2KJPERMOL
         self.rho = rho
         self.p = p
 
