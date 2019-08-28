@@ -48,6 +48,7 @@ CALC_DICT = {
     # "pyscf": PySCF,
     "turbomole": Turbomole.Turbomole,
     "xtb": XTB.XTB,
+    "afir": AFIR,
 }
 
 try:
@@ -157,6 +158,12 @@ def parse_args(args):
 
 
 def get_calc(index, base_name, calc_key, calc_kwargs):
+    if calc_key == "afir":
+        actual_kwargs = calc_kwargs.pop("calc")
+        actual_key = actual_kwargs.pop("type")
+        actual_calc = get_calc(index, base_name, actual_key, actual_kwargs)
+        calc_kwargs["calculator"] = actual_calc
+
     # Expand values that contain the $IMAGE pattern over all images.
     # We have to use a copy of calc_kwargs to keep the $IMAGE pattern.
     # Otherwise it would be replace at it's first occurence and would

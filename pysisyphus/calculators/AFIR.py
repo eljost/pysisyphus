@@ -49,27 +49,48 @@ def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6):
 
 class AFIR(Calculator):
 
-    def __init__(self, calculator, atoms, fragment_indices, gamma, rho=1, p=6):
-        super().__init__()
+    def __init__(self, calculator, fragment_indices, gamma, rho=1, p=6,
+                 **kwargs):
+        """Initially atoms was also an argument to the constructor of AFIR.
+        I removed it so creation becomes easier.
+        The first time a calculation is requested with a proper atom set
+        everything is set up (cov. radii, afir function and corresponding
+        gradient). Afterwards there is only a check if atoms != None and it
+        is expected that all functions are properly set.
+        """
+
+        super().__init__(**kwargs)
 
         self.calculator = calculator
-        self.atoms = atoms
         self.fragment_indices = fragment_indices
         # gamma is expected to be given in kJ/mol. convert it to au.
         self.gamma = gamma / AU2KJPERMOL
         self.rho = rho
         self.p = p
 
+        self.atoms = None
+
+    def set_atoms_and_funcs(self, atoms):
+        if self.atoms is not None:
+            assert self.atoms == atoms
+            return
+
+        self.log("Setting atoms on AFIR calculator")
+        self.atoms = atoms
         self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms]) 
+        self.log("Set covalent radii")
         self.afir_func = afir_closure(self.fragment_indices,
                                       self.cov_radii,
                                       self.gamma,
                                       rho=self.rho,
                                       p=self.p)
+        self.log("Created and set AFIR function.")
         self.afir_grad_func = autograd.grad(self.afir_func)
+        self.log("Created and set AFIR gradient function.")
 
     def get_energy(self, atoms, coords):
-        assert self.atoms == atoms
+        self.set_atoms_and_funcs(atoms)
+
         true_energy = self.calculator.get_energy(atoms, coords)["energy"]
         afir_energy = self.afir_func(coords.reshape(-1, 3))
         return {
@@ -78,7 +99,8 @@ class AFIR(Calculator):
         }
 
     def get_forces(self, atoms, coords):
-        assert self.atoms == atoms
+        self.set_atoms_and_funcs(atoms)
+
         coords3d = coords.reshape(-1, 3)
         results = self.calculator.get_forces(atoms, coords)
         true_energy = results["energy"]

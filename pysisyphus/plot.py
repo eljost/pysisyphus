@@ -664,6 +664,56 @@ def render_cdds(h5):
     print(f"Wrote list of rendered PNGs to '{CDD_PNG_FNS}'")
 
 
+def plot_afir():
+    with open("image_results.yaml") as handle:
+        res = yaml.load(handle.read(), Loader=yaml.loader.Loader)
+
+    afir_ens = [_["energy"] for _ in res]
+    true_ens = [_["true_energy"] for _ in res]
+    afir_ens = np.array(afir_ens) * AU2KJPERMOL
+    afir_ens -= afir_ens.min()
+    true_ens = np.array(true_ens) * AU2KJPERMOL
+    true_ens -= true_ens.min()
+
+    afir_forces = np.linalg.norm([_["forces"] for _ in res], axis=1)
+    true_forces = np.linalg.norm([_["true_forces"] for _ in res], axis=1)
+    afir_forces = np.array(afir_forces)
+    true_forces = np.array(true_forces)
+
+    peak_inds, _ = peakdetect(true_ens, lookahead=2)
+    peak_xs, peak_ys = zip(*peak_inds)
+    highest = np.argmax(peak_ys)
+
+    fig, (en_ax, forces_ax) = plt.subplots(nrows=2, sharex=True)
+
+    style1 = "ro-"
+    style2 = "go-"
+
+    l1 = en_ax.plot(afir_ens, style1, label="AFIR")
+    en_ax2 = en_ax.twinx()
+    l2 = en_ax2.plot(true_ens, style2, label="True")
+    en_ax2.scatter(peak_xs, peak_ys, s=100, marker="X", c="k", zorder=10)
+    en_ax2.scatter(peak_xs[highest], peak_ys[highest],
+                s=150, marker="X", c="k", zorder=10)
+    en_ax.axvline(peak_xs[highest], c="k", ls="--")
+
+    # lines = l1 + l2
+    # labels = [l.get_label() for l in lines]
+    # en_ax.legend(lines, labels, loc=0)
+
+    en_ax.set_title("Energies")
+    en_ax.set_ylabel("$\Delta$E kJ / mol")
+
+    forces_ax.set_title("||Forces||")
+    forces_ax.plot(afir_forces, style1)
+    forces_ax2 = forces_ax.twinx()
+    forces_ax2.plot(true_forces, style2)
+    forces_ax.axvline(peak_xs[highest], c="k", ls="--")
+
+    fig.legend(loc="upper right")
+    plt.show()
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--first", type=int,
@@ -699,6 +749,9 @@ def parse_args(args):
     group.add_argument("--bare_energies", "-b", action="store_true",
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
+    group.add_argument("--afir", action="store_true",
+        help="Plot AFIR and true -energies and -forces from an AFIR calculation."
+    )
     group.add_argument("--overlaps", "-o", action="store_true")
     group.add_argument("--render_cdds", action="store_true")
 
@@ -732,6 +785,8 @@ def run():
         render_cdds(h5=h5)
     elif args.bare_energies:
         plot_bare_energies(h5=h5)
+    elif args.afir:
+        plot_afir()
 
 
 if __name__ == "__main__":
