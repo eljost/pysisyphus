@@ -684,29 +684,34 @@ def plot_afir():
 
     fig, (en_ax, forces_ax) = plt.subplots(nrows=2, sharex=True)
 
-    style1 = "ro-"
-    style2 = "go-"
+    style1 = "r--"
+    style2 = "g--"
+    style3 = "bo-"
 
     l1 = en_ax.plot(afir_ens, style1, label="AFIR")
-    # en_ax.yaxis.label.set_color("red")
-    en_ax.tick_params(axis="y", labelcolor="red")
+    l2 = en_ax.plot(true_ens, style2, label="True")
     en_ax2 = en_ax.twinx()
-    l2 = en_ax2.plot(true_ens, style2, label="True")
-    en_ax2.tick_params(axis="y", labelcolor="green")
+    l3 = en_ax2.plot(true_ens+afir_ens, style3, label="True")
+    en_ax2.tick_params(axis="y", labelcolor="blue")
 
-    # lines = l1 + l2
-    # labels = [l.get_label() for l in lines]
-    # en_ax.legend(lines, labels, loc=0)
+    lines = l1 + l2 + l3
+    labels = [l.get_label() for l in lines]
+    en_ax.legend(lines, labels, loc=0)
 
     en_ax.set_title("Energies")
     en_ax.set_ylabel("$\Delta$E kJ / mol")
 
     forces_ax.set_title("||Forces||")
-    forces_ax.plot(afir_forces, style1)
-    forces_ax.tick_params(axis="y", labelcolor="red")
+    l1 = forces_ax.plot(afir_forces, style1, label="AFIR")
+    l2 = forces_ax.plot(true_forces, style2, label="True")
+
     forces_ax2 = forces_ax.twinx()
-    forces_ax2.plot(true_forces, style2)
-    forces_ax2.tick_params(axis="y", labelcolor="green")
+    l3 = forces_ax2.plot(true_forces + afir_forces, style3, label="Sum")
+    forces_ax2.tick_params(axis="y", labelcolor="blue")
+
+    lines = l1 + l2 + l3
+    labels = [l.get_label() for l in lines]
+    forces_ax.legend(lines, labels, loc=0)
 
     peak_inds, _ = peakdetect(true_ens, lookahead=2)
     print(f"Peaks: {peak_inds}")
@@ -714,8 +719,8 @@ def plot_afir():
         peak_xs, peak_ys = zip(*peak_inds)
         highest = np.argmax(peak_ys)
 
-        en_ax2.scatter(peak_xs, peak_ys, s=100, marker="X", c="k", zorder=10)
-        en_ax2.scatter(peak_xs[highest], peak_ys[highest],
+        en_ax.scatter(peak_xs, peak_ys, s=100, marker="X", c="k", zorder=10)
+        en_ax.scatter(peak_xs[highest], peak_ys[highest],
                     s=150, marker="X", c="k", zorder=10)
         en_ax.axvline(peak_xs[highest], c="k", ls="--")
         forces_ax.axvline(peak_xs[highest], c="k", ls="--")
@@ -723,7 +728,8 @@ def plot_afir():
         print("Peak-detection failed!")
 
 
-    fig.legend(loc="upper right")
+    # fig.legend(loc="upper right")
+    plt.tight_layout()
     plt.show()
 
 
