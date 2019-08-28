@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import os
 from pathlib import Path
 import sys
@@ -680,9 +681,6 @@ def plot_afir():
     afir_forces = np.array(afir_forces)
     true_forces = np.array(true_forces)
 
-    peak_inds, _ = peakdetect(true_ens, lookahead=2)
-    peak_xs, peak_ys = zip(*peak_inds)
-    highest = np.argmax(peak_ys)
 
     fig, (en_ax, forces_ax) = plt.subplots(nrows=2, sharex=True)
 
@@ -692,10 +690,6 @@ def plot_afir():
     l1 = en_ax.plot(afir_ens, style1, label="AFIR")
     en_ax2 = en_ax.twinx()
     l2 = en_ax2.plot(true_ens, style2, label="True")
-    en_ax2.scatter(peak_xs, peak_ys, s=100, marker="X", c="k", zorder=10)
-    en_ax2.scatter(peak_xs[highest], peak_ys[highest],
-                s=150, marker="X", c="k", zorder=10)
-    en_ax.axvline(peak_xs[highest], c="k", ls="--")
 
     # lines = l1 + l2
     # labels = [l.get_label() for l in lines]
@@ -708,7 +702,21 @@ def plot_afir():
     forces_ax.plot(afir_forces, style1)
     forces_ax2 = forces_ax.twinx()
     forces_ax2.plot(true_forces, style2)
-    forces_ax.axvline(peak_xs[highest], c="k", ls="--")
+
+    peak_inds, _ = peakdetect(true_ens, lookahead=2)
+    print(f"Peaks: {peak_inds}")
+    try:
+        peak_xs, peak_ys = zip(*peak_inds)
+        highest = np.argmax(peak_ys)
+
+        en_ax2.scatter(peak_xs, peak_ys, s=100, marker="X", c="k", zorder=10)
+        en_ax2.scatter(peak_xs[highest], peak_ys[highest],
+                    s=150, marker="X", c="k", zorder=10)
+        en_ax.axvline(peak_xs[highest], c="k", ls="--")
+        forces_ax.axvline(peak_xs[highest], c="k", ls="--")
+    except ValueError as err:
+        print("Peak-detection failed!")
+
 
     fig.legend(loc="upper right")
     plt.show()
