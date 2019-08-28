@@ -688,8 +688,11 @@ def plot_afir():
     style2 = "go-"
 
     l1 = en_ax.plot(afir_ens, style1, label="AFIR")
+    # en_ax.yaxis.label.set_color("red")
+    en_ax.tick_params(axis="y", labelcolor="red")
     en_ax2 = en_ax.twinx()
     l2 = en_ax2.plot(true_ens, style2, label="True")
+    en_ax2.tick_params(axis="y", labelcolor="green")
 
     # lines = l1 + l2
     # labels = [l.get_label() for l in lines]
@@ -700,8 +703,10 @@ def plot_afir():
 
     forces_ax.set_title("||Forces||")
     forces_ax.plot(afir_forces, style1)
+    forces_ax.tick_params(axis="y", labelcolor="red")
     forces_ax2 = forces_ax.twinx()
     forces_ax2.plot(true_forces, style2)
+    forces_ax2.tick_params(axis="y", labelcolor="green")
 
     peak_inds, _ = peakdetect(true_ens, lookahead=2)
     print(f"Peaks: {peak_inds}")
