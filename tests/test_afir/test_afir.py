@@ -12,7 +12,8 @@ def test_afir():
     """
     # geom = geom_from_library("ohch3f_anion_cs.xyz", coord_type="redund")
     geom = geom_from_library("ohch3f_anion_cs.xyz")
-    fragment_indices = ([0, 1, 2, 3, 4], [5, 6])
+    # fragment_indices = ([0, 1, 2, 3, 4], [5, 6])
+    fragment_indices = [(5, 6), ]
     calc = XTB(charge=-1)
     gamma = 100
     afir = AFIR(calc, fragment_indices, gamma)

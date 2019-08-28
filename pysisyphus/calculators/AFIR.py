@@ -13,6 +13,7 @@ import numpy as np
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.elem_data import COVALENT_RADII
+from pysisyphus.helpers import complete_fragments
 
 
 def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6):
@@ -51,18 +52,11 @@ class AFIR(Calculator):
 
     def __init__(self, calculator, fragment_indices, gamma, rho=1, p=6,
                  **kwargs):
-        """Initially atoms was also an argument to the constructor of AFIR.
-        I removed it so creation becomes easier.
-        The first time a calculation is requested with a proper atom set
-        everything is set up (cov. radii, afir function and corresponding
-        gradient). Afterwards there is only a check if atoms != None and it
-        is expected that all functions are properly set.
-        """
-
         super().__init__(**kwargs)
 
         self.calculator = calculator
         self.fragment_indices = fragment_indices
+        assert len(self.fragment_indices) in (1, 2)
         # gamma is expected to be given in kJ/mol. convert it to au.
         self.gamma = gamma / AU2KJPERMOL
         self.rho = rho
@@ -71,12 +65,26 @@ class AFIR(Calculator):
         self.atoms = None
 
     def set_atoms_and_funcs(self, atoms):
+        """Initially atoms was also an argument to the constructor of AFIR.
+        I removed it so creation becomes easier.
+        The first time a calculation is requested with a proper atom set
+        everything is set up (cov. radii, afir function and corresponding
+        gradient). Afterwards there is only a check if atoms != None and it
+        is expected that all functions are properly set.
+
+        fragment_indices can also be incomplete w.r.t. to the number of
+        atoms. If the sum of the specified fragment atoms is less than the
+        number of atoms present then all remaining unspecified atoms will
+        be gathered in one fragment.
+        """
+
         if self.atoms is not None:
             assert self.atoms == atoms
             return
 
         self.log("Setting atoms on AFIR calculator")
         self.atoms = atoms
+        self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
         self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms]) 
         self.log("Set covalent radii")
         self.afir_func = afir_closure(self.fragment_indices,
