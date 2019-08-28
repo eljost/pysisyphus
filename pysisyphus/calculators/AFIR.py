@@ -64,6 +64,12 @@ class AFIR(Calculator):
 
         self.atoms = None
 
+    def log_fragments(self):
+        self.log(f"Using {len(self.fragment_indices)} fragments")
+        for i, frag in enumerate(self.fragment_indices):
+            self.log(f"Fragment {i:02d}, {len(frag)} atoms:")
+            self.log(f"\t{frag}")
+
     def set_atoms_and_funcs(self, atoms):
         """Initially atoms was also an argument to the constructor of AFIR.
         I removed it so creation becomes easier.
@@ -85,6 +91,7 @@ class AFIR(Calculator):
         self.log("Setting atoms on AFIR calculator")
         self.atoms = atoms
         self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
+        self.log_fragments()
         self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms]) 
         self.log("Set covalent radii")
         self.afir_func = afir_closure(self.fragment_indices,

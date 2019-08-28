@@ -285,7 +285,6 @@ def rms(arr):
 
 
 def complete_fragments(atoms, fragments):
-    import pdb; pdb.set_trace()
     print(f"found {len(fragments)} fragment(s)")
 
     lengths = [len(frag) for frag in fragments]
