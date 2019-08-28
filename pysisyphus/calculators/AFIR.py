@@ -128,6 +128,8 @@ class AFIR(Calculator):
 
         true_energy = self.calculator.get_energy(atoms, coords)["energy"]
         afir_energy = self.afir_func(coords.reshape(-1, 3))
+        self.log()
+
         return {
             "energy": true_energy+afir_energy,
             "true_energy": true_energy,
@@ -143,6 +145,13 @@ class AFIR(Calculator):
 
         afir_energy = self.afir_func(coords3d)
         afir_forces = -self.afir_grad_func(coords3d).flatten()
+
+        true_norm = np.linalg.norm(true_forces)
+        afir_norm = np.linalg.norm(afir_forces)
+        self.log(f"norm(true_forces)={true_norm:.6f} au/bohr")
+        self.log(f"norm(afir_forces)={afir_norm:.6f} au/bohr")
+        self.log()
+
         return {
             "energy": true_energy+afir_energy,
             "forces": true_forces+afir_forces,

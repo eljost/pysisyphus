@@ -93,7 +93,7 @@ class Calculator:
     def name(self):
         return f"{self.base_name}_{self.calc_number:03d}"
 
-    def log(self, message):
+    def log(self, message=""):
         """Write a log message.
 
         Wraps the logger variable.
