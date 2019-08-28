@@ -285,17 +285,13 @@ def rms(arr):
 
 
 def complete_fragments(atoms, fragments):
-    print(f"found {len(fragments)} fragment(s)")
-
     lengths = [len(frag) for frag in fragments]
-    print("fragment lengths", lengths)
 
     frag_atoms = sum(lengths)
 
     all_inds = set(range(len(atoms)))
     frag_inds = set(it.chain(*fragments))
     rest_inds = all_inds - frag_inds
-    print(f"putting {len(rest_inds)} remaining atoms in new fragment.")
 
     assert len(frag_inds) + len(rest_inds) == len(atoms)
     assert frag_inds & rest_inds == set()
