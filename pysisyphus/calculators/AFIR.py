@@ -60,8 +60,16 @@ class AFIR(Calculator):
         assert len(self.fragment_indices) in (1, 2)
         # gamma is expected to be given in kJ/mol. convert it to au.
         self.gamma = gamma / AU2KJPERMOL
-        self.rho = rho
+        assert self.gamma > 0
+        self.rho = int(rho)
+        assert self.rho in (-1, 1)
         self.p = p
+
+        rho_verbose = { 1: ("pushing", "together"),
+                       -1: ("pulling", "apart")
+        }
+        w1, w2 = rho_verbose[self.rho]
+        self.log(f"rho={self.rho}, {w1} framgents {w2}")
 
         self.atoms = None
 
