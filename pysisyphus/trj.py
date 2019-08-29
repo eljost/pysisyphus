@@ -107,26 +107,31 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
+def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
+               define_prims=None):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
     geoms = list()
+    geom_kwargs = {
+        "coord_type": coord_type,
+        "define_prims": define_prims,
+    }
     for fn in xyz_fns:
         if "*" in fn:
             cwd = Path(".")
-            geom = [geom_from_xyz_file(xyz_fn)
+            geom = [geom_from_xyz_file(xyz_fn, **geom_kwargs)
                     for xyz_fn in natsorted(cwd.glob(fn))]
         elif fn.endswith(".xyz"):
-            geom = [geom_from_xyz_file(fn, coord_type=coord_type), ]
+            geom = [geom_from_xyz_file(fn, **geom_kwargs), ]
         elif fn.endswith(".trj"):
-            geom = geoms_from_trj(fn, coord_type=coord_type)
+            geom = geoms_from_trj(fn, **geom_kwargs)
         else:
             raise Exception("Only .xyz and .trj files are supported!")
         geoms.extend(geom)
     # Original coordinates are in bohr, but pysisyphus expects them
     # to be in Angstrom, so right now they are already multiplied
-    # by ANG2BOHR. We revert this by multip
+    # by ANG2BOHR. We revert this.
     if in_bohr:
         for geom in geoms:
             geom.coords *= BOHR2ANG
@@ -134,13 +139,15 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
 
 
 def get_geoms(xyz_fns, interpolate=None, between=0,
-              coord_type="cart", comments=False, in_bohr=False):
+              coord_type="cart", comments=False, in_bohr=False,
+              define_prims=None):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
     assert interpolate in list(INTERPOLATE.keys()) + [None]
 
-    geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type)
+    geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
+                       define_prims=define_prims)
     print(f"Read {len(geoms)} geometries.")
 
     all_atoms = [geom.atoms for geom in geoms]

@@ -621,6 +621,7 @@ def get_defaults(conf_dict):
         "shake": None,
         "irc": None,
         "preopt_ends": False,
+        "add_prims": None,
     }
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -730,7 +731,7 @@ def handle_yaml(yaml_str):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type",
-                              "preopt_ends", )):
+                              "preopt_ends", "add_prims")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -799,7 +800,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     if run_dict["preopt_ends"]:
         # Update xyz list with optimized endpoint filenames
         xyz = preopt_ends(xyz, calc_getter)
-    geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type)
+    add_prims = run_dict["add_prims"]
+    geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type,
+                      define_prims=add_prims)
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
 
