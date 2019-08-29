@@ -88,6 +88,8 @@ class Optimizer:
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
             self.out_trj_handle= open(out_trj_fn, "w")
+        if self.prefix:
+            self.log(f"Created optimizer with prefix {self.prefix}")
 
     def get_path_for_fn(self, fn):
         return self.out_dir / (self.prefix + fn)
