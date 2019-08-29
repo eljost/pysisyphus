@@ -31,7 +31,8 @@ class HessianOptimizer(Optimizer):
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
-                 hessian_recalc=None, small_eigval_thresh=1e-8, **kwargs):
+                 hessian_recalc=None, hessian_xtb=False,
+                 small_eigval_thresh=1e-8, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
@@ -48,6 +49,7 @@ class HessianOptimizer(Optimizer):
             raise Exception("hessian_multi_update=True doesn't work yet!")
         self.hessian_init = hessian_init
         self.hessian_recalc = hessian_recalc
+        self.hessian_xtb = hessian_xtb
         self.small_eigval_thresh = float(small_eigval_thresh)
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
 
@@ -152,9 +154,17 @@ class HessianOptimizer(Optimizer):
 
     def update_hessian(self):
         if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc) == 0:
-            self.H = self.geometry.hessian
+            # Use xtb hessian
+            self.log("Requested hessian recalculation.")
+            if self.hessian_xtb:
+                self.H = xtb_hessian(self.geometry)
+                key = "xtb"
+            # Calculated hessian at actual level of theory
+            else:
+                self.H = self.geometry.hessian
+                key = "exact"
             if not (self.cur_cycle == 0):
-                self.log(f"Recalculated exact hessian in cycle {self.cur_cycle}.")
+                self.log(f"Recalculated {key} hessian in cycle {self.cur_cycle}.")
         elif self.hessian_multi_update:
             gradients = -np.array(self.forces)
             self.H = multi_step_update(self.H, self.steps, gradients, self.energies)
