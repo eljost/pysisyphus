@@ -520,6 +520,9 @@ class Geometry:
             return self.internal.transform_hessian(self._hessian, int_gradient)
         return self._hessian
 
+    def mass_weigh_hessian(self, hessian):
+        return self.mm_sqrt_inv.dot(hessian).dot(self.mm_sqrt_inv)
+
     @property
     def mw_hessian(self):
         """Mass-weighted hessian.
@@ -529,10 +532,8 @@ class Geometry:
         mw_hessian : np.array
             2d array containing the mass-weighted hessian M^(-1/2) H M^(-1/2).
         """
-        if self.coord_type != "cart":
-            raise Exception("Check if this makes sense with coord_type != cart!")
         # M^(-1/2) H M^(-1/2)
-        return self.mm_sqrt_inv.dot(self._hessian).dot(self.mm_sqrt_inv)
+        return self.mass_weigh_hessian(self._hessian)
 
     @hessian.setter
     def hessian(self, hessian):
