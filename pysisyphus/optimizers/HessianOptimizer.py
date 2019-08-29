@@ -84,10 +84,17 @@ class HessianOptimizer(Optimizer):
         except KeyError:
             self.log(f"Trying to load saved hessian from '{self.hessian_init}'.")
             self.H = np.loadtxt(self.hessian_init)
+            coord_size = self.geometry.coords.size
+            assert (coord_size) == self.H.shape, \
+                f"Number of coordinates at current geometry ({coord_size}) " \
+                f"doesn't match shape {self.H.shape} of hessian in " \
+                f"'{self.hessian_init}'!"
         if self.hessian_init == "calc":
-            hess_fn = self.get_path_for_fn("calculated_init_hessian")
-            np.savetxt(hess_fn, self.H)
-            self.log(f"Wrote calculated hessian to '{hess_fn}'")
+            hess_fn = self.get_path_for_fn("calculated_init_cart_hessian")
+            # Save the cartesian hessian, as it is independent of the
+            # actual coordinate system that is used.
+            np.savetxt(hess_fn, self.geometry._hessian)
+            self.log(f"Wrote calculated cartesian hessian to '{hess_fn}'")
 
         if (hasattr(self.geometry, "coord_type")
             and self.geometry.coord_type == "dlc"):
