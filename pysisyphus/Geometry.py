@@ -529,12 +529,15 @@ class Geometry:
         mw_hessian : np.array
             2d array containing the mass-weighted hessian M^(-1/2) H M^(-1/2).
         """
+        if self.coord_type != "cart":
+            raise Exception("Check if this makes sense with coord_type != cart!")
         # M^(-1/2) H M^(-1/2)
-        return self.mm_sqrt_inv.dot(self.hessian).dot(self.mm_sqrt_inv)
+        return self.mm_sqrt_inv.dot(self._hessian).dot(self.mm_sqrt_inv)
 
     @hessian.setter
     def hessian(self, hessian):
         """Internal wrapper for setting the hessian."""
+        assert hessian.shape == (self.cart_coords.shape, self.cart_coords.shape)
         self._hessian = hessian
 
     def get_initial_hessian(self):
