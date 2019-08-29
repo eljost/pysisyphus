@@ -537,7 +537,7 @@ class Geometry:
     @hessian.setter
     def hessian(self, hessian):
         """Internal wrapper for setting the hessian."""
-        assert hessian.shape == (self.cart_coords.shape, self.cart_coords.shape)
+        assert hessian.shape == (self.cart_coords.size, self.cart_coords.size)
         self._hessian = hessian
 
     def get_initial_hessian(self):
