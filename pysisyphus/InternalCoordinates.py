@@ -133,15 +133,20 @@ class RedundantCoords:
         return len(self.bond_indices) + len(self.bending_indices)
 
     def get_index_of_prim_coord(self, prim_ind):
-        """Index of primitive internal for the given atom indices."""
+        """Index of primitive internal for the given atom indices.
+
+        TODO: simplify this so when we get a prim_ind of len 2
+        (bond) we don't have to check the bending and dihedral indices."""
         prim_ind_set = set(prim_ind)
-        index = [i for i, pi in enumerate(it.chain(*self.prim_indices))
+        indices = [i for i, pi in enumerate(it.chain(*self.prim_indices))
                  if set(pi) == prim_ind_set]
-        if len(index) == 0:
-            raise Exception(f"Primitive internal with indices {prim_ind} "
-                             "is not defined!")
-        else:
-            return index[0]
+        index = None
+        try:
+            index = indices[0]
+        except IndexError:
+            self.log(f"Primitive internal with indices {prim_ind} "
+                      "is not defined!")
+        return index
 
     @property
     def c3d(self):

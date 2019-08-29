@@ -136,6 +136,12 @@ class DLC(RedundantCoords):
         prim_indices = [self.get_index_of_prim_coord(pai)
                         for pai in prim_atom_indices
         ]
+        not_defined = [prim_coord for prim_coord, prim_ind
+                       in zip(prim_atom_indices, prim_indices)
+                       if prim_ind is None
+        ]
+        assert None not in prim_indices, \
+            f"Some primitive internals are not defined ({not_defined})!"
         _ = [self.project_primitive_on_active_set(pi)
                                 for pi in prim_indices
         ]

@@ -69,6 +69,8 @@ class RSPRFOptimizer(HessianOptimizer):
         # reference hessian.
         if self.prim_coord:
             prim_ind = self.geometry.internal.get_index_of_prim_coord(self.prim_coord)
+            if prim_ind is None:
+                raise Exception(f"Primitive internal {self.prim_coord} is not defined!")
             # Select row of eigenvector-matrix that corresponds to this coordinate
             prim_row = eigvecs[prim_ind]
             max_contrib_ind = np.abs(prim_row).argmax()
