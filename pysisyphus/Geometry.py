@@ -24,7 +24,7 @@ class Geometry:
     }
 
     def __init__(self, atoms, coords, coord_type="cart", comment="",
-                 prim_indices=None):
+                 prim_indices=None, define_prims=None):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -65,7 +65,10 @@ class Geometry:
         self.coord_type = coord_type
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            self.internal = coord_class(atoms, self._coords, prim_indices=prim_indices)
+            self.internal = coord_class(atoms, self._coords,
+                                        prim_indices=prim_indices,
+                                        define_prims=define_prims
+            )
         else:
             self.internal = None
         self.comment = comment

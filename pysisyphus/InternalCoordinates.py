@@ -72,10 +72,11 @@ class RedundantCoords:
     BEND_MAX_DEG = 170
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
-                 prim_indices=None):
+                 prim_indices=None, define_prims=None):
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
+        self.define_prims = define_prims
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -83,7 +84,7 @@ class RedundantCoords:
         self.hydrogen_bond_indices = list()
 
         if prim_indices is None:
-            self.set_primitive_indices()
+            self.set_primitive_indices(self.define_prims)
         else:
             to_arr = lambda _: np.array(list(_), dtype=int)
             bonds, bends, dihedrals = prim_indices
@@ -324,7 +325,7 @@ class RedundantCoords:
                     self.log("Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
-    def set_bond_indices(self, factor=None):
+    def set_bond_indices(self, define_bonds=None, factor=None):
         """
         Default factor of 1.3 taken from [1] A.1.
         Gaussian uses somewhat less, like 1.2, or different radii than we do.
@@ -342,7 +343,11 @@ class RedundantCoords:
         bond_flags = cdm <= cov_rad_sums
         bond_indices = atom_indices[bond_flags]
 
+        if define_bonds:
+            bond_indices = np.concatenate(((bond_indices, define_bonds)), axis=0)
+
         self.bare_bond_indices = bond_indices
+
 
         # Look for hydrogen bonds
         self.set_hydrogen_bond_indices(bond_indices)
@@ -395,7 +400,7 @@ class RedundantCoords:
         deg = np.rad2deg(val)
         return self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
 
-    def set_bending_indices(self):
+    def set_bending_indices(self, define_bends=None):
         bond_sets = {frozenset(bi) for bi in self.bond_indices}
         for bond_set1, bond_set2 in it.combinations(bond_sets, 2):
             union = bond_set1 | bond_set2
@@ -408,6 +413,10 @@ class RedundantCoords:
                 self.bending_indices.append(as_tpl)
         self.bending_indices = np.array(self.bending_indices, dtype=int)
 
+        if define_bends:
+            bis = np.concatenate(( (self.bending_indices, define_bends)), axis=0)
+            self.bending_indices = bis
+
     def is_valid_dihedral(self, dihedral_ind, thresh=1e-6):
         # Check for linear atoms
         first_angle = self.calc_bend(self.c3d, dihedral_ind[:3])
@@ -417,7 +426,7 @@ class RedundantCoords:
                 and (abs(second_angle) < pi_thresh)
         )
 
-    def set_dihedral_indices(self):
+    def set_dihedral_indices(self, define_dihedrals=None):
         dihedral_sets = list()
         def set_dihedral_index(dihedral_ind):
             dihedral_set = set(dihedral_ind)
@@ -474,10 +483,24 @@ class RedundantCoords:
 
         self.dihedral_indices = np.array(self.dihedral_indices)
 
-    def set_primitive_indices(self):
-        self.set_bond_indices()
-        self.set_bending_indices()
-        self.set_dihedral_indices()
+        if define_dihedrals:
+            dis = np.concatenate(((self.dihedral_indices, define_dihedrals)), axis=0)
+            self.dihedral_indices = dis
+
+    def sort_by_prim_type(self, to_sort):
+        by_prim_type = [[], [], []]
+        if to_sort is None:
+            to_sort = list()
+        for item in to_sort:
+            len_ = len(item)
+            by_prim_type[len_-2].append(item)
+        return by_prim_type
+
+    def set_primitive_indices(self, define_prims=None):
+        stretches, bends, dihedrals = self.sort_by_prim_type(define_prims)
+        self.set_bond_indices(stretches)
+        self.set_bending_indices(bends)
+        self.set_dihedral_indices(dihedrals)
 
     def calculate(self, coords, attr=None):
         coords3d = coords.reshape(-1, 3)
