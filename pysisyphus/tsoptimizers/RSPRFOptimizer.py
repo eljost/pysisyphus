@@ -61,6 +61,7 @@ class RSPRFOptimizer(HessianOptimizer):
         # reference hessian, or by using a supplied root.
 
         eigvals, eigvecs = np.linalg.eigh(self.H)
+        neg_inds = eigvals < -self.small_eigval_thresh
 
         self.log_negative_eigenvalues(eigvals, "Initial ")
 
@@ -73,11 +74,14 @@ class RSPRFOptimizer(HessianOptimizer):
                 raise Exception(f"Primitive internal {self.prim_coord} is not defined!")
             # Select row of eigenvector-matrix that corresponds to this coordinate
             prim_row = eigvecs[prim_ind]
-            max_contrib_ind = np.abs(prim_row).argmax()
+            big_contribs = np.abs(prim_row) > self.prim_contrib_thresh
+            # Only consider negative eigenvalues
+            big_contribs = np.bitwise_and(big_contribs, neg_inds)
+            # Holds the indices of the modes to consider
+            big_inds = np.arange(prim_row.size)[big_contribs]
+            max_contrib_ind = big_inds[np.abs(prim_row[big_contribs]).argmax()]
             self.root = max_contrib_ind
 
-            big_contribs = np.abs(prim_row) > self.prim_contrib_thresh
-            big_inds = np.arange(prim_row.size)[big_contribs]
             contrib_str = "\n".join(
                 [f"\t{ind:03d}: {contrib:.4f}"
                  for ind, contrib in zip(big_inds, np.abs(prim_row)[big_contribs])]
