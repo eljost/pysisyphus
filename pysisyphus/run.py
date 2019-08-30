@@ -41,15 +41,16 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 CALC_DICT = {
+    "afir": AFIR,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16.Gaussian16,
+    "mopac": MOPAC,
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA.ORCA,
     "psi4": Psi4,
     # "pyscf": PySCF,
     "turbomole": Turbomole.Turbomole,
     "xtb": XTB.XTB,
-    "afir": AFIR,
 }
 
 try:
