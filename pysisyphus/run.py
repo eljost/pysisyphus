@@ -2,6 +2,7 @@
 
 import argparse
 import cloudpickle
+from collections import namedtuple
 import copy
 import itertools
 import os
@@ -340,7 +341,7 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         do_final_hessian(ts_geom)
 
 
-def do_final_hessian(geom):
+def do_final_hessian(geom, save_hessian=True):
     print("Calculating hessian at final geometry.")
 
     # TODO: Add cartesian_hessian property to Geometry to avoid
@@ -364,10 +365,17 @@ def do_final_hessian(geom):
         wavenumbers = eigval_to_wavenumber(neg_eigvals)
         print("Imaginary frequencies in cm⁻¹:", wavenumbers)
 
-    final_hessian_fn = "calculated_final_cart_hessian"
-    np.savetxt(final_hessian_fn, hessian)
-    print()
-    print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
+    if save_hessian:
+        final_hessian_fn = "calculated_final_cart_hessian"
+        np.savetxt(final_hessian_fn, hessian)
+        print()
+        print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
+
+    FinalHessianResult = namedtuple("FinalHessianResult",
+                                    "neg_eigvals"
+    )
+    res = FinalHessianResult(neg_eigvals=neg_eigvals)
+    return res
 
 
 # def run_cos_dimer(cos, dimer_kwargs, calc_getter):
