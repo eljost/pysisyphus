@@ -17,6 +17,7 @@ def test_mopac():
     energy = geom.energy
     print("mop, energy", energy)
     print("mop, gradient", grad)
+    hessian = geom.hessian
 
     g16calc = Gaussian16("PM7")
     geom2.set_calculator(g16calc)
