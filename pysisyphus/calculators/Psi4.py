@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import textwrap
 import re
 
 import numpy as np
