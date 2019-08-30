@@ -487,6 +487,7 @@ class Geometry:
     @gradient.setter
     def gradient(self, gradient):
         """Internal wrapper for setting the gradient."""
+        assert gradient.size == self.cart_coords.size
         self._forces = -gradient
 
     @property
