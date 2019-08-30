@@ -380,13 +380,14 @@ class RedundantCoords:
 
         self.bond_indices = bond_indices
 
-    def are_parallel(self, vec1, vec2, thresh=1e-6):
+    def are_parallel(self, vec1, vec2, angle_ind=None, thresh=1e-6):
         dot = max(min(vec1.dot(vec2), 1), -1)
         rad = np.arccos(dot)#vec1.dot(vec2))
         # angle > 175°
         if abs(rad) > self.RAD_175:
             # self.log(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
-            self.log(f"Nearly linear angle: {np.rad2deg(rad)}")
+            ind_str = f" ({angle_ind})" if angle_ind else ""
+            self.log(f"Nearly linear angle{ind_str}: {np.rad2deg(rad)}")
         return abs(rad) > (np.pi - thresh)
 
     def sort_by_central(self, set1, set2):
@@ -559,7 +560,7 @@ class RedundantCoords:
         angle_rad = np.arccos(u.dot(v))
         if grad:
             # Eq. (24) in [1]
-            if self.are_parallel(u, v):
+            if self.are_parallel(u, v, angle_ind):
                 tmp_vec = np.array((1, -1, 1))
                 par = self.are_parallel(u, tmp_vec) and self.are_parallel(v, tmp_vec)
                 tmp_vec = np.array((-1, 1, 1)) if par else tmp_vec
