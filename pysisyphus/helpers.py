@@ -11,7 +11,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.constants import ANG2BOHR
+from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
@@ -301,3 +301,9 @@ def complete_fragments(atoms, fragments):
     fragments = tuple([tuple(frag) for frag in fragments])
 
     return fragments
+
+
+def eigval_to_wavenumber(ev):
+    conv = AU2J/(AMU2KG*BOHR2M**2)
+
+    return np.sign(ev) * np.sqrt(np.abs(ev)*conv)/(2*np.pi*3e10)
