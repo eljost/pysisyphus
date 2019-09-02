@@ -51,11 +51,11 @@ class LQA(IRC):
         gradient_trans = eigenvectors.T @ gradient
 
         t = dt
-        _ = 0
+        cur_length = 0
         for i in range(self.N_euler):
             dsdt = np.sqrt(np.sum(gradient_trans**2 * np.exp(-2*eigenvalues*t)))
-            _ += dsdt * dt
-            if _ > self.step_length:
+            cur_length += dsdt * dt
+            if cur_length > self.step_length:
                 break
             t += dt
         alphas = (np.exp(-eigenvalues*t) - 1) / eigenvalues
