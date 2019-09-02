@@ -8,11 +8,10 @@ from pysisyphus.helpers import geom_from_library
 
 
 def test_mopac():
-    # geom = geom_from_library("h2o.xyz", coord_type="redund")
     geom = geom_from_library("h2o.xyz")
     geom2 = geom.copy()
-    # calc = MOPAC(mult=3)
     calc = MOPAC()
+    # calc = MOPAC(mult=3)
     geom.set_calculator(calc)
     grad = geom.gradient
     energy = geom.energy
