@@ -87,8 +87,7 @@ class DWI:
         n_2 = self.n // 2
         dx1_norm_n_grad = 2 * n_2 * dx1_norm**(2*n_2-2) * dx1
         dx2_norm_n_grad = 2 * n_2 * dx2_norm**(2*n_2-2) * dx2
-        grad_denom = denom**2
-        w1_grad = (dx2_norm_n_grad*dx1_norm_n  - dx1_norm_n_grad*dx2_norm_n) / grad_denom
+        w1_grad = (dx2_norm_n_grad*dx1_norm_n  - dx1_norm_n_grad*dx2_norm_n) / denom**2
         w2_grad = -w1_grad
 
         # E_dwi = w1(x)*T1(x) + w2(x)*T2(x)
