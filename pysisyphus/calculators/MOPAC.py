@@ -35,8 +35,17 @@ class MOPAC(Calculator):
         "hessian": "DFORCE FORCE LET",
     }
 
-    def __init__(self, **kwargs):
+    METHODS = [m.lower() for m in
+               "AM1 PM3 PM6 PM6-DH2 PM6-D3 PM6-DH+ PM6-DH2 PM6-DH2X " \
+               "PM6-D3H4 PM6-D3H4X PM7 PM7-TS".split()
+    ]
+
+    def __init__(self, method="PM7", **kwargs):
         super().__init__(**kwargs)
+
+        self.method = method
+        assert self.method.lower() in self.METHODS, \
+            f"Invalid method={self.method}! Supported methods are ({self.METHODS})"
 
         self.uhf = "UHF" if self.mult != 1 else ""
 
@@ -66,6 +75,8 @@ class MOPAC(Calculator):
  
         {coord_str}
         """).strip()
+
+        self.log(f"Created MOPAC calculator using the '{self.method}' method.")
 
     def prepare_coords(self, atoms, coords, opt=False):
         coords = coords.reshape(-1, 3) * BOHR2ANG

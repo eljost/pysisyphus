@@ -11,6 +11,16 @@ def test_mopac():
     geom = geom_from_library("h2o.xyz")
     geom2 = geom.copy()
     calc = MOPAC()
+    geom.set_calculator(calc)
+    grad = geom.gradient
+    energy = geom.energy
+    hessian = geom.hessian
+
+
+def mopac_gaussian_compare():
+    geom = geom_from_library("h2o.xyz")
+    geom2 = geom.copy()
+    calc = MOPAC()
     # calc = MOPAC(mult=3)
     geom.set_calculator(calc)
     grad = geom.gradient
@@ -34,3 +44,4 @@ def test_mopac():
 
 if __name__ == "__main__":
     test_mopac()
+    # mopac_gaussian_compare()
