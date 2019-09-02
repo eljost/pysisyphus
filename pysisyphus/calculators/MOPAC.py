@@ -152,24 +152,37 @@ class MOPAC(Calculator):
     def parse_hessian(self, path):
         text = self.read_aux(path)
 
-        mode_re = "NORMAL_MODES\[\d+\]=\s+([\s\.\-\d]+)\s+#Warning"
-        normal_modes = re.search(mode_re, text)[1].strip().split()
-        normal_modes = np.array(normal_modes, dtype=float)
-        coord_num = int(sqrt(normal_modes.size))
-        assert normal_modes.size % coord_num == 0
-        normal_modes = normal_modes.reshape(-1, coord_num)
+        # Parse employed masses, as the given hessian is mass-weighted
+        # and we have to un-weigh it.
+        mass_re = "ISOTOPIC_MASSES.+\s*(.+)"
+        mobj = re.search(mass_re, text, re.MULTILINE)
+        masses = np.array(mobj[1].strip().split(), dtype=float)
+        # This matrix is used to un-weigh the hessian
+        M = np.diag(np.sqrt(np.repeat(masses, 3)))
+        # For N atoms we expect 3N cartesian coordinates
+        coord_num = masses.size * 3
 
         hess_re = " #  Lower half triangle only\s+([\s\.\-\d]+)\s+NORMAL_MODE"
         tril_hess = re.search(hess_re, text)[1].strip().split()
         tril_hess = np.array(tril_hess, dtype=float)
-        hessian = np.zeros((coord_num, coord_num))
-        # TODO: get coord_num from somewhere else?!
+        assert tril_hess.size == sum(range(coord_num+1))
+        hessian_m = np.zeros((coord_num, coord_num))
         tril_indices = np.tril_indices(coord_num)
-        hessian[tril_indices] = tril_hess
+        hessian_m[tril_indices] = tril_hess
 
         triu_indices = np.triu_indices(coord_num, k=1)
-        hessian[triu_indices] = hessian.T[triu_indices]
-        # Hessian is given in millidyne/angstrom and massweighted
+        hessian_m[triu_indices] = hessian_m.T[triu_indices]
+
+        # Hessian is given in mdyn/(Å*amu).
+        # In a first step we have to unweigh the hessian using the matrix
+        # built from the parsed masses.
+        hessian = M @ hessian_m @ M
+        # Then we have to convert mdyn/Å to Hartree/Bohr²
+        #     mdyn/Å = 100 kg/s²
+        #     Hartree/Bohr² ~  1556.8931 kg/s²
+        #
+        #     1 mydn/Å * (100 / 1556.8931 Hartree/Bohr² * Å/mydn) = 0.06423 Hartree/Bohr²
+        hessian *= 0.06423
 
         result = {
             "hessian": hessian,
