@@ -102,6 +102,7 @@ IRC_DICT = {
     "imk": IMKMod.IMKMod,
     "rk4": RK4,
     "lqa": LQA,
+    "modekill": ModeKill,
 }
 
 STOCASTIC_DICT = {

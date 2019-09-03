@@ -1,8 +1,5 @@
 import logging
 
-from pysisyphus.irc.RK4 import RK4
-from pysisyphus.irc.LQA import LQA
-
 __all__ = [
     "DampedVelocityVerlet",
     "Euler",
@@ -10,7 +7,12 @@ __all__ = [
     "IMKMod",
     "RK4",
     "LQA",
+    "ModeKill",
 ]
+
+from pysisyphus.irc.RK4 import RK4
+from pysisyphus.irc.LQA import LQA
+from pysisyphus.irc.ModeKill import ModeKill
 
 logger = logging.getLogger("irc")
 logger.setLevel(logging.DEBUG)
