@@ -137,6 +137,7 @@ def kill_modes(geom):
 
     do_analysis(geom)
     # kill_inds = (0, 1)
+    # mk = ModeKill(geom, kill_inds=kill_inds, max_cycles=5)
     kill_inds = (1, )
     mk = ModeKill(geom, kill_inds=kill_inds)
     mk.run()

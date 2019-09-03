@@ -55,6 +55,7 @@ class IRC:
         self.ts_hessian = copy.copy(self.geometry.hessian)
 
         self.cur_step = 0
+        self.converged = False
         # With downhill=True we shouldn't need any initial displacement.
         # We still call the method because here the initial hessian is
         # calculated and some sanity checks are made. The returned init_displ
@@ -101,13 +102,14 @@ class IRC:
         return self.geometry.mw_hessian
 
     def log(self, msg):
-        self.logger.debug(f"step {self.cur_step}, {msg}")
+        self.logger.debug(f"step {self.cur_step:03d}, {msg}")
 
     # def un_massweight(self, vec):
         # return vec * np.sqrt(self.geometry.masses_rep)
 
     def prepare(self, direction):
         self.cur_step = 0
+        self.converged = False
         # Over the course of the IRC the hessian may get updated.
         # Copying the TS hessian here ensures a clean start in combined
         # forward and backward runs. Otherwise we would accidently use
@@ -210,6 +212,12 @@ class IRC:
             irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
             dE = self.irc_energies[-1] - self.irc_energies[-2]
             max_grad = np.abs(gradient).max()
+
+            if self.converged:
+                break_msg = "Optimizer indicated convergence!"
+                self.table.print(break_msg)
+                break
+
             row_args = (self.cur_step, irc_length, dE, max_grad, rms_grad)
             self.table.print_row(row_args)
             # print(f"||grad||={np.linalg.norm(gradient):.4f}, "
@@ -225,6 +233,7 @@ class IRC:
                 break_msg = "Energy increased!"
             elif abs(last_energy - this_energy) <= 1e-6:
                 break_msg = "Energy converged!"
+
             if break_msg:
                 self.table.print(break_msg)
                 break
@@ -232,6 +241,7 @@ class IRC:
             self.cur_step += 1
             if check_for_stop_sign():
                 break
+            self.log("")
 
         if direction == "forward":
             self.irc_mw_coords.reverse()

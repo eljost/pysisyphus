@@ -8,16 +8,28 @@ from pysisyphus.TableFormatter import TableFormatter
 
 class ModeKill(IRC):
 
-    def __init__(self, geometry, kill_inds=None, nu_thresh=-5., **kwargs):
+    def __init__(self, geometry, kill_inds, nu_thresh=-5., **kwargs):
         super().__init__(geometry, downhill=True, **kwargs)
 
-        self.kill_inds = list(kill_inds) if kill_inds else list()
+        assert self.geometry.coord_type == "cart"
+
+        self.kill_inds = np.array(kill_inds, dtype=int)
         self.nu_thresh = float(nu_thresh)
+
+        self.fmt = {"float": lambda f: f"{f:.4f}",}
+        self.ovlp_thresh = .3
+        self.indices = np.arange(self.geometry.coords.size)
 
     def update_mw_down_step(self):
         w, v = np.linalg.eigh(self.mw_hessian)
 
         self.kill_modes = v[:,self.kill_inds]
+        nus = eigval_to_wavenumber(w)
+        assert all(nus[self.kill_inds] < self.nu_thresh), \
+              "ModeKill is intended for removal of imaginary frequencies " \
+             f"below {self.nu_thresh} cm⁻¹! But the specified indices " \
+             f"{self.kill_inds} contain modes with positive frequencies " \
+             f"({nus[self.kill_inds]} cm⁻¹)."
         # We determine the correct sign of the eigenvector(s) from its
         # overlap(s) with the gradient.
         # To decrease the overall energy we have to step against the
@@ -28,7 +40,11 @@ class ModeKill(IRC):
         mw_grad = self.mw_gradient
         mw_grad_normed = mw_grad / np.linalg.norm(mw_grad)
         overlaps = np.einsum("ij,i->j", self.kill_modes, mw_grad_normed)
+        self.log("Overlaps between gradient and eigenvectors:")
+        self.log(overlaps)
         flip = overlaps > 0
+        self.log("Eigenvector signs to be flipped:")
+        self.log(str(flip))
         self.kill_modes[:,flip] *= -1
         # Create the step as the sum of the downhill steps along the modes
         # to remove.
@@ -48,13 +64,37 @@ class ModeKill(IRC):
         # Overlaps between current normal modes and the modes we want to
         # remove.
         overlaps = np.abs(np.einsum("ij,ik->jk", self.kill_modes, v))
-        self.log(f"Overlaps between current normal modes and modes to remove:")
-        self.log(str(overlaps[:,:6]))
+        self.log(f"Overlaps between original modes and current modes:")
+        # overlaps contains one row per mode to remove
+        for i, ovlps in enumerate(overlaps):
+            above_thresh = ovlps > self.ovlp_thresh
+            # ovlp_str = np.array2string(ovlp[:10], prefix=" "*18)
+            ovlp_str = " ".join(
+                [f"{i:02d}: {o:.4f}" for i, o in zip(self.indices[above_thresh],
+                                                     ovlps[above_thresh])
+                ]
+            )
+            self.log(f"\tOrg. mode {i:02d}: {ovlp_str}")
 
         nus = eigval_to_wavenumber(w)
-        neg_inds = nus < self.nu_thresh
+        neg_inds = nus <= self.nu_thresh
         neg_nus = nus[neg_inds]
-        self.log("Wavenumber of imaginary modes:")
-        self.log(str(neg_nus))
+        self.log(f"Wavenumbers of imaginary modes (<= {self.nu_thresh} cm⁻¹):")
+        self.log(f"{neg_nus} cm⁻¹")
 
-        self.mw_coords += self.mw_down_step
+        # Check if any eigenvalues became positive. If so remove them and update
+        # the step. If no mode to remove is left we are finished and can signal
+        # convergence.
+        argmax = overlaps.argmax(axis=1)
+        eigvals = w[argmax]
+        pos_eigvals = eigvals > 0
+        if any(pos_eigvals):
+            # Only keep negative eigenvalues.
+            flipped = self.kill_inds[pos_eigvals]
+            self.kill_inds = self.kill_inds[~pos_eigvals]
+            self.update_mw_down_step()
+            self.log("Eigenvalue(s) of mode(s) {flipped} became positive!")
+        self.converged = len(self.kill_inds) == 0
+
+        if not self.converged:
+            self.mw_coords += self.mw_down_step
