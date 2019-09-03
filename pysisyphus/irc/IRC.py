@@ -18,7 +18,7 @@ from pysisyphus.TablePrinter import TablePrinter
 class IRC:
 
     def __init__(self, geometry, step_length=0.1, max_cycles=150,
-                 forward=True, backward=True,
+                 downhill=False, forward=True, backward=True, mode=0,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
                  rms_grad_thresh=1e-4):
         assert(step_length > 0), "step_length must be positive"
@@ -29,8 +29,11 @@ class IRC:
         self.geometry = geometry
         self.step_length = step_length
         self.max_cycles = max_cycles
-        self.forward = forward
-        self.backward = backward
+        self.downhill = downhill
+        # Disable forward/backward when downhill is set
+        self.forward = not self.downhill and forward
+        self.backward = not self.downhill and backward
+        self.mode = mode
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
@@ -52,6 +55,10 @@ class IRC:
         self.ts_hessian = copy.copy(self.geometry.hessian)
 
         self.cur_step = 0
+        # With downhill=True we shouldn't need any initial displacement.
+        # We still call the method because here the initial hessian is
+        # calculated and some sanity checks are made. The returned init_displ
+        # will be the zero vector though.
         self.init_displ = self.initial_displacement()
         # step length dE max(|grad|) rms(grad)
         col_fmts = "int float float float float".split()
@@ -101,6 +108,14 @@ class IRC:
         # run.
         self.hessian = self.ts_hessian
 
+        self.irc_mw_coords = list()
+        self.irc_energies = list()
+        self.irc_gradients = list()
+
+        # We don't need an initiald displacement when going downhill
+        if self.downhill:
+            return
+
         # Do inital displacement from the TS
         init_factor = 1 if (direction == "forward") else -1
         initial_step = init_factor*self.init_displ
@@ -108,9 +123,6 @@ class IRC:
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(f"Did inital step of length {initial_step_length:.4f} "
                           "from the TS.")
-        self.irc_mw_coords = list()
-        self.irc_energies = list()
-        self.irc_gradients = list()
 
     def initial_displacement(self):
         """Returns a non-mass-weighted step in angstrom for an initial
@@ -128,13 +140,16 @@ class IRC:
         eigvals, eigvecs = np.linalg.eigh(mw_hessian)
         neg_inds = eigvals < -1e-10
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
-        min_eigval = eigvals[0]
-        mw_trans_vec = eigvecs[:,0]
+        min_eigval = eigvals[self.mode]
+        mw_trans_vec = eigvecs[:,self.mode]
         # Un-mass-weight the transition vector
         trans_vec = mm_sqr_inv.dot(mw_trans_vec)
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
 
-        if self.displ == "length":
+
+        if self.downhill:
+            step = np.zeros_like(self.transition_vector)
+        elif self.displ == "length":
             self.log("Using length-based initial displacement from the TS.")
             step = self.displ_length * self.transition_vector
         else:
@@ -228,7 +243,7 @@ class IRC:
             self.forward_step = self.cur_step
             self.write_trj(".", "forward", self.forward_coords)
 
-        # Add TS data
+        # Add TS/starting data
         self.all_coords.append(self.ts_mw_coords)
         self.all_energies.append(self.ts_energy)
 
@@ -246,6 +261,16 @@ class IRC:
             self.backward_step = self.cur_step
             self.write_trj(".", "backward", self.backward_coords)
 
+        if self.downhill:
+            print(highlight_text("Downhill"))
+            self.irc("downhill")
+            self.downhill_coords = self.irc_mw_coords
+            self.downhill_energies = self.irc_energies
+            self.all_coords.extend(self.downhill_coords)
+            self.all_energies.extend(self.downhill_energies)
+            self.downhill_step = self.cur_step
+            self.write_trj(".", "downhill", self.downhill_coords)
+
         self.all_coords = np.array(self.all_coords)
         self.all_energies = np.array(self.all_energies)
         self.postprocess()
@@ -254,7 +279,6 @@ class IRC:
         # Right now self.all_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.
         self.all_coords_umw = self.all_coords / self.geometry.masses_rep**0.5
-
 
     def postprocess(self):
         pass
