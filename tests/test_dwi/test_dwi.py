@@ -129,7 +129,7 @@ def test_euler():
             k_coords.append(cur_coords.copy())
             if length >= norm:
                 # print(f"Converged! length={length:.8f}, length-step={length-corr_step_length:.8f}")
-                print(f"Converged! length={length:.8f}")#, length-step={length-corr_step_length:.8f}")
+                print(f"Converged! length={length:.8f}")
                 break
             energy, gradient = dwi.interpolate(cur_coords, gradient=True)
             cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
