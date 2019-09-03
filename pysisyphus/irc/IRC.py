@@ -93,6 +93,13 @@ class IRC:
     def mw_gradient(self):
         return self.geometry.mw_gradient
 
+    @property
+    def mw_hessian(self):
+        # TODO: This can be removed when the mw_hessian property is updated
+        #       in Geometry.py.
+        self.geometry.hessian
+        return self.geometry.mw_hessian
+
     def log(self, msg):
         self.logger.debug(f"step {self.cur_step}, {msg}")
 
@@ -181,6 +188,7 @@ class IRC:
         self.irc_energies.append(self.energy)
         self.irc_gradients.append(self.gradient)
 
+        self.table.print_header()
         while True:
             if self.cur_step == self.max_cycles:
                 print("IRC steps exceeded. Stopping.")
@@ -196,7 +204,9 @@ class IRC:
             self.irc_energies.append(self.energy)
             rms_grad = np.sqrt(np.mean(np.square(gradient)))
 
-            self.table.print_header()
+            # if (self.cur_step % 10) == 0:
+                # print()
+                # self.table.print_header()
             irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
             dE = self.irc_energies[-1] - self.irc_energies[-2]
             max_grad = np.abs(gradient).max()
@@ -222,7 +232,6 @@ class IRC:
             self.cur_step += 1
             if check_for_stop_sign():
                 break
-            print()
 
         if direction == "forward":
             self.irc_mw_coords.reverse()
