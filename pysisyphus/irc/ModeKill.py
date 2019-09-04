@@ -11,7 +11,10 @@ class ModeKill(IRC):
 
     def __init__(self, geometry, kill_inds, nu_thresh=-5.,
                  do_hess=True, hessian_update=True, **kwargs):
-        super().__init__(geometry, downhill=True, **kwargs)
+        # Use tight convergence criteria so the IRC/ModeKill doesn't
+        # ent prematurely.
+        super().__init__(geometry, downhill=True, rms_grad_thresh=1e-6,
+                         **kwargs)
 
         assert self.geometry.coord_type == "cart"
 
