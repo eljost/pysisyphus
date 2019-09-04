@@ -3,8 +3,7 @@
 import numpy as np
 
 from pysisyphus.calculators.ORCA import ORCA
-from pysisyphus.helpers import geom_from_xyz_file
-from pysisyphus.run import do_final_hessian
+from pysisyphus.helpers import geom_from_xyz_file, do_final_hessian
 
 
 def test_do_final_hessian(datadir):
