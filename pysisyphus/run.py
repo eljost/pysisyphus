@@ -328,7 +328,7 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         print(f"Imaginary mode {root} has highest overlap with splined HEI tangent")
         # Use mode with highest overlap as initial root
         tsopt_kwargs["root"] = root
-        prfo = ts_optimizer(ts_geom, **tsopt_kwargs)
+        prfo = ts_optimizer(ts_geom, prefix="ts_", **tsopt_kwargs)
         prfo.run()
 
     print(f"Optimized TS coords:")
@@ -348,13 +348,13 @@ def do_final_hessian(geom, save_hessian=True):
 
     # TODO: Add cartesian_hessian property to Geometry to avoid
     # accessing a "private" attribute.
-    hessian = geom._hessian
+    hessian = geom.cart_hessian
     print("... mass-weighing cartesian hessian")
     mw_hessian = geom.mass_weigh_hessian(hessian)
     print("... doing eckart-projection")
     proj_hessian = geom.eckart_projection(mw_hessian)
     eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-    ev_thresh = -1e-4
+    ev_thresh = -1e-6
 
     neg_inds = eigvals < ev_thresh
     neg_eigvals = eigvals[neg_inds]
@@ -365,7 +365,7 @@ def do_final_hessian(geom, save_hessian=True):
     # print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
     if neg_num > 0:
         wavenumbers = eigval_to_wavenumber(neg_eigvals)
-        print("Imaginary frequencies in cm⁻¹:", wavenumbers)
+        print("Imaginary frequencies:", wavenumbers, "cm⁻¹")
 
     if save_hessian:
         final_hessian_fn = "calculated_final_cart_hessian"
