@@ -18,7 +18,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
-                                get_coords_diffs)
+                                get_coords_diffs, shake_coords)
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
@@ -86,6 +86,17 @@ def parse_args(args):
     action_group.add_argument("--std", action="store_true",
                     help="Move supplied geometry to its standard orientation."
     )
+    action_group.add_argument("--shake", action="store_true",
+                    help="Shake (randomly displace) coordiantes."
+    )
+
+    shake_group = parser.add_argument_group()
+    shake_group.add_argument("--scale", type=float, default=0.1,
+        help="Scales the displacement in --shake."
+    )
+    shake_group.add_argument("--seed", type=int, default=None,
+        help="Initialize the RNG for reproducible results."
+    )
 
     interpolate_group = parser.add_mutually_exclusive_group()
     interpolate_group.add_argument("--idpp", action="store_true",
@@ -97,6 +108,7 @@ def parse_args(args):
     interpolate_group.add_argument("--redund", action="store_true",
         help="Interpolate in internal coordinates."
     )
+
     parser.add_argument("--bohr", action="store_true",
                     help="Input geometries are in Bohr instead of Angstrom."
     )
@@ -300,6 +312,12 @@ def standard_orientation(geoms):
     return geoms
 
 
+def shake(geoms, scale=0.1, seed=None):
+    for geom in geoms:
+        geom.coords = shake_coords(geom.coords, scale=scale, seed=seed)
+    return geoms
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -364,6 +382,9 @@ def run():
     elif args.std:
         to_dump = standard_orientation(geoms)
         fn_base = "standard"
+    elif args.shake:
+        to_dump = shake(geoms, args.scale, args.seed)
+        fn_base = "shaked"
 
     # Write transformed geometries
     dump_trj = dump_trj and (len(to_dump) > 1)
