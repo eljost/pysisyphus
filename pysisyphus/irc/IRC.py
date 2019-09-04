@@ -120,6 +120,7 @@ class IRC:
         self.irc_mw_coords = list()
         self.irc_energies = list()
         self.irc_gradients = list()
+        self.irc_mw_gradients = list()
 
         # We don't need an initiald displacement when going downhill
         if self.downhill:
@@ -189,6 +190,7 @@ class IRC:
         self.irc_mw_coords.append(self.mw_coords)
         self.irc_energies.append(self.energy)
         self.irc_gradients.append(self.gradient)
+        self.irc_mw_gradients.append(self.mw_gradient)
 
         self.table.print_header()
         while True:
@@ -200,18 +202,15 @@ class IRC:
             # Do macroiteration/IRC step to update the geometry
             self.step()
             # Calculate energy and gradient on the new geometry
-            gradient = self.gradient
-            energy = self.energy
             self.irc_mw_coords.append(self.mw_coords)
+            self.irc_gradients.append(self.gradient)
+            self.irc_mw_gradients.append(self.mw_gradient)
             self.irc_energies.append(self.energy)
-            rms_grad = np.sqrt(np.mean(np.square(gradient)))
+            rms_grad = np.sqrt(np.mean(np.square(self.gradient)))
 
-            # if (self.cur_step % 10) == 0:
-                # print()
-                # self.table.print_header()
             irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
             dE = self.irc_energies[-1] - self.irc_energies[-2]
-            max_grad = np.abs(gradient).max()
+            max_grad = np.abs(self.gradient).max()
 
             if self.converged:
                 break_msg = "Optimizer indicated convergence!"
@@ -220,9 +219,12 @@ class IRC:
 
             row_args = (self.cur_step, irc_length, dE, max_grad, rms_grad)
             self.table.print_row(row_args)
-            # print(f"||grad||={np.linalg.norm(gradient):.4f}, "
-                  # f"max(grad)={np.abs(gradient).max():.4f}, "
-                  # f"rms(grad)={rms_grad:.4f}")
+            try:
+                # The derived IRC classes may want to do some printing
+                add_info = self.get_additional_print()
+                self.table.print(add_info)
+            except AttributeError:
+                pass
             last_energy = self.irc_energies[-2]
             this_energy = self.irc_energies[-1]
 
@@ -293,7 +295,8 @@ class IRC:
         self.all_coords = np.array(self.all_coords)
         self.all_energies = np.array(self.all_energies)
         self.postprocess()
-        self.write_trj(".", "finished")
+        if not self.downhill:
+            self.write_trj(".", "finished")
 
         # Right now self.all_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.
