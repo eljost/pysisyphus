@@ -27,7 +27,7 @@ from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords, \
-                               highlight_text, eigval_to_wavenumber
+                               highlight_text, eigval_to_wavenumber, do_final_hessian
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -341,43 +341,6 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     if do_hess:
         print()
         do_final_hessian(ts_geom)
-
-
-def do_final_hessian(geom, save_hessian=True):
-    print("Calculating hessian at final geometry.")
-
-    # TODO: Add cartesian_hessian property to Geometry to avoid
-    # accessing a "private" attribute.
-    hessian = geom.cart_hessian
-    print("... mass-weighing cartesian hessian")
-    mw_hessian = geom.mass_weigh_hessian(hessian)
-    print("... doing eckart-projection")
-    proj_hessian = geom.eckart_projection(mw_hessian)
-    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-    ev_thresh = -1e-6
-
-    neg_inds = eigvals < ev_thresh
-    neg_eigvals = eigvals[neg_inds]
-    neg_num = sum(neg_inds)
-    eigval_str = np.array2string(eigvals[:10], precision=4)
-    print()
-    print("First 10 eigenvalues", eigval_str)
-    # print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
-    if neg_num > 0:
-        wavenumbers = eigval_to_wavenumber(neg_eigvals)
-        print("Imaginary frequencies:", wavenumbers, "cm⁻¹")
-
-    if save_hessian:
-        final_hessian_fn = "calculated_final_cart_hessian"
-        np.savetxt(final_hessian_fn, hessian)
-        print()
-        print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
-
-    FinalHessianResult = namedtuple("FinalHessianResult",
-                                    "neg_eigvals"
-    )
-    res = FinalHessianResult(neg_eigvals=neg_eigvals)
-    return res
 
 
 # def run_cos_dimer(cos, dimer_kwargs, calc_getter):

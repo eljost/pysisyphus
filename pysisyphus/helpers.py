@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import namedtuple
 import itertools as it
 import logging
 import os
@@ -307,3 +308,42 @@ def eigval_to_wavenumber(ev):
     conv = AU2J/(AMU2KG*BOHR2M**2)
 
     return np.sign(ev) * np.sqrt(np.abs(ev)*conv)/(2*np.pi*3e10)
+
+
+FinalHessianResult = namedtuple("FinalHessianResult",
+                                "neg_eigvals"
+)
+
+
+def do_final_hessian(geom, save_hessian=True):
+    print("Calculating hessian at final geometry.")
+
+    # TODO: Add cartesian_hessian property to Geometry to avoid
+    # accessing a "private" attribute.
+    hessian = geom.cart_hessian
+    print("... mass-weighing cartesian hessian")
+    mw_hessian = geom.mass_weigh_hessian(hessian)
+    print("... doing eckart-projection")
+    proj_hessian = geom.eckart_projection(mw_hessian)
+    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+    ev_thresh = -1e-6
+
+    neg_inds = eigvals < ev_thresh
+    neg_eigvals = eigvals[neg_inds]
+    neg_num = sum(neg_inds)
+    eigval_str = np.array2string(eigvals[:10], precision=4)
+    print()
+    print("First 10 eigenvalues", eigval_str)
+    # print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
+    if neg_num > 0:
+        wavenumbers = eigval_to_wavenumber(neg_eigvals)
+        print("Imaginary frequencies:", wavenumbers, "cm⁻¹")
+
+    if save_hessian:
+        final_hessian_fn = "calculated_final_cart_hessian"
+        np.savetxt(final_hessian_fn, hessian)
+        print()
+        print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
+
+    res = FinalHessianResult(neg_eigvals=neg_eigvals)
+    return res
