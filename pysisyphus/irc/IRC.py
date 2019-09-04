@@ -6,6 +6,7 @@
 import copy
 import logging
 import pathlib
+import sys
 
 import numpy as np
 
@@ -244,6 +245,7 @@ class IRC:
             if check_for_stop_sign():
                 break
             self.log("")
+            sys.stdout.flush()
 
         if direction == "forward":
             self.irc_mw_coords.reverse()
