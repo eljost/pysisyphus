@@ -678,6 +678,9 @@ class Geometry:
             "energy": "energy",
             "forces": "cart_forces",
             "hessian": "cart_hessian",
+            # True properties in AFIR calculations
+            "true_forces": "true_forces",
+            "true_energy": "true_energy",
         }
 
         for key in results:
