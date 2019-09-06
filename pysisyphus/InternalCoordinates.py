@@ -386,7 +386,7 @@ class RedundantCoords:
         # angle > 175°
         if abs(rad) > self.RAD_175:
             # self.log(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
-            ind_str = f" ({angle_ind})" if angle_ind else ""
+            ind_str = f" ({angle_ind})" if (angle_ind is not None) else ""
             self.log(f"Nearly linear angle{ind_str}: {np.rad2deg(rad)}")
         return abs(rad) > (np.pi - thresh)
 
