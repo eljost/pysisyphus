@@ -109,6 +109,9 @@ def parse_args(args):
         help="Interpolate in internal coordinates."
     )
 
+    parser.add_argument("--noipalign", action="store_false",
+        help="Don't align geometries when interpolating."
+    )
     parser.add_argument("--bohr", action="store_true",
                     help="Input geometries are in Bohr instead of Angstrom."
     )
@@ -152,7 +155,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
 
 def get_geoms(xyz_fns, interpolate=None, between=0,
               coord_type="cart", comments=False, in_bohr=False,
-              define_prims=None):
+              define_prims=None, interpolate_align=True):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
@@ -173,8 +176,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     # betweeen geom1 and geom2 contains 8 primtives. Then the number of coordinates
     # at all images in the final list may be non-constant.
     if interpolate:
+        import pdb; pdb.set_trace()
         interpolate_class = INTERPOLATE[interpolate]
-        interpolator = interpolate_class(geoms, between)
+        interpolator = interpolate_class(geoms, between, align=interpolate_align)
         geoms = interpolator.interpolate_all()
     if coord_type != geoms[0].coord_type:
         # Recreate Geometries so they have the correct coord_type. There may
@@ -333,7 +337,8 @@ def run():
         interpolate = None
 
     # Read supplied files and create Geometry objects
-    geoms = get_geoms(args.fns, interpolate, args.between, in_bohr=args.bohr)
+    geoms = get_geoms(args.fns, interpolate, args.between, in_bohr=args.bohr,
+                      interpolate_align=args.noipalign)
 
     to_dump = geoms
     dump_trj = True
