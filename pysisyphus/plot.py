@@ -276,7 +276,7 @@ def load_results(keys):
 def plot_cosgrad():
     keys = ("energy", "forces", "coords")
     (energies, forces, coords), num_cycles, num_images = load_results(keys)
-    dummy_atoms = list()
+    dummy_atoms = ["H" for _ in coords[0][0]]
 
     all_nebs = list()
     all_perp_forces = list()
