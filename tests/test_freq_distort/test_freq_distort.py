@@ -131,6 +131,7 @@ def tmp(geom, mode_ind, nu_thresh=-5.):
 
     plt.tight_layout()
     plt.show()
+    fig.savefig("imgkill.pdf")
 
 
 def kill_modes(geom):
@@ -142,6 +143,78 @@ def kill_modes(geom):
     mk = ModeKill(geom, kill_inds=kill_inds)
     mk.run()
     do_analysis(geom)
+
+
+def freq_distort(geom, mode_ind):
+    print(geom)
+    hess = geom.hessian
+    mw_hess = geom.mass_weigh_hessian(hess)
+    # w, v = np.linalg.eigh(mw_hess)
+    # nus = eigval_to_wavenumber(w)
+    # neg_inds = w < 0
+    # print(w[neg_inds])
+    # print(nus[neg_inds])
+
+    # shaked = geom.copy()
+    # shaked.coords = shake_coords(shaked.coords, scale=0.05, seed=25032018)
+    # shaked.set_calculator(XTB(pal=4, base_name="shake"))
+    # shess = shaked.hessian
+    # sw, sv = np.linalg.eigh(shess)
+    # with open("shaked.xyz", "w") as handle:
+        # handle.write(shaked.as_xyz())
+
+    print("Eckart projected")
+    proj_hess = geom.eckart_projection(mw_hess)
+    w, v = np.linalg.eigh(proj_hess)
+    nus = eigval_to_wavenumber(w)
+    neg_inds = w < 0
+    print(w[neg_inds])
+    print(nus[neg_inds])
+
+    imag_mode = v[:,mode_ind]
+    print(imag_mode)
+    lengths = np.linspace(-1, 1, 21)
+    print(lengths)
+    coords_list = list()
+    M = np.sqrt(geom.masses_rep)
+    for l in lengths:
+        new_coords = (geom.mw_coords + l*imag_mode) / M
+        coords_list.append(new_coords)
+    coords_to_trj("displaced.trj", geom.atoms, coords_list)
+
+    energies = list()
+    for cs in coords_list:
+        geom.coords = cs
+        energy = geom.energy
+        energies.append(energy)
+        pass
+    print(energies)
+
+    energies = np.array(energies)
+    np.save("energies", energies)
+    # energies -= energies.min()
+    # energies *= 2625.25
+
+    def func_harmonic(x, a, b, c):
+        return a + b*(x+c)**2
+
+    fromto = 4
+    slice_ = slice(fromto, -fromto+1)
+    ydata = energies[slice_]
+    xdata = np.arange(energies.size)[slice_]
+    popt, pcov = curve_fit(func_harmonic, xdata, ydata)
+    print("popt")
+    print(popt)
+    print("pcov")
+    print(pcov)
+
+    fig, ax = plt.subplots()
+    ax.plot(energies, "o-", label="True")
+    ax.plot(xdata, func_harmonic(xdata, *popt), "--", label="Harmonic")
+    ax.legend()
+    plt.show()
+
+    pass
 
 
 def test_freq_distort():
@@ -240,4 +313,8 @@ def test_freq_distort():
 
 if __name__ == "__main__":
     # test_freq_distort()
-    run()
+    # run()
+    geom = geom_from_xyz_file("03_00_water_addition_ts.xyz")
+    geom.set_calculator(XTB(pal=4))
+    # freq_distort(geom, 1)
+    tmp(geom, 1)
