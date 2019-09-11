@@ -35,7 +35,7 @@ class FragmentKick(Kick):
         self.frag_atoms = [atoms_arr[frag] for frag in self.fragments]
 
         new_coords3d = np.concatenate(self.frag_coords)
-        geom = Geometry(self.atoms, new_coords3d.flatten())
+        geom = Geometry(list(it.chain(*self.frag_atoms)), new_coords3d.flatten())
         with open("fragments_in_origin.xyz", "w") as handle:
             handle.write(geom.as_xyz())
 
