@@ -280,7 +280,7 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None, env=None, shell=False,
             hold=False, keep=True, cmd=None, inc_counter=True,
-            run_after=True):
+            run_after=True, parser_kwargs=None):
         """Run a calculation.
 
         The bread-and-butter method to actually run an external quantum
@@ -336,7 +336,8 @@ class Calculator:
         try:
             if run_after:
                 self.run_after(path)
-            results = self.parser_funcs[calc](path)
+            parser_kwargs = {} if parser_kwargs is None else parser_kwargs
+            results = self.parser_funcs[calc](path, **parser_kwargs)
             if keep:
                 self.keep(path)
         except Exception as err:
