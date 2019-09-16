@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import namedtuple
 import glob
 import io
 import os
@@ -15,6 +16,9 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
 from pysisyphus.xyzloader import make_xyz_str
+
+
+OptResult = namedtuple("OptResult", "opt_geom opt_log")
 
 
 class XTB(Calculator):
@@ -36,7 +40,8 @@ class XTB(Calculator):
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
         self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz", "g98.out",
-                        "xtb.trj", )
+                        "xtb.trj",
+        )
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
@@ -175,7 +180,7 @@ class XTB(Calculator):
         geoms = geoms_from_trj(path / "xtb.trj")
         return geoms
 
-    def run_opt(self, atoms, coords, keep=True):
+    def run_opt(self, atoms, coords, keep=True, keep_log=False):
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--opt", "tight"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -184,18 +189,28 @@ class XTB(Calculator):
             "add_args": add_args,
             "env": self.get_pal_env(),
             "keep": keep,
+            "parser_kwargs": {"keep_log": keep_log},
         }
-        opt_geom = self.run(inp, **kwargs)
-        return opt_geom
+        opt_result = self.run(inp, **kwargs)
+        return opt_result
 
-    def parse_opt(self, path):
+    def parse_opt(self, path, keep_log=False):
         xtbopt = path / "xtbopt.xyz"
         if not xtbopt.exists():
             self.log(f"{self.calc_number:03d} failed")
             return None
         opt_geom = geom_from_xyz_file(xtbopt)
         opt_geom.energy = self.parse_energy(path)
-        return opt_geom
+
+        opt_log = None
+        if keep_log:
+            opt_log = geoms_from_trj(path / "xtbopt.log")
+
+        opt_result = OptResult(
+                        opt_geom=opt_geom,
+                        opt_log=opt_log
+        )
+        return opt_result
 
     def parse_energy(self, path):
         with open(path / self.out_fn) as handle:
