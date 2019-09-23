@@ -452,6 +452,10 @@ class ORCA(OverlapCalculator):
         except KeyError:
             self.log("Didn't set 'mwfn_wf'. No .molden file in kept_fns.")
 
+    def propagate_wavefunction(self, calc):
+        if self.gbw:
+            calc.gbw = self.gbw
+
     def __str__(self):
         return f"ORCA({self.name})"
 
