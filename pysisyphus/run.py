@@ -271,7 +271,9 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     try:
         prim_indices = hei_image.internal.prim_indices
     except AttributeError:
-        prim_indices = form_coordinate_union(cos.images[0], cos.images[-1])
+        internal_geom1 = Geometry(cos.images[0].atoms, cos.images[0].cart_coords)
+        internal_geom2 = Geometry(cos.images[-1].atoms, cos.images[-1].cart_coords)
+        prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
                        coord_type="redund", prim_indices=prim_indices)
 
