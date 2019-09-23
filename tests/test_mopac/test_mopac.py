@@ -17,7 +17,7 @@ def test_mopac():
     hessian = geom.hessian
 
 
-def mopac_gaussian_compare():
+def test_mopac_gaussian_compare():
     geom = geom_from_library("h2o.xyz")
     geom2 = geom.copy()
     calc = MOPAC()

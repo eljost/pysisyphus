@@ -146,8 +146,10 @@ class MOPAC(Calculator):
 
     def parse_grad(self, path):
         text = self.read_aux(path)
-        grad_re = "GRADIENTS:KCAL.+$\s+(.+)$"
-        mobj = re.search(grad_re, text, re.MULTILINE)
+        # grad_re = "GRADIENTS:KCAL.+$\s+(.+)$"
+        # mobj = re.search(grad_re, text, re.MULTILINE)
+        grad_re = "GRADIENTS:KCAL/MOL/ANGSTROM\[\d+]=\s+(.+)\s+OVERLAP_MATRIX"
+        mobj = re.search(grad_re, text, re.DOTALL)
         # Gradients are given in kcal*mol/angstrom
         gradients = np.array(mobj[1].split(), dtype=float)
         # Convert to hartree/bohr
