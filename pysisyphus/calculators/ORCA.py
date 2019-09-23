@@ -31,14 +31,12 @@ class ORCA(OverlapCalculator):
 
     conf_key = "orca"
 
-    def __init__(self, keywords, gbw="", blocks="", **kwargs):
+    def __init__(self, keywords, blocks="", gbw=None, **kwargs):
         super().__init__(**kwargs)
 
         self.keywords = keywords
-        # Only call when we are not restarting
-        if not ("last_calc_cycle" in kwargs):
-            self.set_moinp_str(gbw)
         self.blocks = blocks
+        self.gbw = gbw
 
         assert (("pal" not in keywords.lower())
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
@@ -80,16 +78,13 @@ class ORCA(OverlapCalculator):
         # Use the latest .gbw
         gbw = self.make_fn("gbw", last_calc_cycle)
         self.log(f"restarted. using {gbw}")
-        self.set_moinp_str(gbw)
 
-    def set_moinp_str(self, gbw):
-        if not gbw:
-            self.moinp = ""
-            self.gbw = ""
-        else:
-            self.moinp = f"""!moread
+    def get_moinp_str(self, gbw):
+        moinp_str = ""
+        if gbw:
+            moinp_str = f"""!moread
             %moinp "{gbw}" """
-            self.gbw = gbw
+        return moinp_str
 
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)
@@ -102,7 +97,7 @@ class ORCA(OverlapCalculator):
         inp = self.orca_input.format(
                                 keywords=self.keywords,
                                 calc_type=calc_type,
-                                moinp=self.moinp,
+                                moinp=self.get_moinp_str(self.gbw),
                                 pal=self.pal,
                                 blocks=self.get_block_str(),
                                 coords=coords,
@@ -443,7 +438,7 @@ class ORCA(OverlapCalculator):
 
     def keep(self, path):
         kept_fns = super().keep(path)
-        self.set_moinp_str(kept_fns["gbw"])
+        self.gbw = kept_fns["gbw"]
         self.out = kept_fns["out"]
         if self.track and self.do_tddft:
             self.cis = kept_fns["cis"]
@@ -458,23 +453,3 @@ class ORCA(OverlapCalculator):
 
     def __str__(self):
         return f"ORCA({self.name})"
-
-
-if __name__ == "__main__":
-    from pysisyphus.helpers import geom_from_library
-    geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
-    keywords = "BP86 def2-SV(P)"
-    blocks = "tddft iroot 1 end"
-    charge = 1
-    mult = 1
-    orca = ORCA(keywords, blocks, charge=charge, mult=mult)
-    """
-    geom.set_calculator(orca)
-    forces = geom.forces
-    print(forces)
-    """
-    res = orca.parse_engrad("/scratch/test/pysis_orca/neu")
-    orca.set_moinp_str("")
-    print(orca.moinp)
-    orca.set_moinp_str("path/to/gbw")
-    print(orca.moinp)
