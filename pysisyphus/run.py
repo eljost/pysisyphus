@@ -201,53 +201,6 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
     return calc_getter
 
 
-def preopt_ends(xyz, calc_getter):
-    """Run optimization on first and last geometry in xyz and return
-    updated xyz variable containing the optimized ends and any
-    intermediate image that was present in the original list."""
-    geoms = get_geoms(xyz, coord_type="redund")
-    assert len(geoms) >= 2, "Need at least two geometries!"
-
-    middle_geoms = geoms[1:-1]
-    middle_fn = None
-    if len(middle_geoms) > 0:
-        middle_fn = "middle_for_preopt.trj"
-        write_geoms_to_trj(middle_geoms, middle_fn)
-
-    def opt_getter(geom, prefix):
-        opt_kwargs = {
-            "max_cycles": 150,
-            "thresh": "gau",
-            "trust_max": 0.3,
-            "prefix": prefix,
-            "dump": True,
-        }
-        opt = RFOptimizer.RFOptimizer(geom, **opt_kwargs)
-        return opt
-
-    out_xyz = list()
-    for ind, str_ in ((0, "first"), (-1, "last")):
-        print(f"Preoptimizing {str_} geometry.")
-        geom = geoms[ind]
-        prefix = f"{str_}_pre"
-        opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix))
-        # Continue when preoptimization was stopped manually
-        if not opt.stopped and not opt.is_converged:
-            print(f"Problem in preoptimization of {str_}. Exiting!")
-            sys.exit()
-        print(f"Preoptimization of {str_} geometry converged!")
-        opt_fn = f"{str_}_preopt.xyz"
-        shutil.move(opt.final_fn, opt_fn)
-        print(f"Saved final preoptimized structure to '{opt_fn}'.")
-        out_xyz.append(opt_fn)
-        print()
-
-    if middle_fn:
-        out_xyz.insert(1, middle_fn)
-
-    return out_xyz
-
-
 def run_cos(cos, calc_getter, opt_getter):
     for i, image in enumerate(cos.images):
         image.set_calculator(calc_getter(i))
@@ -498,6 +451,50 @@ def run_stocastic(stoc):
     stoc.run()
 
 
+def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
+    """Run optimization on first and last geometry in xyz and return
+    updated xyz variable containing the optimized ends and any
+    intermediate image that was present in the original list."""
+    strict = preopt_kwargs.pop("strict")
+
+    geoms = get_geoms(xyz, coord_type="redund")
+    assert len(geoms) >= 2, "Need at least two geometries!"
+
+    middle_geoms = geoms[1:-1]
+    middle_fn = None
+    if len(middle_geoms) > 0:
+        middle_fn = "middle_for_preopt.trj"
+        write_geoms_to_trj(middle_geoms, middle_fn)
+
+    def opt_getter(geom, prefix):
+        opt_kwargs = preopt_kwargs.copy()
+        opt_kwargs["prefix"] = prefix
+        opt = OPT_DICT[preopt_key](geom, **opt_kwargs)
+        return opt
+
+    out_xyz = list()
+    for ind, str_ in ((0, "first"), (-1, "last")):
+        print(f"Preoptimizing {str_} geometry.")
+        geom = geoms[ind]
+        prefix = f"{str_}_pre"
+        opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix))
+        # Continue when preoptimization was stopped manually
+        if strict and not opt.stopped and not opt.is_converged:
+            print(f"Problem in preoptimization of {str_}. Exiting!")
+            sys.exit()
+        print(f"Preoptimization of {str_} geometry converged!")
+        opt_fn = f"{str_}_preopt.xyz"
+        shutil.move(opt.final_fn, opt_fn)
+        print(f"Saved final preoptimized structure to '{opt_fn}'.")
+        out_xyz.append(opt_fn)
+        print()
+
+    if middle_fn:
+        out_xyz.insert(1, middle_fn)
+
+    return out_xyz
+
+
 def run_opt(geom, calc_getter, opt_getter):
     print(highlight_text(f"Running optimization"))
     geom.set_calculator(calc_getter(0))
@@ -597,6 +594,7 @@ def get_defaults(conf_dict):
         "calc": {
             "pal": 1,
         },
+        "preopt": None,
         "opt": None,
         "tsopt": None,
         "overlaps": None,
@@ -622,9 +620,8 @@ def get_defaults(conf_dict):
         }
     elif "opt" in conf_dict:
         dd["opt"] = {
-            "type": "cg",
+            "type": "rfo",
             "dump": True,
-            "alpha": 0.25,
         }
     elif "overlaps" in conf_dict:
         dd["overlaps"] = {
@@ -666,6 +663,16 @@ def get_defaults(conf_dict):
         tsopt_dict = tsopt_dicts[type_]
         tsopt_dict["do_hess"] = False
         dd["tsopt"] = tsopt_dict
+
+    if "preopt" in conf_dict:
+        dd["preopt"] = {
+            "type": "rfo",
+            "max_cycles": 150,
+            "thresh": "gau_loose",
+            "trust_max": 0.3,
+            "dump": True,
+            "strict": False,
+        }
 
     if "shake" in conf_dict:
         dd["shake"] = {
@@ -710,14 +717,15 @@ def handle_yaml(yaml_str):
     yaml_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
     # Load defaults to have a sane baseline
     run_dict = get_defaults(yaml_dict)
-    # Update nested entries
+    # Update nested entries that are dicts by themselves
     key_set = set(yaml_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
-                              "stocastic", "tsopt", "shake", "irc")):
+                              "stocastic", "tsopt", "shake", "irc",
+                              "preopt", )):
         run_dict[key].update(yaml_dict[key])
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type",
-                              "preopt_ends", "add_prims")):
+                              "add_prims")):
         run_dict[key] = yaml_dict[key]
     return run_dict
 
@@ -739,6 +747,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     if run_dict["interpol"]:
         interpolate = run_dict["interpol"]["type"]
         between = run_dict["interpol"]["between"]
+    if run_dict["preopt"]:
+        preopt_key = run_dict["preopt"].pop("type")
+        preopt_kwargs = run_dict["preopt"]
     if run_dict["opt"]:
         opt_key = run_dict["opt"].pop("type")
         opt_kwargs = run_dict["opt"]
@@ -783,9 +794,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
     coord_type = run_dict["coord_type"]
-    if run_dict["preopt_ends"]:
+
+    if run_dict["preopt"]:
         # Update xyz list with optimized endpoint filenames
-        xyz = preopt_ends(xyz, calc_getter)
+        xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
+
     add_prims = run_dict["add_prims"]
     geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type,
                       define_prims=add_prims)
