@@ -22,9 +22,6 @@ class RSPRFOptimizer(HessianOptimizer):
                  hessian_init="calc", hessian_update="bofill",
                  max_micro_cycles=50, trust_radius=0.3, **kwargs):
 
-        # assert hessian_init == "calc", \
-            # "TS-optimization should be started from a calculated hessian " \
-            # "(hessian_init=\"calc\")!"
         assert hessian_update == "bofill", \
             "Bofill update is recommended in a TS-optimization."
 
