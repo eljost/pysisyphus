@@ -227,6 +227,12 @@ class RSPRFOptimizer(HessianOptimizer):
             min_mat_scaled[:-1,-1] /= alpha
             step_min, eigval_min, nu_min = self.solve_rfo(min_mat_scaled, "min")
 
+            min_norm = np.linalg.norm(step_min)
+            max_norm = np.linalg.norm(step_max)
+            self.log(f"norm(step_max)={max_norm:.6f}")
+            self.log(f"norm(step_min)={min_norm:.6f}")
+            self.log(f"norm(step_max)/norm(step_min)={max_norm/min_norm:.2%}")
+
             # As of Eq. (8a) of [4] max_eigval and min_eigval also
             # correspond to:
             # max_eigval = -forces_trans[self.root] * max_step
