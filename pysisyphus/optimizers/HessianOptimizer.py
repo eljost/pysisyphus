@@ -84,13 +84,12 @@ class HessianOptimizer(Optimizer):
             self.H, hess_str = hess_funcs[self.hessian_init]()
             self.log(f"Using {hess_str} hessian.")
         except KeyError:
+            # We allow only loading of cartesian hessians
             self.log(f"Trying to load saved hessian from '{self.hessian_init}'.")
-            self.H = np.loadtxt(self.hessian_init)
-            coord_size = self.geometry.coords.size
-            assert (coord_size) == self.H.shape, \
-                f"Number of coordinates at current geometry ({coord_size}) " \
-                f"doesn't match shape {self.H.shape} of hessian in " \
-                f"'{self.hessian_init}'!"
+            self.geometry.cart_hessian = np.loadtxt(self.hessian_init)
+            # Use the previously set hessian in whatever coordinate system we
+            # actually employ.
+            self.H = self.geometry.hessian
         if self.hessian_init == "calc":
             hess_fn = self.get_path_for_fn("calculated_init_cart_hessian")
             # Save the cartesian hessian, as it is independent of the
