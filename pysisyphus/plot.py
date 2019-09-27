@@ -691,7 +691,7 @@ def plot_afir():
     l1 = en_ax.plot(afir_ens, style1, label="AFIR")
     l2 = en_ax.plot(true_ens, style2, label="True")
     en_ax2 = en_ax.twinx()
-    l3 = en_ax2.plot(true_ens+afir_ens, style3, label="True")
+    l3 = en_ax2.plot(true_ens+afir_ens, style3, label="Sum")
     en_ax2.tick_params(axis="y", labelcolor="blue")
 
     lines = l1 + l2 + l3
