@@ -224,11 +224,18 @@ class RSPRFOptimizer(HessianOptimizer):
             min_mat_scaled[:-1,-1] /= alpha
             step_min, eigval_min, nu_min = self.solve_rfo(min_mat_scaled, "min")
 
+            # Calculate overlap between directions over the course of the micro cycles
+            if mu == 0:
+                ref_step_max = step_max.copy()
+                ref_step_min = step_min.copy()
             min_norm = np.linalg.norm(step_min)
             max_norm = np.linalg.norm(step_max)
             self.log(f"norm(step_max)={max_norm:.6f}")
             self.log(f"norm(step_min)={min_norm:.6f}")
             self.log(f"norm(step_max)/norm(step_min)={max_norm/min_norm:.2%}")
+            # Calculate overlaps with originally proposed step in mu == 0
+            max_ovlp = ref_step_max @ step_max
+            min_ovlp = ref_step_min @ step_min
 
             # As of Eq. (8a) of [4] max_eigval and min_eigval also
             # correspond to:
@@ -240,10 +247,12 @@ class RSPRFOptimizer(HessianOptimizer):
             step[self.root] = step_max
             step[min_indices] = step_min
             step_norm = np.linalg.norm(step)
+            self.log(f"norm(step)={step_norm:.6f}")
 
             inside_trust = step_norm <= self.trust_radius
             if inside_trust:
-                self.log("Restricted step satisfied the trust radius.")
+                self.log( "Restricted step satisfies trust radius of "
+                         f"{self.trust_radius:.6f}")
                 self.log(f"Micro-cycles converged in cycle {mu:02d} with "
                          f"alpha={alpha:.6f}!")
                 break

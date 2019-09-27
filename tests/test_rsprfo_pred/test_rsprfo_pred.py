@@ -14,9 +14,14 @@ def test_pred():
     geom = AnaPot.get_geom((-0.174, 1.27, 0.))
     calc = geom.calculator
     trst = 0.05
-    # opt = RSPRFOptimizer(geom, trust_min=trst, trust_max=trst, hessian_recalc=1)
-    opt = RSPRFOptimizer(geom, trust_min=trst, trust_radius=trst, hessian_recalc=1)
-    # opt = RFOptimizer(geom, trust_min=trst, trust_max=trst, hessian_recalc=1)
+    opt_kwargs = {
+        "trust_min": trst,
+        "trust_radius": trst,
+        "trust_max": 0.3,
+        "hessian_recalc": 1,
+        "max_micro_cycles": 1,
+    }
+    opt = RSPRFOptimizer(geom, **opt_kwargs)
     opt.run()
     coords = np.array(opt.coords)
 
