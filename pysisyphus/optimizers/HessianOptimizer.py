@@ -4,14 +4,19 @@ from abc import abstractmethod
 
 import numpy as np
 
-from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.hessian_updates import (bfgs_update, flowchart_update,
+from pysisyphus.optimizers.guess_hessians import (fischer_guess,
+                                                  lindh_guess,
+                                                  simple_guess,
+                                                  swart_guess,
+                                                  xtb_hessian,)
+from pysisyphus.optimizers.hessian_updates import (bfgs_update,
+                                                   flowchart_update,
                                                    damped_bfgs_update,
                                                    multi_step_update,
-                                                   bofill_update)
-from pysisyphus.optimizers.guess_hessians import (fischer_guess, lindh_guess,
-                                                  simple_guess, swart_guess,
-                                                  xtb_hessian,)
+                                                   bofill_update,)
+from pysisyphus.optimizers import line_search2
+from pysisyphus.optimizers.line_search2 import poly_line_search
+from pysisyphus.optimizers.Optimizer import Optimizer
 
 
 class HessianOptimizer(Optimizer):
@@ -173,6 +178,44 @@ class HessianOptimizer(Optimizer):
             dH, key = self.hessian_update_func(self.H, dx, dg)
             self.H = self.H + dH
             self.log(f"Did {key} hessian update.")
+
+    def poly_line_search(self):
+        # Current energy & gradient are already appended.
+        cur_energy = self.energies[-1]
+        prev_energy = self.energies[-2]
+        # energy_increased = (cur_energy - prev_energy) > 0.
+        # # TODO: always call line_search?
+        # if not energy_increased:
+            # return cur_grad
+
+        prev_step = self.steps[-1]
+        cur_grad = -self.forces[-1]
+        prev_grad = -self.forces[-2]
+
+        # Generate directional gradients by projecting them on the previous step.
+        prev_grad_proj = prev_step @ prev_grad
+        cur_grad_proj =  prev_step @ cur_grad
+        cubic_result = line_search2.cubic_fit(prev_energy, cur_energy,
+                                              prev_grad_proj, cur_grad_proj)
+
+        prev_coords = self.coords[-2]
+        cur_coords = self.coords[-1]
+        accept = {
+            "cubic": lambda x: (x > 0) and (x < 1),
+        }
+        if accept["cubic"](cubic_result.x):
+            x = cubic_result.x
+            fit_step = x * prev_step
+            # Interpolate coordinates and gradient
+            fit_coords = prev_coords + fit_step
+            fit_grad = (1-x)*prev_grad + x*cur_grad
+            fit_res = self.geometry.get_energy_and_forces_at(fit_coords)
+
+            # TODO: update step and other saved entries?!
+            self.geometry.coords = fit_coords
+            cur_grad = fit_grad
+
+        return cur_grad
 
     def solve_rfo(self, rfo_mat, kind="min"):
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
