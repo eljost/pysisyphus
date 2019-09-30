@@ -458,6 +458,16 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     intermediate image that was present in the original list."""
     strict = preopt_kwargs.pop("strict")
 
+    preopt = preopt_kwargs.pop("preopt")
+    assert preopt in "first last both".split()
+    first = (0, "first")
+    last = (-1, "last")
+    to_preopt = {
+        "both": (first, last),
+        "first": (first, ),
+        "last": (last, ),
+    }
+
     geoms = get_geoms(xyz, coord_type="redund")
     assert len(geoms) >= 2, "Need at least two geometries!"
 
@@ -474,11 +484,12 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         return opt
 
     out_xyz = list()
-    for ind, str_ in ((0, "first"), (-1, "last")):
+    for ind, str_ in to_preopt[preopt]:
         print(f"Preoptimizing {str_} geometry.")
         geom = geoms[ind]
         prefix = f"{str_}_pre"
-        opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix))
+        opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix),
+                      title=f"Running {str_} preoptimization.")
         # Continue when preoptimization was stopped manually
         if strict and not opt.stopped and not opt.is_converged:
             print(f"Problem in preoptimization of {str_}. Exiting!")
@@ -490,14 +501,24 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         out_xyz.append(opt_fn)
         print()
 
+    if preopt == "last":
+        fn = "first_not_preopt.xyz"
+        with open(fn, "w") as handle:
+            handle.write(geoms[0].as_xyz())
+        out_xyz.insert(0, fn)
     if middle_fn:
         out_xyz.insert(1, middle_fn)
+    if preopt == "first":
+        fn = "last_not_preopt.xyz"
+        with open(fn, "w") as handle:
+            handle.write(geoms[-1].as_xyz())
+        out_xyz.append(fn)
 
     return out_xyz
 
 
-def run_opt(geom, calc_getter, opt_getter):
-    print(highlight_text(f"Running optimization"))
+def run_opt(geom, calc_getter, opt_getter, title="Running optimization"):
+    print(highlight_text(title))
     geom.set_calculator(calc_getter(0))
     opt = opt_getter(geom)
     opt.run()
@@ -605,7 +626,6 @@ def get_defaults(conf_dict):
         "coord_type": "cart",
         "shake": None,
         "irc": None,
-        "preopt_ends": False,
         "add_prims": None,
     }
     if "cos" in conf_dict:
@@ -668,6 +688,7 @@ def get_defaults(conf_dict):
     if "preopt" in conf_dict:
         dd["preopt"] = {
             "type": "rfo",
+            "preopt": "both",
             "max_cycles": 150,
             "thresh": "gau_loose",
             "trust_max": 0.3,
