@@ -457,6 +457,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     updated xyz variable containing the optimized ends and any
     intermediate image that was present in the original list."""
     strict = preopt_kwargs.pop("strict")
+    coord_type = preopt_kwargs.pop("coord_type")
 
     preopt = preopt_kwargs.pop("preopt")
     assert preopt in "first last both".split()
@@ -468,7 +469,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         "last": (last, ),
     }
 
-    geoms = get_geoms(xyz, coord_type="redund")
+    geoms = get_geoms(xyz, coord_type=coord_type)
     assert len(geoms) >= 2, "Need at least two geometries!"
 
     middle_geoms = geoms[1:-1]
@@ -694,6 +695,7 @@ def get_defaults(conf_dict):
             "trust_max": 0.3,
             "dump": True,
             "strict": False,
+            "coord_type": redund,
         }
 
     if "shake" in conf_dict:
@@ -820,6 +822,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     if run_dict["preopt"]:
         # Update xyz list with optimized endpoint filenames
         xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
+        sys.stdout.flush()
 
     add_prims = run_dict["add_prims"]
     geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type,
