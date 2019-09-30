@@ -220,6 +220,7 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
 
     # Use plain HEI
     hei_index = cos.get_hei_index()
+    print(f"Index of highest energy image (HEI) is {hei_index}.")
     hei_image = cos.images[hei_index]
     try:
         prim_indices = hei_image.internal.prim_indices
