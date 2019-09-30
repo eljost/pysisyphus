@@ -92,6 +92,9 @@ def parse_args(args):
     action_group.add_argument("--internals", action="store_true",
                     help="Print automatically generated internals."
     )
+    action_group.add_argument("--get", type=int,
+                    help="Get n-th geometry. Expects 0-based index input."
+    )
 
     shake_group = parser.add_argument_group()
     shake_group.add_argument("--scale", type=float, default=0.1,
@@ -334,7 +337,10 @@ def print_internals(geoms):
             if len(pi.inds) > 2:
                 val = np.rad2deg(val)
             print(f"{j:03d}: {pi_type}{pi.inds} {val: >10.4f}")
-    pass
+
+
+def get(geoms, index):
+    return [geoms[index], ]
 
 
 def run():
@@ -405,6 +411,9 @@ def run():
     elif args.shake:
         to_dump = shake(geoms, args.scale, args.seed)
         fn_base = "shaked"
+    elif args.get:
+        to_dump = get(geoms, args.get)
+        fn_base = "got"
     elif args.internals:
         print_internals(geoms)
         return
