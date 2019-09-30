@@ -226,6 +226,7 @@ class RSPRFOptimizer(HessianOptimizer):
 
             # Calculate overlap between directions over the course of the micro cycles
             if mu == 0:
+                # TODO: convert back to original space
                 ref_step_max = step_max.copy()
                 ref_step_min = step_min.copy()
             min_norm = np.linalg.norm(step_min)
@@ -234,8 +235,9 @@ class RSPRFOptimizer(HessianOptimizer):
             self.log(f"norm(step_min)={min_norm:.6f}")
             self.log(f"norm(step_max)/norm(step_min)={max_norm/min_norm:.2%}")
             # Calculate overlaps with originally proposed step in mu == 0
-            max_ovlp = ref_step_max @ step_max
-            min_ovlp = ref_step_min @ step_min
+            # TODO: convert back to original space
+            # max_ovlp = ref_step_max @ step_max
+            # min_ovlp = ref_step_min @ step_min
 
             # As of Eq. (8a) of [4] max_eigval and min_eigval also
             # correspond to:
