@@ -62,6 +62,8 @@ class Optimizer:
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
 
+        current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
+        self.current_fn = self.get_path_for_fn(current_fn)
         final_fn = "final_geometries.trj" if self.is_cos else "final_geometry.xyz"
         self.final_fn = self.get_path_for_fn(final_fn)
 
@@ -329,6 +331,8 @@ class Optimizer:
 
             if self.dump:
                 self.write_cycle_to_file()
+                with open(self.current_fn, "w") as handle:
+                    handle.write(self.geometry.as_xyz())
 
             self.print_opt_progress()
             if self.is_converged:
