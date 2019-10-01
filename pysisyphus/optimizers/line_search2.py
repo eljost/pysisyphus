@@ -153,7 +153,8 @@ def cubic_fit(e0, e1, g0, g1):
     try:
         mr, mv = get_minimum(poly)
     except ValueError:
-        mr, mv = None, None
+        return None
+
     fit_result = FitResult(mr, mv, (poly, ))
     return fit_result
 

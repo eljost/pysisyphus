@@ -66,6 +66,7 @@ def test_birkholz():
             "hessian_update": "bfgs",
             # "hessian_update": "damped_bfgs",
             "hessian_init": "fischer",
+            "line_search": True,
         }
         opt_kwargs = opt_kwargs_base.copy()
 

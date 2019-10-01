@@ -37,7 +37,7 @@ class HessianOptimizer(Optimizer):
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_xtb=False,
-                 small_eigval_thresh=1e-8, **kwargs):
+                 small_eigval_thresh=1e-8, line_search=False, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
@@ -56,6 +56,7 @@ class HessianOptimizer(Optimizer):
         self.hessian_recalc = hessian_recalc
         self.hessian_xtb = hessian_xtb
         self.small_eigval_thresh = float(small_eigval_thresh)
+        self.line_search = line_search
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
 
         # Allow only calculated or unit hessian for geometries that don't
@@ -183,38 +184,61 @@ class HessianOptimizer(Optimizer):
         # Current energy & gradient are already appended.
         cur_energy = self.energies[-1]
         prev_energy = self.energies[-2]
-        # energy_increased = (cur_energy - prev_energy) > 0.
-        # # TODO: always call line_search?
-        # if not energy_increased:
-            # return cur_grad
+        energy_increased = (cur_energy - prev_energy) > 0.
 
         prev_step = self.steps[-1]
         cur_grad = -self.forces[-1]
         prev_grad = -self.forces[-2]
+
+        # TODO: always call line_search? Right now we could get some acceleration
+        # as we also accept steps > 1.
+        # if not energy_increased:
+            # return cur_grad
 
         # Generate directional gradients by projecting them on the previous step.
         prev_grad_proj = prev_step @ prev_grad
         cur_grad_proj =  prev_step @ cur_grad
         cubic_result = line_search2.cubic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
+        quartic_result = line_search2.quartic_fit(prev_energy, cur_energy,
+                                              prev_grad_proj, cur_grad_proj)
 
         prev_coords = self.coords[-2]
         cur_coords = self.coords[-1]
         accept = {
-            "cubic": lambda x: (x > 0) and (x < 1),
+            "cubic": lambda x: (x > 2.) and (x < 1),
+            "quartic": lambda x: (x > 0.) and (x <= 2),
         }
-        if accept["cubic"](cubic_result.x):
-            x = cubic_result.x
+        fit_result = None
+        if quartic_result and accept["quartic"](quartic_result.x):
+            fit_result = quartic_result
+            deg = "quartic"
+        elif cubic_result and accept["cubic"](cubic_result.x):
+            fit_result = cubic_result
+            deg = "cubic"
+        # else:
+            # Midpoint fallback as described by gaussian?
+
+        if fit_result and fit_result.y < prev_energy:
+
+            x = fit_result.x
+            y = fit_result.y
+            self.log(f"Did {deg} interpolation with x={x:.6f}.")
             fit_step = x * prev_step
             # Interpolate coordinates and gradient
             fit_coords = prev_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
-            fit_res = self.geometry.get_energy_and_forces_at(fit_coords)
 
             # TODO: update step and other saved entries?!
             self.geometry.coords = fit_coords
+            self.forces[-1] = -fit_grad
+            self.energies[-1] = y
+            self.coords[-1] = fit_coords.copy()
+            self.cart_coords[-1] = self.geometry.cart_coords.copy()
+            self.steps[-1] = fit_step
             cur_grad = fit_grad
 
+            # self.update_hessian()
         return cur_grad
 
     def solve_rfo(self, rfo_mat, kind="min"):
@@ -232,12 +256,12 @@ class HessianOptimizer(Optimizer):
         # (smallest eigenvalue) or the last (largest eigenvalue) index.
         step_nu = eigenvectors.T[ind]
         nu = step_nu[-1]
-        self.log(f"nu_{verbose}={nu:.4e}")
+        self.log(f"\tnu_{verbose}={nu:.4e}")
         # Scale eigenvector so that its last element equals 1. The
         # final is step is the scaled eigenvector without the last element.
         step = step_nu[:-1] / nu
         eigval = eigenvalues[ind]
-        self.log(f"eigenvalue_{verbose}={eigval:.4e}")
+        self.log(f"\teigenvalue_{verbose}={eigval:.4e}")
         return step, eigval, nu
 
     def filter_small_eigvals(self, eigvals, eigvecs):

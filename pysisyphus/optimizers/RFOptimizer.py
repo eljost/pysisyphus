@@ -19,10 +19,11 @@ class RFOptimizer(HessianOptimizer):
         self.energies.append(self.geometry.energy)
 
         if self.cur_cycle > 0:
-            import pdb; pdb.set_trace()
+            # TODO: skip hessian in the beginning?
             self.update_trust_radius()
             self.update_hessian()
-            gradient = self.poly_line_search()
+            if self.line_search:
+                gradient = self.poly_line_search()
 
         H = self.H
 
