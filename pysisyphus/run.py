@@ -695,7 +695,7 @@ def get_defaults(conf_dict):
             "trust_max": 0.3,
             "dump": True,
             "strict": False,
-            "coord_type": redund,
+            "coord_type": "redund",
         }
 
     if "shake" in conf_dict:
