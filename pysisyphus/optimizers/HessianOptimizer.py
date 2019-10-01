@@ -202,6 +202,7 @@ class HessianOptimizer(Optimizer):
                                               prev_grad_proj, cur_grad_proj)
         quartic_result = line_search2.quartic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
+        # TODO: add quintic
 
         prev_coords = self.coords[-2]
         cur_coords = self.coords[-1]
