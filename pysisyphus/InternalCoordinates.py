@@ -670,6 +670,8 @@ class RedundantCoords:
         self.backtransform_failed = True
         for i in range(25):
             cart_step = Bt_inv_prim.T.dot(remaining_int_step)
+            # Recalculate exact Bt_inv every cycle. Costly.
+            # cart_step = self.Bt_inv.T.dot(remaining_int_step)
             cart_rms = np.sqrt(np.mean(cart_step**2))
             # Update cartesian coordinates
             cur_cart_coords += cart_step
