@@ -340,7 +340,7 @@ class Calculator:
                 except FileNotFoundError:
                     pass
                 os.symlink(path / self.out_fn, sym_fn)
-                self.log("Created symlink in '{sym_fn}'")
+                self.log(f"Created symlink in '{sym_fn}'")
             result = subprocess.Popen(args, cwd=path,
                                       stdout=handle, stderr=subprocess.PIPE,
                                       env=env, shell=shell)
