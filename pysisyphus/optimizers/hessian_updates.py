@@ -7,6 +7,11 @@
 # [3] https://epubs.siam.org/doi/pdf/10.1137/S1052623496306450
 #     BFGS WITH UPDATE SKIPPING AND VARYING MEMORY
 #     Kolda, 1998
+# [4] https://link.springer.com/article/10.1186/1029-242X-2012-241
+#     New cautious BFGS algorithm based on modified Armijo-type line search
+#     Wan, 2012
+# [5] Numerical optimization, 2nd ed.
+#     Nocedal, Wright
 
 import numpy as np
 
@@ -20,6 +25,7 @@ def bfgs_update(H, dx, dg):
 
 
 def damped_bfgs_update(H, dx, dg):
+    """See [5]"""
     dxdg = dx.dot(dg)
     dxHdx = dx.dot(H).dot(dx)
     theta = 1
