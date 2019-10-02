@@ -16,6 +16,7 @@ from pysisyphus.optimizers.RSAlgorithm import RSAlgorithm
 
 GEOMS = {
     "artemisin.xyz": (0, 1),
+    "aspartame.xyz": (0, 1),
     "avobenzone.xyz": (0, 1),
     "azadirachtin.xyz": (0, 1),
     "bisphenol_a.xyz": (0, 1),
@@ -61,12 +62,13 @@ def test_birkholz():
             "max_cycles": 150,
             "thresh": "gau",
             "trust_radius": 0.5,
+            # "trust_max": 0.5,
             "trust_update": True,
             # "hessian_update": "flowchart",
-            "hessian_update": "bfgs",
-            # "hessian_update": "damped_bfgs",
+            # "hessian_update": "bfgs",
+            "hessian_update": "damped_bfgs",
             "hessian_init": "fischer",
-            "line_search": True,
+	    "line_search": True,
         }
         opt_kwargs = opt_kwargs_base.copy()
 
