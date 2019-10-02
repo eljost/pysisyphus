@@ -280,7 +280,7 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None, env=None, shell=False,
             hold=False, keep=True, cmd=None, inc_counter=True,
-            run_after=True, parser_kwargs=None):
+            run_after=True, parser_kwargs=None, symlink=True):
         """Run a calculation.
 
         The bread-and-butter method to actually run an external quantum
@@ -329,6 +329,18 @@ class Calculator:
         if not env:
             env = os.environ.copy()
         with open(path / self.out_fn, "w") as handle:
+            if symlink:
+                # We can't use resolve here as a previous symlink may already
+                # exist. Calling resolve would translate this to the original
+                # out file in some tempdir (that is already deleted ...).
+                # sym_fn = Path("cur_out").resolve()
+                sym_fn = self.out_dir / "cur_out"
+                try:
+                    os.remove(sym_fn)
+                except FileNotFoundError:
+                    pass
+                os.symlink(path / self.out_fn, sym_fn)
+                self.log("Created symlink in '{sym_fn}'")
             result = subprocess.Popen(args, cwd=path,
                                       stdout=handle, stderr=subprocess.PIPE,
                                       env=env, shell=shell)
