@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
+import logging
 
 import numpy as np
 
@@ -60,6 +61,7 @@ def md(geom, v0, t, dt, term_funcs=None):
         term_funcs = list()
 
     m = geom.masses_rep * AMU2KG
+    # x = geom.cart_coords * BOHR2M
     x = geom.coords * BOHR2M
     v = v0 * AU2MPERSEC
     a_prev = 0
@@ -67,12 +69,18 @@ def md(geom, v0, t, dt, term_funcs=None):
 
     t_cur = 0
     while t_cur < t:
+        print(t_cur)
         t_cur += dt
         xs.append(x.copy())
-        f = geom.forces * AU2J / BOHR2M
+        try:
+            f = geom.forces * AU2J / BOHR2M
+        except:
+            logging.exception("Force calculation in MD failed.")
+            break
         a = f / m
         v += .5 * (a + a_prev) * dt
         x += v*dt + .5*a*dt**2
+        # geom.cart_coords = x / BOHR2M
         geom.coords = x / BOHR2M
         a_prev = a
         if any([tf(x) for tf in term_funcs]):
@@ -81,4 +89,5 @@ def md(geom, v0, t, dt, term_funcs=None):
                     coords=np.array(xs)/BOHR2M,
                     t=t,
     )
+
     return md_result
