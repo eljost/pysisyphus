@@ -60,7 +60,7 @@ def test_acetaldehyd_psi4_xtb():
     geom.set_calculator(oniom)
 
     from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-    rfo = RFOptimizer(geom, trust_max=.3, dump=True, thresh="gau")
+    rfo = RFOptimizer(geom, trust_max=.3, dump=True, thresh="gau", line_search=True)
     rfo.run()
 
 
