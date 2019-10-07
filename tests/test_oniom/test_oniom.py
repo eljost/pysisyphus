@@ -42,6 +42,28 @@ def test_acetaldehyd():
     rfo.run()
 
 
+def test_acetaldehyd_psi4_xtb():
+    calc_dict = {
+        "high": {
+            "type": "pypsi4",
+            "method": "scf",
+            "basis": "sto-3g",
+        },
+        "low": {
+            "type": "pyxtb",
+        },
+    }
+    high_inds = (4,5,6)
+    oniom = ONIOM(calc_dict, high_inds)
+
+    geom = geom_from_library("acetaldehyd_oniom.xyz", coord_type="redund")
+    geom.set_calculator(oniom)
+
+    from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+    rfo = RFOptimizer(geom, trust_max=.3, dump=True, thresh="gau")
+    rfo.run()
+
+
 def test_biaryl_solvated():
     calc_dict = {
         "high": {
@@ -73,4 +95,5 @@ def test_biaryl_solvated():
 
 if __name__ == "__main__":
     # test_acetaldehyd()
-    test_biaryl_solvated()
+    test_acetaldehyd_psi4_xtb()
+    # test_biaryl_solvated()
