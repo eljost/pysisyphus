@@ -77,7 +77,7 @@ class ORCA(OverlapCalculator):
     def reattach(self, last_calc_cycle):
         # Use the latest .gbw
         gbw = self.make_fn("gbw", last_calc_cycle)
-        self.log(f"restarted. using {gbw}")
+        self.log(f"Restarted. using {gbw}")
 
     def get_moinp_str(self, gbw):
         moinp_str = ""
@@ -89,9 +89,9 @@ class ORCA(OverlapCalculator):
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)
         if self.gbw:
-            self.log(f"using {self.gbw}")
+            self.log(f"Using {self.gbw}")
         else:
-            self.log("using initial guess provided by ORCA")
+            self.log("Using initial guess provided by ORCA")
         if calc_type == "noparse":
             calc_type = ""
         inp = self.orca_input.format(
