@@ -1029,6 +1029,7 @@ def run():
                              if v is not None}
     pprint(run_dict_without_none)
     print()
+    sys.stdout.flush()
 
     if args.overlaps:
         overlaps(run_dict)
