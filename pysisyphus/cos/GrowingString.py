@@ -48,8 +48,6 @@ class GrowingString(GrowingChainOfStates):
         self.perp_forces_list = list()
         self.coords_list = list()
 
-        left_img, right_img = self.images
-
         left_frontier = self.get_new_image(self.lf_ind)
         self.left_string.append(left_frontier)
         right_frontier = self.get_new_image(self.rf_ind)
@@ -124,6 +122,14 @@ class GrowingString(GrowingChainOfStates):
         new_coords = new_img.coords + step
         new_img.coords = new_coords
         new_img.set_calculator(self.calc_getter())
+        ref_calc = self.images[ref_index].calculator
+        try:
+            ref_calc.propagate_wavefunction(new_img.calculator)
+            self.log( "Set wavefunction data from calculator of node "
+                     f"{ref_ind:02d} on calculator of new node."
+            )
+        except AttributeError:
+            self.log("Calculator doesn't support 'propagte_wavefunction()'")
         self.images.insert(insert_ind, new_img)
         self.log(f"Created new image; inserted it before index {insert_ind}.")
         return new_img
