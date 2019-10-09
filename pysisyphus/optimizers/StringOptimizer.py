@@ -20,7 +20,7 @@ class StringOptimizer(Optimizer):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         # gamma = 1.25 Hartree/Bohr² ~ 5 Hartree/Angstrom²
-        self.gamma = gamma
+        self.gamma = float(gamma)
         self.stop_in_when_full = int(stop_in_when_full)
 
         # Add one as we later subtract 1 before we check if this value
