@@ -126,7 +126,7 @@ class GrowingString(GrowingChainOfStates):
         try:
             ref_calc.propagate_wavefunction(new_img.calculator)
             self.log( "Set wavefunction data from calculator of node "
-                     f"{ref_ind:02d} on calculator of new node."
+                     f"{ref_index:02d} on calculator of new node."
             )
         except AttributeError:
             self.log("Calculator doesn't support 'propagte_wavefunction()'")
