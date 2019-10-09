@@ -4,10 +4,13 @@ from ase.atoms import Atoms
 import numpy as np
 
 import sys
-xtb_path = "/scratch/programme/xtb-190806/python"
-sys.path.append(xtb_path)
-import xtb_mod
-from xtb_mod import GFN2
+try:
+    xtb_path = "/scratch/programme/xtb-190806/python"
+    sys.path.append(xtb_path)
+    import xtb_mod
+    from xtb_mod import GFN2
+except ImportError:
+    pass
 
 
 from pysisyphus.calculators.Calculator import Calculator

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-import psi4
+try:
+    import psi4
+except ImportError:
+    pass
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
