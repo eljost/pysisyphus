@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-from ase.atoms import Atoms
+try:
+    from ase.atoms import Atoms
+except ImportError:
+    pass
 import numpy as np
 
 import sys
