@@ -24,8 +24,8 @@ class Optimizer:
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
-                 max_cycles=50, rms_force=None, align=False, dump=False,
-                 last_cycle=None, prefix=""):
+                 rms_force=None, align=False, dump=False, last_cycle=None,
+                 prefix="", **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -42,7 +42,7 @@ class Optimizer:
 
         # Setting some default values
         self.resetted = False
-        self.max_cycles = max_cycles
+        self.max_cycles = 50
         self.max_step = max_step
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
