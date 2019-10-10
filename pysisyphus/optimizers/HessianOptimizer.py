@@ -47,6 +47,7 @@ class HessianOptimizer(Optimizer):
         self.trust_max = float(trust_max)
         # Constrain initial trust radius if trust_max > trust_radius
         self.trust_radius = min(trust_radius, trust_max)
+        self.log(f"Initial trust radius: {self.trust_radius:.6f}")
         self.hessian_update = hessian_update
         self.hessian_update_func = self.hessian_update_funcs[hessian_update]
         self.hessian_multi_update = hessian_multi_update
