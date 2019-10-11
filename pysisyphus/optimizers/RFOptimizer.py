@@ -19,7 +19,8 @@ class RFOptimizer(HessianOptimizer):
         self.energies.append(self.geometry.energy)
 
         if self.cur_cycle > 0:
-            # TODO: skip hessian in the beginning?
+            # TODO: skip hessian update in the beginning when the gradients
+            # are big?
             self.update_trust_radius()
             self.update_hessian()
             if self.line_search:
@@ -32,7 +33,6 @@ class RFOptimizer(HessianOptimizer):
         neg_num = neg_eigval_inds.sum()
         eigval_str = np.array2string(eigvals[neg_eigval_inds], precision=6)
         self.log(f"Found {neg_num} negative eigenvalue(s): {eigval_str}")
-
 
         if self.geometry.internal:
             H_proj = self.geometry.internal.project_hessian(self.H)
