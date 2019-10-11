@@ -6,39 +6,32 @@
 #     Farkas, Schlegel, 2002
 
 
+import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.optimizers.gdiis import gdiis
 
 
-def diis(err_vecs, max_vecs=5):
-    # https://github.com/psi4/psi4numpy/blob/d8bd75a3f004728953931fb485fbc53ef8e16078/Coupled-Cluster/Spin_Orbitals/CCSD/CCSD_DIIS.py
-    use_vecs = np.array(err_vecs[::-1][:max_vecs])
-
-    # Scale error vectors so the smallest norm is 1
-    norms = np.linalg.norm(use_vecs, axis=1)
-    use_vecs /= norms.min()
-    norms_ = np.linalg.norm(use_vecs, axis=1)
-
-    used = len(use_vecs)
-
-    A = np.einsum("ij,kj->ik", use_vecs, use_vecs)
-    coeffs = np.linalg.solve(A, np.ones(used))
-    # Scale coeffs so that their sum equals 1
-    coeffs /= np.sum(coeffs)
-
-    return coeffs, used
+def get_step(H, forces, trust):
+    step = np.linalg.inv(H) @ forces
+    norm = np.linalg.norm(step)
+    if norm > trust:
+        step = trust * step / norm
+    return step
 
 
 def test_sd_gdiis():
     geom = AnaPot.get_geom((0.4333, 3.14286, 0.))
 
-    trust = 0.25
+    trust = 0.3
+    H = np.eye(geom.coords.size)
 
     cs = list()
     dcs = list()
     fs = list()
+    pairs = list()
     for i in range(50):
         forces = geom.forces
 
@@ -51,20 +44,30 @@ def test_sd_gdiis():
             print("Converged!")
             break
 
-        if len(fs) > 1:
-            coeffs, used = diis(fs, max_vecs=2)
-            # Inter-/extrapolate coordinates and forces
-            coords_ = np.sum(np.array(coeffs)[:,None] * cs[::-1][:used], axis=0)
-            forces = np.sum(np.array(coeffs)[:,None] * fs[::-1][:used], axis=0)
-            dcs.append(coords_)
-            geom.coords = coords_
-            forces_norm = np.linalg.norm(forces)
+        # Calculate reference step
+        step = get_step(H, forces, trust)
 
-        step = forces
-        if forces_norm > trust:
-            step = trust * forces / forces_norm
+        if len(fs) > 1:
+            gdiis_kwargs = {
+                "coords": cs,
+                "forces": fs,
+                "ref_step": step,
+            }
+            res = gdiis(fs, **gdiis_kwargs)
+            if res:
+                # Inter-/extrapolate coordinates and forces
+                coords_ = res.coords
+                forces = res.forces
+                dcs.append(coords_)
+                pairs.append((geom.coords.copy(), coords_, geom.coords + step))
+                geom.coords = coords_
+                forces_norm = np.linalg.norm(forces)
+                # Get new step from DIIS coordinates & forces
+                step = get_step(H, forces, trust)
+
         new_coords = geom.coords + step
         geom.coords = new_coords
+    # return
 
     cs = np.array(cs)
     dcs = np.array(dcs)
@@ -72,7 +75,15 @@ def test_sd_gdiis():
     calc.plot()
     ax = calc.ax
     ax.plot(*cs.T[:2], "o-")
+    for i, cs_ in enumerate(cs):
+        ax.annotate(f"{i:02d}", cs_[:2])
+
     ax.plot(*dcs.T[:2], "o-")
+    for oc, dc, rs in pairs:
+        line = mlines.Line2D((oc[0], dc[0]), (oc[1], dc[1]), ls="--", color="k")
+        ax.add_artist(line)
+        line = mlines.Line2D((oc[0], rs[0]), (oc[1], rs[1]), ls="--", color="r")
+        ax.add_artist(line)
     plt.show()
 
 
