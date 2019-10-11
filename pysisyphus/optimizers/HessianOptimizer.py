@@ -36,7 +36,7 @@ class HessianOptimizer(Optimizer):
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
-                 hessian_recalc=None, hessian_xtb=False,
+                 hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
                  small_eigval_thresh=1e-8, line_search=False, **kwargs):
         super().__init__(geometry, **kwargs)
 
@@ -55,10 +55,14 @@ class HessianOptimizer(Optimizer):
             raise Exception("hessian_multi_update=True doesn't work yet!")
         self.hessian_init = hessian_init
         self.hessian_recalc = hessian_recalc
+        self.hessian_recalc_adapt = hessian_recalc_adapt
         self.hessian_xtb = hessian_xtb
         self.small_eigval_thresh = float(small_eigval_thresh)
         self.line_search = line_search
+
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
+        self.hessian_recalc_in = None
+        self.adapt_norm = None
 
         # Allow only calculated or unit hessian for geometries that don't
         # use internal coordinates.
@@ -108,6 +112,14 @@ class HessianOptimizer(Optimizer):
             and self.geometry.coord_type == "dlc"):
             U = self.geometry.internal.U
             self.H = U.T.dot(self.H).dot(U)
+
+        if self.hessian_recalc_adapt:
+            self.adapt_norm = np.linalg.norm(self.geometry.forces)
+
+        if self.hessian_recalc:
+            # Already substract one, as we don't do a hessian update in
+            # the first cycle.
+            self.hessian_recalc_in = self.hessian_recalc - 1
 
     def update_trust_radius(self):
         # The predicted change should be calculated at the end of optimize
@@ -159,7 +171,30 @@ class HessianOptimizer(Optimizer):
         self.log(f"Updated trust radius: {self.trust_radius:.6f}")
 
     def update_hessian(self):
-        if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc) == 0:
+        # Compare current forces to reference forces to see if we shall recalc the
+        # hessian.
+        try:
+            cur_norm = np.linalg.norm(self.forces[-1])
+            ref_norm = self.adapt_norm / self.hessian_recalc_adapt
+            recalc_adapt = cur_norm <= ref_norm
+            self.log( "Check for adaptive hessian recalculation: "
+                     f"{cur_norm:.6f} <= {ref_norm:.6f}, {recalc_adapt}"
+            )
+        except TypeError:
+            recalc_adapt = False
+
+        try:
+            self.hessian_recalc_in -= 1
+        except TypeError:
+            self.hessian_recalc_in = None
+
+        # Update reference norm if needed
+        if recalc_adapt:
+            self.adapt_norm = cur_norm
+
+        recalc = (self.hessian_recalc_in == 0)
+
+        if recalc or recalc_adapt:
             # Use xtb hessian
             self.log("Requested hessian recalculation.")
             if self.hessian_xtb:
@@ -171,9 +206,13 @@ class HessianOptimizer(Optimizer):
                 key = "exact"
             if not (self.cur_cycle == 0):
                 self.log(f"Recalculated {key} hessian in cycle {self.cur_cycle}.")
-        elif self.hessian_multi_update:
-            gradients = -np.array(self.forces)
-            self.H = multi_step_update(self.H, self.steps, gradients, self.energies)
+            # Reset counter. It is also reset when the recalculation was initiated
+            # by the adaptive formulation.
+            self.hessian_recalc_in = self.hessian_recalc
+        # elif self.hessian_multi_update:
+            # gradients = -np.array(self.forces)
+            # self.H = multi_step_update(self.H, self.steps, gradients, self.energies)
+        # Simple hessian update
         else:
             dx = self.steps[-1]
             dg = -(self.forces[-1] - self.forces[-2])
