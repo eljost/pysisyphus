@@ -87,7 +87,6 @@ OPT_DICT = {
     "string": StringOptimizer.StringOptimizer,
     "sqnm": StabilizedQNMethod.StabilizedQNMethod,
     "bfgs_": BFGS_,
-    # "gdiis": GDIIS.GDIIS,
 }
 
 TSOPT_DICT = {

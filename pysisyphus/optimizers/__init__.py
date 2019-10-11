@@ -16,7 +16,6 @@ __all__ = [
     "ANCOptimizer",
     "StringOptimizer",
     "StabilizedQNMethod",
-    # "GDIIS",
 ]
 
 logger = logging.getLogger("optimizer")
