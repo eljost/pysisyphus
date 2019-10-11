@@ -131,7 +131,8 @@ class Optimizer:
             setattr(self, key, val)
 
     def log(self, message):
-        self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
+        # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
+        self.logger.debug(message)
 
     def check_convergence(self, multiple=1.0):
         """Check if the current convergence of the optimization

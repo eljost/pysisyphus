@@ -264,7 +264,6 @@ class HessianOptimizer(Optimizer):
             # Midpoint fallback as described by gaussian?
 
         if fit_result and fit_result.y < prev_energy:
-
             x = fit_result.x
             y = fit_result.y
             self.log(f"Did {deg} interpolation with x={x:.6f}.")
