@@ -189,6 +189,8 @@ class HessianOptimizer(Optimizer):
             self.hessian_recalc_in = None
 
         # Update reference norm if needed
+        # TODO: Decide on whether to update the norm when the recalculation is
+        # initiated by 'recalc'.
         if recalc_adapt:
             self.adapt_norm = cur_norm
 
