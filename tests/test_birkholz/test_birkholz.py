@@ -42,6 +42,7 @@ def test_birkholz():
     base_path = Path("birkholz")
     results = dict()
     tot_cycles = 0
+    tot_cycles_with_fails = 0
     fails = 0
     start = time.time()
     # GEOMS = { "bisphenol_a.xyz": (0, 1), }
@@ -68,7 +69,8 @@ def test_birkholz():
             # "hessian_update": "bfgs",
             "hessian_update": "damped_bfgs",
             "hessian_init": "fischer",
-	    "line_search": True,
+            "line_search": True,
+            # "dump": True,
         }
         opt_kwargs = opt_kwargs_base.copy()
 
@@ -95,6 +97,7 @@ def test_birkholz():
             tot_cycles += cycles
         else:
             fails += 1
+        tot_cycles_with_fails += cycles
         print()
     end = time.time()
     print()
@@ -102,6 +105,7 @@ def test_birkholz():
     print(f"Total runtime: {end-start:.1f} s")
     pprint(results)
     print(f"Total cycles: {tot_cycles}")
+    print(f"Total cycles (with fails): {tot_cycles_with_fails}")
     print(f"Fails: {fails}")
 
     opt_kwargs["time"] = time.time()
