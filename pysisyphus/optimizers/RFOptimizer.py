@@ -9,6 +9,7 @@
 import numpy as np
 
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
+from pysisyphus.optimizers.gdiis import gdiis
 
 
 class RFOptimizer(HessianOptimizer):
@@ -47,8 +48,25 @@ class RFOptimizer(HessianOptimizer):
                             ((H, gradient[:, None]),
                              (gradient[None, :], [[0]]))
         ))
-
         step, eigval, nu = self.solve_rfo(H_aug, "min")
+
+        # if self.cur_cycle > 0:
+            # gdiis_kwargs = {
+                # "coords": self.coords,
+                # "forces": self.forces,
+                # "ref_step": step,
+            # }
+            # gdiis_result = gdiis(self.forces, **gdiis_kwargs)
+            # if gdiis_result:
+                # # Inter-/extrapolate coordinates and forces
+                # forces = gdiis_result.forces
+                # self.geometry.coords = gdiis_result.coords
+                # # Get new step from DIIS coordinates & forces
+                # H_aug = np.array(np.bmat(
+                                    # ((H, -forces[:, None]),
+                                     # (forces[None, :], [[0]]))
+                # ))
+                # step, eigval, nu = self.solve_rfo(H_aug, "min")
 
         step_norm = np.linalg.norm(step)
         self.log(f"norm(step,unscaled)={np.linalg.norm(step):.6f}")
