@@ -482,7 +482,7 @@ def test_cos():
 
 if __name__ == "__main__":
     # Steepest Descent
-    # opt = test_steepest_descent_neb()
+    opt = test_steepest_descent_neb()
     # opt = test_steepest_descent_var_springs_neb()
     # opt = test_steepest_descent_neb_more_images()
     # opt = test_fix_first_neb()
@@ -530,9 +530,9 @@ if __name__ == "__main__":
     # NEB with Dimer
     # test_spline_hei()
 
-    # ap = animate(opt)
+    ap = animate(opt)
     # ap = animate_bare(opt)
     # ap.as_html5("anim.html")
-    # plt.show()
+    plt.show()
 
     test_cos()
