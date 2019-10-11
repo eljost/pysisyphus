@@ -11,7 +11,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.XTB import XTB
+from pysisyphus.helpers import geom_from_library
 from pysisyphus.optimizers.gdiis import gdiis
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 
 def get_step(H, forces, trust):
@@ -87,5 +90,14 @@ def test_sd_gdiis():
     plt.show()
 
 
+def test_rfo_benzene():
+    geom = geom_from_library("benzene_shaken.xyz", coord_type="redund")
+    calc = XTB(pal=4)
+    geom.set_calculator(calc)
+    opt = RFOptimizer(geom, dump=True)
+    opt.run()
+
+
 if __name__ == "__main__":
-    test_sd_gdiis()
+    # test_sd_gdiis()
+    test_rfo_benzene()
