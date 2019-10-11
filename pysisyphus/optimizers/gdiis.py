@@ -44,7 +44,7 @@ def from_coeffs(vec, coeffs):
     return np.sum(coeffs[:,None] * vec[::-1][:len(coeffs)], axis=0)
 
 
-def gdiis(err_vecs, coords, forces, ref_step, max_vecs=10):
+def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
 
     # Scale error vectors so the smallest norm is 1
     norms = np.linalg.norm(err_vecs, axis=1)
