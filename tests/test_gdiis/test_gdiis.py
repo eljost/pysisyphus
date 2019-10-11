@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# [1] https://doi.org/10.1016/S0022-2860(84)87198-7
+#     Pulay, 1984
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +19,8 @@ def diis(err_vecs, max_vecs=5):
     size_ = len(use_vecs)+1
     A = np.ones((size_, size_))
     A[-1,-1] = 0
-    _ = np.einsum("ij,jk->ik", use_vecs, use_vecs.T)
+    # Overlaps of error vectors
+    _ = np.einsum("ij,kj->ik", use_vecs, use_vecs)
     A[:-1,:-1] = _
     sol = np.zeros(size_)
     sol[-1] = 1
@@ -32,12 +36,12 @@ def test_sd_gdiis():
 
     cs = list()
     dcs = list()
-    gs = list()
+    fs = list()
     for i in range(50):
         forces = geom.forces
 
         cs.append(geom.coords)
-        gs.append(-forces)
+        fs.append(forces)
 
         forces_norm = np.linalg.norm(forces)
         print(f"{i:02d}: {forces_norm:.6f}")
@@ -45,11 +49,11 @@ def test_sd_gdiis():
             print("Converged!")
             break
 
-        if len(gs) > 1:
-            coeffs, used = diis(gs, max_vecs=2)
-            # Inter-/extrapolate coordinates and gradient
+        if len(fs) > 1:
+            coeffs, used = diis(fs, max_vecs=2)
+            # Inter-/extrapolate coordinates and forces
             coords_ = np.sum(np.array(coeffs)[:,None] * cs[::-1][:used], axis=0)
-            forces = -np.sum(np.array(coeffs)[:,None] * gs[::-1][:used], axis=0)
+            forces = np.sum(np.array(coeffs)[:,None] * fs[::-1][:used], axis=0)
             dcs.append(coords_)
             geom.coords = coords_
             forces_norm = np.linalg.norm(forces)
@@ -68,8 +72,6 @@ def test_sd_gdiis():
     ax.plot(*cs.T[:2], "o-")
     ax.plot(*dcs.T[:2], "o-")
     plt.show()
-
-    pass
 
 
 if __name__ == "__main__":
