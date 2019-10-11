@@ -2,6 +2,8 @@
 
 # [1] https://doi.org/10.1016/S0022-2860(84)87198-7
 #     Pulay, 1984
+# [2] https://pubs.rsc.org/en/content/articlehtml/2002/cp/b108658h
+#     Farkas, Schlegel, 2002
 
 
 import matplotlib.pyplot as plt
@@ -13,19 +15,19 @@ from pysisyphus.calculators.AnaPot import AnaPot
 def diis(err_vecs, max_vecs=5):
     # https://github.com/psi4/psi4numpy/blob/d8bd75a3f004728953931fb485fbc53ef8e16078/Coupled-Cluster/Spin_Orbitals/CCSD/CCSD_DIIS.py
     use_vecs = np.array(err_vecs[::-1][:max_vecs])
-    used = len(use_vecs)
-    print(f"using last {len(use_vecs)} error vectors")
 
-    size_ = len(use_vecs)+1
-    A = np.ones((size_, size_))
-    A[-1,-1] = 0
-    # Overlaps of error vectors
-    _ = np.einsum("ij,kj->ik", use_vecs, use_vecs)
-    A[:-1,:-1] = _
-    sol = np.zeros(size_)
-    sol[-1] = 1
-    *coeffs, lagrange = np.linalg.solve(A, sol)
-    print(A, coeffs, lagrange)
+    # Scale error vectors so the smallest norm is 1
+    norms = np.linalg.norm(use_vecs, axis=1)
+    use_vecs /= norms.min()
+    norms_ = np.linalg.norm(use_vecs, axis=1)
+
+    used = len(use_vecs)
+
+    A = np.einsum("ij,kj->ik", use_vecs, use_vecs)
+    coeffs = np.linalg.solve(A, np.ones(used))
+    # Scale coeffs so that their sum equals 1
+    coeffs /= np.sum(coeffs)
+
     return coeffs, used
 
 
