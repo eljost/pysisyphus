@@ -407,7 +407,7 @@ def test_rfo_optimizer():
         "thresh": "gau_tight",
         "max_cycles": 15,
         "hessian_recalc": 2,
-        "hessian_recalc_adapt": 5,
+        # "hessian_recalc_adapt": 5,
     }
     opt = RFOptimizer(geom, **rfo_kwargs)
     opt.run()

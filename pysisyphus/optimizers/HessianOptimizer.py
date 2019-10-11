@@ -185,6 +185,7 @@ class HessianOptimizer(Optimizer):
 
         try:
             self.hessian_recalc_in -= 1
+            self.log(f"Recalculation of hessian in {self.hessian_recalc_in} cycles.")
         except TypeError:
             self.hessian_recalc_in = None
 
