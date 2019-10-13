@@ -29,6 +29,7 @@ def test_velocity_verlet():
             "v0": v0.copy(),
             "t": t,
             "dt": dt,
+            "vcom": True,
         }
         md_result = md(geom, **md_kwargs)
         all_xs.append(md_result.coords)
@@ -179,9 +180,9 @@ def test_oniom_md():
 
 
 if __name__ == "__main__":
-    # test_velocity_verlet()
+    test_velocity_verlet()
     # test_mdp()
     # test_so3hcl_diss()
     # test_so3hcl_md()
     # test_xtb_md()
-    test_oniom_md()
+    # test_oniom_md()
