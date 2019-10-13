@@ -126,6 +126,8 @@ class HessianOptimizer(Optimizer):
         # of the previous cycle.
         assert len(self.predicted_energy_changes) == len(self.forces)-1, \
             "Did you forget to append to self.predicted_energy_changes?"
+        self.log("Trust radius update")
+        self.log(f"\tCurrent trust radius: {self.trust_radius:.6f}")
         predicted_change = self.predicted_energy_changes[-1]
         actual_change = self.energies[-1] - self.energies[-2]
         # Only report an unexpected increase if we actually predicted a
@@ -135,17 +137,17 @@ class HessianOptimizer(Optimizer):
                   f"Cur. trust={self.trust_radius:.6f}.")
             self.log(f"Energy increased by {actual_change:.6f} au!")
         coeff = actual_change / predicted_change
-        self.log(f"Predicted change: {predicted_change:.4e} au")
-        self.log(f"Actual change: {actual_change:.4e} au")
-        self.log(f"Coefficient: {coeff:.2%}")
+        self.log(f"\tPredicted change: {predicted_change:.4e} au")
+        self.log(f"\tActual change: {actual_change:.4e} au")
+        self.log(f"\tCoefficient: {coeff:.2%}")
         if self.trust_update:
             step = self.steps[-1]
             last_step_norm = np.linalg.norm(step)
-            self.get_new_trust_radius(coeff, last_step_norm)
+            self.set_new_trust_radius(coeff, last_step_norm)
         else:
-            self.log("Skipping trust radius update")
+            self.log("\tSkipped trust radius update")
 
-    def get_new_trust_radius(self, coeff, last_step_norm):
+    def set_new_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
 
         # If actual and predicted energy change have different signs
@@ -154,7 +156,7 @@ class HessianOptimizer(Optimizer):
         if coeff < 0.25:
             self.trust_radius = max(self.trust_radius/4,
                                     self.trust_min)
-            self.log("Decreasing trust radius.")
+            self.log("\tDecreasing trust radius.")
         # Only increase trust radius if last step norm was at least 80% of it
         # See [5], Appendix, step size and direction control
         # elif coeff > 0.75 and (last_step_norm >= .8*self.trust_radius):
@@ -164,11 +166,11 @@ class HessianOptimizer(Optimizer):
         elif coeff > 0.75 and abs(self.trust_radius - last_step_norm) <= 1e-3:
             self.trust_radius = min(self.trust_radius*2,
                                     self.trust_max)
-            self.log("Increasing trust radius.")
+            self.log("\tIncreasing trust radius.")
         else:
-            self.log(f"Keeping current trust radius at {self.trust_radius:.6f}")
+            self.log(f"\tKeeping current trust radius at {self.trust_radius:.6f}")
             return
-        self.log(f"Updated trust radius: {self.trust_radius:.6f}")
+        self.log(f"\tUpdated trust radius: {self.trust_radius:.6f}")
 
     def update_hessian(self):
         # Compare current forces to reference forces to see if we shall recalc the
