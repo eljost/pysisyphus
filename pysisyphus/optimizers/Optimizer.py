@@ -12,7 +12,7 @@ import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
-from pysisyphus.helpers import check_for_stop_sign
+from pysisyphus.helpers import check_for_stop_sign, highlight_text
 
 
 class Optimizer:
@@ -293,6 +293,7 @@ class Optimizer:
         self.stopped = False
         while True:
             start_time = time.time()
+            self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
             if self.cur_cycle == self.max_cycles:
                 print("Number of cycles exceeded!")
                 break
