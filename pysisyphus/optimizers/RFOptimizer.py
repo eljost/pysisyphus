@@ -9,7 +9,7 @@
 import numpy as np
 
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
-from pysisyphus.optimizers.gdiis import gdiis
+from pysisyphus.optimizers.gdiis import gdiis, gediis
 
 
 class RFOptimizer(HessianOptimizer):
@@ -50,23 +50,39 @@ class RFOptimizer(HessianOptimizer):
         ))
         step, eigval, nu = self.solve_rfo(H_aug, "min")
 
-        # if self.cur_cycle > 0:
+        # can_gediis = np.sqrt(np.mean(self.forces[-1]**2)) < 1e-2
+        # try:
+            # can_diis = np.sqrt(np.mean(self.steps[-1]**2)) < 2.5e-3
+        # except IndexError:
+            # can_diis = False
+        # # GDIIS check
+        # if self.cur_cycle > 0 and can_diis:
+            # # rms_step = np.sqrt(np.mean(self.steps[-1]**2))
+            # # print(f"\t\t\trms(step): {rms_step:.6f}")
+            # print("trying gdiis")
             # gdiis_kwargs = {
                 # "coords": self.coords,
                 # "forces": self.forces,
                 # "ref_step": step,
             # }
-            # gdiis_result = gdiis(self.forces, **gdiis_kwargs)
-            # if gdiis_result:
-                # # Inter-/extrapolate coordinates and forces
-                # forces = gdiis_result.forces
-                # self.geometry.coords = gdiis_result.coords
-                # # Get new step from DIIS coordinates & forces
-                # H_aug = np.array(np.bmat(
-                                    # ((H, -forces[:, None]),
-                                     # (forces[None, :], [[0]]))
-                # ))
-                # step, eigval, nu = self.solve_rfo(H_aug, "min")
+            # diis_result = gdiis(self.forces, **gdiis_kwargs)
+        # # GEDIIS check
+        # elif self.cur_cycle > 0 and can_gediis:
+            # print("trying gediis")
+            # diis_result = gediis(self.coords, self.energies, self.forces)
+        # else:
+            # diis_result = None
+
+        # if diis_result:
+            # # Inter-/extrapolate coordinates and forces
+            # forces = diis_result.forces
+            # self.geometry.coords = diis_result.coords
+            # # Get new step from DIIS coordinates & forces
+            # H_aug = np.array(np.bmat(
+                                # ((H, -forces[:, None]),
+                                 # (forces[None, :], [[0]]))
+            # ))
+            # step, eigval, nu = self.solve_rfo(H_aug, "min")
 
         step_norm = np.linalg.norm(step)
         self.log(f"norm(step,unscaled)={np.linalg.norm(step):.6f}")

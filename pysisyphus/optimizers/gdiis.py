@@ -8,7 +8,10 @@
 from collections import namedtuple
 import logging
 
+import autograd.numpy as anp
+from autograd import grad
 import numpy as np
+from scipy.optimize import minimize
 
 
 COS_CUTOFFS = {
@@ -23,7 +26,7 @@ COS_CUTOFFS = {
     8: 0.49,
     9: 0.41,
 }
-GDIISResult = namedtuple("GDIISResult",
+DIISResult = namedtuple("DIISResult",
                          "coeffs coords forces N"
 )
 logger = logging.getLogger("optimizer")
@@ -42,6 +45,20 @@ def valid_diis_direction(diis_step, ref_step, use):
 
 def from_coeffs(vec, coeffs):
     return np.sum(coeffs[:,None] * vec[::-1][:len(coeffs)], axis=0)
+
+
+def diis_result(coeffs, coords, forces):
+    diis_coords = from_coeffs(coords, coeffs)
+    diis_forces = from_coeffs(forces, coeffs)
+    diis_result = DIISResult(
+                        coeffs=coeffs,
+                        coords=diis_coords,
+                        forces=diis_forces,
+                        N=len(coeffs),
+    )
+    log(f"\tUsed {len(coeffs)} error vectors for DIIS.")
+    log("")
+    return diis_result
 
 
 def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
@@ -94,22 +111,58 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
                        and valid_length
         )
         log(f"\tGDIIS step is valid: {gdiis_valid}")
-        log("")
         if not gdiis_valid:
             break
         # Update valid DIIS coefficients
         valid_coeffs = coeffs
+        log("")
 
     if valid_coeffs is None:
         return None
 
-    diis_coords = from_coeffs(coords, valid_coeffs)
-    diis_forces = from_coeffs(forces, valid_coeffs)
-    gdiis_result = GDIISResult(
-                        coeffs=valid_coeffs,
-                        coords=diis_coords,
-                        forces=diis_forces,
-                        N=len(valid_coeffs),
-    )
-    log(f"Used {len(valid_coeffs)} error vectors for GDIIS.")
-    return gdiis_result
+    return diis_result(valid_coeffs, coords, forces)
+
+
+def gediis(coords, energies, forces, max_vecs=10):
+    use = min(len(coords), max_vecs)
+
+    R = coords[::-1][:use]
+    E = energies[::-1][:use]
+    f = forces[::-1][:use]
+    # Precompute values so they can be reused in fun()
+    Rifi = np.einsum("ik,ik->i", R, f)
+    Rjfi = np.einsum("jk,ik->ji", R, f)
+
+    def x2c(x):
+        return x**2 / (x**2).sum()
+
+    # def fun(xs):
+        # """Naive implementation with loops."""
+        # cs = x2c(xs)
+        # first = (cs*E).sum()
+        # sec = 0.
+        # for i, ci in enumerate(cs):
+            # for j, cj in enumerate(cs):
+                # sec += ci * cj * (f[j] - f[i]) @ (R[i] - R[j])
+        # return first - 1/2 * sec
+
+    # def fun(xs):
+        # """Recalculation of all values in every call."""
+        # cs = x2c(xs)
+        # return anp.sum(cs*E) - anp.einsum("i,j,jk,ik", cs, cs, R, f) + anp.einsum("i,ij,ij", cs, R, f)
+
+    def fun(xs):
+        """Usage of precomputed values."""
+        cs = x2c(xs)
+        return anp.sum(cs*E) - anp.sum(anp.outer(cs, cs)*Rjfi) + (cs * Rifi).sum()
+
+    jac = grad(fun)
+
+    x0 = np.ones(use)
+    res = minimize(fun, x0=x0, jac=jac)
+    # print(res)
+
+    coeffs = None
+    if res.success:
+        coeffs = x2c(res.x)
+    return diis_result(coeffs, coords, forces)
