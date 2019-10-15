@@ -1,9 +1,19 @@
+#!/usr/bin/env python3
+
 from collections import namedtuple
+import logging
 from math import sqrt
 from pprint import pprint
 
 import numpy as np
 import sympy as sym
+
+
+logger = logging.getLogger("optimizer")
+
+
+def log(msg):
+    logger.debug(msg)
 
 
 def gen_solutions():
@@ -159,5 +169,91 @@ def cubic_fit(e0, e1, g0, g1):
     return fit_result
 
 
-def poly_line_search():
-    pass
+def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step):
+    # TODO: always call line_search? Probably, because we can also extrapolate
+    # in a linesearch.
+    # energy_increased = (cur_energy - prev_energy) > 0.
+    # if not energy_increased:
+        # return cur_grad
+
+    # Generate directional gradients by projecting them on the previous step.
+    prev_grad_proj = prev_step @ prev_grad
+    cur_grad_proj =  prev_step @ cur_grad
+    cubic_result = cubic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
+    quartic_result = quartic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
+    # TODO: add quintic, but then we would have to save the hessians.
+
+    accept = {
+        "cubic": lambda x: (x > 2.) and (x < 1),
+        "quartic": lambda x: (x > 0.) and (x <= 2),
+    }
+    fit_result = None
+    if quartic_result and accept["quartic"](quartic_result.x):
+        fit_result = quartic_result
+        deg = "quartic"
+    elif cubic_result and accept["cubic"](cubic_result.x):
+        fit_result = cubic_result
+        deg = "cubic"
+    # else:
+        # Midpoint fallback as described by gaussian?
+
+    fit_step = None
+    fit_grad = None
+    if fit_result and fit_result.y < prev_energy:
+        x = fit_result.x
+        y = fit_result.y
+        log(f"Did {deg} interpolation with x={x:.6f}.")
+        # Interpolate step and gradient
+        fit_step = (1-x) * -prev_step
+        fit_grad = (1-x)*prev_grad + x*cur_grad
+    return fit_step, fit_grad
+
+
+def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step):
+    # TODO: always call line_search? Probably, because we can also extrapolate
+    # in a linesearch.
+    # energy_increased = (cur_energy - prev_energy) > 0.
+    # if not energy_increased:
+        # return cur_grad
+
+    # Generate directional gradients by projecting them on the previous step.
+    prev_grad_proj = prev_step @ prev_grad
+    cur_grad_proj =  prev_step @ cur_grad
+    cubic_result = cubic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
+    quartic_result = quartic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
+    # TODO: add quintic, but then we would have to save the hessians.
+
+    accept = {
+        "cubic": lambda x: (x > .25) and (x < 1),
+        "quartic": lambda x: (x > 0.) and (x <= 2),
+    }
+    fit_result = None
+    if quartic_result and accept["quartic"](quartic_result.x):
+        fit_result = quartic_result
+        deg = "quartic"
+    elif cubic_result and accept["cubic"](cubic_result.x):
+        fit_result = cubic_result
+        deg = "cubic"
+    # else:
+        # Midpoint fallback as described by gaussian?
+
+    fit_step = None
+    fit_grad = None
+    fit_energy = None
+    if fit_result and fit_result.y < prev_energy:
+        x = fit_result.x
+        fit_energy = fit_result.y
+        log(f"Did {deg} interpolation with x={x:.6f}.")
+        # print(f"Did {deg} interpolation with x={x:.6f}.")
+        # Interpolate step and gradient
+        # fit_step = x * prev_step
+        # fit_step = x * prev_step
+
+        fit_step = (1-x) * -prev_step
+
+        fit_grad = (1-x)*prev_grad + x*cur_grad
+        # print("Returning")
+        # print("\tfit_step", fit_step)
+        # print("\tfit_grad", fit_grad)
+        # print("\tfit_energy", fit_energy)
+    return fit_step, fit_grad, fit_energy

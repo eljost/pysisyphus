@@ -4,6 +4,8 @@
 #     Pulay, 1984
 # [2] https://pubs.rsc.org/en/content/articlehtml/2002/cp/b108658h
 #     Farkas, Schlegel, 2002
+# [3] https://pubs.acs.org/doi/abs/10.1021/ct050275a
+#     Li, Frisch, 2006
 
 from collections import namedtuple
 import logging
@@ -47,7 +49,7 @@ def from_coeffs(vec, coeffs):
     return np.sum(coeffs[:,None] * vec[::-1][:len(coeffs)], axis=0)
 
 
-def diis_result(coeffs, coords, forces):
+def diis_result(coeffs, coords, forces, prefix=""):
     diis_coords = from_coeffs(coords, coeffs)
     diis_forces = from_coeffs(forces, coeffs)
     diis_result = DIISResult(
@@ -56,7 +58,7 @@ def diis_result(coeffs, coords, forces):
                         forces=diis_forces,
                         N=len(coeffs),
     )
-    log(f"\tUsed {len(coeffs)} error vectors for DIIS.")
+    log(f"\tUsed {len(coeffs)} error vectors for {prefix}DIIS.")
     log("")
     return diis_result
 
@@ -120,7 +122,12 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
     if valid_coeffs is None:
         return None
 
-    return diis_result(valid_coeffs, coords, forces)
+    # if len(valid_coeffs) is 2:
+        # print("GDIIS with only 2 cycles. Skipping! Return None")
+        # return None
+
+    print("GDIIS")
+    return diis_result(valid_coeffs, coords, forces, prefix="G")
 
 
 def gediis(coords, energies, forces, max_vecs=10):
@@ -129,6 +136,8 @@ def gediis(coords, energies, forces, max_vecs=10):
     R = coords[::-1][:use]
     E = energies[::-1][:use]
     f = forces[::-1][:use]
+    assert len(R) == len(E) == len(f)
+    log(f"Trying GEDIIS with {use} previous cycles.")
     # Precompute values so they can be reused in fun()
     Rifi = np.einsum("ik,ik->i", R, f)
     Rjfi = np.einsum("jk,ik->ji", R, f)
@@ -165,4 +174,13 @@ def gediis(coords, energies, forces, max_vecs=10):
     coeffs = None
     if res.success:
         coeffs = x2c(res.x)
-    return diis_result(coeffs, coords, forces)
+    log(f"\tOptimization converged!")
+    coeff_str = np.array2string(coeffs, precision=4)
+    log(f"\tCoefficients: {coeff_str}")
+    en_ = (E * coeffs).sum()
+    print(f"\tlc.  energy={en_:.6f}")
+    if en_ >= E[0]:
+        print(f"GEDIIS converged, but proposed energy is above current energy! Returning None")
+        return None
+    print("GEDIIS")
+    return diis_result(coeffs, coords, forces, "GE")
