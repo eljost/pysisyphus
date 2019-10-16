@@ -86,13 +86,13 @@ class RFOptimizer(HessianOptimizer):
             interpol_step, interpol_forces, interpol_en = interpolate_extrapolate(**ie_kwargs)
         if interpol_forces is not None:
             # print("drei")
-            # fit_coords = self.coords[-2] + interpol_step
-            # self.geometry.coords = fit_coords
-            # self.forces[-1] = interpol_forces
-            # self.energies[-1] = interpol_en
-            # self.coords[-1] = fit_coords.copy()
-            # self.cart_coords[-1] = self.geometry.cart_coords.copy()
-            # self.steps[-1] = interpol_step
+            fit_coords = self.coords[-2] + interpol_step
+            self.geometry.coords = fit_coords
+            self.forces[-1] = interpol_forces
+            self.energies[-1] = interpol_en
+            self.coords[-1] = fit_coords.copy()
+            self.cart_coords[-1] = self.geometry.cart_coords.copy()
+            self.steps[-1] = interpol_step
             # print(f"\tnorm(grad)={np.linalg.norm(interpol_forces):.6f}")
 
             # fit_coords = self.coords[-2] + interpol_step
@@ -111,7 +111,7 @@ class RFOptimizer(HessianOptimizer):
                                  (-interpol_forces[None, :], [[0]]))
             ))
             step, eigval, nu = self.solve_rfo(H_aug, "min")
-            step = interpol_step + step
+            # step = interpol_step + step
             # step = interpol_step + step
         # else:
             # print(f"\tnorm(grad)={np.linalg.norm(gradient):.6f}")

@@ -246,10 +246,9 @@ def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step):
         log(f"Did {deg} interpolation with x={x:.6f}.")
         # print(f"Did {deg} interpolation with x={x:.6f}.")
         # Interpolate step and gradient
-        # fit_step = x * prev_step
-        # fit_step = x * prev_step
 
-        fit_step = (1-x) * -prev_step
+        fit_step = x * prev_step
+        # fit_step = (1-x) * -prev_step
 
         fit_grad = (1-x)*prev_grad + x*cur_grad
         # print("Returning")
