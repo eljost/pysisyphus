@@ -17,6 +17,7 @@ from pysisyphus.optimizers.hessian_updates import (bfgs_update,
 from pysisyphus.optimizers import line_search2
 from pysisyphus.optimizers.line_search2 import poly_line_search
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.interpolate_extrapolate import interpolate_extrapolate
 
 
 class HessianOptimizer(Optimizer):
@@ -254,7 +255,8 @@ class HessianOptimizer(Optimizer):
         prev_coords = self.coords[-2]
         cur_coords = self.coords[-1]
         accept = {
-            "cubic": lambda x: (x > 0.25) and (x < 1),
+            # "cubic": lambda x: (x > 0.25) and (x < 1),
+            "cubic": lambda x: (x > 2.) and (x < 1),
             "quartic": lambda x: (x > 0.) and (x <= 2),
         }
         fit_result = None
@@ -271,11 +273,21 @@ class HessianOptimizer(Optimizer):
             x = fit_result.x
             y = fit_result.y
             self.log(f"Did {deg} interpolation with x={x:.6f}.")
-            print(f"Did {deg} interpolation with x={x:.6f}.")
+            # print(f"Did {deg} interpolation with x={x:.6f}.")
             fit_step = x * prev_step
             # Interpolate coordinates and gradient
             fit_coords = prev_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
+
+            kws = {"gediis_thresh": -1, "gdiis_thresh": -1}
+            ip_res = interpolate_extrapolate(self.coords, self.energies, self.forces, self.steps, **kws)
+            ips, ipf, ipe = ip_res
+            try:
+                np.testing.assert_allclose(ipe, y)
+                np.testing.assert_allclose(ips, fit_step)
+                np.testing.assert_allclose(ipf, -fit_grad)
+            except AssertionError:
+                import pdb; pdb.set_trace()
 
             # TODO: update step and other saved entries?!
             self.geometry.coords = fit_coords
