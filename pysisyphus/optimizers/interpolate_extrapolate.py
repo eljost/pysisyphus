@@ -25,6 +25,7 @@ def interpolate_extrapolate(coords, energies, forces, steps,
 
     interpol_step = None
     interpol_forces = None
+    interpol_energy = None
     # import pdb; pdb.set_trace()
     if not diis_result or ((diis_result.name == "GDIIS") and (diis_result.N == 2)):
         cur_energy = energies[-1]
@@ -40,7 +41,9 @@ def interpolate_extrapolate(coords, energies, forces, steps,
         # print("\tip step", interpol_step)
         # print("\tip grad", interpol_gradient)
         # print("\tip ener", interpol_energy)
-        if (interpol_step is not None):
+        if ((interpol_step is not None)
+            and (interpol_gradient is not None)
+            and (interpol_energy is not None)):
             # prev_coords = coords[-2]
             # new_coords = prev_coords + step
             # geom.coords = new_coords

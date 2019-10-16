@@ -224,7 +224,8 @@ def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step):
     # TODO: add quintic, but then we would have to save the hessians.
 
     accept = {
-        "cubic": lambda x: (x > .25) and (x < 1),
+        # "cubic": lambda x: (x > .25) and (x < 1),
+        "cubic": lambda x: (x > 2) and (x < 1),
         "quartic": lambda x: (x > 0.) and (x <= 2),
     }
     fit_result = None
