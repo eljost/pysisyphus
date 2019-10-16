@@ -6,6 +6,7 @@ import time
 
 import cloudpickle
 
+from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import geom_from_library
@@ -51,8 +52,10 @@ def test_birkholz():
     for xyz_fn, (charge, mult) in GEOMS.items():
         print(xyz_fn, charge, mult)
         geom = geom_from_library(base_path / xyz_fn, coord_type="redund")
+        # geom = geom_from_library(base_path / xyz_fn)
         # geom = geom_from_library(base_path / xyz_fn, coord_type="dlc")
         calc = XTB(charge=charge, mult=mult, pal=4)
+        # calc = ORCA("HF 3-21G", charge=charge, mult=mult, pal=4)
         # route = "HF/3-21G"
         # if xyz_fn in ("vitamin_c.xyz", "easc.xyz"):
             # route = "B3LYP/6-31G**"
@@ -61,7 +64,6 @@ def test_birkholz():
 
         opt_kwargs_base = {
             "max_cycles": 150,
-            # "max_cycles": 5,
             "thresh": "gau",
             "trust_radius": 0.5,
             # "trust_max": 0.5,
@@ -72,8 +74,8 @@ def test_birkholz():
             "hessian_init": "fischer",
             # "line_search": True,
             # "dump": True,
-            "eins": True,
-            # "zwei": True,
+            # "eins": True,
+            "zwei": True,
         }
         opt_kwargs = opt_kwargs_base.copy()
 

@@ -107,7 +107,7 @@ def from_coeffs(vec, coeffs):
 def test_sd_gediis():
     geom = AnaPot.get_geom((0.4333, 3.14286, 0.))
 
-    trust = 0.1
+    trust = 0.3
     H = np.eye(geom.coords.size)
 
     ens = list()
@@ -115,7 +115,7 @@ def test_sd_gediis():
     dcs = list()
     fs = list()
     pairs = list()
-    for i in range(75):
+    for i in range(25):
         forces = geom.forces
         energy = geom.energy
 
@@ -228,10 +228,22 @@ def test_hess_proj():
     import pdb; pdb.set_trace()
 
 
+def test_quad():
+    def func(x):
+        return x**2
+    def dfunc(x):
+        return 2*x
+    coords = np.array(((-2, ), (1, )))
+    energies = func(coords)
+    forces = -dfunc(coords)
+    gediis(coords, energies, forces)
+
+
 if __name__ == "__main__":
     # test_sd_gdiis()
     # test_rfo_benzene()
-    # test_sd_gediis()
-    test_diis()
+    test_sd_gediis()
+    # test_diis()
     # test_artemisin()
     # test_hess_proj()
+    # test_quad()
