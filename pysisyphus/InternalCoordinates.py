@@ -228,10 +228,10 @@ class RedundantCoords:
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
 
-    def project_hessian(self, H):
+    def project_hessian(self, H, shift=1000):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
         P = self.P
-        return P.dot(H).dot(P) + 1000*(np.eye(P.shape[0]) - P)
+        return P.dot(H).dot(P) + shift*(np.eye(P.shape[0]) - P)
 
     def set_rho(self):
         # TODO: remove this as it is already in optimizers/guess_hessians
