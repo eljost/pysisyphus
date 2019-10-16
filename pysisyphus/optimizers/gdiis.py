@@ -134,7 +134,7 @@ def gediis(coords, energies, forces, max_vecs=10):
     use = min(len(coords), max_vecs)
 
     R = coords[::-1][:use]
-    E = energies[::-1][:use]
+    E = np.ravel(energies[::-1][:use])
     f = forces[::-1][:use]
     assert len(R) == len(E) == len(f)
     log(f"Trying GEDIIS with {use} previous cycles.")
@@ -165,19 +165,38 @@ def gediis(coords, energies, forces, max_vecs=10):
         cs = x2c(xs)
         return anp.sum(cs*E) - anp.sum(anp.outer(cs, cs)*Rjfi) + (cs * Rifi).sum()
 
+    # def fun(xs):
+        # cs = x2c(xs)
+        # cRjfi = anp.einsum("j,jk,ik->ji", cs, R, f).sum(axis=0)
+        # return anp.sum(
+            # cs * (E + cRjfi + Rifi)
+        # )
+
+    # def fun_(xs):
+        # cs = x2c(xs)
+        # cRjfi = anp.einsum("j,jk,ik->ji", cs, R, f).sum(axis=0)
+        # print(cRjfi)
+        # return anp.sum(
+            # cs * (E.flatten() - cRjfi + Rifi)
+        # )
+
     jac = grad(fun)
+    # jac_ = grad(fun_)
 
     x0 = np.ones(use)
     res = minimize(fun, x0=x0, jac=jac)
     # print(res)
+    # res_ = minimize(fun_, x0=x0, jac=jac_)
 
+    # import pdb; pdb.set_trace()
     coeffs = None
     if res.success:
         coeffs = x2c(res.x)
+        en_ = res.fun
     log(f"\tOptimization converged!")
     coeff_str = np.array2string(coeffs, precision=4)
     log(f"\tCoefficients: {coeff_str}")
-    en_ = (E * coeffs).sum()
+    # en_ = (E * coeffs).sum()
     print(f"\tlc.  energy={en_:.6f}")
     if en_ >= E[0]:
         print(f"GEDIIS converged, but proposed energy is above current energy! Returning None")
