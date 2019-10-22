@@ -688,6 +688,7 @@ class Geometry:
             # True properties in AFIR calculations
             "true_forces": "true_forces",
             "true_energy": "true_energy",
+            "all_energies": "all_energies",
         }
 
         for key in results:
