@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 from tensorflow_probability.python.optimizer.linesearch import hager_zhang as tfhz
 
 
@@ -120,6 +121,25 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
             dphis[alpha] = dphi_
         return dphi_
 
+
+    def get_phi_dphi(what, alpha):
+        whats = "f g fg".split()
+        assert what in whats
+        calc_funcs = {
+            "f": phi,
+            "g": dphi,
+        }
+        result = [calc_funcs[w](alpha) for w in what]
+        # Check if we got both phi and dphi for alpha now. If so we
+        # can check if the chosen condition (Wolfe/approx. Wolfe) is
+        # satisfied.
+        if (alpha in alpha_fs) and (alpha in alpha_dfs) and cond(alpha):
+            raise LinesearchConverged(alpha)
+        # Dont return a list if only f or g was requested.
+        if len(what) == 1:
+            result = result[0]
+        return result
+
     if f0 is None:
         phi0 = phi(0)
     else:
@@ -154,11 +174,13 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
         for i in range(max_bisects):
             # U3 a.
             d = (1 - theta)*a + theta*b
-            dphi_d = dphi(d)
+            # dphi_d = dphi(d)
+            dphi_d = get_phi_dphi("g", d)
             if dphi_d >= 0:
                 return a, d
 
-            phi_d = phi(d)
+            # phi_d = phi(d)
+            phi_d = get_phi_dphi("f", d)
             # U3 b.
             if (dphi_d < 0) and (phi_d <= phi0 + epsk):
                 a = d
@@ -172,10 +194,9 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
         if not (a < c < b):
             return a, b
 
-        phi_c = phi(c)
-        dphi_c = dphi(c)
-        if cond(c):
-            raise LinesearchConverged(c)
+        # phi_c = phi(c)
+        # dphi_c = dphi(c)
+        phi_c, dphi_c = get_phi_dphi("fg", c)
         # U1, sign of slope projection changed. We already passed the minimum.
         if dphi_c >= 0:
             return a, c
@@ -230,13 +251,15 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
         for j in range(10):
             cs.append(c)
 
-            dphi_j = dphi(c)
+            dphi_j = get_phi_dphi("g", c)
+            # dphi_j = dphi(c)
 
             if (dphi_j >= 0) and (j == 0):
                 pri(0, c)
                 return 0, c
 
-            phi_j = phi(c)
+            phi_j = get_phi_dphi("f", c)
+            # phi_j = phi(c)
             if dphi_j >= 0:
                 phi_inds = np.array([alpha_fs[c] for c in cs[:-1]]) <= (phi0 + epsk)
                 # See https://stackoverflow.com/a/8768734
@@ -251,35 +274,6 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
 
     def norm_inf(arr): return np.linalg.norm(arr, np.inf)
 
-    # def initial():
-        # nonlocal alpha_prev
-        # if alpha_prev is None:
-            # if (~np.isclose(x0, np.zeros_like(x0))).any():
-                # alpha_prev = psi_0 * norm_inf(x0)/norm_inf(df0)
-            # elif not np.isclose(f0, 0):
-                # alpha_prev = psi_0 * f0 / norm_inf(df0)**2
-            # else:
-                # alpha_prev = 1
-            # print(f"I0 alpha={alpha_prev:.6f}")
-
-        # alpha_ = psi_1 * 2* alpha_prev
-        # phi_ = phi(alpha_)
-        # if quad_step and (phi_ <= phi0):
-            # # Fit quadratic polynomial mx**2 + nx + o
-            # o = phi0
-            # n = dphi0
-            # m = (phi_ - o - n*alpha_) / alpha_**2
-            # poly = np.poly1d((m, n, o))
-            # dpoly = np.polyder(poly)
-            # if np.polyder(poly, 2)[0] > 0:
-                # c = np.roots(dpoly)[0]
-                # assert c > 0
-            # else:
-                # c = psi_2 * alpha_prev
-        # else:
-            # c = psi_2 * alpha_prev
-        # return c
-
     def initial():
         if (~np.isclose(x0, np.zeros_like(x0))).any():
             c = psi_0 * norm_inf(x0)/norm_inf(df0)
@@ -290,35 +284,13 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
         print(f"I0 alpha={c:.6f}")
         return c
 
-    # def take_quad_step(alpha):
-        # alpha_ = psi_1 * 2 * alpha
-        # phi_ = phi(alpha_)
-        # num = dphi0*alpha_**2
-        # denom = 2*(phi_ - phi0 - dphi0*alpha_)
-        # if quad_step and (phi_ <= phi0):
-            # # Fit quadratic polynomial mx**2 + nx + o
-            # o = phi0
-            # n = dphi0
-            # m = (phi_ - o - n*alpha_) / alpha_**2
-            # poly = np.poly1d((m, n, o))
-            # dpoly = np.polyder(poly)
-            # if np.polyder(poly, 2)[0] > 0:
-                # c = np.roots(dpoly)[0]
-                # assert c > 0
-            # else:
-                # print("\tNEGATIVE")
-                # c = psi_2 * alpha_prev
-        # else:
-            # c = psi_2 * alpha_prev
-        # return c
-
     def take_quad_step(alpha, df0_):
         fact = max(psi_low, df0_/(dphi0*psi_2))
         print(f"t={fact:.6f}")
         alpha_ = min(fact, psi_hi) * alpha
         print(f"alpha for quadstep={alpha_:.6f}")
         # alpha_ = psi_1 * 2 * alpha
-        phi_ = phi(alpha_)
+        phi_ = get_phi_dphi("f", alpha_)
         num = dphi0*alpha_**2
         # denom = 2*(phi_ - phi0 - dphi0*alpha_)
         denom = 2*((phi_-phi0)/alpha_ - dphi0)
@@ -331,24 +303,6 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
         else:
             c_ = alpha
         return c_
-            # print("c_=", c_)
-        # if quad_step and (phi_ <= phi0):
-            # # Fit quadratic polynomial mx**2 + nx + o
-            # o = phi0
-            # n = dphi0
-            # m = (phi_ - o - n*alpha_) / alpha_**2
-            # poly = np.poly1d((m, n, o))
-            # dpoly = np.polyder(poly)
-            # if np.polyder(poly, 2)[0] > 0:
-                # c = np.roots(dpoly)[0]
-                # assert c > 0
-            # else:
-                # print("\tNEGATIVE")
-                # c = psi_2 * alpha_prev
-        # else:
-            # c = psi_2 * alpha_prev
-        # return c
-
 
     # Q_prev = 0
     # C_prev = 0
@@ -396,13 +350,29 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
             return ak, alpha_fs[ak], alpha_dfs[ak], dphi0
 
 
+    # print(f"\talpha_init={alpha_init:.6f}")
+    # ak, bk = bracket(alpha_init)
+    # for k in range(max_cycles):
+        # if cond(ak):
+            # break
+        # try:
+            # # import pdb; pdb.set_trace()
+            # # secant² step
+            # a, b = double_secant(ak, bk)
+            # if (b - a) > gamma*(bk - ak):
+                # # Bisection step
+                # c = (a + b)/2
+                # a, b = interval_update(a, b, c)
+            # ak, bk = a, b
+        # except LinesearchConverged as lsc:
+            # ak = lsc.alpha
+            # break
     print(f"\talpha_init={alpha_init:.6f}")
-    ak, bk = bracket(alpha_init)
-    for k in range(max_cycles):
-        if cond(ak):
-            break
-        try:
-            # import pdb; pdb.set_trace()
+    try:
+        ak, bk = bracket(alpha_init)
+        for k in range(max_cycles):
+            if cond(ak):
+                break
             # secant² step
             a, b = double_secant(ak, bk)
             if (b - a) > gamma*(bk - ak):
@@ -410,9 +380,8 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
                 c = (a + b)/2
                 a, b = interval_update(a, b, c)
             ak, bk = a, b
-        except LinesearchConverged as lsc:
-            ak = lsc.alpha
-            break
+    except LinesearchConverged as lsc:
+        ak = lsc.alpha
     
     print(f"\tfinal alpha={ak:.6f}")
     return ak, alpha_fs[ak], alpha_dfs[ak], dphi0
@@ -530,11 +499,20 @@ def cg_descent(x0, fun, jac, max_cycles=50):
     return np.array(xs)
 
 
-def test_hager_zhang():
+@pytest.mark.parametrize(
+    "calc, x0",
+    [
+        pytest.param(AnaPot, (0, 3., 0)),
+        pytest.param(Rosenbrock, (-1.2, 1.0, 0.)),
+])
+def test_hager_zhang(calc, x0):
     # x0 = np.array((0, 3, 0.))
+    x0 = np.array(x0)
     # geom = AnaPot.get_geom(x0)
-    x0 = np.array((-1.2, 1.0, 0.))
-    geom = Rosenbrock.get_geom(x0)
+    geom = calc.get_geom(x0)
+    # x0 = np.array((-1.2, 1.0, 0.))
+    # geom = Rosenbrock.get_geom(x0)
+
     calc = geom.calculator
 
     def fun(x0):
@@ -567,12 +545,12 @@ def test_hager_zhang():
     # ax.set_ylim(0.5, 3)
     # plt.show()
 
-    calc.plot()
-    ax = calc.ax
-    ax.plot(*xs.T[:2], "o-")
-    ax.set_xlim(-2.5, 2.5)
-    ax.set_ylim(-0.5, 1.5)
-    plt.show()
+    # calc.plot()
+    # ax = calc.ax
+    # ax.plot(*xs.T[:2], "o-")
+    # ax.set_xlim(-2.5, 2.5)
+    # ax.set_ylim(-0.5, 1.5)
+    # plt.show()
 
 
 if __name__ == "__main__":
