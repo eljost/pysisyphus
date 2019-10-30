@@ -88,12 +88,6 @@ def backtracking_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
     return alpha, alpha_fs[alpha], alpha_dfs[alpha]
 
 
-# def track_args(func):
-    # def wrapper(*args, **kwargs):
-        # pass
-    # return wrapper
-
-
 def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
                            alpha_prev=None, f_prev=None, dphi0_prev=None, quad_step=False,
                            c1=.1, c2=0.9, eps=1e-6, theta=0.5, gamma=0.5, rho=5,
