@@ -152,8 +152,8 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
         alpha_dfs[0.] = df0
 
     epsk = eps * abs(alpha_fs[0.])
-    wolfe_hi = c1*dphi0
-    wolfe_low = c2*dphi0
+    # wolfe_hi = c1*dphi0
+    # wolfe_low = c2*dphi0
 
     def sufficiently_decreased(alpha):
         return phi(alpha) <= (phi0 + c1 * alpha * dphi0)
@@ -233,18 +233,18 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
             a_dash, b_dash = A, B
         return a_dash, b_dash
 
-    def pri(a, b):
-        pa = phi(a)
-        pb = phi(b)
-        fa = alpha_fs[a]
-        fb = alpha_fs[b]
-        dpa = dphi(a)
-        dpb = dphi(b)
-        da = dpa-wolfe_hi
-        db = dpb-wolfe_hi
-        print(f"a={a:>10.6f} b={b:>10.6f} fa={fa:>10.6f} fb={fb:>10.6f} "
-              f"da={da:>10.6f} db={db:>10.6f}"
-        )
+    # def pri(a, b):
+        # pa = phi(a)
+        # pb = phi(b)
+        # fa = alpha_fs[a]
+        # fb = alpha_fs[b]
+        # dpa = dphi(a)
+        # dpb = dphi(b)
+        # da = dpa-wolfe_hi
+        # db = dpb-wolfe_hi
+        # print(f"a={a:>10.6f} b={b:>10.6f} fa={fa:>10.6f} fb={fb:>10.6f} "
+              # f"da={da:>10.6f} db={db:>10.6f}"
+        # )
 
     def bracket(c):
         cs = list()
@@ -255,7 +255,7 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
             # dphi_j = dphi(c)
 
             if (dphi_j >= 0) and (j == 0):
-                pri(0, c)
+                # pri(0, c)
                 return 0, c
 
             phi_j = get_phi_dphi("f", c)
@@ -264,10 +264,10 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
                 phi_inds = np.array([alpha_fs[c] for c in cs[:-1]]) <= (phi0 + epsk)
                 # See https://stackoverflow.com/a/8768734
                 ci = len(phi_inds) - phi_inds[::-1].argmax() - 1
-                pri(cs[ci], c)
+                # pri(cs[ci], c)
                 return cs[ci], c
             elif (dphi_j < 0) and (phi_j > (phi0 + epsk)):
-                pri(*bisect(0, c))
+                # pri(*bisect(0, c))
                 return bisect(0, c)
 
             c *= rho
@@ -342,7 +342,7 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
     if quad_step:
         df0 = -2*abs(alpha_fs[0]/alpha_init) if (dphi0_prev is None) else dphi0_prev
         alpha_init = take_quad_step(psi_2*alpha_init, df0)
-        print("start ", end=""); pri(0, alpha_init)
+        # print("start ", end=""); pri(0, alpha_init)
 
         if cond(alpha_init):
             ak = alpha_init
@@ -350,24 +350,11 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
             return ak, alpha_fs[ak], alpha_dfs[ak], dphi0
 
 
-    # print(f"\talpha_init={alpha_init:.6f}")
-    # ak, bk = bracket(alpha_init)
-    # for k in range(max_cycles):
-        # if cond(ak):
-            # break
-        # try:
-            # # import pdb; pdb.set_trace()
-            # # secant² step
-            # a, b = double_secant(ak, bk)
-            # if (b - a) > gamma*(bk - ak):
-                # # Bisection step
-                # c = (a + b)/2
-                # a, b = interval_update(a, b, c)
-            # ak, bk = a, b
-        # except LinesearchConverged as lsc:
-            # ak = lsc.alpha
-            # break
     print(f"\talpha_init={alpha_init:.6f}")
+    # Put everything in a try/except block because now everytime
+    # we evaluate phi/dphi at some alpha and both phi and dphi
+    # are present convergence of the linesearch will be checked,
+    # and LinesearchConverged may be raised.
     try:
         ak, bk = bracket(alpha_init)
         for k in range(max_cycles):
