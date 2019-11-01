@@ -333,16 +333,6 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
         # print(f"\tfinal quad alpha={ak:.6f}")
         # return ak, alpha_fs[ak], alpha_dfs[ak]
 
-    if quad_step:
-        df0 = -2*abs(alpha_fs[0]/alpha_init) if (dphi0_prev is None) else dphi0_prev
-        alpha_init = take_quad_step(psi_2*alpha_init, df0)
-        # print("start ", end=""); pri(0, alpha_init)
-
-        if cond(alpha_init):
-            ak = alpha_init
-            print(f"\tfinal quad alpha={ak:.6f}")
-            return ak, alpha_fs[ak], alpha_dfs[ak], dphi0
-
 
     print(f"\talpha_init={alpha_init:.6f}")
     # Put everything in a try/except block because now everytime
@@ -350,6 +340,12 @@ def hager_zhang_linesearch(f, df, x0, p, f0=None, df0=None, alpha_init=None,
     # are present convergence of the linesearch will be checked,
     # and LinesearchConverged may be raised.
     try:
+        if quad_step:
+            df0 = -2*abs(alpha_fs[0]/alpha_init) if (dphi0_prev is None) \
+                  else dphi0_prev
+            alpha_init = take_quad_step(psi_2*alpha_init, df0)
+        _ = get_phi_dphi("fg", alpha_init)
+
         ak, bk = bracket(alpha_init)
         for k in range(max_cycles):
             if cond(ak):
