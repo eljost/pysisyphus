@@ -23,14 +23,30 @@ def interpol_alpha_cubic(f_0, df_0, f_alpha_0, f_alpha_1, alpha_0, alpha_1):
     return alpha_cubic
 
 
-def line_search(f, df, x, p, f_0=None, df_0=None, alpha=1, alpha_max=1,
-                c1=1e-4, c2=0.9):
+def line_search(f, df, x, p, f_0=None, f_0_prev=None, df_0=None,
+                alpha=None, alpha_min=0.01, alpha_max=100.,
+                c1=1e-4, c2=0.9, fac=2, strong=True):
 
+    alpha_fs = {}
     def phi_alpha(alpha):
-        return f(x + alpha*p)
+        try:
+            f_alpha = alpha_fs[alpha]
+        except KeyError:
+            f_alpha = f(x + alpha*p)
+            alpha_fs[alpha] = f_alpha
+        return f_alpha
 
+    alpha_dfs = {}
     def dphi_alpha(alpha):
-        return df(x + alpha*p) @ p
+        try:
+            df_alpha = alpha_dfs[alpha]
+        except KeyError:
+            df_alpha = df(x + alpha*p)
+            alpha_dfs[alpha] = df_alpha
+        return df_alpha@p
+
+    def results_for(alpha):
+        return alpha, alpha_fs[alpha], alpha_dfs[alpha]
 
     # We shouldn't have to recompute phi_0 and dphi_0, as they were probably already
     # calculated when determining the descent direction p.
@@ -38,17 +54,26 @@ def line_search(f, df, x, p, f_0=None, df_0=None, alpha=1, alpha_max=1,
         phi_0 = phi_alpha(0)
     else:
         phi_0 = f_0
+        alpha_fs[0] = f_0
     if df_0 is None:
         dphi_0 = dphi_alpha(0)
     else:
         dphi_0 = df_0 @ p
+        alpha_dfs[0] = df_0
 
     def sufficiently_decreased(phi_alpha, alpha):
         return phi_alpha <= (phi_0 + c1 * alpha * dphi_0)
 
+    def curvature_condition(dphi_alpha):
+        return dphi_alpha >= c2*dphi_0
+
+    def curvature_condition_strong(dphi_alpha):
+        return abs(dphi_alpha) <= -c2*dphi_0
+
+    curv_cond = curvature_condition_strong if strong else curvature_condition
+
     def zoom(alpha_lo, alpha_hi, phi_0, dphi_0, phi_lo,
              phi_alpha_=None, alpha_0_=None, max_cycles=10):
-        assert (alpha_lo < alpha_hi) and (alpha_lo >= 0) and (alpha_hi > 0)
 
         alphas = list()
         phi_alphas = list()
@@ -91,7 +116,7 @@ def line_search(f, df, x, p, f_0=None, df_0=None, alpha=1, alpha_max=1,
                 continue
 
             dphi_j = dphi_alpha(alpha_j)
-            if abs(dphi_j) <= (-c2 * dphi_0):
+            if curv_cond(dphi_j):
                 print(f"\tzoom converged after {j+1} cycles.")
                 return alpha_j
 
@@ -104,23 +129,37 @@ def line_search(f, df, x, p, f_0=None, df_0=None, alpha=1, alpha_max=1,
     
     alpha_prev = 0
     phi_prev = phi_0
-    alpha_i = alpha
+    if alpha is not None:
+        alpha_i = alpha
+    # This does not seem to help
+    # elif f_0_prev is not None:
+        # alpha_i = min(1.01*2*(f_0 - f_0_prev) / dphi_0, 1.)
+        # print("ai", alpha_i)
+        # alpha_i = 1. if alpha_i < 0. else alpha_i
+    else:
+        alpha_i = 1.0
     for i in range(50):
         phi_i = phi_alpha(alpha_i)
         if (not sufficiently_decreased(phi_i, alpha_i)
              or ((phi_i >= phi_prev) and i > 0)):
-            return zoom(alpha_prev, alpha_i, phi_0, dphi_0, phi_prev,
-                        phi_i, alpha_i)
+            return results_for(
+                    zoom(alpha_prev, alpha_i, phi_0, dphi_0, phi_prev,
+                         phi_i, alpha_i
+                    )
+            )
 
         dphi_i = dphi_alpha(alpha_i)
-        if abs(dphi_i) <= (-c2 * dphi_0):
-            return alpha_i
+        if curv_cond(dphi_i):
+            return results_for(alpha_i)
 
         if dphi_i >= 0:
-            return zoom(alpha_i, alpha_prev, phi_0, dphi_0, phi_i,
-                        phi_alpha_=phi_i, alpha_0_=alpha_i)
+            return results_for(
+                    zoom(alpha_i, alpha_prev, phi_0, dphi_0, phi_i,
+                         phi_alpha_=phi_i, alpha_0_=alpha_i
+                    )
+            )
         prev_alpha = alpha
-        alpha = min(fac * alpha, alpha_max)
+        alpha_i = min(fac * alpha_i, alpha_max)
     raise Exception("line_search() didn't converge in {i+1} cycles!")
 
 
@@ -269,7 +308,7 @@ def run_geom_opt():
     geom_opt.set_calculator(XTB(pal=4))
     opt_hess = geom_opt.hessian
     wo, vo = np.linalg.eigh(opt_hess)
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
     def f_(x):
         res = geom.get_energy_and_forces_at(x)
