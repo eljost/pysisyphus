@@ -233,6 +233,11 @@ class RedundantCoords:
         P = self.P
         return P.dot(H).dot(P) + shift*(np.eye(P.shape[0]) - P)
 
+    def project_vector(self, vector):
+        """Project supplied vector onto range of B."""
+        P = self.P
+        return self.P.dot(vector)
+
     def set_rho(self):
         # TODO: remove this as it is already in optimizers/guess_hessians
         atoms = [a.lower() for a in self.atoms]
