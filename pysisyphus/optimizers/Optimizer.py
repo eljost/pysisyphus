@@ -17,16 +17,16 @@ from pysisyphus.helpers import check_for_stop_sign, highlight_text
 
 class Optimizer:
     CONV_THRESHS = {
-        # max_force, rms_force, max_step, rms_step
-        "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
-        "gau":       (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
-        "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
-        "baker":     (3.0e-4, 2.0e-4, 3.0e-4, 2.0e-4),
+        #             max_force, rms_force, max_step, rms_step
+        "gau_loose": (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
+        "gau":       (4.5e-4,    3.0e-4,    1.8e-3,   1.2e-3),
+        "gau_tight": (1.5e-5,    1.0e-5,    6.0e-5,   4.0e-5),
+        "baker":     (3.0e-4,    2.0e-4,    3.0e-4,   2.0e-4),
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
                  rms_force=None, align=False, dump=False, last_cycle=None,
-                 prefix="", **kwargs):
+                 prefix="", overachieve_factor=0., **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -37,6 +37,7 @@ class Optimizer:
         self.dump = dump
         self.last_cycle = last_cycle
         self.prefix = prefix
+        self.overachieve_factor = float(overachieve_factor)
 
         for key, value in self.convergence.items():
             setattr(self, key, value)
@@ -135,11 +136,13 @@ class Optimizer:
         # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
         self.logger.debug(message)
 
-    def check_convergence(self, multiple=1.0):
+    def check_convergence(self, multiple=1.0, overachieve_factor=0.,
+                          energy_thresh=1e-6):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple
         thereof. The latter may be used in initiating the climbing image.
         """
+
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
         if self.is_cos:
@@ -176,10 +179,35 @@ class Optimizer:
             "rms_step_thresh": rms_step
         }
 
-        return all(
+        # Check if force convergence is overachieved
+        overachieved = False
+        if overachieve_factor > 0:
+            max_thresh = self.convergence["max_force_thresh"] / overachieve_factor
+            rms_thresh = self.convergence["rms_force_thresh"] / overachieve_factor
+            max_ = max_force < max_thresh
+            rms_ = rms_force < rms_thresh
+            overachieved = max_ and rms_
+            if max_:
+                self.log("max(force) is overachieved")
+            if rms_:
+                self.log("rms(force) is overachieved")
+            if max_ and rms_:
+                print("Force convergence overachieved!")
+
+        normal_convergence = all(
             [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
+
+        energy_converged = False
+        # if self.cur_cycle > 0:
+            # cur_energy = self.energies[-1]
+            # prev_energy = self.energies[-2]
+            # energy_converged = abs(cur_energy - prev_energy) < energy_thresh
+            # if energy_converged:
+                # print("Energy converged")
+        # return any((normal_convergence, overachieved, energy_converged))
+        return any((normal_convergence, overachieved))
 
     def print_header(self):
         hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
@@ -326,7 +354,9 @@ class Optimizer:
             self.steps.append(step)
 
             # Convergence check
-            self.is_converged = self.check_convergence()
+            self.is_converged = self.check_convergence(
+                                    overachieve_factor=self.overachieve_factor
+            )
 
             end_time = time.time()
             elapsed_seconds = end_time - start_time
