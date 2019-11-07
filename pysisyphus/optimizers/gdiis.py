@@ -126,7 +126,6 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
         # print("GDIIS with only 2 cycles. Skipping! Return None")
         # return None
 
-    print("GDIIS")
     return diis_result(valid_coeffs, coords, forces, prefix="G")
 
 
@@ -188,7 +187,6 @@ def gediis(coords, energies, forces, max_vecs=10):
     # print(res)
     # res_ = minimize(fun_, x0=x0, jac=jac_)
 
-    # import pdb; pdb.set_trace()
     coeffs = None
     if res.success:
         coeffs = x2c(res.x)
@@ -201,5 +199,4 @@ def gediis(coords, energies, forces, max_vecs=10):
     if en_ >= E[0]:
         print(f"GEDIIS converged, but proposed energy is above current energy! Returning None")
         return None
-    print("GEDIIS")
     return diis_result(coeffs, coords, forces, "GE")
