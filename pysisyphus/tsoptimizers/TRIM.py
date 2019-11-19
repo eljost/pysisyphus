@@ -11,6 +11,7 @@ from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 
 
 class TRIM(HessianOptimizer):
+    # TODO: reuse methods from RSPRFO to select inital root etc.
 
     def optimize(self):
         H = self.geometry.hessian
