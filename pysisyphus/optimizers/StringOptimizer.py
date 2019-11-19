@@ -48,9 +48,9 @@ class StringOptimizer(Optimizer):
         steps[too_big] = signs * self.max_step
         return steps
 
-    def check_convergence(self):
+    def check_convergence(self, *args, **kwargs):
         # Normal convergence check with gradients etc.
-        converged = super().check_convergence()
+        converged = super().check_convergence(*args, **kwargs)
 
         if self.geometry.fully_grown:
             self.stop_in -= 1
