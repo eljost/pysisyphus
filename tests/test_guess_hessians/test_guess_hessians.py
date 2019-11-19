@@ -63,8 +63,6 @@ def test_ts_hessian_opt():
     opt_kwargs = {
         "hessian_init": "fischer",
         "dump": True,
-        "trust_radius": 0.3,
-        "trust_max": 0.3,
         "rx_coords": ((2, 1, 0), ),
         "thresh": "gau_tight",
     }

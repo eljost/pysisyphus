@@ -27,7 +27,8 @@ class RSPRFOptimizer(HessianOptimizer):
             "Bofill update is recommended in a TS-optimization."
 
         super().__init__(geometry, hessian_init=hessian_init,
-                         hessian_update=hessian_update, **kwargs)
+                         hessian_update=hessian_update, trust_radius=trust_radius,
+                         **kwargs)
 
         self.root = int(root)
         self.hessian_ref = hessian_ref
