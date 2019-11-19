@@ -13,13 +13,14 @@
 import numpy as np
 
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
+from pysisyphus.optimizers.guess_hessians import ts_hessian
 
 
 class RSPRFOptimizer(HessianOptimizer):
     """Optimizer to find first-order saddle points."""
 
     def __init__(self, geometry, root=0, hessian_ref=None, prim_coord=None,
-                 hessian_init="calc", hessian_update="bofill",
+                 rx_coords=None, hessian_init="calc", hessian_update="bofill",
                  max_micro_cycles=50, trust_radius=0.3, **kwargs):
 
         assert hessian_update == "bofill", \
@@ -44,6 +45,7 @@ class RSPRFOptimizer(HessianOptimizer):
         except ValueError as err:
             self.log(f"No reference hessian provided.")
         self.prim_coord = prim_coord
+        self.rx_coords = rx_coords
 
         self.ts_mode = None
         self.max_micro_cycles = max_micro_cycles
@@ -53,6 +55,24 @@ class RSPRFOptimizer(HessianOptimizer):
 
     def prepare_opt(self):
         super().prepare_opt()
+
+        # Assume a guess hessian when not calculated. This hessian has to be
+        # modified according to the assumed reaction coordinates.
+        if self.hessian_init != "calc":
+            assert self.geometry.coord_type != "cart", \
+                "Using a modified guess hessian for TS-optimizations is " \
+                "only supported in redundand internal coordinates " \
+                "(coord_type=redund)"
+            prim_inds = [self.geometry.internal.get_index_of_prim_coord(rxc)
+                         for rxc in self.rx_coords]
+            nones = [i for i, _ in enumerate(prim_inds) if _ == None]
+            missing_prim_inds = [self.rx_coords[i] for i, _ in enumerate(prim_inds)
+                                 if _ is None]
+            assert len(missing_prim_inds) == 0, \
+                 "Some of the requested reaction coordinates are not defined: " \
+                f"{missing_prim_inds}"
+            import pdb; pdb.set_trace()
+            self.H = ts_hessian(self.H, coord_inds=prim_inds)
 
         # Determiniation of initial mode either by using a provided
         # reference hessian, or by using a supplied root.

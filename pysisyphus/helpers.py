@@ -372,7 +372,8 @@ def do_final_hessian(geom, save_hessian=True):
     # print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
     if neg_num > 0:
         wavenumbers = eigval_to_wavenumber(neg_eigvals)
-        print("Imaginary frequencies:", wavenumbers, "cm⁻¹")
+        wavenum_str = np.array2string(wavenumbers, precision=2)
+        print("Imaginary frequencies:", wavenum_str, "cm⁻¹")
 
     if save_hessian:
         final_hessian_fn = "calculated_final_cart_hessian"
