@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# [1] https://doi.org/10.1016/0009-2614(91)90115-P
+#     Helgaker, 1991
+
+
 import numpy as np
 
 from scipy.optimize import newton
@@ -14,6 +18,8 @@ class TRIM(HessianOptimizer):
         self.forces.append(-gradient)
         self.energies.append(self.geometry.energy)
         eigvals, eigvecs = np.linalg.eigh(H)
+        # Neglect small eigenvalues
+        eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
         root = 0
         assert root == 0
