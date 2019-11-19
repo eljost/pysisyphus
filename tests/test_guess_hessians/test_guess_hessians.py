@@ -61,15 +61,19 @@ def test_ts_hessian_opt():
     geom.set_calculator(XTB(pal=4))
 
     opt_kwargs = {
-        # "hessian_init": "fischer",
+        "hessian_init": "fischer",
         "dump": True,
         "trust_radius": 0.3,
         "trust_max": 0.3,
-        "rx_coords": ((2, 1, 0), )
+        "rx_coords": ((2, 1, 0), ),
+        "thresh": "gau_tight",
     }
     opt = RSPRFOptimizer(geom, **opt_kwargs)
     opt.run()
     do_final_hessian(geom)
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 10
 
 
 if __name__ == "__main__":

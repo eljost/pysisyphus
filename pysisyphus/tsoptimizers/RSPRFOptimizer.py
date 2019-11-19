@@ -71,7 +71,6 @@ class RSPRFOptimizer(HessianOptimizer):
             assert len(missing_prim_inds) == 0, \
                  "Some of the requested reaction coordinates are not defined: " \
                 f"{missing_prim_inds}"
-            import pdb; pdb.set_trace()
             self.H = ts_hessian(self.H, coord_inds=prim_inds)
 
         # Determiniation of initial mode either by using a provided
