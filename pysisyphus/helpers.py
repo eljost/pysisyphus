@@ -83,6 +83,46 @@ def get_baker_geoms(**kwargs):
     return geoms, sto3g_energies
 
 
+def get_baker_ts_geoms(**kwargs):
+    baker_ts_path = THIS_DIR / "../xyz_files/baker_ts"
+    xyz_fns = baker_ts_path.glob("*.xyz")
+    geoms = {
+        xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
+        if not ("downhill" in xyz_fn.name)
+    }
+    # From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7
+    meta_data = {
+        "01_hcn.xyz": (0, 1, -92.24604),
+        "02_hcch.xyz": (0, 1, -76.29343),
+        "03_h2co.xyz": (0, 1, -113.05003),
+        "04_ch3o.xyz": (0, 2, -113.69365),
+        "05_cyclopropyl.xyz": (0, 2, -115.72100),
+        "06_bicyclobutane.xyz": (0, 1, -153.90494),
+        "07_bicyclobutane.xyz": (0, 1, -153.89754),
+        "08_formyloxyethyl.xyz": (0, 2, -264.64757),
+        "09_parentdieslalder.xyz": (0, 1, -231.60321),
+        # 10 and 11 don't have any imaginary frequencies at the given
+        # geometry, so they may be skipped.
+        "10_tetrazine.xyz": (0, 1, -292.81026),
+        "11_trans_butadiene.xyz": (0, 1, -154.05046),
+        "12_ethane_h2_abstraction.xyz": (0, 1, -78.54323),
+        "13_hf_abstraction.xyz": (0, 1, -176.98453),
+        "14_vinyl_alcohol.xyz": (0, 1, -151.91310),
+        "15_hocl.xyz": (0, 1, -596.87865),
+        "16_h2po4_anion.xyz": (-1, 1, -637.92388),
+        "17_claisen.xyz": (0, 1, -267.23859),
+        "18_silyene_insertion.xyz": (0, 1, -367.20778),
+        "19_hnccs.xyz": (0, 1, -525.43040),
+        "20_hconh3_cation.xyz": (1, 1, -168.24752),
+        "21_acrolein_rot.xyz": (0, 1, -189.67574),
+        "22_hconhoh.xyz": (0, 1, -242.25529),
+        "23_hcn_h2.xyz": (0, 1, -93.31114),
+        "24_h2cnh.xyz": (0, 1, -93.33296),
+        "25_hcnh2.xyz": (0, 1, -93.28172),
+    }
+    return geoms, meta_data
+
+
 def align_geoms(geoms):
     # http://nghiaho.com/?page_id=671#comment-559906
     first_geom = geoms[0]
