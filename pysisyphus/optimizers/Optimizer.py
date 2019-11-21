@@ -32,6 +32,7 @@ class Optimizer:
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
 
         assert thresh in self.CONV_THRESHS.keys()
+        self.thresh = thresh
         self.convergence = self.make_conv_dict(thresh, rms_force)
         self.align = align
         self.dump = dump
@@ -199,14 +200,14 @@ class Optimizer:
              for key in self.convergence.keys()]
         )
 
-        energy_converged = False
-        # if self.cur_cycle > 0:
-            # cur_energy = self.energies[-1]
-            # prev_energy = self.energies[-2]
-            # energy_converged = abs(cur_energy - prev_energy) < energy_thresh
-            # if energy_converged:
-                # print("Energy converged")
-        # return any((normal_convergence, overachieved, energy_converged))
+        if self.thresh == "baker":
+            energy_converged = False
+            if self.cur_cycle > 0:
+                cur_energy = self.energies[-1]
+                prev_energy = self.energies[-2]
+                energy_converged = abs(cur_energy - prev_energy) < 1e-6
+            converged = (max_force) < 3e-4 and (energy_converged or (max_step < 3e-4))
+            return converged
         return any((normal_convergence, overachieved))
 
     def print_header(self):
