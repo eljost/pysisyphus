@@ -31,25 +31,17 @@ def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
     failed = 0
     cycles = 0
     opt_kwargs = {
-        # "thresh": "gau_tight",
         "thresh": thresh,
-        # "thresh": "baker",
-        # "thresh": "gau_loose",
-        # "thresh": "gau",
-        # # "max_cycles": 10,
         "max_cycles": 150,
         "line_search": poly,
         "gediis": gediis,
         "gdiis": gdiis,
-        # "dump": True,
         "overachieve_factor": 5,
-        # "zwei": True,
-        # "hessian_recalc": 1,
+        # "dump": True,
     }
     results = dict()
     for i, (name, geom) in enumerate(geoms.items()):
-        # if i == 0: continue
-        # geom.set_calculator(XTB(pal=2))
+        # geom.set_calculator(XTB(pal=4))
         geom.set_calculator(Gaussian16(route="HF/STO-3G", pal=4))
         opt = RFOptimizer(geom, **opt_kwargs)
         opt.run()
