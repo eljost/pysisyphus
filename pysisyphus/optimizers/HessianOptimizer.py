@@ -273,21 +273,15 @@ class HessianOptimizer(Optimizer):
             x = fit_result.x
             y = fit_result.y
             self.log(f"Did {deg} interpolation with x={x:.6f}.")
-            # print(f"Did {deg} interpolation with x={x:.6f}.")
-            fit_step = x * prev_step
+
             # Interpolate coordinates and gradient
+            fit_step = x * prev_step
             fit_coords = prev_coords + fit_step
+            # fit_step = (1-x) * -prev_step
+            # fit_coords = cur_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
 
             kws = {"gediis_thresh": -1, "gdiis_thresh": -1}
-            ip_res = interpolate_extrapolate(self.coords, self.energies, self.forces, self.steps, **kws)
-            ips, ipf, ipe = ip_res
-            try:
-                np.testing.assert_allclose(ipe, y)
-                np.testing.assert_allclose(ips, fit_step)
-                np.testing.assert_allclose(ipf, -fit_grad)
-            except AssertionError:
-                import pdb; pdb.set_trace()
 
             # TODO: update step and other saved entries?!
             self.geometry.coords = fit_coords
@@ -297,8 +291,6 @@ class HessianOptimizer(Optimizer):
             self.cart_coords[-1] = self.geometry.cart_coords.copy()
             self.steps[-1] = fit_step
             cur_grad = fit_grad
-
-            # self.update_hessian()
         return cur_grad
 
     def solve_rfo(self, rfo_mat, kind="min"):
@@ -315,6 +307,7 @@ class HessianOptimizer(Optimizer):
         # Given sorted eigenvalue-indices (sorted_inds) use the first
         # (smallest eigenvalue) or the last (largest eigenvalue) index.
         step_nu = eigenvectors.T[ind]
+        # TODO: Root following like in optking?!
         nu = step_nu[-1]
         self.log(f"\tnu_{verbose}={nu:.4e}")
         # Scale eigenvector so that its last element equals 1. The
