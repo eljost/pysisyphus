@@ -66,16 +66,14 @@ def test_birkholz():
             "max_cycles": 150,
             "thresh": "gau",
             "trust_radius": 0.5,
-            # "trust_max": 0.5,
             "trust_update": True,
+            "hessian_init": "fischer",
+            "hessian_update": "damped_bfgs",
             # "hessian_update": "flowchart",
             # "hessian_update": "bfgs",
-            "hessian_update": "damped_bfgs",
-            "hessian_init": "fischer",
-            # "line_search": True,
             # "dump": True,
-            # "eins": True,
-            "zwei": True,
+            "line_search": True,
+            # "gdiis": True,
         }
         opt_kwargs = opt_kwargs_base.copy()
 
