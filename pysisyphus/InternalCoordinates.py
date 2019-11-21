@@ -466,7 +466,13 @@ class RedundantCoords:
             else:
                 fourth_atom = list(bond_set - intersect)
                 dihedral_ind = bend.tolist() + fourth_atom
-                improper_dihedrals.append(dihedral_ind)
+                # This way dihedrals may be generated that contain linear
+                # atoms and these would be undefinied. So we check for this.
+                dihed = self.calc_dihedral(coords3d, dihedral_ind)
+                if not np.isnan(dihed):
+                    improper_dihedrals.append(dihedral_ind)
+                else:
+                    self.log("Dihedral {dihedral_ind} is undefinied. Skipping it!")
 
         # Now try to create the remaining improper dihedrals.
         if (len(self.atoms) >= 4) and (len(self.dihedral_indices) == 0):
@@ -686,8 +692,9 @@ class RedundantCoords:
                 cur_cart_coords, new_internals = best_cycle
                 break
             else:
-                import pdb; pdb.set_trace()
-                print("IC conversion failed in first cycle.")
+                raise Exception("Internal-cartesian back-transformation already "
+                                "failed in the first step. Aborting!"
+                )
             prev_internals = new_internals
 
             last_rms = cart_rms
