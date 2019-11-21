@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+import itertools as it
 from pprint import pprint
 import time
 
 import numpy as np
 import pandas as pd
 
-from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian
+from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian, geom_from_library
 from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.color import red, green
@@ -15,7 +16,8 @@ from pysisyphus.color import red, green
 def print_summary(converged, failed, cycles, ran, runid):
     ran_ = f"{ran+1:02d}"
     print(f"converged: {converged:02d}/{ran_}")
-    print(f"   failed: {failed:02d}/{ran_}")
+    # print(f"   failed: {failed:02d}/{ran_}")
+    print(f"   failed: {failed:d}")
     print(f"   cycles: {cycles}")
     print(f"      run: {runid}")
 
@@ -29,7 +31,9 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
     cycles = 0
     opt_kwargs = {
         "thresh": thresh,
-        "max_cycles": 150,
+        # "max_cycles": 150,
+        "max_cycles": 100,
+        # "max_cycles": 50,
         "dump": True,
         "trust_radius": 0.3,
         "trust_max": 0.3,
@@ -46,6 +50,7 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
             "pal": 4,
         }
         geom.set_calculator(Gaussian16(**calc_kwargs))
+
         opt = RSPRFOptimizer(geom, **opt_kwargs)
         opt.run()
         if opt.is_converged:
@@ -78,54 +83,72 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
 
 def test_baker_ts_optimizations():
     coord_type = "redund"
+    # coord_type = "dlc"
     # coord_type = "cart"
     thresh = "baker"
     runs = 1
-
 
     all_results = list()
     durations = list()
     all_cycles = list()
     for i in range(runs):
         geoms, meta = get_baker_ts_geoms(coord_type=coord_type)
-        only = "01_hcn.xyz"
+        # only = "01_hcn.xyz"
+        # only = "24_h2cnh.xyz"
+        # only = "15_hocl.xyz"
+        # only = "02_hcch.xyz"
         # geoms = {
             # only: geoms[only],
         # }
-        # hcn = geoms[only]
 
-        # [..]/intcoords/derivatives.py", line 640, in d2q_d
-        # x99 = 1/sqrt(x93)
-        #   ValueError: math domain error
-        del geoms["09_parentdieslalder.xyz"]
-        del geoms["12_ethane_h2_abstraction.xyz"]
-        del geoms["20_hconh3_cation.xyz"]
-        del geoms["22_hconhoh.xyz"]
-        del geoms["24_h2cnh.xyz"]
-        del geoms["13_hf_abstraction.xyz"]
-        del geoms["17_claisen.xyz"]
-        del geoms["19_hnccs.xyz"]
-        del geoms["21_acrolein_rot.xyz"]
-        del geoms["03_h2co.xyz"]
-        # SVD did not converge
-        del geoms["15_hocl.xyz"]
-        #  No imaginary modes
-        del geoms["10_tetrazine.xyz"]
-        del geoms["11_trans_butadiene.xyz"]
-        # Works
-        # del geoms["05_cyclopropyl.xyz"]
-        # del geoms["08_formyloxyethyl.xyz"]
-        # del geoms["14_vinyl_alcohol.xyz"]
-        # del geoms["16_h2po4_anion.xyz"]
-        # del geoms["18_silyene_insertion.xyz"]
-        # del geoms["04_ch3o.xyz"]
-        # del geoms["06_bicyclobutane.xyz"]
-        # del geoms["07_bicyclobutane.xyz"]
-        # del geoms["23_hcn_h2.xyz"]
-        # del geoms["01_hcn.xyz"]
-        # del geoms["25_hcnh2.xyz"]
-        # ALpha negative
-        del geoms["02_hcch.xyz"]
+        fails = (
+            "09_parentdieslalder.xyz",
+            "12_ethane_h2_abstraction.xyz",
+            "22_hconhoh.xyz",
+            "17_claisen.xyz",
+            "15_hocl.xyz",
+        )
+        works = (
+            "05_cyclopropyl.xyz",
+            "08_formyloxyethyl.xyz",
+            "14_vinyl_alcohol.xyz",
+            "16_h2po4_anion.xyz",
+            "18_silyene_insertion.xyz",
+            "04_ch3o.xyz",
+            "06_bicyclobutane.xyz",
+            "07_bicyclobutane.xyz",
+            "23_hcn_h2.xyz",
+            "01_hcn.xyz",
+            "25_hcnh2.xyz",
+        )
+        math_error_but_works = (
+            # [..]/intcoords/derivatives.py", line 640, in d2q_d
+            # x99 = 1/sqrt(x93)
+            #   ValueError: math domain error
+            # ZeroDivison Fix
+            # "20_hconh3_cation.xyz",
+            # "24_h2cnh.xyz",
+            # "13_hf_abstraction.xyz",
+            # "19_hnccs.xyz",
+            "21_acrolein_rot.xyz",
+            # "03_h2co.xyz",
+        )
+        alpha_negative = (
+            "02_hcch.xyz",
+        )
+        no_imag = (
+            "10_tetrazine.xyz",
+            "11_trans_butadiene.xyz",
+        )
+        use = (
+            # fails,
+            # works,
+            math_error_but_works,
+            # alpha_negative,
+            # no_imag,
+        )
+        geoms = {key: geoms[key] for key in it.chain(*use)}
+
         results, duration, cycles = run_baker_ts_opts(
                                         geoms,
                                         meta,
