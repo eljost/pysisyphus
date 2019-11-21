@@ -21,29 +21,6 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 
-# different sets of covalent radii for testing
-# # pyberny
-# pyb_cr = {
-    # "h": 0.38 / BOHR2ANG,
-    # "c": 0.77 / BOHR2ANG,
-    # "n": 0.75 / BOHR2ANG,
-    # "o": 0.73 / BOHR2ANG,
-    # "cl": 0.99 / BOHR2ANG,
-    # "ru": 1.26 / BOHR2ANG,
-# }
-# # dalton
-pyb_cr = {
-    "h": 0.40 / BOHR2ANG,
-    "c": 0.75 / BOHR2ANG,
-    "n": 0.71 / BOHR2ANG,
-    "o": 0.63 / BOHR2ANG,
-    "cl": 0.99 / BOHR2ANG,
-    "ru": 1.25 / BOHR2ANG,
-}
-from pysisyphus.elem_data import COVALENT_RADII as CR
-old_vals = [CR[k] for k in pyb_cr.keys()]
-CR.update(pyb_cr)
-
 
 def get_cov_radii_sum_array(atoms, coords):
     coords3d = coords.reshape(-1, 3)
@@ -202,7 +179,13 @@ class RedundantCoords:
         K_flat = np.zeros(size_ * size_)
         for pc, int_grad_item in zip(self._prim_internals, int_gradient):
             # Contract with gradient
-            dg = int_grad_item * grad_deriv_wrapper(pc.inds)
+            try:
+                dg = int_grad_item * grad_deriv_wrapper(pc.inds)
+            except (ValueError, ZeroDivisionError) as err:
+                self.log( "Error in calculation of 2nd derivative of primitive "
+                         f"internal {pc.inds}."
+                )
+                continue
             # Depending on the type of internal coordinate dg is a flat array
             # of size 36 (stretch), 81 (bend) or 144 (torsion).
             #
@@ -694,7 +677,7 @@ class RedundantCoords:
                 # the internal-cartesian-transformation goes bad.
                 best_cycle = (cur_cart_coords.copy(), new_internals.copy())
                 best_cycle_ind = i
-            else:
+            elif i != 0:
                 # If the conversion somehow fails we return the step
                 # saved above.
                 self.log( "Internal to cartesian failed! Using from step "
@@ -702,6 +685,9 @@ class RedundantCoords:
                 )
                 cur_cart_coords, new_internals = best_cycle
                 break
+            else:
+                import pdb; pdb.set_trace()
+                print("IC conversion failed in first cycle.")
             prev_internals = new_internals
 
             last_rms = cart_rms
