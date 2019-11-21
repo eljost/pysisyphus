@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian, geom_from_library
-from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
+from pysisyphus.tsoptimizers import *
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.color import red, green
 
@@ -52,6 +52,8 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
         geom.set_calculator(Gaussian16(**calc_kwargs))
 
         opt = RSPRFOptimizer(geom, **opt_kwargs)
+        # opt = RSIRFOptimizer(geom, **opt_kwargs)
+        # opt = TRIM(geom, **opt_kwargs)
         opt.run()
         if opt.is_converged:
             converged += 1
@@ -126,12 +128,12 @@ def test_baker_ts_optimizations():
             # x99 = 1/sqrt(x93)
             #   ValueError: math domain error
             # ZeroDivison Fix
-            # "20_hconh3_cation.xyz",
-            # "24_h2cnh.xyz",
-            # "13_hf_abstraction.xyz",
-            # "19_hnccs.xyz",
+            "20_hconh3_cation.xyz",
+            "24_h2cnh.xyz",
+            "13_hf_abstraction.xyz",
+            "19_hnccs.xyz",
             "21_acrolein_rot.xyz",
-            # "03_h2co.xyz",
+            "03_h2co.xyz",
         )
         alpha_negative = (
             "02_hcch.xyz",
@@ -142,7 +144,7 @@ def test_baker_ts_optimizations():
         )
         use = (
             # fails,
-            # works,
+            works,
             math_error_but_works,
             # alpha_negative,
             # no_imag,

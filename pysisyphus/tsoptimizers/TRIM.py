@@ -7,35 +7,26 @@
 import numpy as np
 
 from scipy.optimize import newton
-from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
+from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
-class TRIM(HessianOptimizer):
-    # TODO: reuse methods from RSPRFO to select inital root etc.
+class TRIM(TSHessianOptimizer):
 
     def optimize(self):
-        H = self.geometry.hessian
-        gradient = self.geometry.gradient
-        self.forces.append(-gradient)
-        self.energies.append(self.geometry.energy)
-        eigvals, eigvecs = np.linalg.eigh(H)
-        # Neglect small eigenvalues
-        eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
+        energy, gradient, H, eigvals, eigvecs = self.housekeeping()
+        self.update_ts_mode(eigvals, eigvecs)
 
-        root = 0
-        assert root == 0
-        self.log(f"Signs of eigenvalue and -vector of root {root} "
+        self.log(f"Signs of eigenvalue and -vector of root {self.root} "
                   "will be reversed!")
-
         # Transform gradient to basis of eigenvectors
         gradient_ = eigvecs.T.dot(gradient)
 
         # Construct image function by inverting the signs of the eigenvalue and
         # -vector of the mode to follow uphill.
         eigvals_ = eigvals.copy()
-        eigvals_[root] *= -1
+        eigvals_[self.root] *= -1
         gradient_ = gradient_.copy()
-        gradient_[root] *= -1
+        gradient_[self.root] *= -1
 
         def get_step(mu):
             zetas = -gradient_ / (eigvals_ - mu)
@@ -64,4 +55,8 @@ class TRIM(HessianOptimizer):
         step = get_step(mu)
         step_norm = np.linalg.norm(step)
         self.log(f"norm(step)={step_norm:.6f}")
+
+        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
+        self.predicted_energy_changes.append(quadratic_prediction)
+
         return step

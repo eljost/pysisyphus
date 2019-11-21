@@ -18,30 +18,7 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 class RSPRFOptimizer(TSHessianOptimizer):
 
     def optimize(self):
-        gradient = self.geometry.gradient
-        self.forces.append(-self.geometry.gradient)
-        self.energies.append(self.geometry.energy)
-
-        if self.cur_cycle > 0:
-            self.update_trust_radius()
-            self.update_hessian()
-
-        H = self.H
-        if self.geometry.internal:
-            H_proj = self.geometry.internal.project_hessian(self.H)
-            # Symmetrize hessian, as the projection may break it?!
-            H = (H_proj + H_proj.T) / 2
-
-        eigvals, eigvecs = np.linalg.eigh(H)
-
-        if self.geometry.coord_type == "cart":
-            # Don't use eigenvectors that belong to very small eigenvalues,
-            # as they probably belong to overall translations/rotations of
-            # the molecule and may mess up the stepsize, by producing large steps.
-            eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
-
-        # Calculate overlaps between (updated) hessian and current TS-mode to
-        # determine new TS-mode.
+        energy, gradient, H, eigvals, eigvecs = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
 
         # Transform gradient to eigensystem of hessian

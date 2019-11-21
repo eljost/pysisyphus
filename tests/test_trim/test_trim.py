@@ -2,46 +2,37 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
-from pysisyphus.tsoptimizers.TRIM import TRIM
-from pysisyphus.tsoptimizers.RSIRFO import RSIRFO
+from pysisyphus.tsoptimizers import *
 
 
-def test_trim():
+@pytest.mark.parametrize(
+    "opt_cls, ref_cur_cycle",
+    [
+        pytest.param(TRIM, 7),
+        pytest.param(RSIRFOptimizer, 8),
+        pytest.param(RSPRFOptimizer, 11),
+])
+def test_tshessian_opts(opt_cls, ref_cur_cycle):
     geom = AnaPot.get_geom((-0.6, 2.2, 0.))
 
-    trim = TRIM(geom, trust_radius=0.2)
-    trim.run()
+    opt_kwargs = {
+        "trust_radius": 0.2,
+    }
+    opt = opt_cls(geom, **opt_kwargs)
+    opt.run()
 
-    # assert trim.cur_cycle == 17
-    # assert trim.is_converged
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cur_cycle
 
-    # cs = np.array(trim.coords)
+    # cs = np.array(opt.coords)
     # calc = geom.calculator
     # calc.plot()
     # ax = calc.ax
-    # ax.plot(*cs.T[:2])
+    # ax.plot(*cs.T[:2], "o-")
     # plt.show()
 
-
-def test_rsirfo():
-    geom = AnaPot.get_geom((-0.6, 2.2, 0.))
-
-    trim = RSIRFO(geom, trust_radius=0.2)
-    trim.run()
-
-    # assert trim.cur_cycle == 17
-    # assert trim.is_converged
-
-    cs = np.array(trim.coords)
-    calc = geom.calculator
-    calc.plot()
-    ax = calc.ax
-    ax.plot(*cs.T[:2], "o-")
-    plt.show()
-
-
 if __name__ == "__main__":
-    test_trim()
-    test_rsirfo()
+    test_tshessian_opts()

@@ -6,31 +6,21 @@
 
 import numpy as np
 
-from scipy.optimize import newton
-from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
+from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
-class RSIRFO(HessianOptimizer):
-    # TODO: reuse methods from RSPRFO to select inital root etc.
-
-    def prepare_opt(self):
-        super().prepare_opt()
-        self.I = np.eye(self.geometry.coords.size)
+class RSIRFOptimizer(TSHessianOptimizer):
 
     def optimize(self):
-        H = self.geometry.hessian
-        gradient = self.geometry.gradient
-        self.forces.append(-gradient)
-        self.energies.append(self.geometry.energy)
-        eigvals, eigvecs = np.linalg.eigh(H)
-        # # Neglect small eigenvalues
-        # eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
+        energy, gradient, H, eigvals, eigvecs = self.housekeeping()
+        self.update_ts_mode(eigvals, eigvecs)
 
-        root = 0
-        assert root == 0
-        trans_vec = eigvecs[:,root]
+        self.log( "Using projection to construct image potential gradient "
+                  f"and hessian for root {self.root}."
+        )
+        trans_vec = eigvecs[:,self.root]
         # Projection matrix to construct g* and H*
-        P = self.I - 2 * np.outer(trans_vec, trans_vec)
+        P = np.eye(self.geometry.coords.size) - 2 * np.outer(trans_vec, trans_vec)
         H_star = P.dot(H)
         eigvals_, eigvecs_ = np.linalg.eigh(H_star)
         # Neglect small eigenvalues
@@ -85,15 +75,11 @@ class RSIRFO(HessianOptimizer):
             alpha += alpha_step
             self.log("")
 
-            # import pdb; pdb.set_trace()
-            pass
-
         # Transform back to original basis
         step = eigvecs_.dot(step_)
 
-        return step
+        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
+        rfo_prediction = quadratic_prediction / (1 + step @ step)
+        self.predicted_energy_changes.append(rfo_prediction)
 
-        step_norm = np.linalg.norm(step)
-        if step_norm > self.trust_radius:
-            step = step / step_norm * self.trust_radius
         return step

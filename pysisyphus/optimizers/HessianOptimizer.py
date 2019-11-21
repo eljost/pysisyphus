@@ -335,6 +335,30 @@ class HessianOptimizer(Optimizer):
         self.log(f"{pre_str}hessian has {neg_inds.sum()} negative eigenvalue(s).")
         self.log(f"\t{neg_eigval_str}")
 
+    def housekeeping(self):
+        """Calculate gradient and energy. Update trust radius and hessian
+        if needed. Return energy, gradient and hessian for the current cycle."""
+        gradient = self.geometry.gradient
+        energy = self.geometry.energy
+        self.forces.append(-gradient)
+        self.energies.append(energy)
+
+        if self.cur_cycle > 0:
+            self.update_trust_radius()
+            self.update_hessian()
+
+        H = self.H
+        if self.geometry.internal:
+            H_proj = self.geometry.internal.project_hessian(self.H)
+            # Symmetrize hessian, as the projection may break it?!
+            H = (H_proj + H_proj.T) / 2
+
+        eigvals, eigvecs = np.linalg.eigh(H)
+        # Neglect small eigenvalues
+        eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
+
+        return energy, gradient, H, eigvals, eigvecs
+
     @abstractmethod
     def optimize(self):
         pass
