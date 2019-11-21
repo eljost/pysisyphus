@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from pysisyphus.helpers import get_baker_geoms
+from pysisyphus.color import red, green
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.calculators.Gaussian16 import Gaussian16
@@ -60,12 +61,12 @@ def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
         try:
             refen = ref_energies[name]
             assert np.allclose(geom.energy, refen)
-            print(f"@Energies match for {name}! ({geom.energy:.6f}, {refen:.6f})")
+            print(green(f"@Energies match for {name}! ({geom.energy:.6f}, {refen:.6f})"))
         except KeyError:
-            print(f"@Couldn't find reference energy for {name}")
+            print(red(f"@Couldn't find reference energy for {name}"))
         except AssertionError as err:
-            print(f"@Calculated energy {geom.energy:.6f} and reference "
-                  f"energy {refen:.6f} don't match.")
+            print(red(f"@Calculated energy {geom.energy:.6f} and reference "
+                      f"energy {refen:.6f} don't match."))
         print()
         print_summary(converged, failed, cycles, i, runid)
         print()
