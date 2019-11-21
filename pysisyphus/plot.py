@@ -771,10 +771,34 @@ def parse_args(args):
     group.add_argument("--afir", action="store_true",
         help="Plot AFIR and true -energies and -forces from an AFIR calculation."
     )
+    group.add_argument("--opt", action="store_true",
+        help="Plot optimization progress."
+    )
     group.add_argument("--overlaps", "-o", action="store_true")
     group.add_argument("--render_cdds", action="store_true")
 
     return parser.parse_args(args)
+
+
+def plot_opt():
+    def load(fn):
+        print(f"Reading {fn}")
+        with open(fn) as handle:
+            res = yaml.load(handle.read(), Loader=yaml.Loader)
+        energies = np.array(res["energies"])
+        energies -= energies.min()
+        energies *= AU2KJPERMOL
+        return energies
+    ens = load("optimizer_results.yaml")
+
+    fig, ax = plt.subplots()
+
+    ax.plot(ens, "o-", label="Cartesian")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+    ax.legend()
+    fig.tight_layout()
+    plt.show()
 
 
 def run():
@@ -806,6 +830,8 @@ def run():
         plot_bare_energies(h5=h5)
     elif args.afir:
         plot_afir()
+    elif args.opt:
+        plot_opt()
 
 
 if __name__ == "__main__":
