@@ -16,6 +16,7 @@ import time
 from distributed import Client
 from natsort import natsorted
 import numpy as np
+import versioneer
 import yaml
 
 from pysisyphus.calculators import *
@@ -130,6 +131,9 @@ def parse_args(args):
                               metavar=("ENERGIES", "OVERLAPS"),
         help="Sort precomputed energies of (excited) states by precomputed "
              "overlaps."
+    )
+    action_group.add_argument("-v", "--version", action="store_true",
+        help="Print pysisyphus version."
     )
 
     run_type_group = parser.add_mutually_exclusive_group(required=False)
@@ -1021,6 +1025,9 @@ def run():
         return
     elif args.fclean:
         clean(force=True)
+        return
+    elif args.version:
+        print(f"pysisyphus {versioneer.get_version()}")
         return
 
     print_header()

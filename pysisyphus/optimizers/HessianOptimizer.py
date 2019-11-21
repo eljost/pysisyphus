@@ -17,6 +17,7 @@ from pysisyphus.optimizers.hessian_updates import (bfgs_update,
 from pysisyphus.optimizers import line_search2
 from pysisyphus.optimizers.line_search2 import poly_line_search
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.interpolate_extrapolate import interpolate_extrapolate
 
 
 class HessianOptimizer(Optimizer):
@@ -37,7 +38,8 @@ class HessianOptimizer(Optimizer):
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
-                 small_eigval_thresh=1e-8, line_search=False, **kwargs):
+                 small_eigval_thresh=1e-8, line_search=False, hybrid=False,
+                 **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
@@ -58,7 +60,8 @@ class HessianOptimizer(Optimizer):
         self.hessian_recalc_adapt = hessian_recalc_adapt
         self.hessian_xtb = hessian_xtb
         self.small_eigval_thresh = float(small_eigval_thresh)
-        self.line_search = line_search
+        self.line_search = bool(line_search)
+        self.hybrid = bool(hybrid)
 
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
         self.hessian_recalc_in = None
@@ -186,7 +189,7 @@ class HessianOptimizer(Optimizer):
             recalc_adapt = False
 
         try:
-            self.hessian_recalc_in -= 1
+            self.hessian_recalc_in = max(self.hessian_recalc_in-1, 0)
             self.log(f"Recalculation of hessian in {self.hessian_recalc_in} cycles.")
         except TypeError:
             self.hessian_recalc_in = None
@@ -252,6 +255,7 @@ class HessianOptimizer(Optimizer):
         prev_coords = self.coords[-2]
         cur_coords = self.coords[-1]
         accept = {
+            # "cubic": lambda x: (x > 0.25) and (x < 1),
             "cubic": lambda x: (x > 2.) and (x < 1),
             "quartic": lambda x: (x > 0.) and (x <= 2),
         }
@@ -269,10 +273,15 @@ class HessianOptimizer(Optimizer):
             x = fit_result.x
             y = fit_result.y
             self.log(f"Did {deg} interpolation with x={x:.6f}.")
-            fit_step = x * prev_step
+
             # Interpolate coordinates and gradient
+            fit_step = x * prev_step
             fit_coords = prev_coords + fit_step
+            # fit_step = (1-x) * -prev_step
+            # fit_coords = cur_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
+
+            kws = {"gediis_thresh": -1, "gdiis_thresh": -1}
 
             # TODO: update step and other saved entries?!
             self.geometry.coords = fit_coords
@@ -282,8 +291,6 @@ class HessianOptimizer(Optimizer):
             self.cart_coords[-1] = self.geometry.cart_coords.copy()
             self.steps[-1] = fit_step
             cur_grad = fit_grad
-
-            # self.update_hessian()
         return cur_grad
 
     def solve_rfo(self, rfo_mat, kind="min"):
@@ -300,6 +307,7 @@ class HessianOptimizer(Optimizer):
         # Given sorted eigenvalue-indices (sorted_inds) use the first
         # (smallest eigenvalue) or the last (largest eigenvalue) index.
         step_nu = eigenvectors.T[ind]
+        # TODO: Root following like in optking?!
         nu = step_nu[-1]
         self.log(f"\tnu_{verbose}={nu:.4e}")
         # Scale eigenvector so that its last element equals 1. The

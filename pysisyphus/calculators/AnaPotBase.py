@@ -63,8 +63,8 @@ class AnaPotBase(Calculator):
         results["hessian"] = hessian
         return results
 
-    def plot(self, levels=None):
-        self.fig, self.ax = plt.subplots()
+    def plot(self, levels=None, **figkwargs):
+        self.fig, self.ax = plt.subplots(**figkwargs)
         x = np.linspace(*self.xlim, 100)
         y = np.linspace(*self.ylim, 100)
         X, Y = np.meshgrid(x, y)

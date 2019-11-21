@@ -107,7 +107,7 @@ def from_coeffs(vec, coeffs):
 def test_sd_gediis():
     geom = AnaPot.get_geom((0.4333, 3.14286, 0.))
 
-    trust = 0.1
+    trust = 0.3
     H = np.eye(geom.coords.size)
 
     ens = list()
@@ -115,7 +115,7 @@ def test_sd_gediis():
     dcs = list()
     fs = list()
     pairs = list()
-    for i in range(75):
+    for i in range(25):
         forces = geom.forces
         energy = geom.energy
 
@@ -172,6 +172,9 @@ def test_diis():
     opt_kwargs = {
         # "max_step": 0.5,
         # "trust_max": 0.1,
+        "thresh": "gau_tight",
+        # "eins": True,
+        "zwei": True,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
@@ -184,8 +187,63 @@ def test_diis():
     plt.show()
 
 
+def test_artemisin():
+    # geom = geom_from_library("birkholz/artemisin.xyz", coord_type="redund")
+    geom = geom_from_library("birkholz/artemisin.xyz")
+    calc = XTB(charge=0, mult=1, pal=4)
+    # geom = geom_from_library("birkholz/zn_edta.xyz", coord_type="redund")
+    # geom = geom_from_library("birkholz/zn_edta.xyz")
+    # calc = XTB(charge=-2, mult=1, pal=4)
+    geom.set_calculator(calc)
+
+    opt_kwargs_base = {
+        "max_cycles": 50,
+        # "max_cycles": 15,
+        # "max_cycles": 8,
+        "thresh": "gau",
+        "trust_radius": 0.5,
+        "trust_update": True,
+        "hessian_update": "damped_bfgs",
+        # "hessian_init": "fischer",
+        "hessian_init": "calc",
+        "hessian_recalc": 1,
+        "line_search": True,
+        # "hybrid": True,
+        # "dump": True,
+    }
+    opt = RFOptimizer(geom, **opt_kwargs_base)
+    opt.run()
+    H = opt.H
+    w, v = np.linalg.eigh(H)
+    print(w)
+    # import pdb; pdb.set_trace()
+
+
+def test_hess_proj():
+    geom = geom_from_library("birkholz/zn_edta.xyz")
+    H = np.eye(geom.cart_coords.size)
+    mwH = geom.mass_weigh_hessian(H)
+    eH = geom.eckart_projection(mwH)
+    w, v = np.linalg.eigh(eH)
+    import pdb; pdb.set_trace()
+
+
+def test_quad():
+    def func(x):
+        return x**2
+    def dfunc(x):
+        return 2*x
+    coords = np.array(((-2, ), (1, )))
+    energies = func(coords)
+    forces = -dfunc(coords)
+    gediis(coords, energies, forces)
+
+
 if __name__ == "__main__":
     # test_sd_gdiis()
     # test_rfo_benzene()
-    # test_sd_gediis()
-    test_diis()
+    test_sd_gediis()
+    # test_diis()
+    # test_artemisin()
+    # test_hess_proj()
+    # test_quad()

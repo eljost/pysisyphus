@@ -185,12 +185,13 @@ def test_anapot_cbm_rot():
 def plot_anapotcbm_curvature():
     pot = AnaPotCBM()
     pot.plot()
-    num = 100
+    num = 25
     xs = np.linspace(-1.25, 1.25, num=num)
     # ys = np.linspace(-0.75, 0.75, num=50)
     ys = np.linspace(-1, 1, num=num)
     X, Y = np.meshgrid(xs, ys)
     z = list()
+    neg = list()
     for x_, y_ in zip(X.flatten(), Y.flatten()):
         g = pot.get_geom((x_, y_, 0))
         H = g.hessian
@@ -198,9 +199,13 @@ def plot_anapotcbm_curvature():
         z.append(
             1 if (w < 0).any() else 0
         )
+        if (w < 0).any():
+            neg.append((x_, y_))
     Z = np.array(z).reshape(X.shape)
     ax = pot.ax
-    ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
+    # ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
+    neg = np.array(neg)
+    ax.scatter(*neg.T, c="red", zorder=10)
     plt.show()
 
 
@@ -348,6 +353,6 @@ if __name__ == "__main__":
     # anapot_tester()
     # test_anapot_cbm_rot()
     # hcn_tester()
-    # plot_anapotcbm_curvature()
+    plot_anapotcbm_curvature()
     # test_anapotcbm()
-    test_baker_16()
+    # test_baker_16()

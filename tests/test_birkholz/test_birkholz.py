@@ -6,6 +6,7 @@ import time
 
 import cloudpickle
 
+from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import geom_from_library
@@ -51,8 +52,10 @@ def test_birkholz():
     for xyz_fn, (charge, mult) in GEOMS.items():
         print(xyz_fn, charge, mult)
         geom = geom_from_library(base_path / xyz_fn, coord_type="redund")
+        # geom = geom_from_library(base_path / xyz_fn)
         # geom = geom_from_library(base_path / xyz_fn, coord_type="dlc")
         calc = XTB(charge=charge, mult=mult, pal=4)
+        # calc = ORCA("HF 3-21G", charge=charge, mult=mult, pal=4)
         # route = "HF/3-21G"
         # if xyz_fn in ("vitamin_c.xyz", "easc.xyz"):
             # route = "B3LYP/6-31G**"
@@ -63,14 +66,14 @@ def test_birkholz():
             "max_cycles": 150,
             "thresh": "gau",
             "trust_radius": 0.5,
-            # "trust_max": 0.5,
             "trust_update": True,
+            "hessian_init": "fischer",
+            "hessian_update": "damped_bfgs",
             # "hessian_update": "flowchart",
             # "hessian_update": "bfgs",
-            "hessian_update": "damped_bfgs",
-            "hessian_init": "fischer",
-            "line_search": True,
             # "dump": True,
+            "line_search": True,
+            # "gdiis": True,
         }
         opt_kwargs = opt_kwargs_base.copy()
 
@@ -105,7 +108,8 @@ def test_birkholz():
     print(f"Total runtime: {end-start:.1f} s")
     pprint(results)
     print(f"Total cycles: {tot_cycles}")
-    print(f"Total cycles (with fails): {tot_cycles_with_fails}")
+    if fails:
+        print(f"Total cycles (with fails): {tot_cycles_with_fails}")
     print(f"Fails: {fails}")
 
     opt_kwargs["time"] = time.time()

@@ -21,29 +21,6 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 
-# different sets of covalent radii for testing
-# # pyberny
-# pyb_cr = {
-    # "h": 0.38 / BOHR2ANG,
-    # "c": 0.77 / BOHR2ANG,
-    # "n": 0.75 / BOHR2ANG,
-    # "o": 0.73 / BOHR2ANG,
-    # "cl": 0.99 / BOHR2ANG,
-    # "ru": 1.26 / BOHR2ANG,
-# }
-# # dalton
-pyb_cr = {
-    "h": 0.40 / BOHR2ANG,
-    "c": 0.75 / BOHR2ANG,
-    "n": 0.71 / BOHR2ANG,
-    "o": 0.63 / BOHR2ANG,
-    "cl": 0.99 / BOHR2ANG,
-    "ru": 1.25 / BOHR2ANG,
-}
-from pysisyphus.elem_data import COVALENT_RADII as CR
-old_vals = [CR[k] for k in pyb_cr.keys()]
-CR.update(pyb_cr)
-
 
 def get_cov_radii_sum_array(atoms, coords):
     coords3d = coords.reshape(-1, 3)
@@ -202,7 +179,13 @@ class RedundantCoords:
         K_flat = np.zeros(size_ * size_)
         for pc, int_grad_item in zip(self._prim_internals, int_gradient):
             # Contract with gradient
-            dg = int_grad_item * grad_deriv_wrapper(pc.inds)
+            try:
+                dg = int_grad_item * grad_deriv_wrapper(pc.inds)
+            except (ValueError, ZeroDivisionError) as err:
+                self.log( "Error in calculation of 2nd derivative of primitive "
+                         f"internal {pc.inds}."
+                )
+                continue
             # Depending on the type of internal coordinate dg is a flat array
             # of size 36 (stretch), 81 (bend) or 144 (torsion).
             #
@@ -228,10 +211,15 @@ class RedundantCoords:
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
 
-    def project_hessian(self, H):
+    def project_hessian(self, H, shift=1000):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
         P = self.P
-        return P.dot(H).dot(P) + 1000*(np.eye(P.shape[0]) - P)
+        return P.dot(H).dot(P) + shift*(np.eye(P.shape[0]) - P)
+
+    def project_vector(self, vector):
+        """Project supplied vector onto range of B."""
+        P = self.P
+        return self.P.dot(vector)
 
     def set_rho(self):
         # TODO: remove this as it is already in optimizers/guess_hessians
@@ -478,7 +466,13 @@ class RedundantCoords:
             else:
                 fourth_atom = list(bond_set - intersect)
                 dihedral_ind = bend.tolist() + fourth_atom
-                improper_dihedrals.append(dihedral_ind)
+                # This way dihedrals may be generated that contain linear
+                # atoms and these would be undefinied. So we check for this.
+                dihed = self.calc_dihedral(coords3d, dihedral_ind)
+                if not np.isnan(dihed):
+                    improper_dihedrals.append(dihedral_ind)
+                else:
+                    self.log("Dihedral {dihedral_ind} is undefinied. Skipping it!")
 
         # Now try to create the remaining improper dihedrals.
         if (len(self.atoms) >= 4) and (len(self.dihedral_indices) == 0):
@@ -689,7 +683,7 @@ class RedundantCoords:
                 # the internal-cartesian-transformation goes bad.
                 best_cycle = (cur_cart_coords.copy(), new_internals.copy())
                 best_cycle_ind = i
-            else:
+            elif i != 0:
                 # If the conversion somehow fails we return the step
                 # saved above.
                 self.log( "Internal to cartesian failed! Using from step "
@@ -697,6 +691,10 @@ class RedundantCoords:
                 )
                 cur_cart_coords, new_internals = best_cycle
                 break
+            else:
+                raise Exception("Internal-cartesian back-transformation already "
+                                "failed in the first step. Aborting!"
+                )
             prev_internals = new_internals
 
             last_rms = cart_rms
