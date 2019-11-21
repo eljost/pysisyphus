@@ -6,7 +6,6 @@ from pysisyphus.optimizers.gdiis import gdiis, gediis
 from pysisyphus.optimizers.line_search2 import poly_line_search
 
 
-# def interpolate_extrapolate(geom, coords, energies, forces, steps,
 def interpolate_extrapolate(coords, energies, forces, steps,
                             ref_step=None, err_vecs=None, max_vecs=10,
                             gediis_thresh=1e-2, gdiis_thresh=2.5e-3):
@@ -26,7 +25,7 @@ def interpolate_extrapolate(coords, energies, forces, steps,
     interpol_step = None
     interpol_forces = None
     interpol_energy = None
-    # import pdb; pdb.set_trace()
+
     if not diis_result or ((diis_result.name == "GDIIS") and (diis_result.N == 2)):
         cur_energy = energies[-1]
         prev_energy = energies[-2]
@@ -36,11 +35,8 @@ def interpolate_extrapolate(coords, energies, forces, steps,
         interpol_step, interpol_gradient, interpol_energy = poly_line_search(
                                                                 cur_energy, prev_energy,
                                                                 cur_grad, prev_grad,
-                                                                prev_step
+                                                                prev_step, coords,
         )
-        # print("\tip step", interpol_step)
-        # print("\tip grad", interpol_gradient)
-        # print("\tip ener", interpol_energy)
         if ((interpol_step is not None)
             and (interpol_gradient is not None)
             and (interpol_energy is not None)):
