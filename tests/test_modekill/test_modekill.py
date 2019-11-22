@@ -9,8 +9,8 @@ from pysisyphus.irc import ModeKill
 from pysisyphus.helpers import geom_from_xyz_file, eigval_to_wavenumber
 
 
-def test_modekill_xtb(datadir):
-    fn = datadir / "shaked.geom_000.xyz"
+def test_modekill_xtb(data_dir):
+    fn = data_dir / "shaked.geom_000.xyz"
     geom = geom_from_xyz_file(fn)
     calc = XTB(pal=4)
     geom.set_calculator(calc)
@@ -28,8 +28,8 @@ def test_modekill_xtb(datadir):
     assert nus[0] == pytest.approx(-98.2557)
 
 
-def test_modekill_g16(datadir):
-    fn = datadir / "ethane_shaked.xyz"
+def test_modekill_g16(data_dir):
+    fn = data_dir / "ethane_shaked.xyz"
     geom = geom_from_xyz_file(fn)
     calc = Gaussian16(route="bp86 sto-3g")
     geom.set_calculator(calc)

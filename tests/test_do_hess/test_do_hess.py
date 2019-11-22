@@ -6,13 +6,13 @@ from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.helpers import geom_from_xyz_file, do_final_hessian
 
 
-def test_do_final_hessian(datadir):
-    fn = datadir / "final_geometry.xyz"
+def test_do_final_hessian(data_dir):
+    fn = data_dir / "final_geometry.xyz"
     geom = geom_from_xyz_file(fn, coord_type="redund")
     calc = ORCA("")
 
-    grad = np.load(datadir / "grad.npy")
-    hess = np.load(datadir / "hess.npy")
+    grad = np.load(data_dir / "grad.npy")
+    hess = np.load(data_dir / "hess.npy")
     geom.hessian = hess
     geom.gradient = grad
 
