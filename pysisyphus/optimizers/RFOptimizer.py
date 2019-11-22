@@ -15,7 +15,7 @@ from pysisyphus.optimizers.interpolate_extrapolate import interpolate_extrapolat
 
 class RFOptimizer(HessianOptimizer):
 
-    def __init__(self, geom, line_search=False, gediis=False, gdiis=False,
+    def __init__(self, geom, line_search=True, gediis=False, gdiis=True,
                  *args, **kwargs):
         super().__init__(geom, *args, **kwargs)
 
