@@ -31,16 +31,19 @@ class ORCA(OverlapCalculator):
 
     conf_key = "orca"
 
-    def __init__(self, keywords, blocks="", gbw=None, **kwargs):
+    def __init__(self, keywords, blocks="", gbw=None, mem=2000, **kwargs):
         super().__init__(**kwargs)
 
         self.keywords = keywords
         self.blocks = blocks
         self.gbw = gbw
+        self.mem = int(mem)
 
         assert (("pal" not in keywords.lower())
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
                 "allowed! Use 'pal: n' in the 'calc' section instead."
+        assert "maxcore" not in blocks.lower(), "maxcore not allowed! " \
+                "Use 'mem: n' in the 'calc' section instead!"
 
         self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian",
                         "cis", "molden:orca.molden", "hess")
@@ -58,6 +61,7 @@ class ORCA(OverlapCalculator):
         {moinp}
 
         %pal nprocs {pal} end
+        %maxcore {mem}
 
         {blocks}
 
@@ -99,6 +103,7 @@ class ORCA(OverlapCalculator):
                                 calc_type=calc_type,
                                 moinp=self.get_moinp_str(self.gbw),
                                 pal=self.pal,
+                                mem=self.mem,
                                 blocks=self.get_block_str(),
                                 coords=coords,
                                 charge=self.charge,

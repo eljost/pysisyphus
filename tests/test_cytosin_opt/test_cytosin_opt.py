@@ -20,7 +20,7 @@ from pysisyphus.calculators.PySCF import PySCF
 ])
 def test_cytosin_opt(calc_cls, calc_kwargs):
     geom = geom_from_library("cytosin.xyz", coord_type="redund")
-    calc = calc_cls(**calc_kwargs)
+    calc = calc_cls(**calc_kwargs, mem=1000)
     geom.set_calculator(calc)
 
     opt_kwargs = {
