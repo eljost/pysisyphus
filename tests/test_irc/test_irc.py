@@ -5,6 +5,7 @@ import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.irc.Euler import Euler
+from pysisyphus.irc.EulerPC import EulerPC
 from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 from pysisyphus.irc.IMKMod import IMKMod
@@ -98,10 +99,37 @@ def test_lqa():
     plt.show()
 
 
+def test_eulerpc():
+    ts_coords = (0.61173, 1.49297, 0.)
+    geom = AnaPot.get_geom(ts_coords)
+
+    irc_kwargs = {
+        # "step_length": 0.5,
+        # "step_length": 1.5,
+        # "step_length": 150,
+        # "step_length": 1.5,
+        # "step_length": .2,
+        # "step_length": .4,
+        # "step_length": .4,
+        "step_length": .3,
+        # "step_length": .3,
+    }
+    irc = EulerPC(geom, **irc_kwargs)
+    irc.run()
+
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    ax.plot(*irc.all_coords_umw.T[:2], "ro-")
+    plt.show()
+
+
+
 if __name__ == "__main__":
     # irc = test_imk()
     # irc = test_rk4()
     # plot_anapot_irc(irc)
     # irc = test_gs()
     # plot_anapot_irc(irc)
-    test_lqa()
+    # test_lqa()
+    test_eulerpc()

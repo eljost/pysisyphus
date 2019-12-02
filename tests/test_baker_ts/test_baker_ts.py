@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import itertools as it
+from pathlib import Path
 from pprint import pprint
+import shutil
 import time
 
 import numpy as np
@@ -16,7 +18,6 @@ from pysisyphus.color import red, green
 def print_summary(converged, failed, cycles, ran, runid):
     ran_ = f"{ran+1:02d}"
     print(f"converged: {converged:02d}/{ran_}")
-    # print(f"   failed: {failed:02d}/{ran_}")
     print(f"   failed: {failed:d}")
     print(f"   cycles: {cycles}")
     print(f"      run: {runid}")
@@ -62,7 +63,12 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
         cycles += opt.cur_cycle + 1
         try:
             assert np.allclose(geom.energy, ref_energy)
+            # Backup TS if optimization succeeded
+            # ts_xyz_fn = Path(name).stem + "_opt.xyz"
+            # out_path = Path("/scratch/programme/pysisyphus/xyz_files/baker_ts_opt/")
             print(green(f"\t@Energies MATCH for {name}! ({geom.energy:.6f}, {ref_energy:.6f})"))
+            with open(out_path / ts_xyz_fn, "w") as handle:
+                handle.write(geom.as_xyz())
         except AssertionError as err:
             print(red(f"\t@Calculated energy {geom.energy:.6f} and reference "
                       f"energy {ref_energy:.6f} DON'T MATCH'."))
