@@ -157,7 +157,6 @@ class IRC:
         trans_vec = mm_sqr_inv.dot(mw_trans_vec)
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
 
-
         if self.downhill:
             step = np.zeros_like(self.transition_vector)
         elif self.displ == "length":
