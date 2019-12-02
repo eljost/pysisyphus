@@ -13,17 +13,13 @@
 # [3.1] http://www.rsc.org/suppdata/c7/cp/c7cp03722h/c7cp03722h1.pdf
 #       Corresponding SI
 
-from pprint import pprint
-
-
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
 # from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.irc.DWI import DWI
 from pysisyphus.irc.IRC import IRC
-from pysisyphus.optimizers.hessian_updates import bfgs_update
+from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 
 
 class EulerPC(IRC):
@@ -122,12 +118,12 @@ class EulerPC(IRC):
                 try:
                     prev_coords = k_coords[-2]
                     osc_norm = np.linalg.norm(cur_coords - prev_coords)
+                    # TODO: handle this by restarting everyhting with a smaller stepsize.
+                    # Check 10.1039/c7cp03722h SI
                     if osc_norm <= corr_step_length:
-                        print("Detected oscillation. Breaking!")
-                        # TODO: handle this by restarting everyhting with a smaller stepsize.
-                        # Check 10.1039/c7cp03722h SI
-                        assert False, "This case is not yet handled"
-                        break
+                        self.log("Detected oscillation. This is not handled right now!")
+                        # assert False, "This case is not yet handled"
+                        # break
                 except IndexError:
                     pass
             richardson[(k, 0)] = cur_coords
@@ -135,12 +131,12 @@ class EulerPC(IRC):
             # Refine using Richardson extrapolation
             # Set additional values using Richard extrapolation
             for j in range(1, k+1):
-                # print(f"k={k},j={j}")
                 richardson[(k, j)] = ((2**j) * richardson[(k, j-1)] - richardson[(k-1, j-1)]) \
                                      / (2**j-1)
             if k > 0:
                 # Error estimate according to Numerical Recipes Eq. (17.3.9)
                 # error = np.linalg.norm(richardson[(k,k)] - richardson[(k,k-1)])
+
                 # RMS error
                 error = np.sqrt(np.mean((richardson[(k,k)] - richardson[(k,k-1)])**2))
                 errors.append(error)
