@@ -113,10 +113,9 @@ class EulerPC(IRC):
 
             # step_ = euler_step_length * -grad_ / np.linalg.norm(grad_)
         else:
-            # raise Exception("Handle case where Euler integration does not converge. "
-                            # "Kästner paper suggests that IRC is probably converged."
-            # )
+            # Assume convergence when predictor euler integration does not converge.
             self.mw_coords = euler_mw_coords
+            self.converged = True
             return
 
         # for i in range(500):
