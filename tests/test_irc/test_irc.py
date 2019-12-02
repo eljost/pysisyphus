@@ -109,15 +109,8 @@ def test_eulerpc():
     geom = MullerBrownPot .get_geom(ts_coords)
 
     irc_kwargs = {
-        # "step_length": 0.5,
-        # "step_length": 1.5,
-        # "step_length": 150,
-        # "step_length": 1.5,
-        # "step_length": .2,
-        # "step_length": .4,
-        # "step_length": .4,
-        # "step_length": .3,
         "step_length": .1,
+        # "step_length": .2,
         "displ": "length",
         "displ_length": .05,
         # "hessian_update": "bfgs",

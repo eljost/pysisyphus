@@ -3,16 +3,18 @@ import logging
 __all__ = [
     "DampedVelocityVerlet",
     "Euler",
+    "EulerPC",
+    "LQA",
     "GonzalesSchlegel",
     "IMKMod",
-    "RK4",
-    "LQA",
     "ModeKill",
+    "RK4",
 ]
 
-from pysisyphus.irc.RK4 import RK4
+from pysisyphus.irc.EulerPC import EulerPC
 from pysisyphus.irc.LQA import LQA
 from pysisyphus.irc.ModeKill import ModeKill
+from pysisyphus.irc.RK4 import RK4
 
 logger = logging.getLogger("irc")
 logger.setLevel(logging.DEBUG)
