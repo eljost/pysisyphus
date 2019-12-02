@@ -52,8 +52,10 @@ class IRC:
         # Backup TS data
         self.ts_coords = self.coords.copy()
         self.ts_mw_coords = self.mw_coords.copy()
-        self.ts_energy = copy.copy(self.geometry.energy)
-        self.ts_hessian = copy.copy(self.geometry.hessian)
+        # self.ts_gradient = self.geometry.gradient.copy()
+        self.ts_mw_gradient = self.mw_gradient.copy()
+        self.ts_energy = self.energy.copy()
+        self.ts_hessian = self.geometry.hessian.copy()
 
         self.cur_step = 0
         self.converged = False

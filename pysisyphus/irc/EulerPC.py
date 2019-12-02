@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 # [1  ] https://aip.scitation.org/doi/pdf/10.1063/1.3514202?class=pdf
 #       Original EulerPC
 #       Hratchian, Schlegel, 2010
@@ -13,16 +12,23 @@
 # [3.1] http://www.rsc.org/suppdata/c7/cp/c7cp03722h/c7cp03722h1.pdf
 #       Corresponding SI
 
+
 import numpy as np
 
-from pysisyphus.Geometry import Geometry
-# from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.irc.DWI import DWI
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 
 
 class EulerPC(IRC):
+
+    def __init__(self, *args, hessian_update="bofill", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hessian_update = {
+            "bfgs": bfgs_update,
+            "bofill": bofill_update,
+        }
+        self.hessian_update_func = self.hessian_update[hessian_update]
 
     def prepare(self, *args, **kwargs):
         super().prepare(*args, **kwargs)
@@ -32,10 +38,14 @@ class EulerPC(IRC):
         self.dwi = DWI()
         mw_grad = self.mw_gradient
         energy = self.energy
-        # TODO: Hessian update
-        # dH, _ = bfgs_update(self.ts_hessian, dx, dg)
-        mw_hessian = self.mw_hessian
-        self.dwi.update(self.mw_coords, energy, mw_grad, mw_hessian)
+        self.mw_H = self.geometry.mass_weigh_hessian(self.ts_hessian)
+
+        dx = self.mw_coords - self.ts_mw_coords
+        dg = mw_grad - self.ts_mw_gradient
+        dH, key = self.hessian_update_func(self.ts_hessian, dx, dg)
+        self.log(f"Did {key} hessian update.")
+        self.mw_H += dH
+        self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_H.copy())
 
     def step(self):
         ##################
@@ -47,12 +57,16 @@ class EulerPC(IRC):
 
         # Simple euler integration
         euler_step_length = self.step_length / 250
-        # TODO: Avoid recalculation of hessian
-        mw_hessian = self.mw_hessian
 
+        # TODO: Avoid recalculation of hessian
+        # mw_hessian = self.mw_hessian
+
+        # def taylor_gradient(step):
+            # """Return gradient from Taylor expansion of energy to 2nd order."""
+            # return mw_grad + mw_hessian @ step
         def taylor_gradient(step):
             """Return gradient from Taylor expansion of energy to 2nd order."""
-            return mw_grad + mw_hessian @ step
+            return mw_grad + self.mw_H @ step
 
         # Create a copy of the inital coordinates for the determination
         # of the actual step size in the predictor Euler integration.
@@ -88,8 +102,13 @@ class EulerPC(IRC):
         self.mw_coords = euler_mw_coords
         mw_grad = self.mw_gradient
         energy = self.energy
-        mw_hessian = self.mw_hessian
-        self.dwi.update(self.mw_coords, energy, mw_grad, mw_hessian)
+
+        dx = self.mw_coords - self.irc_mw_coords[-1]
+        dg = mw_grad - self.irc_mw_gradients[-1]
+        dH, key = self.hessian_update_func(self.mw_H, dx, dg)
+        self.log(f"Did {key} hessian update.")
+        self.mw_H += dH
+        self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
 
         ##################
         # CORRECTOR STEP #

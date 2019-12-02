@@ -10,6 +10,9 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 from pysisyphus.irc.IMKMod import IMKMod
 from pysisyphus.irc import RK4
+# from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
+# from pysi
+from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 
 
 def get_geom():
@@ -100,8 +103,10 @@ def test_lqa():
 
 
 def test_eulerpc():
-    ts_coords = (0.61173, 1.49297, 0.)
-    geom = AnaPot.get_geom(ts_coords)
+    # ts_coords = (0.61173, 1.49297, 0.)
+    # geom = AnaPot.get_geom(ts_coords)
+    ts_coords = (-0.822, 0.624, 0.)
+    geom = MullerBrownPot .get_geom(ts_coords)
 
     irc_kwargs = {
         # "step_length": 0.5,
@@ -111,8 +116,12 @@ def test_eulerpc():
         # "step_length": .2,
         # "step_length": .4,
         # "step_length": .4,
-        "step_length": .3,
         # "step_length": .3,
+        "step_length": .1,
+        "displ": "length",
+        "displ_length": .05,
+        # "hessian_update": "bfgs",
+        "hessian_update": "bofill",
     }
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
@@ -121,8 +130,9 @@ def test_eulerpc():
     calc.plot()
     ax = calc.ax
     ax.plot(*irc.all_coords_umw.T[:2], "ro-")
+    ax.set_xlim(-1.1, 0.1)
+    ax.set_ylim( 0.3, 1.6)
     plt.show()
-
 
 
 if __name__ == "__main__":
