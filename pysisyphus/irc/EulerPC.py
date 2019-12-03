@@ -22,8 +22,10 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 
 class EulerPC(IRC):
 
-    def __init__(self, *args, hessian_update="bofill", **kwargs):
+    def __init__(self, *args, hessian_recalc=None, hessian_update="bofill", **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.hessian_recalc = hessian_recalc
         self.hessian_update = {
             "bfgs": bfgs_update,
             "bofill": bofill_update,
@@ -109,9 +111,13 @@ class EulerPC(IRC):
 
         dx = self.mw_coords - self.irc_mw_coords[-1]
         dg = mw_grad - self.irc_mw_gradients[-1]
-        dH, key = self.hessian_update_func(self.mw_H, dx, dg)
-        self.log(f"Did {key} hessian update.")
-        self.mw_H += dH
+        if self.hessian_recalc and (self.cur_step % self.hessian_recalc == 0):
+            self.mw_H = self.mw_hessian
+            self.log("Calculated excact hessian")
+        else:
+            dH, key = self.hessian_update_func(self.mw_H, dx, dg)
+            self.mw_H += dH
+            self.log(f"Did {key} hessian update.")
         self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
 
         ##################
