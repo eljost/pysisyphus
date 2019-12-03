@@ -54,7 +54,7 @@ class IRC:
         self.ts_mw_coords = self.mw_coords.copy()
         # self.ts_gradient = self.geometry.gradient.copy()
         self.ts_mw_gradient = self.mw_gradient.copy()
-        self.ts_energy = self.energy.copy()
+        self.ts_energy = self.energy
         self.ts_hessian = self.geometry.hessian.copy()
 
         self.cur_step = 0
@@ -230,10 +230,13 @@ class IRC:
                 break_msg = "Integrator indicated convergence!"
             elif rms_grad <= self.rms_grad_thresh:
                 break_msg = "RMS of gradient converged!"
+                self.converged = True
+            # TODO: Allow some threshold?
             elif this_energy > last_energy:
                 break_msg = "Energy increased!"
             elif abs(last_energy - this_energy) <= 1e-6:
                 break_msg = "Energy converged!"
+                self.converged = True
 
             if break_msg:
                 self.table.print(break_msg)
@@ -251,7 +254,8 @@ class IRC:
 
     def run(self):
         if self.forward:
-            print(highlight_text("Forward"))
+            print()
+            print(highlight_text("IRC - Forward"))
             # try:
                 # self.irc("forward")
             # except Exception as error:
@@ -269,7 +273,8 @@ class IRC:
         self.all_energies.append(self.ts_energy)
 
         if self.backward:
-            print(highlight_text("Backward"))
+            print()
+            print(highlight_text("IRC - Backward"))
             # try:
                 # self.irc("backward")
             # except Exception as error:
@@ -283,7 +288,8 @@ class IRC:
             self.write_trj(".", "backward", self.backward_coords)
 
         if self.downhill:
-            print(highlight_text("Downhill"))
+            print()
+            print(highlight_text("IRC - Downhill"))
             self.irc("downhill")
             self.downhill_coords = self.irc_mw_coords
             self.downhill_energies = self.irc_energies
