@@ -37,6 +37,7 @@ for i, (xyz_fn, (charge, mult)) in enumerate(meta_data.items()):
         # "hessian_recalc": 5,
         "step_length": .4,
         "hessian_recalc": 1,
+        "backward": False,
     }
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
