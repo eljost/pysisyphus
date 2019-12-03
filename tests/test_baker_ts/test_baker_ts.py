@@ -64,7 +64,7 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
         try:
             assert np.allclose(geom.energy, ref_energy)
             # Backup TS if optimization succeeded
-            # ts_xyz_fn = Path(name).stem + "_opt.xyz"
+            # ts_xyz_fn = Path(name).stem + "_opt_ts.xyz"
             # out_path = Path("/scratch/programme/pysisyphus/xyz_files/baker_ts_opt/")
             print(green(f"\t@Energies MATCH for {name}! ({geom.energy:.6f}, {ref_energy:.6f})"))
             with open(out_path / ts_xyz_fn, "w") as handle:
