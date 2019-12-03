@@ -125,6 +125,43 @@ def get_baker_ts_geoms(**kwargs):
     return geoms, meta_data
 
 
+def get_baker_opt_ts_geoms(**kwargs):
+    meta_data = {
+        "01_hcn_opt_ts.xyz": (0, 1),
+        # "02_hcch_opt_ts.xyz": (0, 1),
+        "03_h2co_opt_ts.xyz": (0, 1),
+        "04_ch3o_opt_ts.xyz": (0, 2),
+        "05_cyclopropyl_opt_ts.xyz": (0, 2),
+        "06_bicyclobutane_opt_ts.xyz": (0, 1),
+        "07_bicyclobutane_opt_ts.xyz": (0, 1),
+        "08_formyloxyethyl_opt_ts.xyz": (0, 2),
+        # "09_parentdieslalder_opt_ts.xyz": (0, 1),
+        # "10_tetrazine_opt_ts.xyz": (0, 1),
+        # "11_trans_butadiene_opt_ts.xyz": (0, 1),
+        # "12_ethane_h2_abstraction_opt_ts.xyz": (0, 1),
+        "13_hf_abstraction_opt_ts.xyz": (0, 1),
+        "14_vinyl_alcohol_opt_ts.xyz": (0, 1),
+        # "15_hocl_opt_ts.xyz": (0, 1),
+        "16_h2po4_anion_opt_ts.xyz": (-1, 1),
+        # "17_claisen_opt_ts.xyz": (0, 1),
+        "18_silyene_insertion_opt_ts.xyz": (0, 1),
+        "19_hnccs_opt_ts.xyz": (0, 1),
+        "20_hconh3_cation_opt_ts.xyz": (1, 1),
+        "21_acrolein_rot_opt_ts.xyz": (0, 1),
+        # "22_hconhoh_opt_ts.xyz": (0, 1),
+        "23_hcn_h2_opt_ts.xyz": (0, 1),
+        "24_h2cnh_opt_ts.xyz": (0, 1),
+        "25_hcnh2_opt_ts.xyz": (0, 1),
+    }
+    baker_ts_path = THIS_DIR / "../xyz_files/baker_opt_ts"
+    geoms = {
+        xyz_fn: geom_from_xyz_file(baker_ts_path / xyz_fn, **kwargs)
+        for xyz_fn in meta_data.keys()
+    }
+
+    return geoms, meta_data
+
+
 def align_geoms(geoms):
     # http://nghiaho.com/?page_id=671#comment-559906
     first_geom = geoms[0]
