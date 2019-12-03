@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
+import shutil
+
 from pysisyphus.helpers import get_baker_opt_ts_geoms
 from pysisyphus.color import green, red
 from pysisyphus.calculators import Gaussian16
@@ -19,7 +22,7 @@ meta_data = {
 
 for i, (xyz_fn, (charge, mult)) in enumerate(meta_data.items()):
     geom = geoms[xyz_fn]
-    print(f"{i:02d}: {xyz_fn} ({charge},{mult})")
+    print(f"@{i:02d}: {xyz_fn} ({charge},{mult})")
 
     calc_kwargs = {
         "route": "HF/3-21G",
@@ -30,11 +33,17 @@ for i, (xyz_fn, (charge, mult)) in enumerate(meta_data.items()):
     geom.set_calculator(Gaussian16(**calc_kwargs))
 
     irc_kwargs = {
-        "step_length": .2,
-        "hessian_recalc": 5,
+        # "step_length": .2,
+        # "hessian_recalc": 5,
+        "step_length": .4,
+        "hessian_recalc": 1,
     }
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
     col = colors[irc.converged]
     print()
-    print(col(f"Converged: {irc.converged}"))
+    print(col(f"@Converged: {irc.converged}"))
+    src = "finished_irc.trj"
+    dst = Path(xyz_fn).stem + "_finished_irc.trj"
+    shutil.copy(src, dst)
+    print(f"@Copied '{src}' to '{dst}'")
