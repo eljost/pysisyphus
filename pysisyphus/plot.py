@@ -810,7 +810,12 @@ def plot_irc(h5):
         energies = handle["energies"][:]
         gradients = handle["gradients"][:]
         rms_grad_thresh = handle["rms_grad_thresh"][()]
-    energies -= energies.min()
+        try:
+            ts_index = handle["ts_index"][()]
+        except KeyError:
+            ts_index = None
+
+    energies -= energies[0]
     energies *= AU2KJPERMOL
 
     cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
@@ -837,6 +842,12 @@ def plot_irc(h5):
     ax2.set_title("max(gradient)")
     ax2.set_xlabel("IRC / amu$^{\\frac{1}{2}}$ bohr")
     ax2.set_ylabel("Hartree / bohr")
+
+    if ts_index:
+        x = cds[ts_index]
+        for ax, arr in ((ax0, energies), (ax1, rms_grads), (ax2, max_grads)):
+            xy = (x, arr[ts_index])
+            ax.annotate("TS", xy, fontsize=12, fontweight="bold")
 
     fig.suptitle("IRC")
 

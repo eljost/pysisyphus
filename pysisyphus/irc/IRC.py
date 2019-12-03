@@ -49,13 +49,16 @@ class IRC:
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
 
-        self.all_coords = list()
         self.all_energies = list()
+        self.all_coords = list()
+        self.all_gradients = list()
+        self.all_mw_coords = list()
+        self.all_mw_gradients = list()
 
-        # Backup TS data
+        # Calculate data at TS and create backup
         self.ts_coords = self.coords.copy()
         self.ts_mw_coords = self.mw_coords.copy()
-        # self.ts_gradient = self.geometry.gradient.copy()
+        self.ts_gradient = self.gradient.copy()
         self.ts_mw_gradient = self.mw_gradient.copy()
         self.ts_energy = self.energy
         self.ts_hessian = self.geometry.hessian.copy()
@@ -273,58 +276,65 @@ class IRC:
         if not dumped:
             self.dump_data
 
+    def set_data(self, prefix):
+        energies_name = f"{prefix}_energies"
+        coords_name = f"{prefix}_coords"
+        grad_name = f"{prefix}_gradients"
+        mw_coords_name = f"{prefix}_mw_coords"
+        mw_grad_name = f"{prefix}_mw_gradients"
+
+        setattr(self, coords_name, self.irc_coords)
+        setattr(self, grad_name, self.irc_gradients)
+        setattr(self, mw_coords_name, self.irc_mw_coords)
+        setattr(self, mw_grad_name, self.irc_mw_gradients)
+        setattr(self, energies_name, self.irc_energies)
+
+        self.all_energies.extend(getattr(self, energies_name))
+        self.all_coords.extend(getattr(self, coords_name))
+        self.all_gradients.extend(getattr(self, grad_name))
+        self.all_mw_coords.extend(getattr(self, mw_coords_name))
+        self.all_mw_gradients.extend(getattr(self, mw_grad_name))
+
+        setattr(self, f"{prefix}_step", self.cur_step)
+        self.write_trj(".", prefix, getattr(self, mw_coords_name))
+
     def run(self):
         if self.forward:
             print("\n" + highlight_text("IRC - Forward") + "\n")
-            # try:
-                # self.irc("forward")
-            # except Exception as error:
-                # logging.error(error)
             self.irc("forward")
-            self.forward_coords = self.irc_mw_coords
-            self.forward_energies = self.irc_energies
-            self.all_coords.extend(self.forward_coords)
-            self.all_energies.extend(self.forward_energies)
-            self.forward_step = self.cur_step
-            self.write_trj(".", "forward", self.forward_coords)
+            self.set_data("forward")
 
         # Add TS/starting data
-        self.all_coords.append(self.ts_mw_coords)
         self.all_energies.append(self.ts_energy)
+        self.all_coords.append(self.ts_coords)
+        self.all_gradients.append(self.ts_gradient)
+        self.all_mw_coords.append(self.ts_mw_coords)
+        self.all_mw_gradients.append(self.ts_mw_gradient)
+        self.ts_index = len(self.all_energies) - 1
 
         if self.backward:
             print("\n" + highlight_text("IRC - Backward") + "\n")
-            # try:
-                # self.irc("backward")
-            # except Exception as error:
-                # logging.error(error)
             self.irc("backward")
-            self.backward_coords = self.irc_mw_coords
-            self.backward_energies = self.irc_energies
-            self.all_coords.extend(self.backward_coords)
-            self.all_energies.extend(self.backward_energies)
-            self.backward_step = self.cur_step
-            self.write_trj(".", "backward", self.backward_coords)
+            self.set_data("backward")
 
         if self.downhill:
             print("\n" + highlight_text("IRC - Downhill") + "\n")
             self.irc("downhill")
-            self.downhill_coords = self.irc_mw_coords
-            self.downhill_energies = self.irc_energies
-            self.all_coords.extend(self.downhill_coords)
-            self.all_energies.extend(self.downhill_energies)
-            self.downhill_step = self.cur_step
-            self.write_trj(".", "downhill", self.downhill_coords)
+            self.set_data("downhill")
 
-        self.all_coords = np.array(self.all_coords)
+        self.all_mw_coords = np.array(self.all_mw_coords)
         self.all_energies = np.array(self.all_energies)
         self.postprocess()
         if not self.downhill:
             self.write_trj(".", "finished")
 
-        # Right now self.all_coords is still in mass-weighted coordinates.
+            # Dump the whole IRC to HDF5
+            dump_fn = "finished_" + self.dump_fn
+            self.dump_data(dump_fn, full=True)
+
+        # Right now self.all_mw_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.
-        self.all_coords_umw = self.all_coords / self.geometry.masses_rep**0.5
+        self.all_mw_coords_umw = self.all_mw_coords / self.geometry.masses_rep**0.5
 
     def postprocess(self):
         pass
@@ -333,11 +343,11 @@ class IRC:
         path = pathlib.Path(path)
         atoms = self.geometry.atoms
         if coords is None:
-            coords = self.all_coords
+            coords = self.all_mw_coords
         coords = coords.copy()
         coords /= self.geometry.masses_rep**0.5
         coords = coords.reshape(-1, len(atoms), 3) * BOHR2ANG
-        # all_coords = self.all_coords.flatten()
+        # all_mw_coords = self.all_mw_coords.flatten()
         trj_string = make_trj_str(atoms, coords, comments=self.all_energies)
         trj_fn = f"{prefix}_irc.trj"
         with open(path / trj_fn, "w") as handle:
@@ -353,15 +363,35 @@ class IRC:
         with open(path / first_fn, "w") as handle:
             handle.write(make_xyz_str(atoms, last_coords))
 
-    def dump_data(self, dump_fn=None):
+    def get_irc_data(self):
         data_dict = {
             "energies": np.array(self.irc_energies, dtype=float),
             "coords": np.array(self.irc_coords, dtype=float),
             "gradients": np.array(self.irc_gradients, dtype=float),
             "mw_coords": np.array(self.irc_mw_coords, dtype=float),
             "mw_gradients": np.array(self.irc_mw_gradients, dtype=float),
-            "atoms": np.array(self.geometry.atoms, dtype="S")
         }
+        return data_dict
+
+    def get_full_irc_data(self):
+        data_dict = {
+            "energies": np.array(self.all_energies, dtype=float),
+            "coords": np.array(self.all_coords, dtype=float),
+            "gradients": np.array(self.all_gradients, dtype=float),
+            "mw_coords": np.array(self.all_mw_coords, dtype=float),
+            "mw_gradients": np.array(self.all_mw_gradients, dtype=float),
+            "ts_index": np.array(self.ts_index, dtype=int),
+        }
+        return data_dict
+
+    def dump_data(self, dump_fn=None, full=False):
+        get_data = self.get_full_irc_data if full else self.get_irc_data
+        data_dict = get_data()
+
+        data_dict.update({
+                "atoms": np.array(self.geometry.atoms, dtype="S"),
+                "rms_grad_thresh": np.array(self.rms_grad_thresh),
+        })
 
         if dump_fn is None:
             dump_fn = self.dump_fn
@@ -369,6 +399,3 @@ class IRC:
         with h5py.File(dump_fn, "w") as handle:
             for key, val in data_dict.items():
                 handle.create_dataset(name=key, dtype=val.dtype, data=val)
-
-            handle.create_dataset(name="rms_grad_thresh",
-                                  data=np.float(self.rms_grad_thresh))
