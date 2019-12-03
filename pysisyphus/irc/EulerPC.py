@@ -137,7 +137,7 @@ class EulerPC(IRC):
             while True:
                 k_coords.append(cur_coords.copy())
                 if cur_length >= self.step_length:
-                    self.log(f"\tk={k:02d} points={points:04d} "
+                    self.log(f"\tk={k:02d} points={points: >4d} "
                              f"step_length={corr_step_length:.4f} Δs={cur_length:.4f}")
                     break
                 energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
