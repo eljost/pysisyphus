@@ -12,7 +12,7 @@ import numpy as np
 
 from pysisyphus.xyzloader import make_trj_str, make_xyz_str
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import check_for_stop_sign, highlight_text
+from pysisyphus.helpers import check_for_stop_sign, highlight_text, eigval_to_wavenumber
 from pysisyphus.TablePrinter import TablePrinter
 
 
@@ -105,7 +105,8 @@ class IRC:
         return self.geometry.mw_hessian
 
     def log(self, msg):
-        self.logger.debug(f"step {self.cur_step:03d}, {msg}")
+        # self.logger.debug(f"step {self.cur_step:03d}, {msg}")
+        self.logger.debug(msg)
 
     # def un_massweight(self, vec):
         # return vec * np.sqrt(self.geometry.masses_rep)
@@ -154,6 +155,8 @@ class IRC:
         neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
         min_eigval = eigvals[self.mode]
+        self.log(f"Transition vector is mode {self.mode} with wavenumber "
+                 f"{eigval_to_wavenumber(min_eigval):.2f} cm⁻¹.")
         mw_trans_vec = eigvecs[:,self.mode]
         # Un-mass-weight the transition vector
         trans_vec = mm_sqr_inv.dot(mw_trans_vec)
@@ -196,6 +199,7 @@ class IRC:
 
         self.table.print_header()
         while True:
+            self.log(highlight_text(f"IRC step {self.cur_step:03d}") + "\n")
             if self.cur_step == self.max_cycles:
                 print("IRC steps exceeded. Stopping.")
                 print()
@@ -254,8 +258,7 @@ class IRC:
 
     def run(self):
         if self.forward:
-            print()
-            print(highlight_text("IRC - Forward"))
+            print("\n" + highlight_text("IRC - Forward") + "\n")
             # try:
                 # self.irc("forward")
             # except Exception as error:
@@ -273,8 +276,7 @@ class IRC:
         self.all_energies.append(self.ts_energy)
 
         if self.backward:
-            print()
-            print(highlight_text("IRC - Backward"))
+            print("\n" + highlight_text("IRC - Backward") + "\n")
             # try:
                 # self.irc("backward")
             # except Exception as error:
@@ -288,8 +290,7 @@ class IRC:
             self.write_trj(".", "backward", self.backward_coords)
 
         if self.downhill:
-            print()
-            print(highlight_text("IRC - Downhill"))
+            print("\n" + highlight_text("IRC - Downhill") + "\n")
             self.irc("downhill")
             self.downhill_coords = self.irc_mw_coords
             self.downhill_energies = self.irc_energies

@@ -127,6 +127,7 @@ class EulerPC(IRC):
         all_coords = list()
         richardson = dict()
         errors = list()
+        self.log("Starting mBS integration")
         for k in range(10):
             points = 10*(2**k) + 1
             corr_step_length  = self.step_length / (points - 1)
@@ -136,9 +137,8 @@ class EulerPC(IRC):
             while True:
                 k_coords.append(cur_coords.copy())
                 if cur_length >= self.step_length:
-                    self.log(f"mBS integration with k={k} and "
-                             f"step_length={corr_step_length:.6f} "
-                             f"converged with total step length={cur_length:.6f}")
+                    self.log(f"\tk={k:02d} points={points:04d} "
+                             f"step_length={corr_step_length:.4f} Δs={cur_length:.4f}")
                     break
                 energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
                 cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
@@ -172,7 +172,7 @@ class EulerPC(IRC):
                 error = np.sqrt(np.mean((richardson[(k,k)] - richardson[(k,k-1)])**2))
                 errors.append(error)
                 if error <= 1e-5:
-                    self.log(f"Extrapolation converged (error={error:.4e})!")
+                    self.log(f"mBS integration converged (error={error:.4e})!")
                     break
             all_coords.append(np.array(k_coords))
         else:
