@@ -219,11 +219,17 @@ class IRC:
 
             # Do macroiteration/IRC step to update the geometry
             self.step()
+
             # Calculate energy and gradient on the new geometry
-            self.irc_mw_coords.append(self.mw_coords)
-            self.irc_gradients.append(self.gradient)
-            self.irc_mw_gradients.append(self.mw_gradient)
             self.irc_energies.append(self.energy)
+            # Non mass-weighted
+            self.irc_coords.append(self.coords)
+            self.irc_gradients.append(self.gradient)
+            # Mass-weighted
+            self.irc_mw_coords.append(self.mw_coords)
+            self.irc_mw_gradients.append(self.mw_gradient)
+
+
             rms_grad = np.sqrt(np.mean(np.square(self.gradient)))
 
             irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
@@ -270,8 +276,11 @@ class IRC:
             sys.stdout.flush()
 
         if direction == "forward":
-            self.irc_mw_coords.reverse()
             self.irc_energies.reverse()
+            self.irc_coords.reverse()
+            self.irc_gradients.reverse()
+            self.irc_mw_coords.reverse()
+            self.irc_mw_gradients.reverse()
 
         if not dumped:
             self.dump_data
@@ -331,6 +340,12 @@ class IRC:
             # Dump the whole IRC to HDF5
             dump_fn = "finished_" + self.dump_fn
             self.dump_data(dump_fn, full=True)
+
+        # Convert to arrays
+        [setattr(self, name, np.array(getattr(self, name)))
+         for name in "all_energies all_coords all_gradients "
+                     "all_mw_coords all_mw_gradients".split()
+        ]
 
         # Right now self.all_mw_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.

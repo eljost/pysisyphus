@@ -134,6 +134,7 @@ class EulerPC(IRC):
             cur_coords = init_mw_coords.copy()
             k_coords = list()
             cur_length = 0
+
             # Only use given points
             # for point in range(points):
                 # k_coords.append(cur_coords.copy())
@@ -152,8 +153,8 @@ class EulerPC(IRC):
                     break
                 energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
                 cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
-                # cur_length += corr_step_length
-                cur_length = get_integration_length(cur_coords)
+                cur_length += corr_step_length
+                # cur_length = get_integration_length(cur_coords)
 
                 # Check for oscillation
                 try:
