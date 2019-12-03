@@ -11,7 +11,10 @@
 #       Meisner, Kästner, 2017
 # [3.1] http://www.rsc.org/suppdata/c7/cp/c7cp03722h/c7cp03722h1.pdf
 #       Corresponding SI
+# [4  ] https://aip.scitation.org/doi/pdf/10.1063/1.3593456?class=pdf
+#       Hratchian, Frisch, 2011
 
+from functools import lru_cache
 
 import numpy as np
 
@@ -48,6 +51,15 @@ class EulerPC(IRC):
         self.log(f"Did {key} hessian update.")
         self.mw_H += dH
         self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_H.copy())
+
+    @lru_cache(maxsize=128)
+    def points(self, k):
+        """48, 64, 96, 128, ... n_k = 2*n_(k-2)"""
+        if k == 0:
+            return 48
+        if k == 1:
+            return 64
+        return 2*self.points(k-2)
 
     def step(self):
         ##################
@@ -124,10 +136,54 @@ class EulerPC(IRC):
         # CORRECTOR STEP #
         ##################
 
-        all_coords = list()
-        richardson = dict()
         errors = list()
         self.log("Starting mBS integration")
+
+        # neville = dict()
+        # def T(k, j):
+            # return neville[(k, j)]
+        # for k in range(10):
+            # points = self.points(k)
+            # corr_step_length = self.step_length / (points - 1)
+            # cur_coords = init_mw_coords.copy()
+            # k_coords = list()
+            # cur_length = 0
+
+            # # Integrate until the desired spacing is reached
+            # while True:
+                # k_coords.append(cur_coords.copy())
+                # if abs(self.step_length - cur_length) < .5*corr_step_length:
+                    # self.log(f"\tk={k:02d} points={points: >4d} "
+                             # f"step_length={corr_step_length:.4f} Δs={cur_length:.4f}")
+                    # break
+                # energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
+                # cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
+                # cur_length = get_integration_length(cur_coords)
+            # neville[(k, 0)] = cur_coords
+
+            # # Extrapolate higher order terms using Neville's algorithm
+            # if k == 0:
+                # continue
+
+            # for j in range(k):
+                # print(f"k={k}, j={j+1}, points={points}, points(k-j)={self.points(k-1)}")
+                # neville[(k, j+1)] = \
+                    # T(k, j) + (T(k, j) - T(k-1,j))/((points/self.points(k-1))**2 - 1)
+
+            # # Error estimate according to Numerical Recipes Eq. (17.3.9)
+            # # RMS error
+            # error = np.sqrt(np.mean((neville[(k,k)] - neville[(k,k-1)])**2))
+            # errors.append(error)
+            # print("error", error)
+            # if error <= 1e-5:
+                # self.log(f"mBS integration converged (error={error:.4e})!")
+                # break
+        # else:
+            # raise Exception("Neville's algorithm failed!")
+
+        # self.mw_coords = neville[(k,k)]
+
+        richardson = dict()
         for k in range(10):
             points = 10*(2**k) + 1
             corr_step_length  = self.step_length / (points - 1)
@@ -185,7 +241,6 @@ class EulerPC(IRC):
                 if error <= 1e-5:
                     self.log(f"mBS integration converged (error={error:.4e})!")
                     break
-            all_coords.append(np.array(k_coords))
         else:
             raise Exception("Richardson did not converge!")
         
