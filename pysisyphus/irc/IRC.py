@@ -151,7 +151,7 @@ class IRC:
         except AttributeError:
             pass
         eigvals, eigvecs = np.linalg.eigh(mw_hessian)
-        neg_inds = eigvals < -1e-10
+        neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
         min_eigval = eigvals[self.mode]
         mw_trans_vec = eigvecs[:,self.mode]
@@ -214,11 +214,6 @@ class IRC:
             dE = self.irc_energies[-1] - self.irc_energies[-2]
             max_grad = np.abs(self.gradient).max()
 
-            if self.converged:
-                break_msg = "Optimizer indicated convergence!"
-                self.table.print(break_msg)
-                break
-
             row_args = (self.cur_step, irc_length, dE, max_grad, rms_grad)
             self.table.print_row(row_args)
             try:
@@ -231,7 +226,9 @@ class IRC:
             this_energy = self.irc_energies[-1]
 
             break_msg = ""
-            if rms_grad <= self.rms_grad_thresh:
+            if self.converged:
+                break_msg = "Integrator indicated convergence!"
+            elif rms_grad <= self.rms_grad_thresh:
                 break_msg = "RMS of gradient converged!"
             elif this_energy > last_energy:
                 break_msg = "Energy increased!"
