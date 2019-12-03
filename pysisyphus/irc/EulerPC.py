@@ -71,16 +71,20 @@ class EulerPC(IRC):
         # Create a copy of the inital coordinates for the determination
         # of the actual step size in the predictor Euler integration.
         init_mw_coords = self.mw_coords.copy()
+        m_sqrt = np.sqrt(self.geometry.masses_rep)
+        def get_integration_length(cur_mw_coords):
+            """Returns length of integration path done in mass-weighted coordinates
+            in un-mass-weighted coordinates."""
+            return np.linalg.norm((cur_mw_coords - init_mw_coords) / m_sqrt)
 
         # These variables will hold the coordinates and gradients along
         # the Euler integration and will be updated frequently.
         euler_mw_coords = self.mw_coords.copy()
         euler_mw_grad = mw_grad.copy()
 
-        m_sqrt = np.sqrt(self.geometry.masses_rep)
         for i in range(500):
             # Calculate step length in non-mass-weighted coordinates
-            cur_length = np.linalg.norm((euler_mw_coords - init_mw_coords) / m_sqrt)
+            cur_length = get_integration_length(euler_mw_coords)
 
             # Check if we achieved the desired step length
             if cur_length > self.step_length:
@@ -122,17 +126,19 @@ class EulerPC(IRC):
             corr_step_length  = self.step_length / (points - 1)
             cur_coords = init_mw_coords.copy()
             k_coords = list()
-            length = 0
+            cur_length = 0
             while True:
                 k_coords.append(cur_coords.copy())
-                if length >= self.step_length:
+                if cur_length >= self.step_length:
                     self.log(f"mBS integration with k={k} and "
                              f"step_length={corr_step_length:.6f} "
-                             f"converged with total step length={length:.6f}")
+                             f"converged with total step length={cur_length:.6f}")
                     break
                 energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
                 cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
-                length += corr_step_length
+                cur_length += corr_step_length
+                # cur_length = get_integration_length(cur_coords)
+
                 # Check for oscillation
                 try:
                     prev_coords = k_coords[-2]
