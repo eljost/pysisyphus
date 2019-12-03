@@ -774,6 +774,9 @@ def parse_args(args):
     group.add_argument("--opt", action="store_true",
         help="Plot optimization progress."
     )
+    group.add_argument("--irc", action="store_true",
+        help="Plot IRC progress."
+    )
     group.add_argument("--overlaps", "-o", action="store_true")
     group.add_argument("--render_cdds", action="store_true")
 
@@ -798,6 +801,46 @@ def plot_opt():
     ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
     ax.legend()
     fig.tight_layout()
+    plt.show()
+
+
+def plot_irc(h5):
+    with h5py.File(h5) as handle:
+        mw_coords = handle["mw_coords"][:]
+        energies = handle["energies"][:]
+        gradients = handle["gradients"][:]
+        rms_grad_thresh = handle["rms_grad_thresh"][()]
+    energies -= energies.min()
+    energies *= AU2KJPERMOL
+
+    cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
+    rms_grads = np.sqrt(np.mean(gradients**2, axis=1))
+    max_grads = np.abs(gradients).max(axis=1)
+
+    fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
+
+    plt_kwargs = {
+        "linestyle": "-",
+        "marker": "o",
+    }
+
+    ax0.plot(cds, energies, **plt_kwargs)
+    ax0.set_title("energy change")
+    ax0.set_ylabel("kJ mol⁻¹")
+
+    ax1.plot(cds, rms_grads, **plt_kwargs)
+    ax1.axhline(rms_grad_thresh, linestyle="--", color="k")
+    ax1.set_title("rms(gradient)")
+    ax1.set_ylabel("Hartree / bohr")
+
+    ax2.plot(cds, max_grads, **plt_kwargs)
+    ax2.set_title("max(gradient)")
+    ax2.set_xlabel("IRC / amu$^{\\frac{1}{2}}$ bohr")
+    ax2.set_ylabel("Hartree / bohr")
+
+    fig.suptitle("IRC")
+
+    # plt.tight_layout()
     plt.show()
 
 
@@ -832,6 +875,8 @@ def run():
         plot_afir()
     elif args.opt:
         plot_opt()
+    elif args.irc:
+        plot_irc(h5)
 
 
 if __name__ == "__main__":

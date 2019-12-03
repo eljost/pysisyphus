@@ -33,10 +33,10 @@ for i, (xyz_fn, (charge, mult)) in enumerate(meta_data.items()):
     geom.set_calculator(Gaussian16(**calc_kwargs))
 
     irc_kwargs = {
-        # "step_length": .2,
-        # "hessian_recalc": 5,
-        "step_length": .4,
-        "hessian_recalc": 1,
+        "step_length": .2,
+        "hessian_recalc": 5,
+        # "step_length": .4,
+        # "hessian_recalc": 1,
     }
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()

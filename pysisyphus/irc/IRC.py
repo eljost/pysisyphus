@@ -8,6 +8,7 @@ import logging
 import pathlib
 import sys
 
+import h5py
 import numpy as np
 
 from pysisyphus.xyzloader import make_trj_str, make_xyz_str
@@ -21,7 +22,7 @@ class IRC:
     def __init__(self, geometry, step_length=0.1, max_cycles=150,
                  downhill=False, forward=True, backward=True, mode=0,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=1e-4):
+                 rms_grad_thresh=1e-4, dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
 
@@ -45,6 +46,8 @@ class IRC:
         # assert self.displ_length > 0, \
             # "displ_displ must be positive"
         self.rms_grad_thresh = float(rms_grad_thresh)
+        self.dump_fn = dump_fn
+        self.dump_every = int(dump_every)
 
         self.all_coords = list()
         self.all_energies = list()
@@ -66,7 +69,7 @@ class IRC:
         self.init_displ = self.initial_displacement()
         # step length dE max(|grad|) rms(grad)
         col_fmts = "int float float float float".split()
-        header = ("Step", "IRC length", "dE", "max(|grad|)", "rms(grad)")
+        header = ("Step", "IRC length", "dE / au", "max(|grad|)", "rms(grad)")
         self.table = TablePrinter(header, col_fmts)
 
     @property
@@ -121,9 +124,12 @@ class IRC:
         # run.
         self.hessian = self.ts_hessian
 
-        self.irc_mw_coords = list()
         self.irc_energies = list()
+        # Not mass-weighted
+        self.irc_coords = list()
         self.irc_gradients = list()
+        # Mass-weighted
+        self.irc_mw_coords = list()
         self.irc_mw_gradients = list()
 
         # We don't need an initiald displacement when going downhill
@@ -192,9 +198,12 @@ class IRC:
         self.logger.info(f"IRC {direction}")
         self.prepare(direction)
         gradient = self.gradient
-        self.irc_mw_coords.append(self.mw_coords)
         self.irc_energies.append(self.energy)
+        # Non mass-weighted
+        self.irc_coords.append(self.coords)
         self.irc_gradients.append(self.gradient)
+        # Mass-weighted
+        self.irc_mw_coords.append(self.mw_coords)
         self.irc_mw_gradients.append(self.mw_gradient)
 
         self.table.print_header()
@@ -242,6 +251,11 @@ class IRC:
                 break_msg = "Energy converged!"
                 self.converged = True
 
+            dumped = (self.cur_step % self.dump_every) == 0
+            if dumped:
+                dump_fn = f"{direction}_{self.dump_fn}"
+                self.dump_data(dump_fn)
+
             if break_msg:
                 self.table.print(break_msg)
                 break
@@ -255,6 +269,9 @@ class IRC:
         if direction == "forward":
             self.irc_mw_coords.reverse()
             self.irc_energies.reverse()
+
+        if not dumped:
+            self.dump_data
 
     def run(self):
         if self.forward:
@@ -335,3 +352,23 @@ class IRC:
         first_fn = f"{prefix}_last.xyz"
         with open(path / first_fn, "w") as handle:
             handle.write(make_xyz_str(atoms, last_coords))
+
+    def dump_data(self, dump_fn=None):
+        data_dict = {
+            "energies": np.array(self.irc_energies, dtype=float),
+            "coords": np.array(self.irc_coords, dtype=float),
+            "gradients": np.array(self.irc_gradients, dtype=float),
+            "mw_coords": np.array(self.irc_mw_coords, dtype=float),
+            "mw_gradients": np.array(self.irc_mw_gradients, dtype=float),
+            "atoms": np.array(self.geometry.atoms, dtype="S")
+        }
+
+        if dump_fn is None:
+            dump_fn = self.dump_fn
+
+        with h5py.File(dump_fn, "w") as handle:
+            for key, val in data_dict.items():
+                handle.create_dataset(name=key, dtype=val.dtype, data=val)
+
+            handle.create_dataset(name="rms_grad_thresh",
+                                  data=np.float(self.rms_grad_thresh))
