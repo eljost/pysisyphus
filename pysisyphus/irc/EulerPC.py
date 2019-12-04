@@ -16,6 +16,7 @@
 
 import numpy as np
 
+from pysisyphus.helpers import rms
 from pysisyphus.irc.DWI import DWI
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
@@ -59,20 +60,6 @@ class EulerPC(IRC):
 
         mw_grad = self.mw_gradient
         mw_grad_norm = np.linalg.norm(mw_grad)
-
-        # Simple euler integration
-        euler_step_length = self.step_length / (self.max_pred_steps / 2)
-
-        # TODO: Avoid recalculation of hessian
-        # mw_hessian = self.mw_hessian
-
-        # def taylor_gradient(step):
-            # """Return gradient from Taylor expansion of energy to 2nd order."""
-            # return mw_grad + mw_hessian @ step
-        def taylor_gradient(step):
-            """Return gradient from Taylor expansion of energy to 2nd order."""
-            return mw_grad + self.mw_H @ step
-
         # Create a copy of the inital coordinates for the determination
         # of the actual step size in the predictor Euler integration.
         init_mw_coords = self.mw_coords.copy()
@@ -82,31 +69,61 @@ class EulerPC(IRC):
             in un-mass-weighted coordinates."""
             return np.linalg.norm((cur_mw_coords - init_mw_coords) / m_sqrt)
 
+        # Simple euler integration
+        euler_step_length = self.step_length / (self.max_pred_steps / 2)
+
+        def taylor_gradient(step):
+            """Return gradient from Taylor expansion of energy to 2nd order."""
+            return mw_grad + self.mw_H @ step
+
         # These variables will hold the coordinates and gradients along
         # the Euler integration and will be updated frequently.
         euler_mw_coords = self.mw_coords.copy()
         euler_mw_grad = mw_grad.copy()
-
         for i in range(self.max_pred_steps):
             # Calculate step length in non-mass-weighted coordinates
             cur_length = get_integration_length(euler_mw_coords)
 
             # Check if we achieved the desired step length
             if cur_length > self.step_length:
-                self.log(f"Predictor Euler integration converged with Δs={cur_length:.4f}!")
+                self.log( "Predictor-Euler integration converged with "
+                         f"Δs={cur_length:.4f} after {i+1} steps!"
+                )
                 break
             step_ = euler_step_length * -euler_mw_grad / np.linalg.norm(euler_mw_grad)
             euler_mw_coords += step_
             # Determine actual step by comparing the current and the initial coordinates
             euler_step = euler_mw_coords - init_mw_coords
             euler_mw_grad = taylor_gradient(euler_step)
+        # else:
+            # # Assume convergence when predictor Euler integration does not converge.
+            # self.mw_coords = euler_mw_coords
+            # self.converged = True
+            # self.log( "Predictor-Euler integration did not converge after "
+                     # f"{i+1} steps. cur_length={cur_length:.6f}"
+            # )
+            # return
         else:
-            # Assume convergence when predictor Euler integration does not converge.
-            self.mw_coords = euler_mw_coords
-            self.converged = True
-            return
+            self.log(f"Predictor-Euler integration dit not converge in {i+1} "
+                     f"steps. Δs={cur_length:.4f}."
+            )
 
-        # Calculate energy and gradient at new predictor geometry. These
+            # Check if we are already sufficiently converged. If so signal
+            # convergence.
+            self.mw_coords = euler_mw_coords
+
+            rms_grad = rms(self.gradient)
+            if rms_grad <= 5*self.rms_grad_thresh:
+                print("seems sufficiently converged!")
+                # self.mw_coords = euler_mw_coords
+                self.converged = True
+                return
+            # euler_step = self.step_length * -mw_grad / mw_grad_norm
+            # euler_mw_coords = self.mw_coords.copy() + euler_step
+            # self.log( "Predictor-Euler integration did not converge after "
+                     # f"{i+1} steps. Using simple Euler step fallback!")
+
+        # Calculate energy and gradient at new predicted geometry. These
         # results will be added to the DWI for use in the corrector step.
         self.mw_coords = euler_mw_coords
         mw_grad = self.mw_gradient
@@ -155,12 +172,16 @@ class EulerPC(IRC):
                 try:
                     prev_coords = k_coords[-2]
                     osc_norm = np.linalg.norm(cur_coords - prev_coords)
-                    # TODO: handle this by restarting everyhting with a smaller stepsize.
+                    # TODO: handle this by restarting everything with a smaller stepsize.
                     # Check 10.1039/c7cp03722h SI
                     if osc_norm <= corr_step_length:
                         self.log("Detected oscillation. This is not handled right now!")
                         # assert False, "This case is not yet handled"
                         # break
+                        self.mw_coords = prev_coords
+                        # self.converged = True
+                        return
+
                 except IndexError:
                     pass
             richardson[(k, 0)] = cur_coords
