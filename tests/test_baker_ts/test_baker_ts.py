@@ -156,6 +156,7 @@ def test_baker_ts_optimizations():
             # no_imag,
         )
         geoms = {key: geoms[key] for key in it.chain(*use)}
+        # geoms = {"05_cyclopropyl.xyz": geoms["05_cyclopropyl.xyz"]}
 
         results, duration, cycles = run_baker_ts_opts(
                                         geoms,

@@ -26,6 +26,7 @@ works = (
     "01_hcn_opt_ts.xyz",
     "03_h2co_opt_ts.xyz",
     "04_ch3o_opt_ts.xyz",
+    "05_cyclopropyl_opt_ts.xyz",
     "06_bicyclobutane_opt_ts.xyz",
     "07_bicyclobutane_opt_ts.xyz",
     "08_formyloxyethyl_opt_ts.xyz",
@@ -42,12 +43,18 @@ works = (
 )
 
 fails = (
-    "05_cyclopropyl_opt_ts.xyz",
+    # "05_cyclopropyl_opt_ts.xyz",
 )
-for key in it.chain(*(works, fails)):
-    del meta_data[key]
 
-for i, (xyz_fn, (charge, mult)) in enumerate(meta_data.items()):
+use = (
+    works,
+    fails,
+)
+use_meta_data = dict()
+for key in it.chain(*use):
+    use_meta_data[key] = meta_data[key]
+
+for i, (xyz_fn, (charge, mult)) in enumerate(use_meta_data.items()):
     geom = geoms[xyz_fn]
     print(f"@{i:02d}: {xyz_fn} ({charge},{mult})")
 
@@ -57,6 +64,9 @@ for i, (xyz_fn, (charge, mult)) in enumerate(meta_data.items()):
         "charge": charge,
         "mult": mult,
     }
+    # Otherwise SCF converges to wrong solution with no imaginary frequencies
+    if xyz_fn == "05_cyclopropyl_opt_ts.xyz":
+        calc_kwargs["route"] += " scf=qc"
     geom.set_calculator(Gaussian16(**calc_kwargs))
 
     irc_kwargs = {
@@ -64,6 +74,7 @@ for i, (xyz_fn, (charge, mult)) in enumerate(meta_data.items()):
         # "displ_energy": 1e-3,
         # "step_length": .4,
         "hessian_recalc": 10,
+        # "displ": "length",
         # "backward": False,
         # "forward": False,
     }
