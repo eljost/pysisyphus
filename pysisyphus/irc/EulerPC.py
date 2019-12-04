@@ -95,14 +95,6 @@ class EulerPC(IRC):
             # Determine actual step by comparing the current and the initial coordinates
             euler_step = euler_mw_coords - init_mw_coords
             euler_mw_grad = taylor_gradient(euler_step)
-        # else:
-            # # Assume convergence when predictor Euler integration does not converge.
-            # self.mw_coords = euler_mw_coords
-            # self.converged = True
-            # self.log( "Predictor-Euler integration did not converge after "
-                     # f"{i+1} steps. cur_length={cur_length:.6f}"
-            # )
-            # return
         else:
             self.log(f"Predictor-Euler integration dit not converge in {i+1} "
                      f"steps. Δs={cur_length:.4f}."
@@ -114,14 +106,9 @@ class EulerPC(IRC):
 
             rms_grad = rms(self.gradient)
             if rms_grad <= 5*self.rms_grad_thresh:
-                print("seems sufficiently converged!")
-                # self.mw_coords = euler_mw_coords
+                self.log("Sufficient convergence achieved on rms(grad)")
                 self.converged = True
                 return
-            # euler_step = self.step_length * -mw_grad / mw_grad_norm
-            # euler_mw_coords = self.mw_coords.copy() + euler_step
-            # self.log( "Predictor-Euler integration did not converge after "
-                     # f"{i+1} steps. Using simple Euler step fallback!")
 
         # Calculate energy and gradient at new predicted geometry. These
         # results will be added to the DWI for use in the corrector step.
@@ -172,14 +159,11 @@ class EulerPC(IRC):
                 try:
                     prev_coords = k_coords[-2]
                     osc_norm = np.linalg.norm(cur_coords - prev_coords)
-                    # TODO: handle this by restarting everything with a smaller stepsize.
+                    # TODO: Handle this by restarting everything with a smaller stepsize?
                     # Check 10.1039/c7cp03722h SI
                     if osc_norm <= corr_step_length:
-                        self.log("Detected oscillation. This is not handled right now!")
-                        # assert False, "This case is not yet handled"
-                        # break
+                        self.log("Detected oscillation in Corrector-Euler integration.")
                         self.mw_coords = prev_coords
-                        # self.converged = True
                         return
 
                 except IndexError:
