@@ -13,7 +13,7 @@ import numpy as np
 
 from pysisyphus.xyzloader import make_trj_str, make_xyz_str
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import check_for_stop_sign, highlight_text, eigval_to_wavenumber
+from pysisyphus.helpers import check_for_stop_sign, highlight_text, eigval_to_wavenumber, rms
 from pysisyphus.TablePrinter import TablePrinter
 
 
@@ -22,7 +22,7 @@ class IRC:
     def __init__(self, geometry, step_length=0.1, max_cycles=150,
                  downhill=False, forward=True, backward=True, mode=0,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=1e-3, dump_fn="irc_data.h5", dump_every=5):
+                 rms_grad_thresh=5e-4, dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
 
@@ -217,8 +217,7 @@ class IRC:
             self.irc_mw_coords.append(self.mw_coords)
             self.irc_mw_gradients.append(self.mw_gradient)
 
-
-            rms_grad = np.sqrt(np.mean(np.square(self.gradient)))
+            rms_grad = rms(self.gradient)
 
             irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
             dE = self.irc_energies[-1] - self.irc_energies[-2]
@@ -303,6 +302,16 @@ class IRC:
         self.ts_mw_gradient = self.mw_gradient.copy()
         self.ts_energy = self.energy
         self.ts_hessian = self.geometry.hessian.copy()
+
+        ts_grad_norm = np.linalg.norm(self.ts_gradient)
+        ts_grad_max = np.abs(self.ts_gradient).max()
+        ts_grad_rms = rms(self.ts_gradient)
+
+        self.log( "Transition state (TS):\n"
+                 f"\tnorm(grad)={ts_grad_norm:.6f}\n"
+                 f"\t max(grad)={ts_grad_max:.6f}\n"
+                 f"\t rms(grad)={ts_grad_rms:.6f}"
+        )
 
         # With downhill=True we shouldn't need any initial displacement.
         # We still call the method because here the initial hessian is
