@@ -121,7 +121,7 @@ def test_eulerpc():
     calc = geom.calculator
     calc.plot()
     ax = calc.ax
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     ax.plot(*irc.all_coords.T[:2], "ro-")
     # ax.set_xlim(-1.1, 0.1)
     # ax.set_ylim( 0.3, 1.6)
