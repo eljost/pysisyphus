@@ -114,6 +114,8 @@ def test_eulerpc():
         # "displ_length": .05,
         # "hessian_update": "bfgs",
         "hessian_update": "bofill",
+        # "backward": False,
+        "rms_grad_thresh": 1e-2,
     }
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
