@@ -14,8 +14,6 @@
 # [4  ] https://aip.scitation.org/doi/pdf/10.1063/1.3593456?class=pdf
 #       Hratchian, Frisch, 2011
 
-from functools import lru_cache
-
 import numpy as np
 
 from pysisyphus.irc.DWI import DWI
@@ -25,7 +23,8 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 
 class EulerPC(IRC):
 
-    def __init__(self, *args, hessian_recalc=None, hessian_update="bofill", **kwargs):
+    def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
+                 max_pred_steps=500, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.hessian_recalc = hessian_recalc
@@ -34,6 +33,7 @@ class EulerPC(IRC):
             "bofill": bofill_update,
         }
         self.hessian_update_func = self.hessian_update[hessian_update]
+        self.max_pred_steps = int(max_pred_steps)
 
     def prepare(self, *args, **kwargs):
         super().prepare(*args, **kwargs)
@@ -52,15 +52,6 @@ class EulerPC(IRC):
         self.mw_H += dH
         self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_H.copy())
 
-    @lru_cache(maxsize=128)
-    def points(self, k):
-        """48, 64, 96, 128, ... n_k = 2*n_(k-2)"""
-        if k == 0:
-            return 48
-        if k == 1:
-            return 64
-        return 2*self.points(k-2)
-
     def step(self):
         ##################
         # PREDICTOR STEP #
@@ -70,7 +61,7 @@ class EulerPC(IRC):
         mw_grad_norm = np.linalg.norm(mw_grad)
 
         # Simple euler integration
-        euler_step_length = self.step_length / 250
+        euler_step_length = self.step_length / (self.max_pred_steps / 2)
 
         # TODO: Avoid recalculation of hessian
         # mw_hessian = self.mw_hessian
@@ -96,7 +87,7 @@ class EulerPC(IRC):
         euler_mw_coords = self.mw_coords.copy()
         euler_mw_grad = mw_grad.copy()
 
-        for i in range(500):
+        for i in range(self.max_pred_steps):
             # Calculate step length in non-mass-weighted coordinates
             cur_length = get_integration_length(euler_mw_coords)
 
@@ -137,80 +128,28 @@ class EulerPC(IRC):
         ##################
 
         errors = list()
-        self.log("Starting mBS integration")
-
-        # neville = dict()
-        # def T(k, j):
-            # return neville[(k, j)]
-        # for k in range(10):
-            # points = self.points(k)
-            # corr_step_length = self.step_length / (points - 1)
-            # cur_coords = init_mw_coords.copy()
-            # k_coords = list()
-            # cur_length = 0
-
-            # # Integrate until the desired spacing is reached
-            # while True:
-                # k_coords.append(cur_coords.copy())
-                # if abs(self.step_length - cur_length) < .5*corr_step_length:
-                    # self.log(f"\tk={k:02d} points={points: >4d} "
-                             # f"step_length={corr_step_length:.4f} Δs={cur_length:.4f}")
-                    # break
-                # energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
-                # cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
-                # cur_length = get_integration_length(cur_coords)
-            # neville[(k, 0)] = cur_coords
-
-            # # Extrapolate higher order terms using Neville's algorithm
-            # if k == 0:
-                # continue
-
-            # for j in range(k):
-                # print(f"k={k}, j={j+1}, points={points}, points(k-j)={self.points(k-1)}")
-                # neville[(k, j+1)] = \
-                    # T(k, j) + (T(k, j) - T(k-1,j))/((points/self.points(k-1))**2 - 1)
-
-            # # Error estimate according to Numerical Recipes Eq. (17.3.9)
-            # # RMS error
-            # error = np.sqrt(np.mean((neville[(k,k)] - neville[(k,k-1)])**2))
-            # errors.append(error)
-            # print("error", error)
-            # if error <= 1e-5:
-                # self.log(f"mBS integration converged (error={error:.4e})!")
-                # break
-        # else:
-            # raise Exception("Neville's algorithm failed!")
-
-        # self.mw_coords = neville[(k,k)]
+        self.log("Starting mBS integration using Richardson extrapolation")
 
         richardson = dict()
-        for k in range(10):
-            points = 10*(2**k) + 1
+        for k in range(15):
+            points = 20*(2**k)
             corr_step_length  = self.step_length / (points - 1)
             cur_coords = init_mw_coords.copy()
             k_coords = list()
             cur_length = 0
 
-            # Only use given points
-            # for point in range(points):
-                # k_coords.append(cur_coords.copy())
-                # energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
-                # cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
-            # cur_length = get_integration_length(cur_coords)
-            # self.log(f"\tk={k:02d} points={points: >4d} "
-                     # f"step_length={corr_step_length:.4f} Δs={cur_length:.4f}")
-
             # Integrate until the desired spacing is reached
             while True:
                 k_coords.append(cur_coords.copy())
-                if cur_length >= self.step_length:
+                if abs(self.step_length - cur_length) < .5*corr_step_length:
                     self.log(f"\tk={k:02d} points={points: >4d} "
                              f"step_length={corr_step_length:.4f} Δs={cur_length:.4f}")
                     break
+
                 energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
                 cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
-                cur_length += corr_step_length
-                # cur_length = get_integration_length(cur_coords)
+                # cur_length += corr_step_length
+                cur_length = get_integration_length(cur_coords)
 
                 # Check for oscillation
                 try:
@@ -232,9 +171,8 @@ class EulerPC(IRC):
                 richardson[(k, j)] = ((2**j) * richardson[(k, j-1)] - richardson[(k-1, j-1)]) \
                                      / (2**j-1)
             if k > 0:
-                # Error estimate according to Numerical Recipes Eq. (17.3.9)
-                # error = np.linalg.norm(richardson[(k,k)] - richardson[(k,k-1)])
-
+                # Error estimate according to Numerical Recipes Eq. (17.3.9).
+                # We compare the last two entries/columns in the current row.
                 # RMS error
                 error = np.sqrt(np.mean((richardson[(k,k)] - richardson[(k,k-1)])**2))
                 errors.append(error)
