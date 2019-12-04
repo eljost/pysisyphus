@@ -55,25 +55,13 @@ class IRC:
         self.all_mw_coords = list()
         self.all_mw_gradients = list()
 
-        # Calculate data at TS and create backup
-        self.ts_coords = self.coords.copy()
-        self.ts_mw_coords = self.mw_coords.copy()
-        self.ts_gradient = self.gradient.copy()
-        self.ts_mw_gradient = self.mw_gradient.copy()
-        self.ts_energy = self.energy
-        self.ts_hessian = self.geometry.hessian.copy()
-
-        self.cur_step = 0
-        self.converged = False
-        # With downhill=True we shouldn't need any initial displacement.
-        # We still call the method because here the initial hessian is
-        # calculated and some sanity checks are made. The returned init_displ
-        # will be the zero vector though.
-        self.init_displ = self.initial_displacement()
         # step length dE max(|grad|) rms(grad)
         col_fmts = "int float float float float".split()
         header = ("Step", "IRC length", "dE / au", "max(|grad|)", "rms(grad)")
         self.table = TablePrinter(header, col_fmts)
+
+        self.cur_step = 0
+        self.converged = False
 
     @property
     def coords(self):
@@ -308,6 +296,20 @@ class IRC:
         self.write_trj(".", prefix, getattr(self, mw_coords_name))
 
     def run(self):
+        # Calculate data at TS and create backup
+        self.ts_coords = self.coords.copy()
+        self.ts_mw_coords = self.mw_coords.copy()
+        self.ts_gradient = self.gradient.copy()
+        self.ts_mw_gradient = self.mw_gradient.copy()
+        self.ts_energy = self.energy
+        self.ts_hessian = self.geometry.hessian.copy()
+
+        # With downhill=True we shouldn't need any initial displacement.
+        # We still call the method because here the initial hessian is
+        # calculated and some sanity checks are made. The returned init_displ
+        # will be the zero vector though.
+        self.init_displ = self.initial_displacement()
+
         if self.forward:
             print("\n" + highlight_text("IRC - Forward") + "\n")
             self.irc("forward")
