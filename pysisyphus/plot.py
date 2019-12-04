@@ -804,7 +804,17 @@ def plot_opt():
     plt.show()
 
 
-def plot_irc(h5):
+def plot_irc():
+    cwd = Path(".")
+    h5s = cwd.glob("*irc_data.h5")
+    for h5 in h5s:
+        type_ = h5.name.split("_")[0]
+        title = f"{type_.capitalize()} IRC data"
+        fig, axs = plot_irc_h5(h5, title)
+    plt.show()
+
+
+def plot_irc_h5(h5, title=None):
     with h5py.File(h5) as handle:
         mw_coords = handle["mw_coords"][:]
         energies = handle["energies"][:]
@@ -849,10 +859,12 @@ def plot_irc(h5):
             xy = (x, arr[ts_index])
             ax.annotate("TS", xy, fontsize=12, fontweight="bold")
 
-    fig.suptitle("IRC")
+    if title:
+        fig.suptitle(title)
+    else:
+        fig.tight_layout()
 
-    # plt.tight_layout()
-    plt.show()
+    return fig, (ax0, ax1, ax2)
 
 
 def run():
@@ -887,7 +899,7 @@ def run():
     elif args.opt:
         plot_opt()
     elif args.irc:
-        plot_irc(h5)
+        plot_irc()
 
 
 if __name__ == "__main__":
