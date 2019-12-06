@@ -16,11 +16,6 @@ colors = {
 }
 
 geoms, meta_data = get_baker_opt_ts_geoms()
-# only_fn = "01_hcn_opt_ts.xyz"
-# only_fn = "16_h2po4_anion_opt_ts.xyz"
-# meta_data = {
-    # only_fn: meta_data[only_fn]
-# }
 
 works = (
     "01_hcn_opt_ts.xyz",
@@ -46,9 +41,17 @@ fails = (
     # "05_cyclopropyl_opt_ts.xyz",
 )
 
+only = (
+    # "01_hcn_opt_ts.xyz",
+    # "16_h2po4_anion_opt_ts.xyz"
+    "08_formyloxyethyl_opt_ts.xyz",
+)
+
 use = (
-    works,
-    fails,
+    # works,
+    #fails,
+    only,
+
 )
 use_meta_data = dict()
 for key in it.chain(*use):
@@ -70,19 +73,21 @@ for i, (xyz_fn, (charge, mult)) in enumerate(use_meta_data.items()):
     geom.set_calculator(Gaussian16(**calc_kwargs))
 
     irc_kwargs = {
-        # "hessian_recalc": 5,
-        # "displ_energy": 1e-3,
-        # "step_length": .4,
+        "step_length": .1,
         "hessian_recalc": 10,
+        # "displ_energy": 1e-3,
+        # "hessian_recalc": 10,
         # "displ": "length",
         # "backward": False,
         # "forward": False,
     }
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
+    forward_steps = irc.forward_step + 1
+    backward_steps = irc.backward_step + 1
     col = colors[irc.converged]
     print()
-    print(col(f"@Converged: {irc.converged}"))
+    print(col(f"@Converged: {irc.converged}, (F {forward_steps}, B {backward_steps})"))
     src = "finished_irc.trj"
     dst = Path(xyz_fn).stem + "_finished_irc.trj"
     shutil.copy(src, dst)
