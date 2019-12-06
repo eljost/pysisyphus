@@ -50,7 +50,7 @@ class NCOptimizer(HessianOptimizer):
             freeze_inds = wavenumbers < self.freeze_modes
             eigvals = eigvals[~freeze_inds]
             eigvecs = eigvecs[:,~freeze_inds]
-            self.log(f"Found {np.sum(freeze_inds)} freeze_modes")
+            self.log(f"{np.sum(freeze_inds)} normal modes will be frozen.")
 
         frozen_str = ["(frozen)" if frozen else "" for frozen in freeze_inds]
         wavenumber_str = "\n".join([
