@@ -60,6 +60,20 @@ class EulerPC(IRC):
 
         mw_grad = self.mw_gradient
         mw_grad_norm = np.linalg.norm(mw_grad)
+        energy = self.energy
+
+        if self.cur_step > 0:
+            if self.hessian_recalc and (self.cur_step % self.hessian_recalc == 0):
+                self.mw_H = self.mw_hessian
+                self.log("Calculated excact hessian")
+            else:
+                dx = self.mw_coords - self.irc_mw_coords[-2]
+                dg = mw_grad - self.irc_mw_gradients[-2]
+                dH, key = self.hessian_update_func(self.mw_H, dx, dg)
+                self.mw_H += dH
+                self.log(f"Did {key} hessian update before predictor step.")
+            self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
+
         # Create a copy of the inital coordinates for the determination
         # of the actual step size in the predictor Euler integration.
         init_mw_coords = self.mw_coords.copy()
@@ -118,13 +132,9 @@ class EulerPC(IRC):
 
         dx = self.mw_coords - self.irc_mw_coords[-1]
         dg = mw_grad - self.irc_mw_gradients[-1]
-        if self.hessian_recalc and (self.cur_step % self.hessian_recalc == 0):
-            self.mw_H = self.mw_hessian
-            self.log("Calculated excact hessian")
-        else:
-            dH, key = self.hessian_update_func(self.mw_H, dx, dg)
-            self.mw_H += dH
-            self.log(f"Did {key} hessian update.")
+        dH, key = self.hessian_update_func(self.mw_H, dx, dg)
+        self.mw_H += dH
+        self.log(f"Did {key} hessian update after predictor step.")
         self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
 
         ##################
