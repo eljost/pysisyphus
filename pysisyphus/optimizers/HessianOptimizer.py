@@ -294,6 +294,7 @@ class HessianOptimizer(Optimizer):
         return cur_grad
 
     def solve_rfo(self, rfo_mat, kind="min"):
+        self.log("Diagonalizing augmented Hessian:")
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
         eigenvalues = eigenvalues.real
         eigenvectors = eigenvectors.real
@@ -317,7 +318,7 @@ class HessianOptimizer(Optimizer):
         self.log(f"\teigenvalue_{verbose}={eigval:.4e}")
         return step, eigval, nu
 
-    def filter_small_eigvals(self, eigvals, eigvecs):
+    def filter_small_eigvals(self, eigvals, eigvecs, mask=False):
         small_inds = np.abs(eigvals) < self.small_eigval_thresh
         eigvals = eigvals[~small_inds]
         eigvecs = eigvecs[:,~small_inds]
@@ -327,7 +328,10 @@ class HessianOptimizer(Optimizer):
         assert small_num <= 6, \
              "Expected at most 6 small eigenvalues in cartesian hessian " \
             f"but found {small_num}!"
-        return eigvals, eigvecs
+        if mask:
+            return eigvals, eigvecs, small_inds
+        else:
+            return eigvals, eigvecs
 
     def log_negative_eigenvalues(self, eigvals, pre_str=""):
         neg_inds = eigvals < -self.small_eigval_thresh
