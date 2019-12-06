@@ -186,7 +186,7 @@ class IRC:
         return step
 
     def irc(self, direction):
-        self.logger.info(f"IRC {direction}")
+        self.log(highlight_text(f"IRC {direction}"))
         self.prepare(direction)
         gradient = self.gradient
         self.irc_energies.append(self.energy)
