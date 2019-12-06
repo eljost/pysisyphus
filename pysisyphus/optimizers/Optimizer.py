@@ -75,7 +75,7 @@ class Optimizer:
         # Setting some empty lists as default
         self.list_attrs = "cart_coords coords energies forces steps " \
                           "max_forces rms_forces max_steps rms_steps " \
-                          "cycle_times tangents".split()
+                          "cycle_times tangents modified_forces".split()
         for la in self.list_attrs:
             setattr(self, la, list())
 
@@ -146,8 +146,12 @@ class Optimizer:
 
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
+        # TODO: Also use modified_forces for cos
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
+        elif len(self.modified_forces) == len(self.forces):
+            self.log("Using modified forces to determine convergence!")
+            forces = self.modified_forces[-1]
         else:
             forces = self.forces[-1]
         step = self.steps[-1]
