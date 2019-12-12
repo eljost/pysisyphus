@@ -20,6 +20,7 @@ def test_tshessian_opts(opt_cls, ref_cur_cycle):
 
     opt_kwargs = {
         "trust_radius": 0.2,
+        "dump": False,
     }
     opt = opt_cls(geom, **opt_kwargs)
     opt.run()
