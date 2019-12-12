@@ -58,7 +58,7 @@ class ChainOfStates:
         self.image_atoms = copy(img0.atoms)
         self.coord_type = img0.coord_type
         assert self.coord_type in self.valid_coord_types, \
-                "Invalid coord_type! Supported types are: {self.valid_coord_types}"
+                f"Invalid coord_type! Supported types are: {self.valid_coord_types}"
         try:
             self.prim_indices = img0.internal.prim_indices
         except AttributeError:
@@ -277,10 +277,10 @@ class ChainOfStates:
         work with cartesian forces."""
         zero_forces = np.zeros_like(self.images[0].cart_coords)
         if self.fix_first:
-            self.images[0].forces = zero_forces
+            self.images[0].cart_forces = zero_forces
             self.log("Zeroed forces on fixed first image.")
         if self.fix_last:
-            self.images[-1].forces = zero_forces
+            self.images[-1].cart_forces = zero_forces
             self.log("Zeroed forces on fixed last image.")
 
     def get_tangent(self, i, kind="upwinding"):

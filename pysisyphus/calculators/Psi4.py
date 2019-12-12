@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import textwrap
 import re
 
 import numpy as np
@@ -12,11 +11,12 @@ class Psi4(Calculator):
 
     conf_key = "psi4"
 
-    def __init__(self, method, basis, mem=2000, **kwargs):
+    def __init__(self, method, basis, to_set=None, mem=2000, **kwargs):
         super().__init__(**kwargs)
 
         self.method = method
         self.basis = basis
+        self.to_set = {} if to_set is None else dict(to_set)
         self.mem = mem
 
         self.inp_fn = "psi4.inp"
@@ -43,6 +43,8 @@ class Psi4(Calculator):
 
 
         set basis {basis}
+        {to_set}
+
         {method}
         """
 
@@ -66,12 +68,15 @@ class Psi4(Calculator):
                        "np.save('hessian', H_arr)",
         }
         method = calc_types[calc_type].format(self.method)
+        set_strs = [f"set {key} {value}" for key, value in self.to_set.items()]
+        set_strs = "\n".join(set_strs)
 
         inp = self.inp.format(
                 xyz=xyz,
                 charge=self.charge,
                 mult=self.mult,
                 basis=self.basis,
+                to_set=set_strs,
                 method=method,
                 pal=self.pal,
                 mem=self.mem,

@@ -33,6 +33,8 @@ class AnaPotBase(Calculator):
 
         self.fake_atoms = ("X", ) # X, dummy atom
 
+        self.analytical_2d = True
+
     def get_energy(self, atoms, coords):
         x, y, z = coords
         energy = self.V(x, y)
@@ -61,8 +63,8 @@ class AnaPotBase(Calculator):
         results["hessian"] = hessian
         return results
 
-    def plot(self, levels=None):
-        self.fig, self.ax = plt.subplots()
+    def plot(self, levels=None, **figkwargs):
+        self.fig, self.ax = plt.subplots(**figkwargs)
         x = np.linspace(*self.xlim, 100)
         y = np.linspace(*self.ylim, 100)
         X, Y = np.meshgrid(x, y)
@@ -97,7 +99,7 @@ class AnaPotBase(Calculator):
 
 
     @classmethod
-    def get_geom(cls, coords, atoms=("H", )):
+    def get_geom(cls, coords, atoms=("X", )):
         geom = Geometry(atoms, coords)
         geom.set_calculator(cls())
         return geom

@@ -24,7 +24,7 @@ class Geometry:
     }
 
     def __init__(self, atoms, coords, coord_type="cart", comment="",
-                 prim_indices=None):
+                 prim_indices=None, define_prims=None):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -52,7 +52,7 @@ class Geometry:
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
-        self._coords = np.array(coords, dtype=np.float)
+        self._coords = np.array(coords, dtype=np.float).flatten()
         assert self._coords.size == (3*len(self.atoms)), \
             f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
             f"{self._coords.size}. Did you accidentally supply internal " \
@@ -65,7 +65,10 @@ class Geometry:
         self.coord_type = coord_type
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            self.internal = coord_class(atoms, coords, prim_indices=prim_indices)
+            self.internal = coord_class(atoms, self._coords,
+                                        prim_indices=prim_indices,
+                                        define_prims=define_prims
+            )
         else:
             self.internal = None
         self.comment = comment
@@ -120,7 +123,7 @@ class Geometry:
             # In our case get_tangent returns B - A, that is a vector pointing
             # from A to B.
             diff = -get_tangent(self.internal.prim_coords, other.internal.prim_coords,
-                               self.internal.dihed_start)
+                                self.internal.dihed_start)
         else:
             raise Exception("Invalid coord_type!")
 
@@ -212,6 +215,7 @@ class Geometry:
             may vary depending on the chosen coordinate system.
         """
         # Do the backtransformation from internal to cartesian.
+        coords = np.array(coords).flatten()
         if self.internal:
             int_step = coords - self.internal.coords
             cart_diff = self.internal.transform_int_step(int_step)
@@ -432,6 +436,19 @@ class Geometry:
         self._energy = energy
 
     @property
+    def cart_forces(self):
+        if self._forces is None:
+            results = self.calculator.get_forces(self.atoms, self._coords)
+            self.set_results(results)
+        return self._forces
+
+    @cart_forces.setter
+    def cart_forces(self, cart_forces):
+        cart_forces = np.array(cart_forces)
+        assert cart_forces.shape == self.cart_coords.shape
+        self._forces = cart_forces
+
+    @property
     def forces(self):
         """Energy of the current atomic configuration.
 
@@ -441,25 +458,30 @@ class Geometry:
             1d array containing the forces acting on the atoms. Negative
             of the gradient.
         """
-        if self._forces is None:
-            results = self.calculator.get_forces(self.atoms, self._coords)
-            self.set_results(results)
+        forces = self.cart_forces
         if self.internal:
-            return self.internal.transform_forces(self._forces)
-        return self._forces
+            forces = self.internal.transform_forces(forces)
+        return forces
 
-    @forces.setter
-    def forces(self, forces):
-        """Internal wrapper for setting the forces.
+    # @forces.setter
+    # def forces(self, forces):
+        # """Internal wrapper for setting the forces.
 
-        Parameters
-        ----------
-        forces : np.array
-        """
-        #if self.internal:
-        #    raise Exception("Setting forces in internal coordinates not "
-        #                    "yet implemented!")
-        self._forces = forces
+        # Parameters
+        # ----------
+        # forces : np.array
+        # """
+        # forces = np.array(forces)
+        # assert forces.shape == self.coords.shape
+        # self._forces = forces
+
+    @property
+    def cart_gradient(self):
+        return -self.cart_forces
+
+    @cart_gradient.setter
+    def cart_gradient(self, cart_gradient):
+        self.cart_forces = -cart_gradient
 
     @property
     def gradient(self):
@@ -472,10 +494,11 @@ class Geometry:
         """
         return -self.forces
 
-    @gradient.setter
-    def gradient(self, gradient):
-        """Internal wrapper for setting the gradient."""
-        self._forces = -gradient
+    # @gradient.setter
+    # def gradient(self, gradient):
+        # """Internal wrapper for setting the gradient."""
+        # # No check here as this is handled by in the forces.setter.
+        # self.forces = -gradient
 
     @property
     def mw_gradient(self):
@@ -489,6 +512,19 @@ class Geometry:
         return -self.forces / np.sqrt(self.masses_rep)
 
     @property
+    def cart_hessian(self):
+        if self._hessian is None:
+            results = self.calculator.get_hessian(self.atoms, self._coords)
+            self.set_results(results)
+        return self._hessian
+
+    @cart_hessian.setter
+    def cart_hessian(self, cart_hessian):
+        cart_hessian = np.array(cart_hessian)
+        assert cart_hessian.shape == (self.cart_coords.size, self.cart_coords.size)
+        self._hessian = cart_hessian
+
+    @property
     def hessian(self):
         """Matrix of second derivatives of the energy in respect to atomic
         displacements.
@@ -500,13 +536,20 @@ class Geometry:
             to atomic/coordinate displacements depending on the type of
             coordiante system.
         """
-        if self._hessian is None:
-            results = self.calculator.get_hessian(self.atoms, self._coords)
-            self.set_results(results)
+        hessian = self.cart_hessian
         if self.internal:
             int_gradient = self.gradient
-            return self.internal.transform_hessian(self._hessian, int_gradient)
-        return self._hessian
+            return self.internal.transform_hessian(hessian, int_gradient)
+        return hessian
+
+    # @hessian.setter
+    # def hessian(self, hessian):
+        # """Internal wrapper for setting the hessian."""
+        # assert hessian.shape == (self.coords.size, self.coords.size)
+        # self._hessian = hessian
+
+    def mass_weigh_hessian(self, hessian):
+        return self.mm_sqrt_inv.dot(hessian).dot(self.mm_sqrt_inv)
 
     @property
     def mw_hessian(self):
@@ -518,12 +561,11 @@ class Geometry:
             2d array containing the mass-weighted hessian M^(-1/2) H M^(-1/2).
         """
         # M^(-1/2) H M^(-1/2)
-        return self.mm_sqrt_inv.dot(self.hessian).dot(self.mm_sqrt_inv)
-
-    @hessian.setter
-    def hessian(self, hessian):
-        """Internal wrapper for setting the hessian."""
-        self._hessian = hessian
+        # TODO: Do the right thin here when the hessian is not yet calculated.
+        #       this would probably involve figuring out how to mass-weigh and
+        #       internal coordinat hessian... I think this is described in one
+        #       of the Gonzales-Schlegel-papers about the GS2 algorithm.
+        return self.mass_weigh_hessian(self.cart_hessian)
 
     def get_initial_hessian(self):
         """Return and initial guess for the hessian."""
@@ -607,13 +649,20 @@ class Geometry:
         results = self.calculator.get_forces(self.atoms, self.cart_coords)
         self.set_results(results)
 
+    def assert_cart_coords(self, coords):
+        assert coords.size == self.cart_coords.size, \
+            "This method only works with cartesian coordinate input. " \
+            "Did you accidentally provide internal coordinates?"
+
+    def get_energy_at(self, coords):
+        self.assert_cart_coords(coords)
+        return self.calculator.get_energy(self.atoms, coords)
+
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
         
         The results are not saved in the Geometry object."""
-        assert coords.size == self.cart_coords.size, \
-            "This method only works with cartesian coordinate input. " \
-            "Did you accidentally provide internal coordinates?"
+        self.assert_cart_coords(coords)
         return self.calculator.get_forces(self.atoms, coords)
 
     def calc_double_ao_overlap(self, geom2):
@@ -632,8 +681,18 @@ class Geometry:
             object, with the corresponding item as value.
         """
 
+        trans = {
+            "energy": "energy",
+            "forces": "cart_forces",
+            "hessian": "cart_hessian",
+            # True properties in AFIR calculations
+            "true_forces": "true_forces",
+            "true_energy": "true_energy",
+            "all_energies": "all_energies",
+        }
+
         for key in results:
-            setattr(self, key, results[key])
+            setattr(self, trans[key], results[key])
         self.results = results
 
     def as_xyz(self, comment=""):

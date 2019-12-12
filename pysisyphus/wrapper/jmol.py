@@ -43,6 +43,9 @@ def call_jmol(spt_str):
         proc = subprocess.Popen(jmol_cmd, universal_newlines=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         proc.wait()
+    stdout = proc.stdout.read()
+    stderr = proc.stderr.read()
+    return stdout, stderr
 
 
 def render_cdd_cube(cdd_cube, isoval=0.002, orient=""):
@@ -56,7 +59,7 @@ def render_cdd_cube(cdd_cube, isoval=0.002, orient=""):
     )
     with open("jmol.spt", "w") as handle:
         handle.write(spt)
-    call_jmol(spt)
+    stdout, stderr = call_jmol(spt)
     return png_fn
 
 

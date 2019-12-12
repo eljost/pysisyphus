@@ -173,3 +173,28 @@ def xtb_hessian(geom):
     geom_ = geom.copy()
     geom_.set_calculator(xtb_calc)
     return geom_.hessian
+
+
+def ts_hessian(hessian, coord_inds, damp=0.25):
+    """According to [3]"""
+
+    inds = list(coord_inds)
+
+    # Use a copy as diag returns only a read-only view
+    diag = np.diag(hessian).copy()
+
+    # Reverse sign of reaction coordinates and damp them
+    diag[inds] = -1 * damp * diag[inds]
+    force_constants = diag[inds]
+    ts_hess = np.diag(diag)
+
+    # Set off-diagonal elements
+    for i, j in it.combinations(inds, 2):
+        # fi = force_constants[i]
+        # fj = force_constants[j]
+        fi = diag[i]
+        fj = diag[j]
+        f = -(2*fi*fj)**0.5
+        ts_hess[i,j] = f
+        ts_hess[j,i] = f
+    return ts_hess

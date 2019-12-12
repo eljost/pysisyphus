@@ -24,6 +24,15 @@ def make_trj_str(atoms, coords_list, comments=None):
     return "\n".join(xyz_strings)
 
 
+def coords_to_trj(trj_fn, atoms, coords_list, comments=None):
+    coords = np.array(coords_list)
+    coords = coords.reshape(-1, len(atoms), 3) * BOHR2ANG
+    trj_str = make_trj_str(atoms, coords, comments)
+    with open(trj_fn, "w") as handle:
+        handle.write(trj_str)
+    return trj_fn
+
+
 def make_trj_str_from_geoms(geoms, comments=None):
     atoms = geoms[0].atoms
     coords_list = [geom.coords3d*BOHR2ANG for geom in geoms]

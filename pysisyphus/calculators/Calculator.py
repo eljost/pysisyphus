@@ -93,7 +93,7 @@ class Calculator:
     def name(self):
         return f"{self.base_name}_{self.calc_number:03d}"
 
-    def log(self, message):
+    def log(self, message=""):
         """Write a log message.
 
         Wraps the logger variable.
@@ -214,6 +214,29 @@ class Calculator:
             text = handle.read()
         print(text)
 
+    def prepare_turbo_coords(self, atoms, coords):
+        """Get a Turbomole coords string.
+
+        Parameters
+        ----------
+        atoms : iterable
+            Atom descriptors (element symbols).
+        coords: np.array, 1d
+            1D-array holding coordinates in Bohr.
+
+        Returns
+        -------
+        coords: str
+            String holding coordinates in Turbomole coords format.
+        """
+        fmt = "{:<20.014f}"
+        coord_str = "$coord\n"
+        for atom, coord in zip(atoms, coords.reshape(-1, 3)):
+            coord_line = (fmt+fmt+fmt).format(*coord) + atom.lower() + "\n"
+            coord_str += coord_line
+        coord_str += "$end"
+        return coord_str
+
     def prepare_coords(self, atoms, coords):
         """Get 3d coords in Angstrom.
 
@@ -257,7 +280,7 @@ class Calculator:
 
     def run(self, inp, calc, add_args=None, env=None, shell=False,
             hold=False, keep=True, cmd=None, inc_counter=True,
-            run_after=True):
+            run_after=True, parser_kwargs=None, symlink=True):
         """Run a calculation.
 
         The bread-and-butter method to actually run an external quantum
@@ -306,6 +329,18 @@ class Calculator:
         if not env:
             env = os.environ.copy()
         with open(path / self.out_fn, "w") as handle:
+            if symlink:
+                # We can't use resolve here as a previous symlink may already
+                # exist. Calling resolve would translate this to the original
+                # out file in some tempdir (that is already deleted ...).
+                # sym_fn = Path("cur_out").resolve()
+                sym_fn = self.out_dir / "cur_out"
+                try:
+                    os.remove(sym_fn)
+                except FileNotFoundError:
+                    pass
+                os.symlink(path / self.out_fn, sym_fn)
+                self.log(f"Created symlink in '{sym_fn}'")
             result = subprocess.Popen(args, cwd=path,
                                       stdout=handle, stderr=subprocess.PIPE,
                                       env=env, shell=shell)
@@ -313,7 +348,8 @@ class Calculator:
         try:
             if run_after:
                 self.run_after(path)
-            results = self.parser_funcs[calc](path)
+            parser_kwargs = {} if parser_kwargs is None else parser_kwargs
+            results = self.parser_funcs[calc](path, **parser_kwargs)
             if keep:
                 self.keep(path)
         except Exception as err:

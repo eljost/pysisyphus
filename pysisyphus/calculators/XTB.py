@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+from collections import namedtuple
 import glob
+import io
 import os
 import re
+import textwrap
 
 import numpy as np
 import pyparsing as pp
@@ -11,8 +14,11 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.parser import parse_turbo_gradient
-from pysisyphus.helpers import geom_from_xyz_file
+from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
 from pysisyphus.xyzloader import make_xyz_str
+
+
+OptResult = namedtuple("OptResult", "opt_geom opt_log")
 
 
 class XTB(Calculator):
@@ -33,12 +39,15 @@ class XTB(Calculator):
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz", "g98.out")
+        self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz", "g98.out",
+                        "xtb.trj",
+        )
 
         self.parser_funcs = {
             "grad": self.parse_gradient,
             "hess": self.parse_hessian,
             "opt": self.parse_opt,
+            "md": self.parse_md,
             "noparse": lambda path: None,
         }
 
@@ -108,7 +117,70 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
-    def run_opt(self, atoms, coords, keep=True):
+    def get_mdrestart_str(self, coords, velocities):
+        """coords and velocities have to given in au!"""
+        vals = np.concatenate((coords, velocities), axis=1)
+
+        with io.StringIO() as io_stream:
+            np.savetxt(io_stream, vals, fmt="% .14e")
+            mdrestart = io_stream.getvalue()
+        # What does the -1.0 mean?
+        mdrestart = "-1.0\n" + mdrestart.replace("e", "D")
+        mdrestart = textwrap.indent(mdrestart, " ")
+        return mdrestart
+
+    def write_mdrestart(self, path, mdrestart_str):
+        with open(path / "mdrestart", "wb") as handle:
+            handle.write(mdrestart_str.encode("ascii"))
+
+    def run_md(self, atoms, coords, t, dt, velocities=None, dump=1):
+        """Expecting t and dt in fs, even though xtb wants t in ps!"""
+
+        restart = "false"
+        path = self.prepare_path(use_in_run=True)
+        if velocities is not None:
+            coords3d = coords.reshape(-1, 3)
+            velocities3d = velocities.reshape(-1, 3)
+            assert coords3d.shape == velocities3d.shape, \
+                "Shape of coordinates and velocities doesn't match!"
+            mdrestart_str = self.get_mdrestart_str(coords3d, velocities3d)
+            self.write_mdrestart(path, mdrestart_str)
+            restart = "true"
+        md_str = textwrap.dedent("""
+        $md
+            hmass=1
+            dump={dump}  # fs
+            nvt=false
+            restart={restart}
+            time={time}  # ps
+            shake=0
+            step={step}  # fs
+            velo=false
+        $end""")
+        t_fs = t / 1000
+        md_str_fmt = md_str.format(restart=restart, time=t_fs, step=dt,
+                                   dump=dump)
+        with open(path / "xcontrol", "w") as handle:
+            handle.write(md_str_fmt)
+        inp = self.prepare_turbo_coords(atoms, coords)
+
+        add_args = self.prepare_add_args() + ["--input", "xcontrol", "--md"]
+        self.log(f"Executing {self.base_cmd} {add_args}")
+        kwargs = {
+            "calc": "md",
+            "add_args": add_args,
+            "env": self.get_pal_env(),
+            "keep": True,
+        }
+        geoms = self.run(inp, **kwargs)
+        return geoms
+
+    def parse_md(self, path):
+        assert (path / "xtbmdok").exists(), "File xtbmdok does not exist!"
+        geoms = geoms_from_trj(path / "xtb.trj")
+        return geoms
+
+    def run_opt(self, atoms, coords, keep=True, keep_log=False):
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--opt", "tight"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -117,18 +189,28 @@ class XTB(Calculator):
             "add_args": add_args,
             "env": self.get_pal_env(),
             "keep": keep,
+            "parser_kwargs": {"keep_log": keep_log},
         }
-        opt_geom = self.run(inp, **kwargs)
-        return opt_geom
+        opt_result = self.run(inp, **kwargs)
+        return opt_result
 
-    def parse_opt(self, path):
+    def parse_opt(self, path, keep_log=False):
         xtbopt = path / "xtbopt.xyz"
         if not xtbopt.exists():
             self.log(f"{self.calc_number:03d} failed")
             return None
         opt_geom = geom_from_xyz_file(xtbopt)
         opt_geom.energy = self.parse_energy(path)
-        return opt_geom
+
+        opt_log = None
+        if keep_log:
+            opt_log = geoms_from_trj(path / "xtbopt.log")
+
+        opt_result = OptResult(
+                        opt_geom=opt_geom,
+                        opt_log=opt_log
+        )
+        return opt_result
 
     def parse_energy(self, path):
         with open(path / self.out_fn) as handle:

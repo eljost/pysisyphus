@@ -1,0 +1,102 @@
+from pathlib import Path
+
+import pytest
+
+from pysisyphus.helpers import geom_from_library
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.calculators.ORCA import ORCA
+from pysisyphus.calculators.Psi4 import Psi4
+from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.calculators.Turbomole import Turbomole
+
+
+@pytest.fixture
+def this_dir(request):
+    return Path(request.module.__file__).parents[0]
+
+
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs",
+    [
+        pytest.param(Gaussian16, {"route": "HF/STO-3G"}),
+        pytest.param(ORCA, {"keywords": "HF STO-3G tightscf"}),
+        pytest.param(Psi4, {"method": "scf", "basis": "sto-3g",
+                            "to_set": {"scf_type": "pk"}}
+        ),
+        pytest.param(PySCF, {"basis": "sto-3g"}),
+        pytest.param(Turbomole,
+            {"control_path": "./control_path_hf_sto3g_gs"},
+        ),
+])
+def test_cytosin_gs_opt(calc_cls, calc_kwargs, this_dir):
+    geom = geom_from_library("cytosin.xyz", coord_type="redund")
+
+    if "control_path" in calc_kwargs:
+        calc_kwargs["control_path"] = this_dir / calc_kwargs["control_path"]
+
+    calc = calc_cls(**calc_kwargs, mem=1000)
+    geom.set_calculator(calc)
+
+    opt_kwargs = {
+        "thresh": "gau_tight",
+        "overachieve_factor": 2.,
+        # "trust_radius": 0.3,
+        # "trust_max": 0.3,
+        "line_search": True,
+        "gdiis": True,
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    # gau tight
+    assert geom.energy == pytest.approx(-387.54925361)
+
+
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs",
+    [
+        # pytest.param(Gaussian16, {"route": "PBE1PBE/def2SVP TD=(nstates=2,root=1)"}),
+        pytest.param(Turbomole,
+            {"control_path": "./control_path_pbe0_def2svp_s1"},
+        ),
+        # pytest.param(ORCA,
+            # {"keywords": "PBE0 def2-SVP tightscf",
+             # "blocks": "%tddft nroots 2 iroot 1 tda false end"}
+        # ),
+        # pytest.param(PySCF,
+            # {"xc": "pbe0", "method": "tddft", "basis": "def2SVP",
+             # "nstates": 2, "root": 1}
+        # )
+])
+def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):
+    geom = geom_from_library("cytosin.xyz", coord_type="redund")
+
+    if "control_path" in calc_kwargs:
+        calc_kwargs["control_path"] = this_dir / calc_kwargs["control_path"]
+
+    calc_kwargs.update({
+        "mem": 2000,
+        "pal": 4,
+        "ovlp_type": "tden",
+        "track": True,
+    })
+    calc = calc_cls(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    opt_kwargs = {
+        # "thresh": "gau_tight",
+        "overachieve_factor": 2.,
+        # "trust_radius": 0.3,
+        # "trust_max": 0.3,
+        "line_search": True,
+        "gdiis": True,
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(-394.060726878)
+    assert calc.root_flips[2]
+    assert calc.root == 2

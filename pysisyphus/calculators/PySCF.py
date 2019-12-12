@@ -65,6 +65,11 @@ class PySCF(OverlapCalculator):
             mf._numint.libxc = xcfun
             mf.conv_tol = 1e-8
             mf.max_cycle = 150
+            # TODO: grids
+            # grids = pyscf.dft.gen_grid.Grids(mol)
+            # grids.level = 4
+            # grids.build()
+            # mf.grids = grids
         elif mol and (step == "scf"):
             driver = self.drivers[(step, self.unrestricted)]
             mf = driver(mol)
@@ -192,7 +197,7 @@ class PySCF(OverlapCalculator):
         exc_mf = self.mf
 
         gs_energy = gs_mf.e_tot
-        mo_coeffs = gs_mf.mo_coeff
+        mo_coeffs = gs_mf.mo_coeff.T
 
         # Shape = (nstates, 2 (X,Y), occ, virt)
         ci_coeffs = np.array(exc_mf.xy)

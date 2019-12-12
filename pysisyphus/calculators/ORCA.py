@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
-import logging
+# import logging
 import os
 from pathlib import Path
 import re
@@ -31,21 +31,22 @@ class ORCA(OverlapCalculator):
 
     conf_key = "orca"
 
-    def __init__(self, keywords, gbw="", blocks="", **kwargs):
+    def __init__(self, keywords, blocks="", gbw=None, mem=2000, **kwargs):
         super().__init__(**kwargs)
 
         self.keywords = keywords
-        # Only call when we are not restarting
-        if not ("last_calc_cycle" in kwargs):
-            self.set_moinp_str(gbw)
         self.blocks = blocks
+        self.gbw = gbw
+        self.mem = int(mem)
 
         assert (("pal" not in keywords.lower())
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
                 "allowed! Use 'pal: n' in the 'calc' section instead."
+        assert "maxcore" not in blocks.lower(), "maxcore not allowed! " \
+                "Use 'mem: n' in the 'calc' section instead!"
 
         self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian",
-                        "cis", "molden:orca.molden")
+                        "cis", "molden:orca.molden", "hess")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -60,6 +61,7 @@ class ORCA(OverlapCalculator):
         {moinp}
 
         %pal nprocs {pal} end
+        %maxcore {mem}
 
         {blocks}
 
@@ -79,31 +81,29 @@ class ORCA(OverlapCalculator):
     def reattach(self, last_calc_cycle):
         # Use the latest .gbw
         gbw = self.make_fn("gbw", last_calc_cycle)
-        self.log(f"restarted. using {gbw}")
-        self.set_moinp_str(gbw)
+        self.log(f"Restarted. using {gbw}")
 
-    def set_moinp_str(self, gbw):
-        if not gbw:
-            self.moinp = ""
-            self.gbw = ""
-        else:
-            self.moinp = f"""!moread
+    def get_moinp_str(self, gbw):
+        moinp_str = ""
+        if gbw:
+            moinp_str = f"""!moread
             %moinp "{gbw}" """
-            self.gbw = gbw
+        return moinp_str
 
     def prepare_input(self, atoms, coords, calc_type):
         coords = self.prepare_coords(atoms, coords)
         if self.gbw:
-            self.log(f"using {self.gbw}")
+            self.log(f"Using {self.gbw}")
         else:
-            self.log("using initial guess provided by ORCA")
+            self.log("Using initial guess provided by ORCA")
         if calc_type == "noparse":
             calc_type = ""
         inp = self.orca_input.format(
                                 keywords=self.keywords,
                                 calc_type=calc_type,
-                                moinp=self.moinp,
+                                moinp=self.get_moinp_str(self.gbw),
                                 pal=self.pal,
+                                mem=self.mem,
                                 blocks=self.get_block_str(),
                                 coords=coords,
                                 charge=self.charge,
@@ -219,7 +219,7 @@ class ORCA(OverlapCalculator):
         parsed = parser.parseString(text)
         results["hessian"] = make_sym_mat(parsed["hessian"])
 
-        logging.warning("Hacky orca energy parsing in orca hessian calculation!")
+        # logging.warning("Hacky orca energy parsing in orca hessian calculation!")
         orca_log_fn = os.path.join(path, self.out_fn)
         with open(orca_log_fn) as handle:
             log_text = handle.read()
@@ -443,7 +443,7 @@ class ORCA(OverlapCalculator):
 
     def keep(self, path):
         kept_fns = super().keep(path)
-        self.set_moinp_str(kept_fns["gbw"])
+        self.gbw = kept_fns["gbw"]
         self.out = kept_fns["out"]
         if self.track and self.do_tddft:
             self.cis = kept_fns["cis"]
@@ -452,25 +452,9 @@ class ORCA(OverlapCalculator):
         except KeyError:
             self.log("Didn't set 'mwfn_wf'. No .molden file in kept_fns.")
 
+    def propagate_wavefunction(self, calc):
+        if self.gbw:
+            calc.gbw = self.gbw
+
     def __str__(self):
         return f"ORCA({self.name})"
-
-
-if __name__ == "__main__":
-    from pysisyphus.helpers import geom_from_library
-    geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
-    keywords = "BP86 def2-SV(P)"
-    blocks = "tddft iroot 1 end"
-    charge = 1
-    mult = 1
-    orca = ORCA(keywords, blocks, charge=charge, mult=mult)
-    """
-    geom.set_calculator(orca)
-    forces = geom.forces
-    print(forces)
-    """
-    res = orca.parse_engrad("/scratch/test/pysis_orca/neu")
-    orca.set_moinp_str("")
-    print(orca.moinp)
-    orca.set_moinp_str("path/to/gbw")
-    print(orca.moinp)

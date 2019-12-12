@@ -15,11 +15,17 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class StringOptimizer(Optimizer):
 
-    def __init__(self, geometry, gamma=1.25, max_step=0.1, **kwargs):
+    def __init__(self, geometry, gamma=1.25, max_step=0.1,
+                 stop_in_when_full=-1, **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         # gamma = 1.25 Hartree/Bohr² ~ 5 Hartree/Angstrom²
-        self.gamma = gamma
+        self.gamma = float(gamma)
+        self.stop_in_when_full = int(stop_in_when_full)
+
+        # Add one as we later subtract 1 before we check if this value
+        # is 0.
+        self.stop_in = self.stop_in_when_full + 1
 
     def prepare_opt(self):
         if self.is_cos and self.align:
@@ -41,6 +47,18 @@ class StringOptimizer(Optimizer):
         signs = np.sign(steps[too_big])
         steps[too_big] = signs * self.max_step
         return steps
+
+    def check_convergence(self, *args, **kwargs):
+        # Normal convergence check with gradients etc.
+        converged = super().check_convergence(*args, **kwargs)
+
+        if self.geometry.fully_grown:
+            self.stop_in -= 1
+            self.log(f"String is fully grown. Stopping in {self.stop_in} cycles.")
+
+        full_stop = self.geometry.fully_grown and (self.stop_in == 0)
+        # full_stop will take precedence when True
+        return full_stop or converged
 
     def optimize(self):
         # Raises IndexError in cycle 0 and evaluates to False when the

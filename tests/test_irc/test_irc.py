@@ -5,10 +5,14 @@ import numpy as np
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.irc.Euler import Euler
+from pysisyphus.irc.EulerPC import EulerPC
 from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
 from pysisyphus.irc.IMKMod import IMKMod
 from pysisyphus.irc import RK4
+# from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
+# from pysi
+from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 
 
 def get_geom():
@@ -83,9 +87,54 @@ def plot_anapot_irc(irc):
     plt.show()
 
 
+def test_lqa():
+    from pysisyphus.irc.LQA import LQA
+    ts_coords = (0.61173, 1.49297, 0.)
+    geom = AnaPot.get_geom(ts_coords)
+    irc = LQA(geom, step_length=.2)
+    irc.run()
+
+    coords = irc.all_coords
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    ax.plot(*coords.T[:2], "ro-")
+    plt.show()
+
+
+def test_eulerpc():
+    ts_coords = (0.61173, 1.49297, 0.)
+    geom = AnaPot.get_geom(ts_coords)
+    # ts_coords = (-0.822, 0.624, 0.)
+    # geom = MullerBrownPot .get_geom(ts_coords)
+
+    irc_kwargs = {
+        "step_length": .2,
+        "displ": "length",
+        # "displ_length": .05,
+        # "hessian_update": "bfgs",
+        "hessian_update": "bofill",
+        # "backward": False,
+        "rms_grad_thresh": 1e-2,
+    }
+    irc = EulerPC(geom, **irc_kwargs)
+    irc.run()
+
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    # import pdb; pdb.set_trace()
+    ax.plot(*irc.all_coords.T[:2], "ro-")
+    # ax.set_xlim(-1.1, 0.1)
+    # ax.set_ylim( 0.3, 1.6)
+    plt.show()
+
+
 if __name__ == "__main__":
     # irc = test_imk()
-    irc = test_rk4()
-    plot_anapot_irc(irc)
+    # irc = test_rk4()
+    # plot_anapot_irc(irc)
     # irc = test_gs()
     # plot_anapot_irc(irc)
+    # test_lqa()
+    test_eulerpc()

@@ -21,29 +21,6 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 
-# different sets of covalent radii for testing
-# # pyberny
-# pyb_cr = {
-    # "h": 0.38 / BOHR2ANG,
-    # "c": 0.77 / BOHR2ANG,
-    # "n": 0.75 / BOHR2ANG,
-    # "o": 0.73 / BOHR2ANG,
-    # "cl": 0.99 / BOHR2ANG,
-    # "ru": 1.26 / BOHR2ANG,
-# }
-# # dalton
-pyb_cr = {
-    "h": 0.40 / BOHR2ANG,
-    "c": 0.75 / BOHR2ANG,
-    "n": 0.71 / BOHR2ANG,
-    "o": 0.63 / BOHR2ANG,
-    "cl": 0.99 / BOHR2ANG,
-    "ru": 1.25 / BOHR2ANG,
-}
-from pysisyphus.elem_data import COVALENT_RADII as CR
-old_vals = [CR[k] for k in pyb_cr.keys()]
-CR.update(pyb_cr)
-
 
 def get_cov_radii_sum_array(atoms, coords):
     coords3d = coords.reshape(-1, 3)
@@ -57,8 +34,6 @@ def get_cov_radii_sum_array(atoms, coords):
     cov_rad_sums = np.array(cov_rad_sums)
     return cov_rad_sums
 
-
-# PrimitiveCoord = namedtuple("PrimitiveCoord", "inds val grad")
 
 @attr.s(auto_attribs=True)
 class PrimitiveCoord:
@@ -74,10 +49,11 @@ class RedundantCoords:
     BEND_MAX_DEG = 170
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
-                 prim_indices=None):
+                 prim_indices=None, define_prims=None):
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
+        self.define_prims = define_prims
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -85,7 +61,7 @@ class RedundantCoords:
         self.hydrogen_bond_indices = list()
 
         if prim_indices is None:
-            self.set_primitive_indices()
+            self.set_primitive_indices(self.define_prims)
         else:
             to_arr = lambda _: np.array(list(_), dtype=int)
             bonds, bends, dihedrals = prim_indices
@@ -134,15 +110,20 @@ class RedundantCoords:
         return len(self.bond_indices) + len(self.bending_indices)
 
     def get_index_of_prim_coord(self, prim_ind):
-        """Index of primitive internal for the given atom indices."""
+        """Index of primitive internal for the given atom indices.
+
+        TODO: simplify this so when we get a prim_ind of len 2
+        (bond) we don't have to check the bending and dihedral indices."""
         prim_ind_set = set(prim_ind)
-        index = [i for i, pi in enumerate(it.chain(*self.prim_indices))
+        indices = [i for i, pi in enumerate(it.chain(*self.prim_indices))
                  if set(pi) == prim_ind_set]
-        if len(index) == 0:
-            raise Exception(f"Primitive internal with indices {prim_ind} "
-                             "is not defined!")
-        else:
-            return index[0]
+        index = None
+        try:
+            index = indices[0]
+        except IndexError:
+            self.log(f"Primitive internal with indices {prim_ind} "
+                      "is not defined!")
+        return index
 
     @property
     def c3d(self):
@@ -198,7 +179,13 @@ class RedundantCoords:
         K_flat = np.zeros(size_ * size_)
         for pc, int_grad_item in zip(self._prim_internals, int_gradient):
             # Contract with gradient
-            dg = int_grad_item * grad_deriv_wrapper(pc.inds)
+            try:
+                dg = int_grad_item * grad_deriv_wrapper(pc.inds)
+            except (ValueError, ZeroDivisionError) as err:
+                self.log( "Error in calculation of 2nd derivative of primitive "
+                         f"internal {pc.inds}."
+                )
+                continue
             # Depending on the type of internal coordinate dg is a flat array
             # of size 36 (stretch), 81 (bend) or 144 (torsion).
             #
@@ -224,10 +211,15 @@ class RedundantCoords:
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
 
-    def project_hessian(self, H):
+    def project_hessian(self, H, shift=1000):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
         P = self.P
-        return P.dot(H).dot(P) + 1000*(np.eye(P.shape[0]) - P)
+        return P.dot(H).dot(P) + shift*(np.eye(P.shape[0]) - P)
+
+    def project_vector(self, vector):
+        """Project supplied vector onto range of B."""
+        P = self.P
+        return self.P.dot(vector)
 
     def set_rho(self):
         # TODO: remove this as it is already in optimizers/guess_hessians
@@ -326,7 +318,7 @@ class RedundantCoords:
                     self.log("Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
-    def set_bond_indices(self, factor=None):
+    def set_bond_indices(self, define_bonds=None, factor=None):
         """
         Default factor of 1.3 taken from [1] A.1.
         Gaussian uses somewhat less, like 1.2, or different radii than we do.
@@ -344,7 +336,11 @@ class RedundantCoords:
         bond_flags = cdm <= cov_rad_sums
         bond_indices = atom_indices[bond_flags]
 
+        if define_bonds:
+            bond_indices = np.concatenate(((bond_indices, define_bonds)), axis=0)
+
         self.bare_bond_indices = bond_indices
+
 
         # Look for hydrogen bonds
         self.set_hydrogen_bond_indices(bond_indices)
@@ -372,13 +368,14 @@ class RedundantCoords:
 
         self.bond_indices = bond_indices
 
-    def are_parallel(self, vec1, vec2, thresh=1e-6):
+    def are_parallel(self, vec1, vec2, angle_ind=None, thresh=1e-6):
         dot = max(min(vec1.dot(vec2), 1), -1)
         rad = np.arccos(dot)#vec1.dot(vec2))
         # angle > 175°
         if abs(rad) > self.RAD_175:
             # self.log(f"Nearly linear angle {angle_ind}: {np.rad2deg(rad)}")
-            self.log(f"Nearly linear angle: {np.rad2deg(rad)}")
+            ind_str = f" ({angle_ind})" if (angle_ind is not None) else ""
+            self.log(f"Nearly linear angle{ind_str}: {np.rad2deg(rad)}")
         return abs(rad) > (np.pi - thresh)
 
     def sort_by_central(self, set1, set2):
@@ -397,7 +394,7 @@ class RedundantCoords:
         deg = np.rad2deg(val)
         return self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
 
-    def set_bending_indices(self):
+    def set_bending_indices(self, define_bends=None):
         bond_sets = {frozenset(bi) for bi in self.bond_indices}
         for bond_set1, bond_set2 in it.combinations(bond_sets, 2):
             union = bond_set1 | bond_set2
@@ -410,6 +407,10 @@ class RedundantCoords:
                 self.bending_indices.append(as_tpl)
         self.bending_indices = np.array(self.bending_indices, dtype=int)
 
+        if define_bends:
+            bis = np.concatenate(( (self.bending_indices, define_bends)), axis=0)
+            self.bending_indices = bis
+
     def is_valid_dihedral(self, dihedral_ind, thresh=1e-6):
         # Check for linear atoms
         first_angle = self.calc_bend(self.c3d, dihedral_ind[:3])
@@ -419,7 +420,7 @@ class RedundantCoords:
                 and (abs(second_angle) < pi_thresh)
         )
 
-    def set_dihedral_indices(self):
+    def set_dihedral_indices(self, define_dihedrals=None):
         dihedral_sets = list()
         def set_dihedral_index(dihedral_ind):
             dihedral_set = set(dihedral_ind)
@@ -465,7 +466,13 @@ class RedundantCoords:
             else:
                 fourth_atom = list(bond_set - intersect)
                 dihedral_ind = bend.tolist() + fourth_atom
-                improper_dihedrals.append(dihedral_ind)
+                # This way dihedrals may be generated that contain linear
+                # atoms and these would be undefinied. So we check for this.
+                dihed = self.calc_dihedral(coords3d, dihedral_ind)
+                if not np.isnan(dihed):
+                    improper_dihedrals.append(dihedral_ind)
+                else:
+                    self.log("Dihedral {dihedral_ind} is undefinied. Skipping it!")
 
         # Now try to create the remaining improper dihedrals.
         if (len(self.atoms) >= 4) and (len(self.dihedral_indices) == 0):
@@ -476,10 +483,24 @@ class RedundantCoords:
 
         self.dihedral_indices = np.array(self.dihedral_indices)
 
-    def set_primitive_indices(self):
-        self.set_bond_indices()
-        self.set_bending_indices()
-        self.set_dihedral_indices()
+        if define_dihedrals:
+            dis = np.concatenate(((self.dihedral_indices, define_dihedrals)), axis=0)
+            self.dihedral_indices = dis
+
+    def sort_by_prim_type(self, to_sort):
+        by_prim_type = [[], [], []]
+        if to_sort is None:
+            to_sort = list()
+        for item in to_sort:
+            len_ = len(item)
+            by_prim_type[len_-2].append(item)
+        return by_prim_type
+
+    def set_primitive_indices(self, define_prims=None):
+        stretches, bends, dihedrals = self.sort_by_prim_type(define_prims)
+        self.set_bond_indices(stretches)
+        self.set_bending_indices(bends)
+        self.set_dihedral_indices(dihedrals)
 
     def calculate(self, coords, attr=None):
         coords3d = coords.reshape(-1, 3)
@@ -533,7 +554,7 @@ class RedundantCoords:
         angle_rad = np.arccos(u.dot(v))
         if grad:
             # Eq. (24) in [1]
-            if self.are_parallel(u, v):
+            if self.are_parallel(u, v, angle_ind):
                 tmp_vec = np.array((1, -1, 1))
                 par = self.are_parallel(u, tmp_vec) and self.are_parallel(v, tmp_vec)
                 tmp_vec = np.array((-1, 1, 1)) if par else tmp_vec
@@ -638,10 +659,13 @@ class RedundantCoords:
         # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
 
-        last_rms = None
+        last_rms = 9999
         prev_internals = cur_internals
+        self.backtransform_failed = True
         for i in range(25):
             cart_step = Bt_inv_prim.T.dot(remaining_int_step)
+            # Recalculate exact Bt_inv every cycle. Costly.
+            # cart_step = self.Bt_inv.T.dot(remaining_int_step)
             cart_rms = np.sqrt(np.mean(cart_step**2))
             # Update cartesian coordinates
             cur_cart_coords += cart_step
@@ -653,23 +677,33 @@ class RedundantCoords:
                      f"rms(Δinternal) = {internal_rms:1.5e}"
             )
 
-            if i == 0:
-                # Store results of the first conversion cycle for laster use, if
-                # the internal -> cartesian optimization goes awry.
-                first_cycle = (cur_cart_coords.copy(), new_internals.copy())
-            elif i > 0 and (cart_rms > last_rms):
+            # This assumes the first cart_rms won't be > 9999 ;)
+            if (cart_rms < last_rms):
+                # Store results of the conversion cycle for laster use, if
+                # the internal-cartesian-transformation goes bad.
+                best_cycle = (cur_cart_coords.copy(), new_internals.copy())
+                best_cycle_ind = i
+            elif i != 0:
                 # If the conversion somehow fails we return the step
                 # saved above.
-                self.log("Internal to cartesian failed! Using first step.")
-                cur_cart_coords, new_internals = first_cycle
+                self.log( "Internal to cartesian failed! Using from step "
+                         f"from cycle {best_cycle_ind}."
+                )
+                cur_cart_coords, new_internals = best_cycle
                 break
+            else:
+                raise Exception("Internal-cartesian back-transformation already "
+                                "failed in the first step. Aborting!"
+                )
             prev_internals = new_internals
 
             last_rms = cart_rms
             if cart_rms < cart_rms_thresh:
                 self.log("Internal to cartesian transformation converged!")
+                self.backtransform_failed = False
                 break
             self._prim_coords = np.array(new_internals)
+        self.log("")
         return cur_cart_coords - self.cart_coords
 
     def __str__(self):

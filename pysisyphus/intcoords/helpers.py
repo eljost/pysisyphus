@@ -48,7 +48,13 @@ def to_set(iterable):
 
 def get_ind_sets(geom):
     """Convert RedundandCoords.prim_indices to sets of tuples."""
-    bonds, bends, dihedrals = geom.internal.prim_indices
+    try:
+        bonds, bends, dihedrals = geom.internal.prim_indices
+    # Exception will be raised if the geom is in cartesians. Then we
+    # just create the internals for the given geometry.
+    except AttributeError:
+        internal = RedundantCoords(geom.atoms, geom.cart_coords)
+        bonds, bends, dihedrals = internal.prim_indices
     return to_set(bonds), to_set(bends), to_set(dihedrals)
 
 

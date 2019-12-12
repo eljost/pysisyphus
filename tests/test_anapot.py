@@ -403,13 +403,22 @@ def test_rfo_optimizer():
     # geom = pot.get_geom((-0.8333, 2, 0))
     geom = pot.get_geom((-1, 3, 0))
     # geom = pot.get_geom((0, 3, 0))
-    opt = RFOptimizer(geom, thresh="gau_tight", max_cycles=15)
+    rfo_kwargs = {
+        "thresh": "gau_tight",
+        "max_cycles": 15,
+        "hessian_recalc": 2,
+        # "hessian_recalc_adapt": 5,
+    }
+    opt = RFOptimizer(geom, **rfo_kwargs)
     opt.run()
-    # return
-    coords = np.array(opt.coords)
-    pot.plot()
-    ax = pot.ax
-    ax.plot(coords[:,0], coords[:,1], "ro-")
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 6
+
+    # coords = np.array(opt.coords)
+    # pot.plot()
+    # ax = pot.ax
+    # ax.plot(coords[:,0], coords[:,1], "ro-")
     # plt.show()
 
 
@@ -517,7 +526,7 @@ if __name__ == "__main__":
     # test_modified_broyden()
 
     # Rational function optimization
-    # test_rfo_optimizer()
+    test_rfo_optimizer()
 
     # SimpleZTS
     # opt = test_equal_szts()
@@ -535,4 +544,4 @@ if __name__ == "__main__":
     # ap.as_html5("anim.html")
     # plt.show()
 
-    test_cos()
+    # test_cos()

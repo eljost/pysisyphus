@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import os
 from pathlib import Path
 import sys
@@ -275,7 +276,7 @@ def load_results(keys):
 def plot_cosgrad():
     keys = ("energy", "forces", "coords")
     (energies, forces, coords), num_cycles, num_images = load_results(keys)
-    dummy_atoms = list()
+    dummy_atoms = ["H" for _ in coords[0][0]]
 
     all_nebs = list()
     all_perp_forces = list()
@@ -538,6 +539,10 @@ def plot_overlaps(h5, thresh=.1):
     print(f"Reference cycles: {ref_cycles}")
     print(f"Reference roots: {ref_roots}")
 
+    print("Key-bindings:")
+    print("i: switch between current and first cycle.")
+    print("e: switch between current and last cycle.")
+
     fig, ax = plt.subplots()
 
     n_states = overlaps[0].shape[0]
@@ -623,7 +628,19 @@ def render_cdds(h5):
     with h5py.File(h5) as handle:
         cdd_cubes = handle["cdd_cubes"][:].astype(str)
         orient = handle["orient"][()].decode()
+    cdd_cubes = [Path(cub) for cub in cdd_cubes]
     print(f"Found {len(cdd_cubes)} CDD cube filenames in {h5}")
+    # Check if cubes exist
+    non_existant_cubes = [cub for cub in cdd_cubes if not cub.exists()]
+    existing_cubes = [str(cub) for cub in set(cdd_cubes) - set(non_existant_cubes)]
+    if any(non_existant_cubes):
+        print("Couldn't find cubes:")
+        print("\n".join(["\t" + str(cub) for cub in non_existant_cubes]))
+        print("Dropping full path and looking only for cube names.")
+        cub_names = [cub.name for cub in non_existant_cubes]
+        _ = [cub for cub in cub_names if Path(cub).exists()]
+        existing_cubes = existing_cubes + _
+        cdd_cubes = existing_cubes
 
     # Create list of all final PNG filenames
     png_fns = [Path(cube).with_suffix(".png") for cube in cdd_cubes]
@@ -646,6 +663,74 @@ def render_cdds(h5):
     print("Rendered PNGs:")
     print(joined)
     print(f"Wrote list of rendered PNGs to '{CDD_PNG_FNS}'")
+
+
+def plot_afir():
+    with open("image_results.yaml") as handle:
+        res = yaml.load(handle.read(), Loader=yaml.loader.Loader)
+
+    afir_ens = [_["energy"] for _ in res]
+    true_ens = [_["true_energy"] for _ in res]
+    afir_ens = np.array(afir_ens) * AU2KJPERMOL
+    afir_ens -= afir_ens.min()
+    true_ens = np.array(true_ens) * AU2KJPERMOL
+    true_ens -= true_ens.min()
+
+    afir_forces = np.linalg.norm([_["forces"] for _ in res], axis=1)
+    true_forces = np.linalg.norm([_["true_forces"] for _ in res], axis=1)
+    afir_forces = np.array(afir_forces)
+    true_forces = np.array(true_forces)
+
+
+    fig, (en_ax, forces_ax) = plt.subplots(nrows=2, sharex=True)
+
+    style1 = "r--"
+    style2 = "g--"
+    style3 = "bo-"
+
+    l1 = en_ax.plot(afir_ens, style1, label="AFIR")
+    l2 = en_ax.plot(true_ens, style2, label="True")
+    en_ax2 = en_ax.twinx()
+    l3 = en_ax2.plot(true_ens+afir_ens, style3, label="Sum")
+    en_ax2.tick_params(axis="y", labelcolor="blue")
+
+    lines = l1 + l2 + l3
+    labels = [l.get_label() for l in lines]
+    en_ax.legend(lines, labels, loc=0)
+
+    en_ax.set_title("Energies")
+    en_ax.set_ylabel("$\Delta$E kJ / mol")
+
+    forces_ax.set_title("||Forces||")
+    l1 = forces_ax.plot(afir_forces, style1, label="AFIR")
+    l2 = forces_ax.plot(true_forces, style2, label="True")
+
+    forces_ax2 = forces_ax.twinx()
+    l3 = forces_ax2.plot(true_forces + afir_forces, style3, label="Sum")
+    forces_ax2.tick_params(axis="y", labelcolor="blue")
+
+    lines = l1 + l2 + l3
+    labels = [l.get_label() for l in lines]
+    forces_ax.legend(lines, labels, loc=0)
+
+    peak_inds, _ = peakdetect(true_ens, lookahead=2)
+    print(f"Peaks: {peak_inds}")
+    try:
+        peak_xs, peak_ys = zip(*peak_inds)
+        highest = np.argmax(peak_ys)
+
+        en_ax.scatter(peak_xs, peak_ys, s=100, marker="X", c="k", zorder=10)
+        en_ax.scatter(peak_xs[highest], peak_ys[highest],
+                    s=150, marker="X", c="k", zorder=10)
+        en_ax.axvline(peak_xs[highest], c="k", ls="--")
+        forces_ax.axvline(peak_xs[highest], c="k", ls="--")
+    except ValueError as err:
+        print("Peak-detection failed!")
+
+
+    # fig.legend(loc="upper right")
+    plt.tight_layout()
+    plt.show()
 
 
 def parse_args(args):
@@ -683,10 +768,103 @@ def parse_args(args):
     group.add_argument("--bare_energies", "-b", action="store_true",
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
+    group.add_argument("--afir", action="store_true",
+        help="Plot AFIR and true -energies and -forces from an AFIR calculation."
+    )
+    group.add_argument("--opt", action="store_true",
+        help="Plot optimization progress."
+    )
+    group.add_argument("--irc", action="store_true",
+        help="Plot IRC progress."
+    )
     group.add_argument("--overlaps", "-o", action="store_true")
     group.add_argument("--render_cdds", action="store_true")
 
     return parser.parse_args(args)
+
+
+def plot_opt():
+    def load(fn):
+        print(f"Reading {fn}")
+        with open(fn) as handle:
+            res = yaml.load(handle.read(), Loader=yaml.Loader)
+        energies = np.array(res["energies"])
+        energies -= energies.min()
+        energies *= AU2KJPERMOL
+        return energies
+    ens = load("optimizer_results.yaml")
+
+    fig, ax = plt.subplots()
+
+    ax.plot(ens, "o-", label="Cartesian")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+    ax.legend()
+    fig.tight_layout()
+    plt.show()
+
+
+def plot_irc():
+    cwd = Path(".")
+    h5s = cwd.glob("*irc_data.h5")
+    for h5 in h5s:
+        type_ = h5.name.split("_")[0]
+        title = f"{type_.capitalize()} IRC data"
+        fig, axs = plot_irc_h5(h5, title)
+    plt.show()
+
+
+def plot_irc_h5(h5, title=None):
+    with h5py.File(h5) as handle:
+        mw_coords = handle["mw_coords"][:]
+        energies = handle["energies"][:]
+        gradients = handle["gradients"][:]
+        rms_grad_thresh = handle["rms_grad_thresh"][()]
+        try:
+            ts_index = handle["ts_index"][()]
+        except KeyError:
+            ts_index = None
+
+    energies -= energies[0]
+    energies *= AU2KJPERMOL
+
+    cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
+    rms_grads = np.sqrt(np.mean(gradients**2, axis=1))
+    max_grads = np.abs(gradients).max(axis=1)
+
+    fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
+
+    plt_kwargs = {
+        "linestyle": "-",
+        "marker": "o",
+    }
+
+    ax0.plot(cds, energies, **plt_kwargs)
+    ax0.set_title("energy change")
+    ax0.set_ylabel("kJ mol⁻¹")
+
+    ax1.plot(cds, rms_grads, **plt_kwargs)
+    ax1.axhline(rms_grad_thresh, linestyle="--", color="k")
+    ax1.set_title("rms(gradient)")
+    ax1.set_ylabel("Hartree / bohr")
+
+    ax2.plot(cds, max_grads, **plt_kwargs)
+    ax2.set_title("max(gradient)")
+    ax2.set_xlabel("IRC / amu$^{\\frac{1}{2}}$ bohr")
+    ax2.set_ylabel("Hartree / bohr")
+
+    if ts_index:
+        x = cds[ts_index]
+        for ax, arr in ((ax0, energies), (ax1, rms_grads), (ax2, max_grads)):
+            xy = (x, arr[ts_index])
+            ax.annotate("TS", xy, fontsize=12, fontweight="bold")
+
+    if title:
+        fig.suptitle(title)
+    else:
+        fig.tight_layout()
+
+    return fig, (ax0, ax1, ax2)
 
 
 def run():
@@ -716,6 +894,12 @@ def run():
         render_cdds(h5=h5)
     elif args.bare_energies:
         plot_bare_energies(h5=h5)
+    elif args.afir:
+        plot_afir()
+    elif args.opt:
+        plot_opt()
+    elif args.irc:
+        plot_irc()
 
 
 if __name__ == "__main__":

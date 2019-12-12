@@ -90,6 +90,7 @@ class Turbomole(OverlapCalculator):
         self.virt_mos = nbf - self.occ_mos
 
         self.td = False
+        self.td_vec_fn = None
         self.ricc2 = False
         # Check for excited state calculation
         if "$exopt" in text:
@@ -137,15 +138,6 @@ class Turbomole(OverlapCalculator):
         self.td_vec_fn = None
         self.ci_coeffs = None
         self.mo_inds = None
-
-    def prepare_turbo_coords(self, atoms, coords):
-        fmt = "{:<20.014f}"
-        coord_str = "$coord\n"
-        for atom, coord in zip(atoms, coords.reshape(-1, 3)):
-            coord_line = (fmt+fmt+fmt).format(*coord) + atom.lower() + "\n"
-            coord_str += coord_line
-        coord_str += "$end"
-        return coord_str
 
     def prepare_input(self, atoms, coords, calc_type):
         if calc_type not in ("force", "double_mol", "noparse"):
@@ -260,7 +252,10 @@ class Turbomole(OverlapCalculator):
                 # Redo gradient calculation for new root.
                 results = self.get_forces(atoms, coords, cmd=self.second_cmd)
             self.last_run_path = prev_run_path
-        shutil.rmtree(self.last_run_path)
+        try:
+            shutil.rmtree(self.last_run_path)
+        except FileNotFoundError:
+            self.log("'{self.last_run_path}' was already deleted!")
         return results
 
     def run_calculation(self, atoms, coords):
@@ -405,6 +400,10 @@ class Turbomole(OverlapCalculator):
                   ("control", "\$subenergy.*$\s*" + float_re, re.MULTILINE),
                   # DSCF ground state energy
                   ("out", "total energy\s*=\s*" + float_re, 0),
+                  # From egrad when a rootflip occured. Then only the excited
+                  # state calculation will be redone and the ground state calculation
+                  # won't be present in the out-file.
+                  ("out", "Ground state\s*?Total energy:\s+" + float_re, re.MULTILINE),
         ]
         for file_attr, regex, flag in regexs:
             regex_ = re.compile(regex, flags=flag)

@@ -21,6 +21,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "attrs",
+        "autograd",
         "distributed",
         "h5py",
         "numpy",
@@ -40,6 +41,7 @@ setup(
             "pysisplot = pysisyphus.plot:run",
             "pysistrj = pysisyphus.trj:run",
             "pysisfilter = pysisyphus.filtertrj:run",
+            "pysisserver = pysisyphus.server.main:run",
         ]
     },
 )

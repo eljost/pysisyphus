@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+from collections import namedtuple
+import itertools as it
 import logging
 import os
 from pathlib import Path
@@ -8,7 +12,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.constants import ANG2BOHR
+from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
@@ -40,8 +44,122 @@ def geoms_from_trj(trj_fn, first=None, **kwargs):
 def get_baker_geoms(**kwargs):
     baker_path = THIS_DIR / "../xyz_files/baker"
     xyz_fns = baker_path.glob("*.xyz")
-    geoms = [geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns]
-    return geoms
+    geoms = {
+        xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
+    }
+    # From 10.1002/jcc.540140910
+    sto3g_energies = {
+        "water.xyz": -74.96590,
+        "ammonia.xyz": -55.45542,
+        "ethane.xyz": -78.30618,
+        "acetylene.xyz": -75.85625,
+        "allene.xyz": -114.42172,
+        "hydroxysulphane.xyz": -468.12592,
+        "benzene.xyz": -227.89136,
+        "methylamine.xyz": -94.01617,
+        "ethanol.xyz": -152.13267,
+        "acetone.xyz": -189.53603,
+        "disilylether.xyz": -648.58003,
+        "135trisilacyclohexane.xyz": -976.13242,
+        "benzaldehyde.xyz": -339.12084,
+        "13difluorobenzene.xyz": -422.81106,
+        "135trifluorobenzene.xyz": -520.27052,
+        "neopentane.xyz": -194.04677,
+        "furan.xyz": -225.75126,
+        "naphthalene.xyz": -378.68685,
+        "15difluoronaphthalene.xyz": -573.60633,
+        "2hydroxybicyclopentane.xyz": -265.46482,
+        "achtar10.xyz": -356.28265,
+        "acanil01.xyz": -432.03012,
+        "benzidine.xyz": -563.27798,
+        "pterin.xyz": -569.84884,
+        "difuropyrazine.xyz": -556.71910,
+        "mesityloxide.xyz": -304.05919,
+        "histidine.xyz": -538.54910,
+        "dimethylpentane.xyz": -271.20088,
+        "caffeine.xyz": -667.73565,
+        "menthone.xyz": -458.44639,
+    }
+    return geoms, sto3g_energies
+
+
+def get_baker_ts_geoms(**kwargs):
+    baker_ts_path = THIS_DIR / "../xyz_files/baker_ts"
+    xyz_fns = baker_ts_path.glob("*.xyz")
+    geoms = {
+        xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
+        if not ("downhill" in xyz_fn.name)
+    }
+    # From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7
+    meta_data = {
+        "01_hcn.xyz": (0, 1, -92.24604),
+        "02_hcch.xyz": (0, 1, -76.29343),
+        "03_h2co.xyz": (0, 1, -113.05003),
+        "04_ch3o.xyz": (0, 2, -113.69365),
+        "05_cyclopropyl.xyz": (0, 2, -115.72100),
+        "06_bicyclobutane.xyz": (0, 1, -153.90494),
+        "07_bicyclobutane.xyz": (0, 1, -153.89754),
+        "08_formyloxyethyl.xyz": (0, 2, -264.64757),
+        "09_parentdieslalder.xyz": (0, 1, -231.60321),
+        # 10 and 11 don't have any imaginary frequencies at the given
+        # geometry, so they may be skipped.
+        "10_tetrazine.xyz": (0, 1, -292.81026),
+        "11_trans_butadiene.xyz": (0, 1, -154.05046),
+        "12_ethane_h2_abstraction.xyz": (0, 1, -78.54323),
+        "13_hf_abstraction.xyz": (0, 1, -176.98453),
+        "14_vinyl_alcohol.xyz": (0, 1, -151.91310),
+        "15_hocl.xyz": (0, 1, -596.87865),
+        "16_h2po4_anion.xyz": (-1, 1, -637.92388),
+        "17_claisen.xyz": (0, 1, -267.23859),
+        "18_silyene_insertion.xyz": (0, 1, -367.20778),
+        "19_hnccs.xyz": (0, 1, -525.43040),
+        # The energy given in the paper (-168.24752 au) is faulty.
+        # This is the correct one.
+        "20_hconh3_cation.xyz": (1, 1, -168.241392),
+        "21_acrolein_rot.xyz": (0, 1, -189.67574),
+        "22_hconhoh.xyz": (0, 1, -242.25529),
+        "23_hcn_h2.xyz": (0, 1, -93.31114),
+        "24_h2cnh.xyz": (0, 1, -93.33296),
+        "25_hcnh2.xyz": (0, 1, -93.28172),
+    }
+    return geoms, meta_data
+
+
+def get_baker_opt_ts_geoms(**kwargs):
+    meta_data = {
+        "01_hcn_opt_ts.xyz": (0, 1),
+        # "02_hcch_opt_ts.xyz": (0, 1),
+        "03_h2co_opt_ts.xyz": (0, 1),
+        "04_ch3o_opt_ts.xyz": (0, 2),
+        "05_cyclopropyl_opt_ts.xyz": (0, 2),
+        "06_bicyclobutane_opt_ts.xyz": (0, 1),
+        "07_bicyclobutane_opt_ts.xyz": (0, 1),
+        "08_formyloxyethyl_opt_ts.xyz": (0, 2),
+        # "09_parentdieslalder_opt_ts.xyz": (0, 1),
+        # "10_tetrazine_opt_ts.xyz": (0, 1),
+        # "11_trans_butadiene_opt_ts.xyz": (0, 1),
+        # "12_ethane_h2_abstraction_opt_ts.xyz": (0, 1),
+        "13_hf_abstraction_opt_ts.xyz": (0, 1),
+        "14_vinyl_alcohol_opt_ts.xyz": (0, 1),
+        # "15_hocl_opt_ts.xyz": (0, 1),
+        "16_h2po4_anion_opt_ts.xyz": (-1, 1),
+        # "17_claisen_opt_ts.xyz": (0, 1),
+        "18_silyene_insertion_opt_ts.xyz": (0, 1),
+        "19_hnccs_opt_ts.xyz": (0, 1),
+        "20_hconh3_cation_opt_ts.xyz": (1, 1),
+        "21_acrolein_rot_opt_ts.xyz": (0, 1),
+        # "22_hconhoh_opt_ts.xyz": (0, 1),
+        "23_hcn_h2_opt_ts.xyz": (0, 1),
+        "24_h2cnh_opt_ts.xyz": (0, 1),
+        "25_hcnh2_opt_ts.xyz": (0, 1),
+    }
+    baker_ts_path = THIS_DIR / "../xyz_files/baker_opt_ts"
+    geoms = {
+        xyz_fn: geom_from_xyz_file(baker_ts_path / xyz_fn, **kwargs)
+        for xyz_fn in meta_data.keys()
+    }
+
+    return geoms, meta_data
 
 
 def align_geoms(geoms):
@@ -279,3 +397,68 @@ def highlight_text(text, width=80):
 
 def rms(arr):
     return np.sqrt(np.mean(arr**2))
+
+
+def complete_fragments(atoms, fragments):
+    lengths = [len(frag) for frag in fragments]
+
+    frag_atoms = sum(lengths)
+
+    all_inds = set(range(len(atoms)))
+    frag_inds = set(it.chain(*fragments))
+    rest_inds = all_inds - frag_inds
+
+    assert len(frag_inds) + len(rest_inds) == len(atoms)
+    assert frag_inds & rest_inds == set()
+
+    if rest_inds:
+        fragments.append(tuple(rest_inds))
+    fragments = tuple([tuple(frag) for frag in fragments])
+
+    return fragments
+
+
+def eigval_to_wavenumber(ev):
+    conv = AU2J/(AMU2KG*BOHR2M**2)
+
+    return np.sign(ev) * np.sqrt(np.abs(ev)*conv)/(2*np.pi*3e10)
+
+
+FinalHessianResult = namedtuple("FinalHessianResult",
+                                "neg_eigvals"
+)
+
+
+def do_final_hessian(geom, save_hessian=True):
+    print("Calculating hessian at final geometry.")
+
+    # TODO: Add cartesian_hessian property to Geometry to avoid
+    # accessing a "private" attribute.
+    hessian = geom.cart_hessian
+    print("... mass-weighing cartesian hessian")
+    mw_hessian = geom.mass_weigh_hessian(hessian)
+    print("... doing eckart-projection")
+    proj_hessian = geom.eckart_projection(mw_hessian)
+    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+    ev_thresh = -1e-6
+
+    neg_inds = eigvals < ev_thresh
+    neg_eigvals = eigvals[neg_inds]
+    neg_num = sum(neg_inds)
+    eigval_str = np.array2string(eigvals[:10], precision=4)
+    print()
+    print("First 10 eigenvalues", eigval_str)
+    # print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
+    if neg_num > 0:
+        wavenumbers = eigval_to_wavenumber(neg_eigvals)
+        wavenum_str = np.array2string(wavenumbers, precision=2)
+        print("Imaginary frequencies:", wavenum_str, "cm⁻¹")
+
+    if save_hessian:
+        final_hessian_fn = "calculated_final_cart_hessian"
+        np.savetxt(final_hessian_fn, hessian)
+        print()
+        print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
+
+    res = FinalHessianResult(neg_eigvals=neg_eigvals)
+    return res

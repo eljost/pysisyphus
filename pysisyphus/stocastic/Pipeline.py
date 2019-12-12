@@ -178,8 +178,8 @@ class Pipeline:
     def run_geom_opt(self, geom):
         calc = XTB(calc_number=self.calc_counter, **self.calc_kwargs)
         self.calc_counter += 1
-        opt_geom = calc.run_opt(geom.atoms, geom.coords, keep=False)
-        return opt_geom
+        opt_result = calc.run_opt(geom.atoms, geom.coords, keep=False)
+        return opt_result.opt_geom
 
     """
     def run(self):

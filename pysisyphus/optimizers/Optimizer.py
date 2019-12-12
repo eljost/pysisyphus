@@ -12,35 +12,38 @@ import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
-from pysisyphus.helpers import check_for_stop_sign
+from pysisyphus.helpers import check_for_stop_sign, highlight_text
 
 
 class Optimizer:
     CONV_THRESHS = {
-        # max_force, rms_force, max_step, rms_step
-        "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
-        "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
-        "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
+        #             max_force, rms_force, max_step, rms_step
+        "gau_loose": (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
+        "gau":       (4.5e-4,    3.0e-4,    1.8e-3,   1.2e-3),
+        "gau_tight": (1.5e-5,    1.0e-5,    6.0e-5,   4.0e-5),
+        "baker":     (3.0e-4,    2.0e-4,    3.0e-4,   2.0e-4),
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
                  rms_force=None, align=False, dump=False, last_cycle=None,
-                 **kwargs):
+                 prefix="", overachieve_factor=0., **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
 
         assert thresh in self.CONV_THRESHS.keys()
+        self.thresh = thresh
         self.convergence = self.make_conv_dict(thresh, rms_force)
         self.align = align
         self.dump = dump
         self.last_cycle = last_cycle
+        self.prefix = prefix
+        self.overachieve_factor = float(overachieve_factor)
 
         for key, value in self.convergence.items():
             setattr(self, key, value)
 
         # Setting some default values
-        self.final_fn = "final_geometries.trj" if self.is_cos else "final_geometry.xyz"
         self.resetted = False
         self.max_cycles = 50
         self.max_step = max_step
@@ -61,12 +64,18 @@ class Optimizer:
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
+
+        current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
+        self.current_fn = self.get_path_for_fn(current_fn)
+        final_fn = "final_geometries.trj" if self.is_cos else "final_geometry.xyz"
+        self.final_fn = self.get_path_for_fn(final_fn)
+
         self.logger = logging.getLogger("optimizer")
 
         # Setting some empty lists as default
         self.list_attrs = "cart_coords coords energies forces steps " \
                           "max_forces rms_forces max_steps rms_steps " \
-                          "cycle_times tangents".split()
+                          "cycle_times tangents modified_forces".split()
         for la in self.list_attrs:
             setattr(self, la, list())
 
@@ -80,6 +89,15 @@ class Optimizer:
             # redo the last cycle.
             self.cur_cycle = last_cycle + 1
             self.restart()
+
+        if self.dump:
+            out_trj_fn = self.get_path_for_fn("optimization.trj")
+            self.out_trj_handle= open(out_trj_fn, "w")
+        if self.prefix:
+            self.log(f"Created optimizer with prefix {self.prefix}")
+
+    def get_path_for_fn(self, fn):
+        return self.out_dir / (self.prefix + fn)
 
     def make_conv_dict(self, key, rms_force=None):
         if not rms_force:
@@ -116,17 +134,24 @@ class Optimizer:
             setattr(self, key, val)
 
     def log(self, message):
-        self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
+        # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
+        self.logger.debug(message)
 
-    def check_convergence(self, multiple=1.0):
+    def check_convergence(self, multiple=1.0, overachieve_factor=0.,
+                          energy_thresh=1e-6):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple
         thereof. The latter may be used in initiating the climbing image.
         """
+
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
+        # TODO: Also use modified_forces for cos
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
+        elif len(self.modified_forces) == len(self.forces):
+            self.log("Using modified forces to determine convergence!")
+            forces = self.modified_forces[-1]
         else:
             forces = self.forces[-1]
         step = self.steps[-1]
@@ -159,17 +184,42 @@ class Optimizer:
             "rms_step_thresh": rms_step
         }
 
-        return all(
+        # Check if force convergence is overachieved
+        overachieved = False
+        if overachieve_factor > 0:
+            max_thresh = self.convergence["max_force_thresh"] / overachieve_factor
+            rms_thresh = self.convergence["rms_force_thresh"] / overachieve_factor
+            max_ = max_force < max_thresh
+            rms_ = rms_force < rms_thresh
+            overachieved = max_ and rms_
+            if max_:
+                self.log("max(force) is overachieved")
+            if rms_:
+                self.log("rms(force) is overachieved")
+            if max_ and rms_:
+                print("Force convergence overachieved!")
+
+        normal_convergence = all(
             [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
+
+        if self.thresh == "baker":
+            energy_converged = False
+            if self.cur_cycle > 0:
+                cur_energy = self.energies[-1]
+                prev_energy = self.energies[-2]
+                energy_converged = abs(cur_energy - prev_energy) < 1e-6
+            converged = (max_force) < 3e-4 and (energy_converged or (max_step < 3e-4))
+            return converged
+        return any((normal_convergence, overachieved))
 
     def print_header(self):
         hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
         header = "cycle" + " ".join([h.rjust(13) for h in hs])
         print(header)
 
-    def print_convergence(self):
+    def print_opt_progress(self):
         int_fmt = "{:>5d}"
         float_fmt = "{:>12.6f}"
         conv_str = int_fmt + " " + (float_fmt + " ") * 4 + "{:>12.1f}"
@@ -211,7 +261,13 @@ class Optimizer:
 
     def write_results(self):
         # Save results from the Geometry.
-        self.image_results.append(self.geometry.results)
+        results = self.geometry.results
+        # Results will be a list for COS geometries, instead of a
+        # dictionary.
+        if not self.is_cos:
+            results["cart_coords"] = self.cart_coords[-1]
+            results["atoms"] = self.geometry.atoms
+        self.image_results.append(results)
         self.write_to_out_dir(self.image_results_fn,
                               yaml.dump(self.image_results))
 
@@ -229,11 +285,11 @@ class Optimizer:
             self.write_to_out_dir(out_fn, as_xyz_str)
             # Also write separate .trj files for every image in the cos
             self.write_image_trjs()
-            self.write_results()
         else:
             # Append to .trj file
-            out_fn = "optimization.trj"
-            self.write_to_out_dir(out_fn, as_xyz_str+"\n", mode="a")
+            self.out_trj_handle.write(as_xyz_str+"\n")
+            self.out_trj_handle.flush()
+        self.write_results()
 
     def final_summary(self):
         # If the optimization was stopped _forces may not be set, so
@@ -268,9 +324,10 @@ class Optimizer:
             print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
         self.print_header()
-        stopped = False
+        self.stopped = False
         while True:
             start_time = time.time()
+            self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
             if self.cur_cycle == self.max_cycles:
                 print("Number of cycles exceeded!")
                 break
@@ -302,7 +359,9 @@ class Optimizer:
             self.steps.append(step)
 
             # Convergence check
-            self.is_converged = self.check_convergence()
+            self.is_converged = self.check_convergence(
+                                    overachieve_factor=self.overachieve_factor
+            )
 
             end_time = time.time()
             elapsed_seconds = end_time - start_time
@@ -310,8 +369,10 @@ class Optimizer:
 
             if self.dump:
                 self.write_cycle_to_file()
+                with open(self.current_fn, "w") as handle:
+                    handle.write(self.geometry.as_xyz())
 
-            self.print_convergence()
+            self.print_opt_progress()
             if self.is_converged:
                 print("Converged!")
                 print()
@@ -328,15 +389,19 @@ class Optimizer:
 
             sys.stdout.flush()
             if check_for_stop_sign():
-                stopped = True
+                self.stopped = True
                 break
 
             self.cur_cycle += 1
             self.log("")
 
         # Outside loop
-        if (not self.is_cos) and (not stopped):
+        if self.dump:
+            self.out_trj_handle.close()
+
+        if (not self.is_cos) and (not self.stopped):
             print(self.final_summary())
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
-        print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn}'")
+        print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
+        sys.stdout.flush()

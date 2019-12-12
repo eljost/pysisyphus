@@ -18,7 +18,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
-                                get_coords_diffs)
+                                get_coords_diffs, shake_coords)
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
@@ -86,6 +86,23 @@ def parse_args(args):
     action_group.add_argument("--std", action="store_true",
                     help="Move supplied geometry to its standard orientation."
     )
+    action_group.add_argument("--shake", action="store_true",
+                    help="Shake (randomly displace) coordiantes."
+    )
+    action_group.add_argument("--internals", action="store_true",
+                    help="Print automatically generated internals."
+    )
+    action_group.add_argument("--get", type=int,
+                    help="Get n-th geometry. Expects 0-based index input."
+    )
+
+    shake_group = parser.add_argument_group()
+    shake_group.add_argument("--scale", type=float, default=0.1,
+        help="Scales the displacement in --shake."
+    )
+    shake_group.add_argument("--seed", type=int, default=None,
+        help="Initialize the RNG for reproducible results."
+    )
 
     interpolate_group = parser.add_mutually_exclusive_group()
     interpolate_group.add_argument("--idpp", action="store_true",
@@ -97,6 +114,10 @@ def parse_args(args):
     interpolate_group.add_argument("--redund", action="store_true",
         help="Interpolate in internal coordinates."
     )
+
+    parser.add_argument("--noipalign", action="store_false",
+        help="Don't align geometries when interpolating."
+    )
     parser.add_argument("--bohr", action="store_true",
                     help="Input geometries are in Bohr instead of Angstrom."
     )
@@ -107,26 +128,31 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
+def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
+               define_prims=None):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
     geoms = list()
+    geom_kwargs = {
+        "coord_type": coord_type,
+        "define_prims": define_prims,
+    }
     for fn in xyz_fns:
         if "*" in fn:
             cwd = Path(".")
-            geom = [geom_from_xyz_file(xyz_fn)
+            geom = [geom_from_xyz_file(xyz_fn, **geom_kwargs)
                     for xyz_fn in natsorted(cwd.glob(fn))]
         elif fn.endswith(".xyz"):
-            geom = [geom_from_xyz_file(fn, coord_type=coord_type), ]
+            geom = [geom_from_xyz_file(fn, **geom_kwargs), ]
         elif fn.endswith(".trj"):
-            geom = geoms_from_trj(fn, coord_type=coord_type)
+            geom = geoms_from_trj(fn, **geom_kwargs)
         else:
             raise Exception("Only .xyz and .trj files are supported!")
         geoms.extend(geom)
     # Original coordinates are in bohr, but pysisyphus expects them
     # to be in Angstrom, so right now they are already multiplied
-    # by ANG2BOHR. We revert this by multip
+    # by ANG2BOHR. We revert this.
     if in_bohr:
         for geom in geoms:
             geom.coords *= BOHR2ANG
@@ -134,13 +160,15 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart"):
 
 
 def get_geoms(xyz_fns, interpolate=None, between=0,
-              coord_type="cart", comments=False, in_bohr=False):
+              coord_type="cart", comments=False, in_bohr=False,
+              define_prims=None, interpolate_align=True):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
     assert interpolate in list(INTERPOLATE.keys()) + [None]
 
-    geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type)
+    geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
+                       define_prims=define_prims)
     print(f"Read {len(geoms)} geometries.")
 
     all_atoms = [geom.atoms for geom in geoms]
@@ -155,7 +183,7 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     # at all images in the final list may be non-constant.
     if interpolate:
         interpolate_class = INTERPOLATE[interpolate]
-        interpolator = interpolate_class(geoms, between)
+        interpolator = interpolate_class(geoms, between, align=interpolate_align)
         geoms = interpolator.interpolate_all()
     if coord_type != geoms[0].coord_type:
         # Recreate Geometries so they have the correct coord_type. There may
@@ -293,6 +321,28 @@ def standard_orientation(geoms):
     return geoms
 
 
+def shake(geoms, scale=0.1, seed=None):
+    for geom in geoms:
+        geom.coords = shake_coords(geom.coords, scale=scale, seed=seed)
+    return geoms
+
+
+def print_internals(geoms):
+    pi_types = {2: "B", 3: "A", 4: "D"}
+    for i, geom in enumerate(geoms):
+        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund")
+        for j, pi in enumerate(int_geom.internal._prim_internals):
+            pi_type = pi_types[len(pi.inds)]
+            val = pi.val
+            if len(pi.inds) > 2:
+                val = np.rad2deg(val)
+            print(f"{j:03d}: {pi_type}{pi.inds} {val: >10.4f}")
+
+
+def get(geoms, index):
+    return [geoms[index], ]
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -308,7 +358,8 @@ def run():
         interpolate = None
 
     # Read supplied files and create Geometry objects
-    geoms = get_geoms(args.fns, interpolate, args.between, in_bohr=args.bohr)
+    geoms = get_geoms(args.fns, interpolate, args.between, in_bohr=args.bohr,
+                      interpolate_align=args.noipalign)
 
     to_dump = geoms
     dump_trj = True
@@ -357,6 +408,15 @@ def run():
     elif args.std:
         to_dump = standard_orientation(geoms)
         fn_base = "standard"
+    elif args.shake:
+        to_dump = shake(geoms, args.scale, args.seed)
+        fn_base = "shaked"
+    elif args.get:
+        to_dump = get(geoms, args.get)
+        fn_base = "got"
+    elif args.internals:
+        print_internals(geoms)
+        return
 
     # Write transformed geometries
     dump_trj = dump_trj and (len(to_dump) > 1)
