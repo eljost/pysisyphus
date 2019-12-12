@@ -1,5 +1,6 @@
 # pysisphus
 [![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=latest)](https://pysisyphus.readthedocs.io/en/latest/?badge=latest)
+![](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)
 
 pysisphus implements Chain Of States (COS) methods like Nudged Elastic Band (NEB) and Simple Zero Temperature String (SZTS) to converge minimum energy paths and provide initial guesses for transition states. In addition pysisyphus provides serveral Intrinsic Reaction Coordinate algorithms. The required gradients and/or hessians are calculated by calling external quantum chemistry codes. By default everything is done in cartesian coordinates but an internal coordinates implementation is in progress.
 
