@@ -28,7 +28,8 @@ jobs:
       run: |
         pip install pytest pytest-cov
         pytest --cov=pysisyphus --cov-report xml tests
+    - name: Upload coverage to codecov
     - uses: codecov/codecov-action@v1
       with:
-      token: ${{ secrets.CODECOV_TOKEN }}
-      file: ./coverage.xml
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
