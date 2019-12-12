@@ -302,9 +302,9 @@ class ChainOfStates:
         tangent_minus = ith_image - prev_image
 
         # Handle first and last image
-        if i is 0:
+        if i == 0:
             return tangent_plus/np.linalg.norm(tangent_plus)
-        elif i is (len(self.images) - 1):
+        elif i == (len(self.images) - 1):
             return tangent_minus/np.linalg.norm(tangent_minus)
 
         # [1], Eq. (1)

@@ -50,7 +50,8 @@ def cg_descent(x0, fun, jac, max_cycles=50):
             "alpha_prev": alpha_prev,
             "f_prev": f_prev,
             "quad_step": True,
-            "dphi0_prev": None if alpha_prev is None else dphi0_prev,
+            # dphi0_prev will be set if alpha_prev is not None
+            "dphi0_prev": None if alpha_prev is None else dphi0_prev,  # noqa: F821
         }
         # alpha, f_new, g_new, dphi0_prev = hager_zhang_linesearch(**kwargs)
         kwargs.update({"g0": g})
@@ -130,4 +131,4 @@ def test_cg_descent(calc, x0):
 
 
 if __name__ == "__main__":
-    test_hager_zhang()
+    test_cg_descent()

@@ -180,7 +180,8 @@ class PySCF(OverlapCalculator):
                     mf.density_fit(auxbasis=self.auxbasis)
                     self.log(f"Using density fitting with auxbasis {self.auxbasis}.")
             else:
-                mf = self.get_driver(step, mf=prev_mf)
+                raise Exception("Handle this. What is 'prev_mf'?")
+                # mf = self.get_driver(step, mf=prev_mf)
 
             if (self.chkfile is None) and (step in ("dft", "scf")):
                 self.chkfile = self.make_fn("chkfile")

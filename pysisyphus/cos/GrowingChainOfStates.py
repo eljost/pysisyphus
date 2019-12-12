@@ -68,4 +68,3 @@ class GrowingChainOfStates(ChainOfStates):
         last_size = self.coords_list[-1].size
         length_changed = last_size != self.coords.size
         return parent_result or length_changed
-        coords_change

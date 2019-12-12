@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import bisect
+import itertools as it
 import logging
 import time
 
 import numpy as np
+import rmsd
 from scipy.spatial.distance import pdist
 
 from pysisyphus.calculators.XTB import XTB

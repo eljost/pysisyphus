@@ -2,6 +2,8 @@
 
 # [1] The Importance of Step Control in Optimization Methods
 
+from math import sqrt
+
 import numpy as np
 from scipy.optimize import root_scalar
 

@@ -69,7 +69,7 @@ class NEB(ChainOfStates):
         if i not in self.moving_indices:
             return self.zero_vec.copy()
 
-        if (i is 0) or (i is len(self.images) - 1):
+        if (i == 0) or (i == len(self.images) - 1):
             # We can't use the last image index because there is one
             # spring less than there are images.
             spring_index = min(i, len(self.images)-2)
@@ -120,7 +120,7 @@ class NEB(ChainOfStates):
         if i not in self.moving_indices:
             return self.zero_vec.copy()
 
-        if (i is 0) or (i is len(self.images) - 1):
+        if (i == 0) or (i == len(self.images) - 1):
             # We can't use the last image index because there is one
             # spring less than there are images.
             spring_index = min(i, len(self.images)-2)

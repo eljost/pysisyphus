@@ -6,6 +6,8 @@
 # [2] https://doi.org/10.1002/(SICI)1096-987X(19960115)17:1<49::AID-JCC5>3.0.CO;2-0
 
 from collections import namedtuple
+import random
+import string
 import textwrap
 
 from jinja2 import Template

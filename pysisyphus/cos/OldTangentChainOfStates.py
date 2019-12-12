@@ -80,10 +80,10 @@ class ChainOfStates:
 
     def get_tangent(self, i):
         # Use a one-sided difference for the first and last image
-        if i is 0:
+        if i == 0:
             prev_index = i
             next_index = 1
-        elif i is (len(self.images) - 1):
+        elif i == (len(self.images) - 1):
             prev_index = i - 1
             next_index = len(self.images) - 1
         # If i is an inner index use the image before and after i

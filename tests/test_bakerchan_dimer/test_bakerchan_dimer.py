@@ -110,13 +110,12 @@ def run():
         geom = geom_from_library(f"baker_ts/{xyz_fn}")
         f = Path(xyz_fn)
         print(f.stem)
-        # dim_kwargs = dimer_kwargs.copy()
-        # dim_kwargs["N_init"] = N_init_dict[num]
-        # results = run_geom(f.stem, geom, charge, mult, dimer_kwargs=dim_kwargs)
-        # break
-        v2_kwargs = dimv2_kwargs.copy()
-        v2_kwargs["N"]= N_init_dict[num]
-        results = run_geomv2(f.stem, geom, charge, mult, dimer_kwargs=v2_kwargs)
+        dim_kwargs = dimer_kwargs.copy()
+        dim_kwargs["N_init"] = N_init_dict[num]
+        results = run_geom(f.stem, geom, charge, mult, dimer_kwargs=dim_kwargs)
+        # v2_kwargs = dimv2_kwargs.copy()
+        # v2_kwargs["N"]= N_init_dict[num]
+        # results = run_geomv2(f.stem, geom, charge, mult, dimer_kwargs=v2_kwargs)
         g0 = results.geom0
         ts_en = g0.energy
         en_diff = ref_en - ts_en
@@ -200,13 +199,11 @@ def run_geomv2(stem, geom, charge, mult, dimer_kwargs):
 
     dimer_kwargs["calc_getter"] = calc_getter
     coords = dimer_method_v2(geom, **dimer_kwargs)
-    geom0 = geom
-    ts_xyz = geom0.as_xyz()
+    ts_xyz = geom.as_xyz()
     ts_fn = f"{stem}_dimer_ts.xyz"
     with open(ts_fn, "w") as handle:
         handle.write(ts_xyz)
     print(f"Wrote dimer result to {ts_fn}")
-    return results
 
 
 if __name__ == "__main__":

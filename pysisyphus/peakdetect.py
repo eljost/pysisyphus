@@ -891,43 +891,15 @@ def zero_crossings_sine_fit(y_axis, x_axis, fit_window = None, smooth_window = 1
     
     
     return true_crossings
-        
-        
-    
-    
+
+
 def _test_zero():
     _max, _min = peakdetect_zero_crossing(y,x)
+
+
 def _test():
     _max, _min = peakdetect(y,x, delta=0.30)
     
-    
-def _test_graph():
-    i = 10000
-    x = np.linspace(0,3.7*pi,i)
-    y = (0.3*np.sin(x) + np.sin(1.3 * x) + 0.9 * np.sin(4.2 * x) + 0.06 *
-    np.random.randn(i))
-    y *= -1
-    x = range(i)
-    
-    _max, _min = peakdetect(y,x,750, 0.30)
-    xm = [p[0] for p in _max]
-    ym = [p[1] for p in _max]
-    xn = [p[0] for p in _min]
-    yn = [p[1] for p in _min]
-    
-    plot = pylab.plot(x,y)
-    pylab.hold(True)
-    pylab.plot(xm, ym, "r+")
-    pylab.plot(xn, yn, "g+")
-    
-    _max, _min = peak_det_bad.peakdetect(y, 0.7, x)
-    xm = [p[0] for p in _max]
-    ym = [p[1] for p in _max]
-    xn = [p[0] for p in _min]
-    yn = [p[1] for p in _min]
-    pylab.plot(xm, ym, "y*")
-    pylab.plot(xn, yn, "k*")
-    pylab.show()
     
 def _test_graph_cross(window = 11):
     i = 10000

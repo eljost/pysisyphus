@@ -81,7 +81,8 @@ def run():
             last_step_norm = np.linalg.norm(steps[-1])
             pred = pred_changes[-1]
             actual = energies[-1] - energies[-2]
-            coeff = predicted / actual
+            # predicted will be defined when i > 0
+            coeff = predicted / actual  # noqa: F821
             trust = update_trust_radius(trust, coeff, last_step_norm)
             # Hess update
             dg = gradients[-1] - gradients[-2]
