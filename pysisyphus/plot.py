@@ -255,7 +255,7 @@ def load_results(keys):
             try:
                 tmp_list.append([res[key] for res in res_per_cycle])
             except KeyError:
-                print(f"Key '{key}' not present in {results_fn}. Exiting.")
+                print(f"Key '{key}' not present in {image_results_fn}. Exiting.")
                 sys.exit()
         results_list.append(np.array(tmp_list))
     # The length of the second axis correpsonds to the number of images

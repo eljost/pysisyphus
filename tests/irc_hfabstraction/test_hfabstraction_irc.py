@@ -39,7 +39,7 @@ def prepare_geometry(keywords=None, xyz_fn=None):
 @pytest.mark.orca_irc
 def test_hfabstraction_iso_gs_hfsto3g():
     geometry, this_dir = prepare_geometry()
-    irc = GonzalesSchlegel(geometry, keywords, max_steps=5, step_length=0.3)
+    irc = GonzalesSchlegel(geometry, max_steps=5, step_length=0.3)
     irc.run()
     irc.write_trj(this_dir)
 

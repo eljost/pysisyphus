@@ -231,4 +231,5 @@ def dimer_method(geom0, N, R, calc_getter, max_cycles=50, f_thresh=1e-3,
         coords.append(
             (geom1.coords, geom0.coords, geom2.coords)
         )
+    # TODO: return dimerresults
     return coords

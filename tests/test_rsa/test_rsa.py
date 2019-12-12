@@ -87,27 +87,6 @@ def rsa(H, g, trust=0.3):
     step = get_step(lambda_) + tau*g_[0]
     return step
 
-def plot():
-    # g_[0] = 0.0001
-    # g_[0] = 0.0005
-    # Case 3 if g_[0] <= 1e-4
-    lambdas = np.linspace(0, 1, 500)
-    step_norms = list()
-    eye = np.eye(H_.shape[0])
-    for l in lambdas:
-        step = -np.linalg.pinv(H_ + l*eye).dot(g_)
-        norm = np.linalg.norm(step)
-        step_norms.append(norm)
-        # print(f"l={l:.4e}, norm={norm:.6f}")
-    fig, ax = plt.subplots()
-    ax.plot(lambdas, step_norms)
-    for neg_eigval in vals[neg_inds]:
-        ax.axvline(-neg_eigval, linestyle="--", color="red")
-    ax.axhline(trust, linestyle=":", color="k")
-    ax.set_ylim(0, 5)
-
-    plt.show()
-
 
 def run():
     # pysis_in = np.loadtxt("ref_rsa/in_hess")

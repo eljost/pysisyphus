@@ -23,7 +23,7 @@ def get_cmd(key, use_defaults=True):
         return Config[key]["cmd"]
     except KeyError:
         if (not use_defaults) or (key not in DEFAULTS):
-            print(f"Failed to load key '{key}' from section '{self.conf_key}' "
+            print(f"Failed to load key '{cmd}' from section '{key}' "
                    "in ~/.pysisyphusrc and no default was specified. Exiting!"
             )
             sys.exit()

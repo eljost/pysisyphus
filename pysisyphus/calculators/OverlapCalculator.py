@@ -239,11 +239,11 @@ class OverlapCalculator(Calculator):
         states1 = len(ntos_1)
         states2 = len(ntos_2)
         ovlps = np.zeros((states1, states2))
-        for i in range(states):
+        for i in range(states1):
             n_i = ntos_1[i]
             l_i = n_i.lambdas[:,None]
             ntos_i = l_i*n_i.ntos
-            for j in range(i, states):
+            for j in range(i, states2):
                 n_j = ntos_2[j]
                 l_j = n_j.lambdas[:,None]
                 ntos_j = l_j*n_j.ntos

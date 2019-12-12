@@ -359,7 +359,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
                     rot_force = f_perp
                     gamma = (f_perp - F_rots[-1]).dot(f_perp) / f_perp.dot(f_perp)
                     G_last = G_perps[-1]
-                    G_perp = f_perp + gamma * np.linalg.norm(G_last)*theta
+                    # theta will be present with j > 0.
+                    G_perp = f_perp + gamma * np.linalg.norm(G_last)*theta  # noqa: F821
                     theta_dir = G_perp
                     F_rots.append(f_perp)
                     G_perps.append(G_perp)

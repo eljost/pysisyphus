@@ -345,7 +345,7 @@ if __name__ == "__main__":
     }
     calc_key = "orca"
     ovl = Overlapper(path, calc_key, calc_kwargs)
-    geoms = ovl.discover_geometries(dia.path)
+    geoms = ovl.discover_geometries(path)
     # files_dict = dia.discover_files(path)
     # dia.restore_calculators("orca")
     ovl.overlaps(geoms)

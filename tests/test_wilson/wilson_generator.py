@@ -4,6 +4,8 @@
 #   V. Bakken, T. Helgaker, J. Chem. Phys., 117, 20, 2002
 
 from collections import namedtuple
+import random
+import string
 import textwrap
 
 from jinja2 import Template

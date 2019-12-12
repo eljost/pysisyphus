@@ -18,7 +18,7 @@ def interpolate_extrapolate(coords, energies, forces, steps,
         diis_result = gdiis(err_vecs, coords, forces, ref_step, max_vecs)
     # GEDIIS check
     elif can_gediis:
-        diis_result = gediis(self.coords, self.energies, self.forces)
+        diis_result = gediis(coords, energies, forces)
     else:
         diis_result = None
 
