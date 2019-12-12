@@ -327,8 +327,8 @@ def hypersphere_displacement(size, samples=50, radius=0.3):
 
 def run():
     # run_dimer()
-    # run_lanczos()
-    hypersphere_displacement(3)
+    run_lanczos()
+    # hypersphere_displacement(3)
 
 
 if __name__ == "__main__":
