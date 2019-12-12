@@ -9,6 +9,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
       with:
@@ -33,3 +37,5 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
+        flags: unittests
+        yml: ./codecov.yml
