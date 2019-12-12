@@ -148,9 +148,9 @@ def run():
     with open("opt.xyz", "w") as handle:
         handle.write(geom.as_xyz())
     coords = np.array(coords)
-    pot.plot()
-    ax = pot.ax
-    ax.plot(*coords.T[:2], "bo-")
+    # pot.plot()
+    # ax = pot.ax
+    # ax.plot(*coords.T[:2], "bo-")
     plt.show()
 
 
