@@ -104,4 +104,5 @@ def verify_geom(geom):
         ref_B_grad = ref_funcs[len(prim.inds)](c3d[prim.inds].flatten())
         # np.testing.assert_allclose(fd_B_grad, ref_B_grad, atol=1e-8)
         dB_items.append(np.allclose(fd_B_grad, ref_B_grad, atol=1e-8))
+
     return all(B_items) and all(dB_items)
