@@ -129,6 +129,8 @@ results.yaml
 *.cis
 image_results.yaml
 optimizer_results.yaml
+final_geometry.xyz
+calculated_init_cart_hessian
 
 interpolated.image_*.xyz
 image*.control

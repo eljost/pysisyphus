@@ -13,8 +13,7 @@ np.set_printoptions(suppress=True, precision=6)
 
 
 def prim_findiff(prim, coords3d, redund, delta=1e-4):
-    """Derivatives of a primitive internal wrt its defining cartesian coordinates
-    by finite differences."""
+    """Derivatives of prim. internal wrt cart. coords."""
 
     inds = prim.inds
     # Indices for coords3d to generate the finite difference displacements.
@@ -74,7 +73,7 @@ def B_findiff(prim, coords3d, redund, delta=1e-4):
 
 
 def verify_geom(geom):
-    # Recreate the geometry in the correct coordinate system
+    # Recreate the geometry with primitive internal coordinates
     geom = Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
     c3d = geom.coords3d
     rc = geom.internal
@@ -87,15 +86,22 @@ def verify_geom(geom):
 
     B_items = list()
     dB_items = list()
-    for prim in geom.internal._prim_internals:
-        # Wilson B-matrix
-        fd_prim_grad = prim_findiff(prim, c3d, rc)
-        # np.testing.assert_allclose(prim_grad.flatten(), prim.grad)
-        B_items.append(np.allclose(fd_prim_grad.flatten(), prim.grad))
 
-        # Derivatives of the Wilson B-matrix
-        B_grads_ref = ref_funcs[len(prim.inds)](c3d[prim.inds].flatten())
-        fd_B_grads = B_findiff(prim, c3d, rc, delta=1e-6)
-        # np.testing.assert_allclose(B_grad, B_grads_ref, atol=1e-8)
-        dB_items.append(np.allclose(fd_B_grads, B_grads_ref, atol=1e-8))
+    for prim in geom.internal._prim_internals:
+        # Test first derivates (dq/dx)
+        # Wilson B-matrix row from finite differences
+        fd_prim_grad = prim_findiff(prim, c3d, rc)
+        # Wilson B-matrix row from explicit implementation
+        ref_prim_grad = prim.grad
+        B_items.append(np.allclose(fd_prim_grad.flatten(), ref_prim_grad))
+        # np.testing.assert_allclose(prim_grad.flatten(), prim.grad)
+
+        # Test second derivates (d²q/dxk)
+        # Reference values from finite differences using explicitly
+        # implemented first derivatives
+        fd_B_grad = B_findiff(prim, c3d, rc, delta=1e-6)
+        # Values from code generation
+        ref_B_grad = ref_funcs[len(prim.inds)](c3d[prim.inds].flatten())
+        # np.testing.assert_allclose(fd_B_grad, ref_B_grad, atol=1e-8)
+        dB_items.append(np.allclose(fd_B_grad, ref_B_grad, atol=1e-8))
     return all(B_items) and all(dB_items)
