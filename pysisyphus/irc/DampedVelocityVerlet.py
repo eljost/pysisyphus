@@ -10,15 +10,14 @@ import numpy as np
 
 class DampedVelocityVerlet(IRC):
 
-    def __init__(self, geometry, v0=0.06, dt0=0.1, error_tol=0.003,
-                 energy_lowering=1e-4, **kwargs):
+    def __init__(self, geometry, v0=0.06, dt0=0.1, error_tol=0.003, **kwargs):
         super(DampedVelocityVerlet, self).__init__(geometry, **kwargs)
 
         self.v0 = v0
         self.error_tol = error_tol
         self.dt0 = dt0
 
-        self.mm_inv = self.geometry.mm_inv
+        self.masses_rep = self.geometry.masses_rep
 
         step_header = "damping dt dt_new error".split()
         step_fmts = [".2f", ".4f", ".4f", ".3E"]
@@ -28,15 +27,18 @@ class DampedVelocityVerlet(IRC):
         # In contrast to the paper we don't start from the TS geometry but
         # instead do an initial displacement along the imaginary mode.
         # We still consider the TS geometry and the transition vector.
-        super(DampedVelocityVerlet, self).prepare(direction)
+        super().prepare(direction)
 
-        #self.irc_coords = [self.ts_coords]
-        init_factor = 1 if (direction == "forward") else -1
-        initial_velocity, _ = self.damp_velocity(
-                                        init_factor * self.transition_vector
-        )
-        self.velocities = [initial_velocity]
-        acceleration = self.mm_inv.dot(self.geometry.forces)
+        if self.downhill:
+            init_velocity = -self.gradient
+        else:
+            init_factor = 1 if (direction == "forward") else -1
+            init_velocity = init_factor * self.transition_vector
+
+        init_velocity, _ = self.damp_velocity(init_velocity)
+
+        self.velocities = [init_velocity]
+        acceleration = -self.gradient / self.masses_rep
         self.accelerations = [acceleration]
         self.time_steps = [self.dt0]
 
@@ -55,53 +57,54 @@ class DampedVelocityVerlet(IRC):
             + self.velocities[-2]*time_step_sum
             + 0.5*self.accelerations[-2]*time_step_sum**2
         )
-        coords_diff = np.abs(self.geometry.coords - ref_coords)
+        coords_diff = self.geometry.coords - ref_coords
         largest_component = np.max(np.abs(coords_diff))
         coords_diff_norm = np.linalg.norm(coords_diff)
-        estimated_error = max((largest_component, coords_diff_norm))
+        estimated_error = max(largest_component, coords_diff_norm)
         return estimated_error
 
     def step(self):
-        last_acceleration = self.accelerations[-1]
-        last_velocity = self.velocities[-1]
+        prev_acceleration = self.accelerations[-1]
+        prev_velocity = self.velocities[-1]
         time_step = self.time_steps[-1]
 
         # Get new acceleration
-        acceleration = self.mm_inv.dot(self.geometry.forces)
+        acceleration = -self.gradient / self.masses_rep
         self.accelerations.append(acceleration)
-        self.irc_coords.append(self.geometry.coords)
-        self.irc_energies.append(self.geometry.energy)
+
         # Calculate new coords and velocity
         # Eq. (2) in [1]
-        coords = (self.geometry.coords
-                  + last_velocity*time_step
-                  + 0.5*last_acceleration*time_step**2
+        coords = (self.coords
+                  + prev_velocity*time_step
+                  + 0.5*prev_acceleration*time_step**2
         )
-        self.geometry.coords = coords
-        self.irc_coords.append(coords)
+
         # Update velocity
-        velocity = (last_velocity
-                    + 0.5*(last_acceleration+acceleration)*time_step
-        )
+        velocity = prev_velocity + 0.5*(prev_acceleration+acceleration)*time_step
         # Damp velocity
         damped_velocity, damping_factor = self.damp_velocity(velocity)
         self.velocities.append(damped_velocity)
 
         if self.cur_step == 0:
-            # No error estimated after the first step
+            # No error estimation after the first step
             estimated_error = self.error_tol
         else:
             estimated_error = self.estimate_error()
 
         # Get next time step from error estimation
-        new_time_step = time_step * np.abs(self.error_tol
-                                           / estimated_error)**(1/3)
-        # Constrain time step between 0.0025 fs <= time_step <= 3.0 fs
-        new_time_step = min(new_time_step, 3)
+        new_time_step = time_step * np.abs(self.error_tol / estimated_error)**(1/3)
+        # Constrain time step: 0.0025 fs <= time_step <= 3.0 fs
+        new_time_step = min(new_time_step, 3.)
         new_time_step = max(new_time_step, 0.025)
         self.time_steps.append(new_time_step)
 
-        print(self.step_formatter.header)
-        print(self.step_formatter.line(damping_factor, time_step,
+        print("\t", self.step_formatter.line(damping_factor, time_step,
                                        new_time_step, estimated_error)
         )
+        self.log(self.step_formatter.header)
+        self.log(self.step_formatter.line(damping_factor, time_step,
+                                          new_time_step, estimated_error)
+        )
+
+        # Set new coordinates
+        self.coords = coords

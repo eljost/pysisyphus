@@ -50,3 +50,22 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     assert np.allclose(bc, backward_ref, atol=0.03)
 
     plot_irc(irc, irc.__class__.__name__)
+
+
+
+def test_hf_abstraction_dvv():
+    from pysisyphus.helpers import geom_from_library
+    from pysisyphus.calculators.Gaussian16 import Gaussian16
+
+    # geom = geom_from_library("hfabstraction_ts.xyz")
+    geom = geom_from_library("hfabstraction_hf321g_displ_forward.xyz")
+    geom.set_calculator(Gaussian16("HF/3-21G"))
+
+    kwargs = {
+        "dt0": 0.5,
+        "v0": 0.04,
+        "max_cycles": 5,
+        "downhill": True,
+    }
+    dvv = DampedVelocityVerlet(geom, **kwargs)
+    dvv.run()
