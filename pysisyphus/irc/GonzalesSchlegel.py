@@ -12,6 +12,8 @@ from pysisyphus.TableFormatter import TableFormatter
 
 # [1] An improved algorithm for reaction path following
 # http://aip.scitation.org/doi/pdf/10.1063/1.456010
+# [2] Extension to internal coordinates (not implemented)
+# https://pubs.acs.org/doi/pdf/10.1021/j100377a021
 
 class GonzalesSchlegel(IRC):
 
