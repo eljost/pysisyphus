@@ -183,10 +183,10 @@ class PySCF(OverlapCalculator):
                 raise Exception("Handle this. What is 'prev_mf'?")
                 # mf = self.get_driver(step, mf=prev_mf)
 
-            if (self.chkfile is None) and (step in ("dft", "scf")):
-                self.chkfile = self.make_fn("chkfile")
-                self.log(f"Created chkfile '{self.chkfile}'")
-                mf.chkfile = self.chkfile
+            # if (self.chkfile is None) and (step in ("dft", "scf")):
+                # self.chkfile = self.make_fn("chkfile")
+                # self.log(f"Created chkfile '{self.chkfile}'")
+                # mf.chkfile = self.chkfile
             mf.kernel()
             self.log(f"Completed {step} step")
             prev_mf = mf
