@@ -5,6 +5,9 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.constants import BOHR2ANG
+from pysisyphus.helpers import geom_from_library
 from pysisyphus.irc import *
 
 
@@ -21,12 +24,12 @@ def plot_irc(irc, title=None):
 
 @pytest.mark.parametrize(
     "irc_cls, mod_kwargs, ref", [
-        (DampedVelocityVerlet, {}, None),
-        # (Euler, {}, None),
-        # (EulerPC, {}, None),
+        (DampedVelocityVerlet, {"v0": 0.1, "max_cycles": 400,}, None),
+        (Euler, {"step_length": 0.05,}, None),
+        (EulerPC, {}, None),
         # (GonzalesSchlegel, {}, None),
-        # (IMKMod, {}, None),
-        # (RK4, {}, None),
+        (IMKMod, {}, None),
+        (RK4, {}, None),
         # (LQA, {}, None),
     ]
 )
@@ -34,7 +37,7 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     geom = AnaPot().get_geom((0.61173, 1.49297, 0.))
 
     kwargs = {
-        "step_length": 0.05,
+        "step_length": 0.1,
         "rms_grad_thresh": 1e-2,
     }
     kwargs.update(**mod_kwargs)
@@ -46,26 +49,31 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     bc = irc.all_coords[-1]
     forward_ref = np.array((-1.0527, 1.0278,  0.))
     backward_ref = np.array((1.941, 3.8543, 0.))
-    assert np.allclose(fc, forward_ref, atol=0.03)
-    assert np.allclose(bc, backward_ref, atol=0.03)
+    forward_diff = np.linalg.norm(fc - forward_ref)
+    backward_diff = np.linalg.norm(bc - backward_ref)
+    assert forward_diff == pytest.approx(0.05, abs=0.1)
+    assert backward_diff == pytest.approx(0.05, abs=0.1)
 
-    plot_irc(irc, irc.__class__.__name__)
-
+    # plot_irc(irc, irc.__class__.__name__)
 
 
 def test_hf_abstraction_dvv():
-    from pysisyphus.helpers import geom_from_library
-    from pysisyphus.calculators.Gaussian16 import Gaussian16
-
-    # geom = geom_from_library("hfabstraction_ts.xyz")
     geom = geom_from_library("hfabstraction_hf321g_displ_forward.xyz")
-    geom.set_calculator(Gaussian16("HF/3-21G"))
+
+    geom.set_calculator(PySCF(basis="321g", pal=2))
+    # from pysisyphus.calculators.Gaussian16 import Gaussian16
+    # geom.set_calculator(Gaussian16("HF/3-21G"))
 
     kwargs = {
         "dt0": 0.5,
         "v0": 0.04,
-        "max_cycles": 5,
         "downhill": True,
     }
     dvv = DampedVelocityVerlet(geom, **kwargs)
     dvv.run()
+    c3d = geom.coords3d * BOHR2ANG
+    def bond(i,j): return np.linalg.norm(c3d[i]-c3d[j])
+
+    assert bond(2, 7) == pytest.approx(0.93, abs=0.01)
+    assert bond(4, 7) == pytest.approx(2.42, abs=0.01)
+    assert bond(2, 0) == pytest.approx(2.23, abs=0.01)
