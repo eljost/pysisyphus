@@ -29,6 +29,8 @@ class IRC:
         self.logger = logging.getLogger("irc")
 
         self.geometry = geometry
+        assert self.geometry.coord_type == "cart"
+
         self.step_length = step_length
         self.max_cycles = max_cycles
         self.downhill = downhill
