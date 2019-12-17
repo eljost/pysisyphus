@@ -241,7 +241,8 @@ class Gaussian16(OverlapCalculator):
         opt_dict = {key: value for key, value in as_dict["options"]}
         return kw, opt_dict
 
-    def parse_fchk(self, fchk_path, keys):
+    @staticmethod
+    def parse_fchk(fchk_path, keys):
         with open(fchk_path) as handle:
             text = handle.read()
 
