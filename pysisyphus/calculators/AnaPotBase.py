@@ -63,7 +63,7 @@ class AnaPotBase(Calculator):
         results["hessian"] = hessian
         return results
 
-    def plot(self, levels=None, **figkwargs):
+    def plot(self, levels=None, show=False, **figkwargs):
         self.fig, self.ax = plt.subplots(**figkwargs)
         x = np.linspace(*self.xlim, 100)
         y = np.linspace(*self.ylim, 100)
@@ -81,6 +81,9 @@ class AnaPotBase(Calculator):
         # Draw the contourlines of the potential
         contours = self.ax.contour(X, Y, pot, levels)
         self.fig.colorbar(contours)
+
+        if show:
+            plt.show()
 
     def plot_eigenvalue_structure(self, grid=50, levels=None):
         self.plot(levels=levels)
