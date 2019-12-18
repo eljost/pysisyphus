@@ -395,7 +395,7 @@ class OverlapCalculator(Calculator):
             self.atoms = atoms
         mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data()
 
-        if self.wfow is None:
+        if (self.ovlp_type is "wf") and (self.wfow is None):
             occ_mo_num, virt_mo_num = ci_coeffs[0].shape
             try:
                 wfow_mem = self.pal * self.mem
