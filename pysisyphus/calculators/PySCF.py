@@ -32,7 +32,8 @@ class PySCF(OverlapCalculator):
     }
 
     def __init__(self, basis, xc=None, method="scf",  mem=2000,
-                 root=None, nstates=None, auxbasis=None, **kwargs):
+                 root=None, nstates=None, auxbasis=None, keep_chk=True,
+                 **kwargs):
         super().__init__(**kwargs)
 
         self.basis = basis
@@ -50,6 +51,7 @@ class PySCF(OverlapCalculator):
             assert self.root <= self.nstates, "'root' must be smaller " \
                 "than 'nstates'!"
         self.auxbasis = auxbasis
+        self.keep_chk = keep_chk
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
@@ -182,7 +184,7 @@ class PySCF(OverlapCalculator):
             else:
                 mf = self.get_driver(step, mf=prev_mf)  # noqa: F821
 
-            if (self.chkfile is None) and (step in ("dft", "scf")):
+            if self.keep_chk and (self.chkfile is None) and (step in ("dft", "scf")):
                 self.chkfile = self.make_fn("chkfile", return_str=True)
                 self.log(f"Created chkfile '{self.chkfile}'")
                 mf.chkfile = self.chkfile
