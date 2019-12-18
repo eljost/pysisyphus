@@ -9,7 +9,9 @@ from pytest import approx
 
 
 def get_calc():
-    return PySCF(basis="321g", pal=2)
+    # Interestingly enough the test will fail with keep_chk == True ...
+    # as the RMS value will be much higher
+    return PySCF(basis="321g", pal=2, keep_chk=False)
 
 
 def test_inthess():

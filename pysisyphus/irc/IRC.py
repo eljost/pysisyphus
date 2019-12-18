@@ -29,6 +29,8 @@ class IRC:
         self.logger = logging.getLogger("irc")
 
         self.geometry = geometry
+        assert self.geometry.coord_type == "cart"
+
         self.step_length = step_length
         self.max_cycles = max_cycles
         self.downhill = downhill
@@ -122,7 +124,7 @@ class IRC:
         # forward and backward runs. Otherwise we would accidently use
         # the updated hessian from the end of the first run for the second
         # run.
-        self.hessian = self.ts_hessian
+        self.hessian = self.ts_hessian.copy()
 
         # Do inital displacement from the TS
         init_factor = 1 if (direction == "forward") else -1
@@ -313,9 +315,9 @@ class IRC:
         print("IRC length in mw. coords, max(|grad|) and rms(grad) in non-"
               "mass-weighted coords.")
 
-        # With downhill=True we don't want any initial displacement.
-        # Only calculate hessian and set initial displacement for
-        # forward and/or backward runs. Don't do it for downhill.
+        # For forward/backward runs we need an intial displacement
+        # and for this we need a hessian, that we calculate now.
+        # For downhill runs we probably dont need a hessian.
         if not self.downhill:
             self.ts_hessian = self.geometry.hessian.copy()
             self.init_displ = self.initial_displacement()

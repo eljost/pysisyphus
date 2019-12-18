@@ -1,12 +1,16 @@
 import numpy as np
+import sympy as sym
+from sympy import atan, exp, tan, sin, pi
 
+
+from pysisyphus.calculators.AnaPotBase import AnaPotBase
 from pysisyphus.calculators.Calculator import Calculator
 
 # https://www.wolframalpha.com/input/?i=plot+arccot(-exp(y)*cot(x/2-pi/4))+-+2*exp(-(y-sin(x))^2/2)
 # [1] http://aip.scitation.org/doi/abs/10.1063/1.461606
 # https://www.wolframalpha.com/input/?i=derivative+of+(arccot(-exp(y)*cot(x/2-pi/4))+-+2*exp(-(y-sin(x))^2/2))
 
-class AnaPot2(Calculator):
+class AnaPot2_(Calculator):
 
     def __init__(self): 
         super(AnaPot2, self).__init__()
@@ -26,23 +30,19 @@ class AnaPot2(Calculator):
         return "AnaPot2 calculator"
 
 
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    xlim = (-np.pi/2, np.pi)
-    ylim = (-2, 2)
-    x = np.linspace(*xlim, 100)
-    y = np.linspace(*ylim, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = np.full_like(X, 0)
-    fake_atoms = ("H", )
-    pot_coords = np.stack((X, Y, Z))
-    pot = AnaPot2().get_energy(fake_atoms, pot_coords)["energy"]
+class AnaPot2(AnaPotBase):
+    """We can't use sympify as it replaces 1/tan by cot and this isn't
+    supported by numpy when we call lambdify."""
 
-    levels=(-2, 1, 40)
-    levels = np.linspace(*levels)
-    fig, ax = plt.subplots()
-    contours = ax.contour(X, Y, pot, levels)
-    fig.subplots_adjust(right=0.8)
-    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    fig.colorbar(contours, cax=cbar_ax)
-    plt.show()
+    def __init__(self): 
+        x, y = sym.symbols("x y")
+        V_str = atan(exp(-y)/tan(x/2 + pi/4)) - 2*exp(-(y - sin(x))**2/2)
+        # xlim = (-np.pi/2, np.pi)
+        xlim = (-np.pi, np.pi)
+        ylim = (-2, 2)
+        levels = np.linspace(-2, 1, 40)
+        super().__init__(V_str=V_str, xlim=xlim, ylim=ylim, levels=levels,
+                         use_sympify=False)
+
+    def __str__(self):
+        return "AnaPot2 calculator"

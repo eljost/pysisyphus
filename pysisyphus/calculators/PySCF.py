@@ -32,7 +32,8 @@ class PySCF(OverlapCalculator):
     }
 
     def __init__(self, basis, xc=None, method="scf",  mem=2000,
-                 root=None, nstates=None, auxbasis=None, **kwargs):
+                 root=None, nstates=None, auxbasis=None, keep_chk=True,
+                 **kwargs):
         super().__init__(**kwargs)
 
         self.basis = basis
@@ -50,6 +51,7 @@ class PySCF(OverlapCalculator):
             assert self.root <= self.nstates, "'root' must be smaller " \
                 "than 'nstates'!"
         self.auxbasis = auxbasis
+        self.keep_chk = keep_chk
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
@@ -103,7 +105,7 @@ class PySCF(OverlapCalculator):
         # Just uncomment the lines after
         #   if self.verbose > logger.QUIET:
         #       ...
-        # in 'mole.Mole.build'.
+        # in 'mole.Mole.build'. Around line 2046 for pyscf 1.6.5.
         mol.output = self.make_fn(self.out_fn)
         mol.max_memory = self.mem * self.pal
         mol.build()
@@ -170,7 +172,7 @@ class PySCF(OverlapCalculator):
                 assert step in ("scf", "dft")
                 if self.chkfile:
                     # Copy old chkfile to new chkfile
-                    new_chkfile = self.make_fn("chkfile")
+                    new_chkfile = self.make_fn("chkfile", return_str=True)
                     shutil.copy(self.chkfile, new_chkfile)
                     self.chkfile = new_chkfile
                     mf.chkfile = self.chkfile
@@ -180,13 +182,12 @@ class PySCF(OverlapCalculator):
                     mf.density_fit(auxbasis=self.auxbasis)
                     self.log(f"Using density fitting with auxbasis {self.auxbasis}.")
             else:
-                raise Exception("Handle this. What is 'prev_mf'?")
-                # mf = self.get_driver(step, mf=prev_mf)
+                mf = self.get_driver(step, mf=prev_mf)  # noqa: F821
 
-            # if (self.chkfile is None) and (step in ("dft", "scf")):
-                # self.chkfile = self.make_fn("chkfile")
-                # self.log(f"Created chkfile '{self.chkfile}'")
-                # mf.chkfile = self.chkfile
+            if self.keep_chk and (self.chkfile is None) and (step in ("dft", "scf")):
+                self.chkfile = self.make_fn("chkfile", return_str=True)
+                self.log(f"Created chkfile '{self.chkfile}'")
+                mf.chkfile = self.chkfile
             mf.kernel()
             self.log(f"Completed {step} step")
             prev_mf = mf

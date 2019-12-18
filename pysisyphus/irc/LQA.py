@@ -19,24 +19,22 @@ class LQA(IRC):
 
         self.N_euler = N_euler
 
+
     def prepare(self, direction):
         super().prepare(direction)
 
-        mm_sqrt_inv = self.geometry.mm_sqrt_inv
-        self.mw_hessian = mm_sqrt_inv @ self.hessian @ mm_sqrt_inv
-        self.mw_gradients = list()
+        self.mwH = self.mw_hessian
+
 
     def step(self):
         gradient = self.mw_gradient
-        self.mw_gradients.append(gradient)
-        # hessian = self.geometry.mw_hessian
-        hessian = self.mw_hessian
+        hessian = self.mwH
 
-        if len(self.mw_gradients) > 1:
-            dg = self.mw_gradients[-1] - self.mw_gradients[-2]
+        if len(self.irc_mw_gradients) > 1:
+            dg = self.irc_mw_gradients[-1] - self.irc_mw_gradients[-2]
             dx = self.irc_mw_coords[-1] - self.irc_mw_coords[-2]
-            dH, _ = bfgs_update(self.mw_hessian, dx, dg)
-            self.mw_hessian += dH
+            dH, _ = bfgs_update(self.mwH, dx, dg)
+            self.mwH += dH
 
         eigenvalues, eigenvectors = np.linalg.eigh(hessian)
         # Drop small eigenvalues and corresponding eigenvectors
