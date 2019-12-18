@@ -19,8 +19,8 @@ def using(calculator):
         available = False
         try:
             cmd = Config[calculator]["cmd"]
-            _ = shutil.which(cmd)
-            print("\t", calculator, _)
+            # _ = shutil.which(cmd)
+            # print("\t", calculator, _)
             available = bool(shutil.which(cmd))
         except KeyError:
             pass
