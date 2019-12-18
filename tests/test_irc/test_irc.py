@@ -29,7 +29,7 @@ def plot_irc(irc, title=None):
         (DampedVelocityVerlet, {"v0": 0.1, "max_cycles": 400,}, None),
         (Euler, {"step_length": 0.05,}, None),
         (EulerPC, {}, None),
-        # (GonzalesSchlegel, {}, None),
+        (GonzalesSchlegel, {}, None),
         (IMKMod, {}, None),
         (RK4, {}, None),
         (LQA, {}, None),
@@ -56,7 +56,7 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     assert forward_diff == pytest.approx(0.05, abs=0.1)
     assert backward_diff == pytest.approx(0.05, abs=0.1)
 
-    plot_irc(irc, irc.__class__.__name__)
+    # plot_irc(irc, irc.__class__.__name__)
 
 
 @pytest.mark.parametrize(
