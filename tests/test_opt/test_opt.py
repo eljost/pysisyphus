@@ -15,8 +15,6 @@ from pysisyphus.calculators.Rosenbrock import Rosenbrock
 
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
-import matplotlib.pyplot as plt
-
 @pytest.mark.parametrize(
     "calc_cls, start, ref_cycle, ref_coords", [
     (AnaPot, (0.667, 1.609, 0.), 15, (1.941, 3.8543, 0.)),
