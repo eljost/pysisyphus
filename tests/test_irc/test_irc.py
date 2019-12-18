@@ -6,9 +6,11 @@ import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.irc import *
+from pysisyphus.testing import using
 
 
 def plot_irc(irc, title=None):
@@ -57,20 +59,32 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     # plot_irc(irc, irc.__class__.__name__)
 
 
-def test_hf_abstraction_dvv():
+@pytest.mark.parametrize(
+    "calc_cls, kwargs_", [
+        pytest.param(PySCF, {"basis": "321g", }, marks=using("pyscf")),
+        pytest.param(Gaussian16, {"route": "HF/3-21G"}, marks=using("gaussian16")),
+    ]
+)
+def test_hf_abstraction_dvv(calc_cls, kwargs_):
     geom = geom_from_library("hfabstraction_hf321g_displ_forward.xyz")
 
-    geom.set_calculator(PySCF(basis="321g", pal=2))
-    # from pysisyphus.calculators.Gaussian16 import Gaussian16
-    # geom.set_calculator(Gaussian16("HF/3-21G"))
+    calc_kwargs = {
+        "pal": 2,
+    }
+    calc_kwargs.update(kwargs_)
 
-    kwargs = {
+    print("Using", calc_cls)
+    calc = calc_cls(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    irc_kwargs = {
         "dt0": 0.5,
         "v0": 0.04,
         "downhill": True,
     }
-    dvv = DampedVelocityVerlet(geom, **kwargs)
+    dvv = DampedVelocityVerlet(geom, **irc_kwargs)
     dvv.run()
+
     c3d = geom.coords3d * BOHR2ANG
     def bond(i,j): return np.linalg.norm(c3d[i]-c3d[j])
 
