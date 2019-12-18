@@ -1054,5 +1054,6 @@ def run():
     duration = int(end_time - start_time)
     print(f"pysisyphus run took {duration}s.")
 
+
 if __name__ == "__main__":
     run()
