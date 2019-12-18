@@ -8,6 +8,7 @@ from scipy.optimize import newton
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.IRC import IRC
+from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.TableFormatter import TableFormatter
 
 # [1] An improved algorithm for reaction path following
@@ -18,7 +19,7 @@ from pysisyphus.TableFormatter import TableFormatter
 class GonzalesSchlegel(IRC):
 
     def __init__(self, geometry, max_micro_steps=20, **kwargs):
-        super(GonzalesSchlegel, self).__init__(geometry, **kwargs)
+        super().__init__(geometry, **kwargs)
 
         self.max_micro_steps = max_micro_steps
 
@@ -29,31 +30,19 @@ class GonzalesSchlegel(IRC):
         micro_fmts = ["d", ".2E", ".3E"]
         self.micro_formatter = TableFormatter(micro_header, micro_fmts, 10)
 
-    def bfgs_update(self, grad_diffs, coord_diffs):
-        """BFGS update of the hessian as decribed in Eq. (16) of [1]."""
-        y = grad_diffs[:,None]
-        yT = grad_diffs[None,:]
-        s = coord_diffs[:,None]
-        sT = coord_diffs[None,:]
-        first_term = y.dot(yT) / yT.dot(s)
-        second_term = (self.hessian.dot(s).dot(sT).dot(self.hessian)
-                       / sT.dot(self.hessian).dot(s)
-        )
-        dH = first_term - second_term
-        return self.hessian + dH
-
     def micro_step(self):
         """Constrained optimization on a hypersphere."""
         eye = np.eye(self.displacement.size)
 
-        gradient = self.gradient
-        gradient_diff = gradient - self.last_gradient
-        coords_diff = self.mw_coords - self.last_coords
-        self.last_gradient = gradient
+        gradient = self.mw_gradient
+        gradient_diff = gradient - self.prev_grad
+        coords_diff = self.mw_coords - self.prev_coords
+        self.prev_grad = gradient
         # Without copy we would only store the reference...
-        self.last_coords = self.mw_coords.copy()
+        self.prev_coords = self.mw_coords.copy()
 
-        self.hessian = self.bfgs_update(gradient_diff, coords_diff)
+        dH, _ = bfgs_update(self.hessian, coords_diff, gradient_diff)
+        self.hessian += dH
         eigvals, eigvecs = np.linalg.eig(self.hessian)
         hessian_inv = np.linalg.pinv(self.hessian)
 
@@ -72,7 +61,7 @@ class GonzalesSchlegel(IRC):
         lambda_ = np.sort(eigvals)[0]
         lambda_ *= 1.5 if (lambda_ < 0) else 0.5
         # Find the root with scipy
-        lambda_ = newton(lambda_func, lambda_, maxiter=1000)
+        lambda_ = newton(lambda_func, lambda_, maxiter=500)
 
         # Calculate dx from optimized lambda
         dx = -np.dot(
@@ -88,16 +77,16 @@ class GonzalesSchlegel(IRC):
         return dx, tangent
 
     def step(self):
-        gradient0 = self.gradient
-        gradient0_norm = np.linalg.norm(gradient0)
+        grad0 = self.mw_gradient
+        grad0_norm = np.linalg.norm(grad0)
         # For the BFGS update in the first micro step we use the original
         # point and the initial guess to calculate gradient and
         # coordinate differences.
-        self.last_gradient = gradient0
-        self.last_coords = self.mw_coords
+        self.prev_grad = grad0
+        self.prev_coords = self.mw_coords
 
         # Take a step against the gradient to the pivot point x*_k+1.
-        pivot_step = -0.5*self.step_length * gradient0/gradient0_norm
+        pivot_step = -0.5*self.step_length * grad0/grad0_norm
         pivot_coords = self.mw_coords + pivot_step
         self.pivot_coords.append(pivot_coords)
 
@@ -107,16 +96,21 @@ class GonzalesSchlegel(IRC):
         # Initial displacement p' from the pivot point
         self.displacement = pivot_step
 
-        these_micro_coords = list()
+        micro_coords_ = list()
         i = 0
-        self.table.print(f"Microiterations for step {self.cur_step}")
+        # self.table.print(f"Microiterations for step {self.cur_step}")
         self.table.print(self.micro_formatter.header)
         while True:
             if i == self.max_micro_steps:
                 self.logger.warning("Max micro cycles exceeded!")
                 break
-            dx, tangent = self.micro_step()
-            these_micro_coords.append(self.mw_coords)
+            try:
+                dx, tangent = self.micro_step()
+            except RuntimeError:
+                print("Constrained search did not converge!")
+                self.converged = True
+                return
+            micro_coords_.append(self.mw_coords)
             norm_dx = np.linalg.norm(dx)
             norm_tangent = np.linalg.norm(tangent)
             self.table.print(self.micro_formatter.line(i+1, norm_dx, norm_tangent))
@@ -125,7 +119,7 @@ class GonzalesSchlegel(IRC):
                 break
             i += 1
 
-        self.micro_coords.append(np.array(these_micro_coords))
+        self.micro_coords.append(np.array(micro_coords_))
 
     def postprocess(self):
         self.pivot_coords = np.array(self.pivot_coords)
