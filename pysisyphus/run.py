@@ -93,16 +93,19 @@ OPT_DICT = {
 TSOPT_DICT = {
     "dimer": dimer_method,
     "rsprfo": RSPRFOptimizer,
+    "trim": TRIM,
+    "rsirfo": RSIRFOptimizer,
 }
 
 IRC_DICT = {
-    # "dvv": DampedVelocityVerlet.DampedVelocityVerlet,
-    "euler": Euler.Euler,
-    "gs": GonzalesSchlegel.GonzalesSchlegel,
-    "imk": IMKMod.IMKMod,
-    "rk4": RK4,
+    "dvv": DampedVelocityVerlet,
+    "euler": Euler,
+    "eulerpc": EulerPC,
+    "gs": GonzalesSchlegel,
+    "imk": IMKMod,
     "lqa": LQA,
     "modekill": ModeKill,
+    "rk4": RK4,
 }
 
 STOCASTIC_DICT = {

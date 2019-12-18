@@ -119,7 +119,7 @@ class Calculator:
         """Meant to be extended.."""
         raise Exception("Not implemented!")
 
-    def make_fn(self, name, counter=None):
+    def make_fn(self, name, counter=None, return_str=False):
         """Make a full filename.
 
         Return a full filename including the calculator name and the
@@ -131,6 +131,8 @@ class Calculator:
             Suffix of the filename.
         counter : int, optional
             If not given use the current calc_counter.
+        return_str : int, optional
+            Return a string instead of a Path when True.
 
         Returns
         -------
@@ -141,6 +143,8 @@ class Calculator:
         if not counter:
             counter = self.calc_counter
         fn = self.out_dir / f"{self.name}.{counter:03d}.{name}"
+        if return_str:
+            fn = str(fn)
         return fn
 
     def prepare_path(self, use_in_run=False):

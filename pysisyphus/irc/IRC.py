@@ -29,6 +29,8 @@ class IRC:
         self.logger = logging.getLogger("irc")
 
         self.geometry = geometry
+        assert self.geometry.coord_type == "cart"
+
         self.step_length = step_length
         self.max_cycles = max_cycles
         self.downhill = downhill
@@ -40,11 +42,7 @@ class IRC:
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
         self.displ_energy = float(displ_energy)
-        # assert self.displ_energy > 0, \
-            # "displ_energy must be positive"
         self.displ_length = float(displ_length)
-        # assert self.displ_length > 0, \
-            # "displ_displ must be positive"
         self.rms_grad_thresh = float(rms_grad_thresh)
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
@@ -108,12 +106,6 @@ class IRC:
     def prepare(self, direction):
         self.cur_step = 0
         self.converged = False
-        # Over the course of the IRC the hessian may get updated.
-        # Copying the TS hessian here ensures a clean start in combined
-        # forward and backward runs. Otherwise we would accidently use
-        # the updated hessian from the end of the first run for the second
-        # run.
-        self.hessian = self.ts_hessian
 
         self.irc_energies = list()
         # Not mass-weighted
@@ -126,6 +118,13 @@ class IRC:
         # We don't need an initiald displacement when going downhill
         if self.downhill:
             return
+
+        # Over the course of the IRC the hessian may get updated.
+        # Copying the TS hessian here ensures a clean start in combined
+        # forward and backward runs. Otherwise we would accidently use
+        # the updated hessian from the end of the first run for the second
+        # run.
+        self.hessian = self.ts_hessian.copy()
 
         # Do inital displacement from the TS
         init_factor = 1 if (direction == "forward") else -1
@@ -155,6 +154,7 @@ class IRC:
         self.log(f"Transition vector is mode {self.mode} with wavenumber "
                  f"{eigval_to_wavenumber(min_eigval):.2f} cm⁻¹.")
         mw_trans_vec = eigvecs[:,self.mode]
+        self.mw_transition_vector = mw_trans_vec
         # Un-mass-weight the transition vector
         trans_vec = mm_sqr_inv.dot(mw_trans_vec)
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
@@ -301,23 +301,26 @@ class IRC:
         self.ts_gradient = self.gradient.copy()
         self.ts_mw_gradient = self.mw_gradient.copy()
         self.ts_energy = self.energy
-        self.ts_hessian = self.geometry.hessian.copy()
 
         ts_grad_norm = np.linalg.norm(self.ts_gradient)
         ts_grad_max = np.abs(self.ts_gradient).max()
         ts_grad_rms = rms(self.ts_gradient)
 
         self.log( "Transition state (TS):\n"
-                 f"\tnorm(grad)={ts_grad_norm:.6f}\n"
-                 f"\t max(grad)={ts_grad_max:.6f}\n"
-                 f"\t rms(grad)={ts_grad_rms:.6f}"
+                 f"\tnorm(grad)={ts_grad_norm:.8f}\n"
+                 f"\t max(grad)={ts_grad_max:.8f}\n"
+                 f"\t rms(grad)={ts_grad_rms:.8f}"
         )
 
-        # With downhill=True we shouldn't need any initial displacement.
-        # We still call the method because here the initial hessian is
-        # calculated and some sanity checks are made. The returned init_displ
-        # will be the zero vector though.
-        self.init_displ = self.initial_displacement()
+        print("IRC length in mw. coords, max(|grad|) and rms(grad) in non-"
+              "mass-weighted coords.")
+
+        # For forward/backward runs we need an intial displacement
+        # and for this we need a hessian, that we calculate now.
+        # For downhill runs we probably dont need a hessian.
+        if not self.downhill:
+            self.ts_hessian = self.geometry.hessian.copy()
+            self.init_displ = self.initial_displacement()
 
         if self.forward:
             print("\n" + highlight_text("IRC - Forward") + "\n")

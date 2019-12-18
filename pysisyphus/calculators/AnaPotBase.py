@@ -10,13 +10,17 @@ from pysisyphus.Geometry import Geometry
 
 class AnaPotBase(Calculator):
 
-    def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1), levels=None):
+    def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1), levels=None,
+                 use_sympify=True):
         super(AnaPotBase, self).__init__()
         self.xlim = xlim
         self.ylim = ylim
         self.levels = levels
         x, y = symbols("x y")
-        V = sympify(V_str)
+        if use_sympify:
+            V = sympify(V_str)
+        else:
+            V = V_str
         dVdx = diff(V, x)
         dVdy = diff(V, y)
         self.V = lambdify((x, y), V, "numpy")
