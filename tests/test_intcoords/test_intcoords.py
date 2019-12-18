@@ -6,7 +6,7 @@ from pytest import approx
 
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.testing import pytest_present
+from pysisyphus.testing import using_pytest
 
 
 def numhess(geom, step_size=0.0001):
@@ -48,7 +48,7 @@ def compare_hessians(ref_H, num_H, ref_rms):
     return rms == approx(ref_rms, abs=1e-6)
 
 
-@pytest_present
+@using_pytest
 @pytest.mark.parametrize(
     "xyz_fn, coord_type, ref_rms", [
         ("hcn_bent.xyz", "cart", 4.58997e-6),
