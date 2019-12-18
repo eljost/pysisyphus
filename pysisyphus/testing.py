@@ -9,6 +9,7 @@ https://github.com/MolSSI/QCEngine/blob/master/qcengine/testing.py
 """
 
 
+_reason = "Calculator {} is not available."
 _using_cache = dict()
 
 
@@ -32,6 +33,10 @@ def using(calculator):
             except ImportError:
                 pass
 
-        reason = f"Calculator {calculator} is not available."
+        reason = _reason.format(calculator)
         _using_cache[calculator] = pytest.mark.skipif(not available, reason=reason)
     return _using_cache[calculator]
+
+
+
+pytest_present = pytest.mark.skipif(not using("pyscf"), reason=_reason.format("pyscf"))
