@@ -51,7 +51,6 @@ class LST(Interpolator):
         G = lambda w_c, f: self.cost_function(w_c, f, rab, wab)
 
         interpolated_geoms = list()
-        x0_flat = wab(0).flatten()
         minimize_kwargs = {
             "method": "L-BFGS-B",
             "options": {

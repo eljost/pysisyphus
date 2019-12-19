@@ -124,7 +124,7 @@ class AFIR(Calculator):
         self.log("Created and set AFIR gradient function.")
 
     def get_energy(self, atoms, coords):
-        self.set_atoms_and_funcs(atoms)
+        self.set_atoms_and_funcs(atoms, coords)
 
         true_energy = self.calculator.get_energy(atoms, coords)["energy"]
         afir_energy = self.afir_func(coords.reshape(-1, 3))

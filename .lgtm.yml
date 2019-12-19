@@ -1,0 +1,9 @@
+extraction:
+  python:
+    python_setup:
+      version: 3
+path_classifiers:
+  library:
+    - versioneer.py
+  generated:
+    - pysisyphus/_version.py

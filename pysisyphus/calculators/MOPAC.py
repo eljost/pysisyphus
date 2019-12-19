@@ -35,7 +35,7 @@ class MOPAC(Calculator):
         "hessian": "DFORCE FORCE LET",
     }
 
-    METHODS = [m.lower() for m in
+    METHODS = [m.lower() for m in  # lgtm [py/non-iterable-in-for-loop]
                "AM1 PM3 PM6 PM6-DH2 PM6-D3 PM6-DH+ PM6-DH2 PM6-DH2X " \
                "PM6-D3H4 PM6-D3H4X PM7 PM7-TS".split()
     ]

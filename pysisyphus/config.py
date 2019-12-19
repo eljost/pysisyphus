@@ -16,7 +16,6 @@ if not config_fn.is_file():
     print(f"Couldn't find configuration file. Expected it at '{config_fn}'.")
 read_fns = Config.read(config_fn)
 
-read_fns = Config.read(config_fn)
 
 def get_cmd(key, use_defaults=True):
     try:

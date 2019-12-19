@@ -24,7 +24,6 @@ def bfgs_multiply(s_list, y_list, force, beta=1):
     alphas = alphas[::-1]
     rhos = rhos[::-1]
 
-    r = q
     if cycles > 0:
         s = s_list[-1]
         y = y_list[-1]
