@@ -62,3 +62,5 @@ class SimpleZTS(ChainOfStates):
         # Flatten along first dimension.
         new_points = new_points.reshape(-1, len(self.images))
         self.coords = new_points.transpose().flatten()
+
+        return True

@@ -387,6 +387,18 @@ class Optimizer:
                 if reparametrized:
                     self.log("Did reparametrization")
 
+                    cur_coords = self.geometry.coords
+                    prev_coords = self.coords[-1]
+                    rms = np.sqrt(np.mean((prev_coords - cur_coords)**2))
+                    self.log("rms of coordinates after reparametrization={rms.:6f}")
+                    self.is_converged = rms < 1e-3
+                    if self.is_converged:
+                        print("Insignificant change in coordinates after "
+                              "reparametrization. Signalling convergence!"
+                        )
+                        print()
+                        break
+
             sys.stdout.flush()
             if check_for_stop_sign():
                 self.stopped = True
