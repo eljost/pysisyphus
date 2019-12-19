@@ -26,7 +26,8 @@ class Optimizer:
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
                  rms_force=None, align=False, dump=False, last_cycle=None,
-                 prefix="", overachieve_factor=0., **kwargs):
+                 prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
+                 **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -38,6 +39,7 @@ class Optimizer:
         self.dump = dump
         self.last_cycle = last_cycle
         self.prefix = prefix
+        self.reparam_thresh = reparam_thresh
         self.overachieve_factor = float(overachieve_factor)
 
         for key, value in self.convergence.items():
@@ -391,7 +393,7 @@ class Optimizer:
                     prev_coords = self.coords[-1]
                     rms = np.sqrt(np.mean((prev_coords - cur_coords)**2))
                     self.log("rms of coordinates after reparametrization={rms.:6f}")
-                    self.is_converged = rms < 1e-3
+                    self.is_converged = rms < self.reparam_thresh
                     if self.is_converged:
                         print("Insignificant change in coordinates after "
                               "reparametrization. Signalling convergence!"
