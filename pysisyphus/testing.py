@@ -6,6 +6,9 @@ from pysisyphus.config import Config
 
 """Inspired by
 https://github.com/MolSSI/QCEngine/blob/master/qcengine/testing.py
+
+Maybe implement something like this to make test access easier
+    https://stackoverflow.com/a/36601576/12486216
 """
 
 
