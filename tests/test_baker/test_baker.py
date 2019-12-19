@@ -5,6 +5,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from pysisyphus.helpers import get_baker_geoms
 from pysisyphus.color import red, green
