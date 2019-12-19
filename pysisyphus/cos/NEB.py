@@ -34,7 +34,7 @@ class NEB(ChainOfStates):
 
     def update_springs(self):
         # Check if there are enough springs
-        if (len(self.k) is not len(self.images)-1):
+        if (len(self.k) != len(self.images)-1):
             self.k = np.full(len(self.images)-1, self.k_min)
         if self.variable_springs:
             self.set_variable_springs()

@@ -54,7 +54,6 @@ class Optimizer:
 
         assert(self.max_step > self.rel_step_thresh)
 
-        image_num = 1
         if self.is_cos:
             image_num = len(self.geometry.moving_indices)
             print(f"Path with {image_num} moving images.")
@@ -386,11 +385,12 @@ class Optimizer:
 
             if hasattr(self.geometry, "reparametrize"):
                 reparametrized = self.geometry.reparametrize()
-                if reparametrized:
+                cur_coords = self.geometry.coords
+                prev_coords = self.coords[-1]
+
+                if reparametrized and (cur_coords.size == prev_coords.size):
                     self.log("Did reparametrization")
 
-                    cur_coords = self.geometry.coords
-                    prev_coords = self.coords[-1]
                     rms = np.sqrt(np.mean((prev_coords - cur_coords)**2))
                     self.log("rms of coordinates after reparametrization={rms.:6f}")
                     self.is_converged = rms < self.reparam_thresh

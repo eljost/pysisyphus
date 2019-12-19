@@ -242,8 +242,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
         cloudpickle.dump(dimer_pickle, handle)
 
     dimer_cycles = list()
-    coords0_list = [coords0.copy(), ]
-    N_list = [N.copy(), ]
 
     print("Using N:", N)
     def f_tran_getter(coords, N, C):
@@ -307,7 +305,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
 
         f0_rms = get_rms(f0)
         f0_max = np.abs(f0).max()
-        row_args = [C, f0_max, f0_rms]
         trans_table.print(f"@ {i:03d}: C={C:.6f}; max(|f0|)={f0_max:.6f}; rms(f0)={f0_rms:.6f}")
         print()
         converged = C < 0 and f0_rms <= rms_f_thresh and f0_max <= max_f_thresh
@@ -394,10 +391,8 @@ def dimer_method(geoms, calc_getter, N_init=None,
                 rot_force_evals += 1
                 f2_trial = 2*f0 - f1_trial
                 N_trial = make_unit_vec(coords1_trial, coords0)
-                coords2_trial = coords0 - N_trial*dR
 
                 C_trial = get_curvature(f1_trial, f2_trial, N_trial, dR)
-                theta_trial = get_theta0(f1_trial, f2_trial, N_trial)
 
                 b1 = 0.5 * dC
                 a1 = (C - C_trial + b1*np.sin(2*rad_trial)) / (1-np.cos(2*rad_trial))
@@ -407,7 +402,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
                 logger.debug(f"rad_min={rad_min:.2f}")
                 def get_C(theta_rad):
                     return a0/2 + a1*np.cos(2*theta_rad) + b1*np.sin(2*theta_rad)
-                C_min = get_C(rad_min)
+                C_min = get_C(rad_min)  # lgtm [py/multiple-definition]
                 if C_min > C:
                     rad_min += np.deg2rad(90)
                     C_min_new = get_C(rad_min)
@@ -454,8 +449,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             coords2_rot = coords0 - N*dR
             f2 = 2*f0 - f1
             C = get_curvature(f1, f2, N, dR)
-            rof_force = get_f_perp(f1, f2, N)
-            rot_force_norm = np.linalg.norm(rot_force)
+            rot_force = get_f_perp(f1, f2, N)
             rot_force_rms = get_rms(rot_force)
             logger.debug("")
             if j == 0:
@@ -491,7 +485,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
             coords0 = geom0.coords
             # Calculate new forces for translated dimer
             f0 = geom0.forces
-            d_neu = f0 / np.linalg.norm(f0)
             f1 = geom1.forces
             add_force_evals += 2
             f2 = 2*f0 - f1
@@ -518,15 +511,15 @@ def dimer_method(geoms, calc_getter, N_init=None,
                   # or (f_perp_rms > prev_f_perp_rms)):
             elif (C > 0) and (f_par_rms < prev_f_par_rms):
                 break
-            prev_f_par_rms = f_par_rms
-            prev_f_perp_rms = f_perp_rms
+            prev_f_par_rms = f_par_rms  # lgtm [py/multiple-definition]
+            # prev_f_perp_rms = f_perp_rms
 
 
         # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
         try:
             rot_coords = np.array((coords1_rot, coords0, coords2_rot))
-        except:
+        except NameError:
             rot_coords = np.array((coords1, coords0, coords2))
         trans_coords = np.array((coords1_trans, coords0_trans, coords2_trans))
         dc = DimerCycle(org_coords, rot_coords, trans_coords, f0, f_tran)

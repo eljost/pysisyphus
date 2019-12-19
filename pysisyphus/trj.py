@@ -240,7 +240,6 @@ def spline_redistribute(geoms):
     szts = SimpleZTS.SimpleZTS(geoms)
     pre_diffs = get_coords_diffs([image.coords for image in szts.images])
     szts.reparametrize()
-    post_diffs = get_coords_diffs(szts.coords.reshape(-1,3))
     post_diffs = get_coords_diffs([image.coords for image in szts.images])
     cds_str = lambda cds: " ".join([f"{cd:.2f}" for cd in cds])
     print("Normalized path segments before splining:")

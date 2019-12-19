@@ -135,8 +135,3 @@ class Psi4(Calculator):
 
     def __str__(self):
         return f"Psi4({self.name})"
-
-
-if __name__ == "__main__":
-    psi4 = Psi4()
-    print(psi4.cmd)

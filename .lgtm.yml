@@ -1,0 +1,13 @@
+extraction:
+  python:
+    python_setup:
+      version: 3
+path_classifiers:
+  # Filter out versioneer related stuff, as it throws errors
+  library:
+    - versioneer.py
+    - pysisyphus/server/bottle.py
+  generated:
+    - pysisyphus/_version.py
+  exclude:
+    - pysisyphus/deprecated/*

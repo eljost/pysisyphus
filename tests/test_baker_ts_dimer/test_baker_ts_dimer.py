@@ -33,7 +33,7 @@ def make_N_init_dict():
 
 
 def get_N_10_11_15_dict():
-    pickle_path = Path("/scratch/programme/pysisyphus/tests/test_bakerchan_dimer/10_11_N_init.pickle")
+    pickle_path = Path("10_11_N_init.pickle")
     with open(pickle_path, "rb") as handle:
         N_inits = cloudpickle.load(handle)
     return N_inits

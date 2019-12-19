@@ -30,7 +30,7 @@ class OverlapCalculator(Calculator):
         # As described in 10.1002/jcc.25800
         "nto_org": "original natural transition orbital overlap",
     }
-    VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]
+    VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]  # lgtm [py/non-iterable-in-for-loop]
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
@@ -368,17 +368,17 @@ class OverlapCalculator(Calculator):
         roots changed."""
         raise Exception("This method is not functional right now!")
 
-        # We only have to update the first dimension
-        to_update = (
-            "all_energies_list",
-            "overlap_matrices",
-            "ci_coeff_list",
-        )
-        for name in to_update:
-            arr_list = getattr(self, name)
-            first_dims = [arr.shape[0] for arr in arr_list]
-            max_ = max(first_dims)
-            print(f"name: {name} first_dims: {first_dims}")
+        # # We only have to update the first dimension
+        # to_update = (
+            # "all_energies_list",
+            # "overlap_matrices",
+            # "ci_coeff_list",
+        # )
+        # for name in to_update:
+            # arr_list = getattr(self, name)
+            # first_dims = [arr.shape[0] for arr in arr_list]
+            # max_ = max(first_dims)
+            # print(f"name: {name} first_dims: {first_dims}")
 
         # try:
             # # With dyn_root > 0 the size of all_ens may be different from cycle to

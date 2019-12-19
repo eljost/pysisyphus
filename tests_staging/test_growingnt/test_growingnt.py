@@ -119,7 +119,6 @@ def test_anapot_growingstring_opt():
         # "perp_thresh": 1,
     }
     gs = GrowingString(images, calc_getter, reparam_every=1)
-    from pysisyphus.cos.GSref import GrowingString as GS
     # from pysisyphus.optimizers.QuickMin import QuickMin
     # opt = QuickMin(gs)
     # self.coords = [c.reshape(-1, 3) for c in self.gs.coords_list]
@@ -135,11 +134,6 @@ def test_anapot_growingstring_opt():
     levels = (-3, 4, 80)
     ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
     ap.animate()
-
-    # gs_ = GS(images, AnaPot, )
-    # gs_.run()
-    # ap = AnimGS(gs_, AnaPot)
-    # ap.animate()
 
 
 def test_mb_gs_opt():

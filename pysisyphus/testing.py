@@ -42,4 +42,5 @@ def using(calculator):
 
 
 
-using_pytest = pytest.mark.skipif(not using("pyscf"), reason=_reason.format("pyscf"))
+using_pyscf = using("pyscf")
+using_gaussian16 = using("gaussian16")

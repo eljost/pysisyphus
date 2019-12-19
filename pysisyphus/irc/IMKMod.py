@@ -92,40 +92,40 @@ class IMKMod(IRC):
         self.mw_coords = mw_coords_4
         return
 
-        # Project g1 along D
-        grad_1_proj = grad_1.dot(D)
-        """Fit parabel with 2 energies and 1 projected gradient.
-        See [2] on how to do this. We want to determine the coefficients
-        for the polynom f(x) = a0 + a1*x + a2*x**2. This can be done by
-        solving A*b = y with b being the coefficient vector.
-        The system matrix A is given by:
-            A = (
-                (1, x11, x11**2),
-                (1, x12, x12**2),
-                (0, 1, 2*x21)
-            )
-        energy_1 and and grad_1 are evaluated at the same point x11 = 0,
-        so only x12 is != 0."""
-        A = (
-	    (1, 0, 0),
-	    (1, self.line_step_size, self.line_step_size**2),
-	    (0, 1, 0)
-	)
-        y = (energy_1, energy_2, grad_1_proj)
-        b = np.linalg.lstsq(A, y, rcond=None)[0]
-        # np.poly1d expects the coefficients in decreasing power order
-        parabel = np.poly1d(b[::-1])
-        # Roots of the first derivative
-        roots = parabel.deriv().r
-        try:
-            real_minimum = (roots[roots.imag==0].real)[0]
-        except:
-            print("Only found an imaginary minimum for the fitted parabel. "
-                  "This should not happen :) Exiting.")
-            return
+        # # Project g1 along D
+        # grad_1_proj = grad_1.dot(D)
+        # """Fit parabel with 2 energies and 1 projected gradient.
+        # See [2] on how to do this. We want to determine the coefficients
+        # for the polynom f(x) = a0 + a1*x + a2*x**2. This can be done by
+        # solving A*b = y with b being the coefficient vector.
+        # The system matrix A is given by:
+            # A = (
+                # (1, x11, x11**2),
+                # (1, x12, x12**2),
+                # (0, 1, 2*x21)
+            # )
+        # energy_1 and and grad_1 are evaluated at the same point x11 = 0,
+        # so only x12 is != 0."""
+        # A = (
+	    # (1, 0, 0),
+	    # (1, self.line_step_size, self.line_step_size**2),
+	    # (0, 1, 0)
+	# )
+        # y = (energy_1, energy_2, grad_1_proj)
+        # b = np.linalg.lstsq(A, y, rcond=None)[0]
+        # # np.poly1d expects the coefficients in decreasing power order
+        # parabel = np.poly1d(b[::-1])
+        # # Roots of the first derivative
+        # roots = parabel.deriv().r
+        # try:
+            # real_minimum = (roots[roots.imag==0].real)[0]
+        # except:
+            # print("Only found an imaginary minimum for the fitted parabel. "
+                  # "This should not happen :) Exiting.")
+            # return
 
-        if abs(real_minimum) > 2*self.line_step_thresh:
-            print("Predicted minimum is above threshold! OHOHOHOHOH")
-            real_minimum = 0
+        # if abs(real_minimum) > 2*self.line_step_thresh:
+            # print("Predicted minimum is above threshold! OHOHOHOHOH")
+            # real_minimum = 0
 
-        self.mw_coords = mw_coords_1 + (real_minimum*D)
+        # self.mw_coords = mw_coords_1 + (real_minimum*D)

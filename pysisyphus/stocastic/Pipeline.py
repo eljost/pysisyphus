@@ -135,7 +135,7 @@ class Pipeline:
                 and not self.atoms_are_too_close(geom)
                 and self.geom_is_new(geom))
     
-    def get_input_geom(self):
+    def get_input_geom(self, geom):
         raise Exception("Implement me!")
 
     """

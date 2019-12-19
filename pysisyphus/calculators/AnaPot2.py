@@ -13,7 +13,7 @@ from pysisyphus.calculators.Calculator import Calculator
 class AnaPot2_(Calculator):
 
     def __init__(self): 
-        super(AnaPot2, self).__init__()
+        super().__init__()
 
     def get_energy(self, atoms, coords):
         x, y, z = coords

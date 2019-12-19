@@ -140,13 +140,13 @@ class Turbomole(OverlapCalculator):
         self.mo_inds = None
 
     def prepare_input(self, atoms, coords, calc_type):
+        """To rectify this we have to construct the basecmd
+        dynamically and construct it ad hoc. We could set a RI flag
+        in the beginning and select the correct scf binary here from
+        it. Then we select the following binary on demand, e.g. aoforce
+        or rdgrad or egrad etc."""
         if calc_type not in ("force", "double_mol", "noparse"):
             raise Exception("Can only do force and tddft for now.")
-            """To rectify this we have to construct the basecmd
-            dynamically and construct it ad hoc. We could set a RI flag
-            in the beginning and select the correct scf binary here from
-            it. Then we select the following binary on demand, e.g. aoforce
-            or rdgrad or egrad etc."""
         path = self.prepare_path(use_in_run=True)
         if calc_type == "double_mol":
             copy_from = self.double_mol_path

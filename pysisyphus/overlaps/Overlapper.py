@@ -90,7 +90,7 @@ class Overlapper:
     def discover_geometries(self, path):
         xyz_fns = natsorted(path.glob("*.xyz"))
         geoms = [geom_from_xyz_file(xyz_fn) for xyz_fn in xyz_fns]
-        self.restore_calculators(geoms, self.calc_key)
+        self.restore_calculators(geoms)
 
         return geoms
 

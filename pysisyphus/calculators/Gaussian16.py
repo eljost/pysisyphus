@@ -610,7 +610,6 @@ class Gaussian16(OverlapCalculator):
 
         fst = full_mat[:,0][:,None]
         nbas_single = nbas // 2
-        double_mol_ovlp = full_mat[nbas_single:, :nbas_single]
         """The whole matrix consists of four blocks:
             Original overlaps of molecule 1
                 b1 = full_mat[:nbas_single, :nbas_single]

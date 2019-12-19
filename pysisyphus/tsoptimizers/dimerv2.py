@@ -60,7 +60,6 @@ def diis(error_vecs, coords, forces, max_vecs=7):
         err_norms = np.linalg.norm(err_vecs, axis=1)
         scale_factor = 1 / err_norms.min()
         err_vecs  *= scale_factor
-        err_norms = np.linalg.norm(err_vecs, axis=1)
 
         for i, e1 in enumerate(err_vecs):
             for j in range(i, len(err_vecs)):
