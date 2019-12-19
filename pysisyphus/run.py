@@ -78,7 +78,6 @@ OPT_DICT = {
     "qm": QuickMin.QuickMin,
     "rfo": RFOptimizer.RFOptimizer,
     "rsrfo": RSRFOptimizer,
-    "rsa": RSAlgorithm.RSAlgorithm,
     "anc": ANCOptimizer.ANCOptimizer,
     "string": StringOptimizer.StringOptimizer,
     "sqnm": StabilizedQNMethod.StabilizedQNMethod,

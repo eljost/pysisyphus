@@ -2,8 +2,6 @@
 
 # See [1] 10.1063/1.1691018
 
-from copy import copy
-
 import numpy as np
 from scipy.interpolate import splprep, splev
 
@@ -85,7 +83,6 @@ class GrowingString(GrowingChainOfStates):
         Sk, _ = self.arc_dims
         S = Sk / (self.max_nodes+1)
         # Create first two mobile nodes
-        left_img, right_img = self.images
         new_left_coords = S*init_tangent
         new_right_coords = - S*init_tangent
         left_frontier = self.get_new_image(new_left_coords, 1, 0)
@@ -93,11 +90,11 @@ class GrowingString(GrowingChainOfStates):
         right_frontier = self.get_new_image(new_right_coords, 2, 2)
         self.right_string.append(right_frontier)
 
-        def ind_func(perp_force, tol=0.5):
+        def ind_func(perp_force, tol=0.5):  # lgtm [py/unused-local-variable]
             return int(np.linalg.norm(perp_force) <= tol)
 
         # Step length on the normalized arclength
-        sk = 1 / (self.max_nodes+1)
+        sk = 1 / (self.max_nodes+1)  # lgtm [py/unused-local-variable]
         tcks, us = self.spline()
         for self.cur_cycle in range(self.max_cycles):
             Sk, cur_mesh = self.arc_dims
@@ -121,9 +118,7 @@ class GrowingString(GrowingChainOfStates):
                  for force, tangent in zip(force_per_img, tangents)]
             )
             self.perp_force_list.append(self.perp_forces)
-            perp_norms = np.linalg.norm(self.perp_forces, axis=1)
             np.save("gs_ref_perp.npy", self.perp_forces)
-            break
 
             # Take step
             step = 0.05 * self.perp_forces.flatten()

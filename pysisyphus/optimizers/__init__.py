@@ -10,7 +10,6 @@ __all__ = [
     "RFOptimizer",
     "SteepestDescent",
     "RSRFOptimizer",
-    "RSAlgorithm",
     "ANCOptimizer",
     "StringOptimizer",
     "StabilizedQNMethod",
