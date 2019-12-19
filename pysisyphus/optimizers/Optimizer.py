@@ -54,7 +54,6 @@ class Optimizer:
 
         assert(self.max_step > self.rel_step_thresh)
 
-        image_num = 1
         if self.is_cos:
             image_num = len(self.geometry.moving_indices)
             print(f"Path with {image_num} moving images.")

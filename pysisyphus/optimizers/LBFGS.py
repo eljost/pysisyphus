@@ -49,7 +49,6 @@ class LBFGS(Optimizer):
         alphas = alphas[::-1]
         rhos = rhos[::-1]
 
-        r = q
         if cycles > 0:
             s = s_list[-1]
             y = y_list[-1]
@@ -57,6 +56,7 @@ class LBFGS(Optimizer):
             r = gamma * q
         else:
             r = beta * q
+
         for i in range(cycles):
             s = s_list[i]
             y = y_list[i]
