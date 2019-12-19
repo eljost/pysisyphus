@@ -17,8 +17,8 @@ from scipy.optimize import minimize
 
 
 COS_CUTOFFS = {
-    # 2: 0.97,
-    # 3: 0.84,
+    2: 0.97,
+    3: 0.84,
     2: 0.80,
     3: 0.75,
     4: 0.71,
