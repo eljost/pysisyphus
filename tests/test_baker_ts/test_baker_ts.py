@@ -14,7 +14,7 @@ from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.color import red, green
 from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian, geom_from_library
-from pysisyphus.testing import using_pyscf
+from pysisyphus.testing import using_pyscf, using_gaussian16
 from pysisyphus.tsoptimizers import *
 
 
@@ -26,8 +26,7 @@ def print_summary(converged, failed, cycles, ran, runid):
     print(f"      run: {runid}")
 
 
-@using_pyscf
-@pytest.mark.skip
+@using_gaussian16
 @pytest.mark.benchmark
 def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
     """From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7"""

@@ -43,3 +43,4 @@ def using(calculator):
 
 
 using_pyscf = using("pyscf")
+using_gaussian16 = using("gaussian16")
