@@ -108,7 +108,7 @@ class PySCF(OverlapCalculator):
         # in 'mole.Mole.build'. Around line 2046 for pyscf 1.6.5.
         mol.output = self.make_fn(self.out_fn)
         mol.max_memory = self.mem * self.pal
-        mol.build()
+        mol.build(parse_arg=False)
 
         return mol
 
