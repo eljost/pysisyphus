@@ -26,8 +26,6 @@ def print_summary(converged, failed, cycles, ran, runid):
     print(f"      run: {runid}")
 
 
-@using_gaussian16
-@pytest.mark.benchmark
 def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
     """From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7"""
     start = time.time()
@@ -94,6 +92,8 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
     return results, duration, cycles
 
 
+@pytest.mark.benchmark
+@using_gaussian16
 def test_baker_ts_optimizations():
     coord_type = "redund"
     # coord_type = "dlc"
