@@ -21,7 +21,7 @@ class ChainOfStates:
     logger = logging.getLogger("cos")
     valid_coord_types = "cart dlc".split()
 
-    def __init__(self, images, parallel=0, fix_ends=False,
+    def __init__(self, images, parallel=0, fix_ends=True,
                  fix_first=False, fix_last=False,
                  climb=False, climb_rms=5e-3,
                  scheduler=None):
