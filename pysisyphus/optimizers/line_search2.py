@@ -187,7 +187,7 @@ def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step, co
     accept = {
         # They way cubic is defined now it is never accepted and this is
         # probably better, because it doesn't seem to improve the optimization.
-        "cubic": lambda x: (x > 2) and (x < 1),
+        "cubic": lambda x: (x > 2) and (x < 1),  # lgtm [py/redundant-comparison]
         "quartic": lambda x: (x > 0.) and (x <= 2),
     }
     fit_result = None

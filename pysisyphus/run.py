@@ -424,8 +424,6 @@ def overlaps(run_dict, geoms=None):
         to_pickle = [overlapper] + geoms
         with open(pickle_path, "wb") as handle:
             cloudpickle.dump(to_pickle, handle)
-    print("DEBUG Recreating overlapper!")
-    overlapper = get_overlapper(run_dict)
 
     ovlp_dict = run_dict["overlaps"]
     ovlp_type = ovlp_dict["type"]

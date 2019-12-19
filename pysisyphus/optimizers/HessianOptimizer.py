@@ -255,8 +255,8 @@ class HessianOptimizer(Optimizer):
         prev_coords = self.coords[-2]
         cur_coords = self.coords[-1]
         accept = {
-            # "cubic": lambda x: (x > 0.25) and (x < 1),
-            "cubic": lambda x: (x > 2.) and (x < 1),
+            # cubic is disabled for now as it does not seem to help
+            "cubic": lambda x: (x > 2.) and (x < 1),  # lgtm [py/redundant-comparison]
             "quartic": lambda x: (x > 0.) and (x <= 2),
         }
         fit_result = None
