@@ -8,11 +8,14 @@ import time
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian, geom_from_library
-from pysisyphus.tsoptimizers import *
 from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.color import red, green
+from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian, geom_from_library
+from pysisyphus.testing import using_pyscf
+from pysisyphus.tsoptimizers import *
 
 
 def print_summary(converged, failed, cycles, ran, runid):
@@ -23,6 +26,8 @@ def print_summary(converged, failed, cycles, ran, runid):
     print(f"      run: {runid}")
 
 
+@using_pyscf
+@pytest.mark.skip
 def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
     """From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7"""
     start = time.time()
@@ -45,12 +50,12 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
         print(f"@Running {name}")
         charge, mult, ref_energy = meta[name]
         calc_kwargs = {
-            "route": "HF/3-21G",
             "charge": charge,
             "mult": mult,
             "pal": 4,
         }
-        geom.set_calculator(Gaussian16(**calc_kwargs))
+        geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
+        # geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
 
         opt = RSPRFOptimizer(geom, **opt_kwargs)
         # opt = RSIRFOptimizer(geom, **opt_kwargs)
@@ -67,8 +72,8 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
             # ts_xyz_fn = Path(name).stem + "_opt_ts.xyz"
             # out_path = Path("/scratch/programme/pysisyphus/xyz_files/baker_ts_opt/")
             print(green(f"\t@Energies MATCH for {name}! ({geom.energy:.6f}, {ref_energy:.6f})"))
-            with open(out_path / ts_xyz_fn, "w") as handle:
-                handle.write(geom.as_xyz())
+            # with open(out_path / ts_xyz_fn, "w") as handle:
+                # handle.write(geom.as_xyz())
         except AssertionError as err:
             print(red(f"\t@Calculated energy {geom.energy:.6f} and reference "
                       f"energy {ref_energy:.6f} DON'T MATCH'."))
