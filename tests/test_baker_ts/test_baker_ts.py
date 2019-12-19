@@ -28,6 +28,7 @@ def print_summary(converged, failed, cycles, ran, runid):
 
 @using_pyscf
 @pytest.mark.skip
+@pytest.mark.benchmark
 def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
     """From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7"""
     start = time.time()

@@ -78,6 +78,7 @@ def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
 
 
 @using_pyscf
+@pytest.mark.benchmark
 def test_baker_minimum_optimizations():
     coord_type = "redund"
     # coord_type = "cart"
