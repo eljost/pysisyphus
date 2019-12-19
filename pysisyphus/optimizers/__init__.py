@@ -2,7 +2,6 @@ import logging
 from .RSRFOptimizer import RSRFOptimizer
 
 __all__ = [
-    "BFGS",
     "ConjugateGradient",
     "FIRE",
     "LBFGS",
@@ -10,7 +9,6 @@ __all__ = [
     "QuickMin",
     "RFOptimizer",
     "SteepestDescent",
-    "SciPyOptimizer",
     "RSRFOptimizer",
     "RSAlgorithm",
     "ANCOptimizer",

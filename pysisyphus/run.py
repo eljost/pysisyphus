@@ -69,25 +69,19 @@ COS_DICT = {
     "fs": FreezingString.FreezingString,
 }
 
-from pysisyphus.optimizers.BFGS_ import BFGS_
 OPT_DICT = {
     "fire": FIRE.FIRE,
-    # Removing BFGS for now until save_also is implemented
-    # and rotating the hessian works properly
-    "bfgs": BFGS.BFGS,
     "lbfgs": LBFGS.LBFGS,
     #"lbfgsm": LBFGS_mod.LBFGS,
     "sd": SteepestDescent.SteepestDescent,
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
-    "scipy": SciPyOptimizer.SciPyOptimizer,
     "rfo": RFOptimizer.RFOptimizer,
     "rsrfo": RSRFOptimizer,
     "rsa": RSAlgorithm.RSAlgorithm,
     "anc": ANCOptimizer.ANCOptimizer,
     "string": StringOptimizer.StringOptimizer,
     "sqnm": StabilizedQNMethod.StabilizedQNMethod,
-    "bfgs_": BFGS_,
 }
 
 TSOPT_DICT = {

@@ -7,7 +7,6 @@ from pysisyphus.calculators.IDPPCalculator import IDPPCalculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.helpers import align_geoms
-from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.interpolate.Interpolator import Interpolator
 
@@ -46,8 +45,7 @@ class IDPP(Interpolator):
             "keep_cycles": False,
             "align": False,
         }
-        # opt = FIRE(neb, **opt_kwargs)
-        opt = BFGS(neb, **opt_kwargs)
+        opt = FIRE(neb, **opt_kwargs)
         opt.run()
 
         for geom in idpp_geoms:
