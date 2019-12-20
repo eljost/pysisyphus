@@ -168,10 +168,11 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
 
             phi_d = get_phi_dphi("f", d)
             # U3 b.
-            if (dphi_d < 0) and (phi_d <= phi0 + epsk):
+            # If (dphi_d > 0) we would already have returned above...
+            if phi_d <= phi0 + epsk:
                 a = d
             # U3 c.
-            elif (dphi_d < 0) and (phi_d > phi0 + epsk):
+            elif phi_d > phi0 + epsk:
                 b = d
         raise Exception("Bisect failed!")
 
@@ -186,7 +187,7 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
         if dphi_c >= 0:
             return a, c
         # U2, we are moving towards the minimum.
-        elif (dphi_c < 0) and (phi_c <= phi0 + epsk):
+        elif phi_c <= phi0 + epsk:
             return c, b
 
         # U3, phi_c increased above phi0, so we probably passed the minimum.
@@ -235,7 +236,7 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
                 # See https://stackoverflow.com/a/8768734
                 ci = len(phi_inds) - phi_inds[::-1].argmax() - 1
                 return cs[ci], c
-            elif (dphi_j < 0) and (phi_j > (phi0 + epsk)):
+            elif phi_j > (phi0 + epsk):
                 return bisect(0, c)
 
             c *= rho
@@ -259,7 +260,6 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
         fact = max(psi_low, g0_/(dphi0*psi_2))
         alpha_ = min(fact, psi_hi) * alpha
         phi_ = get_phi_dphi("f", alpha_)
-        num = dphi0*alpha_**2
         denom = 2*((phi_-phi0)/alpha_ - dphi0)
         f_temp = get_fg("f", alpha_)
         if denom > 0.:
@@ -345,6 +345,7 @@ def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     else:
         raise LinesearchNotConverged
 
-    dphi_i = get_phi_dphi("g", alpha, check=False)
+    # Call this so get_fg will always return something...
+    dphi_i = get_phi_dphi("g", alpha, check=False)  # lgtm [py/unused-local-variable]
     f_new, g_new = get_fg("fg", alpha)
     return alpha, f_new, g_new

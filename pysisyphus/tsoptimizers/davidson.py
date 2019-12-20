@@ -143,7 +143,6 @@ def davidson(geom, q, trial_step_size=0.01):
         for i, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
             sel_str = "*" if (i == mode_ind) else " "
             print(f"\t{i:02d}{sel_str} | {nu:> 16.2f} cm⁻¹ | {rms:.8f} | {mr:.8f}")
-            pass
         print()
 
         sys.stdout.flush()
