@@ -1,15 +1,16 @@
 import numpy as np
 from sympy import symbols, exp
 
-# [1] G. Henkelman, G. Jóhannesson, and H. Jónsson
-#   Theoretical Methods in Condensed Phase Chemistry
-#   (Springer, Netherlands, 2002), pp. 287
-# [2] https://aip.scitation.org/doi/pdf/10.1063/1.480097?class=pdf
-#   I'm very sure that Fig. 6 and Fig. 5 are not the potentials that are
-#   described in the paper. There are two errors in the paper. A_1 is
-#   actually -1.5 and not 1.5 and s_x_2 is 0.5 and not 5.0. You also
-#   have to divide by (2*s_x_i**2) and not only by (2*s_x_i) as given
-#   in Eq. (22).
+# [1]   10.1142/9789812839664_0016
+#       G. Henkelman, G. Jóhannesson, and H. Jónsson
+#       Theoretical Methods in Condensed Phase Chemistry
+#       (Springer, Netherlands, 2002), pp. 287
+# [2]   https://aip.scitation.org/doi/pdf/10.1063/1.480097?class=pdf
+#       I'm very sure that Fig. 6 and Fig. 5 are not the potentials that are
+#       described in the paper. There are two errors in the paper. A_1 is
+#       actually -1.5 and not 1.5 and s_x_2 is 0.5 and not 5.0. You also
+#       have to divide by (2*s_x_i**2) and not only by (2*s_x_i) as given
+#       in Eq. (22).
 
 class LEPSExpr:
 
@@ -37,7 +38,7 @@ class LEPSExpr:
     def get_leps(self):
         V_expr = self.V_LEPS()
         xlim = (0, 6)
-        ylim = (0, 4)
+        ylim = (0, 12)
         levels = np.linspace(-5, 5, 250)
         return V_expr, xlim, ylim, levels
 
