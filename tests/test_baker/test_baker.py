@@ -44,6 +44,7 @@ def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
     }
     results = dict()
     for i, (name, geom) in enumerate(geoms.items()):
+        print(f"@Running {name}")
         # geom.set_calculator(XTB(pal=4))
         # geom.set_calculator(Gaussian16(route="HF/STO-3G", pal=4))
         geom.set_calculator(PySCF(basis="sto3g", pal=2))
