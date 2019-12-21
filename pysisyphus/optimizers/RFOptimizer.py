@@ -50,16 +50,16 @@ class RFOptimizer(HessianOptimizer):
         dim_ = big_eigvals.size + 1
         def get_step(gradient, eigvals, eigvecs):
             gradient_ = big_eigvecs.T @ gradient
-            # H_aug = np.zeros((dim_, dim_))
-            # H_aug[:dim_-1,:dim_-1] = np.diag(big_eigvals)
-            # H_aug[-1,:-1] = gradient_
-            # H_aug[:-1,-1] = gradient_
-            H_aug = np.array(
-                np.bmat((
-                    (np.diag(big_eigvals), gradient_[:, None]),
-                    (gradient_[None,:], [[0]])
-                ))
-            )
+            H_aug = np.zeros((dim_, dim_))
+            H_aug[:dim_-1,:dim_-1] = np.diag(big_eigvals)
+            H_aug[-1,:-1] = gradient_
+            H_aug[:-1,-1] = gradient_
+            # H_aug = np.array(
+                # np.bmat((
+                    # (np.diag(big_eigvals), gradient_[:, None]),
+                    # (gradient_[None,:], [[0]])
+                # ))
+            # )
             step_, eigval, nu = self.solve_rfo(H_aug, "min")
             # Transform back to original basis
             step = big_eigvecs @ step_
