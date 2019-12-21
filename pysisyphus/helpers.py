@@ -80,7 +80,12 @@ def get_baker_geoms(**kwargs):
         "caffeine.xyz": -667.73565,
         "menthone.xyz": -458.44639,
     }
-    return geoms, sto3g_energies
+    # return geoms, sto3g_energies
+    # Join both dicts
+    baker_dict = {
+        name: (geom, sto3g_energies[name]) for name, geom in geoms.items()
+    }
+    return baker_dict
 
 
 def get_baker_ts_geoms(**kwargs):
