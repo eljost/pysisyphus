@@ -47,12 +47,13 @@ def get_baker_geoms(**kwargs):
     geoms = {
         xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
     }
+    del geoms["acetylene.xyz"]
     # From 10.1002/jcc.540140910
     sto3g_energies = {
         "water.xyz": -74.96590,
         "ammonia.xyz": -55.45542,
         "ethane.xyz": -78.30618,
-        # "acetylene.xyz": -75.85625,
+        "acetylene.xyz": -75.85625,
         "allene.xyz": -114.42172,
         "hydroxysulphane.xyz": -468.12592,
         "benzene.xyz": -227.89136,
