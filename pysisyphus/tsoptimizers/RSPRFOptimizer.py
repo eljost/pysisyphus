@@ -75,10 +75,10 @@ class RSPRFOptimizer(TSHessianOptimizer):
             step_min, eigval_min, nu_min = self.solve_rfo(min_mat_scaled, "min")
 
             # Calculate overlap between directions over the course of the micro cycles
-            if mu == 0:
+            # if mu == 0:
                 # TODO: convert back to original space
-                ref_step_max = step_max.copy()
-                ref_step_min = step_min.copy()
+                # ref_step_max = step_max.copy()
+                # ref_step_min = step_min.copy()
             min_norm = np.linalg.norm(step_min)
             max_norm = np.linalg.norm(step_max)
             self.log(f"norm(step_max)={max_norm:.6f}")

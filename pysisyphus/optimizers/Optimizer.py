@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import copy
 import logging
 import os
 from pathlib import Path

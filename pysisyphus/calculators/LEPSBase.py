@@ -19,7 +19,7 @@ class LEPSBase(AnaPotBase):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    choices = "leps harmonic tot".split()
+    choices = "leps harmonic tot dimer".split()
     for c in choices:
         lp = LEPSBase(pot_type=c)
         lp.plot()

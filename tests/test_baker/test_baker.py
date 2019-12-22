@@ -24,9 +24,8 @@ def print_summary(converged, failed, cycles, ran, runid):
     print(f"      run: {runid}")
 
 
-def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
-                   gediis=False, gdiis=False, poly=False,
-                   ref_energies=None, runid=0):
+def run_baker_opts(baker_geoms, coord_type="cart", thresh="gau_tight",
+                   gediis=False, gdiis=False, poly=False, runid=0):
     """From https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.540140910"""
     start = time.time()
 
@@ -43,7 +42,8 @@ def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
         # "dump": True,
     }
     results = dict()
-    for i, (name, geom) in enumerate(geoms.items()):
+    for i, (name, (geom, refen)) in enumerate(baker_geoms.items()):
+        print(f"@Running {name}")
         # geom.set_calculator(XTB(pal=4))
         # geom.set_calculator(Gaussian16(route="HF/STO-3G", pal=4))
         geom.set_calculator(PySCF(basis="sto3g", pal=2))
@@ -55,7 +55,6 @@ def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
             failed += 1
         cycles += opt.cur_cycle + 1
         try:
-            refen = ref_energies[name]
             assert np.allclose(geom.energy, refen)
             print(green(f"@Energies match for {name}! ({geom.energy:.6f}, {refen:.6f})"))
         except KeyError:
@@ -78,9 +77,7 @@ def run_baker_opts(geoms, coord_type="cart", thresh="gau_tight",
     return results, duration, cycles
 
 
-@using_pyscf
-@pytest.mark.benchmark
-def test_baker_minimum_optimizations():
+def run_baker_minimum_optimizations():
     coord_type = "redund"
     # coord_type = "cart"
     gediis = False
@@ -96,24 +93,15 @@ def test_baker_minimum_optimizations():
     durations = list()
     all_cycles = list()
     for i in range(runs):
-        geoms, sto3g = get_baker_geoms(coord_type=coord_type)
-        # del geoms["disilylether.xyz"]
-
-        # only = "disilylether.xyz"
-        # only = "achtar10.xyz"
-        # only = "water.xyz"
-        # geoms = {
-            # only: geoms[only],
-        # }
+        baker_geoms = get_baker_geoms(coord_type=coord_type)
 
         results, duration, cycles = run_baker_opts(
-                                        geoms,
+                                        baker_geoms,
                                         coord_type,
                                         thresh,
                                         gediis,
                                         gdiis,
                                         poly,
-                                        ref_energies=sto3g,
                                         runid=i
         )
         all_results.append(results)
@@ -142,5 +130,23 @@ def test_baker_minimum_optimizations():
     print(f"{runs} runs took {sum(durations):.1f} seconds.")
 
 
+@using_pyscf
+@pytest.mark.parametrize(
+    "name, geom, ref_energy",
+    [(name, geom, ref_energy) for name, (geom, ref_energy)
+     in get_baker_geoms(coord_type="redund").items()]
+)
+def test_baker_gs_opt(name, geom, ref_energy):
+    opt_kwargs = {
+        "thresh": "baker",
+        "overachieve_factor": 2.,
+    }
+    print(f"@Running {name}")
+    geom.set_calculator(PySCF(basis="sto3g", pal=2))
+    opt = RFOptimizer(geom, **opt_kwargs)
+    opt.run()
+    assert np.allclose(geom.energy, ref_energy)
+
+
 if __name__ == "__main__":
-    test_baker_minimum_optimizations()
+    run_baker_minimum_optimizations()

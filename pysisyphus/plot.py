@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
-import logging
 import os
 from pathlib import Path
 import sys
 
 import h5py
 import matplotlib
-from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Rectangle
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -810,7 +808,7 @@ def plot_irc():
     for h5 in h5s:
         type_ = h5.name.split("_")[0]
         title = f"{type_.capitalize()} IRC data"
-        fig, axs = plot_irc_h5(h5, title)
+        _ = plot_irc_h5(h5, title)
     plt.show()
 
 

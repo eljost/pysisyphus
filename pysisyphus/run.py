@@ -2,7 +2,6 @@
 
 import argparse
 import cloudpickle
-from collections import namedtuple
 import copy
 import itertools
 import os
@@ -21,14 +20,13 @@ import yaml
 
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
-from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.overlaps.Overlapper import Overlapper
 from pysisyphus.overlaps.couplings import couplings
 from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords, \
-                               highlight_text, eigval_to_wavenumber, do_final_hessian
+                               highlight_text, do_final_hessian
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -266,7 +264,6 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         dimer_result = ts_optimizer(geoms, **tsopt_kwargs)
         dimer_cycles = dimer_result.dimer_cycles
         last_cycle = dimer_cycles[-1]
-        ts_coords = last_cycle.trans_coords[1]
     elif tsopt_key == "rsprfo":
         # # Determine which imaginary mode has the highest overlap
         # # with the splined HEI tangent.
@@ -789,7 +786,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
-        idpp = False
         between = 0
         # Load geometries of latest cycle
         cwd = Path(".")
