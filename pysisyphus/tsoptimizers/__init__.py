@@ -5,7 +5,7 @@ from pysisyphus.tsoptimizers.TRIM import TRIM
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 from pysisyphus.tsoptimizers.dimer import dimer_method
 
-__all__ == [
+__all__ = [
         RSPRFOptimizer,
         TRIM,
         RSIRFOptimizer,
