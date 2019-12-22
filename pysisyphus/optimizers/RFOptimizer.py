@@ -10,7 +10,6 @@ import numpy as np
 
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.gdiis import gdiis, gediis
-from pysisyphus.optimizers.interpolate_extrapolate import interpolate_extrapolate
 
 
 class RFOptimizer(HessianOptimizer):

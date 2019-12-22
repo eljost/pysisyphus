@@ -185,7 +185,6 @@ def ts_hessian(hessian, coord_inds, damp=0.25):
 
     # Reverse sign of reaction coordinates and damp them
     diag[inds] = -1 * damp * diag[inds]
-    force_constants = diag[inds]
     ts_hess = np.diag(diag)
 
     # Set off-diagonal elements

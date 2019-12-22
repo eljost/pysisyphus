@@ -4,13 +4,11 @@ try:
     from ase.atoms import Atoms
 except ImportError:
     pass
-import numpy as np
 
 import sys
 try:
     xtb_path = "/scratch/programme/xtb-190806/python"
     sys.path.append(xtb_path)
-    import xtb_mod
     from xtb_mod import GFN2
 except ImportError:
     pass

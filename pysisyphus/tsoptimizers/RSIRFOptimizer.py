@@ -56,7 +56,6 @@ class RSIRFOptimizer(TSHessianOptimizer):
                 break
 
             # Derivative of the squared step w.r.t. alpha
-            tval = 2*eigval_min / (1+rfo_norm_**2 * alpha)
             numer = grad_star**2
             denom = (eigvals_ - eigval_min * alpha)**3
             quot = np.sum(numer / denom)

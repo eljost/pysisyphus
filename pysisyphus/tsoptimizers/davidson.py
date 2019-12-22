@@ -10,7 +10,6 @@ import sys
 
 import numpy as np
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.helpers import geom_from_xyz_file, eigval_to_wavenumber
 
@@ -140,9 +139,9 @@ def davidson(geom, q, trial_step_size=0.01):
 
         # Print progress
         print("\t #  |      wavelength       |  rms       |   max")
-        for i, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
+        for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
             sel_str = "*" if (i == mode_ind) else " "
-            print(f"\t{i:02d}{sel_str} | {nu:> 16.2f} cm⁻¹ | {rms:.8f} | {mr:.8f}")
+            print(f"\t{j:02d}{sel_str} | {nu:> 16.2f} cm⁻¹ | {rms:.8f} | {mr:.8f}")
         print()
 
         sys.stdout.flush()
