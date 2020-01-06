@@ -15,7 +15,6 @@ import time
 from distributed import Client
 from natsort import natsorted
 import numpy as np
-import versioneer
 import yaml
 
 from pysisyphus.calculators import *
@@ -1015,7 +1014,7 @@ def run():
         clean(force=True)
         return
     elif args.version:
-        print(f"pysisyphus {versioneer.get_version()}")
+        print(f"pysisyphus {get_versions()['version']}")
         return
 
     print_header()
