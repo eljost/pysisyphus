@@ -532,7 +532,7 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
     shutil.copy(tsopt.final_fn, ts_opt_fn)
     print(f"Copied '{tsopt.final_fn}' to '{ts_opt_fn}'.")
 
-    if do_hess:
+    if do_hess and not tsopt.stopped:
         print()
         do_final_hessian(geom)
 
@@ -669,14 +669,12 @@ def get_defaults(conf_dict):
                 "f_tran_mod": False,
                 "multiple_translations": False,
             },
-            "rsprfo": {
-                "type": "rsprfo",
-                # "max_step_length": .3,
-                # "recalc_hess": None,
-                "dump": True,
-            },
         }
-        tsopt_dict = tsopt_dicts[type_]
+        tsopt_default = {
+            "type": "rsprfo",
+            "dump": True,
+        }
+        tsopt_dict = tsopt_dicts.get(type_, tsopt_default)
         tsopt_dict["do_hess"] = False
         dd["tsopt"] = tsopt_dict
 
