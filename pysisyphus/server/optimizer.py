@@ -18,10 +18,10 @@ def get_step_func(key="sd", alpha=0.1, gdiis=False, line_search=False):
 
         return step
 
-    prev_grad = None
-    prev_p = None
-    prev_energy = None
-    prev_step = None
+    prev_grad = None  # lgtm [py/unused-local-variable]
+    prev_p = None  # lgtm [py/unused-local-variable]
+    prev_energy = None  # lgtm [py/unused-local-variable] 
+    prev_step = None  # lgtm [py/unused-local-variable]
     def cg_step_func(self, coords, energy, grad):
         nonlocal prev_grad
         nonlocal prev_p

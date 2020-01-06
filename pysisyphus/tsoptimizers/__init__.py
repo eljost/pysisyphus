@@ -5,6 +5,13 @@ from pysisyphus.tsoptimizers.TRIM import TRIM
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 from pysisyphus.tsoptimizers.dimer import dimer_method
 
+__all__ = [
+        "RSPRFOptimizer",
+        "TRIM",
+        "RSIRFOptimizer",
+        "dimer_method",
+]
+
 logger = logging.getLogger("tsoptimizer")
 logger.setLevel(logging.DEBUG)
 # delay = True prevents creation of empty logfiles

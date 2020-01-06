@@ -15,9 +15,7 @@ from pysisyphus.optimizers.hessian_updates import (bfgs_update,
                                                    multi_step_update,
                                                    bofill_update,)
 from pysisyphus.optimizers import line_search2
-from pysisyphus.optimizers.line_search2 import poly_line_search
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.interpolate_extrapolate import interpolate_extrapolate
 
 
 class HessianOptimizer(Optimizer):
@@ -232,7 +230,7 @@ class HessianOptimizer(Optimizer):
         # Current energy & gradient are already appended.
         cur_energy = self.energies[-1]
         prev_energy = self.energies[-2]
-        energy_increased = (cur_energy - prev_energy) > 0.
+        # energy_increased = (cur_energy - prev_energy) > 0.
 
         prev_step = self.steps[-1]
         cur_grad = -self.forces[-1]
@@ -253,7 +251,6 @@ class HessianOptimizer(Optimizer):
         # TODO: add quintic
 
         prev_coords = self.coords[-2]
-        cur_coords = self.coords[-1]
         accept = {
             # cubic is disabled for now as it does not seem to help
             "cubic": lambda x: (x > 2.) and (x < 1),  # lgtm [py/redundant-comparison]
@@ -280,8 +277,6 @@ class HessianOptimizer(Optimizer):
             # fit_step = (1-x) * -prev_step
             # fit_coords = cur_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
-
-            kws = {"gediis_thresh": -1, "gdiis_thresh": -1}
 
             # TODO: update step and other saved entries?!
             self.geometry.coords = fit_coords

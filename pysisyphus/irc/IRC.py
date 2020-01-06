@@ -3,7 +3,6 @@
 # https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
 # https://chemistry.stackexchange.com/questions/74639
 
-import copy
 import logging
 import pathlib
 import sys
@@ -188,7 +187,8 @@ class IRC:
     def irc(self, direction):
         self.log(highlight_text(f"IRC {direction}"))
         self.prepare(direction)
-        gradient = self.gradient
+        # Calculate gradient
+        self.gradient
         self.irc_energies.append(self.energy)
         # Non mass-weighted
         self.irc_coords.append(self.coords)

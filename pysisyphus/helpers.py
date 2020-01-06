@@ -47,6 +47,7 @@ def get_baker_geoms(**kwargs):
     geoms = {
         xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
     }
+    del geoms["acetylene.xyz"]
     # From 10.1002/jcc.540140910
     sto3g_energies = {
         "water.xyz": -74.96590,
@@ -80,7 +81,12 @@ def get_baker_geoms(**kwargs):
         "caffeine.xyz": -667.73565,
         "menthone.xyz": -458.44639,
     }
-    return geoms, sto3g_energies
+    # return geoms, sto3g_energies
+    # Join both dicts
+    baker_dict = {
+        name: (geom, sto3g_energies[name]) for name, geom in geoms.items()
+    }
+    return baker_dict
 
 
 def get_baker_ts_geoms(**kwargs):

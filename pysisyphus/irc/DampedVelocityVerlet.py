@@ -1,9 +1,8 @@
+import numpy as np
+
 from pysisyphus.constants import BOHR2M, AU2J, AMU2KG
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.TableFormatter import TableFormatter
-
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 # [1] https://pubs.acs.org/doi/10.1021/jp012125b

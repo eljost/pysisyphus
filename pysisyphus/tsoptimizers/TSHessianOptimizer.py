@@ -56,7 +56,6 @@ class TSHessianOptimizer(HessianOptimizer):
                 "(coord_type=redund)"
             prim_inds = [self.geometry.internal.get_index_of_prim_coord(rxc)
                          for rxc in self.rx_coords]
-            nones = [i for i, _ in enumerate(prim_inds) if _ == None]
             missing_prim_inds = [self.rx_coords[i] for i, _ in enumerate(prim_inds)
                                  if _ is None]
             assert len(missing_prim_inds) == 0, \

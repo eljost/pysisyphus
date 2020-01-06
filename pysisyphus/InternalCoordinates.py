@@ -218,7 +218,6 @@ class RedundantCoords:
 
     def project_vector(self, vector):
         """Project supplied vector onto range of B."""
-        P = self.P
         return self.P.dot(vector)
 
     def set_rho(self):

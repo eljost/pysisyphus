@@ -59,7 +59,6 @@ class EulerPC(IRC):
         ##################
 
         mw_grad = self.mw_gradient
-        mw_grad_norm = np.linalg.norm(mw_grad)
         energy = self.energy
 
         if self.cur_step > 0:
