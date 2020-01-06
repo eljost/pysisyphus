@@ -30,7 +30,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install pyscf
       run: |
-        pip install pyscf
+        pip install pyscf==1.7.0
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
