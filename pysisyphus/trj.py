@@ -69,6 +69,9 @@ def parse_args(args):
     action_group.add_argument("--center", action="store_true",
                     help="Move the molecules centroid into the origin."
     )
+    action_group.add_argument("--centerm", action="store_true",
+                    help="Move the molecules center of mass into the origin."
+    )
     action_group.add_argument("--translate", nargs=3, type=float,
                     help="Translate the molecule by the given vector given " \
                          "in Ångström."
@@ -270,6 +273,12 @@ def center(geoms):
     return geoms
 
 
+def centerm(geoms):
+    for geom in geoms:
+        geom.coords3d = geom.coords3d - geom.center_of_mass
+    return geoms
+
+
 def translate(geoms, trans):
     for geom in geoms:
         geom.coords3d += trans
@@ -391,6 +400,9 @@ def run():
     elif args.center:
         to_dump = center(geoms)
         fn_base = "centered"
+    elif args.centerm:
+        to_dump = centerm(geoms)
+        fn_base = "centeredm"
     elif args.translate:
         trans = np.array(args.translate) / BOHR2ANG
         to_dump = translate(geoms, trans)
