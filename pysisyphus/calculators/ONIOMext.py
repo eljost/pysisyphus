@@ -101,7 +101,6 @@ class Model():
             _, self.links = cap_fragment(atoms, coords, self.atom_inds)
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
 
-        debug = True
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
             geom = Geometry(catoms, ccoords)
@@ -150,26 +149,22 @@ class Model():
             parent_energy = parent_results["energy"]
         except AttributeError:
             parent_energy = 0.
-            parent_gradient = np.zeros_like(model_forces)
+            parent_gradient = np.zeros_like(model_gradient)
 
-        gradient = np.zeros_like(atoms)
+        gradient = np.zeros_like(coords).reshape(-1, 3)
+
         # Distribute link atom gradient onto corresponding atoms
         org_num = len(self.atom_inds)
         tmp_correction = -parent_gradient + model_gradient
         org_corr = tmp_correction[:org_num]
         link_corr = tmp_correction[org_num:]
 
-        for link in self.links:
-            correction = -g1[model_ind] + g2[model_ind]
-            if model_ind in links:
-                model_sum = -g1[model_ind] + g3[model_ind]
-                r1_ind, r3_ind, g = links[model_ind]
-                gradient[r1_ind] += (1-g) * correction
-                gradient[r3_ind] += g * correction
-            else:
-                gradient_oniom[real_ind] += correction
+        gradient[self.atom_inds] = org_corr
+        for link, lcorr in zip(self.links, link_corr):
+            gradient[link.ind] += (1-link.g) * lcorr
+            gradient[link.parent_ind] += link.g * lcorr
 
-        return model_energy - parent_energy, gradient.flatten()
+        return model_energy - parent_energy, -gradient.flatten()
     
     def __str__(self):
         return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
@@ -310,8 +305,9 @@ class ONIOMext(Calculator):
     def get_forces(self, atoms, coords):
         results = [model.get_forces(atoms, coords) for model in self.models]
 
-        energy = sum([model_result["energy"] for model_result in results])
-        forces = sum([model_result["forces"] for model_result in results])
+        energies, forces = zip(*results)
+        energy = sum(energies)
+        forces = np.sum(forces, axis=0)
 
         return {
                 "energy": energy,
