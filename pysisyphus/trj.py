@@ -98,6 +98,9 @@ def parse_args(args):
     action_group.add_argument("--get", type=int,
                     help="Get n-th geometry. Expects 0-based index input."
     )
+    action_group.add_argument("--origin", action="store_true",
+                    help="Translate geometry, so that min(X/Y/Z) == 0."
+    )
 
     shake_group = parser.add_argument_group()
     shake_group.add_argument("--scale", type=float, default=0.1,
@@ -351,6 +354,12 @@ def get(geoms, index):
     return [geoms[index], ]
 
 
+def origin(geoms):
+    for geom in geoms:
+        geom.coords3d -= geom.coords3d.min(axis=0)
+    return geoms
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -428,6 +437,9 @@ def run():
     elif args.internals:
         print_internals(geoms)
         return
+    elif args.origin:
+        origin(geoms)
+        fn_base = "origin"
 
     # Write transformed geometries
     dump_trj = dump_trj and (len(to_dump) > 1)
