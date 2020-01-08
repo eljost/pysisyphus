@@ -64,6 +64,62 @@ def test_acetaldehyd_psi4_xtb():
     rfo.run()
 
 
+def test_oniomext():
+    from pysisyphus.calculators.ONIOMext import ONIOMext
+    geom = geom_from_library("alkyl17_sto3g_opt.xyz")
+
+    real = set(range(len(geom.atoms)))
+    medmin = set((0,1,2,3,4,5,6, 46,47,48,49,50,51,52))
+    med = list(real - medmin)
+    h1 = list(range(13, 22))
+    h2 = list(range(31, 40))
+
+    calcs = {
+        "real": {
+            "route": "HF/STO-3G",
+        },
+        "medium": {
+            "route": "HF/3-21G",
+        },
+        "high1": {
+            "route": "HF/6-31G",
+        },
+        "high2": {
+            "route": "HF/6-311G",
+        },
+    }
+    for key, calc in calcs.items():
+        calc["type"] = "g16"
+        calc["pal"] = 2
+        calc["mult"] = 1
+        calc["charge"] = 0
+
+    models = {
+        "med" : {
+            # "inds": (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14),
+            "inds": med,
+            "calc": "medium",
+        },
+        "h1": {
+            # "inds": (4, 5, 6),
+            "inds": h1,
+            "calc": "high1",
+        },
+        "h2": {
+            # "inds": (10, 11, 12),
+            "inds": h2,
+            "calc": "high2",
+        }
+    }
+
+    layers = ["low", "medium", ["high1", "high2"]]
+
+    oniom = ONIOMext(calcs, models, layers, geom)
+
+    assert oniom.layer_num == 3
+    # assert len(oniom.calculators) == 7
+
+
 def test_biaryl_solvated():
     calc_dict = {
         "high": {
@@ -95,5 +151,6 @@ def test_biaryl_solvated():
 
 if __name__ == "__main__":
     # test_acetaldehyd()
-    test_acetaldehyd_psi4_xtb()
+    test_oniomext()
+    # test_acetaldehyd_psi4_xtb()
     # test_biaryl_solvated()
