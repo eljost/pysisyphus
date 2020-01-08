@@ -101,7 +101,7 @@ class Model():
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
 
         if debug:
-            catoms, ccords = self.capped_atoms_coords(atoms, coords)
+            catoms, ccoords = self.capped_atoms_coords(atoms, coords)
             geom = Geometry(catoms, ccoords)
             geom.jmol()
 
@@ -137,14 +137,21 @@ class Model():
         return energy - parent_energy
 
     def get_forces(self, atoms, coords):
-        print("calc energy", self.__str__())
+        print("calc forces", self.__str__())
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
-        energy = self.calc.get_energy(catoms, ccoords)["energy"]
+        results = self.calc.get_forces(catoms, ccoords)
+        forces = results["forces"]
+        energy = results["energy"]
         try:
-            parent_energy = self.parent_calc.get_energy(catoms, ccoords)["energy"]
+            parent_results = self.parent_calc.get_forces(catoms, ccoords)
+            parent_forces = parent_results["forces"]
+            parent_energy = parent_results["energy"]
         except AttributeError:
             parent_energy = 0.
-        return {"energy": energy - parent_energy}
+            parent_forces = np.zeros_like(forces)
+
+        return {"energy": energy - parent_energy,
+                "forces": np.zeros_like(forces)}
     
     def __str__(self):
         return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
