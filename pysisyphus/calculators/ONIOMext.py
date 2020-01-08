@@ -55,6 +55,7 @@ def cap_fragment(atoms, coords, fragment, link_atom="H"):
                 in zip(capped_inds, range(len(capped_inds)))}
     
     # g = 0.723886 # Gaussian16
+    # TODO: g from covalent radii
     g = 0.709 # Paper g98-ONIOM-implementation
     c3d = coords3d.copy()
     new_atoms = list(atoms)
@@ -100,6 +101,7 @@ class Model():
             _, self.links = cap_fragment(atoms, coords, self.atom_inds)
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
 
+        debug = True
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
             geom = Geometry(catoms, ccoords)
@@ -140,18 +142,34 @@ class Model():
         print("calc forces", self.__str__())
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
         results = self.calc.get_forces(catoms, ccoords)
-        forces = results["forces"]
-        energy = results["energy"]
+        model_gradient = -results["forces"].reshape(-1, 3)
+        model_energy = results["energy"]
         try:
             parent_results = self.parent_calc.get_forces(catoms, ccoords)
-            parent_forces = parent_results["forces"]
+            parent_gradient = -parent_results["forces"].reshape(-1, 3)
             parent_energy = parent_results["energy"]
         except AttributeError:
             parent_energy = 0.
-            parent_forces = np.zeros_like(forces)
+            parent_gradient = np.zeros_like(model_forces)
 
-        return {"energy": energy - parent_energy,
-                "forces": np.zeros_like(forces)}
+        gradient = np.zeros_like(atoms)
+        # Distribute link atom gradient onto corresponding atoms
+        org_num = len(self.atom_inds)
+        tmp_correction = -parent_gradient + model_gradient
+        org_corr = tmp_correction[:org_num]
+        link_corr = tmp_correction[org_num:]
+
+        for link in self.links:
+            correction = -g1[model_ind] + g2[model_ind]
+            if model_ind in links:
+                model_sum = -g1[model_ind] + g3[model_ind]
+                r1_ind, r3_ind, g = links[model_ind]
+                gradient[r1_ind] += (1-g) * correction
+                gradient[r3_ind] += g * correction
+            else:
+                gradient_oniom[real_ind] += correction
+
+        return model_energy - parent_energy, gradient.flatten()
     
     def __str__(self):
         return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
@@ -279,10 +297,23 @@ class ONIOMext(Calculator):
             print(m)
 
         # Create link atoms
-        [model.create_links(geom.atoms, geom.coords) for model in self.models]
+        [model.create_links(geom.atoms, geom.cart_coords) for model in self.models]
 
     def get_energy(self, atoms, coords):
         energy = sum(
             [model.get_energy(atoms, coords) for model in self.models]
         )
-        return {"energy": energy}
+        return {
+                "energy": energy
+        }
+
+    def get_forces(self, atoms, coords):
+        results = [model.get_forces(atoms, coords) for model in self.models]
+
+        energy = sum([model_result["energy"] for model_result in results])
+        forces = sum([model_result["forces"] for model_result in results])
+
+        return {
+                "energy": energy,
+                "forces": forces,
+        }

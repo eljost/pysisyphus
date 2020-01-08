@@ -136,7 +136,6 @@ class ONIOM(Calculator):
     def oniom2(self, real_geom):
         model_geom, atom_map, links = cap(real_geom, self.model_inds)
             
-        import pdb; pdb.set_trace()
         results_3 = self.real_low_calc.get_forces(real_geom.atoms, real_geom.cart_coords)
         results_1 = self.model_low_calc.get_forces(model_geom.atoms, model_geom.cart_coords)
         results_2 = self.model_high_calc.get_forces(model_geom.atoms, model_geom.cart_coords)

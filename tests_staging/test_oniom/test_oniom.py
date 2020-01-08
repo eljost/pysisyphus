@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.ONIOM import ONIOM
+from pysisyphus.calculators.ONIOMext import ONIOMext
 from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
@@ -30,6 +31,9 @@ def test_acetaldehyd():
     forces = geom.forces.reshape(-1, 3) # internal forces...
     forces = geom._forces.reshape(-1, 3)
     energy = geom.energy
+
+    assert geom.energy == pytest.approx(-153.07432042299052)
+    assert np.linalg.norm(geom.forces) == pytest.approx(0.03768246934785125)
 
     # print("energy")
     # print(f"{energy:.8f}")
@@ -66,7 +70,6 @@ def test_acetaldehyd_psi4_xtb():
 
 
 def test_oniomext():
-    from pysisyphus.calculators.ONIOMext import ONIOMext
     geom = geom_from_library("alkyl17_sto3g_opt.xyz")
 
     real = set(range(len(geom.atoms)))
@@ -126,6 +129,46 @@ def test_oniomext():
     assert en == pytest.approx(-661.3512410069466)
 
 
+def test_oniomext_gradient():
+    geom = geom_from_library("acetaldehyd_oniom.xyz", coord_type="redund")
+
+    real = set(range(len(geom.atoms)))
+    high = [4, 5, 6]
+
+    calcs = {
+        "real": {
+            "route": "hf sto-3g",
+        },
+        "high": {
+            "route": "b3lyp d95v",
+        },
+    }
+    for key, calc in calcs.items():
+        calc["type"] = "g16"
+        calc["pal"] = 4
+        calc["mult"] = 1
+        calc["charge"] = 0
+
+    models = {
+        "high": {
+            "inds": high,
+            "calc": "high",
+        },
+    }
+
+    layers = ["low", "medium"]
+
+    oniom = ONIOMext(calcs, models, layers, geom)
+
+    assert oniom.layer_num == 2
+
+    geom.set_calculator(oniom)
+
+    # Calculate forces
+    assert np.linalg.norm(geom.forces) == pytest.approx(0.03768246934785125)
+    assert geom.energy == pytest.approx(-153.07432042299052)
+
+
 def test_biaryl_solvated():
     calc_dict = {
         "high": {
@@ -157,6 +200,7 @@ def test_biaryl_solvated():
 
 if __name__ == "__main__":
     # test_acetaldehyd()
-    test_oniomext()
+    # test_oniomext()
+    test_oniomext_gradient()
     # test_acetaldehyd_psi4_xtb()
     # test_biaryl_solvated()
