@@ -28,7 +28,7 @@ CALC_DICT = {
 }
 
 
-LinkMap = namedtuple("LinkMap", "r1_ind r3_ind g")
+LinkMap = namedtuple("LinkMap", "r1_ind r3_ind atom g")
 
 
 def get_cov_radii_sum_array(atoms, coords):
@@ -57,14 +57,15 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3):
     return bond_indices
 
 
-def cap(geom, high_frag):
+def cap(atoms, coords, high_frag, link_atom="H"):
+    coords3d = coords.reshape(-1, 3)
+
     high_set = set(high_frag)
-    ind_set = set(range(len(geom.atoms)))
+    ind_set = set(range(len(atoms)))
     rest = ind_set - high_set
     
     # Determine bond(s) that connect high_frag with the rest
-    # bonds, _, _ = geom.internal.prim_indices
-    bonds = get_bond_sets(geom.atoms, geom.coords3d)
+    bonds = get_bond_sets(atoms, coords3d)
     bond_sets = [set(b) for b in bonds]
     
     # Find all bonds that involve one atom of model. These bonds
@@ -85,8 +86,8 @@ def cap(geom, high_frag):
     
     # g = 0.723886 # Gaussian16
     g = 0.709 # Paper g98-ONIOM-implementation
-    c3d = geom.coords3d.copy()
-    new_atoms = list(geom.atoms)
+    c3d = coords3d.copy()
+    new_atoms = list(atoms)
     link_maps = dict()
     for bb in break_bonds:
         to_cap = bb - high_set
@@ -97,9 +98,9 @@ def cap(geom, high_frag):
         r3 = c3d[r3_ind]
         r2 = r1 + g*(r3-r1)
         c3d[r3_ind] = r2
-        new_atoms[r3_ind] = "H"
+        new_atoms[r3_ind] = link_atom
         new_ind = np.sum(np.array(high_frag) < r3_ind)
-        link_map = LinkMap(r1_ind=r1_ind, r3_ind=r3_ind, g=g)
+        link_map = LinkMap(r1_ind=r1_ind, r3_ind=r3_ind, atom=link_atom, g=g)
         link_maps[new_ind] = link_map
     
     capped_atoms = [new_atoms[i] for i in capped_inds]
@@ -113,7 +114,7 @@ class Model():
 
     def __init__(self, name, calc_level, calc,
                  parent_name, parent_calc_level, parent_calc,
-                 atom_inds, all_atom_inds):
+                 atom_inds, parent_atom_inds, all_atom_inds):
 
         self.name = name
         self.calc_level = calc_level
@@ -124,11 +125,22 @@ class Model():
         self.parent_calc = parent_calc
 
         self.atom_inds = atom_inds
+        self.parent_atom_inds = parent_atom_inds
         self.all_atom_inds = atom_inds
 
         self.links = None
 
     def create_links(self, atoms, coords):
+        if self.parent_name is None:
+            self.links = list()
+            return
+
+        pinds = self.parent_atom_inds
+        parent_atoms = [atoms[i] for i in pinds]
+        parent_coords = coords.reshape(-1, 3)[pinds]
+        # capped_geom, atom_map, link_maps
+        _, __, links = cap(parent_atoms, parent_coords, self.atom_inds)
+        import pdb; pdb.set_trace()
         pass
 
     def capped_atoms_coords(self, atoms, coords):
@@ -169,6 +181,11 @@ class ONIOMext(Calculator):
             i: layer for i, layer in enumerate(layers)
         }
 
+        models[real_key] = {
+            "calc": real_key,
+            "inds": list(range(len(geom.atoms))),
+        }
+
         # Handle models
         model_keys, model_sizes = zip(
                 *{key: len(model["inds"]) for key, model in models.items()}.items()
@@ -195,19 +212,20 @@ class ONIOMext(Calculator):
         # The last (biggest) model is assumed to be embedded in the real system.
         model_parents = dict()
         for i, model_ind in enumerate(sort_args[:-1]):
+            # Exclude the current model and the real model that contains all atoms
             rest_inds = sort_args[i+1:]
             atom_set = model_atom_sets[model_ind]
             is_subset = [atom_set.issubset(model_atom_sets[ind]) for ind in rest_inds]
-            # Each model must belong to only one bigger model
-            assert np.sum(is_subset) == 1
+
+            # Each model should belong to all models of higher layers
             parent_ind = rest_inds[is_subset.index(True)]
             
             model_key = model_keys[model_ind]
             parent_key = model_keys[parent_ind]
             model_parents[model_key] = parent_key
-        # Add remaining biggest model
-        model_parents[model_keys[sort_args[-1]]] = real_key
+            print(i, model_key, parent_key)
 
+        print(model_parents)
         def get_calc(calc_key):
             kwargs = calcs[calc_key].copy()
             type_ = kwargs.pop("type")
@@ -235,6 +253,7 @@ class ONIOMext(Calculator):
                 parent_calc_level=parent_calc_key,
                 parent_calc=parent_calc,
                 atom_inds=models[model]["inds"],
+                parent_atom_inds=models[parent]["inds"],
                 all_atom_inds=all_atom_inds,
             )
             self.models.append(model)
@@ -248,6 +267,7 @@ class ONIOMext(Calculator):
                 calc=real_calc,
                 parent_name=None, parent_calc_level=None, parent_calc=None,
                 atom_inds=all_atom_inds,
+                parent_atom_inds=None,
                 all_atom_inds=all_atom_inds,
             )
         )
