@@ -28,7 +28,7 @@ CALC_DICT = {
 }
 
 
-LinkMap = namedtuple("LinkMap", "r1_ind r3_ind atom g")
+Link = namedtuple("Link", "ind parent_ind atom g")
 
 
 def get_cov_radii_sum_array(atoms, coords):
@@ -88,26 +88,26 @@ def cap(atoms, coords, high_frag, link_atom="H"):
     g = 0.709 # Paper g98-ONIOM-implementation
     c3d = coords3d.copy()
     new_atoms = list(atoms)
-    link_maps = dict()
+    links = dict()
     for bb in break_bonds:
         to_cap = bb - high_set
         assert len(to_cap) == 1
-        r1_ind = list(bb - to_cap)[0]
-        r3_ind = tuple(to_cap)[0]
-        r1 = c3d[r1_ind]
-        r3 = c3d[r3_ind]
+        ind = list(bb - to_cap)[0]
+        parent_ind = tuple(to_cap)[0]
+        r1 = c3d[ind]
+        r3 = c3d[parent_ind]
         r2 = r1 + g*(r3-r1)
-        c3d[r3_ind] = r2
-        new_atoms[r3_ind] = link_atom
-        new_ind = np.sum(np.array(high_frag) < r3_ind)
-        link_map = LinkMap(r1_ind=r1_ind, r3_ind=r3_ind, atom=link_atom, g=g)
-        link_maps[new_ind] = link_map
+        c3d[parent_ind] = r2
+        new_atoms[parent_ind] = link_atom
+        new_ind = np.sum(np.array(high_frag) < parent_ind)
+        link = Link(ind=ind, parent_ind=parent_ind, atom=link_atom, g=g)
+        links[new_ind] = link
     
     capped_atoms = [new_atoms[i] for i in capped_inds]
     capped_coords = c3d[capped_inds].flatten()
     capped_geom = Geometry(capped_atoms, capped_coords)
     
-    return capped_geom, atom_map, link_maps
+    return capped_geom, atom_map, links
 
 
 class Model():
