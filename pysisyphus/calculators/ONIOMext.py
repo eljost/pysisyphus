@@ -57,14 +57,14 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3):
     return bond_indices
 
 
-def cap(atoms, coords, high_frag, link_atom="H"):
+def cap_fragment(atoms, coords, fragment, link_atom="H"):
     coords3d = coords.reshape(-1, 3)
 
-    high_set = set(high_frag)
+    high_set = set(fragment)
     ind_set = set(range(len(atoms)))
     rest = ind_set - high_set
     
-    # Determine bond(s) that connect high_frag with the rest
+    # Determine bond(s) that connect fragment with the rest
     bonds = get_bond_sets(atoms, coords3d)
     bond_sets = [set(b) for b in bonds]
     
@@ -99,15 +99,17 @@ def cap(atoms, coords, high_frag, link_atom="H"):
         r2 = r1 + g*(r3-r1)
         c3d[parent_ind] = r2
         new_atoms[parent_ind] = link_atom
-        new_ind = np.sum(np.array(high_frag) < parent_ind)
+        new_ind = np.sum(np.array(fragment) < parent_ind)
         link = Link(ind=ind, parent_ind=parent_ind, atom=link_atom, g=g)
         links[new_ind] = link
     
     capped_atoms = [new_atoms[i] for i in capped_inds]
     capped_coords = c3d[capped_inds].flatten()
     capped_geom = Geometry(capped_atoms, capped_coords)
+    capped_geom.jmol()
     
-    return capped_geom, atom_map, links
+    # return capped_geom, atom_map, links
+    return atom_map, links
 
 
 class Model():
@@ -128,6 +130,7 @@ class Model():
         self.parent_atom_inds = parent_atom_inds
         self.all_atom_inds = atom_inds
 
+        self.atom_map = None
         self.links = None
 
     def create_links(self, atoms, coords):
@@ -139,9 +142,10 @@ class Model():
         parent_atoms = [atoms[i] for i in pinds]
         parent_coords = coords.reshape(-1, 3)[pinds]
         # capped_geom, atom_map, link_maps
-        _, __, links = cap(parent_atoms, parent_coords, self.atom_inds)
-        import pdb; pdb.set_trace()
-        pass
+        # _, __, links = cap_fragment(atoms, coords, self.atom_inds)
+        atom_map, links = cap_fragment(atoms, coords, self.atom_inds)
+        self.atom_map = atom_map
+        self.links = links
 
     def capped_atoms_coords(self, atoms, coords):
         assert self.links is not None, "Did you forget to call create_links()?"
