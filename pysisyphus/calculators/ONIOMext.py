@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
-import itertools as it
-from pprint import pprint
 
 import numpy as np
-from scipy.spatial.distance import pdist
 
-# from pysisyphus.calculators import *
 from pysisyphus.calculators import Gaussian16, OpenMolcas, ORCA, Psi4, Turbomole, XTB
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.Geometry import Geometry
 from pysisyphus.elem_data import COVALENT_RADII as CR
+from pysisyphus.intcoords.findbonds import get_bond_sets
 
 
 CALC_DICT = {
-    # "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA.ORCA,
@@ -29,32 +25,6 @@ CALC_DICT = {
 
 
 Link = namedtuple("Link", "ind parent_ind atom g")
-
-
-def get_cov_radii_sum_array(atoms, coords):
-    coords3d = coords.reshape(-1, 3)
-    atom_indices = list(it.combinations(range(len(coords3d)),2))
-    atom_indices = np.array(atom_indices, dtype=int)
-    cov_rad_sums = list()
-    for i, j in atom_indices:
-        atom1 = atoms[i].lower()
-        atom2 = atoms[j].lower()
-        cov_rad_sums.append(CR[atom1] + CR[atom2])
-    cov_rad_sums = np.array(cov_rad_sums)
-    return cov_rad_sums
-
-
-def get_bond_sets(atoms, coords3d, bond_factor=1.3):
-    cdm = pdist(coords3d)
-    # Generate indices corresponding to the atom pairs in the
-    # condensed distance matrix cdm.
-    atom_indices = list(it.combinations(range(len(coords3d)),2))
-    atom_indices = np.array(atom_indices, dtype=int)
-    cov_rad_sums = get_cov_radii_sum_array(atoms, coords3d.flatten())
-    cov_rad_sums *= bond_factor
-    bond_flags = cdm <= cov_rad_sums
-    bond_indices = atom_indices[bond_flags]
-    return bond_indices
 
 
 def cap_fragment(atoms, coords, fragment, link_atom="H"):
@@ -88,27 +58,17 @@ def cap_fragment(atoms, coords, fragment, link_atom="H"):
     g = 0.709 # Paper g98-ONIOM-implementation
     c3d = coords3d.copy()
     new_atoms = list(atoms)
-    links = dict()
+    # links = dict()
+    links = list()
     for bb in break_bonds:
         to_cap = bb - high_set
         assert len(to_cap) == 1
         ind = list(bb - to_cap)[0]
         parent_ind = tuple(to_cap)[0]
-        r1 = c3d[ind]
-        r3 = c3d[parent_ind]
-        r2 = r1 + g*(r3-r1)
-        c3d[parent_ind] = r2
-        new_atoms[parent_ind] = link_atom
         new_ind = np.sum(np.array(fragment) < parent_ind)
         link = Link(ind=ind, parent_ind=parent_ind, atom=link_atom, g=g)
-        links[new_ind] = link
+        links.append(link)
     
-    capped_atoms = [new_atoms[i] for i in capped_inds]
-    capped_coords = c3d[capped_inds].flatten()
-    capped_geom = Geometry(capped_atoms, capped_coords)
-    capped_geom.jmol()
-    
-    # return capped_geom, atom_map, links
     return atom_map, links
 
 
@@ -130,38 +90,65 @@ class Model():
         self.parent_atom_inds = parent_atom_inds
         self.all_atom_inds = atom_inds
 
-        self.atom_map = None
-        self.links = None
+        self.links = list()
+        self.capped = False
 
-    def create_links(self, atoms, coords):
-        if self.parent_name is None:
-            self.links = list()
-            return
+    def create_links(self, atoms, coords, debug=False):
+        self.capped = True
 
-        pinds = self.parent_atom_inds
-        parent_atoms = [atoms[i] for i in pinds]
-        parent_coords = coords.reshape(-1, 3)[pinds]
-        # capped_geom, atom_map, link_maps
-        # _, __, links = cap_fragment(atoms, coords, self.atom_inds)
-        atom_map, links = cap_fragment(atoms, coords, self.atom_inds)
-        self.atom_map = atom_map
-        self.links = links
+        if self.parent_name is not None:
+            _, self.links = cap_fragment(atoms, coords, self.atom_inds)
+        self.capped_atom_num = len(self.atom_inds) + len(self.links)
 
-    def capped_atoms_coords(self, atoms, coords):
-        assert self.links is not None, "Did you forget to call create_links()?"
+        if debug:
+            catoms, ccords = self.capped_atoms_coords(atoms, coords)
+            geom = Geometry(catoms, ccoords)
+            geom.jmol()
 
-    def energy(atoms, coords):
+    def capped_atoms_coords(self, all_atoms, all_coords):
+        assert self.capped, "Did you forget to call create_links()?"
+
+        org_atom_num = len(self.atom_inds)
+        c3d = all_coords.reshape(-1, 3)
+
+        capped_atoms = [all_atoms[i] for i in self.atom_inds]
+        # Initialize empty coordinate array
+        capped_coords = np.zeros((self.capped_atom_num, 3))
+        # Copy non-capped coordinates
+        capped_coords[:org_atom_num] = c3d[self.atom_inds]
+
+        for i, link in enumerate(self.links):
+            capped_atoms.append(link.atom)
+
+            r1 = c3d[link.ind]
+            r3 = c3d[link.parent_ind]
+            r2 = r1 + link.g*(r3-r1)
+            capped_coords[org_atom_num + i] = r2
+        return capped_atoms, capped_coords
+
+    def get_energy(self, atoms, coords):
+        print("calc energy", self.__str__())
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
-        energy = self.calc.get_energy(catoms, ccoords)
+        energy = self.calc.get_energy(catoms, ccoords)["energy"]
         try:
-            parent_energy = self.parent_calc.get_energy(catoms, ccoords)
+            parent_energy = self.parent_calc.get_energy(catoms, ccoords)["energy"]
         except AttributeError:
             parent_energy = 0.
         return energy - parent_energy
+
+    def get_forces(self, atoms, coords):
+        print("calc energy", self.__str__())
+        catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        energy = self.calc.get_energy(catoms, ccoords)["energy"]
+        try:
+            parent_energy = self.parent_calc.get_energy(catoms, ccoords)["energy"]
+        except AttributeError:
+            parent_energy = 0.
+        return {"energy": energy - parent_energy}
     
     def __str__(self):
         return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
-               f"level={self.calc_level}, parent_level={self.parent_calc_level}"
+               f"level={self.calc_level}, parent_level={self.parent_calc_level})"
 
 
 class ONIOMext(Calculator):
@@ -230,10 +217,15 @@ class ONIOMext(Calculator):
             print(i, model_key, parent_key)
 
         print(model_parents)
+        cur_calc_num = 0
         def get_calc(calc_key):
+            nonlocal cur_calc_num
+
             kwargs = calcs[calc_key].copy()
             type_ = kwargs.pop("type")
-            return CALC_DICT[type_](**kwargs)
+            calc = CALC_DICT[type_](**kwargs, calc_number=cur_calc_num)
+            cur_calc_num += 1
+            return calc
 
         # Create models and required calculators
         self.models = list()
@@ -276,10 +268,14 @@ class ONIOMext(Calculator):
             )
         )
 
-        pprint([str(m) for m in self.models])
+        for m in self.models:
+            print(m)
 
         # Create link atoms
         [model.create_links(geom.atoms, geom.coords) for model in self.models]
 
     def get_energy(self, atoms, coords):
-        return sum([model.get_energy(atoms, coords) for model in self.models])
+        energy = sum(
+            [model.get_energy(atoms, coords) for model in self.models]
+        )
+        return {"energy": energy}

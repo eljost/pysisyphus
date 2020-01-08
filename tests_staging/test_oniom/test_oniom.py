@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import pytest
 
 from pysisyphus.calculators.ONIOM import ONIOM
 from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
@@ -117,7 +118,12 @@ def test_oniomext():
     oniom = ONIOMext(calcs, models, layers, geom)
 
     assert oniom.layer_num == 3
-    # assert len(oniom.calculators) == 7
+
+    geom.set_calculator(oniom)
+
+    en = geom.energy
+    print("energy", en)
+    assert en == pytest.approx(-661.3512410069466)
 
 
 def test_biaryl_solvated():
