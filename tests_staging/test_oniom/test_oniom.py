@@ -8,6 +8,8 @@ from pysisyphus.calculators.ONIOMext import ONIOMext
 from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
+from pysisyphus.init_logging import init_logging
+
 
 def test_acetaldehyd():
     calc_dict = {
@@ -116,9 +118,9 @@ def test_oniomext():
         }
     }
 
-    layers = ["low", "medium", ["high1", "high2"]]
+    layers = [["h1", "h2"], "med"]
 
-    oniom = ONIOMext(calcs, models, layers, geom)
+    oniom = ONIOMext(calcs, models, geom, layers)
 
     assert oniom.layer_num == 3
 
@@ -156,9 +158,10 @@ def test_oniomext_gradient():
         },
     }
 
-    layers = ["low", "medium"]
+    # layers = ["high"]
+    layers = None
 
-    oniom = ONIOMext(calcs, models, layers, geom)
+    oniom = ONIOMext(calcs, models, geom, layers)
 
     assert oniom.layer_num == 2
 
@@ -199,8 +202,9 @@ def test_biaryl_solvated():
 
 
 if __name__ == "__main__":
+    init_logging()
     # test_acetaldehyd()
     test_oniomext()
-    # test_oniomext_gradient()
+    test_oniomext_gradient()
     # test_acetaldehyd_psi4_xtb()
     # test_biaryl_solvated()

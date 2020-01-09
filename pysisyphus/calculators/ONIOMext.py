@@ -4,6 +4,8 @@
 #     https://doi.org/10.1016/S0166-1280(98)00475-8
 #     Dapprich, Frisch, 1998
 
+import itertools as it
+import logging
 from collections import namedtuple
 
 import numpy as np
@@ -106,6 +108,10 @@ class Model():
         self.links = list()
         self.capped = False
 
+    def log(self, message=""):
+        logger = logging.getLogger("calculator")
+        logger.debug(self.__str__() + " " + message)
+
     def create_links(self, atoms, coords, debug=False):
         self.capped = True
 
@@ -140,7 +146,7 @@ class Model():
         return capped_atoms, capped_coords
 
     def get_energy(self, atoms, coords):
-        print("calc energy", self.__str__())
+        self.log("energy calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
         energy = self.calc.get_energy(catoms, ccoords)["energy"]
         try:
@@ -150,7 +156,7 @@ class Model():
         return energy - parent_energy
 
     def get_forces(self, atoms, coords):
-        print("calc forces", self.__str__())
+        self.log("force calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
         results = self.calc.get_forces(catoms, ccoords)
         model_gradient = -results["forces"].reshape(-1, 3)
@@ -185,70 +191,88 @@ class Model():
 
 class ONIOMext(Calculator):
 
-    def __init__(self, calcs, models, layers, geom):
+    def __init__(self, calcs, models, geom, layers=None, real_key="real"):
+        """
+        layer: list of models
+            len(layer) == 1: normal ONIOM, len(layer) >= 1: multicenter ONIOM.
+        model:
+            (sub)set of all atoms that resides in a certain layer and has
+            a certain calculator.
+        """
+
         super().__init__()
 
-        real_key = "real"
         assert real_key not in models, \
             f'"{real_key}" must not be defined in "models"!'
         assert real_key in calcs, \
             f'"{real_key}" must be defined in "calcs"!'
 
-        # Handle layers
-        self.layer_num = len(layers)
-        layers = [
-            [layer, ] if isinstance(layer, str) else layer for layer in layers
-        ]
-        # Convert single level layers into lists of length 1.
-        self.layers = {
-            i: layer for i, layer in enumerate(layers)
-        }
+        # When no ordering of layers is given we try to guess it from
+        # the size of the respective models. It's probably a better idea
+        # to always specify the layer ordering though ;)
+        if layers is None:
+            self.log("No explicit layer ordering specified! Determining layer "
+                     "hierarchy from model sizes. This does not support multi-"
+                     "center ONIOM!")
+            as_list = [(key, val) for key, val in models.items()]
+            # Determine hierarchy of models, from smallest to biggest model
+            layers = [
+                key for key, val
+                in sorted(as_list, key=lambda model: len(model[1]["inds"]))
+            ]
 
+        assert real_key not in layers, \
+            f'"{real_key}" must not be defined in "layers"!'
+
+        ############
+        #          #
+        #  LAYERS  #
+        #          #
+        ############
+
+        # Add real model and layer to layers and models as they are missing
+        # right now. The real layer is always the last layer. The real layer
+        # is always calculated by the realkey calculator.
+        layers = layers + [real_key]
         models[real_key] = {
             "calc": real_key,
             "inds": list(range(len(geom.atoms))),
         }
+        self.log(f"Layer-ordering from small to big: {layers}")
 
-        # Handle models
-        model_keys, model_sizes = zip(
-                *{key: len(model["inds"]) for key, model in models.items()}.items()
-        )
-        model_keys = list(models.keys())
-        model_sizes = list()
-        model_atom_sets = list()
-        for key in model_keys:
-            model = models[key]
-            inds = model["inds"]
-            model_atom_sets.append(set(inds))
-            model_sizes.append(len(inds))
-        # Determine hierarchy of models, from smallest to biggest model
-        sort_args = np.argsort(model_sizes)
-        all_atom_inds = range(len(geom.atoms))
+        # Single-model layers will be given as strings. As we also support
+        # multicenter-ONIOM there may also be layers that are given as lists
+        # that contain multiple models per layer.
+        # Now we convert the single-model layers to lists of length 1, so
+        # every layer is a list.
+        layers = [
+            [layer, ] if isinstance(layer, str) else layer for layer in layers
+        ]
+        self.layer_num = len(layers)
+        assert self.layer_num > 1
 
-        print(model_keys)
-        print(model_sizes)
-        print(model_atom_sets)
-        print(sort_args)
+        ############
+        #          #
+        #  MODELS  #
+        #          #
+        ############
 
-        # The models are sorted from smaller to bigger. Now we check every
-        # model but the last (biggest) to which bigger model it belongs.
-        # The last (biggest) model is assumed to be embedded in the real system.
-        model_parents = dict()
-        for i, model_ind in enumerate(sort_args[:-1]):
-            # Exclude the current model and the real model that contains all atoms
-            rest_inds = sort_args[i+1:]
-            atom_set = model_atom_sets[model_ind]
-            is_subset = [atom_set.issubset(model_atom_sets[ind]) for ind in rest_inds]
+        # Create mapping between model and its parent layer. Actually
+        # this is a bit hacky right now, as the mapping should not be between
+        # model and parent layer, but model and parent model.
+        # They way it is done here multicenter ONIOM with different calculators
+        # in all but the smallest layer is not well defined.
+        #
+        # If a multicenter ONIOM setup in an intermediate layer is useful may
+        # be another question so the way everything is handled now is fine I guess.
+        model_parent_layers = dict()
+        for i, layer in enumerate(layers[:-1]):
+            model_parent_layers.update(
+                {model: i+1 for model in layer}
+            )
+        model_keys = list(it.chain(*layers))
+        model_inds = list(range(len(model_keys)))
 
-            # Each model should belong to all models of higher layers
-            parent_ind = rest_inds[is_subset.index(True)]
-            
-            model_key = model_keys[model_ind]
-            parent_key = model_keys[parent_ind]
-            model_parents[model_key] = parent_key
-            print(i, model_key, parent_key)
-
-        print(model_parents)
         cur_calc_num = 0
         def get_calc(calc_key):
             nonlocal cur_calc_num
@@ -259,17 +283,14 @@ class ONIOMext(Calculator):
             cur_calc_num += 1
             return calc
 
+        all_atom_inds=list(range(len(geom.atoms)))
         # Create models and required calculators
         self.models = list()
-        for model, parent in model_parents.items():
-            print("\t", model, parent)
+        for model in model_keys[:-1]:
+            parent = layers[model_parent_layers[model]][0]
             model_calc_key = models[model]["calc"]
-            try:
-                parent_calc_key = models[parent]["calc"]
-            except KeyError:
-                parent_calc_key = "real"
+            parent_calc_key = models[parent]["calc"]
 
-            print(model_calc_key, parent_calc_key)
             model_calc = get_calc(model_calc_key)
             parent_calc = get_calc(parent_calc_key)
 
@@ -300,11 +321,15 @@ class ONIOMext(Calculator):
             )
         )
 
-        for m in self.models:
-            print(m)
+        for model in self.models:
+            self.log(str(model))
 
         # Create link atoms
         [model.create_links(geom.atoms, geom.cart_coords) for model in self.models]
+        self.log("Created link atoms")
+
+        self.log(f"Created ONIOM calculator with {self.layer_num} layers and "
+                 f"{len(self.models)} models.")
 
     def get_energy(self, atoms, coords):
         energy = sum(
