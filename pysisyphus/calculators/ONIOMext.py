@@ -45,8 +45,7 @@ def get_g_value(atom, parent_atom, link_atom):
 def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
     coords3d = coords.reshape(-1, 3)
 
-    high_set = set(fragment)
-    ind_set = set(range(len(atoms)))
+    fragment_set = set(fragment)
     
     # Determine bond(s) that connect fragment with the rest
     bonds = get_bond_sets(atoms, coords3d)
@@ -55,12 +54,12 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
     # Find all bonds that involve one atom of model. These bonds
     # connect the model to the real geometry. We want to cap these
     # bonds.
-    break_bonds = [b for b in bond_sets if len(b & high_set) == 1]
+    break_bonds = [b for b in bond_sets if len(b & fragment_set) == 1]
     
     # Put capping atoms at every bond to break.
     # The model fragment size corresponds to the length of the union of
     # the model set and the atoms in break_bonds.
-    capped_frag = high_set.union(*break_bonds)
+    capped_frag = fragment_set.union(*break_bonds)
     capped_inds = list(sorted(capped_frag))
 
     # Index map between the new model geometry and the original indices
@@ -70,7 +69,7 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
     
     links = list()
     for bb in break_bonds:
-        to_cap = bb - high_set
+        to_cap = bb - fragment_set
         assert len(to_cap) == 1
         ind = list(bb - to_cap)[0]
         parent_ind = tuple(to_cap)[0]
