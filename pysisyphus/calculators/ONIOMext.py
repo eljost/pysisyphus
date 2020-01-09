@@ -47,7 +47,6 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
 
     high_set = set(fragment)
     ind_set = set(range(len(atoms)))
-    rest = ind_set - high_set
     
     # Determine bond(s) that connect fragment with the rest
     bonds = get_bond_sets(atoms, coords3d)
@@ -69,16 +68,12 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
     atom_map = {model_ind: real_ind for real_ind, model_ind
                 in zip(capped_inds, range(len(capped_inds)))}
     
-    c3d = coords3d.copy()
-    new_atoms = list(atoms)
-    # links = dict()
     links = list()
     for bb in break_bonds:
         to_cap = bb - high_set
         assert len(to_cap) == 1
         ind = list(bb - to_cap)[0]
         parent_ind = tuple(to_cap)[0]
-        new_ind = np.sum(np.array(fragment) < parent_ind)
         if g is None:
             g = get_g_value(atoms[ind], atoms[parent_ind], link_atom)
         link = Link(ind=ind, parent_ind=parent_ind, atom=link_atom, g=g)
@@ -275,7 +270,6 @@ class ONIOMext(Calculator):
                 {model: i+1 for model in layer}
             )
         model_keys = list(it.chain(*layers))
-        model_inds = list(range(len(model_keys)))
 
         cur_calc_num = 0
         def get_calc(calc_key):
