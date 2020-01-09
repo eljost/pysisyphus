@@ -8,7 +8,10 @@ class FakeASE:
         self.results = dict()
 
     def get_atoms_coords(self, atoms):
-        return atoms.get_chemical_symbols(), atoms.get_positions().flatten()
+        return (atoms.get_chemical_symbols(),
+                # Convert ASE Angstrom to Bohr for pysisyphus
+                atoms.get_positions().flatten() / BOHR2ANG
+        )
 
     def get_potential_energy(self, atoms=None):
         atoms, coords = self.get_atoms_coords(atoms)
@@ -23,7 +26,8 @@ class FakeASE:
         atoms, coords = self.get_atoms_coords(atoms)
         results = self.calc.get_forces(atoms, coords)
 
-        forces = results["forces"].reshape(-1, 3) * BOHR2ANG
+        # Convert back to Angstrom for ASE
+        forces = results["forces"].reshape(-1, 3) / BOHR2ANG
 
         # self.results["energy"] = results["energy"]
         # self.results["forces"] = forces
