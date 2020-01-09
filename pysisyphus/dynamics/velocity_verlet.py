@@ -47,7 +47,7 @@ MDResult = namedtuple("MDResult",
     # return md_result
 
 
-def md(geom, v0, t, dt, term_funcs=None, vcom=False):
+def md(geom, v0, t, dt, term_funcs=None, rm_vcom=False):
     """TODO: dump coords, velocities; check energy conservation.
     Align geometry to avoid drift."""
     """Velocity verlet integrator.
@@ -64,9 +64,12 @@ def md(geom, v0, t, dt, term_funcs=None, vcom=False):
         Timestep in fs.
     term_funcs : optional
         Add description.
-    vcom : bool, optional, default=False
+    rm_vcom : bool, optional, default=False
         Remove center of mass velocity to avoid drift.
     """
+
+    assert geom.coord_type == "cart"
+
     steps = int(t/dt)
     print(f"Doing {steps} steps of {dt:.1f} fs for a total of {steps*dt:.1f} fs.")
 
@@ -98,10 +101,9 @@ def md(geom, v0, t, dt, term_funcs=None, vcom=False):
         a = f / m
         v += .5 * (a + a_prev) * dt
         # Remove center of mass velocity
-        if not vcom:
+        if rm_vcom:
             v -= np.sum(m*v / M)
         x += v*dt + .5*a*dt**2
-        # geom.cart_coords = x / BOHR2M
         geom.coords = x / BOHR2M
         a_prev = a
         if any([tf(x) for tf in term_funcs]):

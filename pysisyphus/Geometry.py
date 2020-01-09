@@ -768,6 +768,23 @@ class Geometry:
             print(f"'{jmol_cmd}' seems not to be on your path!")
         tmp_xyz.close()
 
+
+    def as_ase_atoms(self):
+        try:
+            import ase
+        except ImportError:
+            return None
+
+        # ASE coordinates are in Angstrom
+        atoms = ase.Atoms(symbols=self.atoms, positions=self.coords3d*BOHR2ANG)
+
+        if self.calculator is not None:
+            from pysisyphus.calculators import FakeASE
+
+            ase_calc = FakeASE(self.calculator)
+            atoms.set_calculator(ase_calc)
+        return atoms
+
     def __str__(self):
         return f"Geometry({self.sum_formula})"
 

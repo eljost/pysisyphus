@@ -6,7 +6,9 @@ from pysisyphus.calculators.Calculator import Calculator
 
 class LennardJones(Calculator):
 
-    def __init__(self, sigma=1, epsilon=1):
+    # Corresponds to σ = 1 Å, as the default value in ASE, but
+    # pysisyphus uses au/Bohr.
+    def __init__(self, sigma=1.8897261251, epsilon=1):
         super().__init__()
 
         self.sigma = sigma

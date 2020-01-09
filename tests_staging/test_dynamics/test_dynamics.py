@@ -29,7 +29,6 @@ def test_velocity_verlet():
             "v0": v0.copy(),
             "t": t,
             "dt": dt,
-            "vcom": True,
         }
         md_result = md(geom, **md_kwargs)
         all_xs.append(md_result.coords)

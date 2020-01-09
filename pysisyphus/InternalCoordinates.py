@@ -20,19 +20,7 @@ from scipy.spatial.distance import pdist, squareform
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
-
-
-def get_cov_radii_sum_array(atoms, coords):
-    coords3d = coords.reshape(-1, 3)
-    atom_indices = list(it.combinations(range(len(coords3d)),2))
-    atom_indices = np.array(atom_indices, dtype=int)
-    cov_rad_sums = list()
-    for i, j in atom_indices:
-        atom1 = atoms[i].lower()
-        atom2 = atoms[j].lower()
-        cov_rad_sums.append(CR[atom1] + CR[atom2])
-    cov_rad_sums = np.array(cov_rad_sums)
-    return cov_rad_sums
+from pysisyphus.intcoords.findbonds import get_cov_radii_sum_array
 
 
 @attr.s(auto_attribs=True)

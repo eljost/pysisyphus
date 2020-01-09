@@ -15,7 +15,6 @@ import time
 from distributed import Client
 from natsort import natsorted
 import numpy as np
-import versioneer
 import yaml
 
 from pysisyphus.calculators import *
@@ -49,7 +48,7 @@ CALC_DICT = {
     "psi4": Psi4,
     # "pyscf": PySCF,
     "turbomole": Turbomole.Turbomole,
-    "xtb": XTB.XTB,
+    "xtb": XTB,
 }
 
 try:
@@ -532,7 +531,7 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
     shutil.copy(tsopt.final_fn, ts_opt_fn)
     print(f"Copied '{tsopt.final_fn}' to '{ts_opt_fn}'.")
 
-    if do_hess:
+    if do_hess and not tsopt.stopped:
         print()
         do_final_hessian(geom)
 
@@ -669,14 +668,12 @@ def get_defaults(conf_dict):
                 "f_tran_mod": False,
                 "multiple_translations": False,
             },
-            "rsprfo": {
-                "type": "rsprfo",
-                # "max_step_length": .3,
-                # "recalc_hess": None,
-                "dump": True,
-            },
         }
-        tsopt_dict = tsopt_dicts[type_]
+        tsopt_default = {
+            "type": "rsprfo",
+            "dump": True,
+        }
+        tsopt_dict = tsopt_dicts.get(type_, tsopt_default)
         tsopt_dict["do_hess"] = False
         dd["tsopt"] = tsopt_dict
 
@@ -1017,7 +1014,7 @@ def run():
         clean(force=True)
         return
     elif args.version:
-        print(f"pysisyphus {versioneer.get_version()}")
+        print(f"pysisyphus {get_versions()['version']}")
         return
 
     print_header()

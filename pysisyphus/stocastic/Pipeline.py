@@ -10,7 +10,7 @@ import rmsd
 from scipy.spatial.distance import pdist
 
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.InternalCoordinates import get_cov_radii_sum_array
+from pysisyphus.intcoords.findbonds import get_cov_radii_sum_array
 from pysisyphus.xyzloader import make_trj_str_from_geoms
 from pysisyphus.stocastic.align import matched_rmsd
 from pysisyphus.helpers import check_for_stop_sign

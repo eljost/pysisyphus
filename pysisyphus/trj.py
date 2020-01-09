@@ -69,6 +69,9 @@ def parse_args(args):
     action_group.add_argument("--center", action="store_true",
                     help="Move the molecules centroid into the origin."
     )
+    action_group.add_argument("--centerm", action="store_true",
+                    help="Move the molecules center of mass into the origin."
+    )
     action_group.add_argument("--translate", nargs=3, type=float,
                     help="Translate the molecule by the given vector given " \
                          "in Ångström."
@@ -94,6 +97,9 @@ def parse_args(args):
     )
     action_group.add_argument("--get", type=int,
                     help="Get n-th geometry. Expects 0-based index input."
+    )
+    action_group.add_argument("--origin", action="store_true",
+                    help="Translate geometry, so that min(X/Y/Z) == 0."
     )
 
     shake_group = parser.add_argument_group()
@@ -270,6 +276,12 @@ def center(geoms):
     return geoms
 
 
+def centerm(geoms):
+    for geom in geoms:
+        geom.coords3d = geom.coords3d - geom.center_of_mass
+    return geoms
+
+
 def translate(geoms, trans):
     for geom in geoms:
         geom.coords3d += trans
@@ -342,6 +354,12 @@ def get(geoms, index):
     return [geoms[index], ]
 
 
+def origin(geoms):
+    for geom in geoms:
+        geom.coords3d -= geom.coords3d.min(axis=0)
+    return geoms
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -391,6 +409,9 @@ def run():
     elif args.center:
         to_dump = center(geoms)
         fn_base = "centered"
+    elif args.centerm:
+        to_dump = centerm(geoms)
+        fn_base = "centeredm"
     elif args.translate:
         trans = np.array(args.translate) / BOHR2ANG
         to_dump = translate(geoms, trans)
@@ -416,6 +437,9 @@ def run():
     elif args.internals:
         print_internals(geoms)
         return
+    elif args.origin:
+        origin(geoms)
+        fn_base = "origin"
 
     # Write transformed geometries
     dump_trj = dump_trj and (len(to_dump) > 1)
