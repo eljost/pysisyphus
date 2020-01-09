@@ -36,7 +36,7 @@ def test_velocity_verlet():
     plt.show()
 
 
-def lolo():
+def ase_md_playground():
     geom = AnaPot.get_geom((0.52, 1.80, 0), atoms=("H", ))
     atoms = geom.as_ase_atoms()
     # ase_calc = FakeASE(geom.calculator)
@@ -44,11 +44,17 @@ def lolo():
     # dyn = BFGS(atoms)
     # dyn.run(fmax=0.05)
 
+    import ase
+    from ase import units
+    from ase.io.trajectory import Trajectory
     from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
     from ase.md.verlet import VelocityVerlet
-    from ase import units
 
     MaxwellBoltzmannDistribution(atoms, 300 * units.kB)
+    momenta = atoms.get_momenta()
+    momenta[0, 2] = 0.
+    # Zero 3rd dimension
+    atoms.set_momenta(momenta)
 
     dyn = VelocityVerlet(atoms, .005 * units.fs)  # 5 fs time step.
 
@@ -62,13 +68,28 @@ def lolo():
 
     # Now run the dynamics
     printenergy(atoms)
-    dyn.run(600)
-    printenergy(atoms)
+    traj_fn = 'asemd.traj'
+    traj = Trajectory(traj_fn, 'w', atoms)
+    dyn.attach(traj.write, interval=5)
+    # dyn.attach(bumms().bimms, interval=1)
 
-    # import pdb; pdb.set_trace()
-    # from ase.atoms
-    # from ase.md.verlet import VelocityVerlet
+    dyn.run(10000)
+    printenergy(atoms)
+    traj.close()
+
+    traj = ase.io.read(traj_fn+"@:")#, "r")
+    pos = [a.get_positions() for a in traj]
+    from pysisyphus.constants import BOHR2ANG
+    pos = np.array(pos) / BOHR2ANG
+
+    calc = geom.calculator
+    calc.plot()
+
+    ax = calc.ax
+    ax.plot(*pos[:,0,:2].T)
+
+    plt.show()
 
 
 if __name__ == "__main__":
-    lolo()
+    ase_md_playground()
