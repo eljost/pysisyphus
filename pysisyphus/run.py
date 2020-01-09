@@ -48,7 +48,7 @@ CALC_DICT = {
     "psi4": Psi4,
     # "pyscf": PySCF,
     "turbomole": Turbomole.Turbomole,
-    "xtb": XTB.XTB,
+    "xtb": XTB,
 }
 
 try:
