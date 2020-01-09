@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.LennardJones import LennardJones
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.Geometry import Geometry
 
 
@@ -15,6 +16,7 @@ def test_lennard_jones():
     ase_forces = atoms.get_forces()
 
     coords = atoms.positions.flatten()
-    geom = Geometry(atoms.get_chemical_symbols(), coords)
+    geom = Geometry(atoms.get_chemical_symbols(), coords / BOHR2ANG)
     geom.set_calculator(LennardJones())
-    np.testing.assert_allclose(geom.forces, ase_forces.flatten(), atol=1e-15)
+    pysis_forces = geom.forces / BOHR2ANG
+    np.testing.assert_allclose(pysis_forces, ase_forces.flatten(), atol=1e-15)
