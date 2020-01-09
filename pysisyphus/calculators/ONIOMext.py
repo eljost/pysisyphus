@@ -249,7 +249,8 @@ class ONIOMext(Calculator):
             [layer, ] if isinstance(layer, str) else layer for layer in layers
         ]
         self.layer_num = len(layers)
-        assert self.layer_num > 1
+        assert self.layer_num > 1, "What are you trying to do?!"
+        self.layers = layers
 
         ############
         #          #
@@ -259,12 +260,13 @@ class ONIOMext(Calculator):
 
         # Create mapping between model and its parent layer. Actually
         # this is a bit hacky right now, as the mapping should not be between
-        # model and parent layer, but model and parent model.
-        # They way it is done here multicenter ONIOM with different calculators
-        # in all but the smallest layer is not well defined.
+        # model and parent layer, but between model and parent model.
+        # This way we expect the parent layer to have the same calculator
+        # throughout, so multicenter ONIOM with different calculators
+        # in all but the smallest layer (highest level) is not well defined.
         #
-        # If a multicenter ONIOM setup in an intermediate layer is useful may
-        # be another question so the way everything is handled now is fine I guess.
+        # If multicenter ONIOM in an intermediate layer is useful may
+        # be another question to be answered ;).
         model_parent_layers = dict()
         for i, layer in enumerate(layers[:-1]):
             model_parent_layers.update(
@@ -275,6 +277,8 @@ class ONIOMext(Calculator):
 
         cur_calc_num = 0
         def get_calc(calc_key):
+            """Helper function for easier generation of calculators
+            with incrementing calc_number."""
             nonlocal cur_calc_num
 
             kwargs = calcs[calc_key].copy()
@@ -287,7 +291,14 @@ class ONIOMext(Calculator):
         # Create models and required calculators
         self.models = list()
         for model in model_keys[:-1]:
-            parent = layers[model_parent_layers[model]][0]
+            parent_layer = layers[model_parent_layers[model]]
+            parent_calc_keys = set([models[model]["calc"] for model in parent_layer])
+            assert len(parent_calc_keys) == 1, \
+                "It seems you are trying to run a multicenter ONIOM setup in " \
+                "an intermediate layer with different calculators. This is " \
+                "not supported right now."
+
+            parent = parent_layer[0]
             model_calc_key = models[model]["calc"]
             parent_calc_key = models[parent]["calc"]
 
