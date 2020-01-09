@@ -200,7 +200,7 @@ def test_biaryl_solvated():
 
 if __name__ == "__main__":
     # test_acetaldehyd()
-    # test_oniomext()
-    test_oniomext_gradient()
+    test_oniomext()
+    # test_oniomext_gradient()
     # test_acetaldehyd_psi4_xtb()
     # test_biaryl_solvated()

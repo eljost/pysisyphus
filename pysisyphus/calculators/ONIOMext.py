@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# [1] https://www.sciencedirect.com/science/article/pii/S0166128098004758
+#     https://doi.org/10.1016/S0166-1280(98)00475-8
+#     Dapprich, Frisch, 1998
+
 from collections import namedtuple
 
 import numpy as np
@@ -27,7 +31,16 @@ CALC_DICT = {
 Link = namedtuple("Link", "ind parent_ind atom g")
 
 
-def cap_fragment(atoms, coords, fragment, link_atom="H"):
+def get_g_value(atom, parent_atom, link_atom):
+    cr, pcr, lcr = [CR[a.lower()] for a in (atom, parent_atom, link_atom)]
+
+    # Ratio between sum of CR_atom and CR_link with sum of CR_atom CR_parent_atom.
+    # See [1] Sect. 2.2 page 5.
+    g = (cr + lcr) / (cr + pcr)
+    return g
+
+
+def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
     coords3d = coords.reshape(-1, 3)
 
     high_set = set(fragment)
@@ -54,9 +67,6 @@ def cap_fragment(atoms, coords, fragment, link_atom="H"):
     atom_map = {model_ind: real_ind for real_ind, model_ind
                 in zip(capped_inds, range(len(capped_inds)))}
     
-    # g = 0.723886 # Gaussian16
-    # TODO: g from covalent radii
-    g = 0.709 # Paper g98-ONIOM-implementation
     c3d = coords3d.copy()
     new_atoms = list(atoms)
     # links = dict()
@@ -67,6 +77,8 @@ def cap_fragment(atoms, coords, fragment, link_atom="H"):
         ind = list(bb - to_cap)[0]
         parent_ind = tuple(to_cap)[0]
         new_ind = np.sum(np.array(fragment) < parent_ind)
+        if g is None:
+            g = get_g_value(atoms[ind], atoms[parent_ind], link_atom)
         link = Link(ind=ind, parent_ind=parent_ind, atom=link_atom, g=g)
         links.append(link)
     
