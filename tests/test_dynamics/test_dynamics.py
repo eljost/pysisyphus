@@ -9,7 +9,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.dynamics.velocity_verlet import md
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_velocity_verlet():
     geom = AnaPot.get_geom((0.52, 1.80, 0))
     x0 = geom.coords.copy()
@@ -34,3 +34,41 @@ def test_velocity_verlet():
         # ax.plot(*xs.T[:2], "-", label=f"dt={dt:.3f}")
     ax.legend()
     plt.show()
+
+
+def lolo():
+    geom = AnaPot.get_geom((0.52, 1.80, 0), atoms=("H", ))
+    atoms = geom.as_ase_atoms()
+    # ase_calc = FakeASE(geom.calculator)
+    # from ase.optimize import BFGS
+    # dyn = BFGS(atoms)
+    # dyn.run(fmax=0.05)
+
+    from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+    from ase.md.verlet import VelocityVerlet
+    from ase import units
+
+    MaxwellBoltzmannDistribution(atoms, 300 * units.kB)
+
+    dyn = VelocityVerlet(atoms, .005 * units.fs)  # 5 fs time step.
+
+
+    def printenergy(a):
+        """Function to print the potential, kinetic and total energy"""
+        epot = a.get_potential_energy() / len(a)
+        ekin = a.get_kinetic_energy() / len(a)
+        print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
+              'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
+
+    # Now run the dynamics
+    printenergy(atoms)
+    dyn.run(600)
+    printenergy(atoms)
+
+    # import pdb; pdb.set_trace()
+    # from ase.atoms
+    # from ase.md.verlet import VelocityVerlet
+
+
+if __name__ == "__main__":
+    lolo()
