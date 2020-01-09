@@ -118,6 +118,8 @@ class Model():
         if self.parent_name is not None:
             _, self.links = cap_fragment(atoms, coords, self.atom_inds)
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
+        for i, link in enumerate(self.links):
+            self.log(f"Link {i:02d}: {link}")
 
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
