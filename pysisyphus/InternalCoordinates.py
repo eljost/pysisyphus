@@ -302,7 +302,7 @@ class RedundantCoords:
                 angle = self.calc_bend(coords3d, (x_ind, h_ind, y_ind))
                 if (cov_rad_sum < distance < vdw) and (angle > np.pi/2):
                     self.hydrogen_bond_indices.append((h_ind, y_ind))
-                    self.log("Added hydrogen bond between {h_ind} and {y_ind}")
+                    self.log(f"Added hydrogen bond between {h_ind} and {y_ind}")
         self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
     def set_bond_indices(self, define_bonds=None, factor=None):

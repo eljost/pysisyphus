@@ -172,6 +172,44 @@ def test_oniomext_gradient():
     assert geom.energy == pytest.approx(-153.07432042299052)
 
 
+def test_oniomext_ee():
+    geom = geom_from_library("oniom_ee_model_system.xyz", coord_type="redund")
+
+    all_ = set(range(len(geom.atoms)))
+    high = list(sorted(all_ - set((21, 20, 19, 15, 14, 13))))
+
+    calcs = {
+        "real": {
+            "route": "hf 6-31G",
+        },
+        "high": {
+            "route": "mp2 6-31G*",
+        },
+    }
+    for key, calc in calcs.items():
+        calc["type"] = "g16"
+        calc["pal"] = 4
+        calc["mult"] = 1
+        calc["charge"] = 0
+
+    models = {
+        "high": {
+            "inds": high,
+            "calc": "high",
+        },
+    }
+
+    oniom = ONIOMext(calcs, models, geom)
+    geom.set_calculator(oniom)
+
+    # Calculate forces and energy
+    forces = geom.forces
+    energy = geom.energy
+
+    assert np.linalg.norm(forces) == pytest.approx(0.0585419180)
+    assert energy == pytest.approx(-588.02530947)
+
+
 def test_biaryl_solvated():
     calc_dict = {
         "high": {
@@ -204,7 +242,8 @@ def test_biaryl_solvated():
 if __name__ == "__main__":
     init_logging()
     # test_acetaldehyd()
-    test_oniomext()
-    test_oniomext_gradient()
+    # test_oniomext()
+    # test_oniomext_gradient()
+    test_oniomext_ee()
     # test_acetaldehyd_psi4_xtb()
     # test_biaryl_solvated()

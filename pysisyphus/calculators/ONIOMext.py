@@ -36,10 +36,10 @@ from pysisyphus.intcoords.findbonds import get_bond_sets
 CALC_DICT = {
     "g16": Gaussian16,
     "openmolcas": OpenMolcas.OpenMolcas,
-    "orca": ORCA.ORCA,
+    "orca": ORCA,
     "psi4": Psi4,
-    "turbomole": Turbomole.Turbomole,
-    "xtb": XTB.XTB,
+    "turbomole": Turbomole,
+    "xtb": XTB,
     # "pyscf": PySCF,
     # "pypsi4": PyPsi4,
     # "pyxtb": PyXTB,
