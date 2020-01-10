@@ -131,6 +131,9 @@ class Model():
         for i, link in enumerate(self.links):
             self.log(f"Link {i:02d}: {link}")
 
+        if len(self.links) == 0:
+            self.log("Didn't create any link atoms!")
+
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
             geom = Geometry(catoms, ccoords)
@@ -167,14 +170,19 @@ class Model():
             parent_energy = 0.
         return energy - parent_energy
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, point_charges=None):
         self.log("force calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
-        results = self.calc.get_forces(catoms, ccoords)
+
+        prepare_kwargs = {
+            "point_charges": point_charges,
+        }
+
+        results = self.calc.get_forces(catoms, ccoords, prepare_kwargs)
         model_gradient = -results["forces"].reshape(-1, 3)
         model_energy = results["energy"]
         try:
-            parent_results = self.parent_calc.get_forces(catoms, ccoords)
+            parent_results = self.parent_calc.get_forces(catoms, ccoords, prepare_kwargs)
             parent_gradient = -parent_results["forces"].reshape(-1, 3)
             parent_energy = parent_results["energy"]
         except AttributeError:
@@ -195,6 +203,15 @@ class Model():
             gradient[link.parent_ind] += link.g * lcorr
 
         return model_energy - parent_energy, -gradient.flatten()
+
+    def parse_charges(self):
+        charges = self.calc.parse_charges()
+        try:
+            parent_charges = self.parent_calc.parse_charges()
+        except AttributeError:
+            parent_charges = None
+
+        return charges, parent_charges
     
     def __str__(self):
         return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
@@ -217,7 +234,7 @@ class ONIOMext(Calculator):
 
         valid_embeddings = (None, "electronic")
         assert embedding in valid_embeddings, f"Valid embeddings are: {valid_embeddings}"
-        self.embedding = embedding,
+        self.embedding = embedding
 
         assert real_key not in models, \
             f'"{real_key}" must not be defined in "models"!'
@@ -348,12 +365,15 @@ class ONIOMext(Calculator):
             )
         )
 
+        # Reverse order of models so the first model is the real system
+        self.models = self.models[::-1]
+
+        self.log("Created all ONIOM layers:")
         for model in self.models:
-            self.log(str(model))
+            self.log("\t"+str(model))
 
         # Create link atoms
         [model.create_links(geom.atoms, geom.cart_coords) for model in self.models]
-        self.log("Created link atoms")
 
         self.log(f"Created ONIOM calculator with {self.layer_num} layers and "
                  f"{len(self.models)} models.")
@@ -362,17 +382,32 @@ class ONIOMext(Calculator):
         energy = sum(
             [model.get_energy(atoms, coords) for model in self.models]
         )
+        self.calc_counter += 1
         return {
                 "energy": energy
         }
 
     def get_forces(self, atoms, coords):
-        results = [model.get_forces(atoms, coords) for model in self.models]
+        if self.embedding == "electronic":
+            real_model = self.models[0]
+            real_results = real_model.get_forces(atoms, coords)
+            charges, _ = real_model.parse_charges()
+
+            c3d = coords.reshape(-1, 3)
+            point_charges = np.zeros((charges.size, 4))
+            point_charges[:,:3] = c3d
+            point_charges[:,3] = charges
+            high_model = self.models[1]
+            high_results = high_model.get_forces(atoms, coords, point_charges=point_charges)
+            results = (real_results, high_results)
+        elif self.embedding == None:
+            results = [model.get_forces(atoms, coords) for model in self.models]
 
         energies, forces = zip(*results)
         energy = sum(energies)
         forces = np.sum(forces, axis=0)
 
+        self.calc_counter += 1
         return {
                 "energy": energy,
                 "forces": forces,

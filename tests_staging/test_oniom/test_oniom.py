@@ -180,10 +180,12 @@ def test_oniomext_ee():
 
     calcs = {
         "real": {
-            "route": "hf 6-31G",
+            # "route": "hf 6-31G",
+            "route": "hf sto-3g",
         },
         "high": {
-            "route": "mp2 6-31G*",
+            # "route": "mp2 6-31G*",
+            "route": "hf 3-21g",
         },
     }
     for key, calc in calcs.items():
@@ -199,15 +201,20 @@ def test_oniomext_ee():
         },
     }
 
-    oniom = ONIOMext(calcs, models, geom)
+    oniom = ONIOMext(calcs, models, geom, embedding="electronic")
     geom.set_calculator(oniom)
 
     # Calculate forces and energy
     forces = geom.forces
     energy = geom.energy
 
-    assert np.linalg.norm(forces) == pytest.approx(0.0585419180)
-    assert energy == pytest.approx(-588.02530947)
+    # Org.
+    # assert energy == pytest.approx(-588.02530947)
+    # assert np.linalg.norm(forces) == pytest.approx(0.0585419180)
+
+    # real: sto-3g, high 3-21g
+    assert energy == pytest.approx(-582.39203495)
+    assert np.linalg.norm(forces) == pytest.approx(0.0940337814)
 
 
 def test_biaryl_solvated():
