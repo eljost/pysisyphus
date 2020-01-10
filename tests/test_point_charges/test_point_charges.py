@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pysisyphus.calculators import Turbomole, ORCA
+from pysisyphus.calculators import Gaussian16, Turbomole, ORCA
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.testing import using
 
@@ -14,16 +14,21 @@ from pysisyphus.testing import using
             {"keywords": "BP86 def2-SVP"},
             -40.473648820542, 0.0539577447,
             marks=using("orca"),),
-        # pytest.param(
-            # ORCA,
-            # {"keywords": "BP86 def2-SVP", "blocks": "%method doEQ true end"},
-            # -40.448455709343, 0.0539577447,
-            # marks=using("orca"),)
+        pytest.param(
+            ORCA,
+            {"keywords": "BP86 def2-SVP", "blocks": "%method doEQ true end"},
+            -40.448455709343, 0.0539577447,
+            marks=using("orca"),),
         pytest.param(
             Turbomole,
             {"control_path": "./methane_control_path"},
             -40.47560386, 0.05402566536,
-            marks=using("turbomole"),)
+            marks=using("turbomole"),),
+        pytest.param(
+            Gaussian16,
+            {"route": "BP86 def2SVP"},
+            -40.44843869845143, 0.054086037,
+            marks=using("gaussian16"),),
 ])
 def test_turbomole_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
     geom = geom_from_library("methane_bp86_def2svp_opt.xyz")
