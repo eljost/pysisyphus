@@ -203,7 +203,8 @@ class Model():
 
 class ONIOMext(Calculator):
 
-    def __init__(self, calcs, models, geom, layers=None, real_key="real"):
+    def __init__(self, calcs, models, geom, layers=None, embedding=None,
+                 real_key="real"):
         """
         layer: list of models
             len(layer) == 1: normal ONIOM, len(layer) >= 1: multicenter ONIOM.
@@ -213,6 +214,8 @@ class ONIOMext(Calculator):
         """
 
         super().__init__()
+
+        self.embedding = embedding
 
         assert real_key not in models, \
             f'"{real_key}" must not be defined in "models"!'
