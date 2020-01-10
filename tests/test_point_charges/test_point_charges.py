@@ -30,7 +30,7 @@ from pysisyphus.testing import using
             -40.44843869845143, 0.054086037,
             marks=using("gaussian16"),),
 ])
-def test_turbomole_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
+def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
     geom = geom_from_library("methane_bp86_def2svp_opt.xyz")
 
     calc = calc_cls(**calc_kwargs)
