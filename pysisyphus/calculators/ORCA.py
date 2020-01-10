@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import glob
-# import logging
 import os
 from pathlib import Path
 import re
@@ -13,6 +12,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.constants import BOHR2ANG
 
 
 def make_sym_mat(table_block):
@@ -46,7 +46,7 @@ class ORCA(OverlapCalculator):
                 "Use 'mem: n' in the 'calc' section instead!"
 
         self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian",
-                        "cis", "molden:orca.molden", "hess")
+                        "cis", "molden:orca.molden", "hess", "pcgrad")
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -64,6 +64,7 @@ class ORCA(OverlapCalculator):
         %maxcore {mem}
 
         {blocks}
+        {pointcharges}
 
         *xyz {charge} {mult}
         {coords}
@@ -90,7 +91,7 @@ class ORCA(OverlapCalculator):
             %moinp "{gbw}" """
         return moinp_str
 
-    def prepare_input(self, atoms, coords, calc_type):
+    def prepare_input(self, atoms, coords, calc_type, point_charges=None):
         coords = self.prepare_coords(atoms, coords)
         if self.gbw:
             self.log(f"Using {self.gbw}")
@@ -98,6 +99,20 @@ class ORCA(OverlapCalculator):
             self.log("Using initial guess provided by ORCA")
         if calc_type == "noparse":
             calc_type = ""
+
+        pc_str = ""
+        if point_charges is not None:
+            # ORCA excepcts point charge positions in Angstrom
+            pc_fn = self.make_fn("pointcharges_inp.pc")
+            point_charges[:,:3] *= BOHR2ANG
+            # ORCA also expects the ordering <q> <x> <y> <z>, so we have to
+            # resort.
+            _ = np.zeros_like(point_charges)
+            _[:,0] = point_charges[:,3]
+            _[:,1:] = point_charges[:,:3]
+            np.savetxt(pc_fn, _,
+                       fmt="%16.10f", header=str(len(point_charges)), comments="")
+            pc_str = f'%pointcharges "{pc_fn}"'
         inp = self.orca_input.format(
                                 keywords=self.keywords,
                                 calc_type=calc_type,
@@ -105,6 +120,7 @@ class ORCA(OverlapCalculator):
                                 pal=self.pal,
                                 mem=self.mem,
                                 blocks=self.get_block_str(),
+                                pointcharges=pc_str,
                                 coords=coords,
                                 charge=self.charge,
                                 mult=self.mult,
@@ -124,9 +140,12 @@ class ORCA(OverlapCalculator):
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+
         calc_type = "engrad"
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         kwargs = {
             "calc": "grad",
         }

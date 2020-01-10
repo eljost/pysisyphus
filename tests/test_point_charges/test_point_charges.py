@@ -1,17 +1,34 @@
 import numpy as np
 import pytest
 
-from pysisyphus.calculators import Turbomole
+from pysisyphus.calculators import Turbomole, ORCA
 from pysisyphus.helpers import geom_from_library
-from pysisyphus.testing import using_turbomole
+from pysisyphus.testing import using
 
 
-@using_turbomole
-def test_turbomole_point_charges():
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs, ref_energy, ref_force_norm",
+    [
+        pytest.param(
+            ORCA,
+            {"keywords": "BP86 def2-SVP"},
+            -40.473648820542, 0.0539577447,
+            marks=using("orca"),),
+        # pytest.param(
+            # ORCA,
+            # {"keywords": "BP86 def2-SVP", "blocks": "%method doEQ true end"},
+            # -40.448455709343, 0.0539577447,
+            # marks=using("orca"),)
+        pytest.param(
+            Turbomole,
+            {"control_path": "./methane_control_path"},
+            -40.47560386, 0.05402566536,
+            marks=using("turbomole"),)
+])
+def test_turbomole_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
     geom = geom_from_library("methane_bp86_def2svp_opt.xyz")
-    ctrl_path = "./methane_control_path"
-    calc = Turbomole(ctrl_path)
 
+    calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)
 
     point_charges = np.array((
@@ -24,5 +41,5 @@ def test_turbomole_point_charges():
     }
     results = calc.get_forces(geom.atoms, geom.coords, prepare_kwargs=prep_kwargs)
 
-    assert results["energy"] == pytest.approx(-40.47560386)
-    assert np.linalg.norm(results["forces"]) == pytest.approx(0.05402566536)
+    assert results["energy"] == pytest.approx(ref_energy)
+    assert np.linalg.norm(results["forces"]) == pytest.approx(ref_force_norm)
