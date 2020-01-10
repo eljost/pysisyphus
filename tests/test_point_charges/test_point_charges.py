@@ -48,3 +48,6 @@ def test_turbomole_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_no
 
     assert results["energy"] == pytest.approx(ref_energy)
     assert np.linalg.norm(results["forces"]) == pytest.approx(ref_force_norm)
+
+    # results = calc.get_forces(geom.atoms, geom.coords, prepare_kwargs=None)
+    # print(calc_cls, results["energy"], np.linalg.norm(results["forces"]))
