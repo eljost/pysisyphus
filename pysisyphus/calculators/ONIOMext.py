@@ -3,9 +3,21 @@
 # [1] https://www.sciencedirect.com/science/article/pii/S0166128098004758
 #     https://doi.org/10.1016/S0166-1280(98)00475-8
 #     Dapprich, Frisch, 1998
+#
+# Not implemented in pysisyphus
+#
 # [2] https://aip.scitation.org/doi/pdf/10.1063/1.2814164?class=pdf
-#     QM/QM ONIOM EE
+#     QM/QM ONIOM EE based on Mulliken charges
 #     Hratchian, Raghavachari, 2008
+# [3] https://aip.scitation.org/doi/full/10.1063/1.3315417<Paste>
+#     QM/QM ONIOM EE based on Löwdin charges
+#     Mayhall, Hratchian, 2010
+# [4] https://www.frontiersin.org/articles/10.3389/fchem.2018.00089/full
+#     Overview on hybrid methods
+#
+# Excited state ONIOM
+# [5] https://aip.scitation.org/doi/pdf/10.1063/1.4972000?class=pdf
+# [6] https://pubs.rsc.org/en/content/articlehtml/2012/pc/c2pc90007f
 
 
 import itertools as it

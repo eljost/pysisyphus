@@ -47,7 +47,7 @@ CALC_DICT = {
     "orca": ORCA.ORCA,
     "psi4": Psi4,
     # "pyscf": PySCF,
-    "turbomole": Turbomole.Turbomole,
+    "turbomole": Turbomole,
     "xtb": XTB,
 }
 
