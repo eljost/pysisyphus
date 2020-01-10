@@ -3,6 +3,10 @@
 # [1] https://www.sciencedirect.com/science/article/pii/S0166128098004758
 #     https://doi.org/10.1016/S0166-1280(98)00475-8
 #     Dapprich, Frisch, 1998
+# [2] https://aip.scitation.org/doi/pdf/10.1063/1.2814164?class=pdf
+#     QM/QM ONIOM EE
+#     Hratchian, Raghavachari, 2008
+
 
 import itertools as it
 import logging

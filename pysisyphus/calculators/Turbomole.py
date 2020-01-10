@@ -48,7 +48,7 @@ class Turbomole(OverlapCalculator):
                         "ciss_a", "ucis_a", "gradient", "sing_a",
                         "__ccre*", "exstates", "coord",
                         "mwfn_wf:wavefunction.molden",
-                        "input.xyz",
+                        "input.xyz", "pc_gradients"
         )
 
         self.parser_funcs = {
@@ -218,8 +218,12 @@ class Turbomole(OverlapCalculator):
         if point_charges is not None:
             charge_num = len(point_charges)
             pc_str = self.prepare_point_charges(point_charges)
-            log_msg = f" appended {charge_num} point charges"
-            self.sub_control("\$end", pc_str + "\n$end", log_msg)
+            self.sub_control( "\$end", pc_str + "\n$end",
+                             f"appended {charge_num} point charges")
+            # Activate calculation of gradients on point charges
+            self.sub_control("\$drvopt", "$drvopt\npoint charges\n")
+            # Write point charge gradients to file
+            self.sub_control("\$end", "$point_charge_gradients file=pc_gradients\n$end")
 
     def sub_control(self, pattern, repl, log_msg="", **kwargs):
         path = self.path_already_prepared
