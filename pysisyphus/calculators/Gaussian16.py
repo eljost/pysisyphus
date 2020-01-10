@@ -637,7 +637,6 @@ class Gaussian16(OverlapCalculator):
         return double_mol_ovlp
 
     def parse_charges(self, path=None):
-        import pdb; pdb.set_trace()
         if path is None and self.fchk is not None:
             fchk_path = self.fchk
         elif path is not None and path.endswith(".fchk"):

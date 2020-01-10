@@ -215,7 +215,9 @@ class ONIOMext(Calculator):
 
         super().__init__()
 
-        self.embedding = embedding
+        valid_embeddings = (None, "electronic")
+        assert embedding in valid_embeddings, f"Valid embeddings are: {valid_embeddings}"
+        self.embedding = embedding,
 
         assert real_key not in models, \
             f'"{real_key}" must not be defined in "models"!'
