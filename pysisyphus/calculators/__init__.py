@@ -24,4 +24,5 @@ from pysisyphus.calculators.Psi4 import Psi4
 #from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
+from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.calculators.XTB import XTB
