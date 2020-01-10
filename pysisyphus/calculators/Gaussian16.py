@@ -636,6 +636,21 @@ class Gaussian16(OverlapCalculator):
         double_mol_ovlp = full_mat[nbas_single:, :nbas_single]
         return double_mol_ovlp
 
+    def parse_charges(self, path=None):
+        import pdb; pdb.set_trace()
+        if path is None and self.fchk is not None:
+            fchk_path = self.fchk
+        elif path is not None and path.endswith(".fchk"):
+            fchk_path = path
+        elif path is not None:
+            fchk_path = Path(path) / f"{self.fn_base}.fchk"
+
+        keys = ("Mulliken Charges", )
+        fchk_dict = self.parse_fchk(fchk_path, keys=keys)
+        charges = np.array(fchk_dict["Mulliken Charges"])
+
+        return charges
+
     def keep(self, path):
         kept_fns = super().keep(path)
         if self.keep_chk:

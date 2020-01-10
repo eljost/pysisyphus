@@ -51,3 +51,27 @@ def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
 
     # results = calc.get_forces(geom.atoms, geom.coords, prepare_kwargs=None)
     # print(calc_cls, results["energy"], np.linalg.norm(results["forces"]))
+
+
+
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs, ref_energy, ref_charges",
+    [
+        pytest.param(
+            Gaussian16,
+            {"route": "BP86 def2SVP"},
+            -40.4818752416, (-0.195353, 0.048838, 0.048838, 0.048838, 0.048838),
+            marks=using("gaussian16"),),
+])
+def test_parse_charges(calc_cls, calc_kwargs, ref_energy, ref_charges):
+    geom = geom_from_library("methane_bp86_def2svp_opt.xyz")
+
+    calc = calc_cls(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    results = calc.get_forces(geom.atoms, geom.coords)
+    
+    assert results["energy"] == pytest.approx(ref_energy)
+
+    charges = calc.parse_charges()
+    np.testing.assert_allclose(charges, ref_charges, atol=1e-5)
