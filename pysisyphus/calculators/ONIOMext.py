@@ -3,6 +3,8 @@
 # [1] https://www.sciencedirect.com/science/article/pii/S0166128098004758
 #     https://doi.org/10.1016/S0166-1280(98)00475-8
 #     Dapprich, Frisch, 1998
+# [2] https://onlinelibrary.wiley.com/doi/abs/10.1002/9783527629213.ch2
+#     Clemente, Frisch, 2010
 #
 # Not implemented in pysisyphus
 #
@@ -101,7 +103,7 @@ class Model():
 
     def __init__(self, name, calc_level, calc,
                  parent_name, parent_calc_level, parent_calc,
-                 atom_inds, parent_atom_inds, all_atom_inds):
+                 atom_inds, parent_atom_inds):
 
         self.name = name
         self.calc_level = calc_level
@@ -113,7 +115,6 @@ class Model():
 
         self.atom_inds = atom_inds
         self.parent_atom_inds = parent_atom_inds
-        self.all_atom_inds = atom_inds
 
         self.links = list()
         self.capped = False
@@ -181,8 +182,12 @@ class Model():
         prepare_kwargs = {
             "point_charges": point_charges,
         }
+        if point_charges is not None:
+            pc = point_charges.copy()
 
         results = self.calc.get_forces(catoms, ccoords, prepare_kwargs)
+        if point_charges is not None:
+            hpc = point_charges.copy()
         model_gradient = -results["forces"].reshape(-1, 3)
         model_energy = results["energy"]
         try:
@@ -192,6 +197,8 @@ class Model():
         except AttributeError:
             parent_energy = 0.
             parent_gradient = np.zeros_like(model_gradient)
+        if point_charges is not None:
+            ppc = point_charges.copy()
 
         gradient = np.zeros_like(coords).reshape(-1, 3)
 
@@ -268,9 +275,9 @@ class ONIOMext(Calculator):
         #          #
         ############
 
-        # Add real model and layer to layers and models as they are missing
-        # right now. The real layer is always the last layer. The real layer
-        # is always calculated by the realkey calculator.
+        # Add real model and layer as they are missing right now. The real
+        # layer is always the last layer. The real layer is always calculated
+        # by the 'realkey'-calculator.
         layers = layers + [real_key]
         models[real_key] = {
             "calc": real_key,
@@ -324,7 +331,6 @@ class ONIOMext(Calculator):
             cur_calc_num += 1
             return calc
 
-        all_atom_inds=list(range(len(geom.atoms)))
         # Create models and required calculators
         self.models = list()
         for model in model_keys[:-1]:
@@ -351,7 +357,6 @@ class ONIOMext(Calculator):
                 parent_calc=parent_calc,
                 atom_inds=models[model]["inds"],
                 parent_atom_inds=models[parent]["inds"],
-                all_atom_inds=all_atom_inds,
             )
             self.models.append(model)
 
@@ -363,9 +368,8 @@ class ONIOMext(Calculator):
                 calc_level=real_key,
                 calc=real_calc,
                 parent_name=None, parent_calc_level=None, parent_calc=None,
-                atom_inds=all_atom_inds,
+                atom_inds=list(range(len(geom.atoms))),
                 parent_atom_inds=None,
-                all_atom_inds=all_atom_inds,
             )
         )
 
@@ -393,17 +397,28 @@ class ONIOMext(Calculator):
 
     def get_forces(self, atoms, coords):
         if self.embedding == "electronic":
-            real_model = self.models[0]
+            self.log("Electronic embedding calculation")
+            real_model, high_model = self.models
+
             real_results = real_model.get_forces(atoms, coords)
             charges, _ = real_model.parse_charges()
+            charge_sum = sum(charges)
+            self.log(f"sum(charges_real)={charge_sum:.4f}")
 
-            c3d = coords.reshape(-1, 3)
-            point_charges = np.zeros((charges.size, 4))
-            point_charges[:,:3] = c3d
-            point_charges[:,3] = charges
-            high_model = self.models[1]
+            # Only consider charges that belong to atoms in the parent layer.
+            # Otherwise we would place additional charges onto the atoms in the
+            # higher-level layer.
+            only_parent_inds = list(set(real_model.atom_inds) - set(high_model.atom_inds))
+            ee_charges = charges[only_parent_inds]
+            ee_charge_sum = sum(ee_charges)
+            self.log(f"sum(ee_charges)={ee_charge_sum:.4f}")
+
+            point_charges = np.zeros((ee_charges.size, 4))
+            point_charges[:,:3] = coords.reshape(-1, 3)[only_parent_inds]
+            point_charges[:,3] = ee_charges
             high_results = high_model.get_forces(atoms, coords, point_charges=point_charges)
             results = (real_results, high_results)
+        if self.embedding == "electronic2":
         elif self.embedding == None:
             results = [model.get_forces(atoms, coords) for model in self.models]
 

@@ -201,20 +201,34 @@ def test_oniomext_ee():
         },
     }
 
-    oniom = ONIOMext(calcs, models, geom, embedding="electronic")
+    oniom_kwargs = {
+        # "embedding": "electronic",
+        "embedding": "electronic2",
+        # "embedding": None,
+    }
+    oniom = ONIOMext(calcs, models, geom, **oniom_kwargs)
     geom.set_calculator(oniom)
 
     # Calculate forces and energy
     forces = geom.forces
     energy = geom.energy
 
-    # Org.
-    # assert energy == pytest.approx(-588.02530947)
-    # assert np.linalg.norm(forces) == pytest.approx(0.0585419180)
-
-    # real: sto-3g, high 3-21g
-    assert energy == pytest.approx(-582.39203495)
-    assert np.linalg.norm(forces) == pytest.approx(0.0940337814)
+    # Real: sto-3g, High 3-21g
+    # No embedding
+    if oniom_kwargs["embedding"] is None:
+        # G16 reference,          energy=-582.392034947882
+        assert energy == pytest.approx(-582.3920349478807)
+        assert np.linalg.norm(forces) == pytest.approx(0.09403378140930853)
+    # Electronic embedding
+    elif oniom_kwargs["embedding"] is "electronic":
+        assert energy == pytest.approx(-582.3997769406087)
+        assert np.linalg.norm(forces) == pytest.approx(0.0942232377699925)
+    elif oniom_kwargs["embedding"] is "electronic2":
+        assert energy == pytest.approx(-582.3997769406087)
+        assert np.linalg.norm(forces) == pytest.approx(0.0942232377699925)
+    else:
+        # It will probably crash before in the ONIOMext constructor
+        raise Exception()
 
 
 def test_biaryl_solvated():
@@ -250,7 +264,7 @@ if __name__ == "__main__":
     init_logging()
     # test_acetaldehyd()
     # test_oniomext()
-    test_oniomext_gradient()
-    # test_oniomext_ee()
+    # test_oniomext_gradient()
+    test_oniomext_ee()
     # test_acetaldehyd_psi4_xtb()
     # test_biaryl_solvated()
