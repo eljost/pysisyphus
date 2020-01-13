@@ -133,29 +133,37 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
 
 
 @pytest.mark.parametrize(
-    "embedding, ref_energy, ref_force_norm",
+    "calc_key, embedding, ref_energy, ref_force_norm",
     [
-        # pytest.param(None, -582.3920349478807, 0.09403378140930853,
+        # No embedding
+        # pytest.param("g16", None,   -582.3920349478807, 0.09403378140930853,
                      # marks=using_gaussian16),
-        pytest.param("electronic", -582.3997769406087, 0.0942232377699925,
-                     marks=using_gaussian16),
+        # pytest.param("pyscf", None, -582.3920349478807, 0.09403378140930853,
+                     # marks=using_pyscf),
+
+        # Electronic embedding
+        # pytest.param("g16", "electronic",   -582.3997769406087, 0.0942232377699925,
+                     # marks=using_gaussian16),
+        pytest.param("pyscf", "electronic", -582.3997769406087, 0.0942232377699925,
+                     marks=using_pyscf),
 ])
-def test_electronic_embedding(embedding, ref_energy, ref_force_norm):
+def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     geom = geom_from_library("oniom_ee_model_system.xyz", coord_type="redund")
 
     all_ = set(range(len(geom.atoms)))
     high = list(sorted(all_ - set((21, 20, 19, 15, 14, 13))))
 
-    calcs = {
-        "real": {
-            "route": "hf sto-3g",
-        },
-        "highC": {
-            "route": "hf 3-21g",
-        },
+    calcs_dict = {
+        "g16": ({"real": {"type": "g16", "route": "hf sto-3g"},
+                 "high": {"type": "g16", "route": "hf 3-21g"},
+        }),
+        "pyscf": ({"real": {"type": "pyscf", "basis": "sto3g",},
+                   "high": {"type": "pyscf", "basis": "321g"},
+        }),
     }
+    calcs = calcs_dict[calc_key]
+
     for key, calc in calcs.items():
-        calc["type"] = "g16"
         calc["pal"] = 2
         calc["mult"] = 1
         calc["charge"] = 0
@@ -163,7 +171,7 @@ def test_electronic_embedding(embedding, ref_energy, ref_force_norm):
     models = {
         "high": {
             "inds": high,
-            "calc": "highC",
+            "calc": "high",
         },
     }
 

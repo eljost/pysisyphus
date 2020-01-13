@@ -135,9 +135,8 @@ class Model():
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
         for i, link in enumerate(self.links):
             ind, parent_ind = link.ind, link.parent_ind
-            self.log(f"Created Link atom ({link.atom}) between {atoms[ind]}{ind} "
-                     f"and {atoms[parent_ind]}{parent_ind}")
-            self.log(f"\tLink {i:02d}: {link}")
+            self.log(f"\tCreated Link atom ({link.atom}) between {atoms[ind]}{ind} "
+                     f"and {atoms[parent_ind]}{parent_ind} (g={link.g:.6f})")
 
         if len(self.links) == 0:
             self.log("Didn't create any link atoms!\n")

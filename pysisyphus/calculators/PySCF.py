@@ -5,7 +5,7 @@ import shutil
 
 import numpy as np
 import pyscf
-from pyscf import gto, grad, lib, hessian, tddft
+from pyscf import gto, grad, lib, hessian, tddft, qmmm
 from pyscf.dft import xcfun
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
@@ -112,9 +112,13 @@ class PySCF(OverlapCalculator):
 
         return mol
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        point_charges = prepare_kwargs.get("point_charges", None)
+
         mol = self.prepare_input(atoms, coords)
-        mf = self.run(mol)
+        mf = self.run(mol, point_charges=point_charges)
         results = {
             "energy": mf.e_tot,
         }
@@ -122,8 +126,12 @@ class PySCF(OverlapCalculator):
         return results
 
     def get_forces(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        point_charges = prepare_kwargs.get("point_charges", None)
+
         mol = self.prepare_input(atoms, coords)
-        mf = self.run(mol)
+        mf = self.run(mol, point_charges=point_charges)
         # >>> mf.chkfile = '/path/to/chkfile'
         # >>> mf.init_guess = 'chkfile'
         grad_driver = mf.Gradients()
@@ -150,8 +158,12 @@ class PySCF(OverlapCalculator):
         return results
 
     def get_hessian(self, atoms, coords):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        point_charges = prepare_kwargs.get("point_charges", None)
+
         mol = self.prepare_input(atoms, coords)
-        mf = self.run(mol)
+        mf = self.run(mol, point_charges=point_charges)
         H = mf.Hessian().kernel()
 
         # The returned hessian is 4d ... ok. This probably serves a purpose
@@ -164,7 +176,7 @@ class PySCF(OverlapCalculator):
 
         return results
 
-    def run(self, mol):
+    def run(self, mol, point_charges=None):
         steps = self.multisteps[self.method]
         self.log(f"Running steps '{steps}' for method {self.method}")
         for i, step in enumerate(steps):
@@ -182,6 +194,11 @@ class PySCF(OverlapCalculator):
                 if self.auxbasis:
                     mf.density_fit(auxbasis=self.auxbasis)
                     self.log(f"Using density fitting with auxbasis {self.auxbasis}.")
+
+                if point_charges is not None:
+                    mf = qmmm.mm_charge(mf, point_charges[:,:3], point_charges[:,3])
+                    self.log(f"Added {len(point_charges)} point charges with "
+                             f"sum(q)={sum(point_charges[:,3]):.4f}.")
             else:
                 mf = self.get_driver(step, mf=prev_mf)  # noqa: F821
 
