@@ -120,7 +120,7 @@ class PySCF(OverlapCalculator):
         }
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, prepare_kwargs=None):
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol)
         # >>> mf.chkfile = '/path/to/chkfile'

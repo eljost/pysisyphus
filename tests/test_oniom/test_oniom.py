@@ -3,10 +3,9 @@
 import numpy as np
 import pytest
 
-from pysisyphus.calculators.ONIOMext import ONIOMext
-from pysisyphus.helpers import geom_from_library, geom_from_xyz_file
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-from pysisyphus.testing import using_gaussian16
+from pysisyphus.calculators.ONIOMv2 import ONIOM
+from pysisyphus.helpers import geom_from_library
+from pysisyphus.testing import using_gaussian16, using_pyscf
 
 from pysisyphus.init_logging import init_logging
 
@@ -64,7 +63,7 @@ def test_energy():
 
     layers = ["med", ["h1", "h2"]]
 
-    oniom = ONIOMext(calcs, models, geom, layers)
+    oniom = ONIOM(calcs, models, geom, layers)
 
     assert oniom.layer_num == 3
 
@@ -73,24 +72,36 @@ def test_energy():
     assert geom.energy == pytest.approx(-661.3512410069466)
 
 
-@using_gaussian16
-def test_gradient():
+@pytest.mark.parametrize(
+    "calcs, ref_energy, ref_force_norm",
+    [
+        pytest.param(
+            {"real": {"type": "g16", "route": "hf sto-3g"},
+             "high": {"type": "g16", "route": "b3lyp d95v"}},
+            -153.07432042299052 , 0.03768246934785125,
+            marks=using_gaussian16,
+        ),
+        pytest.param(
+            {"real": {"type": "g16", "route": "hf sto-3g"},
+             "high": {"type": "g16", "route": "b3lyp 3-21g"}},
+            -152.4529060634755 , 0.018462670668992546,
+            marks=using_gaussian16,
+        ),
+        pytest.param(
+            {"real": {"type": "pyscf", "basis": "sto3g"},
+             "high": {"type": "pyscf", "xc": "b3lypg", "basis": "321g"}},
+            -152.4529060634755, 0.01839279960703439,
+            marks=using_pyscf,
+        ),
+])
+def test_gradient(calcs, ref_energy, ref_force_norm):
     geom = geom_from_library("acetaldehyd_oniom.xyz", coord_type="redund")
 
     real = set(range(len(geom.atoms)))
     high = [4, 5, 6]
 
-    calcs = {
-        "real": {
-            "route": "hf sto-3g",
-        },
-        "high": {
-            "route": "b3lyp d95v",
-        },
-    }
     for key, calc in calcs.items():
-        calc["type"] = "g16"
-        calc["pal"] = 4
+        calc["pal"] = 2
         calc["mult"] = 1
         calc["charge"] = 0
 
@@ -102,17 +113,21 @@ def test_gradient():
     }
 
     # layers = ["high"]
+    # No layers specified
     layers = None
 
-    oniom = ONIOMext(calcs, models, geom, layers)
+    oniom = ONIOM(calcs, models, geom, layers)
 
     assert oniom.layer_num == 2
 
     geom.set_calculator(oniom)
 
     # Calculate forces
-    assert np.linalg.norm(geom.forces) == pytest.approx(0.03768246934785125)
-    assert geom.energy == pytest.approx(-153.07432042299052)
+    forces = geom.forces
+    energy = geom.energy
+
+    assert np.linalg.norm(forces) == pytest.approx(ref_force_norm)
+    assert energy == pytest.approx(ref_energy)
 
 
 @pytest.mark.parametrize(
@@ -153,7 +168,7 @@ def test_electronic_embedding(embedding, ref_energy, ref_force_norm):
     oniom_kwargs = {
         "embedding": embedding,
     }
-    oniom = ONIOMext(calcs, models, geom, **oniom_kwargs)
+    oniom = ONIOM(calcs, models, geom, **oniom_kwargs)
     geom.set_calculator(oniom)
 
     # Calculate forces and energy

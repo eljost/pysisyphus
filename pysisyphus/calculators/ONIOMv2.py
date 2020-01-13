@@ -42,10 +42,14 @@ CALC_DICT = {
     "psi4": Psi4,
     "turbomole": Turbomole,
     "xtb": XTB,
-    # "pyscf": PySCF,
     # "pypsi4": PyPsi4,
     # "pyxtb": PyXTB,
 }
+try:
+    from pysisyphus.calculators.PySCF import PySCF
+    CALC_DICT["pyscf"] = PySCF
+except ImportError:
+    print("Error importing PySCF in ONIOMv2")
 
 
 Link = namedtuple("Link", "ind parent_ind atom g")
@@ -231,7 +235,7 @@ class Model():
         return self.__str__()
 
 
-class ONIOMext(Calculator):
+class ONIOM(Calculator):
 
     def __init__(self, calcs, models, geom, layers=None, embedding=None,
                  real_key="real"):
