@@ -129,7 +129,11 @@ class Model():
             _, self.links = cap_fragment(atoms, coords, self.atom_inds)
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
         for i, link in enumerate(self.links):
-            self.log(f"Link {i:02d}: {link}")
+            # Link = namedtuple("Link", "ind parent_ind atom g")
+            ind, parent_ind = link.ind, link.parent_ind
+            self.log(f"Created Link atom ({link.atom}) between {atoms[ind]}{ind} "
+                     f"and {atoms[parent_ind]}{parent_ind}")
+            self.log(f"\tLink {i:02d}: {link}")
 
         if len(self.links) == 0:
             self.log("Didn't create any link atoms!")
