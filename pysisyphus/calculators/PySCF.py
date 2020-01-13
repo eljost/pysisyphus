@@ -118,6 +118,7 @@ class PySCF(OverlapCalculator):
         results = {
             "energy": mf.e_tot,
         }
+
         return results
 
     def get_forces(self, atoms, coords, prepare_kwargs=None):
@@ -141,7 +142,6 @@ class PySCF(OverlapCalculator):
             "forces": -gradient.flatten(),
         }
 
-        self.mf = mf
         if self.track:
             self.store_overlap_data(atoms, coords)
             if self.track_root():
@@ -161,6 +161,7 @@ class PySCF(OverlapCalculator):
             "energy": mf.e_tot,
             "hessian": H,
         }
+
         return results
 
     def run(self, mol):
@@ -191,7 +192,10 @@ class PySCF(OverlapCalculator):
             mf.kernel()
             self.log(f"Completed {step} step")
             prev_mf = mf
+
+        self.mf = mf
         self.calc_counter += 1
+
         return mf
 
     def prepare_overlap_data(self):
@@ -219,6 +223,12 @@ class PySCF(OverlapCalculator):
         all_energies[0] = gs_energy
         all_energies[1:] = exc_energies
         return mo_coeffs, ci_coeffs, all_energies
+
+    def parse_charges(self):
+        # Mulliken charges
+        results = self.mf.analyze(with_meta_lowdin=False)
+
+        return results[0][1]
 
     def __str__(self):
         return f"PySCF({self.name})"

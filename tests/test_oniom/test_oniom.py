@@ -135,8 +135,8 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
 @pytest.mark.parametrize(
     "embedding, ref_energy, ref_force_norm",
     [
-        pytest.param(None, -582.3920349478807, 0.09403378140930853,
-                     marks=using_gaussian16),
+        # pytest.param(None, -582.3920349478807, 0.09403378140930853,
+                     # marks=using_gaussian16),
         pytest.param("electronic", -582.3997769406087, 0.0942232377699925,
                      marks=using_gaussian16),
 ])
