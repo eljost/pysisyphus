@@ -169,28 +169,33 @@ class Model():
         return capped_atoms, capped_coords
 
     def get_energy(self, atoms, coords, point_charges=None):
-        self.log("energy calculation")
-        catoms, ccoords = self.capped_atoms_coords(atoms, coords)
-        energy = self.calc.get_energy(catoms, ccoords)["energy"]
-        try:
-            parent_energy = self.parent_calc.get_energy(catoms, ccoords)["energy"]
-        except AttributeError:
-            parent_energy = 0.
-        return energy - parent_energy
-
-    def get_forces(self, atoms, coords, point_charges=None):
-        self.log("force calculation")
+        self.log("Energy calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
 
         prepare_kwargs = {
             "point_charges": point_charges,
         }
-        if point_charges is not None:
-            pc = point_charges.copy()
+
+        results = self.calc.get_energy(catoms, ccoords, prepare_kwargs)
+        energy = results["energy"]
+        try:
+            parent_results= self.parent_calc.get_energy(catoms, ccoords, prepare_kwargs)
+            parent_energy = parent_results["energy"]
+        except AttributeError:
+            parent_energy = 0.
+
+        energy = energy - parent_energy
+        return energy
+
+    def get_forces(self, atoms, coords, point_charges=None):
+        self.log("Force calculation")
+        catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+
+        prepare_kwargs = {
+            "point_charges": point_charges,
+        }
 
         results = self.calc.get_forces(catoms, ccoords, prepare_kwargs)
-        if point_charges is not None:
-            hpc = point_charges.copy()
         model_gradient = -results["forces"].reshape(-1, 3)
         model_energy = results["energy"]
         try:
@@ -200,8 +205,6 @@ class Model():
         except AttributeError:
             parent_energy = 0.
             parent_gradient = np.zeros_like(model_gradient)
-        if point_charges is not None:
-            ppc = point_charges.copy()
 
         gradient = np.zeros_like(coords).reshape(-1, 3)
 

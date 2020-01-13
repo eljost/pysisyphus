@@ -75,12 +75,14 @@ def test_energy():
 @pytest.mark.parametrize(
     "calcs, ref_energy, ref_force_norm",
     [
+        # From https://doi.org/10.1016/S0166-1280(98)00475-8
         pytest.param(
             {"real": {"type": "g16", "route": "hf sto-3g"},
              "high": {"type": "g16", "route": "b3lyp d95v"}},
             -153.07432042299052 , 0.03768246934785125,
             marks=using_gaussian16,
         ),
+        # The following two tests should yield identical results
         pytest.param(
             {"real": {"type": "g16", "route": "hf sto-3g"},
              "high": {"type": "g16", "route": "b3lyp 3-21g"}},
