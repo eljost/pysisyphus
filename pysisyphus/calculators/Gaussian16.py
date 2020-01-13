@@ -284,8 +284,10 @@ class Gaussian16(OverlapCalculator):
                 results_dict[key] = np.array(res[2:])
         return results_dict
 
-    def get_energy(self, atoms, coords):
-        results = self.get_forces(atoms, coords)
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        results = self.get_forces(atoms, coords, prepare_kwargs)
         del results["forces"]
         return results
 
