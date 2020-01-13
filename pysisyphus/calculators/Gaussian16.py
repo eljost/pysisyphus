@@ -189,6 +189,7 @@ class Gaussian16(OverlapCalculator):
             kwargs["route"] += " scf=maxcycles=0"
         if point_charges is not None:
             kwargs["route"] += " charge"
+            point_charges = point_charges.copy()
             point_charges[:,:3] *= BOHR2ANG
             with io.StringIO() as handle:
                 np.savetxt(handle, point_charges, fmt="%16.10f")
