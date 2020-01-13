@@ -130,7 +130,6 @@ class Model():
             _, self.links = cap_fragment(atoms, coords, self.atom_inds)
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
         for i, link in enumerate(self.links):
-            # Link = namedtuple("Link", "ind parent_ind atom g")
             ind, parent_ind = link.ind, link.parent_ind
             self.log(f"Created Link atom ({link.atom}) between {atoms[ind]}{ind} "
                      f"and {atoms[parent_ind]}{parent_ind}")
@@ -138,6 +137,7 @@ class Model():
 
         if len(self.links) == 0:
             self.log("Didn't create any link atoms!")
+        self.log("")
 
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
@@ -165,7 +165,7 @@ class Model():
             capped_coords[org_atom_num + i] = r2
         return capped_atoms, capped_coords
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, point_charges=None):
         self.log("energy calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
         energy = self.calc.get_energy(catoms, ccoords)["energy"]
@@ -228,6 +228,9 @@ class Model():
         return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
                f"level={self.calc_level}, parent_level={self.parent_calc_level})"
 
+    def __repr__(self):
+        return self.__str__()
+
 
 class ONIOMext(Calculator):
 
@@ -260,10 +263,10 @@ class ONIOMext(Calculator):
                      "hierarchy from model sizes. This does not support multi-"
                      "center ONIOM!")
             as_list = [(key, val) for key, val in models.items()]
-            # Determine hierarchy of models, from smallest to biggest model
+            # Determine hierarchy of models, from biggest to smallest model
             layers = [
                 key for key, val
-                in sorted(as_list, key=lambda model: len(model[1]["inds"]))
+                in sorted(as_list, key=lambda model: -len(model[1]["inds"]))
             ]
 
         assert real_key not in layers, \
@@ -278,12 +281,12 @@ class ONIOMext(Calculator):
         # Add real model and layer as they are missing right now. The real
         # layer is always the last layer. The real layer is always calculated
         # by the 'realkey'-calculator.
-        layers = layers + [real_key]
+        layers = [real_key] + layers
         models[real_key] = {
             "calc": real_key,
             "inds": list(range(len(geom.atoms))),
         }
-        self.log(f"Layer-ordering from small to big: {layers}")
+        self.log(f"Layer-ordering from big to small: {layers}")
 
         # Single-model layers will be given as strings. As we also support
         # multicenter-ONIOM there may also be layers that are given as lists
@@ -294,8 +297,7 @@ class ONIOMext(Calculator):
             [layer, ] if isinstance(layer, str) else layer for layer in layers
         ]
         self.layer_num = len(layers)
-        assert self.layer_num > 1, "What are you trying to do?!"
-        self.layers = layers
+        assert self.layer_num > 1, "ONIOM with only 1 layer requested. Aborting!"
 
         ############
         #          #
@@ -312,10 +314,10 @@ class ONIOMext(Calculator):
         #
         # If multicenter ONIOM in an intermediate layer is useful may
         # be another question to be answered ;).
-        model_parent_layers = dict()
-        for i, layer in enumerate(layers[:-1]):
-            model_parent_layers.update(
-                {model: i+1 for model in layer}
+        self.model_parent_layers = dict()
+        for i, layer in enumerate(layers[1:]):
+            self.model_parent_layers.update(
+                {model: i for model in layer}
             )
         model_keys = list(it.chain(*layers))
 
@@ -333,8 +335,10 @@ class ONIOMext(Calculator):
 
         # Create models and required calculators
         self.models = list()
-        for model in model_keys[:-1]:
-            parent_layer = layers[model_parent_layers[model]]
+        self.layers = [list() for layer in layers]
+        for model in model_keys[1:]:
+            parent_layer_ind = self.model_parent_layers[model]
+            parent_layer = layers[parent_layer_ind]
             parent_calc_keys = set([models[model]["calc"] for model in parent_layer])
             assert len(parent_calc_keys) == 1, \
                 "It seems you are trying to run a multicenter ONIOM setup in " \
@@ -359,11 +363,11 @@ class ONIOMext(Calculator):
                 parent_atom_inds=models[parent]["inds"],
             )
             self.models.append(model)
+            self.layers[parent_layer_ind+1].append(model)
 
         # All real model
         real_calc = get_calc(real_key)
-        self.models.append(
-            Model(
+        real_model = Model(
                 name=real_key,
                 calc_level=real_key,
                 calc=real_calc,
@@ -371,10 +375,11 @@ class ONIOMext(Calculator):
                 atom_inds=list(range(len(geom.atoms))),
                 parent_atom_inds=None,
             )
-        )
+        self.models.insert(0, real_model)
+        self.layers[0].append(real_model)
 
         # Reverse order of models so the first model is the real system
-        self.models = self.models[::-1]
+        # self.models = self.models[::-1]
 
         self.log("Created all ONIOM layers:")
         for model in self.models:
@@ -386,47 +391,58 @@ class ONIOMext(Calculator):
         self.log(f"Created ONIOM calculator with {self.layer_num} layers and "
                  f"{len(self.models)} models.")
 
-    def get_energy(self, atoms, coords):
-        energy = sum(
-            [model.get_energy(atoms, coords) for model in self.models]
-        )
+    def run_calculations(self, atoms, coords, method):
+        self.log("Electronic embedding calculation")
+
+        all_results = list()
+        point_charges = None
+        for i, layer in enumerate(self.layers):
+            # Only consider charges that belong to atoms in the parent
+            # layer. Otherwise this would result in additonal charges at
+            # the same positions as the atoms we would like to calculate.
+            if self.embedding == "electronic" and (i > 0):
+                parent_layer = self.layers[i-1]
+                assert len(parent_layer) == 1, \
+                    "Multicenter ONIOM in intermediate layer is not supported!"
+                parent_model = parent_layer[0]
+                parent_inds = set(parent_model.atom_inds)
+                charges, _ = parent_model.parse_charges()
+
+                layer_inds = set(*it.chain([model.atom_inds for model in layer]))
+                # Determine indices of atoms that are in the parent layer, but
+                # not in the current layer
+                only_parent_inds = list(parent_inds - layer_inds)
+                ee_charges = charges[only_parent_inds]
+                # ee_charge_sum = sum(ee_charges)
+                # self.log(f"sum(ee_charges)={ee_charge_sum:.4f}")
+
+                point_charges = np.zeros((ee_charges.size, 4))
+                point_charges[:,:3] = coords.reshape(-1, 3)[only_parent_inds]
+                point_charges[:,3] = ee_charges
+
+            results = [getattr(model, method)(atoms, coords, point_charges=point_charges)
+                       for model in layer]
+            all_results.extend(results)
         self.calc_counter += 1
+
+        return all_results
+
+    def get_energy(self, atoms, coords):
+        all_energies = self.run_calculations(atoms, coords, "get_energy")
+
+        energy = sum(all_energies)
+
         return {
-                "energy": energy
+                "energy": energy,
         }
 
     def get_forces(self, atoms, coords):
-        if self.embedding == "electronic":
-            self.log("Electronic embedding calculation")
-            real_model, high_model = self.models
+        all_results = self.run_calculations(atoms, coords, "get_forces")
 
-            real_results = real_model.get_forces(atoms, coords)
-            charges, _ = real_model.parse_charges()
-            charge_sum = sum(charges)
-            self.log(f"sum(charges_real)={charge_sum:.4f}")
-
-            # Only consider charges that belong to atoms in the parent layer.
-            # Otherwise we would place additional charges onto the atoms in the
-            # higher-level layer.
-            only_parent_inds = list(set(real_model.atom_inds) - set(high_model.atom_inds))
-            ee_charges = charges[only_parent_inds]
-            ee_charge_sum = sum(ee_charges)
-            self.log(f"sum(ee_charges)={ee_charge_sum:.4f}")
-
-            point_charges = np.zeros((ee_charges.size, 4))
-            point_charges[:,:3] = coords.reshape(-1, 3)[only_parent_inds]
-            point_charges[:,3] = ee_charges
-            high_results = high_model.get_forces(atoms, coords, point_charges=point_charges)
-            results = (real_results, high_results)
-        if self.embedding == "electronic2":
-        elif self.embedding == None:
-            results = [model.get_forces(atoms, coords) for model in self.models]
-
-        energies, forces = zip(*results)
+        energies, forces_ = zip(*all_results)
         energy = sum(energies)
-        forces = np.sum(forces, axis=0)
+        forces = np.sum(forces_, axis=0)
 
-        self.calc_counter += 1
         return {
                 "energy": energy,
                 "forces": forces,
