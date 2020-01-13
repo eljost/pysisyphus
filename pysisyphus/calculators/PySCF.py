@@ -7,6 +7,8 @@ import numpy as np
 import pyscf
 from pyscf import gto, grad, lib, hessian, tddft, qmmm
 from pyscf.dft import xcfun
+from pyscf.lib.chkfile import save_mol
+from pyscf.tools import cubegen
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 
@@ -210,6 +212,8 @@ class PySCF(OverlapCalculator):
             self.log(f"Completed {step} step")
             prev_mf = mf
 
+        # Keep mf and dump mol
+        # save_mol(mol, self.make_fn("mol.chk"))
         self.mf = mf
         self.calc_counter += 1
 
