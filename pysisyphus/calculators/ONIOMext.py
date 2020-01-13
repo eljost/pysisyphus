@@ -136,8 +136,7 @@ class Model():
             self.log(f"\tLink {i:02d}: {link}")
 
         if len(self.links) == 0:
-            self.log("Didn't create any link atoms!")
-        self.log("")
+            self.log("Didn't create any link atoms!\n")
 
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
@@ -392,7 +391,11 @@ class ONIOMext(Calculator):
                  f"{len(self.models)} models.")
 
     def run_calculations(self, atoms, coords, method):
-        self.log("Electronic embedding calculation")
+        titles = {
+            None: "",
+            "electronic": "Electronic embedding",
+        }
+        self.log(f"{titles[self.embedding]} ONIOM calculation")
 
         all_results = list()
         point_charges = None
@@ -413,12 +416,16 @@ class ONIOMext(Calculator):
                 # not in the current layer
                 only_parent_inds = list(parent_inds - layer_inds)
                 ee_charges = charges[only_parent_inds]
-                # ee_charge_sum = sum(ee_charges)
-                # self.log(f"sum(ee_charges)={ee_charge_sum:.4f}")
+                ee_charge_sum = sum(ee_charges)
 
                 point_charges = np.zeros((ee_charges.size, 4))
                 point_charges[:,:3] = coords.reshape(-1, 3)[only_parent_inds]
                 point_charges[:,3] = ee_charges
+
+                self.log(f"Polarizing calculation in layer {i} ({layer}) by "
+                         f"charges from layer {i-1} ({self.layers[i-1]})."
+                )
+                self.log(f"sum(charges)={ee_charge_sum:.4f}")
 
             results = [getattr(model, method)(atoms, coords, point_charges=point_charges)
                        for model in layer]

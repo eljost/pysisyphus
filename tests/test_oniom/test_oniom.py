@@ -11,6 +11,9 @@ from pysisyphus.testing import using_gaussian16
 from pysisyphus.init_logging import init_logging
 
 
+init_logging()
+
+
 @using_gaussian16
 def test_energy():
     geom = geom_from_library("alkyl17_sto3g_opt.xyz")
@@ -159,10 +162,3 @@ def test_electronic_embedding(embedding, ref_energy, ref_force_norm):
 
     assert energy == pytest.approx(ref_energy)
     assert np.linalg.norm(forces) == pytest.approx(ref_force_norm)
-
-
-if __name__ == "__main__":
-    init_logging()
-    # test_energy()
-    # test_gradient()
-    test_electronic_embedding()
