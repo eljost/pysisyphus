@@ -157,7 +157,7 @@ class PySCF(OverlapCalculator):
                 results = self.get_forces(atoms, coords)
         return results
 
-    def get_hessian(self, atoms, coords):
+    def get_hessian(self, atoms, coords, prepare_kwargs=None):
         if prepare_kwargs is None:
             prepare_kwargs = {}
         point_charges = prepare_kwargs.get("point_charges", None)
