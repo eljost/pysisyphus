@@ -136,14 +136,14 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
     "calc_key, embedding, ref_energy, ref_force_norm",
     [
         # No embedding
-        # pytest.param("g16", None,   -582.3920349478807, 0.09403378140930853,
-                     # marks=using_gaussian16),
-        # pytest.param("pyscf", None, -582.3920349478807, 0.09403378140930853,
-                     # marks=using_pyscf),
+        pytest.param("g16", None,   -582.3920349478807, 0.09403378140930853,
+                     marks=using_gaussian16),
+        pytest.param("pyscf", None, -582.3920349478807, 0.09403378140930853,
+                     marks=using_pyscf),
 
         # Electronic embedding
-        # pytest.param("g16", "electronic",   -582.3997769406087, 0.0942232377699925,
-                     # marks=using_gaussian16),
+        pytest.param("g16", "electronic",   -582.3997769406087, 0.0942232377699925,
+                     marks=using_gaussian16),
         pytest.param("pyscf", "electronic", -582.3997769406087, 0.0942232377699925,
                      marks=using_pyscf),
 ])
