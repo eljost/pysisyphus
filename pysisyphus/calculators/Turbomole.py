@@ -48,7 +48,7 @@ class Turbomole(OverlapCalculator):
                         "ciss_a", "ucis_a", "gradient", "sing_a",
                         "__ccre*", "exstates", "coord",
                         "mwfn_wf:wavefunction.molden",
-                        "input.xyz",
+                        "input.xyz", "pc_gradients"
         )
 
         self.parser_funcs = {
@@ -139,7 +139,15 @@ class Turbomole(OverlapCalculator):
         self.ci_coeffs = None
         self.mo_inds = None
 
-    def prepare_input(self, atoms, coords, calc_type):
+    def prepare_point_charges(self, point_charges):
+        """$point_charges
+                <x> <y> <z> <q>
+        """
+        lines = [f"{x:.12} {y:.12f} {z:.12f} {q:.12f}" for x, y, z, q in point_charges]
+
+        return "$point_charges\n\t" + "\n".join(lines)
+
+    def prepare_input(self, atoms, coords, calc_type, point_charges=None):
         """To rectify this we have to construct the basecmd
         dynamically and construct it ad hoc. We could set a RI flag
         in the beginning and select the correct scf binary here from
@@ -207,6 +215,16 @@ class Turbomole(OverlapCalculator):
                              root_log_msg)
             self.log(f"Using '{repl}' for geoopt.")
 
+        if point_charges is not None:
+            charge_num = len(point_charges)
+            pc_str = self.prepare_point_charges(point_charges)
+            self.sub_control( "\$end", pc_str + "\n$end",
+                             f"appended {charge_num} point charges")
+            # Activate calculation of gradients on point charges
+            self.sub_control("\$drvopt", "$drvopt\npoint charges\n")
+            # Write point charge gradients to file
+            self.sub_control("\$end", "$point_charge_gradients file=pc_gradients\n$end")
+
     def sub_control(self, pattern, repl, log_msg="", **kwargs):
         path = self.path_already_prepared
         assert path
@@ -231,8 +249,10 @@ class Turbomole(OverlapCalculator):
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords, cmd=None):
-        self.prepare_input(atoms, coords, "force")
+    def get_forces(self, atoms, coords, cmd=None, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        self.prepare_input(atoms, coords, "force", **prepare_kwargs)
         kwargs = {
                 "calc": "force",
                 "shell": True, # To allow chained commands like 'ridft; rdgrad'

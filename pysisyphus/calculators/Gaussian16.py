@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
+import io
 import logging
 import os
 from pathlib import Path
@@ -13,7 +14,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.constants import AU2EV
+from pysisyphus.constants import AU2EV, BOHR2ANG
 
 
 class Gaussian16(OverlapCalculator):
@@ -143,7 +144,8 @@ class Gaussian16(OverlapCalculator):
         else:
             return ""
 
-    def prepare_input(self, atoms, coords, calc_type, did_stable=False):
+    def prepare_input(self, atoms, coords, calc_type,
+                      did_stable=False, point_charges=None):
         path = self.prepare_path(use_in_run=True)
         xyz_str = self.prepare_xyz_string(atoms, coords)
         with open(path / "input.xyz", "w") as handle:
@@ -185,6 +187,15 @@ class Gaussian16(OverlapCalculator):
         # and we dont want to 'optimize' it any further
         if did_stable:
             kwargs["route"] += " scf=maxcycles=0"
+        if point_charges is not None:
+            kwargs["route"] += " charge"
+            point_charges = point_charges.copy()
+            point_charges[:,:3] *= BOHR2ANG
+            with io.StringIO() as handle:
+                np.savetxt(handle, point_charges, fmt="%16.10f")
+                pc_str = handle.getvalue()
+            # Append point charges to coords
+            kwargs["coords"] += "\n\n" + pc_str
         inp = self.gaussian_input.format(**kwargs)
         return inp
 
@@ -273,19 +284,23 @@ class Gaussian16(OverlapCalculator):
                 results_dict[key] = np.array(res[2:])
         return results_dict
 
-    def get_energy(self, atoms, coords):
-        results = self.get_forces(atoms, coords)
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        results = self.get_forces(atoms, coords, prepare_kwargs)
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
         did_stable = False
         if self.stable:
             is_stable = self.run_stable(atoms, coords)
             self.log(f"Wavefunction is now stable: {is_stable}")
             did_stable = True
         inp = self.prepare_input(atoms, coords, "force",
-                                 did_stable=did_stable)
+                                 did_stable=did_stable, **prepare_kwargs)
         kwargs = {
             "calc": "force",
         }
@@ -623,6 +638,20 @@ class Gaussian16(OverlapCalculator):
         """
         double_mol_ovlp = full_mat[nbas_single:, :nbas_single]
         return double_mol_ovlp
+
+    def parse_charges(self, path=None):
+        if path is None and self.fchk is not None:
+            fchk_path = self.fchk
+        elif path is not None and path.endswith(".fchk"):
+            fchk_path = path
+        elif path is not None:
+            fchk_path = Path(path) / f"{self.fn_base}.fchk"
+
+        keys = ("Mulliken Charges", )
+        fchk_dict = self.parse_fchk(fchk_path, keys=keys)
+        charges = np.array(fchk_dict["Mulliken Charges"])
+
+        return charges
 
     def keep(self, path):
         kept_fns = super().keep(path)

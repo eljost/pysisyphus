@@ -44,10 +44,10 @@ CALC_DICT = {
     "g16": Gaussian16,
     "mopac": MOPAC,
     "openmolcas": OpenMolcas.OpenMolcas,
-    "orca": ORCA.ORCA,
+    "orca": ORCA,
     "psi4": Psi4,
     # "pyscf": PySCF,
-    "turbomole": Turbomole.Turbomole,
+    "turbomole": Turbomole,
     "xtb": XTB,
 }
 

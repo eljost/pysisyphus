@@ -5,8 +5,10 @@ import shutil
 
 import numpy as np
 import pyscf
-from pyscf import gto, grad, lib, hessian, tddft
+from pyscf import gto, grad, lib, hessian, tddft, qmmm
 from pyscf.dft import xcfun
+from pyscf.lib.chkfile import save_mol
+from pyscf.tools import cubegen
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 
@@ -112,17 +114,26 @@ class PySCF(OverlapCalculator):
 
         return mol
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        point_charges = prepare_kwargs.get("point_charges", None)
+
         mol = self.prepare_input(atoms, coords)
-        mf = self.run(mol)
+        mf = self.run(mol, point_charges=point_charges)
         results = {
             "energy": mf.e_tot,
         }
+
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        point_charges = prepare_kwargs.get("point_charges", None)
+
         mol = self.prepare_input(atoms, coords)
-        mf = self.run(mol)
+        mf = self.run(mol, point_charges=point_charges)
         # >>> mf.chkfile = '/path/to/chkfile'
         # >>> mf.init_guess = 'chkfile'
         grad_driver = mf.Gradients()
@@ -141,7 +152,6 @@ class PySCF(OverlapCalculator):
             "forces": -gradient.flatten(),
         }
 
-        self.mf = mf
         if self.track:
             self.store_overlap_data(atoms, coords)
             if self.track_root():
@@ -149,9 +159,13 @@ class PySCF(OverlapCalculator):
                 results = self.get_forces(atoms, coords)
         return results
 
-    def get_hessian(self, atoms, coords):
+    def get_hessian(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+        point_charges = prepare_kwargs.get("point_charges", None)
+
         mol = self.prepare_input(atoms, coords)
-        mf = self.run(mol)
+        mf = self.run(mol, point_charges=point_charges)
         H = mf.Hessian().kernel()
 
         # The returned hessian is 4d ... ok. This probably serves a purpose
@@ -161,9 +175,10 @@ class PySCF(OverlapCalculator):
             "energy": mf.e_tot,
             "hessian": H,
         }
+
         return results
 
-    def run(self, mol):
+    def run(self, mol, point_charges=None):
         steps = self.multisteps[self.method]
         self.log(f"Running steps '{steps}' for method {self.method}")
         for i, step in enumerate(steps):
@@ -181,6 +196,11 @@ class PySCF(OverlapCalculator):
                 if self.auxbasis:
                     mf.density_fit(auxbasis=self.auxbasis)
                     self.log(f"Using density fitting with auxbasis {self.auxbasis}.")
+
+                if point_charges is not None:
+                    mf = qmmm.mm_charge(mf, point_charges[:,:3], point_charges[:,3])
+                    self.log(f"Added {len(point_charges)} point charges with "
+                             f"sum(q)={sum(point_charges[:,3]):.4f}.")
             else:
                 mf = self.get_driver(step, mf=prev_mf)  # noqa: F821
 
@@ -191,7 +211,12 @@ class PySCF(OverlapCalculator):
             mf.kernel()
             self.log(f"Completed {step} step")
             prev_mf = mf
+
+        # Keep mf and dump mol
+        # save_mol(mol, self.make_fn("mol.chk"))
+        self.mf = mf
         self.calc_counter += 1
+
         return mf
 
     def prepare_overlap_data(self):
@@ -219,6 +244,12 @@ class PySCF(OverlapCalculator):
         all_energies[0] = gs_energy
         all_energies[1:] = exc_energies
         return mo_coeffs, ci_coeffs, all_energies
+
+    def parse_charges(self):
+        # Mulliken charges
+        results = self.mf.analyze(with_meta_lowdin=False)
+
+        return results[0][1]
 
     def __str__(self):
         return f"PySCF({self.name})"

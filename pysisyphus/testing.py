@@ -21,10 +21,16 @@ def using(calculator):
 
     if calculator not in _using_cache:
         available = False
+
         try:
-            cmd = Config[calculator]["cmd"]
-            # _ = shutil.which(cmd)
-            # print("\t", calculator, _)
+            # Look for dscf availability
+            if calculator == "turbomole":
+                cmd = "dscf"
+            else:
+                # Try to read from .pysisyphusrc
+                cmd = Config[calculator]["cmd"]
+
+
             available = bool(shutil.which(cmd))
         except KeyError:
             pass
@@ -44,3 +50,4 @@ def using(calculator):
 
 using_pyscf = using("pyscf")
 using_gaussian16 = using("gaussian16")
+using_turbomole = using("turbomole")

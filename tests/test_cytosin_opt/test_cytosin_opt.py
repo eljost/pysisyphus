@@ -2,11 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from pysisyphus.calculators.Gaussian16 import Gaussian16
-from pysisyphus.calculators.ORCA import ORCA
-from pysisyphus.calculators.Psi4 import Psi4
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.calculators.Turbomole import Turbomole
+from pysisyphus.calculators import Turbomole, ORCA, Gaussian16, Psi4
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
