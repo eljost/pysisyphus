@@ -355,7 +355,6 @@ def get(geoms, index):
 
 
 def origin(geoms):
-    import pdb; pdb.set_trace()
     for i, geom in enumerate(geoms):
         print(f"{i:02d}: {geom}")
         geom.coords3d -= geom.coords3d.min(axis=0)
