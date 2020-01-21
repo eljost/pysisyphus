@@ -72,6 +72,7 @@ class ORCA(OverlapCalculator):
         """
 
         self.parser_funcs = {
+            "energy": self.parse_energy,
             "grad": self.parse_engrad,
             "hessian": self.parse_hessian,
             "noparse": lambda path: None,
@@ -136,8 +137,9 @@ class ORCA(OverlapCalculator):
         return block_str
 
     def get_energy(self, atoms, coords):
-        results = self.get_forces(atoms, coords)
-        del results["forces"]
+        calc_type = ""
+        inp = self.prepare_input(atoms, coords, calc_type)
+        results = self.run(inp, calc="energy")
         return results
 
     def get_forces(self, atoms, coords, prepare_kwargs=None):
@@ -254,6 +256,19 @@ class ORCA(OverlapCalculator):
             raise Exception("Proper handling of TDDFT and hessian "
                             " is not yet implemented.")
         return results
+
+    def parse_energy(self, path):
+        log_fn = glob.glob(os.path.join(path / "orca.out"))
+        if not log_fn:
+            raise Exception("ORCA calculation failed.")
+
+        assert(len(log_fn) == 1)
+        log_fn = log_fn[0]
+        with open(log_fn) as handle:
+            text = handle.read()
+        mobj = re.search("FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
+        energy = float(mobj[1])
+        return {"energy": energy}
 
     def parse_engrad(self, path):
         results = {}
