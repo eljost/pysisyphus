@@ -949,6 +949,7 @@ def clean(force=False):
         "ts_opt.xyz",
         "final_geometry.xyz",
         "calculated_init_hessian",
+        "cur_out",
     )
     to_rm_paths = list()
     for glob in rm_globs:
