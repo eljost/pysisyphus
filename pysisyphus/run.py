@@ -554,10 +554,10 @@ def run_irc(geom, irc_kwargs, calc_getter):
 
     to_opt = list()
     if opt_ends and irc.forward:
-        coords = irc.all_coords_umw[0]
+        coords = irc.all_coords[0]
         to_opt.append((coords, "forward_end"))
     if opt_ends and irc.backward:
-        coords = irc.all_coords_umw[-1]
+        coords = irc.all_coords[-1]
         to_opt.append((coords, "backward_end"))
 
     opt_kwargs = {
@@ -945,8 +945,8 @@ def clean(force=False):
         "internal_coords.log",
         "hei_tangent",
         "optimization.trj",
-        "splined_hei.xyz",
-        "ts_opt.xyz",
+        # "splined_hei.xyz",
+        # "ts_opt.xyz",
         "final_geometry.xyz",
         "calculated_init_hessian",
         "cur_out",
