@@ -6,10 +6,12 @@ import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.calculators.Gaussian16 import Gaussian16
+# from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.calculators import XTB, Gaussian16
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.irc import *
+from pysisyphus.run import run_irc
 from pysisyphus.testing import using
 
 
@@ -91,3 +93,32 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_):
     assert bond(2, 7) == pytest.approx(0.93, abs=0.01)
     assert bond(4, 7) == pytest.approx(2.42, abs=0.01)
     assert bond(2, 0) == pytest.approx(2.23, abs=0.01)
+
+
+@pytest.mark.parametrize(
+    "opt_ends, opt_geom_num", [
+        pytest.param(False, 0, marks=using("xtb")),
+        pytest.param(True, 2, marks=using("xtb")),
+        pytest.param("fragments", 3, marks=using("xtb")),
+    ]
+)
+def test_run_irc_opt_ends(opt_ends, opt_geom_num):
+    geom = geom_from_library("hfabstraction_ts_opt_xtb.xyz")
+    calc = XTB(pal=2)
+    geom.set_calculator(calc)
+
+    calc_ind = 0
+    def calc_getter(index):
+        nonlocal calc_ind
+        calc = XTB(calc_number=calc_ind, pal=2)
+        calc_ind += 1
+        return calc
+
+    irc_kwargs = {
+        "type": "eulerpc",
+        "opt_ends": opt_ends,
+        "max_cycles": 15,
+
+    }
+    opt_geoms = run_irc(geom, irc_kwargs, calc_getter)
+    assert len(opt_geoms) == opt_geom_num

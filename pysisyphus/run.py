@@ -30,6 +30,8 @@ from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
+from pysisyphus.intcoords.fragments import merge_fragments
+from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.optimizers import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
@@ -540,11 +542,13 @@ def run_irc(geom, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
     calc_number = 0
-    def set_calc(geom):
+    def set_calc(geom, name):
         nonlocal calc_number
         calc_number += 1
-        geom.set_calculator(calc_getter(calc_number))
-    set_calc(geom)
+        calc = calc_getter(calc_number)
+        calc.base_name = name
+        geom.set_calculator(calc)
+    set_calc(geom, "irc")
 
     irc_type = irc_kwargs.pop("type")
     opt_ends = irc_kwargs.pop("opt_ends")
@@ -552,6 +556,10 @@ def run_irc(geom, irc_kwargs, calc_getter):
     irc = IRC_DICT[irc_type](geom, **irc_kwargs)
     irc.run()
 
+    if opt_ends:
+        print(highlight_text(f"Optimizing IRC ends"))
+
+    # Gather geometries that are to be optimized
     to_opt = list()
     if opt_ends and irc.forward:
         coords = irc.all_coords[0]
@@ -559,17 +567,52 @@ def run_irc(geom, irc_kwargs, calc_getter):
     if opt_ends and irc.backward:
         coords = irc.all_coords[-1]
         to_opt.append((coords, "backward_end"))
+    if opt_ends and irc.downhill:
+        coords = irc.all_coords[-1]
+        to_opt.append((coords, "downhill_end"))
+
+    def to_frozensets(sets):
+        return [frozenset(_) for _ in sets]
+
+    # Convert to array for easy indexing with the fragment lists
+    atoms = np.array(geom.atoms)
+    fragment_names = list()
+    fragments_to_opt = list()
+    for coords, base_name in to_opt:
+        c3d = coords.reshape(-1, 3)
+        if opt_ends == "fragments":
+            bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
+            # Sort atom indices, so the atoms don't become totally scrambled.
+            fragments = [sorted(frag) for frag in merge_fragments(bond_sets)]
+            # Disable higher fragment counts. I'm looking forward to the day
+            # this ever occurs and someone complains :)
+            assert len(fragments) < 10, "Something probably went wrong"
+            fragment_names = [f"{base_name}_fragment_{i:03d}"
+                              for i, _ in enumerate(fragments)]
+            print(f"Found {len(fragments)} fragment(s) at {base_name}")
+            for frag_name, frag in zip(fragment_names, fragments):
+                print(f"\t{frag_name}: {len(frag)} atoms")
+        # Optimize the full geometries, without splitting them into fragments
+        else:
+            fragments = [range(len(atoms)), ]
+            fragment_names = [base_name, ]
+        fragment_atoms = [tuple(atoms[list(frag)]) for frag in fragments]
+        fragment_coords = [c3d[frag].flatten() for frag in fragments]
+        fragments_to_opt.extend(
+            list(zip(fragment_names, fragment_atoms, fragment_coords))
+        )
+        print()
+    to_opt = fragments_to_opt
 
     opt_kwargs = {
         "max_cycles": 150,
-        "thresh": "gau",
-        "trust_max": 0.3,
         "dump": True,
     }
-    for coords, name in to_opt:
+    opt_geoms = list()
+    for name, atoms, coords in to_opt:
         print(highlight_text(f"Optimizing {name}"))
-        geom = Geometry(geom.atoms, coords, coord_type="redund")
-        set_calc(geom)
+        geom = Geometry(atoms, coords, coord_type="redund")
+        set_calc(geom, name)
 
         prefix = f"{name}_"
         opt = RFOptimizer.RFOptimizer(geom, prefix=prefix, **opt_kwargs)
@@ -578,6 +621,8 @@ def run_irc(geom, irc_kwargs, calc_getter):
         shutil.move(opt.final_fn, opt_fn)
         print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
         print()
+        opt_geoms.append(geom)
+    return opt_geoms
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
