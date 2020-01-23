@@ -210,6 +210,11 @@ class HessianOptimizer(Optimizer):
             else:
                 self.H = self.geometry.hessian
                 key = "exact"
+                hess_fn = self.get_path_for_fn(
+                            f"calculated_cart_hessian_cycle_{self.cur_cycle}"
+                )
+                np.savetxt(hess_fn, self.geometry._hessian)
+                self.log(f"Wrote calculated cartesian hessian to '{hess_fn}'")
             if not (self.cur_cycle == 0):
                 self.log(f"Recalculated {key} hessian in cycle {self.cur_cycle}.")
             # Reset counter. It is also reset when the recalculation was initiated
