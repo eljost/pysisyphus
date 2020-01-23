@@ -85,7 +85,13 @@ class TSHessianOptimizer(HessianOptimizer):
             big_contribs = np.bitwise_and(big_contribs, neg_inds)
             # Holds the indices of the modes to consider
             big_inds = np.arange(prim_row.size)[big_contribs]
-            max_contrib_ind = big_inds[np.abs(prim_row[big_contribs]).argmax()]
+            try:
+                max_contrib_ind = big_inds[np.abs(prim_row[big_contribs]).argmax()]
+            except ValueError as err:
+                print( "No imaginary mode with significant contribution "
+                      f"(>{self.prim_contrib_thresh:.3f}) of primitive internal "
+                      f"{self.prim_coord} found!")
+                raise err
             self.root = max_contrib_ind
 
             contrib_str = "\n".join(
