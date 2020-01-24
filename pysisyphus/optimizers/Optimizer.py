@@ -391,7 +391,7 @@ class Optimizer:
                     self.log("Did reparametrization")
 
                     rms = np.sqrt(np.mean((prev_coords - cur_coords)**2))
-                    self.log("rms of coordinates after reparametrization={rms.:6f}")
+                    self.log(f"rms of coordinates after reparametrization={rms:.6f}")
                     self.is_converged = rms < self.reparam_thresh
                     if self.is_converged:
                         print("Insignificant change in coordinates after "
