@@ -69,7 +69,7 @@ class ModeKill(IRC):
         self.mw_down_step = (self.step_length*self.kill_modes).sum(axis=1)
 
     def step(self):
-        if self.hessian_update and (self.cur_step > 0):
+        if self.hessian_update and (self.cur_cycle > 0):
             # Hessian update with mass-weighted values
             dx = self.irc_mw_coords[-1] - self.irc_mw_coords[-2]
             dg = (self.irc_mw_gradients[-1] - self.irc_mw_gradients[-2])

@@ -98,7 +98,7 @@ class GonzalesSchlegel(IRC):
 
         micro_coords_ = list()
         i = 0
-        # self.table.print(f"Microiterations for step {self.cur_step}")
+        # self.table.print(f"Microiterations for step {self.cur_cycle}")
         self.table.print(self.micro_formatter.header)
         while True:
             if i == self.max_micro_steps:

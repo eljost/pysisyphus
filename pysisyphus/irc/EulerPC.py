@@ -63,8 +63,8 @@ class EulerPC(IRC):
         mw_grad = self.mw_gradient
         energy = self.energy
 
-        if self.cur_step > 0:
-            if self.hessian_recalc and (self.cur_step % self.hessian_recalc == 0):
+        if self.cur_cycle > 0:
+            if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc == 0):
                 self.mw_H = self.mw_hessian
                 self.log("Calculated excact hessian")
             else:
