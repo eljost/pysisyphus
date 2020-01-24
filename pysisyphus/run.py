@@ -271,9 +271,9 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         # # Determine which imaginary mode has the highest overlap
         # # with the splined HEI tangent.
         eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
-        neg_inds = eigvals < -1e-8
+        neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
-        print(f"Negative eigenvalues at splined HEI: {eigval_str}")
+        print(f"Negative eigenvalues at splined HEI:\n{eigval_str}")
         neg_eigvecs = eigvecs.T[neg_inds]
         ovlps = [np.abs(imag_mode.dot(redund_tangent)) for imag_mode in neg_eigvecs]
         print("Overlaps between HEI tangent and imaginary modes:")
