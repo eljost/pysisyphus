@@ -255,7 +255,10 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
 
     ts_optimizer = TSOPT_DICT[tsopt_key]
-    do_hess = tsopt_kwargs.pop("do_hess")
+    try:
+        do_hess = tsopt_kwargs.pop("do_hess")
+    except KeyError:
+        do_hess = False
 
     if tsopt_key == "dimer":
         geoms = [ts_geom, ]

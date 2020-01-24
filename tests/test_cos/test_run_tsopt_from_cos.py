@@ -83,7 +83,7 @@ def test_run_tsopt_from_cos(tsopt_key, tsopt_kwargs):
         "thresh": "gau_loose",
         "overachieve_factor": 1,
         # "hessian_recalc": 10,
-        # "do_hess": True,
+        # "do_hess": False,
     }
     tsopt_kwargs_.update(tsopt_kwargs)
 
