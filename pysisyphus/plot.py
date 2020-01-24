@@ -7,6 +7,7 @@ import sys
 
 import h5py
 import matplotlib
+from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Rectangle
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -96,11 +97,12 @@ class Plotter:
         self.lines = self.ax.plot(self.coord_diffs[0], self.data[0], "o-")
         if self.legend:
             self.ax.legend(self.lines, self.legend)
-        self.animation = matplotlib.animation.FuncAnimation(
-                                                self.fig,
-                                                self.update_func,
-                                                frames=self.cycles,
-                                                interval=self.interval)
+        self.animation = FuncAnimation(
+                            self.fig,
+                            self.update_func,
+                            frames=self.cycles,
+                            interval=self.interval
+        )
         if self.save:
             self.animation.save("animation.gif", writer='imagemagick', fps=5)
         plt.show()
@@ -226,11 +228,11 @@ def plot_aneb():
         lines[0].set_ydata(energies_[i])
 
     def animate():
-        animation = matplotlib.animation.FuncAnimation(
-                                            fig,
-                                            update_func,
-                                            frames=num_cycles,
-                                            interval=250,
+        animation = FuncAnimation(
+                        fig,
+                        update_func,
+                        frames=num_cycles,
+                        interval=250,
         )
         return animation
     anim = animate()
