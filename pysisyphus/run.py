@@ -200,6 +200,8 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 
 def run_cos(cos, calc_getter, opt_getter):
+    print(highlight_text(f"Running {cos}"))
+
     for i, image in enumerate(cos.images):
         image.set_calculator(calc_getter(i))
     opt = opt_getter(cos)
@@ -213,8 +215,8 @@ def run_cos(cos, calc_getter, opt_getter):
     print(f"Wrote splined HEI to '{hei_fn}'")
 
 
-def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
-    print("Starting TS optimization after chain of states method.")
+def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
+    print(highlight_text(f"Running TS-optimization from COS"))
 
     # Use plain HEI
     hei_index = cos.get_hei_index()
@@ -265,7 +267,7 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         dimer_result = ts_optimizer(geoms, **tsopt_kwargs)
         dimer_cycles = dimer_result.dimer_cycles
         last_cycle = dimer_cycles[-1]
-    elif tsopt_key == "rsprfo":
+    else:
         # # Determine which imaginary mode has the highest overlap
         # # with the splined HEI tangent.
         eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
@@ -481,7 +483,6 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
 
     out_xyz = list()
     for ind, str_ in to_preopt[preopt]:
-        print(f"Preoptimizing {str_} geometry.")
         geom = geoms[ind]
         prefix = f"{str_}_pre"
         opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix),
@@ -782,7 +783,10 @@ def handle_yaml(yaml_str):
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
                               "stocastic", "tsopt", "shake", "irc",
                               "preopt", )):
-        run_dict[key].update(yaml_dict[key])
+        try:
+            run_dict[key].update(yaml_dict[key])
+        except TypeError:
+            print(f"Using default values for '{key}' section.")
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type",
                               "add_prims")):
@@ -880,9 +884,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
+        import pdb; pdb.set_trace()
         if run_dict["tsopt"]:
             calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-            run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter)
+            run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
@@ -1042,6 +1047,8 @@ def run():
     start_time = time.time()
     args = parse_args(sys.argv[1:])
 
+    print_header()
+
     if args.yaml:
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
         init_logging(yaml_dir, args.scheduler)
@@ -1063,7 +1070,6 @@ def run():
         print(f"pysisyphus {get_versions()['version']}")
         return
 
-    print_header()
     run_dict_without_none = {k: v for k, v in run_dict.items()
                              if v is not None}
     pprint(run_dict_without_none)
