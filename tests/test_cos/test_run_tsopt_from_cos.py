@@ -60,7 +60,7 @@ def test_run_tsopt_from_cos(tsopt_key, tsopt_kwargs):
     calc_number = 0
     def calc_getter():
         nonlocal calc_number
-        calc = ORCA(**orca_kwargs, calc_nubmer=calc_number)
+        calc = ORCA(**orca_kwargs, calc_number=calc_number)
         calc_number += 1
         return calc
 
@@ -68,11 +68,15 @@ def test_run_tsopt_from_cos(tsopt_key, tsopt_kwargs):
         geom.set_calculator(calc_getter())
 
     cos = NEB(geoms)
-    opt_kwargs = {
-        "max_cycles": 1,
-    }
-    opt = SteepestDescent(cos, **opt_kwargs)
-    opt.run()
+    # We don't actually need to run an optimization step.
+    # When calling 'get_hei_index()' in the run_tsopt... function energy
+    # calculations will be done.
+
+    # opt_kwargs = {
+        # "max_cycles": 1,
+    # }
+    # opt = SteepestDescent(cos, **opt_kwargs)
+    # opt.run()
 
     tsopt_kwargs_ = {
         "trust_max": 0.3,
