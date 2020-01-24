@@ -27,18 +27,23 @@ def geom_from_xyz_file(xyz_fn, **kwargs):
     return geom
 
 
-def geom_from_library(xyz_fn, **kwargs):
-    xyz_dir = THIS_DIR / "../xyz_files/"
-    xyz_fn = xyz_dir / xyz_fn
-    return geom_from_xyz_file(xyz_fn, **kwargs)
-
-
 def geoms_from_trj(trj_fn, first=None, **kwargs):
     atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
     geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, comment=comment, **kwargs)
              for atoms, coords, comment in atoms_coords_comments
     ]
     return geoms
+
+
+def geom_from_library(xyz_fn, **kwargs):
+    xyz_dir = THIS_DIR / "../xyz_files/"
+    xyz_fn = xyz_dir / xyz_fn
+    if xyz_fn.suffix == ".xyz":
+        return geom_from_xyz_file(xyz_fn, **kwargs)
+    elif xyz_fn.suffix == ".trj":
+        return geoms_from_trj(xyz_fn, **kwargs)
+    else:
+        raise Exception("Unknown filetype!")
 
 
 def get_baker_geoms(**kwargs):
