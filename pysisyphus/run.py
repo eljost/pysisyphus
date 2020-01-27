@@ -1086,8 +1086,9 @@ def run():
         # energies_fn, max_ovlp_inds_fn = args.sort_by_overlaps
         # consider_first = args.consider_first
         # sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
-    else:
-        main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
+    # else:
+        # main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
+    main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     end_time = time.time()
     duration = int(end_time - start_time)
     print(f"pysisyphus run took {duration}s.")
