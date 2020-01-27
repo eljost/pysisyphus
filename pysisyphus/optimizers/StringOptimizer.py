@@ -26,9 +26,10 @@ class StringOptimizer(Optimizer):
         # Add one as we later subtract 1 before we check if this value
         # is 0.
         self.stop_in = self.stop_in_when_full + 1
+        self.is_cart_opt = self.geometry.coord_type is "cart"
 
     def prepare_opt(self):
-        if self.is_cos and self.align:
+        if self.is_cos and self.is_cart_opt and self.align:
             procrustes(self.geometry)
 
     def reset(self):
@@ -68,7 +69,7 @@ class StringOptimizer(Optimizer):
         except IndexError:
             string_size_changed = True
 
-        if string_size_changed and self.is_cos and self.align:
+        if string_size_changed and self.is_cos and self.is_cart_opt and self.align:
             procrustes(self.geometry)
             self.log("Aligned string.")
 
