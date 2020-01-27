@@ -391,7 +391,7 @@ class Optimizer:
                     self.log("Did reparametrization")
 
                     rms = np.sqrt(np.mean((prev_coords - cur_coords)**2))
-                    self.log("rms of coordinates after reparametrization={rms.:6f}")
+                    self.log(f"rms of coordinates after reparametrization={rms:.6f}")
                     self.is_converged = rms < self.reparam_thresh
                     if self.is_converged:
                         print("Insignificant change in coordinates after "
@@ -414,6 +414,11 @@ class Optimizer:
 
         if (not self.is_cos) and (not self.stopped):
             print(self.final_summary())
+            # Remove 'current_geometry.xyz' file
+            try:
+                os.remove(self.current_fn)
+            except FileNotFoundError:
+                self.log(f"Tried to delete '{self.current_fn}'. Couldn't find it.")
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")

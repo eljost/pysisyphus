@@ -59,6 +59,8 @@ class ChainOfStates:
         self.coord_type = img0.coord_type
         assert self.coord_type in self.valid_coord_types, \
                 f"Invalid coord_type! Supported types are: {self.valid_coord_types}"
+        assert all([img.coord_type == self.coord_type for img in self.images]), \
+                "coord_type of images differ!"
         try:
             self.prim_indices = img0.internal.prim_indices
         except AttributeError:
@@ -150,7 +152,8 @@ class ChainOfStates:
         """
         assert self.images[i].coord_type == "cart", \
             "ChainOfStates.set_coords_at() has to be reworked to support " \
-            "internal coordiantes. Try to set 'align: False' in the .yaml file."
+            "internal coordiantes. Try to set 'align: False' in the 'opt' " \
+            "section of the .yaml input file."
         if i in self.moving_indices:
             self.images[i].coords = coords
         # When dealing with a fixed image don't set coords through the
@@ -487,3 +490,6 @@ class ChainOfStates:
 
     def get_image_calc_counter_sum(self):
         return sum([image.calculator.calc_counter for image in self.images])
+
+    def __str__(self):
+        return self.__class__.__name__

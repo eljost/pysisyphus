@@ -13,7 +13,6 @@ from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.Geometry import Geometry
 from pysisyphus.cos.GrowingNT import GrowingNT
 from pysisyphus.cos.GrowingString import GrowingString
-from pysisyphus.plotters.AnimGS import AnimGS
 from pysisyphus.plotters.AnimPlot import AnimPlot
 
 

@@ -114,7 +114,7 @@ class DampedVelocityVerlet(IRC):
         damped_velocity, damping_factor = self.damp_velocity(velocity)
         self.velocities.append(damped_velocity)
 
-        if self.cur_step == 0:
+        if self.cur_cycle == 0:
             # No error estimation in the first step
             estimated_error = self.error_tol
         else:

@@ -355,8 +355,10 @@ def get(geoms, index):
 
 
 def origin(geoms):
-    for geom in geoms:
+    for i, geom in enumerate(geoms):
+        print(f"{i:02d}: {geom}")
         geom.coords3d -= geom.coords3d.min(axis=0)
+        print(f"\tmax(coords3d): {geom.coords3d.max(axis=0)}")
     return geoms
 
 

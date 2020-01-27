@@ -340,7 +340,7 @@ class ONIOM(Calculator):
 
         # Create models and required calculators
         self.models = list()
-        self.layers = [list() for layer in layers]
+        self.layers = [list() for _ in layers]
         for model in model_keys[1:]:
             parent_layer_ind = self.model_parent_layers[model]
             parent_layer = layers[parent_layer_ind]

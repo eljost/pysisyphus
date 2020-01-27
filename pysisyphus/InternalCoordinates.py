@@ -21,6 +21,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.findbonds import get_cov_radii_sum_array
+from pysisyphus.intcoords.fragments import merge_fragments
 
 
 @attr.s(auto_attribs=True)
@@ -235,28 +236,6 @@ class RedundantCoords:
             k_diag.append(k_dict[len(primitive.inds)] * rho_product)
         return np.diagflat(k_diag)
 
-    def merge_fragments(self, fragments):
-        """Merge a list of sets."""
-        # Hold the final fragments that can't be merged further, as they
-        # contain distinct atoms.
-        merged = list()
-        while len(fragments) > 0:
-            popped = fragments.pop(0)
-            # Look for an intersection between the popped unmerged fragment
-            # and the remaining unmerged fragments.
-            for frag in fragments:
-                if popped & frag:
-                    fragments.remove(frag)
-                    # If a intersecting unmerged fragment is found merge
-                    # both fragments and append them at the end.
-                    fragments.append(popped | frag)
-                    break
-            else:
-                # Add the unmerged fragment into merged if it doesn't
-                # intersect with any other unmerged fragment.
-                merged.append(popped)
-        return merged
-
     def connect_fragments(self, cdm, fragments):
         """Determine the smallest interfragment bond for a list
         of fragments and a condensed distance matrix."""
@@ -337,7 +316,7 @@ class RedundantCoords:
 
         # Merge bond index sets into fragments
         bond_ind_sets = [frozenset(bi) for bi in bond_indices]
-        fragments = self.merge_fragments(bond_ind_sets)
+        fragments = merge_fragments(bond_ind_sets)
 
         # Look for unbonded single atoms and create fragments for them.
         bonded_set = set(tuple(bond_indices.flatten()))

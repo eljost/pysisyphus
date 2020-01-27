@@ -25,7 +25,9 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 class EulerPC(IRC):
 
     def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
-                 max_pred_steps=500, **kwargs):
+                 max_pred_steps=500, rms_grad_thresh=1e-4, **kwargs):
+        # Use a tighter criterion
+        kwargs["rms_grad_thresh"] = rms_grad_thresh
         super().__init__(*args, **kwargs)
 
         self.hessian_recalc = hessian_recalc
@@ -61,8 +63,8 @@ class EulerPC(IRC):
         mw_grad = self.mw_gradient
         energy = self.energy
 
-        if self.cur_step > 0:
-            if self.hessian_recalc and (self.cur_step % self.hessian_recalc == 0):
+        if self.cur_cycle > 0:
+            if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc == 0):
                 self.mw_H = self.mw_hessian
                 self.log("Calculated excact hessian")
             else:

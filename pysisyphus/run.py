@@ -30,6 +30,8 @@ from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
+from pysisyphus.intcoords.fragments import merge_fragments
+from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.optimizers import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
@@ -198,21 +200,24 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 
 def run_cos(cos, calc_getter, opt_getter):
+    print(highlight_text(f"Running {cos}"))
+
     for i, image in enumerate(cos.images):
         image.set_calculator(calc_getter(i))
     opt = opt_getter(cos)
     opt.run()
-    hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
-    hei_geom = Geometry(cos.images[0].atoms, hei_coords)
-    hei_geom.coords = hei_coords
-    hei_fn = "splined_hei.xyz"
-    with open(hei_fn, "w") as handle:
-        handle.write(hei_geom.as_xyz())
-    print(f"Wrote splined HEI to '{hei_fn}'")
+    if not opt.stopped:
+        hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
+        hei_geom = Geometry(cos.images[0].atoms, hei_coords)
+        hei_geom.coords = hei_coords
+        hei_fn = "splined_hei.xyz"
+        with open(hei_fn, "w") as handle:
+            handle.write(hei_geom.as_xyz())
+        print(f"Wrote splined HEI to '{hei_fn}'")
 
 
-def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
-    print("Starting TS optimization after chain of states method.")
+def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
+    print(highlight_text(f"Running TS-optimization from COS"))
 
     # Use plain HEI
     hei_index = cos.get_hei_index()
@@ -251,7 +256,10 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
 
     ts_optimizer = TSOPT_DICT[tsopt_key]
-    do_hess = tsopt_kwargs.pop("do_hess")
+    try:
+        do_hess = tsopt_kwargs.pop("do_hess")
+    except KeyError:
+        do_hess = False
 
     if tsopt_key == "dimer":
         geoms = [ts_geom, ]
@@ -263,13 +271,13 @@ def run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         dimer_result = ts_optimizer(geoms, **tsopt_kwargs)
         dimer_cycles = dimer_result.dimer_cycles
         last_cycle = dimer_cycles[-1]
-    elif tsopt_key == "rsprfo":
+    else:
         # # Determine which imaginary mode has the highest overlap
         # # with the splined HEI tangent.
         eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
-        neg_inds = eigvals < -1e-8
+        neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
-        print(f"Negative eigenvalues at splined HEI: {eigval_str}")
+        print(f"Negative eigenvalues at splined HEI:\n{eigval_str}")
         neg_eigvecs = eigvecs.T[neg_inds]
         ovlps = [np.abs(imag_mode.dot(redund_tangent)) for imag_mode in neg_eigvecs]
         print("Overlaps between HEI tangent and imaginary modes:")
@@ -479,7 +487,6 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
 
     out_xyz = list()
     for ind, str_ in to_preopt[preopt]:
-        print(f"Preoptimizing {str_} geometry.")
         geom = geoms[ind]
         prefix = f"{str_}_pre"
         opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix),
@@ -540,11 +547,13 @@ def run_irc(geom, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
     calc_number = 0
-    def set_calc(geom):
+    def set_calc(geom, name):
         nonlocal calc_number
         calc_number += 1
-        geom.set_calculator(calc_getter(calc_number))
-    set_calc(geom)
+        calc = calc_getter(calc_number)
+        calc.base_name = name
+        geom.set_calculator(calc)
+    set_calc(geom, "irc")
 
     irc_type = irc_kwargs.pop("type")
     opt_ends = irc_kwargs.pop("opt_ends")
@@ -552,24 +561,62 @@ def run_irc(geom, irc_kwargs, calc_getter):
     irc = IRC_DICT[irc_type](geom, **irc_kwargs)
     irc.run()
 
+    if opt_ends:
+        print(highlight_text(f"Optimizing IRC ends"))
+
+    # Gather geometries that are to be optimized
     to_opt = list()
     if opt_ends and irc.forward:
-        coords = irc.all_coords_umw[0]
+        coords = irc.all_coords[0]
         to_opt.append((coords, "forward_end"))
     if opt_ends and irc.backward:
-        coords = irc.all_coords_umw[-1]
+        coords = irc.all_coords[-1]
         to_opt.append((coords, "backward_end"))
+    if opt_ends and irc.downhill:
+        coords = irc.all_coords[-1]
+        to_opt.append((coords, "downhill_end"))
+
+    def to_frozensets(sets):
+        return [frozenset(_) for _ in sets]
+
+    # Convert to array for easy indexing with the fragment lists
+    atoms = np.array(geom.atoms)
+    fragments_to_opt = list()
+    for coords, base_name in to_opt:
+        c3d = coords.reshape(-1, 3)
+        if opt_ends == "fragments":
+            bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
+            # Sort atom indices, so the atoms don't become totally scrambled.
+            fragments = [sorted(frag) for frag in merge_fragments(bond_sets)]
+            # Disable higher fragment counts. I'm looking forward to the day
+            # this ever occurs and someone complains :)
+            assert len(fragments) < 10, "Something probably went wrong"
+            fragment_names = [f"{base_name}_fragment_{i:03d}"
+                              for i, _ in enumerate(fragments)]
+            print(f"Found {len(fragments)} fragment(s) at {base_name}")
+            for frag_name, frag in zip(fragment_names, fragments):
+                print(f"\t{frag_name}: {len(frag)} atoms")
+        # Optimize the full geometries, without splitting them into fragments
+        else:
+            fragments = [range(len(atoms)), ]
+            fragment_names = [base_name, ]
+        fragment_atoms = [tuple(atoms[list(frag)]) for frag in fragments]
+        fragment_coords = [c3d[frag].flatten() for frag in fragments]
+        fragments_to_opt.extend(
+            list(zip(fragment_names, fragment_atoms, fragment_coords))
+        )
+        print()
+    to_opt = fragments_to_opt
 
     opt_kwargs = {
         "max_cycles": 150,
-        "thresh": "gau",
-        "trust_max": 0.3,
         "dump": True,
     }
-    for coords, name in to_opt:
+    opt_geoms = list()
+    for name, atoms, coords in to_opt:
         print(highlight_text(f"Optimizing {name}"))
-        geom = Geometry(geom.atoms, coords, coord_type="redund")
-        set_calc(geom)
+        geom = Geometry(atoms, coords, coord_type="redund")
+        set_calc(geom, name)
 
         prefix = f"{name}_"
         opt = RFOptimizer.RFOptimizer(geom, prefix=prefix, **opt_kwargs)
@@ -578,6 +625,8 @@ def run_irc(geom, irc_kwargs, calc_getter):
         shutil.move(opt.final_fn, opt_fn)
         print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
         print()
+        opt_geoms.append(geom)
+    return opt_geoms
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
@@ -737,7 +786,10 @@ def handle_yaml(yaml_str):
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
                               "stocastic", "tsopt", "shake", "irc",
                               "preopt", )):
-        run_dict[key].update(yaml_dict[key])
+        try:
+            run_dict[key].update(yaml_dict[key])
+        except TypeError:
+            print(f"Using default values for '{key}' section.")
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type",
                               "add_prims")):
@@ -837,7 +889,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         run_cos(cos, calc_getter, opt_getter)
         if run_dict["tsopt"]:
             calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-            run_cos_tsopt(cos, tsopt_key, tsopt_kwargs, calc_getter)
+            run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
@@ -945,10 +997,11 @@ def clean(force=False):
         "internal_coords.log",
         "hei_tangent",
         "optimization.trj",
-        "splined_hei.xyz",
-        "ts_opt.xyz",
+        # "splined_hei.xyz",
+        # "ts_opt.xyz",
         "final_geometry.xyz",
         "calculated_init_hessian",
+        "cur_out",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -996,6 +1049,8 @@ def run():
     start_time = time.time()
     args = parse_args(sys.argv[1:])
 
+    print_header()
+
     if args.yaml:
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
         init_logging(yaml_dir, args.scheduler)
@@ -1017,7 +1072,6 @@ def run():
         print(f"pysisyphus {get_versions()['version']}")
         return
 
-    print_header()
     run_dict_without_none = {k: v for k, v in run_dict.items()
                              if v is not None}
     pprint(run_dict_without_none)

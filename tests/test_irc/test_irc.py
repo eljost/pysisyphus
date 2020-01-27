@@ -6,7 +6,7 @@ import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.calculators import Gaussian16
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.irc import *

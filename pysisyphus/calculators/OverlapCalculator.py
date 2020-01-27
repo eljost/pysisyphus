@@ -2,6 +2,8 @@
 
 # [1] https://pubs.acs.org/doi/pdf/10.1021/acs.jctc.5b01148
 #     Plasser, 2016
+# [2] https://doi.org/10.1002/jcc.25800
+#     Garcia, Campetella, 2019
 
 from collections import namedtuple
 from pathlib import Path

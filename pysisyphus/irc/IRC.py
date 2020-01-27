@@ -19,7 +19,8 @@ from pysisyphus.TablePrinter import TablePrinter
 class IRC:
 
     def __init__(self, geometry, step_length=0.1, max_cycles=150,
-                 downhill=False, forward=True, backward=True, mode=0,
+                 downhill=False, forward=True, backward=True,
+                 mode=0, hessian_init=None,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
                  rms_grad_thresh=5e-4, dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
@@ -37,6 +38,10 @@ class IRC:
         self.forward = not self.downhill and forward
         self.backward = not self.downhill and backward
         self.mode = mode
+        # Load initial (not massweighted) cartesian hessian if provided
+        self.hessian_init = hessian_init
+        if self.hessian_init is not None:
+            self.hessian_init = np.loadtxt(hessian_init)
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
@@ -57,7 +62,7 @@ class IRC:
         header = ("Step", "IRC length", "dE / au", "max(|grad|)", "rms(grad)")
         self.table = TablePrinter(header, col_fmts)
 
-        self.cur_step = 0
+        self.cur_cycle = 0
         self.converged = False
 
     @property
@@ -96,14 +101,14 @@ class IRC:
         return self.geometry.mw_hessian
 
     def log(self, msg):
-        # self.logger.debug(f"step {self.cur_step:03d}, {msg}")
+        # self.logger.debug(f"step {self.cur_cycle:03d}, {msg}")
         self.logger.debug(msg)
 
     # def un_massweight(self, vec):
         # return vec * np.sqrt(self.geometry.masses_rep)
 
     def prepare(self, direction):
-        self.cur_step = 0
+        self.cur_cycle = 0
         self.converged = False
 
         self.irc_energies = list()
@@ -199,8 +204,8 @@ class IRC:
 
         self.table.print_header()
         while True:
-            self.log(highlight_text(f"IRC step {self.cur_step:03d}") + "\n")
-            if self.cur_step == self.max_cycles:
+            self.log(highlight_text(f"IRC step {self.cur_cycle:03d}") + "\n")
+            if self.cur_cycle == self.max_cycles:
                 print("IRC steps exceeded. Stopping.")
                 print()
                 break
@@ -223,7 +228,7 @@ class IRC:
             dE = self.irc_energies[-1] - self.irc_energies[-2]
             max_grad = np.abs(self.gradient).max()
 
-            row_args = (self.cur_step, irc_length, dE, max_grad, rms_grad)
+            row_args = (self.cur_cycle, irc_length, dE, max_grad, rms_grad)
             self.table.print_row(row_args)
             try:
                 # The derived IRC classes may want to do some printing
@@ -247,7 +252,7 @@ class IRC:
                 break_msg = "Energy converged!"
                 self.converged = True
 
-            dumped = (self.cur_step % self.dump_every) == 0
+            dumped = (self.cur_cycle % self.dump_every) == 0
             if dumped:
                 dump_fn = f"{direction}_{self.dump_fn}"
                 self.dump_data(dump_fn)
@@ -256,7 +261,7 @@ class IRC:
                 self.table.print(break_msg)
                 break
 
-            self.cur_step += 1
+            self.cur_cycle += 1
             if check_for_stop_sign():
                 break
             self.log("")
@@ -291,7 +296,7 @@ class IRC:
         self.all_mw_coords.extend(getattr(self, mw_coords_name))
         self.all_mw_gradients.extend(getattr(self, mw_grad_name))
 
-        setattr(self, f"{prefix}_step", self.cur_step)
+        setattr(self, f"{prefix}_step", self.cur_cycle)
         self.write_trj(".", prefix, getattr(self, mw_coords_name))
 
     def run(self):
@@ -319,7 +324,10 @@ class IRC:
         # and for this we need a hessian, that we calculate now.
         # For downhill runs we probably dont need a hessian.
         if not self.downhill:
-            self.ts_hessian = self.geometry.hessian.copy()
+            if self.hessian_init is not None:
+                self.ts_hessian = self.hessian_init.copy()
+            else:
+                self.ts_hessian = self.geometry.hessian.copy()
             self.init_displ = self.initial_displacement()
 
         if self.forward:
