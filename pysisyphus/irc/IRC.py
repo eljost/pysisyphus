@@ -39,7 +39,8 @@ class IRC:
         self.backward = not self.downhill and backward
         self.mode = mode
         # Load initial (not massweighted) cartesian hessian if provided
-        if hessian_init is not None:
+        self.hessian_init = hessian_init
+        if self.hessian_init is not None:
             self.hessian_init = np.loadtxt(hessian_init)
         self.displ = displ
         assert self.displ in ("energy", "length"), \
