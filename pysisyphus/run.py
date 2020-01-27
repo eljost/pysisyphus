@@ -887,7 +887,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
-        import pdb; pdb.set_trace()
         if run_dict["tsopt"]:
             calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
             run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
