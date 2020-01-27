@@ -26,7 +26,7 @@ class StringOptimizer(Optimizer):
         # Add one as we later subtract 1 before we check if this value
         # is 0.
         self.stop_in = self.stop_in_when_full + 1
-        self.is_cart_opt = self.geometry.coord_type is "cart"
+        self.is_cart_opt = self.geometry.coord_type == "cart"
 
     def prepare_opt(self):
         if self.is_cos and self.is_cart_opt and self.align:
