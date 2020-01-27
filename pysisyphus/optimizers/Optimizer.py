@@ -415,7 +415,10 @@ class Optimizer:
         if (not self.is_cos) and (not self.stopped):
             print(self.final_summary())
             # Remove 'current_geometry.xyz' file
-            os.remove(self.current_fn)
+            try:
+                os.remove(self.current_fn)
+            except FileNotFoundError:
+                self.log(f"Tried to delete '{self.current_fn}'. Couldn't find it."
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
