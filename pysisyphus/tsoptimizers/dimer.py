@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 import logging
+import sys
 
 import cloudpickle
 import numpy as np
@@ -233,9 +234,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
         geom2 = geom_getter(coords2)
         dR = dR_base
 
-    geom0.calculator.base_name = "image0"
-    geom1.calculator.base_name = "image1"
-    geom2.calculator.base_name = "image2"
+    geom0.calculator.base_name += "_image0"
+    geom1.calculator.base_name += "_image1"
+    geom2.calculator.base_name += "_image2"
 
     dimer_pickle = DimerPickle(coords0, N, dR)
     with open("dimer_pickle", "wb") as handle:
@@ -503,7 +504,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             f_perp_rms = get_rms(f_perp)
             # Check for sign change of curvature
             if (prev_C < 0) and (np.sign(C/prev_C) < 0):
-                trans_table.print("Curvature changed!")
+                trans_table.print("Curvature became positive!")
                 break
             if (C < 0) and (f_par_rms > prev_f_par_rms):
                 break
@@ -531,6 +532,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
             break
         logger.debug("")
         print()
+        sys.stdout.flush()
     print(f"Did {tot_rot_force_evals} force evaluations in the rotation steps "
           f"using the {opt_name_dict[rot_opt]} optimizer.")
     tot_force_evals = tot_rot_force_evals + add_force_evals
