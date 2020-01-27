@@ -20,9 +20,9 @@ import yaml
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
-from pysisyphus.overlaps.Overlapper import Overlapper
-from pysisyphus.overlaps.couplings import couplings
-from pysisyphus.overlaps.sorter import sort_by_overlaps
+# from pysisyphus.overlaps.Overlapper import Overlapper
+# from pysisyphus.overlaps.couplings import couplings
+# from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords, \
                                highlight_text, do_final_hessian
@@ -119,14 +119,14 @@ def parse_args(args):
     action_group.add_argument("--fclean", action="store_true",
         help="Force cleaning without prior confirmation."
     )
-    action_group.add_argument("--couplings", type=int, nargs="+",
-        help="Create coupling elements."
-    )
-    action_group.add_argument("--sort-by-overlaps", nargs=2,
-                              metavar=("ENERGIES", "OVERLAPS"),
-        help="Sort precomputed energies of (excited) states by precomputed "
-             "overlaps."
-    )
+    # action_group.add_argument("--couplings", type=int, nargs="+",
+        # help="Create coupling elements."
+    # )
+    # action_group.add_argument("--sort-by-overlaps", nargs=2,
+                              # metavar=("ENERGIES", "OVERLAPS"),
+        # help="Sort precomputed energies of (excited) states by precomputed "
+             # "overlaps."
+    # )
     action_group.add_argument("-v", "--version", action="store_true",
         help="Print pysisyphus version."
     )
@@ -138,10 +138,10 @@ def parse_args(args):
     run_type_group.add_argument("--restart", action="store_true",
         help="Continue a previously crashed/aborted/... pysisphus run."
     )
-    run_type_group.add_argument("--overlaps", action="store_true",
-        help="Calculate overlaps between transition density matrices "
-             "(tden) or wavefunctions (wf)."
-    )
+    # run_type_group.add_argument("--overlaps", action="store_true",
+        # help="Calculate overlaps between transition density matrices "
+             # "(tden) or wavefunctions (wf)."
+    # )
     run_type_group.add_argument("--cp", "--copy",
         help="Copy .yaml file and corresponding geometries to a "
              "new directory. Similar to TURBOMOLEs cpc command."
@@ -150,10 +150,10 @@ def parse_args(args):
     parser.add_argument("--scheduler", default=None,
         help="Address of the dask scheduler."
     )
-    parser.add_argument("--consider-first", type=int, default=None,
-        help="Consider the first N states for sorting according "
-             "to overlaps."
-    )
+    # parser.add_argument("--consider-first", type=int, default=None,
+        # help="Consider the first N states for sorting according "
+             # "to overlaps."
+    # )
 
     return parser.parse_args()
 
@@ -272,8 +272,8 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         dimer_cycles = dimer_result.dimer_cycles
         last_cycle = dimer_cycles[-1]
     else:
-        # # Determine which imaginary mode has the highest overlap
-        # # with the splined HEI tangent.
+        # Determine which imaginary mode has the highest overlap
+        # with the splined HEI tangent.
         eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
         neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
@@ -362,91 +362,91 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
     return geoms
 
 
-def get_overlapper(run_dict):
-    try:
-        calc_key = run_dict["calc"].pop("type")
-    except KeyError:
-        print("Creating Overlapper without calc_key.")
-        calc_key = None
-    calc_kwargs = run_dict["calc"]
-    cwd = Path(".")
-    ovlp_with = run_dict["overlaps"]["ovlp_with"]
-    prev_n = run_dict["overlaps"]["prev_n"]
-    overlapper = Overlapper(cwd, ovlp_with, prev_n, calc_key, calc_kwargs)
-    return overlapper
+# def get_overlapper(run_dict):
+    # try:
+        # calc_key = run_dict["calc"].pop("type")
+    # except KeyError:
+        # print("Creating Overlapper without calc_key.")
+        # calc_key = None
+    # calc_kwargs = run_dict["calc"]
+    # cwd = Path(".")
+    # ovlp_with = run_dict["overlaps"]["ovlp_with"]
+    # prev_n = run_dict["overlaps"]["prev_n"]
+    # overlapper = Overlapper(cwd, ovlp_with, prev_n, calc_key, calc_kwargs)
+    # return overlapper
 
 
-def restore_calculators(run_dict):
-    overlapper = get_overlapper(run_dict)
+# def restore_calculators(run_dict):
+    # overlapper = get_overlapper(run_dict)
 
-    cwd = Path(".")
-    glob = run_dict["overlaps"]["glob"]
-    regex = run_dict["overlaps"]["regex"]
-    # First try globbing
-    if glob:
-        paths = natsorted([p for p in cwd.glob(glob)])
-        if len(paths) == 0:
-            raise Exception("Couldn't find any paths! Are you sure that your "
-                           f"glob '{glob}' is right?")
-        xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
-        geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-        if regex:
-            mobjs = [re.search(regex, str(path)) for path in paths]
-            calc_numbers = [int(mobj[1]) for mobj in mobjs]
-            assert len(calc_numbers) == len(paths)
-        else:
-            calc_numbers = range(len(paths))
-        [overlapper.set_files_from_dir(geom, path, calc_number)
-         for calc_number, geom, path in zip(calc_numbers, geoms, paths)]
-    else:
-        # Otherwise check if geometries are defined in the run_dict
-        if run_dict["xyz"]:
-            geoms = get_geoms(run_dict["xyz"])
-        else:
-            # Else resort to globbing arbitrary xyz files
-            xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
-            geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-        # geoms = geoms[:2]
-        calc_num = overlapper.restore_calculators(geoms)
-        geoms = geoms[:calc_num]
-    return overlapper, geoms
-
-
-def overlaps(run_dict, geoms=None):
-    pickle_path = Path("pickles")
-    if pickle_path.is_file() and confirm_input("Load pickled geoms?"):
-        with open(pickle_path, "rb") as handle:
-            overlapper, *geoms = cloudpickle.load(handle)
-        print(f"Loaded overlap and {len(geoms)} from {str(pickle_path)}.")
-    else:
-        if not geoms:
-            overlapper, geoms = restore_calculators(run_dict)
-        else:
-            overlapper = get_overlapper(run_dict)
-
-        to_pickle = [overlapper] + geoms
-        with open(pickle_path, "wb") as handle:
-            cloudpickle.dump(to_pickle, handle)
-
-    ovlp_dict = run_dict["overlaps"]
-    ovlp_type = ovlp_dict["type"]
-    double_mol = ovlp_dict["ao_ovlps"]
-    recursive = ovlp_dict["recursive"]
-    consider_first = ovlp_dict["consider_first"]
-    skip = ovlp_dict["skip"]
-
-    if ovlp_type == "wf" and double_mol:
-        print("!"*10)
-        print("WFOverlaps with true AO overlaps seem faulty right now!")
-        print("!"*10)
+    # cwd = Path(".")
+    # glob = run_dict["overlaps"]["glob"]
+    # regex = run_dict["overlaps"]["regex"]
+    # # First try globbing
+    # if glob:
+        # paths = natsorted([p for p in cwd.glob(glob)])
+        # if len(paths) == 0:
+            # raise Exception("Couldn't find any paths! Are you sure that your "
+                           # f"glob '{glob}' is right?")
+        # xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
+        # geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
+        # if regex:
+            # mobjs = [re.search(regex, str(path)) for path in paths]
+            # calc_numbers = [int(mobj[1]) for mobj in mobjs]
+            # assert len(calc_numbers) == len(paths)
+        # else:
+            # calc_numbers = range(len(paths))
+        # [overlapper.set_files_from_dir(geom, path, calc_number)
+         # for calc_number, geom, path in zip(calc_numbers, geoms, paths)]
+    # else:
+        # # Otherwise check if geometries are defined in the run_dict
+        # if run_dict["xyz"]:
+            # geoms = get_geoms(run_dict["xyz"])
+        # else:
+            # # Else resort to globbing arbitrary xyz files
+            # xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
+            # geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
+        # # geoms = geoms[:2]
+        # calc_num = overlapper.restore_calculators(geoms)
+        # geoms = geoms[:calc_num]
+    # return overlapper, geoms
 
 
-    overlapper.overlaps_for_geoms(geoms,
-                                  ovlp_type=ovlp_type,
-                                  double_mol=double_mol,
-                                  recursive=recursive,
-                                  consider_first=consider_first,
-                                  skip=skip,)
+# def overlaps(run_dict, geoms=None):
+    # pickle_path = Path("pickles")
+    # if pickle_path.is_file() and confirm_input("Load pickled geoms?"):
+        # with open(pickle_path, "rb") as handle:
+            # overlapper, *geoms = cloudpickle.load(handle)
+        # print(f"Loaded overlap and {len(geoms)} from {str(pickle_path)}.")
+    # else:
+        # if not geoms:
+            # overlapper, geoms = restore_calculators(run_dict)
+        # else:
+            # overlapper = get_overlapper(run_dict)
+
+        # to_pickle = [overlapper] + geoms
+        # with open(pickle_path, "wb") as handle:
+            # cloudpickle.dump(to_pickle, handle)
+
+    # ovlp_dict = run_dict["overlaps"]
+    # ovlp_type = ovlp_dict["type"]
+    # double_mol = ovlp_dict["ao_ovlps"]
+    # recursive = ovlp_dict["recursive"]
+    # consider_first = ovlp_dict["consider_first"]
+    # skip = ovlp_dict["skip"]
+
+    # if ovlp_type == "wf" and double_mol:
+        # print("!"*10)
+        # print("WFOverlaps with true AO overlaps seem faulty right now!")
+        # print("!"*10)
+
+
+    # overlapper.overlaps_for_geoms(geoms,
+                                  # ovlp_type=ovlp_type,
+                                  # double_mol=double_mol,
+                                  # recursive=recursive,
+                                  # consider_first=consider_first,
+                                  # skip=skip,)
 
 def run_stocastic(stoc):
     # Fragment
@@ -662,7 +662,7 @@ def get_defaults(conf_dict):
         "preopt": None,
         "opt": None,
         "tsopt": None,
-        "overlaps": None,
+        # "overlaps": None,
         "glob": None,
         "stocastic": None,
         "xyz": None,
@@ -687,18 +687,18 @@ def get_defaults(conf_dict):
             "type": "rfo",
             "dump": True,
         }
-    elif "overlaps" in conf_dict:
-        dd["overlaps"] = {
-            "type": "tden",
-            "ao_ovlps": None,
-            "glob": None,
-            "recursive": False,
-            "consider_first": None,
-            "skip": 0,
-            "regex": None,
-            "ovlp_with": "previous",
-            "prev_n": 0,
-        }
+    # elif "overlaps" in conf_dict:
+        # dd["overlaps"] = {
+            # "type": "tden",
+            # "ao_ovlps": None,
+            # "glob": None,
+            # "recursive": False,
+            # "consider_first": None,
+            # "skip": 0,
+            # "regex": None,
+            # "ovlp_with": "previous",
+            # "prev_n": 0,
+        # }
     elif "stocastic" in conf_dict:
         dd["stocastic"] = {
             "type": "frag",
@@ -876,10 +876,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         calc = calc_getter(0)
         dry_run(calc, geoms[0])
         return
-    elif run_dict["overlaps"]:
-        geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
-                                 calc_kwargs, scheduler, assert_track=True)
-        overlaps(run_dict, geoms)
+    # elif run_dict["overlaps"]:
+        # geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
+                                 # calc_kwargs, scheduler, assert_track=True)
+        # overlaps(run_dict, geoms)
     elif run_dict["cos"]:
         cos_cls = COS_DICT[cos_key]
         if (issubclass(cos_cls, GrowingChainOfStates)
@@ -1078,14 +1078,14 @@ def run():
     print()
     sys.stdout.flush()
 
-    if args.overlaps:
-        overlaps(run_dict)
-    elif args.couplings:
-        couplings(args.couplings)
-    elif args.sort_by_overlaps:
-        energies_fn, max_ovlp_inds_fn = args.sort_by_overlaps
-        consider_first = args.consider_first
-        sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
+    # if args.overlaps:
+        # overlaps(run_dict)
+    # elif args.couplings:
+        # couplings(args.couplings)
+    # elif args.sort_by_overlaps:
+        # energies_fn, max_ovlp_inds_fn = args.sort_by_overlaps
+        # consider_first = args.consider_first
+        # sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
     else:
         main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     end_time = time.time()
