@@ -580,7 +580,6 @@ def run_irc(geom, irc_kwargs, calc_getter):
 
     # Convert to array for easy indexing with the fragment lists
     atoms = np.array(geom.atoms)
-    fragment_names = list()
     fragments_to_opt = list()
     for coords, base_name in to_opt:
         c3d = coords.reshape(-1, 3)
