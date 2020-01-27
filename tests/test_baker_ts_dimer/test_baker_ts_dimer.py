@@ -8,13 +8,16 @@ import time
 import cloudpickle
 from natsort import natsorted
 import numpy as np
+import pytest
 
-from pysisyphus.calculators.Gaussian16 import Gaussian16
-from pysisyphus.calculators.XTB import XTB
+from pysisyphus.calculators import Gaussian16
+from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_xyz_file, geom_from_library
+from pysisyphus.helpers import geom_from_xyz_file, geom_from_library, \
+                               get_baker_ts_geoms_flat, do_final_hessian
 from pysisyphus.tsoptimizers.dimer import dimer_method
 from pysisyphus.tsoptimizers.dimerv2 import dimer_method as dimer_method_v2
+from pysisyphus.testing import using
 
 
 def make_N_init_dict():
@@ -24,11 +27,10 @@ def make_N_init_dict():
     for guess, initial in [xyzs[2*i:2*i+2] for i in range(25)]:
         assert "downhill" in initial.stem
         assert guess.stem[:2] == initial.stem[:2]
-        num = initial.stem[:2]
         guess_geom = geom_from_xyz_file(guess)
         initial_geom = geom_from_xyz_file(initial)
         N_init = guess_geom.coords - initial_geom.coords
-        N_dict[num] = N_init
+        N_dict[guess.name] = N_init
     return N_dict
 
 
@@ -41,55 +43,6 @@ def get_N_10_11_15_dict():
 
 def run():
     start = time.time()
-    np.random.seed(20180325)
-    xyz_path = Path("/scratch/Code/parsezmat/")
-    xyzs = natsorted(xyz_path.glob("*.xyz"))
-    geoms = [geom_from_xyz_file(fn) for fn in xyzs]
-
-    BAKER_DICT = {
-        "01": ("01_hcn.xyz", 0, 1, -92.24604),
-        "02": ("02_hcch.xyz", 0, 1, -76.29343),
-        "03": ("03_h2co.xyz", 0, 1, -113.05003),
-        "04": ("04_ch3o.xyz", 0, 2, -113.69365),
-        "05": ("05_cyclopropyl.xyz", 0, 2, -115.72100),
-        "06": ("06_bicyclobutane.xyz", 0, 1, -153.90494),
-        "07": ("07_bicyclobutane.xyz", 0, 1, -153.89754),
-        "08": ("08_formyloxyethyl.xyz", 0, 2, -264.64757),
-        "09": ("09_parentdieslalder.xyz", 0, 1, -231.60321),
-        # "10": ("10_tetrazine.xyz", 0, 1, -292.81026),
-        # "11": ("11_trans_butadiene.xyz", 0, 1, -154.05046),
-        "12": ("12_ethane_h2_abstraction.xyz", 0, 1, -78.54323),
-        "13": ("13_hf_abstraction.xyz", 0, 1, -176.98453),
-        "14": ("14_vinyl_alcohol.xyz", 0, 1, -151.91310),
-        # "15": ("15_hocl.xyz", 0, 1, -569.89752),
-        "16": ("16_h2po4_anion.xyz", -1, 1, -637.92388),
-        "17": ("17_claisen.xyz", 0, 1, -267.23859),
-        "18": ("18_silyene_insertion.xyz", 0, 1, -367.20778),
-        "19": ("19_hnccs.xyz", 0, 1, -525.43040),
-        "20": ("20_hconh3_cation.xyz", +1, 1, -168.24752),
-        "21": ("21_acrolein_rot.xyz", 0, 1, -189.67574),
-        "22": ("22_hconhoh.xyz", 0, 1, -242.25529),
-        "23": ("23_hcn_h2.xyz", 0, 1, -93.31114),
-        "24": ("24_h2cnh.xyz", 0, 1, -93.33296),
-        "25": ("25_hcnh2.xyz", 0, 1, -93.28172),
-    }
-
-    dimer_kwargs = {
-        "max_step": 0.25,
-        # 1e-2 Angstroem in bohr
-        "dR_base": 0.0189,
-        "rot_opt": "lbfgs",
-        # "trans_opt": "mb",
-        "trans_opt": "lbfgs",
-        # "trans_memory": 10, # bad idea
-        "angle_tol": 5,
-        "f_thresh": 1e-3,
-        "max_cycles": 50,
-        "f_tran_mod": True,
-        # "rot_type": "direct",
-        "multiple_translations": True,
-    }
-
     dimv2_kwargs = {
         "max_step": 0.25,
         "R": 0.0189,
@@ -139,50 +92,6 @@ def run():
     print(f"Whole run took {duration:.0f} seconds.")
 
 
-def run_geom(stem, geom, charge, mult, dimer_kwargs=None):
-    # Gaussian 16
-    calc_kwargs = {
-        "route": "HF/3-21G",
-        "pal": 4,
-        "mem": 1000,
-        "charge": charge,
-        "mult": mult,
-    }
-    def calc_getter():
-        return Gaussian16(**calc_kwargs)
-
-    # # XTB
-    # calc_kwargs = {
-        # "pal": 4,
-        # "charge": charge,
-        # "mult": mult,
-    # }
-    # def calc_getter():
-        # return XTB(**calc_kwargs)
-
-    geom.set_calculator(calc_getter())
-    geoms = [geom, ]
-
-    if dimer_kwargs is None:
-        dimer_kwargs = {
-            "max_step": 0.5,
-            # 1e-2 Angstroem
-            "dR_base": 0.0189,
-            "rot_opt": "lbfgs",
-            "angle_tol": 5,
-            "f_thresh": 1e-3,
-            "max_cycles": 100,
-        }
-    results = dimer_method(geoms, calc_getter, **dimer_kwargs)
-    geom0 = results.geom0
-    ts_xyz = geom0.as_xyz()
-    ts_fn = f"{stem}_dimer_ts.xyz"
-    with open(ts_fn, "w") as handle:
-        handle.write(ts_xyz)
-    print(f"Wrote dimer result to {ts_fn}")
-    return results
-
-
 def run_geomv2(stem, geom, charge, mult, dimer_kwargs):
     # Gaussian 16
     calc_kwargs = {
@@ -206,5 +115,57 @@ def run_geomv2(stem, geom, charge, mult, dimer_kwargs):
     print(f"Wrote dimer result to {ts_fn}")
 
 
-if __name__ == "__main__":
-    run()
+@using("pyscf")
+# @using("gaussian16")
+@pytest.mark.parametrize(
+    "name, geom, charge, mult, ref_energy",
+    [_ for _ in get_baker_ts_geoms_flat()
+     if _[0][:2] not in ("10", "11", "15", "17", "20", "18", "05")
+     # if _[0][:2] in ("10", "11", "15")  # no cart. imag. freqs.
+     # if _[0][:2] in ("17", "20", "18", "05")  # just fails :)
+    ]
+)
+def test_baker_ts_dimer(name, geom, charge, mult, ref_energy):
+    print(f"@Got geom '{name}'")
+    # Load initial dimers
+    N_init_dict = make_N_init_dict()
+
+    calc_kwargs = {
+        "charge": charge,
+        "mult": mult,
+        "pal": 2,
+        "base_name": Path(name).stem,
+    }
+    def calc_getter():
+        return PySCF(basis="321g", **calc_kwargs)
+
+    # def calc_getter():
+        # return Gaussian16(route="HF/3-21G", **calc_kwargs)
+    geom.set_calculator(calc_getter())
+
+    dimer_kwargs = {
+        "max_step": 0.25,
+        # 1e-2 Angstroem in bohr
+        "dR_base": 0.0189,
+        "rot_opt": "lbfgs",
+        # "trans_opt": "mb",
+        "trans_opt": "lbfgs",
+        # "trans_memory": 10, # bad idea
+        "angle_tol": 5,
+        "f_thresh": 1e-3,
+        "max_cycles": 50,
+        "f_tran_mod": True,
+        # "rot_type": "direct",
+        "multiple_translations": True,
+    }
+    dimer_kwargs["N_init"] = N_init_dict[name]
+    geoms = (geom, )
+    results = dimer_method(geoms, calc_getter, **dimer_kwargs)
+
+    same_energy = geom.energy == pytest.approx(ref_energy)
+    print(f"@Same energy: {str(same_energy): >5}, {name}")
+    if not same_energy:
+        do_final_hessian(geom)
+
+    # This way pytest prints the actual values... instead of just the boolean
+    assert geom.energy == pytest.approx(ref_energy)
