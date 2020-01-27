@@ -136,6 +136,12 @@ def get_baker_ts_geoms(**kwargs):
     return geoms, meta_data
 
 
+def get_baker_ts_geoms_flat(**kwargs):
+     geoms, meta_data = get_baker_ts_geoms(**kwargs)
+     # Key: (geometry, charge, mult, ref_energy)
+     return [(mol,) + (geom, ) + meta_data[mol] for mol, geom in geoms.items()]
+
+
 def get_baker_opt_ts_geoms(**kwargs):
     meta_data = {
         "01_hcn_opt_ts.xyz": (0, 1),
