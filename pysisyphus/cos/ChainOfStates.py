@@ -59,6 +59,8 @@ class ChainOfStates:
         self.coord_type = img0.coord_type
         assert self.coord_type in self.valid_coord_types, \
                 f"Invalid coord_type! Supported types are: {self.valid_coord_types}"
+        assert all([img.coord_type == self.coord_type for img in self.images]), \
+                "coord_type of images differ!"
         try:
             self.prim_indices = img0.internal.prim_indices
         except AttributeError:
