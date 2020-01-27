@@ -19,7 +19,8 @@ from pysisyphus.TablePrinter import TablePrinter
 class IRC:
 
     def __init__(self, geometry, step_length=0.1, max_cycles=150,
-                 downhill=False, forward=True, backward=True, mode=0,
+                 downhill=False, forward=True, backward=True,
+                 mode=0, hessian_init=None,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
                  rms_grad_thresh=5e-4, dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
@@ -37,6 +38,9 @@ class IRC:
         self.forward = not self.downhill and forward
         self.backward = not self.downhill and backward
         self.mode = mode
+        # Load initial (not massweighted) cartesian hessian if provided
+        if hessian_init is not None:
+            self.hessian_init = np.loadtxt(hessian_init)
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
@@ -319,7 +323,10 @@ class IRC:
         # and for this we need a hessian, that we calculate now.
         # For downhill runs we probably dont need a hessian.
         if not self.downhill:
-            self.ts_hessian = self.geometry.hessian.copy()
+            if self.hessian_init is not None:
+                self.ts_hessian = self.hessian_init.copy()
+            else:
+                self.ts_hessian = self.geometry.hessian.copy()
             self.init_displ = self.initial_displacement()
 
         if self.forward:
