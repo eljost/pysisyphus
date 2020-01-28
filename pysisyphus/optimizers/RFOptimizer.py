@@ -102,6 +102,9 @@ class RFOptimizer(HessianOptimizer):
             ip_gradient = self.poly_line_search()
 
         if ip_gradient is not None:
+            source = diis_result.type if diis_result else "line search"
+            self.log(f"Got inter/extra-polated geometry from {source}")
+            self.log(f"Calculating second step from inter/extra-polated gradient.")
             step = get_step(ip_gradient, big_eigvals, big_eigvecs)
 
         step_norm = np.linalg.norm(step)
