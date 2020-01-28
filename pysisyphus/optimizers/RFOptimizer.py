@@ -15,12 +15,15 @@ from pysisyphus.optimizers.gdiis import gdiis, gediis
 class RFOptimizer(HessianOptimizer):
 
     def __init__(self, geom, line_search=True, gediis=False, gdiis=True,
+                 gdiis_thresh=2.5e-3, gediis_tresh=1e-2,
                  *args, **kwargs):
         super().__init__(geom, *args, **kwargs)
 
         self.line_search = line_search
         self.gediis = gediis
         self.gdiis = gdiis
+        self.gdiis_thresh = gdiis_thresh
+        self.gediis_thresh = gediis_thresh
 
     def optimize(self):
         gradient = self.geometry.gradient
@@ -67,10 +70,8 @@ class RFOptimizer(HessianOptimizer):
         ref_step = get_step(gradient, big_eigvals, big_eigvecs)
         step = ref_step
 
-        gediis_thresh = 1e-2
-        gdiis_thresh = 2.5e-3
-        can_gediis = np.sqrt(np.mean(self.forces[-1]**2)) < gediis_thresh
-        can_diis = np.sqrt(np.mean(ref_step**2)) < gdiis_thresh
+        can_gediis = np.sqrt(np.mean(self.forces[-1]**2)) < self.gediis_thresh
+        can_diis = np.sqrt(np.mean(ref_step**2)) < self.gdiis_thresh
         diis_result = None
         ip_gradient = None
         if self.gdiis and can_diis:
