@@ -35,85 +35,85 @@ def make_N_init_dict():
     return N_dict
 
 
-def get_N_10_11_15_dict():
-    pickle_path = Path("10_11_N_init.pickle")
-    with open(pickle_path, "rb") as handle:
-        N_inits = cloudpickle.load(handle)
-    return N_inits
+# def get_N_10_11_15_dict():
+    # pickle_path = Path("10_11_N_init.pickle")
+    # with open(pickle_path, "rb") as handle:
+        # N_inits = cloudpickle.load(handle)
+    # return N_inits
 
 
-def run():
-    start = time.time()
-    dimv2_kwargs = {
-        "max_step": 0.25,
-        "R": 0.0189,
-        "max_cycles": 1,
-        "rot_kwargs": {
-            "max_cycles": 15,
-            "alpha": 0.05,
-        }
-    }
+# def run():
+    # start = time.time()
+    # dimv2_kwargs = {
+        # "max_step": 0.25,
+        # "R": 0.0189,
+        # "max_cycles": 1,
+        # "rot_kwargs": {
+            # "max_cycles": 15,
+            # "alpha": 0.05,
+        # }
+    # }
 
-    N_init_dict = make_N_init_dict()
-    N_init_10_11_15 = get_N_10_11_15_dict()
-    N_init_dict.update(N_init_10_11_15)
-    results_list = list()
-    # for f, g in zip(xyzs, geoms):
-    for num in BAKER_DICT.keys():
-        xyz_fn, charge, mult, ref_en = BAKER_DICT[num]
-        geom = geom_from_library(f"baker_ts/{xyz_fn}")
-        f = Path(xyz_fn)
-        print(f.stem)
-        dim_kwargs = dimer_kwargs.copy()
-        dim_kwargs["N_init"] = N_init_dict[num]
-        results = run_geom(f.stem, geom, charge, mult, dimer_kwargs=dim_kwargs)
-        # v2_kwargs = dimv2_kwargs.copy()
-        # v2_kwargs["N"]= N_init_dict[num]
-        # results = run_geomv2(f.stem, geom, charge, mult, dimer_kwargs=v2_kwargs)
-        g0 = results.geom0
-        ts_en = g0.energy
-        en_diff = ref_en - ts_en
-        results_list.append((f.name, ts_en, en_diff, results.converged, results.force_evals))
-        print("Results so far:")
-        for f_, ts_en, den, conved, evals_ in results_list:
-            print(f"\t{f_}: {ts_en:.6f} ({den:.6f}), {conved}, {evals_}")
-        print()
-        print()
-        sys.stdout.flush()
-    results_list.append(dimer_kwargs)
+    # N_init_dict = make_N_init_dict()
+    # N_init_10_11_15 = get_N_10_11_15_dict()
+    # N_init_dict.update(N_init_10_11_15)
+    # results_list = list()
+    # # for f, g in zip(xyzs, geoms):
+    # for num in BAKER_DICT.keys():
+        # xyz_fn, charge, mult, ref_en = BAKER_DICT[num]
+        # geom = geom_from_library(f"baker_ts/{xyz_fn}")
+        # f = Path(xyz_fn)
+        # print(f.stem)
+        # dim_kwargs = dimer_kwargs.copy()
+        # dim_kwargs["N_init"] = N_init_dict[num]
+        # results = run_geom(f.stem, geom, charge, mult, dimer_kwargs=dim_kwargs)
+        # # v2_kwargs = dimv2_kwargs.copy()
+        # # v2_kwargs["N"]= N_init_dict[num]
+        # # results = run_geomv2(f.stem, geom, charge, mult, dimer_kwargs=v2_kwargs)
+        # g0 = results.geom0
+        # ts_en = g0.energy
+        # en_diff = ref_en - ts_en
+        # results_list.append((f.name, ts_en, en_diff, results.converged, results.force_evals))
+        # print("Results so far:")
+        # for f_, ts_en, den, conved, evals_ in results_list:
+            # print(f"\t{f_}: {ts_en:.6f} ({den:.6f}), {conved}, {evals_}")
+        # print()
+        # print()
+        # sys.stdout.flush()
+    # results_list.append(dimer_kwargs)
 
-    dimer_kwargs["time"] = time.time()
-    hash_ = hash(frozenset(dimer_kwargs.items()))
-    pickle_fn = f"results_{hash_}.pickle"
-    with open(pickle_fn, "wb") as handle:
-        cloudpickle.dump(results_list, handle)
-    print(f"Save pickled results to {pickle_fn}.")
-    end = time.time()
-    duration = end - start
-    print(f"Whole run took {duration:.0f} seconds.")
+    # dimer_kwargs["time"] = time.time()
+    # hash_ = hash(frozenset(dimer_kwargs.items()))
+    # pickle_fn = f"results_{hash_}.pickle"
+    # with open(pickle_fn, "wb") as handle:
+        # cloudpickle.dump(results_list, handle)
+    # print(f"Save pickled results to {pickle_fn}.")
+    # end = time.time()
+    # duration = end - start
+    # print(f"Whole run took {duration:.0f} seconds.")
 
 
-def run_geomv2(stem, geom, charge, mult, dimer_kwargs):
-    # Gaussian 16
-    calc_kwargs = {
-        "route": "HF/3-21G",
-        "pal": 4,
-        "mem": 1000,
-        "charge": charge,
-        "mult": mult,
-    }
-    def calc_getter():
-        return Gaussian16(**calc_kwargs)
+# def run_geomv2(stem, geom, charge, mult, dimer_kwargs):
+    # # Gaussian 16
+    # calc_kwargs = {
+        # "route": "HF/3-21G",
+        # "pal": 4,
+        # "mem": 1000,
+        # "charge": charge,
+        # "mult": mult,
+    # }
+    # def calc_getter():
+        # return Gaussian16(**calc_kwargs)
 
-    geom.set_calculator(calc_getter())
+    # geom.set_calculator(calc_getter())
 
-    dimer_kwargs["calc_getter"] = calc_getter
-    coords = dimer_method_v2(geom, **dimer_kwargs)
-    ts_xyz = geom.as_xyz()
-    ts_fn = f"{stem}_dimer_ts.xyz"
-    with open(ts_fn, "w") as handle:
-        handle.write(ts_xyz)
-    print(f"Wrote dimer result to {ts_fn}")
+    # dimer_kwargs["calc_getter"] = calc_getter
+    # coords = dimer_method_v2(geom, **dimer_kwargs)
+    # ts_xyz = geom.as_xyz()
+    # ts_fn = f"{stem}_dimer_ts.xyz"
+    # with open(ts_fn, "w") as handle:
+        # handle.write(ts_xyz)
+    # print(f"Wrote dimer result to {ts_fn}")
 
 
 @using("pyscf")
