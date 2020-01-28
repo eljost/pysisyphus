@@ -21,7 +21,8 @@ from pysisyphus.testing import using
 
 
 def make_N_init_dict():
-    xyz_path = Path("/scratch/programme/pysisyphus/xyz_files/baker_ts")
+    THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
+    xyz_path = THIS_DIR / "../../xyz_files/baker_ts"
     xyzs = natsorted(xyz_path.glob("*.xyz"))
     N_dict = dict()
     for guess, initial in [xyzs[2*i:2*i+2] for i in range(25)]:
