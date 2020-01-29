@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import cloudpickle
 import copy
 import itertools
 import os
@@ -24,7 +23,7 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 # from pysisyphus.overlaps.couplings import couplings
 # from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_xyz_file, confirm_input, shake_coords, \
+from pysisyphus.helpers import confirm_input, shake_coords, \
                                highlight_text, do_final_hessian
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
