@@ -44,6 +44,12 @@ class RFOptimizer(HessianOptimizer):
             return step
 
         ref_step = get_step(gradient, big_eigvals, big_eigvecs)
+        # Right now we have everything in place to check for convergence.
+        # If all values are below the thresholds there is no need to do additional
+        # inter/extrapolations.
+        if self.check_convergence(ref_step):
+            self.log("Convergence achieved! Skipping inter/extrapolation.")
+            return  ref_step
         step = ref_step
 
         rms_forces = rms(self.forces[-1])
