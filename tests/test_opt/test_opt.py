@@ -23,7 +23,7 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
     (AnaPot4, (-0.50, 3.32, 0.),  13, (-2.2102, 0.3297, 0.)),
     (AnaPotCBM, (-0.32, 0.71, 0.), 9, (-1., 0. ,0.)),
     (CerjanMiller, (-0.46, 1.48, 0.), 10, (0., 0., 0.)),
-    (FourWellAnaPot, (1.45, 0.04, 0.), 8, (1.1241, -1.4853, 0.)),
+    (FourWellAnaPot, (1.45, 0.04, 0.), 9, (1.1241, -1.4853, 0.)),
     (LEPSBase, (1.31, 0.82, 0.), 29, (0.742, 7.4056, 0.)),
     (MullerBrownPot, (-0.69, 0.55, 0.), 10, (-0.05, 0.4667, 0.)),
     (Rosenbrock, (-1.00, 1.00, 0.), 47, (1., 1., 0.)),
