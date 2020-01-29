@@ -59,9 +59,6 @@ class RFOptimizer(HessianOptimizer):
         elif self.gediis and can_gediis:
         # Try GEDIIS if GDIIS failed
         # if self.gediis and can_gediis and (diis_result == None):
-            H = self.geometry.hessian
-            w, v = np.linalg.eigh(H)
-            print(w)
             diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
 
         if diis_result:
