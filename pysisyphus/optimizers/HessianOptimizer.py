@@ -353,6 +353,8 @@ class HessianOptimizer(Optimizer):
 
         H = self.H
         if self.geometry.internal:
+            # Shift eigenvalues of orthogonal part to high values, so they
+            # don't contribute to the actual step.
             H_proj = self.geometry.internal.project_hessian(self.H)
             # Symmetrize hessian, as the projection may break it?!
             H = (H_proj + H_proj.T) / 2
