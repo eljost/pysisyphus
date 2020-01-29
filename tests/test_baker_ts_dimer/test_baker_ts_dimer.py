@@ -164,7 +164,8 @@ def test_baker_ts_dimer(name, geom, charge, mult, ref_energy):
     results = dimer_method(geoms, calc_getter, **dimer_kwargs)
 
     same_energy = geom.energy == pytest.approx(ref_energy)
-    print(f"@Same energy: {str(same_energy): >5}, {name}")
+    print(f"@Same energy: {str(same_energy): >5}, {name}, "
+          f"{results.force_evals} force evaluations")
     if not same_energy:
         do_final_hessian(geom)
 
