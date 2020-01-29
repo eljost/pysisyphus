@@ -55,7 +55,7 @@ def run_baker_opts(baker_geoms, coord_type="cart", thresh="gau_tight",
             failed += 1
         cycles += opt.cur_cycle + 1
         try:
-            assert np.allclose(geom.energy, refen)
+            assert geom.energy == pytest.approx(refen)
             print(green(f"@Energies match for {name}! ({geom.energy:.6f}, {refen:.6f})"))
         except KeyError:
             print(red(f"@Couldn't find reference energy for {name}"))
