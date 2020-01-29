@@ -202,7 +202,7 @@ class Optimizer:
             if rms_:
                 self.log("rms(force) is overachieved")
             if max_ and rms_:
-                print("Force convergence overachieved!")
+                self.log("Force convergence overachieved!")
 
         normal_convergence = all(
             [this_cycle[key] <= getattr(self, key)*multiple
@@ -215,7 +215,7 @@ class Optimizer:
                 cur_energy = self.energies[-1]
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
-            converged = (max_force) < 3e-4 and (energy_converged or (max_step < 3e-4))
+            converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
             return converged
         return any((normal_convergence, overachieved))
 

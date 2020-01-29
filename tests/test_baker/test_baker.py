@@ -38,7 +38,7 @@ def run_baker_opts(baker_geoms, coord_type="cart", thresh="gau_tight",
         "line_search": poly,
         "gediis": gediis,
         "gdiis": gdiis,
-        "overachieve_factor": 5,
+        # "overachieve_factor": 2,
         # "dump": True,
     }
     results = dict()
@@ -85,8 +85,7 @@ def run_baker_minimum_optimizations():
     poly = True
     # thresh = "gau_tight"
     thresh = "baker"
-    runs = 7
-    # runs = 5
+    runs = 1
 
 
     all_results = list()
@@ -139,7 +138,6 @@ def run_baker_minimum_optimizations():
 def test_baker_gs_opt(name, geom, ref_energy):
     opt_kwargs = {
         "thresh": "baker",
-        "overachieve_factor": 2.,
     }
     print(f"@Running {name}")
     geom.set_calculator(PySCF(basis="sto3g", pal=2))
