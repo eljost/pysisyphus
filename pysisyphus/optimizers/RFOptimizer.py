@@ -27,29 +27,10 @@ class RFOptimizer(HessianOptimizer):
         self.gediis_thresh = gediis_thresh  # Will be compared to rms(forces)
 
     def optimize(self):
-        gradient = self.geometry.gradient
-        self.forces.append(-self.geometry.gradient)
-        self.energies.append(self.geometry.energy)
+        energy, gradient, H, big_eigvals, big_eigvecs = self.housekeeping()
 
         org_grad = gradient.copy()
-        if self.cur_cycle > 0:
-            # TODO: skip hessian update in the beginning when the gradients
-            # are big?
-            self.update_trust_radius()
-            self.update_hessian()
 
-        H = self.H
-        if self.geometry.internal:
-            # Shift eigenvalues of orthogonal part to high values, so they
-            # don't contribute to the actual step.
-            H_proj = self.geometry.internal.project_hessian(H)
-            # Symmetrize hessian, as the projection probably breaks it?!
-            H = (H_proj + H_proj.T) / 2
-
-        eigvals, eigvecs = np.linalg.eigh(H)
-
-        # Calculate step in basis of eigenvectors of the hessian.
-        big_eigvals, big_eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
         dim_ = big_eigvals.size + 1
         def get_step(gradient, eigvals, eigvecs):
             gradient_ = big_eigvecs.T @ gradient
@@ -57,12 +38,6 @@ class RFOptimizer(HessianOptimizer):
             H_aug[:dim_-1,:dim_-1] = np.diag(big_eigvals)
             H_aug[-1,:-1] = gradient_
             H_aug[:-1,-1] = gradient_
-            # H_aug = np.array(
-                # np.bmat((
-                    # (np.diag(big_eigvals), gradient_[:, None]),
-                    # (gradient_[None,:], [[0]])
-                # ))
-            # )
             step_, eigval, nu = self.solve_rfo(H_aug, "min")
             # Transform back to original basis
             step = big_eigvecs @ step_
@@ -74,7 +49,7 @@ class RFOptimizer(HessianOptimizer):
         rms_forces = rms(self.forces[-1])
         rms_step = rms(ref_step)
         can_diis = rms_step <= self.gdiis_thresh
-        can_gediis = rms_forces <= self.gediis_thresh# and rms_step > self.gdiis_thresh
+        can_gediis = rms_forces <= self.gediis_thresh
         diis_result = None
         ip_gradient = None
         if self.gdiis and can_diis:
@@ -84,7 +59,10 @@ class RFOptimizer(HessianOptimizer):
         elif self.gediis and can_gediis:
         # Try GEDIIS if GDIIS failed
         # if self.gediis and can_gediis and (diis_result == None):
-            diis_result = gediis(self.coords, self.energies, self.forces)
+            H = self.geometry.hessian
+            w, v = np.linalg.eigh(H)
+            print(w)
+            diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
 
         if diis_result:
             tmp_geom = self.geometry.copy()
