@@ -8,6 +8,7 @@
 
 import numpy as np
 
+from pysisyphus.helpers import rms
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.gdiis import gdiis, gediis
 
@@ -15,15 +16,15 @@ from pysisyphus.optimizers.gdiis import gdiis, gediis
 class RFOptimizer(HessianOptimizer):
 
     def __init__(self, geom, line_search=True, gediis=False, gdiis=True,
-                 gdiis_thresh=2.5e-3, gediis_tresh=1e-2,
+                 gdiis_thresh=2.5e-3, gediis_thresh=1e-2,
                  *args, **kwargs):
         super().__init__(geom, *args, **kwargs)
 
         self.line_search = line_search
         self.gediis = gediis
         self.gdiis = gdiis
-        self.gdiis_thresh = gdiis_thresh
-        self.gediis_thresh = gediis_thresh
+        self.gdiis_thresh = gdiis_thresh  # Will be compared to rms(step)
+        self.gediis_thresh = gediis_thresh  # Will be compared to rms(forces)
 
     def optimize(self):
         gradient = self.geometry.gradient
@@ -70,14 +71,19 @@ class RFOptimizer(HessianOptimizer):
         ref_step = get_step(gradient, big_eigvals, big_eigvecs)
         step = ref_step
 
-        can_gediis = np.sqrt(np.mean(self.forces[-1]**2)) < self.gediis_thresh
-        can_diis = np.sqrt(np.mean(ref_step**2)) < self.gdiis_thresh
+        rms_forces = rms(self.forces[-1])
+        rms_step = rms(ref_step)
+        can_diis = rms_step <= self.gdiis_thresh
+        can_gediis = rms_forces <= self.gediis_thresh# and rms_step > self.gdiis_thresh
         diis_result = None
         ip_gradient = None
         if self.gdiis and can_diis:
             err_vecs = -np.array(self.forces)
             diis_result = gdiis(err_vecs, self.coords, self.forces, ref_step)
+        # Don't try GEDIIS if GDIIS failed
         elif self.gediis and can_gediis:
+        # Try GEDIIS if GDIIS failed
+        # if self.gediis and can_gediis and (diis_result == None):
             diis_result = gediis(self.coords, self.energies, self.forces)
 
         if diis_result:
