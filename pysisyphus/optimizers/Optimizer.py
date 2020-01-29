@@ -138,12 +138,17 @@ class Optimizer:
         # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
         self.logger.debug(message)
 
-    def check_convergence(self, multiple=1.0, overachieve_factor=0.,
+    def check_convergence(self, step=None, multiple=1.0, overachieve_factor=None,
                           energy_thresh=1e-6):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple
         thereof. The latter may be used in initiating the climbing image.
         """
+
+        if step is None:
+            step = self.steps[-1]
+        if overachieve_factor is None:
+            overachieve_factor = self.overachieve_factor
 
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
@@ -155,7 +160,6 @@ class Optimizer:
             forces = self.modified_forces[-1]
         else:
             forces = self.forces[-1]
-        step = self.steps[-1]
 
         # The forces of fixed images may be zero and this may distort the RMS
         # values. So we take into account the number of moving images with
@@ -360,9 +364,7 @@ class Optimizer:
             self.steps.append(step)
 
             # Convergence check
-            self.is_converged = self.check_convergence(
-                                    overachieve_factor=self.overachieve_factor
-            )
+            self.is_converged = self.check_convergence()
 
             end_time = time.time()
             elapsed_seconds = end_time - start_time
