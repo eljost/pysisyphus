@@ -347,7 +347,7 @@ def print_internals(geoms):
             val = pi.val
             if len(pi.inds) > 2:
                 val = np.rad2deg(val)
-            print(f"{j:03d}: {pi_type}{pi.inds} {val: >10.4f}")
+            print(f"{j:04d}: {pi_type}{str(pi.inds): >20} {val: >10.4f}")
 
 
 def get(geoms, index):
