@@ -170,9 +170,9 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
         "pal": 4,
     }
 
-    geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
+    # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
+    geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
     geom = augment_coordinates(geom)
-    # geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
 
     opt_kwargs = {
         "thresh": "baker",
