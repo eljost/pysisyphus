@@ -163,9 +163,8 @@ def cubic_fit(e0, e1, g0, g1):
     c = g0
     b = -(g1 + 2*g0 + 3*e0 - 3*e1)
     a = 2*(e0 - e1) + g0 + g1
-    coeffs = (a, b, c, d)
     # np.testing.assert_allclose([a, b, c, d], coeffs, atol=1e-10)
-    poly = np.poly1d(coeffs)
+    poly = np.poly1d((a, b, c, d))
     try:
         mr, mv = get_minimum(poly)
     except ValueError:
