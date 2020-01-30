@@ -125,9 +125,12 @@ def get_baker_ts_geoms(**kwargs):
         "17_claisen.xyz": (0, 1, -267.23859),
         "18_silyene_insertion.xyz": (0, 1, -367.20778),
         "19_hnccs.xyz": (0, 1, -525.43040),
-        # The energy given in the paper (-168.24752 au) is faulty.
-        # This is the correct one.
-        "20_hconh3_cation.xyz": (1, 1, -168.241392),
+        # The energy given in the paper (-168.24752 au) is the correct one
+        # if one forms the central (0,1) bond (0-based indexing). If this
+        # bond is missing, as it is if we autogenerate with bond-factor=1.3
+        # then a TS with -168.241392 will be found.
+        # For now we will use the original value from the paper.
+        "20_hconh3_cation.xyz": (1, 1, -168.24752),
         "21_acrolein_rot.xyz": (0, 1, -189.67574),
         "22_hconhoh.xyz": (0, 1, -242.25529),
         "23_hcn_h2.xyz": (0, 1, -93.31114),
