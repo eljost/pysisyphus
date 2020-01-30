@@ -150,15 +150,21 @@ def quartic_fit(e0, e1, g0, g1):
 
 
 def cubic_fit(e0, e1, g0, g1):
-    # Shorter sympy implementation. Probably slower? But shouldn't matter...
-    a0, a1, a2, a3 = sym.symbols("a:4")
-    s = sym.solve((e0-a0,
-                   g0-a1,
-                   e1-a0-a1-a2-a3,
-                   g1-a1-2*a2-3*a3),
-                   (a0, a1, a2, a3),
-    )
-    coeffs = [sym.N(expr) for expr in (s[a3], s[a2], s[a1], s[a0])]
+    # # Shorter sympy implementation. Probably slower? But shouldn't matter...
+    # a0, a1, a2, a3 = sym.symbols("a:4")
+    # s = sym.solve((e0-a0,
+                   # g0-a1,
+                   # e1-a0-a1-a2-a3,
+                   # g1-a1-2*a2-3*a3),
+                   # (a0, a1, a2, a3),
+    # )
+    # coeffs = [float(sym.N(expr)) for expr in (s[a3], s[a2], s[a1], s[a0])]
+    d = e0
+    c = g0
+    b = -(g1 + 2*g0 + 3*e0 - 3*e1)
+    a = 2*(e0 - e1) + g0 + g1
+    coeffs = (a, b, c, d)
+    # np.testing.assert_allclose([a, b, c, d], coeffs, atol=1e-10)
     poly = np.poly1d(coeffs)
     try:
         mr, mv = get_minimum(poly)
