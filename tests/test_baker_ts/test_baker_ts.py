@@ -170,6 +170,7 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
         "pal": 4,
     }
 
+    print(f"@Running {name}")
     # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
     geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
     geom = augment_coordinates(geom)
@@ -185,7 +186,12 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
     # opt = TRIM(geom, **opt_kwargs)
     opt.run()
 
+    print(f"\t@Converged: {opt.is_converged}, {opt.cur_cycle+1} cycles")
+
     assert geom.energy == pytest.approx(ref_energy)
+    print("\t@Energies match!")
+
+    return opt.cur_cycle+1
 
 
 @pytest.mark.benchmark
@@ -378,5 +384,7 @@ def test_silyl():
 
 
 if __name__ == "__main__":
-    _test_baker_ts_optimizations()
+    # _test_baker_ts_optimizations()
     # add_coords()
+    cycles = sum([test_baker_tsopt(*args) for args in get_geoms()])
+    print(cycles)
