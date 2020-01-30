@@ -30,12 +30,12 @@ class RSIRFOptimizer(TSHessianOptimizer):
         grad_star = eigvecs_.T.dot(P.dot(gradient))
 
         # Augmented hessian
-        H_aug = np.array(np.bmat(
-                            ((np.diag(eigvals_), grad_star[:, None]),
-                             (grad_star[None, :], [[0]]))
-        ))
-        # alpha = self.alpha0
-        alpha = 1
+        dim_ = eigvals_.size + 1
+        H_aug = np.zeros((dim_, dim_))
+        H_aug[:dim_-1,:dim_-1] = np.diag(eigvals_)
+        H_aug[-1,:-1] = grad_star
+        H_aug[:-1,-1] = grad_star
+        alpha = self.alpha0
 
         diag_indices = np.diag_indices(eigvals_.size)
         self.max_micro_cycles = 25
