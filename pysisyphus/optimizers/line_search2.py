@@ -151,6 +151,7 @@ def quartic_fit(e0, e1, g0, g1):
 
 def cubic_fit(e0, e1, g0, g1):
     # # Shorter sympy implementation. Probably slower? But shouldn't matter...
+    # # Ok it is really slow ... and it's gone.
     # a0, a1, a2, a3 = sym.symbols("a:4")
     # s = sym.solve((e0-a0,
                    # g0-a1,
