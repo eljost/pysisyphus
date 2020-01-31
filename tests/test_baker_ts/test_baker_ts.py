@@ -356,6 +356,7 @@ def find_missing_strong_bonds(geom, hessian, bond_factor=1.7, thresh=0.3, root=0
     return missing_bonds
 
 
+@using_gaussian16
 def test_silyl():
     geom = geom_from_library("baker_ts/18_silyene_insertion.xyz", coord_type="redund")
 
