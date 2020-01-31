@@ -256,20 +256,24 @@ class HessianOptimizer(Optimizer):
                                               prev_grad_proj, cur_grad_proj)
         quartic_result = line_search2.quartic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
+        quintic_result = None
         if hessian is not None:
             quintic_result = line_search2.quintic_fit(prev_energy, cur_energy,
                                                       prev_grad_proj, cur_grad_proj,
                                                       hess_proj, hess_proj)
-
-        import pdb; pdb.set_trace()
         prev_coords = self.coords[-2]
         accept = {
             # cubic is disabled for now as it does not seem to help
             "cubic": lambda x: (x > 2.) and (x < 1),  # lgtm [py/redundant-comparison]
             "quartic": lambda x: (x > 0.) and (x <= 2),
+            "quintic": lambda x: (x > 0.) and (x <= 2),
         }
+
         fit_result = None
-        if quartic_result and accept["quartic"](quartic_result.x):
+        if quintic_result and accept["quintic"](quintic_result.x):
+            fit_result = quintic_result
+            deg = "quintic"
+        elif quartic_result and accept["quartic"](quartic_result.x):
             fit_result = quartic_result
             deg = "quartic"
         elif cubic_result and accept["cubic"](cubic_result.x):
