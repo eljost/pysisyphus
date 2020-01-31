@@ -149,4 +149,12 @@ def test_baker_gs_opt(name, geom, ref_energy):
 
 
 if __name__ == "__main__":
-    run_baker_minimum_optimizations()
+    # run_baker_minimum_optimizations()
+    cycles_converged = [
+        test_baker_gs_opt(name, geom, ref_energy) for name, (geom, ref_energy)
+        in get_baker_geoms(coord_type="redund").items()
+    ]
+    cycles, converged = zip(*cycles_converged)
+    tot_cycles = sum(cycles)
+    print(tot_cycles)
+    print(converged)
