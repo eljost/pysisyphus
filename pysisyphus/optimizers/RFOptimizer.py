@@ -85,8 +85,8 @@ class RFOptimizer(HessianOptimizer):
         can_linesearch = (diis_result is None) and self.line_search and (self.cur_cycle > 0)
         if can_linesearch:
             # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search()
-            ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2(H)
-            # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2()
+            #ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2(H)
+             ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2()
 
         if ip_gradient is not None:
             # Project interpolated gradient if necessary
