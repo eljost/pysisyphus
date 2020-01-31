@@ -45,7 +45,7 @@ def get_step(geom, coords):
     assert len(geom.coords) == len(coords)
 
     if geom.coord_type == "cart":
-        diff = self.coords - other.coords
+        diff = geom.coords - coords
     elif geom.coord_type in ("redund", "dlc"):
         diff = -get_tangent(geom.internal.prim_coords, coords,
                             geom.internal.dihed_start)
