@@ -99,6 +99,24 @@ def get_minimum(poly):
 FitResult = namedtuple("FitResult", "x y polys")
 
 
+def quintic_fit(e0, e1, g0, g1, H0, H1):
+    a = -H0/2 + H1/2 - 6*e0 + 6*e1 - 3*g0 - 3*g1
+    b = 3*H0/2 - H1 + 15*e0 - 15*e1 + 8*g0 + 7*g1
+    c = -3*H0/2 + H1/2 - 10*e0 + 10*e1 - 6*g0 - 4*g1
+    d = H0/2
+    e = g0
+    f = e0
+
+    poly = np.poly1d((a, b, c, d, e, f))
+    try:
+        mr, mv = get_minimum(poly)
+    except ValueError:
+        return None
+
+    fit_result = FitResult(mr, mv, (poly, ))
+    return fit_result
+
+
 def quartic_fit(e0, e1, g0, g1):
     """See gen_solutions() for derivation."""
     a0 = e0
