@@ -38,12 +38,14 @@ class RedundantCoords:
     BEND_MAX_DEG = 170
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
-                 prim_indices=None, define_prims=None, bonds_only=False):
+                 prim_indices=None, define_prims=None, bonds_only=False,
+                 check_bends=True):
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
         self.define_prims = define_prims
         self.bonds_only = bonds_only
+        self.check_bends = check_bends
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -364,7 +366,10 @@ class RedundantCoords:
     def is_valid_bend(self, bend_ind):
         val = self.calc_bend(self.c3d, bend_ind)
         deg = np.rad2deg(val)
-        return self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
+        # Always return true if bends should not be checked
+        return (
+            not self.check_bends) or (self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
+        )
 
     def set_bending_indices(self, define_bends=None):
         bond_sets = {frozenset(bi) for bi in self.bond_indices}
