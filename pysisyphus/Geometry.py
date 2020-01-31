@@ -133,18 +133,25 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
-    def copy(self):
+    def copy(self, coord_type=None):
         """Returns a new Geometry object with same atoms and coordinates.
+
+        Parameters
+        ----------
+        coord_type : str
+            Desired coord_type, defaults to current coord_type.
 
         Returns
         -------
         geom : Geometry
             New Geometry object with the same atoms and coordinates.
         """
+        if coord_type == None:
+            coord_type = self.coord_type
         prim_indices = None
-        if self.coord_type != "cart":
+        if coord_type != "cart":
             prim_indices = self.internal.prim_indices
-        return Geometry(self.atoms, self._coords, self.coord_type,
+        return Geometry(self.atoms, self._coords, coord_type=coord_type,
                         prim_indices=prim_indices)
 
     def atom_indices(self):
