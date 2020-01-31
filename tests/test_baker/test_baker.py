@@ -145,6 +145,8 @@ def test_baker_gs_opt(name, geom, ref_energy):
     opt.run()
     assert np.allclose(geom.energy, ref_energy)
 
+    return opt.cur_cycle + 1, opt.is_converged
+
 
 if __name__ == "__main__":
     run_baker_minimum_optimizations()
