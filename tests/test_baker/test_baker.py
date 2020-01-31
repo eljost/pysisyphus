@@ -138,6 +138,8 @@ def run_baker_minimum_optimizations():
 def test_baker_gs_opt(name, geom, ref_energy):
     opt_kwargs = {
         "thresh": "baker",
+        "gdiis": False,
+        # "max_cycles": 4,
     }
     print(f"@Running {name}")
     geom.set_calculator(PySCF(basis="sto3g", pal=2))

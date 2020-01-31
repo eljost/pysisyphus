@@ -4,6 +4,7 @@ from abc import abstractmethod
 
 import numpy as np
 
+from pysisyphus.intcoords.helpers import get_step
 from pysisyphus.optimizers.guess_hessians import (fischer_guess,
                                                   lindh_guess,
                                                   simple_guess,
@@ -299,6 +300,84 @@ class HessianOptimizer(Optimizer):
             # fit_step = (1-x) * -prev_step
             # fit_coords = cur_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
+        return fit_energy, fit_grad, fit_coords, fit_step
+
+    def poly_line_search_v2(self, hessian=None):
+        assert len(self.energies) == len(self.coords) == len(self.forces)
+        # Find previous best point
+        prev_best_ind = np.argmin(self.energies[:-1])
+        prev_best_energy = self.energies[prev_best_ind]
+        prev_best_coords = self.coords[prev_best_ind]
+        prev_best_grad = -self.forces[prev_best_ind]
+
+        # Current point. Current energy & gradient are already appended.
+        cur_energy = self.energies[-1]
+        cur_coords = self.coords[-1]
+        cur_grad = -self.forces[-1]
+
+        at_best_energy = cur_energy < prev_best_energy
+
+        # This wont work for internals
+        # step = prev_coords - cur_coords
+        # This should work for all coord_types
+        # tmp_geom = self.geometry.copy(check_bends=False)
+        # tmp_geom.coords = prev_best_coords
+        # step = tmp_geom - self.geometry
+        step = get_step(self.geometry, prev_best_coords)
+
+        if hessian is not None:
+            hess_proj = float(step[None,:].dot(hessian).dot(step[:,None]))
+
+        # Generate directional gradients by projecting them on the previous step.
+        prev_grad_proj = step @ prev_best_grad
+        cur_grad_proj =  step @ cur_grad
+        cubic_result = line_search2.cubic_fit(prev_best_energy, cur_energy,
+                                              prev_grad_proj, cur_grad_proj)
+        quartic_result = line_search2.quartic_fit(prev_best_energy, cur_energy,
+                                                  prev_grad_proj, cur_grad_proj)
+        quintic_result = None
+        if hessian is not None:
+            quintic_result = line_search2.quintic_fit(prev_best_energy, cur_energy,
+                                                      prev_grad_proj, cur_grad_proj,
+                                                      hess_proj, hess_proj)
+        accept_if_best = lambda x: True if at_best_energy else (0. < x < 1.)
+        accept = {
+            "cubic": lambda x: 0. < x < 1.,
+            # "quartic": accept_if_best,
+            "quartic": lambda x: 0. < x < 2.,
+            "quintic": accept_if_best,
+        }
+        fit_result = None
+        # import pdb; pdb.set_trace()
+        if quintic_result and accept["quintic"](quintic_result.x):
+            fit_result = quintic_result
+            deg = "quintic"
+        elif quartic_result and accept["quartic"](quartic_result.x):
+            fit_result = quartic_result
+            deg = "quartic"
+        elif cubic_result and accept["cubic"](cubic_result.x):
+            fit_result = cubic_result
+            deg = "cubic"
+        # else:
+            # Midpoint fallback as described by gaussian?
+
+        fit_energy = None
+        fit_grad = None
+        fit_coords = None
+        fit_step = None
+        if fit_result and fit_result.y < prev_best_energy:
+            x = fit_result.x
+            fit_energy = fit_result.y
+            self.log(f"Did {deg} interpolation with x={x:.6f}.")
+
+            # Interpolate coordinates and gradient
+            fit_step = x * step
+            fit_coords = prev_best_coords + fit_step
+            # The commented lines below would be correct if we would want
+            # the step from the previous coordinates and not the current ones.
+            # fit_step = (1-x) * -prev_step
+            # fit_coords = cur_coords + fit_step
+            fit_grad = (1-x)*prev_best_grad + x*cur_grad
         return fit_energy, fit_grad, fit_coords, fit_step
 
     def solve_rfo(self, rfo_mat, kind="min"):
