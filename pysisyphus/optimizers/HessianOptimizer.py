@@ -231,7 +231,7 @@ class HessianOptimizer(Optimizer):
             self.H = self.H + dH
             self.log(f"Did {key} hessian update.")
 
-    def poly_line_search(self):
+    def poly_line_search(self, hessian=None):
         # Current energy & gradient are already appended.
         cur_energy = self.energies[-1]
         prev_energy = self.energies[-2]
@@ -240,6 +240,9 @@ class HessianOptimizer(Optimizer):
         prev_step = self.steps[-1]
         cur_grad = -self.forces[-1]
         prev_grad = -self.forces[-2]
+
+        if hessian is not None:
+            hess_proj = float(prev_step[None,:].dot(hessian).dot(prev_step[:,None]))
 
         # TODO: always call line_search? Right now we could get some acceleration
         # as we also accept steps > 1.
@@ -253,8 +256,12 @@ class HessianOptimizer(Optimizer):
                                               prev_grad_proj, cur_grad_proj)
         quartic_result = line_search2.quartic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
-        # TODO: add quintic
+        if hessian is not None:
+            quintic_result = line_search2.quintic_fit(prev_energy, cur_energy,
+                                                      prev_grad_proj, cur_grad_proj,
+                                                      hess_proj, hess_proj)
 
+        import pdb; pdb.set_trace()
         prev_coords = self.coords[-2]
         accept = {
             # cubic is disabled for now as it does not seem to help
@@ -271,27 +278,24 @@ class HessianOptimizer(Optimizer):
         # else:
             # Midpoint fallback as described by gaussian?
 
+        fit_energy = None
+        fit_grad = None
+        fit_coords = None
+        fit_step = None
         if fit_result and fit_result.y < prev_energy:
             x = fit_result.x
-            y = fit_result.y
+            fit_energy = fit_result.y
             self.log(f"Did {deg} interpolation with x={x:.6f}.")
 
             # Interpolate coordinates and gradient
             fit_step = x * prev_step
             fit_coords = prev_coords + fit_step
+            # The commented lines below would be correct if we would want
+            # the step from the previous coordinates and not the current ones.
             # fit_step = (1-x) * -prev_step
             # fit_coords = cur_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
-
-            # TODO: update step and other saved entries?!
-            self.geometry.coords = fit_coords
-            self.forces[-1] = -fit_grad
-            self.energies[-1] = y
-            self.coords[-1] = fit_coords.copy()
-            self.cart_coords[-1] = self.geometry.cart_coords.copy()
-            self.steps[-1] = fit_step
-            cur_grad = fit_grad
-        return cur_grad
+        return fit_energy, fit_grad, fit_coords, fit_step
 
     def solve_rfo(self, rfo_mat, kind="min"):
         self.log("Diagonalizing augmented Hessian:")

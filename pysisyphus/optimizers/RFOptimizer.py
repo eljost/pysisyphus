@@ -67,32 +67,46 @@ class RFOptimizer(HessianOptimizer):
         # if self.gediis and can_gediis and (diis_result == None):
             diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
 
-        if diis_result:
+        try:
+            ip_coords = diis_result.coords
             tmp_geom = self.geometry.copy()
-            try:
-                tmp_geom.coords = diis_result.coords
-                diis_step = tmp_geom - self.geometry
-                self.geometry.coords = diis_result.coords
-                self.forces[-1] = diis_result.forces
-                # self.energies[-1] = y
-                self.coords[-1] = self.geometry.coords.copy()
-                self.cart_coords[-1] = self.geometry.cart_coords.copy()
-                self.steps[-1] = diis_step
-                ip_gradient = -diis_result.forces
-            except ValueError:
-                # This will be raised if the tmp_geom will have a different
-                # number of coordinates because some (primitives) couldn't
-                # be defined.
-                diis_result = None
+            tmp_geom.coords = diis_result.coords
+            ip_step = tmp_geom - self.geometry
+            ip_gradient = -diis_result.forces.copy()
+        # When diis_result is None
+        except AttributeError:
+            self.log("GDIIS didn't succeed.")
+        except ValueError:
+            # This will be raised if the tmp_geom will have a different
+            # number of coordinates because some (primitives) couldn't
+            # be defined.
+            diis_result = None
 
         can_linesearch = (diis_result is None) and self.line_search and (self.cur_cycle > 0)
         if can_linesearch:
-            ip_gradient = self.poly_line_search()
+            ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search()
 
         if ip_gradient is not None:
+            # Project interpolated gradient if necessary
+            if self.geometry.coord_type == "redund":
+                ip_gradient = self.geometry.internal.project_vector(ip_gradient)
+
+            self.geometry.coords = ip_coords
+            self.forces[-1] = -ip_gradient
+            try:
+                self.energies[-1] = ip_energy
+            # GDIIS doesn't produce an energy
+            except UnboundLocalError:
+                self.log("Skipping energy update after fitting.")
+            self.coords[-1] = ip_coords.copy()
+            self.cart_coords[-1] = self.geometry.cart_coords.copy()
+            self.steps[-1] = ip_step
+
             source = diis_result.type if diis_result else "line search"
             self.log(f"Got inter/extra-polated geometry from {source}")
             self.log(f"Calculating second step from inter/extra-polated gradient.")
+            if self.geometry.coord_type == "redund":
+                ip_gradient = self.geometry.internal.project_vector(ip_gradient)
             step = get_step(ip_gradient, big_eigvals, big_eigvecs)
 
         step_norm = np.linalg.norm(step)
