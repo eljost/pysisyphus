@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 from pprint import pprint
 import time
 
@@ -140,7 +141,8 @@ def test_baker_gs_opt(name, geom, ref_energy):
         "thresh": "baker",
     }
     print(f"@Running {name}")
-    geom.set_calculator(PySCF(basis="sto3g", pal=2))
+    pal = min(os.cpu_count(), 4)
+    geom.set_calculator(PySCF(basis="sto3g", pal=pal))
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
     assert np.allclose(geom.energy, ref_energy)
