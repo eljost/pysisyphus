@@ -26,16 +26,6 @@ class RSPRFOptimizer(TSHessianOptimizer):
 
         # Minimize energy along all modes, except the TS-mode
         min_indices = [i for i in range(gradient_trans.size) if i != self.root]
-        min_mat = np.asarray(np.bmat((
-            (np.diag(eigvals[min_indices]), gradient_trans[min_indices,None]),
-            (gradient_trans[None,min_indices], [[0]])
-        )))
-        # Maximize energy along the chosen TS mode. The matrix is hardcoded
-        # as 2x2, so only first-order saddle point searches are supported.
-        max_mat = np.array(((eigvals[self.root], gradient_trans[self.root]),
-                           (gradient_trans[self.root], 0)))
-
-        min_diag_indices = np.diag_indices(min_mat.shape[0])
 
         """In the RS-(P)RFO method we have to scale the matrices with alpha.
         Unscaled matrix (Eq. 8) in [1]:
@@ -57,22 +47,20 @@ class RSPRFOptimizer(TSHessianOptimizer):
                                    = lambda     .
             (g+             0) (1)          (1)
         """
+
         alpha = self.alpha0
         for mu in range(self.max_micro_cycles):
             self.log(f"RS-PRFO micro cycle {mu:02d}, alpha={alpha:.6f}")
-            max_mat_scaled = max_mat.copy()
-            # Create the scaled max. matrix
-            max_mat_scaled[0, 0] /= alpha
-            max_mat_scaled[0, 1] /= alpha
-            step_max, eigval_max, nu_max = self.solve_rfo(max_mat_scaled, "max")
+
+            # Maximize energy along the chosen TS mode. The matrix is hardcoded
+            # as 2x2, so only first-order saddle point searches are supported.
+            H_aug_max = self.get_augmented_hessian(eigvals[[self.root]], gradient_trans[[self.root]], alpha)
+            step_max, eigval_max, nu_max = self.solve_rfo(H_aug_max, "max")
             step_max = step_max[0]
-            # Create the scaled min. matrix
-            scaled_min_eigenvalues = np.zeros_like(eigvals)
-            scaled_min_eigenvalues[:-1] = eigvals[min_indices] / alpha
-            min_mat_scaled = min_mat.copy()
-            min_mat_scaled[min_diag_indices] = scaled_min_eigenvalues
-            min_mat_scaled[:-1,-1] /= alpha
-            step_min, eigval_min, nu_min = self.solve_rfo(min_mat_scaled, "min")
+
+            # Minimize energy along all modes, but the TS mode.
+            H_aug_min = self.get_augmented_hessian(eigvals[min_indices], gradient_trans[min_indices], alpha)
+            step_min, eigval_min, nu_min = self.solve_rfo(H_aug_min, "min")
 
             # Calculate overlap between directions over the course of the micro cycles
             # if mu == 0:
@@ -127,7 +115,6 @@ class RSPRFOptimizer(TSHessianOptimizer):
                           / dstep2_dalpha
             )
             alpha += alpha_step
-            assert alpha > 0, "alpha must not be negative!"
 
         # Right now the step is still given in the Hessians eigensystem. We
         # transform it back now.
