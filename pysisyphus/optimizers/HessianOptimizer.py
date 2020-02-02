@@ -471,7 +471,7 @@ class HessianOptimizer(Optimizer):
                       / dstep2_dalpha
         )
         self.log(f"alpha_step={alpha_step:.4f}")
-        assert (alpha + alpha_step) > 0, "alpha must not be negative!"
+        assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
         return alpha_step
 
     @abstractmethod
