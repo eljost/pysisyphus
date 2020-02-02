@@ -12,9 +12,7 @@ from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.calculators.LEPSBase import LEPSBase
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
-
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-
 
 @pytest.mark.parametrize(
     "calc_cls, start, ref_cycle, ref_coords", [

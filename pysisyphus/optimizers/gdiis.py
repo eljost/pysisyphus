@@ -83,7 +83,11 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
         use_vecs = np.array(err_vecs[::-1][:use])
 
         A = np.einsum("ij,kj->ik", use_vecs, use_vecs)
-        coeffs = np.linalg.solve(A, np.ones(use))
+        try:
+            coeffs = np.linalg.solve(A, np.ones(use))
+        except np.linalg.LinAlgError:
+            log("LinAlgError when solving GDIIS matrix.")
+            break
         # Scale coeffs so that their sum equals 1
         coeffs_norm = np.linalg.norm(coeffs)
         valid_coeffs_norm = coeffs_norm <= 1e8
