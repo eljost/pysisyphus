@@ -38,11 +38,14 @@ class RedundantCoords:
     BEND_MAX_DEG = 170
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
-                 prim_indices=None, define_prims=None):
+                 prim_indices=None, define_prims=None, bonds_only=False,
+                 check_bends=True):
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
         self.define_prims = define_prims
+        self.bonds_only = bonds_only
+        self.check_bends = check_bends
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -62,6 +65,10 @@ class RedundantCoords:
             valid_dihedrals = [inds for inds in dihedrals if
                                self.is_valid_dihedral(inds)]
             self.dihedral_indices = to_arr(valid_dihedrals)
+
+        if self.bonds_only:
+            self.bending_indices = list()
+            self.dihedral_indices = list()
         self._prim_internals = self.calculate(self.cart_coords)
         self._prim_coords = np.array([pc.val for pc in self._prim_internals])
 
@@ -150,7 +157,8 @@ class RedundantCoords:
         return self.Bt_inv.dot(cart_forces)
 
     def get_K_matrix(self, int_gradient=None):
-        assert len(int_gradient) == len(self._prim_internals)
+        if int_gradient is not None:
+            assert len(int_gradient) == len(self._prim_internals)
         size_ = self.cart_coords.size
         if int_gradient is None:
             return np.zeros((size_, size_))
@@ -358,7 +366,10 @@ class RedundantCoords:
     def is_valid_bend(self, bend_ind):
         val = self.calc_bend(self.c3d, bend_ind)
         deg = np.rad2deg(val)
-        return self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
+        # Always return true if bends should not be checked
+        return (
+            not self.check_bends) or (self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
+        )
 
     def set_bending_indices(self, define_bends=None):
         bond_sets = {frozenset(bi) for bi in self.bond_indices}
@@ -367,7 +378,7 @@ class RedundantCoords:
             if len(union) == 3:
                 as_tpl, _ = self.sort_by_central(bond_set1, bond_set2)
                 if not self.is_valid_bend(as_tpl):
-                    self.log(f"Didn't create bend ({as_tpl})")
+                    self.log(f"Didn't create bend {list(as_tpl)}")
                              # f" with value of {deg:.3f}°")
                     continue
                 self.bending_indices.append(as_tpl)
@@ -438,7 +449,7 @@ class RedundantCoords:
                 if not np.isnan(dihed):
                     improper_dihedrals.append(dihedral_ind)
                 else:
-                    self.log("Dihedral {dihedral_ind} is undefinied. Skipping it!")
+                    self.log(f"Dihedral {dihedral_ind} is undefinied. Skipping it!")
 
         # Now try to create the remaining improper dihedrals.
         if (len(self.atoms) >= 4) and (len(self.dihedral_indices) == 0):

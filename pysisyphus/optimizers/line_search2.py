@@ -99,6 +99,24 @@ def get_minimum(poly):
 FitResult = namedtuple("FitResult", "x y polys")
 
 
+def quintic_fit(e0, e1, g0, g1, H0, H1):
+    a = -H0/2 + H1/2 - 6*e0 + 6*e1 - 3*g0 - 3*g1
+    b = 3*H0/2 - H1 + 15*e0 - 15*e1 + 8*g0 + 7*g1
+    c = -3*H0/2 + H1/2 - 10*e0 + 10*e1 - 6*g0 - 4*g1
+    d = H0/2
+    e = g0
+    f = e0
+
+    poly = np.poly1d((a, b, c, d, e, f))
+    try:
+        mr, mv = get_minimum(poly)
+    except ValueError:
+        return None
+
+    fit_result = FitResult(mr, mv, (poly, ))
+    return fit_result
+
+
 def quartic_fit(e0, e1, g0, g1):
     """See gen_solutions() for derivation."""
     a0 = e0
@@ -150,16 +168,22 @@ def quartic_fit(e0, e1, g0, g1):
 
 
 def cubic_fit(e0, e1, g0, g1):
-    # Shorter sympy implementation. Probably slower? But shouldn't matter...
-    a0, a1, a2, a3 = sym.symbols("a:4")
-    s = sym.solve((e0-a0,
-                   g0-a1,
-                   e1-a0-a1-a2-a3,
-                   g1-a1-2*a2-3*a3),
-                   (a0, a1, a2, a3),
-    )
-    coeffs = [sym.N(expr) for expr in (s[a3], s[a2], s[a1], s[a0])]
-    poly = np.poly1d(coeffs)
+    # # Shorter sympy implementation. Probably slower? But shouldn't matter...
+    # # Ok it is really slow ... and it's gone.
+    # a0, a1, a2, a3 = sym.symbols("a:4")
+    # s = sym.solve((e0-a0,
+                   # g0-a1,
+                   # e1-a0-a1-a2-a3,
+                   # g1-a1-2*a2-3*a3),
+                   # (a0, a1, a2, a3),
+    # )
+    # coeffs = [float(sym.N(expr)) for expr in (s[a3], s[a2], s[a1], s[a0])]
+    d = e0
+    c = g0
+    b = -(g1 + 2*g0 + 3*e0 - 3*e1)
+    a = 2*(e0 - e1) + g0 + g1
+    # np.testing.assert_allclose([a, b, c, d], coeffs, atol=1e-10)
+    poly = np.poly1d((a, b, c, d))
     try:
         mr, mv = get_minimum(poly)
     except ValueError:

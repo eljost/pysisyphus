@@ -238,12 +238,11 @@ def test_quad():
     forces = -dfunc(coords)
     gediis(coords, energies, forces)
 
-
 if __name__ == "__main__":
     # test_sd_gdiis()
     # test_rfo_benzene()
-    test_sd_gediis()
+    # test_sd_gediis()
     # test_diis()
     # test_artemisin()
     # test_hess_proj()
-    # test_quad()
+    test_quad()

@@ -3,9 +3,14 @@
 # [1] https://doi.org/10.1016/S0022-2860(84)87198-7
 #     Pulay, 1984
 # [2] https://pubs.rsc.org/en/content/articlehtml/2002/cp/b108658h
+#     Stabilized GDIIS
 #     Farkas, Schlegel, 2002
 # [3] https://pubs.acs.org/doi/abs/10.1021/ct050275a
+#     GEDIIS/Hybrid method
 #     Li, Frisch, 2006
+# [4] https://aip.scitation.org/doi/10.1063/1.2977735
+#     Sim-GEDIIS using hessian information
+#     Moss, Li, 2008
 
 from collections import namedtuple
 import logging
@@ -17,10 +22,12 @@ from scipy.optimize import minimize
 
 
 COS_CUTOFFS = {
-    2: 0.97,
-    3: 0.84,
-    # 2: 0.80,
-    # 3: 0.75,
+    # Looser cutoffs
+    2: 0.80,
+    3: 0.75,
+    # Original cutoffs, as published in [2]
+    # 2: 0.97,
+    # 3: 0.84,
     4: 0.71,
     5: 0.67,
     6: 0.62,
@@ -29,7 +36,7 @@ COS_CUTOFFS = {
     9: 0.41,
 }
 DIISResult = namedtuple("DIISResult",
-                         "coeffs coords forces N"
+                         "coeffs coords forces energy N type"
 )
 logger = logging.getLogger("optimizer")
 
@@ -49,14 +56,16 @@ def from_coeffs(vec, coeffs):
     return np.sum(coeffs[:,None] * vec[::-1][:len(coeffs)], axis=0)
 
 
-def diis_result(coeffs, coords, forces, prefix=""):
+def diis_result(coeffs, coords, forces, energy=None, prefix=""):
     diis_coords = from_coeffs(coords, coeffs)
     diis_forces = from_coeffs(forces, coeffs)
     diis_result = DIISResult(
                         coeffs=coeffs,
                         coords=diis_coords,
                         forces=diis_forces,
+                        energy=energy,
                         N=len(coeffs),
+                        type=f"{prefix}DIIS",
     )
     log(f"\tUsed {len(coeffs)} error vectors for {prefix}DIIS.")
     log("")
@@ -64,7 +73,6 @@ def diis_result(coeffs, coords, forces, prefix=""):
 
 
 def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
-
     # Scale error vectors so the smallest norm is 1
     norms = np.linalg.norm(err_vecs, axis=1)
     err_vecs = err_vecs / norms.min()
@@ -75,7 +83,11 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
         use_vecs = np.array(err_vecs[::-1][:use])
 
         A = np.einsum("ij,kj->ik", use_vecs, use_vecs)
-        coeffs = np.linalg.solve(A, np.ones(use))
+        try:
+            coeffs = np.linalg.solve(A, np.ones(use))
+        except np.linalg.LinAlgError:
+            log("LinAlgError when solving GDIIS matrix.")
+            break
         # Scale coeffs so that their sum equals 1
         coeffs_norm = np.linalg.norm(coeffs)
         valid_coeffs_norm = coeffs_norm <= 1e8
@@ -129,7 +141,7 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5):
     return diis_result(valid_coeffs, coords, forces, prefix="G")
 
 
-def gediis(coords, energies, forces, max_vecs=10):
+def gediis(coords, energies, forces, hessian=None, max_vecs=3):
     use = min(len(coords), max_vecs)
 
     R = coords[::-1][:use]
@@ -159,10 +171,22 @@ def gediis(coords, energies, forces, max_vecs=10):
         # cs = x2c(xs)
         # return anp.sum(cs*E) - anp.einsum("i,j,jk,ik", cs, cs, R, f) + anp.einsum("i,ij,ij", cs, R, f)
 
-    def fun(xs):
-        """Usage of precomputed values."""
-        cs = x2c(xs)
-        return anp.sum(cs*E) - anp.sum(anp.outer(cs, cs)*Rjfi) + (cs * Rifi).sum()
+    # Using precomputed values from above in 'fun()'
+    if hessian is None:
+        def fun(xs):
+            """Eq. (6) from [3]."""
+            cs = x2c(xs)
+            return anp.sum(cs*E) - anp.sum(anp.outer(cs, cs)*Rjfi) + (cs * Rifi).sum()
+    else:
+        hessian_inv = np.linalg.pinv(hessian)
+        # It doesn't matter if we use forces or gradients, as the signs will cancel.
+        # gHig = 0.5 * np.einsum("ki,ji,ki->k", f, hessian_inv, f)
+        gHig = np.einsum("ki,ji,ki->k", f, hessian_inv, f)
+        def fun(xs):
+            """Eq. (5) from [4]."""
+            cs = x2c(xs)
+            # Consider the hessian in the first term
+            return 0.5 * anp.sum(cs*gHig) - anp.sum(anp.outer(cs, cs)*Rjfi) + (cs * Rifi).sum()
 
     # def fun(xs):
         # cs = x2c(xs)
@@ -171,21 +195,14 @@ def gediis(coords, energies, forces, max_vecs=10):
             # cs * (E + cRjfi + Rifi)
         # )
 
-    # def fun_(xs):
-        # cs = x2c(xs)
-        # cRjfi = anp.einsum("j,jk,ik->ji", cs, R, f).sum(axis=0)
-        # print(cRjfi)
-        # return anp.sum(
-            # cs * (E.flatten() - cRjfi + Rifi)
-        # )
-
     jac = grad(fun)
-    # jac_ = grad(fun_)
 
-    x0 = np.ones(use)
-    res = minimize(fun, x0=x0, jac=jac)
+    x0 = np.ones(use) / use
+    res = minimize(fun, x0=x0, jac=jac)#, tol=1e-7)
     # print(res)
-    # res_ = minimize(fun_, x0=x0, jac=jac_)
+    # print("final x", res.x)
+    # x = res.x
+    # import pdb; pdb.set_trace()
 
     coeffs = None
     if res.success:
@@ -195,8 +212,8 @@ def gediis(coords, energies, forces, max_vecs=10):
     coeff_str = np.array2string(coeffs, precision=4)
     log(f"\tCoefficients: {coeff_str}")
     # en_ = (E * coeffs).sum()
-    print(f"\tlc.  energy={en_:.6f}")
-    if en_ >= E[0]:
+    # import pdb; pdb.set_trace()
+    if (hessian is None) and (en_ >= E[0]):
         print(f"GEDIIS converged, but proposed energy is above current energy! Returning None")
         return None
-    return diis_result(coeffs, coords, forces, "GE")
+    return diis_result(coeffs, coords, forces, energy=en_, prefix="GE")

@@ -52,7 +52,7 @@ def get_baker_geoms(**kwargs):
     geoms = {
         xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
     }
-    del geoms["acetylene.xyz"]
+    # del geoms["acetylene.xyz"]
     # From 10.1002/jcc.540140910
     sto3g_energies = {
         "water.xyz": -74.96590,
@@ -119,14 +119,18 @@ def get_baker_ts_geoms(**kwargs):
         "12_ethane_h2_abstraction.xyz": (0, 1, -78.54323),
         "13_hf_abstraction.xyz": (0, 1, -176.98453),
         "14_vinyl_alcohol.xyz": (0, 1, -151.91310),
+        # 15 does not have an imaginary mode in cartesian coordinates
         "15_hocl.xyz": (0, 1, -596.87865),
         "16_h2po4_anion.xyz": (-1, 1, -637.92388),
         "17_claisen.xyz": (0, 1, -267.23859),
         "18_silyene_insertion.xyz": (0, 1, -367.20778),
         "19_hnccs.xyz": (0, 1, -525.43040),
-        # The energy given in the paper (-168.24752 au) is faulty.
-        # This is the correct one.
-        "20_hconh3_cation.xyz": (1, 1, -168.241392),
+        # The energy given in the paper (-168.24752 au) is the correct one
+        # if one forms the central (0,1) bond (0-based indexing). If this
+        # bond is missing, as it is if we autogenerate with bond-factor=1.3
+        # then a TS with -168.241392 will be found.
+        # For now we will use the original value from the paper.
+        "20_hconh3_cation.xyz": (1, 1, -168.24752),
         "21_acrolein_rot.xyz": (0, 1, -189.67574),
         "22_hconhoh.xyz": (0, 1, -242.25529),
         "23_hcn_h2.xyz": (0, 1, -93.31114),
@@ -134,6 +138,12 @@ def get_baker_ts_geoms(**kwargs):
         "25_hcnh2.xyz": (0, 1, -93.28172),
     }
     return geoms, meta_data
+
+
+def get_baker_ts_geoms_flat(**kwargs):
+     geoms, meta_data = get_baker_ts_geoms(**kwargs)
+     # Key: (geometry, charge, mult, ref_energy)
+     return [(mol,) + (geom, ) + meta_data[mol] for mol, geom in geoms.items()]
 
 
 def get_baker_opt_ts_geoms(**kwargs):

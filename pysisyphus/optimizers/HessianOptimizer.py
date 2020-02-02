@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-from abc import abstractmethod
-
 import numpy as np
 
+from pysisyphus.intcoords.helpers import get_step
 from pysisyphus.optimizers.guess_hessians import (fischer_guess,
                                                   lindh_guess,
                                                   simple_guess,
@@ -36,7 +35,8 @@ class HessianOptimizer(Optimizer):
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
-                 small_eigval_thresh=1e-8, line_search=False, hybrid=False,
+                 small_eigval_thresh=1e-8, line_search=False,
+                 alpha0=1., max_micro_cycles=25,
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
@@ -59,7 +59,10 @@ class HessianOptimizer(Optimizer):
         self.hessian_xtb = hessian_xtb
         self.small_eigval_thresh = float(small_eigval_thresh)
         self.line_search = bool(line_search)
-        self.hybrid = bool(hybrid)
+        # Restricted-step related
+        self.alpha0 = alpha0
+        self.max_micro_cycles = int(max_micro_cycles)
+        assert max_micro_cycles >= 1
 
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
         self.hessian_recalc_in = None
@@ -253,14 +256,13 @@ class HessianOptimizer(Optimizer):
                                               prev_grad_proj, cur_grad_proj)
         quartic_result = line_search2.quartic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
-        # TODO: add quintic
-
         prev_coords = self.coords[-2]
         accept = {
             # cubic is disabled for now as it does not seem to help
             "cubic": lambda x: (x > 2.) and (x < 1),  # lgtm [py/redundant-comparison]
             "quartic": lambda x: (x > 0.) and (x <= 2),
         }
+
         fit_result = None
         if quartic_result and accept["quartic"](quartic_result.x):
             fit_result = quartic_result
@@ -271,27 +273,101 @@ class HessianOptimizer(Optimizer):
         # else:
             # Midpoint fallback as described by gaussian?
 
+        fit_energy = None
+        fit_grad = None
+        fit_coords = None
+        fit_step = None
         if fit_result and fit_result.y < prev_energy:
             x = fit_result.x
-            y = fit_result.y
+            fit_energy = fit_result.y
             self.log(f"Did {deg} interpolation with x={x:.6f}.")
 
             # Interpolate coordinates and gradient
             fit_step = x * prev_step
             fit_coords = prev_coords + fit_step
+            # The commented lines below would be correct if we would want
+            # the step from the previous coordinates and not the current ones.
             # fit_step = (1-x) * -prev_step
             # fit_coords = cur_coords + fit_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
+        return fit_energy, fit_grad, fit_coords, fit_step
 
-            # TODO: update step and other saved entries?!
-            self.geometry.coords = fit_coords
-            self.forces[-1] = -fit_grad
-            self.energies[-1] = y
-            self.coords[-1] = fit_coords.copy()
-            self.cart_coords[-1] = self.geometry.cart_coords.copy()
-            self.steps[-1] = fit_step
-            cur_grad = fit_grad
-        return cur_grad
+    def poly_line_search_v2(self, hessian=None):
+        assert len(self.energies) == len(self.coords) == len(self.forces)
+        # Find previous best point
+        prev_best_ind = np.argmin(self.energies[:-1])
+        prev_best_energy = self.energies[prev_best_ind]
+        prev_best_coords = self.coords[prev_best_ind]
+        prev_best_grad = -self.forces[prev_best_ind]
+
+        # Current point. Current energy & gradient are already appended.
+        cur_energy = self.energies[-1]
+        cur_grad = -self.forces[-1]
+
+        at_best_energy = cur_energy < prev_best_energy
+
+        # This wont work for internals
+        # step = prev_coords - cur_coords
+        # This should work for all coord_types
+        # tmp_geom = self.geometry.copy(check_bends=False)
+        # tmp_geom.coords = prev_best_coords
+        # step = tmp_geom - self.geometry
+        step = get_step(self.geometry, prev_best_coords)
+
+        if hessian is not None:
+            hess_proj = float(step[None,:].dot(hessian).dot(step[:,None]))
+
+        # Generate directional gradients by projecting them on the previous step.
+        prev_grad_proj = step @ prev_best_grad
+        cur_grad_proj =  step @ cur_grad
+        cubic_result = line_search2.cubic_fit(prev_best_energy, cur_energy,
+                                              prev_grad_proj, cur_grad_proj)
+        quartic_result = line_search2.quartic_fit(prev_best_energy, cur_energy,
+                                                  prev_grad_proj, cur_grad_proj)
+        quintic_result = None
+        if hessian is not None:
+            quintic_result = line_search2.quintic_fit(prev_best_energy, cur_energy,
+                                                      prev_grad_proj, cur_grad_proj,
+                                                      hess_proj, hess_proj)
+        accept_if_best = lambda x: True if at_best_energy else (0. < x < 1.)
+        accept = {
+            "cubic": lambda x: 0. < x < 1.,
+            # "quartic": accept_if_best,
+            "quartic": lambda x: 0. < x < 2.,
+            "quintic": accept_if_best,
+        }
+        fit_result = None
+        # import pdb; pdb.set_trace()
+        if quintic_result and accept["quintic"](quintic_result.x):
+            fit_result = quintic_result
+            deg = "quintic"
+        elif quartic_result and accept["quartic"](quartic_result.x):
+            fit_result = quartic_result
+            deg = "quartic"
+        elif cubic_result and accept["cubic"](cubic_result.x):
+            fit_result = cubic_result
+            deg = "cubic"
+        # else:
+            # Midpoint fallback as described by gaussian?
+
+        fit_energy = None
+        fit_grad = None
+        fit_coords = None
+        fit_step = None
+        if fit_result and fit_result.y < prev_best_energy:
+            x = fit_result.x
+            fit_energy = fit_result.y
+            self.log(f"Did {deg} interpolation with x={x:.6f}.")
+
+            # Interpolate coordinates and gradient
+            fit_step = x * step
+            fit_coords = prev_best_coords + fit_step
+            # The commented lines below would be correct if we would want
+            # the step from the previous coordinates and not the current ones.
+            # fit_step = (1-x) * -prev_step
+            # fit_coords = cur_coords + fit_step
+            fit_grad = (1-x)*prev_best_grad + x*cur_grad
+        return fit_energy, fit_grad, fit_coords, fit_step
 
     def solve_rfo(self, rfo_mat, kind="min"):
         self.log("Diagonalizing augmented Hessian:")
@@ -353,6 +429,8 @@ class HessianOptimizer(Optimizer):
 
         H = self.H
         if self.geometry.internal:
+            # Shift eigenvalues of orthogonal part to high values, so they
+            # don't contribute to the actual step.
             H_proj = self.geometry.internal.project_hessian(self.H)
             # Symmetrize hessian, as the projection may break it?!
             H = (H_proj + H_proj.T) / 2
@@ -363,6 +441,70 @@ class HessianOptimizer(Optimizer):
 
         return energy, gradient, H, eigvals, eigvecs
 
-    @abstractmethod
-    def optimize(self):
-        pass
+    def get_augmented_hessian(self, eigvals, gradient, alpha=1.):
+        dim_ = eigvals.size + 1
+        H_aug = np.zeros((dim_, dim_))
+        H_aug[:dim_-1,:dim_-1] = np.diag(eigvals/alpha)
+        H_aug[-1,:-1] = gradient
+        H_aug[:-1,-1] = gradient
+
+        H_aug[:-1,-1] /= alpha
+
+        return H_aug
+
+    def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, gradient):
+        # Derivative of the squared step w.r.t. alpha
+        numer = gradient**2
+        denom = (eigvals - rfo_eigval * cur_alpha)**3
+        quot = np.sum(numer / denom)
+        self.log(f"quot={quot:.6f}")
+        dstep2_dalpha = (2*rfo_eigval/(1+step_norm**2 * cur_alpha)
+                         * np.sum(gradient**2
+                                  / ((eigvals - rfo_eigval * cur_alpha)**3)
+                           )
+        )
+        self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
+        # Update alpha
+        alpha_step = (2*(self.trust_radius*step_norm - step_norm**2)
+                      / dstep2_dalpha
+        )
+        self.log(f"alpha_step={alpha_step:.4f}")
+        assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
+        return alpha_step
+
+    def get_rs_step(self, eigvals, eigvecs, gradient, name="RS"):
+        # Transform gradient to basis of eigenvectors
+        gradient_ = eigvecs.T.dot(gradient)
+
+        alpha = self.alpha0
+        for mu in range(self.max_micro_cycles):
+            self.log(f"{name} micro cycle {mu:02d}, alpha={alpha:.6f}")
+            H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha)
+            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
+            rfo_norm_ = np.linalg.norm(rfo_step_)
+            self.log(f"norm(rfo step)={rfo_norm_:.6f}")
+
+            if (rfo_norm_ < self.trust_radius) or abs(rfo_norm_ - self.trust_radius) <= 1e-3:
+                step_ = rfo_step_
+                break
+
+            alpha_step = self.get_alpha_step(alpha, eigval_min, rfo_norm_, eigvals, gradient_)
+            alpha += alpha_step
+            self.log("")
+        else:
+            self.log( "RS algorithm did not produce a desired step length "
+                     f"after {self.max_micro_cycles} micro cycles. Using "
+                      "simple downscaled step with alpha=1."
+            )
+            H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.)
+            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
+            rfo_norm_ = np.linalg.norm(rfo_step_)
+            # This should always be True if the above algorithm failed but we
+            # keep this line here nonetheless to make it more obvious what
+            # we are doing.
+            if rfo_norm_ > self.trust_radius:
+                step_ = rfo_step_ / rfo_norm_ * self.trust_radius
+
+        # Transform step back to original basis
+        step = eigvecs.dot(step_)
+        return step

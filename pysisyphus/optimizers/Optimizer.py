@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from abc import abstractmethod
 import logging
 import os
 from pathlib import Path
@@ -16,11 +17,12 @@ from pysisyphus.helpers import check_for_stop_sign, highlight_text
 
 class Optimizer:
     CONV_THRESHS = {
-        #             max_force, rms_force, max_step, rms_step
-        "gau_loose": (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
-        "gau":       (4.5e-4,    3.0e-4,    1.8e-3,   1.2e-3),
-        "gau_tight": (1.5e-5,    1.0e-5,    6.0e-5,   4.0e-5),
-        "baker":     (3.0e-4,    2.0e-4,    3.0e-4,   2.0e-4),
+        #              max_force, rms_force, max_step, rms_step
+        "gau_loose":  (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
+        "gau":        (4.5e-4,    3.0e-4,    1.8e-3,   1.2e-3),
+        "gau_tight":  (1.5e-5,    1.0e-5,    6.0e-5,   4.0e-5),
+        "gau_vtight": (2.0e-6,    1.0e-6,    6.0e-6,   4.0e-6),
+        "baker":      (3.0e-4,    2.0e-4,    3.0e-4,   2.0e-4),
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
@@ -137,12 +139,17 @@ class Optimizer:
         # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
         self.logger.debug(message)
 
-    def check_convergence(self, multiple=1.0, overachieve_factor=0.,
+    def check_convergence(self, step=None, multiple=1.0, overachieve_factor=None,
                           energy_thresh=1e-6):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple
         thereof. The latter may be used in initiating the climbing image.
         """
+
+        if step is None:
+            step = self.steps[-1]
+        if overachieve_factor is None:
+            overachieve_factor = self.overachieve_factor
 
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
@@ -154,7 +161,6 @@ class Optimizer:
             forces = self.modified_forces[-1]
         else:
             forces = self.forces[-1]
-        step = self.steps[-1]
 
         # The forces of fixed images may be zero and this may distort the RMS
         # values. So we take into account the number of moving images with
@@ -197,7 +203,7 @@ class Optimizer:
             if rms_:
                 self.log("rms(force) is overachieved")
             if max_ and rms_:
-                print("Force convergence overachieved!")
+                self.log("Force convergence overachieved!")
 
         normal_convergence = all(
             [this_cycle[key] <= getattr(self, key)*multiple
@@ -210,7 +216,7 @@ class Optimizer:
                 cur_energy = self.energies[-1]
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
-            converged = (max_force) < 3e-4 and (energy_converged or (max_step < 3e-4))
+            converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
             return converged
         return any((normal_convergence, overachieved))
 
@@ -243,6 +249,7 @@ class Optimizer:
     def prepare_opt(self):
         pass
 
+    @abstractmethod
     def optimize(self):
         raise Exception("Not implemented!")
 
@@ -359,9 +366,7 @@ class Optimizer:
             self.steps.append(step)
 
             # Convergence check
-            self.is_converged = self.check_convergence(
-                                    overachieve_factor=self.overachieve_factor
-            )
+            self.is_converged = self.check_convergence()
 
             end_time = time.time()
             elapsed_seconds = end_time - start_time

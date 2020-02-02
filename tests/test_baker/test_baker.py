@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 from pprint import pprint
 import time
 
@@ -38,7 +39,7 @@ def run_baker_opts(baker_geoms, coord_type="cart", thresh="gau_tight",
         "line_search": poly,
         "gediis": gediis,
         "gdiis": gdiis,
-        "overachieve_factor": 5,
+        # "overachieve_factor": 2,
         # "dump": True,
     }
     results = dict()
@@ -55,7 +56,7 @@ def run_baker_opts(baker_geoms, coord_type="cart", thresh="gau_tight",
             failed += 1
         cycles += opt.cur_cycle + 1
         try:
-            assert np.allclose(geom.energy, refen)
+            assert geom.energy == pytest.approx(refen)
             print(green(f"@Energies match for {name}! ({geom.energy:.6f}, {refen:.6f})"))
         except KeyError:
             print(red(f"@Couldn't find reference energy for {name}"))
@@ -85,8 +86,7 @@ def run_baker_minimum_optimizations():
     poly = True
     # thresh = "gau_tight"
     thresh = "baker"
-    runs = 7
-    # runs = 5
+    runs = 1
 
 
     all_results = list()
@@ -139,14 +139,24 @@ def run_baker_minimum_optimizations():
 def test_baker_gs_opt(name, geom, ref_energy):
     opt_kwargs = {
         "thresh": "baker",
-        "overachieve_factor": 2.,
     }
     print(f"@Running {name}")
-    geom.set_calculator(PySCF(basis="sto3g", pal=2))
+    pal = min(os.cpu_count(), 4)
+    geom.set_calculator(PySCF(basis="sto3g", pal=pal))
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
     assert np.allclose(geom.energy, ref_energy)
 
+    return opt.cur_cycle + 1, opt.is_converged
+
 
 if __name__ == "__main__":
-    run_baker_minimum_optimizations()
+    # run_baker_minimum_optimizations()
+    cycles_converged = [
+        test_baker_gs_opt(name, geom, ref_energy) for name, (geom, ref_energy)
+        in get_baker_geoms(coord_type="redund").items()
+    ]
+    cycles, converged = zip(*cycles_converged)
+    tot_cycles = sum(cycles)
+    print(tot_cycles)
+    print(converged)

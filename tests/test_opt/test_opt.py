@@ -12,18 +12,16 @@ from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.calculators.LEPSBase import LEPSBase
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
-
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-
 
 @pytest.mark.parametrize(
     "calc_cls, start, ref_cycle, ref_coords", [
-    (AnaPot, (0.667, 1.609, 0.), 16, (1.941, 3.8543, 0.)),
-    (AnaPot3, (-0.36, 0.93, 0.), 9, (-1., 0., 0.)),
+    (AnaPot, (0.667, 1.609, 0.), 15, (1.941, 3.8543, 0.)),
+    (AnaPot3, (-0.36, 0.93, 0.), 10, (-1., 0., 0.)),
     (AnaPot4, (-0.50, 3.32, 0.),  13, (-2.2102, 0.3297, 0.)),
     (AnaPotCBM, (-0.32, 0.71, 0.), 9, (-1., 0. ,0.)),
     (CerjanMiller, (-0.46, 1.48, 0.), 10, (0., 0., 0.)),
-    (FourWellAnaPot, (1.45, 0.04, 0.), 10, (1.1241, -1.4853, 0.)),
+    (FourWellAnaPot, (1.45, 0.04, 0.), 8, (1.1241, -1.4853, 0.)),
     (LEPSBase, (1.31, 0.82, 0.), 29, (0.742, 7.4056, 0.)),
     (MullerBrownPot, (-0.69, 0.55, 0.), 10, (-0.05, 0.4667, 0.)),
     (Rosenbrock, (-1.00, 1.00, 0.), 47, (1., 1., 0.)),
@@ -38,6 +36,7 @@ def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
         "thresh": "gau_tight",
         "dump": False,
         "overachieve_factor": 2.,
+        # "max_micro_cycles": 1,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()

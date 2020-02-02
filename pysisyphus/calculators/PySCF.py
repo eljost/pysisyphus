@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 from pathlib import Path
 import shutil
 
@@ -206,6 +207,10 @@ class PySCF(OverlapCalculator):
 
             if self.keep_chk and (self.chkfile is None) and (step in ("dft", "scf")):
                 self.chkfile = self.make_fn("chkfile", return_str=True)
+                try:
+                    os.remove(self.chkfile)
+                except FileNotFoundError:
+                    self.log(f"Tried to remove '{self.chkfile}'. It doesn't exist.")
                 self.log(f"Created chkfile '{self.chkfile}'")
                 mf.chkfile = self.chkfile
             mf.kernel()

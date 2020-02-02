@@ -18,7 +18,7 @@ import numpy as np
     "hessian_init, ref_cycle", [
         ("lindh", 18),
         ("fischer", 17),
-        ("simple", 28),
+        ("simple", 27),
         ("swart", 20),
     ]
 )
