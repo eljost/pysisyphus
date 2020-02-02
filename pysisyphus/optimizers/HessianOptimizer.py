@@ -502,7 +502,11 @@ class HessianOptimizer(Optimizer):
             H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.)
             rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
             rfo_norm_ = np.linalg.norm(rfo_step_)
-            step_ = rfo_step_ / rfo_norm_ * self.trust_radius
+            # This should always be True if the above algorithm failed but we
+            # keep this line here nonetheless to make it more obvious what
+            # we are doing.
+            if rfo_norm_ > self.trust_radius:
+                step_ = rfo_step_ / rfo_norm_ * self.trust_radius
 
         # Transform step back to original basis
         step = eigvecs.dot(step_)
