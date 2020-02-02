@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from abc import abstractmethod
 import logging
 import os
 from pathlib import Path
@@ -248,6 +249,7 @@ class Optimizer:
     def prepare_opt(self):
         pass
 
+    @abstractmethod
     def optimize(self):
         raise Exception("Not implemented!")
 
