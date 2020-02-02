@@ -442,27 +442,26 @@ class HessianOptimizer(Optimizer):
 
         return energy, gradient, H, eigvals, eigvecs
 
-    def get_augmented_hessian(self, eigvals, alpha=1.):
+    def get_augmented_hessian(self, eigvals, gradient, alpha=1.):
         dim_ = eigvals.size + 1
         H_aug = np.zeros((dim_, dim_))
         H_aug[:dim_-1,:dim_-1] = np.diag(eigvals/alpha)
-        H_aug[-1,:-1] = grad_star
-        H_aug[:-1,-1] = grad_star
+        H_aug[-1,:-1] = gradient
+        H_aug[:-1,-1] = gradient
 
-        H_aug_scaled[diag_indices] /= alpha
         H_aug[:-1,-1] /= alpha
 
         return H_aug
 
-    def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, forces):
+    def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, gradient):
         # Derivative of the squared step w.r.t. alpha
         tval = 2*rfo_eigval/(1+step_norm**2 * cur_alpha)
-        numer = forces**2
+        numer = gradient**2
         denom = (eigvals - rfo_eigval * cur_alpha)**3
         quot = np.sum(numer / denom)
         self.log(f"quot={quot:.6f}")
         dstep2_dalpha = (2*rfo_eigval/(1+step_norm**2 * cur_alpha)
-                         * np.sum(forces**2
+                         * np.sum(gradient**2
                                   / ((eigvals - rfo_eigval * cur_alpha)**3)
                            )
         )

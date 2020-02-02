@@ -29,25 +29,13 @@ class RSIRFOptimizer(TSHessianOptimizer):
         # Transform gradient to basis of eigenvectors
         grad_star = eigvecs_.T.dot(P.dot(gradient))
 
-        # Augmented hessian
-        dim_ = eigvals_.size + 1
-        H_aug = np.zeros((dim_, dim_))
-        H_aug[:dim_-1,:dim_-1] = np.diag(eigvals_)
-        H_aug[-1,:-1] = grad_star
-        H_aug[:-1,-1] = grad_star
         alpha = self.alpha0
-
-        diag_indices = np.diag_indices(eigvals_.size)
         self.max_micro_cycles = 25
         for mu in range(self.max_micro_cycles):
             # assert alpha > 0, "alpha should not be negative"
             self.log(f"RS-IRFO micro cycle {mu:02d}, alpha={alpha:.6f}")
-            # We only have to update one eigenvalue
-            H_aug_scaled = H_aug.copy()
-            H_aug_scaled[diag_indices] /= alpha
-            H_aug_scaled[:-1,-1] /= alpha
-            # import pdb; pdb.set_trace()
-            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug_scaled, "min")
+            H_aug = self.get_augmented_hessian(eigvals_, grad_star, alpha)
+            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
             rfo_norm_ = np.linalg.norm(rfo_step_)
             self.log(f"norm(rfo step)={rfo_norm_:.6f}")
 
@@ -55,22 +43,7 @@ class RSIRFOptimizer(TSHessianOptimizer):
                 step_ = rfo_step_
                 break
 
-            # Derivative of the squared step w.r.t. alpha
-            numer = grad_star**2
-            denom = (eigvals_ - eigval_min * alpha)**3
-            quot = np.sum(numer / denom)
-            self.log(f"quot={quot:.6f}")
-            dstep2_dalpha = (2*eigval_min/(1+rfo_norm_**2 * alpha)
-                             * np.sum(grad_star**2
-                                      / ((eigvals_ - eigval_min * alpha)**3)
-                               )
-            )
-            self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
-            # Update alpha
-            alpha_step = (2*(self.trust_radius*rfo_norm_ - rfo_norm_**2)
-                          / dstep2_dalpha
-            )
-            self.log(f"alpha_step={alpha_step:.4f}")
+            alpha_step = self.get_alpha_step(alpha, eigval_min, rfo_norm_, eigvals_, grad_star)
             alpha += alpha_step
             self.log("")
 
