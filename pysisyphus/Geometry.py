@@ -146,7 +146,7 @@ class Geometry:
         geom : Geometry
             New Geometry object with the same atoms and coordinates.
         """
-        if coord_type == None:
+        if coord_type is None:
             coord_type = self.coord_type
         prim_indices = None
         if coord_type != "cart":

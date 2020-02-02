@@ -312,7 +312,6 @@ class HessianOptimizer(Optimizer):
 
         # Current point. Current energy & gradient are already appended.
         cur_energy = self.energies[-1]
-        cur_coords = self.coords[-1]
         cur_grad = -self.forces[-1]
 
         at_best_energy = cur_energy < prev_best_energy
