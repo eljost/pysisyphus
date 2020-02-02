@@ -38,7 +38,7 @@ class HessianOptimizer(Optimizer):
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
                  small_eigval_thresh=1e-8, line_search=False,
-                 max_micro_cycles=1,
+                 alpha0=1., max_micro_cycles=25,
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
@@ -62,6 +62,7 @@ class HessianOptimizer(Optimizer):
         self.small_eigval_thresh = float(small_eigval_thresh)
         self.line_search = bool(line_search)
         # Restricted-step related
+        self.alpha0 = alpha0
         self.max_micro_cycles = int(max_micro_cycles)
         assert max_micro_cycles >= 1
 
@@ -474,6 +475,35 @@ class HessianOptimizer(Optimizer):
         assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
         return alpha_step
 
-    @abstractmethod
-    def optimize(self):
-        pass
+    def get_rs_step(self, eigvals, eigvecs, gradient, name="RS"):
+        # Transform gradient to basis of eigenvectors
+        gradient_ = eigvecs.T.dot(gradient)
+
+        alpha = self.alpha0
+        for mu in range(self.max_micro_cycles):
+            self.log(f"{name} micro cycle {mu:02d}, alpha={alpha:.6f}")
+            H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha)
+            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
+            rfo_norm_ = np.linalg.norm(rfo_step_)
+            self.log(f"norm(rfo step)={rfo_norm_:.6f}")
+
+            if (rfo_norm_ < self.trust_radius) or abs(rfo_norm_ - self.trust_radius) <= 1e-3:
+                step_ = rfo_step_
+                break
+
+            alpha_step = self.get_alpha_step(alpha, eigval_min, rfo_norm_, eigvals, gradient_)
+            alpha += alpha_step
+            self.log("")
+        else:
+            self.log( "RS algorithm did not produce a desired step length "
+                     f"after {self.max_micro_cycles} micro cycles. Using "
+                      "simple downscaled step with alpha=1."
+            )
+            H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.)
+            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
+            rfo_norm_ = np.linalg.norm(rfo_step_)
+            step_ = rfo_step_ / rfo_norm_ * self.trust_radius
+
+        # Transform step back to original basis
+        step = eigvecs.dot(step_)
+        return step

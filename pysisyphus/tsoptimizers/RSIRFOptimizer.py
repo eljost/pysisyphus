@@ -26,29 +26,8 @@ class RSIRFOptimizer(TSHessianOptimizer):
         # Neglect small eigenvalues
         eigvals_, eigvecs_ = self.filter_small_eigvals(eigvals_, eigvecs_)
 
-        # Transform gradient to basis of eigenvectors
-        grad_star = eigvecs_.T.dot(P.dot(gradient))
-
-        alpha = self.alpha0
-        self.max_micro_cycles = 25
-        for mu in range(self.max_micro_cycles):
-            # assert alpha > 0, "alpha should not be negative"
-            self.log(f"RS-IRFO micro cycle {mu:02d}, alpha={alpha:.6f}")
-            H_aug = self.get_augmented_hessian(eigvals_, grad_star, alpha)
-            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
-            rfo_norm_ = np.linalg.norm(rfo_step_)
-            self.log(f"norm(rfo step)={rfo_norm_:.6f}")
-
-            if (rfo_norm_ < self.trust_radius) or abs(rfo_norm_ - self.trust_radius) <= 1e-3:
-                step_ = rfo_step_
-                break
-
-            alpha_step = self.get_alpha_step(alpha, eigval_min, rfo_norm_, eigvals_, grad_star)
-            alpha += alpha_step
-            self.log("")
-
-        # Transform back to original basis
-        step = eigvecs_.dot(step_)
+        grad_star = P.dot(gradient)
+        step = self.get_rs_step(eigvals_, eigvecs_, grad_star, name="RS-I-RFO")
 
         quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
         rfo_prediction = quadratic_prediction / (1 + step @ step)

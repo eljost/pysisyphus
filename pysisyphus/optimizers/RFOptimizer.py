@@ -16,9 +16,9 @@ from pysisyphus.optimizers.gdiis import gdiis, gediis
 class RFOptimizer(HessianOptimizer):
 
     def __init__(self, geom, line_search=True, gediis=False, gdiis=True,
-                 gdiis_thresh=2.5e-3, gediis_thresh=1e-2,
+                 gdiis_thresh=2.5e-3, gediis_thresh=1e-2, max_micro_cycles=1,
                  *args, **kwargs):
-        super().__init__(geom, *args, **kwargs)
+        super().__init__(geom, max_micro_cycles=max_micro_cycles, *args, **kwargs)
 
         self.line_search = line_search
         self.gediis = gediis
@@ -31,19 +31,8 @@ class RFOptimizer(HessianOptimizer):
 
         org_grad = gradient.copy()
 
-        dim_ = big_eigvals.size + 1
-        def get_step(gradient, eigvals, eigvecs):
-            gradient_ = big_eigvecs.T @ gradient
-            H_aug = np.zeros((dim_, dim_))
-            H_aug[:dim_-1,:dim_-1] = np.diag(big_eigvals)
-            H_aug[-1,:-1] = gradient_
-            H_aug[:-1,-1] = gradient_
-            step_, eigval, nu = self.solve_rfo(H_aug, "min")
-            # Transform back to original basis
-            step = big_eigvecs @ step_
-            return step
+        ref_step = self.get_rs_step(big_eigvals, big_eigvecs, gradient, name="RS-RFO")
 
-        ref_step = get_step(gradient, big_eigvals, big_eigvecs)
         # Right now we have everything in place to check for convergence.
         # If all values are below the thresholds there is no need to do additional
         # inter/extrapolations.
@@ -52,21 +41,24 @@ class RFOptimizer(HessianOptimizer):
             return  ref_step
         step = ref_step
 
+        # Check if we can do GDIIS or GEDIIS
         rms_forces = rms(self.forces[-1])
         rms_step = rms(ref_step)
         can_diis = rms_step <= self.gdiis_thresh
         can_gediis = rms_forces <= self.gediis_thresh
         diis_result = None
         ip_gradient = None
+        # Prefer GDIIS over GEDIIS
         if self.gdiis and can_diis:
             err_vecs = -np.array(self.forces)
             diis_result = gdiis(err_vecs, self.coords, self.forces, ref_step)
-        # Don't try GEDIIS if GDIIS failed
+        # Don't try GEDIIS if GDIIS failed with elif
         elif self.gediis and can_gediis:
-        # Try GEDIIS if GDIIS failed
+        # Try GEDIIS if GDIIS failed with if
         # if self.gediis and can_gediis and (diis_result == None):
             diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
 
+        # diis_result may be None if GDIIS failed
         try:
             ip_coords = diis_result.coords
             tmp_geom = self.geometry.copy()
@@ -85,9 +77,10 @@ class RFOptimizer(HessianOptimizer):
         can_linesearch = (diis_result is None) and self.line_search and (self.cur_cycle > 0)
         if can_linesearch:
             ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search()
-            # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2(H)
             # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2()
+            # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2(H)
 
+        # Try a second (RS)-RFO step from the interpolated geometry with the interpolated gradient
         if ip_gradient is not None:
             # Project interpolated gradient if necessary
             if self.geometry.coord_type == "redund":
@@ -109,15 +102,7 @@ class RFOptimizer(HessianOptimizer):
             self.log(f"Calculating second step from inter/extra-polated gradient.")
             if self.geometry.coord_type == "redund":
                 ip_gradient = self.geometry.internal.project_vector(ip_gradient)
-            step = get_step(ip_gradient, big_eigvals, big_eigvecs)
-
-        step_norm = np.linalg.norm(step)
-        self.log(f"norm(step,unscaled)={np.linalg.norm(step):.6f}")
-        # Restrict step_norm to the current trust radius
-        if step_norm > self.trust_radius:
-            self.log(f"step-norm exceeds trust radius; scaling step.")
-            step = step / step_norm * self.trust_radius
-        self.log(f"norm(step)={np.linalg.norm(step):.6f}")
+            step = self.get_rs_step(big_eigvals, big_eigvecs, ip_gradient, name="RS-RFO")
 
         # quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
         quadratic_prediction = step @ org_grad + 0.5 * step @ self.H @ step

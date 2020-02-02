@@ -38,6 +38,7 @@ def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
         "thresh": "gau_tight",
         "dump": False,
         "overachieve_factor": 2.,
+        # "max_micro_cycles": 1,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
