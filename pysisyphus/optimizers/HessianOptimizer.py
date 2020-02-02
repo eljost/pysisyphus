@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from abc import abstractmethod
-
 import numpy as np
 
 from pysisyphus.intcoords.helpers import get_step
@@ -456,7 +454,6 @@ class HessianOptimizer(Optimizer):
 
     def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, gradient):
         # Derivative of the squared step w.r.t. alpha
-        tval = 2*rfo_eigval/(1+step_norm**2 * cur_alpha)
         numer = gradient**2
         denom = (eigvals - rfo_eigval * cur_alpha)**3
         quot = np.sum(numer / denom)
