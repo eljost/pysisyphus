@@ -75,7 +75,6 @@ OPT_DICT = {
     "cg": ConjugateGradient.ConjugateGradient,
     "qm": QuickMin.QuickMin,
     "rfo": RFOptimizer.RFOptimizer,
-    "rsrfo": RSRFOptimizer,
     "anc": ANCOptimizer.ANCOptimizer,
     "string": StringOptimizer.StringOptimizer,
     "sqnm": StabilizedQNMethod.StabilizedQNMethod,

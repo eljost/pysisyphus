@@ -1,5 +1,4 @@
 import logging
-from .RSRFOptimizer import RSRFOptimizer
 
 __all__ = [
     "ConjugateGradient",
@@ -9,7 +8,6 @@ __all__ = [
     "QuickMin",
     "RFOptimizer",
     "SteepestDescent",
-    "RSRFOptimizer",
     "ANCOptimizer",
     "StringOptimizer",
     "StabilizedQNMethod",

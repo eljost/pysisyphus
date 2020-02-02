@@ -11,7 +11,6 @@ from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-from pysisyphus.optimizers.RSRFOptimizer import RSRFOptimizer
 from pysisyphus.optimizers.RSAlgorithm import RSAlgorithm
 
 
@@ -75,13 +74,6 @@ def test_birkholz():
             "line_search": True,
             # "gdiis": True,
         }
-        opt_kwargs = opt_kwargs_base.copy()
-
-        # opt_kwargs.update({
-            # "max_micro_cycles": 1,
-        # })
-        # opt = RSRFOptimizer(geom, **opt_kwargs)
-        # opt.run()
 
         opt_kwargs = opt_kwargs_base.copy()
         opt = RFOptimizer(geom, **opt_kwargs)
