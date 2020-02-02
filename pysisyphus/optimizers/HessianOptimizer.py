@@ -37,7 +37,8 @@ class HessianOptimizer(Optimizer):
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
-                 small_eigval_thresh=1e-8, line_search=False, hybrid=False,
+                 small_eigval_thresh=1e-8, line_search=False,
+                 max_micro_cycles=1,
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
@@ -60,7 +61,9 @@ class HessianOptimizer(Optimizer):
         self.hessian_xtb = hessian_xtb
         self.small_eigval_thresh = float(small_eigval_thresh)
         self.line_search = bool(line_search)
-        self.hybrid = bool(hybrid)
+        # Restricted-step related
+        self.max_micro_cycles = int(max_micro_cycles)
+        assert max_micro_cycles >= 1
 
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
         self.hessian_recalc_in = None
@@ -438,6 +441,38 @@ class HessianOptimizer(Optimizer):
         eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
         return energy, gradient, H, eigvals, eigvecs
+
+    def get_augmented_hessian(self, eigvals, alpha=1.):
+        dim_ = eigvals.size + 1
+        H_aug = np.zeros((dim_, dim_))
+        H_aug[:dim_-1,:dim_-1] = np.diag(eigvals/alpha)
+        H_aug[-1,:-1] = grad_star
+        H_aug[:-1,-1] = grad_star
+
+        H_aug_scaled[diag_indices] /= alpha
+        H_aug[:-1,-1] /= alpha
+
+        return H_aug
+
+    def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, forces):
+        # Derivative of the squared step w.r.t. alpha
+        tval = 2*rfo_eigval/(1+step_norm**2 * cur_alpha)
+        numer = forces**2
+        denom = (eigvals - rfo_eigval * cur_alpha)**3
+        quot = np.sum(numer / denom)
+        self.log(f"quot={quot:.6f}")
+        dstep2_dalpha = (2*rfo_eigval/(1+step_norm**2 * cur_alpha)
+                         * np.sum(forces**2
+                                  / ((eigvals - rfo_eigval * cur_alpha)**3)
+                           )
+        )
+        self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
+        # Update alpha
+        alpha_step = (2*(self.trust_radius*step_norm - step_norm**2)
+                      / dstep2_dalpha
+        )
+        self.log(f"alpha_step={alpha_step:.4f}")
+        return alpha_step
 
     @abstractmethod
     def optimize(self):
