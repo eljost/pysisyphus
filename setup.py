@@ -35,6 +35,11 @@ setup(
         "sympy",
         "scipy",
     ],
+    # Install locally with
+    #   pip install -e .[extra]
+    extras_require={
+        "QCEngine": ["qcengine>=0.13.0", ],
+    },
     entry_points={
         "console_scripts": [
             "pysis = pysisyphus.run:run",
