@@ -20,7 +20,7 @@ from scipy.spatial.distance import pdist, squareform
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
-from pysisyphus.intcoords.findbonds import get_cov_radii_sum_array
+from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
@@ -305,7 +305,7 @@ class RedundantCoords:
         # condensed distance matrix cdm.
         atom_indices = list(it.combinations(range(len(coords3d)),2))
         atom_indices = np.array(atom_indices, dtype=int)
-        cov_rad_sums = get_cov_radii_sum_array(self.atoms, self.cart_coords)
+        cov_rad_sums = get_pair_covalent_radii(self.atoms)
         cov_rad_sums *= bond_factor
         bond_flags = cdm <= cov_rad_sums
         bond_indices = atom_indices[bond_flags]
@@ -314,7 +314,6 @@ class RedundantCoords:
             bond_indices = np.concatenate(((bond_indices, define_bonds)), axis=0)
 
         self.bare_bond_indices = bond_indices
-
 
         # Look for hydrogen bonds
         self.set_hydrogen_bond_indices(bond_indices)

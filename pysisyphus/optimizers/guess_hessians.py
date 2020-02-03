@@ -15,25 +15,19 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.elem_data import COVALENT_RADII
-
-
-def get_pair_covalent_radii(geom):
-    atoms = [a.lower() for a in geom.atoms]
-    cov_radii = np.array([COVALENT_RADII[a] for a in atoms])
-    pair_cov_radii = np.array([r1+r2 for r1, r2 in it.combinations(cov_radii, 2)])
-    return pair_cov_radii
+from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 
 
 def get_bond_mat(geom, bond_factor=1.2):
     cdm = pdist(geom.coords3d)
-    pair_cov_radii = get_pair_covalent_radii(geom)
+    pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
     return bond_mat
 
 
 def fischer_guess(geom):
     cdm = pdist(geom.coords3d)
-    pair_cov_radii = get_pair_covalent_radii(geom)
+    pair_cov_radii = get_pair_covalent_radii(geom.atoms)
 
     bonds = geom.internal.bonds
     dihedrals = geom.internal.dihedrals
@@ -113,7 +107,7 @@ def lindh_guess(geom):
     atoms = [a.lower() for a in geom.atoms]
     alphas = [get_alpha(a1, a2)
               for a1, a2 in it.combinations(atoms, 2)]
-    pair_cov_radii = get_pair_covalent_radii(geom)
+    pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     cdm = pdist(geom.coords3d)
     rhos = squareform(np.exp(alphas*(pair_cov_radii**2-cdm**2)))
 
@@ -144,7 +138,7 @@ def simple_guess(geom):
 
 
 def swart_guess(geom):
-    pair_cov_radii = get_pair_covalent_radii(geom)
+    pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     cdm = pdist(geom.coords3d)
     rhos = squareform(np.exp(-cdm/pair_cov_radii + 1))
     k_dict = {
