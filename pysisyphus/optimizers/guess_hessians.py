@@ -14,7 +14,6 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.elem_data import COVALENT_RADII
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii, get_bond_mat
 
 
