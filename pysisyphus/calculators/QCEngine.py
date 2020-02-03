@@ -33,12 +33,15 @@ class QCEngine(Calculator):
             "molecular_multiplicity": self.mult,
         }
 
-        if self.program == "openmm" and (self.connectivity is None):
-            self.log("No connectivity specified! Using hacky connectivity "
-                     f"guess with bond-order={self.bond_order}")
-            connectivity = qcel.molutil.guess_connectivity(atoms, c3d, threshold=1.3)
-            connectivity = [(at1, at2, self.bond_order) for at1, at2 in connectivity]
-            mol_inp["connectivity"] = connectivity
+        if self.program == "openmm":
+            if self.connectivity is None:
+                self.log( "No connectivity specified! Using hacky connectivity "
+                         f"guess with bond-order={self.bond_order}")
+                connectivity = qcel.molutil.guess_connectivity(atoms, c3d,
+                                                               threshold=1.3)
+                self.connectivity = [(at1, at2, self.bond_order)
+                                     for at1, at2 in connectivity]
+            mol_inp["connectivity"] = self.connectivity
 
         molecule = qcel.models.Molecule.from_data(mol_inp)
 

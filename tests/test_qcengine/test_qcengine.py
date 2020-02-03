@@ -72,6 +72,7 @@ def test_qcengine_openmm():
             "method": "openmm",
             "basis": "openff-1.0.0",
             "offxml": "openff-1.0.0.offxml",
+        "connectivity": ((0, 1, 1), (0, 2, 1)),
         },
     }
     qce = QCEngine(**qce_kwargs)
@@ -84,3 +85,7 @@ def test_qcengine_openmm():
 
     assert energy == pytest.approx(6.4193809337e+20)
     assert norm == pytest.approx(1.4649609864e+22)
+
+    # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+    # opt = RFOptimizer(geom)
+    # opt.run()
