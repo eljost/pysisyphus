@@ -51,9 +51,36 @@ def test_qcengine_mopac():
 
     forces = geom.forces
     energy = geom.energy
-    print(f"energy={energy:.6f}")
-    print(f"forces={forces}")
     norm = np.linalg.norm(forces)
 
     assert energy == pytest.approx(-0.083446211)
     assert norm == pytest.approx(0.044034367)
+
+
+@using("openmm")
+@using_qcengine
+def test_qcengine_openmm():
+    """
+        conda install -c omnia -c conda-forge openmm
+        conda install -c omnia -c conda-forge openforcefield
+    """
+    geom = geom_from_library("h2o_guess.xyz")
+
+    qce_kwargs = {
+        "program": "openmm",
+        "model": {
+            "method": "openmm",
+            "basis": "openff-1.0.0",
+            "offxml": "openff-1.0.0.offxml",
+        },
+    }
+    qce = QCEngine(**qce_kwargs)
+
+    geom.set_calculator(qce)
+
+    forces = geom.forces
+    energy = geom.energy
+    norm = np.linalg.norm(forces)
+
+    assert energy == pytest.approx(6.4193809337e+20)
+    assert norm == pytest.approx(1.4649609864e+22)

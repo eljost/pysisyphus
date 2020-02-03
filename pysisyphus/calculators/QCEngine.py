@@ -10,7 +10,8 @@ from pysisyphus.constants import BOHR2ANG
 
 class QCEngine(Calculator):
 
-    def __init__(self, program, model, keywords=None, **kwargs):
+    def __init__(self, program, model, keywords=None, connectivity=None,
+                 bond_order=1, **kwargs):
         super().__init__(**kwargs)
 
         self.program = program
@@ -18,6 +19,8 @@ class QCEngine(Calculator):
         if keywords is None:
             keywords = dict()
         self.keywords = dict(keywords)
+        self.connectivity = connectivity
+        self.bond_order = int(bond_order)
 
         # TODO: pal, memory
 
@@ -29,6 +32,14 @@ class QCEngine(Calculator):
             "molecular_charge": self.charge,
             "molecular_multiplicity": self.mult,
         }
+
+        if self.program == "openmm" and (self.connectivity is None):
+            self.log("No connectivity specified! Using hacky connectivity "
+                     f"guess with bond-order={self.bond_order}")
+            connectivity = qcel.molutil.guess_connectivity(atoms, c3d, threshold=1.3)
+            connectivity = [(at1, at2, self.bond_order) for at1, at2 in connectivity]
+            mol_inp["connectivity"] = connectivity
+
         molecule = qcel.models.Molecule.from_data(mol_inp)
 
         return molecule

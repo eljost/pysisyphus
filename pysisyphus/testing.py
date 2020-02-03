@@ -49,6 +49,13 @@ def using(calculator):
             except ImportError:
                 pass
 
+        if calculator == "openmm":
+            try:
+                import simtk.openmm
+                available = True
+            except ImportError:
+                pass
+
         reason = _reason.format(calculator)
         _using_cache[calculator] = pytest.mark.skipif(not available, reason=reason)
     return _using_cache[calculator]
