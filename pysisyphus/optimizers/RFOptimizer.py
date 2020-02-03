@@ -104,8 +104,7 @@ class RFOptimizer(HessianOptimizer):
                 ip_gradient = self.geometry.internal.project_vector(ip_gradient)
             step = self.get_rs_step(big_eigvals, big_eigvecs, ip_gradient, name="RS-RFO")
 
-        # quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
-        quadratic_prediction = step @ org_grad + 0.5 * step @ self.H @ step
+        quadratic_prediction = step @ org_grad + 0.5 * step @ H @ step
         rfo_prediction = quadratic_prediction / (1 + step @ step)
         self.predicted_energy_changes.append(rfo_prediction)
 
