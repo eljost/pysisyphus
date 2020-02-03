@@ -15,7 +15,9 @@ class QCEngine(Calculator):
 
         self.program = program
         self.model = model
-        self.keywords = keywords
+        if keywords is None:
+            keywords = dict()
+        self.keywords = dict(keywords)
 
         # TODO: pal, memory
 
