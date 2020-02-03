@@ -23,3 +23,10 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3):
     bond_flags = cdm <= cov_rad_sums
     bond_indices = atom_indices[bond_flags]
     return bond_indices
+
+
+def get_bond_mat(geom, bond_factor=1.2):
+    cdm = pdist(geom.coords3d)
+    pair_cov_radii = get_pair_covalent_radii(geom.atoms)
+    bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
+    return bond_mat

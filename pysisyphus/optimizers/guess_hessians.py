@@ -15,14 +15,7 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.elem_data import COVALENT_RADII
-from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
-
-
-def get_bond_mat(geom, bond_factor=1.2):
-    cdm = pdist(geom.coords3d)
-    pair_cov_radii = get_pair_covalent_radii(geom.atoms)
-    bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
-    return bond_mat
+from pysisyphus.intcoords.findbonds import get_pair_covalent_radii, get_bond_mat
 
 
 def fischer_guess(geom):
