@@ -1,6 +1,6 @@
 import itertools as it
 import numpy as np
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.elem_data import COVALENT_RADII as CR
 
