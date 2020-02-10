@@ -1,4 +1,5 @@
 import numpy as np
+from pathlib import Path
 import pytest
 
 from pysisyphus.calculators import Turbomole
@@ -6,12 +7,17 @@ from pysisyphus.testing import using
 from pysisyphus.helpers import geom_from_library, eigval_to_wavenumber
 
 
+@pytest.fixture
+def this_dir(request):
+    return Path(request.module.__file__).parents[0]
+
+
 @using("turbomole")
-def test_turbomole_hessian():
+def test_turbomole_hessian(this_dir):
     geom = geom_from_library("h2o_bp86_def2svp_opt.xyz")
 
     turbo_kwargs = {
-        "control_path": "/scratch/programme/pysisyphus/tests/test_turbomole/ref_",
+        "control_path": this_dir / "./control_path_dft_gs",
     }
     calc = Turbomole(**turbo_kwargs)
     geom.set_calculator(calc)
@@ -36,17 +42,17 @@ def test_turbomole_hessian():
 @pytest.mark.parametrize(
         "control_path, ref_energy", [
         # Ground state
-        ("/scratch/programme/pysisyphus/tests/test_turbomole/ref_", -76.36357867674),
+        ("./control_path_dft_gs", -76.36357867674),
         # Excited state
-        ("/scratch/programme/pysisyphus/tests/test_turbomole/ref_exc", -76.0926146085),
+        ("./control_path_dft_es1", -76.0926146085),
         # ricc2
-        ("/scratch/programme/pysisyphus/tests/test_turbomole/ref_ricc2", -75.8716368247),
+        ("./control_path_ricc2", -75.8716368247),
         ],
 )
-def test_h2o_energy(control_path, ref_energy):
+def test_h2o_energy(control_path, ref_energy, this_dir):
     geom = geom_from_library("h2o_bp86_def2svp_opt.xyz")
     turbo_kwargs = {
-        "control_path": control_path,
+        "control_path": this_dir / control_path,
     }
     calc = Turbomole(**turbo_kwargs)
     geom.set_calculator(calc)
@@ -60,17 +66,17 @@ def test_h2o_energy(control_path, ref_energy):
 @pytest.mark.parametrize(
         "control_path, ref_energy, ref_force_norm", [
         # Ground state
-        ("/scratch/programme/pysisyphus/tests/test_turbomole/ref_",
+        ("./control_path_dft_gs",
             -76.36357867674, 1.30342385e-5),
         # Excited state gradient, TDDFT
-        ("/scratch/programme/pysisyphus/tests/test_turbomole/ref_exc",
+        ("./control_path_dft_es1",
             -76.0926146085, 0.16006233),
         # Excited state gradient, ricc2
-        ("/scratch/programme/pysisyphus/tests/test_turbomole/ref_ricc2",
+        ("./control_path_ricc2",
             -75.8716368247, 0.15925937),
         ],
 )
-def test_h2o_forces(control_path, ref_energy, ref_force_norm):
+def test_h2o_forces(control_path, ref_energy, ref_force_norm, this_dir):
     geom = geom_from_library("h2o_bp86_def2svp_opt.xyz")
     turbo_kwargs = {
         "control_path": control_path,

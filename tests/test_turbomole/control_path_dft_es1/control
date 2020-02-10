@@ -1,0 +1,89 @@
+$title
+$operating system unix
+$symmetry c1
+$redundant    file=coord
+$user-defined bonds    file=coord
+$coord    file=coord
+$optimize
+ internal   on
+ redundant  on
+ cartesian  off
+ global     off
+ basis      off
+$atoms
+o  1                                                                           \
+   basis =o def2-SVP                                                           \
+   jbas  =o def2-SVP
+h  2-3                                                                         \
+   basis =h def2-SVP                                                           \
+   jbas  =h def2-SVP
+$basis    file=basis
+$rundimensions
+   dim(fock,dens)=352
+   natoms=3
+   nshell=12
+   nbf(CAO)=25
+   dim(trafo[SAO<-->AO/CAO])=27
+   rhfshells=1
+   nbf(AO)=24
+$scfmo   file=mos
+$scfiterlimit       30
+$thize     0.10000000E-04
+$thime        5
+$scfdump
+$scfintunit
+ unit=30       size=0        file=twoint
+$scfdiis
+$maxcor    500 MiB  per_core
+$scforbitalshift  automatic=.1
+$drvopt
+   cartesian  on
+   basis      off
+   global     off
+   hessian    on
+   dipole     on
+   nuclear polarizability
+$interconversion  off
+   qconv=1.d-7
+   maxiter=25
+$coordinateupdate
+   dqmax=0.3
+   interpolate  on
+   statistics    5
+$forceupdate
+   ahlrichs numgeo=0  mingeo=3 maxgeo=4 modus=<g|dq> dynamic fail=0.3
+   threig=0.005  reseig=0.005  thrbig=3.0  scale=1.00  damping=0.0
+$forceinit on
+   diag=default
+$energy    file=energy
+$forceapprox    file=forceapprox
+$grad file=gradient
+$dft
+   functional b-p
+   gridsize   m3
+$scfconv        8
+$scfdamp   start=0.700  step=0.050  min=0.050
+$ricore      500 MiB per_core
+$rij
+$jbas    file=auxbasis
+$last SCF energy change = -.46263864E-08
+$charge from ridft
+          0.000 (not to be modified here)
+$dipole from ridft
+  x     0.00000000000001    y     0.78053239151023    z    -0.00000000000001    a.u.
+   | dipole | =    1.9839304449  debye
+$optinfo       file=optinfo
+$hessapprox   file=hessapprox
+$orbital_max_rnorm 0.24880808002160E-05
+$subenergy  Etot         E1                  Ej                Ex                 Ec                 En
+-76.36357867644    -122.7909998563     46.74016584175    -8.978374565395    -.3664970845179     9.032126988010
+$closed shells
+ a       1-5                                    ( 2 )
+$scfinstab rpas
+$soes
+ a            2
+$exopt 1
+$rpacor   1000
+$denconv 1d-7
+$last step     define
+$end
