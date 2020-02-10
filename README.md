@@ -67,7 +67,7 @@ Setup a `.pysisyphusrc` file in your `$HOME` directory that contains the command
 
 
 ## Usage
-pysisyphus provides several entry points can be called from the shell (command line). The available commandas of the entry points can be queried with the `-h` or `--help` arguments:
+pysisyphus provides several entry points that can be called from the shell (command line). The available commands of the entry points can be queried with the `-h` or `--help` arguments:
 
     # Run calculations (Minima optimization, TS search, IRC, NEB, GS, ...)
     pysis
@@ -121,7 +121,7 @@ Please see `pysistrj --help` for a list of available arguments.
 |Program|Gradient|Hessian|Exc. states|Comment|
 |-|-|-|-|-|
 |ORCA|y|y|TD-DFT, TDA||
-|Turbomole|y|-|TD-DFT, TDA, ricc2||
+|Turbomole|y|y|TD-DFT, TDA, ricc2|Tested with V7.2, V7.3 and V7.4. Only ground state hessians.|
 |Gaussian16|y|y|tested TD-DFT, TDA|
 |PySCF|y|y|tested TD-DFT|
 |OpenMOLCAS|y|-|&rasscf|Not derived from OverlapCalculator, so functionality may lag behind for now.|
