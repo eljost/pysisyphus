@@ -48,10 +48,11 @@ class Turbomole(OverlapCalculator):
                         "ciss_a", "ucis_a", "gradient", "sing_a",
                         "__ccre*", "exstates", "coord",
                         "mwfn_wf:wavefunction.molden",
-                        "input.xyz", "pc_gradients"
+                        "input.xyz", "pc_gradients", "nprhessian",
         )
 
         self.parser_funcs = {
+            "energy": self.parse_energy,
             "force": self.parse_force,
             "double_mol": self.parse_double_mol,
             "noparse": lambda path: None,
@@ -89,9 +90,15 @@ class Turbomole(OverlapCalculator):
         # Determine number of virtual orbitals
         self.virt_mos = nbf - self.occ_mos
 
+        assert not (("$exopt" in text) and ("$ricc2" in text)), \
+            "Found $exopt and $ricc2 in the control file! $exopt is used " \
+            "for TD-DFT/TDA gradients whereas $ricc2 with 'geoopt ...' " \
+            "leads to ricc2 gradients. Please delete one of the keywords!"
+
         self.td = False
         self.td_vec_fn = None
         self.ricc2 = False
+        self.ricc2_opt = False
         # Check for excited state calculation
         if "$exopt" in text:
             exopt_re = "\$exopt\s*(\d+)"
@@ -105,6 +112,7 @@ class Turbomole(OverlapCalculator):
             self.prepare_td(text)
         elif ("$ricc2" in text) and ("$excitations" in text):
             self.ricc2 = True
+            self.ricc2_opt = "geoopt" in text
             second_cmd = "ricc2"
             self.prepare_td(text)
             self.root = self.get_ricc2_root(text)
@@ -118,8 +126,28 @@ class Turbomole(OverlapCalculator):
         # instead of egrad.
         self.scf_cmd = scf_cmd
         self.second_cmd = second_cmd
-        self.base_cmd = ";".join((self.scf_cmd, self.second_cmd))
-        self.log(f"Using base_cmd {self.base_cmd}")
+
+        # Setup several cmds, depending on the calc type
+        def get_cmd(cmd):
+            return ";".join((self.scf_cmd, cmd))
+
+        if self.td:
+            self.energy_cmd  = get_cmd("escf") 
+            self.forces_cmd = get_cmd("egrad")
+            self.freq_cmd = get_cmd("aoforce")
+        elif self.ricc2:
+            ricc2_cmd = get_cmd("ricc2")
+            self.energy_cmd  = ricc2_cmd
+            self.forces_cmd = ricc2_cmd
+            self.freq_cmd = "not_yet_implemented"
+        else:
+            self.energy_cmd  = self.scf_cmd
+            self.forces_cmd = get_cmd(second_cmd)
+            self.freq_cmd = get_cmd("aoforce")
+        self.log(f"Prepared commands:")
+        self.log(f"\tEnergy cmd: " + self.energy_cmd)
+        self.log(f"\tForces cmd: " + self.forces_cmd)
+        self.log(f"\tHessian cmd: " + self.freq_cmd)
 
     def get_ricc2_root(self, text):
         regex = "geoopt.+?state=\((.+?)\)"
@@ -153,8 +181,18 @@ class Turbomole(OverlapCalculator):
         in the beginning and select the correct scf binary here from
         it. Then we select the following binary on demand, e.g. aoforce
         or rdgrad or egrad etc."""
-        if calc_type not in ("force", "double_mol", "noparse"):
-            raise Exception("Can only do force and tddft for now.")
+
+        valid_calc_types = (
+                "energy",
+                "force",
+                "double_mol",
+                "noparse",
+                "freq"
+        )
+        if calc_type not in valid_calc_types:
+            raise Exception(f"Invalid calc_type '{calc_type}'! Supported "
+                            f"calc_types are '{valid_calc_types}'.")
+
         path = self.prepare_path(use_in_run=True)
         if calc_type == "double_mol":
             copy_from = self.double_mol_path
@@ -225,6 +263,9 @@ class Turbomole(OverlapCalculator):
             # Write point charge gradients to file
             self.sub_control("\$end", "$point_charge_gradients file=pc_gradients\n$end")
 
+        if calc_type == "freq":
+            self.append_control("$noproj\n$nprhessian file=nprhessian")
+
     def sub_control(self, pattern, repl, log_msg="", **kwargs):
         path = self.path_already_prepared
         assert path
@@ -236,6 +277,9 @@ class Turbomole(OverlapCalculator):
         with open(control_path, "w") as handle:
             handle.write(text)
 
+    def append_control(self, to_append, log_msg="", **kwargs):
+        self.sub_control("\$end", f"{to_append}\n$end", log_msg, **kwargs)
+
     def get_pal_env(self):
         env_copy = os.environ.copy()
         env_copy["PARA_ARCH"] = "SMP"
@@ -244,21 +288,34 @@ class Turbomole(OverlapCalculator):
 
         return env_copy
 
-    def get_energy(self, atoms, coords):
-        results = self.get_forces(atoms, coords)
-        del results["forces"]
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
+
+        self.prepare_input(atoms, coords, "energy", **prepare_kwargs)
+        kwargs = {
+                "calc": "energy",
+                "shell": True,
+                "env": self.get_pal_env(),
+                "cmd": self.energy_cmd,
+        }
+        results = self.run(None, **kwargs)
         return results
 
     def get_forces(self, atoms, coords, cmd=None, prepare_kwargs=None):
         if prepare_kwargs is None:
             prepare_kwargs = {}
         self.prepare_input(atoms, coords, "force", **prepare_kwargs)
+
+        if cmd is None:
+            cmd = self.forces_cmd
+
         kwargs = {
                 "calc": "force",
                 "shell": True, # To allow chained commands like 'ridft; rdgrad'
                 "hold": self.track, # Keep the files for WFOverlap
                 "env": self.get_pal_env(),
-                "cmd": cmd,
+                "cmd": self.forces_cmd,
         }
         # Use inp=None because we don't use any dedicated input besides
         # the previously prepared control file and the current coords.
@@ -269,13 +326,30 @@ class Turbomole(OverlapCalculator):
             root_flipped = self.track_root()
             self.calc_counter += 1
             if root_flipped:
-                # Redo gradient calculation for new root.
+                # Redo gradient calculation for new root. Skip scf_cmd and only
+                # use self.second_cmd (egrad/ricc2).
                 results = self.get_forces(atoms, coords, cmd=self.second_cmd)
             self.last_run_path = prev_run_path
         try:
             shutil.rmtree(self.last_run_path)
         except FileNotFoundError:
             self.log("'{self.last_run_path}' was already deleted!")
+        return results
+
+    def get_hessian(self, atoms, coords):
+        if self.ricc2:
+            raise Exception("ricc2 hessian not yet supported!")
+
+        self.prepare_input(atoms, coords, "freq")
+        kwargs = {
+                "calc": "freq",
+                "shell": True, # To allow chained commands like 'ridft; rdgrad'
+                "env": self.get_pal_env(),
+                "cmd": cmd,
+        }
+        # Use inp=None because we don't use any dedicated input besides
+        # the previously prepared control file and the current coords.
+        results = self.run(None, **kwargs)
         return results
 
     def run_calculation(self, atoms, coords):
@@ -330,6 +404,26 @@ class Turbomole(OverlapCalculator):
 
     def parse_mos(self):
         pass
+
+    def parse_energy(self, path):
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        en_regex = re.compile("Total energy\s*:?\s*=?\s*([\d\-\.]+)", re.IGNORECASE)
+        tot_ens = en_regex.findall(text)
+
+        if self.td:
+            # Drop ground state energy that is repeated
+            tot_en = tot_ens[1:][self.root]
+        elif self.ricc2 and self.ricc2_opt:
+            results = parse_turbo_gradient(path)
+            tot_en = results["energy"]
+        elif self.ricc2 and not self.ricc2_opt:
+            raise Exception("Implement me!")
+        else:
+            tot_en = tot_ens[0]
+
+        tot_en = float(tot_en)
+        return {"energy": tot_en, }
 
     def parse_force(self, path):
         results = parse_turbo_gradient(path)
