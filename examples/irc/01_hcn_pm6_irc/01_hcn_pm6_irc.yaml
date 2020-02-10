@@ -1,8 +1,8 @@
 irc:
- type: eulerpc
- hessian_recalc: 5
- opt_ends: True
- #rms_grad_thresh: 1e-4
+ type: eulerpc              # Similar to EulerPC from Gaussian
+ opt_ends: True             # Optimized ends of IRC
+ #rms_grad_thresh: 1e-4      # Convergence threshold for rms(grad)
+ #hessian_recalc: 5          # Recalc exact hessian every n-th cycle
 calc:
  type: g16
  route: pm6
