@@ -3,179 +3,181 @@
 ![build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)
 [![codecov](https://codecov.io/gh/eljost/pysisyphus/branch/master/graph/badge.svg)](https://codecov.io/gh/eljost/pysisyphus)
 
-pysisphus implements Chain Of States (COS) methods like Nudged Elastic Band (NEB) and Simple Zero Temperature String (SZTS) to converge minimum energy paths and provide initial guesses for transition states. In addition pysisyphus provides serveral Intrinsic Reaction Coordinate algorithms. The required gradients and/or hessians are calculated by calling external quantum chemistry codes. By default everything is done in cartesian coordinates but an internal coordinates implementation is in progress.
+pysisyphus is a software-suite for the exploration of potential energy surfaces in ground- and **excited states**. It implements several methods to search for stationary points (minima and first order saddle points) and calculation of minimum energy paths by means of IRC and Chain of States methods like Nudged Elastic Band and Growing String. Furthermore it supports interpolation of geometries in internal coordinates.
+
+The required energies, gradients and hessians are calculated by calling external quantum chemistry codes. pysisyphus can also be used as a library to implement custom quantum chemistry workflows.
 
 **This software is still work in progress and shouldn't be used for production runs. Use at your own risk.**
 
-## Usage
-pysisyphus provides three hooks that can be called from the shell (command line). The available commandas can be queried with the `-h` or `--help` arguments:
+## Installation
 
-    # Run optimizations of single molecules or chain of states (NEB, string method)
-    pysisrun
-    # Visualize the results of chain of states calculations
+    # Optional: Create separate Anaconda environment
+        # conda create -n pysis-env python=3.7
+        # activate pysis-env
+    # or virtual environment
+        # python3 -m venv pysis-env
+        # source pysis-env/bin/activate
+    
+    git clone https://github.com/eljost/pysisyphus.git [install_dir]
+    cd [install_dir]
+    # Install with -e if you want an editable installation
+    pip install . [-e]
+
+Setup a `.pysisyphusrc` file in your `$HOME` directory that contains the commands/paths the quantum chemistry codes:
+
+    [orca]
+    # ORCA needs the full path to its binary
+    cmd=/scratch/programme/orca_4_2_0_linux_x86-64_openmpi314/orca
+
+    [xtb]
+    # Only the binary name; xtb has to be on your $PATH
+    cmd=xtb
+
+    [openmolcas]
+    # Only the binary name; pymolcas has to be on your $PATH
+    cmd=pymolcas
+
+    [gaussian09]
+    # Only the binary name; Gaussian09 has to be on your $PATH
+    cmd=g09
+
+    [gaussian16]
+    # Only the binary name; Gaussian16 has to be on your $PATH
+    cmd=g16
+    formchk_cmd=formchk
+    unfchk_cmd=unfchk
+
+    [wfoverlap]
+    # Path to the wfoverlap binary. Used for tracking excited states.
+    # Can be obtaine from https://github.com/sharc-md/sharc/tree/master/bin
+    cmd=/scratch/wfoverlap_1.0/bin/wfoverlap.x
+
+    [psi4]
+    # Path to a script that takes a single argument containing the generated Psi4 input file.
+    cmd=/user/johannes/bin/runpsi4.sh
+
+    [mopac]
+    # Path to a script that takes a single argument containing the generated MOPAC2016 input file.
+    cmd=/user/johannes/bin/runmopac.sh
+
+
+## Usage
+pysisyphus provides several entry points can be called from the shell (command line). The available commandas of the entry points can be queried with the `-h` or `--help` arguments:
+
+    # Run calculations (Minima optimization, TS search, IRC, NEB, GS, ...)
+    pysis
+    # Plotting of path-energies, optimization progress, IRC progress, etc ...
     pysisplot
     # Manipulate a .trj file or multiple .xyz files
     pysistrj
 
-### pysisrun
-Usually called with a YAML-formatted file containing all input for the optimizations. The --restart is quite experimental for now.
+### pysis
+Called with a YAML-input file. Simple and more complex examples can be found in the `examples` directory of this repository. Some common arguments are given below:
 
-    usage: pysisrun [-h] [--clean] [--fclean] [--restart] [yaml]
+    usage: pysis [-h] [--clean] [--dryrun | --cp CP]
+             [yaml]
 
     positional arguments:
-     yaml        Start pysisyphus with input from a YAML file.
+        yaml                  Start pysisyphus with input from a YAML file.
 
     optional arguments:
-     -h, --help  show this help message and exit
-     --clean     Ask for confirmation before cleaning.
-     --fclean    Force cleaning without prior confirmation.
-     --restart   Continue a previously crashed/aborted/... pysisphus run.
-     
-#### Example for a simple xTB NEB run
-
-    cos:
-     type: neb          # optimize a NEB
-     parallel: 4        # Run 4 calculations in parallel
-    opt:
-     type: cg           # Use conjugate gradient
-     max_cycles: 50     # Optimize for at most 50 cycles
-     align: True        # Remove translation and rotation with partial procrustes
-     climb: True        # Use climbing image NEB to get a better guess for the TS
-    interpol:
-     idpp: True         # Interpolate using the image dependent pair potential (recommended)
-     between: 15        # Interpolate 15 images for a total of (1 + 15 + 1 = 17) images
-    calc:
-     type: xtb          # Use xTB calculator
-     charge: 0
-     mult: 1
-    # Interpolate between these two geometries. One can supply also more than two geometries,
-    # but then the between value in the interpol section has to be lowered. Supplying a third
-    # geoemtry here would lead to a chain of states containing 33 images (1 + 15 + 1 + 15 + 1). 
-    xyz: [15_tpss_tzvp_full_scan_acn_013_xtb.xyz, 15_tpss_tzvp_full_scan_acn_024_xtb.xyz]
+        --clean               Ask for confirmation before cleaning.
+        --dryrun              Only generate a sample input (if meaningful) for
+                              checking.
+        --cp CP, --copy CP    Copy .yaml file and corresponding geometries to a new
+                              directory. Similar to TURBOMOLEs cpc command.
 
 ### pysisplot
-    usage: pysisplot [-h] [--until UNTIL]
-                     (--saras | --tddft | --params PARAMS | --cosgrad | --energies)
+Visualization/plotting of the pysisyphus calculations. Some common arguments are given below:
+
+    usage: pysisplot [-h] [--first FIRST] [--last LAST] [--h5 H5]
+                 [--orient ORIENT]
+                 (--cosgrad | --energies | --aneb | --all_energies | --bare_energies | --afir | --opt | --irc)
 
     optional arguments:
-        -h, --help       show this help message and exit
-        --until UNTIL    Only show until cycle [until].
-        --saras          Plot OpenMolcas state average potential energy surfaces
-                         over the course of the NEB.
-        --tddft          Plot ORCA TDDFT potential energy surfaces over the course
-                         of the NEB.
-        --params PARAMS  Follow internal coordinates over the course of the NEB. All
-                         atom indices have to be 0-based. Use two indices for a
-                         bond, three indices for an angle and four indices for a
-                         dihedral. The indices for different coordinates have to be
-                         separated by ','.
-        --cosgrad        Plot image gradients along the path.
-        --energies       Plot energies.
-
+        -h, --help           show this help message and exit
+        --cosgrad, --cg      Plot image gradients along the path.
+        --energies, -e       Plot energies.
+        --aneb               Plot Adaptive NEB.
+        --all_energies, -a   Plot ground and excited state energies from
+                             'overlap_data.h5'.
+        --bare_energies, -b  Plot ground and excited state energies from
+                             'overlap_data.h5'.
+        --afir               Plot AFIR and true -energies and -forces from an AFIR
+                             calculation.
+        --opt                Plot optimization progress.
+        --irc                Plot IRC progress.
 
 ### pysistrj
-Usually called wit multiple .xyz files or a single .trj file.
+Please see `pysistrj --help` for a list of available arguments.
 
-    usage: pysistrj [-h] [--idpp] [--xyz XYZ [XYZ ...]]
-                (--between BETWEEN | --align ALIGN [ALIGN ...] | --split SPLIT | --reverse REVERSE | --cleantrj CLEANTRJ | --spline SPLINE)
+## Available calculators
+### Excited state capabilities
+|Program|Gradient|Hessian|Exc. states|Comment|
+|-|-|-|-|-|
+|ORCA|y|y|TD-DFT, TDA||
+|Turbomole|y|-|TD-DFT, TDA, ricc2||
+|Gaussian16|y|y|tested TD-DFT, TDA|
+|PySCF|y|y|tested TD-DFT|
+|OpenMOLCAS|y|-|&rasscf|Not derived from OverlapCalculator, so functionality may lag behind for now.|
+### Ground states only
+|Program|Gradient|Hessian|Comment|
+|-|-|-|-|
+|MOPAC2016|y|y||
+|XTB|y|y|Tested with 6.2.2|
+|QCEngine|depends|depends|Capabilities depend on the program harness.|
+|Psi4|y|y||
+### Pure python calculators & Wrappers
+|Program|Gradient|Hessian|Comment|
+|-|-|-|-|
+|Sympy 2d potentials|y|y|Many analytical potentials with gradients & hessian from sympy (LEPS, Rosenbrock, Cerjan-Miller, ...).|
+|Lennard-Jones|y|-|No periodic boundary conditions.|
+|**AFIR**|y|-|Wrapper for other pysisyphus calculators|
+|**ONIOM**|y|-|Arbitrary levels with multicenter-support in the highest level. Wraps other pysisyphus calculators|
+|FakeASE|y|-|Thin bare-bones wrapper for pysisyphus calculators so they can be used with ASE.|
 
-    optional arguments:
-        -h, --help            show this help message and exit
-        --idpp                Use Image Dependent Pair Potential instead of simple
-                              linear interpolation.
-        --xyz XYZ [XYZ ...]
-        --between BETWEEN     Interpolate additional images.
-        --align ALIGN [ALIGN ...]
-                              Align geometries onto the first geometry read from
-                              multiple .xyz or one .trj file.
-        --split SPLIT         Split a supplied .trj file in multiple .xyz files.
-        --reverse REVERSE     Reverse a .trj file.
-        --cleantrj CLEANTRJ   Clean a .trj file.
-        --spline SPLINE       Evenly redistribute geometries along a splined path.
-	
+## Available algorithms
+### Chain Of State (COS) Methods
+| Algorithm |Coordinate system| Comment | Links |
+|-----------|---------|-------|-|
+|Nudged elastic band (NEB)|Cartesian|DLC planned, Climbing Image variants|
+|Adaptive NEB|Cartesian|Not well tested|
+|Free-End NEB|Cartesian|Not well tested|
+|Simple zero temperature string|Cartesian|Equal-, and energy dependent spacing||
+|Growing String method|Cartesian, **Delocalized internals**||
+### COS Optimizers
+| Algorithm | Comment | Links |
+|-----------|---------|-------|
+|Steepest Descent (SD)|Backtracking variant||
+|Conjugate Gradient (CG)|Backtracking variant||
+|QuickMin (QM)|||
+|FIRE|||
+|BFGS||Removal of translation & rotation is disabled.|
 
-## Currently implemented methods
-### Chain Of States methods
-* Initial guess
-    * Linear interpolation
-    * Image Dependent Pair Potential (https://doi.org/10.1063/1.4878664)
-* Removal of translation and rotation (http://pubs.acs.org/doi/abs/10.1021/acs.jctc.7b00360)
-* Either the first and/or the last image of the path can be fixed
+### Transition state optimization
+| Algorithm | Comment | Links |
+|-----------|---------|-------|
+|RS-P-RFO| default choice |https://pubs.acs.org/doi/pdf/10.1021/j100247a015, https://link.springer.com/article/10.1007/s002140050387|
+|RS-I-RFO| RFO, Image function |https://link.springer.com/article/10.1007/s002140050387|
+|TRIM|Trust region Image function|https://doi.org/10.1016/0009-2614(91)90115-P|
+|Dimer method|Hessian free TS search||
 
-#### Nudged elastic band
-* Improved tangent (https://doi.org/10.1063/1.1323224)
-* 1 Climbing Image (https://doi.org/10.1063/1.1329672)
-* 2 Climbing Image (https://doi.org/10.1063/1.4905209)
-* Different optimizers (see below)
-
-#### Simple Zero Temperature String
-* Steepest Descent Optimizer only (https://doi.org/10.1063/1.2720838)
-* Splined images
-    * Equal spacing
-    * Energy dependent spacing, leading to higher resoultion at high energy regions
-
-### Optimizers
-* Can be used for single molecules or COS-paths
-* Currently implemented
-    * Using only first derivatives
-        * Steepest Descent (SD)
-        * Conjugate Gradient (CG)
-        * QuickMin (QM)
-        * FIRE
-    * Using second derivatives (Hessian)
-        * BFGS
-        * Rational Function Optimization (RFO)
-    * Wrapper for serveral SciPy optimizer that don't require an explicit hessian (Experimental and not recommended, as the step size can't be controlled easily)
 
 ### Intrinsic Reaction Coordinate
-* Very experimental
-* Mass-weighted or non-mass-weighted coordinates
-* Initial displacement using the transition vector
-### Modified IMK
-* http://pubs.acs.org/doi/pdf/10.1021/ja00295a002
-### Damped velocity verlet
-* http://pubs.acs.org/doi/abs/10.1021/jp012125b
-### Gonzales-Schlegel 2
-* https://doi.org/10.1063/1.456010
-### Euler method
-* https://en.wikipedia.org/wiki/Euler_method
+* Done in mass-weighted cartesian coordinates
+* Initial displacement from prescribed energy lowering along the transition vector or by length
 
----
+| Algorithm | Comment | Links |
+|-----------|---------|-------|
+|Modified EulerPC| default choice | https://aip.scitation.org/doi/pdf/10.1063/1.3514202, https://doi.org/10.1039/C7CP03722H |
+|Modified IMK||http://pubs.acs.org/doi/pdf/10.1021/ja00295a002|
+|Damped velocity verlet||http://pubs.acs.org/doi/abs/10.1021/jp012125b|
+|Gonzales-Schlegel 2||https://doi.org/10.1063/1.456010|
+|LQA||https://aip.scitation.org/doi/pdf/10.1063/1.459634?class=pdf|
+|Euler method|Not advisable|https://en.wikipedia.org/wiki/Euler_method|
+|Runge-Kutta-4|Not advisable|https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods#Derivation_of_the_Runge%E2%80%93Kutta_fourth-order_method|
 
-## Calculators
-* Can be called in parallel or in serial mode
-### OpenMolcas
-* Wavefunctions from &rasscf and gradients from &alaska
-* Reuse of orbitals from previous iterations
-* State average calculations to converge excited state MEPs 
+## Additional remarks
 
-### GFN-xTB
-* Fast semi-emperical method for ground state calculations (http://pubs.acs.org/doi/abs/10.1021/acs.jctc.7b00118)
-
-### ORCA
-* All methods that have gradients
-* Recognizes TDDFT optimizations
-
-### Turbomole
-* Density functional methods 
-* Recognizes TDDFT optimizations
-
-### Gaussian 09 and 16
-* (Probably) All methods that support Force run
-* Recognizes TDDFT optimizations
-
-### Analytical 2D potentials
-* All expressions that can be handled by sympy
-* Automatic differentation to give gradients and hessian
-* Easy visualization of optimization progress with COS methods (AnimPlot class)
----
-## Geometry input and output
-All coordinate input read from .xyz or .trj files is expected to be in Ångström. Internally atomic units (Hartree, Bohr, etc.) are used throughout. All coordinate output written is given in Ångström again.
-
-## Roadmap
-* Get everything to work very smoothly;)
-
-## Special 
-
-tmpdir:
-export TMPDIR=[tmpdir]
+    tmpdir:
+    export TMPDIR=[tmpdir]
