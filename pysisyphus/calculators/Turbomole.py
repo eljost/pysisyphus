@@ -317,7 +317,7 @@ class Turbomole(OverlapCalculator):
                 "shell": True, # To allow chained commands like 'ridft; rdgrad'
                 "hold": self.track, # Keep the files for WFOverlap
                 "env": self.get_pal_env(),
-                "cmd": self.forces_cmd,
+                "cmd": cmd,
         }
         # Use inp=None because we don't use any dedicated input besides
         # the previously prepared control file and the current coords.
