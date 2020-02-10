@@ -2,6 +2,7 @@
 [![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=latest)](https://pysisyphus.readthedocs.io/en/latest/?badge=latest)
 ![build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)
 [![codecov](https://codecov.io/gh/eljost/pysisyphus/branch/master/graph/badge.svg)](https://codecov.io/gh/eljost/pysisyphus)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 pysisyphus is a software-suite for the exploration of potential energy surfaces in ground- and **excited states**. It implements several methods to search for stationary points (minima and first order saddle points) and calculation of minimum energy paths by means of IRC and Chain of States methods like Nudged Elastic Band and Growing String. Furthermore it supports interpolation of geometries in internal coordinates.
 
