@@ -67,7 +67,7 @@ Setup a `.pysisyphusrc` file in your `$HOME` directory that contains the command
 
 
 ## Usage
-pysisyphus provides several entry points can be called from the shell (command line). The available commandas of the entry points can be queried with the `-h` or `--help` arguments:
+pysisyphus provides several entry points that can be called from the shell (command line). The available commands of the entry points can be queried with the `-h` or `--help` arguments:
 
     # Run calculations (Minima optimization, TS search, IRC, NEB, GS, ...)
     pysis
