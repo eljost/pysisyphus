@@ -8,9 +8,11 @@ pysisyphus is a software-suite for the exploration of potential energy surfaces 
 
 The required energies, gradients and hessians are calculated by calling external quantum chemistry codes. pysisyphus can also be used as a library to implement custom quantum chemistry workflows.
 
-**This software is still work in progress. Use at your own risk. See also [License](https://github.com/eljost/pysisyphus/blob/master/LICENSE).**
+**This software is still work in progress. Use at your own risk. Also take a look at the [license](https://github.com/eljost/pysisyphus/blob/master/LICENSE).**
 
-Contrubtions are welcome. If any issues arise please open an issue on github.
+Contrubtions are welcome.
+
+If any issues arise please open an [issue](https://github.com/eljost/pysisyphus/issues) and I'll try to fix it if possible and my time permits it.
 
 ## Installation
 
