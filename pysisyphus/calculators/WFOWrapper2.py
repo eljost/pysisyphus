@@ -81,7 +81,8 @@ class WFOWrapper2:
     def log(self, message):
         self.logger.debug(f"{self.name}, " + message)
 
-    def fake_turbo_mos(self, mo_coeffs):
+    @staticmethod
+    def fake_turbo_mos(mo_coeffs):
         """Create a mos file suitable for TURBOMOLE input. All MO eigenvalues
         are set to 0.0. There is also a little deviation in the formatting
         (see turbo_fmt()) but it works ..."""
