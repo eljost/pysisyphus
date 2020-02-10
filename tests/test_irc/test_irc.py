@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.calculators import Gaussian16
+from pysisyphus.calculators import Gaussian16, Turbomole
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.irc import *
 from pysisyphus.testing import using
+
+
+@pytest.fixture
+def this_dir(request):
+    return Path(request.module.__file__).parents[0]
 
 
 def plot_irc(irc, title=None):
@@ -61,17 +68,30 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
 
 @pytest.mark.parametrize(
     "calc_cls, kwargs_", [
-        pytest.param(PySCF, {"basis": "321g", }, marks=using("pyscf")),
-        pytest.param(Gaussian16, {"route": "HF/3-21G"}, marks=using("gaussian16")),
+        pytest.param(PySCF,
+            {"basis": "321g", },
+            marks=using("pyscf")
+        ),
+        pytest.param(Gaussian16,
+            {"route": "HF/3-21G"},
+            marks=using("gaussian16")
+        ),
+        pytest.param(Turbomole,
+            {"control_path": "./hf_abstr_control_path", "pal": 1},
+            marks=using("turbomole")
+        ),
     ]
 )
-def test_hf_abstraction_dvv(calc_cls, kwargs_):
+def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     geom = geom_from_library("hfabstraction_hf321g_displ_forward.xyz")
 
     calc_kwargs = {
         "pal": 2,
     }
     calc_kwargs.update(kwargs_)
+
+    if "control_path" in calc_kwargs:
+        calc_kwargs["control_path"] = this_dir / calc_kwargs["control_path"]
 
     print("Using", calc_cls)
     calc = calc_cls(**calc_kwargs)
