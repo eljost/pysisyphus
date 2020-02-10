@@ -10,7 +10,7 @@ import rmsd
 from scipy.spatial.distance import pdist
 
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.intcoords.findbonds import get_cov_radii_sum_array
+from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.xyzloader import make_trj_str_from_geoms
 from pysisyphus.stocastic.align import matched_rmsd
 from pysisyphus.helpers import check_for_stop_sign
@@ -79,7 +79,7 @@ class Pipeline:
     def atoms_are_too_close(self, geom, factor=.7):
         """Determine if atoms are too close."""
         dist_mat = pdist(geom.coords3d)
-        cov_rad_mat = get_cov_radii_sum_array(geom.atoms, geom.coords)
+        cov_rad_mat = get_pair_covalent_radii(geom.atoms)
         too_close = dist_mat < factor*cov_rad_mat
         return any(too_close)
 

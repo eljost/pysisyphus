@@ -42,6 +42,20 @@ def using(calculator):
             except ImportError:
                 pass
 
+        if calculator == "qcengine":
+            try:
+                import qcengine
+                available = True
+            except ImportError:
+                pass
+
+        if calculator == "openmm":
+            try:
+                import simtk.openmm
+                available = True
+            except ImportError:
+                pass
+
         reason = _reason.format(calculator)
         _using_cache[calculator] = pytest.mark.skipif(not available, reason=reason)
     return _using_cache[calculator]
@@ -51,3 +65,4 @@ def using(calculator):
 using_pyscf = using("pyscf")
 using_gaussian16 = using("gaussian16")
 using_turbomole = using("turbomole")
+using_qcengine = using("qcengine")

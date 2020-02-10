@@ -744,7 +744,7 @@ def get_defaults(conf_dict):
 
     if "irc" in conf_dict:
         dd["irc"] = {
-            "type": "euler",
+            "type": "eulerpc",
             "opt_ends": False,
         }
 

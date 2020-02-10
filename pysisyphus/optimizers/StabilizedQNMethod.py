@@ -6,7 +6,7 @@ import numpy as np
 from scipy.spatial.distance import squareform
 
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.guess_hessians import get_bond_mat
+from pysisyphus.intcoords.findbonds import get_bond_mat
 from pysisyphus.optimizers.step_restriction import scale_by_max_step
 
 
