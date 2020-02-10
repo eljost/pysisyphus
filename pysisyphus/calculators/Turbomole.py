@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
+import itertools as it
 import logging
 import os
 from pathlib import Path
@@ -54,6 +55,7 @@ class Turbomole(OverlapCalculator):
         self.parser_funcs = {
             "energy": self.parse_energy,
             "force": self.parse_force,
+            "hessian": self.parse_hessian,
             "double_mol": self.parse_double_mol,
             "noparse": lambda path: None,
         }
@@ -134,20 +136,20 @@ class Turbomole(OverlapCalculator):
         if self.td:
             self.energy_cmd  = get_cmd("escf") 
             self.forces_cmd = get_cmd("egrad")
-            self.freq_cmd = get_cmd("aoforce")
+            self.hessian_cmd = "not_yet_implemented"
         elif self.ricc2:
             ricc2_cmd = get_cmd("ricc2")
             self.energy_cmd  = ricc2_cmd
             self.forces_cmd = ricc2_cmd
-            self.freq_cmd = "not_yet_implemented"
+            self.hessian_cmd = "not_yet_implemented"
         else:
             self.energy_cmd  = self.scf_cmd
             self.forces_cmd = get_cmd(second_cmd)
-            self.freq_cmd = get_cmd("aoforce")
+            self.hessian_cmd = get_cmd("aoforce")
         self.log(f"Prepared commands:")
         self.log(f"\tEnergy cmd: " + self.energy_cmd)
         self.log(f"\tForces cmd: " + self.forces_cmd)
-        self.log(f"\tHessian cmd: " + self.freq_cmd)
+        self.log(f"\tHessian cmd: " + self.hessian_cmd)
 
     def get_ricc2_root(self, text):
         regex = "geoopt.+?state=\((.+?)\)"
@@ -187,7 +189,7 @@ class Turbomole(OverlapCalculator):
                 "force",
                 "double_mol",
                 "noparse",
-                "freq"
+                "hessian"
         )
         if calc_type not in valid_calc_types:
             raise Exception(f"Invalid calc_type '{calc_type}'! Supported "
@@ -263,7 +265,7 @@ class Turbomole(OverlapCalculator):
             # Write point charge gradients to file
             self.sub_control("\$end", "$point_charge_gradients file=pc_gradients\n$end")
 
-        if calc_type == "freq":
+        if calc_type == "hessian":
             self.append_control("$noproj\n$nprhessian file=nprhessian")
 
     def sub_control(self, pattern, repl, log_msg="", **kwargs):
@@ -337,18 +339,16 @@ class Turbomole(OverlapCalculator):
         return results
 
     def get_hessian(self, atoms, coords):
-        if self.ricc2:
-            raise Exception("ricc2 hessian not yet supported!")
+        if self.td or self.ricc2:
+            raise Exception("ricc2 or TD-DFT/TDA hessian not yet supported!")
 
-        self.prepare_input(atoms, coords, "freq")
+        self.prepare_input(atoms, coords, "hessian")
         kwargs = {
-                "calc": "freq",
+                "calc": "hessian",
                 "shell": True, # To allow chained commands like 'ridft; rdgrad'
                 "env": self.get_pal_env(),
-                "cmd": cmd,
+                "cmd": self.hessian_cmd,
         }
-        # Use inp=None because we don't use any dedicated input besides
-        # the previously prepared control file and the current coords.
         results = self.run(None, **kwargs)
         return results
 
@@ -427,6 +427,28 @@ class Turbomole(OverlapCalculator):
 
     def parse_force(self, path):
         results = parse_turbo_gradient(path)
+        return results
+
+    def parse_hessian(self, path, fn=None):
+        if fn is None:
+            fn = path / "nprhessian"
+
+        with open(fn) as handle:
+            lines = [l.strip() for l in handle.readlines()]
+        assert lines[0] == "$nprhessian"
+        assert lines[-1] == "$end"
+
+        hess_lines = [line.split()[2:] for line in lines[1:-1]]
+        atom_num = int(lines[-2].split()[0])
+        hessian = np.array(list(it.chain(*hess_lines)), dtype=float)
+        hessian = hessian.reshape(atom_num, atom_num)
+
+        energy = self.parse_energy(path)
+
+        results = {
+            "energy": energy,
+            "hessian": hessian,
+        }
         return results
 
     def parse_td_vectors(self, text):
