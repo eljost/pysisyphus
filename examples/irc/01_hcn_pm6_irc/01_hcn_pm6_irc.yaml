@@ -3,6 +3,14 @@ irc:
  opt_ends: True             # Optimize ends of IRC
  #rms_grad_thresh: 1e-4      # Convergence threshold for rms(grad)
  #hessian_recalc: 5          # Recalc exact hessian every n-th cycle
+ #displ: energy              # Initial displacement from the TS. 'energy' is default.
+                             # Another option is 'length'
+ #displ_energy: 5e-4         # Energy lowering from TS in a.u.
+ #displ_length: 0.1          # Displacement along the transition vector from the TS
+ #forward: True
+ #backward: True
+ #downhill: False            # Used when starting an IRC from a non-stationary point
+                             # with non-vanishing gradient
 calc:
  type: g16
  route: pm6
