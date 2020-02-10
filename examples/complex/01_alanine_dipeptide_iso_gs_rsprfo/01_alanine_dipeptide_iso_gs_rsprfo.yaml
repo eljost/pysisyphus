@@ -9,7 +9,6 @@ tsopt:
  type: rsprfo
  do_hess: True
  trust_max: 0.3
- do_hess: True
  thresh: gau_loose
 calc:
  type: orca

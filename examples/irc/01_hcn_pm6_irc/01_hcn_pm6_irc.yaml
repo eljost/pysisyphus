@@ -1,0 +1,12 @@
+irc:
+ type: eulerpc
+ hessian_recalc: 5
+ opt_ends: True
+ #rms_grad_thresh: 1e-4
+calc:
+ type: g16
+ route: pm6
+ pal: 4
+ charge: 0
+ mult: 1
+xyz: ts_opt.xyz
