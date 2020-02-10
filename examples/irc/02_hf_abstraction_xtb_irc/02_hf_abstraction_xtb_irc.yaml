@@ -1,0 +1,10 @@
+irc:
+ type: eulerpc              # Similar to EulerPC from Gaussian
+ opt_ends: fragments        # Detect fragments at the end of the IRC
+                            # and optimize them separately.
+calc:
+ type: xtb
+ pal: 4
+ charge: 0
+ mult: 1
+xyz: hfabstraction_ts_opt_xtb.xyz
