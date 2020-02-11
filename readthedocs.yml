@@ -5,6 +5,9 @@ sphinx:
 
 formats: all
 
+build:
+ image: latest
+
 python:
  version: 3.7
  install:
