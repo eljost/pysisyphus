@@ -29,10 +29,10 @@ If any issues arise please open an issue_ and I'll try to fix it if possible and
    overview.rst
    installation.rst
    calculators.rst
+   tsoptimization.rst
    irc.rst
 ..
    optimizers.rst
-   tsoptimizers.rst
    examples.rst
    pysisyphus.rst
 	

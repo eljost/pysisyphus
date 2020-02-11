@@ -36,14 +36,18 @@ that the user may want to modify.
 
     irc:
      type: eulerpc                      # Similar to EulerPC from Gaussian
+
      opt_ends: fragments                # Detect fragments at the end of the IRC
                                         # and optimize them separately.
+
      #displ: energy|length              # How to do the initial displacement
      #displ_energy: 0.0005              # Energy lowering in au (Hartree)
      #displ_length: 0.1                 # Step length along the TV
+
      #forward: True
      #backward: True
      #downhill: False                   # Only integrate downhill
+
      #rms_grad_thresh: 0.0005           # Convergence threshold
     calc:
      type: xtb                          # extended tight-binding calculator
