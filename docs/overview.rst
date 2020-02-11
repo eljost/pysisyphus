@@ -104,11 +104,79 @@ ONIOM         y        n       Arbitrary number of layers with multicenter-suppo
 FakeASE       y        n       Wraps `pysisyphus` calculators so they can be used with `ase`.
 ============= ======== ======= =========
 
+Available algorithms
+=====================
+
+Chain Of States methods
+-----------------------
+
+=============================== ====================== =======
+Algorithm                       Coordinates            Comment
+=============================== ====================== =======
+Nudged Elastic Band (NEB)       Cartesian, DLC planned Climbing Image variants, Doubly nudged variant
+Adaptive NEB                    Cartesian              Not well tested
+Free-End NEB                    Cartesian              Not well tested
+Simple Zero-Temperature-String  Cartesian              Equal spacing, energy-dependent spacing
+Growing String Method           Cartesian, DLC
+=============================== ====================== =======
+
+Chain of states optimizer
+--------------------------
+
+================== ==================== =======
+Algorithm          Comment              Links
+================== ==================== =======
+Steepest Descent   Backtracking variant NEB-Optimizers_
+Conjugate Gradient Backtracking variant NEB-Optimizers_
+QuickMin                                NEB-Optimizers_
+FIRE                                    NEB-Optimizers_
+BFGS                                    NEB-Optimizers_
+================== ==================== =======
+
+.. _NEB-Optimizers: https://pubs.acs.org/doi/abs/10.1021/acs.jctc.7b00360
+
+Transition state optimization
+-----------------------------
+
+================== ==================== =======
+Algorithm          Comment              Links
+================== ==================== =======
+RS-P-RFO           default              RFO-Paper_, RS-Paper_
+RS-I-RFO                                RFO-Paper_, RS-Paper_
+TRIM                                    TRIM-Paper_ 
+Dimer method                                    
+================== ==================== =======
+
+.. _RFO-Paper: https://pubs.acs.org/doi/pdf/10.1021/j100247a015
+.. _RS-Paper: https://link.springer.com/article/10.1007/s002140050387
+.. _TRIM-Paper: https://doi.org/10.1016/0009-2614(91)90115-P
+
+Intrinsic Reaction Coordinate integrators
+-----------------------------------------
+
+============================= ==================== =======
+Algorithm                     Comment              Links
+============================= ==================== =======
+Damped-Velocity-Verlet                             DVV-Paper_
+Euler                         Not recommended
+EulerPC                       default              Kaestner-PC_, Euler-PC_
+Gonzales-Schlegel 2                                GS2-Paper_
+Local Quadratic Approximation                      LQA-Paper_
+Modified IMK                                       IMK-Paper_
+Runge-Kutta-4                 Not recommended
+============================= ==================== =======
+
+.. _Kaestner-PC: https://doi.org/10.1039/C7CP03722H
+.. _Euler-PC: https://aip.scitation.org/doi/pdf/10.1063/1.3514202
+.. _IMK-Paper: http://pubs.acs.org/doi/pdf/10.1021/ja00295a002
+.. _DVV-Paper: http://pubs.acs.org/doi/abs/10.1021/jp012125b
+.. _GS2-Paper: https://doi.org/10.1063/1.456010
+.. _LQA-Paper: https://aip.scitation.org/doi/pdf/10.1063/1.459634?class=pdf
 
 Additional remarks
 ==================
 
-`pysisyphus` the `tempfile` module from the stdlib. The location of the temporary
+`pysisyphus` uses the `tempfile` module from the python stdlib. The location of the temporary
 directories can be controlled by setting the **$TMPDIR** environment variable before
 executing `pysis`.
 
