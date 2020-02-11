@@ -1,0 +1,18 @@
+opt:
+ type: rfo
+ overachieve_factor: 2                          # Stop optimization if force threshs are 2 times
+                                                # overachievd, regardless of convergence on the step.
+ thresh: gau                                    # tighter convergence, default is 'gau_loose'
+calc:
+ type: turbomole
+ control_path: control_path_pbe0_def2svp_s1     # Path to the prepared calculation
+ track: True                                    # Activate excited state tracking
+ ovlp_type: tden                                # Track with transition density matrix overlaps
+ charge: 0
+ mult: 1
+ pal: 4
+ mem: 2000
+xyz: cytosin.xyz
+coord_type: redund                              # Use redundant internal coordinates. Other options are
+                                                # 'cart' for cartesian coordinates and 'dlc' for delocalized
+                                                # internal coordinates.
