@@ -1,7 +1,7 @@
 Optimization of Minima
 **********************
 
-Short intro.
+To be done.
 
 YAML example
 ===============
@@ -17,10 +17,12 @@ that the user may want to modify when using the RFOptimizer.
      overachieve_factor: 2          # Indicate convergence, regardless of the 
                                     # proposed step when max(grad) and rms(grad)
                                     # are overachieved by factor [n]
+
      do_hess: True                  # Calculate the hessian at the final geometry
                                     # after the optimization.
 
      #hessian_recalc: None          # Recalculate exact hessian every n-th cylce
+
      #hessian_recalc_adapt: None    # Expects a float. Recalculate exact hessian
                                     # whenever the gradient norms drops below
                                     # 1/[n] of the gradient norm at the last hessian
@@ -43,10 +45,12 @@ that the user may want to modify when using the RFOptimizer.
      #trust_min: 0.1                # Min. trust radius
 
      #line_search: True             # Do line search
+
      #gdiis_thresh: 0.0025          # May do GDIIS if rms(step) falls below this threshold
      #gediis_thresh: 0.01           # May do GEDIIS if rms(grad) falls below this threshold
      #gdiis: True                   # Do controlled GDIIS after 'gdiis_thresh' is reached
      #gediis: False                 # Do GEDIIS after 'gediis_thresh' is reached
+
     calc:
      type: turbomole
      control_path: control_path_pbe0_def2svp_s1     # Path to the prepared calculation
@@ -56,6 +60,7 @@ that the user may want to modify when using the RFOptimizer.
      mult: 1
      pal: 4
      mem: 2000
+
     xyz: cytosin.xyz
     coord_type: redund
 
