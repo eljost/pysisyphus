@@ -39,6 +39,8 @@ setup(
     #   pip install -e .[extra]
     extras_require={
         "qcengine": ["qcengine>=0.13.0", ],
+        "ase": ["ase", ],
+        "pyscf": ["pyscf>=1.7.0", ],
     },
     entry_points={
         "console_scripts": [

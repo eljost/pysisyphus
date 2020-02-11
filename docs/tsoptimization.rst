@@ -2,8 +2,23 @@ Transition State Optimization
 *****************************
 
 Optimizing transition states (TSs) is black magic, especially in internal
-coordinates. The most promising TS optimizers employ hessian information,
-but locating TSs in `pysisyphus` is also possible with only first derivatives.
+coordinates. The most promising TS optimizers employ second derivative information
+(hessian) but locating TS in `pysisyphus` is also possible using only first
+derivative information.
+
+TS optimizations should preferably be done in internal coordinates (`coord_type: redund`).
+Before starting the actual TS search ond should **always** check the internal coordinates
+that pysisyphus set up by running `pysistrj [xyz] --internals`, with `[xyz]` corresponding
+to the TS guess for the optimization. **Check carefully** all supposed reaction coordinates
+are present. **If they are missing** define them manually with the `add_prims` key
+in the YAML input.
+
+Calculation of the exact hessian can be avoided by using `type: dimer` or by using
+`rx_coords: [list of primitives]` in combination with `hessian_init: fischer|lindh|swart|simple`.
+With the latter options a diagonal model hessian is set up and the signs of the entries
+corresponding to the reaction coordinates are inverted.
+
+Right now the `dimer` method may work but it may needs an overhaul.
 
 YAML example(s)
 ==============
@@ -67,6 +82,17 @@ RS-P-RFO, TRIM).
 
 Further examples for TS optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/tsopt>`_.
+
+General advice for TS optimizations
+===================================
+
+- Use as many exact hessians as your computational budget allows it (`hessian_recalc: [n]`)
+- Use tight convergence settings for your SCF. In contrast to codes like ORCA `pysisyphus`
+  does not do this automatically
+- Grid-based methods (DFT, some RI-types) may need finer grids to reduce numerical noice
+- Try to preoptimize the TS using a cheap method (xtb) that allows `hessian_recalc: 1`
+- Maybe decrease current & allowed trust radius (`trust_radius: 0.1` and `trust_max: 0.3|0.5`)
+- Check for a correct coordinate setup
 
 TSHessianOptimizer base class
 =============================
