@@ -6,11 +6,15 @@
 Welcome to pysisyphus documentation!
 ======================================
 
-pysisyphus is a software-suite for the exploration of potential energy surfaces in ground- and **excited states**. It implements several methods to search for stationary points (minima and first order saddle points) and calculation of minimum energy paths by means of IRC and Chain of States methods like Nudged Elastic Band and Growing String. Furthermore it supports interpolation of geometries in internal coordinates.
+`pysisyphus` is a software-suite for the exploration of potential energy surfaces in ground-
+and **excited states**. It implements several methods to search for stationary points
+(minima and first order saddle points) and calculation of minimum energy paths by means
+of IRC and Chain of States methods like Nudged Elastic Band and Growing String.
+Furthermore provides tools to easily analyze & modify geometries (aligning, translating, interpolating, ...).
 
-The required energies, gradients and hessians are calculated by calling external quantum chemistry codes. pysisyphus can also be used as a library to implement custom quantum chemistry workflows.
+The required energies, gradients and hessians are calculated by calling external quantum chemistry codes. `pysisyphus` can also be used as a library to implement custom quantum chemistry workflows.
 
-If any issues arise please open an issue_ and I'll try to fix it if possible and my time permits it. Contrubtions are welcome.
+If any issues arise please open an issue_ and I'll try to fix it if possible and my time permits it. Contrubtions are welcome, so feel free to submit a PR.
 
 **This software is still work in progress. Use at your own risk. Also take a look at the** `license <https://github.com/eljost/pysisyphus/blob/master/LICENSE>`_
 
@@ -25,10 +29,12 @@ If any issues arise please open an issue_ and I'll try to fix it if possible and
    overview.rst
    installation.rst
    calculators.rst
+   irc.rst
 ..
    optimizers.rst
+   tsoptimizers.rst
    examples.rst
-   pysisyphus
+   pysisyphus.rst
 	
 Indices and tables
 ==================

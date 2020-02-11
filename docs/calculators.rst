@@ -11,6 +11,14 @@ Calculator base class
 Excited state capabilities
 ==========================
 
+OverlapCalculator base class
+----------------------------
+
+.. automodule:: pysisyphus.calculators.OverlapCalculator
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Gaussian09
 ---------
 
@@ -52,6 +60,19 @@ PySCF 1.7.0
 
 Turbomole 7.4
 ---------------------------------------
+
+For now I have chosen the "easy" way and didnt't try to implement a wrapper for
+`define`. That's why the user has to manually prepare a valid TURBOMOLE job directory
+beforehand that is then supplied to the calculator via the `control_path` argument.
+
+If an excited-state optimization is desired care has to be taken to include
+**$exopt [n]** for TD-DFT/TDA or the **geoopt state=([n])** (ricc2)! Tracking
+of excited states is currently possible for closed shell `egrad` and `ricc2` calculations.
+
+**Right now care has to be taken that no `gradient` file is present in the `control_path`!**
+
+An easier, alternative way to use TURBOMOLE in `pysisyphus` is via its `QCEngine` wrapper,
+albeit with restricted funtionality (no hessian, no excited states right now).
 
 .. automodule:: pysisyphus.calculators.Turbomole
     :members:

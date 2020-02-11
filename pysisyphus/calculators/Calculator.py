@@ -108,15 +108,15 @@ class Calculator:
         logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, {message}")
 
     def get_energy(self, atoms, coords):
-        """Meant to be extended.."""
+        """Meant to be extended."""
         raise Exception("Not implemented!")
 
     def get_forces(self, atoms, coords):
-        """Meant to be extended.."""
+        """Meant to be extended."""
         raise Exception("Not implemented!")
 
     def get_hessian(self, atoms, coords):
-        """Meant to be extended.."""
+        """Meant to be extended."""
         raise Exception("Not implemented!")
 
     def make_fn(self, name, counter=None, return_str=False):

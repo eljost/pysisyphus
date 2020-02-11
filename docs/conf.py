@@ -12,6 +12,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
@@ -24,7 +25,7 @@ from pysisyphus import _version
 # -- Project information -----------------------------------------------------
 
 project = 'pysisyphus'
-copyright = '2020, Johannes Steinmetzer'
+copyright = f'{datetime.date.today().year}, Johannes Steinmetzer'
 author = 'Johannes Steinmetzer'
 
 # The short X.Y version
