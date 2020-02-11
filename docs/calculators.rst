@@ -20,14 +20,14 @@ OverlapCalculator base class
     :show-inheritance:
 
 Gaussian09
----------
+----------
 
 .. automodule:: pysisyphus.calculators.Gaussian09
     :members:
     :undoc-members:
 
 Gaussian16
----------
+----------
 
 .. automodule:: pysisyphus.calculators.Gaussian16
     :members:
@@ -35,7 +35,7 @@ Gaussian16
     :show-inheritance:
 
 OpenMolcas
-----------------------------------------
+----------
 
 .. automodule:: pysisyphus.calculators.OpenMolcas
     :members:
@@ -43,7 +43,7 @@ OpenMolcas
     :show-inheritance:
 
 ORCA 4.2.1
-----------------------------------
+----------
 
 .. automodule:: pysisyphus.calculators.ORCA
     :members:
@@ -59,7 +59,7 @@ PySCF 1.7.0
     :show-inheritance:
 
 Turbomole 7.4
----------------------------------------
+-------------
 
 For now I have chosen the "easy" way and didnt't try to implement a wrapper for
 `define`. That's why the user has to manually prepare a valid TURBOMOLE job directory
@@ -83,7 +83,7 @@ Ground state capabilities
 ==========================
 
 MOPAC 2016
----------------------------------
+----------
 
 .. automodule:: pysisyphus.calculators.MOPAC
     :members:
@@ -91,7 +91,7 @@ MOPAC 2016
     :show-inheritance:
 
 Psi4
----------------------------------
+----
 
 .. automodule:: pysisyphus.calculators.Psi4
     :members:
@@ -99,7 +99,7 @@ Psi4
     :show-inheritance:
 
 QCEngine
----------------------------------
+--------
 
 .. automodule:: pysisyphus.calculators.QCEngine
     :members:
@@ -107,7 +107,7 @@ QCEngine
     :show-inheritance:
 
 XTB 6.2
----------------------------------
+-------
 
 .. automodule:: pysisyphus.calculators.XTB
     :members:
@@ -118,7 +118,7 @@ Pure Python calculators & wrappers
 ==========================
 
 Sympy 2D Potentials
----------------------------------
+-------------------
 
 .. automodule:: pysisyphus.calculators.AnaPotBase
     :members:
@@ -126,7 +126,7 @@ Sympy 2D Potentials
     :show-inheritance:
 
 Lennard-Jones
----------------------------------
+-------------
 
 .. automodule:: pysisyphus.calculators.LennardJones
     :members:
@@ -134,7 +134,7 @@ Lennard-Jones
     :show-inheritance:
 
 AFIR
----------------------------------
+----
 
 .. automodule:: pysisyphus.calculators.AFIR
     :members:
@@ -142,7 +142,7 @@ AFIR
     :show-inheritance:
 
 ONIOM
----------------------------------
+-----
 
 .. automodule:: pysisyphus.calculators.ONIOMv2
     :members:

@@ -117,7 +117,7 @@ Nudged Elastic Band (NEB)       Cartesian, DLC planned Climbing Image variants, 
 Adaptive NEB                    Cartesian              Not well tested
 Free-End NEB                    Cartesian              Not well tested
 Simple Zero-Temperature-String  Cartesian              Equal spacing, energy-dependent spacing
-Growing String Method           Cartesian, DLC
+**Growing String Method**       Cartesian, **DLC**
 =============================== ====================== =======
 
 Chain of states optimizer

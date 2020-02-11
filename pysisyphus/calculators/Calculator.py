@@ -152,7 +152,6 @@ class Calculator:
 
         Create a temporary directory that can later be used in a calculation.
 
-
         Parameters
         ----------
             use_in_run : bool, option
@@ -173,7 +172,10 @@ class Calculator:
         return path
 
     def prepare(self, inp):
-        """Prepare a temporary directory and write input into it.
+        """Prepare a temporary directory and write input.
+
+        Similar to prepare_path, but the input is also written into
+        the prepared directory.
 
         Paramters
         ---------

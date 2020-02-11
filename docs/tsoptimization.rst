@@ -21,7 +21,7 @@ corresponding to the reaction coordinates are inverted.
 Right now the `dimer` method may work but it may needs an overhaul.
 
 YAML example(s)
-==============
+===============
 
 Below you can find an example YAML-input including the most important options
 that the user may want to modify for the hessian-based optimizers (RS-I-RFO,
