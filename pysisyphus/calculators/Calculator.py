@@ -24,7 +24,7 @@ class Calculator:
                  last_calc_cycle=None, clean_after=True, out_dir="./"):
         """Base-class of all calculators.
 
-        Base-class of all calculators that is meant to be extended.
+        Meant to be extended.
 
         Parameters
         ----------

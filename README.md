@@ -15,58 +15,6 @@ Contrubtions are welcome.
 
 If any issues arise please open an [issue](https://github.com/eljost/pysisyphus/issues) and I'll try to fix it if possible and my time permits it.
 
-## Installation
-
-    # Optional: Create separate Anaconda environment
-        # conda create -n pysis-env python=3.7
-        # activate pysis-env
-    # or virtual environment
-        # python3 -m venv pysis-env
-        # source pysis-env/bin/activate
-    
-    git clone https://github.com/eljost/pysisyphus.git [install_dir]
-    cd [install_dir]
-    # Install with -e if you want an editable installation
-    pip install . [-e]
-
-Setup a `.pysisyphusrc` file in your `$HOME` directory that contains the commands/paths the quantum chemistry codes:
-
-    [orca]
-    # ORCA needs the full path to its binary
-    cmd=/scratch/programme/orca_4_2_0_linux_x86-64_openmpi314/orca
-
-    [xtb]
-    # Only the binary name; xtb has to be on your $PATH
-    cmd=xtb
-
-    [openmolcas]
-    # Only the binary name; pymolcas has to be on your $PATH
-    cmd=pymolcas
-
-    [gaussian09]
-    # Only the binary name; Gaussian09 has to be on your $PATH
-    cmd=g09
-
-    [gaussian16]
-    # Only the binary name; Gaussian16 has to be on your $PATH
-    cmd=g16
-    formchk_cmd=formchk
-    unfchk_cmd=unfchk
-
-    [wfoverlap]
-    # Path to the wfoverlap binary. Used for tracking excited states.
-    # Can be obtaine from https://github.com/sharc-md/sharc/tree/master/bin
-    cmd=/scratch/wfoverlap_1.0/bin/wfoverlap.x
-
-    [psi4]
-    # Path to a script that takes a single argument containing the generated Psi4 input file.
-    cmd=/user/johannes/bin/runpsi4.sh
-
-    [mopac]
-    # Path to a script that takes a single argument containing the generated MOPAC2016 input file.
-    cmd=/user/johannes/bin/runmopac.sh
-
-
 ## Usage
 pysisyphus provides several entry points that can be called from the shell (command line). The available commands of the entry points can be queried with the `-h` or `--help` arguments:
 

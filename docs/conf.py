@@ -24,7 +24,7 @@ from pysisyphus import _version
 # -- Project information -----------------------------------------------------
 
 project = 'pysisyphus'
-copyright = '2018, Johannes Steinmetzer'
+copyright = '2020, Johannes Steinmetzer'
 author = 'Johannes Steinmetzer'
 
 # The short X.Y version

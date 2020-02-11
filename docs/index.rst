@@ -6,30 +6,32 @@
 Welcome to pysisyphus documentation!
 ======================================
 
-pysisphus implements Chain Of States (COS) methods like Nudged Elastic Band
-(NEB) and Simple Zero Temperature String (SZTS) to converge minimum energy
-paths and provide initial guesses for transition states (TS) optimizations.
+pysisyphus is a software-suite for the exploration of potential energy surfaces in ground- and **excited states**. It implements several methods to search for stationary points (minima and first order saddle points) and calculation of minimum energy paths by means of IRC and Chain of States methods like Nudged Elastic Band and Growing String. Furthermore it supports interpolation of geometries in internal coordinates.
 
-In addition pysisyphus provides serveral Intrinsic Reaction Coordinate
-algorithms. The required gradients and/or hessians are calculated by
-calling external quantum chemistry codes. By default everything is done
-in cartesian coordinates but an internal coordinates implementation is
-in progress.
+The required energies, gradients and hessians are calculated by calling external quantum chemistry codes. pysisyphus can also be used as a library to implement custom quantum chemistry workflows.
+
+If any issues arise please open an issue_ and I'll try to fix it if possible and my time permits it. Contrubtions are welcome.
+
+**This software is still work in progress. Use at your own risk. Also take a look at the** `license <https://github.com/eljost/pysisyphus/blob/master/LICENSE>`_
+
+.. _license: https://github.com/eljost/pysisyphus/blob/master/LICENSE
+.. _issue: https://github.com/eljost/pysisyphus/issues
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
+   :numbered:
    :caption: Contents:
  
+   overview.rst
    installation.rst
    calculators.rst
+..
    optimizers.rst
    examples.rst
    pysisyphus
 	
-
-
 Indices and tables
 ==================
 
-* :ref:`genindex`
+.. * :ref:`genindex`
 * :ref:`search`
