@@ -24,7 +24,7 @@ class Calculator:
                  last_calc_cycle=None, clean_after=True, out_dir="./"):
         """Base-class of all calculators.
 
-        Base-class of all calculators that is meant to be extended.
+        Meant to be extended.
 
         Parameters
         ----------
@@ -108,15 +108,15 @@ class Calculator:
         logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, {message}")
 
     def get_energy(self, atoms, coords):
-        """Meant to be extended.."""
+        """Meant to be extended."""
         raise Exception("Not implemented!")
 
     def get_forces(self, atoms, coords):
-        """Meant to be extended.."""
+        """Meant to be extended."""
         raise Exception("Not implemented!")
 
     def get_hessian(self, atoms, coords):
-        """Meant to be extended.."""
+        """Meant to be extended."""
         raise Exception("Not implemented!")
 
     def make_fn(self, name, counter=None, return_str=False):
@@ -152,7 +152,6 @@ class Calculator:
 
         Create a temporary directory that can later be used in a calculation.
 
-
         Parameters
         ----------
             use_in_run : bool, option
@@ -173,7 +172,10 @@ class Calculator:
         return path
 
     def prepare(self, inp):
-        """Prepare a temporary directory and write input into it.
+        """Prepare a temporary directory and write input.
+
+        Similar to prepare_path, but the input is also written into
+        the prepared directory.
 
         Paramters
         ---------
