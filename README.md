@@ -1,5 +1,5 @@
 # pysisphus
-[![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=latest)](https://pysisyphus.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=dev)](https://pysisyphus.readthedocs.io/en/dev/?badge=dev)
 ![build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)
 [![codecov](https://codecov.io/gh/eljost/pysisyphus/branch/master/graph/badge.svg)](https://codecov.io/gh/eljost/pysisyphus)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)

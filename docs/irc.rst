@@ -29,27 +29,28 @@ IRC paths can be plotted with `pysisplot --irc`.
 YAML example(s)
 ========
 
-Below you can find an example YAML-input.
+Below you can find an example YAML-input including the most important options
+that the user may want to modify.
 
 .. code:: yaml
 
     irc:
-     type: eulerpc              # Similar to EulerPC from Gaussian
-     opt_ends: fragments        # Detect fragments at the end of the IRC
-                                # and optimize them separately.
-     #displ: energy|length      # How to do the initial displacement
-     #displ_energy: 0.0005      # Energy lowering in au (Hartree)
-     #displ_length: 0.1         # Step length along the TV
+     type: eulerpc                      # Similar to EulerPC from Gaussian
+     opt_ends: fragments                # Detect fragments at the end of the IRC
+                                        # and optimize them separately.
+     #displ: energy|length              # How to do the initial displacement
+     #displ_energy: 0.0005              # Energy lowering in au (Hartree)
+     #displ_length: 0.1                 # Step length along the TV
      #forward: True
      #backward: True
-     #downhill: False           # Only integrate downhill
-     #rms_grad_thresh: 0.0005   # Convergence threshold
+     #downhill: False                   # Only integrate downhill
+     #rms_grad_thresh: 0.0005           # Convergence threshold
     calc:
-     type: xtb                  # extended tight-binding calculator
+     type: xtb                          # extended tight-binding calculator
      pal: 4
      charge: 0
      mult: 1
-    xyz: hfabstraction_ts_opt_xtb.xyz
+    xyz: hfabstraction_ts_opt_xtb.xyz   # Input coordinates
 
 Further examples for IRC calculations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/irc>`_.
