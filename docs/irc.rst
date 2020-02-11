@@ -3,8 +3,8 @@ Intrinsic Reaction Coordinate (IRC)
 
 By default two paths are integrated in plus- and minus-direction of the imaginary
 mode (transition vector, TV) at the transition state (TS). If the IRC is started from
-a non-stationary point with non-vanishing gradient the `downhill` argument can be
-set to `True` to integrate only one path and skip the initial hessian calculation.
+a non-stationary point with non-vanishing gradient the `downhill: True` argument can be
+set to integrate only one path and skip the initial hessian calculation.
 
 IRCs are integrated in mass-weighted coordinates and the default integrator is
 `EulerPC`.
@@ -15,19 +15,19 @@ length from a quadratic potential: :math:`\mathrm{d}E = \frac{1}{2} (k \cdot \ma
 with :math:`k` being the eigenvalue of the TV (imaginary mode) and :math:`\mathrm{d}q`
 the required step length. The default required energy lowering is
 :math:`0.0005 ~ \mathrm{au}`. Alternatively the initial can be done by a prescribed length:
-`displ=length` and `displ_length=[desired step]` (default is :math:`0.1 \sqrt{\mathrm{amu}}
+`displ: length` and `displ_length: [desired step]` (default is :math:`0.1 \sqrt{\mathrm{amu}}
 \cdot \mathrm{bohr}`).
 
 The resulting endpoints of the IRC integration can be further optimized to stationary poins
-with the `opt_ends=True|fragments` option (default is `False`). With `opt_ends=fragments`
+with the `opt_ends: True|fragments` option (default is `False`). With `opt_ends: fragments`
 separate fragments at the endpoints are detected automatically and optimized separately.
 This may be useful if the molecules are only weakly bound.
 
-By default IRC path data is dumped to `dump_fn=irc_data.h5` every `dump_every=5` cycles.
+By default IRC path data is dumped to `dump_fn: irc_data.h5` every `dump_every: 5` cycles.
 IRC paths can be plotted with `pysisplot --irc`.
 
 YAML example(s)
-========
+===============
 
 Below you can find an example YAML-input including the most important options
 that the user may want to modify.

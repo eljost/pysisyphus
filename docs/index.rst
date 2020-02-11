@@ -30,11 +30,11 @@ If any issues arise please open an issue_ and I'll try to fix it if possible and
    overview.rst
    installation.rst
    calculators.rst
+   min_optimization.rst
+   chainofstates.rst
    tsoptimization.rst
    irc.rst
 ..
-   optimizers.rst
-   examples.rst
    pysisyphus.rst
 	
 Indices and tables

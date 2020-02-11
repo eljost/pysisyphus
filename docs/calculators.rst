@@ -115,7 +115,7 @@ XTB 6.2
     :show-inheritance:
 
 Pure Python calculators & wrappers
-==========================
+==================================
 
 Sympy 2D Potentials
 -------------------

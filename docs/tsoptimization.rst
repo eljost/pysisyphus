@@ -40,7 +40,8 @@ RS-P-RFO, TRIM).
                                     # idea.
 
      prim_coord: [3, 18]            # Select the mode to follow uphill by overlap with
-                                    # this primitive internal coordinate
+                                    # this primitive internal coordinate. Expects indices
+                                    # for one primitive internal.
 
      #root: 0                       # Follow the n-th imaginary mode uphill, minimize
                                     # along the others.
@@ -76,7 +77,10 @@ RS-P-RFO, TRIM).
     add_prims: [[24, 20], ]         # If using internal coordinates ALWAYS check the coordinates
                                     # that pysisyphus generates (pysistrj [xyz] --internals). If
                                     # some important (reaction) coordinates appears to be missing
-                                    # define them manually.
+                                    # define them manually. In this example
+                                    # we add a bond. If additional internal coordinates can
+                                    # derived from the added primitives pysisyphus will do
+                                    # it.
 
     coord_type: redund              # Optimization in internal coordinates.
 
