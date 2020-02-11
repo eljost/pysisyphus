@@ -174,3 +174,6 @@ autodoc_default_flags = ['members', ]
 
 napoleon_google_docstring = False
 napoleon_include_init_with_doc = True
+
+# Allows use of double dashes without fusing them to an endash
+smartquotes=False

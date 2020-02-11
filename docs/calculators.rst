@@ -69,7 +69,7 @@ If an excited-state optimization is desired care has to be taken to include
 **$exopt [n]** for TD-DFT/TDA or the **geoopt state=([n])** (ricc2)! Tracking
 of excited states is currently possible for closed shell `egrad` and `ricc2` calculations.
 
-**Right now care has to be taken that no `gradient` file is present in the `control_path`!**
+**Right now care has to be taken that no** `gradient` **file is present in the** `control_path`!
 
 An easier, alternative way to use TURBOMOLE in `pysisyphus` is via its `QCEngine` wrapper,
 albeit with restricted funtionality (no hessian, no excited states right now).
