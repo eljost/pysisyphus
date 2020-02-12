@@ -636,11 +636,15 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
         print("already exists")
     xyzs = run_dict["xyz"]
     print("Copying:")
-    if isinstance(xyzs, str):
-        xyzs = [xyzs, ]
-    for xyz in xyzs:
-        shutil.copy(xyz, destination)
-        print("\t", xyz)
+    # When newlines are present we have an inline xyz formatted string
+    if not "\n" in xyzs:
+        if isinstance(xyzs, str):
+            xyzs = [xyzs, ]
+        for xyz in xyzs:
+            shutil.copy(xyz, destination)
+            print("\t", xyz)
+    else:
+        print("Found inline xyz formatted string. No files to copy!")
     shutil.copy(yaml_fn, destination)
     print("\t", yaml_fn)
 

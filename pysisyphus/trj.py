@@ -22,7 +22,7 @@ from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
-from pysisyphus.xyzloader import write_geoms_to_trj
+from pysisyphus.xyzloader import write_geoms_to_trj, split_xyz_str
 
 
 INTERPOLATE = {
@@ -154,8 +154,20 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
         elif fn.endswith(".trj"):
             geom = geoms_from_trj(fn, **geom_kwargs)
         else:
-            raise Exception("Only .xyz and .trj files are supported!")
+            continue
         geoms.extend(geom)
+
+    # Try to parse as inline xyz formatted string
+    if len(geoms) == 0:
+        try:
+            atoms_coords = split_xyz_str(fn)
+            geoms = [Geometry(atoms, coords, **geom_kwargs)
+                     for atoms, coords in atoms_coords]
+        except AssertionError:
+            raise Exception("Could not parse supplied 'xyz' values as either "
+                            ".xyz, .trj or xyz-formatted string.!"
+            )
+
     # Original coordinates are in bohr, but pysisyphus expects them
     # to be in Angstrom, so right now they are already multiplied
     # by ANG2BOHR. We revert this.
