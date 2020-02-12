@@ -16,7 +16,7 @@ setup(
     url="https://github.com/eljost/pysisyphus",
     maintainer="Johannes Steinmetzer",
     maintainer_email="johannes.steinmetzer@uni-jena.de",
-    license="GPL 3",
+    license="License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     platforms=["unix"],
     packages=find_packages(),
     install_requires=[
