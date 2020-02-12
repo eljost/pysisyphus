@@ -1,7 +1,45 @@
 Optimization of Minima
 **********************
 
-To be done.
+Searching for minimum energy geometries of molecules is preferably done using
+second order methods that employ hessian information. Using the plain hessian
+:math:`H` for step prediction through :math:`p=-H^{-1}g`, with :math:`g` being
+the gradient, may yield erroneous uphill steps when :math:`H` has negative eigenvalues.
+
+This can be understood by calculating the step in the basis of the hessian eigenvectors
+:math:`V`.
+
+.. math::
+
+    \begin{align}
+        \tilde{H} &= V^T H V \\
+        \tilde{g} &= V^T g \\
+        \tilde{p_i} &= -\frac{\tilde{g}_i}{\tilde{H}_{ii}} \\
+    \end{align}
+
+:math:`\tilde{H}, \tilde{g}` and :math:`\tilde{p}` are transformed into the eigenvector
+basis and the subscript :math:`_i` indicates the component belongs to the :math:`i`-th
+eigenvalue (-vector) of :math:`H`. As the gradient always points into the direction of
+greater function values dividing it by negative eigenvalues :math:`\tilde{H}_{ii}` will
+lead to a step in uphill direction along the :math:`i`-th eigenvector of :math:`H`.
+
+The step in the original basis is obtained by a simple back-transformation:
+
+.. math::
+
+        p = V \tilde{p}
+
+A step in downhill direction can be ensured by introducing a shift parameter :math:`\lambda`
+that must smaller than the smallest eigenvalue :math:`H_{ii}`:
+
+.. math::
+
+    \tilde{p_i} = -\frac{\tilde{g}_i}{\tilde{H}_{ii} - \lambda} \\
+    
+
+In `pysisyphus` shift parameter :math:`\lambda` is obtained from the Rational Function
+Optimization approach.
+
 
 YAML example
 ===============
