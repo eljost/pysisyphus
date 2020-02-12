@@ -15,7 +15,8 @@ Furthermore it provides tools to easily analyze & modify geometries (aligning, t
 
 The required energies, gradients and hessians are calculated by calling external quantum chemistry codes. `pysisyphus` can also be used as a library to implement custom quantum chemistry workflows.
 
-If any issues arise please open an issue_ and I'll try to fix it if possible and my time permits it. Contrubtions are welcome, so feel free to submit a PR.
+If any issues arise please open an issue_ and I'll see if it can be fixed and my time permits it.
+Contrubtions are welcome, so feel free to submit a PR.
 
 **This software is still work in progress. Use at your own risk. Also take a look at the** `license <https://github.com/eljost/pysisyphus/blob/master/LICENSE>`_
 

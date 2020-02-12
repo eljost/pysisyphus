@@ -1,8 +1,20 @@
 Overview of pysisyphus
 **********************
 
-Usage
-=====
+`pysisyphus` is a software-suite for the exploration of potential energy surfaces in ground-
+and **excited states**. User input is read from YAML files. It can also be used as a python
+library to set up custom workflows.
+
+Below you can find a screencast of the transition state (TS) search for the famous alanine dipeptide
+isomerization at the `xtb` level of theory. It starts with pre-optimizations of the initial
+and final geometry, a subsequent growing string calculation in delocalized internal coordinates
+to generate a guess for the final TS optimization and concludes with the final TS search.
+
+.. image:: https://asciinema.org/a/300731.png
+    :target: https://asciinema.org/a/300731
+
+Entry points
+============
 
 pysisyphus provides several entry points that can be called from the shell (command line). The available commands of the entry points can be queried with the `-h` or `--help` arguments:
 
