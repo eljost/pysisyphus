@@ -17,4 +17,12 @@ If any issues arise please open an issue_ and I'll try to fix it if possible and
 
 **This software is still work in progress. Use at your own risk.**
 
+## Example
+
+Fully internal coordinate transition state search for the famous alanine dipeptide isomerization reaction using the xtb calculator using the growing string method.
+
+[![asciicast](https://asciinema.org/a/300731.svg)](https://asciinema.org/a/300731)
+
+## Documentation
+
 Please have a look at the [documentation](https://pysisyphus.readthedocs.io/en/dev/).
