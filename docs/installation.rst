@@ -17,8 +17,20 @@ whether it is an `Anaconda <https://www.anaconda.com/>`_ environment or a
     python3 -m venv pysis-env
     source pysis-env/bin/activate
 
-Getting & installing the code
-=============================
+Installation from PyPI with pip
+===============================
+
+This installs the latest stable release as published on PyPI. If you don't want to
+do any development this is probably the preferred way of installation.
+
+.. code-block:: bash
+
+    pip install pysisyphus
+    # Installation of extras is also possible
+    # pip install pysisyphus[qcengine]
+
+Installation from source
+========================
 
 Decide on an **$install_dir** and clone the repository from github. If you want to change
 the code after installation do an editable (-e) installation with pip.
@@ -30,7 +42,7 @@ the code after installation do an editable (-e) installation with pip.
     # Install with -e if you want an editable installation
     pip install [-e] .
     # Installation of extras is also possible
-    pip install [-e] .[qcengine]
+    # pip install [-e] .[qcengine]
 
 Setting up .pysisyphusrc
 ========================
