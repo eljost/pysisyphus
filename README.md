@@ -1,6 +1,6 @@
 # pysisphus
 [![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=master)](https://pysisyphus.readthedocs.io/en/master/?badge=master)
-![build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)
+![[build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)](https://github.com/eljost/pysisyphus/actions)
 [![codecov](https://codecov.io/gh/eljost/pysisyphus/branch/master/graph/badge.svg)](https://codecov.io/gh/eljost/pysisyphus)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![DOI](https://zenodo.org/badge/96281078.svg)](https://zenodo.org/badge/latestdoi/96281078)
@@ -19,7 +19,7 @@ If any issues arise please open an issue_ and I'll try to fix it if possible and
 
 ## Example
 
-Fully internal coordinate transition state search for the famous alanine dipeptide isomerization reaction using the xtb calculator using the growing string method.
+Fully internal coordinate transition state search for the famous alanine dipeptide isomerization reaction using the xtb calculator and the growing string method.
 
 [![asciicast](https://asciinema.org/a/300731.svg)](https://asciinema.org/a/300731)
 
