@@ -1,8 +1,22 @@
 Overview of pysisyphus
 **********************
 
-Usage
-=====
+`pysisyphus` is a software-suite for the exploration of potential energy surfaces in ground-
+and **excited states**. User input is read from YAML files, but it can also be used as a python
+library to set up custom workflows.
+
+Below you can find a screencast of the transition state (TS) search for the famous alanine dipeptide
+isomerization at the `xtb` level of theory. It starts with pre-optimizations of the initial
+and final geometry, a subsequent growing string calculation in delocalized internal coordinates
+to generate a guess for the final TS optimization and with which it concludes.
+
+.. image:: https://asciinema.org/a/300731.png
+    :target: https://asciinema.org/a/300731
+
+Besides being able to track excited states over the course of an optimization the idea of `pysisyphus` is to provide tools for handling the whole process of calculating reaction paths, starting from pre-optimizing the given input geometries for chain of states methods and ending with the hessian calculation on the optimized IRC endpoints.
+
+Entry points
+============
 
 pysisyphus provides several entry points that can be called from the shell (command line). The available commands of the entry points can be queried with the `-h` or `--help` arguments:
 
@@ -75,7 +89,7 @@ ORCA        y        y       TD-DFT, TDA        4.2.x
 Turbomole   y        y       TD-DFT, TDA, ricc2 7.2-7.4
 Gaussian16  y        y       tested TD-DFT, TDA 
 PySCF       y        y       tested TD-DFT      1.7.0
-OpenMOLCAS  y        n       &rasscf
+OpenMOLCAS  y        n       &rasscf            Not yet derived from OverlapCalculator
 =========== ======== ======= ================== =======
 
 Ground states capabilities
@@ -107,7 +121,7 @@ FakeASE       y        n       Wraps `pysisyphus` calculators so they can be use
 Available algorithms
 =====================
 
-Chain Of States methods
+Chain Of States Methods
 -----------------------
 
 =============================== ====================== =======
@@ -120,7 +134,7 @@ Simple Zero-Temperature-String  Cartesian              Equal spacing, energy-dep
 **Growing String Method**       Cartesian, **DLC**
 =============================== ====================== =======
 
-Chain of states optimizer
+Chain Of States Optimizer
 --------------------------
 
 ================== ==================== =======

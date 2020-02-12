@@ -1,7 +1,62 @@
 Optimization of Minima
 **********************
 
-To be done.
+Searching for minimum energy geometries of molecules is preferably done using
+second order methods that employ hessian information. Using the plain hessian
+:math:`H` for step prediction through :math:`p=-H^{-1}g`, with :math:`g` being
+the gradient vector, may yield erroneous uphill steps when :math:`H` has negative
+eigenvalues.
+
+This can be understood by calculating the step in the basis of the hessian eigenvectors
+:math:`V`.
+
+.. math::
+
+    \begin{align}
+        \tilde{H} &= V^T H V \\
+        \tilde{g} &= V^T g \\
+        \tilde{p_i} &= -\frac{\tilde{g}_i}{\tilde{H}_{ii}} \\
+    \end{align}
+
+:math:`\tilde{H}, \tilde{g}` and :math:`\tilde{p}` are transformed into the eigenvector
+basis and the subscript :math:`i` indicates the component belongs to the :math:`i`-th
+eigenvalue (-vector) of :math:`H`. As the gradient always points into the direction of
+greater function values dividing it by a negative eigenvalues :math:`\tilde{H}_{ii}` will
+lead to a step in uphill direction along the :math:`i`-th eigenvector.
+The step in the original basis is obtained by a simple back-transformation:
+
+.. math::
+
+        p = V \tilde{p}
+
+A step in downhill direction can be ensured by introducing an appropriate shift parameter
+:math:`\lambda` that must be smaller than the smallest eigenvalue of :math:`H`:
+
+.. math::
+
+    \tilde{p_i} = -\frac{\tilde{g}_i}{\tilde{H}_{ii} - \lambda} \\
+    
+
+In `pysisyphus` the shift parameter :math:`\lambda` is obtained by the Rational Function
+Optimization approach.
+
+When the root-mean-square of the predicted step :math:`p` drops below a certain threshold
+(default is 0.0025 au or rad) controlled GDIIS is tried. If GDIIS fails or is not yet
+possible a polynomial line-search is conducted. Using the latest two energies and the
+projection of the latest two gradients onto the last step the coefficients of a cubic
+polynomial are defined unambiguously. By requiring :math:`\mathrm{d}^2 f(x)/\mathrm{d}x^2 >= 0`
+and the equality holding at exactly one point also a quartic polynomial can be determined.
+
+For now line-searches using a cubic polynomial are disabled as they seem to degrade the
+optimizer performance, so only the constrained quartic polynomial is tried. By also using
+projected hessian information the coefficients of a quintic polynomial can be determined,
+but this also seems to be inferior compared to the constrained quartic polynomial.
+
+Convergence is indicated when the root-mean-square and the maximum value of the gradient
+and step drop below a certain threshold. It is not uncommon that the gradient convergence
+is achieved before step convergence. By using `overachieve_factor: [n, float > 1]` in
+the YAML input convergence will be signalled, when gradient convergence is overachieved
+by factor `n`.
 
 YAML example
 ===============
