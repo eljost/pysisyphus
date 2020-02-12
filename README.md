@@ -15,6 +15,6 @@ The required energies, gradients and hessians are calculated by calling external
 
 If any issues arise please open an issue_ and I'll try to fix it if possible and my time permits it. Contrubtions are welcome, so feel free to submit a PR.
 
-**This software is still work in progress. Use at your own risk. Also take a look at the [license](https://github.com/eljost/pysisyphus/blob/master/LICENSE)**
+**This software is still work in progress. Use at your own risk.**
 
 Please have a look at the [documentation](https://pysisyphus.readthedocs.io/en/dev/).
