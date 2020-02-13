@@ -310,7 +310,7 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
 
 @linesearch_wrapper(cond="armijo")
 def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
-                 alpha_init=None, rho_lo=0.1, rho_hi=0.5):
+                 alpha_init=1., rho_lo=0.1, rho_hi=0.5):
     phi0, dphi0 = get_phi_dphi("fg", 0)
 
     alpha = alpha_init
