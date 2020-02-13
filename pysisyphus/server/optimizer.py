@@ -2,7 +2,7 @@ import types
 
 import numpy as np
 
-from pysisyphus.optimizers.line_search2 import poly_line_search
+from pysisyphus.optimizers.poly_fit import poly_line_search
 
 
 def get_step_func(key="sd", alpha=0.1, gdiis=False, line_search=False):

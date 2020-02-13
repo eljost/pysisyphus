@@ -13,7 +13,7 @@ from pysisyphus.optimizers.hessian_updates import (bfgs_update,
                                                    damped_bfgs_update,
                                                    multi_step_update,
                                                    bofill_update,)
-from pysisyphus.optimizers import line_search2
+from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
@@ -252,9 +252,9 @@ class HessianOptimizer(Optimizer):
         # Generate directional gradients by projecting them on the previous step.
         prev_grad_proj = prev_step @ prev_grad
         cur_grad_proj =  prev_step @ cur_grad
-        cubic_result = line_search2.cubic_fit(prev_energy, cur_energy,
+        cubic_result = poly_fit.cubic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
-        quartic_result = line_search2.quartic_fit(prev_energy, cur_energy,
+        quartic_result = poly_fit.quartic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
         prev_coords = self.coords[-2]
         accept = {
@@ -320,13 +320,13 @@ class HessianOptimizer(Optimizer):
         # Generate directional gradients by projecting them on the previous step.
         prev_grad_proj = step @ prev_best_grad
         cur_grad_proj =  step @ cur_grad
-        cubic_result = line_search2.cubic_fit(prev_best_energy, cur_energy,
+        cubic_result = poly_fit.cubic_fit(prev_best_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
-        quartic_result = line_search2.quartic_fit(prev_best_energy, cur_energy,
+        quartic_result = poly_fit.quartic_fit(prev_best_energy, cur_energy,
                                                   prev_grad_proj, cur_grad_proj)
         quintic_result = None
         if hessian is not None:
-            quintic_result = line_search2.quintic_fit(prev_best_energy, cur_energy,
+            quintic_result = poly_fit.quintic_fit(prev_best_energy, cur_energy,
                                                       prev_grad_proj, cur_grad_proj,
                                                       hess_proj, hess_proj)
         accept_if_best = lambda x: True if at_best_energy else (0. < x < 1.)
