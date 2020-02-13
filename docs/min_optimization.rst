@@ -132,7 +132,7 @@ Base class for optimizers that empoly a hessian.
     :undoc-members:
     :show-inheritance:
 
-Optimizer using hessian information
+Optimizers using hessian information
 ======================================
 
 Restricted-Step RFO
