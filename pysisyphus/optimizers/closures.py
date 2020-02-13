@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import numpy as np
+from scipy.sparse.linalg import spsolve
 
 
-def bfgs_multiply(s_list, y_list, force, beta=1):
+def bfgs_multiply(s_list, y_list, force, beta=1, P=None):
     """Get a L-BFGS step.
     
     Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
@@ -24,13 +25,16 @@ def bfgs_multiply(s_list, y_list, force, beta=1):
     alphas = alphas[::-1]
     rhos = rhos[::-1]
 
-    if cycles > 0:
+    if P is not None:
+        r = spsolve(P, q)
+    elif cycles > 0:
         s = s_list[-1]
         y = y_list[-1]
         gamma = s.dot(y) / y.dot(y)
         r = gamma * q
     else:
         r = beta * q
+
     for i in range(cycles):
         s = s_list[i]
         y = y_list[i]
