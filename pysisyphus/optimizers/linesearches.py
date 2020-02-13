@@ -3,13 +3,13 @@ import numpy as np
 from pysisyphus.optimizers.line_search import interpol_alpha_cubic, interpol_alpha_quad
 
 
-class LinesearchConverged(Exception):
+class LineSearchConverged(Exception):
 
     def __init__(self, alpha):
         self.alpha = alpha
 
 
-class LinesearchNotConverged(Exception):
+class LineSearchNotConverged(Exception):
     pass
 
 
@@ -56,7 +56,7 @@ def linesearch_wrapper(cond):
                 # satisfied.
                 if check and (alpha > 0.0) \
                    and (alpha in alpha_gs) and (alpha in alpha_gs) and cond_func(alpha):
-                    raise LinesearchConverged(alpha)
+                    raise LineSearchConverged(alpha)
                 # Dont return a list if only f or g was requested.
                 if len(what) == 1:
                     result = result[0]
@@ -279,14 +279,14 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     # we evaluate phi/dphi at some alpha and both phi and dphi
     # are present for this alpha, e.g. from a previous calculation,
     # convergence of the linesearch will be checked, and
-    # LinesearchConverged may be raised. Using exceptions enables
+    # LineSearchConverged may be raised. Using exceptions enables
     # us to also return from nested functions.
     try:
         if quad_step:
             g0_ = -2*abs(get_fg("f", 0)/alpha_init) if (dphi0_prev is None) \
                   else dphi0_prev
             alpha_init = take_quad_step(psi_2*alpha_init, g0_)
-        # This may raise LinesearchConverged
+        # This may raise LineSearchConverged
         _ = get_phi_dphi("fg", alpha_init)
 
         # TODO: cubic interpolation for better alpha_init
@@ -301,7 +301,7 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
                 c = (a + b)/2
                 a, b = interval_update(a, b, c)
             ak, bk = a, b
-    except LinesearchConverged as lsc:
+    except LineSearchConverged as lsc:
         ak = lsc.alpha
 
     f_new, g_new = get_fg("fg", ak)
@@ -343,7 +343,7 @@ def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
         alpha_new = min(alpha_new, alpha_prev*rho_hi)
         alpha = max(alpha_new, alpha_prev*rho_lo)
     else:
-        raise LinesearchNotConverged
+        raise LineSearchNotConverged
 
     # Call this so get_fg will always return something...
     dphi_i = get_phi_dphi("g", alpha, check=False)  # lgtm [py/unused-local-variable]
