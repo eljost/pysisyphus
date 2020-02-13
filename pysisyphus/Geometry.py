@@ -666,6 +666,10 @@ class Geometry:
         self.assert_cart_coords(coords)
         return self.calculator.get_energy(self.atoms, coords)
 
+    def get_forces_at(self, coords):
+        self.assert_cart_coords(coords)
+        return self.calculator.get_forces(self.atoms, coords)
+
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
         
