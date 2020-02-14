@@ -106,7 +106,10 @@ class AnaPotBase(Calculator):
 
 
     @classmethod
-    def get_geom(cls, coords, atoms=("X", )):
+    def get_geom(cls, coords, atoms=("X", ), V_str=None):
         geom = Geometry(atoms, coords)
-        geom.set_calculator(cls())
+        if V_str:
+            geom.set_calculator(cls(V_str=V_str))
+        else:
+            geom.set_calculator(cls())
         return geom
