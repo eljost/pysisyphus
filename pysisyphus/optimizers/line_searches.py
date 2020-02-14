@@ -79,7 +79,7 @@ def linesearch_wrapper(cond):
                 # can check if the chosen condition (Wolfe/approx. Wolfe) is
                 # satisfied.
                 if check and (alpha > 0.0) \
-                   and (alpha in alpha_gs) and (alpha in alpha_gs) and cond_func(alpha):
+                   and (alpha in alpha_fs) and (alpha in alpha_gs) and cond_func(alpha):
                     raise LineSearchConverged(alpha)
                 # Dont return a list if only f or g was requested.
                 if len(what) == 1:
