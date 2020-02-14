@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -121,14 +120,14 @@ class CGDescent(Optimizer):
 
 
 @pytest.mark.parametrize(
-    "line_search, ref_cycle",
+    "line_search, ref_cycle, ref_energy",
     [
-        ("armijo", 32),
+        ("armijo", 32, 0.98555442),
         # ("wolfe", 32),
         # ("hz", 32),
     ]
 )
-def test_line_search(line_search, ref_cycle):
+def test_line_search(line_search, ref_cycle, ref_energy):
     geom = AnaPot.get_geom((0.687, 1.57, 0.))
 
     opt_kwargs = {
@@ -142,6 +141,7 @@ def test_line_search(line_search, ref_cycle):
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
+    assert geom.energy == pytest.approx(ref_energy)
 
 
 def test_1d_steepest_descent_wolfe():
