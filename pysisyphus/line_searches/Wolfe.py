@@ -15,7 +15,6 @@ class Wolfe(LineSearch):
 
         See [1], Chapter 3, Line Search methods, Section 3.5 p. 60."""
 
-
         kwargs["cond"] = "wolfe"
         super().__init__(*args, **kwargs)
 
