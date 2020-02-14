@@ -20,7 +20,8 @@ class SteepestDescent(Optimizer):
         self.line_search = line_search
 
         ls_funcs = {
-            "armijo": Backtracking,
+            # "armijo": Backtracking,
+            "armijo": backtracking,
             # "wolfe": wolfe,
         }
         self.line_search_func = ls_funcs[self.line_search]
@@ -36,28 +37,30 @@ class SteepestDescent(Optimizer):
 
         step_dir = forces / np.linalg.norm(forces)
 
-        # f = lambda coords: self.geometry.get_energy_at(coords)
-        # df = lambda coords: self.geometry.get_energy_and_forces_at(coords)["forces"]
-        # kwargs = {
-            # "f": f,
-            # "df": df,
-            # "x0": self.geometry.coords,
-            # "p": step_dir,
-            # "f0": energy,
-            # "g0": -forces,
-            # # "alpha_init": self.alpha_prev if self.alpha_prev else self.alpha_init,
-            # "alpha_init": self.alpha_init,
-        # }
-        # alpha = self.line_search_func(**kwargs)
+        f = lambda coords: self.geometry.get_energy_at(coords)
+        df = lambda coords: self.geometry.get_energy_and_forces_at(coords)["forces"]
         kwargs = {
-            "geometry": self.geometry,
+            "f": f,
+            "df": df,
+            "x0": self.geometry.coords,
             "p": step_dir,
             "f0": energy,
             "g0": -forces,
+            # "alpha_init": self.alpha_prev if self.alpha_prev else self.alpha_init,
             "alpha_init": self.alpha_init,
         }
-        line_search = Backtracking(**kwargs)
-        alpha = line_search.run()
+        alpha = self.line_search_func(**kwargs)
+
+        # OO Interface
+        # kwargs = {
+            # "geometry": self.geometry,
+            # "p": step_dir,
+            # "f0": energy,
+            # "g0": -forces,
+            # "alpha_init": self.alpha_init,
+        # }
+        # line_search = Backtracking(**kwargs)
+        # alpha = line_search.run()
 
         step = alpha * step_dir
         self.alpha_prev = alpha
@@ -94,24 +97,10 @@ class CGDescent(Optimizer):
 
         alpha_init = self.alpha_init if self.alpha_prev is None else None
 
-        # kwargs = {
-            # "f": f,
-            # "df": df,
-            # "x0": self.geometry.coords,
-            # "p": self.step_direction,
-            # "f0": energy,
-            # "g0": -forces,
-            # "alpha_init": alpha_init,
-            # "alpha_prev": self.alpha_prev,
-            # "f_prev": f_prev,
-            # "quad_step": True,
-            # # dphi0_prev will be set if alpha_prev is not None
-            # "dphi0_prev": None if not self.alpha_prev else self.dphi0_prev,  # noqa: F821
-        # }
-        # alpha, f_new, g_new, dphi0_prev = hager_zhang(**kwargs)
-
         kwargs = {
-            "geometry": self.geometry,
+            "f": f,
+            "df": df,
+            "x0": self.geometry.coords,
             "p": self.step_direction,
             "f0": energy,
             "g0": -forces,
@@ -122,8 +111,22 @@ class CGDescent(Optimizer):
             # dphi0_prev will be set if alpha_prev is not None
             "dphi0_prev": None if not self.alpha_prev else self.dphi0_prev,  # noqa: F821
         }
-        line_search = HagerZhang(**kwargs)
-        alpha, f_new, g_new, dphi0_prev = line_search.run()
+        alpha, f_new, g_new, dphi0_prev = hager_zhang(**kwargs)
+
+        # kwargs = {
+            # "geometry": self.geometry,
+            # "p": self.step_direction,
+            # "f0": energy,
+            # "g0": -forces,
+            # "alpha_init": alpha_init,
+            # "alpha_prev": self.alpha_prev,
+            # "f_prev": f_prev,
+            # "quad_step": True,
+            # # dphi0_prev will be set if alpha_prev is not None
+            # "dphi0_prev": None if not self.alpha_prev else self.dphi0_prev,  # noqa: F821
+        # }
+        # line_search = HagerZhang(**kwargs)
+        # alpha, f_new, g_new, dphi0_prev = line_search.run()
 
         self.dphi0_prev = dphi0_prev
         step = alpha*self.step_direction

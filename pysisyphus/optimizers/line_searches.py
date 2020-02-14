@@ -132,9 +132,12 @@ def linesearch_wrapper(cond):
 
             conds = {
                 "armijo": sufficiently_decreased,
+                "curv": curvature_condition,
                 "wolfe": wolfe_condition,
                 "strong_wolfe": strong_wolfe_condition,
             }
+
+            cond_func = conds[cond]
 
             # Q_prev = 0
             # C_prev = 0
@@ -161,17 +164,15 @@ def linesearch_wrapper(cond):
             # cond = t2_condition
             # cond = approx_wolfe_condition
 
-            cond_func = conds[cond]
-
-            linesearch_result = func(x0, p, get_phi_dphi, get_fg, cond_func,
+            linesearch_result = func(x0, p, get_phi_dphi, get_fg, conds,
                                      max_cycles, *args, **kwargs)
             return linesearch_result
         return wrapper
     return cond_wrapper
 
 
-@linesearch_wrapper(cond="wolfe")
-def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
+@linesearch_wrapper("wolfe")
+def hager_zhang(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
                 alpha_init=None, alpha_prev=None,
                 f_prev=None, dphi0_prev=None, quad_step=False,
                 eps=1e-6, theta=0.5, gamma=0.5, rho=5,
@@ -180,6 +181,8 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     epsk = eps * abs(get_fg("f", 0.))
     phi0, dphi0 = get_phi_dphi("fg", 0.)
     f0, g0 = get_fg("fg", 0.)
+
+    cond = conds["wolfe"]
 
     def bisect(a, b):
         """Bisect interval [a, b]."""
@@ -332,8 +335,8 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     return ak, f_new, g_new, dphi0
 
 
-@linesearch_wrapper(cond="armijo")
-def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
+@linesearch_wrapper("armijo")
+def backtracking(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
                  alpha_init=1., rho_lo=5e-2, rho_hi=0.9):
     """Backtracking line search enforcing Armijo conditions.
 
@@ -341,6 +344,7 @@ def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
 
     See [1], Chapter 3, Line Search methods, Section 3.1 p. 31 and
     Section 3.5 p. 56."""
+    cond = conds["armijo"]
 
     log("Starting backtracking line search")
     phi0, dphi0 = get_phi_dphi("fg", 0)
@@ -385,8 +389,8 @@ def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     return alpha
 
 
-@linesearch_wrapper(cond="wolfe")
-def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
+@linesearch_wrapper("wolfe")
+def wolfe(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
           alpha_init=1., alpha_min=0.01, alpha_max=100., fac=2):
     """Wolfe line search.
 
@@ -433,13 +437,13 @@ def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
 
             # True if alpha is still too big or if the function value
             # increased compared to the previous cycle.
-            if (not sufficiently_decreased(alpha_j) or phi_j > phi_lo):
+            if (not conds["armijo"](alpha_j) or phi_j > phi_lo):
                 # Shrink interval to (alpha_lo, alpha_j)
                 alpha_hi = alpha_j
                 continue
 
             dphi_j = get_phi_dphi("g", alpha_j)
-            if curvature_condition(dphi_j):
+            if conds["curv"](dphi_j):
                 print(f"\tzoom converged after {j+1} cycles.")
                 return alpha_j
 
@@ -465,11 +469,11 @@ def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     try:
         for i in range(10):
             phi_i = get_phi_dphi("f", alpha_i)
-            if (not sufficiently_decreased(phi_i, alpha_i) or ((phi_i >= phi_prev) and i > 0)):
+            if (not conds["armijo"](phi_i, alpha_i) or ((phi_i >= phi_prev) and i > 0)):
                 zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
 
             dphi_i = get_phi_dphi("g", alpha_i)
-            if curvature_condition(dphi_i):
+            if conds["curve"](dphi_i):
                 raise LineSearchConverged(alpha_i)
 
             if dphi_i >= 0:
