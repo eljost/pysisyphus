@@ -104,7 +104,6 @@ class AnaPotBase(Calculator):
         Z = np.array(z).reshape(X.shape)
         self.ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
 
-
     @classmethod
     def get_geom(cls, coords, atoms=("X", ), V_str=None):
         geom = Geometry(atoms, coords)
