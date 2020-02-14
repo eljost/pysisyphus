@@ -184,6 +184,7 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
 
     cond = conds["wolfe"]
 
+    import pdb; pdb.set_trace()
     def bisect(a, b):
         """Bisect interval [a, b]."""
         for i in range(max_bisects):
@@ -284,6 +285,7 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
 
     def take_quad_step(alpha, g0_):
         """Try to get alpha for minimum step from quadratic interpolation."""
+        import pdb; pdb.set_trace()
         fact = max(psi_low, g0_/(dphi0*psi_2))
         alpha_ = min(fact, psi_hi) * alpha
         phi_ = get_phi_dphi("f", alpha_)

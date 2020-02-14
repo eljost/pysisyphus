@@ -22,7 +22,7 @@ class LineSearch:
         x0 = x0
         if self.geometry:
             self.f = lambda coords: self.geometry.get_energy_at(coords)
-            self.df = lambda coords: self.geometry.get_energy_and_forces_at(coords)["forces"]
+            self.df = lambda coords: -self.geometry.get_energy_and_forces_at(coords)["forces"]
             self.x0 = self.geometry.coords.copy()
         
         self.alpha_init = alpha_init
