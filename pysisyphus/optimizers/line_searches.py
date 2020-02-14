@@ -4,12 +4,25 @@ import logging
 
 import numpy as np
 
-from pysisyphus.optimizers.line_search import interpol_alpha_cubic, interpol_alpha_quad
-
 
 logger = logging.getLogger("optimizer")
 def log(msg):
     logger.debug(msg)
+
+
+def interpol_alpha_quad(f_0, df_0, f_alpha_0, alpha_0):
+    return -df_0*alpha_0**2 / 2 / (f_alpha_0 - f_0 - df_0*alpha_0)
+
+
+def interpol_alpha_cubic(f_0, df_0, f_alpha_0, f_alpha_1, alpha_0, alpha_1):
+    quot = 1 / (alpha_0**2 * alpha_1**2 * (alpha_1 - alpha_0))
+    A = np.array(((alpha_0**2, -alpha_1**2),
+                  (-alpha_0**3, alpha_1**3)))
+    B = np.array(((f_alpha_1 - f_0 - df_0*alpha_1),
+                  (f_alpha_0 - f_0 - df_0*alpha_0)))
+    a, b = quot * A @ B
+    alpha_cubic = (-b + (b**2 - 3*a*df_0)**(0.5)) / (3*a)
+    return alpha_cubic
 
 
 class LineSearchConverged(Exception):
@@ -363,8 +376,113 @@ def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
         alpha_prev = alpha
         alpha = alpha_new
         log(f"\tAlpha for next cycles: {alpha:.6f}\n")
-
     else:
         raise LineSearchNotConverged
 
     return alpha
+
+
+@linesearch_wrapper(cond="wolfe")
+def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
+          alpha_init=1., alpha_min=0.01, alpha_max=100., fac=2):
+
+    phi0, dphi0 = get_phi_dphi("fg", 0)
+
+    def zoom(alpha_lo, alpha_hi, phi_lo,
+             phi_alpha_=None, alpha_0_=None, max_cycles=10):
+
+        alphas = list()
+        phi_alphas = list()
+        if phi_alpha_:
+            phi_alphas = [phi_alpha_, ]
+        if alpha_0_:
+            alphas = [alpha_0_, ]
+
+        for j in range(max_cycles):
+            # Interpoaltion of alpha between alpha_lo, alpha_hi
+            #
+            # Try cubic interpolation if at least two additional alphas and
+            # corresponding phi_alpha values are available beside alpha = 0.
+            if len(phi_alphas) > 1:
+                alpha_prev = alphas[-1]
+                phi_alpha_prev = phi_alphas[-1]
+                alpha_j = interpol_alpha_cubic(phi0, dphi0,
+                                               phi_alpha_, phi_alpha_prev,
+                                               alpha_0_, alpha_prev
+                )
+            # Try quadratic interpolation if at one additional alpha and
+            # corresponding phi_alpha value is available beside alpha = 0.
+            elif len(phi_alphas) == 1:
+                alpha_j = interpol_alpha_quad(phi0, dphi0, phi_alpha_, alpha_0_)
+            # Fallback to simple bisection
+            else:
+                alpha_j = (alpha_lo + alpha_hi) / 2
+
+            phi_j = get_phi_dphi("f", alpha_j)
+            # Store the values so they can be reused for cubic interpolation
+            alphas.append(alpha_j)
+            phi_alphas.append(phi_j)
+
+            # True if alpha is still too big or if the function value
+            # increased compared to the previous cycle.
+            if (not cond(alpha_j)
+                or phi_j > phi_lo):
+                # Shrink interval to (alpha_lo, alpha_j)
+                alpha_hi = alpha_j
+                continue
+
+            dphi_j = get_phi_dphi("g", alpha_j)
+            if curv_cond(dphi_j):
+                print(f"\tzoom converged after {j+1} cycles.")
+                return alpha_j
+
+            if (dphi_j * (alpha_hi - alpha_lo)) >= 0:
+                alpha_hi = alpha_lo
+            # Shrink interval to (alpha_j, alpha_hi)
+            alpha_lo = alpha_j
+        raise Exception("zoom() didn't converge in {j+1} cycles!")
+
+    
+    alpha_prev = 0
+    phi_prev = phi0
+    if alpha_init is not None:
+        alpha_i = alpha_init
+    # This does not seem to help
+    # elif f_0_prev is not None:
+        # alpha_i = min(1.01*2*(f_0 - f_0_prev) / dphi_0, 1.)
+        # print("ai", alpha_i)
+        # alpha_i = 1. if alpha_i < 0. else alpha_i
+    else:
+        alpha_i = 1.0
+
+    try:
+        for i in range(10):
+            phi_i = get_phi_dphi("f", alpha_i)
+            # if (not sufficiently_decreased(phi_i, alpha_i)
+            if (not cond(alpha_i) or ((phi_i >= phi_prev) and i > 0)):
+                # return results_for(
+                        # zoom(alpha_prev, alpha_i, phi_prev,
+                             # phi_i, alpha_i
+                        # )
+                # )
+                zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
+
+            dphi_i = get_phi_dphi("g", alpha_i)
+            if curv_cond(dphi_i):
+                return results_for(alpha_i)
+
+            if dphi_i >= 0:
+                return results_for(
+                        zoom(alpha_i, alpha_prev, phi_i,
+                             phi_alpha_=phi_i, alpha_0_=alpha_i
+                        )
+                )
+            prev_alpha = alpha
+            alpha_i = min(fac * alpha_i, alpha_max)
+        else:
+            raise LineSearchNotConverged
+    except LineSearchConverged as lsc:
+        ak = lsc.alpha
+
+    f_new, g_new = get_fg("fg", ak)
+    return ak, f_new, g_new

@@ -7,160 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import line_search as sp_line_search
 
-
-def interpol_alpha_quad(f_0, df_0, f_alpha_0, alpha_0):
-    return -df_0*alpha_0**2 / 2 / (f_alpha_0 - f_0 - df_0*alpha_0)
-
-
-def interpol_alpha_cubic(f_0, df_0, f_alpha_0, f_alpha_1, alpha_0, alpha_1):
-    quot = 1 / (alpha_0**2 * alpha_1**2 * (alpha_1 - alpha_0))
-    A = np.array(((alpha_0**2, -alpha_1**2),
-                  (-alpha_0**3, alpha_1**3)))
-    B = np.array(((f_alpha_1 - f_0 - df_0*alpha_1),
-                  (f_alpha_0 - f_0 - df_0*alpha_0)))
-    a, b = quot * A @ B
-    alpha_cubic = (-b + (b**2 - 3*a*df_0)**(0.5)) / (3*a)
-    return alpha_cubic
-
-
-def line_search(f, df, x, p, f_0=None, f_0_prev=None, df_0=None,
-                alpha=None, alpha_min=0.01, alpha_max=100.,
-                c1=1e-4, c2=0.9, fac=2, strong=True):
-
-    alpha_fs = {}
-    def phi_alpha(alpha):
-        try:
-            f_alpha = alpha_fs[alpha]
-        except KeyError:
-            f_alpha = f(x + alpha*p)
-            alpha_fs[alpha] = f_alpha
-        return f_alpha
-
-    alpha_dfs = {}
-    def dphi_alpha(alpha):
-        try:
-            df_alpha = alpha_dfs[alpha]
-        except KeyError:
-            df_alpha = df(x + alpha*p)
-            alpha_dfs[alpha] = df_alpha
-        return df_alpha@p
-
-    def results_for(alpha):
-        return alpha, alpha_fs[alpha], alpha_dfs[alpha]
-
-    # We shouldn't have to recompute phi_0 and dphi_0, as they were probably already
-    # calculated when determining the descent direction p.
-    if f_0 is None:
-        phi_0 = phi_alpha(0)
-    else:
-        phi_0 = f_0
-        alpha_fs[0] = f_0
-    if df_0 is None:
-        dphi_0 = dphi_alpha(0)
-    else:
-        dphi_0 = df_0 @ p
-        alpha_dfs[0] = df_0
-
-    def sufficiently_decreased(phi_alpha, alpha):
-        return phi_alpha <= (phi_0 + c1 * alpha * dphi_0)
-
-    def curvature_condition(dphi_alpha):
-        return dphi_alpha >= c2*dphi_0
-
-    def curvature_condition_strong(dphi_alpha):
-        return abs(dphi_alpha) <= -c2*dphi_0
-
-    curv_cond = curvature_condition_strong if strong else curvature_condition
-
-    def zoom(alpha_lo, alpha_hi, phi_0, dphi_0, phi_lo,
-             phi_alpha_=None, alpha_0_=None, max_cycles=10):
-
-        alphas = list()
-        phi_alphas = list()
-        if phi_alpha_:
-            phi_alphas = [phi_alpha_, ]
-        if alpha_0_:
-            alphas = [alpha_0_, ]
-
-        for j in range(max_cycles):
-            # Interpoaltion of alpha between alpha_lo, alpha_hi
-            #
-            # Try cubic interpolation if at least two additional alphas and
-            # corresponding phi_alpha values are available beside alpha = 0.
-            if len(phi_alphas) > 1:
-                alpha_prev = alphas[-1]
-                phi_alpha_prev = phi_alphas[-1]
-                alpha_j = interpol_alpha_cubic(phi_0, dphi_0,
-                                               phi_alpha_, phi_alpha_prev,
-                                               alpha_0_, alpha_prev
-                )
-            # Try quadratic interpolation if at one additional alpha and
-            # corresponding phi_alpha value is available beside alpha = 0.
-            elif len(phi_alphas) == 1:
-                alpha_j = interpol_alpha_quad(phi_0, dphi_0, phi_alpha_, alpha_0_)
-            # Fallback to simple bisection
-            else:
-                alpha_j = (alpha_lo + alpha_hi) / 2
-
-            phi_j = phi_alpha(alpha_j)
-            # Store the values so they can be reused for cubic interpolation
-            alphas.append(alpha_j)
-            phi_alphas.append(phi_j)
-
-            # True if alpha is still too big or if the function value
-            # increased compared to the previous cycle.
-            if (not sufficiently_decreased(phi_j, alpha_j)
-                or phi_j > phi_lo):
-                # Shrink interval to (alpha_lo, alpha_j)
-                alpha_hi = alpha_j
-                continue
-
-            dphi_j = dphi_alpha(alpha_j)
-            if curv_cond(dphi_j):
-                print(f"\tzoom converged after {j+1} cycles.")
-                return alpha_j
-
-            if (dphi_j * (alpha_hi - alpha_lo)) >= 0:
-                alpha_hi = alpha_lo
-            # Shrink interval to (alpha_j, alpha_hi)
-            alpha_lo = alpha_j
-        raise Exception("zoom() didn't converge in {j+1} cycles!")
-
-    
-    alpha_prev = 0
-    phi_prev = phi_0
-    if alpha is not None:
-        alpha_i = alpha
-    # This does not seem to help
-    # elif f_0_prev is not None:
-        # alpha_i = min(1.01*2*(f_0 - f_0_prev) / dphi_0, 1.)
-        # print("ai", alpha_i)
-        # alpha_i = 1. if alpha_i < 0. else alpha_i
-    else:
-        alpha_i = 1.0
-    for i in range(50):
-        phi_i = phi_alpha(alpha_i)
-        if (not sufficiently_decreased(phi_i, alpha_i)
-             or ((phi_i >= phi_prev) and i > 0)):
-            return results_for(
-                    zoom(alpha_prev, alpha_i, phi_0, dphi_0, phi_prev,
-                         phi_i, alpha_i
-                    )
-            )
-
-        dphi_i = dphi_alpha(alpha_i)
-        if curv_cond(dphi_i):
-            return results_for(alpha_i)
-
-        if dphi_i >= 0:
-            return results_for(
-                    zoom(alpha_i, alpha_prev, phi_0, dphi_0, phi_i,
-                         phi_alpha_=phi_i, alpha_0_=alpha_i
-                    )
-            )
-        prev_alpha = alpha
-        alpha_i = min(fac * alpha_i, alpha_max)
-    raise Exception("line_search() didn't converge in {i+1} cycles!")
+from pysisyphus.optimizers.line_searches import wolfe
 
 
 def run_line_search(f, df, get_p, x0, alpha_0=1, alpha_max=1):
@@ -199,7 +46,20 @@ def run_line_search(f, df, get_p, x0, alpha_0=1, alpha_max=1):
 
         # f_evals_prev = f_evals
         # df_evals_prev = df_evals
-        alpha = line_search(f, df, x, p, f_0, df_0=grad, alpha=alpha_guess)
+        # import pdb; pdb.set_trace()
+
+        kwargs = {
+            "f": f,
+            "df": df,
+            "x0": x,
+            "p": p,
+            "f0": f_0,
+            "g0": grad,
+            "alpha_init": alpha_guess,
+        }
+        alpha, f_, df_ = wolfe(**kwargs)
+
+        # alpha, f_, df_ = wolfe(f, df, x, p, f_0, df_0=grad, alpha=alpha_guess)
         # fc_ = f_evals - f_evals_prev
         # gc_ = df_evals - df_evals_prev
         # print(f"\talpha={alpha:.6f}, fc={fc_}, gc={gc_}")
@@ -348,3 +208,7 @@ def run_geom_opt():
         step = -np.linalg.pinv(hess_) @ grad
         new_coords = geom.coords + step
         geom.coords = new_coords
+
+
+if __name__ == "__main__":
+    run()
