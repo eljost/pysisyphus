@@ -445,7 +445,7 @@ def wolfe(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
                 continue
 
             dphi_j = get_phi_dphi("g", alpha_j)
-            if conds["curv"](dphi_j):
+            if conds["curv"](alpha_j):
                 print(f"\tzoom converged after {j+1} cycles.")
                 return alpha_j
 
@@ -455,7 +455,6 @@ def wolfe(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
             alpha_lo = alpha_j
         raise Exception("zoom() didn't converge in {j+1} cycles!")
 
-    
     alpha_prev = 0
     phi_prev = phi0
     if alpha_init is not None:
@@ -471,11 +470,11 @@ def wolfe(x0, p, get_phi_dphi, get_fg, conds, max_cycles,
     try:
         for i in range(10):
             phi_i = get_phi_dphi("f", alpha_i)
-            if (not conds["armijo"](phi_i, alpha_i) or ((phi_i >= phi_prev) and i > 0)):
+            if (not conds["armijo"](alpha_i) or ((phi_i >= phi_prev) and i > 0)):
                 zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
 
             dphi_i = get_phi_dphi("g", alpha_i)
-            if conds["curve"](dphi_i):
+            if conds["curve"](alpha_i):
                 raise LineSearchConverged(alpha_i)
 
             if dphi_i >= 0:

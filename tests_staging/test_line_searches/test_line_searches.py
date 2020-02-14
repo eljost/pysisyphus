@@ -7,7 +7,7 @@ from pysisyphus.calculators.AnaPotBase import AnaPotBase
 from pysisyphus.optimizers.line_searches import backtracking, wolfe, hager_zhang
 from pysisyphus.optimizers.Optimizer import Optimizer
 
-from pysisyphus.line_searches import Backtracking, HagerZhang
+from pysisyphus.line_searches import Backtracking, HagerZhang, Wolfe
 
 
 class SteepestDescent(Optimizer):
@@ -19,12 +19,16 @@ class SteepestDescent(Optimizer):
         self.alpha_init = alpha_init
         self.line_search = line_search
 
-        ls_funcs = {
+        ls_cls = {
             "armijo": Backtracking,
-            # "armijo": backtracking,
-            # "wolfe": wolfe,
+            "wolfe": Wolfe,
+        }
+        ls_funcs = {
+            "armijo": backtracking,
+            "wolfe": wolfe,
         }
         self.line_search_func = ls_funcs[self.line_search]
+        self.line_search_cls = ls_cls[self.line_search]
 
         self.alpha_prev = None
 
@@ -59,7 +63,7 @@ class SteepestDescent(Optimizer):
             "g0": -forces,
             "alpha_init": self.alpha_init,
         }
-        line_search = Backtracking(**kwargs)
+        line_search = self.line_search_cls(**kwargs)
         alpha = line_search.run()
 
         step = alpha * step_dir
@@ -151,7 +155,7 @@ class CGDescent(Optimizer):
     "line_search, ref_cycle, ref_energy",
     [
         ("armijo", 32, 0.98555442),
-        # ("wolfe", 32),
+        # ("wolfe", 32, 0.9855),
         # ("hz", 32),
     ]
 )
