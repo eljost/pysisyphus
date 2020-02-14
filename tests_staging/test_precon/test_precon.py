@@ -18,6 +18,7 @@ def run():
     opt = PreconLBFGS(geom, thresh="gau_tight")
     opt.run()
 
+
 def verify_P():
     geom = geom_from_library("h2o_shaken.xyz")
     from pysisyphus.InternalCoordinates import RedundantCoords

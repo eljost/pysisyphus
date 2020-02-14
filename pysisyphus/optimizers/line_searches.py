@@ -328,9 +328,8 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     except LineSearchConverged as lsc:
         ak = lsc.alpha
 
-    # f_new, g_new = get_fg("fg", ak)
-    # return ak, f_new, g_new, dphi0
-    return ak
+    f_new, g_new = get_fg("fg", ak)
+    return ak, f_new, g_new, dphi0
 
 
 @linesearch_wrapper(cond="armijo")
