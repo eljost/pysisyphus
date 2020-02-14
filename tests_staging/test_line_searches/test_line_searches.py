@@ -120,6 +120,17 @@ class CGDescent(Optimizer):
         return step
 
 
+def plot_opt(opt):
+    geom = opt.geometry
+
+    cs = np.array(opt.coords)
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    ax.plot(*cs.T[:2])
+    plt.show()
+
+
 @pytest.mark.parametrize(
     "line_search, ref_cycle",
     [
@@ -138,12 +149,7 @@ def test_line_search(line_search, ref_cycle):
     opt = SteepestDescent(geom, **opt_kwargs)
     opt.run()
 
-    # cs = np.array(opt.coords)
-    # calc = geom.calculator
-    # calc.plot()
-    # ax = calc.ax
-    # ax.plot(*cs.T[:2])
-    # plt.show()
+    plot_opt(opt)
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
@@ -177,12 +183,7 @@ def test_cg_descent(calc, x0, ref_cycle):
     opt = CGDescent(geom, **opt_kwargs)
     opt.run()
 
-    # cs = np.array(opt.coords)
-    # calc = geom.calculator
-    # calc.plot()
-    # ax = calc.ax
-    # ax.plot(*cs.T[:2])
-    # plt.show()
+    # plot_opt(opt)
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
