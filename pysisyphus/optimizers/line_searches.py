@@ -1,6 +1,15 @@
+# [1] Nocedal - Numerical Optimization, Second ed.
+
+import logging
+
 import numpy as np
 
 from pysisyphus.optimizers.line_search import interpol_alpha_cubic, interpol_alpha_quad
+
+
+logger = logging.getLogger("optimizer")
+def log(msg):
+    logger.debug(msg)
 
 
 class LineSearchConverged(Exception):
@@ -310,42 +319,52 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
 
 @linesearch_wrapper(cond="armijo")
 def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
-                 alpha_init=1., rho_lo=0.1, rho_hi=0.5):
+                 alpha_init=1., rho_lo=5e-2, rho_hi=0.9):
+    """Backtracking line search enforcing Armijo conditions.
+
+    Uses only energy evaluations.
+
+    See [1], Chapter 3, Line Search methods, Section 3.1 p. 31 and
+    Section 3.5 p. 56."""
+
+    log("Starting backtracking line search")
     phi0, dphi0 = get_phi_dphi("fg", 0)
 
     alpha = alpha_init
-    alpha_prev = alpha_init
     for i in range(max_cycles):
         phi_i = get_phi_dphi("f", alpha)
+        log(f"\tCycle {i:02d}: alpha={alpha:.6f}, ϕ={phi_i:.6f}")
 
         if cond(alpha):
-            print(f"\tbacktracking converged after {i} cycles.")
+            log(f"\tLine search converged after {i} cycles.")
             break
 
         if i == 0:
             # Quadratic interpolation
             alpha_new = interpol_alpha_quad(phi0, dphi0, phi_i, alpha)
-            print(f"\tQUAD alpha={alpha:.6f}")
+            type_ = "Quadratic"
         else:
             # Cubic interpolation
             phi_prev = get_phi_dphi("f", alpha_prev)
             alpha_new = interpol_alpha_cubic(phi0, dphi0, phi_prev, phi_i, alpha_prev, alpha)
-            print(f"\tCUB alpha={alpha:.6f}")
+            type_ = "Cubic"
+        log(f"\tNew alpha from {type_}: {alpha_new:.6f}")
 
-        alpha_prev = alpha
-
-        if alpha_new > alpha_prev*rho_hi:
-            print("\tProposed alpha is too high!")
-        if alpha_new < alpha_prev*rho_lo:
-            print("\tProposed alpha is too small!")
+        lower_bound = alpha * rho_lo
+        upper_bound = alpha * rho_hi
+        if alpha_new < lower_bound:
+            log("\tNew alpha is too big!")
+        if alpha_new > upper_bound:
+            log("\tNew alpha is too high!")
 
         # Assert that alpha doesn't change too much compared to the previous alpha   
-        alpha_new = min(alpha_new, alpha_prev*rho_hi)
-        alpha = max(alpha_new, alpha_prev*rho_lo)
+        alpha_new = min(alpha_new, upper_bound)
+        alpha_new = max(alpha_new, lower_bound)
+        alpha_prev = alpha
+        alpha = alpha_new
+        log(f"\tAlpha for next cycles: {alpha:.6f}\n")
+
     else:
         raise LineSearchNotConverged
 
-    # Call this so get_fg will always return something...
-    dphi_i = get_phi_dphi("g", alpha, check=False)  # lgtm [py/unused-local-variable]
-    f_new, g_new = get_fg("fg", alpha)
-    return alpha, f_new, g_new
+    return alpha
