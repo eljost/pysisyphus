@@ -385,6 +385,11 @@ def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
 @linesearch_wrapper(cond="wolfe")
 def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
           alpha_init=1., alpha_min=0.01, alpha_max=100., fac=2):
+    """Wolfe line search.
+
+    Uses only energy & gradient evaluations.
+
+    See [1], Chapter 3, Line Search methods, Section 3.5 p. 60."""
 
     phi0, dphi0 = get_phi_dphi("fg", 0)
 
@@ -460,23 +465,14 @@ def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
             phi_i = get_phi_dphi("f", alpha_i)
             # if (not sufficiently_decreased(phi_i, alpha_i)
             if (not cond(alpha_i) or ((phi_i >= phi_prev) and i > 0)):
-                # return results_for(
-                        # zoom(alpha_prev, alpha_i, phi_prev,
-                             # phi_i, alpha_i
-                        # )
-                # )
                 zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
 
             dphi_i = get_phi_dphi("g", alpha_i)
             if curv_cond(dphi_i):
-                return results_for(alpha_i)
+                raise LineSearchConverged(alpha_i)
 
             if dphi_i >= 0:
-                return results_for(
-                        zoom(alpha_i, alpha_prev, phi_i,
-                             phi_alpha_=phi_i, alpha_0_=alpha_i
-                        )
-                )
+                zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
             prev_alpha = alpha
             alpha_i = min(fac * alpha_i, alpha_max)
         else:
