@@ -187,3 +187,48 @@ def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
 
     assert energy == pytest.approx(ref_energy)
     assert np.linalg.norm(forces) == pytest.approx(ref_force_norm)
+
+
+@using_gaussian16
+def test_oniom_13_coupling():
+    geom = geom_from_library("oniom_13_coupling_example.xyz")
+
+    calcs = {
+        "real": {
+            "route": "HF/STO-3G",
+        },
+        "mid": {
+            "route": "HF/3-21G",
+        },
+        "high": {
+            "route": "PM6",
+        },
+    }
+    for key, calc in calcs.items():
+        calc["type"] = "g16"
+        calc["pal"] = 2
+        calc["mult"] = 1
+        calc["charge"] = 0
+
+    # "real" must not be defined; will be automatically set
+    models = {
+        "mid": {
+            "inds": range(4, 14),
+            "calc": "mid",
+        },
+        "high": {
+            "inds": range(4, 10),
+            "calc": "high",
+        }
+    }
+
+    # "real" must not be defined; will be automatically set
+    layers = ["mid", "high"]
+
+    oniom = ONIOM(calcs, models, geom, layers)
+
+    assert oniom.layer_num == 3
+
+    geom.set_calculator(oniom)
+
+    assert geom.energy == pytest.approx(-77.42058687128718)
