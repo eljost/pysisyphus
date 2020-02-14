@@ -1,5 +1,6 @@
-from pysisyphus.line_searches.LineSearch import LineSearch
+import numpy as np
 
+from pysisyphus.line_searches.LineSearch import LineSearch
 from pysisyphus.optimizers.line_searches import LineSearchConverged
 
 
@@ -119,7 +120,7 @@ class HagerZhang(LineSearch):
             elif phi_j > p0epsk:
                 return self.bisect(0, c)
 
-            c *= rho
+            c *= self.rho
 
     def norm_inf(self, arr):
         """Returns infinity norm of given array."""
@@ -128,9 +129,9 @@ class HagerZhang(LineSearch):
     def initial(self):
         """Get an initial guess for alpha."""
         if (~np.isclose(self.x0, np.zeros_like(self.x0))).any():
-            c = self.psi_0 * norm_inf(self.x0)/norm_inf(self.g0)
+            c = self.psi_0 * self.norm_inf(self.x0)/self.norm_inf(self.g0)
         elif not np.isclose(self.f0, 0):
-            c = self.psi_0 * self.f0 / self.norm_inf(g0)**2
+            c = self.psi_0 * self.f0 / self.norm_inf(self.g0)**2
         else:
             c = 1
         return c
@@ -184,7 +185,7 @@ class HagerZhang(LineSearch):
                     break
                 # secant² step
                 a, b = self.double_secant(ak, bk)
-                if (b - a) > gamma*(bk - ak):
+                if (b - a) > self.gamma*(bk - ak):
                     # Bisection step
                     c = (a + b)/2
                     a, b = self.interval_update(a, b, c)

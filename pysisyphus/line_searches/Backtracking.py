@@ -27,6 +27,7 @@ class Backtracking(LineSearch):
         self.log("Starting backtracking line search")
         phi0, dphi0 = self.get_phi_dphi("fg", 0)
 
+        alpha_prev = None
         alpha = self.alpha_init
         for i in range(self.max_cycles):
             phi_i = self.get_phi_dphi("f", alpha)

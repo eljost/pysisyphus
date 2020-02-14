@@ -345,6 +345,7 @@ def backtracking(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     log("Starting backtracking line search")
     phi0, dphi0 = get_phi_dphi("fg", 0)
 
+    alpha_prev = None
     alpha = alpha_init
     for i in range(max_cycles):
         phi_i = get_phi_dphi("f", alpha)
@@ -432,14 +433,13 @@ def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
 
             # True if alpha is still too big or if the function value
             # increased compared to the previous cycle.
-            if (not cond(alpha_j)
-                or phi_j > phi_lo):
+            if (not sufficiently_decreased(alpha_j) or phi_j > phi_lo):
                 # Shrink interval to (alpha_lo, alpha_j)
                 alpha_hi = alpha_j
                 continue
 
             dphi_j = get_phi_dphi("g", alpha_j)
-            if curv_cond(dphi_j):
+            if curvature_condition(dphi_j):
                 print(f"\tzoom converged after {j+1} cycles.")
                 return alpha_j
 
@@ -465,17 +465,16 @@ def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     try:
         for i in range(10):
             phi_i = get_phi_dphi("f", alpha_i)
-            # if (not sufficiently_decreased(phi_i, alpha_i)
-            if (not cond(alpha_i) or ((phi_i >= phi_prev) and i > 0)):
+            if (not sufficiently_decreased(phi_i, alpha_i) or ((phi_i >= phi_prev) and i > 0)):
                 zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
 
             dphi_i = get_phi_dphi("g", alpha_i)
-            if curv_cond(dphi_i):
+            if curvature_condition(dphi_i):
                 raise LineSearchConverged(alpha_i)
 
             if dphi_i >= 0:
                 zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
-            prev_alpha = alpha
+            prev_alpha = alpha_i
             alpha_i = min(fac * alpha_i, alpha_max)
         else:
             raise LineSearchNotConverged
