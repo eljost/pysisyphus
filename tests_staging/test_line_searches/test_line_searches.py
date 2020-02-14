@@ -10,11 +10,11 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class SteepestDescent(Optimizer):
 
-    def __init__(self, geometry, alpha=0.1, line_search="armijo",
+    def __init__(self, geometry, alpha_init=0.5, line_search="armijo",
                  **kwargs):
         super().__init__(geometry, **kwargs)
 
-        self.alpha = alpha
+        self.alpha_init = alpha_init
         self.line_search = line_search
 
         ls_funcs = {
@@ -24,6 +24,8 @@ class SteepestDescent(Optimizer):
         }
         self.line_search_func = ls_funcs[self.line_search]
 
+        self.alpha_prev = None
+
     def optimize(self):
         forces = self.geometry.forces
         energy = self.geometry.energy
@@ -32,7 +34,6 @@ class SteepestDescent(Optimizer):
         self.energies.append(self.geometry.energy)
 
         step_dir = forces / np.linalg.norm(forces)
-        # alpha, _, _ = 0.25, None, None
 
         f = lambda coords: self.geometry.get_energy_at(coords)
         df = lambda coords: self.geometry.get_energy_and_forces_at(coords)["forces"]
@@ -44,19 +45,22 @@ class SteepestDescent(Optimizer):
             "p": step_dir,
             "f0": energy,
             "g0": -forces,
-            "alpha_init": 0.5,
+            # "alpha_init": self.alpha_prev if self.alpha_prev else self.alpha_init,
+            "alpha_init": self.alpha_init,
         }
-        # alpha, f_new, g_new = backtracking(**kwargs)
         alpha = self.line_search_func(**kwargs)
 
         step = alpha * step_dir
+        self.alpha_prev = alpha
         return step
+
 
 @pytest.mark.parametrize(
     "line_search, ref_cycle",
     [
         ("armijo", 32),
-        ("wolfe", 32),
+        # ("wolfe", 32),
+        # ("hz", 32),
     ]
 )
 def test_line_search(line_search, ref_cycle):
@@ -69,12 +73,12 @@ def test_line_search(line_search, ref_cycle):
     opt = SteepestDescent(geom, **opt_kwargs)
     opt.run()
 
-    # cs = np.array(opt.coords)
-    # calc = geom.calculator
-    # calc.plot()
-    # ax = calc.ax
-    # ax.plot(*cs.T[:2])
-    # plt.show()
+    cs = np.array(opt.coords)
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    ax.plot(*cs.T[:2])
+    plt.show()
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle

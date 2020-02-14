@@ -45,6 +45,7 @@ def linesearch_wrapper(cond):
                 try:
                     f_alpha = alpha_fs[alpha]
                 except KeyError:
+                    log(f"\tEvaluating energy for alpha={alpha:.6f}")
                     f_alpha = f(x0 + alpha*p)
                     alpha_fs[alpha] = f_alpha
                 return f_alpha
@@ -57,6 +58,7 @@ def linesearch_wrapper(cond):
                     df_alpha = alpha_gs[alpha]
                     dphi_ = df_alpha @ p
                 except KeyError:
+                    log(f"\tEvaluating gradient for alpha={alpha:.6f}")
                     df_alpha = df(x0 + alpha*p)
                     alpha_gs[alpha] = df_alpha
                     dphi_ = df_alpha @ p
@@ -326,8 +328,9 @@ def hager_zhang(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
     except LineSearchConverged as lsc:
         ak = lsc.alpha
 
-    f_new, g_new = get_fg("fg", ak)
-    return ak, f_new, g_new, dphi0
+    # f_new, g_new = get_fg("fg", ak)
+    # return ak, f_new, g_new, dphi0
+    return ak
 
 
 @linesearch_wrapper(cond="armijo")
@@ -478,7 +481,6 @@ def wolfe(x0, p, get_phi_dphi, get_fg, cond, max_cycles,
         else:
             raise LineSearchNotConverged
     except LineSearchConverged as lsc:
-        ak = lsc.alpha
+        alpha = lsc.alpha
 
-    f_new, g_new = get_fg("fg", ak)
-    return ak, f_new, g_new
+    return alpha
