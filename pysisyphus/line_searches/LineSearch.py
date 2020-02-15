@@ -7,7 +7,8 @@ from pysisyphus.optimizers.line_searches import LineSearchConverged
 
 LineSearchResult = namedtuple(
                     "LineSearchResult",
-                    "alpha f_new g_new f_evals df_evals dphi0 converged"
+                    "converged alpha f_new g_new f_evals df_evals dphi0",
+                    defaults=( None, None, None, None,   None,    None),
 )
 
 
@@ -157,18 +158,23 @@ class LineSearch(metaclass=abc.ABCMeta):
     def run(self):
         self.prepare_line_search()
 
-        f_new = None
-        g_new = None
+        # Normal termination
         try:
             alpha = self.run_line_search()
-            converged = True
-            f_new = self.alpha_fs.get(alpha)
-            g_new = self.alpha_dfs.get(alpha, None)
+        # Termination in get_phi_dphi
+        except LineSearchConverged as lsc:
+            alpha = lsc.alpha
+        # Failed LineSearch
         except LineSearchNotConverged:
-            converged = False
+            return LineSearchResult(converged=False)
 
+        converged = True
+        f_new = self.alpha_fs.get(alpha)
+        # LineSearches enforcing only Armijo condition may not have evaluated the
+        # gradient at the final point.
+        g_new = self.alpha_dfs.get(alpha, None)
         result = LineSearchResult(
-                    converged=converged,
+                    converged=True,
                     alpha=alpha,
                     f_new=f_new,
                     g_new=g_new,

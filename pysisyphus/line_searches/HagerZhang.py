@@ -162,35 +162,26 @@ class HagerZhang(LineSearch):
         else:
             alpha_init = self.alpha_init
 
-        # Put everything in a try/except block because now everytime
-        # we evaluate phi/dphi at some alpha and both phi and dphi
-        # are present for this alpha, e.g. from a previous calculation,
-        # convergence of the linesearch will be checked, and
-        # LineSearchConverged may be raised. Using exceptions enables
-        # us to also return from nested functions.
-        try:
-            if self.quad_step:
-                g0_ = -2*abs(self.get_fg("f", 0)/alpha_init) if (self.dphi0_prev is None) \
-                      else self.dphi0_prev
-                alpha_init = self.take_quad_step(self.psi_2*alpha_init, g0_)
-            # This may raise LineSearchConverged
-            _ = self.get_phi_dphi("fg", alpha_init)
+        if self.quad_step:
+            g0_ = -2*abs(self.get_fg("f", 0)/alpha_init) if (self.dphi0_prev is None) \
+                  else self.dphi0_prev
+            alpha_init = self.take_quad_step(self.psi_2*alpha_init, g0_)
+        # This may raise LineSearchConverged
+        _ = self.get_phi_dphi("fg", alpha_init)
 
-            # TODO: cubic interpolation for better alpha_init
-            ak, bk = self.bracket(alpha_init)
-            for k in range(self.max_cycles):
-                if self.cond_func(ak):
-                    break
-                # secant² step
-                a, b = self.double_secant(ak, bk)
-                if (b - a) > self.gamma*(bk - ak):
-                    # Bisection step
-                    c = (a + b)/2
-                    a, b = self.interval_update(a, b, c)
-                ak, bk = a, b
-            else:
-                raise LineSearchNotConverged
-        except LineSearchConverged as lsc:
-            ak = lsc.alpha
+        # TODO: cubic interpolation for better alpha_init
+        ak, bk = self.bracket(alpha_init)
+        for k in range(self.max_cycles):
+            if self.cond_func(ak):
+                break
+            # secant² step
+            a, b = self.double_secant(ak, bk)
+            if (b - a) > self.gamma*(bk - ak):
+                # Bisection step
+                c = (a + b)/2
+                a, b = self.interval_update(a, b, c)
+            ak, bk = a, b
+        else:
+            raise LineSearchNotConverged
 
         return ak

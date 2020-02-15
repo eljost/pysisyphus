@@ -85,28 +85,25 @@ class StrongWolfe(LineSearch):
         else:
             alpha_i = 1.0
 
-        try:
-            for i in range(10):
-                phi_i = self.get_phi_dphi("f", alpha_i)
-                phi_rose = (phi_i >= phi_prev)
-                # In [1] this condition is given with (if not sufficiently_decreased ...)
-                # I guess this may give problems if the initial step is too small; then
-                # suff. decr. is also not fullfilled ...
-                if not self.sufficiently_decreased(alpha_i) or (phi_rose and i > 0):
-                    return self.zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
+        for i in range(10):
+            phi_i = self.get_phi_dphi("f", alpha_i)
+            phi_rose = (phi_i >= phi_prev)
+            # In [1] this condition is given with (if not sufficiently_decreased ...)
+            # I guess this may give problems if the initial step is too small; then
+            # suff. decr. is also not fullfilled ...
+            if not self.sufficiently_decreased(alpha_i) or (phi_rose and i > 0):
+                return self.zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
 
-                dphi_i = self.get_phi_dphi("g", alpha_i)
-                if self.strong_curvature_condition(alpha_i):
-                    raise LineSearchConverged(alpha_i)
+            dphi_i = self.get_phi_dphi("g", alpha_i)
+            if self.strong_curvature_condition(alpha_i):
+                raise LineSearchConverged(alpha_i)
 
-                if dphi_i >= 0:
-                    return self.zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
-                prev_alpha = alpha_i
-                alpha_i = min(self.fac * alpha_i, self.alpha_max)
-            # Premature abort of the loop may happen through LineSearchConverged being raised
-            else:
-                raise LineSearchNotConverged
-        except LineSearchConverged as lsc:
-            alpha = lsc.alpha
+            if dphi_i >= 0:
+                return self.zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
+            prev_alpha = alpha_i
+            alpha_i = min(self.fac * alpha_i, self.alpha_max)
+        # Premature abort of the loop may happen through LineSearchConverged being raised
+        else:
+            raise LineSearchNotConverged
 
         return alpha
