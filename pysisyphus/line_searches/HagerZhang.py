@@ -194,4 +194,5 @@ class HagerZhang(LineSearch):
             ak = lsc.alpha
 
         f_new, g_new = self.get_fg("fg", ak)
-        return ak, f_new, g_new, dphi0
+        result = self.make_result(ak, f_new, g_new)
+        return result

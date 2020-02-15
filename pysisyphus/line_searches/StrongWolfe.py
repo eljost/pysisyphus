@@ -111,4 +111,6 @@ class StrongWolfe(LineSearch):
         except LineSearchConverged as lsc:
             alpha = lsc.alpha
 
-        return alpha
+        f_new, g_new = self.get_fg("fg", alpha)
+        result = self.make_result(alpha, f_new, g_new)
+        return result

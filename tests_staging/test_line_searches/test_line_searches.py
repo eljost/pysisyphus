@@ -22,12 +22,13 @@ class SteepestDescent(Optimizer):
         ls_cls = {
             "armijo": Backtracking,
             "strong_wolfe": StrongWolfe,
+            "hz": HagerZhang,
         }
-        ls_funcs = {
-            "armijo": backtracking,
-            "strong_wolfe": wolfe,
-        }
-        self.line_search_func = ls_funcs[self.line_search]
+        # ls_funcs = {
+            # "armijo": backtracking,
+            # "strong_wolfe": wolfe,
+        # }
+        # self.line_search_func = ls_funcs[self.line_search]
         self.line_search_cls = ls_cls[self.line_search]
 
         self.alpha_prev = None
@@ -64,7 +65,8 @@ class SteepestDescent(Optimizer):
             "alpha_init": self.alpha_init,
         }
         line_search = self.line_search_cls(**kwargs)
-        alpha = line_search.run()
+        line_search_result = line_search.run()
+        alpha = line_search_result.alpha
 
         step = alpha * step_dir
         self.alpha_prev = alpha
@@ -130,7 +132,11 @@ class CGDescent(Optimizer):
             "dphi0_prev": None if not self.alpha_prev else self.dphi0_prev,  # noqa: F821
         }
         line_search = HagerZhang(**kwargs)
-        alpha, f_new, g_new, dphi0_prev = line_search.run()
+        hz_result = line_search.run()
+        alpha = hz_result.alpha
+        f_new = hz_result.f_new
+        g_new = hz_result.g_new
+        dphi0_prev = hz_result.dphi0
 
         self.dphi0_prev = dphi0_prev
         step = alpha*self.step_direction
@@ -156,7 +162,7 @@ class CGDescent(Optimizer):
     [
         ("armijo", 32, 0.98555442),
         ("strong_wolfe", 57, 0.98555442),
-        # ("hz", 32),
+        ("hz", 63, 0.98555442),
     ]
 )
 def test_line_search(line_search, ref_cycle, ref_energy):

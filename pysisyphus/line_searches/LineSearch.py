@@ -1,6 +1,14 @@
+from collections import namedtuple
 import logging
 
 from pysisyphus.optimizers.line_searches import LineSearchConverged
+
+
+LineSearchResult = namedtuple(
+                    "LineSearchResult",
+                    "alpha f_new g_new f_evals df_evals dphi0"
+)
+
 
 class LineSearch:
 
@@ -31,9 +39,11 @@ class LineSearch:
         self.c2 = c2
         self.max_cycles = max_cycles
 
-        # Store calculate energies & gradients
+        # Store calculated energies & gradients
         self.alpha_fs = {}
         self.alpha_dfs = {}
+        self.f_evals = 0
+        self.df_evals = 0
 
         self.dphis = {}
 
@@ -68,6 +78,7 @@ class LineSearch:
         except KeyError:
             self.log(f"\tEvaluating energy for alpha={alpha:.6f}")
             f_alpha = self.f(self.x0 + alpha*self.p)
+            self.f_evals += 1
             self.alpha_fs[alpha] = f_alpha
         return f_alpha
 
@@ -79,6 +90,7 @@ class LineSearch:
         except KeyError:
             self.log(f"\tEvaluating gradient for alpha={alpha:.6f}")
             df_alpha = self.df(self.x0 + alpha*self.p)
+            self.df_evals += 1
             self.alpha_dfs[alpha] = df_alpha
             dphi_ = df_alpha @ self.p
             self.dphis[alpha] = dphi_
@@ -107,7 +119,7 @@ class LineSearch:
         return result
 
     def get_fg(self, what, alpha):
-        """Lookup raw function/gradient values at alpha."""
+        """Lookup raw function/gradient values for a given alpha."""
         whats = "f g fg".split()
         assert what in whats
         lookups = {
@@ -139,3 +151,14 @@ class LineSearch:
 
     def run(self):
         self.prepare_line_search()
+
+    def make_result(self, alpha, f_new, g_new=None):
+        result = LineSearchResult(
+                    alpha=alpha,
+                    f_new=f_new,
+                    g_new=g_new,
+                    f_evals=self.f_evals,
+                    df_evals=self.df_evals,
+                    dphi0=self.dphi0,
+        )
+        return result

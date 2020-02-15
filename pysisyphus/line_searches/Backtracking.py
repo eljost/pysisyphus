@@ -64,4 +64,6 @@ class Backtracking(LineSearch):
         else:
             raise LineSearchNotConverged
 
-        return alpha
+        f_new  = self.get_fg("f", alpha)
+        result = self.make_result(alpha, f_new)
+        return result
