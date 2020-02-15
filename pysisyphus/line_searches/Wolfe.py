@@ -8,7 +8,7 @@ from pysisyphus.optimizers.line_searches import interpol_alpha_quad, \
 
 class Wolfe(LineSearch):
 
-    def __init__(self, *args, alpha_min=0.01, alpha_max=100., fac=2, **kwargs):
+    def __init__(self, *args, alpha_max=10., fac=2, **kwargs):
         """Wolfe line search.
 
         Uses only energy & gradient evaluations.
@@ -18,7 +18,6 @@ class Wolfe(LineSearch):
         kwargs["cond"] = "wolfe"
         super().__init__(*args, **kwargs)
 
-        self.alpha_min = float(alpha_min)
         self.alpha_max = float(alpha_max)
 
     def zoom(self, alpha_lo, alpha_hi, phi_lo,
@@ -85,11 +84,6 @@ class Wolfe(LineSearch):
         phi_prev = phi0
         if self.alpha_init is not None:
             alpha_i = self.alpha_init
-        # This does not seem to help
-        # elif f_0_prev is not None:
-            # alpha_i = min(1.01*2*(f_0 - f_0_prev) / dphi_0, 1.)
-            # print("ai", alpha_i)
-            # alpha_i = 1. if alpha_i < 0. else alpha_i
         else:
             alpha_i = 1.0
 
@@ -106,7 +100,7 @@ class Wolfe(LineSearch):
                 if dphi_i >= 0:
                     self.zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
                 prev_alpha = alpha_i
-                alpha_i = min(self.fac * alpha_i, alpha_max)
+                alpha_i = min(self.fac * alpha_i, self.alpha_max)
             else:
                 raise LineSearchNotConverged
         except LineSearchConverged as lsc:

@@ -5,8 +5,7 @@ from pysisyphus.optimizers.line_searches import LineSearchConverged
 class LineSearch:
 
     def __init__(self, p, cond, x0=None, geometry=None, f=None, df=None, alpha_init=None,
-                 f0=None, g0=None,
-                 c1=0.1, c2=0.9, max_cycles=10, *args, **kwargs):
+                 f0=None, g0=None, c1=0.1, c2=0.9, max_cycles=10, *args, **kwargs):
         self.p = p
         self.geometry = geometry
         self.f = f

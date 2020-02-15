@@ -155,7 +155,7 @@ class CGDescent(Optimizer):
     "line_search, ref_cycle, ref_energy",
     [
         ("armijo", 32, 0.98555442),
-        # ("wolfe", 32, 0.9855),
+        ("wolfe", 57, 0.98555442),
         # ("hz", 32),
     ]
 )
@@ -165,6 +165,7 @@ def test_line_search(line_search, ref_cycle, ref_energy):
     opt_kwargs = {
         "thresh": "gau_tight",
         "line_search": line_search,
+        "max_cycles": 75,
     }
     opt = SteepestDescent(geom, **opt_kwargs)
     opt.run()

@@ -169,7 +169,6 @@ def get_precon3(atoms, coords, bonds=None, angles=None, torsions=None, c_stab=0.
         3: lambda i, j, k: d2q_a(*c3d[i], *c3d[j], *c3d[k]),
     }
 
-    row = np.zeros(dim).reshape(-1, 3)
     H_flat = np.zeros(dim*dim)
     P = np.zeros((dim, dim))
     for inds, k in zip(it.chain(bonds, angles), ks):
@@ -187,7 +186,6 @@ def get_precon3(atoms, coords, bonds=None, angles=None, torsions=None, c_stab=0.
         bh = bond_hessian(c3d, b)
         P += bh
 
-        pass
     P += c_stab*np.eye(dim)
     P = csc_matrix(P)
     return P
