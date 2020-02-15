@@ -168,10 +168,12 @@ class LineSearch(metaclass=abc.ABCMeta):
         except LineSearchNotConverged:
             return LineSearchResult(converged=False)
 
+        # Code below is only executed when line_search was successful
+
         converged = True
+        # The gradient at the endpoint of the line search may not have been evaluted,
+        # but the function value was always evaluated.
         f_new = self.alpha_fs.get(alpha)
-        # LineSearches enforcing only Armijo condition may not have evaluated the
-        # gradient at the final point.
         g_new = self.alpha_dfs.get(alpha, None)
         result = LineSearchResult(
                     converged=True,
