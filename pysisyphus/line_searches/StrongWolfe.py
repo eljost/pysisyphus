@@ -1,3 +1,5 @@
+# [1] Nocedal, Numerical Optimization
+
 from pysisyphus.line_searches.LineSearch import LineSearch
 
 from pysisyphus.optimizers.line_searches import interpol_alpha_quad, \
@@ -6,7 +8,7 @@ from pysisyphus.optimizers.line_searches import interpol_alpha_quad, \
                                                 LineSearchNotConverged
 
 
-class Wolfe(LineSearch):
+class StrongWolfe(LineSearch):
 
     def __init__(self, *args, alpha_max=10., fac=2, **kwargs):
         """Wolfe line search.
@@ -15,7 +17,7 @@ class Wolfe(LineSearch):
 
         See [1], Chapter 3, Line Search methods, Section 3.5 p. 60."""
 
-        kwargs["cond"] = "wolfe"
+        kwargs["cond"] = "strong_wolfe"
         super().__init__(*args, **kwargs)
 
         self.alpha_max = float(alpha_max)
@@ -43,8 +45,8 @@ class Wolfe(LineSearch):
                                                phi_alpha_, phi_alpha_prev,
                                                alpha_0_, alpha_prev
                 )
-            # Try quadratic interpolation if at one additional alpha and
-            # corresponding phi_alpha value is available beside alpha = 0.
+            # Try quadratic interpolation if only one additional alpha and
+            # corresponding phi_alpha value are available beside alpha = 0.
             elif len(phi_alphas) == 1:
                 alpha_j = interpol_alpha_quad(phi0, dphi0, phi_alpha_, alpha_0_)
             # Fallback to simple bisection
@@ -58,21 +60,19 @@ class Wolfe(LineSearch):
 
             # True if alpha is still too big or if the function value
             # increased compared to the previous cycle.
-            if (not self.sufficiently_decreased(alpha_j) or phi_j > phi_lo):
+            if not self.sufficiently_decreased(alpha_j) or (phi_j > phi_lo):
                 # Shrink interval to (alpha_lo, alpha_j)
                 alpha_hi = alpha_j
                 continue
 
+            # If line search converged LineSearchConverged will be raised in
+            # this call.
             dphi_j = self.get_phi_dphi("g", alpha_j)
-            if self.curvature_condition(alpha_j):
-                print(f"\tzoom converged after {j+1} cycles.")
-                return alpha_j
 
             if (dphi_j * (alpha_hi - alpha_lo)) >= 0:
                 alpha_hi = alpha_lo
             # Shrink interval to (alpha_j, alpha_hi)
             alpha_lo = alpha_j
-        raise Exception("zoom() didn't converge in {j+1} cycles!")
 
     def run(self):
         super().run()
@@ -90,17 +90,22 @@ class Wolfe(LineSearch):
         try:
             for i in range(10):
                 phi_i = self.get_phi_dphi("f", alpha_i)
-                if (not self.sufficiently_decreased(alpha_i) or ((phi_i >= phi_prev) and i > 0)):
-                    self.zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
+                phi_rose = (phi_i >= phi_prev)
+                # In [1] this condition is given with (if not sufficiently_decreased ...)
+                # I guess this may give problems if the initial step is too small; then
+                # suff. decr. is also not fullfilled ...
+                if not self.sufficiently_decreased(alpha_i) or (phi_rose and i > 0):
+                    return self.zoom(alpha_prev, alpha_i, phi_prev, phi_i, alpha_i)
 
                 dphi_i = self.get_phi_dphi("g", alpha_i)
-                if self.curvature_condition(alpha_i):
+                if self.strong_curvature_condition(alpha_i):
                     raise LineSearchConverged(alpha_i)
 
                 if dphi_i >= 0:
-                    self.zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
+                    return self.zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
                 prev_alpha = alpha_i
                 alpha_i = min(self.fac * alpha_i, self.alpha_max)
+            # Premature abort of the loop may happen through LineSearchConverged being raised
             else:
                 raise LineSearchNotConverged
         except LineSearchConverged as lsc:

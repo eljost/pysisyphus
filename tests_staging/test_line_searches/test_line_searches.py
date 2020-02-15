@@ -7,7 +7,7 @@ from pysisyphus.calculators.AnaPotBase import AnaPotBase
 from pysisyphus.optimizers.line_searches import backtracking, wolfe, hager_zhang
 from pysisyphus.optimizers.Optimizer import Optimizer
 
-from pysisyphus.line_searches import Backtracking, HagerZhang, Wolfe
+from pysisyphus.line_searches import Backtracking, HagerZhang, StrongWolfe
 
 
 class SteepestDescent(Optimizer):
@@ -21,11 +21,11 @@ class SteepestDescent(Optimizer):
 
         ls_cls = {
             "armijo": Backtracking,
-            "wolfe": Wolfe,
+            "strong_wolfe": StrongWolfe,
         }
         ls_funcs = {
             "armijo": backtracking,
-            "wolfe": wolfe,
+            "strong_wolfe": wolfe,
         }
         self.line_search_func = ls_funcs[self.line_search]
         self.line_search_cls = ls_cls[self.line_search]
@@ -155,7 +155,7 @@ class CGDescent(Optimizer):
     "line_search, ref_cycle, ref_energy",
     [
         ("armijo", 32, 0.98555442),
-        ("wolfe", 57, 0.98555442),
+        ("strong_wolfe", 57, 0.98555442),
         # ("hz", 32),
     ]
 )
@@ -177,7 +177,7 @@ def test_line_search(line_search, ref_cycle, ref_energy):
     assert geom.energy == pytest.approx(ref_energy)
 
 
-def test_1d_steepest_descent_wolfe():
+def test_1d_steepest_descent():
     V_str = "2*x**4 + 5*x**3 - 2*x**2 + 10*x"
     geom = AnaPotBase.get_geom((-3, 0., 0.), V_str=V_str)
 
