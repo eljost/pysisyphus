@@ -1,7 +1,7 @@
 import numpy as np
 
-from pysisyphus.line_searches.LineSearch import LineSearch
-from pysisyphus.optimizers.line_searches import LineSearchConverged
+from pysisyphus.line_searches.LineSearch import LineSearch, \
+                                                LineSearchNotConverged
 
 
 class HagerZhang(LineSearch):

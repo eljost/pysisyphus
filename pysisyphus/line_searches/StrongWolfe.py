@@ -1,11 +1,11 @@
 # [1] Nocedal, Numerical Optimization
 
-from pysisyphus.line_searches.LineSearch import LineSearch
+from pysisyphus.line_searches.LineSearch import LineSearch, \
+                                                LineSearchNotConverged
+
 
 from pysisyphus.optimizers.line_searches import interpol_alpha_quad, \
                                                 interpol_alpha_cubic, \
-                                                LineSearchConverged, \
-                                                LineSearchNotConverged
 
 
 class StrongWolfe(LineSearch):
@@ -96,7 +96,7 @@ class StrongWolfe(LineSearch):
 
             dphi_i = self.get_phi_dphi("g", alpha_i)
             if self.strong_curvature_condition(alpha_i):
-                raise LineSearchConverged(alpha_i)
+                break
 
             if dphi_i >= 0:
                 return self.zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
@@ -106,4 +106,4 @@ class StrongWolfe(LineSearch):
         else:
             raise LineSearchNotConverged
 
-        return alpha
+        return alpha_i

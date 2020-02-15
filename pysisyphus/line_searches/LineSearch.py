@@ -2,7 +2,15 @@ import abc
 from collections import namedtuple
 import logging
 
-from pysisyphus.optimizers.line_searches import LineSearchConverged
+
+class LineSearchConverged(Exception):
+
+    def __init__(self, alpha):
+        self.alpha = alpha
+
+
+class LineSearchNotConverged(Exception):
+    pass
 
 
 LineSearchResult = namedtuple(
