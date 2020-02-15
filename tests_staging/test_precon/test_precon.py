@@ -27,14 +27,9 @@ def verify_P():
     # bends = int_.bending_indices
     bends = list()
 
-    from pysisyphus.optimizers.precon import get_precon, get_lindh_k, get_precon2, get_precon3
+    from pysisyphus.optimizers.precon import get_lindh_k, get_precon
 
     ks = get_lindh_k(geom.atoms, geom.coords3d, bonds, bends)
-    P = get_precon(geom.atoms, geom.coords, bonds, bends)
-    P_ = P.todense()
-    P2 = get_precon2(geom.atoms, geom.coords, bonds, bends)
-    P2_ = P2.todense()
-    w2, v2 = np.linalg.eigh(P2_)
 
     from ase import Atoms
     from ase.utils import ff 
@@ -69,11 +64,11 @@ def verify_P():
     ase_P_ = ase_P.todense() * 0.0103
     wa, va = np.linalg.eigh(ase_P_)
 
-    P3 = get_precon3(geom.atoms, geom.coords, bonds, bends)
+    P3 = get_precon(geom.atoms, geom.coords, bonds, bends)
     P3_ = P3.todense()
     import pdb; pdb.set_trace()
 
 
 if __name__ == "__main__":
-    run()
-    # verify_P()
+    # run()
+    verify_P()

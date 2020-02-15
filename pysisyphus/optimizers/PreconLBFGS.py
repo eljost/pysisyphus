@@ -8,7 +8,7 @@ from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.line_searches import backtracking
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.precon import get_precon, get_precon2
+from pysisyphus.optimizers.precon import get_precon
 
 
 class PreconLBFGS(Optimizer):
