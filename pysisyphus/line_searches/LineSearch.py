@@ -6,7 +6,7 @@ from pysisyphus.optimizers.line_searches import LineSearchConverged
 
 LineSearchResult = namedtuple(
                     "LineSearchResult",
-                    "alpha f_new g_new f_evals df_evals dphi0"
+                    "alpha f_new g_new f_evals df_evals dphi0 converged"
 )
 
 
@@ -154,6 +154,7 @@ class LineSearch:
 
     def make_result(self, alpha, f_new, g_new=None):
         result = LineSearchResult(
+                    converged=True,
                     alpha=alpha,
                     f_new=f_new,
                     g_new=g_new,
