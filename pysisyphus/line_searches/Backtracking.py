@@ -21,9 +21,7 @@ class Backtracking(LineSearch):
         self.rho_lo = float(rho_lo)
         self.rho_hi = float(rho_hi)
 
-    def run(self):
-        super().run()
-
+    def run_line_search(self):
         self.log("Starting backtracking line search")
         phi0, dphi0 = self.get_phi_dphi("fg", 0)
 
@@ -64,6 +62,4 @@ class Backtracking(LineSearch):
         else:
             raise LineSearchNotConverged
 
-        f_new  = self.get_fg("f", alpha)
-        result = self.make_result(alpha, f_new)
-        return result
+        return alpha

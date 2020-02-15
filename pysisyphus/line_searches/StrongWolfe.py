@@ -74,9 +74,7 @@ class StrongWolfe(LineSearch):
             # Shrink interval to (alpha_j, alpha_hi)
             alpha_lo = alpha_j
 
-    def run(self):
-        super().run()
-
+    def run_line_search(self):
         self.log("Starting Wolfe line search")
         phi0, dphi0 = self.get_phi_dphi("fg", 0)
 
@@ -111,6 +109,4 @@ class StrongWolfe(LineSearch):
         except LineSearchConverged as lsc:
             alpha = lsc.alpha
 
-        f_new, g_new = self.get_fg("fg", alpha)
-        result = self.make_result(alpha, f_new, g_new)
-        return result
+        return alpha

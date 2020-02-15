@@ -151,9 +151,7 @@ class HagerZhang(LineSearch):
             c = alpha
         return c
 
-    def run(self):
-        super().run()
-
+    def run_line_search(self):
         phi0, dphi0 = self.get_phi_dphi("fg", 0.)
         f0, g0 = self.get_fg("fg", 0.)
 
@@ -190,9 +188,9 @@ class HagerZhang(LineSearch):
                     c = (a + b)/2
                     a, b = self.interval_update(a, b, c)
                 ak, bk = a, b
+            else:
+                raise LineSearchNotConverged
         except LineSearchConverged as lsc:
             ak = lsc.alpha
 
-        f_new, g_new = self.get_fg("fg", ak)
-        result = self.make_result(ak, f_new, g_new)
-        return result
+        return ak

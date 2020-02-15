@@ -1,3 +1,4 @@
+import abc
 from collections import namedtuple
 import logging
 
@@ -10,7 +11,7 @@ LineSearchResult = namedtuple(
 )
 
 
-class LineSearch:
+class LineSearch(metaclass=abc.ABCMeta):
 
     def __init__(self, p, cond, x0=None, geometry=None, f=None, df=None, alpha_init=None,
                  f0=None, g0=None, c1=0.1, c2=0.9, max_cycles=10, *args, **kwargs):
@@ -149,12 +150,25 @@ class LineSearch:
         """Strong wolfe condition."""
         return self.sufficiently_decreased(alpha) and self.strong_curvature_condition(alpha)
 
+    @abc.abstractmethod
+    def run_line_search(self):
+        raise NotImplementedError
+
     def run(self):
         self.prepare_line_search()
 
-    def make_result(self, alpha, f_new, g_new=None):
+        f_new = None
+        g_new = None
+        try:
+            alpha = self.run_line_search()
+            converged = True
+            f_new = self.alpha_fs.get(alpha)
+            g_new = self.alpha_dfs.get(alpha, None)
+        except LineSearchNotConverged:
+            converged = False
+
         result = LineSearchResult(
-                    converged=True,
+                    converged=converged,
                     alpha=alpha,
                     f_new=f_new,
                     g_new=g_new,
