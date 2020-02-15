@@ -85,7 +85,7 @@ class StrongWolfe(LineSearch):
         else:
             alpha_i = 1.0
 
-        for i in range(10):
+        for i in range(self.max_cycles):
             phi_i = self.get_phi_dphi("f", alpha_i)
             phi_rose = (phi_i >= phi_prev)
             # In [1] this condition is given with (if not sufficiently_decreased ...)
