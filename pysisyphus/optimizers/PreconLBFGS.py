@@ -28,9 +28,7 @@ class PreconLBFGS(Optimizer):
         self.bends = list()
 
     def get_precon(self):
-        # return get_precon(self.geometry.atoms, self.geometry.coords,
-                          # self.bonds, self.bends)
-        return get_precon2(self.geometry.atoms, self.geometry.coords,
+        return get_precon(self.geometry.atoms, self.geometry.coords,
                           self.bonds, self.bends)
 
     def optimize(self):
