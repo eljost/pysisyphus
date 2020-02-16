@@ -31,7 +31,6 @@ class PreconSteepestDescent(Optimizer):
 
         step_dir = forces / np.linalg.norm(forces)
 
-        # OO Interface
         kwargs = {
             "geometry": self.geometry,
             "p": step_dir,
