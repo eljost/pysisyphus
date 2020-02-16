@@ -4,73 +4,9 @@ import pytest
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
 from pysisyphus.calculators.AnaPotBase import AnaPotBase
-from pysisyphus.optimizers.line_searches import backtracking, wolfe, hager_zhang
-from pysisyphus.optimizers.Optimizer import Optimizer
-
 from pysisyphus.line_searches import Backtracking, HagerZhang, StrongWolfe
-
-
-class SteepestDescent(Optimizer):
-
-    def __init__(self, geometry, alpha_init=0.5, line_search="armijo",
-                 **kwargs):
-        super().__init__(geometry, **kwargs)
-
-        self.alpha_init = alpha_init
-        self.line_search = line_search
-
-        ls_cls = {
-            "armijo": Backtracking,
-            "strong_wolfe": StrongWolfe,
-            "hz": HagerZhang,
-        }
-        # ls_funcs = {
-            # "armijo": backtracking,
-            # "strong_wolfe": wolfe,
-        # }
-        # self.line_search_func = ls_funcs[self.line_search]
-        self.line_search_cls = ls_cls[self.line_search]
-
-        self.alpha_prev = None
-
-    def optimize(self):
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-
-        self.forces.append(forces)
-        self.energies.append(self.geometry.energy)
-
-        step_dir = forces / np.linalg.norm(forces)
-
-        # f = lambda coords: self.geometry.get_energy_at(coords)
-        # df = lambda coords: self.geometry.get_energy_and_forces_at(coords)["forces"]
-        # kwargs = {
-            # "f": f,
-            # "df": df,
-            # "x0": self.geometry.coords,
-            # "p": step_dir,
-            # "f0": energy,
-            # "g0": -forces,
-            # # "alpha_init": self.alpha_prev if self.alpha_prev else self.alpha_init,
-            # "alpha_init": self.alpha_init,
-        # }
-        # alpha = self.line_search_func(**kwargs)
-
-        # OO Interface
-        kwargs = {
-            "geometry": self.geometry,
-            "p": step_dir,
-            "f0": energy,
-            "g0": -forces,
-            "alpha_init": self.alpha_init,
-        }
-        line_search = self.line_search_cls(**kwargs)
-        line_search_result = line_search.run()
-        alpha = line_search_result.alpha
-
-        step = alpha * step_dir
-        self.alpha_prev = alpha
-        return step
+from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.PreconSteepestDescent import PreconSteepestDescent
 
 
 class CGDescent(Optimizer):
@@ -173,7 +109,7 @@ def test_line_search(line_search, ref_cycle, ref_energy):
         "line_search": line_search,
         "max_cycles": 75,
     }
-    opt = SteepestDescent(geom, **opt_kwargs)
+    opt = PreconSteepestDescent(geom, **opt_kwargs)
     opt.run()
 
     # geom.calculator.plot_opt(opt)
@@ -187,7 +123,7 @@ def test_1d_steepest_descent():
     V_str = "2*x**4 + 5*x**3 - 2*x**2 + 10*x"
     geom = AnaPotBase.get_geom((-3, 0., 0.), V_str=V_str)
 
-    opt = SteepestDescent(geom, thresh="gau_tight")
+    opt = PreconSteepestDescent(geom, thresh="gau_tight")
     opt.run()
 
     assert opt.is_converged

@@ -1,8 +1,7 @@
 from pysisyphus.line_searches.LineSearch import LineSearch, \
                                                 LineSearchNotConverged
 
-from pysisyphus.optimizers.line_searches import interpol_alpha_quad, \
-                                                interpol_alpha_cubic
+from pysisyphus.line_searches.interpol import interpol_alpha_quad, interpol_alpha_cubic
 
 
 class Backtracking(LineSearch):

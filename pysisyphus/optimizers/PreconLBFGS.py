@@ -5,8 +5,8 @@ from collections import deque
 import numpy as np
 
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.line_searches.Backtracking import Backtracking
 from pysisyphus.optimizers.closures import bfgs_multiply
-from pysisyphus.optimizers.line_searches import backtracking
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.precon import get_precon
 
@@ -51,18 +51,16 @@ class PreconLBFGS(Optimizer):
 
         step_dir = step / np.linalg.norm(step)
 
-        f = lambda coords: self.geometry.get_energy_at(coords)
-        df = lambda coords: self.geometry.get_energy_and_forces_at(coords)["forces"]
-
         kwargs = {
-            "f": f,
-            "df": df,
-            "x0": self.geometry.coords,
+            "geometry": self.geometry,
             "p": step_dir,
             "f0": energy,
             "g0": -forces,
-            "alpha_init": 1.,
+            "alpha_init": 1,
         }
-        alpha, f_new, g_new = backtracking(**kwargs)
+        backtracking = Backtracking(**kwargs)
+        line_search_result = backtracking.run()
+        alpha = line_search_result.alpha
+
         step = alpha * step_dir
         return step
