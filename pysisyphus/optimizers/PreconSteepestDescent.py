@@ -10,6 +10,7 @@ class PreconSteepestDescent(Optimizer):
 
     def __init__(self, geometry, alpha_init=0.5, line_search="armijo",
                  precon=True, **kwargs):
+        assert geometry.coord_type == "cart"
         super().__init__(geometry, **kwargs)
 
         self.alpha_init = alpha_init
@@ -26,8 +27,6 @@ class PreconSteepestDescent(Optimizer):
         self.alpha_prev = None
 
     def prepare_opt(self):
-        super().prepare_opt()
-
         if self.precon:
             self.precon_getter = precon_getter(self.geometry)
 
@@ -38,16 +37,16 @@ class PreconSteepestDescent(Optimizer):
         self.forces.append(forces)
         self.energies.append(self.geometry.energy)
 
-        # Preconditoned steepest descent
+        # Plain steepst descent (fallback)
+        step = forces
+
+        # Preconditoned steepest descent if requested
         if self.precon:
             P = self.precon_getter(self.geometry.coords)
             # Solve:
             #   step = -P^-1 * grad
             #   P step = -grad
             step = spsolve(P, forces)
-        # Plain steepst descent
-        else:
-            step = forces
 
         step_dir = step / np.linalg.norm(step)
 
