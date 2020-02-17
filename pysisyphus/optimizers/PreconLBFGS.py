@@ -14,7 +14,8 @@ from pysisyphus.optimizers.precon import precon_getter
 class PreconLBFGS(Optimizer):
 
     def __init__(self, geometry, history=7, precon=True, **kwargs):
-        assert geometry.coord_type == "cart"
+        assert geometry.coord_type == "cart", \
+            "Preconditioning makes only sense with 'coord_type: cart'"
         super().__init__(geometry, **kwargs)
 
         self.history = history

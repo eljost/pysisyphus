@@ -10,7 +10,8 @@ class PreconSteepestDescent(Optimizer):
 
     def __init__(self, geometry, alpha_init=0.5, line_search="armijo",
                  precon=True, **kwargs):
-        assert geometry.coord_type == "cart"
+        assert geometry.coord_type == "cart", \
+            "Preconditioning makes only sense with 'coord_type: cart'"
         super().__init__(geometry, **kwargs)
 
         self.alpha_init = alpha_init
