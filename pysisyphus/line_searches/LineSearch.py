@@ -36,7 +36,7 @@ class LineSearch(metaclass=abc.ABCMeta):
             "Supply either 'geometry' with a calculator or the two functions " \
             "'f' and 'df' to calculate the energy and its gradient!"
 
-        x0 = x0
+        self.x0 = x0
         if self.geometry:
             self.f = lambda coords: self.geometry.get_energy_at(coords)
             self.df = lambda coords: -self.geometry.get_energy_and_forces_at(coords)["forces"]

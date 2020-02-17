@@ -152,9 +152,6 @@ class HagerZhang(LineSearch):
         return c
 
     def run_line_search(self):
-        phi0, dphi0 = self.get_phi_dphi("fg", 0.)
-        f0, g0 = self.get_fg("fg", 0.)
-
         if self.alpha_init is None and self.alpha_prev:
             alpha_init = self.alpha_prev
         elif self.alpha_init is None and self.alpha_prev is None:

@@ -4,7 +4,6 @@ from collections import deque
 
 import numpy as np
 
-from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.line_searches.Backtracking import Backtracking
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
