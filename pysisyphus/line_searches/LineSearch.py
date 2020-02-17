@@ -16,7 +16,7 @@ class LineSearchNotConverged(Exception):
 LineSearchResult = namedtuple(
                     "LineSearchResult",
                     "converged alpha f_new g_new f_evals df_evals dphi0",
-                    defaults=( None, None, None, None,   None,    None),
+                    # defaults=( None, None, None, None,   None,    None),
 )
 
 
@@ -176,18 +176,14 @@ class LineSearch(metaclass=abc.ABCMeta):
         except LineSearchNotConverged:
             return LineSearchResult(converged=False)
 
-        # Code below is only executed when line_search was successful
-
-        converged = True
-        # The gradient at the endpoint of the line search may not have been evaluted,
-        # but the function value was always evaluated.
-        f_new = self.alpha_fs.get(alpha)
-        g_new = self.alpha_dfs.get(alpha, None)
         result = LineSearchResult(
-                    converged=True,
+                    converged=bool(alpha),
                     alpha=alpha,
-                    f_new=f_new,
-                    g_new=g_new,
+                    # The gradient at the endpoint of the line search may not
+                    # have been evaluted, but the function value was always
+                    # evaluated, except when the line search did not converge.
+                    f_new=self.alpha_fs.get(alpha, None),
+                    g_new=self.alpha_dfs.get(alpha, None),
                     f_evals=self.f_evals,
                     df_evals=self.df_evals,
                     dphi0=self.dphi0,
