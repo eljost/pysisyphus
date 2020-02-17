@@ -1,17 +1,20 @@
 import numpy as np
+from scipy.sparse.linalg import spsolve
 
 from pysisyphus.line_searches import Backtracking, HagerZhang, StrongWolfe
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.precon import precon_getter
 
 
 class PreconSteepestDescent(Optimizer):
 
     def __init__(self, geometry, alpha_init=0.5, line_search="armijo",
-                 **kwargs):
+                 precon=True, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.alpha_init = alpha_init
         self.line_search = line_search
+        self.precon = precon
 
         ls_cls = {
             "armijo": Backtracking,
@@ -22,6 +25,12 @@ class PreconSteepestDescent(Optimizer):
 
         self.alpha_prev = None
 
+    def prepare_opt(self):
+        super().prepare_opt()
+
+        if self.precon:
+            self.precon_getter = precon_getter(self.geometry)
+
     def optimize(self):
         forces = self.geometry.forces
         energy = self.geometry.energy
@@ -29,7 +38,18 @@ class PreconSteepestDescent(Optimizer):
         self.forces.append(forces)
         self.energies.append(self.geometry.energy)
 
-        step_dir = forces / np.linalg.norm(forces)
+        # Preconditoned steepest descent
+        if self.precon:
+            P = self.precon_getter(self.geometry.coords)
+            # Solve:
+            #   step = -P^-1 * grad
+            #   P step = -grad
+            step = spsolve(P, forces)
+        # Plain steepst descent
+        else:
+            step = forces
+
+        step_dir = step / np.linalg.norm(step)
 
         # OO Interface
         kwargs = {

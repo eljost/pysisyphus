@@ -108,6 +108,7 @@ def test_line_search(line_search, ref_cycle, ref_energy):
         "thresh": "gau_tight",
         "line_search": line_search,
         "max_cycles": 75,
+        "precon": False,
     }
     opt = PreconSteepestDescent(geom, **opt_kwargs)
     opt.run()
@@ -123,7 +124,7 @@ def test_1d_steepest_descent():
     V_str = "2*x**4 + 5*x**3 - 2*x**2 + 10*x"
     geom = AnaPotBase.get_geom((-3, 0., 0.), V_str=V_str)
 
-    opt = PreconSteepestDescent(geom, thresh="gau_tight")
+    opt = PreconSteepestDescent(geom, thresh="gau_tight", precon=False)
     opt.run()
 
     assert opt.is_converged
