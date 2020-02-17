@@ -250,7 +250,6 @@ class Turbomole(OverlapCalculator):
             # )
         if self.root and self.ricc2:
             repl = f"state=(a {self.root})"
-            log_msg = " with current root."
             self.sub_control("state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})",
                              root_log_msg)
             self.log(f"Using '{repl}' for geoopt.")
