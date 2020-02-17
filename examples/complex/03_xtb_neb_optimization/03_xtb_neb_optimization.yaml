@@ -1,0 +1,19 @@
+preopt:
+ max_cycles: 5
+interpol:
+ type: idpp
+ between: 18
+cos:
+ type: neb
+ fix_ends: True
+opt:
+ type: qm
+ align: True
+ max_cycles: 25
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+ pal: 4
+preopt_ends: True
+xyz: [09_htransfer_product.xyz, 10_po_diss_product_xtbopt.xyz]

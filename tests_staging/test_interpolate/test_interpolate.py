@@ -18,7 +18,7 @@ def test_lst():
     final = geom_from_library("dipeptide_fin.xyz")
 
     geoms = (initial, final)
-    lst = LST(geoms, 50, align=True)
+    lst = LST(geoms, 28, align=True)
     geoms = lst.interpolate_all()
     lst.all_geoms_to_trj("lst_opt.trj")
 

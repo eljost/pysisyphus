@@ -104,9 +104,17 @@ class AnaPotBase(Calculator):
         Z = np.array(z).reshape(X.shape)
         self.ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
 
+    def plot_opt(self, opt):
+        coords = np.array(opt.coords)
+        self.plot()
+        self.ax.plot(*coords.T[:2])
+        plt.show()
 
     @classmethod
-    def get_geom(cls, coords, atoms=("X", )):
+    def get_geom(cls, coords, atoms=("X", ), V_str=None):
         geom = Geometry(atoms, coords)
-        geom.set_calculator(cls())
+        if V_str:
+            geom.set_calculator(cls(V_str=V_str))
+        else:
+            geom.set_calculator(cls())
         return geom

@@ -268,7 +268,6 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         })
         dimer_result = ts_optimizer(geoms, **tsopt_kwargs)
         dimer_cycles = dimer_result.dimer_cycles
-        last_cycle = dimer_cycles[-1]
     else:
         # Determine which imaginary mode has the highest overlap
         # with the splined HEI tangent.
@@ -915,8 +914,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         geom.set_calculator(calc_getter(0))
         run_tsopt(geom, tsopt_key, tsopt_kwargs)
     else:
-        geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
-                                 calc_kwargs, scheduler)
+        run_calculations(geoms, calc_getter, yaml_dir,
+                         calc_key, calc_kwargs, scheduler)
 
 
 def clean(force=False):
