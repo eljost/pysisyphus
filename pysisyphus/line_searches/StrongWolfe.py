@@ -99,7 +99,7 @@ class StrongWolfe(LineSearch):
 
             if dphi_i >= 0:
                 return self.zoom(alpha_i, alpha_prev, phi_i, phi_alpha_=phi_i, alpha_0_=alpha_i)
-            prev_alpha = alpha_i
+            alpha_prev = alpha_i
             alpha_i = min(self.fac * alpha_i, self.alpha_max)
         # Premature abort of the loop may happen through LineSearchConverged being raised
         else:

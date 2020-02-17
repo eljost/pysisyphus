@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from abc import abstractmethod
+import abc
 import logging
 import os
 from pathlib import Path
@@ -15,7 +15,7 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign, highlight_text
 
 
-class Optimizer:
+class Optimizer(metaclass=abc.ABCMeta):
     CONV_THRESHS = {
         #              max_force, rms_force, max_step, rms_step
         "gau_loose":  (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
@@ -249,7 +249,7 @@ class Optimizer:
     def prepare_opt(self):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def optimize(self):
         raise Exception("Not implemented!")
 
@@ -332,12 +332,9 @@ class Optimizer:
 
         self.print_header()
         self.stopped = False
-        while True:
+        for self.cur_cycle in range(self.max_cycles):
             start_time = time.time()
             self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
-            if self.cur_cycle == self.max_cycles:
-                print("Number of cycles exceeded!")
-                break
 
             # Check if something considerably changed in the optimization,
             # e.g. new images were added/interpolated. Then the optimizer
@@ -399,7 +396,7 @@ class Optimizer:
                     self.log(f"rms of coordinates after reparametrization={rms:.6f}")
                     self.is_converged = rms < self.reparam_thresh
                     if self.is_converged:
-                        print("Insignificant change in coordinates after "
+                        print("Insignificant coordinate change after "
                               "reparametrization. Signalling convergence!"
                         )
                         print()
@@ -410,8 +407,9 @@ class Optimizer:
                 self.stopped = True
                 break
 
-            self.cur_cycle += 1
             self.log("")
+        else:
+            print("Number of cycles exceeded!")
 
         # Outside loop
         if self.dump:

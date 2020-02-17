@@ -1,13 +1,12 @@
 import itertools as it
 
-import jax
-import jax.numpy as jnp
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from scipy.sparse import csc_matrix
 
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
-from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d, d2q_b, d2q_a
+from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
+from pysisyphus.InternalCoordinates import RedundantCoords
 
 
 def get_lindh_alpha(atom1, atom2):
@@ -51,70 +50,66 @@ def get_lindh_k(atoms, coords3d, bonds=None, angles=None, torsions=None):
     return ks
 
 
-class Bond:
-
-    def __init__(self, i, j, k, r_eq):
-        self.i = i
-        self.j = j
-        self.k = k
-        self.r_eq = r_eq
-
-
-def bond_energy(coords3d, bond):
-    r = jnp.linalg.norm(coords3d[bond.i] - coords3d[bond.j])
-
-    energy = 0.5 * bond.k * (r - bond.r_eq)**2
-
-    return energy
-
-
-_bond_gradient = jax.grad(bond_energy)
-def bond_gradient(coords3d, bond):
-    return _bond_gradient(coords3d, bond).flatten()
-
-
-_bond_hessian = jax.hessian(bond_energy)
-def bond_hessian(coords3d, bond):
-    return _bond_hessian(coords3d, bond).reshape(-1, coords3d.size)
-
-
-def get_precon(atoms, coords, bonds=None, angles=None, torsions=None, c_stab=0.00103):
-    """c_stab = 0.00103 hartree/bohr² corresponds to 0.1 eV/Å²"""
+def get_lindh_precon(atoms, coords, bonds=None, bends=None, dihedrals=None,
+                     c_stab=0.0103):
+    """c_stab = 0.00103 hartree/bohr² corresponds to 0.1 eV/Å² as
+    given in the paper."""
 
     if bonds is None:
         bonds = list()
-    if angles is None:
-        angles = list()
-    if torsions is None:
-        torsions = list()
+    if bends is None:
+        bends = list()
+    if dihedrals is None:
+        dihedrals = list()
 
     dim = coords.size
     c3d = coords.reshape(-1, 3)
 
-    ks = get_lindh_k(atoms, c3d, bonds, angles)
+    # Calculate Lindh force constants
+    ks = get_lindh_k(atoms, c3d, bonds, bends)
 
-    hess_funcs = {
-        2: lambda i, j: d2q_b(*c3d[i], *c3d[j]),
-        3: lambda i, j, k: d2q_a(*c3d[i], *c3d[j], *c3d[k]),
+    grad_funcs = {
+        # Bond
+        2: lambda i, j: dq_b(*c3d[i], *c3d[j]),
+        # Bend
+        3: lambda i, j, k: dq_a(*c3d[i], *c3d[j], *c3d[k]),
+        # Dihedral
+        4: lambda i, j, k, l: dq_d(*c3d[i], *c3d[j], *c3d[k]),
     }
 
-    H_flat = np.zeros(dim*dim)
+    row = np.zeros(dim)
     P = np.zeros((dim, dim))
-    for inds, k in zip(it.chain(bonds, angles), ks):
-        int_hess = hess_funcs[len(inds)](*inds)
+    for inds, k in zip(it.chain(bonds, bends, dihedrals), ks):
         # Construct full row
-        H = H_flat.copy()
         cart_inds = list(it.chain(*[range(3*i,3*i+3) for i in inds]))
-        flat_inds = [row*dim + col for row, col in it.product(cart_inds, cart_inds)]
-        H[flat_inds] = int_hess
-        # P += np.outer(full_row, full_row*abs(k))
-        # P += H.reshape(dim, dim) * abs(k)
-        i, j = inds
-        req = np.linalg.norm(c3d[i]-c3d[j])
-        b = Bond(i, j, abs(k), req)
-        bh = bond_hessian(c3d, b)
-        P += bh
 
+        # First derivatives of internal coordinates w.r.t cartesian coordinates
+        int_grad = grad_funcs[len(inds)](*inds)
+        # Assign to the correct cartesian indices
+        full_row = row.copy()
+        full_row[cart_inds] = int_grad
+        P += np.outer(full_row, full_row*abs(k))
+
+    # Add stabilization to diagonal
     P += c_stab*np.eye(dim)
+    # Convert to sparse matrix
     P = csc_matrix(P)
+
     return P
+
+
+def precon_getter(geometry, c_stab=0.0103):
+    atoms = geometry.atoms
+    internal = RedundantCoords(atoms, geometry.cart_coords)
+    bonds  = internal.bond_indices
+    bends = internal.bending_indices
+    dihedrals = internal.dihedrals
+
+    def wrapper(coords):
+        P = get_lindh_precon(
+                atoms, coords,
+                bonds, bends, dihedrals,
+                c_stab=c_stab,
+        )
+        return P
+    return wrapper
