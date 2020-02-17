@@ -345,8 +345,13 @@ class Calculator:
                     os.remove(sym_fn)
                 except FileNotFoundError:
                     pass
-                os.symlink(path / self.out_fn, sym_fn)
-                self.log(f"Created symlink in '{sym_fn}'")
+
+                try:
+                    os.symlink(path / self.out_fn, sym_fn)
+                    self.log(f"Created symlink in '{sym_fn}'")
+                # This may happen if we use a dask scheduler
+                except FileExistsError:
+                    self.log("Symlink already exists. Skipping generation.")
             result = subprocess.Popen(args, cwd=path,
                                       stdout=handle, stderr=subprocess.PIPE,
                                       env=env, shell=shell)
