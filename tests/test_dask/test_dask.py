@@ -21,9 +21,7 @@ def test_dask():
 
         neb = NEB(geoms, scheduler=address)
 
-        # from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
-        # opt = ConjugateGradient(neb, align=True, max_cycles=5)
-        max_cycles = 5
+        max_cycles = 1
         opt = SteepestDescent(neb, align=True, max_cycles=max_cycles)
         opt.run()
 
