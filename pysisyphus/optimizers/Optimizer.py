@@ -332,12 +332,9 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         self.print_header()
         self.stopped = False
-        while True:
+        for self.cur_cycle in range(self.max_cycles):
             start_time = time.time()
             self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
-            if self.cur_cycle == self.max_cycles:
-                print("Number of cycles exceeded!")
-                break
 
             # Check if something considerably changed in the optimization,
             # e.g. new images were added/interpolated. Then the optimizer
@@ -410,8 +407,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.stopped = True
                 break
 
-            self.cur_cycle += 1
             self.log("")
+        else:
+            print("Number of cycles exceeded!")
 
         # Outside loop
         if self.dump:
