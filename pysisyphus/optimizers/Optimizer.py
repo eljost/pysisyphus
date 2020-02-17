@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from abc import abstractmethod
+import abc
 import logging
 import os
 from pathlib import Path
@@ -15,7 +15,7 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign, highlight_text
 
 
-class Optimizer:
+class Optimizer(metaclass=abc.ABCMeta):
     CONV_THRESHS = {
         #              max_force, rms_force, max_step, rms_step
         "gau_loose":  (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
@@ -249,7 +249,7 @@ class Optimizer:
     def prepare_opt(self):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def optimize(self):
         raise Exception("Not implemented!")
 
