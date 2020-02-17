@@ -396,7 +396,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                     self.log(f"rms of coordinates after reparametrization={rms:.6f}")
                     self.is_converged = rms < self.reparam_thresh
                     if self.is_converged:
-                        print("Insignificant change in coordinates after "
+                        print("Insignificant coordinate change after "
                               "reparametrization. Signalling convergence!"
                         )
                         print()
