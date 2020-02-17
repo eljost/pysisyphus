@@ -11,8 +11,8 @@ from pysisyphus.calculators.PySCF import PySCF
     [
         (PreconSteepestDescent, True, 7),
         (PreconSteepestDescent, False, 15),
-        # (PreconLBFGS, True, 7),
-        # (PreconLBFGS, False, 15),
+        (PreconLBFGS, True, 7),
+        (PreconLBFGS, False, 7),
     ]
 )
 def test_water_hf_precon_opt(opt_cls, precon, ref_cycles):
