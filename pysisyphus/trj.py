@@ -131,7 +131,12 @@ def parse_args(args):
         help="Disable dumping of single .xyz files."
     )
     parser.add_argument("--atoms", nargs="+", type=int, default=list(),
-        help="Only print primitive internals including the given atoms."
+        help="Used with --internals. Only print primitives including the given atoms."
+    )
+    parser.add_argument("--add_prims", type=str, default="",
+        help="Used with --internals. Define additional primitives. Expects a "
+             "string representation of a nested list that can be parsed as YAML "
+             "e.g. [[10,30],[1,2,3],[4,5,6,7]]."
     )
 
     return parser.parse_args()
@@ -353,12 +358,13 @@ def shake(geoms, scale=0.1, seed=None):
     return geoms
 
 
-def print_internals(geoms, filter_atoms=None):
+def print_internals(geoms, filter_atoms=None, add_prims=""):
     if filter_atoms is None:
         filter_atoms = set()
-    filter_set = set(filter_atoms)
 
+    filter_set = set(filter_atoms)
     pi_types = {2: "B", 3: "A", 4: "D"}
+    add_prims = yaml.safe_load(add_prims)
 
     for i, geom in enumerate(geoms):
         atom_num = len(geom.atoms)
@@ -370,7 +376,9 @@ def print_internals(geoms, filter_atoms=None):
             f"valid range for the {i}-th geometry '{geom}' with {atom_num} " \
             f"atoms (valid indices: range(0,{atom_num}))."
 
-        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund")
+        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
+                            define_prims=add_prims)
+        prim_counter = 0
         for j, pi in enumerate(int_geom.internal._prim_internals):
             pi_type = pi_types[len(pi.inds)]
             val = pi.val
@@ -383,6 +391,8 @@ def print_internals(geoms, filter_atoms=None):
             if filter_set and not (set(pi.inds) & filter_set):
                 continue
             print(f"{j:04d}: {pi_type}{str(pi.inds): >20} {val: >10.4f}")
+            prim_counter += 1
+        print(f"Printed {prim_counter} primitive internals.")
 
 
 def get(geoms, index):
@@ -472,7 +482,7 @@ def run():
         to_dump = get(geoms, args.get)
         fn_base = "got"
     elif args.internals:
-        print_internals(geoms, args.atoms)
+        print_internals(geoms, args.atoms, args.add_prims)
         return
     elif args.origin:
         origin(geoms)
