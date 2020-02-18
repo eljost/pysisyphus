@@ -174,7 +174,7 @@ class LineSearch(metaclass=abc.ABCMeta):
             alpha = lsc.alpha
         # Failed LineSearch
         except LineSearchNotConverged:
-            return LineSearchResult(converged=False)
+            converged = False
 
         result = LineSearchResult(
                     converged=bool(alpha),
