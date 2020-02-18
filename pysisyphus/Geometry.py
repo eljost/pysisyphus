@@ -24,7 +24,8 @@ class Geometry:
     }
 
     def __init__(self, atoms, coords, coord_type="cart", comment="",
-                 prim_indices=None, define_prims=None, bond_factor=1.3):
+                 prim_indices=None, define_prims=None, bond_factor=1.3,
+                 check_bends=True):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -49,6 +50,13 @@ class Geometry:
             contain integer pairs, defining bonds between atoms, the next one
             should contain integer triples containing bends, and finally
             integer quadrupel for dihedrals.
+        define_prims : list of lists, optional
+            Define additional primitives.
+        bond_factor : float, default=1.3
+            Scaling factor of the the pair covalent radii used for bond detection.
+        check_bends : bool, default=True
+            Whether to check for invalid bends. If disabled these bends will
+            be defined nonetheless.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
@@ -69,6 +77,7 @@ class Geometry:
                                         prim_indices=prim_indices,
                                         define_prims=define_prims,
                                         bond_factor=bond_factor,
+                                        check_bends=check_bends,
             )
         else:
             self.internal = None
@@ -133,7 +142,7 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
-    def copy(self, coord_type=None):
+    def copy(self, coord_type=None, check_bends=True):
         """Returns a new Geometry object with same atoms and coordinates.
 
         Parameters
@@ -152,7 +161,7 @@ class Geometry:
         if coord_type != "cart":
             prim_indices = self.internal.prim_indices
         return Geometry(self.atoms, self._coords, coord_type=coord_type,
-                        prim_indices=prim_indices)
+                        prim_indices=prim_indices, check_bends=check_bends)
 
     def atom_indices(self):
         """Dict with atom types as key and corresponding indices as values.
