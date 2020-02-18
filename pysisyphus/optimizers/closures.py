@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+from collections import deque
 
 import numpy as np
 from scipy.sparse.linalg import spsolve
@@ -170,3 +170,25 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
 
         return dx, -F
     return modified_broyden
+
+def small_lbfgs_closure(history=5):
+    prev_forces = None
+    grad_diffs = deque(maxlen=history)
+    steps = deque(maxlen=history)
+    cur_cycle = 0
+
+    def lbfgs(forces):
+        nonlocal cur_cycle
+        nonlocal prev_forces
+
+        # Steepest descent in the first cycle
+        step = forces
+        # LBFGS in the following cycles
+        if cur_cycle > 0:
+            grad_diffs.append(-forces - -prev_forces)
+            step = -bfgs_multiply(steps, grad_diffs, forces)
+
+        prev_forces = forces
+        cur_cycle += 1
+        return step
+    return lbfgs
