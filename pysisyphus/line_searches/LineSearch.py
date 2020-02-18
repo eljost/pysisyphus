@@ -78,7 +78,7 @@ class LineSearch(metaclass=abc.ABCMeta):
         if self.g0 is None:
             self.dphi0 = self.get_phi_dphi("g", 0)
         else:
-            self.dphi0 = self.g0 @ self.p
+            self.dphi0 = self.g0.dot(self.p)
             self.alpha_dfs[0.] = self.g0
 
     def _phi(self, alpha):
@@ -96,13 +96,13 @@ class LineSearch(metaclass=abc.ABCMeta):
         alpha = float(alpha)
         try:
             df_alpha = self.alpha_dfs[alpha]
-            dphi_ = df_alpha @ self.p
+            dphi_ = df_alpha.dot(self.p)
         except KeyError:
             self.log(f"\tEvaluating gradient for alpha={alpha:.6f}")
             df_alpha = self.df(self.x0 + alpha*self.p)
             self.df_evals += 1
             self.alpha_dfs[alpha] = df_alpha
-            dphi_ = df_alpha @ self.p
+            dphi_ = df_alpha.dot(self.p)
             self.dphis[alpha] = dphi_
         return dphi_
 
