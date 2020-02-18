@@ -222,9 +222,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
         coords0 = geom0.coords
         # Assign random unit vector and use dR_base to for dR
         coord_size = geom0.coords.size
+        if N_init is None:
+            N_init  = np.random.rand(coord_size)
         N = np.array(N_init)
-        if N is None:
-            N = np.random.rand(coord_size)
         if ana_2dpot:
             N[2] = 0
         N /= np.linalg.norm(N)
