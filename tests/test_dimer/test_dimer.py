@@ -44,7 +44,8 @@ def test_dimer():
     np.testing.assert_allclose(dim_forces, f_tran)
 
     from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
-    opt = PreconLBFGS(geom, precon=False, line_search=None)
+    opt = PreconLBFGS(geom, precon=False, line_search=None, max_step_element=0.25,
+                      thresh="gau_tight")
     opt.run()
 
     AnaPot().plot_opt(opt)
