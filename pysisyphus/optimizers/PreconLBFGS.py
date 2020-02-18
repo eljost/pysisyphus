@@ -29,7 +29,6 @@ class PreconLBFGS(Optimizer):
             "strong_wolfe": StrongWolfe,
             "hz": HagerZhang,
             "dummy": Dummy,
-            "scale": Scale,
         }
         self.line_search_cls = ls_cls[self.line_search]
 
