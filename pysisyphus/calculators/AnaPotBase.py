@@ -107,7 +107,7 @@ class AnaPotBase(Calculator):
     def plot_opt(self, opt):
         coords = np.array(opt.coords)
         self.plot()
-        self.ax.plot(*coords.T[:2])
+        self.ax.plot(*coords.T[:2], "o-")
         plt.show()
 
     @classmethod
