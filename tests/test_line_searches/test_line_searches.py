@@ -99,7 +99,7 @@ class CGDescent(Optimizer):
         ("armijo", 32, 0.98555442),
         ("strong_wolfe", 57, 0.98555442),
         ("hz", 63, 0.98555442),
-        pytest.param("dummy", 1, 1, marks=pytest.mark.xfail)
+        pytest.param(None, 1, 1, marks=pytest.mark.xfail),
     ]
 )
 def test_line_search(line_search, ref_cycle, ref_energy):

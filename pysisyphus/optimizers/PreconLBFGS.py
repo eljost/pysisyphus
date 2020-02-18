@@ -14,7 +14,7 @@ from pysisyphus.optimizers.precon import precon_getter
 class PreconLBFGS(Optimizer):
 
     def __init__(self, geometry, alpha_init=1., history=7, precon=True,
-                 line_search="armijo", **kwargs):
+                 line_search="armijo", max_step_element=0.05, **kwargs):
         assert geometry.coord_type == "cart", \
             "Preconditioning makes only sense with 'coord_type: cart'"
         super().__init__(geometry, **kwargs)
@@ -28,9 +28,10 @@ class PreconLBFGS(Optimizer):
             "armijo": Backtracking,
             "strong_wolfe": StrongWolfe,
             "hz": HagerZhang,
-            "dummy": Dummy,
+            None: None
         }
         self.line_search_cls = ls_cls[self.line_search]
+        self.max_step_element = max_step_element
 
         self.grad_diffs = deque(maxlen=self.history)
         self.steps_ = deque(maxlen=self.history)
@@ -62,16 +63,20 @@ class PreconLBFGS(Optimizer):
 
         step_dir = step / np.linalg.norm(step)
 
-        kwargs = {
-            "geometry": self.geometry,
-            "p": step_dir,
-            "f0": energy,
-            "g0": -forces,
-            "alpha_init": self.alpha_init,
-        }
-        line_search = self.line_search_cls(**kwargs)
-        line_search_result = line_search.run()
-        alpha = line_search_result.alpha
-
-        step = alpha * step_dir
+        if self.line_search_cls is not None:
+            kwargs = {
+                "geometry": self.geometry,
+                "p": step_dir,
+                "f0": energy,
+                "g0": -forces,
+                "alpha_init": self.alpha_init,
+            }
+            line_search = self.line_search_cls(**kwargs)
+            line_search_result = line_search.run()
+            alpha = line_search_result.alpha
+            step = alpha * step_dir
+        else:
+            max_element = np.abs(step).max()
+            if max_element > self.max_step_element:
+                step *= self.max_step_element / max_element
         return step
