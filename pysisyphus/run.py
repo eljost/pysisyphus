@@ -778,23 +778,24 @@ def get_last_calc_cycle():
     return last_calc_cycle
 
 
-def handle_yaml(yaml_str):
-    yaml_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
+def setup_run_dict(run_dict):
+    org_dict = run_dict.copy()
+
     # Load defaults to have a sane baseline
-    run_dict = get_defaults(yaml_dict)
+    run_dict = get_defaults(run_dict)
     # Update nested entries that are dicts by themselves
-    key_set = set(yaml_dict.keys())
+    key_set = set(org_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
                               "stocastic", "tsopt", "shake", "irc",
                               "preopt", )):
         try:
-            run_dict[key].update(yaml_dict[key])
+            run_dict[key].update(org_dict[key])
         except TypeError:
             print(f"Using default values for '{key}' section.")
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type",
                               "add_prims")):
-        run_dict[key] = yaml_dict[key]
+        run_dict[key] = org_dict[key]
     return run_dict
 
 
@@ -918,7 +919,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
                          calc_key, calc_kwargs, scheduler)
 
 
-def clean(force=False):
+def do_clean(force=False):
     """Deletes files from previous runs in the cwd.
     A similar function could be used to store everything ..."""
     cwd = Path(".").resolve()
@@ -1046,31 +1047,30 @@ def print_header():
     print(f"{logo}\n\n{version}\n")
 
 
-def run():
-    start_time = time.time()
-    args = parse_args(sys.argv[1:])
+def run_from_dict(run_dict, cwd=None, yaml_fn=None, cp=None, scheduler=None,
+                  clean=False, fclean=False, version=False, restart=False,
+                  dryrun=False):
+    if cwd is None:
+        cwd = Path(".")
 
+    start_time = time.time()
     print_header()
 
-    if args.yaml:
-        yaml_dir = Path(os.path.abspath(args.yaml)).parent
-        init_logging(yaml_dir, args.scheduler)
-        with open(args.yaml) as handle:
-            yaml_str = handle.read()
-        run_dict = handle_yaml(yaml_str)
-        sys.stdout.flush()
+    init_logging(cwd, scheduler)
+    # Load defaults etc.
+    run_dict = setup_run_dict(run_dict)
+    sys.stdout.flush()
 
-    if args.cp:
-        copy_yaml_and_geometries(run_dict, args.yaml, args.cp)
+    if cp:
+        copy_yaml_and_geometries(run_dict, yaml_fn, cp)
         return
-    elif args.clean:
-        clean()
+    elif clean:
+        do_clean()
         return
-    elif args.fclean:
-        clean(force=True)
+    elif fclean:
+        do_clean(force=True)
         return
-    elif args.version:
-        print(f"pysisyphus {get_versions()['version']}")
+    elif version:
         return
 
     run_dict_without_none = {k: v for k, v in run_dict.items()
@@ -1089,10 +1089,37 @@ def run():
         # sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
     # else:
         # main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
-    main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
+    main(run_dict, restart, cwd, scheduler, dryrun)
     end_time = time.time()
     duration = int(end_time - start_time)
     print(f"pysisyphus run took {duration}s.")
+
+
+def run():
+    args = parse_args(sys.argv[1:])
+
+    # Defaults
+    run_dict = {}
+    yaml_dir = Path(".")
+
+    if args.yaml:
+        yaml_dir = Path(os.path.abspath(args.yaml)).parent
+        with open(args.yaml) as handle:
+            yaml_str = handle.read()
+        run_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
+
+    run_kwargs = {
+        "cwd": yaml_dir,
+        "yaml_fn": args.yaml,
+        "cp": args.cp,
+        "scheduler": args.scheduler,
+        "clean": args.clean,
+        "fclean": args.fclean,
+        "version": args.version,
+        "restart": args.restart,
+        "dryrun": args.dryrun,
+    }
+    run_from_dict(run_dict, **run_kwargs)
 
 
 if __name__ == "__main__":
