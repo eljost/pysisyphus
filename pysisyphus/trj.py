@@ -125,10 +125,13 @@ def parse_args(args):
         help="Don't align geometries when interpolating."
     )
     parser.add_argument("--bohr", action="store_true",
-                    help="Input geometries are in Bohr instead of Angstrom."
+        help="Input geometries are in Bohr instead of Angstrom."
     )
     parser.add_argument("--noxyz", action="store_false",
-                    help="Disable dumping of single .xyz files."
+        help="Disable dumping of single .xyz files."
+    )
+    parser.add_argument("--atoms", nargs="+", type=int, default=list(),
+        help="Only print primitive internals including the given atoms."
     )
 
     return parser.parse_args()
@@ -350,15 +353,35 @@ def shake(geoms, scale=0.1, seed=None):
     return geoms
 
 
-def print_internals(geoms):
+def print_internals(geoms, filter_atoms=None):
+    if filter_atoms is None:
+        filter_atoms = set()
+    filter_set = set(filter_atoms)
+
     pi_types = {2: "B", 3: "A", 4: "D"}
+
     for i, geom in enumerate(geoms):
+        atom_num = len(geom.atoms)
+        atom_inds = set(range(atom_num))
+        # Atom indices must superset of filter_atoms
+        invalid = filter_set - atom_inds
+        assert not invalid, \
+            f"Filter indices {invalid} are outside of the " \
+            f"valid range for the {i}-th geometry '{geom}' with {atom_num} " \
+            f"atoms (valid indices: range(0,{atom_num}))."
+
         int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund")
         for j, pi in enumerate(int_geom.internal._prim_internals):
             pi_type = pi_types[len(pi.inds)]
             val = pi.val
             if len(pi.inds) > 2:
                 val = np.rad2deg(val)
+
+            # Continue if we want to filter and there is no intersection
+            # between the atoms of the current primitive and the atoms we
+            # want to filter for.
+            if filter_set and not (set(pi.inds) & filter_set):
+                continue
             print(f"{j:04d}: {pi_type}{str(pi.inds): >20} {val: >10.4f}")
 
 
@@ -449,7 +472,7 @@ def run():
         to_dump = get(geoms, args.get)
         fn_base = "got"
     elif args.internals:
-        print_internals(geoms)
+        print_internals(geoms, args.atoms)
         return
     elif args.origin:
         origin(geoms)
