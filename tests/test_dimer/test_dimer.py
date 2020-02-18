@@ -1,34 +1,16 @@
-from pprint import pprint
-
 import numpy as np
+import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.Geometry import Geometry
 from pysisyphus.calculators.DimerMethod import DimerMethod
-from pysisyphus.tsoptimizers.dimer import dimer_method
+from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 
 
 def test_dimer():
-    calc_getter = lambda: AnaPot()
-    geom_ref = AnaPot.get_geom((-0.2, 1.1, 0))
-    geom = geom_ref.copy()
-    geom.set_calculator(calc_getter())
-
+    coords = (-0.2, 1.1, 0)
+    geom = Geometry(("X", ), coords)
     N_init = np.array((0.3, 0.7, 0.))
-
-    # Reference
-    ref_kwargs = {
-        "max_cycles": 1,
-        "ana_2dpot": True,
-        "calc_getter": calc_getter,
-        "f_tran_mod": False,
-        "N_init": N_init,
-    }
-    res = dimer_method([geom_ref, ], **ref_kwargs)
-    last_cycle = res.dimer_cycles[-1]
-    pprint(last_cycle)
-
-    f0 = last_cycle.f0
-    f_tran = last_cycle.f_tran
 
     # New implementation
     dimer_kwargs = {
@@ -39,17 +21,12 @@ def test_dimer():
     dimer = DimerMethod(**dimer_kwargs)
     geom.set_calculator(dimer)
 
-    dim_forces = geom.forces
-    # import pdb; pdb.set_trace()
-    np.testing.assert_allclose(dim_forces, f_tran)
-
-    from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
     opt = PreconLBFGS(geom, precon=False, line_search=None, max_step_element=0.25,
                       thresh="gau_tight")
     opt.run()
 
-    AnaPot().plot_opt(opt)
+    assert opt.is_converged
+    assert opt.cur_cycle == 9
+    assert geom.energy == pytest.approx(2.80910484)
 
-
-    # calc = geom.calculator
-    # calc.plot(show=True)
+    # AnaPot().plot_opt(opt)
