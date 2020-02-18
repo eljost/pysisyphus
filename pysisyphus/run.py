@@ -1047,9 +1047,9 @@ def print_header():
     print(f"{logo}\n\n{version}\n")
 
 
-def run_from_dict(run_dict, cwd=None, yaml_fn=None, cp=None, scheduler=None,
-                  clean=False, fclean=False, version=False, restart=False,
-                  dryrun=False):
+def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
+                  scheduler=None, clean=False, fclean=False, version=False,
+                  restart=False, dryrun=False):
     if cwd is None:
         cwd = Path(".")
 
@@ -1058,7 +1058,8 @@ def run_from_dict(run_dict, cwd=None, yaml_fn=None, cp=None, scheduler=None,
 
     init_logging(cwd, scheduler)
     # Load defaults etc.
-    run_dict = setup_run_dict(run_dict)
+    if set_defaults:
+        run_dict = setup_run_dict(run_dict)
     sys.stdout.flush()
 
     if cp:
@@ -1110,6 +1111,7 @@ def run():
 
     run_kwargs = {
         "cwd": yaml_dir,
+        "set_defaults": True,
         "yaml_fn": args.yaml,
         "cp": args.cp,
         "scheduler": args.scheduler,
