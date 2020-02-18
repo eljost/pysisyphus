@@ -153,7 +153,6 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
-        # TODO: Also use modified_forces for cos
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
         elif len(self.modified_forces) == len(self.forces):
