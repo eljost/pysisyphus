@@ -7,7 +7,7 @@ from pysisyphus.calculators.DimerMethod import DimerMethod
 from pysisyphus.tsoptimizers.dimer import dimer_method
 
 
-def test_dimer_new():
+def test_dimer():
     calc_getter = lambda: AnaPot()
     geom_ref = AnaPot.get_geom((-0.2, 1.1, 0))
     geom = geom_ref.copy()
@@ -44,7 +44,7 @@ def test_dimer_new():
     np.testing.assert_allclose(dim_forces, f_tran)
 
     from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
-    opt = PreconLBFGS(geom, precon=False, line_search="scale")
+    opt = PreconLBFGS(geom, precon=False, line_search=None)
     opt.run()
 
     AnaPot().plot_opt(opt)
