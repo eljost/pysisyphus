@@ -99,6 +99,7 @@ class CGDescent(Optimizer):
         ("armijo", 32, 0.98555442),
         ("strong_wolfe", 57, 0.98555442),
         ("hz", 63, 0.98555442),
+        pytest.param("dummy", 1, 1, marks=pytest.mark.xfail)
     ]
 )
 def test_line_search(line_search, ref_cycle, ref_energy):
@@ -107,13 +108,13 @@ def test_line_search(line_search, ref_cycle, ref_energy):
     opt_kwargs = {
         "thresh": "gau_tight",
         "line_search": line_search,
-        "max_cycles": 75,
+        "max_cycles": 58,
         "precon": False,
     }
     opt = PreconSteepestDescent(geom, **opt_kwargs)
     opt.run()
 
-    # geom.calculator.plot_opt(opt)
+    geom.calculator.plot_opt(opt)
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle

@@ -5,7 +5,7 @@ from collections import deque
 import numpy as np
 from scipy.sparse.linalg import spsolve
 
-from pysisyphus.line_searches import Backtracking, HagerZhang, StrongWolfe
+from pysisyphus.line_searches import Backtracking, Dummy, HagerZhang, StrongWolfe
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.precon import precon_getter
@@ -28,6 +28,7 @@ class PreconLBFGS(Optimizer):
             "armijo": Backtracking,
             "strong_wolfe": StrongWolfe,
             "hz": HagerZhang,
+            "dummy": Dummy,
         }
         self.line_search_cls = ls_cls[self.line_search]
 
