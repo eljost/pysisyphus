@@ -20,6 +20,7 @@ class StrongWolfe(LineSearch):
         super().__init__(*args, **kwargs)
 
         self.alpha_max = float(alpha_max)
+        self.fac = fac
 
     def zoom(self, alpha_lo, alpha_hi, phi_lo,
              phi_alpha_=None, alpha_0_=None, max_cycles=10):
