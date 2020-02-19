@@ -13,7 +13,7 @@ class RotationConverged(Exception):
 
 class Dimer(Calculator):
 
-    def __init__(self, calculator, *args, N_init=None, length=0.01, grotation_max_cycles=10,
+    def __init__(self, calculator, *args, N_init=None, length=0.01, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-3, rotation_tol=1.0,
                  rotation_max_element=0.001, interpolate=True, **kwargs):
         super().__init__(*args, **kwargs)
@@ -22,7 +22,7 @@ class Dimer(Calculator):
         self.length = float(length)
 
         # Rotation parameters
-        self.grotation_max_cycles = int(grotation_max_cycles)
+        self.rotation_max_cycles = int(rotation_max_cycles)
 
         rotation_methods = {
             "direct": self.direct_rotation,
@@ -51,6 +51,8 @@ class Dimer(Calculator):
         self._energy0 = None
         self._f0 = None
         self._f1 = None
+
+        self.force_evals = 0
 
         # Set dimer direction if given
         if N_init is not None:
@@ -98,6 +100,7 @@ class Dimer(Calculator):
     def f0(self):
         if self._f0 is None:
             results = self.calculator.get_forces(self.atoms, self.coords0)
+            self.force_evals += 1
             self._f0 = results["forces"]
             self._energy0 = results["energy"]
         return self._f0
@@ -106,6 +109,7 @@ class Dimer(Calculator):
     def f1(self):
         if self._f1 is None:
             results = self.calculator.get_forces(self.atoms, self.coords1)
+            self.force_evals += 1
             self._f1 = results["forces"]
         return self._f1
 
@@ -140,19 +144,13 @@ class Dimer(Calculator):
         return self.coords0 + (self.N*np.cos(rad) + theta*np.sin(rad)) * self.length
 
     def direct_rotation(self, optimizer, prev_step):
-        rot_force = self.rot_force
-        if rms(rot_force) <= self.rotation_thresh:
-            raise RotationConverged
         rot_step = optimizer(self.rot_force, prev_step)
         rot_step = self.restrict_step(rot_step)
         # Strictly speaking rot_step should be constrained to conserve the desired
         # dimer length (coords1 - coords0)*2. This step is unconstrained.
         # Later on we calculate the actual step between the old coords1 and the new
         # coords1 that have been reconstrained.
-        coords1_old = self.coords1
-        self.coords1 = coords1_old + rot_step
-        actual_step = self.coords1 - coords1_old
-        return actual_step
+        self.coords1 = self.coords1 + rot_step
 
     def fourier_rotation(self, optimizer, prev_step):
         theta_dir = optimizer(self.rot_force, prev_step)
@@ -179,6 +177,7 @@ class Dimer(Calculator):
         # and rotational curvature.
         coords1_trial = self.rotate(rad_trial, theta)
         f1_trial = self.calculator.get_forces(self.atoms, coords1_trial)["forces"]
+        self.force_evals += 1
         f2_trial = 2*self.f0 - f1_trial
         N_trial = make_unit_vec(coords1_trial, self.coords0)
         C_trial = self.curvature(f1_trial, f2_trial, N_trial)
@@ -216,13 +215,8 @@ class Dimer(Calculator):
                       * np.tan(rad_trial / 2)) * self.f0
             )
 
-        coords1_old = self.coords1
         self.coords1 = self.rotate(rad_min, theta)
-        actual_step = self.coords1 - coords1_old
-
         self.f1 = f1
-        return actual_step
-
 
     def get_forces(self, atoms, coords):
         # Generate random guess for the dimer orientation if not yet set
@@ -232,15 +226,26 @@ class Dimer(Calculator):
         self.atoms = atoms
         self.coords0 = coords
 
-        # lbfgs = small_lbfgs_closure(restrict_step=self.restrict_step)
         lbfgs = small_lbfgs_closure()
         try:
             prev_step = None
-            for i in range(self.grotation_max_cycles):
-                step = self.rotation_method(lbfgs, prev_step)
-                prev_step = step
+            for i in range(self.rotation_max_cycles):
+                rot_force = self.rot_force
+                if rms(rot_force) <= self.rotation_thresh:
+                    self.log("rms(rot_force) below threshold!")
+                    raise RotationConverged
+
+                coords1_old = self.coords1
+                self.rotation_method(lbfgs, prev_step)
+                actual_step = self.coords1 - coords1_old
+                prev_step = actual_step
+            else:
+                msg =  "Dimer rotation dit not converge in " \
+                      f"{self.rotation_max_cycles}"
         except RotationConverged:
-            print(f"Rotation converged in {i+1} cycles.")
+            msg = f"Dimer rotation converged in {i+1} cycle(s)."
+        self.log(msg)
+        self.log("N after rotation:\n\t" + str(self.N))
 
         energy = self.energy0
 
@@ -254,5 +259,4 @@ class Dimer(Calculator):
             "energy": energy,
             "forces": f_tran
         }
-        print("N", self.N)
         return results
