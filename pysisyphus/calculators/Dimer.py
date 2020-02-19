@@ -17,7 +17,8 @@ class Dimer(Calculator):
 
     def __init__(self, calculator, *args, N_init=None, length=0.0189, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
-                 rotation_max_element=0.001, rotation_interpolate=True, **kwargs):
+                 rotation_max_element=0.001, rotation_interpolate=True, seed=None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -62,6 +63,9 @@ class Dimer(Calculator):
         if N_init is not None:
             self.log("Setting initial orientation from given 'N_init'.")
             self.N = N_init
+
+        if seed is not None:
+            np.random.seed(seed)
 
     def log(self, message=""):
         self.logger.debug(message)
