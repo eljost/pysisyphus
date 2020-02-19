@@ -2,6 +2,7 @@ import logging
 
 __all__ = [
     "AFIR",
+    "Dimer",
     "FakeASE",
     "Gaussian09",
     "Gaussian16",
@@ -10,7 +11,6 @@ __all__ = [
     "OpenMolcas",
     "ORCA",
     "Psi4",
-    #"PySCF",
     "PyPsi4",
     "PyXTB",
     "Turbomole",
@@ -24,7 +24,6 @@ from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.calculators.MOPAC import MOPAC
 from pysisyphus.calculators.Psi4 import Psi4
-#from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
