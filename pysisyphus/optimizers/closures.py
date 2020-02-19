@@ -8,6 +8,10 @@ def bfgs_multiply(s_list, y_list, force, beta=1, P=None):
     """Get a L-BFGS step.
     
     Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
+
+    assert len(s_list) == len(y_list), \
+        "lengths of step list 's_list' and gradient list 'y_list' differ!"
+
     q = -force
     cycles = len(s_list)
     alphas = list()
@@ -171,15 +175,27 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
         return dx, -F
     return modified_broyden
 
+
 def small_lbfgs_closure(history=5):
+    """Compact LBFGS closure.
+
+    The returned function takes two arguments: forces and prev_step.
+    forces are the forces at the current iterate and prev_step is the
+    previous step that lead us to the current iterate. In this way
+    step restriction/line search can be done outisde of the lbfgs function.
+    """
+
     prev_forces = None
     grad_diffs = deque(maxlen=history)
     steps = deque(maxlen=history)
     cur_cycle = 0
 
-    def lbfgs(forces):
+    def lbfgs(forces, prev_step=None):
         nonlocal cur_cycle
         nonlocal prev_forces
+
+        if prev_step is not None:
+            steps.append(prev_step)
 
         # Steepest descent in the first cycle
         step = forces
