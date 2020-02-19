@@ -35,6 +35,7 @@ class PreconLBFGS(Optimizer):
             self.c_stab = 0.0103  # 0.1 eV/Å²
         else:
             self.c_stab = float(c_stab)
+            self.log("Using c_stab={self.c_stab:.6f}")
 
         self.max_step_element = max_step_element
         if self.max_step_element is not None:
