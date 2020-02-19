@@ -13,10 +13,10 @@ class RotationConverged(Exception):
 
 class Dimer(Calculator):
 
-    def __init__(self, calculator, N_init=None, length=0.01, grotation_max_cycles=10,
+    def __init__(self, calculator, *args, N_init=None, length=0.01, grotation_max_cycles=10,
                  rotation_method="fourier", rotation_thresh=1e-3, rotation_tol=1.0,
-                 rotation_max_element=0.001, interpolate=True):
-        super().__init__(self)
+                 rotation_max_element=0.001, interpolate=True, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.calculator = calculator
         self.length = float(length)
@@ -54,6 +54,7 @@ class Dimer(Calculator):
 
         # Set dimer direction if given
         if N_init is not None:
+            self.log("Setting initial orientation from given 'N_init'.")
             self.N = N_init
 
     @property
@@ -226,6 +227,7 @@ class Dimer(Calculator):
     def get_forces(self, atoms, coords):
         # Generate random guess for the dimer orientation if not yet set
         if self.N is None:
+            self.log("No initial orientation given. Using random guess.")
             self.N = np.random.rand(coords.size)
         self.atoms = atoms
         self.coords0 = coords
