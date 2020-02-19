@@ -3,6 +3,7 @@ import numpy as np
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.linalg import perp_comp, make_unit_vec
 from pysisyphus.optimizers.closures import small_lbfgs_closure
+from pysisyphus.optimizers.restrict_step import get_scale_max
 from pysisyphus.helpers import rms
 
 
@@ -10,61 +11,79 @@ class RotationConverged(Exception):
     pass
 
 
-class DimerMethod(Calculator):
+class Dimer(Calculator):
 
-    rotation_types = ("fourier", "direct")
-
-    def __init__(self, calculator, geometry, N_init, length=0.01, max_rotations=10,
-                 rotation_type="direct", rotation_thresh=1e-3, rotation_tol=1.0,
+    def __init__(self, calculator, N_init=None, length=0.01, max_rotations=10,
+                 rotation_method="fourier", rotation_thresh=1e-3, rotation_tol=1.0,
+                 rotation_max=0.001,
                  interpolate=True):
         super().__init__(self)
 
         self.calculator = calculator
-        self.geometry = geometry
-        N_init = np.array(N_init, dtype=float)
         self.length = float(length)
 
         # Rotation parameters
         self.max_rotations = int(max_rotations)
-        assert rotation_type in self.rotation_types, \
-            f"Invalid rotation_type={rotation_type}! Valid types are: " \
-            f"{self.rotation_types}"
-        self.rotation_type = rotation_type
+
+        rotation_methods = {
+            "direct": self.direct_rotation,
+            "fourier": self.fourier_rotation,
+        }
+        try:
+            self.rotation_method = rotation_methods[rotation_method]
+        except KeyError as err:
+            print(f"Invalid rotation_method={rotation_method}! Valid types are: "
+                  f"{tuple(self.rotation_methods.keys())}"
+            )
+            raise err
         self.rotation_thresh = float(rotation_thresh)
         self.rotation_tol = np.deg2rad(rotation_tol)
+        self.rotation_max = float(rotation_max)
         self.interpolate = bool(interpolate)
 
-        # Set normalized dimer direction
-        if N_init is None:
-            N_init = np.random.rand(self.geometry.coords.size)
-        N_init /= np.linalg.norm(N_init)
+        restrict_steps = {
+            "direct": get_scale_max(self.rotation_max),
+            "fourier": None,
+        }
+        self.restrict_step = restrict_steps[rotation_method]
 
-        self.N = N_init.copy()
-        self.atoms = self.geometry.atoms
-
-        self._f0 = None
+        self._N = None
+        self._coords0 = None
         self._energy0 = None
+        self._f0 = None
         self._f1 = None
+
+        # Set dimer direction if given
+        if N_init is not None:
+            self.N = N_init
+
+    @property
+    def N(self):
+        return self._N
+
+    @N.setter
+    def N(self, N_new):
+        N_new = np.array(N_new, dtype=float) / np.linalg.norm(N_new)
+        self._N = N_new
 
     @property
     def coords0(self):
-        return self.geometry.coords
+        return self._coords0
 
     @coords0.setter
     def coords0(self, coords0_new):
-        self.geometry.coords = coords0_new
+        self._coords0 = coords0_new
         self._energy0 = None
         self._f0 = None
         self._f1 = None
 
     @property
     def coords1(self):
-        return self.geometry.coords + self.length * self.N
+        return self.coords0 + self.length * self.N
 
     @coords1.setter
     def coords1(self, coords1_new):
         N_new = coords1_new - self.coords0
-        N_new /= np.linalg.norm(N_new)
         self.N = N_new
         self._f1 = None
 
@@ -108,31 +127,35 @@ class DimerMethod(Calculator):
         return f_perp
 
     def curvature(self, f1, f2, N):
+        """Curvature of the mode represented by the dimer."""
         return (f2 - f1).dot(N) / (2 * self.length)
 
     @property
     def C(self):
-        """Curvature"""
+        """Shortcut for the curvature."""
         return self.curvature(self.f1, self.f2, self.N)
 
     def rotate(self, rad, theta):
-        """Return new coords1"""
-        step = (self.N*np.cos(rad) + theta*np.sin(rad)) * self.length
-        return self.coords0 + step
+        """Rotate dimer and produce new coords1."""
+        return self.coords0 + (self.N*np.cos(rad) + theta*np.sin(rad)) * self.length
 
-    def direct_rotation_step(self):
-        step = self.rot_force
-        norm = np.linalg.norm(step)
-        print(f"norm(rot_force)={norm:.6f}")
-        trust = 0.0005
-        if norm > trust:
-            step = trust * step / norm
+    def direct_rotation(self, optimizer, prev_step):
+        rot_force = self.rot_force
+        if rms(rot_force) <= self.rotation_thresh:
+            raise RotationConverged
+        rot_step = optimizer(self.rot_force, prev_step)
+        rot_step = self.restrict_step(rot_step)
+        # Strictly speaking rot_step should be constrained to conserve the desired
+        # dimer length (coords1 - coords0)*2. This step is unconstrained.
+        # Later on we calculate the actual step between the old coords1 and the new
+        # coords1 that have been reconstrained.
+        coords1_old = self.coords1
+        self.coords1 = coords1_old + rot_step
+        actual_step = self.coords1 - coords1_old
+        return actual_step
 
-        new_coords1 = self.coords1 + step
-        self.coords1  = new_coords1
-
-    def fourier_rotation_step(self, optimizer):
-        theta_dir = optimizer(self.rot_force)
+    def fourier_rotation(self, optimizer, prev_step):
+        theta_dir = optimizer(self.rot_force, prev_step)
         # Remove component that is parallel to N
         theta_dir = theta_dir - theta_dir.dot(self.N)*self.N
         theta = theta_dir / np.linalg.norm(theta_dir)
@@ -193,19 +216,29 @@ class DimerMethod(Calculator):
                    + (1 - np.cos(rad_min) - np.sin(rad_min)
                       * np.tan(rad_trial / 2)) * self.f0
             )
-        self.coords1 = self.rotate(rad_min, theta)
-        self.f1 = f1
 
-    # def get_energy(self, atoms, coords):
-        # return self.calculator.get_energy(atoms, coords)
+        coords1_old = self.coords1
+        self.coords1 = self.rotate(rad_min, theta)
+        actual_step = self.coords1 - coords1_old
+
+        self.f1 = f1
+        return actual_step
+
 
     def get_forces(self, atoms, coords):
+        # Generate random guess for the dimer orientation if not yet set
+        if self.N is None:
+            self.N = np.random.rand(coords.size)
+        self.atoms = atoms
         self.coords0 = coords
-        lbfgs = small_lbfgs_closure()
 
+        # lbfgs = small_lbfgs_closure(restrict_step=self.restrict_step)
+        lbfgs = small_lbfgs_closure()
         try:
+            prev_step = None
             for i in range(self.max_rotations):
-                self.fourier_rotation_step(lbfgs)
+                step = self.rotation_method(lbfgs, prev_step)
+                prev_step = step
         except RotationConverged:
             print(f"Rotation converged in {i+1} cycles.")
 
