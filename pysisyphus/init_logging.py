@@ -26,7 +26,8 @@ def get_fh_logger(name, log_fn):
     if len(logger.handlers) == 0:
         fh = logging.FileHandler(log_fn, mode="w", delay=True)
         fh.setLevel(logging.DEBUG)
-        fmt_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        # fmt_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        fmt_str = "%(asctime)s - %(message)s"
         formatter = logging.Formatter(fmt_str)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
