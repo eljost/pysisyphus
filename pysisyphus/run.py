@@ -41,6 +41,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 CALC_DICT = {
     "afir": AFIR,
+    "dimer": Dimer,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "mopac": MOPAC,
@@ -68,16 +69,16 @@ COS_DICT = {
 }
 
 OPT_DICT = {
+    "anc": ANCOptimizer.ANCOptimizer,
+    "cg": ConjugateGradient.ConjugateGradient,
     "fire": FIRE.FIRE,
     "lbfgs": LBFGS.LBFGS,
-    #"lbfgsm": LBFGS_mod.LBFGS,
-    "sd": SteepestDescent.SteepestDescent,
-    "cg": ConjugateGradient.ConjugateGradient,
+    "plbfgs": PreconLBFGS.PreconLBFGS,
     "qm": QuickMin.QuickMin,
     "rfo": RFOptimizer.RFOptimizer,
-    "anc": ANCOptimizer.ANCOptimizer,
-    "string": StringOptimizer.StringOptimizer,
+    "sd": SteepestDescent.SteepestDescent,
     "sqnm": StabilizedQNMethod.StabilizedQNMethod,
+    "string": StringOptimizer.StringOptimizer,
 }
 
 TSOPT_DICT = {
