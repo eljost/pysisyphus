@@ -28,7 +28,8 @@ class PreconLBFGS(Optimizer):
             "armijo": Backtracking,
             "strong_wolfe": StrongWolfe,
             "hz": HagerZhang,
-            None: None
+            None: None,
+            False: None,
         }
         self.line_search_cls = ls_cls[self.line_search]
         self.max_step_element = max_step_element
