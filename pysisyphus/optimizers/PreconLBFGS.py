@@ -14,7 +14,7 @@ from pysisyphus.optimizers.precon import precon_getter
 class PreconLBFGS(Optimizer):
 
     def __init__(self, geometry, alpha_init=1., history=7, precon=True,
-                 line_search="armijo", max_step_element=0.05, **kwargs):
+                 max_step_element=None, line_search="armijo", **kwargs):
         assert geometry.coord_type == "cart", \
             "Preconditioning makes only sense with 'coord_type: cart'"
         super().__init__(geometry, **kwargs)
@@ -22,8 +22,14 @@ class PreconLBFGS(Optimizer):
         self.alpha_init = alpha_init
         self.history = history
         self.precon = precon
-        self.line_search = line_search
 
+        self.max_step_element = max_step_element
+        if self.max_step_element is not None:
+            self.log(f"max_step_element={max_step_element:.6f} given. Setting "
+                      "line_search to 'None'.")
+            line_search = None
+
+        self.line_search = line_search
         ls_cls = {
             "armijo": Backtracking,
             "strong_wolfe": StrongWolfe,
@@ -32,7 +38,6 @@ class PreconLBFGS(Optimizer):
             False: None,
         }
         self.line_search_cls = ls_cls[self.line_search]
-        self.max_step_element = max_step_element
 
         self.grad_diffs = deque(maxlen=self.history)
         self.steps_ = deque(maxlen=self.history)
