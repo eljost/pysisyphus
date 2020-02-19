@@ -104,10 +104,14 @@ class AnaPotBase(Calculator):
         Z = np.array(z).reshape(X.shape)
         self.ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
 
-    def plot_opt(self, opt):
+    def plot_opt(self, opt, enum=True):
         coords = np.array(opt.coords)
         self.plot()
-        self.ax.plot(*coords.T[:2], "o-")
+        xs, ys = coords.T[:2]
+        self.ax.plot(xs, ys, "o-")
+        if enum:
+            for i, (x, y) in enumerate(zip(xs, ys)):
+                self.ax.annotate(i, (x, y))
         plt.show()
 
     @classmethod
