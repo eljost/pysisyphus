@@ -1,15 +1,16 @@
 Transition State Optimization
 *****************************
 
-Optimizing transition states (TSs) is black magic, especially in internal
-coordinates. The most promising TS optimizers employ second derivative information
-(hessian) but locating TS in `pysisyphus` is also possible using only first
-derivative information.
+To cite Frank Jensen: "Locating transition states
+(TSs) is black magic, especially in internal coordinates" and I can say this is true.
+The most promising TS optimizers in `pysisyphus` employ second derivative information
+(hessian) but locating TS is also possible using only first derivative information
+by means of the `Dimer` method.
 
 TS optimizations should preferably be done in internal coordinates (`coord_type: redund`).
-Before starting the actual TS search ond should **always** check the internal coordinates
+Before starting the actual TS search one should **always** check the internal coordinates
 that pysisyphus set up by running `pysistrj [xyz] --internals`, with `[xyz]` corresponding
-to the TS guess for the optimization. **Check carefully** all supposed reaction coordinates
+to the TS guess for the optimization. **Check carefully** if all supposed reaction coordinates
 are present. **If they are missing** define them manually with the `add_prims` key
 in the YAML input.
 
@@ -18,7 +19,7 @@ Calculation of the exact hessian can be avoided by using `type: dimer` or by usi
 With the latter options a diagonal model hessian is set up and the signs of the entries
 corresponding to the reaction coordinates are inverted.
 
-Right now the `dimer` method may work but it may needs an overhaul.
+Right now the `Dimer` is only tested with `coord_type: cart`.
 
 YAML example(s)
 ===============
@@ -84,6 +85,10 @@ RS-P-RFO, TRIM).
 
     coord_type: redund              # Optimization in internal coordinates.
 
+Second-derivative-free TS optimization can be done using the `Dimer` method. Attached
+you can find a sample input.
+
+
 Further examples for TS optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/tsopt>`_.
 
@@ -135,12 +140,19 @@ Trust-Region Image-Function Method
     :undoc-members:
     :show-inheritance:
 
-TS-Optimizers without hessian information
+TS-Optimization without hessian information
 =========================================
 
-Dimer method
+Old Dimer method
 ------------
 
 .. automodule:: pysisyphus.tsoptimizers.dimer
+    :members:
+    :undoc-members:
+
+New Dimer method
+------------
+
+.. automodule:: pysisyphus.calculators.Dimer
     :members:
     :undoc-members:
