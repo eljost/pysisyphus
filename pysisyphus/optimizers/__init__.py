@@ -1,14 +1,14 @@
 import logging
 
 __all__ = [
+    "ANCOptimizer",
     "ConjugateGradient",
     "FIRE",
     "LBFGS",
-    #"LBFGS_mod",
+    "PreconLBFGS",
     "QuickMin",
     "RFOptimizer",
     "SteepestDescent",
-    "ANCOptimizer",
     "StringOptimizer",
     "StabilizedQNMethod",
 ]
