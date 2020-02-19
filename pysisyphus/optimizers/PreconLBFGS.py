@@ -5,6 +5,7 @@ from collections import deque
 import numpy as np
 from scipy.sparse.linalg import spsolve
 
+from pysisyphus.calculators import Dimer
 from pysisyphus.line_searches import *
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -14,7 +15,8 @@ from pysisyphus.optimizers.precon import precon_getter
 class PreconLBFGS(Optimizer):
 
     def __init__(self, geometry, alpha_init=1., history=7, precon=True,
-                 max_step_element=None, line_search="armijo", **kwargs):
+                 max_step_element=None, line_search="armijo",
+                 c_stab=None, **kwargs):
         assert geometry.coord_type == "cart", \
             "Preconditioning makes only sense with 'coord_type: cart'"
         super().__init__(geometry, **kwargs)
@@ -22,6 +24,17 @@ class PreconLBFGS(Optimizer):
         self.alpha_init = alpha_init
         self.history = history
         self.precon = precon
+
+        if c_stab is None and isinstance(self.geometry.calculator, Dimer):
+            self.log( "Found Dimer calculator. Using a big stabilization of "
+                     f"c_stab=0.103 au/bohr² (1 eV/Å²)")
+            self.c_stab = 0.103  # 1 eV/Å²
+        elif c_stab is None:
+            self.log("No c_stab specified. Using default value of 0.0103 au/bohr² "
+                     "(0.1 eV/Å²).")
+            self.c_stab = 0.0103  # 0.1 eV/Å²
+        else:
+            self.c_stab = float(c_stab)
 
         self.max_step_element = max_step_element
         if self.max_step_element is not None:
@@ -44,7 +57,7 @@ class PreconLBFGS(Optimizer):
 
     def prepare_opt(self):
         if self.precon:
-            self.precon_getter = precon_getter(self.geometry)
+            self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab)
 
     def optimize(self):
         forces = self.geometry.forces
