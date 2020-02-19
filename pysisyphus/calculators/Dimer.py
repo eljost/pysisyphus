@@ -15,9 +15,9 @@ class RotationConverged(Exception):
 
 class Dimer(Calculator):
 
-    def __init__(self, calculator, *args, N_init=None, length=0.01, rotation_max_cycles=15,
+    def __init__(self, calculator, *args, N_init=None, length=0.0189, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
-                 rotation_max_element=0.001, interpolate=True, **kwargs):
+                 rotation_max_element=0.001, rotation_interpolate=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -42,7 +42,7 @@ class Dimer(Calculator):
         self.rotation_thresh = float(rotation_thresh)
         self.rotation_tol = np.deg2rad(rotation_tol)
         self.rotation_max_element = float(rotation_max_element)
-        self.interpolate = bool(interpolate)
+        self.rotation_interpolate = bool(rotation_interpolate)
 
         restrict_steps = {
             "direct": get_scale_max(self.rotation_max_element),
@@ -215,7 +215,7 @@ class Dimer(Calculator):
 
         f1 = None
         # Interpolate force at coords1_rot; see Eq. (12) in [4]
-        if self.interpolate:
+        if self.rotation_interpolate:
             f1 = (np.sin(rad_trial - rad_min) / np.sin(rad_trial) * self.f1
                    + np.sin(rad_min) / np.sin(rad_trial) * f1_trial
                    + (1 - np.cos(rad_min) - np.sin(rad_min)
