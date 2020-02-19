@@ -48,7 +48,6 @@ CALC_DICT = {
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA,
     "psi4": Psi4,
-    # "pyscf": PySCF,
     "turbomole": Turbomole,
     "xtb": XTB,
 }
@@ -158,7 +157,11 @@ def parse_args(args):
 
 
 def get_calc(index, base_name, calc_key, calc_kwargs):
-    if calc_key == "afir":
+    # Some calculators are just wrappers that modify the forces from
+    # actual calculators, e.g. AFIR and Dimer. If we find the 'calc'
+    # key we create the actual calculator and assign it to the 'calculator'
+    # key in calc_kwargs.
+    if "calc" in calc_kwargs:
         actual_kwargs = calc_kwargs.pop("calc")
         actual_key = actual_kwargs.pop("type")
         actual_calc = get_calc(index, base_name, actual_key, actual_kwargs)
@@ -628,7 +631,6 @@ def get_defaults(conf_dict):
             "between": 0,
         },
         "cos": None,
-        "dimer": None,
         "calc": {
             "pal": 1,
         },
