@@ -42,4 +42,4 @@ def test_dimer(rotation_method, ref_cycle):
     assert opt.cur_cycle == ref_cycle
     assert geom.energy == pytest.approx(2.80910484)
 
-    AnaPot().plot_opt(opt)
+    # AnaPot().plot_opt(opt)

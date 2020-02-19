@@ -13,17 +13,16 @@ class RotationConverged(Exception):
 
 class Dimer(Calculator):
 
-    def __init__(self, calculator, N_init=None, length=0.01, max_rotations=10,
+    def __init__(self, calculator, N_init=None, length=0.01, grotation_max_cycles=10,
                  rotation_method="fourier", rotation_thresh=1e-3, rotation_tol=1.0,
-                 rotation_max=0.001,
-                 interpolate=True):
+                 rotation_max_element=0.001, interpolate=True):
         super().__init__(self)
 
         self.calculator = calculator
         self.length = float(length)
 
         # Rotation parameters
-        self.max_rotations = int(max_rotations)
+        self.grotation_max_cycles = int(grotation_max_cycles)
 
         rotation_methods = {
             "direct": self.direct_rotation,
@@ -38,11 +37,11 @@ class Dimer(Calculator):
             raise err
         self.rotation_thresh = float(rotation_thresh)
         self.rotation_tol = np.deg2rad(rotation_tol)
-        self.rotation_max = float(rotation_max)
+        self.rotation_max_element = float(rotation_max_element)
         self.interpolate = bool(interpolate)
 
         restrict_steps = {
-            "direct": get_scale_max(self.rotation_max),
+            "direct": get_scale_max(self.rotation_max_element),
             "fourier": None,
         }
         self.restrict_step = restrict_steps[rotation_method]
@@ -235,7 +234,7 @@ class Dimer(Calculator):
         lbfgs = small_lbfgs_closure()
         try:
             prev_step = None
-            for i in range(self.max_rotations):
+            for i in range(self.grotation_max_cycles):
                 step = self.rotation_method(lbfgs, prev_step)
                 prev_step = step
         except RotationConverged:
