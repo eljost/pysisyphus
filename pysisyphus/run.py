@@ -300,35 +300,6 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         do_final_hessian(ts_geom)
 
 
-# def run_cos_dimer(cos, dimer_kwargs, calc_getter):
-    # print("Starting dimer method")
-    # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
-
-    # ts_geom = cos.images[0].copy()
-    # ts_geom.coords = hei_coords
-    # ts_geom.set_calculator(calc_getter())
-    # print("Splined TS guess")
-    # print(ts_geom.as_xyz())
-    # with open("splined_ts_guess.xyz", "w") as handle:
-        # handle.write(ts_geom.as_xyz())
-
-    # print(f"Interpolated HEI: {hei_coords}")
-
-    # ts_geom.set_calculator(calc_getter())
-    # geoms = [ts_geom, ]
-    # dimer_kwargs.update({
-        # "restrict_step": "max",
-        # "N_init": hei_tangent,
-        # "calc_getter": calc_getter,
-    # })
-    # dimer_result = dimer_method(geoms, **dimer_kwargs)
-    # dimer_cycles = dimer_result.dimer_cycles
-    # last_cycle = dimer_cycles[-1]
-    # ts_coords = last_cycle.trans_coords[1]
-    # print(f"Optimized TS coord:")
-    # print(ts_geom.as_xyz())
-
-
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
                      scheduler=None, assert_track=False):
     print("Running calculations")
