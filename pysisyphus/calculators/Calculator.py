@@ -48,6 +48,7 @@ class Calculator:
         out_dir : str
             Path that is prepended to generated filenames.
         """
+
         self.calc_number = calc_number
         self.charge = int(charge)
         self.mult = int(mult)
@@ -56,6 +57,8 @@ class Calculator:
         self.out_dir = Path(out_dir).resolve()
 
         assert pal > 0, "pal must be a non-negative integer!"
+
+        self.logger = logging.getLogger("calculator")
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
@@ -104,8 +107,7 @@ class Calculator:
             Message to be logged.
         """
 
-        logger = logging.getLogger("calculator")
-        logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, {message}")
+        self.logger.debug(f"{self.name}, cycle {self.calc_counter:03d}: {message}")
 
     def get_energy(self, atoms, coords):
         """Meant to be extended."""
