@@ -25,18 +25,22 @@ class PreconLBFGS(Optimizer):
         self.history = history
         self.precon = precon
 
-        if c_stab is None and isinstance(self.geometry.calculator, Dimer):
-            self.log( "Found Dimer calculator. Using a big stabilization of "
-                     f"c_stab=0.103 au/bohr² (1 eV/Å²)")
-            self.c_stab = 0.103  # 1 eV/Å²
-        elif c_stab is None:
-            self.log("No c_stab specified. Using default value of 0.0103 au/bohr² "
-                     "(0.1 eV/Å²).")
-            self.c_stab = 0.0103  # 0.1 eV/Å²
-        else:
-            self.c_stab = float(c_stab)
-            self.log("Using c_stab={self.c_stab:.6f}")
+        is_dimer = isinstance(self.geometry.calculator, Dimer)
+        if c_stab is None:
+            self.log("No c_stab specified.")
+            if is_dimer:
+                self.log( "Found Dimer calculator, using bigger stabilization.")
+                c_stab = 0.103  # 1 eV/Å²
+            else:
+                c_stab = 0.0103 # 0.1 eV/Å²
 
+        self.c_stab = float(c_stab)
+        self.log("Using c_stab={self.c_stab:.6f}")
+
+        if max_step_element is None and is_dimer:
+            self.max_step_element = 0.25
+            self.log("Found Dimer calculator. Using "
+                     "max_step_element={self.max_step_element:.2f}")
         self.max_step_element = max_step_element
         if self.max_step_element is not None:
             self.log(f"max_step_element={max_step_element:.6f} given. Setting "
