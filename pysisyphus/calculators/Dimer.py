@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
@@ -14,9 +16,11 @@ class RotationConverged(Exception):
 class Dimer(Calculator):
 
     def __init__(self, calculator, *args, N_init=None, length=0.01, rotation_max_cycles=15,
-                 rotation_method="fourier", rotation_thresh=1e-3, rotation_tol=1.0,
+                 rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, interpolate=True, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.logger = logging.getLogger("dimer")
 
         self.calculator = calculator
         self.length = float(length)
@@ -58,6 +62,9 @@ class Dimer(Calculator):
         if N_init is not None:
             self.log("Setting initial orientation from given 'N_init'.")
             self.N = N_init
+
+    def log(self, message=""):
+        self.logger.debug(message)
 
     @property
     def N(self):
@@ -228,24 +235,27 @@ class Dimer(Calculator):
 
         lbfgs = small_lbfgs_closure()
         try:
+            self.log("Starting dimer rotation")
             prev_step = None
             for i in range(self.rotation_max_cycles):
                 rot_force = self.rot_force
-                if rms(rot_force) <= self.rotation_thresh:
-                    self.log("rms(rot_force) below threshold!")
+                rms_rot_force = rms(rot_force)
+                self.log(f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f}")
+                if rms_rot_force <= self.rotation_thresh:
+                    self.log("\trms(rot_force) is below threshold!")
                     raise RotationConverged
-
                 coords1_old = self.coords1
                 self.rotation_method(lbfgs, prev_step)
                 actual_step = self.coords1 - coords1_old
                 prev_step = actual_step
             else:
-                msg =  "Dimer rotation dit not converge in " \
+                msg =  "\tDimer rotation dit not converge in " \
                       f"{self.rotation_max_cycles}"
         except RotationConverged:
-            msg = f"Dimer rotation converged in {i+1} cycle(s)."
+            msg = f"\tDimer rotation converged in {i+1} cycle(s)."
         self.log(msg)
         self.log("N after rotation:\n\t" + str(self.N))
+        self.log()
 
         energy = self.energy0
 

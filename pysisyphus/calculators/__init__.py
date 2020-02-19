@@ -1,3 +1,5 @@
+import logging
+
 __all__ = [
     "AFIR",
     "FakeASE",
@@ -16,6 +18,7 @@ __all__ = [
 ]
 
 from pysisyphus.calculators.AFIR import AFIR
+from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.LennardJones import LennardJones
@@ -27,3 +30,12 @@ from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
 from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.calculators.XTB import XTB
+
+
+logger = logging.getLogger("dimer")
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler("dimer.log", mode="w", delay=True)
+fmt_str = "%(message)s"
+formatter = logging.Formatter(fmt_str)
+handler.setFormatter(formatter)
+logger.addHandler(handler)

@@ -54,10 +54,9 @@ def test_dimer(rotation_method, ref_cycle):
 def test_dimer_hcn():
     geom = geom_from_library("baker_ts/01_hcn.xyz")
     ref_energy = -92.24604
-    N_init = "-0.2211 -0.1248 -0.4702 " \
-             "0.565   0.2762  0.0518 " \
-             "-0.3439 -0.1515  0.4184".split()
-    # N_init = None
+    N_init = " 0.5858  0.      0.0543 " \
+             "-0.7697 -0.      0.061 " \
+             "0.2027  0.     -0.1295".split()
 
     calc = PySCF("321g", pal=2)
 
