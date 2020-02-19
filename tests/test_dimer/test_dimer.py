@@ -8,6 +8,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
+from pysisyphus.testing import using
 
 
 init_logging()
@@ -51,12 +52,22 @@ def test_dimer(rotation_method, ref_cycle):
     # AnaPot().plot_opt(opt)
 
 
-def test_dimer_hcn():
+@using("pyscf")
+@pytest.mark.parametrize(
+    "bonds, ref_cycle",
+    [
+        (None, 9),
+        ([[1, 2, -1], [2, 0, 1]], 8),
+    ]
+)
+def test_dimer_hcn(bonds, ref_cycle):
     geom = geom_from_library("baker_ts/01_hcn.xyz")
     ref_energy = -92.24604
     N_init = " 0.5858  0.      0.0543 " \
              "-0.7697 -0.      0.061 " \
              "0.2027  0.     -0.1295".split()
+    if bonds is not None:
+        N_init = None
 
     calc = PySCF("321g", pal=2)
 
@@ -64,6 +75,7 @@ def test_dimer_hcn():
         "rotation_method": "fourier",
         "calculator": calc,
         "N_init": N_init,
+        "bonds": bonds,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -77,10 +89,8 @@ def test_dimer_hcn():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 9
+    assert opt.cur_cycle == ref_cycle
     assert geom.energy == pytest.approx(ref_energy)
-
-    # do_final_hessian(geom, save_hessian=False)
 
 
 @pytest.mark.parametrize(
@@ -101,8 +111,8 @@ def test_N_init(bonds):
     dimer = Dimer(**dimer_kwargs)
     dimer.make_N_init(geom.coords)
     N = dimer.N.reshape(-1, 3)
-    print()
-    print(N)
+    # print()
+    # print(N)
 
     from_, to_, weight = bonds[0]
     ref_row = np.array((-0.66128738, -0.24330643, 0.05916908))

@@ -91,29 +91,6 @@ class Dimer(Calculator):
                           for bond in self.bonds]
             N = np.sum(bond_modes, axis=0)
         self.N = N
-        # elif self.bond_form is not None:
-            # bond = self.bond_form
-            # direction = 1
-            # self.log( "Generating mode that describes a bond formation "
-                     # f"between atoms {bond}.")
-        # elif self.bond_break is not None:
-            # bond = self.bond_break
-            # direction = -1
-            # self.log( "Generating mode that describes a bond breaking "
-                     # f"between atoms {bond}.")
-        # else:
-            # raise Exception("This should not happen :)")
-
-        # from_, to_ = bond
-        # c3d = coords.reshape(-1, 3)
-        # bond_vec = c3d[from_] - c3d[to_]
-        # # Normalization is done nonetheless in the setter of self.N
-        # bond_vec /= direction * np.linalg.norm(bond_vec)
-
-        # N = np.zeros_like(c3d)
-        # N[from_] = bond_vec
-        # N[to_] = -bond_vec
-        # self.N = N.flatten()
 
         self.log("Initial orientation:\n\t{self.N}")
 
@@ -280,7 +257,7 @@ class Dimer(Calculator):
     def get_forces(self, atoms, coords):
         # Generate random guess for the dimer orientation if not yet set
         if self.N is None:
-            self.make_N_init(self, coords)
+            self.make_N_init(coords)
         self.atoms = atoms
         self.coords0 = coords
 
