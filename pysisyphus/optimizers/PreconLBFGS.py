@@ -38,9 +38,9 @@ class PreconLBFGS(Optimizer):
         self.log("Using c_stab={self.c_stab:.6f}")
 
         if max_step_element is None and is_dimer:
-            self.max_step_element = 0.25
+            max_step_element = 0.25
             self.log("Found Dimer calculator. Using "
-                     "max_step_element={self.max_step_element:.2f}")
+                     "max_step_element={max_step_element:.2f}")
         self.max_step_element = max_step_element
         if self.max_step_element is not None:
             self.log(f"max_step_element={max_step_element:.6f} given. Setting "
