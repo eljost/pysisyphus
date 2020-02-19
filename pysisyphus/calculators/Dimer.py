@@ -194,12 +194,11 @@ class Dimer(Calculator):
         C_min = get_C(rad_min)  # lgtm [py/multiple-definition]
         if C_min > C:
             rad_min += np.deg2rad(90)
-            C_min_new = get_C(rad_min)
+            # C_min_new = get_C(rad_min)
             # logger.debug( "Predicted theta_min lead us to a curvature maximum "
                          # f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
                          # f"(C(theta+pi/2)={C_min_new:.6f})"
             # )
-            C_min = C_min_new
 
         # TODO: handle cases where the curvature is still positive, but
         # the angle is small, so the rotation is skipped.

@@ -185,7 +185,7 @@ def small_lbfgs_closure(history=5):
     step restriction/line search can be done outisde of the lbfgs function.
     """
 
-    prev_forces = None
+    prev_forces = None  # lgtm [py/unused-local-variable]
     grad_diffs = deque(maxlen=history)
     steps = deque(maxlen=history)
     cur_cycle = 0
