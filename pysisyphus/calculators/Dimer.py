@@ -21,7 +21,7 @@ class Dimer(Calculator):
                  **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.logger = logging.getLogger("dimer")
+        self.dimer_logger = logging.getLogger("dimer")
 
         self.calculator = calculator
         self.length = float(length)
@@ -61,14 +61,14 @@ class Dimer(Calculator):
 
         # Set dimer direction if given
         if N_init is not None:
-            self.log("Setting initial orientation from given 'N_init'.")
+            self.dimer_log("Setting initial orientation from given 'N_init'.")
             self.N = N_init
 
         if seed is not None:
             np.random.seed(seed)
 
-    def log(self, message=""):
-        self.logger.debug(message)
+    def dimer_log(self, message=""):
+        self.dimer_logger.debug(message)
 
     @property
     def N(self):
@@ -232,21 +232,21 @@ class Dimer(Calculator):
     def get_forces(self, atoms, coords):
         # Generate random guess for the dimer orientation if not yet set
         if self.N is None:
-            self.log("No initial orientation given. Using random guess.")
+            self.dimer_log("No initial orientation given. Using random guess.")
             self.N = np.random.rand(coords.size)
         self.atoms = atoms
         self.coords0 = coords
 
         lbfgs = small_lbfgs_closure()
         try:
-            self.log("Starting dimer rotation")
+            self.dimer_log("Starting dimer rotation")
             prev_step = None
-            for i in range(self.rotation_max_cycles):
+            for i in range(self.rotation_max_cycles):  # lgtm [py/redundant-else]
                 rot_force = self.rot_force
                 rms_rot_force = rms(rot_force)
-                self.log(f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f}")
+                self.dimer_log(f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f}")
                 if rms_rot_force <= self.rotation_thresh:
-                    self.log("\trms(rot_force) is below threshold!")
+                    self.dimer_log("\trms(rot_force) is below threshold!")
                     raise RotationConverged
                 coords1_old = self.coords1
                 self.rotation_method(lbfgs, prev_step)
@@ -257,9 +257,9 @@ class Dimer(Calculator):
                       f"{self.rotation_max_cycles}"
         except RotationConverged:
             msg = f"\tDimer rotation converged in {i+1} cycle(s)."
-        self.log(msg)
-        self.log("N after rotation:\n\t" + str(self.N))
-        self.log()
+        self.dimer_log(msg)
+        self.dimer_log("N after rotation:\n\t" + str(self.N))
+        self.dimer_log()
 
         energy = self.energy0
 

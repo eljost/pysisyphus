@@ -5,7 +5,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_library, do_final_hessian
+from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 
