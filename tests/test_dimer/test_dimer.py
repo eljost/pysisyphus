@@ -77,7 +77,7 @@ def test_dimer_hcn():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 8
+    assert opt.cur_cycle == 9
     assert geom.energy == pytest.approx(ref_energy)
 
     # do_final_hessian(geom, save_hessian=False)
