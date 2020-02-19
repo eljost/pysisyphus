@@ -81,3 +81,30 @@ def test_dimer_hcn():
     assert geom.energy == pytest.approx(ref_energy)
 
     # do_final_hessian(geom, save_hessian=False)
+
+
+@pytest.mark.parametrize(
+    "bonds",
+    [
+        [(0, 4, 1)],
+        [(0, 4, -1)],
+    ]
+)
+def test_N_init(bonds):
+    geom = geom_from_library("baker_ts/08_formyloxyethyl.xyz")
+
+    dimer_kwargs = {
+        "calculator": None,
+        "bonds": bonds,
+    }
+
+    dimer = Dimer(**dimer_kwargs)
+    dimer.make_N_init(geom.coords)
+    N = dimer.N.reshape(-1, 3)
+    print()
+    print(N)
+
+    from_, to_, weight = bonds[0]
+    ref_row = np.array((-0.66128738, -0.24330643, 0.05916908))
+    np.testing.assert_allclose(N[from_], weight * ref_row)
+    np.testing.assert_allclose(N[to_], -weight * ref_row)

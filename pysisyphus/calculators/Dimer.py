@@ -17,11 +17,11 @@ class Dimer(Calculator):
 
     def __init__(self, calculator, *args, N_init=None, length=0.0189, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
-                 rotation_max_element=0.001, rotation_interpolate=True, seed=None,
-                 **kwargs):
+                 rotation_max_element=0.001, rotation_interpolate=True,
+                 bonds=None, seed=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.dimer_logger = logging.getLogger("dimer")
+        self.logger = logging.getLogger("dimer")
 
         self.calculator = calculator
         self.length = float(length)
@@ -44,6 +44,8 @@ class Dimer(Calculator):
         self.rotation_tol = np.deg2rad(rotation_tol)
         self.rotation_max_element = float(rotation_max_element)
         self.rotation_interpolate = bool(rotation_interpolate)
+        # Regarding generation of initial orientation
+        self.bonds = bonds
 
         restrict_steps = {
             "direct": get_scale_max(self.rotation_max_element),
@@ -61,14 +63,59 @@ class Dimer(Calculator):
 
         # Set dimer direction if given
         if N_init is not None:
-            self.dimer_log("Setting initial orientation from given 'N_init'.")
+            self.log("Setting initial orientation from given 'N_init'.")
             self.N = N_init
 
         if seed is not None:
             np.random.seed(seed)
 
-    def dimer_log(self, message=""):
-        self.dimer_logger.debug(message)
+    def get_bond_mode(self, bond, coords):
+        from_, to_, weight = bond
+        c3d = coords.reshape(-1, 3)
+        bond_vec = c3d[from_] - c3d[to_]
+        # Normalization is done nonetheless in the setter of self.N
+        bond_vec /= weight * np.linalg.norm(bond_vec)
+
+        N = np.zeros_like(c3d)
+        N[from_] = bond_vec
+        N[to_] = -bond_vec
+        return N
+
+    def make_N_init(self, coords):
+        self.log("No initial orientation given. Generating one.")
+        if self.bonds is None:
+            self.log("Using random guess.")
+            N = np.random.rand(coords.size)
+        else:
+            bond_modes = [self.get_bond_mode(bond, coords)
+                          for bond in self.bonds]
+            N = np.sum(bond_modes, axis=0)
+        self.N = N
+        # elif self.bond_form is not None:
+            # bond = self.bond_form
+            # direction = 1
+            # self.log( "Generating mode that describes a bond formation "
+                     # f"between atoms {bond}.")
+        # elif self.bond_break is not None:
+            # bond = self.bond_break
+            # direction = -1
+            # self.log( "Generating mode that describes a bond breaking "
+                     # f"between atoms {bond}.")
+        # else:
+            # raise Exception("This should not happen :)")
+
+        # from_, to_ = bond
+        # c3d = coords.reshape(-1, 3)
+        # bond_vec = c3d[from_] - c3d[to_]
+        # # Normalization is done nonetheless in the setter of self.N
+        # bond_vec /= direction * np.linalg.norm(bond_vec)
+
+        # N = np.zeros_like(c3d)
+        # N[from_] = bond_vec
+        # N[to_] = -bond_vec
+        # self.N = N.flatten()
+
+        self.log("Initial orientation:\n\t{self.N}")
 
     @property
     def N(self):
@@ -76,7 +123,8 @@ class Dimer(Calculator):
 
     @N.setter
     def N(self, N_new):
-        N_new = np.array(N_new, dtype=float) / np.linalg.norm(N_new)
+        N_new = np.array(N_new, dtype=float).flatten()
+        N_new /= np.linalg.norm(N_new)
         self._N = N_new
 
     @property
@@ -232,45 +280,58 @@ class Dimer(Calculator):
     def get_forces(self, atoms, coords):
         # Generate random guess for the dimer orientation if not yet set
         if self.N is None:
-            self.dimer_log("No initial orientation given. Using random guess.")
-            self.N = np.random.rand(coords.size)
+            self.make_N_init(self, coords)
         self.atoms = atoms
         self.coords0 = coords
 
         lbfgs = small_lbfgs_closure()
         try:
-            self.dimer_log("Starting dimer rotation")
+            self.log("Starting dimer rotation")
             prev_step = None
             for i in range(self.rotation_max_cycles):  # lgtm [py/redundant-else]
                 rot_force = self.rot_force
                 rms_rot_force = rms(rot_force)
-                self.dimer_log(f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f}")
+                self.log(
+                    f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f} C={self.C: .8f}"
+                )
                 if rms_rot_force <= self.rotation_thresh:
-                    self.dimer_log("\trms(rot_force) is below threshold!")
+                    self.log("\trms(rot_force) is below threshold!")
                     raise RotationConverged
                 coords1_old = self.coords1
                 self.rotation_method(lbfgs, prev_step)
                 actual_step = self.coords1 - coords1_old
                 prev_step = actual_step
             else:
-                msg =  "\tDimer rotation dit not converge in " \
+                msg =  "\tDimer rotation did not converge in " \
                       f"{self.rotation_max_cycles}"
         except RotationConverged:
             msg = f"\tDimer rotation converged in {i+1} cycle(s)."
-        self.dimer_log(msg)
-        self.dimer_log("N after rotation:\n\t" + str(self.N))
-        self.dimer_log()
+        self.log(msg )
+        self.log("\tN after rotation:\n\t" + str(self.N))
+        self.log()
 
         energy = self.energy0
+        self.log(f"\tenergy={self.energy0:.8f} au")
 
         f0 = self.f0
+        norm_f0 = np.linalg.norm(f0)
+        self.log(f"\tnorm(forces)={norm_f0:.6f}")
         N = self.N
 
         f_parallel = f0.dot(N)*N
+        norm_parallel = np.linalg.norm(f_parallel)
+        self.log(f"\tnorm(forces_parallel)={norm_parallel:.6f}")
+
         f_perp = f0 - f_parallel
+        norm_perp = np.linalg.norm(f_perp)
+        self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
+
         f_tran = f_perp - f_parallel
+        self.log(f"\tf_tran:\n\t{f_tran}")
         results = {
             "energy": energy,
             "forces": f_tran
         }
+
+        self.calc_counter += 1
         return results
