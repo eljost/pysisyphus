@@ -515,7 +515,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
             prev_f_par_rms = f_par_rms  # lgtm [py/multiple-definition]
             # prev_f_perp_rms = f_perp_rms
 
-
         # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
         try:
