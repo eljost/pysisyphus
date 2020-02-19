@@ -532,10 +532,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
         logger.debug("")
         print()
         sys.stdout.flush()
-    print(f"Did {tot_rot_force_evals} force evaluations in the rotation steps "
+    print(f"@Did {tot_rot_force_evals} force evaluations in the rotation steps "
           f"using the {opt_name_dict[rot_opt]} optimizer.")
     tot_force_evals = tot_rot_force_evals + add_force_evals
-    print(f"Used {add_force_evals} additional force evaluations for a total of "
+    print(f"@Used {add_force_evals} additional force evaluations for a total of "
           f"{tot_force_evals} force evaluations.")
 
     dimer_results = DimerResult(dimer_cycles=dimer_cycles,
