@@ -18,7 +18,7 @@ class Dimer(Calculator):
     def __init__(self, calculator, *args, N_raw=None, length=0.0189, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, rotation_interpolate=True,
-                 bonds=None, bias_rotation=None, seed=None, **kwargs):
+                 bonds=None, bias_rotation=False, seed=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -48,6 +48,7 @@ class Dimer(Calculator):
         self.bonds = bonds
         # Bias
         self.bias_rotation = bias_rotation
+        self.bias_rotation_a = 0.
 
         restrict_steps = {
             "direct": get_scale_max(self.rotation_max_element),
@@ -126,16 +127,7 @@ class Dimer(Calculator):
             results = self.calculator.get_forces(self.atoms, self.coords1)
             self.force_evals += 1
             self._f1 = results["forces"]
-        f1 = self._f1
-
-        # Apply bias force if desired. Dont apply bias if N_init is not (yet)
-        # set. When N_raw was converged to a reasonable N_init we can add
-        # the bias.
-        if self.bias_rotation is not None and self.N_init is not None:
-            fN = self.bias_rotation * self.length * self.N.dot(self.N_init) * self.N_init
-            f1 += fN
-
-        return f1
+        return self._f1
 
     @f1.setter
     def f1(self, f1_new):
@@ -146,12 +138,33 @@ class Dimer(Calculator):
         """Never calculated explicitly, but estimated from f0 and f1."""
         return 2 * self.f0 - self.f1
 
+    def f1_bias(self):
+        # Apply bias force to f1 if desired. Dont apply bias if N_init is not (yet)
+        # set. When N_raw was converged to a reasonable N_init we can add
+        # the bias.
+        assert self.bias_rotation_a >= 0., \
+            "This should not be negative!"
+
+        try:
+            fN = self.bias_rotation_a * self.length * self.N.dot(self.N_init) * self.N_init
+        # When N_init is not set
+        except TypeError:
+            fN = np.zeros_like(self.N)
+
+        return fN
+
     @property
     def rot_force(self):
         f1_perp = perp_comp(self.f1, self.N)
         f2_perp = perp_comp(self.f2, self.N)
-
         f_perp = f1_perp - f2_perp
+
+        # Don't bias rotational force if curvature is already negative
+        if self.bias_rotation and self.C > 0.:
+            f1_bias = self.f1_bias()
+            f1_bias_perp = perp_comp(f1_bias, self.N)
+            f_perp += f1_bias_perp
+
         return f_perp
 
     def curvature(self, f1, f2, N):
@@ -324,6 +337,16 @@ class Dimer(Calculator):
             self.log(f"N_raw:\n\t{self.N_raw}")
             self.log(f"Rotated N_raw by {rot_deg:.1f}° to N_init")
             self.log(f"N_init:\n\t{self.N_init}")
+            C = self.C
+            self.log(f"Curvature after intial sweep is C={C:.6f}")
+            self.log("Determining proper scaling factor for bias potential.")
+            assert self.C > 0, \
+                "Handle case with bias_rotation=True and self.C < 0!"
+            # Determine proper scaling factor for the quadratic bias potential
+            # from the current curvature.
+            scale_fact = 1.5
+            self.bias_rotation_a = scale_fact*self.C
+            self.log(f"Using a={scale_fact}*C={self.bias_rotation_a:.6f}")
 
         self.do_dimer_rotations()
 

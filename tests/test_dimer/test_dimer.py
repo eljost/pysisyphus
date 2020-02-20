@@ -109,7 +109,7 @@ def test_N_raw(bonds):
     }
 
     dimer = Dimer(**dimer_kwargs)
-    dimer.make_N_raw(geom.coords)
+    dimer.set_N_raw(geom.coords)
     N = dimer.N.reshape(-1, 3)
     # print()
     # print(N)
@@ -140,7 +140,7 @@ def test_bias_rotation():
         "calculator": calc,
         "bonds": bonds,
         # "rotation_thresh": 2e-4,
-        "bias_rotation": .025,
+        "bias_rotation": True,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
