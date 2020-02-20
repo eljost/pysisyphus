@@ -15,7 +15,7 @@ class RotationConverged(Exception):
 
 class Dimer(Calculator):
 
-    def __init__(self, calculator, *args, N_init=None, length=0.0189, rotation_max_cycles=15,
+    def __init__(self, calculator, *args, N_raw=None, length=0.0189, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, rotation_interpolate=True,
                  bonds=None, bias_rotation=None, seed=None, **kwargs):
@@ -64,11 +64,11 @@ class Dimer(Calculator):
         self.force_evals = 0
 
         # Set dimer direction if given
-        self.N_init = N_init
-        if N_init is not None:
-            self.log("Setting initial orientation from given 'N_init'.")
-            self.N = N_init
-        self.N_init_converged = False
+        self.N_raw = N_raw
+        if self.N_raw is not None:
+            self.log("Setting initial orientation from given 'N_raw'.")
+            self.N = N_raw
+        self.N_init = None
 
         if seed is not None:
             np.random.seed(seed)
@@ -128,8 +128,10 @@ class Dimer(Calculator):
             self._f1 = results["forces"]
         f1 = self._f1
 
-        # Apply bias force if desired
-        if self.bias_rotation is not None:
+        # Apply bias force if desired. Dont apply bias if N_init is not (yet)
+        # set. When N_raw was converged to a reasonable N_init we can add
+        # the bias.
+        if self.bias_rotation is not None and self.N_init is not None:
             fN = self.bias_rotation * self.length * self.N.dot(self.N_init) * self.N_init
             f1 += fN
 
@@ -173,7 +175,7 @@ class Dimer(Calculator):
         N[to_] = -bond_vec
         return N
 
-    def make_N_raw(self, coords):
+    def set_N_raw(self, coords):
         self.log("No initial orientation given. Generating one.")
         if self.bonds is None:
             self.log("Using random guess.")
@@ -182,15 +184,12 @@ class Dimer(Calculator):
             bond_modes = [self.get_bond_mode(bond, coords)
                           for bond in self.bonds]
             N_raw = np.sum(bond_modes, axis=0)
-        # Normalize N_init
+        # Normalize N_raw
         self.N = N_raw
         # Now we keep the normalized dimer orientation
         self.N_raw = self.N
 
         self.log(f"Initial orientation:\n\t{self.N}")
-
-    def converge_N_init(self):
-        pass
 
     def rotate_coords1(self, rad, theta):
         """Rotate dimer and produce new coords1."""
@@ -271,33 +270,32 @@ class Dimer(Calculator):
         self.coords1 = self.rotate_coords1(rad_min, theta)
         self.f1 = f1
 
-    def do_dimer_rotations(self, coords):
-        # Generate random guess for the dimer orientation if not yet set
-        if self.N is None:
-            self.make_N_raw(coords)
-            self.N_init = self.N
-
-        # Refine N_raw if not yet done to get a good guess for N_init
-        if not self.N_init_converged:
-            self.converge_N_init()
+    def do_dimer_rotations(self, rotation_thresh=None):
+        self.log("Doing dimer rotations")
+        if rotation_thresh is None:
+            rotation_thresh = self.rotation_thresh
+            self.log(f"\tThreshold norm(rot_force)={rotation_thresh:.6f}")
 
         lbfgs = small_lbfgs_closure()
         try:
-            self.log("Starting dimer rotation")
+            N_first = self.N
             prev_step = None
             for i in range(self.rotation_max_cycles):  # lgtm [py/redundant-else]
+                N_cur = self.N
                 rot_force = self.rot_force
                 rms_rot_force = rms(rot_force)
                 self.log(
                     f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f} C={self.C: .8f}"
                 )
-                if rms_rot_force <= self.rotation_thresh:
+                if rms_rot_force <= rotation_thresh:
                     self.log("\trms(rot_force) is below threshold!")
                     raise RotationConverged
                 coords1_old = self.coords1
                 self.rotation_method(lbfgs, prev_step)
                 actual_step = self.coords1 - coords1_old
                 prev_step = actual_step
+                rot_deg = np.rad2deg(np.arccos(N_cur.dot(self.N)))
+                self.log(f"\t\tRotated by {rot_deg:.1f}°")
             else:
                 msg =  "\tDimer rotation did not converge in " \
                       f"{self.rotation_max_cycles}"
@@ -306,13 +304,35 @@ class Dimer(Calculator):
         self.log(msg )
         self.log("\tN after rotation:\n\t" + str(self.N))
         self.log()
+        rot_deg = np.rad2deg(np.arccos(N_first.dot(self.N)))
+        self.log(f"\tRotated by {rot_deg:.1f}° w.r.t. the orientation "
+                  "before the rotations.")
+
+    def update_orientation(self, coords):
+        # Generate random guess for the dimer orientation if not yet set
+        if self.N is None:
+            self.set_N_raw(coords)
+
+        # Refine N_raw to N_init if not yet done
+        if self.bias_rotation and self.N_init is None:
+            # Run initial sweep with a much softer convergence threshold
+            self.log("Initial sweep to refine N_raw to N_init.")
+            self.do_dimer_rotations(10 * self.rotation_thresh)
+            self.N_init = self.N
+            rot_rad = np.arccos(self.N_raw.dot(self.N_init))
+            rot_deg = np.rad2deg(rot_rad)
+            self.log(f"N_raw:\n\t{self.N_raw}")
+            self.log(f"Rotated N_raw by {rot_deg:.1f}° to N_init")
+            self.log(f"N_init:\n\t{self.N_init}")
+
+        self.do_dimer_rotations()
 
     def get_forces(self, atoms, coords):
         self.atoms = atoms
         self.coords0 = coords
 
-        # Update dimer orientation self.N
-        self.do_dimer_rotations(coords)
+        self.update_orientation(coords)
+        # Now we have an updated self.N and can do the projections of the forces
 
         energy = self.energy0
         self.log(f"\tenergy={self.energy0:.8f} au")

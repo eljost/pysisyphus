@@ -24,13 +24,13 @@ init_logging()
 def test_dimer(rotation_method, ref_cycle):
     coords = (-0.2, 1.1, 0)
     geom = Geometry(("X", ), coords)
-    N_init = np.array((0.3, 0.7, 0.))
+    N_raw = np.array((0.3, 0.7, 0.))
 
     # New implementation
     dimer_kwargs = {
         "rotation_method": rotation_method,
         "calculator": AnaPot(),
-        "N_init": N_init,
+        "N_raw": N_raw,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -63,18 +63,18 @@ def test_dimer(rotation_method, ref_cycle):
 def test_dimer_hcn(bonds, ref_cycle):
     geom = geom_from_library("baker_ts/01_hcn.xyz")
     ref_energy = -92.24604
-    N_init = " 0.5858  0.      0.0543 " \
+    N_raw = " 0.5858  0.      0.0543 " \
              "-0.7697 -0.      0.061 " \
              "0.2027  0.     -0.1295".split()
     if bonds is not None:
-        N_init = None
+        N_raw = None
 
     calc = PySCF("321g", pal=2)
 
     dimer_kwargs = {
         "rotation_method": "fourier",
         "calculator": calc,
-        "N_init": N_init,
+        "N_raw": N_raw,
         "bonds": bonds,
     }
     dimer = Dimer(**dimer_kwargs)
@@ -100,7 +100,7 @@ def test_dimer_hcn(bonds, ref_cycle):
         [(0, 4, -1)],
     ]
 )
-def test_N_init(bonds):
+def test_N_raw(bonds):
     geom = geom_from_library("baker_ts/08_formyloxyethyl.xyz")
 
     dimer_kwargs = {
@@ -109,7 +109,7 @@ def test_N_init(bonds):
     }
 
     dimer = Dimer(**dimer_kwargs)
-    dimer.make_N_init(geom.coords)
+    dimer.make_N_raw(geom.coords)
     N = dimer.N.reshape(-1, 3)
     # print()
     # print(N)
@@ -118,3 +118,39 @@ def test_N_init(bonds):
     ref_row = np.array((-0.66128738, -0.24330643, 0.05916908))
     np.testing.assert_allclose(N[from_], weight * ref_row)
     np.testing.assert_allclose(N[to_], -weight * ref_row)
+
+
+def test_bias_rotation():
+    geom = geom_from_library("claisen_forward.xyz")
+    bonds = ((10, 11, 1), (12, 13, -1))
+    calc_kwargs = {
+        "xc": "pbe",
+        "basis": "def2svp",
+        "auxbasis": "weigend",
+        "pal": 4,
+    }
+    calc = PySCF(**calc_kwargs)
+
+    # geom = geom_from_library("baker_ts/01_hcn.xyz")
+    # bonds = ((1, 2, -1), (2, 0, 1))
+    # calc = PySCF("321g", pal=2)
+
+    dimer_kwargs = {
+        "rotation_method": "fourier",
+        "calculator": calc,
+        "bonds": bonds,
+        # "rotation_thresh": 2e-4,
+        "bias_rotation": .025,
+    }
+    dimer = Dimer(**dimer_kwargs)
+    geom.set_calculator(dimer)
+
+    f = geom.forces
+    print(f)
+    # opt_kwargs = {
+        # "precon": True,
+        # "max_step_element": 0.25,
+        # "max_cycles": 15,
+    # }
+    # opt = PreconLBFGS(geom, **opt_kwargs)
+    # opt.run()
