@@ -43,7 +43,7 @@ class Dimer(Calculator):
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, rotation_interpolate=True,
                  rotation_disable=False, bonds=None, bias_rotation=False,
-                 seed=None, **kwargs):
+                 bias_translation=False, seed=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -76,6 +76,7 @@ class Dimer(Calculator):
         # Bias
         self.bias_rotation = bias_rotation
         self.bias_rotation_a = 0.
+        self.bias_translation = bias_translation
 
         restrict_steps = {
             "direct": get_scale_max(self.rotation_max_element),
@@ -213,9 +214,7 @@ class Dimer(Calculator):
         return self.curvature(self.f1, self.f2, self.N)
 
     def get_gaussian_forces(self, coords):
-        return np.sum([gauss.forces(infl_coords) for gauss in self.gaussians],
-                      axis=0
-        )
+        return np.sum([gauss.forces(coords) for gauss in self.gaussians], axis=0)
 
     def add_gaussian(self, atoms, center, N, height=.1, std=0.0529,
                      max_cycles=50):
@@ -282,6 +281,9 @@ class Dimer(Calculator):
         dot = get_dot(height)
         gaussian.height = height
         self.gaussians.append(gaussian)
+
+        self.log(f"Added gaussian with height={height:.6f}")
+        self.log(f"There are now {len(self.gaussians)} gaussians.")
 
         return gaussian
 
@@ -484,6 +486,10 @@ class Dimer(Calculator):
         self.log(f"\tenergy={self.energy0:.8f} au")
 
         f0 = self.f0
+
+        if self.bias_translation:
+            f0 += self.get_gaussian_forces(coords)
+
         norm_f0 = np.linalg.norm(f0)
         self.log(f"\tnorm(forces)={norm_f0:.6f}")
         N = self.N

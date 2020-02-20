@@ -168,23 +168,25 @@ def test_add_gaussian():
     assert g0.height == pytest.approx(0.1708984)
 
 
-# @pytest.mark.skip
+@pytest.mark.skip
 def test_bias_translation():
-    geom = AnaPot.get_geom((-1.05, 1.02, 0))
+    # coords = (-1.05, 1.02, 0)
+    coords = (-1.009, 1.024, 0)
+    geom = AnaPot.get_geom(coords)
     N_raw = np.array((0.9603, 0.2789, 0.))
 
     calc = geom.calculator
     dimer_kwargs = {
         "calculator": calc,
         "N_raw": N_raw,
-        "bias_rotation": True,
+        # "bias_rotation": True,
+        "bias_translation": True,
         "rotation_disable": True,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
 
-    # g0 = dimer.add_gaussian(geom.atoms, geom.coords, dimer.N)
-    # assert g0.height == pytest.approx(0.1708984)
+    g0 = dimer.add_gaussian(geom.atoms, geom.coords, dimer.N)
 
     opt_kwargs = {
         "precon": False,
