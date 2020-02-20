@@ -17,14 +17,14 @@ init_logging()
 @pytest.mark.parametrize(
     "rotation_method, ref_cycle",
     [
-        ("direct", 11),
+        ("direct", 9),
         ("fourier", 9),
     ]
 )
 def test_dimer(rotation_method, ref_cycle):
     coords = (-0.2, 1.1, 0)
     geom = Geometry(("X", ), coords)
-    N_raw = np.array((0.3, 0.7, 0.))
+    N_raw = np.array((0.83, 0.27, 0.))
 
     # New implementation
     dimer_kwargs = {
@@ -44,7 +44,7 @@ def test_dimer(rotation_method, ref_cycle):
     }
     opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
-    # AnaPot().plot_opt(opt)
+    AnaPot().plot_opt(opt)
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
@@ -168,7 +168,6 @@ def test_add_gaussian():
     assert g0.height == pytest.approx(0.1708984)
 
 
-@pytest.mark.skip
 def test_bias_translation():
     # coords = (-1.05, 1.02, 0)
     coords = (-1.009, 1.024, 0)
