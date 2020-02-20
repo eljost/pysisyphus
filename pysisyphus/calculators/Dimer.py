@@ -112,6 +112,7 @@ class Dimer(Calculator):
         N_new = np.array(N_new, dtype=float).flatten()
         N_new /= np.linalg.norm(N_new)
         self._N = N_new
+        self._f1 = None
 
     @property
     def coords0(self):

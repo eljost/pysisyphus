@@ -168,6 +168,7 @@ def test_add_gaussian():
     assert g0.height == pytest.approx(0.1708984)
 
 
+@pytest.mark.skip
 def test_bias_translation():
     # coords = (-1.05, 1.02, 0)
     coords = (-1.009, 1.024, 0)
@@ -178,9 +179,9 @@ def test_bias_translation():
     dimer_kwargs = {
         "calculator": calc,
         "N_raw": N_raw,
-        # "bias_rotation": True,
+        "bias_rotation": True,
         "bias_translation": True,
-        "rotation_disable": True,
+        # "rotation_disable": True,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
