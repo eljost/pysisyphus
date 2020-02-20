@@ -305,8 +305,15 @@ class Dimer(Calculator):
                 N_cur = self.N
                 rot_force = self.rot_force
                 rms_rot_force = rms(rot_force)
+                if self.should_bias_f1:
+                    C_real = self.C
+                    C_bias = -self.bias_rotation_a * (self.N.dot(self.N_init))**2
+                    C = C_real + C_bias
+                    C_str = f"C={C: .6f}, C_real={C_real: .6f}, C_bias={C_bias: .6f}"
+                else:
+                    C_str = f"C={self.C: .6f}"
                 self.log(
-                    f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f} C={self.C: .8f}"
+                    f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f} {C_str}"
                 )
                 if rms_rot_force <= rotation_thresh:
                     self.log("\trms(rot_force) is below threshold!")
@@ -335,26 +342,28 @@ class Dimer(Calculator):
             self.set_N_raw(coords)
 
         # Refine N_raw to N_init if not yet done
-        if self.bias_rotation and self.N_init is None:
+        if self.bias_rotation and self.N_init is None and self.C > 0.:
             # Run initial sweep with a much softer convergence threshold
             self.log("Initial sweep to refine N_raw to N_init.")
             self.do_dimer_rotations(10 * self.rotation_thresh)
-            self.N_init = self.N
-            rot_rad = np.arccos(self.N_raw.dot(self.N_init))
-            rot_deg = np.rad2deg(rot_rad)
-            self.log(f"N_raw:\n\t{self.N_raw}")
-            self.log(f"Rotated N_raw by {rot_deg:.1f}° to N_init")
-            self.log(f"N_init:\n\t{self.N_init}")
-            C = self.C
-            self.log(f"Curvature after intial sweep is C={C:.6f}")
-            self.log("Determining proper scaling factor for bias potential.")
-            assert self.C > 0, \
-                "Handle case with bias_rotation=True and self.C < 0!"
-            # Determine proper scaling factor for the quadratic bias potential
-            # from the current curvature.
-            scale_fact = 1.5
-            self.bias_rotation_a = scale_fact*self.C
-            self.log(f"Using a={scale_fact}*C={self.bias_rotation_a:.6f}")
+            if self.C > 0:
+                self.N_init = self.N
+                rot_rad = np.arccos(self.N_raw.dot(self.N_init))
+                rot_deg = np.rad2deg(rot_rad)
+                self.log(f"N_raw:\n\t{self.N_raw}")
+                self.log(f"Rotated N_raw by {rot_deg:.1f}° to N_init")
+                self.log(f"N_init:\n\t{self.N_init}")
+                C = self.C
+                self.log(f"Curvature after intial sweep is C={C:.6f}")
+                self.log("Determining proper scaling factor for bias potential.")
+                # Determine proper scaling factor for the quadratic bias potential
+                # from the current curvature.
+                scale_fact = 1.5
+                self.bias_rotation_a = scale_fact*self.C
+                self.log(f"Using a={scale_fact}*C={self.bias_rotation_a:.6f}")
+            else:
+                self.log(f"Curvature after initial sweep C={self.C:.6f} is "
+                          "already negative. Not setting N_init and bias_rotation_a!")
 
         self.do_dimer_rotations()
 

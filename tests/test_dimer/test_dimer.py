@@ -121,19 +121,20 @@ def test_N_raw(bonds):
 
 
 def test_bias_rotation():
-    geom = geom_from_library("claisen_forward.xyz")
-    bonds = ((10, 11, 1), (12, 13, -1))
-    calc_kwargs = {
-        "xc": "pbe",
-        "basis": "def2svp",
-        "auxbasis": "weigend",
-        "pal": 4,
-    }
-    calc = PySCF(**calc_kwargs)
+    # geom = geom_from_library("claisen_forward.xyz")
+    # bonds = ((10, 11, 1), (12, 13, -1))
+    # calc_kwargs = {
+        # "xc": "pbe",
+        # # "basis": "def2svp",
+        # # "auxbasis": "weigend",
+        # "basis": "321g",
+        # "pal": 4,
+    # }
+    # calc = PySCF(**calc_kwargs)
 
-    # geom = geom_from_library("baker_ts/01_hcn.xyz")
-    # bonds = ((1, 2, -1), (2, 0, 1))
-    # calc = PySCF("321g", pal=2)
+    geom = geom_from_library("baker_ts/01_hcn.xyz")
+    bonds = ((1, 2, -1), (2, 0, 1))
+    calc = PySCF("321g", pal=2)
 
     dimer_kwargs = {
         "rotation_method": "fourier",
@@ -151,6 +152,7 @@ def test_bias_rotation():
         # "precon": True,
         # "max_step_element": 0.25,
         # "max_cycles": 15,
+        # "dump": True,
     # }
     # opt = PreconLBFGS(geom, **opt_kwargs)
     # opt.run()

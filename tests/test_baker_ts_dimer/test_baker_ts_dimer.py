@@ -197,7 +197,7 @@ def test_baker_dimer_new(name, geom, charge, mult, ref_energy):
     dimer_kwargs = {
         "rotation_method": "fourier",
         "calculator": calc,
-        "N_init": N_init_dict[name],
+        "N_raw": N_init_dict[name],
         "length": 0.0189,
         "rotation_tol": 5,
     }
