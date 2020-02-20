@@ -18,7 +18,7 @@ class Dimer(Calculator):
     def __init__(self, calculator, *args, N_init=None, length=0.0189, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, rotation_interpolate=True,
-                 bonds=None, seed=None, **kwargs):
+                 bonds=None, bias_rotation=None, seed=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -46,6 +46,8 @@ class Dimer(Calculator):
         self.rotation_interpolate = bool(rotation_interpolate)
         # Regarding generation of initial orientation
         self.bonds = bonds
+        # Bias
+        self.bias_rotation = bias_rotation
 
         restrict_steps = {
             "direct": get_scale_max(self.rotation_max_element),
@@ -66,37 +68,10 @@ class Dimer(Calculator):
         if N_init is not None:
             self.log("Setting initial orientation from given 'N_init'.")
             self.N = N_init
+        self.N_init_converged = False
 
         if seed is not None:
             np.random.seed(seed)
-
-    def get_bond_mode(self, bond, coords):
-        from_, to_, weight = bond
-        c3d = coords.reshape(-1, 3)
-        bond_vec = c3d[from_] - c3d[to_]
-        # Normalization is done nonetheless in the setter of self.N
-        bond_vec /= weight * np.linalg.norm(bond_vec)
-
-        N = np.zeros_like(c3d)
-        N[from_] = bond_vec
-        N[to_] = -bond_vec
-        return N
-
-    def make_N_init(self, coords):
-        self.log("No initial orientation given. Generating one.")
-        if self.bonds is None:
-            self.log("Using random guess.")
-            N_init = np.random.rand(coords.size)
-        else:
-            bond_modes = [self.get_bond_mode(bond, coords)
-                          for bond in self.bonds]
-            N_init = np.sum(bond_modes, axis=0)
-        # Normalize N_init
-        self.N = N_init
-        # Now we keep the normalized dimer orientation
-        self.N_init = self.N
-
-        self.log("Initial orientation:\n\t{self.N}")
 
     @property
     def N(self):
@@ -151,7 +126,14 @@ class Dimer(Calculator):
             results = self.calculator.get_forces(self.atoms, self.coords1)
             self.force_evals += 1
             self._f1 = results["forces"]
-        return self._f1
+        f1 = self._f1
+
+        # Apply bias force if desired
+        if self.bias_rotation is not None:
+            fN = self.bias_rotation * self.length * self.N.dot(self.N_init) * self.N_init
+            f1 += fN
+
+        return f1
 
     @f1.setter
     def f1(self, f1_new):
@@ -179,7 +161,38 @@ class Dimer(Calculator):
         """Shortcut for the curvature."""
         return self.curvature(self.f1, self.f2, self.N)
 
-    def rotate(self, rad, theta):
+    def get_bond_mode(self, bond, coords):
+        from_, to_, weight = bond
+        c3d = coords.reshape(-1, 3)
+        bond_vec = c3d[from_] - c3d[to_]
+        # Normalization is done nonetheless in the setter of self.N
+        bond_vec /= weight * np.linalg.norm(bond_vec)
+
+        N = np.zeros_like(c3d)
+        N[from_] = bond_vec
+        N[to_] = -bond_vec
+        return N
+
+    def make_N_raw(self, coords):
+        self.log("No initial orientation given. Generating one.")
+        if self.bonds is None:
+            self.log("Using random guess.")
+            N_raw = np.random.rand(coords.size)
+        else:
+            bond_modes = [self.get_bond_mode(bond, coords)
+                          for bond in self.bonds]
+            N_raw = np.sum(bond_modes, axis=0)
+        # Normalize N_init
+        self.N = N_raw
+        # Now we keep the normalized dimer orientation
+        self.N_raw = self.N
+
+        self.log(f"Initial orientation:\n\t{self.N}")
+
+    def converge_N_init(self):
+        pass
+
+    def rotate_coords1(self, rad, theta):
         """Rotate dimer and produce new coords1."""
         return self.coords0 + (self.N*np.cos(rad) + theta*np.sin(rad)) * self.length
 
@@ -215,7 +228,7 @@ class Dimer(Calculator):
 
         # Trial rotation for finite difference calculation of rotational force
         # and rotational curvature.
-        coords1_trial = self.rotate(rad_trial, theta)
+        coords1_trial = self.rotate_coords1(rad_trial, theta)
         f1_trial = self.calculator.get_forces(self.atoms, coords1_trial)["forces"]
         self.force_evals += 1
         f2_trial = 2*self.f0 - f1_trial
@@ -255,15 +268,18 @@ class Dimer(Calculator):
                       * np.tan(rad_trial / 2)) * self.f0
             )
 
-        self.coords1 = self.rotate(rad_min, theta)
+        self.coords1 = self.rotate_coords1(rad_min, theta)
         self.f1 = f1
 
-    def get_forces(self, atoms, coords):
+    def do_dimer_rotations(self, coords):
         # Generate random guess for the dimer orientation if not yet set
         if self.N is None:
-            self.make_N_init(coords)
-        self.atoms = atoms
-        self.coords0 = coords
+            self.make_N_raw(coords)
+            self.N_init = self.N
+
+        # Refine N_raw if not yet done to get a good guess for N_init
+        if not self.N_init_converged:
+            self.converge_N_init()
 
         lbfgs = small_lbfgs_closure()
         try:
@@ -290,6 +306,13 @@ class Dimer(Calculator):
         self.log(msg )
         self.log("\tN after rotation:\n\t" + str(self.N))
         self.log()
+
+    def get_forces(self, atoms, coords):
+        self.atoms = atoms
+        self.coords0 = coords
+
+        # Update dimer orientation self.N
+        self.do_dimer_rotations(coords)
 
         energy = self.energy0
         self.log(f"\tenergy={self.energy0:.8f} au")
