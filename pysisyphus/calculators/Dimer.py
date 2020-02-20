@@ -138,6 +138,19 @@ class Dimer(Calculator):
         """Never calculated explicitly, but estimated from f0 and f1."""
         return 2 * self.f0 - self.f1
 
+    @property
+    def can_bias_f1(self):
+        return self.bias_rotation \
+               and (self.N_init is not None) \
+               and (self.bias_rotation_a is not None) \
+               and (self.bias_rotation_a > 0.)
+
+    @property
+    def should_bias_f1(self):
+        """May lead to calculation of f0 and/or f1 if present!"""
+        return self.can_bias_f1 and self.C > 0.
+
+    @property
     def f1_bias(self):
         # Apply bias force to f1 if desired. Dont apply bias if N_init is not (yet)
         # set. When N_raw was converged to a reasonable N_init we can add
@@ -145,11 +158,7 @@ class Dimer(Calculator):
         assert self.bias_rotation_a >= 0., \
             "This should not be negative!"
 
-        try:
-            fN = self.bias_rotation_a * self.length * self.N.dot(self.N_init) * self.N_init
-        # When N_init is not set
-        except TypeError:
-            fN = np.zeros_like(self.N)
+        fN = self.bias_rotation_a * self.length * self.N.dot(self.N_init) * self.N_init
 
         return fN
 
@@ -160,9 +169,8 @@ class Dimer(Calculator):
         f_perp = f1_perp - f2_perp
 
         # Don't bias rotational force if curvature is already negative
-        if self.bias_rotation and self.C > 0.:
-            f1_bias = self.f1_bias()
-            f1_bias_perp = perp_comp(f1_bias, self.N)
+        if self.should_bias_f1:
+            f1_bias_perp = perp_comp(self.f1_bias, self.N)
             f_perp += f1_bias_perp
 
         return f_perp
@@ -319,7 +327,7 @@ class Dimer(Calculator):
         self.log()
         rot_deg = np.rad2deg(np.arccos(N_first.dot(self.N)))
         self.log(f"\tRotated by {rot_deg:.1f}° w.r.t. the orientation "
-                  "before the rotations.")
+                  "before rotation(s).")
 
     def update_orientation(self, coords):
         # Generate random guess for the dimer orientation if not yet set
