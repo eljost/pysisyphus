@@ -44,6 +44,7 @@ def test_dimer(rotation_method, ref_cycle):
     }
     opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
+    # AnaPot().plot_opt(opt)
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
@@ -148,17 +149,9 @@ def test_bias_rotation():
 
     f = geom.forces
     print(f)
-    # opt_kwargs = {
-        # "precon": True,
-        # "max_step_element": 0.25,
-        # "max_cycles": 15,
-        # "dump": True,
-    # }
-    # opt = PreconLBFGS(geom, **opt_kwargs)
-    # opt.run()
 
 
-def test_bias_translation():
+def test_add_gaussian():
     geom = AnaPot.get_geom((-0.2, 1.1, 0))
     N_raw = np.array((0.3, 0.7, 0.))
 
@@ -173,3 +166,32 @@ def test_bias_translation():
     g0 = dimer.add_gaussian(geom.atoms, geom.coords, dimer.N)
 
     assert g0.height == pytest.approx(0.1708984)
+
+
+# @pytest.mark.skip
+def test_bias_translation():
+    geom = AnaPot.get_geom((-1.05, 1.02, 0))
+    N_raw = np.array((0.9603, 0.2789, 0.))
+
+    calc = geom.calculator
+    dimer_kwargs = {
+        "calculator": calc,
+        "N_raw": N_raw,
+        "bias_rotation": True,
+        "rotation_disable": True,
+    }
+    dimer = Dimer(**dimer_kwargs)
+    geom.set_calculator(dimer)
+
+    # g0 = dimer.add_gaussian(geom.atoms, geom.coords, dimer.N)
+    # assert g0.height == pytest.approx(0.1708984)
+
+    opt_kwargs = {
+        "precon": False,
+        "max_step_element": 0.25,
+        "max_cycles": 3,
+        "dump": True,
+    }
+    opt = PreconLBFGS(geom, **opt_kwargs)
+    opt.run()
+    calc.plot_opt(opt)

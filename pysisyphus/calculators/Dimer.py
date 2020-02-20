@@ -42,7 +42,8 @@ class Dimer(Calculator):
     def __init__(self, calculator, *args, N_raw=None, length=0.0189, rotation_max_cycles=15,
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, rotation_interpolate=True,
-                 bonds=None, bias_rotation=False, seed=None, **kwargs):
+                 rotation_disable=False, bonds=None, bias_rotation=False,
+                 seed=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -68,6 +69,8 @@ class Dimer(Calculator):
         self.rotation_tol = np.deg2rad(rotation_tol)
         self.rotation_max_element = float(rotation_max_element)
         self.rotation_interpolate = bool(rotation_interpolate)
+        self.rotation_disable = bool(rotation_disable)
+
         # Regarding generation of initial orientation
         self.bonds = bonds
         # Bias
@@ -221,7 +224,11 @@ class Dimer(Calculator):
         # Calculate real forces at inflection point of new gaussian
         infl_coords = center + gaussian.std*N
         infl_results = self.calculator.get_forces(atoms, infl_coords)
+        self.force_evals += 1
         infl_forces = infl_results["forces"]
+
+        assert infl_forces.dot(N) < 0, \
+            "We probably overstepped the TS. See Section 2.3 in the paper."
 
         forces = self.get_gaussian_forces(infl_coords) + infl_forces
 
@@ -238,6 +245,9 @@ class Dimer(Calculator):
 
         def bisect(min_, max_, ):
             for i in range(max_cycles):
+                if abs(min_ - max_) <= 1e-10:
+                    raise Exception("min_ and max_ became too similar!")
+
                 # Determie value at half of the internval
                 height = min_ + (max_ - min_) / 2
                 dot = get_dot(height)
@@ -462,8 +472,13 @@ class Dimer(Calculator):
         self.atoms = atoms
         self.coords0 = coords
 
-        self.update_orientation(coords)
-        # Now we have an updated self.N and can do the projections of the forces
+        if not self.rotation_disable:
+            self.update_orientation(coords)
+        # Without update of self.N the calculations will be missing, so we
+        # do them here.
+        else:
+            self.f0
+        # Now we (have an updated self.N and) can do the force projections
 
         energy = self.energy0
         self.log(f"\tenergy={self.energy0:.8f} au")
@@ -481,7 +496,11 @@ class Dimer(Calculator):
         norm_perp = np.linalg.norm(f_perp)
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
 
-        f_tran = f_perp - f_parallel
+        f_tran = -f_parallel
+        if self.C < 0:
+            f_tran += f_perp
+        # f_tran = f_perp - f_parallel
+
         self.log(f"\tf_tran:\n\t{f_tran}")
         results = {
             "energy": energy,
