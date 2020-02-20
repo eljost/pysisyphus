@@ -13,6 +13,30 @@ class RotationConverged(Exception):
     pass
 
 
+class Gaussian:
+
+    def __init__(self, height, center, std, N):
+        self.center = np.array(center)
+        self.height= float(height)
+        self.std = float(std)
+        self.N = np.array(N)
+
+        self.s0 = self.center.dot(self.N)
+
+    def energy(self, R, height=None):
+        if height is None:
+            height = self.height
+
+        return height * np.exp(-(R.dot(self.N) - self.s0)**2 / (2*self.std**2))
+
+    def forces(self, R, height=None):
+        if height is None:
+            height = self.height
+        s_diff = R.dot(self.N) - self.s0
+
+        return height * np.exp(-s_diff**2 / (2 * self.std**2)) * s_diff/self.std**2 * self.N
+
+
 class Dimer(Calculator):
 
     def __init__(self, calculator, *args, N_raw=None, length=0.0189, rotation_max_cycles=15,
@@ -63,6 +87,7 @@ class Dimer(Calculator):
         self._f1 = None
 
         self.force_evals = 0
+        self.gaussians = list()
 
         # Set dimer direction if given
         self.N_raw = N_raw
@@ -183,6 +208,72 @@ class Dimer(Calculator):
     def C(self):
         """Shortcut for the curvature."""
         return self.curvature(self.f1, self.f2, self.N)
+
+    def get_gaussian_forces(self, coords):
+        return np.sum([gauss.forces(infl_coords) for gauss in self.gaussians],
+                      axis=0
+        )
+
+    def add_gaussian(self, atoms, center, N, height=.1, std=0.0529,
+                     max_cycles=50):
+        gaussian = Gaussian(height=height, center=center, std=std, N=N)
+
+        # Calculate real forces at inflection point of new gaussian
+        infl_coords = center + gaussian.std*N
+        infl_results = self.calculator.get_forces(atoms, infl_coords)
+        infl_forces = infl_results["forces"]
+
+        forces = self.get_gaussian_forces(infl_coords) + infl_forces
+
+        def get_dot(height):
+            """Dot product of forces for a given height and orientation N."""
+            tmp_forces = forces.copy()
+            tmp_forces += gaussian.forces(infl_coords, height=height)
+            dot = tmp_forces.dot(N)
+            return dot
+
+        def can_break(dot):
+            """Convergence indicator."""
+            return abs(dot - 0.1) <= 1e-3
+
+        def bisect(min_, max_, ):
+            for i in range(max_cycles):
+                # Determie value at half of the internval
+                height = min_ + (max_ - min_) / 2
+                dot = get_dot(height)
+
+                if can_break(dot):
+                    break
+
+                if dot > 0.1:
+                    max_ = height
+                elif dot < 0.1:
+                    min_ = height
+            return height
+
+        # Determine appropriate height
+        grow = 2
+        min_height = 0
+        assert get_dot(0) < 0.1
+        for i in range(max_cycles):
+            dot = get_dot(height)
+
+            if can_break(dot):
+                break
+
+            if 0 < dot < 0.1:
+                min_height = height
+                height *= grow
+            elif dot < 0.1:
+                height *= grow
+            else:
+                height = bisect(min_height, height)
+                break
+        dot = get_dot(height)
+        gaussian.height = height
+        self.gaussians.append(gaussian)
+
+        return gaussian
 
     def get_bond_mode(self, bond, coords):
         from_, to_, weight = bond

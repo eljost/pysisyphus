@@ -156,3 +156,20 @@ def test_bias_rotation():
     # }
     # opt = PreconLBFGS(geom, **opt_kwargs)
     # opt.run()
+
+
+def test_bias_translation():
+    geom = AnaPot.get_geom((-0.2, 1.1, 0))
+    N_raw = np.array((0.3, 0.7, 0.))
+
+    calc = geom.calculator
+    dimer_kwargs = {
+        "calculator": calc,
+        "N_raw": N_raw,
+    }
+    dimer = Dimer(**dimer_kwargs)
+    geom.set_calculator(dimer)
+
+    g0 = dimer.add_gaussian(geom.atoms, geom.coords, dimer.N)
+
+    assert g0.height == pytest.approx(0.1708984)
