@@ -502,10 +502,10 @@ class Dimer(Calculator):
         norm_perp = np.linalg.norm(f_perp)
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
 
-        f_tran = -f_parallel
-        if self.C < 0:
-            f_tran += f_perp
-        # f_tran = f_perp - f_parallel
+        # f_tran = -f_parallel
+        # if self.C < 0:
+            # f_tran += f_perp
+        f_tran = f_perp - f_parallel
 
         self.log(f"\tf_tran:\n\t{f_tran}")
         results = {
