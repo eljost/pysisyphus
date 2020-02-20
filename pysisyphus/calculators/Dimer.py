@@ -62,6 +62,7 @@ class Dimer(Calculator):
         self.force_evals = 0
 
         # Set dimer direction if given
+        self.N_init = N_init
         if N_init is not None:
             self.log("Setting initial orientation from given 'N_init'.")
             self.N = N_init
@@ -85,12 +86,15 @@ class Dimer(Calculator):
         self.log("No initial orientation given. Generating one.")
         if self.bonds is None:
             self.log("Using random guess.")
-            N = np.random.rand(coords.size)
+            N_init = np.random.rand(coords.size)
         else:
             bond_modes = [self.get_bond_mode(bond, coords)
                           for bond in self.bonds]
-            N = np.sum(bond_modes, axis=0)
-        self.N = N
+            N_init = np.sum(bond_modes, axis=0)
+        # Normalize N_init
+        self.N = N_init
+        # Now we keep the normalized dimer orientation
+        self.N_init = self.N
 
         self.log("Initial orientation:\n\t{self.N}")
 
