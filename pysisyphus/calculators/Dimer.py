@@ -36,6 +36,10 @@ class Gaussian:
 
         return height * np.exp(-s_diff**2 / (2 * self.std**2)) * s_diff/self.std**2 * self.N
 
+    def __str__(self):
+        return f"Gaussian(height={self.height:.4f}, center={self.center}, " \
+               f"s0={self.s0:.4f}, std={self.std:.4f}"
+
 
 class Dimer(Calculator):
 
@@ -214,11 +218,20 @@ class Dimer(Calculator):
         """Shortcut for the curvature."""
         return self.curvature(self.f1, self.f2, self.N)
 
-    def get_gaussian_forces(self, coords):
-        return np.sum([gauss.forces(coords) for gauss in self.gaussians], axis=0)
+    def get_gaussian_energies(self, coords, sum_=True):
+        energies = [gauss.energy(coords) for gauss in self.gaussians]
+        if sum_:
+            energies = sum(energies)
+        return energies
+
+    def get_gaussian_forces(self, coords, sum_=True):
+        forces = [gauss.forces(coords) for gauss in self.gaussians]
+        if sum_:
+            forces = np.sum(forces, axis=0)
+        return forces
 
     def add_gaussian(self, atoms, center, N, height=.1, std=0.0529,
-                     max_cycles=50):
+                     max_cycles=50, dot_ref=0.1):
         gaussian = Gaussian(height=height, center=center, std=std, N=N)
 
         # Calculate real forces at inflection point of new gaussian
@@ -241,7 +254,7 @@ class Dimer(Calculator):
 
         def can_break(dot):
             """Convergence indicator."""
-            return abs(dot - 0.1) <= 1e-3
+            return abs(dot - dot_ref) <= 1e-3
 
         def bisect(min_, max_, ):
             for i in range(max_cycles):
@@ -255,26 +268,26 @@ class Dimer(Calculator):
                 if can_break(dot):
                     break
 
-                if dot > 0.1:
+                if dot > dot_ref:
                     max_ = height
-                elif dot < 0.1:
+                elif dot < dot_ref:
                     min_ = height
             return height
 
         # Determine appropriate height
         grow = 2
         min_height = 0
-        assert get_dot(0) < 0.1
+        assert get_dot(0) < dot_ref
         for i in range(max_cycles):
             dot = get_dot(height)
 
             if can_break(dot):
                 break
 
-            if 0 < dot < 0.1:
+            if 0 < dot < dot_ref:
                 min_height = height
                 height *= grow
-            elif dot < 0.1:
+            elif dot < dot_ref:
                 height *= grow
             else:
                 height = bisect(min_height, height)
@@ -489,19 +502,25 @@ class Dimer(Calculator):
         f0 = self.f0
 
         if self.bias_translation:
-            f0 += self.get_gaussian_forces(coords)
+            bias_energy = self.get_gaussian_energies(coords)
+            energy += bias_energy
+            bias_forces = self.get_gaussian_forces(coords, sum_=False)
+            f0 += np.sum(bias_forces, axis=0)
 
         norm_f0 = np.linalg.norm(f0)
         self.log(f"\tnorm(forces)={norm_f0:.6f}")
         N = self.N
 
+        print("\t\tN=", N)
         f_parallel = f0.dot(N)*N
         norm_parallel = np.linalg.norm(f_parallel)
         self.log(f"\tnorm(forces_parallel)={norm_parallel:.6f}")
+        self.log(f"\tforce_parallel={f_parallel}")
 
         f_perp = f0 - f_parallel
         norm_perp = np.linalg.norm(f_perp)
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
+        self.log(f"\tforce_perp={f_perp}")
 
         f_tran = -f_parallel
         if self.C < 0:
