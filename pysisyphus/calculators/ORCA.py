@@ -31,13 +31,15 @@ class ORCA(OverlapCalculator):
 
     conf_key = "orca"
 
-    def __init__(self, keywords, blocks="", gbw=None, mem=2000, **kwargs):
+    def __init__(self, keywords, blocks="", gbw=None, mem=2000,
+                 do_stable=False, **kwargs):
         super().__init__(**kwargs)
 
         self.keywords = keywords
         self.blocks = blocks
         self.gbw = gbw
         self.mem = int(mem)
+        self.do_stable = bool(do_stable)
 
         assert (("pal" not in keywords.lower())
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
@@ -76,6 +78,7 @@ class ORCA(OverlapCalculator):
             "grad": self.parse_engrad,
             "hessian": self.parse_hessian,
             "noparse": lambda path: None,
+            "stable": self.parse_stable,
         }
 
         self.base_cmd = self.get_cmd("cmd")
@@ -92,7 +95,8 @@ class ORCA(OverlapCalculator):
             %moinp "{gbw}" """
         return moinp_str
 
-    def prepare_input(self, atoms, coords, calc_type, point_charges=None):
+    def prepare_input(self, atoms, coords, calc_type, point_charges=None,
+                      do_stable=False):
         coords = self.prepare_coords(atoms, coords)
         if self.gbw:
             self.log(f"Using {self.gbw}")
@@ -114,13 +118,16 @@ class ORCA(OverlapCalculator):
             np.savetxt(pc_fn, _,
                        fmt="%16.10f", header=str(len(point_charges)), comments="")
             pc_str = f'%pointcharges "{pc_fn}"'
+        stable_block = "\n%scf stabperform true hftyp uhf end" if do_stable else ""
+        blocks = self.get_block_str() + stable_block
+
         inp = self.orca_input.format(
                                 keywords=self.keywords,
                                 calc_type=calc_type,
                                 moinp=self.get_moinp_str(self.gbw),
                                 pal=self.pal,
                                 mem=self.mem,
-                                blocks=self.get_block_str(),
+                                blocks=blocks,
                                 pointcharges=pc_str,
                                 coords=coords,
                                 charge=self.charge,
@@ -136,8 +143,43 @@ class ORCA(OverlapCalculator):
             self.log(f"Using iroot '{self.root}' for excited state gradient.")
         return block_str
 
+    def get_stable_wavefunction(self, atoms, coords):
+        self.log("Trying to get a stable wavefunction")
+
+        stable = False
+        max_cycles = 10
+        for i in range(max_cycles):
+            inp = self.prepare_input(atoms, coords, calc_type="", do_stable=True)
+            stable = self.run(inp, calc="stable")
+            self.log(f"{i:02d} stable: {stable}")
+
+            if stable:
+                self.log(f"Found stable wavefunction in cycle {i}!")
+                break
+        else:
+            raise Exception("Could not find stable wavefunction in {max_cycles}! "
+                            "Aborting.")
+
+    def parse_stable(self, path):
+        with open(path / "orca.out") as handle:
+            text = handle.read()
+
+        stable_re = re.compile("Stability Analysis indicates a stable")
+        stable = bool(stable_re.search(text))
+
+        unstable_re = re.compile("Stability Analysis indicates an UNSTABLE")
+        unstable = bool(unstable_re.search(text))
+
+        stable = stable and not unstable
+
+        return stable
+
     def get_energy(self, atoms, coords):
         calc_type = ""
+
+        if self.do_stable:
+            self.get_stable_wavefunction(atoms, coords)
+
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="energy")
         return results
@@ -145,6 +187,9 @@ class ORCA(OverlapCalculator):
     def get_forces(self, atoms, coords, prepare_kwargs=None):
         if prepare_kwargs is None:
             prepare_kwargs = {}
+
+        if self.do_stable:
+            self.get_stable_wavefunction(atoms, coords)
 
         calc_type = "engrad"
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
@@ -161,6 +206,10 @@ class ORCA(OverlapCalculator):
 
     def get_hessian(self, atoms, coords):
         calc_type = "freq"
+
+        if self.do_stable:
+            self.get_stable_wavefunction(atoms, coords)
+
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="hessian")
         return results
