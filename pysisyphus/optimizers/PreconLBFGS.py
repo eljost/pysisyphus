@@ -35,7 +35,7 @@ class PreconLBFGS(Optimizer):
                 c_stab = 0.0103 # 0.1 eV/Å²
 
         self.c_stab = float(c_stab)
-        self.log("Using c_stab={self.c_stab:.6f}")
+        self.log(f"Using c_stab={self.c_stab:.6f}")
 
         if max_step_element is None and is_dimer:
             max_step_element = 0.25
