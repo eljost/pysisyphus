@@ -511,6 +511,9 @@ class Dimer(Calculator):
             self.f0
         # Now we (have an updated self.N and) can do the force projections
 
+        N = self.N
+        self.log(f"Orientation N:\n\t{N}")
+
         energy = self.energy0
         self.log(f"\tenergy={self.energy0:.8f} au")
 
@@ -522,14 +525,16 @@ class Dimer(Calculator):
             bias_energy = self.get_gaussian_energies(coords)
             energy += bias_energy
             bias_forces = self.get_gaussian_forces(coords, sum_=False)
-            bias_norms = np.linalg.norm(bias_forces, axis=1)
-            bias_norms_str = np.array2string(bias_norms, precision=4)
-            self.log(f"\tnorm(bias_forces)={bias_norms_str}")
+            try:
+                bias_norms = np.linalg.norm(bias_forces, axis=1)
+                bias_norms_str = np.array2string(bias_norms, precision=4)
+                self.log(f"\tnorm(bias_forces)={bias_norms_str}")
+            except np.AxisError:
+                self.log("Skipping calculation of norm(bias_forces)")
             f0 += np.sum(bias_forces, axis=0)
 
         norm_f0 = np.linalg.norm(f0)
         self.log(f"\tnorm(forces)={norm_f0:.6f}")
-        N = self.N
 
         f_parallel = f0.dot(N)*N
         norm_parallel = np.linalg.norm(f_parallel)
@@ -545,8 +550,15 @@ class Dimer(Calculator):
             print(f"Negative curvature: {self.C:.6f}")
         # Only return perpendicular component when curvature is negative
         f_tran = -f_parallel
+        # if self.should_bias_f0:
+            # f_tran *= -1
         if self.C < 0:
             f_tran += f_perp
+            self.log("Curvature is negative. Returned reversed parallel and "
+                     "perpendicular component of f_tran.")
+        else:
+            self.log("Curvature is positive. Returned only reversed parallel "
+                     "component of f_tran.")
         # Always return both components
         # f_tran = f_perp - f_parallel
 
