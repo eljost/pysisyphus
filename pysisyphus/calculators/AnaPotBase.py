@@ -89,7 +89,7 @@ class AnaPotBase(Calculator):
         if show:
             plt.show()
 
-    def plot_eigenvalue_structure(self, grid=50, levels=None):
+    def plot_eigenvalue_structure(self, grid=50, levels=None, show=False):
         self.plot(levels=levels)
         xs = np.linspace(*self.xlim, grid)
         ys = np.linspace(*self.ylim, grid)
@@ -103,6 +103,8 @@ class AnaPotBase(Calculator):
             )
         Z = np.array(z).reshape(X.shape)
         self.ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
+        if show:
+            plt.show()
 
     def plot_opt(self, opt, enum=True):
         coords = np.array(opt.coords)
