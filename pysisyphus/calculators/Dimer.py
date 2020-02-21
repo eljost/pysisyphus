@@ -47,7 +47,7 @@ class Dimer(Calculator):
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, rotation_interpolate=True,
                  rotation_disable=False, bonds=None, bias_rotation=False,
-                 bias_translation=False, seed=None, **kwargs):
+                 bias_translation=False, bias_gaussian_dot=0.1, seed=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -78,9 +78,10 @@ class Dimer(Calculator):
         # Regarding generation of initial orientation
         self.bonds = bonds
         # Bias
-        self.bias_rotation = bias_rotation
+        self.bias_rotation = bool(bias_rotation)
         self.bias_rotation_a = 0.
-        self.bias_translation = bias_translation
+        self.bias_translation = bool(bias_translation)
+        self.bias_gaussian_dot = float(bias_gaussian_dot)
 
         restrict_steps = {
             "direct": get_scale_max(self.rotation_max_element),
@@ -185,6 +186,15 @@ class Dimer(Calculator):
         return self.can_bias_f1 and self.C > 0.
 
     @property
+    def can_bias_f0(self):
+        return self.bias_translation and (self.N is not None)
+
+    @property
+    def should_bias_f0(self):
+        """May lead to calculation of f0 and/or f1 if present!"""
+        return self.can_bias_f0 and self.C > 0.
+
+    @property
     def f1_bias(self):
         # Apply bias force to f1 if desired. Dont apply bias if N_init is not (yet)
         # set. When N_raw was converged to a reasonable N_init we can add
@@ -231,8 +241,13 @@ class Dimer(Calculator):
         return forces
 
     def add_gaussian(self, atoms, center, N, height=.1, std=0.0529,
-                     max_cycles=50, dot_ref=0.1):
+                     max_cycles=50, dot_ref=None):
+        # Create new gaussian object with default height that will be
+        # refined later.
         gaussian = Gaussian(height=height, center=center, std=std, N=N)
+
+        if dot_ref is None:
+            dot_ref = self.bias_gaussian_dot
 
         # Calculate real forces at inflection point of new gaussian
         infl_coords = center + gaussian.std*N
@@ -501,10 +516,15 @@ class Dimer(Calculator):
 
         f0 = self.f0
 
-        if self.bias_translation:
+        if self.should_bias_f0:
+            self.log("Biasing translation forces")
+            self.log(f"There are currently {len(self.gaussians)} gaussians present.")
             bias_energy = self.get_gaussian_energies(coords)
             energy += bias_energy
             bias_forces = self.get_gaussian_forces(coords, sum_=False)
+            bias_norms = np.linalg.norm(bias_forces, axis=1)
+            bias_norms_str = np.array2string(bias_norms, precision=4)
+            self.log(f"\tnorm(bias_forces)={bias_norms_str}")
             f0 += np.sum(bias_forces, axis=0)
 
         norm_f0 = np.linalg.norm(f0)
@@ -514,23 +534,29 @@ class Dimer(Calculator):
         f_parallel = f0.dot(N)*N
         norm_parallel = np.linalg.norm(f_parallel)
         self.log(f"\tnorm(forces_parallel)={norm_parallel:.6f}")
-        self.log(f"\tforce_parallel={f_parallel}")
+        self.log(f"\tforce_parallel:\n\t{f_parallel}")
 
         f_perp = f0 - f_parallel
         norm_perp = np.linalg.norm(f_perp)
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
-        self.log(f"\tforce_perp={f_perp}")
+        self.log(f"\tforce_perp:\n\t{f_perp}")
 
+        if self.C < 0:
+            print(f"Negative curvature: {self.C:.6f}")
+        # Only return perpendicular component when curvature is negative
         f_tran = -f_parallel
         if self.C < 0:
             f_tran += f_perp
+        # Always return both components
         # f_tran = f_perp - f_parallel
 
         self.log(f"\tf_tran:\n\t{f_tran}")
+        self.log()
+        self.calc_counter += 1
+
         results = {
             "energy": energy,
             "forces": f_tran
         }
 
-        self.calc_counter += 1
         return results
