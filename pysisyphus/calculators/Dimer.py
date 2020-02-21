@@ -511,7 +511,6 @@ class Dimer(Calculator):
         self.log(f"\tnorm(forces)={norm_f0:.6f}")
         N = self.N
 
-        print("\t\tN=", N)
         f_parallel = f0.dot(N)*N
         norm_parallel = np.linalg.norm(f_parallel)
         self.log(f"\tnorm(forces_parallel)={norm_parallel:.6f}")
