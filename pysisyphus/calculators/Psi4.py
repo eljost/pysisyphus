@@ -52,7 +52,7 @@ class Psi4(Calculator):
         xyz = self.prepare_coords(atoms, coords)
 
         calc_types = {
-            "energy": "energy('{}')",
+            "energy": "E, wfn = energy('{}', return_wfn=True)",
             # Right now we don't need the wavefunction
             # "grad": "G, wfn = gradient('{}', return_wfn=True)\n" \
                     # "G_arr = np.array(G)\n" \
@@ -60,14 +60,16 @@ class Psi4(Calculator):
             # "hessian": "H, wfn = hessian('{}', return_wfn=True)\n" \
                        # "H_arr = np.array(H)\n" \
                        # "np.save('hessian', H_arr)",
-            "grad": "G = gradient('{}')\n" \
+            "grad": "G, wfn = gradient('{}', return_wfn=True)\n" \
                     "G_arr = np.array(G)\n" \
                     "np.save('grad', G_arr)",
-            "hessian": "H = hessian('{}')\n" \
+            "hessian": "H, wfn = hessian('{}', return_wfn=True)\n" \
                        "H_arr = np.array(H)\n" \
                        "np.save('hessian', H_arr)",
         }
         method = calc_types[calc_type].format(self.method)
+        wfn_path = self.make_fn("wfn.npy")
+        method += f"\nWavefunction.to_file(wfn, '{wfn_path}')"
         set_strs = [f"set {key} {value}" for key, value in self.to_set.items()]
         set_strs = "\n".join(set_strs)
 
