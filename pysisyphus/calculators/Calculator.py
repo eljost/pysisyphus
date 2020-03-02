@@ -477,9 +477,25 @@ class Calculator:
         shutil.rmtree(path)
         self.log(f"Cleaned {path}")
 
-    def reattach(self, last_calc_cycle):
-        """Meant to be extended.
-        
-        When restarting the calculator set all attributes to restore the
-        previous state."""
-        self.calc_counter = last_calc_cycle
+    def get_restart_info(self):
+        restart_info = {
+            "base_name": self.base_name,
+            "calc_number": self.calc_number,
+            "calc_counter": self.calc_counter
+        }
+        return restart_info
+
+    def set_restart_info(self, restart_info):
+        try:
+            chkfile = restart_info.pop("chkfile")
+            self.set_chkfile(chkfile)
+        except KeyError:
+            self.log("No chkfile preset in restart_info")
+        except AttributeError:
+            self.log("Found chkfile on restart_info, but 'set_chkfile' is not "
+                     "implemented for Calculator.")
+
+        self.log("Setting restart_info")
+        for key, val in restart_info:
+            setattr(self, key, value)
+            self.log(f"Set '{key}' to '{val}'")
