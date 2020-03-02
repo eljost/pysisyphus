@@ -478,11 +478,18 @@ class Calculator:
         self.log(f"Cleaned {path}")
 
     def get_restart_info(self):
+        try:
+            chkfile = self.get_chkfile()
+        except AttributeError:
+            chkfile = None
+
         restart_info = {
             "base_name": self.base_name,
             "calc_number": self.calc_number,
             "calc_counter": self.calc_counter
+            "chkfile": chkfile,
         }
+
         return restart_info
 
     def set_restart_info(self, restart_info):
