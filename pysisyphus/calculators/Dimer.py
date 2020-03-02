@@ -546,12 +546,12 @@ class Dimer(Calculator):
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
         self.log(f"\tforce_perp:\n\t{f_perp}")
 
-        if self.C < 0:
-            print(f"Negative curvature: {self.C:.6f}")
+        # if self.C < 0:
+            # print(f"Negative curvature: {self.C:.6f}")
+
         # Only return perpendicular component when curvature is negative
         f_tran = -f_parallel
-        # if self.should_bias_f0:
-            # f_tran *= -1
+
         if self.C < 0:
             f_tran += f_perp
             self.log("Curvature is negative. Returned reversed parallel and "
@@ -570,5 +570,10 @@ class Dimer(Calculator):
             "energy": energy,
             "forces": f_tran
         }
+
+        return results
+
+    def get_hessian(self, atoms, coords):
+        results = self.calculator.get_hessian(atoms, coords)
 
         return results
