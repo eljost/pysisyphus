@@ -222,9 +222,9 @@ def dimer_method(geoms, calc_getter, N_init=None,
         coords0 = geom0.coords
         # Assign random unit vector and use dR_base to for dR
         coord_size = geom0.coords.size
+        if N_init is None:
+            N_init  = np.random.rand(coord_size)
         N = np.array(N_init)
-        if N is None:
-            N = np.random.rand(coord_size)
         if ana_2dpot:
             N[2] = 0
         N /= np.linalg.norm(N)
@@ -515,7 +515,6 @@ def dimer_method(geoms, calc_getter, N_init=None,
             prev_f_par_rms = f_par_rms  # lgtm [py/multiple-definition]
             # prev_f_perp_rms = f_perp_rms
 
-
         # Save cycle information
         org_coords = np.array((coords1, coords0, coords2))
         try:
@@ -533,10 +532,10 @@ def dimer_method(geoms, calc_getter, N_init=None,
         logger.debug("")
         print()
         sys.stdout.flush()
-    print(f"Did {tot_rot_force_evals} force evaluations in the rotation steps "
+    print(f"@Did {tot_rot_force_evals} force evaluations in the rotation steps "
           f"using the {opt_name_dict[rot_opt]} optimizer.")
     tot_force_evals = tot_rot_force_evals + add_force_evals
-    print(f"Used {add_force_evals} additional force evaluations for a total of "
+    print(f"@Used {add_force_evals} additional force evaluations for a total of "
           f"{tot_force_evals} force evaluations.")
 
     dimer_results = DimerResult(dimer_cycles=dimer_cycles,

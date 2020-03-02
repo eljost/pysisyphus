@@ -19,3 +19,14 @@ def gram_schmidt(vecs, thresh=1e-8):
             continue
         ortho.append(tmp / norm)
     return np.array(ortho)
+
+
+def perp_comp(vec, along):
+    """Return the perpendicular component of vec along along."""
+    return vec - vec.dot(along)*along
+
+
+def make_unit_vec(vec1, vec2):
+    """Return unit vector pointing from vec2 to vec1."""
+    diff = vec1 - vec2
+    return diff / np.linalg.norm(diff)

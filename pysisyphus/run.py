@@ -41,13 +41,13 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 CALC_DICT = {
     "afir": AFIR,
+    "dimer": Dimer,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "mopac": MOPAC,
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA,
     "psi4": Psi4,
-    # "pyscf": PySCF,
     "turbomole": Turbomole,
     "xtb": XTB,
 }
@@ -68,16 +68,16 @@ COS_DICT = {
 }
 
 OPT_DICT = {
+    "anc": ANCOptimizer.ANCOptimizer,
+    "cg": ConjugateGradient.ConjugateGradient,
     "fire": FIRE.FIRE,
     "lbfgs": LBFGS.LBFGS,
-    #"lbfgsm": LBFGS_mod.LBFGS,
-    "sd": SteepestDescent.SteepestDescent,
-    "cg": ConjugateGradient.ConjugateGradient,
+    "plbfgs": PreconLBFGS.PreconLBFGS,
     "qm": QuickMin.QuickMin,
     "rfo": RFOptimizer.RFOptimizer,
-    "anc": ANCOptimizer.ANCOptimizer,
-    "string": StringOptimizer.StringOptimizer,
+    "sd": SteepestDescent.SteepestDescent,
     "sqnm": StabilizedQNMethod.StabilizedQNMethod,
+    "string": StringOptimizer.StringOptimizer,
 }
 
 TSOPT_DICT = {
@@ -157,7 +157,11 @@ def parse_args(args):
 
 
 def get_calc(index, base_name, calc_key, calc_kwargs):
-    if calc_key == "afir":
+    # Some calculators are just wrappers that modify the forces from
+    # actual calculators, e.g. AFIR and Dimer. If we find the 'calc'
+    # key we create the actual calculator and assign it to the 'calculator'
+    # key in calc_kwargs.
+    if "calc" in calc_kwargs:
         actual_kwargs = calc_kwargs.pop("calc")
         actual_key = actual_kwargs.pop("type")
         actual_calc = get_calc(index, base_name, actual_key, actual_kwargs)
@@ -297,35 +301,6 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     if do_hess:
         print()
         do_final_hessian(ts_geom)
-
-
-# def run_cos_dimer(cos, dimer_kwargs, calc_getter):
-    # print("Starting dimer method")
-    # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
-
-    # ts_geom = cos.images[0].copy()
-    # ts_geom.coords = hei_coords
-    # ts_geom.set_calculator(calc_getter())
-    # print("Splined TS guess")
-    # print(ts_geom.as_xyz())
-    # with open("splined_ts_guess.xyz", "w") as handle:
-        # handle.write(ts_geom.as_xyz())
-
-    # print(f"Interpolated HEI: {hei_coords}")
-
-    # ts_geom.set_calculator(calc_getter())
-    # geoms = [ts_geom, ]
-    # dimer_kwargs.update({
-        # "restrict_step": "max",
-        # "N_init": hei_tangent,
-        # "calc_getter": calc_getter,
-    # })
-    # dimer_result = dimer_method(geoms, **dimer_kwargs)
-    # dimer_cycles = dimer_result.dimer_cycles
-    # last_cycle = dimer_cycles[-1]
-    # ts_coords = last_cycle.trans_coords[1]
-    # print(f"Optimized TS coord:")
-    # print(ts_geom.as_xyz())
 
 
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
@@ -656,7 +631,6 @@ def get_defaults(conf_dict):
             "between": 0,
         },
         "cos": None,
-        "dimer": None,
         "calc": {
             "pal": 1,
         },
@@ -675,7 +649,6 @@ def get_defaults(conf_dict):
     if "cos" in conf_dict:
         dd["cos"] = {
             "type": "neb",
-            "parallel": 0,
             "fix_ends": True,
         }
         dd["opt"] = {
@@ -1047,9 +1020,9 @@ def print_header():
     print(f"{logo}\n\n{version}\n")
 
 
-def run_from_dict(run_dict, cwd=None, yaml_fn=None, cp=None, scheduler=None,
-                  clean=False, fclean=False, version=False, restart=False,
-                  dryrun=False):
+def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
+                  scheduler=None, clean=False, fclean=False, version=False,
+                  restart=False, dryrun=False):
     if cwd is None:
         cwd = Path(".")
 
@@ -1058,7 +1031,8 @@ def run_from_dict(run_dict, cwd=None, yaml_fn=None, cp=None, scheduler=None,
 
     init_logging(cwd, scheduler)
     # Load defaults etc.
-    run_dict = setup_run_dict(run_dict)
+    if set_defaults:
+        run_dict = setup_run_dict(run_dict)
     sys.stdout.flush()
 
     if cp:
@@ -1110,6 +1084,7 @@ def run():
 
     run_kwargs = {
         "cwd": yaml_dir,
+        "set_defaults": True,
         "yaml_fn": args.yaml,
         "cp": args.cp,
         "scheduler": args.scheduler,

@@ -7,7 +7,7 @@ from scipy.spatial.distance import squareform
 
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.intcoords.findbonds import get_bond_mat
-from pysisyphus.optimizers.step_restriction import scale_by_max_step
+from pysisyphus.optimizers.restrict_step import scale_by_max_step
 
 
 class StabilizedQNMethod(Optimizer):
