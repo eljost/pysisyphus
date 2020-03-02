@@ -486,7 +486,7 @@ class Calculator:
         restart_info = {
             "base_name": self.base_name,
             "calc_number": self.calc_number,
-            "calc_counter": self.calc_counter
+            "calc_counter": self.calc_counter,
             "chkfile": chkfile,
         }
 
@@ -503,6 +503,6 @@ class Calculator:
                      "implemented for Calculator.")
 
         self.log("Setting restart_info")
-        for key, val in restart_info:
+        for key, value in restart_info.items():
             setattr(self, key, value)
-            self.log(f"Set '{key}' to '{val}'")
+            self.log(f"\t{key}: {value}")
