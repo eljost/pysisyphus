@@ -538,12 +538,18 @@ class ORCA(OverlapCalculator):
         if self.gbw:
             calc.gbw = self.gbw
 
-    def get_chkfile(self):
-        return self.gbw
+    def get_chkfiles(self):
+        return {
+            "gbw": self.gbw,
+        }
 
-    def set_chkfile(self, chkfile):
-        self.gbw = chkfile
-        self.log(f"Set chkfile '{chkfile}' as gbw.")
+    def set_chkfiles(self, chkfiles):
+        try:
+            gbw = chkfiles["gbw"]
+            self.gbw = gbw
+            self.log(f"Set chkfile '{gbw}' as gbw.")
+        except KeyError:
+            self.log("Found no gbw information in chkfiles!")
 
     def __str__(self):
         return f"ORCA({self.name})"

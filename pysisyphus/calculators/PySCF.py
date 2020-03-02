@@ -256,5 +256,19 @@ class PySCF(OverlapCalculator):
 
         return results[0][1]
 
+    def get_chkfiles(self):
+        return {
+            "chkfile": self.chkfile,
+        }
+
+    def set_chkfiles(self, chkfiles):
+        try:
+            chkfile = chkfiles["chkfile"]
+            self.chkfile = chkfile
+            self.log(f"Set chkfile '{chkfile}' as chkfile.")
+        except KeyError:
+            self.log("Found no chkfile information in chkfiles!")
+
+
     def __str__(self):
         return f"PySCF({self.name})"

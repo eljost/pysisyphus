@@ -479,27 +479,33 @@ class Calculator:
 
     def get_restart_info(self):
         try:
-            chkfile = str(self.get_chkfile())
+            # Convert possible Paths to str
+            chkfiles = {
+                k: str(v) for k, v in self.get_chkfiles().items()
+            }
         except AttributeError:
-            chkfile = None
+            chkfiles = dict()
 
         restart_info = {
             "base_name": self.base_name,
             "calc_number": self.calc_number,
             "calc_counter": self.calc_counter,
-            "chkfile": chkfile,
+            "chkfiles": chkfiles,
         }
 
         return restart_info
 
     def set_restart_info(self, restart_info):
         try:
-            chkfile = Path(restart_info.pop("chkfile"))
-            self.set_chkfile(chkfile)
+            # Set a Paths
+            chkfiles = {
+                k: Path(v) for k, v in restart_info.pop("chkfiles").items()
+            }
+            self.set_chkfiles(chkfiles)
         except KeyError:
-            self.log("No chkfile preset in restart_info")
+            self.log("No chkfiles preset in restart_info")
         except AttributeError:
-            self.log("Found chkfile on restart_info, but 'set_chkfile' is not "
+            self.log("Found chkfiles on restart_info, but 'set_chkfiles' is not "
                      "implemented for Calculator.")
 
         self.log("Setting restart_info")

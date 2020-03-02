@@ -80,17 +80,8 @@ class Turbomole(OverlapCalculator):
             self.log("Found RI calculation.")
 
         self.uhf = "$uhf" in text
-        assert self.uhf == False, "Implement occ for UHF!"
 
-        # Determine number of occupied orbitals
-        occ_re = "closed shells\s+(\w)\s*\d+-(\d+)"
-        self.occ_mos = int(re.search(occ_re, text)[2])
-        self.log(f"Found {self.occ_mos} occupied MOs.")
-        # Number of spherical basis functions. May be different from CAO
-        nbf_re = "nbf\(AO\)=(\d+)"
-        nbf = int(re.search(nbf_re, text)[1])
-        # Determine number of virtual orbitals
-        self.virt_mos = nbf - self.occ_mos
+        self.set_occ_and_mo_nums(text)
 
         assert not (("$exopt" in text) and ("$ricc2" in text)), \
             "Found $exopt and $ricc2 in the control file! $exopt is used " \
@@ -150,6 +141,31 @@ class Turbomole(OverlapCalculator):
         self.log(f"\tEnergy cmd: " + self.energy_cmd)
         self.log(f"\tForces cmd: " + self.forces_cmd)
         self.log(f"\tHessian cmd: " + self.hessian_cmd)
+
+    def set_occ_and_mo_nums(self, text):
+        # Determine number of basis functions
+        nbf_re = "nbf\(AO\)=(\d+)"
+        nbf = int(re.search(nbf_re, text)[1])
+
+        self.occ_mos = None
+        self.virt_mos = None
+
+        # Determine number of occupied orbitals
+        if not self.uhf:
+            occ_re = "closed shells\s+(\w)\s*\d+-(\d+)"
+            self.occ_mos = int(re.search(occ_re, text)[2])
+            self.log(f"Found {self.occ_mos} occupied MOs.")
+            # Number of spherical basis functions. May be different from CAO
+            # Determine number of virtual orbitals
+            self.virt_mos = nbf - self.occ_mos
+        else:
+            alpha_re = "alpha shells\s+(\w)\s*\d+-(\d+)"
+            alpha_mos = int(re.search(alpha_re, text)[2])
+            self.log(f"Found {alpha_mos} occupied alpha MOs.")
+
+            beta_re = "beta shells\s+(\w)\s*\d+-(\d+)"
+            beta_mos = int(re.search(beta_re, text)[2])
+            self.log(f"Found {beta_mos} occupied beta MOs.")
 
     def get_ricc2_root(self, text):
         regex = "geoopt.+?state=\((.+?)\)"
@@ -334,7 +350,7 @@ class Turbomole(OverlapCalculator):
         try:
             shutil.rmtree(self.last_run_path)
         except FileNotFoundError:
-            self.log("'{self.last_run_path}' was already deleted!")
+            self.log(f"'{self.last_run_path}' has already been deleted!")
         return results
 
     def get_hessian(self, atoms, coords):
@@ -673,6 +689,33 @@ class Turbomole(OverlapCalculator):
         elif self.uhf and self.alpha and self.beta:
             calc.alpha = self.alpha
             calc.beta = self.beta
+
+    def get_chkfiles(self):
+        if self.uhf:
+            chkfiles = {
+                "alpha": self.alpha,
+                "beta": self.beta,
+            }
+        else:
+            chkfiles = {
+                "mos": self.mos,
+            }
+        return chkfiles
+
+    def set_chkfiles(self, chkfiles):
+        try:
+            if self.uhf:
+                alpha = chkfiles["alpha"]
+                beta = chkfiles["beta"]
+                self.alpha = alpha
+                self.beta = beta
+                self.log(f"Set chkfile '{alpha}' and '{beta}' as alpha and beta.")
+            else:
+                mos = chkfiles["mos"]
+                self.mos = mos
+                self.log(f"Set chkfile '{mos}' as mos.")
+        except KeyError:
+            self.log("Found no chkfile information in chkfiles!")
 
     def __str__(self):
         return "Turbomole calculator"
