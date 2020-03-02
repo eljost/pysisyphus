@@ -396,6 +396,11 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
 
 
 def get(geoms, index):
+    # Convert to positive index. Right now this doesn't do anything useful.
+    # Could be used to generated more meaningful filenames if we could somehow
+    # also return a index number to generate the filename.
+    if index < 0:
+        index += len(geoms)
     return [geoms[index], ]
 
 
@@ -478,7 +483,7 @@ def run():
     elif args.shake:
         to_dump = shake(geoms, args.scale, args.seed)
         fn_base = "shaked"
-    elif args.get:
+    elif args.get or (args.get == 0):
         to_dump = get(geoms, args.get)
         fn_base = "got"
     elif args.internals:
