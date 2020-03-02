@@ -479,7 +479,7 @@ class Calculator:
 
     def get_restart_info(self):
         try:
-            chkfile = self.get_chkfile()
+            chkfile = str(self.get_chkfile())
         except AttributeError:
             chkfile = None
 
@@ -494,7 +494,7 @@ class Calculator:
 
     def set_restart_info(self, restart_info):
         try:
-            chkfile = restart_info.pop("chkfile")
+            chkfile = Path(restart_info.pop("chkfile"))
             self.set_chkfile(chkfile)
         except KeyError:
             self.log("No chkfile preset in restart_info")
