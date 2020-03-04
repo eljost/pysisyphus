@@ -182,10 +182,33 @@ def plot_energies():
     ax.set_xlabel("Image")
     ax.set_ylabel("dE / kJ mol⁻¹")
 
+    fig2, ax2 = plt.subplots()
+    last_energies = energies[-1].copy()
+    last_energies -= last_energies.min()
+    last_energies *= AU2KJPERMOL
+    xs = np.arange(len(last_energies))
+    ax2.plot(xs, last_energies, "o-")
+    ax2.set_xlabel("Image")
+    ax2.set_ylabel("$\Delta$E / kJ mol⁻¹")
+
+    first_image_en = last_energies[0]
+    last_image_en = last_energies[-1]
+    max_en_ind = last_energies.argmax()
+    max_en = last_energies[max_en_ind]
+    print( "Barrier heights using actual energies (not splined) from "
+          f"cycle {energies.shape[0]-1}.")
+    print(f"\tHighest energy image (HEI) at index {max_en_ind} (0-based)")
+    max_image_en = last_energies.max()
+
+    first_barr = max_en - first_image_en
+    print(f"\tBarrier between first image and HEI: {first_barr:.1f} kJ mol⁻¹")
+    last_barr = max_en - last_image_en
+    print(f"\tBarrier between last image and HEI: {last_barr:.1f} kJ mol⁻¹")
+
     # Also do an animation
     plotter = Plotter(coords, energies, "ΔE / au", interval=250, save=False)
+    # This calls plt.show()
     plotter.animate()
-    plt.show()
 
 
 def plot_aneb():
