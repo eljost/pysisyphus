@@ -9,6 +9,7 @@ from pysisyphus.calculators import ORCA, Gaussian16, Turbomole
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.FIRE import FIRE
+from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.testing import using
@@ -91,6 +92,7 @@ def test_geometry_get_restart_info():
     [
         pytest.param(ConjugateGradient, 0.01753495, marks=using("pyscf")),
         pytest.param(FIRE, 0.50285483, marks=using("pyscf")),
+        pytest.param(LBFGS, 0.002782565, marks=using("pyscf")),
         pytest.param(QuickMin, 0.02305389, marks=using("pyscf")),
         pytest.param(SteepestDescent, 0.05535400, marks=using("pyscf")),
     ]
