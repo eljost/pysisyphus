@@ -432,6 +432,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             "last_cycle": self.cur_cycle,
             "max_cycles": self.max_cycles,
             "forces": [forces.tolist() for forces in self.forces],
+            "steps": [step.tolist() for step in self.steps],
         }
         restart_info.update(self._get_opt_restart_info())
         return restart_info
@@ -444,6 +445,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.max_cycles += restart_info["max_cycles"]
 
         self.forces = [np.array(forces) for forces in restart_info["forces"]]
+        self.steps = [np.array(step) for step in restart_info["steps"]]
 
         # Set subclass specific information
         self._set_opt_restart_info(restart_info)

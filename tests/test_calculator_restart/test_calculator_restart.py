@@ -7,6 +7,7 @@ from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA, Gaussian16, Turbomole
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
@@ -88,6 +89,7 @@ def test_geometry_get_restart_info():
 @pytest.mark.parametrize(
     "opt_cls, ref_norm",
     [
+        pytest.param(ConjugateGradient, 0.01753495, marks=using("pyscf")),
         pytest.param(FIRE, 0.50285483, marks=using("pyscf")),
         pytest.param(QuickMin, 0.02305389, marks=using("pyscf")),
         pytest.param(SteepestDescent, 0.05535400, marks=using("pyscf")),
@@ -140,4 +142,4 @@ def test_opt_restart(opt_cls, ref_norm):
     assert re_opt.cur_cycle == 2*max_cycles - 1
     assert re_geom.energy == pytest.approx(ref_energy)
     re_forces = re_geom.forces
-    np.testing.assert_allclose(re_forces, ref_forces, atol=1e-7)
+    np.testing.assert_allclose(re_forces, ref_forces, atol=1e-6)
