@@ -31,12 +31,16 @@ class BacktrackingOptimizer(Optimizer):
         # return skip = False if we already skipped in the last n iterations.
         self.skip_log = list()
 
-    def save_also(self):
-        return {
-            "cycles_since_backtrack": self.cycles_since_backtrack,
+    def _get_opt_restart_info(self):
+        opt_restart_info = {
             "alpha": self.alpha,
-            "alpha0": self.alpha0,
+            "cycles_since_backtrack": self.cycles_since_backtrack,
         }
+        return opt_restart_info
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        self.alpha = opt_restart_info["alpha"]
+        self.cycles_since_backtrack = opt_restart_info["cycles_since_backtrack"]
 
     def scale_alpha(self, unscaled_steps, alpha):
         # When using an accelerated backtracking optimizer we will vary
