@@ -72,5 +72,9 @@ def test_geometry_restart():
     geom.set_calculator(calc)
     restart = geom.get_restart_info()
 
-    import pdb; pdb.set_trace()
-    pass
+    atoms = restart["atoms"]
+    coords = restart["cart_coords"]
+
+    assert atoms == geom.atoms
+    assert len(coords) == len(geom.atoms * 3)
+    assert "calc_info" in restart

@@ -765,11 +765,7 @@ class Geometry:
         return atoms
 
     def get_restart_info(self):
-        try:
-            calc_restart_info = self.calculator.get_restart_info()
-        except AttributeError:
-            calc_restart_info = dict()
-
+        # Geometry restart information
         restart_info = {
             "atoms": self.atoms,
             "cart_coords": self.cart_coords.tolist(),
@@ -782,6 +778,11 @@ class Geometry:
             prim_inds = None
         restart_info["prim_inds"] = prim_inds
 
+        # Calculator restart information
+        try:
+            calc_restart_info = self.calculator.get_restart_info()
+        except AttributeError:
+            calc_restart_info = dict()
         restart_info["calc_info"] = calc_restart_info
 
         return restart_info
