@@ -431,6 +431,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             "geom_info": self.geometry.get_restart_info(),
             "last_cycle": self.cur_cycle,
             "max_cycles": self.max_cycles,
+            "energies": self.energies,
+            "coords": self.coords,
             "forces": [forces.tolist() for forces in self.forces],
             "steps": [step.tolist() for step in self.steps],
         }
@@ -444,6 +446,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         if self.last_cycle >= self.max_cycles:
             self.max_cycles += restart_info["max_cycles"]
 
+        self.coords = [np.array(coords) for coords in restart_info["coords"]]
+        self.energies = restart_info["energies"]
         self.forces = [np.array(forces) for forces in restart_info["forces"]]
         self.steps = [np.array(step) for step in restart_info["steps"]]
 

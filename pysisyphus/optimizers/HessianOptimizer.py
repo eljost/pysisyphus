@@ -65,8 +65,10 @@ class HessianOptimizer(Optimizer):
         assert max_micro_cycles >= 1
 
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
-        self.hessian_recalc_in = None
-        self.adapt_norm = None
+        if not self.restarted:
+            self.hessian_recalc_in = None
+            self.adapt_norm = None
+            self.predicted_energy_changes = list()
 
         # Allow only calculated or unit hessian for geometries that don't
         # use internal coordinates.
@@ -74,8 +76,6 @@ class HessianOptimizer(Optimizer):
             or (self.geometry.internal is None)):
             if self.hessian_init != "calc":
                 self.hessian_init = "unit"
-
-        self.predicted_energy_changes = list()
 
     def prepare_opt(self):
         # We use lambdas to avoid premature evaluation of the dict items.
@@ -124,6 +124,21 @@ class HessianOptimizer(Optimizer):
             # Already substract one, as we don't do a hessian update in
             # the first cycle.
             self.hessian_recalc_in = self.hessian_recalc - 1
+
+    def _get_opt_restart_info(self):
+        opt_restart_info = {
+            "adapt_norm": self.adapt_norm,
+            "H": self.H.tolist(),
+            "hessian_recalc_in": self.hessian_recalc_in,
+            "predicted_energy_changes": self.predicted_energy_changes,
+        }
+        return opt_restart_info
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        self.adapt_norm = opt_restart_info["adapt_norm"]
+        self.H = np.array(opt_restart_info["H"])
+        self.hessian_recalc_in = opt_restart_info["hessian_recalc_in"]
+        self.predicted_energy_changes = opt_restart_info["predicted_energy_changes"]
 
     def update_trust_radius(self):
         # The predicted change should be calculated at the end of optimize
