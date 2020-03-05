@@ -87,7 +87,7 @@ def test_geometry_get_restart_info():
 @pytest.mark.parametrize(
     "opt_cls, ref_norm",
     [
-        # pytest.param(QuickMin, 0.023053887, marks=using("pyscf")),
+        pytest.param(QuickMin, 0.023053887, marks=using("pyscf")),
         pytest.param(FIRE, 0.50285483, marks=using("pyscf")),
     ]
 )
@@ -119,7 +119,6 @@ def test_opt_restart(opt_cls, ref_norm):
     ref_energy = ref_geom.energy
     ref_forces = ref_geom.forces
 
-    # import pdb; pdb.set_trace()
     assert ref_opt.cur_cycle == 2*max_cycles - 1
     assert np.linalg.norm(ref_forces) == pytest.approx(ref_norm)
 
