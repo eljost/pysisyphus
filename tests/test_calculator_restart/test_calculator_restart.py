@@ -7,6 +7,7 @@ from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA, Gaussian16, Turbomole
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.testing import using
 
 
@@ -67,7 +68,7 @@ def test_restart(calc_cls, calc_kwargs, chk_exts, this_dir):
 
 def test_geometry_get_restart_info():
     geom = geom_from_library("benzene.xyz")
-    calc = ORCA("HF def2-SVP")
+    calc = PySCF(method="scf", basis="def2svp")
 
     geom.set_calculator(calc)
     restart = geom.get_restart_info()
@@ -78,3 +79,36 @@ def test_geometry_get_restart_info():
     assert atoms == geom.atoms
     assert len(coords) == len(geom.atoms * 3)
     assert "calc_info" in restart
+
+
+def test_opt_restart():
+    def get_calc():
+        return ORCA("HF sto-3g")
+
+    def get_geom():
+        geom = geom_from_library("h2o_shaken.xyz")
+        geom.set_calculator(get_calc())
+        return geom
+
+    def get_opt(geom, restart_info=None):
+        opt_kwargs = {
+            "max_cycles": 2,
+            "restart_info": restart_info,
+            "dump": True,
+        }
+        opt = QuickMin(geom, **opt_kwargs)
+        return opt
+
+    # Initial run
+    geom = get_geom()
+    opt = get_opt(geom)
+    opt.run()
+    restart_info = opt.get_restart_info()
+
+    # Restarted run
+    re_geom = get_geom()
+    re_opt = get_opt(re_geom, restart_info)
+    re_opt.run()
+
+    # import pdb; pdb.set_trace()
+    pass

@@ -12,20 +12,19 @@ class QuickMin(Optimizer):
         super(QuickMin, self).__init__(geometry, **kwargs)
 
         self.dt = dt
-        self.velocities = list()
 
-    def get_opt_restart_info(self):
+    def _get_opt_restart_info(self):
         opt_restart_info = {
             "velocity": self.velocities[-1].tolist(),
         }
         return opt_restart_info
 
-    def set_opt_restart_info(self, opt_restart_info):
+    def _set_opt_restart_info(self, opt_restart_info):
         velocity = np.array(opt_restart_info["velocity"], dtype=float)
         self.velocities = [velocity, ]
 
     def prepare_opt(self):
-        self.velocities.append(np.zeros_like(self.geometry.coords))
+        self.velocities = [np.zeros_like(self.geometry.coords), ]
 
     def reset(self):
         if self.coords[-1].size != self.coords[-2].size:

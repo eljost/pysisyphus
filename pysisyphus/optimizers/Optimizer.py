@@ -26,9 +26,9 @@ class Optimizer(metaclass=abc.ABCMeta):
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
-                 rms_force=None, align=False, dump=False,
+                 rms_force=None, align=False, dump=False, dump_restart=None,
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
-                 **kwargs):
+                 restart_info=None, **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -38,6 +38,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.convergence = self.make_conv_dict(thresh, rms_force)
         self.align = align
         self.dump = dump
+        self.dump_restart = dump_restart
         self.prefix = prefix
         self.reparam_thresh = reparam_thresh
         self.overachieve_factor = float(overachieve_factor)
@@ -84,13 +85,19 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.image_results_fn = "image_results.yaml"
         self.image_results = list()
 
-        self.cur_cycle = 0
-
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
             self.out_trj_handle= open(out_trj_fn, "w")
         if self.prefix:
             self.log(f"Created optimizer with prefix {self.prefix}")
+
+        self.restarted = False
+        self.last_cycle = 0
+        if restart_info is not None:
+            if isinstance(restart_info, str):
+                restart_info = yaml.load(restart_info, Loader=yaml.SafeLoader)
+            self.set_restart_info(restart_info)
+            self.restarted = True
 
     def get_path_for_fn(self, fn):
         return self.out_dir / (self.prefix + fn)
@@ -303,8 +310,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         return textwrap.dedent(final_summary.strip())
 
     def run(self):
-        # if not self.restarted:
-        if True:
+        if not self.restarted:
             prep_start_time = time.time()
             self.prepare_opt()
             prep_end_time = time.time()
@@ -313,7 +319,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         self.print_header()
         self.stopped = False
-        for self.cur_cycle in range(self.max_cycles):
+        for self.cur_cycle in range(self.last_cycle, self.max_cycles):
             start_time = time.time()
             self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
 
@@ -354,6 +360,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.write_cycle_to_file()
                 with open(self.current_fn, "w") as handle:
                     handle.write(self.geometry.as_xyz())
+
+            if self.dump and (self.cur_cycle % self.dump_restart) == 0:
+                self.dump_restart_info()
 
             self.print_opt_progress()
             if self.is_converged:
@@ -408,26 +417,39 @@ class Optimizer(metaclass=abc.ABCMeta):
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
         sys.stdout.flush()
 
-    def get_opt_restart_info(self):
+    def _get_opt_restart_info(self):
         """To be re-implemented in the derived classes."""
         return dict()
 
-    def set_opt_restart_info(self, restart_info):
+    def _set_opt_restart_info(self, opt_restart_info):
         """To be re-implemented in the derived classes."""
         return
 
     def get_restart_info(self):
         restart_info = {
-            "cur_cycle": self.cur_cycle,
+            "last_cycle": self.cur_cycle,
+            "max_cycles": self.max_cycles,
             "geom_info": self.geometry.get_restart_info(),
         }
-        restart_info.update(self.get_opt_restart_info())
+        restart_info.update(self._get_opt_restart_info())
         return restart_info
 
-    def set_restart_info(self):
-        # Set optimizer restart information
-        cur_cycle = restart_info["cur_cycle"]
-        self.set_opt_restart_info(restart_info)
+    def set_restart_info(self, restart_info):
+        # Set restart information general to all optimizers
+        self.last_cycle = restart_info["last_cycle"] + 1
+
+        if self.last_cycle >= self.max_cycles:
+            self.max_cycles += restart_info["max_cycles"]
+
+        # Set subclass specific information
+        self._set_opt_restart_info(restart_info)
 
         # Propagate restart information downwards to the geometry
         self.geometry.set_restart_info(restart_info["geom_info"])
+
+    def dump_restart_info(self):
+        restart_info = self.get_restart_info()
+
+        restart_fn = f"restart_{self.cur_cycle:03d}.yaml"
+        restart_yaml = yaml.dump(restart_info)
+        self.write_to_out_dir(restart_fn, restart_yaml)
