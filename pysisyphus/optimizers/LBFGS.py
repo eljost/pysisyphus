@@ -41,7 +41,7 @@ class LBFGS(Optimizer):
             rot_steps, rot_forces, rot_coord_diffs, rot_grad_diffs = rot_vec_lists
             self.steps = rot_steps
             self.forces = rot_forces
-            self.coord_diffs = coord_diffs
+            self.coord_diffs = rot_coord_diffs
             self.grad_diffs = rot_grad_diffs
 
         forces = self.geometry.forces
