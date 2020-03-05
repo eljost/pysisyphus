@@ -14,11 +14,15 @@ class QuickMin(Optimizer):
         self.dt = dt
         self.velocities = list()
 
-    def save_also(self):
-        return {
-            "dt": self.dt,
-            "velocities": self.velocities,
+    def get_opt_restart_info(self):
+        opt_restart_info = {
+            "velocity": self.velocities[-1].tolist(),
         }
+        return opt_restart_info
+
+    def set_opt_restart_info(self, opt_restart_info):
+        velocity = np.array(opt_restart_info["velocity"], dtype=float)
+        self.velocities = [velocity, ]
 
     def prepare_opt(self):
         self.velocities.append(np.zeros_like(self.geometry.coords))

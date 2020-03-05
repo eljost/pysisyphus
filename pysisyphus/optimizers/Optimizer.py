@@ -26,7 +26,7 @@ class Optimizer(metaclass=abc.ABCMeta):
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
-                 rms_force=None, align=False, dump=False, last_cycle=None,
+                 rms_force=None, align=False, dump=False,
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  **kwargs):
         self.geometry = geometry
@@ -38,7 +38,6 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.convergence = self.make_conv_dict(thresh, rms_force)
         self.align = align
         self.dump = dump
-        self.last_cycle = last_cycle
         self.prefix = prefix
         self.reparam_thresh = reparam_thresh
         self.overachieve_factor = float(overachieve_factor)
@@ -86,11 +85,6 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.image_results = list()
 
         self.cur_cycle = 0
-        if self.last_cycle:
-            # Increase cycle number by one as we don't want to
-            # redo the last cycle.
-            self.cur_cycle = last_cycle + 1
-            self.restart()
 
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
@@ -122,15 +116,6 @@ class Optimizer(metaclass=abc.ABCMeta):
             k: v for k, v in zip(keys, threshs)
         }
         return conv_dict
-
-    def restart(self):
-        with open(self.image_results_fn) as handle:
-            self.image_results = yaml.load(handle.read())
-        with open(self.opt_results_fn) as handle:
-            yaml_str = handle.read()
-        opt_results = yaml.load(yaml_str)
-        for key, val in opt_results.items():
-            setattr(self, key, val)
 
     def log(self, message):
         # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
@@ -318,7 +303,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         return textwrap.dedent(final_summary.strip())
 
     def run(self):
-        if not self.last_cycle:
+        # if not self.restarted:
+        if True:
             prep_start_time = time.time()
             self.prepare_opt()
             prep_end_time = time.time()
@@ -421,3 +407,27 @@ class Optimizer(metaclass=abc.ABCMeta):
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
         sys.stdout.flush()
+
+    def get_opt_restart_info(self):
+        """To be re-implemented in the derived classes."""
+        return dict()
+
+    def set_opt_restart_info(self, restart_info):
+        """To be re-implemented in the derived classes."""
+        return
+
+    def get_restart_info(self):
+        restart_info = {
+            "cur_cycle": self.cur_cycle,
+            "geom_info": self.geometry.get_restart_info(),
+        }
+        restart_info.update(self.get_opt_restart_info())
+        return restart_info
+
+    def set_restart_info(self):
+        # Set optimizer restart information
+        cur_cycle = restart_info["cur_cycle"]
+        self.set_opt_restart_info(restart_info)
+
+        # Propagate restart information downwards to the geometry
+        self.geometry.set_restart_info(restart_info["geom_info"])
