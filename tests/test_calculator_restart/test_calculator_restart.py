@@ -7,6 +7,7 @@ from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA, Gaussian16, Turbomole
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.testing import using
 
@@ -86,7 +87,8 @@ def test_geometry_get_restart_info():
 @pytest.mark.parametrize(
     "opt_cls, ref_norm",
     [
-        pytest.param(QuickMin, 0.026668, marks=using("pyscf")),
+        # pytest.param(QuickMin, 0.023053887, marks=using("pyscf")),
+        pytest.param(FIRE, 0.50285483, marks=using("pyscf")),
     ]
 )
 def test_opt_restart(opt_cls, ref_norm):
@@ -98,26 +100,43 @@ def test_opt_restart(opt_cls, ref_norm):
         geom.set_calculator(get_calc())
         return geom
 
-    def get_opt(geom, restart_info=None):
+    def get_opt(geom, max_cycles, restart_info=None):
         opt_kwargs = {
-            "max_cycles": 4,
+            "max_cycles": max_cycles,
             "restart_info": restart_info,
             "dump": True,
         }
         opt = opt_cls(geom, **opt_kwargs)
         return opt
 
-    # Initial run
-    geom = get_geom()
-    opt = get_opt(geom)
-    opt.run()
-    restart_info = opt.get_restart_info()
+    max_cycles = 4
 
-    # Restarted run
+    # Reference run
+    ref_geom = get_geom()
+    ref_opt = get_opt(ref_geom, max_cycles=2*max_cycles)
+    ref_opt.run()
+
+    ref_energy = ref_geom.energy
+    ref_forces = ref_geom.forces
+
+    # import pdb; pdb.set_trace()
+    assert ref_opt.cur_cycle == 2*max_cycles - 1
+    assert np.linalg.norm(ref_forces) == pytest.approx(ref_norm)
+
+    # Try two runs, each with 1*max_cycles and restart inbetween
+    # First run
+    first_geom = get_geom()
+    first_opt = get_opt(first_geom, max_cycles)
+    first_opt.run()
+    # Get restart info
+    restart_info = first_opt.get_restart_info()
+
+    # Second run, restarted from the first one
     re_geom = get_geom()
-    re_opt = get_opt(re_geom, restart_info)
+    re_opt = get_opt(re_geom, max_cycles, restart_info)
     re_opt.run()
 
-    assert re_opt.cur_cycle == 7
-    norm_forces = np.linalg.norm(re_opt.forces[-1])
-    assert norm_forces == pytest.approx(ref_norm)
+    assert re_opt.cur_cycle == 2*max_cycles - 1
+    assert re_geom.energy == pytest.approx(ref_energy)
+    re_forces = re_geom.forces
+    np.testing.assert_allclose(re_forces, ref_forces, atol=1e-7)
