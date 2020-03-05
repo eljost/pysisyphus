@@ -94,8 +94,10 @@ class Geometry:
         repeat_masses = 2 if (self._coords.size == 2) else 3
         self.masses_rep = np.repeat(self.masses, repeat_masses)
 
+    @property
+    def sum_formula(self):
         atom_counter = Counter(self.atoms)
-        self.sum_formula = "_".join(
+        return "_".join(
                 [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
 
@@ -786,6 +788,17 @@ class Geometry:
         restart_info["calc_info"] = calc_restart_info
 
         return restart_info
+
+    def set_restart_info(self, restart_info):
+        assert self.atoms == restart_info["atoms"]
+        self.cart_coords = np.array(restart_info["cart_coords"], dtype=float)
+
+        try:
+            self.calculator.set_restart_info(restart_info["calc_info"])
+        except KeyError:
+            print("No calculator restart information found!")
+        except AttributeError:
+            print("Could not restart calculator, as no calculator is set!")
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"
