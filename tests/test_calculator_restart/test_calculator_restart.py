@@ -66,6 +66,7 @@ def test_restart(calc_cls, calc_kwargs, chk_exts, this_dir):
     np.testing.assert_allclose(forces2, forces, atol=1e-5)
 
 
+@using("pyscf")
 def test_geometry_get_restart_info():
     geom = geom_from_library("benzene.xyz")
     calc = PySCF(method="scf", basis="def2svp")
@@ -81,9 +82,16 @@ def test_geometry_get_restart_info():
     assert "calc_info" in restart
 
 
-def test_opt_restart():
+@using("pyscf")
+@pytest.mark.parametrize(
+    "opt_cls, ref_norm",
+    [
+        pytest.param(QuickMin, 0.026668, marks=using("pyscf")),
+    ]
+)
+def test_opt_restart(opt_cls, ref_norm):
     def get_calc():
-        return ORCA("HF sto-3g")
+        return PySCF(method="scf", basis="def2svp")
 
     def get_geom():
         geom = geom_from_library("h2o_shaken.xyz")
@@ -92,11 +100,11 @@ def test_opt_restart():
 
     def get_opt(geom, restart_info=None):
         opt_kwargs = {
-            "max_cycles": 2,
+            "max_cycles": 4,
             "restart_info": restart_info,
             "dump": True,
         }
-        opt = QuickMin(geom, **opt_kwargs)
+        opt = opt_cls(geom, **opt_kwargs)
         return opt
 
     # Initial run
@@ -110,5 +118,6 @@ def test_opt_restart():
     re_opt = get_opt(re_geom, restart_info)
     re_opt.run()
 
-    # import pdb; pdb.set_trace()
-    pass
+    assert re_opt.cur_cycle == 7
+    norm_forces = np.linalg.norm(re_opt.forces[-1])
+    assert norm_forces == pytest.approx(ref_norm)
