@@ -63,3 +63,14 @@ def test_restart(calc_cls, calc_kwargs, chk_exts, this_dir):
     forces2 = geom2.forces
 
     np.testing.assert_allclose(forces2, forces, atol=1e-5)
+
+
+def test_geometry_restart():
+    geom = geom_from_library("benzene.xyz")
+    calc = ORCA("HF def2-SVP")
+
+    geom.set_calculator(calc)
+    restart = geom.get_restart_info()
+
+    import pdb; pdb.set_trace()
+    pass

@@ -407,27 +407,6 @@ class Geometry:
             aligned, vecs = self.principal_axes_are_aligned()
             if aligned:
                 break
-        """
-        # else:
-            # print(vecs)
-        # return aligned
-
-        I = self.inertia_tensor
-        w, v = np.linalg.eigh(I)
-        rot = np.linalg.solve(v, np.eye(3))
-        rot_c3d = rot.dot(c3d.T).T
-
-        # print(c3d)
-        # print()
-        # print(rot_c3d)
-        # print()
-        # print()
-        # import pdb; pdb.set_trace()
-        self.coords3d = rot_c3d
-        assert self.principal_axes_are_aligned()
-        return self.coords3d
-        """
-
     @property
     def energy(self):
         """Energy of the current atomic configuration.
@@ -583,22 +562,6 @@ class Geometry:
         #       internal coordinat hessian... I think this is described in one
         #       of the Gonzales-Schlegel-papers about the GS2 algorithm.
         return self.mass_weigh_hessian(self.cart_hessian)
-
-    def get_initial_hessian(self):
-        """Return and initial guess for the hessian."""
-        warnings.warn(
-                "This method will be removed in the future. Get hessians from "
-                "'pysisyphus.optimizers.guess_hessians' instead.",
-                DeprecationWarning
-        )
-        if self.internal:
-            H = self.internal.get_initial_hessian()
-        if self.coord_type == "dlc":
-            U = self.internal.U
-            H = U.T.dot(H).dot(U)
-        else:
-            H = np.eye(self.coords.size)
-        return H
 
     def unweight_mw_hessian(self, mw_hessian):
         """Unweight a mass-weighted hessian.
@@ -785,7 +748,6 @@ class Geometry:
             print(f"'{jmol_cmd}' seems not to be on your path!")
         tmp_xyz.close()
 
-
     def as_ase_atoms(self):
         try:
             import ase
@@ -801,6 +763,28 @@ class Geometry:
             ase_calc = FakeASE(self.calculator)
             atoms.set_calculator(ase_calc)
         return atoms
+
+    def get_restart_info(self):
+        try:
+            calc_restart_info = self.calculator.get_restart_info()
+        except AttributeError:
+            calc_restart_info = dict()
+
+        restart_info = {
+            "atoms": self.atoms,
+            "cart_coords": self.cart_coords.tolist(),
+            "coord_type": self.coord_type,
+            "comment": self.comment,
+        }
+        try:
+            prim_inds = self.internal.prim_indices
+        except AttributeError:
+            prim_inds = None
+        restart_info["prim_inds"] = prim_inds
+
+        restart_info["calc_info"] = calc_restart_info
+
+        return restart_info
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"
