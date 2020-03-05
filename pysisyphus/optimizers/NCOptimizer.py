@@ -37,7 +37,8 @@ class NCOptimizer(HessianOptimizer):
         # Mass-weighted hessian
         H_mw = self.geometry.mass_weigh_hessian(self.H)
         # Project out translation and rotation
-        H_mw = self.geometry.eckart_projection(H_mw)
+        if self.geometry.coords.size > 3:
+            H_mw = self.geometry.eckart_projection(H_mw)
         eigvals, eigvecs = np.linalg.eigh(H_mw)
         # Drop translational/rotational modes as they will have
         # small (zero) eigenvalues. Zero the corresponding gradient entries.
