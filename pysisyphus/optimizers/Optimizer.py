@@ -361,7 +361,8 @@ class Optimizer(metaclass=abc.ABCMeta):
                 with open(self.current_fn, "w") as handle:
                     handle.write(self.geometry.as_xyz())
 
-            if self.dump and (self.cur_cycle % self.dump_restart) == 0:
+            if self.dump and self.dump_restart \
+               and (self.cur_cycle % self.dump_restart) == 0:
                 self.dump_restart_info()
 
             self.print_opt_progress()
