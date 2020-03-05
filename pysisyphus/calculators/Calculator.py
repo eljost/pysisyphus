@@ -497,7 +497,7 @@ class Calculator:
 
     def set_restart_info(self, restart_info):
         try:
-            # Set a Paths
+            # Set as Path objects
             chkfiles = {
                 k: Path(v) for k, v in restart_info.pop("chkfiles").items()
             }
