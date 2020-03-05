@@ -68,11 +68,12 @@ COS_DICT = {
 }
 
 OPT_DICT = {
-    "anc": ANCOptimizer.ANCOptimizer,
     "cg": ConjugateGradient.ConjugateGradient,
     "fire": FIRE.FIRE,
     "lbfgs": LBFGS.LBFGS,
+    "nc": NCOptimizer.NCOptimizer,
     "plbfgs": PreconLBFGS.PreconLBFGS,
+    "psd": PreconSteepestDescent.PreconSteepestDescent,
     "qm": QuickMin.QuickMin,
     "rfo": RFOptimizer.RFOptimizer,
     "sd": SteepestDescent.SteepestDescent,

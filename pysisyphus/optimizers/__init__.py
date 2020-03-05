@@ -1,11 +1,12 @@
 import logging
 
 __all__ = [
-    "ANCOptimizer",
     "ConjugateGradient",
     "FIRE",
     "LBFGS",
+    "NCOptimizer",
     "PreconLBFGS",
+    "PreconSteepestDescent",
     "QuickMin",
     "RFOptimizer",
     "SteepestDescent",
