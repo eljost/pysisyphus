@@ -19,10 +19,13 @@ class PreconLBFGS(Optimizer):
                  c_stab=None, **kwargs):
         assert geometry.coord_type == "cart", \
             "Preconditioning makes only sense with 'coord_type: cart'"
+        # Set before calling the superclass constructor so we can the value
+        # in _set_opt_restart_info.
+        self.history = history
+
         super().__init__(geometry, **kwargs)
 
         self.alpha_init = alpha_init
-        self.history = history
         self.precon = precon
 
         is_dimer = isinstance(self.geometry.calculator, Dimer)
@@ -57,12 +60,32 @@ class PreconLBFGS(Optimizer):
         }
         self.line_search_cls = ls_cls[self.line_search]
 
-        self.grad_diffs = deque(maxlen=self.history)
-        self.steps_ = deque(maxlen=self.history)
+        if not self.restarted:
+            self.grad_diffs = deque(maxlen=self.history)
+            self.steps_ = deque(maxlen=self.history)
 
     def prepare_opt(self):
         if self.precon:
             self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab)
+
+    def _get_opt_restart_info(self):
+        opt_restart_info = {
+            "c_stab": self.c_stab,
+            "grad_diffs": np.array(self.grad_diffs).tolist(),
+            "steps_": np.array(self.steps_).tolist(),
+        }
+        return opt_restart_info
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        self.grad_diffs = deque(
+            [np.array(gd) for gd in opt_restart_info["grad_diffs"]], maxlen=self.history
+        )
+        self.steps_ = deque(
+            [np.array(cd) for cd in opt_restart_info["steps_"]], maxlen=self.history
+        )
+
+        c_stab = opt_restart_info["c_stab"]
+        self.precon_getter = precon_getter(self.geometry, c_stab=c_stab)
 
     def optimize(self):
         forces = self.geometry.forces

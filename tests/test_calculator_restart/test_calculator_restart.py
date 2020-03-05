@@ -13,6 +13,7 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.testing import using
 
 
@@ -94,6 +95,7 @@ def test_geometry_get_restart_info():
         pytest.param(ConjugateGradient, 0.01753495, marks=using("pyscf")),
         pytest.param(FIRE, 0.50285483, marks=using("pyscf")),
         pytest.param(LBFGS, 2.903023e-6, marks=using("pyscf")),
+        pytest.param(PreconLBFGS, 1.0844091e-5, marks=using("pyscf")),
         pytest.param(QuickMin, 0.02305389, marks=using("pyscf")),
         pytest.param(RFOptimizer, 0.001659627, marks=using("pyscf")),
         pytest.param(SteepestDescent, 0.05535400, marks=using("pyscf")),
