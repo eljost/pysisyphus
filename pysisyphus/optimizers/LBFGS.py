@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import numpy as np
+
 from pysisyphus.helpers import fit_rigid
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.closures import bfgs_multiply
@@ -14,10 +16,21 @@ class LBFGS(Optimizer):
         self.beta = beta
         self.keep_last = int(keep_last)
 
-        super().__init__(geometry, max_step=max_step, **kwargs)
-
         self.coord_diffs = list()
         self.grad_diffs = list()
+
+        super().__init__(geometry, max_step=max_step, **kwargs)
+
+    def _get_opt_restart_info(self):
+        opt_restart_info = {
+            "coord_diffs": np.array(self.coord_diffs).tolist(),
+            "grad_diffs": np.array(self.grad_diffs).tolist()
+        }
+        return opt_restart_info
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        self.coord_diffs = [np.array(cd) for cd in opt_restart_info["coord_diffs"]]
+        self.grad_diffs = [np.array(gd) for gd in opt_restart_info["grad_diffs"]]
 
     def optimize(self):
         if self.is_cos and self.align:

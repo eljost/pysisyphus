@@ -92,7 +92,7 @@ def test_geometry_get_restart_info():
     [
         pytest.param(ConjugateGradient, 0.01753495, marks=using("pyscf")),
         pytest.param(FIRE, 0.50285483, marks=using("pyscf")),
-        pytest.param(LBFGS, 0.002782565, marks=using("pyscf")),
+        pytest.param(LBFGS, 2.903023e-6, marks=using("pyscf")),
         pytest.param(QuickMin, 0.02305389, marks=using("pyscf")),
         pytest.param(SteepestDescent, 0.05535400, marks=using("pyscf")),
     ]
@@ -111,6 +111,7 @@ def test_opt_restart(opt_cls, ref_norm):
             "max_cycles": max_cycles,
             "restart_info": restart_info,
             "dump": True,
+            "thresh": "gau_tight",
         }
         opt = opt_cls(geom, **opt_kwargs)
         return opt
