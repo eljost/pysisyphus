@@ -123,9 +123,6 @@ class Optimizer(metaclass=abc.ABCMeta):
         }
         return conv_dict
 
-    def save_also(self):
-        return {}
-
     def restart(self):
         with open(self.image_results_fn) as handle:
             self.image_results = yaml.load(handle.read())
@@ -279,7 +276,6 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # Save results from the Optimizer
         opt_results = {la: getattr(self, la) for la in self.list_attrs}
-        opt_results.update(self.save_also())
         self.write_to_out_dir(self.opt_results_fn,
                               yaml.dump(opt_results))
 
