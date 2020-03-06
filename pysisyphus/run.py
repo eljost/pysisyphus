@@ -24,7 +24,7 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 # from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import confirm_input, shake_coords, \
-                               highlight_text, do_final_hessian
+                               highlight_text, do_final_hessian, print_barrier
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -222,6 +222,9 @@ def run_cos(cos, calc_getter, opt_getter):
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     print(highlight_text(f"Running TS-optimization from COS"))
 
+    first_cos_energy = cos.images[0].energy
+    last_cos_energy = cos.images[-1].energy
+
     # Use plain HEI
     hei_index = cos.get_hei_index()
     print(f"Index of highest energy image (HEI) is {hei_index}.")
@@ -302,6 +305,10 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
     if do_hess:
         print()
         do_final_hessian(ts_geom)
+
+    ts_energy = ts_geom.energy
+    print_barrier(ts_energy, first_cos_energy, "TS", "first COS image")
+    print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
 
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
@@ -430,10 +437,10 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     """Run optimization on first and last geometry in xyz and return
     updated xyz variable containing the optimized ends and any
     intermediate image that was present in the original list."""
-    strict = preopt_kwargs.pop("strict")
-    coord_type = preopt_kwargs.pop("coord_type")
+    strict = preopt_kwargs.get("strict", False)
+    coord_type = preopt_kwargs.get("coord_type", "redund")
 
-    preopt = preopt_kwargs.pop("preopt")
+    preopt = preopt_kwargs.get("preopt", "both")
     assert preopt in "first last both".split()
     first = (0, "first")
     last = (-1, "last")
