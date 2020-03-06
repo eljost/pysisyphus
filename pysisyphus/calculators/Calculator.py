@@ -522,12 +522,15 @@ class Calculator:
             chkfile = Path(chkfile)
             # If the chkfile exists at the given path we use it as it is.
             if not chkfile.exists():
+                self.log(f"Given chkfile '{chkfile}' could not be found! Dropping "
+                          "absolute part and trying only its name.")
                 # Check if relative path exists. This may happen if the calculation
                 # has been moved to a different folder.
                 name = Path(chkfile.name)
                 if name.exists():
                     chkfile = name
                 else:
+                    self.log(f"'{name}' could not be found! Skipping this chkfile.")
                     continue
             paths[key] = chkfile
         return paths
