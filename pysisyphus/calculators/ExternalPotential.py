@@ -51,7 +51,9 @@ class ExternalPotential(Calculator):
 
     def get_potential_energy(self, coords):
         coords3d = coords.reshape(-1, 3)
-        potential_energy = sum([pot.calc(coords3d) for pot in self.potentials])
+        potential_energies = [pot.calc(coords3d) for pot in self.potentials]
+        potential_energy = sum(potential_energies)
+        self.log(f"Energies from external potential: {potential_energy}")
         return potential_energy
 
     def get_energy(self, atoms, coords):
@@ -66,9 +68,11 @@ class ExternalPotential(Calculator):
         energies_gradients = [pot.calc(coords3d, gradient=True)
                               for pot in self.potentials]
         energies, gradients = zip(*energies_gradients)
-        energies = sum(energies)
+        self.log(f"Energies from external potential: {energies}")
+        energy = sum(energies)
         forces = -np.sum(gradients, axis=0)
-        return energies, forces
+        self.log(f"Forces from external potential: {forces}")
+        return energy, forces
 
     def get_forces(self, atoms, coords):
         potential_energy, potential_forces = self.get_potential_forces(coords)

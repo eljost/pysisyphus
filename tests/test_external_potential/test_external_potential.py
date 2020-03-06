@@ -5,6 +5,7 @@ from pysisyphus.constants import KB
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import geom_from_library
 
 
 def test_external_potential():
@@ -38,3 +39,10 @@ def test_external_potential():
     forces = geom.forces
     ref_forces = np.array((-0.01483574, 0., 0.))
     np.testing.assert_allclose(forces, ref_forces)
+
+
+def test_geometry_sphere_radius():
+    geom = geom_from_library("benzene.xyz")
+    radius = geom.get_sphere_radius()
+    print(radius)
+    pass
