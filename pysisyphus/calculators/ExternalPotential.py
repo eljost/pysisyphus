@@ -7,6 +7,10 @@ from pysisyphus.constants import KB
 class LogFermi:
 
     def __init__(self, beta, radius, T=300, origin=(0., 0., 0.)):
+        """As described in the XTB docs.
+
+        https://xtb-docs.readthedocs.io/en/latest/xcontrol.html#confining-in-a-cavity
+        """
         self.beta = beta
         self.radius = radius
         self.T = T
