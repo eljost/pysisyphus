@@ -197,9 +197,10 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
                        define_prims=define_prims)
     print(f"Read {len(geoms)} geometries.")
 
-    all_atoms = [geom.atoms for geom in geoms]
-    atoms_0 = all_atoms[0]
-    assert all([atoms_i == atoms_0 for atoms_i in all_atoms]), \
+    atoms_0 = geoms[0].atoms
+    atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
+    atoms_0_str = atoms_strs[0]
+    assert all([atoms_str == atoms_0_str for atoms_str in atoms_strs]), \
         "Atom ordering/numbering in the geometries is inconsistent!"
 
     # TODO: Multistep interpolation (when more than two geometries are specified)
