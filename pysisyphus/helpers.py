@@ -12,7 +12,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M
+from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
@@ -483,3 +483,9 @@ def do_final_hessian(geom, save_hessian=True):
 
     res = FinalHessianResult(neg_eigvals=neg_eigvals)
     return res
+
+
+def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
+    barrier = (ref_energy - comp_energy) * AU2KJPERMOL
+    print(f"\tBarrier between {ref_str} and {comp_str} and : {barrier:.1f} kJ mol⁻¹")
+    return barrier
