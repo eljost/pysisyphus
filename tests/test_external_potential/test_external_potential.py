@@ -3,7 +3,6 @@ import pytest
 
 from pysisyphus.constants import KB
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
-from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.Geometry import Geometry
 
@@ -33,6 +32,7 @@ def test_external_potential():
     displ_coords = (9., 0., 0)
     geom.coords = displ_coords
     ext_energy = geom.energy
+    # from math import exp, log; log(1 + exp(6*(9-10)))
     assert ext_energy == pytest.approx(0.002475685)
 
     forces = geom.forces
