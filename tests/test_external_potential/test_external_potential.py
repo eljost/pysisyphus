@@ -43,6 +43,6 @@ def test_external_potential():
 
 def test_geometry_sphere_radius():
     geom = geom_from_library("benzene.xyz")
-    radius = geom.get_sphere_radius()
-    print(radius)
-    pass
+    radius = geom.get_sphere_radius(offset=4)
+
+    assert radius == pytest.approx(8.7142660)
