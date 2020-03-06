@@ -42,7 +42,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 CALC_DICT = {
     "afir": AFIR,
     "dimer": Dimer,
-    "ext": ExternalPotential,
+    # "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "mopac": MOPAC,
