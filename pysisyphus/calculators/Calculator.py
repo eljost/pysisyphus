@@ -478,6 +478,14 @@ class Calculator:
         self.log(f"Cleaned {path}")
 
     def get_restart_info(self):
+        """Return a dict containing chkfiles.
+
+        Returns
+        -------
+        restart_info : dict
+            Dictionary holding the calculator state. Used for restoring calculaters
+            in restarted calculations.
+        """
         try:
             # Convert possible Paths to str
             chkfiles = {
@@ -495,12 +503,46 @@ class Calculator:
 
         return restart_info
 
+    def verify_chkfiles(self, chkfiles):
+        """Checks if given chkfiles exist and return them as Paths
+
+        Parameters
+        ----------
+        chkfiles : dict
+            Dictionary holding the chkfiles. The keys correspond to the attribute
+            names, the values are strs holding the (potentially full) filename (path).
+
+        Returns
+        -------
+        paths : dict
+            Dictionary of Paths.
+        """
+        paths = {}
+        for key, chkfile in chkfiles.items():
+            chkfile = Path(chkfile)
+            # If the chkfile exists at the given path we use it as it is.
+            if not chkfile.exists():
+                # Check if relative path exists. This may happen if the calculation
+                # has been moved to a different folder.
+                name = Path(chkfile.name)
+                if name.exists():
+                    chkfile = name
+                else:
+                    continue
+            paths[key] = chkfile
+        return paths
+
     def set_restart_info(self, restart_info):
+        """Sets restart information (chkfiles etc.) on the calculator.
+
+        Parameters
+        -------
+        restart_info : dict
+            Dictionary holding the calculator state. Used for restoring calculaters
+            in restarted calculations.
+        """
         try:
-            # Set as Path objects
-            chkfiles = {
-                k: Path(v) for k, v in restart_info.pop("chkfiles").items()
-            }
+            chkfiles = self.verify_chkfiles(restart_info.pop("chkfiles"))
             self.set_chkfiles(chkfiles)
         except KeyError:
             self.log("No chkfiles preset in restart_info")
