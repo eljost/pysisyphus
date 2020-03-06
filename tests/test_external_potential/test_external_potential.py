@@ -6,6 +6,10 @@ from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library
+from pysisyphus.init_logging import init_logging
+
+
+init_logging()
 
 
 def test_external_potential():

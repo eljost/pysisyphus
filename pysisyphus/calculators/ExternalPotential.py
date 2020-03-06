@@ -27,8 +27,8 @@ class LogFermi:
         return energy, gradient.flatten()
 
     def __repr__(self):
-        return f"LogFermi(beta={self.beta}, radius={self.radius}, T={self.T}, " \
-               f"origin={self.origin})"
+        return f"LogFermi(beta={self.beta:.6f}, radius={self.radius:.6f}, " \
+               f"T={self.T:.6f}, origin={self.origin})"
 
 
 class ExternalPotential(Calculator):
@@ -43,17 +43,19 @@ class ExternalPotential(Calculator):
         self.calculator = calculator
 
         self.potentials = list()
-        for pot_kwargs in potentials:
+        self.log("Creating external potentials")
+        for i, pot_kwargs in enumerate(potentials):
             pot_key = pot_kwargs.pop("type")
             pot_cls = self.available_potentials[pot_key]
             pot = pot_cls(**pot_kwargs)
             self.potentials.append(pot)
+            self.log(f"\t{i:02d}: {pot}")
 
     def get_potential_energy(self, coords):
         coords3d = coords.reshape(-1, 3)
         potential_energies = [pot.calc(coords3d) for pot in self.potentials]
         potential_energy = sum(potential_energies)
-        self.log(f"Energies from external potential: {potential_energy}")
+        self.log(f"Energies from external potential: {potential_energies}")
         return potential_energy
 
     def get_energy(self, atoms, coords):
