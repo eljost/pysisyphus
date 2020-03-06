@@ -1,7 +1,6 @@
 from collections import Counter, namedtuple
 import subprocess
 import tempfile
-import warnings
 
 import numpy as np
 import rmsd

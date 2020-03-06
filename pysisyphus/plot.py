@@ -198,7 +198,6 @@ def plot_energies():
     print( "Barrier heights using actual energies (not splined) from "
           f"cycle {energies.shape[0]-1}.")
     print(f"\tHighest energy image (HEI) at index {max_en_ind} (0-based)")
-    max_image_en = last_energies.max()
 
     first_barr = max_en - first_image_en
     print(f"\tBarrier between first image and HEI: {first_barr:.1f} kJ mol⁻¹")
