@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.constants import KB
-from pysisyphus.calculators.ExternalPotential import ExternalPotential
+from pysisyphus.calculators import ExternalPotential
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library

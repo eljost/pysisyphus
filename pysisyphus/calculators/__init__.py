@@ -3,6 +3,7 @@ import logging
 __all__ = [
     "AFIR",
     "Dimer",
+    "ExternalPotential",
     "FakeASE",
     "Gaussian09",
     "Gaussian16",
@@ -19,6 +20,7 @@ __all__ = [
 
 from pysisyphus.calculators.AFIR import AFIR
 from pysisyphus.calculators.Dimer import Dimer
+from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.LennardJones import LennardJones
