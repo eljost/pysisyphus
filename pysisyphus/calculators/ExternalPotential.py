@@ -19,7 +19,7 @@ class LogFermi:
         self.kT = KB * self.T
 
     def calc(self, coords3d, gradient=False):
-        t0 = coords3d - self.origin[None,:]
+        t0 = coords3d - self.origin[None, :]
         t1 = np.linalg.norm(t0, axis=1)
         t2 = np.exp(self.beta*(t1 - self.radius))
 
@@ -27,7 +27,7 @@ class LogFermi:
         if not gradient:
             return energy
 
-        gradient = self.kT * ((self.beta*t2) / ((1+t2) * t1))[:,None] * t0
+        gradient = self.kT * ((self.beta*t2) / ((1+t2) * t1))[:, None] * t0
         return energy, gradient.flatten()
 
     def __repr__(self):
@@ -66,7 +66,6 @@ class ExternalPotential(Calculator):
         potential_energy = self.get_potential_energy(coords)
         results = self.calculator.get_energy(atoms, coords)
         results["energy"] += potential_energy
-        
         return results
 
     def get_potential_forces(self, coords):
@@ -85,7 +84,6 @@ class ExternalPotential(Calculator):
         results = self.calculator.get_forces(atoms, coords)
         results["energy"] += potential_energy
         results["forces"] += potential_forces
-        
         return results
 
     def get_hessian(self, atoms, coords):
