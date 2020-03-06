@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 
 import numpy as np
+from scipy.spatial.distance import pdist
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
@@ -798,6 +799,12 @@ class Geometry:
             print("No calculator restart information found!")
         except AttributeError:
             print("Could not restart calculator, as no calculator is set!")
+
+    def get_sphere_radius(self, offset=4):
+        distances = pdist(self.coords3d)
+
+        radius = (distances.max() / 2) + offset
+        return radius
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"
