@@ -46,6 +46,7 @@ class PreconLBFGS(Optimizer):
             self.log("Found Dimer calculator. Using "
                      "max_step_element={max_step_element:.2f}")
         self.max_step_element = max_step_element
+        # Disable linesearch if max_step_element is set
         if self.max_step_element is not None:
             self.log(f"max_step_element={max_step_element:.6f} given. Setting "
                       "line_search to 'None'.")
