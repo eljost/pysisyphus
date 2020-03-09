@@ -43,6 +43,10 @@ class QuickMin(Optimizer):
         self.forces.append(cur_forces)
         self.energies.append(self.geometry.energy)
 
+        norm = np.linalg.norm(cur_forces)
+        self.log(f"Current energy={self.energies[-1]:.6f}")
+        self.log(f"norm(forces)={norm:.6f}")
+
         if self.cur_cycle == 0:
             tmp_velocities = np.zeros_like(prev_velocities)
         else:
