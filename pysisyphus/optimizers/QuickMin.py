@@ -44,7 +44,8 @@ class QuickMin(Optimizer):
         self.energies.append(self.geometry.energy)
 
         norm = np.linalg.norm(cur_forces)
-        self.log(f"Current energy={self.energies[-1]:.6f}")
+        if not self.is_cos:
+            self.log(f"Current energy={self.energies[-1]:.6f}")
         self.log(f"norm(forces)={norm:.6f}")
 
         if self.cur_cycle == 0:

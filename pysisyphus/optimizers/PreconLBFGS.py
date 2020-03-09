@@ -96,7 +96,8 @@ class PreconLBFGS(Optimizer):
         self.energies.append(energy)
 
         norm = np.linalg.norm(forces)
-        self.log(f"Current energy={energy:.6f}")
+        if not self.is_cos:
+            self.log(f"Current energy={energy:.6f}")
         self.log(f"norm(forces)={norm:.6f}")
 
         # Steepest descent fallback
