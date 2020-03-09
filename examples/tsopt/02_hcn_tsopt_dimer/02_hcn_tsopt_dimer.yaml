@@ -9,7 +9,7 @@ calc:
   pal: 2
   charge: 0
   mult: 1
- N_init:
+ N_raw:
  length: 0.0189
  rotation_max_cycles: 15
  rotation_method: fourier
