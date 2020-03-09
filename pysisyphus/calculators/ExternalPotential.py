@@ -1,7 +1,7 @@
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.constants import KB
+from pysisyphus.constants import KB, AU2J
 
 
 class LogFermi:
@@ -16,7 +16,8 @@ class LogFermi:
         self.T = T
         self.origin = np.array(origin)
 
-        self.kT = KB * self.T
+        # In Hartree
+        self.kT = KB * self.T / AU2J
 
     def calc(self, coords3d, gradient=False):
         t0 = coords3d - self.origin[None, :]
