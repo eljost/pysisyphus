@@ -101,7 +101,7 @@ class EulerPC(IRC):
 
             # Check if we achieved the desired step length. Here we allow some
             # leeway for the integration length
-            if (abs(cur_length - self.step_length) <= 1e-2)
+            if (abs(cur_length - self.step_length) <= 1e-2
                 or (cur_length > self.step_length)):
                 self.log( "Predictor-Euler integration converged with "
                          f"Δs={cur_length:.4f} after {i+1} steps!"
