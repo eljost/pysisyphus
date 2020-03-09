@@ -8,6 +8,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
+from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.testing import using
 
 
@@ -123,3 +124,27 @@ def test_h2o_xtb_opt():
     assert opt.is_converged
     assert opt_diff_norm < org_diff_norm
     assert opt_diff_norm < 4
+
+
+@pytest.mark.skip
+def test_lj_external_potential_opt():
+    np.random.seed(20182503)
+
+    radius = 9
+    atom_num = 50
+    coords3d = (np.random.rand(atom_num, 3) - 0.5) * 2 * radius
+    atoms = ("Ar", ) * atom_num
+
+    geom = Geometry(atoms, coords3d.flatten())
+
+    lj_calc = LennardJones()
+    geom.set_calculator(lj_calc)
+
+    opt_kwargs = {
+        "max_cycles": 250,
+        "precon_update": 50,
+        "c_stab": 0.5,
+    }
+    # opt = QuickMin(geom, **opt_kwargs)
+    opt = PreconLBFGS(geom, **opt_kwargs)
+    opt.run()
