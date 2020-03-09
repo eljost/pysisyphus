@@ -99,8 +99,10 @@ class EulerPC(IRC):
             # Calculate step length in non-mass-weighted coordinates
             cur_length = get_integration_length(euler_mw_coords)
 
-            # Check if we achieved the desired step length
-            if cur_length > self.step_length:
+            # Check if we achieved the desired step length. Here we allow some
+            # leeway for the integration length
+            if (abs(cur_length - self.step_length) <= 1e-2)
+                or (cur_length > self.step_length)):
                 self.log( "Predictor-Euler integration converged with "
                          f"Δs={cur_length:.4f} after {i+1} steps!"
                 )
@@ -119,7 +121,14 @@ class EulerPC(IRC):
             # convergence.
             self.mw_coords = euler_mw_coords
 
-            rms_grad = rms(self.gradient)
+            # Use rms of gradient from taylor expansion for convergence check.
+            euler_grad = self.unweight_vec(euler_mw_grad)
+            rms_grad = rms(euler_grad)
+
+            # Or check true gradient? But this would need an additional calculation,
+            # so I disabled it for now.
+            # rms_grad = rms(self.gradient)
+
             if rms_grad <= 5*self.rms_grad_thresh:
                 self.log("Sufficient convergence achieved on rms(grad)")
                 self.converged = True
