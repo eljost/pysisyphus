@@ -104,8 +104,8 @@ class IRC:
         # self.logger.debug(f"step {self.cur_cycle:03d}, {msg}")
         self.logger.debug(msg)
 
-    # def un_massweight(self, vec):
-        # return vec * np.sqrt(self.geometry.masses_rep)
+    def unweight_vec(self, vec):
+        return vec * np.sqrt(self.geometry.masses_rep)
 
     def prepare(self, direction):
         self.cur_cycle = 0
