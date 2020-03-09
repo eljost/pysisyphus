@@ -213,11 +213,11 @@ class IRC:
             # Do macroiteration/IRC step to update the geometry
             self.step()
 
-            # Calculate energy and gradient on the new geometry
-            self.irc_energies.append(self.energy)
+            # Calculate gradient and energy on the new geometry
             # Non mass-weighted
             self.irc_coords.append(self.coords)
             self.irc_gradients.append(self.gradient)
+            self.irc_energies.append(self.energy)
             # Mass-weighted
             self.irc_mw_coords.append(self.mw_coords)
             self.irc_mw_gradients.append(self.mw_gradient)
