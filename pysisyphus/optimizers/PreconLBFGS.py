@@ -15,7 +15,7 @@ from pysisyphus.optimizers.precon import precon_getter
 class PreconLBFGS(Optimizer):
 
     def __init__(self, geometry, alpha_init=1., history=7, precon=True,
-                 max_step_element=None, line_search="armijo",
+                 precon_update=None, max_step_element=None, line_search="armijo",
                  c_stab=None, **kwargs):
         assert geometry.coord_type == "cart", \
             "Preconditioning makes only sense with 'coord_type: cart'"
@@ -27,6 +27,7 @@ class PreconLBFGS(Optimizer):
 
         self.alpha_init = alpha_init
         self.precon = precon
+        self.precon_update = precon_update
 
         is_dimer = isinstance(self.geometry.calculator, Dimer)
         if c_stab is None:
@@ -100,6 +101,11 @@ class PreconLBFGS(Optimizer):
 
         # Steepest descent fallback
         step = forces
+
+        # Check for preconditioner update
+        if (self.precon_update and self.cur_cycle > 0
+            and self.cur_cycle % self.precon_update == 0):
+            self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab)
 
         # Construct preconditoner if requested
         P = None
