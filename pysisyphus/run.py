@@ -169,15 +169,7 @@ def get_calc(index, base_name, calc_key, calc_kwargs):
         actual_calc = get_calc(index, base_name, actual_key, actual_kwargs)
         calc_kwargs["calculator"] = actual_calc
 
-    # Expand values that contain the $IMAGE pattern over all images.
-    # We have to use a copy of calc_kwargs to keep the $IMAGE pattern.
-    # Otherwise it would be replace at it's first occurence and would
-    # be gone in the following items.
-    kwargs_copy = copy.deepcopy(calc_kwargs)
-    for key, value in kwargs_copy.items():
-        if not isinstance(value, str) or not ("$IMAGE" in value):
-            continue
-        kwargs_copy[key] = value.replace("$IMAGE", f"{index:03d}")
+    kwargs_copy = calc_kwargs.copy()
     kwargs_copy["base_name"] = base_name
     kwargs_copy["calc_number"] = index
     return CALC_DICT[calc_key](**kwargs_copy)
