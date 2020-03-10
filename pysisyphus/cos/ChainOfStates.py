@@ -356,7 +356,7 @@ class ChainOfStates:
         return "\n".join([image.as_xyz() for image in self.images])
 
     def get_dask_client(self):
-        return Client(self.scheduler, pure=False, silence_logs=False)
+        return Client(self.scheduler)
 
     def get_hei_index(self, energies=None):
         """Return index of highest energy image."""
