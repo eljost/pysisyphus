@@ -274,7 +274,9 @@ class GrowingString(GrowingChainOfStates):
             reparam_coords = reparam_image.coords + step
             reparam_image.coords = reparam_coords
             cur_param_density = self.get_cur_param_density("coords")
-        self.log(f"Current param density: {cur_param_density}")
+
+        cpd_str = np.array2string(cur_param_density, precision=4)
+        self.log(f"Current param density: {cpd_str}")
         np.testing.assert_allclose(cur_param_density, desired_param_density,
                                    atol=self.reparam_tol)
 
@@ -364,10 +366,16 @@ class GrowingString(GrowingChainOfStates):
         perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
         perp_norms = np.linalg.norm(perp_forces, axis=1)
 
+        self.log( "Checking frontier node convergence, "
+                 f"threshold={self.perp_thresh:.6f}"
+        )
         # We can add a new node if the norm of the perpendicular force
         # on the frontier node(s) is below a threshold.
         def converged(i):
-            return perp_norms[i] <= self.perp_thresh
+            is_converged = perp_norms[i] <= self.perp_thresh
+            conv_str = ", converged" if is_converged else ""
+            self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
+            return is_converged
 
         # We can add new nodes if the string is not yet fully grown
         # and if the frontier nodes are converged below self.perp_thresh.
@@ -391,7 +399,7 @@ class GrowingString(GrowingChainOfStates):
 
         # Prepare node reparametrization
         desired_param_density = self.sk*self.full_string_image_inds
-        pd_str = np.array2string(desired_param_density, precision=3)
+        pd_str = np.array2string(desired_param_density, precision=4)
         self.log(f"Desired param density: {pd_str}")
 
         # TODO: Add some kind of threshold and only reparametrize when
