@@ -28,6 +28,7 @@ def test_augment_coordinates_silyl(augment, ref_cycle):
         "dump": True,
         "trust_radius": 0.3,
         "trust_max": 0.3,
+        "augment_bonds": augment,
     }
     calc_kwargs = {
         "charge": 0,
@@ -72,6 +73,7 @@ def test_augment_biaryl_bare(augment, ref_cycle):
 
     opt_kwargs = {
         "thresh": "gau_tight",
+        "augment_bonds": augment,
     }
     opt = RSIRFOptimizer(geom, **opt_kwargs)
     opt.run()

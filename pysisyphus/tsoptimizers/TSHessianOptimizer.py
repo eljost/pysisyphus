@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from pysisyphus.intcoords.augment_bonds import augment_bonds
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.guess_hessians import ts_hessian
 
@@ -11,7 +12,8 @@ class TSHessianOptimizer(HessianOptimizer):
 
     def __init__(self, geometry, root=0, hessian_ref=None, prim_coord=None,
                  rx_coords=None, hessian_init="calc", hessian_update="bofill",
-                 max_micro_cycles=50, trust_radius=0.3, **kwargs):
+                 max_micro_cycles=50, trust_radius=0.3, augment_bonds=True,
+                 **kwargs):
 
         assert hessian_update == "bofill", \
             "Bofill update is recommended in a TS-optimization."
@@ -37,6 +39,8 @@ class TSHessianOptimizer(HessianOptimizer):
             self.log(f"No reference hessian provided.")
         self.prim_coord = prim_coord
         self.rx_coords = rx_coords
+        # Bond augmentation is only useful with calculated hessians
+        self.augment_bonds = augment_bonds and (self.hessian_init == "calc")
 
         self.ts_mode = None
         self.max_micro_cycles = max_micro_cycles

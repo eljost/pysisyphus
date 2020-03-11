@@ -36,8 +36,7 @@ class HessianOptimizer(Optimizer):
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
                  small_eigval_thresh=1e-8, line_search=False,
-                 alpha0=1., max_micro_cycles=25,
-                 **kwargs):
+                 alpha0=1., max_micro_cycles=25, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
