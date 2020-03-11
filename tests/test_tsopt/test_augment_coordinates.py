@@ -52,7 +52,6 @@ def test_augment_coordinates_silyl(augment, ref_cycle):
     assert geom.energy == pytest.approx(ref_en)
 
 
-
 @using("gaussian16")
 @pytest.mark.parametrize(
     "augment, ref_cycle",
