@@ -13,6 +13,9 @@
 #       Corresponding SI
 # [4  ] https://aip.scitation.org/doi/pdf/10.1063/1.3593456?class=pdf
 #       Hratchian, Frisch, 2011
+# [6  ] https://aip.scitation.org/doi/10.1063/1.3593456<Paste>
+#       Hratchian, Frisch
+#	Further improvements; not implemented
 
 import numpy as np
 
