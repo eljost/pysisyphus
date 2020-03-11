@@ -12,7 +12,7 @@ class TSHessianOptimizer(HessianOptimizer):
 
     def __init__(self, geometry, root=0, hessian_ref=None, prim_coord=None,
                  rx_coords=None, hessian_init="calc", hessian_update="bofill",
-                 max_micro_cycles=50, trust_radius=0.3, augment_bonds=True,
+                 max_micro_cycles=50, trust_radius=0.3, augment_bonds=False,
                  **kwargs):
 
         assert hessian_update == "bofill", \
@@ -49,6 +49,10 @@ class TSHessianOptimizer(HessianOptimizer):
         self.alpha0 = 1
 
     def prepare_opt(self):
+        if self.augment_bonds:
+            self.geometry = augment_bonds(self.geometry, root=self.root)
+
+        # Calculate/set initial hessian
         super().prepare_opt()
 
         # Assume a guess hessian when not calculated. This hessian has to be

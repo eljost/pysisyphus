@@ -39,10 +39,6 @@ def test_augment_coordinates_silyl(augment, ref_cycle):
 
     geom.set_calculator(calc)
 
-    # Check if additional coordiantes can be defined
-    if augment:
-        geom = augment_bonds(geom)
-
     opt = RSIRFOptimizer(geom, **opt_kwargs)
     opt.run()
 
@@ -50,7 +46,7 @@ def test_augment_coordinates_silyl(augment, ref_cycle):
     assert opt.cur_cycle == ref_cycle
 
     ref_en = -367.20778
-    assert geom.energy == pytest.approx(ref_en)
+    assert opt.geometry.energy == pytest.approx(ref_en)
 
 
 @using("gaussian16")
@@ -67,9 +63,6 @@ def test_augment_biaryl_bare(augment, ref_cycle):
 
     calc = Gaussian16("PM6", pal=4)
     geom.set_calculator(calc)
-
-    if augment:
-        geom = augment_bonds(geom)
 
     opt_kwargs = {
         "thresh": "gau_tight",
