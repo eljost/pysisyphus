@@ -661,6 +661,7 @@ def get_defaults(conf_dict):
         dd["opt"] = {
             "type": "rfo",
             "dump": True,
+            "overachieve_factor": 3,
         }
     # elif "overlaps" in conf_dict:
         # dd["overlaps"] = {
@@ -696,6 +697,7 @@ def get_defaults(conf_dict):
         tsopt_default = {
             "type": "rsprfo",
             "dump": True,
+            "overachieve_factor": 3,
         }
         tsopt_dict = tsopt_dicts.get(type_, tsopt_default)
         tsopt_dict["do_hess"] = False
