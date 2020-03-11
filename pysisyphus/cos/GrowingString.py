@@ -177,6 +177,11 @@ class GrowingString(GrowingChainOfStates):
         return not ((self.string_size - 2) < self.max_nodes)
 
     @property
+    def nodes_missing(self):
+        """Returns the number of nodes to be grown."""
+        return (self.max_nodes + 2) - self.string_size
+
+    @property
     def lf_ind(self):
         """Index of the left frontier node in self.images."""
         return len(self.left_string)-1
@@ -395,7 +400,10 @@ class GrowingString(GrowingChainOfStates):
             self.right_string.append(new_right_frontier)
             self.log("Added new right frontier node.")
 
-        self.log(f"Current string size: {self.left_size}+{self.right_size}")
+        self.log(f"Current string size is {self.left_size}+{self.right_size}="
+                 f"{self.string_size}. There are still {self.nodes_missing} "
+                  "nodes to be grown."
+        )
 
         # Prepare node reparametrization
         desired_param_density = self.sk*self.full_string_image_inds
