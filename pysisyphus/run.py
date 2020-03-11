@@ -212,7 +212,8 @@ def run_cos(cos, calc_getter, opt_getter):
         print(f"Wrote splined HEI to '{hei_fn}'")
 
 
-def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
+def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
+                       ovlp_thresh=.3):
     print(highlight_text(f"Running TS-optimization from COS"))
 
     first_cos_energy = cos.images[0].energy
@@ -276,13 +277,25 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None):
         neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
         print(f"Negative eigenvalues at splined HEI:\n{eigval_str}")
+        neg_eigvals = eigvals[neg_inds]
         neg_eigvecs = eigvecs.T[neg_inds]
         ovlps = [np.abs(imag_mode.dot(redund_tangent)) for imag_mode in neg_eigvecs]
         print("Overlaps between HEI tangent and imaginary modes:")
         for i, ov in enumerate(ovlps):
             print(f"\t{i:02d}: {ov:.6f}")
-        root = np.argmax(ovlps)
-        print(f"Imaginary mode {root} has highest overlap with splined HEI tangent")
+        max_ovlp_ind = np.argmax(ovlps)
+        print(f"Imaginary mode {max_ovlp_ind} has highest overlap with splined "
+                "HEI tangent."
+        )
+        max_ovlp = ovlps[max_ovlp_ind]
+        if max_ovlp >= ovlp_thresh:
+            root = np.argmax(ovlps)
+        else:
+            root = neg_eigvals.min()
+            print(f"Highest overlap {max_ovlp:.6f} is below the threshold "
+                  f"of {ovlp_thresh:.6f}. Selecting mode {root} with most "
+                  f"negative eigenvalue {neg_eigvals.argmin()} instead."
+            )
         # Use mode with highest overlap as initial root
         tsopt_kwargs["root"] = root
         prfo = ts_optimizer(ts_geom, prefix="ts_", **tsopt_kwargs)
