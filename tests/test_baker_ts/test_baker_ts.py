@@ -15,6 +15,7 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.color import red, green
 from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian, \
                                geom_from_library, get_baker_ts_geoms_flat
+from pysisyphus.intcoords.augment_bonds import augment_bonds
 from pysisyphus.testing import using_pyscf, using_gaussian16
 from pysisyphus.tsoptimizers import *
 
@@ -54,7 +55,7 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
             "pal": 4,
         }
         geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
-        geom = augment_coordinates(geom)
+        geom = augment_bonds(geom)
         # geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
 
         # opt = RSPRFOptimizer(geom, **opt_kwargs)
@@ -173,7 +174,7 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
     print(f"@Running {name}")
     # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
     geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
-    geom = augment_coordinates(geom)
+    geom = augment_bonds(geom)
 
     opt_kwargs = {
         "thresh": "baker",
