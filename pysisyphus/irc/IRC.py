@@ -145,7 +145,7 @@ class IRC:
         See https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
         """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
-        mw_hessian = self.geometry.mw_hessian
+        mw_hessian = self.geometry.mass_weigh_hessian(self.ts_hessian)
         try:
             if not self.geometry.calculator.analytical_2d:
                 mw_hessian = self.geometry.eckart_projection(mw_hessian)
@@ -303,6 +303,7 @@ class IRC:
         # Calculate data at TS and create backup
         self.ts_coords = self.coords.copy()
         self.ts_mw_coords = self.mw_coords.copy()
+        print("Calculating energy and gradient at the TS")
         self.ts_gradient = self.gradient.copy()
         self.ts_mw_gradient = self.mw_gradient.copy()
         self.ts_energy = self.energy
