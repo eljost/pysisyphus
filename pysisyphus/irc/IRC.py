@@ -42,6 +42,7 @@ class IRC:
         self.hessian_init = hessian_init
         if self.hessian_init is not None:
             self.hessian_init = np.loadtxt(hessian_init)
+            self.log(f"Read initial TS hessian from '{hessian_init}'")
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
@@ -329,6 +330,7 @@ class IRC:
                 self.ts_hessian = self.hessian_init.copy()
             else:
                 self.ts_hessian = self.geometry.hessian.copy()
+                np.savetxt("calculated_initial_ts_hessian", self.ts_hessian)
             self.init_displ = self.initial_displacement()
 
         if self.forward:
