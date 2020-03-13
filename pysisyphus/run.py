@@ -316,6 +316,8 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     print_barrier(ts_energy, first_cos_energy, "TS", "first COS image")
     print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
+    return ts_geom
+
 
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
                      scheduler=None, assert_track=False):
@@ -880,7 +882,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         run_cos(cos, calc_getter, opt_getter)
         if run_dict["tsopt"]:
             calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-            run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
+            ts_geom = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
+            if run_dict["irc"]:
+                run_irc(ts_geom, irc_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
