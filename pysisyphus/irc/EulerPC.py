@@ -89,7 +89,7 @@ class EulerPC(IRC):
 
         # Simple euler integration
         euler_step_length = self.step_length / (self.max_pred_steps / 2)
-        self.log("Using Euler step length={euler_step_length:.6f}")
+        self.log(f"Using Euler step length={euler_step_length:.6f}")
 
         def taylor_gradient(step):
             """Return gradient from Taylor expansion of energy to 2nd order."""
