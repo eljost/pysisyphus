@@ -165,6 +165,16 @@ class Geometry:
         return Geometry(self.atoms, self._coords, coord_type=coord_type,
                         prim_indices=prim_indices, check_bends=check_bends)
 
+    def copy_all(self, coord_type=None, check_bends=True):
+        new_geom = self.copy(coord_type, check_bends)
+        new_geom.set_calculator(self.calculator)
+        new_geom.energy = self._energy
+        if self._forces is not None:
+            new_geom.cart_forces = self._forces
+        if self._hessian is not None:
+            new_geom.cart_hessian = self._hessian
+        return new_geom
+
     def atom_indices(self):
         """Dict with atom types as key and corresponding indices as values.
 
