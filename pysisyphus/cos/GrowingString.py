@@ -389,7 +389,7 @@ class GrowingString(GrowingChainOfStates):
                 conv_str = ", converged" if is_converged else ""
                 self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
             else:
-                raise Exception(f"Invalid reparam_check='{reparam_check}'")
+                raise Exception(f"Invalid reparam_check='{self.reparam_check}'")
             return is_converged
 
         # We can add new nodes if the string is not yet fully grown
