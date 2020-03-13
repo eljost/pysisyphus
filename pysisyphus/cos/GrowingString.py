@@ -13,7 +13,8 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, perp_thresh=0.05,
-                 reparam_every=3, reparam_tol=None, **kwargs):
+                 reparam_every=3, reparam_tol=None, reparam_check="norm",
+                 **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
@@ -32,6 +33,7 @@ class GrowingString(GrowingChainOfStates):
         else:
             self.reparam_tol = 1 / (self.max_nodes + 2) / 2
         self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4e}")
+        self.reparam_check = reparam_check
 
         left_img, right_img = self.images
 
@@ -370,6 +372,7 @@ class GrowingString(GrowingChainOfStates):
         # node/image on the string.
         perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
         perp_norms = np.linalg.norm(perp_forces, axis=1)
+        perp_rms = np.sqrt(np.mean(perp_forces**2, axis=1))
 
         self.log( "Checking frontier node convergence, "
                  f"threshold={self.perp_thresh:.6f}"
@@ -377,9 +380,16 @@ class GrowingString(GrowingChainOfStates):
         # We can add a new node if the norm of the perpendicular force
         # on the frontier node(s) is below a threshold.
         def converged(i):
-            is_converged = perp_norms[i] <= self.perp_thresh
-            conv_str = ", converged" if is_converged else ""
-            self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
+            if self.reparam_check == "norm":
+                is_converged = perp_norms[i] <= self.perp_thresh
+                conv_str = ", converged" if is_converged else ""
+                self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
+            elif self.reparam_check == "rms":
+                is_converged = perp_norms[i] <= self.perp_thresh
+                conv_str = ", converged" if is_converged else ""
+                self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
+            else:
+                raise Exception(f"Invalid reparam_check='{reparam_check}'")
             return is_converged
 
         # We can add new nodes if the string is not yet fully grown
