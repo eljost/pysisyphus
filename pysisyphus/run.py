@@ -534,14 +534,15 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
 def run_irc(geom, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
+    calc_number = 0
+    def set_calc(geom, name):
+        nonlocal calc_number
+        calc_number += 1
+        calc = calc_getter(calc_number)
+        calc.base_name = name
+        geom.set_calculator(calc)
+
     if geom.calculator is None:
-        calc_number = 0
-        def set_calc(geom, name):
-            nonlocal calc_number
-            calc_number += 1
-            calc = calc_getter(calc_number)
-            calc.base_name = name
-            geom.set_calculator(calc)
         set_calc(geom, "irc")
 
     if geom.coord_type != "cart":
