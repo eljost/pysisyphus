@@ -531,17 +531,21 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
         do_final_hessian(geom)
 
 
-def run_irc(geom, irc_kwargs, calc_getter):
+def run_irc(geom, irc_kwargs, calc_getter=None):
     print(highlight_text(f"Running IRC"))
 
-    calc_number = 0
-    def set_calc(geom, name):
-        nonlocal calc_number
-        calc_number += 1
-        calc = calc_getter(calc_number)
-        calc.base_name = name
-        geom.set_calculator(calc)
-    set_calc(geom, "irc")
+    if calc_getter is not None:
+        calc_number = 0
+        def set_calc(geom, name):
+            nonlocal calc_number
+            calc_number += 1
+            calc = calc_getter(calc_number)
+            calc.base_name = name
+            geom.set_calculator(calc)
+        set_calc(geom, "irc")
+
+    if geom.coord_type != "cart":
+        geom = geom.copy_all(coord_type="cart")
 
     irc_type = irc_kwargs.pop("type")
     opt_ends = irc_kwargs.pop("opt_ends")
@@ -884,7 +888,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
             ts_geom = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
             if run_dict["irc"]:
-                run_irc(ts_geom, irc_kwargs, calc_getter)
+                run_irc(ts_geom, irc_kwargs)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
