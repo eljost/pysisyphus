@@ -531,10 +531,10 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
         do_final_hessian(geom)
 
 
-def run_irc(geom, irc_kwargs, calc_getter=None):
+def run_irc(geom, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
-    if calc_getter is not None:
+    if geom.calculator is None:
         calc_number = 0
         def set_calc(geom, name):
             nonlocal calc_number
@@ -885,10 +885,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
         run_cos(cos, calc_getter, opt_getter)
         if run_dict["tsopt"]:
-            calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-            ts_geom = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
+            ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
+            ts_geom = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, ts_calc_getter)
             if run_dict["irc"]:
-                run_irc(ts_geom, irc_kwargs)
+                run_irc(ts_geom, irc_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
