@@ -87,9 +87,29 @@ class EulerPC(IRC):
             in un-mass-weighted coordinates."""
             return np.linalg.norm((cur_mw_coords - init_mw_coords) / m_sqrt)
 
-        # Simple euler integration
-        euler_step_length = self.step_length / (self.max_pred_steps / 2)
-        self.log(f"Using Euler step length={euler_step_length:.6f}")
+        # Calculate predictor Euler-integeration step length. We do the integration
+        # in mass-weighted coordinates, but we want to integrate until we achieve
+        # a given step length in un-mass-weighted coordinates.
+        # Converting the step from mass-weighted coordinates to un-mass-weighted
+        # coordinates will reduce its norm as we dive the step vector by sqrt(m).
+        #
+        # So the problem is to determine a appropriate step-length for the
+        # integration. [3] proposes just using Δs/250 with a maximum of 500 steps, so
+        # something like Δs/(max_steps / 2). It seems we can't use this because (at
+        # least for the systems I tested) this will lead to a step length that is too
+        # small, so the predictor Euler-integration will fail to converge in the
+        # prescribed number of cycles. This is because this calculation does not take
+        # into account the mass-weighting. The step length may be appropriate for
+        # integrations in un-mass-weighted coordinates, but not when using mass-weighted
+        # coordinates.
+        # We determine a conversion factor from comparing the magnitudes (norms) of
+        # the mass-weighted and un-mass-weighted gradients. This takes into account
+        # which atoms are actually moving, so it should be a good guess.
+        norm_mw_grad = np.linalg.norm(mw_grad)
+        norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
+        conv_fact = norm_grad / norm_mw_grad
+        self.log(f"Un-mass-weighted / mass-weighted conversion factor {conv_fact:.4f}")
+        euler_step_length = self.step_length / (self.max_pred_steps / conv_fact)
 
         def taylor_gradient(step):
             """Return gradient from Taylor expansion of energy to 2nd order."""
@@ -99,16 +119,22 @@ class EulerPC(IRC):
         # the Euler integration and will be updated frequently.
         euler_mw_coords = self.mw_coords.copy()
         euler_mw_grad = mw_grad.copy()
+        self.log(f"Predictor-Euler-integration with Δs={euler_step_length:.6f} "
+                 f"for up to {self.max_pred_steps} steps")
+        prev_cur_length = 0.
         for i in range(self.max_pred_steps):
             # Calculate step length in non-mass-weighted coordinates
             cur_length = get_integration_length(euler_mw_coords)
+            if i % 50 == 0:
+                diff = cur_length - prev_cur_length
+                self.log(f"\t{i:03d}: {cur_length:.4f} Δ={diff:.4f}")
+                prev_cur_length = cur_length
 
-            # Check if we achieved the desired step length. Here we allow some
-            # leeway for the integration length
-            if (abs(cur_length - self.step_length) <= 1e-2
-                or (cur_length > self.step_length)):
+            # Check if we achieved the desired step length.
+            if cur_length >= self.step_length:
                 self.log( "Predictor-Euler integration converged with "
-                         f"Δs={cur_length:.4f} after {i+1} steps!"
+                         f"Δs={cur_length:.4f} (desired Δs={self.step_length:.4f}) "
+                         f"after {i+1} steps!"
                 )
                 break
             step_ = euler_step_length * -euler_mw_grad / np.linalg.norm(euler_mw_grad)
@@ -137,6 +163,7 @@ class EulerPC(IRC):
                 self.log("Sufficient convergence achieved on rms(grad)")
                 self.converged = True
                 return
+        self.log("")
 
         # Calculate energy and gradient at new predicted geometry. These
         # results will be added to the DWI for use in the corrector step.
@@ -148,7 +175,7 @@ class EulerPC(IRC):
         dg = mw_grad - self.irc_mw_gradients[-1]
         dH, key = self.hessian_update_func(self.mw_H, dx, dg)
         self.mw_H += dH
-        self.log(f"Did {key} hessian update after predictor step.")
+        self.log(f"Did {key} hessian update after predictor step.\n")
         self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
 
         ##################
