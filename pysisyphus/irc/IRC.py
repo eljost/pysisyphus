@@ -314,9 +314,9 @@ class IRC:
         ts_grad_rms = rms(self.ts_gradient)
 
         self.log( "Transition state (TS):\n"
-                 f"\tnorm(grad)={ts_grad_norm:.8f}\n"
-                 f"\t max(grad)={ts_grad_max:.8f}\n"
-                 f"\t rms(grad)={ts_grad_rms:.8f}"
+                 f"\tnorm(grad)={ts_grad_norm:.6f}\n"
+                 f"\t max(grad)={ts_grad_max:.6f}\n"
+                 f"\t rms(grad)={ts_grad_rms:.6f}"
         )
 
         print("IRC length in mw. coords, max(|grad|) and rms(grad) in non-"
