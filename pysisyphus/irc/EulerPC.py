@@ -109,6 +109,7 @@ class EulerPC(IRC):
         norm_mw_grad = np.linalg.norm(mw_grad)
         norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
         conv_fact = norm_grad / norm_mw_grad
+        conv_fact = max(2, conv_fact)
         self.log(f"Un-mass-weighted / mass-weighted conversion factor {conv_fact:.4f}")
         euler_step_length = self.step_length / (self.max_pred_steps / conv_fact)
 
