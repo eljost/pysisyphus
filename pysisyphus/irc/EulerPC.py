@@ -168,6 +168,7 @@ class EulerPC(IRC):
         # Calculate energy and gradient at new predicted geometry. These
         # results will be added to the DWI for use in the corrector step.
         self.mw_coords = euler_mw_coords
+        self.log("Calculating energy and gradient at predictor step.")
         mw_grad = self.mw_gradient
         energy = self.energy
 
