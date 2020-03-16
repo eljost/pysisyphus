@@ -239,4 +239,5 @@ class EulerPC(IRC):
         else:
             raise Exception("Richardson did not converge!")
         
+        self.log(f"Setting mass-weighted coordinates from richardson[({k},{k})]")
         self.mw_coords = richardson[(k,k)]

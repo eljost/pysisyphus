@@ -216,6 +216,7 @@ class IRC:
 
             # Calculate gradient and energy on the new geometry
             # Non mass-weighted
+            self.log("Calculating energy and gradient at new geometry.")
             self.irc_coords.append(self.coords)
             self.irc_gradients.append(self.gradient)
             self.irc_energies.append(self.energy)
