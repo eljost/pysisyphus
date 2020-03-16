@@ -330,7 +330,7 @@ class IRC:
                 self.ts_hessian = self.hessian_init.copy()
             else:
                 self.ts_hessian = self.geometry.hessian.copy()
-                np.savetxt("calculated_initial_ts_hessian", self.ts_hessian)
+                np.savetxt("calculated_initial_irc_hessian", self.ts_hessian)
             self.init_displ = self.initial_displacement()
 
         if self.forward:
