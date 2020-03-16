@@ -210,6 +210,7 @@ def run_cos(cos, calc_getter, opt_getter):
         with open(hei_fn, "w") as handle:
             handle.write(hei_geom.as_xyz())
         print(f"Wrote splined HEI to '{hei_fn}'")
+    print()
 
 
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
@@ -316,6 +317,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     print_barrier(ts_energy, first_cos_energy, "TS", "first COS image")
     print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
+    print()
     return ts_geom
 
 
@@ -439,6 +441,7 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
 def run_stocastic(stoc):
     # Fragment
     stoc.run()
+    print()
 
 
 def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
@@ -502,6 +505,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         with open(fn, "w") as handle:
             handle.write(geoms[-1].as_xyz())
         out_xyz.append(fn)
+    print()
 
     return out_xyz
 
@@ -529,6 +533,7 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
     if do_hess and not tsopt.stopped:
         print()
         do_final_hessian(geom)
+    print()
 
 
 def run_irc(geom, irc_kwargs, calc_getter):
@@ -619,6 +624,7 @@ def run_irc(geom, irc_kwargs, calc_getter):
         print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
         print()
         opt_geoms.append(geom)
+    print()
     return opt_geoms
 
 
