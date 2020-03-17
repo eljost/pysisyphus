@@ -57,7 +57,7 @@ class TSHessianOptimizer(HessianOptimizer):
 
         # Assume a guess hessian when not calculated. This hessian has to be
         # modified according to the assumed reaction coordinates.
-        if self.hessian_init != "calc":
+        if self.hessian_init != "calc" and (self.rx_coords is not None):
             assert self.geometry.coord_type != "cart", \
                 "Using a modified guess hessian for TS-optimizations is " \
                 "only supported in redundand internal coordinates " \
