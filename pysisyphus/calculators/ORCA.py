@@ -92,7 +92,7 @@ class ORCA(OverlapCalculator):
         moinp_str = ""
         if gbw:
             moinp_str = f"""!moread
-            %moinp "{gbw}" """
+            %moinp "{os.path.abspath(gbw)}" """
         return moinp_str
 
     def prepare_input(self, atoms, coords, calc_type, point_charges=None,
