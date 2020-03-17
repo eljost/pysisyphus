@@ -113,6 +113,7 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     assert bond(2, 0) == pytest.approx(2.23, abs=0.01)
 
 
+@using("pyscf")
 @pytest.mark.parametrize(
     "irc_cls, irc_kwargs, fw_cycle, bw_cycle",
     [
