@@ -83,8 +83,8 @@ for i, (xyz_fn, (charge, mult)) in enumerate(use_meta_data.items()):
     }
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
-    forward_steps = irc.forward_step + 1
-    backward_steps = irc.backward_step + 1
+    forward_steps = irc.forward_cycle + 1
+    backward_steps = irc.backward_cycle + 1
     col = colors[irc.converged]
     print()
     print(col(f"@Converged: {irc.converged}, (F {forward_steps}, B {backward_steps})"))

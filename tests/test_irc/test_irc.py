@@ -114,12 +114,12 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
 
 
 @pytest.mark.parametrize(
-    "irc_cls, irc_kwargs",
+    "irc_cls, irc_kwargs, fw_cycle, bw_cycle",
     [
-        (EulerPC, {"hessian_recalc": 10,}),
+        (EulerPC, {"hessian_recalc": 10,}, 30, 37),
     ]
 )
-def test_hcn_irc(irc_cls, irc_kwargs):
+def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
     geom = geom_from_library("hcn_iso_hf_sto3g_ts_opt.xyz")
 
     calc = PySCF(
@@ -129,3 +129,7 @@ def test_hcn_irc(irc_cls, irc_kwargs):
 
     irc = irc_cls(geom, **irc_kwargs)
     irc.run()
+
+    assert irc.forward_cycle == fw_cycle
+    assert irc.backward_cycle == bw_cycle
+    # import pdb; pdb.set_trace()
