@@ -58,6 +58,13 @@ class EulerPC(IRC):
         self.mw_H += dH
         self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_H.copy())
 
+    def get_integration_length_func(self, init_mw_coords):
+        def get_integration_length(cur_mw_coords):
+            """Returns length of integration path done in mass-weighted coordinates
+            in un-mass-weighted coordinates."""
+            return np.linalg.norm((cur_mw_coords - init_mw_coords) / self.m_sqrt)
+        return get_integration_length
+
     def step(self):
         ##################
         # PREDICTOR STEP #
@@ -82,10 +89,7 @@ class EulerPC(IRC):
         # of the actual step size in the predictor Euler integration.
         init_mw_coords = self.mw_coords.copy()
 
-        def get_integration_length(cur_mw_coords):
-            """Returns length of integration path done in mass-weighted coordinates
-            in un-mass-weighted coordinates."""
-            return np.linalg.norm((cur_mw_coords - init_mw_coords) / self.m_sqrt)
+        get_integration_length = self.get_integration_length_func(init_mw_coords)
 
         # Calculate predictor Euler-integeration step length. We do the integration
         # in mass-weighted coordinates, but we want to integrate until we achieve
@@ -182,16 +186,26 @@ class EulerPC(IRC):
         self.log(f"Did {key} hessian update after predictor step.\n")
         self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
 
+        corrected_mw_coords = self.corrector_step(
+                                init_mw_coords,
+                                self.step_length,
+                                self.dwi
+        )
+        self.mw_coords = corrected_mw_coords
+
+    def corrector_step(self, init_mw_coords, step_length, dwi):
         ##################
         # CORRECTOR STEP #
         ##################
+
+        get_integration_length = self.get_integration_length_func(init_mw_coords)
 
         self.log("Starting mBS integration using Richardson extrapolation")
         errors = list()
         richardson = dict()
         for k in range(15):
             points = 20*(2**k)
-            corr_step_length  = self.step_length / (points - 1)
+            corr_step_length = step_length / (points - 1)
             cur_coords = init_mw_coords.copy()
             k_coords = list()
             cur_length = 0
@@ -199,12 +213,12 @@ class EulerPC(IRC):
             # Integrate until the desired spacing is reached
             while True:
                 k_coords.append(cur_coords.copy())
-                if abs(self.step_length - cur_length) < .5*corr_step_length:
+                if abs(step_length - cur_length) < .5*corr_step_length:
                     self.log(f"\tk={k:02d} points={points: >4d} "
                              f"step_length={corr_step_length:.4f} Δs={cur_length:.4f}")
                     break
 
-                energy, gradient = self.dwi.interpolate(cur_coords, gradient=True)
+                energy, gradient = dwi.interpolate(cur_coords, gradient=True)
                 cur_coords += corr_step_length * -gradient/np.linalg.norm(gradient)
                 # cur_length += corr_step_length
                 cur_length = get_integration_length(cur_coords)
@@ -219,9 +233,7 @@ class EulerPC(IRC):
                         self.log( "Detected oscillation in Corrector-Euler "
                                  f"integration for k={k:02d} and {points} points. "
                                   "Aborting corrector integration!")
-                        self.mw_coords = prev_coords
-                        return
-
+                        return prev_coords
                 except IndexError:
                     pass
             richardson[(k, 0)] = cur_coords
@@ -243,5 +255,5 @@ class EulerPC(IRC):
         else:
             raise Exception("Richardson did not converge!")
         
-        self.log(f"Setting corrected mass-weighted coordinates from richardson[({k},{k})]")
-        self.mw_coords = richardson[(k,k)]
+        self.log(f"Returning corrected mass-weighted coordinates from richardson[({k},{k})]")
+        return richardson[(k,k)]
