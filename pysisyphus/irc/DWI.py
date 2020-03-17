@@ -7,6 +7,7 @@
 
 from collections import deque
 
+import h5py
 import numpy as np
 
 
@@ -96,3 +97,36 @@ class DWI:
         grad_dwi = w1_grad*t1 + w1*t1_grad + w2_grad*t2 + w2*t2_grad
 
         return E_dwi, grad_dwi
+
+    def dump(self, fn):
+        data = {
+            "coords": np.array(self.coords, dtype=float),
+            "energies": np.array(self.energies, dtype=float),
+            "gradients": np.array(self.gradients, dtype=float),
+            "hessians": np.array(self.hessians, dtype=float),
+        }
+
+        with h5py.File(fn, "w") as handle:
+            for key, val in data.items():
+                handle.create_dataset(name=key, dtype=val.dtype, data=val)
+            handle.create_dataset(name="maxlen", data=self.maxlen, dtype=int)
+            handle.create_dataset(name="n", data=self.n, dtype=int)
+
+    @staticmethod
+    def from_h5(fn):
+        with h5py.File(fn, "r") as handle:
+            coords = handle["coords"][:]
+            energies = handle["energies"][:]
+            gradients = handle["gradients"][:]
+            hessians = handle["hessians"][:]
+
+            maxlen = int(handle["maxlen"][()])
+            n = int(handle["n"][()])
+
+        dwi = DWI(n=n, maxlen=maxlen)
+        for c, e, g, h in zip(coords, energies, gradients, hessians):
+            dwi.update(c, e, g, h)
+        return dwi
+
+    def __repr__(self):
+        return f"DWI(n={self.n}, maxlen={self.maxlen})"
