@@ -28,7 +28,7 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 class EulerPC(IRC):
 
     def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
-                 max_pred_steps=500, rms_grad_thresh=1e-4, **kwargs):
+                 max_pred_steps=500, rms_grad_thresh=1e-4, dump_dwi=False, **kwargs):
         # Use a tighter criterion
         kwargs["rms_grad_thresh"] = rms_grad_thresh
         super().__init__(*args, **kwargs)
@@ -40,6 +40,7 @@ class EulerPC(IRC):
         }
         self.hessian_update_func = self.hessian_update[hessian_update]
         self.max_pred_steps = int(max_pred_steps)
+        self.dump_dwi = dump_dwi
 
     def prepare(self, *args, **kwargs):
         super().prepare(*args, **kwargs)
@@ -113,7 +114,7 @@ class EulerPC(IRC):
         norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
         conv_fact = norm_grad / norm_mw_grad
         conv_fact = max(2, conv_fact)
-        self.log(f"Un-mass-weighted / mass-weighted conversion factor {conv_fact:.4f}")
+        self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
         euler_step_length = self.step_length / (self.max_pred_steps / conv_fact)
 
         def taylor_gradient(step):
@@ -200,6 +201,9 @@ class EulerPC(IRC):
 
         get_integration_length = self.get_integration_length_func(init_mw_coords)
 
+        if self.dump_dwi:
+            dwi.dump(f"dwi_{self.cur_direction}_{self.cur_cycle:0{self.cycle_places}d}.h5")
+
         self.log("Starting mBS integration using Richardson extrapolation")
         errors = list()
         richardson = dict()
@@ -230,9 +234,9 @@ class EulerPC(IRC):
                     # TODO: Handle this by restarting everything with a smaller stepsize?
                     # Check 10.1039/c7cp03722h SI
                     if osc_norm <= corr_step_length:
-                        self.log( "Detected oscillation in Corrector-Euler "
-                                 f"integration for k={k:02d} and {points} points. "
-                                  "Aborting corrector integration!")
+                        self.log( "\tDetected oscillation in Corrector-Euler "
+                                 f"integration for k={k:02d} and {points} points.\n"
+                                  "\tAborting corrector integration!")
                         return prev_coords
                 except IndexError:
                     pass
@@ -243,6 +247,7 @@ class EulerPC(IRC):
             for j in range(1, k+1):
                 richardson[(k, j)] = ((2**j) * richardson[(k, j-1)] - richardson[(k-1, j-1)]) \
                                      / (2**j-1)
+            # Can only be done after the second successful integration
             if k > 0:
                 # Error estimate according to Numerical Recipes Eq. (17.3.9).
                 # We compare the last two entries/columns in the current row.
