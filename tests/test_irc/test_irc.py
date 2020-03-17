@@ -130,6 +130,7 @@ def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
     irc = irc_cls(geom, **irc_kwargs)
     irc.run()
 
+    assert irc.forward_energies[0] == pytest.approx(-91.67520894777218)
+    assert irc.backward_energies[-1] == pytest.approx(-91.64442379051056)
     assert irc.forward_cycle == fw_cycle
     assert irc.backward_cycle == bw_cycle
-    # import pdb; pdb.set_trace()
