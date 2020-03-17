@@ -117,7 +117,7 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
 @pytest.mark.parametrize(
     "irc_cls, irc_kwargs, fw_cycle, bw_cycle",
     [
-        (EulerPC, {"hessian_recalc": 10,}, 30, 37),
+        (EulerPC, {"hessian_recalc": 10, "dump_dwi": False,}, 30, 37),
     ]
 )
 def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
