@@ -298,7 +298,7 @@ class IRC:
         self.all_mw_coords.extend(getattr(self, mw_coords_name))
         self.all_mw_gradients.extend(getattr(self, mw_grad_name))
 
-        setattr(self, f"{prefix}_step", self.cur_cycle)
+        setattr(self, f"{prefix}_cycle", self.cur_cycle)
         self.write_trj(".", prefix, getattr(self, mw_coords_name))
 
     def run(self):
