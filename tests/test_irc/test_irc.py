@@ -111,3 +111,21 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     assert bond(2, 7) == pytest.approx(0.93, abs=0.01)
     assert bond(4, 7) == pytest.approx(2.42, abs=0.01)
     assert bond(2, 0) == pytest.approx(2.23, abs=0.01)
+
+
+@pytest.mark.parametrize(
+    "irc_cls, irc_kwargs",
+    [
+        (EulerPC, {"hessian_recalc": 10,}),
+    ]
+)
+def test_hcn_irc(irc_cls, irc_kwargs):
+    geom = geom_from_library("hcn_iso_hf_sto3g_ts_opt.xyz")
+
+    calc = PySCF(
+            basis="sto3g",
+    )
+    geom.set_calculator(calc)
+
+    irc = irc_cls(geom, **irc_kwargs)
+    irc.run()
