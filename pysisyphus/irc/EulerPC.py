@@ -167,13 +167,15 @@ class EulerPC(IRC):
                 return
         self.log("")
 
-        # Calculate energy and gradient at new predicted geometry. These
-        # results will be added to the DWI for use in the corrector step.
+        # Calculate energy and gradient at new predicted geometry. Update the
+        # hessian accordingly. These results will be added to the DWI for use
+        # in the corrector step.
         self.mw_coords = euler_mw_coords
         self.log("Calculating energy and gradient at predictor step.")
         mw_grad = self.mw_gradient
         energy = self.energy
 
+        # Hessian update
         dx = self.mw_coords - self.irc_mw_coords[-1]
         dg = mw_grad - self.irc_mw_gradients[-1]
         dH, key = self.hessian_update_func(self.mw_H, dx, dg)
@@ -241,5 +243,5 @@ class EulerPC(IRC):
         else:
             raise Exception("Richardson did not converge!")
         
-        self.log(f"Setting mass-weighted coordinates from richardson[({k},{k})]")
+        self.log(f"Setting corrected mass-weighted coordinates from richardson[({k},{k})]")
         self.mw_coords = richardson[(k,k)]
