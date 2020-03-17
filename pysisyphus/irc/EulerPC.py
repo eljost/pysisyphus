@@ -187,9 +187,8 @@ class EulerPC(IRC):
         # CORRECTOR STEP #
         ##################
 
-        errors = list()
         self.log("Starting mBS integration using Richardson extrapolation")
-
+        errors = list()
         richardson = dict()
         for k in range(15):
             points = 20*(2**k)
@@ -218,7 +217,9 @@ class EulerPC(IRC):
                     # TODO: Handle this by restarting everything with a smaller stepsize?
                     # Check 10.1039/c7cp03722h SI
                     if osc_norm <= corr_step_length:
-                        self.log("Detected oscillation in Corrector-Euler integration.")
+                        self.log( "Detected oscillation in Corrector-Euler "
+                                 f"integration for k={k:02d} and {points} points. "
+                                  "Aborting corrector integration!")
                         self.mw_coords = prev_coords
                         return
 
