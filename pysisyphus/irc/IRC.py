@@ -4,6 +4,7 @@
 # https://chemistry.stackexchange.com/questions/74639
 
 import logging
+from math import ceil, log
 import pathlib
 import sys
 
@@ -67,6 +68,8 @@ class IRC:
 
         self.cur_cycle = 0
         self.converged = False
+        self.cur_direction = None
+        self.cycle_places = ceil(log(self.max_cycles, 10))
 
     @property
     def coords(self):
@@ -194,10 +197,13 @@ class IRC:
             mw_step = step_length * mw_trans_vec
             step = mw_step / self.m_sqrt
         print(f"Norm of initial displacement step: {np.linalg.norm(step):.4f}")
+        self.log("")
         return step
 
     def irc(self, direction):
         self.log(highlight_text(f"IRC {direction}"))
+
+        self.cur_direction = direction
         self.prepare(direction)
         # Calculate gradient
         self.gradient
@@ -284,6 +290,8 @@ class IRC:
 
         if not dumped:
             self.dump_data
+
+        self.cur_direction = None
 
     def set_data(self, prefix):
         energies_name = f"{prefix}_energies"
