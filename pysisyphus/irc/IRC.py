@@ -52,6 +52,8 @@ class IRC:
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
 
+        self._m_sqrt = np.sqrt(self.geometry.masses_rep)
+
         self.all_energies = list()
         self.all_coords = list()
         self.all_gradients = list()
@@ -105,8 +107,12 @@ class IRC:
         # self.logger.debug(f"step {self.cur_cycle:03d}, {msg}")
         self.logger.debug(msg)
 
+    @property
+    def m_sqrt(self):
+        return self._m_sqrt
+
     def unweight_vec(self, vec):
-        return vec * np.sqrt(self.geometry.masses_rep)
+        return self.m_sqrt * vec
 
     def prepare(self, direction):
         self.cur_cycle = 0
@@ -186,7 +192,7 @@ class IRC:
             # probably have to multiply this step length with the mass-weighted
             # mode and un-weigh it.
             mw_step = step_length * mw_trans_vec
-            step = mw_step / np.sqrt(self.geometry.masses_rep)
+            step = mw_step / self.m_sqrt
         print(f"Norm of initial displacement step: {np.linalg.norm(step):.4f}")
         return step
 
@@ -375,7 +381,7 @@ class IRC:
 
         # Right now self.all_mw_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.
-        self.all_mw_coords_umw = self.all_mw_coords / self.geometry.masses_rep**0.5
+        self.all_mw_coords_umw = self.all_mw_coords / self.m_sqrt
 
     def postprocess(self):
         pass
@@ -386,7 +392,7 @@ class IRC:
         if coords is None:
             coords = self.all_mw_coords
         coords = coords.copy()
-        coords /= self.geometry.masses_rep**0.5
+        coords /= self.m_sqrt
         coords = coords.reshape(-1, len(atoms), 3) * BOHR2ANG
         # all_mw_coords = self.all_mw_coords.flatten()
         trj_string = make_trj_str(atoms, coords, comments=self.all_energies)

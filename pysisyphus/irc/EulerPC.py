@@ -81,12 +81,11 @@ class EulerPC(IRC):
         # Create a copy of the inital coordinates for the determination
         # of the actual step size in the predictor Euler integration.
         init_mw_coords = self.mw_coords.copy()
-        m_sqrt = np.sqrt(self.geometry.masses_rep)
 
         def get_integration_length(cur_mw_coords):
             """Returns length of integration path done in mass-weighted coordinates
             in un-mass-weighted coordinates."""
-            return np.linalg.norm((cur_mw_coords - init_mw_coords) / m_sqrt)
+            return np.linalg.norm((cur_mw_coords - init_mw_coords) / self.m_sqrt)
 
         # Calculate predictor Euler-integeration step length. We do the integration
         # in mass-weighted coordinates, but we want to integrate until we achieve
