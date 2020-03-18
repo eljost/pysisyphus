@@ -30,7 +30,7 @@ class EulerPC(IRC):
 
     def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
                  max_pred_steps=500, rms_grad_thresh=1e-4, dump_dwi=False,
-                 corr_func="mbs", **kwargs):
+                 scipy_method=None, corr_func="mbs", **kwargs):
         # Use a tighter criterion
         kwargs["rms_grad_thresh"] = rms_grad_thresh
         super().__init__(*args, **kwargs)
@@ -44,11 +44,17 @@ class EulerPC(IRC):
         self.max_pred_steps = int(max_pred_steps)
         self.dump_dwi = dump_dwi
 
+        self.scipy_method = scipy_method
         corr_funcs = {
             "mbs": self.corrector_step,
             # "scipy_v1": self.scipy_corrector_step_v1,
             "scipy": self.scipy_corrector_step,
         }
+        if (self.scipy_method is not None) and corr_func != "scipy":
+            self.log(f"scipy_method={scipy_method} given, but corr_func={corr_func}. "
+                      "Setting corr_func=scipy to use scipy integrator."
+            )
+            corr_func = "scipy"
         self.corr_func = corr_funcs[corr_func]
 
     def prepare(self, *args, **kwargs):
@@ -193,7 +199,7 @@ class EulerPC(IRC):
         # hessian accordingly. These results will be added to the DWI for use
         # in the corrector step.
         self.mw_coords = euler_mw_coords
-        self.log("Calculating energy and gradient at predictor step.")
+        self.log("Calculating energy and gradient at predictor step geometry.")
         mw_grad = self.mw_gradient
         energy = self.energy
 
@@ -283,7 +289,10 @@ class EulerPC(IRC):
         coordinates. Integration done until self.step_length in unweighted
         coordinates is achieved."""
 
-        method = "RK45"
+        if self.scipy_method is None:
+            method = "RK45"
+        else:
+            method = self.scipy_method
         self.log(f"Corrector step using SciPy and {method} integration")
 
         _, init_mw_grad = dwi.interpolate(init_mw_coords, gradient=True)
@@ -294,6 +303,7 @@ class EulerPC(IRC):
             return -gradient / np.linalg.norm(gradient)
 
         t_span = (0, self.step_length * conv_fact)
+        self.log(f"\tt_span={t_span}")
         ode_res = solve_ivp(
                     fun=fun,
                     t_span=t_span,
@@ -301,12 +311,17 @@ class EulerPC(IRC):
                     method=method,
         )
 
-        self.log("\n" + str(ode_res))
+        attrs = "message nfev njev nlu sol status success".split()
+        for attr in attrs:
+            self.log(f"\t{attr}: {getattr(ode_res, attr)}")
+        self.log("")
+
+        # Integration reached end of t_span
         assert ode_res.status == 0
         corrected_mw_coords = ode_res.y[:,-1]
         return corrected_mw_coords
 
-    # def scipy_corrector_step2(self, init_mw_coords, step_length, dwi):
+    # def scipy_corrector_step_v1(self, init_mw_coords, step_length, dwi):
         # get_integration_length = self.get_integration_length_func(init_mw_coords)
 
         # # Termination event
