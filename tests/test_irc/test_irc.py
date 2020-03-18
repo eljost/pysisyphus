@@ -143,13 +143,22 @@ def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
     assert irc.backward_cycle == bw_cycle
 
 
-def test_eulerpc_scipy():
+@pytest.mark.parametrize(
+    "scipy_method",
+    [
+        (None),
+        ("RK45"),
+        ("DOP853"),
+    ]
+)
+def test_eulerpc_scipy(scipy_method):
     geom = AnaPot().get_geom((0.61173, 1.49297, 0.))
 
     kwargs = {
         "step_length": 0.2,
         "rms_grad_thresh": 1e-2,
         "corr_func": "scipy",
+        "scipy_method": scipy_method,
     }
 
     irc = EulerPC(geom, **kwargs)
