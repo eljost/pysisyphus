@@ -18,6 +18,7 @@
 #	Further improvements; not implemented
 
 import numpy as np
+from scipy.integrate import solve_ivp
 
 from pysisyphus.helpers import rms
 from pysisyphus.irc.DWI import DWI
@@ -28,7 +29,8 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 class EulerPC(IRC):
 
     def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
-                 max_pred_steps=500, rms_grad_thresh=1e-4, dump_dwi=False, **kwargs):
+                 max_pred_steps=500, rms_grad_thresh=1e-4, dump_dwi=False,
+                 corr_func="mbs", **kwargs):
         # Use a tighter criterion
         kwargs["rms_grad_thresh"] = rms_grad_thresh
         super().__init__(*args, **kwargs)
@@ -41,6 +43,13 @@ class EulerPC(IRC):
         self.hessian_update_func = self.hessian_update[hessian_update]
         self.max_pred_steps = int(max_pred_steps)
         self.dump_dwi = dump_dwi
+
+        corr_funcs = {
+            "mbs": self.corrector_step,
+            # "scipy_v1": self.scipy_corrector_step_v1,
+            "scipy": self.scipy_corrector_step,
+        }
+        self.corr_func = corr_funcs[corr_func]
 
     def prepare(self, *args, **kwargs):
         super().prepare(*args, **kwargs)
@@ -65,6 +74,34 @@ class EulerPC(IRC):
             in un-mass-weighted coordinates."""
             return np.linalg.norm((cur_mw_coords - init_mw_coords) / self.m_sqrt)
         return get_integration_length
+
+    def get_conv_fact(self, mw_grad, min_fact=2.):
+        # Numerical integration of differential equations requires a step length and/or
+        # we have to terminate the integration at some point, e.g. when the desired
+        # step length is reached. IRCs are integrated in mass-weighted coordinates,
+        # but self.step_length is given in unweighted coordinates. Unweighting a step
+        # in mass-weighted coordinates will reduce its norm as we divide by sqrt(m).
+        #
+        # If we want to do an Euler-integration we have to decide on a step size
+        # when a desired integration length is to be reached in a given number of steps.
+        # [3] proposes using Δs/250 with a maximum of 500 steps, so something like
+        # Δs/(max_steps / 2). It seems we can't use this because (at
+        # least for the systems I tested) this will lead to a step length that is too
+        # small, so the predictor Euler-integration will fail to converge in the
+        # prescribed number of cycles. It fails because simply dividing the desired
+        # step length in unweighted coordinates does not take into account the mass
+        # dependence. Such a step size is appropriate for integrations in unweighted
+        # coordinates, but not when using mass-weighted coordinates.
+        #
+        # We determine a conversion factor from comparing the magnitudes (norms) of
+        # the mass-weighted and un-mass-weighted gradients. This takes into account
+        # which atoms are actually moving, so it should be a good guess.
+        norm_mw_grad = np.linalg.norm(mw_grad)
+        norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
+        conv_fact = norm_grad / norm_mw_grad
+        conv_fact = max(min_fact, conv_fact)
+        self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
+        return conv_fact
 
     def step(self):
         ##################
@@ -92,29 +129,9 @@ class EulerPC(IRC):
 
         get_integration_length = self.get_integration_length_func(init_mw_coords)
 
-        # Calculate predictor Euler-integeration step length. We do the integration
-        # in mass-weighted coordinates, but we want to integrate until we achieve
-        # a given step length in un-mass-weighted coordinates.
-        # Converting the step from mass-weighted coordinates to un-mass-weighted
-        # coordinates will reduce its norm as we dive the step vector by sqrt(m).
-        #
-        # So the problem is to determine a appropriate step-length for the
-        # integration. [3] proposes just using Δs/250 with a maximum of 500 steps, so
-        # something like Δs/(max_steps / 2). It seems we can't use this because (at
-        # least for the systems I tested) this will lead to a step length that is too
-        # small, so the predictor Euler-integration will fail to converge in the
-        # prescribed number of cycles. This is because this calculation does not take
-        # into account the mass-weighting. The step length may be appropriate for
-        # integrations in un-mass-weighted coordinates, but not when using mass-weighted
-        # coordinates.
-        # We determine a conversion factor from comparing the magnitudes (norms) of
-        # the mass-weighted and un-mass-weighted gradients. This takes into account
-        # which atoms are actually moving, so it should be a good guess.
-        norm_mw_grad = np.linalg.norm(mw_grad)
-        norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
-        conv_fact = norm_grad / norm_mw_grad
-        conv_fact = max(2, conv_fact)
-        self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
+        # Calculate predictor Euler-integration step length. See get_conv_fact
+        # method definition for a comment on this.
+        conv_fact = self.get_conv_fact(mw_grad)
         euler_step_length = self.step_length / (self.max_pred_steps / conv_fact)
 
         def taylor_gradient(step):
@@ -165,7 +182,8 @@ class EulerPC(IRC):
             # so I disabled it for now.
             # rms_grad = rms(self.gradient)
 
-            if rms_grad <= 5*self.rms_grad_thresh:
+            # if rms_grad <= 5*self.rms_grad_thresh:
+            if rms_grad <= self.rms_grad_thresh:
                 self.log("Sufficient convergence achieved on rms(grad)")
                 self.converged = True
                 return
@@ -187,7 +205,7 @@ class EulerPC(IRC):
         self.log(f"Did {key} hessian update after predictor step.\n")
         self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
 
-        corrected_mw_coords = self.corrector_step(
+        corrected_mw_coords = self.corr_func(
                                 init_mw_coords,
                                 self.step_length,
                                 self.dwi
@@ -195,16 +213,13 @@ class EulerPC(IRC):
         self.mw_coords = corrected_mw_coords
 
     def corrector_step(self, init_mw_coords, step_length, dwi):
-        ##################
-        # CORRECTOR STEP #
-        ##################
+        self.log("Corrector step using mBS integration")
 
         get_integration_length = self.get_integration_length_func(init_mw_coords)
 
         if self.dump_dwi:
             dwi.dump(f"dwi_{self.cur_direction}_{self.cur_cycle:0{self.cycle_places}d}.h5")
 
-        self.log("Starting mBS integration using Richardson extrapolation")
         errors = list()
         richardson = dict()
         for k in range(15):
@@ -262,3 +277,64 @@ class EulerPC(IRC):
         
         self.log(f"Returning corrected mass-weighted coordinates from richardson[({k},{k})]")
         return richardson[(k,k)]
+
+    def scipy_corrector_step(self, init_mw_coords, step_length, dwi):
+        """Solve IRC equation dx/ds = -g/|g| on DWI PES in mass-weighted
+        coordinates. Integration done until self.step_length in unweighted
+        coordinates is achieved."""
+
+        method = "RK45"
+        self.log(f"Corrector step using SciPy and {method} integration")
+
+        _, init_mw_grad = dwi.interpolate(init_mw_coords, gradient=True)
+        conv_fact = self.get_conv_fact(init_mw_grad, min_fact=1.)
+
+        def fun(t, cur_mw_coords):
+            energy, gradient = dwi.interpolate(cur_mw_coords, gradient=True)
+            return -gradient / np.linalg.norm(gradient)
+
+        t_span = (0, self.step_length * conv_fact)
+        ode_res = solve_ivp(
+                    fun=fun,
+                    t_span=t_span,
+                    y0=init_mw_coords,
+                    method=method,
+        )
+
+        self.log("\n" + str(ode_res))
+        assert ode_res.status == 0
+        corrected_mw_coords = ode_res.y[:,-1]
+        return corrected_mw_coords
+
+    # def scipy_corrector_step2(self, init_mw_coords, step_length, dwi):
+        # get_integration_length = self.get_integration_length_func(init_mw_coords)
+
+        # # Termination event
+        # def integration_length_reached_event(t, cur_mw_coords):
+            # cur_length = get_integration_length(cur_mw_coords)
+            # return self.step_length - cur_length
+        # integration_length_reached_event.terminal = True
+
+        # def fun(t, cur_mw_coords):
+            # energy, gradient = dwi.interpolate(cur_mw_coords, gradient=True)
+            # return -gradient
+
+        # ode_res = solve_ivp(
+                    # fun=fun,
+                    # t_span=(0, 10),
+                    # y0=init_mw_coords,
+                    # method="RK45",
+                    # events=integration_length_reached_event,
+                    # # first_step=self.step_length / 50,
+                    # # max_step=self.step_length / 50,
+                    # # dense_output=True,
+        # )
+
+        # # Expect termination event
+        # # try:
+            # # assert ode_res.status == 1
+        # # except AssertionError:
+            # # import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
+        # corrected_mw_coords = ode_res.y[:,-1]
+        # return corrected_mw_coords
