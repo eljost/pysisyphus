@@ -257,7 +257,7 @@ class IRC:
             if self.converged:
                 break_msg = "Integrator indicated convergence!"
             elif rms_grad <= self.rms_grad_thresh:
-                break_msg = "RMS of gradient converged!"
+                break_msg = "rms(grad) converged!"
                 self.converged = True
             # TODO: Allow some threshold?
             elif this_energy > last_energy:
@@ -334,8 +334,8 @@ class IRC:
                  f"\t rms(grad)={ts_grad_rms:.6f}"
         )
 
-        print("IRC length in mw. coords, max(|grad|) and rms(grad) in non-"
-              "mass-weighted coords.")
+        print("IRC length in mw. coords, max(|grad|) and rms(grad) in "
+              "unweighted coordinates.")
 
         # For forward/backward runs we need an intial displacement
         # and for this we need a hessian, that we calculate now.
