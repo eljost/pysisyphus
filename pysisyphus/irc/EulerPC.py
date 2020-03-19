@@ -335,7 +335,7 @@ class EulerPC(IRC):
         attrs = "message nfev njev nlu sol status success".split()
         for attr in attrs:
             self.log(f"\t{attr}: {getattr(ode_res, attr)}")
-        self.log(f"Corrector integration took {int_duration:.1} s")
+        self.log(f"Corrector integration took {int_duration:.4} s")
 
         # Integration reached end of t_span
         # try:
