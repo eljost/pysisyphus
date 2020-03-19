@@ -23,7 +23,8 @@ class IRC:
                  downhill=False, forward=True, backward=True,
                  mode=0, hessian_init=None,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=5e-4, dump_fn="irc_data.h5", dump_every=5):
+                 rms_grad_thresh=5e-4, force_inflection=True,
+                 dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
 
@@ -50,6 +51,7 @@ class IRC:
         self.displ_energy = float(displ_energy)
         self.displ_length = float(displ_length)
         self.rms_grad_thresh = float(rms_grad_thresh)
+        self.force_inflection = force_inflection
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
 
@@ -120,6 +122,7 @@ class IRC:
     def prepare(self, direction):
         self.cur_cycle = 0
         self.converged = False
+        self.past_inflection = not self.force_inflection
 
         self.irc_energies = list()
         # Not mass-weighted
@@ -238,6 +241,12 @@ class IRC:
 
             rms_grad = rms(self.gradient)
 
+            # Only update once
+            if not self.past_inflection:
+                self.past_inflection = rms_grad >= self.rms_grad_thresh
+                _ = "" if self.past_inflection else "not yet"
+                self.log(f"(rms(grad) > threshold) {_} fullfilled!")
+
             irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
             dE = self.irc_energies[-1] - self.irc_energies[-2]
             max_grad = np.abs(self.gradient).max()
@@ -256,7 +265,7 @@ class IRC:
             break_msg = ""
             if self.converged:
                 break_msg = "Integrator indicated convergence!"
-            elif rms_grad <= self.rms_grad_thresh:
+            elif self.past_inflection and (rms_grad <= self.rms_grad_thresh):
                 break_msg = "rms(grad) converged!"
                 self.converged = True
             # TODO: Allow some threshold?
