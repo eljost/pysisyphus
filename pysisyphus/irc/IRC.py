@@ -19,11 +19,11 @@ from pysisyphus.TablePrinter import TablePrinter
 
 class IRC:
 
-    def __init__(self, geometry, step_length=0.1, max_cycles=150,
+    def __init__(self, geometry, step_length=0.1, max_cycles=75,
                  downhill=False, forward=True, backward=True,
                  mode=0, hessian_init=None,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=5e-4, force_inflection=True,
+                 rms_grad_thresh=3e-3, force_inflection=True,
                  dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
