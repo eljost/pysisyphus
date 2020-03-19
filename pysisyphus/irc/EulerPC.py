@@ -213,7 +213,7 @@ class EulerPC(IRC):
         self.log(f"Did {key} hessian update after predictor step.\n")
         self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
         if self.dump_dwi:
-            dwi.dump(f"dwi_{self.cur_direction}_{self.cur_cycle:0{self.cycle_places}d}.h5")
+            self.dwi.dump(f"dwi_{self.cur_direction}_{self.cur_cycle:0{self.cycle_places}d}.h5")
 
         corrected_mw_coords = self.corr_func(
                                 init_mw_coords,
