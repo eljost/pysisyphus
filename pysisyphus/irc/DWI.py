@@ -83,7 +83,7 @@ class DWI:
         # **2n instead of **n, so the square root can be easily reduced.
         # sqrt(x)**2n = x**(1/2)**2n = x**n
         #
-        # Thats why we have to do following calculations with the half the value
+        # Thats why we do the following calculations with n/2.
         # of n.
         n_2 = self.n // 2
         dx1_norm_n_grad = 2 * n_2 * dx1_norm**(2*n_2-2) * dx1
