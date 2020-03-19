@@ -15,7 +15,9 @@
 #       Hratchian, Frisch, 2011
 # [6  ] https://aip.scitation.org/doi/10.1063/1.3593456<Paste>
 #       Hratchian, Frisch
-#	Further improvements; not implemented
+#	Further improvements for DWI; not implemented
+
+import time
 
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -210,6 +212,8 @@ class EulerPC(IRC):
         self.mw_H += dH
         self.log(f"Did {key} hessian update after predictor step.\n")
         self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
+        if self.dump_dwi:
+            dwi.dump(f"dwi_{self.cur_direction}_{self.cur_cycle:0{self.cycle_places}d}.h5")
 
         corrected_mw_coords = self.corr_func(
                                 init_mw_coords,
@@ -217,14 +221,13 @@ class EulerPC(IRC):
                                 self.dwi
         )
         self.mw_coords = corrected_mw_coords
+        corr_step_length = get_integration_length(self.mw_coords)
+        self.log(f"Corrected unweighted step length: {corr_step_length:.6f}")
 
     def corrector_step(self, init_mw_coords, step_length, dwi):
         self.log("Corrector step using mBS integration")
 
         get_integration_length = self.get_integration_length_func(init_mw_coords)
-
-        if self.dump_dwi:
-            dwi.dump(f"dwi_{self.cur_direction}_{self.cur_cycle:0{self.cycle_places}d}.h5")
 
         errors = list()
         richardson = dict()
@@ -289,10 +292,24 @@ class EulerPC(IRC):
         coordinates. Integration done until self.step_length in unweighted
         coordinates is achieved."""
 
+        # Integrator
         if self.scipy_method is None:
-            method = "RK45"
+            method = "Radau"
         else:
             method = self.scipy_method
+
+        # Jacobian/hessian
+        jac = None
+        if method in "Radau BDF".split():
+            # jac = dwi.hessians[0]
+            jac = self.mw_H
+        else:
+            self.log(f"The chosen method {method} is probably a bad choice "
+                      "for integrating IRCs, as they it is not well suited "
+                      "for stiff problems. See SciPy documentation of "
+                      "solve_ivp() for more information."
+            )
+
         self.log(f"Corrector step using SciPy and {method} integration")
 
         _, init_mw_grad = dwi.interpolate(init_mw_coords, gradient=True)
@@ -304,20 +321,27 @@ class EulerPC(IRC):
 
         t_span = (0, self.step_length * conv_fact)
         self.log(f"\tt_span={t_span}")
+        int_start = time.time()
         ode_res = solve_ivp(
                     fun=fun,
                     t_span=t_span,
                     y0=init_mw_coords,
                     method=method,
+                    jac=jac,
         )
+        int_end = time.time()
+        int_duration = int_end - int_start
 
         attrs = "message nfev njev nlu sol status success".split()
         for attr in attrs:
             self.log(f"\t{attr}: {getattr(ode_res, attr)}")
-        self.log("")
+        self.log(f"Corrector integration took {int_duration:.1} s")
 
         # Integration reached end of t_span
-        assert ode_res.status == 0
+        # try:
+            # assert ode_res.status == 0
+        # except AssertionError:
+            # import pdb; pdb.set_trace()
         corrected_mw_coords = ode_res.y[:,-1]
         return corrected_mw_coords
 
