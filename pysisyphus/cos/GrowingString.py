@@ -126,12 +126,13 @@ class GrowingString(GrowingChainOfStates):
         new_img.set_calculator(self.calc_getter())
         ref_calc = self.images[ref_index].calculator
         try:
-            ref_calc.propagate_wavefunction(new_img.calculator)
-            self.log( "Set wavefunction data from calculator of node "
+            chkfiles = ref_calc.get_chkfiles()
+            new_img.calculator.set_chkfiles(chkfiles)
+            self.log( "Set checkfiles from calculator of node "
                      f"{ref_index:02d} on calculator of new node."
             )
         except AttributeError:
-            self.log("Calculator doesn't support 'propagte_wavefunction()'")
+            self.log("Calculator doesn't support 'get/set_chkfiles()'")
         self.images.insert(insert_ind, new_img)
         self.log(f"Created new image; inserted it before index {insert_ind}.")
         return new_img
