@@ -749,7 +749,6 @@ def plot_afir():
     except ValueError as err:
         print("Peak-detection failed!")
 
-
     # fig.legend(loc="upper right")
     plt.tight_layout()
     plt.show()
