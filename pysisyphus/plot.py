@@ -838,7 +838,7 @@ def plot_irc():
 
 def plot_irc_h5(h5, title=None):
     print(f"Reading IRC data {h5}")
-    with h5py.File(h5) as handle:
+    with h5py.File(h5, "r") as handle:
         mw_coords = handle["mw_coords"][:]
         energies = handle["energies"][:]
         gradients = handle["gradients"][:]
