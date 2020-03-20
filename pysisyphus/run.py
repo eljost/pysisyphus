@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from collections import namedtuple
 import copy
 import itertools
 import os
@@ -445,6 +446,7 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
                                   # consider_first=consider_first,
                                   # skip=skip,)
 
+
 def run_stocastic(stoc):
     # Fragment
     stoc.run()
@@ -547,7 +549,7 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
     return tsopt.geometry, tsopt
 
 
-def run_irc(geom, irc_kwargs, calc_getter):
+def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
     calc_number = 0
@@ -564,10 +566,9 @@ def run_irc(geom, irc_kwargs, calc_getter):
     if geom.coord_type != "cart":
         geom = geom.copy_all(coord_type="cart")
 
-    irc_type = irc_kwargs.pop("type")
     opt_ends = irc_kwargs.pop("opt_ends")
 
-    irc = IRC_DICT[irc_type](geom, **irc_kwargs)
+    irc = IRC_DICT[irc_key](geom, **irc_kwargs)
     irc.run()
 
     if opt_ends:
@@ -823,9 +824,19 @@ def dry_run(calc, geom):
     print(f"Wrote input to {calc.inp_fn}.")
 
 
+RunResult = namedtuple(
+                "RunResult",
+                ("preopt "
+                 "cos cos_opt"
+                 "ts_geom ts_opt"
+                 "irc end_geoms "
+                 "opt calculations stocastic"
+                ),
+)
+
+
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
          dryrun=None):
-    xyz = run_dict["xyz"]
     if run_dict["interpol"]:
         interpolate = run_dict["interpol"]["type"]
         between = run_dict["interpol"]["between"]
@@ -846,7 +857,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         tsopt_key = run_dict["tsopt"].pop("type")
         tsopt_kwargs = run_dict["tsopt"]
     if run_dict["irc"]:
+        irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
+
+    xyz = run_dict["xyz"]
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -871,21 +885,21 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     calc_kwargs["out_dir"] = yaml_dir
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
 
-    # Prepare optimizer
-    opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
-
-    coord_type = run_dict["coord_type"]
-
     if run_dict["preopt"]:
+        preopt_xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
         # Update xyz list with optimized endpoint filenames
-        xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
+        xyz = preopt_xyz
         sys.stdout.flush()
 
     add_prims = run_dict["add_prims"]
+    coord_type = run_dict["coord_type"]
     geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type,
                       define_prims=add_prims)
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
+
+    # Prepare optimizer
+    opt_getter = lambda geoms: OPT_DICT[opt_key](geoms, **opt_kwargs)
 
     if dryrun:
         calc = calc_getter(0)
@@ -906,7 +920,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
             ts_geom, ts_opt = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, ts_calc_getter)
             if run_dict["irc"]:
-                run_irc(ts_geom, irc_kwargs, calc_getter)
+                run_irc(ts_geom, irc_key, irc_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
@@ -923,7 +937,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     elif run_dict["irc"]:
         assert len(geoms) == 1
         geom = geoms[0]
-        run_irc(geom, irc_kwargs, calc_getter)
+        run_irc(geom, irc_key, irc_kwargs, calc_getter)
     elif run_dict["tsopt"]:
         assert len(geoms) == 1
         geom = geoms[0]
@@ -932,6 +946,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     else:
         run_calculations(geoms, calc_getter, yaml_dir,
                          calc_key, calc_kwargs, scheduler)
+
+    # import pdb; pdb.set_trace()
+    # run_result = RunResult(**results)
+    # return run_result
 
 
 def do_clean(force=False):
