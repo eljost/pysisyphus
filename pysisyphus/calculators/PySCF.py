@@ -179,6 +179,9 @@ class PySCF(OverlapCalculator):
 
         return results
 
+    def run_calculation(self, atoms, coords, prepare_kwargs=None):
+        return self.get_energy(atoms, coords, prepare_kwargs)
+
     def run(self, mol, point_charges=None):
         steps = self.multisteps[self.method]
         self.log(f"Running steps '{steps}' for method {self.method}")
