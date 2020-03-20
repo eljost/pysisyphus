@@ -18,9 +18,7 @@ class GrowingString(GrowingChainOfStates):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
-            print("More than 2 images were supplied! Will only use the "
-                  "first and last images to start the GrowingString."
-            )
+            print("More than 2 images given. Will only use first and last image!")
 
         super().__init__(images, calc_getter, **kwargs)
 
