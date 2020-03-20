@@ -826,11 +826,14 @@ def dry_run(calc, geom):
 
 RunResult = namedtuple(
                 "RunResult",
-                ("preopt "
-                 "cos cos_opt"
-                 "ts_geom ts_opt"
-                 "irc end_geoms "
-                 "opt calculations stocastic"
+                (
+                 "preopt_xyz "
+                 "cos cos_opt "
+                 "ts_geom ts_opt "
+                 "end_geoms irc "
+                 "opt_geom opt "
+                 "calced_geoms stocastic "
+                 "calc_getter "
                 ),
 )
 
@@ -915,41 +918,44 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             or isinstance(cos_cls, type(FreezingString))):
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         cos = COS_DICT[cos_key](geoms, **cos_kwargs)
-        run_cos(cos, calc_getter, opt_getter)
+        cos, cos_opt = run_cos(cos, calc_getter, opt_getter)
         if run_dict["tsopt"]:
             ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
             ts_geom, ts_opt = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, ts_calc_getter)
             if run_dict["irc"]:
-                run_irc(ts_geom, irc_key, irc_kwargs, calc_getter)
+                end_geoms, irc = run_irc(ts_geom, irc_key, irc_kwargs, calc_getter)
     elif run_dict["opt"]:
         assert(len(geoms) == 1)
         geom = geoms[0]
         if run_dict["shake"]:
             shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
             geom.coords = shaked_coords
-        run_opt(geom, calc_getter, opt_getter)
+        opt_geom, opt = run_opt(geom, calc_getter, opt_getter)
     elif run_dict["stocastic"]:
         assert len(geoms) == 1
         geom = geoms[0]
         stoc_kwargs["calc_kwargs"] = calc_kwargs
-        stoc = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
-        run_stocastic(stoc)
+        stocastic = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
+        stocastic = run_stocastic(stocastic)
     elif run_dict["irc"]:
         assert len(geoms) == 1
         geom = geoms[0]
-        run_irc(geom, irc_key, irc_kwargs, calc_getter)
+        end_geoms, irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
     elif run_dict["tsopt"]:
         assert len(geoms) == 1
         geom = geoms[0]
         geom.set_calculator(calc_getter(0))
-        run_tsopt(geom, tsopt_key, tsopt_kwargs)
+        ts_geom, ts_opt = run_tsopt(geom, tsopt_key, tsopt_kwargs)
     else:
-        run_calculations(geoms, calc_getter, yaml_dir,
-                         calc_key, calc_kwargs, scheduler)
+        calced_geoms = run_calculations(geoms, calc_getter, yaml_dir,
+                                        calc_key, calc_kwargs, scheduler)
 
-    # import pdb; pdb.set_trace()
-    # run_result = RunResult(**results)
-    # return run_result
+    # We can't use locals() in the dict comprehension, as this will be
+    # in a different scope.
+    locals_ = locals()
+    results = {key: locals_.get(key, None) for key in RunResult._fields}
+    run_result = RunResult(**results)
+    return run_result
 
 
 def do_clean(force=False):
@@ -1123,10 +1129,12 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
         # sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
     # else:
         # main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
-    main(run_dict, restart, cwd, scheduler, dryrun)
+    run_result = main(run_dict, restart, cwd, scheduler, dryrun)
     end_time = time.time()
     duration = int(end_time - start_time)
     print(f"pysisyphus run took {duration}s.")
+
+    return run_result
 
 
 def run():
@@ -1154,7 +1162,7 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
-    run_from_dict(run_dict, **run_kwargs)
+    return run_from_dict(run_dict, **run_kwargs)
 
 
 if __name__ == "__main__":
