@@ -105,6 +105,7 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
         "dt0": 0.5,
         "v0": 0.04,
         "downhill": True,
+        "max_cycles": 150,
     }
     dvv = DampedVelocityVerlet(geom, **irc_kwargs)
     dvv.run()
@@ -122,7 +123,7 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     "irc_cls, irc_kwargs, fw_cycle, bw_cycle",
     [
         (EulerPC, {"hessian_recalc": 10, "dump_dwi": False,}, 30, 37),
-        (EulerPC, {"hessian_recalc": 10, "corr_func": "scipy",}, 18, 27),
+        (EulerPC, {"hessian_recalc": 10, "corr_func": "scipy",}, 19, 23),
     ]
 )
 def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
