@@ -683,13 +683,6 @@ class Turbomole(OverlapCalculator):
         stdout, stderr = res.communicate(stdin)
         res.terminate()
 
-    def propagate_wavefunction(self, calc):
-        if self.mos:
-            calc.mos = self.mos
-        elif self.uhf and self.alpha and self.beta:
-            calc.alpha = self.alpha
-            calc.beta = self.beta
-
     def get_chkfiles(self):
         if self.uhf:
             chkfiles = {
