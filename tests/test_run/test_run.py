@@ -59,6 +59,7 @@ def test_diels_alder_growing_string():
     assert results.calc_getter
 
 
+@using("pyscf")
 def test_run_results():
     run_dict = {
         "xyz": "lib:h2o.xyz",
