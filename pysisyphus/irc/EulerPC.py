@@ -31,10 +31,8 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 class EulerPC(IRC):
 
     def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
-                 max_pred_steps=500, rms_grad_thresh=1e-4, dump_dwi=False,
+                 max_pred_steps=500, dump_dwi=False,
                  scipy_method=None, corr_func="mbs", **kwargs):
-        # Use a tighter criterion
-        kwargs["rms_grad_thresh"] = rms_grad_thresh
         super().__init__(*args, **kwargs)
 
         self.hessian_recalc = hessian_recalc
