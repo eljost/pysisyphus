@@ -212,6 +212,8 @@ def run_cos(cos, calc_getter, opt_getter):
         print(f"Wrote splined HEI to '{hei_fn}'")
     print()
 
+    return cos, opt
+
 
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
                        ovlp_thresh=.3):
@@ -292,15 +294,16 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         if max_ovlp >= ovlp_thresh:
             root = np.argmax(ovlps)
         else:
-            root = neg_eigvals.min()
+            root = neg_eigvals.argmin()
+            neg_eigval = neg_eigvals[root]
             print(f"Highest overlap {max_ovlp:.6f} is below the threshold "
                   f"of {ovlp_thresh:.6f}. Selecting mode {root} with most "
-                  f"negative eigenvalue {neg_eigvals.argmin()} instead."
+                  f"negative eigenvalue {neg_eigval} instead."
             )
         # Use mode with highest overlap as initial root
         tsopt_kwargs["root"] = root
-        prfo = ts_optimizer(ts_geom, prefix="ts_", **tsopt_kwargs)
-        prfo.run()
+        ts_opt = ts_optimizer(ts_geom, prefix="ts_", **tsopt_kwargs)
+        ts_opt.run()
 
     print(f"Optimized TS coords:")
     print(ts_geom.as_xyz())
@@ -318,7 +321,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
     print()
-    return ts_geom
+    return ts_geom, ts_opt
 
 
 def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
@@ -447,6 +450,8 @@ def run_stocastic(stoc):
     stoc.run()
     print()
 
+    return stoc
+
 
 def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     """Run optimization on first and last geometry in xyz and return
@@ -484,8 +489,8 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     for ind, str_ in to_preopt[preopt]:
         geom = geoms[ind]
         prefix = f"{str_}_pre"
-        opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix),
-                      title=f"Running {str_} preoptimization.")
+        _, opt = run_opt(geom, calc_getter, lambda geom: opt_getter(geom, prefix),
+                         title=f"Running {str_} preoptimization.")
         # Continue when preoptimization was stopped manually
         if strict and not opt.stopped and not opt.is_converged:
             print(f"Problem in preoptimization of {str_}. Exiting!")
@@ -519,7 +524,7 @@ def run_opt(geom, calc_getter, opt_getter, title="Running optimization"):
     geom.set_calculator(calc_getter(0))
     opt = opt_getter(geom)
     opt.run()
-    return opt
+    return geom, opt
 
 
 def run_tsopt(geom, tsopt_key, tsopt_kwargs):
@@ -538,6 +543,8 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
         print()
         do_final_hessian(geom)
     print()
+
+    return tsopt.geometry, tsopt
 
 
 def run_irc(geom, irc_kwargs, calc_getter):
@@ -629,7 +636,7 @@ def run_irc(geom, irc_kwargs, calc_getter):
         print()
         opt_geoms.append(geom)
     print()
-    return opt_geoms
+    return opt_geoms, irc
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
@@ -897,7 +904,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         run_cos(cos, calc_getter, opt_getter)
         if run_dict["tsopt"]:
             ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-            ts_geom = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, ts_calc_getter)
+            ts_geom, ts_opt = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, ts_calc_getter)
             if run_dict["irc"]:
                 run_irc(ts_geom, irc_kwargs, calc_getter)
     elif run_dict["opt"]:
