@@ -134,7 +134,7 @@ def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
     )
     geom.set_calculator(calc)
 
-    irc = irc_cls(geom, **irc_kwargs)
+    irc = irc_cls(geom, **irc_kwargs, rms_grad_thresh=1e-4)
     irc.run()
 
     # approx. +- 0.5 kJ/mol
