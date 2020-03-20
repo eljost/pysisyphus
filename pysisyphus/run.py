@@ -342,9 +342,13 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
         for i, geom in enumerate(geoms):
             start = time.time()
             geom.calculator.run_calculation(geom.atoms, geom.coords)
-            if i < (len(geoms)-2) and hasattr(geom.calculator, "propagate_wavefunction"):
-                next_calculator = geoms[i+1].calculator
-                geom.calculator.propagate_wavefunction(next_calculator)
+            if i < (len(geoms)-2):
+                try:
+                    cur_calculator = geom.calculator
+                    next_calculator = geoms[i+1].calculator
+                    next_calculator.set_chkfiles(cur_calculator.get_chkfiles())
+                except AttributeError:
+                    print("Calculators don't support set/get_chkfiles!")
             end = time.time()
             diff = end - start
             print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
