@@ -1,3 +1,9 @@
+from pprint import pprint
+
+import pytest
+
+from pysisyphus.Geometry import Geometry
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
@@ -37,4 +43,29 @@ def test_diels_alder_growing_string():
         "xyz": "lib:diels_alder_interpolated.trj",
         "coord_type": "dlc",
     }
-    result = run_from_dict(run_dict)
+    results = run_from_dict(run_dict)
+
+    pprint(results)
+
+    assert len(results.preopt_xyz) == 3
+    assert isinstance(results.cos, ChainOfStates)
+    assert results.cos_opt.is_converged
+    assert results.ts_opt.is_converged
+    assert results.ts_geom._energy == pytest.approx(-231.6032000849316)
+    assert isinstance(results.ts_geom, Geometry)
+    assert results.irc.forward_is_converged
+    assert results.irc.backward_is_converged
+    assert len(results.end_geoms) == 3
+    assert results.calc_getter
+
+
+def test_run_results():
+    run_dict = {
+        "xyz": "lib:h2o.xyz",
+        "calc": {"type": "pyscf", "basis": "sto3g"},
+    }
+    results = run_from_dict(run_dict)
+
+    calced_geoms = results.calced_geoms
+    assert len(calced_geoms) == 1
+    assert results.calc_getter
