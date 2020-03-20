@@ -1,0 +1,22 @@
+opt:
+ type: plbfgs
+ thresh: baker
+calc:
+ type: dimer
+ calc:
+  type: pyscf
+  basis: 321g
+  pal: 2
+  charge: 0
+  mult: 1
+ N_raw:
+ length: 0.0189
+ rotation_max_cycles: 15
+ rotation_method: fourier
+ rotation_thresh: 1e-4
+ rotation_tol: 1
+ rotation_max_element: 0.001
+ rotation_interpolate: True
+ seed: 20182503
+xyz: 01_hcn.xyz
+coord_type: cart

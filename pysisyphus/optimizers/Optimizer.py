@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from abc import abstractmethod
+import abc
 import logging
 import os
 from pathlib import Path
@@ -15,7 +15,7 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign, highlight_text
 
 
-class Optimizer:
+class Optimizer(metaclass=abc.ABCMeta):
     CONV_THRESHS = {
         #              max_force, rms_force, max_step, rms_step
         "gau_loose":  (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
@@ -26,9 +26,9 @@ class Optimizer:
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
-                 rms_force=None, align=False, dump=False, last_cycle=None,
+                 rms_force=None, align=False, dump=False, dump_restart=None,
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
-                 **kwargs):
+                 restart_info=None, **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -38,7 +38,7 @@ class Optimizer:
         self.convergence = self.make_conv_dict(thresh, rms_force)
         self.align = align
         self.dump = dump
-        self.last_cycle = last_cycle
+        self.dump_restart = dump_restart
         self.prefix = prefix
         self.reparam_thresh = reparam_thresh
         self.overachieve_factor = float(overachieve_factor)
@@ -85,18 +85,19 @@ class Optimizer:
         self.image_results_fn = "image_results.yaml"
         self.image_results = list()
 
-        self.cur_cycle = 0
-        if self.last_cycle:
-            # Increase cycle number by one as we don't want to
-            # redo the last cycle.
-            self.cur_cycle = last_cycle + 1
-            self.restart()
-
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
             self.out_trj_handle= open(out_trj_fn, "w")
         if self.prefix:
             self.log(f"Created optimizer with prefix {self.prefix}")
+
+        self.restarted = False
+        self.last_cycle = 0
+        if restart_info is not None:
+            if isinstance(restart_info, str):
+                restart_info = yaml.load(restart_info, Loader=yaml.SafeLoader)
+            self.set_restart_info(restart_info)
+            self.restarted = True
 
     def get_path_for_fn(self, fn):
         return self.out_dir / (self.prefix + fn)
@@ -123,18 +124,6 @@ class Optimizer:
         }
         return conv_dict
 
-    def save_also(self):
-        return {}
-
-    def restart(self):
-        with open(self.image_results_fn) as handle:
-            self.image_results = yaml.load(handle.read())
-        with open(self.opt_results_fn) as handle:
-            yaml_str = handle.read()
-        opt_results = yaml.load(yaml_str)
-        for key, val in opt_results.items():
-            setattr(self, key, val)
-
     def log(self, message):
         # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
         self.logger.debug(message)
@@ -153,7 +142,6 @@ class Optimizer:
 
         # When using a ChainOfStates method we are only interested
         # in optimizing the forces perpendicular to the MEP.
-        # TODO: Also use modified_forces for cos
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
         elif len(self.modified_forces) == len(self.forces):
@@ -249,7 +237,7 @@ class Optimizer:
     def prepare_opt(self):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def optimize(self):
         raise Exception("Not implemented!")
 
@@ -280,7 +268,6 @@ class Optimizer:
 
         # Save results from the Optimizer
         opt_results = {la: getattr(self, la) for la in self.list_attrs}
-        opt_results.update(self.save_also())
         self.write_to_out_dir(self.opt_results_fn,
                               yaml.dump(opt_results))
 
@@ -323,7 +310,7 @@ class Optimizer:
         return textwrap.dedent(final_summary.strip())
 
     def run(self):
-        if not self.last_cycle:
+        if not self.restarted:
             prep_start_time = time.time()
             self.prepare_opt()
             prep_end_time = time.time()
@@ -332,12 +319,9 @@ class Optimizer:
 
         self.print_header()
         self.stopped = False
-        while True:
+        for self.cur_cycle in range(self.last_cycle, self.max_cycles):
             start_time = time.time()
             self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
-            if self.cur_cycle == self.max_cycles:
-                print("Number of cycles exceeded!")
-                break
 
             # Check if something considerably changed in the optimization,
             # e.g. new images were added/interpolated. Then the optimizer
@@ -377,6 +361,10 @@ class Optimizer:
                 with open(self.current_fn, "w") as handle:
                     handle.write(self.geometry.as_xyz())
 
+            if self.dump and self.dump_restart \
+               and (self.cur_cycle % self.dump_restart) == 0:
+                self.dump_restart_info()
+
             self.print_opt_progress()
             if self.is_converged:
                 print("Converged!")
@@ -399,7 +387,7 @@ class Optimizer:
                     self.log(f"rms of coordinates after reparametrization={rms:.6f}")
                     self.is_converged = rms < self.reparam_thresh
                     if self.is_converged:
-                        print("Insignificant change in coordinates after "
+                        print("Insignificant coordinate change after "
                               "reparametrization. Signalling convergence!"
                         )
                         print()
@@ -410,8 +398,9 @@ class Optimizer:
                 self.stopped = True
                 break
 
-            self.cur_cycle += 1
             self.log("")
+        else:
+            print("Number of cycles exceeded!")
 
         # Outside loop
         if self.dump:
@@ -428,3 +417,49 @@ class Optimizer:
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
         sys.stdout.flush()
+
+    def _get_opt_restart_info(self):
+        """To be re-implemented in the derived classes."""
+        return dict()
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        """To be re-implemented in the derived classes."""
+        return
+
+    def get_restart_info(self):
+        restart_info = {
+            "geom_info": self.geometry.get_restart_info(),
+            "last_cycle": self.cur_cycle,
+            "max_cycles": self.max_cycles,
+            "energies": self.energies,
+            "coords": self.coords,
+            "forces": [forces.tolist() for forces in self.forces],
+            "steps": [step.tolist() for step in self.steps],
+        }
+        restart_info.update(self._get_opt_restart_info())
+        return restart_info
+
+    def set_restart_info(self, restart_info):
+        # Set restart information general to all optimizers
+        self.last_cycle = restart_info["last_cycle"] + 1
+
+        if self.last_cycle >= self.max_cycles:
+            self.max_cycles += restart_info["max_cycles"]
+
+        self.coords = [np.array(coords) for coords in restart_info["coords"]]
+        self.energies = restart_info["energies"]
+        self.forces = [np.array(forces) for forces in restart_info["forces"]]
+        self.steps = [np.array(step) for step in restart_info["steps"]]
+
+        # Set subclass specific information
+        self._set_opt_restart_info(restart_info)
+
+        # Propagate restart information downwards to the geometry
+        self.geometry.set_restart_info(restart_info["geom_info"])
+
+    def dump_restart_info(self):
+        restart_info = self.get_restart_info()
+
+        restart_fn = f"restart_{self.cur_cycle:03d}.yaml"
+        restart_yaml = yaml.dump(restart_info)
+        self.write_to_out_dir(restart_fn, restart_yaml)

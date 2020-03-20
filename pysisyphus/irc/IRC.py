@@ -4,6 +4,7 @@
 # https://chemistry.stackexchange.com/questions/74639
 
 import logging
+from math import ceil, log
 import pathlib
 import sys
 
@@ -18,11 +19,12 @@ from pysisyphus.TablePrinter import TablePrinter
 
 class IRC:
 
-    def __init__(self, geometry, step_length=0.1, max_cycles=150,
+    def __init__(self, geometry, step_length=0.1, max_cycles=75,
                  downhill=False, forward=True, backward=True,
                  mode=0, hessian_init=None,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=5e-4, dump_fn="irc_data.h5", dump_every=5):
+                 rms_grad_thresh=3e-3, force_inflection=True,
+                 dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
 
@@ -42,14 +44,18 @@ class IRC:
         self.hessian_init = hessian_init
         if self.hessian_init is not None:
             self.hessian_init = np.loadtxt(hessian_init)
+            self.log(f"Read initial TS hessian from '{hessian_init}'")
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
         self.displ_energy = float(displ_energy)
         self.displ_length = float(displ_length)
         self.rms_grad_thresh = float(rms_grad_thresh)
+        self.force_inflection = force_inflection
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
+
+        self._m_sqrt = np.sqrt(self.geometry.masses_rep)
 
         self.all_energies = list()
         self.all_coords = list()
@@ -64,6 +70,8 @@ class IRC:
 
         self.cur_cycle = 0
         self.converged = False
+        self.cur_direction = None
+        self.cycle_places = ceil(log(self.max_cycles, 10))
 
     @property
     def coords(self):
@@ -104,12 +112,17 @@ class IRC:
         # self.logger.debug(f"step {self.cur_cycle:03d}, {msg}")
         self.logger.debug(msg)
 
-    # def un_massweight(self, vec):
-        # return vec * np.sqrt(self.geometry.masses_rep)
+    @property
+    def m_sqrt(self):
+        return self._m_sqrt
+
+    def unweight_vec(self, vec):
+        return self.m_sqrt * vec
 
     def prepare(self, direction):
         self.cur_cycle = 0
         self.converged = False
+        self.past_inflection = not self.force_inflection
 
         self.irc_energies = list()
         # Not mass-weighted
@@ -145,7 +158,7 @@ class IRC:
         See https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
         """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
-        mw_hessian = self.geometry.mw_hessian
+        mw_hessian = self.geometry.mass_weigh_hessian(self.ts_hessian)
         try:
             if not self.geometry.calculator.analytical_2d:
                 mw_hessian = self.geometry.eckart_projection(mw_hessian)
@@ -185,12 +198,15 @@ class IRC:
             # probably have to multiply this step length with the mass-weighted
             # mode and un-weigh it.
             mw_step = step_length * mw_trans_vec
-            step = mw_step / np.sqrt(self.geometry.masses_rep)
+            step = mw_step / self.m_sqrt
         print(f"Norm of initial displacement step: {np.linalg.norm(step):.4f}")
+        self.log("")
         return step
 
     def irc(self, direction):
         self.log(highlight_text(f"IRC {direction}"))
+
+        self.cur_direction = direction
         self.prepare(direction)
         # Calculate gradient
         self.gradient
@@ -213,16 +229,23 @@ class IRC:
             # Do macroiteration/IRC step to update the geometry
             self.step()
 
-            # Calculate energy and gradient on the new geometry
-            self.irc_energies.append(self.energy)
+            # Calculate gradient and energy on the new geometry
             # Non mass-weighted
+            self.log("Calculating energy and gradient at new geometry.")
             self.irc_coords.append(self.coords)
             self.irc_gradients.append(self.gradient)
+            self.irc_energies.append(self.energy)
             # Mass-weighted
             self.irc_mw_coords.append(self.mw_coords)
             self.irc_mw_gradients.append(self.mw_gradient)
 
             rms_grad = rms(self.gradient)
+
+            # Only update once
+            if not self.past_inflection:
+                self.past_inflection = rms_grad >= self.rms_grad_thresh
+                _ = "" if self.past_inflection else "not yet"
+                self.log(f"(rms(grad) > threshold) {_} fullfilled!")
 
             irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
             dE = self.irc_energies[-1] - self.irc_energies[-2]
@@ -242,8 +265,8 @@ class IRC:
             break_msg = ""
             if self.converged:
                 break_msg = "Integrator indicated convergence!"
-            elif rms_grad <= self.rms_grad_thresh:
-                break_msg = "RMS of gradient converged!"
+            elif self.past_inflection and (rms_grad <= self.rms_grad_thresh):
+                break_msg = "rms(grad) converged!"
                 self.converged = True
             # TODO: Allow some threshold?
             elif this_energy > last_energy:
@@ -277,6 +300,8 @@ class IRC:
         if not dumped:
             self.dump_data
 
+        self.cur_direction = None
+
     def set_data(self, prefix):
         energies_name = f"{prefix}_energies"
         coords_name = f"{prefix}_coords"
@@ -296,13 +321,15 @@ class IRC:
         self.all_mw_coords.extend(getattr(self, mw_coords_name))
         self.all_mw_gradients.extend(getattr(self, mw_grad_name))
 
-        setattr(self, f"{prefix}_step", self.cur_cycle)
+        setattr(self, f"{prefix}_is_converged", self.converged)
+        setattr(self, f"{prefix}_cycle", self.cur_cycle)
         self.write_trj(".", prefix, getattr(self, mw_coords_name))
 
     def run(self):
         # Calculate data at TS and create backup
         self.ts_coords = self.coords.copy()
         self.ts_mw_coords = self.mw_coords.copy()
+        print("Calculating energy and gradient at the TS")
         self.ts_gradient = self.gradient.copy()
         self.ts_mw_gradient = self.mw_gradient.copy()
         self.ts_energy = self.energy
@@ -312,13 +339,13 @@ class IRC:
         ts_grad_rms = rms(self.ts_gradient)
 
         self.log( "Transition state (TS):\n"
-                 f"\tnorm(grad)={ts_grad_norm:.8f}\n"
-                 f"\t max(grad)={ts_grad_max:.8f}\n"
-                 f"\t rms(grad)={ts_grad_rms:.8f}"
+                 f"\tnorm(grad)={ts_grad_norm:.6f}\n"
+                 f"\t max(grad)={ts_grad_max:.6f}\n"
+                 f"\t rms(grad)={ts_grad_rms:.6f}"
         )
 
-        print("IRC length in mw. coords, max(|grad|) and rms(grad) in non-"
-              "mass-weighted coords.")
+        print("IRC length in mw. coords, max(|grad|) and rms(grad) in "
+              "unweighted coordinates.")
 
         # For forward/backward runs we need an intial displacement
         # and for this we need a hessian, that we calculate now.
@@ -328,6 +355,7 @@ class IRC:
                 self.ts_hessian = self.hessian_init.copy()
             else:
                 self.ts_hessian = self.geometry.hessian.copy()
+                np.savetxt("calculated_initial_irc_hessian", self.ts_hessian)
             self.init_displ = self.initial_displacement()
 
         if self.forward:
@@ -371,7 +399,7 @@ class IRC:
 
         # Right now self.all_mw_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.
-        self.all_mw_coords_umw = self.all_mw_coords / self.geometry.masses_rep**0.5
+        self.all_mw_coords_umw = self.all_mw_coords / self.m_sqrt
 
     def postprocess(self):
         pass
@@ -382,7 +410,7 @@ class IRC:
         if coords is None:
             coords = self.all_mw_coords
         coords = coords.copy()
-        coords /= self.geometry.masses_rep**0.5
+        coords /= self.m_sqrt
         coords = coords.reshape(-1, len(atoms), 3) * BOHR2ANG
         # all_mw_coords = self.all_mw_coords.flatten()
         trj_string = make_trj_str(atoms, coords, comments=self.all_energies)

@@ -106,7 +106,7 @@ def lindh_guess(geom):
     k_dict = {
         2: 0.45,  # Stretches/bonds
         3: 0.15,  # Bends/angles
-        4: 0.005,  # Torsions/dihedrals
+        4: 0.005, # Torsions/dihedrals
     }
     k_diag = list()
     for primitive in geom.internal._prim_internals:

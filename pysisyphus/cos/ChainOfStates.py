@@ -21,14 +21,11 @@ class ChainOfStates:
     logger = logging.getLogger("cos")
     valid_coord_types = "cart dlc".split()
 
-    def __init__(self, images, parallel=0, fix_ends=True,
-                 fix_first=False, fix_last=False,
-                 climb=False, climb_rms=5e-3,
-                 scheduler=None):
+    def __init__(self, images, fix_ends=True, fix_first=False, fix_last=False,
+                 climb=False, climb_rms=5e-3, scheduler=None):
 
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = list(images)
-        self.parallel = parallel
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
         self.fix_ends = fix_ends
@@ -204,11 +201,6 @@ class ChainOfStates:
             self.log(client)
             image_futures = client.map(self.par_image_calc, images_to_calculate)
             self.set_images(image_indices, client.gather(image_futures))
-        # Parallel calculation with multiprocessing
-        elif self.parallel > 0:
-            with Pool(processes=self.parallel) as pool:
-                par_images = pool.map(self.par_image_calc, images_to_calculate)
-                self.set_images(image_indices, par_images)
         # Serial calculation
         else:
             [image.calc_energy_and_forces() for image in images_to_calculate]
@@ -364,7 +356,7 @@ class ChainOfStates:
         return "\n".join([image.as_xyz() for image in self.images])
 
     def get_dask_client(self):
-        return Client(self.scheduler, pure=False, silence_logs=False)
+        return Client(self.scheduler)
 
     def get_hei_index(self, energies=None):
         """Return index of highest energy image."""

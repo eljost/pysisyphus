@@ -22,7 +22,7 @@ from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
-from pysisyphus.xyzloader import write_geoms_to_trj
+from pysisyphus.xyzloader import write_geoms_to_trj, split_xyz_str
 
 
 INTERPOLATE = {
@@ -125,10 +125,18 @@ def parse_args(args):
         help="Don't align geometries when interpolating."
     )
     parser.add_argument("--bohr", action="store_true",
-                    help="Input geometries are in Bohr instead of Angstrom."
+        help="Input geometries are in Bohr instead of Angstrom."
     )
     parser.add_argument("--noxyz", action="store_false",
-                    help="Disable dumping of single .xyz files."
+        help="Disable dumping of single .xyz files."
+    )
+    parser.add_argument("--atoms", nargs="+", type=int, default=list(),
+        help="Used with --internals. Only print primitives including the given atoms."
+    )
+    parser.add_argument("--add_prims", type=str, default="",
+        help="Used with --internals. Define additional primitives. Expects a "
+             "string representation of a nested list that can be parsed as YAML "
+             "e.g. [[10,30],[1,2,3],[4,5,6,7]]."
     )
 
     return parser.parse_args()
@@ -154,8 +162,20 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
         elif fn.endswith(".trj"):
             geom = geoms_from_trj(fn, **geom_kwargs)
         else:
-            raise Exception("Only .xyz and .trj files are supported!")
+            continue
         geoms.extend(geom)
+
+    # Try to parse as inline xyz formatted string
+    if len(geoms) == 0:
+        try:
+            atoms_coords = split_xyz_str(fn)
+            geoms = [Geometry(atoms, coords, **geom_kwargs)
+                     for atoms, coords in atoms_coords]
+        except AssertionError:
+            raise Exception("Could not parse supplied 'xyz' values as either "
+                            ".xyz, .trj or xyz-formatted string.!"
+            )
+
     # Original coordinates are in bohr, but pysisyphus expects them
     # to be in Angstrom, so right now they are already multiplied
     # by ANG2BOHR. We revert this.
@@ -177,9 +197,10 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
                        define_prims=define_prims)
     print(f"Read {len(geoms)} geometries.")
 
-    all_atoms = [geom.atoms for geom in geoms]
-    atoms_0 = all_atoms[0]
-    assert all([atoms_i == atoms_0 for atoms_i in all_atoms]), \
+    atoms_0 = geoms[0].atoms
+    atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
+    atoms_0_str = atoms_strs[0]
+    assert all([atoms_str == atoms_0_str for atoms_str in atoms_strs]), \
         "Atom ordering/numbering in the geometries is inconsistent!"
 
     # TODO: Multistep interpolation (when more than two geometries are specified)
@@ -338,19 +359,49 @@ def shake(geoms, scale=0.1, seed=None):
     return geoms
 
 
-def print_internals(geoms):
+def print_internals(geoms, filter_atoms=None, add_prims=""):
+    if filter_atoms is None:
+        filter_atoms = set()
+
+    filter_set = set(filter_atoms)
     pi_types = {2: "B", 3: "A", 4: "D"}
+    add_prims = yaml.safe_load(add_prims)
+
     for i, geom in enumerate(geoms):
-        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund")
+        atom_num = len(geom.atoms)
+        atom_inds = set(range(atom_num))
+        # Atom indices must superset of filter_atoms
+        invalid = filter_set - atom_inds
+        assert not invalid, \
+            f"Filter indices {invalid} are outside of the " \
+            f"valid range for the {i}-th geometry '{geom}' with {atom_num} " \
+            f"atoms (valid indices: range(0,{atom_num}))."
+
+        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
+                            define_prims=add_prims)
+        prim_counter = 0
         for j, pi in enumerate(int_geom.internal._prim_internals):
             pi_type = pi_types[len(pi.inds)]
             val = pi.val
             if len(pi.inds) > 2:
                 val = np.rad2deg(val)
+
+            # Continue if we want to filter and there is no intersection
+            # between the atoms of the current primitive and the atoms we
+            # want to filter for.
+            if filter_set and not (set(pi.inds) & filter_set):
+                continue
             print(f"{j:04d}: {pi_type}{str(pi.inds): >20} {val: >10.4f}")
+            prim_counter += 1
+        print(f"Printed {prim_counter} primitive internals.")
 
 
 def get(geoms, index):
+    # Convert to positive index. Right now this doesn't do anything useful.
+    # Could be used to generated more meaningful filenames if we could somehow
+    # also return a index number to generate the filename.
+    if index < 0:
+        index += len(geoms)
     return [geoms[index], ]
 
 
@@ -433,11 +484,11 @@ def run():
     elif args.shake:
         to_dump = shake(geoms, args.scale, args.seed)
         fn_base = "shaked"
-    elif args.get:
+    elif args.get or (args.get == 0):
         to_dump = get(geoms, args.get)
         fn_base = "got"
     elif args.internals:
-        print_internals(geoms)
+        print_internals(geoms, args.atoms, args.add_prims)
         return
     elif args.origin:
         origin(geoms)

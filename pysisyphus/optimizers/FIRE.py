@@ -30,18 +30,25 @@ class FIRE(Optimizer):
         self.velocities = [self.v, ]
         self.time_deltas = [self.dt, ]
 
-        super(FIRE, self).__init__(geometry, **kwargs)
+        super().__init__(geometry, **kwargs)
 
-    def save_also(self):
-        tmp_dict = {attr: getattr(self, attr)
-                    for attr in self.defaults.keys()}
-        tmp_dict.update({
+    def _get_opt_restart_info(self):
+        opt_restart_info = {
             "a": self.a,
             "dt": self.dt,
-            "velocities": self.velocities,
-            "time_deltas": self.time_deltas,
-        })
-        return tmp_dict
+            "n_reset": self.n_reset,
+            "time_delta": self.time_deltas[-1],
+            "velocity": self.velocities[-1].tolist(),
+        }
+        return opt_restart_info
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        self.a = opt_restart_info["a"]
+        self.dt = opt_restart_info["dt"]
+        self.n_reset = opt_restart_info["n_reset"]
+        self.time_deltas = [opt_restart_info["time_delta"], ]
+        velocity = np.array(opt_restart_info["velocity"], dtype=float)
+        self.velocities = [velocity, ]
 
     def reset(self):
         pass

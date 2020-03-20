@@ -12,7 +12,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M
+from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
 
@@ -21,6 +21,10 @@ THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 
 
 def geom_from_xyz_file(xyz_fn, **kwargs):
+    xyz_fn = str(xyz_fn)
+    if xyz_fn.startswith("lib:"):
+        # Drop lib: part
+        return geom_from_library(xyz_fn[4:], **kwargs)
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
     coords *= ANG2BOHR
     geom = Geometry(atoms, coords.flatten(), comment=comment, **kwargs)
@@ -28,6 +32,10 @@ def geom_from_xyz_file(xyz_fn, **kwargs):
 
 
 def geoms_from_trj(trj_fn, first=None, **kwargs):
+    trj_fn = str(trj_fn)
+    if trj_fn.startswith("lib:"):
+        # Drop lib: part
+        return geom_from_library(trj_fn[4:], **kwargs)[:first]
     atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
     geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, comment=comment, **kwargs)
              for atoms, coords, comment in atoms_coords_comments
@@ -42,6 +50,16 @@ def geom_from_library(xyz_fn, **kwargs):
         return geom_from_xyz_file(xyz_fn, **kwargs)
     elif xyz_fn.suffix == ".trj":
         return geoms_from_trj(xyz_fn, **kwargs)
+    else:
+        raise Exception("Unknown filetype!")
+
+
+def geom_loader(fn, **kwargs):
+    fn = str(fn)
+    if fn.endswith(".xyz"):
+        return geom_from_xyz_file(fn, **kwargs)
+    elif fn.endswith(".trj"):
+        return geoms_from_trj(fn, **kwargs)
     else:
         raise Exception("Unknown filetype!")
 
@@ -483,3 +501,9 @@ def do_final_hessian(geom, save_hessian=True):
 
     res = FinalHessianResult(neg_eigvals=neg_eigvals)
     return res
+
+
+def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
+    barrier = (ref_energy - comp_energy) * AU2KJPERMOL
+    print(f"\tBarrier between {ref_str} and {comp_str} and : {barrier:.1f} kJ mol⁻¹")
+    return barrier

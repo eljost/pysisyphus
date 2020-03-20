@@ -48,6 +48,7 @@ class Calculator:
         out_dir : str
             Path that is prepended to generated filenames.
         """
+
         self.calc_number = calc_number
         self.charge = int(charge)
         self.mult = int(mult)
@@ -56,6 +57,8 @@ class Calculator:
         self.out_dir = Path(out_dir).resolve()
 
         assert pal > 0, "pal must be a non-negative integer!"
+
+        self.logger = logging.getLogger("calculator")
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
@@ -104,8 +107,7 @@ class Calculator:
             Message to be logged.
         """
 
-        logger = logging.getLogger("calculator")
-        logger.debug(f"{self.name}_cyc_{self.calc_counter:03d}, {message}")
+        self.logger.debug(f"{self.name}, cycle {self.calc_counter:03d}: {message}")
 
     def get_energy(self, atoms, coords):
         """Meant to be extended."""
@@ -345,8 +347,13 @@ class Calculator:
                     os.remove(sym_fn)
                 except FileNotFoundError:
                     pass
-                os.symlink(path / self.out_fn, sym_fn)
-                self.log(f"Created symlink in '{sym_fn}'")
+
+                try:
+                    os.symlink(path / self.out_fn, sym_fn)
+                    self.log(f"Created symlink in '{sym_fn}'")
+                # This may happen if we use a dask scheduler
+                except FileExistsError:
+                    self.log("Symlink already exists. Skipping generation.")
             result = subprocess.Popen(args, cwd=path,
                                       stdout=handle, stderr=subprocess.PIPE,
                                       env=env, shell=shell)
@@ -470,9 +477,83 @@ class Calculator:
         shutil.rmtree(path)
         self.log(f"Cleaned {path}")
 
-    def reattach(self, last_calc_cycle):
-        """Meant to be extended.
-        
-        When restarting the calculator set all attributes to restore the
-        previous state."""
-        self.calc_counter = last_calc_cycle
+    def get_restart_info(self):
+        """Return a dict containing chkfiles.
+
+        Returns
+        -------
+        restart_info : dict
+            Dictionary holding the calculator state. Used for restoring calculaters
+            in restarted calculations.
+        """
+        try:
+            # Convert possible Paths to str
+            chkfiles = {
+                k: str(v) for k, v in self.get_chkfiles().items()
+            }
+        except AttributeError:
+            chkfiles = dict()
+
+        restart_info = {
+            "base_name": self.base_name,
+            "calc_number": self.calc_number,
+            "calc_counter": self.calc_counter,
+            "chkfiles": chkfiles,
+        }
+
+        return restart_info
+
+    def verify_chkfiles(self, chkfiles):
+        """Checks if given chkfiles exist and return them as Paths
+
+        Parameters
+        ----------
+        chkfiles : dict
+            Dictionary holding the chkfiles. The keys correspond to the attribute
+            names, the values are strs holding the (potentially full) filename (path).
+
+        Returns
+        -------
+        paths : dict
+            Dictionary of Paths.
+        """
+        paths = {}
+        for key, chkfile in chkfiles.items():
+            chkfile = Path(chkfile)
+            # If the chkfile exists at the given path we use it as it is.
+            if not chkfile.exists():
+                self.log(f"Given chkfile '{chkfile}' could not be found! Dropping "
+                          "absolute part and trying only its name.")
+                # Check if relative path exists. This may happen if the calculation
+                # has been moved to a different folder.
+                name = Path(chkfile.name)
+                if name.exists():
+                    chkfile = name
+                else:
+                    self.log(f"'{name}' could not be found! Skipping this chkfile.")
+                    continue
+            paths[key] = chkfile
+        return paths
+
+    def set_restart_info(self, restart_info):
+        """Sets restart information (chkfiles etc.) on the calculator.
+
+        Parameters
+        -------
+        restart_info : dict
+            Dictionary holding the calculator state. Used for restoring calculaters
+            in restarted calculations.
+        """
+        try:
+            chkfiles = self.verify_chkfiles(restart_info.pop("chkfiles"))
+            self.set_chkfiles(chkfiles)
+        except KeyError:
+            self.log("No chkfiles preset in restart_info")
+        except AttributeError:
+            self.log("Found chkfiles on restart_info, but 'set_chkfiles' is not "
+                     "implemented for Calculator.")
+
+        self.log("Setting restart_info")
+        for key, value in restart_info.items():
+            setattr(self, key, value)
+            self.log(f"\t{key}: {value}")

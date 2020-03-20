@@ -666,6 +666,19 @@ class Gaussian16(OverlapCalculator):
         if self.track:
             self.dump_635r = kept_fns["dump_635r"]
 
+    def get_chkfiles(self):
+        return {
+            "fchk": self.fchk,
+        }
+
+    def set_chkfiles(self, chkfiles):
+        try:
+            fchk = chkfiles["fchk"]
+            self.fchk = fchk
+            self.log(f"Set chkfile '{fchk}' as fchk.")
+        except KeyError:
+            self.log("Found no fchk information in chkfiles!")
+
     def __str__(self):
         return "Gaussian16 calculator"
 

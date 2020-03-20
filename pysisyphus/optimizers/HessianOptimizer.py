@@ -13,7 +13,7 @@ from pysisyphus.optimizers.hessian_updates import (bfgs_update,
                                                    damped_bfgs_update,
                                                    multi_step_update,
                                                    bofill_update,)
-from pysisyphus.optimizers import line_search2
+from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
@@ -36,8 +36,7 @@ class HessianOptimizer(Optimizer):
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
                  small_eigval_thresh=1e-8, line_search=False,
-                 alpha0=1., max_micro_cycles=25,
-                 **kwargs):
+                 alpha0=1., max_micro_cycles=25, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
@@ -65,8 +64,10 @@ class HessianOptimizer(Optimizer):
         assert max_micro_cycles >= 1
 
         assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
-        self.hessian_recalc_in = None
-        self.adapt_norm = None
+        if not self.restarted:
+            self.hessian_recalc_in = None
+            self.adapt_norm = None
+            self.predicted_energy_changes = list()
 
         # Allow only calculated or unit hessian for geometries that don't
         # use internal coordinates.
@@ -74,8 +75,6 @@ class HessianOptimizer(Optimizer):
             or (self.geometry.internal is None)):
             if self.hessian_init != "calc":
                 self.hessian_init = "unit"
-
-        self.predicted_energy_changes = list()
 
     def prepare_opt(self):
         # We use lambdas to avoid premature evaluation of the dict items.
@@ -124,6 +123,21 @@ class HessianOptimizer(Optimizer):
             # Already substract one, as we don't do a hessian update in
             # the first cycle.
             self.hessian_recalc_in = self.hessian_recalc - 1
+
+    def _get_opt_restart_info(self):
+        opt_restart_info = {
+            "adapt_norm": self.adapt_norm,
+            "H": self.H.tolist(),
+            "hessian_recalc_in": self.hessian_recalc_in,
+            "predicted_energy_changes": self.predicted_energy_changes,
+        }
+        return opt_restart_info
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        self.adapt_norm = opt_restart_info["adapt_norm"]
+        self.H = np.array(opt_restart_info["H"])
+        self.hessian_recalc_in = opt_restart_info["hessian_recalc_in"]
+        self.predicted_energy_changes = opt_restart_info["predicted_energy_changes"]
 
     def update_trust_radius(self):
         # The predicted change should be calculated at the end of optimize
@@ -252,9 +266,9 @@ class HessianOptimizer(Optimizer):
         # Generate directional gradients by projecting them on the previous step.
         prev_grad_proj = prev_step @ prev_grad
         cur_grad_proj =  prev_step @ cur_grad
-        cubic_result = line_search2.cubic_fit(prev_energy, cur_energy,
+        cubic_result = poly_fit.cubic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
-        quartic_result = line_search2.quartic_fit(prev_energy, cur_energy,
+        quartic_result = poly_fit.quartic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
         prev_coords = self.coords[-2]
         accept = {
@@ -320,13 +334,13 @@ class HessianOptimizer(Optimizer):
         # Generate directional gradients by projecting them on the previous step.
         prev_grad_proj = step @ prev_best_grad
         cur_grad_proj =  step @ cur_grad
-        cubic_result = line_search2.cubic_fit(prev_best_energy, cur_energy,
+        cubic_result = poly_fit.cubic_fit(prev_best_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
-        quartic_result = line_search2.quartic_fit(prev_best_energy, cur_energy,
+        quartic_result = poly_fit.quartic_fit(prev_best_energy, cur_energy,
                                                   prev_grad_proj, cur_grad_proj)
         quintic_result = None
         if hessian is not None:
-            quintic_result = line_search2.quintic_fit(prev_best_energy, cur_energy,
+            quintic_result = poly_fit.quintic_fit(prev_best_energy, cur_energy,
                                                       prev_grad_proj, cur_grad_proj,
                                                       hess_proj, hess_proj)
         accept_if_best = lambda x: True if at_best_energy else (0. < x < 1.)

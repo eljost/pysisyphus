@@ -5,7 +5,7 @@ import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
-from pysisyphus.optimizers.linesearches import hager_zhang, backtracking
+from pysisyphus.optimizers.line_searches import hager_zhang, backtracking
 
 
 def cg_descent(x0, fun, jac, max_cycles=50):

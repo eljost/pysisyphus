@@ -10,13 +10,14 @@ from natsort import natsorted
 import numpy as np
 import pytest
 
-from pysisyphus.calculators import Gaussian16
+from pysisyphus.calculators import Dimer, Gaussian16
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_xyz_file, geom_from_library, \
                                get_baker_ts_geoms_flat, do_final_hessian
 from pysisyphus.tsoptimizers.dimer import dimer_method
 from pysisyphus.tsoptimizers.dimerv2 import dimer_method as dimer_method_v2
+from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.testing import using
 
 
@@ -171,3 +172,49 @@ def test_baker_ts_dimer(name, geom, charge, mult, ref_energy):
 
     # This way pytest prints the actual values... instead of just the boolean
     assert geom.energy == pytest.approx(ref_energy)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "name, geom, charge, mult, ref_energy",
+    [_ for _ in get_baker_ts_geoms_flat()
+     if _[0][:2] not in ("10", "11", "15", "17", "20", "18", "05")
+    ]
+)
+def test_baker_dimer_new(name, geom, charge, mult, ref_energy):
+    print(f"@Got geom '{name}'")
+    # Load initial dimers
+    N_init_dict = make_N_init_dict()
+
+    calc_kwargs = {
+        "charge": charge,
+        "mult": mult,
+        "pal": 2,
+        "base_name": Path(name).stem,
+    }
+    calc = PySCF("321g", **calc_kwargs)
+
+    dimer_kwargs = {
+        "rotation_method": "fourier",
+        "calculator": calc,
+        "N_raw": N_init_dict[name],
+        "length": 0.0189,
+        "rotation_tol": 5,
+    }
+    dimer = Dimer(**dimer_kwargs)
+    geom.set_calculator(dimer)
+
+    opt_kwargs = {
+        "precon": True,
+        "max_step_element": 0.25,
+        "max_cycles": 50,
+        "thresh": "baker",
+        "c_stab": 0.103,
+    }
+    opt = PreconLBFGS(geom, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(ref_energy)
+
+    print(f"@{name} converged using {dimer.force_evals} force evaluations")

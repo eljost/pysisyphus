@@ -12,8 +12,9 @@ from pysisyphus.TableFormatter import TableFormatter
 
 class DampedVelocityVerlet(IRC):
 
-    def __init__(self, geometry, v0=0.04, dt0=0.5, error_tol=0.003, **kwargs):
-        super(DampedVelocityVerlet, self).__init__(geometry, **kwargs)
+    def __init__(self, geometry, v0=0.04, dt0=0.5, error_tol=0.003,
+                 max_cycles=150, **kwargs):
+        super().__init__(geometry, max_cycles=max_cycles, **kwargs)
 
         self.v0 = v0
         self.error_tol = error_tol

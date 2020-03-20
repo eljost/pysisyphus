@@ -1,12 +1,17 @@
-#!/usr/bin/env python3
+from collections import deque
 
 import numpy as np
+from scipy.sparse.linalg import spsolve
 
 
-def bfgs_multiply(s_list, y_list, force, beta=1):
+def bfgs_multiply(s_list, y_list, force, beta=1, P=None):
     """Get a L-BFGS step.
     
     Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
+
+    assert len(s_list) == len(y_list), \
+        "lengths of step list 's_list' and gradient list 'y_list' differ!"
+
     q = -force
     cycles = len(s_list)
     alphas = list()
@@ -24,13 +29,16 @@ def bfgs_multiply(s_list, y_list, force, beta=1):
     alphas = alphas[::-1]
     rhos = rhos[::-1]
 
-    if cycles > 0:
+    if P is not None:
+        r = spsolve(P, q)
+    elif cycles > 0:
         s = s_list[-1]
         y = y_list[-1]
         gamma = s.dot(y) / y.dot(y)
         r = gamma * q
     else:
         r = beta * q
+
     for i in range(cycles):
         s = s_list[i]
         y = y_list[i]
@@ -166,3 +174,37 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
 
         return dx, -F
     return modified_broyden
+
+
+def small_lbfgs_closure(history=5):
+    """Compact LBFGS closure.
+
+    The returned function takes two arguments: forces and prev_step.
+    forces are the forces at the current iterate and prev_step is the
+    previous step that lead us to the current iterate. In this way
+    step restriction/line search can be done outisde of the lbfgs function.
+    """
+
+    prev_forces = None  # lgtm [py/unused-local-variable]
+    grad_diffs = deque(maxlen=history)
+    steps = deque(maxlen=history)
+    cur_cycle = 0
+
+    def lbfgs(forces, prev_step=None):
+        nonlocal cur_cycle
+        nonlocal prev_forces
+
+        if prev_step is not None:
+            steps.append(prev_step)
+
+        # Steepest descent in the first cycle
+        step = forces
+        # LBFGS in the following cycles
+        if cur_cycle > 0:
+            grad_diffs.append(-forces - -prev_forces)
+            step = -bfgs_multiply(steps, grad_diffs, forces)
+
+        prev_forces = forces
+        cur_cycle += 1
+        return step
+    return lbfgs

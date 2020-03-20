@@ -89,7 +89,7 @@ class AnaPotBase(Calculator):
         if show:
             plt.show()
 
-    def plot_eigenvalue_structure(self, grid=50, levels=None):
+    def plot_eigenvalue_structure(self, grid=50, levels=None, show=False):
         self.plot(levels=levels)
         xs = np.linspace(*self.xlim, grid)
         ys = np.linspace(*self.ylim, grid)
@@ -103,10 +103,24 @@ class AnaPotBase(Calculator):
             )
         Z = np.array(z).reshape(X.shape)
         self.ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
+        if show:
+            plt.show()
 
+    def plot_opt(self, opt, enum=True):
+        coords = np.array(opt.coords)
+        self.plot()
+        xs, ys = coords.T[:2]
+        self.ax.plot(xs, ys, "o-")
+        if enum:
+            for i, (x, y) in enumerate(zip(xs, ys)):
+                self.ax.annotate(i, (x, y))
+        plt.show()
 
     @classmethod
-    def get_geom(cls, coords, atoms=("X", )):
+    def get_geom(cls, coords, atoms=("X", ), V_str=None):
         geom = Geometry(atoms, coords)
-        geom.set_calculator(cls())
+        if V_str:
+            geom.set_calculator(cls(V_str=V_str))
+        else:
+            geom.set_calculator(cls())
         return geom

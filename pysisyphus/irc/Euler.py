@@ -22,8 +22,3 @@ class Euler(IRC):
         # Step downhill, against the gradient
         step_direction = -grad / grad_norm
         self.mw_coords += self.step_length*step_direction
-        # energy_diff = self.irc_energies[0] - energy
-
-        # print(self.step_formatter.header)
-        # print(self.step_formatter.line(energy, energy_diff, grad_norm))
-

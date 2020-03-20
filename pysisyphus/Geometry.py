@@ -1,9 +1,9 @@
 from collections import Counter, namedtuple
 import subprocess
 import tempfile
-import warnings
 
 import numpy as np
+from scipy.spatial.distance import pdist
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
@@ -24,7 +24,8 @@ class Geometry:
     }
 
     def __init__(self, atoms, coords, coord_type="cart", comment="",
-                 prim_indices=None, define_prims=None, bond_factor=1.3):
+                 prim_indices=None, define_prims=None, bond_factor=1.3,
+                 check_bends=True):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -49,6 +50,13 @@ class Geometry:
             contain integer pairs, defining bonds between atoms, the next one
             should contain integer triples containing bends, and finally
             integer quadrupel for dihedrals.
+        define_prims : list of lists, optional
+            Define additional primitives.
+        bond_factor : float, default=1.3
+            Scaling factor of the the pair covalent radii used for bond detection.
+        check_bends : bool, default=True
+            Whether to check for invalid bends. If disabled these bends will
+            be defined nonetheless.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
@@ -69,6 +77,7 @@ class Geometry:
                                         prim_indices=prim_indices,
                                         define_prims=define_prims,
                                         bond_factor=bond_factor,
+                                        check_bends=check_bends,
             )
         else:
             self.internal = None
@@ -85,8 +94,10 @@ class Geometry:
         repeat_masses = 2 if (self._coords.size == 2) else 3
         self.masses_rep = np.repeat(self.masses, repeat_masses)
 
+    @property
+    def sum_formula(self):
         atom_counter = Counter(self.atoms)
-        self.sum_formula = "_".join(
+        return "_".join(
                 [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
 
@@ -133,7 +144,7 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
-    def copy(self, coord_type=None):
+    def copy(self, coord_type=None, check_bends=True):
         """Returns a new Geometry object with same atoms and coordinates.
 
         Parameters
@@ -152,7 +163,17 @@ class Geometry:
         if coord_type != "cart":
             prim_indices = self.internal.prim_indices
         return Geometry(self.atoms, self._coords, coord_type=coord_type,
-                        prim_indices=prim_indices)
+                        prim_indices=prim_indices, check_bends=check_bends)
+
+    def copy_all(self, coord_type=None, check_bends=True):
+        new_geom = self.copy(coord_type, check_bends)
+        new_geom.set_calculator(self.calculator)
+        new_geom.energy = self._energy
+        if self._forces is not None:
+            new_geom.cart_forces = self._forces
+        if self._hessian is not None:
+            new_geom.cart_hessian = self._hessian
+        return new_geom
 
     def atom_indices(self):
         """Dict with atom types as key and corresponding indices as values.
@@ -398,27 +419,6 @@ class Geometry:
             aligned, vecs = self.principal_axes_are_aligned()
             if aligned:
                 break
-        """
-        # else:
-            # print(vecs)
-        # return aligned
-
-        I = self.inertia_tensor
-        w, v = np.linalg.eigh(I)
-        rot = np.linalg.solve(v, np.eye(3))
-        rot_c3d = rot.dot(c3d.T).T
-
-        # print(c3d)
-        # print()
-        # print(rot_c3d)
-        # print()
-        # print()
-        # import pdb; pdb.set_trace()
-        self.coords3d = rot_c3d
-        assert self.principal_axes_are_aligned()
-        return self.coords3d
-        """
-
     @property
     def energy(self):
         """Energy of the current atomic configuration.
@@ -575,22 +575,6 @@ class Geometry:
         #       of the Gonzales-Schlegel-papers about the GS2 algorithm.
         return self.mass_weigh_hessian(self.cart_hessian)
 
-    def get_initial_hessian(self):
-        """Return and initial guess for the hessian."""
-        warnings.warn(
-                "This method will be removed in the future. Get hessians from "
-                "'pysisyphus.optimizers.guess_hessians' instead.",
-                DeprecationWarning
-        )
-        if self.internal:
-            H = self.internal.get_initial_hessian()
-        if self.coord_type == "dlc":
-            U = self.internal.U
-            H = U.T.dot(H).dot(U)
-        else:
-            H = np.eye(self.coords.size)
-        return H
-
     def unweight_mw_hessian(self, mw_hessian):
         """Unweight a mass-weighted hessian.
 
@@ -664,7 +648,7 @@ class Geometry:
 
     def get_energy_at(self, coords):
         self.assert_cart_coords(coords)
-        return self.calculator.get_energy(self.atoms, coords)
+        return self.calculator.get_energy(self.atoms, coords)["energy"]
 
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
@@ -776,7 +760,6 @@ class Geometry:
             print(f"'{jmol_cmd}' seems not to be on your path!")
         tmp_xyz.close()
 
-
     def as_ase_atoms(self):
         try:
             import ase
@@ -792,6 +775,46 @@ class Geometry:
             ase_calc = FakeASE(self.calculator)
             atoms.set_calculator(ase_calc)
         return atoms
+
+    def get_restart_info(self):
+        # Geometry restart information
+        restart_info = {
+            "atoms": self.atoms,
+            "cart_coords": self.cart_coords.tolist(),
+            "coord_type": self.coord_type,
+            "comment": self.comment,
+        }
+        try:
+            prim_inds = self.internal.prim_indices
+        except AttributeError:
+            prim_inds = None
+        restart_info["prim_inds"] = prim_inds
+
+        # Calculator restart information
+        try:
+            calc_restart_info = self.calculator.get_restart_info()
+        except AttributeError:
+            calc_restart_info = dict()
+        restart_info["calc_info"] = calc_restart_info
+
+        return restart_info
+
+    def set_restart_info(self, restart_info):
+        assert self.atoms == restart_info["atoms"]
+        self.cart_coords = np.array(restart_info["cart_coords"], dtype=float)
+
+        try:
+            self.calculator.set_restart_info(restart_info["calc_info"])
+        except KeyError:
+            print("No calculator restart information found!")
+        except AttributeError:
+            print("Could not restart calculator, as no calculator is set!")
+
+    def get_sphere_radius(self, offset=4):
+        distances = pdist(self.coords3d)
+
+        radius = (distances.max() / 2) + offset
+        return radius
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"

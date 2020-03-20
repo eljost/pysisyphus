@@ -13,13 +13,12 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, perp_thresh=0.05,
-                 reparam_every=3, reparam_tol=None, **kwargs):
+                 reparam_every=3, reparam_tol=None, reparam_check="norm",
+                 **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
-            print("More than 2 images were supplied! Will only use the "
-                  "first and last images to start the GrowingString."
-            )
+            print("More than 2 images given. Will only use first and last image!")
 
         super().__init__(images, calc_getter, **kwargs)
 
@@ -32,6 +31,7 @@ class GrowingString(GrowingChainOfStates):
         else:
             self.reparam_tol = 1 / (self.max_nodes + 2) / 2
         self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4e}")
+        self.reparam_check = reparam_check
 
         left_img, right_img = self.images
 
@@ -83,7 +83,7 @@ class GrowingString(GrowingChainOfStates):
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
         the center of the string."""
-        new_img = self.images[ref_index].copy()
+        new_img = self.images[ref_index].copy(check_bends=False)
 
         if ref_index <= self.lf_ind:
             tangent_ind = ref_index + 1
@@ -124,12 +124,13 @@ class GrowingString(GrowingChainOfStates):
         new_img.set_calculator(self.calc_getter())
         ref_calc = self.images[ref_index].calculator
         try:
-            ref_calc.propagate_wavefunction(new_img.calculator)
-            self.log( "Set wavefunction data from calculator of node "
+            chkfiles = ref_calc.get_chkfiles()
+            new_img.calculator.set_chkfiles(chkfiles)
+            self.log( "Set checkfiles from calculator of node "
                      f"{ref_index:02d} on calculator of new node."
             )
         except AttributeError:
-            self.log("Calculator doesn't support 'propagte_wavefunction()'")
+            self.log("Calculator doesn't support 'get/set_chkfiles()'")
         self.images.insert(insert_ind, new_img)
         self.log(f"Created new image; inserted it before index {insert_ind}.")
         return new_img
@@ -175,6 +176,11 @@ class GrowingString(GrowingChainOfStates):
         """Returns wether the string is fully grown. Don't count the first
         and last node."""
         return not ((self.string_size - 2) < self.max_nodes)
+
+    @property
+    def nodes_missing(self):
+        """Returns the number of nodes to be grown."""
+        return (self.max_nodes + 2) - self.string_size
 
     @property
     def lf_ind(self):
@@ -274,7 +280,9 @@ class GrowingString(GrowingChainOfStates):
             reparam_coords = reparam_image.coords + step
             reparam_image.coords = reparam_coords
             cur_param_density = self.get_cur_param_density("coords")
-        self.log(f"Current param density: {cur_param_density}")
+
+        cpd_str = np.array2string(cur_param_density, precision=4)
+        self.log(f"Current param density: {cpd_str}")
         np.testing.assert_allclose(cur_param_density, desired_param_density,
                                    atol=self.reparam_tol)
 
@@ -363,11 +371,25 @@ class GrowingString(GrowingChainOfStates):
         # node/image on the string.
         perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
         perp_norms = np.linalg.norm(perp_forces, axis=1)
+        perp_rms = np.sqrt(np.mean(perp_forces**2, axis=1))
 
+        self.log( "Checking frontier node convergence, "
+                 f"threshold={self.perp_thresh:.6f}"
+        )
         # We can add a new node if the norm of the perpendicular force
         # on the frontier node(s) is below a threshold.
         def converged(i):
-            return perp_norms[i] <= self.perp_thresh
+            if self.reparam_check == "norm":
+                is_converged = perp_norms[i] <= self.perp_thresh
+                conv_str = ", converged" if is_converged else ""
+                self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
+            elif self.reparam_check == "rms":
+                is_converged = perp_norms[i] <= self.perp_thresh
+                conv_str = ", converged" if is_converged else ""
+                self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
+            else:
+                raise Exception(f"Invalid reparam_check='{self.reparam_check}'")
+            return is_converged
 
         # We can add new nodes if the string is not yet fully grown
         # and if the frontier nodes are converged below self.perp_thresh.
@@ -387,11 +409,14 @@ class GrowingString(GrowingChainOfStates):
             self.right_string.append(new_right_frontier)
             self.log("Added new right frontier node.")
 
-        self.log(f"Current string size: {self.left_size}+{self.right_size}")
+        self.log(f"Current string size is {self.left_size}+{self.right_size}="
+                 f"{self.string_size}. There are still {self.nodes_missing} "
+                  "nodes to be grown."
+        )
 
         # Prepare node reparametrization
         desired_param_density = self.sk*self.full_string_image_inds
-        pd_str = np.array2string(desired_param_density, precision=3)
+        pd_str = np.array2string(desired_param_density, precision=4)
         self.log(f"Desired param density: {pd_str}")
 
         # TODO: Add some kind of threshold and only reparametrize when

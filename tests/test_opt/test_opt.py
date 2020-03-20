@@ -12,7 +12,11 @@ from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.calculators.LEPSBase import LEPSBase
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
+
+from pysisyphus.optimizers.LBFGS import LBFGS
+from pysisyphus.optimizers.NCOptimizer import NCOptimizer
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+
 
 @pytest.mark.parametrize(
     "calc_cls, start, ref_cycle, ref_coords", [
@@ -51,6 +55,47 @@ def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
     assert diff_norm < 6e-5
 
     print("@\tFinal coords", geom.coords)
+
+    # import matplotlib.pyplot as plt
+    # calc = geom.calculator
+    # calc.plot()
+    # coords = np.array(opt.coords)
+    # ax = calc.ax
+    # ax.plot(*coords.T[:2], "ro-")
+    # plt.show()
+
+
+@pytest.mark.parametrize(
+    "opt_cls, ref_cycle", [
+    (RFOptimizer, 15),
+    (NCOptimizer, 13),
+    # LBFGS converged to the saddle point, as the 'hessian' has the
+    # wrong eigenvalue structure. Ok, ok we don't have a hessian but
+    # you get the idea :)
+    pytest.param(LBFGS, 11, marks=pytest.mark.xfail),
+    ]
+)
+def test_optimizers(opt_cls, ref_cycle):
+    geom = AnaPot.get_geom((0.667, 1.609, 0.))
+    ref_coords = np.array((1.941, 3.8543, 0.))
+
+    opt_kwargs = {
+        "thresh": "gau_tight",
+        "dump": False,
+        "overachieve_factor": 2.,
+    }
+    opt = opt_cls(geom, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycle
+
+    diff = ref_coords - geom.coords
+    diff_norm = np.linalg.norm(diff)
+    print(f"@\tnorm(diff)={diff_norm:.8f}")
+    assert diff_norm < 6e-5
+
+    # print("@\tFinal coords", geom.coords)
 
     # import matplotlib.pyplot as plt
     # calc = geom.calculator

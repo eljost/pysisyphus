@@ -1,0 +1,31 @@
+preopt:
+ max_cycles: 5
+cos:
+ type: gs
+ #max_nodes: 11
+ max_nodes: 7
+ fix_ends: True
+opt:
+ type: string
+ gamma: 1.0
+ align: False
+ stop_in_when_full: 0
+tsopt:
+ type: rsirfo
+ do_hess: True
+ hessian_recalc: 5
+irc:
+ type: eulerpc
+ step_length: 0.2
+ hessian_recalc: 10
+ rms_grad_thresh: 0.001
+ opt_ends: fragments
+calc:
+ type: g16
+ route: pm7
+ charge: 0
+ mult: 1
+ pal: 4
+preopt_ends: True
+xyz: [split.image_000.xyz, split.image_056.xyz]
+coord_type: dlc

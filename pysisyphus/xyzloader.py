@@ -1,4 +1,7 @@
+import re
+
 import numpy as np
+
 from pysisyphus.constants import BOHR2ANG
 
 
@@ -49,6 +52,35 @@ def write_geoms_to_trj(geoms, fn, comments=None):
     trj_str = make_trj_str_from_geoms(geoms, comments)
     with open(fn, "w") as handle:
         handle.write(trj_str)
+
+
+def split_xyz_str(xyz_str):
+    float_ = "([\+\d\-\.]+)"
+    header_re = re.compile("(\d+)")
+    coord_re = re.compile(f"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
+
+    lines = xyz_str.strip().split("\n")
+
+    lines_remaining = len(lines)
+    cur_line = 0
+    valid_xyz_strs = list()
+    while lines_remaining:
+        header_mobj = header_re.match(lines[cur_line])
+        expect_lines = int(header_mobj[1])
+        slice_ = slice(cur_line+2, cur_line+2+expect_lines)
+        check_lines = lines[slice_]
+        assert len(check_lines) == expect_lines
+        assert all([coord_re.match(line.strip()) for line in check_lines])
+
+        valid_xyz_strs.append(
+            str(expect_lines) + "\n\n" + "\n".join(check_lines)
+        )
+
+        lines_read = expect_lines + 2
+        lines_remaining -= lines_read
+        cur_line += lines_read
+    atoms_coords = [parse_xyz_str(_, with_comment=False) for _ in valid_xyz_strs]
+    return atoms_coords
 
 
 def parse_xyz_str(xyz_str, with_comment):

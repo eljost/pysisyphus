@@ -175,12 +175,15 @@ class Model():
             "point_charges": point_charges,
         }
 
+        self.log("Calculation at layer level")
         results = self.calc.get_energy(catoms, ccoords, prepare_kwargs)
         energy = results["energy"]
         try:
+            self.log("Calculation at parent layer level")
             parent_results= self.parent_calc.get_energy(catoms, ccoords, prepare_kwargs)
             parent_energy = parent_results["energy"]
         except AttributeError:
+            self.log("No parent layer!")
             parent_energy = 0.
 
         energy = energy - parent_energy
@@ -194,14 +197,17 @@ class Model():
             "point_charges": point_charges,
         }
 
+        self.log("Calculation at layer level")
         results = self.calc.get_forces(catoms, ccoords, prepare_kwargs)
         model_gradient = -results["forces"].reshape(-1, 3)
         model_energy = results["energy"]
         try:
+            self.log("Calculation at parent layer level")
             parent_results = self.parent_calc.get_forces(catoms, ccoords, prepare_kwargs)
             parent_gradient = -parent_results["forces"].reshape(-1, 3)
             parent_energy = parent_results["energy"]
         except AttributeError:
+            self.log("No parent layer!")
             parent_energy = 0.
             parent_gradient = np.zeros_like(model_gradient)
 
@@ -392,6 +398,24 @@ class ONIOM(Calculator):
 
         # Create link atoms
         [model.create_links(geom.atoms, geom.cart_coords) for model in self.models]
+
+        # And do a quick sanity check
+        assert len(self.models[0].links) == 0, \
+            "There must not be any links in the 'real' layer!"
+        # Look for link atoms that appear in two adjacent layers. In such situations
+        # the higher layer is coupled to a layer two levels below. This may be a bad
+        # idea.
+        for i, (lower_model, model) in enumerate(zip(self.models[:-1], self.models[1:])):
+            lower_links = lower_model.links
+            links = model.links
+            same_links = [link for link in links if link in lower_links]
+            if same_links:
+                print(f"Found {len(same_links)} link(s) that appear(s) in two layers!")
+                for j, link in enumerate(same_links):
+                    print(f"\t{j:02d}: {link}")
+                print(f"Your current setup couples layer '{model.name}' to "
+                      f"to layer '{self.models[i-1].name}' two levels below! "
+                       "This is probably a bad idea!")
 
         self.log(f"Created ONIOM calculator with {self.layer_num} layers and "
                  f"{len(self.models)} models.")

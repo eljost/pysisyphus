@@ -38,9 +38,9 @@ COS_CUTOFFS = {
 DIISResult = namedtuple("DIISResult",
                          "coeffs coords forces energy N type"
 )
+
+
 logger = logging.getLogger("optimizer")
-
-
 def log(msg):
     logger.debug(msg)
 

@@ -179,6 +179,9 @@ class PySCF(OverlapCalculator):
 
         return results
 
+    def run_calculation(self, atoms, coords, prepare_kwargs=None):
+        return self.get_energy(atoms, coords, prepare_kwargs)
+
     def run(self, mol, point_charges=None):
         steps = self.multisteps[self.method]
         self.log(f"Running steps '{steps}' for method {self.method}")
@@ -255,6 +258,20 @@ class PySCF(OverlapCalculator):
         results = self.mf.analyze(with_meta_lowdin=False)
 
         return results[0][1]
+
+    def get_chkfiles(self):
+        return {
+            "chkfile": self.chkfile,
+        }
+
+    def set_chkfiles(self, chkfiles):
+        try:
+            chkfile = chkfiles["chkfile"]
+            self.chkfile = chkfile
+            self.log(f"Set chkfile '{chkfile}' as chkfile.")
+        except KeyError:
+            self.log("Found no chkfile information in chkfiles!")
+
 
     def __str__(self):
         return f"PySCF({self.name})"

@@ -12,16 +12,19 @@ class QuickMin(Optimizer):
         super(QuickMin, self).__init__(geometry, **kwargs)
 
         self.dt = dt
-        self.velocities = list()
 
-    def save_also(self):
-        return {
-            "dt": self.dt,
-            "velocities": self.velocities,
+    def _get_opt_restart_info(self):
+        opt_restart_info = {
+            "velocity": self.velocities[-1].tolist(),
         }
+        return opt_restart_info
+
+    def _set_opt_restart_info(self, opt_restart_info):
+        velocity = np.array(opt_restart_info["velocity"], dtype=float)
+        self.velocities = [velocity, ]
 
     def prepare_opt(self):
-        self.velocities.append(np.zeros_like(self.geometry.coords))
+        self.velocities = [np.zeros_like(self.geometry.coords), ]
 
     def reset(self):
         if self.coords[-1].size != self.coords[-2].size:
@@ -39,6 +42,11 @@ class QuickMin(Optimizer):
         cur_forces = self.geometry.forces
         self.forces.append(cur_forces)
         self.energies.append(self.geometry.energy)
+
+        norm = np.linalg.norm(cur_forces)
+        if not self.is_cos:
+            self.log(f"Current energy={self.energies[-1]:.6f}")
+        self.log(f"norm(forces)={norm:.6f}")
 
         if self.cur_cycle == 0:
             tmp_velocities = np.zeros_like(prev_velocities)

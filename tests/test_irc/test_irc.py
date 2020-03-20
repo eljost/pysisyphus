@@ -20,9 +20,21 @@ def this_dir(request):
     return Path(request.module.__file__).parents[0]
 
 
+def assert_anapot_irc(irc):
+    fc = irc.all_coords[0]
+    bc = irc.all_coords[-1]
+    forward_ref = np.array((-1.0527, 1.0278,  0.))
+    backward_ref = np.array((1.941, 3.8543, 0.))
+    forward_diff = np.linalg.norm(fc - forward_ref)
+    backward_diff = np.linalg.norm(bc - backward_ref)
+    assert forward_diff == pytest.approx(0.05, abs=0.1)
+    assert backward_diff == pytest.approx(0.05, abs=0.1)
+
+
 def plot_irc(irc, title=None):
     geom = irc.geometry
     calc = geom.calculator
+    levels = np.linspace(-3, 4, 120)
     calc.plot()
     ax = calc.ax
     ax.plot(*irc.all_coords.T[:2], "ro-")
@@ -54,15 +66,7 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     irc = irc_cls(geom, **kwargs)
     irc.run()
 
-    fc = irc.all_coords[0]
-    bc = irc.all_coords[-1]
-    forward_ref = np.array((-1.0527, 1.0278,  0.))
-    backward_ref = np.array((1.941, 3.8543, 0.))
-    forward_diff = np.linalg.norm(fc - forward_ref)
-    backward_diff = np.linalg.norm(bc - backward_ref)
-    assert forward_diff == pytest.approx(0.05, abs=0.1)
-    assert backward_diff == pytest.approx(0.05, abs=0.1)
-
+    assert_anapot_irc(irc)
     # plot_irc(irc, irc.__class__.__name__)
 
 
@@ -101,6 +105,7 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
         "dt0": 0.5,
         "v0": 0.04,
         "downhill": True,
+        "max_cycles": 150,
     }
     dvv = DampedVelocityVerlet(geom, **irc_kwargs)
     dvv.run()
@@ -111,3 +116,54 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     assert bond(2, 7) == pytest.approx(0.93, abs=0.01)
     assert bond(4, 7) == pytest.approx(2.42, abs=0.01)
     assert bond(2, 0) == pytest.approx(2.23, abs=0.01)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "irc_cls, irc_kwargs, fw_cycle, bw_cycle",
+    [
+        (EulerPC, {"hessian_recalc": 10, "dump_dwi": False,}, 30, 37),
+        (EulerPC, {"hessian_recalc": 10, "corr_func": "scipy",}, 19, 23),
+    ]
+)
+def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
+    geom = geom_from_library("hcn_iso_hf_sto3g_ts_opt.xyz")
+
+    calc = PySCF(
+            basis="sto3g",
+    )
+    geom.set_calculator(calc)
+
+    irc = irc_cls(geom, **irc_kwargs, rms_grad_thresh=1e-4)
+    irc.run()
+
+    # approx. +- 0.5 kJ/mol
+    assert irc.forward_energies[0] == pytest.approx(-91.67520894777218, abs=2.2e-4)
+    assert irc.backward_energies[-1] == pytest.approx(-91.64442379051056)
+    assert irc.forward_cycle == fw_cycle
+    assert irc.backward_cycle == bw_cycle
+
+
+@pytest.mark.parametrize(
+    "scipy_method",
+    [
+        (None),
+        ("RK45"),
+        ("DOP853"),
+    ]
+)
+def test_eulerpc_scipy(scipy_method):
+    geom = AnaPot().get_geom((0.61173, 1.49297, 0.))
+
+    kwargs = {
+        "step_length": 0.2,
+        "rms_grad_thresh": 1e-2,
+        "corr_func": "scipy",
+        "scipy_method": scipy_method,
+    }
+
+    irc = EulerPC(geom, **kwargs)
+    irc.run()
+
+    assert_anapot_irc(irc)
+    # plot_irc(irc, irc.__class__.__name__)
