@@ -6,11 +6,13 @@ from pysisyphus.intcoords.Primitive import Primitive
 class Bend(Primitive):
 
     def __init__(self, *args, complement=False, **kwargs):
+        kwargs["calc_kwargs"] = ("complement", )
         super().__init__(*args, **kwargs)
 
         self.complement = complement
 
-    def _calculate(self, coords3d, indices, gradient):
+    @staticmethod
+    def _calculate(coords3d, indices, gradient=False, complement=False):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
@@ -30,13 +32,13 @@ class Bend(Primitive):
         w_dash = np.cross(u, cross_vec)
         w = w_dash / np.linalg.norm(w_dash)
 
-        if self.complement:
+        if complement:
             angle_rad = np.arccos(u.dot(w)) + np.arccos(w.dot(v))
         else:
             angle_rad = np.arccos(u.dot(v))
 
         if gradient:
-            if self.complement:
+            if complement:
                 w = -(u + v) / np.linalg.norm(u + v)
             uxw = np.cross(u, w)
             wxv = np.cross(w, v)

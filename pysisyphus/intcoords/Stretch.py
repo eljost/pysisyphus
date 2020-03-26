@@ -6,7 +6,7 @@ from pysisyphus.intcoords.Primitive import Primitive
 class Stretch(Primitive):
 
     @staticmethod
-    def _calculate(*, coords3d, indices, gradient):
+    def _calculate(coords3d, indices, gradient=False):
         n, m = indices
         bond = coords3d[m] - coords3d[n]
         bond_length = np.linalg.norm(bond)

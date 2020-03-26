@@ -267,8 +267,7 @@ class RedundantCoords:
                 cov_rad_sum = CR["h"] + CR[y_atom]
                 distance = np.linalg.norm(coords3d[h_ind] - coords3d[y_ind])
                 vdw = 0.9 * (VDW_RADII["h"] + VDW_RADII[y_atom])
-                bend = Bend((x_ind, h_ind, y_ind))
-                angle = bend.calculate(coords3d)
+                angle = Bend._calculate(coords3d, (x_ind,  h_ind, y_ind))
                 if (cov_rad_sum < distance < vdw) and (angle > np.pi/2):
                     self.hydrogen_stretch_indices.append((h_ind, y_ind))
                     self.log(f"Added hydrogen bond between {h_ind} and {y_ind}")
@@ -333,8 +332,7 @@ class RedundantCoords:
         return (terminal1, central, terminal2), central
 
     def is_valid_bend(self, bend_ind):
-        bend = Bend(bend_ind)
-        val = bend.calculate(self.c3d)
+        val = Bend._calculate(self.c3d, bend_ind)
         deg = np.rad2deg(val)
         # Always return true if bends should not be checked
         return (
@@ -360,9 +358,8 @@ class RedundantCoords:
 
     def is_valid_dihedral(self, dihedral_ind, thresh=1e-6):
         # Check for linear atoms
-        bend = Bend(dihedral_ind[:3])
-        first_angle = bend.calculate(self.c3d)
-        second_angle = bend.calculate(self.c3d, indices=dihedral_ind[1:])
+        first_angle = Bend._calculate(self.c3d, dihedral_ind[:3])
+        second_angle = Bend._calculate(self.c3d, dihedral_ind[1:])
         pi_thresh = np.pi - thresh
         return ((abs(first_angle) < pi_thresh)
                 and (abs(second_angle) < pi_thresh)
@@ -416,8 +413,7 @@ class RedundantCoords:
                 dihedral_ind = bend.tolist() + fourth_atom
                 # This way dihedrals may be generated that contain linear
                 # atoms and these would be undefinied. So we check for this.
-                dihed = Torsion._calculate(coords3d=coords3d, indices=dihedral_ind,
-                                           gradient=False)
+                dihed = Torsion._calculate(coords3d=coords3d, indices=dihedral_ind)
                 if not np.isnan(dihed):
                     improper_dihedrals.append(dihedral_ind)
                 else:

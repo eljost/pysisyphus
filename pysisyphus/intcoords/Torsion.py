@@ -5,8 +5,14 @@ from pysisyphus.intcoords.Primitive import Primitive
 
 class Torsion(Primitive):
 
+    def __init__(self, *args, cos_tol=1e-9, **kwargs):
+        kwargs["calc_kwargs"] = ("cos_tol", )
+        super().__init__(*args, **kwargs)
+
+        self.cos_tol = cos_tol
+
     @staticmethod
-    def _calculate(*, coords3d, indices, gradient, cos_tol=1e-9):
+    def _calculate(coords3d, indices, gradient=False, cos_tol=1e-9):
         m, o, p, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[p]
@@ -36,6 +42,7 @@ class Torsion(Primitive):
             # if wxv.dot(u) < 0:
             if vxw.dot(u) < 0:
                 dihedral_rad *= -1
+
         if gradient:
             row = np.zeros_like(coords3d)
             #                  |  m  |  n  |  o  |  p  |
