@@ -219,33 +219,6 @@ class RedundantCoords:
         """Project supplied vector onto range of B."""
         return self.P.dot(vector)
 
-    def set_rho(self):
-        # TODO: remove this as it is already in optimizers/guess_hessians
-        atoms = [a.lower() for a in self.atoms]
-        cov_radii = np.array([CR[a.lower()] for a in atoms])
-        rref = np.array([r1+r2
-                         for r1, r2 in it.combinations(cov_radii, 2)])
-        coords3d = self.cart_coords.reshape(-1, 3)
-        cdm = pdist(coords3d)
-        self.rho = squareform(np.exp(-cdm/rref + 1))
-
-    def get_initial_hessian(self):
-        # TODO: remove this as it is already in optimizers/guess_hessians
-        self.set_rho()
-        k_dict = {
-            2: 0.35,
-            3: 0.15,
-            4: 0.005,
-        }
-        k_diag = list()
-        for primitive in self._prim_internals:
-            rho_product = 1
-            for i in range(primitive.inds.size-1):
-                i1, i2 = primitive.inds[i:i+2]
-                rho_product *= self.rho[i1, i2]
-            k_diag.append(k_dict[len(primitive.inds)] * rho_product)
-        return np.diagflat(k_diag)
-
     def connect_fragments(self, cdm, fragments):
         """Determine the smallest interfragment bond for a list
         of fragments and a condensed distance matrix."""
