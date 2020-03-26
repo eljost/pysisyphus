@@ -265,7 +265,7 @@ class RedundantCoords:
             for y_ind in y_inds:
                 y_atom = self.atoms[y_ind].lower()
                 cov_rad_sum = CR["h"] + CR[y_atom]
-                distance = np.linalg.norm(coords3[h_ind] - coords3d[y_ind])
+                distance = np.linalg.norm(coords3d[h_ind] - coords3d[y_ind])
                 vdw = 0.9 * (VDW_RADII["h"] + VDW_RADII[y_atom])
                 bend = Bend((x_ind, h_ind, y_ind))
                 angle = bend.calculate(coords3d)
