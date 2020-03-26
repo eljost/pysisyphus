@@ -125,7 +125,7 @@ class Geometry:
         self.assert_compatibility(other)
         if self.coord_type == "cart":
             diff = self.coords - other.coords
-        elif self.coord_type in ("redund", "dlc"):
+        elif self.coord_type in ("redund", "redund_v2", "dlc"):
             # Take periodicity of dihedrals into account by calling
             # get_tangent(). Care has to be taken regarding the orientation
             # of the returned tangent vector. It points from self to other.

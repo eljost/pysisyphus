@@ -275,10 +275,7 @@ class RedundantCoords:
         self.hydrogen_stretch_indices = np.array(self.hydrogen_stretch_indices)
 
     def get_stretch_indices(self, define_bonds=None, bond_factor=None):
-        """
-        Default factor of 1.3 taken from [1] A.1.
-        Gaussian uses somewhat less, like 1.2, or different radii than we do.
-        """
+        """ Default factor of 1.3 taken from [1] A.1."""
 
         bond_factor = float(bond_factor) if bond_factor else self.bond_factor
         coords3d = self.cart_coords.reshape(-1, 3)
