@@ -5,8 +5,8 @@ from pysisyphus.intcoords.Primitive import Primitive
 
 class Bend(Primitive):
 
-    def __init__(self, indices, complement=False):
-        super().__init__(indices)
+    def __init__(self, *args, complement=False, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.complement = complement
 
@@ -19,15 +19,11 @@ class Bend(Primitive):
         u = u_dash / u_norm
         v = v_dash / v_norm
 
-        def parallel(u, v, thresh=1e-4):
-            dot = u.dot(v) / (np.linalg.norm(u) * np.linalg.norm(v))
-            return (1 - abs(dot)) < thresh
-
         # Eq. (24) in [1]
-        uv_parallel = parallel(u, v)
+        uv_parallel = Bend.parallel(u, v)
         if not uv_parallel:
             cross_vec = v
-        elif uv_parallel and not parallel(u, (1, -1, 1)):
+        elif uv_parallel and not Bend.parallel(u, (1, -1, 1)):
             cross_vec = (1, -1, 1)
         else:
             cross_vec = (-1, 1, 1)

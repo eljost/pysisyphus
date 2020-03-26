@@ -12,7 +12,7 @@ def get_pair_covalent_radii(atoms):
     return pair_cov_radii
 
 
-def get_bond_sets(atoms, coords3d, bond_factor=1.3):
+def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False):
     cdm = pdist(coords3d)
     # Generate indices corresponding to the atom pairs in the
     # condensed distance matrix cdm.
@@ -22,6 +22,8 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3):
     cov_rad_sums *= bond_factor
     bond_flags = cdm <= cov_rad_sums
     bond_indices = atom_indices[bond_flags]
+    if return_cdm:
+        return bond_indices, cdm
     return bond_indices
 
 
