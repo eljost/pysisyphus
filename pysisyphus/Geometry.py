@@ -9,6 +9,7 @@ import rmsd
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
@@ -20,6 +21,7 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
+        "redund_v2": RedundantCoordsV2,
         "dlc": DLC,
     }
 
