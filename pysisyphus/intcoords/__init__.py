@@ -1,3 +1,7 @@
+from pysisyphus.intcoords.Bend import Bend
+from pysisyphus.intcoords.Stretch import Stretch
+from pysisyphus.intcoords.Torsion import Torsion
+
 import logging
 
 logger = logging.getLogger("internal_coords")
