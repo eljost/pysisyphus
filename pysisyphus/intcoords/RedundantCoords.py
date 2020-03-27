@@ -228,6 +228,9 @@ class RedundantCoords:
     def connect_fragments(self, cdm, fragments):
         """Determine the smallest interfragment bond for a list
         of fragments and a condensed distance matrix."""
+        self.log(f"Connecting fragments")
+        for i, frag in enumerate(fragments):
+            self.log(f"\t{i: >5d}: {tuple(frag)}")
         dist_mat = squareform(cdm)
         interfragment_indices = list()
         for frag1, frag2 in it.combinations(fragments, 2):
@@ -270,7 +273,8 @@ class RedundantCoords:
                 angle = Bend._calculate(coords3d, (x_ind,  h_ind, y_ind))
                 if (cov_rad_sum < distance < vdw) and (angle > np.pi/2):
                     self.hydrogen_stretch_indices.append((h_ind, y_ind))
-                    self.log(f"Added hydrogen bond between {h_ind} and {y_ind}")
+                    self.log(f"Added hydrogen bond between atoms {h_ind} "
+                             f"({self.atoms[h_ind]}) and {y_ind} ({self.atoms[y_ind]})")
         self.hydrogen_stretch_indices = np.array(self.hydrogen_stretch_indices)
 
     def get_stretch_indices(self, define_bonds=None, bond_factor=None):
