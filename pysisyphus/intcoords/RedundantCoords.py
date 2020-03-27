@@ -484,11 +484,6 @@ class RedundantCoords:
             return np.array([getattr(pc, attr) for pc in pcs])
         return pcs
 
-    def calculate_val_diffs(self, coords1, coords2):
-        vals1 = np.array(self.calculate(coords1, attr="val"))
-        vals2 = np.array(self.calculate(coords2, attr="val"))
-        return vals1-vals2
-
     def update_internals(self, new_cartesians, prev_internals):
         new_internals = self.calculate(new_cartesians, attr="val")
         internal_diffs = np.array(new_internals - prev_internals)

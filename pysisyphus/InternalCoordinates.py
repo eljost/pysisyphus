@@ -475,11 +475,6 @@ class RedundantCoords:
             return np.array([getattr(ic,attr) for ic in int_coords])
         return int_coords
 
-    def calculate_val_diffs(self, coords1, coords2):
-        vals1 = np.array(self.calculate(coords1, attr="val"))
-        vals2 = np.array(self.calculate(coords2, attr="val"))
-        return vals1-vals2
-
     def calc_stretch(self, coords3d, bond_ind, grad=False):
         n, m = bond_ind
         bond = coords3d[m] - coords3d[n]
