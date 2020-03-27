@@ -5,6 +5,7 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords import Stretch, Bend, Torsion
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.testing import using
 
 
 def compare_internals(xyz_fn):
@@ -49,9 +50,22 @@ def test_allene():
     np.testing.assert_allclose(B, Bref)
 
 
+@using("pyscf")
 def test_allene_opt():
     geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
     calc = PySCF(basis="321g", pal=2)
     geom.set_calculator(calc)
     opt = RFOptimizer(geom, thresh="gau_tight")
     opt.run()
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 5
+
+
+@using("pyscf")
+def test_hydrogen_bonds_fragments():
+    geom = geom_loader("lib:hydrogen_bond_fragments_test.xyz",
+                       coord_type="redund_v2")
+    int_ = geom.internal
+    assert len(int_.hydrogen_bond_indices) == 1
+    assert len(int_.fragments) == 2

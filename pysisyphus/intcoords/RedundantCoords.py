@@ -51,7 +51,7 @@ class RedundantCoords:
         self.stretch_indices = list()
         self.bend_indices = list()
         self.torsion_indices = list()
-        self.hydrogen_stretch_indices = list()
+        self.hydrogen_bond_indices = list()
 
         if prim_indices is None:
             self.set_primitive_indices(self.define_prims)
@@ -245,7 +245,7 @@ class RedundantCoords:
         # the original indices but only the required distances.
         return interfragment_indices
 
-    def set_hydrogen_stretch_indices(self, stretch_indices):
+    def set_hydrogen_bond_indices(self, stretch_indices):
         coords3d = self.cart_coords.reshape(-1, 3)
         tmp_sets = [frozenset(bi) for bi in stretch_indices]
         # Check for hydrogen bonds as described in [1] A.1 .
@@ -272,10 +272,10 @@ class RedundantCoords:
                 vdw = 0.9 * (VDW_RADII["h"] + VDW_RADII[y_atom])
                 angle = Bend._calculate(coords3d, (x_ind,  h_ind, y_ind))
                 if (cov_rad_sum < distance < vdw) and (angle > np.pi/2):
-                    self.hydrogen_stretch_indices.append((h_ind, y_ind))
+                    self.hydrogen_bond_indices.append((h_ind, y_ind))
                     self.log(f"Added hydrogen bond between atoms {h_ind} "
                              f"({self.atoms[h_ind]}) and {y_ind} ({self.atoms[y_ind]})")
-        self.hydrogen_stretch_indices = np.array(self.hydrogen_stretch_indices)
+        self.hydrogen_bond_indices = np.array(self.hydrogen_bond_indices)
 
     def get_stretch_indices(self, define_bonds=None, bond_factor=None):
         """ Default factor of 1.3 taken from [1] A.1."""
@@ -299,10 +299,10 @@ class RedundantCoords:
         self.bare_stretch_indices = stretch_indices
 
         # Look for hydrogen bonds
-        self.set_hydrogen_stretch_indices(stretch_indices)
-        if self.hydrogen_stretch_indices.size > 0:
+        self.set_hydrogen_bond_indices(stretch_indices)
+        if self.hydrogen_bond_indices.size > 0:
             stretch_indices = np.concatenate((stretch_indices,
-                                           self.hydrogen_stretch_indices))
+                                              self.hydrogen_bond_indices))
 
         # Merge bond index sets into fragments
         bond_ind_sets = [frozenset(bi) for bi in stretch_indices]
