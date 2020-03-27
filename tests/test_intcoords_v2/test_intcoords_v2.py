@@ -62,7 +62,6 @@ def test_allene_opt():
     assert opt.cur_cycle == 5
 
 
-@using("pyscf")
 def test_hydrogen_bonds_fragments():
     geom = geom_loader("lib:hydrogen_bond_fragments_test.xyz",
                        coord_type="redund_v2")
