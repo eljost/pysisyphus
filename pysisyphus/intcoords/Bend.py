@@ -5,10 +5,11 @@ from pysisyphus.intcoords.Primitive import Primitive
 
 class Bend(Primitive):
 
-    def __init__(self, *args, complement=False, **kwargs):
+    def __init__(self, *args, linear=False, complement=False, **kwargs):
         kwargs["calc_kwargs"] = ("complement", )
         super().__init__(*args, **kwargs)
 
+        self.linear = linear
         self.complement = complement
 
     @staticmethod
@@ -23,12 +24,17 @@ class Bend(Primitive):
 
         # Eq. (24) in [1]
         uv_parallel = Bend.parallel(u, v)
+        # Determine second vector for the cross product, to get an
+        # orthogonal direction.
         if not uv_parallel:
             cross_vec = v
         elif uv_parallel and not Bend.parallel(u, (1, -1, 1)):
             cross_vec = (1, -1, 1)
+        # elif not Bend.parallel(u, (1, 0, 0)) and (not Bend.parallel(v, (1, 0, 0))):
+            # cross_vec = (1, 0, 0)
         else:
             cross_vec = (-1, 1, 1)
+            # cross_vec = (0., 0., 1)
         w_dash = np.cross(u, cross_vec)
         w = w_dash / np.linalg.norm(w_dash)
 
@@ -39,7 +45,9 @@ class Bend(Primitive):
 
         if gradient:
             if complement:
-                w = -(u + v) / np.linalg.norm(u + v)
+                # Create second vector, orthongal to w and u
+                w = np.cross(u, w)
+            # print("pysis w", w)
             uxw = np.cross(u, w)
             wxv = np.cross(w, v)
 
@@ -56,3 +64,7 @@ class Bend(Primitive):
             row = row.flatten()
             return angle_rad, row
         return angle_rad
+
+    def __str__(self):
+        return f"Bend({tuple(self.indices)}, linear={self.linear}, " \
+               f"complement={self.complement})"
