@@ -36,7 +36,7 @@ class RedundantCoords:
 
     RAD_175 = 3.05432619
     BEND_MIN_DEG = 15
-    BEND_MAX_DEG = 175
+    LIN_BEND_DEG = 170
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
                  prim_indices=None, define_prims=None, bonds_only=False,
@@ -75,7 +75,8 @@ class RedundantCoords:
         self._primitives = self.get_primitives(
                                 self.stretch_indices,
                                 self.bend_indices,
-                                self.torsion_indices
+                                self.torsion_indices,
+                                self.cart_coords,
         )
         self._prim_internals = self.calculate(self.cart_coords)
         self._prim_coords = np.array([pc.val for pc in self._prim_internals])
@@ -339,9 +340,7 @@ class RedundantCoords:
         val = Bend._calculate(self.c3d, bend_ind)
         deg = np.rad2deg(val)
         # Always return true if bends should not be checked
-        return (
-            not self.check_bends) or (self.BEND_MIN_DEG <= deg <= self.BEND_MAX_DEG
-        )
+        return (not self.check_bends) or (self.BEND_MIN_DEG <= deg)
 
     def get_bend_indices(self, define_bends=None):
         bond_sets = {frozenset(bi) for bi in self.stretch_indices}
@@ -351,14 +350,15 @@ class RedundantCoords:
                 as_tpl, _ = self.sort_by_central(bond_set1, bond_set2)
                 if not self.is_valid_bend(as_tpl):
                     self.log(f"Didn't create bend {list(as_tpl)}")
-                             # f" with value of {deg:.3f}°")
                     continue
                 self.bend_indices.append(as_tpl)
         self.bend_indices = np.array(self.bend_indices, dtype=int)
 
         if define_bends:
-            bis = np.concatenate(( (self.bend_indices, define_bends)), axis=0)
-            self.bend_indices = bis
+            self.bend_indices = np.concatenate(
+                                    ((self.bend_indices, define_bends)),
+                                    axis=0
+            )
 
     def is_valid_dihedral(self, dihedral_ind, thresh=1e-6):
         # Check for linear atoms
@@ -378,9 +378,8 @@ class RedundantCoords:
                 return
             # Assure that the angles are below 175° (3.054326 rad)
             if not self.is_valid_dihedral(dihedral_ind, thresh=0.0873):
-                self.log("Skipping generation of dihedral "
-                               f"{dihedral_ind} as some of the the atoms "
-                                "are linear."
+                self.log(f"Did not create dihedral {dihedral_ind} as some "
+                          "vectors are (nearly) colinear."
                 )
                 return
             self.torsion_indices.append(dihedral_ind)
@@ -451,8 +450,10 @@ class RedundantCoords:
         self.get_bend_indices(bends)
         self.get_torsion_indices(dihedrals)
 
-    def get_primitives(self, stretch_indices, bend_indices, torsion_indices):
-        cls = {
+    def get_primitives(self, stretch_indices, bend_indices, torsion_indices,
+                       coords):
+        coords3d = coords.reshape(-1, 3)
+        classes = {
             2: Stretch,
             3: Bend,
             4: Torsion,
@@ -460,9 +461,35 @@ class RedundantCoords:
 
         primitives = list()
         for inds in it.chain(stretch_indices, bend_indices, torsion_indices):
-            periodic = len(inds) == 4
-            prim = cls[len(inds)](indices=inds, periodic=periodic)
+            prim_kwargs = {
+                "indices": inds,
+                "periodic": len(inds) == 4,
+            }
+            cls = classes[len(inds)]
+            val = cls._calculate(coords3d, inds)
+
+            # print(inds, val)
+            # Check for linear angles
+            linear = (len(inds) == 3) and (np.rad2deg(val) >= self.LIN_BEND_DEG)
+            if linear:
+                self.log(f"Bend {inds}={np.rad2deg(val):.1f}° (is close) to linear. "
+                          "Creating linear bend & complement.")
+                prim_kwargs["linear"] = linear
+                print("Check no. of bonds to see if linear bend is really needed!")
+
+            # Create primitive coordinate and append
+            prim = cls(**prim_kwargs)
             primitives.append(prim)
+
+            if linear:
+                self.log(f"Created complement for Bend {inds}")
+                prim_kwargs["complement"] = True
+                prim = cls(**prim_kwargs)
+                primitives.append(prim)
+
+        # print()
+        # for i, p in enumerate(primitives): print(i, p.indices)
+        # print()
         return primitives
 
     def calculate(self, coords, attr=None):
