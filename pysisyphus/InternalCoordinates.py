@@ -602,9 +602,19 @@ class RedundantCoords:
         cur_internals = self.prim_coords
         target_internals = cur_internals + step
         B_prim = self.B_prim
+
+        # u, s, vh = np.linalg.svd(B_prim, full_matrices=False)
+        # inds = s > 1e-8
+        # s_inv = 1 / s[inds]
+        # B_ = np.dot(u[:, inds] * s[inds], vh[inds])
+        # B__ = np.dot(vh[inds].T * s_inv, u[:, inds].T)
+        # B___ = np.linalg.pinv(B_prim.T.dot(B_prim)).dot(B_prim.T)
+
         # Bt_inv may be overriden in other coordiante systems so we
         # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
+
+        # import pdb; pdb.set_trace()
 
         last_rms = 9999
         prev_internals = cur_internals
