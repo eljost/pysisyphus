@@ -46,13 +46,20 @@ def test_allene():
     print(geom)
     int_ = geom.internal
     B = int_.B
+    bad = int_._primitives[8]
+    # import pdb; pdb.set_trace()
+    bad.calculate(geom.coords3d)
     
     np.testing.assert_allclose(B, Bref)
 
 
+# @pytest.mark.skip
 @using("pyscf")
 def test_allene_opt():
-    geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
+    # geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
+    geom = geom_loader("lib:08_allene.xyz", coord_type="redund")
+    int_ = geom.internal
+
     calc = PySCF(basis="321g", pal=2)
     geom.set_calculator(calc)
     opt = RFOptimizer(geom, thresh="gau_tight")
