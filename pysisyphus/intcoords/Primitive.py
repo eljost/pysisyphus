@@ -34,3 +34,6 @@ class Primitive(metaclass=abc.ABCMeta):
                     gradient=gradient,
                     **calc_kwargs,
         )
+
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.indices})"
