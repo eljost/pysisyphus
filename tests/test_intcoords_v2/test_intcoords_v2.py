@@ -43,6 +43,7 @@ def test_allene():
     Bref = ref_int.B
 
     geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    # geom = geom_loader(xyz_fn, coord_type="redund_v2", linear_bend_deg=0)
     print(geom)
     int_ = geom.internal
     B = int_.B

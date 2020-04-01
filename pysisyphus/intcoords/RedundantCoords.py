@@ -40,13 +40,15 @@ class RedundantCoords:
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
                  prim_indices=None, define_prims=None, bonds_only=False,
-                 check_bends=True):
+                 check_bends=True, linear_bend_deg=170):
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
         self.define_prims = define_prims
         self.bonds_only = bonds_only
         self.check_bends = check_bends
+
+        self.linear_bend_deg = float(linear_bend_deg)
 
         self.stretch_indices = list()
         self.bend_indices = list()
@@ -470,7 +472,9 @@ class RedundantCoords:
 
             # print(inds, val)
             # Check for linear angles
-            linear = (len(inds) == 3) and (np.rad2deg(val) >= self.LIN_BEND_DEG)
+            linear = len(inds) == 3 \
+                     and self.linear_bend_deg > 0 \
+                     and np.rad2deg(val) >= self.linear_bend_deg
             if linear:
                 self.log(f"Bend {inds}={np.rad2deg(val):.1f}° (is close) to linear. "
                           "Creating linear bend & complement.")
