@@ -38,6 +38,7 @@ setup(
         "dask",
         "pandas",
         "pytest",
+        "pytest-harvest",
         "pyyaml",
         "rmsd",
         "sympy",
