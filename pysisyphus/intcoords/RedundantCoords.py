@@ -41,6 +41,35 @@ class RedundantCoords:
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
                  prim_indices=None, define_prims=None, bonds_only=False,
                  check_bends=True, linear_bend_deg=170):
+        """Redundant internal coordinate handling.
+
+        Parameters
+        ----------
+        atoms : iterable
+            Iterable of length N, containing  element symbols.
+        coords : 1d iterable
+            1d iterable of length 3N, containing the cartesian coordinates
+            of N atoms.
+        bond_factor : float, optional
+            Scaling factor for the sum of the covalent radii. Used for
+            bond/stretch setup. Bigger values will lead to increased number
+            of bond definitions.
+        prim_indices : iterable of shape (3, (bonds, bends, dihedrals))
+            Iterable containing definitions for primitive internal coordinates.
+            Three items are expected in the iterable: the first one should
+            contain integer pairs, defining bonds between atoms, the next one
+            should contain integer triples containing bends, and finally
+            integer quadrupel for dihedrals.
+        define_prims : list of lists, optional
+            Define additional primitives.
+        bonds_only : bool, optional
+            Whether only bonds/stretches shall be defined. Default is False.
+        bond_factor : float, default=1.3
+            Scaling factor of the the pair covalent radii used for bond detection.
+        check_bends : bool, default=True
+            Whether to check for invalid bends. If disabled these bends will
+            be defined nonetheless.
+        """
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
