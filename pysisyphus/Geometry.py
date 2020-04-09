@@ -25,9 +25,8 @@ class Geometry:
         "dlc": DLC,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart", comment="",
-                 prim_indices=None, define_prims=None, bond_factor=1.3,
-                 check_bends=True):
+    def __init__(self, atoms, coords, coord_type="cart", coord_kwargs=None,
+                 comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -44,21 +43,11 @@ class Geometry:
         coord_type : {"cart", "redund"}, optional
             Type of coordinate system to use. Right now cartesian (cart)
             and redundand (redund) are supported.
+        coord_kwargs : dict, optional
+            Dictionary containing additional arguments that get passed
+            to the constructor of the internal coordinate class.
         comment : str, optional
             Comment string.
-        prim_indices : iterable of shape (3, (bonds, bends, dihedrals))
-            Iterable containing definitions for primitive internal coordinates.
-            Three items are expected in the iterable: the first one should
-            contain integer pairs, defining bonds between atoms, the next one
-            should contain integer triples containing bends, and finally
-            integer quadrupel for dihedrals.
-        define_prims : list of lists, optional
-            Define additional primitives.
-        bond_factor : float, default=1.3
-            Scaling factor of the the pair covalent radii used for bond detection.
-        check_bends : bool, default=True
-            Whether to check for invalid bends. If disabled these bends will
-            be defined nonetheless.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
@@ -68,19 +57,14 @@ class Geometry:
             f"{self._coords.size}. Did you accidentally supply internal " \
              "coordinates?"
 
-        if (prim_indices is not None) and coord_type == "cart":
-            coord_type = "redund"
-            print("coord_type is set to 'cart' but primitive indices were "
-                  "provided. Using 'redund' coord_type.")
+        if (coord_kwargs is not None) and coord_type == "cart":
+            print("coord_type is set to 'cart' but coord_kwargs were given. "
+                  "This is probably not intended. Exiting!")
         self.coord_type = coord_type
+        coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            self.internal = coord_class(atoms, self._coords,
-                                        prim_indices=prim_indices,
-                                        define_prims=define_prims,
-                                        bond_factor=bond_factor,
-                                        check_bends=check_bends,
-            )
+            self.internal = coord_class(atoms, self._coords, **coord_kwargs)
         else:
             self.internal = None
         self.comment = comment
