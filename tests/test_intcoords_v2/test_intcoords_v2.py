@@ -41,16 +41,18 @@ def test_bmat_allene():
     print(ref_geom)
     ref_int = ref_geom.internal
     Bref = ref_int.B
+    # for pi in ref_int._prim_internals: print(pi.inds)
 
-    # geom = geom_loader(xyz_fn, coord_type="redund_v2")
     geom = geom_loader(xyz_fn, coord_type="redund_v2",
-                       linear_bend_deg=0)
+                       coord_kwargs={
+                           "linear_bend_deg": 0,
+                        }
+    )
     print(geom)
     int_ = geom.internal
     B = int_.B
-    bad = int_._primitives[8]
-    # import pdb; pdb.set_trace()
-    bad.calculate(geom.coords3d)
+    # Delete linear angle
+    B = np.delete(B, 7, axis=0)
     
     np.testing.assert_allclose(B, Bref)
 
