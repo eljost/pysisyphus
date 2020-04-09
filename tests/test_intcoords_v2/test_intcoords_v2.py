@@ -35,15 +35,16 @@ def test_compare_biaryl():
     compare_internals(xyz_fn)
 
 
-def test_allene():
+def test_bmat_allene():
     xyz_fn = "lib:08_allene.xyz"
     ref_geom = geom_loader(xyz_fn, coord_type="redund")
     print(ref_geom)
     ref_int = ref_geom.internal
     Bref = ref_int.B
 
-    geom = geom_loader(xyz_fn, coord_type="redund_v2")
-    # geom = geom_loader(xyz_fn, coord_type="redund_v2", linear_bend_deg=0)
+    # geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    geom = geom_loader(xyz_fn, coord_type="redund_v2",
+                       linear_bend_deg=0)
     print(geom)
     int_ = geom.internal
     B = int_.B
