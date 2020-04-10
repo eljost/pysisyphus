@@ -29,7 +29,8 @@ class GrowingChainOfStates(ChainOfStates):
     def get_new_image_from_coords(self, coords, index):
         new_image = Geometry(self.image_atoms, coords,
                              coord_type=self.coord_type,
-                             prim_indices=self.prim_indices)
+                             coord_kwargs={"prim_indices": self.prim_indices,},
+        )
         new_image.set_calculator(self.calc_getter())
         self.images.insert(index, new_image)
         self.log(f"Create new image; insert it before index {index}.")

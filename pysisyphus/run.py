@@ -234,7 +234,9 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         internal_geom2 = Geometry(cos.images[-1].atoms, cos.images[-1].cart_coords)
         prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
-                       coord_type="redund", prim_indices=prim_indices)
+                       coord_type="redund",
+                       coord_kwargs={"prim_indices": prim_indices,},
+    )
 
     hei_tangent = cos.get_tangent(hei_index)
     # Convert tangent to redundant internals

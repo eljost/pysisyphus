@@ -150,7 +150,9 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     geoms = list()
     geom_kwargs = {
         "coord_type": coord_type,
-        "define_prims": define_prims,
+        "coord_kwargs": {
+            "define_prims": define_prims,
+        },
     }
     for fn in xyz_fns:
         if "*" in fn:
@@ -220,7 +222,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
         if coord_type != "cart":
             prim_indices = [geom.internal.prim_indices for geom in geoms]
         geoms = [Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type,
-                          comment=geom.comment, prim_indices=pi)
+                          comment=geom.comment,
+                          coord_kwargs={"prim_indices": pi,},
+                 )
                  for geom, pi in zip(geoms, prim_indices)]
 
     same_prim_inds = True
@@ -232,7 +236,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     if not same_prim_inds:
         prim_indices = form_coordinate_union(geoms[0], geoms[-1])
         geoms = [Geometry(atoms_0, geom.cart_coords,
-                         coord_type=coord_type, prim_indices=prim_indices)
+                         coord_type=coord_type,
+                         coord_kwargs={"prim_indices": prim_indices,},
+                 )
                  for geom in geoms]
         coord_lengths_ = np.array([geom.coords.size for geom in geoms])
     return geoms
@@ -378,7 +384,8 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
             f"atoms (valid indices: range(0,{atom_num}))."
 
         int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
-                            define_prims=add_prims)
+                            coord_kwargs={"define_prims": add_prims,},
+        )
         prim_counter = 0
         for j, pi in enumerate(int_geom.internal._prim_internals):
             pi_type = pi_types[len(pi.inds)]

@@ -148,8 +148,12 @@ class Geometry:
         prim_indices = None
         if coord_type != "cart":
             prim_indices = self.internal.prim_indices
-        return Geometry(self.atoms, self._coords, coord_type=coord_type,
-                        prim_indices=prim_indices, check_bends=check_bends)
+        return Geometry(self.atoms, self._coords,
+                        coord_type=coord_type,
+                        coord_kwargs={"prim_indices": prim_indices,
+                                      "check_bends": check_bends,
+                        },
+            )
 
     def copy_all(self, coord_type=None, check_bends=True):
         new_geom = self.copy(coord_type, check_bends)
