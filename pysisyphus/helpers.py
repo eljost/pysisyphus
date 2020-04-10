@@ -21,28 +21,37 @@ THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 
 
 def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
+    kwargs = {
+        "coord_type": coord_type,
+        "coord_kwargs": coord_kwargs,
+    }
     xyz_fn = str(xyz_fn)
     if xyz_fn.startswith("lib:"):
         # Drop lib: part
         return geom_from_library(xyz_fn[4:], **kwargs)
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
     coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten(), comment=comment,
-                    coord_type=coord_type,
-                    coord_kwargs=coord_kwargs
+    geom = Geometry(atoms, coords.flatten(),
+                    comment=comment,
+                    **kwargs,
     )
     return geom
 
 
 def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     trj_fn = str(trj_fn)
+    kwargs = {
+        "coord_type": coord_type,
+        "coord_kwargs": coord_kwargs,
+    }
     if trj_fn.startswith("lib:"):
         # Drop lib: part
         return geom_from_library(trj_fn[4:], **kwargs)[:first]
     atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
-    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, comment=comment,
-                      coord_type=coord_type,
-                      coord_kwargs=coord_kwargs)
+    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR,
+                      comment=comment,
+                      **kwargs
+             )
              for atoms, coords, comment in atoms_coords_comments
     ]
     return geoms
