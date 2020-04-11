@@ -61,8 +61,8 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
     fn = str(fn)
     kwargs = {
         "coord_type": coord_type,
-        "coord_kwargs": coord_kwargs,
     }
+    kwargs.update(coord_kwargs)
     if fn.endswith(".xyz"):
         return geom_from_xyz_file(fn, **kwargs)
     elif fn.endswith(".trj"):
@@ -76,7 +76,7 @@ def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
     xyz_fn = xyz_dir / xyz_fn
     return geom_loader(xyz_fn,
                        coord_type=coord_type,
-                       coord_kwargs=coord_kwargs,
+                       **coord_kwargs,
     )
 
 
