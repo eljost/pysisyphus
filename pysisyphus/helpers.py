@@ -23,8 +23,8 @@ THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
     kwargs = {
         "coord_type": coord_type,
-        "coord_kwargs": coord_kwargs,
     }
+    kwargs.update(coord_kwargs)
     xyz_fn = str(xyz_fn)
     if xyz_fn.startswith("lib:"):
         # Drop lib: part
@@ -42,8 +42,8 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     trj_fn = str(trj_fn)
     kwargs = {
         "coord_type": coord_type,
-        "coord_kwargs": coord_kwargs,
     }
+    kwargs.update(coord_kwargs)
     if trj_fn.startswith("lib:"):
         # Drop lib: part
         return geom_from_library(trj_fn[4:], **kwargs)[:first]
