@@ -316,16 +316,18 @@ class RedundantCoords:
         coords3d = self.cart_coords.reshape(-1, 3)
 
         # Set up bond indices
-        stretch_indices, cdm = get_bond_sets(
-                                    self.atoms,
-                                    coords3d,
-                                    bond_factor=bond_factor,
-                                    return_cdm=True
+        stretch_indices, cdm, cbm = get_bond_sets(
+                                        self.atoms,
+                                        coords3d,
+                                        bond_factor=bond_factor,
+                                        return_cdm=True,
+                                        return_cbm=True,
         )
         if define_bonds:
             stretch_indices = np.concatenate(((stretch_indices, define_bonds)), axis=0)
             for from_, to_ in define_bonds:
                 cdm[from_, to_] = 1
+        self.bond_matrix = squareform(cbm)
 
         # Bond indices without interfragment bonds and/or hydrogen bonds
         self.bare_stretch_indices = stretch_indices
@@ -500,10 +502,20 @@ class RedundantCoords:
             val = cls._calculate(coords3d, inds)
 
             # print(inds, val)
+            # if len(inds) == 3:
+                # print("bend",  inds)
+                # print("\tcentral atom", inds[1])
+                # print("\tbonds", sum(self.bond_matrix[inds[1]]))
+                # print()
+
             # Check for linear angles
-            linear = len(inds) == 3 \
-                     and self.linear_bend_deg > 0 \
-                     and np.rad2deg(val) >= self.linear_bend_deg
+            linear = (
+                len(inds) == 3
+                and self.linear_bend_deg > 0
+                and np.rad2deg(val) >= self.linear_bend_deg
+                # No need for linear bend if already enough bonds present
+                and sum(self.bond_matrix[inds[1]]) < 5
+            )
             if linear:
                 self.log(f"Bend {inds}={np.rad2deg(val):.1f}° (is close) to linear. "
                           "Creating linear bend & complement.")
@@ -514,11 +526,11 @@ class RedundantCoords:
             prim = cls(**prim_kwargs)
             primitives.append(prim)
 
-            if linear:
-                self.log(f"Created complement for Bend {inds}")
-                prim_kwargs["complement"] = True
-                prim = cls(**prim_kwargs)
-                primitives.append(prim)
+            # if linear:
+                # self.log(f"Created complement for Bend {inds}")
+                # prim_kwargs["complement"] = True
+                # prim = cls(**prim_kwargs)
+                # primitives.append(prim)
 
         # print()
         # for i, p in enumerate(primitives): print(i, p.indices)
