@@ -79,3 +79,75 @@ def test_hydrogen_bonds_fragments():
     int_ = geom.internal
     assert len(int_.hydrogen_bond_indices) == 1
     assert len(int_.fragments) == 2
+
+
+def test_linear_bend_allene():
+    np.set_printoptions(precision=5)
+    xyz_fn = "lib:08_allene.xyz"
+    geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    c3d = geom.coords3d
+
+    from pysisyphus.intcoords.LinearBend import LinearBend
+    inds = (0, 3, 4, 1)
+    lb = LinearBend(inds)
+    _ = lb.calculate(c3d)
+    __ = np.rad2deg(_)
+    print(_, __)
+    g, grad = lb.calculate(c3d, gradient=True)
+    grad = grad.reshape(-1, 3)
+    print(grad)
+    print("huhu")
+    from pysisyphus.constants import BOHR2ANG
+    g16g = grad[list(inds)].reshape(-1, 1) #/ BOHR2ANG
+    print(g16g)
+
+    co = LinearBend(inds, complement=True)
+    cv, cg = co.calculate(c3d, gradient=True)
+    print("complement")
+    cvd = np.rad2deg(cv)
+    print(f"\t{cv} {cvd}")
+    c16g = cg.reshape(-1, 3)[list(inds)].reshape(-1, 1)
+    print(c16g)
+    print(c16g.flatten().dot(g16g.flatten()))
+    print()
+    print(np.concatenate((g16g, c16g), axis=1))
+
+
+def test_linear_bend_c4():
+    np.set_printoptions(precision=5)
+    # xyz_fn = "c4.xyz"
+    xyz_fn = "02_test.xyz"
+    geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    c3d = geom.coords3d
+
+    from pysisyphus.intcoords.LinearBend import LinearBend
+    inds = (0, 1, 2, 3)
+    lb = LinearBend(inds)
+    _ = lb.calculate(c3d)
+    __ = np.rad2deg(_)
+    print(_, __)
+    g, grad = lb.calculate(c3d, gradient=True)
+    grad = grad.reshape(-1, 3)
+    print(grad)
+    print("huhu")
+    from pysisyphus.constants import BOHR2ANG
+    g16g = grad[list(inds)].reshape(-1, 1) #/ BOHR2ANG
+    print(g16g)
+
+    co = LinearBend(inds, complement=True)
+    cv, cg = co.calculate(c3d, gradient=True)
+    print("complement")
+    cvd = np.rad2deg(cv)
+    print(f"\t{cv} {cvd}")
+    c16g = cg.reshape(-1, 3)[list(inds)].reshape(-1, 1)
+    print(c16g)
+    print(c16g.flatten().dot(g16g.flatten()))
+
+    print(np.concatenate((g16g, c16g), axis=1))
+
+
+def test_molcas_lb():
+    np.set_printoptions(precision=5)
+    xyz_fn = "lib:08_allene.xyz"
+    geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    c3d = geom.coords3d
