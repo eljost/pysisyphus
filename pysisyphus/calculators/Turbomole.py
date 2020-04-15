@@ -343,9 +343,12 @@ class Turbomole(OverlapCalculator):
             root_flipped = self.track_root()
             self.calc_counter += 1
             if root_flipped:
-                # Redo gradient calculation for new root. Skip scf_cmd and only
-                # use self.second_cmd (egrad/ricc2).
-                results = self.get_forces(atoms, coords, cmd=self.second_cmd)
+                # # Redo gradient calculation for new root. Skip scf_cmd and only
+                # # use self.second_cmd (egrad/ricc2).
+                # results = self.get_forces(atoms, coords, cmd=self.second_cmd)
+
+                # Redo gradient calculation for new root.
+                results = self.get_forces(atoms, coords, cmd=cmd)
             self.last_run_path = prev_run_path
         try:
             shutil.rmtree(self.last_run_path)
