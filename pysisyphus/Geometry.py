@@ -147,7 +147,6 @@ class Geometry:
         """
         if coord_type is None:
             coord_type = self.coord_type
-        prim_indices = None
 
         # Geometry constructor will exit when coord_kwargs are given
         # with coord_type == 'cart'. So we only supply it when we are
