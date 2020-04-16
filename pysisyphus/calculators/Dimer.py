@@ -523,12 +523,17 @@ class Dimer(Calculator):
 
         N = self.N
         self.log(f"Orientation N:\n\t{N}")
+        # Save orientation N in human-readable format, aka .trj
+        # file in Angstrom.
         if self.write_orientations:
             trj_str = get_tangent_trj_str(atoms, coords, N)
             trj_fn = self.make_fn("N.trj")
             with open(trj_fn, "w") as handle:
                 handle.write(trj_str)
             self.log(f"Wrote current orientation animation to '{trj_fn}'")
+        # Always save orientation in Bohr
+        N_fn = self.make_fn("N")
+        np.savetxt(N_fn, N)
 
         energy = self.energy0
         self.log(f"\tenergy={self.energy0:.8f} au")
