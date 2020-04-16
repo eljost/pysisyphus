@@ -150,10 +150,13 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     geoms = list()
     geom_kwargs = {
         "coord_type": coord_type,
-        "coord_kwargs": {
-            "define_prims": define_prims,
-        },
     }
+    # Dont supply coord_kwargs with coord_type == "cart"
+    if coord_type != "cart":
+        geom_kwargs["coord_kwargs"] = {
+            "define_prims": define_prims,
+        }
+
     for fn in xyz_fns:
         if "*" in fn:
             cwd = Path(".")
