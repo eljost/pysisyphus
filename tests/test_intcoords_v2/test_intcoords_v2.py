@@ -115,8 +115,8 @@ def test_linear_bend_allene():
 
 def test_linear_bend_c4():
     np.set_printoptions(precision=5)
-    # xyz_fn = "c4.xyz"
-    xyz_fn = "02_test.xyz"
+    # xyz_fn = "lib:c4_lb_test.xyz"
+    xyz_fn = "lib:c4_lb_test_02.xyz"
     geom = geom_loader(xyz_fn, coord_type="redund_v2")
     c3d = geom.coords3d
 
