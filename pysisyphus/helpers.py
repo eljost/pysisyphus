@@ -14,7 +14,7 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
+from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
 THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
@@ -523,3 +523,16 @@ def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
     barrier = (ref_energy - comp_energy) * AU2KJPERMOL
     print(f"\tBarrier between {ref_str} and {comp_str} and : {barrier:.1f} kJ mol⁻¹")
     return barrier
+
+
+def get_tangent_trj_str(atoms, coords, tangent, points=10, displ=None):
+    if displ is None:
+        # Linear equation. Will give displ~3 for 30 atoms and
+        # displ ~ 1 for 3 atoms.
+        displ = 2/27 * len(atoms) + 0.78
+    step_sizes = np.linspace(-displ, displ, 2*points + 1)
+    steps = step_sizes[:,None] * tangent
+    trj_coords = coords[None,:] + steps
+    trj_coords = trj_coords.reshape(step_sizes.size, -1, 3) / ANG2BOHR
+    trj_str = make_trj_str(atoms, trj_coords)
+    return trj_str
