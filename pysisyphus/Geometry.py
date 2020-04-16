@@ -1,6 +1,7 @@
 from collections import Counter, namedtuple
 import subprocess
 import tempfile
+import sys
 
 import numpy as np
 from scipy.spatial.distance import pdist
@@ -60,6 +61,7 @@ class Geometry:
         if (coord_kwargs is not None) and coord_type == "cart":
             print("coord_type is set to 'cart' but coord_kwargs were given. "
                   "This is probably not intended. Exiting!")
+            sys.exit()
         self.coord_type = coord_type
         coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
         coord_class = self.coord_types[self.coord_type]
@@ -146,14 +148,19 @@ class Geometry:
         if coord_type is None:
             coord_type = self.coord_type
         prim_indices = None
+
+        # Geometry constructor will exit when coord_kwargs are given
+        # with coord_type == 'cart'. So we only supply it when we are
+        # NOT using cartesian coordinates.
+        coord_kwargs = None
         if coord_type != "cart":
-            prim_indices = self.internal.prim_indices
+            coord_kwargs={"prim_indices": self.internal.prim_indices,
+                          "check_bends": check_bends,
+            }
         return Geometry(self.atoms, self._coords,
                         coord_type=coord_type,
-                        coord_kwargs={"prim_indices": prim_indices,
-                                      "check_bends": check_bends,
-                        },
-            )
+                        coord_kwargs=coord_kwargs,
+        )
 
     def copy_all(self, coord_type=None, check_bends=True):
         new_geom = self.copy(coord_type, check_bends)
