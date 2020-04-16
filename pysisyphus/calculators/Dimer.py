@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import numpy as np
 
@@ -101,8 +102,14 @@ class Dimer(Calculator):
         # Set dimer direction if given
         self.N_raw = N_raw
         if self.N_raw is not None:
-            self.log("Setting initial orientation from given 'N_raw'.")
+            msg = "Setting initial orientation from given 'N_raw'"
+            if isinstance(self.N_raw, str) and Path(self.N_raw).exists():
+                fn = self.N_raw
+                self.N_raw = np.loadtxt(fn)
+                msg = f"Read initial orientation from file '{fn}'"
+                N_raw = self.N_raw.copy()
             self.N = N_raw
+            self.log(msg)
         self.N_init = None
 
         if seed is not None:
