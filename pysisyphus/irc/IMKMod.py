@@ -46,10 +46,11 @@ class IMKMod(IRC):
         self.mw_coords = mw_coords_1
 
         energy_1 = self.energy
-        if energy_1 > energy_0:
-            self.log("Initial displacement lead to higher energy. "
-                     "Searching for better step with a shorter displacement."
-            )
+        energy_diff = energy_1 - energy_0
+        if energy_diff > 0:
+            self.log(f"Initial displacement with step_length={self.step_length:.6f} "
+                     f"lead to an energy increase of {energy_diff:.6f} au. Halving "
+                      "the intial step size!")
             corr_step = 0.5*step
             mw_coords_1_corr = mw_coords_0 + corr_step
             self.mw_coords = mw_coords_1_corr
