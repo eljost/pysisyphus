@@ -914,6 +914,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
     # Create second function that returns a wrapped calculator. This may be
     # useful if we later want to drop the wrapper and use the actual calculator.
+    if "calc" in calc_kwargs:
         act_calc_kwargs = calc_kwargs["calc"].copy()
         act_calc_key = act_calc_kwargs.pop("type")
         act_calc_getter = lambda index: get_calc(index, "image",
