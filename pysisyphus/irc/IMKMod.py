@@ -68,7 +68,7 @@ class IMKMod(IRC):
         grad_1_norm = np.linalg.norm(grad_1)
 
         # Determine bisector d
-        d = -grad_0/grad_0_norm + grad_1/grad_1_norm
+        d = grad_0/grad_0_norm - grad_1/grad_1_norm
         D = d / np.linalg.norm(d)
 
         # Take a step along D
