@@ -956,6 +956,12 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
             geom.coords = shaked_coords
         opt_geom, opt = run_opt(geom, calc_getter, opt_getter)
+        # Allow IRC runs after a dimer optimization
+        if run_dict["irc"] and isinstance(opt_geom.calculator, Dimer):
+            dimer_calc = opt_geom.calculator
+            # Drop the dimer calculator and set the actual calculator
+            opt_geom.set_calculator(dimer_calc.calculator)
+            end_geoms, irc = run_irc(opt_geom, irc_key, irc_kwargs, calc_getter)
     elif run_dict["stocastic"]:
         assert len(geoms) == 1
         geom = geoms[0]
