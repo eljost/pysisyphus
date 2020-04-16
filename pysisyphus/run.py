@@ -580,10 +580,10 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     calc_number = 0
     def set_calc(geom, name):
         nonlocal calc_number
-        calc_number += 1
         calc = calc_getter(calc_number)
         calc.base_name = name
         geom.set_calculator(calc)
+        calc_number += 1
 
     if geom.calculator is None:
         set_calc(geom, "irc")
@@ -912,6 +912,12 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
+    # Create second function that returns a wrapped calculator
+    if "calc" in calc_kwargs:
+        act_calc_kwargs = calc_kwargs["calc"].copy()
+        act_calc_key = act_calc_kwargs.pop("type")
+        act_calc_getter = lambda index: get_calc(index, "image",
+                                                 act_calc_key, act_calc_kwargs)
 
     if run_dict["preopt"]:
         preopt_xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
@@ -959,9 +965,12 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         # Allow IRC runs after a dimer optimization
         if run_dict["irc"] and isinstance(opt_geom.calculator, Dimer):
             dimer_calc = opt_geom.calculator
-            # Drop the dimer calculator and set the actual calculator
-            opt_geom.set_calculator(dimer_calc.calculator)
-            end_geoms, irc = run_irc(opt_geom, irc_key, irc_kwargs, calc_getter)
+            # Drop the dimer calculator. A new calculator will be set
+            # from by calling 'act_calc_getter'.
+            opt_geom.set_calculator(None)
+            # opt_geom.set_calculator(dimer_calc.calculator)
+            # Now we use act_calc_getter
+            end_geoms, irc = run_irc(opt_geom, irc_key, irc_kwargs, act_calc_getter)
     elif run_dict["stocastic"]:
         assert len(geoms) == 1
         geom = geoms[0]
