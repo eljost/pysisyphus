@@ -70,3 +70,34 @@ def test_run_results():
     calced_geoms = results.calced_geoms
     assert len(calced_geoms) == 1
     assert results.calc_getter
+
+
+@using("pyscf")
+def test_run_dimer_irc():
+    run_dict = {
+        "opt": {
+            "type": "plbfgs",
+        },
+        "irc": {
+            "type": "imk",
+            "rms_grad_thresh": 0.001,
+            "opt_ends": "fragments",
+        },
+        "calc": {
+            "type": "dimer",
+            "calc": {
+                "type": "pyscf",
+                "basis": "321g",
+                "pal": 2,
+            }
+        },
+        "xyz": "lib:hcn_ts_hf_321g.xyz",
+    }
+    results = run_from_dict(run_dict)
+
+    assert results.opt.is_converged
+    assert results.irc.backward_is_converged
+    assert results.irc.forward_is_converged
+    hcn, cnh = results.end_geoms
+    assert hcn.energy == pytest.approx(-92.33966200907034)
+    assert cnh.energy == pytest.approx(-92.35408370090339)
