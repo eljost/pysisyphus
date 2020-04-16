@@ -66,14 +66,15 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     irc = irc_cls(geom, **kwargs)
     irc.run()
 
-    assert_anapot_irc(irc)
     # plot_irc(irc, irc.__class__.__name__)
+    assert_anapot_irc(irc)
 
 
 @pytest.mark.parametrize(
     "step_length", [
         (0.1),
         (0.2),
+        (0.3),
         (0.4),
     ]
 )
@@ -83,13 +84,17 @@ def test_imk(step_length):
     irc_kwargs = {
         "step_length": step_length,
         "rms_grad_thresh": 1e-2,
+        "corr_first": True,
+        "corr_first_energy": True,
+        "corr_bisec_size": 0.0025,
+        "corr_bisec_energy": True,
     }
 
     irc = IMKMod(geom, **irc_kwargs)
     irc.run()
 
+    # plot_irc(irc, irc.__class__.__name__)
     assert_anapot_irc(irc)
-    plot_irc(irc, irc.__class__.__name__)
 
 
 @pytest.mark.parametrize(
@@ -187,5 +192,5 @@ def test_eulerpc_scipy(scipy_method):
     irc = EulerPC(geom, **kwargs)
     irc.run()
 
-    assert_anapot_irc(irc)
     # plot_irc(irc, irc.__class__.__name__)
+    assert_anapot_irc(irc)
