@@ -15,10 +15,13 @@ from pysisyphus.irc.IRC import IRC
 
 class IMKMod(IRC):
 
-    def __init__(self, geometry, line_step_size=0.025, **kwargs):
+    def __init__(self, geometry, line_step_size=0.025, corr_first=True,
+                 **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.line_step_size = line_step_size
+        self.corr_first = bool(corr_first)
+
         self.line_step_thresh = 2*self.line_step_size
 
     def fit_parabola(self, x, y):
@@ -38,16 +41,20 @@ class IMKMod(IRC):
         mw_coords_0 = self.mw_coords.copy()
         grad_0 = self.mw_gradient
         energy_0 = self.energy
+        self.log(f"Current point:\n\tenergy_0={energy_0:.6f} au")
 
         grad_0_norm = np.linalg.norm(grad_0)
+        dir_0 = -grad_0 / grad_0_norm
         # Step direction is against the gradient to the pivot point Q1.
-        step = -self.step_length * grad_0 / grad_0_norm
+        step = self.step_length * dir_0
         mw_coords_1 = self.mw_coords + step
         self.mw_coords = mw_coords_1
 
         energy_1 = self.energy
+        self.log(f"Pivot point\n\tenergy_1={energy_1:.6f} au")
         energy_diff = energy_1 - energy_0
-        if energy_diff > 0:
+        correct_first_step = self.corr_first and (energy_diff > 0)
+        if correct_first_step:
             self.log(f"Initial displacement with step_length={self.step_length:.6f} "
                      f"lead to an energy increase of {energy_diff:.6f} au. Halving "
                       "the intial step size!")
@@ -55,10 +62,11 @@ class IMKMod(IRC):
             mw_coords_1_corr = mw_coords_0 + corr_step
             self.mw_coords = mw_coords_1_corr
             energy_1_corr = self.energy
-            x_corr = np.array((0, 0.5, 1)) * self.step_length
+            # x_corr = np.array((0, 0.5, 1)) * self.step_length
+            x_corr = np.array((0, 0.5, 1))
             y_corr = (energy_0, energy_1_corr, energy_1)
             min_ = self.fit_parabola(x_corr, y_corr)
-            step_corr = min_ * -grad_0 / grad_0_norm
+            step_corr = min_ * self.step_length * dir_0
             mw_coords_1 = mw_coords_0 + step_corr
             self.mw_coords = mw_coords_1
 
@@ -66,16 +74,20 @@ class IMKMod(IRC):
         grad_1 = self.mw_gradient
         energy_1 = self.energy
         grad_1_norm = np.linalg.norm(grad_1)
+        dir_1 = -grad_1 / grad_1_norm
 
-        # Determine bisector d
-        d = grad_0/grad_0_norm - grad_1/grad_1_norm
+        # Determine bisector d and normalized bisector vector D.
+        # d = grad_0/grad_0_norm - grad_1/grad_1_norm
+        d = -dir_0 + dir_1
         D = d / np.linalg.norm(d)
+        self.log("Determined bisector D")
 
         # Take a step along D
         step_2 = self.line_step_size * D
         mw_coords_2 = mw_coords_1 + step_2
         self.mw_coords = mw_coords_2
         energy_2 = self.energy
+        self.log(f"1st step along D\n\tenergy_2={energy_2:.6f} au")
         if energy_2 > energy_1:
             factor = 0.5
         else:
@@ -83,7 +95,9 @@ class IMKMod(IRC):
         step_3 = self.line_step_size * factor * D
         mw_coords_3 = mw_coords_1 + step_3
         self.mw_coords = mw_coords_3
+        self.log("Took 2nd step along bisector D")
         energy_3 = self.energy
+        self.log(f"2nd step along D\n\tenergy_3={energy_3:.6f} au")
         # x = (0, 1, factor)
         x = np.array((0, 1, factor)) * self.line_step_size
         y = (energy_1, energy_2, energy_3)
