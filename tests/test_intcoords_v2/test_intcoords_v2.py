@@ -62,7 +62,6 @@ def test_bmat_allene():
 def test_allene_opt():
     # geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
     geom = geom_loader("lib:08_allene.xyz", coord_type="redund")
-    int_ = geom.internal
 
     calc = PySCF(basis="321g", pal=2)
     geom.set_calculator(calc)
@@ -150,4 +149,4 @@ def test_molcas_lb():
     np.set_printoptions(precision=5)
     xyz_fn = "lib:08_allene.xyz"
     geom = geom_loader(xyz_fn, coord_type="redund_v2")
-    c3d = geom.coords3d
+    # c3d = geom.coords3d
