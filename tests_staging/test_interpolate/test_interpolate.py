@@ -73,10 +73,10 @@ def dlc_interpolate(initial, final, between=18):
     print("union of primitives", len(valid_bonds) + len(valid_bends) + len(valid_dihedrals))
 
     geom1 = Geometry(initial.atoms, initial.cart_coords,
-                     coord_type="redund", prim_indices=prim_indices
+                     coord_type="redund", coord_kwargs={"prim_indices": prim_indices,}
     )
     geom2 = Geometry(final.atoms, final.cart_coords,
-                     coord_type="redund", prim_indices=prim_indices
+                     coord_type="redund", coord_kwargs={"prim_indices": prim_indices,}
     )
 
     def update_internals(prev_internals, new_internals, bonds_bends, d):

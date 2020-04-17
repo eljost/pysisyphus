@@ -7,8 +7,6 @@
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844
 
-from collections import namedtuple
-from functools import reduce
 import itertools as it
 import logging
 import typing
@@ -21,7 +19,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Bend, Stretch, Torsion
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
-from pysisyphus.intcoords.findbonds import get_pair_covalent_radii, get_bond_sets
+from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
@@ -266,8 +264,6 @@ class RedundantCoords:
         dist_mat = squareform(cdm)
         interfragment_indices = list()
         for frag1, frag2 in it.combinations(fragments, 2):
-            arr1 = np.array(list(frag1))[None,:]
-            arr2 = np.array(list(frag2))[:,None]
             indices = [(i1, i2) for i1, i2 in it.product(frag1, frag2)]
             distances = np.array([dist_mat[ind] for ind in indices])
             min_index = indices[distances.argmin()]
@@ -287,7 +283,6 @@ class RedundantCoords:
                          if a.lower() == "h"]
         x_inds = [i for i, a in enumerate(self.atoms)
                   if a.lower() in "n o f p s cl".split()]
-        hydrogen_bond_inds = list()
         for h_ind, x_ind in it.product(hydrogen_inds, x_inds):
             as_set = set((h_ind, x_ind))
             if not as_set in tmp_sets:
@@ -567,7 +562,6 @@ class RedundantCoords:
         dihedral_diffs = internal_diffs[-len(dihedrals):]
         # Find differences that are shifted by 2*pi
         shifted_by_2pi = np.abs(np.abs(dihedral_diffs) - 2*np.pi) < np.pi/2
-        org = dihedral_diffs.copy()
         new_dihedrals = new_internals[-len(dihedrals):]
         new_dihedrals[shifted_by_2pi] -= 2*np.pi * np.sign(dihedral_diffs[shifted_by_2pi])
         new_internals[-len(dihedrals):] = new_dihedrals
