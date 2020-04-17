@@ -5,47 +5,12 @@
 # [2] https://reiher.ethz.ch/software/akira.html
 
 
-from math import sqrt
 import sys
 
 import numpy as np
 
-from pysisyphus.calculators.Turbomole import Turbomole
-from pysisyphus.helpers import geom_from_xyz_file, eigval_to_wavenumber
-
-
-class NormalMode:
-    """See http://gaussian.com/vib/"""
-
-    def __init__(self, l, masses):
-        """NormalMode class.
-
-        Cartesian displacements are normalized to 1.
-
-        Parameters
-        ----------
-        l : np.array
-            Cartesian, non-mass-weighted displacements.
-        masses : np.array
-            Atomic masses.
-        """
-
-        self.l = np.array(l)
-        self.l /= np.linalg.norm(l)
-        self.masses = masses
-        assert self.l.shape == self.masses.shape
-
-    @property
-    def red_mass(self):
-        return 1 / np.sum(np.square(self.l_mw) / self.masses)
-
-    def mw_norm_for_norm(self, norm=0.01):
-        return norm * sqrt(self.red_mass)
-
-    @property
-    def l_mw(self):
-        l_mw = self.l * np.sqrt(self.masses)
-        return l_mw / np.linalg.norm(l_mw)
+from pysisyphus.helpers import eigval_to_wavenumber
+from pysisyphus.modefollow.NormalMode import NormalMode
 
 
 def fin_diff(geom, b, step_size):
@@ -149,20 +114,4 @@ def davidson(geom, q, trial_step_size=0.01):
             print("Converged!")
             break
 
-    assert (nus[mode_ind] - 1748.21916159) < 1e-4
-
-
-def test():
-    geom = geom_from_xyz_file("/scratch/programme/pysisyphus/pysisyphus/tsoptimizers/coords.xyz")
-    control_path = "/scratch/programme/pysisyphus/pysisyphus/tsoptimizers/acet_tm"
-    geom.set_calculator(Turbomole(control_path=control_path))
-    l = np.zeros_like(geom.coords).reshape(-1, 3)
-    l[0][2] = 0.8
-    l[1][2] = -0.6
-    q = NormalMode(l.flatten(), geom.masses_rep)
-    
-    davidson(geom, q)
-
-
-if __name__ == "__main__":
-    test()
+    return nus, mode_ind

@@ -18,6 +18,7 @@ __all__ = [
     "XTB",
 ]
 
+
 from pysisyphus.calculators.AFIR import AFIR
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
