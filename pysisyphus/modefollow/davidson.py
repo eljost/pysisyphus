@@ -5,7 +5,7 @@
 # [2] https://reiher.ethz.ch/software/akira.html
 
 
-import sys
+from collections import namedtuple
 
 import numpy as np
 
@@ -21,21 +21,29 @@ def fin_diff(geom, b, step_size):
     return fd
 
 
-def davidson(geom, q, trial_step_size=0.01):
+DavidsonResult = namedtuple(
+                    "DavidsonResult",
+                    "cur_cycle nus mode_ind",
+)
+
+
+def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
+             res_rms_thresh=1e-4):
+    print("Using  preconditioner from supplied hessian")
     B_list = list()
     S_list = list()
     msqrt = np.sqrt(geom.masses_rep)
 
+    # Project out translation/rotation
     P = np.eye(geom.cart_coords.size)
     for vec in geom.get_trans_rot_vectors():
         P -= np.outer(vec, vec)
-
-    # Project out translation/rotation
     l_proj = P.dot(q.l_mw) / msqrt
     q = NormalMode(l_proj, geom.masses_rep)
-    b_prev = q.l_mw
 
-    for i in range(10):
+    b_prev = q.l_mw
+    for i in range(max_cycles):
+        print(f"Cycle {i:02d}")
         b = q.l_mw
         B_list.append(b)
         B = np.stack(B_list, axis=1)
@@ -82,7 +90,12 @@ def davidson(geom, q, trial_step_size=0.01):
         b_prev = approx_modes[mode_ind]
 
         # Construct new basis vector from residuum of selected mode
-        b = residues[mode_ind]
+        if hessian_precon is not None:
+            # Construct X
+            X = np.linalg.inv(hessian_precon - v[mode_ind] * np.eye(hessian_precon.shape[0]))
+            b = X.dot(residues[mode_ind])
+        else:
+            b = residues[mode_ind]
         # Project out translation and rotation from new mode guess
         b = P.dot(b)
         # Orthogonalize new mode against current basis vectors
@@ -109,9 +122,14 @@ def davidson(geom, q, trial_step_size=0.01):
             print(f"\t{j:02d}{sel_str} | {nu:> 16.2f} cm⁻¹ | {rms:.8f} | {mr:.8f}")
         print()
 
-        sys.stdout.flush()
-        if res_rms[mode_ind] < 1e-4:
+        if res_rms[mode_ind] < res_rms_thresh:
             print("Converged!")
             break
 
-    return nus, mode_ind
+    result = DavidsonResult(
+                cur_cycle=i,
+                nus=nus,
+                mode_ind=mode_ind,
+    )
+
+    return result
