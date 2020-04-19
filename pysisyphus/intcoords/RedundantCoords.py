@@ -521,11 +521,11 @@ class RedundantCoords:
             prim = cls(**prim_kwargs)
             primitives.append(prim)
 
-            # if linear:
-                # self.log(f"Created complement for Bend {inds}")
-                # prim_kwargs["complement"] = True
-                # prim = cls(**prim_kwargs)
-                # primitives.append(prim)
+            if linear:
+                self.log(f"Created complement for Bend {inds}")
+                prim_kwargs["complement"] = True
+                prim = cls(**prim_kwargs)
+                primitives.append(prim)
 
         # print()
         # for i, p in enumerate(primitives): print(i, p.indices)

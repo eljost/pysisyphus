@@ -22,19 +22,16 @@ class Bend(Primitive):
         u = u_dash / u_norm
         v = v_dash / v_norm
 
-        # Eq. (24) in [1]
-        uv_parallel = Bend.parallel(u, v)
         # Determine second vector for the cross product, to get an
-        # orthogonal direction.
+        # orthogonal direction. Eq. (24) in [1]
+        uv_parallel = Bend.parallel(u, v)
         if not uv_parallel:
             cross_vec = v
-        elif uv_parallel and not Bend.parallel(u, (1, -1, 1)):
+        elif not Bend.parallel(u, (1, -1, 1)):
             cross_vec = (1, -1, 1)
-        # elif not Bend.parallel(u, (1, 0, 0)) and (not Bend.parallel(v, (1, 0, 0))):
-            # cross_vec = (1, 0, 0)
         else:
             cross_vec = (-1, 1, 1)
-            # cross_vec = (0., 0., 1)
+
         w_dash = np.cross(u, cross_vec)
         w = w_dash / np.linalg.norm(w_dash)
 
@@ -44,10 +41,14 @@ class Bend(Primitive):
             angle_rad = np.arccos(u.dot(v))
 
         if gradient:
-            if complement:
-                # Create second vector, orthongal to w and u
+            # Use a second direction, orthogonal to the original
+            # orthogonal direction w.
+            if complement and (not uv_parallel):
+                w = -(u + v) / np.linalg.norm(u + v)
+            elif complement:
                 w = np.cross(u, w)
-            # print("pysis w", w)
+
+
             uxw = np.cross(u, w)
             wxv = np.cross(w, v)
 

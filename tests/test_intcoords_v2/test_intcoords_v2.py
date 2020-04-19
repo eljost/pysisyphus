@@ -124,7 +124,7 @@ def test_linear_bend_c4():
     lb = LinearBend(inds)
     _ = lb.calculate(c3d)
     __ = np.rad2deg(_)
-    print(_, __)
+    print("val=", _, "grad=", __)
     g, grad = lb.calculate(c3d, gradient=True)
     grad = grad.reshape(-1, 3)
     print(grad)
@@ -133,6 +133,7 @@ def test_linear_bend_c4():
     g16g = grad[list(inds)].reshape(-1, 1) #/ BOHR2ANG
     print(g16g)
 
+    # import pdb; pdb.set_trace()
     co = LinearBend(inds, complement=True)
     cv, cg = co.calculate(c3d, gradient=True)
     print("complement")

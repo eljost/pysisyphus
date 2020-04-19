@@ -22,18 +22,22 @@ class LinearBend(Primitive):
         u = u_dash / u_norm
         v = v_dash / v_norm
 
-        cross_vec = coords3d[p] - coords3d[o]
+        if not LinearBend.parallel(u, v):
+            cross_vec = v
+        else:
+            cross_vec = coords3d[p] - coords3d[o]
         w_dash = np.cross(u, cross_vec)
-        if complement:
-            # import pdb; pdb.set_trace()
-            w_dash = -np.cross(u, w_dash)
-            print("uw comp", u.dot(w_dash))
-            print("vw comp", v.dot(w_dash))
         w = w_dash / np.linalg.norm(w_dash)
 
-        angle_rad = np.arccos(u.dot(w)) + np.arccos(w.dot(v))
+        if complement:
+            angle_rad = np.arccos(u.dot(w)) + np.arccos(w.dot(v))
+        else:
+            angle_rad = np.arccos(u.dot(v))
 
         if gradient:
+            if complement:
+                w = np.cross(u, w)
+
             uxw = np.cross(u, w)
             wxv = np.cross(w, v)
 
