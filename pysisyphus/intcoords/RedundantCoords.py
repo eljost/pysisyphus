@@ -514,7 +514,7 @@ class RedundantCoords:
                 and sum(self.bond_matrix[inds[1]]) < 5
             )
             if linear:
-                self.log(f"Bend {inds}={np.rad2deg(val):.1f}° (is close) to linear. "
+                self.log(f"Bend {inds}={np.rad2deg(val):.1f}° is (close to) linear. "
                           "Creating linear bend & complement.")
                 # Create LinearBend instead of regular Bend
                 cls = LinearBend
