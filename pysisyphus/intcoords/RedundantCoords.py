@@ -17,7 +17,7 @@ from scipy.spatial.distance import squareform
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
-from pysisyphus.intcoords import Bend, Stretch, Torsion
+from pysisyphus.intcoords import Bend, LinearBend, Stretch, Torsion
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.intcoords.fragments import merge_fragments
@@ -485,6 +485,7 @@ class RedundantCoords:
         classes = {
             2: Stretch,
             3: Bend,
+            # 3: LinearBend,  # Will be handled explicitly
             4: Torsion,
         }
 
@@ -515,7 +516,8 @@ class RedundantCoords:
             if linear:
                 self.log(f"Bend {inds}={np.rad2deg(val):.1f}° (is close) to linear. "
                           "Creating linear bend & complement.")
-                prim_kwargs["linear"] = linear
+                # Create LinearBend instead of regular Bend
+                cls = LinearBend
 
             # Create primitive coordinate and append
             prim = cls(**prim_kwargs)
