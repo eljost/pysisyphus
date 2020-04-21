@@ -38,7 +38,7 @@ class RedundantCoords:
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
                  prim_indices=None, define_prims=None, bonds_only=False,
-                 check_bends=True, linear_bend_deg=170):
+                 check_bends=True, linear_bend_deg=170, make_complement=True):
         """Redundant internal coordinate handling.
 
         Parameters
@@ -76,6 +76,7 @@ class RedundantCoords:
         self.check_bends = check_bends
 
         self.linear_bend_deg = float(linear_bend_deg)
+        self.make_complement = bool(make_complement)
 
         self.stretch_indices = list()
         self.bend_indices = list()
@@ -515,13 +516,12 @@ class RedundantCoords:
                 self.log(f"Bend {inds}={np.rad2deg(val):.1f}° (is close) to linear. "
                           "Creating linear bend & complement.")
                 prim_kwargs["linear"] = linear
-                print("Check no. of bonds to see if linear bend is really needed!")
 
             # Create primitive coordinate and append
             prim = cls(**prim_kwargs)
             primitives.append(prim)
 
-            if linear:
+            if linear and self.make_complement:
                 self.log(f"Created complement for Bend {inds}")
                 prim_kwargs["complement"] = True
                 prim = cls(**prim_kwargs)
