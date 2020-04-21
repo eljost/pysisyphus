@@ -14,7 +14,6 @@ from pysisyphus.testing import using
 
 
 THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
-# init_logging()
 
 
 @pytest.mark.parametrize(
@@ -35,8 +34,6 @@ THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
             1691.052689, 3, 1691.005160, 7, marks=using("xtb")),
         pytest.param(
             PySCF, {"basis": "321g",},
-            # 1889.207638, 16, 1889.030654, 16, marks=using("pyscf")),
-            # 1889.2027727, 16, 1889.012645, 16, marks=using("pyscf")),
             1889.2027727, 16, 1888.9849030442317, 16, marks=using("pyscf")),
     ],
 )
@@ -63,7 +60,7 @@ def test_davidson_acet(precon, calc_cls, calc_kwargs,
         # precon_geom.set_calculator(precon_calc)
         # hessian_precon = precon_geom.eckart_projection(precon_geom.mw_hessian)
         # np.savetxt("hessian_precon", hessian_precon)
-        hessian_precon = np.loadtxt("hessian_precon")
+        hessian_precon = np.loadtxt(THIS_DIR / "hessian_precon")
     else:
         hessian_precon = None
 
