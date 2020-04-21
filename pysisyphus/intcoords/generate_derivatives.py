@@ -165,9 +165,9 @@ def generate_wilson():
         return derivs_lb
 
     funcs = (
-        # bond,
-        # bend,
-        # dihedral,
+        bond,
+        bend,
+        dihedral,
         linear_bend,
     )
     derivs = [f() for f in funcs]
