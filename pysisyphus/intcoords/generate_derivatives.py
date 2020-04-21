@@ -6,6 +6,7 @@
 # [2] https://doi.org/10.1002/(SICI)1096-987X(19960115)17:1<49::AID-JCC5>3.0.CO;2-0
 
 from collections import namedtuple
+import itertools as it
 import random
 import string
 import textwrap
@@ -31,6 +32,8 @@ def make_py_func(exprs, args=None, name=None, comment=""):
         name = "func_" + "".join([random.choice(string.ascii_letters)
                                   for i in range(8)])
 
+    if len(exprs.shape) == 2:
+        exprs = it.chain(*exprs)
     repls, reduced = cse(list(exprs))
 
     assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
@@ -91,57 +94,87 @@ def generate_wilson():
     O = Sys.origin.locate_new("O", o0*Sys.i + o1*Sys.j + o2*Sys.k)
     P = Sys.origin.locate_new("P", p0*Sys.i + p1*Sys.j + p2*Sys.k)
 
-    # Bond/Stretch
-    U = M.position_wrt(N)
-    q_b = U.magnitude()
-    dx_b = (m0, m1, m2, n0, n1, n2)
-    args_b = "m0, m1, m2, n0, n1, n2"
-    derivs_b = make_deriv_funcs(q_b, dx_b, args_b,
-                                ("dq_b", "d2q_b"),
-                                ("Stretch, first derivative wrt. cartesians",
-                                 "Stretch, 2nd derivative wrt. cartesians",)
-    )
-    print(derivs_b.f1)
-    print(derivs_b.f2)
+    def bond():
+        # Bond/Stretch
+        U = M.position_wrt(N)
+        q_b = U.magnitude()
+        dx_b = (m0, m1, m2, n0, n1, n2)
+        args_b = "m0, m1, m2, n0, n1, n2"
+        derivs_b = make_deriv_funcs(q_b, dx_b, args_b,
+                                    ("dq_b", "d2q_b"),
+                                    ("Stretch, first derivative wrt. cartesians",
+                                     "Stretch, 2nd derivative wrt. cartesians",)
+        )
+        print(derivs_b.f1)
+        print(derivs_b.f2)
+        return derivs_b
 
-    # Bend/Angle
-    U = M.position_wrt(O)
-    V = N.position_wrt(O)
-    q_a = sym.acos(U.dot(V) / (U.magnitude() * V.magnitude()))
-    dx_a = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
-    args_a = "m0, m1, m2, o0, o1, o2, n0, n1, n2"
-    derivs_a = make_deriv_funcs(q_a, dx_a, args_a,
-                                ("dq_a", "d2q_a"),
-                                ("Bend, first derivative wrt. cartesians",
-                                 "Bend, 2nd derivative wrt. cartesians",)
-    )
-    print(derivs_a.f1)
-    print(derivs_a.f2)
+    def bend():
+        # Bend/Angle
+        U = M.position_wrt(O)
+        V = N.position_wrt(O)
+        q_a = sym.acos(U.dot(V) / (U.magnitude() * V.magnitude()))
+        dx_a = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
+        args_a = "m0, m1, m2, o0, o1, o2, n0, n1, n2"
+        derivs_a = make_deriv_funcs(q_a, dx_a, args_a,
+                                    ("dq_a", "d2q_a"),
+                                    ("Bend, first derivative wrt. cartesians",
+                                     "Bend, 2nd derivative wrt. cartesians",)
+        )
+        print(derivs_a.f1)
+        print(derivs_a.f2)
+        return derivs_a
 
-    # Dihedral/Torsion
-    U = M.position_wrt(O)
-    V = N.position_wrt(P)
-    W = P.position_wrt(O)
-    U_ = U.normalize()
-    W_ = W.normalize()
-    V_ = V.normalize()
-    phi_u = sym.acos(U_.dot(W_))
-    phi_v = sym.acos(-W_.dot(V_))
-    q_d = sym.acos(U_.cross(W_).dot(V_.cross(W_))/(sym.sin(phi_u)*sym.sin(phi_v)))
-    dx_d = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
-    args_d = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
-    derivs_d = make_deriv_funcs(q_d, dx_d, args_d,
-                                ("dq_d", "d2q_d"),
-                                ("Torsion, first derivative wrt. cartesians",
-                                 "Torsion, 2nd derivative wrt. cartesians",)
-    )
-    print(derivs_d.f1)
-    print(derivs_d.f2)
+    def dihedral():
+        # Dihedral/Torsion
+        U = M.position_wrt(O)
+        V = N.position_wrt(P)
+        W = P.position_wrt(O)
+        U_ = U.normalize()
+        W_ = W.normalize()
+        V_ = V.normalize()
+        phi_u = sym.acos(U_.dot(W_))
+        phi_v = sym.acos(-W_.dot(V_))
+        q_d = sym.acos(U_.cross(W_).dot(V_.cross(W_))/(sym.sin(phi_u)*sym.sin(phi_v)))
+        dx_d = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
+        args_d = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
+        derivs_d = make_deriv_funcs(q_d, dx_d, args_d,
+                                    ("dq_d", "d2q_d"),
+                                    ("Torsion, first derivative wrt. cartesians",
+                                     "Torsion, 2nd derivative wrt. cartesians",)
+        )
+        print(derivs_d.f1)
+        print(derivs_d.f2)
+        return derivs_d
 
+    def linear_bend():
+        # Linear Bend
+        U = M.position_wrt(O)
+        V = N.position_wrt(O)
+        W = P.position_wrt(Sys)
+        q_lb = W.dot(U.cross(V)) / (U.magnitude() * V.magnitude())
+        dx_lb = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
+        args_lb = "m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2"
+        derivs_lb = make_deriv_funcs(q_lb, dx_lb, args_lb,
+                                    ("dq_lb", "d2q_lb"),
+                                    ("Linear Bend, first derivative wrt. cartesians",
+                                     "Linear Bend, 2nd derivative wrt. cartesians",)
+        )
+        print(derivs_lb.f1)
+        print(derivs_lb.f2)
+        return derivs_lb
+
+    funcs = (
+        # bond,
+        # bend,
+        # dihedral,
+        linear_bend,
+    )
+    derivs = [f() for f in funcs]
     out_fn = "derivatives.py"
     with open(out_fn, "w") as handle:
-        handle.write("from math import sqrt\n\nimport numpy as np\n\n\n")
-        for d in (derivs_b, derivs_a, derivs_d):
+        handle.write("import math\n\nimport numpy as np\n\n\n")
+        for d in derivs:
             handle.write(d.f1 + "\n\n\n")
             handle.write(d.f2 + "\n\n\n")
 
