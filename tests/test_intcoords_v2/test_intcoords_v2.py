@@ -1,9 +1,10 @@
 import numpy as np
 import pytest
 
+from pysisyphus.calculators import XTB
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
-from pysisyphus.intcoords import Stretch, Bend, Torsion
+from pysisyphus.intcoords import Bend, LinearBend, Stretch, Bend, Torsion
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
@@ -87,7 +88,7 @@ def test_linear_bend_allene():
     c3d = geom.coords3d
 
     from pysisyphus.intcoords.LinearBend import LinearBend
-    inds = (0, 3, 4, 1)
+    inds = (0, 3, 4)# 1)
     lb = LinearBend(inds)
     _ = lb.calculate(c3d)
     __ = np.rad2deg(_)
@@ -120,7 +121,7 @@ def test_linear_bend_c4():
     c3d = geom.coords3d
 
     from pysisyphus.intcoords.LinearBend import LinearBend
-    inds = (0, 1, 2, 3)
+    inds = (0, 1, 2)
     lb = LinearBend(inds)
     _ = lb.calculate(c3d)
     __ = np.rad2deg(_)
@@ -151,3 +152,104 @@ def test_molcas_lb():
     xyz_fn = "lib:08_allene.xyz"
     geom = geom_loader(xyz_fn, coord_type="redund_v2")
     # c3d = geom.coords3d
+
+
+@using("xtb")
+@pytest.mark.parametrize(
+    "make_complement", [
+        True,
+        False
+    ]
+)
+@pytest.mark.parametrize(
+    "fn", [
+        "lib:co2_bent.xyz",
+        "lib:h2o.xyz",
+    ]
+)
+def test_complement(make_complement, fn):
+    coord_kwargs = {
+        "make_complement": make_complement,
+    }
+    geom = geom_loader(fn, coord_type="redund_v2",
+                       coord_kwargs=coord_kwargs,
+    )
+    int_ = geom.internal
+    prims = int_._primitives
+    # List primitives
+    for pi in prims:
+        print(pi)
+    print()
+
+    if make_complement and (len(prims) == 5):
+        lb = prims[3]
+        comp = prims[4]
+        c3d = geom.coords3d
+        # Gradients
+        _, lbg = lb.calculate(c3d, gradient=True)
+        lbg = lbg.reshape(-1, 3)
+        _, cg = comp.calculate(c3d, gradient=True)
+        cg = cg.reshape(-1, 3)
+
+        for pi in (lb, comp):
+            q, grad = pi.calculate(c3d, gradient=True)
+            print(pi)
+            print(q)
+            print(grad)
+    geom.set_calculator(XTB())
+
+    opt_kwargs = {
+        "thresh": "gau_loose",
+        "dump": True,
+        "line_search": False,
+        "gdiis": False,
+        # "max_cycles": 15,
+        "max_cycles": 11,
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
+    opt.run()
+
+    print()
+
+
+def test_derivs():
+    coord_kwargs = {
+        "make_complement": True,
+    }
+    fn = "lib:co2_bent.xyz"
+    # fn = "lib:co2.xyz"
+    geom = geom_loader(fn, coord_type="redund_v2",
+                       coord_kwargs=coord_kwargs,
+    )
+    int_ = geom.internal
+    prims = int_._primitives
+
+
+    c3d = geom.coords3d
+    indices = (1, 0, 2)
+    slb = LinearBend(indices)
+    lb, glb = slb.calculate(c3d, gradient=True)
+    clb = LinearBend(indices, complement=True)
+    cb, gcb = clb.calculate(c3d, gradient=True)
+
+    return
+    # List primitives
+    for pi in prims:
+        print(pi)
+    print()
+
+    if make_complement and (len(prims) == 5):
+        lb = prims[3]
+        comp = prims[4]
+        c3d = geom.coords3d
+        # Gradients
+        _, lbg = lb.calculate(c3d, gradient=True)
+        lbg = lbg.reshape(-1, 3)
+        _, cg = comp.calculate(c3d, gradient=True)
+        cg = cg.reshape(-1, 3)
+
+        for pi in (lb, comp):
+            q, grad = pi.calculate(c3d, gradient=True)
+            print(pi)
+            print(q)
+            print(grad)
