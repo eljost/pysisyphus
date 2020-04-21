@@ -498,13 +498,6 @@ class RedundantCoords:
             cls = classes[len(inds)]
             val = cls._calculate(coords3d, inds)
 
-            # print(inds, val)
-            # if len(inds) == 3:
-                # print("bend",  inds)
-                # print("\tcentral atom", inds[1])
-                # print("\tbonds", sum(self.bond_matrix[inds[1]]))
-                # print()
-
             # Check for linear angles
             linear = (
                 len(inds) == 3
@@ -529,9 +522,9 @@ class RedundantCoords:
                 prim = cls(**prim_kwargs)
                 primitives.append(prim)
 
-        # print()
-        # for i, p in enumerate(primitives): print(i, p.indices)
-        # print()
+        self.log("Defined primitives")
+        for i, p in enumerate(primitives):
+            self.log(f"\t{i}: {p.indices}")
         return primitives
 
     def calculate(self, coords, attr=None):
