@@ -32,13 +32,14 @@ THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
             # 1691.888 cm⁻¹ from XTB itself
             XTB, {},
             1691.052689, 3, 1691.005160, 7, marks=using("xtb")),
-        pytest.param(
-            PySCF, {"basis": "321g",},
-            1889.2027727, 16, 1888.9849030442317, 16, marks=using("pyscf")),
+        # pytest.param(
+            # PySCF, {"basis": "321g",},
+            # 1889.2027727, 16, 1888.9849030442317, 16, marks=using("pyscf")),
     ],
 )
 def test_davidson_acet(precon, calc_cls, calc_kwargs,
-                       ref_nu, ref_cyc, ref_nu_pre, ref_cyc_pre):
+                       # ref_nu, ref_cyc, ref_nu_pre, ref_cyc_pre):
+                       ref_nu_pre, ref_cyc_pre, ref_nu, ref_cyc):
     geom = geom_loader("lib:acet_tm.xyz")
 
     calc_kwargs.update({
@@ -70,7 +71,8 @@ def test_davidson_acet(precon, calc_cls, calc_kwargs,
     result = davidson(geom, q, **davidson_kwargs)
 
     nu = result.nus[result.mode_ind]
-    print(nu)
+    print("nu", nu)
+    print("cur_cycle", result.cur_cycle)
 
     ref_cycles = ref_cyc_pre if precon else ref_cyc
     nu_ref = ref_nu_pre if precon else ref_nu
