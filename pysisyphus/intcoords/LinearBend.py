@@ -3,6 +3,14 @@ import numpy as np
 from pysisyphus.intcoords.derivatives import dq_lb
 from pysisyphus.intcoords.Primitive import Primitive
 
+# [1] 10.1080/00268977200102361
+#     Hoy, 1972
+# [2] 10.1063/1.474377
+#     Chuang, 1997
+# [3] 10.1063/1.468630
+#     Jackels, 1995
+# Refs. [2] and [3] give a short discussion of the linear bends.
+
 
 class LinearBend(Primitive):
 
