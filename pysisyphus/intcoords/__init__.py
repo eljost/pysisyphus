@@ -1,4 +1,5 @@
 from pysisyphus.intcoords.Bend import Bend
+from pysisyphus.intcoords.LinearBend import LinearBend
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.intcoords.Torsion import Torsion
 
