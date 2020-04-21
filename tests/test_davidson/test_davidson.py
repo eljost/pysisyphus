@@ -14,7 +14,6 @@ from pysisyphus.testing import using
 
 
 THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
-# init_logging()
 
 
 @pytest.mark.parametrize(
@@ -63,7 +62,7 @@ def test_davidson_acet(precon, calc_cls, calc_kwargs,
         # precon_geom.set_calculator(precon_calc)
         # hessian_precon = precon_geom.eckart_projection(precon_geom.mw_hessian)
         # np.savetxt("hessian_precon", hessian_precon)
-        hessian_precon = np.loadtxt("hessian_precon")
+        hessian_precon = np.loadtxt(THIS_DIR / "hessian_precon")
     else:
         hessian_precon = None
 
