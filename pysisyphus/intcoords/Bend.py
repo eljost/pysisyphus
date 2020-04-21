@@ -52,4 +52,4 @@ class Bend(Primitive):
         return angle_rad
 
     def __str__(self):
-        return f"Bend({tuple(self.indices)}")
+        return f"Bend({tuple(self.indices)}"
