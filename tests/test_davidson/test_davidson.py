@@ -34,8 +34,6 @@ THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
             1691.052689, 3, 1691.005160, 7, marks=using("xtb")),
         pytest.param(
             PySCF, {"basis": "321g",},
-            # 1889.207638, 16, 1889.030654, 16, marks=using("pyscf")),
-            # 1889.2027727, 16, 1889.012645, 16, marks=using("pyscf")),
             1889.2027727, 16, 1888.9849030442317, 16, marks=using("pyscf")),
     ],
 )
