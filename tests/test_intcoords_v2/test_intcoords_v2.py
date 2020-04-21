@@ -238,7 +238,7 @@ def test_derivs():
         print(pi)
     print()
 
-    if make_complement and (len(prims) == 5):
+    if len(prims) == 5):
         lb = prims[3]
         comp = prims[4]
         c3d = geom.coords3d
