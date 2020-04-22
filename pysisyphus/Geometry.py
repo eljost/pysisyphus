@@ -1,6 +1,7 @@
 from collections import Counter, namedtuple
 import subprocess
 import tempfile
+import sys
 
 import numpy as np
 from scipy.spatial.distance import pdist
@@ -9,6 +10,7 @@ import rmsd
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
 from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
@@ -20,12 +22,12 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
+        "redund_v2": RedundantCoordsV2,
         "dlc": DLC,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart", comment="",
-                 prim_indices=None, define_prims=None, bond_factor=1.3,
-                 check_bends=True):
+    def __init__(self, atoms, coords, coord_type="cart", coord_kwargs=None,
+                 comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -42,21 +44,11 @@ class Geometry:
         coord_type : {"cart", "redund"}, optional
             Type of coordinate system to use. Right now cartesian (cart)
             and redundand (redund) are supported.
+        coord_kwargs : dict, optional
+            Dictionary containing additional arguments that get passed
+            to the constructor of the internal coordinate class.
         comment : str, optional
             Comment string.
-        prim_indices : iterable of shape (3, (bonds, bends, dihedrals))
-            Iterable containing definitions for primitive internal coordinates.
-            Three items are expected in the iterable: the first one should
-            contain integer pairs, defining bonds between atoms, the next one
-            should contain integer triples containing bends, and finally
-            integer quadrupel for dihedrals.
-        define_prims : list of lists, optional
-            Define additional primitives.
-        bond_factor : float, default=1.3
-            Scaling factor of the the pair covalent radii used for bond detection.
-        check_bends : bool, default=True
-            Whether to check for invalid bends. If disabled these bends will
-            be defined nonetheless.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
@@ -66,19 +58,15 @@ class Geometry:
             f"{self._coords.size}. Did you accidentally supply internal " \
              "coordinates?"
 
-        if (prim_indices is not None) and coord_type == "cart":
-            coord_type = "redund"
-            print("coord_type is set to 'cart' but primitive indices were "
-                  "provided. Using 'redund' coord_type.")
+        if (coord_kwargs is not None) and coord_type == "cart":
+            print("coord_type is set to 'cart' but coord_kwargs were given. "
+                  "This is probably not intended. Exiting!")
+            sys.exit()
         self.coord_type = coord_type
+        coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            self.internal = coord_class(atoms, self._coords,
-                                        prim_indices=prim_indices,
-                                        define_prims=define_prims,
-                                        bond_factor=bond_factor,
-                                        check_bends=check_bends,
-            )
+            self.internal = coord_class(atoms, self._coords, **coord_kwargs)
         else:
             self.internal = None
         self.comment = comment
@@ -123,7 +111,7 @@ class Geometry:
         self.assert_compatibility(other)
         if self.coord_type == "cart":
             diff = self.coords - other.coords
-        elif self.coord_type in ("redund", "dlc"):
+        elif self.coord_type in ("redund", "redund_v2", "dlc"):
             # Take periodicity of dihedrals into account by calling
             # get_tangent(). Care has to be taken regarding the orientation
             # of the returned tangent vector. It points from self to other.
@@ -159,11 +147,19 @@ class Geometry:
         """
         if coord_type is None:
             coord_type = self.coord_type
-        prim_indices = None
+
+        # Geometry constructor will exit when coord_kwargs are given
+        # with coord_type == 'cart'. So we only supply it when we are
+        # NOT using cartesian coordinates.
+        coord_kwargs = None
         if coord_type != "cart":
-            prim_indices = self.internal.prim_indices
-        return Geometry(self.atoms, self._coords, coord_type=coord_type,
-                        prim_indices=prim_indices, check_bends=check_bends)
+            coord_kwargs={"prim_indices": self.internal.prim_indices,
+                          "check_bends": check_bends,
+            }
+        return Geometry(self.atoms, self._coords,
+                        coord_type=coord_type,
+                        coord_kwargs=coord_kwargs,
+        )
 
     def copy_all(self, coord_type=None, check_bends=True):
         new_geom = self.copy(coord_type, check_bends)

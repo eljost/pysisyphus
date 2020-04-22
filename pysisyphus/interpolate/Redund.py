@@ -28,10 +28,12 @@ class Redund(Interpolator):
         print("Union of primitives: ", union_length)
 
         geom1 = Geometry(initial_geom.atoms, initial_geom.cart_coords,
-                         coord_type="redund", prim_indices=prim_indices
+                         coord_type="redund",
+                         coord_kwargs={"prim_indices": prim_indices,},
         )
         geom2 = Geometry(final_geom.atoms, final_geom.cart_coords,
-                         coord_type="redund", prim_indices=prim_indices
+                         coord_type="redund",
+                         coord_kwargs={"prim_indices": prim_indices,},
         )
 
         dihed_start = geom1.internal.dihed_start

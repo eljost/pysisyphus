@@ -5,47 +5,12 @@
 # [2] https://reiher.ethz.ch/software/akira.html
 
 
-from math import sqrt
-import sys
+from collections import namedtuple
 
 import numpy as np
 
-from pysisyphus.calculators.Turbomole import Turbomole
-from pysisyphus.helpers import geom_from_xyz_file, eigval_to_wavenumber
-
-
-class NormalMode:
-    """See http://gaussian.com/vib/"""
-
-    def __init__(self, l, masses):
-        """NormalMode class.
-
-        Cartesian displacements are normalized to 1.
-
-        Parameters
-        ----------
-        l : np.array
-            Cartesian, non-mass-weighted displacements.
-        masses : np.array
-            Atomic masses.
-        """
-
-        self.l = np.array(l)
-        self.l /= np.linalg.norm(l)
-        self.masses = masses
-        assert self.l.shape == self.masses.shape
-
-    @property
-    def red_mass(self):
-        return 1 / np.sum(np.square(self.l_mw) / self.masses)
-
-    def mw_norm_for_norm(self, norm=0.01):
-        return norm * sqrt(self.red_mass)
-
-    @property
-    def l_mw(self):
-        l_mw = self.l * np.sqrt(self.masses)
-        return l_mw / np.linalg.norm(l_mw)
+from pysisyphus.helpers import eigval_to_wavenumber
+from pysisyphus.modefollow.NormalMode import NormalMode
 
 
 def fin_diff(geom, b, step_size):
@@ -56,21 +21,29 @@ def fin_diff(geom, b, step_size):
     return fd
 
 
-def davidson(geom, q, trial_step_size=0.01):
+DavidsonResult = namedtuple(
+                    "DavidsonResult",
+                    "cur_cycle nus mode_ind",
+)
+
+
+def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
+             res_rms_thresh=1e-4):
+    print("Using  preconditioner from supplied hessian")
     B_list = list()
     S_list = list()
     msqrt = np.sqrt(geom.masses_rep)
 
+    # Project out translation/rotation
     P = np.eye(geom.cart_coords.size)
     for vec in geom.get_trans_rot_vectors():
         P -= np.outer(vec, vec)
-
-    # Project out translation/rotation
     l_proj = P.dot(q.l_mw) / msqrt
     q = NormalMode(l_proj, geom.masses_rep)
-    b_prev = q.l_mw
 
-    for i in range(10):
+    b_prev = q.l_mw
+    for i in range(max_cycles):
+        print(f"Cycle {i:02d}")
         b = q.l_mw
         B_list.append(b)
         B = np.stack(B_list, axis=1)
@@ -117,7 +90,12 @@ def davidson(geom, q, trial_step_size=0.01):
         b_prev = approx_modes[mode_ind]
 
         # Construct new basis vector from residuum of selected mode
-        b = residues[mode_ind]
+        if hessian_precon is not None:
+            # Construct X
+            X = np.linalg.inv(hessian_precon - v[mode_ind] * np.eye(hessian_precon.shape[0]))
+            b = X.dot(residues[mode_ind])
+        else:
+            b = residues[mode_ind]
         # Project out translation and rotation from new mode guess
         b = P.dot(b)
         # Orthogonalize new mode against current basis vectors
@@ -144,25 +122,14 @@ def davidson(geom, q, trial_step_size=0.01):
             print(f"\t{j:02d}{sel_str} | {nu:> 16.2f} cm⁻¹ | {rms:.8f} | {mr:.8f}")
         print()
 
-        sys.stdout.flush()
-        if res_rms[mode_ind] < 1e-4:
+        if res_rms[mode_ind] < res_rms_thresh:
             print("Converged!")
             break
 
-    assert (nus[mode_ind] - 1748.21916159) < 1e-4
+    result = DavidsonResult(
+                cur_cycle=i,
+                nus=nus,
+                mode_ind=mode_ind,
+    )
 
-
-def test():
-    geom = geom_from_xyz_file("/scratch/programme/pysisyphus/pysisyphus/tsoptimizers/coords.xyz")
-    control_path = "/scratch/programme/pysisyphus/pysisyphus/tsoptimizers/acet_tm"
-    geom.set_calculator(Turbomole(control_path=control_path))
-    l = np.zeros_like(geom.coords).reshape(-1, 3)
-    l[0][2] = 0.8
-    l[1][2] = -0.6
-    q = NormalMode(l.flatten(), geom.masses_rep)
-    
-    davidson(geom, q)
-
-
-if __name__ == "__main__":
-    test()
+    return result

@@ -41,7 +41,7 @@ def parse_turbo_gradient(path):
     ))
 
     parser = (
-        pp.Literal("$grad") + pp.Optional(cart_grads) +
+        pp.Or((pp.Literal("$grad"), pp.Literal("$gradient"))) + pp.Optional(cart_grads) +
         pp.Literal("cycle =") + cycle +
         energy_type + pp.Literal("=") + scf_energy +
         pp.Literal("|dE/dxyz| =") + grad_norm +

@@ -14,54 +14,70 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file
+from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
 THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 
 
-def geom_from_xyz_file(xyz_fn, **kwargs):
+def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
+    kwargs = {
+        "coord_type": coord_type,
+    }
+    kwargs.update(coord_kwargs)
     xyz_fn = str(xyz_fn)
     if xyz_fn.startswith("lib:"):
         # Drop lib: part
         return geom_from_library(xyz_fn[4:], **kwargs)
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
     coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten(), comment=comment, **kwargs)
+    geom = Geometry(atoms, coords.flatten(),
+                    comment=comment,
+                    **kwargs,
+    )
     return geom
 
 
-def geoms_from_trj(trj_fn, first=None, **kwargs):
+def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     trj_fn = str(trj_fn)
+    kwargs = {
+        "coord_type": coord_type,
+    }
+    kwargs.update(coord_kwargs)
     if trj_fn.startswith("lib:"):
         # Drop lib: part
         return geom_from_library(trj_fn[4:], **kwargs)[:first]
     atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
-    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR, comment=comment, **kwargs)
+    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR,
+                      comment=comment,
+                      **kwargs
+             )
              for atoms, coords, comment in atoms_coords_comments
     ]
     return geoms
 
 
-def geom_from_library(xyz_fn, **kwargs):
-    xyz_dir = THIS_DIR / "../xyz_files/"
-    xyz_fn = xyz_dir / xyz_fn
-    if xyz_fn.suffix == ".xyz":
-        return geom_from_xyz_file(xyz_fn, **kwargs)
-    elif xyz_fn.suffix == ".trj":
-        return geoms_from_trj(xyz_fn, **kwargs)
-    else:
-        raise Exception("Unknown filetype!")
-
-
-def geom_loader(fn, **kwargs):
+def geom_loader(fn, coord_type="cart", **coord_kwargs):
     fn = str(fn)
+    kwargs = {
+        "coord_type": coord_type,
+    }
+    kwargs.update(coord_kwargs)
     if fn.endswith(".xyz"):
         return geom_from_xyz_file(fn, **kwargs)
     elif fn.endswith(".trj"):
         return geoms_from_trj(fn, **kwargs)
     else:
         raise Exception("Unknown filetype!")
+
+
+def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
+    xyz_dir = THIS_DIR / "../xyz_files/"
+    xyz_fn = xyz_dir / xyz_fn
+    return geom_loader(xyz_fn,
+                       coord_type=coord_type,
+                       **coord_kwargs,
+    )
 
 
 def get_baker_geoms(**kwargs):
@@ -507,3 +523,16 @@ def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
     barrier = (ref_energy - comp_energy) * AU2KJPERMOL
     print(f"\tBarrier between {ref_str} and {comp_str} and : {barrier:.1f} kJ mol⁻¹")
     return barrier
+
+
+def get_tangent_trj_str(atoms, coords, tangent, points=10, displ=None):
+    if displ is None:
+        # Linear equation. Will give displ~3 for 30 atoms and
+        # displ ~ 1 for 3 atoms.
+        displ = 2/27 * len(atoms) + 0.78
+    step_sizes = np.linspace(-displ, displ, 2*points + 1)
+    steps = step_sizes[:,None] * tangent
+    trj_coords = coords[None,:] + steps
+    trj_coords = trj_coords.reshape(step_sizes.size, -1, 3) / ANG2BOHR
+    trj_str = make_trj_str(atoms, trj_coords)
+    return trj_str

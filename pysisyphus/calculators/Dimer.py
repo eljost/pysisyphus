@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import numpy as np
 
@@ -6,7 +7,7 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.linalg import perp_comp, make_unit_vec
 from pysisyphus.optimizers.closures import small_lbfgs_closure
 from pysisyphus.optimizers.restrict_step import get_scale_max
-from pysisyphus.helpers import rms
+from pysisyphus.helpers import rms, get_tangent_trj_str
 
 
 class RotationConverged(Exception):
@@ -47,7 +48,8 @@ class Dimer(Calculator):
                  rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
                  rotation_max_element=0.001, rotation_interpolate=True,
                  rotation_disable=False, bonds=None, bias_rotation=False,
-                 bias_translation=False, bias_gaussian_dot=0.1, seed=None, **kwargs):
+                 bias_translation=False, bias_gaussian_dot=0.1, seed=None,
+                 write_orientations=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -83,6 +85,8 @@ class Dimer(Calculator):
         self.bias_translation = bool(bias_translation)
         self.bias_gaussian_dot = float(bias_gaussian_dot)
 
+        self.write_orientations = write_orientations
+
         restrict_steps = {
             "direct": get_scale_max(self.rotation_max_element),
             "fourier": None,
@@ -101,8 +105,14 @@ class Dimer(Calculator):
         # Set dimer direction if given
         self.N_raw = N_raw
         if self.N_raw is not None:
-            self.log("Setting initial orientation from given 'N_raw'.")
+            msg = "Setting initial orientation from given 'N_raw'"
+            if isinstance(self.N_raw, str) and Path(self.N_raw).exists():
+                fn = self.N_raw
+                self.N_raw = np.loadtxt(fn)
+                msg = f"Read initial orientation from file '{fn}'"
+                N_raw = self.N_raw.copy()
             self.N = N_raw
+            self.log(msg)
         self.N_init = None
 
         if seed is not None:
@@ -513,6 +523,17 @@ class Dimer(Calculator):
 
         N = self.N
         self.log(f"Orientation N:\n\t{N}")
+        # Save orientation N in human-readable format, aka .trj
+        # file in Angstrom.
+        if self.write_orientations:
+            trj_str = get_tangent_trj_str(atoms, coords, N)
+            trj_fn = self.make_fn("N.trj")
+            with open(trj_fn, "w") as handle:
+                handle.write(trj_str)
+            self.log(f"Wrote current orientation animation to '{trj_fn}'")
+        # Always save orientation in Bohr
+        N_fn = self.make_fn("N")
+        np.savetxt(N_fn, N)
 
         energy = self.energy0
         self.log(f"\tenergy={self.energy0:.8f} au")

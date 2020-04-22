@@ -203,6 +203,34 @@ class IRC:
         self.log("")
         return step
 
+    def get_conv_fact(self, mw_grad, min_fact=2.):
+        # Numerical integration of differential equations requires a step length and/or
+        # we have to terminate the integration at some point, e.g. when the desired
+        # step length is reached. IRCs are integrated in mass-weighted coordinates,
+        # but self.step_length is given in unweighted coordinates. Unweighting a step
+        # in mass-weighted coordinates will reduce its norm as we divide by sqrt(m).
+        #
+        # If we want to do an Euler-integration we have to decide on a step size
+        # when a desired integration length is to be reached in a given number of steps.
+        # [3] proposes using Δs/250 with a maximum of 500 steps, so something like
+        # Δs/(max_steps / 2). It seems we can't use this because (at
+        # least for the systems I tested) this will lead to a step length that is too
+        # small, so the predictor Euler-integration will fail to converge in the
+        # prescribed number of cycles. It fails because simply dividing the desired
+        # step length in unweighted coordinates does not take into account the mass
+        # dependence. Such a step size is appropriate for integrations in unweighted
+        # coordinates, but not when using mass-weighted coordinates.
+        #
+        # We determine a conversion factor from comparing the magnitudes (norms) of
+        # the mass-weighted and un-mass-weighted gradients. This takes into account
+        # which atoms are actually moving, so it should be a good guess.
+        norm_mw_grad = np.linalg.norm(mw_grad)
+        norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
+        conv_fact = norm_grad / norm_mw_grad
+        conv_fact = max(min_fact, conv_fact)
+        self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
+        return conv_fact
+
     def irc(self, direction):
         self.log(highlight_text(f"IRC {direction}"))
 

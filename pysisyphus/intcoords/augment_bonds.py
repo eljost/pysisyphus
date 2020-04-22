@@ -15,7 +15,8 @@ def augment_bonds(geom, root=0):
         print("\t@Missing bonds:", missing_bonds)
         new_geom = Geometry(geom.atoms, geom.cart_coords,
                             coord_type=geom.coord_type,
-                            define_prims=missing_bonds)
+                            coord_kwargs={"define_prims": missing_bonds,},
+        )
         new_geom.set_calculator(geom.calculator)
         new_geom.energy = energy
         new_geom.cart_hessian = hessian

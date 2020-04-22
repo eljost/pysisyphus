@@ -226,6 +226,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     # Use plain HEI
     hei_index = cos.get_hei_index()
     print(f"Index of highest energy image (HEI) is {hei_index}.")
+    print()
     hei_image = cos.images[hei_index]
     try:
         prim_indices = hei_image.internal.prim_indices
@@ -234,7 +235,9 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         internal_geom2 = Geometry(cos.images[-1].atoms, cos.images[-1].cart_coords)
         prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
-                       coord_type="redund", prim_indices=prim_indices)
+                       coord_type="redund",
+                       coord_kwargs={"prim_indices": prim_indices,},
+    )
 
     hei_tangent = cos.get_tangent(hei_index)
     # Convert tangent to redundant internals
@@ -245,12 +248,33 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     else:
         raise Exception("Unknown coord_type!")
 
+    # Also create a cartesian tangent
+    atoms = cos.images[0].atoms
+    cart_images = list()
+    for image in cos.images:
+        cart_image = Geometry(atoms, image.cart_coords)
+        cart_image.energy = image.energy
+        cart_images.append(cart_image)
+    cart_cos = ChainOfStates.ChainOfStates(cart_images)
+    cart_hei_index = cart_cos.get_hei_index()
+    cart_hei_tangent = cart_cos.get_tangent(cart_hei_index)
+    cart_hei_fn = "cart_hei_tangent"
+    np.savetxt(cart_hei_fn, cart_hei_tangent)
+
     # Use splined HEI
     # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
     # ts_geom = Geometry(cos.images[0].atoms, hei_coords, coord_type="redund")
-    ts_geom.set_calculator(calc_getter())
+
+    # Print HEI information (coords & tangent)
     print("Splined HEI (TS guess)")
     print(ts_geom.as_xyz())
+    print()
+    dummy = Geometry(atoms, cart_hei_tangent)
+    print("Cartesian HEI tangent")
+    print(dummy.as_xyz())
+    print()
+
+    # Write out HEI information (coords & tangent)
     hei_xyz_fn = "splined_hei.xyz"
     with open(hei_xyz_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
@@ -259,6 +283,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     np.savetxt("hei_tangent", hei_tangent)
     print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
 
+    ts_geom.set_calculator(calc_getter())
     ts_optimizer = TSOPT_DICT[tsopt_key]
     try:
         do_hess = tsopt_kwargs.pop("do_hess")
@@ -555,10 +580,10 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     calc_number = 0
     def set_calc(geom, name):
         nonlocal calc_number
-        calc_number += 1
         calc = calc_getter(calc_number)
         calc.base_name = name
         geom.set_calculator(calc)
+        calc_number += 1
 
     if geom.calculator is None:
         set_calc(geom, "irc")
@@ -887,6 +912,13 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
     calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
+    # Create second function that returns a wrapped calculator. This may be
+    # useful if we later want to drop the wrapper and use the actual calculator.
+    if "calc" in calc_kwargs:
+        act_calc_kwargs = calc_kwargs["calc"].copy()
+        act_calc_key = act_calc_kwargs.pop("type")
+        act_calc_getter = lambda index: get_calc(index, "image",
+                                                 act_calc_key, act_calc_kwargs)
 
     if run_dict["preopt"]:
         preopt_xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
@@ -931,6 +963,15 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
             geom.coords = shaked_coords
         opt_geom, opt = run_opt(geom, calc_getter, opt_getter)
+        # Allow IRC runs after a dimer optimization
+        if run_dict["irc"] and isinstance(opt_geom.calculator, Dimer):
+            dimer_calc = opt_geom.calculator
+            # Drop the dimer calculator. A new calculator will be set
+            # from by calling 'act_calc_getter'.
+            opt_geom.set_calculator(None)
+            # opt_geom.set_calculator(dimer_calc.calculator)
+            # Now we use act_calc_getter
+            end_geoms, irc = run_irc(opt_geom, irc_key, irc_kwargs, act_calc_getter)
     elif run_dict["stocastic"]:
         assert len(geoms) == 1
         geom = geoms[0]
