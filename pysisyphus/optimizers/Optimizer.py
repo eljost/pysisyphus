@@ -329,7 +329,8 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             if self.is_cos and self.check_coord_diffs:
                 image_coords = [image.cart_coords for image in self.geometry.images]
-                cds = get_coords_diffs(image_coords, align=True)
+                align = len(image_coords[0]) > 3
+                cds = get_coords_diffs(image_coords, align=align)
                 cds_str = np.array2string(cds, precision=4)
                 self.log(f"Coordinate differences: {cds_str}")
                 # Differences of coordinate differences ;)
