@@ -135,7 +135,6 @@ class AdaptiveNEB(NEB):
             self.log("Cant adapt, HEI is first or last!")
             return base_reset
         else:
-            print("Adapting images")
             self.fix_first = False
             self.fix_last = False
             self.fix_ends = False
@@ -176,6 +175,8 @@ class AdaptiveNEB(NEB):
             f"images ({len(all_new_images)}) is smaller than the number of " \
         f"current images ({len(self.images)}). Increase the number of " \
          "starting images or decrease 'adapt_between'."
+
+        print(f"Adapted images! New number of images is {len(all_new_images)}.")
 
         # Backup old calculators
         calcs = [img.calculator for img in self.images]
