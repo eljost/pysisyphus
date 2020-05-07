@@ -7,15 +7,20 @@ from sympy import symbols, diff, lambdify, sympify
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.Geometry import Geometry
+from pysisyphus.interpolate import interpolate
 
 class AnaPotBase(Calculator):
 
     def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1), levels=None,
-                 use_sympify=True):
+                 use_sympify=True, minima=None):
         super(AnaPotBase, self).__init__()
         self.xlim = xlim
         self.ylim = ylim
         self.levels = levels
+        if minima is None:
+            minima = list()
+        self.minima = np.array(minima, dtype=float)
+
         x, y = symbols("x y")
         if use_sympify:
             V = sympify(V_str)
@@ -124,3 +129,19 @@ class AnaPotBase(Calculator):
         else:
             geom.set_calculator(cls())
         return geom
+
+    def get_path(self, num, minima_inds=None):
+        between = num - 2
+
+        inds = 0, 1
+        if minima_inds is not None:
+            inds = minima_inds
+        initial_ind, final_ind = inds
+
+        initial_geom = self.get_geom(self.minima[initial_ind])
+        final_geom = self.get_geom(self.minima[final_ind])
+        geoms = interpolate(initial_geom, final_geom, between=between)
+        return geoms
+
+    def get_minima(self):
+        return [self.get_geom(coords) for coords in self.minima]
