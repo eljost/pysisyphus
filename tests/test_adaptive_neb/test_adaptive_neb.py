@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
-
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.cos.AdaptiveNEB import AdaptiveNEB
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
+from pysisyphus.run import run_from_dict
 
 
 def test_anapot_aneb():
@@ -24,3 +23,33 @@ def test_anapot_aneb():
 
     assert opt.is_converged
     assert opt.cur_cycle == 20
+
+
+def test_hcn_aneb():
+    run_dict = {
+        "preopt": {
+            "max_cycles": 3,
+        },
+        "interpol": {
+            "type": "idpp",
+            "between": 1,
+        },
+        "cos": {
+            "type": "aneb",
+        },
+        "opt": {
+            "type": "qm",
+            "max_cycles": 25,
+            "align": True,
+        },
+        "calc": {
+            "type": "pyscf",
+            "pal": 2,
+            "basis": "321g",
+        },
+        "xyz": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"]
+    }
+    results = run_from_dict(run_dict)
+
+    assert results.cos_opt.cur_cycle == 22
+    assert results.cos.level == 2
