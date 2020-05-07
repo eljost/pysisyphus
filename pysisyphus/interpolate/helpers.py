@@ -12,11 +12,13 @@ INTERPOLATE = {
 
 
 def interpolate(initial_geom, final_geom, between, kind="linear",
-                only_between=False, align=False):
+                only_between=False, align=False, interpol_kwargs=None):
+    if interpol_kwargs is None:
+        interpol_kwargs = {}
     """ only_between: return only the interpolated images."""
     interpolate_class = INTERPOLATE[kind]
     interpolator = interpolate_class((initial_geom, final_geom), between,
-                                     align=align)
+                                     align=align, **interpol_kwargs)
     if only_between:
         return interpolator.interpolate(initial_geom, final_geom)
     else:
