@@ -8,6 +8,8 @@ from sympy import symbols, diff, lambdify, sympify
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate import interpolate
+from pysisyphus.plotters.AnimPlot import AnimPlot
+
 
 class AnaPotBase(Calculator):
 
@@ -120,6 +122,27 @@ class AnaPotBase(Calculator):
             for i, (x, y) in enumerate(zip(xs, ys)):
                 self.ax.annotate(i, (x, y))
         plt.show()
+
+    def anim_opt(self, opt, energy_profile=False, colorbar=False, figsize=(8, 6)):
+        try:
+            min_ = self.levels.min()
+            max_ = self.levels.max()
+            num = self.levels.size
+            levels = (min_, max_, num)
+        except TypeError:
+            levels = None
+
+        anim = AnimPlot(self.__class__(),
+                        opt,
+                        xlim=self.xlim,
+                        ylim=self.ylim,
+                        levels=levels,
+                        energy_profile=energy_profile,
+                        colorbar=colorbar,
+                        figsize=figsize
+        )
+        anim.animate()
+        return anim
 
     @classmethod
     def get_geom(cls, coords, atoms=("X", ), V_str=None):
