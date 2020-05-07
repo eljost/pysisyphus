@@ -206,7 +206,7 @@ def run_cos(cos, calc_getter, opt_getter):
     if not opt.stopped:
         hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
         hei_geom = Geometry(cos.images[0].atoms, hei_coords)
-        hei_geom.coords = hei_coords
+        hei_geom.energy = hei_energy
         hei_fn = "splined_hei.xyz"
         with open(hei_fn, "w") as handle:
             handle.write(hei_geom.as_xyz())
