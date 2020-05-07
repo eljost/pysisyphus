@@ -168,7 +168,10 @@ class AnaPotBase(Calculator):
         final_geom = self.get_geom(self.minima[final_ind])
         geoms = interpolate(initial_geom, final_geom, between=between)
         for geom in geoms:
-            geom.set_calculator(self.__class__())
+            # Creating new instances can be really slow when the sympy calls
+            # need some time. For now we just reuse the current calculator...
+            # geom.set_calculator(self.__class__())
+            geom.set_calculator(self)
         return geoms
 
     def get_minima(self):
