@@ -44,8 +44,6 @@ def test_align_coords_trans_rot_3d():
 
 def test_align_coords_interpolate():
     geoms = get_geoms(translate=5., euler=(0., 0., 90.))
-
-
     interpolated = interpolate(*geoms, 10, kind="lst")
     all_coords = [geom.coords for geom in interpolated]
     aligned = align_coords(all_coords)
