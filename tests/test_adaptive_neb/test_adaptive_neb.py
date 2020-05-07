@@ -2,11 +2,11 @@
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.cos.AdaptiveNEB import AdaptiveNEB
-from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 
 
 def test_anapot_aneb():
-    image_num = 5
+    image_num = 10
     calc = AnaPot()
     all_geoms = calc.get_path(image_num)
     aneb_kwargs = {
@@ -14,9 +14,13 @@ def test_anapot_aneb():
     }
     aneb = AdaptiveNEB(all_geoms, **aneb_kwargs)
 
-    opt = SteepestDescent(aneb)
+    opt_kwargs = {
+        "rms_force": 3e-3,
+    }
+    opt = ConjugateGradient(aneb, **opt_kwargs)
     opt.run()
 
     ap = calc.anim_opt(opt, show=True)
 
-    return opt
+    assert opt.is_converged
+    assert opt.cur_cycle == 20
