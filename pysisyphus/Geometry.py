@@ -467,17 +467,17 @@ class Geometry:
             forces = self.internal.transform_forces(forces)
         return forces
 
-    # @forces.setter
-    # def forces(self, forces):
-        # """Internal wrapper for setting the forces.
+    @forces.setter
+    def forces(self, forces):
+        """Internal wrapper for setting the forces.
 
-        # Parameters
-        # ----------
-        # forces : np.array
-        # """
-        # forces = np.array(forces)
-        # assert forces.shape == self.coords.shape
-        # self._forces = forces
+        Parameters
+        ----------
+        forces : np.array
+        """
+        forces = np.array(forces)
+        assert forces.shape == self.cart_coords.shape
+        self._forces = forces
 
     @property
     def cart_gradient(self):
