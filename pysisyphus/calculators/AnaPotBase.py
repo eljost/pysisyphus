@@ -141,6 +141,8 @@ class AnaPotBase(Calculator):
         initial_geom = self.get_geom(self.minima[initial_ind])
         final_geom = self.get_geom(self.minima[final_ind])
         geoms = interpolate(initial_geom, final_geom, between=between)
+        for geom in geoms:
+            geom.set_calculator(self.__class__())
         return geoms
 
     def get_minima(self):
