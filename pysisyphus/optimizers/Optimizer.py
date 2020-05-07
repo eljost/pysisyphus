@@ -319,6 +319,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         self.print_header()
         self.stopped = False
+        # Actual optimization loop
         for self.cur_cycle in range(self.last_cycle, self.max_cycles):
             start_time = time.time()
             self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
