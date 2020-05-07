@@ -110,9 +110,11 @@ class AdaptiveNEB(NEB):
         # iterations stored in the WFOWrapper.
         img0 = self.images[0]
         if hasattr(img0, "track") and (img0.track == True):
-            raise Exception("track = True and interpolating new images "
+            raise Exception(
+                "track = True and interpolating new images "
                 "may give problems with excited state tracking, so this "
-                "is disabled for now.")
+                "is disabled for now."
+            )
 
         # Initialize adapt_thresh
         if not self.adapt_thresh:
@@ -190,3 +192,5 @@ class AdaptiveNEB(NEB):
         self.adapt_thresh = None
         self.level += 1
         return True
+
+    def get_additional_print(self):
