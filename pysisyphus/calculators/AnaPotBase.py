@@ -123,7 +123,8 @@ class AnaPotBase(Calculator):
                 self.ax.annotate(i, (x, y))
         plt.show()
 
-    def anim_opt(self, opt, energy_profile=False, colorbar=False, figsize=(8, 6)):
+    def anim_opt(self, opt, energy_profile=False, colorbar=False, figsize=(8, 6),
+                 show=False):
         try:
             min_ = self.levels.min()
             max_ = self.levels.max()
@@ -142,6 +143,8 @@ class AnaPotBase(Calculator):
                         figsize=figsize
         )
         anim.animate()
+        if show:
+            plt.show()
         return anim
 
     @classmethod
