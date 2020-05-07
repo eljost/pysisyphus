@@ -5,9 +5,8 @@ from pysisyphus.run import run_from_dict
 
 
 def test_anapot_aneb():
-    image_num = 10
     calc = AnaPot()
-    all_geoms = calc.get_path(image_num)
+    all_geoms = calc.get_path(10)
     aneb_kwargs = {
         # "keep_hei": True,
     }
