@@ -12,7 +12,7 @@ import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
-from pysisyphus.helpers import check_for_stop_sign, highlight_text
+from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_diffs
 
 
 class Optimizer(metaclass=abc.ABCMeta):
@@ -28,7 +28,7 @@ class Optimizer(metaclass=abc.ABCMeta):
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
                  rms_force=None, align=False, dump=False, dump_restart=None,
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
-                 restart_info=None, **kwargs):
+                 restart_info=None, check_coord_diffs=True, **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -42,6 +42,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.prefix = prefix
         self.reparam_thresh = reparam_thresh
         self.overachieve_factor = float(overachieve_factor)
+        self.check_coord_diffs = check_coord_diffs
 
         for key, value in self.convergence.items():
             setattr(self, key, value)
@@ -323,6 +324,16 @@ class Optimizer(metaclass=abc.ABCMeta):
         for self.cur_cycle in range(self.last_cycle, self.max_cycles):
             start_time = time.time()
             self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
+
+            if self.is_cos and self.check_coord_diffs:
+                self.log("Checking coordinate differences")
+                image_coords = [image.cart_coords for image in self.geometry.images]
+                cds = get_coords_diffs(image_coords, align=True)
+                # Differences of coordinate differences ;)
+                cds_diffs = np.diff(cds)
+                if cds_diffs.min() < 0.01:
+                    print("Coordinates too similar. Stopping optimization!")
+                    break
 
             # Check if something considerably changed in the optimization,
             # e.g. new images were added/interpolated. Then the optimizer
