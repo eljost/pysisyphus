@@ -28,7 +28,8 @@ class Optimizer(metaclass=abc.ABCMeta):
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
                  rms_force=None, align=False, dump=False, dump_restart=None,
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
-                 restart_info=None, check_coord_diffs=True, **kwargs):
+                 restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
+                 **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -43,6 +44,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.reparam_thresh = reparam_thresh
         self.overachieve_factor = float(overachieve_factor)
         self.check_coord_diffs = check_coord_diffs
+        self.coord_diff_thresh = float(coord_diff_thresh)
 
         for key, value in self.convergence.items():
             setattr(self, key, value)
@@ -326,13 +328,20 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
 
             if self.is_cos and self.check_coord_diffs:
-                self.log("Checking coordinate differences")
                 image_coords = [image.cart_coords for image in self.geometry.images]
                 cds = get_coords_diffs(image_coords, align=True)
+                cds_str = np.array2string(cds, precision=4)
+                self.log(f"Coordinate differences: {cds_str}")
                 # Differences of coordinate differences ;)
                 cds_diffs = np.diff(cds)
-                if cds_diffs.min() < 0.01:
-                    print("Coordinates too similar. Stopping optimization!")
+                min_ind = cds_diffs.argmin()
+                if cds_diffs[min_ind] < self.coord_diff_thresh:
+                    similar_inds = min_ind, min_ind+1
+                    msg = f"Cartesian coordinates of images {similar_inds} are " \
+                           "too similar. Stopping optimization!"
+                    # I should improve my logging :)
+                    print(msg)
+                    self.log(msg)
                     break
 
             # Check if something considerably changed in the optimization,
