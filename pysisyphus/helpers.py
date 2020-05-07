@@ -283,6 +283,34 @@ def procrustes(geometry):
     return rot_mats
 
 
+def align_coords(coords_list):
+    aligned_coords = np.zeros_like(coords_list)
+
+    coords0 = coords_list[0]
+    coords0_3d = coords0.reshape(-1, 3)
+    centroid = coords0_3d.mean(axis=0)
+    prev_centered = coords0_3d - centroid
+    aligned_coords[0] = prev_centered
+
+    for i, coords in enumerate(coords_list[1:], 1):
+        coords3d = coords.reshape(-1, 3)
+        centroid = coords3d.mean(axis=0)
+        # Center next image
+        centered = coords3d - centroid
+        tmp_mat = centered.T.dot(prev_centered)
+        U, W, Vt = np.linalg.svd(tmp_mat)
+        rot_mat = U.dot(Vt)
+        # Avoid reflections
+        if np.linalg.det(rot_mat) < 0:
+            U[:, -1] *= -1
+            rot_mat = U.dot(Vt)
+        # Rotate the coords
+        rotated3d = centered.dot(rot_mat)
+        aligned_coords[i] = rotated3d
+        prev_centered = rotated3d
+    return aligned_coords
+
+
 def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
     rotated_vector_lists = list()
     rotated_hessian = None
@@ -423,7 +451,9 @@ def get_geom_getter(ref_geom, calc_setter):
     return geom_from_coords
 
 
-def get_coords_diffs(coords):
+def get_coords_diffs(coords, align=False):
+    if align:
+        coords = align_coords(coords)
     cds = [0, ]
     for i in range(len(coords)-1):
         diff = np.linalg.norm(coords[i+1]-coords[i])
