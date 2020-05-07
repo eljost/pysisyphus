@@ -284,7 +284,9 @@ def procrustes(geometry):
 
 
 def align_coords(coords_list):
-    aligned_coords = np.zeros_like(coords_list)
+    coords_list = np.array(coords_list)
+    coord_num = len(coords_list)
+    aligned_coords = np.empty_like(coords_list).reshape(coord_num, -1, 3)
 
     coords0 = coords_list[0]
     coords0_3d = coords0.reshape(-1, 3)
@@ -308,6 +310,7 @@ def align_coords(coords_list):
         rotated3d = centered.dot(rot_mat)
         aligned_coords[i] = rotated3d
         prev_centered = rotated3d
+    aligned_coords.reshape(coord_num, -1)
     return aligned_coords
 
 
