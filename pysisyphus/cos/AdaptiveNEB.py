@@ -135,7 +135,7 @@ class AdaptiveNEB(NEB):
             self.log("Cant adapt, HEI is first or last!")
             return base_reset
         else:
-            print("Adapting")
+            print("Adapting images")
             self.fix_first = False
             self.fix_last = False
             self.fix_ends = False
@@ -150,13 +150,17 @@ class AdaptiveNEB(NEB):
         #   prev. neighbour - HEI
         #   HEI - next neighbour
         # Usually the better idea
+        kwargs = {
+            "kind": "lst",
+            "only_between": True,
+            "interpol_kwargs": {"silent": True},
+        }
         if self.keep_hei:
             # Interpolation of new images between previous neighbour
             # and the HEI.
-            new_images_1 = interpolate(prev_image, hei_image, self.adapt_between,
-                                       kind="lst", only_between=True)
-            new_images_2 = interpolate(hei_image, next_image, self.adapt_between,
-                                       kind="lst", only_between=True)
+            kwargs["between"] = self.adapt_between
+            new_images_1 = interpolate(prev_image, hei_image, **kwargs)
+            new_images_2 = interpolate(hei_image, next_image, **kwargs)
             # Between next neighbour and the HEI.
             all_new_images = ([prev_image] + new_images_1
                               + [hei_image]
@@ -164,9 +168,8 @@ class AdaptiveNEB(NEB):
         # One interpolation
         #   prev. neighbour - next neighbour
         else:
-            new_images = interpolate(prev_image, next_image, 2*self.adapt_between+1,
-                                     kind="lst", only_between=True
-            )
+            kwargs["between"] = 2*self.adapt_between+1
+            new_images = interpolate(prev_image, next_image, **kwargs)
             all_new_images = [prev_image] + new_images + [next_image]
 
         assert len(all_new_images) <= len(self.images), "The number of new " \
@@ -192,5 +195,3 @@ class AdaptiveNEB(NEB):
         self.adapt_thresh = None
         self.level += 1
         return True
-
-    def get_additional_print(self):
