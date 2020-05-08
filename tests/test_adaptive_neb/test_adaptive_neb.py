@@ -7,10 +7,7 @@ from pysisyphus.run import run_from_dict
 def test_anapot_aneb():
     calc = AnaPot()
     all_geoms = calc.get_path(10)
-    aneb_kwargs = {
-        # "keep_hei": True,
-    }
-    aneb = AdaptiveNEB(all_geoms, **aneb_kwargs)
+    aneb = AdaptiveNEB(all_geoms)
 
     opt_kwargs = {
         "rms_force": 3e-3,
@@ -21,7 +18,7 @@ def test_anapot_aneb():
     ap = calc.anim_opt(opt, show=True)
 
     assert opt.is_converged
-    assert opt.cur_cycle == 20
+    assert opt.cur_cycle == 22
 
 
 def test_hcn_aneb():
@@ -50,5 +47,6 @@ def test_hcn_aneb():
     }
     results = run_from_dict(run_dict)
 
-    assert results.cos_opt.cur_cycle == 22
-    assert results.cos.level == 2
+    assert results.cos_opt.is_converged
+    assert results.cos_opt.cur_cycle == 18
+    assert results.cos.level == 3
