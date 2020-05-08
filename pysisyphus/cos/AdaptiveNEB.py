@@ -12,8 +12,9 @@ from pysisyphus.interpolate import interpolate
 
 class AdaptiveNEB(NEB):
 
-    def __init__(self, images, adapt_fact=.25, adapt_between=1,
-                 scale_fact=False, keep_hei=True, **kwargs):
+    def __init__(self, images, adapt=True, adapt_fact=.25, adapt_between=1,
+                 scale_fact=False, keep_hei=True, free_ends=True,
+                 **kwargs):
         """Adaptive Nudged Elastic Band.
 
         Parameters
@@ -35,17 +36,34 @@ class AdaptiveNEB(NEB):
             Wether to keep the highest energy image (usually a very good
             idea) or to interpolate only between the neighbouring images.
         """
-        kwargs["fix_ends"] = True
         super().__init__(images, **kwargs)
 
+        self.adapt = adapt
         self.adapt_fact = adapt_fact
         self.adapt_between = adapt_between
         self.scale_fact = scale_fact
         self.keep_hei = keep_hei
+        self.free_ends = free_ends
 
         self.adapt_thresh = None
         self.level = 1
         self.coords_backup = list()
+
+    @NEB.forces.getter
+    def forces(self):
+        forces = super().forces
+        forces_size = self.images[-1].forces.size
+
+        if self.free_ends and (not self.fix_first):
+            mod_forces = self.get_perpendicular_forces(0)
+            forces[:forces_size] = mod_forces
+
+        if self.free_ends and (not self.fix_last):
+            mod_forces = self.get_perpendicular_forces(self.last_index)
+            forces[-forces_size:] = mod_forces
+
+        self._forces = forces
+        return self._forces
 
     def update_adapt_thresh(self, forces):
         """Update the adaption threshold.
@@ -101,6 +119,8 @@ class AdaptiveNEB(NEB):
         See ChainOfStates.prepare_opt_cycle for a complete docstring.
         """
         base_reset = super().prepare_opt_cycle(*args, **kwargs)
+        if not self.adapt:
+            return base_reset
 
         # Transferring Calculators including WFOWrapper objects
         # in excited state calculations may be problematic.
