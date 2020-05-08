@@ -15,7 +15,7 @@ def test_anapot_aneb():
     opt = ConjugateGradient(aneb, **opt_kwargs)
     opt.run()
 
-    ap = calc.anim_opt(opt, show=True)
+    # ap = calc.anim_opt(opt, show=True)
 
     assert opt.is_converged
     assert opt.cur_cycle == 22
