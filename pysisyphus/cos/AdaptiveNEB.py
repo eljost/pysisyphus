@@ -7,6 +7,9 @@ from pysisyphus.interpolate import interpolate
 
 
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.1495401
+# [2] http://dx.doi.org/10.1063/1.4962019
+#     Zhang, 2016
+#     FreeEnd Adaptive NEB
 
 # See /scratch/projekte/biaryl/me_cn/cycloadd22/guess01/neb2
 
@@ -15,12 +18,16 @@ class AdaptiveNEB(NEB):
     def __init__(self, images, adapt=True, adapt_fact=.25, adapt_between=1,
                  scale_fact=False, keep_hei=True, free_ends=True,
                  **kwargs):
-        """Adaptive Nudged Elastic Band.
+        """(Free-End) Adaptive Nudged Elastic Band.
 
         Parameters
         ----------
         images : list of Geometry objects
             Images of the band.
+        adapt : bool, default True
+            Whether to adapt the image number or not. This switch is included
+            to support the FreeEndNEB class, that is just a thin wrapper around
+            this class.
         adapt_fact : positive float
             Factor that is used to decide wether to adapt. The inital
             threshold is calculated by multiplying the RMS force of the
@@ -32,9 +39,14 @@ class AdaptiveNEB(NEB):
             must be higher or equal then 2*adapt_between+3, as we
             reuse/transfer the calculators from the starting images onto
             the new ones.
+        scale_fact : bool, default False
+            Whether to increase adapt_fact in deeper levels. This may lead
+            to earlier adapation.
         keep_hei : bool, optional
-            Wether to keep the highest energy image (usually a very good
+            Whether to keep the highest energy image (usually a very good
             idea) or to interpolate only between the neighbouring images.
+        free_ends : bool, default True
+            Whether to use modified forces on the end images.
         """
         super().__init__(images, **kwargs)
 
@@ -51,6 +63,8 @@ class AdaptiveNEB(NEB):
 
     @NEB.forces.getter
     def forces(self):
+        """See Eq. (7) in [2]."""
+
         forces = super().forces
         forces_size = self.images[-1].forces.size
 
@@ -191,12 +205,14 @@ class AdaptiveNEB(NEB):
             new_images = interpolate(prev_image, next_image, **kwargs)
             all_new_images = [prev_image] + new_images + [next_image]
 
-        assert len(all_new_images) <= len(self.images), "The number of new " \
-            f"images ({len(all_new_images)}) is smaller than the number of " \
-        f"current images ({len(self.images)}). Increase the number of " \
-         "starting images or decrease 'adapt_between'."
+        assert len(all_new_images) <= len(self.images), \
+            f"The number of new images ({len(all_new_images)}) is smaller than " \
+            f"the number of current images ({len(self.images)}). Increase the number " \
+             "of starting images or decrease 'adapt_between'."
+        self.level += 1
 
-        print(f"Adapted images! New number of images is {len(all_new_images)}.")
+        print(f"Adapted images! New number of images is {len(all_new_images)}. "
+              f"Current level is {self.level}.")
 
         # Backup old calculators
         calcs = [img.calculator for img in self.images]
@@ -214,5 +230,4 @@ class AdaptiveNEB(NEB):
         # Reset adapt_thresh so it will be set again in the beginning
         # of the next iteration.
         self.adapt_thresh = None
-        self.level += 1
         return True
