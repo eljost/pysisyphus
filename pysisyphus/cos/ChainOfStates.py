@@ -21,7 +21,7 @@ class ChainOfStates:
     logger = logging.getLogger("cos")
     valid_coord_types = "cart dlc".split()
 
-    def __init__(self, images, fix_ends=True, fix_first=False, fix_last=False,
+    def __init__(self, images, fix_ends=False, fix_first=True, fix_last=True,
                  climb=False, climb_rms=5e-3, scheduler=None):
 
         assert(len(images) >= 2), "Need at least 2 images!"
