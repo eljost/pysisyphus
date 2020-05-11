@@ -153,7 +153,12 @@ class Geometry:
         # NOT using cartesian coordinates.
         coord_kwargs = None
         if coord_type != "cart":
-            coord_kwargs={"prim_indices": self.internal.prim_indices,
+            try:
+                prim_indices = self.internal.prim_indices
+            # Will be raised if the current coord_type is 'cart'
+            except AttributeError:
+                prim_indices = None
+            coord_kwargs={"prim_indices": prim_indices,
                           "check_bends": check_bends,
             }
         return Geometry(self.atoms, self._coords,
