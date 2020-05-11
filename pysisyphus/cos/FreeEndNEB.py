@@ -1,39 +1,25 @@
-#!/usr/bin/env python3
+from pysisyphus.cos.AdaptiveNEB import AdaptiveNEB
 
-from pysisyphus.cos.NEB import NEB
+# [1] https://www.pnas.org/content/pnas/104/9/3031.full.pdf
+#     Zhu, 2006
+#     Original method
+# [2] http://dx.doi.org/10.1063/1.4962019
+#     Zhang, 2016
+#     FreeEnd Adaptive NEB
 
-# [1] http://dx.doi.org/10.1063/1.4962019
 
+class FreeEndNEB(AdaptiveNEB):
+    def __init__(self, *args, fix_first=False, fix_last=False, **kwargs):
+        """Simple Free-End-NEB method.
 
-class FreeEndNEB(NEB):
-    def __init__(self, *args, mod=False, **kwargs):
-        super().__init__(*args, **kwargs)
+        Derived from AdaptiveNEB with disabled adaptation.
+        Only implements Eq. (7) from [2]. For other implementations
+        please see the commit 01bc8812ca6f1cd3645d43e0337d9e3c5fb0ba55.
+        There the other variants are present but I think Eq. (7) in [2] is
+        the simplest & best bet.
+        """
+        kwargs["adapt"] = False
+        super().__init__(*args, fix_first=fix_first, fix_last=fix_last, **kwargs)
 
-        self.mod = mod
-
-    def mod_end_forces(self, i):
-        """Equation (7) in [1]."""
-        assert (i == 0) or (i == self.last_index)
-        true_forces = self.images[i].forces
-        tangent = self.get_tangent(i)
-        return true_forces - true_forces.dot(tangent) * tangent
-
-    @NEB.forces.getter
-    def forces(self):
-        forces = super().forces
-        i_last = self.last_index
-        forces_last = self.images[-1].forces
-        forces_size = forces_last.size
-        if self.mod:
-            start_forces = self.mod_end_forces(0)
-            end_forces = self.mod_end_forces(self.last_index)
-            forces[:forces_size] = start_forces
-            forces[-forces_size:] = end_forces
-        else:
-            par_forces_last = self.get_parallel_forces(i_last)
-            lambda_ = -forces_last.dot(forces_last)/par_forces_last.dot(forces_last)
-            fe_forces = lambda_ * par_forces_last + forces_last
-            forces[-forces_size:] = fe_forces
-        self._forces = forces
-
-        return self._forces
+        assert (not self.fix_first) or (not self.fix_last), \
+            "FreeEndNEB without moving end-image(s) is useless!"

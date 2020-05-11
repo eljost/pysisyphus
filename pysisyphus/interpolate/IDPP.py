@@ -44,6 +44,7 @@ class IDPP(Interpolator):
             "rms_force": 1e-2,
             "keep_cycles": False,
             "align": False,
+            "check_coord_diffs": False,
         }
         opt = FIRE(neb, **opt_kwargs)
         opt.run()

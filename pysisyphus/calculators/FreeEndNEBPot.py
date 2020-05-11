@@ -18,11 +18,15 @@ class FreeEndNEBPot(AnaPotBase):
         
         V_expr = V_expr - 2*atan(5*(x-self.x0)) - 2*x
         V_str = str(V_expr)
-        xlim = (0.5, 2.25)
-        ylim = (0.0, 1.6)
-        levels = np.linspace(-10, 0, 125)
+        # xlim = (0.5, 2.25)
+        # ylim = (0.0, 1.6)
+        # levels = np.linspace(-10, 0, 125)
+        xlim = (0.5, 4)
+        ylim = (-4, 2)
+        minima = ((0.828758,  1.2027524, 0), (3.0894413, -1.4060824, 0))
 
-        super().__init__(V_str=V_str, xlim=xlim, ylim=ylim, levels=levels)
+        super().__init__(V_str=V_str, xlim=xlim, ylim=ylim, levels=levels,
+                         minima=minima)
 
     def __str__(self):
         return "FreeEndNEBPot calculator"

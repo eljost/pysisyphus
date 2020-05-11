@@ -8,7 +8,7 @@ from scipy.spatial.distance import pdist
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
+from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
@@ -153,7 +153,12 @@ class Geometry:
         # NOT using cartesian coordinates.
         coord_kwargs = None
         if coord_type != "cart":
-            coord_kwargs={"prim_indices": self.internal.prim_indices,
+            try:
+                prim_indices = self.internal.prim_indices
+            # Will be raised if the current coord_type is 'cart'
+            except AttributeError:
+                prim_indices = None
+            coord_kwargs={"prim_indices": prim_indices,
                           "check_bends": check_bends,
             }
         return Geometry(self.atoms, self._coords,
@@ -362,6 +367,10 @@ class Geometry:
         self.coords = mw_coords / np.sqrt(self.masses_rep)
 
     @property
+    def covalent_radii(self):
+        return np.array([CR[a.lower()] for a in self.atoms])
+
+    @property
     def inertia_tensor(self):
         """Inertita tensor.
 
@@ -467,17 +476,17 @@ class Geometry:
             forces = self.internal.transform_forces(forces)
         return forces
 
-    # @forces.setter
-    # def forces(self, forces):
-        # """Internal wrapper for setting the forces.
+    @forces.setter
+    def forces(self, forces):
+        """Internal wrapper for setting the forces.
 
-        # Parameters
-        # ----------
-        # forces : np.array
-        # """
-        # forces = np.array(forces)
-        # assert forces.shape == self.coords.shape
-        # self._forces = forces
+        Parameters
+        ----------
+        forces : np.array
+        """
+        forces = np.array(forces)
+        assert forces.shape == self.cart_coords.shape
+        self._forces = forces
 
     @property
     def cart_gradient(self):

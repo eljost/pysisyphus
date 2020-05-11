@@ -95,6 +95,10 @@ def merge_coordinate_definitions(geom1, geom2):
 
 
 def form_coordinate_union(geom1, geom2):
+    def not_cartesian(geom):
+        return geom.coord_type != "cart"
+
+    assert not_cartesian(geom1) and not_cartesian(geom2)
     # The first call yields all primitives from geom1 that are also
     # valid at geom2.
     bonds1, bends1, dihedrals1 = merge_coordinate_definitions(geom1, geom2)

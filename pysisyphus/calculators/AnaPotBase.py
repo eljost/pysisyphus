@@ -7,15 +7,22 @@ from sympy import symbols, diff, lambdify, sympify
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.Geometry import Geometry
+from pysisyphus.interpolate import interpolate
+from pysisyphus.plotters.AnimPlot import AnimPlot
+
 
 class AnaPotBase(Calculator):
 
     def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1), levels=None,
-                 use_sympify=True):
+                 use_sympify=True, minima=None):
         super(AnaPotBase, self).__init__()
         self.xlim = xlim
         self.ylim = ylim
         self.levels = levels
+        if minima is None:
+            minima = list()
+        self.minima = np.array(minima, dtype=float)
+
         x, y = symbols("x y")
         if use_sympify:
             V = sympify(V_str)
@@ -116,6 +123,30 @@ class AnaPotBase(Calculator):
                 self.ax.annotate(i, (x, y))
         plt.show()
 
+    def anim_opt(self, opt, energy_profile=False, colorbar=False, figsize=(8, 6),
+                 show=False):
+        try:
+            min_ = self.levels.min()
+            max_ = self.levels.max()
+            num = self.levels.size
+            levels = (min_, max_, num)
+        except TypeError:
+            levels = None
+
+        anim = AnimPlot(self.__class__(),
+                        opt,
+                        xlim=self.xlim,
+                        ylim=self.ylim,
+                        levels=levels,
+                        energy_profile=energy_profile,
+                        colorbar=colorbar,
+                        figsize=figsize
+        )
+        anim.animate()
+        if show:
+            plt.show()
+        return anim
+
     @classmethod
     def get_geom(cls, coords, atoms=("X", ), V_str=None):
         geom = Geometry(atoms, coords)
@@ -124,3 +155,24 @@ class AnaPotBase(Calculator):
         else:
             geom.set_calculator(cls())
         return geom
+
+    def get_path(self, num, minima_inds=None):
+        between = num - 2
+
+        inds = 0, 1
+        if minima_inds is not None:
+            inds = minima_inds
+        initial_ind, final_ind = inds
+
+        initial_geom = self.get_geom(self.minima[initial_ind])
+        final_geom = self.get_geom(self.minima[final_ind])
+        geoms = interpolate(initial_geom, final_geom, between=between)
+        for geom in geoms:
+            # Creating new instances can be really slow when the sympy calls
+            # need some time. For now we just reuse the current calculator...
+            # geom.set_calculator(self.__class__())
+            geom.set_calculator(self)
+        return geoms
+
+    def get_minima(self):
+        return [self.get_geom(coords) for coords in self.minima]
