@@ -585,6 +585,8 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
+    geom = geom.copy()
+
     calc_number = 0
     def set_calc(geom, name):
         nonlocal calc_number
