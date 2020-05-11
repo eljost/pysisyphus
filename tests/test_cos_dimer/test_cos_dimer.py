@@ -5,7 +5,7 @@ from pysisyphus.testing import using
 
 
 @using("pyscf")
-def test_hcn_neb_dimer():
+def test_hcn_neb_dimer_irc():
     run_dict = {
         "preopt": {
             "max_cycles": 3,
@@ -27,10 +27,10 @@ def test_hcn_neb_dimer():
             "thresh": "gau_tight",
             "do_hess": True,
         },
-        # "irc": {
-            # "type": "eulerpc",
-            # "rms_grad_thresh": 1e-3,
-        # },
+        "irc": {
+            "type": "eulerpc",
+            "rms_grad_thresh": 1e-3,
+        },
         "calc": {
             "type": "pyscf",
             "pal": 2,
