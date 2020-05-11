@@ -111,6 +111,8 @@ class RedundantCoords:
         self._prim_internals = self.calculate(self.cart_coords)
         self._prim_coords = np.array([pc.val for pc in self._prim_internals])
 
+        self.transform_counter = 0
+
     def log(self, message):
         logger = logging.getLogger("internal_coords")
         logger.debug(message)
@@ -566,6 +568,9 @@ class RedundantCoords:
         """This is always done in primitive internal coordinates so care
         has to be taken that the supplied step is given in primitive internal
         coordinates."""
+
+        self.log(f"Internal->cartesian transformation cycle {self.transform_counter}")
+        self.transform_counter += 1
 
         remaining_int_step = step
         cur_cart_coords = self.cart_coords.copy()
