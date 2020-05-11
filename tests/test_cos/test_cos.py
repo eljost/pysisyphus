@@ -157,3 +157,22 @@ def test_hcn_neb():
 
     assert results.cos_opt.is_converged
     assert results.cos_opt.cur_cycle == 18
+
+
+@pytest.mark.parametrize(
+    "neb_kwargs, ref_cycle", [
+        ({}, 34),
+        ({"variable_springs": True, "k_min": 0.01, "k_max": 5}, 33),
+    ]
+)
+def test_neb_springs(neb_kwargs, ref_cycle):
+    calc = AnaPot()
+    geoms = calc.get_path(15)
+    neb = NEB(geoms, **neb_kwargs)
+    opt = SteepestDescent(neb)
+    opt.run()
+
+    calc.anim_opt(opt)#, show=True)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == ref_cycle)
