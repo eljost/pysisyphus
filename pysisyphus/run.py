@@ -585,6 +585,8 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
+    # Avoids modifying the supplied geom. When the supplied geom originated
+    # from a previous TS optimization we want to retain it unmodified.
     geom = geom.copy()
 
     calc_number = 0
