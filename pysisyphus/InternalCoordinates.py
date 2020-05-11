@@ -37,7 +37,7 @@ class RedundantCoords:
     # BEND_MIN_DEG = 45
     # BEND_MAX_DEG = 170
     BEND_MIN_DEG = 15
-    BEND_MAX_DEG = 175
+    BEND_MAX_DEG = 180
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
                  prim_indices=None, define_prims=None, bonds_only=False,
