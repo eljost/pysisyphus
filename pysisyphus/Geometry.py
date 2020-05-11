@@ -8,7 +8,7 @@ from scipy.spatial.distance import pdist
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS
+from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
@@ -365,6 +365,10 @@ class Geometry:
     def mw_coords(self, mw_coords):
         """Set mass-weighted coordinates."""
         self.coords = mw_coords / np.sqrt(self.masses_rep)
+
+    @property
+    def covalent_radii(self):
+        return np.array([CR[a.lower()] for a in self.atoms])
 
     @property
     def inertia_tensor(self):
