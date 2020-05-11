@@ -231,8 +231,10 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     try:
         prim_indices = hei_image.internal.prim_indices
     except AttributeError:
-        internal_geom1 = Geometry(cos.images[0].atoms, cos.images[0].cart_coords)
-        internal_geom2 = Geometry(cos.images[-1].atoms, cos.images[-1].cart_coords)
+        def get_int_geom(geom):
+            return Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
+        internal_geom1 = get_int_geom(cos.images[0])
+        internal_geom2 = get_int_geom(cos.images[-1])
         prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
                        coord_type="redund",
@@ -283,22 +285,24 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     np.savetxt("hei_tangent", hei_tangent)
     print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
 
-    ts_geom.set_calculator(calc_getter())
+    ts_calc = calc_getter()
+    ts_geom.set_calculator(ts_calc)
     ts_optimizer = TSOPT_DICT[tsopt_key]
-    try:
-        do_hess = tsopt_kwargs.pop("do_hess")
-    except KeyError:
-        do_hess = False
+    dimer_kwargs = tsopt_kwargs.pop("dimer_kwargs", {})
+    do_hess = tsopt_kwargs.pop("do_hess", False)
 
     if tsopt_key == "dimer":
-        geoms = [ts_geom, ]
-        tsopt_kwargs.update({
-            "restrict_step": "max",
-            "N_init": hei_tangent,
-            "calc_getter": calc_getter,
+        # Right now Dimer optimization is rectricted to cartesian
+        # rotations and translations, even though translation in
+        # internals would be possible.
+        ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords)
+        dimer_kwargs.update({
+            "N_raw": cart_hei_tangent,
+            "base_name": "dimer",
         })
-        dimer_result = ts_optimizer(geoms, **tsopt_kwargs)
-        dimer_cycles = dimer_result.dimer_cycles  # lgtm [py/unused-local-variable]
+        dimer_calc = Dimer(ts_calc, **dimer_kwargs)
+        ts_geom.set_calculator(dimer_calc)
+        ts_opt = PreconLBFGS.PreconLBFGS(ts_geom, **tsopt_kwargs)
     else:
         # Determine which imaginary mode has the highest overlap
         # with the splined HEI tangent.
@@ -329,7 +333,11 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         # Use mode with highest overlap as initial root
         tsopt_kwargs["root"] = root
         ts_opt = ts_optimizer(ts_geom, prefix="ts_", **tsopt_kwargs)
-        ts_opt.run()
+
+    ts_opt.run()
+    # Restore original calculator for Dimer calculations
+    if tsopt_key == "dimer":
+        ts_geom.set_calculator(ts_calc)
 
     print(f"Optimized TS coords:")
     print(ts_geom.as_xyz())
@@ -746,16 +754,7 @@ def get_defaults(conf_dict):
     if "tsopt" in conf_dict:
         type_ = conf_dict["tsopt"]["type"]
         tsopt_dicts = {
-            "dimer": {
-                "type": "dimer",
-                "max_step": 0.1,
-                "max_cycles": 50,
-                "trial_angle": 5,
-                "angle_tol": 1,
-                "dR_base": 0.01,
-                "f_tran_mod": False,
-                "multiple_translations": False,
-            },
+            "dimer": {}
         }
         tsopt_default = {
             "type": "rsprfo",
