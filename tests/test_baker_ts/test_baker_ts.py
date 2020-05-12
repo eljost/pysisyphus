@@ -102,7 +102,7 @@ def get_geoms():
         "12_ethane_h2_abstraction.xyz",
         "15_hocl.xyz",
         "17_claisen.xyz",
-        "20_hconh3_cation.xyz",
+        "20_hconh3_cation.xyz",  # fails when angles up to & including 180° are defined
         "22_hconhoh.xyz",
     )
     works = (
