@@ -384,10 +384,10 @@ class HessianOptimizer(Optimizer):
         return fit_energy, fit_grad, fit_coords, fit_step
 
     def solve_rfo(self, rfo_mat, kind="min"):
-        self.log("Diagonalizing augmented Hessian:")
         # When using the restricted step variant of RFO the RFO matrix
         # may not be symmetric. Thats why we can't use eigh here.
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
+        self.log("\tdiagonalized augmented Hessian")
         eigenvalues = eigenvalues.real
         eigenvectors = eigenvectors.real
         sorted_inds = np.argsort(eigenvalues)
@@ -402,12 +402,12 @@ class HessianOptimizer(Optimizer):
         step_nu = eigenvectors.T[ind]
         # TODO: Root following like in optking?!
         nu = step_nu[-1]
-        self.log(f"\tnu_{verbose}={nu:.4e}")
+        self.log(f"\tnu_{verbose}={nu:.6f}")
         # Scale eigenvector so that its last element equals 1. The
         # final is step is the scaled eigenvector without the last element.
         step = step_nu[:-1] / nu
         eigval = eigenvalues[ind]
-        self.log(f"\teigenvalue_{verbose}={eigval:.4e}")
+        self.log(f"\teigenvalue_{verbose}={eigval:.6f}")
         return step, eigval, nu
 
     def filter_small_eigvals(self, eigvals, eigvecs, mask=False):
