@@ -98,11 +98,12 @@ def run_baker_ts_opts(geoms, meta, coord_type="cart", thresh="baker", runid=0):
 
 def get_geoms():
     fails = (
-        "22_hconhoh.xyz",
         "09_parentdieslalder.xyz",
         "12_ethane_h2_abstraction.xyz",
-        "17_claisen.xyz",
         "15_hocl.xyz",
+        "17_claisen.xyz",
+        "20_hconh3_cation.xyz",
+        "22_hconhoh.xyz",
     )
     works = (
         "01_hcn.xyz",
@@ -123,7 +124,6 @@ def get_geoms():
         # x99 = 1/sqrt(x93)
         #   ValueError: math domain error
         # ZeroDivison Fix
-        "20_hconh3_cation.xyz",
         "24_h2cnh.xyz",
         "13_hf_abstraction.xyz",
         "19_hnccs.xyz",
