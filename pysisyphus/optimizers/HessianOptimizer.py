@@ -385,6 +385,8 @@ class HessianOptimizer(Optimizer):
 
     def solve_rfo(self, rfo_mat, kind="min"):
         self.log("Diagonalizing augmented Hessian:")
+        # When using the restricted step variant of RFO the RFO matrix
+        # may not be symmetric. Thats why we can't use eigh here.
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
         eigenvalues = eigenvalues.real
         eigenvectors = eigenvectors.real
