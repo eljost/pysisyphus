@@ -722,6 +722,7 @@ def get_defaults(conf_dict):
         "irc": None,
         "add_prims": None,
     }
+
     if "cos" in conf_dict:
         dd["cos"] = {
             "type": "neb",
