@@ -1,0 +1,12 @@
+tsopt:
+ type: rsirfo
+ hessian_recalc: 5
+ do_hess: True
+calc:
+ type: xtb
+ pal: 4
+ charge: 0
+ mult: 1
+xyz: shaked.geom_000.xyz
+add_prims: [[24, 20], ]
+coord_type: redund
