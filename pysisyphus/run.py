@@ -1203,7 +1203,7 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
         # main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     run_result = main(run_dict, restart, cwd, scheduler, dryrun)
 
-    if "assert" in run_dict:
+    if run_dict["assert"] is not None:
         print()
         check_asserts(run_result, run_dict)
 
