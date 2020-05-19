@@ -15,11 +15,13 @@ import time
 from distributed import Client
 from natsort import natsorted
 import numpy as np
+import pytest
 import yaml
 
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
+from pysisyphus.color import bool_color
 # from pysisyphus.overlaps.Overlapper import Overlapper
 # from pysisyphus.overlaps.couplings import couplings
 # from pysisyphus.overlaps.sorter import sort_by_overlaps
@@ -721,6 +723,7 @@ def get_defaults(conf_dict):
         "shake": None,
         "irc": None,
         "add_prims": None,
+        "assert": None,
     }
 
     if "cos" in conf_dict:
@@ -794,6 +797,9 @@ def get_defaults(conf_dict):
             "opt_ends": False,
         }
 
+    if "assert" in conf_dict:
+        dd["assert"] = {}
+
     return dd
 
 
@@ -830,7 +836,7 @@ def setup_run_dict(run_dict):
     key_set = set(org_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
                               "stocastic", "tsopt", "shake", "irc",
-                              "preopt", )):
+                              "preopt", "assert")):
         try:
             run_dict[key].update(org_dict[key])
         except TypeError:
@@ -1001,6 +1007,27 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     results = {key: locals_.get(key, None) for key in RunResult._fields}
     run_result = RunResult(**results)
     return run_result
+
+
+def check_asserts(results, run_dict):
+    print(highlight_text(f"Asserting results"))
+
+    assert_ = run_dict["assert"]
+    keys = list(assert_.keys())
+    objs_attrs = [key.split(".") for key in keys]
+    ref_vals = [assert_[k] for k in keys]
+    matches = list()
+    for i, ((obj, attr), ref_val) in enumerate(zip(objs_attrs, ref_vals)):
+        cur_val = getattr(getattr(results, obj), attr)
+        matched = cur_val == pytest.approx(ref_val)
+        print(f"{i:02d}: {obj}.{attr}")
+        print(f"\tReference: {ref_val}")
+        print(f"\tCurrent: {cur_val}")
+        print(f"\tMatches: {bool_color(matched)}")
+        matches.append(matched)
+
+    assert all(matches)
+    print()
 
 
 def do_clean(force=False):
@@ -1175,6 +1202,11 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
     # else:
         # main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
     run_result = main(run_dict, restart, cwd, scheduler, dryrun)
+
+    if "assert" in run_dict:
+        print()
+        check_asserts(run_result, run_dict)
+
     end_time = time.time()
     duration = int(end_time - start_time)
     print(f"pysisyphus run took {duration}s.")
