@@ -10,3 +10,6 @@ calc:
 xyz: shaked.geom_000.xyz
 add_prims: [[24, 20], ]
 coord_type: redund
+assert:
+ ts_geom.energy: -65.29137150
+ ts_opt.cur_cycle: 12
