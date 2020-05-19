@@ -15,5 +15,4 @@ calc:
  charge: 0
  mult: 1
  pal: 4
-preopt_ends: True
 xyz: [09_htransfer_product.xyz, 10_po_diss_product_xtbopt.xyz]

@@ -26,6 +26,5 @@ calc:
  charge: 0
  mult: 1
  pal: 4
-preopt_ends: True
 xyz: [split.image_000.xyz, split.image_056.xyz]
 coord_type: dlc
