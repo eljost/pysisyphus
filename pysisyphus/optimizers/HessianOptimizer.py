@@ -96,10 +96,10 @@ class HessianOptimizer(Optimizer):
         }
         try:
             self.H, hess_str = hess_funcs[self.hessian_init]()
-            self.log(f"Using {hess_str} hessian.")
+            self.log(f"Using {hess_str} Hessian.")
         except KeyError:
             # We allow only loading of cartesian hessians
-            self.log(f"Trying to load saved hessian from '{self.hessian_init}'.")
+            self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
             self.geometry.cart_hessian = np.loadtxt(self.hessian_init)
             # Use the previously set hessian in whatever coordinate system we
             # actually employ.
@@ -109,7 +109,7 @@ class HessianOptimizer(Optimizer):
             # Save the cartesian hessian, as it is independent of the
             # actual coordinate system that is used.
             np.savetxt(hess_fn, self.geometry._hessian)
-            self.log(f"Wrote calculated cartesian hessian to '{hess_fn}'")
+            self.log(f"Wrote calculated cartesian Hessian to '{hess_fn}'")
 
         if (hasattr(self.geometry, "coord_type")
             and self.geometry.coord_type == "dlc"):
@@ -197,7 +197,7 @@ class HessianOptimizer(Optimizer):
             cur_norm = np.linalg.norm(self.forces[-1])
             ref_norm = self.adapt_norm / self.hessian_recalc_adapt
             recalc_adapt = cur_norm <= ref_norm
-            self.log( "Check for adaptive hessian recalculation: "
+            self.log( "Check for adaptive Hessian recalculation: "
                      f"{cur_norm:.6f} <= {ref_norm:.6f}, {recalc_adapt}"
             )
         except TypeError:
@@ -205,7 +205,7 @@ class HessianOptimizer(Optimizer):
 
         try:
             self.hessian_recalc_in = max(self.hessian_recalc_in-1, 0)
-            self.log(f"Recalculation of hessian in {self.hessian_recalc_in} cycle(s).")
+            self.log(f"Recalculation of Hessian in {self.hessian_recalc_in} cycle(s).")
         except TypeError:
             self.hessian_recalc_in = None
 
@@ -219,7 +219,7 @@ class HessianOptimizer(Optimizer):
 
         if recalc or recalc_adapt:
             # Use xtb hessian
-            self.log("Requested hessian recalculation.")
+            self.log("Requested Hessian recalculation.")
             if self.hessian_xtb:
                 self.H = xtb_hessian(self.geometry)
                 key = "xtb"
@@ -231,9 +231,9 @@ class HessianOptimizer(Optimizer):
                             f"calculated_cart_hessian_cycle_{self.cur_cycle}"
                 )
                 np.savetxt(hess_fn, self.geometry._hessian)
-                self.log(f"Wrote calculated cartesian hessian to '{hess_fn}'")
+                self.log(f"Wrote calculated cartesian Hessian to '{hess_fn}'")
             if not (self.cur_cycle == 0):
-                self.log(f"Recalculated {key} hessian in cycle {self.cur_cycle}.")
+                self.log(f"Recalculated {key} Hessian in cycle {self.cur_cycle}.")
             # Reset counter. It is also reset when the recalculation was initiated
             # by the adaptive formulation.
             self.hessian_recalc_in = self.hessian_recalc
@@ -246,7 +246,7 @@ class HessianOptimizer(Optimizer):
             dg = -(self.forces[-1] - self.forces[-2])
             dH, key = self.hessian_update_func(self.H, dx, dg)
             self.H = self.H + dH
-            self.log(f"Did {key} hessian update.")
+            self.log(f"Did {key} Hessian update.")
 
     def poly_line_search(self):
         # Current energy & gradient are already appended.
