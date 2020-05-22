@@ -14,7 +14,8 @@ from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.color import red, green
 from pysisyphus.helpers import get_baker_ts_geoms, do_final_hessian, \
-                               geom_from_library, get_baker_ts_geoms_flat
+                               geom_from_library, get_baker_ts_geoms_flat, \
+                               geom_loader
 from pysisyphus.intcoords.augment_bonds import augment_bonds
 from pysisyphus.testing import using_pyscf, using_gaussian16
 from pysisyphus.tsoptimizers import *
@@ -193,6 +194,66 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
     print("\t@Energies match!")
 
     return opt.cur_cycle+1
+
+
+@using_pyscf
+@pytest.mark.parametrize(
+    "define_prims, proj, ref_cycle", [
+        (None, True, 17),
+        pytest.param(None, False, 17,
+                     marks=pytest.mark.xfail),
+        ([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 13),
+        pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 3,
+                     marks=pytest.mark.xfail),
+    ]
+)
+def test_baker_ts_diels_alder(define_prims, ref_cycle, proj):
+    """
+        https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.21494
+    """
+
+    coord_kwargs = None
+    augment = True
+
+    if define_prims:
+        coord_kwargs = {
+            "define_prims": define_prims,
+        }
+        augment = False
+
+    geom = geom_loader("lib:baker_ts/09_parentdieslalder.xyz",
+                       coord_type="redund",
+                       coord_kwargs=coord_kwargs,
+    )
+
+    calc_kwargs = {
+        "charge": 0,
+        "mult": 1,
+        "pal": 4,
+    }
+    # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
+    geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
+    if augment:
+        geom = augment_bonds(geom, proj=proj)
+
+    opt_kwargs = {
+        "thresh": "baker",
+        "max_cycles": 50,
+        "trust_radius": 0.3,
+        "trust_max": 0.3,
+        "hessian_recalc": 5,
+        "dump": True,
+    }
+    opt = RSIRFOptimizer(geom, **opt_kwargs)
+    opt.run()
+
+    print(f"\t@Converged: {opt.is_converged}, {opt.cur_cycle+1} cycles")
+
+    ref_energy = -231.60320857
+    assert geom.energy == pytest.approx(ref_energy)
+    print("\t@Energies match!")
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycle
 
 
 @pytest.mark.benchmark
