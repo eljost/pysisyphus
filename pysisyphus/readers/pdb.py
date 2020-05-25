@@ -6,6 +6,10 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.constants import ANG2BOHR
 
 
+AMINOS = "ALA CYS ASP GLU PHE GLY HIS ILE LYS LEU" \
+         "MET ASN PRO GLN ARG SER THR VAL TRP TYR".split()
+
+
 def get_parser(widths):
     fmt = " ".join('{}{}'.format(width, "s") for width in widths)
     fieldstruct = struct.Struct(fmt)
