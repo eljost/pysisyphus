@@ -202,7 +202,8 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
         (None, True, 17),
         pytest.param(None, False, 17,
                      marks=pytest.mark.xfail),
-        ([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 13),
+        pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 13,
+                     marks=pytest.mark.xfail),
         pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 3,
                      marks=pytest.mark.xfail),
     ]
