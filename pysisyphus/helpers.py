@@ -14,6 +14,7 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
+from pysisyphus.readers import geom_from_pdb
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -59,6 +60,10 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
 
 def geom_loader(fn, coord_type="cart", **coord_kwargs):
     fn = str(fn)
+
+    if fn.startswith("lib:"):
+        fn = str(THIS_DIR / "../xyz_files/" / fn[4:])
+
     kwargs = {
         "coord_type": coord_type,
     }
@@ -67,6 +72,9 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
         return geom_from_xyz_file(fn, **kwargs)
     elif fn.endswith(".trj"):
         return geoms_from_trj(fn, **kwargs)
+    elif fn.endswith(".pdb"):
+        print("coord_type & coord_kwargs are currently ignored for PDBs!")
+        return geom_from_pdb(fn)
     else:
         raise Exception("Unknown filetype!")
 
