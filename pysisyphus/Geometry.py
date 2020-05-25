@@ -1,4 +1,6 @@
 from collections import Counter, namedtuple
+import itertools as it
+import re
 import subprocess
 import tempfile
 import sys
@@ -200,6 +202,21 @@ class Geometry:
     @property
     def atom_types(self):
         return set(self.atoms)
+
+    def get_fragments(self, regex):
+        regex = re.compile(regex)
+        frags = [frag for frag in self.fragments.keys() if regex.search(frag)]
+        org_indices = list(it.chain(*[self.fragments[frag] for frag in frags]))
+
+        new_atoms = [self.atoms[ind] for ind in org_indices]
+        new_coords = self.coords3d[org_indices].copy()
+        new_fragments = dict()
+        i = 0
+        for frag in frags:
+            frag_atoms = len(self.fragments[frag])
+            new_fragments[frag] = list(range(i, i+frag_atoms))
+            i += frag_atoms
+        return Geometry(new_atoms, new_coords, fragments=new_fragments)
 
     def clear(self):
         """Reset the object state."""
