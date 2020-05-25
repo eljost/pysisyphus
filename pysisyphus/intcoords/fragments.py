@@ -27,7 +27,7 @@ def merge_fragments(fragments):
 def get_fragments(atoms, coords):
     coords3d = coords.reshape(-1, 3)
     # Bond indices without interfragment bonds and/or hydrogen bonds
-    stretch_indices = get_bond_sets(atoms, coords3d,)
+    stretch_indices = get_bond_sets(atoms, coords3d)
 
     bond_ind_sets = [frozenset(bi) for bi in stretch_indices]
     fragments = merge_fragments(bond_ind_sets)
