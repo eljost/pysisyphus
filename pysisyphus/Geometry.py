@@ -26,8 +26,8 @@ class Geometry:
         "dlc": DLC,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart", coord_kwargs=None,
-                 comment=""):
+    def __init__(self, atoms, coords, fragments=None, coord_type="cart",
+                 coord_kwargs=None, comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -41,6 +41,9 @@ class Geometry:
         coords : 1d iterable
             1d iterable of length 3N, containing the cartesian coordinates
             of N atoms.
+        fragments : dict, optional
+            Dict with different keys denoting different fragments. The values
+            contain lists of atom indices.
         coord_type : {"cart", "redund"}, optional
             Type of coordinate system to use. Right now cartesian (cart)
             and redundand (redund) are supported.
@@ -57,6 +60,9 @@ class Geometry:
             f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
             f"{self._coords.size}. Did you accidentally supply internal " \
              "coordinates?"
+        if fragments is None:
+            fragments = dict()
+        self.fragments = fragments
 
         if (coord_kwargs is not None) and coord_type == "cart":
             print("coord_type is set to 'cart' but coord_kwargs were given. "
