@@ -15,13 +15,18 @@ np.set_printoptions(suppress=True, precision=6)
 
 class FragmentKick(Kick):
 
-    def __init__(self, geom, fragments, fix_fragments=list(),
-                 displace_from=list(), random_displacement=False,
+    def __init__(self, geom, fragments, fix_fragments=None,
+                 displace_from=None, random_displacement=False,
                  **kwargs):
         super().__init__(geom, **kwargs)
 
         self.fragments = self.get_fragments(fragments)
+        if fix_fragments is None:
+            fix_fragments = (0, )
         self.fix_fragments = fix_fragments
+
+        if displace_from is None:
+            displace_from = list()
         self.displace_from = displace_from
         # True when displace_from is given
         self.random_displacement = self.displace_from or random_displacement

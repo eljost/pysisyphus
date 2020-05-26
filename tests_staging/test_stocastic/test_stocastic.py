@@ -43,14 +43,12 @@ def test_kick():
 @using("xtb")
 def test_benz_chlorine_fragment_kick():
     geom = geom_loader("lib:benzene_and_chlorine.xyz")
-    fragments = (list(range(12)), )
     stoc_kwargs = {
         "cycle_size": 15,
         "max_cycles": 3,
         "radius": 4.5,
         "seed": 1532002565,
-        "fragments": fragments,
-        "fix_fragments": (0, ),
+        "fragments": (list(range(12)), ),
         "rmsd_thresh": .2,
     }
     stoc = FragmentKick(geom, **stoc_kwargs)
@@ -61,27 +59,28 @@ def test_benz_chlorine_fragment_kick():
     assert min(stoc.new_energies) == pytest.approx(-24.9911479)
 
 
-@pytest.mark.skip
+@using("xtb")
 def test_benz_no_plus_fragment_kick():
-    geom = geom_from_library("benzene_and_no.xyz")
-    benz_frag = range(12)
-    no_frag = (12, 13)
-    fragments = (benz_frag, no_frag)
-    kwargs = {
+    geom = geom_loader("lib:benzene_and_no.xyz")
+    stoc_kwargs = {
         "cycle_size": 10,
-        "cycles": 3,
+        "max_cycles": 3,
         "radius": 2.5,
         "seed": 1532002565,
-        "fragments": fragments,
-        "fix_fragments": (0, ),
+        "fragments": (list(range(12)), ),
         "rmsd_thresh": .2,
         "calc_kwargs": {
             "charge": 1,
         },
         "random_displacement": True,
     }
-    fkick = FragmentKick(geom, **kwargs)
-    fkick.run()
+
+    stoc = FragmentKick(geom, **stoc_kwargs)
+    stoc.run()
+
+    assert stoc.cur_cycle == 2
+    assert len(stoc.new_geoms) == 17
+    assert min(stoc.new_energies) == pytest.approx(-22.37273674)
 
 
 @pytest.mark.skip
