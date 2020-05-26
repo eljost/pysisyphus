@@ -196,7 +196,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
-    assert interpolate in list(INTERPOLATE.keys()) + [None]
+    assert interpolate in list(INTERPOLATE.keys()) + [None], \
+        f"Unsupported type: '{interpolate}' given. Valid arguments are " \
+        f"{list(INTERPOLATE.keys())}'"
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
                        define_prims=define_prims)
@@ -208,7 +210,8 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     assert all([atoms_str == atoms_0_str for atoms_str in atoms_strs]), \
         "Atom ordering/numbering in the geometries is inconsistent!"
 
-    # TODO: Multistep interpolation (when more than two geometries are specified)
+    # TODO:
+    # Multistep interpolation (when more than two geometries are specified)
     # in internal coordinates may lead to a different number of defined coordinates.
     # Maybe the union between geom0 and geom1 contains 6 internals and the union
     # betweeen geom1 and geom2 contains 8 primtives. Then the number of coordinates
@@ -217,18 +220,24 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
         interpolate_class = INTERPOLATE[interpolate]
         interpolator = interpolate_class(geoms, between, align=interpolate_align)
         geoms = interpolator.interpolate_all()
+
+    # Recreate Geometries so they have the correct coord_type. There may
+    # be a difference between the coord_type used for interpolation and
+    # the desired coord_type as specified in the function arguments.
+    # prim_indices = [None for geom in geoms]
     if coord_type != geoms[0].coord_type:
-        # Recreate Geometries so they have the correct coord_type. There may
-        # be a difference between the coord_type used for interpolation and
-        # the desired coord_type as specified in the function arguments.
-        prim_indices = [None for geom in geoms]
-        if coord_type != "cart":
-            prim_indices = [geom.internal.prim_indices for geom in geoms]
-        geoms = [Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type,
-                          comment=geom.comment,
-                          coord_kwargs={"prim_indices": pi,},
-                 )
-                 for geom, pi in zip(geoms, prim_indices)]
+        recreated_geoms = list()
+        for geom in geoms:
+            coord_kwargs = None
+            if coord_type != "cart":
+                coord_kwargs = {
+                    "prim_indices": geom.internal.prim_indices,
+                }
+            geom = Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type,
+                            comment=geom.comment, coord_kwargs=coord_kwargs
+            )
+            recreated_geoms.append(geom)
+        geoms = recreated_geoms
 
     same_prim_inds = True
     if coord_type != "cart":
