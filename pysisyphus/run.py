@@ -104,8 +104,8 @@ IRC_DICT = {
 }
 
 STOCASTIC_DICT = {
-    "frag": FragmentKick.FragmentKick,
-    "kick": Kick.Kick,
+    "frag": FragmentKick,
+    "kick": Kick,
 }
 
 
