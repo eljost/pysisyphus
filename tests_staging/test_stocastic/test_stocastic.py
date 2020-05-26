@@ -166,7 +166,6 @@ def test_pyscf_stocastic():
     stoc = FragmentKick(geom, **stoc_kwargs)
     stoc.run()
 
-    import pdb; pdb.set_trace()
     assert stoc.cur_cycle == 2
-    assert len(stoc.new_geoms) == 17
-    assert min(stoc.new_energies) == pytest.approx(-22.37273674)
+    assert len(stoc.new_geoms) == 4
+    assert min(stoc.new_energies) == pytest.approx(-357.605594464)
