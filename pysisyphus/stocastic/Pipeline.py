@@ -10,17 +10,19 @@ from scipy.spatial.distance import pdist
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import check_for_stop_sign, highlight_text
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.stocastic.align import matched_rmsd
 from pysisyphus.xyzloader import make_trj_str_from_geoms
 
 
 class Pipeline:
 
-    def __init__(self, geom, seed=None, max_cycles=5, cycle_size=15,
+    def __init__(self, geom, calc_getter=None, seed=None, max_cycles=5, cycle_size=15,
                  rmsd_thresh=.1, energy_thresh=1e-3, energy_range=.125,
                  compare_num=25, break_after=2,
                  calc_kwargs=None):
         self.initial_geom = geom
+        self.calc_getter = calc_getter
         self.max_cycles = max_cycles
         self.cycle_size = cycle_size
         if seed is None:
@@ -42,6 +44,7 @@ class Pipeline:
         np.random.seed(self.seed)
         self.logger = logging.getLogger("stocastic")
 
+        self.is_analytical2d = len(geom.atoms) == 1
         self.log(f"Seed: {self.seed}")
         self.coords_size = self.initial_geom.coords.size
 
@@ -130,10 +133,17 @@ class Pipeline:
     def geom_is_valid(self, geom):
         """Filter out geometries that are None, or were the atoms are too close
         or when they are already known."""
-        return (geom is not None
-                and not self.geom_is_close_in_energy(geom)
-                and not self.atoms_are_too_close(geom)
-                and self.geom_is_new(geom))
+
+        valid = (geom is not None
+                 and not self.geom_is_close_in_energy(geom)
+        )
+
+        if not self.is_analytical2d:
+            valid = (valid
+                     and not self.atoms_are_too_close(geom)
+                     and self.geom_is_new(geom)
+            )
+        return valid
     
     def get_input_geom(self, geom):
         raise Exception("Implement me!")
@@ -178,10 +188,19 @@ class Pipeline:
         return unique_geoms
 
     def run_geom_opt(self, geom):
-        calc = XTB(calc_number=self.calc_counter, **self.calc_kwargs)
+        if self.calc_getter is not None:
+            calc = self.calc_getter(calc_number=self.calc_counter)
+            geom.set_calculator(calc)
+            opt = RFOptimizer(geom)
+            opt.run()
+            opt_geom = geom
+        else:
+            calc = XTB(calc_number=self.calc_counter, **self.calc_kwargs)
+            opt_result = calc.run_opt(geom.atoms, geom.coords, keep=False)
+            opt_geom = opt_result.opt_geom
+
         self.calc_counter += 1
-        opt_result = calc.run_opt(geom.atoms, geom.coords, keep=False)
-        return opt_result.opt_geom
+        return opt_geom
 
     def write_geoms_to_trj(self, geoms, fn, comments=None):
         with open(fn, "w") as handle:
@@ -261,6 +280,10 @@ class Pipeline:
         first_geom = self.new_geoms[0]
         first_geom.standard_orientation()
         first_geom.energy = self.new_energies[0]
+
+        if self.is_analytical2d:
+            return self.new_geoms
+
         matched_geoms = [first_geom, ]
         for geom, energy in zip(self.new_geoms[1:], self.new_energies):
             rmsd, (_, matched_geom) = matched_rmsd(first_geom, geom)
