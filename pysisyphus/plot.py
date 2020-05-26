@@ -298,18 +298,19 @@ def load_results(keys):
 def plot_cosgrad():
     keys = ("energy", "forces", "coords")
     (energies, forces, coords), num_cycles, num_images = load_results(keys)
-    dummy_atoms = ["H" for _ in coords[0][0]]
+    atom_num = coords[0][0].size // 3
+    dummy_atoms =["H"] * atom_num
 
     all_nebs = list()
     all_perp_forces = list()
     for i, per_cycle in enumerate(zip(energies, forces, coords), 1):
         ens, frcs, crds = per_cycle
         images = [Geometry(dummy_atoms, per_image) for per_image in crds]
+        for image, en, frc in zip(images, ens, frcs):
+            image._energy = en
+            image._forces = frc
+
         neb = NEB(images)
-        neb._forces = frcs
-        neb.forces = frcs
-        neb._energy = ens
-        neb.energy = ens
         all_nebs.append(neb)
         pf = neb.perpendicular_forces.reshape(num_images, -1)
         all_perp_forces.append(pf)

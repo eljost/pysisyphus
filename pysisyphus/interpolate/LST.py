@@ -14,10 +14,11 @@ from pysisyphus.interpolate.Interpolator import Interpolator
 
 class LST(Interpolator):
 
-    def __init__(self, geoms, between, align=True, gtol=1e-4):
+    def __init__(self, geoms, between, align=True, gtol=1e-4, silent=False):
         super().__init__(geoms, between, align)
 
         self.gtol = float(gtol)
+        self.silent = silent
 
     def cost_function(self, wa_c, f, rab, wab):
         wa_c = wa_c.reshape(-1, 3)
@@ -65,7 +66,8 @@ class LST(Interpolator):
             x0_flat = wab(f)
             res = minimize(self.cost_function, x0=x0_flat, args=(f, rab, wab),
                            **minimize_kwargs)
-            print(f"{i:03d}/{self.between:03d}: f={f:.04f}, success: {res.success}")
+            if not self.silent:
+                print(f"{i:03d}/{self.between:03d}: f={f:.04f}, success: {res.success}")
             interpolated_geoms.append(
                 Geometry(self.atoms, res.x)
             )

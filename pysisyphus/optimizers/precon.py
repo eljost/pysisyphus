@@ -9,6 +9,10 @@ from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
 from pysisyphus.InternalCoordinates import RedundantCoords
 
 
+# [1] https://www.nature.com/articles/s41598-018-32105-x
+#     Mones, 2018
+
+
 def get_lindh_alpha(atom1, atom2):
     first_period = ("h", "he")
 

@@ -4,18 +4,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pysisyphus.plotters.AnimPlot import AnimPlot
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.Geometry import Geometry
+from pysisyphus.interpolate.Interpolator import Interpolator
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-from pysisyphus.interpolate.Interpolator import Interpolator
+from pysisyphus.plotters.AnimPlot import AnimPlot
+from pysisyphus.run import run_from_dict
+from pysisyphus.testing import using
 
 
 def get_geoms():
@@ -125,3 +127,52 @@ def animate_bare(opt):
     )
     ap.animate()
     return ap
+
+
+@using("pyscf")
+def test_hcn_neb():
+    run_dict = {
+        "preopt": {
+            "max_cycles": 3,
+        },
+        "interpol": {
+            "type": "idpp",
+            "between": 3,
+        },
+        "cos": {
+            "type": "neb",
+        },
+        "opt": {
+            "type": "qm",
+            "align": True,
+        },
+        "calc": {
+            "type": "pyscf",
+            "pal": 2,
+            "basis": "321g",
+        },
+        "xyz": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"]
+    }
+    results = run_from_dict(run_dict)
+
+    assert results.cos_opt.is_converged
+    assert results.cos_opt.cur_cycle == 18
+
+
+@pytest.mark.parametrize(
+    "neb_kwargs, ref_cycle", [
+        ({}, 34),
+        ({"variable_springs": True, "k_min": 0.01, "k_max": 5}, 33),
+    ]
+)
+def test_neb_springs(neb_kwargs, ref_cycle):
+    calc = AnaPot()
+    geoms = calc.get_path(15)
+    neb = NEB(geoms, **neb_kwargs)
+    opt = SteepestDescent(neb)
+    opt.run()
+
+    calc.anim_opt(opt)#, show=True)
+
+    assert(opt.is_converged)
+    assert(opt.cur_cycle == ref_cycle)
