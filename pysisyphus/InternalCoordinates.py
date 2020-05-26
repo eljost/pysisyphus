@@ -11,7 +11,6 @@ from collections import namedtuple
 from functools import reduce
 import itertools as it
 import logging
-import typing
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
