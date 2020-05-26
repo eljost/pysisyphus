@@ -23,13 +23,6 @@ from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
-# @attr.s(auto_attribs=True)
-# class PrimitiveCoord:
-    # inds : typing.List[int]
-    # val : float
-    # grad : np.ndarray
-
-
 PrimitiveCoord = namedtuple(
                     "PrimitiveCoord",
                     "inds val grad",

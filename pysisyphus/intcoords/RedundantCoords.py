@@ -12,7 +12,6 @@ import itertools as it
 import logging
 import typing
 
-# import attr
 import numpy as np
 from scipy.spatial.distance import squareform
 
@@ -22,13 +21,6 @@ from pysisyphus.intcoords import Bend, LinearBend, Stretch, Torsion
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.intcoords.fragments import merge_fragments
-
-
-# @attr.s(auto_attribs=True)
-# class PrimitiveCoord:
-    # inds : typing.List[int]
-    # val : float
-    # grad : np.ndarray
 
 
 PrimitiveCoord = namedtuple(
