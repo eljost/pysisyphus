@@ -1,6 +1,6 @@
-import numpy as np
 import pytest
 
+from pysisyphus.calculators.Rastrigin import Rastrigin
 from pysisyphus.helpers import geom_loader
 from pysisyphus.stocastic import *
 from pysisyphus.testing import using
@@ -102,3 +102,35 @@ def test_toluene():
     assert stoc.cur_cycle == 2
     assert len(stoc.new_geoms) == 4
     assert min(stoc.new_energies) == pytest.approx(-28.1439149)
+
+
+def test_rastrigin():
+    calc = Rastrigin()
+
+    def calc_getter(calc_number):
+        calc.calc_counter = 0
+        calc.calc_number = calc_number
+        return calc
+
+    geom = calc.get_minima()[0]
+    stoc_kwargs = {
+        "seed": 20180325,
+        "calc_getter": calc_getter,
+        "cycle_size": 25,
+        "max_cycles": 10,
+        "radius": 4,
+    }
+    stoc = Kick(geom, **stoc_kwargs)
+    geoms = stoc.run()
+
+    assert stoc.cur_cycle == 9
+    assert len(stoc.new_geoms) == 14
+    assert min(stoc.new_energies) == pytest.approx(0., abs=1.5e-8)
+
+    # import numpy as np
+    # import matplotlib.pyplot as plt
+    # calc.plot()
+    # ax = calc.ax
+    # xs, ys = np.array([geom.coords[:2] for geom in geoms]).T
+    # ax.scatter(xs, ys, s=35, marker="X", color="red", zorder=10)
+    # plt.show()
