@@ -86,27 +86,19 @@ def test_benz_no_plus_fragment_kick():
     assert min(stoc.new_energies) == pytest.approx(-22.37273674)
 
 
-@pytest.mark.skip
+@using("xtb")
 def test_toluene():
-    geom = geom_from_library("toluene_and_cl2.xyz")
-    toluene_frag = range(15)
-    cl2_frag = (15, 16)
-    fragments = (toluene_frag, cl2_frag)
-    # kwargs = {
-        # "cycle_size": 10,
-        # "radius": 1.25,
-        # "cycles": 2,
-        # "seed": 1532002565,
-    # }
-    # fkick = FragmentKick(geom, fragments, **kwargs)
-    # fkick.run()
-    kwargs = {
-        "cycle_size": 75,
-        # "cycle_size": 15,
+    geom = geom_loader("lib:toluene_and_cl2.xyz")
+    stoc_kwargs = {
+        "cycle_size": 10,
+        "max_cycles": 3,
         "radius": 3,
-        "cycles": 15,
-        # "cycles": 5,
         "seed": 1532002565,
+        "fragments": (list(range(15)), ),
     }
-    fkick = FragmentKick(geom, fragments, **kwargs)
-    fkick.run()
+    stoc = FragmentKick(geom, **stoc_kwargs)
+    stoc.run()
+
+    assert stoc.cur_cycle == 2
+    assert len(stoc.new_geoms) == 4
+    assert min(stoc.new_energies) == pytest.approx(-28.1439149)

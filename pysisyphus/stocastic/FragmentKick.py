@@ -10,9 +10,6 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.stocastic.Kick import Kick
 
 
-np.set_printoptions(suppress=True, precision=6)
-
-
 class FragmentKick(Kick):
 
     def __init__(self, geom, fragments, fix_fragments=None,

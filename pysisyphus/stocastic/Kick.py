@@ -10,8 +10,6 @@ from pysisyphus.xyzloader import make_trj_str_from_geoms
 from pysisyphus.stocastic.Pipeline import Pipeline
 
 
-np.set_printoptions(suppress=True, precision=2)
-
 class Kick(Pipeline):
 
     def __init__(self, geom, radius=0.5, **kwargs):
