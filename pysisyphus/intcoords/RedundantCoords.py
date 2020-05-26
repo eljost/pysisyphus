@@ -7,11 +7,12 @@
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844
 
+from collections import namedtuple
 import itertools as it
 import logging
 import typing
 
-import attr
+# import attr
 import numpy as np
 from scipy.spatial.distance import squareform
 
@@ -23,11 +24,17 @@ from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
-@attr.s(auto_attribs=True)
-class PrimitiveCoord:
-    inds : typing.List[int]
-    val : float
-    grad : np.ndarray
+# @attr.s(auto_attribs=True)
+# class PrimitiveCoord:
+    # inds : typing.List[int]
+    # val : float
+    # grad : np.ndarray
+
+
+PrimitiveCoord = namedtuple(
+                    "PrimitiveCoord",
+                    "inds val grad",
+)
 
 
 class RedundantCoords:

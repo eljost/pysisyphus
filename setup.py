@@ -28,7 +28,7 @@ setup(
     platforms=["unix"],
     packages=find_packages(),
     install_requires=[
-        "attrs",
+        # "attrs",
         "autograd",
         "distributed",
         "h5py",

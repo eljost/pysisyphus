@@ -13,7 +13,6 @@ import itertools as it
 import logging
 import typing
 
-import attr
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
@@ -24,11 +23,17 @@ from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
-@attr.s(auto_attribs=True)
-class PrimitiveCoord:
-    inds : typing.List[int]
-    val : float
-    grad : np.ndarray
+# @attr.s(auto_attribs=True)
+# class PrimitiveCoord:
+    # inds : typing.List[int]
+    # val : float
+    # grad : np.ndarray
+
+
+PrimitiveCoord = namedtuple(
+                    "PrimitiveCoord",
+                    "inds val grad",
+)
 
 
 class RedundantCoords:
