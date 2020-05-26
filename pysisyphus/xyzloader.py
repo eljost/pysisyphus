@@ -36,15 +36,13 @@ def coords_to_trj(trj_fn, atoms, coords_list, comments=None):
     return trj_fn
 
 
-def make_trj_str_from_geoms(geoms, comments=None):
+def make_trj_str_from_geoms(geoms, comments=None, energy_comments=False):
     atoms = geoms[0].atoms
     coords_list = [geom.coords3d*BOHR2ANG for geom in geoms]
-    if comments is not None:
-        assert len(comments) == len(geoms)
-        geom_comments = [geom.comment for geom in geoms]
-        comments = [f"{geom_comment}, {comment}"
-                    for geom_comment, comment in zip(geom_comments, comments)
-        ]
+    if energy_comments and comments is None:
+        comments = [str(geom._energy) for geom in geoms]
+    assert len(comments) == len(geoms)
+
     return make_trj_str(atoms, coords_list, comments)
 
 

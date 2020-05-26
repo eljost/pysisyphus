@@ -210,7 +210,9 @@ class Pipeline:
 
     def write_geoms_to_trj(self, geoms, fn, comments=None):
         with open(fn, "w") as handle:
-            handle.write(make_trj_str_from_geoms(geoms, comments))
+            handle.write(
+                make_trj_str_from_geoms(geoms, comments, energy_comments=True)
+            )
 
     def run(self):
         for self.cur_cycle in range(self.max_cycles):
