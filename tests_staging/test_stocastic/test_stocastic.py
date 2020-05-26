@@ -1,12 +1,7 @@
-#!/usr/bin/env python3
-
-import os
-from pathlib import Path
-
 import numpy as np
 import pytest
 
-from pysisyphus.helpers import geom_loader, geom_from_library, geoms_from_trj
+from pysisyphus.helpers import geom_loader
 from pysisyphus.stocastic import *
 from pysisyphus.testing import using
 
@@ -21,6 +16,14 @@ def test_get_fragments():
     fkick = FragmentKick(geom, **kwargs)
     _, benz_frag = fkick.fragments
     assert benz_frag.tolist() == list(range(12))
+
+
+def test_atoms_are_too_close():
+    geoms = geom_loader("lib:test_reject.trj")
+    stoc = Kick(geoms[0])
+    reject = [stoc.atoms_are_too_close(geom, factor=.7) for geom in geoms]
+    inds = [i for i, r in enumerate(reject) if r]
+    assert inds == [6, 9, 14, 19, 20, 23, 28]
 
 
 @using("xtb")
@@ -107,24 +110,3 @@ def test_toluene():
     }
     fkick = FragmentKick(geom, fragments, **kwargs)
     fkick.run()
-
-
-def test_atoms_are_too_close():
-    THIS_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
-    trj_fn = THIS_DIR / "test_reject.trj"
-    geoms = geoms_from_trj(trj_fn)
-    kick = Kick(geoms[0])
-    reject = [kick.atoms_are_too_close(geom, factor=.7) for geom in geoms]
-    inds = [i for i, r in enumerate(reject) if r]
-    assert inds == [6, 9, 14, 19, 20, 23, 28]
-
-
-
-
-if __name__ == "__main__":
-    # test_kick()
-    # test_benz_chlorine_fragment_kick()
-    # test_benz_no_plus_fragment_kick()
-    test_toluene()
-    # test_atoms_are_too_close()
-    # test_get_fragments()
