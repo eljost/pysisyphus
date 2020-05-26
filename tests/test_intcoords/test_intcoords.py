@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 from pytest import approx
 
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_from_library, geom_loader
+from pysisyphus.intcoords.fragments import get_fragments
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.testing import using_pyscf
 
@@ -68,3 +69,10 @@ def test_numhess(xyz_fn, coord_type, ref_rms):
     nH = numhess(geom)
 
     assert compare_hessians(H, nH, ref_rms)
+
+
+def test_get_fragments():
+    geom = geom_loader("lib:thr75_from_1bl8.xyz")
+
+    fragments = get_fragments(geom.atoms, geom.coords3d)
+    assert len(fragments) == 4
