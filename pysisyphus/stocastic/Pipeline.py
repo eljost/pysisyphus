@@ -191,9 +191,15 @@ class Pipeline:
         if self.calc_getter is not None:
             calc = self.calc_getter(calc_number=self.calc_counter)
             geom.set_calculator(calc)
-            opt = RFOptimizer(geom)
+            opt_kwargs = {
+                "gdiis": False,
+                "thresh": "gau_loose",
+                "overachieve_factor": 2,
+                "max_cycles": 75,
+            }
+            opt = RFOptimizer(geom, **opt_kwargs)
             opt.run()
-            opt_geom = geom
+            opt_geom = geom if opt.is_converged else None
         else:
             calc = XTB(calc_number=self.calc_counter, **self.calc_kwargs)
             opt_result = calc.run_opt(geom.atoms, geom.coords, keep=False)

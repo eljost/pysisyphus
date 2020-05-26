@@ -1,6 +1,7 @@
 import pytest
 
 from pysisyphus.calculators.Rastrigin import Rastrigin
+from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.stocastic import *
 from pysisyphus.testing import using
@@ -68,7 +69,7 @@ def test_benz_no_plus_fragment_kick():
     stoc_kwargs = {
         "cycle_size": 10,
         "max_cycles": 3,
-        "radius": 2.5,
+        "radius": 5.,
         "seed": 1532002565,
         "fragments": (list(range(12)), ),
         "rmsd_thresh": .2,
@@ -82,8 +83,8 @@ def test_benz_no_plus_fragment_kick():
     stoc.run()
 
     assert stoc.cur_cycle == 2
-    assert len(stoc.new_geoms) == 17
-    assert min(stoc.new_energies) == pytest.approx(-22.37273674)
+    assert len(stoc.new_geoms) == 11
+    assert min(stoc.new_energies) == pytest.approx(-22.3727376)
 
 
 @using("xtb")
@@ -134,3 +135,38 @@ def test_rastrigin():
     # xs, ys = np.array([geom.coords[:2] for geom in geoms]).T
     # ax.scatter(xs, ys, s=35, marker="X", color="red", zorder=10)
     # plt.show()
+
+
+@using("pyscf")
+def test_pyscf_stocastic():
+    geom = geom_loader("lib:benzene_and_no.xyz")
+
+    def calc_getter(calc_number):
+        calc_kwargs = {
+            "charge": +1,
+            "mult": 1,
+            "pal": 2,
+            "basis": "321g",
+            "calc_number": calc_number,
+        }
+        calc = PySCF(**calc_kwargs)
+        return calc
+
+    stoc_kwargs = {
+        "calc_getter": calc_getter,
+        "cycle_size": 3,
+        "max_cycles": 3,
+        "radius": 5.,
+        "seed": 20180325,
+        "fragments": (list(range(12)), ),
+        "rmsd_thresh": .2,
+        "random_displacement": True,
+    }
+
+    stoc = FragmentKick(geom, **stoc_kwargs)
+    stoc.run()
+
+    import pdb; pdb.set_trace()
+    assert stoc.cur_cycle == 2
+    assert len(stoc.new_geoms) == 17
+    assert min(stoc.new_energies) == pytest.approx(-22.37273674)
