@@ -41,7 +41,8 @@ def make_trj_str_from_geoms(geoms, comments=None, energy_comments=False):
     coords_list = [geom.coords3d*BOHR2ANG for geom in geoms]
     if energy_comments and comments is None:
         comments = [str(geom._energy) for geom in geoms]
-    assert len(comments) == len(geoms)
+    elif comments is not None:
+        assert len(comments) == len(geoms)
 
     return make_trj_str(atoms, coords_list, comments)
 
