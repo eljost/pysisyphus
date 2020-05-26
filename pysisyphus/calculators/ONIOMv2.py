@@ -107,7 +107,7 @@ class Model():
 
     def __init__(self, name, calc_level, calc,
                  parent_name, parent_calc_level, parent_calc,
-                 atom_inds, parent_atom_inds):
+                 atom_inds, parent_atom_inds, use_link_atoms=True):
 
         self.name = name
         self.calc_level = calc_level
@@ -120,6 +120,8 @@ class Model():
         self.atom_inds = atom_inds
         self.parent_atom_inds = parent_atom_inds
 
+        self.use_link_atoms = use_link_atoms
+
         self.links = list()
         self.capped = False
 
@@ -130,7 +132,7 @@ class Model():
     def create_links(self, atoms, coords, debug=False):
         self.capped = True
 
-        if self.parent_name is not None:
+        if self.use_link_atoms and self.parent_name is not None:
             _, self.links = cap_fragment(atoms, coords, self.atom_inds)
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
         for i, link in enumerate(self.links):
@@ -246,7 +248,7 @@ class Model():
 class ONIOM(Calculator):
 
     def __init__(self, calcs, models, geom, layers=None, embedding=None,
-                 real_key="real"):
+                 real_key="real", use_link_atoms=True):
         """
         layer: list of models
             len(layer) == 1: normal ONIOM, len(layer) >= 1: multicenter ONIOM.
@@ -265,6 +267,8 @@ class ONIOM(Calculator):
             f'"{real_key}" must not be defined in "models"!'
         assert real_key in calcs, \
             f'"{real_key}" must be defined in "calcs"!'
+
+        self.use_link_atoms = use_link_atoms
 
         # When no ordering of layers is given we try to guess it from
         # the size of the respective models. It's probably a better idea
@@ -372,6 +376,7 @@ class ONIOM(Calculator):
                 parent_calc=parent_calc,
                 atom_inds=models[model]["inds"],
                 parent_atom_inds=models[parent]["inds"],
+                use_link_atoms=self.use_link_atoms,
             )
             self.models.append(model)
             self.layers[parent_layer_ind+1].append(model)
