@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import itertools as it
 import time
 
@@ -90,29 +88,3 @@ class Kick(Pipeline):
         self.cur_micro_cycle += 1
 
         return kept_geoms
-
-    # def run(self):
-        # while self.cur_cycle < self.cycles:
-            # print(f"Starting cycle {self.cur_cycle} with " \
-                  # f"{len(self.geoms_to_kick)} geometries.")
-            # new_geoms = list(
-                # it.chain(
-                    # *[self.run_cycle(geom) for geom in self.geoms_to_kick]
-                # )
-            # )
-            # new_num = len(new_geoms)
-            # print(f"Kicks in cycle {self.cur_cycle} produced "
-                  # f"{new_num} new geometries.")
-            # kept_geoms = self.get_unique_geometries(new_geoms)
-            # kept_num = len(kept_geoms)
-            # self.geoms_to_kick = kept_geoms
-            # self.cur_cycle += 1
-            # self.cur_micro_cycle = 0
-            # print()
-            # geoms_sorted = sorted(kept_geoms, key=lambda g: g._energy)
-            # trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
-            # with open(trj_filtered_fn, "w") as handle:
-                # handle.write(make_trj_str_from_geoms(geoms_sorted))
-        # # keine optimierungen von bereits bekannten startgeometrien starten
-        # #                                           endgeometrien starten
-        # # energie einbeziehen

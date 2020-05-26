@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import bisect
 import itertools as it
 import logging
@@ -10,19 +8,20 @@ import rmsd
 from scipy.spatial.distance import pdist
 
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.helpers import check_for_stop_sign, highlight_text
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
-from pysisyphus.xyzloader import make_trj_str_from_geoms
 from pysisyphus.stocastic.align import matched_rmsd
-from pysisyphus.helpers import check_for_stop_sign
+from pysisyphus.xyzloader import make_trj_str_from_geoms
+
 
 class Pipeline:
 
-    def __init__(self, geom, seed=None, cycles=5, cycle_size=15,
+    def __init__(self, geom, seed=None, max_cycles=5, cycle_size=15,
                  rmsd_thresh=.1, energy_thresh=1e-3, energy_range=.125,
                  compare_num=25, break_after=2,
-                 calc_kwargs={}):
+                 calc_kwargs=None):
         self.initial_geom = geom
-        self.cycles = cycles
+        self.max_cycles = max_cycles
         self.cycle_size = cycle_size
         if seed is None:
             self.seed = int(time.time())
@@ -37,7 +36,8 @@ class Pipeline:
                 "charge": 0,
                 "mult": 1,
         }
-        self.calc_kwargs.update(calc_kwargs)
+        if calc_kwargs is not None:
+            self.calc_kwargs.update(calc_kwargs)
 
         np.random.seed(self.seed)
         self.logger = logging.getLogger("stocastic")
@@ -173,7 +173,7 @@ class Pipeline:
         is_, js = np.where(rmsds < self.rmsd_thresh)
         similar_inds = np.unique(js)
         all_inds = np.arange(geom_num)
-        unique_geoms = [geoms[i] for i in range(geom_num) if not i in similar_inds]
+        unique_geoms = [geoms[i] for i in range(geom_num) if i not in similar_inds]
         unique_num = len(unique_geoms)
         return unique_geoms
 
@@ -183,42 +183,14 @@ class Pipeline:
         opt_result = calc.run_opt(geom.atoms, geom.coords, keep=False)
         return opt_result.opt_geom
 
-    """
-    def run(self):
-        while self.cur_cycle < self.cycles:
-            print(f"Starting cycle {self.cur_cycle} with " \
-                  f"{len(self.geoms_to_kick)} geometries.")
-            new_geoms = list(
-                it.chain(
-                    *[self.run_cycle(geom) for geom in self.geoms_to_kick]
-                )
-            )
-            new_num = len(new_geoms)
-            print(f"Kicks in cycle {self.cur_cycle} produced "
-                  f"{new_num} new geometries.")
-            kept_geoms = self.get_unique_geometries(new_geoms)
-            kept_num = len(kept_geoms)
-            self.geoms_to_kick = kept_geoms
-            self.cur_cycle += 1
-            self.cur_micro_cycle = 0
-            print()
-            geoms_sorted = sorted(kept_geoms, key=lambda g: g._energy)
-            trj_filtered_fn = f"cycle_{self.cur_cycle:03d}.trj"
-            with open(trj_filtered_fn, "w") as handle:
-                handle.write(make_trj_str_from_geoms(geoms_sorted))
-        # keine optimierungen von bereits bekannten startgeometrien starten
-        #                                           endgeometrien starten
-        # energie einbeziehen
-    """
-
     def write_geoms_to_trj(self, geoms, fn, comments=None):
         with open(fn, "w") as handle:
             handle.write(make_trj_str_from_geoms(geoms, comments))
 
     def run(self):
-        while self.cur_cycle < self.cycles:
+        for self.cur_cycle in range(self.max_cycles):
             cycle_start = time.time()
-            self.log(f"Cycle {self.cur_cycle}")
+            self.log(highlight_text(f"Cycle {self.cur_cycle}"))
             input_geoms = [self.get_input_geom(self.initial_geom)
                            for _ in range(self.cycle_size)]
             # Write input geometries to disk
@@ -250,8 +222,7 @@ class Pipeline:
                     last_minimum = self.new_energies[1]
                     diff = abs(energy - last_minimum)
                     self.log(f"It is a new global minimum at {energy:.4f} au! "
-                             f"Last one was at {last_minimum:.4f} au "
-                             f"({diff:.4f} au higher).")
+                             f"Last one was {diff:.4f} au higher.")
 
             kept_num = len(kept_geoms)
 
@@ -271,7 +242,6 @@ class Pipeline:
                 self.log(f"Cycle {self.cur_cycle} produced no new geometries.")
                 self.break_in -= 1
 
-            self.cur_cycle += 1
             cycle_end = time.time()
             cycle_duration = cycle_end - cycle_start
             self.log(f"Cycle {i} took {cycle_duration:.0f} s.")
@@ -299,10 +269,3 @@ class Pipeline:
         fn_matched = "final_matched.trj"
         self.write_geoms_to_trj(matched_geoms, fn_matched)
         return matched_geoms
-
-
-if __name__ == "__main__":
-    from pysisyphus.helpers import geom_from_library
-    geom = geom_from_library("benzene.xyz")
-    p = Pipeline(geom)
-    print(p)

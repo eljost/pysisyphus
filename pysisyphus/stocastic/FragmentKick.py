@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # See [1] 10.1002/jcc.21026
 
 import itertools as it
@@ -53,6 +51,7 @@ class FragmentKick(Kick):
             self.log("\n".join(frag_lines) + "\n")
 
     def get_fragments(self, fragments):
+        fragments = list(fragments)
         # Compare number of atoms defined in fragments with the total
         # number of atoms in the molecule.
         fragment_atoms = list(it.chain(*fragments))

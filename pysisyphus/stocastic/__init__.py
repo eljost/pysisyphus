@@ -1,6 +1,15 @@
 import logging
 import sys
 
+from pysisyphus.stocastic.Kick import Kick
+from pysisyphus.stocastic.FragmentKick import FragmentKick
+
+
+__all__ = [
+    "FragmentKick",
+    "Kick",
+]
+
 logger = logging.getLogger("stocastic")
 logger.setLevel(logging.DEBUG)
 fh = logging.FileHandler("stocastic.log", mode="w", delay=True)
@@ -10,8 +19,3 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 # formatter = logging.Formatter(fmt_str)
 # fh.setFormatter(formatter)
 logger.addHandler(fh)
-
-__all__ = [
-    "FragmentKick",
-    "Kick",
-]
