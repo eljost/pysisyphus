@@ -1,3 +1,5 @@
+import pytest
+
 from pysisyphus.calculators.Rastrigin import Rastrigin
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
@@ -13,3 +15,4 @@ def test_rastrigin_minimum():
 
     assert opt.is_converged
     assert opt.cur_cycle == 0
+    assert geom.energy == pytest.approx(0.)

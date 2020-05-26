@@ -9,6 +9,8 @@ class Rastrigin(AnaPotBase):
     """
 
     def __init__(self): 
+        # d == 2
+        # f(x) = 10*d + sum_(i+1)^d (x_i**2 - 10*cos(2*pi*x_i))
         V_str = "20 + x**2 - 10*cos(2*pi*x) + y**2 - 10*cos(2*pi*y)"
         xlim = (-5.12, 5.12)
         ylim = xlim
