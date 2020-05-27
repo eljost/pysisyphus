@@ -32,6 +32,7 @@ setup(
         "dask",
         "distributed",
         "h5py",
+        "jinja2",
         "matplotlib",
         "numpy",
         "natsort",
