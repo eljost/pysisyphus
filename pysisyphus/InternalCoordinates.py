@@ -31,8 +31,6 @@ PrimitiveCoord = namedtuple(
 class RedundantCoords:
 
     RAD_175 = 3.05432619
-    # BEND_MIN_DEG = 45
-    # BEND_MAX_DEG = 170
     BEND_MIN_DEG = 15
     BEND_MAX_DEG = 180
 
@@ -610,8 +608,6 @@ class RedundantCoords:
         # Bt_inv may be overriden in other coordiante systems so we
         # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
-
-        # import pdb; pdb.set_trace()
 
         last_rms = 9999
         prev_internals = cur_internals
