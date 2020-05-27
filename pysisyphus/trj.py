@@ -390,6 +390,7 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
     add_prims = yaml.safe_load(add_prims)
 
     for i, geom in enumerate(geoms):
+        print(geom)
         atom_num = len(geom.atoms)
         atom_inds = set(range(atom_num))
         # Atom indices must superset of filter_atoms
@@ -402,21 +403,30 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
         int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
                             coord_kwargs={"define_prims": add_prims,},
         )
+
         prim_counter = 0
+        prev_len = 2
         for j, pi in enumerate(int_geom.internal._prim_internals):
             pi_type = pi_types[len(pi.inds)]
             val = pi.val
-            if len(pi.inds) > 2:
+            len_ = len(pi.inds)
+            if len_ > 2:
                 val = np.rad2deg(val)
+
+            if len_ > prev_len:
+                prim_counter = 0
+                print()
 
             # Continue if we want to filter and there is no intersection
             # between the atoms of the current primitive and the atoms we
             # want to filter for.
             if filter_set and not (set(pi.inds) & filter_set):
                 continue
-            print(f"{j:04d}: {pi_type}{str(pi.inds): >20} {val: >10.4f}")
+            print(f"{j:04d}: {pi_type}{prim_counter:03d}{str(pi.inds): >20} {val: >10.4f}")
             prim_counter += 1
-        print(f"Printed {prim_counter} primitive internals.")
+            prev_len = len_
+
+        print(f"Printed {j+1} primitive internals.")
 
 
 def get(geoms, index):
