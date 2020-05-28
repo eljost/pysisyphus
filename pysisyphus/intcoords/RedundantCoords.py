@@ -411,7 +411,7 @@ class RedundantCoords:
                           "as some of the the atoms are (nearly) linear."
                 )
                 return
-            self.dihedral_indices.append(dihedral_ind)
+            self.torsion_indices.append(dihedral_ind)
             dihedrals.append(dihed)
 
         improper_dihedrals = list()
