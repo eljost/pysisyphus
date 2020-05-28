@@ -1,4 +1,7 @@
+import pytest
+
 from pysisyphus.helpers import geom_loader
+
 
 @pytest.mark.skip
 def test_22():
