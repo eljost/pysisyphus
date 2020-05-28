@@ -196,7 +196,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             if max_ and rms_:
                 self.log("Force convergence overachieved!")
 
-        normal_convergence = all(
+        converged = all(
             [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
@@ -208,8 +208,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
             converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
-            return converged
-        return any((normal_convergence, overachieved))
+        return any((converged, overachieved))
 
     def print_header(self):
         hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
