@@ -109,11 +109,10 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
 @using_pyscf
 @pytest.mark.parametrize(
     "define_prims, proj, ref_cycle", [
-        (None, True, 17),
+        (None, True, 18),
         pytest.param(None, False, 17,
                      marks=pytest.mark.xfail),
-        pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 13,
-                     marks=pytest.mark.xfail),
+        pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 12),
         pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 3,
                      marks=pytest.mark.xfail),
     ]
@@ -154,6 +153,7 @@ def test_diels_alder_ts(define_prims, ref_cycle, proj):
         "trust_max": 0.3,
         "hessian_recalc": 5,
         "dump": True,
+        "overachieve_factor": 2,
     }
     opt = RSIRFOptimizer(geom, **opt_kwargs)
     opt.run()
