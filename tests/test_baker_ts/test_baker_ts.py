@@ -17,10 +17,10 @@ def get_geoms():
         "15_hocl.xyz",
         "17_claisen.xyz",
         "20_hconh3_cation.xyz",  # fails when angles up to & including 180° are defined
-        "22_hconhoh.xyz",
     )
     works = (
         "01_hcn.xyz",
+        "02_hcch.xyz",
         "04_ch3o.xyz",
         "05_cyclopropyl.xyz",
         "06_bicyclobutane.xyz",
@@ -45,7 +45,7 @@ def get_geoms():
         "03_h2co.xyz",
     )
     alpha_negative = (
-        "02_hcch.xyz",
+        "22_hconhoh.xyz",
     )
     no_imag = (
         "10_tetrazine.xyz",
@@ -54,7 +54,6 @@ def get_geoms():
     only = (
         # "18_silyene_insertion.xyz",
         # "21_acrolein_rot.xyz",
-        "22_hconhoh.xyz",
     )
     use = (
         # fails,
