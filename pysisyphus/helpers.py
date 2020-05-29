@@ -521,7 +521,7 @@ def eigval_to_wavenumber(ev):
 
 
 FinalHessianResult = namedtuple("FinalHessianResult",
-                                "neg_eigvals"
+                                "neg_eigvals eigvals nus",
 )
 
 
@@ -556,7 +556,11 @@ def do_final_hessian(geom, save_hessian=True):
         print()
         print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
 
-    res = FinalHessianResult(neg_eigvals=neg_eigvals)
+    res = FinalHessianResult(
+            neg_eigvals=neg_eigvals,
+            eigvals=eigvals,
+            nus=eigval_to_wavenumber(eigvals),
+    )
     return res
 
 
