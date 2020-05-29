@@ -54,11 +54,22 @@ def write_geoms_to_trj(geoms, fn, comments=None):
 
 
 def split_xyz_str(xyz_str):
+    """Example:
+
+        xyz:
+         1
+
+         X -1.2 1.4 0.0
+         1
+
+         X 2.0 4.0 0.0
+
+    """
     float_ = "([\+\d\-\.]+)"
     header_re = re.compile("(\d+)")
     coord_re = re.compile(f"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
 
-    lines = xyz_str.strip().split("\n")
+    lines = [l.strip() for l in xyz_str.strip().split("\n")]
 
     lines_remaining = len(lines)
     cur_line = 0
