@@ -77,7 +77,7 @@ def split_xyz_str(xyz_str):
     while lines_remaining:
         header_mobj = header_re.match(lines[cur_line])
         expect_lines = int(header_mobj[1])
-        slice_ = slice(cur_line+2, cur_line+2+expect_lines)
+        slice_ = slice(cur_line+2, cur_line+2+expect_lines)  # lgtm [py/hash-unhashable-value]
         check_lines = lines[slice_]
         assert len(check_lines) == expect_lines
         assert all([coord_re.match(line.strip()) for line in check_lines])
