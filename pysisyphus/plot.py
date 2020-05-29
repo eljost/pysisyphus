@@ -190,6 +190,7 @@ def plot_energies():
     ax2.plot(xs, last_energies, "o-")
     ax2.set_xlabel("Image")
     ax2.set_ylabel("$\Delta$E / kJ mol⁻¹")
+    ax2.set_title(f"Cycle {len(energies)-1}")
 
     first_image_en = last_energies[0]
     last_image_en = last_energies[-1]
