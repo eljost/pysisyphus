@@ -5,6 +5,7 @@ from collections import namedtuple
 import copy
 import itertools
 import os
+from math import ceil, floor
 from pathlib import Path
 from pprint import pprint
 import re
@@ -206,7 +207,11 @@ def run_cos(cos, calc_getter, opt_getter):
     opt = opt_getter(cos)
     opt.run()
     if not opt.stopped:
-        hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
+        hei_coords, hei_energy, hei_tangent, hei_frac_index = cos.get_splined_hei()
+        floor_ind = floor(hei_frac_index)
+        ceil_ind = ceil(hei_frac_index)
+        print(f"Splined HEI is at {hei_frac_index:.2f}/{len(cos.images)-1:.2f}, "
+              f"between image {floor_ind} and {ceil_ind} (0-based indexing).")
         hei_geom = Geometry(cos.images[0].atoms, hei_coords)
         hei_geom.energy = hei_energy
         hei_fn = "splined_hei.xyz"
