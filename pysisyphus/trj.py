@@ -214,6 +214,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
     assert all([atoms_str == atoms_0_str for atoms_str in atoms_strs]), \
         "Atom ordering/numbering in the geometries is inconsistent!"
 
+    # Dont try to align 1-atom species
+    interpolate_align = interpolate_align and len(geoms[0].atoms) > 1
+
     # TODO:
     # Multistep interpolation (when more than two geometries are specified)
     # in internal coordinates may lead to a different number of defined coordinates.
