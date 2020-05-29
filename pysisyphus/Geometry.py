@@ -74,6 +74,8 @@ class Geometry:
         coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
+            assert coords.size != 3, \
+                "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
             self.internal = coord_class(atoms, self._coords, **coord_kwargs)
         else:
             self.internal = None
