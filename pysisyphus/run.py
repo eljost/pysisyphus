@@ -56,7 +56,7 @@ CALC_DICT = {
     "turbomole": Turbomole,
     "xtb": XTB,
     # Analytical potentials
-    "anapot": AnaPot,
+    # "anapot": AnaPot,
 }
 
 try:
