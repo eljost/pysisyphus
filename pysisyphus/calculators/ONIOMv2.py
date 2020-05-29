@@ -124,7 +124,7 @@ class Model():
 
         self.links = list()
         self.capped = False
-        self.jac_shape = None
+        self.J = None
 
     def log(self, message=""):
         logger = logging.getLogger("calculator")
@@ -145,9 +145,7 @@ class Model():
             self.log("Didn't create any link atoms!\n")
 
         try:
-            # Shape of Jacobian is (model + link, real)
-            self.jac_shape = (len(self.atom_inds)*3 + len(self.links)*3,
-                              len(self.parent_atom_inds)*3)
+            self.J = self.get_jacobian()
         except TypeError:
             self.log("Skipping definition of jacobian shape")
 
@@ -178,12 +176,16 @@ class Model():
         return capped_atoms, capped_coords
 
     def get_jacobian(self):
-        if self.jac_shape is None:
+        try:
+            # Shape of Jacobian is (model + link, real)
+            jac_shape = (len(self.atom_inds)*3 + len(self.links)*3,
+                         len(self.parent_atom_inds)*3)
+        except TypeError:
             # Return array instead of 1, because the integer 1 can't be transposed
             # as we have to do for the hessian calculation.
             return np.array(1)
 
-        J = np.zeros(self.jac_shape)
+        J = np.zeros(jac_shape)
         # Stencil for diagonal elements of 3x3 submatrix
         stencil = np.array((0, 1, 2), dtype=int)
         size_ = len(self.atom_inds)
@@ -233,13 +235,11 @@ class Model():
             "point_charges": point_charges,
         }
 
-        J = self.get_jacobian()
-
         self.log("Calculation at layer level")
         results = self.calc.get_forces(catoms, ccoords, prepare_kwargs)
         forces = results["forces"]
         energy = results["energy"]
-        forces = forces.dot(J)
+        forces = forces.dot(self.J)
 
         # Calculate correction if parent layer is present
         try:
@@ -250,7 +250,7 @@ class Model():
 
             # Correct energy and forces
             energy -= parent_energy
-            forces -= parent_forces.dot(J)
+            forces -= parent_forces.dot(self.J)
         except AttributeError:
             self.log("No parent layer!")
 
@@ -267,14 +267,12 @@ class Model():
         if point_charges is not None:
             raise Exception("point_charges & hessian is not yet implemented")
 
-        J = self.get_jacobian()
-
         self.log("Calculation at layer level")
         # results = self.calc.get_hessian(catoms, ccoords, prepare_kwargs)
         results = self.calc.get_hessian(catoms, ccoords)
         hessian = results["hessian"]
         energy = results["energy"]
-        hessian = J.T.dot(hessian.dot(J))
+        hessian = self.J.T.dot(hessian.dot(self.J))
 
         # Calculate correction if parent layer is present
         try:
@@ -285,7 +283,7 @@ class Model():
 
             # Correct energy and hessian
             energy -= parent_energy
-            hessian -= J.T.dot(parent_hessian.dot(J))
+            hessian -= self.J.T.dot(parent_hessian.dot(self.J))
         except AttributeError:
             self.log("No parent layer!")
 
