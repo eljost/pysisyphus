@@ -414,9 +414,11 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
             val = pi.val
             len_ = len(pi.inds)
             if len_ > 2:
+                unit = "°"
                 val = np.rad2deg(val)
             else:
                 val *= BOHR2ANG
+                unit = " Å"
 
             if len_ > prev_len:
                 prim_counter = 0
@@ -427,7 +429,8 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
             # want to filter for.
             if filter_set and not (set(pi.inds) & filter_set):
                 continue
-            print(f"{j:04d}: {pi_type}{prim_counter:03d}{str(pi.inds): >20} {val: >10.4f}")
+            print(f"{j:04d}: {pi_type}{prim_counter:03d}{str(pi.inds): >20} {val: >10.4f}"
+                  f"{unit}")
             prim_counter += 1
             prev_len = len_
 
