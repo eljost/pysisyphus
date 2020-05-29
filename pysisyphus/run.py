@@ -55,6 +55,8 @@ CALC_DICT = {
     "psi4": Psi4,
     "turbomole": Turbomole,
     "xtb": XTB,
+    # Analytical potentials
+    "anapot": AnaPot,
 }
 
 try:

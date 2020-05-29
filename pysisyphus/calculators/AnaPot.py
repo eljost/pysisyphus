@@ -4,7 +4,7 @@ from pysisyphus.calculators.AnaPotBase import AnaPotBase
 
 class AnaPot(AnaPotBase):
 
-    def __init__(self): 
+    def __init__(self, **kwargs):
         V_str = "4 + 4.5*x - 4*y + x**2 + 2*y**2-2*x*y + x**4 - 2*x**2*y"
         xlim = (-2, 2.5)
         ylim = (0, 5)
