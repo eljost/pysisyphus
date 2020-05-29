@@ -124,6 +124,7 @@ class Model():
 
         self.links = list()
         self.capped = False
+        self.jac_shape = None
 
     def log(self, message=""):
         logger = logging.getLogger("calculator")
@@ -142,6 +143,13 @@ class Model():
 
         if len(self.links) == 0:
             self.log("Didn't create any link atoms!\n")
+
+        try:
+            # Shape of Jacobian is (model + link, real)
+            self.jac_shape = (len(self.atom_inds)*3 + len(self.links)*3,
+                              len(self.parent_atom_inds)*3)
+        except TypeError:
+            self.log("Skipping definition of jacobian shape")
 
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
@@ -168,6 +176,32 @@ class Model():
             r2 = r1 + link.g*(r3-r1)
             capped_coords[org_atom_num + i] = r2
         return capped_atoms, capped_coords
+
+    def get_jacobian(self):
+        if self.jac_shape is None:
+            # Return array instead of 1, because the integer 1 can't be transposed
+            # as we have to do for the hessian calculation.
+            return np.array(1)
+
+        J = np.zeros(self.jac_shape)
+        # Stencil for diagonal elements of 3x3 submatrix
+        stencil = np.array((0, 1, 2), dtype=int)
+        size_ = len(self.atom_inds)
+
+        model_rows = np.arange(size_ * 3)
+        model_cols = np.tile(stencil, size_) + np.repeat(self.atom_inds, 3)*3
+        J[model_rows, model_cols] = 1
+
+        # Link atoms
+        link_start = model_rows.max() + 1
+        for i, (ind, parent_ind, atom, g) in enumerate(self.links):
+            rows = link_start + i*3 + stencil
+            cols = ind*3 + stencil
+            parent_cols = parent_ind*3 + stencil
+            one_g = 1 - g
+            J[rows, parent_cols] = g
+            J[rows, cols] = 1 - g
+        return J
 
     def get_energy(self, atoms, coords, point_charges=None):
         self.log("Energy calculation")
@@ -199,34 +233,63 @@ class Model():
             "point_charges": point_charges,
         }
 
+        J = self.get_jacobian()
+
         self.log("Calculation at layer level")
         results = self.calc.get_forces(catoms, ccoords, prepare_kwargs)
-        model_gradient = -results["forces"].reshape(-1, 3)
-        model_energy = results["energy"]
+        forces = results["forces"]
+        energy = results["energy"]
+        forces = forces.dot(J)
+
+        # Calculate correction if parent layer is present
         try:
             self.log("Calculation at parent layer level")
             parent_results = self.parent_calc.get_forces(catoms, ccoords, prepare_kwargs)
-            parent_gradient = -parent_results["forces"].reshape(-1, 3)
+            parent_forces = parent_results["forces"]
             parent_energy = parent_results["energy"]
+
+            # Correct energy and forces
+            energy -= parent_energy
+            forces -= parent_forces.dot(J)
         except AttributeError:
             self.log("No parent layer!")
-            parent_energy = 0.
-            parent_gradient = np.zeros_like(model_gradient)
 
-        gradient = np.zeros_like(coords).reshape(-1, 3)
+        return energy, forces
 
-        # Distribute link atom gradient onto corresponding atoms
-        org_num = len(self.atom_inds)
-        tmp_correction = -parent_gradient + model_gradient
-        org_corr = tmp_correction[:org_num]
-        link_corr = tmp_correction[org_num:]
+    def get_hessian(self, atoms, coords, point_charges=None):
+        self.log("Hessian calculation")
+        catoms, ccoords = self.capped_atoms_coords(atoms, coords)
 
-        gradient[self.atom_inds] = org_corr
-        for link, lcorr in zip(self.links, link_corr):
-            gradient[link.ind] += (1-link.g) * lcorr
-            gradient[link.parent_ind] += link.g * lcorr
+        # prepare_kwargs = {
+            # "point_charges": point_charges,
+        # }
+        prepare_kwargs = {}
+        if point_charges is not None:
+            raise Exception("point_charges & hessian is not yet implemented")
 
-        return model_energy - parent_energy, -gradient.flatten()
+        J = self.get_jacobian()
+
+        self.log("Calculation at layer level")
+        # results = self.calc.get_hessian(catoms, ccoords, prepare_kwargs)
+        results = self.calc.get_hessian(catoms, ccoords)
+        hessian = results["hessian"]
+        energy = results["energy"]
+        hessian = J.T.dot(hessian.dot(J))
+
+        # Calculate correction if parent layer is present
+        try:
+            self.log("Calculation at parent layer level")
+            parent_results = self.parent_calc.get_hessian(catoms, ccoords)
+            parent_hessian = parent_results["hessian"]
+            parent_energy = parent_results["energy"]
+
+            # Correct energy and hessian
+            energy -= parent_energy
+            hessian -= J.T.dot(parent_hessian.dot(J))
+        except AttributeError:
+            self.log("No parent layer!")
+
+        return energy, hessian
 
     def parse_charges(self):
         charges = self.calc.parse_charges()
@@ -488,4 +551,16 @@ class ONIOM(Calculator):
         return {
                 "energy": energy,
                 "forces": forces,
+        }
+
+    def get_hessian(self, atoms, coords):
+        all_results = self.run_calculations(atoms, coords, "get_hessian")
+
+        energies, hessians = zip(*all_results)
+        energy = sum(energies)
+        hessian = np.sum(hessians, axis=0)
+
+        return {
+                "energy": energy,
+                "hessian": hessian,
         }
