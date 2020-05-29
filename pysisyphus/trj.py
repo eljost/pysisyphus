@@ -415,6 +415,8 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
             len_ = len(pi.inds)
             if len_ > 2:
                 val = np.rad2deg(val)
+            else:
+                val *= BOHR2ANG
 
             if len_ > prev_len:
                 prim_counter = 0
