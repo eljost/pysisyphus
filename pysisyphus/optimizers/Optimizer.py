@@ -8,11 +8,26 @@ import sys
 import textwrap
 import time
 
+import h5py
 import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_diffs
+
+
+def init_h5_group(f, group_name):
+    f.create_group(group_name)
+
+
+def get_h5_group(fn, group_name):
+    f = h5py.File(fn, mode="a")
+
+    if group_name not in f:
+        init_h5_group(f, group_name)
+    group = f[group_name]
+
+    return group
 
 
 class Optimizer(metaclass=abc.ABCMeta):
@@ -29,7 +44,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                  rms_force=None, align=False, dump=False, dump_restart=None,
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
-                 **kwargs):
+                 h5_fn="optimization.h5", h5_group_name="opt", **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
@@ -69,6 +84,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
+        self.h5_fn = self.out_dir / h5_fn
+        self.h5_group_name = h5_group_name
 
         current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
         self.current_fn = self.get_path_for_fn(current_fn)
@@ -91,6 +108,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
             self.out_trj_handle= open(out_trj_fn, "w")
+            # self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name)
         if self.prefix:
             self.log(f"Created optimizer with prefix {self.prefix}")
 
@@ -438,6 +456,11 @@ class Optimizer(metaclass=abc.ABCMeta):
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
         sys.stdout.flush()
+
+        try:
+            self.h5_group.file.close()
+        except AttributeError:
+            self.log("Closing of HDF5 file skipped.")
 
     def _get_opt_restart_info(self):
         """To be re-implemented in the derived classes."""
