@@ -48,6 +48,10 @@ class GrowingChainOfStates(ChainOfStates):
         norm_cds = cds / cds.max()
         return tot_length, norm_cds
 
+    @property
+    def max_image_num(self):
+        return self.max_nodes + 2
+
     def new_node_coords(self, k):
         l = (self.max_nodes-k) / (self.max_nodes+1-k)
         kth_coords = self.images[k].coords

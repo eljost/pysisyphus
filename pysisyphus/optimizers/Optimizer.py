@@ -17,10 +17,13 @@ from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_d
 def get_data_model(geometry, is_cos, max_cycles):
     _1d = (max_cycles, )
     _2d = (max_cycles, geometry.coords.size)
+    _energy = _1d if (not is_cos) else (max_cycles, geometry.max_image_num)
+    # TODO: Handle growing methods
+
     data_model = {
         "cart_coords": (max_cycles, geometry.cart_coords.size),
         "coords": _2d,
-        "energies": _2d if is_cos else _1d,
+        "energies": _energy,
         "forces": _2d,
         "steps": _2d,
         # Convergence related
@@ -30,9 +33,11 @@ def get_data_model(geometry, is_cos, max_cycles):
         "rms_steps": _1d,
         # Misc
         "cycle_times": _1d,
-        "tangents": _2d,
         "modified_forces": _2d,
+        # COS specific
+        "tangents": _2d,
     }
+
     return data_model
 
 
@@ -163,9 +168,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         }
         return conv_dict
 
-    def log(self, message):
-        # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
-        self.logger.debug(message)
+    def log(self, message, level=50):
+        self.logger.log(level, message)
 
     def check_convergence(self, step=None, multiple=1.0, overachieve_factor=None,
                           energy_thresh=1e-6):
@@ -308,6 +312,16 @@ class Optimizer(metaclass=abc.ABCMeta):
         opt_results = {la: getattr(self, la) for la in self.data_model.keys()}
         self.write_to_out_dir(self.opt_results_fn,
                               yaml.dump(opt_results))
+        try:
+            for key in self.data_model.keys():
+                value = getattr(self, key)
+                # Don't try to set empty values, e.g. 'tangents' are only present
+                # for COS methods. 'modified_forces' are only present for NCOptimizer.
+                if not value:
+                    continue
+                self.h5_group[key][self.cur_cycle] = value[-1]
+        except AttributeError:
+            self.log("Skipping HD5 dump.")
 
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
@@ -402,7 +416,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 continue
 
             if self.is_cos:
-                self.tangents.append(self.geometry.get_tangents())
+                self.tangents.append(self.geometry.get_tangents().flatten())
 
             self.steps.append(step)
 

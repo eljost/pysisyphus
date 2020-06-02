@@ -14,10 +14,10 @@ def test_dump():
     opt_kwargs = {
         "dump": True,
         "rms_force": 1.0,
-        "max_cycles": 5,
+        # "max_cycles": 5,
     }
-    # opt = SteepestDescent(cos, **opt_kwargs)
-    opt = SteepestDescent(geoms[0], **opt_kwargs)
+    opt = SteepestDescent(cos, **opt_kwargs)
+    # opt = SteepestDescent(geoms[0], **opt_kwargs)
     opt.run()
     return
 

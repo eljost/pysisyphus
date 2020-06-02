@@ -90,6 +90,10 @@ class ChainOfStates:
     def moving_images(self):
         return [self.images[i] for i in self.moving_indices]
 
+    @property
+    def max_image_num(self):
+        return len(self.images)
+
     def zero_fixed_vector(self, vector):
         fixed = self.get_fixed_indices()
         for i in fixed:
