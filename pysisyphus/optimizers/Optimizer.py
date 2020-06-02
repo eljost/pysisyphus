@@ -44,7 +44,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                  rms_force=None, align=False, dump=False, dump_restart=None,
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
-                 h5_fn="optimization.h5", h5_group_name="opt", **kwargs):
+                 h5_fn="optimization.h5", h5_group_name="opt"):#, **kwargs):
         self.geometry = geometry
 
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
