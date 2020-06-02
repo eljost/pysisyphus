@@ -806,24 +806,41 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def plot_opt():
-    def load(fn):
-        print(f"Reading {fn}")
-        with open(fn) as handle:
-            res = yaml.load(handle.read(), Loader=yaml.Loader)
-        energies = np.array(res["energies"])
-        energies -= energies.min()
-        energies *= AU2KJPERMOL
-        return energies
-    ens = load("optimizer_results.yaml")
+def plot_opt(h5_fn="optimization.h5", group_name="opt"):
+    with h5py.File("optimization.h5", "r") as handle:
+        group = handle[group_name]
+        cur_cycle = group["cur_cycle"][()]
+        ens = group["energies"][:cur_cycle]
+        is_cos = group["is_cos"][()]
+        max_forces = group["max_forces"][:cur_cycle]
+        rms_forces = group["rms_forces"][:cur_cycle]
 
-    fig, ax = plt.subplots()
+    ens -= ens.min()
+    ens *= AU2KJPERMOL
+    if is_cos:
+        print("COS optimization detected. Plotting total energy of all images "
+              "in every cycle.")
+        ens = ens.sum(axis=1)
 
-    ax.plot(ens, "o-", label="Cartesian")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
-    ax.legend()
-    fig.tight_layout()
+    ax_kwargs = {
+        "marker": "o",
+    }
+
+    fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
+
+    ax0.plot(ens, **ax_kwargs)
+    ax0.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+
+    ax1.plot(max_forces, **ax_kwargs)
+    ax1.set_title("max(forces)")
+    ax1.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
+
+    ax2.plot(max_forces, **ax_kwargs)
+    ax2.set_title("rms(forces)")
+    ax2.set_xlabel("Step")
+    ax2.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
+
+    fig.suptitle(str(h5_fn) + "/" + group_name)
     plt.show()
 
 
