@@ -15,13 +15,27 @@ from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_d
 
 
 def get_data_model(geometry, is_cos, max_cycles):
+    try:
+        image_num = geometry.max_image_num
+        dummy_geom = geometry.images[0]
+    except AttributeError:
+        image_num = 1
+        dummy_geom = geometry
+
+    # Define dataset shapes. As pysisyphus offers growing COS methods where
+    # the number of images changes along the optimization we have to define
+    # the shapes accordingly by considering the maximum number of images.
     _1d = (max_cycles, )
-    _2d = (max_cycles, geometry.coords.size)
+    _2d = (max_cycles, image_num * dummy_geom.coords.size)
+    # Number of cartesian coordinates is probably different from the number
+    # of internal coordinates.
+    _2d_cart = (max_cycles, image_num * dummy_geom.cart_coords.size)
+    # The dimensionality of energies depends on whether a COS is optimized or
+    # not. I know this is probably not the best idea...
     _energy = _1d if (not is_cos) else (max_cycles, geometry.max_image_num)
-    # TODO: Handle growing methods
 
     data_model = {
-        "cart_coords": (max_cycles, geometry.cart_coords.size),
+        "cart_coords": _2d_cart,
         "coords": _2d,
         "energies": _energy,
         "forces": _2d,
@@ -56,6 +70,14 @@ def get_h5_group(fn, group_name, data_model):
     f = h5py.File(fn, mode="a")
 
     if group_name not in f:
+        init_h5_group(f, group_name, data_model)
+    group = f[group_name]
+
+    # Check compatibility of data_model and group
+    compatible = [group[key].shape == shape for key, shape in data_model.items()]
+    compatible = all(compatible)
+    if not compatible:
+        del f[group_name]
         init_h5_group(f, group_name, data_model)
     group = f[group_name]
 
@@ -315,13 +337,17 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.write_to_out_dir(self.opt_results_fn,
                               yaml.dump(opt_results))
         try:
-            for key in self.data_model.keys():
+            for key, shape in self.data_model.items():
                 value = getattr(self, key)
                 # Don't try to set empty values, e.g. 'tangents' are only present
                 # for COS methods. 'modified_forces' are only present for NCOptimizer.
                 if not value:
                     continue
-                self.h5_group[key][self.cur_cycle] = value[-1]
+                print(key, shape, value)
+                if len(shape) > 1:# and (shape[-1] != value[-1].size):
+                    self.h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
+                else:
+                    self.h5_group[key][self.cur_cycle] = value[-1]
             self.h5_group["cur_cycle"][()] = self.cur_cycle
             self.h5_group["is_cos"][()] = self.is_cos
         except AttributeError:
