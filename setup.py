@@ -36,7 +36,6 @@ setup(
         "matplotlib",
         "numpy",
         "natsort",
-        "pandas",
         "pytest",
         "pytest-harvest",
         "pyyaml",

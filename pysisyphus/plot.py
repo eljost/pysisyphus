@@ -12,7 +12,6 @@ from matplotlib.patches import Rectangle
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from scipy.interpolate import splrep, splev
 import yaml
 
