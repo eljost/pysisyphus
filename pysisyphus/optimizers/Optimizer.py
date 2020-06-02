@@ -73,7 +73,8 @@ def get_h5_group(fn, group_name, data_model):
         init_h5_group(f, group_name, data_model)
     group = f[group_name]
 
-    # Check compatibility of data_model and group
+    # Check compatibility of data_model and group. If they aren't compatible
+    # recreate the group with the proper shapes.
     compatible = [group[key].shape == shape for key, shape in data_model.items()]
     compatible = all(compatible)
     if not compatible:

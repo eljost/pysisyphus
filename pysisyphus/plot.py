@@ -819,7 +819,9 @@ def plot_opt(h5_fn="optimization.h5", group_name="opt"):
     ens *= AU2KJPERMOL
     if is_cos:
         print("COS optimization detected. Plotting total energy of all images "
-              "in every cycle.")
+              "in every cycle. Results from optimizing growing COS methods can "
+              "be plotted but the plots are not really useful as the varying "
+              "number of images is not considered.")
         ens = ens.sum(axis=1)
 
     ax_kwargs = {
