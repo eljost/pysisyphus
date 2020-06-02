@@ -159,7 +159,6 @@ class Optimizer(metaclass=abc.ABCMeta):
         for la in self.data_model.keys():
             setattr(self, la, list())
 
-        self.opt_results_fn = "optimizer_results.yaml"
         self.image_results_fn = "image_results.yaml"
         self.image_results = list()
 
@@ -343,10 +342,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.write_to_out_dir(self.image_results_fn,
                               yaml.dump(self.image_results))
 
-        # Save results from the Optimizer
-        opt_results = {la: getattr(self, la) for la in self.data_model.keys()}
-        self.write_to_out_dir(self.opt_results_fn,
-                              yaml.dump(opt_results))
+        # Save results from the Optimizer to HDF5 file if requested
         try:
             for key, shape in self.data_model.items():
                 value = getattr(self, key)
