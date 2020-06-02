@@ -674,8 +674,12 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
         geom = Geometry(atoms, coords, coord_type="redund")
         set_calc(geom, name)
 
-        prefix = f"{name}_"
-        opt = RFOptimizer.RFOptimizer(geom, prefix=prefix, **opt_kwargs)
+        frag_opt_kwargs = opt_kwargs.copy()
+        frag_opt_kwargs.update({
+            "prefix": f"{name}_",
+            "h5_group_name": name,
+        })
+        opt = RFOptimizer.RFOptimizer(geom, **frag_opt_kwargs)
         opt.run()
         opt_fn = f"{name}_opt.xyz"
         shutil.move(opt.final_fn, opt_fn)
