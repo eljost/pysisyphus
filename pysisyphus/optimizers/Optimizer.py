@@ -85,6 +85,16 @@ def get_h5_group(fn, group_name, data_model):
     return group
 
 
+def resize_h5_group(group, max_cycles):
+    for key, dataset in group.items():
+        # No need to resize scalar datasets
+        if dataset.shape == ():
+            continue
+        new_shape = list(dataset.shape).copy()
+        new_shape[0] = max_cycles
+        dataset.resize(new_shape)
+
+
 class Optimizer(metaclass=abc.ABCMeta):
     CONV_THRESHS = {
         #              max_force, rms_force, max_step, rms_step
@@ -344,8 +354,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 # for COS methods. 'modified_forces' are only present for NCOptimizer.
                 if not value:
                     continue
-                print(key, shape, value)
-                if len(shape) > 1:# and (shape[-1] != value[-1].size):
+                if len(shape) > 1:
                     self.h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
                 else:
                     self.h5_group[key][self.cur_cycle] = value[-1]
@@ -550,9 +559,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         # Set restart information general to all optimizers
         self.last_cycle = restart_info["last_cycle"] + 1
 
-        if self.last_cycle >= self.max_cycles:
+        must_resize = self.last_cycle >= self.max_cycles
+        if must_resize:
             self.max_cycles += restart_info["max_cycles"]
-            raise Exception("Add resizing of H5 datasets.")
+            # Resize HDF5
+            if self.dump:
+                resize_h5_group(self.h5_group, self.max_cycles)
 
         self.coords = [np.array(coords) for coords in restart_info["coords"]]
         self.energies = restart_info["energies"]
