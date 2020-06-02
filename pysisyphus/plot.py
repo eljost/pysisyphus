@@ -133,33 +133,25 @@ def plot_energies():
     coords = np.array([c for c, l in zip(coords, equal_lengths) if l])
     num_cycles, num_images = energies.shape
 
-    df = pd.DataFrame(energies)
-    cmap = plt.get_cmap("Greys")
-    df = df.transpose()
-    df -= df.values.min()
-    df *= AU2KJPERMOL
+    energies -= energies.min()
+    energies *= AU2KJPERMOL
 
     # Static plot of path with equally spaced images
     fig, ax = plt.subplots()
-    ax = df.plot(
-            ax=ax,
-            title="Energies",
-            colormap=cmap,
-            legend=False,
-            marker="o",
-            xticks=range(num_images),
-            xlim=(0, num_images-1),
-    )
+    colors = matplotlib.cm.Greys(np.linspace(.2, 1, num=num_cycles))
+    for cycle, color in zip(energies, colors):
+        ax.plot(cycle, "o-", color=color)
+    ax.set_title("Energies")
+
     kwargs = {
         "ls": ":",
         "color": "darkgrey",
     }
     try:
-        last_row = df.transpose().iloc[-1]
-        spl = splrep(last_row.index, last_row)
-        images = len(last_row.index)
+        last_cycle = energies[-1]
+        spl = splrep(np.arange(num_images), last_cycle)
         # Calculate interpolated values
-        x2 = np.linspace(0, images, 100)
+        x2 = np.linspace(0, num_images, 100)
         y2 = splev(x2, spl)
         # Only consider maxima
         peak_inds, _ = peakdetect(y2, lookahead=2)
@@ -184,8 +176,6 @@ def plot_energies():
 
     fig2, ax2 = plt.subplots()
     last_energies = energies[-1].copy()
-    last_energies -= last_energies.min()
-    last_energies *= AU2KJPERMOL
     xs = np.arange(len(last_energies))
     ax2.plot(xs, last_energies, "o-")
     ax2.set_xlabel("Image")
