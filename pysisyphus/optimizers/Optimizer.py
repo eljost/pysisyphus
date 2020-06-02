@@ -40,9 +40,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         "baker":      (3.0e-4,    2.0e-4,    3.0e-4,   2.0e-4),
     }
 
-    def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
-                 rms_force=None, align=False, dump=False, dump_restart=None,
-                 prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
+    def __init__(self, geometry, thresh="gau_loose", max_step=0.04, max_cycles=50,
+                 rms_force=None, align=False, dump=False,
+                 dump_restart=None, prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
                  h5_fn="optimization.h5", h5_group_name="opt"):#, **kwargs):
         assert thresh in self.CONV_THRESHS.keys()
@@ -59,19 +59,19 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
 
+        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
+        self.convergence = self.make_conv_dict(thresh, rms_force)
         for key, value in self.convergence.items():
             setattr(self, key, value)
 
         # Setting some default values
-        self.convergence = self.make_conv_dict(thresh, rms_force)
         self.resetted = False
-        self.max_cycles = 50
+        self.max_cycles = max_cycles
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
 
         assert(self.max_step > self.rel_step_thresh)
 
-        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         if self.is_cos:
             image_num = len(self.geometry.moving_indices)
             print(f"Path with {image_num} moving images.")
