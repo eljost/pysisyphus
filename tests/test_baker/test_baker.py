@@ -5,7 +5,6 @@ from pprint import pprint
 import time
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from pysisyphus.helpers import get_baker_geoms
@@ -119,14 +118,6 @@ def run_baker_minimum_optimizations():
     cycles = {
         name: [result[name][0] for result in all_results] for name in names
     }
-    df = pd.DataFrame.from_dict(cycles)
-
-    ged = "_gediis" if gediis else ""
-    gd = "_gdiis" if gdiis else ""
-    pod = "_poly" if poly else ""
-    df_name = f"cycles_{coord_type}_{runs}_runs_{thresh}{ged}{gd}{pod}.pickle"
-    df.to_pickle(df_name)
-    print(f"Pickled dataframe to {df_name}")
     print(f"{runs} runs took {sum(durations):.1f} seconds.")
 
 
