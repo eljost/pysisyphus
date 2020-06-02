@@ -525,6 +525,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     def opt_getter(geom, prefix):
         opt_kwargs = preopt_kwargs.copy()
         opt_kwargs["prefix"] = prefix
+        opt_kwargs["h5_group_name"] = prefix
         opt = OPT_DICT[preopt_key](geom, **opt_kwargs)
         return opt
 
@@ -774,6 +775,7 @@ def get_defaults(conf_dict):
             "type": "rsprfo",
             "dump": True,
             "overachieve_factor": 3,
+            "h5_group_name": "tsopt",
         }
         tsopt_dict = tsopt_dicts.get(type_, tsopt_default)
         tsopt_dict["do_hess"] = False
