@@ -45,13 +45,11 @@ class Optimizer(metaclass=abc.ABCMeta):
                  prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
                  h5_fn="optimization.h5", h5_group_name="opt"):#, **kwargs):
-        self.geometry = geometry
-
-        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
-
         assert thresh in self.CONV_THRESHS.keys()
+
+        self.geometry = geometry
         self.thresh = thresh
-        self.convergence = self.make_conv_dict(thresh, rms_force)
+        self.max_step = max_step
         self.align = align
         self.dump = dump
         self.dump_restart = dump_restart
@@ -65,21 +63,22 @@ class Optimizer(metaclass=abc.ABCMeta):
             setattr(self, key, value)
 
         # Setting some default values
+        self.convergence = self.make_conv_dict(thresh, rms_force)
         self.resetted = False
         self.max_cycles = 50
-        self.max_step = max_step
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
 
         assert(self.max_step > self.rel_step_thresh)
 
+        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         if self.is_cos:
             image_num = len(self.geometry.moving_indices)
             print(f"Path with {image_num} moving images.")
 
-        # Overwrite default values if they are supplied as kwargs
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        # # Overwrite default values if they are supplied as kwargs
+        # for key, value in kwargs.items():
+            # setattr(self, key, value)
 
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
