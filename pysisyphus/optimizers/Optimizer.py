@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import abc
 import logging
 import os
@@ -14,6 +12,28 @@ import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_diffs
+
+
+def get_data_model(geometry, is_cos, max_cycles):
+    _1d = (max_cycles, )
+    _2d = (max_cycles, geometry.coords.size)
+    data_model = {
+        "cart_coords": (max_cycles, geometry.cart_coords.size),
+        "coords": _2d,
+        "energies": _2d if is_cos else _1d,
+        "forces": _2d,
+        "steps": _2d,
+        # Convergence related
+        "max_forces": _1d,
+        "rms_forces": _1d,
+        "max_steps": _1d,
+        "rms_steps": _1d,
+        # Misc
+        "cycle_times": _1d,
+        "tangents": _2d,
+        "modified_forces": _2d,
+    }
+    return data_model
 
 
 def init_h5_group(f, group_name):
@@ -90,10 +110,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.logger = logging.getLogger("optimizer")
 
         # Setting some empty lists as default
-        self.list_attrs = "cart_coords coords energies forces steps " \
-                          "max_forces rms_forces max_steps rms_steps " \
-                          "cycle_times tangents modified_forces".split()
-        for la in self.list_attrs:
+        self.data_model = get_data_model(self.geometry, self.is_cos, self.max_cycles)
+        for la in self.data_model.keys():
             setattr(self, la, list())
 
         self.opt_results_fn = "optimizer_results.yaml"
@@ -282,7 +300,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                               yaml.dump(self.image_results))
 
         # Save results from the Optimizer
-        opt_results = {la: getattr(self, la) for la in self.list_attrs}
+        opt_results = {la: getattr(self, la) for la in self.data_model.keys()}
         self.write_to_out_dir(self.opt_results_fn,
                               yaml.dump(opt_results))
 
@@ -484,6 +502,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         if self.last_cycle >= self.max_cycles:
             self.max_cycles += restart_info["max_cycles"]
+            raise Exception("Add resizing of H5 datasets.")
 
         self.coords = [np.array(coords) for coords in restart_info["coords"]]
         self.energies = restart_info["energies"]
