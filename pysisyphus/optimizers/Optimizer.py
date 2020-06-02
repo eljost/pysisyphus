@@ -318,8 +318,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             max_int_forces = np.abs(int_forces).max()
             rms_int_forces = np.sqrt(np.mean(int_forces**2))
             int_str = f"""
-            \tmax(forces,internal): {max_int_forces:.6f} hartree/(bohr,rad)
-            \trms(forces,internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
+            \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
+            \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
         energy = self.geometry.energy
         final_summary = f"""
         Final summary:{int_str}
