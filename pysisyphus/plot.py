@@ -837,7 +837,7 @@ def plot_opt(h5_fn="optimization.h5", group_name="opt"):
     ax1.set_title("max(forces)")
     ax1.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
 
-    ax2.plot(max_forces, **ax_kwargs)
+    ax2.plot(rms_forces, **ax_kwargs)
     ax2.set_title("rms(forces)")
     ax2.set_xlabel("Step")
     ax2.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
