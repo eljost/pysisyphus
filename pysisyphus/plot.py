@@ -309,21 +309,6 @@ def plot_cosgrad():
     # Calculate norms of true force
     # Shape (cycles, images, coords)
     force_norms = np.linalg.norm(forces, axis=2)
-    """
-    last_neb = all_nebs[-1]
-    for img in last_neb.images:
-        #print(last_forces.shape)
-        max_force = img.forces.max()
-        rms_force = np.sqrt(np.mean(np.square(img.forces)))
-        print(f"rms(force)={rms_force:.04f}, max(force)={max_force:.04}")
-    last_pf = all_perp_forces[-1]
-    for per_img in last_pf:
-        max_force = per_img.max()
-        rms_force = np.sqrt(np.mean(np.square(per_img.flatten())))
-        print(f"max(force)={max_force:.06}, rms(force)={rms_force:.06f}")
-    max_force = last_pf[1:].max()
-    rms_force = np.sqrt(np.mean(np.square(last_pf[1:].flatten())))
-    """
     all_max_forces = list()
     all_rms_forces = list()
     rms = lambda arr: np.sqrt(np.mean(np.square(arr)))
@@ -335,41 +320,18 @@ def plot_cosgrad():
     all_max_forces = np.array(all_max_forces)
     all_rms_forces = np.array(all_rms_forces)
 
-    cmap = plt.get_cmap("Greys")
-    fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
-    # Using dataframes seems to be the easiest way to include
-    # the colormap... Axis.plot() cant be used with cmap.
-    max_df = pd.DataFrame(all_max_forces.T)
-    rms_df = pd.DataFrame(all_rms_forces.T)
-    norm_df = pd.DataFrame(force_norms.T)
-
-    kwargs = {
-        "colormap": cmap,
-        "logy": True,
-        "legend": False,
-        #"ylim": (5e-4, 1e-1),
-        "marker": "o",
-        "xticks": range(num_images),
-        "xlim": (0, num_images-1),
-    }
-    ax1 = max_df.plot(
-            ax=ax1,
-            title="max(perpendicular grad.)",
-            **kwargs,
-    )
-
-    ax2 = rms_df.plot(
-            ax=ax2,
-            title="rms(perpendicular grad.)",
-            **kwargs,
-    )
-
-    ax3 =norm_df.plot(
-            ax=ax3,
-            title="norm(true grad.)",
-            **kwargs,
-    )
-    ax3.set_xlabel("Image")
+    fig, (ax0, ax1, ax2) = plt.subplots(sharex=True, nrows=3)
+    def plot(ax, data, title):
+        colors = matplotlib.cm.Greys(np.linspace(0, 1, num=data.shape[0]))
+        for row, color in zip(data, colors):
+            ax.plot(row, "o-", color=color)
+        ax.set_yscale('log')
+        if title:
+            ax.set_title(title)
+    plot(ax0, all_max_forces, "max(perpendicular gradient)")
+    plot(ax1, all_rms_forces, "rms(perpendicular gradient)")
+    plot(ax2, force_norms, "norm(true gradient)")
+    ax2.set_xlabel("Images")
 
     plt.tight_layout()
     plt.show()
