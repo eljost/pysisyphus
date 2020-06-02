@@ -17,7 +17,7 @@ def test_dump():
         # "max_cycles": 5,
     }
     opt = SteepestDescent(cos, **opt_kwargs)
-    # opt = SteepestDescent(geoms[0], **opt_kwargs)
+    # opt = SteepestDescent(geoms[7], **opt_kwargs)
     opt.run()
     return
 
