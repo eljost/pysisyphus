@@ -48,6 +48,8 @@ def init_h5_group(f, group_name, data_model):
         assert len(shape) <= 2, "3D not yet supported"
         maxshape = (None, ) if (len(shape) == 1) else (None, shape[-1])
         group.create_dataset(key, shape, maxshape=maxshape)
+    group.create_dataset("cur_cycle", dtype=int, shape=())
+    group.create_dataset("is_cos", dtype=bool, shape=())
 
 
 def get_h5_group(fn, group_name, data_model):
@@ -320,6 +322,8 @@ class Optimizer(metaclass=abc.ABCMeta):
                 if not value:
                     continue
                 self.h5_group[key][self.cur_cycle] = value[-1]
+            self.h5_group["cur_cycle"][()] = self.cur_cycle
+            self.h5_group["is_cos"][()] = self.is_cos
         except AttributeError:
             self.log("Skipping HD5 dump.")
 
