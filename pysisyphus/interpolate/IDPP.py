@@ -42,7 +42,6 @@ class IDPP(Interpolator):
         opt_kwargs = {
             "max_cycles": 1000,
             "rms_force": 1e-2,
-            "keep_cycles": False,
             "align": False,
             "check_coord_diffs": False,
         }

@@ -501,10 +501,9 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     """Run optimization on first and last geometry in xyz and return
     updated xyz variable containing the optimized ends and any
     intermediate image that was present in the original list."""
-    strict = preopt_kwargs.get("strict", False)
-    coord_type = preopt_kwargs.get("coord_type", "redund")
-
-    preopt = preopt_kwargs.get("preopt", "both")
+    strict = preopt_kwargs.pop("strict", False)
+    coord_type = preopt_kwargs.pop("coord_type", "redund")
+    preopt = preopt_kwargs.pop("preopt", "both")
     assert preopt in "first last both".split()
     first = (0, "first")
     last = (-1, "last")
