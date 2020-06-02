@@ -36,15 +36,20 @@ def get_data_model(geometry, is_cos, max_cycles):
     return data_model
 
 
-def init_h5_group(f, group_name):
-    f.create_group(group_name)
+def init_h5_group(f, group_name, data_model):
+    group = f.create_group(group_name)
+    # Create (resizable) datasets by using None in maxshape
+    for key, shape in data_model.items():
+        assert len(shape) <= 2, "3D not yet supported"
+        maxshape = (None, ) if (len(shape) == 1) else (None, shape[-1])
+        group.create_dataset(key, shape, maxshape=maxshape)
 
 
-def get_h5_group(fn, group_name):
+def get_h5_group(fn, group_name, data_model):
     f = h5py.File(fn, mode="a")
 
     if group_name not in f:
-        init_h5_group(f, group_name)
+        init_h5_group(f, group_name, data_model)
     group = f[group_name]
 
     return group
@@ -121,7 +126,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
             self.out_trj_handle= open(out_trj_fn, "w")
-            # self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name)
+            self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model)
         if self.prefix:
             self.log(f"Created optimizer with prefix {self.prefix}")
 
