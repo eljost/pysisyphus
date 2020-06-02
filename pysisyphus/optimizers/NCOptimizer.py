@@ -64,10 +64,7 @@ class NCOptimizer(HessianOptimizer):
         # the mass-weighted gradient.
         grad_q = eigvecs.T.dot(self.geometry.mw_gradient)
 
-        mw_H_aug = np.array(np.bmat(
-                            ((np.diag(eigvals), grad_q[:, None]),
-                             (grad_q[None, :], [[0]]))
-        ))
+        mw_H_aug = self.get_augmented_hessian(eigvals, grad_q)
         mw_step, eigval, nu = self.solve_rfo(mw_H_aug, "min")
         # Transform back to original basis. Right now the step is still in
         # mass-weighted coordinates.
