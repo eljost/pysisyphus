@@ -200,7 +200,6 @@ class Model():
             rows = link_start + i*3 + stencil
             cols = ind*3 + stencil
             parent_cols = parent_ind*3 + stencil
-            one_g = 1 - g
             J[rows, parent_cols] = g
             J[rows, cols] = 1 - g
         return J
