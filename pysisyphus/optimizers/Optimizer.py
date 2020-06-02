@@ -44,7 +44,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                  rms_force=None, align=False, dump=False,
                  dump_restart=None, prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
-                 h5_fn="optimization.h5", h5_group_name="opt"):#, **kwargs):
+                 h5_fn="optimization.h5", h5_group_name="opt"):
         assert thresh in self.CONV_THRESHS.keys()
 
         self.geometry = geometry
@@ -75,10 +75,6 @@ class Optimizer(metaclass=abc.ABCMeta):
         if self.is_cos:
             image_num = len(self.geometry.moving_indices)
             print(f"Path with {image_num} moving images.")
-
-        # # Overwrite default values if they are supplied as kwargs
-        # for key, value in kwargs.items():
-            # setattr(self, key, value)
 
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
