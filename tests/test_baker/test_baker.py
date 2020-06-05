@@ -127,7 +127,7 @@ def run_baker_minimum_optimizations():
     [(name, geom, ref_energy) for name, (geom, ref_energy)
      in get_baker_geoms(coord_type="redund").items()]
 )
-def test_baker_gs_opt(name, geom, ref_energy, results_bag):
+def test_baker_gs_opt(name, geom, ref_energy, results_bag=None):
     opt_kwargs = {
         "thresh": "baker",
     }
@@ -137,18 +137,22 @@ def test_baker_gs_opt(name, geom, ref_energy, results_bag):
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
-    results_bag.cycles = opt.cur_cycle + 1
-    results_bag.is_converged = opt.is_converged
-    results_bag.energy = geom.energy
-    results_bag.ref_energy = ref_energy
+    if results_bag is not None:
+        results_bag.cycles = opt.cur_cycle + 1
+        results_bag.is_converged = opt.is_converged
+        results_bag.energy = geom.energy
+        results_bag.ref_energy = ref_energy
 
     assert np.allclose(geom.energy, ref_energy)
 
     return opt.cur_cycle + 1, opt.is_converged
 
 
-def test_baker_synthesis(fixture_store):
-    print("test_synthesis")
+def test_baker_synthesis(fixture_store=None):
+    if fixture_store is None:
+        print("Skipped as 'pytest-harvest' is not installed.")
+        return
+
     for i, fix in enumerate(fixture_store):
         print(i, fix)
 
