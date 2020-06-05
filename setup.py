@@ -48,7 +48,6 @@ setup(
         "qcengine": ["qcengine>=0.13.0", ],
         "ase": ["ase", ],
         "pyscf": ["pyscf>=1.7.1", ],
-        "pytest-harvest": ["pytest-harvest>=1.9.2", ],
     },
     entry_points={
         "console_scripts": [
