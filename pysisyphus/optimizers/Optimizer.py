@@ -334,16 +334,16 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
 
     def write_results(self):
-        # Save results from the Geometry.
-        results = self.geometry.results
-        # Results will be a list for COS geometries, instead of a
-        # dictionary.
-        if not self.is_cos:
-            results["cart_coords"] = self.cart_coords[-1]
-            results["atoms"] = self.geometry.atoms
-        self.image_results.append(results)
-        self.write_to_out_dir(self.image_results_fn,
-                              yaml.dump(self.image_results))
+        # # Save results from the Geometry.
+        # results = self.geometry.results
+        # # Results will be a list for COS geometries, instead of a
+        # # dictionary.
+        # if not self.is_cos:
+            # results["cart_coords"] = self.cart_coords[-1]
+            # results["atoms"] = self.geometry.atoms
+        # self.image_results.append(results)
+        # self.write_to_out_dir(self.image_results_fn,
+                              # yaml.dump(self.image_results))
 
         # Save results from the Optimizer to HDF5 file if requested
         if hasattr(self, "h5_group"):
