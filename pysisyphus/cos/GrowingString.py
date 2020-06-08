@@ -199,6 +199,10 @@ class GrowingString(GrowingChainOfStates):
         image_inds = np.concatenate((left_inds, right_inds))
         return image_inds
 
+    @property
+    def image_inds(self):
+        return self.full_string_image_inds
+
     def spline(self):
         reshaped = self.coords.reshape(-1, self.coords_length)
         # To use splprep we have to transpose the coords.
