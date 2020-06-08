@@ -334,45 +334,34 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
 
     def write_results(self):
-        # # Save results from the Geometry.
-        # results = self.geometry.results
-        # # Results will be a list for COS geometries, instead of a
-        # # dictionary.
-        # if not self.is_cos:
-            # results["cart_coords"] = self.cart_coords[-1]
-            # results["atoms"] = self.geometry.atoms
-        # self.image_results.append(results)
-        # self.write_to_out_dir(self.image_results_fn,
-                              # yaml.dump(self.image_results))
-
         # Save results from the Optimizer to HDF5 file if requested
-        if hasattr(self, "h5_group"):
-            # Some attributes never change and are only set in the first cycle
-            if self.cur_cycle == 0:
-                self.h5_group.attrs["is_cos"] = self.is_cos
-                try:
-                    atoms = self.geometry.images[0].atoms
-                    coord_size = self.geometry.images[0].coords.size
-                except AttributeError:
-                    atoms = self.geometry.atoms
-                    coord_size = self.geometry.coords.size
-                self.h5_group.attrs["atoms"] = atoms
-                self.h5_group.attrs["coord_type"] = self.geometry.coord_type
-                self.h5_group.attrs["coord_size"] = coord_size
 
-            # Update changing attributes
-            self.h5_group.attrs["cur_cycle"] = self.cur_cycle
+        # Some attributes never change and are only set in the first cycle
+        if self.cur_cycle == 0:
+            self.h5_group.attrs["is_cos"] = self.is_cos
+            try:
+                atoms = self.geometry.images[0].atoms
+                coord_size = self.geometry.images[0].coords.size
+            except AttributeError:
+                atoms = self.geometry.atoms
+                coord_size = self.geometry.coords.size
+            self.h5_group.attrs["atoms"] = atoms
+            self.h5_group.attrs["coord_type"] = self.geometry.coord_type
+            self.h5_group.attrs["coord_size"] = coord_size
 
-            for key, shape in self.data_model.items():
-                value = getattr(self, key)
-                # Don't try to set empty values, e.g. 'tangents' are only present
-                # for COS methods. 'modified_forces' are only present for NCOptimizer.
-                if not value:
-                    continue
-                if len(shape) > 1:
-                    self.h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
-                else:
-                    self.h5_group[key][self.cur_cycle] = value[-1]
+        # Update changing attributes
+        self.h5_group.attrs["cur_cycle"] = self.cur_cycle
+
+        for key, shape in self.data_model.items():
+            value = getattr(self, key)
+            # Don't try to set empty values, e.g. 'tangents' are only present
+            # for COS methods. 'modified_forces' are only present for NCOptimizer.
+            if not value:
+                continue
+            if len(shape) > 1:
+                self.h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
+            else:
+                self.h5_group[key][self.cur_cycle] = value[-1]
 
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
@@ -386,7 +375,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             # Append to .trj file
             self.out_trj_handle.write(as_xyz_str+"\n")
             self.out_trj_handle.flush()
-        self.write_results()
+        if hasattr(self, "h5_group"):
+            self.write_results()
 
     def final_summary(self):
         # If the optimization was stopped _forces may not be set, so
