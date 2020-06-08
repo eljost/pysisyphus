@@ -26,97 +26,6 @@ from pysisyphus.wrapper.jmol import render_cdd_cube
 CDD_PNG_FNS = "cdd_png_fns"
 
 
-class Plotter:
-    def __init__(self, coords, data, ylabel, interval=750, save=None,
-                 legend=None):
-        self.coords = coords
-        self.data = data
-        self.ylabel = ylabel
-        self.interval = interval
-        self.save = save
-        self.legend = legend
-
-        # First image of the first cycle
-        self.anchor = self.coords[0][0]
-        self.cycles = len(self.data)
-        self.pause = True
-
-        self.fig, self.ax = plt.subplots()
-        self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
-
-        self.ax.set_xlabel("Path length / Bohr")
-        y_min = self.data.min()
-        y_max = self.data.max()
-        self.ax.set_ylim(y_min, y_max)
-        self.ax.set_ylabel(self.ylabel)
-
-        self.coord_diffs = self.get_coord_diffs(self.coords)
-
-        if self.data.ndim == 2:
-            self.update_func = self.update_plot
-        elif self.data.ndim == 3:
-            self.update_func = self.update_plot2
-
-    def get_coord_diffs(self, coords, normalize=False):
-        coord_diffs = list()
-        for per_cycle in coords:
-            tmp_list = [0, ]
-            for i in range(len(per_cycle)-1):
-                diff = np.linalg.norm(per_cycle[i+1]-per_cycle[i])
-                tmp_list.append(diff)
-            tmp_list = np.cumsum(tmp_list)
-            offset = np.linalg.norm(self.anchor-per_cycle[0])
-            tmp_list += offset
-            if normalize:
-                tmp_list /= tmp_list.max()
-            coord_diffs.append(tmp_list)
-        return np.array(coord_diffs)
-
-    def update_plot(self, i):
-        """Use this when only 1 state is present."""
-        self.fig.suptitle("Cycle {}".format(i))
-        self.lines[0].set_xdata(self.coord_diffs[i])
-        self.lines[0].set_ydata(self.data[i])
-        if self.save:
-            self.save_png(i)
-
-    def update_plot2(self, i):
-        """Use this when several states are present."""
-        self.fig.suptitle("Cycle {}".format(i))
-        for j, line in enumerate(self.lines):
-            line.set_ydata(self.data[i][:, j])
-        if self.save:
-            self.save_png(i)
-
-    def save_png(self, frame):
-        frame_fn = f"step{frame}.png"
-        if not os.path.exists(frame_fn):
-            self.fig.savefig(frame_fn)
-
-    def animate(self):
-        self.lines = self.ax.plot(self.coord_diffs[0], self.data[0], "o-")
-        if self.legend:
-            self.ax.legend(self.lines, self.legend)
-        self.animation = FuncAnimation(
-                            self.fig,
-                            self.update_func,
-                            frames=self.cycles,
-                            interval=self.interval
-        )
-        if self.save:
-            self.animation.save("animation.gif", writer='imagemagick', fps=5)
-        plt.show()
-
-    def on_keypress(self, event):
-        """Pause on SPACE press."""
-        #https://stackoverflow.com/questions/41557578
-        if event.key == " ":
-            if self.pause:
-                self.animation.event_source.stop()
-            else:
-                self.animation.event_source.start()
-            self.pause = not self.pause
-
 def spline_plot_cycles(cart_coords, energies):
     num_cycles = energies.shape[1]
 
@@ -224,7 +133,13 @@ def anim_cos(cart_coords, energies):
     return anim, fig, ax
 
 
-def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
+def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
+    if datasets is None:
+        datasets = list()
+
+    if attrs is None:
+        attrs = list()
+
     with h5py.File(h5_fn, "r") as handle:
         group = handle[h5_group]
 
@@ -234,20 +149,44 @@ def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
 
         image_nums = group["image_nums"][:num_cycles].astype(int)
         image_inds = group["image_inds"][:num_cycles].astype(int)
-        _energies = group["energies"][:num_cycles]
-        _cart_coords = group["cart_coords"][:num_cycles]
 
-    max_image_num = _energies.shape[1]
-    _energies -= _energies.min()
-    _energies *= AU2KJPERMOL
-    _cart_coords = _cart_coords.reshape(num_cycles, -1, 3)
+        _datasets = {ds: group[ds][:num_cycles] for ds in datasets}
+        _attrs = {a: group.attrs[a] for a in attrs}
 
-    energies = np.full_like(_energies, np.nan)
-    cart_coords = np.full_like(_cart_coords, np.nan)
-    for cyc, (img_ind, img_num) in enumerate(zip(image_inds, image_nums)):
-        img_ind = img_ind[:img_num]
-        energies[cyc,img_ind] = _energies[cyc, :img_num]
-        cart_coords[cyc,img_ind] = _cart_coords[cyc, :img_num]
+    if "energies" in _datasets:
+        ens = _datasets["energies"]
+        ens -= ens.min()
+        ens *= AU2KJPERMOL
+
+    try:
+        _datasets["cart_coords"] = _datasets["cart_coords"].reshape(num_cycles, -1, 3)
+    except KeyError:
+        pass
+
+    def sort_by_image(arr):
+        by_image = np.full_like(arr, np.nan)
+        for cyc, (img_ind, img_num) in enumerate(zip(image_inds, image_nums)):
+            img_ind = img_ind[:img_num]
+            by_image[cyc,img_ind] = arr[cyc, :img_num]
+        return by_image
+
+    for k, v in _datasets.items():
+        _datasets[k] = sort_by_image(v)
+
+    # Also copy requested attributes into dictionary
+    _datasets.update(_attrs)
+
+    return _datasets
+
+
+def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
+    results = load_h5(h5_fn, h5_group,
+                      datasets=("cart_coords", "energies"),
+                      attrs=("is_cos", ))
+    energies = results["energies"]
+    cart_coords = results["cart_coords"]
+
+    assert results["is_cos"]
 
     # Splined last cycle and plot of all cycles
     fig_, ax_ = spline_plot_cycles(cart_coords, energies)
