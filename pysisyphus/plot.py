@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import sys
+import textwrap
 
 import h5py
 import matplotlib
@@ -615,6 +616,9 @@ def parse_args(args):
     parser.add_argument("--last", type=int,
                         help="Only consider the last [last] cycles.")
     parser.add_argument("--h5", default="overlap_data.h5")
+    parser.add_argument("--group", default="opt",
+        help="HDF5 group to plot."
+    )
     parser.add_argument("--orient", default="")
 
     group = parser.add_mutually_exclusive_group(required=True)
@@ -673,10 +677,12 @@ def plot_opt(h5_fn="optimization.h5", group_name="opt"):
     ens -= ens.min()
     ens *= AU2KJPERMOL
     if is_cos:
-        print("COS optimization detected. Plotting total energy of all images "
+        text = textwrap.wrap(
+              "COS optimization detected. Plotting total energy of all images "
               "in every cycle. Results from optimizing growing COS methods can "
               "be plotted but the plots are not really useful as the varying "
-              "number of images is not considered.")
+              "number of images is not considered.", width=80)
+        print("\n".join(text))
         ens = ens.sum(axis=1)
 
     ax_kwargs = {
@@ -774,7 +780,7 @@ def run():
 
     # Optimization/COS related
     if args.opt:
-        plot_opt()
+        plot_opt(group_name=args.group)
     elif args.energies:
         plot_energies()
     elif args.cosgrad:
