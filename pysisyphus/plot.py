@@ -599,7 +599,7 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     ax2.set_xlabel("Step")
     ax2.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
 
-    fig.suptitle(str(h5_fn) + "/" + h5_group)
+    fig.suptitle(str(h5_fn) + "/" + h5_group, y=.999)
 
     plt.tight_layout()
     plt.show()
