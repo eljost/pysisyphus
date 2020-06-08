@@ -37,6 +37,7 @@ def get_data_model(geometry, is_cos, max_cycles):
     _energy = _1d if (not is_cos) else (max_cycles, geometry.max_image_num)
 
     data_model = {
+        "image_nums": _1d,
         "image_inds": _image_inds,
         "cart_coords": _2d_cart,
         "coords": _2d,
@@ -139,8 +140,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         assert(self.max_step > self.rel_step_thresh)
 
         if self.is_cos:
-            image_num = len(self.geometry.moving_indices)
-            print(f"Path with {image_num} moving images.")
+            moving_image_num = len(self.geometry.moving_indices)
+            print(f"Path with {moving_image_num} moving images.")
 
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
@@ -345,7 +346,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                               yaml.dump(self.image_results))
 
         # Save results from the Optimizer to HDF5 file if requested
-        try:
+        if hasattr(self, "h5_group"):
             # Some attributes never change and are only set in the first cycle
             if self.cur_cycle == 0:
                 self.h5_group.attrs["is_cos"] = self.is_cos
@@ -369,8 +370,6 @@ class Optimizer(metaclass=abc.ABCMeta):
                     self.h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
                 else:
                     self.h5_group[key][self.cur_cycle] = value[-1]
-        except AttributeError:
-            self.log("Skipping HD5 dump.")
 
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
@@ -455,9 +454,12 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.cart_coords.append(self.geometry.cart_coords.copy())
             try:
                 image_inds = self.geometry.image_inds
+                image_num = len(image_inds)
             except AttributeError:
                 image_inds = [0, ]
+                image_num = 1
             self.image_inds.append(image_inds)
+            self.image_nums.append(image_num)
 
             if reset_flag:
                 self.reset()
