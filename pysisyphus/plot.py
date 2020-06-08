@@ -690,11 +690,11 @@ def run():
         plot_irc()
     # Overlap calculator related
     elif args.all_energies:
-        plot_all_energies(h5=h5)
+        plot_all_energies(h5_fn=h5)
     elif args.overlaps:
-        plot_overlaps(h5=h5)
+        plot_overlaps(h5_fn=h5)
     elif args.render_cdds:
-        render_cdds(h5=h5)
+        render_cdds(h5_fn=h5)
 
 
 if __name__ == "__main__":
