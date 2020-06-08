@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
 from pathlib import Path
 import sys
 import textwrap
@@ -16,9 +15,7 @@ import numpy as np
 from scipy.interpolate import splrep, splev
 import yaml
 
-from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG, AU2EV
-from pysisyphus.cos.NEB import NEB
-from pysisyphus.Geometry import Geometry
+from pysisyphus.constants import AU2KJPERMOL, AU2EV
 from pysisyphus.peakdetect import peakdetect
 from pysisyphus.wrapper.jmol import render_cdd_cube
 
@@ -144,10 +141,8 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
         group = handle[h5_group]
 
         atoms = group.attrs["atoms"]
-        is_cos = group.attrs["is_cos"]
         cur_cycle = group.attrs["cur_cycle"]
         coord_size = group.attrs["coord_size"]
-        coord_type = group.attrs["coord_type"]
         num_cycles = cur_cycle + 1
 
         image_nums = group["image_nums"][:num_cycles].astype(int)
@@ -202,11 +197,11 @@ def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
     assert results["is_cos"]
 
     # Splined last cycle and plot of all cycles
-    fig_, ax_ = spline_plot_cycles(cart_coords, energies)
+    fig_, ax_ = spline_plot_cycles(cart_coords, energies)  # lgtm [py/unused-local-variable]
     # Plot last cycle
-    fig_last, ax_last = plot_cycle(cart_coords, energies)
+    fig_last, ax_last = plot_cycle(cart_coords, energies)  # lgtm [py/unused-local-variable]
     # Plot animation
-    anim, fig_anim, ax_anim = anim_cos(cart_coords, energies)
+    anim, fig_anim, ax_anim = anim_cos(cart_coords, energies)  # lgtm [py/unused-local-variable]
 
     plt.show()
 
@@ -694,7 +689,7 @@ def run():
     elif args.overlaps:
         plot_overlaps(h5=h5_fn)
     elif args.render_cdds:
-        render_cdds(h5_fn=h5_fn)
+        render_cdds(h5=h5_fn)
 
 
 if __name__ == "__main__":
