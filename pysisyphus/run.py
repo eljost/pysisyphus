@@ -5,6 +5,7 @@ from collections import namedtuple
 import copy
 import itertools
 import os
+from math import ceil, floor
 from pathlib import Path
 from pprint import pprint
 import re
@@ -54,6 +55,8 @@ CALC_DICT = {
     "psi4": Psi4,
     "turbomole": Turbomole,
     "xtb": XTB,
+    # Analytical potentials
+    # "anapot": AnaPot,
 }
 
 try:
@@ -104,8 +107,8 @@ IRC_DICT = {
 }
 
 STOCASTIC_DICT = {
-    "frag": FragmentKick.FragmentKick,
-    "kick": Kick.Kick,
+    "frag": FragmentKick,
+    "kick": Kick,
 }
 
 
@@ -206,7 +209,11 @@ def run_cos(cos, calc_getter, opt_getter):
     opt = opt_getter(cos)
     opt.run()
     if not opt.stopped:
-        hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
+        hei_coords, hei_energy, hei_tangent, hei_frac_index = cos.get_splined_hei()
+        floor_ind = floor(hei_frac_index)
+        ceil_ind = ceil(hei_frac_index)
+        print(f"Splined HEI is at {hei_frac_index:.2f}/{len(cos.images)-1:.2f}, "
+              f"between image {floor_ind} and {ceil_ind} (0-based indexing).")
         hei_geom = Geometry(cos.images[0].atoms, hei_coords)
         hei_geom.energy = hei_energy
         hei_fn = "splined_hei.xyz"
@@ -494,10 +501,9 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     """Run optimization on first and last geometry in xyz and return
     updated xyz variable containing the optimized ends and any
     intermediate image that was present in the original list."""
-    strict = preopt_kwargs.get("strict", False)
-    coord_type = preopt_kwargs.get("coord_type", "redund")
-
-    preopt = preopt_kwargs.get("preopt", "both")
+    strict = preopt_kwargs.pop("strict", False)
+    coord_type = preopt_kwargs.pop("coord_type", "redund")
+    preopt = preopt_kwargs.pop("preopt", "both")
     assert preopt in "first last both".split()
     first = (0, "first")
     last = (-1, "last")
@@ -519,6 +525,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     def opt_getter(geom, prefix):
         opt_kwargs = preopt_kwargs.copy()
         opt_kwargs["prefix"] = prefix
+        opt_kwargs["h5_group_name"] = prefix
         opt = OPT_DICT[preopt_key](geom, **opt_kwargs)
         return opt
 
@@ -667,8 +674,12 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
         geom = Geometry(atoms, coords, coord_type="redund")
         set_calc(geom, name)
 
-        prefix = f"{name}_"
-        opt = RFOptimizer.RFOptimizer(geom, prefix=prefix, **opt_kwargs)
+        frag_opt_kwargs = opt_kwargs.copy()
+        frag_opt_kwargs.update({
+            "prefix": f"{name}_",
+            "h5_group_name": name,
+        })
+        opt = RFOptimizer.RFOptimizer(geom, **frag_opt_kwargs)
         opt.run()
         opt_fn = f"{name}_opt.xyz"
         shutil.move(opt.final_fn, opt_fn)
@@ -768,6 +779,7 @@ def get_defaults(conf_dict):
             "type": "rsprfo",
             "dump": True,
             "overachieve_factor": 3,
+            "h5_group_name": "tsopt",
         }
         tsopt_dict = tsopt_dicts.get(type_, tsopt_default)
         tsopt_dict["do_hess"] = False

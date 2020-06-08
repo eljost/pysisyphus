@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
 from pathlib import Path
 import sys
+import textwrap
 
 import h5py
 import matplotlib
@@ -12,13 +12,10 @@ from matplotlib.patches import Rectangle
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from scipy.interpolate import splrep, splev
 import yaml
 
-from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG, AU2EV
-from pysisyphus.cos.NEB import NEB
-from pysisyphus.Geometry import Geometry
+from pysisyphus.constants import AU2KJPERMOL, AU2EV
 from pysisyphus.peakdetect import peakdetect
 from pysisyphus.wrapper.jmol import render_cdd_cube
 
@@ -26,140 +23,27 @@ from pysisyphus.wrapper.jmol import render_cdd_cube
 CDD_PNG_FNS = "cdd_png_fns"
 
 
-class Plotter:
-    def __init__(self, coords, data, ylabel, interval=750, save=None,
-                 legend=None):
-        self.coords = coords
-        self.data = data
-        self.ylabel = ylabel
-        self.interval = interval
-        self.save = save
-        self.legend = legend
+def spline_plot_cycles(cart_coords, energies):
+    num_cycles = energies.shape[1]
 
-        # First image of the first cycle
-        self.anchor = self.coords[0][0]
-        self.cycles = len(self.data)
-        self.pause = True
-
-        self.fig, self.ax = plt.subplots()
-        self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
-
-        self.ax.set_xlabel("Path length / Bohr")
-        y_min = self.data.min()
-        y_max = self.data.max()
-        self.ax.set_ylim(y_min, y_max)
-        self.ax.set_ylabel(self.ylabel)
-
-        self.coord_diffs = self.get_coord_diffs(self.coords)
-
-        if self.data.ndim == 2:
-            self.update_func = self.update_plot
-        elif self.data.ndim == 3:
-            self.update_func = self.update_plot2
-
-    def get_coord_diffs(self, coords, normalize=False):
-        coord_diffs = list()
-        for per_cycle in coords:
-            tmp_list = [0, ]
-            for i in range(len(per_cycle)-1):
-                diff = np.linalg.norm(per_cycle[i+1]-per_cycle[i])
-                tmp_list.append(diff)
-            tmp_list = np.cumsum(tmp_list)
-            offset = np.linalg.norm(self.anchor-per_cycle[0])
-            tmp_list += offset
-            if normalize:
-                tmp_list /= tmp_list.max()
-            coord_diffs.append(tmp_list)
-        return np.array(coord_diffs)
-
-    def update_plot(self, i):
-        """Use this when only 1 state is present."""
-        self.fig.suptitle("Cycle {}".format(i))
-        self.lines[0].set_xdata(self.coord_diffs[i])
-        self.lines[0].set_ydata(self.data[i])
-        if self.save:
-            self.save_png(i)
-
-    def update_plot2(self, i):
-        """Use this when several states are present."""
-        self.fig.suptitle("Cycle {}".format(i))
-        for j, line in enumerate(self.lines):
-            line.set_ydata(self.data[i][:, j])
-        if self.save:
-            self.save_png(i)
-
-    def save_png(self, frame):
-        frame_fn = f"step{frame}.png"
-        if not os.path.exists(frame_fn):
-            self.fig.savefig(frame_fn)
-
-    def animate(self):
-        self.lines = self.ax.plot(self.coord_diffs[0], self.data[0], "o-")
-        if self.legend:
-            self.ax.legend(self.lines, self.legend)
-        self.animation = FuncAnimation(
-                            self.fig,
-                            self.update_func,
-                            frames=self.cycles,
-                            interval=self.interval
-        )
-        if self.save:
-            self.animation.save("animation.gif", writer='imagemagick', fps=5)
-        plt.show()
-
-    def on_keypress(self, event):
-        """Pause on SPACE press."""
-        #https://stackoverflow.com/questions/41557578
-        if event.key == " ":
-            if self.pause:
-                self.animation.event_source.stop()
-            else:
-                self.animation.event_source.start()
-            self.pause = not self.pause
-
-
-def plot_energies():
-    keys = ("energy", "cart_coords")
-    (energies, coords), num_cycles, num_images = load_results(keys)
-
-    if isinstance(num_images, list):
-        print("Please use --aneb instead of --energies")
-        return
-
-    lengths = np.array([len(e) for e in energies])
-    equal_lengths = lengths == lengths[-1]
-    # Hack to support growing string calculations
-    energies = np.array([e for e, l in zip(energies, equal_lengths) if l])
-    coords = np.array([c for c, l in zip(coords, equal_lengths) if l])
-    num_cycles, num_images = energies.shape
-
-    df = pd.DataFrame(energies)
-    cmap = plt.get_cmap("Greys")
-    df = df.transpose()
-    df -= df.values.min()
-    df *= AU2KJPERMOL
-
-    # Static plot of path with equally spaced images
     fig, ax = plt.subplots()
-    ax = df.plot(
-            ax=ax,
-            title="Energies",
-            colormap=cmap,
-            legend=False,
-            marker="o",
-            xticks=range(num_images),
-            xlim=(0, num_images-1),
-    )
+    colors = matplotlib.cm.Greys(np.linspace(.2, 1, num=num_cycles))
+    # for cycle, color in zip(energies, colors):
+    for i, (cycle, color) in enumerate(zip(energies, colors)):
+        ax.plot(cycle, "o-", color=color)
+    ax.set_title("Energies")
+
     kwargs = {
         "ls": ":",
         "color": "darkgrey",
     }
+    # Try to spline the last cycle to get an estimate for the spliend HEI
     try:
-        last_row = df.transpose().iloc[-1]
-        spl = splrep(last_row.index, last_row)
-        images = len(last_row.index)
+        last_cycle = energies[-1]
+        num_images = last_cycle.size
+        spl = splrep(np.arange(num_images), last_cycle)
         # Calculate interpolated values
-        x2 = np.linspace(0, images, 100)
+        x2 = np.linspace(0, num_images, 100)
         y2 = splev(x2, spl)
         # Only consider maxima
         peak_inds, _ = peakdetect(y2, lookahead=2)
@@ -182,14 +66,18 @@ def plot_energies():
     ax.set_xlabel("Image")
     ax.set_ylabel("dE / kJ mol⁻¹")
 
-    fig2, ax2 = plt.subplots()
+    return fig, ax
+
+
+def plot_cycle(cart_coords, energies):
+    # Plot last_cycle
+    fig, ax = plt.subplots()
     last_energies = energies[-1].copy()
-    last_energies -= last_energies.min()
-    last_energies *= AU2KJPERMOL
     xs = np.arange(len(last_energies))
-    ax2.plot(xs, last_energies, "o-")
-    ax2.set_xlabel("Image")
-    ax2.set_ylabel("$\Delta$E / kJ mol⁻¹")
+    ax.plot(xs, last_energies, "o-")
+    ax.set_xlabel("Image")
+    ax.set_ylabel("$\Delta$E / kJ mol⁻¹")
+    ax.set_title(f"Cycle {len(energies)-1}")
 
     first_image_en = last_energies[0]
     last_image_en = last_energies[-1]
@@ -204,50 +92,30 @@ def plot_energies():
     last_barr = max_en - last_image_en
     print(f"\tBarrier between last image and HEI: {last_barr:.1f} kJ mol⁻¹")
 
+    return fig, ax
+
+
+def anim_cos(cart_coords, energies):
+    num_cycles = cart_coords.shape[0]
+
     # Also do an animation
-    plotter = Plotter(coords, energies, "ΔE / au", interval=250, save=False)
-    # This calls plt.show()
-    plotter.animate()
+    min_ = np.nanmin(energies)
+    max_ = np.nanmax(energies)
 
-
-def plot_aneb():
-    keys = ("energy", "cart_coords")
-    (energies, coords), num_cycles, num_images = load_results(keys)
-
-    # Use coordinates of the first image in the first cycle as
-    # anchor for all following cycles.
-    first_coords = coords[0][0]
-
-    coord_diffs = list()
-    min_ = 0
-    max_ = max(energies[0])
-    for en, c in zip(energies, coords):
-        cd = np.linalg.norm(c - first_coords, axis=1)
-        min_ = min(min_, min(en))
-        max_ = max(max_, max(en))
-        coord_diffs.append(cd)
-
-    energies_ = list()
-    au2kJmol = 2625.499638
-    for en in energies:
-        en = np.array(en)
-        en -= min_
-        en *= au2kJmol
-        energies_.append(en)
-
+    coord_diffs = np.linalg.norm(cart_coords-cart_coords[0][0], axis=2)
     fig, ax = plt.subplots()
-    # Initial energies
-    lines = ax.plot(coord_diffs[0], energies_[0], "o-")
-    y_max = (max_ - min_) * au2kJmol
-    ax.set_ylim(0, y_max)
 
+    # Initial energies
+    lines = ax.plot(coord_diffs[0], energies[0], "o-")
+    y_max = (max_ - min_)
+    ax.set_ylim(0, y_max)
     ax.set_xlabel("Coordinate differences / Bohr")
     ax.set_ylabel("$\Delta$J / kJ $\cdot$ mol$^{-1}$")
 
     def update_func(i):
         fig.suptitle("Cycle {}".format(i))
         lines[0].set_xdata(coord_diffs[i])
-        lines[0].set_ydata(energies_[i])
+        lines[0].set_ydata(energies[i])
 
     def animate():
         animation = FuncAnimation(
@@ -257,211 +125,114 @@ def plot_aneb():
                         interval=250,
         )
         return animation
+
     anim = animate()
+    return anim, fig, ax
+
+
+def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
+    if datasets is None:
+        datasets = list()
+
+    if attrs is None:
+        attrs = list()
+
+    with h5py.File(h5_fn, "r") as handle:
+        group = handle[h5_group]
+
+        atoms = group.attrs["atoms"]
+        cur_cycle = group.attrs["cur_cycle"]
+        coord_size = group.attrs["coord_size"]
+        num_cycles = cur_cycle + 1
+
+        image_nums = group["image_nums"][:num_cycles].astype(int)
+        image_inds = group["image_inds"][:num_cycles].astype(int)
+
+        _datasets = {ds: group[ds][:num_cycles] for ds in datasets}
+        _attrs = {a: group.attrs[a] for a in attrs}
+
+    if "energies" in _datasets:
+        ens = _datasets["energies"]
+        ens -= ens.min()
+        ens *= AU2KJPERMOL
+
+    try:
+        # We can't use coord_size because coord_type may be != cart and then
+        # coord_size gives the number of internals.
+        cart_shape = (num_cycles, -1, 3* len(atoms))
+        _datasets["cart_coords"] = _datasets["cart_coords"].reshape(cart_shape)
+    except KeyError:
+        pass
+
+    try:
+        # Here we can use coord_size because forces will always be in the same
+        # coordinate system as the actual coordinates.
+        _datasets["forces"] = _datasets["forces"].reshape((num_cycles, -1, coord_size))
+    except KeyError:
+        pass
+
+    def sort_by_image(arr):
+        by_image = np.full_like(arr, np.nan)
+        for cyc, (img_ind, img_num) in enumerate(zip(image_inds, image_nums)):
+            img_ind = img_ind[:img_num]
+            by_image[cyc,img_ind] = arr[cyc, :img_num]
+        return by_image
+
+    for k, v in _datasets.items():
+        _datasets[k] = sort_by_image(v)
+
+    # Also copy requested attributes into dictionary
+    _datasets.update(_attrs)
+
+    return _datasets
+
+
+def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
+    results = load_h5(h5_fn, h5_group,
+                      datasets=("cart_coords", "energies"),
+                      attrs=("is_cos", ))
+    cart_coords = results["cart_coords"]
+    energies = results["energies"]
+
+    assert results["is_cos"]
+
+    # Splined last cycle and plot of all cycles
+    fig_, ax_ = spline_plot_cycles(cart_coords, energies)  # lgtm [py/unused-local-variable]
+    # Plot last cycle
+    fig_last, ax_last = plot_cycle(cart_coords, energies)  # lgtm [py/unused-local-variable]
+    # Plot animation
+    anim, fig_anim, ax_anim = anim_cos(cart_coords, energies)  # lgtm [py/unused-local-variable]
+
     plt.show()
 
 
-def load_results(keys):
-    if isinstance(keys, str):
-        keys = (keys, )
-    image_results_fn = "image_results.yaml"
-    print(f"Reading {image_results_fn}")
-    with open(image_results_fn) as handle:
-        all_results = yaml.load(handle.read(), Loader=yaml.Loader)
-    num_cycles = len(all_results)
+def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
+    results = load_h5(h5_fn, h5_group,
+                      datasets=("forces", ),
+                      attrs=("is_cos", ))
+    forces = results["forces"]
 
-    results_list = list()
-    for key in keys:
-        tmp_list = list()
-        for res_per_cycle in all_results:
-            try:
-                tmp_list.append([res[key] for res in res_per_cycle])
-            except KeyError:
-                print(f"Key '{key}' not present in {image_results_fn}. Exiting.")
-                sys.exit()
-        results_list.append(np.array(tmp_list))
-    # The length of the second axis correpsonds to the number of images
-    # Determine the number of images. If we have the same number of images
-    # set num_images to this number. Otherwise return a list containing
-    # the number of images.
-    num_images = np.array([len(cycle) for cycle in results_list[0]])
-    if all(num_images[0] == num_images):
-        num_images = num_images[0]
-        print(f"Found path with {num_images} images.")
-    # Flatten the first axis when we got only a single key
-    if len(results_list) == 1:
-        results_list = results_list[0]
-    print(f"Loaded {num_cycles} cycle(s).")
-    return results_list, num_cycles, num_images
+    assert results["is_cos"]
 
+    last_axis = forces.ndim-1
+    max_ = np.nanmax(np.abs(forces), axis=last_axis)
+    rms = np.sqrt(np.mean(forces**2, axis=last_axis))
 
-def plot_cosgrad():
-    keys = ("energy", "forces", "coords")
-    (energies, forces, coords), num_cycles, num_images = load_results(keys)
-    atom_num = coords[0][0].size // 3
-    dummy_atoms =["H"] * atom_num
+    fig, (ax0, ax1)  = plt.subplots(sharex=True, nrows=2)
 
-    all_nebs = list()
-    all_perp_forces = list()
-    for i, per_cycle in enumerate(zip(energies, forces, coords), 1):
-        ens, frcs, crds = per_cycle
-        images = [Geometry(dummy_atoms, per_image) for per_image in crds]
-        for image, en, frc in zip(images, ens, frcs):
-            image._energy = en
-            image._forces = frc
+    def plot(ax, data, title):
+        colors = matplotlib.cm.Greys(np.linspace(0, 1, num=data.shape[0]))
+        for row, color in zip(data, colors):
+            ax.plot(row, "o-", color=color)
+        ax.set_yscale('log')
+        if title:
+            ax.set_title(title)
 
-        neb = NEB(images)
-        all_nebs.append(neb)
-        pf = neb.perpendicular_forces.reshape(num_images, -1)
-        all_perp_forces.append(pf)
-
-    # Calculate norms of true force
-    # Shape (cycles, images, coords)
-    force_norms = np.linalg.norm(forces, axis=2)
-    """
-    last_neb = all_nebs[-1]
-    for img in last_neb.images:
-        #print(last_forces.shape)
-        max_force = img.forces.max()
-        rms_force = np.sqrt(np.mean(np.square(img.forces)))
-        print(f"rms(force)={rms_force:.04f}, max(force)={max_force:.04}")
-    last_pf = all_perp_forces[-1]
-    for per_img in last_pf:
-        max_force = per_img.max()
-        rms_force = np.sqrt(np.mean(np.square(per_img.flatten())))
-        print(f"max(force)={max_force:.06}, rms(force)={rms_force:.06f}")
-    max_force = last_pf[1:].max()
-    rms_force = np.sqrt(np.mean(np.square(last_pf[1:].flatten())))
-    """
-    all_max_forces = list()
-    all_rms_forces = list()
-    rms = lambda arr: np.sqrt(np.mean(np.square(arr)))
-    for pf in all_perp_forces:
-        max_forces = pf.max(axis=1)
-        all_max_forces.append(max_forces)
-        rms_forces = np.apply_along_axis(rms, 1, pf)
-        all_rms_forces.append(rms_forces)
-    all_max_forces = np.array(all_max_forces)
-    all_rms_forces = np.array(all_rms_forces)
-
-    cmap = plt.get_cmap("Greys")
-    fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
-    # Using dataframes seems to be the easiest way to include
-    # the colormap... Axis.plot() cant be used with cmap.
-    max_df = pd.DataFrame(all_max_forces.T)
-    rms_df = pd.DataFrame(all_rms_forces.T)
-    norm_df = pd.DataFrame(force_norms.T)
-
-    kwargs = {
-        "colormap": cmap,
-        "logy": True,
-        "legend": False,
-        #"ylim": (5e-4, 1e-1),
-        "marker": "o",
-        "xticks": range(num_images),
-        "xlim": (0, num_images-1),
-    }
-    ax1 = max_df.plot(
-            ax=ax1,
-            title="max(perpendicular grad.)",
-            **kwargs,
-    )
-
-    ax2 = rms_df.plot(
-            ax=ax2,
-            title="rms(perpendicular grad.)",
-            **kwargs,
-    )
-
-    ax3 =norm_df.plot(
-            ax=ax3,
-            title="norm(true grad.)",
-            **kwargs,
-    )
-    ax3.set_xlabel("Image")
+    plot(ax0, max_, "max(perp. forces)")
+    plot(ax1, rms, "rms(perp. forces)")
+    ax1.set_xlabel("Image")
 
     plt.tight_layout()
-    plt.show()
-
-
-def plot_multistate_pes(keys):
-    (pes_ens, coords), num_cycles, num_images = load_results(keys)
-    pes_ens -= pes_ens.min(axis=(2, 1), keepdims=True)
-    pes_ens *= 27.211396
-
-    plotter = Plotter(coords, pes_ens, "ΔE / eV")
-    plotter.animate()
-
-
-def plot_params(inds):
-    def get_bond_length(coords_slice):
-        return np.linalg.norm(coords_slice[0]-coords_slice[1]) * BOHR2ANG * 100
-
-    def get_angle(coords_slice):
-        vec1 = coords_slice[0] - coords_slice[1]
-        vec2 = coords_slice[2] - coords_slice[1]
-        vec1n = np.linalg.norm(vec1)
-        vec2n = np.linalg.norm(vec2)
-        dotp = np.dot(vec1, vec2)
-        radians = np.arccos(dotp / (vec1n * vec2n))
-        return radians * 180 / np.pi
-
-    def get_dihedral(coords_slice):
-        raise Exception("Not implemented yet!")
-
-    type_dict = {
-        2: ("bond length / pm", get_bond_length),
-        3: ("angle / °", get_angle),
-        4: ("dihedral / °", get_dihedral)
-    }
-    inds_list = [[int(i) for i in i_.split()] for i_ in inds.split(",")]
-    ylabels, funcs = zip(*[type_dict[len(inds)] for inds in inds_list])
-    assert all([len(inds_list[i]) == len(inds_list[i+1])
-                for i in range(len(inds_list)-1)]), "Can only display " \
-            "multiple coordinates of the same type (bond, angle or " \
-            "dihedral."
-    # Just use the first label because they all have to be the same
-    ylabel = ylabels[0]
-
-    key = "coords"
-    # only allow same type of coordinate if multiple coordinates are given?
-    coords, num_cycles, num_images = load_results(key)
-
-    # Coordinates for all images for all cycles
-    ac = list()
-    for i, per_cycle in enumerate(coords):
-        # Coordinates for all images per cycle
-        pc = list()
-        for j, per_image in enumerate(per_cycle):
-            # Coordinates per ind for all images
-            pi = list()
-            for inds, func in zip(inds_list, funcs):
-                coords_slice = per_image.reshape(-1, 3)[inds]
-                param = func(coords_slice)
-                pi.append(param)
-            pc.append(pi)
-        ac.append(pc)
-
-    ac_arr = np.array(ac)
-
-    # Construct legend list
-    legend = ["-".join([str(i) for i in inds]) for inds in inds_list]
-    plotter = Plotter(coords, ac_arr, ylabel, legend=legend)
-    plotter.animate()
-
-    #df = pd.DataFrame(ac_arr)
-    #cmap = plt.get_cmap("Greys")
-    #ax = df.plot(
-    #        title=f"Params {inds}",
-    #        colormap=cmap,
-    #        legend=False,
-    #        marker="o",
-    #        xticks=range(num_images),
-    #        xlim=(0, num_images-1),
-    #)
-    #ax.set_xlabel("Image")
-    #ax.set_ylabel(ylabel)
-    #plt.tight_layout()
     plt.show()
 
 
@@ -508,24 +279,6 @@ def plot_all_energies(h5):
     ax.set_ylabel("$\Delta E / eV$")
     root_ens = [s[r] for s, r in zip(energies, roots)]
     ax.plot(steps, root_ens, "--k")
-    plt.show()
-
-
-def plot_bare_energies(h5):
-    with h5py.File(h5) as handle:
-        energies = handle["all_energies"][:]
-    print(f"Found a total of {len(energies)} steps.")
-
-    energies -= energies.min()
-    energies *= AU2EV
-    steps = np.arange(len(energies))
-
-    fig, ax = plt.subplots()
-    for i, state in enumerate(energies.T):
-        ax.plot(steps, state, "o-", label=f"State {i:03d}")
-    ax.legend(loc="lower center", ncol=3)
-    ax.set_xlabel("Step")
-    ax.set_ylabel("$\Delta E / eV$")
     plt.show()
 
 
@@ -689,6 +442,8 @@ def render_cdds(h5):
 
 
 def plot_afir():
+    raise Exception("Implement HDF5 dump for AFIR calculator!")
+
     with open("image_results.yaml") as handle:
         res = yaml.load(handle.read(), Loader=yaml.loader.Loader)
 
@@ -761,27 +516,18 @@ def parse_args(args):
                         help="Only consider the first [first] cycles.")
     parser.add_argument("--last", type=int,
                         help="Only consider the last [last] cycles.")
-    parser.add_argument("--h5", default="overlap_data.h5")
+    parser.add_argument("--h5_fn", default="overlap_data.h5")
+    parser.add_argument("--h5_group", default="opt",
+        help="HDF5 group to plot."
+    )
     parser.add_argument("--orient", default="")
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--saras", action="store_true",
-                       help="Plot OpenMolcas state average potential energy "
-                            "surfaces over the course of the NEB.")
-    group.add_argument("--tddft", action="store_true",
-                       help="Plot ORCA TDDFT potential energy surfaces "
-                            "over the course of the NEB.")
-    group.add_argument("--params",
-                       help="Follow internal coordinates over the course of "
-                            "the NEB. All atom indices have to be 0-based. "
-                            "Use two indices for a bond, three indices for "
-                            "an angle and four indices for a dihedral. "
-                            "The indices for different coordinates have to "
-                            "be separated by ','.")
-    group.add_argument("--cosgrad", "--cg", action="store_true",
-                        help="Plot image gradients along the path.")
-    group.add_argument("--energies", "-e", action="store_true",
-                        help="Plot energies.")
+    group.add_argument("--cosforces", "--cf", action="store_true",
+                        help="Plot image forces along a COS."
+    )
+    group.add_argument("--cosens", "--ce", action="store_true",
+                        help="Plot COS energies.")
     group.add_argument("--aneb", action="store_true",
                         help="Plot Adaptive NEB.")
     group.add_argument("--all_energies", "-a", action="store_true",
@@ -805,24 +551,52 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def plot_opt():
-    def load(fn):
-        print(f"Reading {fn}")
-        with open(fn) as handle:
-            res = yaml.load(handle.read(), Loader=yaml.Loader)
-        energies = np.array(res["energies"])
-        energies -= energies.min()
-        energies *= AU2KJPERMOL
-        return energies
-    ens = load("optimizer_results.yaml")
+def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
+    with h5py.File(h5_fn, "r") as handle:
+        group = handle[h5_group]
 
-    fig, ax = plt.subplots()
+        cur_cycle = group.attrs["cur_cycle"]
+        is_cos = group.attrs["is_cos"]
+        # atoms = group.attrs["atoms"]
 
-    ax.plot(ens, "o-", label="Cartesian")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
-    ax.legend()
-    fig.tight_layout()
+        ens = group["energies"][:cur_cycle]
+        max_forces = group["max_forces"][:cur_cycle]
+        rms_forces = group["rms_forces"][:cur_cycle]
+
+    ens -= ens.min()
+    ens *= AU2KJPERMOL
+    if is_cos:
+        text = textwrap.wrap(
+              "COS optimization detected. Plotting total energy of all images "
+              "in every cycle. Results from optimizing growing COS methods can "
+              "be plotted but the plots are not really useful as the varying "
+              "number of images is not considered.", width=80)
+        print("\n".join(text))
+        ens = ens.sum(axis=1)
+
+    ax_kwargs = {
+        "marker": "o",
+    }
+
+    fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
+
+    ax0.plot(ens, **ax_kwargs)
+    ax0.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+
+    ax1.plot(max_forces, **ax_kwargs)
+    ax1.set_yscale("log")
+    ax1.set_title("max(forces)")
+    ax1.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
+
+    ax2.plot(rms_forces, **ax_kwargs)
+    ax2.set_yscale("log")
+    ax2.set_title("rms(forces)")
+    ax2.set_xlabel("Step")
+    ax2.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
+
+    fig.suptitle(str(h5_fn) + "/" + h5_group, y=.999)
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -893,36 +667,29 @@ def plot_irc_h5(h5, title=None):
 def run():
     args = parse_args(sys.argv[1:])
 
-    h5 = args.h5
+    h5_fn = args.h5_fn
 
-    if args.energies:
-        plot_energies()
-    elif args.saras:
-        keys = ("sa_energies", "coords")
-        plot_multistate_pes(keys)
-    elif args.tddft:
-        keys = ("tddft_energies", "coords")
-        plot_multistate_pes(keys)
-    elif args.params:
-        plot_params(args.params)
-    elif args.cosgrad:
-        plot_cosgrad()
-    elif args.aneb:
-        plot_aneb()
-    elif args.all_energies:
-        plot_all_energies(h5=h5)
-    elif args.overlaps:
-        plot_overlaps(h5=h5)
-    elif args.render_cdds:
-        render_cdds(h5=h5)
-    elif args.bare_energies:
-        plot_bare_energies(h5=h5)
+    # Optimization
+    if args.opt:
+        plot_opt(h5_group=args.h5_group)
+    # COS specific
+    elif args.cosens:
+        plot_cos_energies(h5_group=args.h5_group)
+    elif args.cosforces:
+        plot_cos_forces(h5_group=args.h5_group)
+    # AFIR
     elif args.afir:
         plot_afir()
-    elif args.opt:
-        plot_opt()
+    # IRC related
     elif args.irc:
         plot_irc()
+    # Overlap calculator related
+    elif args.all_energies:
+        plot_all_energies(h5=h5_fn)
+    elif args.overlaps:
+        plot_overlaps(h5=h5_fn)
+    elif args.render_cdds:
+        render_cdds(h5=h5_fn)
 
 
 if __name__ == "__main__":

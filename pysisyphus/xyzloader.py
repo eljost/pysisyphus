@@ -36,15 +36,14 @@ def coords_to_trj(trj_fn, atoms, coords_list, comments=None):
     return trj_fn
 
 
-def make_trj_str_from_geoms(geoms, comments=None):
+def make_trj_str_from_geoms(geoms, comments=None, energy_comments=False):
     atoms = geoms[0].atoms
     coords_list = [geom.coords3d*BOHR2ANG for geom in geoms]
-    if comments is not None:
+    if energy_comments and comments is None:
+        comments = [str(geom._energy) for geom in geoms]
+    elif comments is not None:
         assert len(comments) == len(geoms)
-        geom_comments = [geom.comment for geom in geoms]
-        comments = [f"{geom_comment}, {comment}"
-                    for geom_comment, comment in zip(geom_comments, comments)
-        ]
+
     return make_trj_str(atoms, coords_list, comments)
 
 
@@ -55,11 +54,22 @@ def write_geoms_to_trj(geoms, fn, comments=None):
 
 
 def split_xyz_str(xyz_str):
+    """Example:
+
+        xyz:
+         1
+
+         X -1.2 1.4 0.0
+         1
+
+         X 2.0 4.0 0.0
+
+    """
     float_ = "([\+\d\-\.]+)"
     header_re = re.compile("(\d+)")
     coord_re = re.compile(f"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
 
-    lines = xyz_str.strip().split("\n")
+    lines = [l.strip() for l in xyz_str.strip().split("\n")]
 
     lines_remaining = len(lines)
     cur_line = 0
@@ -67,7 +77,7 @@ def split_xyz_str(xyz_str):
     while lines_remaining:
         header_mobj = header_re.match(lines[cur_line])
         expect_lines = int(header_mobj[1])
-        slice_ = slice(cur_line+2, cur_line+2+expect_lines)
+        slice_ = slice(cur_line+2, cur_line+2+expect_lines)  # lgtm [py/hash-unhashable-value]
         check_lines = lines[slice_]
         assert len(check_lines) == expect_lines
         assert all([coord_re.match(line.strip()) for line in check_lines])

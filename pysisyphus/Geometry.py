@@ -1,4 +1,6 @@
 from collections import Counter, namedtuple
+import itertools as it
+import re
 import subprocess
 import tempfile
 import sys
@@ -26,8 +28,8 @@ class Geometry:
         "dlc": DLC,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart", coord_kwargs=None,
-                 comment=""):
+    def __init__(self, atoms, coords, fragments=None, coord_type="cart",
+                 coord_kwargs=None, comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -41,6 +43,9 @@ class Geometry:
         coords : 1d iterable
             1d iterable of length 3N, containing the cartesian coordinates
             of N atoms.
+        fragments : dict, optional
+            Dict with different keys denoting different fragments. The values
+            contain lists of atom indices.
         coord_type : {"cart", "redund"}, optional
             Type of coordinate system to use. Right now cartesian (cart)
             and redundand (redund) are supported.
@@ -57,6 +62,9 @@ class Geometry:
             f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
             f"{self._coords.size}. Did you accidentally supply internal " \
              "coordinates?"
+        if fragments is None:
+            fragments = dict()
+        self.fragments = fragments
 
         if (coord_kwargs is not None) and coord_type == "cart":
             print("coord_type is set to 'cart' but coord_kwargs were given. "
@@ -66,6 +74,8 @@ class Geometry:
         coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
+            assert coords.size != 3, \
+                "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
             self.internal = coord_class(atoms, self._coords, **coord_kwargs)
         else:
             self.internal = None
@@ -194,6 +204,21 @@ class Geometry:
     @property
     def atom_types(self):
         return set(self.atoms)
+
+    def get_fragments(self, regex):
+        regex = re.compile(regex)
+        frags = [frag for frag in self.fragments.keys() if regex.search(frag)]
+        org_indices = list(it.chain(*[self.fragments[frag] for frag in frags]))
+
+        new_atoms = [self.atoms[ind] for ind in org_indices]
+        new_coords = self.coords3d[org_indices].copy()
+        new_fragments = dict()
+        i = 0
+        for frag in frags:
+            frag_atoms = len(self.fragments[frag])
+            new_fragments[frag] = list(range(i, i+frag_atoms))
+            i += frag_atoms
+        return Geometry(new_atoms, new_coords, fragments=new_fragments)
 
     def clear(self):
         """Reset the object state."""
@@ -685,6 +710,7 @@ class Geometry:
             # True properties in AFIR calculations
             "true_forces": "true_forces",
             "true_energy": "true_energy",
+            # Overlap calculator; includes excited states
             "all_energies": "all_energies",
         }
 

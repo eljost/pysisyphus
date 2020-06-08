@@ -7,11 +7,10 @@
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844
 
+from collections import namedtuple
 import itertools as it
 import logging
-import typing
 
-import attr
 import numpy as np
 from scipy.spatial.distance import squareform
 
@@ -23,11 +22,10 @@ from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
-@attr.s(auto_attribs=True)
-class PrimitiveCoord:
-    inds : typing.List[int]
-    val : float
-    grad : np.ndarray
+PrimitiveCoord = namedtuple(
+                    "PrimitiveCoord",
+                    "inds val grad",
+)
 
 
 class RedundantCoords:
@@ -401,20 +399,20 @@ class RedundantCoords:
         )
 
     def get_torsion_indices(self, define_dihedrals=None):
-        dihedral_sets = list()
+        dihedrals = list()
         def set_dihedral_index(dihedral_ind):
-            dihedral_set = set(dihedral_ind)
+            dihed = tuple(dihedral_ind)
             # Check if this dihedral is already present
-            if dihedral_set in dihedral_sets:
+            if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
                 return
             # Assure that the angles are below 175° (3.054326 rad)
             if not self.is_valid_dihedral(dihedral_ind, thresh=0.0873):
-                self.log(f"Did not create dihedral {dihedral_ind} as some "
-                          "vectors are (nearly) colinear."
+                self.log(f"Skipping generation of dihedral {dihedral_ind} "
+                          "as some of the the atoms are (nearly) linear."
                 )
                 return
             self.torsion_indices.append(dihedral_ind)
-            dihedral_sets.append(dihedral_set)
+            dihedrals.append(dihed)
 
         improper_dihedrals = list()
         coords3d = self.cart_coords.reshape(-1, 3)

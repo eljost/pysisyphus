@@ -16,16 +16,6 @@ class GrowingChainOfStates(ChainOfStates):
         self.calc_getter = calc_getter
         self.zero_step = np.zeros_like(self.images[0].coords)
 
-    # TODO: remove this as it is seems to be never used?!
-    # def get_new_image(self, step, before_index, ref_index):
-        # new_image = self.images[ref_index].copy()
-        # new_coords = new_image.coords + step
-        # new_image.coords = new_coords
-        # new_image.set_calculator(self.calc_getter())
-        # self.images.insert(before_index, new_image)
-        # self.log(f"Created new image; inserted it before index {before_index}.")
-        # return new_image
-
     def get_new_image_from_coords(self, coords, index):
         new_image = Geometry(self.image_atoms, coords,
                              coord_type=self.coord_type,
@@ -47,6 +37,10 @@ class GrowingChainOfStates(ChainOfStates):
         tot_length = cds[-1]
         norm_cds = cds / cds.max()
         return tot_length, norm_cds
+
+    @property
+    def max_image_num(self):
+        return self.max_nodes + 2
 
     def new_node_coords(self, k):
         l = (self.max_nodes-k) / (self.max_nodes+1-k)

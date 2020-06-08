@@ -47,7 +47,7 @@ class AnimPlot:
         self.coords = [c.reshape(-1, 3) for c in self.optimizer.coords]
         self.forces = [f.reshape((-1, 3)) for f in self.optimizer.forces]
         self.energies = self.optimizer.energies
-        self.tangents = self.optimizer.tangents
+        self.tangents = [t.reshape((-1, 3)) for t in self.optimizer.tangents]
 
         # ax: the contour plot
         # ax1: energy along the path

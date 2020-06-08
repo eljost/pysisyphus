@@ -1,13 +1,11 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import pytest
 
 from pysisyphus.calculators.ONIOMv2 import ONIOM
-from pysisyphus.helpers import geom_from_library
-from pysisyphus.testing import using_gaussian16, using_pyscf
-
+from pysisyphus.helpers import geom_from_library, do_final_hessian
 from pysisyphus.init_logging import init_logging
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.testing import using_gaussian16, using_pyscf
 
 
 init_logging()
@@ -232,3 +230,45 @@ def test_oniom_13_coupling():
     geom.set_calculator(oniom)
 
     assert geom.energy == pytest.approx(-77.42058687128718)
+
+
+@using_gaussian16
+def test_acetaldehyde_opt():
+    """
+        From https://doi.org/10.1016/S0166-1280(98)00475-8
+    """
+    geom = geom_from_library("acetaldehyd_oniom.xyz", coord_type="redund")
+
+    real = set(range(len(geom.atoms)))
+    high = [4, 5, 6]
+
+    calcs = {
+        "real": {"type": "g16", "route": "hf sto-3g"},
+         "high": {"type": "g16", "route": "b3lyp d95v"}
+    }
+
+    for key, calc in calcs.items():
+        calc["pal"] = 2
+        calc["mult"] = 1
+        calc["charge"] = 0
+
+    models = {
+        "high": {
+            "inds": high,
+            "calc": "high",
+        },
+    }
+
+    oniom = ONIOM(calcs, models, geom, layers=None)
+    geom.set_calculator(oniom)
+
+    opt = RFOptimizer(geom, thresh="gau_tight")
+    opt.run()
+    assert geom.energy == pytest.approx(-153.07526171)
+
+    hess_result = do_final_hessian(geom, save_hessian=False)
+    nus = hess_result.nus
+    print("wavenumbers / cm⁻¹:", nus)
+
+    assert nus[-1] == pytest.approx(3759.5872)
+    assert nus[-3] == pytest.approx(3560.9944)

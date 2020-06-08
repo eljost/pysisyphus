@@ -28,28 +28,26 @@ setup(
     platforms=["unix"],
     packages=find_packages(),
     install_requires=[
-        "attrs",
         "autograd",
+        "dask",
         "distributed",
         "h5py",
-        "numpy",
+        "jinja2",
         "matplotlib",
+        "numpy",
         "natsort",
-        "dask",
-        "pandas",
         "pytest",
-        "pytest-harvest",
         "pyyaml",
         "rmsd",
-        "sympy",
         "scipy",
+        "sympy",
     ],
     # Install locally with
     #   pip install -e .[extra]
     extras_require={
         "qcengine": ["qcengine>=0.13.0", ],
         "ase": ["ase", ],
-        "pyscf": ["pyscf>=1.7.0", ],
+        "pyscf": ["pyscf>=1.7.1", ],
     },
     entry_points={
         "console_scripts": [

@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators import Gaussian16, Turbomole, ORCA
+from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_from_library
 from pysisyphus.testing import using
 
@@ -16,6 +17,8 @@ from pysisyphus.testing import using
             marks=using("orca"),),
         pytest.param(
             ORCA,
+            # DoEq includes interaction between point charges and nuclear
+            # charges of the actual atoms.
             {"keywords": "BP86 def2-SVP", "blocks": "%method doEQ true end"},
             -40.448455709343, 0.0539577447,
             marks=using("orca"),),
@@ -29,6 +32,11 @@ from pysisyphus.testing import using
             {"route": "BP86 def2SVP"},
             -40.44843869845143, 0.054086037,
             marks=using("gaussian16"),),
+        pytest.param(
+            PySCF,
+            {"basis": "def2svp", "xc": "bp86"},
+            -40.473635092, 0.05408810,
+            marks=using("pyscf"),),
 ])
 def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
     geom = geom_from_library("methane_bp86_def2svp_opt.xyz")

@@ -3,6 +3,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.augment_bonds import augment_bonds
+from pysisyphus.optimizers.Optimizer import get_data_model, get_h5_group
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.guess_hessians import ts_hessian
 
@@ -51,6 +52,13 @@ class TSHessianOptimizer(HessianOptimizer):
     def prepare_opt(self):
         if self.augment_bonds:
             self.geometry = augment_bonds(self.geometry, root=self.root)
+            # Update data model and HD5 shapes, as the number of coordinates
+            # may have changed.
+            if self.dump:
+                self.data_model = get_data_model(self.geometry, self.is_cos,
+                                                 self.max_cycles)
+                self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name,
+                                             self.data_model)
 
         # Calculate/set initial hessian
         super().prepare_opt()

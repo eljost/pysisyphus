@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import abc
 import logging
 import os
@@ -8,11 +6,95 @@ import sys
 import textwrap
 import time
 
+import h5py
 import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_diffs
+
+
+def get_data_model(geometry, is_cos, max_cycles):
+    try:
+        # Attribute is only present in COS classes
+        image_num = geometry.max_image_num
+        dummy_geom = geometry.images[0]
+    except AttributeError:
+        image_num = 1
+        dummy_geom = geometry
+
+    # Define dataset shapes. As pysisyphus offers growing COS methods where
+    # the number of images changes along the optimization we have to define
+    # the shapes accordingly by considering the maximum number of images.
+    _1d = (max_cycles, )
+    _2d = (max_cycles, image_num * dummy_geom.coords.size)
+    _image_inds = (max_cycles, image_num)
+    # Number of cartesian coordinates is probably different from the number
+    # of internal coordinates.
+    _2d_cart = (max_cycles, image_num * dummy_geom.cart_coords.size)
+    # The dimensionality of energies depends on whether a COS is optimized or
+    # not. I know this is probably not the best idea...
+    _energy = _1d if (not is_cos) else (max_cycles, geometry.max_image_num)
+
+    data_model = {
+        "image_nums": _1d,
+        "image_inds": _image_inds,
+        "cart_coords": _2d_cart,
+        "coords": _2d,
+        "energies": _energy,
+        "forces": _2d,
+        "steps": _2d,
+        # Convergence related
+        "max_forces": _1d,
+        "rms_forces": _1d,
+        "max_steps": _1d,
+        "rms_steps": _1d,
+        # Misc
+        "cycle_times": _1d,
+        "modified_forces": _2d,
+        # COS specific
+        "tangents": _2d,
+    }
+
+    return data_model
+
+
+def init_h5_group(f, group_name, data_model):
+    group = f.create_group(group_name)
+    # Create (resizable) datasets by using None in maxshape
+    for key, shape in data_model.items():
+        assert len(shape) <= 2, "3D not yet supported"
+        maxshape = (None, ) if (len(shape) == 1) else (None, shape[-1])
+        group.create_dataset(key, shape, maxshape=maxshape)
+
+
+def get_h5_group(fn, group_name, data_model):
+    f = h5py.File(fn, mode="a")
+
+    if group_name not in f:
+        init_h5_group(f, group_name, data_model)
+    group = f[group_name]
+
+    # Check compatibility of data_model and group. If they aren't compatible
+    # recreate the group with the proper shapes.
+    compatible = [group[key].shape == shape for key, shape in data_model.items()]
+    compatible = all(compatible)
+    if not compatible:
+        del f[group_name]
+        init_h5_group(f, group_name, data_model)
+    group = f[group_name]
+
+    return group
+
+
+def resize_h5_group(group, max_cycles):
+    for key, dataset in group.items():
+        # No need to resize scalar datasets
+        if dataset.shape == ():
+            continue
+        new_shape = list(dataset.shape).copy()
+        new_shape[0] = max_cycles
+        dataset.resize(new_shape)
 
 
 class Optimizer(metaclass=abc.ABCMeta):
@@ -25,18 +107,16 @@ class Optimizer(metaclass=abc.ABCMeta):
         "baker":      (3.0e-4,    2.0e-4,    3.0e-4,   2.0e-4),
     }
 
-    def __init__(self, geometry, thresh="gau_loose", max_step=0.04,
-                 rms_force=None, align=False, dump=False, dump_restart=None,
-                 prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
+    def __init__(self, geometry, thresh="gau_loose", max_step=0.04, max_cycles=50,
+                 rms_force=None, align=False, dump=False,
+                 dump_restart=None, prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
-                 **kwargs):
-        self.geometry = geometry
-
-        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
-
+                 h5_fn="optimization.h5", h5_group_name="opt"):
         assert thresh in self.CONV_THRESHS.keys()
+
+        self.geometry = geometry
         self.thresh = thresh
-        self.convergence = self.make_conv_dict(thresh, rms_force)
+        self.max_step = max_step
         self.align = align
         self.dump = dump
         self.dump_restart = dump_restart
@@ -46,29 +126,28 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
 
+        self.is_cos = issubclass(type(self.geometry), ChainOfStates)
+        self.convergence = self.make_conv_dict(thresh, rms_force)
         for key, value in self.convergence.items():
             setattr(self, key, value)
 
         # Setting some default values
         self.resetted = False
-        self.max_cycles = 50
-        self.max_step = max_step
+        self.max_cycles = max_cycles
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
 
         assert(self.max_step > self.rel_step_thresh)
 
         if self.is_cos:
-            image_num = len(self.geometry.moving_indices)
-            print(f"Path with {image_num} moving images.")
-
-        # Overwrite default values if they are supplied as kwargs
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+            moving_image_num = len(self.geometry.moving_indices)
+            print(f"Path with {moving_image_num} moving images.")
 
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
+        self.h5_fn = self.out_dir / h5_fn
+        self.h5_group_name = h5_group_name
 
         current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
         self.current_fn = self.get_path_for_fn(current_fn)
@@ -77,20 +156,19 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         self.logger = logging.getLogger("optimizer")
 
-        # Setting some empty lists as default
-        self.list_attrs = "cart_coords coords energies forces steps " \
-                          "max_forces rms_forces max_steps rms_steps " \
-                          "cycle_times tangents modified_forces".split()
-        for la in self.list_attrs:
+        # Setting some empty lists as default. The actual shape of the respective
+        # entries is not considered, which gives us some flexibility.
+        self.data_model = get_data_model(self.geometry, self.is_cos, self.max_cycles)
+        for la in self.data_model.keys():
             setattr(self, la, list())
 
-        self.opt_results_fn = "optimizer_results.yaml"
         self.image_results_fn = "image_results.yaml"
         self.image_results = list()
 
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
             self.out_trj_handle= open(out_trj_fn, "w")
+            self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model)
         if self.prefix:
             self.log(f"Created optimizer with prefix {self.prefix}")
 
@@ -127,9 +205,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         }
         return conv_dict
 
-    def log(self, message):
-        # self.logger.debug(f"Cycle {self.cur_cycle:03d}, {message}")
-        self.logger.debug(message)
+    def log(self, message, level=50):
+        self.logger.log(level, message)
 
     def check_convergence(self, step=None, multiple=1.0, overachieve_factor=None,
                           energy_thresh=1e-6):
@@ -196,7 +273,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             if max_ and rms_:
                 self.log("Force convergence overachieved!")
 
-        normal_convergence = all(
+        converged = all(
             [this_cycle[key] <= getattr(self, key)*multiple
              for key in self.convergence.keys()]
         )
@@ -208,8 +285,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
             converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
-            return converged
-        return any((normal_convergence, overachieved))
+        return any((converged, overachieved))
 
     def print_header(self):
         hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
@@ -258,21 +334,34 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
 
     def write_results(self):
-        # Save results from the Geometry.
-        results = self.geometry.results
-        # Results will be a list for COS geometries, instead of a
-        # dictionary.
-        if not self.is_cos:
-            results["cart_coords"] = self.cart_coords[-1]
-            results["atoms"] = self.geometry.atoms
-        self.image_results.append(results)
-        self.write_to_out_dir(self.image_results_fn,
-                              yaml.dump(self.image_results))
+        # Save results from the Optimizer to HDF5 file if requested
 
-        # Save results from the Optimizer
-        opt_results = {la: getattr(self, la) for la in self.list_attrs}
-        self.write_to_out_dir(self.opt_results_fn,
-                              yaml.dump(opt_results))
+        # Some attributes never change and are only set in the first cycle
+        if self.cur_cycle == 0:
+            self.h5_group.attrs["is_cos"] = self.is_cos
+            try:
+                atoms = self.geometry.images[0].atoms
+                coord_size = self.geometry.images[0].coords.size
+            except AttributeError:
+                atoms = self.geometry.atoms
+                coord_size = self.geometry.coords.size
+            self.h5_group.attrs["atoms"] = atoms
+            self.h5_group.attrs["coord_type"] = self.geometry.coord_type
+            self.h5_group.attrs["coord_size"] = coord_size
+
+        # Update changing attributes
+        self.h5_group.attrs["cur_cycle"] = self.cur_cycle
+
+        for key, shape in self.data_model.items():
+            value = getattr(self, key)
+            # Don't try to set empty values, e.g. 'tangents' are only present
+            # for COS methods. 'modified_forces' are only present for NCOptimizer.
+            if not value:
+                continue
+            if len(shape) > 1:
+                self.h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
+            else:
+                self.h5_group[key][self.cur_cycle] = value[-1]
 
     def write_cycle_to_file(self):
         as_xyz_str = self.geometry.as_xyz()
@@ -286,7 +375,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             # Append to .trj file
             self.out_trj_handle.write(as_xyz_str+"\n")
             self.out_trj_handle.flush()
-        self.write_results()
+        if hasattr(self, "h5_group"):
+            self.write_results()
 
     def final_summary(self):
         # If the optimization was stopped _forces may not be set, so
@@ -301,8 +391,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             max_int_forces = np.abs(int_forces).max()
             rms_int_forces = np.sqrt(np.mean(int_forces**2))
             int_str = f"""
-            \tmax(forces,internal): {max_int_forces:.6f} hartree/(bohr,rad)
-            \trms(forces,internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
+            \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
+            \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
         energy = self.geometry.energy
         final_summary = f"""
         Final summary:{int_str}
@@ -355,6 +445,15 @@ class Optimizer(metaclass=abc.ABCMeta):
                                                              self.forces[-1])
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
+            try:
+                image_inds = self.geometry.image_inds
+                image_num = len(image_inds)
+            except AttributeError:
+                image_inds = [0, ]
+                image_num = 1
+            self.image_inds.append(image_inds)
+            self.image_nums.append(image_num)
+
             if reset_flag:
                 self.reset()
 
@@ -367,7 +466,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 continue
 
             if self.is_cos:
-                self.tangents.append(self.geometry.get_tangents())
+                self.tangents.append(self.geometry.get_tangents().flatten())
 
             self.steps.append(step)
 
@@ -440,6 +539,11 @@ class Optimizer(metaclass=abc.ABCMeta):
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
         sys.stdout.flush()
 
+        try:
+            self.h5_group.file.close()
+        except AttributeError:
+            self.log("Closing of HDF5 file skipped.")
+
     def _get_opt_restart_info(self):
         """To be re-implemented in the derived classes."""
         return dict()
@@ -465,8 +569,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         # Set restart information general to all optimizers
         self.last_cycle = restart_info["last_cycle"] + 1
 
-        if self.last_cycle >= self.max_cycles:
+        must_resize = self.last_cycle >= self.max_cycles
+        if must_resize:
             self.max_cycles += restart_info["max_cycles"]
+            # Resize HDF5
+            if self.dump:
+                resize_h5_group(self.h5_group, self.max_cycles)
 
         self.coords = [np.array(coords) for coords in restart_info["coords"]]
         self.energies = restart_info["energies"]

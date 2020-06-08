@@ -35,6 +35,9 @@ THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
         # pytest.param(
             # PySCF, {"basis": "321g",},
             # 1889.2027727, 16, 1888.9849030442317, 16, marks=using("pyscf")),
+        pytest.param(
+            PySCF, {"basis": "def2svp", "xc": "bp86"},
+            1790.744, 3, 1790.342, 7, marks=using("pyscf")),
     ],
 )
 def test_davidson_acet(precon, calc_cls, calc_kwargs,

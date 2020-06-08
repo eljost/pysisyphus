@@ -11,9 +11,7 @@ from collections import namedtuple
 from functools import reduce
 import itertools as it
 import logging
-import typing
 
-import attr
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
@@ -24,18 +22,15 @@ from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
-@attr.s(auto_attribs=True)
-class PrimitiveCoord:
-    inds : typing.List[int]
-    val : float
-    grad : np.ndarray
+PrimitiveCoord = namedtuple(
+                    "PrimitiveCoord",
+                    "inds val grad",
+)
 
 
 class RedundantCoords:
 
     RAD_175 = 3.05432619
-    # BEND_MIN_DEG = 45
-    # BEND_MAX_DEG = 170
     BEND_MIN_DEG = 15
     BEND_MAX_DEG = 180
 
@@ -373,21 +368,20 @@ class RedundantCoords:
         )
 
     def set_dihedral_indices(self, define_dihedrals=None):
-        dihedral_sets = list()
+        dihedrals = list()
         def set_dihedral_index(dihedral_ind):
-            dihedral_set = set(dihedral_ind)
+            dihed = tuple(dihedral_ind)
             # Check if this dihedral is already present
-            if dihedral_set in dihedral_sets:
+            if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
                 return
             # Assure that the angles are below 175° (3.054326 rad)
             if not self.is_valid_dihedral(dihedral_ind, thresh=0.0873):
-                self.log("Skipping generation of dihedral "
-                               f"{dihedral_ind} as some of the the atoms "
-                                "are linear."
+                self.log(f"Skipping generation of dihedral {dihedral_ind} "
+                          "as some of the the atoms are (nearly) linear."
                 )
                 return
             self.dihedral_indices.append(dihedral_ind)
-            dihedral_sets.append(dihedral_set)
+            dihedrals.append(dihed)
 
         improper_dihedrals = list()
         coords3d = self.cart_coords.reshape(-1, 3)
@@ -613,8 +607,6 @@ class RedundantCoords:
         # Bt_inv may be overriden in other coordiante systems so we
         # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
-
-        # import pdb; pdb.set_trace()
 
         last_rms = 9999
         prev_internals = cur_internals

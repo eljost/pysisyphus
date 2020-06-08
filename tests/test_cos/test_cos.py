@@ -172,7 +172,7 @@ def test_neb_springs(neb_kwargs, ref_cycle):
     opt = SteepestDescent(neb)
     opt.run()
 
-    calc.anim_opt(opt)#, show=True)
+    # calc.anim_opt(opt, show=True)
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == ref_cycle)
