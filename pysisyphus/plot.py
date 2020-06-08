@@ -661,9 +661,12 @@ def parse_args(args):
 def plot_opt(h5_fn="optimization.h5", group_name="opt"):
     with h5py.File("optimization.h5", "r") as handle:
         group = handle[group_name]
-        cur_cycle = group["cur_cycle"][()]
+
+        cur_cycle = group.attrs["cur_cycle"]
+        is_cos = group.attrs["is_cos"]
+        # atoms = group.attrs["atoms"]
+
         ens = group["energies"][:cur_cycle]
-        is_cos = group["is_cos"][()]
         max_forces = group["max_forces"][:cur_cycle]
         rms_forces = group["rms_forces"][:cur_cycle]
 
@@ -686,10 +689,12 @@ def plot_opt(h5_fn="optimization.h5", group_name="opt"):
     ax0.set_ylabel("$\Delta E$ / kJ mol⁻¹")
 
     ax1.plot(max_forces, **ax_kwargs)
+    ax1.set_yscale("log")
     ax1.set_title("max(forces)")
     ax1.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
 
     ax2.plot(rms_forces, **ax_kwargs)
+    ax2.set_yscale("log")
     ax2.set_title("rms(forces)")
     ax2.set_xlabel("Step")
     ax2.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
