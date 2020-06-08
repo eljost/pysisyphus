@@ -117,29 +117,13 @@ class Plotter:
                 self.animation.event_source.start()
             self.pause = not self.pause
 
+def spline_plot_cycles(cart_coords, energies):
+    num_cycles = energies.shape[1]
 
-def plot_energies():
-    keys = ("energy", "cart_coords")
-    (energies, coords), num_cycles, num_images = load_results(keys)
-
-    if isinstance(num_images, list):
-        print("Please use --aneb instead of --energies")
-        return
-
-    lengths = np.array([len(e) for e in energies])
-    equal_lengths = lengths == lengths[-1]
-    # Hack to support growing string calculations
-    energies = np.array([e for e, l in zip(energies, equal_lengths) if l])
-    coords = np.array([c for c, l in zip(coords, equal_lengths) if l])
-    num_cycles, num_images = energies.shape
-
-    energies -= energies.min()
-    energies *= AU2KJPERMOL
-
-    # Static plot of path with equally spaced images
     fig, ax = plt.subplots()
     colors = matplotlib.cm.Greys(np.linspace(.2, 1, num=num_cycles))
-    for cycle, color in zip(energies, colors):
+    # for cycle, color in zip(energies, colors):
+    for i, (cycle, color) in enumerate(zip(energies, colors)):
         ax.plot(cycle, "o-", color=color)
     ax.set_title("Energies")
 
@@ -147,8 +131,10 @@ def plot_energies():
         "ls": ":",
         "color": "darkgrey",
     }
+    # Try to spline the last cycle to get an estimate for the spliend HEI
     try:
         last_cycle = energies[-1]
+        num_images = last_cycle.size
         spl = splrep(np.arange(num_images), last_cycle)
         # Calculate interpolated values
         x2 = np.linspace(0, num_images, 100)
@@ -174,13 +160,18 @@ def plot_energies():
     ax.set_xlabel("Image")
     ax.set_ylabel("dE / kJ mol⁻¹")
 
-    fig2, ax2 = plt.subplots()
+    return fig, ax
+
+
+def plot_cycle(cart_coords, energies):
+    # Plot last_cycle
+    fig, ax = plt.subplots()
     last_energies = energies[-1].copy()
     xs = np.arange(len(last_energies))
-    ax2.plot(xs, last_energies, "o-")
-    ax2.set_xlabel("Image")
-    ax2.set_ylabel("$\Delta$E / kJ mol⁻¹")
-    ax2.set_title(f"Cycle {len(energies)-1}")
+    ax.plot(xs, last_energies, "o-")
+    ax.set_xlabel("Image")
+    ax.set_ylabel("$\Delta$E / kJ mol⁻¹")
+    ax.set_title(f"Cycle {len(energies)-1}")
 
     first_image_en = last_energies[0]
     last_image_en = last_energies[-1]
@@ -195,50 +186,30 @@ def plot_energies():
     last_barr = max_en - last_image_en
     print(f"\tBarrier between last image and HEI: {last_barr:.1f} kJ mol⁻¹")
 
+    return fig, ax
+
+
+def anim_cos(cart_coords, energies):
+    num_cycles = cart_coords.shape[0]
+
     # Also do an animation
-    plotter = Plotter(coords, energies, "ΔE / au", interval=250, save=False)
-    # This calls plt.show()
-    plotter.animate()
+    min_ = np.nanmin(energies)
+    max_ = np.nanmax(energies)
 
-
-def plot_aneb():
-    keys = ("energy", "cart_coords")
-    (energies, coords), num_cycles, num_images = load_results(keys)
-
-    # Use coordinates of the first image in the first cycle as
-    # anchor for all following cycles.
-    first_coords = coords[0][0]
-
-    coord_diffs = list()
-    min_ = 0
-    max_ = max(energies[0])
-    for en, c in zip(energies, coords):
-        cd = np.linalg.norm(c - first_coords, axis=1)
-        min_ = min(min_, min(en))
-        max_ = max(max_, max(en))
-        coord_diffs.append(cd)
-
-    energies_ = list()
-    au2kJmol = 2625.499638
-    for en in energies:
-        en = np.array(en)
-        en -= min_
-        en *= au2kJmol
-        energies_.append(en)
-
+    coord_diffs = np.linalg.norm(cart_coords-cart_coords[0][0], axis=2)
     fig, ax = plt.subplots()
-    # Initial energies
-    lines = ax.plot(coord_diffs[0], energies_[0], "o-")
-    y_max = (max_ - min_) * au2kJmol
-    ax.set_ylim(0, y_max)
 
+    # Initial energies
+    lines = ax.plot(coord_diffs[0], energies[0], "o-")
+    y_max = (max_ - min_)
+    ax.set_ylim(0, y_max)
     ax.set_xlabel("Coordinate differences / Bohr")
     ax.set_ylabel("$\Delta$J / kJ $\cdot$ mol$^{-1}$")
 
     def update_func(i):
         fig.suptitle("Cycle {}".format(i))
         lines[0].set_xdata(coord_diffs[i])
-        lines[0].set_ydata(energies_[i])
+        lines[0].set_ydata(energies[i])
 
     def animate():
         animation = FuncAnimation(
@@ -248,49 +219,59 @@ def plot_aneb():
                         interval=250,
         )
         return animation
+
     anim = animate()
+    return anim, fig, ax
+
+
+def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
+    with h5py.File(h5_fn, "r") as handle:
+        group = handle[h5_group]
+
+        is_cos = group.attrs["is_cos"]
+        cur_cycle = group.attrs["cur_cycle"]
+        num_cycles = cur_cycle + 1
+
+        image_nums = group["image_nums"][:num_cycles].astype(int)
+        image_inds = group["image_inds"][:num_cycles].astype(int)
+        _energies = group["energies"][:num_cycles]
+        _cart_coords = group["cart_coords"][:num_cycles]
+
+    max_image_num = _energies.shape[1]
+    _energies -= _energies.min()
+    _energies *= AU2KJPERMOL
+    _cart_coords = _cart_coords.reshape(num_cycles, -1, 3)
+
+    energies = np.full_like(_energies, np.nan)
+    cart_coords = np.full_like(_cart_coords, np.nan)
+    for cyc, (img_ind, img_num) in enumerate(zip(image_inds, image_nums)):
+        img_ind = img_ind[:img_num]
+        energies[cyc,img_ind] = _energies[cyc, :img_num]
+        cart_coords[cyc,img_ind] = _cart_coords[cyc, :img_num]
+
+    # Splined last cycle and plot of all cycles
+    fig_, ax_ = spline_plot_cycles(cart_coords, energies)
+    # Plot last cycle
+    fig_last, ax_last = plot_cycle(cart_coords, energies)
+    # Plot animation
+    anim, fig_anim, ax_anim = anim_cos(cart_coords, energies)
+
     plt.show()
 
 
-def load_results(keys):
-    if isinstance(keys, str):
-        keys = (keys, )
-    image_results_fn = "image_results.yaml"
-    print(f"Reading {image_results_fn}")
-    with open(image_results_fn) as handle:
-        all_results = yaml.load(handle.read(), Loader=yaml.Loader)
-    num_cycles = len(all_results)
+def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
+    with h5py.File(h5_fn, "r") as handle:
+        group = handle[h5_group]
 
-    results_list = list()
-    for key in keys:
-        tmp_list = list()
-        for res_per_cycle in all_results:
-            try:
-                tmp_list.append([res[key] for res in res_per_cycle])
-            except KeyError:
-                print(f"Key '{key}' not present in {image_results_fn}. Exiting.")
-                sys.exit()
-        results_list.append(np.array(tmp_list))
-    # The length of the second axis correpsonds to the number of images
-    # Determine the number of images. If we have the same number of images
-    # set num_images to this number. Otherwise return a list containing
-    # the number of images.
-    num_images = np.array([len(cycle) for cycle in results_list[0]])
-    if all(num_images[0] == num_images):
-        num_images = num_images[0]
-        print(f"Found path with {num_images} images.")
-    # Flatten the first axis when we got only a single key
-    if len(results_list) == 1:
-        results_list = results_list[0]
-    print(f"Loaded {num_cycles} cycle(s).")
-    return results_list, num_cycles, num_images
+        is_cos = group.attrs["is_cos"]
+        atoms = group.attrs["atoms"]
+        cur_cycle = group.attrs["cur_cycle"]
 
+        image_inds = group["image_inds"][:cur_cycle].astype(int)
+        forces = group["forces"][:cur_cycle]
 
-def plot_cosgrad():
-    keys = ("energy", "forces", "coords")
-    (energies, forces, coords), num_cycles, num_images = load_results(keys)
-    atom_num = coords[0][0].size // 3
-    dummy_atoms =["H"] * atom_num
+    assert is_cos, "--cosgrad is only useful for COS optimizations!"
+    import pdb; pdb.set_trace()
 
     all_nebs = list()
     all_perp_forces = list()
@@ -543,6 +524,8 @@ def render_cdds(h5):
 
 
 def plot_afir():
+    raise Exception("Implement HDF5 dump for AFIR calculator!")
+
     with open("image_results.yaml") as handle:
         res = yaml.load(handle.read(), Loader=yaml.loader.Loader)
 
@@ -615,30 +598,18 @@ def parse_args(args):
                         help="Only consider the first [first] cycles.")
     parser.add_argument("--last", type=int,
                         help="Only consider the last [last] cycles.")
-    parser.add_argument("--h5", default="overlap_data.h5")
-    parser.add_argument("--group", default="opt",
+    parser.add_argument("--h5_fn", default="overlap_data.h5")
+    parser.add_argument("--h5_group", default="opt",
         help="HDF5 group to plot."
     )
     parser.add_argument("--orient", default="")
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--saras", action="store_true",
-                       help="Plot OpenMolcas state average potential energy "
-                            "surfaces over the course of the NEB.")
-    group.add_argument("--tddft", action="store_true",
-                       help="Plot ORCA TDDFT potential energy surfaces "
-                            "over the course of the NEB.")
-    group.add_argument("--params",
-                       help="Follow internal coordinates over the course of "
-                            "the NEB. All atom indices have to be 0-based. "
-                            "Use two indices for a bond, three indices for "
-                            "an angle and four indices for a dihedral. "
-                            "The indices for different coordinates have to "
-                            "be separated by ','.")
-    group.add_argument("--cosgrad", "--cg", action="store_true",
-                        help="Plot image gradients along the path.")
-    group.add_argument("--energies", "-e", action="store_true",
-                        help="Plot energies.")
+    group.add_argument("--cosforces", "--cf", action="store_true",
+                        help="Plot image forces along a COS."
+    )
+    group.add_argument("--cosens", "--ce", action="store_true",
+                        help="Plot COS energies.")
     group.add_argument("--aneb", action="store_true",
                         help="Plot Adaptive NEB.")
     group.add_argument("--all_energies", "-a", action="store_true",
@@ -662,9 +633,9 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def plot_opt(h5_fn="optimization.h5", group_name="opt"):
-    with h5py.File("optimization.h5", "r") as handle:
-        group = handle[group_name]
+def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
+    with h5py.File(h5_fn, "r") as handle:
+        group = handle[h5_group]
 
         cur_cycle = group.attrs["cur_cycle"]
         is_cos = group.attrs["is_cos"]
@@ -776,17 +747,17 @@ def plot_irc_h5(h5, title=None):
 def run():
     args = parse_args(sys.argv[1:])
 
-    h5 = args.h5
+    h5_fn = args.h5_fn
 
-    # Optimization/COS related
+    # Optimization
     if args.opt:
-        plot_opt(group_name=args.group)
-    elif args.energies:
-        plot_energies()
-    elif args.cosgrad:
-        plot_cosgrad()
-    elif args.aneb:
-        plot_aneb()
+        plot_opt(h5_group=args.h5_group)
+    # COS specific
+    elif args.cosens:
+        plot_cos_energies(h5_group=args.h5_group)
+    elif args.cosforces:
+        plot_cos_forces(h5_group=args.h5_group)
+    # AFIR
     elif args.afir:
         plot_afir()
     # IRC related
