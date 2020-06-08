@@ -336,87 +336,6 @@ def plot_cosgrad():
     plt.show()
 
 
-def plot_multistate_pes(keys):
-    (pes_ens, coords), num_cycles, num_images = load_results(keys)
-    pes_ens -= pes_ens.min(axis=(2, 1), keepdims=True)
-    pes_ens *= 27.211396
-
-    plotter = Plotter(coords, pes_ens, "ΔE / eV")
-    plotter.animate()
-
-
-def plot_params(inds):
-    def get_bond_length(coords_slice):
-        return np.linalg.norm(coords_slice[0]-coords_slice[1]) * BOHR2ANG * 100
-
-    def get_angle(coords_slice):
-        vec1 = coords_slice[0] - coords_slice[1]
-        vec2 = coords_slice[2] - coords_slice[1]
-        vec1n = np.linalg.norm(vec1)
-        vec2n = np.linalg.norm(vec2)
-        dotp = np.dot(vec1, vec2)
-        radians = np.arccos(dotp / (vec1n * vec2n))
-        return radians * 180 / np.pi
-
-    def get_dihedral(coords_slice):
-        raise Exception("Not implemented yet!")
-
-    type_dict = {
-        2: ("bond length / pm", get_bond_length),
-        3: ("angle / °", get_angle),
-        4: ("dihedral / °", get_dihedral)
-    }
-    inds_list = [[int(i) for i in i_.split()] for i_ in inds.split(",")]
-    ylabels, funcs = zip(*[type_dict[len(inds)] for inds in inds_list])
-    assert all([len(inds_list[i]) == len(inds_list[i+1])
-                for i in range(len(inds_list)-1)]), "Can only display " \
-            "multiple coordinates of the same type (bond, angle or " \
-            "dihedral."
-    # Just use the first label because they all have to be the same
-    ylabel = ylabels[0]
-
-    key = "coords"
-    # only allow same type of coordinate if multiple coordinates are given?
-    coords, num_cycles, num_images = load_results(key)
-
-    # Coordinates for all images for all cycles
-    ac = list()
-    for i, per_cycle in enumerate(coords):
-        # Coordinates for all images per cycle
-        pc = list()
-        for j, per_image in enumerate(per_cycle):
-            # Coordinates per ind for all images
-            pi = list()
-            for inds, func in zip(inds_list, funcs):
-                coords_slice = per_image.reshape(-1, 3)[inds]
-                param = func(coords_slice)
-                pi.append(param)
-            pc.append(pi)
-        ac.append(pc)
-
-    ac_arr = np.array(ac)
-
-    # Construct legend list
-    legend = ["-".join([str(i) for i in inds]) for inds in inds_list]
-    plotter = Plotter(coords, ac_arr, ylabel, legend=legend)
-    plotter.animate()
-
-    #df = pd.DataFrame(ac_arr)
-    #cmap = plt.get_cmap("Greys")
-    #ax = df.plot(
-    #        title=f"Params {inds}",
-    #        colormap=cmap,
-    #        legend=False,
-    #        marker="o",
-    #        xticks=range(num_images),
-    #        xlim=(0, num_images-1),
-    #)
-    #ax.set_xlabel("Image")
-    #ax.set_ylabel(ylabel)
-    #plt.tight_layout()
-    plt.show()
-
-
 def plot_all_energies(h5):
     with h5py.File(h5) as handle:
         energies = handle["all_energies"][:]
@@ -460,24 +379,6 @@ def plot_all_energies(h5):
     ax.set_ylabel("$\Delta E / eV$")
     root_ens = [s[r] for s, r in zip(energies, roots)]
     ax.plot(steps, root_ens, "--k")
-    plt.show()
-
-
-def plot_bare_energies(h5):
-    with h5py.File(h5) as handle:
-        energies = handle["all_energies"][:]
-    print(f"Found a total of {len(energies)} steps.")
-
-    energies -= energies.min()
-    energies *= AU2EV
-    steps = np.arange(len(energies))
-
-    fig, ax = plt.subplots()
-    for i, state in enumerate(energies.T):
-        ax.plot(steps, state, "o-", label=f"State {i:03d}")
-    ax.legend(loc="lower center", ncol=3)
-    ax.set_xlabel("Step")
-    ax.set_ylabel("$\Delta E / eV$")
     plt.show()
 
 
@@ -866,34 +767,27 @@ def run():
 
     h5 = args.h5
 
-    if args.energies:
+    # Optimization/COS related
+    if args.opt:
+        plot_opt()
+    elif args.energies:
         plot_energies()
-    elif args.saras:
-        keys = ("sa_energies", "coords")
-        plot_multistate_pes(keys)
-    elif args.tddft:
-        keys = ("tddft_energies", "coords")
-        plot_multistate_pes(keys)
-    elif args.params:
-        plot_params(args.params)
     elif args.cosgrad:
         plot_cosgrad()
     elif args.aneb:
         plot_aneb()
+    elif args.afir:
+        plot_afir()
+    # IRC related
+    elif args.irc:
+        plot_irc()
+    # Overlap calculator related
     elif args.all_energies:
         plot_all_energies(h5=h5)
     elif args.overlaps:
         plot_overlaps(h5=h5)
     elif args.render_cdds:
         render_cdds(h5=h5)
-    elif args.bare_energies:
-        plot_bare_energies(h5=h5)
-    elif args.afir:
-        plot_afir()
-    elif args.opt:
-        plot_opt()
-    elif args.irc:
-        plot_irc()
 
 
 if __name__ == "__main__":
