@@ -1,0 +1,14 @@
+tsopt:
+ type: rsprfo
+ do_hess: True
+ trust_max: 0.3
+ thresh: gau
+ hessian_init: xtb
+calc:
+ type: orca
+ keywords: def2-svp bp86
+ pal: 4
+ charge: 0
+ mult: 1
+xyz: ts_guess_from_xtb.xyz
+coord_type: redund
