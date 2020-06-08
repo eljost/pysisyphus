@@ -16,6 +16,7 @@ from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_d
 
 def get_data_model(geometry, is_cos, max_cycles):
     try:
+        # Attribute is only present in COS classes
         image_num = geometry.max_image_num
         dummy_geom = geometry.images[0]
     except AttributeError:
@@ -27,6 +28,7 @@ def get_data_model(geometry, is_cos, max_cycles):
     # the shapes accordingly by considering the maximum number of images.
     _1d = (max_cycles, )
     _2d = (max_cycles, image_num * dummy_geom.coords.size)
+    _image_inds = (max_cycles, image_num)
     # Number of cartesian coordinates is probably different from the number
     # of internal coordinates.
     _2d_cart = (max_cycles, image_num * dummy_geom.cart_coords.size)
@@ -35,6 +37,7 @@ def get_data_model(geometry, is_cos, max_cycles):
     _energy = _1d if (not is_cos) else (max_cycles, geometry.max_image_num)
 
     data_model = {
+        "image_inds": _image_inds,
         "cart_coords": _2d_cart,
         "coords": _2d,
         "energies": _energy,
@@ -154,7 +157,8 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         self.logger = logging.getLogger("optimizer")
 
-        # Setting some empty lists as default
+        # Setting some empty lists as default. The actual shape of the respective
+        # entries is not considered, which gives us some flexibility.
         self.data_model = get_data_model(self.geometry, self.is_cos, self.max_cycles)
         for la in self.data_model.keys():
             setattr(self, la, list())
@@ -440,6 +444,12 @@ class Optimizer(metaclass=abc.ABCMeta):
                                                              self.forces[-1])
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
+            try:
+                image_inds = self.geometry.image_inds
+            except AttributeError:
+                image_inds = [0, ]
+            self.image_inds.append(image_inds)
+
             if reset_flag:
                 self.reset()
 
