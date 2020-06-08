@@ -12,3 +12,7 @@ calc:
  mult: 1
 xyz: ts_guess_from_xtb.xyz
 coord_type: redund
+assert:
+ ts_opt.is_converged: True
+ ts_opt.cur_cycle: 9
+ ts_geom.energy: -495.49620805
