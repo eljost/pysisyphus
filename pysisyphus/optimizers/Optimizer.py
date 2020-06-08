@@ -352,10 +352,13 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.h5_group.attrs["is_cos"] = self.is_cos
                 try:
                     atoms = self.geometry.images[0].atoms
+                    coord_size = self.geometry.images[0].coords.size
                 except AttributeError:
                     atoms = self.geometry.atoms
+                    coord_size = self.geometry.coords.size
                 self.h5_group.attrs["atoms"] = atoms
                 self.h5_group.attrs["coord_type"] = self.geometry.coord_type
+                self.h5_group.attrs["coord_size"] = coord_size
 
             # Update changing attributes
             self.h5_group.attrs["cur_cycle"] = self.cur_cycle
