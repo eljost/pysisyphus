@@ -348,11 +348,11 @@ class Optimizer(metaclass=abc.ABCMeta):
         try:
             # Some attributes never change and are only set in the first cycle
             if self.cur_cycle == 0:
-                self.h5_group.attrs["is_cos"] = True
+                self.h5_group.attrs["is_cos"] = self.is_cos
                 try:
                     atoms = self.geometry.images[0].atoms
                 except AttributeError:
-                    atoms = self.geometry.atom
+                    atoms = self.geometry.atoms
                 self.h5_group.attrs["atoms"] = atoms
                 self.h5_group.attrs["coord_type"] = self.geometry.coord_type
 
