@@ -143,8 +143,11 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
     with h5py.File(h5_fn, "r") as handle:
         group = handle[h5_group]
 
+        atoms = group.attrs["atoms"]
         is_cos = group.attrs["is_cos"]
         cur_cycle = group.attrs["cur_cycle"]
+        coord_size = group.attrs["coord_size"]
+        coord_type = group.attrs["coord_type"]
         num_cycles = cur_cycle + 1
 
         image_nums = group["image_nums"][:num_cycles].astype(int)
@@ -159,7 +162,17 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
         ens *= AU2KJPERMOL
 
     try:
-        _datasets["cart_coords"] = _datasets["cart_coords"].reshape(num_cycles, -1, 3)
+        # We can't use coord_size because coord_type may be != cart and then
+        # coord_size gives the number of internals.
+        cart_shape = (num_cycles, -1, 3* len(atoms))
+        _datasets["cart_coords"] = _datasets["cart_coords"].reshape(cart_shape)
+    except KeyError:
+        pass
+
+    try:
+        # Here we can use coord_size because forces will always be in the same
+        # coordinate system as the actual coordinates.
+        _datasets["forces"] = _datasets["forces"].reshape((num_cycles, -1, coord_size))
     except KeyError:
         pass
 
@@ -183,8 +196,8 @@ def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
     results = load_h5(h5_fn, h5_group,
                       datasets=("cart_coords", "energies"),
                       attrs=("is_cos", ))
-    energies = results["energies"]
     cart_coords = results["cart_coords"]
+    energies = results["energies"]
 
     assert results["is_cos"]
 
@@ -199,48 +212,19 @@ def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
 
 
 def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
-    with h5py.File(h5_fn, "r") as handle:
-        group = handle[h5_group]
+    results = load_h5(h5_fn, h5_group,
+                      datasets=("forces", ),
+                      attrs=("is_cos", ))
+    forces = results["forces"]
 
-        is_cos = group.attrs["is_cos"]
-        atoms = group.attrs["atoms"]
-        cur_cycle = group.attrs["cur_cycle"]
+    assert results["is_cos"]
 
-        image_inds = group["image_inds"][:cur_cycle].astype(int)
-        forces = group["forces"][:cur_cycle]
+    last_axis = forces.ndim-1
+    max_ = np.nanmax(np.abs(forces), axis=last_axis)
+    rms = np.sqrt(np.mean(forces**2, axis=last_axis))
 
-    assert is_cos, "--cosgrad is only useful for COS optimizations!"
-    import pdb; pdb.set_trace()
+    fig, (ax0, ax1)  = plt.subplots(sharex=True, nrows=2)
 
-    all_nebs = list()
-    all_perp_forces = list()
-    for i, per_cycle in enumerate(zip(energies, forces, coords), 1):
-        ens, frcs, crds = per_cycle
-        images = [Geometry(dummy_atoms, per_image) for per_image in crds]
-        for image, en, frc in zip(images, ens, frcs):
-            image._energy = en
-            image._forces = frc
-
-        neb = NEB(images)
-        all_nebs.append(neb)
-        pf = neb.perpendicular_forces.reshape(num_images, -1)
-        all_perp_forces.append(pf)
-
-    # Calculate norms of true force
-    # Shape (cycles, images, coords)
-    force_norms = np.linalg.norm(forces, axis=2)
-    all_max_forces = list()
-    all_rms_forces = list()
-    rms = lambda arr: np.sqrt(np.mean(np.square(arr)))
-    for pf in all_perp_forces:
-        max_forces = pf.max(axis=1)
-        all_max_forces.append(max_forces)
-        rms_forces = np.apply_along_axis(rms, 1, pf)
-        all_rms_forces.append(rms_forces)
-    all_max_forces = np.array(all_max_forces)
-    all_rms_forces = np.array(all_rms_forces)
-
-    fig, (ax0, ax1, ax2) = plt.subplots(sharex=True, nrows=3)
     def plot(ax, data, title):
         colors = matplotlib.cm.Greys(np.linspace(0, 1, num=data.shape[0]))
         for row, color in zip(data, colors):
@@ -248,10 +232,10 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
         ax.set_yscale('log')
         if title:
             ax.set_title(title)
-    plot(ax0, all_max_forces, "max(perpendicular gradient)")
-    plot(ax1, all_rms_forces, "rms(perpendicular gradient)")
-    plot(ax2, force_norms, "norm(true gradient)")
-    ax2.set_xlabel("Images")
+
+    plot(ax0, max_, "max(perp. forces)")
+    plot(ax1, rms, "rms(perp. forces)")
+    ax1.set_xlabel("Image")
 
     plt.tight_layout()
     plt.show()
@@ -615,7 +599,9 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     ax2.set_xlabel("Step")
     ax2.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
 
-    fig.suptitle(str(h5_fn) + "/" + group_name)
+    fig.suptitle(str(h5_fn) + "/" + h5_group)
+
+    plt.tight_layout()
     plt.show()
 
 
