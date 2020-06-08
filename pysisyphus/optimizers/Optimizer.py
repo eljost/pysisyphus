@@ -65,8 +65,6 @@ def init_h5_group(f, group_name, data_model):
         assert len(shape) <= 2, "3D not yet supported"
         maxshape = (None, ) if (len(shape) == 1) else (None, shape[-1])
         group.create_dataset(key, shape, maxshape=maxshape)
-    group.create_dataset("cur_cycle", dtype=int, shape=())
-    group.create_dataset("is_cos", dtype=bool, shape=())
 
 
 def get_h5_group(fn, group_name, data_model):
@@ -348,6 +346,19 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # Save results from the Optimizer to HDF5 file if requested
         try:
+            # Some attributes never change and are only set in the first cycle
+            if self.cur_cycle == 0:
+                self.h5_group.attrs["is_cos"] = True
+                try:
+                    atoms = self.geometry.images[0].atoms
+                except AttributeError:
+                    atoms = self.geometry.atom
+                self.h5_group.attrs["atoms"] = atoms
+                self.h5_group.attrs["coord_type"] = self.geometry.coord_type
+
+            # Update changing attributes
+            self.h5_group.attrs["cur_cycle"] = self.cur_cycle
+
             for key, shape in self.data_model.items():
                 value = getattr(self, key)
                 # Don't try to set empty values, e.g. 'tangents' are only present
@@ -358,8 +369,6 @@ class Optimizer(metaclass=abc.ABCMeta):
                     self.h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
                 else:
                     self.h5_group[key][self.cur_cycle] = value[-1]
-            self.h5_group["cur_cycle"][()] = self.cur_cycle
-            self.h5_group["is_cos"][()] = self.is_cos
         except AttributeError:
             self.log("Skipping HD5 dump.")
 
