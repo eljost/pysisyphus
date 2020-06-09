@@ -441,24 +441,23 @@ def render_cdds(h5):
     print(f"Wrote list of rendered PNGs to '{CDD_PNG_FNS}'")
 
 
-def plot_afir():
-    raise Exception("Implement HDF5 dump for AFIR calculator!")
+def plot_afir(h5_fn="afir.h5", h5_group="afir"):
 
-    with open("image_results.yaml") as handle:
-        res = yaml.load(handle.read(), Loader=yaml.loader.Loader)
+    with h5py.File(h5_fn, "r") as handle:
+        group = handle[h5_group]
 
-    afir_ens = [_["energy"] for _ in res]
-    true_ens = [_["true_energy"] for _ in res]
-    afir_ens = np.array(afir_ens) * AU2KJPERMOL
+        cycles = group.attrs["cur_cycle"] + 1
+        afir_ens = group["energy"][:cycles]
+        true_ens = group["true_energy"][:cycles]
+        afir_forces = group["forces"][:cycles]
+        true_forces = group["true_forces"][:cycles]
+
+    afir_ens *= AU2KJPERMOL
     afir_ens -= afir_ens.min()
-    true_ens = np.array(true_ens) * AU2KJPERMOL
+    true_ens *= AU2KJPERMOL
     true_ens -= true_ens.min()
-
-    afir_forces = np.linalg.norm([_["forces"] for _ in res], axis=1)
-    true_forces = np.linalg.norm([_["true_forces"] for _ in res], axis=1)
-    afir_forces = np.array(afir_forces)
-    true_forces = np.array(true_forces)
-
+    afir_forces = np.linalg.norm(afir_forces, axis=1)
+    true_forces = np.linalg.norm(true_forces, axis=1)
 
     fig, (en_ax, forces_ax) = plt.subplots(nrows=2, sharex=True)
 
@@ -490,9 +489,16 @@ def plot_afir():
     lines = l1 + l2 + l3
     labels = [l.get_label() for l in lines]
     forces_ax.legend(lines, labels, loc=0)
+    forces_ax.set_xlabel("Cycle")
 
     peak_inds, _ = peakdetect(true_ens, lookahead=2)
-    print(f"Peaks: {peak_inds}")
+    if peak_inds:
+        print(f"Peaks:")
+        print("\tCycle: Energy / kJ mol⁻¹")
+        print()
+        for at, energy in peak_inds:
+            print(f"\t{at}: {energy:.2f}")
+
     try:
         peak_xs, peak_ys = zip(*peak_inds)
         highest = np.argmax(peak_ys)
