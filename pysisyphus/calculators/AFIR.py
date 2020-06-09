@@ -87,6 +87,7 @@ class AFIR(Calculator):
         # We can initialize the HDF5 group as we don't know the shape of
         # atoms/coords yet. So we wait until after the first calculation.
         self.h5_group = None
+        self.h5_cycles = 50
 
         rho_verbose = { 1: ("pushing", "together"),
                        -1: ("pulling", "apart")
@@ -97,7 +98,9 @@ class AFIR(Calculator):
         self.atoms = None
         self.calc_counter = 0
 
-    def init_h5_group(self, atoms, max_cycles=50):
+    def init_h5_group(self, atoms, max_cycles=None):
+        if max_cycles is None:
+            max_cycles = self.h5_cycles
         self.data_model = get_data_model(atoms, max_cycles)
         self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model)
 
@@ -107,6 +110,13 @@ class AFIR(Calculator):
             self.init_h5_group(atoms)
             # Write atoms once
             self.h5_group.attrs["atoms"] = atoms
+
+        # Check if HDF5 datasets have to be resized
+        cur_max_cycles = self.h5_group["cart_coords"].shape[0]
+        need_resize = self.calc_counter > cur_max_cycles - 5
+        if need_resize:
+            new_max_cycles = cur_max_cycles + self.h5_cycles
+            resize_h5_group(self.h5_group, max_cycles=new_max_cycles)
 
         for k, v in results.items():
             self.h5_group[k][self.calc_counter] = v
