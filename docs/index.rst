@@ -35,6 +35,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    chainofstates.rst
    tsoptimization.rst
    irc.rst
+   plotting.rst
 	
 Indices and tables
 ==================
