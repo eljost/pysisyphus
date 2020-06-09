@@ -34,6 +34,12 @@ coordinates. A chain of states (COS) is optimized loosely via a LBFGS optimizer.
 energy image (HEI) is employed for a subsequent transition state (TS) optimization. Finally the
 intrinsic reaction coordinate (IRC) is obtained by means of an Euler-Predictor-Corrector integrator.
 
+.. figure:: /images/diels_alder/diels_alder.png
+    :width: 600
+    :alt: Educts, TS and products of the Diels-Alder reaction between ethene and 1-4-butadiene.
+
+    Educts, TS and products of the Diels-Alder reaction between ethene and 1-4-butadiene.
+
 Plotting optimization progress
 ------------------------------
 The progress of an optimization can be plotted via
@@ -151,3 +157,26 @@ in mass-weighted cartesian coordinates, whereas gradients are given in non-mass-
 Evidently the IRC integration failed at the end, as can be seen from the the bunched up points,
 but unless you want to do some kind of transition-state-theory (TST; not supported by pysisyphus)
 calculations this should not be a problem.
+
+Worked Example - AFIR
+=====================
+
+.. _AFIR-Paper: https://aip.scitation.org/doi/pdf/10.1063/1.3457903
+
+pysisplot is able to visualize AFIR calculations and to highlight intersting geometries
+along the optimization. Shown below is an example taken from the AFIR-Paper_ . By using
+AFIR the S\ :sub:`N`\ 2 between OH\ :sup:`-` and fluoromethylene can be forced, yielding
+methanol and the fluorine anion.
+
+.. figure:: /images/afir/afir_molecules.png
+    :width: 600
+    :alt: Formation of methanol by means of a S\ :sub:`N`\ 2 reaction.
+
+    Formation of methanol by means of a S\ :sub:`N`\ 2 reaction.
+    
+
+.. figure:: /images/afir/afir.png
+    :width: 600
+    :alt: Energy profile and force norms along the S\ :sub:`N`\ 2 reaction.
+    
+    Energy profile and force norms along the S\ :sub:`N`\ 2 reaction.
