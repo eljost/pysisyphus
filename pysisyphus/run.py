@@ -1129,6 +1129,9 @@ def do_clean(force=False):
         "final_geometry.xyz",
         "calculated_init_hessian",
         "cur_out",
+        # HDF5 files
+        "optimization.h5",
+        "afir.h5",
     )
     to_rm_paths = list()
     for glob in rm_globs:
