@@ -311,6 +311,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # Update changing attributes
         self.h5_group.attrs["cur_cycle"] = self.cur_cycle
+        self.h5_group.attrs["is_converged"] = self.is_converged
 
         for key, shape in self.data_model.items():
             value = getattr(self, key)
