@@ -14,7 +14,7 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.readers import geom_from_pdb
+from pysisyphus.io import geom_from_pdb
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
