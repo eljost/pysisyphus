@@ -32,7 +32,7 @@ class EulerPC(IRC):
 
     def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
                  max_pred_steps=500, dump_dwi=False,
-                 scipy_method=None, corr_func="mbs", **kwargs):
+                 scipy_method=None, corr_func="scipy", **kwargs):
         super().__init__(*args, **kwargs)
 
         self.hessian_recalc = hessian_recalc
