@@ -326,6 +326,8 @@ def plot_overlaps(h5, thresh=.1):
     print(f"Found rendered {len(cdd_imgs)} CDD images.")
 
     overlaps[np.abs(overlaps) < thresh] = np.nan
+    print(f"Overlap type: {ovlp_type}")
+    print(f"Overlap with: {ovlp_with}")
     print(f"Found {len(overlaps)} overlap matrices.")
     print(f"Roots: {roots}")
     print(f"Reference cycles: {ref_cycles}")
