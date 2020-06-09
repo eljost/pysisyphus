@@ -161,12 +161,13 @@ calculations this should not be a problem.
 Worked Example - AFIR
 =====================
 
-.. _AFIR-Paper: https://aip.scitation.org/doi/pdf/10.1063/1.3457903
-
 pysisplot is able to visualize AFIR calculations and to highlight intersting geometries
 along the optimization. Shown below is an example taken from the AFIR-Paper_ . By using
 AFIR the S\ :sub:`N`\ 2 between OH\ :sup:`-` and fluoromethylene can be forced, yielding
-methanol and the fluorine anion.
+methanol and the fluorine anion. The corresponding unit test can be found in the
+`tests/test_afir` directory of the repository.
+
+.. _AFIR-Paper: https://aip.scitation.org/doi/pdf/10.1063/1.3457903
 
 .. figure:: /images/afir/afir_molecules.png
     :width: 600
@@ -180,3 +181,6 @@ methanol and the fluorine anion.
     :alt: Energy profile and force norms along the S\ :sub:`N`\ 2 reaction.
     
     Energy profile and force norms along the S\ :sub:`N`\ 2 reaction.
+
+Worked Example - Excited State Tracking
+=======================================
