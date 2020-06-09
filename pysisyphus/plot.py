@@ -23,6 +23,15 @@ from pysisyphus.wrapper.jmol import render_cdd_cube
 CDD_PNG_FNS = "cdd_png_fns"
 
 
+def get_force_unit(coord_type):
+    force_unit = "$E_h$ Bohr⁻¹"
+    if coord_type != "cart":
+        force_unit += " (rad)⁻¹"
+    return force_unit
+
+UNIT_DEKJMOL = "$\Delta$E / kJ mol⁻¹"
+
+
 def spline_plot_cycles(cart_coords, energies):
     num_cycles = energies.shape[1]
 
@@ -31,7 +40,7 @@ def spline_plot_cycles(cart_coords, energies):
     # for cycle, color in zip(energies, colors):
     for i, (cycle, color) in enumerate(zip(energies, colors)):
         ax.plot(cycle, "o-", color=color)
-    ax.set_title("Energies")
+    ax.set_title("COS image energies")
 
     kwargs = {
         "ls": ":",
@@ -64,7 +73,8 @@ def spline_plot_cycles(cart_coords, energies):
     # Always draw a line at the minimum y=0
     ax.axhline(y=0, **kwargs)
     ax.set_xlabel("Image")
-    ax.set_ylabel("dE / kJ mol⁻¹")
+    ax.set_ylabel(UNIT_DEKJMOL)
+    ax.set_xlim(0, energies.shape[0]-1)
 
     return fig, ax
 
@@ -76,8 +86,9 @@ def plot_cycle(cart_coords, energies):
     xs = np.arange(len(last_energies))
     ax.plot(xs, last_energies, "o-")
     ax.set_xlabel("Image")
-    ax.set_ylabel("$\Delta$E / kJ mol⁻¹")
-    ax.set_title(f"Cycle {len(energies)-1}")
+    ax.set_ylabel(UNIT_DEKJMOL)
+    ax.set_title(f"COS image energies, (last) cycle {len(energies)-1}")
+    ax.set_xlim(0, energies.shape[0]-1)
 
     first_image_en = last_energies[0]
     last_image_en = last_energies[-1]
@@ -110,7 +121,7 @@ def anim_cos(cart_coords, energies):
     y_max = (max_ - min_)
     ax.set_ylim(0, y_max)
     ax.set_xlabel("Coordinate differences / Bohr")
-    ax.set_ylabel("$\Delta$J / kJ $\cdot$ mol$^{-1}$")
+    ax.set_ylabel(UNIT_DEKJMOL)
 
     def update_func(i):
         fig.suptitle("Cycle {}".format(i))
@@ -209,8 +220,9 @@ def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
 def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
     results = load_h5(h5_fn, h5_group,
                       datasets=("forces", ),
-                      attrs=("is_cos", ))
+                      attrs=("is_cos", "coord_type"))
     forces = results["forces"]
+    coord_type = results["coord_type"]
 
     assert results["is_cos"]
 
@@ -218,12 +230,15 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
     max_ = np.nanmax(np.abs(forces), axis=last_axis)
     rms = np.sqrt(np.mean(forces**2, axis=last_axis))
 
+    force_unit = get_force_unit(coord_type)
+
     fig, (ax0, ax1)  = plt.subplots(sharex=True, nrows=2)
 
     def plot(ax, data, title):
         colors = matplotlib.cm.Greys(np.linspace(0, 1, num=data.shape[0]))
         for row, color in zip(data, colors):
             ax.plot(row, "o-", color=color)
+            ax.set_ylabel(force_unit)
         ax.set_yscale('log')
         if title:
             ax.set_title(title)
@@ -275,8 +290,8 @@ def plot_all_energies(h5):
     for i, state in enumerate(energies.T):
         ax.plot(steps, state, "o-", label=f"State {i:03d}")
     ax.legend(loc="lower center", ncol=3)
-    ax.set_xlabel("Step")
-    ax.set_ylabel("$\Delta E / eV$")
+    ax.set_xlabel("Cycle")
+    ax.set_ylabel("$\Delta$E / eV")
     root_ens = [s[r] for s, r in zip(energies, roots)]
     ax.plot(steps, root_ens, "--k")
     plt.show()
@@ -476,7 +491,7 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
     en_ax.legend(lines, labels, loc=0)
 
     en_ax.set_title("Energies")
-    en_ax.set_ylabel("$\Delta$E kJ / mol")
+    en_ax.set_ylabel(UNIT_DEKJMOL)
 
     forces_ax.set_title("||Forces||")
     l1 = forces_ax.plot(afir_forces, style1, label="AFIR")
@@ -553,6 +568,9 @@ def parse_args(args):
     )
     group.add_argument("--overlaps", "-o", action="store_true")
     group.add_argument("--render_cdds", action="store_true")
+    group.add_argument("--h5_list", default=None,
+        help="List groups in HDF5 file."
+    )
 
     return parser.parse_args(args)
 
@@ -563,7 +581,8 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
 
         cur_cycle = group.attrs["cur_cycle"]
         is_cos = group.attrs["is_cos"]
-        # atoms = group.attrs["atoms"]
+        is_converged = group.attrs["is_converged"]
+        coord_type = group.attrs["coord_type"]
 
         ens = group["energies"][:cur_cycle]
         max_forces = group["max_forces"][:cur_cycle]
@@ -579,6 +598,7 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
               "number of images is not considered.", width=80)
         print("\n".join(text))
         ens = ens.sum(axis=1)
+    force_unit = get_force_unit(coord_type)
 
     ax_kwargs = {
         "marker": "o",
@@ -587,20 +607,21 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
 
     ax0.plot(ens, **ax_kwargs)
-    ax0.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+    ax0.set_ylabel(UNIT_DEKJMOL)
 
     ax1.plot(max_forces, **ax_kwargs)
     ax1.set_yscale("log")
     ax1.set_title("max(forces)")
-    ax1.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
+    ax1.set_ylabel(force_unit)
 
     ax2.plot(rms_forces, **ax_kwargs)
     ax2.set_yscale("log")
     ax2.set_title("rms(forces)")
-    ax2.set_xlabel("Step")
-    ax2.set_ylabel("$E_h$ Bohr⁻¹ (rad)⁻¹")
+    ax2.set_xlabel("Cycle")
+    ax2.set_ylabel(force_unit)
 
-    fig.suptitle(str(h5_fn) + "/" + h5_group, y=.999)
+    title = f"{h5_fn}/{h5_group}, converged={is_converged}"
+    fig.suptitle(title, y=.999)
 
     plt.tight_layout()
     plt.show()
@@ -644,17 +665,17 @@ def plot_irc_h5(h5, title=None):
 
     ax0.plot(cds, energies, **plt_kwargs)
     ax0.set_title("energy change")
-    ax0.set_ylabel("kJ mol⁻¹")
+    ax0.set_ylabel(UNIT_DEKJMOL)
 
     ax1.plot(cds, rms_grads, **plt_kwargs)
     ax1.axhline(rms_grad_thresh, linestyle="--", color="k")
     ax1.set_title("rms(gradient)")
-    ax1.set_ylabel("Hartree / bohr")
+    ax1.set_ylabel("$E_h$ Bohr⁻¹")
 
     ax2.plot(cds, max_grads, **plt_kwargs)
     ax2.set_title("max(gradient)")
-    ax2.set_xlabel("IRC / amu$^{\\frac{1}{2}}$ bohr")
-    ax2.set_ylabel("Hartree / bohr")
+    ax2.set_xlabel("IRC / amu$^{\\frac{1}{2}}$ Bohr")
+    ax2.set_ylabel("$E_h$ Bohr⁻¹")
 
     if ts_index:
         x = cds[ts_index]
@@ -670,12 +691,26 @@ def plot_irc_h5(h5, title=None):
     return fig, (ax0, ax1, ax2)
 
 
+def list_h5_groups(h5_fn):
+    with h5py.File(h5_fn, "r") as handle:
+        groups = list(handle.keys())
+
+    print(f"Found {len(groups)} groups in '{h5_fn}'\n")
+    for i, grp in enumerate(groups):
+        print(f"\t{i:02d}: {grp}")
+
+    if groups:
+        print("\nAvailable groups can be selected by '--h5_group [name]'.")
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
     h5_fn = args.h5_fn
 
     # Optimization
+    if args.h5_list:
+        list_h5_groups(args.h5_list)
     if args.opt:
         plot_opt(h5_group=args.h5_group)
     # COS specific
