@@ -24,7 +24,7 @@ A help message that shows possible usages of `pysisplot` is displayed by
 If needed, results from multiple optimizations are written to different HD5-groups of the same
 HDF5-file. Available groups can be listed either by the HDF5-tool `h5ls` or `pysisplot --h5_list [hd55 file]`. The desired group for visualization is then selected by the `--h5_group [group name]` argument.
 
-Worked Example - Diels-Alder reaction
+Example - Diels-Alder reaction
 =====================================
 
 The plotting capabilities of `pysisplot` are demonstrated for the example of a
@@ -158,7 +158,7 @@ Evidently the IRC integration failed at the end, as can be seen from the the bun
 but unless you want to do some kind of transition-state-theory (TST; not supported by pysisyphus)
 calculations this should not be a problem.
 
-Worked Example - AFIR
+Example - AFIR
 =====================
 
 pysisplot is able to visualize AFIR calculations and to highlight intersting geometries
@@ -182,5 +182,57 @@ methanol and the fluorine anion. The corresponding unit test can be found in the
     
     Energy profile and force norms along the S\ :sub:`N`\ 2 reaction.
 
-Worked Example - Excited State Tracking
+Example - Excited State Tracking
 =======================================
+
+pysisyphus is aware of excited states (ES) and can track them using various approaches
+over the course of an optimization or an IRC. By calculating the overlap matrices between
+ESs at given geometry and a reference geometry pysisyphus can track the desired ES. All
+relevant data is stored in `overlap_data.h5`.
+
+Optimizing an ES is demonstrated for the S\ :sub:`1` of the 1H-amino-keto tautomer of
+Cytosin at the PBE0/def-SVP level of theory. A corresponding test can be
+found under (`tests/test_cytosin_opt`). Right after the first optimization cycle a root
+flip occurs and the S\ :sub`1` and S\ :sub:`2` switch. The potential energy curves along
+the optimization are plotted by:
+
+.. code-block:: bash
+
+    pysisplot --all_energies
+    pysisplot -a
+
+.. figure:: /images/cytosin/cytosin_ae.png
+    :width: 600
+    :alt: Potential energy curves along the S\ :sub:`1` optimization of Cytosin.
+
+    Potential energy curves along the S\ :sub:`1` optimization of the 1H-amino-keto
+    tautomer of Cytosin at the PBE0/def2-SVP level of theory. The root actually followed
+    is indicated by a dashed line.
+
+The calculated overlap matrices can be plotted by:
+
+.. code-block:: bash
+
+    pysisplot --overlaps
+    pysisplot -o
+
+If the calculation was set up to calculate charge-density-differences (CDDs) via MultiWFN
+and to render them via Jmol then the CDD images displayed beside the overlap matrices.
+
+.. figure:: /images/cytosin/cytosin_ovlps_0.png
+    :width: 600
+    :alt: Cytosin S\ :sub:`1` optimization. Overlaps between 1st and 2nd cycle.
+    
+    Cytosin S\ :sub:`1` optimization. Overlaps between first and second cycle. No root
+    flips occured. All ES are in the same order as in the reference geometry at cycle 0.
+
+
+.. figure:: /images/cytosin/cytosin_ovlps_1.png
+    :width: 600
+    :alt: Cytosin S\ :sub:`1` optimization. Overlaps between 2nd and 3rd cycle with root flip.
+    
+    Cytosin S\ :sub:`1` optimization. Overlaps between second and third cycle
+    with root flip. The S\ :sub:`1` and S\ :sub:`2` switch their order.
+
+
+Hallo.
