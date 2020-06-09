@@ -64,6 +64,8 @@ try:
     CALC_DICT["pyscf"] = PySCF
 except ModuleNotFoundError:
     pass
+except ImportError:
+    pass
 
 COS_DICT = {
     "neb": NEB.NEB,
