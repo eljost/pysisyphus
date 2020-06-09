@@ -298,7 +298,7 @@ def plot_all_energies(h5):
 
 
 def plot_overlaps(h5, thresh=.1):
-    with h5py.File(h5) as handle:
+    with h5py.File(h5, "r") as handle:
         overlaps = handle["overlap_matrices"][:]
         ovlp_type = handle["ovlp_type"][()].decode()
         ovlp_with = handle["ovlp_with"][()].decode()
@@ -323,13 +323,14 @@ def plot_overlaps(h5, thresh=.1):
         except FileNotFoundError:
             png_paths = [Path(fn.decode()).name for fn in cdd_img_fns]
             cdd_imgs = [mpimg.imread(fn) for fn in png_paths]
+    print(f"Found rendered {len(cdd_imgs)} CDD images.")
 
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Found {len(overlaps)} overlap matrices.")
     print(f"Roots: {roots}")
     print(f"Reference cycles: {ref_cycles}")
     print(f"Reference roots: {ref_roots}")
-
+    print()
     print("Key-bindings:")
     print("i: switch between current and first cycle.")
     print("e: switch between current and last cycle.")
@@ -348,12 +349,13 @@ def plot_overlaps(h5, thresh=.1):
             ax1 = None
         o = np.abs(overlaps[i])
         im = ax.imshow(o, vmin=0, vmax=1)
-        # fig.colorbar(im)
         ax.grid(color="#CCCCCC", linestyle='--', linewidth=1)
         ax.set_xticks(np.arange(n_states, dtype=np.int))
         ax.set_yticks(np.arange(n_states, dtype=np.int))
-        ax.set_xlabel("new states")
-        ax.set_ylabel("reference states")
+        # set_ylim is needed, otherwise set_yticks drastically shrinks the plot
+        ax.set_ylim(n_states-0.5, -0.5)
+        ax.set_xlabel("new roots")
+        ax.set_ylabel("reference roots")
         for (l,k), value in np.ndenumerate(o):
             if np.isnan(value):
                 continue
@@ -362,11 +364,11 @@ def plot_overlaps(h5, thresh=.1):
         j, k = ref_cycles[i], i+1
         ref_root = ref_roots[i]
         ref_ind = ref_root - 1
+        if ovlp_type == "wf":
+            ref_ind += 1
         old_root = calculated_roots[i+1]
         new_root = roots[i+1]
         ref_overlaps = o[ref_ind]
-        if ovlp_type == "wf":
-            ref_ind += 1
         argmax = np.nanargmax(ref_overlaps)
         xy = (argmax-0.5, ref_ind-0.5)
         highlight = Rectangle(xy, 1, 1,
@@ -412,6 +414,8 @@ def plot_overlaps(h5, thresh=.1):
             return
         draw(i)
     fig.canvas.mpl_connect("key_press_event", press)
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -533,10 +537,6 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--first", type=int,
-                        help="Only consider the first [first] cycles.")
-    parser.add_argument("--last", type=int,
-                        help="Only consider the last [last] cycles.")
     parser.add_argument("--h5_fn", default="overlap_data.h5")
     parser.add_argument("--h5_group", default="opt",
         help="HDF5 group to plot."
@@ -549,12 +549,7 @@ def parse_args(args):
     )
     group.add_argument("--cosens", "--ce", action="store_true",
                         help="Plot COS energies.")
-    group.add_argument("--aneb", action="store_true",
-                        help="Plot Adaptive NEB.")
     group.add_argument("--all_energies", "-a", action="store_true",
-        help="Plot ground and excited state energies from 'overlap_data.h5'."
-    )
-    group.add_argument("--bare_energies", "-b", action="store_true",
         help="Plot ground and excited state energies from 'overlap_data.h5'."
     )
     group.add_argument("--afir", action="store_true",
