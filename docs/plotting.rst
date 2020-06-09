@@ -234,5 +234,3 @@ and to render them via Jmol then the CDD images displayed beside the overlap mat
     Cytosin S\ :sub:`1` optimization. Overlaps between second and third cycle
     with root flip. The S\ :sub:`1` and S\ :sub:`2` switch their order.
 
-
-Hallo.
