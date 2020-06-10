@@ -96,6 +96,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             setattr(self, key, value)
 
         # Setting some default values
+        self.resetted = False
         self.max_cycles = max_cycles
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
