@@ -178,7 +178,8 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     if len(geoms) == 0:
         try:
             atoms_coords = split_xyz_str(fn)
-            geoms = [Geometry(atoms, coords, **geom_kwargs)
+            # We excpect the coordinates to be given in Angstrom
+            geoms = [Geometry(atoms, coords/BOHR2ANG, **geom_kwargs)
                      for atoms, coords in atoms_coords]
         except AssertionError:
             raise Exception("Could not parse supplied 'xyz' values as either "
