@@ -74,8 +74,7 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
     elif fn.endswith(".trj"):
         return geoms_from_trj(fn, **kwargs)
     elif fn.endswith(".pdb"):
-        print("coord_type & coord_kwargs are currently ignored for PDBs!")
-        return geom_from_pdb(fn)
+        return geom_from_pdb(fn, **kwargs)
     else:
         raise Exception("Unknown filetype!")
 
