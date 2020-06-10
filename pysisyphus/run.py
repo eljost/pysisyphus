@@ -359,7 +359,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
 
     if do_hess:
         print()
-        do_final_hessian(ts_geom)
+        do_final_hessian(ts_geom, write_imag_modes=True)
 
     ts_energy = ts_geom.energy
     print_barrier(ts_energy, first_cos_energy, "TS", "first COS image")
@@ -587,7 +587,7 @@ def run_tsopt(geom, tsopt_key, tsopt_kwargs):
 
     if do_hess and not tsopt.stopped:
         print()
-        do_final_hessian(geom)
+        do_final_hessian(geom, write_imag_modes=True)
     print()
 
     return tsopt.geometry, tsopt
