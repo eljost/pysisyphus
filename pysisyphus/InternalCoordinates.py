@@ -18,6 +18,7 @@ from scipy.spatial.distance import pdist, squareform
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
+from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
 
@@ -36,13 +37,14 @@ class RedundantCoords:
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
                  prim_indices=None, define_prims=None, bonds_only=False,
-                 check_bends=True):
+                 check_bends=True, check_dihedrals=False):
         self.atoms = atoms
         self.cart_coords = cart_coords
         self.bond_factor = bond_factor
         self.define_prims = define_prims
         self.bonds_only = bonds_only
         self.check_bends = check_bends
+        self.check_dihedrals = check_dihedrals
 
         self.bond_indices = list()
         self.bending_indices = list()
@@ -586,6 +588,32 @@ class RedundantCoords:
         new_internals[-len(dihedrals):] = new_dihedrals
         return new_internals
 
+    def dihedrals_are_valid(self, cart_coords):
+        _, _, dihedrals = self.prim_indices
+
+        def collinear(v1, v2, thresh=1e-4):
+            # ~4e-5 corresponds to 179.5°
+            return 1 - abs(v1.dot(v2)) <= thresh
+
+        coords3d = cart_coords.reshape(-1, 3)
+        def check(indices):
+            m, o, p, n = indices
+            u_dash = coords3d[m] - coords3d[o]
+            v_dash = coords3d[n] - coords3d[p]
+            w_dash = coords3d[p] - coords3d[o]
+            u_norm = np.linalg.norm(u_dash)
+            v_norm = np.linalg.norm(v_dash)
+            w_norm = np.linalg.norm(w_dash)
+            u = u_dash / u_norm
+            v = v_dash / v_norm
+            w = w_dash / w_norm
+
+            valid = not (collinear(u, w) or collinear(v, w))
+            return valid
+
+        all_valid = all([check(indices) for indices in dihedrals])
+        return all_valid
+
     def transform_int_step(self, step, cart_rms_thresh=1e-6):
         """This is always done in primitive internal coordinates so care
         has to be taken that the supplied step is given in primitive internal
@@ -652,6 +680,10 @@ class RedundantCoords:
                 self.backtransform_failed = False
                 break
             self._prim_coords = np.array(new_internals)
+
+        if self.check_dihedrals and (not self.dihedrals_are_valid(cur_cart_coords)):
+            raise NeedNewInternalsException(cur_cart_coords)
+
         self.log("")
         return cur_cart_coords - self.cart_coords
 
