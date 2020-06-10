@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from pathlib import Path
 
 import pytest
 
@@ -33,3 +34,9 @@ def results_bag(request):
 @pytest.fixture(scope="session")
 def fixture_store(request):
     return FixtureStore
+
+
+@pytest.fixture(scope="module")
+def this_dir(request):
+    path = Path(request.fspath)
+    return path.parent
