@@ -39,13 +39,14 @@ class RedundantCoords:
                  prim_indices=None, define_prims=None, bonds_only=False,
                  check_bends=True, check_dihedrals=False):
         self.atoms = atoms
-        self.cart_coords = cart_coords
+        self._cart_coords = cart_coords
         self.bond_factor = bond_factor
         self.define_prims = define_prims
         self.bonds_only = bonds_only
         self.check_bends = check_bends
         self.check_dihedrals = check_dihedrals
 
+        self._B_prim = None
         self.bond_indices = list()
         self.bending_indices = list()
         self.dihedral_indices = list()
@@ -92,6 +93,15 @@ class RedundantCoords:
         return self._prim_coords
 
     @property
+    def cart_coords(self):
+        return self._cart_coords
+
+    @cart_coords.setter
+    def cart_coords(self, cart_coords):
+        self._cart_coords = cart_coords
+        self._B_prim = None
+
+    @property
     def coords(self):
         return self.prim_coords
 
@@ -127,7 +137,10 @@ class RedundantCoords:
     @property
     def B_prim(self):
         """Wilson B-Matrix"""
-        return np.array([c.grad for c in self.calculate(self.cart_coords)])
+        if self._B_prim is None:
+            self._B_prim = np.array([c.grad for c in self.calculate(self.cart_coords)])
+
+        return self._B_prim
 
     @property
     def B(self):
@@ -625,13 +638,6 @@ class RedundantCoords:
         target_internals = cur_internals + step
         B_prim = self.B_prim
 
-        # u, s, vh = np.linalg.svd(B_prim, full_matrices=False)
-        # inds = s > 1e-8
-        # s_inv = 1 / s[inds]
-        # B_ = np.dot(u[:, inds] * s[inds], vh[inds])
-        # B__ = np.dot(vh[inds].T * s_inv, u[:, inds].T)
-        # B___ = np.linalg.pinv(B_prim.T.dot(B_prim)).dot(B_prim.T)
-
         # Bt_inv may be overriden in other coordiante systems so we
         # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
@@ -685,6 +691,8 @@ class RedundantCoords:
             raise NeedNewInternalsException(cur_cart_coords)
 
         self.log("")
+        # Return the difference between the new cartesian coordinates that yield
+        # the desired internal coordinates and the old cartesian coordinates.
         return cur_cart_coords - self.cart_coords
 
     def __str__(self):
