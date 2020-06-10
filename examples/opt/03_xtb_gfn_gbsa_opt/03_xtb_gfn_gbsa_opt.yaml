@@ -1,0 +1,28 @@
+# Simple xtb calculation using GFN-1 parametrization
+# and a gbsa solvent model. The starting geometry is
+# distored.
+opt:
+ type: rfo
+ thresh: gau
+calc:
+ type: xtb
+ # Valid values are (1, 2) for GFN-1 or GFN-2 (default)
+ gfn: 1
+ # Valid values are the available solvents in xtb
+ gbsa: water
+ charge: 0
+ mult: 1
+ pal: 2
+xyz: cytosin.xyz
+coord_type: redund
+# Initial random displacement of atoms, so the optimization
+# does not immediately converges, but takes more cycles.
+shake:
+ seed: 25032018
+ scale: 0.20
+# Used for internal testing. Values parsed by pysisyphus
+# at the end are checked against this value.
+assert:
+ opt.is_converged: True
+ opt.cur_cycle: 14
+ opt_geom.energy: -25.48326681453
