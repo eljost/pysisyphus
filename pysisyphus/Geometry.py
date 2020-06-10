@@ -14,6 +14,7 @@ from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
+from pysisyphus.intcoords.exceptions import NeedNewInternalsException, RebuiltInternalsException
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
 from pysisyphus.xyzloader import make_xyz_str
@@ -267,15 +268,23 @@ class Geometry:
         ----------
         coords : np.array
             1d array containing atomic coordiantes. It's length
-            may vary depending on the chosen coordinate system.
+            depends on the coordinate system.
         """
         # Do the backtransformation from internal to cartesian.
         coords = np.array(coords).flatten()
         if self.internal:
-            int_step = coords - self.internal.coords
-            cart_diff = self.internal.transform_int_step(int_step)
-            coords = self._coords + cart_diff
-            self.internal.cart_coords = coords
+            try:
+                int_step = coords - self.internal.coords
+                cart_diff = self.internal.transform_int_step(int_step)
+                coords = self._coords + cart_diff
+                self.internal.cart_coords = coords
+            except NeedNewInternalsException as exception:
+                coords = exception.cart_coords
+                coord_class = self.coord_types[self.coord_type]
+                self.internal = coord_class(self.atoms, coords)
+                raise RebuiltInternalsException
+
+        # Set new cartesian coordinates
         self._coords = coords
         # Reset all values because no calculations with the new coords
         # have been performed yet.
