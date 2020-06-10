@@ -12,6 +12,7 @@ import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_diffs
+from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 
 
@@ -95,7 +96,6 @@ class Optimizer(metaclass=abc.ABCMeta):
             setattr(self, key, value)
 
         # Setting some default values
-        self.resetted = False
         self.max_cycles = max_cycles
         self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
@@ -404,8 +404,15 @@ class Optimizer(metaclass=abc.ABCMeta):
                 reset_flag = self.geometry.prepare_opt_cycle(self.coords[-1],
                                                              self.energies[-1],
                                                              self.forces[-1])
+            elif self.cur_cycle > 0:
+                reset_flag = reset_flag or (self.geometry.coords.size != self.coords[-1].size)
+
+            if reset_flag:
+                self.reset()
+
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
+            # Determine and store number of currenctly actively optimized images
             try:
                 image_inds = self.geometry.image_inds
                 image_num = len(image_inds)
@@ -414,9 +421,6 @@ class Optimizer(metaclass=abc.ABCMeta):
                 image_num = 1
             self.image_inds.append(image_inds)
             self.image_nums.append(image_num)
-
-            if reset_flag:
-                self.reset()
 
             step = self.optimize()
 
@@ -455,7 +459,10 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             # Update coordinates
             new_coords = self.geometry.coords.copy() + step
-            self.geometry.coords = new_coords
+            try:
+                self.geometry.coords = new_coords
+            except RebuiltInternalsException:
+                print("Rebuilt internal coordinates")
 
             if hasattr(self.geometry, "reparametrize"):
                 reparametrized = self.geometry.reparametrize()
