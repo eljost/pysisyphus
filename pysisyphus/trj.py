@@ -18,8 +18,8 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.fragments import get_fragments
-from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
-                                get_coords_diffs, shake_coords)
+from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, geom_loader,
+                                procrustes, get_coords_diffs, shake_coords)
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
@@ -170,6 +170,8 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
             geom = [geom_from_xyz_file(fn, **geom_kwargs), ]
         elif fn.endswith(".trj"):
             geom = geoms_from_trj(fn, **geom_kwargs)
+        elif fn.endswith(".pdb"):
+            geom = [geom_loader(fn, **geom_kwargs), ]
         else:
             continue
         geoms.extend(geom)
