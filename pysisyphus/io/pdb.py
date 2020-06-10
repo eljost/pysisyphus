@@ -68,8 +68,8 @@ def parse_pdb(fn):
     try:
         master_fields = master_parse(master_line)
     except UnboundLocalError:
-        print("Warning! No MASTER line found in '{pdb_fn}'!")
         master_fields = None
+        print(f"Warning! No MASTER line found in '{fn}'!")
 
     atoms = list()
     coords = list()
