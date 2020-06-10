@@ -65,7 +65,11 @@ def parse_pdb(fn):
     """
     master_widths = (6, 9, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)
     master_parse = get_parser(master_widths)
-    master_fields = master_parse(master_line)
+    try:
+        master_fields = master_parse(master_line)
+    except UnboundLocalError:
+        print("Warning! No MASTER line found in '{pdb_fn}'!")
+        master_fields = None
 
     atoms = list()
     coords = list()
@@ -86,15 +90,17 @@ def parse_pdb(fn):
         frag = fragments.setdefault(frag, list())
         frag.append(i)
 
-    # Verification using MASTER record
-    num_coord = int(master_fields[9])
-    assert len(atoms) == num_coord
+    if master_fields is not None:
+        # Verification using MASTER record
+        num_coord = int(master_fields[9])
+        assert len(atoms) == num_coord
 
     coords = np.array(coords, dtype=float) * ANG2BOHR
     return atoms, coords.flatten(), fragments
 
 
-def geom_from_pdb(fn):
+def geom_from_pdb(fn, **kwargs):
     atoms, coords, fragments = parse_pdb(fn)
-    geom = Geometry(atoms, coords.flatten(), fragments=fragments)
+    kwargs["fragments"] = fragments
+    geom = Geometry(atoms, coords.flatten(), **kwargs)
     return geom
