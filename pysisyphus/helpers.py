@@ -587,3 +587,28 @@ def get_tangent_trj_str(atoms, coords, tangent, points=10, displ=None):
     trj_coords = trj_coords.reshape(step_sizes.size, -1, 3) / ANG2BOHR
     trj_str = make_trj_str(atoms, trj_coords)
     return trj_str
+
+
+def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
+    NormalMode = namedtuple("NormalMode",
+                            "nu mode trj_str"
+    )
+    # We don't want to do start any calculation here, so we directly access
+    # the attribute underlying the geom.hessian property.
+    mw_H = geom.eckart_projection(geom.mass_weigh_hessian(geom._hessian))
+    eigvals, eigvecs = np.linalg.eigh(mw_H)
+    nus = eigval_to_wavenumber(eigvals)
+    below_thresh = nus < freq_thresh
+
+    imag_modes = list()
+    for nu, eigvec in zip(nus[below_thresh], eigvecs[:, below_thresh].T):
+        trj_str = get_tangent_trj_str(geom.atoms, geom.cart_coords, eigvec,
+                                      points=points, displ=displ)
+        imag_modes.append(
+            NormalMode(nu=nu,
+                       mode=eigvec,
+                       trj_str=trj_str,
+            )
+        )
+
+    return imag_modes
