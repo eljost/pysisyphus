@@ -595,7 +595,8 @@ def get_tangent_trj_str(atoms, coords, tangent, comment=None,
         # Logarithmic function f(x) = a*log(x) + b
         # f(3) = ~1 and (f30) = ~2 with a = 0.43429 and b = 0.52288
         # I guess this works better, because only some atoms move, even in bigger
-        # systems.
+        # systems and the log function converges against a certain value, whereas
+        # the linear function just keeps growing.
         displ = 0.43429 * log(len(atoms)) + 0.52288
     step_sizes = np.linspace(-displ, displ, 2*points + 1)
     steps = step_sizes[:,None] * tangent
