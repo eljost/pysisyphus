@@ -2,6 +2,7 @@ tsopt:
  type: rsirfo
  hessian_recalc: 5
  do_hess: True
+ thresh: gau_tight
 calc:
  type: xtb
  pal: 4
@@ -11,5 +12,5 @@ xyz: shaked.geom_000.xyz
 add_prims: [[24, 20], ]
 coord_type: redund
 assert:
- ts_geom.energy: -65.29137150
- ts_opt.cur_cycle: 12
+ ts_geom.energy: -65.29143582
+ ts_opt.cur_cycle: 17
