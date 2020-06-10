@@ -531,7 +531,7 @@ FinalHessianResult = namedtuple("FinalHessianResult",
 )
 
 
-def do_final_hessian(geom, save_hessian=True):
+def do_final_hessian(geom, save_hessian=True, write_imag_modes=False):
     print("Calculating hessian at final geometry.")
 
     # TODO: Add cartesian_hessian property to Geometry to avoid
@@ -562,6 +562,14 @@ def do_final_hessian(geom, save_hessian=True):
         print()
         print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
 
+    if write_imag_modes:
+        imag_modes = imag_modes_from_geom(geom)
+        for i, imag_mode in enumerate(imag_modes):
+            trj_fn = f"imaginary_mode_{i:03d}.trj"
+            with open(trj_fn, "w") as handle:
+                handle.write(imag_mode.trj_str)
+            print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
+
     res = FinalHessianResult(
             neg_eigvals=neg_eigvals,
             eigvals=eigvals,
@@ -576,7 +584,8 @@ def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
     return barrier
 
 
-def get_tangent_trj_str(atoms, coords, tangent, points=10, displ=None):
+def get_tangent_trj_str(atoms, coords, tangent, comment=None,
+                        points=10, displ=None):
     if displ is None:
         # Linear equation. Will give displ~3 for 30 atoms and
         # displ ~ 1 for 3 atoms.
@@ -585,7 +594,12 @@ def get_tangent_trj_str(atoms, coords, tangent, points=10, displ=None):
     steps = step_sizes[:,None] * tangent
     trj_coords = coords[None,:] + steps
     trj_coords = trj_coords.reshape(step_sizes.size, -1, 3) / ANG2BOHR
-    trj_str = make_trj_str(atoms, trj_coords)
+
+    comments = None
+    if comment:
+        comments = [comment] * step_sizes.size
+    trj_str = make_trj_str(atoms, trj_coords, comments=comments)
+
     return trj_str
 
 
@@ -602,8 +616,9 @@ def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
 
     imag_modes = list()
     for nu, eigvec in zip(nus[below_thresh], eigvecs[:, below_thresh].T):
+        comment = f"{nu:.2f} cm⁻¹"
         trj_str = get_tangent_trj_str(geom.atoms, geom.cart_coords, eigvec,
-                                      points=points, displ=displ)
+                                      comment=comment, points=points, displ=displ)
         imag_modes.append(
             NormalMode(nu=nu,
                        mode=eigvec,
