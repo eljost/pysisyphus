@@ -404,6 +404,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 reset_flag = self.geometry.prepare_opt_cycle(self.coords[-1],
                                                              self.energies[-1],
                                                              self.forces[-1])
+            # Reset when number of coordinates changed
             elif self.cur_cycle > 0:
                 reset_flag = reset_flag or (self.geometry.coords.size != self.coords[-1].size)
 
