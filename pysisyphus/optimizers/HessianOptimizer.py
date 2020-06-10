@@ -76,7 +76,17 @@ class HessianOptimizer(Optimizer):
             if self.hessian_init != "calc":
                 self.hessian_init = "unit"
 
-    def prepare_opt(self):
+    def reset(self):
+        # Don't recalculate the hessian if we have to reset the optimizer
+        hessian_init = self.hessian_init
+        if hessian_init == "calc" and self.geometry.coord_type != "cart":
+            hessian_init = "fischer"
+        self.prepare_opt(hessian_init)
+
+    def prepare_opt(self, hessian_init=None):
+        if hessian_init is None:
+            hessian_init = self.hessian_init
+
         # We use lambdas to avoid premature evaluation of the dict items.
         hess_funcs = {
             # Calculate true hessian
@@ -95,12 +105,12 @@ class HessianOptimizer(Optimizer):
             "xtb": lambda: (xtb_hessian(self.geometry), "XTB"),
         }
         try:
-            self.H, hess_str = hess_funcs[self.hessian_init]()
+            self.H, hess_str = hess_funcs[hessian_init]()
             self.log(f"Using {hess_str} Hessian.")
         except KeyError:
             # We allow only loading of cartesian hessians
             self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
-            self.geometry.cart_hessian = np.loadtxt(self.hessian_init)
+            self.geometry.cart_hessian = np.loadtxt(hessian_init)
             # Use the previously set hessian in whatever coordinate system we
             # actually employ.
             self.H = self.geometry.hessian
