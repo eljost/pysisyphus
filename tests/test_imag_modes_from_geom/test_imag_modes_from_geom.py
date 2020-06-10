@@ -5,6 +5,7 @@ from pysisyphus.helpers import geom_loader, imag_modes_from_geom
 
 
 def test_imag_modes_from_geom(this_dir):
+    # Obtained at the xtb-GFN2 level of theory
     H = np.loadtxt(this_dir / "calculated_final_cart_hessian")
     geom = geom_loader("lib:hcn_iso_ts_opt_xtb.xyz")
     geom._hessian = H
