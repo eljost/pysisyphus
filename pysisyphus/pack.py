@@ -17,15 +17,27 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     # Solute
-    parser.add_argument("solute")
-    parser.add_argument("--solute_num", type=int, default=1)
+    parser.add_argument("solute",
+        help="Filename of solute geometry."
+    )
+    parser.add_argument("--solute_num", type=int, default=1,
+        help="Number of solute molecules to pack."
+    )
 
     # Solvent
-    parser.add_argument("--solv")
-    parser.add_argument("--solv_num", type=int)
-    parser.add_argument("--solv_dens", type=float)
+    parser.add_argument("--solv",
+        help="Filename of solvent geometry."
+    )
+    parser.add_argument("--solv_num", type=int,
+        help="Number of solvent molecules to pack."
+    )
+    parser.add_argument("--solv_dens", type=float,
+        help="Solvent density in g/cm³."
+    )
 
-    parser.add_argument("--output", default="output.pdb")
+    parser.add_argument("--output", default="output.pdb",
+        help="Filename of packed molecules."
+    )
 
     return parser.parse_args(args)
 
