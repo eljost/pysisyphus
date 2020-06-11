@@ -187,6 +187,7 @@ def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     assert np.linalg.norm(forces) == pytest.approx(ref_force_norm)
 
 
+@pytest.mark.xfail
 @using_gaussian16
 def test_oniom_13_coupling():
     geom = geom_from_library("oniom_13_coupling_example.xyz")
