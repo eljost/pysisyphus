@@ -1,5 +1,7 @@
 import struct
+import textwrap
 
+from jinja2 import Template
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
@@ -104,3 +106,50 @@ def geom_from_pdb(fn, **kwargs):
     kwargs["fragments"] = fragments
     geom = Geometry(atoms, coords.flatten(), **kwargs)
     return geom
+
+
+def geom_to_pdb_str(geom):
+    pdb_str = atoms_coords_to_pdb_str(geom.atoms, geom.cart_coords)
+    return pdb_str
+
+
+def atoms_coords_to_pdb_str(atoms, coords):
+    # Convert to Å
+    coords3d = coords.reshape(-1, 3) /  ANG2BOHR
+
+    coord_fmt = "{: >8.3f}"*3
+    #            serial  name  altLoc      chainID     iCode
+    #                                resName     resSeq           
+    fmt = "HETATM{: >5d} {: >4}{: >1}{: >3}{: >1} {: >4d}{: >1}   "
+    #      xyz
+    fmt += coord_fmt
+    #      occupancy tempFactor            atom
+    fmt += "{: >6.2f}{: >6.2f}" + 10*" " + "{: >2s}"
+
+    # Fixed for now
+    altLoc = ""
+    resName = ""
+    chainID = ""
+    resSeq = 0
+    iCode = ""
+    occupancy = 1.0
+    tempFactor = 0.0
+
+    lines = list()
+    for serial, (name, xyz) in enumerate(zip(atoms, coords3d)):
+        # print(serial, name, x, y, z)
+        line = fmt.format(serial, name, altLoc, resName, chainID, resSeq,
+                          iCode, *xyz, occupancy, tempFactor, name)
+        lines.append(line)
+
+    pdb_tpl = Template(textwrap.dedent(
+    """\
+    REMARK 1 Created by pysisyphus"
+    {%+ for line in lines -%}
+    {{ line }}
+    {%+ endfor -%} 
+    END""")
+    )
+
+    pdb_str = pdb_tpl.render(lines=lines)
+    return pdb_str
