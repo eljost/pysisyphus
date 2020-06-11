@@ -55,7 +55,7 @@ setup(
             "pysisplot = pysisyphus.plot:run",
             "pysistrj = pysisyphus.trj:run",
             "pysisfilter = pysisyphus.filtertrj:run",
-            "pysisserver = pysisyphus.server.main:run",
+            "pysispack = pysisyphus.pack:run",
         ]
     },
 )
