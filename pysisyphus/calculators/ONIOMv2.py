@@ -185,21 +185,31 @@ class Model():
             # as we have to do for the hessian calculation.
             return np.array(1)
 
+        # assert self.parent_atom_inds == list(range(self.parent_atom_inds[0],
+                                                   # self.parent_atom_inds[-1]+1))
+
         J = np.zeros(jac_shape)
         # Stencil for diagonal elements of 3x3 submatrix
         stencil = np.array((0, 1, 2), dtype=int)
         size_ = len(self.atom_inds)
 
         model_rows = np.arange(size_ * 3)
-        model_cols = np.tile(stencil, size_) + np.repeat(self.atom_inds, 3)*3
+        # When more than two layers are present the inner layers aren't directly
+        # embedded in the outermost layer. This means parent_inds does not begin
+        # at 0, but with a higher index. So we need a map of the actual indices
+        # (not starting at 0) to the indices in the Jacobian which start at 0.
+        atom_inds = [self.parent_atom_inds.index(ind) for ind in self.atom_inds]
+        ind_map = {k: v for k, v in zip(self.atom_inds, atom_inds)}
+        model_cols = np.tile(stencil, size_) + np.repeat(atom_inds, 3)*3
         J[model_rows, model_cols] = 1
 
         # Link atoms
         link_start = model_rows.max() + 1
         for i, (ind, parent_ind, atom, g) in enumerate(self.links):
             rows = link_start + i*3 + stencil
-            cols = ind*3 + stencil
-            parent_cols = parent_ind*3 + stencil
+            cols = ind_map[ind]*3 + stencil
+            parent_cols = self.parent_atom_inds.index(parent_ind)*3 + stencil
+
             J[rows, parent_cols] = g
             J[rows, cols] = 1 - g
         return J
