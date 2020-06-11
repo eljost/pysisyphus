@@ -49,7 +49,7 @@ def as_pdb(fn):
         pdb_fn = str(Path(fn).with_suffix(".pdb"))
         with open(pdb_fn, "w") as handle:
             handle.write(pdb_str)
-        print(f"Converted '{fn}' to PDB format in '{pdb_fn}'")
+        print(f"Converted '{fn}' to PDB format ('{pdb_fn}')")
         fn = pdb_fn
     return fn
 
@@ -73,8 +73,8 @@ def volume_for_density(molecule_num, mol_mass, density):
 
 def print_info(title, geom):
     print(title)
-    print("\t", geom)
-    print(f"\tTotal mass: {geom.total_mass:.2f} g mol⁻¹")
+    print(f"\t{geom}")
+    print(f"\tMolar mass: {geom.total_mass:.2f} g mol⁻¹")
     print()
 
 
@@ -95,22 +95,26 @@ def run():
     print_info("Solute", solute)
     print_info("Solvent", solv)
 
+    solute_solv_mass = solute_mass + solv_mass
+    print(f"Total mass of solute(s) and solvent(s): {solute_solv_mass:.2f} amu")
+    print()
+
     # Solvent volume
     solv_vol = volume_for_density(solv_num, solv_mass, solv_dens)
-    print(f"Solvent volume: {solv_vol:.4f} Å³")
+    print(f"Solvent volume: {solv_vol:>10.2f} Å³")
 
     # Solute volume; Use the solvent density for this calculation
     solute_vol = volume_for_density(solute_num, solute_mass, solv_dens)
-    print(f"Solute volume: {solute_vol:.4f} Å³")
+    print(f" Solute volume: {solute_vol:>10.2f} Å³")
 
     total_vol = solv_vol + solute_vol
-    print(f"Total volum: {total_vol:.4f} Å³")
+    print(f"  Total volume: {total_vol:>10.2f} Å³")
     print()
 
     radius = sphere_radius_from_volume(total_vol)
-    print(f"Sphere radius: {radius:.2f} Å")
+    print(f"     Sphere radius: {radius:>8.2f} Å")
     cradius = ceil(radius)
-    print(f"Using ceil(radius)={cradius:.2f} Å")
+    print(f"Using ceil(radius): {cradius:>8.2f} Å")
     print()
 
     # Create solute/solvent PDBs if needed
@@ -125,10 +129,23 @@ def run():
     }
 
     inp = make_input(**inp_kwargs)
+    inp_fn = "packmol.inp"
+    with open(inp_fn, "w") as handle:
+        handle.write(inp_fn)
+    print(f"Wrote packmol input to '{inp_fn}'")
+
     proc = call_packmol(inp)
+
+    log_fn = "packmol.log"
+    with open(log_fn, "w") as handle:
+        handle.write(proc.stdout)
+    print(f"Wrote packmol ouput to '{log_fn}'")
+    print()
 
     return_ = proc.returncode
     if return_ != 0:
         print(proc.stdout)
     else:
         print("packmol returned successfully!")
+
+    return return_
