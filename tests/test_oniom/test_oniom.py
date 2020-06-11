@@ -272,3 +272,43 @@ def test_acetaldehyde_opt():
 
     assert nus[-1] == pytest.approx(3759.5872)
     assert nus[-3] == pytest.approx(3560.9944)
+
+
+@using_gaussian16
+def test_yaml_oniom():
+    from pysisyphus.run import run_from_dict
+
+    run_dict = {
+        "xyz": "lib:acetaldehyd_oniom.xyz",
+        "coord_type": "redund",
+        "calc": {
+            "type": "oniom",
+            "calcs": {
+                "real": {
+                    "type": "g16",
+                    "route": "hf sto-3g",
+                    "pal": 2,
+                },
+                "high": {
+                    "type": "g16",
+                    "route": "b3lyp d95v",
+                    "pal": 2,
+                },
+            },
+            "models": {
+                "high": {
+                    "inds": [4, 5, 6],
+                    "calc": "high",
+                }
+            }
+        },
+        "opt": {
+            "thresh": "gau_tight",
+        }
+    }
+    res = run_from_dict(run_dict)
+
+    opt = res.opt
+    assert opt.is_converged
+    assert opt.cur_cycle == 7
+    assert res.opt_geom.energy == pytest.approx(-153.07526171)

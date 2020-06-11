@@ -10,6 +10,7 @@ __all__ = [
     "Gaussian16",
     "LennardJones",
     "MOPAC",
+    "ONIOM",
     "OpenMolcas",
     "ORCA",
     "Psi4",
@@ -29,6 +30,7 @@ from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.calculators.MOPAC import MOPAC
 from pysisyphus.calculators.Psi4 import Psi4
+from pysisyphus.calculators.ONIOMv2 import ONIOM
 from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB

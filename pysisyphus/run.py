@@ -50,6 +50,7 @@ CALC_DICT = {
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "mopac": MOPAC,
+    "oniom": ONIOM,
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA,
     "psi4": Psi4,
@@ -62,8 +63,6 @@ CALC_DICT = {
 try:
     from pysisyphus.calculators.PySCF import PySCF
     CALC_DICT["pyscf"] = PySCF
-except ModuleNotFoundError:
-    pass
 except ImportError:
     pass
 
@@ -166,7 +165,10 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def get_calc(index, base_name, calc_key, calc_kwargs):
+def get_calc(index, base_name, calc_key, calc_kwargs, iter_dict=None):
+    if iter_dict is None:
+        iter_dict = dict()
+
     # Some calculators are just wrappers that modify the forces from
     # actual calculators, e.g. AFIR and Dimer. If we find the 'calc'
     # key we create the actual calculator and assign it to the 'calculator'
@@ -180,6 +182,8 @@ def get_calc(index, base_name, calc_key, calc_kwargs):
     kwargs_copy = calc_kwargs.copy()
     kwargs_copy["base_name"] = base_name
     kwargs_copy["calc_number"] = index
+    for key, iter_ in iter_dict.items():
+        kwargs_copy[key] = next(iter_)
     return CALC_DICT[calc_key](**kwargs_copy)
 
 
@@ -935,7 +939,15 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
-    calc_getter = lambda index: get_calc(index, "image", calc_key, calc_kwargs)
+    calc_getter_kwargs = {
+        "base_name": "image",
+        "calc_key": calc_key,
+        "calc_kwargs": calc_kwargs,
+    }
+    if calc_key == "oniom":
+        geoms = get_geoms(xyz, quiet=True)
+        calc_getter_kwargs["iter_dict"] = {"geom": iter(geoms),}
+    calc_getter = lambda index: get_calc(index, **calc_getter_kwargs)
     # Create second function that returns a wrapped calculator. This may be
     # useful if we later want to drop the wrapper and use the actual calculator.
     if "calc" in calc_kwargs:

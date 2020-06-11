@@ -199,7 +199,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
 
 def get_geoms(xyz_fns, interpolate=None, between=0,
               coord_type="cart", comments=False, in_bohr=False,
-              define_prims=None, interpolate_align=True):
+              define_prims=None, interpolate_align=True, quiet=False):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
@@ -209,7 +209,8 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
                        define_prims=define_prims)
-    print(f"Read {len(geoms)} geometries.")
+    if not quiet:
+        print(f"Read {len(geoms)} geometries.")
 
     atoms_0 = geoms[0].atoms
     atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]

@@ -307,8 +307,8 @@ class Model():
 
 class ONIOM(Calculator):
 
-    def __init__(self, calcs, models, geom, layers=None, embedding=None,
-                 real_key="real", use_link_atoms=True):
+    def __init__(self, calcs, models, geom=None, layers=None, embedding=None,
+                 real_key="real", use_link_atoms=True, *args, **kwargs):
         """
         layer: list of models
             len(layer) == 1: normal ONIOM, len(layer) >= 1: multicenter ONIOM.
@@ -317,7 +317,7 @@ class ONIOM(Calculator):
             a certain calculator.
         """
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
         valid_embeddings = (None, "electronic")
         assert embedding in valid_embeddings, f"Valid embeddings are: {valid_embeddings}"
