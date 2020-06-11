@@ -109,13 +109,14 @@ def geom_from_pdb(fn, **kwargs):
 
 
 def geom_to_pdb_str(geom):
-    pdb_str = atoms_coords_to_pdb_str(geom.atoms, geom.cart_coords)
+    # Convert to Å
+    coords = geom.cart_coords / ANG2BOHR
+    pdb_str = atoms_coords_to_pdb_str(geom.atoms, coords)
     return pdb_str
 
 
 def atoms_coords_to_pdb_str(atoms, coords):
-    # Convert to Å
-    coords3d = coords.reshape(-1, 3) /  ANG2BOHR
+    coords3d = coords.reshape(-1, 3)
 
     coord_fmt = "{: >8.3f}"*3
     #            serial  name  altLoc      chainID     iCode
