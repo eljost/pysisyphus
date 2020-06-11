@@ -279,7 +279,11 @@ class Optimizer(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def optimize(self):
-        raise Exception("Not implemented!")
+        pass
+
+    @abc.abstractmethod
+    def reset(self):
+        pass
 
     def write_to_out_dir(self, out_fn, content, mode="w"):
         out_path = self.out_dir / out_fn
@@ -414,6 +418,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
+
             # Determine and store number of currenctly actively optimized images
             try:
                 image_inds = self.geometry.image_inds
