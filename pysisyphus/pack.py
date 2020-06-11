@@ -1,9 +1,11 @@
 import argparse
 from math import pi as PI, ceil
+from pathlib import Path
 import sys
 
 from pysisyphus.constants import AMU2KG
 from pysisyphus.helpers import geom_loader
+from pysisyphus.io.pdb import geom_to_pdb_str
 from pysisyphus.wrapper.packmol import make_input, call_packmol
 
 
@@ -23,7 +25,21 @@ def parse_args(args):
     parser.add_argument("--solv_num", type=int)
     parser.add_argument("--solv_dens", type=float)
 
+    parser.add_argument("--output", default="output.pdb")
+
     return parser.parse_args(args)
+
+
+def as_pdb(fn):
+    if not fn.endswith(".pdb"):
+        geom = geom_loader(fn)
+        pdb_str = geom_to_pdb_str(geom)
+        pdb_fn = str(Path(fn).with_suffix(".pdb"))
+        with open(pdb_fn, "w") as handle:
+            handle.write(pdb_str)
+        print(f"Converted '{fn}' to PDB format in '{pdb_fn}'")
+        fn = pdb_fn
+    return fn
 
 
 def sphere_radius_from_volume(volume):
@@ -85,11 +101,13 @@ def run():
     print(f"Using ceil(radius)={cradius:.2f} Å")
     print()
 
+    # Create solute/solvent PDBs if needed
+
     inp_kwargs = {
-        "output_fn": "output.pdb",
-        "solute_fn": solute_fn,
+        "output_fn": args.output,
+        "solute_fn": as_pdb(solute_fn),
         "solute_num": solute_num,
-        "solvent_fn": solv_fn,
+        "solvent_fn": as_pdb(solv_fn),
         "solvent_num": solv_num,
         "sphere_radius": cradius,
     }
