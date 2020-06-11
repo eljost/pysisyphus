@@ -7,6 +7,7 @@ import sys
 DEFAULTS = {
     "mwfn": "Multiwfn",
     "jmol": "jmol",
+    "packmol": "packmol",
 }
 
 
