@@ -164,12 +164,12 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     for fn in xyz_fns:
         if "*" in fn:
             cwd = Path(".")
-            geom = [geom_from_xyz_file(xyz_fn, **geom_kwargs)
+            geom = [geom_loader(xyz_fn, **geom_kwargs)
                     for xyz_fn in natsorted(cwd.glob(fn))]
         elif fn.endswith(".xyz"):
-            geom = [geom_from_xyz_file(fn, **geom_kwargs), ]
+            geom = [geom_loader(fn, **geom_kwargs), ]
         elif fn.endswith(".trj"):
-            geom = geoms_from_trj(fn, **geom_kwargs)
+            geom = geom_loader(fn, **geom_kwargs)
         elif fn.endswith(".pdb"):
             geom = [geom_loader(fn, **geom_kwargs), ]
         else:
