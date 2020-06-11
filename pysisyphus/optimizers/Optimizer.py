@@ -281,9 +281,9 @@ class Optimizer(metaclass=abc.ABCMeta):
     def optimize(self):
         pass
 
-    @abc.abstractmethod
-    def reset(self):
-        pass
+    # @abc.abstractmethod
+    # def reset(self):
+        # pass
 
     def write_to_out_dir(self, out_fn, content, mode="w"):
         out_path = self.out_dir / out_fn
