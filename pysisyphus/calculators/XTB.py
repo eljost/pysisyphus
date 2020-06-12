@@ -79,12 +79,16 @@ class XTB(Calculator):
 
         return env_copy
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
         results = self.get_forces(atoms, coords)
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--grad"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -96,7 +100,9 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
-    def get_hessian(self, atoms, coords):
+    def get_hessian(self, atoms, coords, prepare_kwargs=None):
+        if prepare_kwargs is None:
+            prepare_kwargs = {}
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--hess"]
         self.log(f"Executing {self.base_cmd} {add_args}")
