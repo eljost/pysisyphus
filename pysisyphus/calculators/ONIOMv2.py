@@ -215,10 +215,16 @@ class Model():
         for i, (ind, parent_ind, atom, g) in enumerate(self.links):
             rows = link_start + i*3 + stencil
             cols = ind_map[ind]*3 + stencil
-            parent_cols = self.parent_atom_inds.index(parent_ind)*3 + stencil
 
-            J[rows, parent_cols] = g
             J[rows, cols] = 1 - g
+            try:
+                parent_cols = self.parent_atom_inds.index(parent_ind)*3 + stencil
+                J[rows, parent_cols] = g
+            # Raised when link atom is not coupled to layer above, but
+            # to a layer higher above.
+            except ValueError:
+                pass
+
         return J
 
     def get_energy(self, atoms, coords, point_charges=None):
