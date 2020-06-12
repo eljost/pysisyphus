@@ -1,0 +1,48 @@
+REMARK   1 File created by GaussView 5.0.8
+HETATM    1  C           0      -3.385   0.674   0.000                       C
+HETATM    2  H           0      -3.028  -0.335   0.000                       H
+HETATM    3  H           0      -3.028   1.179   0.874                       H
+HETATM    4  H           0      -4.455   0.674   0.000                       H
+HETATM    5  C           0      -2.871   1.400  -1.257                       C
+HETATM    6  H           0      -3.228   2.409  -1.257                       H
+HETATM    7  H           0      -1.801   1.400  -1.257                       H
+HETATM    8  C           0      -3.385   0.674  -2.515                       C
+HETATM    9  H           0      -3.027  -0.334  -2.516                       H
+HETATM   10  H           0      -4.455   0.672  -2.514                       H
+HETATM   11  C           0      -2.874   1.402  -3.772                       C
+HETATM   12  H           0      -1.804   1.404  -3.773                       H
+HETATM   13  H           0      -3.232   2.410  -3.771                       H
+HETATM   14  C           0      -3.387   0.675  -5.030                       C
+HETATM   15  H           0      -4.457   0.673  -5.029                       H
+HETATM   16  H           0      -3.028  -0.333  -5.030                       H
+HETATM   17  C           0      -2.876   1.403  -6.287                       C
+HETATM   18  H           0      -1.806   1.405  -6.288                       H
+HETATM   19  H           0      -3.234   2.411  -6.286                       H
+HETATM   20  C           0      -3.388   0.677  -7.544                       C
+HETATM   21  H           0      -4.458   0.675  -7.544                       H
+HETATM   22  H           0      -3.033   1.182  -8.418                       H
+HETATM   23  H           0      -3.030  -0.331  -7.545                       H
+END
+CONECT    1    2    3    4    5
+CONECT    2    1
+CONECT    3    1
+CONECT    4    1
+CONECT    5    6    7    1    8
+CONECT    6    5
+CONECT    7    5
+CONECT    8    9   10    5   11
+CONECT    9    8
+CONECT   10    8
+CONECT   11   12   13    8   14
+CONECT   12   11
+CONECT   13   11
+CONECT   14   15   16   11   17
+CONECT   15   14
+CONECT   16   14
+CONECT   17   18   19   14   20
+CONECT   18   17
+CONECT   19   17
+CONECT   20   21   22   23   17
+CONECT   21   20
+CONECT   22   20
+CONECT   23   20

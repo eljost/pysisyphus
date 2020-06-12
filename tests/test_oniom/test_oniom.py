@@ -2,9 +2,10 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.ONIOMv2 import ONIOM
-from pysisyphus.helpers import geom_from_library, do_final_hessian
+from pysisyphus.helpers import do_final_hessian, geom_loader, eigval_to_wavenumber
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using_gaussian16, using_pyscf
 
 
@@ -13,7 +14,7 @@ init_logging()
 
 @using_gaussian16
 def test_energy():
-    geom = geom_from_library("alkyl17_sto3g_opt.xyz")
+    geom = geom_loader("lib:alkyl17_sto3g_opt.xyz")
 
     real = set(range(len(geom.atoms)))
     medmin = set((0,1,2,3,4,5,6, 46,47,48,49,50,51,52))
@@ -95,7 +96,7 @@ def test_energy():
         ),
 ])
 def test_gradient(calcs, ref_energy, ref_force_norm):
-    geom = geom_from_library("acetaldehyd_oniom.xyz", coord_type="redund")
+    geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
 
     real = set(range(len(geom.atoms)))
     high = [4, 5, 6]
@@ -146,7 +147,7 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
                      marks=using_pyscf),
 ])
 def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
-    geom = geom_from_library("oniom_ee_model_system.xyz", coord_type="redund")
+    geom = geom_loader("lib:oniom_ee_model_system.xyz", coord_type="redund")
 
     all_ = set(range(len(geom.atoms)))
     high = list(sorted(all_ - set((21, 20, 19, 15, 14, 13))))
@@ -190,7 +191,7 @@ def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
 @pytest.mark.xfail
 @using_gaussian16
 def test_oniom_13_coupling():
-    geom = geom_from_library("oniom_13_coupling_example.xyz")
+    geom = geom_loader("lib:oniom_13_coupling_example.xyz")
 
     calcs = {
         "real": {
@@ -238,7 +239,7 @@ def test_acetaldehyde_opt():
     """
         From https://doi.org/10.1016/S0166-1280(98)00475-8
     """
-    geom = geom_from_library("acetaldehyd_oniom.xyz", coord_type="redund")
+    geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
 
     real = set(range(len(geom.atoms)))
     high = [4, 5, 6]
@@ -277,7 +278,6 @@ def test_acetaldehyde_opt():
 
 @using_gaussian16
 def test_yaml_oniom():
-    from pysisyphus.run import run_from_dict
 
     run_dict = {
         "xyz": "lib:acetaldehyd_oniom.xyz",
@@ -313,3 +313,50 @@ def test_yaml_oniom():
     assert opt.is_converged
     assert opt.cur_cycle == 7
     assert res.opt_geom.energy == pytest.approx(-153.07526171)
+
+
+@using_pyscf
+def test_oniom3():
+    run_dict = {
+        "xyz": "lib:oniom3alkyl.pdb",
+        "calc": {
+            "type": "oniom",
+            "calcs": {
+                "real": {
+                    "type": "pyscf",
+                    "basis": "sto3g",
+                    "pal": 2,
+                },
+                "mid": {
+                    "type": "pyscf",
+                    "basis": "321g",
+                    "pal": 2,
+                },
+                "high": {
+                    "type": "pyscf",
+                    # "basis": "sto3g",
+                    "basis": "431g",
+                    "pal": 2,
+                },
+            },
+            "models": {
+                "high": {
+                    "inds": list(range(7, 16)),
+                    "calc": "high",
+                },
+                "mid": {
+                    "inds": list(range(4, 19)),
+                    "calc": "mid",
+                },
+            }
+        },
+    }
+    res = run_from_dict(run_dict)
+
+    geom = res.calced_geoms[0]
+    H = geom.hessian
+    w, v = np.linalg.eigh(H)
+    nus = eigval_to_wavenumber(w)
+    # Not meaningful frequencies, as mass-weighting etc. is missing
+    assert nus[-1] == pytest.approx(5981.1807)
+    assert nus[-3] == pytest.approx(5968.7844)
