@@ -41,7 +41,7 @@ CALC_DICT = {
     "orca": ORCA,
     "psi4": Psi4,
     "turbomole": Turbomole,
-    "xtb": XTB,
+    "xtb": XTB.XTB,
     # "pypsi4": PyPsi4,
     # "pyxtb": PyXTB,
 }
@@ -101,6 +101,13 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
         links.append(link)
     
     return atom_map, links
+
+
+def atom_inds_to_cart_inds(atom_inds):
+    stencil = np.array((0, 1, 2), dtype=int)
+    size_ = len(atom_inds)
+    cart_inds = np.tile(stencil, size_) + np.repeat(atom_inds, 3)*3
+    return cart_inds
 
 
 class Model():
@@ -200,7 +207,7 @@ class Model():
         # (not starting at 0) to the indices in the Jacobian which start at 0.
         atom_inds = [self.parent_atom_inds.index(ind) for ind in self.atom_inds]
         ind_map = {k: v for k, v in zip(self.atom_inds, atom_inds)}
-        model_cols = np.tile(stencil, size_) + np.repeat(atom_inds, 3)*3
+        model_cols = atom_inds_to_cart_inds(atom_inds)
         J[model_rows, model_cols] = 1
 
         # Link atoms
@@ -407,14 +414,19 @@ class ONIOM(Calculator):
         model_keys = list(it.chain(*layers))
 
         cur_calc_num = 0
-        def get_calc(calc_key):
+        def get_calc(calc_key, base_name=None):
             """Helper function for easier generation of calculators
             with incrementing calc_number."""
             nonlocal cur_calc_num
 
             kwargs = calcs[calc_key].copy()
             type_ = kwargs.pop("type")
-            calc = CALC_DICT[type_](**kwargs, calc_number=cur_calc_num)
+
+            kwargs["calc_number"] = cur_calc_num
+            if base_name is not None:
+                kwargs["base_name"] = base_name
+
+            calc = CALC_DICT[type_](**kwargs)
             cur_calc_num += 1
             return calc
 
@@ -434,8 +446,10 @@ class ONIOM(Calculator):
             model_calc_key = models[model]["calc"]
             parent_calc_key = models[parent]["calc"]
 
-            model_calc = get_calc(model_calc_key)
-            parent_calc = get_calc(parent_calc_key)
+            model_base_name = f"{model}_{model_calc_key}"
+            model_calc = get_calc(model_calc_key, base_name=model_base_name)
+            parent_base_name = f"{model}_parent"
+            parent_calc = get_calc(parent_calc_key, base_name=parent_base_name)
 
             model = Model(
                 name=model,
@@ -539,6 +553,10 @@ class ONIOM(Calculator):
 
         return all_results
 
+    def run_calculation(self, atoms, coords):
+        self.log("run_calculation() called. Doing simple energy calculation!")
+        return self.get_energy(atoms, coords)
+
     def get_energy(self, atoms, coords):
         all_energies = self.run_calculations(atoms, coords, "get_energy")
 
@@ -552,12 +570,16 @@ class ONIOM(Calculator):
         all_results = self.run_calculations(atoms, coords, "get_forces")
 
         energies, forces_ = zip(*all_results)
+        forces_ = [np.array(f).reshape(-1, 3) for f in forces_]
         energy = sum(energies)
-        forces = np.sum(forces_, axis=0)
+
+        forces = forces_[0]
+        for mdl, f in zip(self.models[1:], forces_[1:]):
+            forces[mdl.parent_atom_inds] += f
 
         return {
                 "energy": energy,
-                "forces": forces,
+                "forces": forces.flatten(),
         }
 
     def get_hessian(self, atoms, coords):
@@ -565,7 +587,12 @@ class ONIOM(Calculator):
 
         energies, hessians = zip(*all_results)
         energy = sum(energies)
-        hessian = np.sum(hessians, axis=0)
+
+        hessian = hessians[0]
+        for mdl, h in zip(self.models[1:], hessians[1:]):
+            inds = atom_inds_to_cart_inds(mdl.parent_atom_inds)
+            # Keep in mind that we modify hessians[0] in place
+            hessian[inds[:,None], inds[None,:]] += h
 
         return {
                 "energy": energy,
