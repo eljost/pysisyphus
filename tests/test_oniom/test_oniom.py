@@ -188,7 +188,6 @@ def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     assert np.linalg.norm(forces) == pytest.approx(ref_force_norm)
 
 
-@pytest.mark.xfail
 @using_gaussian16
 def test_oniom_13_coupling():
     geom = geom_loader("lib:oniom_13_coupling_example.xyz")
@@ -231,7 +230,7 @@ def test_oniom_13_coupling():
 
     geom.set_calculator(oniom)
 
-    assert geom.energy == pytest.approx(-77.42058687128718)
+    assert geom.energy == pytest.approx(-77.420587)
 
 
 @using_gaussian16
@@ -319,6 +318,7 @@ def test_yaml_oniom():
 def test_oniom3():
     run_dict = {
         "xyz": "lib:oniom3alkyl.pdb",
+        "coord_type": "redund",
         "calc": {
             "type": "oniom",
             "calcs": {
@@ -350,13 +350,19 @@ def test_oniom3():
                 },
             }
         },
+        "opt": {
+            "thresh": "gau_tight",
+        },
     }
     res = run_from_dict(run_dict)
+    print()
 
-    geom = res.calced_geoms[0]
-    H = geom.hessian
-    w, v = np.linalg.eigh(H)
-    nus = eigval_to_wavenumber(w)
-    # Not meaningful frequencies, as mass-weighting etc. is missing
-    assert nus[-1] == pytest.approx(5981.1807)
-    assert nus[-3] == pytest.approx(5968.7844)
+    opt = res.opt
+    assert opt.is_converged
+    assert opt.cur_cycle == 6
+
+    geom = res.opt_geom
+    res = do_final_hessian(geom, save_hessian=False)
+    nus = res.nus
+    assert nus[-1] == pytest.approx(3747.54937)
+    assert nus[-5] == pytest.approx(3563.89449)
