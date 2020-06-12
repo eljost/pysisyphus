@@ -361,7 +361,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         handle.write(ts_geom.as_xyz())
     print(f"Wrote TS geometry to '{ts_opt_fn}'")
 
-    if do_hess:
+    if do_hess and not ts_opt.stopped:
         print()
         do_final_hessian(ts_geom, write_imag_modes=True)
 
@@ -571,9 +571,11 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
 
 def run_opt(geom, calc_getter, opt_getter, title="Running optimization"):
     print(highlight_text(title))
+
     geom.set_calculator(calc_getter(0))
     opt = opt_getter(geom)
     opt.run()
+
     return geom, opt
 
 
