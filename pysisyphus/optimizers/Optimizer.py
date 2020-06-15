@@ -129,8 +129,13 @@ class Optimizer(metaclass=abc.ABCMeta):
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
             self.out_trj_handle= open(out_trj_fn, "w")
+            # Call with reset=True to delete remnants of previous calculations, unless
+            # the optimizer was restarted. Given a previous optimization with, e.g. 30
+            # cycles and a second restarted optimization with 20 cycles the last 10 cycles
+            # of the previous optimization would still be present.
+            reset = (restart_info is None)
             self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model,
-                                         reset=True)
+                                         reset=reset)
         if self.prefix:
             self.log(f"Created optimizer with prefix {self.prefix}")
 
