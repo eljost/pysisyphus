@@ -804,6 +804,7 @@ class Geometry:
         try:
             import ase
         except ImportError:
+            print("Please install the 'ase' package!")
             return None
 
         # ASE coordinates are in Angstrom
