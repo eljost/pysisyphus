@@ -102,7 +102,8 @@ class AFIR(Calculator):
         if max_cycles is None:
             max_cycles = self.h5_cycles
         self.data_model = get_data_model(atoms, max_cycles)
-        self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model)
+        self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model,
+                                     reset=True)
 
     def dump_h5(self, atoms, coords, results):
         # Initialize if not done yet
