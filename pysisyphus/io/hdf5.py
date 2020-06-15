@@ -11,7 +11,7 @@ def init_h5_group(f, group_name, data_model):
         group.create_dataset(key, shape, maxshape=maxshape)
 
 
-def get_h5_group(fn, group_name, data_model):
+def get_h5_group(fn, group_name, data_model, reset=False):
     """Return (and create if neccesary) group with given name and
     data model."""
 
@@ -25,7 +25,7 @@ def get_h5_group(fn, group_name, data_model):
     # recreate the group with the proper shapes.
     compatible = [group[key].shape == shape for key, shape in data_model.items()]
     compatible = all(compatible)
-    if not compatible:
+    if (not compatible) or reset:
         del f[group_name]
         init_h5_group(f, group_name, data_model)
     group = f[group_name]
