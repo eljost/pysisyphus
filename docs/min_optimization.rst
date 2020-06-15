@@ -68,6 +68,7 @@ that the user may want to modify when using the RFOptimizer.
 
     opt:
      type: rfo                      # Optimization algorithm
+     max_cycles: 50                 # Maximum number of optimization cycles
 
      overachieve_factor: 2          # Indicate convergence, regardless of the 
                                     # proposed step when max(grad) and rms(grad)
