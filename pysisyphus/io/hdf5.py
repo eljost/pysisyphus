@@ -2,6 +2,7 @@ import h5py
 
 
 def init_h5_group(f, group_name, data_model):
+    """Create group with given name and data model."""
     group = f.create_group(group_name)
     # Create (resizable) datasets by using None in maxshape
     for key, shape in data_model.items():
@@ -11,6 +12,9 @@ def init_h5_group(f, group_name, data_model):
 
 
 def get_h5_group(fn, group_name, data_model):
+    """Return (and create if neccesary) group with given name and
+    data model."""
+
     f = h5py.File(fn, mode="a")
 
     if group_name not in f:
@@ -30,6 +34,7 @@ def get_h5_group(fn, group_name, data_model):
 
 
 def resize_h5_group(group, max_cycles):
+    """Increase size of first dimension of datasets in the given group."""
     for key, dataset in group.items():
         # No need to resize scalar datasets
         if dataset.shape == ():
