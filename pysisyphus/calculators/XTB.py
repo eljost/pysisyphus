@@ -12,7 +12,7 @@ import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.parser import parse_turbo_gradient
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.constants import BOHR2ANG, BOHRPERFS2AU
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
 from pysisyphus.xyzloader import make_xyz_str
@@ -64,7 +64,8 @@ class XTB(Calculator):
         return None
 
     def prepare_add_args(self):
-        add_args = f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
+        add_args = (f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf} "
+                    f"--acc {self.acc}").split()
         # Use solvent model if specified
         if self.gbsa:
             gbsa = f"--gbsa {self.gbsa}".split()
@@ -146,7 +147,7 @@ class XTB(Calculator):
         path = self.prepare_path(use_in_run=True)
         if velocities is not None:
             coords3d = coords.reshape(-1, 3)
-            velocities3d = velocities.reshape(-1, 3)
+            velocities3d = velocities.reshape(-1, 3) * BOHRPERFS2AU
             assert coords3d.shape == velocities3d.shape, \
                 "Shape of coordinates and velocities doesn't match!"
             mdrestart_str = self.get_mdrestart_str(coords3d, velocities3d)
@@ -163,12 +164,12 @@ class XTB(Calculator):
             step={step}  # fs
             velo=false
         $end""")
-        t_fs = t / 1000
-        md_str_fmt = md_str.format(restart=restart, time=t_fs, step=dt,
+        t_ps = t / 1000
+        md_str_fmt = md_str.format(restart=restart, time=t_ps, step=dt,
                                    dump=dump)
         with open(path / "xcontrol", "w") as handle:
             handle.write(md_str_fmt)
-        inp = self.prepare_turbo_coords(atoms, coords)
+        inp = self.prepare_coords(atoms, coords)
 
         add_args = self.prepare_add_args() + ["--input", "xcontrol", "--md"]
         self.log(f"Executing {self.base_cmd} {add_args}")
