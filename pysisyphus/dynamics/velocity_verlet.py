@@ -7,6 +7,7 @@ from pysisyphus.constants import FORCE2ACC
 from pysisyphus.dynamics.helpers import kinetic_energy_from_velocities, \
                                         temperature_for_kinetic_energy
 
+logger = logging.getLogger("dynamics")
 
 MDResult = namedtuple("MDResult",
                       "coords t",
@@ -26,7 +27,7 @@ def md(geom, v0, steps, dt, term_funcs=None, verbose=True):
         Number of simulation steps.
     dt : float
         Timestep in fs.
-    term_funcs : iterable, optional
+    term_funcs : dict, optional
         Iterable of functions that are called with the atomic
         coordinates in every MD cycle and result in termination
         of the MD integration when they evaluate to true.
@@ -35,7 +36,7 @@ def md(geom, v0, steps, dt, term_funcs=None, verbose=True):
     assert geom.coord_type == "cart"
 
     if term_funcs is None:
-        term_funcs = list()
+        term_funcs = dict()
 
     if verbose:
         t_ps = steps * dt * 1e-3  # Total simulation time
@@ -79,7 +80,13 @@ def md(geom, v0, steps, dt, term_funcs=None, verbose=True):
         geom.coords = x
         a_prev = a
 
-        if any([tf(x) for tf in term_funcs]):
+        terminate = False
+        for name, func in term_funcs.items():
+            if func(x):
+                logger.debug(f"Termination function '{name}' evaluted to True. Breaking.")
+                terminate = True
+                break
+        if terminate:
             break
 
     md_result = MDResult(
