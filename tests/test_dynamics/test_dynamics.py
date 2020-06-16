@@ -1,95 +1,111 @@
-#!/usr/bin/env python3
-
-from matplotlib.patches import Circle
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.constants import VELO2E
+from pysisyphus.dynamics.helpers import kinetic_energy_from_velocities, \
+                                        kinetic_energy_for_temperature, \
+                                        temperature_for_kinetic_energy, \
+                                        remove_com_velocity, \
+                                        scale_velocities_to_temperatue, \
+                                        unscaled_velocity_distribution, \
+                                        get_mb_velocities_for_geom
 from pysisyphus.dynamics.velocity_verlet import md
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.helpers import geom_loader
+from pysisyphus.testing import using
 
 
-# @pytest.mark.skip
-def test_velocity_verlet():
-    geom = AnaPot.get_geom((0.52, 1.80, 0))
-    x0 = geom.coords.copy()
-    v0 = .1 * np.random.rand(*geom.coords.shape)
-    t = 3
-    dts = (.005, .01, .02, .04, .08)
-    all_xs = list()
-    for dt in dts:
-        geom.coords = x0.copy()
-        md_kwargs = {
-            "v0": v0.copy(),
-            "t": t,
-            "dt": dt,
-        }
-        md_result = md(geom, **md_kwargs)
-        all_xs.append(md_result.coords)
-    calc = geom.calculator
-    calc.plot()
-    ax = calc.ax
-    for dt, xs in zip(dts, all_xs):
-        ax.plot(*xs.T[:2], "o-", label=f"dt={dt:.3f}")
-        # ax.plot(*xs.T[:2], "-", label=f"dt={dt:.3f}")
-    ax.legend()
-    plt.show()
+def test_kinetic_energy_from_velocities():
+    atoms = 5
+    masses = np.ones(atoms)
+    velocities = np.ones((atoms, 3))
+
+    E_kin = kinetic_energy_from_velocities(masses, velocities)
+    assert E_kin == pytest.approx(1.5 * atoms * VELO2E)
 
 
-def ase_md_playground():
-    geom = AnaPot.get_geom((0.52, 1.80, 0), atoms=("H", ))
-    atoms = geom.as_ase_atoms()
-    # ase_calc = FakeASE(geom.calculator)
-    # from ase.optimize import BFGS
-    # dyn = BFGS(atoms)
-    # dyn.run(fmax=0.05)
+def test_kinetic_energy_calculations():
+    atoms = 5
+    T = 298.15
 
-    import ase
-    from ase import units
-    from ase.io.trajectory import Trajectory
-    from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-    from ase.md.verlet import VelocityVerlet
-
-    MaxwellBoltzmannDistribution(atoms, 300 * units.kB)
-    momenta = atoms.get_momenta()
-    momenta[0, 2] = 0.
-    # Zero 3rd dimension
-    atoms.set_momenta(momenta)
-
-    dyn = VelocityVerlet(atoms, .005 * units.fs)  # 5 fs time step.
+    E_kin = kinetic_energy_for_temperature(atoms, T)
+    T_calc = temperature_for_kinetic_energy(atoms, E_kin)
+    assert T == pytest.approx(T_calc)
 
 
-    def printenergy(a):
-        """Function to print the potential, kinetic and total energy"""
-        epot = a.get_potential_energy() / len(a)
-        ekin = a.get_kinetic_energy() / len(a)
-        print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
-              'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
+def test_remove_com_velocity():
+    atoms = 5
+    velocities = np.ones((atoms, 3))
+    masses = np.ones(atoms)
+    v_com = 1 - masses[0] / masses.sum()
 
-    # Now run the dynamics
-    printenergy(atoms)
-    traj_fn = 'asemd.traj'
-    traj = Trajectory(traj_fn, 'w', atoms)
-    dyn.attach(traj.write, interval=5)
-    # dyn.attach(bumms().bimms, interval=1)
-
-    dyn.run(10000)
-    printenergy(atoms)
-    traj.close()
-
-    traj = ase.io.read(traj_fn+"@:")#, "r")
-    pos = [a.get_positions() for a in traj]
-    from pysisyphus.constants import BOHR2ANG
-    pos = np.array(pos) / BOHR2ANG
-
-    calc = geom.calculator
-    calc.plot()
-
-    ax = calc.ax
-    ax.plot(*pos[:,0,:2].T)
-
-    plt.show()
+    v = remove_com_velocity(velocities, masses)
+    np.testing.assert_allclose(v, np.full_like(velocities, v_com))
 
 
-if __name__ == "__main__":
-    ase_md_playground()
+def test_scale_velocities_to_temperatue():
+    atoms = 5
+    masses = np.ones(atoms)
+    T = 298.15
+    E_ref = kinetic_energy_for_temperature(atoms, T)  # in Bohr
+    v_unscaled = 2*(np.random.rand(atoms, 3) - 0.5)
+    v_scaled = scale_velocities_to_temperatue(masses, v_unscaled, T)
+    E_scaled = kinetic_energy_from_velocities(masses, v_scaled)
+
+    assert E_scaled == pytest.approx(E_ref)
+
+
+def test_unscaled_velocity_distribution():
+    atoms = 5
+    masses = np.ones(atoms)
+    T = 298.15
+    seed = 20182503
+
+    v = unscaled_velocity_distribution(masses, T, seed)
+    v_ref = np.array([[-17.5130082,  24.56713378,  -3.46233695],
+                      [ -1.12100338,  -3.29778854,  15.19174986],
+                      [  0.78607979, -31.36839825, -13.09479587],
+                      [ 23.69573447,  24.69377977,  -8.79120253],
+                      [-16.84579461,  17.65313333,  13.93684248]]
+
+    )
+    assert np.abs((v - v_ref)).sum() == pytest.approx(0., abs=1e-7)
+
+
+def test_get_mb_velocities_for_geom():
+    geom = geom_loader("lib:benzene.xyz")
+    T = 298.15
+
+    # import pdb; pdb.set_trace()
+    v = get_mb_velocities_for_geom(geom, T, remove_com=True)  # in Bohr/fs
+    E_kin = kinetic_energy_from_velocities(geom.masses, v)
+    E_ref = kinetic_energy_for_temperature(len(geom.atoms), T)  # in Bohr
+
+    assert E_kin == pytest.approx(E_ref)
+
+
+@using("pyscf")
+def test_mb_velocities():
+    geom = geom_loader("lib:h2o.xyz")
+    geom.set_calculator(PySCF(basis="sto3g"))
+
+    # Preoptimization
+    opt = RFOptimizer(geom, thresh="gau_tight")
+    opt.run()
+    print()
+
+    T = 298.15
+    seed = 20182503
+    v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
+    steps = 100
+    dt = 0.5
+    res = md(geom, v0, steps, dt)
+    assert dt * steps / 1000 == pytest.approx(res.t)
+
+    # import pdb; pdb.set_trace()
+    # from pysisyphus.xyzloader import coords_to_trj
+    # coords = res.coords
+    # trj_fn = "md.trj"
+    # atoms = geom.atoms
+    # coords_to_trj(trj_fn, atoms, coords)
