@@ -10,7 +10,7 @@ from pysisyphus.dynamics.helpers import kinetic_energy_from_velocities, \
 logger = logging.getLogger("dynamics")
 
 MDResult = namedtuple("MDResult",
-                      "coords t",
+                      "coords t terminated",
 )
 
 
@@ -53,6 +53,8 @@ def md(geom, v0, steps, dt, term_funcs=None, verbose=True):
     xs = list()
 
     t_cur = 0
+    terminate = False
+    terminate_key = None
     for i in range(steps):
         xs.append(x.copy())
         t_cur += dt
@@ -80,18 +82,19 @@ def md(geom, v0, steps, dt, term_funcs=None, verbose=True):
         geom.coords = x
         a_prev = a
 
-        terminate = False
         for name, func in term_funcs.items():
             if func(x):
-                logger.debug(f"Termination function '{name}' evaluted to True. Breaking.")
                 terminate = True
+                terminate_key = name
                 break
         if terminate:
+            logger.debug(f"Termination function '{name}' evaluted to True. Breaking.")
             break
 
     md_result = MDResult(
                     coords=np.array(xs),
                     t=t_cur*1e-3,
+                    terminated=terminate_key,
     )
 
     return md_result
