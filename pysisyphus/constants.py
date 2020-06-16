@@ -17,8 +17,6 @@ SEC2AU = 2.4188843265857e-17
 # Velocity from m/s to au
 AU2MPERSEC = BOHR2M / SEC2AU
 MPERSEC2AU = 1 / AU2MPERSEC
-# Velocity from m/s to Bohr/fs
-MPERSEC2AUPERFS = 1/BOHR2M * 1e-15
 # Hartree to kcal mol⁻¹
 AU2KCALMOL = 627.509474
 
