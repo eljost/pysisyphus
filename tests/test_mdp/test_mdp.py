@@ -1,11 +1,13 @@
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators import XTB
 from pysisyphus.dynamics import mdp
 from pysisyphus.helpers import geom_loader
+from pysisyphus.testing import using
 
 
 def test_muller_brown_mdp():
@@ -54,8 +56,14 @@ def test_muller_brown_mdp():
     # ax.plot(*res.md_fin_minus.coords.T[:2], "-", lw=3)
     # plt.show()
 
-
-def test_so3hcl_diss_mdp():
+@using("xtb")
+@pytest.mark.parametrize(
+    "external_md", [
+        False,
+        # True,  # term_funcs not implemented
+    ]
+)
+def test_so3hcl_diss_mdp(external_md):
     """See
         https://aip.scitation.org/doi/pdf/10.1063/1.5082885
     """
@@ -90,8 +98,8 @@ def test_so3hcl_diss_mdp():
         # Paper uses 200
         "t": 100,
         "dt": .5,
-        "seed": 2503201823,
-        # "external_md": True,
+        "seed": 9081302,
+        "external_md": external_md,
         "max_init_trajs": 1,
     }
     res = mdp(geom, **mdp_kwargs)
