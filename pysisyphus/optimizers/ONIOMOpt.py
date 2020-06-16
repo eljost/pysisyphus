@@ -5,7 +5,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class ONIOMOpt(Optimizer):
 
-    def __init__(self, geometry, max_micro_cycles=None, *args, **kwargs):
+    def __init__(self, geometry, *args, max_micro_cycles=None, **kwargs):
         super().__init__(geometry, *args, **kwargs)
 
         layers = self.geometry.layers
@@ -27,6 +27,6 @@ class ONIOMOpt(Optimizer):
         step = forces
         norm = np.linalg.norm(step)
         if norm > 0.5:
-            direction = forces / np.linalg.forces(direction)
+            direction = forces / np.linalg.norm(forces)
             step = 0.5 * direction
         return step
