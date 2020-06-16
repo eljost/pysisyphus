@@ -170,6 +170,9 @@ def get_mb_velocities(masses, cart_coords, T, remove_com=True, remove_rot=True,
     # Initial velocities
     v = unscaled_velocity_distribution(masses, T, seed=seed)
 
+    if (len(masses) == 1) and remove_com:
+        raise Exception("Removing COM velocity with only 1 atom is a bad idea!")
+
     # Remove center-of-mass velocity
     if remove_com:
         v = remove_com_velocity(v, masses)
