@@ -1,42 +1,8 @@
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.calculators.AnaPot import AnaPot
-from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
-from pysisyphus.calculators.XTB import XTB
-from pysisyphus.dynamics import mdp
 from pysisyphus.dynamics.velocity_verlet import md
 from pysisyphus.helpers import geom_loader
-
-
-def test_so3hcl_diss():
-    """See [1]"""
-    def get_geom():
-        geom = geom_loader("lib:so3hcl_diss_ts_opt.xyz")
-        geom.set_calculator(XTB(pal=4))
-        return geom
-
-    geom = get_geom()
-    mdp_kwargs = {
-        # About 5 kcal/mol
-        "E_excess": 0.0079,
-        "term_funcs": None,
-        "epsilon": 5e-4,
-        "ascent_alpha": 0.05,
-        "t_init": 20,
-        # Paper uses 200
-        "t": 100,
-        "dt": .5,
-        "seed": 25032018,
-        # "external_md": True,
-        "max_init_trajs": 1,
-    }
-    res = mdp(geom, **mdp_kwargs)
-
-    import pdb; pdb.set_trace()
-    # geom = get_geom()
-    # mdp_kwargs["E_excess"] = 0
-    # res_ee = mdp(geom, **mdp_kwargs)
 
 
 def test_oniom_md():
