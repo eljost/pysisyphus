@@ -54,7 +54,7 @@ def test_oniom_md():
     from pysisyphus.calculators.ONIOM import ONIOM
     oniom = ONIOM(calc_dict, high_inds)
 
-    geom = geom_from_library("acetaldehyd_oniom.xyz")
+    geom = geom_loader("lib:acetaldehyd_oniom.xyz")
     geom.set_calculator(oniom)
 
     v0 = .005 * np.random.rand(*geom.coords.shape)
