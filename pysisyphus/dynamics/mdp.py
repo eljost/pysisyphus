@@ -9,7 +9,7 @@ import numpy as np
 
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.dynamics.velocity_verlet import md, MDResult
-from pysisyphus.dynamics.helpers import (dump_coords, get_velocities,
+from pysisyphus.dynamics.helpers import (dump_coords, get_velocities_for_geom,
                                          temperature_for_kinetic_energy_au)
 from pysisyphus.helpers import highlight_text
 
@@ -173,7 +173,7 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         # Determine random momentum vector for the given kinetic energy
         E_kin = E_tot - E_pot
         T = temperature_for_kinetic_energy_au(len(geom.atoms), E_kin)
-        v0 = get_velocities(geom, T).flatten()
+        v0 = get_velocities_for_geom(geom, T).flatten()
 
         # Zero last element if we have an analytical surface
         if v0.size == 3:
