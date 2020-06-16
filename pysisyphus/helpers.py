@@ -487,13 +487,20 @@ def shake_coords(coords, scale=0.1, seed=None):
     return coords + offset
 
 
-def highlight_text(text, width=80):
+def highlight_text(text, width=80, level=0):
+    levels = {
+        #  horizontal    
+        #        vertical
+        0: ("#", "#"),
+        1: ("-", "|"),
+        } 
     full_length = len(text) + 4
     pad_len = width - full_length
     pad_len = (pad_len - (pad_len % 2)) // 2
     pad = " " * pad_len
-    full_row = "#" * full_length
-    highlight = f"""{pad}{full_row}\n{pad}# {text.upper()} #\n{pad}{full_row}"""
+    hchar, vchar = levels[level]
+    full_row = hchar * full_length
+    highlight = f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
     return highlight
 
 
