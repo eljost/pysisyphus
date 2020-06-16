@@ -368,6 +368,7 @@ def test_oniom3():
     assert nus[-5] == pytest.approx(3563.89449)
 
 
+@using_pyscf
 def test_oniomopt_water_dimer():
     run_dict = {
         "xyz": "lib:water_dimer_oniomopt_test.pdb",
@@ -397,6 +398,7 @@ def test_oniomopt_water_dimer():
             "type": "oniom",
             "thresh": "gau_loose",
             "rms_force": 0.0025,
+            # "max_cycles": 1,
         },
     }
     res = run_from_dict(run_dict)
@@ -404,3 +406,4 @@ def test_oniomopt_water_dimer():
 
     opt = res.opt
     assert opt.is_converged
+    assert opt.cur_cycle == 13

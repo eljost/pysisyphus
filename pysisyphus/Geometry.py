@@ -279,6 +279,14 @@ class Geometry:
             i += frag_atoms
         return Geometry(new_atoms, new_coords, fragments=new_fragments)
 
+    @property
+    def layers(self):
+        try:
+            layers = self.calculator.layers
+        except AttributeError:
+            layers = ()
+        return layers
+
     def clear(self):
         """Reset the object state."""
 

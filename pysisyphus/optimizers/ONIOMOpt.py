@@ -5,6 +5,18 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class ONIOMOpt(Optimizer):
 
+    def __init__(self, geometry, max_micro_cycles=None, *args, **kwargs):
+        super().__init__(geometry, *args, **kwargs)
+
+        layers = self.geometry.layers
+        print(f"found {len(layers)} layers: {layers}")
+
+        if max_micro_cycles is None:
+            max_micro_cycles = np.ones(len(layers), dtype=int)
+            max_micro_cycles[0] = 5
+        self.max_micro_cycles = max_micro_cycles
+        print("max_micro_cycles", self.max_micro_cycles)
+
     def optimize(self):
         forces = self.geometry.forces
         energy = self.geometry.energy

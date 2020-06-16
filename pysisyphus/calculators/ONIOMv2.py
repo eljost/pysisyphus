@@ -182,6 +182,10 @@ class Model():
             capped_coords[org_atom_num + i] = r2
         return capped_atoms, capped_coords
 
+    # def coords(self, atoms, coords):
+        # """Wrapper for self.capped_atoms_coords."""
+        # return self.capped_atoms_coords(atoms, coords)
+
     def get_jacobian(self):
         try:
             # Shape of Jacobian is (model + link, real)
