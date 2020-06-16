@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # [1] https://doi.org/10.1063/1.5082885
+#     Minimum dynamic path
 #     Unke, 2019
 
 from collections import namedtuple
@@ -9,8 +10,9 @@ import numpy as np
 
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.dynamics.velocity_verlet import md, MDResult
-from pysisyphus.dynamics.helpers import (dump_coords, get_velocities_for_geom,
-                                         temperature_for_kinetic_energy_au)
+from pysisyphus.dynamics.helpers import dump_coords, \
+                                        get_mb_velocities_for_geom, \
+                                        temperature_for_kinetic_energy
 from pysisyphus.helpers import highlight_text
 
 
@@ -30,11 +32,13 @@ def run_md(geom, t, dt, v0=None, term_funcs=None, external=False):
         geoms = geom.calculator.run_md(**md_kwargs)
         md_result = MDResult(coords=[geom.coords for geom in geoms], t=t)
     else:
+        steps= int(t / dt)
         md_kwargs = {
             "v0": v0,
-            "t": t,
+            "steps": steps,
             "dt": dt,
             "term_funcs": term_funcs,
+            "verbose": False,
         }
         print("Running MD with internal implementation.")
         md_result = md(geom, **md_kwargs)
@@ -155,6 +159,14 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         step = ascent_alpha * direction
         new_coords = geom.coords + step
         geom.coords = new_coords
+
+    # calc = geom.calculator
+    # class Opt:
+        # pass
+    # _opt = Opt()
+    # _opt.coords = np.array(ascent_xs)
+    # calc.plot_opt(_opt, show=True)
+
     assert ascent_converged, "Steepest ascent didn't converge!"
     assert (E_tot - E_pot) > 0., \
          "Potential energy after steepst ascent is greater than the desired " \
@@ -168,12 +180,16 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
 
     masses = geom.masses_rep
 
-    print("Runninig initialization trajectories")
+    print(highlight_text("Runninig initialization trajectories", level=1))
     for i in range(max_init_trajs):
         # Determine random momentum vector for the given kinetic energy
         E_kin = E_tot - E_pot
-        T = temperature_for_kinetic_energy_au(len(geom.atoms), E_kin)
-        v0 = get_velocities_for_geom(geom, T).flatten()
+        T = temperature_for_kinetic_energy(len(geom.atoms), E_kin)
+        # Disable removal of translation/rotation for analytical potentials
+        remove_com = remove_rot = geom.cart_coords.size > 3
+        v0 = get_mb_velocities_for_geom(geom, T,
+                                        remove_com=remove_com,
+                                        remove_rot=remove_rot).flatten()
 
         # Zero last element if we have an analytical surface
         if v0.size == 3:
@@ -225,7 +241,7 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
     print()
 
     # Run actual trajectories, using the supplied termination functions if possible.
-    print("Running actual full trajectories.")
+    print(highlight_text("Running actual full trajectories.", level=1))
 
     # MD with positive v0.
     md_fin_kwargs = {

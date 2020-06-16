@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-
-# [1] https://doi.org/10.1063/1.5082885
-
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,36 +6,11 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.dynamics.helpers import get_velocities
+# from pysisyphus.dynamics.helpers import get_velocities
+from pysisyphus.dynamics.helpers import get_mb_velocities_for_geom
 from pysisyphus.dynamics.mdp import mdp
 from pysisyphus.dynamics.velocity_verlet import md
 from pysisyphus.helpers import geom_from_library
-
-
-def test_velocity_verlet():
-    geom = AnaPot.get_geom((0.52, 1.80, 0))
-    x0 = geom.coords.copy()
-    v0 = .1 * np.random.rand(*geom.coords.shape)
-    t = 3
-    dts = (.005, .01, .02, .04, .08)
-    all_xs = list()
-    for dt in dts:
-        geom.coords = x0.copy()
-        md_kwargs = {
-            "v0": v0.copy(),
-            "t": t,
-            "dt": dt,
-        }
-        md_result = md(geom, **md_kwargs)
-        all_xs.append(md_result.coords)
-    calc = geom.calculator
-    calc.plot()
-    ax = calc.ax
-    for dt, xs in zip(dts, all_xs):
-        # ax.plot(*xs.T[:2], "o-", label=f"dt={dt:.3f}")
-        ax.plot(*xs.T[:2], "-", label=f"dt={dt:.3f}")
-    ax.legend()
-    plt.show()
 
 
 def test_mdp():
@@ -56,15 +27,15 @@ def test_mdp():
     term_funcs = (stopA, stopB)
 
     mdp_kwargs = {
-        "E_excess": 0.1,
+        "E_excess": 0.2,
         "term_funcs": term_funcs,
         "epsilon": 5e-4,
-        "ascent_alpha": 0.05,
+        "ascent_alpha": 0.0125,
         "t_init": 0.15,
         "t": 3,
         "dt": 0.001,
     }
-    # np.random.seed(25032018)
+    np.random.seed(25032018)
     res = mdp(geom, **mdp_kwargs)
 
     calc = geom.calculator
@@ -139,7 +110,8 @@ def test_xtb_md():
     calc = XTB(pal=4)
 
     T = 298.15
-    velocities = get_velocities(geom, T=T)
+    # velocities = get_velocities(geom, T=T)
+    velocities = get_mb_velocities_for_geom(geom, T=T)
     geoms = calc.run_md(geom.atoms, geom.coords, t=200, step=0.1,
                         velocities=velocities)
 
@@ -175,13 +147,3 @@ def test_oniom_md():
     trj_str = make_trj_str(geom.atoms, coords)
     with open("md.trj", "w") as handle:
         handle.write(trj_str)
-    # import pdb; pdb.set_trace()
-
-
-if __name__ == "__main__":
-    test_velocity_verlet()
-    # test_mdp()
-    # test_so3hcl_diss()
-    # test_so3hcl_md()
-    # test_xtb_md()
-    # test_oniom_md()
