@@ -1,5 +1,8 @@
 import logging
 
+from pysisyphus.dynamics.mdp import mdp
+
+
 logger = logging.getLogger("dynamics")
 logger.setLevel(logging.DEBUG)
 # delay = True prevents creation of empty logfiles
