@@ -113,7 +113,7 @@ class AnaPotBase(Calculator):
         if show:
             plt.show()
 
-    def plot_opt(self, opt, enum=True):
+    def plot_opt(self, opt, enum=True, show=False):
         coords = np.array(opt.coords)
         self.plot()
         xs, ys = coords.T[:2]
@@ -121,7 +121,9 @@ class AnaPotBase(Calculator):
         if enum:
             for i, (x, y) in enumerate(zip(xs, ys)):
                 self.ax.annotate(i, (x, y))
-        plt.show()
+
+        if show:
+            plt.show()
 
     def anim_opt(self, opt, energy_profile=False, colorbar=False, figsize=(8, 6),
                  show=False):
