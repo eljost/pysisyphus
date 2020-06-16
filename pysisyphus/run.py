@@ -80,6 +80,7 @@ OPT_DICT = {
     "fire": FIRE.FIRE,
     "lbfgs": LBFGS.LBFGS,
     "nc": NCOptimizer.NCOptimizer,
+    "oniom": ONIOMOpt,
     "plbfgs": PreconLBFGS.PreconLBFGS,
     "psd": PreconSteepestDescent.PreconSteepestDescent,
     "qm": QuickMin.QuickMin,

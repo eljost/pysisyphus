@@ -366,3 +366,41 @@ def test_oniom3():
     nus = res.nus
     assert nus[-1] == pytest.approx(3747.54937)
     assert nus[-5] == pytest.approx(3563.89449)
+
+
+def test_oniomopt_water_dimer():
+    run_dict = {
+        "xyz": "lib:water_dimer_oniomopt_test.pdb",
+        "coord_type": "cart",
+        "calc": {
+            "type": "oniom",
+            "calcs": {
+                "real": {
+                    "type": "pyscf",
+                    "basis": "sto3g",
+                    "pal": 2,
+                },
+                "high": {
+                    "type": "pyscf",
+                    "basis": "321g",
+                    "pal": 2,
+                },
+            },
+            "models": {
+                "high": {
+                    "inds": [0, 1, 2],
+                    "calc": "high",
+                },
+            }
+        },
+        "opt": {
+            "type": "oniom",
+            "thresh": "gau_loose",
+            "rms_force": 0.0025,
+        },
+    }
+    res = run_from_dict(run_dict)
+    print()
+
+    opt = res.opt
+    assert opt.is_converged
