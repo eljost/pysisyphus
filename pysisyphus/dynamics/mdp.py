@@ -48,7 +48,8 @@ def run_md(geom, t, dt, v0=None, term_funcs=None, external=False):
 
 MDPResult = namedtuple("MDResult",
                        "ascent_xs md_init_plus md_init_minus "
-                       "md_fin_plus md_fin_minus"
+                       "md_fin_plus md_fin_minus "
+                       "md_fin_plus_term md_fin_minus_term"
 )
 
 
@@ -259,6 +260,9 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
     md_fin_kwargs["v0"] = -v0
     md_fin_minus = run_md(geom, **md_fin_kwargs)
 
+    md_fin_plus_term = md_fin_plus.terminated
+    md_fin_minus_term = md_fin_minus.terminated
+
     if dump:
         dump_coords(geom.atoms, md_fin_plus.coords, "mdp_ee_fin_plus.trj")
         dump_coords(geom.atoms, md_fin_minus.coords, "mdp_ee_fin_minus.trj")
@@ -269,5 +273,7 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
                     md_init_minus=md_init_minus,
                     md_fin_plus=md_fin_plus,
                     md_fin_minus=md_fin_minus,
+                    md_fin_plus_term=md_fin_plus_term,
+                    md_fin_minus_term=md_fin_minus_term,
     )
     return mdp_result
