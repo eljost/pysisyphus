@@ -71,11 +71,11 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
 
     print(highlight_text("Minimum dynamic path calculation"))
 
-    if seed is not None:
-        seed = int(seed)
-        print(f"Using seed {seed} to initialize the random number generator.")
-        print()
-        np.random.seed(seed)
+    if seed is None:
+        seed = np.random.randint(0, 20182305)
+    print(f"Using seed {seed} to initialize the random number generator.")
+    print()
+    np.random.seed(seed)
 
 
     E_TS = geom.energy
