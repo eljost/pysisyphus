@@ -7,24 +7,27 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.XTB import XTB
 # from pysisyphus.dynamics.helpers import get_velocities
-from pysisyphus.dynamics.helpers import get_mb_velocities_for_geom
 from pysisyphus.dynamics.mdp import mdp
 from pysisyphus.dynamics.velocity_verlet import md
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 
 
 def test_mdp():
     coords = (-0.82200156,  0.6243128, 0)
     geom = MullerBrownPot.get_geom(coords)
 
+    # Termination functions
     A = (-0.5592, 1.443, 0)
     B = (0.605, 0.036, 0)
-    rad = 0.05
-    def stopA(x, rad=rad):
-        return np.linalg.norm(x-A) < rad
-    def stopB(x, rad=rad):
-        return np.linalg.norm(x-B) < rad
-    term_funcs = (stopA, stopB)
+    radius = 0.05
+    def stopA(x, rad=radius):
+        return np.linalg.norm(x-A) < radius
+    def stopB(x, rad=radius):
+        return np.linalg.norm(x-B) < radius
+    term_funcs = {
+        "nearA": stopA,
+        "nearB": stopB,
+    }
 
     mdp_kwargs = {
         "E_excess": 0.2,
@@ -44,9 +47,9 @@ def test_mdp():
     ax.plot(*res.ascent_xs.T[:2], "ro-")
     ax.plot(*res.md_init_plus.coords.T[:2], "-", lw=3)
     ax.plot(*res.md_init_minus.coords.T[:2], "-", lw=3)
-    cA = Circle(A[:2], radius=rad)
+    cA = Circle(A[:2], radius=radius)
     ax.add_artist(cA)
-    cB = Circle(B[:2], radius=rad)
+    cB = Circle(B[:2], radius=radius)
     ax.add_artist(cB)
     ax.plot(*res.md_fin_plus.coords.T[:2], "-", lw=3)
     ax.plot(*res.md_fin_minus.coords.T[:2], "-", lw=3)
@@ -57,7 +60,7 @@ def test_mdp():
 def test_so3hcl_diss():
     """See [1]"""
     def get_geom():
-        geom = geom_from_library("so3hcl_diss_ts_opt.xyz")
+        geom = geom_loader("lib:so3hcl_diss_ts_opt.xyz")
         geom.set_calculator(XTB(pal=4))
         return geom
 
@@ -84,7 +87,7 @@ def test_so3hcl_diss():
 
 
 def test_so3hcl_md():
-    geom = geom_from_library("so3hcl_diss_ts_opt.xyz")
+    geom = geom_loader("lib:so3hcl_diss_ts_opt.xyz")
     geom.set_calculator(XTB(pal=4))
 
     v0 = .025 * np.random.rand(*geom.coords.shape)
@@ -103,17 +106,6 @@ def test_so3hcl_md():
         with open(trj_fn, "w") as handle:
             handle.write(trj_str)
     dump_coords(res.coords, "md.trj")
-
-
-def test_xtb_md():
-    geom = geom_from_library("so3hcl_diss_ts_opt.xyz")
-    calc = XTB(pal=4)
-
-    T = 298.15
-    # velocities = get_velocities(geom, T=T)
-    velocities = get_mb_velocities_for_geom(geom, T=T)
-    geoms = calc.run_md(geom.atoms, geom.coords, t=200, step=0.1,
-                        velocities=velocities)
 
 
 def test_oniom_md():
