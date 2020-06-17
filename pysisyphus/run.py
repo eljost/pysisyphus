@@ -713,6 +713,8 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
         if isinstance(xyzs, str):
             xyzs = [xyzs, ]
         for xyz in xyzs:
+            if xyz.startswith("lib:"):
+                continue
             shutil.copy(xyz, destination)
             print("\t", xyz)
     else:
