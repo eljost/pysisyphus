@@ -18,3 +18,7 @@ calc:
  mult: 1
 xyz: lib:h2o2_short.xyz
 coord_type: redund
+assert:
+ opt_geom.energy: -151.44017893
+ opt.is_converged: True
+ opt.cur_cycle: 8
