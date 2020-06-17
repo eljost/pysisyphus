@@ -101,8 +101,10 @@ class HessianOptimizer(Optimizer):
             "simple": lambda: (simple_guess(self.geometry), "simple"),
             # Swart model hessian
             "swart": lambda: (swart_guess(self.geometry), "Swart"),
-            # XTB hessian
+            # XTB hessian using GFN-2
             "xtb": lambda: (xtb_hessian(self.geometry), "XTB"),
+            # XTB hessian using GFN-1
+            "xtb1": lambda: (xtb_hessian(self.geometry, gfn=1), "XTB"),
         }
         try:
             self.H, hess_str = hess_funcs[hessian_init]()

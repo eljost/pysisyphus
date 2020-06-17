@@ -1,0 +1,18 @@
+opt:
+ # Use xtb-GFN1 initial hessian instead of xtb-GFN2 hessian (hessian_init: xtb)
+ hessian_init: xtb1
+ thresh: gau_tight
+calc:
+ type: orca
+ keywords: BP86 def2-SVP TightSCF
+ blocks: "%scf maxiter 500 end"
+ pal: 4
+ mem: 2000
+ charge: 0
+ mult: 1
+xyz: lib:h2o2_short.xyz
+coord_type: redund
+assert:
+ opt_geom.energy: -151.43510902
+ opt.is_converged: True
+ opt.cur_cycle: 8

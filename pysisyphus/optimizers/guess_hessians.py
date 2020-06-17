@@ -148,13 +148,15 @@ def swart_guess(geom):
     return np.diagflat(k_diag)
 
 
-def xtb_hessian(geom):
+def xtb_hessian(geom, gfn=None):
     calc = geom.calculator
     xtb_kwargs = {
         "charge": calc.charge,
         "mult": calc.mult,
         "pal": calc.pal
     }
+    if gfn is not None:
+        xtb_kwargs["gfn"] = gfn
     xtb_calc = XTB(**xtb_kwargs)
     geom_ = geom.copy()
     geom_.set_calculator(xtb_calc)
