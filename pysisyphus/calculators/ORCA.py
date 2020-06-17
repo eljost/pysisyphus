@@ -32,7 +32,7 @@ class ORCA(OverlapCalculator):
     conf_key = "orca"
 
     def __init__(self, keywords, blocks="", gbw=None, mem=2000,
-                 do_stable=False, **kwargs):
+                 do_stable=False, numfreq=False, **kwargs):
         super().__init__(**kwargs)
 
         self.keywords = keywords
@@ -40,6 +40,7 @@ class ORCA(OverlapCalculator):
         self.gbw = gbw
         self.mem = int(mem)
         self.do_stable = bool(do_stable)
+        self.freq_keyword = "numfreq" if numfreq else "freq"
 
         assert (("pal" not in keywords.lower())
                 and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
@@ -205,7 +206,7 @@ class ORCA(OverlapCalculator):
         return results
 
     def get_hessian(self, atoms, coords):
-        calc_type = "freq"
+        calc_type = self.freq_keyword
 
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
