@@ -231,7 +231,8 @@ class Model():
 
         return J
 
-    def get_energy(self, atoms, coords, point_charges=None):
+    def get_energy(self, atoms, coords, point_charges=None,
+                   parent_correction=True):
         self.log("Energy calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
 
@@ -242,18 +243,20 @@ class Model():
         self.log("Calculation at layer level")
         results = self.calc.get_energy(catoms, ccoords, prepare_kwargs)
         energy = results["energy"]
-        try:
+
+        # Calculate correction if parent layer is present and it is requested
+        if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
             parent_results= self.parent_calc.get_energy(catoms, ccoords, prepare_kwargs)
             parent_energy = parent_results["energy"]
-        except AttributeError:
-            self.log("No parent layer!")
-            parent_energy = 0.
+            energy -= parent_energy
+        elif not parent_correction:
+            self.log("No parent correction!")
 
-        energy = energy - parent_energy
         return energy
 
-    def get_forces(self, atoms, coords, point_charges=None):
+    def get_forces(self, atoms, coords, point_charges=None,
+                   parent_correction=True):
         self.log("Force calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
 
@@ -267,8 +270,8 @@ class Model():
         energy = results["energy"]
         forces = forces.dot(self.J)
 
-        # Calculate correction if parent layer is present
-        try:
+        # Calculate correction if parent layer is present and it is requested
+        if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
             parent_results = self.parent_calc.get_forces(catoms, ccoords, prepare_kwargs)
             parent_forces = parent_results["forces"]
@@ -277,12 +280,13 @@ class Model():
             # Correct energy and forces
             energy -= parent_energy
             forces -= parent_forces.dot(self.J)
-        except AttributeError:
-            self.log("No parent layer!")
+        elif not parent_correction:
+            self.log("No parent correction!")
 
         return energy, forces
 
-    def get_hessian(self, atoms, coords, point_charges=None):
+    def get_hessian(self, atoms, coords, point_charges=None,
+                    parent_correction=True):
         self.log("Hessian calculation")
         catoms, ccoords = self.capped_atoms_coords(atoms, coords)
 
@@ -300,8 +304,8 @@ class Model():
         energy = results["energy"]
         hessian = self.J.T.dot(hessian.dot(self.J))
 
-        # Calculate correction if parent layer is present
-        try:
+        # Calculate correction if parent layer is present and it is requested
+        if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
             parent_results = self.parent_calc.get_hessian(catoms, ccoords)
             parent_hessian = parent_results["hessian"]
@@ -310,8 +314,8 @@ class Model():
             # Correct energy and hessian
             energy -= parent_energy
             hessian -= self.J.T.dot(parent_hessian.dot(self.J))
-        except AttributeError:
-            self.log("No parent layer!")
+        elif not parent_correction:
+            self.log("No parent correction!")
 
         return energy, hessian
 
@@ -608,3 +612,37 @@ class ONIOM(Calculator):
                 "energy": energy,
                 "hessian": hessian,
         }
+
+    def atom_inds_in_layer(self, index, exclude_inner=False):
+        """Returns list of atom indices in layer at index.
+
+        Atoms that also appear in inner layer can be excluded on request.
+
+        Parameters
+        ----------
+        index : int
+            pasd
+        exclude_inner : bool, default=False, optional
+            Whether to exclude atom indices that also appear in inner layers.
+
+        Returns
+        -------
+        atom_indices : list
+            List containing the atom indices in the selected layer.
+        """
+
+        layer = self.layers[index]
+        atom_inds = list(it.chain(*[model.atom_inds for model in layer]))
+        if exclude_inner and (index < len(self.layers)-1):
+            lower_inds = self.atom_inds_in_layer(index+1)
+            # Drop indices that appear in inner layers
+            atom_inds = [i for i in atom_inds if i not in lower_inds]
+        return atom_inds
+
+    def calc_layer(self, atoms, coords, index, parent_correction=True):
+        layer = self.layers[index]
+        assert len(layer) == 1, \
+            "Multicenter not yet supported!"
+        model, = layer
+        result = model.get_forces(atoms, coords, parent_correction=parent_correction)
+        return result
