@@ -45,13 +45,18 @@ class AnaPotBase(Calculator):
         self.fake_atoms = ("X", ) # X, dummy atom
 
         self.analytical_2d = True
+        self.energy_calcs = 0
+        self.forces_calcs = 0
+        self.hessian_calcs = 0
 
     def get_energy(self, atoms, coords):
+        self.energy_calcs += 1
         x, y, z = coords
         energy = self.V(x, y)
         return {"energy": energy}
 
     def get_forces(self, atoms, coords):
+        self.forces_calcs += 1
         x, y, z = coords
         dVdx = self.dVdx(x, y)
         dVdy = self.dVdy(x, y)
@@ -62,6 +67,7 @@ class AnaPotBase(Calculator):
         return results
 
     def get_hessian(self, atoms, coords):
+        self.hessian_calcs += 1
         x, y, z = coords
         dVdxdx = self.dVdxdx(x, y)
         dVdxdy = self.dVdxdy(x, y)
@@ -73,6 +79,10 @@ class AnaPotBase(Calculator):
         results = self.get_forces(atoms, coords)
         results["hessian"] = hessian
         return results
+
+    def statistics(self):
+        return f"Energy calculations: {self.energy_calcs}, Force calculations: " \
+               f"{self.forces_calcs}, Hessian calculations: {self.hessian_calcs}"
 
     def plot(self, levels=None, show=False, **figkwargs):
         self.fig, self.ax = plt.subplots(**figkwargs)
