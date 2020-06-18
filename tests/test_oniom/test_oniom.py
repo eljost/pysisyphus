@@ -374,6 +374,8 @@ def test_oniomopt_water_dimer():
         "xyz": "lib:water_dimer_oniomopt_test.pdb",
         "coord_type": "cart",
         "calc": {
+            # "type": "pyscf",
+            # "basis": "sto-3g",
             "type": "oniom",
             "calcs": {
                 "real": {
@@ -395,10 +397,39 @@ def test_oniomopt_water_dimer():
             }
         },
         "opt": {
+            # "trust_max": 0.1,
             "type": "oniom",
-            "thresh": "gau_loose",
+            # "thresh": "gau_loose",
             "rms_force": 0.0025,
-            # "max_cycles": 1,
+            # "dump": False,
+            # "max_cycles": 7,
+        },
+    }
+    res = run_from_dict(run_dict)
+    print()
+
+    # opt = res.opt
+    # assert opt.is_converged
+    # assert opt.cur_cycle == 13
+
+
+@using_pyscf
+def test_water_dimer_sd():
+    run_dict = {
+        "xyz": "lib:water_dimer_oniomopt_test.pdb",
+        "coord_type": "cart",
+        "calc": {
+            "type": "pyscf",
+            "basis": "sto-3g",
+        },
+        "opt": {
+            "type": "sd",
+            # "trust_max": 0.1,
+            # "type": "oniom",
+            # "thresh": "gau_loose",
+            "rms_force": 0.0075,
+            # "dump": False,
+            # "max_cycles": 5,
         },
     }
     res = run_from_dict(run_dict)
@@ -406,4 +437,4 @@ def test_oniomopt_water_dimer():
 
     opt = res.opt
     assert opt.is_converged
-    assert opt.cur_cycle == 13
+    assert opt.cur_cycle == 23
