@@ -397,12 +397,9 @@ def test_oniomopt_water_dimer():
             }
         },
         "opt": {
-            # "trust_max": 0.1,
+            "micro_cycles": [3, 1],
             "type": "oniom",
-            # "thresh": "gau_loose",
             "rms_force": 0.0025,
-            # "dump": False,
-            # "max_cycles": 7,
         },
     }
     res = run_from_dict(run_dict)

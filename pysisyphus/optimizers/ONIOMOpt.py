@@ -11,17 +11,17 @@ logger = logging.getLogger("optimizer")
 
 class ONIOMOpt(Optimizer):
 
-    def __init__(self, geometry, *args, max_micro_cycles=None, **kwargs):
+    def __init__(self, geometry, *args, micro_cycles=None, **kwargs):
         super().__init__(geometry, *args, **kwargs)
 
         layers = self.geometry.layers
         print(f"found {len(layers)} layers: {layers}")
 
-        if max_micro_cycles is None:
-            max_micro_cycles = np.ones(len(layers), dtype=int)
-            max_micro_cycles[0] = 5
-        self.max_micro_cycles = max_micro_cycles
-        print("max_micro_cycles", self.max_micro_cycles)
+        if micro_cycles is None:
+            micro_cycles = np.ones(len(layers), dtype=int)
+            micro_cycles[0] = 5
+        self.micro_cycles = micro_cycles
+        self.log("Micro cycles: {self.micro_cycles}")
 
         self.calc = self.geometry.calculator
         self.layer_indices = [self.calc.atom_inds_in_layer(i, exclude_inner=True)
@@ -94,5 +94,9 @@ class ONIOMOpt(Optimizer):
     def optimize(self):
         atoms = self.geometry.atoms
         coords = self.geometry.cart_coords
+
+        # Microcycles:
+        for i in range(self.micro_cycles[0]):
+            print(i)
 
         return self.cg_step(atoms, coords, 0, beta_formula="HS")
