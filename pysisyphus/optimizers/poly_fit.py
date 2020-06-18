@@ -194,7 +194,8 @@ def cubic_fit(e0, e1, g0, g1):
 
 
 def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step,
-                     prev_coords, allow_cubic=True, allow_none=True):
+                     prev_coords, allow_cubic=True, allow_none=True,
+                     cubic_max=2., quartic_max=4.):
     # Generate directional gradients by projecting them on the previous step.
     prev_grad_proj = prev_step @ prev_grad
     cur_grad_proj =  prev_step @ cur_grad
@@ -203,8 +204,8 @@ def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step,
     quartic_result = quartic_fit(prev_energy, cur_energy,
                                  prev_grad_proj, cur_grad_proj)
     accept = {
-        "cubic": lambda x: allow_cubic and (x > 0.) and (x <= 2),
-        "quartic": lambda x: (x > 0.) and (x <= 4),
+        "cubic": lambda x: allow_cubic and (x > 0.) and (x <= cubic_max),
+        "quartic": lambda x: (x > 0.) and (x <= quartic_max),
     }
 
     fit_result = None
