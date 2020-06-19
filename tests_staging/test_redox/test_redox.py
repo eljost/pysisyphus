@@ -22,7 +22,7 @@ RedoxResult = namedtuple("RedoxResult",
 )
 
 
-def run(geom, charge, mult, calc_getter_gas, calc_getter_solv):
+def run(geom, charge, mult, calc_getter_gas, calc_getter_solv, opt=False):
     def get_name(base): return f"{base}_{charge}_{mult}"
 
     print(highlight_text(f"Charge={charge}, Mult={mult}"))
@@ -44,10 +44,11 @@ def run(geom, charge, mult, calc_getter_gas, calc_getter_solv):
     # Gas phase calculation, optimization and frequency
     gas_calc = calc_getter_gas(calc_kwargs)
     geom.set_calculator(gas_calc)
-    opt = RFOptimizer(geom, **opt_kwargs)
-    opt.run()
-    assert opt.is_converged
-    print(highlight_text("Gas phase optimization finished!", level=1))
+    if opt:
+        opt = RFOptimizer(geom, **opt_kwargs)
+        opt.run()
+        assert opt.is_converged
+        print(highlight_text("Gas phase optimization finished!", level=1))
     Hg = geom.cart_hessian
     energyg = geom.energy
     save_hessian(f"{get_name('gas')}.h5", geom,
@@ -75,8 +76,17 @@ def run(geom, charge, mult, calc_getter_gas, calc_getter_solv):
     return res
 
 
-def test_redox(fn, calc_cls, gas_kwargs, solv_kwargs):
-    ref_geom = geom_loader(fn, coord_type="redund")
+def test_redox(inp_1, inp_2, calc_cls, gas_kwargs, solv_kwargs):
+    geom_1 = geom_loader(inp_1["xyz"], coord_type="redund")
+    charge_1 = inp_1["charge"]
+    mult_1 = inp_1["mult"]
+    opt_1 = inp_1["opt"]
+
+    geom_2 = geom_loader(inp_2["xyz"], coord_type="redund")
+    charge_2= inp_2["charge"]
+    mult_2 = inp_2["mult"]
+    opt_2 = inp_2["opt"]
+
 
     gas_calc_number = 0
     def calc_getter_gas(calc_kwargs):
@@ -92,17 +102,12 @@ def test_redox(fn, calc_cls, gas_kwargs, solv_kwargs):
         solv_calc_number += 1
         return calc
 
-    ref_charge_mult = (0, 1)
-    oxd_charge_mult = (1, 2)
-
-    ref_res = run(ref_geom, *ref_charge_mult, calc_getter_gas, calc_getter_solv)
+    ref_res = run(geom_1, charge_1, mult_1, calc_getter_gas, calc_getter_solv, opt=opt_1)
     print()
-
-    oxd_geom = ref_res.geom_gas.copy()
-    oxd_res = run(oxd_geom, *oxd_charge_mult, calc_getter_gas, calc_getter_solv)
+    oxd_res = run(geom_2, charge_2, mult_2, calc_getter_gas, calc_getter_solv, opt=opt_2)
 
 
-def test_thermo(n=1, T=298.15):
+def calculate_potential(n=1, T=298.15):
     # Neutral
     gas01 = "gas_0_1.h5"
     solv01 = "solv_0_1.energy"
@@ -185,7 +190,25 @@ if __name__ == "__main__":
         "solv_kwargs": orca_solv,
     }
 
-    fn = "fe0_freq.pdb"
-    # test_redox(fn, **g16_kwargs)
+    ############
+    # FERROCEN #
+    ############
+
+    fn = "lib:redox/ferrocen_pm6.xyz"
+    inp_1 = {
+        "xyz": fn,
+        "charge": 0,
+        "mult": 1,
+        "opt": False,
+    }
+    inp_2 = inp_1.copy()
+    inp_2 = {
+        "xyz": fn,
+        "charge": 1,
+        "mult": 2,
+        "opt": True,
+    }
+
+    test_redox(inp_1, inp_2, **g16_kwargs)
     # test_redox(fn, **orca_kwargs)
-    test_thermo()
+    calculate_potential()
