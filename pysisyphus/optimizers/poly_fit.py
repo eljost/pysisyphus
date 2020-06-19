@@ -236,7 +236,7 @@ def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step,
     if fit_result and fit_result.y < prev_energy:
         x = fit_result.x
         fit_energy = fit_result.y
-        logger.debug(f"Did '{deg}' interpolation with x={x:.6f}.")
+        logger.debug(f"\tDid '{deg}' interpolation with x={x:.6f}.")
         # Interpolate coordinates and gradient
         fit_step = x * prev_step
         fit_coords = prev_coords + fit_step

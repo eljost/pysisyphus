@@ -415,9 +415,10 @@ def test_oniomopt_water_dimer():
 
 @pytest.mark.skip
 @using_pyscf
-def test_oniomo_microiters():
+def test_oniom_microiters():
     run_dict = {
         "xyz": "lib:oniom_microiters_test.pdb",
+        # "xyz": "lib:acetaldehyd_oniom.xyz",
         "coord_type": "cart",
         "calc": {
             # "type": "pyscf",
@@ -438,6 +439,7 @@ def test_oniomo_microiters():
             "models": {
                 "high": {
                     "inds": [10, 11, 12, 13, 14],
+                    # "inds": [4, 5, 6],
                     "calc": "high",
                 },
             }
@@ -447,7 +449,8 @@ def test_oniomo_microiters():
             "type": "oniom",
             # "rms_force": 0.0025,
             # "rms_force": 0.005,
-            # "max_cycles": 10,
+            # "max_cycles": 7,
+            # "max_cycles": 3,
         },
     }
     res = run_from_dict(run_dict)
