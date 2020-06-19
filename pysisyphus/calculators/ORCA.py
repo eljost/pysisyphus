@@ -409,7 +409,7 @@ class ORCA(OverlapCalculator):
 
     def parse_gbw(self, gbw_fn):
         """Adapted from
-        https://orcaforum.cec.mpg.de/viewtopic.php?f=8&t=3299&hilit=perl&start=20#p13273
+        https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
 
         The first 5 long int values represent pointers into the file:
 
