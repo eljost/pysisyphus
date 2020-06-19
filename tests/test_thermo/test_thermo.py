@@ -5,8 +5,8 @@ from pysisyphus.testing import using
 
 
 @using("thermoanalysis")
-def test_thermoanalysis():
-    hess_fn = "h2o_hessian.h5"
+def test_thermoanalysis(this_dir):
+    hess_fn = this_dir / "h2o_hessian.h5"
     with h5py.File(hess_fn, "r") as handle:
         masses = handle["masses"][:]
         vibfreqs = handle["vibfreqs"][:]
