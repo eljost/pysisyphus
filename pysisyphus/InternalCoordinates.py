@@ -212,6 +212,7 @@ class RedundantCoords:
         return K
 
     def transform_hessian(self, cart_hessian, int_gradient=None):
+        """Transform Cartesian Hessian to internal coordinates."""
         if int_gradient is None:
             self.log("Supplied 'int_gradient' is None. K matrix will be zero, "
                      "so derivatives of the Wilson-B-matrix are neglected in "
@@ -219,6 +220,16 @@ class RedundantCoords:
             )
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
+
+    def backtransform_hessian(self, redund_hessian, int_gradient=None):
+        """Transform Hessian in internal coordinates to Cartesians."""
+        if int_gradient is None:
+            self.log("Supplied 'int_gradient' is None. K matrix will be zero, "
+                     "so derivatives of the Wilson-B-matrix are neglected in "
+                     "the hessian transformation."
+            )
+        K = self.get_K_matrix(int_gradient)
+        return self.B.T.dot(redund_hessian).dot(self.B) + K
 
     def project_hessian(self, H, shift=1000):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
