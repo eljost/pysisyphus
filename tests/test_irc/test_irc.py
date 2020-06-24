@@ -10,7 +10,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import Gaussian16, Turbomole
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.irc import *
 from pysisyphus.testing import using
 
@@ -114,7 +114,7 @@ def test_imk(step_length):
     ]
 )
 def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
-    geom = geom_from_library("hfabstraction_hf321g_displ_forward.xyz")
+    geom = geom_loader("lib:hfabstraction_hf321g_displ_forward.xyz")
 
     calc_kwargs = {
         "pal": 2,
@@ -150,11 +150,11 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     "irc_cls, irc_kwargs, fw_cycle, bw_cycle",
     [
         (EulerPC, {"hessian_recalc": 10, "dump_dwi": False,}, 30, 37),
-        (EulerPC, {"hessian_recalc": 10, "corr_func": "scipy",}, 19, 23),
+        (EulerPC, {"hessian_recalc": 10, "corr_func": "scipy",}, 18, 23),
     ]
 )
 def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
-    geom = geom_from_library("hcn_iso_hf_sto3g_ts_opt.xyz")
+    geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
 
     calc = PySCF(
             basis="sto3g",
@@ -194,3 +194,27 @@ def test_eulerpc_scipy(scipy_method):
 
     # plot_irc(irc, irc.__class__.__name__)
     assert_anapot_irc(irc)
+
+
+@pytest.mark.skip
+@using("pyscf")
+def test_downhill_irc_model_hessian():
+    geom = geom_loader("got.geom_000.xyz")
+
+    calc = PySCF(basis="sto3g", pal=2)
+    geom.set_calculator(calc)
+
+    irc_kwargs = {
+        # "hessian_recalc": 10,
+        "rms_grad_thresh": 1e-4,
+        "downhill": True,
+    }
+
+    irc = EulerPC(geom, **irc_kwargs)
+    irc.run()
+
+    # approx. +- 0.5 kJ/mol
+    # assert irc.forward_energies[0] == pytest.approx(-91.67520894777218, abs=2.2e-4)
+    # assert irc.backward_energies[-1] == pytest.approx(-91.64442379051056)
+    # assert irc.forward_cycle == fw_cycle
+    # assert irc.backward_cycle == bw_cycle

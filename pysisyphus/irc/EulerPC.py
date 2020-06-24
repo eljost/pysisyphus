@@ -31,9 +31,9 @@ from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
 class EulerPC(IRC):
 
     def __init__(self, *args, hessian_recalc=None, hessian_update="bofill",
-                 max_pred_steps=500, dump_dwi=False,
+                 hessian_init="calc", max_pred_steps=500, dump_dwi=False,
                  scipy_method=None, corr_func="mbs", **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, hessian_init=hessian_init, **kwargs)
 
         self.hessian_recalc = hessian_recalc
         self.hessian_update = {
@@ -65,14 +65,13 @@ class EulerPC(IRC):
         self.dwi = DWI()
         mw_grad = self.mw_gradient
         energy = self.energy
-        self.mw_H = self.geometry.mass_weigh_hessian(self.ts_hessian)
 
         dx = self.mw_coords - self.ts_mw_coords
         dg = mw_grad - self.ts_mw_gradient
-        dH, key = self.hessian_update_func(self.ts_hessian, dx, dg)
+        dH, key = self.hessian_update_func(self.mw_hessian, dx, dg)
         self.log(f"Did {key} hessian update.")
-        self.mw_H += dH
-        self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_H.copy())
+        self.mw_hessian += dH
+        self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_hessian.copy())
 
     def get_integration_length_func(self, init_mw_coords):
         def get_integration_length(cur_mw_coords):
@@ -91,15 +90,15 @@ class EulerPC(IRC):
 
         if self.cur_cycle > 0:
             if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc == 0):
-                self.mw_H = self.mw_hessian
+                self.mw_hessian = self.geometry.mw_hessian
                 self.log("Calculated excact hessian")
             else:
                 dx = self.mw_coords - self.irc_mw_coords[-2]
                 dg = mw_grad - self.irc_mw_gradients[-2]
-                dH, key = self.hessian_update_func(self.mw_H, dx, dg)
-                self.mw_H += dH
+                dH, key = self.hessian_update_func(self.mw_hessian, dx, dg)
+                self.mw_hessian += dH
                 self.log(f"Did {key} hessian update before predictor step.")
-            self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
+            self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_hessian.copy())
 
         # Create a copy of the inital coordinates for the determination
         # of the actual step size in the predictor Euler integration.
@@ -114,7 +113,7 @@ class EulerPC(IRC):
 
         def taylor_gradient(step):
             """Return gradient from Taylor expansion of energy to 2nd order."""
-            return mw_grad + self.mw_H @ step
+            return mw_grad + self.mw_hessian @ step
 
         # These variables will hold the coordinates and gradients along
         # the Euler integration and will be updated frequently.
@@ -178,10 +177,10 @@ class EulerPC(IRC):
         # Hessian update
         dx = self.mw_coords - self.irc_mw_coords[-1]
         dg = mw_grad - self.irc_mw_gradients[-1]
-        dH, key = self.hessian_update_func(self.mw_H, dx, dg)
-        self.mw_H += dH
+        dH, key = self.hessian_update_func(self.mw_hessian, dx, dg)
+        self.mw_hessian += dH
         self.log(f"Did {key} hessian update after predictor step.\n")
-        self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_H.copy())
+        self.dwi.update(self.mw_coords.copy(), energy, mw_grad, self.mw_hessian.copy())
         if self.dump_dwi:
             self.dwi.dump(f"dwi_{self.cur_direction}_{self.cur_cycle:0{self.cycle_places}d}.h5")
 
@@ -272,7 +271,7 @@ class EulerPC(IRC):
         jac = None
         if method in "Radau BDF".split():
             # jac = dwi.hessians[0]
-            jac = self.mw_H
+            jac = self.mw_hessian
         else:
             self.log(f"The chosen method {method} is probably a bad choice "
                       "for integrating IRCs, as they it is not well suited "

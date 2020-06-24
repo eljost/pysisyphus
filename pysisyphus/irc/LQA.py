@@ -19,46 +19,38 @@ class LQA(IRC):
 
         self.N_euler = N_euler
 
-
-    def prepare(self, direction):
-        super().prepare(direction)
-
-        self.mwH = self.mw_hessian
-
-
     def step(self):
-        gradient = self.mw_gradient
-        hessian = self.mwH
+        mw_gradient = self.mw_gradient
 
         if len(self.irc_mw_gradients) > 1:
             dg = self.irc_mw_gradients[-1] - self.irc_mw_gradients[-2]
             dx = self.irc_mw_coords[-1] - self.irc_mw_coords[-2]
-            dH, _ = bfgs_update(self.mwH, dx, dg)
-            self.mwH += dH
+            dH, _ = bfgs_update(self.mw_hessian, dx, dg)
+            self.mw_hessian += dH
 
-        eigenvalues, eigenvectors = np.linalg.eigh(hessian)
+        eigenvalues, eigenvectors = np.linalg.eigh(self.mw_hessian)
         # Drop small eigenvalues and corresponding eigenvectors
         small_vals = np.abs(eigenvalues) < 1e-8
         eigenvalues = eigenvalues[~small_vals]
         eigenvectors = eigenvectors[:,~small_vals]
 
         # t step for numerical integration
-        dt = 1 / self.N_euler * self.step_length / np.linalg.norm(gradient)
+        dt = 1 / self.N_euler * self.step_length / np.linalg.norm(mw_gradient)
 
         # Transform gradient to eigensystem of the hessian
-        gradient_trans = eigenvectors.T @ gradient
+        mw_gradient_trans = eigenvectors.T @ mw_gradient
 
         t = dt
         cur_length = 0
         for i in range(self.N_euler):
-            dsdt = np.sqrt(np.sum(gradient_trans**2 * np.exp(-2*eigenvalues*t)))
+            dsdt = np.sqrt(np.sum(mw_gradient_trans**2 * np.exp(-2*eigenvalues*t)))
             cur_length += dsdt * dt
             if cur_length > self.step_length:
                 break
             t += dt
         alphas = (np.exp(-eigenvalues*t) - 1) / eigenvalues
         A = eigenvectors @ np.diag(alphas) @ eigenvectors.T
-        step = A @ gradient
+        step = A @ mw_gradient
         norm = np.linalg.norm(step)
 
         mw_coords = self.mw_coords.copy()
