@@ -3,11 +3,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.helpers import get_step
-from pysisyphus.optimizers.guess_hessians import (fischer_guess,
-                                                  lindh_guess,
-                                                  simple_guess,
-                                                  swart_guess,
-                                                  xtb_hessian,)
+from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.optimizers.hessian_updates import (bfgs_update,
                                                    flowchart_update,
                                                    damped_bfgs_update,
@@ -87,35 +83,8 @@ class HessianOptimizer(Optimizer):
         if hessian_init is None:
             hessian_init = self.hessian_init
 
-        # We use lambdas to avoid premature evaluation of the dict items.
-        hess_funcs = {
-            # Calculate true hessian
-            "calc": lambda: (self.geometry.hessian, "calculated exact"),
-            # Unit hessian
-            "unit": lambda: (np.eye(self.geometry.coords.size), "unit"),
-            # Fischer model hessian
-            "fischer": lambda: (fischer_guess(self.geometry), "Fischer"),
-            # Lindh model hessian
-            "lindh": lambda: (lindh_guess(self.geometry), "Lindh"),
-            # Simple (0.5, 0.2, 0.1) model hessian
-            "simple": lambda: (simple_guess(self.geometry), "simple"),
-            # Swart model hessian
-            "swart": lambda: (swart_guess(self.geometry), "Swart"),
-            # XTB hessian using GFN-2
-            "xtb": lambda: (xtb_hessian(self.geometry, gfn=2), "GFN2-XTB"),
-            # XTB hessian using GFN-1
-            "xtb1": lambda: (xtb_hessian(self.geometry, gfn=1), "GFN1-XTB"),
-        }
-        try:
-            self.H, hess_str = hess_funcs[hessian_init]()
-            self.log(f"Using {hess_str} Hessian.")
-        except KeyError:
-            # We allow only loading of cartesian hessians
-            self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
-            self.geometry.cart_hessian = np.loadtxt(hessian_init)
-            # Use the previously set hessian in whatever coordinate system we
-            # actually employ.
-            self.H = self.geometry.hessian
+        self.H, hess_str = get_guess_hessian(self.geometry, hessian_init)
+        self.log(f"Using {hess_str} Hessian.")
 
         # Dump to disk if hessian was calculated
         if self.hessian_init == "calc":

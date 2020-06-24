@@ -163,6 +163,37 @@ def xtb_hessian(geom, gfn=None):
     return geom_.hessian
 
 
+def get_guess_hessian(geometry, hessian_init):
+    hess_funcs = {
+        # Calculate true hessian
+        "calc": lambda: (geometry.hessian, "calculated exact"),
+        # Unit hessian
+        "unit": lambda: (np.eye(geometry.coords.size), "unit"),
+        # Fischer model hessian
+        "fischer": lambda: (fischer_guess(geometry), "Fischer"),
+        # Lindh model hessian
+        "lindh": lambda: (lindh_guess(geometry), "Lindh"),
+        # Simple (0.5, 0.2, 0.1) model hessian
+        "simple": lambda: (simple_guess(geometry), "simple"),
+        # Swart model hessian
+        "swart": lambda: (swart_guess(geometry), "Swart"),
+        # XTB hessian using GFN-2
+        "xtb": lambda: (xtb_hessian(geometry, gfn=2), "GFN2-XTB"),
+        # XTB hessian using GFN-1
+        "xtb1": lambda: (xtb_hessian(geometry, gfn=1), "GFN1-XTB"),
+    }
+    try:
+        H, hess_str = hess_funcs[hessian_init]()
+    except KeyError:
+        # Only cartesian hessians can be loaded
+        geometry.cart_hessian = np.loadtxt(hessian_init)
+        # Use the previously set hessian in whatever coordinate system we
+        # actually employ.
+        H = geometry.hessian
+        hess_str = "saved"
+    return H, hess_str
+
+
 def ts_hessian(hessian, coord_inds, damp=0.25):
     """According to [3]"""
 
