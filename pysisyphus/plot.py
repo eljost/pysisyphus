@@ -641,10 +641,16 @@ def plot_irc_h5(h5, title=None):
         energies = handle["energies"][:]
         gradients = handle["gradients"][:]
         rms_grad_thresh = handle["rms_grad_thresh"][()]
+
         try:
             ts_index = handle["ts_index"][()]
         except KeyError:
             ts_index = None
+
+    sizes = [dataset.shape[0] for dataset in (mw_coords, energies, gradients)]
+    size0 = sizes[0]
+    assert all([size == size0 for size in sizes])
+    print(f"\tFound {size0} IRC points")
 
     energies -= energies[0]
     energies *= AU2KJPERMOL
