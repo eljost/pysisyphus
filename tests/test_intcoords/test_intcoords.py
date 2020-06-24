@@ -52,8 +52,8 @@ def compare_hessians(ref_H, num_H, ref_rms):
 @using_pyscf
 @pytest.mark.parametrize(
     "xyz_fn, coord_type, ref_rms", [
-        ("hcn_bent.xyz", "cart", 1.2e-6),
-        ("h2o2_rot2.xyz", "redund", 0.000876695),
+        ("lib:hcn_bent.xyz", "cart", 1.2e-6),
+        ("lib:h2o2_rot2.xyz", "redund", 0.000876695),
     ]
 )
 def test_numhess(xyz_fn, coord_type, ref_rms):
