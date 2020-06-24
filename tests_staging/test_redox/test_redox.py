@@ -16,6 +16,7 @@ from pysisyphus.testing import using
 """
 See
     https://pubs.acs.org/doi/pdf/10.1021/jp025853n
+    https://www.sciencedirect.com/science/article/pii/S0009261404012977
 """
 
 # Farady constant
