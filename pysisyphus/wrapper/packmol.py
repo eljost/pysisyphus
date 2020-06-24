@@ -1,4 +1,3 @@
-import io
 import subprocess
 import tempfile
 
@@ -55,7 +54,7 @@ def call_packmol(inp):
         proc = subprocess.run(cmd, shell=True,
                               stdout=subprocess.PIPE, #stderr=subprocess.PIPE,
                               text=True)
-    out = proc.stdout
+    out = proc.stdout  # lgtm [py/unused-local-variable]
     # err = proc.stderr
 
     return proc

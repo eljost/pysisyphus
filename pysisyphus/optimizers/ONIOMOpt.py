@@ -114,9 +114,9 @@ class ONIOMOpt(Optimizer):
                 step = step/norm * 0.5
             self.log("Steepest descent FALLBACK")
             return step
-            import pdb; pdb.set_trace()
-            ls_result = poly_fit.poly_line_search(**ls_kwargs)
-            raise Exception("Linesearchfailed")
+            # import pdb; pdb.set_trace()
+            # ls_result = poly_fit.poly_line_search(**ls_kwargs)
+            # raise Exception("Linesearchfailed")
 
         # Hestensen-Stiefel
         if beta_formula == "HS":
@@ -211,58 +211,58 @@ class ONIOMOpt(Optimizer):
 
         return step
 
-    def optimize(self):
-        atoms = self.geometry.atoms
+    # def optimize(self):
+        # atoms = self.geometry.atoms
 
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-        self.forces.append(forces)
-        self.energies.append(energy)
+        # forces = self.geometry.forces
+        # energy = self.geometry.energy
+        # self.forces.append(forces)
+        # self.energies.append(energy)
 
-        if self.cur_cycle > 0:
-            self.log(f"Current energy={energy:.6f}")
-            dE = energy - self.energies[-2]
-            dE_str = "raised" if dE >= 0 else "lowered"
-            dEkj = dE*AU2KJPERMOL
-            self.log(f"Current energy: {energy:.6f}, energy {dE_str} "
-                     f"by {dEkj:.2f} kJ mol⁻¹")
-            if dE_str == "raised":
-                print("Raised!")
+        # if self.cur_cycle > 0:
+            # self.log(f"Current energy={energy:.6f}")
+            # dE = energy - self.energies[-2]
+            # dE_str = "raised" if dE >= 0 else "lowered"
+            # dEkj = dE*AU2KJPERMOL
+            # self.log(f"Current energy: {energy:.6f}, energy {dE_str} "
+                     # f"by {dEkj:.2f} kJ mol⁻¹")
+            # if dE_str == "raised":
+                # print("Raised!")
 
-        # Calling copy is important, otherwise we would modify the geomtries
-        # coordinates.
-        coords3d = self.geometry.coords3d.copy()
-        li0 = self.layer_indices[0]
-        li1 = self.layer_indices[1]
-        coords3d_1 = coords3d[li1].copy()
+        # # Calling copy is important, otherwise we would modify the geomtries
+        # # coordinates.
+        # coords3d = self.geometry.coords3d.copy()
+        # li0 = self.layer_indices[0]
+        # li1 = self.layer_indices[1]
+        # coords3d_1 = coords3d[li1].copy()
 
-        # step_func = self.cg_step
-        step_func = self.sd_step
+        # # step_func = self.cg_step
+        # step_func = self.sd_step
 
-        layer = 0
-        l0_step = np.zeros_like(coords3d)
-        # Microcycles
-        self.log(f"Starting microcycles for layer {layer}")
-        for i in range(self.micro_cycles[0]):
-            self.log(f"Microcycle {i}")
-            step = step_func(atoms, coords3d.flatten(), layer)
-            # Only set coordinates of atoms in layer 0
-            _ = l0_step.copy()
-            _[li0] = step.reshape(-1, 3)[li0]
-            coords3d += _
-        np.testing.assert_allclose(coords3d[li1], coords3d_1)
+        # layer = 0
+        # l0_step = np.zeros_like(coords3d)
+        # # Microcycles
+        # self.log(f"Starting microcycles for layer {layer}")
+        # for i in range(self.micro_cycles[0]):
+            # self.log(f"Microcycle {i}")
+            # step = step_func(atoms, coords3d.flatten(), layer)
+            # # Only set coordinates of atoms in layer 0
+            # _ = l0_step.copy()
+            # _[li0] = step.reshape(-1, 3)[li0]
+            # coords3d += _
+        # np.testing.assert_allclose(coords3d[li1], coords3d_1)
 
-        # # Step for inner layer
-        layer = 1
-        self.log(f"\n\nStarting cycle for inner layer {layer}")
-        # step = self.cg_step(atoms, coords3d.flatten(), layer, full=True)
-        # import pdb; pdb.set_trace()
-        step = step_func(atoms, coords3d.flatten(), layer)
-        # print(step.reshape(-1,3))
-        coords3d += step.reshape(-1,3)
+        # # # Step for inner layer
+        # layer = 1
+        # self.log(f"\n\nStarting cycle for inner layer {layer}")
+        # # step = self.cg_step(atoms, coords3d.flatten(), layer, full=True)
+        # # import pdb; pdb.set_trace()
+        # step = step_func(atoms, coords3d.flatten(), layer)
+        # # print(step.reshape(-1,3))
+        # coords3d += step.reshape(-1,3)
 
-        step = (coords3d - self.geometry.coords3d).flatten()
-        return step
+        # step = (coords3d - self.geometry.coords3d).flatten()
+        # return step
 
     def optimize(self):
         atoms = self.geometry.atoms

@@ -13,7 +13,6 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import splrep, splev
-import yaml
 
 from pysisyphus.constants import AU2KJPERMOL, AU2EV
 from pysisyphus.peakdetect import peakdetect

@@ -83,7 +83,7 @@ class ModeKill(IRC):
             )
         else:
             # Recalculate exact hessian
-            self.mw_hessian = self.mw_hessian
+            self.mw_hessian = self.geometry.mw_hessian
             self.log("Recalculated exact hessian.")
 
         w, v = np.linalg.eigh(self.mw_hessian)

@@ -293,7 +293,7 @@ class Model():
         # prepare_kwargs = {
             # "point_charges": point_charges,
         # }
-        prepare_kwargs = {}
+        prepare_kwargs = {}  # lgtm [py/unused-local-variable]
         if point_charges is not None:
             raise Exception("point_charges & hessian is not yet implemented")
 

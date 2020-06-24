@@ -6,7 +6,6 @@ import sys
 import textwrap
 import time
 
-import h5py
 import numpy as np
 import yaml
 

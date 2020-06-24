@@ -378,6 +378,7 @@ class IRC:
                                                         self.hessian_init,
                                                         cart_gradient=self.ts_gradient
         )
+        self.log(f"Initial hessian: {hess_str}")
 
         # For forward/backward runs from a TS we need an intial displacement,
         # calculated from the transition vector (imaginary mode) of the TS
