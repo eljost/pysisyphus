@@ -674,7 +674,7 @@ class Geometry:
             2d array containing the mass-weighted hessian M^(-1/2) H M^(-1/2).
         """
         # M^(-1/2) H M^(-1/2)
-        # TODO: Do the right thin here when the hessian is not yet calculated.
+        # TODO: Do the right thing here when the hessian is not yet calculated.
         #       this would probably involve figuring out how to mass-weigh and
         #       internal coordinat hessian... I think this is described in one
         #       of the Gonzales-Schlegel-papers about the GS2 algorithm.
