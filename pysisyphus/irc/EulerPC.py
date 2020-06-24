@@ -150,7 +150,7 @@ class EulerPC(IRC):
             euler_step = euler_mw_coords - init_mw_coords
             euler_mw_grad = taylor_gradient(euler_step)
         else:
-            self.log(f"Predictor-Euler integration dit not converge in {i+1} "
+            self.log(f"Predictor-Euler integration did not converge in {i+1} "
                      f"steps. Δs={cur_length:.4f}."
             )
 
