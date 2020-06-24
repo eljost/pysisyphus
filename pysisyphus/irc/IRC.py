@@ -40,11 +40,7 @@ class IRC:
         self.forward = not self.downhill and forward
         self.backward = not self.downhill and backward
         self.mode = mode
-        # Load initial (not massweighted) cartesian hessian if provided
         self.hessian_init = hessian_init
-        if self.hessian_init is not None:
-            self.hessian_init = np.loadtxt(hessian_init)
-            self.log(f"Read initial TS hessian from '{hessian_init}'")
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
@@ -375,9 +371,15 @@ class IRC:
         print("IRC length in mw. coords, max(|grad|) and rms(grad) in "
               "unweighted coordinates.")
 
+        # Load initial (not massweighted) cartesian hessian if provided
+        if self.hessian_init is not None:
+            self.hessian_init = np.loadtxt(hessian_init)
+            self.log(f"Read initial TS hessian from '{hessian_init}'")
+
         # For forward/backward runs we need an intial displacement
         # and for this we need a hessian, that we calculate now.
-        # For downhill runs we probably dont need a hessian.
+        # If we need a Hessian for downhill runs depends on the employed
+        # IRC integrator (e.g. EulerPC needs a Hessian).
         if not self.downhill:
             if self.hessian_init is not None:
                 self.ts_hessian = self.hessian_init.copy()
