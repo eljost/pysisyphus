@@ -66,12 +66,19 @@ class EulerPC(IRC):
         mw_grad = self.mw_gradient
         energy = self.energy
 
+        # Store starting information for distances weighted interpolation
+        self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_hessian.copy())
+
+        if self.downhill:
+            return
+
+        # Do a first Hessian update with the information between the TS
+        # and the initially displaced geometry.
         dx = self.mw_coords - self.ts_mw_coords
         dg = mw_grad - self.ts_mw_gradient
         dH, key = self.hessian_update_func(self.mw_hessian, dx, dg)
         self.log(f"Did {key} hessian update.")
         self.mw_hessian += dH
-        self.dwi.update(self.mw_coords, energy, mw_grad, self.mw_hessian.copy())
 
     def get_integration_length_func(self, init_mw_coords):
         def get_integration_length(cur_mw_coords):
