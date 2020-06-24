@@ -184,8 +184,10 @@ def get_guess_hessian(geometry, hessian_init):
     }
     try:
         H, hess_str = hess_funcs[hessian_init]()
+        # self.log(f"Using {hess_str} Hessian.")
     except KeyError:
         # Only cartesian hessians can be loaded
+        # self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
         geometry.cart_hessian = np.loadtxt(hessian_init)
         # Use the previously set hessian in whatever coordinate system we
         # actually employ.
