@@ -14,7 +14,7 @@ class ModeKill(IRC):
         # Use tight convergence criteria so the IRC/ModeKill doesn't
         # ent prematurely.
         super().__init__(geometry, downhill=True, rms_grad_thresh=1e-6,
-                         **kwargs)
+                         hessian_init="calc", **kwargs)
 
         assert self.geometry.coord_type == "cart"
 
@@ -31,11 +31,10 @@ class ModeKill(IRC):
     def prepare(self, *args, **kwargs):
         super().prepare(*args, **kwargs)
 
-        self.mw_H = self.mw_hessian
         self.update_mw_down_step()
 
     def update_mw_down_step(self):
-        w, v = np.linalg.eigh(self.mw_H)
+        w, v = np.linalg.eigh(self.mw_hessian)
 
         self.kill_modes = v[:,self.kill_inds]
         nus = eigval_to_wavenumber(w)
@@ -73,8 +72,8 @@ class ModeKill(IRC):
             # Hessian update with mass-weighted values
             dx = self.irc_mw_coords[-1] - self.irc_mw_coords[-2]
             dg = (self.irc_mw_gradients[-1] - self.irc_mw_gradients[-2])
-            d_mw_H, key = bofill_update(self.mw_H, dx, dg)
-            self.mw_H += d_mw_H
+            d_mw_H, key = bofill_update(self.mw_hessian, dx, dg)
+            self.mw_hessian += d_mw_H
 
             # norm(dx) is probably self.step_length ;)
             norm_dx = np.linalg.norm(dx)
@@ -84,10 +83,10 @@ class ModeKill(IRC):
             )
         else:
             # Recalculate exact hessian
-            self.mw_H = self.mw_hessian
+            self.mw_hessian = self.mw_hessian
             self.log("Recalculated exact hessian.")
 
-        w, v = np.linalg.eigh(self.mw_H)
+        w, v = np.linalg.eigh(self.mw_hessian)
         # Overlaps between current normal modes and the modes we want to
         # remove.
         overlaps = np.abs(np.einsum("ij,ik->jk", self.kill_modes, v))
