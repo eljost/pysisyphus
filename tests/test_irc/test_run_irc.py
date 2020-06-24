@@ -6,11 +6,12 @@ from pysisyphus.run import run_irc
 from pysisyphus.testing import using
 
 
+@using("xtb")
 @pytest.mark.parametrize(
     "opt_ends, opt_geom_num", [
-        pytest.param(False, 0, marks=using("xtb")),
-        pytest.param(True, 2, marks=using("xtb")),
-        pytest.param("fragments", 3, marks=using("xtb")),
+        (False, 0),
+        (True, 2),
+        ("fragments", 3),
     ]
 )
 def test_run_irc_opt_ends(opt_ends, opt_geom_num):
@@ -31,5 +32,6 @@ def test_run_irc_opt_ends(opt_ends, opt_geom_num):
         "max_cycles": 15,
 
     }
-    opt_geoms = run_irc(geom, irc_kwargs, calc_getter)
+    irc_key = irc_kwargs.pop("type")
+    opt_geoms, irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
     assert len(opt_geoms) == opt_geom_num
