@@ -116,6 +116,8 @@ class HessianOptimizer(Optimizer):
             # Use the previously set hessian in whatever coordinate system we
             # actually employ.
             self.H = self.geometry.hessian
+
+        # Dump to disk if hessian was calculated
         if self.hessian_init == "calc":
             hess_fn = self.get_path_for_fn("calculated_init_cart_hessian")
             # Save the cartesian hessian, as it is independent of the
