@@ -196,25 +196,31 @@ def test_eulerpc_scipy(scipy_method):
     assert_anapot_irc(irc)
 
 
-@pytest.mark.skip
 @using("pyscf")
-def test_downhill_irc_model_hessian():
+@pytest.mark.parametrize(
+    "hessian_init, ref_cycle", [
+        ("calc", 28),
+        pytest.param("fischer", 0, marks=pytest.mark.xfail),
+        pytest.param("unit", 0, marks=pytest.mark.xfail),
+        ("lindh", 28),
+        ("simple", 28),
+        ("swart", 28),
+    ]
+)
+def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
     geom = geom_loader("got.geom_000.xyz")
 
     calc = PySCF(basis="sto3g", pal=2)
     geom.set_calculator(calc)
 
     irc_kwargs = {
-        # "hessian_recalc": 10,
-        "rms_grad_thresh": 1e-4,
+        "hessian_init": hessian_init,
+        "rms_grad_thresh": 5e-3,
         "downhill": True,
     }
 
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
 
-    # approx. +- 0.5 kJ/mol
-    # assert irc.forward_energies[0] == pytest.approx(-91.67520894777218, abs=2.2e-4)
-    # assert irc.backward_energies[-1] == pytest.approx(-91.64442379051056)
-    # assert irc.forward_cycle == fw_cycle
-    # assert irc.backward_cycle == bw_cycle
+    assert irc.downhill_energies[-1] == pytest.approx(-91.67517096968325)
+    assert irc.downhill_cycle == ref_cycle

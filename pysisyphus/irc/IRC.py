@@ -375,7 +375,9 @@ class IRC:
               "unweighted coordinates.")
 
         self.init_hessian, hess_str = get_guess_hessian(self.geometry,
-                                                        self.hessian_init)
+                                                        self.hessian_init,
+                                                        cart_gradient=self.ts_gradient
+        )
 
         # For forward/backward runs from a TS we need an intial displacement,
         # calculated from the transition vector (imaginary mode) of the TS
