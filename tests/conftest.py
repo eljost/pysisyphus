@@ -23,8 +23,9 @@ class ResultsBag(dict):
         return id(self)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def results_bag(request):
+    import pdb; pdb.set_trace()
     bag = ResultsBag()
     test_name = request._pyfuncitem.name
     FixtureStore.setdefault("results_bag", dict())[test_name] = bag
