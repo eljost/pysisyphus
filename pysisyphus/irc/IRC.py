@@ -326,7 +326,7 @@ class IRC:
             self.irc_mw_gradients.reverse()
 
         if not dumped:
-            self.dump_data
+            self.dump_data(dump_fn)
 
         self.cur_direction = None
 
