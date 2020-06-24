@@ -163,7 +163,15 @@ def xtb_hessian(geom, gfn=None):
     return geom_.hessian
 
 
-def get_guess_hessian(geometry, hessian_init):
+def get_guess_hessian(geometry, hessian_init, int_gradient=None,
+                      cart_gradient=None):
+    model_hessian = hessian_init not in ("calc", "unit", "xtb", "xtb1")
+    target_coord_type = geometry.coord_type
+
+    # Recreate geometry with internal coordinates if needed
+    if model_hessian and (geometry.coord_type == "cart"):
+        geometry = geometry.copy(coord_type="redund")
+
     hess_funcs = {
         # Calculate true hessian
         "calc": lambda: (geometry.hessian, "calculated exact"),
@@ -193,6 +201,12 @@ def get_guess_hessian(geometry, hessian_init):
         # actually employ.
         H = geometry.hessian
         hess_str = "saved"
+
+    if model_hessian and target_coord_type == "cart":
+        if cart_gradient is not None:
+            int_gradient = geometry.internal.transform_forces(cart_gradient)
+        H = geometry.internal.backtransform_hessian(H, int_gradient=int_gradient)
+
     return H, hess_str
 
 
