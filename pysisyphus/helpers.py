@@ -548,7 +548,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False):
     hessian = geom.cart_hessian
     print("... mass-weighing cartesian hessian")
     mw_hessian = geom.mass_weigh_hessian(hessian)
-    print("... doing eckart-projection")
+    print("... doing Eckart-projection")
     proj_hessian = geom.eckart_projection(mw_hessian)
     eigvals, eigvecs = np.linalg.eigh(proj_hessian)
     ev_thresh = -1e-6
