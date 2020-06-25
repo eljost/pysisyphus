@@ -208,7 +208,7 @@ def test_eulerpc_scipy(scipy_method):
     ]
 )
 def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
-    geom = geom_loader("got.geom_000.xyz")
+    geom = geom_loader("lib:hcn_downhill_model_hessian.xyz")
 
     calc = PySCF(basis="sto3g", pal=2)
     geom.set_calculator(calc)
