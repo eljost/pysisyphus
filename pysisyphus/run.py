@@ -241,6 +241,8 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         redund_tangent = ts_geom.internal.B_prim @ hei_tangent
     else:
         raise Exception("Unknown coord_type!")
+    # The tangent is probably not normalized anymore
+    redund_tangent /= np.linalg.norm(redund_tangent)
 
     # Also create a cartesian tangent
     atoms = cos.images[0].atoms
@@ -324,7 +326,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
             )
         # Use mode with highest overlap as initial root
         tsopt_kwargs["root"] = root
-        ts_opt = ts_optimizer(ts_geom, prefix="ts_", **tsopt_kwargs)
+        ts_opt = ts_optimizer(ts_geom, prefix="ts", **tsopt_kwargs)
 
     ts_opt.run()
     # Restore original calculator for Dimer calculations
@@ -343,6 +345,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         do_final_hessian(ts_geom, write_imag_modes=True)
 
     ts_energy = ts_geom.energy
+    print()
     print_barrier(ts_energy, first_cos_energy, "TS", "first COS image")
     print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
@@ -1090,8 +1093,6 @@ def do_clean(force=False):
     A similar function could be used to store everything ..."""
     cwd = Path(".").resolve()
     rm_globs = (
-        "image*.trj",
-        "image*.out",
         "cycle*.trj",
         "interpolated.trj",
         "interpolated.image*.xyz",
@@ -1105,7 +1106,6 @@ def do_clean(force=False):
         "optimization.trj",
         "cos.log",
         "*.gradient",
-        "image_results.yaml",
         "optimizer_results.yaml",
         # ORCA specific
         "*orca.gbw",
@@ -1114,31 +1114,15 @@ def do_clean(force=False):
         "*orca.hessian",
         "*orca.inp",
         # OpenMOLCAS specific
-        "image*.RasOrb",
-        "image*.in",
-        "image*.JobIph",
         "calculator*.out",
         "calculator*.JobIph",
         "calculator*.RasOrb",
         "*rasscf.molden",
-        # Gaussian specific
-        "image*.fchk",
-        "image*.log",
-        "image*.chk",
-        "image*.com",
-        "image*.*dump_635r",
-        "image*ao_ovlp_rec"
         # Turbomole specific
-        "image*.mos",
-        "image*.alpha",
-        "image*.beta",
-        "image*.control",
-        "image*.ciss_a",
         "calculator_*.control",
         "calculator_*.coord"
         "calculator_*.mos",
         "calculator_*.ciss_a",
-        "image*.sing_a",
         "calculator*.sing_a",
         "*wavefunction.molden",
         "*input.xyz",
@@ -1148,8 +1132,7 @@ def do_clean(force=False):
         # XTB specific
         "image*.grad",
         "calculator*.grad",
-        "image_*.*.mos",
-        "image*.*.ao_ovlp_rec",
+        "image_*",
         "splined_ts_guess.xyz",
         "dimer_ts.xyz",
         "dimer_pickle",
@@ -1157,7 +1140,6 @@ def do_clean(force=False):
         # Wavefunction overlap
         "wfo_*",
         "image*.molden",
-        "crashed_*",
         "jmol.spt",
         # "overlap_data.h5",
         "*_CDD.png",
@@ -1165,14 +1147,36 @@ def do_clean(force=False):
         "internal_coords.log",
         "hei_tangent",
         "optimization.trj",
-        # "splined_hei.xyz",
-        # "ts_opt.xyz",
+        "splined_hei.xyz",
+        "ts_opt.xyz",
         "final_geometry.xyz",
         "calculated_init_hessian",
         "cur_out",
         # HDF5 files
         "optimization.h5",
         "afir.h5",
+        # Optimization files
+        "*_optimization.trj",
+        # Preopt files
+        "first_*",
+        "last_*",
+        # TSOpt
+        "rsirfo*",
+        # IRC files
+        "irc_*",
+        "finished_*",
+        # IRC/Endopt files
+        "backward_*",
+        "forward_*",
+        # Misc
+        "*.log",
+        "*imaginary_mode_*.trj",
+        "cart_hei_tangent",
+        "ts_calculated_init_cart_hessian",
+        "calculated_final_cart_hessian",
+        "*final_geometry.xyz",
+        "*final_geometries.trj",
+        "*current_geometries.trj",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -1185,10 +1189,9 @@ def do_clean(force=False):
         for p in to_rm_paths:
             try:
                 os.remove(p)
-            except OSError:
-                # os.rmdir(p)
-                shutil.rmtree(p)
-            print(f"Deleted {p}")
+                print(f"Deleted {p}")
+            except FileNotFoundError:
+                pass
     if force:
         delete()
         return
