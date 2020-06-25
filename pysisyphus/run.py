@@ -591,7 +591,8 @@ def run_opt(geom, calc_getter, opt_key, opt_kwargs,
 
     if do_hess and (not opt.stopped):
         print()
-        do_final_hessian(geom, write_imag_modes=True)
+        prefix = opt_kwargs.get("prefix", "")
+        do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
     print()
 
     return opt.geometry, opt
@@ -649,7 +650,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             # Disable higher fragment counts. I'm looking forward to the day
             # this ever occurs and someone complains :)
             assert len(fragments) < 10, "Something probably went wrong"
-            fragment_names = [f"{base_name}_fragment_{i:03d}"
+            fragment_names = [f"{base_name}_frag{i:03d}"
                               for i, _ in enumerate(fragments)]
             print(f"Found {len(fragments)} fragment(s) at {base_name}")
             for frag_name, frag in zip(fragment_names, fragments):
@@ -679,8 +680,9 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
         opt_kwargs = endopt_kwargs.copy()
         opt_kwargs.update({
-            "prefix": f"{name}_",
+            "prefix": name,
             "h5_group_name": name,
+            "dump": True,
         })
         _, opt = run_opt(geom, wrapped_calc_getter, endopt_key, opt_kwargs,
                          title=f"{name} Optimization")
@@ -762,7 +764,7 @@ def get_defaults(conf_dict):
         }
         dd["opt"] = cos_opt_defaults.copy()
     # Use a different, more powerful, optimizer when we are not dealing
-    # with a COS-optmiization.
+    # with a COS-optimization.
     elif "opt" in conf_dict:
         dd["opt"] = mol_opt_defaults.copy()
     # elif "overlaps" in conf_dict:
