@@ -39,7 +39,7 @@ class XTB(Calculator):
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out:xtb.out", "grad", "xtbopt.xyz", "g98.out",
+        self.to_keep = ("out:xtb.out", "gradient", "xtbopt.xyz", "g98.out",
                         "xtb.trj",
         )
 
