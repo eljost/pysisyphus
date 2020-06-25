@@ -983,7 +983,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         act_calc_getter = lambda index: get_calc(index, "image",
                                                  act_calc_key, act_calc_kwargs)
 
-    if run_dict["preopt"]:
+    if (not dryrun) and run_dict["preopt"]:
         preopt_xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
         # Update xyz list with optimized endpoint filenames
         xyz = preopt_xyz
