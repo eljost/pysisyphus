@@ -1000,67 +1000,113 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         calc = calc_getter(0)
         dry_run(calc, geoms[0])
         return
-    # elif run_dict["overlaps"]:
-        # geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
-                                 # calc_kwargs, scheduler, assert_track=True)
-        # overlaps(run_dict, geoms)
-    elif run_dict["cos"]:
-        cos_cls = COS_DICT[cos_key]
-        if (issubclass(cos_cls, GrowingChainOfStates)
-            or isinstance(cos_cls, type(FreezingString))):
-            cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
-        cos = COS_DICT[cos_key](geoms, **cos_kwargs)
-        cos, cos_opt = run_opt(cos, calc_getter, opt_key, opt_kwargs)
-        if run_dict["tsopt"]:
-            ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-            ts_geom, ts_opt = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, ts_calc_getter)
-            if run_dict["irc"]:
-                irc = run_irc(ts_geom, irc_key, irc_kwargs, calc_getter)
-                if run_dict["endopt"]:
-                    end_geoms = run_endopt(ts_geom, irc, endopt_key, endopt_kwargs,
-                                           calc_getter)
-    elif run_dict["opt"]:
-        assert(len(geoms) == 1)
-        geom = geoms[0]
-        if run_dict["shake"]:
-            shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
-            geom.coords = shaked_coords
-        opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
-        # Allow IRC runs after a dimer optimization
-        if run_dict["irc"] and isinstance(opt_geom.calculator, Dimer):
-            dimer_calc = opt_geom.calculator
-            # Drop the dimer calculator. A new calculator will be set
-            # from by calling 'act_calc_getter'.
-            opt_geom.set_calculator(None)
-            irc = run_irc(opt_geom, irc_key, irc_kwargs, act_calc_getter)
-            if run_dict["endopt"]:
-                end_geoms = run_endopt(ts_geom, irc, endopt_key, endopt_kwargs,
-                                       act_calc_getter)
-    elif run_dict["stocastic"]:
+
+    if run_dict["stocastic"]:
         assert len(geoms) == 1
         geom = geoms[0]
         stoc_kwargs["calc_kwargs"] = calc_kwargs
         stocastic = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
         stocastic = run_stocastic(stocastic)
-    elif run_dict["irc"]:
-        assert len(geoms) == 1
-        geom = geoms[0]
-        irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
-        if run_dict["endopt"]:
-            end_geoms = run_endopt(geom, irc, endopt_key, endopt_kwargs,
-                                   calc_getter)
-    elif run_dict["tsopt"]:
-        assert len(geoms) == 1
-        geom = geoms[0]
-        geom.set_calculator(calc_getter(0))
-        ts_geom, ts_opt = run_opt(geom, calc_getter, tsopt_key, tsopt_kwargs,
-                                  title="TS-Optimization", copy_final_geom="ts_opt.xyz")
+    # elif run_dict["overlaps"]:
+        # geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
+                                 # calc_kwargs, scheduler, assert_track=True)
+        # overlaps(run_dict, geoms)
+    """
+    This case will handle most pysisyphus runs. A full run would encompass
+    the following steps:
+
+        (0. Preoptimization, handled outside)
+         1. (COS)-Optimization
+         2. TS-Optimization by TSHessianOptimizer or Dimer method
+         3. IRC integration
+         4. Optimization of IRC endpoints
+
+    Everything can be chained. All functions operate on the 'geom' object,
+    which is propagated along through all functions calls.
+
+    """
+    elif set(("cos", "opt", "tsopt", "irc", "endopt")) & set(run_dict.keys()):
+
+        #######
+        # COS #
+        #######
+
+        if run_dict["cos"]:
+            cos_cls = COS_DICT[cos_key]
+            if (issubclass(cos_cls, GrowingChainOfStates)
+                or isinstance(cos_cls, type(FreezingString))):
+                cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
+            geom = COS_DICT[cos_key](geoms, **cos_kwargs)
+
+        #######
+        # OPT #
+        #######
+
+        if run_dict["opt"]:
+            # if run_dict["shake"]:
+                # shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
+                # geom.coords = shaked_coords
+            opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
+            if isinstance(opt_geom, ChainOfStates.ChainOfStates):
+                # Set some variables so they can later on be collected for the
+                # RunResult.
+                cos = opt_geom
+                cos_opt = opt
+                # copy() is not present for ChainOfState objects, so we just keep
+                # using the COS object with a different name.
+                geom = opt_geom
+            else:
+                geom = opt_geom.copy()
+
+        #########
+        # TSOPT #
+        #########
+
+        if run_dict["tsopt"]:
+            # Use a separate implementation for TS-Optimizations started from
+            # COS-optimizations.
+            if isinstance(geom, ChainOfStates.ChainOfStates):
+                ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
+                ts_geom, ts_opt = run_tsopt_from_cos(geom, tsopt_key, tsopt_kwargs,
+                                                     ts_calc_getter
+                )
+            else:
+                ts_geom, ts_opt = run_opt(geom, calc_getter, tsopt_key, tsopt_kwargs,
+                                          title="TS-Optimization",
+                                          copy_final_geom="ts_opt.xyz"
+                )
+            geom = ts_geom.copy()
+
+        #######
+        # IRC #
+        #######
+
+        ran_irc = False
+        if run_dict["irc"]:
+            # For an IRC after a Dimer run we have to use the actual calculator
+            # and not the Dimer calculator.
+            try:
+                if isinstance(geom.calculator, Dimer):
+                    calc_getter = act_calc_getter
+            except AttributeError:
+                pass
+            irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
+            ran_irc = True
+
+        ##########
+        # ENDOPT #
+        ##########
+
+        # Only run 'endopt' when a previous IRC calculation was done
+        if ran_irc and run_dict["endopt"]:
+            end_geoms = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+    # Fallback when no specific job type was specified
     else:
         calced_geoms = run_calculations(geoms, calc_getter, yaml_dir,
                                         calc_key, calc_kwargs, scheduler)
 
-    # We can't use locals() in the dict comprehension, as this will be
-    # in a different scope.
+    # We can't use locals() in the dict comprehension, as it runs in its own
+    # local scope.
     locals_ = locals()
     results = {key: locals_.get(key, None) for key in RunResult._fields}
     run_result = RunResult(**results)
