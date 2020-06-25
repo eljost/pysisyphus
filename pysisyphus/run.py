@@ -1020,7 +1020,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     #
     # Everything can be chained. All functions operate on the 'geom' object,
     # which is propagated along through all functions calls.
-    elif set(("opt", "tsopt", "irc", "endopt")) & set(run_dict.keys()):
+    elif (set(("opt", "tsopt", "irc", "endopt")) & set(run_dict.keys())):
 
         #######
         # OPT #
@@ -1067,13 +1067,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
 
         ran_irc = False
         if run_dict["irc"]:
-            # For an IRC after a Dimer run we have to use the actual calculator
+            # After a Dimer run we continue with the actual calculator
             # and not the Dimer calculator.
-            try:
-                if isinstance(geom.calculator, Dimer):
-                    calc_getter = act_calc_getter
-            except AttributeError:
-                pass
+            if calc_key == "dimer":
+                calc_getter = act_calc_getter
             irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
             ran_irc = True
 
