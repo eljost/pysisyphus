@@ -675,6 +675,7 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
 
     opt_kwargs = {
         "max_cycles": 150,
+        "thresh": "gau",
         "dump": True,
     }
     opt_geoms = list()

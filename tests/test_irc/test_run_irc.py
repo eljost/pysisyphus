@@ -29,7 +29,7 @@ def test_run_irc_opt_ends(opt_ends, opt_geom_num):
     irc_kwargs = {
         "type": "eulerpc",
         "opt_ends": opt_ends,
-        "max_cycles": 15,
+        "max_cycles": 25,
 
     }
     irc_key = irc_kwargs.pop("type")
