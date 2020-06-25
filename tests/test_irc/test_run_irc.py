@@ -24,7 +24,7 @@ def test_run_irc_opt_ends(fragments, opt_geom_num):
 
     irc_kwargs = {
         "type": "eulerpc",
-        "max_cycles": 25,
+        "max_cycles": 20,
 
     }
     irc_key = irc_kwargs.pop("type")
@@ -34,6 +34,7 @@ def test_run_irc_opt_ends(fragments, opt_geom_num):
     endopt_kwargs = {
         "thresh": "gau_tight",
         "fragments": fragments,
+        "do_hess": True,
     }
     opt_geoms = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
     assert len(opt_geoms) == opt_geom_num
