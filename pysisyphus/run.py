@@ -748,7 +748,7 @@ def get_defaults(conf_dict):
         "assert": None,
     }
 
-    mol_opt_default = {
+    mol_opt_defaults = {
         "type": "rfo",
         "dump": True,
         "overachieve_factor": 3,
@@ -788,24 +788,18 @@ def get_defaults(conf_dict):
         }
 
     if "tsopt" in conf_dict:
-        type_ = conf_dict["tsopt"]["type"]
-        tsopt_dicts = {
-            "dimer": {}
-        }
-        tsopt_default = {
+        dd["tsopt"] = {
             "type": "rsprfo",
             "dump": True,
             "overachieve_factor": 3,
             "h5_group_name": "tsopt",
         }
-        tsopt_dict = tsopt_dicts.get(type_, tsopt_default)
-        dd["tsopt"] = tsopt_dict
 
     if "preopt" in conf_dict:
         # We can't just copy dd["opt"] because there will probably be
         # some COS specific optimizer, but we just wan't to optimize the
         # (molecular) endpoints.
-        dd["preopt"] = mol_opt_default.copy()
+        dd["preopt"] = mol_opt_defaults.copy()
         dd["preopt"].update({
             # Optimization specific
             # We are a bit more cautious here
@@ -819,7 +813,7 @@ def get_defaults(conf_dict):
         })
 
     if "endopt" in conf_dict:
-        dd["endopt"] = mol_opt_default.copy()
+        dd["endopt"] = mol_opt_defaults.copy()
         dd["endopt"].update({
             "thresh": "gau",
             "fragments": False,
@@ -1001,51 +995,41 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         dry_run(calc, geoms[0])
         return
 
-    if run_dict["stocastic"]:
+    if run_dict["cos"]:
+        cos_cls = COS_DICT[cos_key]
+        if (issubclass(cos_cls, GrowingChainOfStates)
+            or isinstance(cos_cls, type(FreezingString))):
+            cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
+        geom = COS_DICT[cos_key](geoms, **cos_kwargs)
+    else:
         assert len(geoms) == 1
         geom = geoms[0]
+
+    if run_dict["stocastic"]:
         stoc_kwargs["calc_kwargs"] = calc_kwargs
         stocastic = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
         stocastic = run_stocastic(stocastic)
-    # elif run_dict["overlaps"]:
-        # geoms = run_calculations(geoms, calc_getter, yaml_dir, calc_key,
-                                 # calc_kwargs, scheduler, assert_track=True)
-        # overlaps(run_dict, geoms)
-    """
-    This case will handle most pysisyphus runs. A full run would encompass
-    the following steps:
-
-        (0. Preoptimization, handled outside)
-         1. (COS)-Optimization
-         2. TS-Optimization by TSHessianOptimizer or Dimer method
-         3. IRC integration
-         4. Optimization of IRC endpoints
-
-    Everything can be chained. All functions operate on the 'geom' object,
-    which is propagated along through all functions calls.
-
-    """
-    elif set(("cos", "opt", "tsopt", "irc", "endopt")) & set(run_dict.keys()):
-
-        #######
-        # COS #
-        #######
-
-        if run_dict["cos"]:
-            cos_cls = COS_DICT[cos_key]
-            if (issubclass(cos_cls, GrowingChainOfStates)
-                or isinstance(cos_cls, type(FreezingString))):
-                cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
-            geom = COS_DICT[cos_key](geoms, **cos_kwargs)
+    # This case will handle most pysisyphus runs. A full run encompasses
+    # the following steps:
+    #
+    #    (0. Preoptimization, already handled)
+    #     1. (COS)-Optimization
+    #     2. TS-Optimization by TSHessianOptimizer or Dimer method
+    #     3. IRC integration
+    #     4. Optimization of IRC endpoints
+    #
+    # Everything can be chained. All functions operate on the 'geom' object,
+    # which is propagated along through all functions calls.
+    elif set(("opt", "tsopt", "irc", "endopt")) & set(run_dict.keys()):
 
         #######
         # OPT #
         #######
 
         if run_dict["opt"]:
-            # if run_dict["shake"]:
-                # shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
-                # geom.coords = shaked_coords
+            if run_dict["shake"]:
+                shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
+                geom.coords = shaked_coords
             opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
             if isinstance(opt_geom, ChainOfStates.ChainOfStates):
                 # Set some variables so they can later on be collected for the
