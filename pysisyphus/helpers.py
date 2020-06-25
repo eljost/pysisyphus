@@ -540,8 +540,10 @@ FinalHessianResult = namedtuple("FinalHessianResult",
 )
 
 
-def do_final_hessian(geom, save_hessian=True, write_imag_modes=False):
-    print("Calculating hessian at final geometry.")
+def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
+                     prefix=""):
+    print(highlight_text("Hessian at final geometry", level=1))
+    print()
 
     # TODO: Add cartesian_hessian property to Geometry to avoid
     # accessing a "private" attribute.
@@ -565,8 +567,11 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False):
         wavenum_str = np.array2string(wavenumbers, precision=2)
         print("Imaginary frequencies:", wavenum_str, "cm⁻¹")
 
+    if prefix:
+        prefix = f"{prefix}_"
+
     if save_hessian:
-        final_hessian_fn = "calculated_final_cart_hessian"
+        final_hessian_fn = prefix + "calculated_final_cart_hessian"
         np.savetxt(final_hessian_fn, hessian)
         print()
         print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
@@ -574,7 +579,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False):
     if write_imag_modes:
         imag_modes = imag_modes_from_geom(geom)
         for i, imag_mode in enumerate(imag_modes):
-            trj_fn = f"imaginary_mode_{i:03d}.trj"
+            trj_fn = prefix + f"imaginary_mode_{i:03d}.trj"
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
