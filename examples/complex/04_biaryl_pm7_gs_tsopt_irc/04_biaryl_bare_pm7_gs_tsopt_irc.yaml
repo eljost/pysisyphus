@@ -18,8 +18,9 @@ irc:
  type: eulerpc
  step_length: 0.2
  hessian_recalc: 10
- rms_grad_thresh: 0.001
- opt_ends: fragments
+ rms_grad_thresh: 0.002
+endopt:
+ fragments: True
 calc:
  type: g16
  route: pm7
@@ -28,3 +29,9 @@ calc:
  pal: 4
 xyz: [split.image_000.xyz, split.image_056.xyz]
 coord_type: dlc
+assert:
+ opt.is_converged: True
+ opt.cur_cycle: 12
+ ts_opt.is_converged: True
+ ts_opt.cur_cycle: 9
+ ts_geom._energy: 0.08464462

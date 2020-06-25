@@ -13,6 +13,7 @@ calc:
  pal: 4
  mem: 2000
 xyz: cytosin.xyz
-coord_type: redund                              # Use redundant internal coordinates. Other options are
-                                                # 'cart' for cartesian coordinates and 'dlc' for delocalized
-                                                # internal coordinates.
+coord_type: redund                              # Redundant internal coordinates.
+assert:
+ opt_geom.energy: -394.06081704
+ opt.cur_cycle: 6

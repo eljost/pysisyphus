@@ -1,6 +1,7 @@
 opt:
  type: plbfgs
  thresh: baker
+ do_hess: True
 calc:
  type: dimer
  calc:

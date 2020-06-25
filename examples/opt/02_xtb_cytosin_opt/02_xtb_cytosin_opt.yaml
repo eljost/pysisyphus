@@ -13,4 +13,5 @@ shake:
  seed: 25032018
 assert:
  opt.is_converged: True
+ opt.cur_cycle: 9
  opt_geom.energy: -23.9636197588

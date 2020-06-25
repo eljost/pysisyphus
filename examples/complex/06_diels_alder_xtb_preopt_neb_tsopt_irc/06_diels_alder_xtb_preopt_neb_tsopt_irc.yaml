@@ -27,4 +27,4 @@ xyz: diels_alder.trj
 coord_type: cart
 assert:
  ts_geom.energy: -17.81225938
- ts_opt.cur_cycle: 25
+ ts_opt.cur_cycle: 29
