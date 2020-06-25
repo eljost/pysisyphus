@@ -231,7 +231,7 @@ class IRC:
         return conv_fact
 
     def irc(self, direction):
-        self.log(highlight_text(f"IRC {direction}"))
+        self.log(highlight_text(f"IRC {direction}", level=1))
 
         self.cur_direction = direction
         self.prepare(direction)
