@@ -1,7 +1,9 @@
 irc:
  type: eulerpc              # Similar to EulerPC from Gaussian
- opt_ends: fragments        # Detect fragments at the end of the IRC
-                            # and optimize them separately.
+endopt:
+ fragments: True            # Detect fragments at the end of the IRC and optimize them separately.
+ do_hess: True
+ thresh: gau_tight
 calc:
  type: xtb
  pal: 4
