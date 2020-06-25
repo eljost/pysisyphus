@@ -594,7 +594,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
 
 def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
     barrier = (ref_energy - comp_energy) * AU2KJPERMOL
-    print(f"\tBarrier between {ref_str} and {comp_str} and : {barrier:.1f} kJ mol⁻¹")
+    print(f"Barrier between {ref_str} and {comp_str}: {barrier:.1f} kJ mol⁻¹")
     return barrier
 
 
