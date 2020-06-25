@@ -1,6 +1,7 @@
 opt:
  type: rfo
  thresh: gau
+ do_hess: True
 calc:
  type: xtb
  charge: 0

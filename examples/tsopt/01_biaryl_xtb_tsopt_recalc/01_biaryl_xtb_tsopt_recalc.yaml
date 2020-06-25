@@ -13,4 +13,4 @@ add_prims: [[24, 20], ]
 coord_type: redund
 assert:
  ts_geom.energy: -65.29143582
- ts_opt.cur_cycle: 17
+ ts_opt.cur_cycle: 22
