@@ -140,6 +140,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         self.restarted = False
         self.last_cycle = 0
+        self.cur_cycle = 0
         if restart_info is not None:
             if isinstance(restart_info, str):
                 restart_info = yaml.load(restart_info, Loader=yaml.SafeLoader)
