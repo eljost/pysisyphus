@@ -16,6 +16,7 @@ from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii, get_bond_mat
+from pysisyphus.io.hessian import save_hessian
 
 
 def fischer_guess(geom):
@@ -165,8 +166,8 @@ def xtb_hessian(geom, gfn=None):
 
 
 def get_guess_hessian(geometry, hessian_init, int_gradient=None,
-                      cart_gradient=None):
-    model_hessian = hessian_init not in ("calc", "unit", "xtb", "xtb1")
+                      cart_gradient=None, h5_fn=None):
+    model_hessian = hessian_init in ("fischer", "lindh", "simple", "swart")
     target_coord_type = geometry.coord_type
 
     # Recreate geometry with internal coordinates if needed
@@ -207,6 +208,9 @@ def get_guess_hessian(geometry, hessian_init, int_gradient=None,
         # actually employ.
         H = geometry.hessian
         hess_str = "saved"
+
+    if (h5_fn is not None) and (hessian_init == "calc"):
+        save_hessian(h5_fn, geometry)
 
     if model_hessian and target_coord_type == "cart":
         if cart_gradient is not None:

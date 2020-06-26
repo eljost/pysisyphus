@@ -23,6 +23,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 from pysisyphus.helpers import rms
+from pysisyphus.io.hessian import save_hessian
 from pysisyphus.irc.DWI import DWI
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.optimizers.hessian_updates import bfgs_update, bofill_update
@@ -98,6 +99,8 @@ class EulerPC(IRC):
         if self.cur_cycle > 0:
             if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc == 0):
                 self.mw_hessian = self.geometry.mw_hessian
+                h5_fn = f"hess_calc_irc_{self.direction}_cyc{self.cur_cycle}.h5"
+                save_hessian(h5_fn, self.geometry)
                 self.log("Calculated excact hessian")
             else:
                 dx = self.mw_coords - self.irc_mw_coords[-2]
