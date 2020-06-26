@@ -10,6 +10,7 @@
 from math import exp
 import itertools as it
 
+import h5py
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
@@ -196,7 +197,12 @@ def get_guess_hessian(geometry, hessian_init, int_gradient=None,
     except KeyError:
         # Only cartesian hessians can be loaded
         # self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
-        geometry.cart_hessian = np.loadtxt(hessian_init)
+        if hessian_init.endswith(".h5"):
+            with h5py.File(hessian_init, "r") as handle:
+                cart_hessian = handle["hessian"][:]
+        else:
+            cart_hessian = np.loadtxt(hessian_init)
+        geometry.cart_hessian = cart_hessian
         # Use the previously set hessian in whatever coordinate system we
         # actually employ.
         H = geometry.hessian
