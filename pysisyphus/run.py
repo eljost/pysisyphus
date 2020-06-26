@@ -1020,7 +1020,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     #
     # Everything can be chained. All functions operate on the 'geom' object,
     # which is propagated along through all functions calls.
-    # elif (set(("opt", "tsopt", "irc", "endopt")) & set(run_dict.keys())):
+    #
+    # All keys are present in 'run_dict', but most of the corresponding values will
+    # be set to zero.
     elif any([run_dict[key] is not None for key in ("opt", "tsopt", "irc", "endopt")]):
 
         #######
