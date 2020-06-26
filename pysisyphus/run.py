@@ -1147,13 +1147,15 @@ def do_clean(force=False):
         "*rasscf.molden",
         # Turbomole specific
         "calculator_*.control",
-        "calculator_*.coord"
+        "calculator_*.coord",
         "calculator_*.mos",
         "calculator_*.ciss_a",
         "calculator*.sing_a",
         "*wavefunction.molden",
         "*input.xyz",
-        "*.coord"
+        "*.coord",
+        # PySCF specific
+        "calculator*.chkfile",
         # WFOverlap specific
         "wfo_*.*.out",
         # XTB specific
@@ -1204,6 +1206,7 @@ def do_clean(force=False):
         "*final_geometry.xyz",
         "*final_geometries.trj",
         "*current_geometries.trj",
+        "hess_calc_cyc*.h5",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -1223,10 +1226,10 @@ def do_clean(force=False):
         delete()
         return
     # If we dont force the cleaning ask for confirmation first
-    if confirm_input("Delete these files?"):
+    elif to_rm_paths and confirm_input("Delete these files?"):
         delete()
     else:
-        print("Aborting")
+        print("No files found for removal.")
 
 
 def print_header():
