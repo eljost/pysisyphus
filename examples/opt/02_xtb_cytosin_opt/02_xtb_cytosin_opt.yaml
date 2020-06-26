@@ -1,0 +1,17 @@
+opt:
+ type: rfo
+ thresh: gau
+ do_hess: True
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+ pal: 2
+xyz: cytosin.xyz
+coord_type: redund
+shake:
+ seed: 25032018
+assert:
+ opt.is_converged: True
+ opt.cur_cycle: 9
+ opt_geom.energy: -23.9636197588

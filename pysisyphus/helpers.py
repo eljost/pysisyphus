@@ -3,6 +3,7 @@
 from collections import namedtuple
 import itertools as it
 import logging
+from math import log
 import os
 from pathlib import Path
 import re
@@ -14,6 +15,7 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
+from pysisyphus.io import geom_from_pdb
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -59,6 +61,10 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
 
 def geom_loader(fn, coord_type="cart", **coord_kwargs):
     fn = str(fn)
+
+    if fn.startswith("lib:"):
+        fn = str(THIS_DIR / "../xyz_files/" / fn[4:])
+
     kwargs = {
         "coord_type": coord_type,
     }
@@ -67,6 +73,8 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
         return geom_from_xyz_file(fn, **kwargs)
     elif fn.endswith(".trj"):
         return geoms_from_trj(fn, **kwargs)
+    elif fn.endswith(".pdb"):
+        return geom_from_pdb(fn, **kwargs)
     else:
         raise Exception("Unknown filetype!")
 
@@ -120,11 +128,13 @@ def get_baker_geoms(**kwargs):
         "caffeine.xyz": -667.73565,
         "menthone.xyz": -458.44639,
     }
-    # return geoms, sto3g_energies
     # Join both dicts
-    baker_dict = {
-        name: (geom, sto3g_energies[name]) for name, geom in geoms.items()
-    }
+    baker_dict = {}
+    for name, geom in geoms.items():
+        try:
+            baker_dict[name] = (geom, sto3g_energies[name])
+        except KeyError:
+            pass
     return baker_dict
 
 
@@ -314,6 +324,12 @@ def align_coords(coords_list):
     return aligned_coords
 
 
+# def rmsd(coord_1, coord_2):
+    # aligned_1, aligned_2 = align_coords((coord_1, coord_2))
+    # result = np.sqrt(np.mean(aligned_1 - aligned_2)**2)
+    # return result
+
+
 def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
     rotated_vector_lists = list()
     rotated_hessian = None
@@ -473,13 +489,20 @@ def shake_coords(coords, scale=0.1, seed=None):
     return coords + offset
 
 
-def highlight_text(text, width=80):
+def highlight_text(text, width=80, level=0):
+    levels = {
+        #  horizontal    
+        #        vertical
+        0: ("#", "#"),
+        1: ("-", "|"),
+        } 
     full_length = len(text) + 4
     pad_len = width - full_length
     pad_len = (pad_len - (pad_len % 2)) // 2
     pad = " " * pad_len
-    full_row = "#" * full_length
-    highlight = f"""{pad}{full_row}\n{pad}# {text.upper()} #\n{pad}{full_row}"""
+    hchar, vchar = levels[level]
+    full_row = hchar * full_length
+    highlight = f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
     return highlight
 
 
@@ -513,19 +536,21 @@ def eigval_to_wavenumber(ev):
 
 
 FinalHessianResult = namedtuple("FinalHessianResult",
-                                "neg_eigvals"
+                                "neg_eigvals eigvals nus",
 )
 
 
-def do_final_hessian(geom, save_hessian=True):
-    print("Calculating hessian at final geometry.")
+def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
+                     prefix=""):
+    print(highlight_text("Hessian at final geometry", level=1))
+    print()
 
     # TODO: Add cartesian_hessian property to Geometry to avoid
     # accessing a "private" attribute.
     hessian = geom.cart_hessian
     print("... mass-weighing cartesian hessian")
     mw_hessian = geom.mass_weigh_hessian(hessian)
-    print("... doing eckart-projection")
+    print("... doing Eckart-projection")
     proj_hessian = geom.eckart_projection(mw_hessian)
     eigvals, eigvecs = np.linalg.eigh(proj_hessian)
     ev_thresh = -1e-6
@@ -542,30 +567,84 @@ def do_final_hessian(geom, save_hessian=True):
         wavenum_str = np.array2string(wavenumbers, precision=2)
         print("Imaginary frequencies:", wavenum_str, "cm⁻¹")
 
+    if prefix:
+        prefix = f"{prefix}_"
+
     if save_hessian:
-        final_hessian_fn = "calculated_final_cart_hessian"
+        final_hessian_fn = prefix + "calculated_final_cart_hessian"
         np.savetxt(final_hessian_fn, hessian)
         print()
         print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
 
-    res = FinalHessianResult(neg_eigvals=neg_eigvals)
+    if write_imag_modes:
+        imag_modes = imag_modes_from_geom(geom)
+        for i, imag_mode in enumerate(imag_modes):
+            trj_fn = prefix + f"imaginary_mode_{i:03d}.trj"
+            with open(trj_fn, "w") as handle:
+                handle.write(imag_mode.trj_str)
+            print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
+
+    res = FinalHessianResult(
+            neg_eigvals=neg_eigvals,
+            eigvals=eigvals,
+            nus=eigval_to_wavenumber(eigvals),
+    )
     return res
 
 
 def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
     barrier = (ref_energy - comp_energy) * AU2KJPERMOL
-    print(f"\tBarrier between {ref_str} and {comp_str} and : {barrier:.1f} kJ mol⁻¹")
+    print(f"Barrier between {ref_str} and {comp_str}: {barrier:.1f} kJ mol⁻¹")
     return barrier
 
 
-def get_tangent_trj_str(atoms, coords, tangent, points=10, displ=None):
+def get_tangent_trj_str(atoms, coords, tangent, comment=None,
+                        points=10, displ=None):
     if displ is None:
         # Linear equation. Will give displ~3 for 30 atoms and
         # displ ~ 1 for 3 atoms.
-        displ = 2/27 * len(atoms) + 0.78
+        # displ = 2/27 * len(atoms) + 0.78
+
+        # Logarithmic function f(x) = a*log(x) + b
+        # f(3) = ~1 and (f30) = ~2 with a = 0.43429 and b = 0.52288
+        # I guess this works better, because only some atoms move, even in bigger
+        # systems and the log function converges against a certain value, whereas
+        # the linear function just keeps growing.
+        displ = 0.43429 * log(len(atoms)) + 0.52288
     step_sizes = np.linspace(-displ, displ, 2*points + 1)
     steps = step_sizes[:,None] * tangent
     trj_coords = coords[None,:] + steps
     trj_coords = trj_coords.reshape(step_sizes.size, -1, 3) / ANG2BOHR
-    trj_str = make_trj_str(atoms, trj_coords)
+
+    comments = None
+    if comment:
+        comments = [comment] * step_sizes.size
+    trj_str = make_trj_str(atoms, trj_coords, comments=comments)
+
     return trj_str
+
+
+def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
+    NormalMode = namedtuple("NormalMode",
+                            "nu mode trj_str"
+    )
+    # We don't want to do start any calculation here, so we directly access
+    # the attribute underlying the geom.hessian property.
+    mw_H = geom.eckart_projection(geom.mass_weigh_hessian(geom._hessian))
+    eigvals, eigvecs = np.linalg.eigh(mw_H)
+    nus = eigval_to_wavenumber(eigvals)
+    below_thresh = nus < freq_thresh
+
+    imag_modes = list()
+    for nu, eigvec in zip(nus[below_thresh], eigvecs[:, below_thresh].T):
+        comment = f"{nu:.2f} cm⁻¹"
+        trj_str = get_tangent_trj_str(geom.atoms, geom.cart_coords, eigvec,
+                                      comment=comment, points=points, displ=displ)
+        imag_modes.append(
+            NormalMode(nu=nu,
+                       mode=eigvec,
+                       trj_str=trj_str,
+            )
+        )
+
+    return imag_modes

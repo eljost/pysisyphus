@@ -1,0 +1,30 @@
+preopt:
+ max_cycles: 3
+cos:
+ type: gs
+ max_nodes: 10
+opt:
+ type: string
+ gamma: 1.0
+ align: False
+ stop_in_when_full: 0
+tsopt:
+ type: rsirfo
+ max_cycles: 75
+ thresh: gau_tight
+ do_hess: True
+calc:
+ type: orca
+ keywords: bp86 def2-sv(p) grid4 finalgrid5
+ charge: 0
+ mult: 1
+ pal: 4
+ mem: 1000
+xyz: diels_alder.trj
+coord_type: dlc
+assert:
+ opt.is_converged: True
+ opt.cur_cycle: 10
+ ts_opt.is_converged: True
+ ts_opt.cur_cycle: 27
+ ts_geom._energy: -234.34959665

@@ -17,8 +17,8 @@ import yaml
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import (geom_from_xyz_file, geoms_from_trj, procrustes,
-                                get_coords_diffs, shake_coords)
+from pysisyphus.intcoords.fragments import get_fragments
+from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
@@ -37,69 +37,72 @@ def parse_args(args):
     parser = argparse.ArgumentParser("Utility to transform .xyz and .trj files.")
 
     parser.add_argument("fns", nargs="+",
-            help="Filenames of .xyz and/or .trj files (xyz and trj can be mixed)."
+        help="Filenames of .xyz and/or .trj files (xyz and trj can be mixed)."
     )
 
     action_group = parser.add_mutually_exclusive_group(required=True)
     action_group.add_argument("--between", type=int, default=0,
-                    help="Interpolate additional images."
+        help="Interpolate additional images."
     )
     action_group.add_argument("--align", action="store_true",
-                    help="Align geometries onto the first geometry."
+        help="Align geometries onto the first geometry."
     )
     action_group.add_argument("--split", action="store_true",
-                    help="Split a supplied geometries in multiple .xyz files."
+        help="Split a supplied geometries in multiple .xyz files."
     )
     action_group.add_argument("--reverse", action="store_true",
-                    help="Reverse a .trj file."
+        help="Reverse a .trj file."
     )
     action_group.add_argument("--cleantrj", action="store_true",
-                    help="Keep only the first four columns of xyz/trj files."
+        help="Keep only the first four columns of xyz/trj files."
     )
     action_group.add_argument("--spline", action="store_true",
-                    help="Evenly redistribute geometries along a splined path."
+        help="Evenly redistribute geometries along a splined path."
     )
     action_group.add_argument("--first", type=int,
-                    help="Copy the first N geometries to a new .trj file."
+        help="Copy the first N geometries to a new .trj file."
     )
     action_group.add_argument("--every", type=int,
-                    help="Create new .trj with every N-th geometry. "
-                         "Always includes the first and last point."
+        help="Create new .trj with every N-th geometry. "
+             "Always includes the first and last point."
     )
     action_group.add_argument("--center", action="store_true",
-                    help="Move the molecules centroid into the origin."
+        help="Move the molecules centroid into the origin."
     )
     action_group.add_argument("--centerm", action="store_true",
-                    help="Move the molecules center of mass into the origin."
+        help="Move the molecules center of mass into the origin."
     )
     action_group.add_argument("--translate", nargs=3, type=float,
-                    help="Translate the molecule by the given vector given " \
-                         "in Ångström."
+        help="Translate the molecule by the given vector given " \
+             "in Ångström."
     )
     action_group.add_argument("--append", action="store_true",
-                    help="Combine the given .xyz files into one .xyz file."
+        help="Combine the given .xyz files into one .xyz file."
     )
     action_group.add_argument("--join", action="store_true",
-                    help="Combine the given .xyz/.trj files into one .trj file."
+        help="Combine the given .xyz/.trj files into one .trj file."
     )
     action_group.add_argument("--match", action="store_true",
-            help="Resort the second .xyz file so the atom order matches the "
-                 "first .xyz file. Uses the hungarian method."
+        help="Resort the second .xyz file so the atom order matches the "
+             "first .xyz file. Uses the hungarian method."
     )
     action_group.add_argument("--std", action="store_true",
-                    help="Move supplied geometry to its standard orientation."
+        help="Move supplied geometry to its standard orientation."
     )
     action_group.add_argument("--shake", action="store_true",
-                    help="Shake (randomly displace) coordiantes."
+        help="Shake (randomly displace) coordiantes."
     )
     action_group.add_argument("--internals", action="store_true",
-                    help="Print automatically generated internals."
+        help="Print automatically generated internals."
     )
     action_group.add_argument("--get", type=int,
-                    help="Get n-th geometry. Expects 0-based index input."
+        help="Get n-th geometry. Expects 0-based index input."
     )
     action_group.add_argument("--origin", action="store_true",
-                    help="Translate geometry, so that min(X/Y/Z) == 0."
+        help="Translate geometry, so that min(X/Y/Z) == 0."
+    )
+    action_group.add_argument("--fragsort", action="store_true",
+        help="Resort atoms by fragments."
     )
 
     shake_group = parser.add_argument_group()
@@ -160,12 +163,14 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     for fn in xyz_fns:
         if "*" in fn:
             cwd = Path(".")
-            geom = [geom_from_xyz_file(xyz_fn, **geom_kwargs)
+            geom = [geom_loader(xyz_fn, **geom_kwargs)
                     for xyz_fn in natsorted(cwd.glob(fn))]
         elif fn.endswith(".xyz"):
-            geom = [geom_from_xyz_file(fn, **geom_kwargs), ]
+            geom = [geom_loader(fn, **geom_kwargs), ]
         elif fn.endswith(".trj"):
-            geom = geoms_from_trj(fn, **geom_kwargs)
+            geom = geom_loader(fn, **geom_kwargs)
+        elif fn.endswith(".pdb"):
+            geom = [geom_loader(fn, **geom_kwargs), ]
         else:
             continue
         geoms.extend(geom)
@@ -174,7 +179,8 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     if len(geoms) == 0:
         try:
             atoms_coords = split_xyz_str(fn)
-            geoms = [Geometry(atoms, coords, **geom_kwargs)
+            # We excpect the coordinates to be given in Angstrom
+            geoms = [Geometry(atoms, coords/BOHR2ANG, **geom_kwargs)
                      for atoms, coords in atoms_coords]
         except AssertionError:
             raise Exception("Could not parse supplied 'xyz' values as either "
@@ -192,7 +198,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
 
 def get_geoms(xyz_fns, interpolate=None, between=0,
               coord_type="cart", comments=False, in_bohr=False,
-              define_prims=None, interpolate_align=True):
+              define_prims=None, interpolate_align=True, quiet=False):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
@@ -202,13 +208,17 @@ def get_geoms(xyz_fns, interpolate=None, between=0,
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
                        define_prims=define_prims)
-    print(f"Read {len(geoms)} geometries.")
+    if not quiet:
+        print(f"Read {len(geoms)} geometries.")
 
     atoms_0 = geoms[0].atoms
     atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
     atoms_0_str = atoms_strs[0]
     assert all([atoms_str == atoms_0_str for atoms_str in atoms_strs]), \
         "Atom ordering/numbering in the geometries is inconsistent!"
+
+    # Dont try to align 1-atom species
+    interpolate_align = interpolate_align and len(geoms[0].atoms) > 1
 
     # TODO:
     # Multistep interpolation (when more than two geometries are specified)
@@ -386,6 +396,7 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
     add_prims = yaml.safe_load(add_prims)
 
     for i, geom in enumerate(geoms):
+        print(geom)
         atom_num = len(geom.atoms)
         atom_inds = set(range(atom_num))
         # Atom indices must superset of filter_atoms
@@ -398,21 +409,35 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
         int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
                             coord_kwargs={"define_prims": add_prims,},
         )
+
         prim_counter = 0
+        prev_len = 2
         for j, pi in enumerate(int_geom.internal._prim_internals):
             pi_type = pi_types[len(pi.inds)]
             val = pi.val
-            if len(pi.inds) > 2:
+            len_ = len(pi.inds)
+            if len_ > 2:
+                unit = "°"
                 val = np.rad2deg(val)
+            else:
+                val *= BOHR2ANG
+                unit = " Å"
+
+            if len_ > prev_len:
+                prim_counter = 0
+                print()
 
             # Continue if we want to filter and there is no intersection
             # between the atoms of the current primitive and the atoms we
             # want to filter for.
             if filter_set and not (set(pi.inds) & filter_set):
                 continue
-            print(f"{j:04d}: {pi_type}{str(pi.inds): >20} {val: >10.4f}")
+            print(f"{j:04d}: {pi_type}{prim_counter:03d}{str(pi.inds): >20} {val: >10.4f}"
+                  f"{unit}")
             prim_counter += 1
-        print(f"Printed {prim_counter} primitive internals.")
+            prev_len = len_
+
+        print(f"Printed {j+1} primitive internals.")
 
 
 def get(geoms, index):
@@ -430,6 +455,22 @@ def origin(geoms):
         geom.coords3d -= geom.coords3d.min(axis=0)
         print(f"\tmax(coords3d): {geom.coords3d.max(axis=0)}")
     return geoms
+
+
+def frag_sort(geoms):
+    sorted_geoms = list()
+    for i, geom in enumerate(geoms):
+        print(f"{i:02d}: {geom}")
+        frags = get_fragments(geom.atoms, geom.coords)
+        print(f"\tFound {len(frags)} fragments.\n"
+               "\tResorting atoms and coordinates.")
+        new_indices = list(it.chain(*frags))
+        new_atoms = [geom.atoms[i] for i in new_indices]
+        new_coords = geom.coords3d[new_indices]
+        sorted_geoms.append(
+                Geometry(new_atoms, new_coords)
+        )
+    return sorted_geoms
 
 
 def run():
@@ -509,6 +550,9 @@ def run():
     elif args.internals:
         print_internals(geoms, args.atoms, args.add_prims)
         return
+    elif args.fragsort:
+        to_dump = frag_sort(geoms)
+        fn_base = "frag_sorted"
     elif args.origin:
         origin(geoms)
         fn_base = "origin"

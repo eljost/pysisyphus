@@ -1,19 +1,30 @@
-#!/usr/bin/env python3
-
 import configparser
-import pathlib
+import os
+from pathlib import Path
 import sys
+
 
 DEFAULTS = {
     "mwfn": "Multiwfn",
     "jmol": "jmol",
+    "packmol": "packmol",
 }
 
-home = pathlib.Path.home()
-Config = configparser.ConfigParser()
-config_fn = home / ".pysisyphusrc"
+
+# First try to read pysisyphusrc path an environment variable
+try:
+    pysisrc_env = os.getenv("PYSISRC", default=None)
+    config_fn = Path(pysisrc_env).resolve()
+    print(f"Read pysisyphus configuration from '{config_fn}'")
+# Fallback to $HOME/.pysisyphusrc
+except TypeError:
+    home = Path.home()
+    config_fn = Path.home() / ".pysisyphusrc"
+
 if not config_fn.is_file():
     print(f"Couldn't find configuration file. Expected it at '{config_fn}'.")
+
+Config = configparser.ConfigParser()
 read_fns = Config.read(config_fn)
 
 

@@ -10,7 +10,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import Gaussian16, Turbomole
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.irc import *
 from pysisyphus.testing import using
 
@@ -114,7 +114,7 @@ def test_imk(step_length):
     ]
 )
 def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
-    geom = geom_from_library("hfabstraction_hf321g_displ_forward.xyz")
+    geom = geom_loader("lib:hfabstraction_hf321g_displ_forward.xyz")
 
     calc_kwargs = {
         "pal": 2,
@@ -154,7 +154,7 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     ]
 )
 def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
-    geom = geom_from_library("hcn_iso_hf_sto3g_ts_opt.xyz")
+    geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
 
     calc = PySCF(
             basis="sto3g",
@@ -194,3 +194,33 @@ def test_eulerpc_scipy(scipy_method):
 
     # plot_irc(irc, irc.__class__.__name__)
     assert_anapot_irc(irc)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "hessian_init, ref_cycle", [
+        ("calc", 28),
+        pytest.param("fischer", 0, marks=pytest.mark.xfail),
+        pytest.param("unit", 0, marks=pytest.mark.xfail),
+        ("lindh", 28),
+        ("simple", 28),
+        ("swart", 28),
+    ]
+)
+def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
+    geom = geom_loader("lib:hcn_downhill_model_hessian.xyz")
+
+    calc = PySCF(basis="sto3g", pal=2)
+    geom.set_calculator(calc)
+
+    irc_kwargs = {
+        "hessian_init": hessian_init,
+        "rms_grad_thresh": 5e-3,
+        "downhill": True,
+    }
+
+    irc = EulerPC(geom, **irc_kwargs)
+    irc.run()
+
+    assert irc.downhill_energies[-1] == pytest.approx(-91.67517096968325)
+    assert irc.downhill_cycle == ref_cycle

@@ -11,44 +11,42 @@ from collections import namedtuple
 from functools import reduce
 import itertools as it
 import logging
-import typing
 
-import attr
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
+from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
-@attr.s(auto_attribs=True)
-class PrimitiveCoord:
-    inds : typing.List[int]
-    val : float
-    grad : np.ndarray
+PrimitiveCoord = namedtuple(
+                    "PrimitiveCoord",
+                    "inds val grad",
+)
 
 
 class RedundantCoords:
 
     RAD_175 = 3.05432619
-    # BEND_MIN_DEG = 45
-    # BEND_MAX_DEG = 170
     BEND_MIN_DEG = 15
-    BEND_MAX_DEG = 175
+    BEND_MAX_DEG = 180
 
     def __init__(self, atoms, cart_coords, bond_factor=1.3,
                  prim_indices=None, define_prims=None, bonds_only=False,
-                 check_bends=True):
+                 check_bends=True, check_dihedrals=False):
         self.atoms = atoms
-        self.cart_coords = cart_coords
+        self._cart_coords = cart_coords
         self.bond_factor = bond_factor
         self.define_prims = define_prims
         self.bonds_only = bonds_only
         self.check_bends = check_bends
+        self.check_dihedrals = check_dihedrals
 
+        self._B_prim = None
         self.bond_indices = list()
         self.bending_indices = list()
         self.dihedral_indices = list()
@@ -95,6 +93,15 @@ class RedundantCoords:
         return self._prim_coords
 
     @property
+    def cart_coords(self):
+        return self._cart_coords
+
+    @cart_coords.setter
+    def cart_coords(self, cart_coords):
+        self._cart_coords = cart_coords
+        self._B_prim = None
+
+    @property
     def coords(self):
         return self.prim_coords
 
@@ -130,7 +137,10 @@ class RedundantCoords:
     @property
     def B_prim(self):
         """Wilson B-Matrix"""
-        return np.array([c.grad for c in self.calculate(self.cart_coords)])
+        if self._B_prim is None:
+            self._B_prim = np.array([c.grad for c in self.calculate(self.cart_coords)])
+
+        return self._B_prim
 
     @property
     def B(self):
@@ -202,6 +212,7 @@ class RedundantCoords:
         return K
 
     def transform_hessian(self, cart_hessian, int_gradient=None):
+        """Transform Cartesian Hessian to internal coordinates."""
         if int_gradient is None:
             self.log("Supplied 'int_gradient' is None. K matrix will be zero, "
                      "so derivatives of the Wilson-B-matrix are neglected in "
@@ -209,6 +220,16 @@ class RedundantCoords:
             )
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
+
+    def backtransform_hessian(self, redund_hessian, int_gradient=None):
+        """Transform Hessian in internal coordinates to Cartesians."""
+        if int_gradient is None:
+            self.log("Supplied 'int_gradient' is None. K matrix will be zero, "
+                     "so derivatives of the Wilson-B-matrix are neglected in "
+                     "the hessian transformation."
+            )
+        K = self.get_K_matrix(int_gradient)
+        return self.B.T.dot(redund_hessian).dot(self.B) + K
 
     def project_hessian(self, H, shift=1000):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
@@ -373,21 +394,20 @@ class RedundantCoords:
         )
 
     def set_dihedral_indices(self, define_dihedrals=None):
-        dihedral_sets = list()
+        dihedrals = list()
         def set_dihedral_index(dihedral_ind):
-            dihedral_set = set(dihedral_ind)
+            dihed = tuple(dihedral_ind)
             # Check if this dihedral is already present
-            if dihedral_set in dihedral_sets:
+            if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
                 return
             # Assure that the angles are below 175° (3.054326 rad)
             if not self.is_valid_dihedral(dihedral_ind, thresh=0.0873):
-                self.log("Skipping generation of dihedral "
-                               f"{dihedral_ind} as some of the the atoms "
-                                "are linear."
+                self.log(f"Skipping generation of dihedral {dihedral_ind} "
+                          "as some of the the atoms are (nearly) linear."
                 )
                 return
             self.dihedral_indices.append(dihedral_ind)
-            dihedral_sets.append(dihedral_set)
+            dihedrals.append(dihed)
 
         improper_dihedrals = list()
         coords3d = self.cart_coords.reshape(-1, 3)
@@ -592,6 +612,32 @@ class RedundantCoords:
         new_internals[-len(dihedrals):] = new_dihedrals
         return new_internals
 
+    def dihedrals_are_valid(self, cart_coords):
+        _, _, dihedrals = self.prim_indices
+
+        def collinear(v1, v2, thresh=1e-4):
+            # ~4e-5 corresponds to 179.5°
+            return 1 - abs(v1.dot(v2)) <= thresh
+
+        coords3d = cart_coords.reshape(-1, 3)
+        def check(indices):
+            m, o, p, n = indices
+            u_dash = coords3d[m] - coords3d[o]
+            v_dash = coords3d[n] - coords3d[p]
+            w_dash = coords3d[p] - coords3d[o]
+            u_norm = np.linalg.norm(u_dash)
+            v_norm = np.linalg.norm(v_dash)
+            w_norm = np.linalg.norm(w_dash)
+            u = u_dash / u_norm
+            v = v_dash / v_norm
+            w = w_dash / w_norm
+
+            valid = not (collinear(u, w) or collinear(v, w))
+            return valid
+
+        all_valid = all([check(indices) for indices in dihedrals])
+        return all_valid
+
     def transform_int_step(self, step, cart_rms_thresh=1e-6):
         """This is always done in primitive internal coordinates so care
         has to be taken that the supplied step is given in primitive internal
@@ -603,18 +649,9 @@ class RedundantCoords:
         target_internals = cur_internals + step
         B_prim = self.B_prim
 
-        # u, s, vh = np.linalg.svd(B_prim, full_matrices=False)
-        # inds = s > 1e-8
-        # s_inv = 1 / s[inds]
-        # B_ = np.dot(u[:, inds] * s[inds], vh[inds])
-        # B__ = np.dot(vh[inds].T * s_inv, u[:, inds].T)
-        # B___ = np.linalg.pinv(B_prim.T.dot(B_prim)).dot(B_prim.T)
-
         # Bt_inv may be overriden in other coordiante systems so we
         # calculate it 'manually' here.
         Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
-
-        # import pdb; pdb.set_trace()
 
         last_rms = 9999
         prev_internals = cur_internals
@@ -660,7 +697,13 @@ class RedundantCoords:
                 self.backtransform_failed = False
                 break
             self._prim_coords = np.array(new_internals)
+
+        if self.check_dihedrals and (not self.dihedrals_are_valid(cur_cart_coords)):
+            raise NeedNewInternalsException(cur_cart_coords)
+
         self.log("")
+        # Return the difference between the new cartesian coordinates that yield
+        # the desired internal coordinates and the old cartesian coordinates.
         return cur_cart_coords - self.cart_coords
 
     def __str__(self):

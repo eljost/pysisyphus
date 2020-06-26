@@ -5,6 +5,7 @@ __all__ = [
     "FIRE",
     "LBFGS",
     "NCOptimizer",
+    "ONIOMOpt",
     "PreconLBFGS",
     "PreconSteepestDescent",
     "QuickMin",
@@ -13,6 +14,8 @@ __all__ = [
     "StringOptimizer",
     "StabilizedQNMethod",
 ]
+
+from pysisyphus.optimizers.ONIOMOpt import ONIOMOpt
 
 logger = logging.getLogger("optimizer")
 logger.setLevel(logging.DEBUG)

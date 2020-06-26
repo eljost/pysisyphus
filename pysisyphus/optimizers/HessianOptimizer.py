@@ -1,13 +1,8 @@
-#!/usr/bin/env python3
-
 import numpy as np
 
 from pysisyphus.intcoords.helpers import get_step
-from pysisyphus.optimizers.guess_hessians import (fischer_guess,
-                                                  lindh_guess,
-                                                  simple_guess,
-                                                  swart_guess,
-                                                  xtb_hessian,)
+from pysisyphus.io.hessian import save_hessian
+from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
 from pysisyphus.optimizers.hessian_updates import (bfgs_update,
                                                    flowchart_update,
                                                    damped_bfgs_update,
@@ -76,40 +71,31 @@ class HessianOptimizer(Optimizer):
             if self.hessian_init != "calc":
                 self.hessian_init = "unit"
 
-    def prepare_opt(self):
-        # We use lambdas to avoid premature evaluation of the dict items.
-        hess_funcs = {
-            # Calculate true hessian
-            "calc": lambda: (self.geometry.hessian, "calculated exact"),
-            # Unit hessian
-            "unit": lambda: (np.eye(self.geometry.coords.size), "unit"),
-            # Fischer model hessian
-            "fischer": lambda: (fischer_guess(self.geometry), "Fischer"),
-            # Lindh model hessian
-            "lindh": lambda: (lindh_guess(self.geometry), "Lindh"),
-            # Simple (0.5, 0.2, 0.1) model hessian
-            "simple": lambda: (simple_guess(self.geometry), "simple"),
-            # Swart model hessian
-            "swart": lambda: (swart_guess(self.geometry), "Swart"),
-            # XTB hessian
-            "xtb": lambda: (xtb_hessian(self.geometry), "XTB"),
-        }
-        try:
-            self.H, hess_str = hess_funcs[self.hessian_init]()
-            self.log(f"Using {hess_str} hessian.")
-        except KeyError:
-            # We allow only loading of cartesian hessians
-            self.log(f"Trying to load saved hessian from '{self.hessian_init}'.")
-            self.geometry.cart_hessian = np.loadtxt(self.hessian_init)
-            # Use the previously set hessian in whatever coordinate system we
-            # actually employ.
-            self.H = self.geometry.hessian
+    def reset(self):
+        # Don't recalculate the hessian if we have to reset the optimizer
+        hessian_init = self.hessian_init
+        if hessian_init == "calc" and self.geometry.coord_type != "cart":
+            hessian_init = "fischer"
+        self.prepare_opt(hessian_init)
+
+    def save_hessian(self):
+        h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle}.h5")
+        # Save the cartesian hessian, as it is independent of the
+        # actual coordinate system that is used.
+        save_hessian(h5_fn, self.geometry, self.geometry.cart_hessian,
+                     self.geometry.energy, self.geometry.calculator.mult)
+        self.log(f"Wrote calculated cartesian Hessian to '{h5_fn}'")
+
+    def prepare_opt(self, hessian_init=None):
+        if hessian_init is None:
+            hessian_init = self.hessian_init
+
+        self.H, hess_str = get_guess_hessian(self.geometry, hessian_init)
+        self.log(f"Using {hess_str} Hessian.")
+
+        # Dump to disk if hessian was calculated
         if self.hessian_init == "calc":
-            hess_fn = self.get_path_for_fn("calculated_init_cart_hessian")
-            # Save the cartesian hessian, as it is independent of the
-            # actual coordinate system that is used.
-            np.savetxt(hess_fn, self.geometry._hessian)
-            self.log(f"Wrote calculated cartesian hessian to '{hess_fn}'")
+            self.save_hessian()
 
         if (hasattr(self.geometry, "coord_type")
             and self.geometry.coord_type == "dlc"):
@@ -197,7 +183,7 @@ class HessianOptimizer(Optimizer):
             cur_norm = np.linalg.norm(self.forces[-1])
             ref_norm = self.adapt_norm / self.hessian_recalc_adapt
             recalc_adapt = cur_norm <= ref_norm
-            self.log( "Check for adaptive hessian recalculation: "
+            self.log( "Check for adaptive Hessian recalculation: "
                      f"{cur_norm:.6f} <= {ref_norm:.6f}, {recalc_adapt}"
             )
         except TypeError:
@@ -205,7 +191,7 @@ class HessianOptimizer(Optimizer):
 
         try:
             self.hessian_recalc_in = max(self.hessian_recalc_in-1, 0)
-            self.log(f"Recalculation of hessian in {self.hessian_recalc_in} cycle(s).")
+            self.log(f"Recalculation of Hessian in {self.hessian_recalc_in} cycle(s).")
         except TypeError:
             self.hessian_recalc_in = None
 
@@ -219,7 +205,7 @@ class HessianOptimizer(Optimizer):
 
         if recalc or recalc_adapt:
             # Use xtb hessian
-            self.log("Requested hessian recalculation.")
+            self.log("Requested Hessian recalculation.")
             if self.hessian_xtb:
                 self.H = xtb_hessian(self.geometry)
                 key = "xtb"
@@ -227,13 +213,9 @@ class HessianOptimizer(Optimizer):
             else:
                 self.H = self.geometry.hessian
                 key = "exact"
-                hess_fn = self.get_path_for_fn(
-                            f"calculated_cart_hessian_cycle_{self.cur_cycle}"
-                )
-                np.savetxt(hess_fn, self.geometry._hessian)
-                self.log(f"Wrote calculated cartesian hessian to '{hess_fn}'")
+                self.save_hessian()
             if not (self.cur_cycle == 0):
-                self.log(f"Recalculated {key} hessian in cycle {self.cur_cycle}.")
+                self.log(f"Recalculated {key} Hessian in cycle {self.cur_cycle}.")
             # Reset counter. It is also reset when the recalculation was initiated
             # by the adaptive formulation.
             self.hessian_recalc_in = self.hessian_recalc
@@ -246,7 +228,7 @@ class HessianOptimizer(Optimizer):
             dg = -(self.forces[-1] - self.forces[-2])
             dH, key = self.hessian_update_func(self.H, dx, dg)
             self.H = self.H + dH
-            self.log(f"Did {key} hessian update.")
+            self.log(f"Did {key} Hessian update.")
 
     def poly_line_search(self):
         # Current energy & gradient are already appended.
@@ -384,8 +366,10 @@ class HessianOptimizer(Optimizer):
         return fit_energy, fit_grad, fit_coords, fit_step
 
     def solve_rfo(self, rfo_mat, kind="min"):
-        self.log("Diagonalizing augmented Hessian:")
+        # When using the restricted step variant of RFO the RFO matrix
+        # may not be symmetric. Thats why we can't use eigh here.
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
+        self.log("\tdiagonalized augmented Hessian")
         eigenvalues = eigenvalues.real
         eigenvectors = eigenvectors.real
         sorted_inds = np.argsort(eigenvalues)
@@ -400,12 +384,12 @@ class HessianOptimizer(Optimizer):
         step_nu = eigenvectors.T[ind]
         # TODO: Root following like in optking?!
         nu = step_nu[-1]
-        self.log(f"\tnu_{verbose}={nu:.4e}")
+        self.log(f"\tnu_{verbose}={nu:.8e}")
         # Scale eigenvector so that its last element equals 1. The
         # final is step is the scaled eigenvector without the last element.
         step = step_nu[:-1] / nu
         eigval = eigenvalues[ind]
-        self.log(f"\teigenvalue_{verbose}={eigval:.4e}")
+        self.log(f"\teigenvalue_{verbose}={eigval:.8e}")
         return step, eigval, nu
 
     def filter_small_eigvals(self, eigvals, eigvecs, mask=False):

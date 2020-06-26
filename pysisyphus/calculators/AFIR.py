@@ -15,6 +15,23 @@ from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.elem_data import COVALENT_RADII
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import complete_fragments
+from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
+
+
+def get_data_model(atoms, max_cycles):
+    coord_size = 3 * len(atoms)
+    _1d = (max_cycles, )
+    _2d = (max_cycles, coord_size)
+
+    data_model = {
+        "cart_coords": _2d,
+        "energy": _1d,
+        "forces": _2d,
+        "true_energy": _1d,
+        "true_forces": _2d,
+    }
+
+    return data_model
 
 
 def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6):
@@ -52,7 +69,7 @@ def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6):
 class AFIR(Calculator):
 
     def __init__(self, calculator, fragment_indices, gamma, rho=1, p=6,
-                 **kwargs):
+                 dump=True, h5_fn="afir.h5", h5_group_name="afir", **kwargs):
         super().__init__(**kwargs)
 
         self.calculator = calculator
@@ -64,6 +81,13 @@ class AFIR(Calculator):
         self.rho = int(rho)
         assert self.rho in (-1, 1)
         self.p = p
+        self.dump = dump
+        self.h5_fn = h5_fn
+        self.h5_group_name = h5_group_name
+        # We can initialize the HDF5 group as we don't know the shape of
+        # atoms/coords yet. So we wait until after the first calculation.
+        self.h5_group = None
+        self.h5_cycles = 50
 
         rho_verbose = { 1: ("pushing", "together"),
                        -1: ("pulling", "apart")
@@ -72,13 +96,39 @@ class AFIR(Calculator):
         self.log(f"rho={self.rho}, {w1} framgents {w2}")
 
         self.atoms = None
+        self.calc_counter = 0
+
+    def init_h5_group(self, atoms, max_cycles=None):
+        if max_cycles is None:
+            max_cycles = self.h5_cycles
+        self.data_model = get_data_model(atoms, max_cycles)
+        self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model,
+                                     reset=True)
+
+    def dump_h5(self, atoms, coords, results):
+        # Initialize if not done yet
+        if self.h5_group is None:
+            self.init_h5_group(atoms)
+            # Write atoms once
+            self.h5_group.attrs["atoms"] = atoms
+
+        # Check if HDF5 datasets have to be resized
+        cur_max_cycles = self.h5_group["cart_coords"].shape[0]
+        need_resize = self.calc_counter > cur_max_cycles - 5
+        if need_resize:
+            new_max_cycles = cur_max_cycles + self.h5_cycles
+            resize_h5_group(self.h5_group, max_cycles=new_max_cycles)
+
+        for k, v in results.items():
+            self.h5_group[k][self.calc_counter] = v
+        self.h5_group["cart_coords"][self.calc_counter] = coords
+        self.h5_group.attrs["cur_cycle"] = self.calc_counter
 
     def log_fragments(self):
         self.log(f"Using {len(self.fragment_indices)} fragments")
         for i, frag in enumerate(self.fragment_indices):
             self.log(f"Fragment {i:02d}, {len(frag)} atoms:")
             self.log(f"\t{frag}")
-
 
     def write_fragment_geoms(self, atoms, coords):
         geom = Geometry(atoms, coords)
@@ -130,10 +180,14 @@ class AFIR(Calculator):
         afir_energy = self.afir_func(coords.reshape(-1, 3))
         self.log()
 
-        return {
+        results = {
             "energy": true_energy+afir_energy,
             "true_energy": true_energy,
         }
+        if self.dump:
+            self.dump_h5(atoms, coords, results)
+        self.calc_counter += 1
+        return results
 
     def get_forces(self, atoms, coords):
         self.set_atoms_and_funcs(atoms, coords)
@@ -152,9 +206,13 @@ class AFIR(Calculator):
         self.log(f"norm(afir_forces)={afir_norm:.6f} au/bohr")
         self.log()
 
-        return {
+        results = {
             "energy": true_energy+afir_energy,
             "forces": true_forces+afir_forces,
             "true_forces": true_forces,
             "true_energy": true_energy,
         }
+        if self.dump:
+            self.dump_h5(atoms, coords, results)
+        self.calc_counter += 1
+        return results

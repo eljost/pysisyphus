@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # See [1] 10.1002/jcc.21026
 
 import itertools as it
@@ -12,18 +10,20 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.stocastic.Kick import Kick
 
 
-np.set_printoptions(suppress=True, precision=6)
-
-
 class FragmentKick(Kick):
 
-    def __init__(self, geom, fragments, fix_fragments=list(),
-                 displace_from=list(), random_displacement=False,
+    def __init__(self, geom, fragments, fix_fragments=None,
+                 displace_from=None, random_displacement=False,
                  **kwargs):
         super().__init__(geom, **kwargs)
 
         self.fragments = self.get_fragments(fragments)
+        if fix_fragments is None:
+            fix_fragments = (0, )
         self.fix_fragments = fix_fragments
+
+        if displace_from is None:
+            displace_from = list()
         self.displace_from = displace_from
         # True when displace_from is given
         self.random_displacement = self.displace_from or random_displacement
@@ -53,6 +53,7 @@ class FragmentKick(Kick):
             self.log("\n".join(frag_lines) + "\n")
 
     def get_fragments(self, fragments):
+        fragments = list(fragments)
         # Compare number of atoms defined in fragments with the total
         # number of atoms in the molecule.
         fragment_atoms = list(it.chain(*fragments))

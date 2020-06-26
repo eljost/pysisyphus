@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # https://verahill.blogspot.de/2013/06/439-calculate-frequencies-from-hessian.html
 # https://chemistry.stackexchange.com/questions/74639
 
@@ -11,10 +9,11 @@ import sys
 import h5py
 import numpy as np
 
-from pysisyphus.xyzloader import make_trj_str, make_xyz_str
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import check_for_stop_sign, highlight_text, eigval_to_wavenumber, rms
+from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
+from pysisyphus.xyzloader import make_trj_str, make_xyz_str
 
 
 class IRC:
@@ -40,11 +39,9 @@ class IRC:
         self.forward = not self.downhill and forward
         self.backward = not self.downhill and backward
         self.mode = mode
-        # Load initial (not massweighted) cartesian hessian if provided
+        if hessian_init is None:
+            hessian_init = "calc" if not self.downhill else "unit"
         self.hessian_init = hessian_init
-        if self.hessian_init is not None:
-            self.hessian_init = np.loadtxt(hessian_init)
-            self.log(f"Read initial TS hessian from '{hessian_init}'")
         self.displ = displ
         assert self.displ in ("energy", "length"), \
             "displ must be either 'energy' or 'length'"
@@ -101,12 +98,11 @@ class IRC:
     def mw_gradient(self):
         return self.geometry.mw_gradient
 
-    @property
-    def mw_hessian(self):
-        # TODO: This can be removed when the mw_hessian property is updated
-        #       in Geometry.py.
-        self.geometry.hessian
-        return self.geometry.mw_hessian
+    # @property
+    # def mw_hessian(self):
+        # # TODO: This can be removed when the mw_hessian property is updated
+        # #       in Geometry.py.
+        # return self.geometry.mw_hessian
 
     def log(self, msg):
         # self.logger.debug(f"step {self.cur_cycle:03d}, {msg}")
@@ -119,8 +115,12 @@ class IRC:
     def unweight_vec(self, vec):
         return self.m_sqrt * vec
 
+    def mass_weigh_hessian(self, hessian):
+        return self.geometry.mass_weigh_hessian(hessian)
+
     def prepare(self, direction):
         self.cur_cycle = 0
+        self.direction = direction
         self.converged = False
         self.past_inflection = not self.force_inflection
 
@@ -132,16 +132,16 @@ class IRC:
         self.irc_mw_coords = list()
         self.irc_mw_gradients = list()
 
-        # We don't need an initiald displacement when going downhill
-        if self.downhill:
-            return
-
         # Over the course of the IRC the hessian may get updated.
-        # Copying the TS hessian here ensures a clean start in combined
-        # forward and backward runs. Otherwise we would accidently use
+        # Copying the initial hessian here ensures a clean start in combined
+        # forward and backward runs. Otherwise we may accidentally use
         # the updated hessian from the end of the first run for the second
         # run.
-        self.hessian = self.ts_hessian.copy()
+        self.mw_hessian = self.mass_weigh_hessian(self.init_hessian)
+
+        # We don't need an initial displacement when going downhill
+        if self.downhill:
+            return
 
         # Do inital displacement from the TS
         init_factor = 1 if (direction == "forward") else -1
@@ -158,7 +158,7 @@ class IRC:
         See https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
         """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
-        mw_hessian = self.geometry.mass_weigh_hessian(self.ts_hessian)
+        mw_hessian = self.mass_weigh_hessian(self.init_hessian)
         try:
             if not self.geometry.calculator.analytical_2d:
                 mw_hessian = self.geometry.eckart_projection(mw_hessian)
@@ -232,7 +232,7 @@ class IRC:
         return conv_fact
 
     def irc(self, direction):
-        self.log(highlight_text(f"IRC {direction}"))
+        self.log(highlight_text(f"IRC {direction}", level=1))
 
         self.cur_direction = direction
         self.prepare(direction)
@@ -326,7 +326,7 @@ class IRC:
             self.irc_mw_gradients.reverse()
 
         if not dumped:
-            self.dump_data
+            self.dump_data(dump_fn)
 
         self.cur_direction = None
 
@@ -375,15 +375,19 @@ class IRC:
         print("IRC length in mw. coords, max(|grad|) and rms(grad) in "
               "unweighted coordinates.")
 
-        # For forward/backward runs we need an intial displacement
-        # and for this we need a hessian, that we calculate now.
-        # For downhill runs we probably dont need a hessian.
+        self.init_hessian, hess_str = get_guess_hessian(self.geometry,
+                                                        self.hessian_init,
+                                                        cart_gradient=self.ts_gradient,
+                                                        h5_fn=f"hess_init_irc.h5",
+        )
+        self.log(f"Initial hessian: {hess_str}")
+
+        # For forward/backward runs from a TS we need an intial displacement,
+        # calculated from the transition vector (imaginary mode) of the TS
+        # hessian. If we need/want a Hessian for a downhill run from a
+        # non-stationary point (with non-vanishing gradient) depends on the
+        # actual IRC integrator (e.g. EulerPC and LQA need a Hessian).
         if not self.downhill:
-            if self.hessian_init is not None:
-                self.ts_hessian = self.hessian_init.copy()
-            else:
-                self.ts_hessian = self.geometry.hessian.copy()
-                np.savetxt("calculated_initial_irc_hessian", self.ts_hessian)
             self.init_displ = self.initial_displacement()
 
         if self.forward:

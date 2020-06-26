@@ -84,7 +84,7 @@ def make_deriv_funcs(base_expr, dx, args, names, comments):
     )
 
 
-def generate_wilson():
+def generate_wilson(generate=None, out_fn="derivatives.py"):
     m0, m1, m2, n0, n1, n2, o0, o1, o2, p0, p1, p2 = sym.symbols("m:3 n:3 o:3 p:3")
 
     # Coordinate system
@@ -164,19 +164,26 @@ def generate_wilson():
         print(derivs_lb.f2)
         return derivs_lb
 
-    funcs = (
-        bond,
-        bend,
-        dihedral,
-        linear_bend,
-    )
+    if generate is None:
+        generate = ("bond", "bend", "dihedral", "linear_bend")
+
+    avail_funcs = {
+        "bond": bond,
+        "bend": bend,
+        "dihedral": dihedral,
+        "linear_bend": linear_bend,
+    }
+    funcs = [avail_funcs[key] for key in generate]
     derivs = [f() for f in funcs]
-    out_fn = "derivatives.py"
-    with open(out_fn, "w") as handle:
-        handle.write("import math\n\nimport numpy as np\n\n\n")
-        for d in derivs:
-            handle.write(d.f1 + "\n\n\n")
-            handle.write(d.f2 + "\n\n\n")
+
+    if out_fn:
+        with open(out_fn, "w") as handle:
+            handle.write("import math\n\nimport numpy as np\n\n\n")
+            for d in derivs:
+                handle.write(d.f1 + "\n\n\n")
+                handle.write(d.f2 + "\n\n\n")
+
+    return derivs
 
 
 if __name__ == "__main__":

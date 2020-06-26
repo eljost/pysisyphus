@@ -22,3 +22,7 @@ calc:
 xyz: [ala_start.xyz, ala_end.xyz]
 coord_type: dlc                         # Run GrowingString in delocalized internal coordinates
                                         # (preferred).
+assert:
+ opt.is_converged: True
+ ts_geom.energy: -32.96468660
+ ts_opt.cur_cycle: 15

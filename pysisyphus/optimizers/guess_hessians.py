@@ -10,11 +10,13 @@
 from math import exp
 import itertools as it
 
+import h5py
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii, get_bond_mat
+from pysisyphus.io.hessian import save_hessian
 
 
 def fischer_guess(geom):
@@ -148,17 +150,74 @@ def swart_guess(geom):
     return np.diagflat(k_diag)
 
 
-def xtb_hessian(geom):
+def xtb_hessian(geom, gfn=None):
     calc = geom.calculator
     xtb_kwargs = {
         "charge": calc.charge,
         "mult": calc.mult,
         "pal": calc.pal
     }
+    if gfn is not None:
+        xtb_kwargs["gfn"] = gfn
     xtb_calc = XTB(**xtb_kwargs)
     geom_ = geom.copy()
     geom_.set_calculator(xtb_calc)
     return geom_.hessian
+
+
+def get_guess_hessian(geometry, hessian_init, int_gradient=None,
+                      cart_gradient=None, h5_fn=None):
+    model_hessian = hessian_init in ("fischer", "lindh", "simple", "swart")
+    target_coord_type = geometry.coord_type
+
+    # Recreate geometry with internal coordinates if needed
+    if model_hessian and (geometry.coord_type == "cart"):
+        geometry = geometry.copy(coord_type="redund")
+
+    hess_funcs = {
+        # Calculate true hessian
+        "calc": lambda: (geometry.hessian, "calculated exact"),
+        # Unit hessian
+        "unit": lambda: (np.eye(geometry.coords.size), "unit"),
+        # Fischer model hessian
+        "fischer": lambda: (fischer_guess(geometry), "Fischer"),
+        # Lindh model hessian
+        "lindh": lambda: (lindh_guess(geometry), "Lindh"),
+        # Simple (0.5, 0.2, 0.1) model hessian
+        "simple": lambda: (simple_guess(geometry), "simple"),
+        # Swart model hessian
+        "swart": lambda: (swart_guess(geometry), "Swart"),
+        # XTB hessian using GFN-2
+        "xtb": lambda: (xtb_hessian(geometry, gfn=2), "GFN2-XTB"),
+        # XTB hessian using GFN-1
+        "xtb1": lambda: (xtb_hessian(geometry, gfn=1), "GFN1-XTB"),
+    }
+    try:
+        H, hess_str = hess_funcs[hessian_init]()
+        # self.log(f"Using {hess_str} Hessian.")
+    except KeyError:
+        # Only cartesian hessians can be loaded
+        # self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
+        if str(hessian_init).endswith(".h5"):
+            with h5py.File(hessian_init, "r") as handle:
+                cart_hessian = handle["hessian"][:]
+        else:
+            cart_hessian = np.loadtxt(hessian_init)
+        geometry.cart_hessian = cart_hessian
+        # Use the previously set hessian in whatever coordinate system we
+        # actually employ.
+        H = geometry.hessian
+        hess_str = "saved"
+
+    if (h5_fn is not None) and (hessian_init == "calc"):
+        save_hessian(h5_fn, geometry)
+
+    if model_hessian and target_coord_type == "cart":
+        if cart_gradient is not None:
+            int_gradient = geometry.internal.transform_forces(cart_gradient)
+        H = geometry.internal.backtransform_hessian(H, int_gradient=int_gradient)
+
+    return H, hess_str
 
 
 def ts_hessian(hessian, coord_inds, damp=0.25):

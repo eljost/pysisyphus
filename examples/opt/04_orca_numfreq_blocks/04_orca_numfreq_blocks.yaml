@@ -1,0 +1,24 @@
+opt:
+ hessian_init: calc
+ thresh: gau_tight
+calc:
+ type: orca
+ keywords: TPSS def2-SVP TightSCF
+ # blocks are defined here. Multiple blocks can be chained, separated
+ # by a space. E.g.
+ # blocks: %scf maxiter 500 end %tddft nroots 5 tda false end
+ blocks: "%scf maxiter 500 end"
+ # Use 'numfreq: True' for methods where no analytical hessian is
+ # available. You have to request this manually, pysisyphus does
+ # not know which method supports analytical hessians.
+ numfreq: True
+ pal: 4
+ mem: 2000
+ charge: 0
+ mult: 1
+xyz: lib:h2o2_short.xyz
+coord_type: redund
+assert:
+ opt_geom.energy: -151.44017893
+ opt.is_converged: True
+ opt.cur_cycle: 8

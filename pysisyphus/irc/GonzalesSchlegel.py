@@ -41,15 +41,15 @@ class GonzalesSchlegel(IRC):
         # Without copy we would only store the reference...
         self.prev_coords = self.mw_coords.copy()
 
-        dH, _ = bfgs_update(self.hessian, coords_diff, gradient_diff)
-        self.hessian += dH
-        eigvals, eigvecs = np.linalg.eig(self.hessian)
-        hessian_inv = np.linalg.pinv(self.hessian)
+        dH, _ = bfgs_update(self.mw_hessian, coords_diff, gradient_diff)
+        self.mw_hessian += dH
+        eigvals, eigvecs = np.linalg.eig(self.mw_hessian)
+        hessian_inv = np.linalg.pinv(self.mw_hessian)
 
         def lambda_func(lambda_):
             # Eq. (11) in [1]
             # (H - λI)^-1
-            hmlinv = np.linalg.pinv(self.hessian - eye*lambda_)
+            hmlinv = np.linalg.pinv(self.mw_hessian - eye*lambda_)
             # (g - λp)
             glp = gradient - self.displacement*lambda_
             tmp = self.displacement - hmlinv.dot(glp)
@@ -65,7 +65,7 @@ class GonzalesSchlegel(IRC):
 
         # Calculate dx from optimized lambda
         dx = -np.dot(
-                np.linalg.inv(self.hessian-lambda_*eye),
+                np.linalg.inv(self.mw_hessian-lambda_*eye),
                 gradient-lambda_*self.displacement
         )
         self.displacement += dx

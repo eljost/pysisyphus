@@ -3,6 +3,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.augment_bonds import augment_bonds
+from pysisyphus.optimizers.Optimizer import get_data_model, get_h5_group
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.guess_hessians import ts_hessian
 
@@ -30,13 +31,13 @@ class TSHessianOptimizer(HessianOptimizer):
             expected_shape = (_, _)
             shape = self.hessian_ref.shape
             assert shape == expected_shape, \
-                f"Shape of reference hessian {shape} doesn't match the expected "  \
-                f"shape {expected_shape} of the hessian for the current coordinates!"
+                f"Shape of reference Hessian {shape} doesn't match the expected "  \
+                f"shape {expected_shape} of the Hessian for the current coordinates!"
         except OSError as err:
-            self.log(f"Tried to load reference hessian from '{self.hessian_ref}' "
+            self.log(f"Tried to load reference Hessian from '{self.hessian_ref}' "
                       "but the file could not be found.")
         except ValueError as err:
-            self.log(f"No reference hessian provided.")
+            self.log(f"No reference Hessian provided.")
         self.prim_coord = prim_coord
         self.rx_coords = rx_coords
         # Bond augmentation is only useful with calculated hessians
@@ -51,6 +52,13 @@ class TSHessianOptimizer(HessianOptimizer):
     def prepare_opt(self):
         if self.augment_bonds:
             self.geometry = augment_bonds(self.geometry, root=self.root)
+            # Update data model and HD5 shapes, as the number of coordinates
+            # may have changed.
+            if self.dump:
+                self.data_model = get_data_model(self.geometry, self.is_cos,
+                                                 self.max_cycles)
+                self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name,
+                                             self.data_model)
 
         # Calculate/set initial hessian
         super().prepare_opt()
@@ -59,7 +67,7 @@ class TSHessianOptimizer(HessianOptimizer):
         # modified according to the assumed reaction coordinates.
         if self.hessian_init != "calc" and (self.rx_coords is not None):
             assert self.geometry.coord_type != "cart", \
-                "Using a modified guess hessian for TS-optimizations is " \
+                "Using a modified guess Hessian for TS-optimizations is " \
                 "only supported in redundand internal coordinates " \
                 "(coord_type=redund)"
             prim_inds = [self.geometry.internal.get_index_of_prim_coord(rxc)
@@ -81,7 +89,7 @@ class TSHessianOptimizer(HessianOptimizer):
 
         self.log("Determining initial TS mode to follow uphill.")
         # Select an initial TS-mode by highest overlap with eigenvectors from
-        # reference hessian.
+        # reference Hessian.
         if self.prim_coord:
             prim_ind = self.geometry.internal.get_index_of_prim_coord(self.prim_coord)
             if prim_ind is None:
@@ -119,8 +127,8 @@ class TSHessianOptimizer(HessianOptimizer):
             ref_mode = eigvecs_ref[:,0]
             overlaps = np.einsum("ij,j->i", eigvecs.T, ref_mode)
             ovlp_str = np.array2string(overlaps, precision=4)
-            self.log( "Overlaps between eigenvectors of current hessian "
-                     f"TS mode from reference hessian:")
+            self.log( "Overlaps between eigenvectors of current Hessian "
+                     f"TS mode from reference Hessian:")
             self.log(f"\t{ovlp_str}")
 
             self.root = np.abs(overlaps).argmax()

@@ -1,6 +1,7 @@
 opt:
  type: plbfgs
  thresh: baker
+ do_hess: True
 calc:
  type: dimer
  calc:
@@ -20,3 +21,7 @@ calc:
  seed: 20182503
 xyz: 01_hcn.xyz
 coord_type: cart
+assert:
+ opt.is_converged: True
+ opt.cur_cycle: 9
+ opt_geom.energy: -92.24604297

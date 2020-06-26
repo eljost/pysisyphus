@@ -35,7 +35,7 @@ jobs:
         pip install ase
     - name: Install pyscf
       run: |
-        pip install pyscf==1.7.0
+        pip install pyscf==1.7.1
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov

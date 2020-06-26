@@ -25,8 +25,9 @@ class ConjugateGradient(BacktrackingOptimizer):
 
     def reset(self):
         super().reset()
-        # Check if the number of images changed
-        if self.forces[-1].shape != self.coords[-1].shape:
+
+        # Check if the number of coordinates changed
+        if self.forces[-1].size != self.geometry.coords.size:
             new_forces = self.geometry.forces
             self.forces.append(new_forces)
         self.resetted = True
@@ -58,16 +59,17 @@ class ConjugateGradient(BacktrackingOptimizer):
             self.log(f"beta = {beta:.06f}")
             if np.isinf(beta):
                 beta = 1.0
-            steps = cur_forces + beta*self.steps[-1]
+            step = cur_forces + beta*self.steps[-1]
         else:
             # Start with steepest descent in the first iteration
-            steps = cur_forces
+            step = cur_forces
             self.resetted = False
-        steps = self.alpha * steps
-        steps = self.scale_by_max_step(steps)
 
-        last_coords = self.coords[-1]
-        new_coords = last_coords + steps
+        step = self.alpha * step
+        step = self.scale_by_max_step(step)
+
+        cur_coords = self.geometry.coords
+        new_coords = cur_coords + step
         self.geometry.coords = new_coords
 
         new_forces = self.geometry.forces
@@ -77,15 +79,17 @@ class ConjugateGradient(BacktrackingOptimizer):
         # Imho backtracking gives bad results here, so only use it if
         # explicitly requested (self.dont_skip == False).
         if (not self.dont_skip) and skip:
-            self.geometry.coords = last_coords
+            self.geometry.coords = cur_coords
             return None
 
         if self.align and self.is_cos:
-            (new_forces, cur_forces, steps), _, _ = fit_rigid(self.geometry,
+            (new_forces, cur_forces, step), _, _ = fit_rigid(self.geometry,
                                                               (new_forces,
                                                                cur_forces,
-                                                               steps))
-            self.geometry.coords -= steps
+                                                               step))
+            # Minus step???
+            new_coords = self.geometry.coords - step
+            self.geometry.coords = new_coords
             # Set the calculated properties on the rotated geometries
             self.geometry.energy = new_energy
             self.geometry.forces = new_forces
@@ -94,4 +98,4 @@ class ConjugateGradient(BacktrackingOptimizer):
         self.forces.append(new_forces)
         self.energies.append(new_energy)
 
-        return steps
+        return step

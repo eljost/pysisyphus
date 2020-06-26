@@ -52,8 +52,6 @@ def test_bmat_allene():
     print(geom)
     int_ = geom.internal
     B = int_.B
-    # Delete linear angle
-    B = np.delete(B, 7, axis=0)
     
     np.testing.assert_allclose(B, Bref)
 
@@ -253,3 +251,38 @@ def test_derivs():
             print(pi)
             print(q)
             print(grad)
+
+
+def test_lb():
+    from pysisyphus.Geometry import Geometry
+
+    coords = np.array((
+        ( 0.,  0., 0.),
+        ( 0.,  0., 2.),
+        ( 0., 0., -1.),
+    ))
+    atoms = ("O", "O", "O")
+    geom = Geometry(atoms, coords, coord_type="redund_v2")
+    indices = (1, 0, 2)
+    lb = LinearBend(indices)
+    print(lb)
+    q, g = lb.calculate(coords, gradient=True)
+    g = g.reshape(-1, 3)
+
+    print("val")
+    print(q)
+    print("grad")
+    print(g)
+
+
+    print()
+    print("COMPLEMENT")
+    cb = LinearBend(indices, complement=True)
+    print(cb)
+    qc, gc = cb.calculate(coords, gradient=True)
+    gc = gc.reshape(-1, 3)
+
+    print("complement, val")
+    print(qc)
+    print("complement, grad")
+    print(gc)

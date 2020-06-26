@@ -90,6 +90,14 @@ class ChainOfStates:
     def moving_images(self):
         return [self.images[i] for i in self.moving_indices]
 
+    @property
+    def max_image_num(self):
+        return len(self.images)
+
+    @property
+    def image_inds(self):
+        return list(range(self.max_image_num))
+
     def zero_fixed_vector(self, vector):
         fixed = self.get_fixed_indices()
         for i in fixed:
@@ -462,6 +470,7 @@ class ChainOfStates:
         # Determine index that yields the highest energy
         hei_ind = energies_fine.argmax()
         hei_x = x_fine[hei_ind]
+        hei_frac_index = hei_x * (len(self.images) - 1)
         hei_energy = energies_fine[hei_ind]
 
         reshaped = cart_coords.reshape(-1, self.cart_coords_length)
@@ -478,7 +487,7 @@ class ChainOfStates:
         hei_tangent = np.vstack([splev([hei_x, ], tck, der=1) for tck in tcks]).T
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
-        return hei_coords, hei_energy, hei_tangent
+        return hei_coords, hei_energy, hei_tangent, hei_frac_index
 
     def get_image_calc_counter_sum(self):
         return sum([image.calculator.calc_counter for image in self.images])

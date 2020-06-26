@@ -193,27 +193,21 @@ def cubic_fit(e0, e1, g0, g1):
     return fit_result
 
 
-def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step, coords):
-    # TODO: always call line_search? Probably, because we can also extrapolate
-    # in a linesearch.
-
-    # energy_increased = (cur_energy - prev_energy) > 0.
-    # if not energy_increased:
-        # return cur_grad
-
+def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step,
+                     prev_coords, allow_cubic=True, allow_none=True,
+                     cubic_max=2., quartic_max=4.):
     # Generate directional gradients by projecting them on the previous step.
     prev_grad_proj = prev_step @ prev_grad
     cur_grad_proj =  prev_step @ cur_grad
-    cubic_result = cubic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
-    quartic_result = quartic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
-    # TODO: add quintic, but then we would have to save the hessians.
-
+    cubic_result = cubic_fit(prev_energy, cur_energy,
+                             prev_grad_proj, cur_grad_proj)
+    quartic_result = quartic_fit(prev_energy, cur_energy,
+                                 prev_grad_proj, cur_grad_proj)
     accept = {
-        # They way cubic is defined now it is never accepted and this is
-        # probably better, because it doesn't seem to improve the optimization.
-        "cubic": lambda x: (x > 2) and (x < 1),  # lgtm [py/redundant-comparison]
-        "quartic": lambda x: (x > 0.) and (x <= 2),
+        "cubic": lambda x: allow_cubic and (x > 0.) and (x <= cubic_max),
+        "quartic": lambda x: (x > 0.) and (x <= quartic_max),
     }
+
     fit_result = None
     if quartic_result and accept["quartic"](quartic_result.x):
         fit_result = quartic_result
@@ -221,17 +215,30 @@ def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step, co
     elif cubic_result and accept["cubic"](cubic_result.x):
         fit_result = cubic_result
         deg = "cubic"
-    # else:
+    # If we don't allow None we always return either the current point at
+    # x == 1, or the midpoint at x == 0.5.
+    elif not allow_none:
         # Midpoint fallback as described by gaussian?
+        if cur_energy < prev_energy:
+            x = 1
+            y = cur_energy
+            deg = "current point"
+        else:
+            x = 0.5
+            y = (cur_energy + prev_energy) / 2
+            deg = "midpoint"
+        fit_result = FitResult(x, y, polys=None)
 
-    fit_step = None
-    fit_grad = None
     fit_energy = None
+    fit_grad = None
+    fit_coords = None
+    fit_step = None
     if fit_result and fit_result.y < prev_energy:
         x = fit_result.x
         fit_energy = fit_result.y
-        log(f"Did {deg} interpolation with x={x:.6f}.")
-        # Interpolate step and gradient
-        fit_step = (1-x) * -prev_step
+        logger.debug(f"\tDid '{deg}' interpolation with x={x:.6f}.")
+        # Interpolate coordinates and gradient
+        fit_step = x * prev_step
+        fit_coords = prev_coords + fit_step
         fit_grad = (1-x)*prev_grad + x*cur_grad
-    return fit_step, fit_grad, fit_energy
+    return fit_energy, fit_grad, fit_coords, fit_step

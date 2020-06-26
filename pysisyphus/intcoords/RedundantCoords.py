@@ -7,11 +7,10 @@
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844
 
+from collections import namedtuple
 import itertools as it
 import logging
-import typing
 
-import attr
 import numpy as np
 from scipy.spatial.distance import squareform
 
@@ -23,11 +22,10 @@ from pysisyphus.intcoords.findbonds import get_bond_sets
 from pysisyphus.intcoords.fragments import merge_fragments
 
 
-@attr.s(auto_attribs=True)
-class PrimitiveCoord:
-    inds : typing.List[int]
-    val : float
-    grad : np.ndarray
+PrimitiveCoord = namedtuple(
+                    "PrimitiveCoord",
+                    "inds val grad",
+)
 
 
 class RedundantCoords:
@@ -110,6 +108,8 @@ class RedundantCoords:
         )
         self._prim_internals = self.calculate(self.cart_coords)
         self._prim_coords = np.array([pc.val for pc in self._prim_internals])
+
+        self.transform_counter = 0
 
     def log(self, message):
         logger = logging.getLogger("internal_coords")
@@ -239,6 +239,7 @@ class RedundantCoords:
         return K
 
     def transform_hessian(self, cart_hessian, int_gradient=None):
+        """Transform Cartesian Hessian to internal coordinates."""
         if int_gradient is None:
             self.log("Supplied 'int_gradient' is None. K matrix will be zero, "
                      "so derivatives of the Wilson-B-matrix are neglected in "
@@ -246,6 +247,16 @@ class RedundantCoords:
             )
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv.dot(cart_hessian-K).dot(self.B_inv)
+
+    def backtransform_hessian(self, redund_hessian, int_gradient=None):
+        """Transform Hessian in internal coordinates to Cartesians."""
+        if int_gradient is None:
+            self.log("Supplied 'int_gradient' is None. K matrix will be zero, "
+                     "so derivatives of the Wilson-B-matrix are neglected in "
+                     "the hessian transformation."
+            )
+        K = self.get_K_matrix(int_gradient)
+        return self.B.T.dot(redund_hessian).dot(self.B) + K
 
     def project_hessian(self, H, shift=1000):
         """Expects a hessian in internal coordinates. See Eq. (11) in [1]."""
@@ -399,20 +410,20 @@ class RedundantCoords:
         )
 
     def get_torsion_indices(self, define_dihedrals=None):
-        dihedral_sets = list()
+        dihedrals = list()
         def set_dihedral_index(dihedral_ind):
-            dihedral_set = set(dihedral_ind)
+            dihed = tuple(dihedral_ind)
             # Check if this dihedral is already present
-            if dihedral_set in dihedral_sets:
+            if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
                 return
             # Assure that the angles are below 175° (3.054326 rad)
             if not self.is_valid_dihedral(dihedral_ind, thresh=0.0873):
-                self.log(f"Did not create dihedral {dihedral_ind} as some "
-                          "vectors are (nearly) colinear."
+                self.log(f"Skipping generation of dihedral {dihedral_ind} "
+                          "as some of the the atoms are (nearly) linear."
                 )
                 return
             self.torsion_indices.append(dihedral_ind)
-            dihedral_sets.append(dihedral_set)
+            dihedrals.append(dihed)
 
         improper_dihedrals = list()
         coords3d = self.cart_coords.reshape(-1, 3)
@@ -566,6 +577,9 @@ class RedundantCoords:
         """This is always done in primitive internal coordinates so care
         has to be taken that the supplied step is given in primitive internal
         coordinates."""
+
+        self.log(f"Internal->cartesian transformation cycle {self.transform_counter}")
+        self.transform_counter += 1
 
         remaining_int_step = step
         cur_cart_coords = self.cart_coords.copy()

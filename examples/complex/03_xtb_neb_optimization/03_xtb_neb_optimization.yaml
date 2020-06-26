@@ -1,3 +1,4 @@
+# Dissociation
 preopt:
  max_cycles: 5
 interpol:
@@ -15,5 +16,11 @@ calc:
  charge: 0
  mult: 1
  pal: 4
-preopt_ends: True
+tsopt:
+ do_hess: True
 xyz: [09_htransfer_product.xyz, 10_po_diss_product_xtbopt.xyz]
+assert:
+ opt.cur_cycle: 24
+ ts_opt.is_converged: True
+ ts_opt.cur_cycle: 25
+ ts_geom._energy: -80.68084881

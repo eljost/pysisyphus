@@ -1,8 +1,8 @@
 irc:
  type: eulerpc              # Similar to EulerPC from Gaussian
- opt_ends: True             # Optimize ends of IRC
- #rms_grad_thresh: 1e-4      # Convergence threshold for rms(grad)
- #hessian_recalc: 5          # Recalc exact hessian every n-th cycle
+ rms_grad_thresh: 1e-3      # Convergence threshold for rms(grad)
+ #max_cycles: 50             # Do at most this many IRC cycles
+ hessian_recalc: 10          # Recalc exact hessian every n-th cycle
  #displ: energy              # Initial displacement from the TS. 'energy' is default.
                              # Another option is 'length'
  #displ_energy: 5e-4         # Energy lowering from TS in a.u.
@@ -11,6 +11,11 @@ irc:
  #backward: True
  #downhill: False            # Used when starting an IRC from a non-stationary point
                              # with non-vanishing gradient
+endopt:
+ #fragments: False           # Optimize potential fragments separately
+ coord_type: redund_v2
+ trust_max: 0.1
+ thresh: gau_tight
 calc:
  type: g16
  route: pm6
@@ -18,3 +23,6 @@ calc:
  charge: 0
  mult: 1
 xyz: ts_opt.xyz
+assert:
+ irc.forward_is_converged: True
+ irc.backward_is_converged: True

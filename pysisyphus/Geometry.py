@@ -1,4 +1,6 @@
 from collections import Counter, namedtuple
+import itertools as it
+import re
 import subprocess
 import tempfile
 import sys
@@ -12,9 +14,68 @@ from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
+from pysisyphus.intcoords.exceptions import NeedNewInternalsException, RebuiltInternalsException
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
 from pysisyphus.xyzloader import make_xyz_str
+
+
+def get_trans_rot_vectors(cart_coords, masses):
+    """Orthonormal vectors describing translation and rotation.
+
+    These vectors are used for the Eckart projection by constructing
+    a projector from them.
+
+    See Martin J. Field - A Pratcial Introduction to the simulation
+    of Molecular Systems, 2007, Cambridge University Press, Eq. (8.23),
+    (8.24) and (8.26) for the actual projection.
+
+    Parameters
+    ----------
+    cart_coorrds : np.array, 1d, shape (3 * atoms.size, )
+        Atomic masses in amu.
+    masses : iterable, 1d, shape (atoms.size, )
+        Atomic masses in amu.
+
+    Returns
+    -------
+    ortho_vecs : np.array(6, 3*atoms.size)
+        2d array containing row vectors describing translations
+        and rotations.
+    """
+
+    coords3d = np.reshape(cart_coords, (-1, 3))
+    masses_rep = np.repeat(masses, 3)
+    M_sqrt = np.sqrt(masses_rep)
+    num = len(masses)
+    def get_trans_vecs():
+        """Mass-weighted unit vectors of the three cartesian axes."""
+        for vec in ((1, 0, 0), (0, 1, 0), (0, 0, 1)):
+            _ = M_sqrt * np.tile(vec, num)
+            yield _ / np.linalg.norm(_)
+    trans_vecs = list(get_trans_vecs())
+
+    x, y, z = coords3d.T
+    zeros = np.zeros(x.size)
+
+    def get_rot_vecs():
+        """Mass-weighted unit vectors Rx ~ (0, -z, y, 0, -z, y, ...)
+        Ry ~ (z, 0, -x, z, 0, -x, ...) and Rz ~ (-y, x, 0, -y, x, 0)."""
+        for c3d in ((zeros, -z, y), (z, zeros, -x), (-y, x, zeros)):
+            _ = np.array(c3d).T.flatten()
+            _ *= M_sqrt
+            yield _ / np.linalg.norm(_)
+    rot_vecs = list(get_rot_vecs())
+    ortho_vecs = np.array(gram_schmidt(trans_vecs + rot_vecs))
+
+    return ortho_vecs
+
+
+def get_trans_rot_projector(cart_coords, masses):
+    P = np.eye(cart_coords.size)
+    for vec in get_trans_rot_vectors(cart_coords, masses=masses):
+        P -= np.outer(vec, vec)
+    return P
 
 
 class Geometry:
@@ -26,8 +87,8 @@ class Geometry:
         "dlc": DLC,
     }
 
-    def __init__(self, atoms, coords, coord_type="cart", coord_kwargs=None,
-                 comment=""):
+    def __init__(self, atoms, coords, fragments=None, coord_type="cart",
+                 coord_kwargs=None, comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -41,6 +102,9 @@ class Geometry:
         coords : 1d iterable
             1d iterable of length 3N, containing the cartesian coordinates
             of N atoms.
+        fragments : dict, optional
+            Dict with different keys denoting different fragments. The values
+            contain lists of atom indices.
         coord_type : {"cart", "redund"}, optional
             Type of coordinate system to use. Right now cartesian (cart)
             and redundand (redund) are supported.
@@ -57,6 +121,9 @@ class Geometry:
             f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
             f"{self._coords.size}. Did you accidentally supply internal " \
              "coordinates?"
+        if fragments is None:
+            fragments = dict()
+        self.fragments = fragments
 
         if (coord_kwargs is not None) and coord_type == "cart":
             print("coord_type is set to 'cart' but coord_kwargs were given. "
@@ -66,6 +133,8 @@ class Geometry:
         coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
+            assert coords.size != 3, \
+                "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
             self.internal = coord_class(atoms, self._coords, **coord_kwargs)
         else:
             self.internal = None
@@ -195,6 +264,29 @@ class Geometry:
     def atom_types(self):
         return set(self.atoms)
 
+    def get_fragments(self, regex):
+        regex = re.compile(regex)
+        frags = [frag for frag in self.fragments.keys() if regex.search(frag)]
+        org_indices = list(it.chain(*[self.fragments[frag] for frag in frags]))
+
+        new_atoms = [self.atoms[ind] for ind in org_indices]
+        new_coords = self.coords3d[org_indices].copy()
+        new_fragments = dict()
+        i = 0
+        for frag in frags:
+            frag_atoms = len(self.fragments[frag])
+            new_fragments[frag] = list(range(i, i+frag_atoms))
+            i += frag_atoms
+        return Geometry(new_atoms, new_coords, fragments=new_fragments)
+
+    @property
+    def layers(self):
+        try:
+            layers = self.calculator.layers
+        except AttributeError:
+            layers = ()
+        return layers
+
     def clear(self):
         """Reset the object state."""
 
@@ -242,15 +334,23 @@ class Geometry:
         ----------
         coords : np.array
             1d array containing atomic coordiantes. It's length
-            may vary depending on the chosen coordinate system.
+            depends on the coordinate system.
         """
         # Do the backtransformation from internal to cartesian.
         coords = np.array(coords).flatten()
         if self.internal:
-            int_step = coords - self.internal.coords
-            cart_diff = self.internal.transform_int_step(int_step)
-            coords = self._coords + cart_diff
-            self.internal.cart_coords = coords
+            try:
+                int_step = coords - self.internal.coords
+                cart_diff = self.internal.transform_int_step(int_step)
+                coords = self._coords + cart_diff
+                self.internal.cart_coords = coords
+            except NeedNewInternalsException as exception:
+                coords = exception.cart_coords
+                coord_class = self.coord_types[self.coord_type]
+                self.internal = coord_class(self.atoms, coords)
+                raise RebuiltInternalsException
+
+        # Set new cartesian coordinates
         self._coords = coords
         # Reset all values because no calculations with the new coords
         # have been performed yet.
@@ -574,7 +674,7 @@ class Geometry:
             2d array containing the mass-weighted hessian M^(-1/2) H M^(-1/2).
         """
         # M^(-1/2) H M^(-1/2)
-        # TODO: Do the right thin here when the hessian is not yet calculated.
+        # TODO: Do the right thing here when the hessian is not yet calculated.
         #       this would probably involve figuring out how to mass-weigh and
         #       internal coordinat hessian... I think this is described in one
         #       of the Gonzales-Schlegel-papers about the GS2 algorithm.
@@ -597,48 +697,10 @@ class Geometry:
         return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
 
     def get_trans_rot_vectors(self):
-        """Orthonormal vectors describing translation and rotation.
-
-        These vectors are used in the Eckart projection.
-
-        See Martin J. Field - A Pratcial Introduction to the simulation
-        of Molecular Systems, 2007, Cambridge University Press, Eq. (8.23),
-        (8.24) and (8.26) for the actual projection.
-
-        Returns
-        -------
-        ortho_vecs : np.array(6, atoms*3)
-            2d array containing row vectors describing translations
-            and rotations.
-        """
-        M_sqrt = np.sqrt(self.masses_rep)
-        num = len(self.atoms)
-        def get_trans_vecs():
-            """Mass-weighted unit vectors of the three cartesian axes."""
-            for vec in ((1, 0, 0), (0, 1, 0), (0, 0, 1)):
-                _ = M_sqrt * np.tile(vec, num)
-                yield _ / np.linalg.norm(_)
-        trans_vecs = list(get_trans_vecs())
-
-        x, y, z = self.coords3d.T
-        zeros = np.zeros(x.size)
-
-        def get_rot_vecs():
-            """Mass-weighted unit vectors Rx ~ (0, -z, y, 0, -z, y, ...)
-            Ry ~ (z, 0, -x, z, 0, -x, ...) and Rz ~ (-y, x, 0, -y, x, 0)."""
-            for c3d in ((zeros, -z, y), (z, zeros, -x), (-y, x, zeros)):
-                _ = np.array(c3d).T.flatten()
-                _ *= M_sqrt
-                yield _ / np.linalg.norm(_)
-        rot_vecs = list(get_rot_vecs())
-        ortho_vecs = np.array(gram_schmidt(trans_vecs + rot_vecs))
-
-        return ortho_vecs
+        return get_trans_rot_vectors(self.cart_coords, masses=self.masses)
 
     def eckart_projection(self, mw_hessian):
-        P = np.eye(self.cart_coords.size)
-        for vec in self.get_trans_rot_vectors():
-            P -= np.outer(vec, vec)
+        P = get_trans_rot_projector(self.cart_coords, masses=self.masses)
         return P.T.dot(mw_hessian).dot(P)
 
     def calc_energy_and_forces(self):
@@ -685,6 +747,7 @@ class Geometry:
             # True properties in AFIR calculations
             "true_forces": "true_forces",
             "true_energy": "true_energy",
+            # Overlap calculator; includes excited states
             "all_energies": "all_energies",
         }
 
@@ -769,6 +832,7 @@ class Geometry:
         try:
             import ase
         except ImportError:
+            print("Please install the 'ase' package!")
             return None
 
         # ASE coordinates are in Angstrom

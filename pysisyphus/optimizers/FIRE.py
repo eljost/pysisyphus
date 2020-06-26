@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 
 from pysisyphus.helpers import fit_rigid
@@ -8,22 +6,19 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 class FIRE(Optimizer):
     # https://doi.org/10.1103/PhysRevLett.97.170201
 
-    def __init__(self, geometry, **kwargs):
-        self.defaults = {
-            "dt": 0.1,
-            "dt_max": 1,
-            # Accelerate after N_acc cycles
-            "N_acc": 2,
-            "f_inc": 1.1,
-            "f_acc": 0.99,
-            "f_dec": 0.5,
-            "n_reset": 0,
-            "a_start": 0.1
-        }
-        for key, val in self.defaults.items():
-            setattr(self, key, val)
-        self.a = self.a_start
+    def __init__(self, geometry, dt=0.1, dt_max=1, N_acc=2, f_inc=1.1,
+                 f_acc=0.99, f_dec=0.5, n_reset=0, a_start=0.1, **kwargs):
+        self.dt = dt
+        self.dt_max = dt_max
+        # Accelerate after N_acc cycles
+        self.N_acc = N_acc
+        self.f_inc = f_inc
+        self.f_acc = f_acc
+        self.f_dec = f_dec
+        self.n_reset = n_reset
+        self.a_start = a_start
 
+        self.a = self.a_start
         # The current velocity
         self.v = np.zeros_like(geometry.coords)
         # Store the velocities for every step

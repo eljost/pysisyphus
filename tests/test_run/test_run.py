@@ -31,9 +31,11 @@ def test_diels_alder_growing_string():
         },
         "irc": {
             "type": "eulerpc",
-            "opt_ends": "fragments",
             "corr_func": "scipy",
             "rms_grad_thresh": 2.5e-3,
+        },
+        "endopt": {
+            "fragments": True,
         },
         "calc": {
             "type": "pyscf",
@@ -74,14 +76,19 @@ def test_run_results():
 
 @using("pyscf")
 def test_run_dimer_irc():
+    """Quick test to see if the Dimer method works well with
+    the rest."""
     run_dict = {
         "opt": {
             "type": "plbfgs",
+            "do_hess": True,
         },
         "irc": {
             "type": "imk",
             "rms_grad_thresh": 0.001,
-            "opt_ends": "fragments",
+        },
+        "endopt": {
+            "fragments": True,
         },
         "calc": {
             "type": "dimer",
