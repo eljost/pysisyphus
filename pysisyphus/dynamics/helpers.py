@@ -32,7 +32,7 @@ def kinetic_energy_from_velocities(masses, velocities):
     return np.sum(masses[:,None] / 2 * velocities**2) * VELO2E
 
 
-def kinetic_energy_for_temperature(atom_number, T):
+def kinetic_energy_for_temperature(atom_number, T, fixed_dof=0):
     """Kinetic energy for given temperature and number of atoms.
 
     Each atom has three degrees of freedom (1/2 * 3 == 3/2).
@@ -43,16 +43,19 @@ def kinetic_energy_for_temperature(atom_number, T):
         Number of atoms. Each atom has three degrees of freedom.
     T : float
         Temperature in Kelvin.
+    fixed_dof : int, optional, default=0
+        Number of fixed degrees of freedom, e.g. 3 when the center-of-mass
+        velocity is removed.
 
     Returns
     -------
     E_kin : float
         Kinetic energy in Hartree.
     """
-    return 3/2 * atom_number * T * KBAU
+    return (3*atom_number - fixed_dof) / 2 * T * KBAU
 
 
-def temperature_for_kinetic_energy(atom_number, E_kin):
+def temperature_for_kinetic_energy(atom_number, E_kin, fixed_dof=0):
     """Temperature for given kinetic energy and atom number.
 
     Each atom has three degrees of freedom (1/2 * 3 == 3/2).
@@ -63,13 +66,16 @@ def temperature_for_kinetic_energy(atom_number, E_kin):
         Number of atoms. Each atom has three degrees of freedom.
     E_kin : float
         Kinetic energy in Hartree.
+    fixed_dof : int, optional, default=0
+        Number of fixed degrees of freedom, e.g. 3 when the center-of-mass
+        velocity is removed.
 
     Returns
     -------
     Temperature : float
         Temperature in Kelvin.
     """
-    return 2/3 * E_kin / (atom_number * KBAU)
+    return 2 * E_kin / ((3*atom_number - fixed_dof) * KBAU)
 
 
 def remove_com_velocity(v, masses):

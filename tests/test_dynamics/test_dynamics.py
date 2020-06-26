@@ -85,6 +85,22 @@ def test_get_mb_velocities_for_geom():
     assert E_kin == pytest.approx(E_ref)
 
 
+def test_fixed_dof_kinetic_energy():
+    atoms = 5
+    T = 298.15
+
+    E_kin_ref = kinetic_energy_for_temperature(atoms, T)
+
+    fully_fixed = 3 * atoms
+    E_kin_fully_fixed = kinetic_energy_for_temperature(atoms, T, fixed_dof=fully_fixed)
+    assert E_kin_fully_fixed == 0.
+
+    translation_fixed = 3
+    T_trans_fixed = temperature_for_kinetic_energy(atoms, E_kin_ref,
+                                                   fixed_dof=translation_fixed)
+    assert T_trans_fixed > T
+
+
 @using("pyscf")
 def test_mb_velocities():
     geom = geom_loader("lib:h2o.xyz")
