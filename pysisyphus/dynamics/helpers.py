@@ -99,7 +99,7 @@ def remove_com_velocity(v, masses):
     return v - v_com
 
 
-def scale_velocities_to_temperatue(masses, v, T_desired):
+def scale_velocities_to_temperatue(masses, v, T_desired, fixed_dof=0):
     """Scale velocities to a given temperature.
 
     Parameters
@@ -110,6 +110,9 @@ def scale_velocities_to_temperatue(masses, v, T_desired):
         (Unscaled) velocities in Bohr/fs.
     T_desired : float
         Desired temperature in Kelvin.
+    fixed_dof : int, optional, default=0
+        Number of fixed degrees of freedom, e.g. 3 when the center-of-mass
+        velocity is removed.
 
     Returns
     -------
@@ -117,7 +120,8 @@ def scale_velocities_to_temperatue(masses, v, T_desired):
         Scaled velocities in Bohr/fs.
     """
 
-    E_ref = kinetic_energy_for_temperature(len(masses), T_desired)  # in Hartree
+    E_ref = kinetic_energy_for_temperature(len(masses), T_desired,
+                                           fixed_dof=fixed_dof)  # in Hartree
     E_cur = kinetic_energy_from_velocities(masses, v)  # in Hartree
     scale = (E_ref / E_cur)**0.5
     v *= scale
@@ -179,16 +183,19 @@ def get_mb_velocities(masses, cart_coords, T, remove_com=True, remove_rot=True,
     if (len(masses) == 1) and remove_com:
         raise Exception("Removing COM velocity with only 1 atom is a bad idea!")
 
+    fixed_dof = 0
     # Remove center-of-mass velocity
     if remove_com:
         v = remove_com_velocity(v, masses)
+        fixed_dof += 3
 
     if remove_rot:
         P = get_trans_rot_projector(cart_coords, masses)
         v = P.dot(v.flatten()).reshape(-1, 3)
+        fixed_dof += 3
 
     # In Bohr/fs
-    v = scale_velocities_to_temperatue(masses, v, T)
+    v = scale_velocities_to_temperatue(masses, v, T, fixed_dof=fixed_dof)
 
     return v
 

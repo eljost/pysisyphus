@@ -73,15 +73,26 @@ def test_unscaled_velocity_distribution():
     assert np.abs((v - v_ref)).sum() == pytest.approx(0., abs=1e-7)
 
 
-def test_get_mb_velocities_for_geom():
+@pytest.mark.parametrize(
+    "remove_com, remove_rot", [
+        (False, False),
+        (True, True),
+    ]
+)
+def test_get_mb_velocities_for_geom(remove_com, remove_rot):
     geom = geom_loader("lib:benzene.xyz")
     T = 298.15
 
-    # import pdb; pdb.set_trace()
-    v = get_mb_velocities_for_geom(geom, T, remove_com=True)  # in Bohr/fs
-    E_kin = kinetic_energy_from_velocities(geom.masses, v)
-    E_ref = kinetic_energy_for_temperature(len(geom.atoms), T)  # in Bohr
+    fixed_dof = 0
+    if remove_com:
+        fixed_dof += 3
+    if remove_rot:
+        fixed_dof += 3
 
+    v = get_mb_velocities_for_geom(geom, T,
+                                   remove_com=remove_com, remove_rot=remove_rot)  # in Bohr/fs
+    E_kin = kinetic_energy_from_velocities(geom.masses, v)
+    E_ref = kinetic_energy_for_temperature(len(geom.atoms), T, fixed_dof=fixed_dof)  # in Bohr
     assert E_kin == pytest.approx(E_ref)
 
 
