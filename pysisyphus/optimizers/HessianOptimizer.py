@@ -1,6 +1,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.helpers import get_step
+from pysisyphus.io.hessian import save_hessian
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
 from pysisyphus.optimizers.hessian_updates import (bfgs_update,
                                                    flowchart_update,
@@ -77,6 +78,14 @@ class HessianOptimizer(Optimizer):
             hessian_init = "fischer"
         self.prepare_opt(hessian_init)
 
+    def save_hessian(self):
+        h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle}.h5")
+        # Save the cartesian hessian, as it is independent of the
+        # actual coordinate system that is used.
+        save_hessian(h5_fn, self.geometry, self.geometry.cart_hessian,
+                     self.geometry.energy, self.geometry.calculator.mult)
+        self.log(f"Wrote calculated cartesian Hessian to '{h5_fn}'")
+
     def prepare_opt(self, hessian_init=None):
         if hessian_init is None:
             hessian_init = self.hessian_init
@@ -86,11 +95,7 @@ class HessianOptimizer(Optimizer):
 
         # Dump to disk if hessian was calculated
         if self.hessian_init == "calc":
-            hess_fn = self.get_path_for_fn("calculated_init_cart_hessian")
-            # Save the cartesian hessian, as it is independent of the
-            # actual coordinate system that is used.
-            np.savetxt(hess_fn, self.geometry._hessian)
-            self.log(f"Wrote calculated cartesian Hessian to '{hess_fn}'")
+            self.save_hessian()
 
         if (hasattr(self.geometry, "coord_type")
             and self.geometry.coord_type == "dlc"):
@@ -208,11 +213,7 @@ class HessianOptimizer(Optimizer):
             else:
                 self.H = self.geometry.hessian
                 key = "exact"
-                hess_fn = self.get_path_for_fn(
-                            f"calculated_cart_hessian_cycle_{self.cur_cycle}"
-                )
-                np.savetxt(hess_fn, self.geometry._hessian)
-                self.log(f"Wrote calculated cartesian Hessian to '{hess_fn}'")
+                self.save_hessian()
             if not (self.cur_cycle == 0):
                 self.log(f"Recalculated {key} Hessian in cycle {self.cur_cycle}.")
             # Reset counter. It is also reset when the recalculation was initiated
