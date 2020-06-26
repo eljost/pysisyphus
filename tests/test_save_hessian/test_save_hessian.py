@@ -9,7 +9,6 @@ from pysisyphus.testing import using
 @using("pyscf")
 def test_save_hessian(this_dir):
     geom = geom_loader("lib:acetaldehyd.xyz", coord_type="redund")
-    # return
     calc = PySCF(basis="321g", pal=2)
     geom.set_calculator(calc)
 
