@@ -197,7 +197,7 @@ def get_guess_hessian(geometry, hessian_init, int_gradient=None,
     except KeyError:
         # Only cartesian hessians can be loaded
         # self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
-        if hessian_init.endswith(".h5"):
+        if str(hessian_init).endswith(".h5"):
             with h5py.File(hessian_init, "r") as handle:
                 cart_hessian = handle["hessian"][:]
         else:
