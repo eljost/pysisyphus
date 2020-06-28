@@ -1020,6 +1020,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
     #
     # Everything can be chained. All functions operate on the 'geom' object,
     # which is propagated along through all functions calls.
+    #
+    # All keys are present in 'run_dict', but most of the corresponding values will
+    # be set to zero.
     elif any([run_dict[key] is not None for key in ("opt", "tsopt", "irc", "endopt")]):
 
         #######
@@ -1147,13 +1150,15 @@ def do_clean(force=False):
         "*rasscf.molden",
         # Turbomole specific
         "calculator_*.control",
-        "calculator_*.coord"
+        "calculator_*.coord",
         "calculator_*.mos",
         "calculator_*.ciss_a",
         "calculator*.sing_a",
         "*wavefunction.molden",
         "*input.xyz",
-        "*.coord"
+        "*.coord",
+        # PySCF specific
+        "calculator*.chkfile",
         # WFOverlap specific
         "wfo_*.*.out",
         # XTB specific
@@ -1204,6 +1209,7 @@ def do_clean(force=False):
         "*final_geometry.xyz",
         "*final_geometries.trj",
         "*current_geometries.trj",
+        "hess_calc_cyc*.h5",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -1223,10 +1229,10 @@ def do_clean(force=False):
         delete()
         return
     # If we dont force the cleaning ask for confirmation first
-    if confirm_input("Delete these files?"):
+    elif to_rm_paths and confirm_input("Delete these files?"):
         delete()
     else:
-        print("Aborting")
+        print("No files found for removal.")
 
 
 def print_header():

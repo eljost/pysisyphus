@@ -10,11 +10,13 @@
 from math import exp
 import itertools as it
 
+import h5py
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii, get_bond_mat
+from pysisyphus.io.hessian import save_hessian
 
 
 def fischer_guess(geom):
@@ -164,8 +166,8 @@ def xtb_hessian(geom, gfn=None):
 
 
 def get_guess_hessian(geometry, hessian_init, int_gradient=None,
-                      cart_gradient=None):
-    model_hessian = hessian_init not in ("calc", "unit", "xtb", "xtb1")
+                      cart_gradient=None, h5_fn=None):
+    model_hessian = hessian_init in ("fischer", "lindh", "simple", "swart")
     target_coord_type = geometry.coord_type
 
     # Recreate geometry with internal coordinates if needed
@@ -196,11 +198,19 @@ def get_guess_hessian(geometry, hessian_init, int_gradient=None,
     except KeyError:
         # Only cartesian hessians can be loaded
         # self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
-        geometry.cart_hessian = np.loadtxt(hessian_init)
+        if str(hessian_init).endswith(".h5"):
+            with h5py.File(hessian_init, "r") as handle:
+                cart_hessian = handle["hessian"][:]
+        else:
+            cart_hessian = np.loadtxt(hessian_init)
+        geometry.cart_hessian = cart_hessian
         # Use the previously set hessian in whatever coordinate system we
         # actually employ.
         H = geometry.hessian
         hess_str = "saved"
+
+    if (h5_fn is not None) and (hessian_init == "calc"):
+        save_hessian(h5_fn, geometry)
 
     if model_hessian and target_coord_type == "cart":
         if cart_gradient is not None:

@@ -120,6 +120,7 @@ class IRC:
 
     def prepare(self, direction):
         self.cur_cycle = 0
+        self.direction = direction
         self.converged = False
         self.past_inflection = not self.force_inflection
 
@@ -376,7 +377,8 @@ class IRC:
 
         self.init_hessian, hess_str = get_guess_hessian(self.geometry,
                                                         self.hessian_init,
-                                                        cart_gradient=self.ts_gradient
+                                                        cart_gradient=self.ts_gradient,
+                                                        h5_fn=f"hess_init_irc.h5",
         )
         self.log(f"Initial hessian: {hess_str}")
 

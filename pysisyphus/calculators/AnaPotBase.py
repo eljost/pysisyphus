@@ -49,6 +49,10 @@ class AnaPotBase(Calculator):
         self.forces_calcs = 0
         self.hessian_calcs = 0
 
+        # Dummies
+        self.mult = 1
+        self.charge = 0
+
     def get_energy(self, atoms, coords):
         self.energy_calcs += 1
         x, y, z = coords
