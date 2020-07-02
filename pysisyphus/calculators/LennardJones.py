@@ -4,17 +4,20 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 
+
 class LennardJones(Calculator):
 
     # Corresponds to σ = 1 Å, as the default value in ASE, but
     # pysisyphus uses au/Bohr.
-    def __init__(self, sigma=1.8897261251, epsilon=1):
+    def __init__(self, sigma=1.8897261251, epsilon=1, rc=None):
         super().__init__()
 
         self.sigma = sigma
         self.epsilon = epsilon
         # Cutoff distance
-        self.rc = 3 * self.sigma
+        if rc is None:
+            rc = 3 * self.sigma
+        self.rc = rc
         # Shift energy
         self.e0 = (4 * self.epsilon *
                    ((self.sigma/self.rc)**12 - (self.sigma/self.rc)**6)
