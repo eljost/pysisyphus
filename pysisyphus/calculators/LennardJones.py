@@ -44,8 +44,11 @@ class LennardJones(Calculator):
 
         Derivative of quotient appearing in LJ potential w.r.t first cartesian
         coordinate:
-            d(σ/r)**n/dx_1 =
-                (σ/r)**n * (-n)*(x1-x2)/r**2
+            d(σ/r)**n/dx_1
+                = σ**n * d/dx_1 r**(-n)
+                = σ**n * (-n/2) * (2x1-2x2) * r**(-n) * r**(-2)
+                = σ**n * r**(-n) * (-n) * (x1-x2) * r**(-2)
+                = (σ/r)**n * (-n) * (x1-x2) / r**2
 
         Derivate w.r.t to cartesian x coordinate of atom A (x_1):
             dLJ(r)/dx_1 = 
@@ -58,7 +61,7 @@ class LennardJones(Calculator):
         The derivate w.r.t to x_2 differs only by a factor of -1!
         """
         prefactors = 24*self.epsilon * (c6 - 2*c12) / rs**2
-        products = prefactors[:,None] * diffs 
+        products = prefactors[:,None] * diffs
 
         gradient = np.zeros_like(coords3d)
         # Every pair (a, b) contributes to the total gradient of atoms a and b.
