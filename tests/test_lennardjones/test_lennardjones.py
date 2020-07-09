@@ -16,10 +16,15 @@ def test_lennard_jones():
     atoms = Icosahedron("Ar", noshells=2, latticeconstant=3)
     atoms.set_calculator(ase_LJ())
     ase_forces = atoms.get_forces()
+    ase_energy = atoms.get_potential_energy()
 
     coords = atoms.positions.flatten()
     geom = Geometry(atoms.get_chemical_symbols(), coords / BOHR2ANG)
     geom.set_calculator(LennardJones())
+
+    pysis_energy = geom.energy
+    assert pysis_energy == pytest.approx(ase_energy)
+
     pysis_forces = geom.forces / BOHR2ANG
     np.testing.assert_allclose(pysis_forces, ase_forces.flatten(), atol=1e-15)
 
