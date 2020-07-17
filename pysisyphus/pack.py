@@ -131,7 +131,7 @@ def run():
     inp = make_input(**inp_kwargs)
     inp_fn = "packmol.inp"
     with open(inp_fn, "w") as handle:
-        handle.write(inp_fn)
+        handle.write(inp)
     print(f"Wrote packmol input to '{inp_fn}'")
 
     proc = call_packmol(inp)
