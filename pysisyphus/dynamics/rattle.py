@@ -1,11 +1,14 @@
 import numpy as np
 
 from pysisyphus.constants import FORCE2ACC
+from pysisyphus.dynamics.helpers import energy_forces_getter_closure, remove_com_velocity
 
 
-def rattle_closure(geom, constraints, dt, tol, max_cycles=25):
+def rattle_closure(geom, constraints, dt, tol=1e-3, max_cycles=25,
+                   energy_forces_getter=None, remove_com_v=True):
     # Inverse atom masses
-    inv_masses = 1 / geom.masses
+    masses = geom.masses
+    inv_masses = 1 / masses
     inv_masses_rep = np.repeat(inv_masses, 3)
 
     dt2 = 0.5 * dt
@@ -23,8 +26,10 @@ def rattle_closure(geom, constraints, dt, tol, max_cycles=25):
     lengths = np.linalg.norm(get_bond_vecs(coords3d), axis=1)
     lengths_sq = lengths**2
 
-    def force_getter(coords):
-        return geom.get_energy_and_forces_at(coords)["forces"]
+    if energy_forces_getter is None:
+        energy_forces_getter = energy_forces_getter_closure(geom)
+        # def forces_getter(coords):
+            # return geom.get_energy_and_forces_at(coords)["forces"]
 
     def rattle(coords, velocities, forces):
         acceleration = forces * inv_masses_rep * FORCE2ACC
@@ -35,6 +40,8 @@ def rattle_closure(geom, constraints, dt, tol, max_cycles=25):
         coords3d_updated = (coords + dt*velocities + dt2_sq * acceleration).reshape(-1, 3)
         # Unconstrained velocity update
         velocities3d_updated = (velocities + dt2 * acceleration).reshape(-1, 3)
+        if remove_com_v:
+            velocities3d_updated = remove_com_velocity(velocities3d_updated, masses)
 
         # First part of RATTLE algorithm.
         #   Yields updated positions for t+dt and half-updated velocities for t+dt/2
@@ -69,12 +76,16 @@ def rattle_closure(geom, constraints, dt, tol, max_cycles=25):
 
             # Stop macro-iterations when no correction was done
             if not corrected:
-                print(f"RATTLE_1 finished after {i+1} macro cycle(s)!")
+                # print(f"RATTLE_1 finished after {i+1} macro cycle(s)!")
                 break
+        else:
+            raise Exception("First part of RATTLE did not converge!")
 
-        # Calculate new forces at updated coordinates
-        forces_new = force_getter(coords3d_updated.flatten())
+        # Calculate energy (E_pot) and forces at updated coordinates
+        energy_new, forces_new = energy_forces_getter(coords3d_updated.flatten())
         velocities3d_updated += dt2 * (forces_new * inv_masses_rep * FORCE2ACC).reshape(-1, 3)
+        if remove_com_v:
+            velocities3d_updated = remove_com_velocity(velocities3d_updated, masses)
         # The coordinates aren't updated anymore in the second part, so we can
         # calculate the bond vectors here once and store them.
         bond_vecs = get_bond_vecs(coords3d_updated)
@@ -100,9 +111,11 @@ def rattle_closure(geom, constraints, dt, tol, max_cycles=25):
 
             # Stop macro-iterations when no correction was done
             if not corrected:
-                print(f"RATTLE_2 finished after {i+1} macro cycle(s)!")
+                # print(f"RATTLE_2 finished after {i+1} macro cycle(s)!")
                 break
+        else:
+            raise Exception("Second part of RATTLE did not converge!")
 
-        return coords3d_updated.flatten(), velocities3d_updated.flatten(), forces_new
+        return coords3d_updated.flatten(), velocities3d_updated.flatten(), energy_new, forces_new
 
     return rattle

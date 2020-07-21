@@ -212,3 +212,12 @@ def get_mb_velocities_for_geom(geom, T, remove_com=True, remove_rot=True,
                              remove_rot=remove_rot,
                              seed=seed,
     )
+
+
+def energy_forces_getter_closure(geom):
+    def energy_forces_getter(coords):
+        results = geom.get_energy_and_forces_at(coords)
+        energy = results["energy"]
+        forces = results["forces"]
+        return energy, forces
+    return energy_forces_getter

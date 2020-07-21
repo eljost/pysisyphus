@@ -2,7 +2,7 @@ import itertools as it
 
 import pytest
 
-from pysisyphus.calculators import TIP3P
+from pysisyphus.calculators import TIP3P, ExternalPotential
 from pysisyphus.dynamics.helpers import get_mb_velocities_for_geom
 from pysisyphus.dynamics.velocity_verlet import md
 from pysisyphus.dynamics import rattle_closure
@@ -17,26 +17,47 @@ def get_water_constraints(index):
 
 
 def test_rattle_tip3p(this_dir):
-    # geom = geom_loader(this_dir / "output_10.xyz")
-    geom = geom_loader(this_dir / "output_2.xyz")
-    geom.set_calculator(TIP3P())
+    geom = geom_loader(this_dir / "output_10.xyz")
+    # geom = geom_loader(this_dir / "output_2.xyz")
     # geom.jmol()
 
-    constraints = list(it.chain(*[get_water_constraints(i) for i in range(len(geom.atoms) // 3)]))
-    # constraints.append([2, 3])
-
-    forces = geom.forces
-
     T = 298.15
-    seed = 20200626
-    velocities = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
+    calc = TIP3P()
+    potentials = [
+        {
+            "type": "logfermi",
+            "beta": 6,
+            "T": T,
+            "radius": 10,
+        },
+    ]
+    ext_calc = ExternalPotential(calc, potentials=potentials)
+    geom.set_calculator(ext_calc)
 
-    rattle = rattle_closure(geom, constraints, dt=0.5, tol=1e-2,
-                            max_cycles=10)
-    c, v, f = rattle(geom.coords, velocities, forces)
-    print("coords")
-    print(c)
-    print("velocities")
-    print(v)
-    print("forces")
-    print(f)
+    constraints = list(it.chain(*[get_water_constraints(i) for i in range(len(geom.atoms) // 3)]))
+
+    seed = 20200626
+    v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
+
+    md_kwargs = {
+        "v0": v0,
+        # "steps": 100,
+        # "dt": 1,
+        "steps": 250,
+        "dt": 1.5,
+        # "steps": 500,
+        # "dt": 0.25,
+        "constraints": constraints,
+        "constraint_kwargs": {
+            # "remove_com_v": False,
+        }
+    }
+
+    # import pdb; pdb.set_trace()
+    md_result = md(geom, **md_kwargs)
+
+    from pysisyphus.xyzloader import coords_to_trj
+    coords = md_result.coords
+    trj_fn = "md.trj"
+    atoms = geom.atoms
+    coords_to_trj(trj_fn, atoms, coords)
