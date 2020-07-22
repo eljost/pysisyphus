@@ -1,0 +1,43 @@
+import numpy as np
+import pytest
+
+from pysisyphus.calculators import Psi4
+from pysisyphus.helpers import geom_loader, eigval_to_wavenumber
+from pysisyphus.testing import using
+
+
+@pytest.fixture
+def azetidine():
+    geom = geom_loader("lib:azetidine_hf_321g_opt.xyz", coord_type="redund")
+    psi4_kwargs = {
+        "method": "hf",
+        "basis": "3-21g",
+        "pal": 2,
+    }
+    calc = Psi4(**psi4_kwargs)
+    geom.set_calculator(calc)
+    return geom
+
+
+
+@using("psi4")
+def test_energy(azetidine):
+    energy = azetidine.energy
+    assert energy == pytest.approx(-171.1173045397321744)
+
+
+@using("psi4")
+def test_forces(azetidine):
+    forces = azetidine.forces
+    norm = np.linalg.norm(forces)
+    assert norm == pytest.approx(2.567425805927507e-05, abs=1e-5)
+
+
+@using("psi4")
+def test_hessian(azetidine):
+    H = azetidine.mw_hessian
+    H = azetidine.eckart_projection(H)
+    w, v = np.linalg.eigh(H)
+    nus = eigval_to_wavenumber(w)
+    ref_nus = np.array((3278.33113, 3320.16889, 3714.42723))
+    np.testing.assert_allclose(nus[-3:], ref_nus, atol=1e-4)
