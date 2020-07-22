@@ -43,7 +43,7 @@ class Psi4(Calculator):
         set_num_threads({pal})
         memory {mem} MB
 
-        set basis {basis}
+        {basis}
         {to_set}
         {pcm}
 
@@ -75,6 +75,29 @@ class Psi4(Calculator):
         set_strs = [f"set {key} {value}" for key, value in self.to_set.items()]
         set_strs = "\n".join(set_strs)
 
+        # Basis section
+        basis = self.basis
+        # Construct more complex basis input
+        if isinstance(basis, dict):
+            # Check if a global basis is given for all atoms. This must come
+            # first, otherwise Psi4 throws an error.
+            basis_lines = ["basis {", ]
+            try:
+                basis_lines.append(f"assign {basis['assign']}")
+            except KeyError:
+                pass
+            # Add remaining lines
+            basis_lines.extend(
+                [f"assign {atms} {bas}" for atms, bas in basis.items()
+                 if atms != "assign"]
+            )
+            basis_lines.append("}")
+
+            basis = "\n".join(basis_lines)
+        # Use set when self.basis is a string
+        else:
+            basis =  f"set basis {basis}"
+
         # PCM section
         pcm = ""
         if self.solvent:
@@ -97,7 +120,7 @@ class Psi4(Calculator):
                 xyz=xyz,
                 charge=self.charge,
                 mult=self.mult,
-                basis=self.basis,
+                basis=basis,
                 to_set=set_strs,
                 pcm=pcm,
                 method=method,
@@ -124,6 +147,9 @@ class Psi4(Calculator):
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="hessian")
         return results
+
+    def run_calculation(self, atoms, coords):
+        return self.get_energy(atoms, coords)
 
     def parse_energy(self, path):
         with open(path / "psi4.out") as handle:
