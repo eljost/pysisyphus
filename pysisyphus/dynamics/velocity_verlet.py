@@ -7,6 +7,7 @@ from pysisyphus.constants import FORCE2ACC
 from pysisyphus.dynamics.helpers import kinetic_energy_from_velocities, \
                                         temperature_for_kinetic_energy, \
                                         energy_forces_getter_closure
+from pysisyphus.dynamics.csvr import resample_kin
 from pysisyphus.dynamics.rattle import rattle_closure
 
 logger = logging.getLogger("dynamics")
@@ -14,10 +15,13 @@ logger = logging.getLogger("dynamics")
 MDResult = namedtuple("MDResult",
                       "coords t terminated",
 )
+THERMOSTATS = {
+    "csvr": resample_kin,
+}
 
 
-def md(geom, v0, steps, dt, remove_com_v=True, term_funcs=None, constraints=None,
-       constraint_kwargs=None, verbose=True):
+def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
+       term_funcs=None, constraints=None, constraint_kwargs=None, verbose=True):
     """Velocity verlet integrator.
 
     Parameters
@@ -32,6 +36,10 @@ def md(geom, v0, steps, dt, remove_com_v=True, term_funcs=None, constraints=None
         Timestep in fs.
     remove_com_v : bool, default=True
         Remove center-of-mass velocity.
+    thermostat : str, optional, default None
+        Which and whether to use a thermostat.
+    T : float, optional, default=None
+        Desired temperature in thermostated runs.
     term_funcs : dict, optional
         Iterable of functions that are called with the atomic
         coordinates in every MD cycle and result in termination
@@ -71,6 +79,9 @@ def md(geom, v0, steps, dt, remove_com_v=True, term_funcs=None, constraints=None
         fixed_dof += len(constraints)
         rattle = rattle_closure(geom, constraints, dt, energy_forces_getter=energy_forces_getter,
                                 **constraint_kwargs)
+
+    if thermostat is not None:
+        thermo_func = THERMOSTATS[thermostat]
 
     # In amu
     masses = geom.masses

@@ -130,6 +130,30 @@ def scale_velocities_to_temperatue(masses, v, T_desired, fixed_dof=0):
     return v
 
 
+def scale_velocities_to_energy(masses, v, E_desired):
+    """Scale velocities to a given temperature.
+
+    Parameters
+    ----------
+    masses : np.array, 1d, shape (number of atoms, )
+        Atomic masses in amu.
+    v : np.array, 2d, shape (number of atoms, 3)
+        (Unscaled) velocities in Bohr/fs.
+    E_desired : float
+        Desired kinetic energy in Hartree.
+
+    Returns
+    -------
+    v : np.array, 2d, shape (number of atoms, 3)
+        Scaled velocities in Bohr/fs.
+    """
+
+    E_cur = kinetic_energy_from_velocities(masses, v)  # in Hartree
+    scale = (E_desired / E_cur)**0.5
+    v *= scale
+    return v
+
+
 def unscaled_velocity_distribution(masses, T, seed=None):
     """
     ρ ∝ exp(- v² * m / (2 * kT))
@@ -221,3 +245,8 @@ def energy_forces_getter_closure(geom):
         forces = results["forces"]
         return energy, forces
     return energy_forces_getter
+
+
+def rescale_velocities(velocites3d, e_kin_target, fixed_dof=0):
+    e_kin_cur = kinetic_energy_from_velocities(velocities3d)
+    pass
