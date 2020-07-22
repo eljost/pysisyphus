@@ -50,7 +50,7 @@ def test_hessian(azetidine):
         ("iefpcm", -171.1230983139995772),
     ]
 )
-def test_pcm(azetidine, pcm, ref_energy):
+def test_pcm_energy(azetidine, pcm, ref_energy):
     calc = azetidine.calculator
     calc.solvent = "water"
     calc.pcm = pcm
