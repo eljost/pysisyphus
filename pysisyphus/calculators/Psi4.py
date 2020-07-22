@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
-
 import re
+import textwrap
 
 import numpy as np
 
@@ -11,12 +10,15 @@ class Psi4(Calculator):
 
     conf_key = "psi4"
 
-    def __init__(self, method, basis, to_set=None, mem=2000, **kwargs):
+    def __init__(self, method, basis, to_set=None, pcm="iefpcm",
+                 solvent=None, mem=2000, **kwargs):
         super().__init__(**kwargs)
 
         self.method = method
         self.basis = basis
         self.to_set = {} if to_set is None else dict(to_set)
+        self.pcm = pcm
+        self.solvent = solvent
         self.mem = mem
 
         self.inp_fn = "psi4.inp"
@@ -31,7 +33,7 @@ class Psi4(Calculator):
 
         self.base_cmd = self.get_cmd("cmd")
 
-        self.inp = """
+        self.inp = textwrap.dedent("""
         molecule mol{{
           {xyz}
           {charge} {mult}
@@ -41,12 +43,12 @@ class Psi4(Calculator):
         set_num_threads({pal})
         memory {mem} MB
 
-
         set basis {basis}
         {to_set}
+        {pcm}
 
         {method}
-        """
+        """)
 
     def prepare_input(self, atoms, coords, calc_type):
         xyz = self.prepare_coords(atoms, coords)
@@ -73,17 +75,36 @@ class Psi4(Calculator):
         set_strs = [f"set {key} {value}" for key, value in self.to_set.items()]
         set_strs = "\n".join(set_strs)
 
+        # PCM section
+        pcm = ""
+        if self.solvent:
+            pcm = textwrap.dedent(f"""
+            set pcm true
+
+            pcm = {{
+                Medium {{
+                    SolverType = {self.pcm}
+                    Solvent = {self.solvent}
+                }}
+
+                Cavity {{
+                    Type = GePol
+                }}
+            }}
+            """)
+
         inp = self.inp.format(
                 xyz=xyz,
                 charge=self.charge,
                 mult=self.mult,
                 basis=self.basis,
                 to_set=set_strs,
+                pcm=pcm,
                 method=method,
                 pal=self.pal,
                 mem=self.mem,
         )
-        inp = "\n".join([line.strip() for line in inp.split("\n")])
+        # inp = "\n".join([line.strip() for line in inp.split("\n")])
         return inp
 
     def get_energy(self, atoms, coords):
@@ -113,7 +134,6 @@ class Psi4(Calculator):
             "energy": float(mobj[1])
         }
         return result
-
 
     def parse_grad(self, path):
         gradient = np.load(path / "grad.npy")

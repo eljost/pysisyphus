@@ -41,3 +41,18 @@ def test_hessian(azetidine):
     nus = eigval_to_wavenumber(w)
     ref_nus = np.array((3278.33113, 3320.16889, 3714.42723))
     np.testing.assert_allclose(nus[-3:], ref_nus, atol=1e-4)
+
+
+@using("psi4")
+@pytest.mark.parametrize(
+    "pcm, ref_energy", [
+        (  "cpcm", -171.1231505412408751),
+        ("iefpcm", -171.1230983139995772),
+    ]
+)
+def test_pcm(azetidine, pcm, ref_energy):
+    calc = azetidine.calculator
+    calc.solvent = "water"
+    calc.pcm = pcm
+    energy = azetidine.energy
+    assert energy == pytest.approx(ref_energy)
