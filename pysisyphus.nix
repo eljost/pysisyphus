@@ -26,12 +26,9 @@
 , wfoverlap ? null
 }:
 let
-  psi4Wrapper = writeScript {
-    name = "psi4.sh";
-    text = ''
-      ${psi4}/bin/psi4 -o stdout $1
-    '';
-  };
+  psi4Wrapper = writeScript "psi4.sh" ''
+    ${psi4}/bin/psi4 -o stdout $1
+  '';
   pysisrc =
     let
       gaussian16Conf = {
@@ -48,7 +45,7 @@ let
       mopacConf = {
       };
       psi4Conf = {
-        cmd = "${psi4Wrapper}";
+        cmd = "${toString psi4Wrapper}";
       };
       xtbConf = {
         cmd = "${xtb}/bin/xtb";
