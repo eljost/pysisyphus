@@ -54,7 +54,7 @@ let
         cmd = "${xtb}/bin/xtb";
       };
       wfoverlapConf = {
-        cmd = "${wfoverlap}/bin/wfoverlap";
+        cmd = "${wfoverlap}/bin/wfoverlap.x";
       };
       multiwfnConf = {
         cmd = "${multiwfn}/bin/Multiwfn";
