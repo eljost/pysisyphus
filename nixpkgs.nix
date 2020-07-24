@@ -12,7 +12,7 @@ let
       repoPath = builtins.fetchGit {
         url = "https://gitlab.com/theoretical-chemistry-jena/nixwithchemistry.git";
         name = "NixWithChemistry";
-        rev = "6e47f912176b70122cc337f14838e59418af867e";
+        rev = "5941d49fd06abde6f2863008be144a63931931d3";
         ref = "refs/heads/master";
       };
     in import "${repoPath}/default.nix";
