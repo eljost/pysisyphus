@@ -1,13 +1,8 @@
 let nixpkgs = import ./nixpkgs.nix;
+    config = import ./nixwithchemistry/config.nix;
 in  with nixpkgs; python37Packages.callPackage ./pysisyphus.nix {
-      orca = null;
-      turbomole = null;
-      gaussian = null;
-      jmol = null;
-      multiwfn = null;
-      xtb = null;
-      openmolcas = null;
-      pyscf = null;
-      psi4 = null;
+      orca = if config.orca then orca else null;
+      turbomole = if config.turbomole then turbomole else null;
+      gaussian = if config.gaussian then gaussian else null;
       mopac = null;
     }

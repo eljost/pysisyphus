@@ -13,17 +13,17 @@
 , rmsd
 , scipy
 , sympy
-, orca ? null
-, turbomole ? null
-, gaussian ? null
-, jmol ? null
-, multiwfn ? null
-, xtb ? null
-, openmolcas ? null
-, pyscf ? null
-, psi4 ? null
+, orca ? orca # or null
+, turbomole ? turbomole # or null
+, gaussian ? gaussian # or null
+, jmol ? jmol # or null
+, multiwfn ? multiwfn # or null
+, xtb ? xtb # or null
+, openmolcas ? openmolcas # or null
+, pyscf ? pyscf # or null
+, psi4 ? psi4 # or null
 , mopac ? null
-, wfoverlap ? null
+, wfoverlap ? wfoverlap # or null
 }:
 let
   psi4Wrapper = writeScript "psi4.sh" ''
