@@ -144,3 +144,5 @@ fabfile.py
 *.grad
 
 *gaussian16.com
+
+result
