@@ -1,0 +1,16 @@
+# Adapted from https://github.com/psi4/psi4/blob/master/samples/cc25/input.dat
+calc:
+ type: psi4
+ pal: 2
+ mem: 2000
+ method: eom-ccsd
+ # All entries here will be printed in the Psi4 input as
+ # set [key] [value]
+ # The "basis" key must not present here!
+ to_set:
+  reference: uhf
+  roots_per_irrep: "[1, ]"
+ basis: DZ
+ charge: 1
+ mult: 2
+xyz: lib:h2o.xyz
