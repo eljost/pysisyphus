@@ -34,7 +34,8 @@ def test_rattle_tip3p(this_dir):
     ext_calc = ExternalPotential(calc, potentials=potentials)
     geom.set_calculator(ext_calc)
 
-    constraints = list(it.chain(*[get_water_constraints(i) for i in range(len(geom.atoms) // 3)]))
+    constraints = list(it.chain(*[get_water_constraints(i)
+                                  for i in range(len(geom.atoms) // 3)]))
 
     seed = 20200626
     v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
@@ -50,7 +51,8 @@ def test_rattle_tip3p(this_dir):
         "constraints": constraints,
         "constraint_kwargs": {
             # "remove_com_v": False,
-        }
+        },
+        # "thermostat": "csvr",
     }
 
     # import pdb; pdb.set_trace()
