@@ -12,6 +12,8 @@ class RSA(HessianOptimizer):
         min_eigval = big_eigvals[0]
         pos_definite = min_eigval > 0.
         gradient_trans = big_eigvecs.T.dot(gradient)
+        self.log(f"Smallest eigenvalue: {min_eigval:.6f}")
+        self.log(f"Positive definite Hessian: {pos_definite}")
 
         def get_step(lambda_):
             return -gradient_trans /(big_eigvals + lambda_)
@@ -23,7 +25,7 @@ class RSA(HessianOptimizer):
         def on_trust_radius(step, thresh=1e-3):
             return abs(self.trust_radius - np.linalg.norm(step)) <= thresh
 
-        def on_trust_radius_lin(step, thresh=1e-3):
+        def on_trust_radius_lin(step):
             return 1/self.trust_radius - 1/np.linalg.norm(step)
 
         def finalize_step(lambda_):
@@ -37,8 +39,11 @@ class RSA(HessianOptimizer):
         # already in trust radius.
         if pos_definite and newton_norm <= self.trust_radius:
             lambda_ = 0.
+            self.log("Using unshifted Newton step.")
             return finalize_step(lambda_)
 
+        # If the Hessian is not positive definite or if the step is too
+        # long we have to determine the shift parameter lambda.
         try:
             bracket_start = 0. if pos_definite else -min_eigval
             rs_kwargs = {
@@ -46,9 +51,10 @@ class RSA(HessianOptimizer):
                 "bracket": (bracket_start, 1e10),
                 "x0": bracket_start + 1e-3,
                 "xtol": 1e-3,
+                # "method": "brentq",
             }
             res = root_scalar(**rs_kwargs)
-            assert res.flag == "converged"
+            assert res.converged
             lambda_ = res.root
         except AssertionError as err:
             raise err

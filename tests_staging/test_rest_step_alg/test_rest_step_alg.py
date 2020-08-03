@@ -27,10 +27,10 @@ def test_rsa():
     print(f"@\tnorm(diff)={diff_norm:.8f}")
     assert diff_norm < 6e-5
 
-    import matplotlib.pyplot as plt
-    calc = geom.calculator
-    calc.plot()
-    coords = np.array(opt.coords)
-    ax = calc.ax
-    ax.plot(*coords.T[:2], "ro-")
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # calc = geom.calculator
+    # calc.plot()
+    # coords = np.array(opt.coords)
+    # ax = calc.ax
+    # ax.plot(*coords.T[:2], "ro-")
+    # plt.show()
