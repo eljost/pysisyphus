@@ -88,8 +88,8 @@ class RSA(HessianOptimizer):
         # different formula to calculate the step.
         without_first = gradient_trans[1:] / (big_eigvals[1:] - min_eigval)
         tau = sqrt(self.trust_radius**2 - (without_first**2).sum())
-        step = [tau] + step_trans.tolist()
-        step = big_eigvecs.dot(-step_trans)
+        step_trans = [tau] + -without_first.tolist()
+        step = big_eigvecs.dot(step_trans)
         predicted_change = step.dot(gradient) + 0.5 * step.dot(H).dot(step)
         self.predicted_energy_changes.append(predicted_change)
         return step
