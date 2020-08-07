@@ -572,9 +572,9 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
         print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
 
         # Also write HD5 hessian
-        # final_h5_hessian_fn = prefix + "final_hessian.h5"
-        # save_h5_hessian(final_h5_hessian_fn, geom)
-        # print(f"Wrote HD5 Hessian to '{final_h5_hessian_fn}'.")
+        final_h5_hessian_fn = prefix + "final_hessian.h5"
+        save_h5_hessian(final_h5_hessian_fn, geom)
+        print(f"Wrote HD5 Hessian to '{final_h5_hessian_fn}'.")
 
     if write_imag_modes:
         imag_modes = imag_modes_from_geom(geom)
