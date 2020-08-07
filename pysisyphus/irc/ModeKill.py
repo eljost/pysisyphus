@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pysisyphus.helpers import eigval_to_wavenumber, do_final_hessian
+from pysisyphus.helpers import do_final_hessian
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.optimizers.hessian_updates import bofill_update
 from pysisyphus.TableFormatter import TableFormatter
