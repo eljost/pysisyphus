@@ -138,8 +138,9 @@ def test_mb_velocities():
     coords_to_trj(trj_fn, atoms, coords)
 
 
+@using("xtb")
 def test_thermostat():
-    geom = geom_loader("/home/carpx/Code/pysisyphus/tests/test_rattle/output_10.xyz")
+    geom = geom_loader("lib:dynamics/10_water.xyz")
     from pysisyphus.calculators.XTB import XTB
     geom.set_calculator(XTB(pal=2))
 
@@ -149,7 +150,8 @@ def test_thermostat():
     T = 298.15
     seed = 20182503
     v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
-    steps = 6000
+    # steps = 6000
+    steps = 250
     dt = 0.5
     md_kwargs = {
         "v0": v0,
