@@ -93,6 +93,9 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
     assert w[0] < -1e-8
     trans_vec = v[:,0]
 
+    # Disable removal of translation/rotation for analytical potentials
+    remove_com = remove_rot = geom.cart_coords.size > 3
+
     if E_excess == 0.:
         print("MDP without excess energy.")
         # Without excess energy we have to do an initial displacement along
@@ -189,8 +192,6 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         # Determine random momentum vector for the given kinetic energy
         E_kin = E_tot - E_pot
         T = temperature_for_kinetic_energy(len(geom.atoms), E_kin)
-        # Disable removal of translation/rotation for analytical potentials
-        remove_com = remove_rot = geom.cart_coords.size > 3
         v0 = get_mb_velocities_for_geom(geom, T,
                                         remove_com=remove_com,
                                         remove_rot=remove_rot).flatten()
