@@ -245,8 +245,3 @@ def energy_forces_getter_closure(geom):
         forces = results["forces"]
         return energy, forces
     return energy_forces_getter
-
-
-def rescale_velocities(velocites3d, e_kin_target, fixed_dof=0):
-    e_kin_cur = kinetic_energy_from_velocities(velocities3d)
-    pass
