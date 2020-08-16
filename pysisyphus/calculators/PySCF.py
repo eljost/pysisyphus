@@ -109,6 +109,8 @@ class PySCF(OverlapCalculator):
         #   if self.verbose > logger.QUIET:
         #       ...
         # in 'mole.Mole.build'. Around line 2046 for pyscf 1.6.5.
+        # Search for "output file" in gto/mole.py
+        # Search for "Large deviations found" in scf/{uhf,dhf,ghf}.py
         mol.output = self.make_fn(self.out_fn)
         mol.max_memory = self.mem * self.pal
         mol.build(parse_arg=False)

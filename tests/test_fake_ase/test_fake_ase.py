@@ -30,8 +30,8 @@ def test_fake_ase_opt():
     atoms.set_calculator(FakeASE(LennardJones()))
 
     dyn = BFGS(atoms)
-    dyn.run(fmax=0.05)
+    dyn.run(fmax=0.0005)
 
     assert dyn.converged()
-    assert dyn.get_number_of_steps() == 29
-    assert np.linalg.norm(dyn.f0) == pytest.approx(1.594722318789367)
+    assert dyn.get_number_of_steps() == 14
+    assert np.linalg.norm(dyn.f0) == pytest.approx(0.0041872)

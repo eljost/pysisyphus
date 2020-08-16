@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators import Psi4
-from pysisyphus.helpers import geom_loader, eigval_to_wavenumber
+from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.testing import using
 
 

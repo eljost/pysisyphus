@@ -4,7 +4,8 @@ import pytest
 
 from pysisyphus.calculators import Turbomole
 from pysisyphus.testing import using
-from pysisyphus.helpers import geom_from_library, eigval_to_wavenumber
+from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 
 
 @pytest.fixture
