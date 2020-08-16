@@ -34,6 +34,7 @@ class OverlapCalculator(Calculator):
         "nto_org": "original natural transition orbital overlap",
     }
     VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]  # lgtm [py/non-iterable-in-for-loop]
+    VALID_CDDS = (None, "calc", "render")
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
@@ -54,12 +55,19 @@ class OverlapCalculator(Calculator):
         self.use_ntos = use_ntos
         self.cdds = cdds
         # When calculation/rendering of charge density differences is requested
-        # check if MWFN is available. If not, we disable CDDs and print a warning.
-        if (self.cdds is not None) and not available("mwfn"):
+        # check if the appropriate programs are available. If not, we fallback
+        # to a more sensible command and print a warning.
+        if (self.cdds == "render") and (not available("jmol")):
+            print(f"'cdds: {self.cdds}' requested, but Jmol was not found! "
+                   "Falling back to 'cdds: calc'! Consider defining the Jmol "
+                   "command in the '.pysisyphusrc'.")
+            self.cdds = "calc"
+        if (self.cdds == "calc") and (not available("mwfn")):
             print(f"'cdds: {self.cdds}' requested, but Multiwfn was not found! "
                    "Falling back to 'cdds: None'! Consider defining the Multiwfn "
                    "command in the '.pysisyphusrc'.")
             self.cdds = None
+        assert self.cdds in self.VALID_CDDS
         self.orient = orient
         self.dump_fn = self.out_dir / dump_fn
         self.ncore = int(ncore)
@@ -70,8 +78,6 @@ class OverlapCalculator(Calculator):
             self.log("dyn_roots = 0 is hardcoded right now")
 
         assert self.ncore >= 0, "ncore must be a >= 0!"
-        if self.cdds:
-            assert self.cdds in "calc render".split()
 
         self.wfow = None
         self.mo_coeff_list = list()
@@ -597,8 +603,10 @@ class OverlapCalculator(Calculator):
         return exc_str
 
     def calc_cdd_cube(self, root, cycle=-1):
+        # Check if Calculator provides an input file (.fchk/.molden) for Mwfn
         if (not hasattr(self, "mwfn_wf")):
-            self.log("self.mwfn_wf is not set! Skipping CDD cube generation!")
+            self.log("Calculator does not provide an input file for Multiwfn, "
+                     "as 'self.mwfn_wf' is not set! Skipping CDD cube generation!")
         if cycle != -1:
             self.log("'cycle' argument to make_cdd_cube is currently ignored!")
         exc_str = self.get_mwfn_exc_str(cycle)
