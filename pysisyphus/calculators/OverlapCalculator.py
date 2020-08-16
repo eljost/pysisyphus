@@ -570,7 +570,12 @@ class OverlapCalculator(Calculator):
         assert len(self.roots_list) == len(self.calculated_roots)
 
         if self.cdds:
-            self.calc_cdd_cube(self.root)
+            try:
+                self.calc_cdd_cube(self.root)
+            except Exception as err:
+                print("CDD calculation by Multiwfn crashed. Disabling it!")
+                self.log(err)
+                self.cdds = None
             if self.cdds == "render":
                 self.render_cdd_cube()
 
