@@ -58,6 +58,7 @@ def test_mwfn_crash_fallback(water, monkeypatch):
     calc = water.calculator
     calc.cdds = "calc"
 
+    # Mock method to ensure the CDD calculation always crashes.
     def mock_calc_cdd_cube(*args):
         raise Exception("Mocked Multiwfn crash!")
     monkeypatch.setattr(OverlapCalculator, "calc_cdd_cube", mock_calc_cdd_cube)
