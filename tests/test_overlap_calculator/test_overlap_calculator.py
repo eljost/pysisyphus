@@ -45,8 +45,10 @@ def water():
         "basis": "sto3g",
         "nstates": 2,
         "root": 1,
+        # OverlapCalculator specific
         "track": True,
         "cdds": "calc",
+        "ovlp_type": "tden",
     }
     calc = PySCF(**calc_kwargs)
     geom.set_calculator(calc)
