@@ -57,15 +57,14 @@ class OverlapCalculator(Calculator):
         # When calculation/rendering of charge density differences is requested
         # check if the appropriate programs are available. If not, we fallback
         # to a more sensible command and print a warning.
+        msg = "'cdds: {0}' requested, but {1} was not found! " \
+              "Falling back to 'cdds: {2}'! Consider defining the {1} " \
+              "command in '.pysisyphusrc'."
         if (self.cdds == "render") and (not available("jmol")):
-            print(f"'cdds: {self.cdds}' requested, but Jmol was not found! "
-                   "Falling back to 'cdds: calc'! Consider defining the Jmol "
-                   "command in the '.pysisyphusrc'.")
+            print(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
         if (self.cdds == "calc") and (not available("mwfn")):
-            print(f"'cdds: {self.cdds}' requested, but Multiwfn was not found! "
-                   "Falling back to 'cdds: None'! Consider defining the Multiwfn "
-                   "command in the '.pysisyphusrc'.")
+            print(msg.format(self.cdds, "Multiwfn", None))
             self.cdds = None
         assert self.cdds in self.VALID_CDDS
         self.orient = orient
