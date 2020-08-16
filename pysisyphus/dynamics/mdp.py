@@ -16,7 +16,8 @@ from pysisyphus.dynamics.helpers import dump_coords, \
 from pysisyphus.helpers import highlight_text
 
 
-def run_md(geom, t, dt, v0=None, term_funcs=None, external=False):
+def run_md(geom, t, dt, v0=None, remove_com_v=True, term_funcs=None,
+           external=False):
     if external and hasattr(geom.calculator, "run_md"):
         md_kwargs = {
             "atoms": geom.atoms,
@@ -39,6 +40,7 @@ def run_md(geom, t, dt, v0=None, term_funcs=None, external=False):
             "dt": dt,
             "term_funcs": term_funcs,
             "verbose": False,
+            "remove_com_v": remove_com_v,
         }
         print("Running MD with internal implementation.")
         md_result = md(geom, **md_kwargs)
@@ -106,6 +108,7 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
             "dt": dt,
             "term_funcs": term_funcs,
             "external": external_md,
+            "remove_com_v": remove_com,
         }
 
         geom.coords = x0_plus
@@ -205,6 +208,7 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
             "t": t_init,
             "dt": dt,
             "external": external_md,
+            "remove_com_v": remove_com,
         }
         geom.coords = x0.copy()
         md_init_plus = run_md(geom, **md_init_kwargs)
@@ -251,6 +255,7 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         "dt": dt,
         "term_funcs": term_funcs,
         "external": external_md,
+        "remove_com_v": remove_com,
     }
     geom.coords = x0.copy()
     md_fin_plus = run_md(geom, **md_fin_kwargs)
