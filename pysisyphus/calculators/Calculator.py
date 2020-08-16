@@ -372,6 +372,9 @@ class Calculator:
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
             shutil.copytree(path, backup_dir)
+            print(f"Copied contents of\n\t'{path}'\nto\n\t'{backup_dir}'.\n"
+                   "Consider checking the log files there."
+            )
             raise err
         finally:
             if (not hold) and self.clean_after:
