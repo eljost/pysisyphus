@@ -72,8 +72,6 @@ def lincs_closure(geom, constraints, order=4):
         for i, (a1, a2) in enumerate(constraints):
             new_coords3d[a1] -= inv_masses[a1] * S_diag[i] * sol[i] * B[i].sum()
             new_coords3d[a2] += inv_masses[a2] * S_diag[i] * sol[i] * B[i].sum()
-        pass
-
 
     def lincs(prev_coords3d, new_coords3d):
         # Calculate constraint directions
@@ -102,7 +100,6 @@ def lincs_closure(geom, constraints, order=4):
             sol[i] = rhs[0, i]
 
         solve(rhs, sol, new_coords3d, A, B)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         return new_coords3d
-        pass
     return lincs

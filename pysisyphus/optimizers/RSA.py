@@ -30,8 +30,8 @@ class RSA(HessianOptimizer):
         newton_step = get_step(0.)
         newton_norm = np.linalg.norm(newton_step)
 
-        def on_trust_radius(step, thresh=1e-3):
-            return abs(self.trust_radius - np.linalg.norm(step)) <= thresh
+        # def on_trust_radius(step, thresh=1e-3):
+            # return abs(self.trust_radius - np.linalg.norm(step)) <= thresh
 
         def on_trust_radius_lin(step):
             return 1/self.trust_radius - 1/np.linalg.norm(step)

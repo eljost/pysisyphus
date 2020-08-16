@@ -13,7 +13,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
+from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.io import geom_from_pdb, save_hessian as save_h5_hessian
