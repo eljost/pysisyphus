@@ -19,6 +19,7 @@ from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
 from pysisyphus.wrapper.mwfn import make_cdd
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
+from pysisyphus.testing import available
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -52,6 +53,13 @@ class OverlapCalculator(Calculator):
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
         self.use_ntos = use_ntos
         self.cdds = cdds
+        # When calculation/rendering of charge density differences is requested
+        # check if MWFN is available. If not, we disable CDDs and print a warning.
+        if (self.cdds is not None) and not available("mwfn"):
+            print(f"'cdds: {self.cdds}' requested, but Multiwfn was not found! "
+                   "Falling back to 'cdds: None'! Consider defining the Multiwfn "
+                   "command in the '.pysisyphusrc'.")
+            self.cdds = None
         self.orient = orient
         self.dump_fn = self.out_dir / dump_fn
         self.ncore = int(ncore)
