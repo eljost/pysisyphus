@@ -5,14 +5,14 @@ try:
     from pysisyphus.calculators.QCEngine import QCEngine
 except ImportError:
     print("QCEngine import failed. Did you install it?")
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using_turbomole, using_qcengine, using
 
 
 @using_turbomole
 @using_qcengine
 def test_qcengine_turbomole():
-    geom = geom_from_library("h2o_guess.xyz")
+    geom = geom_loader("lib:h2o_guess.xyz")
 
     qce_kwargs = {
         "program": "turbomole",
@@ -36,7 +36,7 @@ def test_qcengine_turbomole():
 @using("mopac")
 @using_qcengine
 def test_qcengine_mopac():
-    geom = geom_from_library("h2o_guess.xyz")
+    geom = geom_loader("lib:h2o_guess.xyz")
 
     qce_kwargs = {
         "program": "mopac",
@@ -64,7 +64,7 @@ def test_qcengine_openmm():
         conda install -c omnia -c conda-forge openmm
         conda install -c omnia -c conda-forge openforcefield
     """
-    geom = geom_from_library("h2o_guess.xyz")
+    geom = geom_loader("lib:h2o_guess.xyz")
 
     qce_kwargs = {
         "program": "openmm",
@@ -89,3 +89,30 @@ def test_qcengine_openmm():
     # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
     # opt = RFOptimizer(geom)
     # opt.run()
+
+
+@using("gamess")
+@using_qcengine
+def test_qcengine_gamess():
+    geom = geom_loader("lib:h2o.xyz")
+
+    qce_kwargs = {
+        "program": "gamess",
+        "model": {
+            "method": "hf",
+            "basis": "accd",
+        },
+        "keywords": {
+            "contrl__ispher": 1,
+        }
+    }
+    qce = QCEngine(**qce_kwargs)
+
+    geom.set_calculator(qce)
+
+    forces = geom.forces
+    energy = geom.energy
+    norm = np.linalg.norm(forces)
+
+    assert energy == pytest.approx(-76.0408384927)
+    assert norm == pytest.approx(0.03196142235784051)
