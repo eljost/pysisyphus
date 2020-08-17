@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://pubs.acs.org/doi/pdf/10.1021/acs.jctc.5b01148
 #     Plasser, 2016
 # [2] https://doi.org/10.1002/jcc.25800
@@ -19,6 +17,7 @@ from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
 from pysisyphus.wrapper.mwfn import make_cdd
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
+from pysisyphus.testing import available
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -33,6 +32,7 @@ class OverlapCalculator(Calculator):
         "nto_org": "original natural transition orbital overlap",
     }
     VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]  # lgtm [py/non-iterable-in-for-loop]
+    VALID_CDDS = (None, "calc", "render")
 
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
@@ -52,6 +52,19 @@ class OverlapCalculator(Calculator):
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
         self.use_ntos = use_ntos
         self.cdds = cdds
+        # When calculation/rendering of charge density differences is requested
+        # check if the appropriate programs are available. If not, we fallback
+        # to a more sensible command and print a warning.
+        msg = "'cdds: {0}' requested, but {1} was not found! " \
+              "Falling back to 'cdds: {2}'! Consider defining the {1} " \
+              "command in '.pysisyphusrc'."
+        if (self.cdds == "render") and (not available("jmol")):
+            print(msg.format(self.cdds, "Jmol", "calc"))
+            self.cdds = "calc"
+        if (self.cdds == "calc") and (not available("mwfn")):
+            print(msg.format(self.cdds, "Multiwfn", None))
+            self.cdds = None
+        assert self.cdds in self.VALID_CDDS
         self.orient = orient
         self.dump_fn = self.out_dir / dump_fn
         self.ncore = int(ncore)
@@ -62,8 +75,6 @@ class OverlapCalculator(Calculator):
             self.log("dyn_roots = 0 is hardcoded right now")
 
         assert self.ncore >= 0, "ncore must be a >= 0!"
-        if self.cdds:
-            assert self.cdds in "calc render".split()
 
         self.wfow = None
         self.mo_coeff_list = list()
@@ -557,7 +568,12 @@ class OverlapCalculator(Calculator):
         assert len(self.roots_list) == len(self.calculated_roots)
 
         if self.cdds:
-            self.calc_cdd_cube(self.root)
+            try:
+                self.calc_cdd_cube(self.root)
+            except Exception as err:
+                print("CDD calculation by Multiwfn crashed. Disabling it!")
+                self.log(err)
+                self.cdds = None
             if self.cdds == "render":
                 self.render_cdd_cube()
 
@@ -589,8 +605,10 @@ class OverlapCalculator(Calculator):
         return exc_str
 
     def calc_cdd_cube(self, root, cycle=-1):
+        # Check if Calculator provides an input file (.fchk/.molden) for Mwfn
         if (not hasattr(self, "mwfn_wf")):
-            self.log("self.mwfn_wf is not set! Skipping CDD cube generation!")
+            self.log("Calculator does not provide an input file for Multiwfn, "
+                     "as 'self.mwfn_wf' is not set! Skipping CDD cube generation!")
         if cycle != -1:
             self.log("'cycle' argument to make_cdd_cube is currently ignored!")
         exc_str = self.get_mwfn_exc_str(cycle)

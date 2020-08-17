@@ -6,7 +6,7 @@
 import numpy as np
 
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
-from pysisyphus.helpers import eigval_to_wavenumber 
+from pysisyphus.helpers_pure import eigval_to_wavenumber 
 
 
 class NCOptimizer(HessianOptimizer):

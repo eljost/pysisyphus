@@ -10,7 +10,8 @@ import h5py
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import check_for_stop_sign, highlight_text, eigval_to_wavenumber, rms
+from pysisyphus.helpers import check_for_stop_sign, highlight_text, rms
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.xyzloader import make_trj_str, make_xyz_str

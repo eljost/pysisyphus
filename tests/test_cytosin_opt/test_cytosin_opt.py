@@ -74,11 +74,12 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
     [
         pytest.param(Gaussian16,
             {"route": "PBE1PBE/def2SVP TD=(nstates=2,root=1)"},
-            marks=using("gaussian16")),
+            marks=using("gaussian16")
+        ),
         pytest.param(Turbomole,
             {"control_path": "./control_path_pbe0_def2svp_s1"},
-            marks=using("turbomole")),
-        # ),
+            marks=using("turbomole")
+        ),
         # pytest.param(ORCA,
             # {"keywords": "PBE0 def2-SVP tightscf",
              # "blocks": "%tddft nroots 2 iroot 1 tda false end"}

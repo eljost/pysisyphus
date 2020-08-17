@@ -131,8 +131,57 @@ def test_mb_velocities():
     assert dt * steps / 1000 == pytest.approx(res.t)
 
     # import pdb; pdb.set_trace()
-    # from pysisyphus.xyzloader import coords_to_trj
-    # coords = res.coords
-    # trj_fn = "md.trj"
-    # atoms = geom.atoms
-    # coords_to_trj(trj_fn, atoms, coords)
+    from pysisyphus.xyzloader import coords_to_trj
+    coords = res.coords
+    trj_fn = "md.trj"
+    atoms = geom.atoms
+    coords_to_trj(trj_fn, atoms, coords)
+
+
+@using("xtb")
+def test_thermostat():
+    geom = geom_loader("lib:dynamics/10_water.xyz")
+    from pysisyphus.calculators.XTB import XTB
+    geom.set_calculator(XTB(pal=2))
+
+    opt = RFOptimizer(geom, thresh="gau_loose", max_cycles=25)
+    opt.run()
+
+    T = 298.15
+    seed = 20182503
+    v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
+    # steps = 6000
+    steps = 250
+    dt = 0.5
+    md_kwargs = {
+        "v0": v0,
+        "steps": steps,
+        "dt": dt,
+        "remove_com_v": True,
+        "thermostat": "csvr",
+        "timecon": 25,
+    }
+    res = md(geom, **md_kwargs)
+    # assert dt * steps / 1000 == pytest.approx(res.t)
+
+    import matplotlib.pyplot as plt
+    E_tot = res.E_tot
+    E_tot -= E_tot.mean()
+    from pysisyphus.constants import AU2KJPERMOL
+    E_tot *= AU2KJPERMOL
+    T = res.T
+    fig, (ax0, ax1) = plt.subplots(nrows=2)
+    ax0.plot(E_tot)
+    ax0.axhline(E_tot.mean())
+    ax0.set_title("$\Delta$E$_{tot}$ / kJ mol⁻¹")
+
+    ax1.plot(T)
+    T_mean = T.mean()
+    print("T_mean", T_mean, "K")
+    ax1.axhline(T_mean)
+    ax1.set_title(f"T / K, avg. = {T_mean:.2f} K")
+
+    plt.tight_layout()
+    plt.show()
+
+    fig.savefig("md.pdf")

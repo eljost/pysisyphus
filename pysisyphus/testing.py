@@ -68,6 +68,10 @@ def using(calculator):
     return _using_cache[calculator]
 
 
+def available(calculator):
+    # True when skipif is False
+    return not using(calculator).args[0]
+
 
 using_pyscf = using("pyscf")
 using_gaussian16 = using("gaussian16")

@@ -46,7 +46,7 @@ setup(
     #   pip install -e .[extra]
     extras_require={
         "qcengine": ["qcengine>=0.13.0", ],
-        "ase": ["ase", ],
+        "ase": ["ase>=3.20.1", ],
         "pyscf": ["pyscf>=1.7.1", ],
     },
     entry_points={

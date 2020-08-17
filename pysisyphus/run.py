@@ -11,6 +11,7 @@ from pprint import pprint
 import re
 import shutil
 import sys
+import textwrap
 import time
 
 from distributed import Client
@@ -126,6 +127,9 @@ def parse_args(args):
     )
     action_group.add_argument("--fclean", action="store_true",
         help="Force cleaning without prior confirmation."
+    )
+    action_group.add_argument("--bibtex", action="store_true",
+        help="Print bibtex string for pysisyphus paper."
     )
     # action_group.add_argument("--couplings", type=int, nargs="+",
         # help="Create coupling elements."
@@ -1034,6 +1038,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
                 shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
                 geom.coords = shaked_coords
             opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
+            # Keep a backup of the optimized geometry
             if isinstance(opt_geom, ChainOfStates.ChainOfStates):
                 # Set some variables so they can later on be collected for the
                 # RunResult.
@@ -1252,6 +1257,20 @@ def print_header():
     print(f"{logo}\n\n{version}\n")
 
 
+def print_bibtex():
+    bibtex = textwrap.dedent("""@article{Steinmetzer2020,
+        doi = {10.1002/qua.26390},
+        url = {https://doi.org/10.1002/qua.26390},
+        year = {2020},
+        month = aug,
+        publisher = {Wiley},
+        author = {Johannes Steinmetzer and Stephan Kupfer and Stefanie Gräfe},
+        title = {pysisyphus: Exploring potential energy surfaces in ground and excited states},
+        journal = {International Journal of Quantum Chemistry}
+    }""")
+    print(bibtex)
+
+
 def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
                   scheduler=None, clean=False, fclean=False, version=False,
                   restart=False, dryrun=False):
@@ -1278,6 +1297,11 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
         return
     elif version:
         return
+
+    # Citation
+    citation = "If pysisyphus benefitted your research please cite:\n\n" \
+               "\thttps://doi.org/10.1002/qua.26390\n"
+    print(citation)
 
     run_dict_without_none = {k: v for k, v in run_dict.items()
                              if v is not None}
@@ -1320,6 +1344,9 @@ def run():
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         run_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
+    elif args.bibtex:
+        print_bibtex()
+        return
 
     run_kwargs = {
         "cwd": yaml_dir,

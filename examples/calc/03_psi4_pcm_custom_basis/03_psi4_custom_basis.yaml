@@ -1,0 +1,25 @@
+calc:
+ type: psi4
+ # When different basis sets/ECPs are needed for different atoms
+ # then 'basis' also supports a more complex input. 'assign' must
+ # always be present, as it specifies the default basis. Different basis
+ # set for specific atom types are then added as [atom]: [basis].
+ #
+ # The input below will use 3-21G for C and N, and the smaller STO-3G
+ # basis for H.
+ basis:
+  assign: 3-21G
+  H: sto-3g
+ # Alternatively, when only one basis is needed then the simple syntax can
+ # be used.
+ # basis: 3-21G
+ method: b3lyp
+ # Valid keywords for pcm are 'cpcm' and 'iefpcm'. The latter is the default.
+ # Note: Psi4 probably does not support analytical gradients with PCM, making
+ # it extremely costly for optimizations.
+ pcm: iefpcm
+ # Specifies the solvent for use with PCM.
+ solvent: water
+ pal: 2
+ mem: 2000
+xyz: lib:azetidine_hf_321g_opt.xyz

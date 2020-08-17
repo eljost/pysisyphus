@@ -13,9 +13,10 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.constants import ANG2BOHR, AU2J, AMU2KG, BOHR2M, AU2KJPERMOL
+from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.io import geom_from_pdb
+from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.io import geom_from_pdb, save_hessian as save_h5_hessian
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -529,12 +530,6 @@ def complete_fragments(atoms, fragments):
     return fragments
 
 
-def eigval_to_wavenumber(ev):
-    conv = AU2J/(AMU2KG*BOHR2M**2)
-
-    return np.sign(ev) * np.sqrt(np.abs(ev)*conv)/(2*np.pi*3e10)
-
-
 FinalHessianResult = namedtuple("FinalHessianResult",
                                 "neg_eigvals eigvals nus",
 )
@@ -575,6 +570,11 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
         np.savetxt(final_hessian_fn, hessian)
         print()
         print(f"Wrote final (not mass-weighted) hessian to '{final_hessian_fn}'.")
+
+        # Also write HD5 hessian
+        final_h5_hessian_fn = prefix + "final_hessian.h5"
+        save_h5_hessian(final_h5_hessian_fn, geom)
+        print(f"Wrote HD5 Hessian to '{final_h5_hessian_fn}'.")
 
     if write_imag_modes:
         imag_modes = imag_modes_from_geom(geom)
