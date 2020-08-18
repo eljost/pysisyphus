@@ -37,6 +37,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    tsoptimization.rst
    irc.rst
    plotting.rst
+   pysistrj.rst
 	
 Indices and tables
 ==================
