@@ -1178,7 +1178,7 @@ def do_clean(force=False):
         "wfo_*",
         "image*.molden",
         "jmol.spt",
-        # "overlap_data.h5",
+        "overlap_data.h5",
         "*_CDD.png",
         "*_CDD.cub",
         "internal_coords.log",
@@ -1213,6 +1213,7 @@ def do_clean(force=False):
         "calculated_final_cart_hessian",
         "*final_geometry.xyz",
         "*final_geometries.trj",
+        "current_geometry.xyz",
         "*current_geometries.trj",
         "hess_calc_cyc*.h5",
     )

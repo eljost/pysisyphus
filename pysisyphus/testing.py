@@ -1,7 +1,7 @@
 import pytest
 import shutil
 
-from pysisyphus.config import Config
+from pysisyphus.config import Config, DEFAULTS
 
 
 """Inspired by
@@ -22,18 +22,22 @@ def using(calculator):
     if calculator not in _using_cache:
         available = False
 
+        # Look into .pysisyphusrc first
         try:
+            cmd = Config[calculator]["cmd"]
+        except KeyError:
             # Look for dscf availability
             if calculator == "turbomole":
                 cmd = "dscf"
-            else:
-                # Try to read from .pysisyphusrc
-                cmd = Config[calculator]["cmd"]
-
-
+            # Try defaults last
+            try:
+                cmd = DEFAULTS[calculator]
+            except KeyError:
+                cmd = None
+        if cmd is not None:
             available = bool(shutil.which(cmd))
-        except KeyError:
-            pass
+
+        # Handling native python packages from here
 
         if calculator == "pyscf":
             try:

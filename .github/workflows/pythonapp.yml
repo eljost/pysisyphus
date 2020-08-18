@@ -32,10 +32,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install ASE
       run: |
-        pip install ase
+        pip install ase>=3.20.1
     - name: Install pyscf
       run: |
-        pip install pyscf==1.7.1
+        pip install pyscf>=1.7.4
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov

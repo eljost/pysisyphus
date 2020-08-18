@@ -373,7 +373,7 @@ class Calculator:
                 shutil.rmtree(backup_dir)
             shutil.copytree(path, backup_dir)
             print(f"Copied contents of\n\t'{path}'\nto\n\t'{backup_dir}'.\n"
-                   "Consider checking the log files there."
+                   "Consider checking the log files there.\n"
             )
             raise err
         finally:
