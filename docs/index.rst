@@ -32,6 +32,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    installation.rst
    calculators.rst
    min_optimization.rst
+   es_optimization.rst
    chainofstates.rst
    tsoptimization.rst
    irc.rst
