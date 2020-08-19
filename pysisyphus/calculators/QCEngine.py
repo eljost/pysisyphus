@@ -83,5 +83,17 @@ class QCEngine(Calculator):
 
         return results
 
+    def get_hessian(self, atoms, coords, prepare_kwargs=None):
+        mol = self.get_molecule(atoms, coords)
+
+        res = self.compute(mol, driver="hessian")
+
+        results = {
+            "energy": res["properties"]["return_energy"],
+            "hessian": np.array(res["return_result"]),
+        }
+
+        return results
+
     def __str__(self):
         return f"QCECalculator({self.name})"
