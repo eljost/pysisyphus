@@ -4,17 +4,20 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 
+
 class LennardJones(Calculator):
 
     # Corresponds to σ = 1 Å, as the default value in ASE, but
     # pysisyphus uses au/Bohr.
-    def __init__(self, sigma=1.8897261251, epsilon=1):
+    def __init__(self, sigma=1.8897261251, epsilon=1, rc=None):
         super().__init__()
 
         self.sigma = sigma
         self.epsilon = epsilon
         # Cutoff distance
-        self.rc = 3 * self.sigma
+        if rc is None:
+            rc = 3 * self.sigma
+        self.rc = rc
         # Shift energy
         self.e0 = (4 * self.epsilon *
                    ((self.sigma/self.rc)**12 - (self.sigma/self.rc)**6)
@@ -41,8 +44,11 @@ class LennardJones(Calculator):
 
         Derivative of quotient appearing in LJ potential w.r.t first cartesian
         coordinate:
-            d(σ/r)**n/dx_1 =
-                (σ/r)**n * (-n)*(x1-x2)/r**2
+            d(σ/r)**n/dx_1
+                = σ**n * d/dx_1 r**(-n)
+                = σ**n * (-n/2) * (2x1-2x2) * r**(-n) * r**(-2)
+                = σ**n * r**(-n) * (-n) * (x1-x2) * r**(-2)
+                = (σ/r)**n * (-n) * (x1-x2) / r**2
 
         Derivate w.r.t to cartesian x coordinate of atom A (x_1):
             dLJ(r)/dx_1 = 
@@ -55,7 +61,7 @@ class LennardJones(Calculator):
         The derivate w.r.t to x_2 differs only by a factor of -1!
         """
         prefactors = 24*self.epsilon * (c6 - 2*c12) / rs**2
-        products = prefactors[:,None] * diffs 
+        products = prefactors[:,None] * diffs
 
         gradient = np.zeros_like(coords3d)
         # Every pair (a, b) contributes to the total gradient of atoms a and b.

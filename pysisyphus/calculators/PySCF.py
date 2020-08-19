@@ -109,6 +109,8 @@ class PySCF(OverlapCalculator):
         #   if self.verbose > logger.QUIET:
         #       ...
         # in 'mole.Mole.build'. Around line 2046 for pyscf 1.6.5.
+        # Search for "output file" in gto/mole.py
+        # Search for "Large deviations found" in scf/{uhf,dhf,ghf}.py
         mol.output = self.make_fn(self.out_fn)
         mol.max_memory = self.mem * self.pal
         mol.build(parse_arg=False)
@@ -125,6 +127,12 @@ class PySCF(OverlapCalculator):
         results = {
             "energy": mf.e_tot,
         }
+
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = self.get_energy(atoms, coords, prepare_kwargs)
 
         return results
 
@@ -157,7 +165,7 @@ class PySCF(OverlapCalculator):
             self.store_overlap_data(atoms, coords)
             if self.track_root():
                 # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
+                results = self.get_forces(atoms, coords, prepare_kwargs)
         return results
 
     def get_hessian(self, atoms, coords, prepare_kwargs=None):

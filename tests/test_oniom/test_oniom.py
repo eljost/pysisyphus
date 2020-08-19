@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.ONIOMv2 import ONIOM
-from pysisyphus.helpers import do_final_hessian, geom_loader, eigval_to_wavenumber
+from pysisyphus.helpers import do_final_hessian, geom_loader
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.run import run_from_dict

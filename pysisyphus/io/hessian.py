@@ -1,7 +1,7 @@
 import numpy as np 
 import h5py
 
-from pysisyphus.helpers import eigval_to_wavenumber
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 
 
 def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):

@@ -94,6 +94,13 @@ class RedundantCoords:
             valid_dihedrals = [inds for inds in dihedrals if
                                self.is_valid_dihedral(inds)]
             self.torsion_indices = to_arr(valid_dihedrals)
+            # self.bond_matrix and other attributes like self.fragments etc.
+            # is not set when dont call set_primitive_indices. This is a problem
+            # and should be handled.
+            *_, cbm = get_bond_sets(self.atoms, self.cart_coords.reshape(-1, 3),
+                                    bond_factor=self.bond_factor, return_cbm=True,
+            )
+            self.bond_matrix = squareform(cbm)
 
         if self.bonds_only:
             self.bend_indices = list()

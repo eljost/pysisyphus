@@ -182,6 +182,8 @@ methanol and the fluorine anion. The corresponding unit test can be found in the
     
     Energy profile and force norms along the S\ :sub:`N`\ 2 reaction.
 
+.. _es-plotting-label:
+
 Example - Excited State Tracking
 =======================================
 
@@ -193,7 +195,7 @@ relevant data is stored in `overlap_data.h5`.
 Optimizing an ES is demonstrated for the S\ :sub:`1` of the 1H-amino-keto tautomer of
 Cytosin at the PBE0/def-SVP level of theory. A corresponding test can be
 found under (`tests/test_cytosin_opt`). Right after the first optimization cycle a root
-flip occurs and the S\ :sub`1` and S\ :sub:`2` switch. The potential energy curves along
+flip occurs and the S\ :sub:`1` and S\ :sub:`2` switch. The potential energy curves along
 the optimization are plotted by:
 
 .. code-block:: bash

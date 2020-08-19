@@ -1,6 +1,7 @@
 import logging
 
 from pysisyphus.dynamics.mdp import mdp
+from pysisyphus.dynamics.rattle import rattle_closure
 
 
 logger = logging.getLogger("dynamics")

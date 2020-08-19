@@ -9,7 +9,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from pysisyphus.helpers import eigval_to_wavenumber
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.modefollow.NormalMode import NormalMode
 
 

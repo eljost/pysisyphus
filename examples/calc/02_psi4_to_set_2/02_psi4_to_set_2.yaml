@@ -1,0 +1,18 @@
+# https://github.com/psi4/psi4/blob/master/samples/dft-custom-dhdf/input.dat
+calc:
+ type: psi4
+ pal: 2
+ mem: 2000
+ method: b2plyp
+ # See ../01_psi4_to_set_1 for explanation
+ to_set:
+  df_scf_guess: false
+  freeze_core: false
+  dft_radial_points: 90
+  dft_spherical_points: 770
+  dft_block_scheme: naive
+  scf_type: direct
+ basis: cc-pvtz
+ charge: 0
+ mult: 1
+xyz: lib:h2o.xyz

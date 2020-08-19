@@ -1,0 +1,20 @@
+opt:
+ type: rfo
+ overachieve_factor: 2
+ thresh: gau
+calc:
+ type: orca
+ keywords: pbe0 def2-svp rijcosx def2/J def2-svp/C
+ blocks: "%tddft nroots 2 iroot 1 tda false end"
+ track: True
+ ovlp_type: tden
+ charge: 0
+ mult: 1
+ pal: 4
+ mem: 2000
+ cdds: render
+xyz: cytosin.xyz
+coord_type: redund 
+assert:
+ opt_geom.energy: -394.06152976
+ opt.cur_cycle: 7

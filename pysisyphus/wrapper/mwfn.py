@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -7,18 +6,32 @@ from subprocess import PIPE, Popen
 
 from pysisyphus.config import get_cmd
 
+
+logger = logging.getLogger("mwfn")
+
+
+def log(msg):
+    logger.debug(msg)
+
+
+def wrap_stdin(stdin):
+    return f"<< EOF\n{stdin}\nEOF"
+
+
 def call_mwfn(inp_fn, stdin, cwd=None):
     if cwd is None:
         cwd = Path(".")
-    mwfn_cmd = [get_cmd("mwfn"), inp_fn]
-    proc = Popen(mwfn_cmd, universal_newlines=True,
+    mwfn_cmd = get_cmd("mwfn")
+    cmd = [mwfn_cmd, inp_fn]
+    log(f"\n{mwfn_cmd} {inp_fn} {wrap_stdin(stdin)}")
+    proc = Popen(cmd, universal_newlines=True,
                  stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=cwd)
     stdout, stderr = proc.communicate(stdin)
     proc.terminate()
     return stdout, stderr
 
 
-def make_cdd(inp_fn, state, log, cwd, keep=False, quality=2):
+def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
     """Create CDD cube in cwd.
 
     Parameters
@@ -27,9 +40,9 @@ def make_cdd(inp_fn, state, log, cwd, keep=False, quality=2):
         Filename of a .molden/.fchk file.
     state : int
         CDD cubes will be generated up to this state.
-    log : str
+    log_fn : str
         Filename of the .log file.
-    cwd : str or Path
+    cwd : str or Path, optional
         If a different cwd should be used.
     keep : bool
         Wether to keep electron.cub and hole.cub, default is False.
@@ -39,9 +52,13 @@ def make_cdd(inp_fn, state, log, cwd, keep=False, quality=2):
 
     assert quality in (1,2,3)
 
+    msg = f"Requested CDD calculation from Multiwfn for state {state} using " \
+          f"{inp_fn} and {log_fn}"
+    log(msg)
+
     stdin = f"""18
     1
-    {log}
+    {log_fn}
     {state}
 
     1
@@ -54,6 +71,8 @@ def make_cdd(inp_fn, state, log, cwd, keep=False, quality=2):
     """
     stdout, stderr = call_mwfn(inp_fn, stdin, cwd=cwd)
 
+    if cwd is None:
+        cwd = "."
     cwd = Path(cwd)
 
     cube_fns = ("electron.cub", "hole.cub", "CDD.cub")
