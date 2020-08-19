@@ -42,7 +42,11 @@ the code after installation do an editable (-e) installation with pip.
     # Install with -e if you want an editable installation
     pip install [-e] .
     # Installation of extras is also possible
-    # pip install [-e] .[qcengine]
+    # pip install [-e] .[qcengine,ase,pyscf]
+    # If you want to build the documentation
+    # pip install sphinx sphinx-rtd-theme
+
+.. _pysisrc-label:
 
 Setting up .pysisyphusrc
 ========================
@@ -105,7 +109,7 @@ Depending on the software different choices were made how it is registered. An e
     #[qcengine]
     # QCEngine must not have an entry explicit entry in the .pysisyphusrc. It is used
     # via its python interface and can be installed as an extra with pip (see above).
-    # The user is reference to the QCEngine for any further questions.
+    # The user is referenced to the QCEngine-documentation for any further questions.
 
     [xtb]
     # Cmd to execute. Please ensure that xtb is on your $PATH.
@@ -118,16 +122,20 @@ Depending on the software different choices were made how it is registered. An e
     # can be obtained from https://github.com/sharc-md/sharc/tree/master/bin
     cmd=/scratch/wfoverlap_1.0/bin/wfoverlap.x
 
-    [multiwfn]
-    # Cmd to execute. Please ensure that Multiwfn is on your $PATH.
+    [mwfn]
+    # Cmd to execute. Please ensure that Multiwfn is on your $PATH. Otherwise put an
+    # absolute path here. By default pysisyphus looks up "Multiwfn", so if you would
+    # put a relative path here you don't have to, as this is already covered by the
+    # defaults.
     cmd=Multiwfn
 
     [jmol]
-    # Cmd to execute. Please ensure that jmol is on your $PATH.
+    # Cmd to execute. The same arguments apply for jmol as for Multiwfn. "jmol" is
+    # already the default.
     cmd=jmol
 
 
-When the specified path/cmd is not absolute but relative (e.g. for xtb, g16, ...) the corresponding
+When the specified path/cmd is not absolute, but relative (e.g. for xtb, g16, ...) the corresponding
 binaries have to be available on the **$PATH** and all other environment variables have to
 be set up correctly by the user.
 

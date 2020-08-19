@@ -7,6 +7,7 @@ except ImportError:
     print("QCEngine import failed. Did you install it?")
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using_turbomole, using_qcengine, using
+from pysisyphus.calculators import Turbomole
 
 
 @using_turbomole
@@ -31,6 +32,36 @@ def test_qcengine_turbomole():
 
     assert energy == pytest.approx(-75.95615655854)
     assert norm == pytest.approx(0.11354367)
+
+
+@using("turbomole")
+@using("qcengine")
+def test_turbomole_hessian_compare(this_dir):
+    geom = geom_loader("lib:h2o_bp86_def2svp_opt.xyz")
+
+    qce_kwargs = {
+        "program": "turbomole",
+        "model": {
+            "method": "b-p",
+            "basis": "def2-SVP",
+        },
+        "keywords": {
+            "ri": True,
+            "grid": "m5",
+        }
+    }
+    qce_calc = QCEngine(**qce_kwargs)
+    geom.set_calculator(qce_calc)
+    H = geom.hessian
+
+    ref_geom = geom.copy()
+    control_path = this_dir / "h2o_bp86_def2svp_control"
+    ref_calc = Turbomole(control_path)
+    ref_geom.set_calculator(ref_calc)
+    H_ref = ref_geom.hessian
+
+    assert geom.energy == pytest.approx(ref_geom.energy)
+    np.testing.assert_allclose(H, H_ref, rtol=2e-4)
 
 
 @using("mopac")

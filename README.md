@@ -11,7 +11,9 @@ and **excited states**. It implements several methods to search for stationary p
 of IRC and Chain of States methods like Nudged Elastic Band and Growing String.
 Furthermore it provides tools to easily analyze & modify geometries (aligning, translating, **interpolating**, ...) and to visualize the calculation results/progress.
 
-The required energies, gradients and hessians are calculated by calling external quantum chemistry codes. `pysisyphus` can also be used as a library to implement custom quantum chemistry workflows.
+**Further information can be found in the Open Access [pysisyphus paper](https://onlinelibrary.wiley.com/doi/full/10.1002/qua.26390).**
+
+Required energies, gradients and hessians are calculated by calling external quantum chemistry codes. Alternatively `pysisyphus` can also be used as a library to implement custom quantum chemistry workflows.
 
 If any issues arise please open an issue and I'll try to fix it if possible and my time permits it. Contrubtions are welcome, so feel free to submit a PR.
 
@@ -19,7 +21,7 @@ If any issues arise please open an issue and I'll try to fix it if possible and 
 
 ## Example
 
-Fully internal coordinate transition state search for the famous alanine dipeptide isomerization reaction using the xtb calculator and the growing string method.
+Fully internal coordinate transition state search for the famous alanine dipeptide isomerization reaction, using the xtb calculator and the growing string method.
 
 [![asciicast](https://asciinema.org/a/300731.svg)](https://asciinema.org/a/300731)
 
