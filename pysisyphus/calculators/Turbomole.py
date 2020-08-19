@@ -461,7 +461,7 @@ class Turbomole(OverlapCalculator):
         hessian = np.array(list(it.chain(*hess_lines)), dtype=float)
         hessian = hessian.reshape(atom_num, atom_num)
 
-        energy = self.parse_energy(path)
+        energy = self.parse_energy(path)["energy"]
 
         results = {
             "energy": energy,
