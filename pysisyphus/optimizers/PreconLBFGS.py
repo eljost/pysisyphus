@@ -111,6 +111,7 @@ class PreconLBFGS(Optimizer):
         P = None
         if self.precon:
             P = self.precon_getter(self.geometry.coords)
+            self.log("Calculated new preconditioner P")
             step = spsolve(P, forces)
 
         if self.cur_cycle > 0:
