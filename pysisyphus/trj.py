@@ -165,11 +165,14 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
             cwd = Path(".")
             geom = [geom_loader(xyz_fn, **geom_kwargs)
                     for xyz_fn in natsorted(cwd.glob(fn))]
+        # Simplify this to use geom_loader...
         elif fn.endswith(".xyz"):
             geom = [geom_loader(fn, **geom_kwargs), ]
         elif fn.endswith(".trj"):
             geom = geom_loader(fn, **geom_kwargs)
         elif fn.endswith(".pdb"):
+            geom = [geom_loader(fn, **geom_kwargs), ]
+        elif fn.endswith(".cjson"):
             geom = [geom_loader(fn, **geom_kwargs), ]
         else:
             continue

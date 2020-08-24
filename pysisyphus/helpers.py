@@ -16,7 +16,7 @@ from scipy.spatial.distance import cdist
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.io import geom_from_pdb, save_hessian as save_h5_hessian
+from pysisyphus.io import geom_from_pdb, geom_from_cjson, save_hessian as save_h5_hessian
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -76,6 +76,8 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
         return geoms_from_trj(fn, **kwargs)
     elif fn.endswith(".pdb"):
         return geom_from_pdb(fn, **kwargs)
+    elif fn.endswith(".cjson"):
+        return geom_from_cjson(fn, **kwargs)
     else:
         raise Exception("Unknown filetype!")
 
