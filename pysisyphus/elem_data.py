@@ -223,3 +223,5 @@ ATOMIC_NUMBERS = {
     'ts': 117,
     'og': 118
 }
+
+INV_ATOMIC_NUMBERS = {num: elem for elem, num in ATOMIC_NUMBERS.items()}
