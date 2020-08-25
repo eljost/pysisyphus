@@ -351,8 +351,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             # Append to .trj file
             self.out_trj_handle.write(as_xyz_str+"\n")
             self.out_trj_handle.flush()
-        if hasattr(self, "h5_group"):
-            self.write_results()
+        # Dump to HDF5
+        self.write_results()
 
     def final_summary(self):
         # If the optimization was stopped _forces may not be set, so
