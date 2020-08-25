@@ -73,7 +73,6 @@ def spline_plot_cycles(cart_coords, energies):
     ax.axhline(y=0, **kwargs)
     ax.set_xlabel("Image")
     ax.set_ylabel(UNIT_DEKJMOL)
-    ax.set_xlim(0, energies.shape[0]-1)
 
     return fig, ax
 
@@ -87,7 +86,6 @@ def plot_cycle(cart_coords, energies):
     ax.set_xlabel("Image")
     ax.set_ylabel(UNIT_DEKJMOL)
     ax.set_title(f"COS image energies, (last) cycle {len(energies)-1}")
-    ax.set_xlim(0, energies.shape[0]-1)
 
     first_image_en = last_energies[0]
     last_image_en = last_energies[-1]
