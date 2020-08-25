@@ -10,7 +10,6 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.testing import using_pyscf
 
 
-
 @using_pyscf
 @pytest.mark.parametrize(
     "name, geom, ref_energy",
@@ -20,7 +19,6 @@ from pysisyphus.testing import using_pyscf
 def test_baker_gs_opt(name, geom, ref_energy, results_bag):
     opt_kwargs = {
         "thresh": "baker",
-        "dump": True,
     }
     print(f"@Running {name}")
     pal = min(os.cpu_count(), 4)
