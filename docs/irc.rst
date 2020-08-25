@@ -19,9 +19,9 @@ the required step length. The default required energy lowering is
 \cdot \mathrm{bohr}`).
 
 The resulting endpoints of the IRC integration can be further optimized to stationary poins
-with the `opt_ends: True|fragments` option (default is `False`). With `opt_ends: fragments`
-separate fragments at the endpoints are detected automatically and optimized separately.
-This may be useful if the molecules are only weakly bound.
+by adding the `endopt:` section (vide infra). By setting `fragments: True` in `endopt` separate
+fragments will be detected and optimized individually. This may be useful if the molecules are
+only weakly bound.
 
 By default IRC path data is dumped to `dump_fn: irc_data.h5` every `dump_every: 5` cycles.
 IRC paths can be plotted with `pysisplot --irc`.
@@ -37,9 +37,6 @@ that the user may want to modify.
     irc:
      type: eulerpc                      # Similar to EulerPC from Gaussian
 
-     opt_ends: fragments                # Detect fragments at the end of the IRC
-                                        # and optimize them separately.
-
      #displ: energy|length              # How to do the initial displacement
      #displ_energy: 0.0005              # Energy lowering in au (Hartree)
      #displ_length: 0.1                 # Step length along the TV
@@ -49,6 +46,11 @@ that the user may want to modify.
      #downhill: False                   # Only integrate downhill
 
      #rms_grad_thresh: 0.0005           # Convergence threshold
+    endopt:
+     #fragments: False           # Optimize potential fragments separately
+     coord_type: redund_v2       # Use different coordinates if desired
+     trust_max: 0.1
+     thresh: gau_tight
     calc:
      type: xtb                          # extended tight-binding calculator
      pal: 4
