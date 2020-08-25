@@ -12,6 +12,9 @@
 #     Wan, 2012
 # [5] Numerical optimization, 2nd ed.
 #     Nocedal, Wright
+# [6] https://arxiv.org/abs/2006.08877
+#     Goldfarb, 2020
+
 
 import numpy as np
 
@@ -38,6 +41,38 @@ def damped_bfgs_update(H, dx, dg):
                   / dxHdx
     )
     return first_term - second_term, "damped BFGS"
+
+
+def double_damp(H, s, y, mu_1=0.2, mu_2=0.2, logger=None):
+    """Double damped step and gradient differences.
+
+    H is the inverse Hessian!
+    See [6]. Potentially updates s and y. y is only
+    updated if mu_2 is not None."""
+    sy = s.dot(y)
+    yHy = y.dot(H).dot(y)
+
+    theta_1 = 1
+    if sy < mu_1*yHy:
+        theta_1 = (1 - mu_1) * yHy / (yHy - sy)
+    s = theta_1*s + (1 - theta_1)*H.dot(y)
+
+    # Double damping
+    if mu_2 is not None:
+        sy = s.dot(y)
+        ss = s.dot(s)
+        theta_2 = 1
+        if sy < mu_2*ss:
+            theta_2 = (1 - mu_2) * ss / (ss - sy)
+        y = theta_2*y + (1 - theta_2)*s
+        msg = f"Double damped BFGS. theta_1={theta_1:.4f}, theta_2={theta_2:.4f}"
+    else:
+        msg = f"Damped BFGS. theta_1={theta_1:.4f}"
+
+    if logger is not None:
+        logger.debug(msg)
+
+    return s, y
 
 
 def sr1_update(z, dx):

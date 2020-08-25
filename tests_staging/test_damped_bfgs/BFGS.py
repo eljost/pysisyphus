@@ -1,6 +1,8 @@
 import numpy as np
 
+# from pysisyphus.helpers import fit_rigid, procrustes
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.restrict_step import scale_by_max_step
 
 # [1] Nocedal, Wright - Numerical Optimization, 2006
@@ -41,27 +43,8 @@ class BFGS(Optimizer):
         """Double damped BFGS update of inverse Hessian.
 
         See [3]. Potentially updates s and y."""
-        sy = s.dot(y)
-        yHy = y.dot(self.H).dot(y)
 
-        theta_1 = 1
-        if sy < mu_1*yHy:
-            theta_1 = (1 - mu_1) * yHy / (yHy - sy)
-        s = theta_1*s + (1 - theta_1)*self.H.dot(y)
-
-        # Double damping
-        if mu_2 is not None:
-            sy = s.dot(y)
-            ss = s.dot(s)
-            theta_2 = 1
-            if sy < mu_2*ss:
-                theta_2 = (1 - mu_2) * ss / (ss - sy)
-            y = theta_2*y + (1 - theta_2)*s
-            self.log(f"Double damped BFGS. theta_1={theta_1:.4f}, "
-                     f"theta_2={theta_2:.4f}")
-        else:
-            self.log(f"Damped BFGS. theta_1={theta_1:.4f}")
-
+        s, y = double_damp(self.H, s, y, mu_1, mu_2, self.logger)
         self.bfgs_update(s, y)
 
     def damped_bfgs_update(self, s, y, mu_1=0.2):
@@ -77,6 +60,14 @@ class BFGS(Optimizer):
         self.double_damped_bfgs_update(s, y, mu_2=None)
 
     def optimize(self):
+        #if self.is_cos and self.align:
+        #    (last_coords, last_forces, steps), _, self.inv_hessian = fit_rigid(
+        #                                                    self.geometry,
+        #                                                    (last_coords,
+        #                                                     last_forces,
+        #                                                     steps),
+        #                                                    hessian=self.inv_hessian)
+
         forces = self.geometry.forces
         energy = self.geometry.energy
         self.forces.append(forces)
