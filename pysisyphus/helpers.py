@@ -344,10 +344,10 @@ def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
         rvl = [vec.dot(G) for vec in vl]
         rotated_vector_lists.append(rvl)
 
-    if hessian:
-        #rotated_hessian = G.dot(hessian).dot(G.T)
-        rotated_hessian = G.T.dot(hessian).dot(G)
-        #rotated_hessian = G*hessian*G.T
+    if hessian is not None:
+        # rotated_hessian = G.dot(hessian).dot(G.T)
+        # rotated_hessian = G.T.dot(hessian).dot(G)
+        rotated_hessian = G*hessian*G.T
     return rotated_vectors, rotated_vector_lists, rotated_hessian
 
 

@@ -32,6 +32,7 @@ def test_neb():
         # "update": "damped",
         # "update": "bfgs",
         "update": "double",
+        # "align": True,  # does not work!
         "dump": True,
     }
     opt = BFGS(cos, **opt_kwargs)

@@ -1,6 +1,6 @@
 import numpy as np
 
-# from pysisyphus.helpers import fit_rigid, procrustes
+# from pysisyphus.helpers import fit_rigid
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.restrict_step import scale_by_max_step
@@ -60,13 +60,16 @@ class BFGS(Optimizer):
         self.double_damped_bfgs_update(s, y, mu_2=None)
 
     def optimize(self):
-        #if self.is_cos and self.align:
-        #    (last_coords, last_forces, steps), _, self.inv_hessian = fit_rigid(
-        #                                                    self.geometry,
-        #                                                    (last_coords,
-        #                                                     last_forces,
-        #                                                     steps),
-        #                                                    hessian=self.inv_hessian)
+        # if self.is_cos and self.align and self.cur_cycle > 0:
+           # rotated = fit_rigid(
+                        # self.geometry,
+                        # (self.forces[-1], self.steps[-1]),
+                        # hessian=self.H
+           # )
+           # (prev_step, prev_forces), _, self.H = rotated
+        # elif self.cur_cycle > 0:
+           # prev_forces = self.forces[-1]
+           # prev_step = self.steps[-1]
 
         forces = self.geometry.forces
         energy = self.geometry.energy
@@ -76,8 +79,10 @@ class BFGS(Optimizer):
         if self.cur_cycle > 0:
             # Gradient difference
             y = self.forces[-2] - forces
+            # y = prev_forces - forces
             # Coordinate difference / step
             s = self.steps[-1]
+            # s = prev_step
             # Curvature condition
             sy = s.dot(y)
             self.log(f"s·y={sy:.6f}")
