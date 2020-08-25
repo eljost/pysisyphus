@@ -398,7 +398,6 @@ class Optimizer(metaclass=abc.ABCMeta):
                 align = len(image_coords[0]) > 3
                 cds = get_coords_diffs(image_coords, align=align)
                 cds_str = np.array2string(cds, precision=4)
-                self.log(f"Coordinate differences: {cds_str}")
                 # Differences of coordinate differences ;)
                 cds_diffs = np.diff(cds)
                 min_ind = cds_diffs.argmin()
