@@ -1,6 +1,7 @@
 import logging
 
 __all__ = [
+    "BFGS",
     "ConjugateGradient",
     "FIRE",
     "LBFGS",

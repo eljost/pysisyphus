@@ -78,6 +78,7 @@ COS_DICT = {
 
 OPT_DICT = {
     "cg": ConjugateGradient.ConjugateGradient,
+    "bfgs": BFGS.BFGS,
     "fire": FIRE.FIRE,
     "lbfgs": LBFGS.LBFGS,
     "nc": NCOptimizer.NCOptimizer,
