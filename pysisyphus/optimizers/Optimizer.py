@@ -71,7 +71,7 @@ class Optimizer(metaclass=abc.ABCMeta):
     }
 
     def __init__(self, geometry, thresh="gau_loose", max_step=0.04, max_cycles=50,
-                 rms_force=None, align=False, dump=False,
+                 rms_force=None, rms_force_only=False, align=False, dump=False,
                  dump_restart=None, prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
                  restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
                  h5_fn="optimization.h5", h5_group_name="opt"):
@@ -80,6 +80,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.geometry = geometry
         self.thresh = thresh
         self.max_step = max_step
+        self.rms_force_only = rms_force_only
         self.align = align
         self.dump = dump
         self.dump_restart = dump_restart
@@ -225,6 +226,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             "max_step_thresh": max_step,
             "rms_step_thresh": rms_step
         }
+
+        if self.rms_force_only:
+            self.log("Checking convergence with rms(forces) only!")
+            return rms_force <= self.convergence["rms_force_thresh"]
 
         # Check if force convergence is overachieved
         overachieved = False
