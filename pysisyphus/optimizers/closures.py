@@ -4,7 +4,8 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 
 
-def bfgs_multiply(s_list, y_list, vector, beta=1, P=None):
+def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
+                  gamma_mult=True):
     """Matrix-vector product H·v.
 
     Multiplies given vector with inverse Hessian, obtained
@@ -35,19 +36,25 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None):
 
     if P is not None:
         r = spsolve(P, q)
-    elif cycles > 0:
+        msg = "preconditioner."
+    elif gamma_mult and (cycles > 0):
         s = s_list[-1]
         y = y_list[-1]
         gamma = s.dot(y) / y.dot(y)
         r = gamma * q
+        msg = f"gamma={gamma:.4f}"
     else:
         r = beta * q
+        msg = f"beta={beta:.4f}"
+
+    if logger is not None:
+        logger.debug(f"BFGS multiply using {cycles} previous cycles with {msg}.")
 
     for i in range(cycles):
         s = s_list[i]
         y = y_list[i]
         beta = rhos[i] * y.dot(r)
-        r = r + s*(alphas[i] - beta)
+        r += s*(alphas[i] - beta)
 
     return r
 
