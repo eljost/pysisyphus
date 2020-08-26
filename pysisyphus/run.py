@@ -1216,6 +1216,9 @@ def do_clean(force=False):
         "current_geometry.xyz",
         "*current_geometries.trj",
         "hess_calc_cyc*.h5",
+        "ts_hess_calc_cyc*.h5",
+        "hess_init_irc.h5",
+        "final_hessian.h5",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -1301,7 +1304,7 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
 
     # Citation
     citation = "If pysisyphus benefitted your research please cite:\n\n" \
-               "\thttps://doi.org/10.1002/qua.26390\n"
+               "\thttps://doi.org/10.1002/qua.26390\n\nGood luck!\n"
     print(citation)
 
     run_dict_without_none = {k: v for k, v in run_dict.items()
