@@ -4,15 +4,19 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 
 
-def bfgs_multiply(s_list, y_list, force, beta=1, P=None):
-    """Get a L-BFGS step.
+def bfgs_multiply(s_list, y_list, vector, beta=1, P=None):
+    """Matrix-vector product H·v.
+
+    Multiplies given vector with inverse Hessian, obtained
+    from repeated BFGS updates calculated from steps in 's_list'
+    and gradient differences in 'y_list'.
     
     Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
 
     assert len(s_list) == len(y_list), \
         "lengths of step list 's_list' and gradient list 'y_list' differ!"
 
-    q = -force
+    q = vector
     cycles = len(s_list)
     alphas = list()
     rhos = list()
@@ -63,7 +67,7 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
         nonlocal y_list
 
         prev_forces = forces[-1]
-        step = -bfgs_multiply(s_list, y_list, prev_forces)
+        step = bfgs_multiply(s_list, y_list, prev_forces)
         step = restrict_step(x, step)
         new_x = x + step
         new_forces = force_getter(new_x, *getter_args)
@@ -107,7 +111,7 @@ def lbfgs_closure_(force_getter, M=10, beta=1, restrict_step=None):
         x_list.append(x)
         force_list.append(force)
 
-        step = -bfgs_multiply(s_list, y_list, force, beta=beta)
+        step = bfgs_multiply(s_list, y_list, force, beta=beta)
         step = restrict_step(x, step)
         # Only keep last m cycles
         s_list = s_list[-M:]
@@ -202,7 +206,7 @@ def small_lbfgs_closure(history=5):
         # LBFGS in the following cycles
         if cur_cycle > 0:
             grad_diffs.append(-forces - -prev_forces)
-            step = -bfgs_multiply(steps, grad_diffs, forces)
+            step = bfgs_multiply(steps, grad_diffs, forces)
 
         prev_forces = forces
         cur_cycle += 1

@@ -117,7 +117,7 @@ class PreconLBFGS(Optimizer):
         if self.cur_cycle > 0:
             self.grad_diffs.append(-forces - -self.forces[-2])
             self.steps_.append(self.steps[-1])
-            step = -bfgs_multiply(self.steps_, self.grad_diffs, forces, P=P)
+            step = bfgs_multiply(self.steps_, self.grad_diffs, forces, P=P)
 
         step_dir = step / np.linalg.norm(step)
 

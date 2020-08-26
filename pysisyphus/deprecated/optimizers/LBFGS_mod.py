@@ -68,7 +68,7 @@ class LBFGS(BacktrackingOptimizer):
         prev_coords = self.coords[-1]
         prev_forces = self.forces[-1]
 
-        step = -bfgs_multiply(self.sigmas, self.grad_diffs, prev_forces)
+        step = bfgs_multiply(self.sigmas, self.grad_diffs, prev_forces)
         step = self.scale_by_max_step(step)
 
         new_coords = prev_coords + self.alpha*step

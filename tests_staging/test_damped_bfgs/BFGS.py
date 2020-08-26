@@ -24,6 +24,9 @@ class BFGS(Optimizer):
         }
         self.update_func = update_funcs[self.update]
 
+        self.s_list = list()
+        self.y_list = list()
+
     def prepare_opt(self):
         # Inverse Hessian
         self.H = self.eye
@@ -43,8 +46,14 @@ class BFGS(Optimizer):
 
         See [3]. Potentially updates s and y."""
 
-        s, y = double_damp(s, y, H=self.H, mu_1=mu_1, mu_2=mu_2,
-                           logger=self.logger)
+        # Call using the inverse Hessian 'H'
+        # s, y = double_damp(s, y, H=self.H, mu_1=mu_1, mu_2=mu_2,
+                           # logger=self.logger)
+        # Call using LBFGS two-loop recursion for Hy matrix product.
+        s, y = double_damp(s, y, s_list=self.s_list, y_list=self.y_list,
+                           mu_1=mu_1, mu_2=mu_2, logger=self.logger)
+        self.s_list.append(s)
+        self.y_list.append(y)
         self.bfgs_update(s, y)
 
     def damped_bfgs_update(self, s, y, mu_1=0.2):

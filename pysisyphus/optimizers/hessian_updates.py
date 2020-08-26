@@ -86,7 +86,7 @@ def double_damp(s, y, H=None, s_list=None, y_list=None,
     if H is not None:
         Hy = H.dot(y)
     else:
-        assert (len(s_list) == len(y_list)) and (len(s_list) > 0)
+        # assert (len(s_list) == len(y_list)) and (len(s_list) > 0)
         Hy = bfgs_multiply(s_list, y_list, y)
     yHy = y.dot(Hy)
 

@@ -55,7 +55,7 @@ class LBFGS(Optimizer):
             self.grad_diffs.append(grad_diff)
             self.grad_diffs = self.grad_diffs[-self.keep_last:]
 
-        step = -bfgs_multiply(self.coord_diffs, self.grad_diffs, forces, beta=self.beta)
+        step = bfgs_multiply(self.coord_diffs, self.grad_diffs, forces, beta=self.beta)
         step = scale_by_max_step(step, self.max_step)
 
         self.coord_diffs.append(step)

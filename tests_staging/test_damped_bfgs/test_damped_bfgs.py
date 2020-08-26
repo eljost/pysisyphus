@@ -1,12 +1,25 @@
+import numpy as np
+
 from pysisyphus.calculators import XTB
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.helpers import geom_loader
-from BFGS import BFGS
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.LBFGS import LBFGS
+from pysisyphus.optimizers.closures import bfgs_multiply
+
+from BFGS import BFGS
 
 
-def test_neb():
+def test_bfgs_multiply():
+    size = 10
+    s_list = list()
+    y_list = list()
+    forces = np.ones(size)
+    Hf = bfgs_multiply(s_list, y_list, forces)
+    np.testing.assert_allclose(Hf, -forces)
+
+
+def test_double_damped_neb():
     geoms = geom_loader("interpolated.trj")
     # geoms = geom_loader("cycle_034.input.trj")
     for i, geom in enumerate(geoms):
@@ -27,7 +40,7 @@ def test_neb():
     # opt = QuickMin(cos, **opt_kwargs)
 
     opt_kwargs = {
-        "max_cycles": 50,
+        "max_cycles": 10,
         "max_step": 0.1,
         # "update": "damped",
         # "update": "bfgs",
