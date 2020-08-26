@@ -85,17 +85,22 @@ def double_damp(s, y, H=None, s_list=None, y_list=None,
     # Calculate Hy directly
     if H is not None:
         Hy = H.dot(y)
+    # Calculate Hy via BFGS_multiply as in LBFGS
     else:
-        # assert (len(s_list) == len(y_list)) and (len(s_list) > 0)
-        Hy = bfgs_multiply(s_list, y_list, y)
+        Hy = bfgs_multiply(s_list, y_list, y, logger=logger)
     yHy = y.dot(Hy)
 
     theta_1 = 1
+    damped_s = ""
     if sy < mu_1*yHy:
         theta_1 = (1 - mu_1) * yHy / (yHy - sy)
-    s = theta_1*s + (1 - theta_1)*Hy
+        s = theta_1*s + (1 - theta_1)*Hy
+        if theta_1 < 1.:
+            damped_s = ", damped s"
+    msg = f"damped BFGS\n\ttheta_1={theta_1:.4f} {damped_s}"
 
     # Double damping
+    damped_y = ""
     if mu_2 is not None:
         sy = s.dot(y)
         ss = s.dot(s)
@@ -103,12 +108,12 @@ def double_damp(s, y, H=None, s_list=None, y_list=None,
         if sy < mu_2*ss:
             theta_2 = (1 - mu_2) * ss / (ss - sy)
         y = theta_2*y + (1 - theta_2)*s
-        msg = f"Double damped BFGS. theta_1={theta_1:.4f}, theta_2={theta_2:.4f}"
-    else:
-        msg = f"Damped BFGS. theta_1={theta_1:.4f}"
+        if theta_2 < 1.:
+            damped_y = ", damped y"
+        msg = "double " + msg + f"\n\ttheta_2={theta_2:.4f} {damped_y}"
 
     if logger is not None:
-        logger.debug(msg)
+        logger.debug(msg.capitalize())
 
     return s, y
 
