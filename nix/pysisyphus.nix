@@ -114,7 +114,7 @@ in
 
     src = builtins.path {
       name = "pysisyphus";
-      path = ./.;
+      path = ./..;
     };
 
     doCheck = false;
