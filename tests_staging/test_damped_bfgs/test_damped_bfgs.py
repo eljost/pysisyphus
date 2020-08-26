@@ -16,7 +16,7 @@ def test_bfgs_multiply():
     y_list = list()
     forces = np.ones(size)
     Hf = bfgs_multiply(s_list, y_list, forces)
-    np.testing.assert_allclose(Hf, -forces)
+    np.testing.assert_allclose(Hf, forces)
 
 
 def test_double_damped_neb():
