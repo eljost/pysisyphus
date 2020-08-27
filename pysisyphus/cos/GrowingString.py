@@ -348,11 +348,10 @@ class GrowingString(GrowingChainOfStates):
             self.calculate_forces()
 
         indices = range(len(self.images))
-        perp_forces = [self.get_perpendicular_forces(i) for i in indices]
-        self._forces = np.array(perp_forces).flatten()
-        self.perp_forces_list.append(self._forces.copy())
-        # TODO: Add climbing modification
-        # total_forces = self.set_climbing_forces(total_forces)
+        perp_forces = np.array([self.get_perpendicular_forces(i) for i in indices])
+        self.perp_forces_list.append(perp_forces.copy().flatten())
+        total_forces = self.set_climbing_forces(perp_forces)
+        self._forces = total_forces.flatten()
         return self._forces
 
     def reparametrize(self):
