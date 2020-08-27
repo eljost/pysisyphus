@@ -57,7 +57,7 @@ def assert_cos_opt(opt, ref_cycle):
         (ConjugateGradient, {}, {}, 40, 5),
         (QuickMin, {"dt": 0.1,}, {}, 27, 5),
         (FIRE, {"dt_max": 0.2,}, {}, 42, 5),
-        (LBFGS, {}, {}, 10, 5),
+        (LBFGS, {"gamma_mult": True, }, {}, 12, 5),
 ])
 def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
     geoms = get_geoms()

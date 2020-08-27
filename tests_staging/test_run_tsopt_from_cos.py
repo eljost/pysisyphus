@@ -40,6 +40,7 @@ from pysisyphus.testing import using
     # run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "tsopt_key, tsopt_kwargs", [
         # ("dimer", ),
