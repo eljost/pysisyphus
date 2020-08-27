@@ -90,18 +90,19 @@ def test_geometry_get_restart_info():
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "opt_cls, ref_norm",
+    "opt_cls, opt_kwargs_, ref_norm",
     [
-        pytest.param(ConjugateGradient, 0.01753495, marks=using("pyscf")),
-        pytest.param(FIRE, 0.50285483, marks=using("pyscf")),
-        pytest.param(LBFGS, 2.903023e-6, marks=using("pyscf")),
-        pytest.param(PreconLBFGS, 1.0844091e-5, marks=using("pyscf")),
-        pytest.param(QuickMin, 0.02305389, marks=using("pyscf")),
-        pytest.param(RFOptimizer, 0.001659627, marks=using("pyscf")),
-        pytest.param(SteepestDescent, 0.05535400, marks=using("pyscf")),
+        pytest.param(ConjugateGradient, {}, 0.01753495, marks=using("pyscf")),
+        pytest.param(FIRE, {}, 0.50285483, marks=using("pyscf")),
+        pytest.param(LBFGS, {"gamma_mult": True, }, 2.2002337e-6, marks=using("pyscf")),
+        pytest.param(LBFGS, {"gamma_mult": False, }, 1.36271012e-5, marks=using("pyscf")),
+        pytest.param(PreconLBFGS, {}, 1.0844091e-5, marks=using("pyscf")),
+        pytest.param(QuickMin, {}, 0.02305389, marks=using("pyscf")),
+        pytest.param(RFOptimizer, {}, 0.001659627, marks=using("pyscf")),
+        pytest.param(SteepestDescent, {}, 0.05535400, marks=using("pyscf")),
     ]
 )
-def test_opt_restart(opt_cls, ref_norm):
+def test_opt_restart(opt_cls, opt_kwargs_, ref_norm):
     def get_calc():
         return PySCF(method="scf", basis="def2svp")
 
@@ -117,6 +118,7 @@ def test_opt_restart(opt_cls, ref_norm):
             "dump": True,
             "thresh": "gau_tight",
         }
+        opt_kwargs.update(opt_kwargs_)
         opt = opt_cls(geom, **opt_kwargs)
         return opt
 

@@ -14,7 +14,7 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 
 class LBFGS(Optimizer):
     def __init__(self, geometry, keep_last=7, beta=1, max_step=0.2,
-                 double_damp=False, gamma_mult=False, **kwargs):
+                 double_damp=True, gamma_mult=False, **kwargs):
         """[1] Nocedal, Wright - Numerical Optimization, 2006"""
         self.beta = beta
         self.keep_last = int(keep_last)
