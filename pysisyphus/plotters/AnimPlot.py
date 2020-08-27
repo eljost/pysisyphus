@@ -8,6 +8,7 @@ import matplotlib.animation as animation
 import numpy as np
 
 from pysisyphus.helpers import get_coords_diffs
+from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 
 class AnimPlot:
@@ -44,6 +45,7 @@ class AnimPlot:
         self.title = title
         self.tight_layout = tight_layout
 
+        self.growing = isinstance(self.optimizer.geometry, GrowingChainOfStates)
         self.coords = [c.reshape(-1, 3) for c in self.optimizer.coords]
         self.forces = [f.reshape((-1, 3)) for f in self.optimizer.forces]
         self.energies = self.optimizer.energies
@@ -93,11 +95,13 @@ class AnimPlot:
         # Create artists, so we can update their data later
         # Image positions
         self.images, = self.ax.plot(images_x, images_y, "ro", ls="-")
-        # Total forces
-        self.total_forces_quiv = self.ax.quiver(images_x, images_y,
+
+        if not self.growing:
+            # Total forces
+            self.total_forces_quiv = self.ax.quiver(images_x, images_y,
                                                 forces_x, forces_y)
-        # Tangents
-        self.tangent_quiv = self.ax.quiver(images_x, images_y,
+            # Tangents
+            self.tangent_quiv = self.ax.quiver(images_x, images_y,
                                            tangents_x, tangents_y, color="b")
 
         # Energy along the path
@@ -117,20 +121,25 @@ class AnimPlot:
         self.images.set_xdata(images_x)
         self.images.set_ydata(images_y)
 
-        # Update total forces quiver
-        forces_x = self.forces[frame][:,0]
-        forces_y = self.forces[frame][:,1]
-        offsets = np.stack((images_x, images_y), axis=-1).flatten()
-        # https://stackoverflow.com/questions/19329039
-        # https://stackoverflow.com/questions/17758942
-        self.total_forces_quiv.set_offsets(offsets)
-        self.total_forces_quiv.set_UVC(forces_x, forces_y)
+        if not self.growing:
+            # Update total forces quiver
+            forces_x = self.forces[frame][:,0]
+            forces_y = self.forces[frame][:,1]
+            offsets = np.stack((images_x, images_y), axis=-1).flatten()
+            # https://stackoverflow.com/questions/19329039
+            # https://stackoverflow.com/questions/17758942
+            self.total_forces_quiv.set_offsets(offsets)
+            self.total_forces_quiv.set_UVC(forces_x, forces_y)
 
-        # Update tangent quiver
-        tangents_x = self.tangents[frame][:,0]
-        tangents_y = self.tangents[frame][:,1]
-        self.tangent_quiv.set_offsets(offsets)
-        self.tangent_quiv.set_UVC(tangents_x, tangents_y)
+            # Update tangent quiver
+            tangents_x = self.tangents[frame][:,0]
+            tangents_y = self.tangents[frame][:,1]
+            self.tangent_quiv.set_offsets(offsets)
+            self.tangent_quiv.set_UVC(tangents_x, tangents_y)
+            # print("noice!", frame)
+        # except ValueError:
+            # import pdb; pdb.set_trace()
+            # print("ohoh!", frame)
 
         if self.energy_profile:
             coords_diffs = get_coords_diffs(self.coords[frame])
