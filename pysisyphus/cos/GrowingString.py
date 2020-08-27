@@ -1,7 +1,3 @@
-#/!usr/bin/env python3
-
-# See [1] 10.1063/1.1691018
-
 import numpy as np
 from scipy.interpolate import splprep, splev
 
@@ -9,12 +5,17 @@ from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
+# [1] https://aip.scitation.org/doi/abs/10.1063/1.1691018
+#     Peters, 2004
+# [2] https://aip.scitation.org/doi/abs/10.1063/1.4804162
+#     Zimmerman, 2013
+
 
 class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, perp_thresh=0.05,
                  reparam_every=3, reparam_tol=None, reparam_check="norm",
-                 **kwargs):
+                 max_micro_cycles=5, **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
@@ -30,8 +31,9 @@ class GrowingString(GrowingChainOfStates):
             assert self.reparam_tol > 0
         else:
             self.reparam_tol = 1 / (self.max_nodes + 2) / 2
-        self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4e}")
+        self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4f}")
         self.reparam_check = reparam_check
+        self.max_micro_cycles= int(max_micro_cycles)
 
         left_img, right_img = self.images
 
@@ -265,30 +267,49 @@ class GrowingString(GrowingChainOfStates):
         # we try to do the reparametrization in one step.
         # A safer approach would be to do it in multiple smaller steps.
 
+        self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
-            diff = (desired_param_density - cur_param_density)[i]
-            # Negative sign: image is too far right and has to be shifted left.
-            # Positive sign: image is too far left and has to be shifted right.
-            sign = int(np.sign(diff))
-            if abs(diff) < thresh:
-                continue
-            # Index of the tangent image. reparam_image will be shifted along
-            # this direction to achieve the desired parametirzation density.
-            tangent_ind = i + sign
-            tangent_image = self.images[tangent_ind]
-            distance = -(reparam_image - tangent_image)
+            self.log(f"Reparametrizing node {i}")
+            for j in range(self.max_micro_cycles):
+                diff = (desired_param_density - cur_param_density)[i]
+                self.log(f"\t{j}: Δ={diff:.6f}")
+                if abs(diff) < self.reparam_tol:
+                    break
+                # Negative sign: image is too far right and has to be shifted left.
+                # Positive sign: image is too far left and has to be shifted right.
+                sign = int(np.sign(diff))
+                if abs(diff) < thresh:
+                    continue
+                # Index of the tangent image. reparam_image will be shifted along
+                # this direction to achieve the desired parametirzation density.
+                tangent_ind = i + sign
+                tangent_image = self.images[tangent_ind]
+                distance = -(reparam_image - tangent_image)
 
-            param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
-            step_length = abs(diff) / param_dens_diff
-            step = step_length * distance
-            reparam_coords = reparam_image.coords + step
-            reparam_image.coords = reparam_coords
-            cur_param_density = self.get_cur_param_density("coords")
+                param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
+                step_length = abs(diff) / param_dens_diff
+                step = step_length * distance
+                reparam_coords = reparam_image.coords + step
+                reparam_image.coords = reparam_coords
+                cur_param_density = self.get_cur_param_density("coords")
+            else:
+                self.log(f"Reparametrization of node {i} did not converge after "
+                         f"{self.max_micro_cycles}. Breaking!")
+                break
 
         cpd_str = np.array2string(cur_param_density, precision=4)
-        self.log(f"Current param density: {cpd_str}")
-        np.testing.assert_allclose(cur_param_density, desired_param_density,
-                                   atol=self.reparam_tol)
+        self.log(f"Param density after reparametrization: {cpd_str}")
+
+        try:
+            np.testing.assert_allclose(cur_param_density, desired_param_density,
+                                       atol=self.reparam_tol)
+        except AssertionError as err:
+            trj_str = self.as_xyz()
+            fn = "failed_reparametrization.trj"
+            with open(fn, "w") as handle:
+                handle.write(trj_str)
+            print("Wrote coordinates of failed reparametrization to '{fn}'")
+            raise err
 
         # Regenerate active set after reparametrization
         # [image.internal.set_active_set() for image in self.moving_images]
