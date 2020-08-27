@@ -770,7 +770,9 @@ class Geometry:
             Current geometry as string in XYZ-format.
         """
         coords = self._coords * BOHR2ANG
-        return make_xyz_str(self.atoms, coords.reshape((-1,3)), self.comment)
+        if comment == "":
+            comment = self.comment
+        return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
     def get_subgeom(self, indices, coord_type="cart"):
         """Return a Geometry containing a subset of the current Geometry.
