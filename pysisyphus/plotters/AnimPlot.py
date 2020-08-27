@@ -136,10 +136,6 @@ class AnimPlot:
             tangents_y = self.tangents[frame][:,1]
             self.tangent_quiv.set_offsets(offsets)
             self.tangent_quiv.set_UVC(tangents_x, tangents_y)
-            # print("noice!", frame)
-        # except ValueError:
-            # import pdb; pdb.set_trace()
-            # print("ohoh!", frame)
 
         if self.energy_profile:
             coords_diffs = get_coords_diffs(self.coords[frame])
