@@ -33,13 +33,18 @@ class LBFGS(Optimizer):
     def _get_opt_restart_info(self):
         opt_restart_info = {
             "coord_diffs": np.array(self.coord_diffs).tolist(),
-            "grad_diffs": np.array(self.grad_diffs).tolist()
+            "grad_diffs": np.array(self.grad_diffs).tolist(),
+            "double_damp": self.double_damp,
+            "gamma_mult": self.gamma_mult,
+            "keep_last": self.keep_last,
         }
         return opt_restart_info
 
     def _set_opt_restart_info(self, opt_restart_info):
         self.coord_diffs = [np.array(cd) for cd in opt_restart_info["coord_diffs"]]
         self.grad_diffs = [np.array(gd) for gd in opt_restart_info["grad_diffs"]]
+        for attr in ("double_damp", "gamma_mult", "keep_last"):
+            setattr(self, attr, opt_restart_info[attr])
 
     def optimize(self):
         if self.is_cos and self.align:
