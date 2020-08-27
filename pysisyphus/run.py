@@ -29,7 +29,8 @@ from pysisyphus.color import bool_color
 # from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import confirm_input, shake_coords, \
-                               highlight_text, do_final_hessian, print_barrier
+                               highlight_text, do_final_hessian, print_barrier, \
+                               get_tangent_trj_str
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -261,6 +262,13 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     cart_hei_tangent = cart_cos.get_tangent(cart_hei_index)
     cart_hei_fn = "cart_hei_tangent"
     np.savetxt(cart_hei_fn, cart_hei_tangent)
+    trj = get_tangent_trj_str(ts_geom.atoms, ts_geom.cart_coords,
+                              cart_hei_tangent, points=10
+    )
+    trj_fn = cart_hei_fn + ".trj"
+    with open(trj_fn, "w") as handle:
+        handle.write(trj)
+    print(f"Wrote animated HEI tangent to {trj_fn}\n")
 
     # Use splined HEI
     # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
@@ -281,7 +289,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         handle.write(ts_geom.as_xyz())
     print(f"Wrote splined HEI coordinates to '{hei_xyz_fn}'")
     hei_tangent_fn = "splined_hei_tangent"
-    np.savetxt("hei_tangent", hei_tangent)
+    np.savetxt(hei_tangent_fn, hei_tangent)
     print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
 
     ts_calc = calc_getter()
