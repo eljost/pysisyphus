@@ -350,6 +350,7 @@ class GrowingString(GrowingChainOfStates):
         indices = range(len(self.images))
         perp_forces = np.array([self.get_perpendicular_forces(i) for i in indices])
         self.perp_forces_list.append(perp_forces.copy().flatten())
+        # Add climbing forces
         total_forces = self.set_climbing_forces(perp_forces)
         self._forces = total_forces.flatten()
         return self._forces

@@ -9,6 +9,8 @@ def test_anapot_growing_string():
     geoms = (initial, final)
     gs_kwargs = {
         "perp_thresh": 0.5,
+        "climb": True,
+        "climb_rms": 0.3,
     }
     gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
 
@@ -22,11 +24,5 @@ def test_anapot_growing_string():
     assert opt.is_converged
     assert opt.cur_cycle == 15
 
-    # from pysisyphus.plotters.AnimPlot import AnimPlot
-    # import matplotlib.pyplot as plt
-    # xlim = (-2, 2.5)
-    # ylim = (0, 5)
-    # levels = (-3, 4, 80)
-    # ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
-    # ap.animate()
-    # plt.show()
+    # calc = AnaPot()
+    # calc.anim_opt(opt, show=True)
