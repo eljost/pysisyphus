@@ -7,13 +7,11 @@ from pysisyphus.optimizers.StringOptimizer import StringOptimizer
 
 @pytest.mark.parametrize(
     "keep_last, ref_cycle", [
-        (0, 13),
-        (2, 16),
+        (0, 10),
+        (2, 12),
         (4, 14),
-        (6, 22),
-        (8, 17),
-        # (10, 17),
-        # (12, 17),
+        (6, 16),
+        (8, 18),
     ]
 )
 def test_anapot_growing_string(keep_last, ref_cycle):
@@ -28,7 +26,8 @@ def test_anapot_growing_string(keep_last, ref_cycle):
 
     opt_kwargs = {
         "gamma": 10.,
-        "stop_in_when_full": 3,
+        # "stop_in_when_full": 3,
+        "stop_in_when_full": keep_last,
         "keep_last": keep_last,
     }
     opt = StringOptimizer(gs, **opt_kwargs)
