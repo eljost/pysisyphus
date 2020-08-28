@@ -5,6 +5,7 @@ from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
+
 # [1] https://aip.scitation.org/doi/abs/10.1063/1.1691018
 #     Peters, 2004
 # [2] https://aip.scitation.org/doi/abs/10.1063/1.4804162
@@ -15,7 +16,7 @@ class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, perp_thresh=0.05,
                  reparam_every=2, reparam_every_full=3, reparam_tol=None,
-                 reparam_check="norm", max_micro_cycles=5, **kwargs):
+                 reparam_check="rms", max_micro_cycles=5, **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
