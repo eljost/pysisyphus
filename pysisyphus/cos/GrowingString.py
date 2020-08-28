@@ -244,13 +244,11 @@ class GrowingString(GrowingChainOfStates):
             for j in range(self.max_micro_cycles):
                 diff = (desired_param_density - cur_param_density)[i]
                 self.log(f"\t{j}: Δ={diff:.6f}")
-                if abs(diff) < self.reparam_tol:
+                if abs(diff) < thresh:
                     break
                 # Negative sign: image is too far right and has to be shifted left.
                 # Positive sign: image is too far left and has to be shifted right.
                 sign = int(np.sign(diff))
-                if abs(diff) < thresh:
-                    continue
                 # Index of the tangent image. reparam_image will be shifted along
                 # this direction to achieve the desired parametirzation density.
                 tangent_ind = i + sign
@@ -316,10 +314,9 @@ class GrowingString(GrowingChainOfStates):
         if self.coord_type == "cart":
             return self._tangents[i]
 
-        # With DLC we can use conventional tangents that can be calculated
-        # without splining.
+        # With DLC we can use conventional tangents, calculated without splining.
 
-        # Upwinding tangent when the string is fully grown.
+        # Use upwinding tangents for fully grown strings.
         if self.fully_grown:
             return super().get_tangent(i, kind="upwinding")
 
@@ -418,7 +415,8 @@ class GrowingString(GrowingChainOfStates):
                 self.set_tangents()
             elif self.coord_type == "dlc":
                 cur_param_density = self.get_cur_param_density("coords")
-                self.reparam_dlc(cur_param_density, desired_param_density)
+                self.reparam_dlc(cur_param_density, desired_param_density,
+                                 thresh=self.reparam_tol)
             else:
                 raise Exception("How did you get here?")
 

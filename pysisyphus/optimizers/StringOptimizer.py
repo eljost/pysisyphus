@@ -80,7 +80,7 @@ class StringOptimizer(Optimizer):
         self.log(f"norm(forces)={np.linalg.norm(forces)*ANG2BOHR:.6f} hartree/Å")
 
         sd_step = forces / self.gamma
-        # Steepest descent in the first cbeginning
+        # Steepest descent in the beginning
         if (self.cur_cycle == 0) or string_size_changed:
             step = sd_step
             self.log("Taking steepest descent step.")
