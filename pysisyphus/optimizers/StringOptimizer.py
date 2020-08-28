@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/abs/10.1063/1.3664901
 #     Behn, 2011, Freezing string method
 # [2] https://aip.scitation.org/doi/pdf/10.1063/1.4804162
@@ -7,12 +5,12 @@
 #                      in internal coordiantes
 
 import numpy as np
-import scipy as sp
 
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import procrustes
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.closures import bfgs_multiply
+
 
 class StringOptimizer(Optimizer):
 

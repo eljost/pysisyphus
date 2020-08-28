@@ -12,7 +12,7 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
     from repeated BFGS updates calculated from steps in 's_list'
     and gradient differences in 'y_list'.
     
-    Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
+    Based on algorithm 7.4 Nocedal, Num. Opt., p. 178."""
 
     assert len(s_list) == len(y_list), \
         "lengths of step list 's_list' and gradient list 'y_list' differ!"
