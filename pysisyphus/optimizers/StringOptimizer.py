@@ -113,7 +113,7 @@ class StringOptimizer(Optimizer):
         if self.keep_last == 0 and string_size_changed:
             step /= self.gamma
         # Conjugate gradient modification
-        else:
+        elif self.keep_last == 0:
             cur_norm = np.linalg.norm(forces)
             prev_norm = np.linalg.norm(self.forces[-2])
             quot = min(cur_norm**2 / prev_norm**2, 1)
