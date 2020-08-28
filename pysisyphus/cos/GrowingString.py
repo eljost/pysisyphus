@@ -369,6 +369,9 @@ class GrowingString(GrowingChainOfStates):
             self.calculate_forces()
 
         indices = range(len(self.images))
+        # In constrast to NEB calculations we only use the perpendicular component
+        # of the force, without any spring forces. A desired image distribution is
+        # achieved via periodic reparametrization.
         perp_forces = np.array([self.get_perpendicular_forces(i) for i in indices])
         self.perp_forces_list.append(perp_forces.copy().flatten())
         # Add climbing forces
@@ -444,8 +447,6 @@ class GrowingString(GrowingChainOfStates):
         pd_str = np.array2string(desired_param_density, precision=4)
         self.log(f"Desired param density: {pd_str}")
 
-        # TODO: Add some kind of threshold and only reparametrize when
-        # the deviation from the desired param_density is above the threshold.
         if self.coord_type == "cart":
             self.reparam_cart(tcks, desired_param_density)
             self.set_tangents()
