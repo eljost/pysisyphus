@@ -64,6 +64,8 @@ class GrowingString(GrowingChainOfStates):
         if self.coord_type == "cart":
             self.set_tangents()
 
+        self.new_image_inds = list()
+
     def get_cur_param_density(self, kind="cart"):
         if kind == "cart":
             coords = np.array([image.cart_coords for image in self.images])
@@ -229,12 +231,13 @@ class GrowingString(GrowingChainOfStates):
         new_points = new_points.reshape(-1, len(self.images))
         self.coords = new_points.transpose().flatten()
 
-    def reparam_dlc(self, cur_param_density, desired_param_density, thresh=1e-3):
+    def reparam_dlc(self, desired_param_density, thresh=1e-3):
         # Reparametrization will take place along the tangent between two
         # images. The index of the tangent image depends on wether the image
         # is above or below the desired param_density on the normalized arc.
         #
         # The reparametrization is done in micro cycles, until it is converged.
+        cur_param_density = self.get_cur_param_density("coords")
         self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
             self.log(f"Reparametrizing node {i}")
@@ -351,6 +354,7 @@ class GrowingString(GrowingChainOfStates):
         # If this counter reaches 0 reparametrization will occur.
         self.reparam_in -= 1
 
+        self.new_image_inds = list()
         # Check if new images can be added for incomplete strings.
         if not self.fully_grown:
             perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
@@ -378,6 +382,7 @@ class GrowingString(GrowingChainOfStates):
                 # Insert at the end of the left string, just before the
                 # right frontier node.
                 new_left_frontier = self.get_new_image(self.lf_ind)
+                self.new_image_inds.append(self.left_size)
                 self.left_string.append(new_left_frontier)
                 self.log("Added new left frontier node.")
                 self.reparam_in = 0
@@ -387,9 +392,11 @@ class GrowingString(GrowingChainOfStates):
                 # Insert at the end of the right string, just before the
                 # current right frontier node.
                 new_right_frontier = self.get_new_image(self.rf_ind)
+                self.new_image_inds.append(self.left_size)
                 self.right_string.append(new_right_frontier)
                 self.log("Added new right frontier node.")
                 self.reparam_in = 0
+            self.log(f"New image indices: {self.new_image_inds}")
 
         self.log(
             f"Current string size is {self.left_size}+{self.right_size}="
@@ -412,9 +419,7 @@ class GrowingString(GrowingChainOfStates):
                 self.reparam_cart(desired_param_density)
                 self.set_tangents()
             elif self.coord_type == "dlc":
-                cur_param_density = self.get_cur_param_density("coords")
-                self.reparam_dlc(cur_param_density, desired_param_density,
-                                 thresh=self.reparam_tol)
+                self.reparam_dlc(desired_param_density, thresh=self.reparam_tol)
             else:
                 raise Exception("How did you get here?")
 
