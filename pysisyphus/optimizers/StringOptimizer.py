@@ -63,13 +63,13 @@ class StringOptimizer(Optimizer):
 
     def optimize(self):
         # Raises IndexError in cycle 0 and evaluates to False when
-        # string size changed (grew), compared to the previous cycle.
+        # string size changed (grew) from previous cycle.
         try:
             string_size_changed = self.geometry.coords.size != self.coords[-2].size
         except IndexError:
             string_size_changed = True
 
-        if string_size_changed and self.is_cos and self.is_cart_opt and self.align:
+        if self.align and string_size_changed and self.is_cos and self.is_cart_opt:
             procrustes(self.geometry)
             self.log("Aligned string.")
 
