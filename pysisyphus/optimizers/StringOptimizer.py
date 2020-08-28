@@ -16,7 +16,7 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 class StringOptimizer(Optimizer):
 
     def __init__(self, geometry, gamma=1.25, max_step=0.1,
-                 stop_in_when_full=-1, keep_last=10, **kwargs):
+                 stop_in_when_full=-1, keep_last=0, **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         assert self.is_cos, \
@@ -78,66 +78,48 @@ class StringOptimizer(Optimizer):
 
         self.log(f"norm(forces)={np.linalg.norm(forces)*ANG2BOHR:.6f} hartree/Å")
 
-        step = forces / self.gamma
-        if self.cur_cycle > 0 and not string_size_changed:
+        cur_size = self.geometry.string_size
+        # LBFGS step calculation
+        if self.keep_last > 0 and self.cur_cycle > 0:
+            new_image_inds = self.geometry.new_image_inds
+            inds = list(range(cur_size))
+
+            try:
+                y = self.forces[-2] - forces
+                s = self.coords[-1] - self.coords[-2]
+            except ValueError:
+                prev_size = cur_size - len(new_image_inds)
+                cur_forces = np.delete(forces.reshape(cur_size, -1),
+                                       new_image_inds, axis=0).flatten()
+                y = self.forces[-2] - cur_forces
+                cur_coords = np.delete(self.coords[-1].reshape(cur_size, -1),
+                                       new_image_inds, axis=0).flatten()
+                s = self.coords[-2] - cur_coords
+                inds = np.delete(inds, new_image_inds)
+
+            self.s_list.append(s)
+            self.y_list.append(y)
+            self.inds.append(inds)
+            # Drop oldest vectors
+            self.s_list = self.s_list[-self.keep_last:]
+            self.y_list = self.y_list[-self.keep_last:]
+            self.inds = self.inds[-self.keep_last:]
+
+        # Results in a simple SD step for empty s_list & y_list
+        step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=False,
+                             inds=self.inds, cur_size=cur_size)
+
+        # Damped steepest descent
+        if self.keep_last == 0 and string_size_changed:
+            step /= self.gamma
+        # Conjugate gradient modification
+        else:
             cur_norm = np.linalg.norm(forces)
             prev_norm = np.linalg.norm(self.forces[-2])
             quot = min(cur_norm**2 / prev_norm**2, 1)
-            step += quot*self.steps[-1]
+            # step = step / self.gamma + quot*self.steps[-1]
+            step = forces / self.gamma + quot*self.steps[-1]
 
         step = scale_by_max_step(step, self.max_step)
 
         return step
-
-    # def optimize(self):
-        # # Raises IndexError in cycle 0 and evaluates to False when
-        # # string size changed (grew) from previous cycle.
-        # try:
-            # string_size_changed = self.geometry.coords.size != self.coords[-2].size
-        # except IndexError:
-            # string_size_changed = True
-
-        # if self.align and string_size_changed and self.is_cart_opt:
-            # procrustes(self.geometry)
-            # self.log("Aligned string.")
-
-        # forces = self.geometry.forces
-        # self.energies.append(self.geometry.energy)
-        # self.forces.append(forces)
-
-        # self.log(f"norm(forces)={np.linalg.norm(forces)*ANG2BOHR:.6f} hartree/Å")
-
-        # # Handle fixed images
-        # # Double damp
-        # cur_size = self.geometry.string_size
-        # if self.keep_last > 0 and self.cur_cycle > 0:
-            # new_image_inds = self.geometry.new_image_inds
-            # inds = list(range(cur_size))
-
-            # try:
-                # y = self.forces[-2] - forces
-                # s = self.coords[-1] - self.coords[-2]
-            # except ValueError:
-                # prev_size = cur_size - len(new_image_inds)
-                # cur_forces = np.delete(forces.reshape(cur_size, -1),
-                                       # new_image_inds, axis=0).flatten()
-                # y = self.forces[-2] - cur_forces
-                # cur_coords = np.delete(self.coords[-1].reshape(cur_size, -1),
-                                       # new_image_inds, axis=0).flatten()
-                # s = self.coords[-2] - cur_coords
-                # inds = np.delete(inds, new_image_inds)
-
-            # self.s_list.append(s)
-            # self.y_list.append(y)
-            # self.inds.append(inds)
-
-        # # Drop oldest vectors
-        # self.s_list = self.s_list[-self.keep_last:]
-        # self.y_list = self.y_list[-self.keep_last:]
-        # self.inds = self.inds[-self.keep_last:]
-
-        # step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=False,
-                             # inds=self.inds, cur_size=cur_size)
-        # step = scale_by_max_step(step, self.max_step)
-
-        # return step
