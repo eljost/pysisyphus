@@ -62,8 +62,8 @@ class StringOptimizer(Optimizer):
         return full_stop or converged
 
     def optimize(self):
-        # Raises IndexError in cycle 0 and evaluates to False when the
-        # string size changed (grew) compared to the previous cycle.
+        # Raises IndexError in cycle 0 and evaluates to False when
+        # string size changed (grew), compared to the previous cycle.
         try:
             string_size_changed = self.geometry.coords.size != self.coords[-2].size
         except IndexError:
