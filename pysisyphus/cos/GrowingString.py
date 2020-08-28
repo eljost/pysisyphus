@@ -16,7 +16,8 @@ class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, perp_thresh=0.05,
                  reparam_every=2, reparam_every_full=3, reparam_tol=None,
-                 reparam_check="rms", max_micro_cycles=5, **kwargs):
+                 reparam_check="rms", max_micro_cycles=5, reset_dlc=False,
+                 **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
@@ -38,6 +39,7 @@ class GrowingString(GrowingChainOfStates):
         self.reparam_check = reparam_check
         assert self.reparam_check in ("norm", "rms")
         self.max_micro_cycles= int(max_micro_cycles)
+        self.reset_dlc = bool(reset_dlc)
 
         left_img, right_img = self.images
 
@@ -231,14 +233,8 @@ class GrowingString(GrowingChainOfStates):
         # Reparametrization will take place along the tangent between two
         # images. The index of the tangent image depends on wether the image
         # is above or below the desired param_density on the normalized arc.
-
-        # This implementation assumes that the reparametrization step take is not
-        # too big, so the internal-cartesian-transformation doesn't fail.
-        # Adding new images is done with smaller steps to avoid this problem.
-        # As every images is added only once, but may be reparametrized quite often
-        # we try to do the reparametrization in one step.
-        # A safer approach would be to do it in multiple smaller steps.
-
+        #
+        # The reparametrization is done in micro cycles, until it is converged.
         self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
             self.log(f"Reparametrizing node {i}")
@@ -282,7 +278,8 @@ class GrowingString(GrowingChainOfStates):
             raise err
 
         # Regenerate active set after reparametrization
-        # [image.internal.set_active_set() for image in self.moving_images]
+        if self.reset_dlc:
+            [image.internal.set_active_set() for image in self.moving_images]
 
     def set_tangents(self):
         """Set tangents as given by the first derivative of a cubic spline.
