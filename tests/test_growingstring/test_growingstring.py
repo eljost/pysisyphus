@@ -9,8 +9,9 @@ def test_anapot_growing_string():
     geoms = (initial, final)
     gs_kwargs = {
         "perp_thresh": 0.5,
-        "climb": True,
-        "climb_rms": 0.3,
+        # "climb": True,
+        # "climb_rms": 0.3,
+        "reparam_check": "rms",
     }
     gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
 
@@ -22,7 +23,7 @@ def test_anapot_growing_string():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 15
+    assert opt.cur_cycle == 14
 
     # calc = AnaPot()
     # calc.anim_opt(opt, show=True)
