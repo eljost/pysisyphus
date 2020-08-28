@@ -12,12 +12,16 @@ import scipy as sp
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import procrustes
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.closures import bfgs_multiply
 
 class StringOptimizer(Optimizer):
 
     def __init__(self, geometry, gamma=1.25, max_step=0.1,
                  stop_in_when_full=-1, **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
+
+        assert self.is_cos, \
+            "StringOptimizer is only intended to be used with COS objects."
 
         # gamma = 1.25 Hartree/Bohr² ~ 5 Hartree/Angstrom²
         self.gamma = float(gamma)
@@ -29,18 +33,11 @@ class StringOptimizer(Optimizer):
         self.is_cart_opt = self.geometry.coord_type == "cart"
 
     def prepare_opt(self):
-        if self.is_cos and self.is_cart_opt and self.align:
+        if self.align and self.is_cart_opt:
             procrustes(self.geometry)
 
     def reset(self):
         pass
-
-    # def fit_rigid(self, vectors=None):
-        # rot_mats = procrustes(self.geometry)
-        # G = sp.linalg.block_diag(*rot_mats)
-        # rotated_vectors = [vec.dot(G) for vec in vectors]
-
-        # return rotated_vectors
 
     def restrict_step_components(self, steps):
         too_big = np.abs(steps) > self.max_step
@@ -69,7 +66,7 @@ class StringOptimizer(Optimizer):
         except IndexError:
             string_size_changed = True
 
-        if self.align and string_size_changed and self.is_cos and self.is_cart_opt:
+        if self.align and string_size_changed and self.is_cart_opt:
             procrustes(self.geometry)
             self.log("Aligned string.")
 
