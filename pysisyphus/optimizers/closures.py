@@ -68,7 +68,7 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
             inds_i = inds[i]
             r_ = r.reshape(cur_size, -1)
             beta = rhos[i] * y.dot(r_[inds_i].flatten())
-            # This also modifies q!
+            # This also modifies r!
             r_[inds_i] += s.reshape(len(inds_i), -1) *(alphas[i] - beta)
 
     return r
