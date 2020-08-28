@@ -15,8 +15,8 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 
 class StringOptimizer(Optimizer):
 
-    def __init__(self, geometry, gamma=1.25, max_step=0.1,
-                 stop_in_when_full=-1, keep_last=0, **kwargs):
+    def __init__(self, geometry, gamma=1.25, max_step=0.1, stop_in_when_full=-1,
+                 keep_last=10, lbfgs_when_full=True, **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         assert self.is_cos, \
@@ -26,7 +26,9 @@ class StringOptimizer(Optimizer):
         self.gamma = float(gamma)
         self.stop_in_when_full = int(stop_in_when_full)
         self.keep_last = int(keep_last)
-
+        self.lbfgs_when_full = lbfgs_when_full
+        if self.lbfgs_when_full and (self.keep_last == 0):
+            print("lbfgs_when_full is True, but keep_last is 0!")
         # Add one as we later subtract 1 before we check if this value is 0.
         self.stop_in = self.stop_in_when_full + 1
         self.is_cart_opt = self.geometry.coord_type == "cart"
@@ -79,8 +81,16 @@ class StringOptimizer(Optimizer):
         self.log(f"norm(forces)={np.linalg.norm(forces)*ANG2BOHR:.6f} hartree/Å")
 
         cur_size = self.geometry.string_size
-        # LBFGS step calculation
-        if self.keep_last > 0 and self.cur_cycle > 0:
+        add_to_list = (
+            self.keep_last > 0  # Only add to s_list and y_list if we want to keep
+            and self.cur_cycle > 0 # some cycles and if we can calculate differences.
+            and (not self.lbfgs_when_full # Add when LBFGS is allowed before fully grown
+                 or self.lbfgs_when_full and self.geometry.fully_grown
+                 and not string_size_changed # Don't add when string has to be fully grown
+                                             # but only grew fully in this cycle.
+            )
+        )
+        if add_to_list:
             new_image_inds = self.geometry.new_image_inds
             inds = list(range(cur_size))
 
@@ -107,12 +117,12 @@ class StringOptimizer(Optimizer):
 
         # Results simple SD step for empty s_list & y_list
         step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=False,
-                             inds=self.inds, cur_size=cur_size)
+                             inds=self.inds, cur_size=cur_size, logger=self.logger)
 
         # Damped steepest descent
         if self.keep_last == 0 and string_size_changed:
             step /= self.gamma
-        # Conjugate gradient modification
+        # Conjugate gradient step
         elif self.keep_last == 0:
             cur_norm = np.linalg.norm(forces)
             prev_norm = np.linalg.norm(self.forces[-2])
