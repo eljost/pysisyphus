@@ -5,7 +5,7 @@ from scipy.sparse.linalg import spsolve
 
 
 def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
-                  gamma_mult=True):
+                  gamma_mult=True, inds=None, cur_size=None):
     """Matrix-vector product H·v.
 
     Multiplies given vector with inverse Hessian, obtained
@@ -17,7 +17,7 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
     assert len(s_list) == len(y_list), \
         "lengths of step list 's_list' and gradient list 'y_list' differ!"
 
-    q = vector
+    q = vector.copy()
     cycles = len(s_list)
     alphas = list()
     rhos = list()
@@ -27,9 +27,17 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
         y = y_list[i]
         rho = 1/y.dot(s)
         rhos.append(rho)
-        alpha = rho * s.dot(q)
+        try:
+            alpha = rho * s.dot(q)
+            q -= alpha*y
+        except ValueError:
+            inds_i = inds[i]
+            q_ = q.reshape(cur_size, -1)
+            alpha = rho * s.dot(q_[inds_i].flatten())
+            # This also modifies q!
+            q_[inds_i] -= alpha*y.reshape(len(inds_i), -1)
         alphas.append(alpha)
-        q = q - alpha*y
+
     # Restore original order, so that rho[i] = 1/s_list[i].dot(y_list[i]) etc.
     alphas = alphas[::-1]
     rhos = rhos[::-1]
@@ -53,8 +61,15 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
     for i in range(cycles):
         s = s_list[i]
         y = y_list[i]
-        beta = rhos[i] * y.dot(r)
-        r += s*(alphas[i] - beta)
+        try:
+            beta = rhos[i] * y.dot(r)
+            r += s*(alphas[i] - beta)
+        except ValueError:
+            inds_i = inds[i]
+            r_ = r.reshape(cur_size, -1)
+            beta = rhos[i] * y.dot(r_[inds_i].flatten())
+            # This also modifies q!
+            r_[inds_i] += s.reshape(len(inds_i), -1) *(alphas[i] - beta)
 
     return r
 
