@@ -105,7 +105,7 @@ class StringOptimizer(Optimizer):
             self.y_list = self.y_list[-self.keep_last:]
             self.inds = self.inds[-self.keep_last:]
 
-        # Results in a simple SD step for empty s_list & y_list
+        # Results simple SD step for empty s_list & y_list
         step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=False,
                              inds=self.inds, cur_size=cur_size)
 
