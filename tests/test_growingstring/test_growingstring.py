@@ -23,7 +23,7 @@ def test_anapot_growing_string():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 14
+    assert opt.cur_cycle == 13
 
     # calc = AnaPot()
     # calc.anim_opt(opt, show=True)
