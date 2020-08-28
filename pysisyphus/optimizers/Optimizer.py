@@ -402,7 +402,6 @@ class Optimizer(metaclass=abc.ABCMeta):
                 image_coords = [image.cart_coords for image in self.geometry.images]
                 align = len(image_coords[0]) > 3
                 cds = get_coords_diffs(image_coords, align=align)
-                cds_str = np.array2string(cds, precision=4)
                 # Differences of coordinate differences ;)
                 cds_diffs = np.diff(cds)
                 min_ind = cds_diffs.argmin()

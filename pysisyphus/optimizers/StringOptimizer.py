@@ -98,7 +98,6 @@ class StringOptimizer(Optimizer):
                 y = self.forces[-2] - forces
                 s = self.coords[-1] - self.coords[-2]
             except ValueError:
-                prev_size = cur_size - len(new_image_inds)
                 cur_forces = np.delete(forces.reshape(cur_size, -1),
                                        new_image_inds, axis=0).flatten()
                 y = self.forces[-2] - cur_forces
