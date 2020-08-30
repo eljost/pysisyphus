@@ -26,9 +26,11 @@ class StringOptimizer(Optimizer):
         self.gamma = float(gamma)
         self.stop_in_when_full = int(stop_in_when_full)
         self.keep_last = int(keep_last)
+        assert self.keep_last >= 0
         self.lbfgs_when_full = lbfgs_when_full
         if self.lbfgs_when_full and (self.keep_last == 0):
             print("lbfgs_when_full is True, but keep_last is 0!")
+
         # Add one as we later subtract 1 before we check if this value is 0.
         self.stop_in = self.stop_in_when_full + 1
         self.is_cart_opt = self.geometry.coord_type == "cart"
@@ -55,6 +57,7 @@ class StringOptimizer(Optimizer):
         converged = super().check_convergence(*args, **kwargs)
 
         if self.geometry.fully_grown:
+            # We only start decrementing the counter after the string is fully grown.
             self.stop_in -= 1
             self.log(f"String is fully grown. Stopping in {self.stop_in} cycles.")
 
@@ -63,12 +66,8 @@ class StringOptimizer(Optimizer):
         return full_stop or converged
 
     def optimize(self):
-        # Raises IndexError in cycle 0 and evaluates to False when
-        # string size changed (grew) from previous cycle.
-        try:
-            string_size_changed = self.geometry.coords.size != self.coords[-2].size
-        except IndexError:
-            string_size_changed = True
+        new_image_inds = self.geometry.new_image_inds
+        string_size_changed = len(new_image_inds) > 0
 
         if self.align and string_size_changed and self.is_cart_opt:
             procrustes(self.geometry)
@@ -77,8 +76,6 @@ class StringOptimizer(Optimizer):
         forces = self.geometry.forces
         self.energies.append(self.geometry.energy)
         self.forces.append(forces)
-
-        self.log(f"norm(forces)={np.linalg.norm(forces)*ANG2BOHR:.6f} hartree/Å")
 
         cur_size = self.geometry.string_size
         add_to_list = (
@@ -91,12 +88,12 @@ class StringOptimizer(Optimizer):
             )
         )
         if add_to_list:
-            new_image_inds = self.geometry.new_image_inds
             inds = list(range(cur_size))
 
             try:
                 y = self.forces[-2] - forces
                 s = self.coords[-1] - self.coords[-2]
+            # Will be raised when the string grew in the previous cycle.
             except ValueError:
                 cur_forces = np.delete(forces.reshape(cur_size, -1),
                                        new_image_inds, axis=0).flatten()
@@ -114,7 +111,7 @@ class StringOptimizer(Optimizer):
             self.y_list = self.y_list[-self.keep_last:]
             self.inds = self.inds[-self.keep_last:]
 
-        # Results simple SD step for empty s_list & y_list
+        # Results in a simple SD step for empty s_list & y_list
         step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=False,
                              inds=self.inds, cur_size=cur_size, logger=self.logger)
 
