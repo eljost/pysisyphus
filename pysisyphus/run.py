@@ -335,7 +335,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
             neg_eigval = neg_eigvals[root]
             print(f"Highest overlap {max_ovlp:.6f} is below the threshold "
                   f"of {ovlp_thresh:.6f}. Selecting mode {root} with most "
-                  f"negative eigenvalue {neg_eigval} instead."
+                  f"negative eigenvalue {neg_eigval:.6f} instead."
             )
         # Use mode with highest overlap as initial root
         tsopt_kwargs["root"] = root
