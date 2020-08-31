@@ -415,7 +415,14 @@ class ChainOfStates:
         # RMS force (rms_force) or from a multiple of the
         # RMS force convergence threshold (rms_multiple, default).
         rms_forces = self.rms(self.forces_list[-1])
-        return rms_forces <= self.climb_rms
+        # Only start climbing when the COS is fully grown. This
+        # attribute may not be defined in all subclasses, so it
+        # defaults to True here.
+        try:
+            fully_grown = self.fully_grown
+        except AttributeError:
+            fully_grown = True
+        return (rms_forces <= self.climb_rms) and fully_grown
 
     def get_climbing_indices(self):
         # Index of the highest energy image (HEI)
@@ -425,13 +432,15 @@ class ChainOfStates:
         # Don't climb it not yet enabled or requested.
         if not (self.climb and self.started_climbing):
             climb_indices = tuple()
+        # Do one image climbing (C1) neb if explicitly requested or
+        # the HEI is the first or last item in moving_indices.
+        elif self.climb == "one" or ((hei_index == 1) or (hei_index == move_inds[-1])):
+            climb_indices = (hei_index, )
         # We can do two climbing (C2) neb if the highest energy image (HEI)
         # is in moving_indices but not the first or last item in this list.
+        # elif self.climb != "one" and hei_index in move_inds[1:-1]:
         elif hei_index in move_inds[1:-1]:
-            climb_indices = (hei_index-1, hei_index+1)
-        # Do one image climbing (C1) neb if the HEI is the first or last
-        # item in moving_indices.
-        elif (hei_index == 1) or (hei_index == move_inds[-1]):
+            # climb_indices = (hei_index-1, hei_index+1)
             climb_indices = (hei_index, )
         # Don't climb when the HEI is the first or last image of the whole
         # NEB.
