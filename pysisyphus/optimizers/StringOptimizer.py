@@ -90,7 +90,6 @@ class StringOptimizer(Optimizer):
         )
         if add_to_list:
             inds = list(range(cur_size))
-
             try:
                 y = self.forces[-2] - forces
                 s = self.coords[-1] - self.coords[-2]

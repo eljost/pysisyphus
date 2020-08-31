@@ -4,6 +4,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
+from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 
 
 @pytest.mark.parametrize(
@@ -70,15 +71,21 @@ def test_mullerbrown_string():
     # calc.anim_opt(opt, show=True)
 
 
-def test_gs():
+@pytest.mark.parametrize(
+    "gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle", [
+        ({"climb": True, "climb_rms": 0.5, }, 23, 4),
+        ({}, 23, 4),
+    ]
+)
+def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
     calc = AnaPot()
     geoms = calc.get_path(num=2)
     gs_kwargs = {
         "perp_thresh": 0.5,
         "reparam_check": "rms",
     }
-    # gs_kwargs = {}
-    gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
+    gs_kwargs.update(gs_kwargs_)
+    cos = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
 
     opt_kwargs = {
         "gamma": 10.,
@@ -87,11 +94,18 @@ def test_gs():
         "rms_force": 0.1,
         "rms_force_only": True,
     }
-    opt = StringOptimizer(gs, **opt_kwargs)
+    opt = StringOptimizer(cos, **opt_kwargs)
     opt.run()
 
-    # assert opt.is_converged
-    # assert opt.cur_cycle == ref_cycle
+    assert opt.is_converged
+    assert opt.cur_cycle == opt_ref_cycle
 
     # calc = AnaPot()
     # calc.anim_opt(opt, show=True)
+
+    hei_geom = cos.images[cos.get_hei_index()]
+    tsopt = RSIRFOptimizer(hei_geom, thresh="gau_vtight")
+    tsopt.run()
+
+    assert tsopt.is_converged
+    assert tsopt.cur_cycle == tsopt_ref_cycle

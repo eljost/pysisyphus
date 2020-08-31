@@ -17,13 +17,14 @@ class GrowingString(GrowingChainOfStates):
     def __init__(self, images, calc_getter, perp_thresh=0.05,
                  reparam_every=2, reparam_every_full=3, reparam_tol=None,
                  reparam_check="rms", max_micro_cycles=5, reset_dlc=False,
-                 **kwargs):
+                 climb=False, **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
             print("More than 2 images given. Will only use first and last image!")
-
-        super().__init__(images, calc_getter, **kwargs)
+        if climb:
+            climb = "one"
+        super().__init__(images, calc_getter, climb=climb, **kwargs)
 
         self.perp_thresh = perp_thresh
         self.reparam_every = int(reparam_every)
@@ -228,10 +229,18 @@ class GrowingString(GrowingChainOfStates):
         # Reparametrize mesh
         new_points = np.vstack([splev(desired_param_density, tck) for tck in tcks])
         # Flatten along first dimension.
-        new_points = new_points.reshape(-1, len(self.images))
-        self.coords = new_points.transpose().flatten()
+        new_points = new_points.reshape(-1, len(self.images)).T
+        # With a climbing image we ignore the just splined coordinates for the CI
+        # and restore its original coordinates.
+        for index in self.get_climbing_indices():
+            new_points[index] = self.images[index].coords
+            self.log(f"Skipped reparametrization of climbing image {index}")
+        self.coords = new_points.flatten()
+        # In contrast to self.reparam_dlc() we don't check if the reparametrization
+        # succeeded because it can't fail ;)
 
     def reparam_dlc(self, desired_param_density, thresh=1e-3):
+        climbing_indices = self.get_climbing_indices()
         # Reparametrization will take place along the tangent between two
         # images. The index of the tangent image depends on wether the image
         # is above or below the desired param_density on the normalized arc.
@@ -240,6 +249,9 @@ class GrowingString(GrowingChainOfStates):
         cur_param_density = self.get_cur_param_density("coords")
         self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
+            if i in climbing_indices:
+                self.log(f"Skipped reparametrization of climbing image {i}")
+                continue
             self.log(f"Reparametrizing node {i}")
             for j in range(self.max_micro_cycles):
                 diff = (desired_param_density - cur_param_density)[i]
@@ -270,8 +282,12 @@ class GrowingString(GrowingChainOfStates):
         self.log(f"Param density after reparametrization: {cpd_str}")
 
         try:
-            np.testing.assert_allclose(cur_param_density, desired_param_density,
-                                       atol=self.reparam_tol)
+            # Dont check climbing images
+            np.testing.assert_allclose(
+                np.delete(cur_param_density, climbing_indices),
+                np.delete(desired_param_density, climbing_indices),
+                atol=self.reparam_tol
+            )
         except AssertionError as err:
             trj_str = self.as_xyz()
             fn = "failed_reparametrization.trj"
