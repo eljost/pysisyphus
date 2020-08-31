@@ -7,6 +7,7 @@
 import numpy as np
 
 from pysisyphus.helpers import procrustes
+from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.restrict_step import scale_by_max_step
@@ -15,7 +16,8 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 class StringOptimizer(Optimizer):
 
     def __init__(self, geometry, gamma=1.25, max_step=0.1, stop_in_when_full=-1,
-                 keep_last=10, lbfgs_when_full=True, gamma_mult=False, **kwargs):
+                 keep_last=10, lbfgs_when_full=True, gamma_mult=False,
+                 double_damp=False, **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         assert self.is_cos, \
@@ -29,7 +31,8 @@ class StringOptimizer(Optimizer):
         self.lbfgs_when_full = lbfgs_when_full
         if self.lbfgs_when_full and (self.keep_last == 0):
             print("lbfgs_when_full is True, but keep_last is 0!")
-        self.gamma_mult = gamma_mult
+        self.gamma_mult = bool(gamma_mult)
+        self.double_damp = bool(double_damp)
 
         # Add one as we later subtract 1 before we check if this value is 0.
         self.stop_in = self.stop_in_when_full + 1
@@ -101,6 +104,9 @@ class StringOptimizer(Optimizer):
                                        new_image_inds, axis=0).flatten()
                 s = self.coords[-2] - cur_coords
                 inds = np.delete(inds, new_image_inds)
+
+            if self.double_damp:
+                s, y = double_damp(s, y, s_list=self.s_list, y_list=self.y_list)
 
             self.s_list.append(s)
             self.y_list.append(y)

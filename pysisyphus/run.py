@@ -1049,8 +1049,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
             # Keep a backup of the optimized geometry
             if isinstance(opt_geom, ChainOfStates.ChainOfStates):
-                # Set some variables so they can later on be collected for the
-                # RunResult.
+                # Set some variables that are later collected into RunResult
                 cos = opt_geom
                 cos_opt = opt
                 # copy() is not present for ChainOfState objects, so we just keep
