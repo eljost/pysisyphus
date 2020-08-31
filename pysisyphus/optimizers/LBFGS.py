@@ -79,5 +79,4 @@ class LBFGS(Optimizer):
                              gamma_mult=self.gamma_mult)
         step = scale_by_max_step(step, self.max_step)
 
-
         return step
