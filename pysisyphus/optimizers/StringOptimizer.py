@@ -79,12 +79,12 @@ class StringOptimizer(Optimizer):
 
         cur_size = self.geometry.string_size
         add_to_list = (
-            self.keep_last > 0  # Only add to s_list and y_list if we want to keep
-            and self.cur_cycle > 0 # some cycles and if we can calculate differences.
-            and (not self.lbfgs_when_full # Add when LBFGS is allowed before fully grown
+            self.keep_last > 0     # Only add to s_list and y_list if we want to keep
+            and self.cur_cycle > 0 # cycles and if we can actually calculate differences.
+            and (not self.lbfgs_when_full # Add when LBFGS is allowed before fully grown.
                  or self.lbfgs_when_full and self.geometry.fully_grown
                  and not string_size_changed # Don't add when string has to be fully grown
-                                             # but only grew fully in this cycle.
+                                             # but grew fully in this cycle.
             )
         )
         if add_to_list:
@@ -111,19 +111,15 @@ class StringOptimizer(Optimizer):
             self.y_list = self.y_list[-self.keep_last:]
             self.inds = self.inds[-self.keep_last:]
 
-        # Results in a simple SD step for empty s_list & y_list
+        # Results in steepest descent step for empty s_list & y_list
         step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=False,
                              inds=self.inds, cur_size=cur_size, logger=self.logger)
 
-        # Damped steepest descent
-        if self.keep_last == 0 and string_size_changed:
-            step /= self.gamma
         # Conjugate gradient step
-        elif self.keep_last == 0:
+        if self.keep_last == 0 and self.cur_cycle > 0 and not string_size_changed:
             cur_norm = np.linalg.norm(forces)
             prev_norm = np.linalg.norm(self.forces[-2])
             quot = min(cur_norm**2 / prev_norm**2, 1)
-            # step = step / self.gamma + quot*self.steps[-1]
             step = forces / self.gamma + quot*self.steps[-1]
 
         step = scale_by_max_step(step, self.max_step)
