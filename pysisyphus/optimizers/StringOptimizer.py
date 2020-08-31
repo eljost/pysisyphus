@@ -6,7 +6,6 @@
 
 import numpy as np
 
-from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import procrustes
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
