@@ -16,7 +16,7 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 class StringOptimizer(Optimizer):
 
     def __init__(self, geometry, gamma=1.25, max_step=0.1, stop_in_when_full=-1,
-                 keep_last=10, lbfgs_when_full=True, **kwargs):
+                 keep_last=10, lbfgs_when_full=True, gamma_mult=False, **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         assert self.is_cos, \
@@ -30,6 +30,7 @@ class StringOptimizer(Optimizer):
         self.lbfgs_when_full = lbfgs_when_full
         if self.lbfgs_when_full and (self.keep_last == 0):
             print("lbfgs_when_full is True, but keep_last is 0!")
+        self.gamma_mult = gamma_mult
 
         # Add one as we later subtract 1 before we check if this value is 0.
         self.stop_in = self.stop_in_when_full + 1
@@ -112,7 +113,7 @@ class StringOptimizer(Optimizer):
             self.inds = self.inds[-self.keep_last:]
 
         # Results in steepest descent step for empty s_list & y_list
-        step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=False,
+        step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=self.gamma_mult,
                              inds=self.inds, cur_size=cur_size, logger=self.logger)
 
         # Conjugate gradient step
