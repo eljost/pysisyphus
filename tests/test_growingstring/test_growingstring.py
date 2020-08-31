@@ -37,8 +37,8 @@ def test_anapot_growing_string(keep_last, ref_cycle):
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
 
-    calc = AnaPot()
-    calc.anim_opt(opt, show=True)
+    # calc = AnaPot()
+    # calc.anim_opt(opt, show=True)
 
 
 def test_mullerbrown_string():
@@ -67,4 +67,31 @@ def test_mullerbrown_string():
     assert opt.cur_cycle == 67
 
     # calc = MullerBrownPot()
+    # calc.anim_opt(opt, show=True)
+
+
+def test_gs():
+    calc = AnaPot()
+    geoms = calc.get_path(num=2)
+    gs_kwargs = {
+        "perp_thresh": 0.5,
+        "reparam_check": "rms",
+    }
+    # gs_kwargs = {}
+    gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
+
+    opt_kwargs = {
+        "gamma": 10.,
+        "gamma_mult": True,
+        "max_step": 0.04,
+        "rms_force": 0.1,
+        "rms_force_only": True,
+    }
+    opt = StringOptimizer(gs, **opt_kwargs)
+    opt.run()
+
+    # assert opt.is_converged
+    # assert opt.cur_cycle == ref_cycle
+
+    # calc = AnaPot()
     # calc.anim_opt(opt, show=True)
