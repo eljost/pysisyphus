@@ -11,6 +11,7 @@ import rmsd
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
@@ -695,6 +696,17 @@ class Geometry:
         """
         mm_sqrt = np.diag(self.masses_rep**0.5)
         return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
+
+    def get_imag_frequencies(self, hessian=None, thresh=1e-6):
+        if hessian is None:
+            hessian = self.cart_hessian
+
+        mw_hessian = self.mass_weigh_hessian(hessian)
+        proj_hessian = self.eckart_projection(mw_hessian)
+        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+        neg_inds = eigvals < thresh
+        neg_eigvals = eigvals[neg_inds]
+        return eigval_to_wavenumber(neg_eigvals)
 
     def get_trans_rot_vectors(self):
         return get_trans_rot_vectors(self.cart_coords, masses=self.masses)
