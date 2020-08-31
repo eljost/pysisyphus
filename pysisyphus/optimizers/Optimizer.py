@@ -98,10 +98,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         # Setting some default values
         self.resetted = False
         self.max_cycles = max_cycles
-        self.rel_step_thresh = 1e-3
         self.out_dir = os.getcwd()
-
-        assert(self.max_step > self.rel_step_thresh)
 
         if self.is_cos:
             moving_image_num = len(self.geometry.moving_indices)
