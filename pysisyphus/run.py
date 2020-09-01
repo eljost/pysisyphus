@@ -759,6 +759,7 @@ def get_defaults(conf_dict):
         "irc": None,
         "add_prims": None,
         "assert": None,
+        "geom": None,
     }
 
     mol_opt_defaults = {
@@ -847,6 +848,9 @@ def get_defaults(conf_dict):
     if "assert" in conf_dict:
         dd["assert"] = {}
 
+    if "geom" in conf_dict:
+        dd["geom"] = {}
+
     return dd
 
 
@@ -881,9 +885,9 @@ def setup_run_dict(run_dict):
     run_dict = get_defaults(run_dict)
     # Update nested entries that are dicts by themselves
     key_set = set(org_dict.keys())
-    for key in key_set & set(("cos", "opt", "interpol", "overlaps",
+    for key in (key_set & set(("cos", "opt", "interpol", "overlaps",
                               "stocastic", "tsopt", "shake", "irc",
-                              "preopt", "endopt", "assert", "geom")):
+                              "preopt", "endopt", "assert", "geom"))):
         try:
             run_dict[key].update(org_dict[key])
         except TypeError:
