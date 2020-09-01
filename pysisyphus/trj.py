@@ -207,6 +207,8 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
     and interpolates if necessary."""
 
     if union is not None:
+        assert coord_type != "cart", \
+            "union must not be used with coord_type=cart!"
         union_geoms = read_geoms(union, coord_type=coord_type)
         assert len(union_geoms) == 2, \
             f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
