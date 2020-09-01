@@ -64,9 +64,10 @@ class StringOptimizer(Optimizer):
             self.stop_in -= 1
             self.log(f"String is fully grown. Stopping in {self.stop_in} cycles.")
 
-        full_stop = self.geometry.fully_grown and (self.stop_in == 0)
-        # full_stop will take precedence when True
-        return full_stop or converged
+        fully_grown = self.geometry.fully_grown
+        full_stop = fully_grown and (self.stop_in == 0)
+        # full_stop will take precedence when True.
+        return full_stop or (fully_grown and converged)
 
     def optimize(self):
         new_image_inds = self.geometry.new_image_inds
