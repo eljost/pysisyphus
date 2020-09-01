@@ -1,6 +1,5 @@
 import numpy as np
 
-# from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
 
 
