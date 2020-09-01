@@ -328,8 +328,22 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
                 "HEI tangent."
         )
         max_ovlp = ovlps[max_ovlp_ind]
-        if max_ovlp >= ovlp_thresh:
+        rel_ovlps = np.array(ovlps) / max(ovlps)
+        similar_inds = rel_ovlps > .85
+        # Only 1 big overlap is present
+        if (max_ovlp >= ovlp_thresh) and (similar_inds.sum() == 1):
             root = np.argmax(ovlps)
+        # Multiple big and similar overlaps are present.
+        elif (max_ovlp >= ovlp_thresh) and (similar_inds.sum() > 1):
+            # Will yield the first occurence of True, which corresponds to a
+            # similar overlaps with the most negative eigenvalue.
+            root = similar_inds.argmax()
+            neg_eigval = neg_eigvals[root]
+            verbose_inds = np.arange(neg_eigvals.size)[similar_inds]
+            print(f"Overlaps {verbose_inds} are very similar! Using the "
+                  f"one with the most negative eigenvalue (mode {root})."
+            )
+        # Fallback to the most negative eigenvalue when all overlaps are too low.
         else:
             root = neg_eigvals.argmin()
             neg_eigval = neg_eigvals[root]
