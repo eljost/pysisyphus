@@ -14,7 +14,7 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 class GrowingString(GrowingChainOfStates):
 
-    def __init__(self, images, calc_getter, perp_thresh=0.05,
+    def __init__(self, images, calc_getter, perp_thresh=0.05, param="equi",
                  reparam_every=2, reparam_every_full=3, reparam_tol=None,
                  reparam_check="rms", max_micro_cycles=5, reset_dlc=False,
                  climb=False, **kwargs):
@@ -27,6 +27,7 @@ class GrowingString(GrowingChainOfStates):
         super().__init__(images, calc_getter, climb=climb, **kwargs)
 
         self.perp_thresh = perp_thresh
+        self.param = param
         self.reparam_every = int(reparam_every)
         self.reparam_every_full = int(reparam_every_full)
         assert self.reparam_every >= 1 and self.reparam_every_full >= 1, \
@@ -370,6 +371,27 @@ class GrowingString(GrowingChainOfStates):
         self._forces = total_forces.flatten()
         return self._forces
 
+    def get_desired_param_density(self, param=None):
+        if param is None:
+            param = self.param
+
+        def equi():
+            return self.sk*self.full_string_image_inds
+
+        # def energy():
+            # prev_energies = np.array(self.all_energies[-1])
+            # E_min = min((prev_energies[0], prev_energies[-1]))
+            # E_max = max(prev_energies)
+            # return np.exp((prev_energies - E_min) / (E_max - E_min))
+
+        energy()
+        funcs = {
+            "equi": equi,
+            # "energy": energy,
+        }
+
+        return funcs[param]()
+
     def reparametrize(self):
         reparametrized = False
         # If this counter reaches 0 reparametrization will occur.
@@ -431,7 +453,7 @@ class GrowingString(GrowingChainOfStates):
                      f"{self.reparam_in} cycles.")
         else:
             # Prepare image reparametrization
-            desired_param_density = self.sk*self.full_string_image_inds
+            desired_param_density = self.get_desired_param_density()
             pd_str = np.array2string(desired_param_density, precision=4)
             self.log(f"Desired param density: {pd_str}")
 
