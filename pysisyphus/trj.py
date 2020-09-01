@@ -146,7 +146,7 @@ def parse_args(args):
 
 
 def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
-               define_prims=None):
+               define_prims=None, prim_indices=None):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
@@ -158,6 +158,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     if coord_type != "cart":
         geom_kwargs["coord_kwargs"] = {
             "define_prims": define_prims,
+            "prim_indices": prim_indices,
         }
 
     for fn in xyz_fns:
@@ -199,18 +200,26 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     return geoms
 
 
-def get_geoms(xyz_fns, interpolate=None, between=0,
-              coord_type="cart", comments=False, in_bohr=False,
-              define_prims=None, interpolate_align=True, quiet=False):
+def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
+              comments=False, in_bohr=False, define_prims=None, union=None,
+              interpolate_align=True, quiet=False):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
+
+    if union is not None:
+        union_geoms = read_geoms(union, coord_type=coord_type)
+        assert len(union_geoms) == 2, \
+            f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
+        united_prim_indices = form_coordinate_union(*union_geoms)
+    else:
+        united_prim_indices = None
 
     assert interpolate in list(INTERPOLATE.keys()) + [None], \
         f"Unsupported type: '{interpolate}' given. Valid arguments are " \
         f"{list(INTERPOLATE.keys())}'"
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
-                       define_prims=define_prims)
+                       define_prims=define_prims, prim_indices=united_prim_indices)
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
 

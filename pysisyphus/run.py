@@ -386,7 +386,7 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
     else:
         for i, geom in enumerate(geoms):
             start = time.time()
-            geom.calculator.run_calculation(geom.atoms, geom.coords)
+            geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
             if i < (len(geoms)-2):
                 try:
                     cur_calculator = geom.calculator
@@ -757,7 +757,7 @@ def get_defaults(conf_dict):
         "coord_type": "cart",
         "shake": None,
         "irc": None,
-        "add_prims": None,
+        "define_prims": None,
         "assert": None,
         "geom": None,
     }
@@ -894,17 +894,19 @@ def setup_run_dict(run_dict):
             print(f"Using default values for '{key}' section.")
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type",
-                              "add_prims")):
+                              "define_prims")):
         run_dict[key] = org_dict[key]
     return run_dict
 
 
 def dry_run(calc, geom):
     atoms, c3d = geom.atoms, geom.coords3d
-    inp = calc.prepare_input(atoms, c3d.flatten(), "force")
-    if not inp:
-        print("Calculator does not use an explicit input file!")
-        return
+
+    try:
+        inp = calc.prepare_input(atoms, c3d.flatten())
+    except Exception as err:
+        print(f"Calculator {calc} does not support '--dryrun'!\n")
+        raise err
     with open(calc.inp_fn, "w") as handle:
         handle.write(inp)
     print(f"Wrote input to {calc.inp_fn}.")
@@ -954,7 +956,18 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
 
-    xyz = run_dict["xyz"]
+    # New geometry input
+    if run_dict["geom"]:
+        xyz = run_dict["geom"]["fn"]
+        coord_type = run_dict["geom"]["type"]
+        define_prims = run_dict["geom"].get("define_prims", None)
+        union = run_dict["geom"].get("union", None)
+    # Old geometry input
+    else:
+        xyz = run_dict["xyz"]
+        define_prims = run_dict["define_prims"]
+        coord_type = run_dict["coord_type"]
+        union = None
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -1000,10 +1013,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         xyz = preopt_xyz
         sys.stdout.flush()
 
-    add_prims = run_dict["add_prims"]
-    coord_type = run_dict["coord_type"]
     geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type,
-                      define_prims=add_prims)
+                      define_prims=define_prims, union=union)
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
 
@@ -1012,6 +1023,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         dry_run(calc, geoms[0])
         return
 
+    # Create COS objects and supply a function that yields new Calculators,
+    # as needed for growing COS classes, where images are added over time.
     if run_dict["cos"]:
         cos_cls = COS_DICT[cos_key]
         if (issubclass(cos_cls, GrowingChainOfStates)
