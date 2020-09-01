@@ -294,7 +294,6 @@ class GrowingString(GrowingChainOfStates):
                 atol=self.reparam_tol
             )
         except AssertionError as err:
-            import pdb; pdb.set_trace()
             trj_str = self.as_xyz()
             fn = "failed_reparametrization.trj"
             with open(fn, "w") as handle:
