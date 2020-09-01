@@ -622,7 +622,7 @@ def run_opt(geom, calc_getter, opt_key, opt_kwargs,
     if do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
-        do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
+        final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
     print()
 
     return opt.geometry, opt

@@ -533,7 +533,7 @@ def complete_fragments(atoms, fragments):
 
 
 FinalHessianResult = namedtuple("FinalHessianResult",
-                                "neg_eigvals eigvals nus",
+                                "neg_eigvals eigvals nus imag_fns",
 )
 
 
@@ -580,8 +580,10 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
 
     if write_imag_modes:
         imag_modes = imag_modes_from_geom(geom)
+        imag_fns = list()
         for i, imag_mode in enumerate(imag_modes):
             trj_fn = prefix + f"imaginary_mode_{i:03d}.trj"
+            imag_fns.append(trj_fn)
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
@@ -590,6 +592,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
             neg_eigvals=neg_eigvals,
             eigvals=eigvals,
             nus=eigval_to_wavenumber(eigvals),
+            imag_fns=imag_fns,
     )
     return res
 
