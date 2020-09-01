@@ -253,9 +253,10 @@ class GrowingString(GrowingChainOfStates):
                 self.log(f"Skipped reparametrization of climbing image {i}")
                 continue
             self.log(f"Reparametrizing node {i}")
+            # for j in range(self.max_micro_cycles):
             for j in range(self.max_micro_cycles):
                 diff = (desired_param_density - cur_param_density)[i]
-                self.log(f"\t{j}: Δ={diff:.6f}")
+                self.log(f"\t{j}: Δ={diff: .6f}")
                 if abs(diff) < thresh:
                     break
                 # Negative sign: image is too far right and has to be shifted left.
@@ -265,6 +266,8 @@ class GrowingString(GrowingChainOfStates):
                 # this direction to achieve the desired parametirzation density.
                 tangent_ind = i + sign
                 tangent_image = self.images[tangent_ind]
+                rl = "right" if sign < 0 else "left"
+                self.log(f"\t... shifting {rl} towards image {tangent_ind}")
                 distance = -(reparam_image - tangent_image)
 
                 param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
@@ -275,7 +278,7 @@ class GrowingString(GrowingChainOfStates):
                 cur_param_density = self.get_cur_param_density("coords")
             else:
                 self.log(f"Reparametrization of node {i} did not converge after "
-                         f"{self.max_micro_cycles}. Breaking!")
+                         f"{self.max_micro_cycles} cycles. Breaking!")
                 break
 
         cpd_str = np.array2string(cur_param_density, precision=4)
@@ -289,11 +292,12 @@ class GrowingString(GrowingChainOfStates):
                 atol=self.reparam_tol
             )
         except AssertionError as err:
+            import pdb; pdb.set_trace()
             trj_str = self.as_xyz()
             fn = "failed_reparametrization.trj"
             with open(fn, "w") as handle:
                 handle.write(trj_str)
-            print("Wrote coordinates of failed reparametrization to '{fn}'")
+            print(f"Wrote coordinates of failed reparametrization to '{fn}'")
             raise err
 
         # Regenerate active set after reparametrization

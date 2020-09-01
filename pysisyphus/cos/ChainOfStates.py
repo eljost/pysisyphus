@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from copy import copy
 import logging
 from multiprocessing import Pool
@@ -447,7 +445,7 @@ class ChainOfStates:
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
-        self.log(f"Climbing indices are {climb_indices}.")
+        self.log(f"Climbing indices: {climb_indices}")
         return climb_indices
 
     def get_climbing_forces(self, ind):
