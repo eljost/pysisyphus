@@ -82,13 +82,15 @@ class GrowingString(GrowingChainOfStates):
 
         norms = np.linalg.norm(diffs, axis=1)
         cur_param_density = norms / norms.max()
+
         # Assert that the last (rightmost) image is also the one that is the
         # farthest away from the first (leftmost) image.
-        assert norms[-1] == norms.max(), \
-            "Unexpected parametrization density. Expected the last " \
-            "(rightmost) image to be the farthest image, but this is " \
-            "not the case. Current parametrization density is: " \
-           f"{cur_param_density}."
+        # assert norms[-1] == norms.max(), \
+            # "Unexpected parametrization density. Expected the last " \
+            # "(rightmost) image to be the farthest image, but this is " \
+            # "not the case. Current parametrization density is: " \
+           # f"{cur_param_density}."
+
         return cur_param_density
 
     def get_new_image(self, ref_index):
