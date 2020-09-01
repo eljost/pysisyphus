@@ -883,7 +883,7 @@ def setup_run_dict(run_dict):
     key_set = set(org_dict.keys())
     for key in key_set & set(("cos", "opt", "interpol", "overlaps",
                               "stocastic", "tsopt", "shake", "irc",
-                              "preopt", "endopt", "assert")):
+                              "preopt", "endopt", "assert", "geom")):
         try:
             run_dict[key].update(org_dict[key])
         except TypeError:
