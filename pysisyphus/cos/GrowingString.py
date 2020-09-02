@@ -68,22 +68,34 @@ class GrowingString(GrowingChainOfStates):
 
         self.new_image_inds = list()
 
-    def get_cur_param_density(self, kind="cart"):
-        if kind == "cart":
-            coords = np.array([image.cart_coords for image in self.images])
-            coords_ = coords.reshape(len(self.images), -1)
-            diffs = coords_ - coords_[0]
-        elif kind == "coords":
+    def get_cur_param_density(self, kind="coords"):
+        if kind == "coords":
             image0 = self.images[0]
             # This way, even with DLC all differences will be given in the
             # active set of image0.
             diffs = np.array([image0-image for image in self.images])
-        else:
-            raise Exception("Invalid kind")
+            norms = np.linalg.norm(diffs, axis=1)
+            # TODO: drop these two lines ...
+            param_density = norms / norms.max()
+            return param_density
+        elif kind == "energy":
+            prev_energies = np.array(self.all_energies[-1])
 
-        norms = np.linalg.norm(diffs, axis=1)
-        cur_param_density = norms / norms.max()
+            if len(prev_energies) != len(self.images):
+                return None
 
+            mean_energies = (prev_energies[:-1] + prev_energies[1:]) / 2
+            param_density = [0, ]
+            for i in range(1, len(self.images)):
+                diff = np.linalg.norm(self.images[i]-self.images[i-1])
+                mean_energy = (prev_energies[i] + prev_energies[i-1]) / 2
+                weight = mean_energy - prev_energies.min()
+                param_density.append(param_density[-1] + weight*diff)
+            # param_density = np.array(param_density)
+            # param_density /= param_density[-1]
+
+        param_density = np.array(param_density)
+        param_density /= param_density[-1]
         # Assert that the last (rightmost) image is also the one that is the
         # farthest away from the first (leftmost) image.
         # assert norms[-1] == norms.max(), \
@@ -92,7 +104,7 @@ class GrowingString(GrowingChainOfStates):
             # "not the case. Current parametrization density is: " \
            # f"{cur_param_density}."
 
-        return cur_param_density
+        return param_density
 
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
@@ -217,12 +229,16 @@ class GrowingString(GrowingChainOfStates):
     def image_inds(self):
         return self.full_string_image_inds
 
-    def spline(self):
+    def spline(self, tangents=False):
+        if (not tangents) and (self.param == "energy") and self.fully_grown:
+            u = self.get_cur_param_density(kind="energy")
+        else:
+            u = None
         reshaped = self.coords.reshape(-1, self.coords_length)
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
         # Spline in batches as scipy can't handle > 11 rows at once
-        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3)
+        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3, u=u)
                          for i in range(0, len(transp_coords), 9)]
         )
         return tcks, us
@@ -320,7 +336,7 @@ class GrowingString(GrowingChainOfStates):
         reparametrization!  Otherwise wrong (old) tangets are used. !!!
         """
 
-        tcks, us = self.spline()
+        tcks, us = self.spline(tangents=True)
         Sk, cur_mesh = self.arc_dims
         self.log(f"Total arclength Sk={Sk:.4f}")
         tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
@@ -359,7 +375,6 @@ class GrowingString(GrowingChainOfStates):
     def forces(self):
         if self._forces is None:
             self.calculate_forces()
-
         indices = range(len(self.images))
         # In constrast to NEB calculations we only use the perpendicular component
         # of the force, without any spring forces. A desired image distribution is
@@ -370,27 +385,6 @@ class GrowingString(GrowingChainOfStates):
         total_forces = self.set_climbing_forces(perp_forces)
         self._forces = total_forces.flatten()
         return self._forces
-
-    def get_desired_param_density(self, param=None):
-        if param is None:
-            param = self.param
-
-        def equi():
-            return self.sk*self.full_string_image_inds
-
-        # def energy():
-            # prev_energies = np.array(self.all_energies[-1])
-            # E_min = min((prev_energies[0], prev_energies[-1]))
-            # E_max = max(prev_energies)
-            # return np.exp((prev_energies - E_min) / (E_max - E_min))
-
-        # energy()
-        funcs = {
-            "equi": equi,
-            # "energy": energy,
-        }
-
-        return funcs[param]()
 
     def reparametrize(self):
         reparametrized = False
@@ -453,7 +447,7 @@ class GrowingString(GrowingChainOfStates):
                      f"{self.reparam_in} cycles.")
         else:
             # Prepare image reparametrization
-            desired_param_density = self.get_desired_param_density()
+            desired_param_density = self.sk*self.full_string_image_inds
             pd_str = np.array2string(desired_param_density, precision=4)
             self.log(f"Desired param density: {pd_str}")
 

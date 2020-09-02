@@ -109,3 +109,34 @@ def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
 
     assert tsopt.is_converged
     assert tsopt.cur_cycle == tsopt_ref_cycle
+
+
+def test_energy_reparametrization():
+    calc = MullerBrownPot()
+    geoms = calc.get_path(num=17)
+
+    gs_kwargs = {
+        "perp_thresh": 5.0,
+        "reparam_check": "rms",
+        "max_nodes": 15,
+        "param": "energy",
+    }
+    # Reuse same calculator throughout, as the sympy call takes a while...
+    gs = GrowingString(geoms, lambda: calc, **gs_kwargs)
+
+    opt_kwargs = {
+        "keep_last": 10,
+        "lbfgs_when_full": True,
+        "gamma_mult": True,
+        "max_step": 0.04,
+        "max_cycles": 125,
+        "rms_force": 0.5,
+        "rms_force_only": True,
+    }
+    opt = StringOptimizer(gs, **opt_kwargs)
+    opt.run()
+
+    # calc.anim_opt(opt, show=True, energy_profile=True)
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 68
