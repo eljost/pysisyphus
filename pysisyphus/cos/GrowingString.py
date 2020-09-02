@@ -384,7 +384,7 @@ class GrowingString(GrowingChainOfStates):
             # E_max = max(prev_energies)
             # return np.exp((prev_energies - E_min) / (E_max - E_min))
 
-        energy()
+        # energy()
         funcs = {
             "equi": equi,
             # "energy": energy,
