@@ -10,7 +10,7 @@ import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
-from pysisyphus.helpers import check_for_stop_sign, highlight_text, get_coords_diffs
+from pysisyphus.helpers import check_for_end_sign, highlight_text, get_coords_diffs
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 
@@ -500,8 +500,13 @@ class Optimizer(metaclass=abc.ABCMeta):
                         break
 
             sys.stdout.flush()
-            if check_for_stop_sign():
+            sign = check_for_end_sign()
+            if sign == "stop":
                 self.stopped = True
+                break
+            elif sign == "converged":
+                self.converged = True
+                print("Operator indicated convergence!")
                 break
 
             self.log("")

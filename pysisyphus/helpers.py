@@ -426,6 +426,18 @@ def check_for_stop_sign():
     return stop_sign_found
 
 
+def check_for_end_sign():
+    signs = ("stop", "converged", )
+    sign_found = False
+
+    for sign in signs:
+        if os.path.exists(sign):
+            print(f"Found sign '{sign}'. Ending run.")
+            os.remove(sign)
+            sign_found = sign
+    return sign_found
+
+
 def index_array_from_overlaps(overlaps, axis=1):
     """It is assumed that the overlaps between two points with indices
     i and j with (j > i) are computed and that i changes along the first
