@@ -215,7 +215,7 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
-                       ovlp_thresh=.3):
+                       ovlp_thresh=.4):
     print(highlight_text(f"Running TS-optimization from COS"))
 
     first_cos_energy = cos.images[0].energy
