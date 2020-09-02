@@ -732,7 +732,11 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
         print("done")
     except FileExistsError:
         print("already exists")
-    xyzs = run_dict["xyz"]
+    import pdb; pdb.set_trace()
+    if "geom" in run_dict:
+        xyzs = run_dict["geom"]["fn"]
+    else:
+        xyzs = run_dict["xyz"]
     print("Copying:")
     # When newlines are present we have an inline xyz formatted string
     if not "\n" in xyzs:
@@ -1210,6 +1214,8 @@ def do_clean(force=False):
         "calculator*.grad",
         "image_*",
         "splined_ts_guess.xyz",
+        "splined_hei_tangent",
+        "cart_hei_tangent.trj",
         "dimer_ts.xyz",
         "dimer_pickle",
         "interpolated.geom_*.xyz",
