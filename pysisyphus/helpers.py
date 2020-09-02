@@ -590,9 +590,9 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
         save_h5_hessian(final_h5_hessian_fn, geom)
         print(f"Wrote HD5 Hessian to '{final_h5_hessian_fn}'.")
 
+    imag_fns = list()
     if write_imag_modes:
         imag_modes = imag_modes_from_geom(geom)
-        imag_fns = list()
         for i, imag_mode in enumerate(imag_modes):
             trj_fn = prefix + f"imaginary_mode_{i:03d}.trj"
             imag_fns.append(trj_fn)
