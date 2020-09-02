@@ -68,41 +68,28 @@ class GrowingString(GrowingChainOfStates):
 
         self.new_image_inds = list()
 
-    def get_cur_param_density(self, kind="coords"):
-        if kind == "coords":
-            image0 = self.images[0]
-            # This way, even with DLC all differences will be given in the
-            # active set of image0.
-            diffs = np.array([image0-image for image in self.images])
-            norms = np.linalg.norm(diffs, axis=1)
-            # TODO: drop these two lines ...
-            param_density = norms / norms.max()
-            return param_density
-        elif kind == "energy":
+    def get_cur_param_density(self, kind=None):
+        diffs = [image - self.images[max(i-1, 0)]
+                 for i, image in enumerate(self.images)]
+        norms = np.linalg.norm(diffs, axis=1)
+        param_density = np.cumsum(norms)
+
+        # Energy weighted parametrization density
+        if kind == "energy":
             prev_energies = np.array(self.all_energies[-1])
 
             if len(prev_energies) != len(self.images):
                 return None
 
-            mean_energies = (prev_energies[:-1] + prev_energies[1:]) / 2
+            mean_energies = (prev_energies[1:] + prev_energies[:-1]) / 2
+            weights = mean_energies - prev_energies.min()
             param_density = [0, ]
-            for i in range(1, len(self.images)):
-                diff = np.linalg.norm(self.images[i]-self.images[i-1])
-                mean_energy = (prev_energies[i] + prev_energies[i-1]) / 2
-                weight = mean_energy - prev_energies.min()
+            for weight, diff in zip(weights, norms[1:]):
+                assert weight > 0.
                 param_density.append(param_density[-1] + weight*diff)
-            # param_density = np.array(param_density)
-            # param_density /= param_density[-1]
 
         param_density = np.array(param_density)
         param_density /= param_density[-1]
-        # Assert that the last (rightmost) image is also the one that is the
-        # farthest away from the first (leftmost) image.
-        # assert norms[-1] == norms.max(), \
-            # "Unexpected parametrization density. Expected the last " \
-            # "(rightmost) image to be the farthest image, but this is " \
-            # "not the case. Current parametrization density is: " \
-           # f"{cur_param_density}."
 
         return param_density
 
@@ -137,7 +124,7 @@ class GrowingString(GrowingChainOfStates):
         #
         # Δparam_density / distance = self.sk / step
         # step = self.sk / Δparam_density * distance
-        cpd = self.get_cur_param_density("coords")
+        cpd = self.get_cur_param_density()
         # As we always want to step in the direction of 'distance' we just take
         # the absolute value of the difference, as we are not interested in the
         # sign.
@@ -169,7 +156,7 @@ class GrowingString(GrowingChainOfStates):
         # for i in range(steps):
             # new_coords = new_img.coords + step
             # new_img.coords = new_coords
-            # cpd = self.get_cur_param_density("coords")
+            # cpd = self.get_cur_param_density()
             # try:
                 # if new_img.internal.backtransform_failed:
                     # import pdb; pdb.set_trace()
@@ -180,7 +167,7 @@ class GrowingString(GrowingChainOfStates):
         # # self.images.insert(insert_ind, new_img)
         # # self.log(f"Created new image; inserted it before index {insert_ind}.")
 
-        # cpd = self.get_cur_param_density("coords")
+        # cpd = self.get_cur_param_density()
         # self.log(f"Current param_density: {cpd}")
 
         # return new_img
@@ -265,18 +252,18 @@ class GrowingString(GrowingChainOfStates):
         # is above or below the desired param_density on the normalized arc.
         #
         # The reparametrization is done in micro cycles, until it is converged.
-        cur_param_density = self.get_cur_param_density("coords")
+        cur_param_density = self.get_cur_param_density()
         self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
             if i in climbing_indices:
                 self.log(f"Skipped reparametrization of climbing image {i}")
                 continue
             self.log(f"Reparametrizing node {i}")
-            # for j in range(self.max_micro_cycles):
             for j in range(self.max_micro_cycles):
                 diff = (desired_param_density - cur_param_density)[i]
                 self.log(f"\t{j}: Δ={diff: .6f}")
-                if abs(diff) < thresh:
+                # Do at least one pass
+                if (j > 0) and (abs(diff) < thresh):
                     break
                 # Negative sign: image is too far right and has to be shifted left.
                 # Positive sign: image is too far left and has to be shifted right.
@@ -294,7 +281,7 @@ class GrowingString(GrowingChainOfStates):
                 step = step_length * distance
                 reparam_coords = reparam_image.coords + step
                 reparam_image.coords = reparam_coords
-                cur_param_density = self.get_cur_param_density("coords")
+                cur_param_density = self.get_cur_param_density()
             else:
                 self.log(f"Reparametrization of node {i} did not converge after "
                          f"{self.max_micro_cycles} cycles. Breaking!")
