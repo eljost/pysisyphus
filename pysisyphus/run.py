@@ -215,19 +215,43 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
-                       ovlp_thresh=.4):
+                       ovlp_thresh=.4, hei_kind="splined"):
     print(highlight_text(f"Running TS-optimization from COS"))
 
     first_cos_energy = cos.images[0].energy
     last_cos_energy = cos.images[-1].energy
 
-    # Use plain HEI
-    hei_index = cos.get_hei_index()
-    print(f"Index of highest energy image (HEI) is {hei_index}.")
+    atoms = cos.images[0].atoms
+    # Use plain, unsplined, HEI
+    if hei_kind == "plain":
+        hei_index = cos.get_hei_index()
+        hei_image = cos.images[hei_index]
+        hei_tangent = cos.get_tangent(hei_index)
+        # Create a Cartesian tangent, if not already present
+        if cos.coord_type != "cart":
+            cart_images = list()
+            for image in cos.images:
+                cart_image = Geometry(atoms, image.cart_coords)
+                cart_image.energy = image.energy
+                cart_images.append(cart_image)
+            cart_cos = ChainOfStates.ChainOfStates(cart_images)
+            cart_hei_index = cart_cos.get_hei_index()
+            cart_hei_tangent = cart_cos.get_tangent(cart_hei_index)
+        else:
+            cart_hei_tangent = hei_tangent.copy()
+    # Use splined HEI
+    elif hei_kind == "splined":
+        hei_coords, hei_energy, hei_tangent, hei_index = cos.get_splined_hei()
+        hei_image = Geometry(atoms, hei_coords)
+        cart_hei_tangent = hei_tangent.copy()
+    else:
+        raise Exception(f"Invalid hei_kind='{hei_kind}'!")
+
+    print(f"Index of {hei_kind} highest energy image (HEI) is {hei_index}.")
     print()
-    hei_image = cos.images[hei_index]
-    # When the COS was optimized in internal coordinates they are already
-    # present at the HEI image and we just them.
+
+    # When the COS was optimized in internal coordinates the united primitive
+    # indices are already present and we just keep on using them.
     try:
         prim_indices = hei_image.internal.prim_indices
     # If the COS was optimized in Cartesians we have to generated a new
@@ -238,32 +262,24 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         internal_geom1 = get_int_geom(cos.images[0])
         internal_geom2 = get_int_geom(cos.images[-1])
         prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
+
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
                        coord_type="redund",
                        coord_kwargs={"prim_indices": prim_indices,},
     )
 
-    hei_tangent = cos.get_tangent(hei_index)
-    # Convert tangent to redundant internals
-    if cos.coord_type == "dlc":
+    # Convert tangent from whatever coordinates to redundant internals.
+    # When the HEI was splined the tangent will be in Cartesians.
+    if (hei_kind != "splined") and (cos.coord_type == "dlc"):
         redund_tangent = hei_image.internal.Ut_inv @ hei_tangent
-    elif cos.coord_type == "cart":
-        redund_tangent = ts_geom.internal.B_prim @ hei_tangent
     else:
-        raise Exception("Unknown coord_type!")
+        redund_tangent = ts_geom.internal.B_prim @ hei_tangent
     # The tangent is probably not normalized anymore
     redund_tangent /= np.linalg.norm(redund_tangent)
 
-    # Also create a cartesian tangent
-    atoms = cos.images[0].atoms
-    cart_images = list()
-    for image in cos.images:
-        cart_image = Geometry(atoms, image.cart_coords)
-        cart_image.energy = image.energy
-        cart_images.append(cart_image)
-    cart_cos = ChainOfStates.ChainOfStates(cart_images)
-    cart_hei_index = cart_cos.get_hei_index()
-    cart_hei_tangent = cart_cos.get_tangent(cart_hei_index)
+    # Dump HEI data
+    #
+    # Cartesian tangent and an animated .trj file
     cart_hei_fn = "cart_hei_tangent"
     np.savetxt(cart_hei_fn, cart_hei_tangent)
     trj = get_tangent_trj_str(ts_geom.atoms, ts_geom.cart_coords,
@@ -274,27 +290,23 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         handle.write(trj)
     print(f"Wrote animated HEI tangent to {trj_fn}\n")
 
-    # Use splined HEI
-    # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
-    # ts_geom = Geometry(cos.images[0].atoms, hei_coords, coord_type="redund")
-
     # Print HEI information (coords & tangent)
-    print("Splined HEI (TS guess)")
+    print(f"{hei_kind.capitalize()} HEI (TS guess)")
     print(ts_geom.as_xyz())
     print()
     dummy = Geometry(atoms, cart_hei_tangent)
-    print("Cartesian HEI tangent")
+    print(f"{hei_kind.capitalize()} Cartesian HEI tangent")
     print(dummy.as_xyz())
     print()
 
     # Write out HEI information (coords & tangent)
-    hei_xyz_fn = "splined_hei.xyz"
+    hei_xyz_fn = f"{hei_kind}_hei.xyz"
     with open(hei_xyz_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
-    print(f"Wrote splined HEI coordinates to '{hei_xyz_fn}'")
-    hei_tangent_fn = "splined_hei_tangent"
+    print(f"Wrote {hei_kind} HEI coordinates to '{hei_xyz_fn}'")
+    hei_tangent_fn = f"{hei_kind}_hei_tangent"
     np.savetxt(hei_tangent_fn, hei_tangent)
-    print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
+    print(f"Wrote {hei_kind} HEI tangent to '{hei_tangent_fn}'")
 
     ts_calc = calc_getter()
     ts_geom.set_calculator(ts_calc)
