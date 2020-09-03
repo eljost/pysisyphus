@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d, splprep, splev
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import get_coords_diffs
+from pysisyphus.helpers import get_coords_diffs, align_coords
 from pysisyphus.xyzloader import make_trj_str
 
 
@@ -473,6 +473,7 @@ class ChainOfStates:
     def get_splined_hei(self):
         # Interpolate energies
         cart_coords = np.array([image.cart_coords for image in self.images])
+        cart_coords = align_coords(cart_coords)
         coord_diffs = get_coords_diffs(cart_coords)
         energies_spline = interp1d(coord_diffs, self.energy, kind="cubic")
         x_fine = np.linspace(0, 1, 500)
