@@ -215,7 +215,7 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
-                       ovlp_thresh=.4, hei_kind="splined"):
+                       ovlp_thresh=.4, hei_kind="plain"):
     print(highlight_text(f"Running TS-optimization from COS"))
 
     first_cos_energy = cos.images[0].energy
@@ -1279,6 +1279,10 @@ def do_clean(force=False):
         "ts_hess_calc_cyc*.h5",
         "hess_init_irc.h5",
         "final_hessian.h5",
+        "ts_current_geometry.xyz",
+        "dimer_*",
+        "plain_hei_tangent",
+        "plain_hei.xyz",
     )
     to_rm_paths = list()
     for glob in rm_globs:
