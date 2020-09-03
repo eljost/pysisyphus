@@ -308,7 +308,7 @@ class GrowingString(GrowingChainOfStates):
         # Regenerate active set after reparametrization
         if self.reset_dlc and not self.fully_grown:
             [image.internal.set_active_set() for image in self.moving_images]
-            self.log("Created new DLCs for string images.")
+            self.log(f"Created new DLCs for {len(self.images)} string images.")
         elif self.reset_dlc:
             self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
