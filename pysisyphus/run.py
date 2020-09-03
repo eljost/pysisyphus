@@ -226,8 +226,12 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     print(f"Index of highest energy image (HEI) is {hei_index}.")
     print()
     hei_image = cos.images[hei_index]
+    # When the COS was optimized in internal coordinates they are already
+    # present at the HEI image and we just them.
     try:
         prim_indices = hei_image.internal.prim_indices
+    # If the COS was optimized in Cartesians we have to generated a new
+    # set of primitive internals.
     except AttributeError:
         def get_int_geom(geom):
             return Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
