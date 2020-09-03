@@ -247,7 +247,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     else:
         raise Exception(f"Invalid hei_kind='{hei_kind}'!")
 
-    print(f"Index of {hei_kind} highest energy image (HEI) is {hei_index}.")
+    print(f"Index of {hei_kind} highest energy image (HEI) is {hei_index:.2f}.")
     print()
 
     # When the COS was optimized in internal coordinates the united primitive
