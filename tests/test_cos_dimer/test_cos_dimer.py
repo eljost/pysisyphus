@@ -41,7 +41,7 @@ def test_hcn_neb_dimer_irc():
     results = run_from_dict(run_dict)
 
     assert results.ts_opt.is_converged
-    assert results.ts_opt.cur_cycle == 7
+    assert results.ts_opt.cur_cycle == 6
     assert results.ts_geom.energy == pytest.approx(-92.2460427)
 
     irc = results.irc
