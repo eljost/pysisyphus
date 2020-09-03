@@ -5,7 +5,7 @@ from collections import namedtuple
 import copy
 import itertools
 import os
-from math import ceil, floor
+from math import ceil, floor, modf
 from pathlib import Path
 from pprint import pprint
 import re
@@ -215,35 +215,55 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
-                       ovlp_thresh=.4, hei_kind="plain"):
+                       ovlp_thresh=.4, hei_kind="splined"):
     print(highlight_text(f"Running TS-optimization from COS"))
 
-    first_cos_energy = cos.images[0].energy
-    last_cos_energy = cos.images[-1].energy
-
+    # Later want a Cartesian HEI tangent, so if not already present we create
+    # a Cartesian COS object to obtain the tangent from.
     atoms = cos.images[0].atoms
+    if cos.coord_type != "cart":
+        cart_images = list()
+        for image in cos.images:
+            cart_image = Geometry(atoms, image.cart_coords)
+            cart_image.energy = image.energy
+            cart_images.append(cart_image)
+        cart_cos = ChainOfStates.ChainOfStates(cart_images)
+    # Just continue using the Cartesian COS object
+    else:
+        cart_cos = cos
+
     # Use plain, unsplined, HEI
     if hei_kind == "plain":
         hei_index = cos.get_hei_index()
         hei_image = cos.images[hei_index]
-        hei_tangent = cos.get_tangent(hei_index)
-        # Create a Cartesian tangent, if not already present
-        if cos.coord_type != "cart":
-            cart_images = list()
-            for image in cos.images:
-                cart_image = Geometry(atoms, image.cart_coords)
-                cart_image.energy = image.energy
-                cart_images.append(cart_image)
-            cart_cos = ChainOfStates.ChainOfStates(cart_images)
-            cart_hei_index = cart_cos.get_hei_index()
-            cart_hei_tangent = cart_cos.get_tangent(cart_hei_index)
-        else:
-            cart_hei_tangent = hei_tangent.copy()
+        # Select the Cartesian tangent from the COS
+        cart_hei_tangent = cart_cos.get_tangent(hei_index)
     # Use splined HEI
     elif hei_kind == "splined":
-        hei_coords, hei_energy, hei_tangent, hei_index = cos.get_splined_hei()
+        # The splined HEI tangent is usually very bady for the purpose of
+        # selecting an imaginary mode to follow uphill. So we construct a better
+        # HEI tangent by mixing the two tangents closest to the splined HEI.
+        hei_coords, hei_energy, splined_hei_tangent, hei_index = cos.get_splined_hei()
         hei_image = Geometry(atoms, hei_coords)
-        cart_hei_tangent = hei_tangent.copy()
+        # The hei_index is a float. We split off the decimal part and mix the two
+        # nearest tangents accordingly.
+        frac, floor = modf(hei_index)
+        # Indices of the two nearest images with integer indices.
+        floor = int(floor)
+        ceil = floor + 1
+        floor_tangent = cart_cos.get_tangent(floor)
+        ceil_tangent = cart_cos.get_tangent(ceil)
+        print(f"Creating mixed HEI tangent using tangents at images {(floor, ceil)}.")
+        print("Overlap of splined HEI tangent with these tangents:")
+        for ind, tang in ((floor, floor_tangent), (ceil, ceil_tangent)):
+            print(f"\t{ind:02d}: {splined_hei_tangent.dot(tang):.6f}")
+        # When frac is big, e.g. 0.9 the tangent resembles the tangent at 'ceil'
+        # so we mix in only (1-frac) == (1-0.9) == 0.1 of the 'floor' tangent.
+        cart_hei_tangent = (1-frac)*floor_tangent + frac*ceil_tangent
+        cart_hei_tangent /= np.linalg.norm(cart_hei_tangent)
+        # print(f"\t(1-{frac:.4f})*t({floor})+{frac:.4f}*t({ceil}): "
+              # f"{splined_hei_tangent.dot(cart_hei_tangent):.6f}"
+        # )
     else:
         raise Exception(f"Invalid hei_kind='{hei_kind}'!")
 
@@ -270,10 +290,11 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
 
     # Convert tangent from whatever coordinates to redundant internals.
     # When the HEI was splined the tangent will be in Cartesians.
-    if (hei_kind != "splined") and (cos.coord_type == "dlc"):
-        redund_tangent = hei_image.internal.Ut_inv @ hei_tangent
-    else:
-        redund_tangent = ts_geom.internal.B_prim @ hei_tangent
+    # if (hei_kind != "splined") and (cos.coord_type == "dlc"):
+        # redund_tangent = hei_image.internal.Ut_inv @ hei_tangent
+    # else:
+        # redund_tangent = ts_geom.internal.B_prim @ hei_tangent
+    redund_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
     # The tangent is probably not normalized anymore
     redund_tangent /= np.linalg.norm(redund_tangent)
 
@@ -304,9 +325,6 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     with open(hei_xyz_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
     print(f"Wrote {hei_kind} HEI coordinates to '{hei_xyz_fn}'")
-    hei_tangent_fn = f"{hei_kind}_hei_tangent"
-    np.savetxt(hei_tangent_fn, hei_tangent)
-    print(f"Wrote {hei_kind} HEI tangent to '{hei_tangent_fn}'")
 
     ts_calc = calc_getter()
     ts_geom.set_calculator(ts_calc)
@@ -386,9 +404,11 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     if do_hess and not ts_opt.stopped:
         print()
         do_final_hessian(ts_geom, write_imag_modes=True)
+    print()
 
     ts_energy = ts_geom.energy
-    print()
+    first_cos_energy = cos.images[0].energy
+    last_cos_energy = cos.images[-1].energy
     print_barrier(ts_energy, first_cos_energy, "TS", "first COS image")
     print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
