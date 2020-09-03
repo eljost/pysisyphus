@@ -471,22 +471,26 @@ class ChainOfStates:
         return forces
 
     def get_splined_hei(self):
+        self.log("Splining HEI")
         # Interpolate energies
         cart_coords = np.array([image.cart_coords for image in self.images])
         coord_diffs = get_coords_diffs(cart_coords, align=True)
-        energies_spline = interp1d(coord_diffs, self.energy, kind="cubic")
+        self.log(f"\tCoordinate differences: {coord_diffs}")
+        energies = np.array(self.energy)
+        energies_spline = interp1d(coord_diffs, energies, kind="cubic")
         x_fine = np.linspace(0, 1, 500)
         energies_fine = energies_spline(x_fine)
         # Determine index that yields the highest energy
         hei_ind = energies_fine.argmax()
         hei_x = x_fine[hei_ind]
+        self.log(f"Found splined HEI at x={hei_x:.4f}")
         hei_frac_index = hei_x * (len(self.images) - 1)
         hei_energy = energies_fine[hei_ind]
 
         reshaped = cart_coords.reshape(-1, self.cart_coords_length)
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
-        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3)
+        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3, u=coord_diffs)
                          for i in range(0, len(transp_coords), 9)]
         )
 
@@ -494,6 +498,10 @@ class ChainOfStates:
         hei_coords = np.vstack([splev([hei_x, ], tck) for tck in tcks])
         hei_coords = hei_coords.flatten()
 
+        # Actually it looks like that splined tangents are really bad approximations
+        # to the actual imaginary mode. The Cartesian upwinding tangent is usually
+        # much much better. In 'run_tsopt_from_cos' we actually mix two "normal" tangents
+        # to obtain the HEI tangent.
         hei_tangent = np.vstack([splev([hei_x, ], tck, der=1) for tck in tcks]).T
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
