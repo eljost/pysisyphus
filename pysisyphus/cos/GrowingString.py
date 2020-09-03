@@ -306,8 +306,11 @@ class GrowingString(GrowingChainOfStates):
             raise err
 
         # Regenerate active set after reparametrization
-        if self.reset_dlc:
+        if self.reset_dlc and not self.fully_grown:
             [image.internal.set_active_set() for image in self.moving_images]
+            self.log("Created new DLCs for string images.")
+        elif self.reset_dlc:
+            self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
     def set_tangents(self):
         """Set tangents as given by the first derivative of a cubic spline.
