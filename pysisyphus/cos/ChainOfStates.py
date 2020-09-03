@@ -464,7 +464,10 @@ class ChainOfStates:
         for i in self.get_climbing_indices():
             climb_forces, climb_en = self.get_climbing_forces(i)
             forces[i] = climb_forces
-            self.log(f"Climbing with image {i}, E = {climb_en:.6f} au")
+            norm = np.linalg.norm(climb_forces)
+            self.log(f"Climbing with image {i}, E = {climb_en:.6f} au, "
+                     f"norm(forces)={norm:.6f}"
+            )
         return forces
 
     def get_splined_hei(self):
