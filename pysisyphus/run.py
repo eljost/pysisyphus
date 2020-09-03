@@ -748,7 +748,6 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
         print("done")
     except FileExistsError:
         print("already exists")
-    import pdb; pdb.set_trace()
     if "geom" in run_dict:
         xyzs = run_dict["geom"]["fn"]
     else:
