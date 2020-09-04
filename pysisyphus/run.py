@@ -673,7 +673,7 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
 
     # Avoids modifying the supplied geom. When the supplied geom originated
     # from a previous TS optimization we want to retain it unmodified.
-    geom = geom.copy()
+    # geom = geom.copy()
 
     calc = calc_getter(0)
     calc.base_name = "irc"
