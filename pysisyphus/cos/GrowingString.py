@@ -313,7 +313,8 @@ class GrowingString(GrowingChainOfStates):
             self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
     def set_tangents(self):
-        """Set tangents as given by the first derivative of a cubic spline.
+        """THIS METHOD IS DISABLED BY REDEFINITION BELOW AS THE SPLINED TANGENTS
+        SEEM BAD.
 
         Tangent-calculation by splining requires the information of all
         images at once. To avoid the repeated splining of all images whenever
@@ -337,28 +338,16 @@ class GrowingString(GrowingChainOfStates):
         tangents[self.rf_ind:] *= -1
         self._tangents = tangents
 
+    def set_tangents(self):
+        pass
+
     def get_tangent(self, i):
-        # Use splined tangents with cartesian coordinates that were set in a
-        # self.set_tangents() call.
-        if self.coord_type == "cart":
-            return self._tangents[i]
-
-        # With DLC we can use conventional tangents, calculated without splining.
-
-        # Use upwinding tangents for fully grown strings.
-        if self.fully_grown:
-            return super().get_tangent(i, kind="upwinding")
-
-        # During the growth phase we use simple tangents that always point
-        # towards the center of the string.
-        cur_image = self.images[i]
-        if i <= self.lf_ind:
-            next_ind = i + 1
+        if not self.fully_grown and i in (self.lf_ind, self.rf_ind):
+            next_ind = i+1 if (i <= self.lf_ind) else i-1
+            tangent = self.images[next_ind] - self.images[i]
+            tangent /= np.linalg.norm(tangent)
         else:
-            next_ind = i - 1
-        next_image = self.images[next_ind]
-        tangent = next_image - cur_image
-        tangent /= np.linalg.norm(tangent)
+            tangent = super().get_tangent(i, kind="upwinding")
         return tangent
 
     @ChainOfStates.forces.getter
