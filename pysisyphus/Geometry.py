@@ -295,9 +295,10 @@ class Geometry:
         self._forces = None
         self._hessian = None
 
-    def set_calculator(self, calculator):
+    def set_calculator(self, calculator, clear=True):
         """Reset the object and set a calculator."""
-        self.clear()
+        if clear:
+            self.clear()
         self.calculator = calculator
 
     @property

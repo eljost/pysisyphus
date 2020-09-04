@@ -671,13 +671,9 @@ def run_opt(geom, calc_getter, opt_key, opt_kwargs,
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
-    # Avoids modifying the supplied geom. When the supplied geom originated
-    # from a previous TS optimization we want to retain it unmodified.
-    # geom = geom.copy()
-
     calc = calc_getter(0)
     calc.base_name = "irc"
-    geom.set_calculator(calc)
+    geom.set_calculator(calc, clear=False)
 
     # Recreate geometry with Cartesian coordinates if needed.
     if geom.coord_type != "cart":
