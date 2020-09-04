@@ -36,7 +36,7 @@ def test_hcn_neb():
     assert results.cos_opt.is_converged
     assert results.cos_opt.cur_cycle == 18
     assert results.ts_opt.is_converged
-    assert results.ts_opt.cur_cycle == 3
+    assert results.ts_opt.cur_cycle == 1
 
     with h5py.File("optimization.h5", "r") as handle:
         groups = list(handle.keys())

@@ -25,12 +25,13 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn=2, acc=1.0, **kwargs):
-        super(XTB, self).__init__(**kwargs)
+    def __init__(self, gbsa="", gfn=2, acc=1.0, mem=1000, **kwargs):
+        super().__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
         self.acc = acc
+        self.mem = mem
 
         valid_gfns = (1, 2)
         assert self.gfn in valid_gfns, "Invalid gfn argument. " \
@@ -76,7 +77,8 @@ class XTB(Calculator):
         env_copy = os.environ.copy()
         env_copy["OMP_NUM_THREADS"] = str(self.pal)
         env_copy["MKL_NUM_THREADS"] = str(self.pal)
-        env_copy["OMP_STACKSIZE"] = "1000m"
+        # Per thread
+        env_copy["OMP_STACKSIZE"] = f"{self.mem}M"
 
         return env_copy
 
