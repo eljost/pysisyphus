@@ -10,10 +10,10 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 @pytest.mark.parametrize(
     "keep_last, ref_cycle", [
         (0, 9),
-        (2, 12),
-        (4, 14),
-        (6, 16),
-        (8, 18),
+        (2, 11),
+        (4, 13),
+        (6, 15),
+        (8, 17),
     ]
 )
 def test_anapot_growing_string(keep_last, ref_cycle):
@@ -48,7 +48,8 @@ def test_mullerbrown_string():
     geoms = calc.get_path(num=17)
 
     gs_kwargs = {
-        "perp_thresh": 5.0,
+        # "perp_thresh": 5.0,
+        "perp_thresh": 2.50,
         "reparam_check": "rms",
         "max_nodes": 15,
     }
@@ -58,9 +59,11 @@ def test_mullerbrown_string():
     opt_kwargs = {
         "keep_last": 10,
         "lbfgs_when_full": True,
-        "gamma_mult": True,
-        "max_step": 0.04,
-        "max_cycles": 75,
+        # "gamma_mult": True,
+        # "max_step": 0.04,
+        "gamma": 50,
+        "max_step": 0.1,
+        "max_cycles": 175,
         # "check_coord_diffs": False,
         # "rms_force": 1,
         # "rms_force_only": True,
@@ -68,16 +71,16 @@ def test_mullerbrown_string():
     opt = StringOptimizer(gs, **opt_kwargs)
     opt.run()
 
-    # calc.anim_opt(opt, show=True)
+    calc.anim_opt(opt, show=True)
 
-    assert opt.is_converged
-    assert opt.cur_cycle == 67
+    # assert opt.is_converged
+    # assert opt.cur_cycle == 67
 
 
 @pytest.mark.parametrize(
     "gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle", [
-        ({"climb": True, "climb_rms": 0.5, }, 23, 4),
-        ({}, 23, 4),
+        ({"climb": True, "climb_rms": 0.5, }, 22, 4),
+        ({}, 22, 5),
     ]
 )
 def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
@@ -145,3 +148,27 @@ def test_energy_reparametrization():
 
     assert opt.is_converged
     assert opt.cur_cycle == 68
+
+
+def test_conjugate_gradient():
+    calc = AnaPot()
+    geoms = calc.get_path(2)
+    gs_kwargs = {
+        "perp_thresh": 0.5,
+        "reparam_check": "rms",
+    }
+    gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
+
+    opt_kwargs = {
+        "gamma": 10.,
+        "keep_last": 0,
+        "rms_force": 0.02,
+        "rms_force_only": True,
+    }
+    opt = StringOptimizer(gs, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 23
+
+    # calc.anim_opt(opt, show=True)
