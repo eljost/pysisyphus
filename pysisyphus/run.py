@@ -278,13 +278,13 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     # set of primitive internals.
     except AttributeError:
         def get_int_geom(geom):
-            return Geometry(geom.atoms, geom.cart_coords, coord_type="redund_v2")
+            return Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
         internal_geom1 = get_int_geom(cos.images[0])
         internal_geom2 = get_int_geom(cos.images[-1])
         prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
 
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
-                       coord_type="redund_v2",
+                       coord_type="redund",
                        coord_kwargs={"prim_indices": prim_indices,},
     )
 
