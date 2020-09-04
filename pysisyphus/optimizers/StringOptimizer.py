@@ -62,10 +62,9 @@ class StringOptimizer(Optimizer):
         if self.geometry.fully_grown:
             # We only start decrementing the counter after the string is fully grown.
             self.stop_in -= 1
-
-        # Don't print this message if stop_in was disabled in the first place (< 0).
-        if self.stop_in >= 0:
-            self.log(f"String is fully grown. Stopping in {self.stop_in} cycles.")
+            # Don't print this message if stop_in was disabled in the first place (< 0).
+            if self.stop_in >= 0:
+                self.log(f"String is fully grown. Stopping in {self.stop_in} cycles.")
 
         fully_grown = self.geometry.fully_grown
         full_stop = fully_grown and (self.stop_in == 0)
