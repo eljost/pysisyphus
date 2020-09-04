@@ -1150,6 +1150,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
                                           copy_final_geom="ts_opt.xyz"
                 )
             geom = ts_geom.copy()
+            # Try to transfer Hessian to new geometry, to avaoid recalculation.
+            if (ts_geom._hessian is not None):
+                geom._hessian = ts_geom._hessian
 
         #######
         # IRC #
