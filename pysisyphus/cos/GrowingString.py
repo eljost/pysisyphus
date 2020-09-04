@@ -73,6 +73,7 @@ class GrowingString(GrowingChainOfStates):
                  for i, image in enumerate(self.images)]
         norms = np.linalg.norm(diffs, axis=1)
         param_density = np.cumsum(norms)
+        self.log(f"Current string length={param_density[-1]:.6f}")
 
         # Energy weighted parametrization density
         if kind == "energy":
@@ -147,30 +148,6 @@ class GrowingString(GrowingChainOfStates):
         self.images.insert(insert_ind, new_img)
         self.log(f"Created new image; inserted it before index {insert_ind}.")
         return new_img
-
-        # self.images.insert(insert_ind, new_img)
-        # # Take smaller steps, as the internal-cartesian-backconversion may be
-        # # unstable for bigger steps.
-        # steps = 10
-        # step = step_length * distance/steps
-        # for i in range(steps):
-            # new_coords = new_img.coords + step
-            # new_img.coords = new_coords
-            # cpd = self.get_cur_param_density()
-            # try:
-                # if new_img.internal.backtransform_failed:
-                    # import pdb; pdb.set_trace()
-            # except AttributeError:
-                # pass
-            # print(f"{i:02d}: {cpd}")
-
-        # # self.images.insert(insert_ind, new_img)
-        # # self.log(f"Created new image; inserted it before index {insert_ind}.")
-
-        # cpd = self.get_cur_param_density()
-        # self.log(f"Current param_density: {cpd}")
-
-        # return new_img
 
     @property
     def left_size(self):
@@ -272,7 +249,7 @@ class GrowingString(GrowingChainOfStates):
                 # this direction to achieve the desired parametirzation density.
                 tangent_ind = i + sign
                 tangent_image = self.images[tangent_ind]
-                rl = "right" if sign < 0 else "left"
+                rl = "right" if sign > 0 else "left"
                 self.log(f"\t... shifting {rl} towards image {tangent_ind}")
                 distance = -(reparam_image - tangent_image)
 
@@ -290,20 +267,29 @@ class GrowingString(GrowingChainOfStates):
         cpd_str = np.array2string(cur_param_density, precision=4)
         self.log(f"Param density after reparametrization: {cpd_str}")
 
-        try:
-            # Dont check climbing images
-            np.testing.assert_allclose(
-                np.delete(cur_param_density, climbing_indices),
-                np.delete(desired_param_density, climbing_indices),
-                atol=self.reparam_tol
-            )
-        except AssertionError as err:
-            trj_str = self.as_xyz()
-            fn = "failed_reparametrization.trj"
-            with open(fn, "w") as handle:
-                handle.write(trj_str)
-            print(f"Wrote coordinates of failed reparametrization to '{fn}'")
-            raise err
+        # This check is disabled at it is not really applicable. While we reparametrize
+        # the images the string size may vary wildly, at least in the beginning. Lets
+        # say after reparametrization the distance vector between image 0 and 1 is of
+        # magnitude 1 and the overall string length is 10. Then image 1 is at 0.1 w.r.t.
+        # the parametrization density. If we reparametrize the remaining images the over-
+        # all string size may be 8, and now image 1 suddenly sits at 1/8 = 0.125, which
+        # may be already above the allowed threshold.
+        # Over time the string size will equilibrate and the desired parametrization
+        # density will actually be realized.
+        # try:
+            # # Dont check climbing images
+            # np.testing.assert_allclose(
+                # np.delete(cur_param_density, climbing_indices),
+                # np.delete(desired_param_density, climbing_indices),
+                # atol=self.reparam_tol
+            # )
+        # except AssertionError as err:
+            # trj_str = self.as_xyz()
+            # fn = "failed_reparametrization.trj"
+            # with open(fn, "w") as handle:
+                # handle.write(trj_str)
+            # print(f"Wrote coordinates of failed reparametrization to '{fn}'")
+            # raise err
 
         # Regenerate active set after reparametrization
         if self.reset_dlc and not self.fully_grown:
