@@ -278,24 +278,19 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     # set of primitive internals.
     except AttributeError:
         def get_int_geom(geom):
-            return Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
+            return Geometry(geom.atoms, geom.cart_coords, coord_type="redund_v2")
         internal_geom1 = get_int_geom(cos.images[0])
         internal_geom2 = get_int_geom(cos.images[-1])
         prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
 
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
-                       coord_type="redund",
+                       coord_type="redund_v2",
                        coord_kwargs={"prim_indices": prim_indices,},
     )
 
     # Convert tangent from whatever coordinates to redundant internals.
     # When the HEI was splined the tangent will be in Cartesians.
-    # if (hei_kind != "splined") and (cos.coord_type == "dlc"):
-        # redund_tangent = hei_image.internal.Ut_inv @ hei_tangent
-    # else:
-        # redund_tangent = ts_geom.internal.B_prim @ hei_tangent
     redund_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
-    # The tangent is probably not normalized anymore
     redund_tangent /= np.linalg.norm(redund_tangent)
 
     # Dump HEI data
