@@ -253,7 +253,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         ceil = floor + 1
         floor_tangent = cart_cos.get_tangent(floor)
         ceil_tangent = cart_cos.get_tangent(ceil)
-        print(f"Creating mixed HEI tangent using tangents at images {(floor, ceil)}.")
+        print(f"Creating mixed HEI tangent, using tangents at images {(floor, ceil)}.")
         print("Overlap of splined HEI tangent with these tangents:")
         for ind, tang in ((floor, floor_tangent), (ceil, ceil_tangent)):
             print(f"\t{ind:02d}: {splined_hei_tangent.dot(tang):.6f}")
@@ -347,6 +347,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     else:
         # Determine which imaginary mode has the highest overlap
         # with the splined HEI tangent.
+        print(f"Calculating Hessian at {hei_kind} TS guess.")
         eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
         neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
@@ -366,27 +367,33 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
         similar_inds = rel_ovlps > .85
         # Only 1 big overlap is present
         if (max_ovlp >= ovlp_thresh) and (similar_inds.sum() == 1):
-            root = np.argmax(ovlps)
+            ovlp_root = np.argmax(ovlps)
         # Multiple big and similar overlaps are present.
         elif (max_ovlp >= ovlp_thresh) and (similar_inds.sum() > 1):
             # Will yield the first occurence of True, which corresponds to a
             # similar overlaps with the most negative eigenvalue.
-            root = similar_inds.argmax()
-            neg_eigval = neg_eigvals[root]
+            ovlp_root = similar_inds.argmax()
+            neg_eigval = neg_eigvals[ovlp_root]
             verbose_inds = np.arange(neg_eigvals.size)[similar_inds]
-            print(f"Overlaps {verbose_inds} are very similar! Using the "
-                  f"one with the most negative eigenvalue (mode {root})."
+            print(f"Overlaps {verbose_inds} are very similar! Falling back to the "
+                  f"one with the most negative eigenvalue (mode {ovlp_root})."
             )
         # Fallback to the most negative eigenvalue when all overlaps are too low.
         else:
-            root = neg_eigvals.argmin()
-            neg_eigval = neg_eigvals[root]
+            ovlp_root = neg_eigvals.argmin()
+            neg_eigval = neg_eigvals[ovlp_root]
             print(f"Highest overlap {max_ovlp:.6f} is below the threshold "
-                  f"of {ovlp_thresh:.6f}.\nSelecting mode {root} with most "
-                  f"negative eigenvalue {neg_eigval:.6f} instead."
+                  f"of {ovlp_thresh:.6f}.\nFalling back to mode {ovlp_root} with most "
+                  f"negative eigenvalue {neg_eigval:.6f}."
             )
-        # Use mode with highest overlap as initial root
-        tsopt_kwargs["root"] = root
+        root = tsopt_kwargs.get("root", None)
+        if root is None:
+            # Use mode with highest overlap as initial root
+            tsopt_kwargs["root"] = ovlp_root
+        else:
+            print(f"Initial root={root} given, neglecting root {ovlp_root} "
+                   "determined from overlaps."
+            )
         ts_opt = ts_optimizer(ts_geom, prefix="ts", **tsopt_kwargs)
 
     ts_opt.run()
