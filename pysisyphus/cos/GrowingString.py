@@ -298,31 +298,31 @@ class GrowingString(GrowingChainOfStates):
         elif self.reset_dlc:
             self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
-    def set_tangents(self):
-        """THIS METHOD IS DISABLED BY REDEFINITION BELOW AS THE SPLINED TANGENTS
-        SEEM BAD.
+    # def set_tangents(self):
+        # """THIS METHOD IS DISABLED BY REDEFINITION BELOW AS THE SPLINED TANGENTS
+        # SEEM BAD.
 
-        Tangent-calculation by splining requires the information of all
-        images at once. To avoid the repeated splining of all images whenever
-        a tangent is requested this method calculates all tangents and stores
-        them in the self._tangents, that can be accessed via the self.tangents
-        property.
+        # Tangent-calculation by splining requires the information of all
+        # images at once. To avoid the repeated splining of all images whenever
+        # a tangent is requested this method calculates all tangents and stores
+        # them in the self._tangents, that can be accessed via the self.tangents
+        # property.
 
-        !!! Right now one must not forget to call this method
-        after coordinate modification, e.g. after
-        reparametrization!  Otherwise wrong (old) tangets are used. !!!
-        """
+        # !!! Right now one must not forget to call this method
+        # after coordinate modification, e.g. after
+        # reparametrization!  Otherwise wrong (old) tangets are used. !!!
+        # """
 
-        tcks, us = self.spline(tangents=True)
-        Sk, cur_mesh = self.arc_dims
-        self.log(f"Total arclength Sk={Sk:.4f}")
-        tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
-        norms = np.linalg.norm(tangents, axis=1)
-        tangents = tangents / norms[:,None]
-        # Tangents of the right string shall point towards the center, so
-        # we reverse their orientation.
-        tangents[self.rf_ind:] *= -1
-        self._tangents = tangents
+        # tcks, us = self.spline(tangents=True)
+        # Sk, cur_mesh = self.arc_dims
+        # self.log(f"Total arclength Sk={Sk:.4f}")
+        # tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
+        # norms = np.linalg.norm(tangents, axis=1)
+        # tangents = tangents / norms[:,None]
+        # # Tangents of the right string shall point towards the center, so
+        # # we reverse their orientation.
+        # tangents[self.rf_ind:] *= -1
+        # self._tangents = tangents
 
     def set_tangents(self):
         pass

@@ -371,7 +371,8 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
             neg_eigval = neg_eigvals[ovlp_root]
             verbose_inds = np.arange(neg_eigvals.size)[similar_inds]
             print(f"Overlaps {verbose_inds} are very similar! Falling back to the "
-                  f"one with the most negative eigenvalue (mode {ovlp_root})."
+                    f"one with the most negative eigenvalue {neg_eigval:.6f} "
+                    f"(mode {ovlp_root})."
             )
         # Fallback to the most negative eigenvalue when all overlaps are too low.
         else:
@@ -660,7 +661,8 @@ def run_opt(geom, calc_getter, opt_key, opt_kwargs,
     if do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
-        final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
+        # final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
+        do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
     print()
 
     return opt.geometry, opt
