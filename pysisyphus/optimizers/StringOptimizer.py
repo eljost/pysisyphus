@@ -62,6 +62,9 @@ class StringOptimizer(Optimizer):
         if self.geometry.fully_grown:
             # We only start decrementing the counter after the string is fully grown.
             self.stop_in -= 1
+
+        # Don't print this message if stop_in was disabled in the first place (< 0).
+        if self.stop_in >= 0:
             self.log(f"String is fully grown. Stopping in {self.stop_in} cycles.")
 
         fully_grown = self.geometry.fully_grown
@@ -121,12 +124,18 @@ class StringOptimizer(Optimizer):
         step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=self.gamma_mult,
                              inds=self.inds, cur_size=cur_size, logger=self.logger)
 
-        # Conjugate gradient step
-        if self.keep_last == 0 and self.cur_cycle > 0 and not string_size_changed:
-            cur_norm = np.linalg.norm(forces)
-            prev_norm = np.linalg.norm(self.forces[-2])
-            quot = min(cur_norm**2 / prev_norm**2, 1)
-            step = forces / self.gamma + quot*self.steps[-1]
+        # When keep_last == 0 or LBFGS is not yet enabled then s_list and y_list will
+        # be empty and step will be a simple SD step. We try to improve it via CG.
+        if ((self.keep_last == 0 and self.cur_cycle > 0 and not string_size_changed)
+            and (len(self.s_list) == 0 and len(self.y_list) == 0)):
+            prev_forces = self.forces[-2]
+            # Fletcher-Reeves
+            beta = forces.dot(forces) / prev_forces.dot(prev_forces)
+            # Polar-Ribiere
+            # beta = forces.dot(forces - prev_forces) / prev_forces.dot(prev_forces)
+            beta = min(beta, 1)
+            step = forces + beta*self.steps[-1]
+            self.log(f"Conjugate gradient correction, β={beta:.6f}")
 
         step = scale_by_max_step(step, self.max_step)
 

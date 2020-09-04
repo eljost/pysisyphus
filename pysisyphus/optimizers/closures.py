@@ -56,7 +56,10 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
         msg = f"beta={beta:.4f}"
 
     if logger is not None:
-        logger.debug(f"BFGS multiply using {cycles} previous cycles with {msg}.")
+        msg = f"BFGS multiply using {cycles} previous cycles with {msg}."
+        if len(s_list) == 0:
+            msg += " Produced simple SD step."
+        logger.debug(msg)
 
     for i in range(cycles):
         s = s_list[i]
