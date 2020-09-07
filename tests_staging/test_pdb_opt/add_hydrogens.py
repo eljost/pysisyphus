@@ -66,7 +66,6 @@ def hydrogen_bond(G, edge):
 def missing_hydrogens(G1, G2, subgraph):
     h_missing = dict()
     total = 0
-    import pdb; pdb.set_trace()
     for g1, g2 in subgraph.items():
         e1 = G1.edges(g1)
         e2 = G2.edges(g2)
@@ -99,7 +98,6 @@ def add_hydrogens(ref_geom, ref_zmat, geom, inner=False):
         present.append(g1)
     # Assert that there are no "holes".
     # We assume that the heavy atoms come before the hydrogens in the Z-Matrix.
-    import pdb; pdb.set_trace()
     assert set(present) == set(range(len(present)))
     start_at = len(present)
     geom = geom_from_zmat(ref_zmat, coords3d=coords3d, start_at=start_at)
