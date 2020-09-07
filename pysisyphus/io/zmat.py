@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from pysisyphus.constants import ANG2BOHR as ANG2BOHR
-from pysisyphus.helpers import geom_loader
 from pysisyphus.Geometry import Geometry
 
 
