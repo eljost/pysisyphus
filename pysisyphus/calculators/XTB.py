@@ -33,7 +33,7 @@ class XTB(Calculator):
         self.acc = acc
         self.mem = mem
 
-        valid_gfns = (1, 2)
+        valid_gfns = (1, 2, "ff")
         assert self.gfn in valid_gfns, "Invalid gfn argument. " \
             f"Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
@@ -65,12 +65,14 @@ class XTB(Calculator):
         return None
 
     def prepare_add_args(self):
-        add_args = (f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf} "
-                    f"--acc {self.acc}").split()
+        add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
         # Use solvent model if specified
         if self.gbsa:
             gbsa = f"--gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
+        # Select parametrization
+        gfn = ["--gfnff"] if self.gfn == "ff" else f"--gfn {self.gfn}".split()
+        add_args = add_args + gfn
         return add_args
 
     def get_pal_env(self):
