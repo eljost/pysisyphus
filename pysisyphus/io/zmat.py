@@ -1,7 +1,6 @@
 from collections import namedtuple
 
 import numpy as np
-import pytest
 
 from pysisyphus.constants import ANG2BOHR as ANG2BOHR
 from pysisyphus.Geometry import Geometry
