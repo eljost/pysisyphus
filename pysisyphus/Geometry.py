@@ -285,7 +285,7 @@ class Geometry:
         try:
             layers = self.calculator.layers
         except AttributeError:
-            layers = ()
+            layers = (None, )
         return layers
 
     def clear(self):
