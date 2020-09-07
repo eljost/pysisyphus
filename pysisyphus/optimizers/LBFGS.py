@@ -62,6 +62,8 @@ class LBFGS(Optimizer):
         self.forces.append(forces)
         energy = self.geometry.energy
         self.energies.append(energy)
+        norm = np.linalg.norm(forces)
+        self.log(f"norm(forces={norm:.6f}")
 
         if self.cur_cycle > 0:
             y = self.forces[-2] - forces
@@ -76,7 +78,7 @@ class LBFGS(Optimizer):
             self.grad_diffs = self.grad_diffs[-self.keep_last:]
 
         step = bfgs_multiply(self.coord_diffs, self.grad_diffs, forces, beta=self.beta,
-                             gamma_mult=self.gamma_mult)
+                             gamma_mult=self.gamma_mult, logger=self.logger)
         step = scale_by_max_step(step, self.max_step)
 
         return step
