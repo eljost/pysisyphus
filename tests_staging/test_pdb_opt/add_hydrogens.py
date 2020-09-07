@@ -1,11 +1,9 @@
-import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.algorithms import isomorphism
 import numpy as np
 
-from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.findbonds import get_bond_sets
-from zmat import zmat_from_fn, geom_from_zmat
+from pysisyphus.io import geom_from_zmat
 
 
 def geom_to_graph(geom):
@@ -21,12 +19,6 @@ def geom_to_graph(geom):
     G.add_edges_from(bonds_with_lengths)
 
     return G
-
-
-def draw_graph(G):
-    # labels = nx.get_node_attributes(G, "atom") 
-    # nx.draw(G, labels=labels, font_weight="bold")
-    nx.draw(G, with_labels=True, font_weight="bold")
 
 
 def node_match(n1, n2):
@@ -71,7 +63,6 @@ def missing_hydrogens(G1, G2, sg):
     total = 0
     for g1, g2 in sg.items():
         e1 = G1.edges(g1)
-        e2 = G2.edges(g2)
         e1H = [e for e in e1 if hydrogen_bond(G1, e)]
         a1 = G1.nodes[g1]["atom"]
         a2 = G2.nodes[g2]["atom"]
@@ -81,12 +72,39 @@ def missing_hydrogens(G1, G2, sg):
     return h_missing, total
 
 
-def add_hydrogens(geom, sg, htot, zmat):
-    coords3d = np.zeros((len(geom.atoms) + htot, 3))
+# def add_hydrogens(geom, sg, htot, zmat):
+    # coords3d = np.zeros((len(geom.atoms) + htot, 3))
+    # print(coords3d.shape)
+    # # Copy atomic coordinates of heavy atoms at the correct positions
+    # present = list()
+    # for g1, g2 in sg.items():
+        # print(g1, g2)
+        # coords3d[g1] = geom.coords3d[g2]
+        # present.append(g1)
+    # # Assert that there are no "holes".
+    # # We assume that the heave atoms come before the hydrogens in the Z-Matrix.
+    # assert set(present) == set(range(len(present)))
+    # start_at = len(present)
+    # geom = geom_from_zmat(zmat, coords3d=coords3d, start_at=start_at)
+    # return geom
+
+
+def add_hydrogens(ref_geom, ref_zmat, geom):
+    G1 = geom_to_graph(ref_geom)
+    G2 = geom_to_graph(geom)
+
+    import pdb; pdb.set_trace()
+    subgraph = find_subgraph(G1, G2)
+    # print(subgraph)
+    hms0, h_tot = missing_hydrogens(G1, G2, subgraph)
+    print(hms0, h_tot)
+
+    # New coordiantes
+    coords3d = np.zeros((len(geom.atoms) + h_tot, 3))
     print(coords3d.shape)
     # Copy atomic coordinates of heavy atoms at the correct positions
     present = list()
-    for g1, g2 in sg.items():
+    for g1, g2 in subgraph.items():
         print(g1, g2)
         coords3d[g1] = geom.coords3d[g2]
         present.append(g1)
@@ -94,34 +112,5 @@ def add_hydrogens(geom, sg, htot, zmat):
     # We assume that the heave atoms come before the hydrogens in the Z-Matrix.
     assert set(present) == set(range(len(present)))
     start_at = len(present)
-    geom = geom_from_zmat(zmat, coords3d=coords3d, start_at=start_at)
+    geom = geom_from_zmat(ref_zmat, coords3d=coords3d, start_at=start_at)
     return geom
-
-
-# Glycine, reference, with hydrogens 
-zmat = zmat_from_fn("glycine_resorted.zmat")
-gly = geom_loader("glycine_resorted.xyz")
-G = geom_to_graph(gly)
-# draw_graph(G)
-# plt.show()
-
-# Glycine, without hydrogens
-glynoh = geom_loader("glycine_noh.xyz")
-Gnh = geom_to_graph(glynoh)
-# draw_graph(Gnh)
-# plt.show()
-
-sg = find_subgraph(G, Gnh)
-print(sg)
-# sg0 = sgs[0]
-# sg0 = sgs[1]
-hms0, htot0 = missing_hydrogens(G, Gnh, sg)
-print(hms0, htot0)
-
-geom = add_hydrogens(glynoh, sg, htot0, zmat)
-
-# from pysisyphus.calculators.XTB import XTB
-# from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
-# geom.set_calculator(XTB())
-# opt = PreconLBFGS(geom)
-# opt.run()
