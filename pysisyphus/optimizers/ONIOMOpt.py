@@ -21,14 +21,20 @@ class ONIOMOpt(Optimizer):
 
         if micro_cycles is None:
             micro_cycles = np.ones(len(layers), dtype=int)
+        try:
             micro_cycles[0] = 5
+        except IndexError:
+            micro_cycles = None
         self.micro_cycles = micro_cycles
         self.log(f"Micro cycles: {self.micro_cycles}")
 
         self.calc = self.geometry.calculator
-        self.layer_indices = [self.calc.atom_inds_in_layer(i, exclude_inner=True)
-                              for i, _ in enumerate(layers)
-        ]
+        if len(layers) > 1:
+            self.layer_indices = [self.calc.atom_inds_in_layer(i, exclude_inner=True)
+                                  for i, _ in enumerate(layers)
+            ]
+        else:
+            self.layer_indices = [[i for i, atom in enumerate(self.geometry.atoms)] ]
 
         # Conjugate gradient, previous search direction
         self.prev_directions = [None for layer in layers]
@@ -61,7 +67,6 @@ class ONIOMOpt(Optimizer):
         prev_direction = self.prev_directions[index]
         if prev_direction is None:
             prev_direction = forces
-        # import pdb; pdb.set_trace()
         atom_indices = self.layer_indices[index]
         if not full:
             if atom_indices == [10, 11, 12, 13, 14]:
@@ -114,7 +119,6 @@ class ONIOMOpt(Optimizer):
                 step = step/norm * 0.5
             self.log("Steepest descent FALLBACK")
             return step
-            # import pdb; pdb.set_trace()
             # ls_result = poly_fit.poly_line_search(**ls_kwargs)
             # raise Exception("Linesearchfailed")
 
@@ -256,7 +260,6 @@ class ONIOMOpt(Optimizer):
         # layer = 1
         # self.log(f"\n\nStarting cycle for inner layer {layer}")
         # # step = self.cg_step(atoms, coords3d.flatten(), layer, full=True)
-        # # import pdb; pdb.set_trace()
         # step = step_func(atoms, coords3d.flatten(), layer)
         # # print(step.reshape(-1,3))
         # coords3d += step.reshape(-1,3)
@@ -280,5 +283,5 @@ class ONIOMOpt(Optimizer):
                      f"by {dEkj:.2f} kJ mol⁻¹")
             if dE_str == "raised":
                 print("Raised!")
-        # return self.cg_step(atoms, coords, 0, full=True)
-        return self.sd_step(atoms, coords, 0, full=True)
+        return self.cg_step(atoms, coords, 0, full=True, beta_formula="PR")
+        # return self.sd_step(atoms, coords, 0, full=True)
