@@ -46,10 +46,15 @@ def find_subgraph(G1, G2):
     diffs = np.zeros(len(subgraphs))
     for i, map_ in enumerate(subgraphs):
         def translate_edge(i, j):
+            print("translate", i, j)
             return (map_[i], map_[j])
         for edge, length in ref_bonds.items():
-            edge_ = translate_edge(*edge)
-            diffs[i] += abs(g2_bonds[edge_] - length)
+            # Not all bonds from the reference geometry may be present.
+            try:
+                edge_ = translate_edge(*edge)
+                diffs[i] += abs(g2_bonds[edge_] - length)
+            except KeyError:
+                pass
     return subgraphs[diffs.argmin()]
 
 
@@ -58,46 +63,30 @@ def hydrogen_bond(G, edge):
     return (G.nodes[i]["atom"] == "H") or (G.nodes[j]["atom"] == "H")
 
 
-def missing_hydrogens(G1, G2, sg):
+def missing_hydrogens(G1, G2, subgraph):
     h_missing = dict()
     total = 0
-    for g1, g2 in sg.items():
+    import pdb; pdb.set_trace()
+    for g1, g2 in subgraph.items():
         e1 = G1.edges(g1)
+        e2 = G2.edges(g2)
+        # Bonds involving hydrogen in the reference graph
         e1H = [e for e in e1 if hydrogen_bond(G1, e)]
         a1 = G1.nodes[g1]["atom"]
         a2 = G2.nodes[g2]["atom"]
         h_missing[g2] = len(e1H)
         total += len(e1H)
-        print(f"G1: {a1}, G2: {a2}, missing {len(e1H)} hydrogens")
+        print(f"G1: {g1+1},{a1}, G2: {g2+1},{a2}, missing {len(e1H)} hydrogens")
     return h_missing, total
 
 
-# def add_hydrogens(geom, sg, htot, zmat):
-    # coords3d = np.zeros((len(geom.atoms) + htot, 3))
-    # print(coords3d.shape)
-    # # Copy atomic coordinates of heavy atoms at the correct positions
-    # present = list()
-    # for g1, g2 in sg.items():
-        # print(g1, g2)
-        # coords3d[g1] = geom.coords3d[g2]
-        # present.append(g1)
-    # # Assert that there are no "holes".
-    # # We assume that the heave atoms come before the hydrogens in the Z-Matrix.
-    # assert set(present) == set(range(len(present)))
-    # start_at = len(present)
-    # geom = geom_from_zmat(zmat, coords3d=coords3d, start_at=start_at)
-    # return geom
-
-
-def add_hydrogens(ref_geom, ref_zmat, geom):
+def add_hydrogens(ref_geom, ref_zmat, geom, inner=False):
     G1 = geom_to_graph(ref_geom)
     G2 = geom_to_graph(geom)
 
-    import pdb; pdb.set_trace()
     subgraph = find_subgraph(G1, G2)
-    # print(subgraph)
-    hms0, h_tot = missing_hydrogens(G1, G2, subgraph)
-    print(hms0, h_tot)
+    h_map, h_tot = missing_hydrogens(G1, G2, subgraph)
+    print(h_map, h_tot)
 
     # New coordiantes
     coords3d = np.zeros((len(geom.atoms) + h_tot, 3))
@@ -109,7 +98,8 @@ def add_hydrogens(ref_geom, ref_zmat, geom):
         coords3d[g1] = geom.coords3d[g2]
         present.append(g1)
     # Assert that there are no "holes".
-    # We assume that the heave atoms come before the hydrogens in the Z-Matrix.
+    # We assume that the heavy atoms come before the hydrogens in the Z-Matrix.
+    import pdb; pdb.set_trace()
     assert set(present) == set(range(len(present)))
     start_at = len(present)
     geom = geom_from_zmat(ref_zmat, coords3d=coords3d, start_at=start_at)
