@@ -2,7 +2,6 @@ from collections import namedtuple
 
 import numpy as np
 import pytest
-from rmsd import kabsch_rmsd
 
 from pysisyphus.constants import ANG2BOHR as ANG2BOHR
 from pysisyphus.helpers import geom_loader
@@ -115,41 +114,3 @@ def zmat_from_fn(fn):
     with open(fn) as handle:
         text = handle.read()
     return zmat_from_str(text)
-
-
-def assert_geom(ref_fn, zmat_fn, atol=2.5e-5):
-    zmat = zmat_from_fn(zmat_fn)
-    geom = geom_from_zmat(zmat)
-
-    ref = geom_loader(ref_fn)
-    rmsd = kabsch_rmsd(geom.coords3d, ref.coords3d, translate=True)
-    print(f"RMSD: {rmsd:.6f}")
-    assert rmsd == pytest.approx(0., abs=atol)
-
-
-rzmat = zmat_from_fn("glycine_resorted.zmat")
-print(rzmat)
-for zl in rzmat:
-    print(zl)
-rg = geom_from_zmat(rzmat)
-assert_geom("glycine_resorted.xyz", "glycine_resorted.zmat")
-
-AB = ANG2BOHR
-zmat = [
-    ZLine("C"),
-    ZLine("C", 0, 1.510486*AB),
-    ZLine("N", 0, 1.459785*AB, 1, 112.257683),
-    ZLine("O", 1, 1.220389*AB, 0, 118.653885, 2, -179.541229),
-    ZLine("O", 1, 1.353023*AB, 0, 122.591621, 2, 0.825231),
-]
-
-geom = geom_from_zmat(zmat)
-# geom.jmol()
-with open("from_zmat.xyz", "w") as handle:
-    handle.write(geom.as_xyz())
-
-
-reference = geom_loader("glycine_noh.xyz")
-rmsd = kabsch_rmsd(geom.coords3d, reference.coords3d, translate=True)
-print("rmsd", rmsd)
-assert rmsd == pytest.approx(0., abs=1e-6)
