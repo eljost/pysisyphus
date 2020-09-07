@@ -900,6 +900,13 @@ class Geometry:
         radius = (distances.max() / 2) + offset
         return radius
 
+    def without_hydrogens(self):
+        atoms_no_h, coords3d_no_h = zip(*[
+            (atom, coords) for atom, coords in zip(self.atoms, self.coords3d)
+            if atom.lower() != "h"
+        ])
+        return Geometry(atoms_no_h, np.array(coords3d_no_h).flatten())
+
     def __str__(self):
         return f"Geometry({self.sum_formula})"
 

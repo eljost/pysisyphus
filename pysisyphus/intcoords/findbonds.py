@@ -12,7 +12,7 @@ def get_pair_covalent_radii(atoms):
     return pair_cov_radii
 
 
-def get_bond_mat(geom=None, bond_factor=1.3):
+def get_bond_mat(geom, bond_factor=1.3):
     cdm = pdist(geom.coords3d)
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
