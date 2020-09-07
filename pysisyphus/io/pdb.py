@@ -145,7 +145,7 @@ def atoms_coords_to_pdb_str(atoms, coords):
 
     pdb_tpl = Template(textwrap.dedent(
     """\
-    REMARK 1 Created by pysisyphus"
+    REMARK 1 Created by pysisyphus
     {%+ for line in lines -%}
     {{ line }}
     {%+ endfor -%} 
