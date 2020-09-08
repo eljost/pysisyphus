@@ -197,7 +197,7 @@ class GrowingString(GrowingChainOfStates):
         if (not tangents) and (self.param == "energy") and self.fully_grown:
             u = self.get_cur_param_density(kind="energy")
         else:
-            u = None
+            u = self.get_cur_param_density()
         reshaped = self.coords.reshape(-1, self.coords_length)
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
