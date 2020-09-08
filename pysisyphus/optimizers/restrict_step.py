@@ -20,6 +20,5 @@ def get_scale_max(max_element):
 def restrict_step(steps, max_step):
     too_big = np.abs(steps) > max_step
     signs = np.sign(steps[too_big])
-    # import pdb; pdb.set_trace()
     steps[too_big] = signs * max_step
     return steps
