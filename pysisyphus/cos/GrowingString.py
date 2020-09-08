@@ -84,6 +84,8 @@ class GrowingString(GrowingChainOfStates):
 
             mean_energies = (prev_energies[1:] + prev_energies[:-1]) / 2
             weights = mean_energies - prev_energies.min()
+            # This damps everything a bit.
+            weights = np.sqrt(weights)
             param_density = [0, ]
             for weight, diff in zip(weights, norms[1:]):
                 assert weight > 0.
