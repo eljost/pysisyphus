@@ -15,16 +15,14 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 
 class StringOptimizer(Optimizer):
 
-    def __init__(self, geometry, gamma=1.25, max_step=0.1, stop_in_when_full=-1,
+    def __init__(self, geometry, max_step=0.1, stop_in_when_full=-1,
                  keep_last=10, lbfgs_when_full=True, gamma_mult=False,
-                 double_damp=False, **kwargs):
+                 double_damp=False, scale_step="global", **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         assert self.is_cos, \
             "StringOptimizer is only intended to be used with COS objects."
 
-        # gamma = 1.25 Hartree/Bohr² ~ 5 Hartree/Angstrom²
-        self.gamma = float(gamma)
         self.stop_in_when_full = int(stop_in_when_full)
         self.keep_last = int(keep_last)
         assert self.keep_last >= 0
@@ -33,6 +31,8 @@ class StringOptimizer(Optimizer):
             print("lbfgs_when_full is True, but keep_last is 0!")
         self.gamma_mult = bool(gamma_mult)
         self.double_damp = bool(double_damp)
+        self.scale_step = scale_step
+        assert self.scale_step in ("global", "per_image")
 
         # Add one as we later subtract 1 before we check if this value is 0.
         self.stop_in = self.stop_in_when_full + 1
@@ -136,6 +136,12 @@ class StringOptimizer(Optimizer):
             step = forces + beta*self.steps[-1]
             self.log(f"Conjugate gradient correction, β={beta:.6f}")
 
-        step = scale_by_max_step(step, self.max_step)
+        if self.scale_step == "global":
+            step = scale_by_max_step(step, self.max_step)
+        elif self.scale_step == "per_image":
+            for image_step in step.reshape(len(self.geometry.images), -1):
+                scale_by_max_step(image_step, self.max_step)
+        else:
+            raise Exception("Invalid scale_step={self.scale_step}!")
 
         return step
