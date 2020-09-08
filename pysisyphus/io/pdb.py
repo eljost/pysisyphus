@@ -149,8 +149,7 @@ def atoms_coords_to_pdb_str(atoms, coords):
     {%+ for line in lines -%}
     {{ line }}
     {%+ endfor -%} 
-    END""")
-    )
+    END"""))
 
     pdb_str = pdb_tpl.render(lines=lines)
     return pdb_str
