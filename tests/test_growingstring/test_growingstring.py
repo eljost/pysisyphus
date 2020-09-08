@@ -27,7 +27,6 @@ def test_anapot_growing_string(keep_last, ref_cycle):
     gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
 
     opt_kwargs = {
-        "gamma": 10.,
         # "stop_in_when_full": 3,
         "stop_in_when_full": keep_last,
         "keep_last": keep_last,
@@ -35,46 +34,11 @@ def test_anapot_growing_string(keep_last, ref_cycle):
     opt = StringOptimizer(gs, **opt_kwargs)
     opt.run()
 
-    assert opt.is_converged
-    assert opt.cur_cycle == ref_cycle
-
     # calc = AnaPot()
     # calc.anim_opt(opt, show=True)
 
-
-@pytest.mark.skip
-def test_mullerbrown_string():
-    calc = MullerBrownPot()
-    geoms = calc.get_path(num=17)
-
-    gs_kwargs = {
-        # "perp_thresh": 5.0,
-        "perp_thresh": 2.50,
-        "reparam_check": "rms",
-        "max_nodes": 15,
-    }
-    # Reuse same calculator throughout, as the sympy call takes a while...
-    gs = GrowingString(geoms, lambda: calc, **gs_kwargs)
-
-    opt_kwargs = {
-        "keep_last": 10,
-        "lbfgs_when_full": True,
-        # "gamma_mult": True,
-        # "max_step": 0.04,
-        "gamma": 50,
-        "max_step": 0.1,
-        "max_cycles": 175,
-        # "check_coord_diffs": False,
-        # "rms_force": 1,
-        # "rms_force_only": True,
-    }
-    opt = StringOptimizer(gs, **opt_kwargs)
-    opt.run()
-
-    calc.anim_opt(opt, show=True)
-
-    # assert opt.is_converged
-    # assert opt.cur_cycle == 67
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycle
 
 
 @pytest.mark.parametrize(
@@ -94,7 +58,6 @@ def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
     cos = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
 
     opt_kwargs = {
-        "gamma": 10.,
         "gamma_mult": True,
         "max_step": 0.04,
         "rms_force": 0.1,
@@ -117,14 +80,40 @@ def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
     assert tsopt.cur_cycle == tsopt_ref_cycle
 
 
-@pytest.mark.skip
-def test_energy_reparametrization():
+def test_mullerbrown_string():
     calc = MullerBrownPot()
     geoms = calc.get_path(num=17)
 
     gs_kwargs = {
         "perp_thresh": 5.0,
-        "reparam_check": "rms",
+        "max_nodes": 15,
+    }
+    # Reuse same calculator throughout, as the sympy call takes a while...
+    gs = GrowingString(geoms, lambda: calc, **gs_kwargs)
+
+    opt_kwargs = {
+        "keep_last": 10,
+        "lbfgs_when_full": True,
+        "gamma_mult": True,
+        "max_step": 0.03,
+        "max_cycles": 100,
+        "scale_step": "per_image",
+    }
+    opt = StringOptimizer(gs, **opt_kwargs)
+    opt.run()
+
+    # calc.anim_opt(opt, show=True)
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 61
+
+
+def test_energy_reparametrization():
+    calc = MullerBrownPot()
+    geoms = calc.get_path(num=17)
+
+    gs_kwargs = {
+        "perp_thresh": 2.5,
         "max_nodes": 15,
         "param": "energy",
     }
@@ -134,20 +123,18 @@ def test_energy_reparametrization():
     opt_kwargs = {
         "keep_last": 10,
         "lbfgs_when_full": True,
-        "gamma_mult": True,
-        "max_step": 0.04,
-        "max_cycles": 125,
-        "rms_force": 0.5,
+        "max_step": 0.02,
+        "max_cycles": 200,
+        "rms_force": 7.5,
         "rms_force_only": True,
-        "check_coord_diffs": False,
     }
     opt = StringOptimizer(gs, **opt_kwargs)
     opt.run()
 
-    calc.anim_opt(opt, show=True, energy_profile=True)
+    # calc.anim_opt(opt, show=True, energy_profile=True)
 
     assert opt.is_converged
-    assert opt.cur_cycle == 68
+    assert opt.cur_cycle == 77
 
 
 def test_conjugate_gradient():
@@ -160,7 +147,6 @@ def test_conjugate_gradient():
     gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
 
     opt_kwargs = {
-        "gamma": 10.,
         "keep_last": 0,
         "rms_force": 0.02,
         "rms_force_only": True,
