@@ -23,7 +23,7 @@ class IRC:
                  downhill=False, forward=True, backward=True,
                  mode=0, hessian_init=None,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=3e-3, force_inflection=True,
+                 rms_grad_thresh=3e-3, energy_thresh=1e-6, force_inflection=True,
                  dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
@@ -49,6 +49,7 @@ class IRC:
         self.displ_energy = float(displ_energy)
         self.displ_length = float(displ_length)
         self.rms_grad_thresh = float(rms_grad_thresh)
+        self.energy_thresh = float(energy_thresh)
         self.force_inflection = force_inflection
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
@@ -300,7 +301,7 @@ class IRC:
             # TODO: Allow some threshold?
             elif this_energy > last_energy:
                 break_msg = "Energy increased!"
-            elif abs(last_energy - this_energy) <= 1e-6:
+            elif abs(last_energy - this_energy) <= self.energy_thresh:
                 break_msg = "Energy converged!"
                 self.converged = True
 

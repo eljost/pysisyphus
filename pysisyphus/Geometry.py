@@ -11,6 +11,7 @@ import rmsd
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
 from pysisyphus.intcoords.DLC import DLC
@@ -284,7 +285,7 @@ class Geometry:
         try:
             layers = self.calculator.layers
         except AttributeError:
-            layers = ()
+            layers = (None, )
         return layers
 
     def clear(self):
@@ -294,9 +295,10 @@ class Geometry:
         self._forces = None
         self._hessian = None
 
-    def set_calculator(self, calculator):
+    def set_calculator(self, calculator, clear=True):
         """Reset the object and set a calculator."""
-        self.clear()
+        if clear:
+            self.clear()
         self.calculator = calculator
 
     @property
@@ -696,6 +698,17 @@ class Geometry:
         mm_sqrt = np.diag(self.masses_rep**0.5)
         return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
 
+    def get_imag_frequencies(self, hessian=None, thresh=1e-6):
+        if hessian is None:
+            hessian = self.cart_hessian
+
+        mw_hessian = self.mass_weigh_hessian(hessian)
+        proj_hessian = self.eckart_projection(mw_hessian)
+        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+        neg_inds = eigvals < thresh
+        neg_eigvals = eigvals[neg_inds]
+        return eigval_to_wavenumber(neg_eigvals)
+
     def get_trans_rot_vectors(self):
         return get_trans_rot_vectors(self.cart_coords, masses=self.masses)
 
@@ -770,7 +783,9 @@ class Geometry:
             Current geometry as string in XYZ-format.
         """
         coords = self._coords * BOHR2ANG
-        return make_xyz_str(self.atoms, coords.reshape((-1,3)), self.comment)
+        if comment == "":
+            comment = self.comment
+        return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
     def get_subgeom(self, indices, coord_type="cart"):
         """Return a Geometry containing a subset of the current Geometry.
@@ -884,6 +899,13 @@ class Geometry:
 
         radius = (distances.max() / 2) + offset
         return radius
+
+    def without_hydrogens(self):
+        atoms_no_h, coords3d_no_h = zip(*[
+            (atom, coords) for atom, coords in zip(self.atoms, self.coords3d)
+            if atom.lower() != "h"
+        ])
+        return Geometry(atoms_no_h, np.array(coords3d_no_h).flatten())
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"

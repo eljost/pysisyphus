@@ -5,7 +5,7 @@ from collections import namedtuple
 import copy
 import itertools
 import os
-from math import ceil, floor
+from math import ceil, floor, modf
 from pathlib import Path
 from pprint import pprint
 import re
@@ -29,7 +29,8 @@ from pysisyphus.color import bool_color
 # from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import confirm_input, shake_coords, \
-                               highlight_text, do_final_hessian, print_barrier
+                               highlight_text, do_final_hessian, print_barrier, \
+                               get_tangent_trj_str
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.init_logging import init_logging
@@ -78,6 +79,7 @@ COS_DICT = {
 
 OPT_DICT = {
     "cg": ConjugateGradient.ConjugateGradient,
+    "bfgs": BFGS.BFGS,
     "fire": FIRE.FIRE,
     "lbfgs": LBFGS.LBFGS,
     "nc": NCOptimizer.NCOptimizer,
@@ -213,75 +215,111 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
 
 
 def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
-                       ovlp_thresh=.3):
+                       ovlp_thresh=.4, hei_kind="splined"):
     print(highlight_text(f"Running TS-optimization from COS"))
 
-    first_cos_energy = cos.images[0].energy
-    last_cos_energy = cos.images[-1].energy
+    # Later want a Cartesian HEI tangent, so if not already present we create
+    # a Cartesian COS object to obtain the tangent from.
+    atoms = cos.images[0].atoms
+    if cos.coord_type != "cart":
+        cart_images = list()
+        for image in cos.images:
+            cart_image = Geometry(atoms, image.cart_coords)
+            cart_image.energy = image.energy
+            cart_images.append(cart_image)
+        cart_cos = ChainOfStates.ChainOfStates(cart_images)
+    # Just continue using the Cartesian COS object
+    else:
+        cart_cos = cos
 
-    # Use plain HEI
-    hei_index = cos.get_hei_index()
-    print(f"Index of highest energy image (HEI) is {hei_index}.")
+    # Use plain, unsplined, HEI
+    if hei_kind == "plain":
+        hei_index = cos.get_hei_index()
+        hei_image = cos.images[hei_index]
+        # Select the Cartesian tangent from the COS
+        cart_hei_tangent = cart_cos.get_tangent(hei_index)
+    # Use splined HEI
+    elif hei_kind == "splined":
+        # The splined HEI tangent is usually very bady for the purpose of
+        # selecting an imaginary mode to follow uphill. So we construct a better
+        # HEI tangent by mixing the two tangents closest to the splined HEI.
+        hei_coords, hei_energy, splined_hei_tangent, hei_index = cos.get_splined_hei()
+        hei_image = Geometry(atoms, hei_coords)
+        # The hei_index is a float. We split off the decimal part and mix the two
+        # nearest tangents accordingly.
+        frac, floor = modf(hei_index)
+        # Indices of the two nearest images with integer indices.
+        floor = int(floor)
+        ceil = floor + 1
+        floor_tangent = cart_cos.get_tangent(floor)
+        ceil_tangent = cart_cos.get_tangent(ceil)
+        print(f"Creating mixed HEI tangent, using tangents at images {(floor, ceil)}.")
+        print("Overlap of splined HEI tangent with these tangents:")
+        for ind, tang in ((floor, floor_tangent), (ceil, ceil_tangent)):
+            print(f"\t{ind:02d}: {splined_hei_tangent.dot(tang):.6f}")
+        # When frac is big, e.g. 0.9 the tangent resembles the tangent at 'ceil'
+        # so we mix in only (1-frac) == (1-0.9) == 0.1 of the 'floor' tangent.
+        cart_hei_tangent = (1-frac)*floor_tangent + frac*ceil_tangent
+        cart_hei_tangent /= np.linalg.norm(cart_hei_tangent)
+        # print(f"\t(1-{frac:.4f})*t({floor})+{frac:.4f}*t({ceil}): "
+              # f"{splined_hei_tangent.dot(cart_hei_tangent):.6f}"
+        # )
+    else:
+        raise Exception(f"Invalid hei_kind='{hei_kind}'!")
+
+    print(f"Index of {hei_kind} highest energy image (HEI) is {hei_index:.2f}.")
     print()
-    hei_image = cos.images[hei_index]
+
+    # When the COS was optimized in internal coordinates the united primitive
+    # indices are already present and we just keep on using them.
     try:
         prim_indices = hei_image.internal.prim_indices
+    # If the COS was optimized in Cartesians we have to generated a new
+    # set of primitive internals.
     except AttributeError:
         def get_int_geom(geom):
             return Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
         internal_geom1 = get_int_geom(cos.images[0])
         internal_geom2 = get_int_geom(cos.images[-1])
         prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
+
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
                        coord_type="redund",
                        coord_kwargs={"prim_indices": prim_indices,},
     )
 
-    hei_tangent = cos.get_tangent(hei_index)
-    # Convert tangent to redundant internals
-    if cos.coord_type == "dlc":
-        redund_tangent = hei_image.internal.Ut_inv @ hei_tangent
-    elif cos.coord_type == "cart":
-        redund_tangent = ts_geom.internal.B_prim @ hei_tangent
-    else:
-        raise Exception("Unknown coord_type!")
-    # The tangent is probably not normalized anymore
+    # Convert tangent from whatever coordinates to redundant internals.
+    # When the HEI was splined the tangent will be in Cartesians.
+    redund_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
     redund_tangent /= np.linalg.norm(redund_tangent)
 
-    # Also create a cartesian tangent
-    atoms = cos.images[0].atoms
-    cart_images = list()
-    for image in cos.images:
-        cart_image = Geometry(atoms, image.cart_coords)
-        cart_image.energy = image.energy
-        cart_images.append(cart_image)
-    cart_cos = ChainOfStates.ChainOfStates(cart_images)
-    cart_hei_index = cart_cos.get_hei_index()
-    cart_hei_tangent = cart_cos.get_tangent(cart_hei_index)
+    # Dump HEI data
+    #
+    # Cartesian tangent and an animated .trj file
     cart_hei_fn = "cart_hei_tangent"
     np.savetxt(cart_hei_fn, cart_hei_tangent)
-
-    # Use splined HEI
-    # hei_coords, hei_energy, hei_tangent = cos.get_splined_hei()
-    # ts_geom = Geometry(cos.images[0].atoms, hei_coords, coord_type="redund")
+    trj = get_tangent_trj_str(ts_geom.atoms, ts_geom.cart_coords,
+                              cart_hei_tangent, points=10
+    )
+    trj_fn = cart_hei_fn + ".trj"
+    with open(trj_fn, "w") as handle:
+        handle.write(trj)
+    print(f"Wrote animated HEI tangent to {trj_fn}\n")
 
     # Print HEI information (coords & tangent)
-    print("Splined HEI (TS guess)")
+    print(f"{hei_kind.capitalize()} HEI (TS guess)")
     print(ts_geom.as_xyz())
     print()
     dummy = Geometry(atoms, cart_hei_tangent)
-    print("Cartesian HEI tangent")
+    print(f"{hei_kind.capitalize()} Cartesian HEI tangent")
     print(dummy.as_xyz())
     print()
 
     # Write out HEI information (coords & tangent)
-    hei_xyz_fn = "splined_hei.xyz"
+    hei_xyz_fn = f"{hei_kind}_hei.xyz"
     with open(hei_xyz_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
-    print(f"Wrote splined HEI coordinates to '{hei_xyz_fn}'")
-    hei_tangent_fn = "splined_hei_tangent"
-    np.savetxt("hei_tangent", hei_tangent)
-    print(f"Wrote splined HEI tangent to '{hei_tangent_fn}'")
+    print(f"Wrote {hei_kind} HEI coordinates to '{hei_xyz_fn}'")
 
     ts_calc = calc_getter()
     ts_geom.set_calculator(ts_calc)
@@ -304,6 +342,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     else:
         # Determine which imaginary mode has the highest overlap
         # with the splined HEI tangent.
+        print(f"Calculating Hessian at {hei_kind} TS guess.")
         eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
         neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
@@ -319,17 +358,38 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
                 "HEI tangent."
         )
         max_ovlp = ovlps[max_ovlp_ind]
-        if max_ovlp >= ovlp_thresh:
-            root = np.argmax(ovlps)
-        else:
-            root = neg_eigvals.argmin()
-            neg_eigval = neg_eigvals[root]
-            print(f"Highest overlap {max_ovlp:.6f} is below the threshold "
-                  f"of {ovlp_thresh:.6f}. Selecting mode {root} with most "
-                  f"negative eigenvalue {neg_eigval} instead."
+        rel_ovlps = np.array(ovlps) / max(ovlps)
+        similar_inds = rel_ovlps > .85
+        # Only 1 big overlap is present
+        if (max_ovlp >= ovlp_thresh) and (similar_inds.sum() == 1):
+            ovlp_root = np.argmax(ovlps)
+        # Multiple big and similar overlaps are present.
+        elif (max_ovlp >= ovlp_thresh) and (similar_inds.sum() > 1):
+            # Will yield the first occurence of True, which corresponds to a
+            # similar overlaps with the most negative eigenvalue.
+            ovlp_root = similar_inds.argmax()
+            neg_eigval = neg_eigvals[ovlp_root]
+            verbose_inds = np.arange(neg_eigvals.size)[similar_inds]
+            print(f"Overlaps {verbose_inds} are very similar! Falling back to the "
+                    f"one with the most negative eigenvalue {neg_eigval:.6f} "
+                    f"(mode {ovlp_root})."
             )
-        # Use mode with highest overlap as initial root
-        tsopt_kwargs["root"] = root
+        # Fallback to the most negative eigenvalue when all overlaps are too low.
+        else:
+            ovlp_root = neg_eigvals.argmin()
+            neg_eigval = neg_eigvals[ovlp_root]
+            print(f"Highest overlap {max_ovlp:.6f} is below the threshold "
+                  f"of {ovlp_thresh:.6f}.\nFalling back to mode {ovlp_root} with most "
+                  f"negative eigenvalue {neg_eigval:.6f}."
+            )
+        root = tsopt_kwargs.get("root", None)
+        if root is None:
+            # Use mode with highest overlap as initial root
+            tsopt_kwargs["root"] = ovlp_root
+        else:
+            print(f"Initial root={root} given, neglecting root {ovlp_root} "
+                   "determined from overlaps."
+            )
         ts_opt = ts_optimizer(ts_geom, prefix="ts", **tsopt_kwargs)
 
     ts_opt.run()
@@ -347,9 +407,11 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     if do_hess and not ts_opt.stopped:
         print()
         do_final_hessian(ts_geom, write_imag_modes=True)
+    print()
 
     ts_energy = ts_geom.energy
-    print()
+    first_cos_energy = cos.images[0].energy
+    last_cos_energy = cos.images[-1].energy
     print_barrier(ts_energy, first_cos_energy, "TS", "first COS image")
     print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
@@ -377,7 +439,7 @@ def run_calculations(geoms, calc_getter, path, calc_key, calc_kwargs,
     else:
         for i, geom in enumerate(geoms):
             start = time.time()
-            geom.calculator.run_calculation(geom.atoms, geom.coords)
+            geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
             if i < (len(geoms)-2):
                 try:
                     cur_calculator = geom.calculator
@@ -599,6 +661,7 @@ def run_opt(geom, calc_getter, opt_key, opt_kwargs,
     if do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
+        # final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
         do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
     print()
 
@@ -608,13 +671,9 @@ def run_opt(geom, calc_getter, opt_key, opt_kwargs,
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
-    # Avoids modifying the supplied geom. When the supplied geom originated
-    # from a previous TS optimization we want to retain it unmodified.
-    geom = geom.copy()
-
     calc = calc_getter(0)
     calc.base_name = "irc"
-    geom.set_calculator(calc)
+    geom.set_calculator(calc, clear=False)
 
     # Recreate geometry with Cartesian coordinates if needed.
     if geom.coord_type != "cart":
@@ -709,7 +768,10 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
         print("done")
     except FileExistsError:
         print("already exists")
-    xyzs = run_dict["xyz"]
+    if "geom" in run_dict:
+        xyzs = run_dict["geom"]["fn"]
+    else:
+        xyzs = run_dict["xyz"]
     print("Copying:")
     # When newlines are present we have an inline xyz formatted string
     if not "\n" in xyzs:
@@ -748,8 +810,9 @@ def get_defaults(conf_dict):
         "coord_type": "cart",
         "shake": None,
         "irc": None,
-        "add_prims": None,
+        "define_prims": None,
         "assert": None,
+        "geom": None,
     }
 
     mol_opt_defaults = {
@@ -838,6 +901,9 @@ def get_defaults(conf_dict):
     if "assert" in conf_dict:
         dd["assert"] = {}
 
+    if "geom" in conf_dict:
+        dd["geom"] = {}
+
     return dd
 
 
@@ -872,26 +938,28 @@ def setup_run_dict(run_dict):
     run_dict = get_defaults(run_dict)
     # Update nested entries that are dicts by themselves
     key_set = set(org_dict.keys())
-    for key in key_set & set(("cos", "opt", "interpol", "overlaps",
+    for key in (key_set & set(("cos", "opt", "interpol", "overlaps",
                               "stocastic", "tsopt", "shake", "irc",
-                              "preopt", "endopt", "assert")):
+                              "preopt", "endopt", "assert", "geom"))):
         try:
             run_dict[key].update(org_dict[key])
         except TypeError:
             print(f"Using default values for '{key}' section.")
     # Update non nested entries
     for key in key_set & set(("calc", "xyz", "pal", "coord_type",
-                              "add_prims")):
+                              "define_prims")):
         run_dict[key] = org_dict[key]
     return run_dict
 
 
 def dry_run(calc, geom):
     atoms, c3d = geom.atoms, geom.coords3d
-    inp = calc.prepare_input(atoms, c3d.flatten(), "force")
-    if not inp:
-        print("Calculator does not use an explicit input file!")
-        return
+
+    try:
+        inp = calc.prepare_input(atoms, c3d.flatten())
+    except Exception as err:
+        print(f"Calculator {calc} does not support '--dryrun'!\n")
+        raise err
     with open(calc.inp_fn, "w") as handle:
         handle.write(inp)
     print(f"Wrote input to {calc.inp_fn}.")
@@ -941,7 +1009,18 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
 
-    xyz = run_dict["xyz"]
+    # New geometry input
+    if run_dict["geom"]:
+        xyz = run_dict["geom"]["fn"]
+        coord_type = run_dict["geom"]["type"]
+        define_prims = run_dict["geom"].get("define_prims", None)
+        union = run_dict["geom"].get("union", None)
+    # Old geometry input
+    else:
+        xyz = run_dict["xyz"]
+        define_prims = run_dict["define_prims"]
+        coord_type = run_dict["coord_type"]
+        union = None
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -987,10 +1066,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         xyz = preopt_xyz
         sys.stdout.flush()
 
-    add_prims = run_dict["add_prims"]
-    coord_type = run_dict["coord_type"]
     geoms = get_geoms(xyz, interpolate, between, coord_type=coord_type,
-                      define_prims=add_prims)
+                      define_prims=define_prims, union=union)
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
 
@@ -999,6 +1076,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         dry_run(calc, geoms[0])
         return
 
+    # Create COS objects and supply a function that yields new Calculators,
+    # as needed for growing COS classes, where images are added over time.
     if run_dict["cos"]:
         cos_cls = COS_DICT[cos_key]
         if (issubclass(cos_cls, GrowingChainOfStates)
@@ -1040,8 +1119,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
             # Keep a backup of the optimized geometry
             if isinstance(opt_geom, ChainOfStates.ChainOfStates):
-                # Set some variables so they can later on be collected for the
-                # RunResult.
+                # Set some variables that are later collected into RunResult
                 cos = opt_geom
                 cos_opt = opt
                 # copy() is not present for ChainOfState objects, so we just keep
@@ -1068,6 +1146,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
                                           copy_final_geom="ts_opt.xyz"
                 )
             geom = ts_geom.copy()
+            # Try to transfer Hessian to new geometry, to avaoid recalculation.
+            if (ts_geom._hessian is not None):
+                geom._hessian = ts_geom._hessian
 
         #######
         # IRC #
@@ -1171,6 +1252,8 @@ def do_clean(force=False):
         "calculator*.grad",
         "image_*",
         "splined_ts_guess.xyz",
+        "splined_hei_tangent",
+        "cart_hei_tangent.trj",
         "dimer_ts.xyz",
         "dimer_pickle",
         "interpolated.geom_*.xyz",
@@ -1216,6 +1299,13 @@ def do_clean(force=False):
         "current_geometry.xyz",
         "*current_geometries.trj",
         "hess_calc_cyc*.h5",
+        "ts_hess_calc_cyc*.h5",
+        "hess_init_irc.h5",
+        "final_hessian.h5",
+        "ts_current_geometry.xyz",
+        "dimer_*",
+        "plain_hei_tangent",
+        "plain_hei.xyz",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -1301,7 +1391,7 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
 
     # Citation
     citation = "If pysisyphus benefitted your research please cite:\n\n" \
-               "\thttps://doi.org/10.1002/qua.26390\n"
+               "\thttps://doi.org/10.1002/qua.26390\n\nGood luck!\n"
     print(citation)
 
     run_dict_without_none = {k: v for k, v in run_dict.items()

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from collections import deque
 
 import numpy as np
@@ -113,12 +111,13 @@ class PreconLBFGS(Optimizer):
         P = None
         if self.precon:
             P = self.precon_getter(self.geometry.coords)
+            self.log("Calculated new preconditioner P")
             step = spsolve(P, forces)
 
         if self.cur_cycle > 0:
             self.grad_diffs.append(-forces - -self.forces[-2])
             self.steps_.append(self.steps[-1])
-            step = -bfgs_multiply(self.steps_, self.grad_diffs, forces, P=P)
+            step = bfgs_multiply(self.steps_, self.grad_diffs, forces, P=P)
 
         step_dir = step / np.linalg.norm(step)
 

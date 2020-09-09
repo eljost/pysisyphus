@@ -10,7 +10,6 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.testing import using_pyscf
 
 
-
 @using_pyscf
 @pytest.mark.parametrize(
     "name, geom, ref_energy",

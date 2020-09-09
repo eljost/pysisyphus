@@ -16,7 +16,7 @@ from scipy.spatial.distance import cdist
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.io import geom_from_pdb, save_hessian as save_h5_hessian
+from pysisyphus.io import geom_from_pdb, geom_from_cjson, save_hessian as save_h5_hessian
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -76,6 +76,8 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
         return geoms_from_trj(fn, **kwargs)
     elif fn.endswith(".pdb"):
         return geom_from_pdb(fn, **kwargs)
+    elif fn.endswith(".cjson"):
+        return geom_from_cjson(fn, **kwargs)
     else:
         raise Exception("Unknown filetype!")
 
@@ -342,10 +344,10 @@ def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
         rvl = [vec.dot(G) for vec in vl]
         rotated_vector_lists.append(rvl)
 
-    if hessian:
-        #rotated_hessian = G.dot(hessian).dot(G.T)
-        rotated_hessian = G.T.dot(hessian).dot(G)
-        #rotated_hessian = G*hessian*G.T
+    if hessian is not None:
+        # rotated_hessian = G.dot(hessian).dot(G.T)
+        # rotated_hessian = G.T.dot(hessian).dot(G)
+        rotated_hessian = G*hessian*G.T
     return rotated_vectors, rotated_vector_lists, rotated_hessian
 
 
@@ -422,6 +424,18 @@ def check_for_stop_sign():
             os.remove(ss)
             stop_sign_found = True
     return stop_sign_found
+
+
+def check_for_end_sign():
+    signs = ("stop", "converged", )
+    sign_found = False
+
+    for sign in signs:
+        if os.path.exists(sign):
+            print(f"Found sign '{sign}'. Ending run.")
+            os.remove(sign)
+            sign_found = sign
+    return sign_found
 
 
 def index_array_from_overlaps(overlaps, axis=1):
@@ -531,7 +545,7 @@ def complete_fragments(atoms, fragments):
 
 
 FinalHessianResult = namedtuple("FinalHessianResult",
-                                "neg_eigvals eigvals nus",
+                                "neg_eigvals eigvals nus imag_fns",
 )
 
 
@@ -576,10 +590,12 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
         save_h5_hessian(final_h5_hessian_fn, geom)
         print(f"Wrote HD5 Hessian to '{final_h5_hessian_fn}'.")
 
+    imag_fns = list()
     if write_imag_modes:
         imag_modes = imag_modes_from_geom(geom)
         for i, imag_mode in enumerate(imag_modes):
             trj_fn = prefix + f"imaginary_mode_{i:03d}.trj"
+            imag_fns.append(trj_fn)
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
@@ -588,6 +604,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
             neg_eigvals=neg_eigvals,
             eigvals=eigvals,
             nus=eigval_to_wavenumber(eigvals),
+            imag_fns=imag_fns,
     )
     return res
 

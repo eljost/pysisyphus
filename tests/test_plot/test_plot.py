@@ -26,7 +26,6 @@ def test_multi_run():
     gsm_kwargs = {
         "dump": True,
         "h5_group_name": "gsm",
-        "gamma": 10.,
         "stop_in_when_full": 0,
     }
     gsm_opt = StringOptimizer(gsm, **gsm_kwargs)

@@ -1,7 +1,3 @@
-#/!usr/bin/env python3
-
-# See [1] 10.1063/1.1691018
-
 import numpy as np
 from scipy.interpolate import splprep, splev
 
@@ -10,28 +6,42 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 
+# [1] https://aip.scitation.org/doi/abs/10.1063/1.1691018
+#     Peters, 2004
+# [2] https://aip.scitation.org/doi/abs/10.1063/1.4804162
+#     Zimmerman, 2013
+
+
 class GrowingString(GrowingChainOfStates):
 
-    def __init__(self, images, calc_getter, perp_thresh=0.05,
-                 reparam_every=3, reparam_tol=None, reparam_check="norm",
-                 **kwargs):
+    def __init__(self, images, calc_getter, perp_thresh=0.05, param="equi",
+                 reparam_every=2, reparam_every_full=3, reparam_tol=None,
+                 reparam_check="rms", max_micro_cycles=5, reset_dlc=False,
+                 climb=False, **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
             print("More than 2 images given. Will only use first and last image!")
-
-        super().__init__(images, calc_getter, **kwargs)
+        if climb:
+            climb = "one"
+        super().__init__(images, calc_getter, climb=climb, **kwargs)
 
         self.perp_thresh = perp_thresh
+        self.param = param
         self.reparam_every = int(reparam_every)
-        assert self.reparam_every >= 1
+        self.reparam_every_full = int(reparam_every_full)
+        assert self.reparam_every >= 1 and self.reparam_every_full >= 1, \
+            "reparam_every and reparam_every_full must be positive integers!"
         if reparam_tol is not None:
             self.reparam_tol = float(reparam_tol)
             assert self.reparam_tol > 0
         else:
             self.reparam_tol = 1 / (self.max_nodes + 2) / 2
-        self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4e}")
+        self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4f}")
         self.reparam_check = reparam_check
+        assert self.reparam_check in ("norm", "rms")
+        self.max_micro_cycles= int(max_micro_cycles)
+        self.reset_dlc = bool(reset_dlc)
 
         left_img, right_img = self.images
 
@@ -56,29 +66,35 @@ class GrowingString(GrowingChainOfStates):
         if self.coord_type == "cart":
             self.set_tangents()
 
-    def get_cur_param_density(self, kind="cart"):
-        if kind == "cart":
-            coords = np.array([image.cart_coords for image in self.images])
-            coords_ = coords.reshape(len(self.images), -1)
-            diffs = coords_ - coords_[0]
-        elif kind == "coords":
-            image0 = self.images[0]
-            # This way, even with DLC all differences will be given in the
-            # active set of image0.
-            diffs = np.array([image0-image for image in self.images])
-        else:
-            raise Exception("Invalid kind")
+        self.new_image_inds = list()
 
+    def get_cur_param_density(self, kind=None):
+        diffs = [image - self.images[max(i-1, 0)]
+                 for i, image in enumerate(self.images)]
         norms = np.linalg.norm(diffs, axis=1)
-        cur_param_density = norms / norms.max()
-        # Assert that the last (rightmost) image is also the one that is the
-        # farthest away from the first (leftmost) image.
-        assert norms[-1] == norms.max(), \
-            "Unexpected parametrization density. Expected the last " \
-            "(rightmost) image to be the farthest image, but this is " \
-            "not the case. Current parametrization density is: " \
-           f"{cur_param_density}."
-        return cur_param_density
+        param_density = np.cumsum(norms)
+        self.log(f"Current string length={param_density[-1]:.6f}")
+
+        # Energy weighted parametrization density
+        if kind == "energy":
+            prev_energies = np.array(self.all_energies[-1])
+
+            if len(prev_energies) != len(self.images):
+                return None
+
+            mean_energies = (prev_energies[1:] + prev_energies[:-1]) / 2
+            weights = mean_energies - prev_energies.min()
+            # This damps everything a bit.
+            weights = np.sqrt(weights)
+            param_density = [0, ]
+            for weight, diff in zip(weights, norms[1:]):
+                assert weight > 0.
+                param_density.append(param_density[-1] + weight*diff)
+
+        param_density = np.array(param_density)
+        param_density /= param_density[-1]
+
+        return param_density
 
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
@@ -111,7 +127,7 @@ class GrowingString(GrowingChainOfStates):
         #
         # Δparam_density / distance = self.sk / step
         # step = self.sk / Δparam_density * distance
-        cpd = self.get_cur_param_density("coords")
+        cpd = self.get_cur_param_density()
         # As we always want to step in the direction of 'distance' we just take
         # the absolute value of the difference, as we are not interested in the
         # sign.
@@ -134,30 +150,6 @@ class GrowingString(GrowingChainOfStates):
         self.images.insert(insert_ind, new_img)
         self.log(f"Created new image; inserted it before index {insert_ind}.")
         return new_img
-
-        # self.images.insert(insert_ind, new_img)
-        # # Take smaller steps, as the internal-cartesian-backconversion may be
-        # # unstable for bigger steps.
-        # steps = 10
-        # step = step_length * distance/steps
-        # for i in range(steps):
-            # new_coords = new_img.coords + step
-            # new_img.coords = new_coords
-            # cpd = self.get_cur_param_density("coords")
-            # try:
-                # if new_img.internal.backtransform_failed:
-                    # import pdb; pdb.set_trace()
-            # except AttributeError:
-                # pass
-            # print(f"{i:02d}: {cpd}")
-
-        # # self.images.insert(insert_ind, new_img)
-        # # self.log(f"Created new image; inserted it before index {insert_ind}.")
-
-        # cpd = self.get_cur_param_density("coords")
-        # self.log(f"Current param_density: {cpd}")
-
-        # return new_img
 
     @property
     def left_size(self):
@@ -203,237 +195,245 @@ class GrowingString(GrowingChainOfStates):
     def image_inds(self):
         return self.full_string_image_inds
 
-    def spline(self):
+    def spline(self, tangents=False):
+        if (not tangents) and (self.param == "energy") and self.fully_grown:
+            u = self.get_cur_param_density(kind="energy")
+        else:
+            u = self.get_cur_param_density()
         reshaped = self.coords.reshape(-1, self.coords_length)
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
         # Spline in batches as scipy can't handle > 11 rows at once
-        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3)
+        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3, u=u)
                          for i in range(0, len(transp_coords), 9)]
         )
         return tcks, us
 
-    def reparam_cart(self, tcks, param_density):
+    def reparam_cart(self, desired_param_density):
+        tcks, us = self.spline()
         # Reparametrize mesh
-        new_points = np.vstack([splev(param_density, tck) for tck in tcks])
+        new_points = np.vstack([splev(desired_param_density, tck) for tck in tcks])
         # Flatten along first dimension.
-        new_points = new_points.reshape(-1, len(self.images))
-        self.coords = new_points.transpose().flatten()
+        new_points = new_points.reshape(-1, len(self.images)).T
+        # With a climbing image we ignore the just splined coordinates for the CI
+        # and restore its original coordinates.
+        for index in self.get_climbing_indices():
+            new_points[index] = self.images[index].coords
+            self.log(f"Skipped reparametrization of climbing image {index}")
+        self.coords = new_points.flatten()
+        # In contrast to self.reparam_dlc() we don't check if the reparametrization
+        # succeeded because it can't fail ;)
 
-    # def reparam_dlc(self, cur_param_density, desired_param_density, thresh=1e-3):
-        # # Reparametrization will take place along the tangent between two
-        # # images. The index of the tangent image depends on wether the image
-        # # is above or below the desired param_density on the normalized arc.
-        # diffs = desired_param_density - cur_param_density
-        # # Negative sign: image is too far right and has to be shifted left.
-        # # Positive sign: image is too far left and has to be shifted right.
-        # signs = np.sign(diffs).astype(int)
-        # # TODO: multiple passes of this loop to get a tighter convergence,
-        # # so a lower atol can used in the np.testing method.
-        # for i, (diff, sign) in enumerate(zip(diffs, signs)):
-            # if abs(diff) < thresh:
-                # continue
-            # reparam_image = self.images[i]
-            # # Index of the tangent image. reparam_image will be shifted along
-            # # this direction to achieve the desired parametirzation density.
-            # tangent_ind = i + sign
-            # tangent_image = self.images[tangent_ind]
-            # distance = -(reparam_image - tangent_image)
-
-            # param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
-            # step_length = abs(diff) / param_dens_diff
-            # step = step_length * distance
-            # reparam_coords = reparam_image.coords + step
-            # reparam_image.coords = reparam_coords
-            # cur_param_density = self.get_cur_param_density("coords")
-        # np.testing.assert_allclose(cur_param_density, desired_param_density,
-                                   # # atol=max(5e-2, 5*thresh))
-                                   # atol=thresh)
-
-        # # Regenerate active set after reparametrization
-        # # [image.internal.set_active_set() for image in self.moving_images]
-
-    def reparam_dlc(self, cur_param_density, desired_param_density, thresh=1e-3):
+    def reparam_dlc(self, desired_param_density, thresh=1e-3):
+        climbing_indices = self.get_climbing_indices()
         # Reparametrization will take place along the tangent between two
         # images. The index of the tangent image depends on wether the image
         # is above or below the desired param_density on the normalized arc.
-
-        # This implementation assumes that the reparametrization step take is not
-        # too big, so the internal-cartesian-transformation doesn't fail.
-        # Adding new images is done with smaller steps to avoid this problem.
-        # As every images is added only once, but may be reparametrized quite often
-        # we try to do the reparametrization in one step.
-        # A safer approach would be to do it in multiple smaller steps.
-
+        #
+        # The reparametrization is done in micro cycles, until it is converged.
+        cur_param_density = self.get_cur_param_density()
+        self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
-            diff = (desired_param_density - cur_param_density)[i]
-            # Negative sign: image is too far right and has to be shifted left.
-            # Positive sign: image is too far left and has to be shifted right.
-            sign = int(np.sign(diff))
-            if abs(diff) < thresh:
+            if i in climbing_indices:
+                self.log(f"Skipped reparametrization of climbing image {i}")
                 continue
-            # Index of the tangent image. reparam_image will be shifted along
-            # this direction to achieve the desired parametirzation density.
-            tangent_ind = i + sign
-            tangent_image = self.images[tangent_ind]
-            distance = -(reparam_image - tangent_image)
+            self.log(f"Reparametrizing node {i}")
+            for j in range(self.max_micro_cycles):
+                diff = (desired_param_density - cur_param_density)[i]
+                self.log(f"\t{j}: Δ={diff: .6f}")
+                # Do at least one pass
+                if (j > 0) and (abs(diff) < thresh):
+                    break
+                # Negative sign: image is too far right and has to be shifted left.
+                # Positive sign: image is too far left and has to be shifted right.
+                sign = int(np.sign(diff))
+                # Index of the tangent image. reparam_image will be shifted along
+                # this direction to achieve the desired parametirzation density.
+                tangent_ind = i + sign
+                tangent_image = self.images[tangent_ind]
+                rl = "right" if sign > 0 else "left"
+                self.log(f"\t... shifting {rl} towards image {tangent_ind}")
+                distance = -(reparam_image - tangent_image)
 
-            param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
-            step_length = abs(diff) / param_dens_diff
-            step = step_length * distance
-            reparam_coords = reparam_image.coords + step
-            reparam_image.coords = reparam_coords
-            cur_param_density = self.get_cur_param_density("coords")
+                param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
+                step_length = abs(diff) / param_dens_diff
+                step = step_length * distance
+                reparam_coords = reparam_image.coords + step
+                reparam_image.coords = reparam_coords
+                cur_param_density = self.get_cur_param_density()
+            else:
+                self.log(f"Reparametrization of node {i} did not converge after "
+                         f"{self.max_micro_cycles} cycles. Breaking!")
+                break
 
         cpd_str = np.array2string(cur_param_density, precision=4)
-        self.log(f"Current param density: {cpd_str}")
-        np.testing.assert_allclose(cur_param_density, desired_param_density,
-                                   atol=self.reparam_tol)
+        self.log(f"Param density after reparametrization: {cpd_str}")
+
+        # This check is disabled at it is not really applicable. While we reparametrize
+        # the images the string size may vary wildly, at least in the beginning. Lets
+        # say after reparametrization the distance vector between image 0 and 1 is of
+        # magnitude 1 and the overall string length is 10. Then image 1 is at 0.1 w.r.t.
+        # the parametrization density. If we reparametrize the remaining images the over-
+        # all string size may be 8, and now image 1 suddenly sits at 1/8 = 0.125, which
+        # may be already above the allowed threshold.
+        # Over time the string size will equilibrate and the desired parametrization
+        # density will actually be realized.
+        # try:
+            # # Dont check climbing images
+            # np.testing.assert_allclose(
+                # np.delete(cur_param_density, climbing_indices),
+                # np.delete(desired_param_density, climbing_indices),
+                # atol=self.reparam_tol
+            # )
+        # except AssertionError as err:
+            # trj_str = self.as_xyz()
+            # fn = "failed_reparametrization.trj"
+            # with open(fn, "w") as handle:
+                # handle.write(trj_str)
+            # print(f"Wrote coordinates of failed reparametrization to '{fn}'")
+            # raise err
 
         # Regenerate active set after reparametrization
-        # [image.internal.set_active_set() for image in self.moving_images]
+        if self.reset_dlc and not self.fully_grown:
+            [image.internal.set_active_set() for image in self.moving_images]
+            self.log(f"Created new DLCs for {len(self.images)} string images.")
+        elif self.reset_dlc:
+            self.log("Skipping creation of new DLCs, as string is already fully grown.")
+
+    # def set_tangents(self):
+        # """THIS METHOD IS DISABLED BY REDEFINITION BELOW AS THE SPLINED TANGENTS
+        # SEEM BAD.
+
+        # Tangent-calculation by splining requires the information of all
+        # images at once. To avoid the repeated splining of all images whenever
+        # a tangent is requested this method calculates all tangents and stores
+        # them in the self._tangents, that can be accessed via the self.tangents
+        # property.
+
+        # !!! Right now one must not forget to call this method
+        # after coordinate modification, e.g. after
+        # reparametrization!  Otherwise wrong (old) tangets are used. !!!
+        # """
+
+        # tcks, us = self.spline(tangents=True)
+        # Sk, cur_mesh = self.arc_dims
+        # self.log(f"Total arclength Sk={Sk:.4f}")
+        # tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
+        # norms = np.linalg.norm(tangents, axis=1)
+        # tangents = tangents / norms[:,None]
+        # # Tangents of the right string shall point towards the center, so
+        # # we reverse their orientation.
+        # tangents[self.rf_ind:] *= -1
+        # self._tangents = tangents
 
     def set_tangents(self):
-        """Set tangents as given by the first derivative of a cubic spline.
-
-        Tangent-calculation by splining requires the information of all
-        images at once. To avoid the repeated splining of all images whenever
-        a tangent is requested this method calculates all tangents and stores
-        them in the self._tangents, that can be accessed via the self.tangents
-        property.
-
-        !!! Right now one must not forget to call this method
-        after coordinate modification, e.g. after
-        reparametrization!  Otherwise wrong (old) tangets are used. !!!
-        """
-
-        tcks, us = self.spline()
-        Sk, cur_mesh = self.arc_dims
-        self.log(f"Total arclength Sk={Sk:.4f}")
-        tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
-        norms = np.linalg.norm(tangents, axis=1)
-        tangents = tangents / norms[:,None]
-        # Tangents of the right string shall point towards the center, so
-        # we reverse their orientation.
-        tangents[self.rf_ind:] *= -1
-        self._tangents = tangents
+        pass
 
     def get_tangent(self, i):
-        # Use splined tangents with cartesian coordinates
-        if self.coord_type == "cart":
-            return self._tangents[i]
-
-        # With DLC we can use conventional tangents that can be calculated
-        # without splining.
-
-        # Upwinding tangent when the string is fully grown.
-        if self.fully_grown:
-            return super().get_tangent(i, kind="upwinding")
-
-        # During the growth phase we use simple tangents that always point
-        # towards the center of the string.
-        cur_image = self.images[i]
-        if i <= self.lf_ind:
-            next_ind = i + 1
+        if not self.fully_grown and i in (self.lf_ind, self.rf_ind):
+            next_ind = i+1 if (i <= self.lf_ind) else i-1
+            tangent = self.images[next_ind] - self.images[i]
+            tangent /= np.linalg.norm(tangent)
         else:
-            next_ind = i - 1
-        next_image = self.images[next_ind]
-        tangent = next_image - cur_image
-        tangent /= np.linalg.norm(tangent)
+            tangent = super().get_tangent(i, kind="upwinding")
         return tangent
 
     @ChainOfStates.forces.getter
     def forces(self):
         if self._forces is None:
             self.calculate_forces()
-
         indices = range(len(self.images))
-        perp_forces = [self.get_perpendicular_forces(i) for i in indices]
-        self._forces = np.array(perp_forces).flatten()
-        self.perp_forces_list.append(self._forces.copy())
-        # TODO: Add climbing modification
-        # total_forces = self.set_climbing_forces(total_forces)
+        # In constrast to NEB calculations we only use the perpendicular component
+        # of the force, without any spring forces. A desired image distribution is
+        # achieved via periodic reparametrization.
+        perp_forces = np.array([self.get_perpendicular_forces(i) for i in indices])
+        self.perp_forces_list.append(perp_forces.copy().flatten())
+        # Add climbing forces
+        total_forces = self.set_climbing_forces(perp_forces)
+        self._forces = total_forces.flatten()
         return self._forces
 
     def reparametrize(self):
-        # Non-fully-grown strings are reparametrized every cycle
-        can_reparametrize = True
+        reparametrized = False
+        # If this counter reaches 0 reparametrization will occur.
         self.reparam_in -= 1
-        # Fully-grown strings are reparametrized only every n-th cycle
-        if self.fully_grown and not (self.reparam_in == 0):
+
+        self.new_image_inds = list()
+        # Check if new images can be added for incomplete strings.
+        if not self.fully_grown:
+            perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
+            # Calculate norm and rms of the perpendicular force for every
+            # node/image on the string.
+            to_check = {
+                "norm": np.linalg.norm(perp_forces, axis=1),
+                "rms": np.sqrt(np.mean(perp_forces**2, axis=1)),
+            }
+            self.log(f"Checking frontier node convergence, threshold={self.perp_thresh:.6f}")
+            # We can add a new node if the norm/rms of the perpendicular force is below
+            # the threshold.
+            def converged(i):
+                cur_val = to_check[self.reparam_check][i]
+                is_converged = cur_val <= self.perp_thresh
+                conv_str = ", converged" if is_converged else ""
+                self.log(f"\tnode {i:02d}: {self.reparam_check}(perp_forces)={cur_val:.6f}"
+                         f"{conv_str}")
+                return is_converged
+
+            # New images are added with the same coordinates as the frontier image.
+            # We force reparametrization by setting self.reparam_in to 0 to get sane
+            # coordinates for the new image(s).
+            if converged(self.lf_ind):
+                # Insert at the end of the left string, just before the
+                # right frontier node.
+                new_left_frontier = self.get_new_image(self.lf_ind)
+                self.new_image_inds.append(self.left_size)
+                self.left_string.append(new_left_frontier)
+                self.log("Added new left frontier node.")
+                self.reparam_in = 0
+            # If an image was just grown in the left substring the string may now
+            # be fully grown, so we reavluate 'self.fully_grown' here.
+            if (not self.fully_grown) and converged(self.rf_ind):
+                # Insert at the end of the right string, just before the
+                # current right frontier node.
+                new_right_frontier = self.get_new_image(self.rf_ind)
+                self.new_image_inds.append(self.left_size)
+                self.right_string.append(new_right_frontier)
+                self.log("Added new right frontier node.")
+                self.reparam_in = 0
+            self.log(f"New image indices: {self.new_image_inds}")
+
+        self.log(
+            f"Current string size is {self.left_size}+{self.right_size}="
+            f"{self.string_size}. There are still {self.nodes_missing} "
+            "nodes to be grown."
+            if not self.fully_grown else "String is fully grown."
+        )
+
+        if self.reparam_in > 0:
             self.log("Skipping reparametrization. Next reparametrization in "
                      f"{self.reparam_in} cycles.")
-            self.set_tangents()
-            return False
+        else:
+            # Prepare image reparametrization
+            desired_param_density = self.sk*self.full_string_image_inds
+            pd_str = np.array2string(desired_param_density, precision=4)
+            self.log(f"Desired param density: {pd_str}")
 
-        # Spline displaced coordinates. 'tcks' contains all relevant information.
-        # These splines will be used to interpolate all present
-        # (already existing and new) images.
-        tcks, us = self.spline()
-
-        # Calculate the norm of the perpendicular force for every
-        # node/image on the string.
-        perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
-        perp_norms = np.linalg.norm(perp_forces, axis=1)
-        perp_rms = np.sqrt(np.mean(perp_forces**2, axis=1))
-
-        self.log( "Checking frontier node convergence, "
-                 f"threshold={self.perp_thresh:.6f}"
-        )
-        # We can add a new node if the norm of the perpendicular force
-        # on the frontier node(s) is below a threshold.
-        def converged(i):
-            if self.reparam_check == "norm":
-                is_converged = perp_norms[i] <= self.perp_thresh
-                conv_str = ", converged" if is_converged else ""
-                self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
-            elif self.reparam_check == "rms":
-                is_converged = perp_norms[i] <= self.perp_thresh
-                conv_str = ", converged" if is_converged else ""
-                self.log(f"\tnode {i:02d}: norm(perp_forces)={perp_norms[i]:.6f}{conv_str}")
+            # Reparametrize images.
+            if self.coord_type == "cart":
+                self.reparam_cart(desired_param_density)
+                self.set_tangents()
+            elif self.coord_type == "dlc":
+                self.reparam_dlc(desired_param_density, thresh=self.reparam_tol)
             else:
-                raise Exception(f"Invalid reparam_check='{self.reparam_check}'")
-            return is_converged
+                raise Exception("How did you get here?")
 
-        # We can add new nodes if the string is not yet fully grown
-        # and if the frontier nodes are converged below self.perp_thresh.
-        # Right now we add the new image(s) with a zero step, so they got
-        # the same coordinates as the respective frontier geometry.
-        # We then rely on reparametrization to assign the correct coordinates.
-        if (not self.fully_grown) and converged(self.lf_ind):
-            # Insert at the end of the left string, just before the
-            # right frontier node.
-            new_left_frontier = self.get_new_image(self.lf_ind)
-            self.left_string.append(new_left_frontier)
-            self.log("Added new left frontier node.")
-        if (not self.fully_grown) and converged(self.rf_ind):
-            # Insert at the end of the right string, just before the
-            # current right frontier node.
-            new_right_frontier = self.get_new_image(self.rf_ind)
-            self.right_string.append(new_right_frontier)
-            self.log("Added new right frontier node.")
+            self.reparam_in = self.reparam_every_full if self.fully_grown \
+                              else self.reparam_every
+            reparametrized = True
 
-        self.log(f"Current string size is {self.left_size}+{self.right_size}="
-                 f"{self.string_size}. There are still {self.nodes_missing} "
-                  "nodes to be grown."
-        )
-
-        # Prepare node reparametrization
-        desired_param_density = self.sk*self.full_string_image_inds
-        pd_str = np.array2string(desired_param_density, precision=4)
-        self.log(f"Desired param density: {pd_str}")
-
-        # TODO: Add some kind of threshold and only reparametrize when
-        # the deviation from the desired param_density is above the threshold.
         if self.coord_type == "cart":
-            self.reparam_cart(tcks, desired_param_density)
             self.set_tangents()
-        elif self.coord_type == "dlc":
-            cur_param_density = self.get_cur_param_density("coords")
-            self.reparam_dlc(cur_param_density, desired_param_density)
-        self.reparam_in = self.reparam_every
-
-        return True
+        return reparametrized
 
     def get_additional_print(self):
         size_str = f"{self.left_size}+{self.right_size}"

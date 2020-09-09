@@ -41,10 +41,9 @@ the code after installation do an editable (-e) installation with pip.
     cd $install_dir
     # Install with -e if you want an editable installation
     pip install [-e] .
-    # Installation of extras is also possible
-    # pip install [-e] .[qcengine,ase,pyscf]
-    # If you want to build the documentation
-    # pip install sphinx sphinx-rtd-theme
+    # Installation of extras is also possible. 'sphinx' is only needed if you
+    # want to build the documentation.
+    # pip install [-e] .[qcengine,ase,pyscf,sphinx]
 
 .. _pysisrc-label:
 

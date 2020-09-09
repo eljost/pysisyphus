@@ -25,14 +25,15 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn=2, acc=1.0, **kwargs):
-        super(XTB, self).__init__(**kwargs)
+    def __init__(self, gbsa="", gfn=2, acc=1.0, mem=1000, **kwargs):
+        super().__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
         self.acc = acc
+        self.mem = mem
 
-        valid_gfns = (1, 2)
+        valid_gfns = (1, 2, "ff")
         assert self.gfn in valid_gfns, "Invalid gfn argument. " \
             f"Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
@@ -64,19 +65,22 @@ class XTB(Calculator):
         return None
 
     def prepare_add_args(self):
-        add_args = (f"--gfn {self.gfn} --chrg {self.charge} --uhf {self.uhf} "
-                    f"--acc {self.acc}").split()
+        add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
         # Use solvent model if specified
         if self.gbsa:
             gbsa = f"--gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
+        # Select parametrization
+        gfn = ["--gfnff"] if self.gfn == "ff" else f"--gfn {self.gfn}".split()
+        add_args = add_args + gfn
         return add_args
 
     def get_pal_env(self):
         env_copy = os.environ.copy()
         env_copy["OMP_NUM_THREADS"] = str(self.pal)
         env_copy["MKL_NUM_THREADS"] = str(self.pal)
-        env_copy["OMP_STACKSIZE"] = "1000m"
+        # Per thread
+        env_copy["OMP_STACKSIZE"] = f"{self.mem}M"
 
         return env_copy
 

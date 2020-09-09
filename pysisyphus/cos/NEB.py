@@ -23,7 +23,7 @@ class NEB(ChainOfStates):
                  k_max=0.3, k_min=0.1, perp_spring_forces=None, **kwargs):
         super(NEB, self).__init__(images, **kwargs)
 
-        assert(k_max > k_min), "k_max has to be bigger than k_min!"
+        assert(k_max >= k_min), "k_max must be bigger or equal to k_min!"
         self.variable_springs = variable_springs
         self.k_max = k_max
         self.k_min = k_min
@@ -151,4 +151,5 @@ class NEB(ChainOfStates):
         )
         total_forces = self.set_climbing_forces(total_forces)
         self._forces = np.array(total_forces).flatten()
+
         return self._forces

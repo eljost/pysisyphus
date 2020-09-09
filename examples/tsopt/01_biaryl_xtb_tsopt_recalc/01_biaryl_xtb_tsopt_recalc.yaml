@@ -9,7 +9,7 @@ calc:
  charge: 0
  mult: 1
 xyz: shaked.geom_000.xyz
-add_prims: [[24, 20], ]
+define_prims: [[24, 20], ]
 coord_type: redund
 assert:
  ts_geom.energy: -65.29143582

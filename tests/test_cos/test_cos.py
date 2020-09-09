@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.Geometry import Geometry
@@ -57,7 +56,7 @@ def assert_cos_opt(opt, ref_cycle):
         (ConjugateGradient, {}, {}, 40, 5),
         (QuickMin, {"dt": 0.1,}, {}, 27, 5),
         (FIRE, {"dt_max": 0.2,}, {}, 42, 5),
-        (LBFGS, {}, {}, 10, 5),
+        (LBFGS, {"gamma_mult": True, }, {}, 12, 5),
 ])
 def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
     geoms = get_geoms()
@@ -176,3 +175,33 @@ def test_neb_springs(neb_kwargs, ref_cycle):
 
     assert(opt.is_converged)
     assert(opt.cur_cycle == ref_cycle)
+
+
+@pytest.mark.parametrize(
+    "k, ref_cycle", [
+        (  500, 70),
+        ( 1000, 56),
+        ( 2000, 62),
+        ( 4000, 78),
+    ]
+)
+def test_mullerbrown_neb(k, ref_cycle):
+    geoms = MullerBrownPot().get_path(num=17)
+    cos = NEB(geoms, k_max=k, k_min=k)
+    cos.printf = False
+    cos.onlyone = False
+
+    opt_kwargs = {
+        "max_step": 0.04,
+        "gamma_mult": True,
+        "keep_last": 10,
+        "max_cycles": 100,
+    }
+    opt = LBFGS(cos, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycle
+
+    # calc = MullerBrownPot()
+    # calc.anim_opt(opt, show=True)

@@ -12,8 +12,13 @@
 #     Wan, 2012
 # [5] Numerical optimization, 2nd ed.
 #     Nocedal, Wright
+# [6] https://arxiv.org/abs/2006.08877
+#     Goldfarb, 2020
+
 
 import numpy as np
+
+from pysisyphus.optimizers.closures import bfgs_multiply
 
 
 def bfgs_update(H, dx, dg):
@@ -38,6 +43,79 @@ def damped_bfgs_update(H, dx, dg):
                   / dxHdx
     )
     return first_term - second_term, "damped BFGS"
+
+
+def double_damp(s, y, H=None, s_list=None, y_list=None,
+                mu_1=0.2, mu_2=0.2, logger=None):
+    """Double damped step 's' and gradient differences 'y'.
+
+    H is the inverse Hessian!
+    See [6]. Potentially updates s and y. y is only
+    updated if mu_2 is not None.
+
+    Parameters
+    ----------
+    s : np.array, shape (N, ), floats
+        Coordiante differences/step.
+    y : np.array, shape (N, ), floats
+        Gradient differences
+    H : np.array, shape (N, N), floats, optional
+        Inverse Hessian.
+    s_list : list of nd.array, shape (K, N), optional
+        List of K previous steps. If no H is supplied and prev_ys is given
+        the matrix-vector product Hy will be calculated through the
+        two-loop LBFGS-recursion.
+    y_list : list of nd.array, shape (K, N), optional
+        List of K previous gradient differences. See s_list.
+    mu_1 : float, optional
+        Parameter for 's' damping.
+    mu_2 : float, optional
+        Parameter for 'y' damping.
+    logger : logging.Logger, optional
+        Logger to be used.
+
+    Returns
+    -------
+    s : np.array, shape (N, ), floats
+        Damped coordiante differences/step.
+    y : np.array, shape (N, ), floats
+        Damped gradient differences
+    """
+    sy = s.dot(y)
+    # Calculate Hy directly
+    if H is not None:
+        Hy = H.dot(y)
+    # Calculate Hy via BFGS_multiply as in LBFGS
+    else:
+        Hy = bfgs_multiply(s_list, y_list, y, logger=logger)
+    yHy = y.dot(Hy)
+
+    theta_1 = 1
+    damped_s = ""
+    if sy < mu_1*yHy:
+        theta_1 = (1 - mu_1) * yHy / (yHy - sy)
+        s = theta_1*s + (1 - theta_1)*Hy
+        if theta_1 < 1.:
+            damped_s = ", damped s"
+    msg = f"damped BFGS\n\ttheta_1={theta_1:.4f} {damped_s}"
+
+    # Double damping
+    damped_y = ""
+    if mu_2 is not None:
+        sy = s.dot(y)
+        ss = s.dot(s)
+        theta_2 = 1
+        if sy < mu_2*ss:
+            theta_2 = (1 - mu_2) * ss / (ss - sy)
+        y = theta_2*y + (1 - theta_2)*s
+        if theta_2 < 1.:
+            damped_y = ", damped y"
+        msg = "double " + msg + f"\n\ttheta_2={theta_2:.4f} {damped_y}"
+
+    if logger is not None:
+        logger.debug(msg.capitalize())
+
+    return s, y
 
 
 def sr1_update(z, dx):

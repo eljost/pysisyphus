@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-
 import numpy as np
 
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.RedundantCoords import RedundantCoords
 
 
 def get_tangent(prims1, prims2, dihed_start, normalize=False):
@@ -64,13 +62,15 @@ def to_set(iterable):
     return set([tuple(_) for _ in iterable])
 
 
-def get_ind_sets(geom):
+def get_ind_sets(geom, strict=False):
     """Convert RedundandCoords.prim_indices to sets of tuples."""
     try:
         bonds, bends, dihedrals = geom.internal.prim_indices
     # Exception will be raised if the geom is in cartesians. Then we
     # just create the internals for the given geometry.
-    except AttributeError:
+    except AttributeError as err:
+        if strict:
+            raise err
         internal = RedundantCoords(geom.atoms, geom.cart_coords)
         bonds, bends, dihedrals = internal.prim_indices
     return to_set(bonds), to_set(bends), to_set(dihedrals)

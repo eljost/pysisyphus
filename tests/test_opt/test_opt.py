@@ -64,16 +64,18 @@ def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
 
 
 @pytest.mark.parametrize(
-    "opt_cls, ref_cycle", [
-    (RFOptimizer, 15),
-    (NCOptimizer, 13),
+    "opt_cls, opt_kwargs_, ref_cycle", [
+    (RFOptimizer, {}, 15),
+    (NCOptimizer, {}, 13),
     # LBFGS converged to the saddle point, as the 'hessian' has the
     # wrong eigenvalue structure. Ok, ok we don't have a hessian but
     # you get the idea :)
-    pytest.param(LBFGS, 11, marks=pytest.mark.xfail),
+    pytest.param(LBFGS, {"double_damp": True, "gamma_mult": True, }, 19),
+    pytest.param(LBFGS, {"double_damp": True, "gamma_mult": False, }, 19),
+    pytest.param(LBFGS, {"double_damp": False}, 19, marks=pytest.mark.xfail),
     ]
 )
-def test_optimizers(opt_cls, ref_cycle):
+def test_optimizers(opt_cls, opt_kwargs_, ref_cycle):
     geom = AnaPot.get_geom((0.667, 1.609, 0.))
     ref_coords = np.array((1.941, 3.8543, 0.))
 
@@ -82,6 +84,7 @@ def test_optimizers(opt_cls, ref_cycle):
         "dump": False,
         "overachieve_factor": 2.,
     }
+    opt_kwargs.update(opt_kwargs_)
     opt = opt_cls(geom, **opt_kwargs)
     opt.run()
 

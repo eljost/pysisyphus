@@ -4,15 +4,20 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 
 
-def bfgs_multiply(s_list, y_list, force, beta=1, P=None):
-    """Get a L-BFGS step.
+def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
+                  gamma_mult=True, inds=None, cur_size=None):
+    """Matrix-vector product H·v.
+
+    Multiplies given vector with inverse Hessian, obtained
+    from repeated BFGS updates calculated from steps in 's_list'
+    and gradient differences in 'y_list'.
     
-    Algorithm 7.4 Nocedal, Num. Opt., p. 178."""
+    Based on algorithm 7.4 Nocedal, Num. Opt., p. 178."""
 
     assert len(s_list) == len(y_list), \
         "lengths of step list 's_list' and gradient list 'y_list' differ!"
 
-    q = -force
+    q = vector.copy()
     cycles = len(s_list)
     alphas = list()
     rhos = list()
@@ -22,28 +27,52 @@ def bfgs_multiply(s_list, y_list, force, beta=1, P=None):
         y = y_list[i]
         rho = 1/y.dot(s)
         rhos.append(rho)
-        alpha = rho * s.dot(q)
+        try:
+            alpha = rho * s.dot(q)
+            q -= alpha*y
+        except ValueError:
+            inds_i = inds[i]
+            q_ = q.reshape(cur_size, -1)
+            alpha = rho * s.dot(q_[inds_i].flatten())
+            # This also modifies q!
+            q_[inds_i] -= alpha*y.reshape(len(inds_i), -1)
         alphas.append(alpha)
-        q = q - alpha*y
+
     # Restore original order, so that rho[i] = 1/s_list[i].dot(y_list[i]) etc.
     alphas = alphas[::-1]
     rhos = rhos[::-1]
 
     if P is not None:
         r = spsolve(P, q)
-    elif cycles > 0:
+        msg = "preconditioner."
+    elif gamma_mult and (cycles > 0):
         s = s_list[-1]
         y = y_list[-1]
         gamma = s.dot(y) / y.dot(y)
         r = gamma * q
+        msg = f"gamma={gamma:.4f}"
     else:
         r = beta * q
+        msg = f"beta={beta:.4f}"
+
+    if logger is not None:
+        msg = f"BFGS multiply using {cycles} previous cycles with {msg}."
+        if len(s_list) == 0:
+            msg += " Produced simple SD step."
+        logger.debug(msg)
 
     for i in range(cycles):
         s = s_list[i]
         y = y_list[i]
-        beta = rhos[i] * y.dot(r)
-        r = r + s*(alphas[i] - beta)
+        try:
+            beta = rhos[i] * y.dot(r)
+            r += s*(alphas[i] - beta)
+        except ValueError:
+            inds_i = inds[i]
+            r_ = r.reshape(cur_size, -1)
+            beta = rhos[i] * y.dot(r_[inds_i].flatten())
+            # This also modifies r!
+            r_[inds_i] += s.reshape(len(inds_i), -1) *(alphas[i] - beta)
 
     return r
 
@@ -63,7 +92,7 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
         nonlocal y_list
 
         prev_forces = forces[-1]
-        step = -bfgs_multiply(s_list, y_list, prev_forces)
+        step = bfgs_multiply(s_list, y_list, prev_forces)
         step = restrict_step(x, step)
         new_x = x + step
         new_forces = force_getter(new_x, *getter_args)
@@ -107,7 +136,7 @@ def lbfgs_closure_(force_getter, M=10, beta=1, restrict_step=None):
         x_list.append(x)
         force_list.append(force)
 
-        step = -bfgs_multiply(s_list, y_list, force, beta=beta)
+        step = bfgs_multiply(s_list, y_list, force, beta=beta)
         step = restrict_step(x, step)
         # Only keep last m cycles
         s_list = s_list[-M:]
@@ -202,7 +231,7 @@ def small_lbfgs_closure(history=5):
         # LBFGS in the following cycles
         if cur_cycle > 0:
             grad_diffs.append(-forces - -prev_forces)
-            step = -bfgs_multiply(steps, grad_diffs, forces)
+            step = bfgs_multiply(steps, grad_diffs, forces)
 
         prev_forces = forces
         cur_cycle += 1

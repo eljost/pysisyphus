@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from copy import copy
 import logging
 from multiprocessing import Pool
@@ -415,7 +413,14 @@ class ChainOfStates:
         # RMS force (rms_force) or from a multiple of the
         # RMS force convergence threshold (rms_multiple, default).
         rms_forces = self.rms(self.forces_list[-1])
-        return rms_forces <= self.climb_rms
+        # Only start climbing when the COS is fully grown. This
+        # attribute may not be defined in all subclasses, so it
+        # defaults to True here.
+        try:
+            fully_grown = self.fully_grown
+        except AttributeError:
+            fully_grown = True
+        return (rms_forces <= self.climb_rms) and fully_grown
 
     def get_climbing_indices(self):
         # Index of the highest energy image (HEI)
@@ -425,20 +430,22 @@ class ChainOfStates:
         # Don't climb it not yet enabled or requested.
         if not (self.climb and self.started_climbing):
             climb_indices = tuple()
+        # Do one image climbing (C1) neb if explicitly requested or
+        # the HEI is the first or last item in moving_indices.
+        elif self.climb == "one" or ((hei_index == 1) or (hei_index == move_inds[-1])):
+            climb_indices = (hei_index, )
         # We can do two climbing (C2) neb if the highest energy image (HEI)
         # is in moving_indices but not the first or last item in this list.
+        # elif self.climb != "one" and hei_index in move_inds[1:-1]:
         elif hei_index in move_inds[1:-1]:
-            climb_indices = (hei_index-1, hei_index+1)
-        # Do one image climbing (C1) neb if the HEI is the first or last
-        # item in moving_indices.
-        elif (hei_index == 1) or (hei_index == move_inds[-1]):
+            # climb_indices = (hei_index-1, hei_index+1)
             climb_indices = (hei_index, )
         # Don't climb when the HEI is the first or last image of the whole
         # NEB.
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
-        self.log(f"Climbing indices are {climb_indices}.")
+        self.log(f"Climbing indices: {climb_indices}")
         return climb_indices
 
     def get_climbing_forces(self, ind):
@@ -457,26 +464,33 @@ class ChainOfStates:
         for i in self.get_climbing_indices():
             climb_forces, climb_en = self.get_climbing_forces(i)
             forces[i] = climb_forces
-            self.log(f"Climbing with image {i}, E = {climb_en:.6f} au")
+            norm = np.linalg.norm(climb_forces)
+            self.log(f"Climbing with image {i}, E = {climb_en:.6f} au, "
+                     f"norm(forces)={norm:.6f}"
+            )
         return forces
 
     def get_splined_hei(self):
+        self.log("Splining HEI")
         # Interpolate energies
         cart_coords = np.array([image.cart_coords for image in self.images])
-        coord_diffs = get_coords_diffs(cart_coords)
-        energies_spline = interp1d(coord_diffs, self.energy, kind="cubic")
+        coord_diffs = get_coords_diffs(cart_coords, align=True)
+        self.log(f"\tCoordinate differences: {coord_diffs}")
+        energies = np.array(self.energy)
+        energies_spline = interp1d(coord_diffs, energies, kind="cubic")
         x_fine = np.linspace(0, 1, 500)
         energies_fine = energies_spline(x_fine)
         # Determine index that yields the highest energy
         hei_ind = energies_fine.argmax()
         hei_x = x_fine[hei_ind]
+        self.log(f"Found splined HEI at x={hei_x:.4f}")
         hei_frac_index = hei_x * (len(self.images) - 1)
         hei_energy = energies_fine[hei_ind]
 
         reshaped = cart_coords.reshape(-1, self.cart_coords_length)
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
-        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3)
+        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3, u=coord_diffs)
                          for i in range(0, len(transp_coords), 9)]
         )
 
@@ -484,6 +498,10 @@ class ChainOfStates:
         hei_coords = np.vstack([splev([hei_x, ], tck) for tck in tcks])
         hei_coords = hei_coords.flatten()
 
+        # Actually it looks like that splined tangents are really bad approximations
+        # to the actual imaginary mode. The Cartesian upwinding tangent is usually
+        # much much better. In 'run_tsopt_from_cos' we actually mix two "normal" tangents
+        # to obtain the HEI tangent.
         hei_tangent = np.vstack([splev([hei_x, ], tck, der=1) for tck in tcks]).T
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)

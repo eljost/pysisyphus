@@ -2,12 +2,10 @@ preopt:
  max_cycles: 5
 cos:
  type: gs
- #max_nodes: 11
  max_nodes: 7
  fix_ends: True
 opt:
  type: string
- gamma: 1.0
  align: False
  stop_in_when_full: 0
 tsopt:

@@ -11,11 +11,14 @@ def init_h5_group(f, group_name, data_model):
         group.create_dataset(key, shape, maxshape=maxshape)
 
 
-def get_h5_group(fn, group_name, data_model, reset=False):
+def get_h5_group(fn, group_name, data_model=None, reset=False):
     """Return (and create if neccesary) group with given name and
     data model."""
 
     f = h5py.File(fn, mode="a")
+    # Shortcut
+    if data_model is None:
+        return f[group_name]
 
     if group_name not in f:
         init_h5_group(f, group_name, data_model)
