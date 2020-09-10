@@ -5,7 +5,7 @@ import itertools as it
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 
 

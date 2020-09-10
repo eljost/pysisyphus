@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
 from pysisyphus.linalg import gram_schmidt
 
 

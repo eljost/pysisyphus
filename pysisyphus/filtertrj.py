@@ -9,7 +9,7 @@ import sys
 import numpy as np
 
 from pysisyphus.helpers import geoms_from_trj, geom_from_xyz_file
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
 from pysisyphus.xyzloader import write_geoms_to_trj
 
 
