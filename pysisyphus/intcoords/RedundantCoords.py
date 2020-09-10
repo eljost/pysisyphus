@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1063/1.1515483 optimization review
 # [2] https://doi.org/10.1063/1.471864 delocalized internal coordinates
 # [3] https://doi.org/10.1016/0009-2614(95)00646-L lindh model hessian
@@ -14,7 +12,6 @@ import logging
 import numpy as np
 from scipy.spatial.distance import squareform
 
-from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Bend, LinearBend, Stretch, Torsion
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
@@ -304,7 +301,7 @@ class RedundantCoords:
                   if a.lower() in "n o f p s cl".split()]
         for h_ind, x_ind in it.product(hydrogen_inds, x_inds):
             as_set = set((h_ind, x_ind))
-            if not as_set in tmp_sets:
+            if as_set not in tmp_sets:
                 continue
             # Check if distance of H to another electronegative atom Y is
             # greater than the sum of their covalent radii but smaller than
