@@ -60,7 +60,7 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
         beta_prev = beta
         q_prev = q
         r_prev = r
-        # Diagonaliez T
+        # Diagonalize T
         w, v = np.linalg.eigh(T)
         w_min = w[0]
         log("Cycle {i: >3d}: w_min={w_min: .6f}")
