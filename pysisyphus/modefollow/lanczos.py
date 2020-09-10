@@ -1,15 +1,22 @@
 import numpy as np
 
 
-def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, r_prev=None, max_cycles=25,
+# [1]  https://doi.org/10.1063/1.1809574
+
+
+def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
             logger=None):
-    """Lanczos method to determine smallest eigenvalue & -vector."""
+    """Lanczos method to determine smallest eigenvalue & -vector.
+
+    See [1] for description of algorithm.
+    """
 
     def log(msg):
         if logger is not None:
             logger.debug(msg)
 
     log("Lanczos Algorithm")
+    r_prev = guess
     if r_prev is None:
         r_prev = np.random.rand(*coords.shape)
     beta_prev = np.linalg.norm(r_prev)
@@ -22,7 +29,6 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, r_prev=None, max_cycles=25,
     # Gradient at current coordinates; does not change.
     grad_l = grad_getter(coords)
     for i in range(max_cycles):
-        log("Cycle {i: >3d}")
         # Normalize q
         q = r_prev / beta_prev
         qs.append(q.copy())
@@ -49,22 +55,22 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, r_prev=None, max_cycles=25,
                 j = i-1
                 T[i,j] = b
                 T[j,i] = b
-        # Set values for next cycle
+
+        # Values for next cycle
         beta_prev = beta
         q_prev = q
         r_prev = r
         # Diagonaliez T
         w, v = np.linalg.eigh(T)
         w_min = w[0]
+        log("Cycle {i: >3d}: w_min={w_min: .6f}")
+
+        # Check eigenvalue convergence
+        if (i > 0) and (abs((w_min - w_mins[-1])/w_mins[-1]) < dl):
+            log("Converged")
+            break
+
         w_mins.append(w_min)
-        print(f"w_min={w_min: .6f}")
-        try:
-            w_diff = abs(w_min - w_mins[-2])
-            if w_diff < dl:
-                print("Converged")
-                break
-        except IndexError:
-            pass
     v_min = v[:,0]
 
     # Form eigenvector from linear combination of Lanczos vectors
@@ -74,10 +80,11 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, r_prev=None, max_cycles=25,
 
 
 def geom_lanczos(geom, *args, **kwargs):
+    """Wraps Lanczos algorithm for use with Geometry objects."""
     coords = geom.coords.copy()
+
     def grad_getter(coords):
         results = geom.get_energy_and_forces_at(coords)
         return -results["forces"]
+
     return lanczos(coords, grad_getter, *args, **kwargs)
-
-
