@@ -21,14 +21,17 @@ def test_anapot_lanczos():
 
 
 @using("pyscf")
-def test_hcn_iso_lanczos():
-    geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
+@pytest.mark.parametrize(
+    "coord_type, guess", [
+        ("cart", (0.4, 0., 0., 0., -0.3, 0., 0., 0., 0.)),
+        # ("redund", None),
+    ]
+)
+def test_hcn_iso_lanczos(coord_type, guess):
+    geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz", coord_type=coord_type)
     calc = PySCF(pal=2, basis="sto3g")
     geom.set_calculator(calc)
 
-    guess = np.zeros_like(geom.coords)
-    guess[0] = 0.4
-    guess[4] = -0.3
     w_min, v_min = geom_lanczos(geom, guess=guess)
 
     # Reference values
