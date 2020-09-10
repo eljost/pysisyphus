@@ -5,7 +5,7 @@ import numpy as np
 
 
 def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
-            logger=None):
+            reortho=True, logger=None):
     """Lanczos method to determine smallest eigenvalue & -vector.
 
     See [1] for description of algorithm.
@@ -18,19 +18,21 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
     log("Lanczos Algorithm")
     r_prev = guess
     if r_prev is None:
-        r_prev = np.random.rand(*coords.shape)
+        r_prev = np.random.rand(coords.size)
     beta_prev = np.linalg.norm(r_prev)
     q_prev = np.zeros_like(r_prev)
 
     alphas = list()
     betas = list()
     w_mins = list()
+    Q = np.zeros((coords.size, max_cycles))
     qs = list()
     # Gradient at current coordinates; does not change.
     grad_l = grad_getter(coords)
     for i in range(max_cycles):
         # Normalize q
         q = r_prev / beta_prev
+        Q[:,i] = q
         qs.append(q.copy())
         # Approximate action of Hessian on q (u = Hq) by finite differences.
         #
@@ -40,7 +42,10 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
         # Residue
         r = u - beta_prev*q_prev
         alpha = q.dot(r)
-        r = r - alpha*q
+        r -= alpha*q
+        # Reorthogonalization of r against the present Lanczos vectors in Q
+        if reortho:
+            r -= Q.dot(Q.T.dot(r))
         beta = np.linalg.norm(r)
 
         alphas.append(alpha)
@@ -63,7 +68,7 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
         # Diagonalize T
         w, v = np.linalg.eigh(T)
         w_min = w[0]
-        log("Cycle {i: >3d}: w_min={w_min: .6f}")
+        log(f"Cycle {i: >3d}: w_min={w_min: .6f}")
 
         # Check eigenvalue convergence
         if (i > 0) and (abs((w_min - w_mins[-1])/w_mins[-1]) < dl):

@@ -1,3 +1,6 @@
+import logging
+import sys
+
 import numpy as np
 import pytest
 
@@ -8,9 +11,16 @@ from pysisyphus.modefollow import geom_lanczos
 from pysisyphus.testing import using
 
 
+logger = logging.getLogger("lanczos")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+logger.addHandler(handler)
+
+
 def test_anapot_lanczos():
     geom = AnaPot.get_geom((-0.5767, 1.6810, 0.))
-    w_min, v_min = geom_lanczos(geom, dx=1e-5, dl=1e-5)
+    w_min, v_min = geom_lanczos(geom, dx=1e-5, dl=1e-5, logger=logger)
 
     H = geom.hessian
     w, v = np.linalg.eigh(H)
@@ -24,7 +34,7 @@ def test_anapot_lanczos():
 @pytest.mark.parametrize(
     "coord_type, guess", [
         ("cart", (0.4, 0., 0., 0., -0.3, 0., 0., 0., 0.)),
-        # ("redund", None),
+        ("redund", (-0.1, 0.1, 0.2, 0.4, -0.3, 0.1)),
     ]
 )
 def test_hcn_iso_lanczos(coord_type, guess):
@@ -32,7 +42,7 @@ def test_hcn_iso_lanczos(coord_type, guess):
     calc = PySCF(pal=2, basis="sto3g")
     geom.set_calculator(calc)
 
-    w_min, v_min = geom_lanczos(geom, guess=guess)
+    w_min, v_min = geom_lanczos(geom, guess=guess, logger=logger)
 
     # Reference values
     H = geom.hessian
