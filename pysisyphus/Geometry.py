@@ -12,9 +12,7 @@ import rmsd
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
-from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
-from pysisyphus.intcoords.DLC import DLC
+from pysisyphus.intcoords import DLC, RedundantCoords, RedundantCoordsV2
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException, RebuiltInternalsException
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt

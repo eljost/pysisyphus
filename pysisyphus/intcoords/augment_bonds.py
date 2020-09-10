@@ -2,7 +2,7 @@ import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.findbonds import get_bond_sets
-from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 
 
 def augment_bonds(geom, root=0, proj=False):

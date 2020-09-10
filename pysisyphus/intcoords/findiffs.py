@@ -5,8 +5,9 @@ import itertools as it
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
+from pysisyphus.intcoords.eval import calc_stretch, calc_bend, calc_dihedral
 
 
 np.set_printoptions(suppress=True, precision=6)
@@ -20,9 +21,9 @@ def prim_findiff(prim, coords3d, redund, delta=1e-4):
     displacement_inds = [(i, j) for i, j in it.product(inds, (0, 1, 2))]
 
     funcs = {
-        2: lambda coords: redund.calc_stretch(coords, inds),
-        3: lambda coords: redund.calc_bend(coords, inds),
-        4: lambda coords: redund.calc_dihedral(coords, inds),
+        2: lambda coords: calc_stretch(coords, inds),
+        3: lambda coords: calc_bend(coords, inds),
+        4: lambda coords: calc_dihedral(coords, inds),
     }
     func = funcs[len(inds)]
 
@@ -47,9 +48,9 @@ def B_findiff(prim, coords3d, redund, delta=1e-4):
     displacement_inds = [(i, j) for i, j in it.product(inds, (0, 1, 2))]
 
     funcs = {
-        2: lambda coords: redund.calc_stretch(coords, inds, grad=True),
-        3: lambda coords: redund.calc_bend(coords, inds, grad=True),
-        4: lambda coords: redund.calc_dihedral(coords, inds, grad=True),
+        2: lambda coords: calc_stretch(coords, inds, grad=True),
+        3: lambda coords: calc_bend(coords, inds, grad=True),
+        4: lambda coords: calc_dihedral(coords, inds, grad=True),
     }
     func = funcs[len(inds)]
     B_grads = list()

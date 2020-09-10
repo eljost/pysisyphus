@@ -6,7 +6,7 @@ from scipy.sparse import csc_matrix
 
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
-from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 
 
 # [1] https://www.nature.com/articles/s41598-018-32105-x

@@ -7,11 +7,11 @@
 
 import numpy as np
 
-from pysisyphus.intcoords.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 from pysisyphus.linalg import gram_schmidt
 
 
-class DLC(RedundantCoords):
+class DLC(RedundantCoords.RedundantCoords):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
