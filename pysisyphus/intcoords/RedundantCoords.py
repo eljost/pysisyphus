@@ -15,10 +15,10 @@ from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
-from pysisyphus.intcoords.helpers import check_primitives, augment_primitives
 from pysisyphus.intcoords.backconversion import transform_int_step
 from pysisyphus.intcoords.eval import eval_prim_internals, \
-                                      calc_stretch, calc_bend, calc_dihedral
+                                      calc_stretch, calc_bend, calc_dihedral, \
+                                      check_primitives, augment_primitives
         
 
 class RedundantCoords:
