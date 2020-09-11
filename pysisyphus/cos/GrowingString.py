@@ -62,10 +62,6 @@ class GrowingString(GrowingChainOfStates):
         self.left_string.append(left_frontier)
         right_frontier = self.get_new_image(self.rf_ind)
         self.right_string.append(right_frontier)
-
-        if self.coord_type == "cart":
-            self.set_tangents()
-
         self.new_image_inds = list()
 
     def get_cur_param_density(self, kind=None):
@@ -300,36 +296,8 @@ class GrowingString(GrowingChainOfStates):
         elif self.reset_dlc:
             self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
-    # def set_tangents(self):
-        # """THIS METHOD IS DISABLED BY REDEFINITION BELOW AS THE SPLINED TANGENTS
-        # SEEM BAD.
-
-        # Tangent-calculation by splining requires the information of all
-        # images at once. To avoid the repeated splining of all images whenever
-        # a tangent is requested this method calculates all tangents and stores
-        # them in the self._tangents, that can be accessed via the self.tangents
-        # property.
-
-        # !!! Right now one must not forget to call this method
-        # after coordinate modification, e.g. after
-        # reparametrization!  Otherwise wrong (old) tangets are used. !!!
-        # """
-
-        # tcks, us = self.spline(tangents=True)
-        # Sk, cur_mesh = self.arc_dims
-        # self.log(f"Total arclength Sk={Sk:.4f}")
-        # tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
-        # norms = np.linalg.norm(tangents, axis=1)
-        # tangents = tangents / norms[:,None]
-        # # Tangents of the right string shall point towards the center, so
-        # # we reverse their orientation.
-        # tangents[self.rf_ind:] *= -1
-        # self._tangents = tangents
-
-    def set_tangents(self):
-        pass
-
     def get_tangent(self, i):
+        # Simple tangent, pointing at each other, for the frontier images.
         if not self.fully_grown and i in (self.lf_ind, self.rf_ind):
             next_ind = i+1 if (i <= self.lf_ind) else i-1
             tangent = self.images[next_ind] - self.images[i]
@@ -421,7 +389,6 @@ class GrowingString(GrowingChainOfStates):
             # Reparametrize images.
             if self.coord_type == "cart":
                 self.reparam_cart(desired_param_density)
-                self.set_tangents()
             elif self.coord_type == "dlc":
                 self.reparam_dlc(desired_param_density, thresh=self.reparam_tol)
             else:
@@ -431,8 +398,6 @@ class GrowingString(GrowingChainOfStates):
                               else self.reparam_every
             reparametrized = True
 
-        if self.coord_type == "cart":
-            self.set_tangents()
         return reparametrized
 
     def get_additional_print(self):
