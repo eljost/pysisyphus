@@ -308,7 +308,10 @@ class GrowingString(GrowingChainOfStates):
         # Converge exact mode at climbing image if requested. Use the upwinding
         # tangent as guess.
         if self.climb_lanczos and (i in self.get_climbing_indices()):
-            tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=tangent)
+            # tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=tangent)
+            # By using guess=None the previous Lanczos will automatically be
+            # used as guess.
+            tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=None)
         return tangent
 
     @ChainOfStates.forces.getter

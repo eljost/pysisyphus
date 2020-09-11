@@ -43,6 +43,7 @@ class ChainOfStates:
         self.all_energies = list()
         self.all_true_forces = list()
         self.lanczos_tangents = dict()
+        self.prev_lanczos_hash = None
 
         # Start climbing immediateley with climb_rms == -1
         self.started_climbing = self.climb_rms == -1
@@ -357,12 +358,21 @@ class ChainOfStates:
                          f"hash={cur_hash}"
                 )
             except KeyError:
+                # Try to use previous Lanczos tangent
+                guess = lanczos_guess
+                if (guess is None) and (self.prev_lanczos_hash is not None):
+                    guess = self.lanczos_tangents[self.prev_lanczos_hash]
+                    self.log(f"Using tangent with hash={self.prev_lanczos_hash} "
+                              "as initial guess for Lanczos algorithm."
+                    )
                 w_min, tangent = geom_lanczos(
                                     ith_image,
-                                    guess=lanczos_guess,
+                                    guess=guess,
                                     logger=self.logger
                 )
                 self.lanczos_tangents[cur_hash] = tangent
+                # Update hash
+                self.prev_lanczos_hash = cur_hash
 
         tangent /= np.linalg.norm(tangent)
         return tangent
