@@ -6,7 +6,7 @@ from pysisyphus.intcoords.eval import eval_prim_internals
 
 
 def update_internals(new_cartesians, old_internals, prim_inds):
-    prim_ints = eval_prim_internals(new_cartesians, prim_inds)
+    prim_ints = eval_prim_internals(new_cartesians.reshape(-1, 3), prim_inds)
     new_internals = [prim.val for prim in it.chain(*prim_ints)]
     internal_diffs = np.array(new_internals) - old_internals
 

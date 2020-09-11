@@ -1,3 +1,5 @@
+import itertools as it
+
 import numpy as np
 
 
@@ -121,8 +123,7 @@ def calc_dihedral(coords3d, dihedral_ind, grad=False, cos_tol=1e-9):
     return dihedral_rad
 
 
-def eval_prim_internals(cart_coords, prim_inds):
-    coords3d = cart_coords.reshape(-1, 3)
+def eval_prim_internals(coords3d, prim_inds):
     bond_inds, bend_inds, dihedral_inds = prim_inds
 
     def per_type(func, ind):
@@ -136,3 +137,6 @@ def eval_prim_internals(cart_coords, prim_inds):
     return bonds, bends, dihedrals
 
 
+def eval_B(coords3d, prim_inds):
+    prim_internals = eval_prim_internals(coords3d, prim_inds)
+    return np.array([prim.grad for prim in it.chain(*prim_internals)])

@@ -15,6 +15,7 @@ from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
 from pysisyphus.intcoords.fragments import merge_fragments
+from pysisyphus.intcoords.helpers import check_primitives, augment_primitives
 from pysisyphus.intcoords.backconversion import transform_int_step
 from pysisyphus.intcoords.eval import eval_prim_internals, \
                                       calc_stretch, calc_bend, calc_dihedral
@@ -70,7 +71,7 @@ class RedundantCoords:
             self.bending_indices = list()
             self.dihedral_indices = list()
 
-        prim_ints = self.calculate(self.cart_coords)
+        prim_ints = self.calculate(self.coords3d)
         self._prim_internals = prim_ints
         self._prim_coords = np.array([prim.val for prim in self._prim_internals])
 
@@ -89,7 +90,7 @@ class RedundantCoords:
     def prim_coords(self):
         if self._prim_coords is None:
             self._prim_coords = np.array(
-                [pc.val for pc in self.calculate(self.cart_coords)]
+                [pc.val for pc in self.calculate(self.coords3d)]
             )
         return self._prim_coords
 
@@ -101,6 +102,10 @@ class RedundantCoords:
     def cart_coords(self, cart_coords):
         self._cart_coords = cart_coords
         self._B_prim = None
+
+    @property
+    def coords3d(self):
+        return self.cart_coords.reshape(-1, 3)
 
     @property
     def coords(self):
@@ -141,7 +146,7 @@ class RedundantCoords:
     def B_prim(self):
         """Wilson B-Matrix"""
         if self._B_prim is None:
-            self._B_prim = np.array([c.grad for c in self.calculate(self.cart_coords)])
+            self._B_prim = np.array([c.grad for c in self.calculate(self.coords3d)])
 
         return self._B_prim
 
@@ -332,14 +337,15 @@ class RedundantCoords:
 
         self.bare_bond_indices = bond_indices
 
+        # Merge bond index sets into fragments. Determine fragments before
+        # determining hydrogen bonds.
+        bond_ind_sets = [frozenset(bi) for bi in bond_indices]
+        fragments = merge_fragments(bond_ind_sets)
+
         # Look for hydrogen bonds
         self.set_hydrogen_bond_indices(bond_indices)
         if self.hydrogen_bond_indices.size > 0:
             bond_indices = np.concatenate((bond_indices, self.hydrogen_bond_indices))
-
-        # Merge bond index sets into fragments
-        bond_ind_sets = [frozenset(bi) for bi in bond_indices]
-        fragments = merge_fragments(bond_ind_sets)
 
         # Look for unbonded single atoms and create fragments for them.
         bonded_set = set(tuple(bond_indices.flatten()))
@@ -481,12 +487,39 @@ class RedundantCoords:
         self.set_bending_indices(bends)
         self.set_dihedral_indices(dihedrals)
 
+        missing_prims, kappa = check_primitives(
+            self.coords3d,
+            self.prim_indices,
+            logger=self.logger,
+        )
+        return
+        # if missing_prims > 0:
+            # # add_bonds, add_bends, add_dihedrals = augment_primitives(
+            # add_prim_indices = augment_primitives(
+                # missing_prims,
+                # self.coords3d,
+                # self.prim_indices,
+                # self.fragments
+            # )
+            # print(add_prim_indices)
+            # for name, lst in zip(("bond_indices", "bending_indices", "dihedral_indices"),
+                                 # add_prim_indices):
+                # arr = getattr(self, name)
+                # if len(lst) > 0:
+                    # new_arr = np.concatenate((arr, lst))
+                    # setattr(self, name, new_arr)
+            # check_primitives(
+                # self.coords3d,
+                # self.prim_indices,
+                # logger=self.logger,
+            # )
+
     def set_prim_internals(self, prim_internals):
         self._prim_internals = list(it.chain(*prim_internals))
         self._prim_coords = np.array([prim.val for prim in self._prim_internals])
 
-    def calculate(self, coords, attr=None):
-        prim_internals = eval_prim_internals(coords, self.prim_indices)
+    def calculate(self, coords3d, attr=None):
+        prim_internals = eval_prim_internals(coords3d, self.prim_indices)
         self.bonds, self.bends, self.dihedrals = prim_internals
 
         if attr:
