@@ -35,6 +35,7 @@ def test_anapot_lanczos():
     "coord_type, guess", [
         ("cart", (0.4, 0., 0., 0., -0.3, 0., 0., 0., 0.)),
         ("redund", (-0.1, 0.1, 0.2, 0.4, -0.3, 0.1)),
+        ("dlc", (0.2, 0.6, -0.1)),
     ]
 )
 def test_hcn_iso_lanczos(coord_type, guess):

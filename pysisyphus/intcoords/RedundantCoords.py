@@ -22,7 +22,6 @@ from pysisyphus.intcoords.eval import eval_prim_internals, \
 
 class RedundantCoords:
 
-    RAD_175 = 3.05432619
     BEND_MIN_DEG = 15
     BEND_MAX_DEG = 180
 
@@ -158,9 +157,21 @@ class RedundantCoords:
         return np.linalg.pinv(B.dot(B.T)).dot(B)
 
     @property
+    def Bt_inv_prim(self):
+        """Transposed generalized inverse of the primitive Wilson B-Matrix."""
+        B = self.B_prim
+        return np.linalg.pinv(B.dot(B.T)).dot(B)
+
+    @property
     def B_inv(self):
         """Generalized inverse of the Wilson B-Matrix."""
         B = self.B
+        return B.T.dot(np.linalg.pinv(B.dot(B.T)))
+
+    @property
+    def B_inv_prim(self):
+        """Generalized inverse of the primitive Wilson B-Matrix."""
+        B = self.B_prim
         return B.T.dot(np.linalg.pinv(B.dot(B.T)))
 
     @property
@@ -228,7 +239,7 @@ class RedundantCoords:
                 "the hessian transformation."
             )
         K = self.get_K_matrix(int_gradient)
-        return self.Bt_inv.dot(cart_hessian - K).dot(self.B_inv)
+        return self.Bt_inv_prim.dot(cart_hessian - K).dot(self.B_inv_prim)
 
     def backtransform_hessian(self, redund_hessian, int_gradient=None):
         """Transform Hessian in internal coordinates to Cartesians."""

@@ -185,9 +185,21 @@ class RedundantCoords:
         return np.linalg.pinv(B.dot(B.T)).dot(B)
 
     @property
+    def Bt_inv_prim(self):
+        """Transposed generalized inverse of the primitive Wilson B-Matrix."""
+        B = self.B_prim
+        return np.linalg.pinv(B.dot(B.T)).dot(B)
+
+    @property
     def B_inv(self):
         """Generalized inverse of the Wilson B-Matrix."""
         B = self.B
+        return B.T.dot(np.linalg.pinv(B.dot(B.T)))
+
+    @property
+    def B_inv_prim(self):
+        """Generalized inverse of the primitive Wilson B-Matrix."""
+        B = self.B_prim
         return B.T.dot(np.linalg.pinv(B.dot(B.T)))
 
     @property

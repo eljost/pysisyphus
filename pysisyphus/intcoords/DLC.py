@@ -75,6 +75,16 @@ class DLC(RedundantCoords):
         internal coordinates."""
         return H
 
+    def transform_hessian(self, cart_hessian, int_gradient=None):
+        """Transform Cartesian Hessian to DLC."""
+        # Transform the DLC gradient to primitive coordinates
+        prim_gradient = self.Ut_inv.dot(int_gradient)
+        H = super().transform_hessian(cart_hessian, prim_gradient)
+        return self.U.T.dot(H).dot(self.U)
+
+    def backtransform_hessian(self, *args, **kwargs):
+        raise Exception("Check if we can just use the parents method.")
+
     def transform_int_step(self, step, *args, **kwargs):
         """As the transformation is done in primitive internal coordinates
         we convert the DLC back to primitive coordinates."""

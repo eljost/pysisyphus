@@ -98,7 +98,9 @@ class HessianOptimizer(Optimizer):
             self.save_hessian()
 
         if (hasattr(self.geometry, "coord_type")
-            and self.geometry.coord_type == "dlc"):
+            and self.geometry.coord_type == "dlc"
+            # Calculated Hessian is already in DLC
+            and hessian_init != "calc"):
             U = self.geometry.internal.U
             self.H = U.T.dot(self.H).dot(U)
 
