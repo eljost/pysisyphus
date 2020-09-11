@@ -202,7 +202,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
 
 def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
               comments=False, in_bohr=False, define_prims=None, union=None,
-              interpolate_align=True, quiet=False):
+              interpolate_align=True, same_prims=True, quiet=False):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
@@ -262,6 +262,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
             )
             recreated_geoms.append(geom)
         geoms = recreated_geoms
+
+    if not same_prims:
+        return geoms
 
     same_prim_inds = True
     if coord_type != "cart":
