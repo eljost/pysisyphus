@@ -11,7 +11,7 @@ from pysisyphus.intcoords import RedundantCoords
 from pysisyphus.linalg import gram_schmidt
 
 
-class DLC(RedundantCoords.RedundantCoords):
+class DLC(RedundantCoords):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
