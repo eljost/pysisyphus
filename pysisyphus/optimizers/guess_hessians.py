@@ -167,6 +167,12 @@ def xtb_hessian(geom, gfn=None):
 
 def get_guess_hessian(geometry, hessian_init, int_gradient=None,
                       cart_gradient=None, h5_fn=None):
+    """Obtain/calculate (model) Hessian.
+
+    For hessian_init="calc" the Hessian will be in the coord_type
+    of the geometry, otherwise a Hessian in primitive internals will
+    be returned.
+    """
     model_hessian = hessian_init in ("fischer", "lindh", "simple", "swart")
     target_coord_type = geometry.coord_type
 
