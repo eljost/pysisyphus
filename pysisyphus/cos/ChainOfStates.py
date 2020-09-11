@@ -1,15 +1,13 @@
 from copy import copy
 import logging
-from multiprocessing import Pool
 
 from distributed import Client
 import numpy as np
 from scipy.interpolate import interp1d, splprep, splev
 
-from pysisyphus.constants import BOHR2ANG
-from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import get_coords_diffs
-from pysisyphus.xyzloader import make_trj_str
+from pysisyphus.helpers_pure import hash_arr
+from pysisyphus.modefollow import geom_lanczos
 
 
 # [1] http://dx.doi.org/10.1063/1.1323224
@@ -20,7 +18,7 @@ class ChainOfStates:
     valid_coord_types = "cart dlc".split()
 
     def __init__(self, images, fix_ends=False, fix_first=True, fix_last=True,
-                 climb=False, climb_rms=5e-3, scheduler=None):
+                 climb=False, climb_rms=5e-3, climb_lanczos=False, scheduler=None):
 
         assert(len(images) >= 2), "Need at least 2 images!"
         self.images = list(images)
@@ -29,6 +27,7 @@ class ChainOfStates:
         self.fix_ends = fix_ends
         self.climb = climb
         self.climb_rms = climb_rms
+        self.climb_lanczos = climb_lanczos
         self.scheduler = scheduler
 
         self._coords = None
@@ -43,6 +42,7 @@ class ChainOfStates:
         self.forces_list = list()
         self.all_energies = list()
         self.all_true_forces = list()
+        self.lanczos_tangents = dict()
 
         # Start climbing immediateley with climb_rms == -1
         self.started_climbing = self.climb_rms == -1
@@ -284,18 +284,19 @@ class ChainOfStates:
             self.images[-1].cart_forces = zero_forces
             self.log("Zeroed forces on fixed last image.")
 
-    def get_tangent(self, i, kind="upwinding"):
+    def get_tangent(self, i, kind="upwinding", lanczos_guess=None):
         """ [1] Equations (8) - (11)"""
 
-        tangent_kinds = "upwinding simple bisect".split()
-        assert kind in tangent_kinds, "Invalid tangent kind! Valid " \
-            f"tangent kinds are {self.tangent_kinds}"
+        tangent_kinds = ("upwinding", "simple", "bisect", "lanczos")
+        assert kind in tangent_kinds, \
+            "Invalid kind! Valid kinds are: {tangent_kinds}"
         prev_index = max(i - 1, 0)
         next_index = min(i + 1, len(self.images)-1)
 
         prev_image = self.images[prev_index]
         ith_image = self.images[i]
         next_image = self.images[next_index]
+
 
         # If (i == 0) or (i == len(self.images)-1) then one
         # of this tangents is zero.
@@ -311,47 +312,60 @@ class ChainOfStates:
         # [1], Eq. (1)
         if kind == "simple":
             tangent = next_image - prev_image
-            tangent /= np.linalg.norm(tangent)
-            return tangent
         # [1], Eq. (2)
         elif kind == "bisect":
             first_term = tangent_minus / np.linalg.norm(tangent_minus)
             sec_term = tangent_plus / np.linalg.norm(tangent_plus)
             tangent = first_term + sec_term
-            tangent /= np.linalg.norm(tangent)
-            return tangent
+        # Upwinding tangent from [1] Eq. (8) and so on
+        elif kind == "upwinding":
+            prev_energy = prev_image.energy
+            ith_energy = ith_image.energy
+            next_energy = next_image.energy
 
-        # Upwinding tangent from now on
-        # [1], Eq. (8) and so on
-        prev_energy = prev_image.energy
-        ith_energy = ith_image.energy
-        next_energy = next_image.energy
+            next_energy_diff = abs(next_energy - ith_energy)
+            prev_energy_diff = abs(prev_energy - ith_energy)
+            delta_energy_max = max(next_energy_diff, prev_energy_diff)
+            delta_energy_min = min(next_energy_diff, prev_energy_diff)
 
-        next_energy_diff = abs(next_energy - ith_energy)
-        prev_energy_diff = abs(prev_energy - ith_energy)
-        delta_energy_max = max(next_energy_diff, prev_energy_diff)
-        delta_energy_min = min(next_energy_diff, prev_energy_diff)
-
-        # Uphill
-        if next_energy > ith_energy > prev_energy:
-            tangent = tangent_plus
-        # Downhill
-        elif next_energy < ith_energy < prev_energy:
-            tangent = tangent_minus
-        # Minimum or Maximum
-        else:
-            if next_energy >= prev_energy:
-                tangent = (tangent_plus * delta_energy_max +
-                           tangent_minus * delta_energy_min
-                )
-            # next_energy < prev_energy
+            # Uphill
+            if next_energy > ith_energy > prev_energy:
+                tangent = tangent_plus
+            # Downhill
+            elif next_energy < ith_energy < prev_energy:
+                tangent = tangent_minus
+            # Minimum or Maximum
             else:
-                tangent = (tangent_plus * delta_energy_min +
-                           tangent_minus * delta_energy_max
+                if next_energy >= prev_energy:
+                    tangent = (tangent_plus * delta_energy_max +
+                               tangent_minus * delta_energy_min
+                    )
+                # next_energy < prev_energy
+                else:
+                    tangent = (tangent_plus * delta_energy_min +
+                               tangent_minus * delta_energy_max
+                    )
+        elif kind == "lanczos":
+            # Calculating a lanczos tangent is costly, so we store the
+            # tangent in a dictionary. The current coordinates are
+            # stringified with precision=4 and then hashed. The tangent
+            # is stored/looked up with this hash.
+            cur_hash = hash_arr(ith_image.coords, precision=4)
+            try:
+                tangent = self.lanczos_tangents[cur_hash]
+                self.log( "Returning previously calculated Lanczos tangent with "
+                         f"hash={cur_hash}"
                 )
+            except KeyError:
+                w_min, tangent = geom_lanczos(
+                                    ith_image,
+                                    guess=lanczos_guess,
+                                    logger=self.logger
+                )
+                self.lanczos_tangents[cur_hash] = tangent
 
-        normalized_tangent = tangent/np.linalg.norm(tangent)
-        return normalized_tangent
+        tangent /= np.linalg.norm(tangent)
+        return tangent
 
     def get_tangents(self):
         return np.array([self.get_tangent(i)
@@ -445,7 +459,7 @@ class ChainOfStates:
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
-        self.log(f"Climbing indices: {climb_indices}")
+        # self.log(f"Climbing indices: {climb_indices}")
         return climb_indices
 
     def get_climbing_forces(self, ind):

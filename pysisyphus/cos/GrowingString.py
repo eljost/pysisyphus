@@ -215,7 +215,7 @@ class GrowingString(GrowingChainOfStates):
         # and restore its original coordinates.
         for index in self.get_climbing_indices():
             new_points[index] = self.images[index].coords
-            self.log(f"Skipped reparametrization of climbing image {index}")
+            self.log(f"Skipped reparametrization of climbing image with index {index}")
         self.coords = new_points.flatten()
         # In contrast to self.reparam_dlc() we don't check if the reparametrization
         # succeeded because it can't fail ;)
@@ -231,7 +231,7 @@ class GrowingString(GrowingChainOfStates):
         self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
             if i in climbing_indices:
-                self.log(f"Skipped reparametrization of climbing image {i}")
+                self.log(f"Skipped reparametrization of climbing image with index {i}")
                 continue
             self.log(f"Reparametrizing node {i}")
             for j in range(self.max_micro_cycles):
@@ -304,6 +304,11 @@ class GrowingString(GrowingChainOfStates):
             tangent /= np.linalg.norm(tangent)
         else:
             tangent = super().get_tangent(i, kind="upwinding")
+
+        # Converge exact mode at climbing image if requested. Use the upwinding
+        # tangent as guess.
+        if self.climb_lanczos and (i in self.get_climbing_indices()):
+            tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=tangent)
         return tangent
 
     @ChainOfStates.forces.getter

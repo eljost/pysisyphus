@@ -11,3 +11,8 @@ def eigval_to_wavenumber(ev):
     conv = AU2J/(AMU2KG*BOHR2M**2)
 
     return np.sign(ev) * np.sqrt(np.abs(ev)*conv)/(2*np.pi*3e10)
+
+
+def hash_arr(arr, precision=4):
+    str_ = np.array2string(arr, precision=4)
+    return hash(str_)
