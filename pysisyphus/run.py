@@ -566,7 +566,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     }
 
     # Allow different sets of primitive internals with same_prims=False
-    geoms = get_geoms(xyz, coord_type=coord_type, same_prims=False)
+    geoms = get_geoms(xyz, coord_type=coord_type, same_prims=True)
     assert len(geoms) >= 2, "Need at least two geometries!"
 
     middle_geoms = geoms[1:-1]
