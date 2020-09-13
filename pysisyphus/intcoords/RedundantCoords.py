@@ -19,7 +19,7 @@ from pysisyphus.intcoords.eval import (
     augment_primitives,
     PrimInternal,
 )
-from pysisyphus.intcoords.setup import setup_redundant, get_primitives
+from pysisyphus.intcoords.setup import setup_redundant, get_primitives, valid_bend, valid_dihedral
 
 
 class RedundantCoords:
@@ -70,10 +70,11 @@ class RedundantCoords:
             bonds, bends, dihedrals = prim_indices
             # We accept all bond indices. What could possibly go wrong?! :)
             self.bond_indices = to_arr(bonds)
-            valid_bends = [inds for inds in bends if self.is_valid_bend(inds)]
+            valid_bends = [inds for inds in bends if valid_bend(self.coords3d, inds,
+                self.bend_min_deg, self.bend_max_deg)]
             self.bending_indices = to_arr(valid_bends)
             valid_dihedrals = [
-                inds for inds in dihedrals if self.is_valid_dihedral(inds)
+                inds for inds in dihedrals if valid_dihedral(self.coords3d, inds)
             ]
             self.dihedral_indices = to_arr(valid_dihedrals)
 
@@ -181,7 +182,7 @@ class RedundantCoords:
     def get_index_of_prim_coord(self, prim_ind):
         """Index of primitive internal for the given atom indices."""
         prim_ind_set = set(prim_ind)
-        for i, prim in self.primitives:
+        for i, prim in enumerate(self.primitives):
             if set(prim.indices) == prim_ind_set:
                 return i
         self.log(f"Primitive internal with indices {prim_ind} " "is not defined!")
@@ -261,7 +262,7 @@ class RedundantCoords:
             except (ValueError, ZeroDivisionError) as err:
                 self.log(
                     "Error in calculation of 2nd derivative of primitive "
-                    f"internal {pc.inds}."
+                    f"internal {primitive.indices}."
                 )
                 continue
             # Depending on the type of internal coordinate dg is a flat array
@@ -336,10 +337,14 @@ class RedundantCoords:
         )
         def_bonds, def_bends, def_dihedrals = self.sort_by_prim_type(define_prims)
 
-        self.bond_indices = coord_info.bonds
-        self.bond_indices += [
-            bond for bond in def_bonds if bond not in self.bond_indices
-        ]
+        def remove_duplicates(seq):
+            seen = set()
+            seen_add = seen.add
+            return [itm for itm in seq if not (itm in seen or seen_add(itm))]
+        all_bonds = (coord_info.bonds + coord_info.hydrogen_bonds
+                     + coord_info.interfrag_bonds + def_bonds)
+        all_bonds = remove_duplicates(all_bonds)
+        self.bond_indices = all_bonds
         self.bending_indices = coord_info.bends
         self.bending_indices += [
             bend for bend in def_bends if bend not in self.bending_indices
