@@ -1,39 +1,37 @@
-#!/usr/bin/env python3
-
 import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import geom_from_library, do_final_hessian
+from pysisyphus.helpers import geom_loader, do_final_hessian
 from pysisyphus.optimizers.guess_hessians import ts_hessian
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
 from pysisyphus.testing import using
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 
 @using("pyscf")
 @pytest.mark.parametrize(
     "hessian_init, ref_cycle", [
-        # ("calc", 27),  # Very slow
+        ("calc", 10),
         # Converges to wrong minimum
-        # pytest.param("unit", 17, marks=[using("pyscf"), pytest.mark.xfail]),
-        ("fischer", 17),
-        ("lindh", 18),
-        ("simple", 27),
-        ("swart", 20),
-        pytest.param("xtb", 22, marks=[using("pyscf"), using("xtb")]),
-        pytest.param("xtb1", 20, marks=[using("pyscf"), using("xtb")]),
+        # ("unit", 9),
+        ("fischer", 16),
+        ("lindh", 19),
+        ("simple", 19),
+        ("swart", 21),
+        pytest.param("xtb", 21, marks=[using("pyscf"), using("xtb")]),
+        pytest.param("xtb1", 15, marks=[using("pyscf"), using("xtb")]),
     ]
 )
 def test_guess_hessians(hessian_init, ref_cycle):
-    geom = geom_from_library("birkholz/vitamin_c.xyz", coord_type="redund")
-    geom.set_calculator(PySCF(basis="321g", pal=2))
+    geom = geom_loader("lib:h2o2_hf_321g_opt.xyz", coord_type="redund")
+    geom.set_calculator(PySCF(basis="def2svp", pal=2))
 
     print("@\tguess_hessian:", hessian_init)
     opt_kwargs = {
         "hessian_init": hessian_init,
+        "thresh": "gau_tight",
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
@@ -42,7 +40,7 @@ def test_guess_hessians(hessian_init, ref_cycle):
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
-    assert geom.energy == pytest.approx(-677.21287468)
+    assert geom.energy == pytest.approx(-150.65298169)
 
 
 @using("pyscf")
@@ -55,7 +53,7 @@ def test_ts_hessian():
 
 @using("pyscf")
 def test_ts_hessian_opt():
-    geom = geom_from_library("baker_ts/01_hcn.xyz", coord_type="redund",)
+    geom = geom_loader("lib:baker_ts/01_hcn.xyz", coord_type="redund")
     geom.set_calculator(PySCF(basis="321g"))
 
     opt_kwargs = {
@@ -66,7 +64,7 @@ def test_ts_hessian_opt():
     }
     opt = RSPRFOptimizer(geom, **opt_kwargs)
     opt.run()
-    do_final_hessian(geom)
+    do_final_hessian(geom, write_imag_modes=True)
 
     assert opt.is_converged
     assert opt.cur_cycle == 11

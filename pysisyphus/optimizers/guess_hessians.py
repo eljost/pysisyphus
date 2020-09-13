@@ -75,13 +75,7 @@ def fischer_guess(geom):
     h_diag = list()
     for primitive in geom.internal.primitives:
         f = h_funcs[len(primitive.indices)]
-        _ = f(primitive)
-        if np.isnan(_):
-            print(primitive)
-            import pdb; pdb.set_trace()
-            f(primitive)
         h_diag.append(f(primitive))
-    # import pdb; pdb.set_trace()
     H = np.array(np.diagflat(h_diag))
     return H
 
@@ -114,15 +108,15 @@ def lindh_guess(geom):
     k_dict = {
         2: 0.45,  # Stretches/bonds
         3: 0.15,  # Bends/angles
-        4: 0.005, # Torsions/dihedrals
+        4: 0.005,  # Torsions/dihedrals
     }
     k_diag = list()
-    for primitive in geom.internal.primitives:
+    for prim_int in geom.internal.prim_internals:
         rho_product = 1
-        for i in range(primitive.indices.size-1):
-            i1, i2 = primitive.indices[i:i+2]
+        for i in range(len(prim_int.inds)-1):
+            i1, i2 = prim_int.inds[i:i+2]
             rho_product *= rhos[i1, i2]
-        k_diag.append(k_dict[len(primitive.indices)] * rho_product)
+        k_diag.append(k_dict[len(prim_int.inds)] * rho_product)
     H = np.diagflat(k_diag)
     return H
 
@@ -149,7 +143,7 @@ def swart_guess(geom):
     k_diag = list()
     for primitive in geom.internal.primitives:
         rho_product = 1
-        for i in range(primitive.indices.size-1):
+        for i in range(len(primitive.indices)-1):
             i1, i2 = primitive.indices[i:i+2]
             rho_product *= rhos[i1, i2]
         k_diag.append(k_dict[len(primitive.indices)] * rho_product)
