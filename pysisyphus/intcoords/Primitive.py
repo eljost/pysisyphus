@@ -6,7 +6,7 @@ import numpy as np
 class Primitive(metaclass=abc.ABCMeta):
 
     def __init__(self, indices, periodic=False, calc_kwargs=None):
-        self.indices = indices
+        self.indices = list(indices)
         self.periodic = periodic
         if calc_kwargs is None:
             calc_kwargs = ()

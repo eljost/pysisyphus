@@ -1,16 +1,18 @@
-import itertools as it
 import logging
 import random
 
 import numpy as np
 
 
-class PrimInt:
+class PrimInternal:
 
     def __init__(self, inds, val, grad):
         self.inds = inds
         self.val = val
         self.grad = grad
+
+
+# PrimInternal = namedtuple("PrimitiveInternal", "inds val grad")
 
 
 def are_parallel(vec1, vec2, angle_ind=None, thresh=1e-6):
@@ -125,31 +127,40 @@ def calc_dihedral(coords3d, dihedral_ind, grad=False, cos_tol=1e-9):
     return dihedral_rad
 
 
-def eval_prim_internals(coords3d, prim_inds):
-    bond_inds, bend_inds, dihedral_inds = prim_inds
+# def eval_prim_internals(coords3d, primitives):
+    # bond_inds, bend_inds, dihedral_inds = prim_inds
 
-    def per_type(func, ind):
-        val, grad = func(coords3d, ind, True)
-        return PrimInt(ind, val, grad)
+    # def per_type(func, ind):
+        # val, grad = func(coords3d, ind, True)
+        # return PrimInt(ind, val, grad)
 
-    bonds = [per_type(calc_stretch, ind) for ind in bond_inds]
-    bends = [per_type(calc_bend, ind) for ind in bend_inds]
-    dihedrals = [per_type(calc_dihedral, ind) for ind in dihedral_inds]
+    # bonds = [per_type(calc_stretch, ind) for ind in bond_inds]
+    # bends = [per_type(calc_bend, ind) for ind in bend_inds]
+    # dihedrals = [per_type(calc_dihedral, ind) for ind in dihedral_inds]
 
-    return bonds, bends, dihedrals
-
-
-def eval_B(coords3d, prim_inds):
-    prim_internals = eval_prim_internals(coords3d, prim_inds)
-    return np.array([prim.grad for prim in it.chain(*prim_internals)])
+    # return bonds, bends, dihedrals
 
 
-def check_primitives(coords3d, prim_inds, thresh=1e-6, logger=None):
+def eval_primitives(coords3d, primitives):
+    prim_internals = list()
+    for primitive in primitives:
+        value, gradient = primitive.calculate(coords3d, gradient=True)
+        prim_internal = PrimInternal(primitive.indices, value, gradient)
+        prim_internals.append(prim_internal)
+    return prim_internals
+
+
+def eval_B(coords3d, primitives):
+    prim_internals = eval_primitives(coords3d, primitives)
+    return np.array([prim_int.grad for prim_int in prim_internals])
+
+
+def check_primitives(coords3d, primitives, thresh=1e-6, logger=None):
     def log(msg, level=logging.DEBUG):
         if logger is not None:
             logger.log(level, msg)
 
-    B = eval_B(coords3d, prim_inds)
+    B = eval_B(coords3d, primitives)
     G = B.T.dot(B)
     w, v = np.linalg.eigh(G)
     nonzero_inds = np.abs(w) > thresh

@@ -9,7 +9,7 @@ from scipy.spatial.distance import pdist
 
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.helpers import check_for_stop_sign, highlight_text
-from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
+from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.stocastic.align import matched_rmsd
 from pysisyphus.xyzloader import make_trj_str_from_geoms

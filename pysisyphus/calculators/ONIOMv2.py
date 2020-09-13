@@ -32,7 +32,7 @@ from pysisyphus.calculators import Gaussian16, OpenMolcas, ORCA, Psi4, Turbomole
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.Geometry import Geometry
 from pysisyphus.elem_data import COVALENT_RADII as CR
-from pysisyphus.intcoords.findbonds import get_bond_sets
+from pysisyphus.intcoords.setup import get_bond_sets
 
 
 CALC_DICT = {

@@ -17,7 +17,7 @@ import yaml
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.fragments import get_fragments
+from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union

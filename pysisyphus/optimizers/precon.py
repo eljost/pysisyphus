@@ -4,7 +4,7 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from scipy.sparse import csc_matrix
 
-from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
+from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
 from pysisyphus.intcoords import RedundantCoords
 

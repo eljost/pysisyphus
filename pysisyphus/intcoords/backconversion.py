@@ -2,15 +2,16 @@ import itertools as it
 
 import numpy as np
 
-from pysisyphus.intcoords.eval import eval_prim_internals
+from pysisyphus.intcoords.eval import eval_primitives
+from pysisyphus.intcoords import Torsion
 
 
-def update_internals(new_cartesians, old_internals, prim_inds):
-    prim_ints = eval_prim_internals(new_cartesians.reshape(-1, 3), prim_inds)
-    new_internals = [prim.val for prim in it.chain(*prim_ints)]
+def update_internals(new_cartesians, old_internals, primitives, dihedral_inds):
+    prim_internals = eval_primitives(new_cartesians.reshape(-1, 3), primitives)
+    new_internals = [prim_int.val for prim_int in prim_internals]
     internal_diffs = np.array(new_internals) - old_internals
 
-    dihedrals = prim_ints[-1]
+    dihedrals = [prim_internals[i] for i in dihedral_inds]
     dihedral_num = len(dihedrals)
     dihedral_diffs = internal_diffs[-dihedral_num:]
 
@@ -23,10 +24,10 @@ def update_internals(new_cartesians, old_internals, prim_inds):
         for dihed, new_val in zip(dihedrals, new_dihedrals):
             dihed.val = new_val
 
-    return prim_ints
+    return prim_internals
 
 
-def transform_int_step(int_step, old_cart_coords, cur_internals, B_prim, prim_inds,
+def transform_int_step(int_step, old_cart_coords, cur_internals, B_prim, primitives,
                        cart_rms_thresh=1e-6, logger=None):
     """Transformation is done in primitive internals, so int_step must be given
     in primitive internals and not in DLC!"""
@@ -40,6 +41,9 @@ def transform_int_step(int_step, old_cart_coords, cur_internals, B_prim, prim_in
     target_internals = cur_internals + int_step
 
     Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
+    dihedral_inds = np.array([i for i, primitive in enumerate(primitives)
+                 if isinstance(primitive, Torsion)
+    ])
 
     last_rms = 9999
     old_internals = cur_internals
@@ -50,8 +54,9 @@ def transform_int_step(int_step, old_cart_coords, cur_internals, B_prim, prim_in
         # Update cartesian coordinates
         new_cart_coords += cart_step
         # Determine new internal coordinates
-        new_prim_ints = update_internals(new_cart_coords, old_internals, prim_inds)
-        new_internals = [prim.val for prim in it.chain(*new_prim_ints)]
+        new_prim_ints = update_internals(new_cart_coords, old_internals, primitives,
+                                         dihedral_inds)
+        new_internals = [prim.val for prim in new_prim_ints]
         remaining_int_step = target_internals - new_internals
         internal_rms = np.sqrt(np.mean(remaining_int_step**2))
         log(f"Cycle {i}: rms(Δcart)={cart_rms:1.4e}, rms(Δint.) = {internal_rms:1.5e}")
@@ -75,7 +80,7 @@ def transform_int_step(int_step, old_cart_coords, cur_internals, B_prim, prim_in
 
         last_rms = cart_rms
         if cart_rms < cart_rms_thresh:
-            log("Internal to cartesian transformation converged!")
+            log(f"Internal->Cartesian transformation converged in {i} cycle(s)!")
             backtransform_failed = False
             break
 

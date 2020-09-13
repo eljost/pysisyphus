@@ -5,7 +5,7 @@ import pytest
 from pytest import approx
 
 from pysisyphus.helpers import geom_loader
-from pysisyphus.intcoords.fragments import get_fragments
+from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.testing import using_pyscf
 

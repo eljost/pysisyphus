@@ -33,10 +33,10 @@ from pysisyphus.helpers import confirm_input, shake_coords, \
                                get_tangent_trj_str
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
+from pysisyphus.helpers_pure import merge_sets
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
-from pysisyphus.intcoords.fragments import merge_fragments
-from pysisyphus.intcoords.findbonds import get_bond_sets
+from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.optimizers import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
@@ -713,7 +713,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         if separate_fragments:
             bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
             # Sort atom indices, so the atoms don't become totally scrambled.
-            fragments = [sorted(frag) for frag in merge_fragments(bond_sets)]
+            fragments = [sorted(frag) for frag in merge_sets(bond_sets)]
             # Disable higher fragment counts. I'm looking forward to the day
             # this ever occurs and someone complains :)
             assert len(fragments) < 10, "Something probably went wrong"

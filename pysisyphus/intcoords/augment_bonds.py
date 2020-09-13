@@ -1,7 +1,7 @@
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.findbonds import get_bond_sets
+from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.intcoords import RedundantCoords
 
 
