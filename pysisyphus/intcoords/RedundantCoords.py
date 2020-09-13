@@ -10,6 +10,7 @@ import logging
 
 import numpy as np
 
+from pysisyphus.helpers_pure import remove_duplicates
 from pysisyphus.intcoords import Bend, LinearBend, Stretch, Torsion
 from pysisyphus.intcoords.backconversion import transform_int_step
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
@@ -337,10 +338,6 @@ class RedundantCoords:
         )
         def_bonds, def_bends, def_dihedrals = self.sort_by_prim_type(define_prims)
 
-        def remove_duplicates(seq):
-            seen = set()
-            seen_add = seen.add
-            return [itm for itm in seq if not (itm in seen or seen_add(itm))]
         all_bonds = (coord_info.bonds + coord_info.hydrogen_bonds
                      + coord_info.interfrag_bonds + def_bonds)
         all_bonds = remove_duplicates(all_bonds)

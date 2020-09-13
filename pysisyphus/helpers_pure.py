@@ -58,3 +58,9 @@ def merge_sets(fragments):
             # intersect with any other unmerged fragment.
             merged.append(popped)
     return merged
+
+
+def remove_duplicates(seq):
+    seen = set()
+    seen_add = seen.add
+    return [itm for itm in seq if not (itm in seen or seen_add(itm))]
