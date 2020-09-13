@@ -307,8 +307,13 @@ def setup_redundant_from_geom(geom, *args, **kwargs):
 
 
 def get_primitives(
-    coords3d, bond_inds, bend_inds, linear_bend_inds, dihedral_inds,
-    make_complement, logger=None,
+    coords3d,
+    bond_inds,
+    bend_inds,
+    linear_bend_inds,
+    dihedral_inds,
+    make_complement,
+    logger=None,
 ):
     zipped = (
         (bond_inds, Stretch),
@@ -335,7 +340,8 @@ def get_primitives(
                 prim = prim_cls(**prim_kwargs)
                 primitives.append(prim)
 
-    log(logger, "Defined primitives")
-    for i, p in enumerate(primitives):
-        log(logger, f"\t{i}: {p.indices}")
+    msg = "Defined primitives\n" + "\n".join(
+        [f"\t{i:03d}: {str(p.indices): >14}" for i, p in enumerate(primitives)]
+    )
+    log(logger, msg)
     return primitives
