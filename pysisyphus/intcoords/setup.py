@@ -330,7 +330,7 @@ def get_primitives(
             primitives.append(prim)
 
             if isinstance(prim, LinearBend) and make_complement:
-                log(logger, f"Created complement for Bend {inds}")
+                log(logger, f"Created complement for LinearBend {prim_inds}")
                 prim_kwargs["complement"] = True
                 prim = prim_cls(**prim_kwargs)
                 primitives.append(prim)
