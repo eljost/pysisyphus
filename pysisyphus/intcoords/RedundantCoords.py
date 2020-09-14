@@ -332,8 +332,7 @@ class RedundantCoords:
             coords3d,
             min_deg=min_deg,
             max_deg=max_deg,
-            # No linear bends
-            lb_min_deg=None,
+            lb_min_deg=self.lb_min_deg,
             logger=self.logger,
         )
         def_bonds, def_bends, def_dihedrals = self.sort_by_prim_type(define_prims)
