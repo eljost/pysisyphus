@@ -264,6 +264,7 @@ def setup_redundant(
         return_cbm=True,
     )
     bond_inds = [tuple(bond) for bond in bond_inds]
+    bond_inds += def_bonds
     bond_ind_sets = [frozenset(bond) for bond in bond_inds]
 
     # Fragments
@@ -283,7 +284,6 @@ def setup_redundant(
         atoms, coords3d, bond_inds, logger=logger
     )
     all_bond_inds = bond_inds + hydrogen_bond_inds + interfrag_inds
-    all_bond_inds += def_bonds
 
     # Bends
     bend_inds = get_bend_inds(
