@@ -95,7 +95,7 @@ class GrowingString(GrowingChainOfStates):
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
         the center of the string."""
-        new_img = self.images[ref_index].copy(check_bends=False)
+        new_img = self.images[ref_index].copy(coord_kwargs={"check_bends": False})
 
         if ref_index <= self.lf_ind:
             tangent_ind = ref_index + 1

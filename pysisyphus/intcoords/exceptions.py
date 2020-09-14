@@ -7,3 +7,7 @@ class NeedNewInternalsException(Exception):
 
 class RebuiltInternalsException(Exception):
     pass
+
+
+class DifferentPrimitivesException(Exception):
+    pass

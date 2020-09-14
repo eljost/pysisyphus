@@ -307,7 +307,7 @@ class HessianOptimizer(Optimizer):
         # This wont work for internals
         # step = prev_coords - cur_coords
         # This should work for all coord_types
-        # tmp_geom = self.geometry.copy(check_bends=False)
+        # tmp_geom = self.geometry.copy(coord_kwargs={"check_bends": False})
         # tmp_geom.coords = prev_best_coords
         # step = tmp_geom - self.geometry
         step = get_step(self.geometry, prev_best_coords)

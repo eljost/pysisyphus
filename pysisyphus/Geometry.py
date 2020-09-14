@@ -13,7 +13,10 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.intcoords import DLC, RedundantCoords, RedundantCoordsV2
-from pysisyphus.intcoords.exceptions import NeedNewInternalsException, RebuiltInternalsException
+from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
+                                             RebuiltInternalsException,
+                                             DifferentPrimitivesException,
+)
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
 from pysisyphus.xyzloader import make_xyz_str
@@ -170,7 +173,10 @@ class Geometry:
         same_coord_length = len(self.coords) == len(other.coords)
         assert same_atoms, "Atom number/ordering is incompatible!"
         assert same_coord_type, "coord_types are incompatible!"
-        assert same_coord_length, "Different length of coordinate vectors!"
+        try:
+            assert same_coord_length, "Different length of coordinate vectors!"
+        except AssertionError:
+            raise DifferentPrimitivesException
 
     def __eq__(self, other):
         return (self.atoms == other.atoms) and all(self.coords == other.coords)
@@ -200,7 +206,7 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
-    def copy(self, coord_type=None, check_bends=True):
+    def copy(self, coord_type=None, coord_kwargs=None):
         """Returns a new Geometry object with same atoms and coordinates.
 
         Parameters
@@ -208,6 +214,9 @@ class Geometry:
         coord_type : str
             Desired coord_type, defaults to current coord_type.
 
+        coord_kwargs : dict, optional
+            Any desired coord_kwargs that will be passed to the RedundantCoords
+            object.
         Returns
         -------
         geom : Geometry
@@ -216,26 +225,30 @@ class Geometry:
         if coord_type is None:
             coord_type = self.coord_type
 
+        if coord_kwargs is None:
+            coord_kwargs = dict()
+
         # Geometry constructor will exit when coord_kwargs are given
         # with coord_type == 'cart'. So we only supply it when we are
         # NOT using cartesian coordinates.
-        coord_kwargs = None
         if coord_type != "cart":
             try:
                 prim_indices = self.internal.prim_indices
             # Will be raised if the current coord_type is 'cart'
             except AttributeError:
                 prim_indices = None
-            coord_kwargs={"prim_indices": prim_indices,
-                          "check_bends": check_bends,
+            default_coord_kwargs={
+                "prim_indices": prim_indices,
+                "check_bends": True,
             }
+            default_coord_kwargs.update(coord_kwargs)
         return Geometry(self.atoms, self._coords,
                         coord_type=coord_type,
-                        coord_kwargs=coord_kwargs,
+                        coord_kwargs=default_coord_kwargs,
         )
 
-    def copy_all(self, coord_type=None, check_bends=True):
-        new_geom = self.copy(coord_type, check_bends)
+    def copy_all(self, coord_type=None, coord_kwargs=None):
+        new_geom = self.copy(coord_type, coord_kwargs)
         new_geom.set_calculator(self.calculator)
         new_geom.energy = self._energy
         if self._forces is not None:
