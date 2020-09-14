@@ -46,7 +46,7 @@ def test_bmat_allene():
 
     geom = geom_loader(xyz_fn, coord_type="redund_v2",
                        coord_kwargs={
-                           "linear_bend_deg": 0,
+                           "lb_min_deg": 0,
                         }
     )
     print(geom)
@@ -76,7 +76,7 @@ def test_hydrogen_bonds_fragments():
                        coord_type="redund_v2")
     int_ = geom.internal
     assert len(int_.hydrogen_bond_indices) == 1
-    assert len(int_.fragments) == 2
+    assert len(int_.fragments) == 3
 
 
 def test_linear_bend_allene():

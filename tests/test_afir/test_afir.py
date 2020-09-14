@@ -30,6 +30,6 @@ def test_afir():
     geom = geom.copy(coord_type="redund")
     int_ = geom.internal
     # Broken C-Cl bond
-    assert [0, 4] not in int_.bond_indices.tolist()
+    assert (0, 4) not in int_.bond_indices
     # Formed O-C bond
-    assert [0, 5] in int_.bond_indices.tolist()
+    assert (0, 5) in int_.bond_indices

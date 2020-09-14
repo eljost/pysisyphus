@@ -47,7 +47,7 @@ def get_lindh_k(atoms, coords3d, bonds=None, angles=None, torsions=None):
     ks = list()
     for inds in it.chain(bonds, angles, torsions):
         rho_product = 1
-        for i in range(inds.size-1):
+        for i in range(len(inds)-1):
             i1, i2 = inds[i:i+2]
             rho_product *= rhos[i1, i2]
         ks.append(k_dict[len(inds)] * rho_product)

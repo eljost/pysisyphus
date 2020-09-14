@@ -61,6 +61,7 @@ def merge_sets(fragments):
 
 
 def remove_duplicates(seq):
+    tuples = [tuple(itm) for itm in seq]
     seen = set()
     seen_add = seen.add
-    return [itm for itm in seq if not (itm in seen or seen_add(itm))]
+    return [itm for itm in tuples if not (itm in seen or seen_add(itm))]
