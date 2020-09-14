@@ -220,23 +220,41 @@ def get_dihedral_inds(atoms, coords3d, bond_inds, bend_inds, logger=None):
     return dihedral_inds
 
 
+def sort_by_prim_type(to_sort=None):
+    if to_sort is None:
+        to_sort = list()
+
+    by_prim_type = [[], [], []]
+    for item in to_sort:
+        len_ = len(item)
+        # len -> index
+        #   2 ->     0 (bond)
+        #   3 ->     1 (bend)
+        #   4 ->     2 (torsion)
+        by_prim_type[len_ - 2].append(item)
+    return by_prim_type
+
+
 CoordInfo = namedtuple(
     "CoordInfo",
     "bonds hydrogen_bonds interfrag_bonds bends linear_bends "
     "dihedrals fragments cdm cbm".split(),
 )
 
-
 def setup_redundant(
     atoms,
     coords3d,
     factor=1.3,
+    define_prims=None,
     min_deg=15,
     max_deg=180,
     lb_min_deg=None,
     lb_max_bonds=4,
     logger=None,
 ):
+    # Additional primitives to be defined.
+    def_bonds, def_bends, def_dihedrals = sort_by_prim_type(define_prims)
+
     # Bonds
     bond_inds, cdm, cbm = get_bond_sets(
         atoms,
@@ -255,8 +273,8 @@ def setup_redundant(
     unbonded_set = set(range(len(atoms))) - bonded_set
     fragments.extend([frozenset((atom,)) for atom in unbonded_set])
 
-    # Check if there are any disconnected fragments. If there are some
-    # create interfragment bonds between all of them.
+    # Check for disconnected fragments. If they are present, create interfragment
+    # bonds between them.
     interfrag_inds = list()
     interfrag_inds.extend(connect_fragments(cdm, fragments))
 
@@ -265,11 +283,16 @@ def setup_redundant(
         atoms, coords3d, bond_inds, logger=logger
     )
     all_bond_inds = bond_inds + hydrogen_bond_inds + interfrag_inds
+    all_bond_inds += def_bonds
 
     # Bends
     bend_inds = get_bend_inds(
         coords3d, all_bond_inds, min_deg=min_deg, max_deg=max_deg, logger=logger
     )
+    # All bends will be checked, for being linear bends and will be removed from
+    # bend_inds, if needed.
+    bend_inds += def_bends
+
     # Linear Bends
     linear_bend_inds = list()
     if lb_min_deg is not None:
@@ -287,6 +310,7 @@ def setup_redundant(
     dihedral_inds = get_dihedral_inds(
         atoms, coords3d, all_bond_inds, bend_inds, logger=logger
     )
+    dihedral_inds += def_dihedrals
 
     coord_info = CoordInfo(
         bonds=bond_inds,

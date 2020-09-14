@@ -315,15 +315,6 @@ class RedundantCoords:
         """Project supplied vector onto range of B."""
         return self.P.dot(vector)
 
-    def sort_by_prim_type(self, to_sort):
-        by_prim_type = [[], [], []]
-        if to_sort is None:
-            to_sort = list()
-        for item in to_sort:
-            len_ = len(item)
-            by_prim_type[len_ - 2].append(item)
-        return by_prim_type
-
     def set_primitive_indices(
         self, atoms, coords3d, min_deg, max_deg, define_prims=None
     ):
@@ -331,28 +322,24 @@ class RedundantCoords:
             atoms,
             coords3d,
             factor=self.bond_factor,
+            define_prims=define_prims,
             min_deg=min_deg,
             max_deg=max_deg,
             lb_min_deg=self.lb_min_deg,
             logger=self.logger,
         )
-        def_bonds, def_bends, def_dihedrals = self.sort_by_prim_type(define_prims)
 
-        all_bonds = (coord_info.bonds + coord_info.hydrogen_bonds
-                     + coord_info.interfrag_bonds + def_bonds)
+        all_bonds = (
+            coord_info.bonds + coord_info.hydrogen_bonds + coord_info.interfrag_bonds
+        )
         all_bonds = remove_duplicates(all_bonds)
+
+        # Set primitive indices
         self.bond_indices = all_bonds
         self.bending_indices = coord_info.bends
-        self.bending_indices += [
-            bend for bend in def_bends if bend not in self.bending_indices
-        ]
         self.linear_bend_indices = coord_info.linear_bends
         self.dihedral_indices = coord_info.dihedrals
-        self.dihedral_indices += [
-            dihedral
-            for dihedral in def_dihedrals
-            if dihedral not in self.dihedral_indices
-        ]
+
         self.hydrogen_bond_indices = coord_info.hydrogen_bonds
         self.fragments = coord_info.fragments
         self.cbm = coord_info.cbm
