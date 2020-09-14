@@ -14,7 +14,7 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 @pytest.mark.parametrize(
     "augment, ref_cycle",
     [
-        (True, 6),
+        (True, 7),
         # 57 cycles are needed when 45 < VALID_BEND_DEG < 170
         # (False, 57),
         (False, 7),
