@@ -330,6 +330,7 @@ class RedundantCoords:
         coord_info = setup_redundant(
             atoms,
             coords3d,
+            factor=self.bond_factor,
             min_deg=min_deg,
             max_deg=max_deg,
             lb_min_deg=self.lb_min_deg,
