@@ -6,8 +6,8 @@ from pysisyphus.intcoords.eval import eval_primitives
 from pysisyphus.intcoords import Torsion
 
 
-def update_internals(new_cartesians, old_internals, primitives, dihedral_inds):
-    prim_internals = eval_primitives(new_cartesians.reshape(-1, 3), primitives)
+def update_internals(new_coords3d, old_internals, primitives, dihedral_inds):
+    prim_internals = eval_primitives(new_coords3d, primitives)
     new_internals = [prim_int.val for prim_int in prim_internals]
     internal_diffs = np.array(new_internals) - old_internals
 
@@ -54,8 +54,12 @@ def transform_int_step(int_step, old_cart_coords, cur_internals, B_prim, primiti
         # Update cartesian coordinates
         new_cart_coords += cart_step
         # Determine new internal coordinates
-        new_prim_ints = update_internals(new_cart_coords, old_internals, primitives,
-                                         dihedral_inds)
+        new_prim_ints = update_internals(
+            new_cart_coords.reshape(-1, 3),
+            old_internals,
+            primitives,
+            dihedral_inds
+        )
         new_internals = [prim.val for prim in new_prim_ints]
         remaining_int_step = target_internals - new_internals
         internal_rms = np.sqrt(np.mean(remaining_int_step**2))
