@@ -13,7 +13,7 @@ class Primitive(metaclass=abc.ABCMeta):
         self.calc_kwargs = calc_kwargs
 
     @staticmethod
-    def parallel(u, v, thresh=1e-4):
+    def parallel(u, v, thresh=1e-6):
         dot = u.dot(v) / (np.linalg.norm(u) * np.linalg.norm(v))
         return (1 - abs(dot)) < thresh
 
