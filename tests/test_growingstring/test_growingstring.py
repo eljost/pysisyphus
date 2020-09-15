@@ -180,7 +180,7 @@ def test_climb_lanczos():
     opt = StringOptimizer(gs, **opt_kwargs)
     opt.run()
 
-    calc.anim_opt(opt, show=True)
+    # calc.anim_opt(opt, show=True)
 
     assert opt.is_converged
     assert opt.cur_cycle == 23

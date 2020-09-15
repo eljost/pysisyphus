@@ -42,11 +42,10 @@ def test_bmat_allene():
     print(ref_geom)
     ref_int = ref_geom.internal
     Bref = ref_int.B
-    # for pi in ref_int._prim_internals: print(pi.inds)
 
     geom = geom_loader(xyz_fn, coord_type="redund_v2",
                        coord_kwargs={
-                           "lb_min_deg": 0,
+                           "lb_min_deg": None,
                         }
     )
     print(geom)

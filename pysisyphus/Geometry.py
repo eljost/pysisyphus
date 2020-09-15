@@ -231,20 +231,21 @@ class Geometry:
         # Geometry constructor will exit when coord_kwargs are given
         # with coord_type == 'cart'. So we only supply it when we are
         # NOT using cartesian coordinates.
+        _coord_kwargs = None
         if coord_type != "cart":
             try:
                 prim_indices = self.internal.prim_indices
             # Will be raised if the current coord_type is 'cart'
             except AttributeError:
                 prim_indices = None
-            default_coord_kwargs={
+            _coord_kwargs = {
                 "prim_indices": prim_indices,
                 "check_bends": True,
             }
-            default_coord_kwargs.update(coord_kwargs)
+            _coord_kwargs.update(coord_kwargs)
         return Geometry(self.atoms, self._coords,
                         coord_type=coord_type,
-                        coord_kwargs=default_coord_kwargs,
+                        coord_kwargs=_coord_kwargs,
         )
 
     def copy_all(self, coord_type=None, coord_kwargs=None):
