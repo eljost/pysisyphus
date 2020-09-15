@@ -7,7 +7,6 @@ from scipy.spatial.distance import pdist, squareform
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
-from pysisyphus.intcoords.eval import calc_stretch, calc_bend, calc_dihedral
 
 
 def get_pair_covalent_radii(atoms):
@@ -89,9 +88,9 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
         for y_ind in y_inds:
             y_atom = atoms[y_ind].lower()
             cov_rad_sum = CR["h"] + CR[y_atom]
-            distance = calc_stretch(coords3d, (h_ind, y_ind))
+            distance = Stretch._calculate(coords3d, (h_ind, y_ind))
             vdw = 0.9 * (VDW_RADII["h"] + VDW_RADII[y_atom])
-            angle = calc_bend(coords3d, (x_ind, h_ind, y_ind))
+            angle = Bend._calculate(coords3d, (x_ind, h_ind, y_ind))
             if (cov_rad_sum < distance < vdw) and (angle > np.pi / 2):
                 hydrogen_bond_inds.append((h_ind, y_ind))
                 log(
@@ -104,7 +103,7 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
 
 
 def valid_bend(coords3d, bend_ind, min_deg, max_deg):
-    val = calc_bend(coords3d, bend_ind)
+    val = Bend._calculate(coords3d, bend_ind)
     deg = np.rad2deg(val)
     return min_deg <= deg <= max_deg
 
@@ -130,7 +129,7 @@ def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=No
     bm = squareform(cbm)
     linear_bend_inds = list()
     for bend in bend_inds:
-        deg = np.rad2deg(calc_bend(coords3d, bend))
+        deg = np.rad2deg(Bend._calculate(coords3d, bend))
         bonds = sum(bm[bend[1]])
         if (deg >= min_deg) and (bonds <= max_bonds):
             log(
@@ -144,8 +143,8 @@ def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=No
 
 def valid_dihedral(coords3d, dihedral_ind, thresh=1e-6):
     # Check for linear atoms
-    first_angle = calc_bend(coords3d, dihedral_ind[:3])
-    second_angle = calc_bend(coords3d, dihedral_ind[1:])
+    first_angle = Bend._calculate(coords3d, dihedral_ind[:3])
+    second_angle = Bend._calculate(coords3d, dihedral_ind[1:])
     pi_thresh = np.pi - thresh
     return (abs(first_angle) < pi_thresh) and (abs(second_angle) < pi_thresh)
 
@@ -201,7 +200,7 @@ def get_dihedral_inds(atoms, coords3d, bond_inds, bend_inds, logger=None):
             dihedral_ind = list(bend) + fourth_atom
             # This way dihedrals may be generated that contain linear
             # atoms and these would be undefinied. So we check for this.
-            dihed = calc_dihedral(coords3d, dihedral_ind)
+            dihed = Torsion._calculate(coords3d, dihedral_ind)
             if not np.isnan(dihed):
                 improper_dihedrals.append(dihedral_ind)
             else:
