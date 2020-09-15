@@ -9,7 +9,7 @@ from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 class RSA(HessianOptimizer):
 
     def optimize(self):
-        energy, gradient, H, big_eigvals, big_eigvecs = self.housekeeping()
+        energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
 
         assert big_eigvals.argmin() == 0
         min_eigval = big_eigvals[0]
