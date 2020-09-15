@@ -115,6 +115,7 @@ class RedundantCoords:
         self._cart_coords = cart_coords
         self._B_prim = None
         self._prim_coords = None
+        self._prim_internals = None
 
     @property
     def primitives(self):
