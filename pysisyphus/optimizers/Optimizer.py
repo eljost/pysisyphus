@@ -480,6 +480,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.geometry.coords = new_coords
             except RebuiltInternalsException:
                 print("Rebuilt internal coordinates")
+                self.reset()
 
             if hasattr(self.geometry, "reparametrize"):
                 reparametrized = self.geometry.reparametrize()
