@@ -64,8 +64,10 @@ def get_geoms():
         # only,
         )
     use_names = list(it.chain(*use))
-    geom_data = get_baker_ts_geoms_flat(coord_type="redund")
-    # _ = [_ for _ in geom_data if _[0] in use_names]
+    geom_data = get_baker_ts_geoms_flat(
+        coord_type="redund",
+        coord_kwargs={"rebuild": True,},
+    )
     return [_ for _ in geom_data if _[0] in use_names]
 
 

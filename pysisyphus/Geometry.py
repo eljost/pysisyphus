@@ -137,7 +137,7 @@ class Geometry:
         if coord_class:
             assert coords.size != 3, \
                 "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            self.internal = coord_class(atoms, self._coords, **coord_kwargs)
+            self.internal = coord_class(atoms, self.coords3d, **coord_kwargs)
         else:
             self.internal = None
         self.comment = comment
@@ -355,13 +355,13 @@ class Geometry:
         if self.internal:
             try:
                 int_step = coords - self.internal.coords
-                cart_diff = self.internal.transform_int_step(int_step)
-                coords = self._coords + cart_diff
-                self.internal.cart_coords = coords
+                cart_step = self.internal.transform_int_step(int_step)
+                coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
-                coords = exception.cart_coords
+                coords3d = exception.cart_coords
                 coord_class = self.coord_types[self.coord_type]
-                self.internal = coord_class(self.atoms, coords)
+                self.internal = coord_class(self.atoms, coords3d)
+                self._coords = coords3d.flatten()
                 raise RebuiltInternalsException
 
         # Set new cartesian coordinates

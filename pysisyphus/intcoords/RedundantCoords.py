@@ -27,25 +27,25 @@ class RedundantCoords:
     def __init__(
         self,
         atoms,
-        cart_coords,
+        coords3d,
         bond_factor=1.3,
         prim_indices=None,
         define_prims=None,
         bonds_only=False,
         check_bends=True,
-        check_dihedrals=False,
+        rebuild=False,
         bend_min_deg=15,
         bend_max_deg=180,
         lb_min_deg=None,
         make_complement=True,
     ):
         self.atoms = atoms
-        self.cart_coords = cart_coords
+        self.coords3d = coords3d
         self.bond_factor = bond_factor
         self.define_prims = define_prims
         self.bonds_only = bonds_only
         self.check_bends = check_bends
-        self.check_dihedrals = check_dihedrals
+        self.rebuild = rebuild
         self.bend_min_deg = bend_min_deg
         self.bend_max_deg = bend_max_deg
         self.lb_min_deg = lb_min_deg
@@ -107,12 +107,12 @@ class RedundantCoords:
         self.logger.debug(message)
 
     @property
-    def cart_coords(self):
-        return self._cart_coords
+    def coords3d(self):
+        return self._coords3d
 
-    @cart_coords.setter
-    def cart_coords(self, cart_coords):
-        self._cart_coords = cart_coords
+    @coords3d.setter
+    def coords3d(self, coords3d):
+        self._coords3d = coords3d.reshape(-1, 3)
         self._B_prim = None
         self._prim_coords = None
         self._prim_internals = None
@@ -124,10 +124,6 @@ class RedundantCoords:
     @primitives.setter
     def primitives(self, primitives):
         self._primitives = primitives
-
-    @property
-    def coords3d(self):
-        return self.cart_coords.reshape(-1, 3)
 
     @property
     def prim_indices(self):
@@ -240,7 +236,7 @@ class RedundantCoords:
     def get_K_matrix(self, int_gradient=None):
         if int_gradient is not None:
             assert len(int_gradient) == len(self._primitives)
-        size_ = self.cart_coords.size
+        size_ = self.coords3d.size
         if int_gradient is None:
             return np.zeros((size_, size_))
 
@@ -370,14 +366,17 @@ class RedundantCoords:
     def transform_int_step(self, int_step, pure=False):
         new_prim_internals, cart_step, failed = transform_int_step(
             int_step,
-            self.cart_coords,
+            self.coords3d.flatten(),
             self.prim_coords,
             self.B_prim,
             self.primitives,
+            check_dihedrals=self.rebuild,
             logger=self.logger,
         )
+        # Update coordinates
         if not pure:
             self.prim_internals = new_prim_internals
+            self.coords3d += cart_step.reshape(-1, 3)
         return cart_step
 
     def __str__(self):
