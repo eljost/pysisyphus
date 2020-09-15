@@ -137,7 +137,7 @@ class Geometry:
         if coord_class:
             assert coords.size != 3, \
                 "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            self.internal = coord_class(atoms, self.coords3d, **coord_kwargs)
+            self.internal = coord_class(atoms, self.coords3d.copy(), **coord_kwargs)
         else:
             self.internal = None
         self.comment = comment
@@ -243,7 +243,7 @@ class Geometry:
                 "check_bends": True,
             }
             _coord_kwargs.update(coord_kwargs)
-        return Geometry(self.atoms, self._coords,
+        return Geometry(self.atoms, self._coords.copy(),
                         coord_type=coord_type,
                         coord_kwargs=_coord_kwargs,
         )
@@ -353,12 +353,14 @@ class Geometry:
         # Do the backtransformation from internal to cartesian.
         coords = np.array(coords).flatten()
         if self.internal:
+            np.testing.assert_allclose(self.coords3d, self.internal.coords3d)
+
             try:
                 int_step = coords - self.internal.coords
                 cart_step = self.internal.transform_int_step(int_step)
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
-                coords3d = exception.cart_coords
+                coords3d = exception.coords3d.copy()
                 coord_class = self.coord_types[self.coord_type]
                 self.internal = coord_class(self.atoms, coords3d)
                 self._coords = coords3d.flatten()

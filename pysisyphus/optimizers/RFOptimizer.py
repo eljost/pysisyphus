@@ -74,8 +74,8 @@ class RFOptimizer(HessianOptimizer):
             # be defined.
             diis_result = None
 
-        can_linesearch = (diis_result is None) and self.line_search and (self.cur_cycle > 0)
-        if can_linesearch and (not resetted):
+        can_linesearch = (diis_result is None) and self.line_search and (not resetted)
+        if can_linesearch:
             ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search()
             # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2()
             # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2(H)

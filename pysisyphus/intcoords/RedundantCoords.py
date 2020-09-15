@@ -40,7 +40,7 @@ class RedundantCoords:
         make_complement=True,
     ):
         self.atoms = atoms
-        self.coords3d = coords3d
+        self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
         self.bond_factor = bond_factor
         self.define_prims = define_prims
         self.bonds_only = bonds_only
