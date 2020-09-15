@@ -447,7 +447,6 @@ class HessianOptimizer(Optimizer):
         eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
         resetted = not can_update
-        print("\tresetted", resetted)
         return energy, gradient, H, eigvals, eigvecs, resetted
 
     def get_augmented_hessian(self, eigvals, gradient, alpha=1.):
