@@ -15,10 +15,9 @@ class PrimInternal:
 # PrimInternal = namedtuple("PrimitiveInternal", "inds val grad")
 
 
-def are_parallel(vec1, vec2, angle_ind=None, thresh=1e-6):
-    dot = max(min(vec1.dot(vec2), 1), -1)
-    rad = np.arccos(dot)
-    return abs(rad) > (np.pi - thresh)
+def are_parallel(u, v, thresh=1e-6):
+    dot = u.dot(v) / (np.linalg.norm(u) * np.linalg.norm(v))
+    return (1 - abs(dot)) < thresh
 
 
 def calc_stretch(coords3d, bond_ind, grad=False):
