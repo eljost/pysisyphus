@@ -423,7 +423,14 @@ class HessianOptimizer(Optimizer):
         self.forces.append(-gradient)
         self.energies.append(energy)
 
-        if self.cur_cycle > 0:
+        can_update = (
+            # Allows gradient differences
+            len(self.forces) > 1 and (self.forces[-2].shape == gradient.shape)
+            # Allows coordinat differences
+            and len(self.coords) > 1 and (self.coords[-2].shape == self.coords[1].shape)
+            and len(self.energies) > 1
+        )
+        if can_update:
             self.update_trust_radius()
             self.update_hessian()
 
@@ -439,7 +446,9 @@ class HessianOptimizer(Optimizer):
         # Neglect small eigenvalues
         eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
-        return energy, gradient, H, eigvals, eigvecs
+        resetted = not can_update
+        print("\tresetted", resetted)
+        return energy, gradient, H, eigvals, eigvecs, resetted
 
     def get_augmented_hessian(self, eigvals, gradient, alpha=1.):
         dim_ = eigvals.size + 1

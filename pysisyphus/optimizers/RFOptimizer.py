@@ -27,7 +27,7 @@ class RFOptimizer(HessianOptimizer):
         self.gediis_thresh = gediis_thresh  # Will be compared to rms(forces)
 
     def optimize(self):
-        energy, gradient, H, big_eigvals, big_eigvecs = self.housekeeping()
+        energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
 
         org_grad = gradient.copy()
 
@@ -44,8 +44,8 @@ class RFOptimizer(HessianOptimizer):
         # Check if we can do GDIIS or GEDIIS
         rms_forces = rms(self.forces[-1])
         rms_step = rms(ref_step)
-        can_diis = rms_step <= self.gdiis_thresh
-        can_gediis = rms_forces <= self.gediis_thresh
+        can_diis = (rms_step <= self.gdiis_thresh) and (not resetted)
+        can_gediis = (rms_forces <= self.gediis_thresh) and (not resetted)
         diis_result = None
         ip_gradient = None
         # Prefer GDIIS over GEDIIS
@@ -75,7 +75,7 @@ class RFOptimizer(HessianOptimizer):
             diis_result = None
 
         can_linesearch = (diis_result is None) and self.line_search and (self.cur_cycle > 0)
-        if can_linesearch:
+        if can_linesearch and (not resetted):
             ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search()
             # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2()
             # ip_energy, ip_gradient, ip_coords, ip_step = self.poly_line_search_v2(H)

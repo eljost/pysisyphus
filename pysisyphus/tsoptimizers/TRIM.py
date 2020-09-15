@@ -13,7 +13,7 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 class TRIM(TSHessianOptimizer):
 
     def optimize(self):
-        energy, gradient, H, eigvals, eigvecs = self.housekeeping()
+        energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
 
         self.log(f"Signs of eigenvalue and -vector of root {self.root} "
