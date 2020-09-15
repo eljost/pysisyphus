@@ -12,7 +12,7 @@ import numpy as np
 
 from pysisyphus.helpers_pure import remove_duplicates
 from pysisyphus.intcoords import Bend, LinearBend, Stretch, Torsion
-from pysisyphus.intcoords.backconversion import transform_int_step
+from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.eval import (
     eval_primitives,
