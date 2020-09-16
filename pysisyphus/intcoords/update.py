@@ -8,6 +8,37 @@ from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 
 
+def correct_dihedrals(new_dihedrals, old_dihedrals):
+    """Dihedrals are periodic. Going from -179° to 179° is not a step of 358°,
+    but a step of 2°. By considering the actual distance of the dihedrals from
+    π the correct step can be calculated.
+
+    dihedral step length  = abs(abs(new_dihedral) - π) + abs(abs(old_dihedral)- π)
+
+    or put differently
+
+    dihedral step length = abs(abs(new_dihedral - old_dihedral) - 2*π)
+
+    The sign is left to be determined. Going from -179° to 179° (roughly π - -π = 2π)
+    is a counter clockwise rotation and the dihedral has to decrease below -π. Going
+    from 179° to -179° (roughly -π - π = -2π) is a clockwise rotation and the dihedral
+    increases abvove π. So the correct sign corresponds to the negative sign of the
+    original difference.
+
+    original difference  2π -> dihedral must decrease -> sign = -1
+    original difference -2π -> dihedral must increase -> sign = +1
+
+    Overall the old dihedral is then modified by the actual step length with the correct
+    sign."""
+    dihedrals_step = new_dihedrals - old_dihedrals
+    shifted_by_2pi = np.abs(np.abs(dihedrals_step) - 2 * np.pi) < np.pi / 2
+    corrected_dihedrals = new_dihedrals.copy()
+    corrected_dihedrals[shifted_by_2pi] -= (
+        2 * np.pi * np.sign(dihedrals_step[shifted_by_2pi])
+    )
+    return corrected_dihedrals
+
+
 def update_internals(new_coords3d, old_internals, primitives, dihedral_inds,
                      check_dihedrals=False, logger=None):
     prim_internals = eval_primitives(new_coords3d, primitives)
