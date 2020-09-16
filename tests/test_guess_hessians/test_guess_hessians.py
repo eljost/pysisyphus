@@ -19,7 +19,7 @@ import numpy as np
         ("fischer", 16),
         ("lindh", 19),
         ("simple", 19),
-        ("swart", 21),
+        ("swart", 20),
         pytest.param("xtb", 21, marks=[using("pyscf"), using("xtb")]),
         pytest.param("xtb1", 15, marks=[using("pyscf"), using("xtb")]),
     ]
