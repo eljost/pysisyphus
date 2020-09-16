@@ -375,8 +375,8 @@ class RedundantCoords:
         )
         # Update coordinates
         if not pure:
-            self.prim_internals = new_prim_internals
             self.coords3d += cart_step.reshape(-1, 3)
+            self.prim_internals = new_prim_internals
         return cart_step
 
     def __str__(self):
