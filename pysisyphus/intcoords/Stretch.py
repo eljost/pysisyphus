@@ -5,6 +5,9 @@ from pysisyphus.intcoords.Primitive import Primitive
 
 class Stretch(Primitive):
 
+    def _weight(self, atoms, coords3d, f_damping):
+        return self.rho(atoms, coords3d, self.indices)
+
     @staticmethod
     def _calculate(coords3d, indices, gradient=False):
         n, m = indices

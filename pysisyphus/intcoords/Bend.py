@@ -1,9 +1,18 @@
+from math import sin
+
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 
 
 class Bend(Primitive):
+
+    def _weight(self, atoms, coords3d, f_damping):
+        m, o, n = self.indices
+        rho_mo = self.rho(atoms, coords3d, (m, o))
+        rho_on = self.rho(atoms, coords3d, (o, n))
+        rad = self.calculate(coords3d)
+        return (rho_mo * rho_on)**0.5 * (f_damping + (1-f_damping)*sin(rad))
 
     @staticmethod
     def _calculate(coords3d, indices, gradient=False):
@@ -15,25 +24,25 @@ class Bend(Primitive):
         u = u_dash / u_norm
         v = v_dash / v_norm
 
-        cross_vec1 = ( 1, -1, 1)
-        cross_vec2 = (-1,  1, 1)
-
-        # Determine second vector for the cross product, to get an
-        # orthogonal direction. Eq. (24) in [1]
-        uv_parallel = Bend.parallel(u, v)
-        if not uv_parallel:
-            cross_vec = v
-        elif not Bend.parallel(u, cross_vec1):
-            cross_vec = cross_vec1
-        else:
-            cross_vec = cross_vec2
-
-        w_dash = np.cross(u, cross_vec)
-        w = w_dash / np.linalg.norm(w_dash)
-
         angle_rad = np.arccos(u.dot(v))
 
         if gradient:
+            cross_vec1 = ( 1, -1, 1)
+            cross_vec2 = (-1,  1, 1)
+
+            # Determine second vector for the cross product, to get an
+            # orthogonal direction. Eq. (24) in [1]
+            uv_parallel = Bend.parallel(u, v)
+            if not uv_parallel:
+                cross_vec = v
+            elif not Bend.parallel(u, cross_vec1):
+                cross_vec = cross_vec1
+            else:
+                cross_vec = cross_vec2
+
+            w_dash = np.cross(u, cross_vec)
+            w = w_dash / np.linalg.norm(w_dash)
+
             uxw = np.cross(u, w)
             wxv = np.cross(w, v)
 

@@ -1,6 +1,9 @@
 import abc
+from math import exp
 
 import numpy as np
+
+from pysisyphus.elem_data import COVALENT_RADII as CR
 
 
 class Primitive(metaclass=abc.ABCMeta):
@@ -20,6 +23,20 @@ class Primitive(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _calculate(*, coords3d, indices, gradient, **kwargs):
         pass
+
+    @abc.abstractmethod
+    def _weight(self, atoms, coords3d, f_damping):
+        pass
+
+    def weight(self, atoms, coords3d, f_damping=0.12):
+        return self._weight(atoms, coords3d, f_damping)
+
+    @staticmethod
+    def rho(atoms, coords3d, indices):
+        i, j = indices
+        distance = np.linalg.norm(coords3d[i]-coords3d[j])
+        cov_rad_sum = CR[atoms[i].lower()] + CR[atoms[j].lower()]
+        return exp(-(distance / cov_rad_sum - 1))
 
     def calculate(self, coords3d, indices=None, gradient=False):
         if indices is None:

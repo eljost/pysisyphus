@@ -1,3 +1,5 @@
+from math import sin
+
 import numpy as np
 
 from pysisyphus.intcoords.derivatives import dq_lb
@@ -19,6 +21,13 @@ class LinearBend(Primitive):
         super().__init__(*args, **kwargs)
 
         self.complement = complement
+
+    def _weight(self, atoms, coords3d, f_damping):
+        m, o, n = self.indices
+        rho_mo = self.rho(atoms, coords3d, (m, o))
+        rho_on = self.rho(atoms, coords3d, (o, n))
+        rad = self.calculate(coords3d)
+        return (rho_mo * rho_on)**0.5 * (f_damping + (1-f_damping)*sin(rad))
 
     @staticmethod
     def _calculate(coords3d, indices, gradient=False, complement=False):

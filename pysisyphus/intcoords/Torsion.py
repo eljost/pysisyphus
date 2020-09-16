@@ -1,6 +1,10 @@
+from math import sin
+
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.intcoords import Bend
+
 
 
 class Torsion(Primitive):
@@ -10,6 +14,19 @@ class Torsion(Primitive):
         super().__init__(*args, **kwargs)
 
         self.cos_tol = cos_tol
+
+    def _weight(self, atoms, coords3d, f_damping):
+        m, o, p, n = self.indices
+        rho_mo = self.rho(atoms, coords3d, (m, o))
+        rho_op = self.rho(atoms, coords3d, (o, p))
+        rho_pn = self.rho(atoms, coords3d, (p, n))
+        rad_mop = Bend._calculate(coords3d, (m, o, p))
+        rad_opn = Bend._calculate(coords3d, (o, p, n))
+        return (
+            (rho_mo * rho_op * rho_pn)**(1/3)
+            * (f_damping + (1-f_damping)*sin(rad_mop))
+            * (f_damping + (1-f_damping)*sin(rad_opn))
+        )
 
     @staticmethod
     def _calculate(coords3d, indices, gradient=False, cos_tol=1e-9):
