@@ -12,7 +12,8 @@ from pysisyphus.linalg import gram_schmidt
 
 
 class DLC(RedundantCoords):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, weighted=False, **kwargs):
+        self.weighted = weighted
         super().__init__(*args, **kwargs)
 
         self.set_active_set()
@@ -95,6 +96,15 @@ class DLC(RedundantCoords):
     def get_active_set(self, B, thresh=1e-6):
         """See [5] between Eq. (7) and Eq. (8) for advice regarding
         the threshold."""
+        if self.weighted:
+            weights = np.array(
+                [prim.weight(self.atoms, self.coords3d) for prim in self.primitives]
+            )
+            self.log( "Weighting B-matrix.\n\tWeights: "
+                     f"{np.array2string(weights, precision=4)}"
+            )
+            B = np.diag(weights).dot(B)
+
         G = B.dot(B.T)
         eigvals, eigvectors = np.linalg.eigh(G)
 

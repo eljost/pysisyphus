@@ -14,7 +14,8 @@ from pysisyphus.testing import using_pyscf
 @pytest.mark.parametrize(
     "name, geom, ref_energy",
     [(name, geom, ref_energy) for name, (geom, ref_energy)
-     in get_baker_geoms(coord_type="redund").items()]
+     # in get_baker_geoms(coord_type="redund").items()]
+     in get_baker_geoms(coord_type="dlc", coord_kwargs={"weighted": True}).items()]
 )
 def test_baker_gs_opt(name, geom, ref_energy, results_bag):
     opt_kwargs = {
