@@ -478,7 +478,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             new_coords = self.geometry.coords.copy() + step
             try:
                 self.geometry.coords = new_coords
-                # self.steps[-1] = self.geometry.coords - self.coords[-1]
+                self.steps[-1] = self.geometry.coords - self.coords[-1]
             except RebuiltInternalsException:
                 print("Rebuilt internal coordinates")
                 self.reset()
