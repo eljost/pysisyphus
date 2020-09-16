@@ -37,3 +37,6 @@ class Primitive(metaclass=abc.ABCMeta):
 
     def __str__(self):
         return f"{self.__class__.__name__}({self.indices})"
+
+    def __repr__(self):
+        return self.__str__()
