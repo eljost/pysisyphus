@@ -349,10 +349,6 @@ class RedundantCoords:
             # logger=self.logger,
         # )
 
-    # def set_prim_internals(self, prim_internals):
-        # self._prim_internals = prim_internals
-        # self._prim_coords = np.array([prim.val for prim in self._prim_internals])
-
     def eval(self, coords3d, attr=None):
         prim_internals = eval_primitives(coords3d, self.primitives)
 
