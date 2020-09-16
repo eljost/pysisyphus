@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] http://aip.scitation.org/doi/10.1063/1.1515483 Optimization review
 # [2] https://doi.org/10.1063/1.450914 Trust region method
 # [3] 10.1007/978-0-387-40065-5 Numerical optimization
