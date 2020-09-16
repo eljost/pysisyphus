@@ -484,6 +484,8 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.steps[-1] = self.geometry.coords - self.coords[-1]
             except RebuiltInternalsException:
                 print("Rebuilt internal coordinates")
+                with open("rebuilt_primitives.xyz", "w") as handle:
+                    handle.write(self.geometry.as_xyz())
                 self.reset()
 
             if hasattr(self.geometry, "reparametrize"):

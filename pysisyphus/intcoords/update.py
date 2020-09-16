@@ -73,7 +73,7 @@ def are_collinear(vec1, vec2, thresh=1e-4):
     return 1 - abs(vec1.dot(vec2)) <= thresh
 
 
-def dihedrals_are_valid(coords3d, dihedral_inds):
+def dihedrals_are_valid(coords3d, dihedral_inds, logger=None):
     def valid_dihedral(inds):
         m, o, p, n = inds
         u_dash = coords3d[m] - coords3d[o]
@@ -90,6 +90,13 @@ def dihedrals_are_valid(coords3d, dihedral_inds):
         return valid
 
     all_valid = all([valid_dihedral(inds) for inds in dihedral_inds])
+    valid = [valid_dihedral(inds) for inds in dihedral_inds]
+    invalid = [
+        dihedral_ind for dihedral_ind, v in zip(dihedral_inds, valid) if not v
+    ]
+    if invalid:
+        log(logger, f"Invalid dihedrals: {invalid}")
+    all_valid = all(valid)
     return all_valid
 
 
