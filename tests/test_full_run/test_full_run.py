@@ -45,9 +45,12 @@ def test_full_run_hf_abstraction():
             "pal": 2,
             "basis": "321g",
         },
-        "xyz": ["lib:test_full_run_split.geom_008.xyz",
-                "lib:test_full_run_split.geom_034.xyz"],
-        "coord_type": "cart",
+        "geom": {
+            "type": "cart",
+            "fn": ["lib:test_full_run_split.geom_008.xyz",
+                  "lib:test_full_run_split.geom_034.xyz"
+            ],
+        },
     }
     results = run_from_dict(run_dict)
 

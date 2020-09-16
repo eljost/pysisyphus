@@ -33,7 +33,7 @@ class RedundantCoords:
         define_prims=None,
         bonds_only=False,
         check_bends=True,
-        rebuild=False,
+        rebuild=True,
         bend_min_deg=15,
         bend_max_deg=180,
         lb_min_deg=None,
