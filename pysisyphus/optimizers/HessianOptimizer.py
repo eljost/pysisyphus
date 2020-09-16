@@ -30,7 +30,7 @@ class HessianOptimizer(Optimizer):
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
                  hessian_multi_update=False, hessian_init="fischer",
                  hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
-                 small_eigval_thresh=1e-8, line_search=False,
+                 hessian_recalc_reset=False, small_eigval_thresh=1e-8, line_search=False,
                  alpha0=1., max_micro_cycles=25, **kwargs):
         super().__init__(geometry, **kwargs)
 
@@ -51,6 +51,7 @@ class HessianOptimizer(Optimizer):
         self.hessian_recalc = hessian_recalc
         self.hessian_recalc_adapt = hessian_recalc_adapt
         self.hessian_xtb = hessian_xtb
+        self.hessian_recalc_reset = hessian_recalc_reset
         self.small_eigval_thresh = float(small_eigval_thresh)
         self.line_search = bool(line_search)
         # Restricted-step related
@@ -74,7 +75,10 @@ class HessianOptimizer(Optimizer):
     def reset(self):
         # Don't recalculate the hessian if we have to reset the optimizer
         hessian_init = self.hessian_init
-        if hessian_init == "calc" and self.geometry.coord_type != "cart":
+        if ((not self.hessian_recalc_reset)
+            and hessian_init == "calc"
+            and self.geometry.coord_type != "cart"
+        ):
             hessian_init = "fischer"
         self.prepare_opt(hessian_init)
 
