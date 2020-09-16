@@ -136,6 +136,9 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         phi_u = sym.acos(U_.dot(W_))
         phi_v = sym.acos(-W_.dot(V_))
         q_d = sym.acos(U_.cross(W_).dot(V_.cross(W_))/(sym.sin(phi_u)*sym.sin(phi_v)))
+        # sin_phi_u = sym.sqrt(1 - (U_.dot(W_))**2)
+        # sin_phi_v = sym.sqrt(1 - (V_.dot(W_))**2)
+        # q_d = sym.acos(U_.cross(W_).dot(V_.cross(W_))/(sin_phi_u*sin_phi_v))
         dx_d = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
         args_d = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
         derivs_d = make_deriv_funcs(q_d, dx_d, args_d,
