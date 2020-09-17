@@ -17,7 +17,7 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
         (True, 6),
         # 57 cycles are needed when 45 < VALID_BEND_DEG < 170
         # (False, 57),
-        (False, 7),
+        (False, 6),
     ]
 )
 def test_augment_coordinates_silyl(augment, ref_cycle):

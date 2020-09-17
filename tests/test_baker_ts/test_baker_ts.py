@@ -13,9 +13,7 @@ from pysisyphus.tsoptimizers import *
 def get_geoms():
     fails = (
         "09_parentdieslalder.xyz",
-        "12_ethane_h2_abstraction.xyz",
-        "15_hocl.xyz",
-        "17_claisen.xyz",
+        "15_hocl.xyz",  # SCF goes completely nuts
         "20_hconh3_cation.xyz",  # fails when angles up to & including 180° are defined
     )
     works = (
@@ -26,8 +24,10 @@ def get_geoms():
         "06_bicyclobutane.xyz",
         "07_bicyclobutane.xyz",
         "08_formyloxyethyl.xyz",
+        "12_ethane_h2_abstraction.xyz",
         "14_vinyl_alcohol.xyz",
         "16_h2po4_anion.xyz",
+        "17_claisen.xyz",
         "18_silyene_insertion.xyz",
         # "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
@@ -38,11 +38,11 @@ def get_geoms():
         # x99 = 1/sqrt(x93)
         #   ValueError: math domain error
         # ZeroDivison Fix
-        "24_h2cnh.xyz",
+        "03_h2co.xyz",
         "13_hf_abstraction.xyz",
         "19_hnccs.xyz",
         "21_acrolein_rot.xyz",
-        "03_h2co.xyz",
+        "24_h2cnh.xyz",
     )
     alpha_negative = (
         "22_hconhoh.xyz",
@@ -86,7 +86,8 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
     print(f"@Running {name}")
     # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
     geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
-    geom = augment_bonds(geom)
+    if geom.coord_type != "cart":
+        geom = augment_bonds(geom)
 
     opt_kwargs = {
         "thresh": "baker",
@@ -110,7 +111,7 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
 @using_pyscf
 @pytest.mark.parametrize(
     "define_prims, proj, ref_cycle", [
-        (None, True, 18),
+        (None, True, 15),
         pytest.param(None, False, 17,
                      marks=pytest.mark.xfail),
         pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 12),
