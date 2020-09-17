@@ -30,7 +30,7 @@ class LinearBend(Primitive):
         return (rho_mo * rho_on)**0.5 * (f_damping + (1-f_damping)*sin(rad))
 
     @staticmethod
-    def _calculate(coords3d, indices, gradient=False, complement=False):
+    def _get_orthogonal_direction(coords3d, indices, complement=False):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
@@ -54,6 +54,16 @@ class LinearBend(Primitive):
         # Generate second orthogonal direction
         if complement:
             w = np.cross(u, w)
+        return w
+
+    @staticmethod
+    def _calculate(coords3d, indices, gradient=False, complement=False):
+        m, o, n = indices
+        u_dash = coords3d[m] - coords3d[o]
+        v_dash = coords3d[n] - coords3d[o]
+        u_norm = np.linalg.norm(u_dash)
+        v_norm = np.linalg.norm(v_dash)
+        w = LinearBend._get_orthogonal_direction(coords3d, indices, complement)
 
         lb_rad = w.dot(np.cross(u_dash, v_dash)) / (u_norm * v_norm)
 
