@@ -45,14 +45,10 @@ class Torsion(Primitive):
         uxw = np.cross(u, w)
         vxw = np.cross(v, w)
         cos_dihed = uxw.dot(vxw)/(np.sin(phi_u)*np.sin(phi_v))
+        # Restrict cos_dihed to [-1, 1], as arccos is only defined in this interval.
+        cos_dihed = min(1, max(cos_dihed, -1))
 
-        # Restrict cos_dihed to [-1, 1]
-        if cos_dihed >= 1 - cos_tol:
-            dihedral_rad = 0
-        elif cos_dihed <= -1 + cos_tol:
-            dihedral_rad = np.arccos(-1)
-        else:
-            dihedral_rad = np.arccos(cos_dihed)
+        dihedral_rad = np.arccos(cos_dihed)
 
         if dihedral_rad != np.pi:
             # wxv = np.cross(w, v)
