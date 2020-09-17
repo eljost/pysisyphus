@@ -20,9 +20,7 @@ from sympy.printing.pycode import pycode
 from sympy.vector import CoordSys3D
 
 
-Derivs = namedtuple("Derivs",
-                    "d1 d2 f1 f2",
-)
+FuncResult = namedtuple("FuncResult", "d0 d1 d2 f0 f1 f2")
 
 
 def make_py_func(exprs, args=None, name=None, comment=""):
@@ -32,9 +30,14 @@ def make_py_func(exprs, args=None, name=None, comment=""):
         name = "func_" + "".join([random.choice(string.ascii_letters)
                                   for i in range(8)])
 
-    if len(exprs.shape) == 2:
-        exprs = it.chain(*exprs)
-    repls, reduced = cse(list(exprs))
+    try:
+        if len(exprs.shape) == 2:
+            exprs = it.chain(*exprs)
+        repls, reduced = cse(list(exprs))
+    # Scalar expression
+    except AttributeError:
+        repls, reduced = cse(exprs)
+
 
     assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
     py_lines = [pycode(as_) for as_ in assignments]
@@ -65,20 +68,34 @@ def make_py_func(exprs, args=None, name=None, comment=""):
     return rendered
 
 
-def make_deriv_funcs(base_expr, dx, args, names, comments):
-    d1_name, d2_name = names
-    d1_comment, d2_comment = comments
+# def make_deriv_funcs(base_expr, dx, args, names, comments):
+def make_deriv_funcs(base_expr, dx, args, names, comment):
+    q_name, d1_name, d2_name = names
+    q_comment, d1_comment, d2_comment = [
+        comment + add for add in ["",
+                                   ", first derivative wrt. Cartesians",
+                                   ", 2nd derivative wrt. Cartesians",
+                                  ]
+    ]
+
+    # Actual function
+    q_func = make_py_func(base_expr, args=args, name=q_name, comment=q_comment)
+
     # First derivative
     deriv1 = sym.derive_by_array(base_expr, dx)
-    deriv1_func = make_py_func(deriv1, args=args, name=d1_name,
-                               comment=d1_comment)
+    deriv1_func = make_py_func(deriv1, args=args, name=d1_name, comment=d1_comment)
+
     # Second derivative
     deriv2 = sym.derive_by_array(deriv1, dx)
-    deriv2_func = make_py_func(deriv2, args=args, name=d2_name,
-                              comment=d2_comment)
-    return Derivs(
+    deriv2_func = make_py_func(deriv2, args=args, name=d2_name, comment=d2_comment)
+
+    return FuncResult(
+        # Expressions
+        d0=base_expr,
         d1=deriv1,
         d2=deriv2,
+        # Functions
+        f0=q_func,
         f1=deriv1_func,
         f2=deriv2_func,
     )
@@ -100,14 +117,12 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         q_b = U.magnitude()
         dx_b = (m0, m1, m2, n0, n1, n2)
         args_b = "m0, m1, m2, n0, n1, n2"
-        derivs_b = make_deriv_funcs(q_b, dx_b, args_b,
-                                    ("dq_b", "d2q_b"),
-                                    ("Stretch, first derivative wrt. cartesians",
-                                     "Stretch, 2nd derivative wrt. cartesians",)
+        func_result_b = make_deriv_funcs(
+            q_b, dx_b, args_b,
+            ("q_b", "dq_b", "d2q_b"),
+            "Stretch",
         )
-        print(derivs_b.f1)
-        print(derivs_b.f2)
-        return derivs_b
+        return func_result_b
 
     def bend():
         # Bend/Angle
@@ -116,14 +131,12 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         q_a = sym.acos(U.dot(V) / (U.magnitude() * V.magnitude()))
         dx_a = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
         args_a = "m0, m1, m2, o0, o1, o2, n0, n1, n2"
-        derivs_a = make_deriv_funcs(q_a, dx_a, args_a,
-                                    ("dq_a", "d2q_a"),
-                                    ("Bend, first derivative wrt. cartesians",
-                                     "Bend, 2nd derivative wrt. cartesians",)
+        func_result_a = make_deriv_funcs(
+            q_a, dx_a, args_a,
+            ("q_a", "dq_a", "d2q_a"),
+            "Bend",
         )
-        print(derivs_a.f1)
-        print(derivs_a.f2)
-        return derivs_a
+        return func_result_a
 
     def dihedral():
         # Dihedral/Torsion
@@ -141,14 +154,12 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         # q_d = sym.acos(U_.cross(W_).dot(V_.cross(W_))/(sin_phi_u*sin_phi_v))
         dx_d =   (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
         args_d = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
-        derivs_d = make_deriv_funcs(q_d, dx_d, args_d,
-                                    ("dq_d", "d2q_d"),
-                                    ("Torsion, first derivative wrt. cartesians",
-                                     "Torsion, 2nd derivative wrt. cartesians",)
+        func_result_d = make_deriv_funcs(
+            q_d, dx_d, args_d,
+            ("q_d", "dq_d", "d2q_d"),
+            "Torsion",
         )
-        print(derivs_d.f1)
-        print(derivs_d.f2)
-        return derivs_d
+        return func_result_d
 
     def linear_bend():
         # Linear Bend
@@ -159,14 +170,12 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         dx_lb =   (m0, m1, m2, o0, o1, o2, n0, n1, n2)
         # Additional args, as we also supply an orthogonal direction
         args_lb = "m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2"
-        derivs_lb = make_deriv_funcs(q_lb, dx_lb, args_lb,
-                                    ("dq_lb", "d2q_lb"),
-                                    ("Linear Bend, first derivative wrt. cartesians",
-                                     "Linear Bend, 2nd derivative wrt. cartesians",)
+        func_result_lb = make_deriv_funcs(
+            q_lb, dx_lb, args_lb,
+            ("q_lb", "dq_lb", "d2q_lb"),
+            "Linear Bend",
         )
-        print(derivs_lb.f1)
-        print(derivs_lb.f2)
-        return derivs_lb
+        return func_result_lb
 
     if generate is None:
         generate = ("bond", "bend", "dihedral", "linear_bend")
@@ -178,16 +187,17 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         "linear_bend": linear_bend,
     }
     funcs = [avail_funcs[key] for key in generate]
-    derivs = [f() for f in funcs]
+    func_results = [f() for f in funcs]
 
     if out_fn:
         with open(out_fn, "w") as handle:
             handle.write("import math\n\nimport numpy as np\n\n\n")
-            for d in derivs:
-                handle.write(d.f1 + "\n\n\n")
-                handle.write(d.f2 + "\n\n\n")
+            for fr in func_results:
+                handle.write(fr.f0 + "\n\n\n")
+                handle.write(fr.f1 + "\n\n\n")
+                handle.write(fr.f2 + "\n\n\n")
 
-    return derivs
+    return func_results
 
 
 if __name__ == "__main__":
