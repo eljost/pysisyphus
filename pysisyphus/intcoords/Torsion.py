@@ -45,16 +45,34 @@ class Torsion(Primitive):
         uxw = np.cross(u, w)
         vxw = np.cross(v, w)
         cos_dihed = uxw.dot(vxw)/(np.sin(phi_u)*np.sin(phi_v))
-        # Restrict cos_dihed to [-1, 1], as arccos is only defined in this interval.
+        # Restrict cos_dihed to the allowed interval for arccos [-1, 1]
         cos_dihed = min(1, max(cos_dihed, -1))
 
         dihedral_rad = np.arccos(cos_dihed)
 
-        if dihedral_rad != np.pi:
-            # wxv = np.cross(w, v)
-            # if wxv.dot(u) < 0:
-            if vxw.dot(u) < 0:
-                dihedral_rad *= -1
+        # Arccos only returns values between 0 and π, but dihedrals can
+        # also be negative. This is corrected now.
+        #
+        # (v ⨯ w) · u will be < 0 when both vectors point in different directions.
+        #
+        #  M  --->  N
+        #   \      /
+        #    u    v    positive dihedral, M rotates into N clockwise
+        #     \  /     (v ⨯ w) · u > 0, keep positive sign
+        #      OwP
+        #
+        #  M
+        #   \
+        #  | u
+        #  |  \
+        #  |   OwP     negative dihedral, M rotates into N counter-clockwise
+        #  v  /        (v ⨯ w) · u < 0, invert dihedral sign
+        #    v
+        #   /
+        #  N
+        #
+        if (dihedral_rad != np.pi) and (vxw.dot(u) < 0):
+            dihedral_rad *= -1
 
         if gradient:
             row = np.zeros_like(coords3d)

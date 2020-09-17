@@ -139,7 +139,7 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         # sin_phi_u = sym.sqrt(1 - (U_.dot(W_))**2)
         # sin_phi_v = sym.sqrt(1 - (V_.dot(W_))**2)
         # q_d = sym.acos(U_.cross(W_).dot(V_.cross(W_))/(sin_phi_u*sin_phi_v))
-        dx_d = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
+        dx_d =   (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
         args_d = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
         derivs_d = make_deriv_funcs(q_d, dx_d, args_d,
                                     ("dq_d", "d2q_d"),
@@ -156,7 +156,8 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         V = N.position_wrt(O)
         W = P.position_wrt(Sys)
         q_lb = W.dot(U.cross(V)) / (U.magnitude() * V.magnitude())
-        dx_lb = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
+        dx_lb =   (m0, m1, m2, o0, o1, o2, n0, n1, n2)
+        # Additional args, as we also supply an orthogonal direction
         args_lb = "m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2"
         derivs_lb = make_deriv_funcs(q_lb, dx_lb, args_lb,
                                     ("dq_lb", "d2q_lb"),
