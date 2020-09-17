@@ -18,6 +18,7 @@ from sympy import cse
 from sympy.codegen.ast import Assignment
 from sympy.printing.pycode import pycode
 from sympy.vector import CoordSys3D
+from sympy.tensor.array.dense_ndim_array import ImmutableDenseNDimArray
 
 
 FuncResult = namedtuple("FuncResult", "d0 d1 d2 f0 f1 f2")
@@ -30,13 +31,14 @@ def make_py_func(exprs, args=None, name=None, comment=""):
         name = "func_" + "".join([random.choice(string.ascii_letters)
                                   for i in range(8)])
 
-    try:
+    is_scalar = not isinstance(exprs, ImmutableDenseNDimArray)
+    if is_scalar:
+        repls, reduced = cse(exprs)
+        reduced = reduced[0]
+    else:
         if len(exprs.shape) == 2:
             exprs = it.chain(*exprs)
         repls, reduced = cse(list(exprs))
-    # Scalar expression
-    except AttributeError:
-        repls, reduced = cse(exprs)
 
 
     assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
@@ -53,7 +55,11 @@ def make_py_func(exprs, args=None, name=None, comment=""):
         {{ line }}
         {% endfor %}
 
+        {% if is_scalar %}
+        return {{ return_val }}
+        {% else %}
         return np.array({{ return_val }})
+        {% endif %}
     """, trim_blocks=True, lstrip_blocks=True)
 
     rendered = textwrap.dedent(
@@ -63,6 +69,7 @@ def make_py_func(exprs, args=None, name=None, comment=""):
                         py_lines=py_lines,
                         return_val=return_val,
                         comment=comment,
+                        is_scalar=is_scalar,
                     )
     ).strip()
     return rendered
@@ -79,13 +86,16 @@ def make_deriv_funcs(base_expr, dx, args, names, comment):
     ]
 
     # Actual function
+    print("\tFunction")
     q_func = make_py_func(base_expr, args=args, name=q_name, comment=q_comment)
 
     # First derivative
+    print("\t1st derivative")
     deriv1 = sym.derive_by_array(base_expr, dx)
     deriv1_func = make_py_func(deriv1, args=args, name=d1_name, comment=d1_comment)
 
     # Second derivative
+    print("\t2nd derivative")
     deriv2 = sym.derive_by_array(deriv1, dx)
     deriv2_func = make_py_func(deriv2, args=args, name=d2_name, comment=d2_comment)
 
@@ -187,7 +197,11 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         "linear_bend": linear_bend,
     }
     funcs = [avail_funcs[key] for key in generate]
-    func_results = [f() for f in funcs]
+    func_results = list()
+    for name, func in zip(generate, funcs):
+        print(f"Generating expressions for: '{name}'")
+        func_res = func()
+        func_results.append(func_res)
 
     if out_fn:
         with open(out_fn, "w") as handle:

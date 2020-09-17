@@ -7,7 +7,7 @@ def q_b(m0, m1, m2, n0, n1, n2):
     """Stretch"""
 
 
-    return np.array([math.sqrt((m0 - n0)**2 + (m1 - n1)**2 + (m2 - n2)**2)])
+    return math.sqrt((m0 - n0)**2 + (m1 - n1)**2 + (m2 - n2)**2)
 
 
 def dq_b(m0, m1, m2, n0, n1, n2):
@@ -73,7 +73,7 @@ def q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x7 = n1 + x2
     x8 = n2 + x4
 
-    return np.array([math.acos((x1*x6 + x3*x7 + x5*x8)/(math.sqrt(x1**2 + x3**2 + x5**2)*math.sqrt(x6**2 + x7**2 + x8**2)))])
+    return math.acos((x1*x6 + x3*x7 + x5*x8)/(math.sqrt(x1**2 + x3**2 + x5**2)*math.sqrt(x6**2 + x7**2 + x8**2)))
 
 
 def dq_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
@@ -362,7 +362,7 @@ def q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x19 = x15*x17
     x20 = x16*x17
 
-    return np.array([math.acos(((-x1*x12 + x11*x7)*(-x1*x19 + x18*x7) + (x1*x13 - x11*x8)*(x1*x20 - x18*x8) + (x12*x8 - x13*x7)*(x19*x8 - x20*x7))/(math.sqrt(1 - (x1*x11 + x12*x7 + x13*x8)**2)*math.sqrt(1 - (-x1*x18 - x19*x7 - x20*x8)**2)))])
+    return math.acos(((-x1*x12 + x11*x7)*(-x1*x19 + x18*x7) + (x1*x13 - x11*x8)*(x1*x20 - x18*x8) + (x12*x8 - x13*x7)*(x19*x8 - x20*x7))/(math.sqrt(1 - (x1*x11 + x12*x7 + x13*x8)**2)*math.sqrt(1 - (-x1*x18 - x19*x7 - x20*x8)**2)))
 
 
 def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
@@ -2625,7 +2625,7 @@ def q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x7 = n1 + x2
     x8 = n2 + x4
 
-    return np.array([(p0*(x3*x8 + x5*(-n1 + o1)) + p1*(x1*(-n2 + o2) + x5*x6) + p2*(x1*x7 + x3*(-n0 + o0)))/(math.sqrt(x1**2 + x3**2 + x5**2)*math.sqrt(x6**2 + x7**2 + x8**2))])
+    return (p0*(x3*x8 + x5*(-n1 + o1)) + p1*(x1*(-n2 + o2) + x5*x6) + p2*(x1*x7 + x3*(-n0 + o0)))/(math.sqrt(x1**2 + x3**2 + x5**2)*math.sqrt(x6**2 + x7**2 + x8**2))
 
 
 def dq_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
