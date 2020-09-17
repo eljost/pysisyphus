@@ -254,6 +254,9 @@ class RedundantCoords:
 
         K_flat = np.zeros(size_ * size_)
         for primitive, int_grad_item in zip(self.primitives, int_gradient):
+            # Skip dihedrals for now
+            if len(primitive.indices) == 4:
+                continue
             # Contract with gradient
             try:
                 dg = int_grad_item * grad_deriv_wrapper(primitive.indices)
