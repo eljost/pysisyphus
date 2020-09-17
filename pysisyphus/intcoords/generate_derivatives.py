@@ -16,7 +16,7 @@ import numpy as np
 import sympy as sym
 from sympy import cse
 from sympy.codegen.ast import Assignment
-from sympy.printing.pycode import pycode
+from sympy.printing.pycode import pycode, MpmathPrinter
 from sympy.vector import CoordSys3D
 from sympy.tensor.array.dense_ndim_array import ImmutableDenseNDimArray
 
@@ -24,12 +24,13 @@ from sympy.tensor.array.dense_ndim_array import ImmutableDenseNDimArray
 FuncResult = namedtuple("FuncResult", "d0 d1 d2 f0 f1 f2")
 
 
-def make_py_func(exprs, args=None, name=None, comment=""):
+def make_py_func(exprs, args=None, name=None, comment="", use_mpmath=False):
     if args is None:
         args = list()
     if name is None:
         name = "func_" + "".join([random.choice(string.ascii_letters)
                                   for i in range(8)])
+    arg_strs = [arg.strip() for arg in args.split(",")]
 
     is_scalar = not isinstance(exprs, ImmutableDenseNDimArray)
     if is_scalar:
@@ -40,15 +41,24 @@ def make_py_func(exprs, args=None, name=None, comment=""):
             exprs = it.chain(*exprs)
         repls, reduced = cse(list(exprs))
 
+    print_func = pycode
+    if use_mpmath:
+        print_func = MpmathPrinter().doprint
 
     assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
-    py_lines = [pycode(as_) for as_ in assignments]
-    return_val = pycode(reduced)
+    py_lines = [print_func(as_) for as_ in assignments]
+    return_val = print_func(reduced)
 
     tpl = Template("""
     def {{ name }}({{ args }}):
         {% if comment %}
         \"\"\"{{ comment }}\"\"\"
+        {% endif %}
+
+        {% if use_mpmath %}
+        {% for arg in arg_strs %}
+        {{ arg }} = mpmath.mpf({{ arg }})
+        {% endfor %}
         {% endif %}
 
         {% for line in py_lines %}
@@ -58,7 +68,7 @@ def make_py_func(exprs, args=None, name=None, comment=""):
         {% if is_scalar %}
         return {{ return_val }}
         {% else %}
-        return np.array({{ return_val }})
+        return np.array({{ return_val }}, dtype=np.float64)
         {% endif %}
     """, trim_blocks=True, lstrip_blocks=True)
 
@@ -70,13 +80,15 @@ def make_py_func(exprs, args=None, name=None, comment=""):
                         return_val=return_val,
                         comment=comment,
                         is_scalar=is_scalar,
+                        use_mpmath=use_mpmath,
+                        arg_strs=arg_strs,
                     )
     ).strip()
     return rendered
 
 
 # def make_deriv_funcs(base_expr, dx, args, names, comments):
-def make_deriv_funcs(base_expr, dx, args, names, comment):
+def make_deriv_funcs(base_expr, dx, args, names, comment, use_mpmath=True):
     q_name, d1_name, d2_name = names
     q_comment, d1_comment, d2_comment = [
         comment + add for add in ["",
@@ -86,18 +98,22 @@ def make_deriv_funcs(base_expr, dx, args, names, comment):
     ]
 
     # Actual function
+    print(f"\tmpmath: {use_mpmath}")
     print("\tFunction")
-    q_func = make_py_func(base_expr, args=args, name=q_name, comment=q_comment)
+    q_func = make_py_func(base_expr, args=args, name=q_name, comment=q_comment,
+                          use_mpmath=use_mpmath)
 
     # First derivative
     print("\t1st derivative")
     deriv1 = sym.derive_by_array(base_expr, dx)
-    deriv1_func = make_py_func(deriv1, args=args, name=d1_name, comment=d1_comment)
+    deriv1_func = make_py_func(deriv1, args=args, name=d1_name, comment=d1_comment,
+                               use_mpmath=use_mpmath)
 
     # Second derivative
     print("\t2nd derivative")
     deriv2 = sym.derive_by_array(deriv1, dx)
-    deriv2_func = make_py_func(deriv2, args=args, name=d2_name, comment=d2_comment)
+    deriv2_func = make_py_func(deriv2, args=args, name=d2_name, comment=d2_comment,
+                               use_mpmath=use_mpmath)
 
     return FuncResult(
         # Expressions
@@ -111,7 +127,7 @@ def make_deriv_funcs(base_expr, dx, args, names, comment):
     )
 
 
-def generate_wilson(generate=None, out_fn="derivatives.py"):
+def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
     m0, m1, m2, n0, n1, n2, o0, o1, o2, p0, p1, p2 = sym.symbols("m:3 n:3 o:3 p:3")
 
     # Coordinate system
@@ -125,12 +141,13 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         # Bond/Stretch
         U = M.position_wrt(N)
         q_b = U.magnitude()
-        dx_b = (m0, m1, m2, n0, n1, n2)
+        dx_b =   (m0, m1, m2, n0, n1, n2)
         args_b = "m0, m1, m2, n0, n1, n2"
         func_result_b = make_deriv_funcs(
             q_b, dx_b, args_b,
             ("q_b", "dq_b", "d2q_b"),
             "Stretch",
+            use_mpmath=use_mpmath,
         )
         return func_result_b
 
@@ -139,12 +156,13 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         U = M.position_wrt(O)
         V = N.position_wrt(O)
         q_a = sym.acos(U.dot(V) / (U.magnitude() * V.magnitude()))
-        dx_a = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
+        dx_a =   (m0, m1, m2, o0, o1, o2, n0, n1, n2)
         args_a = "m0, m1, m2, o0, o1, o2, n0, n1, n2"
         func_result_a = make_deriv_funcs(
             q_a, dx_a, args_a,
             ("q_a", "dq_a", "d2q_a"),
             "Bend",
+            use_mpmath=use_mpmath,
         )
         return func_result_a
 
@@ -168,6 +186,7 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
             q_d, dx_d, args_d,
             ("q_d", "dq_d", "d2q_d"),
             "Torsion",
+            use_mpmath=use_mpmath,
         )
         return func_result_d
 
@@ -184,11 +203,13 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
             q_lb, dx_lb, args_lb,
             ("q_lb", "dq_lb", "d2q_lb"),
             "Linear Bend",
+            use_mpmath=use_mpmath,
         )
         return func_result_lb
 
     if generate is None:
         generate = ("bond", "bend", "dihedral", "linear_bend")
+        # generate = ("bond", "bend")
 
     avail_funcs = {
         "bond": bond,
@@ -203,16 +224,20 @@ def generate_wilson(generate=None, out_fn="derivatives.py"):
         func_res = func()
         func_results.append(func_res)
 
+    import_str = "import mpmath" if use_mpmath else "import math"
     if out_fn:
         with open(out_fn, "w") as handle:
-            handle.write("import math\n\nimport numpy as np\n\n\n")
+            handle.write(f"{import_str}\n\nimport numpy as np\n\n\n")
             for fr in func_results:
                 handle.write(fr.f0 + "\n\n\n")
                 handle.write(fr.f1 + "\n\n\n")
                 handle.write(fr.f2 + "\n\n\n")
+    print(f"Wrote generated code to '{out_fn}'")
 
     return func_results
 
 
 if __name__ == "__main__":
-    generate_wilson()
+    # generate_wilson(out_fn="derivatives.py", use_mpmath=False)
+    # print()
+    generate_wilson(out_fn="mp_derivatives.py", use_mpmath=True)

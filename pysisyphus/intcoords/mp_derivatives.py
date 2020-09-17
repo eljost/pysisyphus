@@ -1,4 +1,4 @@
-import math
+import mpmath
 
 import numpy as np
 
@@ -6,19 +6,31 @@ import numpy as np
 def q_b(m0, m1, m2, n0, n1, n2):
     """Stretch"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
 
-    return math.sqrt((m0 - n0)**2 + (m1 - n1)**2 + (m2 - n2)**2)
+    return mpmath.sqrt((m0 - n0)**2 + (m1 - n1)**2 + (m2 - n2)**2)
 
 
 def dq_b(m0, m1, m2, n0, n1, n2):
     """Stretch, first derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = m0 - n0
     x1 = m1 - n1
     x2 = m2 - n2
-    x3 = 1/math.sqrt(x0**2 + x1**2 + x2**2)
+    x3 = 1/mpmath.sqrt(x0**2 + x1**2 + x2**2)
 
     return np.array([x0*x3, x1*x3, x2*x3, x3*(-m0 + n0), x3*(-m1 + n1), x3*(-m2 + n2)], dtype=np.float64)
 
@@ -26,6 +38,12 @@ def dq_b(m0, m1, m2, n0, n1, n2):
 def d2q_b(m0, m1, m2, n0, n1, n2):
     """Stretch, 2nd derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = m0 - n0
     x1 = x0**2
@@ -34,8 +52,8 @@ def d2q_b(m0, m1, m2, n0, n1, n2):
     x4 = m2 - n2
     x5 = x4**2
     x6 = x1 + x3 + x5
-    x7 = 1/math.sqrt(x6)
-    x8 = x6**(-3/2)
+    x7 = 1/mpmath.sqrt(x6)
+    x8 = x6**(mpmath.mpf(-3)/mpmath.mpf(2))
     x9 = -m0 + n0
     x10 = x8*x9
     x11 = x0*x10 + x7
@@ -66,6 +84,15 @@ def d2q_b(m0, m1, m2, n0, n1, n2):
 def q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     """Bend"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = -o0
     x1 = m0 + x0
@@ -77,12 +104,21 @@ def q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x7 = n1 + x2
     x8 = n2 + x4
 
-    return math.acos((x1*x6 + x3*x7 + x5*x8)/(math.sqrt(x1**2 + x3**2 + x5**2)*math.sqrt(x6**2 + x7**2 + x8**2)))
+    return mpmath.acos((x1*x6 + x3*x7 + x5*x8)/(mpmath.sqrt(x1**2 + x3**2 + x5**2)*mpmath.sqrt(x6**2 + x7**2 + x8**2)))
 
 
 def dq_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     """Bend, first derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = -o0
     x1 = m0 + x0
@@ -96,16 +132,16 @@ def dq_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x9 = n2 + x4
     x10 = x7**2 + x8**2 + x9**2
     x11 = x1*x7 + x3*x8 + x5*x9
-    x12 = 1/math.sqrt(1 - x11**2/(x10*x6))
-    x13 = 1/math.sqrt(x6)
-    x14 = 1/math.sqrt(x10)
+    x12 = 1/mpmath.sqrt(1 - x11**2/(x10*x6))
+    x13 = 1/mpmath.sqrt(x6)
+    x14 = 1/mpmath.sqrt(x10)
     x15 = x13*x14
     x16 = -m0
-    x17 = x11*x14/x6**(3/2)
+    x17 = x11*x14/x6**(mpmath.mpf(3)/mpmath.mpf(2))
     x18 = -m1
     x19 = -m2
     x20 = -n0
-    x21 = x11*x13/x10**(3/2)
+    x21 = x11*x13/x10**(mpmath.mpf(3)/mpmath.mpf(2))
     x22 = -n1
     x23 = -n2
 
@@ -115,6 +151,15 @@ def dq_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
 def d2q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     """Bend, 2nd derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = -o0
     x1 = m0 + x0
@@ -142,11 +187,11 @@ def d2q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x23 = x22**(-1)
     x24 = x18*x23
     x25 = -x13*x24 + 1
-    x26 = 1/math.sqrt(x25)
+    x26 = 1/mpmath.sqrt(x25)
     x27 = -m0
     x28 = o0 + x27
-    x29 = 1/math.sqrt(x22)
-    x30 = x17**(-3/2)
+    x29 = 1/mpmath.sqrt(x22)
+    x30 = x17**(mpmath.mpf(-3)/mpmath.mpf(2))
     x31 = x29*x30
     x32 = x2*x31
     x33 = x12*x31
@@ -154,20 +199,20 @@ def d2q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x35 = x12*x28
     x36 = 3*m0
     x37 = 3*o0
-    x38 = x29/x17**(5/2)
+    x38 = x29/x17**(mpmath.mpf(5)/mpmath.mpf(2))
     x39 = x38*(-x36 + x37)
-    x40 = 1/math.sqrt(x17)
+    x40 = 1/mpmath.sqrt(x17)
     x41 = x29*x40
     x42 = x2*x41 + x28*x33
-    x43 = x25**(-3/2)
+    x43 = x25**(mpmath.mpf(-3)/mpmath.mpf(2))
     x44 = 2*n0
     x45 = 2*o0
     x46 = -x45
-    x47 = (1/2)*x44 + (1/2)*x46
+    x47 = (mpmath.mpf(1)/mpmath.mpf(2))*x44 + (mpmath.mpf(1)/mpmath.mpf(2))*x46
     x48 = x12*x24
     x49 = 2*m0
     x50 = -x49
-    x51 = (1/2)*x13
+    x51 = (mpmath.mpf(1)/mpmath.mpf(2))*x13
     x52 = x23*x51/x17**2
     x53 = x43*(x47*x48 + x52*(x45 + x50))
     x54 = -m1
@@ -182,7 +227,7 @@ def d2q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x63 = x10*x41 + x33*x61
     x64 = -n0
     x65 = x27 + x45 + x64
-    x66 = x22**(-3/2)
+    x66 = x22**(mpmath.mpf(-3)/mpmath.mpf(2))
     x67 = x40*x66
     x68 = x12*x67
     x69 = x1*x33 + x2*x68 + x41*x65
@@ -219,7 +264,7 @@ def d2q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x100 = 2*n1
     x101 = -x76
     x102 = x100 + x101
-    x103 = (1/2)*x48
+    x103 = (mpmath.mpf(1)/mpmath.mpf(2))*x48
     x104 = 2*m1
     x105 = -x104
     x106 = x43*(x102*x103 + x52*(x105 + x76))
@@ -269,7 +314,7 @@ def d2q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
     x150 = x12*x147
     x151 = x12*x2
     x152 = 3*n0
-    x153 = x40/x22**(5/2)
+    x153 = x40/x22**(mpmath.mpf(5)/mpmath.mpf(2))
     x154 = x153*(x146 + x152)
     x155 = x12*x70
     x156 = 2*x155
@@ -346,6 +391,18 @@ def d2q_a(m0, m1, m2, o0, o1, o2, n0, n1, n2):
 def q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     """Torsion"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    p0 = mpmath.mpf(p0)
+    p1 = mpmath.mpf(p1)
+    p2 = mpmath.mpf(p2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = -o0
     x1 = p0 + x0
@@ -356,25 +413,37 @@ def q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x6 = m2 + x5
     x7 = p1 + x3
     x8 = p2 + x5
-    x9 = 1/math.sqrt(x1**2 + x7**2 + x8**2)
-    x10 = x9/math.sqrt(x2**2 + x4**2 + x6**2)
+    x9 = 1/mpmath.sqrt(x1**2 + x7**2 + x8**2)
+    x10 = x9/mpmath.sqrt(x2**2 + x4**2 + x6**2)
     x11 = x10*x2
     x12 = x10*x4
     x13 = x10*x6
     x14 = n0 - p0
     x15 = n1 - p1
     x16 = n2 - p2
-    x17 = x9/math.sqrt(x14**2 + x15**2 + x16**2)
+    x17 = x9/mpmath.sqrt(x14**2 + x15**2 + x16**2)
     x18 = x14*x17
     x19 = x15*x17
     x20 = x16*x17
 
-    return math.acos(((-x1*x12 + x11*x7)*(-x1*x19 + x18*x7) + (x1*x13 - x11*x8)*(x1*x20 - x18*x8) + (x12*x8 - x13*x7)*(x19*x8 - x20*x7))/(math.sqrt(1 - (x1*x11 + x12*x7 + x13*x8)**2)*math.sqrt(1 - (-x1*x18 - x19*x7 - x20*x8)**2)))
+    return mpmath.acos(((-x1*x12 + x11*x7)*(-x1*x19 + x18*x7) + (x1*x13 - x11*x8)*(x1*x20 - x18*x8) + (x12*x8 - x13*x7)*(x19*x8 - x20*x7))/(mpmath.sqrt(1 - (x1*x11 + x12*x7 + x13*x8)**2)*mpmath.sqrt(1 - (-x1*x18 - x19*x7 - x20*x8)**2)))
 
 
 def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     """Torsion, first derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    p0 = mpmath.mpf(p0)
+    p1 = mpmath.mpf(p1)
+    p2 = mpmath.mpf(p2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = -o0
     x1 = m0 + x0
@@ -387,14 +456,14 @@ def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x8 = m2 + x7
     x9 = x8**2
     x10 = x3 + x6 + x9
-    x11 = 1/math.sqrt(x10)
+    x11 = 1/mpmath.sqrt(x10)
     x12 = x2**2
     x13 = p1 + x4
     x14 = x13**2
     x15 = p2 + x7
     x16 = x15**2
     x17 = x12 + x14 + x16
-    x18 = 1/math.sqrt(x17)
+    x18 = 1/mpmath.sqrt(x17)
     x19 = x11*x18
     x20 = x19*x2
     x21 = x13*x19
@@ -411,7 +480,7 @@ def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x32 = n2 + x31
     x33 = x32**2
     x34 = x27 + x30 + x33
-    x35 = 1/math.sqrt(x34)
+    x35 = 1/mpmath.sqrt(x34)
     x36 = x18*x35
     x37 = x26*x36
     x38 = x29*x36
@@ -425,24 +494,24 @@ def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x46 = -x21*x8 + x22*x5
     x47 = -x13*x39 + x15*x38
     x48 = x42*x43 + x44*x45 + x46*x47
-    x49 = 1/math.sqrt(1 - x48**2/(x24*x41))
-    x50 = x18/x10**(3/2)
+    x49 = 1/mpmath.sqrt(1 - x48**2/(x24*x41))
+    x50 = x18/x10**(mpmath.mpf(3)/mpmath.mpf(2))
     x51 = x50*(-m0 + o0)
     x52 = x5*x51
     x53 = x51*x8
     x54 = x1*x13
     x55 = -x22
     x56 = x1*x15
-    x57 = 1/math.sqrt(x24)
-    x58 = 1/math.sqrt(x41)
+    x57 = 1/mpmath.sqrt(x24)
+    x58 = 1/mpmath.sqrt(x41)
     x59 = x57*x58
     x60 = 2*x20
     x61 = x1*x2
     x62 = 2*x61
     x63 = 2*x13
     x64 = 2*x15
-    x65 = (1/2)*x48
-    x66 = x23*x58*x65/x24**(3/2)
+    x65 = (mpmath.mpf(1)/mpmath.mpf(2))*x48
+    x66 = x23*x58*x65/x24**(mpmath.mpf(3)/mpmath.mpf(2))
     x67 = x50*(-m1 + o1)
     x68 = x67*x8
     x69 = x5*x67
@@ -454,7 +523,7 @@ def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x75 = -x21
     x76 = 2*x22
     x77 = 2*x37
-    x78 = x17**(-3/2)
+    x78 = x17**(mpmath.mpf(-3)/mpmath.mpf(2))
     x79 = x12*x78
     x80 = x35*x79
     x81 = 2*x26
@@ -464,7 +533,7 @@ def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x85 = x29*x84
     x86 = x15*x83
     x87 = x32*x86
-    x88 = x40*x57*x65/x41**(3/2)
+    x88 = x40*x57*x65/x41**(mpmath.mpf(3)/mpmath.mpf(2))
     x89 = x1*x19
     x90 = 2*x89
     x91 = x11*x79
@@ -540,7 +609,7 @@ def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x161 = x133*x151
     x162 = x2*x36
     x163 = 2*x162
-    x164 = x18/x34**(3/2)
+    x164 = x18/x34**(mpmath.mpf(3)/mpmath.mpf(2))
     x165 = x164*x27
     x166 = x164*x32
     x167 = x15*x166
@@ -597,6 +666,18 @@ def dq_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
 def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     """Torsion, 2nd derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    p0 = mpmath.mpf(p0)
+    p1 = mpmath.mpf(p1)
+    p2 = mpmath.mpf(p2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
 
     x0 = -o2
     x1 = p2 + x0
@@ -610,7 +691,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x9 = n2 + x8
     x10 = x9**2
     x11 = x10 + x6 + x7
-    x12 = 1/math.sqrt(x11)
+    x12 = 1/mpmath.sqrt(x11)
     x13 = -o0
     x14 = p0 + x13
     x15 = x14**2
@@ -619,7 +700,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x18 = x17**2
     x19 = x1**2
     x20 = x15 + x18 + x19
-    x21 = 1/math.sqrt(x20)
+    x21 = 1/mpmath.sqrt(x20)
     x22 = x12*x21
     x23 = x22*x3
     x24 = x22*x9
@@ -632,7 +713,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x31 = m2 + x0
     x32 = x31**2
     x33 = x29 + x30 + x32
-    x34 = x33**(-3/2)
+    x34 = x33**(mpmath.mpf(-3)/mpmath.mpf(2))
     x35 = x21*x34
     x36 = x27*x35
     x37 = x1*x36
@@ -642,7 +723,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x41 = x25*x40
     x42 = x22*x5
     x43 = -x14*x23 + x17*x42
-    x44 = 1/math.sqrt(x33)
+    x44 = 1/mpmath.sqrt(x33)
     x45 = x21*x44
     x46 = x17*x45
     x47 = x28*x38
@@ -663,11 +744,11 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x62 = x27*x46 + x28*x61 + x31*x52
     x63 = x62**2
     x64 = 1 - x63
-    x65 = 1/math.sqrt(x64)
+    x65 = 1/mpmath.sqrt(x64)
     x66 = -x1*x24 - x14*x42 - x17*x23
     x67 = x66**2
     x68 = 1 - x67
-    x69 = 1/math.sqrt(x68)
+    x69 = 1/mpmath.sqrt(x68)
     x70 = x65*x69
     x71 = 2*x61
     x72 = x26*x54
@@ -678,33 +759,33 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x77 = 2*x76
     x78 = x31*x77 + x71 + 2*x73 + 2*x75
     x79 = x62*x78
-    x80 = x64**(-3/2)
+    x80 = x64**(mpmath.mpf(-3)/mpmath.mpf(2))
     x81 = x69*x80
     x82 = x79*x81
     x83 = -x27*x61 + x28*x46
     x84 = -x28*x52 + x31*x61
     x85 = x27*x52 - x31*x46
     x86 = x25*x85 + x43*x83 + x51*x84
-    x87 = (1/2)*x86
+    x87 = (mpmath.mpf(1)/mpmath.mpf(2))*x86
     x88 = x60*x70 + x82*x87
     x89 = x86**2
     x90 = x64**(-1)
     x91 = x68**(-1)
     x92 = x90*x91
     x93 = -x89*x92 + 1
-    x94 = x93**(-3/2)
-    x95 = (1/2)*x89
+    x94 = x93**(mpmath.mpf(-3)/mpmath.mpf(2))
+    x95 = (mpmath.mpf(1)/mpmath.mpf(2))*x89
     x96 = x91*x95/x64**2
     x97 = x87*x92
     x98 = x94*(x79*x96 + x97*(2*x41 + 2*x50 + 2*x59))
-    x99 = 1/math.sqrt(x93)
-    x100 = (3/4)*x86
-    x101 = x100*x63*x69/x64**(5/2)
+    x99 = 1/mpmath.sqrt(x93)
+    x100 = (mpmath.mpf(3)/mpmath.mpf(4))*x86
+    x101 = x100*x63*x69/x64**(mpmath.mpf(5)/mpmath.mpf(2))
     x102 = x81*x87
     x103 = x102*(x31*x76 + x61 + x73 + x75)
     x104 = 3*m0
     x105 = 3*o0
-    x106 = x21/x33**(5/2)
+    x106 = x21/x33**(mpmath.mpf(5)/mpmath.mpf(2))
     x107 = x106*(-x104 + x105)
     x108 = x107*x26
     x109 = x108*x27
@@ -758,8 +839,8 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x157 = -x72
     x158 = x156 + x157
     x159 = x114 + x146
-    x160 = (1/2)*x60
-    x161 = (1/2)*x82
+    x160 = (mpmath.mpf(1)/mpmath.mpf(2))*x60
+    x161 = (mpmath.mpf(1)/mpmath.mpf(2))*x82
     x162 = x101*x78
     x163 = x143*x161 + x149*x162 + x150*x160
     x164 = -m2 + o2
@@ -789,7 +870,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x188 = x175 + x77
     x189 = x160*x179 + x161*x172 + x162*x178
     x190 = 2*x42
-    x191 = x20**(-3/2)
+    x191 = x20**(mpmath.mpf(-3)/mpmath.mpf(2))
     x192 = x12*x191
     x193 = x15*x192
     x194 = x193*x5
@@ -801,7 +882,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x200 = x1*x199
     x201 = x190 - 2*x194 - 2*x197 - 2*x200
     x202 = x201*x66
-    x203 = x68**(-3/2)
+    x203 = x68**(mpmath.mpf(-3)/mpmath.mpf(2))
     x204 = x203*x65
     x205 = x202*x204
     x206 = 2*x45
@@ -908,7 +989,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x307 = x129 + x210 + x270*x301 - x300 + 2*x302 + 2*x304 + x306 - 2*x72
     x308 = x203*x80
     x309 = x202*x308
-    x310 = (1/4)*x86
+    x310 = (mpmath.mpf(1)/mpmath.mpf(4))*x86
     x311 = x310*x79
     x312 = x160*x205 + x160*x220 + x161*x257 + x162*x219 + x309*x311
     x313 = 2*x23
@@ -1045,7 +1126,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x444 = x133*x443
     x445 = x14*x22
     x446 = 2*x445
-    x447 = x11**(-3/2)
+    x447 = x11**(mpmath.mpf(-3)/mpmath.mpf(2))
     x448 = x21*x447
     x449 = x448*x6
     x450 = 2*x449
@@ -1236,8 +1317,8 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x635 = x176 + x634
     x636 = 2*x181
     x637 = x630 + x636
-    x638 = (1/2)*x150
-    x639 = (1/2)*x143
+    x638 = (mpmath.mpf(1)/mpmath.mpf(2))*x150
+    x639 = (mpmath.mpf(1)/mpmath.mpf(2))*x143
     x640 = x101*x149
     x641 = x172*x638 + x178*x640 + x179*x639
     x642 = x29*x622
@@ -1362,8 +1443,8 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x761 = x27*x742
     x762 = x31*x742
     x763 = x124*x761 + x125*x762 - x175 + x218 + x301*x741 - x759 + x760
-    x764 = (1/2)*x172
-    x765 = (1/2)*x179
+    x764 = (mpmath.mpf(1)/mpmath.mpf(2))*x172
+    x765 = (mpmath.mpf(1)/mpmath.mpf(2))*x179
     x766 = x101*x178
     x767 = x178*x669
     x768 = x205*x764 + x219*x766 + x220*x764 + x257*x765 + x309*x767
@@ -1430,12 +1511,12 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x829 = x14*x828
     x830 = x164*x823
     x831 = x14*x830
-    x832 = x100*x65*x67/x68**(5/2)
+    x832 = x100*x65*x67/x68**(mpmath.mpf(5)/mpmath.mpf(2))
     x833 = x204*x87
     x834 = x833*(-x194 - x200 + x339 + x42)
     x835 = 4*p0
     x836 = x296 + x835
-    x837 = x20**(-5/2)
+    x837 = x20**(mpmath.mpf(-5)/mpmath.mpf(2))
     x838 = 3*p0
     x839 = x837*(x822 + x838)
     x840 = x15*x839
@@ -1573,8 +1654,8 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x972 = 2*x227
     x973 = 2*x196
     x974 = x972 + x973
-    x975 = (1/2)*x257
-    x976 = (1/2)*x357
+    x975 = (mpmath.mpf(1)/mpmath.mpf(2))*x257
+    x976 = (mpmath.mpf(1)/mpmath.mpf(2))*x357
     x977 = x101*x219
     x978 = x201*x832
     x979 = x309*x669
@@ -1621,7 +1702,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1020 = 2*x233
     x1021 = 2*x199
     x1022 = x1020 + x1021
-    x1023 = (1/2)*x418
+    x1023 = (mpmath.mpf(1)/mpmath.mpf(2))*x418
     x1024 = x386*x981
     x1025 = x1023*x205 + x1023*x220 + x1024*x392 + x392*x978 + x393*x975 + x399*x977 + x399*x979 + x400*x975
     x1026 = -x973
@@ -1691,7 +1772,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1090 = x1089*x5
     x1091 = -2*x1090 - x459
     x1092 = -x1035*x1083 + x1082 + 2*x1084 + x1088 + x1091 + x450
-    x1093 = (1/2)*x484
+    x1093 = (mpmath.mpf(1)/mpmath.mpf(2))*x484
     x1094 = x1024*x462 + x1093*x205 + x1093*x220 + x443*x977 + x443*x979 + x444*x975 + x462*x978 + x463*x975
     x1095 = x492*x839
     x1096 = x492*x843
@@ -1736,7 +1817,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1135 = 2*x1029
     x1136 = x1134 + x1135
     x1137 = x1026 - 2*x1037 + x1131 - 2*x1132 - 2*x1133 + x1136
-    x1138 = (1/2)*x525
+    x1138 = (mpmath.mpf(1)/mpmath.mpf(2))*x525
     x1139 = x1024*x507 + x1138*x205 + x1138*x220 + x499*x977 + x499*x979 + x500*x975 + x507*x978 + x508*x975
     x1140 = x530*x839
     x1141 = x530*x843
@@ -1773,7 +1854,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1172 = 2*x1050
     x1173 = x1171 + x1172
     x1174 = -x1021 - 2*x1052 - 2*x1104 + x1169 - 2*x1170 + x1173
-    x1175 = (1/2)*x558
+    x1175 = (mpmath.mpf(1)/mpmath.mpf(2))*x558
     x1176 = x1024*x542 + x1175*x205 + x1175*x220 + x537*x977 + x537*x979 + x538*x975 + x542*x978 + x543*x975
     x1177 = x1041*x3
     x1178 = x1177*x563
@@ -1783,7 +1864,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1182 = -x566
     x1183 = x1035*x9
     x1184 = x1041*x1180
-    x1185 = (1/2)*x574
+    x1185 = (mpmath.mpf(1)/mpmath.mpf(2))*x574
     x1186 = 2*x1036
     x1187 = x3*x563
     x1188 = x1044*x1187
@@ -1795,7 +1876,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1194 = x1177*x582
     x1195 = x1045*x582
     x1196 = x1044*x1192
-    x1197 = (1/2)*x592
+    x1197 = (mpmath.mpf(1)/mpmath.mpf(2))*x592
     x1198 = -x1135
     x1199 = x3*x582
     x1200 = x1044*x1199
@@ -1807,7 +1888,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1206 = x1045*x600
     x1207 = -x605
     x1208 = x1041*x1203
-    x1209 = (1/2)*x610
+    x1209 = (mpmath.mpf(1)/mpmath.mpf(2))*x610
     x1210 = -x1172
     x1211 = x3*x600
     x1212 = x1044*x1211
@@ -2169,7 +2250,7 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
     x1568 = x1049*x435
     x1569 = x1032*x435
     x1570 = 3*n0
-    x1571 = x21/x11**(5/2)
+    x1571 = x21/x11**(mpmath.mpf(5)/mpmath.mpf(2))
     x1572 = x1571*(x1537 + x1570)
     x1573 = x14*x1572
     x1574 = x1031*x17
@@ -2624,6 +2705,18 @@ def d2q_d(m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2):
 def q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     """Linear Bend"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
+    p0 = mpmath.mpf(p0)
+    p1 = mpmath.mpf(p1)
+    p2 = mpmath.mpf(p2)
 
     x0 = -o0
     x1 = m0 + x0
@@ -2635,12 +2728,24 @@ def q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x7 = n1 + x2
     x8 = n2 + x4
 
-    return (p0*(x3*x8 + x5*(-n1 + o1)) + p1*(x1*(-n2 + o2) + x5*x6) + p2*(x1*x7 + x3*(-n0 + o0)))/(math.sqrt(x1**2 + x3**2 + x5**2)*math.sqrt(x6**2 + x7**2 + x8**2))
+    return (p0*(x3*x8 + x5*(-n1 + o1)) + p1*(x1*(-n2 + o2) + x5*x6) + p2*(x1*x7 + x3*(-n0 + o0)))/(mpmath.sqrt(x1**2 + x3**2 + x5**2)*mpmath.sqrt(x6**2 + x7**2 + x8**2))
 
 
 def dq_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     """Linear Bend, first derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
+    p0 = mpmath.mpf(p0)
+    p1 = mpmath.mpf(p1)
+    p2 = mpmath.mpf(p2)
 
     x0 = -n2
     x1 = o2 + x0
@@ -2652,11 +2757,11 @@ def dq_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x7 = -o2
     x8 = m2 + x7
     x9 = x5**2 + x6**2 + x8**2
-    x10 = 1/math.sqrt(x9)
+    x10 = 1/mpmath.sqrt(x9)
     x11 = n0 + x4
     x12 = n2 + x7
     x13 = x11**2 + x12**2 + x3**2
-    x14 = 1/math.sqrt(x13)
+    x14 = 1/mpmath.sqrt(x13)
     x15 = x10*x14
     x16 = -m0
     x17 = o0 + x16
@@ -2665,12 +2770,12 @@ def dq_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x20 = -n0
     x21 = o0 + x20
     x22 = p0*(x12*x6 + x19*x8) + p1*(x1*x5 + x11*x8) + p2*(x21*x6 + x3*x5)
-    x23 = x14*x22/x9**(3/2)
+    x23 = x14*x22/x9**(mpmath.mpf(3)/mpmath.mpf(2))
     x24 = -m1
     x25 = o1 + x24
     x26 = -m2
     x27 = o2 + x26
-    x28 = x10*x22/x13**(3/2)
+    x28 = x10*x22/x13**(mpmath.mpf(3)/mpmath.mpf(2))
 
     return np.array([x15*(p1*x1 + p2*x3) + x17*x23, x15*(p0*x12 + p2*x21) + x23*x25, x15*(p0*x19 + p1*x11) + x23*x27, x11*x28 + x15*(p1*(n2 + x26) + p2*(m1 + x18)) + x23*x5, x15*(p0*(m2 + x0) + p2*(n0 + x16)) + x23*x6 + x28*x3, x12*x28 + x15*(p0*(n1 + x24) + p1*(m0 + x20)) + x23*x8, x15*(p1*x8 + p2*x25) + x21*x28, x15*(p0*x27 + p2*x5) + x19*x28, x1*x28 + x15*(p0*x6 + p1*x17)], dtype=np.float64)
 
@@ -2678,6 +2783,18 @@ def dq_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
 def d2q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     """Linear Bend, 2nd derivative wrt. Cartesians"""
 
+    m0 = mpmath.mpf(m0)
+    m1 = mpmath.mpf(m1)
+    m2 = mpmath.mpf(m2)
+    o0 = mpmath.mpf(o0)
+    o1 = mpmath.mpf(o1)
+    o2 = mpmath.mpf(o2)
+    n0 = mpmath.mpf(n0)
+    n1 = mpmath.mpf(n1)
+    n2 = mpmath.mpf(n2)
+    p0 = mpmath.mpf(p0)
+    p1 = mpmath.mpf(p1)
+    p2 = mpmath.mpf(p2)
 
     x0 = -n2
     x1 = o2 + x0
@@ -2692,11 +2809,11 @@ def d2q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x10 = -o2
     x11 = m2 + x10
     x12 = x11**2 + x8**2 + x9**2
-    x13 = x12**(-3/2)
+    x13 = x12**(mpmath.mpf(-3)/mpmath.mpf(2))
     x14 = n0 + x7
     x15 = n2 + x10
     x16 = x14**2 + x15**2 + x3**2
-    x17 = 1/math.sqrt(x16)
+    x17 = 1/mpmath.sqrt(x16)
     x18 = x13*x17
     x19 = x18*x6
     x20 = x15*x9
@@ -2715,7 +2832,7 @@ def d2q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x33 = x30*x6
     x34 = 3*m0
     x35 = 3*o0
-    x36 = x17/x12**(5/2)
+    x36 = x17/x12**(mpmath.mpf(5)/mpmath.mpf(2))
     x37 = x36*(-x34 + x35)
     x38 = -m1
     x39 = o1 + x38
@@ -2728,8 +2845,8 @@ def d2q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x46 = p0*x22 + p1*x14
     x47 = x19*x46 + x42*x45
     x48 = p1*(n2 + x44) + p2*(m1 + x21)
-    x49 = 1/math.sqrt(x12)
-    x50 = x16**(-3/2)
+    x49 = 1/mpmath.sqrt(x12)
+    x50 = x16**(mpmath.mpf(-3)/mpmath.mpf(2))
     x51 = x49*x50
     x52 = x4*x51
     x53 = x13*x50
@@ -2791,7 +2908,7 @@ def d2q_lb(m0, m1, m2, o0, o1, o2, n0, n1, n2, p0, p1, p2):
     x109 = x105*x30
     x110 = x14*x30
     x111 = 3*n0
-    x112 = x49/x16**(5/2)
+    x112 = x49/x16**(mpmath.mpf(5)/mpmath.mpf(2))
     x113 = x112*(x104 + x111)
     x114 = x110*x53
     x115 = x30*x51
