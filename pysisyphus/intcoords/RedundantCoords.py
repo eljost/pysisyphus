@@ -102,6 +102,7 @@ class RedundantCoords:
         self._bonds_slice = slice(bonds)
         self._bends_slice = slice(bonds, bonds+bends)
         self._dihedrals_slice = slice(bonds+bends, bonds+bends+dihedrals)
+        self.backtransform_counter = 0
 
     def log(self, message):
         self.logger.debug(message)
@@ -355,6 +356,7 @@ class RedundantCoords:
         return prim_internals
 
     def transform_int_step(self, int_step, pure=False):
+        self.log(f"Backtransformation {self.backtransform_counter}")
         new_prim_internals, cart_step, failed = transform_int_step(
             int_step,
             self.coords3d.flatten(),
@@ -368,6 +370,7 @@ class RedundantCoords:
         if not pure:
             self.coords3d += cart_step.reshape(-1, 3)
             self.prim_internals = new_prim_internals
+            self.backtransform_counter += 1
         return cart_step
 
     def __str__(self):

@@ -160,7 +160,7 @@ def transform_int_step(
 
         last_rms = cart_rms
         if cart_rms < cart_rms_thresh:
-            log(logger, f"Internal->Cartesian transformation converged in {i} cycle(s)!")
+            log(logger, f"Internal->Cartesian transformation converged in {i+1} cycle(s)!")
             backtransform_failed = False
             break
 
