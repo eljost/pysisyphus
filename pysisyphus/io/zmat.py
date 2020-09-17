@@ -15,6 +15,7 @@ ZLine = namedtuple("ZLine",
 def geom_from_zmat(zmat, coords3d=None, start_at=None):
     """Adapted from https://github.com/robashaw/geomConvert by Robert Shaw."""
     atoms = [zline.atom for zline in zmat]
+
     if coords3d is None:
         coords3d = np.zeros((len(zmat), 3), dtype=float)
 
@@ -22,6 +23,10 @@ def geom_from_zmat(zmat, coords3d=None, start_at=None):
         start_at = 0
 
     for i, zline in enumerate(zmat[start_at:], start_at):
+        assert all(
+            [(ind is None) or (ind >= 0) for ind in (zline.rind, zline.aind, zline.dind)]
+        ), "Found invalid atom index. Atom indices start with 1, not 0!"
+
         r = zline.r
         if i == 0:
             continue
@@ -102,8 +107,11 @@ def zmat_from_str(text):
 
     zmat = list()
     for line in text.strip().split("\n"):
+        line = line.strip()
+        if line.startswith("#"):
+            continue
         zmat.append(
-            ZLine(*convert(line.strip().split()))
+            ZLine(*convert(line.split()))
         )
     return zmat
 
