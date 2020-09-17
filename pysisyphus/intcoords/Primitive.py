@@ -52,6 +52,19 @@ class Primitive(metaclass=abc.ABCMeta):
                     **calc_kwargs,
         )
 
+    def jacobian(self, coords3d, indices=None):
+        if indices is None:
+            indices = self.indices
+
+        # Gather calc_kwargs
+        calc_kwargs = {key: getattr(self, key) for key in self.calc_kwargs}
+
+        return self._jacobian(
+                    coords3d=coords3d,
+                    indices=indices,
+                    **calc_kwargs,
+        )
+
     def __str__(self):
         return f"{self.__class__.__name__}({self.indices})"
 

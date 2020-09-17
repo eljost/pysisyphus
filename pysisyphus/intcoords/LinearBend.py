@@ -2,7 +2,7 @@ from math import sin
 
 import numpy as np
 
-from pysisyphus.intcoords.derivatives import dq_lb
+from pysisyphus.intcoords.derivatives import dq_lb, d2q_lb
 from pysisyphus.intcoords.Primitive import Primitive
 
 # [1] 10.1080/00268977200102361
@@ -79,6 +79,11 @@ class LinearBend(Primitive):
             row = row.flatten()
             return lb_rad, row
         return lb_rad
+
+    @staticmethod
+    def _jacobian(coords3d, indices, complement=False):
+        w = LinearBend._get_orthogonal_direction(coords3d, indices, complement)
+        return d2q_lb(*coords3d[indices].flatten(), *w)
 
     def __str__(self):
         return f"LinearBend({tuple(self.indices)}, complement={self.complement})"

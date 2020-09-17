@@ -3,6 +3,7 @@ from math import sin
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.intcoords.derivatives import d2q_a
 
 
 class Bend(Primitive):
@@ -60,5 +61,6 @@ class Bend(Primitive):
             return angle_rad, row
         return angle_rad
 
-    def __str__(self):
-        return f"Bend({tuple(self.indices)}"
+    @staticmethod
+    def _jacobian(coords3d, indices):
+        return d2q_a(*coords3d[indices].flatten())

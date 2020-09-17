@@ -4,16 +4,11 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords import Bend
+from pysisyphus.intcoords.derivatives import d2q_d
 
 
 
 class Torsion(Primitive):
-
-    def __init__(self, *args, cos_tol=1e-9, **kwargs):
-        kwargs["calc_kwargs"] = ("cos_tol", )
-        super().__init__(*args, **kwargs)
-
-        self.cos_tol = cos_tol
 
     def _weight(self, atoms, coords3d, f_damping):
         m, o, p, n = self.indices
@@ -29,7 +24,7 @@ class Torsion(Primitive):
         )
 
     @staticmethod
-    def _calculate(coords3d, indices, gradient=False, cos_tol=1e-9):
+    def _calculate(coords3d, indices, gradient=False):
         m, o, p, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[p]
@@ -95,3 +90,8 @@ class Torsion(Primitive):
             row = row.flatten()
             return dihedral_rad, row
         return dihedral_rad
+
+    @staticmethod
+    def _jacobian(coords3d, indices):
+        sign = np.sign(Torsion._calculate(coords3d, indices))
+        return sign * d2q_d(*coords3d[indices].flatten())

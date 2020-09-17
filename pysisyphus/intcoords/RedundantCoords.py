@@ -236,36 +236,28 @@ class RedundantCoords:
     def get_K_matrix(self, int_gradient=None):
         if int_gradient is not None:
             assert len(int_gradient) == len(self._primitives)
+
         size_ = self.coords3d.size
         if int_gradient is None:
             return np.zeros((size_, size_))
 
-        dg_funcs = {
-            2: d2q_b,
-            # Todo: handle linear bend
-            3: d2q_a,
-            4: d2q_d,
-        }
-
-        def grad_deriv_wrapper(inds):
-            coords_flat = self.coords3d[inds].flatten()
-            dgrad = dg_funcs[len(inds)](*coords_flat)
-            return dgrad
-
         K_flat = np.zeros(size_ * size_)
+        coords3d = self.coords3d
         for primitive, int_grad_item in zip(self.primitives, int_gradient):
-            # Skip dihedrals for now
-            if len(primitive.indices) == 4:
-                continue
             # Contract with gradient
-            try:
-                dg = int_grad_item * grad_deriv_wrapper(primitive.indices)
-            except (ValueError, ZeroDivisionError) as err:
-                self.log(
-                    "Error in calculation of 2nd derivative of primitive "
-                    f"internal {primitive.indices}."
-                )
+            val = primitive.calculate(coords3d)
+            if isinstance(primitive, Torsion) and ((abs(val) < 1) or (abs(val) > 179)):
+                self.log("Skipped 2nd derivative of {primitive} with val={val:.2f}°")
                 continue
+            # try:
+                # dg = int_grad_item * primitive.jacobian(coords3d)
+            # except (ValueError, ZeroDivisionError) as err:
+                # self.log(
+                    # "Error in calculation of 2nd derivative of primitive "
+                    # f"internal {primitive.indices}."
+                # )
+                # continue
+            dg = int_grad_item * primitive.jacobian(coords3d)
             # Depending on the type of internal coordinate dg is a flat array
             # of size 36 (stretch), 81 (bend) or 144 (torsion).
             #

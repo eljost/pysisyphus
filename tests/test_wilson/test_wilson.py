@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.intcoords import Stretch, Bend, Torsion, LinearBend
-from pysisyphus.intcoords.mp_derivatives import (
+from pysisyphus.intcoords.derivatives import (
     q_b,
     dq_b,
     d2q_b,

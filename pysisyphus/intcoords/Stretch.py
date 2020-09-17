@@ -1,6 +1,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.intcoords.derivatives import d2q_b
 
 
 class Stretch(Primitive):
@@ -22,3 +23,7 @@ class Stretch(Primitive):
             row = row.flatten()
             return bond_length, row
         return bond_length
+
+    @staticmethod
+    def _jacobian(coords3d, indices):
+        return d2q_b(*coords3d[indices].flatten())

@@ -7,7 +7,7 @@ from pytest import approx
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.testing import using_pyscf
+from pysisyphus.testing import using
 
 
 def numhess(geom, step_size=0.0001):
@@ -49,15 +49,14 @@ def compare_hessians(ref_H, num_H, ref_rms):
     return rms == approx(ref_rms, abs=1e-6)
 
 
-@using_pyscf
+@using("pyscf")
 @pytest.mark.parametrize(
     "xyz_fn, coord_type, ref_rms", [
         ("lib:hcn_bent.xyz", "cart", 1.2e-6),
-        ("lib:h2o2_rot2.xyz", "redund", 0.000876695),
+        ("lib:h2o2_rot2.xyz", "redund", 0.00085819),
     ]
 )
 def test_numhess(xyz_fn, coord_type, ref_rms):
-    # geom = geom_from_library("hcn_bent.xyz")
     geom = geom_loader(xyz_fn, coord_type=coord_type)
 
     # Interestingly enough the test will fail with keep_chk == True ...
@@ -78,7 +77,7 @@ def test_get_fragments():
     assert len(fragments) == 4
 
 
-@using_pyscf
+@using("pyscf")
 def test_backtransform_hessian():
     geom = geom_loader("lib:azetidine_hf_321g_opt.xyz", coord_type="redund")
 
