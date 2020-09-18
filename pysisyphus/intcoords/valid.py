@@ -1,5 +1,6 @@
 import numpy as np
 
+from pysisyphus.helpers import log
 from pysisyphus.intcoords import Bend
 
 
