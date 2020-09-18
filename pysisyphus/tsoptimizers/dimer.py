@@ -468,7 +468,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
         for trans_i in range(max_translations):
             _, f_parallel, f_perp = get_f_tran(f0, N, C)
             prev_f_par_rms = get_rms(f_parallel)
-            prev_f_perp_rms = get_rms(f_perp)
+            # prev_f_perp_rms = get_rms(f_perp)
             prev_C = C
             f0_rms = get_rms(f0)
             f0_max = max(np.abs(f0))
@@ -501,7 +501,7 @@ def dimer_method(geoms, calc_getter, N_init=None,
                 trans_table.print("Did dimer translation.")
             _, f_parallel, f_perp = get_f_tran(f0, N, C)
             f_par_rms = get_rms(f_parallel)
-            f_perp_rms = get_rms(f_perp)
+            # f_perp_rms = get_rms(f_perp)
             # Check for sign change of curvature
             if (prev_C < 0) and (np.sign(C/prev_C) < 0):
                 trans_table.print("Curvature became positive!")

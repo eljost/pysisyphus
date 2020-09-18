@@ -50,7 +50,6 @@ class LQA(IRC):
         alphas = (np.exp(-eigenvalues*t) - 1) / eigenvalues
         A = eigenvectors @ np.diag(alphas) @ eigenvectors.T
         step = A @ mw_gradient
-        norm = np.linalg.norm(step)
 
         mw_coords = self.mw_coords.copy()
         self.mw_coords = mw_coords + step

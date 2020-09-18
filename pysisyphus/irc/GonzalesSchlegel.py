@@ -40,7 +40,6 @@ class GonzalesSchlegel(IRC):
         dH, _ = bfgs_update(self.mw_hessian, coords_diff, gradient_diff)
         self.mw_hessian += dH
         eigvals, eigvecs = np.linalg.eig(self.mw_hessian)
-        hessian_inv = np.linalg.pinv(self.mw_hessian)
 
         def lambda_func(lambda_):
             # Eq. (11) in [1]
@@ -51,7 +50,6 @@ class GonzalesSchlegel(IRC):
             tmp = self.displacement - hmlinv.dot(glp)
             return tmp.dot(tmp) - 0.25*(self.step_length**2)
 
-        smallest_eigval = np.sort(eigvals)[0]
         # Initial guess for λ.
         # λ must be smaller then the smallest eigenvector
         lambda_ = np.sort(eigvals)[0]

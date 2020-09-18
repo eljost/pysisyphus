@@ -213,11 +213,9 @@ class Turbomole(OverlapCalculator):
         # Copy everything from the reference control_dir into this path
         # Use self.control_path for all calculations except the double
         # molecule calculation.
-        all_src_paths = copy_from.glob("./*")
         """Maybe we shouldn't copy everything because it may give convergence
         problems? Right now we use the initial MO guess generated in the
         reference path for all images along the path."""
-        globs = [p for p in all_src_paths]
         for glob in copy_from.glob("./*"):
             shutil.copy(glob, path)
         xyz_str = self.prepare_xyz_string(atoms, coords)

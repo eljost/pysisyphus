@@ -155,7 +155,6 @@ class Geometry:
 
     @property
     def sum_formula(self):
-        atom_counter = Counter(self.atoms)
         return "_".join(
                 [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
@@ -266,7 +265,6 @@ class Geometry:
         inds_dict : dict
             Unique atom types as keys, corresponding indices as values.
         """
-        unique_atoms = set(self.atoms)
         inds_dict = {}
         for atom_type in set(self.atoms):
             inds_dict[atom_type] = [i for i, atom in enumerate(self.atoms)

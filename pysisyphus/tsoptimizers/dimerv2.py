@@ -47,9 +47,8 @@ class DIISError(Exception):
     pass
 
 
-def diis(error_vecs, coords, forces, max_vecs=7):
+def diis(error_vecs, coords, forces):
     cycles = len(error_vecs)
-    use_at_most = min(cycles, max_vecs)
 
     last_cr = None
     for use_last in range(2, cycles+1):
@@ -194,7 +193,7 @@ def dimer_method(geom0, N, R, calc_getter, max_cycles=50, f_thresh=1e-3,
     if rot_kwargs is None:
         rot_kwargs = {}
     if trans_kwargs is None:
-        trans_kwars = {}
+        trans_kwargs = {}
 
     geom1, geom2 = get_dimer_ends(geom0, N, R, calc_getter)
     coords = [(geom1.coords, geom0.coords, geom2.coords), ]

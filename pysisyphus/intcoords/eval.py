@@ -65,7 +65,6 @@ def augment_primitives(missing_prims, coords3d, prim_indices, fragments):
 
     fragment_tpls = [tuple(fragment) for fragment in fragments]
     if len(fragments) > 1:
-        frag_inds = list(range(len(fragments)))
         bond_inds = prim_indices[0]
         bond_sets = [frozenset(bond) for bond in bond_inds]
         while missing_prims > 0:

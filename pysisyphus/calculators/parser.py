@@ -77,7 +77,6 @@ def parse_turbo_ccre0_ascii(text):
 
 
 def parse_turbo_mos(text):
-    float_ = make_float_class()
     float_20 = make_float_class(exact=20)
     int_ = pp.Word(pp.nums)
     comment = pp.Literal("#") + pp.restOfLine

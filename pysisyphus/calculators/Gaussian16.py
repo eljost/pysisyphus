@@ -119,7 +119,7 @@ class Gaussian16(OverlapCalculator):
         prev_fchk = new_chk.with_suffix(".fchk")
         shutil.copy(self.fchk, prev_fchk)
         cmd = f"{self.unfchk_cmd} {prev_fchk}".split()
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
+        subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
         self.log(f"Using MO guess from '{self.fchk}'.")
 
         reuse_str = "guess=read"
@@ -197,14 +197,14 @@ class Gaussian16(OverlapCalculator):
 
     def make_fchk(self, path):
         cmd = f"{self.formchk_cmd} {self.chk_fn}".split()
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
+        subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
         self.log("Created .fchk")
 
     def run_rwfdump(self, path, rwf_index):
         chk_path = path / self.chk_fn
         dump_fn = path / f"{self.dump_base_fn}_dump_{rwf_index}"
         cmd = f"rwfdump {chk_path} {dump_fn} {rwf_index}".split()
-        proc = subprocess.run(cmd)
+        subprocess.run(cmd)
         self.log(f"Dumped {rwf_index} from .chk.")
         return dump_fn
 
@@ -224,7 +224,6 @@ class Gaussian16(OverlapCalculator):
 
         keyword = word.setResultsName("keyword")
         equals = pp.Literal("=")
-        option_key = word
         option = pp.Group(
             word
             + pp.Suppress(pp.Optional(equals))
@@ -350,6 +349,7 @@ class Gaussian16(OverlapCalculator):
             self.log("This track_root() call is a bit superfluous as the "
                      "as the result is ignored :)"
             )
+        return results
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
         self.log("Running double molecule calculation")
@@ -619,7 +619,6 @@ class Gaussian16(OverlapCalculator):
             rows, cols = zip(*get_block_inds(i, nbas))
             full_mat[rows, cols] = block.asList()
 
-        fst = full_mat[:,0][:,None]
         nbas_single = nbas // 2
         """The whole matrix consists of four blocks:
             Original overlaps of molecule 1

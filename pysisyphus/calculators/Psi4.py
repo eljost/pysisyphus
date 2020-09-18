@@ -178,8 +178,5 @@ class Psi4(Calculator):
         result.update(self.parse_energy(path))
         return result
 
-    def keep(self, path):
-        kept_fns = super().keep(path)
-
     def __str__(self):
         return f"Psi4({self.name})"

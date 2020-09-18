@@ -48,8 +48,6 @@ class StabilizedQNMethod(Optimizer):
 
     def bio_mode(self, gradient):
         bond_mat = get_bond_mat(self.geometry)
-        sq = squareform(bond_mat)
-        zero = np.zeros(3)
         atom_num = len(self.geometry.atoms)
         bond_vec_empty = np.zeros((atom_num, 3))
         c3d = self.geometry.coords3d

@@ -182,9 +182,7 @@ class Pipeline:
             rmsds[i, j] = rmsd.kabsch_rmsd(coords1, coords2)
         is_, js = np.where(rmsds < self.rmsd_thresh)
         similar_inds = np.unique(js)
-        all_inds = np.arange(geom_num)
         unique_geoms = [geoms[i] for i in range(geom_num) if i not in similar_inds]
-        unique_num = len(unique_geoms)
         return unique_geoms
 
     def run_geom_opt(self, geom):
@@ -234,7 +232,6 @@ class Pipeline:
             self.log(f"Optimizations took {calc_duration:.0f} s.")
 
             kept_geoms = list()
-            rejected_geoms = 0
             for geom in opt_geoms:
                 # Do all the filtering and reject all invalid geometries
                 if not self.geom_is_valid(geom):

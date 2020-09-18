@@ -419,8 +419,6 @@ class GrowingString(GrowingChainOfStates):
         hei_ind = energies.argmax()
         hei_str = f"HEI={hei_ind+1:02d}/{energies.size:02d}"
 
-        tot = f"Grads={self.get_image_calc_counter_sum()}"
-
         strs = (
             size_info,
             hei_str,

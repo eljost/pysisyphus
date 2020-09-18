@@ -47,7 +47,6 @@ class LST(Interpolator):
             """Difference in actual cartesian coordinates."""
             return (1-f)*coords_r + f*coords_p
         wab = lambda f: wab_(f, coords3d[0], coords3d[1])
-        G = lambda w_c, f: self.cost_function(w_c, f, rab, wab)
 
         interpolated_geoms = list()
         minimize_kwargs = {

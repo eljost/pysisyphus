@@ -35,9 +35,7 @@ class LinearBend(Primitive):
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
         u_norm = np.linalg.norm(u_dash)
-        v_norm = np.linalg.norm(v_dash)
         u = u_dash / u_norm
-        # v = v_dash / v_norm  # Never used ...
 
         # Select initial vector for cross product, similar to
         # geomeTRIC. It must NOT be parallel to u and/or v.

@@ -185,8 +185,6 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         dump_coords(geom.atoms, ascent_xs, "mdp_ee_ascent.trj")
     x0 = geom.coords.copy()
 
-    masses = geom.masses_rep
-
     print(highlight_text("Runninig initialization trajectories", level=1))
     for i in range(max_init_trajs):
         # Determine random momentum vector for the given kinetic energy

@@ -109,7 +109,7 @@ class DLC(RedundantCoords):
         eigvals, eigvectors = np.linalg.eigh(G)
 
         nonzero_inds = np.abs(eigvals) > thresh
-        active_eigvals = eigvals[nonzero_inds]
+        # active_eigvals = eigvals[nonzero_inds]
         return eigvectors[:,nonzero_inds]
 
     def set_active_set(self):

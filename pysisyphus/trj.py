@@ -359,11 +359,6 @@ def append(geoms):
     return [Geometry(atoms, coords), ]
 
 
-def bohr2ang(geoms):
-    coords_angstrom = [geom.coords*0.529177249 for geom in geoms]
-    raise Exception("Implement me")
-
-
 def match(ref_geom, geom_to_match):
     rmsd_before = rmsd.kabsch_rmsd(ref_geom.coords3d, geom_to_match.coords3d)
     print(f"Kabsch RMSD before: {rmsd_before:.4f}")
