@@ -12,7 +12,6 @@ from pysisyphus.tsoptimizers import *
 
 def get_geoms():
     fails = (
-        "09_parentdieslalder.xyz",
         "15_hocl.xyz",  # SCF goes completely nuts
         "20_hconh3_cation.xyz",  # fails when angles up to & including 180° are defined
     )
@@ -29,7 +28,6 @@ def get_geoms():
         "16_h2po4_anion.xyz",
         "17_claisen.xyz",
         "18_silyene_insertion.xyz",
-        # "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
         "25_hcnh2.xyz",
     )
@@ -46,6 +44,7 @@ def get_geoms():
     )
     alpha_negative = (
         "22_hconhoh.xyz",
+        "09_parentdieslalder.xyz",
     )
     no_imag = (
         "10_tetrazine.xyz",
