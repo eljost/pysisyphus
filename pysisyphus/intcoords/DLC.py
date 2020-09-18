@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/10.1063/1.471864
 #     The generation and use of delocalized internal coordinates in geometry
 #     optimization.

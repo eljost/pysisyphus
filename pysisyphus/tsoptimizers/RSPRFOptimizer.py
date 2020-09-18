@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # See [1] https://pubs.acs.org/doi/pdf/10.1021/j100247a015
 #         Banerjee, 1985
 #     [2] https://aip.scitation.org/doi/abs/10.1063/1.2104507

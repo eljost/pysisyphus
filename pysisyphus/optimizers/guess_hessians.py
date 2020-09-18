@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://www.sciencedirect.com/science/article/pii/000926149500646L
 #     Lindh, 1995
 # [2] https://pubs.acs.org/doi/pdf/10.1021/j100203a036

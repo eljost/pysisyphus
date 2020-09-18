@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# Johannes Steinmetzer 2019
+
+# Johannes Steinmetzer 2020
 # As describend in:
 #   V. Bakken, T. Helgaker, J. Chem. Phys., 117, 20, 2002
 # [1] https://aip.scitation.org/doi/abs/10.1063/1.1515483

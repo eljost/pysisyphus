@@ -1,5 +1,3 @@
-#!/usr/bin/env/python3
-
 # [1] http://www.cims.nyu.edu/~eve2/string_jcp_simplified07.pdf
 
 import numpy as np

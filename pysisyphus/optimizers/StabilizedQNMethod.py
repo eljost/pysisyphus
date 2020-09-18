@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.4905665?class=pdf
 
 import numpy as np

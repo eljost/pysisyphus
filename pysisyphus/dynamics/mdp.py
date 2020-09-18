@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1063/1.5082885
 #     Minimum dynamic path
 #     Unke, 2019

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.1523908
 #     Neugebauer, Reiher 2002
 # [2] https://reiher.ethz.ch/software/akira.html

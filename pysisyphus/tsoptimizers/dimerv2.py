@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://pubs.rsc.org/en/content/articlepdf/2002/cp/b108658h
 #     Farkas, 2001, GDIIS
 # [2] https://aip.scitation.org/doi/abs/10.1063/1.4878944

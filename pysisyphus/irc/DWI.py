@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/10.1063/1.1724823
 #     Hratchian, 2004
 # [2] https://aip.scitation.org/doi/pdf/10.1063/1.475419?class=pdf

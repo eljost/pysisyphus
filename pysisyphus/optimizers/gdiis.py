@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1016/S0022-2860(84)87198-7
 #     Pulay, 1984
 # [2] https://pubs.rsc.org/en/content/articlehtml/2002/cp/b108658h

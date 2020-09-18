@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.1498468
 #     Bour, 2002
 

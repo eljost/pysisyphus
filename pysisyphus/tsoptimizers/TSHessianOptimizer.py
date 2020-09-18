@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 
 from pysisyphus.intcoords.augment_bonds import augment_bonds

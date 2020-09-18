@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.459634?class=pdf
 #     Page, 1990, Eq. 19 is missing a **2 after g'_0,i
 # [2] https://aip.scitation.org/doi/10.1063/1.1724823

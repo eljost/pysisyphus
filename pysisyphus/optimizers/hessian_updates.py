@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://link.springer.com/article/10.1007/s00214-016-1847-3
 #     Birkholz, 2016
 # [2] Geometry optimization in Cartesian coordinates: Constrained optimization
