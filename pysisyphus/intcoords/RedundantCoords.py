@@ -20,7 +20,8 @@ from pysisyphus.intcoords.eval import (
     augment_primitives,
     PrimInternal,
 )
-from pysisyphus.intcoords.setup import setup_redundant, get_primitives, valid_bend, valid_dihedral
+from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
+from pysisyphus.intcoords.setup import setup_redundant, get_primitives
 
 
 class RedundantCoords:
@@ -71,11 +72,11 @@ class RedundantCoords:
             bonds, bends, dihedrals = prim_indices
             # We accept all bond indices. What could possibly go wrong?! :)
             self.bond_indices = to_arr(bonds)
-            valid_bends = [inds for inds in bends if valid_bend(self.coords3d, inds,
+            valid_bends = [inds for inds in bends if bend_valid(self.coords3d, inds,
                 self.bend_min_deg, self.bend_max_deg)]
             self.bending_indices = to_arr(valid_bends)
             valid_dihedrals = [
-                inds for inds in dihedrals if valid_dihedral(self.coords3d, inds)
+                inds for inds in dihedrals if dihedral_valid(self.coords3d, inds)
             ]
             self.dihedral_indices = to_arr(valid_dihedrals)
 
@@ -252,15 +253,15 @@ class RedundantCoords:
             if isinstance(primitive, Torsion) and ((abs(val) < 1) or (abs(val) > 179)):
                 self.log(f"Skipped 2nd derivative of {primitive} with val={val:.2f}°")
                 continue
-            # try:
-                # dg = int_grad_item * primitive.jacobian(coords3d)
-            # except (ValueError, ZeroDivisionError) as err:
-                # self.log(
-                    # "Error in calculation of 2nd derivative of primitive "
-                    # f"internal {primitive.indices}."
-                # )
-                # continue
-            dg = int_grad_item * primitive.jacobian(coords3d)
+            # 2nd derivative of normal, but linear, bends is undefined.
+            try:
+                dg = int_grad_item * primitive.jacobian(coords3d)
+            except (ValueError, ZeroDivisionError) as err:
+                self.log(
+                    "Error in calculation of 2nd derivative of primitive "
+                    f"internal {primitive.indices}."
+                )
+                continue
             # Depending on the type of internal coordinate dg is a flat array
             # of size 36 (stretch), 81 (bend) or 144 (torsion).
             #

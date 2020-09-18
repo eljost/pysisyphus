@@ -7,6 +7,7 @@ from scipy.spatial.distance import pdist, squareform
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
+from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
 
 def get_pair_covalent_radii(atoms):
@@ -102,12 +103,6 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
     return hydrogen_bond_inds
 
 
-def valid_bend(coords3d, bend_ind, min_deg, max_deg):
-    val = Bend._calculate(coords3d, bend_ind)
-    deg = np.rad2deg(val)
-    return min_deg <= deg <= max_deg
-
-
 def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, logger=None):
     # TODO: linear bends? -> besser ausserhalb behandeln
     bond_sets = {frozenset(bi) for bi in bond_inds}
@@ -117,7 +112,7 @@ def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, logger=None):
         union = bond_set1 | bond_set2
         if len(union) == 3:
             as_tpl, _ = sort_by_central(bond_set1, bond_set2)
-            if not valid_bend(coords3d, as_tpl, min_deg, max_deg):
+            if not bend_valid(coords3d, as_tpl, min_deg, max_deg):
                 log(logger, f"Bend {list(as_tpl)} is not valid!")
                 continue
             bend_inds.append(as_tpl)
@@ -141,18 +136,16 @@ def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=No
     return linear_bend_inds
 
 
-def valid_dihedral(coords3d, dihedral_ind, thresh=1e-6):
-    # Check for linear atoms
-    first_angle = Bend._calculate(coords3d, dihedral_ind[:3])
-    second_angle = Bend._calculate(coords3d, dihedral_ind[1:])
-    pi_thresh = np.pi - thresh
-    return (abs(first_angle) < pi_thresh) and (abs(second_angle) < pi_thresh)
-
-
-def get_dihedral_inds(atoms, coords3d, bond_inds, bend_inds, logger=None):
+def get_dihedral_inds(coords3d, bond_inds, bend_inds, logger=None):
     dihedrals = list()
-
     dihedral_inds = list()
+    improper_dihedrals = list()
+
+    def log_dihed_skip(inds):
+        log( logger,
+            f"Skipping generation of dihedral {dihedral_ind} "
+            "as some of the the atoms are (close too) linear.",
+        )
 
     def set_dihedral_index(dihedral_ind):
         dihed = tuple(dihedral_ind)
@@ -160,17 +153,12 @@ def get_dihedral_inds(atoms, coords3d, bond_inds, bend_inds, logger=None):
         if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
             return
         # Assure that the angles are below 175° (3.054326 rad)
-        if not valid_dihedral(coords3d, dihedral_ind, thresh=0.0873):
-            log(
-                logger,
-                f"Skipping generation of dihedral {dihedral_ind} "
-                "as some of the the atoms are (nearly) linear.",
-            )
+        if not dihedral_valid(coords3d, dihedral_ind, thresh=0.0873):
+            log_dihed_skip(dihedral_ind)
             return
         dihedral_inds.append(dihedral_ind)
         dihedrals.append(dihed)
 
-    improper_dihedrals = list()
     for bond, bend in it.product(bond_inds, bend_inds):
         central = bend[1]
         bend_set = set(bend)
@@ -200,14 +188,13 @@ def get_dihedral_inds(atoms, coords3d, bond_inds, bend_inds, logger=None):
             dihedral_ind = list(bend) + fourth_atom
             # This way dihedrals may be generated that contain linear
             # atoms and these would be undefinied. So we check for this.
-            dihed = Torsion._calculate(coords3d, dihedral_ind)
-            if not np.isnan(dihed):
+            if dihedral_valid(coords3d, dihedral_ind, thresh=0.0873):
                 improper_dihedrals.append(dihedral_ind)
             else:
-                log(logger, f"Dihedral {dihedral_ind} is undefinied. Skipping it!")
+                log_dihed_skip(dihedral_ind)
 
     # Now try to create the remaining improper dihedrals.
-    if (len(atoms) >= 4) and (len(dihedral_inds) == 0):
+    if (len(coords3d) >= 4) and (len(dihedral_inds) == 0):
         for improp in improper_dihedrals:
             set_dihedral_index(improp)
         log(
@@ -307,7 +294,7 @@ def setup_redundant(
 
     # Dihedrals
     dihedral_inds = get_dihedral_inds(
-        atoms, coords3d, all_bond_inds, bend_inds, logger=logger
+        coords3d, all_bond_inds, bend_inds, logger=logger
     )
     dihedral_inds += def_dihedrals
 
