@@ -2,10 +2,6 @@ import itertools as it
 
 import numpy as np
 
-from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
-from pysisyphus.intcoords import Stretch, Bend, Torsion
-
 
 def fin_diff_B(primitive, coords3d, delta=1e-6):
     """Derivatives of a primitive internal gradient wrt its defining

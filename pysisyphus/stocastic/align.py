@@ -5,8 +5,6 @@ import rmsd as rmsd
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.Geometry import Geometry
-
 
 def match_geom_atoms(ref_geom, geom_to_match, hydrogen=True):
     """Apply the hungarian method to geom_to_match.

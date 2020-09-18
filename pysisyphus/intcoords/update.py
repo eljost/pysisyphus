@@ -1,5 +1,3 @@
-import itertools as it
-
 import numpy as np
 
 from pysisyphus.helpers_pure import log

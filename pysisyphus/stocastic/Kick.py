@@ -1,12 +1,6 @@
-import itertools as it
-import time
-
 import numpy as np
 import rmsd
-from scipy.spatial.distance import pdist, squareform
 
-from pysisyphus.Geometry import Geometry
-from pysisyphus.xyzloader import make_trj_str_from_geoms
 from pysisyphus.stocastic.Pipeline import Pipeline
 
 

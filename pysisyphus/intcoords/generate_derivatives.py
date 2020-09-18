@@ -12,7 +12,6 @@ import string
 import textwrap
 
 from jinja2 import Template
-import numpy as np
 import sympy as sym
 from sympy import cse
 from sympy.codegen.ast import Assignment

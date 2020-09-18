@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import glob
 import os
 
@@ -126,11 +124,3 @@ def parse_turbo_exstates(text):
     result = parser.parseString(text)
     exc_energies_by_model = [(b.model, b.exc_ens.asList()) for b in result.exc_blocks]
     return exc_energies_by_model
-
-
-if __name__ == "__main__":
-    from pathlib import Path
-    with open("image_000.000.exstates") as handle:
-        text = handle.read()
-    ee = parse_turbo_exstates(text)
-    print(ee)

@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-
 import glob
 import os
-from pathlib import Path
 import re
 import struct
 import shutil

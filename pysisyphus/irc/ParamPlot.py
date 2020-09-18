@@ -1,14 +1,5 @@
-#!/usr/bin/env python3
-import os
-import pathlib
-
 import matplotlib.pyplot as plt
 import numpy as np
-
-from pysisyphus.constants import ANG2BOHR
-from pysisyphus.Geometry import Geometry
-
-from pysisyphus.xyzloader import parse_xyz_file
 
 
 class ParamPlot:

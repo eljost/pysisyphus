@@ -1,19 +1,14 @@
-#!/usr/bin/env python3
-
 from collections import namedtuple
-import glob
 import io
 import os
 import re
 import textwrap
 
 import numpy as np
-import pyparsing as pp
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.constants import BOHR2ANG, BOHRPERFS2AU
-from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
 from pysisyphus.xyzloader import make_xyz_str
 

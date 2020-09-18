@@ -1,12 +1,9 @@
-#!/usr/bin/env python3
-
 import itertools as it
 
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
-from pysisyphus.intcoords import RedundantCoords
 from pysisyphus.intcoords.helpers import get_tangent, form_coordinate_union
 from pysisyphus.xyzloader import write_geoms_to_trj
 

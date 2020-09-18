@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-import copy
 import itertools as it
-import os
 from pathlib import Path
-from pprint import pprint
-import re
 import sys
 
 from natsort import natsorted
@@ -22,7 +18,7 @@ from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
-from pysisyphus.xyzloader import write_geoms_to_trj, split_xyz_str
+from pysisyphus.xyzloader import split_xyz_str
 
 
 INTERPOLATE = {

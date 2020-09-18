@@ -7,7 +7,6 @@
 
 import numpy as np
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.irc.IRC import IRC
 

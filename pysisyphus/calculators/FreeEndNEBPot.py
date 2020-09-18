@@ -1,4 +1,4 @@
-import numpy as np
+# import numpy as np
 from sympy import atan, symbols
 
 from pysisyphus.calculators.AnaPotBase import AnaPotBase

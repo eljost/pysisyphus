@@ -11,14 +11,12 @@ import logging
 import numpy as np
 
 from pysisyphus.helpers_pure import remove_duplicates
-from pysisyphus.intcoords import Bend, LinearBend, Stretch, Torsion
+from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.update import transform_int_step
-from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.eval import (
     eval_primitives,
-    check_primitives,
-    augment_primitives,
-    PrimInternal,
+    # check_primitives,
+    # augment_primitives,
 )
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 from pysisyphus.intcoords.setup import setup_redundant, get_primitives

@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist
 from scipy.optimize import minimize
 
 from pysisyphus.Geometry import Geometry

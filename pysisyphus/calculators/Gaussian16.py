@@ -1,9 +1,5 @@
-#!/usr/bin/env python3
-
 from collections import namedtuple
 import io
-import logging
-import os
 from pathlib import Path
 import re
 import shutil

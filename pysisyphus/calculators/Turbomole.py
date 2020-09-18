@@ -1,20 +1,14 @@
-#!/usr/bin/env python3
-
-import glob
 import itertools as it
-import logging
 import os
 from pathlib import Path
 import re
 import shutil
-import struct
 import subprocess
 
 import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.constants import AU2EV
 from pysisyphus.calculators.parser import (parse_turbo_gradient,
                                            parse_turbo_ccre0_ascii,
                                            parse_turbo_mos,

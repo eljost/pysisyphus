@@ -1,20 +1,16 @@
-#!/usr/bin/env python3
-
-import copy
-
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import newton
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.TableFormatter import TableFormatter
+
 
 # [1] An improved algorithm for reaction path following
 # http://aip.scitation.org/doi/pdf/10.1063/1.456010
 # [2] Extension to internal coordinates (not implemented)
 # https://pubs.acs.org/doi/pdf/10.1021/j100377a021
+
 
 class GonzalesSchlegel(IRC):
 
