@@ -268,22 +268,24 @@ class HessianOptimizer(Optimizer):
 
         fit_energy = None
         fit_grad = None
-        fit_coords = None
         fit_step = None
         if fit_result and fit_result.y < prev_energy:
             x = fit_result.x
             fit_energy = fit_result.y
             self.log(f"Did {deg} interpolation with x={x:.6f}.")
 
-            # Interpolate coordinates and gradient
-            fit_step = x * prev_step
-            fit_coords = prev_coords + fit_step
-            # The commented lines below would be correct if we would want
-            # the step from the previous coordinates and not the current ones.
-            # fit_step = (1-x) * -prev_step
-            # fit_coords = cur_coords + fit_step
+            # Interpolate coordinates and gradient. 'fit_step' applied to the current
+            # coordinates yields interpolated coordinates.
+            #
+            # x == 0 would take us to the previous coordinates:
+            #  (1-0) * -prev_step = -prev_step (we revert the last step)
+            # x == 1 would preserve the current coordinates:
+            #  (1-1) * -prev_step = 0 (we stay at the current coordinates)
+            # x > 1 extrapolate along previous step direction:
+            #  with x=2, (1-2) * -prev_step = -1*-prev_step = prev_step
+            fit_step = (1-x) * -prev_step
             fit_grad = (1-x)*prev_grad + x*cur_grad
-        return fit_energy, fit_grad, fit_coords, fit_step
+        return fit_energy, fit_grad, fit_step
 
     def poly_line_search_v2(self, hessian=None):
         assert len(self.energies) == len(self.coords) == len(self.forces)
