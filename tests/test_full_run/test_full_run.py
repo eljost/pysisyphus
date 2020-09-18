@@ -13,7 +13,8 @@ def test_full_run_hf_abstraction():
     run_dict = {
         "preopt": {
             "coord_type": "redund_v2",
-            "trust_max": 0.1,
+            "max_cycles": 25,
+            "trust_max": 0.3,
         },
         "interpol": {
             "type": "redund",
