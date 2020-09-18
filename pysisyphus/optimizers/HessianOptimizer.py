@@ -6,7 +6,6 @@ from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
 from pysisyphus.optimizers.hessian_updates import (bfgs_update,
                                                    flowchart_update,
                                                    damped_bfgs_update,
-                                                   multi_step_update,
                                                    bofill_update,)
 from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -17,7 +16,6 @@ class HessianOptimizer(Optimizer):
         "bfgs": bfgs_update,
         "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
-        "mult": multi_step_update,
         "bofill": bofill_update,
     }
 
@@ -28,10 +26,9 @@ class HessianOptimizer(Optimizer):
 
     def __init__(self, geometry, trust_radius=0.5, trust_update=True,
                  trust_min=0.1, trust_max=1, hessian_update="bfgs",
-                 hessian_multi_update=False, hessian_init="fischer",
-                 hessian_recalc=None, hessian_recalc_adapt=None, hessian_xtb=False,
-                 hessian_recalc_reset=False, small_eigval_thresh=1e-8, line_search=False,
-                 alpha0=1., max_micro_cycles=25, **kwargs):
+                 hessian_init="fischer", hessian_recalc=None, hessian_recalc_adapt=None,
+                 hessian_xtb=False, hessian_recalc_reset=False, small_eigval_thresh=1e-8,
+                 line_search=False, alpha0=1., max_micro_cycles=25, **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
@@ -44,9 +41,6 @@ class HessianOptimizer(Optimizer):
         self.log(f"Initial trust radius: {self.trust_radius:.6f}")
         self.hessian_update = hessian_update
         self.hessian_update_func = self.hessian_update_funcs[hessian_update]
-        self.hessian_multi_update = hessian_multi_update
-        if self.hessian_multi_update:
-            raise Exception("hessian_multi_update=True doesn't work yet!")
         self.hessian_init = hessian_init
         self.hessian_recalc = hessian_recalc
         self.hessian_recalc_adapt = hessian_recalc_adapt
@@ -225,9 +219,6 @@ class HessianOptimizer(Optimizer):
             # Reset counter. It is also reset when the recalculation was initiated
             # by the adaptive formulation.
             self.hessian_recalc_in = self.hessian_recalc
-        # elif self.hessian_multi_update:
-            # gradients = -np.array(self.forces)
-            # self.H = multi_step_update(self.H, self.steps, gradients, self.energies)
         # Simple hessian update
         else:
             dx = self.steps[-1]

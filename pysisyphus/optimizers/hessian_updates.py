@@ -222,7 +222,6 @@ def multi_step_update(H, coords, gradients, energies, last_cycles=3,
         dH = update_func(H, dx, dg)
         H += dH
     return H
-"""
 
 
 # def multi_step_update(H, coords, gradients, energies, last_cycles=3,
@@ -265,3 +264,4 @@ def multi_step_update(H, steps, gradients, energies, last_cycles=1, key="bfgs"):
         dH, _ = update_func(H, dx, dg)
         H_updated += dH
     return H_updated
+"""
