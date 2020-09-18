@@ -25,7 +25,7 @@ def test_afir():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 39
+    assert opt.cur_cycle == 47
 
     geom = geom.copy(coord_type="redund")
     int_ = geom.internal

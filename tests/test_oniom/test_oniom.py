@@ -360,12 +360,12 @@ def test_oniom3():
 
     opt = res.opt
     assert opt.is_converged
-    assert opt.cur_cycle == 6
+    assert opt.cur_cycle == 7
 
     geom = res.opt_geom
     res = do_final_hessian(geom, save_hessian=False)
     nus = res.nus
-    assert nus[-1] == pytest.approx(3747.54937)
+    assert nus[-1] == pytest.approx(3747.5594141)
     assert nus[-5] == pytest.approx(3563.89449)
 
 
