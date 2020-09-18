@@ -34,13 +34,13 @@ setup(
         "h5py",
         "jinja2",
         "matplotlib",
-        "numpy",
+        "numpy>=1.19.2",
         "natsort",
         "pytest",
         "pyyaml",
         "rmsd",
-        "scipy",
-        "sympy",
+        "scipy>=1.5.2",
+        "sympy>=1.6.2",
     ],
     # Install locally with
     #   pip install -e .[extra]
