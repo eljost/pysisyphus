@@ -1,7 +1,6 @@
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.4905665?class=pdf
 
 import numpy as np
-from scipy.spatial.distance import squareform
 
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.intcoords.setup import get_bond_mat

@@ -33,7 +33,6 @@ class LinearBend(Primitive):
     def _get_orthogonal_direction(coords3d, indices, complement=False):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
-        v_dash = coords3d[n] - coords3d[o]
         u_norm = np.linalg.norm(u_dash)
         u = u_dash / u_norm
 

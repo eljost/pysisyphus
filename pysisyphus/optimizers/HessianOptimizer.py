@@ -249,7 +249,6 @@ class HessianOptimizer(Optimizer):
                                               prev_grad_proj, cur_grad_proj)
         quartic_result = poly_fit.quartic_fit(prev_energy, cur_energy,
                                               prev_grad_proj, cur_grad_proj)
-        prev_coords = self.coords[-2]
         accept = {
             # cubic is disabled for now as it does not seem to help
             "cubic": lambda x: (x > 2.) and (x < 1),  # lgtm [py/redundant-comparison]
