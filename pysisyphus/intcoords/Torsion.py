@@ -10,11 +10,12 @@ from pysisyphus.intcoords.derivatives import d2q_d
 
 class Torsion(Primitive):
 
-    def _weight(self, atoms, coords3d, f_damping):
-        m, o, p, n = self.indices
-        rho_mo = self.rho(atoms, coords3d, (m, o))
-        rho_op = self.rho(atoms, coords3d, (o, p))
-        rho_pn = self.rho(atoms, coords3d, (p, n))
+    @staticmethod
+    def _weight(atoms, coords3d, indices, f_damping):
+        m, o, p, n = indices
+        rho_mo = Torsion.rho(atoms, coords3d, (m, o))
+        rho_op = Torsion.rho(atoms, coords3d, (o, p))
+        rho_pn = Torsion.rho(atoms, coords3d, (p, n))
         rad_mop = Bend._calculate(coords3d, (m, o, p))
         rad_opn = Bend._calculate(coords3d, (o, p, n))
         return (

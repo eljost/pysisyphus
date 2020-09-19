@@ -6,8 +6,9 @@ from pysisyphus.intcoords.derivatives import d2q_b
 
 class Stretch(Primitive):
 
-    def _weight(self, atoms, coords3d, f_damping):
-        return self.rho(atoms, coords3d, self.indices)
+    @staticmethod
+    def _weight(atoms, coords3d, indices, f_damping):
+        return Stretch.rho(atoms, coords3d, indices)
 
     @staticmethod
     def _calculate(coords3d, indices, gradient=False):

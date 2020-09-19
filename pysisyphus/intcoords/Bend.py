@@ -8,11 +8,12 @@ from pysisyphus.intcoords.derivatives import d2q_a
 
 class Bend(Primitive):
 
-    def _weight(self, atoms, coords3d, f_damping):
-        m, o, n = self.indices
-        rho_mo = self.rho(atoms, coords3d, (m, o))
-        rho_on = self.rho(atoms, coords3d, (o, n))
-        rad = self.calculate(coords3d)
+    @staticmethod
+    def _weight(atoms, coords3d, indices, f_damping):
+        m, o, n = indices
+        rho_mo = Bend.rho(atoms, coords3d, (m, o))
+        rho_on = Bend.rho(atoms, coords3d, (o, n))
+        rad = Bend._calculate(coords3d, indices)
         return (rho_mo * rho_on)**0.5 * (f_damping + (1-f_damping)*sin(rad))
 
     @staticmethod

@@ -7,7 +7,6 @@ from pysisyphus.elem_data import COVALENT_RADII as CR
 
 
 class Primitive(metaclass=abc.ABCMeta):
-
     def __init__(self, indices, periodic=False, calc_kwargs=None):
         self.indices = list(indices)
         self.periodic = periodic
@@ -25,16 +24,16 @@ class Primitive(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def _weight(self, atoms, coords3d, f_damping):
+    def _weight(self, atoms, coords3d, indices, f_damping):
         pass
 
     def weight(self, atoms, coords3d, f_damping=0.12):
-        return self._weight(atoms, coords3d, f_damping)
+        return self._weight(atoms, coords3d, self.indices, f_damping)
 
     @staticmethod
     def rho(atoms, coords3d, indices):
         i, j = indices
-        distance = np.linalg.norm(coords3d[i]-coords3d[j])
+        distance = np.linalg.norm(coords3d[i] - coords3d[j])
         cov_rad_sum = CR[atoms[i].lower()] + CR[atoms[j].lower()]
         return exp(-(distance / cov_rad_sum - 1))
 
@@ -46,10 +45,10 @@ class Primitive(metaclass=abc.ABCMeta):
         calc_kwargs = {key: getattr(self, key) for key in self.calc_kwargs}
 
         return self._calculate(
-                    coords3d=coords3d,
-                    indices=indices,
-                    gradient=gradient,
-                    **calc_kwargs,
+            coords3d=coords3d,
+            indices=indices,
+            gradient=gradient,
+            **calc_kwargs,
         )
 
     def jacobian(self, coords3d, indices=None):
@@ -60,9 +59,9 @@ class Primitive(metaclass=abc.ABCMeta):
         calc_kwargs = {key: getattr(self, key) for key in self.calc_kwargs}
 
         return self._jacobian(
-                    coords3d=coords3d,
-                    indices=indices,
-                    **calc_kwargs,
+            coords3d=coords3d,
+            indices=indices,
+            **calc_kwargs,
         )
 
     def __str__(self):
