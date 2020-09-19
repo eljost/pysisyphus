@@ -142,7 +142,8 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, logger=None):
     improper_dihedrals = list()
 
     def log_dihed_skip(inds):
-        log( logger,
+        log(
+            logger,
             f"Skipping generation of dihedral {dihedral_ind} "
             "as some of the the atoms are (close too) linear.",
         )
@@ -227,6 +228,7 @@ CoordInfo = namedtuple(
     "dihedrals fragments cdm cbm".split(),
 )
 
+
 def setup_redundant(
     atoms,
     coords3d,
@@ -236,10 +238,18 @@ def setup_redundant(
     max_deg=180,
     lb_min_deg=None,
     lb_max_bonds=4,
+    min_weight=None,
     logger=None,
 ):
     # Additional primitives to be defined.
     def_bonds, def_bends, def_dihedrals = sort_by_prim_type(define_prims)
+
+    def keep_coord(prim_cls, prim_inds):
+        return (
+            True
+            if (min_weight is None)
+            else (prim_cls._weight(atoms, coords3d, prim_inds, 0.12) >= min_weight)
+        )
 
     # Bonds
     bond_inds, cdm, cbm = get_bond_sets(
@@ -251,7 +261,7 @@ def setup_redundant(
     )
     bond_inds = [tuple(bond) for bond in bond_inds]
     bond_inds += def_bonds
-    bond_ind_sets = [frozenset(bond) for bond in bond_inds]
+    bond_ind_sets = [frozenset(bond) for bond in bond_inds if keep_coord(Stretch, bond)]
 
     # Fragments
     fragments = merge_sets(bond_ind_sets)
@@ -278,6 +288,7 @@ def setup_redundant(
     # All bends will be checked, for being linear bends and will be removed from
     # bend_inds, if needed.
     bend_inds += def_bends
+    bend_inds = [bend for bend in bend_inds if keep_coord(Bend, bend)]
 
     # Linear Bends
     linear_bend_inds = list()
@@ -293,10 +304,11 @@ def setup_redundant(
         bend_inds = [bend for bend in bend_inds if bend not in linear_bend_inds]
 
     # Dihedrals
-    dihedral_inds = get_dihedral_inds(
-        coords3d, all_bond_inds, bend_inds, logger=logger
-    )
+    dihedral_inds = get_dihedral_inds(coords3d, all_bond_inds, bend_inds, logger=logger)
     dihedral_inds += def_dihedrals
+    dihedral_inds = [
+        dihedral for dihedral in dihedral_inds if keep_coord(Torsion, dihedral)
+    ]
 
     coord_info = CoordInfo(
         bonds=bond_inds,

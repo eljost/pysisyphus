@@ -10,8 +10,7 @@ from pysisyphus.linalg import gram_schmidt
 
 
 class DLC(RedundantCoords):
-    def __init__(self, *args, weighted=False, **kwargs):
-        self.weighted = weighted
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.set_active_set()
@@ -98,8 +97,11 @@ class DLC(RedundantCoords):
             weights = np.array(
                 [prim.weight(self.atoms, self.coords3d) for prim in self.primitives]
             )
-            self.log( "Weighting B-matrix.\n\tWeights: "
-                     f"{np.array2string(weights, precision=4)}"
+            self.log(
+                "Weighting B-matrix:\n"
+                f"\tWeights: {np.array2string(weights, precision=4)}\n"
+                f"\tmax(weights)={weights.max():.4f}, "
+                f"min(weights)={weights.min():.4f}, ({len(weights)} primitives)"
             )
             B = np.diag(weights).dot(B)
 
@@ -108,7 +110,7 @@ class DLC(RedundantCoords):
 
         nonzero_inds = np.abs(eigvals) > thresh
         # active_eigvals = eigvals[nonzero_inds]
-        return eigvectors[:,nonzero_inds]
+        return eigvectors[:, nonzero_inds]
 
     def set_active_set(self):
         self.U = self.get_active_set(self.B_prim)
@@ -139,7 +141,7 @@ class DLC(RedundantCoords):
         # (or the corresponding unit vectors) for the iterative
         # back-transformation. Right now I don't understand why we would
         # have to do this ([1], p. 10 (200), right column).
-        U_proj = orthonormalized[:,constr_num:]
+        U_proj = orthonormalized[:, constr_num:]
         return U_proj
 
     def freeze_primitives(self, prim_atom_indices):
@@ -151,17 +153,15 @@ class DLC(RedundantCoords):
             Iterable containing atom index iterables that define the primitive
             internal to be frozen.
         """
-        prim_indices = [self.get_index_of_prim_coord(pai)
-                        for pai in prim_atom_indices
+        prim_indices = [self.get_index_of_prim_coord(pai) for pai in prim_atom_indices]
+        not_defined = [
+            prim_coord
+            for prim_coord, prim_ind in zip(prim_atom_indices, prim_indices)
+            if prim_ind is None
         ]
-        not_defined = [prim_coord for prim_coord, prim_ind
-                       in zip(prim_atom_indices, prim_indices)
-                       if prim_ind is None
-        ]
-        assert None not in prim_indices, \
-            f"Some primitive internals are not defined ({not_defined})!"
-        _ = [self.project_primitive_on_active_set(pi)
-                                for pi in prim_indices
-        ]
+        assert (
+            None not in prim_indices
+        ), f"Some primitive internals are not defined ({not_defined})!"
+        _ = [self.project_primitive_on_active_set(pi) for pi in prim_indices]
         projected_primitives = np.array(_).T
         self.constraints = projected_primitives

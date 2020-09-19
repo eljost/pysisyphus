@@ -5,6 +5,7 @@
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844
 
+import math
 import itertools as it
 import logging
 
@@ -37,6 +38,8 @@ class RedundantCoords:
         bend_max_deg=180,
         lb_min_deg=None,
         make_complement=True,
+        weighted=False,
+        min_weight=0.3,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -49,6 +52,9 @@ class RedundantCoords:
         self.bend_max_deg = bend_max_deg
         self.lb_min_deg = lb_min_deg
         self.make_complement = make_complement
+        self.min_weight = float(min_weight)
+        assert self.min_weight > 0.0, "min_weight must be a positive rational!"
+        self.weighted = weighted
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -56,7 +62,25 @@ class RedundantCoords:
         self.linear_bend_indices = list()
         self.logger = logging.getLogger("internal_coords")
 
-        # Set up primitive indices
+        if self.weighted:
+            self.log(
+                "Coordinate weighting requested with min_weight="
+                f"{self.min_weight:.2f}. Calculating bond factor from min_weight."
+            )
+            # Screening function is
+            #   ρ(d) = exp(-(d/sum_cov_rad - 1)
+            #
+            # Swart proposed a min_weight of ρ(d) = 0.3. With this we can
+            # calculate the appropriate factor for the bond detection.
+            # d = (1 - ln(0.3)) * sum_cov_rad
+            # bond_factor = (1 - ln(0.3)) ≈ 2.204
+            #
+            # The snippet below prints weights and corresponding bond_factors.
+            # [f"{w:.2f}: {1-np.log(w):.4f}" for w in np.linspace(0.3, 1, 25)]
+            self.bond_factor = -math.log(self.min_weight) + 1
+        self.log(f"Using a factor of {self.bond_factor:.6f} for bond detection.")
+
+        # Set up primitive coordinate indices
         if prim_indices is None:
             self.set_primitive_indices(
                 self.atoms,
@@ -64,14 +88,19 @@ class RedundantCoords:
                 min_deg=self.bend_min_deg,
                 max_deg=self.bend_max_deg,
                 define_prims=self.define_prims,
+                # Disable min_weight if coordinate weighting is disabled
+                min_weight=min_weight if self.weighted else None,
             )
         else:
             to_arr = lambda _: np.array(list(_), dtype=int)
             bonds, bends, dihedrals = prim_indices
             # We accept all bond indices. What could possibly go wrong?! :)
             self.bond_indices = to_arr(bonds)
-            valid_bends = [inds for inds in bends if bend_valid(self.coords3d, inds,
-                self.bend_min_deg, self.bend_max_deg)]
+            valid_bends = [
+                inds
+                for inds in bends
+                if bend_valid(self.coords3d, inds, self.bend_min_deg, self.bend_max_deg)
+            ]
             self.bending_indices = to_arr(valid_bends)
             valid_dihedrals = [
                 inds for inds in dihedrals if dihedral_valid(self.coords3d, inds)
@@ -93,14 +122,16 @@ class RedundantCoords:
         )
 
         self._prim_internals = self.eval(self.coords3d)
-        self._prim_coords = np.array([prim_int.val for prim_int in self._prim_internals])
+        self._prim_coords = np.array(
+            [prim_int.val for prim_int in self._prim_internals]
+        )
 
         bonds = len(self.bond_indices)
         bends = len(self.bending_indices)
         dihedrals = len(self.dihedral_indices)
         self._bonds_slice = slice(bonds)
-        self._bends_slice = slice(bonds, bonds+bends)
-        self._dihedrals_slice = slice(bonds+bends, bonds+bends+dihedrals)
+        self._bends_slice = slice(bonds, bonds + bends)
+        self._dihedrals_slice = slice(bonds + bends, bonds + bends + dihedrals)
         self.backtransform_counter = 0
 
     def log(self, message):
@@ -148,9 +179,7 @@ class RedundantCoords:
         return np.array([prim_int.val for prim_int in self.prim_internals])
 
     def return_inds(self, slice_):
-        return np.array(
-            [prim_int.indices for prim_int in self.prim_internals[slice_]]
-        )
+        return np.array([prim_int.indices for prim_int in self.prim_internals[slice_]])
 
     @property
     def bonds(self):
@@ -170,8 +199,8 @@ class RedundantCoords:
 
     # @property
     # def coord_indices(self):
-        # ic_ind_tuples = [tuple(prim.indices) for prim in self._primitives]
-        # return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
+    # ic_ind_tuples = [tuple(prim.indices) for prim in self._primitives]
+    # return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
 
     @property
     def dihed_start(self):
@@ -216,7 +245,6 @@ class RedundantCoords:
         """Generalized inverse of the primitive Wilson B-Matrix."""
         B = self.B_prim
         return B.T.dot(np.linalg.pinv(B.dot(B.T)))
-
 
     @property
     def B_inv(self):
@@ -270,7 +298,9 @@ class RedundantCoords:
             # As for now we build up the K matrix as flat array. To add the dg
             # entries at the appropriate places in K_flat we have to calculate
             # the corresponding flat indices of dg in K_flat.
-            cart_inds = list(it.chain(*[range(3 * i, 3 * i + 3) for i in primitive.indices]))
+            cart_inds = list(
+                it.chain(*[range(3 * i, 3 * i + 3) for i in primitive.indices])
+            )
             flat_inds = [
                 row * size_ + col for row, col in it.product(cart_inds, cart_inds)
             ]
@@ -308,7 +338,13 @@ class RedundantCoords:
         return self.P.dot(vector)
 
     def set_primitive_indices(
-        self, atoms, coords3d, min_deg, max_deg, define_prims=None
+        self,
+        atoms,
+        coords3d,
+        min_deg,
+        max_deg,
+        define_prims=None,
+        min_weight=None,
     ):
         coord_info = setup_redundant(
             atoms,
@@ -318,6 +354,7 @@ class RedundantCoords:
             min_deg=min_deg,
             max_deg=max_deg,
             lb_min_deg=self.lb_min_deg,
+            min_weight=min_weight,
             logger=self.logger,
         )
 
@@ -339,18 +376,18 @@ class RedundantCoords:
 
         # TODO: primitives are not yet defined
         # missing_prims, kappa = check_primitives(
-            # self.coords3d,
-            # self.primitives,
-            # logger=self.logger,
+        # self.coords3d,
+        # self.primitives,
+        # logger=self.logger,
         # )
 
     def eval(self, coords3d, attr=None):
         prim_internals = eval_primitives(coords3d, self.primitives)
 
         if attr is not None:
-            return np.array([
-                getattr(prim_internal, attr) for prim_internal in prim_internals
-            ])
+            return np.array(
+                [getattr(prim_internal, attr) for prim_internal in prim_internals]
+            )
 
         return prim_internals
 
@@ -381,6 +418,5 @@ class RedundantCoords:
 
 
 class RedundantCoordsV2(RedundantCoords):
-
     def __init__(self, *args, lb_min_deg=170, **kwargs):
         super().__init__(*args, lb_min_deg=lb_min_deg, **kwargs)
