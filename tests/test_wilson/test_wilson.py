@@ -16,6 +16,7 @@ from pysisyphus.intcoords.derivatives import (
     dq_lb,
     d2q_lb,
 )
+import pysisyphus.intcoords.mp_derivatives as mp_d
 from pysisyphus.intcoords.findiffs import fin_diff_B
 from pysisyphus.io.zmat import geom_from_zmat, zmat_from_str
 
@@ -32,16 +33,22 @@ def test_stretch(length):
     args = coords3d[indices].flatten()
     ref_val = q_b(*args)
     ref_grad = dq_b(*args)
+    mp_ref_val = mp_d.q_b(*args)
+    mp_ref_grad = mp_d.dq_b(*args)
 
     assert val == pytest.approx(ref_val)
+    assert val == pytest.approx(mp_ref_val)
     np.testing.assert_allclose(grad.flatten(), ref_grad.flatten())
+    np.testing.assert_allclose(grad.flatten(), mp_ref_grad.flatten())
 
     # Code generated 2nd derivative
     dgrad = d2q_b(*args)
+    mp_dgrad = mp_d.d2q_b(*args)
 
     # Finite difference reference values
     ref_dgrad = fin_diff_B(Stretch(indices), coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-12)
+    np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-12)
 
 
 @pytest.mark.parametrize("deg", np.linspace(5, 175, num=35))
@@ -69,15 +76,24 @@ def test_bend(deg):
     ref_grad = np.zeros_like(coords3d)
     ref_grad[indices] = _ref_grad.reshape(-1, 3)
 
+    mp_ref_val = mp_d.q_a(*args)
+    _mp_ref_grad = mp_d.dq_a(*args)
+    mp_ref_grad = np.zeros_like(coords3d)
+    mp_ref_grad[indices] = _mp_ref_grad.reshape(-1, 3)
+
     assert val == pytest.approx(ref_val)
+    assert val == pytest.approx(mp_ref_val)
     np.testing.assert_allclose(grad.flatten(), ref_grad.flatten(), atol=1e-12)
+    np.testing.assert_allclose(grad.flatten(), mp_ref_grad.flatten(), atol=1e-12)
 
     # Code generated 2nd derivative
     dgrad = d2q_a(*args)
+    mp_dgrad = mp_d.d2q_a(*args)
 
     # Finite difference reference values
     ref_dgrad = fin_diff_B(Bend(indices), coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
+    np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
 
 
 @pytest.mark.parametrize(
@@ -124,18 +140,29 @@ def test_torsion(dihedral):
     ref_grad = np.zeros_like(coords3d)
     ref_grad[indices] = _ref_grad.reshape(-1, 3)
 
+    mp_ref_val = mp_d.q_d(*args)
+    _mp_ref_grad = mp_d.dq_d(*args)
+    mp_ref_grad = np.zeros_like(coords3d)
+    mp_ref_grad[indices] = _mp_ref_grad.reshape(-1, 3)
+
     # Sign change is not taken into account in q_d
     assert val == pytest.approx(sign * ref_val, abs=1e-8), "Dihedral value"
+    assert val == pytest.approx(sign * mp_ref_val, abs=1e-8)
     np.testing.assert_allclose(
         grad.flatten(), sign * ref_grad.flatten(), atol=1e-8, err_msg="1st derivative"
+    )
+    np.testing.assert_allclose(
+        grad.flatten(), sign * mp_ref_grad.flatten(), atol=1e-8, err_msg="1st derivative"
     )
 
     # Code generated 2nd derivative
     dgrad = sign * d2q_d(*args)
+    mp_dgrad = sign * mp_d.d2q_d(*args)
 
     # Finite difference reference values
     ref_dgrad = fin_diff_B(Torsion(indices), coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-8, err_msg="2nd derivative")
+    np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-8, err_msg="2nd derivative")
 
 
 @pytest.mark.parametrize("deg", np.linspace(165, 180, num=16))
