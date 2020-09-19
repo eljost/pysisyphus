@@ -197,11 +197,6 @@ class RedundantCoords:
     def coords(self):
         return self.prim_coords
 
-    # @property
-    # def coord_indices(self):
-    # ic_ind_tuples = [tuple(prim.indices) for prim in self._primitives]
-    # return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
-
     @property
     def dihed_start(self):
         return len(self.bond_indices) + len(self.bending_indices)
