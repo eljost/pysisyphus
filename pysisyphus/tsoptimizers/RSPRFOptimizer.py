@@ -53,12 +53,14 @@ class RSPRFOptimizer(TSHessianOptimizer):
             # Maximize energy along the chosen TS mode. The matrix is hardcoded
             # as 2x2, so only first-order saddle point searches are supported.
             H_aug_max = self.get_augmented_hessian(eigvals[[self.root]], gradient_trans[[self.root]], alpha)
-            step_max, eigval_max, nu_max = self.solve_rfo(H_aug_max, "max")
+            step_max, eigval_max, nu_max, self.prev_eigvec_max = self.solve_rfo(H_aug_max, "max",
+                    prev_eigvec=self.prev_eigvec_max)
             step_max = step_max[0]
 
             # Minimize energy along all modes, but the TS mode.
             H_aug_min = self.get_augmented_hessian(eigvals[min_indices], gradient_trans[min_indices], alpha)
-            step_min, eigval_min, nu_min = self.solve_rfo(H_aug_min, "min")
+            step_min, eigval_min, nu_min, self.prev_eigvec_min = self.solve_rfo(H_aug_min, "min",
+                    prev_eigvec=self.prev_eigvec_min)
 
             # Calculate overlap between directions over the course of the micro cycles
             # if mu == 0:

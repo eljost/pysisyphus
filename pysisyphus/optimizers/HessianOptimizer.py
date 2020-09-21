@@ -64,6 +64,8 @@ class HessianOptimizer(Optimizer):
             or (self.geometry.internal is None)):
             if self.hessian_init != "calc":
                 self.hessian_init = "unit"
+        self.prev_eigvec_min = None
+        self.prev_eigvec_max = None
 
     def reset(self):
         # Don't recalculate the hessian if we have to reset the optimizer
@@ -289,7 +291,7 @@ class HessianOptimizer(Optimizer):
             fit_grad = (1-x)*prev_grad + x*cur_grad
         return fit_energy, fit_grad, fit_step
 
-    def solve_rfo(self, rfo_mat, kind="min"):
+    def solve_rfo(self, rfo_mat, kind="min", prev_eigvec=None):
         # When using the restricted step variant of RFO the RFO matrix
         # may not be symmetric. Thats why we can't use eigh here.
         eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
@@ -302,11 +304,19 @@ class HessianOptimizer(Optimizer):
         # the mode(s) in the rfo mat we have to select the smallest
         # (biggest) eigenvalue and corresponding eigenvector.
         first_or_last, verbose = self.rfo_dict[kind]
-        ind = sorted_inds[first_or_last]
         # Given sorted eigenvalue-indices (sorted_inds) use the first
         # (smallest eigenvalue) or the last (largest eigenvalue) index.
-        step_nu = eigenvectors.T[ind]
-        # TODO: Root following like in optking?!
+        if prev_eigvec is None:
+            ind = sorted_inds[first_or_last]
+        else:
+            ovlps = np.array([prev_eigvec.dot(ev) for ev in eigenvectors.T])
+            naive_ind = sorted_inds[first_or_last]
+            ind = np.abs(ovlps).argmax()
+            self.log(f"Overlap: {ind} ({eigenvalues[ind]:.6f}), "
+                     f"Naive: {naive_ind} ({eigenvalues[naive_ind]:.6f})"
+            )
+        follow_eigvec = eigenvectors.T[ind]
+        step_nu = follow_eigvec.copy()
         nu = step_nu[-1]
         self.log(f"\tnu_{verbose}={nu:.8e}")
         # Scale eigenvector so that its last element equals 1. The
@@ -314,7 +324,7 @@ class HessianOptimizer(Optimizer):
         step = step_nu[:-1] / nu
         eigval = eigenvalues[ind]
         self.log(f"\teigenvalue_{verbose}={eigval:.8e}")
-        return step, eigval, nu
+        return step, eigval, nu, follow_eigvec
 
     def filter_small_eigvals(self, eigvals, eigvecs, mask=False):
         small_inds = np.abs(eigvals) < self.small_eigval_thresh
@@ -410,7 +420,8 @@ class HessianOptimizer(Optimizer):
         for mu in range(self.max_micro_cycles):
             self.log(f"{name} micro cycle {mu:02d}, alpha={alpha:.6f}")
             H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha)
-            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
+            rfo_step_, eigval_min, nu, self.prev_eigvec_min = self.solve_rfo(H_aug, "min",
+                                                                    prev_eigvec=self.prev_eigvec_min)
             rfo_norm_ = np.linalg.norm(rfo_step_)
             self.log(f"norm(rfo step)={rfo_norm_:.6f}")
 
@@ -427,7 +438,7 @@ class HessianOptimizer(Optimizer):
                       "simple downscaled step with alpha=1."
             )
             H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.)
-            rfo_step_, eigval_min, nu = self.solve_rfo(H_aug, "min")
+            rfo_step_, eigval_min, nu, _ = self.solve_rfo(H_aug, "min")
             rfo_norm_ = np.linalg.norm(rfo_step_)
             # This should always be True if the above algorithm failed but we
             # keep this line here nonetheless to make it more obvious what
