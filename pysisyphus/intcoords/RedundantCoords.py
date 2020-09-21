@@ -17,7 +17,6 @@ from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
     eval_primitives,
     check_primitives,
-    # augment_primitives,
 )
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 from pysisyphus.intcoords.setup import setup_redundant, get_primitives
