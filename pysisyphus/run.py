@@ -702,11 +702,17 @@ def do_rmsds(xyz, geoms, end_geoms, similar_thresh=0.025):
 
     for i, start_geom in enumerate(geoms):
         fn = xyz[i]
+        found_similar = False
         print(f"start geom {i:>2d} ({fn:>{max_len}s})")
         for j, end_geom in enumerate(end_geoms):
             rmsd = start_geom.rmsd(end_geom)
-            similar_str = " (similar)" if (rmsd < similar_thresh) else ""
+            similar_str = ""
+            if rmsd < similar_thresh:
+                found_similar = True
+                similar_str = " (similar)"
             print(f"\tend geom {j:>2d}: rmsd={rmsd:>8.6f} au{similar_str}")
+        if not found_similar:
+            print(f"\tOptimized end geometries are dissimilar to '{fn}'!")
     print()
 
 
