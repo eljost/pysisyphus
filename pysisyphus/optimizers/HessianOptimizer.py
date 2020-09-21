@@ -2,10 +2,12 @@ import numpy as np
 
 from pysisyphus.io.hessian import save_hessian
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
-from pysisyphus.optimizers.hessian_updates import (bfgs_update,
-                                                   flowchart_update,
-                                                   damped_bfgs_update,
-                                                   bofill_update,)
+from pysisyphus.optimizers.hessian_updates import (
+    bfgs_update,
+    flowchart_update,
+    damped_bfgs_update,
+    bofill_update,
+)
 from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.Optimizer import Optimizer
 
@@ -23,16 +25,29 @@ class HessianOptimizer(Optimizer):
         "max": (-1, "max"),
     }
 
-    def __init__(self, geometry, trust_radius=0.5, trust_update=True,
-                 trust_min=0.1, trust_max=1, hessian_update="bfgs",
-                 hessian_init="fischer", hessian_recalc=None, hessian_recalc_adapt=None,
-                 hessian_xtb=False, hessian_recalc_reset=False, small_eigval_thresh=1e-8,
-                 line_search=False, alpha0=1., max_micro_cycles=25, **kwargs):
+    def __init__(
+        self,
+        geometry,
+        trust_radius=0.5,
+        trust_update=True,
+        trust_min=0.1,
+        trust_max=1,
+        hessian_update="bfgs",
+        hessian_init="fischer",
+        hessian_recalc=None,
+        hessian_recalc_adapt=None,
+        hessian_xtb=False,
+        hessian_recalc_reset=False,
+        small_eigval_thresh=1e-8,
+        line_search=False,
+        alpha0=1.0,
+        max_micro_cycles=25,
+        **kwargs,
+    ):
         super().__init__(geometry, **kwargs)
 
         self.trust_update = bool(trust_update)
-        assert trust_min <= trust_max, \
-                "trust_min must be <= trust_max!"
+        assert trust_min <= trust_max, "trust_min must be <= trust_max!"
         self.trust_min = float(trust_min)
         self.trust_max = float(trust_max)
         # Constrain initial trust radius if trust_max > trust_radius
@@ -52,7 +67,7 @@ class HessianOptimizer(Optimizer):
         self.max_micro_cycles = int(max_micro_cycles)
         assert max_micro_cycles >= 1
 
-        assert self.small_eigval_thresh > 0., "small_eigval_thresh must be > 0.!"
+        assert self.small_eigval_thresh > 0.0, "small_eigval_thresh must be > 0.!"
         if not self.restarted:
             self.hessian_recalc_in = None
             self.adapt_norm = None
@@ -60,8 +75,7 @@ class HessianOptimizer(Optimizer):
 
         # Allow only calculated or unit hessian for geometries that don't
         # use internal coordinates.
-        if (not hasattr(self.geometry, "internal")
-            or (self.geometry.internal is None)):
+        if not hasattr(self.geometry, "internal") or (self.geometry.internal is None):
             if self.hessian_init != "calc":
                 self.hessian_init = "unit"
         self.prev_eigvec_min = None
@@ -70,7 +84,8 @@ class HessianOptimizer(Optimizer):
     def reset(self):
         # Don't recalculate the hessian if we have to reset the optimizer
         hessian_init = self.hessian_init
-        if ((not self.hessian_recalc_reset)
+        if (
+            (not self.hessian_recalc_reset)
             and hessian_init == "calc"
             and self.geometry.coord_type != "cart"
         ):
@@ -81,8 +96,13 @@ class HessianOptimizer(Optimizer):
         h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle}.h5")
         # Save the cartesian hessian, as it is independent of the
         # actual coordinate system that is used.
-        save_hessian(h5_fn, self.geometry, self.geometry.cart_hessian,
-                     self.geometry.energy, self.geometry.calculator.mult)
+        save_hessian(
+            h5_fn,
+            self.geometry,
+            self.geometry.cart_hessian,
+            self.geometry.energy,
+            self.geometry.calculator.mult,
+        )
         self.log(f"Wrote calculated cartesian Hessian to '{h5_fn}'")
 
     def prepare_opt(self, hessian_init=None):
@@ -96,10 +116,12 @@ class HessianOptimizer(Optimizer):
         if self.hessian_init == "calc":
             self.save_hessian()
 
-        if (hasattr(self.geometry, "coord_type")
+        if (
+            hasattr(self.geometry, "coord_type")
             and self.geometry.coord_type == "dlc"
             # Calculated Hessian is already in DLC
-            and hessian_init != "calc"):
+            and hessian_init != "calc"
+        ):
             U = self.geometry.internal.U
             self.H = U.T.dot(self.H).dot(U)
 
@@ -129,8 +151,9 @@ class HessianOptimizer(Optimizer):
     def update_trust_radius(self):
         # The predicted change should be calculated at the end of optimize
         # of the previous cycle.
-        assert len(self.predicted_energy_changes) == len(self.forces)-1, \
-            "Did you forget to append to self.predicted_energy_changes?"
+        assert (
+            len(self.predicted_energy_changes) == len(self.forces) - 1
+        ), "Did you forget to append to self.predicted_energy_changes?"
         self.log("Trust radius update")
         self.log(f"\tCurrent trust radius: {self.trust_radius:.6f}")
         predicted_change = self.predicted_energy_changes[-1]
@@ -150,8 +173,9 @@ class HessianOptimizer(Optimizer):
             last_step_norm = np.linalg.norm(step)
             self.set_new_trust_radius(coeff, last_step_norm)
             if unexpected_increase:
-                print(f"Unexpected energy increase ({actual_change:.6f} au)! " \
-                      f"Trust radius: old={old_trust:.4}, new={self.trust_radius:.4}"
+                print(
+                    f"Unexpected energy increase ({actual_change:.6f} au)! "
+                    f"Trust radius: old={old_trust:.4}, new={self.trust_radius:.4}"
                 )
         else:
             self.log("\tSkipped trust radius update")
@@ -163,8 +187,7 @@ class HessianOptimizer(Optimizer):
         # coeff will be negative and lead to a decreased trust radius,
         # which is fine.
         if coeff < 0.25:
-            self.trust_radius = max(self.trust_radius/4,
-                                    self.trust_min)
+            self.trust_radius = max(self.trust_radius / 4, self.trust_min)
             self.log("\tDecreasing trust radius.")
         # Only increase trust radius if last step norm was at least 80% of it
         # See [5], Appendix, step size and direction control
@@ -173,8 +196,7 @@ class HessianOptimizer(Optimizer):
         # Only increase trust radius if last step norm corresponded approximately
         # to the trust radius.
         elif coeff > 0.75 and abs(self.trust_radius - last_step_norm) <= 1e-3:
-            self.trust_radius = min(self.trust_radius*2,
-                                    self.trust_max)
+            self.trust_radius = min(self.trust_radius * 2, self.trust_max)
             self.log("\tIncreasing trust radius.")
         else:
             self.log(f"\tKeeping current trust radius at {self.trust_radius:.6f}")
@@ -188,14 +210,15 @@ class HessianOptimizer(Optimizer):
             cur_norm = np.linalg.norm(self.forces[-1])
             ref_norm = self.adapt_norm / self.hessian_recalc_adapt
             recalc_adapt = cur_norm <= ref_norm
-            self.log( "Check for adaptive Hessian recalculation: "
-                     f"{cur_norm:.6f} <= {ref_norm:.6f}, {recalc_adapt}"
+            self.log(
+                "Check for adaptive Hessian recalculation: "
+                f"{cur_norm:.6f} <= {ref_norm:.6f}, {recalc_adapt}"
             )
         except TypeError:
             recalc_adapt = False
 
         try:
-            self.hessian_recalc_in = max(self.hessian_recalc_in-1, 0)
+            self.hessian_recalc_in = max(self.hessian_recalc_in - 1, 0)
             self.log(f"Recalculation of Hessian in {self.hessian_recalc_in} cycle(s).")
         except TypeError:
             self.hessian_recalc_in = None
@@ -206,7 +229,7 @@ class HessianOptimizer(Optimizer):
         if recalc_adapt:
             self.adapt_norm = cur_norm
 
-        recalc = (self.hessian_recalc_in == 0)
+        recalc = self.hessian_recalc_in == 0
 
         if recalc or recalc_adapt:
             # Use xtb hessian
@@ -245,19 +268,21 @@ class HessianOptimizer(Optimizer):
         # TODO: always call line_search? Right now we could get some acceleration
         # as we also accept steps > 1.
         # if not energy_increased:
-            # return cur_grad
+        # return cur_grad
 
         # Generate directional gradients by projecting them on the previous step.
         prev_grad_proj = prev_step @ prev_grad
-        cur_grad_proj =  prev_step @ cur_grad
-        cubic_result = poly_fit.cubic_fit(prev_energy, cur_energy,
-                                              prev_grad_proj, cur_grad_proj)
-        quartic_result = poly_fit.quartic_fit(prev_energy, cur_energy,
-                                              prev_grad_proj, cur_grad_proj)
+        cur_grad_proj = prev_step @ cur_grad
+        cubic_result = poly_fit.cubic_fit(
+            prev_energy, cur_energy, prev_grad_proj, cur_grad_proj
+        )
+        quartic_result = poly_fit.quartic_fit(
+            prev_energy, cur_energy, prev_grad_proj, cur_grad_proj
+        )
         accept = {
             # cubic is disabled for now as it does not seem to help
-            "cubic": lambda x: (x > 2.) and (x < 1),  # lgtm [py/redundant-comparison]
-            "quartic": lambda x: (x > 0.) and (x <= 2),
+            "cubic": lambda x: (x > 2.0) and (x < 1),  # lgtm [py/redundant-comparison]
+            "quartic": lambda x: (x > 0.0) and (x <= 2),
         }
 
         fit_result = None
@@ -268,7 +293,7 @@ class HessianOptimizer(Optimizer):
             fit_result = cubic_result
             deg = "cubic"
         # else:
-            # Midpoint fallback as described by gaussian?
+        # Midpoint fallback as described by gaussian?
 
         fit_energy = None
         fit_grad = None
@@ -287,8 +312,8 @@ class HessianOptimizer(Optimizer):
             #  (1-1) * -prev_step = 0 (we stay at the current coordinates)
             # x > 1 extrapolate along previous step direction:
             #  with x=2, (1-2) * -prev_step = -1*-prev_step = prev_step
-            fit_step = (1-x) * -prev_step
-            fit_grad = (1-x)*prev_grad + x*cur_grad
+            fit_step = (1 - x) * -prev_step
+            fit_grad = (1 - x) * prev_grad + x * cur_grad
         return fit_energy, fit_grad, fit_step
 
     def solve_rfo(self, rfo_mat, kind="min", prev_eigvec=None):
@@ -312,8 +337,9 @@ class HessianOptimizer(Optimizer):
             ovlps = np.array([prev_eigvec.dot(ev) for ev in eigenvectors.T])
             naive_ind = sorted_inds[first_or_last]
             ind = np.abs(ovlps).argmax()
-            self.log(f"Overlap: {ind} ({eigenvalues[ind]:.6f}), "
-                     f"Naive: {naive_ind} ({eigenvalues[naive_ind]:.6f})"
+            self.log(
+                f"Overlap: {ind} ({eigenvalues[ind]:.6f}), "
+                f"Naive: {naive_ind} ({eigenvalues[naive_ind]:.6f})"
             )
         follow_eigvec = eigenvectors.T[ind]
         step_nu = follow_eigvec.copy()
@@ -329,13 +355,16 @@ class HessianOptimizer(Optimizer):
     def filter_small_eigvals(self, eigvals, eigvecs, mask=False):
         small_inds = np.abs(eigvals) < self.small_eigval_thresh
         eigvals = eigvals[~small_inds]
-        eigvecs = eigvecs[:,~small_inds]
+        eigvecs = eigvecs[:, ~small_inds]
         small_num = sum(small_inds)
-        self.log(f"Found {small_num} small eigenvalues in hessian. Removed "
-                  "corresponding eigenvalues and eigenvectors.")
-        assert small_num <= 6, \
-             "Expected at most 6 small eigenvalues in cartesian hessian " \
+        self.log(
+            f"Found {small_num} small eigenvalues in hessian. Removed "
+            "corresponding eigenvalues and eigenvectors."
+        )
+        assert small_num <= 6, (
+            "Expected at most 6 small eigenvalues in cartesian hessian "
             f"but found {small_num}!"
+        )
         if mask:
             return eigvals, eigvecs, small_inds
         else:
@@ -357,9 +386,11 @@ class HessianOptimizer(Optimizer):
 
         can_update = (
             # Allows gradient differences
-            len(self.forces) > 1 and (self.forces[-2].shape == gradient.shape)
+            len(self.forces) > 1
+            and (self.forces[-2].shape == gradient.shape)
             # Allows coordinat differences
-            and len(self.coords) > 1 and (self.coords[-2].shape == self.coords[1].shape)
+            and len(self.coords) > 1
+            and (self.coords[-2].shape == self.coords[1].shape)
             and len(self.energies) > 1
         )
         if can_update:
@@ -381,32 +412,33 @@ class HessianOptimizer(Optimizer):
         resetted = not can_update
         return energy, gradient, H, eigvals, eigvecs, resetted
 
-    def get_augmented_hessian(self, eigvals, gradient, alpha=1.):
+    def get_augmented_hessian(self, eigvals, gradient, alpha=1.0):
         dim_ = eigvals.size + 1
         H_aug = np.zeros((dim_, dim_))
-        H_aug[:dim_-1,:dim_-1] = np.diag(eigvals/alpha)
-        H_aug[-1,:-1] = gradient
-        H_aug[:-1,-1] = gradient
+        H_aug[: dim_ - 1, : dim_ - 1] = np.diag(eigvals / alpha)
+        H_aug[-1, :-1] = gradient
+        H_aug[:-1, -1] = gradient
 
-        H_aug[:-1,-1] /= alpha
+        H_aug[:-1, -1] /= alpha
 
         return H_aug
 
     def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, gradient):
         # Derivative of the squared step w.r.t. alpha
-        numer = gradient**2
-        denom = (eigvals - rfo_eigval * cur_alpha)**3
+        numer = gradient ** 2
+        denom = (eigvals - rfo_eigval * cur_alpha) ** 3
         quot = np.sum(numer / denom)
         self.log(f"quot={quot:.6f}")
-        dstep2_dalpha = (2*rfo_eigval/(1+step_norm**2 * cur_alpha)
-                         * np.sum(gradient**2
-                                  / ((eigvals - rfo_eigval * cur_alpha)**3)
-                           )
+        dstep2_dalpha = (
+            2
+            * rfo_eigval
+            / (1 + step_norm ** 2 * cur_alpha)
+            * np.sum(gradient ** 2 / ((eigvals - rfo_eigval * cur_alpha) ** 3))
         )
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
-        alpha_step = (2*(self.trust_radius*step_norm - step_norm**2)
-                      / dstep2_dalpha
+        alpha_step = (
+            2 * (self.trust_radius * step_norm - step_norm ** 2) / dstep2_dalpha
         )
         self.log(f"alpha_step={alpha_step:.4f}")
         assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
@@ -420,24 +452,30 @@ class HessianOptimizer(Optimizer):
         for mu in range(self.max_micro_cycles):
             self.log(f"{name} micro cycle {mu:02d}, alpha={alpha:.6f}")
             H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha)
-            rfo_step_, eigval_min, nu, self.prev_eigvec_min = self.solve_rfo(H_aug, "min",
-                                                                    prev_eigvec=self.prev_eigvec_min)
+            rfo_step_, eigval_min, nu, self.prev_eigvec_min = self.solve_rfo(
+                H_aug, "min", prev_eigvec=self.prev_eigvec_min
+            )
             rfo_norm_ = np.linalg.norm(rfo_step_)
             self.log(f"norm(rfo step)={rfo_norm_:.6f}")
 
-            if (rfo_norm_ < self.trust_radius) or abs(rfo_norm_ - self.trust_radius) <= 1e-3:
+            if (rfo_norm_ < self.trust_radius) or abs(
+                rfo_norm_ - self.trust_radius
+            ) <= 1e-3:
                 step_ = rfo_step_
                 break
 
-            alpha_step = self.get_alpha_step(alpha, eigval_min, rfo_norm_, eigvals, gradient_)
+            alpha_step = self.get_alpha_step(
+                alpha, eigval_min, rfo_norm_, eigvals, gradient_
+            )
             alpha += alpha_step
             self.log("")
         else:
-            self.log( "RS algorithm did not produce a desired step length "
-                     f"after {self.max_micro_cycles} micro cycles. Using "
-                      "simple downscaled step with alpha=1."
+            self.log(
+                "RS algorithm did not produce a desired step length "
+                f"after {self.max_micro_cycles} micro cycles. Using "
+                "simple downscaled step with alpha=1."
             )
-            H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.)
+            H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.0)
             rfo_step_, eigval_min, nu, _ = self.solve_rfo(H_aug, "min")
             rfo_norm_ = np.linalg.norm(rfo_step_)
             # This should always be True if the above algorithm failed but we
