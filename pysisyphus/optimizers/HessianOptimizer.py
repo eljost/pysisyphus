@@ -42,6 +42,7 @@ class HessianOptimizer(Optimizer):
         line_search=False,
         alpha0=1.0,
         max_micro_cycles=25,
+        rfo_overlaps=False,
         **kwargs,
     ):
         super().__init__(geometry, **kwargs)
@@ -66,6 +67,7 @@ class HessianOptimizer(Optimizer):
         self.alpha0 = alpha0
         self.max_micro_cycles = int(max_micro_cycles)
         assert max_micro_cycles >= 1
+        self.rfo_overlaps = rfo_overlaps
 
         assert self.small_eigval_thresh > 0.0, "small_eigval_thresh must be > 0.!"
         if not self.restarted:
@@ -78,8 +80,27 @@ class HessianOptimizer(Optimizer):
         if not hasattr(self.geometry, "internal") or (self.geometry.internal is None):
             if self.hessian_init != "calc":
                 self.hessian_init = "unit"
-        self.prev_eigvec_min = None
-        self.prev_eigvec_max = None
+
+        self._prev_eigvec_min = None
+        self._prev_eigvec_max = None
+
+    @property
+    def prev_eigvec_min(self):
+        return self._prev_eigvec_min
+
+    @prev_eigvec_min.setter
+    def prev_eigvec_min(self, prev_eigvec_min):
+        if self.rfo_overlaps:
+            self._prev_eigvec_min = prev_eigvec_min
+
+    @property
+    def prev_eigvec_max(self):
+        return self._prev_eigvec_max
+
+    @prev_eigvec_min.setter
+    def prev_eigvec_max(self, prev_eigvec_max):
+        if self.rfo_overlaps:
+            self._prev_eigvec_max = prev_eigvec_max
 
     def reset(self):
         # Don't recalculate the hessian if we have to reset the optimizer
