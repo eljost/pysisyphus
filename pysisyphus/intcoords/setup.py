@@ -184,7 +184,7 @@ def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=No
     return linear_bend_inds
 
 
-def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=179.2, logger=None):
+def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175., logger=None):
     max_rad = np.deg2rad(max_deg)
     max_rad_thresh = np.pi - max_rad
     bond_dict = dict()
@@ -203,9 +203,6 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=179.2, logger=None
         )
 
     def set_dihedral_index(dihedral_ind):
-        # if set(dihedral_ind) == set((7,6,5,2)):
-            # import pdb; pdb.set_trace()
-            # pass
         dihed = tuple(dihedral_ind)
         # Check if this dihedral is already present
         if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
@@ -218,9 +215,6 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=179.2, logger=None
         dihedrals.append(dihed)
 
     for bond, bend in it.product(bond_inds, bend_inds):
-        # if (bend == (2, 5, 6)) and (bond == frozenset((6, 7))):
-            # import pdb; pdb.set_trace()
-            # pass
         central = bend[1]
         bend_set = set(bend)
         bond_set = set(bond)
@@ -240,15 +234,13 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=179.2, logger=None
 
             bend_rad = Bend._calculate(coords3d, bend)
             # Bend atoms are nearly collinear. Check if we can skip the central bend atom.
-            # if bend_rad >=  max_rad:
-                # bend_terminal_bonds = set(bond_dict[bend_terminal]) - {central}
-                # set_dihedrals = [
-                    # (terminal, intersecting_atom, bend_terminal, btb)
-                    # for btb in bend_terminal_bonds
-                # ]
-            # elif intersecting_atom == bend[0]:
-            if intersecting_atom == bend[0]:
-                # dihedral_ind = [terminal] + list(bend)
+            if bend_rad >=  max_rad:
+                bend_terminal_bonds = set(bond_dict[bend_terminal]) - {central}
+                set_dihedrals = [
+                    (terminal, intersecting_atom, bend_terminal, btb)
+                    for btb in bend_terminal_bonds
+                ]
+            elif intersecting_atom == bend[0]:
                 set_dihedrals = [[terminal] + list(bend)]
             else:
                 set_dihedrals = [list(bend) + [terminal]]
