@@ -127,7 +127,7 @@ class Geometry:
             fragments = dict()
         self.fragments = fragments
 
-        if (coord_kwargs is not None) and coord_type == "cart":
+        if (coord_type == "cart") and not (coord_kwargs == None or coord_kwargs == {}):
             print("coord_type is set to 'cart' but coord_kwargs were given. "
                   "This is probably not intended. Exiting!")
             sys.exit()
