@@ -16,7 +16,7 @@ from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
     eval_primitives,
-    # check_primitives,
+    check_primitives,
     # augment_primitives,
 )
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
@@ -64,8 +64,8 @@ class RedundantCoords:
 
         if self.weighted:
             self.log(
-                "Coordinate weighting requested with min_weight="
-                f"{self.min_weight:.2f}. Calculating bond factor from min_weight."
+                "Coordinate weighting requested, min_weight="
+                f"{self.min_weight:.2f}. Calculating bond factor."
             )
             # Screening function is
             #   ρ(d) = exp(-(d/sum_cov_rad - 1)
@@ -120,6 +120,8 @@ class RedundantCoords:
             make_complement=self.make_complement,
             logger=self.logger,
         )
+        check_primitives(self.coords3d, self.primitives, logger=self.logger)
+
 
         self._prim_internals = self.eval(self.coords3d)
         self._prim_coords = np.array(
@@ -354,7 +356,8 @@ class RedundantCoords:
         )
 
         all_bonds = (
-            coord_info.bonds + coord_info.hydrogen_bonds + coord_info.interfrag_bonds
+            coord_info.bonds + coord_info.hydrogen_bonds
+            + coord_info.interfrag_bonds + coord_info.aux_interfrag_bonds
         )
         all_bonds = remove_duplicates(all_bonds)
 

@@ -4,6 +4,7 @@ import itertools as it
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
@@ -53,20 +54,51 @@ def get_fragments(atoms, coords):
     return fragments
 
 
-def connect_fragments(cdm, fragments):
+def connect_fragments(cdm, fragments, max_aux=3.78, aux_factor=1.3, logger=None):
     """Determine the smallest interfragment bond for a list
     of fragments and a condensed distance matrix."""
+    if len(fragments) > 1:
+        log(logger, f"Detected {len(fragments)} fragments. Generating interfragment bonds.")
     dist_mat = squareform(cdm)
-    interfragment_inds = list()
+    interfrag_inds = list()
+    aux_interfrag_inds = list()
     for frag1, frag2 in it.combinations(fragments, 2):
+        log(logger, f"\tConnecting {len(frag1)} atom and {len(frag2)} atom fragment")
         inds = [(i1, i2) for i1, i2 in it.product(frag1, frag2)]
         distances = np.array([dist_mat[ind] for ind in inds])
-        min_index = inds[distances.argmin()]
-        interfragment_inds.append(min_index)
+
+        # Determine minimum distance bond
+        min_ind = distances.argmin()
+        min_dist = distances[min_ind]
+        interfrag_bond = tuple(inds[min_ind])
+        interfrag_inds.append(interfrag_bond)
+        log(logger, f"\tMinimum distance bond: {interfrag_bond}, {min_dist:.4f} au")
+
+        # Determine auxiliary interfragment bonds that are either below max_aux
+        # (default 2 Å, ≈ 3.78 au), or less than aux_factor (default 1.3) times the
+        # minimum interfragment distance.
+        below_max_aux = [ind for ind in inds
+                         if (dist_mat[ind] < max_aux) and (ind != interfrag_bond)]
+        if below_max_aux:
+            ang_max_aux = max_aux * BOHR2ANG
+            log(logger, f"\tAux. interfrag bonds below {ang_max_aux:.2f} Å:\n"
+                + "\n".join([f"\t\t{ind}: {dist_mat[ind]:.4f} au" for ind in below_max_aux])
+            )
+        scaled_min_dist = aux_factor * min_dist
+        above_min_dist = [ind for ind in inds
+                          if (dist_mat[ind] < scaled_min_dist) and (ind != interfrag_bond)
+                          and (ind not in below_max_aux)]
+        if above_min_dist:
+            ang_max_aux = max_aux * BOHR2ANG
+            log(logger, f"\tAux. interfrag bonds below {aux_factor:.2f} * min_dist:\n"
+                + "\n".join([f"\t\t{ind}: {dist_mat[ind]:.4f} au" for ind in above_min_dist])
+            )
+        aux_interfrag_inds.extend(below_max_aux)
+        aux_interfrag_inds.extend(above_min_dist)
     # Or as Philipp proposed: two loops over the fragments and only
     # generate interfragment distances. So we get a full matrix with
     # the original indices but only the required distances.
-    return interfragment_inds
+    return interfrag_inds, aux_interfrag_inds
 
 
 def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
@@ -96,7 +128,7 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
                 hydrogen_bond_inds.append((h_ind, y_ind))
                 log(
                     logger,
-                    f"Added hydrogen bond between atoms {h_ind} "
+                    f"Detected hydrogen bond between atoms {h_ind} "
                     f"({atoms[h_ind]}) and {y_ind} ({atoms[y_ind]})",
                 )
 
@@ -224,7 +256,7 @@ def sort_by_prim_type(to_sort=None):
 
 CoordInfo = namedtuple(
     "CoordInfo",
-    "bonds hydrogen_bonds interfrag_bonds bends linear_bends "
+    "bonds hydrogen_bonds interfrag_bonds aux_interfrag_bonds bends linear_bends "
     "dihedrals fragments cdm cbm".split(),
 )
 
@@ -241,6 +273,7 @@ def setup_redundant(
     min_weight=None,
     logger=None,
 ):
+    log(logger, f"Detecting primitive internals for {len(atoms)} atoms.")
     # Additional primitives to be defined.
     def_bonds, def_bends, def_dihedrals = sort_by_prim_type(define_prims)
 
@@ -272,18 +305,18 @@ def setup_redundant(
 
     # Check for disconnected fragments. If they are present, create interfragment
     # bonds between them.
-    interfrag_inds = list()
-    interfrag_inds.extend(connect_fragments(cdm, fragments))
+    interfrag_inds, aux_interfrag_inds = connect_fragments(cdm, fragments, logger=logger)
 
     # Hydrogen bonds
     hydrogen_bond_inds = get_hydrogen_bond_inds(
         atoms, coords3d, bond_inds, logger=logger
     )
-    all_bond_inds = bond_inds + hydrogen_bond_inds + interfrag_inds
+    # Don't use auxilary interfragment bonds for bend detection
+    bonds_for_bends = bond_inds + hydrogen_bond_inds + interfrag_inds
 
     # Bends
     bend_inds = get_bend_inds(
-        coords3d, all_bond_inds, min_deg=min_deg, max_deg=max_deg, logger=logger
+        coords3d, bonds_for_bends, min_deg=min_deg, max_deg=max_deg, logger=logger
     )
     # All bends will be checked, for being linear bends and will be removed from
     # bend_inds, if needed.
@@ -304,7 +337,7 @@ def setup_redundant(
         bend_inds = [bend for bend in bend_inds if bend not in linear_bend_inds]
 
     # Dihedrals
-    dihedral_inds = get_dihedral_inds(coords3d, all_bond_inds, bend_inds, logger=logger)
+    dihedral_inds = get_dihedral_inds(coords3d, bonds_for_bends, bend_inds, logger=logger)
     dihedral_inds += def_dihedrals
     dihedral_inds = [
         dihedral for dihedral in dihedral_inds if keep_coord(Torsion, dihedral)
@@ -314,6 +347,7 @@ def setup_redundant(
         bonds=bond_inds,
         hydrogen_bonds=hydrogen_bond_inds,
         interfrag_bonds=interfrag_inds,
+        aux_interfrag_bonds=aux_interfrag_inds,
         bends=bend_inds,
         linear_bends=linear_bend_inds,
         dihedrals=dihedral_inds,
@@ -362,8 +396,9 @@ def get_primitives(
                 prim = prim_cls(**prim_kwargs)
                 primitives.append(prim)
 
-    msg = "Defined primitives\n" + "\n".join(
-        [f"\t{i:03d}: {str(p.indices): >14}" for i, p in enumerate(primitives)]
-    )
+    msg = "Defined primitives\n" \
+          + "\n".join(
+            [f"\t{i:03d}: {str(p.indices): >14}" for i, p in enumerate(primitives)]
+    ) + "\n"
     log(logger, msg)
     return primitives
