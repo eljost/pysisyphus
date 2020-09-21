@@ -28,6 +28,7 @@ def get_geoms():
         "16_h2po4_anion.xyz",
         "17_claisen.xyz",
         "18_silyene_insertion.xyz",
+        "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
         "25_hcnh2.xyz",
     )
@@ -43,7 +44,6 @@ def get_geoms():
         "24_h2cnh.xyz",
     )
     alpha_negative = (
-        "22_hconhoh.xyz",
         "09_parentdieslalder.xyz",
     )
     no_imag = (
@@ -79,7 +79,7 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
     calc_kwargs = {
         "charge": charge,
         "mult": mult,
-        "pal": 4,
+        "pal": 1,
     }
 
     print(f"@Running {name}")

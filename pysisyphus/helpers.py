@@ -177,7 +177,8 @@ def get_baker_ts_geoms(**kwargs):
         # For now we will use the original value from the paper.
         "20_hconh3_cation.xyz": (1, 1, -168.24752),
         "21_acrolein_rot.xyz": (0, 1, -189.67574),
-        "22_hconhoh.xyz": (0, 1, -242.25529),
+        # The energy in the paper (-242.25529) seems wrong...
+        "22_hconhoh.xyz": (0, 1, -242.256958),
         "23_hcn_h2.xyz": (0, 1, -93.31114),
         "24_h2cnh.xyz": (0, 1, -93.33296),
         "25_hcnh2.xyz": (0, 1, -93.28172),
