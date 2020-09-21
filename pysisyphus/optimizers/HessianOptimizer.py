@@ -135,9 +135,9 @@ class HessianOptimizer(Optimizer):
         actual_change = self.energies[-1] - self.energies[-2]
         # Only report an unexpected increase if we actually predicted a
         # decrease.
-        if (actual_change > 0) and (predicted_change < 0):
-            print(f"Unexpected energy increase ({actual_change:.6f} au)! " \
-                  f"Cur. trust={self.trust_radius:.6f}.")
+        unexpected_increase = (actual_change > 0) and (predicted_change < 0)
+        old_trust = self.trust_radius
+        if unexpected_increase:
             self.log(f"Energy increased by {actual_change:.6f} au!")
         coeff = actual_change / predicted_change
         self.log(f"\tPredicted change: {predicted_change:.4e} au")
@@ -147,6 +147,10 @@ class HessianOptimizer(Optimizer):
             step = self.steps[-1]
             last_step_norm = np.linalg.norm(step)
             self.set_new_trust_radius(coeff, last_step_norm)
+            if unexpected_increase:
+                print(f"Unexpected energy increase ({actual_change:.6f} au)! " \
+                      f"Trust radius: old={old_trust:.4}, new={self.trust_radius:.4}"
+                )
         else:
             self.log("\tSkipped trust radius update")
 
