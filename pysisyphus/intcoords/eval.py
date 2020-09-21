@@ -54,7 +54,7 @@ def check_primitives(coords3d, primitives, thresh=1e-6, logger=None):
     nonzero_w = w[nonzero_inds]
     # Condition number
     kappa = abs(nonzero_w.max()/nonzero_w.min())
-    log(f"Condition number of B^T.B=G: {kappa:.2e}")
+    log(f"Condition number of B^T.B=G: {kappa:.4e}")
     return missing+1, kappa
 
 
