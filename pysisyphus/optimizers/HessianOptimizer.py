@@ -1,6 +1,5 @@
 import numpy as np
 
-from pysisyphus.intcoords.helpers import get_step
 from pysisyphus.io.hessian import save_hessian
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
 from pysisyphus.optimizers.hessian_updates import (bfgs_update,
