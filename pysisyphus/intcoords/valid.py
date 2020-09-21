@@ -10,12 +10,13 @@ def bend_valid(coords3d, bend_ind, min_deg, max_deg):
     return min_deg <= deg <= max_deg
 
 
-def are_collinear(vec1, vec2, deg_thresh=179.5):
+def are_collinear(vec1, vec2, deg_thresh=179.18971):
     thresh = np.cos(np.deg2rad(deg_thresh))
     return abs(vec1.dot(vec2)) >= abs(thresh)
 
 
-def dihedral_valid(coords3d, inds, deg_thresh=179.5):
+# def dihedral_valid(coords3d, inds, deg_thresh=179.5):
+def dihedral_valid(coords3d, inds, deg_thresh=179.18971):
     m, o, p, n = inds
     u_dash = coords3d[m] - coords3d[o]
     v_dash = coords3d[n] - coords3d[p]
@@ -26,7 +27,6 @@ def dihedral_valid(coords3d, inds, deg_thresh=179.5):
     u = u_dash / u_norm
     v = v_dash / v_norm
     w = w_dash / w_norm
-    print(f"dihedral valid with {deg_thresh:.2f}")
 
     valid = not (
         are_collinear(u, w, deg_thresh=deg_thresh)
