@@ -448,6 +448,7 @@ def print_internals(geoms, filter_atoms=None, add_prims="", v2=False):
             prev_len = len_
 
         print(f"Printed {j+1} primitive internals.")
+        print()
 
 
 def get(geoms, index):

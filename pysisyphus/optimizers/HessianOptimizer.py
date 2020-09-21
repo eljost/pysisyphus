@@ -136,7 +136,7 @@ class HessianOptimizer(Optimizer):
         # Only report an unexpected increase if we actually predicted a
         # decrease.
         if (actual_change > 0) and (predicted_change < 0):
-            print(f"Energy increased by {actual_change:.6f} au! " \
+            print(f"Unexpected energy increase ({actual_change:.6f} au)! " \
                   f"Cur. trust={self.trust_radius:.6f}.")
             self.log(f"Energy increased by {actual_change:.6f} au!")
         coeff = actual_change / predicted_change
