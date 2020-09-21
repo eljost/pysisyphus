@@ -58,7 +58,10 @@ def connect_fragments(cdm, fragments, max_aux=3.78, aux_factor=1.3, logger=None)
     """Determine the smallest interfragment bond for a list
     of fragments and a condensed distance matrix."""
     if len(fragments) > 1:
-        log(logger, f"Detected {len(fragments)} fragments. Generating interfragment bonds.")
+        log(
+            logger,
+            f"Detected {len(fragments)} fragments. Generating interfragment bonds.",
+        )
     dist_mat = squareform(cdm)
     interfrag_inds = list()
     aux_interfrag_inds = list()
@@ -77,21 +80,34 @@ def connect_fragments(cdm, fragments, max_aux=3.78, aux_factor=1.3, logger=None)
         # Determine auxiliary interfragment bonds that are either below max_aux
         # (default 2 Å, ≈ 3.78 au), or less than aux_factor (default 1.3) times the
         # minimum interfragment distance.
-        below_max_aux = [ind for ind in inds
-                         if (dist_mat[ind] < max_aux) and (ind != interfrag_bond)]
+        below_max_aux = [
+            ind for ind in inds if (dist_mat[ind] < max_aux) and (ind != interfrag_bond)
+        ]
         if below_max_aux:
             ang_max_aux = max_aux * BOHR2ANG
-            log(logger, f"\tAux. interfrag bonds below {ang_max_aux:.2f} Å:\n"
-                + "\n".join([f"\t\t{ind}: {dist_mat[ind]:.4f} au" for ind in below_max_aux])
+            log(
+                logger,
+                f"\tAux. interfrag bonds below {ang_max_aux:.2f} Å:\n"
+                + "\n".join(
+                    [f"\t\t{ind}: {dist_mat[ind]:.4f} au" for ind in below_max_aux]
+                ),
             )
         scaled_min_dist = aux_factor * min_dist
-        above_min_dist = [ind for ind in inds
-                          if (dist_mat[ind] < scaled_min_dist) and (ind != interfrag_bond)
-                          and (ind not in below_max_aux)]
+        above_min_dist = [
+            ind
+            for ind in inds
+            if (dist_mat[ind] < scaled_min_dist)
+            and (ind != interfrag_bond)
+            and (ind not in below_max_aux)
+        ]
         if above_min_dist:
             ang_max_aux = max_aux * BOHR2ANG
-            log(logger, f"\tAux. interfrag bonds below {aux_factor:.2f} * min_dist:\n"
-                + "\n".join([f"\t\t{ind}: {dist_mat[ind]:.4f} au" for ind in above_min_dist])
+            log(
+                logger,
+                f"\tAux. interfrag bonds below {aux_factor:.2f} * min_dist:\n"
+                + "\n".join(
+                    [f"\t\t{ind}: {dist_mat[ind]:.4f} au" for ind in above_min_dist]
+                ),
             )
         aux_interfrag_inds.extend(below_max_aux)
         aux_interfrag_inds.extend(above_min_dist)
@@ -168,7 +184,13 @@ def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=No
     return linear_bend_inds
 
 
-def get_dihedral_inds(coords3d, bond_inds, bend_inds, logger=None):
+def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=179.2, logger=None):
+    max_rad = np.deg2rad(max_deg)
+    max_rad_thresh = np.pi - max_rad
+    bond_dict = dict()
+    for from_, to_ in bond_inds:
+        bond_dict.setdefault(from_, list()).append(to_)
+        bond_dict.setdefault(to_, list()).append(from_)
     dihedrals = list()
     dihedral_inds = list()
     improper_dihedrals = list()
@@ -176,23 +198,29 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, logger=None):
     def log_dihed_skip(inds):
         log(
             logger,
-            f"Skipping generation of dihedral {dihedral_ind} "
+            f"Skipping generation of dihedral {inds} "
             "as some of the the atoms are (close too) linear.",
         )
 
     def set_dihedral_index(dihedral_ind):
+        # if set(dihedral_ind) == set((7,6,5,2)):
+            # import pdb; pdb.set_trace()
+            # pass
         dihed = tuple(dihedral_ind)
         # Check if this dihedral is already present
         if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
             return
         # Assure that the angles are below 175° (3.054326 rad)
-        if not dihedral_valid(coords3d, dihedral_ind, thresh=0.0873):
+        if not dihedral_valid(coords3d, dihedral_ind, deg_thresh=max_deg):
             log_dihed_skip(dihedral_ind)
             return
         dihedral_inds.append(dihedral_ind)
         dihedrals.append(dihed)
 
     for bond, bend in it.product(bond_inds, bend_inds):
+        # if (bend == (2, 5, 6)) and (bond == frozenset((6, 7))):
+            # import pdb; pdb.set_trace()
+            # pass
         central = bend[1]
         bend_set = set(bend)
         bond_set = set(bond)
@@ -200,20 +228,31 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, logger=None):
         intersect = bend_set & bond_set
         if len(intersect) != 1:
             continue
-        # When the common atom is a terminal atom of the bend, that is
-        # it's not the central atom of the bend, we create a
-        # proper dihedral. Before we create any improper dihedrals we
-        # create these proper dihedrals.
+
+        # When the common atom between bond and bend is a terminal, and not a central atom
+        # in the bend we create a proper dihedral. Improper dihedrals are only created
+        # when no proper dihedrals have been found.
         if central not in bond_set:
-            # The new terminal atom in the dihedral is the one that
-            # doesn' intersect.
+            # The new terminal atom in the dihedral is the one, that doesn' intersect.
             terminal = tuple(bond_set - intersect)[0]
             intersecting_atom = tuple(intersect)[0]
+            bend_terminal = tuple(bend_set - {central} - intersect)[0]
+
+            bend_rad = Bend._calculate(coords3d, bend)
+            # Bend atoms are nearly collinear. Check if we can skip the central bend atom.
+            # if bend_rad >=  max_rad:
+                # bend_terminal_bonds = set(bond_dict[bend_terminal]) - {central}
+                # set_dihedrals = [
+                    # (terminal, intersecting_atom, bend_terminal, btb)
+                    # for btb in bend_terminal_bonds
+                # ]
+            # elif intersecting_atom == bend[0]:
             if intersecting_atom == bend[0]:
-                dihedral_ind = [terminal] + list(bend)
+                # dihedral_ind = [terminal] + list(bend)
+                set_dihedrals = [[terminal] + list(bend)]
             else:
-                dihedral_ind = list(bend) + [terminal]
-            set_dihedral_index(dihedral_ind)
+                set_dihedrals = [list(bend) + [terminal]]
+            [set_dihedral_index(dihed) for dihed in set_dihedrals]
         # If the common atom is the central atom we try to form an out
         # of plane bend / improper torsion. They may be created later on.
         else:
@@ -221,7 +260,7 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, logger=None):
             dihedral_ind = list(bend) + fourth_atom
             # This way dihedrals may be generated that contain linear
             # atoms and these would be undefinied. So we check for this.
-            if dihedral_valid(coords3d, dihedral_ind, thresh=0.0873):
+            if dihedral_valid(coords3d, dihedral_ind, deg_thresh=max_deg):
                 improper_dihedrals.append(dihedral_ind)
             else:
                 log_dihed_skip(dihedral_ind)
@@ -305,14 +344,18 @@ def setup_redundant(
 
     # Check for disconnected fragments. If they are present, create interfragment
     # bonds between them.
-    interfrag_inds, aux_interfrag_inds = connect_fragments(cdm, fragments, logger=logger)
+    interfrag_inds, aux_interfrag_inds = connect_fragments(
+        cdm, fragments, logger=logger
+    )
 
     # Hydrogen bonds
     hydrogen_bond_inds = get_hydrogen_bond_inds(
         atoms, coords3d, bond_inds, logger=logger
     )
     # Don't use auxilary interfragment bonds for bend detection
-    bonds_for_bends = bond_inds + hydrogen_bond_inds + interfrag_inds
+    bonds_for_bends = set(
+        [frozenset(bond) for bond in bond_inds + hydrogen_bond_inds + interfrag_inds]
+    )
 
     # Bends
     bend_inds = get_bend_inds(
@@ -337,7 +380,9 @@ def setup_redundant(
         bend_inds = [bend for bend in bend_inds if bend not in linear_bend_inds]
 
     # Dihedrals
-    dihedral_inds = get_dihedral_inds(coords3d, bonds_for_bends, bend_inds, logger=logger)
+    dihedral_inds = get_dihedral_inds(
+        coords3d, bonds_for_bends, bend_inds, logger=logger
+    )
     dihedral_inds += def_dihedrals
     dihedral_inds = [
         dihedral for dihedral in dihedral_inds if keep_coord(Torsion, dihedral)
@@ -396,9 +441,12 @@ def get_primitives(
                 prim = prim_cls(**prim_kwargs)
                 primitives.append(prim)
 
-    msg = "Defined primitives\n" \
-          + "\n".join(
+    msg = (
+        "Defined primitives\n"
+        + "\n".join(
             [f"\t{i:03d}: {str(p.indices): >14}" for i, p in enumerate(primitives)]
-    ) + "\n"
+        )
+        + "\n"
+    )
     log(logger, msg)
     return primitives
