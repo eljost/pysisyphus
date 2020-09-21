@@ -1,7 +1,7 @@
 import argparse
 from collections import namedtuple
 import copy
-import itertools
+import itertools as it
 import os
 from math import ceil, floor, modf
 from pathlib import Path
@@ -684,6 +684,32 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     return irc
 
 
+def do_rmsds(xyz, geoms, end_geoms, similar_thresh=0.025):
+    if len(geoms) == 1:
+        return
+    elif len(geoms) > 2:
+        geoms = (geoms[0], geoms[-1])
+    assert len(geoms) == 2
+
+    if isinstance(xyz, str):
+        xyz = (f"{xyz}, first entry", f"{xyz}, last entry")
+    elif (not isinstance(xyz, str)) and len(xyz) >= 2:
+        xyz = (xyz[0], xyz[-1])
+    assert len(xyz) == 2
+    max_len = max(len(s) for s in xyz)
+
+    print(highlight_text(f"RMSDs After End Optimizations"))
+
+    for i, start_geom in enumerate(geoms):
+        fn = xyz[i]
+        print(f"start geom {i:>2d} ({fn:>{max_len}s})")
+        for j, end_geom in enumerate(end_geoms):
+            rmsd = start_geom.rmsd(end_geom)
+            similar_str = " (similar)" if (rmsd < similar_thresh) else ""
+            print(f"\tend geom {j:>2d}: rmsd={rmsd:>8.6f} au{similar_str}")
+    print()
+
+
 def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     print(highlight_text(f"Optimizing IRC ends"))
 
@@ -912,7 +938,7 @@ def get_last_calc_cycle():
     cwd = Path(".")
     calc_logs = [str(cl) for cl in cwd.glob("image_*.*.out")]
     calc_logs = sorted(calc_logs, key=keyfunc)
-    grouped = itertools.groupby(calc_logs, key=keyfunc)
+    grouped = it.groupby(calc_logs, key=keyfunc)
     # Find the last completly finished cycle.
     last_length = 0
     last_calc_cycle = 0
@@ -1169,6 +1195,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
             end_geoms = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+            if run_dict["cos"] and (len(end_geoms) == 2):
+                do_rmsds(xyz, geoms, end_geoms)
     # Fallback when no specific job type was specified
     else:
         calced_geoms = run_calculations(geoms, calc_getter, yaml_dir,
