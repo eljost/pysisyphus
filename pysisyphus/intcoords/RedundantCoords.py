@@ -371,13 +371,6 @@ class RedundantCoords:
         self.cbm = coord_info.cbm
         self.cdm = coord_info.cdm
 
-        # TODO: primitives are not yet defined
-        # missing_prims, kappa = check_primitives(
-        # self.coords3d,
-        # self.primitives,
-        # logger=self.logger,
-        # )
-
     def eval(self, coords3d, attr=None):
         prim_internals = eval_primitives(coords3d, self.primitives)
 
