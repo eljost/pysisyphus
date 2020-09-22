@@ -77,9 +77,12 @@ class HessianOptimizer(Optimizer):
 
         # Allow only calculated or unit hessian for geometries that don't
         # use internal coordinates.
-        if not hasattr(self.geometry, "internal") or (self.geometry.internal is None):
-            if self.hessian_init != "calc":
-                self.hessian_init = "unit"
+        if (
+            not hasattr(self.geometry, "internal")
+            or (self.geometry.internal is None)
+            and self.hessian_init not in ("calc", "xtb", "xtb1")
+        ):
+            self.hessian_init = "unit"
 
         self._prev_eigvec_min = None
         self._prev_eigvec_max = None
