@@ -684,7 +684,11 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     return irc
 
 
-def do_rmsds(xyz, geoms, end_geoms, similar_thresh=0.025):
+def do_rmsds(xyz, geoms, end_fns, end_geoms, similar_thresh=0.025):
+    if (len(end_fns) != 2 or len(end_geoms) != 2):
+        return
+    max_end_len = max(len(s) for s in end_fns)
+
     if len(geoms) == 1:
         return
     elif len(geoms) > 2:
@@ -705,12 +709,15 @@ def do_rmsds(xyz, geoms, end_geoms, similar_thresh=0.025):
         found_similar = False
         print(f"start geom {i:>2d} ({fn:>{max_len}s})")
         for j, end_geom in enumerate(end_geoms):
+            end_fn = end_fns[j]
             rmsd = start_geom.rmsd(end_geom)
             similar_str = ""
             if rmsd < similar_thresh:
                 found_similar = True
                 similar_str = " (similar)"
-            print(f"\tend geom {j:>2d}: rmsd={rmsd:>8.6f} au{similar_str}")
+            print(f"\tend geom {j:>2d} ({end_fn:>{max_end_len}s}): "
+                  f"rmsd={rmsd:>8.6f} au{similar_str}"
+            )
         if not found_similar:
             print(f"\tOptimized end geometries are dissimilar to '{fn}'!")
     print()
@@ -767,6 +774,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
     coord_type = endopt_kwargs.pop("coord_type", "redund")
     opt_geoms = list()
+    opt_fns = list()
     for name, atoms, coords in to_opt:
         geom = Geometry(atoms, coords, coord_type=coord_type)
 
@@ -788,8 +796,9 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
         print()
         opt_geoms.append(geom)
+        opt_fns.append(opt_fn)
     print()
-    return opt_geoms
+    return opt_geoms, opt_fns
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
@@ -1200,9 +1209,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
 
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
-            end_geoms = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+            end_geoms, end_fns = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
             if run_dict["cos"] and (len(end_geoms) == 2):
-                do_rmsds(xyz, geoms, end_geoms)
+                do_rmsds(xyz, geoms, end_fns, end_geoms)
     # Fallback when no specific job type was specified
     else:
         calced_geoms = run_calculations(geoms, calc_getter, yaml_dir,
@@ -1339,6 +1348,7 @@ def do_clean(force=False):
         "dimer_*",
         "plain_hei_tangent",
         "plain_hei.xyz",
+        "hess_calc_irc*.h5",
     )
     to_rm_paths = list()
     for glob in rm_globs:
