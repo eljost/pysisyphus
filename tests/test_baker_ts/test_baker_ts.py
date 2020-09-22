@@ -23,6 +23,7 @@ def get_geoms():
         "06_bicyclobutane.xyz",
         "07_bicyclobutane.xyz",
         "08_formyloxyethyl.xyz",
+        "09_parentdieslalder.xyz",
         "12_ethane_h2_abstraction.xyz",
         "14_vinyl_alcohol.xyz",
         "16_h2po4_anion.xyz",
@@ -43,9 +44,7 @@ def get_geoms():
         "21_acrolein_rot.xyz",
         "24_h2cnh.xyz",
     )
-    alpha_negative = (
-        "09_parentdieslalder.xyz",
-    )
+    alpha_negative = ()
     no_imag = (
         "10_tetrazine.xyz",
         "11_trans_butadiene.xyz",
