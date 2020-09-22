@@ -32,6 +32,6 @@ def test_afir():
 
     # Broken C-Cl bond
     c3d = geom.coords3d
-    assert np.linalg.norm(c3d[0]-c3d[4]) == pytest.approx(4.805665, atol=1e-5)
+    assert np.linalg.norm(c3d[0]-c3d[4]) == pytest.approx(4.805665, abs=1e-4)
     # Formed O-C bond
-    assert np.linalg.norm(c3d[0]-c3d[5]) == pytest.approx(2.674330, atol=1e-5)
+    assert np.linalg.norm(c3d[0]-c3d[5]) == pytest.approx(2.674330, abs=1e-4)
