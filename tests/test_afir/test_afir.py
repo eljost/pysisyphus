@@ -1,3 +1,6 @@
+import numpy as np
+import pytest
+
 from pysisyphus.calculators.AFIR import AFIR
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -27,9 +30,8 @@ def test_afir():
     assert opt.is_converged
     assert opt.cur_cycle == 47
 
-    geom = geom.copy(coord_type="redund")
-    int_ = geom.internal
     # Broken C-Cl bond
-    assert (0, 4) not in int_.bond_indices
+    c3d = geom.coords3d
+    assert np.linalg.norm(c3d[0]-c3d[4]) == pytest.approx(4.805665, atol=1e-5)
     # Formed O-C bond
-    assert (0, 5) in int_.bond_indices
+    assert np.linalg.norm(c3d[0]-c3d[5]) == pytest.approx(2.674330, atol=1e-5)
