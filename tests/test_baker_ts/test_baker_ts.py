@@ -101,6 +101,9 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
 
     print(f"\t@Converged: {opt.is_converged}, {opt.cur_cycle+1} cycles")
 
+    # Without symmetry restriction this lower lying TS will be obtained.
+    if name.startswith("22_"):
+        ref_energy = -242.25695787
     assert geom.energy == pytest.approx(ref_energy)
     print("\t@Energies match!")
 
