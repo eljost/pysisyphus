@@ -298,7 +298,6 @@ def setup_redundant(
     define_prims=None,
     min_deg=15,
     max_deg=180,
-    complement_deg=175,
     lb_min_deg=None,
     lb_max_bonds=4,
     min_weight=None,
