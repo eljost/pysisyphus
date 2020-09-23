@@ -61,7 +61,7 @@ def test_allene_opt():
     # geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
     geom = geom_loader("lib:08_allene.xyz", coord_type="redund")
 
-    calc = PySCF(basis="321g", pal=2)
+    calc = PySCF(basis="321g", pal=1)
     geom.set_calculator(calc)
     opt = RFOptimizer(geom, thresh="gau_tight")
     opt.run()
