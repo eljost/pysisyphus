@@ -8,7 +8,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
-from pysisyphus.intcoords.valid import dihedral_valid
+from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
 
 def get_pair_covalent_radii(atoms):
@@ -151,22 +151,15 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
     return hydrogen_bond_inds
 
 
-def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, complement_deg, logger=None):
-    # TODO: linear bends? -> besser ausserhalb behandeln
+def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, logger=None):
     bond_sets = {frozenset(bi) for bi in bond_inds}
-
-    # val = Bend._calculate(coords3d, bend_ind)
-    # deg = np.rad2deg(val)
-    # return min_deg <= deg <= max_deg
 
     bend_inds = list()
     for bond_set1, bond_set2 in it.combinations(bond_sets, 2):
         union = bond_set1 | bond_set2
         if len(union) == 3:
             indices, _ = sort_by_central(bond_set1, bond_set2)
-            deg = np.rad2deg(Bend._calculate(coords3d, indices))
-            valid = min_deg <= deg < max_deg
-            if not valid:
+            if not bend_valid(coords3d, indices, min_deg, max_deg):
                 log(logger, f"Bend {indices} is not valid!")
                 continue
             bend_inds.append(indices)
@@ -362,7 +355,6 @@ def setup_redundant(
         bonds_for_bends,
         min_deg=min_deg,
         max_deg=max_deg,
-        complement_deg=complement_deg,
         logger=logger,
     )
     # All bends will be checked, for being linear bends and will be removed from
