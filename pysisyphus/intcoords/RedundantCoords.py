@@ -128,7 +128,7 @@ class RedundantCoords:
         )
 
         bonds = len(self.bond_indices)
-        bends = len(self.bending_indices)
+        bends = len(self.bending_indices) + len(self.linear_bend_indices)
         dihedrals = len(self.dihedral_indices)
         self._bonds_slice = slice(bonds)
         self._bends_slice = slice(bonds, bonds + bends)
