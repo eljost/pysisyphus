@@ -27,8 +27,6 @@ def fischer_guess(geom):
     central_atoms = [dh.inds[1:3] for dh in dihedrals]
     bond_factor = geom.internal.bond_factor
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
-    bm = get_bond_mat(geom, bond_factor)
-    np.testing.assert_allclose(bm, bond_mat)
     tors_atom_bonds = dict()
     for a, b in central_atoms:
         # Substract 2, as we don't want the bond between a and b,
