@@ -8,7 +8,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
-from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
+from pysisyphus.intcoords.valid import dihedral_valid
 
 
 def get_pair_covalent_radii(atoms):
@@ -151,19 +151,25 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
     return hydrogen_bond_inds
 
 
-def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, logger=None):
+def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, complement_deg, logger=None):
     # TODO: linear bends? -> besser ausserhalb behandeln
     bond_sets = {frozenset(bi) for bi in bond_inds}
+
+    # val = Bend._calculate(coords3d, bend_ind)
+    # deg = np.rad2deg(val)
+    # return min_deg <= deg <= max_deg
 
     bend_inds = list()
     for bond_set1, bond_set2 in it.combinations(bond_sets, 2):
         union = bond_set1 | bond_set2
         if len(union) == 3:
-            as_tpl, _ = sort_by_central(bond_set1, bond_set2)
-            if not bend_valid(coords3d, as_tpl, min_deg, max_deg):
-                log(logger, f"Bend {list(as_tpl)} is not valid!")
+            indices, _ = sort_by_central(bond_set1, bond_set2)
+            deg = np.rad2deg(Bend._calculate(coords3d, indices))
+            valid = min_deg <= deg < max_deg
+            if not valid:
+                log(logger, f"Bend {indices} is not valid!")
                 continue
-            bend_inds.append(as_tpl)
+            bend_inds.append(indices)
 
     return bend_inds
 
@@ -184,7 +190,7 @@ def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=No
     return linear_bend_inds
 
 
-def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175., logger=None):
+def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None):
     max_rad = np.deg2rad(max_deg)
     max_rad_thresh = np.pi - max_rad
     bond_dict = dict()
@@ -234,7 +240,7 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175., logger=None)
 
             bend_rad = Bend._calculate(coords3d, bend)
             # Bend atoms are nearly collinear. Check if we can skip the central bend atom.
-            if bend_rad >=  max_rad:
+            if bend_rad >= max_rad:
                 bend_terminal_bonds = set(bond_dict[bend_terminal]) - {central}
                 set_dihedrals = [
                     (terminal, intersecting_atom, bend_terminal, btb)
@@ -299,6 +305,7 @@ def setup_redundant(
     define_prims=None,
     min_deg=15,
     max_deg=180,
+    complement_deg=175,
     lb_min_deg=None,
     lb_max_bonds=4,
     min_weight=None,
@@ -351,7 +358,12 @@ def setup_redundant(
 
     # Bends
     bend_inds = get_bend_inds(
-        coords3d, bonds_for_bends, min_deg=min_deg, max_deg=max_deg, logger=logger
+        coords3d,
+        bonds_for_bends,
+        min_deg=min_deg,
+        max_deg=max_deg,
+        complement_deg=complement_deg,
+        logger=logger,
     )
     # All bends will be checked, for being linear bends and will be removed from
     # bend_inds, if needed.
