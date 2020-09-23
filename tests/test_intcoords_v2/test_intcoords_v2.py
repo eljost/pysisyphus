@@ -58,8 +58,7 @@ def test_bmat_allene():
 # @pytest.mark.skip
 @using("pyscf")
 def test_allene_opt():
-    # geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
-    geom = geom_loader("lib:08_allene.xyz", coord_type="redund")
+    geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
 
     calc = PySCF(basis="321g", pal=1)
     geom.set_calculator(calc)
