@@ -35,7 +35,7 @@ class RedundantCoords:
         rebuild=True,
         bend_min_deg=15,
         bend_max_deg=180,
-        lb_min_deg=None,
+        lb_min_deg=175,
         make_complement=True,
         weighted=False,
         min_weight=0.3,
