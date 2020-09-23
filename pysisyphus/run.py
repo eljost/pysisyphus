@@ -15,6 +15,7 @@ import time
 from distributed import Client
 from natsort import natsorted
 import numpy as np
+import scipy as sp
 import pytest
 import yaml
 
@@ -1388,7 +1389,11 @@ def print_header():
 888      Y8b d88P                       Y8b d88P 888
 888       "Y88P"                         "Y88P"  888                            """
     version = f"Version {get_versions()['version']}"
-    print(f"{logo}\n\n{version}\n")
+    vi = sys.version_info
+    sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
+    npv = np.__version__  # Numpy
+    spv = sp.__version__  # SciPy
+    print(f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n")
 
 
 def print_bibtex():
@@ -1429,6 +1434,7 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
     elif fclean:
         do_clean(force=True)
         return
+    # Return after header was printed
     elif version:
         return
 
