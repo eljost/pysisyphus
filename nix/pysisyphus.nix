@@ -13,6 +13,7 @@
 , rmsd
 , scipy
 , sympy
+, bash
 , orca ? orca # or null
 , turbomole ? turbomole # or null
 , gaussian ? gaussian # or null
@@ -27,6 +28,7 @@
 }:
 let
   psi4Wrapper = writeScript "psi4.sh" ''
+    #!${bash}/bin/bash
     ${psi4}/bin/psi4 -o stdout $1
   '';
   pysisrc =
