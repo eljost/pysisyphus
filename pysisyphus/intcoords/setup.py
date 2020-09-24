@@ -166,10 +166,14 @@ def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, logger=None):
     return bend_inds
 
 
-def get_linear_bend_inds(coords3d, cbm, bends, min_deg, max_bonds, logger=None):
-    bm = squareform(cbm)
+def get_linear_bend_inds(coords3d, cbm, bends, min_deg=175, max_bonds=4, logger=None):
     linear_bends = list()
     complements = list()
+
+    if min_deg is None:
+        return linear_bends, complements
+
+    bm = squareform(cbm)
     for bend in bends:
         deg = np.rad2deg(Bend._calculate(coords3d, bend))
         bonds = sum(bm[bend[1]])
@@ -406,18 +410,17 @@ def setup_redundant(
     bends += def_bends
     bends = keep_coords(bends, Bend)
 
-    # Linear Bends
-    linear_bend_inds = list()
-    if lb_min_deg is not None:
-        linear_bends, linear_bend_complements = get_linear_bend_inds(
-            coords3d,
-            cbm,
-            bends,
-            min_deg=lb_min_deg,
-            max_bonds=lb_max_bonds,
-            logger=logger,
-        )
-        bends = [bend for bend in bends if bend not in linear_bends]
+    # Linear Bends and orthogonal complements
+    linear_bends, linear_bend_complements = get_linear_bend_inds(
+        coords3d,
+        cbm,
+        bends,
+        min_deg=lb_min_deg,
+        max_bonds=lb_max_bonds,
+        logger=logger,
+    )
+    # Remove linear bends from bends
+    bends = [bend for bend in bends if bend not in linear_bends]
     linear_bends = keep_coords(linear_bends, LinearBend)
     linear_bend_complements = keep_coords(linear_bend_complements, LinearBend)
 
