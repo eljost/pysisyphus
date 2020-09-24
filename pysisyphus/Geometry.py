@@ -232,12 +232,12 @@ class Geometry:
         _coord_kwargs = None
         if coord_type != "cart":
             try:
-                prim_indices = self.internal.prim_indices
+                typed_prims = self.internal.typed_prims
             # Will be raised if the current coord_type is 'cart'
             except AttributeError:
-                prim_indices = None
+                typed_prims = None
             _coord_kwargs = {
-                "prim_indices": prim_indices,
+                "typed_prims": typed_prims,
                 "check_bends": True,
             }
             _coord_kwargs.update(coord_kwargs)

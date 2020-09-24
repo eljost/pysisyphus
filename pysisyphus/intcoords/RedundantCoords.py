@@ -19,7 +19,7 @@ from pysisyphus.intcoords.eval import (
     check_primitives,
 )
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
-from pysisyphus.intcoords.setup import setup_redundant, get_primitives
+from pysisyphus.intcoords.setup import setup_redundant, get_primitives, PrimTypes
 
 
 class RedundantCoords:
@@ -28,7 +28,7 @@ class RedundantCoords:
         atoms,
         coords3d,
         bond_factor=1.3,
-        prim_indices=None,
+        typed_prims=None,
         define_prims=None,
         bonds_only=False,
         check_bends=True,
@@ -78,26 +78,14 @@ class RedundantCoords:
         self.log(f"Using a factor of {self.bond_factor:.6f} for bond detection.")
 
         # Set up primitive coordinate indices
-        if prim_indices is None:
+        if typed_prims is None:
             self.set_primitive_indices(
                 self.atoms,
                 self.coords3d,
             )
         else:
-            to_arr = lambda _: np.array(list(_), dtype=int)
-            bonds, bends, dihedrals = prim_indices
-            # We accept all bond indices. What could possibly go wrong?! :)
-            self.bond_indices = to_arr(bonds)
-            valid_bends = [
-                inds
-                for inds in bends
-                if bend_valid(self.coords3d, inds, self.bend_min_deg, max_deg=180.0)
-            ]
-            self.bending_indices = to_arr(valid_bends)
-            valid_dihedrals = [
-                inds for inds in dihedrals if dihedral_valid(self.coords3d, inds)
-            ]
-            self.dihedral_indices = to_arr(valid_dihedrals)
+            self.typed_prims = typed_prims
+            self.set_inds_from_typed_prims(self.typed_prims)
 
         if self.bonds_only:
             self.bending_indices = list()
@@ -106,10 +94,6 @@ class RedundantCoords:
         self.primitives = get_primitives(
             self.coords3d,
             self.typed_prims,
-            # self.bond_indices,
-            # self.bending_indices,
-            # self.linear_bend_indices,
-            # self.dihedral_indices,
             logger=self.logger,
         )
         check_primitives(self.coords3d, self.primitives, logger=self.logger)
@@ -326,6 +310,28 @@ class RedundantCoords:
         """Project supplied vector onto range of B."""
         return self.P.dot(vector)
 
+    def set_inds_from_typed_prims(self, typed_prims):
+        linear_bend_types = (PrimTypes.LINEAR_BEND, PrimTypes.LINEAR_BEND_COMPLEMENT)
+        per_type = {
+            2: list(),
+            3: list(),
+            4: list(),
+            "linear_bend": list(),
+        }
+        for type_, *indices in typed_prims:
+            key = len(indices)
+            if type_ in (linear_bend_types):
+                key = "linear_bend"
+            per_type[key].append(indices)
+
+        self.bond_indices = remove_duplicates(per_type[2])
+        self.bending_indices = per_type[3]
+        self.dihedral_indices = per_type[4]
+        self.linear_bend_indices = per_type["linear_bend"]
+
+        # TODO
+        # self.fragments = coord_info.fragments
+
     def set_primitive_indices(
         self,
         atoms,
@@ -343,26 +349,8 @@ class RedundantCoords:
             logger=self.logger,
         )
 
-        all_bonds = (
-            coord_info.bonds
-            + coord_info.hydrogen_bonds
-            + coord_info.interfrag_bonds
-            + coord_info.aux_interfrag_bonds
-        )
-        all_bonds = remove_duplicates(all_bonds)
-
-        # Set primitive indices
-        self.bond_indices = all_bonds
-        self.hydrogen_bond_indices = coord_info.hydrogen_bonds
-        self.bending_indices = coord_info.bends
-        self.linear_bend_indices = (
-            coord_info.linear_bends + coord_info.linear_bend_complements
-        )
-        self.dihedral_indices = (
-            coord_info.proper_dihedrals + coord_info.improper_dihedrals
-        )
-
         self.typed_prims = coord_info.typed_prims
+        self.set_inds_from_typed_prims(self.typed_prims)
 
         self.fragments = coord_info.fragments
 
