@@ -193,8 +193,6 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
     for from_, to_ in bond_inds:
         bond_dict.setdefault(from_, list()).append(to_)
         bond_dict.setdefault(to_, list()).append(from_)
-    dihedrals = list()
-    dihedral_inds = list()
     proper_dihedral_inds = list()
     improper_candidates = list()
     improper_dihedral_inds = list()
@@ -208,18 +206,18 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
 
     def set_dihedral_index(dihedral_ind, proper=True):
         dihed = tuple(dihedral_ind)
+        check_in = proper_dihedral_inds if proper else improper_dihedral_inds
         # Check if this dihedral is already present
-        if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
+        if (dihed in check_in) or (dihed[::-1] in check_in):
             return
         # Assure that the angles are below 175° (3.054326 rad)
         if not dihedral_valid(coords3d, dihedral_ind, deg_thresh=max_deg):
             log_dihed_skip(dihedral_ind)
             return
         if proper:
-            proper_dihedral_inds.append(dihedral_ind)
+            proper_dihedral_inds.append(dihed)
         else:
-            improper_dihedral_inds.append(dihedral_ind)
-        dihedrals.append(dihed)
+            improper_dihedral_inds.append(dihed)
 
     for bond, bend in it.product(bond_inds, bend_inds):
         central = bend[1]
@@ -265,7 +263,7 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
                 log_dihed_skip(dihedral_ind)
 
     # Now try to create the remaining improper dihedrals.
-    if (len(coords3d) >= 4) and (len(dihedral_inds) == 0):
+    if (len(coords3d) >= 4) and (len(proper_dihedral_inds) == 0):
         log(
             logger,
             "Could not define any proper dihedrals! Generating improper dihedrals!",

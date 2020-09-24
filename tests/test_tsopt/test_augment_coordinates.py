@@ -14,10 +14,10 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 @pytest.mark.parametrize(
     "augment, ref_cycle",
     [
-        (True, 10),
+        (True, 6),
         # 57 cycles are needed when 45 < VALID_BEND_DEG < 170
         # (False, 57),
-        (False, 10),
+        (False, 6),
     ]
 )
 def test_augment_coordinates_silyl(augment, ref_cycle):
