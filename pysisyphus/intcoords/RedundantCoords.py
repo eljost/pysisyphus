@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 from pysisyphus.helpers_pure import remove_duplicates
-from pysisyphus.intcoords import Torsion
+from pysisyphus.intcoords import Stretch, Torsion
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
     eval_primitives,
@@ -35,7 +35,7 @@ class RedundantCoords:
         rebuild=True,
         bend_min_deg=15,
         dihed_max_deg=175.0,
-        lb_min_deg=175,
+        lb_min_deg=175.0,
         weighted=False,
         min_weight=0.3,
     ):
@@ -87,15 +87,15 @@ class RedundantCoords:
             self.typed_prims = typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
 
-        if self.bonds_only:
-            self.bending_indices = list()
-            self.dihedral_indices = list()
-
         self.primitives = get_primitives(
             self.coords3d,
             self.typed_prims,
             logger=self.logger,
         )
+        if self.bonds_only:
+            self.bending_indices = list()
+            self.dihedral_indices = list()
+            self.primitives = [prim for prim in self.primitives if isinstance(prim, Stretch)]
         check_primitives(self.coords3d, self.primitives, logger=self.logger)
 
         self._prim_internals = self.eval(self.coords3d)
