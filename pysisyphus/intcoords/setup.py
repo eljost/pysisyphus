@@ -85,10 +85,9 @@ def connect_fragments(cdm, fragments, max_aux=3.78, aux_factor=1.3, logger=None)
             ind for ind in inds if (dist_mat[ind] < max_aux) and (ind != interfrag_bond)
         ]
         if below_max_aux:
-            ang_max_aux = max_aux * BOHR2ANG
             log(
                 logger,
-                f"\tAux. interfrag bonds below {ang_max_aux:.2f} Å:\n"
+                f"\tAux. interfrag bonds below {max_aux*BOHR2ANG:.2f} Å:\n"
                 + "\n".join(
                     [f"\t\t{ind}: {dist_mat[ind]:.4f} au" for ind in below_max_aux]
                 ),
@@ -102,7 +101,6 @@ def connect_fragments(cdm, fragments, max_aux=3.78, aux_factor=1.3, logger=None)
             and (ind not in below_max_aux)
         ]
         if above_min_dist:
-            ang_max_aux = max_aux * BOHR2ANG
             log(
                 logger,
                 f"\tAux. interfrag bonds below {aux_factor:.2f} * min_dist:\n"
@@ -188,7 +186,6 @@ def get_linear_bend_inds(coords3d, cbm, bends, min_deg, max_bonds, logger=None):
 
 def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None):
     max_rad = np.deg2rad(max_deg)
-    max_rad_thresh = np.pi - max_rad
     bond_dict = dict()
     for from_, to_ in bond_inds:
         bond_dict.setdefault(from_, list()).append(to_)
