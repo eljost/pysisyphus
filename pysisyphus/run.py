@@ -272,7 +272,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     # When the COS was optimized in internal coordinates the united primitive
     # indices are already present and we just keep on using them.
     try:
-        prim_indices = hei_image.internal.prim_indices
+        typed_prims = hei_image.internal.typed_prims
     # If the COS was optimized in Cartesians we have to generated a new
     # set of primitive internals.
     except AttributeError:

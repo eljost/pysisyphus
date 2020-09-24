@@ -26,7 +26,7 @@ def test_hcn_neb():
         },
         "calc": {
             "type": "pyscf",
-            "pal": 2,
+            "pal": 1,
             "basis": "321g",
         },
         "xyz": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"]

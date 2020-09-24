@@ -140,7 +140,7 @@ def parse_args(args):
 
 
 def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
-               define_prims=None, prim_indices=None):
+               define_prims=None, typed_prims=None):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
@@ -152,7 +152,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     if coord_type != "cart":
         geom_kwargs["coord_kwargs"] = {
             "define_prims": define_prims,
-            "typed_prims": prim_indices,
+            "typed_prims": typed_prims,
         }
 
     for fn in xyz_fns:
@@ -206,16 +206,16 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
         union_geoms = read_geoms(union, coord_type=coord_type)
         assert len(union_geoms) == 2, \
             f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
-        united_prim_indices = form_coordinate_union(*union_geoms)
+        typed_prims_union = form_coordinate_union(*union_geoms)
     else:
-        united_prim_indices = None
+        typed_prims_union = None
 
     assert interpolate in list(INTERPOLATE.keys()) + [None], \
         f"Unsupported type: '{interpolate}' given. Valid arguments are " \
         f"{list(INTERPOLATE.keys())}'"
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
-                       define_prims=define_prims, prim_indices=united_prim_indices)
+                       define_prims=define_prims, typed_prims=typed_prims_union)
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
 
@@ -249,7 +249,7 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
             coord_kwargs = None
             if coord_type != "cart":
                 coord_kwargs = {
-                    "prim_indices": geom.internal.prim_indices,
+                    "typed_prims": geom.internal.typed_prims,
                 }
             geom = Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type,
                             comment=geom.comment, coord_kwargs=coord_kwargs
@@ -262,15 +262,15 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
 
     same_prim_inds = True
     if coord_type != "cart":
-        geom_prim_inds = [geom.internal.prim_indices_set for geom in geoms]
+        geom_prim_inds = [geom.internal.typed_prims for geom in geoms]
         first_set = geom_prim_inds[0]
         same_prim_inds = all([ith_set == first_set for ith_set in geom_prim_inds[1:]])
     # Recreate geometries with the same primitive internal coordinates
     if not same_prim_inds:
-        prim_indices = form_coordinate_union(geoms[0], geoms[-1])
+        typed_prims = form_coordinate_union(geoms[0], geoms[-1])
         geoms = [Geometry(atoms_0, geom.cart_coords,
                          coord_type=coord_type,
-                         coord_kwargs={"prim_indices": prim_indices,},
+                         coord_kwargs={"typed_prims": typed_prims},
                  )
                  for geom in geoms]
         assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
