@@ -1,12 +1,11 @@
 from collections import namedtuple
-from enum import Enum
 import itertools as it
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
+from pysisyphus.helpers_pure import log, sort_by_central, merge_sets, OrderedEnum
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
@@ -307,7 +306,7 @@ CoordInfo = namedtuple(
 )
 
 
-class PrimTypes(Enum):
+class PrimTypes(OrderedEnum):
     BOND = 0
     HYDROGEN_BOND = 1
     INTERFRAG_BOND = 2
