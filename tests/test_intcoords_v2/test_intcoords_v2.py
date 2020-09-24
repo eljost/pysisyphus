@@ -36,26 +36,6 @@ def test_compare_biaryl():
     compare_internals(xyz_fn)
 
 
-def test_bmat_allene():
-    xyz_fn = "lib:08_allene.xyz"
-    ref_geom = geom_loader(xyz_fn, coord_type="redund")
-    print(ref_geom)
-    ref_int = ref_geom.internal
-    Bref = ref_int.B
-
-    geom = geom_loader(xyz_fn, coord_type="redund",
-                       coord_kwargs={
-                           "lb_min_deg": None,
-                        }
-    )
-    print(geom)
-    int_ = geom.internal
-    B = int_.B
-    
-    np.testing.assert_allclose(B, Bref)
-
-
-# @pytest.mark.skip
 @using("pyscf")
 def test_allene_opt():
     geom = geom_loader("lib:08_allene.xyz", coord_type="redund")
