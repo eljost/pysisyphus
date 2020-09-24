@@ -184,7 +184,7 @@ def get_linear_bend_inds(coords3d, cbm, bends, min_deg, max_bonds, logger=None):
     return linear_bends, complements
 
 
-def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None):
+def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
     max_rad = np.deg2rad(max_deg)
     bond_dict = dict()
     for from_, to_ in bond_inds:
@@ -335,7 +335,7 @@ def setup_redundant(
     factor=1.3,
     define_prims=None,
     min_deg=15,
-    max_deg=180,
+    dihed_max_deg=175.0,
     lb_min_deg=None,
     lb_max_bonds=4,
     min_weight=None,
@@ -398,7 +398,7 @@ def setup_redundant(
         coords3d,
         bonds_for_bends,
         min_deg=min_deg,
-        max_deg=max_deg,
+        max_deg=180.0,
         logger=logger,
     )
     # All bends will be checked, for being linear bends and will be removed from
@@ -423,7 +423,7 @@ def setup_redundant(
 
     # Dihedrals
     proper_dihedrals, improper_dihedrals = get_dihedral_inds(
-        coords3d, bonds_for_bends, bends, logger=logger
+        coords3d, bonds_for_bends, bends, max_deg=dihed_max_deg, logger=logger
     )
     proper_dihedrals += def_dihedrals
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)

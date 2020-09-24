@@ -34,7 +34,7 @@ class RedundantCoords:
         check_bends=True,
         rebuild=True,
         bend_min_deg=15,
-        bend_max_deg=180,
+        dihed_max_deg=175.0,
         lb_min_deg=175,
         weighted=False,
         min_weight=0.3,
@@ -47,7 +47,7 @@ class RedundantCoords:
         self.check_bends = check_bends
         self.rebuild = rebuild
         self.bend_min_deg = bend_min_deg
-        self.bend_max_deg = bend_max_deg
+        self.dihed_max_deg = dihed_max_deg
         self.lb_min_deg = lb_min_deg
         self.min_weight = float(min_weight)
         assert self.min_weight > 0.0, "min_weight must be a positive rational!"
@@ -82,11 +82,6 @@ class RedundantCoords:
             self.set_primitive_indices(
                 self.atoms,
                 self.coords3d,
-                min_deg=self.bend_min_deg,
-                max_deg=self.bend_max_deg,
-                define_prims=self.define_prims,
-                # Disable min_weight if coordinate weighting is disabled
-                min_weight=min_weight if self.weighted else None,
             )
         else:
             to_arr = lambda _: np.array(list(_), dtype=int)
@@ -96,7 +91,7 @@ class RedundantCoords:
             valid_bends = [
                 inds
                 for inds in bends
-                if bend_valid(self.coords3d, inds, self.bend_min_deg, self.bend_max_deg)
+                if bend_valid(self.coords3d, inds, self.bend_min_deg, max_deg=180.0)
             ]
             self.bending_indices = to_arr(valid_bends)
             valid_dihedrals = [
@@ -335,20 +330,16 @@ class RedundantCoords:
         self,
         atoms,
         coords3d,
-        min_deg,
-        max_deg,
-        define_prims=None,
-        min_weight=None,
     ):
         coord_info = setup_redundant(
             atoms,
             coords3d,
             factor=self.bond_factor,
-            define_prims=define_prims,
-            min_deg=min_deg,
-            max_deg=max_deg,
+            define_prims=self.define_prims,
+            min_deg=self.bend_min_deg,
+            dihed_max_deg=self.dihed_max_deg,
             lb_min_deg=self.lb_min_deg,
-            min_weight=min_weight,
+            min_weight=self.min_weight if self.weighted else None,
             logger=self.logger,
         )
 
