@@ -17,7 +17,6 @@ from pysisyphus.intcoords.eval import (
     eval_primitives,
     check_primitives,
 )
-from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 from pysisyphus.intcoords.setup import setup_redundant, get_primitives, PrimTypes
 
 

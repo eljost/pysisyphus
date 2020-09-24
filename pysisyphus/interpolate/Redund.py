@@ -1,5 +1,3 @@
-import itertools as it
-
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
