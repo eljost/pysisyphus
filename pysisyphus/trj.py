@@ -89,9 +89,6 @@ def parse_args(args):
     action_group.add_argument("--internals", action="store_true",
         help="Print automatically generated internals."
     )
-    action_group.add_argument("--internalsV2", action="store_true",
-        help="Print automatically generated internals using 'coord_type=redund_v2'."
-    )
     action_group.add_argument("--get", type=int,
         help="Get n-th geometry. Expects 0-based index input."
     )
@@ -396,7 +393,7 @@ def shake(geoms, scale=0.1, seed=None):
     return geoms
 
 
-def print_internals(geoms, filter_atoms=None, add_prims="", v2=False):
+def print_internals(geoms, filter_atoms=None, add_prims=""):
     if filter_atoms is None:
         filter_atoms = set()
 
@@ -415,8 +412,7 @@ def print_internals(geoms, filter_atoms=None, add_prims="", v2=False):
             f"valid range for the {i}-th geometry '{geom}' with {atom_num} " \
             f"atoms (valid indices: range(0,{atom_num}))."
 
-        coord_type = "redund_v2" if v2 else "redund"
-        int_geom = Geometry(geom.atoms, geom.coords, coord_type=coord_type,
+        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
                             coord_kwargs={"define_prims": add_prims,},
         )
 
@@ -560,9 +556,6 @@ def run():
         fn_base = "got"
     elif args.internals:
         print_internals(geoms, args.atoms, args.add_prims)
-        return
-    elif args.internalsV2:
-        print_internals(geoms, args.atoms, args.add_prims, v2=True)
         return
     elif args.fragsort:
         to_dump = frag_sort(geoms)

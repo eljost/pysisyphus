@@ -12,7 +12,7 @@ import rmsd
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.intcoords import DLC, RedundantCoords, RedundantCoordsV2
+from pysisyphus.intcoords import DLC, RedundantCoords
 from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
                                              RebuiltInternalsException,
                                              DifferentPrimitivesException,
@@ -85,7 +85,6 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
-        "redund_v2": RedundantCoordsV2,
         "dlc": DLC,
     }
 
@@ -184,7 +183,7 @@ class Geometry:
         self.assert_compatibility(other)
         if self.coord_type == "cart":
             diff = self.coords - other.coords
-        elif self.coord_type in ("redund", "redund_v2", "dlc"):
+        elif self.coord_type in ("redund", "dlc"):
             # Take periodicity of dihedrals into account by calling
             # get_tangent(). Care has to be taken regarding the orientation
             # of the returned tangent vector. It points from self to other.

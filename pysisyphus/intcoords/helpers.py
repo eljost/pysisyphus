@@ -1,6 +1,6 @@
 import numpy as np
 
-from pysisyphus.intcoords import RedundantCoordsV2 as RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 
 
 def get_tangent(prims1, prims2, dihed_start, normalize=False):

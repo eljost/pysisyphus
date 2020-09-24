@@ -43,7 +43,7 @@ def test_bmat_allene():
     ref_int = ref_geom.internal
     Bref = ref_int.B
 
-    geom = geom_loader(xyz_fn, coord_type="redund_v2",
+    geom = geom_loader(xyz_fn, coord_type="redund",
                        coord_kwargs={
                            "lb_min_deg": None,
                         }
@@ -58,7 +58,7 @@ def test_bmat_allene():
 # @pytest.mark.skip
 @using("pyscf")
 def test_allene_opt():
-    geom = geom_loader("lib:08_allene.xyz", coord_type="redund_v2")
+    geom = geom_loader("lib:08_allene.xyz", coord_type="redund")
 
     calc = PySCF(basis="321g", pal=1)
     geom.set_calculator(calc)
@@ -71,7 +71,7 @@ def test_allene_opt():
 
 def test_hydrogen_bonds_fragments():
     geom = geom_loader("lib:hydrogen_bond_fragments_test.xyz",
-                       coord_type="redund_v2")
+                       coord_type="redund")
     int_ = geom.internal
     assert len(int_.hydrogen_bond_indices) == 1
     assert len(int_.fragments) == 3
@@ -80,7 +80,7 @@ def test_hydrogen_bonds_fragments():
 def test_linear_bend_allene():
     np.set_printoptions(precision=5)
     xyz_fn = "lib:08_allene.xyz"
-    geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    geom = geom_loader(xyz_fn, coord_type="redund")
     c3d = geom.coords3d
 
     from pysisyphus.intcoords.LinearBend import LinearBend
@@ -113,7 +113,7 @@ def test_linear_bend_c4():
     np.set_printoptions(precision=5)
     # xyz_fn = "lib:c4_lb_test.xyz"
     xyz_fn = "lib:c4_lb_test_02.xyz"
-    geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    geom = geom_loader(xyz_fn, coord_type="redund")
     c3d = geom.coords3d
 
     from pysisyphus.intcoords.LinearBend import LinearBend
@@ -146,7 +146,7 @@ def test_linear_bend_c4():
 def test_molcas_lb():
     np.set_printoptions(precision=5)
     xyz_fn = "lib:08_allene.xyz"
-    geom = geom_loader(xyz_fn, coord_type="redund_v2")
+    geom = geom_loader(xyz_fn, coord_type="redund")
     # c3d = geom.coords3d
 
 
@@ -167,7 +167,7 @@ def test_complement(make_complement, fn):
     coord_kwargs = {
         "make_complement": make_complement,
     }
-    geom = geom_loader(fn, coord_type="redund_v2",
+    geom = geom_loader(fn, coord_type="redund",
                        coord_kwargs=coord_kwargs,
     )
     int_ = geom.internal
@@ -214,7 +214,7 @@ def test_derivs():
     }
     fn = "lib:co2_bent.xyz"
     # fn = "lib:co2.xyz"
-    geom = geom_loader(fn, coord_type="redund_v2",
+    geom = geom_loader(fn, coord_type="redund",
                        coord_kwargs=coord_kwargs,
     )
     int_ = geom.internal
@@ -260,7 +260,7 @@ def test_lb():
         ( 0., 0., -1.),
     ))
     atoms = ("O", "O", "O")
-    geom = Geometry(atoms, coords, coord_type="redund_v2")
+    geom = Geometry(atoms, coords, coord_type="redund")
     indices = (1, 0, 2)
     lb = LinearBend(indices)
     print(lb)

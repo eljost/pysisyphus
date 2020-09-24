@@ -28,7 +28,7 @@ def test_run_geom_section_union():
                 "basis": "sto3g",
             },
             "geom": {
-                "type": "redund_v2",
+                "type": "redund",
                 "fn": "lib:test_union_ts_001.xyz",
             },
         }
