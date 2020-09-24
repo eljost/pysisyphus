@@ -113,7 +113,7 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
 @pytest.mark.parametrize(
     "define_prims, proj, ref_cycle", [
         (None, True, 14),
-        pytest.param(None, False, 13),
+        pytest.param(None, False, 12),
         pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 12),
         pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 10),
     ]

@@ -65,7 +65,7 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
     opt.run()
 
     assert opt.is_converged
-    assert geom.energy == pytest.approx(-387.54530649)
+    assert geom.energy == pytest.approx(-387.54925356)
 
 
 @pytest.mark.parametrize(
