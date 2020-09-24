@@ -36,7 +36,6 @@ class RedundantCoords:
         bend_min_deg=15,
         bend_max_deg=180,
         lb_min_deg=175,
-        make_complement=True,
         weighted=False,
         min_weight=0.3,
     ):
@@ -50,7 +49,6 @@ class RedundantCoords:
         self.bend_min_deg = bend_min_deg
         self.bend_max_deg = bend_max_deg
         self.lb_min_deg = lb_min_deg
-        self.make_complement = make_complement
         self.min_weight = float(min_weight)
         assert self.min_weight > 0.0, "min_weight must be a positive rational!"
         self.weighted = weighted
@@ -112,15 +110,14 @@ class RedundantCoords:
 
         self.primitives = get_primitives(
             self.coords3d,
-            self.bond_indices,
-            self.bending_indices,
-            self.linear_bend_indices,
-            self.dihedral_indices,
-            make_complement=self.make_complement,
+            self.typed_prims,
+            # self.bond_indices,
+            # self.bending_indices,
+            # self.linear_bend_indices,
+            # self.dihedral_indices,
             logger=self.logger,
         )
         check_primitives(self.coords3d, self.primitives, logger=self.logger)
-
 
         self._prim_internals = self.eval(self.coords3d)
         self._prim_coords = np.array(
@@ -130,6 +127,7 @@ class RedundantCoords:
         bonds = len(self.bond_indices)
         bends = len(self.bending_indices) + len(self.linear_bend_indices)
         dihedrals = len(self.dihedral_indices)
+        assert bonds + bends + dihedrals == len(self.primitives)
         self._bonds_slice = slice(bonds)
         self._bends_slice = slice(bonds, bonds + bends)
         self._dihedrals_slice = slice(bonds + bends, bonds + bends + dihedrals)
@@ -355,21 +353,27 @@ class RedundantCoords:
         )
 
         all_bonds = (
-            coord_info.bonds + coord_info.hydrogen_bonds
-            + coord_info.interfrag_bonds + coord_info.aux_interfrag_bonds
+            coord_info.bonds
+            + coord_info.hydrogen_bonds
+            + coord_info.interfrag_bonds
+            + coord_info.aux_interfrag_bonds
         )
         all_bonds = remove_duplicates(all_bonds)
 
         # Set primitive indices
         self.bond_indices = all_bonds
-        self.bending_indices = coord_info.bends
-        self.linear_bend_indices = coord_info.linear_bends
-        self.dihedral_indices = coord_info.dihedrals
-
         self.hydrogen_bond_indices = coord_info.hydrogen_bonds
+        self.bending_indices = coord_info.bends
+        self.linear_bend_indices = (
+            coord_info.linear_bends + coord_info.linear_bend_complements
+        )
+        self.dihedral_indices = (
+            coord_info.proper_dihedrals + coord_info.improper_dihedrals
+        )
+
+        self.typed_prims = coord_info.typed_prims
+
         self.fragments = coord_info.fragments
-        self.cbm = coord_info.cbm
-        self.cdm = coord_info.cdm
 
     def eval(self, coords3d, attr=None):
         prim_internals = eval_primitives(coords3d, self.primitives)

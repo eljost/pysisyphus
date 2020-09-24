@@ -1,4 +1,5 @@
 from collections import namedtuple
+from enum import Enum
 import itertools as it
 
 import numpy as np
@@ -167,10 +168,11 @@ def get_bend_inds(coords3d, bond_inds, min_deg, max_deg, logger=None):
     return bend_inds
 
 
-def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=None):
+def get_linear_bend_inds(coords3d, cbm, bends, min_deg, max_bonds, logger=None):
     bm = squareform(cbm)
-    linear_bend_inds = list()
-    for bend in bend_inds:
+    linear_bends = list()
+    complements = list()
+    for bend in bends:
         deg = np.rad2deg(Bend._calculate(coords3d, bend))
         bonds = sum(bm[bend[1]])
         if (deg >= min_deg) and (bonds <= max_bonds):
@@ -179,8 +181,9 @@ def get_linear_bend_inds(coords3d, cbm, bend_inds, min_deg, max_bonds, logger=No
                 f"Bend {bend}={deg:.1f}° is (close to) linear. "
                 "Creating linear bend & complement.",
             )
-            linear_bend_inds.append(bend)
-    return linear_bend_inds
+            linear_bends.append(bend)
+            complements.append(bend)
+    return linear_bends, complements
 
 
 def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None):
@@ -192,7 +195,9 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None
         bond_dict.setdefault(to_, list()).append(from_)
     dihedrals = list()
     dihedral_inds = list()
-    improper_dihedrals = list()
+    proper_dihedral_inds = list()
+    improper_candidates = list()
+    improper_dihedral_inds = list()
 
     def log_dihed_skip(inds):
         log(
@@ -201,7 +206,7 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None
             "as some of the the atoms are (close too) linear.",
         )
 
-    def set_dihedral_index(dihedral_ind):
+    def set_dihedral_index(dihedral_ind, proper=True):
         dihed = tuple(dihedral_ind)
         # Check if this dihedral is already present
         if (dihed in dihedrals) or (dihed[::-1] in dihedrals):
@@ -210,7 +215,10 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None
         if not dihedral_valid(coords3d, dihedral_ind, deg_thresh=max_deg):
             log_dihed_skip(dihedral_ind)
             return
-        dihedral_inds.append(dihedral_ind)
+        if proper:
+            proper_dihedral_inds.append(dihedral_ind)
+        else:
+            improper_dihedral_inds.append(dihedral_ind)
         dihedrals.append(dihed)
 
     for bond, bend in it.product(bond_inds, bend_inds):
@@ -252,21 +260,25 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg=175.0, logger=None
             # This way dihedrals may be generated that contain linear
             # atoms and these would be undefinied. So we check for this.
             if dihedral_valid(coords3d, dihedral_ind, deg_thresh=max_deg):
-                improper_dihedrals.append(dihedral_ind)
+                improper_candidates.append(dihedral_ind)
             else:
                 log_dihed_skip(dihedral_ind)
 
     # Now try to create the remaining improper dihedrals.
     if (len(coords3d) >= 4) and (len(dihedral_inds) == 0):
-        for improp in improper_dihedrals:
-            set_dihedral_index(improp)
+        log(
+            logger,
+            "Could not define any proper dihedrals! Generating improper dihedrals!",
+        )
+        for improp in improper_candidates:
+            set_dihedral_index(improp, proper=False)
         log(
             logger,
             "Permutational symmetry not considerd in generation of "
             "improper dihedrals.",
         )
 
-    return dihedral_inds
+    return proper_dihedral_inds, improper_dihedral_inds
 
 
 def sort_by_prim_type(to_sort=None):
@@ -286,9 +298,38 @@ def sort_by_prim_type(to_sort=None):
 
 CoordInfo = namedtuple(
     "CoordInfo",
-    "bonds hydrogen_bonds interfrag_bonds aux_interfrag_bonds bends linear_bends "
-    "dihedrals fragments cdm cbm".split(),
+    "bonds hydrogen_bonds interfrag_bonds aux_interfrag_bonds "
+    "bends linear_bends linear_bend_complements "
+    # "dihedrals typed_prims fragments cdm cbm".split(),
+    "proper_dihedrals improper_dihedrals "
+    "typed_prims fragments".split(),
 )
+
+
+class PrimTypes(Enum):
+    BOND = 0
+    HYDROGEN_BOND = 1
+    INTERFRAG_BOND = 2
+    AUX_INTERFRAG_BOND = 3
+    BEND = 4
+    LINEAR_BEND = 5
+    LINEAR_BEND_COMPLEMENT = 6
+    PROPER_DIHEDRAL = 7
+    IMPROPER_DIHEDRAL = 8
+
+
+# Maps primitive types to their classes
+PrimMap = {
+    PrimTypes.BOND: Stretch,
+    PrimTypes.HYDROGEN_BOND: Stretch,
+    PrimTypes.INTERFRAG_BOND: Stretch,
+    PrimTypes.AUX_INTERFRAG_BOND: Stretch,
+    PrimTypes.BEND: Bend,
+    PrimTypes.LINEAR_BEND: LinearBend,
+    PrimTypes.LINEAR_BEND_COMPLEMENT: lambda indices: LinearBend(indices),
+    PrimTypes.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
+    PrimTypes.IMPROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
+}
 
 
 def setup_redundant(
@@ -314,42 +355,49 @@ def setup_redundant(
             else (prim_cls._weight(atoms, coords3d, prim_inds, 0.12) >= min_weight)
         )
 
+    conv_func = {
+        False: lambda prim: prim,
+        True: lambda prim: frozenset(prim),
+    }
+
+    def keep_coords(prims, prim_cls, to_set=False):
+        cf = conv_func[to_set]
+        return [cf(prim) for prim in prims if keep_coord(prim_cls, prim)]
+
     # Bonds
-    bond_inds, cdm, cbm = get_bond_sets(
+    bonds, cdm, cbm = get_bond_sets(
         atoms,
         coords3d,
         bond_factor=factor,
         return_cdm=True,
         return_cbm=True,
     )
-    bond_inds = [tuple(bond) for bond in bond_inds]
-    bond_inds += def_bonds
-    bond_ind_sets = [frozenset(bond) for bond in bond_inds if keep_coord(Stretch, bond)]
+    bonds = [tuple(bond) for bond in bonds]
+    bonds += def_bonds
+    bond_sets = keep_coords(bonds, Stretch, to_set=True)
 
     # Fragments
-    fragments = merge_sets(bond_ind_sets)
+    fragments = merge_sets(bond_sets)
     # Check for unbonded single atoms and create fragments for them.
-    bonded_set = set(tuple(np.ravel(bond_inds)))
+    bonded_set = set(tuple(np.ravel(bonds)))
     unbonded_set = set(range(len(atoms))) - bonded_set
     fragments.extend([frozenset((atom,)) for atom in unbonded_set])
 
     # Check for disconnected fragments. If they are present, create interfragment
     # bonds between them.
-    interfrag_inds, aux_interfrag_inds = connect_fragments(
+    interfrag_bonds, aux_interfrag_bonds = connect_fragments(
         cdm, fragments, logger=logger
     )
 
     # Hydrogen bonds
-    hydrogen_bond_inds = get_hydrogen_bond_inds(
-        atoms, coords3d, bond_inds, logger=logger
-    )
+    hydrogen_bonds = get_hydrogen_bond_inds(atoms, coords3d, bonds, logger=logger)
     # Don't use auxilary interfragment bonds for bend detection
     bonds_for_bends = set(
-        [frozenset(bond) for bond in bond_inds + hydrogen_bond_inds + interfrag_inds]
+        [frozenset(bond) for bond in bonds + hydrogen_bonds + interfrag_bonds]
     )
 
     # Bends
-    bend_inds = get_bend_inds(
+    bends = get_bend_inds(
         coords3d,
         bonds_for_bends,
         min_deg=min_deg,
@@ -358,42 +406,57 @@ def setup_redundant(
     )
     # All bends will be checked, for being linear bends and will be removed from
     # bend_inds, if needed.
-    bend_inds += def_bends
-    bend_inds = [bend for bend in bend_inds if keep_coord(Bend, bend)]
+    bends += def_bends
+    bends = keep_coords(bends, Bend)
 
     # Linear Bends
     linear_bend_inds = list()
     if lb_min_deg is not None:
-        linear_bend_inds = get_linear_bend_inds(
+        linear_bends, linear_bend_complements = get_linear_bend_inds(
             coords3d,
             cbm,
-            bend_inds,
+            bends,
             min_deg=lb_min_deg,
             max_bonds=lb_max_bonds,
             logger=logger,
         )
-        bend_inds = [bend for bend in bend_inds if bend not in linear_bend_inds]
+        bends = [bend for bend in bends if bend not in linear_bends]
+    linear_bends = keep_coords(linear_bends, LinearBend)
+    linear_bend_complements = keep_coords(linear_bend_complements, LinearBend)
 
     # Dihedrals
-    dihedral_inds = get_dihedral_inds(
-        coords3d, bonds_for_bends, bend_inds, logger=logger
+    proper_dihedrals, improper_dihedrals = get_dihedral_inds(
+        coords3d, bonds_for_bends, bends, logger=logger
     )
-    dihedral_inds += def_dihedrals
-    dihedral_inds = [
-        dihedral for dihedral in dihedral_inds if keep_coord(Torsion, dihedral)
-    ]
+    proper_dihedrals += def_dihedrals
+    proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
+    improper_dihedrals = keep_coords(improper_dihedrals, Torsion)
+
+    pt = PrimTypes
+    typed_prims = (
+        [(pt.BOND, *bond) for bond in bonds]
+        + [(pt.HYDROGEN_BOND, *hbond) for hbond in hydrogen_bonds]
+        + [(pt.INTERFRAG_BOND, *ifbond) for ifbond in interfrag_bonds]
+        + [(pt.AUX_INTERFRAG_BOND, *aifbond) for aifbond in aux_interfrag_bonds]
+        + [(pt.BEND, *bend) for bend in bends]
+        + [(pt.LINEAR_BEND, *lbend) for lbend in linear_bends]
+        + [(pt.LINEAR_BEND_COMPLEMENT, *lbendc) for lbendc in linear_bend_complements]
+        + [(pt.PROPER_DIHEDRAL, *pdihedral) for pdihedral in proper_dihedrals]
+        + [(pt.IMPROPER_DIHEDRAL, *idihedral) for idihedral in improper_dihedrals]
+    )
 
     coord_info = CoordInfo(
-        bonds=bond_inds,
-        hydrogen_bonds=hydrogen_bond_inds,
-        interfrag_bonds=interfrag_inds,
-        aux_interfrag_bonds=aux_interfrag_inds,
-        bends=bend_inds,
-        linear_bends=linear_bend_inds,
-        dihedrals=dihedral_inds,
+        bonds=bonds,
+        hydrogen_bonds=hydrogen_bonds,
+        interfrag_bonds=interfrag_bonds,
+        aux_interfrag_bonds=aux_interfrag_bonds,
+        bends=bends,
+        linear_bends=linear_bends,
+        linear_bend_complements=linear_bend_complements,
+        proper_dihedrals=proper_dihedrals,
+        improper_dihedrals=improper_dihedrals,
+        typed_prims=typed_prims,
         fragments=fragments,
-        cdm=cdm,
-        cbm=cbm,
     )
     return coord_info
 
@@ -402,39 +465,11 @@ def setup_redundant_from_geom(geom, *args, **kwargs):
     return setup_redundant(geom.atoms, geom.coords3d, *args, **kwargs)
 
 
-def get_primitives(
-    coords3d,
-    bond_inds,
-    bend_inds,
-    linear_bend_inds,
-    dihedral_inds,
-    make_complement,
-    logger=None,
-):
-    zipped = (
-        (bond_inds, Stretch),
-        (bend_inds, Bend),
-        (linear_bend_inds, LinearBend),
-        (dihedral_inds, Torsion),
-    )
-
+def get_primitives(coords3d, typed_prims, logger=None):
     primitives = list()
-    for per_type, prim_cls in zipped:
-        for prim_inds in per_type:
-            prim_kwargs = {
-                "indices": prim_inds,
-                "periodic": len(prim_inds) == 4,
-            }
-
-            # Create primitive coordinate and append
-            prim = prim_cls(**prim_kwargs)
-            primitives.append(prim)
-
-            if isinstance(prim, LinearBend) and make_complement:
-                log(logger, f"Created complement for LinearBend {prim_inds}")
-                prim_kwargs["complement"] = True
-                prim = prim_cls(**prim_kwargs)
-                primitives.append(prim)
+    for type_, *indices in typed_prims:
+        cls = PrimMap[type_]
+        primitives.append(cls(indices=indices))
 
     msg = (
         "Defined primitives\n"
