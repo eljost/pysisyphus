@@ -11,7 +11,6 @@ import logging
 
 import numpy as np
 
-from pysisyphus.helpers_pure import remove_duplicates
 from pysisyphus.intcoords import Stretch, Torsion
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
@@ -317,6 +316,7 @@ class RedundantCoords:
             3: list(),
             4: list(),
             "linear_bend": list(),
+            "hydrogen_bond": list(),
         }
         for type_, *indices in typed_prims:
             key = len(indices)
@@ -324,10 +324,15 @@ class RedundantCoords:
                 key = "linear_bend"
             per_type[key].append(indices)
 
-        self.bond_indices = remove_duplicates(per_type[2])
+            # Also keep hydrogen bonds
+            if type_ == PrimTypes.HYDROGEN_BOND:
+                per_type["hydrogen_bond"].append(indices)
+
+        self.bond_indices = per_type[2]
         self.bending_indices = per_type[3]
         self.dihedral_indices = per_type[4]
         self.linear_bend_indices = per_type["linear_bend"]
+        self.hydrogen_bond_indices = per_type["hydrogen_bond"]
 
         # TODO
         # self.fragments = coord_info.fragments

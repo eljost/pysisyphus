@@ -301,8 +301,7 @@ CoordInfo = namedtuple(
     "bonds hydrogen_bonds interfrag_bonds aux_interfrag_bonds "
     "bends linear_bends linear_bend_complements "
     # "dihedrals typed_prims fragments cdm cbm".split(),
-    "proper_dihedrals improper_dihedrals "
-    "typed_prims fragments".split(),
+    "proper_dihedrals improper_dihedrals " "typed_prims fragments".split(),
 )
 
 
@@ -355,14 +354,8 @@ def setup_redundant(
             else (prim_cls._weight(atoms, coords3d, prim_inds, 0.12) >= min_weight)
         )
 
-    conv_func = {
-        False: lambda prim: prim,
-        True: lambda prim: frozenset(prim),
-    }
-
-    def keep_coords(prims, prim_cls, to_set=False):
-        cf = conv_func[to_set]
-        return [cf(prim) for prim in prims if keep_coord(prim_cls, prim)]
+    def keep_coords(prims, prim_cls):
+        return [prim for prim in prims if keep_coord(prim_cls, prim)]
 
     # Bonds
     bonds, cdm, cbm = get_bond_sets(
@@ -374,10 +367,10 @@ def setup_redundant(
     )
     bonds = [tuple(bond) for bond in bonds]
     bonds += def_bonds
-    bond_sets = keep_coords(bonds, Stretch, to_set=True)
+    bonds = keep_coords(bonds, Stretch)
 
     # Fragments
-    fragments = merge_sets(bond_sets)
+    fragments = merge_sets(bonds)
     # Check for unbonded single atoms and create fragments for them.
     bonded_set = set(tuple(np.ravel(bonds)))
     unbonded_set = set(range(len(atoms))) - bonded_set
@@ -391,6 +384,16 @@ def setup_redundant(
 
     # Hydrogen bonds
     hydrogen_bonds = get_hydrogen_bond_inds(atoms, coords3d, bonds, logger=logger)
+
+    hydrogen_set = [frozenset(bond) for bond in hydrogen_bonds]
+    interfrag_bonds = [
+        bond for bond in interfrag_bonds if set(bond) not in hydrogen_set
+    ]
+    aux_interfrag_bonds = [
+        bond for bond in aux_interfrag_bonds if set(bond) not in hydrogen_set
+    ]
+    bonds = [bond for bond in bonds if set(bond) not in hydrogen_set]
+
     # Don't use auxilary interfragment bonds for bend detection
     bonds_for_bends = set(
         [frozenset(bond) for bond in bonds + hydrogen_bonds + interfrag_bonds]

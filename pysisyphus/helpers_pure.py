@@ -39,9 +39,10 @@ def sort_by_central(set1, set2):
 
 
 def merge_sets(fragments):
-    """Merge a list of sets."""
+    """Merge a list of iterables."""
     # Hold the final fragments that can't be merged further, as they
     # contain distinct atoms.
+    fragments = [frozenset(frag) for frag in fragments]
     merged = list()
     while len(fragments) > 0:
         popped = fragments.pop(0)
