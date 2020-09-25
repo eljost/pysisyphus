@@ -66,7 +66,7 @@ class LinearBend(Primitive):
         lb_rad = w.dot(np.cross(u_dash, v_dash)) / (u_norm * v_norm)
 
         if gradient:
-            # Foruth argument is the orthogonal direction
+            # Fourth argument is the orthogonal direction
             grad = dq_lb(*coords3d[m], *coords3d[o], *coords3d[n], *w)
             grad = grad.reshape(-1, 3)
 
