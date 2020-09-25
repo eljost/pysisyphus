@@ -84,12 +84,16 @@ class RedundantCoords:
             )
         # Use supplied typed_prims
         else:
+            self.log(f"{len(typed_prims)} primitives were supplied. Checking them.")
             valid_typed_prims = check_typed_prims(
                 self.coords3d,
                 typed_prims,
                 bend_min_deg=self.bend_min_deg,
                 dihed_max_deg=self.dihed_max_deg,
                 lb_min_deg=self.lb_min_deg,
+            )
+            self.log(
+                f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
             )
             self.typed_prims = valid_typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
