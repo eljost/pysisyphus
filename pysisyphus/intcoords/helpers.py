@@ -60,7 +60,7 @@ def get_step(geom, coords):
 
 def merge_coordinate_definitions(geom1, geom2):
     typed_prims1 = geom1.internal.typed_prims
-    typed_prims2 = geom1.internal.typed_prims
+    typed_prims2 = geom2.internal.typed_prims
     union = list(set(typed_prims1) | set(typed_prims2))
     union.sort()
     # Check if internal coordinates that are only present in one of the two
@@ -80,6 +80,6 @@ def form_coordinate_union(geom1, geom2):
     # The second call yields all primitives from geom2 that are also valid at geom1.
     typed_prims2 = merge_coordinate_definitions(geom2, geom1)
 
-    union = list(set(typed_prims1) | set(typed_prims2))
-    union.sort()
-    return union
+    intersection = list(set(typed_prims1) & set(typed_prims2))
+    intersection.sort()
+    return intersection
