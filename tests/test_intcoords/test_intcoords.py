@@ -191,3 +191,12 @@ def test_check_typed_prims_invalid_dihedral():
     valid_typed_prims = check_typed_prims_for_geom(geom_linear, typed_prims)
     assert bend013 not in valid_typed_prims
     assert dihedral not in valid_typed_prims
+
+
+def test_linear_dihedrals():
+    geom = geom_loader("lib:dihedral_gen_test.cjson", coord_type="redund")
+    typed_prims = geom.internal.typed_prims
+    pd = PrimTypes.PROPER_DIHEDRAL
+    need_diheds = ((2, 7, 0, 5), (2, 7, 0, 4), (3, 7, 0, 4), (2, 7, 0, 5))
+    for dihed in need_diheds:
+        assert ((pd, *dihed) in typed_prims) or ((pd, *dihed[::-1]) in typed_prims)
