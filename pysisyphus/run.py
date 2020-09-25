@@ -1393,7 +1393,9 @@ def print_header():
     sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
     npv = np.__version__  # Numpy
     spv = sp.__version__  # SciPy
-    print(f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n")
+    print(f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
+          f"Commit {get_versions()['full-revisionid']}\n"
+    )
 
 
 def print_bibtex():
