@@ -85,7 +85,7 @@ class RedundantCoords:
         # Use supplied typed_prims
         else:
             valid_typed_prims = check_typed_prims(
-                self.corods3d,
+                self.coords3d,
                 typed_prims,
                 bend_min_deg=self.bend_min_deg,
                 dihed_max_deg=self.dihed_max_deg,
