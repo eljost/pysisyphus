@@ -1,10 +1,10 @@
 __all__ = [
    "Bend",
-   "DLC",
    "LinearBend",
-   "RedundantCoords",
    "Stretch",
    "Torsion",
+   "DLC",
+   "RedundantCoords",
 ]
 
 from pysisyphus.intcoords.Bend import Bend

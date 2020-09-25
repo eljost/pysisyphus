@@ -5,9 +5,10 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers_pure import log, sort_by_central, merge_sets, OrderedEnum
+from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
+from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
 
@@ -301,32 +302,6 @@ CoordInfo = namedtuple(
     # "dihedrals typed_prims fragments cdm cbm".split(),
     "proper_dihedrals improper_dihedrals " "typed_prims fragments".split(),
 )
-
-
-class PrimTypes(OrderedEnum):
-    BOND = 0
-    HYDROGEN_BOND = 1
-    INTERFRAG_BOND = 2
-    AUX_INTERFRAG_BOND = 3
-    BEND = 4
-    LINEAR_BEND = 5
-    LINEAR_BEND_COMPLEMENT = 6
-    PROPER_DIHEDRAL = 7
-    IMPROPER_DIHEDRAL = 8
-
-
-# Maps primitive types to their classes
-PrimMap = {
-    PrimTypes.BOND: Stretch,
-    PrimTypes.HYDROGEN_BOND: Stretch,
-    PrimTypes.INTERFRAG_BOND: Stretch,
-    PrimTypes.AUX_INTERFRAG_BOND: Stretch,
-    PrimTypes.BEND: Bend,
-    PrimTypes.LINEAR_BEND: LinearBend,
-    PrimTypes.LINEAR_BEND_COMPLEMENT: lambda indices: LinearBend(indices),
-    PrimTypes.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
-    PrimTypes.IMPROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
-}
 
 
 def setup_redundant(
