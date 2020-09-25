@@ -18,6 +18,7 @@ from pysisyphus.intcoords.eval import (
     check_primitives,
 )
 from pysisyphus.intcoords.setup import setup_redundant, get_primitives, PrimTypes
+from pysisyphus.intcoords.valid import check_typed_prims
 
 
 class RedundantCoords:
@@ -81,8 +82,16 @@ class RedundantCoords:
                 self.atoms,
                 self.coords3d,
             )
+        # Use supplied typed_prims
         else:
-            self.typed_prims = typed_prims
+            valid_typed_prims = check_typed_prims(
+                self.corods3d,
+                typed_prims,
+                bend_min_deg=self.bend_min_deg,
+                dihed_max_deg=self.dihed_max_deg,
+                lb_min_deg=self.lb_min_deg,
+            )
+            self.typed_prims = valid_typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
 
         self.primitives = get_primitives(
@@ -93,7 +102,9 @@ class RedundantCoords:
         if self.bonds_only:
             self.bending_indices = list()
             self.dihedral_indices = list()
-            self.primitives = [prim for prim in self.primitives if isinstance(prim, Stretch)]
+            self.primitives = [
+                prim for prim in self.primitives if isinstance(prim, Stretch)
+            ]
         check_primitives(self.coords3d, self.primitives, logger=self.logger)
 
         self._prim_internals = self.eval(self.coords3d)

@@ -1,18 +1,18 @@
 import numpy as np
 
 from pysisyphus.helpers_pure import log
-from pysisyphus.intcoords import PrimTypes
+from pysisyphus.intcoords.PrimTypes import PrimTypes
 from pysisyphus.intcoords import Bend
 
 
-def bend_valid(coords3d, bend_ind, min_deg, max_deg):
-    val = Bend._calculate(coords3d, bend_ind)
+def bend_valid(coords3d, indices, min_deg, max_deg):
+    val = Bend._calculate(coords3d, indices)
     deg = np.rad2deg(val)
     return min_deg <= deg <= max_deg
 
 
 def bend_still_valid(coords3d, indices, min_deg, max_deg):
-    val = Bend._calculate(coords3d, bend_ind)
+    val = Bend._calculate(coords3d, indices)
     deg = np.rad2deg(val)
     # Less than, not less or equal as in "bend_valid"
     return min_deg <= deg < max_deg
@@ -57,22 +57,28 @@ def check_typed_prims(
     bend_min_deg,
     dihed_max_deg,
     lb_min_deg,
-    keep_complements=True,
+    # keep_complements=True,
+    logger=None,
 ):
     funcs = {
-        PrimTypes.Bend: lambda indices: bend_still_valid(
+        PrimTypes.BEND: lambda indices: bend_still_valid(
             coords3d, indices, min_deg=bend_min_deg, max_deg=lb_min_deg
         ),
-        PrimTypes.Torsion: lambda indices: dihedral_valid(
+        PrimTypes.PROPER_DIHEDRAL: lambda indices: dihedral_valid(
+            coords3d, indices, deg_thresh=dihed_max_deg,
+        ),
+        PrimTypes.IMPROPER_DIHEDRAL: lambda indices: dihedral_valid(
             coords3d, indices, deg_thresh=dihed_max_deg,
         ),
     }
-    for type_, *indices in typed_prims:
-        pass
-    # Check bends
-    # Check dihedrals
-    # Check complements
-
-    # bend_min_deg=15,
-    # dihed_max_deg=175.0,
-    # lb_min_deg=175.0,
+    valid_typed_prims = list()
+    for i, (type_, *indices) in enumerate(typed_prims):
+        try:
+            valid = funcs[type_](indices)
+        except KeyError:
+            valid = True
+        if valid:
+            valid_typed_prims.append((type_, *indices))
+        else:
+            log(logger, f"Primitive {(type_, *indices)} is invalid!")
+    return valid_typed_prims
