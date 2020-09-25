@@ -5,7 +5,7 @@ from distributed import Client
 import numpy as np
 from scipy.interpolate import interp1d, splprep, splev
 
-from pysisyphus.helpers import get_coords_diffs
+from pysisyphus.helpers import align_coords, get_coords_diffs
 from pysisyphus.helpers_pure import hash_arr
 from pysisyphus.modefollow import geom_lanczos
 
@@ -497,8 +497,8 @@ class ChainOfStates:
     def get_splined_hei(self):
         self.log("Splining HEI")
         # Interpolate energies
-        cart_coords = np.array([image.cart_coords for image in self.images])
-        coord_diffs = get_coords_diffs(cart_coords, align=True)
+        cart_coords = align_coords([image.cart_coords for image in self.images])
+        coord_diffs = get_coords_diffs(cart_coords)
         self.log(f"\tCoordinate differences: {coord_diffs}")
         energies = np.array(self.energy)
         energies_spline = interp1d(coord_diffs, energies, kind="cubic")
