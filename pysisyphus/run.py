@@ -1,6 +1,7 @@
 import argparse
 from collections import namedtuple
 import copy
+import datetime
 import itertools as it
 import os
 from math import ceil, floor, modf
@@ -1395,6 +1396,7 @@ def print_header():
     spv = sp.__version__  # SciPy
     print(f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
           f"Commit {get_versions()['full-revisionid']}\n"
+          f"Executed at {datetime.datetime.now().strftime('%c')}\n"
     )
 
 
