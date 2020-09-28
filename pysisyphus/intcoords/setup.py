@@ -229,6 +229,8 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
         if len(intersect) != 1:
             continue
 
+        # TODO: check collinearity of bond and bend.
+
         # When the common atom between bond and bend is a terminal, and not a central atom
         # in the bend we create a proper dihedral. Improper dihedrals are only created
         # when no proper dihedrals have been found.
@@ -246,6 +248,15 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
                     (terminal, intersecting_atom, bend_terminal, btb)
                     for btb in bend_terminal_bonds
                 ]
+                # Hardcoded for now ... look ahead to next shell of atoms
+                if not any([dihedral_valid(coords3d, inds, deg_thresh=max_deg)
+                            for inds in set_dihedrals]):
+                    set_dihedrals = []
+                    for btb in bend_terminal_bonds:
+                        next_bonds = set(bond_dict[btb]) - {bend_terminal}
+                        set_dihedrals.extend(
+                            [(terminal, intersecting_atom, btb, nb) for nb in next_bonds]
+                        )
             elif intersecting_atom == bend[0]:
                 set_dihedrals = [[terminal] + list(bend)]
             else:
@@ -400,8 +411,10 @@ def setup_redundant(
     linear_bend_complements = keep_coords(linear_bend_complements, LinearBend)
 
     # Dihedrals
+    bends_for_dihedrals = bends + linear_bends
     proper_dihedrals, improper_dihedrals = get_dihedral_inds(
-        coords3d, bonds_for_bends, bends, max_deg=dihed_max_deg, logger=logger
+        # coords3d, bonds_for_bends, bends, max_deg=dihed_max_deg, logger=logger
+        coords3d, bonds_for_bends, bends_for_dihedrals, max_deg=dihed_max_deg, logger=logger
     )
     proper_dihedrals += def_dihedrals
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
