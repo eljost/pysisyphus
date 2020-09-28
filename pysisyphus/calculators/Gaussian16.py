@@ -110,7 +110,6 @@ class Gaussian16(OverlapCalculator):
         exc_str = f"{self.exc_key}=({root},{nstates},{arg_str})"
         return exc_str
 
-
     def reuse_data(self, path):
         # Nothing to reuse if no fchk or chk present
         if (self.fchk is None) and not hasattr(self, "chk"):
