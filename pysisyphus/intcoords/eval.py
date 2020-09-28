@@ -49,7 +49,7 @@ def check_primitives(coords3d, primitives, thresh=1e-6, logger=None):
     missing = expected - nonzero_num
     if missing > 0:
         log( "Not enough internal coordinates defined! Expected at least "
-            f"{expected} nonzero eigenvalues, but found only {nonzero_num}!"
+            f"{expected} nonzero eigenvalues. Found only {nonzero_num}!"
         )
     nonzero_w = w[nonzero_inds]
     # Condition number
