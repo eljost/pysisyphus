@@ -1,5 +1,5 @@
 from pysisyphus.helpers_pure import OrderedEnum
-from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
+from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion, OutOfPlane
 
 
 class PrimTypes(OrderedEnum):
@@ -12,6 +12,7 @@ class PrimTypes(OrderedEnum):
     LINEAR_BEND_COMPLEMENT = 6
     PROPER_DIHEDRAL = 7
     IMPROPER_DIHEDRAL = 8
+    OUT_OF_PLANE = 9
 
 
 # Maps primitive types to their classes
@@ -25,4 +26,5 @@ PrimMap = {
     PrimTypes.LINEAR_BEND_COMPLEMENT: lambda indices: LinearBend(indices),
     PrimTypes.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
     PrimTypes.IMPROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
+    PrimTypes.OUT_OF_PLANE: OutOfPlane,
 }
