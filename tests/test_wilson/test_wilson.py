@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from pysisyphus.intcoords import Stretch, Bend, Torsion, LinearBend
+from pysisyphus.Geometry import Geometry
+from pysisyphus.intcoords import Stretch, Bend, Torsion, OutOfPlane, LinearBend
 from pysisyphus.intcoords.derivatives import (
     q_b,
     dq_b,
@@ -15,9 +16,12 @@ from pysisyphus.intcoords.derivatives import (
     q_lb,
     dq_lb,
     d2q_lb,
+    q_oop,
+    dq_oop,
+    d2q_oop,
 )
 import pysisyphus.intcoords.mp_derivatives as mp_d
-from pysisyphus.intcoords.findiffs import fin_diff_B
+from pysisyphus.intcoords.findiffs import fin_diff_prim, fin_diff_B
 from pysisyphus.io.zmat import geom_from_zmat, zmat_from_str
 
 
@@ -201,3 +205,47 @@ def test_linear_bend(deg):
     # # Finite difference reference values
     # ref_dgrad = fin_diff_B(LinearBend(indices), coords3d)
     # np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
+
+
+@pytest.mark.parametrize(
+    "dz", np.linspace(-10., 10., 21)
+)
+def test_outofplane(dz):
+    indices = [0, 1, 2, 3]
+
+    # Create equilateral triangle
+    r = 2
+    degs = np.array((120, 240, 360))
+    rads = np.deg2rad(degs)
+    xs = r * np.cos(rads)
+    ys = r * np.sin(rads)
+    zs = (0., 0., 0.)
+    _coords3d = np.stack((xs, ys, zs), axis=1)
+    _coords3d -= _coords3d.mean(axis=0)
+    coords3d = np.zeros((4, 3))
+    coords3d[:3] = _coords3d
+
+    # Add apex atom
+    coords3d[3] = (0., 0., dz)
+    atoms = ("C", "C", "C", "C")
+
+    geom = Geometry(atoms, coords3d.flatten())
+    # geom.jmol()
+    oop = OutOfPlane(indices)
+    val, grad = oop.calculate(geom.coords3d, gradient=True)
+
+    # Reference values, code generated
+    args = coords3d[indices].flatten()
+    ref_val = q_oop(*args)
+    assert val == pytest.approx(ref_val)
+
+    # Reference gradient returned in order [0, 1, 2, 3]
+    ref_grad = fin_diff_prim(oop, geom.coords3d)
+    np.testing.assert_allclose(grad, ref_grad, atol=1e-10)
+
+    # Code generated 2nd derivative
+    dgrad = d2q_oop(*args)
+
+    # Finite difference reference values
+    ref_dgrad = fin_diff_B(oop, coords3d)
+    np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)

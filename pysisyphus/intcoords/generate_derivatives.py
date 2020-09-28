@@ -207,15 +207,40 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         )
         return func_result_lb
 
+    def out_of_plane():
+        U = M.position_wrt(P)
+        V = N.position_wrt(P)
+        W = O.position_wrt(P)
+
+        U_ = U.normalize()
+        W_ = W.normalize()
+        V_ = V.normalize()
+
+        Z = U_.cross(V_) + V_.cross(W_) + W_.cross(U_)
+        Z_ = Z.normalize()
+
+        q_oop = Z_.dot(U_)
+
+        dx_oop =   (m0, m1, m2, n0, n1, n2, o0, o1, o2, p0, p1, p2)
+        args_oop = "m0, m1, m2, n0, n1, n2, o0, o1, o2, p0, p1, p2"
+        func_result_oop = make_deriv_funcs(
+            q_oop, dx_oop, args_oop,
+            ("q_oop", "dq_oop", "d2q_oop"),
+            "OutOfPlane",
+            use_mpmath=use_mpmath,
+        )
+        return func_result_oop
+
     if generate is None:
-        generate = ("bond", "bend", "dihedral", "linear_bend")
-        # generate = ("bond", "bend")
+        generate = ("bond", "bend", "dihedral", "linear_bend", "out_of_plane")
+        # generate = ("out_of_plane", )
 
     avail_funcs = {
         "bond": bond,
         "bend": bend,
         "dihedral": dihedral,
         "linear_bend": linear_bend,
+        "out_of_plane" : out_of_plane,
     }
     funcs = [avail_funcs[key] for key in generate]
     func_results = list()
@@ -238,6 +263,6 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
 
 
 if __name__ == "__main__":
-    # generate_wilson(out_fn="derivatives.py", use_mpmath=False)
+    generate_wilson(out_fn="derivatives.py", use_mpmath=False)
     # print()
     generate_wilson(out_fn="mp_derivatives.py", use_mpmath=True)
