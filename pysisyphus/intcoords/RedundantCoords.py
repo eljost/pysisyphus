@@ -37,6 +37,7 @@ class RedundantCoords:
         lb_min_deg=175.0,
         weighted=False,
         min_weight=0.3,
+        rcond=1e-12
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -48,9 +49,10 @@ class RedundantCoords:
         self.bend_min_deg = bend_min_deg
         self.dihed_max_deg = dihed_max_deg
         self.lb_min_deg = lb_min_deg
+        self.weighted = weighted
         self.min_weight = float(min_weight)
         assert self.min_weight > 0.0, "min_weight must be a positive rational!"
-        self.weighted = weighted
+        self.rcond = rcond
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -214,29 +216,34 @@ class RedundantCoords:
         """Wilson B-Matrix"""
         return self.B_prim
 
+    def pinv(self, array, rcond=None):
+        if rcond is None:
+            rcond = self.rcond
+        return np.linalg.pinv(array, rcond=rcond)
+
     @property
     def Bt_inv_prim(self):
         """Transposed generalized inverse of the primitive Wilson B-Matrix."""
         B = self.B_prim
-        return np.linalg.pinv(B.dot(B.T)).dot(B)
+        return self.pinv(B.dot(B.T)).dot(B)
 
     @property
     def Bt_inv(self):
         """Transposed generalized inverse of the Wilson B-Matrix."""
         B = self.B
-        return np.linalg.pinv(B.dot(B.T)).dot(B)
+        return self.pinv(B.dot(B.T)).dot(B)
 
     @property
     def B_inv_prim(self):
         """Generalized inverse of the primitive Wilson B-Matrix."""
         B = self.B_prim
-        return B.T.dot(np.linalg.pinv(B.dot(B.T)))
+        return B.T.dot(self.pinv(B.dot(B.T)))
 
     @property
     def B_inv(self):
         """Generalized inverse of the Wilson B-Matrix."""
         B = self.B
-        return B.T.dot(np.linalg.pinv(B.dot(B.T)))
+        return B.T.dot(self.pinv(B.dot(B.T)))
 
     @property
     def P(self):
