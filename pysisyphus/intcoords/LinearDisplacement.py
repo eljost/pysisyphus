@@ -1,7 +1,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
-from pysisyphus.intcoords.derivatives import dq_ld
+from pysisyphus.intcoords.derivatives import dq_ld, d2q_ld
 
 
 class LinearDisplacement(Primitive):
@@ -27,10 +27,13 @@ class LinearDisplacement(Primitive):
         min_ind = np.argmin([np.dot(cv, x) ** 2 for cv in cross_vecs])
         return cross_vecs[min_ind]
 
+    def set_cross_vec(self, coords3d, indices):
+        self.cross_vec = self._get_cross_vec(coords3d, self.indices)
+        self.log(f"Cross vector for {self} set to {self.cross_vec}")
+
     def calculate(self, coords3d, indices=None, gradient=False):
         if self.cross_vec is None:
-            self.cross_vec = self._get_cross_vec(coords3d, self.indices)
-            self.log(f"Cross vector for {self} was undefined. Set it to {self.cross_vec}")
+            self.set_cross_vec(coords3d, indices)
 
         return super().calculate(coords3d, indices, gradient)
 
@@ -66,9 +69,24 @@ class LinearDisplacement(Primitive):
 
         return lin_disp
 
+    def jacobian(self, coords3d, indices=None):
+        if self.cross_vec is None:
+            self.set_cross_vec(coords3, indices)
+
+        return super().jacobian(coords3d, indices)
+
     @staticmethod
-    def _jacobian(coords3d, indices, complement=False):
-        raise Exception("Not yet implemented!")
+    def _jacobian(coords3d, indices, complement=False, cross_vec=None):
+        if cross_vec is None:
+            cross_vec = LinearDisplacement._get_cross_vec(coords3d, indices)
+
+        if complement:
+            m, _, n = indices
+            w_dash = coords3d[n] - coords3d[m]
+            w = w_dash / np.linalg.norm(w_dash)
+            cross_vec = np.cross(w, cross_vec)
+
+        return d2q_ld(*coords3d[indices].flatten(), *cross_vec)
 
     def __str__(self):
         return (

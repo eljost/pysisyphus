@@ -1,6 +1,7 @@
 __all__ = [
    "Bend",
    "LinearBend",
+   "LinearDisplacement",
    "OutOfPlane",
    "Stretch",
    "Torsion",
@@ -10,6 +11,7 @@ __all__ = [
 
 from pysisyphus.intcoords.Bend import Bend
 from pysisyphus.intcoords.LinearBend import LinearBend
+from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
 from pysisyphus.intcoords.OutOfPlane import OutOfPlane
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.intcoords.Torsion import Torsion

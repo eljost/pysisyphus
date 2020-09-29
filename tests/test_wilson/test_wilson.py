@@ -2,7 +2,14 @@ import numpy as np
 import pytest
 
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords import Stretch, Bend, Torsion, OutOfPlane, LinearBend
+from pysisyphus.intcoords import (
+    Stretch,
+    Bend,
+    Torsion,
+    OutOfPlane,
+    LinearBend,
+    LinearDisplacement,
+)
 from pysisyphus.intcoords.derivatives import (
     q_b,
     dq_b,
@@ -156,7 +163,10 @@ def test_torsion(dihedral):
         grad.flatten(), sign * ref_grad.flatten(), atol=1e-8, err_msg="1st derivative"
     )
     np.testing.assert_allclose(
-        grad.flatten(), sign * mp_ref_grad.flatten(), atol=1e-8, err_msg="1st derivative"
+        grad.flatten(),
+        sign * mp_ref_grad.flatten(),
+        atol=1e-8,
+        err_msg="1st derivative",
     )
 
     # Code generated 2nd derivative
@@ -207,9 +217,7 @@ def test_linear_bend(deg):
     # np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
 
 
-@pytest.mark.parametrize(
-    "dz", np.linspace(-10., 10., 21)
-)
+@pytest.mark.parametrize("dz", np.linspace(-10.0, 10.0, 21))
 def test_outofplane(dz):
     indices = [0, 1, 2, 3]
 
@@ -219,14 +227,14 @@ def test_outofplane(dz):
     rads = np.deg2rad(degs)
     xs = r * np.cos(rads)
     ys = r * np.sin(rads)
-    zs = (0., 0., 0.)
+    zs = (0.0, 0.0, 0.0)
     _coords3d = np.stack((xs, ys, zs), axis=1)
     _coords3d -= _coords3d.mean(axis=0)
     coords3d = np.zeros((4, 3))
     coords3d[:3] = _coords3d
 
     # Add apex atom
-    coords3d[3] = (0., 0., dz)
+    coords3d[3] = (0.0, 0.0, dz)
     atoms = ("C", "C", "C", "C")
 
     geom = Geometry(atoms, coords3d.flatten())
@@ -249,5 +257,39 @@ def test_outofplane(dz):
 
     # Finite difference reference values
     ref_dgrad = fin_diff_B(oop, coords3d)
+    np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
+    np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
+
+
+def test_linear_displacement():
+    from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
+    from pysisyphus.helpers import geom_loader
+
+    geom = geom_loader("lib:08_allene.xyz")
+    coords3d = geom.coords3d
+    indices = [5, 4, 1]
+    ld = LinearDisplacement(indices)
+    val, grad = ld.calculate(coords3d, gradient=True)
+    print(f"pysis value={val:.6f}")
+
+    # from geometric.internal import LinearAngle
+    # complement = False
+    # LA = LinearAngle(*indices, axis=complement)
+    # vLA = LA.value(coords3d)
+    # print(f"geometric value={vLA:.6f}")
+
+    # First derivative
+    ref_row = np.zeros_like(coords3d)
+    ref_row[indices] = fin_diff_prim(ld, coords3d).reshape(-1, 3)
+    ref_row = ref_row.flatten()
+    np.testing.assert_allclose(grad, ref_row, atol=1e-10)
+
+    # Second derivative
+    # Code generated 2nd derivative
+    dgrad = ld.jacobian(coords3d)
+    mp_dgrad = mp_d.d2q_ld(*coords3d[indices].flatten(), *ld.cross_vec)
+
+    # Finite difference reference values
+    ref_dgrad = fin_diff_B(ld, coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
