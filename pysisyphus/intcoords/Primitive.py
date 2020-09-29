@@ -1,4 +1,5 @@
 import abc
+import logging
 from math import exp
 
 import numpy as np
@@ -13,6 +14,10 @@ class Primitive(metaclass=abc.ABCMeta):
         if calc_kwargs is None:
             calc_kwargs = ()
         self.calc_kwargs = calc_kwargs
+        self.logger = logging.getLogger("internal_coords")
+
+    def log(self, msg, lvl=logging.DEBUG):
+        self.logger.log(lvl, msg)
 
     @staticmethod
     def parallel(u, v, thresh=1e-6):
