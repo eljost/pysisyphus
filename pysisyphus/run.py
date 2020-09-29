@@ -1023,6 +1023,10 @@ RunResult = namedtuple(
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
          dryrun=None):
+    # Dump actual run_dict
+    with open("RUN.yaml", "w") as handle:
+        yaml.dump(run_dict, handle)
+
     if run_dict["interpol"]:
         interpolate = run_dict["interpol"]["type"]
         between = run_dict["interpol"]["between"]
@@ -1351,6 +1355,7 @@ def do_clean(force=False):
         "plain_hei_tangent",
         "plain_hei.xyz",
         "hess_calc_irc*.h5",
+        "rebuilt_primitives.xyz",
     )
     to_rm_paths = list()
     for glob in rm_globs:
