@@ -20,6 +20,7 @@ import scipy as sp
 import pytest
 import yaml
 
+from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
@@ -725,6 +726,34 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, similar_thresh=0.025):
     print()
 
 
+def do_endopt_ts_barriers(end_geoms, end_fns, ts_geom):
+    if len(end_geoms) != 2:
+        return
+
+    print(highlight_text("Barrier heights after end optimizations"))
+
+    ts_energy = ts_geom.energy
+    forward_geom, backward_geom = end_geoms
+    forward_energy = forward_geom.energy
+    backward_energy = backward_geom.energy
+    energies = np.array((forward_energy, ts_energy, backward_energy))
+    energies -= energies.min()
+    min_ind = energies.argmin()
+    energies *= AU2KJPERMOL
+
+    forward_fn, backward_fn = end_fns
+    fns = (forward_fn, "TS", backward_fn)
+    max_len = max(len(s) for s in fns)
+    
+    print()
+    print(f"Minimum energy of {energies[min_ind]} kJ mol⁻¹ at '{fns[min_ind]}'.")
+    print()
+    for fn, en in zip(fns, energies):
+        print(f"\t{fn:>{max_len}s}: {en:>8.2f} kJ mol⁻¹")
+    print()
+
+
+
 def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     print(highlight_text(f"Optimizing IRC ends"))
 
@@ -1023,6 +1052,7 @@ RunResult = namedtuple(
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
          dryrun=None):
+
     # Dump actual run_dict
     with open("RUN.yaml", "w") as handle:
         yaml.dump(run_dict, handle)
@@ -1216,8 +1246,12 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
             end_geoms, end_fns = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+
             if run_dict["cos"] and (len(end_geoms) == 2):
                 do_rmsds(xyz, geoms, end_fns, end_geoms)
+
+            if run_dict["tsopt"]:
+                do_endopt_ts_barriers(end_geoms, end_fns, ts_geom)
     # Fallback when no specific job type was specified
     else:
         calced_geoms = run_calculations(geoms, calc_getter, yaml_dir,
@@ -1356,6 +1390,8 @@ def do_clean(force=False):
         "plain_hei.xyz",
         "hess_calc_irc*.h5",
         "rebuilt_primitives.xyz",
+        "RUN.yaml",
+        "middle_for_preopt.trj",
     )
     to_rm_paths = list()
     for glob in rm_globs:
