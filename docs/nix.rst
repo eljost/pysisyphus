@@ -67,6 +67,10 @@ or use :code:`nix run`
 
     nix run
 
+**WARNING** In case of :code:`nix run` the resulting shell will not be pure. Depending on your system configuration conda/pip/... packages and configurations from the system might leak in. You are definitely safe with :code:`nix-shell --pure`.
+
+Do not be confused if the commands of the underlying quantum chemistry codes are not available. They are made available to pysisyphus directly but not necessarily to your shell.
+
 .. _`nix package manager`: https://nixos.org/download.html
 .. _NixWithChemistry: https://gitlab.com/theoretical-chemistry-jena/nixwithchemistry
 .. _`nix-shell`: https://nixos.org/nix/manual/#sec-nix-shell
