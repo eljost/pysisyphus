@@ -261,22 +261,25 @@ def test_outofplane(dz):
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
 
 
-def test_linear_displacement():
+@pytest.mark.parametrize(
+    "deg", np.linspace(165, 180, 16)
+)
+def test_linear_displacement(deg):
     from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
     from pysisyphus.helpers import geom_loader
 
-    geom = geom_loader("lib:08_allene.xyz")
+    zmat_str = f"""
+    C
+    C 1 1.5
+    C 1 1.5 2 {deg}
+    """
+    zmat = zmat_from_str(zmat_str)
+    geom = geom_from_zmat(zmat)
     coords3d = geom.coords3d
-    indices = [5, 4, 1]
+
+    indices = [1, 0, 2]
     ld = LinearDisplacement(indices)
     val, grad = ld.calculate(coords3d, gradient=True)
-    print(f"pysis value={val:.6f}")
-
-    # from geometric.internal import LinearAngle
-    # complement = False
-    # LA = LinearAngle(*indices, axis=complement)
-    # vLA = LA.value(coords3d)
-    # print(f"geometric value={vLA:.6f}")
 
     # First derivative
     ref_row = np.zeros_like(coords3d)
