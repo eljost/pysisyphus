@@ -71,7 +71,7 @@ class LinearDisplacement(Primitive):
 
     def jacobian(self, coords3d, indices=None):
         if self.cross_vec is None:
-            self.set_cross_vec(coords3, indices)
+            self.set_cross_vec(coords3d, indices)
 
         return super().jacobian(coords3d, indices)
 
