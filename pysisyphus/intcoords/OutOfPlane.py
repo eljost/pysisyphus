@@ -5,6 +5,10 @@ from pysisyphus.intcoords.derivatives import dq_oop, d2q_oop
 
 
 class OutOfPlane(Primitive):
+    """
+    [1] https://doi.org/10.1002/(SICI)1096-987X(19990730)20:10<1067::AID-JCC9>3.0.CO;2-V
+        Lee, 1999
+    """
 
     def _weight(atoms, coords3d, indices, f_damping):
         raise Exception("Not yet implemented!")
@@ -32,17 +36,17 @@ class OutOfPlane(Primitive):
 
         z_dash = np.cross(u, v) + np.cross(v, w) + np.cross(w, u)
         z = z_dash / np.linalg.norm(z_dash)
-        
+
         oop_coord = z.dot(u)
 
         if gradient:
             grad = dq_oop(*coords3d[m], *coords3d[n], *coords3d[o], *coords3d[p])
             grad = grad.reshape(4, 3)
             row = np.zeros_like(coords3d)
-            row[m,:] = grad[0]
-            row[n,:] = grad[1]
-            row[o,:] = grad[2]
-            row[p,:] = grad[3]
+            row[m, :] = grad[0]
+            row[n, :] = grad[1]
+            row[o, :] = grad[2]
+            row[p, :] = grad[3]
             row = row.flatten()
             return oop_coord, row
 
