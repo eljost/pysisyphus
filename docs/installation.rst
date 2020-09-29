@@ -114,6 +114,10 @@ Depending on the software different choices were made how it is registered. An e
     # Cmd to execute. Please ensure that xtb is on your $PATH.
     cmd=xtb
 
+    [openmolcas]
+    # Make sure that the MOLCAS variable is set.
+    cmd=pymolcas
+
     # Utilities
 
     [wfoverlap]
