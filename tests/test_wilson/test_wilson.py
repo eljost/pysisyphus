@@ -245,7 +245,9 @@ def test_outofplane(dz):
 
     # Code generated 2nd derivative
     dgrad = oop.jacobian(coords3d)
+    mp_dgrad = mp_d.d2q_oop(*coords3d[indices].flatten())
 
     # Finite difference reference values
     ref_dgrad = fin_diff_B(oop, coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
+    np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
