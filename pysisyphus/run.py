@@ -54,7 +54,7 @@ CALC_DICT = {
     "g16": Gaussian16,
     "mopac": MOPAC,
     "oniom": ONIOM,
-    "openmolcas": OpenMolcas.OpenMolcas,
+    "openmolcas": OpenMolcas,
     "orca": ORCA,
     "psi4": Psi4,
     "turbomole": Turbomole,
