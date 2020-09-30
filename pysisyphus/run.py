@@ -1042,7 +1042,7 @@ RunResult = namedtuple(
                  "preopt_xyz "
                  "cos cos_opt "
                  "ts_geom ts_opt "
-                 "end_geoms irc "
+                 "end_geoms irc irc_geom "
                  "opt_geom opt "
                  "calced_geoms stocastic "
                  "calc_getter "
@@ -1236,6 +1236,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             # and not the Dimer calculator.
             if calc_key == "dimer":
                 calc_getter = act_calc_getter
+            irc_geom = geom.copy()
             irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
             ran_irc = True
 
@@ -1252,6 +1253,14 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
 
             if run_dict["tsopt"]:
                 do_endopt_ts_barriers(end_geoms, end_fns, ts_geom)
+
+            # Dump TS and endopt geoms into trj file
+            if len(end_geoms) == 2:
+                trj_fn = "end_geoms_and_ts.trj"
+                forward_end_geom, backward_end_geom = end_geoms
+                write_geoms_to_trj((forward_end_geom, irc_geom, backward_end_geom),
+                                   trj_fn, comments=("Forward end", "TS", "Backward end"))
+                print(f"Wrote optimized end-geometries and TS to '{trj_fn}'")
     # Fallback when no specific job type was specified
     else:
         calced_geoms = run_calculations(geoms, calc_getter, yaml_dir,

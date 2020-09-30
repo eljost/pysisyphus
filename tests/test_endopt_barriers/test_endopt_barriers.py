@@ -29,5 +29,5 @@ def test_endopt_barriers():
     results = run_from_dict(run_dict)
 
     assert results.ts_opt.is_converged
-    assert results.ts_opt.cur_cycle == 1
+    assert results.ts_opt.cur_cycle == 2
     assert results.ts_geom.energy == pytest.approx(-5.38737424)
