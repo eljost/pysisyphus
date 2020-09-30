@@ -14,6 +14,7 @@ from pysisyphus.calculators.Rosenbrock import Rosenbrock
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.NCOptimizer import NCOptimizer
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.optimizers.RSA import RSA
 
 
 @pytest.mark.parametrize(
@@ -73,6 +74,7 @@ def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
     pytest.param(LBFGS, {"double_damp": True, "gamma_mult": True, }, 19),
     pytest.param(LBFGS, {"double_damp": True, "gamma_mult": False, }, 19),
     pytest.param(LBFGS, {"double_damp": False}, 19, marks=pytest.mark.xfail),
+    (RSA, {}, 17),
     ]
 )
 def test_optimizers(opt_cls, opt_kwargs_, ref_cycle):
@@ -88,6 +90,14 @@ def test_optimizers(opt_cls, opt_kwargs_, ref_cycle):
     opt = opt_cls(geom, **opt_kwargs)
     opt.run()
 
+    import matplotlib.pyplot as plt
+    calc = geom.calculator
+    calc.plot()
+    coords = np.array(opt.coords)
+    ax = calc.ax
+    ax.plot(*coords.T[:2], "ro-")
+    plt.show()
+
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
 
@@ -97,11 +107,3 @@ def test_optimizers(opt_cls, opt_kwargs_, ref_cycle):
     assert diff_norm < 6e-5
 
     # print("@\tFinal coords", geom.coords)
-
-    # import matplotlib.pyplot as plt
-    # calc = geom.calculator
-    # calc.plot()
-    # coords = np.array(opt.coords)
-    # ax = calc.ax
-    # ax.plot(*coords.T[:2], "ro-")
-    # plt.show()
