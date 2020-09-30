@@ -27,9 +27,10 @@ Contrubtions are welcome, so feel free to submit a PR.
    :maxdepth: 3
    :numbered:
    :caption: Contents:
- 
+
    overview.rst
    installation.rst
+   nix.rst
    calculators.rst
    min_optimization.rst
    es_optimization.rst
@@ -38,7 +39,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    irc.rst
    plotting.rst
    pysistrj.rst
-	
+
 Indices and tables
 ==================
 

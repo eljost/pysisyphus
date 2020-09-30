@@ -13,6 +13,7 @@
 , rmsd
 , scipy
 , sympy
+, bash
 , orca ? orca # or null
 , turbomole ? turbomole # or null
 , gaussian ? gaussian # or null
@@ -27,6 +28,7 @@
 }:
 let
   psi4Wrapper = writeScript "psi4.sh" ''
+    #!${bash}/bin/bash
     ${psi4}/bin/psi4 -o stdout $1
   '';
   pysisrc =
@@ -119,12 +121,27 @@ in
 
     doCheck = false;
 
+    binSearchPath = lib.makeSearchPath "bin" ([ ]
+      ++ lib.optional (orca != null) orca
+      ++ lib.optional (turbomole != null) turbomole
+      ++ lib.optional (gaussian != null) gaussian
+      ++ lib.optional (jmol != null) jmol
+      ++ lib.optional (multiwfn != null) multiwfn
+      ++ lib.optional (xtb != null) xtb
+      ++ lib.optional (openmolcas != null) openmolcas
+      ++ lib.optional (pyscf != null) pyscf
+      ++ lib.optional (psi4 != null) psi4
+      ++ lib.optional (mopac != null) mopac
+      ++ lib.optional (wfoverlap != null) wfoverlap
+    );
+
     postInstall = ''
       mkdir -p $out/share/pysisyphus
       cp ${pysisrc} $out/share/pysisyphus/pysisrc
 
       for exe in $out/bin/*; do
         wrapProgram $exe \
+          --prefix PATH : ${binSearchPath} \
           --set-default "PYSISRC" "$out/share/pysisyphus/pysisrc"
       done;
     '';
