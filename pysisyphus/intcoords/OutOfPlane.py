@@ -10,6 +10,7 @@ class OutOfPlane(Primitive):
         Lee, 1999
     """
 
+    @staticmethod
     def _weight(atoms, coords3d, indices, f_damping):
         raise Exception("Not yet implemented!")
 

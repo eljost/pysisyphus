@@ -56,10 +56,10 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
         diag_inds = np.diag_indices(size)
         T[diag_inds] = alphas
         if len(alphas) > 1:
-            for i, b in enumerate(betas[:-1], 1):
-                j = i-1
-                T[i,j] = b
-                T[j,i] = b
+            for j, b in enumerate(betas[:-1], 1):
+                k = j-1
+                T[j,k] = b
+                T[k,j] = b
 
         # Values for next cycle
         beta_prev = beta
