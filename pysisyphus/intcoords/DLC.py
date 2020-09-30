@@ -26,7 +26,7 @@ class DLC(RedundantCoords):
         # For now we use a pseudo-inverse instead of a regular inverse,
         # as some columns of U may be zero from constraints (resulting in
         # singular U matrix that cannot be readily inverted).
-        self._Ut_inv = np.linalg.pinv(self.U.T)
+        self._Ut_inv = np.linalg.pinv(self.U.T, rcond=self.rcond)
 
     @property
     def Ut_inv(self):
