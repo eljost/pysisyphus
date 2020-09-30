@@ -1,6 +1,7 @@
 import argparse
 import itertools as it
 from pathlib import Path
+import re
 import sys
 
 from natsort import natsorted
@@ -8,7 +9,7 @@ import numpy as np
 import rmsd as rmsd
 import yaml
 
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.setup import get_fragments
@@ -91,6 +92,9 @@ def parse_args(args):
     )
     action_group.add_argument("--get", type=int,
         help="Get n-th geometry. Expects 0-based index input."
+    )
+    action_group.add_argument("--geti", action="store_true",
+        help="Decide on geometry interactively."
     )
     action_group.add_argument("--origin", action="store_true",
         help="Translate geometry, so that min(X/Y/Z) == 0."
@@ -456,6 +460,47 @@ def get(geoms, index):
     return [geoms[index], ]
 
 
+class GotNoGeometryException(Exception):
+    pass
+
+
+def get_interactively(geoms):
+    # Try to parse energies from geoms
+    energy_re = re.compile("[-\.\d]+")
+    comments = [geom.comment for geom in geoms]
+    energies = [energy_re.search(comment) for comment in comments]
+    energies = list()
+    for geom in geoms:
+        mobj = energy_re.search(geom.comment)
+        if mobj:
+            energy = float(mobj[0])
+        else:
+            energy = np.nan
+        energies.append(energy)
+    energies = np.array(energies)
+    energies -= np.nanmin(energies)
+    energies *= AU2KJPERMOL
+    min_ind = np.nanargmin(energies)
+    print(f"Minimum energy at index {min_ind}")
+    msg = f"Input index (0-{len(geoms)-1}, q to quit): "
+    while True:
+        try:
+            selection = input(msg)
+            if selection == "q":
+                raise GotNoGeometryException()
+            selection = int(selection)
+        except ValueError:
+            print("Invalid input!")
+            continue
+        en = energies[selection]
+        print(f"ΔE at geometry {selection} is {en:+.2f} kJ mol⁻¹.")
+        yn = input("Get this geometry (y/n)? ").lower()
+        if yn == "y":
+            return get(geoms, selection)
+        else:
+            continue
+
+
 def origin(geoms):
     for i, geom in enumerate(geoms):
         print(f"{i:02d}: {geom}")
@@ -554,6 +599,12 @@ def run():
     elif args.get or (args.get == 0):
         to_dump = get(geoms, args.get)
         fn_base = "got"
+    elif args.geti:
+        try:
+            to_dump = get_interactively(geoms)
+            fn_base = "got"
+        except GotNoGeometryException:
+            return
     elif args.internals:
         print_internals(geoms, args.atoms, args.add_prims)
         return
