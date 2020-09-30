@@ -4,12 +4,14 @@ import numpy as np
 import pytest
 from pytest import approx
 
+from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.calculators import XTB
 from pysisyphus.helpers import geom_loader
-from pysisyphus.io.zmat import geom_from_zmat_str
 from pysisyphus.intcoords.PrimTypes import PrimTypes
 from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.intcoords.valid import check_typed_prims
-from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.io.zmat import geom_from_zmat_str
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
 
@@ -193,19 +195,7 @@ def test_check_typed_prims_invalid_dihedral():
     assert dihedral not in valid_typed_prims
 
 
-@pytest.mark.skip
 def test_linear_dihedrals():
-    cart_geom = geom_loader("lib:dihedral_gen_test.cjson")
-    c3d = cart_geom.coords3d
-
-    # from pysisyphus.intcoords.setup import get_dihedral_inds
-    # bond_inds = ((5, 0), (4, 0), (0, 1), (1, 6), (6, 7), (7, 2), (7, 3))
-    # bend_inds = ((7, 6, 1), )
-    # max_deg = 175.0
-    # pds, ids = get_dihedral_inds(c3d, bond_inds, bend_inds, max_deg)
-    # print(pds, ids)
-    # return
-
     geom = geom_loader("lib:dihedral_gen_test.cjson", coord_type="redund")
     typed_prims = geom.internal.typed_prims
     pd = PrimTypes.PROPER_DIHEDRAL
@@ -214,40 +204,17 @@ def test_linear_dihedrals():
         assert ((pd, *dihed) in typed_prims) or ((pd, *dihed[::-1]) in typed_prims)
 
 
-@pytest.mark.skip
+@using("xtb")
 def test_opt_linear_dihedrals():
-    from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-    from pysisyphus.calculators import XTB
-
-    geom = geom_loader("lib:dihedral_gen_test.cjson", coord_type="redund",
-                       coord_kwargs={"rcond": 1e-6,})
+    geom = geom_loader("lib:dihedral_gen_test.cjson", coord_type="redund")
     geom.set_calculator(XTB())
 
-    cf = geom.cart_forces
-    B = geom.internal.B_prim
-    # for rcond in np.logspace(-6, -15, num=10):
-    for rcond in (1e-6, ):
-        print(f"{rcond:.4e}")
-        Bt_inv = np.linalg.pinv(B.dot(B.T), rcond=rcond).dot(B)
-
-        forces = Bt_inv.dot(cf)
-        for i, (f, p) in enumerate(zip(forces, geom.internal.primitives)):
-            print(f"{i:02d}: {p}, {f:.4f}")
-        print("######\n"*2)
-    # import sys; sys.exit()
-
     opt_kwargs = {
-        "trust_radius": 0.3,
         "thresh": "gau_tight",
-        "max_micro_cycles": 10,
-        "dump": True,
-        "max_cycles": 5,
-        "gdiis": False,
-        "line_search": False,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
-
-# test_linear_dihedrals()
-# test_opt_linear_dihedrals()
+    assert opt.is_converged
+    assert opt.cur_cycle == 16
+    assert geom.energy == pytest.approx(-10.48063133)
