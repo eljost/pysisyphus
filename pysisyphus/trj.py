@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import sys
 
+import matplotlib.pyplot as plt
 from natsort import natsorted
 import numpy as np
 import rmsd as rmsd
@@ -482,12 +483,20 @@ def get_interactively(geoms):
     energies *= AU2KJPERMOL
     min_ind = np.nanargmin(energies)
     print(f"Minimum energy at index {min_ind}")
-    msg = f"Input index (0-{len(geoms)-1}, q to quit): "
+    print("(q) to quit\n(p) to plot energies")
+    msg = f"Input index (0-{len(geoms)-1})/p/q: "
     while True:
         try:
             selection = input(msg)
             if selection == "q":
                 raise GotNoGeometryException()
+            elif selection == "p":
+                fig, ax = plt.subplots()
+                ax.plot(energies, "o-")
+                ax.set_xlabel("Index")
+                ax.set_ylabel("ΔE / kJ mol⁻¹")
+                plt.show()
+                continue
             selection = int(selection)
         except ValueError:
             print("Invalid input!")
