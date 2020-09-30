@@ -6,6 +6,7 @@ import itertools as it
 import os
 from math import ceil, floor, modf
 from pathlib import Path
+import platform
 from pprint import pprint
 import re
 import shutil
@@ -1446,7 +1447,7 @@ def print_header():
     spv = sp.__version__  # SciPy
     print(f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
           f"Git commit {get_versions()['full-revisionid']}\n"
-          f"Executed at {datetime.datetime.now().strftime('%c')}\n"
+          f"Executed at {datetime.datetime.now().strftime('%c')} on '{platform.node()}'\n"
     )
 
 
@@ -1473,6 +1474,11 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
     start_time = time.time()
     print_header()
 
+    # Citation
+    citation = "If pysisyphus benefitted your research please cite:\n\n" \
+               "\thttps://doi.org/10.1002/qua.26390\n\nGood luck!\n"
+    print(citation)
+
     init_logging(cwd, scheduler)
     # Load defaults etc.
     if set_defaults:
@@ -1491,11 +1497,6 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
     # Return after header was printed
     elif version:
         return
-
-    # Citation
-    citation = "If pysisyphus benefitted your research please cite:\n\n" \
-               "\thttps://doi.org/10.1002/qua.26390\n\nGood luck!\n"
-    print(citation)
 
     run_dict_without_none = {k: v for k, v in run_dict.items()
                              if v is not None}
