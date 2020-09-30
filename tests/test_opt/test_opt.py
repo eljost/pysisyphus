@@ -90,13 +90,13 @@ def test_optimizers(opt_cls, opt_kwargs_, ref_cycle):
     opt = opt_cls(geom, **opt_kwargs)
     opt.run()
 
-    import matplotlib.pyplot as plt
-    calc = geom.calculator
-    calc.plot()
-    coords = np.array(opt.coords)
-    ax = calc.ax
-    ax.plot(*coords.T[:2], "ro-")
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # calc = geom.calculator
+    # calc.plot()
+    # coords = np.array(opt.coords)
+    # ax = calc.ax
+    # ax.plot(*coords.T[:2], "ro-")
+    # plt.show()
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
