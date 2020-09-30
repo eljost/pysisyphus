@@ -108,6 +108,7 @@ class RedundantCoords:
         if self.bonds_only:
             self.bending_indices = list()
             self.dihedral_indices = list()
+            self.linear_bend_indices = list()
             self.primitives = [
                 prim for prim in self.primitives if isinstance(prim, Stretch)
             ]
@@ -399,6 +400,7 @@ class RedundantCoords:
             self.B_prim,
             self.primitives,
             check_dihedrals=self.rebuild,
+            rcond=self.rcond,
             logger=self.logger,
         )
         # Update coordinates

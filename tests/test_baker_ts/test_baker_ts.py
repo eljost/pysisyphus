@@ -13,11 +13,11 @@ from pysisyphus.tsoptimizers import *
 def get_geoms():
     fails = (
         "15_hocl.xyz",  # SCF goes completely nuts
-        "20_hconh3_cation.xyz",  # fails when angles up to & including 180° are defined
     )
     works = (
         "01_hcn.xyz",
         "02_hcch.xyz",
+        "03_h2co.xyz",
         "04_ch3o.xyz",
         "05_cyclopropyl.xyz",
         "06_bicyclobutane.xyz",
@@ -25,24 +25,18 @@ def get_geoms():
         "08_formyloxyethyl.xyz",
         "09_parentdieslalder.xyz",
         "12_ethane_h2_abstraction.xyz",
+        "13_hf_abstraction.xyz",
         "14_vinyl_alcohol.xyz",
         "16_h2po4_anion.xyz",
         "17_claisen.xyz",
         "18_silyene_insertion.xyz",
+        "19_hnccs.xyz",
+        "20_hconh3_cation.xyz",
+        "21_acrolein_rot.xyz",
         "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
-        "25_hcnh2.xyz",
-    )
-    math_error_but_works = (
-        # [..]/intcoords/derivatives.py", line 640, in d2q_d
-        # x99 = 1/sqrt(x93)
-        #   ValueError: math domain error
-        # ZeroDivison Fix
-        "03_h2co.xyz",
-        "13_hf_abstraction.xyz",
-        "19_hnccs.xyz",
-        "21_acrolein_rot.xyz",
         "24_h2cnh.xyz",
+        "25_hcnh2.xyz",
     )
     alpha_negative = ()
     no_imag = (
@@ -55,7 +49,7 @@ def get_geoms():
     )
     use = (
         # fails,
-        works,
+        # works,
         math_error_but_works,
         # alpha_negative,
         # no_imag,

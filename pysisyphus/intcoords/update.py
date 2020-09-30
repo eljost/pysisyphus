@@ -75,6 +75,7 @@ def transform_int_step(
     primitives,
     check_dihedrals=False,
     cart_rms_thresh=1e-6,
+    rcond=1e-8,
     logger=None,
 ):
     """Transformation is done in primitive internals, so int_step must be given
@@ -84,7 +85,7 @@ def transform_int_step(
     remaining_int_step = int_step
     target_internals = cur_internals + int_step
 
-    Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
+    Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T), rcond=rcond).dot(B_prim)
     dihedral_inds = np.array(
         [i for i, primitive in enumerate(primitives) if isinstance(primitive, Torsion)]
     )
