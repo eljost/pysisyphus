@@ -11,12 +11,21 @@ from pysisyphus.optimizers.precon import precon_getter
 
 
 class PreconLBFGS(Optimizer):
-
-    def __init__(self, geometry, alpha_init=1., history=7, precon=True,
-                 precon_update=None, max_step_element=None, line_search="armijo",
-                 c_stab=None, **kwargs):
-        assert geometry.coord_type == "cart", \
-            "Preconditioning makes only sense with 'coord_type: cart'"
+    def __init__(
+        self,
+        geometry,
+        alpha_init=1.0,
+        history=7,
+        precon=True,
+        precon_update=None,
+        max_step_element=None,
+        line_search="armijo",
+        c_stab=None,
+        **kwargs,
+    ):
+        assert (
+            geometry.coord_type == "cart"
+        ), "Preconditioning makes only sense with 'coord_type: cart'"
         # Set before calling the superclass constructor so we can the value
         # in _set_opt_restart_info.
         self.history = history
@@ -31,23 +40,26 @@ class PreconLBFGS(Optimizer):
         if c_stab is None:
             self.log("No c_stab specified.")
             if is_dimer:
-                self.log( "Found Dimer calculator, using bigger stabilization.")
+                self.log("Found Dimer calculator, using bigger stabilization.")
                 c_stab = 0.103  # 1 eV/Å²
             else:
-                c_stab = 0.0103 # 0.1 eV/Å²
+                c_stab = 0.0103  # 0.1 eV/Å²
 
         self.c_stab = float(c_stab)
         self.log(f"Using c_stab={self.c_stab:.6f}")
 
         if max_step_element is None and is_dimer:
             max_step_element = 0.25
-            self.log("Found Dimer calculator. Using "
-                     "max_step_element={max_step_element:.2f}")
+            self.log(
+                f"Found Dimer calculator. Using max_step_element={max_step_element:.2f}"
+            )
         self.max_step_element = max_step_element
         # Disable linesearch if max_step_element is set
         if self.max_step_element is not None:
-            self.log(f"max_step_element={max_step_element:.6f} given. Setting "
-                      "line_search to 'None'.")
+            self.log(
+                f"max_step_element={max_step_element:.6f} given. Setting "
+                "line_search to 'None'."
+            )
             line_search = None
 
         self.line_search = line_search
@@ -103,8 +115,11 @@ class PreconLBFGS(Optimizer):
         step = forces
 
         # Check for preconditioner update
-        if (self.precon_update and self.cur_cycle > 0
-            and self.cur_cycle % self.precon_update == 0):
+        if (
+            self.precon_update
+            and self.cur_cycle > 0
+            and self.cur_cycle % self.precon_update == 0
+        ):
             self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab)
 
         # Construct preconditoner if requested
