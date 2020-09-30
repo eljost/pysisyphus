@@ -46,7 +46,8 @@ def test_allene_opt():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 7
+    # assert opt.cur_cycle == 7
+    assert geom.energy == pytest.approx(-115.21991342)
 
 
 def test_hydrogen_bonds_fragments():
