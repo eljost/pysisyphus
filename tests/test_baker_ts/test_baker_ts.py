@@ -45,12 +45,10 @@ def get_geoms():
     )
     only = (
         # "18_silyene_insertion.xyz",
-        # "21_acrolein_rot.xyz",
     )
     use = (
         # fails,
-        # works,
-        math_error_but_works,
+        works,
         # alpha_negative,
         # no_imag,
         # only,
