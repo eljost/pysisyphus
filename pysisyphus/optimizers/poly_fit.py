@@ -94,6 +94,16 @@ def get_minimum(poly):
     return min_root, min_val
 
 
+def get_maximum(poly):
+    roots = np.roots(np.polyder(poly))
+    real_roots = np.real(roots[np.isreal(roots)])
+    vals = poly(real_roots)
+    max_ind = vals.argmax()
+    max_root = real_roots[max_ind]
+    max_val = vals[max_ind]
+    return max_root, max_val
+
+
 FitResult = namedtuple("FitResult", "x y polys")
 
 
@@ -115,7 +125,7 @@ def quintic_fit(e0, e1, g0, g1, H0, H1):
     return fit_result
 
 
-def quartic_fit(e0, e1, g0, g1):
+def quartic_fit(e0, e1, g0, g1, maximize=False):
     """See gen_solutions() for derivation."""
     a0 = e0
     a1 = g0
@@ -142,12 +152,17 @@ def quartic_fit(e0, e1, g0, g1):
     poly1 = get_poly(a3, a2, a1, a0)
 
 
-    mr0, mv0 = get_minimum(poly0)
-    mr1, mv1 = get_minimum(poly1)
+    get_func = get_maximum if maximize else get_minimum
+    mr0, mv0 = get_func(poly0)
+    mr1, mv1 = get_func(poly1)
 
-    mr, mv = (mr0, mv0) if mv0 < mv1 else (mr1, mv1)
+    if maximize:
+        mr, mv = (mr0, mv0) if mv0 > mv1 else (mr1, mv1)
+    else:
+        mr, mv = (mr0, mv0) if mv0 < mv1 else (mr1, mv1)
 
     # Shorter sympy implementation. Probably slower? But shouldn't matter...
+    # ... of course it does ;)
     # a0, a1, a2, a3 = sym.symbols("a:4")
     # a4 = sym.Rational(3, 8) * a3**2 / a2
     # s0, s1 = sym.solve((e0-a0,
