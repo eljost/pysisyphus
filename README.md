@@ -23,7 +23,7 @@ If any issues arise please open an issue and I'll try to fix it if possible and 
 
 Fully internal coordinate transition state search for the famous alanine dipeptide isomerization reaction, using the xtb calculator and the growing string method.
 
-[![asciicast](https://asciinema.org/a/300731.svg)](https://asciinema.org/a/300731)
+[![asciicast](https://asciinema.org/a/300731.svg)](https://asciinema.org/a/300731) [![Join the chat at https://gitter.im/eljost/pysisyphus](https://badges.gitter.im/eljost/pysisyphus.svg)](https://gitter.im/eljost/pysisyphus?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## Documentation
 
