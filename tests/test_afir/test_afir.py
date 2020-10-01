@@ -2,11 +2,15 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.AFIR import AFIR
-from pysisyphus.helpers import geom_loader
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import XTB
+from pysisyphus.helpers import geom_loader
+from pysisyphus.init_logging import init_logging
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
+
+
+init_logging()
 
 
 @using("pyscf")
