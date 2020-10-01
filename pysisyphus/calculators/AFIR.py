@@ -13,6 +13,7 @@ from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.elem_data import COVALENT_RADII
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import complete_fragments
+from pysisyphus.helpers_pure import log
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 
 
@@ -32,7 +33,9 @@ def get_data_model(atoms, max_cycles):
     return data_model
 
 
-def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6, prefactor=1.0):
+def afir_closure(
+    fragment_indices, cov_radii, gamma, rho=1, p=6, prefactor=1.0, logger=None
+):
     """rho=1 pushes fragments together, rho=-1 pulls fragments apart."""
 
     # See https://onlinelibrary.wiley.com/doi/full/10.1002/qua.24757
@@ -54,6 +57,14 @@ def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6, prefactor=1.0):
         alpha = gamma / (
             (2 ** (-1 / 6) - (1 + (1 + gamma / epsilon) ** 0.5) ** (-1 / 6)) * R0
         )
+
+    rho_verbose = {1: ("pushing", "together"), -1: ("pulling", "apart")}
+    w1, w2 = rho_verbose[rho]
+    log(
+        logger,
+        f"Creating AFIR closure with α={alpha:.6f}, prefactor {prefactor:.6f}, "
+        f"rho={rho}, {w1} framgents {w2}",
+    )
 
     def afir_func(coords3d):
         diffs = anp.diff(coords3d[inds], axis=1).reshape(-1, 3)
@@ -86,10 +97,17 @@ class AFIR(Calculator):
         self.fragment_indices = fragment_indices
         assert len(self.fragment_indices) > 0
         # gamma is expected to be given in kJ/mol. convert it to au.
-        self.gamma = gamma / AU2KJPERMOL
-        assert self.gamma > 0
-        self.rho = int(rho)
-        assert self.rho in (-1, 1)
+        try:
+            self.gamma = gamma / AU2KJPERMOL
+        except TypeError:
+            self.gamma = np.array(gamma) / AU2KJPERMOL
+        # assert self.gamma > 0  # TODO: reactivate this
+
+        try:
+            self.rho = int(rho)
+        except TypeError:
+            self.rho = np.array(rho)
+        # assert self.rho in (-1, 1)  # TODO: reactivate this
         self.p = p
         self.dump = dump
         self.h5_fn = h5_fn
@@ -98,10 +116,6 @@ class AFIR(Calculator):
         # atoms/coords yet. So we wait until after the first calculation.
         self.h5_group = None
         self.h5_cycles = 50
-
-        rho_verbose = {1: ("pushing", "together"), -1: ("pulling", "apart")}
-        w1, w2 = rho_verbose[self.rho]
-        self.log(f"rho={self.rho}, {w1} framgents {w2}")
 
         self.atoms = None
         self.calc_counter = 0
@@ -178,7 +192,7 @@ class AFIR(Calculator):
         pairs = list(it.combinations(self.fragment_indices, 2))
         prefactor = 1 / len(pairs)
         self.log(
-            f"Doing AFIR with {len(pairs)} fragment pairs and prefactor {prefactor:.4f}"
+            f"Doing AFIR with {len(pairs)} fragment pairs and prefactor={prefactor:.4f}"
         )
         try:
             self.gamma = [float(self.gamma)] * len(pairs)
@@ -199,6 +213,7 @@ class AFIR(Calculator):
                 rho=rho,
                 p=self.p,
                 prefactor=prefactor,
+                logger=self.logger,
             )
             afir_grad_func = autograd.grad(afir_func)
             self.afir_funcs.append(afir_func)
