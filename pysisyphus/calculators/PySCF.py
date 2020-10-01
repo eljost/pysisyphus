@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-
 import os
-from pathlib import Path
 import shutil
 
 import numpy as np
@@ -9,7 +6,6 @@ import pyscf
 from pyscf import gto, grad, lib, hessian, tddft, qmmm
 from pyscf.dft import xcfun
 # from pyscf.lib.chkfile import save_mol
-# from pyscf.tools import cubegen
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 

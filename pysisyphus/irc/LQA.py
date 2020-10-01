@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.459634?class=pdf
 #     Page, 1990, Eq. 19 is missing a **2 after g'_0,i
 # [2] https://aip.scitation.org/doi/10.1063/1.1724823
@@ -7,7 +5,6 @@
 
 import numpy as np
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.irc.IRC import IRC
 
@@ -51,7 +48,6 @@ class LQA(IRC):
         alphas = (np.exp(-eigenvalues*t) - 1) / eigenvalues
         A = eigenvectors @ np.diag(alphas) @ eigenvectors.T
         step = A @ mw_gradient
-        norm = np.linalg.norm(step)
 
         mw_coords = self.mw_coords.copy()
         self.mw_coords = mw_coords + step

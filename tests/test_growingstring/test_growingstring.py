@@ -158,3 +158,29 @@ def test_conjugate_gradient():
     assert opt.cur_cycle == 23
 
     # calc.anim_opt(opt, show=True)
+
+
+def test_climb_lanczos():
+    calc = AnaPot()
+    geoms = calc.get_path(2)
+    gs_kwargs = {
+        "perp_thresh": 0.5,
+        "reparam_check": "rms",
+        "climb": True,
+        "climb_rms": 0.2,
+        "climb_lanczos": True,
+    }
+    gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
+
+    opt_kwargs = {
+        "keep_last": 0,
+        "rms_force": 0.02,
+        "rms_force_only": True,
+    }
+    opt = StringOptimizer(gs, **opt_kwargs)
+    opt.run()
+
+    # calc.anim_opt(opt, show=True)
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 23

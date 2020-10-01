@@ -45,9 +45,12 @@ def test_baker_synthesis(fixture_store):
     bags = fixture_store["results_bag"]
     for k, v in bags.items():
         print(k)
-        tot_cycles += v["cycles"]
-        converged += 1 if v["is_converged"] else 0
-        for kk, vv in v.items():
-            print("\t", kk, vv)
+        try:
+            tot_cycles += v["cycles"]
+            converged += 1 if v["is_converged"] else 0
+            for kk, vv in v.items():
+                print("\t", kk, vv)
+        except KeyError:
+            print("\tFailed!")
     print(f"Total cycles: {tot_cycles}")
     print(f"Converged: {converged}/{len(bags)}")

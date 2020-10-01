@@ -12,60 +12,52 @@ from pysisyphus.tsoptimizers import *
 
 def get_geoms():
     fails = (
-        "09_parentdieslalder.xyz",
-        "12_ethane_h2_abstraction.xyz",
-        "15_hocl.xyz",
-        "17_claisen.xyz",
-        "20_hconh3_cation.xyz",  # fails when angles up to & including 180° are defined
+        "15_hocl.xyz",  # SCF goes completely nuts
     )
     works = (
         "01_hcn.xyz",
         "02_hcch.xyz",
+        "03_h2co.xyz",
         "04_ch3o.xyz",
         "05_cyclopropyl.xyz",
         "06_bicyclobutane.xyz",
         "07_bicyclobutane.xyz",
         "08_formyloxyethyl.xyz",
+        "09_parentdieslalder.xyz",
+        "12_ethane_h2_abstraction.xyz",
+        "13_hf_abstraction.xyz",
         "14_vinyl_alcohol.xyz",
         "16_h2po4_anion.xyz",
+        "17_claisen.xyz",
         "18_silyene_insertion.xyz",
-        # "22_hconhoh.xyz",
+        "19_hnccs.xyz",
+        "20_hconh3_cation.xyz",
+        "21_acrolein_rot.xyz",
+        "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
+        "24_h2cnh.xyz",
         "25_hcnh2.xyz",
     )
-    math_error_but_works = (
-        # [..]/intcoords/derivatives.py", line 640, in d2q_d
-        # x99 = 1/sqrt(x93)
-        #   ValueError: math domain error
-        # ZeroDivison Fix
-        "24_h2cnh.xyz",
-        "13_hf_abstraction.xyz",
-        "19_hnccs.xyz",
-        "21_acrolein_rot.xyz",
-        "03_h2co.xyz",
-    )
-    alpha_negative = (
-        "22_hconhoh.xyz",
-    )
+    alpha_negative = ()
     no_imag = (
         "10_tetrazine.xyz",
         "11_trans_butadiene.xyz",
     )
     only = (
         # "18_silyene_insertion.xyz",
-        # "21_acrolein_rot.xyz",
     )
     use = (
         # fails,
         works,
-        math_error_but_works,
         # alpha_negative,
         # no_imag,
         # only,
         )
     use_names = list(it.chain(*use))
-    geom_data = get_baker_ts_geoms_flat(coord_type="redund")
-    # _ = [_ for _ in geom_data if _[0] in use_names]
+    geom_data = get_baker_ts_geoms_flat(
+        coord_type="redund",
+        coord_kwargs={"rebuild": True,},
+    )
     return [_ for _ in geom_data if _[0] in use_names]
 
 
@@ -78,13 +70,14 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
     calc_kwargs = {
         "charge": charge,
         "mult": mult,
-        "pal": 4,
+        "pal": 1,
     }
 
     print(f"@Running {name}")
     # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
     geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
-    geom = augment_bonds(geom)
+    if geom.coord_type != "cart":
+        geom = augment_bonds(geom)
 
     opt_kwargs = {
         "thresh": "baker",
@@ -99,6 +92,9 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
 
     print(f"\t@Converged: {opt.is_converged}, {opt.cur_cycle+1} cycles")
 
+    # Without symmetry restriction this lower lying TS will be obtained.
+    if name.startswith("22_"):
+        ref_energy = -242.25695787
     assert geom.energy == pytest.approx(ref_energy)
     print("\t@Energies match!")
 
@@ -108,12 +104,10 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy):
 @using_pyscf
 @pytest.mark.parametrize(
     "define_prims, proj, ref_cycle", [
-        (None, True, 18),
-        pytest.param(None, False, 17,
-                     marks=pytest.mark.xfail),
+        (None, True, 14),
+        pytest.param(None, False, 12),
         pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 12),
-        pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 3,
-                     marks=pytest.mark.xfail),
+        pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 10),
     ]
 )
 def test_diels_alder_ts(define_prims, ref_cycle, proj):

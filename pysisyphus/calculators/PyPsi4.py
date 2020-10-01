@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 try:
     import psi4
 except ImportError:

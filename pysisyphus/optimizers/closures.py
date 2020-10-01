@@ -195,7 +195,6 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
             # Substract step correction
             dx = dx - np.sum(gammas * _, axis=0)
         dx = restrict_step(x, dx)
-        x_new = x + dx
         dxs.append(dx)
 
         # Keep only informations of the last M cycles

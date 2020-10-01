@@ -1,15 +1,10 @@
-#!/usr/bin/env python3
-
 import argparse
-import logging
-import itertools as it
 import re
 import sys
 
 import numpy as np
 
-from pysisyphus.helpers import geoms_from_trj, geom_from_xyz_file
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.helpers import geoms_from_trj
 from pysisyphus.xyzloader import write_geoms_to_trj
 
 

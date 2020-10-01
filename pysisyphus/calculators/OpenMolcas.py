@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
-
 import os
+from pathlib import Path
 import re
 
 import numpy as np
@@ -25,7 +24,7 @@ class OpenMolcas(Calculator):
         )
 
         self.basis = basis
-        self.inporb = inporb
+        self.inporb = Path(inporb).absolute()
         self.roots = roots
         self.mdrlxroot = mdrlxroot
         self.supsym = self.build_supsym_str(supsym)
@@ -201,7 +200,7 @@ class OpenMolcas(Calculator):
         energy, sa_energies = self.parse_energies(text)
 
         results["energy"] = energy
-        results["sa_energies"] = sa_energies
+        # results["sa_energies"] = sa_energies
         results["forces"] = -gradient
 
         return results
@@ -231,19 +230,3 @@ class OpenMolcas(Calculator):
 
     def __str__(self):
         return "OpenMolcas calculator"
-
-
-if __name__ == "__main__":
-    from pysisyphus.helpers import geom_from_library
-    fileorb = "/scratch/test/ommin/excrp.es_opt.RasOrb"
-    basis = "6-31G*"
-    roots = 5
-    rlxroot = 5
-    om = OpenMolcas(basis, fileorb, roots, rlxroot)
-    geom = geom_from_library("dieniminium_cation_s1_opt.xyz")
-    geom.set_calculator(om)
-    #print(geom.forces)
-    #om.parse_gradient("/scratch/test/satest")
-    from pathlib import Path
-    p = Path("/scratch/track_test/parse")
-    om.parse_rassi_track(p)

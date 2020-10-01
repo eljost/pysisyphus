@@ -1,6 +1,8 @@
+from math import sin
+
 import numpy as np
 
-from pysisyphus.intcoords.derivatives import dq_lb
+from pysisyphus.intcoords.derivatives import dq_lb, d2q_lb
 from pysisyphus.intcoords.Primitive import Primitive
 
 # [1] 10.1080/00268977200102361
@@ -21,14 +23,19 @@ class LinearBend(Primitive):
         self.complement = complement
 
     @staticmethod
-    def _calculate(coords3d, indices, gradient=False, complement=False):
+    def _weight(atoms, coords3d, indices, f_damping):
+        m, o, n = indices
+        rho_mo = LinearBend.rho(atoms, coords3d, (m, o))
+        rho_on = LinearBend.rho(atoms, coords3d, (o, n))
+        rad = LinearBend.calculate(coords3d)
+        return (rho_mo * rho_on)**0.5 * (f_damping + (1-f_damping)*sin(rad))
+
+    @staticmethod
+    def _get_orthogonal_direction(coords3d, indices, complement=False):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
-        v_dash = coords3d[n] - coords3d[o]
         u_norm = np.linalg.norm(u_dash)
-        v_norm = np.linalg.norm(v_dash)
         u = u_dash / u_norm
-        # v = v_dash / v_norm  # Never used ...
 
         # Select initial vector for cross product, similar to
         # geomeTRIC. It must NOT be parallel to u and/or v.
@@ -45,11 +52,21 @@ class LinearBend(Primitive):
         # Generate second orthogonal direction
         if complement:
             w = np.cross(u, w)
+        return w
+
+    @staticmethod
+    def _calculate(coords3d, indices, gradient=False, complement=False):
+        m, o, n = indices
+        u_dash = coords3d[m] - coords3d[o]
+        v_dash = coords3d[n] - coords3d[o]
+        u_norm = np.linalg.norm(u_dash)
+        v_norm = np.linalg.norm(v_dash)
+        w = LinearBend._get_orthogonal_direction(coords3d, indices, complement)
 
         lb_rad = w.dot(np.cross(u_dash, v_dash)) / (u_norm * v_norm)
 
         if gradient:
-            # Foruth argument is the orthogonal direction
+            # Fourth argument is the orthogonal direction
             grad = dq_lb(*coords3d[m], *coords3d[o], *coords3d[n], *w)
             grad = grad.reshape(-1, 3)
 
@@ -60,6 +77,11 @@ class LinearBend(Primitive):
             row = row.flatten()
             return lb_rad, row
         return lb_rad
+
+    @staticmethod
+    def _jacobian(coords3d, indices, complement=False):
+        w = LinearBend._get_orthogonal_direction(coords3d, indices, complement)
+        return d2q_lb(*coords3d[indices].flatten(), *w)
 
     def __str__(self):
         return f"LinearBend({tuple(self.indices)}, complement={self.complement})"

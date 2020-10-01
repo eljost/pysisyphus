@@ -2,7 +2,7 @@ import networkx as nx
 from networkx.algorithms import isomorphism
 import numpy as np
 
-from pysisyphus.intcoords.findbonds import get_bond_sets
+from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.io import geom_from_zmat
 
 

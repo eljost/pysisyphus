@@ -24,9 +24,9 @@ def this_dir(request):
         pytest.param(Gaussian16,
             {"route": "HF/STO-3G"},
             marks=using("gaussian16")),
-        # pytest.param(ORCA,
-            # {"keywords": "HF STO-3G tightscf"},
-            # marks=using("orca")),
+        pytest.param(ORCA,
+            {"keywords": "HF STO-3G tightscf"},
+            marks=using("orca")),
         # pytest.param(Psi4,
             # {"method": "scf", "basis": "sto-3g", "to_set": {"scf_type": "pk"}},
             # marks=using("psi4"),
@@ -65,8 +65,7 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
     opt.run()
 
     assert opt.is_converged
-    # gau tight
-    assert geom.energy == pytest.approx(-387.54925361)
+    assert geom.energy == pytest.approx(-387.54925356)
 
 
 @pytest.mark.parametrize(

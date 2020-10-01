@@ -18,7 +18,7 @@ def test_anapot_aneb():
     # ap = calc.anim_opt(opt, show=True)
 
     assert opt.is_converged
-    assert opt.cur_cycle == 22
+    assert opt.cur_cycle == 21
 
 
 def test_hcn_aneb():

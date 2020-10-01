@@ -1,12 +1,7 @@
-#!/usr/bin/env python3
-
-import itertools as it
-
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
-from pysisyphus.InternalCoordinates import RedundantCoords
 from pysisyphus.intcoords.helpers import get_tangent, form_coordinate_union
 from pysisyphus.xyzloader import write_geoms_to_trj
 
@@ -23,17 +18,16 @@ class Redund(Interpolator):
         print(f"No. of primitives at initial structure: {initial_geom.coords.size}")
         print(f"No. of primitives at final structure: {final_geom.coords.size}")
 
-        prim_indices = form_coordinate_union(initial_geom, final_geom)
-        union_length = len(list(it.chain(*prim_indices)))
-        print("Union of primitives: ", union_length)
+        typed_prims = form_coordinate_union(initial_geom, final_geom)
+        print("Union of primitives: ", len(typed_prims))
 
         geom1 = Geometry(initial_geom.atoms, initial_geom.cart_coords,
                          coord_type="redund",
-                         coord_kwargs={"prim_indices": prim_indices,},
+                         coord_kwargs={"typed_prims": typed_prims,},
         )
         geom2 = Geometry(final_geom.atoms, final_geom.cart_coords,
                          coord_type="redund",
-                         coord_kwargs={"prim_indices": prim_indices,},
+                         coord_kwargs={"typed_prims": typed_prims,},
         )
 
         dihed_start = geom1.internal.dihed_start

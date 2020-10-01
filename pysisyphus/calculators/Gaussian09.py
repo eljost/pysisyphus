@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 
 

@@ -4,9 +4,9 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from scipy.sparse import csc_matrix
 
-from pysisyphus.intcoords.findbonds import get_pair_covalent_radii
+from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 
 
 # [1] https://www.nature.com/articles/s41598-018-32105-x
@@ -47,7 +47,7 @@ def get_lindh_k(atoms, coords3d, bonds=None, angles=None, torsions=None):
     ks = list()
     for inds in it.chain(bonds, angles, torsions):
         rho_product = 1
-        for i in range(inds.size-1):
+        for i in range(len(inds)-1):
             i1, i2 = inds[i:i+2]
             rho_product *= rhos[i1, i2]
         ks.append(k_dict[len(inds)] * rho_product)

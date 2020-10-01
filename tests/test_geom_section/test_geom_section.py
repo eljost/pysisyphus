@@ -28,7 +28,7 @@ def test_run_geom_section_union():
                 "basis": "sto3g",
             },
             "geom": {
-                "type": "redund_v2",
+                "type": "redund",
                 "fn": "lib:test_union_ts_001.xyz",
             },
         }
@@ -39,4 +39,4 @@ def test_run_geom_section_union():
     # in the .trj file.
     run_dict = get_run_dict()
     run_dict["geom"]["union"] = "lib:test_union_rx_001.trj"
-    run_assert(run_dict, prim_len=66)
+    run_assert(run_dict, prim_len=67)

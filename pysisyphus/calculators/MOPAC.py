@@ -1,16 +1,10 @@
-#!/usr/bin/env python3
-
-from math import sqrt
 import re
 import textwrap
 
 import numpy as np
 
-from pysisyphus.constants import BOHR2ANG, AU2EV, AU2KCALMOL
+from pysisyphus.constants import BOHR2ANG, AU2KCALMOL
 from pysisyphus.calculators.Calculator import Calculator
-
-
-np.set_printoptions(suppress=True, precision=4, linewidth=120)
 
 
 class MOPAC(Calculator):

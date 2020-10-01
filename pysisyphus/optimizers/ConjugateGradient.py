@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 
 from pysisyphus.helpers import fit_rigid, procrustes

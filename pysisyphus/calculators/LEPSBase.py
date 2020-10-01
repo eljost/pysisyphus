@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from pysisyphus.calculators.AnaPotBase import AnaPotBase
 from pysisyphus.calculators.LEPSExpr import LEPSExpr
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://pubs.acs.org/doi/pdf/10.1021/ct200290m?rand=dcfwsf09
 # [2] https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.23481
 # [3] https://onlinelibrary.wiley.com/doi/epdf/10.1002/tcr.201600043

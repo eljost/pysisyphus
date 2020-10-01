@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1007/s002140050387
 #     Bofill, 1998
 
@@ -12,7 +10,7 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 class RSIRFOptimizer(TSHessianOptimizer):
 
     def optimize(self):
-        energy, gradient, H, eigvals, eigvecs = self.housekeeping()
+        energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
 
         self.log( "Using projection to construct image potential gradient "

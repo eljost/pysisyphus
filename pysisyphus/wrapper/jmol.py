@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import subprocess
 import tempfile
 from pathlib import Path
@@ -35,7 +33,6 @@ write image pngt "{png_fn}"
 
 
 def call_jmol(spt_str):
-    spt_fn = "jmol.spt"
     with tempfile.NamedTemporaryFile("w", suffix=".spt") as spt_handle:
         spt_handle.write(spt_str)
         spt_handle.flush()

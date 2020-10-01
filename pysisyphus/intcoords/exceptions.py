@@ -1,9 +1,13 @@
 class NeedNewInternalsException(Exception):
-    def __init__(self, cart_coords, *args, **kwargs):
+    def __init__(self, coords3d, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.cart_coords = cart_coords
+        self.coords3d = coords3d
 
 
 class RebuiltInternalsException(Exception):
+    pass
+
+
+class DifferentPrimitivesException(Exception):
     pass

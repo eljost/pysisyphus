@@ -1,0 +1,17 @@
+geom:
+ type: redund
+ fn: trans_butadien.xyz
+opt:
+ thresh: gau
+calc:
+ type: openmolcas
+ charge: 0
+ mult: 1
+ basis: ano-rcc-vdzp
+ inporb: butadien_vdzp.RasOrb
+ roots: 5
+ mdrlxroot: 2
+assert:
+ opt.is_converged: True
+ opt.cur_cycle: 6
+ opt_geom.energy: -154.8758862347

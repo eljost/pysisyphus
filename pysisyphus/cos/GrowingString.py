@@ -62,10 +62,6 @@ class GrowingString(GrowingChainOfStates):
         self.left_string.append(left_frontier)
         right_frontier = self.get_new_image(self.rf_ind)
         self.right_string.append(right_frontier)
-
-        if self.coord_type == "cart":
-            self.set_tangents()
-
         self.new_image_inds = list()
 
     def get_cur_param_density(self, kind=None):
@@ -99,7 +95,7 @@ class GrowingString(GrowingChainOfStates):
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
         the center of the string."""
-        new_img = self.images[ref_index].copy(check_bends=False)
+        new_img = self.images[ref_index].copy(coord_kwargs={"check_bends": False})
 
         if ref_index <= self.lf_ind:
             tangent_ind = ref_index + 1
@@ -219,7 +215,7 @@ class GrowingString(GrowingChainOfStates):
         # and restore its original coordinates.
         for index in self.get_climbing_indices():
             new_points[index] = self.images[index].coords
-            self.log(f"Skipped reparametrization of climbing image {index}")
+            self.log(f"Skipped reparametrization of climbing image with index {index}")
         self.coords = new_points.flatten()
         # In contrast to self.reparam_dlc() we don't check if the reparametrization
         # succeeded because it can't fail ;)
@@ -235,7 +231,7 @@ class GrowingString(GrowingChainOfStates):
         self.log(f"Density before reparametrization: {cur_param_density}")
         for i, reparam_image in enumerate(self.images[1:-1], 1):
             if i in climbing_indices:
-                self.log(f"Skipped reparametrization of climbing image {i}")
+                self.log(f"Skipped reparametrization of climbing image with index {i}")
                 continue
             self.log(f"Reparametrizing node {i}")
             for j in range(self.max_micro_cycles):
@@ -300,42 +296,22 @@ class GrowingString(GrowingChainOfStates):
         elif self.reset_dlc:
             self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
-    # def set_tangents(self):
-        # """THIS METHOD IS DISABLED BY REDEFINITION BELOW AS THE SPLINED TANGENTS
-        # SEEM BAD.
-
-        # Tangent-calculation by splining requires the information of all
-        # images at once. To avoid the repeated splining of all images whenever
-        # a tangent is requested this method calculates all tangents and stores
-        # them in the self._tangents, that can be accessed via the self.tangents
-        # property.
-
-        # !!! Right now one must not forget to call this method
-        # after coordinate modification, e.g. after
-        # reparametrization!  Otherwise wrong (old) tangets are used. !!!
-        # """
-
-        # tcks, us = self.spline(tangents=True)
-        # Sk, cur_mesh = self.arc_dims
-        # self.log(f"Total arclength Sk={Sk:.4f}")
-        # tangents = np.vstack([splev(cur_mesh, tck, der=1) for tck in tcks]).T
-        # norms = np.linalg.norm(tangents, axis=1)
-        # tangents = tangents / norms[:,None]
-        # # Tangents of the right string shall point towards the center, so
-        # # we reverse their orientation.
-        # tangents[self.rf_ind:] *= -1
-        # self._tangents = tangents
-
-    def set_tangents(self):
-        pass
-
     def get_tangent(self, i):
+        # Simple tangent, pointing at each other, for the frontier images.
         if not self.fully_grown and i in (self.lf_ind, self.rf_ind):
             next_ind = i+1 if (i <= self.lf_ind) else i-1
             tangent = self.images[next_ind] - self.images[i]
             tangent /= np.linalg.norm(tangent)
         else:
             tangent = super().get_tangent(i, kind="upwinding")
+
+        # Converge exact mode at climbing image if requested. Use the upwinding
+        # tangent as guess.
+        if self.climb_lanczos and (i in self.get_climbing_indices()):
+            # tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=tangent)
+            # By using guess=None the previous Lanczos will automatically be
+            # used as guess.
+            tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=None)
         return tangent
 
     @ChainOfStates.forces.getter
@@ -421,7 +397,6 @@ class GrowingString(GrowingChainOfStates):
             # Reparametrize images.
             if self.coord_type == "cart":
                 self.reparam_cart(desired_param_density)
-                self.set_tangents()
             elif self.coord_type == "dlc":
                 self.reparam_dlc(desired_param_density, thresh=self.reparam_tol)
             else:
@@ -431,8 +406,6 @@ class GrowingString(GrowingChainOfStates):
                               else self.reparam_every
             reparametrized = True
 
-        if self.coord_type == "cart":
-            self.set_tangents()
         return reparametrized
 
     def get_additional_print(self):
@@ -445,8 +418,6 @@ class GrowingString(GrowingChainOfStates):
         barrier_info = f"(E_max-E_0)={barrier:.1f} kJ/mol"
         hei_ind = energies.argmax()
         hei_str = f"HEI={hei_ind+1:02d}/{energies.size:02d}"
-
-        tot = f"Grads={self.get_image_calc_counter_sum()}"
 
         strs = (
             size_info,

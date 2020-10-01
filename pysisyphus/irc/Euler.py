@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.irc.IRC import IRC
@@ -17,7 +16,6 @@ class Euler(IRC):
     def step(self):
         grad = self.mw_gradient
         grad_norm = np.linalg.norm(grad)
-        energy = self.energy
 
         # Step downhill, against the gradient
         step_direction = -grad / grad_norm

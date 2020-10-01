@@ -1,6 +1,6 @@
 import numpy as np
 
-from pysisyphus.intcoords.RedundantCoords import RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 
 
 def get_tangent(prims1, prims2, dihed_start, normalize=False):
@@ -27,8 +27,8 @@ def get_tangent(prims1, prims2, dihed_start, normalize=False):
     """
     tangent = prims2 - prims1
     diheds = tangent[dihed_start:].copy()
-    diheds_plus = diheds.copy() + 2*np.pi
-    diheds_minus = diheds.copy() - 2*np.pi
+    diheds_plus = diheds.copy() + 2 * np.pi
+    diheds_minus = diheds.copy() - 2 * np.pi
     bigger = np.abs(diheds) > np.abs(diheds_plus)
     diheds[bigger] = diheds_plus[bigger]
     bigger = np.abs(diheds) > np.abs(diheds_minus)
@@ -45,8 +45,9 @@ def get_step(geom, coords):
     if geom.coord_type == "cart":
         diff = geom.coords - coords
     elif geom.coord_type in ("redund", "dlc"):
-        diff = -get_tangent(geom.internal.prim_coords, coords,
-                            geom.internal.dihed_start)
+        diff = -get_tangent(
+            geom.internal.prim_coords, coords, geom.internal.dihed_start
+        )
     else:
         raise Exception("Invalid coord_type!")
 
@@ -57,41 +58,16 @@ def get_step(geom, coords):
     return diff
 
 
-def to_set(iterable):
-    """Convert iterable of iterable to a set of tuples."""
-    return set([tuple(_) for _ in iterable])
-
-
-def get_ind_sets(geom, strict=False):
-    """Convert RedundandCoords.prim_indices to sets of tuples."""
-    try:
-        bonds, bends, dihedrals = geom.internal.prim_indices
-    # Exception will be raised if the geom is in cartesians. Then we
-    # just create the internals for the given geometry.
-    except AttributeError as err:
-        if strict:
-            raise err
-        internal = RedundantCoords(geom.atoms, geom.cart_coords)
-        bonds, bends, dihedrals = internal.prim_indices
-    return to_set(bonds), to_set(bends), to_set(dihedrals)
-
-
 def merge_coordinate_definitions(geom1, geom2):
-    bonds1, bends1, dihedrals1 = get_ind_sets(geom1)
-    bonds2, bends2, dihedrals2 = get_ind_sets(geom2)
-    # Form new superset of coordinate definitions that contain
-    # all definitions from geom1 and geom2.
-    all_bonds = bonds1 | bonds2
-    all_bends = bends1 | bends2
-    all_dihedrals = dihedrals1 | dihedrals2
-    all_prim_indices = (all_bonds, all_bends, all_dihedrals)
-    # Check if internal coordinates that are only present in one
-    # of the two geometries are valid in the other. If not we omit
-    # this coordinate definition in the end.
-    redundant = RedundantCoords(geom1.atoms, geom1.cart_coords,
-                                prim_indices=all_prim_indices)
-    bonds, bends, dihedrals = redundant.prim_indices
-    return to_set(bonds), to_set(bends), to_set(dihedrals)
+    typed_prims1 = geom1.internal.typed_prims
+    typed_prims2 = geom2.internal.typed_prims
+    union = list(set(typed_prims1) | set(typed_prims2))
+    union.sort()
+    # Check if internal coordinates that are only present in one of the two
+    # geometries are valid in the other. If not, we omit these primitives.
+    redundant = RedundantCoords(geom1.atoms, geom1.cart_coords, typed_prims=union)
+    valid_typed_prims = redundant.typed_prims
+    return valid_typed_prims
 
 
 def form_coordinate_union(geom1, geom2):
@@ -99,17 +75,11 @@ def form_coordinate_union(geom1, geom2):
         return geom.coord_type != "cart"
 
     assert not_cartesian(geom1) and not_cartesian(geom2)
-    # The first call yields all primitives from geom1 that are also
-    # valid at geom2.
-    bonds1, bends1, dihedrals1 = merge_coordinate_definitions(geom1, geom2)
-    # The second call yields all primitives from geom2 that are also
-    # valid at geom1.
-    bonds2, bends2, dihedrals2 = merge_coordinate_definitions(geom2, geom1)
+    # The first call yields all primitives from geom1 that are also valid at geom2.
+    typed_prims1 = merge_coordinate_definitions(geom1, geom2)
+    # The second call yields all primitives from geom2 that are also valid at geom1.
+    typed_prims2 = merge_coordinate_definitions(geom2, geom1)
 
-    # Only use primitive coordinate definitions that are valid for both
-    valid_bonds = bonds1 & bonds2
-    valid_bends = bends1 & bends2
-    valid_dihedrals = dihedrals1 & dihedrals2
-    prim_indices = (valid_bonds, valid_bends, valid_dihedrals)
-    # return valid_bonds, valid_bends, valid_dihedrals
-    return prim_indices
+    intersection = list(set(typed_prims1) & set(typed_prims2))
+    intersection.sort()
+    return intersection

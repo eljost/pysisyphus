@@ -34,7 +34,7 @@ def test_ar_cluster():
     geom.set_calculator(LennardJones())
 
     opt_kwargs = {
-        "max_cycles": 85,
+        "max_cycles": 150,
         "gediis": True,
         "thresh": "gau_vtight",
     }
@@ -42,4 +42,4 @@ def test_ar_cluster():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 75
+    assert opt.cur_cycle == 93

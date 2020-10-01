@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 
 from pysisyphus.intcoords.augment_bonds import augment_bonds
@@ -13,15 +11,15 @@ class TSHessianOptimizer(HessianOptimizer):
 
     def __init__(self, geometry, root=0, hessian_ref=None, prim_coord=None,
                  rx_coords=None, hessian_init="calc", hessian_update="bofill",
-                 max_micro_cycles=50, trust_radius=0.3, augment_bonds=False,
-                 **kwargs):
+                 hessian_recalc_reset=True, max_micro_cycles=50, trust_radius=0.3,
+                 augment_bonds=False, **kwargs):
 
         assert hessian_update == "bofill", \
             "Bofill update is recommended in a TS-optimization."
 
         super().__init__(geometry, hessian_init=hessian_init,
                          hessian_update=hessian_update, trust_radius=trust_radius,
-                         **kwargs)
+                         hessian_recalc_reset=hessian_recalc_reset, **kwargs)
 
         self.root = int(root)
         self.hessian_ref = hessian_ref
@@ -49,7 +47,7 @@ class TSHessianOptimizer(HessianOptimizer):
 
         self.alpha0 = 1
 
-    def prepare_opt(self):
+    def prepare_opt(self, *args, **kwargs):
         if self.augment_bonds:
             self.geometry = augment_bonds(self.geometry, root=self.root)
             # Update data model and HD5 shapes, as the number of coordinates
@@ -61,7 +59,7 @@ class TSHessianOptimizer(HessianOptimizer):
                                              self.data_model)
 
         # Calculate/set initial hessian
-        super().prepare_opt()
+        super().prepare_opt(*args, **kwargs)
 
         # Assume a guess hessian when not calculated. This hessian has to be
         # modified according to the assumed reaction coordinates.

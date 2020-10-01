@@ -1,12 +1,9 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.4905665?class=pdf
 
 import numpy as np
-from scipy.spatial.distance import squareform
 
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.intcoords.findbonds import get_bond_mat
+from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.optimizers.restrict_step import scale_by_max_step
 
 
@@ -48,8 +45,6 @@ class StabilizedQNMethod(Optimizer):
 
     def bio_mode(self, gradient):
         bond_mat = get_bond_mat(self.geometry)
-        sq = squareform(bond_mat)
-        zero = np.zeros(3)
         atom_num = len(self.geometry.atoms)
         bond_vec_empty = np.zeros((atom_num, 3))
         c3d = self.geometry.coords3d

@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist
 from scipy.optimize import minimize
 
 from pysisyphus.Geometry import Geometry
@@ -49,7 +47,6 @@ class LST(Interpolator):
             """Difference in actual cartesian coordinates."""
             return (1-f)*coords_r + f*coords_p
         wab = lambda f: wab_(f, coords3d[0], coords3d[1])
-        G = lambda w_c, f: self.cost_function(w_c, f, rab, wab)
 
         interpolated_geoms = list()
         minimize_kwargs = {

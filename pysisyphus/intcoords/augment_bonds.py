@@ -1,8 +1,8 @@
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.findbonds import get_bond_sets
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords.setup import get_bond_sets
+from pysisyphus.intcoords import RedundantCoords
 
 
 def augment_bonds(geom, root=0, proj=False):
@@ -47,7 +47,7 @@ def find_missing_strong_bonds(geom, hessian, bond_factor=1.7, thresh=0.3,
     trans_vec = eigvecs[:, root]
     # Find bonds that strongly contribute to the selected transition vector
     strong = np.abs(trans_vec) > thresh
-    strong_bonds = red.bond_indices[strong]
+    strong_bonds = np.array(red.bond_indices)[strong]
     strong_bonds = set([frozenset(b) for b in strong_bonds])
 
     # Check which strong bonds are missing from the currently defiend bonds

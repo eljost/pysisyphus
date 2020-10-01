@@ -1,9 +1,14 @@
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.intcoords.derivatives import d2q_b
 
 
 class Stretch(Primitive):
+
+    @staticmethod
+    def _weight(atoms, coords3d, indices, f_damping):
+        return Stretch.rho(atoms, coords3d, indices)
 
     @staticmethod
     def _calculate(coords3d, indices, gradient=False):
@@ -19,3 +24,7 @@ class Stretch(Primitive):
             row = row.flatten()
             return bond_length, row
         return bond_length
+
+    @staticmethod
+    def _jacobian(coords3d, indices):
+        return d2q_b(*coords3d[indices].flatten())

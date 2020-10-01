@@ -12,10 +12,11 @@ import rmsd
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.InternalCoordinates import RedundantCoords
-from pysisyphus.intcoords.RedundantCoords import RedundantCoords as RedundantCoordsV2
-from pysisyphus.intcoords.DLC import DLC
-from pysisyphus.intcoords.exceptions import NeedNewInternalsException, RebuiltInternalsException
+from pysisyphus.intcoords import DLC, RedundantCoords
+from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
+                                             RebuiltInternalsException,
+                                             DifferentPrimitivesException,
+)
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
 from pysisyphus.xyzloader import make_xyz_str
@@ -84,7 +85,6 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
-        "redund_v2": RedundantCoordsV2,
         "dlc": DLC,
     }
 
@@ -126,7 +126,7 @@ class Geometry:
             fragments = dict()
         self.fragments = fragments
 
-        if (coord_kwargs is not None) and coord_type == "cart":
+        if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
             print("coord_type is set to 'cart' but coord_kwargs were given. "
                   "This is probably not intended. Exiting!")
             sys.exit()
@@ -136,7 +136,7 @@ class Geometry:
         if coord_class:
             assert coords.size != 3, \
                 "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            self.internal = coord_class(atoms, self._coords, **coord_kwargs)
+            self.internal = coord_class(atoms, self.coords3d.copy(), **coord_kwargs)
         else:
             self.internal = None
         self.comment = comment
@@ -154,7 +154,6 @@ class Geometry:
 
     @property
     def sum_formula(self):
-        atom_counter = Counter(self.atoms)
         return "_".join(
                 [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
@@ -172,7 +171,10 @@ class Geometry:
         same_coord_length = len(self.coords) == len(other.coords)
         assert same_atoms, "Atom number/ordering is incompatible!"
         assert same_coord_type, "coord_types are incompatible!"
-        assert same_coord_length, "Different length of coordinate vectors!"
+        try:
+            assert same_coord_length, "Different length of coordinate vectors!"
+        except AssertionError:
+            raise DifferentPrimitivesException
 
     def __eq__(self, other):
         return (self.atoms == other.atoms) and all(self.coords == other.coords)
@@ -181,7 +183,7 @@ class Geometry:
         self.assert_compatibility(other)
         if self.coord_type == "cart":
             diff = self.coords - other.coords
-        elif self.coord_type in ("redund", "redund_v2", "dlc"):
+        elif self.coord_type in ("redund", "dlc"):
             # Take periodicity of dihedrals into account by calling
             # get_tangent(). Care has to be taken regarding the orientation
             # of the returned tangent vector. It points from self to other.
@@ -202,7 +204,7 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
-    def copy(self, coord_type=None, check_bends=True):
+    def copy(self, coord_type=None, coord_kwargs=None):
         """Returns a new Geometry object with same atoms and coordinates.
 
         Parameters
@@ -210,6 +212,9 @@ class Geometry:
         coord_type : str
             Desired coord_type, defaults to current coord_type.
 
+        coord_kwargs : dict, optional
+            Any desired coord_kwargs that will be passed to the RedundantCoords
+            object.
         Returns
         -------
         geom : Geometry
@@ -218,26 +223,31 @@ class Geometry:
         if coord_type is None:
             coord_type = self.coord_type
 
+        if coord_kwargs is None:
+            coord_kwargs = dict()
+
         # Geometry constructor will exit when coord_kwargs are given
         # with coord_type == 'cart'. So we only supply it when we are
         # NOT using cartesian coordinates.
-        coord_kwargs = None
+        _coord_kwargs = None
         if coord_type != "cart":
             try:
-                prim_indices = self.internal.prim_indices
+                typed_prims = self.internal.typed_prims
             # Will be raised if the current coord_type is 'cart'
             except AttributeError:
-                prim_indices = None
-            coord_kwargs={"prim_indices": prim_indices,
-                          "check_bends": check_bends,
+                typed_prims = None
+            _coord_kwargs = {
+                "typed_prims": typed_prims,
+                "check_bends": True,
             }
-        return Geometry(self.atoms, self._coords,
+            _coord_kwargs.update(coord_kwargs)
+        return Geometry(self.atoms, self._coords.copy(),
                         coord_type=coord_type,
-                        coord_kwargs=coord_kwargs,
+                        coord_kwargs=_coord_kwargs,
         )
 
-    def copy_all(self, coord_type=None, check_bends=True):
-        new_geom = self.copy(coord_type, check_bends)
+    def copy_all(self, coord_type=None, coord_kwargs=None):
+        new_geom = self.copy(coord_type, coord_kwargs)
         new_geom.set_calculator(self.calculator)
         new_geom.energy = self._energy
         if self._forces is not None:
@@ -254,7 +264,6 @@ class Geometry:
         inds_dict : dict
             Unique atom types as keys, corresponding indices as values.
         """
-        unique_atoms = set(self.atoms)
         inds_dict = {}
         for atom_type in set(self.atoms):
             inds_dict[atom_type] = [i for i, atom in enumerate(self.atoms)
@@ -341,15 +350,17 @@ class Geometry:
         # Do the backtransformation from internal to cartesian.
         coords = np.array(coords).flatten()
         if self.internal:
+            np.testing.assert_allclose(self.coords3d, self.internal.coords3d)
+
             try:
                 int_step = coords - self.internal.coords
-                cart_diff = self.internal.transform_int_step(int_step)
-                coords = self._coords + cart_diff
-                self.internal.cart_coords = coords
+                cart_step = self.internal.transform_int_step(int_step)
+                coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
-                coords = exception.cart_coords
+                coords3d = exception.coords3d.copy()
                 coord_class = self.coord_types[self.coord_type]
-                self.internal = coord_class(self.atoms, coords)
+                self.internal = coord_class(self.atoms, coords3d)
+                self._coords = coords3d.flatten()
                 raise RebuiltInternalsException
 
         # Set new cartesian coordinates
@@ -734,8 +745,17 @@ class Geometry:
         """Calculate forces and energies at the given coordinates.
         
         The results are not saved in the Geometry object."""
+        if self.coord_type != "cart":
+            int_step = coords - self.internal.coords
+            cart_step = self.internal.transform_int_step(int_step, pure=True)
+            coords = self.cart_coords + cart_step
         self.assert_cart_coords(coords)
-        return self.calculator.get_forces(self.atoms, coords)
+        results = self.calculator.get_forces(self.atoms, coords)
+
+        if self.coord_type != "cart":
+            results["forces"] = self.internal.transform_forces(results["forces"])
+
+        return results
 
     def calc_double_ao_overlap(self, geom2):
         return self.calculator.run_double_mol_calculation(self.atoms,

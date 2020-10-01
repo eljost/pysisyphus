@@ -1,12 +1,12 @@
-#!/usr/bin/env python3
-
 import argparse
 from collections import namedtuple
 import copy
-import itertools
+import datetime
+import itertools as it
 import os
 from math import ceil, floor, modf
 from pathlib import Path
+import platform
 from pprint import pprint
 import re
 import shutil
@@ -17,9 +17,11 @@ import time
 from distributed import Client
 from natsort import natsorted
 import numpy as np
+import scipy as sp
 import pytest
 import yaml
 
+from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
@@ -33,10 +35,10 @@ from pysisyphus.helpers import confirm_input, shake_coords, \
                                get_tangent_trj_str
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
+from pysisyphus.helpers_pure import merge_sets
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
-from pysisyphus.intcoords.fragments import merge_fragments
-from pysisyphus.intcoords.findbonds import get_bond_sets
+from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.optimizers import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
@@ -53,7 +55,7 @@ CALC_DICT = {
     "g16": Gaussian16,
     "mopac": MOPAC,
     "oniom": ONIOM,
-    "openmolcas": OpenMolcas.OpenMolcas,
+    "openmolcas": OpenMolcas,
     "orca": ORCA,
     "psi4": Psi4,
     "turbomole": Turbomole,
@@ -273,7 +275,7 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
     # When the COS was optimized in internal coordinates the united primitive
     # indices are already present and we just keep on using them.
     try:
-        prim_indices = hei_image.internal.prim_indices
+        typed_prims = hei_image.internal.typed_prims
     # If the COS was optimized in Cartesians we have to generated a new
     # set of primitive internals.
     except AttributeError:
@@ -281,11 +283,11 @@ def run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter=None,
             return Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
         internal_geom1 = get_int_geom(cos.images[0])
         internal_geom2 = get_int_geom(cos.images[-1])
-        prim_indices = form_coordinate_union(internal_geom1, internal_geom2)
+        typed_prims = form_coordinate_union(internal_geom1, internal_geom2)
 
     ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords,
                        coord_type="redund",
-                       coord_kwargs={"prim_indices": prim_indices,},
+                       coord_kwargs={"typed_prims": typed_prims,},
     )
 
     # Convert tangent from whatever coordinates to redundant internals.
@@ -565,7 +567,8 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         "last": (last, ),
     }
 
-    geoms = get_geoms(xyz, coord_type=coord_type)
+    # Allow different sets of primitive internals with same_prims=False
+    geoms = get_geoms(xyz, coord_type=coord_type, same_prims=False)
     assert len(geoms) >= 2, "Need at least two geometries!"
 
     middle_geoms = geoms[1:-1]
@@ -685,6 +688,73 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     return irc
 
 
+def do_rmsds(xyz, geoms, end_fns, end_geoms, similar_thresh=0.025):
+    if (len(end_fns) != 2 or len(end_geoms) != 2):
+        return
+    max_end_len = max(len(s) for s in end_fns)
+
+    if len(geoms) == 1:
+        return
+    elif len(geoms) > 2:
+        geoms = (geoms[0], geoms[-1])
+    assert len(geoms) == 2
+
+    if isinstance(xyz, str):
+        xyz = (f"{xyz}, first entry", f"{xyz}, last entry")
+    elif (not isinstance(xyz, str)) and len(xyz) >= 2:
+        xyz = (xyz[0], xyz[-1])
+    assert len(xyz) == 2
+    max_len = max(len(s) for s in xyz)
+
+    print(highlight_text(f"RMSDs After End Optimizations"))
+
+    for i, start_geom in enumerate(geoms):
+        fn = xyz[i]
+        found_similar = False
+        print(f"start geom {i:>2d} ({fn:>{max_len}s})")
+        for j, end_geom in enumerate(end_geoms):
+            end_fn = end_fns[j]
+            rmsd = start_geom.rmsd(end_geom)
+            similar_str = ""
+            if rmsd < similar_thresh:
+                found_similar = True
+                similar_str = " (similar)"
+            print(f"\tend geom {j:>2d} ({end_fn:>{max_end_len}s}): "
+                  f"rmsd={rmsd:>8.6f} au{similar_str}"
+            )
+        if not found_similar:
+            print(f"\tOptimized end geometries are dissimilar to '{fn}'!")
+    print()
+
+
+def do_endopt_ts_barriers(end_geoms, end_fns, ts_geom):
+    if len(end_geoms) != 2:
+        return
+
+    print(highlight_text("Barrier heights after end optimizations"))
+
+    ts_energy = ts_geom.energy
+    forward_geom, backward_geom = end_geoms
+    forward_energy = forward_geom.energy
+    backward_energy = backward_geom.energy
+    energies = np.array((forward_energy, ts_energy, backward_energy))
+    energies -= energies.min()
+    min_ind = energies.argmin()
+    energies *= AU2KJPERMOL
+
+    forward_fn, backward_fn = end_fns
+    fns = (forward_fn, "TS", backward_fn)
+    max_len = max(len(s) for s in fns)
+    
+    print()
+    print(f"Minimum energy of {energies[min_ind]} kJ mol⁻¹ at '{fns[min_ind]}'.")
+    print()
+    for fn, en in zip(fns, energies):
+        print(f"\t{fn:>{max_len}s}: {en:>8.2f} kJ mol⁻¹")
+    print()
+
+
+
 def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     print(highlight_text(f"Optimizing IRC ends"))
 
@@ -712,7 +782,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         if separate_fragments:
             bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
             # Sort atom indices, so the atoms don't become totally scrambled.
-            fragments = [sorted(frag) for frag in merge_fragments(bond_sets)]
+            fragments = [sorted(frag) for frag in merge_sets(bond_sets)]
             # Disable higher fragment counts. I'm looking forward to the day
             # this ever occurs and someone complains :)
             assert len(fragments) < 10, "Something probably went wrong"
@@ -736,6 +806,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
     coord_type = endopt_kwargs.pop("coord_type", "redund")
     opt_geoms = list()
+    opt_fns = list()
     for name, atoms, coords in to_opt:
         geom = Geometry(atoms, coords, coord_type=coord_type)
 
@@ -757,8 +828,9 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
         print()
         opt_geoms.append(geom)
+        opt_fns.append(opt_fn)
     print()
-    return opt_geoms
+    return opt_geoms, opt_fns
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
@@ -913,7 +985,7 @@ def get_last_calc_cycle():
     cwd = Path(".")
     calc_logs = [str(cl) for cl in cwd.glob("image_*.*.out")]
     calc_logs = sorted(calc_logs, key=keyfunc)
-    grouped = itertools.groupby(calc_logs, key=keyfunc)
+    grouped = it.groupby(calc_logs, key=keyfunc)
     # Find the last completly finished cycle.
     last_length = 0
     last_calc_cycle = 0
@@ -971,7 +1043,7 @@ RunResult = namedtuple(
                  "preopt_xyz "
                  "cos cos_opt "
                  "ts_geom ts_opt "
-                 "end_geoms irc "
+                 "end_geoms irc irc_geom "
                  "opt_geom opt "
                  "calced_geoms stocastic "
                  "calc_getter "
@@ -981,6 +1053,11 @@ RunResult = namedtuple(
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
          dryrun=None):
+
+    # Dump actual run_dict
+    with open("RUN.yaml", "w") as handle:
+        yaml.dump(run_dict, handle)
+
     if run_dict["interpol"]:
         interpolate = run_dict["interpol"]["type"]
         between = run_dict["interpol"]["between"]
@@ -1160,6 +1237,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
             # and not the Dimer calculator.
             if calc_key == "dimer":
                 calc_getter = act_calc_getter
+            irc_geom = geom.copy()
             irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
             ran_irc = True
 
@@ -1169,7 +1247,21 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None,
 
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
-            end_geoms = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+            end_geoms, end_fns = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+
+            if run_dict["cos"] and (len(end_geoms) == 2):
+                do_rmsds(xyz, geoms, end_fns, end_geoms)
+
+            if run_dict["tsopt"]:
+                do_endopt_ts_barriers(end_geoms, end_fns, ts_geom)
+
+            # Dump TS and endopt geoms into trj file
+            if len(end_geoms) == 2:
+                trj_fn = "end_geoms_and_ts.trj"
+                forward_end_geom, backward_end_geom = end_geoms
+                write_geoms_to_trj((forward_end_geom, irc_geom, backward_end_geom),
+                                   trj_fn, comments=("Forward end", "TS", "Backward end"))
+                print(f"Wrote optimized end-geometries and TS to '{trj_fn}'")
     # Fallback when no specific job type was specified
     else:
         calced_geoms = run_calculations(geoms, calc_getter, yaml_dir,
@@ -1306,6 +1398,10 @@ def do_clean(force=False):
         "dimer_*",
         "plain_hei_tangent",
         "plain_hei.xyz",
+        "hess_calc_irc*.h5",
+        "rebuilt_primitives.xyz",
+        "RUN.yaml",
+        "middle_for_preopt.trj",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -1345,7 +1441,14 @@ def print_header():
 888      Y8b d88P                       Y8b d88P 888
 888       "Y88P"                         "Y88P"  888                            """
     version = f"Version {get_versions()['version']}"
-    print(f"{logo}\n\n{version}\n")
+    vi = sys.version_info
+    sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
+    npv = np.__version__  # Numpy
+    spv = sp.__version__  # SciPy
+    print(f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
+          f"Git commit {get_versions()['full-revisionid']}\n"
+          f"Executed at {datetime.datetime.now().strftime('%c')} on '{platform.node()}'\n"
+    )
 
 
 def print_bibtex():
@@ -1371,6 +1474,11 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
     start_time = time.time()
     print_header()
 
+    # Citation
+    citation = "If pysisyphus benefitted your research please cite:\n\n" \
+               "\thttps://doi.org/10.1002/qua.26390\n\nGood luck!\n"
+    print(citation)
+
     init_logging(cwd, scheduler)
     # Load defaults etc.
     if set_defaults:
@@ -1386,13 +1494,9 @@ def run_from_dict(run_dict, cwd=None, set_defaults=True, yaml_fn=None, cp=None,
     elif fclean:
         do_clean(force=True)
         return
+    # Return after header was printed
     elif version:
         return
-
-    # Citation
-    citation = "If pysisyphus benefitted your research please cite:\n\n" \
-               "\thttps://doi.org/10.1002/qua.26390\n\nGood luck!\n"
-    print(citation)
 
     run_dict_without_none = {k: v for k, v in run_dict.items()
                              if v is not None}

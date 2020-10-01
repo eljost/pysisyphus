@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://aip.scitation.org/doi/10.1063/1.471864
 #     The generation and use of delocalized internal coordinates in geometry
 #     optimization.
@@ -7,7 +5,7 @@
 
 import numpy as np
 
-from pysisyphus.InternalCoordinates import RedundantCoords
+from pysisyphus.intcoords import RedundantCoords
 from pysisyphus.linalg import gram_schmidt
 
 
@@ -28,7 +26,7 @@ class DLC(RedundantCoords):
         # For now we use a pseudo-inverse instead of a regular inverse,
         # as some columns of U may be zero from constraints (resulting in
         # singular U matrix that cannot be readily inverted).
-        self._Ut_inv = np.linalg.pinv(self.U.T)
+        self._Ut_inv = np.linalg.pinv(self.U.T, rcond=self.rcond)
 
     @property
     def Ut_inv(self):
@@ -75,6 +73,16 @@ class DLC(RedundantCoords):
         internal coordinates."""
         return H
 
+    def transform_hessian(self, cart_hessian, int_gradient=None):
+        """Transform Cartesian Hessian to DLC."""
+        # Transform the DLC gradient to primitive coordinates
+        prim_gradient = self.Ut_inv.dot(int_gradient)
+        H = super().transform_hessian(cart_hessian, prim_gradient)
+        return self.U.T.dot(H).dot(self.U)
+
+    def backtransform_hessian(self, *args, **kwargs):
+        raise Exception("Check if we can just use the parents method.")
+
     def transform_int_step(self, step, *args, **kwargs):
         """As the transformation is done in primitive internal coordinates
         we convert the DLC back to primitive coordinates."""
@@ -85,12 +93,24 @@ class DLC(RedundantCoords):
     def get_active_set(self, B, thresh=1e-6):
         """See [5] between Eq. (7) and Eq. (8) for advice regarding
         the threshold."""
+        if self.weighted:
+            weights = np.array(
+                [prim.weight(self.atoms, self.coords3d) for prim in self.primitives]
+            )
+            self.log(
+                "Weighting B-matrix:\n"
+                f"\tWeights: {np.array2string(weights, precision=4)}\n"
+                f"\tmax(weights)={weights.max():.4f}, "
+                f"min(weights)={weights.min():.4f}, ({len(weights)} primitives)"
+            )
+            B = np.diag(weights).dot(B)
+
         G = B.dot(B.T)
         eigvals, eigvectors = np.linalg.eigh(G)
 
         nonzero_inds = np.abs(eigvals) > thresh
-        active_eigvals = eigvals[nonzero_inds]
-        return eigvectors[:,nonzero_inds]
+        # active_eigvals = eigvals[nonzero_inds]
+        return eigvectors[:, nonzero_inds]
 
     def set_active_set(self):
         self.U = self.get_active_set(self.B_prim)
@@ -121,7 +141,7 @@ class DLC(RedundantCoords):
         # (or the corresponding unit vectors) for the iterative
         # back-transformation. Right now I don't understand why we would
         # have to do this ([1], p. 10 (200), right column).
-        U_proj = orthonormalized[:,constr_num:]
+        U_proj = orthonormalized[:, constr_num:]
         return U_proj
 
     def freeze_primitives(self, prim_atom_indices):
@@ -133,17 +153,15 @@ class DLC(RedundantCoords):
             Iterable containing atom index iterables that define the primitive
             internal to be frozen.
         """
-        prim_indices = [self.get_index_of_prim_coord(pai)
-                        for pai in prim_atom_indices
+        prim_indices = [self.get_index_of_prim_coord(pai) for pai in prim_atom_indices]
+        not_defined = [
+            prim_coord
+            for prim_coord, prim_ind in zip(prim_atom_indices, prim_indices)
+            if prim_ind is None
         ]
-        not_defined = [prim_coord for prim_coord, prim_ind
-                       in zip(prim_atom_indices, prim_indices)
-                       if prim_ind is None
-        ]
-        assert None not in prim_indices, \
-            f"Some primitive internals are not defined ({not_defined})!"
-        _ = [self.project_primitive_on_active_set(pi)
-                                for pi in prim_indices
-        ]
+        assert (
+            None not in prim_indices
+        ), f"Some primitive internals are not defined ({not_defined})!"
+        _ = [self.project_primitive_on_active_set(pi) for pi in prim_indices]
         projected_primitives = np.array(_).T
         self.constraints = projected_primitives

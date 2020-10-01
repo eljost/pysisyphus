@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1016/0009-2614(91)90115-P
 #     Helgaker, 1991
 
@@ -13,7 +11,7 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 class TRIM(TSHessianOptimizer):
 
     def optimize(self):
-        energy, gradient, H, eigvals, eigvecs = self.housekeeping()
+        energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
 
         self.log(f"Signs of eigenvalue and -vector of root {self.root} "
