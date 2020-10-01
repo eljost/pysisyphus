@@ -47,7 +47,8 @@ def test_baker_synthesis(fixture_store):
         print(k)
         try:
             tot_cycles += v["cycles"]
-            converged += 1 if v["is_converged"] else 0
+            energy_matches = v["energy"] == pytest.approx(v["ref_energy"])
+            converged += 1 if v["is_converged"] and energy_matches else 0
             for kk, vv in v.items():
                 print("\t", kk, vv)
         except KeyError:
