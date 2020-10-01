@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1063/1.5082885
 #     Minimum dynamic path
 #     Unke, 2019
@@ -184,8 +182,6 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
     if dump:
         dump_coords(geom.atoms, ascent_xs, "mdp_ee_ascent.trj")
     x0 = geom.coords.copy()
-
-    masses = geom.masses_rep
 
     print(highlight_text("Runninig initialization trajectories", level=1))
     for i in range(max_init_trajs):

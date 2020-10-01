@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 
 import numpy as np
@@ -38,9 +39,10 @@ def sort_by_central(set1, set2):
 
 
 def merge_sets(fragments):
-    """Merge a list of sets."""
+    """Merge a list of iterables."""
     # Hold the final fragments that can't be merged further, as they
     # contain distinct atoms.
+    fragments = [frozenset(frag) for frag in fragments]
     merged = list()
     while len(fragments) > 0:
         popped = fragments.pop(0)
@@ -65,3 +67,22 @@ def remove_duplicates(seq):
     seen = set()
     seen_add = seen.add
     return [itm for itm in tuples if not (itm in seen or seen_add(itm))]
+
+
+class OrderedEnum(Enum):
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value >= other.value
+        return NotImplemented
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value > other.value
+        return NotImplemented
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value <= other.value
+        return NotImplemented
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value < other.value
+        return NotImplemented

@@ -51,10 +51,14 @@ def call_packmol(inp):
         tmp.write(inp)
         tmp.flush()
         cmd = f"{packmol_cmd} < {tmp.name}"
-        proc = subprocess.run(cmd, shell=True,
-                              stdout=subprocess.PIPE, #stderr=subprocess.PIPE,
-                              text=True)
-    out = proc.stdout  # lgtm [py/unused-local-variable]
+        proc = subprocess.run(
+            cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            #stderr=subprocess.PIPE,
+            text=True
+        )
+    # out = proc.stdout
     # err = proc.stderr
 
     return proc

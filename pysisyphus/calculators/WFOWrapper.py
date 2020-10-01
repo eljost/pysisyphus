@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from collections import OrderedDict
 import itertools
 import logging
@@ -8,7 +6,6 @@ import shutil
 import subprocess
 import tempfile
 
-import h5py
 import numpy as np
 import pyparsing as pp
 

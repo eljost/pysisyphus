@@ -12,8 +12,9 @@ from pysisyphus.testing import using
 def test_full_run_hf_abstraction():
     run_dict = {
         "preopt": {
-            "coord_type": "redund_v2",
-            "trust_max": 0.1,
+            "coord_type": "redund",
+            "max_cycles": 25,
+            "trust_max": 0.3,
         },
         "interpol": {
             "type": "redund",
@@ -45,9 +46,12 @@ def test_full_run_hf_abstraction():
             "pal": 2,
             "basis": "321g",
         },
-        "xyz": ["lib:test_full_run_split.geom_008.xyz",
-                "lib:test_full_run_split.geom_034.xyz"],
-        "coord_type": "cart",
+        "geom": {
+            "type": "cart",
+            "fn": ["lib:test_full_run_split.geom_008.xyz",
+                  "lib:test_full_run_split.geom_034.xyz"
+            ],
+        },
     }
     results = run_from_dict(run_dict)
 

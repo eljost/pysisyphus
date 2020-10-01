@@ -1,12 +1,6 @@
-import itertools as it
-import time
-
 import numpy as np
 import rmsd
-from scipy.spatial.distance import pdist, squareform
 
-from pysisyphus.Geometry import Geometry
-from pysisyphus.xyzloader import make_trj_str_from_geoms
 from pysisyphus.stocastic.Pipeline import Pipeline
 
 
@@ -52,7 +46,6 @@ class Kick(Pipeline):
         # Filter out None
         opt_geoms = [geom for geom in opt_geoms if geom]
         opt_num = len(opt_geoms)
-        energies = np.array([geom.energy for geom in opt_geoms])
         print(f"{opt_num}/{self.cycle_size} optimizations converged.")
 
         # Comparing to the initial geometry is only useful when the initial

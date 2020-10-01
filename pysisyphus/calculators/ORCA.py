@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-
 import glob
 import os
-from pathlib import Path
 import re
 import struct
 import shutil
@@ -377,7 +374,6 @@ class ORCA(OverlapCalculator):
         # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
         # X+Y of 2, X-Y of 2, ...
         prevroot = -1
-        istate = 0
         coeffs = list()
         for ivec in range(nvec):
             # header of each vector

@@ -6,15 +6,17 @@ from pysisyphus.constants import ANG2BOHR as ANG2BOHR
 from pysisyphus.Geometry import Geometry
 
 
-ZLine = namedtuple("ZLine",
-                   "atom rind r aind a dind d",
-                   defaults=(None, None, None, None, None, None)
+ZLine = namedtuple(
+    "ZLine", "atom rind r aind a dind d", defaults=(None, None, None, None, None, None)
 )
 
 
-def geom_from_zmat(zmat, coords3d=None, start_at=None):
+def geom_from_zmat(
+    zmat, coords3d=None, start_at=None, coord_type="cart", coord_kwargs=None
+):
     """Adapted from https://github.com/robashaw/geomConvert by Robert Shaw."""
     atoms = [zline.atom for zline in zmat]
+
     if coords3d is None:
         coords3d = np.zeros((len(zmat), 3), dtype=float)
 
@@ -22,12 +24,19 @@ def geom_from_zmat(zmat, coords3d=None, start_at=None):
         start_at = 0
 
     for i, zline in enumerate(zmat[start_at:], start_at):
+        assert all(
+            [
+                (ind is None) or (ind >= 0)
+                for ind in (zline.rind, zline.aind, zline.dind)
+            ]
+        ), "Found invalid atom index. Atom indices start with 1, not 0!"
+
         r = zline.r
         if i == 0:
             continue
         # Bond along x-axis
         elif i == 1:
-            coords3d[i,0] = r
+            coords3d[i, 0] = r
         # Angle in xy-plane from polar coordinates
         elif i == 2:
             """
@@ -48,7 +57,7 @@ def geom_from_zmat(zmat, coords3d=None, start_at=None):
             x = r * np.cos(theta)
             y = r * np.sin(theta)
             # Translate from center with correct orientation
-            coords3d[i] = O + (sign*x, sign*y, 0.)
+            coords3d[i] = O + (sign * x, sign * y, 0.0)
         # Dihedral in xyz-space from spherical coordinates
         else:
             theta, phi = np.deg2rad((zline.a, zline.d))
@@ -83,10 +92,15 @@ def geom_from_zmat(zmat, coords3d=None, start_at=None):
             a /= np.linalg.norm(a)
             b = np.cross(a, w)
             b /= np.linalg.norm(b)
-            coords3d[i] = O - w*x + b*y + a*z
+            coords3d[i] = O - w * x + b * y + a * z
 
-    geom = Geometry(atoms, coords3d)
+    geom = Geometry(atoms, coords3d, coord_type=coord_type, coord_kwargs=coord_kwargs)
     return geom
+
+
+def geom_from_zmat_str(text, coord_type="cart", coord_kwargs=None):
+    zmat = zmat_from_str(text)
+    return geom_from_zmat(zmat, coord_type=coord_type, coord_kwargs=coord_kwargs)
 
 
 def zmat_from_str(text):
@@ -102,9 +116,10 @@ def zmat_from_str(text):
 
     zmat = list()
     for line in text.strip().split("\n"):
-        zmat.append(
-            ZLine(*convert(line.strip().split()))
-        )
+        line = line.strip()
+        if line.startswith("#"):
+            continue
+        zmat.append(ZLine(*convert(line.split())))
     return zmat
 
 

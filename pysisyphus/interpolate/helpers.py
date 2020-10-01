@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from pysisyphus.interpolate import IDPP, LST, Interpolator, Redund
 
 

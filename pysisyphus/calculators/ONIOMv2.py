@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://www.sciencedirect.com/science/article/pii/S0166128098004758
 #     https://doi.org/10.1016/S0166-1280(98)00475-8
 #     Dapprich, Frisch, 1998
@@ -293,7 +291,6 @@ class Model():
         # prepare_kwargs = {
             # "point_charges": point_charges,
         # }
-        prepare_kwargs = {}  # lgtm [py/unused-local-variable]
         if point_charges is not None:
             raise Exception("point_charges & hessian is not yet implemented")
 

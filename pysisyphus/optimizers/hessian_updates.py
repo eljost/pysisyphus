@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://link.springer.com/article/10.1007/s00214-016-1847-3
 #     Birkholz, 2016
 # [2] Geometry optimization in Cartesian coordinates: Constrained optimization
@@ -222,7 +220,6 @@ def multi_step_update(H, coords, gradients, energies, last_cycles=3,
         dH = update_func(H, dx, dg)
         H += dH
     return H
-"""
 
 
 # def multi_step_update(H, coords, gradients, energies, last_cycles=3,
@@ -265,3 +262,4 @@ def multi_step_update(H, steps, gradients, energies, last_cycles=1, key="bfgs"):
         dH, _ = update_func(H, dx, dg)
         H_updated += dH
     return H_updated
+"""

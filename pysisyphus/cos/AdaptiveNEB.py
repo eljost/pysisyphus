@@ -1,17 +1,15 @@
-#!/usr/bin/env python3
-
-import numpy as np
-
-from pysisyphus.cos.NEB import NEB
-from pysisyphus.interpolate import interpolate
-
-
 # [1] https://aip.scitation.org/doi/pdf/10.1063/1.1495401
 # [2] http://dx.doi.org/10.1063/1.4962019
 #     Zhang, 2016
 #     FreeEnd Adaptive NEB
 
 # See /scratch/projekte/biaryl/me_cn/cycloadd22/guess01/neb2
+
+import numpy as np
+
+from pysisyphus.cos.NEB import NEB
+from pysisyphus.interpolate import interpolate
+
 
 class AdaptiveNEB(NEB):
 

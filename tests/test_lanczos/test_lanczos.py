@@ -20,7 +20,8 @@ logger.addHandler(handler)
 
 def test_anapot_lanczos():
     geom = AnaPot.get_geom((-0.5767, 1.6810, 0.))
-    w_min, v_min = geom_lanczos(geom, dx=1e-5, dl=1e-5, logger=logger)
+    guess = (0.4, 0.3, 0.0)
+    w_min, v_min = geom_lanczos(geom, guess=guess, dx=1e-5, dl=1e-5, logger=logger)
 
     H = geom.hessian
     w, v = np.linalg.eigh(H)

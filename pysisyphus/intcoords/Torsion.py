@@ -4,22 +4,18 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords import Bend
+from pysisyphus.intcoords.derivatives import d2q_d
 
 
 
 class Torsion(Primitive):
 
-    def __init__(self, *args, cos_tol=1e-9, **kwargs):
-        kwargs["calc_kwargs"] = ("cos_tol", )
-        super().__init__(*args, **kwargs)
-
-        self.cos_tol = cos_tol
-
-    def _weight(self, atoms, coords3d, f_damping):
-        m, o, p, n = self.indices
-        rho_mo = self.rho(atoms, coords3d, (m, o))
-        rho_op = self.rho(atoms, coords3d, (o, p))
-        rho_pn = self.rho(atoms, coords3d, (p, n))
+    @staticmethod
+    def _weight(atoms, coords3d, indices, f_damping):
+        m, o, p, n = indices
+        rho_mo = Torsion.rho(atoms, coords3d, (m, o))
+        rho_op = Torsion.rho(atoms, coords3d, (o, p))
+        rho_pn = Torsion.rho(atoms, coords3d, (p, n))
         rad_mop = Bend._calculate(coords3d, (m, o, p))
         rad_opn = Bend._calculate(coords3d, (o, p, n))
         return (
@@ -29,7 +25,7 @@ class Torsion(Primitive):
         )
 
     @staticmethod
-    def _calculate(coords3d, indices, gradient=False, cos_tol=1e-9):
+    def _calculate(coords3d, indices, gradient=False):
         m, o, p, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[p]
@@ -45,20 +41,34 @@ class Torsion(Primitive):
         uxw = np.cross(u, w)
         vxw = np.cross(v, w)
         cos_dihed = uxw.dot(vxw)/(np.sin(phi_u)*np.sin(phi_v))
+        # Restrict cos_dihed to the allowed interval for arccos [-1, 1]
+        cos_dihed = min(1, max(cos_dihed, -1))
 
-        # Restrict cos_dihed to [-1, 1]
-        if cos_dihed >= 1 - cos_tol:
-            dihedral_rad = 0
-        elif cos_dihed <= -1 + cos_tol:
-            dihedral_rad = np.arccos(-1)
-        else:
-            dihedral_rad = np.arccos(cos_dihed)
+        dihedral_rad = np.arccos(cos_dihed)
 
-        if dihedral_rad != np.pi:
-            # wxv = np.cross(w, v)
-            # if wxv.dot(u) < 0:
-            if vxw.dot(u) < 0:
-                dihedral_rad *= -1
+        # Arccos only returns values between 0 and π, but dihedrals can
+        # also be negative. This is corrected now.
+        #
+        # (v ⨯ w) · u will be < 0 when both vectors point in different directions.
+        #
+        #  M  --->  N
+        #   \      /
+        #    u    v    positive dihedral, M rotates into N clockwise
+        #     \  /     (v ⨯ w) · u > 0, keep positive sign
+        #      OwP
+        #
+        #  M
+        #   \
+        #  | u
+        #  |  \
+        #  |   OwP     negative dihedral, M rotates into N counter-clockwise
+        #  v  /        (v ⨯ w) · u < 0, invert dihedral sign
+        #    v
+        #   /
+        #  N
+        #
+        if (dihedral_rad != np.pi) and (vxw.dot(u) < 0):
+            dihedral_rad *= -1
 
         if gradient:
             row = np.zeros_like(coords3d)
@@ -81,3 +91,8 @@ class Torsion(Primitive):
             row = row.flatten()
             return dihedral_rad, row
         return dihedral_rad
+
+    @staticmethod
+    def _jacobian(coords3d, indices):
+        sign = np.sign(Torsion._calculate(coords3d, indices))
+        return sign * d2q_d(*coords3d[indices].flatten())

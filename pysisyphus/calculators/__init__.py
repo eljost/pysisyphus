@@ -32,6 +32,7 @@ from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.calculators.MOPAC import MOPAC
 from pysisyphus.calculators.Psi4 import Psi4
 from pysisyphus.calculators.ONIOMv2 import ONIOM
+from pysisyphus.calculators.OpenMolcas import OpenMolcas
 from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB

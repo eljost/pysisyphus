@@ -478,9 +478,14 @@ class Optimizer(metaclass=abc.ABCMeta):
             new_coords = self.geometry.coords.copy() + step
             try:
                 self.geometry.coords = new_coords
+                # Use the actual step. It may differ from the proposed step
+                # when internal coordinates are used, as the internal-Cartesian
+                # transformation is done iteratively.
                 self.steps[-1] = self.geometry.coords - self.coords[-1]
             except RebuiltInternalsException:
                 print("Rebuilt internal coordinates")
+                with open("rebuilt_primitives.xyz", "w") as handle:
+                    handle.write(self.geometry.as_xyz())
                 self.reset()
 
             if hasattr(self.geometry, "reparametrize"):

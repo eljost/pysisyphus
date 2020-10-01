@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1016/0009-2614(91)90115-P
 #     Helgaker, 1991
 

@@ -5,22 +5,20 @@
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844
 
+import math
 import itertools as it
 import logging
 
 import numpy as np
 
-from pysisyphus.helpers_pure import remove_duplicates
-from pysisyphus.intcoords import Bend, LinearBend, Stretch, Torsion
+from pysisyphus.intcoords import Stretch, Torsion
 from pysisyphus.intcoords.update import transform_int_step
-from pysisyphus.intcoords.derivatives import d2q_b, d2q_a, d2q_d
 from pysisyphus.intcoords.eval import (
     eval_primitives,
     check_primitives,
-    augment_primitives,
-    PrimInternal,
 )
-from pysisyphus.intcoords.setup import setup_redundant, get_primitives, valid_bend, valid_dihedral
+from pysisyphus.intcoords.setup import setup_redundant, get_primitives, PrimTypes
+from pysisyphus.intcoords.valid import check_typed_prims
 
 
 class RedundantCoords:
@@ -29,15 +27,17 @@ class RedundantCoords:
         atoms,
         coords3d,
         bond_factor=1.3,
-        prim_indices=None,
+        typed_prims=None,
         define_prims=None,
         bonds_only=False,
         check_bends=True,
-        rebuild=False,
+        rebuild=True,
         bend_min_deg=15,
-        bend_max_deg=180,
-        lb_min_deg=None,
-        make_complement=True,
+        dihed_max_deg=175.0,
+        lb_min_deg=175.0,
+        weighted=False,
+        min_weight=0.3,
+        rcond=1e-8,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -47,9 +47,12 @@ class RedundantCoords:
         self.check_bends = check_bends
         self.rebuild = rebuild
         self.bend_min_deg = bend_min_deg
-        self.bend_max_deg = bend_max_deg
+        self.dihed_max_deg = dihed_max_deg
         self.lb_min_deg = lb_min_deg
-        self.make_complement = make_complement
+        self.weighted = weighted
+        self.min_weight = float(min_weight)
+        assert self.min_weight > 0.0, "min_weight must be a positive rational!"
+        self.rcond = rcond
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -57,51 +60,73 @@ class RedundantCoords:
         self.linear_bend_indices = list()
         self.logger = logging.getLogger("internal_coords")
 
-        # Set up primitive indices
-        if prim_indices is None:
+        if self.weighted:
+            self.log(
+                "Coordinate weighting requested, min_weight="
+                f"{self.min_weight:.2f}. Calculating bond factor."
+            )
+            # Screening function is
+            #   ρ(d) = exp(-(d/sum_cov_rad - 1)
+            #
+            # Swart proposed a min_weight of ρ(d) = 0.3. With this we can
+            # calculate the appropriate factor for the bond detection.
+            # d = (1 - ln(0.3)) * sum_cov_rad
+            # bond_factor = (1 - ln(0.3)) ≈ 2.204
+            #
+            # The snippet below prints weights and corresponding bond_factors.
+            # [f"{w:.2f}: {1-np.log(w):.4f}" for w in np.linspace(0.3, 1, 25)]
+            self.bond_factor = -math.log(self.min_weight) + 1
+        self.log(f"Using a factor of {self.bond_factor:.6f} for bond detection.")
+
+        # Set up primitive coordinate indices
+        if typed_prims is None:
             self.set_primitive_indices(
                 self.atoms,
                 self.coords3d,
-                min_deg=self.bend_min_deg,
-                max_deg=self.bend_max_deg,
-                define_prims=self.define_prims,
             )
+        # Use supplied typed_prims
         else:
-            to_arr = lambda _: np.array(list(_), dtype=int)
-            bonds, bends, dihedrals = prim_indices
-            # We accept all bond indices. What could possibly go wrong?! :)
-            self.bond_indices = to_arr(bonds)
-            valid_bends = [inds for inds in bends if valid_bend(self.coords3d, inds,
-                self.bend_min_deg, self.bend_max_deg)]
-            self.bending_indices = to_arr(valid_bends)
-            valid_dihedrals = [
-                inds for inds in dihedrals if valid_dihedral(self.coords3d, inds)
-            ]
-            self.dihedral_indices = to_arr(valid_dihedrals)
-
-        if self.bonds_only:
-            self.bending_indices = list()
-            self.dihedral_indices = list()
+            self.log(f"{len(typed_prims)} primitives were supplied. Checking them.")
+            valid_typed_prims = check_typed_prims(
+                self.coords3d,
+                typed_prims,
+                bend_min_deg=self.bend_min_deg,
+                dihed_max_deg=self.dihed_max_deg,
+                lb_min_deg=self.lb_min_deg,
+            )
+            self.log(
+                f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
+            )
+            self.typed_prims = valid_typed_prims
+            self.set_inds_from_typed_prims(self.typed_prims)
 
         self.primitives = get_primitives(
             self.coords3d,
-            self.bond_indices,
-            self.bending_indices,
-            self.linear_bend_indices,
-            self.dihedral_indices,
-            make_complement=self.make_complement,
+            self.typed_prims,
             logger=self.logger,
         )
+        if self.bonds_only:
+            self.bending_indices = list()
+            self.dihedral_indices = list()
+            self.linear_bend_indices = list()
+            self.primitives = [
+                prim for prim in self.primitives if isinstance(prim, Stretch)
+            ]
+        check_primitives(self.coords3d, self.primitives, logger=self.logger)
 
         self._prim_internals = self.eval(self.coords3d)
-        self._prim_coords = np.array([prim_int.val for prim_int in self._prim_internals])
+        self._prim_coords = np.array(
+            [prim_int.val for prim_int in self._prim_internals]
+        )
 
         bonds = len(self.bond_indices)
-        bends = len(self.bending_indices)
+        bends = len(self.bending_indices) + len(self.linear_bend_indices)
         dihedrals = len(self.dihedral_indices)
+        assert bonds + bends + dihedrals == len(self.primitives)
         self._bonds_slice = slice(bonds)
-        self._bends_slice = slice(bonds, bonds+bends)
-        self._dihedrals_slice = slice(bonds+bends, bonds+bends+dihedrals)
+        self._bends_slice = slice(bonds, bonds + bends)
+        self._dihedrals_slice = slice(bonds + bends, bonds + bends + dihedrals)
+        self.backtransform_counter = 0
 
     def log(self, message):
         self.logger.debug(message)
@@ -148,9 +173,7 @@ class RedundantCoords:
         return np.array([prim_int.val for prim_int in self.prim_internals])
 
     def return_inds(self, slice_):
-        return np.array(
-            [prim_int.indices for prim_int in self.prim_internals[slice_]]
-        )
+        return np.array([prim_int.indices for prim_int in self.prim_internals[slice_]])
 
     @property
     def bonds(self):
@@ -167,11 +190,6 @@ class RedundantCoords:
     @property
     def coords(self):
         return self.prim_coords
-
-    # @property
-    # def coord_indices(self):
-        # ic_ind_tuples = [tuple(prim.indices) for prim in self._primitives]
-        # return {ic_inds: i for i, ic_inds in enumerate(ic_ind_tuples)}
 
     @property
     def dihed_start(self):
@@ -199,30 +217,34 @@ class RedundantCoords:
         """Wilson B-Matrix"""
         return self.B_prim
 
+    def pinv(self, array, rcond=None):
+        if rcond is None:
+            rcond = self.rcond
+        return np.linalg.pinv(array, rcond=rcond)
+
     @property
     def Bt_inv_prim(self):
         """Transposed generalized inverse of the primitive Wilson B-Matrix."""
         B = self.B_prim
-        return np.linalg.pinv(B.dot(B.T)).dot(B)
+        return self.pinv(B.dot(B.T)).dot(B)
 
     @property
     def Bt_inv(self):
         """Transposed generalized inverse of the Wilson B-Matrix."""
         B = self.B
-        return np.linalg.pinv(B.dot(B.T)).dot(B)
+        return self.pinv(B.dot(B.T)).dot(B)
 
     @property
     def B_inv_prim(self):
         """Generalized inverse of the primitive Wilson B-Matrix."""
         B = self.B_prim
-        return B.T.dot(np.linalg.pinv(B.dot(B.T)))
-
+        return B.T.dot(self.pinv(B.dot(B.T)))
 
     @property
     def B_inv(self):
         """Generalized inverse of the Wilson B-Matrix."""
         B = self.B
-        return B.T.dot(np.linalg.pinv(B.dot(B.T)))
+        return B.T.dot(self.pinv(B.dot(B.T)))
 
     @property
     def P(self):
@@ -236,27 +258,24 @@ class RedundantCoords:
     def get_K_matrix(self, int_gradient=None):
         if int_gradient is not None:
             assert len(int_gradient) == len(self._primitives)
+
         size_ = self.coords3d.size
         if int_gradient is None:
             return np.zeros((size_, size_))
 
-        dg_funcs = {
-            2: d2q_b,
-            # Todo: handle linear bend
-            3: d2q_a,
-            4: d2q_d,
-        }
-
-        def grad_deriv_wrapper(inds):
-            coords_flat = self.coords3d[inds].flatten()
-            dgrad = dg_funcs[len(inds)](*coords_flat)
-            return dgrad
-
         K_flat = np.zeros(size_ * size_)
+        coords3d = self.coords3d
         for primitive, int_grad_item in zip(self.primitives, int_gradient):
             # Contract with gradient
+            val = np.rad2deg(primitive.calculate(coords3d))
+            self.log(f"K, {primitive}={val:.2f}°")
+            # The generated code (d2q_d) seems unstable for these values...
+            if isinstance(primitive, Torsion) and ((abs(val) < 1) or (abs(val) > 179)):
+                self.log(f"Skipped 2nd derivative of {primitive} with val={val:.2f}°")
+                continue
+            # 2nd derivative of normal, but linear, bends is undefined.
             try:
-                dg = int_grad_item * grad_deriv_wrapper(primitive.indices)
+                dg = int_grad_item * primitive.jacobian(coords3d)
             except (ValueError, ZeroDivisionError) as err:
                 self.log(
                     "Error in calculation of 2nd derivative of primitive "
@@ -273,7 +292,9 @@ class RedundantCoords:
             # As for now we build up the K matrix as flat array. To add the dg
             # entries at the appropriate places in K_flat we have to calculate
             # the corresponding flat indices of dg in K_flat.
-            cart_inds = list(it.chain(*[range(3 * i, 3 * i + 3) for i in primitive.indices]))
+            cart_inds = list(
+                it.chain(*[range(3 * i, 3 * i + 3) for i in primitive.indices])
+            )
             flat_inds = [
                 row * size_ + col for row, col in it.product(cart_inds, cart_inds)
             ]
@@ -281,25 +302,23 @@ class RedundantCoords:
         K = K_flat.reshape(size_, size_)
         return K
 
-    def transform_hessian(self, cart_hessian, int_gradient=None):
-        """Transform Cartesian Hessian to internal coordinates."""
+    def log_int_grad_msg(self, int_gradient):
         if int_gradient is None:
             self.log(
                 "Supplied 'int_gradient' is None. K matrix will be zero, "
-                "so derivatives of the Wilson-B-matrix are neglected in "
-                "the hessian transformation."
+                "so derivatives of the\nWilson-B-matrix are neglected in "
+                "Hessian transformation."
             )
+
+    def transform_hessian(self, cart_hessian, int_gradient=None):
+        """Transform Cartesian Hessian to internal coordinates."""
+        self.log_int_grad_msg(int_gradient)
         K = self.get_K_matrix(int_gradient)
         return self.Bt_inv_prim.dot(cart_hessian - K).dot(self.B_inv_prim)
 
     def backtransform_hessian(self, redund_hessian, int_gradient=None):
         """Transform Hessian in internal coordinates to Cartesians."""
-        if int_gradient is None:
-            self.log(
-                "Supplied 'int_gradient' is None. K matrix will be zero, "
-                "so derivatives of the Wilson-B-matrix are neglected in "
-                "the hessian transformation."
-            )
+        self.log_int_grad_msg(int_gradient)
         K = self.get_K_matrix(int_gradient)
         return self.B.T.dot(redund_hessian).dot(self.B) + K
 
@@ -312,54 +331,68 @@ class RedundantCoords:
         """Project supplied vector onto range of B."""
         return self.P.dot(vector)
 
+    def set_inds_from_typed_prims(self, typed_prims):
+        linear_bend_types = (PrimTypes.LINEAR_BEND, PrimTypes.LINEAR_BEND_COMPLEMENT)
+        per_type = {
+            2: list(),
+            3: list(),
+            4: list(),
+            "linear_bend": list(),
+            "hydrogen_bond": list(),
+        }
+        for type_, *indices in typed_prims:
+            key = len(indices)
+            if type_ in (linear_bend_types):
+                key = "linear_bend"
+            per_type[key].append(indices)
+
+            # Also keep hydrogen bonds
+            if type_ == PrimTypes.HYDROGEN_BOND:
+                per_type["hydrogen_bond"].append(indices)
+
+        self.bond_indices = per_type[2]
+        self.bending_indices = per_type[3]
+        self.dihedral_indices = per_type[4]
+        self.linear_bend_indices = per_type["linear_bend"]
+        self.hydrogen_bond_indices = per_type["hydrogen_bond"]
+
+        # TODO
+        # self.fragments = coord_info.fragments
+
     def set_primitive_indices(
-        self, atoms, coords3d, min_deg, max_deg, define_prims=None
+        self,
+        atoms,
+        coords3d,
     ):
         coord_info = setup_redundant(
             atoms,
             coords3d,
             factor=self.bond_factor,
-            define_prims=define_prims,
-            min_deg=min_deg,
-            max_deg=max_deg,
+            define_prims=self.define_prims,
+            min_deg=self.bend_min_deg,
+            dihed_max_deg=self.dihed_max_deg,
             lb_min_deg=self.lb_min_deg,
+            min_weight=self.min_weight if self.weighted else None,
             logger=self.logger,
         )
 
-        all_bonds = (
-            coord_info.bonds + coord_info.hydrogen_bonds + coord_info.interfrag_bonds
-        )
-        all_bonds = remove_duplicates(all_bonds)
+        self.typed_prims = coord_info.typed_prims
+        self.set_inds_from_typed_prims(self.typed_prims)
 
-        # Set primitive indices
-        self.bond_indices = all_bonds
-        self.bending_indices = coord_info.bends
-        self.linear_bend_indices = coord_info.linear_bends
-        self.dihedral_indices = coord_info.dihedrals
-
-        self.hydrogen_bond_indices = coord_info.hydrogen_bonds
         self.fragments = coord_info.fragments
-        self.cbm = coord_info.cbm
-        self.cdm = coord_info.cdm
-
-        # TODO: primitives are not yet defined
-        # missing_prims, kappa = check_primitives(
-            # self.coords3d,
-            # self.primitives,
-            # logger=self.logger,
-        # )
 
     def eval(self, coords3d, attr=None):
         prim_internals = eval_primitives(coords3d, self.primitives)
 
         if attr is not None:
-            return np.array([
-                getattr(prim_internal, attr) for prim_internal in prim_internals
-            ])
+            return np.array(
+                [getattr(prim_internal, attr) for prim_internal in prim_internals]
+            )
 
         return prim_internals
 
     def transform_int_step(self, int_step, pure=False):
+        self.log(f"Backtransformation {self.backtransform_counter}")
         new_prim_internals, cart_step, failed = transform_int_step(
             int_step,
             self.coords3d.flatten(),
@@ -367,12 +400,14 @@ class RedundantCoords:
             self.B_prim,
             self.primitives,
             check_dihedrals=self.rebuild,
+            rcond=self.rcond,
             logger=self.logger,
         )
         # Update coordinates
         if not pure:
             self.coords3d += cart_step.reshape(-1, 3)
             self.prim_internals = new_prim_internals
+            self.backtransform_counter += 1
         return cart_step
 
     def __str__(self):
@@ -381,9 +416,3 @@ class RedundantCoords:
         dihedrals = len(self.dihedral_indices)
         name = self.__class__.__name__
         return f"{name}({bonds} bonds, {bends} bends, {dihedrals} dihedrals)"
-
-
-class RedundantCoordsV2(RedundantCoords):
-
-    def __init__(self, *args, lb_min_deg=170, **kwargs):
-        super().__init__(*args, lb_min_deg=lb_min_deg, **kwargs)

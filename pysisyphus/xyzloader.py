@@ -115,7 +115,6 @@ def parse_xyz_str(xyz_str, with_comment):
     """
 
     xyz_lines = xyz_str.strip().split("\n")
-    atom_num = int(xyz_lines[0].strip())
     comment_line = xyz_lines[1]
 
     # Only consider the first four items on a line

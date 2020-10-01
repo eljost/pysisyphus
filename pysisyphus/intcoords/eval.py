@@ -49,12 +49,12 @@ def check_primitives(coords3d, primitives, thresh=1e-6, logger=None):
     missing = expected - nonzero_num
     if missing > 0:
         log( "Not enough internal coordinates defined! Expected at least "
-            f"{expected} nonzero eigenvalues, but found only {nonzero_num}!"
+            f"{expected} nonzero eigenvalues. Found only {nonzero_num}!"
         )
     nonzero_w = w[nonzero_inds]
     # Condition number
     kappa = abs(nonzero_w.max()/nonzero_w.min())
-    log(f"Condition number of B^T.B=G: {kappa:.2e}")
+    log(f"Condition number of B^T.B=G: {kappa:.4e}")
     return missing+1, kappa
 
 
@@ -65,7 +65,6 @@ def augment_primitives(missing_prims, coords3d, prim_indices, fragments):
 
     fragment_tpls = [tuple(fragment) for fragment in fragments]
     if len(fragments) > 1:
-        frag_inds = list(range(len(fragments)))
         bond_inds = prim_indices[0]
         bond_sets = [frozenset(bond) for bond in bond_inds]
         while missing_prims > 0:

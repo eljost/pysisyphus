@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://doi.org/10.1007/s002140050387
 #     Bofill, 1998
 

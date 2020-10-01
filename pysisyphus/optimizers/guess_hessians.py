@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # [1] https://www.sciencedirect.com/science/article/pii/000926149500646L
 #     Lindh, 1995
 # [2] https://pubs.acs.org/doi/pdf/10.1021/j100203a036
@@ -15,7 +13,7 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.intcoords.setup import get_pair_covalent_radii, get_bond_mat
+from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.io.hessian import save_hessian
 
 
@@ -29,8 +27,6 @@ def fischer_guess(geom):
     central_atoms = [dh.inds[1:3] for dh in dihedrals]
     bond_factor = geom.internal.bond_factor
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
-    bm = get_bond_mat(geom, bond_factor)
-    np.testing.assert_allclose(bm, bond_mat)
     tors_atom_bonds = dict()
     for a, b in central_atoms:
         # Substract 2, as we don't want the bond between a and b,

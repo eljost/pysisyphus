@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import qcengine as qcng
 import qcelemental as qcel
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.constants import BOHR2ANG
 
 
 class QCEngine(Calculator):

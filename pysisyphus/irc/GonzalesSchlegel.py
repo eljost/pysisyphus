@@ -1,20 +1,16 @@
-#!/usr/bin/env python3
-
-import copy
-
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import newton
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.TableFormatter import TableFormatter
+
 
 # [1] An improved algorithm for reaction path following
 # http://aip.scitation.org/doi/pdf/10.1063/1.456010
 # [2] Extension to internal coordinates (not implemented)
 # https://pubs.acs.org/doi/pdf/10.1021/j100377a021
+
 
 class GonzalesSchlegel(IRC):
 
@@ -44,7 +40,6 @@ class GonzalesSchlegel(IRC):
         dH, _ = bfgs_update(self.mw_hessian, coords_diff, gradient_diff)
         self.mw_hessian += dH
         eigvals, eigvecs = np.linalg.eig(self.mw_hessian)
-        hessian_inv = np.linalg.pinv(self.mw_hessian)
 
         def lambda_func(lambda_):
             # Eq. (11) in [1]
@@ -55,7 +50,6 @@ class GonzalesSchlegel(IRC):
             tmp = self.displacement - hmlinv.dot(glp)
             return tmp.dot(tmp) - 0.25*(self.step_length**2)
 
-        smallest_eigval = np.sort(eigvals)[0]
         # Initial guess for λ.
         # λ must be smaller then the smallest eigenvector
         lambda_ = np.sort(eigvals)[0]

@@ -12,7 +12,7 @@ import rmsd
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.intcoords import DLC, RedundantCoords, RedundantCoordsV2
+from pysisyphus.intcoords import DLC, RedundantCoords
 from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
                                              RebuiltInternalsException,
                                              DifferentPrimitivesException,
@@ -85,7 +85,6 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
-        "redund_v2": RedundantCoordsV2,
         "dlc": DLC,
     }
 
@@ -127,7 +126,7 @@ class Geometry:
             fragments = dict()
         self.fragments = fragments
 
-        if (coord_kwargs is not None) and coord_type == "cart":
+        if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
             print("coord_type is set to 'cart' but coord_kwargs were given. "
                   "This is probably not intended. Exiting!")
             sys.exit()
@@ -155,7 +154,6 @@ class Geometry:
 
     @property
     def sum_formula(self):
-        atom_counter = Counter(self.atoms)
         return "_".join(
                 [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
@@ -185,7 +183,7 @@ class Geometry:
         self.assert_compatibility(other)
         if self.coord_type == "cart":
             diff = self.coords - other.coords
-        elif self.coord_type in ("redund", "redund_v2", "dlc"):
+        elif self.coord_type in ("redund", "dlc"):
             # Take periodicity of dihedrals into account by calling
             # get_tangent(). Care has to be taken regarding the orientation
             # of the returned tangent vector. It points from self to other.
@@ -234,12 +232,12 @@ class Geometry:
         _coord_kwargs = None
         if coord_type != "cart":
             try:
-                prim_indices = self.internal.prim_indices
+                typed_prims = self.internal.typed_prims
             # Will be raised if the current coord_type is 'cart'
             except AttributeError:
-                prim_indices = None
+                typed_prims = None
             _coord_kwargs = {
-                "prim_indices": prim_indices,
+                "typed_prims": typed_prims,
                 "check_bends": True,
             }
             _coord_kwargs.update(coord_kwargs)
@@ -266,7 +264,6 @@ class Geometry:
         inds_dict : dict
             Unique atom types as keys, corresponding indices as values.
         """
-        unique_atoms = set(self.atoms)
         inds_dict = {}
         for atom_type in set(self.atoms):
             inds_dict[atom_type] = [i for i, atom in enumerate(self.atoms)

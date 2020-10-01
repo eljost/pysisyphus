@@ -92,13 +92,13 @@ def test_geometry_get_restart_info():
 @pytest.mark.parametrize(
     "opt_cls, opt_kwargs_, ref_norm",
     [
-        pytest.param(ConjugateGradient, {}, 0.01753495, marks=using("pyscf")),
+        pytest.param(ConjugateGradient, {}, 0.01693523, marks=using("pyscf")),
         pytest.param(FIRE, {}, 0.50285483, marks=using("pyscf")),
         pytest.param(LBFGS, {"gamma_mult": True, }, 2.2002337e-6, marks=using("pyscf")),
         pytest.param(LBFGS, {"gamma_mult": False, }, 1.36271012e-5, marks=using("pyscf")),
         pytest.param(PreconLBFGS, {}, 1.0844091e-5, marks=using("pyscf")),
         pytest.param(QuickMin, {}, 0.02305389, marks=using("pyscf")),
-        pytest.param(RFOptimizer, {}, 0.001659627, marks=using("pyscf")),
+        pytest.param(RFOptimizer, {}, 0.00189796616, marks=using("pyscf")),
         pytest.param(SteepestDescent, {}, 0.05535400, marks=using("pyscf")),
     ]
 )

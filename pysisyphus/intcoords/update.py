@@ -1,11 +1,10 @@
-import itertools as it
-
 import numpy as np
 
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.eval import eval_primitives
 from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
+from pysisyphus.intcoords.valid import dihedrals_are_valid
 
 
 def correct_dihedrals(new_dihedrals, old_dihedrals):
@@ -68,31 +67,6 @@ def update_internals(new_coords3d, old_internals, primitives, dihedral_inds,
     return prim_internals
 
 
-def are_collinear(vec1, vec2, thresh=1e-4):
-    # ~4e-5 corresponds to 179.5°
-    return 1 - abs(vec1.dot(vec2)) <= thresh
-
-
-def dihedrals_are_valid(coords3d, dihedral_inds):
-    def valid_dihedral(inds):
-        m, o, p, n = inds
-        u_dash = coords3d[m] - coords3d[o]
-        v_dash = coords3d[n] - coords3d[p]
-        w_dash = coords3d[p] - coords3d[o]
-        u_norm = np.linalg.norm(u_dash)
-        v_norm = np.linalg.norm(v_dash)
-        w_norm = np.linalg.norm(w_dash)
-        u = u_dash / u_norm
-        v = v_dash / v_norm
-        w = w_dash / w_norm
-
-        valid = not (are_collinear(u, w) or are_collinear(v, w))
-        return valid
-
-    all_valid = all([valid_dihedral(inds) for inds in dihedral_inds])
-    return all_valid
-
-
 def transform_int_step(
     int_step,
     old_cart_coords,
@@ -101,6 +75,7 @@ def transform_int_step(
     primitives,
     check_dihedrals=False,
     cart_rms_thresh=1e-6,
+    rcond=1e-8,
     logger=None,
 ):
     """Transformation is done in primitive internals, so int_step must be given
@@ -110,7 +85,7 @@ def transform_int_step(
     remaining_int_step = int_step
     target_internals = cur_internals + int_step
 
-    Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T)).dot(B_prim)
+    Bt_inv_prim = np.linalg.pinv(B_prim.dot(B_prim.T), rcond=rcond).dot(B_prim)
     dihedral_inds = np.array(
         [i for i, primitive in enumerate(primitives) if isinstance(primitive, Torsion)]
     )
@@ -153,7 +128,7 @@ def transform_int_step(
 
         last_rms = cart_rms
         if cart_rms < cart_rms_thresh:
-            log(logger, f"Internal->Cartesian transformation converged in {i} cycle(s)!")
+            log(logger, f"Internal->Cartesian transformation converged in {i+1} cycle(s)!")
             backtransform_failed = False
             break
 

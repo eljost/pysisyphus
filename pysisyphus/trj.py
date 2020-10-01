@@ -1,20 +1,16 @@
-#!/usr/bin/env python3
-
 import argparse
-import copy
 import itertools as it
-import os
 from pathlib import Path
-from pprint import pprint
 import re
 import sys
 
+import matplotlib.pyplot as plt
 from natsort import natsorted
 import numpy as np
 import rmsd as rmsd
 import yaml
 
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.setup import get_fragments
@@ -22,7 +18,7 @@ from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.stocastic.align import match_geom_atoms
-from pysisyphus.xyzloader import write_geoms_to_trj, split_xyz_str
+from pysisyphus.xyzloader import split_xyz_str
 
 
 INTERPOLATE = {
@@ -95,11 +91,11 @@ def parse_args(args):
     action_group.add_argument("--internals", action="store_true",
         help="Print automatically generated internals."
     )
-    action_group.add_argument("--internalsV2", action="store_true",
-        help="Print automatically generated internals using 'coord_type=redund_v2'."
-    )
     action_group.add_argument("--get", type=int,
         help="Get n-th geometry. Expects 0-based index input."
+    )
+    action_group.add_argument("--geti", action="store_true",
+        help="Decide on geometry interactively."
     )
     action_group.add_argument("--origin", action="store_true",
         help="Translate geometry, so that min(X/Y/Z) == 0."
@@ -149,7 +145,7 @@ def parse_args(args):
 
 
 def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
-               define_prims=None, prim_indices=None):
+               define_prims=None, typed_prims=None):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
@@ -161,7 +157,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     if coord_type != "cart":
         geom_kwargs["coord_kwargs"] = {
             "define_prims": define_prims,
-            "prim_indices": prim_indices,
+            "typed_prims": typed_prims,
         }
 
     for fn in xyz_fns:
@@ -215,16 +211,16 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
         union_geoms = read_geoms(union, coord_type=coord_type)
         assert len(union_geoms) == 2, \
             f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
-        united_prim_indices = form_coordinate_union(*union_geoms)
+        typed_prims_union = form_coordinate_union(*union_geoms)
     else:
-        united_prim_indices = None
+        typed_prims_union = None
 
     assert interpolate in list(INTERPOLATE.keys()) + [None], \
         f"Unsupported type: '{interpolate}' given. Valid arguments are " \
         f"{list(INTERPOLATE.keys())}'"
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
-                       define_prims=define_prims, prim_indices=united_prim_indices)
+                       define_prims=define_prims, typed_prims=typed_prims_union)
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
 
@@ -258,7 +254,7 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
             coord_kwargs = None
             if coord_type != "cart":
                 coord_kwargs = {
-                    "prim_indices": geom.internal.prim_indices,
+                    "typed_prims": geom.internal.typed_prims,
                 }
             geom = Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type,
                             comment=geom.comment, coord_kwargs=coord_kwargs
@@ -271,18 +267,18 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
 
     same_prim_inds = True
     if coord_type != "cart":
-        geom_prim_inds = [geom.internal.prim_indices_set for geom in geoms]
+        geom_prim_inds = [geom.internal.typed_prims for geom in geoms]
         first_set = geom_prim_inds[0]
         same_prim_inds = all([ith_set == first_set for ith_set in geom_prim_inds[1:]])
     # Recreate geometries with the same primitive internal coordinates
     if not same_prim_inds:
-        prim_indices = form_coordinate_union(geoms[0], geoms[-1])
+        typed_prims = form_coordinate_union(geoms[0], geoms[-1])
         geoms = [Geometry(atoms_0, geom.cart_coords,
                          coord_type=coord_type,
-                         coord_kwargs={"prim_indices": prim_indices,},
+                         coord_kwargs={"typed_prims": typed_prims},
                  )
                  for geom in geoms]
-        coord_lengths_ = np.array([geom.coords.size for geom in geoms])
+        assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
     return geoms
 
 
@@ -363,11 +359,6 @@ def append(geoms):
     return [Geometry(atoms, coords), ]
 
 
-def bohr2ang(geoms):
-    coords_angstrom = [geom.coords*0.529177249 for geom in geoms]
-    raise Exception("Implement me")
-
-
 def match(ref_geom, geom_to_match):
     rmsd_before = rmsd.kabsch_rmsd(ref_geom.coords3d, geom_to_match.coords3d)
     print(f"Kabsch RMSD before: {rmsd_before:.4f}")
@@ -407,7 +398,7 @@ def shake(geoms, scale=0.1, seed=None):
     return geoms
 
 
-def print_internals(geoms, filter_atoms=None, add_prims="", v2=False):
+def print_internals(geoms, filter_atoms=None, add_prims=""):
     if filter_atoms is None:
         filter_atoms = set()
 
@@ -426,8 +417,7 @@ def print_internals(geoms, filter_atoms=None, add_prims="", v2=False):
             f"valid range for the {i}-th geometry '{geom}' with {atom_num} " \
             f"atoms (valid indices: range(0,{atom_num}))."
 
-        coord_type = "redund_v2" if v2 else "redund"
-        int_geom = Geometry(geom.atoms, geom.coords, coord_type=coord_type,
+        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
                             coord_kwargs={"define_prims": add_prims,},
         )
 
@@ -459,6 +449,7 @@ def print_internals(geoms, filter_atoms=None, add_prims="", v2=False):
             prev_len = len_
 
         print(f"Printed {j+1} primitive internals.")
+        print()
 
 
 def get(geoms, index):
@@ -468,6 +459,53 @@ def get(geoms, index):
     if index < 0:
         index += len(geoms)
     return [geoms[index], ]
+
+
+class GotNoGeometryException(Exception):
+    pass
+
+
+def get_interactively(geoms):
+    # Try to parse energies from geoms
+    energy_re = re.compile("[-\.\d]+")
+    energies = list()
+    for geom in geoms:
+        mobj = energy_re.search(geom.comment)
+        if mobj:
+            energy = float(mobj[0])
+        else:
+            energy = np.nan
+        energies.append(energy)
+    energies = np.array(energies)
+    energies -= np.nanmin(energies)
+    energies *= AU2KJPERMOL
+    min_ind = np.nanargmin(energies)
+    print(f"Minimum energy at index {min_ind}")
+    print("(q) to quit\n(p) to plot energies")
+    msg = f"Input index (0-{len(geoms)-1})/p/q: "
+    while True:
+        try:
+            selection = input(msg)
+            if selection == "q":
+                raise GotNoGeometryException()
+            elif selection == "p":
+                fig, ax = plt.subplots()
+                ax.plot(energies, "o-")
+                ax.set_xlabel("Index")
+                ax.set_ylabel("ΔE / kJ mol⁻¹")
+                plt.show()
+                continue
+            selection = int(selection)
+        except ValueError:
+            print("Invalid input!")
+            continue
+        en = energies[selection]
+        print(f"ΔE at geometry {selection} is {en:+.2f} kJ mol⁻¹.")
+        yn = input("Get this geometry (y/n)? ").lower()
+        if yn == "y":
+            return get(geoms, selection)
+        else:
+            continue
 
 
 def origin(geoms):
@@ -568,11 +606,14 @@ def run():
     elif args.get or (args.get == 0):
         to_dump = get(geoms, args.get)
         fn_base = "got"
+    elif args.geti:
+        try:
+            to_dump = get_interactively(geoms)
+            fn_base = "got"
+        except GotNoGeometryException:
+            return
     elif args.internals:
         print_internals(geoms, args.atoms, args.add_prims)
-        return
-    elif args.internalsV2:
-        print_internals(geoms, args.atoms, args.add_prims, v2=True)
         return
     elif args.fragsort:
         to_dump = frag_sort(geoms)

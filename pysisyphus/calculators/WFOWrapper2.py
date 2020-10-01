@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from collections import OrderedDict
 import itertools
 import logging
@@ -233,7 +231,7 @@ class WFOWrapper2:
 
         if ao_ovlp is None:
             mo_coeffs_1 = self.mo_coeffs_list[ind1]
-            mo_coeffs_2 = self.mo_coeffs_list[ind2]
+            # mo_coeffs_2 = self.mo_coeffs_list[ind2]
             mo_coeffs_1_inv = np.linalg.inv(mo_coeffs_1)
             ao_ovlp = mo_coeffs_1_inv.dot(mo_coeffs_1_inv.T)
 
@@ -266,9 +264,8 @@ class WFOWrapper2:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             self.log(f"Calculation in {tmp_dir}")
-            # import pdb; pdb.set_trace()
-            mos1_path = shutil.copy(mos1, tmp_path / "mos.1")
-            mos2_path = shutil.copy(mos2, tmp_path / "mos.2")
+            shutil.copy(mos1, tmp_path / "mos.1")
+            shutil.copy(mos2, tmp_path / "mos.2")
             dets1_path = tmp_path / "dets.1"
             with open(dets1_path, "w") as handle:
                 handle.write(header1+"\n"+"\n".join(dets1))

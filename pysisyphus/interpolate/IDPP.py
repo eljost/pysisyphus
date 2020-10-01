@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from scipy.spatial.distance import pdist
 
 # from pysisyphus.constants import BOHR2ANG, ANG2BOHR

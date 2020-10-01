@@ -13,13 +13,13 @@ import numpy as np
 @using("pyscf")
 @pytest.mark.parametrize(
     "hessian_init, ref_cycle", [
-        ("calc", 10),
+        ("calc", 11),
         # Converges to wrong minimum
         # ("unit", 9),
-        ("fischer", 16),
-        ("lindh", 19),
-        ("simple", 19),
-        ("swart", 21),
+        ("fischer", 15),
+        ("lindh", 21),
+        ("simple", 22),
+        ("swart", 15),
         pytest.param("xtb", 21, marks=[using("pyscf"), using("xtb")]),
         pytest.param("xtb1", 15, marks=[using("pyscf"), using("xtb")]),
     ]

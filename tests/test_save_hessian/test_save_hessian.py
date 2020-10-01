@@ -21,7 +21,7 @@ def test_opt_load_save_hessian(this_dir):
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 1
+    assert opt.cur_cycle == 2
     assert geom.energy == pytest.approx(-152.05524620313963)
 
 

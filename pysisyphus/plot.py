@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import argparse
 from pathlib import Path
 import sys
@@ -347,7 +345,7 @@ def plot_overlaps(h5, thresh=.1):
             ax = fig.add_subplot(111)
             ax1 = None
         o = np.abs(overlaps[i])
-        im = ax.imshow(o, vmin=0, vmax=1)
+        ax.imshow(o, vmin=0, vmax=1)
         ax.grid(color="#CCCCCC", linestyle='--', linewidth=1)
         ax.set_xticks(np.arange(n_states, dtype=np.int))
         ax.set_yticks(np.arange(n_states, dtype=np.int))

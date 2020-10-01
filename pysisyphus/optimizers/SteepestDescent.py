@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-
-import numpy as np
-
 from pysisyphus.helpers import procrustes
 from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 

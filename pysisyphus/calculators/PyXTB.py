@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 try:
     from ase.atoms import Atoms
 except ImportError:
