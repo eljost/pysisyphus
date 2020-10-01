@@ -10,10 +10,46 @@
 
 import numpy as np
 
+from pysisyphus.helpers_pure import log
 from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
+from pysisyphus.optimizers import poly_fit
 
 
 class RSPRFOptimizer(TSHessianOptimizer):
+
+    def __init__(self, *args, min_line_search=True, max_line_search=True, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.min_line_search = min_line_search
+        self.max_line_search = max_line_search
+
+    @staticmethod
+    def do_line_search(e0, e1, g0, g1, prev_step, maximize, logger=None):
+        poly_fit_kwargs = {
+            "e0": e0,
+            "e1": e1,
+            "g0": g0,
+            "g1": g1,
+            "maximize": maximize,
+        }
+        if not maximize:
+            poly_fit_kwargs.update({
+                "g0": prev_step.dot(g0),
+                "g1": prev_step.dot(g1),
+            })
+        prefix = "Max" if maximize else "Min"
+
+        fit_result = poly_fit.quartic_fit(**poly_fit_kwargs)
+        fit_energy = None
+        fit_grad = None
+        fit_step = None
+        if fit_result and (0.0 < fit_result.x <= 2.0):
+            x = fit_result.x
+            log(logger, f"{prefix}-subpsace interpolation succeeded: x={x:.6f}")
+            fit_energy = fit_result.y
+            fit_step = (1 - x) * -prev_step
+            fit_grad = (1 - x) * g0 + x * g1
+        return fit_energy, fit_grad, fit_step
 
     def optimize(self):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
@@ -24,6 +60,48 @@ class RSPRFOptimizer(TSHessianOptimizer):
 
         # Minimize energy along all modes, except the TS-mode
         min_indices = [i for i in range(gradient_trans.size) if i != self.root]
+
+        max_step = 0.0
+        min_step = np.zeros_like(min_indices)
+        if self.max_line_search and self.cur_cycle > 0:
+            prev_energy = self.energies[-2]
+            prev_gradient = -self.forces[-2]
+            prev_gradient_trans = eigvecs.T.dot(prev_gradient)
+            prev_step = self.steps[-1]
+            prev_step_trans = eigvecs.T.dot(prev_step)
+
+            # Max subspace
+            # max_energy, max_gradient, max_step = self.do_max_line_search(
+            max_energy, max_gradient, max_step = self.do_line_search(
+                prev_energy,
+                energy,
+                prev_gradient_trans[self.root],
+                gradient_trans[self.root],
+                prev_step=prev_step_trans[self.root],
+                maximize=True,
+                logger=self.logger,
+            )
+            if max_gradient is not None:
+                gradient_trans[self.root] = max_gradient
+            else:
+                max_step = 0.0
+
+        if self.min_line_search and self.cur_cycle > 0:
+            # Min subspace
+            # min_energy, min_gradient, min_step = self.do_min_line_search(
+            min_energy, min_gradient, min_step = self.do_line_search(
+                prev_energy,
+                energy,
+                prev_gradient_trans[min_indices],
+                gradient_trans[min_indices],
+                prev_step=prev_step_trans[min_indices],
+                maximize=False,
+                logger=self.logger,
+            )
+            if min_gradient is not None:
+                gradient_trans[min_indices] = min_gradient
+            else:
+                min_step = np.zeros_like(min_indices)
 
         """In the RS-(P)RFO method we have to scale the matrices with alpha.
         Unscaled matrix (Eq. 8) in [1]:
@@ -135,6 +213,8 @@ class RSPRFOptimizer(TSHessianOptimizer):
 
         # Right now the step is still given in the Hessians eigensystem. We
         # transform it back now.
+        step[min_indices] += min_step
+        step[self.root] += max_step
         step = eigvecs.dot(step)
         step_norm = np.linalg.norm(step)
 
