@@ -278,7 +278,8 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
                          coord_kwargs={"typed_prims": typed_prims},
                  )
                  for geom in geoms]
-        assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
+        # assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
+        assert all([len(geom.internal.typed_prims) == len(typed_prims) for geom in geoms])
     return geoms
 
 
