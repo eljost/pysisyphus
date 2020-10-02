@@ -14,19 +14,19 @@ init_logging()
 
 
 @pytest.mark.parametrize(
-    "calc, ref_cycle, ccl_dist, oc_dist",
+    "calc_cls, calc_kwargs, ref_cycle, ccl_dist, oc_dist",
     [
         pytest.param(
-            PySCF(basis="6-31g*", xc="b3lyp", pal=6, charge=-1),
+            PySCF, {"basis": "6-31g*", "xc": "b3lyp", "pal": 2},
             29,
             4.79584,
             2.67745,
             marks=using("pyscf"),
         ),
-        pytest.param(XTB(charge=-1), 27, 5.26346, 2.62731, marks=using("xtb")),
+        pytest.param(XTB, {}, 27, 5.26346, 2.62731, marks=using("xtb")),
     ],
 )
-def test_ohch3f_anion(calc, ref_cycle, ccl_dist, oc_dist):
+def test_ohch3f_anion(calc_cls, calc_kwargs, ref_cycle, ccl_dist, oc_dist):
     """Example (R1) from
         https://aip.scitation.org/doi/pdf/10.1063/1.3457903?class=pdf
 
@@ -39,6 +39,7 @@ def test_ohch3f_anion(calc, ref_cycle, ccl_dist, oc_dist):
         (5, 6),
     ]
     gamma = 100
+    calc = calc_cls(charge=-1, **calc_kwargs)
     afir = AFIR(calc, fragment_indices, gamma, ignore_hydrogen=True)
     geom.set_calculator(afir)
 
