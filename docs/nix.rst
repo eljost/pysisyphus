@@ -10,7 +10,7 @@ The `Nix Pills`_ series provides an informative introduction to the general conc
 Prerequisites
 =============
 
-Please follow the installation instructions in the `nix manual`_ and additional hints from NixWithChemistry_ to set up a working Nix installation on your system. Make sure that the appropriate Nix channel is configured and that, if desired, unfree packages are allowed.
+Please follow the installation instructions in the `nix manual`_ and additional hints from NixWithChemistry_ to set up a working Nix installation on your system. You'll probably have to allow unfree packages.
 
 .. code-block:: bash
     nix-channel --add https://nixos.org/channels/nixos-20.09 nixos
@@ -20,7 +20,7 @@ Please follow the installation instructions in the `nix manual`_ and additional 
 Configuration
 =============
 
-Only minor configuration is required for a successful pysisyphus installation by Nix: Clone the pysisyphus repository from github, initialize the NixWithChemistry_ submodule and adapt `nix/nixwithchemistry/config.nix` as necessary.
+Only minor configuration is required for a successful pysisyphus installation with Nix: Clone the pysisyphus repository from github, initialize the NixWithChemistry_ submodule and adapt `nix/nixwithchemistry/config.nix` as necessary.
 
 .. code-block:: bash
 
@@ -44,7 +44,9 @@ Installation
 ============
 
 After you updated :code:`nix/nixwithchemistry/config.nix`, you can start building the actual QC codes
-and their dependencies.
+and all dependencies.
+
+The initial `nix-build` took about 3.5 h on my laptop, equipped with a i7-8750H (6 physical cores), 16 GB RAM and a NVMe SSD and requires about 15 GB disk space in the local Nix store (only ORCA was enabled, Gaussian and Turbomole were disabled).
 
 .. code-block:: bash
 
@@ -55,7 +57,10 @@ and their dependencies.
     # and return after you picked your first crop of coffee berries ☕.
     nix-build
 
-You will likely depend on closed source software (ORCA, Turbomole, Gaussian, ...) , which is not freely redistributable. If the binary/source archives of these programs are missing from the Nix-store, the installation process will interrupt and tell you how to provide the required files. So it is a good idea to investigate the output of `nix-build` from time to time check, if manual intervention is required.
+You will likely depend on closed source software (ORCA, Turbomole, Gaussian, ...) , which is not freely redistributable. If the binary/source archives of these programs are missing from the Nix-store, the installation process will interrupt and tell you how to provide the required files. So it's a good idea to investigate the output of `nix-build` from time to time check, if manual intervention is required.
+
+Running pysisyphus with Nix
+===========================
 
 You can now make pysisyphus available to your user environment by
 
@@ -77,7 +82,7 @@ or use :code:`nix run`
 
 **WARNING** In case of :code:`nix run` the resulting shell will not be pure. Depending on your system configuration conda/pip/... packages and configurations from the system might leak in. You are definitely safe with :code:`nix-shell --pure`.
 
-Do not be confused if the commands of the underlying quantum chemistry codes are not available. They are made available to pysisyphus directly but not necessarily to your shell.
+Do not be confused if the commands of the underlying quantum chemistry codes are not available. They are made available to directly to the pysisyphus entry point, but not necessarily to your shell.
 
 .. _`Nix package manager`: https://nixos.org/download.html
 .. _NixWithChemistry: https://gitlab.com/theoretical-chemistry-jena/nixwithchemistry
