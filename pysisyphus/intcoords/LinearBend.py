@@ -15,12 +15,12 @@ from pysisyphus.intcoords.Primitive import Primitive
 
 
 class LinearBend(Primitive):
-
     def __init__(self, *args, complement=False, **kwargs):
-        kwargs["calc_kwargs"] = ("complement", )
+        kwargs["calc_kwargs"] = ("complement", "cross_vec")
         super().__init__(*args, **kwargs)
 
         self.complement = complement
+        self.cross_vec = None
 
     @staticmethod
     def _weight(atoms, coords3d, indices, f_damping):
@@ -28,23 +28,18 @@ class LinearBend(Primitive):
         rho_mo = LinearBend.rho(atoms, coords3d, (m, o))
         rho_on = LinearBend.rho(atoms, coords3d, (o, n))
         rad = LinearBend.calculate(coords3d)
-        return (rho_mo * rho_on)**0.5 * (f_damping + (1-f_damping)*sin(rad))
+        return (rho_mo * rho_on) ** 0.5 * (f_damping + (1 - f_damping) * sin(rad))
 
     @staticmethod
-    def _get_orthogonal_direction(coords3d, indices, complement=False):
+    def _get_orthogonal_direction(coords3d, indices, complement=False, cross_vec=None):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
         u_norm = np.linalg.norm(u_dash)
         u = u_dash / u_norm
 
-        # Select initial vector for cross product, similar to
-        # geomeTRIC. It must NOT be parallel to u and/or v.
-        x_dash = coords3d[n] - coords3d[m]
-        x_norm = np.linalg.norm(x_dash)
-        x = x_dash / x_norm
-        cross_vecs = np.eye(3)
-        min_ind = np.argmin([np.dot(cv, x)**2 for cv in cross_vecs])
-        cross_vec = cross_vecs[min_ind]
+        if cross_vec is None:
+            cross_vec = LinearBend._get_cross_vec(coords3d, indices)
+        print("Using cross_vec", cross_vec)
         # Generate first orthogonal direction
         w_dash = np.cross(u, cross_vec)
         w = w_dash / np.linalg.norm(w_dash)
@@ -54,14 +49,22 @@ class LinearBend(Primitive):
             w = np.cross(u, w)
         return w
 
+    def calculate(self, coords3d, indices=None, gradient=False):
+        if self.cross_vec is None:
+            self.set_cross_vec(coords3d, indices)
+
+        return super().calculate(coords3d, indices, gradient)
+
     @staticmethod
-    def _calculate(coords3d, indices, gradient=False, complement=False):
+    def _calculate(coords3d, indices, gradient=False, complement=False, cross_vec=None):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
         u_norm = np.linalg.norm(u_dash)
         v_norm = np.linalg.norm(v_dash)
-        w = LinearBend._get_orthogonal_direction(coords3d, indices, complement)
+        w = LinearBend._get_orthogonal_direction(
+            coords3d, indices, complement, cross_vec
+        )
 
         lb_rad = w.dot(np.cross(u_dash, v_dash)) / (u_norm * v_norm)
 
@@ -78,9 +81,20 @@ class LinearBend(Primitive):
             return lb_rad, row
         return lb_rad
 
+    def jacobian(self, coords3d, indices=None):
+        if self.cross_vec is None:
+            self.set_cross_vec(coords3d, indices)
+
+        return super().jacobian(coords3d, indices)
+
     @staticmethod
-    def _jacobian(coords3d, indices, complement=False):
-        w = LinearBend._get_orthogonal_direction(coords3d, indices, complement)
+    def _jacobian(coords3d, indices, complement=False, cross_vec=None):
+        if cross_vec is None:
+            cross_vec = LinearBend._get_cross_vec(coords3d, indices)
+
+        w = LinearBend._get_orthogonal_direction(
+            coords3d, indices, complement, cross_vec
+        )
         return d2q_lb(*coords3d[indices].flatten(), *w)
 
     def __str__(self):
