@@ -733,6 +733,8 @@ def do_endopt_ts_barriers(end_geoms, end_fns, ts_geom):
 
     print(highlight_text("Barrier heights after end optimizations"))
 
+    print("Thermochemical corrections are NOT included!")
+
     ts_energy = ts_geom.energy
     forward_geom, backward_geom = end_geoms
     forward_energy = forward_geom.energy
