@@ -86,6 +86,7 @@ class AFIR(Calculator):
         gamma,
         rho=1,
         p=6,
+        ignore_hydrogen=True,
         dump=True,
         h5_fn="afir.h5",
         h5_group_name="afir",
@@ -109,6 +110,7 @@ class AFIR(Calculator):
             self.rho = np.array(rho)
         # assert self.rho in (-1, 1)  # TODO: reactivate this
         self.p = p
+        self.ignore_hydrogen = ignore_hydrogen
         self.dump = dump
         self.h5_fn = h5_fn
         self.h5_group_name = h5_group_name
@@ -117,6 +119,8 @@ class AFIR(Calculator):
         self.h5_group = None
         self.h5_cycles = 50
 
+        if self.ignore_hydrogen:
+            self.log("No artificial force contribution from hydrogens!")
         self.atoms = None
         self.calc_counter = 0
 
@@ -185,6 +189,17 @@ class AFIR(Calculator):
         self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
         self.log_fragments()
         self.write_fragment_geoms(atoms, coords)
+
+        if self.ignore_hydrogen:
+            hydrogen_inds = [i for i, atom in enumerate(atoms) if atom.lower() == "h"]
+            fragment_indices = list()
+            for i, frag_inds in enumerate(self.fragment_indices):
+                frag_inds_no_h = [j for j in frag_inds if j not in hydrogen_inds]
+                fragment_indices.append(frag_inds_no_h)
+                dropped_hydrogens = len(frag_inds) - len(frag_inds_no_h)
+                self.log(f"Ignoring {dropped_hydrogens} hydrogen(s) from fragment {i}.")
+            self.fragment_indices = fragment_indices
+
         self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms])
         self.log("Set covalent radii")
         self.afir_funcs = list()
