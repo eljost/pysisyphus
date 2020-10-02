@@ -13,7 +13,6 @@ from pysisyphus.testing import using
 init_logging()
 
 
-@using("pyscf")
 @pytest.mark.parametrize(
     "calc, ref_cycle, ccl_dist, oc_dist",
     [
