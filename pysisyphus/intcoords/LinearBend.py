@@ -39,7 +39,6 @@ class LinearBend(Primitive):
 
         if cross_vec is None:
             cross_vec = LinearBend._get_cross_vec(coords3d, indices)
-        print("Using cross_vec", cross_vec)
         # Generate first orthogonal direction
         w_dash = np.cross(u, cross_vec)
         w = w_dash / np.linalg.norm(w_dash)
@@ -70,15 +69,9 @@ class LinearBend(Primitive):
 
         if gradient:
             # Fourth argument is the orthogonal direction
-            grad = dq_lb(*coords3d[m], *coords3d[o], *coords3d[n], *w)
-            grad = grad.reshape(-1, 3)
-
             row = np.zeros_like(coords3d)
-            row[m, :] = grad[0]
-            row[o, :] = grad[1]
-            row[n, :] = grad[2]
-            row = row.flatten()
-            return lb_rad, row
+            row[indices] = dq_lb(*coords3d[indices].flatten(), *w).reshape(-1, 3)
+            return lb_rad, row.flatten()
         return lb_rad
 
     def jacobian(self, coords3d, indices=None):
