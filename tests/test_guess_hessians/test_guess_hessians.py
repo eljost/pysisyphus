@@ -67,5 +67,6 @@ def test_ts_hessian_opt():
     do_final_hessian(geom, write_imag_modes=True)
 
     assert opt.is_converged
-    assert opt.cur_cycle == 11
+    # 11 without linesearch
+    assert opt.cur_cycle == 8
     assert geom.energy == pytest.approx(-92.2460426792319)
