@@ -84,6 +84,8 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy, results_bag):
         "max_cycles": 50,
         "trust_radius": 0.3,
         "trust_max": 0.3,
+        # "min_line_search": True,
+        # "max_line_search": True,
     }
     # opt = RSPRFOptimizer(geom, **opt_kwargs)
     opt = RSIRFOptimizer(geom, **opt_kwargs)
