@@ -8,6 +8,7 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 class RSIRFOptimizer(TSHessianOptimizer):
+
     def optimize(self):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
