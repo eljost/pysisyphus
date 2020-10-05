@@ -31,6 +31,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    overview.rst
    installation.rst
    nix.rst
+   worked_example.rst
    calculators.rst
    min_optimization.rst
    es_optimization.rst

@@ -82,7 +82,7 @@ Program     Gradient Hessian Exc. states        Version
 ORCA        y        y       TD-DFT, TDA        4.2.x
 Turbomole   y        y       TD-DFT, TDA, ricc2 7.2-7.4
 Gaussian16  y        y       tested TD-DFT, TDA 
-PySCF       y        y       tested TD-DFT      1.7.0
+PySCF       y        y       tested TD-DFT      1.7.5
 OpenMOLCAS  y        n       &rasscf            Not yet derived from OverlapCalculator
 =========== ======== ======= ================== =======
 
@@ -93,8 +93,8 @@ Ground states capabilities
 Program     Gradient Hessian Version
 =========== ======== ======= =========
 MOPAC2016   y        y       
-XTB         y        y       6.2.2
-QCEngine    y        n       >= 0.13.0
+XTB         y        y       6.3.2
+QCEngine    y        n       >= 0.16.0
 Psi4        y        y 
 =========== ======== ======= =========
 
