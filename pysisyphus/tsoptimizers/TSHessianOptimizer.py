@@ -255,7 +255,7 @@ class TSHessianOptimizer(HessianOptimizer):
     def step_and_grad_from_line_search(
         self, energy, gradient_trans, eigvecs, min_indices
     ):
-        ip_step = np.zeros_like(self.geometry.coords)
+        ip_step = np.zeros_like(gradient_trans)
         ip_gradient_trans = gradient_trans.copy()
 
         if self.max_line_search and self.cur_cycle > 0:
