@@ -836,6 +836,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
+    src_path = Path(yaml_fn).resolve().parent
     try:
         print(f"Trying to create directory '{destination}' ... ", end="")
         os.mkdir(destination)
@@ -854,7 +855,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
         for xyz in xyzs:
             if xyz.startswith("lib:"):
                 continue
-            shutil.copy(xyz, destination)
+            shutil.copy(src_path / xyz, destination)
             print("\t", xyz)
     else:
         print("Found inline xyz formatted string. No files to copy!")
