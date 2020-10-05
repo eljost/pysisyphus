@@ -772,7 +772,7 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.0
                 similar_str = " (similar)"
             print(
                 f"\tend geom {j:>2d} ({end_fn:>{max_end_len}s}): "
-                f"rmsd={rmsd:>8.6f} au{similar_str}"
+                f"RMSD={rmsd:>8.6f} au{similar_str}"
             )
         if not found_similar:
             print(f"\tOptimized end geometries are dissimilar to '{fn}'!")
