@@ -127,7 +127,6 @@ def atoms_coords_to_pdb_str(atoms, coords, fragments=None):
     altLoc = ""
     resName = ""
     chainID = ""
-    resSeq = 0
     iCode = ""
     occupancy = 1.0
     tempFactor = 0.0
