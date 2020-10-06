@@ -1,3 +1,4 @@
+from math import sqrt
 import numpy as np
 from scipy.optimize import root_scalar
 
@@ -520,7 +521,7 @@ class HessianOptimizer(Optimizer):
 
     @staticmethod
     def get_newton_step(eigvals, eigvecs, gradient):
-        return eigvecs.dot(eigevecs.T.dot(-gradient_trans) / eigvals)
+        return eigvecs.dot(eigvecs.T.dot(gradient) / eigvals)
 
     def get_newton_step_on_trust(self, eigvals, eigvecs, gradient):
         min_ind = eigvals.argmin()
@@ -596,10 +597,10 @@ class HessianOptimizer(Optimizer):
         # a suitable length, but the (shifted) Hessian would have an incorrect
         # eigenvalue spectrum (not positive definite). To solve this we use a
         # different formula to calculate the step.
-        without_first = gradient_trans[1:] / (big_eigvals[1:] - min_eigval)
+        without_first = gradient_trans[1:] / (eigvals[1:] - min_eigval)
         tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
         step_trans = [tau] + -without_first.tolist()
-        step = big_eigvecs.dot(step_trans)
+        step = eigvecs.dot(step_trans)
         return step
 
     @staticmethod
