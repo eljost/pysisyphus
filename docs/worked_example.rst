@@ -27,14 +27,14 @@ At first, we have to create appropriate educt and product geometries using the m
 editor of our choice, e.g., `avogadro`_ or `TmoleX`_. Given a reasonable educt geometry a
 suitable product geometry can be constructed by decreasing the distance between the
 two ring systems and optimizing the result, e.g., by `xtb`_. Sometimes it may be easier
-to start with the product geometry, and obtain the educt from it. Consistent
-atom ordering in both geometries is mandatory! Usually it's a bad idea to construct both
-geometry separately, as it is easy to mess up the atom ordering.
+to start with the product geometry, and obtain the educt from it. **Consistent
+atom ordering in both geometries is mandatory!** Usually it's a bad idea to construct both
+geometries independently, as it is easy to mess up the atom ordering.
 
 .. _`avogadro`: https://avogadro.cc/
 .. _`TmoleX`: https://www.3ds.com/products-services/biovia/products/molecular-modeling-simulation/solvation-chemistry/turbomoler/
 
-Given educts (`min_xtbopt.xyz`) and product (`prod_xtbopt.xyz`) we can create our YAML input.
+Given educts (`min_xtbopt.xyz`) and product (`prod_xtbopt.xyz`) we can create the YAML input.
 Our goal is to obtain the barrier heights for the reaction shown in :numref:`reaction_fig` by
 means of growing string (GS) calculation, transition state (TS) optimization, intrinsic
 reaction coordinate (IRC) calculation and subsequent optimization of the IRC endpoints.
@@ -115,7 +115,7 @@ Please see :ref:`Chain Of States Methods` for further information on COS methods
      align: False
      max_cycles: 20
 
-COS/GS optimization is controlled via the :code:`opt` block. For GS one should always
+COS/GS optimization is controlled via the :code:`opt` block. For GS optimization one should always
 use :code:`type: string`. In internal coordinates we disable automated geometry alignment,
 as it is not needed. We also restrict the number of optimization cycles to 20 (default 50).
 The chosen optimizer will do steepest descent (SD) steps when the string grew in the previous
