@@ -196,7 +196,7 @@ A lot of files and output will be produced so we will go over everything slowly.
     888      Y8b d88P                       Y8b d88P 888
     888       "Y88P"                         "Y88P"  888                            
 
-    Version 0.4.3.post1+450.g2c1654d3 (Python 3.8.5, NumPy 1.19.2, SciPy 1.5.2)
+    Version 0.5.0.post1+450.g2c1654d3 (Python 3.8.5, NumPy 1.19.2, SciPy 1.5.2)
     Git commit 2c1654d35d69e7b48ac4e9b00d38afd58a8bedd4
     Executed at Tue Oct  6 10:08:30 2020 on 'your fancy hostname'
 
