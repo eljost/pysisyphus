@@ -182,7 +182,7 @@ By default pysisyphus prints to STDOUT so you have to capture STDOUT explicitely
 :code:`tee` so everything is logged to a file and printed simulatenously.
 A lot of files and output will be produced so we will go over everything slowly.
 
-.. code-block::
+.. code-block:: bash
 
                                d8b                            888
                                Y8P                            888
@@ -211,7 +211,7 @@ which hopefully aids in reproducing your results later on, if needed. Then your 
 is repeated, including default values that you did not explicitely set. There you can
 also see the default values chosen for :code:`preopt` and :code:`endopt`.
 
-.. code-block::
+.. code-block:: bash
 
     {'calc': {'pal': 6, 'type': 'xtb'},
      'coord_type': 'cart',
@@ -246,7 +246,7 @@ also see the default values chosen for :code:`preopt` and :code:`endopt`.
 The whole run starts with preoptimizations of educt and product. Both optimizations converge
 quickly, as the geometries are already preoptimized.
 
-.. code-block::
+.. code-block:: bash
 
                            #################################
                            # RUNNING FIRST PREOPTIMIZATION #
@@ -296,7 +296,7 @@ important coordinates. In such cases the generated coordinates can be examined m
 
 Preoptimizations are followed by the GS optimization.
 
-.. code-block::
+.. code-block:: bash
 
                                #########################
                                # RUNNING GROWINGSTRING #
@@ -356,8 +356,7 @@ From cycle 8 on, a CI is employed. The final HEI index is printed at the end. As
 interpolate the HEI, the index may be a fractional number. The COS optimization is followed
 by a TS optimization.
 
-.. code-block::
-
+.. code-block:: bash
 
                           ####################################
                           # RUNNING TS-OPTIMIZATION FROM COS #
@@ -441,7 +440,7 @@ are reported. In this case the energy difference between the first COS image and
 very small, indicating an early TS, similar to the educts. This is also be confirmed by
 examining :numref:`reaction_fig`.
 
-.. code-block::
+.. code-block:: bash
 
                                     ###############
                                     # RUNNING IRC #
@@ -497,7 +496,7 @@ the gradient increases and after the inflection point is passed, falls off again
 a stationary point is approached. In the end both IRC endpoints are fully optimized to
 stationary points.
 
-.. code-block::
+.. code-block:: bash
 
 
                           ####################################
@@ -565,7 +564,7 @@ is not (yet) included. Even though both endpoints are reported as dissimilar to 
 geomtries they are still very similar, confirming, that the obtained TS indeed connects
 presumed educts and product.
 
-.. code-block::
+.. code-block:: bash
 
                            #################################
                            # RMSDS AFTER END OPTIMIZATIONS #
