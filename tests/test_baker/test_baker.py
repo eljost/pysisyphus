@@ -19,6 +19,7 @@ from pysisyphus.testing import using_pyscf
 def test_baker_gs_opt(name, geom, ref_energy, results_bag):
     opt_kwargs = {
         "thresh": "baker",
+        "adapt_step_func": False,
     }
     print(f"@Running {name}")
     pal = min(os.cpu_count(), 4)
