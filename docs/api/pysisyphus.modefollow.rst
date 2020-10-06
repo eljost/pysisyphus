@@ -20,6 +20,13 @@ pysisyphus.modefollow.davidson module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.modefollow.lanczos module
+------------------------------------
+
+.. automodule:: pysisyphus.modefollow.lanczos
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

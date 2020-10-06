@@ -49,6 +49,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.autosectionlabel',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -177,3 +178,4 @@ napoleon_include_init_with_doc = True
 
 # Allows use of double dashes without fusing them to an endash
 smartquotes=False
+numfig = True

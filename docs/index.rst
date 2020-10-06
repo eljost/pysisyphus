@@ -40,6 +40,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    irc.rst
    plotting.rst
    pysistrj.rst
+   api/modules.rst
 
 Indices and tables
 ==================

@@ -44,7 +44,6 @@ pysisyphus.line\_searches.interpol module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 
