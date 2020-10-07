@@ -195,7 +195,7 @@ def parse_args(args):
 def get_calc_closure(base_name, calc_key, calc_kwargs):
     index = 0
 
-    def calc_getter():
+    def calc_getter(**add_kwargs):
         nonlocal index
 
         # Some calculators are just wrappers, modifying forces from actual calculators,
@@ -204,11 +204,12 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
         if "calc" in calc_kwargs:
             actual_kwargs = calc_kwargs.pop("calc")
             actual_key = actual_kwargs.pop("type")
-            actual_calc = calc_getter(index, base_name, actual_key, actual_kwargs)
+            actual_calc = get_calc_closure(base_name, actual_key, actual_kwargs)()
             calc_kwargs["calculator"] = actual_calc
 
         kwargs_copy = copy.deepcopy(calc_kwargs)
         kwargs_copy["base_name"] = base_name
+        kwargs_copy.update(add_kwargs)
         kwargs_copy["calc_number"] = index
         index += 1
         return CALC_DICT[calc_key](**kwargs_copy)
@@ -880,8 +881,21 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
 
 def run_mdp(geom, calc_getter, mdp_kwargs):
-    geom.set_calculator(calc_getter())
-    mdp_result = mdp(geom, **mdp_kwargs)
+    cwd = Path(".").resolve()
+    for i in range(3):
+        out_dir = cwd / f"outdir{i:02d}"
+        try:
+            os.mkdir(out_dir)
+        except FileExistsError:
+            print(out_dir, "exists")
+            pass
+        add_kwargs = {
+            "out_dir": out_dir,
+        }
+        calc = calc_getter(**add_kwargs)
+        geom.set_calculator(calc)
+        mdp_result = mdp(geom, **mdp_kwargs)
+        break
     return mdp_result
 
 
@@ -1686,6 +1700,7 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
+    import pdb; pdb.set_trace()
     return run_from_dict(run_dict, **run_kwargs)
 
 
