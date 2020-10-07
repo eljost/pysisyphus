@@ -16,7 +16,7 @@ from pysisyphus.helpers_pure import log
 logger = logging.getLogger("dynamics")
 
 MDResult = namedtuple("MDResult",
-                      "coords t terminated T E_tot",
+                      "coords t_ps step terminated T E_tot",
 )
 THERMOSTATS = {
     "csvr": resample_kin,
@@ -73,12 +73,16 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     if constraint_kwargs is None:
         constraint_kwargs = dict()
 
+    if remove_com_v and (not thermostat):
+        print("Center of mass velocity removal requested, but thermostat is disabled. "
+              "Disabling velocity removal."
+        )
+        remove_com_v = False
+
     # Fixed degrees of freedom
     fixed_dof = 0
-
     if remove_com_v:
         fixed_dof += 3
-
     constrained_md = constraints is not None
     # Get RATTLE function from closure for constrained MD
     if constrained_md:
@@ -113,7 +117,7 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     terminate_key = None
     T_avg = 0
     log(logger, f"Running MD with Δt={dt:.2f} fs for {steps} steps.")
-    for i in range(steps):
+    for step in range(steps):
         xs.append(x.copy())
 
         E_kin = kinetic_energy_from_velocities(masses, v.reshape(-1, 3))
@@ -124,10 +128,10 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         E_tots.append(E_tot)
 
         status_msg = (
-            f"Step {i:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
-            f"T={T: >8.2f} K <T>={T_avg/(i+1): >8.2f}"
+            f"Step {step:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
+            f"T={T: >8.2f} K <T>={T_avg/(step+1): >8.2f}"
         )
-        if (i % 25) == 0:
+        if (step % 25) == 0:
             log(logger, status_msg)
             if verbose: print(status_msg)
 
@@ -173,7 +177,8 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
 
     md_result = MDResult(
                     coords=np.array(xs),
-                    t=t_cur*1e-3,
+                    t_ps=t_cur*1e-3,
+                    step=step,
                     terminated=terminate_key,
                     T=np.array(Ts),
                     E_tot=np.array(E_tots),
