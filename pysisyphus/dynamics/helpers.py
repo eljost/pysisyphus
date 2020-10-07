@@ -176,7 +176,7 @@ def unscaled_velocity_distribution(masses, T, seed=None):
     return v
 
 
-def get_mb_velocities(masses, cart_coords, T, remove_com=True, remove_rot=True,
+def get_mb_velocities(masses, cart_coords, T, remove_com_v=True, remove_rot_v=True,
                       seed=None):
     """Initial velocities from Maxwell-Boltzmann distribution.
 
@@ -188,8 +188,10 @@ def get_mb_velocities(masses, cart_coords, T, remove_com=True, remove_rot=True,
         Atomic cartesian coordinates. Needed for removal of rotation.
     T : float
         Temperature in Kelvin.
-    remove_com : bool, default=True, optional
+    remove_com_v : bool, default=True, optional
         Whether to remove center-of-mass velocity.
+    remove_rot_v : bool, default=True, optional
+        Whether to remove rotational velocity.
     seed : int, default=None, optional
         Seed for the random-number-generator.
 
@@ -204,16 +206,16 @@ def get_mb_velocities(masses, cart_coords, T, remove_com=True, remove_rot=True,
     # Initial velocities
     v = unscaled_velocity_distribution(masses, T, seed=seed)
 
-    if (len(masses) == 1) and remove_com:
+    if (len(masses) == 1) and remove_com_v:
         raise Exception("Removing COM velocity with only 1 atom is a bad idea!")
 
     fixed_dof = 0
     # Remove center-of-mass velocity
-    if remove_com:
+    if remove_com_v:
         v = remove_com_velocity(v, masses)
         fixed_dof += 3
 
-    if remove_rot:
+    if remove_rot_v:
         P = get_trans_rot_projector(cart_coords, masses)
         v = P.dot(v.flatten()).reshape(-1, 3)
         fixed_dof += 3
@@ -224,7 +226,7 @@ def get_mb_velocities(masses, cart_coords, T, remove_com=True, remove_rot=True,
     return v
 
 
-def get_mb_velocities_for_geom(geom, T, remove_com=True, remove_rot=True,
+def get_mb_velocities_for_geom(geom, T, remove_com_v=True, remove_rot_v=True,
                                seed=None):
     """Initial velocities from Maxwell-Boltzmann distribution.
 
@@ -232,8 +234,8 @@ def get_mb_velocities_for_geom(geom, T, remove_com=True, remove_rot=True,
     """
 
     return get_mb_velocities(geom.masses, geom.cart_coords, T,
-                             remove_com=remove_com,
-                             remove_rot=remove_rot,
+                             remove_com_v=remove_com_v,
+                             remove_rot_v=remove_rot_v,
                              seed=seed,
     )
 

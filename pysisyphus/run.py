@@ -902,7 +902,8 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 def run_mdp(geom, calc_getter, mdp_kwargs):
     index = 0
     geom.set_calculator(calc_getter(0))
-    mdp(geom, **mdp_kwargs)
+    mdp_result = mdp(geom, **mdp_kwargs)
+    return mdp_result
 
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
@@ -1141,6 +1142,7 @@ RunResult = namedtuple(
         "cos cos_opt "
         "ts_geom ts_opt "
         "end_geoms irc irc_geom "
+        "mdp_result "
         "opt_geom opt "
         "calced_geoms stocastic "
         "calc_getter "
@@ -1362,7 +1364,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
         if run_dict["mdp"]:
             mdp_kwargs = run_dict["mdp"]
-            run_mdp(geom, calc_getter, mdp_kwargs)
+            mdp_result = run_mdp(geom, calc_getter, mdp_kwargs)
 
         ##########
         # ENDOPT #

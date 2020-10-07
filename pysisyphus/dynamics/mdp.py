@@ -3,6 +3,9 @@
 #     Unke, 2019
 
 from collections import namedtuple
+import operator
+import re
+import sys
 
 import numpy as np
 
@@ -14,13 +17,54 @@ from pysisyphus.dynamics.helpers import dump_coords, \
 from pysisyphus.helpers import highlight_text
 
 
-def run_md(geom, t, dt, v0=None, remove_com_v=True, term_funcs=None,
+def parse_raw_term_func(raw_term_func):
+    funcs = {
+        "<": operator.lt,
+        ">": operator.gt,
+        "<=": operator.le,
+        ">=": operator.ge,
+        "==": operator.eq,
+    }
+
+    def comp_closure(indices, op, ref_value):
+        a_ind, b_ind = indices
+        func = funcs[op]
+
+        def comp_func(coords3d):
+            a = coords3d[a_ind]
+            b = coords3d[b_ind]
+            dist = np.linalg.norm(a - b)
+            return func(dist, ref_value)
+
+        return comp_func
+
+    operator_re = re.compile("([<>=]+)")
+    mobj = operator_re.split(raw_term_func)
+    if mobj is None:
+        print(f"Could not parse term_func '{raw_term_func}!'")
+        return None
+    indices, op, ref_value = mobj
+    ref_value = float(ref_value)
+    indices = [int(ind) for ind in indices.split(",")]
+    return comp_closure(indices, op, ref_value)
+
+
+def parse_raw_term_funcs(raw_term_funcs):
+    comp_funcs = {}
+    for k, v in raw_term_funcs.items():
+        comp_func = parse_raw_term_func(v)
+        if comp_func:
+            comp_funcs[k] = comp_func
+    return comp_funcs
+
+
+def run_md(geom, dt, steps, v0=None, term_funcs=None,
            external=False):
     if external and hasattr(geom.calculator, "run_md"):
         md_kwargs = {
             "atoms": geom.atoms,
             "coords": geom.coords,
-            "t": t,
+            "t": dt*steps,
             "dt": dt,
             "velocities": v0,
             "dump": dt,
@@ -29,16 +73,17 @@ def run_md(geom, t, dt, v0=None, remove_com_v=True, term_funcs=None,
         if term_funcs is not None:
             print("Termination functions are not supported in external MD!")
         geoms = geom.calculator.run_md(**md_kwargs)
-        md_result = MDResult(coords=[geom.coords for geom in geoms], t=t)
+        md_result = MDResult(coords=[geom.coords for geom in geoms], t=t, step=int(t/dt-1),
+                             terminated=None,
+                             T=None, E_tot=None)
     else:
-        steps= int(t / dt)
         md_kwargs = {
             "v0": v0,
             "steps": steps,
             "dt": dt,
             "term_funcs": term_funcs,
             "verbose": False,
-            "remove_com_v": remove_com_v,
+            "remove_com_v": False,
         }
         print("Running MD with internal implementation.")
         md_result = md(geom, **md_kwargs)
@@ -53,30 +98,39 @@ MDPResult = namedtuple("MDResult",
 )
 
 
-def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
+def mdp(geom, steps, dt, term_funcs=None, steps_init=None, E_excess=0.,
         displ_length=.1, epsilon=5e-4, ascent_alpha=0.05,
         max_ascent_steps=25, max_init_trajs=10, dump=True,
         seed=None, external_md=False):
     # Sanity checks and forcing some types
     dt = float(dt)
     assert dt > 0.
-    t = float(t)
-    assert t > dt
-    if t_init is None:
-        t_init = t / 10
+    steps = int(steps)
+    t = dt * steps
+    # assert t > dt
+    if steps_init is None:
+        steps_init = steps / 10
     E_excess = float(E_excess)
     assert E_excess >= 0.
     displ_length = float(displ_length)
     assert displ_length >= 0.
+    if term_funcs is None:
+        term_funcs = {}
+    for k, v in term_funcs.items():
+        if callable(v):
+            continue
+        elif isinstance(v, str):
+            term_funcs[k] = parse_raw_term_func(v)
+        else:
+            raise Exception(f"Invalid term function '{k}: {v}' encountered!")
 
     print(highlight_text("Minimum dynamic path calculation"))
 
     if seed is None:
-        seed = np.random.randint(0, 20182305)
-    print(f"Using seed {seed} to initialize the random number generator.")
-    print()
+        # 2**32 - 1
+        seed = np.random.randint(4294967295)
     np.random.seed(seed)
-
+    print(f"Using seed {seed} to initialize the random number generator.\n")
 
     E_TS = geom.energy
     E_tot = E_TS + E_excess
@@ -92,7 +146,7 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
     trans_vec = v[:,0]
 
     # Disable removal of translation/rotation for analytical potentials
-    remove_com = remove_rot = geom.cart_coords.size > 3
+    remove_com_v = remove_rot_v = geom.cart_coords.size > 3
 
     if E_excess == 0.:
         print("MDP without excess energy.")
@@ -109,7 +163,6 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
             "dt": dt,
             "term_funcs": term_funcs,
             "external": external_md,
-            "remove_com_v": remove_com,
         }
 
         geom.coords = x0_plus
@@ -189,8 +242,8 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         E_kin = E_tot - E_pot
         T = temperature_for_kinetic_energy(len(geom.atoms), E_kin)
         v0 = get_mb_velocities_for_geom(geom, T,
-                                        remove_com=remove_com,
-                                        remove_rot=remove_rot).flatten()
+                                        remove_com_v=remove_com_v,
+                                        remove_rot_v=remove_rot_v).flatten()
 
         # Zero last element if we have an analytical surface
         if v0.size == 3:
@@ -202,10 +255,9 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         # First MD with positive v0
         md_init_kwargs = {
             "v0": v0.copy(),
-            "t": t_init,
+            "steps": steps_init,
             "dt": dt,
             "external": external_md,
-            "remove_com_v": remove_com,
         }
         geom.coords = x0.copy()
         md_init_plus = run_md(geom, **md_init_kwargs)
@@ -233,34 +285,43 @@ def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
         init_trajs_converged = (np.sign(p) != np.sign(m))
 
         if init_trajs_converged:
+            print("Trajectories ran into different basins. Breaking.")
             break
     if dump:
         dump_coords(geom.atoms, md_init_plus.coords, "mdp_ee_init_plus.trj")
         dump_coords(geom.atoms, md_init_minus.coords, "mdp_ee_init_minus.trj")
     assert init_trajs_converged
-    print(f"Ran 2*{i+1} trajectories.")
-    print("Initialization completed.")
+    print(f"Ran 2*{i+1} initialization trajectories.")
     print()
 
     # Run actual trajectories, using the supplied termination functions if possible.
     print(highlight_text("Running actual full trajectories.", level=1))
 
-    # MD with positive v0.
+    def print_status(terminated, step):
+        if terminated:
+            msg = f"\tTerminated by '{terminated}' in step {step}."
+        else:
+            msg = "\tMax time steps reached!"
+        print(msg)
+
+    # "Production"/Final MDs
     md_fin_kwargs = {
         "v0": v0.copy(),
-        "t": t,
+        "steps": steps,
         "dt": dt,
         "term_funcs": term_funcs,
         "external": external_md,
-        "remove_com_v": remove_com,
     }
+    # MD with positive v0.
     geom.coords = x0.copy()
     md_fin_plus = run_md(geom, **md_fin_kwargs)
+    print_status(md_fin_plus.terminated, md_fin_plus.step)
 
-    geom.coords = x0.copy()
     # MD with negative v0.
+    geom.coords = x0.copy()
     md_fin_kwargs["v0"] = -v0
     md_fin_minus = run_md(geom, **md_fin_kwargs)
+    print_status(md_fin_minus.terminated, md_fin_minus.step)
 
     md_fin_plus_term = md_fin_plus.terminated
     md_fin_minus_term = md_fin_minus.terminated
