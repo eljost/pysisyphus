@@ -1198,9 +1198,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
     # calc_getter_kwargs = {
-        # "base_name": "image",
-        # "calc_key": calc_key,
-        # "calc_kwargs": calc_kwargs,
+    # "base_name": "image",
+    # "calc_key": calc_key,
+    # "calc_kwargs": calc_kwargs,
     # }
     if calc_key == "oniom":
         geoms = get_geoms(xyz, quiet=True)
@@ -1214,8 +1214,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     if "calc" in calc_kwargs:
         act_calc_kwargs = calc_kwargs["calc"].copy()
         act_calc_key = act_calc_kwargs.pop("type")
-        act_calc_getter = lambda index: get_calc(
-            index, "image", act_calc_key, act_calc_kwargs
+        act_calc_getter = get_calc_closure(
+            "act_calculator", act_calc_key, act_calc_kwargs
         )
 
     # Backup original filenames
@@ -1280,7 +1280,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     #
     # All keys are present in 'run_dict', but most of the corresponding values will
     # be set to zero.
-    elif any([run_dict[key] is not None for key in ("opt", "tsopt", "irc", "mdp", "endopt")]):
+    elif any(
+        [run_dict[key] is not None for key in ("opt", "tsopt", "irc", "mdp", "endopt")]
+    ):
 
         #######
         # OPT #
@@ -1516,7 +1518,6 @@ def do_clean(force=False):
         "mdp_ee_ascent.trj",
         "mdp_ee_fin_*.trj",
         "mdp_ee_init_*.trj",
-
     )
     to_rm_paths = list()
     for glob in rm_globs:
