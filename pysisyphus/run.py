@@ -192,36 +192,22 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def get_calc(index, base_name, calc_key, calc_kwargs):
-    # Some calculators are just wrappers, modifying forces from actual calculators,
-    # e.g. AFIR and Dimer. If we find the 'calc' key in 'calc_kwargs' we create the
-    # actual calculator and assign it to the 'calculator' key in calc_kwargs.
-    if "calc" in calc_kwargs:
-        actual_kwargs = calc_kwargs.pop("calc")
-        actual_key = actual_kwargs.pop("type")
-        actual_calc = get_calc(index, base_name, actual_key, actual_kwargs)
-        calc_kwargs["calculator"] = actual_calc
-
-    kwargs_copy = calc_kwargs.copy()
-    kwargs_copy["base_name"] = base_name
-    kwargs_copy["calc_number"] = index
-    return CALC_DICT[calc_key](**kwargs_copy)
-
-
 def get_calc_closure(base_name, calc_key, calc_kwargs):
     index = 0
 
     def calc_getter():
         nonlocal index
-        # Expand values that contain the $IMAGE pattern over all images.
-        # We have to use a copy of calc_kwargs to keep the $IMAGE pattern.
-        # Otherwise it would be replace at it's first occurence and would
-        # be gone in the following items.
+
+        # Some calculators are just wrappers, modifying forces from actual calculators,
+        # e.g. AFIR and Dimer. If we find the 'calc' key in 'calc_kwargs' we create the
+        # actual calculator and assign it to the 'calculator' key in calc_kwargs.
+        if "calc" in calc_kwargs:
+            actual_kwargs = calc_kwargs.pop("calc")
+            actual_key = actual_kwargs.pop("type")
+            actual_calc = calc_getter(index, base_name, actual_key, actual_kwargs)
+            calc_kwargs["calculator"] = actual_calc
+
         kwargs_copy = copy.deepcopy(calc_kwargs)
-        for key, value in kwargs_copy.items():
-            if not isinstance(value, str) or not ("$IMAGE" in value):
-                continue
-            kwargs_copy[key] = value.replace("$IMAGE", f"{index:03d}")
         kwargs_copy["base_name"] = base_name
         kwargs_copy["calc_number"] = index
         index += 1
@@ -457,8 +443,8 @@ def run_calculations(
         geom.calculator.run_calculation(geom.atoms, geom.coords)
         return geom
 
-    for i, geom in enumerate(geoms):
-        geom.set_calculator(calc_getter(i))
+    for geom in geoms:
+        geom.set_calculator(calc_getter())
     if assert_track:
         assert all(
             [geom.calculator.track for geom in geoms]
@@ -669,11 +655,11 @@ def run_opt(
     is_cos = issubclass(type(geom), ChainOfStates.ChainOfStates)
 
     if is_cos:
-        for i, image in enumerate(geom.images):
-            image.set_calculator(calc_getter(i))
+        for image in geom.images:
+            image.set_calculator(calc_getter())
             title = str(geom)
     else:
-        geom.set_calculator(calc_getter(0))
+        geom.set_calculator(calc_getter())
 
     do_hess = opt_kwargs.pop("do_hess", False)
 
@@ -715,7 +701,7 @@ def run_opt(
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
-    calc = calc_getter(0)
+    calc = calc_getter()
     calc.base_name = "irc"
     geom.set_calculator(calc, clear=False)
 
@@ -863,8 +849,8 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     for name, atoms, coords in to_opt:
         geom = Geometry(atoms, coords, coord_type=coord_type)
 
-        def wrapped_calc_getter(calc_number):
-            calc = calc_getter(calc_number)
+        def wrapped_calc_getter():
+            calc = calc_getter()
             calc.base_name = name
             return calc
 
@@ -894,7 +880,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
 
 def run_mdp(geom, calc_getter, mdp_kwargs):
-    geom.set_calculator(calc_getter(0))
+    geom.set_calculator(calc_getter())
     mdp_result = mdp(geom, **mdp_kwargs)
     return mdp_result
 
@@ -1211,17 +1197,18 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
-    calc_getter_kwargs = {
-        "base_name": "image",
-        "calc_key": calc_key,
-        "calc_kwargs": calc_kwargs,
-    }
+    # calc_getter_kwargs = {
+        # "base_name": "image",
+        # "calc_key": calc_key,
+        # "calc_kwargs": calc_kwargs,
+    # }
     if calc_key == "oniom":
         geoms = get_geoms(xyz, quiet=True)
         calc_getter_kwargs["iter_dict"] = {
             "geom": iter(geoms),
         }
-    calc_getter = lambda index: get_calc(index, **calc_getter_kwargs)
+    # calc_getter = lambda index: get_calc(index, **calc_getter_kwargs)
+    calc_getter = get_calc_closure("calculator", calc_key, calc_kwargs)
     # Create second function that returns a wrapped calculator. This may be
     # useful if we later want to drop the wrapper and use the actual calculator.
     if "calc" in calc_kwargs:
@@ -1258,7 +1245,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         dump_geoms(geoms, "interpolated")
 
     if dryrun:
-        calc = calc_getter(0)
+        calc = calc_getter()
         dry_run(calc, geoms[0])
         return
 
