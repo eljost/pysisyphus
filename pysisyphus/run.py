@@ -192,14 +192,10 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def get_calc(index, base_name, calc_key, calc_kwargs, iter_dict=None):
-    if iter_dict is None:
-        iter_dict = dict()
-
-    # Some calculators are just wrappers that modify the forces from
-    # actual calculators, e.g. AFIR and Dimer. If we find the 'calc'
-    # key we create the actual calculator and assign it to the 'calculator'
-    # key in calc_kwargs.
+def get_calc(index, base_name, calc_key, calc_kwargs):
+    # Some calculators are just wrappers, modifying forces from actual calculators,
+    # e.g. AFIR and Dimer. If we find the 'calc' key in 'calc_kwargs' we create the
+    # actual calculator and assign it to the 'calculator' key in calc_kwargs.
     if "calc" in calc_kwargs:
         actual_kwargs = calc_kwargs.pop("calc")
         actual_key = actual_kwargs.pop("type")
@@ -209,8 +205,6 @@ def get_calc(index, base_name, calc_key, calc_kwargs, iter_dict=None):
     kwargs_copy = calc_kwargs.copy()
     kwargs_copy["base_name"] = base_name
     kwargs_copy["calc_number"] = index
-    for key, iter_ in iter_dict.items():
-        kwargs_copy[key] = next(iter_)
     return CALC_DICT[calc_key](**kwargs_copy)
 
 
@@ -900,7 +894,6 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
 
 def run_mdp(geom, calc_getter, mdp_kwargs):
-    index = 0
     geom.set_calculator(calc_getter(0))
     mdp_result = mdp(geom, **mdp_kwargs)
     return mdp_result
