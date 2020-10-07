@@ -5,7 +5,6 @@
 from collections import namedtuple
 import operator
 import re
-import sys
 
 import numpy as np
 
@@ -130,7 +129,8 @@ def mdp(
     t = dt * steps
     # assert t > dt
     if steps_init is None:
-        steps_init = steps / 10
+        steps_init = steps // 10
+        print(f"No 'steps_init' provided! Using {steps_init}")
     E_excess = float(E_excess)
     assert E_excess >= 0.0
     displ_length = float(displ_length)
