@@ -6,6 +6,7 @@ import pytest
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators import XTB
 from pysisyphus.dynamics import mdp
+from pysisyphus.dynamics.mdp import parse_raw_term_funcs
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 
@@ -106,3 +107,35 @@ def test_so3hcl_diss_mdp(external_md):
 
     assert res.md_fin_plus_term == "hcl_dissociated"
     assert res.md_fin_minus_term == "oh_formed"
+
+
+@pytest.mark.parametrize(
+    "distance, lt_ref, gt_ref, le_ref, ge_ref, eq_ref",
+    [
+        (1.0,  True, False,  True, False, False),
+        (2.0,  True, False,  True, False, False),
+        (2.9,  True, False,  True, False, False),
+        (3.0, False, False,  True,  True, True),
+        (3.1, False,  True, False,  True, False),
+        (3.2, False,  True, False,  True, False),
+    ],
+)
+def test_term_func_dissociation(distance, lt_ref, gt_ref, le_ref, ge_ref, eq_ref):
+    raw_term_funcs = {
+        "lt": "0,1 < 3.0",
+        "gt": "0,1 > 3.0",
+        "le": "0,1 <= 3.0",
+        "ge": "0,1 >= 3.0",
+        "eq": "0,1 == 3.0",
+    }
+    term_funcs = parse_raw_term_funcs(raw_term_funcs)
+    coords3d = np.zeros((2, 3))
+    coords3d[1,2] = distance
+    keys = ("lt", "gt", "le", "ge", "eq")
+    lt_res, gt_res, le_res, ge_res, eq_res = [term_funcs[key](coords3d) for key in keys]
+
+    assert lt_res == lt_ref
+    assert gt_res == gt_ref
+    assert le_res == le_ref
+    assert ge_res == ge_ref
+    assert eq_res == eq_ref
