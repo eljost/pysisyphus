@@ -26,6 +26,7 @@ from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
+from pysisyphus.dynamics import mdp
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
 # from pysisyphus.overlaps.couplings import couplings
@@ -898,6 +899,12 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     return opt_geoms, opt_fns
 
 
+def run_mdp(geom, calc_getter, mdp_kwargs):
+    index = 0
+    geom.set_calculator(calc_getter(0))
+    mdp(geom, **mdp_kwargs)
+
+
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
     src_path = Path(yaml_fn).resolve().parent
     try:
@@ -953,6 +960,7 @@ def get_defaults(conf_dict):
         "define_prims": None,
         "assert": None,
         "geom": None,
+        "mdp": None,
     }
 
     mol_opt_defaults = {
@@ -1048,6 +1056,9 @@ def get_defaults(conf_dict):
     if "geom" in conf_dict:
         dd["geom"] = {}
 
+    if "mdp" in conf_dict:
+        dd["mdp"] = {}
+
     return dd
 
 
@@ -1097,6 +1108,7 @@ def setup_run_dict(run_dict):
             "endopt",
             "assert",
             "geom",
+            "mdp",
         )
     ):
         try:
@@ -1286,7 +1298,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     #
     # All keys are present in 'run_dict', but most of the corresponding values will
     # be set to zero.
-    elif any([run_dict[key] is not None for key in ("opt", "tsopt", "irc", "endopt")]):
+    elif any([run_dict[key] is not None for key in ("opt", "tsopt", "irc", "mdp", "endopt")]):
 
         #######
         # OPT #
@@ -1347,6 +1359,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
             irc_geom = geom.copy()
             irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
             ran_irc = True
+
+        if run_dict["mdp"]:
+            mdp_kwargs = run_dict["mdp"]
+            run_mdp(geom, calc_getter, mdp_kwargs)
 
         ##########
         # ENDOPT #
@@ -1514,6 +1530,11 @@ def do_clean(force=False):
         "rebuilt_primitives.xyz",
         "RUN.yaml",
         "middle_for_preopt.trj",
+        # MDP
+        "mdp_ee_ascent.trj",
+        "mdp_ee_fin_*.trj",
+        "mdp_ee_init_*.trj",
+
     )
     to_rm_paths = list()
     for glob in rm_globs:
