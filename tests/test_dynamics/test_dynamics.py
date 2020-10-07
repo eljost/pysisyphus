@@ -128,7 +128,7 @@ def test_mb_velocities():
     steps = 100
     dt = 0.5
     res = md(geom, v0, steps, dt)
-    assert dt * steps / 1000 == pytest.approx(res.t)
+    assert dt * steps / 1000 == pytest.approx(res.t_ps)
 
     # import pdb; pdb.set_trace()
     from pysisyphus.xyzloader import coords_to_trj
