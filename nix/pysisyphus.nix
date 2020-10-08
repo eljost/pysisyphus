@@ -26,7 +26,7 @@
 , mopac ? null
 , wfoverlap ? wfoverlap # or null
 , nwchem ? nwchem # or null
-, gamess ? gamess # or null
+, gamess-us ? gamess-us # or null
 , cfour ? cfour  # or null
 , qcengine
 , ase
@@ -120,7 +120,7 @@ in
     ++ optional (mopac != null) mopac
     ++ optional (wfoverlap != null) wfoverlap
     ++ optional (nwchem != null) nwchem
-    ++ optional (gamess != null) gamess
+    ++ optional (gamess-us != null) gamess-us
     ++ optional (cfour != null) cfour
     ;
 
@@ -144,7 +144,7 @@ in
       ++ lib.optional (mopac != null) mopac
       ++ lib.optional (wfoverlap != null) wfoverlap
       ++ lib.optional (nwchem != null) nwchem
-      ++ lib.optional (gamess != null) gamess
+      ++ lib.optional (gamess-us != null) gamess-us
       ++ lib.optional (cfour != null) cfour
     );
 
