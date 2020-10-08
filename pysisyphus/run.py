@@ -192,9 +192,11 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def get_calc_closure(base_name, calc_key, calc_kwargs):
-    index = 0
+def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None):
+    if iter_dict is None:
+        iter_dict = dict()
 
+    index = 0
     def calc_getter(**add_kwargs):
         nonlocal index
 
@@ -211,6 +213,8 @@ def get_calc_closure(base_name, calc_key, calc_kwargs):
         kwargs_copy["base_name"] = base_name
         kwargs_copy.update(add_kwargs)
         kwargs_copy["calc_number"] = index
+        for key, iter_ in iter_dict.items():
+            kwargs_copy[key] = next(iter_)
         index += 1
         return CALC_DICT[calc_key](**kwargs_copy)
 
@@ -1216,13 +1220,15 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     # "calc_key": calc_key,
     # "calc_kwargs": calc_kwargs,
     # }
+    iter_dict = None
     if calc_key == "oniom":
         geoms = get_geoms(xyz, quiet=True)
-        calc_getter_kwargs["iter_dict"] = {
+        iter_dict = {
             "geom": iter(geoms),
         }
-    # calc_getter = lambda index: get_calc(index, **calc_getter_kwargs)
-    calc_getter = get_calc_closure("calculator", calc_key, calc_kwargs)
+    calc_getter = get_calc_closure(
+        "calculator", calc_key, calc_kwargs, iter_dict=iter_dict
+    )
     # Create second function that returns a wrapped calculator. This may be
     # useful if we later want to drop the wrapper and use the actual calculator.
     if "calc" in calc_kwargs:
@@ -1700,7 +1706,6 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
-    import pdb; pdb.set_trace()
     return run_from_dict(run_dict, **run_kwargs)
 
 
