@@ -1700,7 +1700,6 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
-    import pdb; pdb.set_trace()
     return run_from_dict(run_dict, **run_kwargs)
 
 
