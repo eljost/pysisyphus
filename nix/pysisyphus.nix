@@ -25,6 +25,10 @@
 , psi4 ? psi4 # or null
 , mopac ? null
 , wfoverlap ? wfoverlap # or null
+, nwchem ? nwchem # or null
+, gamess ? gamess # or null
+, qcengine
+, ase
 }:
 let
   psi4Wrapper = writeScript "psi4.sh" ''
@@ -100,6 +104,8 @@ in
         rmsd
         scipy
         sympy
+        qcengine
+        ase
     ]
     ++ optional (orca != null) orca
     ++ optional (turbomole != null) turbomole
@@ -112,6 +118,8 @@ in
     ++ optional (psi4 != null) psi4
     ++ optional (mopac != null) mopac
     ++ optional (wfoverlap != null) wfoverlap
+    ++ optional (nwchem != null) nwchem
+    ++ optional (gamess != null) gamess
     ;
 
     src = builtins.path {
@@ -133,6 +141,8 @@ in
       ++ lib.optional (psi4 != null) psi4
       ++ lib.optional (mopac != null) mopac
       ++ lib.optional (wfoverlap != null) wfoverlap
+      ++ lib.optional (nwchem != null) nwchem
+      ++ lib.optional (gamess != null) gamess
     );
 
     postInstall = ''
