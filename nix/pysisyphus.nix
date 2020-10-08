@@ -27,6 +27,7 @@
 , wfoverlap ? wfoverlap # or null
 , nwchem ? nwchem # or null
 , gamess ? gamess # or null
+, cfour ? cfour  # or null
 , qcengine
 , ase
 }:
@@ -120,6 +121,7 @@ in
     ++ optional (wfoverlap != null) wfoverlap
     ++ optional (nwchem != null) nwchem
     ++ optional (gamess != null) gamess
+    ++ optional (cfour != null) cfour
     ;
 
     src = builtins.path {
@@ -143,6 +145,7 @@ in
       ++ lib.optional (wfoverlap != null) wfoverlap
       ++ lib.optional (nwchem != null) nwchem
       ++ lib.optional (gamess != null) gamess
+      ++ lib.optional (cfour != null) cfour
     );
 
     postInstall = ''
