@@ -8,6 +8,7 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 class RSIRFOptimizer(TSHessianOptimizer):
+
     def optimize(self):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
@@ -27,8 +28,6 @@ class RSIRFOptimizer(TSHessianOptimizer):
         grad_star = P.dot(gradient)
         step = self.get_rs_step(eigvals_, eigvecs_, grad_star, name="RS-I-RFO")
 
-        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
-        rfo_prediction = quadratic_prediction / (1 + step @ step)
-        self.predicted_energy_changes.append(rfo_prediction)
+        self.predicted_energy_changes.append(self.rfo_model(gradient, self.H, step))
 
         return step
