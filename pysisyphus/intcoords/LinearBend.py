@@ -5,6 +5,7 @@ import numpy as np
 from pysisyphus.intcoords.derivatives import dq_lb, d2q_lb
 from pysisyphus.intcoords.Primitive import Primitive
 
+
 # [1] 10.1080/00268977200102361
 #     Hoy, 1972
 # [2] 10.1063/1.474377
@@ -27,7 +28,16 @@ class LinearBend(Primitive):
         m, o, n = indices
         rho_mo = LinearBend.rho(atoms, coords3d, (m, o))
         rho_on = LinearBend.rho(atoms, coords3d, (o, n))
-        rad = LinearBend.calculate(coords3d)
+
+        # Repeated code to avoid import of intcoords.Bend
+        u_dash = coords3d[m] - coords3d[o]
+        v_dash = coords3d[n] - coords3d[o]
+        u_norm = np.linalg.norm(u_dash)
+        v_norm = np.linalg.norm(v_dash)
+        u = u_dash / u_norm
+        v = v_dash / v_norm
+        rad = np.arccos(u.dot(v))
+
         return (rho_mo * rho_on) ** 0.5 * (f_damping + (1 - f_damping) * sin(rad))
 
     @staticmethod
