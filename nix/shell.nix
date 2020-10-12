@@ -7,5 +7,7 @@ in
   mkShell {
     buildInputs = [
       pysisyphus
+      nano
+      neovim
     ];
   }
