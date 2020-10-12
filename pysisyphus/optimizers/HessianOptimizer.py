@@ -460,7 +460,7 @@ class HessianOptimizer(Optimizer):
             2
             * rfo_eigval
             / (1 + step_norm ** 2 * cur_alpha)
-            * np.sum(gradient ** 2 / ((eigvals - rfo_eigval * cur_alpha) ** 3))
+            * quot
         )
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
