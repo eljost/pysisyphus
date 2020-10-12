@@ -6,5 +6,6 @@ in  with nixpkgs; python3Packages.callPackage ./pysisyphus.nix {
       gaussian = if config.gaussian then gaussian else null;
       gamess-us = if config.gamess-us then gamess-us else null;
       cfour = if config.cfour then cfour else null;
+      molpro = if (config.molpro != null && config.molpro.enable) then molpro else null;
       mopac = null;
     }
