@@ -300,10 +300,6 @@ def run_tsopt_from_cos(
     }
     if ts_coord_type == "cart":
         coord_kwargs = None
-    elif ts_coord_type == "dlc":
-        coord_kwargs["weighted"] = True
-    else:
-        raise Exception("Invalid coord_type='{ts_coord_type}'!")
 
     ts_geom = Geometry(
         hei_image.atoms,
@@ -318,6 +314,8 @@ def run_tsopt_from_cos(
         ref_tangent = cart_hei_tangent
     elif ts_coord_type in ("redund", "dlc"):
         ref_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
+    else:
+        raise Exception(f"Invalid coord_type='{ts_coord_type}'!")
     ref_tangent /= np.linalg.norm(ref_tangent)
 
     # Dump HEI data
