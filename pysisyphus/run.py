@@ -295,11 +295,21 @@ def run_tsopt_from_cos(
 
     # Try to run in DLC per default
     ts_coord_type = tsopt_kwargs.pop("coord_type", "dlc")
-    coord_kwargs= {"typed_prims": typed_prims, } if (ts_coord_type != "cart") else None
+    coord_kwargs= {
+        "typed_prims": typed_prims,
+    }
+    if ts_coord_type == "cart":
+        coord_kwargs = None
+    elif ts_coord_type == "dlc":
+        coord_kwargs["weighted"] = True
+    else:
+        raise Exception("Invalid coord_type='{ts_coord_type}'!")
+
     ts_geom = Geometry(
         hei_image.atoms,
         hei_image.cart_coords,
         coord_type=ts_coord_type,
+        coord_kwargs=coord_kwargs,
     )
 
     # Convert tangent from whatever coordinates to redundant internals.
@@ -308,8 +318,6 @@ def run_tsopt_from_cos(
         ref_tangent = cart_hei_tangent
     elif ts_coord_type in ("redund", "dlc"):
         ref_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
-    else:
-        raise Exception("Invalid coord_type='{ts_coord_type}'!")
     ref_tangent /= np.linalg.norm(ref_tangent)
 
     # Dump HEI data
