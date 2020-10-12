@@ -293,19 +293,24 @@ def run_tsopt_from_cos(
         internal_geom2 = get_int_geom(cos.images[-1])
         typed_prims = form_coordinate_union(internal_geom1, internal_geom2)
 
+    # Try to run in DLC per default
+    ts_coord_type = tsopt_kwargs.pop("coord_type", "dlc")
+    coord_kwargs= {"typed_prims": typed_prims, } if (ts_coord_type != "cart") else None
     ts_geom = Geometry(
         hei_image.atoms,
         hei_image.cart_coords,
-        coord_type="redund",
-        coord_kwargs={
-            "typed_prims": typed_prims,
-        },
+        coord_type=ts_coord_type,
     )
 
     # Convert tangent from whatever coordinates to redundant internals.
     # When the HEI was splined the tangent will be in Cartesians.
-    redund_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
-    redund_tangent /= np.linalg.norm(redund_tangent)
+    if ts_coord_type == "cart":
+        ref_tangent = cart_hei_tangent
+    elif ts_coord_type in ("redund", "dlc"):
+        ref_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
+    else:
+        raise Exception("Invalid coord_type='{ts_coord_type}'!")
+    ref_tangent /= np.linalg.norm(ref_tangent)
 
     # Dump HEI data
     #
@@ -359,13 +364,19 @@ def run_tsopt_from_cos(
         # Determine which imaginary mode has the highest overlap
         # with the splined HEI tangent.
         print(f"Calculating Hessian at {hei_kind} TS guess.")
-        eigvals, eigvecs = np.linalg.eigh(ts_geom.hessian)
+        H = ts_geom.hessian
+        if ts_coord_type == "dlc":
+            U = ts_geom.internal.U
+            H = U.dot(H).dot(U.T)
+        elif ts_coord_type == "cart":
+            H = ts_geom.cart_hessian
+        eigvals, eigvecs = np.linalg.eigh(H)
         neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
         print(f"Negative eigenvalues at splined HEI:\n{eigval_str}")
         neg_eigvals = eigvals[neg_inds]
         neg_eigvecs = eigvecs.T[neg_inds]
-        ovlps = [np.abs(imag_mode.dot(redund_tangent)) for imag_mode in neg_eigvecs]
+        ovlps = [np.abs(imag_mode.dot(ref_tangent)) for imag_mode in neg_eigvecs]
         print("Overlaps between HEI tangent and imaginary modes:")
         for i, ov in enumerate(ovlps):
             print(f"\t{i:02d}: {ov:.6f}")
