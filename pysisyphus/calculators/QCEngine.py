@@ -53,14 +53,18 @@ class QCEngine(Calculator):
         }
 
         result = qcng.compute(inp, program=self.program, return_dict=True)
-        # with open("stdout", "w") as handle:
-            # handle.write(__["stdout"])
         return result
+
+    def keep_stdout(self, res):
+        if "stdout" in res:
+            with open(self.make_fn("qcengine_stdout"), "w") as handle:
+                    handle.write(res["stdout"])
 
     def get_energy(self, atoms, coords, prepare_kwargs=None):
         mol = self.get_molecule(atoms, coords)
 
         res = self.compute(mol, driver="energy")
+        self.keep_stdout(res)
 
         results = {
             "energy": res["return_result"],
@@ -72,6 +76,7 @@ class QCEngine(Calculator):
         mol = self.get_molecule(atoms, coords)
 
         res = self.compute(mol, driver="gradient")
+        self.keep_stdout(res)
 
         results = {
             "energy": res["properties"]["return_energy"],
@@ -84,6 +89,7 @@ class QCEngine(Calculator):
         mol = self.get_molecule(atoms, coords)
 
         res = self.compute(mol, driver="hessian")
+        self.keep_stdout(res)
 
         size = 3 * len(atoms)
         shape = (size, size)
