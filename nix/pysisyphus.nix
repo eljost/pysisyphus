@@ -28,6 +28,7 @@
 , nwchem ? nwchem # or null
 , gamess-us ? gamess-us # or null
 , cfour ? cfour  # or null
+, molpro ? molpro # or null
 , qcengine
 , ase
 }:
@@ -107,21 +108,21 @@ in
         sympy
         qcengine
         ase
-    ]
-    ++ optional (orca != null) orca
-    ++ optional (turbomole != null) turbomole
-    ++ optional (gaussian != null) gaussian
-    ++ optional (jmol != null) jmol
-    ++ optional (multiwfn != null) multiwfn
-    ++ optional (xtb != null) xtb
-    ++ optional (openmolcas != null) openmolcas
-    ++ optional (pyscf != null) pyscf
-    ++ optional (psi4 != null) psi4
-    ++ optional (mopac != null) mopac
-    ++ optional (wfoverlap != null) wfoverlap
-    ++ optional (nwchem != null) nwchem
-    ++ optional (gamess-us != null) gamess-us
-    ++ optional (cfour != null) cfour
+    ] ++ optional (orca != null) orca
+      ++ optional (turbomole != null) turbomole
+      ++ optional (gaussian != null) gaussian
+      ++ optional (jmol != null) jmol
+      ++ optional (multiwfn != null) multiwfn
+      ++ optional (xtb != null) xtb
+      ++ optional (openmolcas != null) openmolcas
+      ++ optional (pyscf != null) pyscf
+      ++ optional (psi4 != null) psi4
+      ++ optional (mopac != null) mopac
+      ++ optional (wfoverlap != null) wfoverlap
+      ++ optional (nwchem != null) nwchem
+      ++ optional (gamess-us != null) gamess-us
+      ++ optional (cfour != null) cfour
+      ++ optional (molpro != null) molpro
     ;
 
     src = builtins.path {
@@ -146,6 +147,7 @@ in
       ++ lib.optional (nwchem != null) nwchem
       ++ lib.optional (gamess-us != null) gamess-us
       ++ lib.optional (cfour != null) cfour
+      ++ lib.optional (molpro != null) molpro
     );
 
     postInstall = ''
