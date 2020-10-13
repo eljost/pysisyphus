@@ -78,6 +78,13 @@ try:
 except ImportError:
     pass
 
+try:
+    from pysisyphus.calculators.QCEngine import QCEngine
+
+    CALC_DICT["qcengine"] = QCEngine
+except ImportError:
+    pass
+
 COS_DICT = {
     "neb": NEB.NEB,
     "aneb": AdaptiveNEB.AdaptiveNEB,

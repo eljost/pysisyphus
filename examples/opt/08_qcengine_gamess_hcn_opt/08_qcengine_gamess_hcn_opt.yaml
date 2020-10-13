@@ -1,0 +1,21 @@
+opt:
+ type: rfo
+ thresh: gau
+calc:
+ type: qcengine
+ program: gamess
+ model:
+  method: hf
+  basis: sto
+ keywords:
+  basis__ngauss: 3
+ charge: 0
+ mult: 1
+ pal: 2
+geom:
+ type: redund
+ fn: hcn_bent.xyz
+assert:
+ opt.is_converged: True
+ opt.cur_cycle: 4
+ opt_geom.energy: -91.6752089695
