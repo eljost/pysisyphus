@@ -53,11 +53,12 @@ class QCEngine(Calculator):
         }
 
         result = qcng.compute(inp, program=self.program, return_dict=True)
+        self.calc_counter += 1
         return result
 
     def keep_stdout(self, res):
         if "stdout" in res:
-            with open(self.make_fn("qcengine_stdout"), "w") as handle:
+            with open(self.make_fn(f"qce_{self.program}_stdout"), "w") as handle:
                     handle.write(res["stdout"])
 
     def get_energy(self, atoms, coords, prepare_kwargs=None):
