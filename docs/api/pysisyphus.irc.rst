@@ -92,7 +92,6 @@ pysisyphus.irc.RK4 module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

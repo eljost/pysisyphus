@@ -44,7 +44,6 @@ pysisyphus.interpolate.helpers module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

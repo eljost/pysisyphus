@@ -194,9 +194,11 @@ def test_linear_bend(deg):
 
     # Explicitly implemented
     # Gradient returned in order [0, 1, 2]
-    val, grad = LinearBend._calculate(coords3d, indices, gradient=True)
+    lb = LinearBend(indices)
+    val, grad = lb.calculate(coords3d, gradient=True)
     # Orthogonal direction
-    w = LinearBend._get_orthogonal_direction(coords3d, indices)
+    cross_vec = lb.cross_vec
+    w = lb._get_orthogonal_direction(coords3d, indices, cross_vec=cross_vec)
 
     # Reference values, code generated
     args = coords3d[indices].flatten()
@@ -209,11 +211,11 @@ def test_linear_bend(deg):
     assert val == pytest.approx(ref_val)
     np.testing.assert_allclose(grad.flatten(), ref_grad.flatten(), atol=1e-12)
 
-    # # Code generated 2nd derivative
-    # dgrad = d2q_lb(*args, *w)
+    # Code generated 2nd derivative
+    dgrad = lb.jacobian(coords3d)
 
-    # # Finite difference reference values
-    # ref_dgrad = fin_diff_B(LinearBend(indices), coords3d)
+    # # Finite difference reference values, only passes for 180°
+    # ref_dgrad = fin_diff_B(lb, coords3d)
     # np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
 
 

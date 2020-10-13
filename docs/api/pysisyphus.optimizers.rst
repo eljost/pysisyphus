@@ -4,10 +4,10 @@ pysisyphus.optimizers package
 Submodules
 ----------
 
-pysisyphus.optimizers.ABNR module
+pysisyphus.optimizers.BFGS module
 ---------------------------------
 
-.. automodule:: pysisyphus.optimizers.ABNR
+.. automodule:: pysisyphus.optimizers.BFGS
    :members:
    :undoc-members:
    :show-inheritance:
@@ -60,6 +60,14 @@ pysisyphus.optimizers.NCOptimizer module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.optimizers.ONIOMOpt module
+-------------------------------------
+
+.. automodule:: pysisyphus.optimizers.ONIOMOpt
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.optimizers.Optimizer module
 --------------------------------------
 
@@ -100,18 +108,10 @@ pysisyphus.optimizers.RFOptimizer module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.optimizers.SQNM3 module
-----------------------------------
+pysisyphus.optimizers.RSA module
+--------------------------------
 
-.. automodule:: pysisyphus.optimizers.SQNM3
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.optimizers.SQNM\_ref module
---------------------------------------
-
-.. automodule:: pysisyphus.optimizers.SQNM_ref
+.. automodule:: pysisyphus.optimizers.RSA
    :members:
    :undoc-members:
    :show-inheritance:
@@ -120,14 +120,6 @@ pysisyphus.optimizers.StabilizedQNMethod module
 -----------------------------------------------
 
 .. automodule:: pysisyphus.optimizers.StabilizedQNMethod
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.optimizers.StabilizedQNMethod2 module
-------------------------------------------------
-
-.. automodule:: pysisyphus.optimizers.StabilizedQNMethod2
    :members:
    :undoc-members:
    :show-inheritance:
@@ -152,14 +144,6 @@ pysisyphus.optimizers.closures module
 -------------------------------------
 
 .. automodule:: pysisyphus.optimizers.closures
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.optimizers.exceptions module
----------------------------------------
-
-.. automodule:: pysisyphus.optimizers.exceptions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -204,14 +188,6 @@ pysisyphus.optimizers.precon module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.optimizers.psirsrfo module
--------------------------------------
-
-.. automodule:: pysisyphus.optimizers.psirsrfo
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.optimizers.restrict\_step module
 -------------------------------------------
 
@@ -219,15 +195,6 @@ pysisyphus.optimizers.restrict\_step module
    :members:
    :undoc-members:
    :show-inheritance:
-
-pysisyphus.optimizers.v3d module
---------------------------------
-
-.. automodule:: pysisyphus.optimizers.v3d
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 
 Module contents
 ---------------

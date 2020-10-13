@@ -24,6 +24,21 @@ class Primitive(metaclass=abc.ABCMeta):
         dot = u.dot(v) / (np.linalg.norm(u) * np.linalg.norm(v))
         return (1 - abs(dot)) < thresh
 
+    @staticmethod
+    def _get_cross_vec(coords3d, indices):
+        m, o, n = indices
+        # Select initial vector for cross product, similar to
+        # geomeTRIC. It must NOT be parallel to u and/or v.
+        x_dash = coords3d[n] - coords3d[m]
+        x = x_dash / np.linalg.norm(x_dash)
+        cross_vecs = np.eye(3)
+        min_ind = np.argmin([np.dot(cv, x) ** 2 for cv in cross_vecs])
+        return cross_vecs[min_ind]
+
+    def set_cross_vec(self, coords3d, indices):
+        self.cross_vec = self._get_cross_vec(coords3d, self.indices)
+        self.log(f"Cross vector for {self} set to {self.cross_vec}")
+
     @abc.abstractmethod
     def _calculate(*, coords3d, indices, gradient, **kwargs):
         pass

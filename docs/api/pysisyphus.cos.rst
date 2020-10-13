@@ -68,7 +68,6 @@ pysisyphus.cos.SimpleZTS module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

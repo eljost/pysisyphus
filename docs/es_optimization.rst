@@ -33,8 +33,9 @@ shown below. The full example is found
      track: True
      # Track ES by transition density overlaps
      ovlp_type: tden
-    xyz: cytosin.xyz
-    coord_type: redund
+    geom:
+     type: redund
+     fn: cytosin.xyz
 
 Additional keywords are possible in the `calc` section. The default values are shown
 below.

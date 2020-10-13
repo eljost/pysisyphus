@@ -12,7 +12,6 @@ pysisyphus.plotters.AnimPlot module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

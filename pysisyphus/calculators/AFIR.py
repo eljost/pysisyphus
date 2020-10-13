@@ -13,12 +13,13 @@ from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.elem_data import COVALENT_RADII
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import complete_fragments
+from pysisyphus.helpers_pure import log
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 
 
 def get_data_model(atoms, max_cycles):
     coord_size = 3 * len(atoms)
-    _1d = (max_cycles, )
+    _1d = (max_cycles,)
     _2d = (max_cycles, coord_size)
 
     data_model = {
@@ -32,7 +33,9 @@ def get_data_model(atoms, max_cycles):
     return data_model
 
 
-def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6):
+def afir_closure(
+    fragment_indices, cov_radii, gamma, rho=1, p=6, prefactor=1.0, logger=None
+):
     """rho=1 pushes fragments together, rho=-1 pulls fragments apart."""
 
     # See https://onlinelibrary.wiley.com/doi/full/10.1002/qua.24757
@@ -48,51 +51,76 @@ def afir_closure(fragment_indices, cov_radii, gamma, rho=1, p=6):
     epsilon = 0.000383203368
 
     # Avoid division by zero for gamma = 0.
-    if gamma == 0.:
-        alpha = 0.
+    if gamma == 0.0:
+        alpha = 0.0
     else:
-        alpha = gamma / ((2**(-1/6) - (1 + (1 + gamma/epsilon)**0.5)**(-1/6)) * R0)
-    
+        alpha = gamma / (
+            (2 ** (-1 / 6) - (1 + (1 + gamma / epsilon) ** 0.5) ** (-1 / 6)) * R0
+        )
+
+    rho_verbose = {1: ("pushing", "together"), -1: ("pulling", "apart")}
+    w1, w2 = rho_verbose[rho]
+    log(
+        logger,
+        f"Creating AFIR closure with α={alpha:.6f}, prefactor {prefactor:.6f}, "
+        f"rho={rho}, {w1} framgents {w2}",
+    )
+
     def afir_func(coords3d):
         diffs = anp.diff(coords3d[inds], axis=1).reshape(-1, 3)
         rs = anp.linalg.norm(diffs, axis=1)
 
-        omegas = (cov_rad_sums / rs)**p
+        omegas = (cov_rad_sums / rs) ** p
 
-        f = alpha * rho * (omegas*rs).sum() / omegas.sum()
+        f = prefactor * alpha * rho * (omegas * rs).sum() / omegas.sum()
         return f
+
     return afir_func
 
 
 class AFIR(Calculator):
-
-    def __init__(self, calculator, fragment_indices, gamma, rho=1, p=6,
-                 dump=True, h5_fn="afir.h5", h5_group_name="afir", **kwargs):
+    def __init__(
+        self,
+        calculator,
+        fragment_indices,
+        gamma,
+        rho=1,
+        p=6,
+        ignore_hydrogen=True,
+        dump=True,
+        h5_fn="afir.h5",
+        h5_group_name="afir",
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.calculator = calculator
         self.fragment_indices = fragment_indices
-        assert len(self.fragment_indices) in (1, 2)
+        assert len(self.fragment_indices) > 0
         # gamma is expected to be given in kJ/mol. convert it to au.
-        self.gamma = gamma / AU2KJPERMOL
-        assert self.gamma > 0
-        self.rho = int(rho)
-        assert self.rho in (-1, 1)
+        try:
+            self.gamma = gamma / AU2KJPERMOL
+        except TypeError:
+            self.gamma = np.array(gamma) / AU2KJPERMOL
+        # assert self.gamma > 0  # TODO: reactivate this
+
+        try:
+            self.rho = int(rho)
+        except TypeError:
+            self.rho = np.array(rho)
+        # assert self.rho in (-1, 1)  # TODO: reactivate this
         self.p = p
+        self.ignore_hydrogen = ignore_hydrogen
         self.dump = dump
         self.h5_fn = h5_fn
         self.h5_group_name = h5_group_name
-        # We can initialize the HDF5 group as we don't know the shape of
+        # We can't initialize the HDF5 group as we don't know the shape of
         # atoms/coords yet. So we wait until after the first calculation.
         self.h5_group = None
         self.h5_cycles = 50
 
-        rho_verbose = { 1: ("pushing", "together"),
-                       -1: ("pulling", "apart")
-        }
-        w1, w2 = rho_verbose[self.rho]
-        self.log(f"rho={self.rho}, {w1} framgents {w2}")
-
+        if self.ignore_hydrogen:
+            self.log("No artificial force contribution from hydrogens!")
         self.atoms = None
         self.calc_counter = 0
 
@@ -100,8 +128,9 @@ class AFIR(Calculator):
         if max_cycles is None:
             max_cycles = self.h5_cycles
         self.data_model = get_data_model(atoms, max_cycles)
-        self.h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model,
-                                     reset=True)
+        self.h5_group = get_h5_group(
+            self.h5_fn, self.h5_group_name, self.data_model, reset=True
+        )
 
     def dump_h5(self, atoms, coords, results):
         # Initialize if not done yet
@@ -160,16 +189,51 @@ class AFIR(Calculator):
         self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
         self.log_fragments()
         self.write_fragment_geoms(atoms, coords)
-        self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms]) 
+
+        if self.ignore_hydrogen:
+            hydrogen_inds = [i for i, atom in enumerate(atoms) if atom.lower() == "h"]
+            fragment_indices = list()
+            for i, frag_inds in enumerate(self.fragment_indices):
+                frag_inds_no_h = [j for j in frag_inds if j not in hydrogen_inds]
+                fragment_indices.append(frag_inds_no_h)
+                dropped_hydrogens = len(frag_inds) - len(frag_inds_no_h)
+                self.log(f"Ignoring {dropped_hydrogens} hydrogen(s) from fragment {i}.")
+            self.fragment_indices = fragment_indices
+
+        self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms])
         self.log("Set covalent radii")
-        self.afir_func = afir_closure(self.fragment_indices,
-                                      self.cov_radii,
-                                      self.gamma,
-                                      rho=self.rho,
-                                      p=self.p)
-        self.log("Created and set AFIR function.")
-        self.afir_grad_func = autograd.grad(self.afir_func)
-        self.log("Created and set AFIR gradient function.")
+        self.afir_funcs = list()
+        self.afir_grad_funcs = list()
+        pairs = list(it.combinations(self.fragment_indices, 2))
+        prefactor = 1 / len(pairs)
+        self.log(
+            f"Doing AFIR with {len(pairs)} fragment pairs and prefactor={prefactor:.4f}"
+        )
+        try:
+            self.gamma = [float(self.gamma)] * len(pairs)
+        except TypeError:
+            assert len(self.gamma) == len(pairs)
+        try:
+            self.rho = [float(self.rho)] * len(pairs)
+        except TypeError:
+            assert len(self.rho) == len(pairs)
+        self.log(f"Using gamma(s): {self.gamma}")
+        self.log(f"  Using rho(s): {self.rho}")
+
+        for (frag1, frag2), gamma, rho in zip(pairs, self.gamma, self.rho):
+            afir_func = afir_closure(
+                (frag1, frag2),
+                self.cov_radii,
+                gamma=gamma,
+                rho=rho,
+                p=self.p,
+                prefactor=prefactor,
+                logger=self.logger,
+            )
+            afir_grad_func = autograd.grad(afir_func)
+            self.afir_funcs.append(afir_func)
+            self.afir_grad_funcs.append(afir_grad_func)
+        self.log("Created and set AFIR function & gradient function.")
 
     def get_energy(self, atoms, coords):
         self.set_atoms_and_funcs(atoms, coords)
@@ -179,7 +243,7 @@ class AFIR(Calculator):
         self.log()
 
         results = {
-            "energy": true_energy+afir_energy,
+            "energy": true_energy + afir_energy,
             "true_energy": true_energy,
         }
         if self.dump:
@@ -195,8 +259,11 @@ class AFIR(Calculator):
         true_energy = results["energy"]
         true_forces = results["forces"]
 
-        afir_energy = self.afir_func(coords3d)
-        afir_forces = -self.afir_grad_func(coords3d).flatten()
+        afir_energy = 0.0
+        afir_forces = np.zeros_like(coords)
+        for afir_func, afir_grad_func in zip(self.afir_funcs, self.afir_grad_funcs):
+            afir_energy += afir_func(coords3d)
+            afir_forces += -afir_grad_func(coords3d).flatten()
 
         true_norm = np.linalg.norm(true_forces)
         afir_norm = np.linalg.norm(afir_forces)
@@ -205,8 +272,8 @@ class AFIR(Calculator):
         self.log()
 
         results = {
-            "energy": true_energy+afir_energy,
-            "forces": true_forces+afir_forces,
+            "energy": true_energy + afir_energy,
+            "forces": true_forces + afir_forces,
             "true_forces": true_forces,
             "true_energy": true_energy,
         }

@@ -4,14 +4,6 @@ pysisyphus.tsoptimizers package
 Submodules
 ----------
 
-pysisyphus.tsoptimizers.Dimer module
-------------------------------------
-
-.. automodule:: pysisyphus.tsoptimizers.Dimer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.tsoptimizers.RSIRFOptimizer module
 ---------------------------------------------
 
@@ -52,14 +44,6 @@ pysisyphus.tsoptimizers.dimer module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.tsoptimizers.dimer\_fail module
-------------------------------------------
-
-.. automodule:: pysisyphus.tsoptimizers.dimer_fail
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.tsoptimizers.dimerv2 module
 --------------------------------------
 
@@ -67,7 +51,6 @@ pysisyphus.tsoptimizers.dimerv2 module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------
