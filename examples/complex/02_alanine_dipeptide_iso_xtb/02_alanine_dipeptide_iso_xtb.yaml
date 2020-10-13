@@ -19,8 +19,9 @@ calc:
  pal: 4
  charge: 0
  mult: 1
-xyz: [ala_start.xyz, ala_end.xyz]
-coord_type: dlc                         # Run GrowingString in delocalized internal coordinates
+geom:
+ type: dlc
+ fn: [ala_start.xyz, ala_end.xyz]       # Run GrowingString in delocalized internal coordinates
                                         # (preferred).
 assert:
  opt.is_converged: True

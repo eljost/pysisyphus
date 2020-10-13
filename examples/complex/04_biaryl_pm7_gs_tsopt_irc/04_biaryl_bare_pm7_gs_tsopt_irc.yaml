@@ -25,8 +25,9 @@ calc:
  charge: 0
  mult: 1
  pal: 4
-xyz: [split.image_000.xyz, split.image_056.xyz]
-coord_type: dlc
+geom:
+ type: dlc
+ fn: [split.image_000.xyz, split.image_056.xyz]
 assert:
  opt.is_converged: True
  opt.cur_cycle: 12
