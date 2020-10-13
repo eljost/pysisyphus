@@ -302,7 +302,7 @@ def sort_by_prim_type(to_sort=None):
         #   2 ->     0 (bond)
         #   3 ->     1 (bend)
         #   4 ->     2 (torsion)
-        by_prim_type[len_ - 2].append(item)
+        by_prim_type[len_ - 2].append(tuple(item))
     return by_prim_type
 
 
