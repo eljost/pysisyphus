@@ -56,8 +56,7 @@ that the user may want to modify.
      pal: 4
      charge: 0
      mult: 1
-    geom:
-     fn: hfabstraction_ts_opt_xtb.xyz   # Input coordinates
+    xyz: hfabstraction_ts_opt_xtb.xyz   # Input coordinates
 
 Further examples for IRC calculations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/irc>`_.

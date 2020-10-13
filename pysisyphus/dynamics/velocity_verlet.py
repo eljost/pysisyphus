@@ -11,12 +11,11 @@ from pysisyphus.dynamics.helpers import kinetic_energy_from_velocities, \
 from pysisyphus.dynamics.csvr import resample_kin
 from pysisyphus.dynamics.rattle import rattle_closure
 from pysisyphus.helpers import check_for_stop_sign
-from pysisyphus.helpers_pure import log
 
 logger = logging.getLogger("dynamics")
 
 MDResult = namedtuple("MDResult",
-                      "coords t_ps step terminated T E_tot",
+                      "coords t terminated T E_tot",
 )
 THERMOSTATS = {
     "csvr": resample_kin,
@@ -73,16 +72,12 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     if constraint_kwargs is None:
         constraint_kwargs = dict()
 
-    if remove_com_v and (not thermostat):
-        print("Center of mass velocity removal requested, but thermostat is disabled. "
-              "Disabling velocity removal."
-        )
-        remove_com_v = False
-
     # Fixed degrees of freedom
     fixed_dof = 0
+
     if remove_com_v:
         fixed_dof += 3
+
     constrained_md = constraints is not None
     # Get RATTLE function from closure for constrained MD
     if constrained_md:
@@ -116,8 +111,7 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     terminate = False
     terminate_key = None
     T_avg = 0
-    log(logger, f"Running MD with Δt={dt:.2f} fs for {steps} steps.")
-    for step in range(steps):
+    for i in range(steps):
         xs.append(x.copy())
 
         E_kin = kinetic_energy_from_velocities(masses, v.reshape(-1, 3))
@@ -127,13 +121,10 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         E_tot = E_pot + E_kin
         E_tots.append(E_tot)
 
-        status_msg = (
-            f"Step {step:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
-            f"T={T: >8.2f} K <T>={T_avg/(step+1): >8.2f}"
-        )
-        if (step % 25) == 0:
-            log(logger, status_msg)
-            if verbose: print(status_msg)
+        if verbose and (i % 25) == 0:
+            print(f"Step {i:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
+                  f"T={T: >8.2f} K <T>={T_avg/(i+1): >8.2f}"
+            )
 
         if thermostat:
             E_kin_new = thermo_func(E_kin, sigma, v.size-fixed_dof, tau_t)
@@ -160,12 +151,12 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         geom.coords = x
 
         for name, func in term_funcs.items():
-            if func(x.reshape(-1, 3)):
+            if func(x):
                 terminate = True
                 terminate_key = name
                 break
         if terminate:
-            log(logger, f"Termination function '{name}' evaluted to True. Breaking.")
+            logger.debug(f"Termination function '{name}' evaluted to True. Breaking.")
             break
 
         if check_for_stop_sign():
@@ -173,12 +164,10 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
 
         # Advance time
         t_cur += dt
-    log(logger, "")
 
     md_result = MDResult(
                     coords=np.array(xs),
-                    t_ps=t_cur*1e-3,
-                    step=step,
+                    t=t_cur*1e-3,
                     terminated=terminate_key,
                     T=np.array(Ts),
                     E_tot=np.array(E_tots),

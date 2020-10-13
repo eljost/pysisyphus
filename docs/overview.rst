@@ -54,17 +54,23 @@ Visualization/plotting of the pysisyphus calculations. Some common arguments are
 
 .. code:: bash
 
-    usage: pysisplot (--cosforces | --cosens | --all_energies | --afir | --opt | --irc | --overlaps)
+    usage: pysisplot [-h] [--first FIRST] [--last LAST] [--h5 H5]
+                 [--orient ORIENT]
+                 (--cosgrad | --energies | --aneb | --all_energies | --bare_energies | --afir | --opt | --irc)
 
     optional arguments:
-      --cosforces, --cf    Plot image forces along a COS.
-      --cosens, --ce       Plot COS energies.
-      --all_energies, -a   Plot ground and excited state energies from 'overlap_data.h5'.
-      --afir               Plot AFIR and true -energies and -forces from an AFIR calculation.
-      --opt                Plot optimization progress.
-      --irc                Plot IRC progress.
-      --overlaps, -o
-
+        -h, --help           show this help message and exit
+        --cosgrad, --cg      Plot image gradients along the path.
+        --energies, -e       Plot energies.
+        --aneb               Plot Adaptive NEB.
+        --all_energies, -a   Plot ground and excited state energies from
+                             'overlap_data.h5'.
+        --bare_energies, -b  Plot ground and excited state energies from
+                             'overlap_data.h5'.
+        --afir               Plot AFIR and true -energies and -forces from an AFIR
+                             calculation.
+        --opt                Plot optimization progress.
+        --irc                Plot IRC progress.
 
 pysistrj
 --------
@@ -82,7 +88,7 @@ Program     Gradient Hessian Exc. states        Version
 ORCA        y        y       TD-DFT, TDA        4.2.x
 Turbomole   y        y       TD-DFT, TDA, ricc2 7.2-7.4
 Gaussian16  y        y       tested TD-DFT, TDA 
-PySCF       y        y       tested TD-DFT      1.7.5
+PySCF       y        y       tested TD-DFT      1.7.0
 OpenMOLCAS  y        n       &rasscf            Not yet derived from OverlapCalculator
 =========== ======== ======= ================== =======
 
@@ -93,8 +99,8 @@ Ground states capabilities
 Program     Gradient Hessian Version
 =========== ======== ======= =========
 MOPAC2016   y        y       
-XTB         y        y       6.3.2
-QCEngine    y        n       >= 0.16.0
+XTB         y        y       6.2.2
+QCEngine    y        n       >= 0.13.0
 Psi4        y        y 
 =========== ======== ======= =========
 

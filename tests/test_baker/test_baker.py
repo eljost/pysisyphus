@@ -19,7 +19,6 @@ from pysisyphus.testing import using_pyscf
 def test_baker_gs_opt(name, geom, ref_energy, results_bag):
     opt_kwargs = {
         "thresh": "baker",
-        "adapt_step_func": False,
     }
     print(f"@Running {name}")
     pal = min(os.cpu_count(), 4)
@@ -48,8 +47,7 @@ def test_baker_synthesis(fixture_store):
         print(k)
         try:
             tot_cycles += v["cycles"]
-            energy_matches = v["energy"] == pytest.approx(v["ref_energy"])
-            converged += 1 if v["is_converged"] and energy_matches else 0
+            converged += 1 if v["is_converged"] else 0
             for kk, vv in v.items():
                 print("\t", kk, vv)
         except KeyError:

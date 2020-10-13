@@ -440,21 +440,6 @@ class Geometry:
     def comment(self, new_comment):
         self._comment = new_comment
 
-    def center_of_mass_at(self, coords3d):
-        """Returns the center of mass at given coords3d.
-
-        Parameters
-        ----------
-        coords3d : np.array, shape(N, 3)
-            Cartesian coordiantes.
-
-        Returns
-        -------
-        R : np.array, shape(3, )
-            Center of mass.
-        """
-        return 1/self.total_mass * np.sum(coords3d*self.masses[:,None], axis=0)
-
     @property
     def center_of_mass(self):
         """Returns the center of mass.
@@ -464,8 +449,8 @@ class Geometry:
         R : np.array, shape(3, )
             Center of mass.
         """
-        return self.center_of_mass_at(self.coords3d)
-
+        return 1/self.total_mass * np.sum(self.coords3d*self.masses[:,None],
+                                          axis=0)
 
     @property
     def centroid(self):

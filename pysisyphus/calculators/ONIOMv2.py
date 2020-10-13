@@ -335,7 +335,7 @@ class Model():
 
 class ONIOM(Calculator):
 
-    def __init__(self, calcs, models, geom, layers=None, embedding=None,
+    def __init__(self, calcs, models, geom=None, layers=None, embedding=None,
                  real_key="real", use_link_atoms=True, *args, **kwargs):
         """
         layer: list of models

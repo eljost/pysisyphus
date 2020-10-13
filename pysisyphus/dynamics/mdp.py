@@ -3,66 +3,20 @@
 #     Unke, 2019
 
 from collections import namedtuple
-import operator
-import re
 
 import numpy as np
 
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.dynamics.velocity_verlet import md, MDResult
-from pysisyphus.dynamics.helpers import (
-    dump_coords,
-    get_mb_velocities_for_geom,
-    temperature_for_kinetic_energy,
-)
+from pysisyphus.dynamics.helpers import dump_coords, \
+                                        get_mb_velocities_for_geom, \
+                                        temperature_for_kinetic_energy
 from pysisyphus.helpers import highlight_text
 
 
-def parse_raw_term_func(raw_term_func):
-    funcs = {
-        "<": operator.lt,
-        ">": operator.gt,
-        "<=": operator.le,
-        ">=": operator.ge,
-        "==": operator.eq,
-    }
-
-    def comp_closure(indices, op, ref_value):
-        a_ind, b_ind = indices
-        func = funcs[op]
-
-        def comp_func(coords3d):
-            a = coords3d[a_ind]
-            b = coords3d[b_ind]
-            dist = np.linalg.norm(a - b)
-            return func(dist, ref_value)
-
-        return comp_func
-
-    operator_re = re.compile("([<>=]+)")
-    mobj = operator_re.split(raw_term_func)
-    if mobj is None:
-        print(f"Could not parse term_func '{raw_term_func}!'")
-        return None
-    indices, op, ref_value = mobj
-    ref_value = float(ref_value)
-    indices = [int(ind) for ind in indices.split(",")]
-    return comp_closure(indices, op, ref_value)
-
-
-def parse_raw_term_funcs(raw_term_funcs):
-    comp_funcs = {}
-    for k, v in raw_term_funcs.items():
-        comp_func = parse_raw_term_func(v)
-        if comp_func:
-            comp_funcs[k] = comp_func
-    return comp_funcs
-
-
-def run_md(geom, dt, steps, v0=None, term_funcs=None, external=False):
+def run_md(geom, t, dt, v0=None, remove_com_v=True, term_funcs=None,
+           external=False):
     if external and hasattr(geom.calculator, "run_md"):
-        t = dt * steps
-        t_ps = t * 1e-3
         md_kwargs = {
             "atoms": geom.atoms,
             "coords": geom.coords,
@@ -75,22 +29,16 @@ def run_md(geom, dt, steps, v0=None, term_funcs=None, external=False):
         if term_funcs is not None:
             print("Termination functions are not supported in external MD!")
         geoms = geom.calculator.run_md(**md_kwargs)
-        md_result = MDResult(
-            coords=[geom.coords for geom in geoms],
-            t_ps=t_ps,
-            step=int(t / dt - 1),
-            terminated=None,
-            T=None,
-            E_tot=None,
-        )
+        md_result = MDResult(coords=[geom.coords for geom in geoms], t=t)
     else:
+        steps= int(t / dt)
         md_kwargs = {
             "v0": v0,
             "steps": steps,
             "dt": dt,
             "term_funcs": term_funcs,
             "verbose": False,
-            "remove_com_v": False,
+            "remove_com_v": remove_com_v,
         }
         print("Running MD with internal implementation.")
         md_result = md(geom, **md_kwargs)
@@ -98,65 +46,42 @@ def run_md(geom, dt, steps, v0=None, term_funcs=None, external=False):
     return md_result
 
 
-MDPResult = namedtuple(
-    "MDResult",
-    "ascent_xs md_init_plus md_init_minus "
-    "md_fin_plus md_fin_minus "
-    "md_fin_plus_term md_fin_minus_term",
+MDPResult = namedtuple("MDResult",
+                       "ascent_xs md_init_plus md_init_minus "
+                       "md_fin_plus md_fin_minus "
+                       "md_fin_plus_term md_fin_minus_term"
 )
 
 
-def mdp(
-    geom,
-    steps,
-    dt,
-    term_funcs=None,
-    steps_init=None,
-    E_excess=0.0,
-    displ_length=0.1,
-    epsilon=5e-4,
-    ascent_alpha=0.05,
-    max_ascent_steps=25,
-    max_init_trajs=10,
-    dump=True,
-    seed=None,
-    external_md=False,
-):
+def mdp(geom, t, dt, term_funcs, t_init=None, E_excess=0.,
+        displ_length=.1, epsilon=5e-4, ascent_alpha=0.05,
+        max_ascent_steps=25, max_init_trajs=10, dump=True,
+        seed=None, external_md=False):
     # Sanity checks and forcing some types
     dt = float(dt)
-    assert dt > 0.0
-    steps = int(steps)
-    t = dt * steps
-    # assert t > dt
-    if steps_init is None:
-        steps_init = steps // 10
-        print(f"No 'steps_init' provided! Using {steps_init}")
+    assert dt > 0.
+    t = float(t)
+    assert t > dt
+    if t_init is None:
+        t_init = t / 10
     E_excess = float(E_excess)
-    assert E_excess >= 0.0
+    assert E_excess >= 0.
     displ_length = float(displ_length)
-    assert displ_length >= 0.0
-    if term_funcs is None:
-        term_funcs = {}
-    for k, v in term_funcs.items():
-        if callable(v):
-            continue
-        elif isinstance(v, str):
-            term_funcs[k] = parse_raw_term_func(v)
-        else:
-            raise Exception(f"Invalid term function '{k}: {v}' encountered!")
+    assert displ_length >= 0.
 
     print(highlight_text("Minimum dynamic path calculation"))
 
     if seed is None:
-        # 2**32 - 1
-        seed = np.random.randint(4294967295)
+        seed = np.random.randint(0, 20182305)
+    print(f"Using seed {seed} to initialize the random number generator.")
+    print()
     np.random.seed(seed)
-    print(f"Using seed {seed} to initialize the random number generator.\n")
+
 
     E_TS = geom.energy
     E_tot = E_TS + E_excess
     # Distribute E_excess evenly on E_pot and E_kin
-    E_pot_diff = 0.5 * E_excess
+    E_pot_diff = 0.5*E_excess
     E_pot_desired = E_TS + E_pot_diff
 
     print(f"E_TS={E_TS:.6f} au")
@@ -164,12 +89,12 @@ def mdp(
     # Determine transition vector
     w, v = np.linalg.eigh(geom.hessian)
     assert w[0] < -1e-8
-    trans_vec = v[:, 0]
+    trans_vec = v[:,0]
 
     # Disable removal of translation/rotation for analytical potentials
-    remove_com_v = remove_rot_v = geom.cart_coords.size > 3
+    remove_com = remove_rot = geom.cart_coords.size > 3
 
-    if E_excess == 0.0:
+    if E_excess == 0.:
         print("MDP without excess energy.")
         # Without excess energy we have to do an initial displacement along
         # the transition vector to get a non-vanishing gradient.
@@ -184,6 +109,7 @@ def mdp(
             "dt": dt,
             "term_funcs": term_funcs,
             "external": external_md,
+            "remove_com_v": remove_com,
         }
 
         geom.coords = x0_plus
@@ -197,11 +123,11 @@ def mdp(
             dump_coords(geom.atoms, md_fin_minus.coords, "mdp_minus.trj")
 
         mdp_result = MDPResult(
-            ascent_xs=None,
-            md_init_plus=None,
-            md_init_minus=None,
-            md_fin_plus=md_fin_plus,
-            md_fin_minus=md_fin_minus,
+                        ascent_xs=None,
+                        md_init_plus=None,
+                        md_init_minus=None,
+                        md_fin_plus=md_fin_plus,
+                        md_fin_minus=md_fin_minus,
         )
         return mdp_result
 
@@ -241,17 +167,16 @@ def mdp(
 
     # calc = geom.calculator
     # class Opt:
-    # pass
+        # pass
     # _opt = Opt()
     # _opt.coords = np.array(ascent_xs)
     # calc.plot_opt(_opt, show=True)
 
     assert ascent_converged, "Steepest ascent didn't converge!"
-    assert (E_tot - E_pot) > 0.0, (
-        "Potential energy after steepst ascent is greater than the desired "
-        f"total energy ({E_pot:.6f} > {E_tot:.6f}). Maybe try a smaller epsilon? "
+    assert (E_tot - E_pot) > 0., \
+         "Potential energy after steepst ascent is greater than the desired " \
+        f"total energy ({E_pot:.6f} > {E_tot:.6f}). Maybe try a smaller epsilon? " \
         f"The current value Ɛ={epsilon:.6f} may be too big!"
-    )
 
     ascent_xs = np.array(ascent_xs)
     if dump:
@@ -263,9 +188,9 @@ def mdp(
         # Determine random momentum vector for the given kinetic energy
         E_kin = E_tot - E_pot
         T = temperature_for_kinetic_energy(len(geom.atoms), E_kin)
-        v0 = get_mb_velocities_for_geom(
-            geom, T, remove_com_v=remove_com_v, remove_rot_v=remove_rot_v
-        ).flatten()
+        v0 = get_mb_velocities_for_geom(geom, T,
+                                        remove_com=remove_com,
+                                        remove_rot=remove_rot).flatten()
 
         # Zero last element if we have an analytical surface
         if v0.size == 3:
@@ -277,9 +202,10 @@ def mdp(
         # First MD with positive v0
         md_init_kwargs = {
             "v0": v0.copy(),
-            "steps": steps_init,
+            "t": t_init,
             "dt": dt,
             "external": external_md,
+            "remove_com_v": remove_com,
         }
         geom.coords = x0.copy()
         md_init_plus = run_md(geom, **md_init_kwargs)
@@ -294,7 +220,7 @@ def mdp(
         # Check if both MDs run into different basins of attraction.
         # We (try to) do this by calculating the overlap between the
         # transition vector and the normalized vector defined by the
-        # difference between x0 and the endpoint of the respective
+        # difference between x0 and the endpoint of the respective 
         # test trajectory. Both overlaps should have different sings.
         end_plus = md_init_plus.coords[-1]
         pls = end_plus - x0
@@ -304,46 +230,37 @@ def mdp(
         minus /= np.linalg.norm(minus)
         p = trans_vec @ pls
         m = trans_vec @ minus
-        init_trajs_converged = np.sign(p) != np.sign(m)
+        init_trajs_converged = (np.sign(p) != np.sign(m))
 
         if init_trajs_converged:
-            print("Trajectories ran into different basins. Breaking.")
             break
     if dump:
         dump_coords(geom.atoms, md_init_plus.coords, "mdp_ee_init_plus.trj")
         dump_coords(geom.atoms, md_init_minus.coords, "mdp_ee_init_minus.trj")
     assert init_trajs_converged
-    print(f"Ran 2*{i+1} initialization trajectories.")
+    print(f"Ran 2*{i+1} trajectories.")
+    print("Initialization completed.")
     print()
 
     # Run actual trajectories, using the supplied termination functions if possible.
     print(highlight_text("Running actual full trajectories.", level=1))
 
-    def print_status(terminated, step):
-        if terminated:
-            msg = f"\tTerminated by '{terminated}' in step {step}."
-        else:
-            msg = "\tMax time steps reached!"
-        print(msg)
-
-    # "Production"/Final MDs
+    # MD with positive v0.
     md_fin_kwargs = {
         "v0": v0.copy(),
-        "steps": steps,
+        "t": t,
         "dt": dt,
         "term_funcs": term_funcs,
         "external": external_md,
+        "remove_com_v": remove_com,
     }
-    # MD with positive v0.
     geom.coords = x0.copy()
     md_fin_plus = run_md(geom, **md_fin_kwargs)
-    print_status(md_fin_plus.terminated, md_fin_plus.step)
 
-    # MD with negative v0.
     geom.coords = x0.copy()
+    # MD with negative v0.
     md_fin_kwargs["v0"] = -v0
     md_fin_minus = run_md(geom, **md_fin_kwargs)
-    print_status(md_fin_minus.terminated, md_fin_minus.step)
 
     md_fin_plus_term = md_fin_plus.terminated
     md_fin_minus_term = md_fin_minus.terminated
@@ -353,12 +270,12 @@ def mdp(
         dump_coords(geom.atoms, md_fin_minus.coords, "mdp_ee_fin_minus.trj")
 
     mdp_result = MDPResult(
-        ascent_xs=ascent_xs,
-        md_init_plus=md_init_plus,
-        md_init_minus=md_init_minus,
-        md_fin_plus=md_fin_plus,
-        md_fin_minus=md_fin_minus,
-        md_fin_plus_term=md_fin_plus_term,
-        md_fin_minus_term=md_fin_minus_term,
+                    ascent_xs=ascent_xs,
+                    md_init_plus=md_init_plus,
+                    md_init_minus=md_init_minus,
+                    md_fin_plus=md_fin_plus,
+                    md_fin_minus=md_fin_minus,
+                    md_fin_plus_term=md_fin_plus_term,
+                    md_fin_minus_term=md_fin_minus_term,
     )
     return mdp_result

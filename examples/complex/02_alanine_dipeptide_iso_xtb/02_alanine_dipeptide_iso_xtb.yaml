@@ -4,7 +4,7 @@ cos:
  max_nodes: 9                            # Total string will have max_nodes + 2 images
 opt:
  type: string                            # Optimizer for GrowingString
- stop_in_when_full: 3                    # Stop string optimization N cycles after fully grown
+ stop_in_when_full: 0                    # Stop string optimization N cycles after fully grown
  align: False                            # Disable Kabsch algorithm. Should be True with
                                          # coord_type == cartesian
 tsopt:
@@ -24,5 +24,5 @@ coord_type: dlc                         # Run GrowingString in delocalized inter
                                         # (preferred).
 assert:
  opt.is_converged: True
- ts_geom.energy: -32.9647645
- ts_opt.cur_cycle: 18
+ ts_geom.energy: -32.96468660
+ ts_opt.cur_cycle: 15

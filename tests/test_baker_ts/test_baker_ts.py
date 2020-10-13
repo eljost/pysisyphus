@@ -31,9 +31,9 @@ def get_geoms():
         "17_claisen.xyz",
         "18_silyene_insertion.xyz",
         "19_hnccs.xyz",
-        # "20_hconh3_cation.xyz",
+        "20_hconh3_cation.xyz",
         "21_acrolein_rot.xyz",
-        # "22_hconhoh.xyz",
+        "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
         "24_h2cnh.xyz",
         "25_hcnh2.xyz",
@@ -66,7 +66,7 @@ def get_geoms():
     "name, geom, charge, mult, ref_energy",
     get_geoms()
 )
-def test_baker_tsopt(name, geom, charge, mult, ref_energy, results_bag):
+def test_baker_tsopt(name, geom, charge, mult, ref_energy):
     calc_kwargs = {
         "charge": charge,
         "mult": mult,
@@ -84,50 +84,21 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy, results_bag):
         "max_cycles": 50,
         "trust_radius": 0.3,
         "trust_max": 0.3,
-        # "min_line_search": True,
-        # "max_line_search": True,
     }
     # opt = RSPRFOptimizer(geom, **opt_kwargs)
     opt = RSIRFOptimizer(geom, **opt_kwargs)
     # opt = TRIM(geom, **opt_kwargs)
     opt.run()
 
+    print(f"\t@Converged: {opt.is_converged}, {opt.cur_cycle+1} cycles")
+
     # Without symmetry restriction this lower lying TS will be obtained.
     if name.startswith("22_"):
         ref_energy = -242.25695787
-
-    results_bag.cycles = opt.cur_cycle + 1
-    results_bag.is_converged = opt.is_converged
-    results_bag.energy = geom.energy
-    results_bag.ref_energy = ref_energy
-
-    print(f"\t@Converged: {opt.is_converged}, {opt.cur_cycle+1} cycles")
-
     assert geom.energy == pytest.approx(ref_energy)
     print("\t@Energies match!")
 
     return opt.cur_cycle+1
-
-
-def test_baker_tsopt_synthesis(fixture_store):
-    for i, fix in enumerate(fixture_store):
-        print(i, fix)
-
-    tot_cycles = 0
-    converged = 0
-    bags = fixture_store["results_bag"]
-    for k, v in bags.items():
-        print(k)
-        try:
-            tot_cycles += v["cycles"]
-            energy_matches = v["energy"] == pytest.approx(v["ref_energy"])
-            converged += 1 if v["is_converged"] and energy_matches else 0
-            for kk, vv in v.items():
-                print("\t", kk, vv)
-        except KeyError:
-            print("\tFailed!")
-    print(f"Total cycles: {tot_cycles}")
-    print(f"Converged: {converged}/{len(bags)}")
 
 
 @using_pyscf

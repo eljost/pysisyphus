@@ -17,7 +17,6 @@ from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
-from pysisyphus.io.pdb import geom_to_pdb_str
 from pysisyphus.stocastic.align import match_geom_atoms
 from pysisyphus.xyzloader import split_xyz_str
 
@@ -103,9 +102,6 @@ def parse_args(args):
     )
     action_group.add_argument("--fragsort", action="store_true",
         help="Resort atoms by fragments."
-    )
-    action_group.add_argument("--topdb", action="store_true",
-        help="Convert given geometry to PDB with automatic fragment detection."
     )
 
     shake_group = parser.add_argument_group()
@@ -282,12 +278,11 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
                          coord_kwargs={"typed_prims": typed_prims},
                  )
                  for geom in geoms]
-        # assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
-        assert all([len(geom.internal.typed_prims) == len(typed_prims) for geom in geoms])
+        assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
     return geoms
 
 
-def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, dump_xyz=True, dump_pdb=False,
+def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, dump_xyz=True,
                ang=False):
     xyz_per_geom = [geom.as_xyz() for geom in geoms]
     if dump_trj:
@@ -301,13 +296,6 @@ def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, dump_xyz=True, dump_
             geom_fn = f"{fn_base}.geom_{i:03d}.xyz"
             with open(geom_fn, "w") as handle:
                 handle.write(xyz)
-            print(f"Wrote geom {i:03d} to {geom_fn}.")
-    elif dump_pdb:
-        for i, geom in enumerate(geoms):
-            geom_fn = f"{fn_base}.geom_{i:03d}.pdb"
-            pdb_str = geom_to_pdb_str(geom, detect_fragments=True)
-            with open(geom_fn, "w") as handle:
-                handle.write(pdb_str)
             print(f"Wrote geom {i:03d} to {geom_fn}.")
     print()
 
@@ -565,7 +553,6 @@ def run():
     to_dump = geoms
     dump_trj = True
     dump_xyz = args.noxyz
-    dump_pdb = False
     trj_infix = ""
     if args.between:
         fn_base = "interpolated"
@@ -634,16 +621,12 @@ def run():
     elif args.origin:
         origin(geoms)
         fn_base = "origin"
-    elif args.topdb:
-        fn_base = "as_pdb"
-        dump_pdb = True
-        dump_xyz = False
 
     # Write transformed geometries
     dump_trj = dump_trj and (len(to_dump) > 1)
 
     dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj,
-               dump_xyz=dump_xyz, dump_pdb=dump_pdb)
+               dump_xyz=dump_xyz)
 
 if __name__ == "__main__":
     run()

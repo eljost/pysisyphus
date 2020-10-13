@@ -14,19 +14,15 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 class RSPRFOptimizer(TSHessianOptimizer):
-
     def optimize(self):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
 
         # Transform gradient to eigensystem of hessian
         gradient_trans = eigvecs.T.dot(gradient)
+
         # Minimize energy along all modes, except the TS-mode
         min_indices = [i for i in range(gradient_trans.size) if i != self.root]
-        # Get line search steps, if requested.
-        ip_step_trans, gradient_trans = self.step_and_grad_from_line_search(
-            energy, gradient_trans, eigvecs, min_indices
-        )
 
         """In the RS-(P)RFO method we have to scale the matrices with alpha.
         Unscaled matrix (Eq. 8) in [1]:
@@ -138,7 +134,6 @@ class RSPRFOptimizer(TSHessianOptimizer):
 
         # Right now the step is still given in the Hessians eigensystem. We
         # transform it back now.
-        step += ip_step_trans
         step = eigvecs.dot(step)
         step_norm = np.linalg.norm(step)
 
@@ -154,7 +149,9 @@ class RSPRFOptimizer(TSHessianOptimizer):
         # predicted_energy_change = 1/2 * (eigval_max / nu_max**2 + eigval_min / nu_min**2)
         # self.predicted_energy_changes.append(predicted_energy_change)
 
-        self.predicted_energy_changes.append(self.rfo_model(gradient, self.H, step))
+        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
+        rfo_prediction = quadratic_prediction / (1 + step @ step)
+        self.predicted_energy_changes.append(rfo_prediction)
 
         self.log("")
         return step

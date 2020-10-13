@@ -20,14 +20,13 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn=2, acc=1.0, mem=1000, quiet=False, **kwargs):
+    def __init__(self, gbsa="", gfn=2, acc=1.0, mem=1000, **kwargs):
         super().__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
         self.acc = acc
         self.mem = mem
-        self.quiet = quiet
 
         valid_gfns = (1, 2, "ff")
         assert self.gfn in valid_gfns, "Invalid gfn argument. " \
@@ -39,8 +38,6 @@ class XTB(Calculator):
         self.to_keep = ("out:xtb.out", "gradient", "xtbopt.xyz", "g98.out",
                         "xtb.trj",
         )
-        if self.quiet:
-            self.to_keep = ()
 
         self.parser_funcs = {
             "grad": self.parse_gradient,

@@ -12,6 +12,14 @@ pysisyphus.calculators.AFIR module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.AFIR\_without\_atoms\_arg module
+-------------------------------------------------------
+
+.. automodule:: pysisyphus.calculators.AFIR_without_atoms_arg
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.AnaPot module
 ------------------------------------
 
@@ -140,6 +148,14 @@ pysisyphus.calculators.IDPPCalculator module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.IDPPold module
+-------------------------------------
+
+.. automodule:: pysisyphus.calculators.IDPPold
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.LEPSBase module
 --------------------------------------
 
@@ -152,6 +168,14 @@ pysisyphus.calculators.LEPSExpr module
 --------------------------------------
 
 .. automodule:: pysisyphus.calculators.LEPSExpr
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.LSTPot module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.LSTPot
    :members:
    :undoc-members:
    :show-inheritance:
@@ -276,14 +300,6 @@ pysisyphus.calculators.SocketCalc module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.calculators.TIP3P module
------------------------------------
-
-.. automodule:: pysisyphus.calculators.TIP3P
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.calculators.Turbomole module
 ---------------------------------------
 
@@ -324,13 +340,6 @@ pysisyphus.calculators.parser module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.calculators.px module
---------------------------------
-
-.. automodule:: pysisyphus.calculators.px
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 Module contents
 ---------------

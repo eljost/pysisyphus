@@ -5,7 +5,6 @@ from pysisyphus.helpers import geom_loader, do_final_hessian
 from pysisyphus.optimizers.guess_hessians import ts_hessian
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
-from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 from pysisyphus.testing import using
 
 import numpy as np
@@ -53,13 +52,7 @@ def test_ts_hessian():
 
 
 @using("pyscf")
-@pytest.mark.parametrize(
-    "tsopt_cls, ref_cycle", [
-        (RSPRFOptimizer, 8),
-        # (RSIRFOptimizer, 12),
-    ]
-)
-def test_ts_hessian_opt(tsopt_cls, ref_cycle):
+def test_ts_hessian_opt():
     geom = geom_loader("lib:baker_ts/01_hcn.xyz", coord_type="redund")
     geom.set_calculator(PySCF(basis="321g"))
 
@@ -68,14 +61,11 @@ def test_ts_hessian_opt(tsopt_cls, ref_cycle):
         "dump": True,
         "rx_coords": ((2, 1, 0), ),
         "thresh": "gau_tight",
-        "max_line_search": True,
-        "min_line_search": True,
     }
-    opt = tsopt_cls(geom, **opt_kwargs)
+    opt = RSPRFOptimizer(geom, **opt_kwargs)
     opt.run()
     do_final_hessian(geom, write_imag_modes=True)
 
     assert opt.is_converged
-    # 11 without linesearch
-    assert opt.cur_cycle == ref_cycle
+    assert opt.cur_cycle == 11
     assert geom.energy == pytest.approx(-92.2460426792319)

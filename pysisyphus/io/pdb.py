@@ -108,7 +108,14 @@ def geom_from_pdb(fn, **kwargs):
     return geom
 
 
-def atoms_coords_to_pdb_str(atoms, coords, fragments=None):
+def geom_to_pdb_str(geom):
+    # Convert to Å
+    coords = geom.cart_coords / ANG2BOHR
+    pdb_str = atoms_coords_to_pdb_str(geom.atoms, coords)
+    return pdb_str
+
+
+def atoms_coords_to_pdb_str(atoms, coords):
     coords3d = coords.reshape(-1, 3)
 
     coord_fmt = "{: >8.3f}"*3
@@ -120,27 +127,21 @@ def atoms_coords_to_pdb_str(atoms, coords, fragments=None):
     #      occupancy tempFactor            atom
     fmt += "{: >6.2f}{: >6.2f}" + 10*" " + "{: >2s}"
 
-    if fragments is None:
-        fragments = [range(len(atoms)), ]
-
     # Fixed for now
     altLoc = ""
     resName = ""
     chainID = ""
+    resSeq = 0
     iCode = ""
     occupancy = 1.0
     tempFactor = 0.0
 
     lines = list()
-    serial = 0
-    for resSeq, fragment in enumerate(fragments):
-        for id_ in fragment:
-            name = atoms[id_]
-            xyz = coords3d[id_]
-            line = fmt.format(serial, name, altLoc, resName, chainID, resSeq,
-                              iCode, *xyz, occupancy, tempFactor, name)
-            lines.append(line)
-            serial += 1
+    for serial, (name, xyz) in enumerate(zip(atoms, coords3d)):
+        # print(serial, name, x, y, z)
+        line = fmt.format(serial, name, altLoc, resName, chainID, resSeq,
+                          iCode, *xyz, occupancy, tempFactor, name)
+        lines.append(line)
 
     pdb_tpl = Template(textwrap.dedent(
     """\
@@ -151,21 +152,4 @@ def atoms_coords_to_pdb_str(atoms, coords, fragments=None):
     END"""))
 
     pdb_str = pdb_tpl.render(lines=lines)
-    return pdb_str
-
-
-def geom_to_pdb_str(geom, detect_fragments=False):
-    # Convert to Å
-    coords = geom.cart_coords / ANG2BOHR
-    if len(geom.fragments) > 0:
-        raise Exception("Not yet implemented!")
-
-    fragments = None
-    if detect_fragments:
-        try:
-            fragments = geom.internal.fragments
-        except AttributeError:
-            geom_ = geom.copy(coord_type="redund")
-            fragments = geom_.internal.fragments
-    pdb_str = atoms_coords_to_pdb_str(geom.atoms, coords, fragments=fragments)
     return pdb_str

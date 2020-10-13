@@ -117,9 +117,8 @@ that the user may want to modify when using the RFOptimizer.
      pal: 4
      mem: 2000
 
-    geom:
-     type: redund
-     fn: cytosin.xyz
+    xyz: cytosin.xyz
+    coord_type: redund
 
 Further examples for optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/opt>`_.

@@ -81,10 +81,9 @@ that the user may want to modify when running a COS optimization.
      pal: 4
      charge: 0
      mult: 1
-    geom:
-     type: dlc
-     fn: [first_preopt.xyz, last_preopt.xyz] # Run GrowingString in delocalized internal coordinates
-                                             # (preferred).
+    xyz: [first_preopt.xyz, last_preopt.xyz]
+    coord_type: dlc                         # Run GrowingString in delocalized internal coordinates
+                                            # (preferred).
 
 Further examples for COS optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/dev/examples/complex>`_.

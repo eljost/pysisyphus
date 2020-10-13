@@ -13,11 +13,10 @@ class RSIRFOptimizer(TSHessianOptimizer):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
 
-        self.log(
-            "Using projection to construct image potential gradient "
-            f"and hessian for root {self.root}."
+        self.log( "Using projection to construct image potential gradient "
+                  f"and hessian for root {self.root}."
         )
-        trans_vec = eigvecs[:, self.root]
+        trans_vec = eigvecs[:,self.root]
         # Projection matrix to construct g* and H*
         P = np.eye(self.geometry.coords.size) - 2 * np.outer(trans_vec, trans_vec)
         H_star = P.dot(H)
@@ -28,6 +27,8 @@ class RSIRFOptimizer(TSHessianOptimizer):
         grad_star = P.dot(gradient)
         step = self.get_rs_step(eigvals_, eigvecs_, grad_star, name="RS-I-RFO")
 
-        self.predicted_energy_changes.append(self.rfo_model(gradient, self.H, step))
+        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
+        rfo_prediction = quadratic_prediction / (1 + step @ step)
+        self.predicted_energy_changes.append(rfo_prediction)
 
         return step

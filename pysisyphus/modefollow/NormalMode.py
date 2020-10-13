@@ -35,3 +35,5 @@ class NormalMode:
     def l_mw(self):
         l_mw = self.l * np.sqrt(self.masses)
         return l_mw / np.linalg.norm(l_mw)
+
+

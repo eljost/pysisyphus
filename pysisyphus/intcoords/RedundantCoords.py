@@ -268,7 +268,7 @@ class RedundantCoords:
         for primitive, int_grad_item in zip(self.primitives, int_gradient):
             # Contract with gradient
             val = np.rad2deg(primitive.calculate(coords3d))
-            # self.log(f"K, {primitive}={val:.2f}°")
+            self.log(f"K, {primitive}={val:.2f}°")
             # The generated code (d2q_d) seems unstable for these values...
             if isinstance(primitive, Torsion) and ((abs(val) < 1) or (abs(val) > 179)):
                 self.log(f"Skipped 2nd derivative of {primitive} with val={val:.2f}°")

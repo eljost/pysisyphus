@@ -2,9 +2,6 @@ name: Python application
 
 on:
     push:
-        paths-ignore:
-            - "docs/**"
-            - "examples/**"
     schedule:
         - cron: '0 */12 * * *'
 jobs:

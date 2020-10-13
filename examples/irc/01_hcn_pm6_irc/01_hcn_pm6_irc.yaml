@@ -13,7 +13,7 @@ irc:
                              # with non-vanishing gradient
 endopt:
  #fragments: False           # Optimize potential fragments separately
- coord_type: redund
+ coord_type: redund_v2
  trust_max: 0.1
  thresh: gau_tight
 calc:

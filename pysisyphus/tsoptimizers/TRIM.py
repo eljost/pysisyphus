@@ -54,6 +54,7 @@ class TRIM(TSHessianOptimizer):
         step_norm = np.linalg.norm(step)
         self.log(f"norm(step)={step_norm:.6f}")
 
-        self.predicted_energy_changes.append(self.quadratic_model(gradient, self.H, step))
+        quadratic_prediction = step @ gradient + 0.5 * step @ self.H @ step
+        self.predicted_energy_changes.append(quadratic_prediction)
 
         return step
