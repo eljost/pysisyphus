@@ -1,8 +1,18 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from pysisyphus.constants import ANG2BOHR
-from pysisyphus.calculators import Gaussian09, Gaussian16, ORCA, PySCF, XTB, Psi4
+from pysisyphus.calculators import (
+    Gaussian09,
+    Gaussian16,
+    ORCA,
+    PySCF,
+    XTB,
+    Psi4,
+    OpenMolcas,
+)
 
 try:
     from pysisyphus.calculators.PySCF import PySCF
@@ -20,7 +30,7 @@ except ImportError:
         pass
 
 
-from pysisyphus.helpers import Geometry
+from pysisyphus.helpers import Geometry, geom_loader
 from pysisyphus.testing import using
 
 
@@ -116,6 +126,7 @@ def test_h2o2_hf(calc_cls, calc_kwargs, h2o2):
     assert forces_norm == pytest.approx(0.15586495, abs=1e-5)
 
 
+@using("xtb")
 def test_h2o2_xtb(h2o2):
     """Tested with XTB 6.3.2"""
     calc = XTB(gfn=2)
@@ -127,3 +138,32 @@ def test_h2o2_xtb(h2o2):
 
     assert energy == pytest.approx(-9.02701527453)
     assert forces_norm == pytest.approx(0.130953039, abs=1e-5)
+
+
+@pytest.fixture(scope="module")
+def this_dir(request):
+    path = Path(request.fspath)
+    return path.parent
+
+
+@using("openmolcas")
+def test_h2o_openmolcas(this_dir):
+    geom = geom_loader("lib:h2o.xyz")
+
+    kwargs = {
+        "basis": "ano-rcc-vdzp",
+        "inporb": this_dir / "h2o_input.RasOrb",
+        "charge": 0,
+        "mult": 1,
+        "roots": 2,
+        "mdrlxroot": 1,
+    }
+    calc = OpenMolcas(**kwargs)
+    geom.set_calculator(calc)
+
+    forces = geom.forces
+    forces_norm = np.linalg.norm(forces)
+    energy = geom.energy
+
+    assert energy == pytest.approx(-76.1237706323)
+    assert forces_norm == pytest.approx(0.040632182)
