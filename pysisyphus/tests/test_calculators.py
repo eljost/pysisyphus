@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.constants import ANG2BOHR
-from pysisyphus.calculators import Gaussian09, Gaussian16, ORCA, PySCF
+from pysisyphus.calculators import Gaussian09, Gaussian16, ORCA, PySCF, XTB
 
 try:
     from pysisyphus.calculators.PySCF import PySCF
@@ -77,10 +77,23 @@ def h2o2():
                 },
             },
             marks=using("gamess"),
+            id="QCEngine_Gamess",
+        ),
+        pytest.param(
+            QCEngine,
+            {
+                "program": "turbomole",
+                "model": {
+                    "method": "hf",
+                    "basis": "sto-3g hondo",
+                },
+            },
+            marks=using("define"),
+            id="QCEngine_Turbomole",
         ),
     ],
 )
-def test_h2o2(calc_cls, calc_kwargs, h2o2):
+def test_h2o2_hf(calc_cls, calc_kwargs, h2o2):
     calc = calc_cls(**calc_kwargs)
     h2o2.set_calculator(calc)
 
@@ -91,13 +104,15 @@ def test_h2o2(calc_cls, calc_kwargs, h2o2):
     assert energy == pytest.approx(-148.722366, abs=1e-5)
     assert forces_norm == pytest.approx(0.15586495, abs=1e-5)
 
-    # qce_kwargs = {
-    # "program": "gamess",
-    # "model": {
-    # "method": "hf",
-    # "basis": "accd",
-    # },
-    # "keywords": {
-    # "contrl__ispher": 1,
-    # }
-    # }
+
+def test_h2o2_xtb(h2o2):
+    """Tested with XTB 6.3.2"""
+    calc = XTB(gfn=2)
+    h2o2.set_calculator(calc)
+
+    forces = h2o2.forces
+    forces_norm = np.linalg.norm(forces)
+    energy = h2o2.energy
+
+    assert energy == pytest.approx(-9.02701527453)
+    assert forces_norm == pytest.approx(0.130953039, abs=1e-5)
