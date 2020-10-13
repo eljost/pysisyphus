@@ -17,7 +17,6 @@ _using_cache = dict()
 
 
 def using(calculator):
-    import pdb; pdb.set_trace()
     calculator = calculator.lower()
 
     if calculator not in _using_cache:
