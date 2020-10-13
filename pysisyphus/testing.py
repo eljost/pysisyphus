@@ -26,14 +26,17 @@ def using(calculator):
         try:
             cmd = Config[calculator]["cmd"]
         except KeyError:
-            # Look for dscf availability
-            if calculator == "turbomole":
-                cmd = "dscf"
+
             # Try defaults last
             try:
                 cmd = DEFAULTS[calculator]
             except KeyError:
                 cmd = None
+
+            # Look for dscf availability
+            if calculator == "turbomole":
+                cmd = "dscf"
+
         if cmd is not None:
             available = bool(shutil.which(cmd))
 

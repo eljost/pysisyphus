@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.constants import ANG2BOHR
-from pysisyphus.calculators import Gaussian09, Gaussian16, ORCA, PySCF, XTB
+from pysisyphus.calculators import Gaussian09, Gaussian16, ORCA, PySCF, XTB, Psi4
 
 try:
     from pysisyphus.calculators.PySCF import PySCF
@@ -67,6 +67,17 @@ def h2o2():
             marks=using("orca"),
         ),
         pytest.param(PySCF, {"basis": "sto3g"}, marks=using("pyscf")),
+        pytest.param(
+            Psi4,
+            {
+                "method": "hf",
+                "basis": "sto-3g",
+                "to_set": {
+                    "scf_type": "direct",
+                },
+            },
+            marks=using("psi4"),
+        ),
         pytest.param(
             QCEngine,
             {
