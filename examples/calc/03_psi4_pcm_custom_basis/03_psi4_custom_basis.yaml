@@ -22,4 +22,6 @@ calc:
  solvent: water
  pal: 2
  mem: 2000
-xyz: lib:azetidine_hf_321g_opt.xyz
+geom
+ type: cart
+ fn: lib:azetidine_hf_321g_opt.xyz

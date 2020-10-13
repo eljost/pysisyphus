@@ -13,8 +13,9 @@ calc:
  charge: 0
  mult: 1
  pal: 2
-xyz: cytosin.xyz
-coord_type: redund
+geom:
+ type: redund
+ fn: cytosin.xyz
 # Initial random displacement of atoms, so the optimization
 # does not immediately converges, but takes more cycles.
 shake:
@@ -24,5 +25,5 @@ shake:
 # at the end are checked against this value.
 assert:
  opt.is_converged: True
- opt.cur_cycle: 14
+ opt.cur_cycle: 9
  opt_geom.energy: -25.48326681453

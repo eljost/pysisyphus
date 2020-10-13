@@ -13,4 +13,6 @@ calc:
  basis: DZ
  charge: 1
  mult: 2
-xyz: lib:h2o.xyz
+geom:
+ type: cart
+ fn: lib:h2o.xyz

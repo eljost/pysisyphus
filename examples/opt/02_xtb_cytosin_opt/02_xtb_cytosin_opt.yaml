@@ -7,11 +7,13 @@ calc:
  charge: 0
  mult: 1
  pal: 2
-xyz: cytosin.xyz
-coord_type: redund
+geom:
+ type: redund
+ fn: cytosin.xyz
 shake:
  seed: 25032018
 assert:
+ # Test against xtb 6.3.2
  opt.is_converged: True
- opt.cur_cycle: 9
+ opt.cur_cycle: 8
  opt_geom.energy: -23.9636197588

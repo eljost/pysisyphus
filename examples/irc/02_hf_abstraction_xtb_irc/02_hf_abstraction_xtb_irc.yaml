@@ -9,4 +9,6 @@ calc:
  pal: 4
  charge: 0
  mult: 1
-xyz: hfabstraction_ts_opt_xtb.xyz
+geom:
+ type: cart
+ fn: hfabstraction_ts_opt_xtb.xyz

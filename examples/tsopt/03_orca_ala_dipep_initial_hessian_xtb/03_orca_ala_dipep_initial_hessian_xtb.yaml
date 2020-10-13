@@ -10,8 +10,9 @@ calc:
  pal: 4
  charge: 0
  mult: 1
-xyz: ts_guess_from_xtb.xyz
-coord_type: redund
+geom:
+ coord_type: redund
+ fn: ts_guess_from_xtb.xyz
 assert:
  ts_opt.is_converged: True
  ts_opt.cur_cycle: 9

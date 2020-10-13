@@ -10,11 +10,12 @@ calc:
  ovlp_type: tden
  charge: 0
  mult: 1
- pal: 4
- mem: 2000
+ pal: 6
+ mem: 1500
  cdds: render
-xyz: cytosin.xyz
-coord_type: redund 
+geom:
+ type: redund
+ fn: cytosin.xyz
 assert:
  opt_geom.energy: -394.06152976
  opt.cur_cycle: 7

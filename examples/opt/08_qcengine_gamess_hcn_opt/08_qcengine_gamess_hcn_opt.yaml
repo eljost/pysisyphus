@@ -14,7 +14,7 @@ calc:
  pal: 2
 geom:
  type: redund
- fn: hcn_bent.xyz
+ fn: lib:hcn_bent.xyz
 assert:
  opt.is_converged: True
  opt.cur_cycle: 4
