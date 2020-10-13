@@ -88,7 +88,7 @@ def h2o2():
                     "basis": "sto-3g hondo",
                 },
             },
-            marks=using("define"),
+            marks=using("turbomole"),
             id="QCEngine_Turbomole",
         ),
     ],
