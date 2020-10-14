@@ -93,10 +93,14 @@ class RedundantCoords:
                 bend_min_deg=self.bend_min_deg,
                 dihed_max_deg=self.dihed_max_deg,
                 lb_min_deg=self.lb_min_deg,
+                check_bends=self.check_bends,
             )
             self.log(
                 f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
             )
+            if len(valid_typed_prims) != len(typed_prims):
+                for invalid_prim in (set(typed_prims) - set(valid_typed_prims)):
+                    self.log(f"\t{invalid_prim} is invalid")
             self.typed_prims = valid_typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
 
