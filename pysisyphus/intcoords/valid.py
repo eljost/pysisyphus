@@ -60,18 +60,26 @@ def check_typed_prims(
     bend_min_deg,
     dihed_max_deg,
     lb_min_deg,
-    # keep_complements=True,
     logger=None,
+    check_bends=True,
 ):
-    funcs = {
-        PrimTypes.BEND: lambda indices: bend_still_valid(
+    if check_bends:
+        bend_func = lambda indices: bend_still_valid(
             coords3d, indices, min_deg=bend_min_deg, max_deg=lb_min_deg
-        ),
+        )
+    else:
+        bend_func = lambda indices: True
+    funcs = {
+        PrimTypes.BEND: bend_func,
         PrimTypes.PROPER_DIHEDRAL: lambda indices: dihedral_valid(
-            coords3d, indices, deg_thresh=dihed_max_deg,
+            coords3d,
+            indices,
+            deg_thresh=dihed_max_deg,
         ),
         PrimTypes.IMPROPER_DIHEDRAL: lambda indices: dihedral_valid(
-            coords3d, indices, deg_thresh=dihed_max_deg,
+            coords3d,
+            indices,
+            deg_thresh=dihed_max_deg,
         ),
     }
     valid_typed_prims = list()
