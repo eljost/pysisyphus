@@ -31,6 +31,6 @@ def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
         handle.create_dataset("masses", data=masses)
         handle.create_dataset("coords3d", data=coords3d)
 
-        handle.attrs["atoms"] = atoms
+        handle.attrs["atoms"] = [atom.lower() for atom in atoms]
         handle.attrs["energy"] = energy
         handle.attrs["mult"] = mult
