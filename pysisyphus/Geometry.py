@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import sys
 
+import h5py
 import numpy as np
 from scipy.spatial.distance import pdist
 import rmsd
@@ -723,6 +724,19 @@ class Geometry:
         """
         mm_sqrt = np.diag(self.masses_rep**0.5)
         return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
+
+    def set_h5_hessian(self, fn):
+        with h5py.File(fn, "r") as handle:
+            atoms = handle.attrs["atoms"]
+            hessian = handle["hessian"][:]
+
+        # Also check lengths, as zip would lead to trunction for
+        # different lenghts of self.atoms and atoms.
+        valid = (len(atoms) == len(self.atoms)) and all(
+            [ga.lower() == a.lower() for ga, a in zip(self.atoms, atoms)]
+        )
+        if valid:
+            self.cart_hessian = hessian
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
         if hessian is None:
