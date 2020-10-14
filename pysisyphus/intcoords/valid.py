@@ -24,6 +24,9 @@ def are_collinear(vec1, vec2, deg_thresh=179.5):
 
 
 def dihedral_valid(coords3d, inds, deg_thresh=179.5):
+    if len(set(inds)) != 4:
+        return False
+
     m, o, p, n = inds
     u_dash = coords3d[m] - coords3d[o]
     v_dash = coords3d[n] - coords3d[p]
