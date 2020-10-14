@@ -9,7 +9,10 @@ def augment_bonds(geom, root=0, proj=False):
     assert geom.coord_type != "cart"
 
     hessian = geom.cart_hessian
-    energy = geom.energy
+    try:
+        energy = geom.energy
+    except AttributeError:
+        energy = None
 
     func = find_missing_bonds_by_projection if proj else find_missing_strong_bonds
 
