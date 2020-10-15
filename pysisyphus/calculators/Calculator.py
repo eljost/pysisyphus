@@ -77,6 +77,7 @@ class Calculator:
         # Currently this is only used with the Turbomole calculator.
         self.path_already_prepared = None
         self.last_run_path = None
+        self.backup_dir = None
 
     def get_cmd(self, key):
         assert self.conf_key, \
@@ -324,6 +325,7 @@ class Calculator:
             from TDDFT.
         """
 
+        self.backup_dir = None
         path = self.prepare(inp)
         self.log(f"Running in {path} on {platform.node()}")
         if cmd:
@@ -367,6 +369,7 @@ class Calculator:
             print("Crashed input:")
             print(inp)
             backup_dir = Path(os.getcwd()) / f"crashed_{self.name}"
+            self.backup_dir = backup_dir
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
             shutil.copytree(path, backup_dir)
