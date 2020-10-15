@@ -2,6 +2,7 @@ import numpy as np
 from scipy.interpolate import splprep, splev
 
 from pysisyphus.constants import AU2KJPERMOL
+from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
@@ -92,19 +93,15 @@ class GrowingString(GrowingChainOfStates):
 
         return param_density
 
+    def reset_geometries(self, ref_geometry):
+        ref_typed_prims = ref_geometry.internal.typed_prims
+        for image in self.images:
+            image.reset_coords(ref_typed_prims)
+
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
         the center of the string."""
         new_img = self.images[ref_index].copy()
-
-        try:
-            new_typed_prims = new_img.internal.typed_prims
-            old_typed_prims = self.images[ref_index].internal.typed_prims
-            if len(new_typed_prims) != len(old_typed_prims):
-                for image in self.images:
-                    image.reset_coords(new_typed_prims)
-        except AttributeError:
-            pass
 
         if ref_index <= self.lf_ind:
             tangent_ind = ref_index + 1
@@ -123,7 +120,10 @@ class GrowingString(GrowingChainOfStates):
         # of new_img.
         # Formulated the other way around the same expression can be used for
         # all coord types.
-        distance = -(new_img - tangent_img)
+        try:
+            distance = -(new_img - tangent_img)
+        except DifferentPrimitivesException:
+            self.reset_geometries(new_img)
 
         # The desired step(_length) for the new image be can be easily determined
         # from a simple rule of proportion by relating the actual distance between
