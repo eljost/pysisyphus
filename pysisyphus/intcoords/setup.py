@@ -344,9 +344,10 @@ def setup_redundant(
     min_weight=None,
     logger=None,
 ):
+    if define_prims is None:
+        define_prims = list()
+
     log(logger, f"Detecting primitive internals for {len(atoms)} atoms.")
-    # Additional primitives to be defined.
-    def_bonds, def_bends, def_dihedrals = sort_by_prim_type(define_prims)
 
     def keep_coord(prim_cls, prim_inds):
         return (
@@ -367,7 +368,6 @@ def setup_redundant(
         return_cbm=True,
     )
     bonds = [tuple(bond) for bond in bonds]
-    bonds += def_bonds
     bonds = keep_coords(bonds, Stretch)
 
     # Fragments
@@ -394,6 +394,7 @@ def setup_redundant(
         bond for bond in aux_interfrag_bonds if set(bond) not in hydrogen_set
     ]
     bonds = [bond for bond in bonds if set(bond) not in hydrogen_set]
+    aux_bonds = list()
 
     # Don't use auxilary interfragment bonds for bend detection
     bonds_for_bends = set(
@@ -410,7 +411,6 @@ def setup_redundant(
     )
     # All bends will be checked, for being linear bends and will be removed from
     # bend_inds, if needed.
-    bends += def_bends
     bends = keep_coords(bends, Bend)
 
     # Linear Bends and orthogonal complements
@@ -433,19 +433,39 @@ def setup_redundant(
         # coords3d, bonds_for_bends, bends, max_deg=dihed_max_deg, logger=logger
         coords3d, bonds_for_bends, bends_for_dihedrals, max_deg=dihed_max_deg, logger=logger
     )
-    proper_dihedrals += def_dihedrals
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
     improper_dihedrals = keep_coords(improper_dihedrals, Torsion)
 
+    # Additional primitives to be defined.
+    define_map = {
+        PrimTypes.BOND: "bonds",
+        PrimTypes.AUX_BOND: "aux_bonds",
+        PrimTypes.HYDROGEN_BOND: "hydrogen_bonds",
+        PrimTypes.INTERFRAG_BOND: "interfrag_bonds",
+        PrimTypes.AUX_INTERFRAG_BOND: "aux_interfrag_bonds",
+        PrimTypes.BEND: "bends",
+        PrimTypes.LINEAR_BEND: "linear_bends",
+        PrimTypes.LINEAR_BEND_COMPLEMENT: "linear_bend_complements",
+        PrimTypes.PROPER_DIHEDRAL: "proper_dihedrals",
+        PrimTypes.IMPROPER_DIHEDRAL: "improper_dihedrals",
+    }
+    for type_, *indices in define_prims:
+        key = define_map[type_]
+        locals()[key].append(tuple(indices))
+
     pt = PrimTypes
     typed_prims = (
+        # Bonds, two indices
         [(pt.BOND, *bond) for bond in bonds]
+        + [(pt.AUX_BOND, *abond) for abond in aux_bonds]
         + [(pt.HYDROGEN_BOND, *hbond) for hbond in hydrogen_bonds]
         + [(pt.INTERFRAG_BOND, *ifbond) for ifbond in interfrag_bonds]
         + [(pt.AUX_INTERFRAG_BOND, *aifbond) for aifbond in aux_interfrag_bonds]
+        # Bends, three indices
         + [(pt.BEND, *bend) for bend in bends]
         + [(pt.LINEAR_BEND, *lbend) for lbend in linear_bends]
         + [(pt.LINEAR_BEND_COMPLEMENT, *lbendc) for lbendc in linear_bend_complements]
+        # Dihedral, four indices
         + [(pt.PROPER_DIHEDRAL, *pdihedral) for pdihedral in proper_dihedrals]
         + [(pt.IMPROPER_DIHEDRAL, *idihedral) for idihedral in improper_dihedrals]
     )

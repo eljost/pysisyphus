@@ -1,12 +1,20 @@
+import logging
+
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.intcoords import RedundantCoords
+from pysisyphus.intcoords.PrimTypes import PrimTypes
+
+
+logger = logging.getLogger("internal_coords")
 
 
 def augment_bonds(geom, root=0, proj=False):
     assert geom.coord_type != "cart"
+    log(logger, "Trying to augment bonds.")
 
     hessian = geom.cart_hessian
     try:
@@ -19,10 +27,12 @@ def augment_bonds(geom, root=0, proj=False):
     missing_bonds = func(geom, hessian, root=root)
 
     if missing_bonds:
+        aux_bond_pt = PrimTypes.AUX_BOND
+        missing_aux_bonds = [(aux_bond_pt, *mbond) for mbond in missing_bonds]
         print("\t@Missing bonds:", missing_bonds)
         new_geom = Geometry(geom.atoms, geom.cart_coords,
                             coord_type=geom.coord_type,
-                            coord_kwargs={"define_prims": missing_bonds,},
+                            coord_kwargs={"define_prims": missing_aux_bonds,},
         )
         new_geom.set_calculator(geom.calculator)
         new_geom.energy = energy
