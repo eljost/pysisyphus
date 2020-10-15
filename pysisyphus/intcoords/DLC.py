@@ -10,9 +10,10 @@ from pysisyphus.linalg import gram_schmidt
 
 
 class DLC(RedundantCoords):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, full_set=True, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.full_set = full_set
         self.set_active_set()
 
     @property
@@ -90,7 +91,7 @@ class DLC(RedundantCoords):
         prim_step = self.Ut_inv.dot(step)
         return super().transform_int_step(prim_step, *args, **kwargs)
 
-    def get_active_set(self, B, thresh=1e-6):
+    def get_active_set(self, B, thresh=5e-6):
         """See [5] between Eq. (7) and Eq. (8) for advice regarding
         the threshold."""
         if self.weighted:
@@ -108,9 +109,16 @@ class DLC(RedundantCoords):
         G = B.dot(B.T)
         eigvals, eigvectors = np.linalg.eigh(G)
 
-        nonzero_inds = np.abs(eigvals) > thresh
-        # active_eigvals = eigvals[nonzero_inds]
-        return eigvectors[:, nonzero_inds]
+        if self.full_set:
+            use_inds = np.full_like(eigvals, False, dtype=np.bool)
+            dof = 3*len(self.atoms) - 6
+            use_inds[-dof:] = True
+        else:
+            use_inds = np.abs(eigvals) > thresh
+        use_eigvals = eigvals[use_inds]
+        min_eigval = use_eigvals.min()
+        self.log(f"Using {use_inds.sum()} DLC. Smallest eigenvalue of G is {min_eigval:.4e}")
+        return eigvectors[:, use_inds]
 
     def set_active_set(self):
         self.U = self.get_active_set(self.B_prim)
