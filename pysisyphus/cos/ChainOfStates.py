@@ -435,6 +435,7 @@ class ChainOfStates:
                 msg = "Using Lanczos algorithm to converge HEI tangent."
                 self.log(msg)
                 print(msg)
+
         return not already_climbing and self.started_climbing
 
     def rms(self, arr):
@@ -546,16 +547,8 @@ class ChainOfStates:
         )
 
         # Reparametrize mesh
-        hei_coords = np.vstack(
-            [
-                splev(
-                    [
-                        hei_x,
-                    ],
-                    tck,
-                )
-                for tck in tcks
-            ]
+        hei_coords = np.vstack([
+            splev([hei_x,], tck,) for tck in tcks]
         )
         hei_coords = hei_coords.flatten()
 
@@ -564,16 +557,7 @@ class ChainOfStates:
         # much much better. In 'run_tsopt_from_cos' we actually mix two "normal" tangents
         # to obtain the HEI tangent.
         hei_tangent = np.vstack(
-            [
-                splev(
-                    [
-                        hei_x,
-                    ],
-                    tck,
-                    der=1,
-                )
-                for tck in tcks
-            ]
+            [splev([hei_x, ], tck, der=1,) for tck in tcks]
         ).T
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
