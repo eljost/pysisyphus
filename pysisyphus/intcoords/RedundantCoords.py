@@ -99,8 +99,9 @@ class RedundantCoords:
                 f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
             )
             if len(valid_typed_prims) != len(typed_prims):
-                for invalid_prim in (set(typed_prims) - set(valid_typed_prims)):
-                    self.log(f"\t{invalid_prim} is invalid")
+                self.log("Invalid primitives:")
+                for i, invalid_prim in enumerate(set(typed_prims) - set(valid_typed_prims)):
+                    self.log(f"\t{i:02d}: {invalid_prim}")
             self.typed_prims = valid_typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
 
