@@ -383,6 +383,13 @@ class Geometry:
         self.coords[ind] = coord
         self.clear()
 
+    def reset_coords(self, new_typed_prims):
+        if self.coord_type == "cart":
+            return
+
+        coord_class = self.coord_types[self.coord_type]
+        self.internal = coord_class(self.atoms, self.coords3d, typed_prims=new_typed_prims)
+
     @property
     def coords3d(self):
         """Coordinates in 3d.
