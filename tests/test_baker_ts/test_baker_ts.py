@@ -2,18 +2,16 @@ import itertools as it
 
 import pytest
 
-from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.calculators import ORCA
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import do_final_hessian, get_baker_ts_geoms_flat, geom_loader
+from pysisyphus.helpers import do_final_hessian, get_baker_ts_data, geom_loader
 from pysisyphus.intcoords.augment_bonds import augment_bonds
 from pysisyphus.testing import using_pyscf, using_gaussian16
 from pysisyphus.tsoptimizers import *
 
 
 def get_geoms():
-    fails = (
-        "15_hocl.xyz",  # SCF goes completely nuts
-    )
+    fails = ("15_hocl.xyz",)  # SCF goes completely nuts
     works = (
         "01_hcn.xyz",
         "02_hcch.xyz",
@@ -52,21 +50,23 @@ def get_geoms():
         # alpha_negative,
         # no_imag,
         # only,
-        )
-    use_names = list(it.chain(*use))
-    geom_data = get_baker_ts_geoms_flat(
-        coord_type="redund",
-        coord_kwargs={"rebuild": True,},
     )
-    return [_ for _ in geom_data if _[0] in use_names]
+    use_names = list(it.chain(*use))
+    return use_names
 
 
 @using_pyscf
-@pytest.mark.parametrize(
-    "name, geom, charge, mult, ref_energy",
-    get_geoms()
-)
-def test_baker_tsopt(name, geom, charge, mult, ref_energy, results_bag):
+@pytest.mark.parametrize("name", get_geoms())
+def test_baker_tsopt(name, results_bag):
+    charge, mult, ref_energy = get_baker_ts_data()[name]
+    geom = geom_loader(
+        f"lib:baker_ts/{name}",
+        coord_type="redund",
+        coord_kwargs={
+            "rebuild": True,
+        },
+    )
+    # geom.jmol()
     calc_kwargs = {
         "charge": charge,
         "mult": mult,
@@ -74,21 +74,21 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy, results_bag):
     }
 
     print(f"@Running {name}")
-    # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
     geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
+    # geom.set_calculator(ORCA(keywords="HF 3-21G", **calc_kwargs))
     if geom.coord_type != "cart":
         geom = augment_bonds(geom)
 
     opt_kwargs = {
         "thresh": "baker",
         "max_cycles": 50,
-        "trust_radius": 0.3,
+        "trust_radius": 0.1,
         "trust_max": 0.3,
-        # "min_line_search": True,
-        # "max_line_search": True,
+        "min_line_search": True,
+        "max_line_search": True,
     }
-    # opt = RSPRFOptimizer(geom, **opt_kwargs)
-    opt = RSIRFOptimizer(geom, **opt_kwargs)
+    opt = RSPRFOptimizer(geom, **opt_kwargs)
+    # opt = RSIRFOptimizer(geom, **opt_kwargs)
     # opt = TRIM(geom, **opt_kwargs)
     opt.run()
 
@@ -106,7 +106,7 @@ def test_baker_tsopt(name, geom, charge, mult, ref_energy, results_bag):
     assert geom.energy == pytest.approx(ref_energy)
     print("\t@Energies match!")
 
-    return opt.cur_cycle+1
+    return opt.cur_cycle + 1
 
 
 def test_baker_tsopt_synthesis(fixture_store):
@@ -132,16 +132,17 @@ def test_baker_tsopt_synthesis(fixture_store):
 
 @using_pyscf
 @pytest.mark.parametrize(
-    "define_prims, proj, ref_cycle", [
+    "define_prims, proj, ref_cycle",
+    [
         (None, True, 14),
         pytest.param(None, False, 12),
         pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 12),
         pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 10),
-    ]
+    ],
 )
 def test_diels_alder_ts(define_prims, ref_cycle, proj):
     """
-        https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.21494
+    https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.21494
     """
 
     coord_kwargs = None
@@ -153,9 +154,10 @@ def test_diels_alder_ts(define_prims, ref_cycle, proj):
         }
         augment = False
 
-    geom = geom_loader("lib:baker_ts/09_parentdieslalder.xyz",
-                       coord_type="redund",
-                       coord_kwargs=coord_kwargs,
+    geom = geom_loader(
+        "lib:baker_ts/09_parentdieslalder.xyz",
+        coord_type="redund",
+        coord_kwargs=coord_kwargs,
     )
 
     calc_kwargs = {
