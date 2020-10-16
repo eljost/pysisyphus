@@ -1537,7 +1537,6 @@ def do_clean(force=False):
         "backward_*",
         "forward_*",
         # Misc
-        "*.log",
         "*imaginary_mode_*.trj",
         "cart_hei_tangent",
         "ts_calculated_init_cart_hessian",
@@ -1562,6 +1561,8 @@ def do_clean(force=False):
         "mdp_ee_ascent.trj",
         "mdp_ee_fin_*.trj",
         "mdp_ee_init_*.trj",
+        "aligned.geom*xyz",
+        "cos_hei.trj",
     )
     to_rm_paths = list()
     for glob in rm_globs:
