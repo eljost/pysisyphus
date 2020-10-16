@@ -4,7 +4,7 @@ from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.eval import eval_primitives
 from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
-from pysisyphus.intcoords.valid import dihedrals_are_valid
+from pysisyphus.intcoords.valid import dihedral_valid
 
 
 def correct_dihedrals(new_dihedrals, old_dihedrals):
@@ -38,8 +38,14 @@ def correct_dihedrals(new_dihedrals, old_dihedrals):
     return corrected_dihedrals
 
 
-def update_internals(new_coords3d, old_internals, primitives, dihedral_inds,
-                     check_dihedrals=False, logger=None):
+def update_internals(
+    new_coords3d,
+    old_internals,
+    primitives,
+    dihedral_inds,
+    check_dihedrals=False,
+    logger=None,
+):
     prim_internals = eval_primitives(new_coords3d, primitives)
     new_internals = [prim_int.val for prim_int in prim_internals]
     internal_diffs = np.array(new_internals) - old_internals
@@ -58,11 +64,22 @@ def update_internals(new_coords3d, old_internals, primitives, dihedral_inds,
         # Update values
         for dihed, new_val in zip(dihedrals, new_dihedrals):
             dihed.val = new_val
-    if check_dihedrals and (
-        not dihedrals_are_valid(new_coords3d, [prim_int.inds for prim_int in dihedrals])
-    ):
-        log(logger, "Dihedral(s) became invalid! Need new internal coordinates!")
-        raise NeedNewInternalsException(new_coords3d)
+    # See if dihedrals became invalid (collinear atoms)
+    if check_dihedrals:
+        are_valid = [dihedral_valid(new_coords3d, prim.inds) for prim in dihedrals]
+        try:
+            first_dihedral = dihedral_inds[0]
+        except IndexError:
+            first_dihedral = 0
+        invalid_inds = [
+            i + first_dihedral for i, is_valid in enumerate(are_valid) if not is_valid
+        ]
+        if len(invalid_inds) > 0:
+            invalid_prims = [primitives[i] for i in invalid_inds]
+            log(logger, "Dihedral(s) became invalid! Need new internal coordinates!")
+            raise NeedNewInternalsException(
+                new_coords3d, invalid_inds=invalid_inds, invalid_prims=invalid_prims
+            )
 
     return prim_internals
 
@@ -100,13 +117,20 @@ def transform_int_step(
         new_cart_coords += cart_step
         # Determine new internal coordinates
         new_prim_ints = update_internals(
-            new_cart_coords.reshape(-1, 3), old_internals, primitives, dihedral_inds,
-            check_dihedrals=check_dihedrals, logger=logger,
+            new_cart_coords.reshape(-1, 3),
+            old_internals,
+            primitives,
+            dihedral_inds,
+            check_dihedrals=check_dihedrals,
+            logger=logger,
         )
         new_internals = [prim.val for prim in new_prim_ints]
         remaining_int_step = target_internals - new_internals
         internal_rms = np.sqrt(np.mean(remaining_int_step ** 2))
-        log(logger, f"Cycle {i}: rms(Δcart)={cart_rms:1.4e}, rms(Δint.) = {internal_rms:1.5e}")
+        log(
+            logger,
+            f"Cycle {i}: rms(Δcart)={cart_rms:1.4e}, rms(Δint.) = {internal_rms:1.5e}",
+        )
 
         # This assumes the first cart_rms won't be > 9999 ;)
         if cart_rms < last_rms:
@@ -128,14 +152,17 @@ def transform_int_step(
 
         last_rms = cart_rms
         if cart_rms < cart_rms_thresh:
-            log(logger, f"Internal->Cartesian transformation converged in {i+1} cycle(s)!")
+            log(
+                logger,
+                f"Internal->Cartesian transformation converged in {i+1} cycle(s)!",
+            )
             backtransform_failed = False
             break
 
     # if check_dihedrals and (
-        # not dihedrals_are_valid(new_cart_coords.reshape(-1, 3), dihedral_inds)
+    # not dihedrals_are_valid(new_cart_coords.reshape(-1, 3), dihedral_inds)
     # ):
-        # raise NeedNewInternalsException(new_cart_coords)
+    # raise NeedNewInternalsException(new_cart_coords)
 
     log(logger, "")
 

@@ -358,11 +358,22 @@ class Geometry:
                 cart_step = self.internal.transform_int_step(int_step)
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
+                invalid_inds = exception.invalid_inds
+                valid_typed_prims = [
+                    typed_prim
+                    for i, typed_prim in enumerate(self.internal.typed_prims)
+                    if i not in invalid_inds
+                ]
                 coords3d = exception.coords3d.copy()
                 coord_class = self.coord_types[self.coord_type]
-                self.internal = coord_class(self.atoms, coords3d)
+                self.internal = coord_class(
+                    self.atoms, coords3d, typed_prims=valid_typed_prims
+                )
                 self._coords = coords3d.flatten()
-                raise RebuiltInternalsException
+                import pdb; pdb.set_trace()
+                raise RebuiltInternalsException(
+                    typed_prims=self.internal.typed_prims.copy()
+                )
 
         # Set new cartesian coordinates
         self._coords = coords

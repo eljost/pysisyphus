@@ -493,10 +493,13 @@ class Optimizer(metaclass=abc.ABCMeta):
                 # when internal coordinates are used, as the internal-Cartesian
                 # transformation is done iteratively.
                 self.steps[-1] = self.geometry.coords - self.coords[-1]
-            except RebuiltInternalsException:
+            except RebuiltInternalsException as exception:
                 print("Rebuilt internal coordinates")
                 with open("rebuilt_primitives.xyz", "w") as handle:
                     handle.write(self.geometry.as_xyz())
+                if self.is_cos:
+                    for image in self.geometry.images:
+                        image.reset_coords(exception.typed_prims)
                 self.reset()
 
             if hasattr(self.geometry, "reparametrize"):
