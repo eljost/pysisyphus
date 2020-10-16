@@ -16,7 +16,7 @@ from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.intcoords import DLC, RedundantCoords
 from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
                                              RebuiltInternalsException,
-                                             DifferentPrimitivesException,
+                                             DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
@@ -175,7 +175,7 @@ class Geometry:
         try:
             assert same_coord_length, "Different length of coordinate vectors!"
         except AssertionError:
-            raise DifferentPrimitivesException
+            raise DifferentCoordLengthsException
 
     def __eq__(self, other):
         return (self.atoms == other.atoms) and all(self.coords == other.coords)

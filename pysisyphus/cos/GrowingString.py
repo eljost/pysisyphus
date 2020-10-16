@@ -2,7 +2,7 @@ import numpy as np
 from scipy.interpolate import splprep, splev
 
 from pysisyphus.constants import AU2KJPERMOL
-from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
+from pysisyphus.intcoords.exceptions import DifferentCoordLengthsException, DifferentPrimitivesException
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
@@ -122,8 +122,9 @@ class GrowingString(GrowingChainOfStates):
         # all coord types.
         try:
             distance = -(new_img - tangent_img)
-        except DifferentPrimitivesException:
+        except (DifferentCoordLengthsException, DifferentPrimitivesException):
             self.reset_geometries(new_img)
+            distance = -(new_img - tangent_img)
 
         # The desired step(_length) for the new image be can be easily determined
         # from a simple rule of proportion by relating the actual distance between

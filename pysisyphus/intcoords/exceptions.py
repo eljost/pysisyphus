@@ -11,3 +11,7 @@ class RebuiltInternalsException(Exception):
 
 class DifferentPrimitivesException(Exception):
     pass
+
+
+class DifferentCoordLengthsException(Exception):
+    pass
