@@ -40,6 +40,7 @@ from pysisyphus.helpers import (
     print_barrier,
     get_tangent_trj_str,
 )
+from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.irc import *
 from pysisyphus.stocastic import *
 from pysisyphus.helpers_pure import merge_sets
@@ -744,7 +745,7 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     return irc
 
 
-def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.025):
+def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.25):
     if len(end_fns) != 2 or len(end_geoms) != 2:
         return
     max_end_len = max(len(s) for s in end_fns)
@@ -769,12 +770,20 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.0
 
     print(highlight_text(f"RMSDs After End Optimizations"))
 
+    start_cbms = [get_bond_mat(geom) for geom in geoms]
+    end_cbms = [get_bond_mat(geom) for geom in end_geoms]
     for i, start_geom in enumerate(geoms):
         fn = xyz[i]
         found_similar = False
         print(f"start geom {i:>2d} ({fn:>{max_len}s})")
+        # Condensed bond mat
+        start_cbm = start_cbms[i]
         for j, end_geom in enumerate(end_geoms):
             end_fn = end_fns[j]
+            # Compare bond matrices
+            end_cbm = get_bond_mat(end_geom)
+            cbm_match = (start_cbm == end_cbms[j]).all()
+            cbm_str = "(bond matrices match)" if cbm_match else ""
             rmsd = start_geom.rmsd(end_geom)
             similar_str = ""
             if rmsd < similar_thresh:
@@ -782,10 +791,10 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.0
                 similar_str = " (similar)"
             print(
                 f"\tend geom {j:>2d} ({end_fn:>{max_end_len}s}): "
-                f"RMSD={rmsd:>8.6f} au{similar_str}"
+                f"RMSD={rmsd:>8.6f} au{similar_str} " + cbm_str
             )
         if not found_similar:
-            print(f"\tOptimized end geometries are dissimilar to '{fn}'!")
+            print(f"\tRMSDs of end geometries are dissimilar to '{fn}'!")
     print()
 
 
