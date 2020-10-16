@@ -33,7 +33,7 @@ def get_geoms():
         "21_acrolein_rot.xyz",
         # "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
-        "24_h2cnh.xyz",
+        # "24_h2cnh.xyz",
         "25_hcnh2.xyz",
     )
     alpha_negative = ()
