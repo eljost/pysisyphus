@@ -370,7 +370,6 @@ class Geometry:
                     self.atoms, coords3d, typed_prims=valid_typed_prims
                 )
                 self._coords = coords3d.flatten()
-                import pdb; pdb.set_trace()
                 raise RebuiltInternalsException(
                     typed_prims=self.internal.typed_prims.copy()
                 )
