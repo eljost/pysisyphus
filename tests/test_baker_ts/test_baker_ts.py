@@ -132,32 +132,20 @@ def test_baker_tsopt_synthesis(fixture_store):
 
 @using_pyscf
 @pytest.mark.parametrize(
-    "define_prims, proj, ref_cycle",
+    "proj, ref_cycle",
     [
-        (None, True, 14),
-        pytest.param(None, False, 12),
-        pytest.param([[1, 5], [0, 4], [4, 10], [5, 11], [13, 1], [12, 0]], False, 12),
-        pytest.param([[1, 5], [0, 4], [13, 1], [12, 0]], False, 10),
+        (True, 14),
+        pytest.param(False, 12),
     ],
 )
-def test_diels_alder_ts(define_prims, ref_cycle, proj):
+def test_diels_alder_ts(ref_cycle, proj):
     """
     https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.21494
     """
 
-    coord_kwargs = None
-    augment = True
-
-    if define_prims:
-        coord_kwargs = {
-            "define_prims": define_prims,
-        }
-        augment = False
-
     geom = geom_loader(
         "lib:baker_ts/09_parentdieslalder.xyz",
         coord_type="redund",
-        coord_kwargs=coord_kwargs,
     )
 
     calc_kwargs = {
@@ -165,10 +153,8 @@ def test_diels_alder_ts(define_prims, ref_cycle, proj):
         "mult": 1,
         "pal": 4,
     }
-    # geom.set_calculator(Gaussian16(route="HF/3-21G", **calc_kwargs))
     geom.set_calculator(PySCF(basis="321g", **calc_kwargs))
-    if augment:
-        geom = augment_bonds(geom, proj=proj)
+    geom = augment_bonds(geom, proj=proj)
 
     opt_kwargs = {
         "thresh": "baker",
