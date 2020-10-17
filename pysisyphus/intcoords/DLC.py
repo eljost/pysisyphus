@@ -23,15 +23,6 @@ class DLC(RedundantCoords):
     @U.setter
     def U(self, U):
         self._U = U
-        # Needed for back-transformation to primitive internals
-        # For now we use a pseudo-inverse instead of a regular inverse,
-        # as some columns of U may be zero from constraints (resulting in
-        # singular U matrix that cannot be readily inverted).
-        self._Ut_inv = np.linalg.pinv(self.U.T, rcond=self.rcond)
-
-    @property
-    def Ut_inv(self):
-        return self._Ut_inv
 
     @property
     def constraints(self):
@@ -77,7 +68,7 @@ class DLC(RedundantCoords):
     def transform_hessian(self, cart_hessian, int_gradient=None):
         """Transform Cartesian Hessian to DLC."""
         # Transform the DLC gradient to primitive coordinates
-        prim_gradient = self.Ut_inv.dot(int_gradient)
+        prim_gradient = (self.U * int_gradient).sum(axis=1)
         H = super().transform_hessian(cart_hessian, prim_gradient)
         return self.U.T.dot(H).dot(self.U)
 
@@ -87,8 +78,7 @@ class DLC(RedundantCoords):
     def transform_int_step(self, step, *args, **kwargs):
         """As the transformation is done in primitive internal coordinates
         we convert the DLC back to primitive coordinates."""
-        # Or: prim_step = (step*self.U).sum(axis=1)
-        prim_step = self.Ut_inv.dot(step)
+        prim_step = (step*self.U).sum(axis=1)
         return super().transform_int_step(prim_step, *args, **kwargs)
 
     def get_active_set(self, B, thresh=5e-6):
