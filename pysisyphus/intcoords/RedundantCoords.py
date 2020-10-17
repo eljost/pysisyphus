@@ -37,7 +37,7 @@ class RedundantCoords:
         lb_min_deg=175.0,
         weighted=False,
         min_weight=0.3,
-        rcond=1e-8,
+        rcond=1e-6,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
