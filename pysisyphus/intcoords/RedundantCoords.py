@@ -38,7 +38,7 @@ class RedundantCoords:
         lb_min_deg=175.0,
         weighted=False,
         min_weight=0.3,
-        inv_thresh=1e-5,
+        inv_thresh=1e-4,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -78,6 +78,7 @@ class RedundantCoords:
             # [f"{w:.2f}: {1-np.log(w):.4f}" for w in np.linspace(0.3, 1, 25)]
             self.bond_factor = -math.log(self.min_weight) + 1
         self.log(f"Using a factor of {self.bond_factor:.6f} for bond detection.")
+        self.log(f"Using inv_thresh={inv_thresh:.4e} for inversions.")
 
         # Set up primitive coordinate indices
         if typed_prims is None:
