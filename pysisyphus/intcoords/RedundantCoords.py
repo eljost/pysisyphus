@@ -229,12 +229,12 @@ class RedundantCoords:
         return np.linalg.pinv(array, rcond=rcond)
 
     def inv_B(self, B):
-        # return B.T.dot(svd_inv(B.dot(B.T), thresh=self.inv_thresh))
-        return B.T.dot(self.pinv(B.dot(B.T)))
+        return B.T.dot(svd_inv(B.dot(B.T), thresh=self.inv_thresh))
+        # return B.T.dot(self.pinv(B.dot(B.T)))
 
     def inv_Bt(self, B):
-        # return svd_inv(B.dot(B.T), thresh=self.inv_thresh).dot(B)
-        return self.pinv(B.dot(B.T)).dot(B)
+        return svd_inv(B.dot(B.T), thresh=self.inv_thresh).dot(B)
+        # return self.pinv(B.dot(B.T)).dot(B)
 
     @property
     def Bt_inv_prim(self):
