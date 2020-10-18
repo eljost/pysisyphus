@@ -95,13 +95,27 @@ class GrowingString(GrowingChainOfStates):
 
     def reset_geometries(self, ref_geometry):
         ref_typed_prims = ref_geometry.internal.typed_prims
-        for image in self.images:
-            image.reset_coords(ref_typed_prims)
+        self.log(f"Resetting image primitives. Got {len(ref_typed_prims)} typed primitives.")
+        for i in range(3):
+            self.log(f"\tMicro cycle {i:d}")
+            intersect = set(self.images[0].internal.typed_prims)
+            for j, image in enumerate(self.images):
+                image.reset_coords(ref_typed_prims)
+                new_typed_prims = set(image.internal.typed_prims)
+                self.log(f"\tImage {j:02d} now has {len(new_typed_prims)} typed primitives.")
+                intersect = intersect & new_typed_prims
+
+            if intersect == set(ref_typed_prims):
+                ref_geometry.reset_coords(intersect)
+                break
+            ref_typed_prims = list(intersect)
+        else:
+            raise Exception("Too many reset cycles!")
 
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
         the center of the string."""
-        new_img = self.images[ref_index].copy()
+        new_img = self.images[ref_index].copy(coord_kwargs={"check_bends": True,})
 
         if ref_index <= self.lf_ind:
             tangent_ind = ref_index + 1
@@ -415,6 +429,8 @@ class GrowingString(GrowingChainOfStates):
             self.reparam_in = self.reparam_every_full if self.fully_grown \
                               else self.reparam_every
             reparametrized = True
+            with open("reparametrized.trj", "w") as handle:
+                handle.write(self.as_xyz())
 
         return reparametrized
 
