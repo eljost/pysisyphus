@@ -781,7 +781,6 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
         for j, end_geom in enumerate(end_geoms):
             end_fn = end_fns[j]
             # Compare bond matrices
-            end_cbm = get_bond_mat(end_geom)
             cbm_match = (start_cbm == end_cbms[j]).all()
             cbm_str = "(bond matrices match)" if cbm_match else ""
             rmsd = start_geom.rmsd(end_geom)
@@ -925,7 +924,6 @@ def run_mdp(geom, calc_getter, mdp_kwargs):
             os.mkdir(out_dir)
         except FileExistsError:
             print(out_dir, "exists")
-            pass
         add_kwargs = {
             "out_dir": out_dir,
         }
