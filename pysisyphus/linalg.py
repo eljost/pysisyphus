@@ -28,3 +28,11 @@ def make_unit_vec(vec1, vec2):
     """Return unit vector pointing from vec2 to vec1."""
     diff = vec1 - vec2
     return diff / np.linalg.norm(diff)
+
+
+def svd_inv(array, thresh):
+    U, S, Vt = np.linalg.svd(array)
+    keep = S > thresh
+    S_inv = np.zeros_like(S)
+    S_inv[keep] = 1 / S[keep]
+    return Vt.T.dot(np.diag(S_inv)).dot(U.T)
