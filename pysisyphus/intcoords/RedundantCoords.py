@@ -3,7 +3,7 @@
 # [3] https://doi.org/10.1016/0009-2614(95)00646-L lindh model hessian
 # [4] 10.1002/(SICI)1096-987X(19990730)20:10<1067::AID-JCC9>3.0.CO;2-V
 #     Handling of corner cases
-# [5] https://doi.org/10.1063/1.462844
+# [5] https://doi.org/10.1063/1.462844 , Pulay 1992
 
 import math
 import itertools as it
@@ -38,7 +38,9 @@ class RedundantCoords:
         lb_min_deg=175.0,
         weighted=False,
         min_weight=0.3,
-        svd_inv_thresh=1e-4,
+        # Corresponds to a threshold of 1e-7 for eigenvalues of G, as proposed by
+        # Pulay in [5].
+        svd_inv_thresh=3.16e-4,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
