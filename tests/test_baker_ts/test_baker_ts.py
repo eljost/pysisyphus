@@ -33,7 +33,7 @@ def get_geoms():
         "21_acrolein_rot.xyz",
         "22_hconhoh.xyz",
         "23_hcn_h2.xyz",
-        "24_h2cnh.xyz",
+        # "24_h2cnh.xyz",
         "25_hcnh2.xyz",
     )
     alpha_negative = ()
@@ -95,8 +95,8 @@ def test_baker_tsopt(name, results_bag):
     opt.run()
 
     # Without symmetry restriction this lower lying TS will be obtained.
-    if name.startswith("22_"):
-        ref_energy = -242.25695787
+    # if name.startswith("22_"):
+        # ref_energy = -242.25695787
 
     results_bag.cycles = opt.cur_cycle + 1
     results_bag.is_converged = opt.is_converged
