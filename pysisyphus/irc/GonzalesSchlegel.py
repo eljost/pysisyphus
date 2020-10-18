@@ -44,7 +44,7 @@ class GonzalesSchlegel(IRC):
         def lambda_func(lambda_):
             # Eq. (11) in [1]
             # (H - λI)^-1
-            hmlinv = np.linalg.pinv(self.mw_hessian - eye*lambda_)
+            hmlinv = np.linalg.pinv(self.mw_hessian - eye*lambda_, rcond=1e-6)
             # (g - λp)
             glp = gradient - self.displacement*lambda_
             tmp = self.displacement - hmlinv.dot(glp)
