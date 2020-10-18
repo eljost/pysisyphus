@@ -5,6 +5,7 @@ from pysisyphus.intcoords.eval import eval_primitives
 from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.intcoords.valid import dihedral_valid
+from pysisyphus.linalg import svd_inv
 
 
 def correct_dihedrals(new_dihedrals, old_dihedrals):
@@ -88,11 +89,10 @@ def transform_int_step(
     int_step,
     old_cart_coords,
     cur_internals,
-    B_prim,
+    Bt_inv_prim,
     primitives,
     check_dihedrals=False,
     cart_rms_thresh=1e-6,
-    rcond=1e-4,
     logger=None,
 ):
     """Transformation is done in primitive internals, so int_step must be given
@@ -102,8 +102,6 @@ def transform_int_step(
     remaining_int_step = int_step
     target_internals = cur_internals + int_step
 
-    G = B_prim.dot(B_prim.T)
-    Bt_inv_prim = np.linalg.pinv(G, rcond=rcond).dot(B_prim)
     dihedral_inds = np.array(
         [i for i, primitive in enumerate(primitives) if isinstance(primitive, Torsion)]
     )
