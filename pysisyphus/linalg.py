@@ -30,8 +30,8 @@ def make_unit_vec(vec1, vec2):
     return diff / np.linalg.norm(diff)
 
 
-def svd_inv(array, thresh):
-    U, S, Vt = np.linalg.svd(array)
+def svd_inv(array, thresh, hermitian=False):
+    U, S, Vt = np.linalg.svd(array, hermitian=hermitian)
     keep = S > thresh
     S_inv = np.zeros_like(S)
     S_inv[keep] = 1 / S[keep]
