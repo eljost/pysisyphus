@@ -81,7 +81,7 @@ class DLC(RedundantCoords):
         prim_step = (step*self.U).sum(axis=1)
         return super().transform_int_step(prim_step, *args, **kwargs)
 
-    def get_active_set(self, B, thresh=5e-6):
+    def get_active_set(self, B, inv_thresh=None):
         """See [5] between Eq. (7) and Eq. (8) for advice regarding
         the threshold."""
         if self.weighted:
@@ -99,12 +99,23 @@ class DLC(RedundantCoords):
         G = B.dot(B.T)
         eigvals, eigvectors = np.linalg.eigh(G)
 
+        if inv_thresh is None:
+            # The singular values of G=B B^T correspond to the square roots of the
+            # eigenvalues of G.
+            #
+            # S = sqrt(w)
+            # w = S**2
+            #
+            # To stay consistent with the SVD we derive eigenvalue threshold from
+            # the SVD threshold.
+            inv_thresh = self.svd_inv_thresh**2
+
         if self.full_set:
             use_inds = np.full_like(eigvals, False, dtype=np.bool)
             dof = 3*len(self.atoms) - 6
             use_inds[-dof:] = True
         else:
-            use_inds = np.abs(eigvals) > thresh
+            use_inds = np.abs(eigvals) > inv_thresh
         use_eigvals = eigvals[use_inds]
         min_eigval = use_eigvals.min()
         self.log(f"Diagonalizing G yielded {use_inds.sum()} DLCs. Smallest eigenvalue "
