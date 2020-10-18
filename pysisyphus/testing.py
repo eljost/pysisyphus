@@ -49,6 +49,13 @@ def using(calculator):
             except ImportError:
                 pass
 
+        if calculator == "dalton":
+            try:
+                import daltonproject
+                available = True
+            except ImportError:
+                pass
+
         if calculator == "qcengine":
             try:
                 import qcengine
