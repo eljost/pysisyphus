@@ -107,7 +107,8 @@ class DLC(RedundantCoords):
             use_inds = np.abs(eigvals) > thresh
         use_eigvals = eigvals[use_inds]
         min_eigval = use_eigvals.min()
-        self.log(f"Using {use_inds.sum()} DLC. Smallest eigenvalue of G is {min_eigval:.4e}")
+        self.log(f"Diagonalizing G yielded {use_inds.sum()} DLCs. Smallest eigenvalue "
+                 f"is {min_eigval:.4e}")
         return eigvectors[:, use_inds]
 
     def set_active_set(self):
