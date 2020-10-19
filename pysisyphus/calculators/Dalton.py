@@ -2,7 +2,6 @@ try:
     import daltonproject as dp
 except ModuleNotFoundError:
     print("daltonproject is not installed!")
-import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import BOHR2ANG
@@ -37,8 +36,8 @@ class Dalton(Calculator):
         )
 
     def get_energy(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
+        # if prepare_kwargs is None:
+            # prepare_kwargs = {}
 
         mol = self.prepare_input(atoms, coords)
         prop = dp.Property(energy=True)
@@ -51,8 +50,8 @@ class Dalton(Calculator):
 
 
     def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
+        # if prepare_kwargs is None:
+            # prepare_kwargs = {}
 
         mol = self.prepare_input(atoms, coords)
         prop = dp.Property(energy=True, gradients=True)
