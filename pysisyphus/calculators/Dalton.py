@@ -1,4 +1,7 @@
-import daltonproject as dp
+try:
+    import daltonproject as dp
+except ModuleNotFoundError:
+    print("daltonproject is not installed!")
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator

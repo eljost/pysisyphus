@@ -1,5 +1,6 @@
 import pytest
 
+from pysisyphus.calculators.Dalton import Dalton
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
@@ -7,8 +8,6 @@ from pysisyphus.testing import using
 
 @using("dalton")
 def test_h2o_opt():
-    from pysisyphus.calculators.Dalton import Dalton
-
     geom = geom_loader("lib:h2o.xyz", coord_type="redund")
     calc = Dalton(basis="3-21G")
     geom.set_calculator(calc)
