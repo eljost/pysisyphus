@@ -150,6 +150,18 @@ class OverlapCalculator(Calculator):
             old, new = [int(i) for i in indices]
         return (old, new)
 
+    def get_sao_from_mo_coeffs(self, mo_coeffs):
+        """Recover AO overlaps from given MO coefficients."""
+        mo_coeffs_inv = np.linalg.inv(mo_coeffs)
+        ao_ovlp = mo_coeffs_inv.dot(mo_coeffs_inv.T)
+        return ao_ovlp
+
+    def get_sao_from_mo_coeffs_and_dump(self, mo_coeffs):
+        ao_ovlp = self.get_sao_from_mo_coeffs(mo_coeffs)
+        ao_ovlp_fn = self.make_fn("ao_ovlp_rec")
+        np.savetxt(ao_ovlp_fn, ao_ovlp)
+        return ao_ovlp
+
     def get_wf_overlaps(self, indices=None, ao_ovlp=None):
         old, new = self.get_indices(indices)
         old_cycle = (self.mo_coeff_list[old], self.ci_coeff_list[old])
@@ -179,10 +191,7 @@ class OverlapCalculator(Calculator):
 
         # AO overlaps
         if ao_ovlp is None:
-            mo_coeffs2_inv = np.linalg.inv(mo_coeffs2)
-            ao_ovlp = mo_coeffs2_inv.dot(mo_coeffs2_inv.T)
-            ao_ovlp_fn = self.make_fn("ao_ovlp_rec")
-            np.savetxt(ao_ovlp_fn, ao_ovlp)
+            ao_ovlp = self.get_sao_from_mo_coeffs_and_dump(mo_coeffs2)
         # MO overlaps
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
@@ -239,6 +248,9 @@ class OverlapCalculator(Calculator):
         if ao_ovlp is None:
             mos_inv = np.linalg.inv(self.mo_coeff_list[new])
             ao_ovlp = mos_inv.dot(mos_inv.T)
+
+        if ao_ovlp is None:
+            ao_ovlp = self.get_sao_from_mo_coeffs_and_dump(self.mo_coeff_list[new])
 
         ntos_1 = self.nto_list[old]
         ntos_2 = self.nto_list[new]
