@@ -176,7 +176,7 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3):
             cs = x2c(xs)
             return anp.sum(cs*E) - anp.sum(anp.outer(cs, cs)*Rjfi) + (cs * Rifi).sum()
     else:
-        hessian_inv = np.linalg.pinv(hessian)
+        hessian_inv = np.linalg.pinv(hessian, rcond=1e-6)
         # It doesn't matter if we use forces or gradients, as the signs will cancel.
         # gHig = 0.5 * np.einsum("ki,ji,ki->k", f, hessian_inv, f)
         gHig = np.einsum("ki,ji,ki->k", f, hessian_inv, f)

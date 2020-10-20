@@ -37,7 +37,7 @@ class OverlapCalculator(Calculator):
     def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
                  use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
-                 ncore=0, conf_thresh=1e-4, dyn_roots=0,
+                 ncore=0, conf_thresh=1e-4, dyn_roots=0, mos_ref="cur", mos_renorm=False,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -73,6 +73,9 @@ class OverlapCalculator(Calculator):
         if self.dyn_roots != 0:
             self.dyn_roots = 0
             self.log("dyn_roots = 0 is hardcoded right now")
+        self.mos_ref = mos_ref
+        assert self.mos_ref in ("cur", "ref")
+        self.mos_renorm = bool(mos_renorm)
 
         assert self.ncore >= 0, "ncore must be a >= 0!"
 
@@ -127,28 +130,92 @@ class OverlapCalculator(Calculator):
     def get_indices(self, indices=None):
         """
         A new root is determined by selecting the overlap matrix row
-        corresponding to the old root and checking for the new root
-        with the highest overlap (at the new geometry).
+        corresponding to the reference root and checking for the root
+        with the highest overlap (at the current geometry).
 
         The overlap matrix is usually formed by a double loop like:
 
-        overlap_matrix = np.empty((old_states, new_states))
-        for i, old_state in enumerate(old_states):
-            for j, new_state in enumerate(new_states):
-                overlap_matrix[i, j] = make_overlap(old_state, new_state)
+        overlap_matrix = np.empty((ref_states, cur_states))
+        for i, ref_state in enumerate(ref_states):
+            for j, cur_state in enumerate(cur_states):
+                overlap_matrix[i, j] = make_overlap(ref_state, cur_state)
 
-        So the old states run along the rows. Thats why the old_state index
+        So the reference states run along the rows. Thats why the ref_state index
         comes first in the 'indices' tuple.
         """
 
         if indices is None:
             # By default we compare a reference cycle with the current (last)
             # cycle, so the second index is -1.
-            old, new = self.ref_cycle, -1
+            ref, cur = self.ref_cycle, -1
         else:
             assert len(indices) == 2
-            old, new = [int(i) for i in indices]
-        return (old, new)
+            ref, cur = [int(i) for i in indices]
+        return (ref, cur)
+
+    @staticmethod
+    def get_mo_norms(mo_coeffs, ao_ovlp):
+        """MOs are in rows."""
+        return np.einsum("ki,kj,ij->k", mo_coeffs, mo_coeffs, ao_ovlp)
+
+    @staticmethod
+    def renorm_mos(mo_coeffs, ao_ovlp):
+        norms = OverlapCalculator.get_mo_norms(mo_coeffs, ao_ovlp)
+        sqrts = np.sqrt(norms)
+        return mo_coeffs / sqrts[:,None]
+
+    def get_ref_mos(self, ref_mo_coeffs, cur_mo_coeffs):
+        return {
+            "ref": ref_mo_coeffs,
+            "cur": cur_mo_coeffs,
+        }[self.mos_ref]
+
+    def get_orbital_matrices(self, indices=None, ao_ovlp=None):
+        """Return MO coefficents and AO overlaps for the given indices.
+
+        If not provided, a AO overlap matrix is constructed from one of
+        the MO coefficient matrices (controlled by self.mos_ref). Also,
+        if requested one of the two MO coefficient matrices is re-normalized.
+        """
+
+        ref, cur = self.get_indices(indices)
+        ref_mo_coeffs = self.mo_coeff_list[ref].copy()
+        cur_mo_coeffs = self.mo_coeff_list[cur].copy()
+
+        ao_ovlp_reconstructed = ao_ovlp is None
+        if ao_ovlp_reconstructed:
+            sao_mo_coeffs = cur_mo_coeffs if (self.mos_ref == "cur") else ref_mo_coeffs
+            self.log(f"Reconstructed S_AO from '{self.mos_ref}' MO coefficients.")
+            ao_ovlp = self.get_sao_from_mo_coeffs(sao_mo_coeffs)
+            self.log(f"max(abs(S_AO))={np.abs(ao_ovlp).max():.6f}")
+
+        return_mos = [ref_mo_coeffs, cur_mo_coeffs]
+        # Only renormalize if requested and we reconstructed the AO overlap matrix.
+        if self.mos_renorm and ao_ovlp_reconstructed:
+            # If S_AO was reconstructed from "cur" MOs, then "ref" MOs won't be
+            # normalized anymore and vice versa.
+            renorm_ind = 0 if (self.mos_ref == "cur") else 1
+            to_renorm = return_mos[renorm_ind]
+            # norms = self.get_mo_norms(to_renorm, ao_ovlp)
+            return_mos[renorm_ind] = self.renorm_mos(to_renorm, ao_ovlp)
+            self.log(f"Renormalized '{('ref', 'cur')[renorm_ind]}' MO coefficients.")
+        elif self.mos_renorm and (not ao_ovlp_reconstructed):
+            self.log("Skipped MO re-normalization as 'ao_ovlp' was provided.")
+
+        return *return_mos, ao_ovlp
+
+    @staticmethod
+    def get_sao_from_mo_coeffs(mo_coeffs):
+        """Recover AO overlaps from given MO coefficients."""
+        mo_coeffs_inv = np.linalg.inv(mo_coeffs)
+        ao_ovlp = mo_coeffs_inv.dot(mo_coeffs_inv.T)
+        return ao_ovlp
+
+    def get_sao_from_mo_coeffs_and_dump(self, mo_coeffs):
+        ao_ovlp = self.get_sao_from_mo_coeffs(mo_coeffs)
+        ao_ovlp_fn = self.make_fn("ao_ovlp_rec")
+        np.savetxt(ao_ovlp_fn, ao_ovlp)
+        return ao_ovlp
 
     def get_wf_overlaps(self, indices=None, ao_ovlp=None):
         old, new = self.get_indices(indices)
@@ -156,8 +223,7 @@ class OverlapCalculator(Calculator):
         new_cycle = (self.mo_coeff_list[new], self.ci_coeff_list[new])
         return self.wfow.wf_overlap(old_cycle, new_cycle, ao_ovlp)
 
-    def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2,
-                      ao_ovlp=None):
+    def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp):
         """
         Parameters
         ----------
@@ -177,12 +243,6 @@ class OverlapCalculator(Calculator):
         ci_full1 = self.blowup_ci_coeffs(ci_coeffs1)
         ci_full2 = self.blowup_ci_coeffs(ci_coeffs2)
 
-        # AO overlaps
-        if ao_ovlp is None:
-            mo_coeffs2_inv = np.linalg.inv(mo_coeffs2)
-            ao_ovlp = mo_coeffs2_inv.dot(mo_coeffs2_inv.T)
-            ao_ovlp_fn = self.make_fn("ao_ovlp_rec")
-            np.savetxt(ao_ovlp_fn, ao_ovlp)
         # MO overlaps
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
@@ -195,14 +255,16 @@ class OverlapCalculator(Calculator):
         return overlaps
 
     def get_tden_overlaps(self, indices=None, ao_ovlp=None):
-        old, new = self.get_indices(indices)
-        mo_coeffs1 = self.mo_coeff_list[old]
-        ci_coeffs1 = self.ci_coeff_list[old]
-        mo_coeffs2 = self.mo_coeff_list[new]
-        ci_coeffs2 = self.ci_coeff_list[new]
-        overlaps = self.tden_overlaps(mo_coeffs1, ci_coeffs1,
-                                      mo_coeffs2, ci_coeffs2,
-                                      ao_ovlp=ao_ovlp)
+        mo_coeffs_ref, mo_coeffs_cur, ao_ovlp = self.get_orbital_matrices(indices, ao_ovlp)
+        ref_norms = self.get_mo_norms(mo_coeffs_ref, ao_ovlp)
+        cur_norms = self.get_mo_norms(mo_coeffs_cur, ao_ovlp)
+
+        ref, cur = self.get_indices(indices)
+        ci_coeffs_ref = self.ci_coeff_list[ref]
+        ci_coeffs_cur = self.ci_coeff_list[cur]
+        overlaps = self.tden_overlaps(mo_coeffs_ref, ci_coeffs_ref,
+                                      mo_coeffs_cur, ci_coeffs_cur,
+                                      ao_ovlp)
         return overlaps
 
     def tdens_overlap_with_calculator(self, calc, ao_ovlp=None):
@@ -234,14 +296,15 @@ class OverlapCalculator(Calculator):
         return occ_ntos, vir_ntos, lambdas
 
     def get_nto_overlaps(self, indices=None, ao_ovlp=None, org=False):
-        old, new = self.get_indices(indices)
+        ref, cur = self.get_indices(indices)
 
         if ao_ovlp is None:
-            mos_inv = np.linalg.inv(self.mo_coeff_list[new])
-            ao_ovlp = mos_inv.dot(mos_inv.T)
+            ao_ovlp = self.get_sao_from_mo_coeffs_and_dump(
+                self.get_ref_mos(self.mo_coeff_list[ref], self.mo_coeff_list[cur])
+            )
 
-        ntos_1 = self.nto_list[old]
-        ntos_2 = self.nto_list[new]
+        ntos_1 = self.nto_list[ref]
+        ntos_2 = self.nto_list[cur]
         if org:
             overlaps = self.nto_org_overlaps(ntos_1, ntos_2, ao_ovlp)
         else:

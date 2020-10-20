@@ -11,22 +11,24 @@ from pysisyphus.intcoords import (
 
 class PrimTypes(OrderedEnum):
     BOND = 0
-    HYDROGEN_BOND = 1
-    INTERFRAG_BOND = 2
-    AUX_INTERFRAG_BOND = 3
-    BEND = 4
-    LINEAR_BEND = 5
-    LINEAR_BEND_COMPLEMENT = 6
-    PROPER_DIHEDRAL = 7
-    IMPROPER_DIHEDRAL = 8
-    OUT_OF_PLANE = 9
-    LINEAR_DISPLACEMENT = 10
-    LINEAR_DISPLACEMENT_COMPLEMENT = 11
+    AUX_BOND = 1
+    HYDROGEN_BOND = 2
+    INTERFRAG_BOND = 3
+    AUX_INTERFRAG_BOND = 4
+    BEND = 5
+    LINEAR_BEND = 6
+    LINEAR_BEND_COMPLEMENT = 7
+    PROPER_DIHEDRAL = 8
+    IMPROPER_DIHEDRAL = 9
+    OUT_OF_PLANE = 10
+    LINEAR_DISPLACEMENT = 11
+    LINEAR_DISPLACEMENT_COMPLEMENT = 12
 
 
 # Maps primitive types to their classes
 PrimMap = {
     PrimTypes.BOND: Stretch,
+    PrimTypes.AUX_BOND: Stretch,
     PrimTypes.HYDROGEN_BOND: Stretch,
     PrimTypes.INTERFRAG_BOND: Stretch,
     PrimTypes.AUX_INTERFRAG_BOND: Stretch,

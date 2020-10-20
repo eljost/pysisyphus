@@ -17,10 +17,20 @@ class ChainOfStates:
     logger = logging.getLogger("cos")
     valid_coord_types = "cart dlc".split()
 
-    def __init__(self, images, fix_ends=False, fix_first=True, fix_last=True,
-                 climb=False, climb_rms=5e-3, climb_lanczos=False, scheduler=None):
+    def __init__(
+        self,
+        images,
+        fix_ends=False,
+        fix_first=True,
+        fix_last=True,
+        climb=False,
+        climb_rms=5e-3,
+        climb_lanczos=False,
+        climb_lanczos_rms=5e-3,
+        scheduler=None,
+    ):
 
-        assert(len(images) >= 2), "Need at least 2 images!"
+        assert len(images) >= 2, "Need at least 2 images!"
         self.images = list(images)
         self.fix_first = fix_ends or fix_first
         self.fix_last = fix_ends or fix_last
@@ -28,6 +38,8 @@ class ChainOfStates:
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
+        # Must not be lower than climb_rms
+        self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.scheduler = scheduler
 
         self._coords = None
@@ -49,14 +61,17 @@ class ChainOfStates:
         self.started_climbing = self.climb_rms == -1
         if self.started_climbing:
             self.log("Will start climbing immediately.")
+        self.started_climbing_lanczos = False
 
         img0 = self.images[0]
         self.image_atoms = copy(img0.atoms)
         self.coord_type = img0.coord_type
-        assert self.coord_type in self.valid_coord_types, \
-                f"Invalid coord_type! Supported types are: {self.valid_coord_types}"
-        assert all([img.coord_type == self.coord_type for img in self.images]), \
-                "coord_type of images differ!"
+        assert (
+            self.coord_type in self.valid_coord_types
+        ), f"Invalid coord_type! Supported types are: {self.valid_coord_types}"
+        assert all(
+            [img.coord_type == self.coord_type for img in self.images]
+        ), "coord_type of images differ!"
         try:
             self.prim_indices = img0.internal.prim_indices
         except AttributeError:
@@ -70,7 +85,7 @@ class ChainOfStates:
         if self.fix_first:
             fixed.append(0)
         if self.fix_last:
-            fixed.append(len(self.images)-1)
+            fixed.append(len(self.images) - 1)
         return fixed
 
     @property
@@ -78,8 +93,7 @@ class ChainOfStates:
         """Returns the indices of the images that aren't fixed and can be
         optimized."""
         fixed = self.get_fixed_indices()
-        return [i for i in range(len(self.images))
-                if i not in fixed]
+        return [i for i in range(len(self.images)) if i not in fixed]
 
     @property
     def last_index(self):
@@ -120,7 +134,7 @@ class ChainOfStates:
 
     def set_vector(self, name, vector, clear=False):
         vec_per_image = vector.reshape(-1, self.coords_length)
-        assert(len(self.images) == len(vec_per_image))
+        assert len(self.images) == len(vec_per_image)
         for i in self.moving_indices:
             setattr(self.images[i], name, vec_per_image[i])
         if clear:
@@ -154,10 +168,11 @@ class ChainOfStates:
         Then tries to set cartesian coordinate as self.images[i].coords
         which will raise an error when coord_type != "cart".
         """
-        assert self.images[i].coord_type == "cart", \
-            "ChainOfStates.set_coords_at() has to be reworked to support " \
-            "internal coordiantes. Try to set 'align: False' in the 'opt' " \
+        assert self.images[i].coord_type == "cart", (
+            "ChainOfStates.set_coords_at() has to be reworked to support "
+            "internal coordiantes. Try to set 'align: False' in the 'opt' "
             "section of the .yaml input file."
+        )
         if i in self.moving_indices:
             self.images[i].coords = coords
         # When dealing with a fixed image don't set coords through the
@@ -174,7 +189,7 @@ class ChainOfStates:
     @energy.setter
     def energy(self, energies):
         """This is needed for some optimizers like CG and BFGS."""
-        assert(len(self.images) == len(energies))
+        assert len(self.images) == len(energies)
         for i in self.moving_indices:
             self.images[i].energy = energies[i]
 
@@ -223,7 +238,7 @@ class ChainOfStates:
     def forces(self):
         self.set_zero_forces_for_fixed_images()
         forces = [image.forces for image in self.images]
-        self._forces  = np.concatenate(forces)
+        self._forces = np.concatenate(forces)
         self.counter += 1
         return self._forces
 
@@ -248,7 +263,7 @@ class ChainOfStates:
 
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
-        perp_forces = forces - forces.dot(tangent)*tangent
+        perp_forces = forces - forces.dot(tangent) * tangent
         return perp_forces
 
     @property
@@ -289,15 +304,13 @@ class ChainOfStates:
         """ [1] Equations (8) - (11)"""
 
         tangent_kinds = ("upwinding", "simple", "bisect", "lanczos")
-        assert kind in tangent_kinds, \
-            "Invalid kind! Valid kinds are: {tangent_kinds}"
+        assert kind in tangent_kinds, "Invalid kind! Valid kinds are: {tangent_kinds}"
         prev_index = max(i - 1, 0)
-        next_index = min(i + 1, len(self.images)-1)
+        next_index = min(i + 1, len(self.images) - 1)
 
         prev_image = self.images[prev_index]
         ith_image = self.images[i]
         next_image = self.images[next_index]
-
 
         # If (i == 0) or (i == len(self.images)-1) then one
         # of this tangents is zero.
@@ -306,9 +319,9 @@ class ChainOfStates:
 
         # Handle first and last image
         if i == 0:
-            return tangent_plus/np.linalg.norm(tangent_plus)
+            return tangent_plus / np.linalg.norm(tangent_plus)
         elif i == (len(self.images) - 1):
-            return tangent_minus/np.linalg.norm(tangent_minus)
+            return tangent_minus / np.linalg.norm(tangent_minus)
 
         # [1], Eq. (1)
         if kind == "simple":
@@ -338,13 +351,15 @@ class ChainOfStates:
             # Minimum or Maximum
             else:
                 if next_energy >= prev_energy:
-                    tangent = (tangent_plus * delta_energy_max +
-                               tangent_minus * delta_energy_min
+                    tangent = (
+                        tangent_plus * delta_energy_max
+                        + tangent_minus * delta_energy_min
                     )
                 # next_energy < prev_energy
                 else:
-                    tangent = (tangent_plus * delta_energy_min +
-                               tangent_minus * delta_energy_max
+                    tangent = (
+                        tangent_plus * delta_energy_min
+                        + tangent_minus * delta_energy_max
                     )
         elif kind == "lanczos":
             # Calculating a lanczos tangent is costly, so we store the
@@ -354,21 +369,21 @@ class ChainOfStates:
             cur_hash = hash_arr(ith_image.coords, precision=4)
             try:
                 tangent = self.lanczos_tangents[cur_hash]
-                self.log( "Returning previously calculated Lanczos tangent with "
-                         f"hash={cur_hash}"
+                self.log(
+                    "Returning previously calculated Lanczos tangent with "
+                    f"hash={cur_hash}"
                 )
             except KeyError:
                 # Try to use previous Lanczos tangent
                 guess = lanczos_guess
                 if (guess is None) and (self.prev_lanczos_hash is not None):
                     guess = self.lanczos_tangents[self.prev_lanczos_hash]
-                    self.log(f"Using tangent with hash={self.prev_lanczos_hash} "
-                              "as initial guess for Lanczos algorithm."
+                    self.log(
+                        f"Using tangent with hash={self.prev_lanczos_hash} "
+                        "as initial guess for Lanczos algorithm."
                     )
                 w_min, tangent = geom_lanczos(
-                                    ith_image,
-                                    guess=guess,
-                                    logger=self.logger
+                    ith_image, guess=guess, logger=self.logger
                 )
                 self.lanczos_tangents[cur_hash] = tangent
                 # Update hash
@@ -378,9 +393,7 @@ class ChainOfStates:
         return tangent
 
     def get_tangents(self):
-        return np.array([self.get_tangent(i)
-                         for i in range(len(self.images))]
-        )
+        return np.array([self.get_tangent(i) for i in range(len(self.images))])
 
     def as_xyz(self, comments=None):
         return "\n".join([image.as_xyz() for image in self.images])
@@ -409,10 +422,20 @@ class ChainOfStates:
         # climbing.
         already_climbing = self.started_climbing
         if self.climb and not already_climbing:
-            self.started_climbing = self.check_for_climbing_start()
+            self.started_climbing = self.check_for_climbing_start(self.climb_rms)
             if self.started_climbing:
-                self.log("Starting to climb in next iteration.")
-                print("Starting to climb in next iteration.")
+                msg = "Starting to climb in next iteration."
+                self.log(msg)
+                print(msg)
+
+        already_climbing_lanczos = self.started_climbing_lanczos
+        if self.started_climbing and not already_climbing_lanczos:
+            self.started_climbing_lanczos = self.check_for_climbing_start(self.climb_lanczos_rms)
+            if self.started_climbing_lanczos:
+                msg = "Using Lanczos algorithm to converge HEI tangent."
+                self.log(msg)
+                print(msg)
+
         return not already_climbing and self.started_climbing
 
     def rms(self, arr):
@@ -431,7 +454,7 @@ class ChainOfStates:
         """
         return np.sqrt(np.mean(np.square(arr)))
 
-    def check_for_climbing_start(self):
+    def check_for_climbing_start(self, ref_rms):
         # Only initiate climbing on a sufficiently converged MEP.
         # This can be determined from a supplied threshold for the
         # RMS force (rms_force) or from a multiple of the
@@ -444,7 +467,8 @@ class ChainOfStates:
             fully_grown = self.fully_grown
         except AttributeError:
             fully_grown = True
-        return (rms_forces <= self.climb_rms) and fully_grown
+        start_climbing = (rms_forces <= ref_rms) and fully_grown
+        return start_climbing
 
     def get_climbing_indices(self):
         # Index of the highest energy image (HEI)
@@ -457,13 +481,13 @@ class ChainOfStates:
         # Do one image climbing (C1) neb if explicitly requested or
         # the HEI is the first or last item in moving_indices.
         elif self.climb == "one" or ((hei_index == 1) or (hei_index == move_inds[-1])):
-            climb_indices = (hei_index, )
+            climb_indices = (hei_index,)
         # We can do two climbing (C2) neb if the highest energy image (HEI)
         # is in moving_indices but not the first or last item in this list.
         # elif self.climb != "one" and hei_index in move_inds[1:-1]:
         elif hei_index in move_inds[1:-1]:
             # climb_indices = (hei_index-1, hei_index+1)
-            climb_indices = (hei_index, )
+            climb_indices = (hei_index,)
         # Don't climb when the HEI is the first or last image of the whole
         # NEB.
         else:
@@ -476,7 +500,7 @@ class ChainOfStates:
         climbing_image = self.images[ind]
         ci_forces = climbing_image.forces
         tangent = self.get_tangent(ind)
-        climbing_forces = ci_forces - 2*ci_forces.dot(tangent)*tangent
+        climbing_forces = ci_forces - 2 * ci_forces.dot(tangent) * tangent
 
         return climbing_forces, climbing_image.energy
 
@@ -489,8 +513,9 @@ class ChainOfStates:
             climb_forces, climb_en = self.get_climbing_forces(i)
             forces[i] = climb_forces
             norm = np.linalg.norm(climb_forces)
-            self.log(f"Climbing with image {i}, E = {climb_en:.6f} au, "
-                     f"norm(forces)={norm:.6f}"
+            self.log(
+                f"Climbing with image {i}, E = {climb_en:.6f} au, "
+                f"norm(forces)={norm:.6f}"
             )
         return forces
 
@@ -514,19 +539,26 @@ class ChainOfStates:
         reshaped = cart_coords.reshape(-1, self.cart_coords_length)
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
-        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3, u=coord_diffs)
-                         for i in range(0, len(transp_coords), 9)]
+        tcks, us = zip(
+            *[
+                splprep(transp_coords[i : i + 9], s=0, k=3, u=coord_diffs)
+                for i in range(0, len(transp_coords), 9)
+            ]
         )
 
         # Reparametrize mesh
-        hei_coords = np.vstack([splev([hei_x, ], tck) for tck in tcks])
+        hei_coords = np.vstack([
+            splev([hei_x,], tck,) for tck in tcks]
+        )
         hei_coords = hei_coords.flatten()
 
         # Actually it looks like that splined tangents are really bad approximations
         # to the actual imaginary mode. The Cartesian upwinding tangent is usually
         # much much better. In 'run_tsopt_from_cos' we actually mix two "normal" tangents
         # to obtain the HEI tangent.
-        hei_tangent = np.vstack([splev([hei_x, ], tck, der=1) for tck in tcks]).T
+        hei_tangent = np.vstack(
+            [splev([hei_x, ], tck, der=1,) for tck in tcks]
+        ).T
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
         return hei_coords, hei_energy, hei_tangent, hei_frac_index

@@ -20,6 +20,13 @@ pysisyphus.wrapper.mwfn module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.wrapper.packmol module
+---------------------------------
+
+.. automodule:: pysisyphus.wrapper.packmol
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

@@ -15,16 +15,20 @@ tsopt:
  do_hess: True
  max_cycles: 75
  thresh: gau_tight
+ coord_type: redund
+ hessian_recalc: 7
 irc:
  type: eulerpc
  rms_grad_thresh: 0.0005 
+endopt:
 calc:
  type: xtb
  charge: 0
  mult: 1
  pal: 4
-xyz: diels_alder.trj
-coord_type: cart
+geom:
+ type: cart
+ fn: diels_alder.trj
 assert:
  ts_geom.energy: -17.81225938
- ts_opt.cur_cycle: 29
+ ts_opt.cur_cycle: 15

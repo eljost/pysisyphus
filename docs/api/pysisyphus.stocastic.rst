@@ -36,7 +36,6 @@ pysisyphus.stocastic.align module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

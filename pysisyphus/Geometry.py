@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import sys
 
+import h5py
 import numpy as np
 from scipy.spatial.distance import pdist
 import rmsd
@@ -15,7 +16,7 @@ from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.intcoords import DLC, RedundantCoords
 from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
                                              RebuiltInternalsException,
-                                             DifferentPrimitivesException,
+                                             DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
@@ -174,7 +175,7 @@ class Geometry:
         try:
             assert same_coord_length, "Different length of coordinate vectors!"
         except AssertionError:
-            raise DifferentPrimitivesException
+            raise DifferentCoordLengthsException
 
     def __eq__(self, other):
         return (self.atoms == other.atoms) and all(self.coords == other.coords)
@@ -357,11 +358,21 @@ class Geometry:
                 cart_step = self.internal.transform_int_step(int_step)
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
+                invalid_inds = exception.invalid_inds
+                valid_typed_prims = [
+                    typed_prim
+                    for i, typed_prim in enumerate(self.internal.typed_prims)
+                    if i not in invalid_inds
+                ]
                 coords3d = exception.coords3d.copy()
                 coord_class = self.coord_types[self.coord_type]
-                self.internal = coord_class(self.atoms, coords3d)
+                self.internal = coord_class(
+                    self.atoms, coords3d, typed_prims=valid_typed_prims
+                )
                 self._coords = coords3d.flatten()
-                raise RebuiltInternalsException
+                raise RebuiltInternalsException(
+                    typed_prims=self.internal.typed_prims.copy()
+                )
 
         # Set new cartesian coordinates
         self._coords = coords
@@ -381,6 +392,13 @@ class Geometry:
         """
         self.coords[ind] = coord
         self.clear()
+
+    def reset_coords(self, new_typed_prims):
+        if self.coord_type == "cart":
+            return
+
+        coord_class = self.coord_types[self.coord_type]
+        self.internal = coord_class(self.atoms, self.coords3d, typed_prims=new_typed_prims)
 
     @property
     def coords3d(self):
@@ -440,6 +458,21 @@ class Geometry:
     def comment(self, new_comment):
         self._comment = new_comment
 
+    def center_of_mass_at(self, coords3d):
+        """Returns the center of mass at given coords3d.
+
+        Parameters
+        ----------
+        coords3d : np.array, shape(N, 3)
+            Cartesian coordiantes.
+
+        Returns
+        -------
+        R : np.array, shape(3, )
+            Center of mass.
+        """
+        return 1/self.total_mass * np.sum(coords3d*self.masses[:,None], axis=0)
+
     @property
     def center_of_mass(self):
         """Returns the center of mass.
@@ -449,8 +482,8 @@ class Geometry:
         R : np.array, shape(3, )
             Center of mass.
         """
-        return 1/self.total_mass * np.sum(self.coords3d*self.masses[:,None],
-                                          axis=0)
+        return self.center_of_mass_at(self.coords3d)
+
 
     @property
     def centroid(self):
@@ -708,6 +741,19 @@ class Geometry:
         """
         mm_sqrt = np.diag(self.masses_rep**0.5)
         return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
+
+    def set_h5_hessian(self, fn):
+        with h5py.File(fn, "r") as handle:
+            atoms = handle.attrs["atoms"]
+            hessian = handle["hessian"][:]
+
+        # Also check lengths, as zip would lead to trunction for
+        # different lenghts of self.atoms and atoms.
+        valid = (len(atoms) == len(self.atoms)) and all(
+            [ga.lower() == a.lower() for ga, a in zip(self.atoms, atoms)]
+        )
+        if valid:
+            self.cart_hessian = hessian
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
         if hessian is None:

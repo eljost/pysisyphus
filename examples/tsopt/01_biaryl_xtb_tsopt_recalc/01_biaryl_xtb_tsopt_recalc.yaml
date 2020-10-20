@@ -1,16 +1,17 @@
 tsopt:
  type: rsirfo
- hessian_recalc: 5
+ hessian_recalc: 3
  do_hess: True
- thresh: gau_tight
+ thresh: gau
 calc:
  type: xtb
  pal: 4
  charge: 0
  mult: 1
-xyz: shaked.geom_000.xyz
-define_prims: [[24, 20], ]
-coord_type: redund
+geom:
+ type: redund
+ fn: input.got.geom_000.xyz
 assert:
  ts_geom.energy: -65.29143582
- ts_opt.cur_cycle: 22
+ ts_opt.cur_cycle: 15
+ ts_opt.is_converged: True

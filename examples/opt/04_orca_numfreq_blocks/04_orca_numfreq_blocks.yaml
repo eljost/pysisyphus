@@ -16,9 +16,10 @@ calc:
  mem: 2000
  charge: 0
  mult: 1
-xyz: lib:h2o2_short.xyz
-coord_type: redund
+geom:
+ type: redund
+ fn: lib:h2o2_hf_321g_opt.xyz
 assert:
  opt_geom.energy: -151.44017893
  opt.is_converged: True
- opt.cur_cycle: 8
+ opt.cur_cycle: 10

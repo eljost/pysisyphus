@@ -1,6 +1,7 @@
 import numpy as np
 
 from pysisyphus.intcoords import RedundantCoords
+from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 
 
 def get_tangent(prims1, prims2, dihed_start, normalize=False):
@@ -25,7 +26,10 @@ def get_tangent(prims1, prims2, dihed_start, normalize=False):
     tangent : np.array
         1d array containing the normalized tangent pointing from prims1 to prims2.
     """
-    tangent = prims2 - prims1
+    try:
+        tangent = prims2 - prims1
+    except ValueError:
+        raise DifferentPrimitivesException
     diheds = tangent[dihed_start:].copy()
     diheds_plus = diheds.copy() + 2 * np.pi
     diheds_minus = diheds.copy() - 2 * np.pi

@@ -15,4 +15,6 @@ calc:
  basis: cc-pvtz
  charge: 0
  mult: 1
-xyz: lib:h2o.xyz
+geom:
+ type: cart
+ fn: lib:h2o.xyz

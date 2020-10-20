@@ -33,14 +33,6 @@ pysisyphus.Geometry module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.InternalCoordinates module
--------------------------------------
-
-.. automodule:: pysisyphus.InternalCoordinates
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.TableFormatter module
 --------------------------------
 
@@ -105,6 +97,14 @@ pysisyphus.helpers module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.helpers\_pure module
+-------------------------------
+
+.. automodule:: pysisyphus.helpers_pure
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.init\_logging module
 -------------------------------
 
@@ -121,6 +121,14 @@ pysisyphus.linalg module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.pack module
+----------------------
+
+.. automodule:: pysisyphus.pack
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.peakdetect module
 ----------------------------
 
@@ -133,6 +141,14 @@ pysisyphus.plot module
 ----------------------
 
 .. automodule:: pysisyphus.plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.po module
+--------------------
+
+.. automodule:: pysisyphus.po
    :members:
    :undoc-members:
    :show-inheritance:
@@ -168,7 +184,6 @@ pysisyphus.xyzloader module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

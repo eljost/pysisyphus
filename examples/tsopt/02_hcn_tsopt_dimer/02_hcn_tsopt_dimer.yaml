@@ -19,8 +19,9 @@ calc:
  rotation_max_element: 0.001
  rotation_interpolate: True
  seed: 20182503
-xyz: 01_hcn.xyz
-coord_type: cart
+geom:
+ type: cart
+ fn: 01_hcn.xyz
 assert:
  opt.is_converged: True
  opt.cur_cycle: 9

@@ -37,3 +37,13 @@ def test_pdb_write(this_dir):
         ref = handle.read()
 
     assert pdb_str == ref
+
+
+def test_geom_to_pdb(this_dir):
+    geom = geom_loader(this_dir / "five_chloroforms_xtbopt.xyz")
+    pdb_str = geom_to_pdb_str(geom, detect_fragments=True)
+    # Reference pdb
+    with open(this_dir / "five_chloroforms_ref.pdb") as handle:
+        ref = handle.read()
+
+    assert pdb_str == ref

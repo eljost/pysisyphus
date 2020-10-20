@@ -221,13 +221,18 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
             improper_dihedral_inds.append(dihed)
 
     for bond, bend in it.product(bond_inds, bend_inds):
+        # print("bond", bond, "bend", bend)
         central = bend[1]
         bend_set = set(bend)
         bond_set = set(bond)
         # Check if the two sets share one common atom. If not continue.
         intersect = bend_set & bond_set
+        # print("intersect", intersect)
         if len(intersect) != 1:
             continue
+        # if bond == frozenset((0, 11)) and bend == (0, 3, 4):
+            # import pdb; pdb.set_trace()
+            # pass
 
         # TODO: check collinearity of bond and bend.
 
@@ -241,22 +246,34 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
             bend_terminal = tuple(bend_set - {central} - intersect)[0]
 
             bend_rad = Bend._calculate(coords3d, bend)
-            # Bend atoms are nearly collinear. Check if we can skip the central bend atom.
+            # Bend atoms are nearly collinear. Check if we can skip the central bend atom
+            # and use an atom that is conneced to the terminal atom of the bend or bond.
             if bend_rad >= max_rad:
-                bend_terminal_bonds = set(bond_dict[bend_terminal]) - {central}
+                bend_terminal_bonds = set(bond_dict[bend_terminal]) - bend_set
+                bond_terminal_bonds = set(bond_dict[terminal]) - bond_set
                 set_dihedrals = [
-                    (terminal, intersecting_atom, bend_terminal, btb)
-                    for btb in bend_terminal_bonds
+                    (terminal, intersecting_atom, bend_terminal, betb)
+                    for betb in bend_terminal_bonds
+                ] + [
+                    (bend_terminal, intersecting_atom, terminal, botb)
+                    for botb in bond_terminal_bonds
                 ]
                 # Hardcoded for now ... look ahead to next shell of atoms
                 if not any([dihedral_valid(coords3d, inds, deg_thresh=max_deg)
                             for inds in set_dihedrals]):
                     set_dihedrals = []
-                    for btb in bend_terminal_bonds:
-                        next_bonds = set(bond_dict[btb]) - {bend_terminal}
-                        set_dihedrals.extend(
-                            [(terminal, intersecting_atom, btb, nb) for nb in next_bonds]
-                        )
+                    for betb in bend_terminal_bonds:
+                        bend_terminal_bonds_v2 = set(bond_dict[betb]) - bend_set - bond_set
+                        set_dihedrals = [
+                            (terminal, intersecting_atom, betb, betb_v2)
+                            for betb_v2 in bend_terminal_bonds_v2
+                        ]
+                    for botb in bond_terminal_bonds:
+                        bond_terminal_bonds_v2 = set(bond_dict[botb]) - bend_set - bond_set
+                        set_dihedrals = [
+                            (bend_terminal, intersecting_atom, botb, botb_v2)
+                            for botb_v2 in bond_terminal_bonds_v2
+                        ]
             elif intersecting_atom == bend[0]:
                 set_dihedrals = [[terminal] + list(bend)]
             else:
@@ -302,7 +319,7 @@ def sort_by_prim_type(to_sort=None):
         #   2 ->     0 (bond)
         #   3 ->     1 (bend)
         #   4 ->     2 (torsion)
-        by_prim_type[len_ - 2].append(item)
+        by_prim_type[len_ - 2].append(tuple(item))
     return by_prim_type
 
 
@@ -327,9 +344,10 @@ def setup_redundant(
     min_weight=None,
     logger=None,
 ):
+    if define_prims is None:
+        define_prims = list()
+
     log(logger, f"Detecting primitive internals for {len(atoms)} atoms.")
-    # Additional primitives to be defined.
-    def_bonds, def_bends, def_dihedrals = sort_by_prim_type(define_prims)
 
     def keep_coord(prim_cls, prim_inds):
         return (
@@ -350,7 +368,6 @@ def setup_redundant(
         return_cbm=True,
     )
     bonds = [tuple(bond) for bond in bonds]
-    bonds += def_bonds
     bonds = keep_coords(bonds, Stretch)
 
     # Fragments
@@ -377,6 +394,7 @@ def setup_redundant(
         bond for bond in aux_interfrag_bonds if set(bond) not in hydrogen_set
     ]
     bonds = [bond for bond in bonds if set(bond) not in hydrogen_set]
+    aux_bonds = list()
 
     # Don't use auxilary interfragment bonds for bend detection
     bonds_for_bends = set(
@@ -393,7 +411,6 @@ def setup_redundant(
     )
     # All bends will be checked, for being linear bends and will be removed from
     # bend_inds, if needed.
-    bends += def_bends
     bends = keep_coords(bends, Bend)
 
     # Linear Bends and orthogonal complements
@@ -416,19 +433,39 @@ def setup_redundant(
         # coords3d, bonds_for_bends, bends, max_deg=dihed_max_deg, logger=logger
         coords3d, bonds_for_bends, bends_for_dihedrals, max_deg=dihed_max_deg, logger=logger
     )
-    proper_dihedrals += def_dihedrals
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
     improper_dihedrals = keep_coords(improper_dihedrals, Torsion)
 
+    # Additional primitives to be defined.
+    define_map = {
+        PrimTypes.BOND: "bonds",
+        PrimTypes.AUX_BOND: "aux_bonds",
+        PrimTypes.HYDROGEN_BOND: "hydrogen_bonds",
+        PrimTypes.INTERFRAG_BOND: "interfrag_bonds",
+        PrimTypes.AUX_INTERFRAG_BOND: "aux_interfrag_bonds",
+        PrimTypes.BEND: "bends",
+        PrimTypes.LINEAR_BEND: "linear_bends",
+        PrimTypes.LINEAR_BEND_COMPLEMENT: "linear_bend_complements",
+        PrimTypes.PROPER_DIHEDRAL: "proper_dihedrals",
+        PrimTypes.IMPROPER_DIHEDRAL: "improper_dihedrals",
+    }
+    for type_, *indices in define_prims:
+        key = define_map[type_]
+        locals()[key].append(tuple(indices))
+
     pt = PrimTypes
     typed_prims = (
+        # Bonds, two indices
         [(pt.BOND, *bond) for bond in bonds]
+        + [(pt.AUX_BOND, *abond) for abond in aux_bonds]
         + [(pt.HYDROGEN_BOND, *hbond) for hbond in hydrogen_bonds]
         + [(pt.INTERFRAG_BOND, *ifbond) for ifbond in interfrag_bonds]
         + [(pt.AUX_INTERFRAG_BOND, *aifbond) for aifbond in aux_interfrag_bonds]
+        # Bends, three indices
         + [(pt.BEND, *bend) for bend in bends]
         + [(pt.LINEAR_BEND, *lbend) for lbend in linear_bends]
         + [(pt.LINEAR_BEND_COMPLEMENT, *lbendc) for lbendc in linear_bend_complements]
+        # Dihedral, four indices
         + [(pt.PROPER_DIHEDRAL, *pdihedral) for pdihedral in proper_dihedrals]
         + [(pt.IMPROPER_DIHEDRAL, *idihedral) for idihedral in improper_dihedrals]
     )

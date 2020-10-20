@@ -1,0 +1,17 @@
+geom:
+ type: cart
+ fn: ts_opt.input.xyz
+mdp:
+ E_excess: 0.0079
+ epsilon: 0.0005
+ ascent_alpha: 0.025
+ steps: 500
+ dt: 1.0
+ max_init_trajs: 3
+ external_md: True
+ seed: 3815273451
+endopt:
+calc:
+ type: xtb
+ pal: 6
+ quiet: True

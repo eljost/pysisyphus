@@ -114,6 +114,11 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.current_fn = self.get_path_for_fn(current_fn)
         final_fn = "final_geometries.trj" if self.is_cos else "final_geometry.xyz"
         self.final_fn = self.get_path_for_fn(final_fn)
+        self.hei_trj_fn = self.get_path_for_fn("cos_hei.trj")
+        try:
+            os.remove(self.hei_trj_fn)
+        except FileNotFoundError:
+            pass
 
         self.logger = logging.getLogger("optimizer")
 
@@ -349,6 +354,12 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.write_to_out_dir(out_fn, as_xyz_str)
             # Also write separate .trj files for every image in the cos
             self.write_image_trjs()
+
+            # Dump current HEI
+            max_ind = np.argmax(self.energies[-1])
+            with open(self.hei_trj_fn, "a") as handle:
+                handle.write(self.geometry.images[max_ind].as_xyz()+"\n")
+
         else:
             # Append to .trj file
             self.out_trj_handle.write(as_xyz_str+"\n")
@@ -482,10 +493,13 @@ class Optimizer(metaclass=abc.ABCMeta):
                 # when internal coordinates are used, as the internal-Cartesian
                 # transformation is done iteratively.
                 self.steps[-1] = self.geometry.coords - self.coords[-1]
-            except RebuiltInternalsException:
+            except RebuiltInternalsException as exception:
                 print("Rebuilt internal coordinates")
                 with open("rebuilt_primitives.xyz", "w") as handle:
                     handle.write(self.geometry.as_xyz())
+                if self.is_cos:
+                    for image in self.geometry.images:
+                        image.reset_coords(exception.typed_prims)
                 self.reset()
 
             if hasattr(self.geometry, "reparametrize"):

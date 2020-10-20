@@ -1,5 +1,8 @@
+from math import sqrt
 import numpy as np
+from scipy.optimize import root_scalar
 
+from pysisyphus.helpers import rms
 from pysisyphus.io.hessian import save_hessian
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
 from pysisyphus.optimizers.hessian_updates import (
@@ -457,7 +460,7 @@ class HessianOptimizer(Optimizer):
             2
             * rfo_eigval
             / (1 + step_norm ** 2 * cur_alpha)
-            * np.sum(gradient ** 2 / ((eigvals - rfo_eigval * cur_alpha) ** 3))
+            * quot
         )
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
@@ -511,3 +514,111 @@ class HessianOptimizer(Optimizer):
         # Transform step back to original basis
         step = eigvecs.dot(step_)
         return step
+
+    @staticmethod
+    def get_shifted_step_trans(eigvals, gradient_trans, shift):
+        return -gradient_trans / (eigvals + shift)
+
+    @staticmethod
+    def get_newton_step(eigvals, eigvecs, gradient):
+        return eigvecs.dot(eigvecs.T.dot(gradient) / eigvals)
+
+    def get_newton_step_on_trust(self, eigvals, eigvecs, gradient):
+        min_ind = eigvals.argmin()
+        min_eigval = eigvals[min_ind]
+        pos_definite = min_eigval > 0.0
+        gradient_trans = eigvecs.T.dot(gradient)
+
+        # This will be also be True when we come close to a minimizer,
+        # but then the Hessian will also be positive definite and a
+        # simple Newton step will be used.
+        hard_case = abs(gradient_trans[min_ind]) <= 1e-6
+        self.log(f"Smallest eigenvalue: {min_eigval:.6f}")
+        self.log(f"Positive definite Hessian: {pos_definite}")
+        self.log(f"Hard case: {hard_case}")
+
+        def get_step(shift):
+            return -gradient_trans / (eigvals + shift)
+
+        # Unshifted Newton step
+        newton_step_trans = get_step(0.0)
+        newton_norm = np.linalg.norm(newton_step_trans)
+
+        def on_trust_radius_lin(step):
+            return 1 / self.trust_radius - 1 / np.linalg.norm(step)
+
+        def finalize_step(shift):
+            step = get_step(shift)
+            step = eigvecs.dot(step)
+            return step
+
+        # Simplest case. Positive definite Hessian and predicted step is
+        # already in trust radius.
+        if pos_definite and newton_norm <= self.trust_radius:
+            self.log("Using unshifted Newton step.")
+            return eigvecs.dot(newton_step_trans)
+
+        # If the Hessian is not positive definite or if the step is too
+        # long we have to determine the shift parameter lambda.
+        rs_kwargs = {
+            "f": lambda shift: on_trust_radius_lin(get_step(shift)),
+            "xtol": 1e-3,
+            # Would otherwise be chosen automatically, but we set it
+            # here explicitly for verbosity.
+            "method": "brentq",
+        }
+
+        def root_search(bracket):
+            rs_kwargs.update(
+                {
+                    "bracket": bracket,
+                    "x0": bracket[0] + 1e-3,
+                }
+            )
+            res = root_scalar(**rs_kwargs)
+            return res
+
+        BRACKET_END = 1e10
+        if not hard_case:
+            bracket_start = 0.0 if pos_definite else -min_eigval - 1e-3
+            bracket = (bracket_start, BRACKET_END)
+            res = root_search(bracket)
+            assert res.converged
+            return finalize_step(res.root)
+
+        # Hard case.
+        # First we try the bracket (-b1, ∞)
+        bracket = (-min_eigval, BRACKET_END)
+        res = root_search(bracket)
+        if res.converged:
+            return finalize_step(res.root)
+
+        # Now we would try the bracket (-b2, -b1). The resulting step should have
+        # a suitable length, but the (shifted) Hessian would have an incorrect
+        # eigenvalue spectrum (not positive definite). To solve this we use a
+        # different formula to calculate the step.
+        without_first = gradient_trans[1:] / (eigvals[1:] - min_eigval)
+        tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
+        step_trans = [tau] + -without_first.tolist()
+        step = eigvecs.dot(step_trans)
+        return step
+
+    @staticmethod
+    def quadratic_model(gradient, hessian, step):
+        return step.dot(gradient) + 0.5 * step.dot(hessian).dot(step)
+
+    @staticmethod
+    def rfo_model(gradient, hessian, step):
+        return HessianOptimizer.quadratic_model(gradient, hessian, step) / (
+            1 + step.dot(step)
+        )
+
+    def get_step_func(self, eigvals, gradient, grad_rms_thresh=1e-2):
+        positive_definite = (eigvals < 0).sum() == 0
+        gradient_small = rms(gradient) < grad_rms_thresh
+
+        if self.adapt_step_func and gradient_small and positive_definite:
+            return self.get_newton_step_on_trust, self.quadratic_model
+        # RFO fallback
+        else:
+            return self.get_rs_step, self.rfo_model

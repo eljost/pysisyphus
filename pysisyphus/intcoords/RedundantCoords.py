@@ -3,7 +3,7 @@
 # [3] https://doi.org/10.1016/0009-2614(95)00646-L lindh model hessian
 # [4] 10.1002/(SICI)1096-987X(19990730)20:10<1067::AID-JCC9>3.0.CO;2-V
 #     Handling of corner cases
-# [5] https://doi.org/10.1063/1.462844
+# [5] https://doi.org/10.1063/1.462844 , Pulay 1992
 
 import math
 import itertools as it
@@ -11,6 +11,7 @@ import logging
 
 import numpy as np
 
+from pysisyphus.linalg import svd_inv
 from pysisyphus.intcoords import Stretch, Torsion
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
@@ -37,7 +38,9 @@ class RedundantCoords:
         lb_min_deg=175.0,
         weighted=False,
         min_weight=0.3,
-        rcond=1e-8,
+        # Corresponds to a threshold of 1e-7 for eigenvalues of G, as proposed by
+        # Pulay in [5].
+        svd_inv_thresh=3.16e-4,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -52,7 +55,7 @@ class RedundantCoords:
         self.weighted = weighted
         self.min_weight = float(min_weight)
         assert self.min_weight > 0.0, "min_weight must be a positive rational!"
-        self.rcond = rcond
+        self.svd_inv_thresh = svd_inv_thresh
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -77,6 +80,7 @@ class RedundantCoords:
             # [f"{w:.2f}: {1-np.log(w):.4f}" for w in np.linspace(0.3, 1, 25)]
             self.bond_factor = -math.log(self.min_weight) + 1
         self.log(f"Using a factor of {self.bond_factor:.6f} for bond detection.")
+        self.log(f"Using svd_inv_thresh={self.svd_inv_thresh:.4e} for inversions.")
 
         # Set up primitive coordinate indices
         if typed_prims is None:
@@ -93,10 +97,15 @@ class RedundantCoords:
                 bend_min_deg=self.bend_min_deg,
                 dihed_max_deg=self.dihed_max_deg,
                 lb_min_deg=self.lb_min_deg,
+                check_bends=self.check_bends,
             )
             self.log(
                 f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
             )
+            if len(valid_typed_prims) != len(typed_prims):
+                self.log("Invalid primitives:")
+                for i, invalid_prim in enumerate(set(typed_prims) - set(valid_typed_prims)):
+                    self.log(f"\t{i:02d}: {invalid_prim}")
             self.typed_prims = valid_typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
 
@@ -217,34 +226,33 @@ class RedundantCoords:
         """Wilson B-Matrix"""
         return self.B_prim
 
-    def pinv(self, array, rcond=None):
-        if rcond is None:
-            rcond = self.rcond
-        return np.linalg.pinv(array, rcond=rcond)
+    def inv_B(self, B):
+        return B.T.dot(svd_inv(B.dot(B.T), thresh=self.svd_inv_thresh, hermitian=True))
+        # return B.T.dot(self.pinv(B.dot(B.T)))
+
+    def inv_Bt(self, B):
+        return svd_inv(B.dot(B.T), thresh=self.svd_inv_thresh, hermitian=True).dot(B)
+        # return self.pinv(B.dot(B.T)).dot(B)
 
     @property
     def Bt_inv_prim(self):
         """Transposed generalized inverse of the primitive Wilson B-Matrix."""
-        B = self.B_prim
-        return self.pinv(B.dot(B.T)).dot(B)
+        return self.inv_Bt(self.B_prim)
 
     @property
     def Bt_inv(self):
         """Transposed generalized inverse of the Wilson B-Matrix."""
-        B = self.B
-        return self.pinv(B.dot(B.T)).dot(B)
+        return self.inv_Bt(self.B)
 
     @property
     def B_inv_prim(self):
         """Generalized inverse of the primitive Wilson B-Matrix."""
-        B = self.B_prim
-        return B.T.dot(self.pinv(B.dot(B.T)))
+        return self.inv_B(self.B_prim)
 
     @property
     def B_inv(self):
         """Generalized inverse of the Wilson B-Matrix."""
-        B = self.B
-        return B.T.dot(self.pinv(B.dot(B.T)))
+        return self.inv_B(self.B)
 
     @property
     def P(self):
@@ -268,7 +276,7 @@ class RedundantCoords:
         for primitive, int_grad_item in zip(self.primitives, int_gradient):
             # Contract with gradient
             val = np.rad2deg(primitive.calculate(coords3d))
-            self.log(f"K, {primitive}={val:.2f}°")
+            # self.log(f"K, {primitive}={val:.2f}°")
             # The generated code (d2q_d) seems unstable for these values...
             if isinstance(primitive, Torsion) and ((abs(val) < 1) or (abs(val) > 179)):
                 self.log(f"Skipped 2nd derivative of {primitive} with val={val:.2f}°")
@@ -397,10 +405,9 @@ class RedundantCoords:
             int_step,
             self.coords3d.flatten(),
             self.prim_coords,
-            self.B_prim,
+            self.Bt_inv_prim,
             self.primitives,
             check_dihedrals=self.rebuild,
-            rcond=self.rcond,
             logger=self.logger,
         )
         # Update coordinates

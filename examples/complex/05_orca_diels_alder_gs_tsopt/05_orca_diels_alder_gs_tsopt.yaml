@@ -3,10 +3,11 @@ preopt:
 cos:
  type: gs
  max_nodes: 10
+ climb: True
 opt:
  type: string
  align: False
- stop_in_when_full: 0
+ stop_in_when_full: 5
 tsopt:
  type: rsirfo
  max_cycles: 75
@@ -19,8 +20,9 @@ calc:
  mult: 1
  pal: 4
  mem: 1000
-xyz: diels_alder.trj
-coord_type: dlc
+geom:
+ type: dlc
+ fn: diels_alder.trj
 assert:
  opt.is_converged: True
  opt.cur_cycle: 10

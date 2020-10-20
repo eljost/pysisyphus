@@ -2,6 +2,7 @@ import numpy as np
 from scipy.interpolate import splprep, splev
 
 from pysisyphus.constants import AU2KJPERMOL
+from pysisyphus.intcoords.exceptions import DifferentCoordLengthsException, DifferentPrimitivesException
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
@@ -92,10 +93,29 @@ class GrowingString(GrowingChainOfStates):
 
         return param_density
 
+    def reset_geometries(self, ref_geometry):
+        ref_typed_prims = ref_geometry.internal.typed_prims
+        self.log(f"Resetting image primitives. Got {len(ref_typed_prims)} typed primitives.")
+        for i in range(3):
+            self.log(f"\tMicro cycle {i:d}")
+            intersect = set(self.images[0].internal.typed_prims)
+            for j, image in enumerate(self.images):
+                image.reset_coords(ref_typed_prims)
+                new_typed_prims = set(image.internal.typed_prims)
+                self.log(f"\tImage {j:02d} now has {len(new_typed_prims)} typed primitives.")
+                intersect = intersect & new_typed_prims
+
+            if intersect == set(ref_typed_prims):
+                ref_geometry.reset_coords(intersect)
+                break
+            ref_typed_prims = list(intersect)
+        else:
+            raise Exception("Too many reset cycles!")
+
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
         the center of the string."""
-        new_img = self.images[ref_index].copy(coord_kwargs={"check_bends": False})
+        new_img = self.images[ref_index].copy(coord_kwargs={"check_bends": True,})
 
         if ref_index <= self.lf_ind:
             tangent_ind = ref_index + 1
@@ -114,7 +134,11 @@ class GrowingString(GrowingChainOfStates):
         # of new_img.
         # Formulated the other way around the same expression can be used for
         # all coord types.
-        distance = -(new_img - tangent_img)
+        try:
+            distance = -(new_img - tangent_img)
+        except (DifferentCoordLengthsException, DifferentPrimitivesException):
+            self.reset_geometries(new_img)
+            distance = -(new_img - tangent_img)
 
         # The desired step(_length) for the new image be can be easily determined
         # from a simple rule of proportion by relating the actual distance between
@@ -307,7 +331,7 @@ class GrowingString(GrowingChainOfStates):
 
         # Converge exact mode at climbing image if requested. Use the upwinding
         # tangent as guess.
-        if self.climb_lanczos and (i in self.get_climbing_indices()):
+        if self.started_climbing_lanczos and (i in self.get_climbing_indices()):
             # tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=tangent)
             # By using guess=None the previous Lanczos will automatically be
             # used as guess.
@@ -405,6 +429,8 @@ class GrowingString(GrowingChainOfStates):
             self.reparam_in = self.reparam_every_full if self.fully_grown \
                               else self.reparam_every
             reparametrized = True
+            with open("reparametrized.trj", "w") as handle:
+                handle.write(self.as_xyz())
 
         return reparametrized
 

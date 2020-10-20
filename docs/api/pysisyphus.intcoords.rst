@@ -28,6 +28,30 @@ pysisyphus.intcoords.LinearBend module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.LinearDisplacement module
+----------------------------------------------
+
+.. automodule:: pysisyphus.intcoords.LinearDisplacement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.OutOfPlane module
+--------------------------------------
+
+.. automodule:: pysisyphus.intcoords.OutOfPlane
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.PrimTypes module
+-------------------------------------
+
+.. automodule:: pysisyphus.intcoords.PrimTypes
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.intcoords.Primitive module
 -------------------------------------
 
@@ -76,10 +100,18 @@ pysisyphus.intcoords.derivatives module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.intcoords.findbonds module
--------------------------------------
+pysisyphus.intcoords.eval module
+--------------------------------
 
-.. automodule:: pysisyphus.intcoords.findbonds
+.. automodule:: pysisyphus.intcoords.eval
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.exceptions module
+--------------------------------------
+
+.. automodule:: pysisyphus.intcoords.exceptions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -88,14 +120,6 @@ pysisyphus.intcoords.findiffs module
 ------------------------------------
 
 .. automodule:: pysisyphus.intcoords.findiffs
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.intcoords.fragments module
--------------------------------------
-
-.. automodule:: pysisyphus.intcoords.fragments
    :members:
    :undoc-members:
    :show-inheritance:
@@ -116,6 +140,53 @@ pysisyphus.intcoords.helpers module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.lindisp module
+-----------------------------------
+
+.. automodule:: pysisyphus.intcoords.lindisp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.mp\_derivatives module
+-------------------------------------------
+
+.. automodule:: pysisyphus.intcoords.mp_derivatives
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.setup module
+---------------------------------
+
+.. automodule:: pysisyphus.intcoords.setup
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.setup\_fail module
+---------------------------------------
+
+.. automodule:: pysisyphus.intcoords.setup_fail
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.update module
+----------------------------------
+
+.. automodule:: pysisyphus.intcoords.update
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.valid module
+---------------------------------
+
+.. automodule:: pysisyphus.intcoords.valid
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

@@ -13,7 +13,7 @@ irc:
                              # with non-vanishing gradient
 endopt:
  #fragments: False           # Optimize potential fragments separately
- coord_type: redund_v2
+ coord_type: redund
  trust_max: 0.1
  thresh: gau_tight
 calc:
@@ -22,7 +22,9 @@ calc:
  pal: 4
  charge: 0
  mult: 1
-xyz: ts_opt.xyz
+geom:
+ type: cart
+ fn: ts_opt.xyz
 assert:
  irc.forward_is_converged: True
  irc.backward_is_converged: True

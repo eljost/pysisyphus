@@ -167,3 +167,8 @@ Example runmopac.sh
     module load mopac
 
     MOPAC2016.exe $1
+
+Verifying Installation
+==================================
+By executing :code:`pytest -v --pyargs pysisyphus.tests` a series of quick tests can be
+executed, verifing successful calculator setup.

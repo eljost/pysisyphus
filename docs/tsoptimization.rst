@@ -74,16 +74,16 @@ RS-P-RFO, TRIM).
      pal: 4
      charge: 0
      mult: 1
-    xyz: shaked.geom_000.xyz
-    add_prims: [[24, 20], ]         # If using internal coordinates ALWAYS check the coordinates
+    geom:
+     type: redund
+     fn: shaked.geom_000.xyz
+     add_prims: [[24, 20], ]        # If using internal coordinates ALWAYS check the coordinates
                                     # that pysisyphus generates (pysistrj [xyz] --internals). If
                                     # some important (reaction) coordinates appears to be missing
                                     # define them manually. In this example
                                     # we add a bond. If additional internal coordinates can
                                     # derived from the added primitives pysisyphus will do
                                     # it.
-
-    coord_type: redund              # Optimization in internal coordinates.
 
 Second-derivative-free TS optimization can be done using the `Dimer` method. Attached
 you can find a sample input.
