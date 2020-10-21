@@ -17,7 +17,7 @@ class StringOptimizer(Optimizer):
 
     def __init__(self, geometry, max_step=0.1, stop_in_when_full=-1,
                  keep_last=10, lbfgs_when_full=True, gamma_mult=False,
-                 double_damp=False, scale_step="global", **kwargs):
+                 double_damp=True, scale_step="global", **kwargs):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         assert self.is_cos, \
