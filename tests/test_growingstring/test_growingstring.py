@@ -80,7 +80,13 @@ def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
     assert tsopt.cur_cycle == tsopt_ref_cycle
 
 
-def test_mullerbrown_string():
+@pytest.mark.parametrize(
+    "double_damp, ref_cycle", [
+        (False, 61),
+        (True, 73),
+    ]
+)
+def test_mullerbrown_string(double_damp, ref_cycle):
     calc = MullerBrownPot()
     geoms = calc.get_path(num=17)
 
@@ -98,6 +104,7 @@ def test_mullerbrown_string():
         "max_step": 0.03,
         "max_cycles": 100,
         "scale_step": "per_image",
+        "double_damp": double_damp,
     }
     opt = StringOptimizer(gs, **opt_kwargs)
     opt.run()
@@ -105,10 +112,16 @@ def test_mullerbrown_string():
     # calc.anim_opt(opt, show=True)
 
     assert opt.is_converged
-    assert opt.cur_cycle == 61
+    assert opt.cur_cycle == ref_cycle
 
 
-def test_energy_reparametrization():
+@pytest.mark.parametrize(
+    "double_damp, ref_cycle", [
+        (False, 77),
+        (True, 48),
+    ]
+)
+def test_energy_reparametrization(double_damp, ref_cycle):
     calc = MullerBrownPot()
     geoms = calc.get_path(num=17)
 
@@ -127,6 +140,7 @@ def test_energy_reparametrization():
         "max_cycles": 200,
         "rms_force": 7.5,
         "rms_force_only": True,
+        "double_damp": double_damp
     }
     opt = StringOptimizer(gs, **opt_kwargs)
     opt.run()
@@ -134,7 +148,7 @@ def test_energy_reparametrization():
     # calc.anim_opt(opt, show=True, energy_profile=True)
 
     assert opt.is_converged
-    assert opt.cur_cycle == 77
+    assert opt.cur_cycle == ref_cycle
 
 
 def test_conjugate_gradient():
