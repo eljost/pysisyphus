@@ -70,6 +70,18 @@ below.
      #  adapat: Use adaptive algorithm. Please see the pysisyphus paper for a discussion
      #          at the end of section 3.
      ovlp_with: adapt
+     # Thresholds controlling the update of the reference cycle.
+     # The first number specifies the minimum overlap that must be exceeded, for an update
+     # of the reference cycle. Assuming a value of 0.5 (50 %), the reference cycle update
+     # is skipped, if the overlaps between the current states and the reference state don't
+     # exceed 50 %.
+     # The last two numbers define an interval for the ratio between the second highest
+     # overlap, and the highest overlap. If the ratio is small, e.g., below 0.3, then both
+     # states are sufficiently different, and no reference cycle update is needed. If the ratio
+     # is bigger (> 0.6), then the states are quite similar, and an update is currently not
+     # advised.
+     # Possible values [three positive floats between 0. and 1.]
+     adapt_args: [0.5, 0.3, 0.6]
      # Explicitly calculate the AO-overlap matrix in a double molecule calculation. Only
      # supported by Turbomole and Gaussian calculators. If False, the approximate AO
      # overlap matrix is reconstructed from inverting the MO-coefficient matrix.
@@ -80,16 +92,37 @@ below.
      #
      # Possible values: positive float
      conf_thresh: 0.0001
+     #
+     # nto/natural transition orbital specific
+     #
      # Number of NTOs to consider in the overlap calculation. Only relevant for 'nto'
      # and 'nto_org' ovlp_types.
      #
      # Possible values: positive integer
      use_ntos: 4
+     # 
+     # wfoverlap/wavefunction overlaps specific
+     # 
      # Number of core orbitals to neglect in a wfoverlap calculation. Only relevant
      # for the 'wf' ovlp_type. Must be >= 0.
      #
      # Possible values: positive integer
      ncore: 0
+     #
+     # tden/transition density matrix specific
+     #
+     # Controls which set of MO coefficients (at current cycle, or the reference cycle)
+     # is used to recover the AO overlap matrix.
+     #
+     # Possible values: (ref, cur")
+     mos_ref: cur
+     # Controls whether the set of MO coefficents that was NOT used for recovering the AO
+     # overlap matrix is re-normalized, using the recovered AO overlap matrix. If set to
+     # True and mos_ref = cur, then the MO coefficients at the reference cycle will be re-
+     # normalized, and vice versa.
+     #
+     # Possible values: (True, False)
+     mos_renorm: False
 
 Please also see :ref:`Link <es-plotting-label>` for possible plotting options for ES tracking
 and optimizations.
