@@ -114,7 +114,7 @@ below.
      # Controls which set of MO coefficients (at current cycle, or the reference cycle)
      # is used to recover the AO overlap matrix.
      #
-     # Possible values: (ref, cur")
+     # Possible values: (ref, cur)
      mos_ref: cur
      # Controls whether the set of MO coefficents that was NOT used for recovering the AO
      # overlap matrix is re-normalized, using the recovered AO overlap matrix. If set to
@@ -124,5 +124,9 @@ below.
      # Possible values: (True, False)
      mos_renorm: False
 
-Please also see :ref:`Link <es-plotting-label>` for possible plotting options for ES tracking
-and optimizations.
+By brief reasoning it would seem that :code:`mos_ref: ref` and :code:`mos_renorm: True` are
+more sensible choices, which is possibly true. Right now the present defaults are kept for
+legacy reasons, and I'll update them after testing out the alternatives.
+
+Please also see :ref:`Example - Excited State Tracking <Plotting ES optimizations>`
+for possible visualizations when optimizing ES.
