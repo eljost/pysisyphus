@@ -29,15 +29,15 @@ Only minor configuration is required for a successful pysisyphus installation wi
     git submodule init nix/nixwithchemistry
     git submodule update
     # Adapt the configuration file with the $EDITOR of your choice (nano/vim/kate/gedit...)
-    $EDITOR nix/nixwithchemistry/config.nix
+    edit nix/nixwithchemistry/config.nix
 
 Please adapt the following lines in :code:`config.nix`:
-    - :code:`gaussian`, :code:`mrcc`, :code:`orca` and :code:`turbomole` should be set to :code:`false` if no license and source/binary archive is available
-    - Adapat the available CPU extensions on your machine (you can list them with :code:`grep "flags" /proc/cpuinfo`)
+    - The values for proprietary codes, e.g. :code:`gaussian`, :code:`mrcc`, :code:`orca`, :code:`turbomole` ..., should be set to :code:`false` if no license and source/binary archive is available
+    - Adapt the available CPU extensions on your machine (you can list them with :code:`grep "flags" /proc/cpuinfo`)
     - If you are not using CUDA enabled hardware, set :code:`cuda = false;`.
     - :code:`network` should be adapted if you intend to run pysisyphus on a HPC cluster. Possible values are: :code:`network = "ethernet"`, :code:`network = "omnipath"` or :code:`network = "infiniband"`. If you are running pysisyphus on local machine keep :code:`network = "ethernet"`.
-    - :code:`mpi` is set to :code:`"mvapich2"` by default. There  is usually no reason to change this but you could also use :code:`"openmpi"`. This does **not** mean that the selected MPI version will be used in all programs. MRCC requires IntelMPI and GAMESS-US OpenMPI, no matter what you select here
-    - :code:`blas = mkl` should be updated to :code:`blas = "openblas"` if you don't have an Intel CPU.
+    - :code:`mpi` is set to :code:`"mvapich2"` by default. There  is usually no reason to change this but you could also use :code:`"openmpi"`. This does **not** mean that the selected MPI version will be used in all programs. MRCC requires IntelMPI and GAMESS-US OpenMPI, no matter what you select here.
+    - :code:`blas = "mkl"` should be updated to :code:`blas = "openblas"` if you don't have an Intel CPU.
 
 
 Installation
