@@ -178,7 +178,7 @@ def test_baker_ts_dimer(name, geom, charge, mult, ref_energy):
 @pytest.mark.parametrize(
     "name, geom, charge, mult, ref_energy",
     [_ for _ in get_baker_ts_geoms_flat()
-     if _[0][:2] not in ("10", "11", "15", "17", "20", "18", "05")
+     if _[0][:2] not in ("10", "11", "15")
     ]
 )
 def test_baker_dimer_new(name, geom, charge, mult, ref_energy):
