@@ -115,9 +115,13 @@ class Dimer(Calculator):
             self.log(msg)
         self.N_init = None
 
-        if seed is not None:
-            np.random.seed(seed)
-            self.log(f"Initialized RNG using seed={seed}")
+        if seed is None:
+            # 2**32 - 1
+            seed = np.random.randint(4294967295)
+        np.random.seed(seed)
+        msg = f"Using seed {seed} to initialize the random number generator.\n"
+        print(msg)
+        self.log(msg)
 
     @property
     def N(self):
