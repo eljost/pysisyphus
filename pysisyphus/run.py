@@ -1570,6 +1570,10 @@ def do_clean(force=False):
         "mdp_ee_init_*.trj",
         "aligned.geom*xyz",
         "cos_hei.trj",
+        # Dimer
+        "calculator_*.N",
+        "calculator_*.N.trj",
+        "dimer.log",
     )
     to_rm_paths = list()
     for glob in rm_globs:
