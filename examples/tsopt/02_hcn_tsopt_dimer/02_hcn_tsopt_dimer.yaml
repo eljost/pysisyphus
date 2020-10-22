@@ -10,7 +10,6 @@ calc:
   pal: 2
   charge: 0
   mult: 1
- N_raw:
  length: 0.0189
  rotation_max_cycles: 15
  rotation_method: fourier
@@ -18,6 +17,7 @@ calc:
  rotation_tol: 1
  rotation_max_element: 0.001
  rotation_interpolate: True
+ #bias_rotation: True
  seed: 20182503
 geom:
  type: cart

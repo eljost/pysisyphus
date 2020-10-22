@@ -117,6 +117,7 @@ class Dimer(Calculator):
 
         if seed is not None:
             np.random.seed(seed)
+            self.log(f"Initialized RNG using seed={seed}")
 
     @property
     def N(self):

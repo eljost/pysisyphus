@@ -4,28 +4,31 @@ Transition State Optimization
 To cite Frank Jensen: "Locating transition states
 (TSs) is black magic, especially in internal coordinates" and I can say this is true.
 The most promising TS optimizers in `pysisyphus` employ second derivative information
-(hessian) but locating TS is also possible using only first derivative information
-by means of the `Dimer` method.
+(hessian) but locating TS is also possible using only first derivatives by means of the
+`dimer method` (DM).
 
-TS optimizations should preferably be done in internal coordinates (`coord_type: redund`).
-Before starting the actual TS search one should **always** check the internal coordinates
-that pysisyphus set up by running `pysistrj [xyz] --internals`, with `[xyz]` corresponding
-to the TS guess for the optimization. **Check carefully** if all supposed reaction coordinates
-are present. **If they are missing** define them manually with the `add_prims` key
-in the YAML input.
+TS optimizations should preferably be carried out in internal coordinates (`type: redund|dlc`).
+Before starting the actual TS search, one should **always** check the internal coordinates
+that pysisyphus sets up, by executing `pysistrj [xyz] --internals`, with `[xyz]` corresponding
+to the geometry you plan to use for the optimization. **Check carefully** if all supposed
+reaction coordinates are present. **If they are missing** define them manually with the
+`add_prims` key in the YAML input.
 
-Calculation of the exact hessian can be avoided by using `type: dimer` or by using
+Calculation of the exact hessian can be avoided by using the DM by using
 `rx_coords: [list of primitives]` in combination with `hessian_init: fischer|lindh|swart|simple`.
-With the latter options a diagonal model hessian is set up and the signs of the entries
-corresponding to the reaction coordinates are inverted.
+By using both options, a diagonal model hessian is calcualted and modified for use in
+a TS optimization.
 
-Right now the `Dimer` is only tested with `coord_type: cart`.
+The DM can be used with a powerful preconditioned LBFGS optimizer (:code:`type: lbfgs`).
 
-YAML example(s)
-===============
+Hessian Based TS Optimization
+=============================
+
+YAML example
+------------
 
 Below you can find an example YAML-input including the most important options
-that the user may want to modify for the hessian-based optimizers (RS-I-RFO,
+that the user may want to modify for the Hessian-based optimizers (RS-I-RFO,
 RS-P-RFO, TRIM).
 
 .. code:: yaml
@@ -53,7 +56,7 @@ RS-P-RFO, TRIM).
                                     # TS optimizations.
 
      #hessian_ref: [path]           # Expects a path to a precalculated hessian at any
-                                    # level of theory. Mode to maximize along is selected
+                                    # level of theory. The emode to maximize along is selected
                                     # by highest overlap with imaginary mode from the reference
                                     # hessian.
 
@@ -92,16 +95,64 @@ you can find a sample input.
 Further examples for TS optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/tsopt>`_.
 
+
+Dimer Method
+============
+`pysisyphus` implements the dimer method (DM) as calculator, wrapping another calculator
+for the actual energy and gradient calculations. All DM configurations have to be done
+in the :code:`calc:` section. The best results are obtained by optimizing the DM with
+LBFGS in connection with a preconditioner (PLBFGS), estimated from the Lindh model Hessian.
+in constrast to the TS optimizers mentioned above, PBLFGS is configured in the :code:`opt`
+section of the YAML input. DM related information is logged to `dimer.log`. The current
+DM orientation is saved in files with extension `.N`. Animated `.trj` files of the DM
+orientation are saved to `.N.trj`.
+
+YAML example
+------------
+Below you can find an example for the DM, applied to the isomerization of HCN.
+Default values are commented out. See `examples/tsopt/02_hcn_tsopt_dimer <https://github.com/eljost/pysisyphus/tree/master/examples/tsopt/02_hcn_tsopt_dimer>`_ for the full example.
+
+
+.. code:: yaml
+
+    opt:
+     type: plbfgs    # Preconditioned LBFGS
+     thresh: baker   # Baker threshold, comparable to the Gaussian defaults
+     do_hess: True   # Calculate Hessian at the end. May not be applicable to systems
+                     # where Hessian calculation is infeasible.
+    calc:
+     type: dimer     # Dimer calculator wrapping PySCF at HF/3-21G level of theory
+     calc:
+      type: pyscf
+      basis: 321g
+      pal: 2
+      charge: 0
+      mult: 1
+     #N_raw: [file]                # Path to a file containing an initial dimer orientation
+     #length: 0.0189               # Separation of dimer images from common midpoint
+     #rotation_max_cycles: 15      # Maximum number of rotations
+     #rotation_method: fourier
+     #rotation_thresh: 1e-4        # rms(rotationa force) threshold
+     #rotation_tol: 1              # Rotation tolerance in degree. If a proposed trial
+                                   # rotation angle is below the tolerance the rotation
+                                   # will be skipped.
+     #rotation_max_element: 0.001  # Max. step element for "rotation_method: direct"
+     #rotation_interpolate: True   # Interpolate force on image after rotation
+     #seed: 20182503                # Seed for the RNG for reproducability reasons.
+    geom:
+     type: cart
+     fn: 01_hcn.xyz
+
 General advice for TS optimizations
 ===================================
 
-- Use as many exact hessians as your computational budget allows it (`hessian_recalc: [n]`)
+- Use as many exact hessians as your computational budget allows (`hessian_recalc: [n]`)
 - Use tight convergence settings for your SCF. In contrast to codes like ORCA `pysisyphus`
-  does not do this automatically
-- Grid-based methods (DFT, some RI-types) may need finer grids to reduce numerical noice
+  does not enforces this automatically
+- Grid-based methods (DFT, some RI-types) may need finer grids to reduce numerical noise
 - Try to preoptimize the TS using a cheap method (xtb) that allows `hessian_recalc: 1`
-- Maybe decrease current & allowed trust radius (`trust_radius: 0.1` and `trust_max: 0.3|0.5`)
-- Check for a correct coordinate setup
+- Decrease current & allowed trust radius (`trust_radius: 0.1` and `trust_max: 0.3|0.5`)
+- Check for orrect coordinate setup
 
 TSHessianOptimizer base class
 =============================
