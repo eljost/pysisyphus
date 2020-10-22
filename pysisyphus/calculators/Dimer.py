@@ -479,7 +479,8 @@ class Dimer(Calculator):
         self.log(msg )
         self.log("\tN after rotation:\n\t" + str(self.N))
         self.log()
-        rot_deg = np.rad2deg(np.arccos(N_first.dot(self.N)))
+        # Restrict to interval [-1,1] where arccos is defined
+        rot_deg = np.rad2deg(np.arccos(max(min(N_first.dot(self.N), 1.0), -1.0)))
         self.log(f"\tRotated by {rot_deg:.1f}° w.r.t. the orientation "
                   "before rotation(s).")
 
