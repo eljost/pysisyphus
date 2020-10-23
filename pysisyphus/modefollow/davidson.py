@@ -37,8 +37,8 @@ def davidson(
     if hessian_precon is not None:
         print("Using supplied Hessians as preconditioner.")
 
-    B_list = list()
-    S_list = list()
+    B_full = np.zeros((len(q), max_cycles))
+    S_full = np.zeros_like(B_full)
     msqrt = np.sqrt(geom.masses_rep)
 
     # Projector to remove translation and rotation
@@ -50,34 +50,32 @@ def davidson(
     for i in range(max_cycles):
         print(f"Cycle {i:02d}")
         b = q.l_mw
-        B_list.append(b)
-        B = np.stack(B_list, axis=1)
+        B_full[:, i] = b
 
         # Overlaps of basis vectors in B
-        # B_ovlp = np.einsum("ij,kj->ik", B_list, B_list)
-        # print("Basis vector overlaps")
-        # print(B_ovlp)
+        # B_ovlp = np.einsum("ij,kj->ik", B, B)
 
         # Estimate action of Hessian on basis vector by finite differences
-
+        #
         # Get step size in mass-weighted coordinates that results
         # in the desired 'trial_step_size' in not-mass-weighted coordinates.
         mw_step_size = q.mw_norm_for_norm(trial_step_size)
         # Actual step in non-mass-weighted coordinates
         step = trial_step_size * q.l
-        s = fin_diff(geom, step, mw_step_size)
-        S_list.append(s)
-        S = np.stack(S_list, axis=1)
+        S_full[:, i] = fin_diff(geom, step, mw_step_size)
+
+        # Views on columns that are actually set
+        B = B_full[:, : i + 1]
+        S = S_full[:, : i + 1]
 
         # Calculate and symmetrize approximate hessian
-        Hm_ = B.T.dot(S)
-        Hm_ = (Hm_ + Hm_.T) / 2
-
-        # Diagonalization
-        v, w = np.linalg.eigh(Hm_)
+        Hm = B.T.dot(S)
+        Hm = (Hm + Hm.T) / 2
+        # Diagonalize small Hessian
+        w, v = np.linalg.eigh(Hm)
 
         # i-th approximation to exact eigenvector
-        approx_modes = (w * B[:, :, None]).sum(axis=1).T
+        approx_modes = (v * B[:, :, None]).sum(axis=1).T
 
         # Calculate overlaps between previous root and the new approximate
         # normal modes for root following.
@@ -87,7 +85,7 @@ def davidson(
 
         residues = list()
         for s in range(i + 1):
-            residues.append((w[:, s] * (S - v[s] * B)).sum(axis=1))
+            residues.append((v[:, s] * (S - w[s] * B)).sum(axis=1))
         residues = np.array(residues)
 
         b_prev = approx_modes[mode_ind]
@@ -96,7 +94,7 @@ def davidson(
         if hessian_precon is not None:
             # Construct X
             X = np.linalg.inv(
-                hessian_precon - v[mode_ind] * np.eye(hessian_precon.shape[0])
+                hessian_precon - w[mode_ind] * np.eye(hessian_precon.shape[0])
             )
             b = X.dot(residues[mode_ind])
         else:
@@ -114,7 +112,7 @@ def davidson(
         q = NormalMode(b[:, -1] / msqrt, geom.masses_rep)
 
         # Calculate wavenumbers
-        nus = eigval_to_wavenumber(v)
+        nus = eigval_to_wavenumber(w)
 
         # Check convergence criteria
         max_res = np.abs(residues).max(axis=1)
