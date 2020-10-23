@@ -27,7 +27,7 @@ DavidsonResult = namedtuple(
 
 BlockDavidsonResult = namedtuple(
     "BlockDavidsonResult",
-    "cur_cycle nus mode_inds",
+    "cur_cycle converged final_modes qs nus mode_inds res_rms",
 )
 
 
@@ -244,26 +244,31 @@ def block_davidson(
 
         # Print progress
         print(f"Cycle {i:02d}")
-        print(f"\tFollowing mode(s): {mode_inds}")
-        print("\t #  | ṽ / cm⁻¹|  rms       |   max")
+        print("\t #  |    ṽ / cm⁻¹|   rms(r)   |   max(|r|)")
+        print("\t------------------------------------------")
         converged = res_rms < res_rms_thresh
         for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
             sel_str = "*" if (j in mode_inds) else " "
             conv_str = "✓" if converged[j] else ""
             print(
-                f"\t{j:02d}{sel_str} | {nu:> 16.2f} | {rms:.8f} | {mr:.8f} {conv_str}"
+                f"\t{j:02d}{sel_str} | {nu:> 10.2f} | {rms:.8f} | {mr:.8f} {conv_str}"
             )
         print()
 
         # Convergence is signalled using only the roots we are actually interested in
-        if all(converged[mode_inds]):
-            print("Converged!")
+        modes_converged = all(converged[mode_inds])
+        if modes_converged:
+            print(f"Davidson procedure converged in {i+1} cycles!")
             break
 
     result = BlockDavidsonResult(
         cur_cycle=i,
+        converged=modes_converged,
+        final_modes=guess_modes,
+        qs=approx_modes,
         nus=nus,
         mode_inds=mode_inds,
+        res_rms=res_rms,
     )
 
     return result
