@@ -24,6 +24,9 @@ class NormalMode:
         self.masses = masses
         assert self.l.shape == self.masses.shape
 
+    def __len__(self):
+        return self.l.size
+
     @property
     def red_mass(self):
         return 1 / np.sum(np.square(self.l_mw) / self.masses)
