@@ -170,11 +170,6 @@ def block_davidson(
         from_ = i * num
         to_ = (i + 1) * num
         B_full[:, from_:to_] = b
-        # Orthogonalize new mode against current basis vectors
-        B_full, _ = np.linalg.qr(B_full)
-
-        # Overlaps of basis vectors in B
-        # B_ovlp = np.einsum("ij,kj->ik", B, B)
 
         # Estimate action of Hessian by finite differences.
         for j in range(num):
@@ -184,11 +179,11 @@ def block_davidson(
             mw_step_size = mode.mw_norm_for_norm(trial_step_size)
             # Actual step in non-mass-weighted coordinates
             step = trial_step_size * mode.l
-            S_full[:, from_+j] = fin_diff(geom, step, mw_step_size)
+            S_full[:, from_ + j] = fin_diff(geom, step, mw_step_size)
 
         # Views on columns that are actually set
-        B = B_full[:, : to_]
-        S = S_full[:, : to_]
+        B = B_full[:, :to_]
+        S = S_full[:, :to_]
 
         # Calculate and symmetrize approximate hessian
         Hm = B.T.dot(S)
@@ -200,8 +195,9 @@ def block_davidson(
         approx_modes = (v * B[:, :, None]).sum(axis=1).T
         # Calculate overlaps between previous root and the new approximate
         # normal modes for root following.
-        overlaps = np.einsum("ij,ji->i", approx_modes, b_prev)
-        mode_inds = np.abs(overlaps).argsort()[-num:]
+        # 2D overlap array. approx_modes in row, b_prev in columns.
+        overlaps = np.einsum("ij,jk->ik", approx_modes, b_prev)
+        mode_inds = np.abs(overlaps).argmax(axis=0)
         print(f"\tFollowing mode(s): {mode_inds}")
         b_prev = approx_modes[mode_inds].T
 
@@ -218,20 +214,16 @@ def block_davidson(
                 X = np.linalg.inv(
                     hessian_precon - w[mode_ind] * np.eye(hessian_precon.shape[0])
                 )
-                b[:,j] = X.dot(residues[mode_ind].T)
+                b[:, j] = X.dot(residues[mode_ind].T)
         else:
             b = residues[mode_inds].T
         # Project out translation and rotation from new mode guess
         b = P.dot(b)
-        b = np.linalg.qr(np.concatenate((B, b), axis=1))[0][:,-num][:, None]
+        b = np.linalg.qr(np.concatenate((B, b), axis=1))[0][:, -num:]
 
-        # import pdb; pdb.set_trace()
         # mode_guess = NormalMode(b[:, -1] / msqrt, geom.masses_rep)
         # New NormalMode from non-mass-weighted displacements
-        guess_modes = [
-            NormalMode(b_ / msqrt, geom.masses_rep)
-            for b_ in b.T
-        ]
+        guess_modes = [NormalMode(b_ / msqrt, geom.masses_rep) for b_ in b.T]
 
         # Calculate wavenumbers
         nus = eigval_to_wavenumber(w)
@@ -241,13 +233,18 @@ def block_davidson(
         res_rms = np.sqrt(np.mean(residues ** 2, axis=1))
 
         # Print progress
-        print("\t #  |      wavelength       |  rms       |   max")
+        print("\t #  | ṽ / cm⁻¹|  rms       |   max")
+        converged = res_rms < res_rms_thresh
         for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
             sel_str = "*" if (j in mode_inds) else " "
-            print(f"\t{j:02d}{sel_str} | {nu:> 16.2f} cm⁻¹ | {rms:.8f} | {mr:.8f}")
+            conv_str = "✓" if converged[j] else ""
+            print(
+                f"\t{j:02d}{sel_str} | {nu:> 16.2f} | {rms:.8f} | {mr:.8f} {conv_str}"
+            )
         print()
 
-        if all(res_rms[mode_inds] < res_rms_thresh):
+        # Convergence is signalled using only the roots we are actually interested in
+        if all(converged[mode_inds]):
             print("Converged!")
             break
 
