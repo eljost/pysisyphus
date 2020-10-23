@@ -8,6 +8,7 @@ from collections import namedtuple
 import numpy as np
 
 from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.Geometry import get_trans_rot_projector
 from pysisyphus.modefollow.NormalMode import NormalMode
 
 
@@ -15,27 +16,33 @@ def fin_diff(geom, b, step_size):
     m_sqrt = np.sqrt(geom.masses_rep)
     plus = geom.get_energy_and_forces_at(geom.coords + b)["forces"]
     minus = geom.get_energy_and_forces_at(geom.coords - b)["forces"]
-    fd = (minus - plus) / (2*step_size) / m_sqrt
+    fd = (minus - plus) / (2 * step_size) / m_sqrt
     return fd
 
 
 DavidsonResult = namedtuple(
-                    "DavidsonResult",
-                    "cur_cycle nus mode_ind",
+    "DavidsonResult",
+    "cur_cycle nus mode_ind",
 )
 
 
-def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
-             res_rms_thresh=1e-4):
-    print("Using  preconditioner from supplied hessian")
+def davidson(
+    geom,
+    q,
+    trial_step_size=0.01,
+    hessian_precon=None,
+    max_cycles=25,
+    res_rms_thresh=1e-4,
+):
+    if hessian_precon is not None:
+        print("Using supplied Hessians as preconditioner.")
+
     B_list = list()
     S_list = list()
     msqrt = np.sqrt(geom.masses_rep)
 
-    # Project out translation/rotation
-    P = np.eye(geom.cart_coords.size)
-    for vec in geom.get_trans_rot_vectors():
-        P -= np.outer(vec, vec)
+    # Projector to remove translation and rotation
+    P = get_trans_rot_projector(geom.cart_coords, geom.masses)
     l_proj = P.dot(q.l_mw) / msqrt
     q = NormalMode(l_proj, geom.masses_rep)
 
@@ -51,9 +58,9 @@ def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
         # print("Basis vector overlaps")
         # print(B_ovlp)
 
-        # Estimate s (sigma) from finite differences 
+        # Estimate action of Hessian on basis vector by finite differences
 
-        # Get step size in mass-weighted coordinates that results 
+        # Get step size in mass-weighted coordinates that results
         # in the desired 'trial_step_size' in not-mass-weighted coordinates.
         mw_step_size = q.mw_norm_for_norm(trial_step_size)
         # Actual step in non-mass-weighted coordinates
@@ -70,7 +77,7 @@ def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
         v, w = np.linalg.eigh(Hm_)
 
         # i-th approximation to exact eigenvector
-        approx_modes = (w*B[:,:,None]).sum(axis=1).T
+        approx_modes = (w * B[:, :, None]).sum(axis=1).T
 
         # Calculate overlaps between previous root and the new approximate
         # normal modes for root following.
@@ -79,10 +86,8 @@ def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
         print(f"\tFollowing mode {mode_ind}")
 
         residues = list()
-        for s in range(i+1):
-            residues.append(
-                (w[:,s] * (S-v[s]*B)).sum(axis=1)
-            )
+        for s in range(i + 1):
+            residues.append((w[:, s] * (S - v[s] * B)).sum(axis=1))
         residues = np.array(residues)
 
         b_prev = approx_modes[mode_ind]
@@ -90,7 +95,9 @@ def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
         # Construct new basis vector from residuum of selected mode
         if hessian_precon is not None:
             # Construct X
-            X = np.linalg.inv(hessian_precon - v[mode_ind] * np.eye(hessian_precon.shape[0]))
+            X = np.linalg.inv(
+                hessian_precon - v[mode_ind] * np.eye(hessian_precon.shape[0])
+            )
             b = X.dot(residues[mode_ind])
         else:
             b = residues[mode_ind]
@@ -98,20 +105,20 @@ def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
         b = P.dot(b)
         # Orthogonalize new mode against current basis vectors
         rows, cols = B.shape
-        B_ = np.zeros((rows, cols+1))
-        B_[:,:cols] = B
-        B_[:,-1] = b
+        B_ = np.zeros((rows, cols + 1))
+        B_[:, :cols] = B
+        B_[:, -1] = b
         b, _ = np.linalg.qr(B_)
 
         # New NormalMode from non-mass-weighted displacements
-        q = NormalMode(b[:,-1] /msqrt, geom.masses_rep)
+        q = NormalMode(b[:, -1] / msqrt, geom.masses_rep)
 
         # Calculate wavenumbers
         nus = eigval_to_wavenumber(v)
 
         # Check convergence criteria
         max_res = np.abs(residues).max(axis=1)
-        res_rms = np.sqrt(np.mean(residues**2, axis=1))
+        res_rms = np.sqrt(np.mean(residues ** 2, axis=1))
 
         # Print progress
         print("\t #  |      wavelength       |  rms       |   max")
@@ -125,9 +132,9 @@ def davidson(geom, q, trial_step_size=0.01, hessian_precon=None, max_cycles=25,
             break
 
     result = DavidsonResult(
-                cur_cycle=i,
-                nus=nus,
-                mode_ind=mode_ind,
+        cur_cycle=i,
+        nus=nus,
+        mode_ind=mode_ind,
     )
 
     return result
