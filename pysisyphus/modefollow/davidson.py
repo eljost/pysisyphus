@@ -35,6 +35,7 @@ def block_davidson(
     max_cycles=25,
     res_rms_thresh=1e-4,
     start_precon=5,
+    verbose=True,
 ):
     num = len(guess_modes)
     B_full = np.zeros((len(guess_modes[0]), num * max_cycles))
@@ -131,23 +132,24 @@ def block_davidson(
         max_res = np.abs(residues).max(axis=0)
         res_rms = np.sqrt(np.mean(residues ** 2, axis=0))
 
-        # Print progress
-        print(f"Cycle {i:02d}")
-        print("\t #  |    ṽ / cm⁻¹|   rms(r)   | max(|r|) ")
-        print("\t------------------------------------------")
         converged = res_rms < res_rms_thresh
-        for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
-            sel_str = "*" if (j in mode_inds) else " "
-            conv_str = "✓" if converged[j] else ""
-            print(
-                f"\t{j:02d}{sel_str} | {nu:> 10.2f} | {rms:.8f} | {mr:.8f} {conv_str}"
-            )
-        print()
+        # Print progress if requested
+        if verbose:
+            print(f"Cycle {i:02d}")
+            print("\t #  |    ṽ / cm⁻¹|   rms(r)   | max(|r|) ")
+            print("\t------------------------------------------")
+            for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
+                sel_str = "*" if (j in mode_inds) else " "
+                conv_str = "✓" if converged[j] else ""
+                print(
+                    f"\t{j:02d}{sel_str} | {nu:> 10.2f} | {rms:.8f} | {mr:.8f} {conv_str}"
+                )
+            print()
 
         # Convergence is signalled using only the roots we are actually interested in
         modes_converged = all(converged[mode_inds])
         if modes_converged:
-            print(f"Davidson procedure converged in {i+1} cycles!")
+            if verbose: print(f"Davidson procedure converged in {i+1} cycles!")
             break
 
     result = DavidsonResult(
