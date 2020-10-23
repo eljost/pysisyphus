@@ -37,7 +37,7 @@ def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
         hessian_precon = np.loadtxt(this_dir / "hessian_precon")
 
     result = geom_davidson(
-        geom, guess_modes, hessian_precon=hessian_precon, start_precon=5, verbose=True,
+        geom, guess_modes, hessian_precon=hessian_precon, start_precon=5, print_level=1,
     )
 
     nu = result.nus[result.mode_inds[0]]

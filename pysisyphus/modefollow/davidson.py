@@ -11,6 +11,7 @@ from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.Geometry import get_trans_rot_projector
 from pysisyphus.modefollow.NormalMode import NormalMode
 from pysisyphus.optimizers.hessian_updates import bfgs_update
+from pysisyphus.TablePrinter import TablePrinter
 
 
 DavidsonResult = namedtuple(
@@ -38,7 +39,7 @@ def block_davidson(
     res_rms_thresh=1e-4,
     start_precon=5,
     remove_trans_rot=True,
-    verbose=True,
+    print_level=1,
 ):
     num = len(guess_modes)
     B_full = np.zeros((len(guess_modes[0]), num * max_cycles))
@@ -52,6 +53,12 @@ def block_davidson(
     guess_modes = [
         NormalMode(P.dot(mode.l_mw) / msqrt, masses_rep) for mode in guess_modes
     ]
+
+    col_fmts = "int int int float float str".split()
+    header = ("#", "subspace size", "mode", "ṽ / cm⁻¹", "rms(r)", "Conv")
+    table = TablePrinter(header, col_fmts, width=11)
+    if print_level == 1:
+        table.print_header()
 
     b_prev = np.array([mode.l_mw for mode in guess_modes]).T
     for i in range(max_cycles):
@@ -141,7 +148,7 @@ def block_davidson(
 
         converged = res_rms < res_rms_thresh
         # Print progress if requested
-        if verbose:
+        if print_level == 2:
             print(f"Cycle {i:02d}")
             print("\t #  |    ṽ / cm⁻¹|   rms(r)   | max(|r|) ")
             print("\t------------------------------------------")
@@ -152,11 +159,22 @@ def block_davidson(
                     f"\t{j:02d}{sel_str} | {nu:> 10.2f} | {rms:.8f} | {mr:.8f} {conv_str}"
                 )
             print()
+        elif print_level == 1:
+            for j in mode_inds:
+                conv_str = "✓" if converged[j] else "✗"
+                table.print_row((i, B.shape[1], j, nus[j], res_rms[j], conv_str))
 
         # Convergence is signalled using only the roots we are actually interested in
         modes_converged = all(converged[mode_inds])
         if modes_converged:
-            if verbose: print(f"Davidson procedure converged in {i+1} cycles!")
+            if print_level > 0:
+                print(f"\tDavidson procedure converged in {i+1} cycles!")
+                if lowest is not None:
+                    nus_str = np.array2string(nus[mode_inds], precision=2)
+                    print(f"\tLowest {lowest} wavenumbers: {nus_str} cm⁻¹")
+                    neg_nus = sum(nus[mode_inds] < 0)
+                    type_ = "minimum" if (neg_nus == 0) else f"saddle point of index {neg_nus}"
+                    print(f"\tThis geometry seems to be a {type_} on the PES.")
             break
 
     result = DavidsonResult(
