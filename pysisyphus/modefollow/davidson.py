@@ -150,10 +150,12 @@ def block_davidson(
     hessian_precon=None,
     max_cycles=25,
     res_rms_thresh=1e-4,
+    start_precon=5,
 ):
     num = len(guess_modes)
     B_full = np.zeros((len(guess_modes[0]), num * max_cycles))
     S_full = np.zeros_like(B_full)
+    I = np.eye(geom.cart_coords.size)
     msqrt = np.sqrt(geom.masses_rep)
 
     # Projector to remove translation and rotation
@@ -164,7 +166,6 @@ def block_davidson(
 
     b_prev = np.array([mode.l_mw for mode in guess_modes]).T
     for i in range(max_cycles):
-        print(f"Cycle {i:02d}")
         # Add new basis vectors to B matrix
         b = np.array([mode.l_mw for mode in guess_modes]).T
         from_ = i * num
@@ -198,30 +199,39 @@ def block_davidson(
         # 2D overlap array. approx_modes in row, b_prev in columns.
         overlaps = np.einsum("ij,jk->ik", approx_modes, b_prev)
         mode_inds = np.abs(overlaps).argmax(axis=0)
-        print(f"\tFollowing mode(s): {mode_inds}")
         b_prev = approx_modes[mode_inds].T
 
-        residues = list()
-        for s in range(to_):
-            residues.append((v[:, s] * (S - w[s] * B)).sum(axis=1))
-        residues = np.array(residues)
+        # Eq. (7) in [1]
+        residues = (v * (S[:, :, None] - w * B[:, :, None])).sum(axis=1)
+
+        # Determine preconditioner matrix
+        #
+        # Use supplied matrix
+        if hessian_precon is not None:
+            precon_mat = hessian_precon
+        # Reconstruct Hessian, but only start after some cycles
+        elif i >= start_precon:
+            precon_mat = B.dot(Hm).dot(B.T)
+        # No preconditioning if no matrix was supplied or we are in an early cycle.
+        else:
+            precon_mat = None
 
         # Construct new basis vector from residuum of selected mode
-        if hessian_precon is not None:
-            # Construct X
-            b = np.zeros_like(b_prev)
-            for j, mode_ind in enumerate(mode_inds):
-                X = np.linalg.inv(
-                    hessian_precon - w[mode_ind] * np.eye(hessian_precon.shape[0])
-                )
-                b[:, j] = X.dot(residues[mode_ind].T)
-        else:
-            b = residues[mode_inds].T
+        b = np.zeros_like(b_prev)
+        for j, mode_ind in enumerate(mode_inds):
+            r = residues[:, mode_ind]
+            if precon_mat is not None:
+                # Construct actual preconditioner X
+                X = np.linalg.pinv(precon_mat - w[mode_ind] * I, rcond=1e-8)
+                b[:, j] = X.dot(r)
+            else:
+                b[:, j] = r
+
         # Project out translation and rotation from new mode guess
         b = P.dot(b)
+        # Orthogonalize new vectors against preset vectors
         b = np.linalg.qr(np.concatenate((B, b), axis=1))[0][:, -num:]
 
-        # mode_guess = NormalMode(b[:, -1] / msqrt, geom.masses_rep)
         # New NormalMode from non-mass-weighted displacements
         guess_modes = [NormalMode(b_ / msqrt, geom.masses_rep) for b_ in b.T]
 
@@ -229,10 +239,12 @@ def block_davidson(
         nus = eigval_to_wavenumber(w)
 
         # Check convergence criteria
-        max_res = np.abs(residues).max(axis=1)
-        res_rms = np.sqrt(np.mean(residues ** 2, axis=1))
+        max_res = np.abs(residues).max(axis=0)
+        res_rms = np.sqrt(np.mean(residues ** 2, axis=0))
 
         # Print progress
+        print(f"Cycle {i:02d}")
+        print(f"\tFollowing mode(s): {mode_inds}")
         print("\t #  | ṽ / cm⁻¹|  rms       |   max")
         converged = res_rms < res_rms_thresh
         for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
