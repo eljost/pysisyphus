@@ -19,7 +19,7 @@ class NormalMode:
             Atomic masses.
         """
 
-        self.l = np.array(l)
+        self.l = np.array(l.flatten())
         self.l /= np.linalg.norm(l)
         self.masses = masses
         assert self.l.shape == self.masses.shape
