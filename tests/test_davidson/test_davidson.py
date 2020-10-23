@@ -9,10 +9,6 @@ from pysisyphus.modefollow.NormalMode import NormalMode
 from pysisyphus.testing import using
 
 
-def get_guess(vec, masses_rep, scale=0.0):
-    return NormalMode(vec + scale * np.random.rand(*vec.shape), masses_rep)
-
-
 @using("xtb")
 @pytest.mark.parametrize(
     "precon, ref_cyc, ref_nu",
@@ -30,6 +26,10 @@ def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
     H = geom.eckart_projection(mw_H)
     w, v = np.linalg.eigh(H)
     inds = [16, 8]
+
+    def get_guess(vec, masses_rep, scale=0.0):
+        return NormalMode(vec + scale * np.random.rand(*vec.shape), masses_rep)
+
     guess_modes = [get_guess(v[:, ind], geom.masses_rep) for ind in inds]
 
     hessian_precon = None

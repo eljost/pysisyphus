@@ -9,6 +9,7 @@ __all__ = [
         "RSPRFOptimizer",
         "TRIM",
         "RSIRFOptimizer",
+        "TSHessianOptimizer",
         "dimer_method",
 ]
 

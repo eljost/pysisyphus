@@ -803,6 +803,10 @@ class Geometry:
 
         return results
 
+    def get_energy_and_cart_forces_at(self, cart_coords):
+        self.assert_cart_coords(cart_coords)
+        return self.calculator.get_forces(self.atoms, cart_coords)
+
     def calc_double_ao_overlap(self, geom2):
         return self.calculator.run_double_mol_calculation(self.atoms,
                                                           self.coords,

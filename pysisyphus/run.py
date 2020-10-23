@@ -40,14 +40,15 @@ from pysisyphus.helpers import (
     print_barrier,
     get_tangent_trj_str,
 )
-from pysisyphus.intcoords.setup import get_bond_mat
-from pysisyphus.irc import *
-from pysisyphus.stocastic import *
 from pysisyphus.helpers_pure import merge_sets
+from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
+from pysisyphus.irc import *
+from pysisyphus.modefollow import opt_davidson
 from pysisyphus.optimizers import *
+from pysisyphus.stocastic import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
 from pysisyphus.tsoptimizers.dimer import dimer_method
@@ -692,6 +693,7 @@ def run_opt(
         geom.set_calculator(calc_getter())
 
     do_hess = opt_kwargs.pop("do_hess", False)
+    do_davidson = opt_kwargs.pop("do_davidson", False)
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
@@ -718,7 +720,15 @@ def run_opt(
         shutil.copy(opt.final_fn, copy_fn)
         print(f"Copied '{opt.final_fn}' to '{copy_fn}'.")
 
-    if do_hess and (not opt.stopped):
+    if do_davidson and (not opt.stopped):
+        tsopt = (
+            isinstance(opt, TSHessianOptimizer.TSHessianOptimizer)
+            or isinstance(geom.calculator, Dimer)
+        )
+        type_ = "TS" if tsopt else "minimum"
+        print(highlight_text(f"Davidson after {type_} search", level=1))
+        opt_davidson(opt, tsopt=tsopt)
+    elif do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
         # final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
@@ -1452,8 +1462,8 @@ def check_asserts(results, run_dict):
         matched = cur_val == pytest.approx(ref_val)
         print(f"{i:02d}: {obj}.{attr}")
         print(f"\tReference: {ref_val}")
-        print(f"\tCurrent: {cur_val}")
-        print(f"\tMatches: {bool_color(matched)}")
+        print(f"\t  Current: {cur_val}")
+        print(f"\t  Matches: {bool_color(matched)}")
         matches.append(matched)
 
     assert all(matches)

@@ -10,6 +10,7 @@ import numpy as np
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.Geometry import get_trans_rot_projector
 from pysisyphus.modefollow.NormalMode import NormalMode
+from pysisyphus.optimizers.hessian_updates import bfgs_update
 
 
 DavidsonResult = namedtuple(
@@ -30,11 +31,13 @@ def block_davidson(
     masses,
     forces_getter,
     guess_modes,
+    lowest=None,
     trial_step_size=0.01,
     hessian_precon=None,
     max_cycles=25,
     res_rms_thresh=1e-4,
     start_precon=5,
+    remove_trans_rot=True,
     verbose=True,
 ):
     num = len(guess_modes)
@@ -86,9 +89,12 @@ def block_davidson(
         approx_modes = (v * B[:, :, None]).sum(axis=1).T
         # Calculate overlaps between previous root and the new approximate
         # normal modes for root following.
-        # 2D overlap array. approx_modes in row, b_prev in columns.
-        overlaps = np.einsum("ij,jk->ik", approx_modes, b_prev)
-        mode_inds = np.abs(overlaps).argmax(axis=0)
+        if lowest is None:
+            # 2D overlap array. approx_modes in row, b_prev in columns.
+            overlaps = np.einsum("ij,jk->ik", approx_modes, b_prev)
+            mode_inds = np.abs(overlaps).argmax(axis=0)
+        else:
+            mode_inds = np.arange(lowest)
         b_prev = approx_modes[mode_inds].T
 
         # Eq. (7) in [1]
@@ -118,7 +124,8 @@ def block_davidson(
                 b[:, j] = r
 
         # Project out translation and rotation from new mode guess
-        b = P.dot(b)
+        if remove_trans_rot:
+            b = P.dot(b)
         # Orthogonalize new vectors against preset vectors
         b = np.linalg.qr(np.concatenate((B, b), axis=1))[0][:, -num:]
 
@@ -166,7 +173,47 @@ def block_davidson(
 
 
 def geom_davidson(geom, *args, **kwargs):
-    def forces_getter(coords):
-        return geom.get_energy_and_forces_at(coords)["forces"]
+    def forces_getter(cart_coords):
+        return geom.get_energy_and_cart_forces_at(cart_coords)["forces"]
 
     return block_davidson(geom.cart_coords, geom.masses, forces_getter, *args, **kwargs)
+
+
+def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
+    try:
+        H = opt.H
+    except AttributeError:
+        if tsopt:
+            raise Exception("Can't handle TS optimization without Hessian yet!")
+
+        # Create approximate updated Hessian
+        cart_coords = opt.cart_coords
+        cart_forces = opt.cart_forces
+        coord_diffs = np.diff(cart_coords, axis=0)
+        grad_diffs = -np.diff(cart_forces, axis=0)
+        H = np.eye(cart_coords[0].size)
+        for s, y in zip(coord_diffs, grad_diffs):
+            dH, _ = bfgs_update(H, s, y)
+            H += dH
+    
+    geom = opt.geometry
+    if geom.coord_type != "cart":
+        H = geom.internal.backtransform_hessian(H)
+
+    masses_rep = geom.masses_rep
+    # Mass-weigh and project Hessian
+    H = geom.eckart_projection(geom.mass_weigh_hessian(H))
+    w, v = np.linalg.eigh(H)
+    inds = [0, 1] if tsopt else [0, ]
+    lowest = 2 if tsopt else 0
+    guess_modes = [NormalMode(l, masses_rep) for l in v[:, inds].T]
+
+    davidson_kwargs = {
+        "hessian_precon": H,
+        "guess_modes": guess_modes,
+        "lowest": lowest,
+        "res_rms_thresh": res_rms_thresh,
+        "remove_trans_rot": True,
+    }
+
+    result = geom_davidson(geom, **davidson_kwargs)
