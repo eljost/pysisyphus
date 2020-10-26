@@ -12,7 +12,7 @@ from pysisyphus.TableFormatter import TableFormatter
 # https://pubs.acs.org/doi/pdf/10.1021/j100377a021
 
 
-class GonzalesSchlegel(IRC):
+class GonzalezSchlegel(IRC):
 
     def __init__(self, geometry, max_micro_steps=20, **kwargs):
         super().__init__(geometry, **kwargs)

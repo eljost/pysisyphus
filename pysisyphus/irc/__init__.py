@@ -5,7 +5,7 @@ __all__ = [
     "Euler",
     "EulerPC",
     "LQA",
-    "GonzalesSchlegel",
+    "GonzalezSchlegel",
     "IMKMod",
     "ModeKill",
     "RK4",
@@ -14,7 +14,7 @@ __all__ = [
 from pysisyphus.irc.DampedVelocityVerlet import DampedVelocityVerlet
 from pysisyphus.irc.Euler import Euler
 from pysisyphus.irc.EulerPC import EulerPC
-from pysisyphus.irc.GonzalesSchlegel import GonzalesSchlegel
+from pysisyphus.irc.GonzalezSchlegel import GonzalezSchlegel
 from pysisyphus.irc.IMKMod import IMKMod
 from pysisyphus.irc.LQA import LQA
 from pysisyphus.irc.ModeKill import ModeKill

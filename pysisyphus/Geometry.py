@@ -723,7 +723,7 @@ class Geometry:
         # TODO: Do the right thing here when the hessian is not yet calculated.
         #       this would probably involve figuring out how to mass-weigh and
         #       internal coordinat hessian... I think this is described in one
-        #       of the Gonzales-Schlegel-papers about the GS2 algorithm.
+        #       of the Gonzalez-Schlegel-papers about the GS2 algorithm.
         return self.mass_weigh_hessian(self.cart_hessian)
 
     def unweight_mw_hessian(self, mw_hessian):

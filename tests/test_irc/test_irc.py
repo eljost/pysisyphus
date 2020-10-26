@@ -48,7 +48,7 @@ def plot_irc(irc, title=None):
         (DampedVelocityVerlet, {"v0": 0.1, "max_cycles": 400,}, None),
         (Euler, {"step_length": 0.05,}, None),
         (EulerPC, {}, None),
-        (GonzalesSchlegel, {}, None),
+        (GonzalezSchlegel, {}, None),
         (IMKMod, {}, None),
         (RK4, {}, None),
         (LQA, {}, None),

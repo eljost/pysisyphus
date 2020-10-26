@@ -123,7 +123,7 @@ IRC_DICT = {
     "dvv": DampedVelocityVerlet,
     "euler": Euler,
     "eulerpc": EulerPC,
-    "gs": GonzalesSchlegel,
+    "gs": GonzalezSchlegel,
     "imk": IMKMod,
     "lqa": LQA,
     "modekill": ModeKill,
