@@ -14,10 +14,10 @@ from pysisyphus.TableFormatter import TableFormatter
 
 class GonzalezSchlegel(IRC):
 
-    def __init__(self, geometry, max_micro_steps=20, **kwargs):
+    def __init__(self, geometry, max_micro_cycles=20, **kwargs):
         super().__init__(geometry, **kwargs)
 
-        self.max_micro_steps = max_micro_steps
+        self.max_micro_cycles = max_micro_cycles
 
         self.pivot_coords = list()
         self.micro_coords = list()
@@ -39,7 +39,7 @@ class GonzalezSchlegel(IRC):
 
         dH, _ = bfgs_update(self.mw_hessian, coords_diff, gradient_diff)
         self.mw_hessian += dH
-        eigvals, eigvecs = np.linalg.eig(self.mw_hessian)
+        eigvals, eigvecs = np.linalg.eigh(self.mw_hessian)
 
         def lambda_func(lambda_):
             # Eq. (11) in [1]
@@ -52,7 +52,7 @@ class GonzalezSchlegel(IRC):
 
         # Initial guess for λ.
         # λ must be smaller then the smallest eigenvector
-        lambda_ = np.sort(eigvals)[0]
+        lambda_ = eigvals[0]
         lambda_ *= 1.5 if (lambda_ < 0) else 0.5
         # Find the root with scipy
         lambda_ = newton(lambda_func, lambda_, maxiter=500)
@@ -91,13 +91,9 @@ class GonzalezSchlegel(IRC):
         self.displacement = pivot_step
 
         micro_coords_ = list()
-        i = 0
         # self.table.print(f"Microiterations for step {self.cur_cycle}")
         self.table.print(self.micro_formatter.header)
-        while True:
-            if i == self.max_micro_steps:
-                self.logger.warning("Max micro cycles exceeded!")
-                break
+        for i in range(self.max_micro_cycles):
             try:
                 dx, tangent = self.micro_step()
             except RuntimeError:
@@ -111,7 +107,8 @@ class GonzalezSchlegel(IRC):
 
             if (np.linalg.norm(dx) <= 1e-3):
                 break
-            i += 1
+        else:
+            self.logger.warning("Max micro cycles exceeded!")
 
         self.micro_coords.append(np.array(micro_coords_))
 
