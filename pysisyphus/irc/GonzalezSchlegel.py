@@ -14,13 +14,16 @@ from pysisyphus.TableFormatter import TableFormatter
 
 class GonzalezSchlegel(IRC):
 
-    def __init__(self, geometry, max_micro_cycles=20, **kwargs):
+    def __init__(self, geometry, max_micro_cycles=20, micro_step_thresh=1e-3,
+                 **kwargs):
         super().__init__(geometry, **kwargs)
 
         self.max_micro_cycles = max_micro_cycles
+        self.micro_step_thresh = micro_step_thresh
 
         self.pivot_coords = list()
         self.micro_coords = list()
+        self.eye = np.eye(self.geometry.coords.size)
 
         micro_header = "# |dx| |tangent|".split()
         micro_fmts = ["d", ".2E", ".3E"]
@@ -28,7 +31,6 @@ class GonzalezSchlegel(IRC):
 
     def micro_step(self):
         """Constrained optimization on a hypersphere."""
-        eye = np.eye(self.displacement.size)
 
         gradient = self.mw_gradient
         gradient_diff = gradient - self.prev_grad
@@ -41,27 +43,30 @@ class GonzalezSchlegel(IRC):
         self.mw_hessian += dH
         eigvals, eigvecs = np.linalg.eigh(self.mw_hessian)
 
-        def lambda_func(lambda_):
-            # Eq. (11) in [1]
-            # (H - λI)^-1
-            hmlinv = np.linalg.pinv(self.mw_hessian - eye*lambda_, rcond=1e-6)
-            # (g - λp)
-            glp = gradient - self.displacement*lambda_
-            tmp = self.displacement - hmlinv.dot(glp)
-            return tmp.dot(tmp) - 0.25*(self.step_length**2)
+        constraint = (0.5 * self.step_length)**2
+        big = np.abs(eigvals) > 1e-8
+        big_eigvals = eigvals[big]
+        big_eigvecs = eigvecs[:, big]
+        grad_star = big_eigvecs.T.dot(gradient)
+        displ_star = big_eigvecs.T.dot(self.displacement)
+
+        def get_dx(lambda_):
+            return -(grad_star - lambda_*displ_star) / (big_eigvals - lambda_)
+
+        def on_sphere(lambda_):
+            p = displ_star + get_dx(lambda_)
+            return p.dot(p) - constraint
 
         # Initial guess for λ.
         # λ must be smaller then the smallest eigenvector
-        lambda_ = eigvals[0]
-        lambda_ *= 1.5 if (lambda_ < 0) else 0.5
+        lambda_0 = big_eigvals[0]
+        lambda_0 *= 1.5 if (lambda_0 < 0) else 0.5
         # Find the root with scipy
-        lambda_ = newton(lambda_func, lambda_, maxiter=500)
+        lambda_ = newton(on_sphere, lambda_0, maxiter=500)
 
-        # Calculate dx from optimized lambda
-        dx = -np.dot(
-                np.linalg.inv(self.mw_hessian-lambda_*eye),
-                gradient-lambda_*self.displacement
-        )
+        # Calculate dx from optimized lambda in basis of Hessian eigenvectors and
+        # transform back to mass-weighted Cartesians.
+        dx = big_eigvecs.dot(get_dx(lambda_))
         self.displacement += dx
         self.mw_coords += dx
 
@@ -80,18 +85,18 @@ class GonzalezSchlegel(IRC):
         self.prev_coords = self.mw_coords
 
         # Take a step against the gradient to the pivot point x*_k+1.
-        pivot_step = -0.5*self.step_length * grad0/grad0_norm
+        pivot_step = 0.5*self.step_length * -grad0/grad0_norm
         pivot_coords = self.mw_coords + pivot_step
         self.pivot_coords.append(pivot_coords)
 
-        # Make initial guess for x'_k+1. Here we take another half
-        # step from the pivot point.
+        # Initial guess for x'_k+1 (full step from prev_coords, or another
+        # half step from the pivot point)
         self.mw_coords = pivot_coords + pivot_step
+
         # Initial displacement p' from the pivot point
         self.displacement = pivot_step
 
         micro_coords_ = list()
-        # self.table.print(f"Microiterations for step {self.cur_cycle}")
         self.table.print(self.micro_formatter.header)
         for i in range(self.max_micro_cycles):
             try:
@@ -105,10 +110,17 @@ class GonzalezSchlegel(IRC):
             norm_tangent = np.linalg.norm(tangent)
             self.table.print(self.micro_formatter.line(i+1, norm_dx, norm_tangent))
 
-            if (np.linalg.norm(dx) <= 1e-3):
+            if (np.linalg.norm(dx) <= self.micro_step_thresh):
                 break
         else:
             self.logger.warning("Max micro cycles exceeded!")
+
+        # calc = self.geometry.calculator
+        # pc = self.pivot_coords[0]
+        # c = self.coords
+        # xs = (c[0], pc[0])
+        # ys = (c[1], pc[1])
+        # calc.plot_coords(xs, ys, show=True)
 
         self.micro_coords.append(np.array(micro_coords_))
 
