@@ -12,7 +12,7 @@ from pysisyphus.plotters.AnimPlot import AnimPlot
 class AnaPotBase(Calculator):
 
     def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1), levels=None,
-                 use_sympify=True, minima=None):
+                 use_sympify=True, minima=None, saddles=None):
         super(AnaPotBase, self).__init__()
         self.xlim = xlim
         self.ylim = ylim
@@ -20,6 +20,9 @@ class AnaPotBase(Calculator):
         if minima is None:
             minima = list()
         self.minima = np.array(minima, dtype=float)
+        if saddles is None:
+            saddles = list()
+        self.saddles = np.array(saddles, dtype=float)
 
         x, y = symbols("x y")
         if use_sympify:
@@ -121,21 +124,28 @@ class AnaPotBase(Calculator):
                 1 if (w < 0).any() else 0
             )
         Z = np.array(z).reshape(X.shape)
-        self.ax.contourf(X, Y, Z, cmap=cm.Reds)#, alpha=0.5)
+        self.ax.contourf(X, Y, Z, cmap=cm.Reds)
         if show:
             plt.show()
 
-    def plot_opt(self, opt, enum=True, show=False):
-        coords = np.array(opt.coords)
+    def plot_coords(self, xs, ys, enum=True, show=False, title=None):
         self.plot()
-        xs, ys = coords.T[:2]
         self.ax.plot(xs, ys, "o-")
         if enum:
             for i, (x, y) in enumerate(zip(xs, ys)):
                 self.ax.annotate(i, (x, y))
-
+        if title:
+            self.fig.suptitle(title)
         if show:
             plt.show()
+
+    def plot_opt(self, opt, *args, **kwargs):
+        xs, ys = np.array(opt.coords).T[:2]
+        self.plot_coords(xs, ys, *args, **kwargs)
+
+    def plot_irc(self, irc, *args, **kwargs):
+        xs, ys = irc.all_coords.T[:2]
+        self.plot_coords(xs, ys, *args, **kwargs)
 
     def anim_opt(self, opt, energy_profile=False, colorbar=False, figsize=(8, 6),
                  show=False):
@@ -190,3 +200,9 @@ class AnaPotBase(Calculator):
 
     def get_minima(self):
         return [self.get_geom(coords) for coords in self.minima]
+
+    def get_saddle(self, i=None):
+        if i is not None:
+            return self.get_geom(self.saddles[i])
+        else:
+            return [self.get_geom(coords) for coords in self.saddles]

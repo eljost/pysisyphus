@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import Gaussian16, Turbomole
 from pysisyphus.constants import BOHR2ANG
@@ -224,3 +225,23 @@ def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
 
     assert irc.downhill_energies[-1] == pytest.approx(-91.67517096968325)
     assert irc.downhill_cycle == ref_cycle
+
+
+@pytest.mark.parametrize(
+    "step_length", [
+        0.1,
+        0.2,
+        0.3,
+        0.4
+    ]
+)
+def test_mb_gs2(step_length):
+    calc = MullerBrownPot()
+    geom = calc.get_saddle(0)
+
+    irc_kwargs = {
+        "step_length": step_length,
+    }
+    irc = GonzalezSchlegel(geom, **irc_kwargs)
+    irc.run()
+    # calc.plot_irc(irc, show=True, title=f"length {step_length:.1f}")
