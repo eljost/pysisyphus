@@ -67,7 +67,7 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
     irc = irc_cls(geom, **kwargs)
     irc.run()
 
-    # plot_irc(irc, irc.__class__.__name__)
+    # geom.calculator.plot_irc(irc, show=True)
     assert_anapot_irc(irc)
 
 
@@ -232,7 +232,7 @@ def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
         0.1,
         0.2,
         0.3,
-        0.4
+        0.4  # requires hessian_recalc=1
     ]
 )
 def test_mb_gs2(step_length):
@@ -241,7 +241,9 @@ def test_mb_gs2(step_length):
 
     irc_kwargs = {
         "step_length": step_length,
+        "line_search": False,
+        "hessian_recalc": 1,
     }
     irc = GonzalezSchlegel(geom, **irc_kwargs)
     irc.run()
-    # calc.plot_irc(irc, show=True, title=f"length {step_length:.1f}")
+    # calc.plot_irc(irc, show=True, title=f"length {step_length:.2f}")

@@ -1,3 +1,5 @@
+from math import cos, sin
+
 import numpy as np
 from scipy.optimize import newton
 
@@ -19,6 +21,7 @@ class GonzalezSchlegel(IRC):
         max_micro_cycles=20,
         micro_step_thresh=1e-3,
         hessian_recalc=None,
+        line_search=False,
         **kwargs,
     ):
         super().__init__(geometry, **kwargs)
@@ -26,6 +29,7 @@ class GonzalezSchlegel(IRC):
         self.max_micro_cycles = max_micro_cycles
         self.micro_step_thresh = micro_step_thresh
         self.hessian_recalc = hessian_recalc
+        self.line_search = line_search
 
         self.pivot_coords = list()
         self.micro_coords = list()
@@ -36,12 +40,52 @@ class GonzalezSchlegel(IRC):
         micro_fmts = ["d", ".2E", ".3E"]
         self.micro_formatter = TableFormatter(micro_header, micro_fmts, 10)
 
-    def micro_step(self):
+    def perp_component(self, vec, perp_to):
+        # Make unit vector
+        # perp_to /= np.linalg.norm(perp_to)
+        # Substract parallel component
+        return vec - perp_to.dot(vec) * perp_to / perp_to.dot(perp_to)#np.linalg.norm(perp_to)**2
+
+    def micro_step(self, counter):
         """Constrained optimization on a hypersphere."""
 
         # Calculate gradient at current coordinates
         gradient = self.mw_gradient
         self.log(f"\tnorm(mw_grad)={np.linalg.norm(gradient):.6f}")
+
+        # Interpolation proposed in the paper (Eq. (12) - (15)).
+        # Does not seem to help.
+        if self.line_search and (counter > 0):
+            pivot_coords = self.pivot_coords[-1]
+            p_prev = self.prev_coords - pivot_coords  # p"
+            p_cur = self.mw_coords - pivot_coords  # p'
+            g_prev = self.prev_grad  # g"
+            g_cur = self.gradient  # g'
+            g_prev_p = self.perp_component(g_prev, p_prev)
+            g_cur_p = self.perp_component(g_cur, p_cur)
+            g_prev_p_norm = np.linalg.norm(g_prev_p)
+            g_cur_p_norm = np.linalg.norm(g_cur_p)
+            # Angle between p_prev and p_cur
+            theta_prime = np.arccos(
+                p_prev.dot(p_cur) / np.linalg.norm(p_prev) / np.linalg.norm(p_cur)
+            )  # θ'
+            theta = g_prev_p_norm * theta_prime / (g_prev_p_norm - g_cur_p_norm)  # θ
+            theta_quot = theta / theta_prime
+            cos_theta = cos(theta)
+            sin_theta = sin(theta)
+            cos_theta_prime = cos(theta_prime)
+            sin_theta_prime = sin(theta_prime)
+            sin_quot = sin_theta / sin_theta_prime
+            # Interpolated quantities
+            g_interp = g_prev * (1 - theta_quot) + g_cur * theta_quot
+            p_interp = (
+                p_prev * (cos_theta - sin_quot * cos_theta_prime) + p_cur * sin_quot
+            )
+            x_interp = pivot_coords + p_interp
+            gradient = g_interp
+            self.mw_coords = x_interp
+            self.displacement = p_interp
+
         gradient_diff = gradient - self.prev_grad
         coords_diff = self.mw_coords - self.prev_coords
         # Update previous quantities.
@@ -84,7 +128,6 @@ class GonzalezSchlegel(IRC):
         # Find the root with scipy
         lambda_ = newton(on_sphere, lambda_0, maxiter=500)
         self.log(f"\tDetermined λ={lambda_0:.4f} from Newtons method.")
-        # assert lambda_ < big_eigvals[0]
 
         # Calculate dx from optimized lambda in basis of Hessian eigenvectors and
         # transform back to mass-weighted Cartesians.
@@ -92,12 +135,7 @@ class GonzalezSchlegel(IRC):
         self.displacement += dx
         self.mw_coords += dx
 
-        grad_tangent_to_sphere = (
-            gradient
-            - gradient.dot(self.displacement)
-            / self.displacement.dot(self.displacement)
-            * self.displacement
-        )
+        grad_tangent_to_sphere = self.perp_component(gradient, self.displacement)
         self.micro_counter += 1
 
         dx_norm = np.linalg.norm(dx)
@@ -132,14 +170,13 @@ class GonzalezSchlegel(IRC):
         for i in range(self.max_micro_cycles):
             self.log(f"Micro cycle {i:02d}")
             try:
-                dx, _ = self.micro_step()
+                dx, _ = self.micro_step(i)
             except RuntimeError:
                 print("Constrained search did not converge!")
                 self.converged = True
                 return
             micro_coords_.append(self.mw_coords)
             norm_dx = np.linalg.norm(dx)
-            norm_tangent = np.linalg.norm(tangent)
             if np.linalg.norm(dx) <= self.micro_step_thresh:
                 break
         else:
