@@ -247,3 +247,29 @@ def test_mb_gs2(step_length):
     irc = GonzalezSchlegel(geom, **irc_kwargs)
     irc.run()
     # calc.plot_irc(irc, show=True, title=f"length {step_length:.2f}")
+
+    assert irc.forward_is_converged
+    assert irc.backward_is_converged
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "step_length", [
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+    ]
+)
+def test_hcn_iso_gs2(step_length):
+    geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
+    calc = PySCF(basis="sto3g")
+    geom.set_calculator(calc)
+    irc_kwargs = {
+        "step_length": step_length,
+    }
+    irc = GonzalezSchlegel(geom, **irc_kwargs)
+    irc.run()
+
+    assert irc.forward_is_converged
+    assert irc.backward_is_converged

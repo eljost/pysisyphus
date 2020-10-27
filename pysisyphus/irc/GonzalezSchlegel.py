@@ -30,6 +30,8 @@ class GonzalezSchlegel(IRC):
         self.micro_step_thresh = micro_step_thresh
         self.hessian_recalc = hessian_recalc
         self.line_search = line_search
+        if self.line_search:
+            print("!Line search seems faulty right now!")
 
         self.pivot_coords = list()
         self.micro_coords = list()
