@@ -92,13 +92,18 @@ class GonzalezSchlegel(IRC):
         self.displacement += dx
         self.mw_coords += dx
 
-        displ_norm = np.linalg.norm(self.displacement)
-        tangent = (
-            gradient - gradient.dot(self.displacement) / displ_norm * self.displacement
+        # displ_norm = np.linalg.norm(self.displacement)
+        grad_tangent_to_sphere = (
+            gradient - gradient.dot(self.displacement) / self.displacement.dot(self.displacement) * self.displacement
         )
         self.micro_counter += 1
 
-        return dx, tangent
+        dx_norm = np.linalg.norm(dx)
+        grad_norm = np.linalg.norm(grad_tangent_to_sphere)
+        self.log(f"\tnorm(dx)={dx_norm:.6f}")
+        self.log(f"\tgradient tangent to sphere={grad_norm:.6f}")
+
+        return dx, grad_tangent_to_sphere
 
     def step(self):
         grad0 = self.mw_gradient
@@ -122,7 +127,6 @@ class GonzalezSchlegel(IRC):
         self.displacement = pivot_step
 
         micro_coords_ = list()
-        self.table.print(self.micro_formatter.header)
         for i in range(self.max_micro_cycles):
             self.log(f"Micro cycle {i:02d}")
             try:
@@ -134,8 +138,6 @@ class GonzalezSchlegel(IRC):
             micro_coords_.append(self.mw_coords)
             norm_dx = np.linalg.norm(dx)
             norm_tangent = np.linalg.norm(tangent)
-            self.table.print(self.micro_formatter.line(i + 1, norm_dx, norm_tangent))
-
             if np.linalg.norm(dx) <= self.micro_step_thresh:
                 break
         else:
