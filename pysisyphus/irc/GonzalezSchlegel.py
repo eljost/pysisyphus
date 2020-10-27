@@ -92,9 +92,11 @@ class GonzalezSchlegel(IRC):
         self.displacement += dx
         self.mw_coords += dx
 
-        # displ_norm = np.linalg.norm(self.displacement)
         grad_tangent_to_sphere = (
-            gradient - gradient.dot(self.displacement) / self.displacement.dot(self.displacement) * self.displacement
+            gradient
+            - gradient.dot(self.displacement)
+            / self.displacement.dot(self.displacement)
+            * self.displacement
         )
         self.micro_counter += 1
 
@@ -130,7 +132,7 @@ class GonzalezSchlegel(IRC):
         for i in range(self.max_micro_cycles):
             self.log(f"Micro cycle {i:02d}")
             try:
-                dx, tangent = self.micro_step()
+                dx, _ = self.micro_step()
             except RuntimeError:
                 print("Constrained search did not converge!")
                 self.converged = True
