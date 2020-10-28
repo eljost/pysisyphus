@@ -89,7 +89,7 @@ let
   description = "Python suite for optimization of stationary points on ground- and excited states PES and determination of reaction paths";
   homepage = "https://github.com/eljost/pysisyphus";
 
-  pkgConfig = super.writeTextFile {
+  pkgConfig = writeTextFile {
     name = "${pname}.pc";
     text =  ''
       prefix=@out@
