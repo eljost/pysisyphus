@@ -67,9 +67,6 @@ class IRC:
         header = ("Step", "IRC length", "dE / au", "max(|grad|)", "rms(grad)")
         self.table = TablePrinter(header, col_fmts)
 
-        self.cur_cycle = 0
-        self.converged = False
-        self.cur_direction = None
         self.cycle_places = ceil(log(self.max_cycles, 10))
 
     @property
@@ -121,9 +118,9 @@ class IRC:
         return self.geometry.mass_weigh_hessian(hessian)
 
     def prepare(self, direction):
-        self.cur_cycle = 0
         self.direction = direction
         self.converged = False
+        self.energy_increased = False
         self.past_inflection = not self.force_inflection
 
         self.irc_energies = list()
@@ -249,12 +246,8 @@ class IRC:
         self.irc_mw_gradients.append(self.mw_gradient)
 
         self.table.print_header()
-        while True:
+        for self.cur_cycle in range(self.max_cycles):
             self.log(highlight_text(f"IRC step {self.cur_cycle:03d}") + "\n")
-            if self.cur_cycle == self.max_cycles:
-                print("IRC steps exceeded. Stopping.")
-                print()
-                break
 
             # Do macroiteration/IRC step to update the geometry
             self.step()
@@ -293,13 +286,14 @@ class IRC:
             this_energy = self.irc_energies[-1]
 
             break_msg = ""
+            self.energy_increased = this_energy > last_energy
             if self.converged:
                 break_msg = "Integrator indicated convergence!"
             elif self.past_inflection and (rms_grad <= self.rms_grad_thresh):
                 break_msg = "rms(grad) converged!"
                 self.converged = True
             # TODO: Allow some threshold?
-            elif this_energy > last_energy:
+            elif self.energy_increased:
                 break_msg = "Energy increased!"
             elif abs(last_energy - this_energy) <= self.energy_thresh:
                 break_msg = "Energy converged!"
@@ -314,11 +308,13 @@ class IRC:
                 self.table.print(break_msg)
                 break
 
-            self.cur_cycle += 1
             if check_for_stop_sign():
                 break
             self.log("")
             sys.stdout.flush()
+        else:
+            print("IRC steps exceeded. Stopping.")
+            print()
 
         if direction == "forward":
             self.irc_energies.reverse()
@@ -352,6 +348,7 @@ class IRC:
         self.all_mw_gradients.extend(getattr(self, mw_grad_name))
 
         setattr(self, f"{prefix}_is_converged", self.converged)
+        setattr(self, f"{prefix}_energy_increased", self.energy_increased)
         setattr(self, f"{prefix}_cycle", self.cur_cycle)
         self.write_trj(".", prefix, getattr(self, mw_coords_name))
 
