@@ -205,6 +205,9 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
+    def atom_xyz_iter(self):
+        return iter(zip(self.atoms, self.coords3d))
+
     def copy(self, coord_type=None, coord_kwargs=None):
         """Returns a new Geometry object with same atoms and coordinates.
 

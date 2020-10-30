@@ -121,6 +121,7 @@ class IRC:
         self.direction = direction
         self.converged = False
         self.energy_increased = False
+        self.energy_converged = False
         self.past_inflection = not self.force_inflection
 
         self.irc_energies = list()
@@ -287,6 +288,7 @@ class IRC:
 
             break_msg = ""
             self.energy_increased = this_energy > last_energy
+            self.energy_converged = abs(last_energy - this_energy) <= self.energy_thresh
             if self.converged:
                 break_msg = "Integrator indicated convergence!"
             elif self.past_inflection and (rms_grad <= self.rms_grad_thresh):
@@ -295,7 +297,7 @@ class IRC:
             # TODO: Allow some threshold?
             elif self.energy_increased:
                 break_msg = "Energy increased!"
-            elif abs(last_energy - this_energy) <= self.energy_thresh:
+            elif self.energy_converged:
                 break_msg = "Energy converged!"
                 self.converged = True
 
@@ -349,6 +351,7 @@ class IRC:
 
         setattr(self, f"{prefix}_is_converged", self.converged)
         setattr(self, f"{prefix}_energy_increased", self.energy_increased)
+        setattr(self, f"{prefix}_energy_converged", self.energy_converged)
         setattr(self, f"{prefix}_cycle", self.cur_cycle)
         self.write_trj(".", prefix, getattr(self, mw_coords_name))
 

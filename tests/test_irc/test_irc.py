@@ -274,3 +274,31 @@ def test_hcn_iso_gs2(step_length):
 
     assert irc.forward_is_converged
     assert irc.backward_is_converged
+
+
+@pytest.mark.parametrize(
+    "step_length", [
+        0.1,
+        0.2,
+        # 0.3,
+        # 0.4,
+    ]
+)
+def test_mb_eulerpc(step_length):
+    calc = MullerBrownPot()
+    geom = calc.get_saddle(0)
+
+    irc_kwargs = {
+        "step_length": step_length,
+        # Using Scipy here takes forever...
+        # "corr_func": "scipy",
+        # "scipy_method": "BDF",
+    }
+    irc = EulerPC(geom, **irc_kwargs)
+    irc.run()
+    # calc.plot_irc(irc, show=True, title=f"length {step_length:.2f}")
+
+    forward_coords = irc.all_coords[0]
+    backward_coords = irc.all_coords[-1]
+    assert np.linalg.norm(forward_coords - (-0.558, 1.441, 0.0)) <= 2e-2
+    assert np.linalg.norm(backward_coords - (-0.050, 0.466, 0.0)) <= 5e-3
