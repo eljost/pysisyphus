@@ -40,5 +40,5 @@ def test_irc_load_save_hessian(this_dir):
     irc = EulerPC(geom, **irc_kwargs)
     irc.run()
 
-    assert irc.forward_cycle == 5
-    assert irc.backward_cycle == 5
+    assert irc.forward_cycle == 4
+    assert irc.backward_cycle == 4
