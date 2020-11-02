@@ -2,6 +2,7 @@ from collections import namedtuple
 import io
 import os
 import re
+import shutil
 import textwrap
 
 import numpy as np
@@ -20,12 +21,13 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn=2, acc=1.0, mem=1000, quiet=False, **kwargs):
+    def __init__(self, gbsa="", gfn=2, acc=1.0, topo=None, mem=1000, quiet=False, **kwargs):
         super().__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
         self.acc = acc
+        self.topo = topo
         self.mem = mem
         self.quiet = quiet
 
@@ -60,7 +62,9 @@ class XTB(Calculator):
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
     def prepare_input(self, atoms, coords, calc_type):
-        return None
+        if self.topo:
+            path = self.prepare_path(use_in_run=True)
+            shutil.copy(self.topo,  path / "gfnff_topo")
 
     def prepare_add_args(self):
         add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
@@ -92,6 +96,7 @@ class XTB(Calculator):
     def get_forces(self, atoms, coords, prepare_kwargs=None):
         if prepare_kwargs is None:
             prepare_kwargs = {}  # lgtm [py/unused-local-variable]
+        self.prepare_input(atoms, coords, "forces")
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--grad"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -106,6 +111,7 @@ class XTB(Calculator):
     def get_hessian(self, atoms, coords, prepare_kwargs=None):
         if prepare_kwargs is None:
             prepare_kwargs = {}  # lgtm [py/unused-local-variable]
+        self.prepare_input(atoms, coords, "hessian")
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--hess"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -118,6 +124,7 @@ class XTB(Calculator):
         return results
 
     def run_calculation(self, atoms, coords):
+        self.prepare_input(atoms, coords, "calculation")
         inp = self.prepare_coords(atoms, coords)
         kwargs = {
                 "calc": "noparse",
@@ -246,10 +253,3 @@ class XTB(Calculator):
 
     def __str__(self):
         return "XTB calculator"
-
-
-if __name__ == "__main__":
-    from pathlib import Path
-    path = Path("/scratch/projekte/phosphor_fprakt/07_09_neb/02_irc/tmpo")
-    xtb = XTB()
-    xtb.parse_hessian(path)
