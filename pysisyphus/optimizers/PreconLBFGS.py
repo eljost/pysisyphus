@@ -55,7 +55,10 @@ class PreconLBFGS(Optimizer):
             self.log(
                 f"Found Dimer calculator. Using max_step_element={max_step_element:.2f}"
             )
+        elif max_step_element is None and line_search in (None, False):
+            max_step_element = 0.2
         self.max_step_element = max_step_element
+
         # Disable linesearch if max_step_element is set
         if self.max_step_element is not None:
             self.log(
@@ -79,7 +82,8 @@ class PreconLBFGS(Optimizer):
             self.steps_ = deque(maxlen=self.history)
 
     def get_precon_getter(self):
-        return precon_getter(self.geometry, c_stab=self.c_stab, kind=self.precon_kind)
+        return precon_getter(self.geometry, c_stab=self.c_stab, kind=self.precon_kind,
+                             logger=self.logger)
 
     def prepare_opt(self):
         if self.precon:

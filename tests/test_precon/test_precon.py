@@ -61,20 +61,21 @@ def test_menthone(opt_cls, precon, ref_cycles):
 
 @using("xtb")
 @pytest.mark.parametrize(
-    "precon_kind, ref_cycle", [
-        ("full", 75),
-        ("bonds", 87),
-        ("bonds_bends", 75),
+    "precon, precon_kind, ref_cycle", [
+        (True, "full", 75),
+        (True, "bonds", 87),
+        (True, "bonds_bends", 75),
+        (False, None, 89),
     ]
 )
-def test_biaryl_precon(precon_kind, ref_cycle):
+def test_biaryl_precon(precon, precon_kind, ref_cycle):
     geom = geom_loader("lib:split.image_021.xyz")
     calc = XTB(pal=2)
     geom.set_calculator(calc)
 
     opt_kwargs = {
         "max_cycles": 100,
-        "precon": True,
+        "precon": precon,
         "precon_kind": precon_kind,
         "overachieve_factor": 3.,
     }
@@ -84,4 +85,6 @@ def test_biaryl_precon(precon_kind, ref_cycle):
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
-    assert geom.energy == pytest.approx(-48.73588757, abs=1e-4)
+    # Allow higher tolerance without preconditioner
+    abs_ = 1e-4 if precon else 2e-3
+    assert geom.energy == pytest.approx(-48.73588757, abs=abs_)

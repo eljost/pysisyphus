@@ -6,7 +6,7 @@ from scipy.sparse import csc_matrix
 
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
-from pysisyphus.intcoords.setup_fast import find_bonds
+from pysisyphus.intcoords.setup_fast import find_bonds, find_bonds_bends
 from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
 from pysisyphus.intcoords import RedundantCoords
 
@@ -57,7 +57,13 @@ def get_lindh_k(atoms, coords3d, bonds=None, angles=None, torsions=None):
 
 
 def get_lindh_precon(
-    atoms, coords, bonds=None, bends=None, dihedrals=None, c_stab=0.0103
+    atoms,
+    coords,
+    bonds=None,
+    bends=None,
+    dihedrals=None,
+    c_stab=0.0103,
+    logger=None,
 ):
     """c_stab = 0.00103 hartree/bohr² corresponds to 0.1 eV/Å² as
     given in the paper."""
@@ -101,14 +107,15 @@ def get_lindh_precon(
     P += c_stab * np.eye(dim)
     # Convert to sparse matrix
     P = csc_matrix(P)
+    filled = P.size / dim**2
+    log(logger, f"Preconditioner P has {P.size} entries ({filled:.2%} filled)")
 
     return P
 
 
 def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
     valid_kinds = ("full", "bonds", "bonds_bends")
-    assert kind in valid_kinds, \
-        f"Invalid kind='{kind}'! Valid kinds are: {valid_kinds}"
+    assert kind in valid_kinds, f"Invalid kind='{kind}'! Valid kinds are: {valid_kinds}"
 
     atoms = geom.atoms
     # Default empty lists for coordinates that may be skipped
@@ -121,15 +128,13 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
         bends = internal.bending_indices
         dihedrals = internal.dihedrals
     elif kind == "bonds_bends":
-        internal = RedundantCoords(atoms, geom.cart_coords)
-        bonds = internal.bond_indices
-        bends = internal.bending_indices
+        bonds, bends = find_bonds_bends(geom)
     elif kind == "bonds":
         bonds = find_bonds(geom)
 
     msg = (
-        f"Constructing preconditioner from {len(bonds)} bonds, {len(bends)} bends"
-        f"and {len(dihedrals)} dihedrals."
+        f"Constructing preconditioner from {len(bonds)} bonds, {len(bends)} bends "
+        f"and {len(dihedrals)} dihedrals (kind='{kind}')."
     )
     log(logger, msg)
 
@@ -141,6 +146,7 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
             bends,
             dihedrals,
             c_stab=c_stab,
+            logger=logger,
         )
         return P
 
