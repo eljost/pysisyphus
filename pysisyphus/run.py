@@ -46,8 +46,9 @@ from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
-from pysisyphus.modefollow import opt_davidson
+from pysisyphus.modefollow import NormalMode
 from pysisyphus.optimizers import *
+from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.stocastic import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
@@ -738,6 +739,46 @@ def run_opt(
     return opt.geometry, opt
 
 
+def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
+    try:
+        H = opt.H
+    except AttributeError:
+        if tsopt:
+            raise Exception("Can't handle TS optimization without Hessian yet!")
+
+        # Create approximate updated Hessian
+        cart_coords = opt.cart_coords
+        cart_forces = opt.cart_forces
+        coord_diffs = np.diff(cart_coords, axis=0)
+        grad_diffs = -np.diff(cart_forces, axis=0)
+        H = np.eye(cart_coords[0].size)
+        for s, y in zip(coord_diffs, grad_diffs):
+            dH, _ = bfgs_update(H, s, y)
+            H += dH
+    
+    geom = opt.geometry
+    if geom.coord_type != "cart":
+        H = geom.internal.backtransform_hessian(H)
+
+    masses_rep = geom.masses_rep
+    # Mass-weigh and project Hessian
+    H = geom.eckart_projection(geom.mass_weigh_hessian(H))
+    w, v = np.linalg.eigh(H)
+    inds = [0, 1] if tsopt else [0, ]
+    lowest = 2 if tsopt else 0
+    guess_modes = [NormalMode(l, masses_rep) for l in v[:, inds].T]
+
+    davidson_kwargs = {
+        "hessian_precon": H,
+        "guess_modes": guess_modes,
+        "lowest": lowest,
+        "res_rms_thresh": res_rms_thresh,
+        "remove_trans_rot": True,
+    }
+
+    result = geom_davidson(geom, **davidson_kwargs)
+
+
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
     print(highlight_text(f"Running IRC"))
 
@@ -1093,7 +1134,9 @@ def get_defaults(conf_dict):
         dd["assert"] = {}
 
     if "geom" in conf_dict:
-        dd["geom"] = {}
+        dd["geom"] = {
+            "type": "cart",
+        }
 
     if "mdp" in conf_dict:
         dd["mdp"] = {}
