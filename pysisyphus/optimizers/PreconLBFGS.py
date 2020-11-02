@@ -78,10 +78,12 @@ class PreconLBFGS(Optimizer):
             self.grad_diffs = deque(maxlen=self.history)
             self.steps_ = deque(maxlen=self.history)
 
+    def get_precon_getter(self):
+        return precon_getter(self.geometry, c_stab=self.c_stab, kind=self.precon_kind)
+
     def prepare_opt(self):
         if self.precon:
-            self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab,
-                                               kind=self.precon_kind)
+            self.precon_getter = self.get_precon_getter()
 
     def _get_opt_restart_info(self):
         opt_restart_info = {
@@ -100,7 +102,7 @@ class PreconLBFGS(Optimizer):
         )
 
         c_stab = opt_restart_info["c_stab"]
-        self.precon_getter = precon_getter(self.geometry, c_stab=c_stab)
+        self.precon_getter = self.get_precon_getter()
 
     def optimize(self):
         forces = self.geometry.forces
@@ -123,7 +125,7 @@ class PreconLBFGS(Optimizer):
             and self.cur_cycle > 0
             and self.cur_cycle % self.precon_update == 0
         ):
-            self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab)
+            self.precon_getter = self.get_precon_getter()
 
         # Construct preconditoner if requested
         P = None
