@@ -21,7 +21,9 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn=2, acc=1.0, topo=None, mem=1000, quiet=False, **kwargs):
+    def __init__(
+        self, gbsa="", gfn=2, acc=1.0, topo=None, mem=1000, quiet=False, **kwargs
+    ):
         super().__init__(**kwargs)
 
         self.gbsa = gbsa
@@ -32,14 +34,19 @@ class XTB(Calculator):
         self.quiet = quiet
 
         valid_gfns = (1, 2, "ff")
-        assert self.gfn in valid_gfns, "Invalid gfn argument. " \
-            f"Allowed arguments are: {', '.join(valid_gfns)}!"
+        assert self.gfn in valid_gfns, (
+            "Invalid gfn argument. " f"Allowed arguments are: {', '.join(valid_gfns)}!"
+        )
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out:xtb.out", "gradient", "xtbopt.xyz", "g98.out",
-                        "xtb.trj",
+        self.to_keep = (
+            "out:xtb.out",
+            "gradient",
+            "xtbopt.xyz",
+            "g98.out",
+            "xtb.trj",
         )
         if self.quiet:
             self.to_keep = ()
@@ -64,7 +71,7 @@ class XTB(Calculator):
     def prepare_input(self, atoms, coords, calc_type):
         if self.topo:
             path = self.prepare_path(use_in_run=True)
-            shutil.copy(self.topo,  path / "gfnff_topo")
+            shutil.copy(self.topo, path / "gfnff_topo")
 
     def prepare_add_args(self):
         add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
@@ -127,8 +134,8 @@ class XTB(Calculator):
         self.prepare_input(atoms, coords, "calculation")
         inp = self.prepare_coords(atoms, coords)
         kwargs = {
-                "calc": "noparse",
-                "env": self.get_pal_env(),
+            "calc": "noparse",
+            "env": self.get_pal_env(),
         }
         results = self.run(inp, **kwargs)
         return results
@@ -157,12 +164,14 @@ class XTB(Calculator):
         if velocities is not None:
             coords3d = coords.reshape(-1, 3)
             velocities3d = velocities.reshape(-1, 3) * BOHRPERFS2AU
-            assert coords3d.shape == velocities3d.shape, \
-                "Shape of coordinates and velocities doesn't match!"
+            assert (
+                coords3d.shape == velocities3d.shape
+            ), "Shape of coordinates and velocities doesn't match!"
             mdrestart_str = self.get_mdrestart_str(coords3d, velocities3d)
             self.write_mdrestart(path, mdrestart_str)
             restart = "true"
-        md_str = textwrap.dedent("""
+        md_str = textwrap.dedent(
+            """
         $md
             hmass=1
             dump={dump}  # fs
@@ -172,10 +181,10 @@ class XTB(Calculator):
             shake=0
             step={step}  # fs
             velo=false
-        $end""")
+        $end"""
+        )
         t_ps = t / 1000
-        md_str_fmt = md_str.format(restart=restart, time=t_ps, step=dt,
-                                   dump=dump)
+        md_str_fmt = md_str.format(restart=restart, time=t_ps, step=dt, dump=dump)
         with open(path / "xcontrol", "w") as handle:
             handle.write(md_str_fmt)
         inp = self.prepare_coords(atoms, coords)
@@ -222,10 +231,7 @@ class XTB(Calculator):
         if keep_log:
             opt_log = geoms_from_trj(path / "xtbopt.log")
 
-        opt_result = OptResult(
-                        opt_geom=opt_geom,
-                        opt_log=opt_log
-        )
+        opt_result = OptResult(opt_geom=opt_geom, opt_log=opt_log)
         return opt_result
 
     def parse_energy(self, path):
@@ -242,7 +248,7 @@ class XTB(Calculator):
         with open(path / "hessian") as handle:
             text = handle.read()
         hessian = np.array(text.split()[1:], dtype=float)
-        coord_num = int(hessian.size**0.5)
+        coord_num = int(hessian.size ** 0.5)
         hessian = hessian.reshape(coord_num, coord_num)
         energy = self.parse_energy(path)
         results = {
