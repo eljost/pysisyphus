@@ -18,6 +18,7 @@ class PreconLBFGS(Optimizer):
         history=7,
         precon=True,
         precon_update=None,
+        precon_kind="full",
         max_step_element=None,
         line_search="armijo",
         c_stab=None,
@@ -35,6 +36,7 @@ class PreconLBFGS(Optimizer):
         self.alpha_init = alpha_init
         self.precon = precon
         self.precon_update = precon_update
+        self.precon_kind = precon_kind
 
         is_dimer = isinstance(self.geometry.calculator, Dimer)
         if c_stab is None:
@@ -78,7 +80,8 @@ class PreconLBFGS(Optimizer):
 
     def prepare_opt(self):
         if self.precon:
-            self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab)
+            self.precon_getter = precon_getter(self.geometry, c_stab=self.c_stab,
+                                               kind=self.precon_kind)
 
     def _get_opt_restart_info(self):
         opt_restart_info = {

@@ -102,7 +102,7 @@ def get_lindh_precon(atoms, coords, bonds=None, bends=None, dihedrals=None,
     return P
 
 
-def precon_getter(geometry, c_stab=0.0103):
+def precon_getter(geometry, c_stab=0.0103, kind="full"):
     atoms = geometry.atoms
     internal = RedundantCoords(atoms, geometry.cart_coords)
     bonds  = internal.bond_indices
