@@ -22,7 +22,15 @@ class XTB(Calculator):
     conf_key = "xtb"
 
     def __init__(
-        self, gbsa="", gfn=2, acc=1.0, topo=None, mem=1000, quiet=False, **kwargs
+        self,
+        gbsa="",
+        gfn=2,
+        acc=1.0,
+        topo=None,
+        topo_update=None,
+        mem=1000,
+        quiet=False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
@@ -30,9 +38,11 @@ class XTB(Calculator):
         self.gfn = gfn
         self.acc = acc
         self.topo = topo
+        self.topo_update = topo_update
         self.mem = mem
         self.quiet = quiet
 
+        self.topo_used = 0
         valid_gfns = (1, 2, "ff")
         assert self.gfn in valid_gfns, (
             "Invalid gfn argument. " f"Allowed arguments are: {', '.join(valid_gfns)}!"
@@ -56,6 +66,7 @@ class XTB(Calculator):
             "hess": self.parse_hessian,
             "opt": self.parse_opt,
             "md": self.parse_md,
+            "topo": self.parse_topo,
             "noparse": lambda path: None,
         }
 
@@ -69,9 +80,20 @@ class XTB(Calculator):
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
     def prepare_input(self, atoms, coords, calc_type):
+        # Check if the topology has to be recreated/updated
+        if (
+            self.topo_used > 0
+            and self.topo_update
+            and (self.topo_used % self.topo_update == 0)
+        ):
+            results = self.run_topo(atoms, coords)
+            self.topo = results["topo"]
+            self.log(f"Updated topology! Saved to '{self.topo}'.")
         if self.topo:
             path = self.prepare_path(use_in_run=True)
             shutil.copy(self.topo, path / "gfnff_topo")
+            self.log(f"Using toplogy given in {self.topo}.")
+            self.topo_used += 1
 
     def prepare_add_args(self):
         add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
@@ -139,6 +161,26 @@ class XTB(Calculator):
         }
         results = self.run(inp, **kwargs)
         return results
+
+    def run_topo(self, atoms, coords):
+        inp = self.prepare_coords(atoms, coords)
+        kwargs = {
+            "calc": "topo",
+            "cmd": [self.base_cmd, "topo"],
+            "env": self.get_pal_env(),
+        }
+        results = self.run(inp, **kwargs)
+        return results
+
+    def parse_topo(self, path):
+        fn = "gfnff_topo"
+        topo = path / fn
+        target = self.make_fn(fn)
+        shutil.copy(topo, target)
+
+        return {
+            "topo": target,
+        }
 
     def get_mdrestart_str(self, coords, velocities):
         """coords and velocities have to given in au!"""
