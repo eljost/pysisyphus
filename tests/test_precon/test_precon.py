@@ -84,4 +84,4 @@ def test_biaryl_precon(precon_kind, ref_cycle):
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
-    assert geom.energy == pytest.approx(-48.73588757)
+    assert geom.energy == pytest.approx(-48.73588757, abs=1e-4)
