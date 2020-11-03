@@ -82,8 +82,9 @@ class PreconLBFGS(Optimizer):
             self.steps_ = deque(maxlen=self.history)
 
     def get_precon_getter(self):
-        return precon_getter(self.geometry, c_stab=self.c_stab, kind=self.precon_kind,
-                             logger=self.logger)
+        return precon_getter(
+            self.geometry, c_stab=self.c_stab, kind=self.precon_kind, logger=self.logger
+        )
 
     def prepare_opt(self):
         if self.precon:
@@ -117,7 +118,11 @@ class PreconLBFGS(Optimizer):
 
         norm = np.linalg.norm(forces)
         if not self.is_cos:
-            self.log(f"Current energy={energy:.6f}")
+            self.log(f" Current energy={energy:.6f} au")
+            if self.cur_cycle > 0:
+                prev_energy = self.energies[-2]
+                self.log(f"Previous energy={prev_energy:.6f} au")
+                self.log(f"             ΔE={energy-prev_energy:.6f} au")
         self.log(f"norm(forces)={norm:.6f}")
 
         # Steepest descent fallback
@@ -157,8 +162,13 @@ class PreconLBFGS(Optimizer):
             line_search_result = line_search.run()
             alpha = line_search_result.alpha
             step = alpha * step_dir
+            self.log(
+                f"Did {line_search_result.f_evals} additional energy evaluation(s) in line search."
+            )
         else:
             max_element = np.abs(step).max()
             if max_element > self.max_step_element:
                 step *= self.max_step_element / max_element
+        step_norm = np.linalg.norm(step)
+        self.log(f"norm(step)={step_norm:.6f} au")
         return step
