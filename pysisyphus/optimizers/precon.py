@@ -82,12 +82,9 @@ def get_lindh_precon(
     ks = get_lindh_k(atoms, c3d, bonds, bends)
 
     grad_funcs = {
-        # Bond
-        2: lambda i, j: dq_b(*c3d[i], *c3d[j]),
-        # Bend
-        3: lambda i, j, k: dq_a(*c3d[i], *c3d[j], *c3d[k]),
-        # Dihedral
-        4: lambda i, j, k, l: dq_d(*c3d[i], *c3d[j], *c3d[k]),
+        2: dq_b,  # Bond
+        3: dq_a,  # Bend
+        4: dq_d,  # Dihedral
     }
 
     row = np.zeros(dim)
@@ -97,7 +94,7 @@ def get_lindh_precon(
         cart_inds = list(it.chain(*[range(3 * i, 3 * i + 3) for i in inds]))
 
         # First derivatives of internal coordinates w.r.t cartesian coordinates
-        int_grad = grad_funcs[len(inds)](*inds)
+        int_grad = grad_funcs[len(inds)](*c3d[inds].flatten())
         # Assign to the correct cartesian indices
         full_row = row.copy()
         full_row[cart_inds] = int_grad
