@@ -95,6 +95,7 @@ class PreconLBFGS(Optimizer):
             "c_stab": self.c_stab,
             "grad_diffs": np.array(self.grad_diffs).tolist(),
             "steps_": np.array(self.steps_).tolist(),
+            "precon_kind": self.precon_kind,
         }
         return opt_restart_info
 
@@ -106,8 +107,15 @@ class PreconLBFGS(Optimizer):
             [np.array(cd) for cd in opt_restart_info["steps_"]], maxlen=self.history
         )
 
-        c_stab = opt_restart_info["c_stab"]
+        self.c_stab = opt_restart_info["c_stab"]
+        self.precon_kind = opt_restart_info["precon_kind"]
         self.precon_getter = self.get_precon_getter()
+
+    def scale_max_element(self, step, max_step_element):
+        max_element = np.abs(step).max()
+        if max_element > max_step_element:
+            step *= max_step_element / max_element
+        return step
 
     def optimize(self):
         forces = self.geometry.forces
@@ -161,17 +169,19 @@ class PreconLBFGS(Optimizer):
             }
             line_search = self.line_search_cls(**kwargs)
             line_search_result = line_search.run()
-            alpha = line_search_result.alpha
-            step *= alpha
-            f_evals = line_search_result.f_evals
-            df_evals = line_search_result.df_evals
-            self.log(
-                f"Evaluated {f_evals} energies and {df_evals} gradients in line search."
-            )
+            try:
+                alpha = line_search_result.alpha
+                step *= alpha
+                f_evals = line_search_result.f_evals
+                df_evals = line_search_result.df_evals
+                self.log(
+                    f"Evaluated {f_evals} energies and {df_evals} gradients in line search."
+                )
+            except TypeError:
+                self.log("Line search did not converge!")
+                step = self.scale_max_element(step, self.max_step)
         else:
-            max_element = np.abs(step).max()
-            if max_element > self.max_step_element:
-                step *= self.max_step_element / max_element
+            step = self.scale_max_element(step, self.max_step_element)
         step_norm = np.linalg.norm(step)
         self.log(f"norm(step)={step_norm:.6f} au")
         return step

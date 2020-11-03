@@ -7,6 +7,7 @@ from pysisyphus.calculators.AnaPotBase import AnaPotBase
 from pysisyphus.line_searches import Backtracking, HagerZhang, StrongWolfe
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.PreconSteepestDescent import PreconSteepestDescent
+from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 
 
 class CGDescent(Optimizer):
@@ -94,15 +95,15 @@ class CGDescent(Optimizer):
 
 
 @pytest.mark.parametrize(
-    "line_search, ref_cycle, ref_energy",
+    "line_search, ref_cycle",
     [
-        ("armijo", 32, 0.98555442),
-        ("strong_wolfe", 57, 0.98555442),
-        ("hz", 63, 0.98555442),
-        pytest.param(None, 1, 1, marks=pytest.mark.xfail),
+        ("armijo", 40),
+        ("strong_wolfe", 13),
+        ("hz", 9),
+        (None, 18)
     ]
 )
-def test_line_search(line_search, ref_cycle, ref_energy):
+def test_line_search(line_search, ref_cycle):
     geom = AnaPot.get_geom((0.687, 1.57, 0.))
 
     opt_kwargs = {
@@ -111,14 +112,15 @@ def test_line_search(line_search, ref_cycle, ref_energy):
         "max_cycles": 64,
         "precon": False,
     }
-    opt = PreconSteepestDescent(geom, **opt_kwargs)
+    opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
 
-    # geom.calculator.plot_opt(opt)
+    # geom.calculator.plot_opt(opt, show=True)
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
-    assert geom.energy == pytest.approx(ref_energy)
+    # assert geom.energy == pytest.approx(ref_energy)
+    assert geom.energy == pytest.approx(0.98555442)
 
 
 def test_1d_steepest_descent():
@@ -129,7 +131,7 @@ def test_1d_steepest_descent():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 5
+    assert opt.cur_cycle == 16
 
 
 @pytest.mark.parametrize(

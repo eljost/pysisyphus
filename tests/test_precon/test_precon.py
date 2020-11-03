@@ -65,7 +65,7 @@ def test_menthone(opt_cls, precon, ref_cycles):
         (True, "full", 83),
         (True, "full_fast", 83),
         (True, "bonds", 93),
-        (True, "bonds_bends", 77),
+        (True, "bonds_bends", 83),
         # (False, None, 26),
     ]
 )
