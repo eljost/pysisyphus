@@ -163,8 +163,10 @@ class PreconLBFGS(Optimizer):
             line_search_result = line_search.run()
             alpha = line_search_result.alpha
             step *= alpha
+            f_evals = line_search_result.f_evals
+            df_evals = line_search_result.df_evals
             self.log(
-                f"Did {line_search_result.f_evals} additional energy evaluation(s) in line search."
+                f"Evaluated {f_evals} energies and {df_evals} gradients in line search."
             )
         else:
             max_element = np.abs(step).max()
