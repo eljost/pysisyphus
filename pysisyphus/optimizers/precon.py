@@ -2,7 +2,7 @@ import itertools as it
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
-from scipy.sparse import csc_matrix
+from scipy.sparse import dok_matrix
 
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
@@ -87,19 +87,20 @@ def get_lindh_precon(
         4: dq_d,  # Dihedral
     }
 
-    P = csc_matrix((dim, dim))
+    P = dok_matrix((dim, dim))
     for inds, k in zip(it.chain(bonds, bends, dihedrals), ks):
         # First derivatives of internal coordinates w.r.t cartesian coordinates
         int_grad = grad_funcs[len(inds)](*c3d[inds].flatten())
         # Assign to the correct cartesian indices
-        cart_inds = np.array(
-            list(it.chain(*[range(3 * i, 3 * i + 3) for i in inds]))
+        cart_inds = np.array(list(it.chain(*[range(3 * i, 3 * i + 3) for i in inds])))
+        P[cart_inds[:, None], cart_inds[None, :]] += abs(k) * np.outer(
+            int_grad, int_grad
         )
-        P[cart_inds[:,None], cart_inds[None, :]] += abs(k) * np.outer(int_grad, int_grad)
 
     # Add stabilization to diagonal
     P[np.diag_indices(dim)] += c_stab
-    filled = P.size / dim**2
+    P = P.tocsc()
+    filled = P.size / dim ** 2
     log(logger, f"Preconditioner P has {P.size} entries ({filled:.2%} filled)")
 
     return P
