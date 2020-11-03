@@ -39,7 +39,7 @@ def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
         bond_dict.setdefault(from_, list()).append(to_)
         bond_dict.setdefault(to_, list()).append(from_)
 
-    bends = list()
+    bend_set = set()
     for bond in bonds:
         from_, to_ = bond
         from_neighs = set(bond_dict[from_]) - set((to_,))
@@ -50,12 +50,12 @@ def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
         for indices in bend_candidates:
             if (
                 (not bend_valid(coords3d, indices, min_deg, max_deg))
-                or (indices[::-1] in bends)
-                or (indices in bends)
+                or (indices in bend_set)
+                or (indices[::-1] in bend_set)
             ):
                 continue
-            bends.append(list(indices))
-    return bends
+            bend_set.add(indices)
+    return [list(bend) for bend in bend_set]
 
 
 def find_bonds_bends(geom, bond_factor=1.3):
