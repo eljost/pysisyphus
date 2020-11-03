@@ -21,7 +21,6 @@ class Backtracking(LineSearch):
         self.rho_hi = float(rho_hi)
 
     def run_line_search(self):
-        self.log("Starting backtracking line search")
         phi0, dphi0 = self.get_phi_dphi("fg", 0)
 
         alpha_prev = None

@@ -2,6 +2,8 @@ import abc
 from collections import namedtuple
 import logging
 
+import numpy as np
+
 
 class LineSearchConverged(Exception):
 
@@ -23,7 +25,8 @@ LineSearchResult = namedtuple(
 class LineSearch(metaclass=abc.ABCMeta):
 
     def __init__(self, p, cond="armijo", x0=None, geometry=None, f=None, df=None,
-                 alpha_init=None, f0=None, g0=None, c1=0.1, c2=0.9, max_cycles=10):
+                 alpha_init=None, f0=None, g0=None, c1=0.1, c2=0.9, max_cycles=10,
+                 alpha_min=1e-6):
         self.p = p
         self.geometry = geometry
         self.f = f
@@ -48,6 +51,7 @@ class LineSearch(metaclass=abc.ABCMeta):
         self.c1 = c1
         self.c2 = c2
         self.max_cycles = max_cycles
+        self.alpha_min = alpha_min
 
         # Store calculated energies & gradients
         self.alpha_fs = {}
@@ -81,8 +85,13 @@ class LineSearch(metaclass=abc.ABCMeta):
             self.dphi0 = self.g0.dot(self.p)
             self.alpha_dfs[0.] = self.g0
 
+    def check_alpha(self, alpha):
+        if (alpha != 0.0) and (np.isnan(alpha) or (alpha < self.alpha_min)):
+            raise LineSearchNotConverged()
+
     def _phi(self, alpha):
         alpha = float(alpha)
+        self.check_alpha(alpha)
         try:
             f_alpha = self.alpha_fs[alpha]
         except KeyError:
@@ -94,6 +103,7 @@ class LineSearch(metaclass=abc.ABCMeta):
 
     def _dphi(self, alpha):
         alpha = float(alpha)
+        self.check_alpha(alpha)
         try:
             df_alpha = self.alpha_dfs[alpha]
             dphi_ = df_alpha.dot(self.p)
@@ -168,6 +178,7 @@ class LineSearch(metaclass=abc.ABCMeta):
 
         # Normal termination
         try:
+            self.log(f"Starting {self.__class__.__name__} line search.")
             alpha = self.run_line_search()
         # Termination in get_phi_dphi
         except LineSearchConverged as lsc:
