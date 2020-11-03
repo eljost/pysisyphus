@@ -88,21 +88,3 @@ def test_biaryl_precon(precon, precon_kind, ref_cycle):
     # Allow higher tolerance without preconditioner
     abs_ = 1e-4 if precon else 2e-3
     assert geom.energy == pytest.approx(-48.73588757, abs=abs_)
-
-
-def test_fix_linesearch():
-    geom = geom_loader("lib:h2o_shaken.xyz")
-    calc = PySCF(basis="sto3g")
-    geom.set_calculator(calc)
-
-    opt_kwargs = {
-        "max_cycles": 10,
-        "precon": True,
-        "thresh": "gau",
-    }
-    opt = PreconLBFGS(geom, **opt_kwargs)
-    opt.run()
-
-    # assert opt.is_converged
-    # assert opt.cur_cycle == ref_cycles
-    # assert geom.energy == pytest.approx(-74.96590119)
