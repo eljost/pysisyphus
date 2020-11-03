@@ -136,7 +136,7 @@ class PreconLBFGS(Optimizer):
         ):
             self.precon_getter = self.get_precon_getter()
 
-        # Construct preconditoner if requested
+        # If requested, construct preconditioner
         P = None
         if self.precon:
             P = self.precon_getter(self.geometry.coords)
