@@ -19,7 +19,7 @@ from pysisyphus.testing import using
     ]
 )
 def test_water_hf_precon_opt(opt_cls, precon, ref_cycles):
-    geom = geom_loader("h2o_shaken.xyz")
+    geom = geom_loader("lib:h2o_shaken.xyz")
     calc = PySCF(basis="sto3g")
     geom.set_calculator(calc)
 
