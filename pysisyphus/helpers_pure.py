@@ -1,5 +1,6 @@
 from enum import Enum
 import logging
+import time
 
 import numpy as np
 
@@ -90,3 +91,16 @@ class OrderedEnum(Enum):
         if self.__class__ is other.__class__:
             return self.value < other.value
         return NotImplemented
+
+
+def timed(logger):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            start = time.time()
+            result = func(*args, **kwargs)
+            end = time.time()
+            duration = end - start
+            log(logger, f"Execution of '{func.__name__}' took {duration:.2f} s.")
+            return result
+        return wrapper
+    return decorator

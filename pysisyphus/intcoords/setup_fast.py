@@ -1,11 +1,16 @@
 import itertools as it
+import logging
 
 import numpy as np
 from sklearn.neighbors import KDTree
 
 from pysisyphus.elem_data import COVALENT_RADII as CR
+from pysisyphus.helpers_pure import log, timed
 from pysisyphus.intcoords.setup import get_dihedral_inds
 from pysisyphus.intcoords.valid import bend_valid
+
+
+logger = logging.getLogger("internal_coords")
 
 
 def find_bonds(geom, bond_factor=1.3):
@@ -60,16 +65,26 @@ def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
 
 
 def find_bonds_bends(geom, bond_factor=1.3, min_deg=15, max_deg=175):
+    log(logger, "Starting detection of bonds and bends.")
     bonds = find_bonds(geom, bond_factor=bond_factor)
+    log(logger, f"Found {len(bonds)} bonds.")
     bends = find_bends(geom.coords3d, bonds, min_deg=min_deg, max_deg=max_deg)
+    log(logger, f"Found {len(bends)} bends.")
     return bonds, bends
 
 
+@timed(logger)
 def find_bonds_bends_dihedrals(geom, bond_factor=1.3, min_deg=15, max_deg=175):
+    log(logger, f"Detecting bonds, bends and dihedrals for {len(geom.atoms)} atoms.")
     bonds, bends = find_bonds_bends(
         geom, bond_factor=bond_factor, min_deg=min_deg, max_deg=max_deg
     )
     proper_diheds, improper_diheds = get_dihedral_inds(
         geom.coords3d, bonds, bends, max_deg=max_deg
+    )
+    log(
+        logger,
+        f"Found {len(proper_diheds)} proper and improper "
+        f"{len(improper_diheds)} dihedrals.",
     )
     return bonds, bends, proper_diheds + improper_diheds
