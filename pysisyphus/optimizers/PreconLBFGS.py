@@ -148,12 +148,13 @@ class PreconLBFGS(Optimizer):
             self.steps_.append(self.steps[-1])
             step = bfgs_multiply(self.steps_, self.grad_diffs, forces, P=P)
 
-        step_dir = step / np.linalg.norm(step)
+        step_norm = np.linalg.norm(step)
+        self.log(f"norm(unscaled step)={step_norm:.6f} au")
 
         if self.line_search_cls is not None:
             kwargs = {
                 "geometry": self.geometry,
-                "p": step_dir,
+                "p": step,
                 "f0": energy,
                 "g0": -forces,
                 "alpha_init": self.alpha_init,
@@ -161,7 +162,7 @@ class PreconLBFGS(Optimizer):
             line_search = self.line_search_cls(**kwargs)
             line_search_result = line_search.run()
             alpha = line_search_result.alpha
-            step = alpha * step_dir
+            step *= alpha
             self.log(
                 f"Did {line_search_result.f_evals} additional energy evaluation(s) in line search."
             )
