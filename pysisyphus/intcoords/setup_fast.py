@@ -54,7 +54,7 @@ def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
                 or (indices in bends)
             ):
                 continue
-            bends.append(indices)
+            bends.append(list(indices))
     return bends
 
 
