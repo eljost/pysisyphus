@@ -87,18 +87,15 @@ def get_lindh_precon(
         4: dq_d,  # Dihedral
     }
 
-    row = np.zeros(dim)
     P = np.zeros((dim, dim))
     for inds, k in zip(it.chain(bonds, bends, dihedrals), ks):
-        # Construct full row
-        cart_inds = list(it.chain(*[range(3 * i, 3 * i + 3) for i in inds]))
-
         # First derivatives of internal coordinates w.r.t cartesian coordinates
         int_grad = grad_funcs[len(inds)](*c3d[inds].flatten())
         # Assign to the correct cartesian indices
-        full_row = row.copy()
-        full_row[cart_inds] = int_grad
-        P += np.outer(full_row, full_row * abs(k))
+        cart_inds = np.array(
+            list(it.chain(*[range(3 * i, 3 * i + 3) for i in inds]))
+        )
+        P[cart_inds[:,None], cart_inds[None, :]] += abs(k) * np.outer(int_grad, int_grad)
 
     # Add stabilization to diagonal
     P += c_stab * np.eye(dim)
