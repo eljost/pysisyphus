@@ -119,7 +119,6 @@ def test_line_search(line_search, ref_cycle):
 
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycle
-    # assert geom.energy == pytest.approx(ref_energy)
     assert geom.energy == pytest.approx(0.98555442)
 
 
