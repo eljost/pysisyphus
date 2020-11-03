@@ -63,6 +63,7 @@ def test_menthone(opt_cls, precon, ref_cycles):
 @pytest.mark.parametrize(
     "precon, precon_kind, ref_cycle", [
         (True, "full", 83),
+        (True, "full_fast", 83),
         (True, "bonds", 93),
         (True, "bonds_bends", 77),
         # (False, None, 26),

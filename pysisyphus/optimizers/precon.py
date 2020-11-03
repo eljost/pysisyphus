@@ -6,7 +6,11 @@ from scipy.sparse import dok_matrix
 
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
-from pysisyphus.intcoords.setup_fast import find_bonds, find_bonds_bends
+from pysisyphus.intcoords.setup_fast import (
+    find_bonds,
+    find_bonds_bends,
+    find_bonds_bends_dihedrals,
+)
 from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
 from pysisyphus.intcoords import RedundantCoords
 
@@ -107,7 +111,7 @@ def get_lindh_precon(
 
 
 def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
-    valid_kinds = ("full", "bonds", "bonds_bends")
+    valid_kinds = ("full", "full_fast", "bonds", "bonds_bends")
     assert kind in valid_kinds, f"Invalid kind='{kind}'! Valid kinds are: {valid_kinds}"
 
     atoms = geom.atoms
@@ -120,6 +124,8 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
         bonds = internal.bond_indices
         bends = internal.bending_indices
         dihedrals = internal.dihedrals
+    elif kind == "full_fast":
+        bonds, bends, dihedrals = find_bonds_bends_dihedrals(geom)
     elif kind == "bonds_bends":
         bonds, bends = find_bonds_bends(geom)
     elif kind == "bonds":
