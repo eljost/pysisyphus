@@ -17,6 +17,25 @@ Please follow the installation instructions in the `nix manual`_ and additional 
     nix-channel --update
     export NIXPKGS_ALLOW_UNFREE=1
 
+Binary Caching
+--------------
+
+Binary caching of Nix dependencies heavily speeds up build times by getting the heavy dependencies (like Psi4) prebuilt from the cache (usually hours). A binary cache for the open source components for a common workstation configuration is provided:
+
+- SSE exentensions up to SSE4.2
+- AVX extensions up to AVX2
+- BLAS and LAPACK is provided by OpenBLAS
+- MVAPICH2 is used as the commond MPI provider
+- The network for MPI parallelisation is ethernet and the loopback interface
+
+The caching is provided by the Cachix_ service and needs to be enabled for your nix installation:
+
+.. code-block: bash
+    nix-env -iA nixos.cachix
+    cachix use chemix
+
+Cachix will (necessarily) add a new :code:`substituters` and :code:`trusted-public-keys` to your :code:`$HOME/.config/nix/nix.conf` if executed as normal user or :code:`/etc/nix/nix.conf` if executed as root. If written to your user configuration, you need to be a configured as :code:`trusted-users` for nix in :code:`/etc/nix/nix.conf` or your new caching settings will be ignored.
+
 Configuration
 =============
 
@@ -37,13 +56,14 @@ Please adapt the following lines in :code:`config.nix`:
     - If you are not using CUDA enabled hardware, set :code:`cuda = false;`.
     - :code:`network` should be adapted if you intend to run pysisyphus on a HPC cluster. Possible values are: :code:`network = "ethernet"`, :code:`network = "omnipath"` or :code:`network = "infiniband"`. If you are running pysisyphus on local machine keep :code:`network = "ethernet"`.
     - :code:`mpi` is set to :code:`"mvapich2"` by default. There  is usually no reason to change this but you could also use :code:`"openmpi"`. This does **not** mean that the selected MPI version will be used in all programs. MRCC requires IntelMPI and GAMESS-US OpenMPI, no matter what you select here.
-    - :code:`blas = "mkl"` should be updated to :code:`blas = "openblas"` if you don't have an Intel CPU.
+    - :code:`blas = "openblas"` can be updated to :code:`blas = "mkl"` if you have an Intel CPU.
 
+While enabling the proprietary components in :code:`config.nix` usually does not have an impact on binary caching, changing the CPU optimisation flags, the MPI implementation or network settings will usually trigger more rebuilds as caching is not setup for those configurations.
 
 Installation
 ============
 
-After you updated :code:`nix/nixwithchemistry/config.nix`, you can start building the actual QC codes
+After you updated :code:`nix/nixwithchemistry/config.nix`, you can start building/fetching the actual QC codes
 and all dependencies.
 
 The initial `nix-build` took about 3.5 h on my laptop, equipped with a i7-8750H (6 physical cores), 16 GB RAM and a NVMe SSD and requires about 15 GB disk space in the local Nix store (only ORCA was enabled, Gaussian and Turbomole were disabled).
@@ -89,3 +109,4 @@ Do not be confused if the commands of the underlying quantum chemistry codes are
 .. _`nix-shell`: https://nixos.org/nix/manual/#sec-nix-shell
 .. _`nix manual`: https://nixos.org/manual/nix/stable/
 .. _`Nix Pills`: https://nixos.org/guides/nix-pills/index.html
+.. _Cachix: https://cachix.org/

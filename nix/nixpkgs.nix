@@ -3,7 +3,7 @@ let
   nixpkgs = import (builtins.fetchGit {
     url = "https://github.com/nixos/nixpkgs";
     name = "nixos-20.09";
-    rev = "13d0c311e3ae923a00f734b43fd1d35b47d8943a";
+    rev = "d105075a1fd870b1d1617a6008cb38b443e65433";
     ref = "refs/heads/nixos-20.09";
   }) { overlays = [NixWithChemistry]; };
 
