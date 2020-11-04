@@ -1,4 +1,5 @@
 from collections import deque
+from functools import partial
 
 import numpy as np
 from scipy.sparse.linalg import spsolve
@@ -70,6 +71,7 @@ class PreconLBFGS(Optimizer):
         self.line_search = line_search
         ls_cls = {
             "armijo": Backtracking,
+            "armijo_fg": partial(Backtracking, use_grad=True),
             "strong_wolfe": StrongWolfe,
             "hz": HagerZhang,
             None: None,
