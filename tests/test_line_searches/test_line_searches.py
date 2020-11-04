@@ -97,7 +97,7 @@ class CGDescent(Optimizer):
 @pytest.mark.parametrize(
     "line_search, ref_cycle",
     [
-        ("armijo", 40),
+        # ("armijo", 40),
         ("strong_wolfe", 13),
         ("hz", 9),
         (None, 18)
