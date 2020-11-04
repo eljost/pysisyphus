@@ -159,6 +159,7 @@ class LineSearch(metaclass=abc.ABCMeta):
             and self.can_eval_cond_func(alpha)
             and self.cond_func(alpha)
         ):
+            self.log(f"Line search condition is satisfied for α={alpha:.6f}.")
             raise LineSearchConverged(alpha)
         # Dont return a list if only f or g was requested.
         if len(what) == 1:
