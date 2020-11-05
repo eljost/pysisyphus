@@ -1,7 +1,6 @@
 from pysisyphus.line_searches.LineSearch import (
     LineSearch,
     LineSearchNotConverged,
-    LineSearchConverged,
 )
 
 from pysisyphus.line_searches.interpol import interpol_alpha_quad, interpol_alpha_cubic
@@ -85,7 +84,5 @@ class Backtracking(LineSearch):
             alpha_prev = alpha
             alpha = alpha_new
             self.log(f"\tNext α: {alpha:.6f}\n")
-        else:
-            raise LineSearchNotConverged
 
-        return alpha
+        raise LineSearchNotConverged

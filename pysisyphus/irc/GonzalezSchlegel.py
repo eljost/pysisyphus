@@ -178,7 +178,6 @@ class GonzalezSchlegel(IRC):
                 self.converged = True
                 return
             micro_coords_.append(self.mw_coords)
-            norm_dx = np.linalg.norm(dx)
             if np.linalg.norm(dx) <= self.micro_step_thresh:
                 break
         else:

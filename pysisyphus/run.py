@@ -777,6 +777,7 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
     }
 
     result = geom_davidson(geom, **davidson_kwargs)
+    return result
 
 
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
