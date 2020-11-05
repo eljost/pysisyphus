@@ -14,7 +14,7 @@ from pysisyphus.testing import using
     "precon, ref_cyc, ref_nu",
     [
         (True, 3, 1691.0526969),
-        (False, 5, 1691.028426),
+        (False, 5, 1691.0311213),
     ],
 )
 def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
@@ -27,8 +27,10 @@ def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
     w, v = np.linalg.eigh(H)
     inds = [16, 8]
 
-    def get_guess(vec, masses_rep, scale=0.0):
-        return NormalMode(vec + scale * np.random.rand(*vec.shape), masses_rep)
+    rg = np.random.default_rng(20180325)
+
+    def get_guess(vec, masses_rep, scale=5e-3):
+        return NormalMode(vec + scale * rg.random(*vec.shape), masses_rep)
 
     guess_modes = [get_guess(v[:, ind], geom.masses_rep) for ind in inds]
 
