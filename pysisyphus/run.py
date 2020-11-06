@@ -26,6 +26,7 @@ from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
+from pysisyphus.exceptions import HEIIsFirstOrLastException
 from pysisyphus.dynamics import mdp
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
@@ -263,6 +264,12 @@ def run_tsopt_from_cos(
         # HEI tangent by mixing the two tangents closest to the splined HEI.
         hei_coords, hei_energy, splined_hei_tangent, hei_index = cos.get_splined_hei()
         hei_image = Geometry(atoms, hei_coords)
+        close_to_first = hei_index < 0.5
+        close_to_last = hei_index > len(cos.images) - 1.5
+        if close_to_first or close_to_last:
+            close_to = "first" if close_to_first else "last"
+            print(f"Splined HEI is too close to the {close_to} image. Aborting TS optimization!")
+            raise HEIIsFirstOrLastException
         # The hei_index is a float. We split off the decimal part and mix the two
         # nearest tangents accordingly.
         frac, floor = modf(hei_index)
@@ -270,6 +277,7 @@ def run_tsopt_from_cos(
         floor = int(floor)
         ceil = floor + 1
         floor_tangent = cart_cos.get_tangent(floor)
+        import pdb; pdb.set_trace()
         ceil_tangent = cart_cos.get_tangent(ceil)
         print(f"Creating mixed HEI tangent, using tangents at images {(floor, ceil)}.")
         print("Overlap of splined HEI tangent with these tangents:")
@@ -1413,34 +1421,38 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         # TSOPT #
         #########
 
+        abort = False
         if run_dict["tsopt"]:
             # Use a separate implementation for TS-Optimizations started from
             # COS-optimizations.
-            if isinstance(geom, ChainOfStates.ChainOfStates):
-                ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-                ts_geom, ts_opt = run_tsopt_from_cos(
-                    geom, tsopt_key, tsopt_kwargs, ts_calc_getter
-                )
-            else:
-                ts_geom, ts_opt = run_opt(
-                    geom,
-                    calc_getter,
-                    tsopt_key,
-                    tsopt_kwargs,
-                    title="TS-Optimization",
-                    copy_final_geom="ts_opt.xyz",
-                )
-            geom = ts_geom.copy()
-            # Try to transfer Hessian to new geometry, to avaoid recalculation.
-            if ts_geom._hessian is not None:
-                geom._hessian = ts_geom._hessian
+            try:
+                if isinstance(geom, ChainOfStates.ChainOfStates):
+                    ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
+                    ts_geom, ts_opt = run_tsopt_from_cos(
+                        geom, tsopt_key, tsopt_kwargs, ts_calc_getter
+                    )
+                else:
+                    ts_geom, ts_opt = run_opt(
+                        geom,
+                        calc_getter,
+                        tsopt_key,
+                        tsopt_kwargs,
+                        title="TS-Optimization",
+                        copy_final_geom="ts_opt.xyz",
+                    )
+                geom = ts_geom.copy()
+                # Try to transfer Hessian to new geometry, to avaoid recalculation.
+                if ts_geom._hessian is not None:
+                    geom._hessian = ts_geom._hessian
+            except HEIIsFirstOrLastException:
+                abort = True
 
         #######
         # IRC #
         #######
 
         ran_irc = False
-        if run_dict["irc"]:
+        if (not abort) and run_dict["irc"]:
             # After a Dimer run we continue with the actual calculator
             # and not the Dimer calculator.
             if calc_key == "dimer":
