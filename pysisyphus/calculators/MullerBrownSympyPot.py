@@ -36,9 +36,10 @@ class MullerBrownPot(AnaPotBase):
         ylim = (-0.5, 2.25)
         levels = np.linspace(-200, 400, 100)
         minima = ((-0.5582236, 1.441725842, 0.0), (0.62349941, 0.028037758, 0.0))
+        saddles = ((-0.822, 0.624, 0.0), )
 
         super(MullerBrownPot, self).__init__(V_str=V_str, xlim=xlim, ylim=ylim,
-                                             levels=levels, minima=minima)
+                                             levels=levels, minima=minima, saddles=saddles)
 
     def __str__(self):
         return "MullerBrownPot calculator"

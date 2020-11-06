@@ -44,6 +44,7 @@ def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
+    # geom.calculator.plot_opt(opt, show=True)
     # import matplotlib.pyplot as plt
     # calc = geom.calculator
     # calc.plot()

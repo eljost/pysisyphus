@@ -10,131 +10,187 @@ import numpy as np
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.Geometry import get_trans_rot_projector
 from pysisyphus.modefollow.NormalMode import NormalMode
-
-
-def fin_diff(geom, b, step_size):
-    m_sqrt = np.sqrt(geom.masses_rep)
-    plus = geom.get_energy_and_forces_at(geom.coords + b)["forces"]
-    minus = geom.get_energy_and_forces_at(geom.coords - b)["forces"]
-    fd = (minus - plus) / (2 * step_size) / m_sqrt
-    return fd
+from pysisyphus.TablePrinter import TablePrinter
 
 
 DavidsonResult = namedtuple(
     "DavidsonResult",
-    "cur_cycle nus mode_ind",
+    "cur_cycle converged final_modes qs nus mode_inds res_rms",
 )
 
 
-def davidson(
-    geom,
-    q,
+def forces_fin_diff(forces_getter, coords, b, step_size):
+    plus = forces_getter(coords + b)
+    minus = forces_getter(coords - b)
+    fd = (minus - plus) / (2 * step_size)
+    return fd
+
+
+def block_davidson(
+    cart_coords,
+    masses,
+    forces_getter,
+    guess_modes,
+    lowest=None,
     trial_step_size=0.01,
     hessian_precon=None,
     max_cycles=25,
     res_rms_thresh=1e-4,
+    start_precon=5,
+    remove_trans_rot=True,
+    print_level=1,
 ):
-    if hessian_precon is not None:
-        print("Using supplied Hessians as preconditioner.")
-
-    B_list = list()
-    S_list = list()
-    msqrt = np.sqrt(geom.masses_rep)
+    num = len(guess_modes)
+    B_full = np.zeros((len(guess_modes[0]), num * max_cycles))
+    S_full = np.zeros_like(B_full)
+    I = np.eye(cart_coords.size)
+    masses_rep = np.repeat(masses, 3)
+    msqrt = np.sqrt(masses_rep)
 
     # Projector to remove translation and rotation
-    P = get_trans_rot_projector(geom.cart_coords, geom.masses)
-    l_proj = P.dot(q.l_mw) / msqrt
-    q = NormalMode(l_proj, geom.masses_rep)
+    P = get_trans_rot_projector(cart_coords, masses)
+    guess_modes = [
+        NormalMode(P.dot(mode.l_mw) / msqrt, masses_rep) for mode in guess_modes
+    ]
 
-    b_prev = q.l_mw
+    col_fmts = "int int int float float str".split()
+    header = ("#", "subspace size", "mode", "ṽ / cm⁻¹", "rms(r)", "Conv")
+    table = TablePrinter(header, col_fmts, width=11)
+    if print_level == 1:
+        table.print_header()
+
+    b_prev = np.array([mode.l_mw for mode in guess_modes]).T
     for i in range(max_cycles):
-        print(f"Cycle {i:02d}")
-        b = q.l_mw
-        B_list.append(b)
-        B = np.stack(B_list, axis=1)
+        # Add new basis vectors to B matrix
+        b = np.array([mode.l_mw for mode in guess_modes]).T
+        from_ = i * num
+        to_ = (i + 1) * num
+        B_full[:, from_:to_] = b
 
-        # Overlaps of basis vectors in B
-        # B_ovlp = np.einsum("ij,kj->ik", B_list, B_list)
-        # print("Basis vector overlaps")
-        # print(B_ovlp)
+        # Estimate action of Hessian by finite differences.
+        for j in range(num):
+            mode = guess_modes[j]
+            # Get a step size in mass-weighted coordinates that results
+            # in the desired 'trial_step_size' in not-mass-weighted coordinates.
+            mw_step_size = mode.mw_norm_for_norm(trial_step_size)
+            # Actual step in non-mass-weighted coordinates
+            step = trial_step_size * mode.l
+            S_full[:, from_ + j] = (
+                # Convert to mass-weighted coordinates
+                forces_fin_diff(forces_getter, cart_coords, step, mw_step_size)
+                / msqrt
+            )
 
-        # Estimate action of Hessian on basis vector by finite differences
-
-        # Get step size in mass-weighted coordinates that results
-        # in the desired 'trial_step_size' in not-mass-weighted coordinates.
-        mw_step_size = q.mw_norm_for_norm(trial_step_size)
-        # Actual step in non-mass-weighted coordinates
-        step = trial_step_size * q.l
-        s = fin_diff(geom, step, mw_step_size)
-        S_list.append(s)
-        S = np.stack(S_list, axis=1)
+        # Views on columns that are actually set
+        B = B_full[:, :to_]
+        S = S_full[:, :to_]
 
         # Calculate and symmetrize approximate hessian
-        Hm_ = B.T.dot(S)
-        Hm_ = (Hm_ + Hm_.T) / 2
+        Hm = B.T.dot(S)
+        Hm = (Hm + Hm.T) / 2
+        # Diagonalize small Hessian
+        w, v = np.linalg.eigh(Hm)
 
-        # Diagonalization
-        v, w = np.linalg.eigh(Hm_)
-
-        # i-th approximation to exact eigenvector
-        approx_modes = (w * B[:, :, None]).sum(axis=1).T
-
+        # Approximations to exact eigenvectors in current cycle
+        approx_modes = (v * B[:, :, None]).sum(axis=1).T
         # Calculate overlaps between previous root and the new approximate
         # normal modes for root following.
-        mode_overlaps = (approx_modes * b_prev).sum(axis=1)
-        mode_ind = np.abs(mode_overlaps).argmax()
-        print(f"\tFollowing mode {mode_ind}")
+        if lowest is None:
+            # 2D overlap array. approx_modes in row, b_prev in columns.
+            overlaps = np.einsum("ij,jk->ik", approx_modes, b_prev)
+            mode_inds = np.abs(overlaps).argmax(axis=0)
+        else:
+            mode_inds = np.arange(lowest)
+        b_prev = approx_modes[mode_inds].T
 
-        residues = list()
-        for s in range(i + 1):
-            residues.append((w[:, s] * (S - v[s] * B)).sum(axis=1))
-        residues = np.array(residues)
+        # Eq. (7) in [1]
+        residues = (v * (S[:, :, None] - w * B[:, :, None])).sum(axis=1)
 
-        b_prev = approx_modes[mode_ind]
+        # Determine preconditioner matrix
+        #
+        # Use supplied matrix
+        if hessian_precon is not None:
+            precon_mat = hessian_precon
+        # Reconstruct Hessian, but only start after some cycles
+        elif i >= start_precon:
+            precon_mat = B.dot(Hm).dot(B.T)
+        # No preconditioning if no matrix was supplied or we are in an early cycle.
+        else:
+            precon_mat = None
 
         # Construct new basis vector from residuum of selected mode
-        if hessian_precon is not None:
-            # Construct X
-            X = np.linalg.inv(
-                hessian_precon - v[mode_ind] * np.eye(hessian_precon.shape[0])
-            )
-            b = X.dot(residues[mode_ind])
-        else:
-            b = residues[mode_ind]
+        b = np.zeros_like(b_prev)
+        for j, mode_ind in enumerate(mode_inds):
+            r = residues[:, mode_ind]
+            if precon_mat is not None:
+                # Construct actual preconditioner X
+                X = np.linalg.pinv(precon_mat - w[mode_ind] * I, rcond=1e-8)
+                b[:, j] = X.dot(r)
+            else:
+                b[:, j] = r
+
         # Project out translation and rotation from new mode guess
-        b = P.dot(b)
-        # Orthogonalize new mode against current basis vectors
-        rows, cols = B.shape
-        B_ = np.zeros((rows, cols + 1))
-        B_[:, :cols] = B
-        B_[:, -1] = b
-        b, _ = np.linalg.qr(B_)
+        if remove_trans_rot:
+            b = P.dot(b)
+        # Orthogonalize new vectors against preset vectors
+        b = np.linalg.qr(np.concatenate((B, b), axis=1))[0][:, -num:]
 
         # New NormalMode from non-mass-weighted displacements
-        q = NormalMode(b[:, -1] / msqrt, geom.masses_rep)
+        guess_modes = [NormalMode(b_ / msqrt, masses_rep) for b_ in b.T]
 
         # Calculate wavenumbers
-        nus = eigval_to_wavenumber(v)
+        nus = eigval_to_wavenumber(w)
 
         # Check convergence criteria
-        max_res = np.abs(residues).max(axis=1)
-        res_rms = np.sqrt(np.mean(residues ** 2, axis=1))
+        max_res = np.abs(residues).max(axis=0)
+        res_rms = np.sqrt(np.mean(residues ** 2, axis=0))
 
-        # Print progress
-        print("\t #  |      wavelength       |  rms       |   max")
-        for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
-            sel_str = "*" if (i == mode_ind) else " "
-            print(f"\t{j:02d}{sel_str} | {nu:> 16.2f} cm⁻¹ | {rms:.8f} | {mr:.8f}")
-        print()
+        converged = res_rms < res_rms_thresh
+        # Print progress if requested
+        if print_level == 2:
+            print(f"Cycle {i:02d}")
+            print("\t #  |    ṽ / cm⁻¹|   rms(r)   | max(|r|) ")
+            print("\t------------------------------------------")
+            for j, (nu, rms, mr) in enumerate(zip(nus, res_rms, max_res)):
+                sel_str = "*" if (j in mode_inds) else " "
+                conv_str = "✓" if converged[j] else ""
+                print(
+                    f"\t{j:02d}{sel_str} | {nu:> 10.2f} | {rms:.8f} | {mr:.8f} {conv_str}"
+                )
+            print()
+        elif print_level == 1:
+            for j in mode_inds:
+                conv_str = "✓" if converged[j] else "✗"
+                table.print_row((i, B.shape[1], j, nus[j], res_rms[j], conv_str))
 
-        if res_rms[mode_ind] < res_rms_thresh:
-            print("Converged!")
+        # Convergence is signalled using only the roots we are actually interested in
+        modes_converged = all(converged[mode_inds])
+        if modes_converged:
+            if print_level > 0:
+                print(f"\tDavidson procedure converged in {i+1} cycles!")
+                if lowest is not None:
+                    nus_str = np.array2string(nus[mode_inds], precision=2)
+                    print(f"\tLowest {lowest} wavenumbers: {nus_str} cm⁻¹")
+                    neg_nus = sum(nus[mode_inds] < 0)
+                    type_ = "minimum" if (neg_nus == 0) else f"saddle point of index {neg_nus}"
+                    print(f"\tThis geometry seems to be a {type_} on the PES.")
             break
 
     result = DavidsonResult(
         cur_cycle=i,
+        converged=modes_converged,
+        final_modes=guess_modes,
+        qs=approx_modes,
         nus=nus,
-        mode_ind=mode_ind,
+        mode_inds=mode_inds,
+        res_rms=res_rms,
     )
 
     return result
+
+
+def geom_davidson(geom, *args, **kwargs):
+    def forces_getter(cart_coords):
+        return geom.get_energy_and_cart_forces_at(cart_coords)["forces"]
+
+    return block_davidson(geom.cart_coords, geom.masses, forces_getter, *args, **kwargs)

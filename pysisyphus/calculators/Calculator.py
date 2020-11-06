@@ -312,7 +312,7 @@ class Calculator:
         keep : bool, optional
             Wether to backup files as specified in ``self.to_keep()``. Usually
             you want this.
-        cmd : str, optional
+        cmd : str or iterable, optional
             Overwrites ``self.base_cmd``.
         inc_counter : bool, optional
             Wether to increment the counter after a calculation.
@@ -328,10 +328,13 @@ class Calculator:
         self.backup_dir = None
         path = self.prepare(inp)
         self.log(f"Running in {path} on {platform.node()}")
-        if cmd:
-            args = [cmd, self.inp_fn]
-        else:
-            args = [self.base_cmd, self.inp_fn]
+        if cmd is None:
+            cmd = self.base_cmd
+
+        if isinstance(cmd, str):
+            cmd  = [cmd]
+
+        args = cmd + [self.inp_fn]
         if add_args:
             args.extend(add_args)
         if not env:

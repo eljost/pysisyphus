@@ -202,7 +202,9 @@ class OverlapCalculator(Calculator):
         elif self.mos_renorm and (not ao_ovlp_reconstructed):
             self.log("Skipped MO re-normalization as 'ao_ovlp' was provided.")
 
-        return *return_mos, ao_ovlp
+        # return *return_mos, ao_ovlp
+        # The statement above is only valid in python>=3.8
+        return return_mos[0], return_mos[1], ao_ovlp
 
     @staticmethod
     def get_sao_from_mo_coeffs(mo_coeffs):

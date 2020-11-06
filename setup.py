@@ -41,6 +41,7 @@ setup(
         "rmsd",
         "scipy>=1.4.1",
         "sympy>=1.5.1",
+        "scikit-learn>=0.23",
     ],
     # Install locally with
     #   pip install -e .[extra]

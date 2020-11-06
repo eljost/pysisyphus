@@ -40,14 +40,16 @@ from pysisyphus.helpers import (
     print_barrier,
     get_tangent_trj_str,
 )
-from pysisyphus.intcoords.setup import get_bond_mat
-from pysisyphus.irc import *
-from pysisyphus.stocastic import *
 from pysisyphus.helpers_pure import merge_sets
+from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
+from pysisyphus.irc import *
+from pysisyphus.modefollow import NormalMode
 from pysisyphus.optimizers import *
+from pysisyphus.optimizers.hessian_updates import bfgs_update
+from pysisyphus.stocastic import *
 from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
 from pysisyphus.tsoptimizers.dimer import dimer_method
@@ -122,7 +124,7 @@ IRC_DICT = {
     "dvv": DampedVelocityVerlet,
     "euler": Euler,
     "eulerpc": EulerPC,
-    "gs": GonzalesSchlegel,
+    "gs": GonzalezSchlegel,
     "imk": IMKMod,
     "lqa": LQA,
     "modekill": ModeKill,
@@ -692,6 +694,7 @@ def run_opt(
         geom.set_calculator(calc_getter())
 
     do_hess = opt_kwargs.pop("do_hess", False)
+    do_davidson = opt_kwargs.pop("do_davidson", False)
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
@@ -718,7 +721,15 @@ def run_opt(
         shutil.copy(opt.final_fn, copy_fn)
         print(f"Copied '{opt.final_fn}' to '{copy_fn}'.")
 
-    if do_hess and (not opt.stopped):
+    if do_davidson and (not opt.stopped):
+        tsopt = (
+            isinstance(opt, TSHessianOptimizer.TSHessianOptimizer)
+            or isinstance(geom.calculator, Dimer)
+        )
+        type_ = "TS" if tsopt else "minimum"
+        print(highlight_text(f"Davidson after {type_} search", level=1))
+        opt_davidson(opt, tsopt=tsopt)
+    elif do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
         # final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
@@ -726,6 +737,47 @@ def run_opt(
     print()
 
     return opt.geometry, opt
+
+
+def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
+    try:
+        H = opt.H
+    except AttributeError:
+        if tsopt:
+            raise Exception("Can't handle TS optimization without Hessian yet!")
+
+        # Create approximate updated Hessian
+        cart_coords = opt.cart_coords
+        cart_forces = opt.cart_forces
+        coord_diffs = np.diff(cart_coords, axis=0)
+        grad_diffs = -np.diff(cart_forces, axis=0)
+        H = np.eye(cart_coords[0].size)
+        for s, y in zip(coord_diffs, grad_diffs):
+            dH, _ = bfgs_update(H, s, y)
+            H += dH
+    
+    geom = opt.geometry
+    if geom.coord_type != "cart":
+        H = geom.internal.backtransform_hessian(H)
+
+    masses_rep = geom.masses_rep
+    # Mass-weigh and project Hessian
+    H = geom.eckart_projection(geom.mass_weigh_hessian(H))
+    w, v = np.linalg.eigh(H)
+    inds = [0, 1] if tsopt else [0, ]
+    lowest = 2 if tsopt else 0
+    guess_modes = [NormalMode(l, masses_rep) for l in v[:, inds].T]
+
+    davidson_kwargs = {
+        "hessian_precon": H,
+        "guess_modes": guess_modes,
+        "lowest": lowest,
+        "res_rms_thresh": res_rms_thresh,
+        "remove_trans_rot": True,
+    }
+
+    result = geom_davidson(geom, **davidson_kwargs)
+    return result
 
 
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
@@ -1083,7 +1135,9 @@ def get_defaults(conf_dict):
         dd["assert"] = {}
 
     if "geom" in conf_dict:
-        dd["geom"] = {}
+        dd["geom"] = {
+            "type": "cart",
+        }
 
     if "mdp" in conf_dict:
         dd["mdp"] = {}
@@ -1452,8 +1506,8 @@ def check_asserts(results, run_dict):
         matched = cur_val == pytest.approx(ref_val)
         print(f"{i:02d}: {obj}.{attr}")
         print(f"\tReference: {ref_val}")
-        print(f"\tCurrent: {cur_val}")
-        print(f"\tMatches: {bool_color(matched)}")
+        print(f"\t  Current: {cur_val}")
+        print(f"\t  Matches: {bool_color(matched)}")
         matches.append(matched)
 
     assert all(matches)
@@ -1574,6 +1628,7 @@ def do_clean(force=False):
         "calculator_*.N",
         "calculator_*.N.trj",
         "dimer.log",
+        "*.gfnff_topo",
     )
     to_rm_paths = list()
     for glob in rm_globs:

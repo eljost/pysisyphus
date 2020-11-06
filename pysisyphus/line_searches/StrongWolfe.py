@@ -75,7 +75,6 @@ class StrongWolfe(LineSearch):
             alpha_lo = alpha_j
 
     def run_line_search(self):
-        self.log("Starting Wolfe line search")
         phi0, dphi0 = self.get_phi_dphi("fg", 0)
 
         alpha_prev = 0

@@ -205,6 +205,9 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
+    def atom_xyz_iter(self):
+        return iter(zip(self.atoms, self.coords3d))
+
     def copy(self, coord_type=None, coord_kwargs=None):
         """Returns a new Geometry object with same atoms and coordinates.
 
@@ -723,7 +726,7 @@ class Geometry:
         # TODO: Do the right thing here when the hessian is not yet calculated.
         #       this would probably involve figuring out how to mass-weigh and
         #       internal coordinat hessian... I think this is described in one
-        #       of the Gonzales-Schlegel-papers about the GS2 algorithm.
+        #       of the Gonzalez-Schlegel-papers about the GS2 algorithm.
         return self.mass_weigh_hessian(self.cart_hessian)
 
     def unweight_mw_hessian(self, mw_hessian):
@@ -802,6 +805,10 @@ class Geometry:
             results["forces"] = self.internal.transform_forces(results["forces"])
 
         return results
+
+    def get_energy_and_cart_forces_at(self, cart_coords):
+        self.assert_cart_coords(cart_coords)
+        return self.calculator.get_forces(self.atoms, cart_coords)
 
     def calc_double_ao_overlap(self, geom2):
         return self.calculator.run_double_mol_calculation(self.atoms,
