@@ -1644,6 +1644,9 @@ def do_clean(force=False):
         "*.detailed.out",
         "*.geometry.gen",
         "*.dftb_in.hsd",
+        "*.EXC.DAT",
+        "*.XplusY.DAT",
+        "*.dftb.out",
     )
     to_rm_paths = list()
     for glob in rm_globs:
