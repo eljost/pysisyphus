@@ -569,7 +569,15 @@ def parse_args(args):
 
 def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     with h5py.File(h5_fn, "r") as handle:
-        group = handle[h5_group]
+        try:
+            group = handle[h5_group]
+        except KeyError:
+            groups = list(handle.keys())
+            groups_str = "\t" + "\n\t".join(groups)
+            print(f"Could not find group '{h5_group}'!\nAvailable groups are:\n{groups_str}\n"
+                  f"Use '--h5_group [group]' to plot a different group."
+            )
+            return
 
         cur_cycle = group.attrs["cur_cycle"]
         is_cos = group.attrs["is_cos"]
