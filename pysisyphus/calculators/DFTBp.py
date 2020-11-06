@@ -15,30 +15,41 @@ class DFTBp(OverlapCalculator):
     max_ang_moms = {
         "mio-ext": {
             "H": "s",
+            "C": "p",
+            "N": "p",
             "O": "p",
         },
     }
 
-    def __init__(self, parameter, *args, slakos=None, **kwargs):
+    def __init__(self, parameter, *args, slakos=None, root=None, **kwargs):
         super().__init__(*args, **kwargs)
 
+        assert self.mult == 1, "Open-shell not yet supported!"
         self.parameter = parameter
         if slakos is None:
             slakos = self.get_cmd("slakos")
         self.slakos_prefix = str(slakos)
-        assert (Path(self.slakos_prefix) / self.parameter).exists(), \
-            f"Expected '{self.parameter}' sub-directory in '{self.slakos_prefix}' " \
-             "but could not find it!"
+        assert (Path(self.slakos_prefix) / self.parameter).exists(), (
+            f"Expected '{self.parameter}' sub-directory in '{self.slakos_prefix}' "
+            "but could not find it!"
+        )
+        self.root = root
 
+        self.base_cmd = self.get_cmd("cmd")
+        self.gen_geom_fn = "geometry.gen"
+        self.to_keep = (
+            "dftb_in.hsd",
+            "detailed.out",
+            self.gen_geom_fn,
+            "calc.out",
+            "XplusY.DAT",
+        )
         self.inp_fn = "dftb_in.hsd"
         self.parser_funcs = {
             "energy": self.parse_energy,
             "forces": self.parse_forces,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
-
-        self.gen_geom_fn = "geometry.gen"
         self.dftb_tpl = jinja2.Template(
             textwrap.dedent(
                 """
@@ -47,6 +58,8 @@ class DFTBp(OverlapCalculator):
             }
             Hamiltonian = DFTB {
               Scc = Yes
+              Charge = {{ charge }}
+              SpinPolarisation = {{ spinpol }}
               SlaterKosterFiles = Type2FileNames {
                   Prefix = "{{ slakos_prefix }}/{{ parameter }}/"
                   Separator = "-"
@@ -58,6 +71,11 @@ class DFTBp(OverlapCalculator):
                {%- endfor %}
               }
             }
+
+            ExcitedState {
+             {{ excited_state_str }}
+            }
+
             Analysis {
              {% for anal in analysis -%}
               {{ anal }}
@@ -74,26 +92,53 @@ class DFTBp(OverlapCalculator):
     @staticmethod
     def get_gen_str(atoms, coords):
         gen_fmt_tpl = jinja2.Template(
-            textwrap.dedent("""
+            textwrap.dedent(
+                """
             {{ atom_num }} C
             {% for atom in atom_types %}{{ atom }} {% endfor %}
             {% for type_, x, y, z in types_xyz %}
              {{ loop.index }} {{type_}}  {{x}} {{y}} {{z}}
             {%- endfor %}
-        """).strip())
+        """
+            ).strip()
+        )
         atom_num = len(atoms)
         unique_atoms = tuple(set(atoms))
         atom_types = {atom: i for i, atom in enumerate(unique_atoms, 1)}
         c3d = coords.reshape(-1, 3) * BOHR2ANG
-        types_xyz = [
-            (atom_types[atom], x, y, z) for atom, (x, y, z) in zip(atoms, c3d)
-        ]
+        types_xyz = [(atom_types[atom], x, y, z) for atom, (x, y, z) in zip(atoms, c3d)]
         gen_str = gen_fmt_tpl.render(
             atom_num=atom_num,
             atom_types=unique_atoms,
             types_xyz=types_xyz,
         )
         return gen_str
+
+    @staticmethod
+    def get_excited_state_str(root, forces=False):
+        if root is None:
+            return ""
+
+        casida_tpl = jinja2.Template(
+            textwrap.dedent(
+                """
+            Casida {
+                NrOfExcitations = {{ nstates }}
+                Symmetry = Singlet
+                StateOfInterest = {{ root }}
+                WriteXplusY = Yes
+                {{ es_forces }}
+            }
+            """
+            )
+        )
+        es_forces = "ExcitedStateForces = Yes" if forces else ""
+        es_str = casida_tpl.render(
+            nstates=root + 5,
+            root=root,
+            es_forces=es_forces,
+        )
+        return es_str
 
     def prepare_input(self, atoms, coords, calc_type):
         path = self.prepare_path(use_in_run=True)
@@ -106,12 +151,24 @@ class DFTBp(OverlapCalculator):
         ang_moms = self.max_ang_moms[self.parameter]
         max_ang_moms = [(atom, ang_moms[atom]) for atom in set(atoms)]
 
+        # spinpol = (
+        # "{}"
+        # if (self.mult == 1)
+        # else f"Colinear {{ UnpairedElectrons = {self.mult-1} }}"
+        # )
+        spinpol = "{}"
+        es_forces = calc_type == "forces"
+        es_str = self.get_excited_state_str(self.root, es_forces)
+
         inp = self.dftb_tpl.render(
-              gen_geom_fn=self.gen_geom_fn,
-              slakos_prefix=self.slakos_prefix,
-              parameter=self.parameter,
-              max_ang_moms=max_ang_moms,
-              analysis=analysis,
+            gen_geom_fn=self.gen_geom_fn,
+            charge=self.charge,
+            spinpol=spinpol,
+            slakos_prefix=self.slakos_prefix,
+            parameter=self.parameter,
+            max_ang_moms=max_ang_moms,
+            excited_state_str=self.get_excited_state_str(self.root, es_forces),
+            analysis=analysis,
         )
         return inp
 
