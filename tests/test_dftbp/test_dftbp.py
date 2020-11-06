@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from pysisyphus.helpers import geom_loader
@@ -62,21 +63,40 @@ def test_triplet():
 
 
 @pytest.mark.parametrize(
-    "root, ref_energy", [
-        (None, -19.203183051),
-        (1, -19.203183051),
+    "root, ref_energy, ref_norm", [
+        (None, -19.203183051, 0.078868392),
+        (1, -19.203183051, 0.38002410032),
     ]
 )
-def test_cytosin_es(root, ref_energy):
+def test_cytosin_es_forces(root, ref_energy, ref_norm):
     geom = geom_loader("lib:cytosin.xyz")
     calc_kwargs = {
         "parameter": "mio-ext",
         "root": root,
+        "track": bool(root),
     }
     calc = DFTBp(**calc_kwargs)
     geom.set_calculator(calc)
 
+    forces = geom.forces
     energy = geom.energy
+    norm = np.linalg.norm(forces)
+    assert norm == pytest.approx(ref_norm)
     print("energy", energy)
-    assert energy == pytest.approx(ref_energy)
-    geom.forces
+
+
+def test_cytosin_s1_opt():
+    geom = geom_loader("lib:cytosin.xyz", coord_type="redund")
+    calc_kwargs = {
+        "parameter": "mio-ext",
+        "root": 1,
+        "track": True,
+    }
+    calc = DFTBp(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    opt = RFOptimizer(geom, thresh="gau_tight")
+    opt.run()
+
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(-19.13130711)

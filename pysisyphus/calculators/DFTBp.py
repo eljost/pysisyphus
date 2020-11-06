@@ -1,12 +1,44 @@
+from math import ceil
 from pathlib import Path
 import re
+import shutil
 import textwrap
 
 import jinja2
 import numpy as np
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.constants import BOHR2ANG, AU2EV
+
+
+def parse_mo(eigvec):
+    coeffs = list()
+    # Skip first line
+    for line in eigvec.split("\n")[1:]:
+        line = line.strip()
+        if line == "":
+            continue
+        line = line.split()
+        if len(line) == 5:
+            line = line[-3:]
+        coeffs.append(line[1])
+    return coeffs
+
+
+def parse_xplusy(text):
+    lines = text.split("\n")
+    size, states = [int(i) for i in lines.pop(0).split()]
+    # Add one for header line
+    block_size = ceil(size / 6) + 1
+    assert len(lines) == (states * block_size)
+
+    xpys = list()
+    for i in range(states):
+        block = lines[i * block_size : (i + 1) * block_size]
+        header, *rest = block
+        xpy = np.array([line.split() for line in rest], dtype=float)
+        xpys.append(xpy)
+    return size, states, np.array(xpys)
 
 
 class DFTBp(OverlapCalculator):
@@ -37,14 +69,16 @@ class DFTBp(OverlapCalculator):
 
         self.base_cmd = self.get_cmd("cmd")
         self.gen_geom_fn = "geometry.gen"
+        self.inp_fn = "dftb_in.hsd"
+        self.out_fn = "dftb.out"
         self.to_keep = (
             "dftb_in.hsd",
             "detailed.out",
             self.gen_geom_fn,
-            "calc.out",
+            self.out_fn,
             "XplusY.DAT",
+            "EXC.DAT",
         )
-        self.inp_fn = "dftb_in.hsd"
         self.parser_funcs = {
             "energy": self.parse_energy,
             "forces": self.parse_forces,
@@ -77,7 +111,7 @@ class DFTBp(OverlapCalculator):
             }
 
             Analysis {
-             {% for anal in analysis -%}
+             {% for anal in analysis %}
               {{ anal }}
              {%- endfor %}
             }
@@ -148,6 +182,8 @@ class DFTBp(OverlapCalculator):
         analysis = list()
         if calc_type == "forces":
             analysis.append("CalculateForces = Yes")
+        if self.root:
+            analysis.extend(("WriteEigenvectors = Yes", "EigenvectorsAsText = Yes"))
         ang_moms = self.max_ang_moms[self.parameter]
         max_ang_moms = [(atom, ang_moms[atom]) for atom in set(atoms)]
 
@@ -170,21 +206,40 @@ class DFTBp(OverlapCalculator):
             excited_state_str=self.get_excited_state_str(self.root, es_forces),
             analysis=analysis,
         )
-        return inp
+        return inp, path
 
     def get_energy(self, atoms, coords, prepare_kwargs=None):
-        inp = self.prepare_input(atoms, coords, "energy")
+        inp, path = self.prepare_input(atoms, coords, "energy")
         results = self.run(inp, "energy")
         return results
 
     def get_forces(self, atoms, coords, prepare_kwargs=None):
-        inp = self.prepare_input(atoms, coords, "forces")
-        results = self.run(inp, "forces")
+        inp, path = self.prepare_input(atoms, coords, "forces")
+        run_kwargs = {
+            "calc": "forces",
+            "hold": self.track,
+        }
+        results = self.run(inp, **run_kwargs)
+        if self.track:
+            self.calc_counter += 1
+            self.store_overlap_data(atoms, coords, path)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = self.get_forces(atoms, coords)
+        try:
+            shutil.rmtree(path)
+        except FileNotFoundError:
+            self.log(f"'{path}' has already been deleted!")
         return results
 
     def parse_total_energy(self, text):
         energy_re = re.compile("Total energy:\s*([-\d\.]+)\s*H")
-        return float(energy_re.search(text)[1])
+        exc_energy_re = re.compile("Excitation Energy:\s*([\-\.\d]+)\s*H")
+        energy = float(energy_re.search(text)[1])
+        exc_mobj = exc_energy_re.search(text)
+        if exc_mobj:
+            energy += float(exc_mobj[1])
+        return energy
 
     def parse_energy(self, path):
         detailed = path / "detailed.out"
@@ -194,6 +249,17 @@ class DFTBp(OverlapCalculator):
             "energy": self.parse_total_energy(text),
         }
         return results
+
+    @staticmethod
+    def parse_exc_dat(text):
+        exc_re = re.compile("=+(.+)", re.DOTALL)
+        mobj = exc_re.search(text)
+        exc_lines = mobj[1].strip().split("\n")
+        exc_ens = (
+            np.array([line.strip().split()[0] for line in exc_lines], dtype=float)
+            / AU2EV
+        )
+        return exc_ens
 
     def parse_forces(self, path):
         forces_re = re.compile("Total Forces(.+)Maximal derivative", re.DOTALL)
@@ -207,3 +273,44 @@ class DFTBp(OverlapCalculator):
             "forces": forces.flatten(),
         }
         return results
+
+    def prepare_overlap_data(self, path):
+        #
+        # Excitation energies
+        #
+        with open(path / "detailed.out") as handle:
+            detailed = handle.read()
+        gs_energy = self.parse_total_energy(detailed)
+        with open(path / "EXC.DAT") as handle:
+            exc_dat = handle.read()
+        exc_ens = self.parse_exc_dat(exc_dat)
+        all_energies = np.full(len(exc_ens) + 1, gs_energy)
+        all_energies[1:] += exc_ens
+
+        #
+        # MO coefficients
+        #
+        with open(path / "eigenvec.out") as handle:
+            eigenvecs = handle.read().strip()
+        eigenvecs = eigenvecs.split("Eigenvector")[1:]
+
+        mo_coeffs = np.array([parse_mo(eigvec) for eigvec in eigenvecs], dtype=float)
+        assert mo_coeffs.shape[0] == mo_coeffs.shape[1]
+
+        #
+        # CI coefficients
+        #
+        electron_re = re.compile("Nr. of electrons \(up\):\s*([\d\.]+)")
+        mobj = electron_re.search(detailed)
+        electrons = int(float(mobj[1]))
+        assert electrons % 2 == 0
+        occ = electrons // 2
+        mo_num = mo_coeffs.shape[0]
+        vir = mo_num - occ
+        # X+Y
+        with open(path / "XplusY.DAT") as handle:
+            xpy_text = handle.read().strip()
+        size, states, xpy = parse_xplusy(xpy_text)
+        ci_coeffs = xpy.reshape(states, occ, vir)
+        assert size == occ * vir
+        return mo_coeffs, ci_coeffs, all_energies
