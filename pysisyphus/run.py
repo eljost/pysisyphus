@@ -277,7 +277,6 @@ def run_tsopt_from_cos(
         floor = int(floor)
         ceil = floor + 1
         floor_tangent = cart_cos.get_tangent(floor)
-        import pdb; pdb.set_trace()
         ceil_tangent = cart_cos.get_tangent(ceil)
         print(f"Creating mixed HEI tangent, using tangents at images {(floor, ceil)}.")
         print("Overlap of splined HEI tangent with these tangents:")
