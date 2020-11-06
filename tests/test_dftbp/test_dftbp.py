@@ -48,6 +48,7 @@ def test_missing_parameters():
         calc = DFTBp(parameter="these-are-missing")
 
 
+@using("dftbp")
 def test_charge():
     geom = geom_loader("lib:h2o.xyz")
     calc = DFTBp(parameter="mio-ext", charge=2)
@@ -56,12 +57,14 @@ def test_charge():
     assert geom.energy == pytest.approx(-2.6298838274)
 
 
+@using("dftbp")
 def test_triplet():
     geom = geom_loader("lib:h2o.xyz")
     with pytest.raises(AssertionError):
         calc = DFTBp(parameter="mio-ext", mult=3)
 
 
+@using("dftbp")
 @pytest.mark.parametrize(
     "root, ref_energy, ref_norm", [
         (None, -19.203183051, 0.078868392),
@@ -85,6 +88,7 @@ def test_cytosin_es_forces(root, ref_energy, ref_norm):
     print("energy", energy)
 
 
+@using("dftbp")
 def test_cytosin_s1_opt():
     geom = geom_loader("lib:cytosin.xyz", coord_type="redund")
     calc_kwargs = {
