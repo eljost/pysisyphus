@@ -34,7 +34,7 @@ class OverlapCalculator(Calculator):
     VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]  # lgtm [py/non-iterable-in-for-loop]
     VALID_CDDS = (None, "calc", "render")
 
-    def __init__(self, *args, track=False, ovlp_type="wf", double_mol=False,
+    def __init__(self, *args, track=False, ovlp_type="tden", double_mol=False,
                  ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
                  use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
                  ncore=0, conf_thresh=1e-4, dyn_roots=0, mos_ref="cur", mos_renorm=False,
@@ -468,10 +468,10 @@ class OverlapCalculator(Calculator):
         # except IndexError:
             # pass
 
-    def store_overlap_data(self, atoms, coords):
+    def store_overlap_data(self, atoms, coords, path=None):
         if self.atoms is None:
             self.atoms = atoms
-        mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data()
+        mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data(path)
 
         # Don't create the object when we use a different ovlp method.
         if (self.ovlp_type == "wf") and (self.wfow is None):

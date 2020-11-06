@@ -231,7 +231,7 @@ class PySCF(OverlapCalculator):
 
         return mf
 
-    def prepare_overlap_data(self):
+    def prepare_overlap_data(self, path):
         gs_mf = self.mf._scf
         exc_mf = self.mf
 

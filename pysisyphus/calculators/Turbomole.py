@@ -565,7 +565,7 @@ class Turbomole(OverlapCalculator):
                 continue
         raise Exception("Couldn't parse ground state energy!")
 
-    def prepare_overlap_data(self):
+    def prepare_overlap_data(self, path):
         # Parse eigenvectors from escf/egrad calculation
         gs_energy = self.parse_gs_energy()
         if self.second_cmd != "ricc2":
