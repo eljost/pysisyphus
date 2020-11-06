@@ -318,7 +318,7 @@ def plot_overlaps(h5, thresh=.1):
         except FileNotFoundError:
             png_paths = [Path(fn.decode()).name for fn in cdd_img_fns]
             cdd_imgs = [mpimg.imread(fn) for fn in png_paths]
-    print(f"Found rendered {len(cdd_imgs)} CDD images.")
+        print(f"Found rendered {len(cdd_imgs)} CDD images.")
 
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Overlap type: {ovlp_type}")
