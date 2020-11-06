@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 import textwrap
 
@@ -18,20 +19,26 @@ class DFTBp(OverlapCalculator):
         },
     }
 
-    def __init__(self, parameter, *args, **kwargs):
+    def __init__(self, parameter, *args, slakos=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.parameter = parameter
+        if slakos is None:
+            slakos = self.get_cmd("slakos")
+        self.slakos_prefix = str(slakos)
+        assert (Path(self.slakos_prefix) / self.parameter).exists(), \
+            f"Expected '{self.parameter}' sub-directory in '{self.slakos_prefix}' " \
+             "but could not find it!"
 
         self.inp_fn = "dftb_in.hsd"
         self.parser_funcs = {
+            "energy": self.parse_energy,
             "forces": self.parse_forces,
         }
 
         self.base_cmd = self.get_cmd("cmd")
 
         self.gen_geom_fn = "geometry.gen"
-        self.slako_prefix = self.get_cmd("slako")
         self.dftb_tpl = jinja2.Template(
             textwrap.dedent(
                 """
@@ -41,7 +48,7 @@ class DFTBp(OverlapCalculator):
             Hamiltonian = DFTB {
               Scc = Yes
               SlaterKosterFiles = Type2FileNames {
-                  Prefix = "{{ slako_prefix }}/{{ parameter }}/"
+                  Prefix = "{{ slakos_prefix }}/{{ parameter }}/"
                   Separator = "-"
                   Suffix = ".skf"
                 }
@@ -101,12 +108,17 @@ class DFTBp(OverlapCalculator):
 
         inp = self.dftb_tpl.render(
               gen_geom_fn=self.gen_geom_fn,
-              slako_prefix=self.slako_prefix,
+              slakos_prefix=self.slakos_prefix,
               parameter=self.parameter,
               max_ang_moms=max_ang_moms,
               analysis=analysis,
         )
         return inp
+
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
+        inp = self.prepare_input(atoms, coords, "energy")
+        results = self.run(inp, "energy")
+        return results
 
     def get_forces(self, atoms, coords, prepare_kwargs=None):
         inp = self.prepare_input(atoms, coords, "forces")
@@ -116,6 +128,15 @@ class DFTBp(OverlapCalculator):
     def parse_total_energy(self, text):
         energy_re = re.compile("Total energy:\s*([-\d\.]+)\s*H")
         return float(energy_re.search(text)[1])
+
+    def parse_energy(self, path):
+        detailed = path / "detailed.out"
+        with open(detailed) as handle:
+            text = handle.read()
+        results = {
+            "energy": self.parse_total_energy(text),
+        }
+        return results
 
     def parse_forces(self, path):
         forces_re = re.compile("Total Forces(.+)Maximal derivative", re.DOTALL)
