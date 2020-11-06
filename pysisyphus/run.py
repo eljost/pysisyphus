@@ -1640,6 +1640,10 @@ def do_clean(force=False):
         "calculator_*.N.trj",
         "dimer.log",
         "*.gfnff_topo",
+        # DFTB+
+        "*.detailed.out",
+        "*.geometry.gen",
+        "*.dftb_in.hsd",
     )
     to_rm_paths = list()
     for glob in rm_globs:
