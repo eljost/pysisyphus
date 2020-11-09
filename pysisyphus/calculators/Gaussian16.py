@@ -483,7 +483,7 @@ class Gaussian16(OverlapCalculator):
 
         return X_full, Y_full
 
-    def prepare_overlap_data(self):
+    def prepare_overlap_data(self, path):
         # Parse X eigenvector from 635r dump
         X, Y = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
         ci_coeffs = X+Y
@@ -675,12 +675,3 @@ class Gaussian16(OverlapCalculator):
 
     def __str__(self):
         return "Gaussian16 calculator"
-
-
-if __name__ == "__main__":
-    from pysisyphus.helpers import geom_from_xyz_file
-    geom = geom_from_xyz_file("/scratch/baker_ircs/15/15_hocl_ts_opt.xyz")
-    g16 = Gaussian16(route="HF/3-21G", pal=4)
-    geom.set_calculator(g16)
-    hess = geom.hessian
-    print(hess)

@@ -511,7 +511,7 @@ class ORCA(OverlapCalculator):
         self.log(f"Setting CI coefficients from {cis}.")
         self.ci_coeffs = self.parse_cis(cis)
 
-    def prepare_overlap_data(self):
+    def prepare_overlap_data(self, path):
         # Parse eigenvectors from tda/tddft calculation
         ci_coeffs = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
