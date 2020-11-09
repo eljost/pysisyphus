@@ -35,7 +35,7 @@ def parse_xplusy(text):
     xpys = list()
     for i in range(states):
         block = lines[i * block_size : (i + 1) * block_size]
-        header, *rest = block
+        _, *rest = block
         xpy = np.array([line.split() for line in rest], dtype=float)
         xpys.append(xpy)
     return size, states, np.array(xpys)
@@ -194,7 +194,6 @@ class DFTBp(OverlapCalculator):
         # )
         spinpol = "{}"
         es_forces = calc_type == "forces"
-        es_str = self.get_excited_state_str(self.root, es_forces)
 
         inp = self.dftb_tpl.render(
             gen_geom_fn=self.gen_geom_fn,

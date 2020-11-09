@@ -349,7 +349,7 @@ class OverlapCalculator(Calculator):
                 ovlps[j, i] = ovlp
         return ovlps
 
-    def prepare_overlap_data(self):
+    def prepare_overlap_data(self, path):
         """Implement calculator specific parsing of MO coefficients and CI
         coefficients here. Should return a filename pointing to TURBOMOLE
         like mos, a MO coefficient array and a CI coefficient array."""
