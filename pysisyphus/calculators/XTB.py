@@ -2,6 +2,7 @@ from collections import namedtuple
 import io
 import os
 import re
+import shutil
 import textwrap
 
 import numpy as np
@@ -20,24 +21,42 @@ class XTB(Calculator):
 
     conf_key = "xtb"
 
-    def __init__(self, gbsa="", gfn=2, acc=1.0, mem=1000, quiet=False, **kwargs):
+    def __init__(
+        self,
+        gbsa="",
+        gfn=2,
+        acc=1.0,
+        topo=None,
+        topo_update=None,
+        mem=1000,
+        quiet=False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.gbsa = gbsa
         self.gfn = gfn
         self.acc = acc
+        self.topo = topo
+        self.topo_update = topo_update
         self.mem = mem
         self.quiet = quiet
 
+        self.topo_used = 0
         valid_gfns = (1, 2, "ff")
-        assert self.gfn in valid_gfns, "Invalid gfn argument. " \
-            f"Allowed arguments are: {', '.join(valid_gfns)}!"
+        assert self.gfn in valid_gfns, (
+            "Invalid gfn argument. " f"Allowed arguments are: {', '.join(valid_gfns)}!"
+        )
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
         self.out_fn = "xtb.out"
-        self.to_keep = ("out:xtb.out", "gradient", "xtbopt.xyz", "g98.out",
-                        "xtb.trj",
+        self.to_keep = (
+            "out:xtb.out",
+            "gradient",
+            "xtbopt.xyz",
+            "g98.out",
+            "xtb.trj",
         )
         if self.quiet:
             self.to_keep = ()
@@ -47,6 +66,7 @@ class XTB(Calculator):
             "hess": self.parse_hessian,
             "opt": self.parse_opt,
             "md": self.parse_md,
+            "topo": self.parse_topo,
             "noparse": lambda path: None,
         }
 
@@ -60,7 +80,20 @@ class XTB(Calculator):
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
     def prepare_input(self, atoms, coords, calc_type):
-        return None
+        # Check if the topology has to be recreated/updated
+        if (
+            self.topo_used > 0
+            and self.topo_update
+            and (self.topo_used % self.topo_update == 0)
+        ):
+            results = self.run_topo(atoms, coords)
+            self.topo = results["topo"]
+            self.log(f"Updated topology! Saved to '{self.topo}'.")
+        if self.topo:
+            path = self.prepare_path(use_in_run=True)
+            shutil.copy(self.topo, path / "gfnff_topo")
+            self.log(f"Using toplogy given in {self.topo}.")
+            self.topo_used += 1
 
     def prepare_add_args(self):
         add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
@@ -92,6 +125,7 @@ class XTB(Calculator):
     def get_forces(self, atoms, coords, prepare_kwargs=None):
         if prepare_kwargs is None:
             prepare_kwargs = {}  # lgtm [py/unused-local-variable]
+        self.prepare_input(atoms, coords, "forces")
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--grad"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -106,6 +140,7 @@ class XTB(Calculator):
     def get_hessian(self, atoms, coords, prepare_kwargs=None):
         if prepare_kwargs is None:
             prepare_kwargs = {}  # lgtm [py/unused-local-variable]
+        self.prepare_input(atoms, coords, "hessian")
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--hess"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -118,13 +153,34 @@ class XTB(Calculator):
         return results
 
     def run_calculation(self, atoms, coords):
+        self.prepare_input(atoms, coords, "calculation")
         inp = self.prepare_coords(atoms, coords)
         kwargs = {
-                "calc": "noparse",
-                "env": self.get_pal_env(),
+            "calc": "noparse",
+            "env": self.get_pal_env(),
         }
         results = self.run(inp, **kwargs)
         return results
+
+    def run_topo(self, atoms, coords):
+        inp = self.prepare_coords(atoms, coords)
+        kwargs = {
+            "calc": "topo",
+            "cmd": [self.base_cmd, "topo"],
+            "env": self.get_pal_env(),
+        }
+        results = self.run(inp, **kwargs)
+        return results
+
+    def parse_topo(self, path):
+        fn = "gfnff_topo"
+        topo = path / fn
+        target = self.make_fn(fn)
+        shutil.copy(topo, target)
+
+        return {
+            "topo": target,
+        }
 
     def get_mdrestart_str(self, coords, velocities):
         """coords and velocities have to given in au!"""
@@ -150,12 +206,14 @@ class XTB(Calculator):
         if velocities is not None:
             coords3d = coords.reshape(-1, 3)
             velocities3d = velocities.reshape(-1, 3) * BOHRPERFS2AU
-            assert coords3d.shape == velocities3d.shape, \
-                "Shape of coordinates and velocities doesn't match!"
+            assert (
+                coords3d.shape == velocities3d.shape
+            ), "Shape of coordinates and velocities doesn't match!"
             mdrestart_str = self.get_mdrestart_str(coords3d, velocities3d)
             self.write_mdrestart(path, mdrestart_str)
             restart = "true"
-        md_str = textwrap.dedent("""
+        md_str = textwrap.dedent(
+            """
         $md
             hmass=1
             dump={dump}  # fs
@@ -165,10 +223,10 @@ class XTB(Calculator):
             shake=0
             step={step}  # fs
             velo=false
-        $end""")
+        $end"""
+        )
         t_ps = t / 1000
-        md_str_fmt = md_str.format(restart=restart, time=t_ps, step=dt,
-                                   dump=dump)
+        md_str_fmt = md_str.format(restart=restart, time=t_ps, step=dt, dump=dump)
         with open(path / "xcontrol", "w") as handle:
             handle.write(md_str_fmt)
         inp = self.prepare_coords(atoms, coords)
@@ -215,10 +273,7 @@ class XTB(Calculator):
         if keep_log:
             opt_log = geoms_from_trj(path / "xtbopt.log")
 
-        opt_result = OptResult(
-                        opt_geom=opt_geom,
-                        opt_log=opt_log
-        )
+        opt_result = OptResult(opt_geom=opt_geom, opt_log=opt_log)
         return opt_result
 
     def parse_energy(self, path):
@@ -235,7 +290,7 @@ class XTB(Calculator):
         with open(path / "hessian") as handle:
             text = handle.read()
         hessian = np.array(text.split()[1:], dtype=float)
-        coord_num = int(hessian.size**0.5)
+        coord_num = int(hessian.size ** 0.5)
         hessian = hessian.reshape(coord_num, coord_num)
         energy = self.parse_energy(path)
         results = {
@@ -246,10 +301,3 @@ class XTB(Calculator):
 
     def __str__(self):
         return "XTB calculator"
-
-
-if __name__ == "__main__":
-    from pathlib import Path
-    path = Path("/scratch/projekte/phosphor_fprakt/07_09_neb/02_irc/tmpo")
-    xtb = XTB()
-    xtb.parse_hessian(path)

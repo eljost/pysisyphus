@@ -318,7 +318,7 @@ def plot_overlaps(h5, thresh=.1):
         except FileNotFoundError:
             png_paths = [Path(fn.decode()).name for fn in cdd_img_fns]
             cdd_imgs = [mpimg.imread(fn) for fn in png_paths]
-    print(f"Found rendered {len(cdd_imgs)} CDD images.")
+        print(f"Found rendered {len(cdd_imgs)} CDD images.")
 
     overlaps[np.abs(overlaps) < thresh] = np.nan
     print(f"Overlap type: {ovlp_type}")
@@ -569,7 +569,15 @@ def parse_args(args):
 
 def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     with h5py.File(h5_fn, "r") as handle:
-        group = handle[h5_group]
+        try:
+            group = handle[h5_group]
+        except KeyError:
+            groups = list(handle.keys())
+            groups_str = "\t" + "\n\t".join(groups)
+            print(f"Could not find group '{h5_group}'!\nAvailable groups are:\n{groups_str}\n"
+                  f"Use '--h5_group [group]' to plot a different group."
+            )
+            return
 
         cur_cycle = group.attrs["cur_cycle"]
         is_cos = group.attrs["is_cos"]

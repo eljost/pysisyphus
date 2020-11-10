@@ -3,6 +3,7 @@ import logging
 __all__ = [
     # "AnaPot",
     "AFIR",
+    "DFTBp",
     "Dimer",
     "ExternalPotential",
     "FakeASE",
@@ -24,6 +25,7 @@ __all__ = [
 
 # from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.AFIR import AFIR
+from pysisyphus.calculators.DFTBp import DFTBp
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.FakeASE import FakeASE

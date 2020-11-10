@@ -61,7 +61,7 @@ class LBFGS(Optimizer):
         energy = self.geometry.energy
         self.energies.append(energy)
         norm = np.linalg.norm(forces)
-        self.log(f"norm(forces={norm:.6f}")
+        self.log(f"norm(forces)={norm:.6f}")
 
         if self.cur_cycle > 0:
             y = self.forces[-2] - forces

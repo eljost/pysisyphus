@@ -429,7 +429,7 @@ class ChainOfStates:
                 print(msg)
 
         already_climbing_lanczos = self.started_climbing_lanczos
-        if self.started_climbing and not already_climbing_lanczos:
+        if self.climb_lanczos and self.started_climbing and not already_climbing_lanczos:
             self.started_climbing_lanczos = self.check_for_climbing_start(self.climb_lanczos_rms)
             if self.started_climbing_lanczos:
                 msg = "Using Lanczos algorithm to converge HEI tangent."
