@@ -24,8 +24,8 @@ Binary caching of Nix dependencies heavily speeds up build times by getting the 
 
 - SSE exentensions up to SSE4.2
 - AVX extensions up to AVX2
-- BLAS and LAPACK is provided by OpenBLAS
-- MVAPICH2 is used as the commond MPI provider
+- BLAS and LAPACK is provided by OpenBLAS or MKL
+- MVAPICH2 is used as the common MPI provider
 - The network for MPI parallelisation is ethernet and the loopback interface
 
 The caching is provided by the Cachix_ service and needs to be enabled for your nix installation:
@@ -34,7 +34,7 @@ The caching is provided by the Cachix_ service and needs to be enabled for your 
     nix-env -iA nixos.cachix
     cachix use chemix
 
-Cachix will (necessarily) add a new :code:`substituters` and :code:`trusted-public-keys` to your :code:`$HOME/.config/nix/nix.conf` if executed as normal user or :code:`/etc/nix/nix.conf` if executed as root. If written to your user configuration, you need to be a configured as :code:`trusted-users` for nix in :code:`/etc/nix/nix.conf` or your new caching settings will be ignored.
+Cachix will (necessarily) add a new :code:`substituters` and :code:`trusted-public-keys` to your :code:`$HOME/.config/nix/nix.conf` if executed as normal user or :code:`/etc/nix/nix.conf` if executed as root. If written to your user configuration, you need to be configured as :code:`trusted-users` for nix in :code:`/etc/nix/nix.conf` or your new caching settings will be ignored.
 
 Configuration
 =============
@@ -51,9 +51,8 @@ Only minor configuration is required for a successful pysisyphus installation wi
     edit nix/nixwithchemistry/config.nix
 
 Please adapt the following lines in :code:`config.nix`:
-    - The values for proprietary codes, e.g. :code:`gaussian`, :code:`mrcc`, :code:`orca`, :code:`turbomole` ..., should be set to :code:`false` if no license and source/binary archive is available
+    - The values for proprietary codes, e.g. :code:`gaussian`, :code:`mrcc`, :code:`orca`, :code:`turbomole` ..., can be set to :code:`true` if you have access to their installers and plan to use them.
     - Adapt the available CPU extensions on your machine (you can list them with :code:`grep "flags" /proc/cpuinfo`)
-    - If you are not using CUDA enabled hardware, set :code:`cuda = false;`.
     - :code:`network` should be adapted if you intend to run pysisyphus on a HPC cluster. Possible values are: :code:`network = "ethernet"`, :code:`network = "omnipath"` or :code:`network = "infiniband"`. If you are running pysisyphus on local machine keep :code:`network = "ethernet"`.
     - :code:`mpi` is set to :code:`"mvapich2"` by default. There  is usually no reason to change this but you could also use :code:`"openmpi"`. This does **not** mean that the selected MPI version will be used in all programs. MRCC requires IntelMPI and GAMESS-US OpenMPI, no matter what you select here.
     - :code:`blas = "openblas"` can be updated to :code:`blas = "mkl"` if you have an Intel CPU.
