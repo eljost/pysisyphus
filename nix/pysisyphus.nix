@@ -13,6 +13,7 @@
 , rmsd
 , scipy
 , sympy
+, scikitlearn
 , bash
 , orca ? orca # or null
 , turbomole ? turbomole # or null
@@ -131,6 +132,7 @@ in
         rmsd
         scipy
         sympy
+        scikitlearn
         qcengine
         ase
     ] ++ optional (orca != null) orca
