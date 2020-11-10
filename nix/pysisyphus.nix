@@ -13,6 +13,7 @@
 , rmsd
 , scipy
 , sympy
+, scikitlearn
 , bash
 , orca ? orca # or null
 , turbomole ? turbomole # or null
@@ -83,10 +84,35 @@ let
         inherit text;
         name = "pysisrc";
       };
+
+  pname = "pysisyphus";
+  version = "dev";
+  description = "Python suite for optimization of stationary points on ground- and excited states PES and determination of reaction paths";
+  homepage = "https://github.com/eljost/pysisyphus";
+
+  pkgConfig = writeTextFile {
+    name = "${pname}.pc";
+    text =  ''
+      prefix=@out@
+      exec_prefix=''${prefix}
+      libdir=''${exec_prefix}/lib
+      sharedlibdir=''${libdir}
+      includedir=''${prefix}/include
+
+      Name: ${pname}
+      Description: Python suite for geometry optimisations
+      Version: ${version}
+
+      Requires:
+      Libs:
+      Cflags:
+      URL: ${homepage}
+    '';
+  };
+
 in
   buildPythonApplication rec {
-    pname = "pysisyphus";
-    version = "dev";
+    inherit pname version;
 
     nativeBuildInputs = [
       makeWrapper
@@ -106,6 +132,7 @@ in
         rmsd
         scipy
         sympy
+        scikitlearn
         qcengine
         ase
     ] ++ optional (orca != null) orca
@@ -158,13 +185,16 @@ in
         wrapProgram $exe \
           --prefix PATH : ${binSearchPath} \
           --set-default "PYSISRC" "$out/share/pysisyphus/pysisrc"
-      done;
+      done
+
+      mkdir -p $out/lib/pkgconfig
+      substitute ${pkgConfig} $out/lib/pkgconfig/${pkgConfig.name} \
+        --subst-var "out"
     '';
 
     meta = with lib; {
-      description = "Python suite for optimization of stationary points on ground- and excited states PES and determination of reaction paths";
+      inherit description homepage;
       license = licenses.gpl3;
-      homepage = "https://github.com/eljost/pysisyphus";
       platforms = platforms.unix;
     };
   }

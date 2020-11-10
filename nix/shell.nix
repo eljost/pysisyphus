@@ -8,6 +8,6 @@ in
     buildInputs = [
       pysisyphus
       nano
-      neovim
+      vim
     ];
   }
