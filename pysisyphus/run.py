@@ -47,7 +47,7 @@ from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
-from pysisyphus.modefollow import NormalMode
+from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.stocastic import *
