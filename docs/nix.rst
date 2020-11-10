@@ -30,11 +30,14 @@ Binary caching of Nix dependencies heavily speeds up build times by getting the 
 
 The caching is provided by the Cachix_ service and needs to be enabled for your nix installation:
 
-.. code-block: bash
+.. code-block:: bash
     nix-env -iA nixos.cachix
     cachix use chemix
 
-Cachix will (necessarily) add a new :code:`substituters` and :code:`trusted-public-keys` to your :code:`$HOME/.config/nix/nix.conf` if executed as normal user or :code:`/etc/nix/nix.conf` if executed as root. If written to your user configuration, you need to be configured as :code:`trusted-users` for nix in :code:`/etc/nix/nix.conf` or your new caching settings will be ignored.
+Cachix will (necessarily) add a new :code:`substituters` and :code:`trusted-public-keys` to your :code:`$HOME/.config/nix/nix.conf` if executed as normal user or :code:`/etc/nix/nix.conf` if executed as root.
+
+If you intend to run `nix-build` as normal user, this user *must be* added to `trusted-users` in :code:`/etc/nix/nix.conf` or the caching settings are *ignored*
+and everything will be built on your computer.
 
 Configuration
 =============
