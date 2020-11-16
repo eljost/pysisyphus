@@ -157,8 +157,19 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
         image_nums = group["image_nums"][:num_cycles].astype(int)
         image_inds = group["image_inds"][:num_cycles].astype(int)
 
-        _datasets = {ds: group[ds][:num_cycles] for ds in datasets}
-        _attrs = {a: group.attrs[a] for a in attrs}
+        _datasets = dict()
+        for ds in datasets:
+            try:
+                _datasets[ds] = group[ds][:num_cycles]
+            except KeyError:
+                print(f"Could not load dataset '{ds}' from HDF5 file.")
+
+        _attrs = dict()
+        for a in attrs:
+            try:
+                _attrs[a] = group.attrs[a]
+            except KeyError:
+                print(f"Could not load attribute '{a}' from HDF5 file.")
 
     if "energies" in _datasets:
         ens = _datasets["energies"]
@@ -218,7 +229,7 @@ def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
 def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
     results = load_h5(h5_fn, h5_group,
                       datasets=("forces", ),
-                      attrs=("is_cos", "coord_type"))
+                      attrs=("is_cos", "coord_type", "max_force_thresh", "rms_force_thresh"))
     forces = results["forces"]
     coord_type = results["coord_type"]
 
@@ -243,6 +254,13 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
 
     plot(ax0, max_, "max(perp. forces)")
     plot(ax1, rms, "rms(perp. forces)")
+    try:
+        ax0.axhline(results["max_force_thresh"], ls="--", c="k", label="Conv. thresh.")
+        ax0.legend()
+        ax1.axhline(results["rms_force_thresh"], ls="--", c="k", label="Conv. thresh.")
+        ax1.legend()
+    except KeyError:
+        print("Could not find max/rms entries for force threshold on HDF5 file!")
     ax1.set_xlabel("Image")
 
     plt.tight_layout()

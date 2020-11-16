@@ -27,7 +27,7 @@ def get_data_model(geometry, is_cos, max_cycles):
     # Define dataset shapes. As pysisyphus offers growing COS methods where
     # the number of images changes along the optimization we have to define
     # the shapes accordingly by considering the maximum number of images.
-    _1d = (max_cycles, )
+    _1d = (max_cycles,)
     _2d = (max_cycles, image_num * dummy_geom.coords.size)
     _image_inds = (max_cycles, image_num)
     # Number of cartesian coordinates is probably different from the number
@@ -63,18 +63,33 @@ def get_data_model(geometry, is_cos, max_cycles):
 class Optimizer(metaclass=abc.ABCMeta):
     CONV_THRESHS = {
         #              max_force, rms_force, max_step, rms_step
-        "gau_loose":  (2.5e-3,    1.7e-3,    1.0e-2,   6.7e-3),
-        "gau":        (4.5e-4,    3.0e-4,    1.8e-3,   1.2e-3),
-        "gau_tight":  (1.5e-5,    1.0e-5,    6.0e-5,   4.0e-5),
-        "gau_vtight": (2.0e-6,    1.0e-6,    6.0e-6,   4.0e-6),
-        "baker":      (3.0e-4,    2.0e-4,    3.0e-4,   2.0e-4),
+        "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
+        "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
+        "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
+        "gau_vtight": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
+        "baker": (3.0e-4, 2.0e-4, 3.0e-4, 2.0e-4),
     }
 
-    def __init__(self, geometry, thresh="gau_loose", max_step=0.04, max_cycles=50,
-                 rms_force=None, rms_force_only=False, align=False, dump=False,
-                 dump_restart=None, prefix="", reparam_thresh=1e-3, overachieve_factor=0.,
-                 restart_info=None, check_coord_diffs=True, coord_diff_thresh=0.01,
-                 h5_fn="optimization.h5", h5_group_name="opt"):
+    def __init__(
+        self,
+        geometry,
+        thresh="gau_loose",
+        max_step=0.04,
+        max_cycles=50,
+        rms_force=None,
+        rms_force_only=False,
+        align=False,
+        dump=False,
+        dump_restart=None,
+        prefix="",
+        reparam_thresh=1e-3,
+        overachieve_factor=0.0,
+        restart_info=None,
+        check_coord_diffs=True,
+        coord_diff_thresh=0.01,
+        h5_fn="optimization.h5",
+        h5_group_name="opt",
+    ):
         assert thresh in self.CONV_THRESHS.keys()
 
         self.geometry = geometry
@@ -130,14 +145,15 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         if self.dump:
             out_trj_fn = self.get_path_for_fn("optimization.trj")
-            self.out_trj_handle= open(out_trj_fn, "w")
+            self.out_trj_handle = open(out_trj_fn, "w")
             # Call with reset=True to delete remnants of previous calculations, unless
             # the optimizer was restarted. Given a previous optimization with, e.g. 30
             # cycles and a second restarted optimization with 20 cycles the last 10 cycles
             # of the previous optimization would still be present.
-            reset = (restart_info is None)
-            h5_group = get_h5_group(self.h5_fn, self.h5_group_name, self.data_model,
-                                    reset=reset)
+            reset = restart_info is None
+            h5_group = get_h5_group(
+                self.h5_fn, self.h5_group_name, self.data_model, reset=reset
+            )
             h5_group.file.close()
         if self.prefix:
             self.log(f"Created optimizer with prefix {self.prefix}")
@@ -158,29 +174,32 @@ class Optimizer(metaclass=abc.ABCMeta):
         if not rms_force:
             threshs = self.CONV_THRESHS[key]
         else:
-            print( "Deriving convergence threshold from supplied "
-                  f"rms_force={rms_force}.")
-            threshs = (1.5*rms_force,
-                       rms_force,
-                       6*rms_force,
-                       4*rms_force,
+            print(
+                "Deriving convergence threshold from supplied "
+                f"rms_force={rms_force}."
             )
-        keys = ["max_force_thresh",
-                "rms_force_thresh",
+            threshs = (
+                1.5 * rms_force,
+                rms_force,
+                6 * rms_force,
+                4 * rms_force,
+            )
+        keys = [
+            "max_force_thresh",
+            "rms_force_thresh",
         ]
         # Only used gradient information for CoS optimizations
         if not self.is_cos:
             keys += ["max_step_thresh", "rms_step_thresh"]
-        conv_dict = {
-            k: v for k, v in zip(keys, threshs)
-        }
+        conv_dict = {k: v for k, v in zip(keys, threshs)}
         return conv_dict
 
     def log(self, message, level=50):
         self.logger.log(level, message)
 
-    def check_convergence(self, step=None, multiple=1.0, overachieve_factor=None,
-                          energy_thresh=1e-6):
+    def check_convergence(
+        self, step=None, multiple=1.0, overachieve_factor=None, energy_thresh=1e-6
+    ):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple
         thereof. The latter may be used in initiating the climbing image.
@@ -205,11 +224,11 @@ class Optimizer(metaclass=abc.ABCMeta):
         # values. So we take into account the number of moving images with
         # non-zero forces vectors.
         if self.is_cos:
-            non_zero_elements = (len(self.geometry.moving_indices)
-                                 * self.geometry.coords_length
+            non_zero_elements = (
+                len(self.geometry.moving_indices) * self.geometry.coords_length
             )
-            rms_force = np.sqrt(np.sum(np.square(forces))/non_zero_elements)
-            rms_step = np.sqrt(np.sum(np.square(step))/non_zero_elements)
+            rms_force = np.sqrt(np.sum(np.square(forces)) / non_zero_elements)
+            rms_step = np.sqrt(np.sum(np.square(step)) / non_zero_elements)
         else:
             rms_force = np.sqrt(np.mean(np.square(forces)))
             rms_step = np.sqrt(np.mean(np.square(step)))
@@ -226,7 +245,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             "max_force_thresh": max_force,
             "rms_force_thresh": rms_force,
             "max_step_thresh": max_step,
-            "rms_step_thresh": rms_step
+            "rms_step_thresh": rms_step,
         }
 
         if self.rms_force_only:
@@ -249,8 +268,10 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.log("Force convergence overachieved!")
 
         converged = all(
-            [this_cycle[key] <= getattr(self, key)*multiple
-             for key in self.convergence.keys()]
+            [
+                this_cycle[key] <= getattr(self, key) * multiple
+                for key in self.convergence.keys()
+            ]
         )
 
         if self.thresh == "baker":
@@ -271,9 +292,15 @@ class Optimizer(metaclass=abc.ABCMeta):
         int_fmt = "{:>5d}"
         float_fmt = "{:>12.6f}"
         conv_str = int_fmt + " " + (float_fmt + " ") * 4 + "{:>12.1f}"
-        print(conv_str.format(
-            self.cur_cycle, self.max_forces[-1], self.rms_forces[-1],
-            self.max_steps[-1], self.rms_steps[-1], self.cycle_times[-1])
+        print(
+            conv_str.format(
+                self.cur_cycle,
+                self.max_forces[-1],
+                self.rms_forces[-1],
+                self.max_steps[-1],
+                self.rms_steps[-1],
+                self.cycle_times[-1],
+            )
         )
         try:
             # Geometries/ChainOfStates objects can also do some printing.
@@ -295,10 +322,6 @@ class Optimizer(metaclass=abc.ABCMeta):
     def optimize(self):
         pass
 
-    # @abc.abstractmethod
-    # def reset(self):
-        # pass
-
     def write_to_out_dir(self, out_fn, content, mode="w"):
         out_path = self.out_dir / out_fn
         with open(out_path, mode) as handle:
@@ -310,7 +333,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             image_fn = base_name.format(i)
             comment = f"cycle {self.cur_cycle}"
             as_xyz = image.as_xyz(comment)
-            self.write_to_out_dir(image_fn, as_xyz+"\n", "a")
+            self.write_to_out_dir(image_fn, as_xyz + "\n", "a")
 
     def write_results(self):
         # Save results from the Optimizer to HDF5 file if requested
@@ -328,6 +351,18 @@ class Optimizer(metaclass=abc.ABCMeta):
             h5_group.attrs["atoms"] = np.string_(atoms)
             h5_group.attrs["coord_type"] = self.geometry.coord_type
             h5_group.attrs["coord_size"] = coord_size
+            h5_group.attrs["overachieve_factor"] = self.overachieve_factor
+            for key in (
+                "max_force_thresh",
+                "rms_force_thresh",
+                "max_step_thresh",
+                "rms_step_thresh",
+            ):
+                try:
+                    h5_group.attrs[key] = self.convergence[key]
+                # Step threshold may not be present
+                except KeyError:
+                    pass
 
         # Update changing attributes
         h5_group.attrs["cur_cycle"] = self.cur_cycle
@@ -340,7 +375,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             if not value:
                 continue
             if len(shape) > 1:
-                h5_group[key][self.cur_cycle, :len(value[-1])] = value[-1]
+                h5_group[key][self.cur_cycle, : len(value[-1])] = value[-1]
             else:
                 h5_group[key][self.cur_cycle] = value[-1]
 
@@ -358,11 +393,11 @@ class Optimizer(metaclass=abc.ABCMeta):
             # Dump current HEI
             max_ind = np.argmax(self.energies[-1])
             with open(self.hei_trj_fn, "a") as handle:
-                handle.write(self.geometry.images[max_ind].as_xyz()+"\n")
+                handle.write(self.geometry.images[max_ind].as_xyz() + "\n")
 
         else:
             # Append to .trj file
-            self.out_trj_handle.write(as_xyz_str+"\n")
+            self.out_trj_handle.write(as_xyz_str + "\n")
             self.out_trj_handle.flush()
         # Dump to HDF5
         self.write_results()
@@ -373,12 +408,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry._forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
         int_str = ""
         if self.geometry.coord_type != "cart":
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces**2))
+            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
@@ -414,9 +449,11 @@ class Optimizer(metaclass=abc.ABCMeta):
                 cds_diffs = np.diff(cds)
                 min_ind = cds_diffs.argmin()
                 if cds_diffs[min_ind] < self.coord_diff_thresh:
-                    similar_inds = min_ind, min_ind+1
-                    msg = f"Cartesian coordinates of images {similar_inds} are " \
-                           "too similar. Stopping optimization!"
+                    similar_inds = min_ind, min_ind + 1
+                    msg = (
+                        f"Cartesian coordinates of images {similar_inds} are "
+                        "too similar. Stopping optimization!"
+                    )
                     # I should improve my logging :)
                     print(msg)
                     self.log(msg)
@@ -427,12 +464,14 @@ class Optimizer(metaclass=abc.ABCMeta):
             # should be reset.
             reset_flag = False
             if self.cur_cycle > 0 and self.is_cos:
-                reset_flag = self.geometry.prepare_opt_cycle(self.coords[-1],
-                                                             self.energies[-1],
-                                                             self.forces[-1])
+                reset_flag = self.geometry.prepare_opt_cycle(
+                    self.coords[-1], self.energies[-1], self.forces[-1]
+                )
             # Reset when number of coordinates changed
             elif self.cur_cycle > 0:
-                reset_flag = reset_flag or (self.geometry.coords.size != self.coords[-1].size)
+                reset_flag = reset_flag or (
+                    self.geometry.coords.size != self.coords[-1].size
+                )
 
             if reset_flag:
                 self.reset()
@@ -445,7 +484,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 image_inds = self.geometry.image_inds
                 image_num = len(image_inds)
             except AttributeError:
-                image_inds = [0, ]
+                image_inds = [
+                    0,
+                ]
                 image_num = 1
             self.image_inds.append(image_inds)
             self.image_nums.append(image_num)
@@ -475,8 +516,11 @@ class Optimizer(metaclass=abc.ABCMeta):
                 with open(self.current_fn, "w") as handle:
                     handle.write(self.geometry.as_xyz())
 
-            if self.dump and self.dump_restart \
-               and (self.cur_cycle % self.dump_restart) == 0:
+            if (
+                self.dump
+                and self.dump_restart
+                and (self.cur_cycle % self.dump_restart) == 0
+            ):
                 self.dump_restart_info()
 
             self.print_opt_progress()
@@ -510,12 +554,13 @@ class Optimizer(metaclass=abc.ABCMeta):
                 if reparametrized and (cur_coords.size == prev_coords.size):
                     self.log("Did reparametrization")
 
-                    rms = np.sqrt(np.mean((prev_coords - cur_coords)**2))
+                    rms = np.sqrt(np.mean((prev_coords - cur_coords) ** 2))
                     self.log(f"rms of coordinates after reparametrization={rms:.6f}")
                     self.is_converged = rms < self.reparam_thresh
                     if self.is_converged:
-                        print("Insignificant coordinate change after "
-                              "reparametrization. Signalling convergence!"
+                        print(
+                            "Insignificant coordinate change after "
+                            "reparametrization. Signalling convergence!"
                         )
                         print()
                         break
