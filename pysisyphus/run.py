@@ -1647,6 +1647,9 @@ def do_clean(force=False):
         "*.EXC.DAT",
         "*.XplusY.DAT",
         "*.dftb.out",
+        "rsprfo_*",
+        "reparametrized.trj",
+        "end_geoms_and_ts.trj",
     )
     to_rm_paths = list()
     for glob in rm_globs:
