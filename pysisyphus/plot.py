@@ -87,8 +87,11 @@ def plot_cycle(cart_coords, energies):
 
     first_image_en = last_energies[0]
     last_image_en = last_energies[-1]
-    max_en_ind = last_energies.argmax()
+    max_en_ind = np.nanargmax(last_energies)
     max_en = last_energies[max_en_ind]
+    nans = np.isnan(last_energies).sum()
+    if nans:
+        print(f"The COS seems to be not fully grown (yet), {nans} energies are missing.")
     print( "Barrier heights using actual energies (not splined) from "
           f"cycle {energies.shape[0]-1}.")
     print(f"\tHighest energy image (HEI) at index {max_en_ind} (0-based)")
