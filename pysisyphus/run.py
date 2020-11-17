@@ -1604,6 +1604,7 @@ def do_clean(force=False):
         "rsirfo*",
         # IRC files
         "irc_*",
+        "irc.log",
         "finished_*",
         # IRC/Endopt files
         "backward_*",
