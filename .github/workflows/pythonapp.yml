@@ -5,6 +5,7 @@ on:
         paths-ignore:
             - "docs/**"
             - "examples/**"
+            - "tests_staging/**"
     schedule:
         - cron: '0 */12 * * *'
 jobs:
