@@ -471,7 +471,7 @@ class Geometry:
     def masses_rep(self):
         # Some of the analytical potentials are only 2D
         repeat_masses = 2 if (self._coords.size == 2) else 3
-        return np.repeat(self._masses, repeat_masses)
+        return np.repeat(self.masses, repeat_masses)
 
     @property
     def total_mass(self):
