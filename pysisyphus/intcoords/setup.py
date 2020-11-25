@@ -450,7 +450,10 @@ def setup_redundant(
         PrimTypes.IMPROPER_DIHEDRAL: "improper_dihedrals",
     }
     for type_, *indices in define_prims:
-        key = define_map[type_]
+        try:
+            key = define_map[type_]
+        except KeyError:
+            key = define_map[PrimTypes(type_)]
         locals()[key].append(tuple(indices))
 
     pt = PrimTypes
