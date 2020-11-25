@@ -1,4 +1,5 @@
 from matplotlib import cm
+import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 from sympy import symbols, diff, lambdify, sympify
@@ -10,9 +11,16 @@ from pysisyphus.plotters.AnimPlot import AnimPlot
 
 
 class AnaPotBase(Calculator):
-
-    def __init__(self, V_str, xlim=(-1,1), ylim=(-1,1), levels=None,
-                 use_sympify=True, minima=None, saddles=None):
+    def __init__(
+        self,
+        V_str,
+        xlim=(-1, 1),
+        ylim=(-1, 1),
+        levels=None,
+        use_sympify=True,
+        minima=None,
+        saddles=None,
+    ):
         super(AnaPotBase, self).__init__()
         self.xlim = xlim
         self.ylim = ylim
@@ -43,7 +51,7 @@ class AnaPotBase(Calculator):
         self.dVdxdy = lambdify((x, y), dVdxdy, "numpy")
         self.dVdydy = lambdify((x, y), dVdydy, "numpy")
 
-        self.fake_atoms = ("X", ) # X, dummy atom
+        self.fake_atoms = ("X",)  # X, dummy atom
 
         self.analytical_2d = True
         self.energy_calcs = 0
@@ -77,17 +85,16 @@ class AnaPotBase(Calculator):
         dVdxdx = self.dVdxdx(x, y)
         dVdxdy = self.dVdxdy(x, y)
         dVdydy = self.dVdydy(x, y)
-        hessian = np.array(((dVdxdx, dVdxdy, 0),
-                            (dVdxdy, dVdydy, 0),
-                            (0, 0, 0))
-        )
+        hessian = np.array(((dVdxdx, dVdxdy, 0), (dVdxdy, dVdydy, 0), (0, 0, 0)))
         results = self.get_forces(atoms, coords)
         results["hessian"] = hessian
         return results
 
     def statistics(self):
-        return f"Energy calculations: {self.energy_calcs}, Force calculations: " \
-               f"{self.forces_calcs}, Hessian calculations: {self.hessian_calcs}"
+        return (
+            f"Energy calculations: {self.energy_calcs}, Force calculations: "
+            f"{self.forces_calcs}, Hessian calculations: {self.hessian_calcs}"
+        )
 
     def plot(self, levels=None, show=False, **figkwargs):
         self.fig, self.ax = plt.subplots(**figkwargs)
@@ -118,11 +125,9 @@ class AnaPotBase(Calculator):
         X, Y = np.meshgrid(xs, ys)
         z = list()
         for x_, y_ in zip(X.flatten(), Y.flatten()):
-            H = self.get_hessian(self.fake_atoms,  (x_, y_, 0))["hessian"]
+            H = self.get_hessian(self.fake_atoms, (x_, y_, 0))["hessian"]
             w, v = np.linalg.eigh(H)
-            z.append(
-                1 if (w < 0).any() else 0
-            )
+            z.append(1 if (w < 0).any() else 0)
         Z = np.array(z).reshape(X.shape)
         self.ax.contourf(X, Y, Z, cmap=cm.Reds)
         if show:
@@ -147,8 +152,9 @@ class AnaPotBase(Calculator):
         xs, ys = irc.all_coords.T[:2]
         self.plot_coords(xs, ys, *args, **kwargs)
 
-    def anim_opt(self, opt, energy_profile=False, colorbar=False, figsize=(8, 6),
-                 show=False):
+    def anim_opt(
+        self, opt, energy_profile=False, colorbar=False, figsize=(8, 6), show=False
+    ):
         try:
             min_ = self.levels.min()
             max_ = self.levels.max()
@@ -157,22 +163,40 @@ class AnaPotBase(Calculator):
         except TypeError:
             levels = None
 
-        anim = AnimPlot(self.__class__(),
-                        opt,
-                        xlim=self.xlim,
-                        ylim=self.ylim,
-                        levels=levels,
-                        energy_profile=energy_profile,
-                        colorbar=colorbar,
-                        figsize=figsize
+        anim = AnimPlot(
+            self.__class__(),
+            opt,
+            xlim=self.xlim,
+            ylim=self.ylim,
+            levels=levels,
+            energy_profile=energy_profile,
+            colorbar=colorbar,
+            figsize=figsize,
         )
         anim.animate()
         if show:
             plt.show()
         return anim
 
+    def anim_coords(self, coords, interval=50, show=False, title_func=None):
+        self.plot()
+        steps = range(len(coords))
+        scatter = self.ax.scatter(*coords[0][:2], s=20)
+
+        def func(frame):
+            if title_func:
+                self.ax.set_title(title_func(frame))
+            scatter.set_offsets(coords[frame][:2])
+
+        self.animation = animation.FuncAnimation(
+            self.fig, func, frames=steps, interval=interval
+        )
+
+        if show:
+            plt.show()
+
     @classmethod
-    def get_geom(cls, coords, atoms=("X", ), V_str=None):
+    def get_geom(cls, coords, atoms=("X",), V_str=None):
         geom = Geometry(atoms, coords)
         if V_str:
             geom.set_calculator(cls(V_str=V_str))
