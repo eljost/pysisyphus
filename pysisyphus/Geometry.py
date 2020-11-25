@@ -142,16 +142,11 @@ class Geometry:
             self.internal = None
         self.comment = comment
 
+        self._masses = None
         self._energy = None
         self._forces = None
         self._hessian = None
         self.calculator = None
-
-        self.masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
-        self.total_mass = sum(self.masses)
-        # Some of the analytical potentials are only 2D
-        repeat_masses = 2 if (self._coords.size == 2) else 3
-        self.masses_rep = np.repeat(self.masses, repeat_masses)
 
     @property
     def sum_formula(self):
@@ -460,6 +455,27 @@ class Geometry:
     @comment.setter
     def comment(self, new_comment):
         self._comment = new_comment
+
+    @property
+    def masses(self):
+        if self._masses is None:
+            self.masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+        return self._masses
+
+    @masses.setter
+    def masses(self, masses):
+        assert len(masses) == len(self.atoms)
+        self._masses = masses
+
+    @property
+    def masses_rep(self):
+        # Some of the analytical potentials are only 2D
+        repeat_masses = 2 if (self._coords.size == 2) else 3
+        return np.repeat(self._masses, repeat_masses)
+
+    @property
+    def total_mass(self):
+        return sum(self.masses)
 
     def center_of_mass_at(self, coords3d):
         """Returns the center of mass at given coords3d.
