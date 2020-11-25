@@ -465,7 +465,7 @@ class Geometry:
     @masses.setter
     def masses(self, masses):
         assert len(masses) == len(self.atoms)
-        self._masses = masses
+        self._masses = np.array(masses, dtype=float)
 
     @property
     def masses_rep(self):
