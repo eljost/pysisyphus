@@ -39,7 +39,7 @@ class PyXTB(Calculator):
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
         calc = self.get_calculator(atoms, coords)
-        xtb_result = calc.singlepoint()
+        xtb_result = calc.singlepoint(copy=True)
         results = {
             "energy": xtb_result.get_energy(),
         }
@@ -47,7 +47,7 @@ class PyXTB(Calculator):
 
     def get_forces(self, atoms, coords):
         calc = self.get_calculator(atoms, coords)
-        xtb_result = calc.singlepoint()
+        xtb_result = calc.singlepoint(copy=True)
         results = {
             "energy": xtb_result.get_energy(),
             "forces": -xtb_result.get_gradient().flatten(),
