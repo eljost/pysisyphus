@@ -77,9 +77,14 @@ def test_gaussian_multiple_centers(x, x0, ref_val, ref_grad):
     np.testing.assert_allclose(grad, ref_grad)
 
 
-# def test_gaussian_cr_func():
-# indices = (0, 1)
-# coords = np.zeros((2, 3))
-# coords[0, 0] = 1.0
-# cv = CVDistance(indices)
-# g = Gaussian(x0=0.0, cr_func=cv.gradient)
+@pytest.mark.xfail
+def test_gaussian_cr_func():
+    indices = (0, 1)
+    c3d = np.zeros((2, 3))
+    c3d[0, 0] = 1.0
+    cv = CVDistance(indices)
+    x0 = (1, 1.1, 1.2)
+    x = cv.value(c3d)
+    g = Gaussian(cr_func=cv.gradient)
+    val, grad = g.value(x, x0)
+    # import pdb; pdb.set_trace()
