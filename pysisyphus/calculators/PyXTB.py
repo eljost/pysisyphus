@@ -1,43 +1,52 @@
-try:
-    from ase.atoms import Atoms
-except ImportError:
-    pass
-
-import sys
-try:
-    xtb_path = "/scratch/programme/xtb-190806/python"
-    sys.path.append(xtb_path)
-    from xtb_mod import GFN2
-except ImportError:
-    pass
-
+import numpy as np
+from xtb.interface import Environment, Param, Calculator as XTBCalculator
+from xtb.libxtb import VERBOSITY_MINIMAL, VERBOSITY_FULL, VERBOSITY_MUTED
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.elem_data import ATOMIC_NUMBERS
 
 
 class PyXTB(Calculator):
+    avail_params = {
+        "0": Param.GFN0xTB,
+        "1": Param.GFN1xTB,
+        "2": Param.GFN2xTB,
+        "ff": Param.GFNFF,
+    }
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.gfn2 = GFN2()
+    avail_verbosities = {
+        0: VERBOSITY_MUTED,
+        1: VERBOSITY_MINIMAL,
+        2: VERBOSITY_FULL,
+    }
 
-    def prepare_input(self, atoms, coords, calc_type):
-        return None
+    def __init__(self, *args, gfn=2, verbosity=0, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def calculate(self, atoms, coords):
-        atoms = Atoms(atoms, coords.reshape(-1, 3)*BOHR2ANG)
-        self.gfn2.calculate(atoms)
-        res = self.gfn2.results
-        return res
+        self.env = Environment()
+        self.gfn = str(gfn)
+        self.verbosity = self.avail_verbosities[verbosity]
+        self.param = self.avail_params[self.gfn]
 
-    def get_forces(self, atoms, coords):
-        res = self.calculate(atoms, coords)
+    def get_calculator(self, atoms, coords):
+        numbers = np.array([ATOMIC_NUMBERS[atom.lower()] for atom in atoms])
+        calc = XTBCalculator(self.param, numbers, coords.reshape(-1, 3))
+        calc.set_verbosity(self.verbosity)
+        return calc
+
+    def get_energy(self, atoms, coords, **prepare_kwargs):
+        calc = self.get_calculator(atoms, coords)
+        xtb_result = calc.singlepoint()
         results = {
-            "forces": res["forces"].flatten(),
-            "energy": res["energy"],
+            "energy": xtb_result.get_energy(),
         }
         return results
 
-    def __str__(self):
-        return "PyXTB calculator"
+    def get_forces(self, atoms, coords):
+        calc = self.get_calculator(atoms, coords)
+        xtb_result = calc.singlepoint()
+        results = {
+            "energy": xtb_result.get_energy(),
+            "forces": -xtb_result.get_gradient().flatten(),
+        }
+        return results
