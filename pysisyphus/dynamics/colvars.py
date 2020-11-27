@@ -81,25 +81,37 @@ class CVBend(Colvar):
         return self._wilson_gradient(dq_a, c3d)
 
 
-class CVDihedral(Colvar):
+class CVTorsion(Colvar):
     def __init__(self, indices, **kwargs):
         self.indices = list(indices)
         # Bonded like
-        # i---j
-        #     |
-        #     k---l
+        # i--u--j
+        #       |
+        #       w
+        #       |
+        #       k--v--l
         self.i, self.j, self.k, self.l = self.indices
         super().__init__(**kwargs)
 
     def value(self, c3d):
         u_dash = c3d[self.i] - c3d[self.j]
-        v_dash = c3d[self.k] - c3d[self.j]
+        v_dash = c3d[self.l] - c3d[self.k]
+        w_dash = c3d[self.k] - c3d[self.j]
         u_norm = anp.linalg.norm(u_dash)
         v_norm = anp.linalg.norm(v_dash)
+        w_norm = anp.linalg.norm(w_dash)
         u = u_dash / u_norm
         v = v_dash / v_norm
-        rad = anp.arccos(anp.dot(u, v))
-        return rad
+        w = w_dash / w_norm
+        phi_u = anp.arccos(anp.dot(u, w))
+        phi_v = anp.arccos(-anp.dot(w, v))
+        uxw = anp.cross(u, w)
+        vxw = anp.cross(v, w)
+        cos_dihed = anp.dot(uxw, vxw)/(anp.sin(phi_u)*anp.sin(phi_v))
+        # Restrict cos_dihed to the allowed interval for arccos [-1, 1]
+        cos_dihed = min(1, max(cos_dihed, -1))
 
-    def _gradient(self, c3d):
-        return self._wilson_gradient(dq_d, c3d)
+        rad = anp.arccos(cos_dihed)
+        if (rad != np.pi) and (anp.dot(vxw, u) < 0):
+            rad *= -1
+        return rad

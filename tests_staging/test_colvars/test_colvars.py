@@ -1,4 +1,4 @@
-from pysisyphus.dynamics.colvars import CVDistance, CVBend
+from pysisyphus.dynamics.colvars import CVDistance, CVBend, CVTorsion
 
 import pytest
 import numpy as np
@@ -9,6 +9,7 @@ import numpy as np
     [
         (CVDistance, (0, 1), 1.0),
         (CVBend, (0, 1, 2), np.pi / 2),
+        (CVTorsion, (0, 1, 2, 3), -2.1025204),
     ],
 )
 def test_prim_internal_cv(cls, indices, ref_val):
@@ -17,13 +18,12 @@ def test_prim_internal_cv(cls, indices, ref_val):
             (0.0, 0.0, 0.0),
             (1.0, 0.0, 0.0),
             (1.0, -1.0, 0.0),
-            (2.0, -1.0, 0.0),
+            (2.0, -0.5, 1.7),
         )
     )
 
     # Check if autograd gradient is used
     cv = cls(indices)
-    assert cv.agrad is False
     agrad_cv = cls(indices, force_agrad=True)
     assert agrad_cv.agrad
 
@@ -31,7 +31,7 @@ def test_prim_internal_cv(cls, indices, ref_val):
     agrad_grad = agrad_cv.gradient(c3d)
 
     assert val == pytest.approx(ref_val)
-    np.testing.assert_allclose(grad, agrad_grad)
+    np.testing.assert_allclose(grad, agrad_grad, atol=1e-12)
 
 
 def test_cvbend():
