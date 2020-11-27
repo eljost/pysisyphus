@@ -27,10 +27,13 @@ class PyXTB(Calculator):
         self.gfn = str(gfn)
         self.verbosity = self.avail_verbosities[verbosity]
         self.param = self.avail_params[self.gfn]
+        self.uhf = self.mult - 1
 
     def get_calculator(self, atoms, coords):
         numbers = np.array([ATOMIC_NUMBERS[atom.lower()] for atom in atoms])
-        calc = XTBCalculator(self.param, numbers, coords.reshape(-1, 3))
+        calc = XTBCalculator(
+            self.param, numbers, coords.reshape(-1, 3), charge=self.charge, uhf=self.uhf
+        )
         calc.set_verbosity(self.verbosity)
         return calc
 
