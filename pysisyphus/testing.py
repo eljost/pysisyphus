@@ -77,6 +77,13 @@ def using(calculator):
             except ModuleNotFoundError:
                 pass
 
+        if calculator == "pyxtb":
+            try:
+                import xtb.interface
+                available = True
+            except ModuleNotFoundError:
+                pass
+
         reason = _reason.format(calculator)
         _using_cache[calculator] = pytest.mark.skipif(not available, reason=reason)
     return _using_cache[calculator]
