@@ -32,18 +32,54 @@ def test_gaussian_height0():
     assert g.value(1.0) == pytest.approx(0.0)
 
 
-def test_gaussian_multiple_centers():
-    g = Gaussian(w=1, s=1)
-    x = 1.0
-    x0 = np.array(
+"""
+Assuming three Gaussians (w=1, s=1), centered at -1, 0 and 1,
+the potential at x = 1 will be:
+    V = exp(-(1- -1)**2 / 2) + exp(-1**2 / 2) + exp(0)
+    V = exp(-2) + exp(-1/2) + 1.0
+
+The gradient is given as
+    g = -(1- -1) * exp(-2) + -(1 - 0) * exp(-1/2) + -(1-1) * exp(0)
+    g = -2 * exp(-2) - exp(-1/2) + 0
+
+If we extend this to 2D, with same centers and same x the potential
+is just doubled, and the gradient is the same in both dimensions.
+"""
+THREE_CENTER_POT = EXP_MINUS2 + EXP_HALF + 1.0
+THREE_CENTER_GRAD = -2 * EXP_MINUS2 - EXP_HALF + 0.0
+
+
+@pytest.mark.parametrize(
+    "x, x0, ref_val, ref_grad",
+    [
         (
-            (-1.0,),  # 2 units to the left
-            (0.0,),  # 1 unit to the left
-            (1.0,),  # directly at x0
-        )
-    )
+            1.0,
+            (-1.0, 0.0, 1.0),
+            THREE_CENTER_POT,
+            THREE_CENTER_GRAD,
+        ),
+        (
+            (1.0, 1.0),
+            (-1.0, 0.0, 1.0, -1.0, 0.0, 1.0),
+            2 * THREE_CENTER_POT,
+            (THREE_CENTER_GRAD, THREE_CENTER_GRAD),
+        ),
+    ],
+)
+def test_gaussian_multiple_centers(x, x0, ref_val, ref_grad):
+    g = Gaussian(w=1, s=1)
+    x = np.array(x)
+    x0 = np.array(x0).reshape(3, -1)
     val = g.value(x, x0)
-    assert val == pytest.approx(EXP_MINUS2 + EXP_HALF + 1.0)
+    assert val == pytest.approx(ref_val)
 
     grad = g.gradient(x, x0)
-    np.testing.assert_allclose(grad, -2 * EXP_MINUS2 + -EXP_HALF + 0.0)
+    np.testing.assert_allclose(grad, ref_grad)
+
+
+# def test_gaussian_cr_func():
+# indices = (0, 1)
+# coords = np.zeros((2, 3))
+# coords[0, 0] = 1.0
+# cv = CVDistance(indices)
+# g = Gaussian(x0=0.0, cr_func=cv.gradient)
