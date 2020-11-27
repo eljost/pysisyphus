@@ -5,7 +5,7 @@ import numpy as np
 import autograd
 import autograd.numpy as anp
 
-from pysisyphus.intcoords.derivatives import dq_b, dq_a
+from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
 
 
 class Colvar(metaclass=abc.ABCMeta):
@@ -60,6 +60,10 @@ class CVDistance(Colvar):
 class CVBend(Colvar):
     def __init__(self, indices, **kwargs):
         self.indices = list(indices)
+        # Bonded like
+        # i---j <- central atom
+        #     |
+        #     k
         self.i, self.j, self.k = self.indices
         super().__init__(**kwargs)
 
@@ -75,3 +79,27 @@ class CVBend(Colvar):
 
     def _gradient(self, c3d):
         return self._wilson_gradient(dq_a, c3d)
+
+
+class CVDihedral(Colvar):
+    def __init__(self, indices, **kwargs):
+        self.indices = list(indices)
+        # Bonded like
+        # i---j
+        #     |
+        #     k---l
+        self.i, self.j, self.k, self.l = self.indices
+        super().__init__(**kwargs)
+
+    def value(self, c3d):
+        u_dash = c3d[self.i] - c3d[self.j]
+        v_dash = c3d[self.k] - c3d[self.j]
+        u_norm = anp.linalg.norm(u_dash)
+        v_norm = anp.linalg.norm(v_dash)
+        u = u_dash / u_norm
+        v = v_dash / v_norm
+        rad = anp.arccos(anp.dot(u, v))
+        return rad
+
+    def _gradient(self, c3d):
+        return self._wilson_gradient(dq_d, c3d)
