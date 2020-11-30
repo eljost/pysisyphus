@@ -122,6 +122,8 @@ def md(
 
     energy_forces_getter = energy_forces_getter_closure(geom)
 
+    if gaussians is None:
+        gaussians = tuple()
     gau_centers = list()
     gau_center_num = np.zeros(len(gaussians), dtype=int)
     for _, gaussian, gau_stride in gaussians:

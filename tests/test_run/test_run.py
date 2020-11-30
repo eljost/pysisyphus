@@ -44,8 +44,10 @@ def test_diels_alder_growing_string():
             "pal": 2,
             "basis": "321g",
         },
-        "xyz": "lib:diels_alder_interpolated.trj",
-        "coord_type": "dlc",
+        "geom": {
+            "type": "dlc",
+            "fn": "lib:diels_alder_interpolated.trj",
+        },
     }
     results = run_from_dict(run_dict)
 
@@ -66,7 +68,10 @@ def test_diels_alder_growing_string():
 @using("pyscf")
 def test_run_results():
     run_dict = {
-        "xyz": "lib:h2o.xyz",
+        "geom": {
+            "type": "cart",
+            "fn": "lib:h2o.xyz",
+        },
         "calc": {"type": "pyscf", "basis": "sto3g"},
     }
     results = run_from_dict(run_dict)
@@ -100,7 +105,10 @@ def test_run_dimer_irc():
                 "pal": 2,
             }
         },
-        "xyz": "lib:hcn_ts_hf_321g.xyz",
+        "geom": {
+            "type": "cart",
+            "fn": "lib:hcn_ts_hf_321g.xyz",
+        }
     }
     results = run_from_dict(run_dict)
 

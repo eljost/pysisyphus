@@ -280,8 +280,10 @@ def test_acetaldehyde_opt():
 def test_yaml_oniom():
 
     run_dict = {
-        "xyz": "lib:acetaldehyd_oniom.xyz",
-        "coord_type": "redund",
+        "geom": {
+            "type": "redund",
+            "fn": "lib:acetaldehyd_oniom.xyz",
+        },
         "calc": {
             "type": "oniom",
             "calcs": {
@@ -318,8 +320,10 @@ def test_yaml_oniom():
 @using_pyscf
 def test_oniom3():
     run_dict = {
-        "xyz": "lib:oniom3alkyl.pdb",
-        "coord_type": "redund",
+        "geom": {
+            "type": "redund",
+            "fn": "lib:oniom3alkyl.pdb",
+        },
         "calc": {
             "type": "oniom",
             "calcs": {

@@ -150,7 +150,10 @@ def test_hcn_neb():
             "pal": 2,
             "basis": "321g",
         },
-        "xyz": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"]
+        "geom": {
+            "type": "cart",
+            "fn": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"],
+        },
     }
     results = run_from_dict(run_dict)
 
