@@ -1,5 +1,7 @@
 import logging
 
+from pysisyphus.dynamics.colvars import get_colvar
+from pysisyphus.dynamics.Gaussian import Gaussian
 from pysisyphus.dynamics.helpers import get_mb_velocities_for_geom
 from pysisyphus.dynamics.mdp import mdp
 from pysisyphus.dynamics.rattle import rattle_closure
