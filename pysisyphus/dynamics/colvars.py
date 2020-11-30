@@ -44,6 +44,13 @@ class Colvar(metaclass=abc.ABCMeta):
         grad[self.indices] = func(*c3d[self.indices].flatten()).reshape(-1, 3)
         return grad
 
+    def __str__(self):
+        if hasattr(self, "indices"):
+            str_ = f"{self.__class__.__name__}({self.indices})"
+        else:
+            str_ = super().__str__()
+        return str_
+
 
 class CVDistance(Colvar):
     def __init__(self, indices, **kwargs):
@@ -116,3 +123,14 @@ class CVTorsion(Colvar):
         if (rad != np.pi) and (anp.dot(vxw, u) < 0):
             rad *= -1
         return rad
+
+
+COLVARS = {
+    "distance": CVDistance,
+    "bend": CVBend,
+    "torsion": CVTorsion,
+}
+
+
+def get_colvar(key, kwargs):
+    return COLVARS[key](**kwargs)
