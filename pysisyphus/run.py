@@ -27,7 +27,7 @@ from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
 from pysisyphus.exceptions import HEIIsFirstOrLastException
-from pysisyphus.dynamics import mdp
+from pysisyphus.dynamics import get_mb_velocities_for_geom, mdp, md
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
 # from pysisyphus.overlaps.couplings import couplings
@@ -607,6 +607,26 @@ def run_stocastic(stoc):
     return stoc
 
 
+def run_md(geom, calc_getter, md_kwargs):
+    print(highlight_text(f"Running Molecular Dynamics"))
+    calc = calc_getter()
+    geom.set_calculator(calc)
+
+    T = md_kwargs["T"]
+    steps = md_kwargs.pop("steps")
+    dt = md_kwargs.pop("dt")
+    seed = md_kwargs.pop("seed", None)
+
+    v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
+    md_result = md(geom, v0=v0, steps=steps, dt=dt, **md_kwargs)
+
+    # from pysisyphus.xyzloader import coords_to_trj
+    # trj_fn = "md.trj"
+    # trj_str = coords_to_trj(trj_fn, geom.atoms, md_result.coords)
+
+    return md_result
+
+
 def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     """Run optimization on first and last geometry in xyz and return
     updated xyz variable containing the optimized ends and any
@@ -1049,6 +1069,7 @@ def get_defaults(conf_dict):
         "assert": None,
         "geom": None,
         "mdp": None,
+        "md": None,
     }
 
     mol_opt_defaults = {
@@ -1149,6 +1170,14 @@ def get_defaults(conf_dict):
     if "mdp" in conf_dict:
         dd["mdp"] = {}
 
+    if "md" in conf_dict:
+        dd["md"] = {
+            "T": 298.15,
+            "dt": 0.5,
+            "thermostat": "csvr",
+            "timecon": 50,
+        }
+
     return dd
 
 
@@ -1186,20 +1215,21 @@ def setup_run_dict(run_dict):
     key_set = set(org_dict.keys())
     for key in key_set & set(
         (
+            "assert",
             "calc",
             "cos",
-            "opt",
+            "endopt",
+            "geom",
             "interpol",
+            "irc",
+            "md",
+            "mdp",
+            "opt",
             "overlaps",
+            "preopt",
+            "shake",
             "stocastic",
             "tsopt",
-            "shake",
-            "irc",
-            "preopt",
-            "endopt",
-            "assert",
-            "geom",
-            "mdp",
         )
     ):
         try:
@@ -1376,6 +1406,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         stoc_kwargs["calc_kwargs"] = calc_kwargs
         stocastic = STOCASTIC_DICT[stoc_key](geom, **stoc_kwargs)
         stocastic = run_stocastic(stocastic)
+    elif run_dict["md"]:
+        md_kwargs = run_dict["md"].copy()
+        run_md(geom, calc_getter, md_kwargs)
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #

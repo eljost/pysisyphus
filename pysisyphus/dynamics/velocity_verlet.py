@@ -12,6 +12,7 @@ from pysisyphus.dynamics.csvr import resample_kin
 from pysisyphus.dynamics.rattle import rattle_closure
 from pysisyphus.helpers import check_for_stop_sign
 from pysisyphus.helpers_pure import log
+from pysisyphus.io.hdf5 import get_h5_group
 
 logger = logging.getLogger("dynamics")
 
@@ -23,9 +24,26 @@ THERMOSTATS = {
     "csvr": resample_kin,
 }
 
+
+def get_data_model(atoms, dump_steps):
+    coord_size = 3 * len(atoms)
+    _1d = (dump_steps,)
+    _2d = (dump_steps, coord_size)
+
+    data_model = {
+        "cart_coords": _2d,
+        "step": _1d,
+        "energy_tot": _1d,
+        "T": _1d,
+        "T_avg": _1d,
+        "velocity": _2d,
+    }
+
+    return data_model
+
 def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
        timecon=100, term_funcs=None, constraints=None, constraint_kwargs=None,
-       verbose=True, print_stride=50):
+       verbose=True, print_stride=50, dump_stride=None):
     """Velocity verlet integrator.
 
     Parameters
@@ -59,6 +77,8 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         Do additional printing when True.
     print_stride : int, default=50
         Report every n-th step.
+    dump_stride : int, default=None
+        If given, MD data will be dumped to a HDF5 file every n-th step.
     """
 
     assert geom.coord_type == "cart"
@@ -66,9 +86,19 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     if term_funcs is None:
         term_funcs = dict()
 
+    if dump_stride:
+        dump_steps = steps // dump_stride
+        data_model = get_data_model(geom.atoms, dump_steps)
+        h5_group = get_h5_group("md.h5", "run", data_model, reset=True)
+        h5_group.attrs["atoms"] = geom.atoms
+        h5_group.attrs["dt"] = dt
+        h5_group.attrs["steps"] = steps
+        h5_group.attrs["masses"] = geom.masses
+        h5_group.attrs["T_target"] = T
+
     if verbose:
         t_ps = steps * dt * 1e-3  # Total simulation time
-        print(f"Doing {steps} steps of {dt:.4f} fs for a total of {t_ps:.2f} ps.")
+        print(f"Doing {steps} steps of {dt:.4f} fs for a total of {t_ps:.2f} ps.\n")
 
     energy_forces_getter = energy_forces_getter_closure(geom)
 
@@ -133,9 +163,18 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
             f"Step {step:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
             f"T={T: >8.2f} K <T>={T_avg/(step+1): >8.2f}"
         )
-        if (step % print_stride) == 0:
+        if step % print_stride == 0:
             log(logger, status_msg)
             if verbose: print(status_msg)
+
+        if dump_stride and (step % dump_stride == 0):
+            ind = step // dump_stride
+            h5_group["step"][ind] = step
+            h5_group["cart_coords"][ind] = x
+            h5_group["velocity"][ind] = v
+            h5_group["energy_tot"][ind] = E_tot
+            h5_group["T"][ind] = T
+            h5_group["T_avg"][ind] = T_avg/(step+1)
 
         if thermostat:
             E_kin_new = thermo_func(E_kin, sigma, v.size-fixed_dof, tau_t)
