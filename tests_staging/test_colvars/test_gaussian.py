@@ -69,7 +69,7 @@ THREE_CENTER_GRAD = -2 * EXP_MINUS2 - EXP_HALF + 0.0
 def test_gaussian_multiple_centers(x, x0, ref_val, ref_grad):
     g = Gaussian(w=1, s=1)
     x = np.array(x)
-    x0 = np.array(x0).reshape(3, -1)
+    x0 = np.array(x0)
     val = g.value(x, x0)
     assert val == pytest.approx(ref_val)
 
@@ -77,7 +77,7 @@ def test_gaussian_multiple_centers(x, x0, ref_val, ref_grad):
     np.testing.assert_allclose(grad, ref_grad)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_gaussian_cr_func():
     indices = (0, 1)
     c3d = np.zeros((2, 3))
@@ -85,6 +85,5 @@ def test_gaussian_cr_func():
     cv = CVDistance(indices)
     x0 = (1, 1.1, 1.2)
     x = cv.value(c3d)
-    g = Gaussian(cr_func=cv.gradient)
-    val, grad = g.value(x, x0)
-    # import pdb; pdb.set_trace()
+    g = Gaussian(colvar=cv)
+    val, grad = g.eval(c3d, x0)

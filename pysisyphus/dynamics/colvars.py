@@ -34,7 +34,8 @@ class Colvar(metaclass=abc.ABCMeta):
     def gradient(self, c3d):
         return self._gradient(c3d)
 
-    def eval(self, c3d):
+    def eval(self, coords):
+        c3d = coords.reshape(-1, 3)
         return self.value(c3d), self.gradient(c3d)
 
     def _wilson_gradient(self, func, c3d):
