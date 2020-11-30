@@ -127,7 +127,6 @@ def md(
     for _, gaussian, gau_stride in gaussians:
         num_centers = steps // gau_stride
         gau_centers.append(np.zeros(num_centers))
-        print(f"{steps} steps, stride={gau_stride}, num_centers={num_centers}")
 
     def update_gaussians(step, coords):
         for i, (gau_key, gaussian, gau_stride) in enumerate(gaussians):
