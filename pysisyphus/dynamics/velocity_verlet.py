@@ -43,7 +43,7 @@ def get_data_model(atoms, dump_steps):
 
 def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
        timecon=100, term_funcs=None, constraints=None, constraint_kwargs=None,
-       verbose=True, print_stride=50, dump_stride=None):
+       gaussians=None, verbose=True, print_stride=50, dump_stride=None):
     """Velocity verlet integrator.
 
     Parameters
@@ -73,6 +73,8 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         of the MD integration when they evaluate to true.
     constraint_kwargs : dict, optional
         Keyword arguments for the constraint algorithm.
+    gaussians: list, optional, default=None
+        List of Gaussians to be used in a metadynamics run.
     verbose : bool, default=True
         Do additional printing when True.
     print_stride : int, default=50

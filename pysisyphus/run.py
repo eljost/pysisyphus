@@ -27,7 +27,7 @@ from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
 from pysisyphus.exceptions import HEIIsFirstOrLastException
-from pysisyphus.dynamics import get_mb_velocities_for_geom, mdp, md
+from pysisyphus.dynamics import get_mb_velocities_for_geom, mdp, md, get_colvar, Gaussian
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
 # from pysisyphus.overlaps.couplings import couplings
@@ -617,9 +617,25 @@ def run_md(geom, calc_getter, md_kwargs):
     steps = md_kwargs.pop("steps")
     dt = md_kwargs.pop("dt")
     seed = md_kwargs.pop("seed", None)
+    _gaussian = md_kwargs.pop("gaussian", {})
+    gaussians = list()
+    for g_name, g_kwargs in _gaussian.items():
+        # Create collective variable
+        cv_kwargs = g_kwargs.pop("colvar")
+        cv_key = cv_kwargs.pop("type")
+        colvar = get_colvar(cv_key, cv_kwargs)
+
+        # Create & append Gaussian
+        g_w = g_kwargs.pop("w")
+        g_s = g_kwargs.pop("s")
+        g_stride = g_kwargs.pop("stride")
+        gau = Gaussian(w=g_w, s=g_s, colvar=colvar)
+        gaussians.append(
+            (g_name, gau, g_stride)
+        )
 
     v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
-    md_result = md(geom, v0=v0, steps=steps, dt=dt, **md_kwargs)
+    md_result = md(geom, v0=v0, steps=steps, dt=dt, gaussians=gaussians, **md_kwargs)
 
     # from pysisyphus.xyzloader import coords_to_trj
     # trj_fn = "md.trj"
