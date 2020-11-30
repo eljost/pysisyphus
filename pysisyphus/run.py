@@ -630,8 +630,7 @@ def run_md(geom, calc_getter, md_kwargs):
         g_w = g_kwargs.pop("w")
         g_s = g_kwargs.pop("s")
         g_stride = g_kwargs.pop("stride")
-        dump_fn = f"{g_name}.gau"
-        gau = Gaussian(w=g_w, s=g_s, colvar=colvar, dump_fn=dump_fn)
+        gau = Gaussian(w=g_w, s=g_s, colvar=colvar, dump_name=g_name)
         gaussians.append(
             (g_name, gau, g_stride)
         )

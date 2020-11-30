@@ -12,7 +12,7 @@ class DummyColvar:
 
 
 class Gaussian:
-    def __init__(self, w=1, s=1, x0=None, colvar=None, dump_fn=None):
+    def __init__(self, w=1, s=1, x0=None, colvar=None, dump_name=None):
         """
         See:
             https://doi.org/10.1016/j.cpc.2018.02.017
@@ -37,11 +37,20 @@ class Gaussian:
         if colvar is None:
             colvar = DummyColvar()
         self.colvar = colvar
-        self.dump_fn = dump_fn
+        self.dump_name = dump_name
+        if self.dump_name:
+            self.dump_fn = (
+                dump_name
+                if self.dump_name.endswith(".gau")
+                else f"{self.dump_name}.gau"
+            )
+        else:
+            self.dump_fn = None
 
         # Reset file and write header
         if self.dump_fn:
-            with open(self.dump_fn, "w") as handle: handle.write("# step s w center\n")
+            with open(self.dump_fn, "w") as handle:
+                handle.write(f"# {dump_name}\n# step s w center\n")
 
         # Store some values, to avoid recalculation
         self.s2 = self.s ** 2
@@ -89,4 +98,5 @@ class Gaussian:
 
     def dump(self, step, s, w, center):
         line = f"{step:08d} {s:.12f} {w:.12f} {center:.12f}\n"
-        with open(self.dump_fn, "a") as handle: handle.write(line)
+        with open(self.dump_fn, "a") as handle:
+            handle.write(line)

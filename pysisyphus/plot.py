@@ -13,6 +13,7 @@ import numpy as np
 from scipy.interpolate import splrep, splev
 
 from pysisyphus.constants import AU2KJPERMOL, AU2EV
+from pysisyphus.dynamics import Gaussian
 from pysisyphus.peakdetect import peakdetect
 from pysisyphus.wrapper.jmol import render_cdd_cube
 
@@ -348,6 +349,55 @@ def plot_md(h5_group="run"):
     plt.show()
 
 
+def plot_gau(gau_fns, num=50):
+    print("Assuming constant Gaussian s & w!")
+
+    assert 0 < len(gau_fns) < 3, \
+        "Currently, only plotting of 1 or 2 collective variables is possible!"
+
+    gaussians = list()
+    centers = list()
+    grids = list()
+    for gau_fn in gau_fns:
+        gau_data = np.loadtxt(gau_fn)
+        gau_centers = gau_data[:,3]
+        _, s, w, _ = gau_data[0]
+        gau = Gaussian(w=w, s=s)
+        print(f"Successfully loaded '{gau_fn}' with w={w:.6f}, s={s:.6f}")
+        gaussians.append(gau)
+        min_ = gau_centers.min()
+        max_ = gau_centers.max()
+        diff = abs(max_ - min_)
+        centers.append(gau_centers)
+        grid = np.linspace(min_, max_, num=num)
+        grids.append(grid)
+        print(f"\tmin={min_:.4f}, max={max_:.4f}, Δ={diff:.4f}")
+
+    def eval_gaussians(coords):
+        value = 0.0
+        for i, gau in enumerate(gaussians):
+            value += gau.value(coords=coords[i], x0=centers[i])
+        return value
+
+    fig, ax = plt.subplots()
+
+    if len(gau_fns) == 1:
+        grid = grids[0]
+        ens = np.array([eval_gaussians(x) for x in grid[:,None]]) * AU2KJPERMOL
+        ax.plot(grid, ens)
+        ax.set_xlabel(f"CV0, {gau_fns[0]}")
+        ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+    elif len(gau_fns) == 2:
+        grid0, grid1 = grids
+        X, Y = np.meshgrid(grid0, grid1)
+        xy_flat = np.stack((X.flatten(), Y.flatten()), axis=1)
+        Z = np.array([eval_gaussians(xy) for xy in xy_flat]).reshape(num, num) * AU2KJPERMOL
+        ax.contourf(X, Y, Z)
+        ax.set_xlabel(f"CV0, {gau_fns[0]}")
+        ax.set_ylabel(f"CV1, {gau_fns[1]}")
+    plt.show()
+
+
 def plot_overlaps(h5, thresh=.1):
     with h5py.File(h5, "r") as handle:
         overlaps = handle["overlap_matrices"][:]
@@ -622,6 +672,7 @@ def parse_args(args):
     group.add_argument("--md", action="store_true",
         help="Plot MD."
     )
+    group.add_argument("--gau", nargs="*")
 
     return parser.parse_args(args)
 
@@ -794,6 +845,8 @@ def run():
         plot_all_energies(h5=h5_fn)
     elif args.md:
         plot_md()
+    elif args.gau:
+        plot_gau(args.gau)
     elif args.overlaps:
         plot_overlaps(h5=h5_fn)
     elif args.render_cdds:
