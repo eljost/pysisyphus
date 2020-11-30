@@ -2,8 +2,10 @@ import numpy as np
 
 
 class DummyColvar:
-
     def eval(self, x):
+        assert np.isscalar(
+            x
+        ), f"DummyColvar can only be used for scalar inputs, but got {x}!"
         return x, 1
 
 
@@ -50,16 +52,15 @@ class Gaussian:
         diff = x - np.atleast_1d(x0)
         exp_ = np.exp(-(diff ** 2) * self.one_over_2s2)
         to_return = self.w * exp_.sum()
+
         if gradient:
             try:
-                grad = np.einsum("i,i,ijk->jk", diff, exp_, cr_grad[None,:,:])
-            # except IndexError:
+                grad = np.einsum("i,i,ijk->jk", diff, exp_, cr_grad[None, :, :])
             except TypeError:
                 grad = diff * exp_ * cr_grad
-                # grad = diff * exp_ * cr_grad
-            # grad = diff * exp_ * cr_grad
+
+            # Finalize & append gradient
             grad *= self.minus_w_over_s2
-            # Append gradient
             to_return = to_return, grad
         return to_return
 
