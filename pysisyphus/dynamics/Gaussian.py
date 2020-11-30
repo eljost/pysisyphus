@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 
 
@@ -10,7 +12,7 @@ class DummyColvar:
 
 
 class Gaussian:
-    def __init__(self, w=1, s=1, x0=None, colvar=None):
+    def __init__(self, w=1, s=1, x0=None, colvar=None, dump_fn=None):
         """
         See:
             https://doi.org/10.1016/j.cpc.2018.02.017
@@ -35,6 +37,11 @@ class Gaussian:
         if colvar is None:
             colvar = DummyColvar()
         self.colvar = colvar
+        self.dump_fn = dump_fn
+
+        # Reset file and write header
+        if self.dump_fn:
+            with open(self.dump_fn, "w") as handle: handle.write("# step s w center\n")
 
         # Store some values, to avoid recalculation
         self.s2 = self.s ** 2
@@ -79,3 +86,7 @@ class Gaussian:
 
     def eval(self, coords, x0=None):
         return self.calculate(coords, x0, gradient=True)
+
+    def dump(self, step, s, w, center):
+        line = f"{step:08d} {s:.12f} {w:.12f} {center:.12f}\n"
+        with open(self.dump_fn, "a") as handle: handle.write(line)

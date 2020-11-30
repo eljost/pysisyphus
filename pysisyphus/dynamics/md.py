@@ -139,6 +139,7 @@ def md(
                     logger,
                     f"Added {gau_center_num[i]: >6d}. '{gau_key}' Gaussian in step {step}.",
                 )
+                gaussian.dump(step, gaussian.s, gaussian.w, new_center)
 
     def gaussian_wrapper(coords):
         E_pot, forces = energy_forces_getter(geom.coords)
