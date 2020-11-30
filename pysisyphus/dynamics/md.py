@@ -4,10 +4,12 @@ import logging
 import numpy as np
 
 from pysisyphus.constants import FORCE2ACC
-from pysisyphus.dynamics.helpers import kinetic_energy_from_velocities, \
-                                        temperature_for_kinetic_energy, \
-                                        energy_forces_getter_closure, \
-                                        kinetic_energy_for_temperature
+from pysisyphus.dynamics.helpers import (
+    kinetic_energy_from_velocities,
+    temperature_for_kinetic_energy,
+    energy_forces_getter_closure,
+    kinetic_energy_for_temperature,
+)
 from pysisyphus.dynamics.csvr import resample_kin
 from pysisyphus.dynamics.rattle import rattle_closure
 from pysisyphus.helpers import check_for_stop_sign
@@ -16,8 +18,9 @@ from pysisyphus.io.hdf5 import get_h5_group
 
 logger = logging.getLogger("dynamics")
 
-MDResult = namedtuple("MDResult",
-                      "coords t_ps step terminated T E_tot",
+MDResult = namedtuple(
+    "MDResult",
+    "coords t_ps step terminated T E_tot",
 )
 
 THERMOSTATS = {
@@ -41,9 +44,24 @@ def get_data_model(atoms, dump_steps):
 
     return data_model
 
-def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
-       timecon=100, term_funcs=None, constraints=None, constraint_kwargs=None,
-       gaussians=None, verbose=True, print_stride=50, dump_stride=None):
+
+def md(
+    geom,
+    v0,
+    steps,
+    dt,
+    remove_com_v=True,
+    thermostat=None,
+    T=298.15,
+    timecon=100,
+    term_funcs=None,
+    constraints=None,
+    constraint_kwargs=None,
+    gaussians=None,
+    verbose=True,
+    print_stride=50,
+    dump_stride=None,
+):
     """Velocity verlet integrator.
 
     Parameters
@@ -104,12 +122,43 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
 
     energy_forces_getter = energy_forces_getter_closure(geom)
 
+    gau_centers = list()
+    gau_center_num = np.zeros(len(gaussians), dtype=int)
+    for _, gaussian, gau_stride in gaussians:
+        num_centers = steps // gau_stride
+        gau_centers.append(np.zeros(num_centers))
+        print(f"{steps} steps, stride={gau_stride}, num_centers={num_centers}")
+
+    def update_gaussians(step, coords):
+        for i, (gau_key, gaussian, gau_stride) in enumerate(gaussians):
+            if (step + 1) % gau_stride == 0:
+                new_center = gaussian.colvar.value(coords.reshape(-1, 3))
+                gau_centers[i][gau_center_num[i]] = new_center
+                gau_center_num[i] += 1
+                center_num = gau_center_num[i]
+                log(
+                    logger,
+                    f"Added {gau_center_num[i]: >6d}. '{gau_key}' Gaussian in step {step}.",
+                )
+
+    def gaussian_wrapper(coords):
+        E_pot, forces = energy_forces_getter(geom.coords)
+        for i, (_, gaussian, _) in enumerate(gaussians):
+            center_num = gau_center_num[i]
+            gau_pot, gau_grad = gaussian.eval(coords, gau_centers[i][:center_num])
+            # print("\tgau_pot", gau_pot)
+            gau_forces = -gau_grad.flatten()
+            E_pot += gau_pot
+            forces += gau_forces
+        return E_pot, forces
+
     if constraint_kwargs is None:
         constraint_kwargs = dict()
 
     if remove_com_v and (not thermostat):
-        print("Center of mass velocity removal requested, but thermostat is disabled. "
-              "Disabling velocity removal."
+        print(
+            "Center of mass velocity removal requested, but thermostat is disabled. "
+            "Disabling velocity removal."
         )
         remove_com_v = False
 
@@ -122,16 +171,19 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     # Get RATTLE function from closure for constrained MD
     if constrained_md:
         fixed_dof += len(constraints)
-        rattle = rattle_closure(geom, constraints, dt,
-                                energy_forces_getter=energy_forces_getter,
-                                **constraint_kwargs)
+        rattle = rattle_closure(
+            geom,
+            constraints,
+            dt,
+            energy_forces_getter=energy_forces_getter,
+            **constraint_kwargs,
+        )
     print(f"Fixed degrees of freedom: {fixed_dof}")
 
     if thermostat is not None:
         thermo_func = THERMOSTATS[thermostat]
         tau_t = dt / timecon
-        sigma = kinetic_energy_for_temperature(len(geom.atoms), T,
-                                               fixed_dof=fixed_dof)
+        sigma = kinetic_energy_for_temperature(len(geom.atoms), T, fixed_dof=fixed_dof)
     # In amu
     masses = geom.masses
     masses_rep = geom.masses_rep
@@ -164,12 +216,13 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         E_tots.append(E_tot)
 
         status_msg = (
-            f"Step {step:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
+            f"Step {step:06d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
             f"T={T: >8.2f} K <T>={T_avg/(step+1): >8.2f} K"
         )
         if step % print_stride == 0:
             log(logger, status_msg)
-            if verbose: print(status_msg)
+            if verbose:
+                print(status_msg)
 
         if dump_stride and (step % dump_stride == 0):
             ind = step // dump_stride
@@ -178,27 +231,30 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
             h5_group["velocity"][ind] = v
             h5_group["energy_tot"][ind] = E_tot
             h5_group["T"][ind] = T
-            h5_group["T_avg"][ind] = T_avg/(step+1)
+            h5_group["T_avg"][ind] = T_avg / (step + 1)
 
         if thermostat:
-            E_kin_new = thermo_func(E_kin, sigma, v.size-fixed_dof, tau_t)
-            scale = (E_kin_new / E_kin)**0.5
+            E_kin_new = thermo_func(E_kin, sigma, v.size - fixed_dof, tau_t)
+            scale = (E_kin_new / E_kin) ** 0.5
             v *= scale
+
+        update_gaussians(step, x)
 
         # RATTLE algorithm
         if constrained_md:
             x, v, E_pot, forces = rattle(x, v, forces)
         # Simple Velocity-Verlet integration
         else:
-            E_pot, forces = energy_forces_getter(geom.coords)
+            # E_pot, forces = energy_forces_getter(geom.coords)
+            E_pot, forces = gaussian_wrapper(geom.coords)
             # Acceleration, convert from Hartree / (Bohr * amu) to Bohr/fs²
             a = forces / masses_rep * FORCE2ACC
-            v += .5 * (a + a_prev) * dt
+            v += 0.5 * (a + a_prev) * dt
             if remove_com_v:
                 v -= v * masses_rep / total_mass
             # v*dt = Bohr/fs * fs -> Bohr
             # a*dt**2 = Bohr/fs² * fs² -> Bohr
-            x += v*dt + .5*a*dt**2
+            x += v * dt + 0.5 * a * dt ** 2
             a_prev = a
 
         # Update coordinates
@@ -221,12 +277,12 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     log(logger, "")
 
     md_result = MDResult(
-                    coords=np.array(xs),
-                    t_ps=t_cur*1e-3,
-                    step=step,
-                    terminated=terminate_key,
-                    T=np.array(Ts),
-                    E_tot=np.array(E_tots),
+        coords=np.array(xs),
+        t_ps=t_cur * 1e-3,
+        step=step,
+        terminated=terminate_key,
+        T=np.array(Ts),
+        E_tot=np.array(E_tots),
     )
 
     return md_result
