@@ -313,6 +313,41 @@ def plot_all_energies(h5):
     plt.show()
 
 
+def plot_md(h5_group="run"):
+    with h5py.File("md.h5", "r") as handle:
+        group = handle[h5_group]
+
+        steps = group["step"][:]
+        coords = group["cart_coords"][:]
+        ens = group["energy_tot"][:]
+        Ts = group["T"][:]
+        T_avgs = group["T_avg"][:]
+        # velocities = handle["velocity"][:]
+
+        dt = group.attrs["dt"]
+        T_target = group.attrs["T_target"]
+
+    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+    dts = steps * dt
+    ens *= AU2KJPERMOL
+    mean = ens.mean()
+    ens -= mean
+    ax0.plot(dts, ens)
+    ax0.axhline(0, ls="--", c="k")
+    ax0.set_ylabel("$E - \overline{E}$ / kJ mol⁻¹")
+
+    ax1.plot(dts, Ts, label="Current")
+    ax1.plot(dts, T_avgs, ls="--", c="orange", label="Average")
+    ax1.axhline(T_target, ls="--", c="k", label="Target")
+    ax1.legend()
+    ax1.set_title(f"mean(T) = {Ts.mean():.2f} K")
+    ax1.set_xlabel("$\Delta t$ / fs")
+    ax1.set_ylabel("T / K")
+
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_overlaps(h5, thresh=.1):
     with h5py.File(h5, "r") as handle:
         overlaps = handle["overlap_matrices"][:]
@@ -584,6 +619,9 @@ def parse_args(args):
     group.add_argument("--h5_list", default=None,
         help="List groups in HDF5 file."
     )
+    group.add_argument("--md", action="store_true",
+        help="Plot MD."
+    )
 
     return parser.parse_args(args)
 
@@ -754,6 +792,8 @@ def run():
     # Overlap calculator related
     elif args.all_energies:
         plot_all_energies(h5=h5_fn)
+    elif args.md:
+        plot_md()
     elif args.overlaps:
         plot_overlaps(h5=h5_fn)
     elif args.render_cdds:
