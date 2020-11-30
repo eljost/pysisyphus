@@ -11,7 +11,7 @@ from pysisyphus.elem_data import ATOMIC_NUMBERS
 
 class PyXTB(Calculator):
 
-    def __init__(self, *args, gfn=2, verbosity=0, **kwargs):
+    def __init__(self, *args, gfn=2, verbosity=0, keep_calculator=False, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.env = Environment()
@@ -28,16 +28,28 @@ class PyXTB(Calculator):
             "2": Param.GFN2xTB,
             "ff": Param.GFNFF,
         }
+        self.keep_calculator = keep_calculator
+        self._calculator = None
 
         self.param = avail_params[self.gfn]
         self.uhf = self.mult - 1
 
     def get_calculator(self, atoms, coords):
+        # Reuse old calculator and updatec coordinates
+        if self._calculator:
+            self._calculator.update(coords.reshape(-1, 3))
+            return self._calculator
+
+        # Create new calculator
         numbers = np.array([ATOMIC_NUMBERS[atom.lower()] for atom in atoms])
         calc = XTBCalculator(
             self.param, numbers, coords.reshape(-1, 3), charge=self.charge, uhf=self.uhf
         )
         calc.set_verbosity(self.verbosity)
+
+        # Keep calculator, if requested
+        if self.keep_calculator and (self._calculator is None):
+            self._calculator = calc
         return calc
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
