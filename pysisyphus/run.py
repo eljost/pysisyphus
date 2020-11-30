@@ -69,6 +69,7 @@ CALC_DICT = {
     "openmolcas": OpenMolcas,
     "orca": ORCA,
     "psi4": Psi4,
+    "pyxtb": PyXTB,
     "turbomole": Turbomole,
     "xtb": XTB,
     # Analytical potentials
@@ -1041,7 +1042,6 @@ def get_defaults(conf_dict):
         # "overlaps": None,
         "glob": None,
         "stocastic": None,
-        "xyz": None,
         "coord_type": "cart",
         "shake": None,
         "irc": None,
@@ -1186,6 +1186,7 @@ def setup_run_dict(run_dict):
     key_set = set(org_dict.keys())
     for key in key_set & set(
         (
+            "calc",
             "cos",
             "opt",
             "interpol",
@@ -1205,9 +1206,6 @@ def setup_run_dict(run_dict):
             run_dict[key].update(org_dict[key])
         except TypeError:
             print(f"Using default values for '{key}' section.")
-    # Update non nested entries
-    for key in key_set & set(("calc", "xyz", "pal", "coord_type", "define_prims")):
-        run_dict[key] = org_dict[key]
     return run_dict
 
 
