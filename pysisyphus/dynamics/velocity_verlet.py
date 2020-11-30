@@ -116,7 +116,7 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     # Fixed degrees of freedom
     fixed_dof = 0
     if remove_com_v:
-        print("Removing center-of-mass-velocity.")
+        print("Removing center-of-mass velocity.")
         fixed_dof += 3
     constrained_md = constraints is not None
     # Get RATTLE function from closure for constrained MD
@@ -165,7 +165,7 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
 
         status_msg = (
             f"Step {step:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
-            f"T={T: >8.2f} K <T>={T_avg/(step+1): >8.2f}"
+            f"T={T: >8.2f} K <T>={T_avg/(step+1): >8.2f} K"
         )
         if step % print_stride == 0:
             log(logger, status_msg)
