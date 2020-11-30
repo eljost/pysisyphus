@@ -4,8 +4,7 @@ import pytest
 
 from pysisyphus.calculators import TIP3P, ExternalPotential
 from pysisyphus.dynamics.helpers import get_mb_velocities_for_geom
-from pysisyphus.dynamics.velocity_verlet import md
-from pysisyphus.dynamics import rattle_closure
+from pysisyphus.dynamics import md, rattle_closure
 from pysisyphus.helpers import geom_loader
 
 from pysisyphus.dynamics.lincs import lincs_closure
