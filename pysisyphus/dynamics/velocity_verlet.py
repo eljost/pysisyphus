@@ -18,14 +18,14 @@ logger = logging.getLogger("dynamics")
 MDResult = namedtuple("MDResult",
                       "coords t_ps step terminated T E_tot",
 )
+
 THERMOSTATS = {
     "csvr": resample_kin,
 }
 
-
 def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
        timecon=100, term_funcs=None, constraints=None, constraint_kwargs=None,
-       verbose=True):
+       verbose=True, print_stride=50):
     """Velocity verlet integrator.
 
     Parameters
@@ -57,6 +57,8 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         Keyword arguments for the constraint algorithm.
     verbose : bool, default=True
         Do additional printing when True.
+    print_stride : int, default=50
+        Report every n-th step.
     """
 
     assert geom.coord_type == "cart"
@@ -131,7 +133,7 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
             f"Step {step:05d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
             f"T={T: >8.2f} K <T>={T_avg/(step+1): >8.2f}"
         )
-        if (step % 25) == 0:
+        if (step % print_stride) == 0:
             log(logger, status_msg)
             if verbose: print(status_msg)
 
