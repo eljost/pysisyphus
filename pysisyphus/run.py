@@ -637,9 +637,9 @@ def run_md(geom, calc_getter, md_kwargs):
     v0 = get_mb_velocities_for_geom(geom, T, seed=seed).flatten()
     md_result = md(geom, v0=v0, steps=steps, dt=dt, gaussians=gaussians, **md_kwargs)
 
-    # from pysisyphus.xyzloader import coords_to_trj
-    # trj_fn = "md.trj"
-    # trj_str = coords_to_trj(trj_fn, geom.atoms, md_result.coords)
+    from pysisyphus.xyzloader import coords_to_trj
+    trj_fn = "md.trj"
+    trj_str = coords_to_trj(trj_fn, geom.atoms, md_result.coords[::10])
 
     print()
 
