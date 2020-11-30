@@ -114,6 +114,7 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     # Fixed degrees of freedom
     fixed_dof = 0
     if remove_com_v:
+        print("Removing center-of-mass-velocity.")
         fixed_dof += 3
     constrained_md = constraints is not None
     # Get RATTLE function from closure for constrained MD
@@ -122,13 +123,13 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
         rattle = rattle_closure(geom, constraints, dt,
                                 energy_forces_getter=energy_forces_getter,
                                 **constraint_kwargs)
+    print(f"Fixed degrees of freedom: {fixed_dof}")
 
     if thermostat is not None:
         thermo_func = THERMOSTATS[thermostat]
         tau_t = dt / timecon
         sigma = kinetic_energy_for_temperature(len(geom.atoms), T,
                                                fixed_dof=fixed_dof)
-
     # In amu
     masses = geom.masses
     masses_rep = geom.masses_rep
@@ -149,6 +150,7 @@ def md(geom, v0, steps, dt, remove_com_v=True, thermostat=None, T=298.15,
     terminate_key = None
     T_avg = 0
     log(logger, f"Running MD with Δt={dt:.2f} fs for {steps} steps.")
+    print()
     for step in range(steps):
         xs.append(x.copy())
 
