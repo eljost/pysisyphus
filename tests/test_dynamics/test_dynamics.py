@@ -12,7 +12,7 @@ from pysisyphus.dynamics.helpers import (
     unscaled_velocity_distribution,
     get_mb_velocities_for_geom,
 )
-from pysisyphus.dynamics.velocity_verlet import md
+from pysisyphus.dynamics import md
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
