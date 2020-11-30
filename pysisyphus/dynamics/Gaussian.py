@@ -12,11 +12,15 @@ class DummyColvar:
 class Gaussian:
     def __init__(self, w=1, s=1, x0=None, colvar=None):
         """
-        See https://doi.org/10.1016/j.cpc.2018.02.017
+        See:
+            https://doi.org/10.1016/j.cpc.2018.02.017
 
         V(f(x)) = w * exp(-(f(x) - f0)**2 / (2*s**2))
 
         F(x) = -dV/dx = -dV/df * df/dx
+
+        See also:
+            https://doi.org/10.1103/PhysRevLett.90.238302
         """
         # Gaussian height w and standard deviation s are read-only properties.
         # This way they can't be accidentally altered, which would invalidate the
