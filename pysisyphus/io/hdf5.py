@@ -26,7 +26,10 @@ def get_h5_group(fn, group_name, data_model=None, reset=False):
 
     # Check compatibility of data_model and group. If they aren't compatible
     # recreate the group with the proper shapes.
-    compatible = [group[key].shape == shape for key, shape in data_model.items()]
+    try:
+        compatible = [group[key].shape == shape for key, shape in data_model.items()]
+    except KeyError:
+        compatible = (False, )
     compatible = all(compatible)
     if (not compatible) or reset:
         del f[group_name]
