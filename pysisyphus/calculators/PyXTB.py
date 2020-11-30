@@ -10,26 +10,26 @@ from pysisyphus.elem_data import ATOMIC_NUMBERS
 
 
 class PyXTB(Calculator):
-    avail_params = {
-        "0": Param.GFN0xTB,
-        "1": Param.GFN1xTB,
-        "2": Param.GFN2xTB,
-        "ff": Param.GFNFF,
-    }
-
-    avail_verbosities = {
-        0: VERBOSITY_MUTED,
-        1: VERBOSITY_MINIMAL,
-        2: VERBOSITY_FULL,
-    }
 
     def __init__(self, *args, gfn=2, verbosity=0, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.env = Environment()
         self.gfn = str(gfn)
-        self.verbosity = self.avail_verbosities[verbosity]
-        self.param = self.avail_params[self.gfn]
+        avail_verbosities = {
+            0: VERBOSITY_MUTED,
+            1: VERBOSITY_MINIMAL,
+            2: VERBOSITY_FULL,
+        }
+        self.verbosity = avail_verbosities[verbosity]
+        avail_params = {
+            "0": Param.GFN0xTB,
+            "1": Param.GFN1xTB,
+            "2": Param.GFN2xTB,
+            "ff": Param.GFNFF,
+        }
+
+        self.param = avail_params[self.gfn]
         self.uhf = self.mult - 1
 
     def get_calculator(self, atoms, coords):
