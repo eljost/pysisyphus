@@ -1,6 +1,9 @@
 import numpy as np
-from xtb.interface import Environment, Param, Calculator as XTBCalculator
-from xtb.libxtb import VERBOSITY_MINIMAL, VERBOSITY_FULL, VERBOSITY_MUTED
+try:
+    from xtb.interface import Environment, Param, Calculator as XTBCalculator
+    from xtb.libxtb import VERBOSITY_MINIMAL, VERBOSITY_FULL, VERBOSITY_MUTED
+except ModuleNotFoundError:
+    pass
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.elem_data import ATOMIC_NUMBERS
