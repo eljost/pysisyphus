@@ -383,7 +383,7 @@ def plot_gau(gau_fns, num=50):
 
     if len(gau_fns) == 1:
         grid = grids[0]
-        ens = np.array([eval_gaussians(x) for x in grid[:,None]]) * AU2KJPERMOL
+        -ens = np.array([eval_gaussians(x) for x in grid[:,None]]) * AU2KJPERMOL
         ax.plot(grid, ens)
         ax.set_xlabel(f"CV0, {gau_fns[0]}")
         ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
@@ -391,8 +391,8 @@ def plot_gau(gau_fns, num=50):
         grid0, grid1 = grids
         X, Y = np.meshgrid(grid0, grid1)
         xy_flat = np.stack((X.flatten(), Y.flatten()), axis=1)
-        Z = np.array([eval_gaussians(xy) for xy in xy_flat]).reshape(num, num) * AU2KJPERMOL
-        ax.contourf(X, Y, Z)
+        ens = -np.array([eval_gaussians(xy) for xy in xy_flat]).reshape(num, num) * AU2KJPERMOL
+        ax.contourf(X, Y, ens)
         ax.set_xlabel(f"CV0, {gau_fns[0]}")
         ax.set_ylabel(f"CV1, {gau_fns[1]}")
     plt.show()
