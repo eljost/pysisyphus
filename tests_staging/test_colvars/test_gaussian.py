@@ -88,3 +88,11 @@ def test_gaussian_cr_func(x0, ref_val, ref_grad):
     assert val == pytest.approx(val)
     ref_grad = np.reshape(ref_grad, grad.shape)
     np.testing.assert_allclose(grad, ref_grad)
+
+
+def test_gaussian_centers():
+    g = Gaussian()
+    # No Gaussians are present, because x0 == None
+    val, grad = g.eval(1)
+
+    assert val == pytest.approx(0)

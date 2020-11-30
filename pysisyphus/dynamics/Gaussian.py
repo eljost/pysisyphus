@@ -27,6 +27,8 @@ class Gaussian:
         # values precomputed below.
         self._w = w
         self._s = s
+        if x0 is None:
+            x0 = np.array(())
         self.x0 = np.ravel(x0)
 
         # Collective variable
