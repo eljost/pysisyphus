@@ -20,6 +20,7 @@ EXP_MINUS2 = math.exp(-2)
     ],
 )
 def test_gaussian_value(x, ref_val, ref_grad):
+    """Simple test of the Gaussian class. Uses DummyColvar."""
     x0 = 0.0
     g = Gaussian(w=1, s=1, x0=x0)
     val, grad = g.eval(x)
@@ -41,9 +42,6 @@ the potential at x = 1 will be:
 The gradient is given as
     g = -(1- -1) * exp(-2) + -(1 - 0) * exp(-1/2) + -(1-1) * exp(0)
     g = -2 * exp(-2) - exp(-1/2) + 0
-
-If we extend this to 2D, with same centers and same x the potential
-is just doubled, and the gradient is the same in both dimensions.
 """
 THREE_CENTER_POT = EXP_MINUS2 + EXP_HALF + 1.0
 THREE_CENTER_GRAD = -2 * EXP_MINUS2 - EXP_HALF + 0.0
@@ -61,8 +59,8 @@ THREE_CENTER_GRAD = -2 * EXP_MINUS2 - EXP_HALF + 0.0
     ],
 )
 def test_gaussian_multiple_centers(x, x0, ref_val, ref_grad):
+    """Tests Gaussian evaluation with multiple centers."""
     g = Gaussian(w=1, s=1)
-    # x = np.array(x)
     x0 = np.array(x0)
     val = g.value(x, x0)
     assert val == pytest.approx(ref_val)
@@ -79,6 +77,7 @@ def test_gaussian_multiple_centers(x, x0, ref_val, ref_grad):
     ],
 )
 def test_gaussian_cr_func(x0, ref_val, ref_grad):
+    """Test Gaussian evaluation with supplied colvar function."""
     indices = (0, 1)
     c3d = np.zeros((2, 3))
     c3d[0, 0] = 1.0
