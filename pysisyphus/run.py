@@ -609,6 +609,7 @@ def run_stocastic(stoc):
 
 def run_md(geom, calc_getter, md_kwargs):
     print(highlight_text(f"Running Molecular Dynamics"))
+
     calc = calc_getter()
     geom.set_calculator(calc)
 
