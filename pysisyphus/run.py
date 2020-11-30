@@ -641,6 +641,8 @@ def run_md(geom, calc_getter, md_kwargs):
     # trj_fn = "md.trj"
     # trj_str = coords_to_trj(trj_fn, geom.atoms, md_result.coords)
 
+    print()
+
     return md_result
 
 
