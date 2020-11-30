@@ -617,6 +617,7 @@ def run_md(geom, calc_getter, md_kwargs):
     steps = md_kwargs.pop("steps")
     dt = md_kwargs.pop("dt")
     seed = md_kwargs.pop("seed", None)
+
     _gaussian = md_kwargs.pop("gaussian", {})
     gaussians = list()
     for g_name, g_kwargs in _gaussian.items():
@@ -639,8 +640,9 @@ def run_md(geom, calc_getter, md_kwargs):
 
     from pysisyphus.xyzloader import coords_to_trj
     trj_fn = "md.trj"
-    trj_str = coords_to_trj(trj_fn, geom.atoms, md_result.coords[::10])
-
+    trj_str = coords_to_trj(
+        trj_fn, geom.atoms, md_result.coords[::md_kwargs["dump_stride"]]
+    )
     print()
 
     return md_result
@@ -1195,6 +1197,8 @@ def get_defaults(conf_dict):
             "dt": 0.5,
             "thermostat": "csvr",
             "timecon": 50,
+            "print_stride": 100,
+            "dump_stride": 10,
         }
 
     return dd
