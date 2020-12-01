@@ -40,6 +40,7 @@ def get_data_model(atoms, dump_steps):
         "energy_tot": _1d,
         "energy_pot" : _1d,
         "energy_kin": _1d,
+        "energy_conserved": _1d,
         "T": _1d,
         "T_avg": _1d,
         "velocity": _2d,
@@ -206,6 +207,7 @@ def md(
     T_avg = 0
     log(logger, f"Running MD with Δt={dt:.2f} fs for {steps} steps.")
     print()
+    thermo_corr = 0.0
     for step in range(steps):
         xs.append(x.copy())
 
@@ -215,6 +217,7 @@ def md(
         Ts.append(T)
         E_tot = E_pot + E_kin
         E_tots.append(E_tot)
+        E_conserved = E_pot + E_kin - thermo_corr
 
         status_msg = (
             f"Step {step:06d}  {t_cur*1e-3: >6.2f} ps  E={E_tot: >8.6f} E_h  "
@@ -233,11 +236,13 @@ def md(
             h5_group["energy_tot"][ind] = E_tot
             h5_group["energy_pot"][ind] = E_pot
             h5_group["energy_kin"][ind] = E_kin
+            h5_group["energy_conserved"][ind] = E_conserved
             h5_group["T"][ind] = T
             h5_group["T_avg"][ind] = T_avg / (step + 1)
 
         if thermostat:
             E_kin_new = thermo_func(E_kin, sigma, v.size - fixed_dof, tau_t)
+            thermo_corr += E_kin_new - E_kin
             scale = (E_kin_new / E_kin) ** 0.5
             v *= scale
 

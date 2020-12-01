@@ -321,6 +321,7 @@ def plot_md(h5_group="run"):
         steps = group["step"][:]
         coords = group["cart_coords"][:]
         ens = group["energy_tot"][:]
+        ens_conserved = group["energy_conserved"][:]
         Ts = group["T"][:]
         T_avgs = group["T_avg"][:]
         # velocities = group["velocity"][:]
@@ -328,7 +329,7 @@ def plot_md(h5_group="run"):
         dt = group.attrs["dt"]
         T_target = group.attrs["T_target"]
 
-    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+    fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
     dts = steps * dt
     ens *= AU2KJPERMOL
     mean = ens.mean()
@@ -337,13 +338,20 @@ def plot_md(h5_group="run"):
     ax0.axhline(0, ls="--", c="k")
     ax0.set_ylabel("$E - \overline{E}$ / kJ mol⁻¹")
 
-    ax1.plot(dts, Ts, label="Current")
-    ax1.plot(dts, T_avgs, ls="--", c="orange", label="Average")
-    ax1.axhline(T_target, ls="--", c="k", label="Target")
-    ax1.legend()
-    ax1.set_title(f"mean(T) = {Ts.mean():.2f} K")
-    ax1.set_xlabel("$\Delta t$ / fs")
-    ax1.set_ylabel("T / K")
+    ens_conserved *= AU2KJPERMOL
+    mean_conserved = ens_conserved.mean()
+    ens_conserved -= mean_conserved
+    ax1.plot(dts, ens_conserved)
+    ax1.axhline(0, ls="--", c="k")
+    ax1.set_ylabel("$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / kJ mol⁻¹")
+
+    ax2.plot(dts, Ts, label="Current")
+    ax2.plot(dts, T_avgs, ls="--", c="orange", label="Average")
+    ax2.axhline(T_target, ls="--", c="k", label="Target")
+    ax2.legend()
+    ax2.set_title(f"mean(T) = {Ts.mean():.2f} K")
+    ax2.set_xlabel("$\Delta t$ / fs")
+    ax2.set_ylabel("T / K")
 
     plt.tight_layout()
     plt.show()
