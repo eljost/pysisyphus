@@ -4,10 +4,19 @@ import argparse
 import sys
 
 import h5py
-import physical_validation
-import physical_validation as pv
+
+try:
+    import physical_validation as pv
+except ModuleNotFoundError:
+    print(
+        "Could not import 'physical_validation'.\n"
+        "Please run:\n"
+        "\tpip install physical_validation"
+    )
+    sys.exit()
 
 from pysisyphus.constants import AU2KJPERMOL, BOHR2ANG
+
 
 BOHR2NM = BOHR2ANG / 10
 
@@ -45,11 +54,9 @@ def pysis_to_pv(h5_fn="md.h5", h5_group="run", remove_com_v=True):
         energy_conversion=1.0,
         length_str="nm",
         length_conversion=1.0,
-        # volume_str='nm^3',
         volume_conversion=1.0,
         temperature_str="K",
         temperature_conversion=1.0,
-        # pressure_str='bar',
         pressure_conversion=1.0,
         time_str="fs",
         time_conversion=1.0,
@@ -58,7 +65,6 @@ def pysis_to_pv(h5_fn="md.h5", h5_group="run", remove_com_v=True):
     ensemble = pv.data.EnsembleData(
         ensemble="NVT",
         natoms=natoms,
-        # volume=3.01125**3,
         temperature=T,
     )
 
@@ -90,7 +96,21 @@ def pysis_to_pv(h5_fn="md.h5", h5_group="run", remove_com_v=True):
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--groups", type=str, nargs="*", default=("run",))
+    parser.add_argument(
+        "--fn", type=str, default="md.h5", help="HDF5 file containing the MD dump."
+    )
+    parser.add_argument(
+        "--groups",
+        type=str,
+        nargs="*",
+        default=("run",),
+        help="HDF5 groups to validate.",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Whether to use strict mode in kinetic energy validation.",
+    )
 
     return parser.parse_args(args)
 
@@ -98,29 +118,26 @@ def parse_args(args):
 def run():
     args = parse_args(sys.argv[1:])
 
+    fn = args.fn
     groups = args.groups
-    results = [pysis_to_pv(h5_group=grp) for grp in groups]
+    strict = args.strict
+
+    print(f"Loading data from '{fn}'.")
+    results = [pysis_to_pv(h5_fn=fn, h5_group=grp) for grp in groups]
+    print()
 
     for grp, res in zip(groups, results):
         print(f"### Validating kinetic energy for {grp}")
         _ = pv.kinetic_energy.distribution(
-            res, verbosity=2, strict=True, filename=f"{grp}_kin_test"
+            res, verbosity=2, strict=strict, filename=f"{grp}_kinetic"
         )
+        print()
 
     # Needs conserved quantity
     # if len(groups) > 1:
     # print("### Validating integrator energy")
     # i = pv.integrator.convergence(results, verbose=True, filename=f"{grp}_integrator")
     # print(i)
-
-    # Singular Matrix
-    # if res2:
-    # print("### Validating ensemble")
-    # quantiles = pv.ensemble.check(
-    # # res, quiet=False, screen=False, filename=f"{grp}_ensemble_test"
-    # res, res2, screen=False, filename=f"{grp}_ensemble_test"
-    # )
-    # print(quantiles)
 
 
 if __name__ == "__main__":
