@@ -46,6 +46,8 @@ def pysis_to_pv(h5_fn="md.h5", h5_group="run", remove_com_v=True):
         ndof_reduction_tra=ndof_reduction_tra,
         ndof_reduction_rot=0,
         mass=masses,
+        # molecule_idx=[0, ],
+        # nconstraints_per_molecule=[0],
     )
 
     units = pv.data.UnitData(
@@ -111,6 +113,12 @@ def parse_args(args):
         action="store_true",
         help="Whether to use strict mode in kinetic energy validation.",
     )
+    parser.add_argument(
+        "--verbosity",
+        type=int,
+        default=2,
+        help="Controls verbosity of physical_validation",
+    )
 
     return parser.parse_args(args)
 
@@ -121,6 +129,7 @@ def run():
     fn = args.fn
     groups = args.groups
     strict = args.strict
+    verbosity = args.verbosity
 
     print(f"Loading data from '{fn}'.")
     results = [pysis_to_pv(h5_fn=fn, h5_group=grp) for grp in groups]
@@ -129,15 +138,37 @@ def run():
     for grp, res in zip(groups, results):
         print(f"### Validating kinetic energy for {grp}")
         _ = pv.kinetic_energy.distribution(
-            res, verbosity=2, strict=strict, filename=f"{grp}_kinetic"
+            res, verbosity=verbosity, strict=strict, filename=f"{grp}_kinetic"
         )
         print()
 
+        # TODO: requires handling of molecule_idx and nconstraints_per_molecule
+        # in SystemData (system).
+        # print(f"### Validating kinetic energy equipartitioning for {grp}")
+        # pv.kinetic_energy.equipartition(
+            # res,
+            # strict=strict,
+            # verbosity=verbosity,
+            # filename=f"{grp}_kinetic_equipart",
+            # molec_groups=tuple(),
+        # )
+
+        print(f"### Estimating T for ensemble validation for {grp}")
+        pv.ensemble.estimate_interval(res)
+        print()
+
+    if len(results) == 2:
+        print("### Validating ensemble")
+        quantiles = pv.ensemble.check(
+            *results, screen=False, verbosity=verbosity, filename=f"{grp}_ensemble_test"
+        )
+        print(quantiles)
+
     # Needs conserved quantity
-    # if len(groups) > 1:
-    # print("### Validating integrator energy")
-    # i = pv.integrator.convergence(results, verbose=True, filename=f"{grp}_integrator")
-    # print(i)
+    if len(groups) > 1:
+        print(f"### Validating integrator energy for {groups}")
+        i = pv.integrator.convergence(results, verbose=True, filename=f"{grp}_integrator")
+        print(i)
 
 
 if __name__ == "__main__":
