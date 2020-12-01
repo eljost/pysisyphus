@@ -323,7 +323,7 @@ def plot_md(h5_group="run"):
         ens = group["energy_tot"][:]
         Ts = group["T"][:]
         T_avgs = group["T_avg"][:]
-        # velocities = handle["velocity"][:]
+        # velocities = group["velocity"][:]
 
         dt = group.attrs["dt"]
         T_target = group.attrs["T_target"]
