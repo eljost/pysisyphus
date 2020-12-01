@@ -9,7 +9,7 @@ import re
 import numpy as np
 
 from pysisyphus.constants import AU2KJPERMOL
-from pysisyphus.dynamics.md import md, MDResult
+from pysisyphus.dynamics.driver import md, MDResult
 from pysisyphus.dynamics.helpers import (
     dump_coords,
     get_mb_velocities_for_geom,
