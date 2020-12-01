@@ -5,7 +5,7 @@ from pysisyphus.dynamics.Gaussian import Gaussian
 from pysisyphus.dynamics.helpers import get_mb_velocities_for_geom
 from pysisyphus.dynamics.mdp import mdp
 from pysisyphus.dynamics.rattle import rattle_closure
-from pysisyphus.dynamics.md import md
+from pysisyphus.dynamics.driver import md
 
 
 logger = logging.getLogger("dynamics")
