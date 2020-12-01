@@ -78,7 +78,7 @@ def temperature_for_kinetic_energy(atom_number, E_kin, fixed_dof=0):
     return 2 * E_kin / ((3*atom_number - fixed_dof) * KBAU)
 
 
-def remove_com_velocity(v, masses):
+def remove_com_velocity(v, masses, keep_norm=True):
     """Remove center-of-mass velocity.
 
     Returned units vary with the given input units.
@@ -89,14 +89,20 @@ def remove_com_velocity(v, masses):
         Velocities.
     masses : np.array, 1d, shape (number of atoms, )
         Atomic masses.
+    keep_norm : bool, default=True
+        Whether to rescale v to its original norm, after removal of v_com.
 
     Returns
     -------
     v : np.array
         Velocities without center-of-mass velocity.
     """
+    org_norm = np.linalg.norm(v)
     v_com = v * masses[:,None] / np.sum(masses)
-    return v - v_com
+    v -= v_com
+    if keep_norm:
+        v /= np.linalg.norm(v) / org_norm
+    return v
 
 
 def scale_velocities_to_temperatue(masses, v, T_desired, fixed_dof=0):

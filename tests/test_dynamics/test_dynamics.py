@@ -36,14 +36,21 @@ def test_kinetic_energy_calculations():
     assert T == pytest.approx(T_calc)
 
 
-def test_remove_com_velocity():
+@pytest.mark.parametrize(
+    "keep_norm", [
+        False,
+        True
+    ]
+)
+def test_remove_com_velocity(keep_norm):
     atoms = 5
     velocities = np.ones((atoms, 3))
     masses = np.ones(atoms)
-    v_com = 1 - masses[0] / masses.sum()
+    v_com = velocities * masses[0] / masses.sum()
+    v_ref = velocities if keep_norm else velocities - v_com
 
-    v = remove_com_velocity(velocities, masses)
-    np.testing.assert_allclose(v, np.full_like(velocities, v_com))
+    v = remove_com_velocity(velocities, masses, keep_norm=keep_norm)
+    np.testing.assert_allclose(v, v_ref)
 
 
 def test_scale_velocities_to_temperatue():

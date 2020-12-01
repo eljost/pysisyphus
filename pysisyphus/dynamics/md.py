@@ -9,6 +9,7 @@ from pysisyphus.dynamics.helpers import (
     temperature_for_kinetic_energy,
     energy_forces_getter_closure,
     kinetic_energy_for_temperature,
+    remove_com_velocity,
 )
 from pysisyphus.dynamics.csvr import resample_kin
 from pysisyphus.dynamics.rattle import rattle_closure
@@ -162,13 +163,6 @@ def md(
     if constraint_kwargs is None:
         constraint_kwargs = dict()
 
-    if remove_com_v and (not thermostat):
-        print(
-            "Center of mass velocity removal requested, but thermostat is disabled. "
-            "Disabling velocity removal."
-        )
-        remove_com_v = False
-
     # Fixed degrees of freedom
     fixed_dof = 0
     if remove_com_v:
@@ -259,8 +253,9 @@ def md(
             # Acceleration, convert from Hartree / (Bohr * amu) to Bohr/fs²
             a = forces / masses_rep * FORCE2ACC
             v += 0.5 * (a + a_prev) * dt
+
             if remove_com_v:
-                v -= v * masses_rep / total_mass
+                v = remove_com_velocity(v.reshape(-1, 3), masses).flatten()
             # v*dt = Bohr/fs * fs -> Bohr
             # a*dt**2 = Bohr/fs² * fs² -> Bohr
             x += v * dt + 0.5 * a * dt ** 2
