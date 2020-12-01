@@ -37,6 +37,8 @@ def get_data_model(atoms, dump_steps):
         "cart_coords": _2d,
         "step": _1d,
         "energy_tot": _1d,
+        "energy_pot" : _1d,
+        "energy_kin": _1d,
         "T": _1d,
         "T_avg": _1d,
         "velocity": _2d,
@@ -61,6 +63,7 @@ def md(
     verbose=True,
     print_stride=50,
     dump_stride=None,
+    h5_group_name="run",
 ):
     """Velocity verlet integrator.
 
@@ -99,6 +102,8 @@ def md(
         Report every n-th step.
     dump_stride : int, default=None
         If given, MD data will be dumped to a HDF5 file every n-th step.
+    h5_group_name = str, optional
+        Name of the HDF5 group, used for dumping.
     """
 
     assert geom.coord_type == "cart"
@@ -109,7 +114,7 @@ def md(
     if dump_stride:
         dump_steps = steps // dump_stride
         data_model = get_data_model(geom.atoms, dump_steps)
-        h5_group = get_h5_group("md.h5", "run", data_model, reset=True)
+        h5_group = get_h5_group("md.h5", h5_group_name, data_model, reset=True)
         h5_group.attrs["atoms"] = geom.atoms
         h5_group.attrs["dt"] = dt
         h5_group.attrs["steps"] = steps
@@ -232,6 +237,8 @@ def md(
             h5_group["cart_coords"][ind] = x
             h5_group["velocity"][ind] = v
             h5_group["energy_tot"][ind] = E_tot
+            h5_group["energy_pot"][ind] = E_pot
+            h5_group["energy_kin"][ind] = E_kin
             h5_group["T"][ind] = T
             h5_group["T_avg"][ind] = T_avg / (step + 1)
 
