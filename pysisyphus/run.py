@@ -635,7 +635,9 @@ def run_md(geom, calc_getter, md_kwargs):
             (g_name, gau, g_stride)
         )
 
-    v0 = get_mb_velocities_for_geom(geom, T, seed=seed, remove_rot_v=False).flatten()
+    remove_com_v = md_kwargs.get("remove_com_v")
+    v0 = get_mb_velocities_for_geom(geom, T, seed=seed, remove_com_v=remove_com_v,
+                                    remove_rot_v=False).flatten()
     md_result = md(geom, v0=v0, steps=steps, dt=dt, gaussians=gaussians, **md_kwargs)
 
     from pysisyphus.xyzloader import coords_to_trj
@@ -1199,6 +1201,7 @@ def get_defaults(conf_dict):
             "timecon": 50,
             "print_stride": 100,
             "dump_stride": 10,
+            "remove_com_v": True,
         }
 
     return dd
