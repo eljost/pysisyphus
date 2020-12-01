@@ -9,8 +9,8 @@ from numpy.random import default_rng
     Reformulation fo the algorithm. This is implemented e.g., in YAFF.
     https://github.com/molmod/yaff/blob/master/yaff/sampling/nvt.py
 
-The present implementation is based on the code provided by Bussi on his
-homepage (https://sites.google.com/site/giovannibussi/downloads/resamplekin.tgz)
+The present implementation is based on the code provided on Bussis homepage
+    https://sites.google.com/site/giovannibussi/downloads/resamplekin.tgz
 """
 
 
