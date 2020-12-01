@@ -384,15 +384,20 @@ def plot_gau(gau_fns, num=50):
     if len(gau_fns) == 1:
         grid = grids[0]
         ens = -np.array([eval_gaussians(x) for x in grid[:,None]]) * AU2KJPERMOL
+        ens -= ens.min()
         ax.plot(grid, ens)
         ax.set_xlabel(f"CV0, {gau_fns[0]}")
-        ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+        ax.set_ylabel("$\Delta F$ / kJ mol⁻¹")
     elif len(gau_fns) == 2:
         grid0, grid1 = grids
         X, Y = np.meshgrid(grid0, grid1)
         xy_flat = np.stack((X.flatten(), Y.flatten()), axis=1)
         ens = -np.array([eval_gaussians(xy) for xy in xy_flat]).reshape(num, num) * AU2KJPERMOL
-        ax.contourf(X, Y, ens)
+        ens -= ens.min()
+        levels = np.linspace(ens.min(), 0.75 * ens.max(), num=15)
+        # contour = ax.contour(X, Y, ens, levels=levels)
+        _ = ax.contourf(X, Y, ens, levels=levels)
+        # plt.clabel(contour, inline=True, fmt="%1.1f", fontsize=10, colors="white", levels=levels)
         ax.set_xlabel(f"CV0, {gau_fns[0]}")
         ax.set_ylabel(f"CV1, {gau_fns[1]}")
     plt.show()
