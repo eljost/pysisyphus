@@ -23,7 +23,8 @@ class Gaussian16(OverlapCalculator):
 
         self.route = route.lower()
         self.mem = mem
-        assert ("symmetry" not in self.route) and ("nosymm" not in self.route)
+        invalid_keywords = ("symmetry", "nosymm", "force", "opt", "freq", "irc")
+        assert all([kw not in self.route for kw in invalid_keywords])
         self.gbs = gbs
         assert "@" not in gbs, "Give only the path to the .gbs file, " \
                                "without the @!"
