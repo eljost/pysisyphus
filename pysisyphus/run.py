@@ -1086,7 +1086,6 @@ def get_defaults(conf_dict):
         # "overlaps": None,
         "glob": None,
         "stocastic": None,
-        "coord_type": "cart",
         "shake": None,
         "irc": None,
         "define_prims": None,
@@ -1862,7 +1861,13 @@ def run():
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
         with open(args.yaml) as handle:
             yaml_str = handle.read()
-        run_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
+        try:
+            run_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
+        except yaml.parser.ParserError as err:
+            print(err)
+            if not (args.yaml.lower().endswith(".yaml")):
+                print("Are you sure that you supplied a YAML file?")
+            sys.exit(1)
     elif args.bibtex:
         print_bibtex()
         return
