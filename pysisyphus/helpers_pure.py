@@ -1,5 +1,6 @@
 from enum import Enum
 import logging
+import re
 import time
 
 import numpy as np
@@ -123,3 +124,11 @@ def get_input(data, prompt, lbl_func=None):
             print("Invalid input!")
             print()
     return data[inp]
+
+
+def expand(to_expand):
+    if any([isinstance(to_expand, cls) for cls in (list, tuple, np.ndarray)]):
+        return to_epxand
+    else:
+        start, end = [int(i) for i in to_expand.split("..")]
+        return list(range(start, end))
