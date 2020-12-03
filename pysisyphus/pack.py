@@ -4,9 +4,13 @@ from pathlib import Path
 import sys
 
 from pysisyphus.constants import AMU2KG
-from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers import geom_loader, highlight_text
+from pysisyphus.helpers_pure import get_input
 from pysisyphus.io.pdb import geom_to_pdb_str
 from pysisyphus.wrapper.packmol import make_input, call_packmol
+
+from pysisyphus.db import LEVELS, MOLECULES
+from pysisyphus.db.helpers import get_path as db_get_path
 
 
 AMU2G = AMU2KG * 1e3
@@ -19,7 +23,9 @@ def parse_args(args):
     # Solvent
     solvent_group = parser.add_mutually_exclusive_group(required=True)
     solvent_group.add_argument("--solv", help="Filename of solvent geometry.")
-    solvent_group.add_argument("--db", help="Choose from internal database.")
+    solvent_group.add_argument(
+        "--db", action="store_true", help="Choose from internal database."
+    )
 
     parser.add_argument(
         "--solv_num", type=int, help="Number of solvent molecules to pack."
@@ -40,7 +46,7 @@ def parse_args(args):
 
 
 def as_pdb(fn):
-    if not fn.endswith(".pdb"):
+    if not str(fn).endswith(".pdb"):
         geom = geom_loader(fn)
         pdb_str = geom_to_pdb_str(geom)
         pdb_fn = str(Path(fn).with_suffix(".pdb"))
@@ -89,8 +95,20 @@ def run():
         solute_mass = 0.0
 
     solv_fn = args.solv
+    if solv_fn:
+        solv_dens = args.solv_dens
+    # Load from internal db
+    else:
+        print(highlight_text("Interactive solvent selection"))
+        level = get_input(LEVELS, "Level of theory", lbl_func=lambda lvl: lvl[0])
+        print()
+        molecule = get_input(MOLECULES, "Molecule", lbl_func=lambda mol: mol.name)
+        print()
+
+        solv_fn = db_get_path(molecule.name, level[0])
+        solv_dens = molecule.density
+
     solv = geom_loader(solv_fn)
-    solv_dens = args.solv_dens
     solv_num = args.solv_num
     solv_mass = solv.total_mass
     print_info("Solvent", solv)

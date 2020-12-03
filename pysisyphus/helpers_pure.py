@@ -104,3 +104,22 @@ def timed(logger):
             return result
         return wrapper
     return decorator
+
+
+def get_input(data, prompt, lbl_func=None):
+    if lbl_func is None:
+        lbl_func = lambda _: _
+    labels = [lbl_func(d) for d in data]
+    print(prompt)
+    while True:
+        for i, l in enumerate(labels):
+            print(f"{i: >3d}: {l}")
+        try:
+            inp = int(input("Selection: "))
+            if not (0 <= inp < len(labels)):
+                raise ValueError
+            break
+        except ValueError:
+            print("Invalid input!")
+            print()
+    return data[inp]
