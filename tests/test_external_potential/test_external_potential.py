@@ -3,6 +3,7 @@ import pytest
 
 from pysisyphus.constants import KB, BOHR2ANG
 from pysisyphus.calculators import ExternalPotential, XTB
+from pysisyphus.calculators.ExternalPotential import HarmonicSphere
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_from_library
@@ -16,8 +17,8 @@ init_logging()
 
 
 def test_lj_external_potential():
-    atoms = ("X", )
-    coords = (0., 0., 0.)
+    atoms = ("X",)
+    coords = (0.0, 0.0, 0.0)
     geom = Geometry(atoms, coords)
 
     calc = LennardJones()
@@ -37,13 +38,13 @@ def test_lj_external_potential():
     ext_energy = geom.energy
     assert ext_energy == pytest.approx(ref_energy)
 
-    displ_coords = (9., 0., 0)
+    displ_coords = (9.0, 0.0, 0)
     geom.coords = displ_coords
     ext_energy = geom.energy
     assert ext_energy == pytest.approx(0.00570261)
 
     forces = geom.forces
-    ref_forces = np.array((-0.0056861, 0., 0.))
+    ref_forces = np.array((-0.0056861, 0.0, 0.0))
     np.testing.assert_allclose(forces, ref_forces, atol=1e-6)
 
 
@@ -133,7 +134,7 @@ def test_lj_external_potential_opt():
     radius = 9
     atom_num = 50
     coords3d = (np.random.rand(atom_num, 3) - 0.5) * 2 * radius
-    atoms = ("Ar", ) * atom_num
+    atoms = ("Ar",) * atom_num
 
     geom = Geometry(atoms, coords3d.flatten())
 
@@ -148,3 +149,54 @@ def test_lj_external_potential_opt():
     # opt = QuickMin(geom, **opt_kwargs)
     opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
+
+
+@pytest.mark.parametrize(
+    "coords, ref_energy, ref_norm_forces",
+    [
+        ((0.0, 0.0, 0.0), 0.0, 0.0),
+        ((1.0, 0.0, 0.0), 0.0, 0.0),
+        ((2.0, 0.0, 0.0), 4.0, 4.0),
+        ((2.0, 2.0, 0.0), 8.0, 2 * 8.0 ** 0.5),
+        ((4.0, 0.0, 0.0), 16.0, 8.0),
+    ],
+)
+def test_harmonic_sphere(coords, ref_energy, ref_norm_forces):
+    atoms = ("X",)
+    coords = np.array(coords)
+    geom = Geometry(atoms, coords)
+
+    potentials = [
+        {
+            "type": "harmonic_sphere",
+            "k": 1,
+            "radius": 1,
+        },
+    ]
+    calc = ExternalPotential(potentials=potentials)
+    geom.set_calculator(calc)
+    energy = geom.energy
+    assert energy == pytest.approx(ref_energy)
+
+    forces = geom.forces
+    norm_forces = np.linalg.norm(forces)
+    assert norm_forces == pytest.approx(ref_norm_forces)
+
+
+@pytest.mark.parametrize(
+    "coords, ref_pressure",
+    [
+        ((0.0, 0.0, 0.0), 0.0),
+        ((1.0, 0.0, 0.0), 0.0),
+        ((2.0, 0.0, 0.0), 0.31830989),
+        ((2*2.0, 0.0, 0.0), 2*0.31830989),
+    ],
+)
+def test_harmonic_sphere_pressure(coords, ref_pressure):
+    c3d = np.reshape(coords, (-1, 3))
+    calc = HarmonicSphere(k=1, radius=1.)
+
+    assert calc.surface_area == pytest.approx(4 * np.pi)
+
+    p = calc.instant_pressure(c3d)
+    assert p == pytest.approx(ref_pressure)
