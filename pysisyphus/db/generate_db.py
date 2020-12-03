@@ -1,20 +1,20 @@
+import argparse
 import os
-from pathlib import Path
-import shutil
+import sys
 
 import numpy as np
 
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_loader, do_final_hessian, highlight_text
-from pysisyphus.db import LEVELS, MOLECULES
+from pysisyphus.db import LEVELS, MOLECULES, GUESS_DIR, LEVEL_DIR, OPT_FLAG, THIS_DIR
+import pysisyphus.db.helpers as dbhelpers
+from pysisyphus.run import do_clean
 
 
 OPT_KWARGS = {
     "thresh": "gau_tight",
     "max_cycles": 100,
 }
-GUESS_DIR = Path("./guess")
-LEVEL_DIR = Path("./levels")
 
 
 def generate_db():
@@ -26,12 +26,23 @@ def generate_db():
             out_dir = LEVEL_DIR / level_name
             os.mkdir(out_dir)
         except FileExistsError:
-            shutil.rmtree(out_dir)
-            os.mkdir(out_dir)
+            pass
 
         for geom, mol in zip(geoms, MOLECULES):
-            geom = geom.copy()
             print(highlight_text(f"Running '{mol.name}' AT LEVEL '{level_name}'"))
+
+            out_fn = dbhelpers.get_path(mol.name, level_name)
+            try:
+                with open(out_fn, "r") as handle:
+                    _ = handle.readline()
+                    line2 = handle.readline()
+                if OPT_FLAG in line2:
+                    print("Already optimized! Skipping!")
+                    continue
+            except FileNotFoundError:
+                pass
+
+            geom = geom.copy()
             geom.comment = level_name
             calc = calc_cls(**calc_kwargs)
             geom.set_calculator(calc)
@@ -47,25 +58,41 @@ def generate_db():
                 ), f"Calculation at level '{level_name}' failed for {mol.name}"
 
             geom.standard_orientation()
+            geom.comment += f", {OPT_FLAG}"
 
-            out_fn = f"{mol.name}.xyz"
-            with open(out_dir / out_fn, "w") as handle:
+            with open(out_fn, "w") as handle:
                 handle.write(geom.as_xyz())
             print()
 
 
 def clean():
     fns = "final_geometry.xyz cur_out optimizer.log internal_coords.log".split()
+    fns += list(THIS_DIR.glob("calculator_000.*"))
     for fn in fns:
         try:
-            os.remove(fn)
+            os.remove(THIS_DIR / fn)
         except FileNotFoundError:
             print(f"Could not delete {fn}")
 
 
-if __name__ == "__main__":
-    try:
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--generate", action="store_true", help="Run all necessary optimizations."
+    )
+    parser.add_argument("--clean", action="store_true", help="Clean directory")
+
+    return parser.parse_args(args)
+
+
+def run():
+    args = parse_args(sys.argv[1:])
+
+    if args.generate:
         generate_db()
         clean()
-    except AssertionError as err:
-        raise (err)
+
+
+if __name__ == "__main__":
+    run()
