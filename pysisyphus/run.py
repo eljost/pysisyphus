@@ -614,6 +614,7 @@ def run_md(geom, calc_getter, md_kwargs):
     geom.set_calculator(calc)
 
     T = md_kwargs["T"]
+    T_init_vel = md_kwargs.pop("T_init_vel")
     steps = md_kwargs.pop("steps")
     dt = md_kwargs.pop("dt")
     seed = md_kwargs.pop("seed", None)
@@ -636,7 +637,7 @@ def run_md(geom, calc_getter, md_kwargs):
         )
 
     remove_com_v = md_kwargs.get("remove_com_v")
-    v0 = get_mb_velocities_for_geom(geom, T, seed=seed, remove_com_v=remove_com_v,
+    v0 = get_mb_velocities_for_geom(geom, T_init_vel, seed=seed, remove_com_v=remove_com_v,
                                     remove_rot_v=False).flatten()
     md_result = md(geom, v0=v0, steps=steps, dt=dt, gaussians=gaussians, **md_kwargs)
 
@@ -1194,8 +1195,10 @@ def get_defaults(conf_dict):
         dd["mdp"] = {}
 
     if "md" in conf_dict:
+        md_T = 298.15
         dd["md"] = {
-            "T": 298.15,
+            "T": md_T,
+            "T_init_vel": md_T,
             "dt": 0.5,
             "thermostat": "csvr",
             "timecon": 50,
