@@ -449,8 +449,12 @@ class Geometry:
 
     @property
     def comment(self):
-        energy_str = f"{self._energy} , " if self._energy else ""
-        return f"{energy_str}{self._comment}"
+        en_width = 20
+        en_str = ""
+        if self._energy:
+            en_str = f"{self._energy: >{en_width}.8f}"
+            en_str = f"{en_str}, " if (self._comment[:en_width] != en_str) else ""
+        return f"{en_str}{self._comment}"
 
     @comment.setter
     def comment(self, new_comment):
