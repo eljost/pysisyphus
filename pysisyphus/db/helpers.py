@@ -11,7 +11,6 @@ def get_path(molecule_name, level_name):
 
 
 def get_molecules_levels():
-    # return list(
     molecules_levels = list()
     for level, molecule in it.product(LEVELS, MOLECULES):
         level_name, *_ = level
