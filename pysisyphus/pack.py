@@ -49,12 +49,12 @@ def as_pdb(fn):
     if not str(fn).endswith(".pdb"):
         geom = geom_loader(fn)
         pdb_str = geom_to_pdb_str(geom)
-        pdb_fn = str(Path(fn).with_suffix(".pdb"))
+        cwd = Path(".")
+        pdb_fn = cwd / Path(fn).with_suffix(".pdb").name
         with open(pdb_fn, "w") as handle:
             handle.write(pdb_str)
         print(f"Converted '{fn}' to PDB format ('{pdb_fn}')")
-        fn = pdb_fn
-    return fn
+    return pdb_fn
 
 
 def sphere_radius_from_volume(volume):
