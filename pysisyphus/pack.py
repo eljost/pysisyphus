@@ -19,7 +19,7 @@ def parse_args(args):
     # Solvent
     solvent_group = parser.add_mutually_exclusive_group(required=True)
     solvent_group.add_argument("--solv", help="Filename of solvent geometry.")
-    solvent_group.add_argument("--db", help="Chose from internal database.")
+    solvent_group.add_argument("--db", help="Choose from internal database.")
 
     parser.add_argument(
         "--solv_num", type=int, help="Number of solvent molecules to pack."
