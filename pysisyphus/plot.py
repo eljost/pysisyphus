@@ -710,6 +710,8 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
         ens = group["energies"][:cur_cycle]
         max_forces = group["max_forces"][:cur_cycle]
         rms_forces = group["rms_forces"][:cur_cycle]
+        max_force_thresh = group.attrs["max_force_thresh"]
+        rms_force_thresh = group.attrs["rms_force_thresh"]
 
     ens -= ens.min()
     ens *= AU2KJPERMOL
@@ -733,15 +735,19 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     ax0.set_ylabel(UNIT_DEKJMOL)
 
     ax1.plot(max_forces, **ax_kwargs)
+    ax1.axhline(max_force_thresh, c="k", ls="--", label="Threshold")
     ax1.set_yscale("log")
     ax1.set_title("max(forces)")
     ax1.set_ylabel(force_unit)
+    ax1.legend()
 
     ax2.plot(rms_forces, **ax_kwargs)
+    ax2.axhline(rms_force_thresh, c="k", ls="--", label="Threshold")
     ax2.set_yscale("log")
     ax2.set_title("rms(forces)")
     ax2.set_xlabel("Cycle")
     ax2.set_ylabel(force_unit)
+    ax2.legend()
 
     title = f"{h5_fn}/{h5_group}, converged={is_converged}"
     fig.suptitle(title, y=.999)
