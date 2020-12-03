@@ -1,3 +1,4 @@
 include versioneer.py
 include pysisyphus/_version.py
+recursive-include pysisyphus/db/guess *.xyz
 recursive-include pysisyphus/db/levels/*/ *.xyz
