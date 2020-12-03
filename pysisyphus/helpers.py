@@ -77,7 +77,7 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
     elif fn.endswith(".cjson"):
         return geom_from_cjson(fn, **kwargs)
     else:
-        raise Exception("Unknown filetype!")
+        raise Exception(f"Unknown filetype for '{fn}'!")
 
 
 def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
