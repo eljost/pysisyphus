@@ -450,10 +450,19 @@ class Geometry:
     @property
     def comment(self):
         en_width = 20
-        en_str = ""
+        # Check if we have to drop an (old) energy entry
+        try:
+            comment_en = float(self._comment[:en_width])
+            # Drop old energy entry
+            self._comment = self._comment[en_width+2:]
+        except (ValueError, IndexError):
+            pass
+
+        # Prepend (new) energy, if present
         if self._energy:
-            en_str = f"{self._energy: >{en_width}.8f}"
-            en_str = f"{en_str}, " if (self._comment[:en_width] != en_str) else ""
+            en_str = f"{self._energy: >{en_width}.8f}, "
+        else:
+            en_str = ""
         return f"{en_str}{self._comment}"
 
     @comment.setter
