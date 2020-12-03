@@ -18,9 +18,3 @@ def get_molecules_levels():
         molecule_name, *_ = molecule
         molecules_levels.append(full_name(molecule_name, level_name))
     return molecules_levels
-
-
-if __name__ == "__main__":
-    from pprint import pprint
-    pprint(get_molecules_levels())
-    print(get_path("water", "gfn0_xtb"))
