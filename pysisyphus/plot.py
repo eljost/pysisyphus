@@ -337,6 +337,7 @@ def plot_md(h5_group="run"):
     ax0.plot(dts, ens)
     ax0.axhline(0, ls="--", c="k")
     ax0.set_ylabel("$E - \overline{E}$ / kJ mol⁻¹")
+    ax0.set_title("Energy")
 
     ens_conserved *= AU2KJPERMOL
     mean_conserved = ens_conserved.mean()
@@ -344,6 +345,7 @@ def plot_md(h5_group="run"):
     ax1.plot(dts, ens_conserved)
     ax1.axhline(0, ls="--", c="k")
     ax1.set_ylabel("$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / kJ mol⁻¹")
+    ax1.set_title("Conserved quantity")
 
     ax2.plot(dts, Ts, label="Current")
     ax2.plot(dts, T_avgs, ls="--", c="orange", label="Average")
