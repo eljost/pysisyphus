@@ -416,6 +416,7 @@ class Geometry:
     @coords3d.setter
     def coords3d(self, coords3d):
         self._coords = coords3d.flatten()
+        self.clear()
 
     @property
     def cart_coords(self):
