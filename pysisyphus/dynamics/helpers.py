@@ -98,7 +98,7 @@ def remove_com_velocity(v, masses, keep_norm=True):
         Velocities without center-of-mass velocity.
     """
     org_norm = np.linalg.norm(v)
-    v_com = v * masses[:,None] / np.sum(masses)
+    v_com = (v * masses[:,None] / np.sum(masses)).sum(axis=0)
     v -= v_com
     if keep_norm:
         v /= np.linalg.norm(v) / org_norm
