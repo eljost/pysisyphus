@@ -273,6 +273,10 @@ class Geometry:
     def atom_types(self):
         return set(self.atoms)
 
+    @property
+    def atomic_numbers(self):
+        return [ATOMIC_NUMBERS[a.lower()] for a in self.atoms]
+
     def get_fragments(self, regex):
         regex = re.compile(regex)
         frags = [frag for frag in self.fragments.keys() if regex.search(frag)]
