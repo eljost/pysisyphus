@@ -1,16 +1,18 @@
 from math import exp, sqrt
 
+import numpy as np
 from numpy.random import default_rng
 
 
 """
 [1] https://aip.scitation.org/doi/10.1063/1.2408420
-[2] https://sci-hub.tw/10.1016/j.cpc.2008.01.006
+[2] https://dx.doi.org/10.1016/j.cpc.2008.01.006
     Reformulation fo the algorithm. This is implemented e.g., in YAFF.
     https://github.com/molmod/yaff/blob/master/yaff/sampling/nvt.py
 
-The present implementation is based on the code provided on Bussis homepage
+resample_kin() is based on the implementation provided on Bussis homepage:
     https://sites.google.com/site/giovannibussi/downloads/resamplekin.tgz
+resample_kin_2() is based on [2]
 """
 
 
@@ -80,3 +82,20 @@ def resample_kin(cur_kinetic_energy, sigma, dof, tau_t, rng=None):
         + 2.0 * rr * sqrt(cur_kinetic_energy * sigma / dof * (1.0 - factor) * factor)
     )
     return new_kinetic_energy
+
+
+def resample_kin_2(cur_kinetic_energy, sigma, dof, tau, dt, rng=None):
+    """Canonical stocastical velocity rescaling.
+
+    See dx.doi.org/10.1016/j.cpc.2008.01.006
+    """
+    if rng is None:
+        rng = RNG
+
+    c = exp(-dt / tau)
+    R = rng.normal()
+    S = np.sum(rng.normal(size=dof-1)**2)
+    quot = (1 - c) * sigma / (dof * cur_kinetic_energy)
+    alpha =  sqrt(c + quot * (S + R**2) + 2 * R * sqrt(c*quot))
+    sign = np.sign(R + sqrt(c / quot))
+    return sign * alpha

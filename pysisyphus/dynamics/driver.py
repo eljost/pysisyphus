@@ -11,7 +11,7 @@ from pysisyphus.dynamics.helpers import (
     kinetic_energy_for_temperature,
     remove_com_velocity,
 )
-from pysisyphus.dynamics.csvr import resample_kin
+from pysisyphus.dynamics.csvr import resample_kin, resample_kin_2
 from pysisyphus.dynamics.rattle import rattle_closure
 from pysisyphus.helpers import check_for_stop_sign
 from pysisyphus.helpers_pure import log
@@ -181,6 +181,7 @@ def md(
             **constraint_kwargs,
         )
     print(f"Fixed degrees of freedom: {fixed_dof}")
+    dof = len(geom.coords) - fixed_dof
 
     if thermostat is not None:
         thermo_func = THERMOSTATS[thermostat]
@@ -241,10 +242,9 @@ def md(
             h5_group["T_avg"][ind] = T_avg / (step + 1)
 
         if thermostat:
-            E_kin_new = thermo_func(E_kin, sigma, v.size - fixed_dof, tau_t)
-            thermo_corr += E_kin_new - E_kin
-            scale = (E_kin_new / E_kin) ** 0.5
-            v *= scale
+            alpha = resample_kin_2(E_kin, sigma, dof, tau=timecon, dt=dt)
+            thermo_corr += (alpha**2 - 1) * E_kin
+            v *= alpha
 
         update_gaussians(step, x)
 
