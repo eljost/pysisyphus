@@ -1758,6 +1758,7 @@ def print_header():
         f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
         f"Git commit {get_versions()['full-revisionid']}\n"
         f"Executed at {datetime.datetime.now().strftime('%c')} on '{platform.node()}'\n"
+        f"Platform: {platform.platform()}\n"
     )
 
 
