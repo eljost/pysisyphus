@@ -1199,7 +1199,7 @@ def get_defaults(conf_dict):
             "T": md_T,
             "T_init_vel": md_T,
             "dt": 0.5,
-            "thermostat": "csvr",
+            "thermostat": "csvr_2",
             "timecon": 50,
             "print_stride": 100,
             "dump_stride": 10,

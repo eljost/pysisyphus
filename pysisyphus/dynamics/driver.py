@@ -11,7 +11,7 @@ from pysisyphus.dynamics.helpers import (
     kinetic_energy_for_temperature,
     remove_com_velocity,
 )
-from pysisyphus.dynamics.csvr import resample_kin, resample_kin_2
+from pysisyphus.dynamics.thermostats import csvr_closure, csvr_closure_2, berendsen_closure
 from pysisyphus.dynamics.rattle import rattle_closure
 from pysisyphus.helpers import check_for_stop_sign
 from pysisyphus.helpers_pure import log
@@ -25,7 +25,9 @@ MDResult = namedtuple(
 )
 
 THERMOSTATS = {
-    "csvr": resample_kin,
+    "csvr": csvr_closure,
+    "csvr_2": csvr_closure_2,
+    "berendsen": berendsen_closure,
 }
 
 
@@ -184,9 +186,8 @@ def md(
     dof = len(geom.coords) - fixed_dof
 
     if thermostat is not None:
-        thermo_func = THERMOSTATS[thermostat]
-        tau_t = dt / timecon
         sigma = kinetic_energy_for_temperature(len(geom.atoms), T, fixed_dof=fixed_dof)
+        thermo_func = THERMOSTATS[thermostat](sigma, dof, dt=dt, tau=timecon)
     # In amu
     masses = geom.masses
     masses_rep = geom.masses_rep
@@ -242,7 +243,7 @@ def md(
             h5_group["T_avg"][ind] = T_avg / (step + 1)
 
         if thermostat:
-            alpha = resample_kin_2(E_kin, sigma, dof, tau=timecon, dt=dt)
+            alpha = thermo_func(E_kin)
             thermo_corr += (alpha**2 - 1) * E_kin
             v *= alpha
 
