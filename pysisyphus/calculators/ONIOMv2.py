@@ -48,7 +48,8 @@ try:
     from pysisyphus.calculators.PySCF import PySCF
     CALC_DICT["pyscf"] = PySCF
 except ImportError:
-    print("Error importing PySCF in ONIOMv2")
+    # print("Error importing PySCF in ONIOMv2")
+    pass
 
 
 Link = namedtuple("Link", "ind parent_ind atom g")
