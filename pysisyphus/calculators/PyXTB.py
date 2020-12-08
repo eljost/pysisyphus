@@ -11,11 +11,12 @@ from pysisyphus.elem_data import ATOMIC_NUMBERS
 
 class PyXTB(Calculator):
 
-    def __init__(self, *args, gfn=2, verbosity=0, keep_calculator=False, **kwargs):
+    def __init__(self, *args, gfn=2, acc=None, verbosity=0, keep_calculator=False, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.env = Environment()
         self.gfn = str(gfn)
+        self.acc = acc
         avail_verbosities = {
             0: VERBOSITY_MUTED,
             1: VERBOSITY_MINIMAL,
@@ -46,6 +47,8 @@ class PyXTB(Calculator):
             self.param, numbers, coords.reshape(-1, 3), charge=self.charge, uhf=self.uhf
         )
         calc.set_verbosity(self.verbosity)
+        if self.acc:
+            calc.set_accuracy(self.acc)
 
         # Keep calculator, if requested
         if self.keep_calculator and (self._calculator is None):
