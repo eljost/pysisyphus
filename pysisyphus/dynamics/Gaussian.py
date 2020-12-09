@@ -71,6 +71,9 @@ class Gaussian:
         if x0 is None:
             x0 = self.x0
         x, cr_grad = self.colvar.eval(coords)
+        # TODO: allow colvar to supply a callback, that overrides the difference
+        # below. This will be needed to support periodic colvars, like torsion.
+        # There we can't just calculate the naive difference.
         diff = x - np.atleast_1d(x0)
         exp_ = np.exp(-(diff ** 2) * self.one_over_2s2)
         to_return = self.w * exp_.sum()
