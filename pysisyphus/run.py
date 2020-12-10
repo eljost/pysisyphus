@@ -1864,7 +1864,8 @@ def run():
             yaml_str = handle.read()
         try:
             run_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
-        except yaml.parser.ParserError as err:
+            assert type(run_dict) == type(dict())
+        except (AssertionError, yaml.parser.ParserError) as err:
             print(err)
             if not (args.yaml.lower().endswith(".yaml")):
                 print("Are you sure that you supplied a YAML file?")
