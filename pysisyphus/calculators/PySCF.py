@@ -32,7 +32,7 @@ class PySCF(OverlapCalculator):
 
     def __init__(self, basis, xc=None, method="scf",  mem=2000,
                  root=None, nstates=None, auxbasis=None, keep_chk=True,
-                 **kwargs):
+                 verbose=4, **kwargs):
         super().__init__(**kwargs)
 
         self.basis = basis
@@ -51,6 +51,7 @@ class PySCF(OverlapCalculator):
                 "than 'nstates'!"
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
+        self.verbose = int(verbose)
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
@@ -98,7 +99,7 @@ class PySCF(OverlapCalculator):
         mol.charge = self.charge
         mol.spin = self.mult - 1
         mol.symmetry = False
-        mol.verbose = 4
+        mol.verbose = self.verbose
         # Personally, I patched mole.py so it doesn't print
         # messages regarding the output-file for verbose > QUIET.
         # Just uncomment the lines after
