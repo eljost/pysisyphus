@@ -1426,9 +1426,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         ):
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         geom = COS_DICT[cos_key](geoms, **cos_kwargs)
-    else:
-        assert len(geoms) == 1
-        geom = geoms[0]
 
     if run_dict["stocastic"]:
         stoc_kwargs["calc_kwargs"] = calc_kwargs
