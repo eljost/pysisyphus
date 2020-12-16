@@ -11,7 +11,7 @@ from scipy.spatial.distance import pdist
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
+from pysisyphus.elem_data import MASS_DICT, ISOTOPE_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.intcoords import DLC, RedundantCoords
 from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
@@ -90,7 +90,7 @@ class Geometry:
     }
 
     def __init__(self, atoms, coords, fragments=None, coord_type="cart",
-                 coord_kwargs=None, comment=""):
+                 coord_kwargs=None, isotopes=None, comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -113,6 +113,10 @@ class Geometry:
         coord_kwargs : dict, optional
             Dictionary containing additional arguments that get passed
             to the constructor of the internal coordinate class.
+        isotopes : iterable of pairs, optional
+            Iterable of pairs consisting of 0-based atom index and either an integer
+            or a float. If an integer is given the closest isotope mass will be selected.
+            Given a float, this float will be directly used as mass.
         comment : str, optional
             Comment string.
         """
@@ -126,6 +130,9 @@ class Geometry:
         if fragments is None:
             fragments = dict()
         self.fragments = fragments
+        self.isotopes = isotopes
+        if self.isotopes is None:
+            self.isotopes = list()
 
         if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
             print("coord_type is set to 'cart' but coord_kwargs were given. "
@@ -457,7 +464,7 @@ class Geometry:
         en_width = 20
         # Check if we have to drop an (old) energy entry
         try:
-            comment_en = float(self._comment[:en_width])
+            _ = float(self._comment[:en_width])
             # Drop old energy entry
             self._comment = self._comment[en_width+2:]
         except (ValueError, IndexError):
@@ -477,7 +484,21 @@ class Geometry:
     @property
     def masses(self):
         if self._masses is None:
-            self.masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+            masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+            for atom_index, iso_mass in self.isotopes:
+                if "." not in str(iso_mass):
+                    atom = self.atoms[atom_index].lower()
+                    key = (atom, iso_mass)
+                    try:
+                        iso_mass = ISOTOPE_DICT[key]
+                    except KeyError as err:
+                        print(
+                            f"Found no suitable mass for '{atom.capitalize()}' with approx. "
+                            f"mass of ~{iso_mass} au!"
+                        )
+                        raise err
+                masses[atom_index] = float(iso_mass)
+            self.masses = masses
         return self._masses
 
     @masses.setter
