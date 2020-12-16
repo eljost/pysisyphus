@@ -23,11 +23,14 @@ calc:
  pal: 2
  charge: 0
  mult: 1
+ verbose: 0
 tsopt:
  thresh: gau
  # The imaginary frequency at the TS is -923.36 cm⁻¹ for deuterium and
  # -1215.67 cm⁻¹ for 'normal' hydrogen.
  do_hess: True
+irc:
+ type: eulerpc
 assert:
  ts_opt.is_converged: True
  ts_geom.energy: -92.24604297
