@@ -1,4 +1,5 @@
 from collections import Counter, namedtuple
+import copy
 import itertools as it
 import re
 import subprocess
@@ -250,6 +251,7 @@ class Geometry:
         return Geometry(self.atoms, self._coords.copy(),
                         coord_type=coord_type,
                         coord_kwargs=_coord_kwargs,
+                        isotopes=copy.deepcopy(self.isotopes),
         )
 
     def copy_all(self, coord_type=None, coord_kwargs=None):

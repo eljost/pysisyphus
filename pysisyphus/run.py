@@ -1088,7 +1088,6 @@ def get_defaults(conf_dict):
         "stocastic": None,
         "shake": None,
         "irc": None,
-        "define_prims": None,
         "assert": None,
         "geom": None,
         "mdp": None,
@@ -1335,6 +1334,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         coord_type = run_dict["geom"]["type"]
         define_prims = run_dict["geom"].get("define_prims", None)
         union = run_dict["geom"].get("union", None)
+        isotopes = run_dict["geom"].get("isotopes", None)
     # Old geometry input
     else:
         xyz = run_dict["xyz"]
@@ -1408,6 +1408,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         coord_type=coord_type,
         define_prims=define_prims,
         union=union,
+        isotopes=isotopes,
     )
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
@@ -1426,6 +1427,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         ):
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         geom = COS_DICT[cos_key](geoms, **cos_kwargs)
+    else:
+        assert len(geoms) == 1
+        geom = geoms[0]
 
     if run_dict["stocastic"]:
         stoc_kwargs["calc_kwargs"] = calc_kwargs
