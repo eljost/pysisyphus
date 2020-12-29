@@ -1,3 +1,5 @@
+import importlib
+
 import pytest
 import shutil
 
@@ -14,6 +16,30 @@ Maybe implement something like this to make test access easier
 
 _reason = "Calculator {} is not available."
 _using_cache = dict()
+# Python modules to be imported using importlib.import_module
+IMPORT_DICT = {
+    "pyscf": "pyscf",
+    "dalton": "daltonproject",
+    "qcengine": "qcengine",
+    "openmm": "simtk.openmm",
+    "thermoanalysis": "thermoanalysis",
+    "pyxtb": "xtb.interface",
+    "obabel": "openbabel.openbabel",
+}
+
+
+def module_available(calculator):
+    try:
+        import_name = IMPORT_DICT[calculator]
+    except KeyError:
+        return False
+
+    try:
+        _ = importlib.import_module(import_name)
+        available = True
+    except (ModuleNotFoundError, ImportError):
+        available = False
+    return available
 
 
 def using(calculator):
@@ -26,7 +52,6 @@ def using(calculator):
         try:
             cmd = Config[calculator]["cmd"]
         except KeyError:
-
             # Try defaults last
             try:
                 cmd = DEFAULTS[calculator]
@@ -37,52 +62,12 @@ def using(calculator):
             if calculator == "turbomole":
                 cmd = "dscf"
 
+        # Check if cmd is available on $PATH
         if cmd is not None:
             available = bool(shutil.which(cmd))
 
         # Handling native python packages from here
-
-        if calculator == "pyscf":
-            try:
-                import pyscf
-                available = True
-            except ImportError:
-                pass
-
-        if calculator == "dalton":
-            try:
-                import daltonproject
-                available = True
-            except ImportError:
-                pass
-
-        if calculator == "qcengine":
-            try:
-                import qcengine
-                available = True
-            except ImportError:
-                pass
-
-        if calculator == "openmm":
-            try:
-                import simtk.openmm
-                available = True
-            except ImportError:
-                pass
-
-        if calculator == "thermoanalysis":
-            try:
-                import thermoanalysis
-                available = True
-            except ModuleNotFoundError:
-                pass
-
-        if calculator == "pyxtb":
-            try:
-                import xtb.interface
-                available = True
-            except ModuleNotFoundError:
-                pass
+        available = module_available(calculator)
 
         reason = _reason.format(calculator)
         _using_cache[calculator] = pytest.mark.skipif(not available, reason=reason)

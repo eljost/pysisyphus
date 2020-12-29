@@ -3,8 +3,10 @@ import pytest
 from pysisyphus.calculators.OBabel import OBabel
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.testing import using
 
 
+@using("obabel")
 @pytest.mark.parametrize(
     "ff, ref_energy",
     [
