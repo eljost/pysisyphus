@@ -149,13 +149,14 @@ def parse_args(args):
 
 
 def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
-               define_prims=None, typed_prims=None):
+               define_prims=None, typed_prims=None, isotopes=None):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns, ]
 
     geoms = list()
     geom_kwargs = {
         "coord_type": coord_type,
+        "isotopes": isotopes,
     }
     # Dont supply coord_kwargs with coord_type == "cart"
     if coord_type != "cart":
@@ -205,7 +206,7 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
 
 def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
               comments=False, in_bohr=False, define_prims=None, union=None,
-              interpolate_align=True, same_prims=True, quiet=False):
+              isotopes=None, interpolate_align=True, same_prims=True, quiet=False):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
@@ -224,7 +225,9 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
         f"{list(INTERPOLATE.keys())}'"
 
     geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
-                       define_prims=define_prims, typed_prims=typed_prims_union)
+                       define_prims=define_prims, typed_prims=typed_prims_union,
+                       isotopes=isotopes
+    )
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
 
@@ -280,6 +283,7 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
         geoms = [Geometry(atoms_0, geom.cart_coords,
                          coord_type=coord_type,
                          coord_kwargs={"typed_prims": typed_prims},
+                         isotopes=isotopes,
                  )
                  for geom in geoms]
         # assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])

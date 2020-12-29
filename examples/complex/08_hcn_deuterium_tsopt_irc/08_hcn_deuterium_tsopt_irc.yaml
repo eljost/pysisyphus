@@ -1,0 +1,36 @@
+geom:
+ type: redund
+ fn: |
+  3
+ 
+  C     0.000000     0.000000     0.000000
+  N     0.000000     0.000000     1.148380
+  H     1.585360     0.000000     1.148380
+ # Use deuterium instead of hydrogen. isotopes should be a list of pairs, with
+ # the first item in the pair denoting the atom index (0-based) and the second
+ # item is either an integer (approximate mass) or a flaot. If it is a float is
+ # directly used as mass. If it is an integer it will be interpreted as approximate
+ # mass and a corresponding (exact) isotope mass will be selected from an internal
+ # database (ISOTOPE_DICT in elem_data.py).
+ #
+ # Below, we use a different isotope for the hydrogen atom (index 2):
+ isotopes: [[2, 2]]
+ #isotopes: [[2, 2.014101778]]
+ # Both lines give identical results. In the second line the mass is given directly.
+calc:
+ type: pyscf
+ basis: 321g
+ pal: 2
+ charge: 0
+ mult: 1
+ verbose: 0
+tsopt:
+ thresh: gau
+ # The imaginary frequency at the TS is -923.36 cm⁻¹ for deuterium and
+ # -1215.67 cm⁻¹ for 'normal' hydrogen.
+ do_hess: True
+irc:
+ type: eulerpc
+assert:
+ ts_opt.is_converged: True
+ ts_geom.energy: -92.24604297

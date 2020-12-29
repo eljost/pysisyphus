@@ -596,6 +596,14 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
     print(highlight_text("Hessian at final geometry", level=1))
     print()
 
+    if geom.isotopes is not None:
+        print("Different isotopes were requested! This will affect the frequencies.")
+        atoms = geom.atoms
+        masses = geom.masses
+        for atom_ind, _ in geom.isotopes:
+            print(f"\tAtom {atom_ind}{atoms[atom_ind]}: {masses[atom_ind]:.6f} au")
+        print()
+
     # TODO: Add cartesian_hessian property to Geometry to avoid
     # accessing a "private" attribute.
     hessian = geom.cart_hessian
