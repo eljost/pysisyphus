@@ -29,6 +29,9 @@ class OBabel(Calculator):
     def __init__(self, ff="gaff", **kwargs):
         super().__init__(**kwargs)
 
+        if self.charge != 0:
+            print("'charge' keyword is currently ignored!")
+
         self.ff_name = ff
         avail_ffs = _getplugins(
             ob.OBForceField.FindType, _getpluginnames("forcefields")
