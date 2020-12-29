@@ -137,7 +137,10 @@ class HessianOptimizer(Optimizer):
             hessian_init = self.hessian_init
 
         self.H, hess_str = get_guess_hessian(self.geometry, hessian_init)
-        self.log(f"Using {hess_str} Hessian.")
+        msg = f"Using {hess_str} Hessian"
+        if hess_str == "saved":
+            msg += f" from '{hessian_init}'"
+        self.log(msg)
 
         # Dump to disk if hessian was calculated
         if self.hessian_init == "calc":
