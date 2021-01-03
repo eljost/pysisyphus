@@ -130,6 +130,7 @@ class Dimer(Calculator):
     @N.setter
     def N(self, N_new):
         N_new = np.array(N_new, dtype=float).flatten()
+        N_new = self.make_translationally_invariant(N_new)
         N_new /= np.linalg.norm(N_new)
         self._N = N_new
         self._f1 = None
@@ -352,12 +353,30 @@ class Dimer(Calculator):
             bond_modes = [self.get_bond_mode(bond, coords)
                           for bond in self.bonds]
             N_raw = np.sum(bond_modes, axis=0)
-        # Normalize N_raw
+        # Make N_raw translationally invariant and normalize
         self.N = N_raw
         # Now we keep the normalized dimer orientation
         self.N_raw = self.N
 
         self.log(f"Initial orientation:\n\t{self.N}")
+
+    def make_translationally_invariant(self, coords):
+        # Sum vector components over cartesian directions (x,y,z)
+        # Sum over each direction should equal zero if translationally invariant
+        sum = np.zeros(3)
+        for direction, component in enumerate(coords):
+            sum[direction % 3] += component
+        average = sum / (coords.size / 3)
+        
+        if max(abs(average)) > 1e-8:
+            self.log(f"N-vector not translationally invariant. Shifting by ({average[0]}, {average[1]}, {average[2]}) before normalization.")
+        else:
+            return coords
+        # Subtract the average component along each direction to make sum zero
+        invariant_coords = np.copy(coords)
+        for direction in range(0, invariant_coords.size):
+            invariant_coords[direction] -= average[direction % 3]
+        return invariant_coords
 
     def rotate_coords1(self, rad, theta):
         """Rotate dimer and produce new coords1."""
