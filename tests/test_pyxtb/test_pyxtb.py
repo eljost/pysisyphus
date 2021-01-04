@@ -5,7 +5,6 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 
 
-@using("xtb")
 @using("pyxtb")
 @pytest.mark.parametrize(
     "gfn, ref_energy", [

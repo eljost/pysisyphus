@@ -65,9 +65,9 @@ def using(calculator):
         # Check if cmd is available on $PATH
         if cmd is not None:
             available = bool(shutil.which(cmd))
-
         # Handling native python packages from here
-        available = module_available(calculator)
+        else:
+            available = module_available(calculator)
 
         reason = _reason.format(calculator)
         _using_cache[calculator] = pytest.mark.skipif(not available, reason=reason)
