@@ -596,7 +596,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
     print(highlight_text("Hessian at final geometry", level=1))
     print()
 
-    if geom.isotopes is not None:
+    if (geom.isotopes is not None) and len(geom.isotopes) > 0:
         print("Different isotopes were requested! This will affect the frequencies.")
         atoms = geom.atoms
         masses = geom.masses
