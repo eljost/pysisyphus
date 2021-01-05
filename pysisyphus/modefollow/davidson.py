@@ -4,6 +4,7 @@
 
 
 from collections import namedtuple
+import sys
 
 import numpy as np
 
@@ -175,6 +176,7 @@ def block_davidson(
                     type_ = "minimum" if (neg_nus == 0) else f"saddle point of index {neg_nus}"
                     print(f"\tThis geometry seems to be a {type_} on the PES.")
             break
+        sys.stdout.flush()
 
     result = DavidsonResult(
         cur_cycle=i,
