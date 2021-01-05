@@ -816,8 +816,10 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
     # Mass-weigh and project Hessian
     H = geom.eckart_projection(geom.mass_weigh_hessian(H))
     w, v = np.linalg.eigh(H)
-    inds = [0, 1] if tsopt else [0, ]
-    lowest = 2 if tsopt else 0
+    inds = [0, 1] if tsopt else [6, ]
+    # Converge the lowest two modes for TS optimizations; for minimizations the lowest
+    # mode would is enough.
+    lowest = 2 if tsopt else 1
     guess_modes = [NormalMode(l, masses_rep) for l in v[:, inds].T]
 
     davidson_kwargs = {
