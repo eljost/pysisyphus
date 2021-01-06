@@ -49,7 +49,7 @@ class Dimer(Calculator):
                  rotation_max_element=0.001, rotation_interpolate=True,
                  rotation_disable=False, bonds=None, bias_rotation=False,
                  bias_translation=False, bias_gaussian_dot=0.1, seed=None,
-                 write_orientations=True, **kwargs):
+                 write_orientations=True, rotation_remove_trans=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -76,6 +76,7 @@ class Dimer(Calculator):
         self.rotation_max_element = float(rotation_max_element)
         self.rotation_interpolate = bool(rotation_interpolate)
         self.rotation_disable = bool(rotation_disable)
+        self.rotation_remove_trans = bool(rotation_remove_trans)
 
         # Regarding generation of initial orientation
         self.bonds = bonds
@@ -130,6 +131,8 @@ class Dimer(Calculator):
     @N.setter
     def N(self, N_new):
         N_new = np.array(N_new, dtype=float).flatten()
+        if self.rotation_remove_trans:
+            N_new = self.remove_translation(N_new)
         N_new /= np.linalg.norm(N_new)
         self._N = N_new
         self._f1 = None
@@ -352,12 +355,25 @@ class Dimer(Calculator):
             bond_modes = [self.get_bond_mode(bond, coords)
                           for bond in self.bonds]
             N_raw = np.sum(bond_modes, axis=0)
-        # Normalize N_raw
+        # Make N_raw translationally invariant and normalize
         self.N = N_raw
         # Now we keep the normalized dimer orientation
         self.N_raw = self.N
 
         self.log(f"Initial orientation:\n\t{self.N}")
+
+    def remove_translation(self, displacement):
+        # Average vector components over cartesian directions (x,y,z)
+        # Sum over each direction should equal zero if translationally invariant
+        average = displacement.reshape(-1, 3).mean(axis=0)
+        
+        if max(abs(average)) > 1e-8:
+            self.log(f"N-vector not translationally invariant. Shifting by ({average[0]}, {average[1]}, {average[2]}) before normalization.")
+        else:
+            return displacement
+        # Subtract the average component along each direction to make sum zero
+        invariant_displacement = (displacement.reshape(-1, 3) - average[None, :]).flatten()
+        return invariant_displacement
 
     def rotate_coords1(self, rad, theta):
         """Rotate dimer and produce new coords1."""

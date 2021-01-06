@@ -31,6 +31,7 @@ def test_dimer(rotation_method, ref_cycle):
         "rotation_method": rotation_method,
         "calculator": AnaPot(),
         "N_raw": N_raw,
+        "rotation_remove_trans": False,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -159,6 +160,7 @@ def test_add_gaussian():
     dimer_kwargs = {
         "calculator": calc,
         "N_raw": N_raw,
+        "rotation_remove_trans": False,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -166,3 +168,49 @@ def test_add_gaussian():
     g0 = dimer.add_gaussian(geom.atoms, geom.coords, dimer.N)
 
     assert g0.height == pytest.approx(0.1708984)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "rotation_remove_trans", [
+        True,
+        False,
+    ]
+)
+def test_remove_translation(rotation_remove_trans):
+
+    name = "01_hcn.xyz with translations removed" if rotation_remove_trans \
+           else "01_hcn.xyz without translations removed"
+    ref_energy = -92.24604
+    geom = geom_from_library("baker_ts/01_hcn.xyz")
+    downhill_geom = geom_from_library("baker_ts/01_hcn_downhill.xyz")
+    N_raw = geom.coords - downhill_geom.coords
+
+    calc = PySCF("321g", pal=2)
+
+    dimer_kwargs = {
+        "rotation_method": "fourier",
+        "calculator": calc,
+        "N_raw": N_raw,
+        "length": 0.0189,
+        "rotation_tol": 5,
+        "rotation_remove_trans": rotation_remove_trans,
+    }
+    dimer = Dimer(**dimer_kwargs)
+    geom.set_calculator(dimer)
+
+    opt_kwargs = {
+        "precon": True,
+        "max_step_element": 0.25,
+        "max_cycles": 50,
+        "thresh": "baker",
+        "c_stab": 0.103,
+    }
+    opt = PreconLBFGS(geom, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(ref_energy)
+
+    print(f"@{name} converged using {dimer.force_evals} force evaluations")
+
