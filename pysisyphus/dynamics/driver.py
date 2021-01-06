@@ -145,7 +145,6 @@ def md(
                 new_center = gaussian.colvar.value(coords.reshape(-1, 3))
                 gau_centers[i][gau_center_num[i]] = new_center
                 gau_center_num[i] += 1
-                center_num = gau_center_num[i]
                 log(
                     logger,
                     f"Added {gau_center_num[i]: >6d}. '{gau_key}' Gaussian in step {step}.",
@@ -191,7 +190,6 @@ def md(
     # In amu
     masses = geom.masses
     masses_rep = geom.masses_rep
-    total_mass = masses.sum()
 
     x = geom.cart_coords
     # v is given in Bohr/fs

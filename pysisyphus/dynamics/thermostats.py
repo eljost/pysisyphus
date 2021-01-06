@@ -120,7 +120,6 @@ def csvr_closure_2(sigma, dof, dt, tau=100, rng=None):
 
 def berendsen_closure(sigma, dof, dt, tau=100, rng=None):
     """ https://doi.org/10.1063/1.448118"""
-    two_over_Nkb = 2 / (dof * KBAU)
     tau_t = dt / tau
 
     def resample_kin(cur_kinetic_energy):

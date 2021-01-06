@@ -613,7 +613,6 @@ def run_md(geom, calc_getter, md_kwargs):
     calc = calc_getter()
     geom.set_calculator(calc)
 
-    T = md_kwargs["T"]
     T_init_vel = md_kwargs.pop("T_init_vel")
     steps = md_kwargs.pop("steps")
     dt = md_kwargs.pop("dt")
@@ -641,11 +640,11 @@ def run_md(geom, calc_getter, md_kwargs):
                                     remove_rot_v=False).flatten()
     md_result = md(geom, v0=v0, steps=steps, dt=dt, gaussians=gaussians, **md_kwargs)
 
-    from pysisyphus.xyzloader import coords_to_trj
-    trj_fn = "md.trj"
-    trj_str = coords_to_trj(
-        trj_fn, geom.atoms, md_result.coords[::md_kwargs["dump_stride"]]
-    )
+    # from pysisyphus.xyzloader import coords_to_trj
+    # trj_fn = "md.trj"
+    # _ = coords_to_trj(
+        # trj_fn, geom.atoms, md_result.coords[::md_kwargs["dump_stride"]]
+    # )
     print()
 
     return md_result

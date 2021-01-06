@@ -5,7 +5,7 @@ import numpy as np
 import autograd
 import autograd.numpy as anp
 
-from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
+from pysisyphus.intcoords.derivatives import dq_b, dq_a
 
 
 class Colvar(metaclass=abc.ABCMeta):
@@ -15,8 +15,8 @@ class Colvar(metaclass=abc.ABCMeta):
         except AttributeError:
             force_agrad = True
 
-        # Set autograd gradient method, if no _gradient forces, or if it
-        # was not implemented.
+        # Set autograd gradient method, if no _gradient is not implemented
+        # a autograd is forced.
         if force_agrad:
             grad_func = autograd.grad(self.value)
 
@@ -61,7 +61,7 @@ class CVDistance(Colvar):
     def value(self, c3d):
         return anp.linalg.norm(c3d[self.i] - c3d[self.j])
 
-    def _gradient(self, c3d):
+    def _gradient(self, c3d):  # lgtm [py/attribute-shadows-method]
         return self._wilson_gradient(dq_b, c3d)
 
 
@@ -85,7 +85,7 @@ class CVBend(Colvar):
         rad = anp.arccos(anp.dot(u, v))
         return rad
 
-    def _gradient(self, c3d):
+    def _gradient(self, c3d):  # lgtm [py/attribute-shadows-method]
         return self._wilson_gradient(dq_a, c3d)
 
 

@@ -1,6 +1,5 @@
 from enum import Enum
 import logging
-import re
 import time
 
 import numpy as np

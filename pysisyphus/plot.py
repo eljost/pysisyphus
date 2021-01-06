@@ -319,17 +319,17 @@ def plot_md(h5_group="run"):
         group = handle[h5_group]
 
         steps = group["step"][:]
-        coords = group["cart_coords"][:]
         ens = group["energy_tot"][:]
         ens_conserved = group["energy_conserved"][:]
         Ts = group["T"][:]
         T_avgs = group["T_avg"][:]
+        # coords = group["cart_coords"][:]
         # velocities = group["velocity"][:]
 
         dt = group.attrs["dt"]
         T_target = group.attrs["T_target"]
 
-    fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
+    _, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
     dts = steps * dt
     ens *= AU2KJPERMOL
     mean = ens.mean()
