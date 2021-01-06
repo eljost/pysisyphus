@@ -138,6 +138,7 @@ Default values are commented out. See `examples/tsopt/02_hcn_tsopt_dimer <https:
                                    # will be skipped.
      #rotation_max_element: 0.001  # Max. step element for "rotation_method: direct"
      #rotation_interpolate: True   # Interpolate force on image after rotation
+     #rotation_remove_trans: True  # Remove overall translation from N-vector
      #seed: 20182503                # Seed for the RNG for reproducability reasons.
     geom:
      type: cart
