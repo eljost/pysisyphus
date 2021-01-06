@@ -6,7 +6,13 @@ on:
             - "docs/**"
             - "examples/**"
             - "tests_staging/**"
+            - "deprecated/**"
     pull_request:
+        paths-ignore:
+            - "docs/**"
+            - "examples/**"
+            - "tests_staging/**"
+            - "deprecated/**"
     schedule:
         - cron: '0 */12 * * *'
 jobs:
