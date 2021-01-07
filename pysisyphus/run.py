@@ -1107,7 +1107,7 @@ def get_defaults(conf_dict):
         dd["interpol"] = {
             "type": None,
             "between": 0,
-        },
+        }
 
     if "cos" in conf_dict:
         dd["cos"] = {
