@@ -1072,10 +1072,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
 def get_defaults(conf_dict):
     # Defaults
     dd = {
-        "interpol": {
-            "type": None,
-            "between": 0,
-        },
+        "interpol": None,
         "cos": None,
         "calc": {
             "pal": 1,
@@ -1106,6 +1103,11 @@ def get_defaults(conf_dict):
         "align": True,
         "dump": True,
     }
+    if "interpol" in conf_dict:
+        dd["interpol"] = {
+            "type": None,
+            "between": 0,
+        },
 
     if "cos" in conf_dict:
         dd["cos"] = {
@@ -1304,6 +1306,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     if run_dict["interpol"]:
         interpolate = run_dict["interpol"]["type"]
         between = run_dict["interpol"]["between"]
+    else:
+        interpolate = None
+        between = 0
     # Preoptimization prior to COS optimization
     if run_dict["preopt"]:
         preopt_key = run_dict["preopt"].pop("type")
