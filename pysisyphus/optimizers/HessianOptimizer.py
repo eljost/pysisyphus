@@ -281,6 +281,11 @@ class HessianOptimizer(Optimizer):
         else:
             dx = self.steps[-1]
             dg = -(self.forces[-1] - self.forces[-2])
+            curv_cond = dx.dot(dg)
+            if curv_cond < 0.0:
+                self.log(
+                    f"Curvature condition (s·y = {curv_cond:.4f} < 0) not satisfied!"
+                )
             dH, key = self.hessian_update_func(self.H, dx, dg)
             self.H = self.H + dH
             self.log(f"Did {key} Hessian update.")
@@ -459,12 +464,7 @@ class HessianOptimizer(Optimizer):
         denom = (eigvals - rfo_eigval * cur_alpha) ** 3
         quot = np.sum(numer / denom)
         self.log(f"quot={quot:.6f}")
-        dstep2_dalpha = (
-            2
-            * rfo_eigval
-            / (1 + step_norm ** 2 * cur_alpha)
-            * quot
-        )
+        dstep2_dalpha = 2 * rfo_eigval / (1 + step_norm ** 2 * cur_alpha) * quot
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
         alpha_step = (
