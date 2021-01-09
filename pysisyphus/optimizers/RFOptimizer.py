@@ -12,10 +12,19 @@ from pysisyphus.optimizers.gdiis import gdiis, gediis
 
 
 class RFOptimizer(HessianOptimizer):
-
-    def __init__(self, geom, line_search=True, gediis=False, gdiis=True,
-                 gdiis_thresh=2.5e-3, gediis_thresh=1e-2, max_micro_cycles=1,
-                 adapt_step_func=False, *args, **kwargs):
+    def __init__(
+        self,
+        geom,
+        line_search=True,
+        gediis=False,
+        gdiis=True,
+        gdiis_thresh=2.5e-3,
+        gediis_thresh=1e-2,
+        max_micro_cycles=1,
+        adapt_step_func=False,
+        *args,
+        **kwargs,
+    ):
         super().__init__(geom, max_micro_cycles=max_micro_cycles, *args, **kwargs)
 
         self.line_search = line_search
@@ -41,7 +50,7 @@ class RFOptimizer(HessianOptimizer):
         # the thresholds, there is no need to do additional inter/extrapolations.
         if self.check_convergence(ref_step):
             self.log("Convergence achieved! Skipping inter/extrapolation.")
-            return  ref_step
+            return ref_step
 
         # Try to interpolate an intermediate geometry, either from GDIIS or line search.
         #
@@ -66,7 +75,7 @@ class RFOptimizer(HessianOptimizer):
         # Don't try GEDIIS if GDIIS failed. If GEDIIS should be tried after GDIIS failed
         # comment the line below and uncomment the line following it.
         elif self.gediis and can_gediis:
-        # if self.gediis and can_gediis and (diis_result == None):
+            # if self.gediis and can_gediis and (diis_result == None):
             diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
             self.successful_gediis += 1 if diis_result else 0
 
@@ -93,7 +102,7 @@ class RFOptimizer(HessianOptimizer):
 
         step = step_func(big_eigvals, big_eigvecs, gradient)
         # Form full step. If we did not interpolate or interpolation failed,
-        #ip_step will be zero.
+        # ip_step will be zero.
         step = step + ip_step
 
         # Use the original, actually calculated, gradient
