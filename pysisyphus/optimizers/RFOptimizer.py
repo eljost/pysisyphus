@@ -25,6 +25,10 @@ class RFOptimizer(HessianOptimizer):
         self.gediis_thresh = gediis_thresh  # Will be compared to rms(forces)
         self.adapt_step_func = adapt_step_func
 
+        self.successful_gediis = 0
+        self.successful_gdiis = 0
+        self.successful_line_search = 0
+
     def optimize(self):
         energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
         step_func, pred_func = self.get_step_func(big_eigvals, gradient)
@@ -58,11 +62,13 @@ class RFOptimizer(HessianOptimizer):
             # Gradients as error vectors
             err_vecs = -np.array(self.forces)
             diis_result = gdiis(err_vecs, self.coords, self.forces, ref_step)
+            self.successful_gdiis += 1 if diis_result else 0
         # Don't try GEDIIS if GDIIS failed. If GEDIIS should be tried after GDIIS failed
         # comment the line below and uncomment the line following it.
         elif self.gediis and can_gediis:
         # if self.gediis and can_gediis and (diis_result == None):
             diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
+            self.successful_gediis += 1 if diis_result else 0
 
         try:
             ip_coords = diis_result.coords
@@ -75,6 +81,7 @@ class RFOptimizer(HessianOptimizer):
         # Try line search if GDIIS failed or not requested
         if self.line_search and (diis_result is None) and (not resetted):
             ip_energy, ip_gradient, ip_step = self.poly_line_search()
+            self.successful_line_search += 1 if ip_gradient is not None else 0
 
         # Use the interpolated gradient for the RFO step if interpolation succeeded
         if (ip_gradient is not None) and (ip_step is not None):
@@ -93,3 +100,12 @@ class RFOptimizer(HessianOptimizer):
         self.predicted_energy_changes.append(prediction)
 
         return step
+
+    def postprocess_opt(self):
+        msg = (
+            f"Successful invocations:\n"
+            f"\t     GEDIIS: {self.successful_gediis}\n"
+            f"\t      GDIIS: {self.successful_gdiis}\n"
+            f"\tLine Search: {self.successful_line_search}\n"
+        )
+        self.log(msg)

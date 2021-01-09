@@ -318,6 +318,9 @@ class Optimizer(metaclass=abc.ABCMeta):
     def prepare_opt(self):
         pass
 
+    def postprocess_opt(self):
+        pass
+
     @abc.abstractmethod
     def optimize(self):
         pass
@@ -593,6 +596,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
+        self.postprocess_opt()
         sys.stdout.flush()
 
     def _get_opt_restart_info(self):
