@@ -1,5 +1,6 @@
 from enum import Enum
 import logging
+from pathlib import Path
 import time
 
 import numpy as np
@@ -131,3 +132,18 @@ def expand(to_expand):
     else:
         start, end = [int(i) for i in to_expand.split("..")]
         return list(range(start, end))
+
+
+def file_or_str(*args):
+    exts = args
+    def inner_func(func):
+        def wrapped(inp, *args, **kwargs):
+            p = Path(inp)
+            if exts and (p.suffix in exts) and p.is_file():
+                with open(p) as handle:
+                    inp = handle.read()
+            return func(inp, *args, **kwargs)
+
+        return wrapped
+
+    return inner_func

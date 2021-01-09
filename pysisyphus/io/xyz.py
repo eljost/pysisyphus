@@ -1,14 +1,15 @@
 import numpy as np
 
 from pysisyphus.constants import ANG2BOHR
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 
 
 @file_or_str(".xyz", ".trj")
-def parse_xyz_v2(xyz_str, with_comment=False):
+def parse_xyz(xyz_str, with_comment=False):
     lines = iter(xyz_str.strip().split("\n"))
-    # geoms = list()
     atoms_coords = list()
+    comments = list()
     for l in lines:
         l = l.strip()
         # Skip emtpy lines
@@ -23,7 +24,7 @@ def parse_xyz_v2(xyz_str, with_comment=False):
         coords3d = np.zeros((expect, 3), dtype=float)
         # Advance iterator over xyz definition
         comment = next(lines)
-        comment = comment if with_comment else None
+        comments.append(comment if with_comment else None)
         for i in range(expect):
             atom, *xyz_ = next(lines).split()
             atoms.append(atom)
@@ -32,4 +33,13 @@ def parse_xyz_v2(xyz_str, with_comment=False):
         assert len(atoms) == expect
         coords3d *= ANG2BOHR
         atoms_coords.append((atoms, coords3d.flatten()))
-    return atoms_coords
+    return atoms_coords, comments
+
+
+def geoms_from_xyz(fn, **kwargs):
+    atoms_coords, comments = parse_xyz(fn, with_comment=True)
+    geoms = [
+        Geometry(atoms, coords.flatten(), comment=comment, **kwargs)
+        for (atoms, coords), comment in zip(atoms_coords, comments)
+    ]
+    return geoms
