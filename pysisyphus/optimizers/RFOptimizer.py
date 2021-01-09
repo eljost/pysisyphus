@@ -92,7 +92,8 @@ class RFOptimizer(HessianOptimizer):
             ip_step = np.zeros_like(gradient)
 
         step = step_func(big_eigvals, big_eigvecs, gradient)
-        # Form full step. If we did not interpolate or it failed ip_step will be zero.
+        # Form full step. If we did not interpolate or interpolation failed,
+        #ip_step will be zero.
         step = step + ip_step
 
         # Use the original, actually calculated, gradient
