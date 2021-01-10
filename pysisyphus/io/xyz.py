@@ -10,16 +10,17 @@ def parse_xyz(xyz_str, with_comment=False):
     lines = iter(xyz_str.strip().split("\n"))
     atoms_coords = list()
     comments = list()
-    for l in lines:
-        l = l.strip()
+    for line in lines:
+        line = line.strip()
         # Skip emtpy lines
-        if not l:
+        if not line:
             continue
         # A new xyz block starts with an integer
         try:
-            expect = int(l)
+            expect = int(line)
+        # We only skip empty lines, otherwise we leave the loop.
         except ValueError:
-            continue
+            break
         atoms = list()
         coords3d = np.zeros((expect, 3), dtype=float)
         # Advance iterator over xyz definition
