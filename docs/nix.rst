@@ -3,14 +3,14 @@ Installation via Nix
 
 An easy and reliable way to get a complete pysisyphus installation, including additional quantum chemistry (QC) codes, is possible through the `Nix package manager`_. Required Nix files for the QC codes and their dependencies (linear algebra & MPI libraries etc.) are provided by the NixWithChemistry_ overlay.
 
-Nix installations are fully reproducible and extremly simple to accomplish for any potential pysisyphus user, as most of the necessary configuration is already described in the respective Nix files.
+Nix installations are fully reproducible and extremely simple to accomplish for any potential pysisyphus user, as most of the necessary configuration is already described in the respective Nix files.
 
 The `Nix Pills`_ series provides an informative introduction to the general concepts behind Nix.
 
 Prerequisites
 =============
 
-Please follow the installation instructions in the `nix manual`_ and additional hints from NixWithChemistry_ to set up a working Nix installation on your system. You'll probably have to allow unfree packages.
+Please follow the installation instructions in the `nix manual`_ and additional hints from Chemix to set up a working Nix installation on your system. You'll probably have to allow unfree packages.
 
 .. code-block:: bash
     nix-channel --add https://nixos.org/channels/nixos-20.09 nixos
@@ -24,7 +24,7 @@ Binary caching of Nix dependencies heavily speeds up build times by getting the 
 
 - SSE exentensions up to SSE4.2
 - AVX extensions up to AVX2
-- BLAS and LAPACK is provided by OpenBLAS or MKL
+- BLAS and LAPACK is provided by MKL
 - MVAPICH2 is used as the common MPI provider
 - The network for MPI parallelisation is ethernet and the loopback interface
 
@@ -58,15 +58,14 @@ Please adapt the following lines in :code:`config.nix`:
     - Adapt the available CPU extensions on your machine (you can list them with :code:`grep "flags" /proc/cpuinfo`)
     - :code:`network` should be adapted if you intend to run pysisyphus on a HPC cluster. Possible values are: :code:`network = "ethernet"`, :code:`network = "omnipath"` or :code:`network = "infiniband"`. If you are running pysisyphus on local machine keep :code:`network = "ethernet"`.
     - :code:`mpi` is set to :code:`"mvapich2"` by default. There  is usually no reason to change this but you could also use :code:`"openmpi"`. This does **not** mean that the selected MPI version will be used in all programs. MRCC requires IntelMPI and GAMESS-US OpenMPI, no matter what you select here.
-    - :code:`blas = "openblas"` can be updated to :code:`blas = "mkl"` if you have an Intel CPU.
+    - :code:`blas = "mkl"` can be updated to :code:`blas = "openblas"` if you have an AMD CPU, but it is probably better to set the :code:`MKL_DEBUG_CPU_TYPE=5` environment variable.
 
 While enabling the proprietary components in :code:`config.nix` usually does not have an impact on binary caching, changing the CPU optimisation flags, the MPI implementation or network settings will usually trigger more rebuilds as caching is not setup for those configurations.
 
 Installation
 ============
 
-After you updated :code:`nix/nixwithchemistry/config.nix`, you can start building/fetching the actual QC codes
-and all dependencies.
+After you updated :code:`nix/nixwithchemistry/config.nix`, you can start building/fetching the actual QC codes and all dependencies.
 
 The initial `nix-build` took about 3.5 h on my laptop, equipped with a i7-8750H (6 physical cores), 16 GB RAM and a NVMe SSD and requires about 15 GB disk space in the local Nix store (only ORCA was enabled, Gaussian and Turbomole were disabled).
 
