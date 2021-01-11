@@ -139,9 +139,12 @@ def file_or_str(*args):
     def inner_func(func):
         def wrapped(inp, *args, **kwargs):
             p = Path(inp)
-            if exts and (p.suffix in exts) and p.is_file():
+            looks_like_file = exts and (p.suffix in exts)
+            if looks_like_file and p.is_file():
                 with open(p) as handle:
                     inp = handle.read()
+            elif looks_like_file and not p.exists():
+                raise Exception(f"{inp} looks like a file/path, but it does not exist!")
             return func(inp, *args, **kwargs)
 
         return wrapped
