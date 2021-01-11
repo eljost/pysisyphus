@@ -3,27 +3,28 @@ import os
 import numpy as np
 import pytest
 
-from pysisyphus.helpers import get_baker_geoms
-from pysisyphus.color import red, green
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.benchmark_sets import get_baker_fns, get_baker_ref_energies
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.helpers import geom_loader
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using_pyscf
 
 
 @using_pyscf
 @pytest.mark.parametrize(
-    "name, geom, ref_energy",
-    [(name, geom, ref_energy) for name, (geom, ref_energy)
-     in get_baker_geoms(coord_type="redund").items()]
+    # Drop prefix
+    "fn", get_baker_fns()[1]
 )
-def test_baker_gs_opt(name, geom, ref_energy, results_bag):
+def test_baker_gs_opt(fn, results_bag):
+    geom = geom_loader(f"lib:baker/{fn}", coord_type="redund")
+    ref_energy = get_baker_ref_energies()[fn]
     opt_kwargs = {
         "thresh": "baker",
         "adapt_step_func": False,
     }
-    print(f"@Running {name}")
+    print(f"@Running {fn}")
     pal = min(os.cpu_count(), 4)
-    geom.set_calculator(PySCF(basis="sto3g", pal=pal))
+    geom.set_calculator(PySCF(basis="sto3g", pal=pal, verbose=0))
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 

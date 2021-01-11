@@ -89,56 +89,6 @@ def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
     )
 
 
-def get_baker_geoms(**kwargs):
-    baker_path = THIS_DIR / "../xyz_files/baker"
-    xyz_fns = baker_path.glob("*.xyz")
-    geoms = {
-        xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
-    }
-    # del geoms["acetylene.xyz"]
-    # From 10.1002/jcc.540140910
-    sto3g_energies = {
-        "water.xyz": -74.96590,
-        "ammonia.xyz": -55.45542,
-        "ethane.xyz": -78.30618,
-        "acetylene.xyz": -75.85625,
-        "allene.xyz": -114.42172,
-        "hydroxysulphane.xyz": -468.12592,
-        "benzene.xyz": -227.89136,
-        "methylamine.xyz": -94.01617,
-        "ethanol.xyz": -152.13267,
-        "acetone.xyz": -189.53603,
-        "disilylether.xyz": -648.58003,
-        "135trisilacyclohexane.xyz": -976.13242,
-        "benzaldehyde.xyz": -339.12084,
-        "13difluorobenzene.xyz": -422.81106,
-        "135trifluorobenzene.xyz": -520.27052,
-        "neopentane.xyz": -194.04677,
-        "furan.xyz": -225.75126,
-        "naphthalene.xyz": -378.68685,
-        "15difluoronaphthalene.xyz": -573.60633,
-        "2hydroxybicyclopentane.xyz": -265.46482,
-        "achtar10.xyz": -356.28265,
-        "acanil01.xyz": -432.03012,
-        "benzidine.xyz": -563.27798,
-        "pterin.xyz": -569.84884,
-        "difuropyrazine.xyz": -556.71910,
-        "mesityloxide.xyz": -304.05919,
-        "histidine.xyz": -538.54910,
-        "dimethylpentane.xyz": -271.20088,
-        "caffeine.xyz": -667.73565,
-        "menthone.xyz": -458.44639,
-    }
-    # Join both dicts
-    baker_dict = {}
-    for name, geom in geoms.items():
-        try:
-            baker_dict[name] = (geom, sto3g_energies[name])
-        except KeyError:
-            pass
-    return baker_dict
-
-
 def get_baker_ts_geoms(**kwargs):
     baker_ts_path = THIS_DIR / "../xyz_files/baker_ts"
     xyz_fns = baker_ts_path.glob("*.xyz")

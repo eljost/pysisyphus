@@ -11,7 +11,8 @@ import shutil
 
 @using("orca")
 @pytest.mark.parametrize(
-    "fn", get_s22_fns()
+    # Drop prefix
+    "fn", get_s22_fns()[1]
 )
 def test_s22_set(fn):
     print(f"@Running: {fn}")
