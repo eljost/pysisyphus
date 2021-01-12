@@ -1,5 +1,6 @@
 import pytest
 
+from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.augment_bonds import augment_bonds
@@ -10,8 +11,6 @@ from pysisyphus.tsoptimizers import *
 def calc_getter(charge, mult):
     return PySCF(basis="321g", pal=1, verbose=0, charge=charge, mult=mult)
 
-
-from pysisyphus.benchmarks import Benchmark
 
 BakerTSBm = Benchmark(
     "baker_ts",
