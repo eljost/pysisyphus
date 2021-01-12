@@ -10,15 +10,24 @@ BAKER_TS_SIZE = 25
 
 
 @pytest.mark.parametrize(
-    "name, ref_size", [
-    ("s22", S22_SIZE),
-    ("baker", BAKER_SIZE),
-    ("baker_ts", BAKER_TS_SIZE),
-    ]
+    "name, ref_size",
+    [
+        ("s22", S22_SIZE),
+        ("baker", BAKER_SIZE),
+        ("baker_ts", BAKER_TS_SIZE),
+    ],
 )
 def test_benchmark_geoms(name, ref_size):
     bm = Benchmark(name)
     assert len(list(bm)) == ref_size
+
+
+@pytest.mark.parametrize("inv_exclude", [True, False])
+def test_s22_exclude(inv_exclude):
+    exclude = (17, 18, 19)
+    bm = Benchmark("s22", exclude=exclude, inv_exclude=inv_exclude)
+    ref_len = len(exclude) if inv_exclude else S22_SIZE - len(exclude)
+    assert len(list(bm)) == ref_len
 
 
 def test_s22_exclude():
@@ -30,6 +39,7 @@ def test_s22_exclude():
 def test_calc_getter():
     def calc_getter(charge, mult):
         return ORCA(keywords="hf sto-3g", charge=charge, mult=mult)
+
     bm = Benchmark("baker_ts", calc_getter=calc_getter)
     geom = bm.get_geom(15)
     calc = geom.calculator
@@ -37,5 +47,3 @@ def test_calc_getter():
     assert calc.charge == -1
     assert calc.mult == 1
     assert calc.keywords == "hf sto-3g"
-
-

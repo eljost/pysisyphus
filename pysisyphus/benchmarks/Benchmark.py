@@ -9,7 +9,9 @@ class Benchmark:
         "s22": get_s22_data,
     }
 
-    def __init__(self, name, exclude=None, coord_type="cart", calc_getter=None):
+    def __init__(
+        self, name, exclude=None, inv_exclude=False, coord_type="cart", calc_getter=None
+    ):
 
         self.name = name
         if exclude is None:
@@ -21,6 +23,11 @@ class Benchmark:
         self.data_func = self.data_funcs[self.name]
         self.prefix, self.data = self.data_func()
         self.fns = [fn for fn, *_ in self.data]
+
+        if inv_exclude:
+            self.exclude = [
+                id_ for id_, _ in enumerate(self.data) if id_ in self.exclude
+            ]
 
     def get_geom(self, id_, set_calculator=True):
         fn, charge, mult, ref_energy = self.data[id_]
@@ -64,4 +71,3 @@ class Benchmark:
             fn, charge, mult, ref_energy = self.data[i]
             geom = self.get_geom(i, set_calculator=False)
             yield fn, geom, charge, mult, ref_energy
-
