@@ -8,23 +8,20 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
 
-def calc_getter(charge, mult):
-    return ORCA(
+S22Bm = Benchmark("s22", coord_type="redund")
+
+
+@using("orca")
+@pytest.mark.parametrize("fn, geom, charge, mult, ref_energy", S22Bm.geom_iter)
+def test_s22_set(fn, geom, charge, mult, ref_energy, results_bag):
+    calc = ORCA(
         keywords="RI-MP2 6-31G** def2-SVP/C tightscf",
         pal=6,
         mem=1500,
         charge=charge,
         mult=mult,
     )
-
-
-S22Bm = Benchmark("s22", coord_type="redund", calc_getter=calc_getter)
-
-
-@using("orca")
-@pytest.mark.parametrize("fn, geom, ref_energy", S22Bm)
-def test_s22_set(fn, geom, ref_energy, results_bag):
-    id_ = int(fn[:2])
+    geom.set_calculator(calc)
     opt_kwargs = {
         "thresh": "gau",
         "dump": True,
@@ -33,6 +30,8 @@ def test_s22_set(fn, geom, ref_energy, results_bag):
     opt.run()
 
     assert opt.is_converged
+
+    id_ = int(fn[:2])
 
     def keep(fn):
         shutil.copy(fn, f"{fn}.{id_:02}")

@@ -22,11 +22,11 @@ class Benchmark:
         self.prefix, self.data = self.data_func()
         self.fns = [fn for fn, *_ in self.data]
 
-    def get_geom(self, id_):
+    def get_geom(self, id_, set_calculator=True):
         fn, charge, mult, ref_energy = self.data[id_]
 
         geom = geom_loader(self.prefix + fn, coord_type=self.coord_type)
-        if self.calc_getter:
+        if set_calculator and self.calc_getter:
             geom.set_calculator(self.calc_getter(charge=charge, mult=mult))
         return geom
 
@@ -35,6 +35,17 @@ class Benchmark:
         return self
 
     def __next__(self):
+        """Iterating directly over a Benchmark object, e.g., in
+        pytest.mark.parametrize will give problems when calc_getter is set,
+        but the calculator is not available/installed.
+
+        Pytest will eagerly collect all geoms, and in this process the
+        calculators will be created. But when the calculator command is not
+        available, a SystemExit occur.
+
+        In theses cases it may be better to leave the calc_getter and iterate
+        over Benchmark.geom_iter, and to construct the calculators manually.
+        """
         while self._id < len(self.data):
             if self._id in self.exclude:
                 self._id += 1
@@ -44,3 +55,13 @@ class Benchmark:
             self._id += 1
             return fn, geom, ref_energy
         raise StopIteration
+
+    @property
+    def geom_iter(self):
+        for i, fn in enumerate(self.fns):
+            if i in self.exclude:
+                continue
+            fn, charge, mult, ref_energy = self.data[i]
+            geom = self.get_geom(i, set_calculator=False)
+            yield fn, geom, charge, mult, ref_energy
+
