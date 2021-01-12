@@ -1610,11 +1610,12 @@ def do_clean(force=False):
         "*.gradient",
         "optimizer_results.yaml",
         # ORCA specific
-        "*orca.gbw",
-        "*orca.cis",
-        "*orca.engrad",
-        "*orca.hessian",
-        "*orca.inp",
+        "*.orca.gbw",
+        "*.orca.cis",
+        "*.orca.engrad",
+        "*.orca.hessian",
+        "*.orca.inp",
+        "*.orca.hess",
         # OpenMOLCAS specific
         "calculator*.out",
         "calculator*.JobIph",
