@@ -101,3 +101,36 @@ def get_baker_ref_energies():
         "29_menthone.xyz": -458.44639,
     }
     return ref_energies
+
+
+def get_baker_ts_fns():
+    """10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7"""
+    fns = (
+        "01_hcn.xyz",
+        "02_hcch.xyz",
+        "03_h2co.xyz",
+        "04_ch3o.xyz",
+        "05_cyclopropyl.xyz",
+        "06_bicyclobutane.xyz",
+        "07_bicyclobutane.xyz",
+        "08_formyloxyethyl.xyz",
+        "09_parentdieslalder.xyz",
+        "10_tetrazine.xyz",
+        "11_trans_butadiene.xyz",
+        "12_ethane_h2_abstraction.xyz",
+        "13_hf_abstraction.xyz",
+        "14_vinyl_alcohol.xyz",
+        "15_hocl.xyz",
+        "16_h2po4_anion.xyz",
+        "17_claisen.xyz",
+        "18_silyene_insertion.xyz",
+        "19_hnccs.xyz",
+        "20_hconh3_cation.xyz",
+        "21_acrolein_rot.xyz",
+        "22_hconhoh.xyz",
+        "23_hcn_h2.xyz",
+        "24_h2cnh.xyz",
+        "25_hcnh2.xyz",
+    )
+    prefix = "lib:baker_ts/"
+    return prefix, fns

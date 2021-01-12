@@ -1,30 +1,23 @@
-import os
-
-import numpy as np
 import pytest
 
-from pysisyphus.benchmark_sets import get_baker_fns, get_baker_ref_energies
+from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using_pyscf
 
 
+def calc_getter(charge, mult):
+    return PySCF(basis="sto3g", pal=4, charge=charge, mult=mult)
+BakerBm = Benchmark("baker", coord_type="redund", calc_getter=calc_getter)
+
 @using_pyscf
 @pytest.mark.parametrize(
-    # Drop prefix
-    "fn", get_baker_fns()[1]
+    "fn, geom, ref_energy", BakerBm
 )
-def test_baker_gs_opt(fn, results_bag):
-    geom = geom_loader(f"lib:baker/{fn}", coord_type="redund")
-    ref_energy = get_baker_ref_energies()[fn]
+def test_baker_gs_opt(fn, geom, ref_energy, results_bag):
     opt_kwargs = {
         "thresh": "baker",
-        "adapt_step_func": False,
     }
-    print(f"@Running {fn}")
-    pal = min(os.cpu_count(), 4)
-    geom.set_calculator(PySCF(basis="sto3g", pal=pal, verbose=0))
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
@@ -33,9 +26,7 @@ def test_baker_gs_opt(fn, results_bag):
     results_bag.energy = geom.energy
     results_bag.ref_energy = ref_energy
 
-    assert np.allclose(geom.energy, ref_energy)
-
-    return opt.cur_cycle + 1, opt.is_converged
+    assert geom.energy == pytest.approx(ref_energy)
 
 
 def test_baker_synthesis(fixture_store):

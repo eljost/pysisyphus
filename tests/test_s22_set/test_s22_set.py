@@ -1,34 +1,24 @@
+import shutil
+
 import pytest
 
-from pysisyphus.benchmark_sets import get_s22_fns
+from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators import ORCA
-from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
-import shutil
 
+def calc_getter(charge, mult):
+    return ORCA(keywords="RI-MP2 6-31G** def2-SVP/C tightscf", pal=6, mem=1500,
+            charge=charge, mult=mult)
+S22Bm = Benchmark("s22", coord_type="redund", calc_getter=calc_getter)
 
 @using("orca")
 @pytest.mark.parametrize(
-    # Drop prefix
-    "fn", get_s22_fns()[1]
+    "fn, geom, ref_energy", S22Bm
 )
-def test_s22_set(fn):
-    print(f"@Running: {fn}")
-    geom = geom_loader(f"lib:s22/{fn}", coord_type="redund")
-
+def test_s22_set(fn, geom, ref_energy, results_bag):
     id_ = int(fn[:2])
-    calc_kwargs = {
-        "keywords": "RI-MP2 6-31G** def2-SVP/C tightscf",
-        "pal": 8,
-        "mem": 1500,
-        "charge": 0,
-        "mult": 1,
-    }
-    calc = ORCA(**calc_kwargs)
-    geom.set_calculator(calc)
-
     opt_kwargs = {
         "thresh": "gau",
         "dump": True,
