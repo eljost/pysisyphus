@@ -18,13 +18,13 @@ BAKER_TS_SIZE = 25
 )
 def test_benchmark_geoms(name, ref_size):
     bm = Benchmark(name)
-    geoms = [geom for geom in bm.geoms]
-    assert len(geoms) == ref_size
+    assert len(list(bm)) == ref_size
 
 
-def test_benchmark_iter():
-    bm = Benchmark("s22")
-    assert len(list(bm)) == S22_SIZE
+def test_s22_exclude():
+    exclude = (17, 18, 19)
+    bm = Benchmark("s22", exclude=exclude)
+    assert len(list(bm)) == S22_SIZE - len(exclude)
 
 
 def test_calc_getter():
@@ -39,8 +39,3 @@ def test_calc_getter():
     assert calc.keywords == "hf sto-3g"
 
 
-def test_s22_exclude():
-    exclude = (17, 18, 19)
-    bm = Benchmark("s22", exclude=exclude)
-    geoms = [geom for geom in bm.geoms]
-    assert len(geoms) == S22_SIZE - len(exclude)

@@ -8,12 +8,13 @@ from pysisyphus.testing import using_pyscf
 
 def calc_getter(charge, mult):
     return PySCF(basis="sto3g", pal=4, charge=charge, mult=mult)
+
+
 BakerBm = Benchmark("baker", coord_type="redund", calc_getter=calc_getter)
 
+
 @using_pyscf
-@pytest.mark.parametrize(
-    "fn, geom, ref_energy", BakerBm
-)
+@pytest.mark.parametrize("fn, geom, ref_energy", BakerBm)
 def test_baker_gs_opt(fn, geom, ref_energy, results_bag):
     opt_kwargs = {
         "thresh": "baker",

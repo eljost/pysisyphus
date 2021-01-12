@@ -35,28 +35,12 @@ class Benchmark:
         return self
 
     def __next__(self):
-        i = self._id
-        while i < len(self.data):
-            if i in self.exclude:
+        while self._id < len(self.data):
+            if self._id in self.exclude:
+                self._id += 1
                 continue
-            fn, *_, ref_energy = self.data[i]
-            geom = self.get_geom(i)
+            fn, *_, ref_energy = self.data[self._id]
+            geom = self.get_geom(self._id)
             self._id += 1
             return fn, geom, ref_energy
         raise StopIteration
-
-    @property
-    def geoms(self):
-        for i, fn in enumerate(self.fns):
-            if i in self.exclude:
-                continue
-            geom = self.get_geom(i)
-            yield geom
-
-    @property
-    def names_geoms(self):
-        for i, fn in enumerate(self.fns):
-            if i in self.exclude:
-                continue
-            geom = self.get_geom(i)
-            yield fn, geom
