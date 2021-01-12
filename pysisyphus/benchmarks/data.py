@@ -62,7 +62,7 @@ def get_baker_ts_data():
         ("13_hf_abstraction.xyz", 0, 1, -176.98453),
         ("14_vinyl_alcohol.xyz", 0, 1, -151.91310),
         # 15 does not have an imaginary mode in cartesian coordinates
-        ("15_hocl.xyz", 0, 1, -596.87865),
+        ("15_hocl.xyz", 0, 1, -596.897524),
         ("16_h2po4_anion.xyz", -1, 1, -637.92388),
         ("17_claisen.xyz", 0, 1, -267.23859),
         ("18_silyene_insertion.xyz", 0, 1, -367.20778),
