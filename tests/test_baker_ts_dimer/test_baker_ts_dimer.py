@@ -8,6 +8,7 @@ import pytest
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators import Dimer
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.testing import using
 
@@ -20,8 +21,8 @@ def make_N_init_dict():
     for guess, initial in [xyzs[2 * i : 2 * i + 2] for i in range(25)]:
         assert "downhill" in initial.stem
         assert guess.stem[:2] == initial.stem[:2]
-        guess_geom = geom_from_xyz_file(guess)
-        initial_geom = geom_from_xyz_file(initial)
+        guess_geom = geom_loader(guess)
+        initial_geom = geom_loader(initial)
         N_init = guess_geom.coords - initial_geom.coords
         N_dict[guess.name] = N_init
     return N_dict
