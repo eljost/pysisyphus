@@ -26,7 +26,7 @@ class Benchmark:
 
         if inv_exclude:
             self.exclude = [
-                id_ for id_, _ in enumerate(self.data) if id_ in self.exclude
+                id_ for id_, _ in enumerate(self.data) if id_ not in self.exclude
             ]
 
     def get_geom(self, id_, set_calculator=True):
