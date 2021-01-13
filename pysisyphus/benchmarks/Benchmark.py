@@ -71,3 +71,10 @@ class Benchmark:
             fn, charge, mult, ref_energy = self.data[i]
             geom = self.get_geom(i, set_calculator=False)
             yield fn, geom, charge, mult, ref_energy
+
+    @property
+    def geoms(self):
+        for i, fn in enumerate(self.fns):
+            if i in self.exclude:
+                continue
+            yield self.get_geom(i)
