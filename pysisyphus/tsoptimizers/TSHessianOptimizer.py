@@ -216,9 +216,9 @@ class TSHessianOptimizer(HessianOptimizer):
         # of the eigenvalues. So we multiply small_eigval_thresh to get a
         # negative number.
         # assert eigvals[self.root] < -self.small_eigval_thresh, (
-            # "Expected negative eigenvalue! Eigenvalue of selected TS-mode "
-            # f"{self.root:02d} is above the the threshold of "
-            # f"{self.small_eigval_thresh:.6e}!"
+        # "Expected negative eigenvalue! Eigenvalue of selected TS-mode "
+        # f"{self.root:02d} is above the the threshold of "
+        # f"{self.small_eigval_thresh:.6e}!"
         # )
 
         # Select an initial TS-mode by root index. self.root may have been
@@ -240,12 +240,14 @@ class TSHessianOptimizer(HessianOptimizer):
         # for the overlaps?!
         if self.ts_mode_eigval < 0:
             infix = "imaginary "
-            ovlp_eigvecs = eigvecs[:,:neg_num]
+            ovlp_eigvecs = eigvecs[:, :neg_num]
             eigvals = eigvals[:neg_num]
             # When the eigenvalue corresponding to the TS mode has been negative once,
             # we should not lose all negative eigenvalues. If this happens something went
             # wrong and we crash :)
-            assert neg_num >= 1, "Need at least 1 negative eigenvalue for TS optimization."
+            assert (
+                neg_num >= 1
+            ), "Need at least 1 negative eigenvalue for TS optimization."
         # Use all eigenvectors for overlaps when the eigenvalue corresponding to the TS
         # mode is still positive.
         else:
