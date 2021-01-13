@@ -55,14 +55,19 @@ def get_baker_ts_data():
         ("08_formyloxyethyl.xyz", 0, 2, -264.64757),
         ("09_parentdieslalder.xyz", 0, 1, -231.60321),
         # 10 and 11 don't have any imaginary frequencies at the given
-        # geometry, so they may be skipped.
+        # geometry, so they may be skipped. Until now (jan. 2021) I've
+        # never seen anybody mention, how they treated these cases ...
+        # It's not discussed in the 2002 Bakken paper and also not
+        # in the 1998 Besalu/Bofill paper. And of course not in the
+        # original 1996 Baker paper ... any advice on these two cases
+        # is greatly appreciated.
         ("10_tetrazine.xyz", 0, 1, -292.81026),
         ("11_trans_butadiene.xyz", 0, 1, -154.05046),
         ("12_ethane_h2_abstraction.xyz", 0, 1, -78.54323),
         ("13_hf_abstraction.xyz", 0, 1, -176.98453),
         ("14_vinyl_alcohol.xyz", 0, 1, -151.91310),
         # 15 does not have an imaginary mode in cartesian coordinates
-        ("15_hocl.xyz", 0, 1, -596.87865),
+        ("15_hocl.xyz", 0, 1, -569.897524),
         ("16_h2po4_anion.xyz", -1, 1, -637.92388),
         ("17_claisen.xyz", 0, 1, -267.23859),
         ("18_silyene_insertion.xyz", 0, 1, -367.20778),
