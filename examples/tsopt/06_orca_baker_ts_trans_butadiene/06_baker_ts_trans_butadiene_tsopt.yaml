@@ -29,8 +29,8 @@ tsopt:
  # user-generated mode. The following input constructs an approximate imaginary
  # mode that corresponds to a simple torsion.
  #
- # After all, root 15 will be selected.
+ # After all, root 9 will be selected.
  rx_mode: [[[2, 0, 1, 3], 1]]
- #do_hess: True
+ do_hess: True
 assert:
  ts_geom.energy: -154.05046
