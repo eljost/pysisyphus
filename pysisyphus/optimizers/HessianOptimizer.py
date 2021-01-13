@@ -393,7 +393,7 @@ class HessianOptimizer(Optimizer):
         eigvecs = eigvecs[:, ~small_inds]
         small_num = sum(small_inds)
         self.log(
-            f"Found {small_num} small eigenvalues in hessian. Removed "
+            f"Found {small_num} small eigenvalues in Hessian. Removed "
             "corresponding eigenvalues and eigenvectors."
         )
         assert small_num <= 6, (
@@ -408,7 +408,7 @@ class HessianOptimizer(Optimizer):
     def log_negative_eigenvalues(self, eigvals, pre_str=""):
         neg_inds = eigvals < -self.small_eigval_thresh
         neg_eigval_str = np.array2string(eigvals[neg_inds], precision=6)
-        self.log(f"{pre_str}hessian has {neg_inds.sum()} negative eigenvalue(s).")
+        self.log(f"{pre_str}Hessian has {neg_inds.sum()} negative eigenvalue(s).")
         self.log(f"\t{neg_eigval_str}")
 
     def housekeeping(self):
