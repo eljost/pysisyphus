@@ -1,7 +1,8 @@
 import pytest
 
 from pysisyphus.benchmarks import Benchmark
-from pysisyphus.calculators import ORCA
+from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.testing import using
 
 
 S22_SIZE = 22
@@ -36,9 +37,10 @@ def test_s22_exclude():
     assert len(list(bm)) == S22_SIZE - len(exclude)
 
 
+@using("pyscf")
 def test_calc_getter():
     def calc_getter(charge, mult):
-        return ORCA(keywords="hf sto-3g", charge=charge, mult=mult)
+        return PySCF(basis="sto3g", charge=charge, mult=mult)
 
     bm = Benchmark("baker_ts", calc_getter=calc_getter)
     geom = bm.get_geom(15)
@@ -46,4 +48,4 @@ def test_calc_getter():
     assert calc is not None
     assert calc.charge == -1
     assert calc.mult == 1
-    assert calc.keywords == "hf sto-3g"
+    assert calc.basis == "sto3g"
