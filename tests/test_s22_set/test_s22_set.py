@@ -1,3 +1,4 @@
+from pathlib import Path
 import shutil
 
 import pytest
@@ -16,7 +17,7 @@ S22Bm = Benchmark("s22", coord_type="redund")
 def test_s22_set(fn, geom, charge, mult, ref_energy, results_bag):
     calc = ORCA(
         keywords="RI-MP2 6-31G** def2-SVP/C tightscf",
-        pal=6,
+        pal=8,
         mem=1500,
         charge=charge,
         mult=mult,
@@ -25,17 +26,18 @@ def test_s22_set(fn, geom, charge, mult, ref_energy, results_bag):
     opt_kwargs = {
         "thresh": "gau",
         "dump": True,
+        "gdiis": False,
+        "line_search": False,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
-    assert opt.is_converged
-
     id_ = int(fn[:2])
-
     def keep(fn):
-        shutil.copy(fn, f"{fn}.{id_:02}")
+        shutil.copy(fn, Path("backup_no_gdiis_no_line") / f"{fn}.{id_:02}")
 
     keep("optimizer.log")
     keep("optimization.trj")
     keep("optimization.h5")
+
+    assert opt.is_converged
