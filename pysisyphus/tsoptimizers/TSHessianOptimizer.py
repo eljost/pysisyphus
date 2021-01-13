@@ -18,6 +18,7 @@ class TSHessianOptimizer(HessianOptimizer):
         hessian_ref=None,
         prim_coord=None,
         rx_coords=None,
+        rx_mode=None,
         hessian_init="calc",
         hessian_update="bofill",
         hessian_recalc_reset=True,
@@ -62,6 +63,7 @@ class TSHessianOptimizer(HessianOptimizer):
             self.log(f"No reference Hessian provided.")
         self.prim_coord = prim_coord
         self.rx_coords = rx_coords
+        self.rx_mode = rx_mode
         # Bond augmentation is only useful with calculated hessians
         self.augment_bonds = augment_bonds and (self.hessian_init == "calc")
         self.min_line_search = min_line_search
@@ -177,6 +179,29 @@ class TSHessianOptimizer(HessianOptimizer):
                 f"eigenvector {self.root:02d}."
             )
             used_str = "overlap with reference TS mode"
+        # Construct an approximate initial mode according to user input
+        # and calculate overlaps with the current eigenvectors.
+        elif self.rx_mode is not None:
+            self.log(f"Constructing reference mode, according to user input")
+            assert self.geometry.coord_type != "cart"
+            mode = np.zeros_like(self.geometry.coords)
+            int_ = self.geometry.internal
+            for prim_inds, val in self.rx_mode:
+                ind = int_.get_index_of_prim_coord(prim_inds)
+                mode[ind] = val
+                self.log(f"\tIndex {ind} (coordinate {prim_inds}) set to {val:.4f}")
+            mode /= np.linalg.norm(mode)
+            mode_str = np.array2string(mode, precision=2)
+            self.log(f"Final, normalized, reference mode: {mode_str}")
+
+            # Calculate overlaps in non-redundant subspace by zeroing overlaps
+            # in the redundant subspace.
+            small_inds = np.abs(eigvals) < self.small_eigval_thresh
+            # Take absolute value, because sign of eigenvectors is ambiguous.
+            ovlps = np.abs(np.einsum("ij,i->j", eigvecs, mode))
+            ovlps[small_inds] = 0.0
+            self.root = np.argmax(ovlps)
+            used_str = "overlap with user-generated mode"
         else:
             used_str = f"root={self.root}"
         self.log(f"Used {used_str} to select inital TS mode.")
@@ -201,7 +226,7 @@ class TSHessianOptimizer(HessianOptimizer):
         self.ts_mode = eigvecs[:, self.root]
         self.ts_mode_eigval = eigvals[self.root]
         self.log(
-            f"Using mode {self.root:02d} with eigenvalue "
+            f"Using root {self.root:02d} with eigenvalue "
             f"{self.ts_mode_eigval:.6f} as TS mode.\n"
         )
 
