@@ -115,7 +115,6 @@ class TSHessianOptimizer(HessianOptimizer):
 
         eigvals, eigvecs = np.linalg.eigh(self.H)
         neg_inds = eigvals < -self.small_eigval_thresh
-
         self.log_negative_eigenvalues(eigvals, "Initial ")
 
         self.log("Determining initial TS mode to follow uphill.")
@@ -182,45 +181,64 @@ class TSHessianOptimizer(HessianOptimizer):
             used_str = f"root={self.root}"
         self.log(f"Used {used_str} to select inital TS mode.")
 
+        # This is currently commented out, as we can also start from
+        # the convex region of the PES and maximize along a mode with
+        # an initially positive eigenvalue.
+        #
         # Check if the selected mode (root) is a sensible choice.
         #
         # small_eigval_thresh is positive and we dont take the absolute value
         # of the eigenvalues. So we multiply small_eigval_thresh to get a
         # negative number.
-        assert eigvals[self.root] < -self.small_eigval_thresh, (
-            "Expected negative eigenvalue! Eigenvalue of selected TS-mode "
-            f"{self.root:02d} is above the the threshold of "
-            f"{self.small_eigval_thresh:.6e}!"
-        )
+        # assert eigvals[self.root] < -self.small_eigval_thresh, (
+            # "Expected negative eigenvalue! Eigenvalue of selected TS-mode "
+            # f"{self.root:02d} is above the the threshold of "
+            # f"{self.small_eigval_thresh:.6e}!"
+        # )
 
         # Select an initial TS-mode by root index. self.root may have been
         # modified by using a reference hessian.
         self.ts_mode = eigvecs[:, self.root]
+        self.ts_mode_eigval = eigvals[self.root]
         self.log(
             f"Using mode {self.root:02d} with eigenvalue "
-            f"{eigvals[self.root]:.6f} as TS mode."
+            f"{self.ts_mode_eigval:.6f} as TS mode.\n"
         )
-        self.log("")
 
     def update_ts_mode(self, eigvals, eigvecs):
         neg_eigval_inds = eigvals < -self.small_eigval_thresh
         neg_num = neg_eigval_inds.sum()
-        assert neg_num >= 1, "Need at least 1 negative eigenvalue for TS optimization."
         self.log_negative_eigenvalues(eigvals)
 
-        # Select TS mode with biggest overlap to the previous TS mode
-        self.log("Overlaps of previous TS mode with current imaginary mode(s):")
-        ovlps = [
-            np.abs(imag_mode.dot(self.ts_mode)) for imag_mode in eigvecs.T[:neg_num]
-        ]
+        # When we left the convex region of the PES we only compare to other
+        # imaginary modes ... is this a bad idea? Maybe we should use all modes
+        # for the overlaps?!
+        if self.ts_mode_eigval < 0:
+            infix = "imaginary "
+            ovlp_eigvecs = eigvecs[:,:neg_num]
+            eigvals = eigvals[:neg_num]
+            # When the eigenvalue corresponding to the TS mode has been negative once,
+            # we should not lose all negative eigenvalues. If this happens something went
+            # wrong and we crash :)
+            assert neg_num >= 1, "Need at least 1 negative eigenvalue for TS optimization."
+        # Use all eigenvectors for overlaps when the eigenvalue corresponding to the TS
+        # mode is still positive.
+        else:
+            infix = ""
+            ovlp_eigvecs = eigvecs
+
+        # Select new TS mode according to biggest overlap with previous TS mode.
+        self.log(f"Overlaps of previous TS mode with current {infix}mode(s):")
+        ovlps = np.abs(np.einsum("ij,i->j", ovlp_eigvecs, self.ts_mode))
         for i, ovlp in enumerate(ovlps):
             self.log(f"\t{i:02d}: {ovlp:.6f}")
         max_ovlp_ind = np.argmax(ovlps)
         max_ovlp = ovlps[max_ovlp_ind]
         self.log(f"Highest overlap: {max_ovlp:.6f}, mode {max_ovlp_ind}")
-        self.log(f"Continuing with mode {max_ovlp_ind} as TS mode.")
+        self.log(f"Maximizing along TS mode {max_ovlp_ind}.")
         self.root = max_ovlp_ind
-        self.ts_mode = eigvecs.T[max_ovlp_ind]
+        self.ts_mode = ovlp_eigvecs.T[self.root]
+        self.ts_mode_eigval = eigvals[self.root]
 
     @staticmethod
     def do_line_search(e0, e1, g0, g1, prev_step, maximize, logger=None):
