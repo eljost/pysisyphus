@@ -17,7 +17,7 @@ from pysisyphus.testing import using
 BakerTSBm = Benchmark(
     "baker_ts",
     coord_type="cart",
-    # exclude=(10, ),
+    exclude=(10, ),
     # inv_exclude=True,
 )
 
@@ -86,8 +86,10 @@ def test_baker_ts_dimer_synthesis(fixture_store):
         print(k)
         try:
             tot_cycles += v["cycles"]
-            converged += 1 if v["energies_match"] else 0
-            tot_force_evals += v["force_evals"]
+            energies_match = v["energies_match"]
+            converged += 1 if energies_match else 0
+            if energies_match:
+                tot_force_evals += v["force_evals"]
             for kk, vv in v.items():
                 print("\t", kk, vv)
         except KeyError:
