@@ -17,7 +17,7 @@ from pysisyphus.testing import using
 BakerTSBm = Benchmark(
     "baker_ts",
     coord_type="cart",
-    exclude=(10, ),
+    # exclude=(10, ),
     # inv_exclude=True,
 )
 
