@@ -16,7 +16,7 @@ BakerTSBm = Benchmark(
     "baker_ts",
     coord_type="redund",
     calc_getter=calc_getter,
-    exclude=(9, 10, 14, 21, 23),
+    exclude=(1, 9, 10, 14, 21, 23),
 )
 
 
