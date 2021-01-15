@@ -1,8 +1,9 @@
 from pathlib import Path
+import pickle
 import os
+import shutil
 
 from natsort import natsorted
-import numpy as np
 import pytest
 
 from pysisyphus.benchmarks import Benchmark
@@ -13,31 +14,21 @@ from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.testing import using
 
 
-def make_N_init_dict():
-    THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
-    xyz_path = THIS_DIR / "../../xyz_files/baker_ts"
-    xyzs = natsorted(xyz_path.glob("*.xyz"))
-    N_dict = dict()
-    for guess, initial in [xyzs[2 * i : 2 * i + 2] for i in range(25)]:
-        assert "downhill" in initial.stem
-        assert guess.stem[:2] == initial.stem[:2]
-        guess_geom = geom_loader(guess)
-        initial_geom = geom_loader(initial)
-        N_init = guess_geom.coords - initial_geom.coords
-        N_dict[guess.name] = N_init
-    return N_dict
-
-
-# Create reasonable initial dimer orientations
-N_INITS = make_N_init_dict()
 BakerTSBm = Benchmark(
-    "baker_ts", coord_type="cart", exclude=(9, 10, 14)
+    "baker_ts",
+    coord_type="cart",
+    exclude=(10, ),
+    # inv_exclude=True,
 )
 
 
 @using("pyscf")
 @pytest.mark.parametrize("fn, geom, charge, mult, ref_energy", BakerTSBm.geom_iter)
-def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy):
+def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_dir):
+    with open(this_dir / "Ns", "rb") as handle:
+        N_INITS = pickle.load(handle)
+
+    id_ = fn[:2]
     calc_kwargs = {
         "charge": charge,
         "mult": mult,
@@ -47,12 +38,15 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy):
     }
     calc = PySCF("321g", **calc_kwargs)
 
+    N_raw = N_INITS[id_]
     dimer_kwargs = {
         "rotation_method": "fourier",
         "calculator": calc,
-        "N_raw": N_INITS[fn],
+        "N_raw": N_INITS[id_],
         "length": 0.0189,
         "rotation_tol": 5,
+        "rotation_disable_pos_curv": True,
+        "trans_force_f_perp": True,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -63,11 +57,41 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy):
         "max_step_element": 0.25,
         "max_cycles": 50,
         "c_stab": 0.103,
+        "dump": True,
     }
     opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
 
+    shutil.copy("final_geometry.xyz", f"{id_}_final_geometry.xyz")
+
+    energies_match = geom.energy == pytest.approx(ref_energy)
+
+    results_bag.cycles = opt.cur_cycle + 1
+    results_bag.is_converged = opt.is_converged
+    results_bag.energies_match = energies_match
+    results_bag.force_evals = dimer.force_evals
+
     assert opt.is_converged
-    assert geom.energy == pytest.approx(ref_energy)
+    assert energies_match
 
     print(f"@{fn} converged using {dimer.force_evals} force evaluations")
+
+
+def test_baker_ts_dimer_synthesis(fixture_store):
+    tot_cycles = 0
+    converged = 0
+    tot_force_evals = 0
+    bags = fixture_store["results_bag"]
+    for k, v in bags.items():
+        print(k)
+        try:
+            tot_cycles += v["cycles"]
+            converged += 1 if v["energies_match"] else 0
+            tot_force_evals += v["force_evals"]
+            for kk, vv in v.items():
+                print("\t", kk, vv)
+        except KeyError:
+            print("\tFailed!")
+    print(f"Total cycles: {tot_cycles}")
+    print(f"Total force evaluations: {tot_force_evals}")
+    print(f"Converged: {converged}/{len(bags)}")

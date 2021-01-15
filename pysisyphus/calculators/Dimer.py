@@ -77,13 +77,15 @@ class Dimer(Calculator):
         rotation_max_element=0.001,
         rotation_interpolate=True,
         rotation_disable=False,
+        rotation_disable_pos_curv=False,
+        rotation_remove_trans=True,
+        trans_force_f_perp=False,
         bonds=None,
         bias_rotation=False,
         bias_translation=False,
         bias_gaussian_dot=0.1,
         seed=None,
         write_orientations=True,
-        rotation_remove_trans=True,
         forward_hessian=True,
         **kwargs,
     ):
@@ -114,7 +116,9 @@ class Dimer(Calculator):
         self.rotation_max_element = float(rotation_max_element)
         self.rotation_interpolate = bool(rotation_interpolate)
         self.rotation_disable = bool(rotation_disable)
+        self.rotation_disable_pos_curv = bool(rotation_disable_pos_curv)
         self.rotation_remove_trans = bool(rotation_remove_trans)
+        self.trans_force_f_perp = trans_force_f_perp
         self.forward_hessian = forward_hessian
 
         # Regarding generation of initial orientation
@@ -413,8 +417,7 @@ class Dimer(Calculator):
 
         if max(abs(average)) > 1e-8:
             self.log(
-                f"N-vector not translationally invariant. Shifting by ({average[0]}, "
-                f"{average[1]}, {average[2]}) before normalization."
+                f"N-vector not translationally invariant. Removing average before normalization."
             )
         else:
             return displacement
@@ -589,14 +592,18 @@ class Dimer(Calculator):
         self.atoms = atoms
         self.coords0 = coords
 
+        try:
+            N_backup = self.N.copy()
+        except AttributeError:
+            N_backup = None
         if not self.rotation_disable:
             self.update_orientation(coords)
-        # Without update of self.N the calculations will be missing, so we
-        # do them here.
-        else:
-            self.f0
+        if (N_backup is not None) and self.rotation_disable_pos_curv and self.C > 0:
+            self.log("Rotation did not yield a negative curvature. "
+                     "Restoring previous orientation N before rotation."
+            )
+            self.N = N_backup
         # Now we (have an updated self.N and) can do the force projections
-
         N = self.N
         self.log(f"Orientation N:\n\t{N}")
         # Save orientation N in human-readable format, aka .trj
@@ -643,28 +650,19 @@ class Dimer(Calculator):
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
         self.log(f"\tforce_perp:\n\t{f_perp}")
 
-        # if self.C < 0:
-        # print(f"Negative curvature: {self.C:.6f}")
-
         # Only return perpendicular component when curvature is negative
         f_tran = -f_parallel
 
-        if self.C < 0:
-            f_tran += f_perp
-            self.log(
-                "Curvature is negative. Returned reversed parallel and "
-                "perpendicular component of f_tran."
-            )
-        else:
-            self.log(
-                "Curvature is positive. Returned only reversed parallel "
-                "component of f_tran."
-            )
-        # Always return both components
-        # f_tran = f_perp - f_parallel
+        curv_str = "positive" if self.C > 0 else "negative"
 
+        force_str = "reversed parallel component of"
+        if (self.C < 0) or self.trans_force_f_perp:
+            f_tran += f_perp
+            force_str = "full"
+        self.log(f"Curvature is {curv_str}. Returning {force_str} f_tran.")
         self.log(f"\tf_tran:\n\t{f_tran}")
         self.log()
+
         self.calc_counter += 1
 
         results = {"energy": energy, "forces": f_tran}
