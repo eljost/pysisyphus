@@ -42,6 +42,20 @@ class Gaussian:
                f"s0={self.s0:.4f}, std={self.std:.4f}"
 
 
+# [1] https://aip.scitation.org/doi/abs/10.1063/1.480097
+#     Original Dimer paper
+#     Henkelmann, 1999
+# [2] https://doi.org/10.1063/1.1809574
+#     Comparison of TS search methods
+#     Olsen, 2004
+# [3] https://doi.org/10.1063/1.2104507
+#     Comparison of Dimer and P-RFO
+#     Heyden, 2005
+# [4] https://aip.scitation.org/doi/abs/10.1063/1.2815812
+#     Superlinear Dimer method
+#     Kästner, 2008
+
+
 class Dimer(Calculator):
 
     def __init__(self, calculator, *args, N_raw=None, length=0.0189, rotation_max_cycles=15,
@@ -49,7 +63,8 @@ class Dimer(Calculator):
                  rotation_max_element=0.001, rotation_interpolate=True,
                  rotation_disable=False, bonds=None, bias_rotation=False,
                  bias_translation=False, bias_gaussian_dot=0.1, seed=None,
-                 write_orientations=True, rotation_remove_trans=True, **kwargs):
+                 write_orientations=True, rotation_remove_trans=True,
+                 forward_hessian=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -77,6 +92,7 @@ class Dimer(Calculator):
         self.rotation_interpolate = bool(rotation_interpolate)
         self.rotation_disable = bool(rotation_disable)
         self.rotation_remove_trans = bool(rotation_remove_trans)
+        self.forward_hessian = forward_hessian
 
         # Regarding generation of initial orientation
         self.bonds = bonds
@@ -617,6 +633,10 @@ class Dimer(Calculator):
         return results
 
     def get_hessian(self, atoms, coords):
-        results = self.calculator.get_hessian(atoms, coords)
+        if self.forward_hessian:
+            results = self.calculator.get_hessian(atoms, coords)
+            return results
+        else:
+            raise Exception("Actual Hessian method not forwarded by Dimer calculator!")
 
         return results
