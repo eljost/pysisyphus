@@ -251,6 +251,7 @@ class IRC:
             self.log(highlight_text(f"IRC step {self.cur_cycle:03d}") + "\n")
 
             # Do macroiteration/IRC step to update the geometry
+            self.log(f"Current energy: {self.energy:.6f} au")
             self.step()
 
             # Calculate gradient and energy on the new geometry
@@ -359,7 +360,7 @@ class IRC:
         # Calculate data at TS and create backup
         self.ts_coords = self.coords.copy()
         self.ts_mw_coords = self.mw_coords.copy()
-        print("Calculating energy and gradient at the TS")
+        print("Calculating energy and gradient at TS.")
         self.ts_gradient = self.gradient.copy()
         self.ts_mw_gradient = self.mw_gradient.copy()
         self.ts_energy = self.energy
