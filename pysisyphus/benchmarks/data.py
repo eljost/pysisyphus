@@ -79,9 +79,12 @@ def get_baker_ts_data():
         # For now we will use the original value from the paper.
         ("20_hconh3_cation.xyz", 1, 1, -168.24752),
         ("21_acrolein_rot.xyz", 0, 1, -189.67574),
-        # This energy will be obtained for a planar TS, without symmetry
-        # restrictions the TS will relax to -242.25695787.
-        ("22_hconhoh.xyz", 0, 1, -242.25529),
+        # The published energy -242.25529 corresponds to a planar TS. Without
+        # symmetry restrictions the planar TS relaxes to -242.25695785.
+        # As our algorithms obtain the unconstrained TS, we will use the
+        # updated energy.
+        # ("22_hconhoh.xyz", 0, 1, -242.25529),
+        ("22_hconhoh.xyz", 0, 1, -242.256958),
         ("23_hcn_h2.xyz", 0, 1, -93.31114),
         ("24_h2cnh.xyz", 0, 1, -93.33296),
         ("25_hcnh2.xyz", 0, 1, -93.28172),
