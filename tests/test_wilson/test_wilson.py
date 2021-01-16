@@ -9,6 +9,9 @@ from pysisyphus.intcoords import (
     OutOfPlane,
     LinearBend,
     LinearDisplacement,
+    TranslationX,
+    TranslationY,
+    TranslationZ,
 )
 from pysisyphus.intcoords.derivatives import (
     q_b,
@@ -263,13 +266,8 @@ def test_outofplane(dz):
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
 
 
-@pytest.mark.parametrize(
-    "deg", np.linspace(165, 180, 16)
-)
+@pytest.mark.parametrize("deg", np.linspace(165, 180, 16))
 def test_linear_displacement(deg):
-    from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
-    from pysisyphus.helpers import geom_loader
-
     zmat_str = f"""
     C
     C 1 1.5
@@ -298,3 +296,56 @@ def test_linear_displacement(deg):
     ref_dgrad = fin_diff_B(ld, coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
+
+
+def translation_tester(coords3d, indices):
+    for cls in (TranslationX, TranslationY, TranslationZ):
+        trans = cls(indices)
+
+        # First derivative
+        #   Manually programmed
+        val, grad = trans.calculate(coords3d, gradient=True)
+        # Finite difference reference values
+        ref_grad = np.zeros_like(coords3d)
+        ref_grad[indices] = fin_diff_prim(trans, coords3d).reshape(-1, 3)
+        np.testing.assert_allclose(grad, ref_grad.flatten())
+
+        # Second derivative
+        #   Manually programmed
+        dgrad = trans.jacobian(coords3d)
+        # Finite difference reference values
+        ref_dgrad = fin_diff_B(trans, coords3d)
+        np.testing.assert_allclose(dgrad, ref_dgrad)
+
+
+def test_trans_simple():
+    """Simple test for translation coordinates, as proposed by
+    Lee-Ping Wang in http://dx.doi.org/10.1063/1.4952956
+    """
+    zmat_str = f"""
+    C
+    C 1 3
+    """
+    zmat = zmat_from_str(zmat_str)
+    geom = geom_from_zmat(zmat)
+    coords3d = geom.coords3d
+    indices = [
+        0,
+    ]
+    translation_tester(coords3d, indices)
+
+
+def test_trans_complex():
+    """See test_trans_simple"""
+    hl = 1.5
+    dist = 6
+    c3d_bot = np.array(((hl, hl, 0.0), (hl, -hl, 0.0), (-hl, -hl, 0.0), (-hl, hl, 0.0)))
+    c3d_top = c3d_bot.copy()
+    c3d_top[:, 2] += dist
+    coords3d = np.concatenate((c3d_bot, c3d_top), axis=0)
+
+    indices_bot = [0, 1, 2, 3]
+    translation_tester(coords3d, indices_bot)
+
+    indices_top = [4, 5, 6, 7]
+    translation_tester(coords3d, indices_top)

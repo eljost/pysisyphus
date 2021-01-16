@@ -1,12 +1,15 @@
 __all__ = [
-   "Bend",
-   "LinearBend",
-   "LinearDisplacement",
-   "OutOfPlane",
-   "Stretch",
-   "Torsion",
-   "DLC",
-   "RedundantCoords",
+    "Bend",
+    "LinearBend",
+    "LinearDisplacement",
+    "OutOfPlane",
+    "Stretch",
+    "Torsion",
+    "TranslationX",
+    "TranslationY",
+    "TranslationZ",
+    "DLC",
+    "RedundantCoords",
 ]
 
 from pysisyphus.intcoords.Bend import Bend
@@ -15,7 +18,9 @@ from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
 from pysisyphus.intcoords.OutOfPlane import OutOfPlane
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.intcoords.Torsion import Torsion
+from pysisyphus.intcoords.Translation import TranslationX, TranslationY, TranslationZ
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
+
 # DLC inherits from RedundantCoords
 from pysisyphus.intcoords.DLC import DLC
 

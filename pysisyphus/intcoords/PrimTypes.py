@@ -6,6 +6,9 @@ from pysisyphus.intcoords import (
     LinearDisplacement,
     Torsion,
     OutOfPlane,
+    TranslationX,
+    TranslationY,
+    TranslationZ,
 )
 
 
@@ -23,6 +26,9 @@ class PrimTypes(OrderedEnum):
     OUT_OF_PLANE = 10
     LINEAR_DISPLACEMENT = 11
     LINEAR_DISPLACEMENT_COMPLEMENT = 12
+    TRANSLATION_X = 13
+    TRANSLATION_Y = 14
+    TRANSLATION_Z = 15
 
 
 # Maps primitive types to their classes
@@ -44,4 +50,7 @@ PrimMap = {
     PrimTypes.LINEAR_DISPLACEMENT_COMPLEMENT: lambda indices: LinearDisplacement(
         indices, complement=True
     ),
+    PrimTypes.TRANSLATION_X: TranslationX,
+    PrimTypes.TRANSLATION_Y: TranslationY,
+    PrimTypes.TRANSLATION_Z: TranslationZ,
 }
