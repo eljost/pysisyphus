@@ -1,3 +1,5 @@
+from math import cos, sin
+
 import numpy as np
 
 
@@ -36,3 +38,22 @@ def svd_inv(array, thresh, hermitian=False):
     S_inv = np.zeros_like(S)
     S_inv[keep] = 1 / S[keep]
     return Vt.T.dot(np.diag(S_inv)).dot(U.T)
+
+
+def get_rot_mat(abc=None):
+    # Euler angles
+    if abc is None:
+        abc = np.random.rand(3)*np.pi*2
+    a, b, c = abc
+    R = np.array((
+        (cos(a)*cos(b)*cos(c)-sin(a)*sin(c),
+        -cos(a)*cos(b)*sin(c)-sin(a)*cos(c),
+         cos(a)*sin(b)),
+        (sin(a)*cos(b)*cos(c)+cos(a)*sin(c),
+        -sin(a)*cos(b)*sin(c)+cos(a)*cos(c),
+         sin(a)*sin(b)),
+        (-sin(b)*cos(c),
+          sin(b)*sin(c),
+          cos(b)))
+    )
+    return R
