@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import geom_loader
+from pysisyphus.linalg import get_rot_mat
 from pysisyphus.intcoords import (
     Stretch,
     Bend,
@@ -9,6 +11,9 @@ from pysisyphus.intcoords import (
     OutOfPlane,
     LinearBend,
     LinearDisplacement,
+    RotationA,
+    RotationB,
+    RotationC,
     TranslationX,
     TranslationY,
     TranslationZ,
@@ -349,3 +354,25 @@ def test_trans_complex():
 
     indices_top = [4, 5, 6, 7]
     translation_tester(coords3d, indices_top)
+
+
+def test_rotation():
+    geom = geom_loader("lib:benzene.xyz")
+    coords3d = geom.coords3d
+    indices = list(range(len(geom.atoms)))
+
+    # Create rotated coordinates
+    abc = 0.5, 0.7, 0.1
+    # abc = None
+    R = get_rot_mat(abc)
+    coords3d_rot = R.dot(coords3d.T).T
+    # Reference values obtained from geometric
+    #
+    # from geometric.internal import Rotator
+    # grot = Rotator(a=indices, x0=coords3d)
+    # v_ref = grot.value(coords3d_rot)
+    v_ref = (0.14110539, -0.69609474, -0.57500707)
+    for i, cls in enumerate((RotationA, RotationB, RotationC)):
+        rot = cls(indices, ref_coords3d=coords3d)
+        v = rot.calculate(coords3d_rot)
+        assert v == pytest.approx(v_ref[i])
