@@ -583,6 +583,11 @@ class Optimizer(metaclass=abc.ABCMeta):
             print("Number of cycles exceeded!")
 
         # Outside loop
+        try:
+            self.geometry.calculator.cleanup()
+        except AttributeError:
+            pass
+
         if self.dump:
             self.out_trj_handle.close()
 

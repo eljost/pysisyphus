@@ -1,6 +1,9 @@
 import struct
 
 
+NINE_ZEROS = struct.pack("d" * 9, *[0.0]*9)
+
+
 def send_closure(sock, hdrlen, fmts, verbose=False):
     def send_msg(msg, fmt=None, packed=False):
         """Send message through socket.

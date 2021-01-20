@@ -1,13 +1,10 @@
+# After starting pysisyphus with this input, execute "python client.py" in
+# another terminal/window/pane etc.
 geom:
  type: redund 
- fn: |
-  3
-
-  O                 -0.00000000   -0.11081188    0.00000000
-  H                  0.78397589    0.44324751    0.00000000
-  H                 -0.78397589    0.44324751    0.00000000
+ fn: h2o.xyz
 calc:
  type: ipiserver
- address: /tmp/ipi_h2o
+ address: ./opt_socket
 opt:
  thresh: gau
