@@ -8,3 +8,5 @@ calc:
  address: ./opt_socket
 opt:
  thresh: gau
+assert:
+ opt_geom.energy: -5.07054442
