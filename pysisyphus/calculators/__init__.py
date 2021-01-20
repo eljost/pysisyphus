@@ -9,6 +9,7 @@ __all__ = [
     "FakeASE",
     "Gaussian09",
     "Gaussian16",
+    "IPIServer",
     "LennardJones",
     "MOPAC",
     "ONIOM",
@@ -30,6 +31,7 @@ from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian16 import Gaussian16
+from pysisyphus.calculators.IPIServer import IPIServer
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.calculators.MOPAC import MOPAC
 from pysisyphus.calculators.Psi4 import Psi4

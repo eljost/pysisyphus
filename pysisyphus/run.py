@@ -64,6 +64,7 @@ CALC_DICT = {
     # "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
+    "ipiserver": IPIServer,
     "mopac": MOPAC,
     "oniom": ONIOM,
     "openmolcas": OpenMolcas,
