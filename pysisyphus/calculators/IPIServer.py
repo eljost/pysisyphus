@@ -65,7 +65,7 @@ class IPIServer(Calculator):
         send_msg(coords, fmt="floats")
         send_msg("STATUS")
         have_data = recv_msg()
-        send_msg("GOTFORCES")
+        send_msg("GETFORCE")
         force_ready = recv_msg()
 
         energy = recv_msg(8, fmt="float")[0]
