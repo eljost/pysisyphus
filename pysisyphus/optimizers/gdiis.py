@@ -117,7 +117,7 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5, test_direction=True):
         valid_direction = (
             True
             if (not test_direction)
-            else test_valid_diis_direction(diis_step, ref_step, use)
+            else valid_diis_direction(diis_step, ref_step, use)
         )
         log(f"\tGDIIS step has valid direction: {valid_direction}")
 
