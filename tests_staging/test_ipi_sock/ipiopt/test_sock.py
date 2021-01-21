@@ -6,6 +6,9 @@ import numpy as np
 from pysisyphus.calculators import XTB
 from pysisyphus.helpers import geom_loader
 
+from socket_helper import send_closure, recv_closure
+from conf import addr as ADDR, get_fmts
+
 """
 In Pane 1:
     source ~/Code/i-pi/env.sh
@@ -21,59 +24,20 @@ def ipi_client(addr, atoms, forces_getter, hdrlen=12):
     # Number of entries in a Caretsian forces/coords vector
     cartesians = 3 * atom_num
     # Formats needed for struct.pack, to cast variables to bytes.
-    fmts = {
-        "int": "i",
-        "float": "d",
-        "floats": "d" * cartesians,
-    }
     # Bytes needed, to store a forces/coords vector
     floats_bytes = 8 * cartesians
     # Virial is hardcoded to the zero vector.
-    VIRIAL = struct.pack("d" * cartesians, *np.zeros(cartesians))
+    VIRIAL = struct.pack("d" * 9, *np.zeros(cartesians))
     ZERO = struct.pack("i", 0)
+
+    fmts = get_fmts(cartesians)
 
     # Unix socket is hardcoded right now, but may also be inet-socket
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.connect(addr)
 
-    def send_msg(msg, fmt=None, packed=False):
-        """Send message through socket.
-
-        If fmt is None and the message is not packed (converted to bytes),
-        it is either convert to bytes via struct with the given fmt, or it
-        is assumed to be a str and encoded as ascii. Strings are padded
-        to a length of hdrlen (header length, default=12).
-
-        If it is already packed the message is sent as is, e.g. for the
-        virial, which is already in bytes (packed).
-        """
-        if not packed:
-            if fmt == "floats":
-                msg = struct.pack(fmts[fmt], *msg)
-            elif (fmt is not None):
-                msg = struct.pack(fmts[fmt], msg)
-            else:
-                msg = f"{msg: <{hdrlen}}".encode("ascii")
-                print(f"SENDING: {msg}")
-        sock.sendall(msg)
-
-    def recv_msg(nbytes=None, fmt=None):
-        """Receive a message of given length from the socket.
-
-        If nbytes is not given we expect hdrlen (header length) bytes.
-        If fmt is given the message is also unpacked using struct, otherwise
-        ascii bytes are assumed and a string is returned.
-        """
-        if nbytes is None:
-            nbytes = hdrlen
-
-        msg = sock.recv(nbytes)
-        if fmt:
-            msg = struct.unpack(fmts[fmt], msg)
-        else:
-            msg = msg.decode("ascii").strip()
-            print(f"RECEIVED: {msg}")
-        return msg
+    send_msg = send_closure(sock, hdrlen, fmts)
+    recv_msg = recv_closure(sock, hdrlen, fmts)
 
     while True:
         try:
@@ -91,6 +55,7 @@ def ipi_client(addr, atoms, forces_getter, hdrlen=12):
             # The server then returns POSDATA.
             posdata = recv_msg()
             # Receive cell vectors, inverse cell vectors and number of atoms ...
+            # but we don't use them here, so we don't even try to convert them to something.
             cell = sock.recv(72)
             icell = sock.recv(72)
             ipi_atom_num = recv_msg(4, fmt="int")[0]
@@ -100,6 +65,7 @@ def ipi_client(addr, atoms, forces_getter, hdrlen=12):
 
             # Acutal QC calculation
             forces, energy = forces_getter(coords)
+            print("calced energy", energy)
 
             status = recv_msg()
             # Indicate, that energy and forces are available
@@ -129,8 +95,8 @@ def calc_ipi_client(addr, atoms, calc, **kwargs):
 
 
 def test_ipi_client():
-    addr = "/tmp/ipi_h2o"
     geom = geom_loader("h2o.xyz")
     calc = XTB()
 
-    calc_ipi_client(addr, geom.atoms, calc) 
+    ADDR = "/tmp/ipi_h2o"
+    calc_ipi_client(ADDR, geom.atoms, calc) 
