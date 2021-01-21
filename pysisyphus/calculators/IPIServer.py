@@ -4,7 +4,13 @@ import socket
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.socket_helper import send_closure, recv_closure, get_fmts, NINE_ZEROS
+from pysisyphus.socket_helper import (
+    send_closure,
+    recv_closure,
+    get_fmts,
+    NINE_ZEROS,
+    EYE3,
+)
 
 
 class IPIServer(Calculator):
@@ -50,17 +56,20 @@ class IPIServer(Calculator):
             self.send_msg = send_closure(self._client_conn, self.hdrlen, self.fmts)
             self.recv_msg = recv_closure(self._client_conn, self.hdrlen, self.fmts)
 
-        # Reuse existing connection
+        # Reuse existing connection self._client_conn, wrapped in the
+        # functions below.
         send_msg = self.send_msg
         recv_msg = self.recv_msg
+
+        # Lets start talking
         send_msg("STATUS")
         ready = recv_msg()  # ready
         send_msg("STATUS")
         ready = recv_msg()  # ready
         send_msg("POSDATA")
         # Send cell vectors, inverse cell vectors, number of atoms and coordinates
-        send_msg(NINE_ZEROS, packed=True)  # cell vectors
-        send_msg(NINE_ZEROS, packed=True)  # inverse cell vectors
+        send_msg(EYE3, packed=True)  # cell vectors
+        send_msg(EYE3, packed=True)  # inverse cell vectors
         send_msg(atom_num, fmt="int")
         send_msg(coords, fmt="floats")
         send_msg("STATUS")

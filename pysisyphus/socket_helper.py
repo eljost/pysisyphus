@@ -1,7 +1,10 @@
 import struct
 
+import numpy as np
+
 
 NINE_ZEROS = struct.pack("d" * 9, *[0.0] * 9)
+EYE3 = struct.pack("d" * 9, *np.eye(3).flatten())
 
 
 def send_closure(sock, hdrlen, fmts, verbose=False):
