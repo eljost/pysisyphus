@@ -19,7 +19,7 @@ S22Bm = Benchmark("s22", coord_type="redund")
 def test_s22_set(fn, geom, charge, mult, ref_energy, this_dir):
     calc = ORCA(
         keywords="RI-MP2 6-31G** def2-SVP/C tightscf",
-        pal=6,
+        pal=8,
         mem=1500,
         charge=charge,
         mult=mult,
@@ -45,7 +45,7 @@ def test_s22_set(fn, geom, charge, mult, ref_energy, this_dir):
         if rm:
             os.remove(fn)
 
-    keep("optimizer.log", rm=True)
+    keep("optimizer.log")
     keep("optimization.trj")
     keep("final_geometry.xyz")
     keep("optimization.h5")
