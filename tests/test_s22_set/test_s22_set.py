@@ -17,7 +17,7 @@ S22Bm = Benchmark("s22", coord_type="redund")
 def test_s22_set(fn, geom, charge, mult, ref_energy, results_bag):
     calc = ORCA(
         keywords="RI-MP2 6-31G** def2-SVP/C tightscf",
-        pal=8,
+        pal=6,
         mem=1500,
         charge=charge,
         mult=mult,
@@ -26,15 +26,16 @@ def test_s22_set(fn, geom, charge, mult, ref_energy, results_bag):
     opt_kwargs = {
         "thresh": "gau",
         "dump": True,
-        "gdiis": False,
+        "gdiis": True,
         "line_search": False,
+        "gdiis_test_direction": False,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
     id_ = int(fn[:2])
     def keep(fn):
-        shutil.copy(fn, Path("backup_no_gdiis_no_line") / f"{fn}.{id_:02}")
+        shutil.copy(fn, Path("backup_gdiis_no_direction_test") / f"{fn}.{id_:02}")
 
     keep("optimizer.log")
     keep("optimization.trj")

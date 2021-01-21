@@ -20,6 +20,7 @@ class RFOptimizer(HessianOptimizer):
         gdiis=True,
         gdiis_thresh=2.5e-3,
         gediis_thresh=1e-2,
+        gdiis_test_direction=True,
         max_micro_cycles=1,
         adapt_step_func=False,
         *args,
@@ -32,6 +33,7 @@ class RFOptimizer(HessianOptimizer):
         self.gdiis = gdiis
         self.gdiis_thresh = gdiis_thresh  # Will be compared to rms(step)
         self.gediis_thresh = gediis_thresh  # Will be compared to rms(forces)
+        self.gdiis_test_direction = gdiis_test_direction
         self.adapt_step_func = adapt_step_func
 
         self.successful_gediis = 0
@@ -70,7 +72,13 @@ class RFOptimizer(HessianOptimizer):
         if self.gdiis and can_diis:
             # Gradients as error vectors
             err_vecs = -np.array(self.forces)
-            diis_result = gdiis(err_vecs, self.coords, self.forces, ref_step)
+            diis_result = gdiis(
+                err_vecs,
+                self.coords,
+                self.forces,
+                ref_step,
+                test_direction=self.gdiis_test_direction,
+            )
             self.successful_gdiis += 1 if diis_result else 0
         # Don't try GEDIIS if GDIIS failed. If GEDIIS should be tried after GDIIS failed
         # comment the line below and uncomment the line following it.
