@@ -15,18 +15,36 @@ from pysisyphus.socket_helper import (
 
 class IPIServer(Calculator):
     def __init__(
-        self, address, *args, family=socket.AF_UNIX, unlink=True, hdrlen=12, **kwargs
+        self,
+        *args,
+        address=None,
+        host=None,
+        port=None,
+        unlink=True,
+        hdrlen=12,
+        **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.address = address
+        self.host = host
+        self.port = port
+        if self.host:
+            assert self.port is not None
         self.hdrlen = hdrlen
 
-        if unlink:
+        if self.address and unlink:
             self.unlink(self.address)
 
+        if self.address:
+            family = socket.AF_UNIX
+            bind_args = (self.address, )
+        else:
+            family = socket.AF_INET
+            bind_args = (self.host, self.port)
+
         # Create socket
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.bind(self.address)
+        self.sock = socket.socket(family, socket.SOCK_STREAM)
+        self.sock.bind(*bind_args)
         self.sock.listen(1)
 
         self._client_conn = None
