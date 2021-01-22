@@ -10,13 +10,16 @@ class Benchmark:
     }
 
     def __init__(
-        self, name, exclude=None, inv_exclude=False, coord_type="cart", calc_getter=None
+        self, name, exclude=None, inv_exclude=False, only=None, coord_type="cart", calc_getter=None
     ):
 
         self.name = name
         if exclude is None:
             exclude = tuple()
+        if only is None:
+            only = tuple()
         self.exclude = exclude
+        self.only = only
         self.coord_type = coord_type
         self.calc_getter = calc_getter
 
@@ -24,10 +27,15 @@ class Benchmark:
         self.prefix, self.data = self.data_func()
         self.fns = [fn for fn, *_ in self.data]
 
-        if inv_exclude:
+        def exclude_from(iterable):
             self.exclude = [
-                id_ for id_, _ in enumerate(self.data) if id_ not in self.exclude
+                id_ for id_, _ in enumerate(self.data) if id_ not in iterable
             ]
+        # Only takes precedence
+        if self.only:
+            exclude_from(self.only)
+        elif inv_exclude:
+            exclude_from(self.exclude)
 
     def get_geom(self, id_, set_calculator=True):
         fn, charge, mult, ref_energy = self.data[id_]
