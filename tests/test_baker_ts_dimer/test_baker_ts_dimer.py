@@ -33,10 +33,9 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
         "charge": charge,
         "mult": mult,
         "pal": 2,
-        "verbose": 0,
         "base_name": Path(fn).stem,
     }
-    calc = PySCF("321g", **calc_kwargs)
+    calc = PySCF("321g", verbose=0, **calc_kwargs)
 
     N_raw = N_INITS[id_]
     dimer_kwargs = {
@@ -69,7 +68,7 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
     results_bag.cycles = opt.cur_cycle + 1
     results_bag.is_converged = opt.is_converged
     results_bag.energies_match = energies_match
-    results_bag.force_evals = dimer.force_evals
+    results_bag.dimer_force_evals = dimer.force_evals
 
     assert opt.is_converged
     assert energies_match
@@ -78,22 +77,36 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
 
 
 def test_baker_ts_dimer_synthesis(fixture_store):
-    tot_cycles = 0
     converged = 0
-    tot_force_evals = 0
+    tot_cycles = 0
+    tot_dimer_force_evals = 0
+    tot_cycles_failed = 0
+    tot_dimer_force_evals_failed = 0
+
     bags = fixture_store["results_bag"]
     for k, v in bags.items():
         print(k)
         try:
-            tot_cycles += v["cycles"]
             energies_match = v["energies_match"]
             converged += 1 if energies_match else 0
+            cycles = v["cycles"]
+            force_evals = v["dimer_force_evals"]
             if energies_match:
-                tot_force_evals += v["force_evals"]
+                tot_cycles += cycles
+                tot_dimer_force_evals += force_evals
+            else:
+                tot_cycles_failed += cycles
+                tot_dimer_force_evals_failed += force_evals
             for kk, vv in v.items():
                 print("\t", kk, vv)
         except KeyError:
             print("\tFailed!")
-    print(f"Total cycles: {tot_cycles}")
-    print(f"Total force evaluations: {tot_force_evals}")
-    print(f"Converged: {converged}/{len(bags)}")
+
+    print("### Converged")
+    print(f"\tTotal cycles: {tot_cycles}")
+    print(f"\tTotal dimer force evaluations: {tot_dimer_force_evals}")
+    print(f"\tConverged: {converged}/{len(bags)}")
+
+    print("### Failed")
+    print(f"\tTotal cycles: {tot_cycles_failed}")
+    print(f"\tTotal dimer force evaluations:  {tot_dimer_force_evals_failed}")
