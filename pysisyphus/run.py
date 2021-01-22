@@ -1633,6 +1633,8 @@ def do_clean(force=False):
         "*.coord",
         # PySCF specific
         "calculator*.chkfile",
+        "*.pyscf.out",
+        "*.chkfile",
         # WFOverlap specific
         "wfo_*.*.out",
         # XTB specific
