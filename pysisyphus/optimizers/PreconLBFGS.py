@@ -25,10 +25,11 @@ class PreconLBFGS(Optimizer):
         c_stab=None,
         **kwargs,
     ):
-        assert (
-            geometry.coord_type == "cart"
-        ), "Preconditioning makes only sense with 'coord_type: cart'"
-        # Set before calling the superclass constructor so we can the value
+        if precon:
+            assert (
+                geometry.coord_type == "cart"
+            ), "Preconditioning makes only sense with 'coord_type: cart'"
+        # Set before calling the superclass constructor so we can use the value
         # in _set_opt_restart_info.
         self.history = history
 
