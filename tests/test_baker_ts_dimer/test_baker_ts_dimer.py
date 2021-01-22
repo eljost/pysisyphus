@@ -1,15 +1,12 @@
 from pathlib import Path
 import pickle
-import os
 import shutil
 
-from natsort import natsorted
 import pytest
 
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators import Dimer
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.testing import using
 
@@ -32,12 +29,10 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
     calc_kwargs = {
         "charge": charge,
         "mult": mult,
-        "pal": 2,
         "base_name": Path(fn).stem,
     }
-    calc = PySCF("321g", verbose=0, **calc_kwargs)
+    calc = PySCF("321g", pal=2, verbose=0, **calc_kwargs)
 
-    N_raw = N_INITS[id_]
     dimer_kwargs = {
         "rotation_method": "fourier",
         "calculator": calc,
@@ -46,6 +41,7 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
         "rotation_tol": 5,
         "rotation_disable_pos_curv": True,
         "trans_force_f_perp": True,
+        "rotation_thresh": 0.002,  # Shang 2010
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -57,6 +53,8 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
         "max_cycles": 50,
         "c_stab": 0.103,
         "dump": True,
+        "max_force_only": True,  # Shang 2010
+        "rms_force": 0.0013,  # Shang 2010
     }
     opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
