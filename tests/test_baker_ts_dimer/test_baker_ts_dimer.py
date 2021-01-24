@@ -41,7 +41,7 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
         "rotation_tol": 5,
         "rotation_disable_pos_curv": True,
         "trans_force_f_perp": True,
-        "rotation_thresh": 0.002,  # Shang 2010
+        # "rotation_thresh": 0.002,  # Shang 2010
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -53,8 +53,8 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
         "max_cycles": 50,
         "c_stab": 0.103,
         "dump": True,
-        "max_force_only": True,  # Shang 2010
-        "rms_force": 0.0013,  # Shang 2010
+        # "max_force_only": True,  # Shang 2010
+        # "rms_force": 0.0013,  # Shang 2010
     }
     opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
