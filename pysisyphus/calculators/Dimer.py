@@ -514,7 +514,7 @@ class Dimer(Calculator):
             rotation_thresh = self.rotation_thresh
             self.log(f"\tThreshold norm(rot_force)={rotation_thresh:.6f}")
 
-        lbfgs = small_lbfgs_closure(gamma_mult=False)
+        lbfgs = small_lbfgs_closure(gamma_mult=True)
         try:
             N_first = self.N
             prev_step = None
