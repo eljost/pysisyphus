@@ -456,9 +456,9 @@ class Dimer(Calculator):
         # (f2 - f1) or -(f1 - f2)
         dC = 2 * (self.f0 - self.f1).dot(theta) / self.length
         rad_trial = -0.5 * np.arctan2(dC, 2 * abs(C))
-        # logger.debug(f"rad_trial={rad_trial:.2f}")
+        # self.log(f"rad_trial={rad_trial:.2f}")
         if np.abs(rad_trial) < self.rotation_tol:
-            # logger.debug(f"rad_trial={rad_trial:.2f} below threshold. Breaking.")
+            self.log(f"rad_trial={rad_trial:.2f} below threshold. Breaking.")
             raise RotationConverged
 
         # Trial rotation for finite difference calculation of rotational force
@@ -475,7 +475,7 @@ class Dimer(Calculator):
         a0 = 2 * (C - a1)
 
         rad_min = 0.5 * np.arctan(b1 / a1)
-        # logger.debug(f"rad_min={rad_min:.2f}")
+        # self.log(f"rad_min={rad_min:.2f}")
         def get_C(theta_rad):
             return a0 / 2 + a1 * np.cos(2 * theta_rad) + b1 * np.sin(2 * theta_rad)
 
@@ -483,7 +483,7 @@ class Dimer(Calculator):
         if C_min > C:
             rad_min += np.deg2rad(90)
             # C_min_new = get_C(rad_min)
-            # logger.debug( "Predicted theta_min lead us to a curvature maximum "
+            # self.log("Predicted theta_min lead us to a curvature maximum "
             # f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
             # f"(C(theta+pi/2)={C_min_new:.6f})"
             # )
@@ -492,7 +492,7 @@ class Dimer(Calculator):
         # the angle is small, so the rotation is skipped.
         # Don't do rotation for small angles
         if np.abs(rad_min) < self.rotation_tol:
-            # logger.debug(f"rad_min={rad_min:.2f} below threshold. Breaking.")
+            # self.log(f"rad_min={rad_min:.2f} below threshold. Breaking.")
             raise RotationConverged
 
         f1 = None
@@ -514,7 +514,7 @@ class Dimer(Calculator):
             rotation_thresh = self.rotation_thresh
             self.log(f"\tThreshold norm(rot_force)={rotation_thresh:.6f}")
 
-        lbfgs = small_lbfgs_closure()
+        lbfgs = small_lbfgs_closure(gamma_mult=True)
         try:
             N_first = self.N
             prev_step = None
@@ -547,7 +547,7 @@ class Dimer(Calculator):
         except RotationConverged:
             msg = f"\tDimer rotation converged in {i+1} cycle(s)."
         self.log(msg)
-        self.log("\tN after rotation:\n\t" + str(self.N))
+        # self.log("\tN after rotation:\n\t" + str(self.N))
         self.log()
         # Restrict to interval [-1,1] where arccos is defined
         rot_deg = np.rad2deg(np.arccos(max(min(N_first.dot(self.N), 1.0), -1.0)))

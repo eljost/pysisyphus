@@ -204,7 +204,7 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
     return modified_broyden
 
 
-def small_lbfgs_closure(history=5):
+def small_lbfgs_closure(history=5, gamma_mult=True):
     """Compact LBFGS closure.
 
     The returned function takes two arguments: forces and prev_step.
@@ -230,7 +230,7 @@ def small_lbfgs_closure(history=5):
         # LBFGS in the following cycles
         if cur_cycle > 0:
             grad_diffs.append(-forces - -prev_forces)
-            step = bfgs_multiply(steps, grad_diffs, forces)
+            step = bfgs_multiply(steps, grad_diffs, forces, gamma_mult=gamma_mult)
 
         prev_forces = forces
         cur_cycle += 1
