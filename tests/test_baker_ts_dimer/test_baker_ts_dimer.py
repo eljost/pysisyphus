@@ -22,7 +22,9 @@ BakerTSBm = Benchmark(
 @using("pyscf")
 @pytest.mark.parametrize("fn, geom, charge, mult, ref_energy", BakerTSBm.geom_iter)
 def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_dir):
-    with open(this_dir / "Ns", "rb") as handle:
+    init_orients = "Ns"
+    # init_orients = "Ns_start"
+    with open(this_dir / init_orients, "rb") as handle:
         N_INITS = pickle.load(handle)
 
     id_ = fn[:2]
@@ -42,6 +44,7 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
         "rotation_disable_pos_curv": True,
         "trans_force_f_perp": True,
         # "rotation_thresh": 0.002,  # Shang 2010
+        # "rotation_thresh": 0.001,
     }
     dimer = Dimer(**dimer_kwargs)
     geom.set_calculator(dimer)
@@ -71,7 +74,10 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
     assert opt.is_converged
     assert energies_match
 
-    print(f"@{fn} converged using {dimer.force_evals} force evaluations")
+    opt_cycs = opt.cur_cycle + 1
+    print(f"@{fn} converged: {opt_cycs} optimization cycles, "
+          f"{dimer.force_evals} force evaluations."
+    )
 
 
 def test_baker_ts_dimer_synthesis(fixture_store):
