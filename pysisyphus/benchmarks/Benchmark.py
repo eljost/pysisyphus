@@ -10,6 +10,7 @@ class Benchmark:
         "baker_ts": get_baker_ts_data,
         "s22": get_s22_data,
         "zimmerman": get_zimmerman_data,
+        "zimmerman_xtb": get_zimmerman_xtb_data,
     }
 
     def __init__(

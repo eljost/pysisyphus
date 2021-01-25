@@ -137,3 +137,22 @@ def get_zimmerman_data():
         data.append((fn, 0, 1, None))
     data = tuple(data)
     return prefix, data
+
+
+def get_zimmerman_xtb_data():
+    """
+    Reoptimization of
+        https://dx.doi.org/10.1021/ct400319w
+    at the gfn2-xtb level of theory.
+
+    Includes set 1 (first 72 entries), minus (0-based) ids
+        7, 8, 13, 14, 15, 34, 39
+    """
+    size = 65
+    prefix = "lib:zimmerman_xtb/"
+    data = list()
+    for i in range(size):
+        fn = f"{i:02d}_zm_xtb.trj"
+        data.append((fn, 0, 1, None))
+    data = tuple(data)
+    return prefix, data
