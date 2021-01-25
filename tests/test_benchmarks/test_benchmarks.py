@@ -8,6 +8,7 @@ from pysisyphus.testing import using
 S22_SIZE = 22
 BAKER_SIZE = 30
 BAKER_TS_SIZE = 25
+ZIMMERMAN_SIZE = 105
 
 
 @pytest.mark.parametrize(
@@ -16,6 +17,7 @@ BAKER_TS_SIZE = 25
         ("s22", S22_SIZE),
         ("baker", BAKER_SIZE),
         ("baker_ts", BAKER_TS_SIZE),
+        ("zimmerman", ZIMMERMAN_SIZE),
     ],
 )
 def test_benchmark_geoms(name, ref_size):
@@ -43,7 +45,7 @@ def test_calc_getter():
         return PySCF(basis="sto3g", charge=charge, mult=mult)
 
     bm = Benchmark("baker_ts", calc_getter=calc_getter)
-    geom = bm.get_geom(15)
+    geom = bm.get_geoms(15)
     calc = geom.calculator
     assert calc is not None
     assert calc.charge == -1

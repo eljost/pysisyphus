@@ -123,3 +123,17 @@ def get_s22_data():
     )
     prefix = "lib:s22/"
     return prefix, data
+
+
+def get_zimmerman_data():
+    """
+    https://dx.doi.org/10.1021/ct400319w
+    """
+    size = 105
+    prefix = "lib:zimmerman/"
+    data = list()
+    for i in range(size):
+        fn = f"case_{i:03d}.trj"
+        data.append((fn, 0, 1, None))
+    data = tuple(data)
+    return prefix, data
