@@ -313,7 +313,7 @@ def run_tsopt_from_cos(
         typed_prims = form_coordinate_union(internal_geom1, internal_geom2)
 
     # Try to run in DLC per default
-    ts_coord_type = tsopt_kwargs.pop("coord_type", "dlc")
+    ts_coord_type = tsopt_kwargs.pop("coord_type", "redund")
     coord_kwargs= {
         "typed_prims": typed_prims,
     }
