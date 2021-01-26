@@ -52,6 +52,9 @@ def update_internals(
 
     dihedrals = [prim_internals[i] for i in dihedral_inds]
     dihedral_num = len(dihedrals)
+    if dihedral_num == 0:
+        return prim_internals
+
     dihedral_diffs = internal_diffs[-dihedral_num:]
 
     # Find differences that are shifted by 2*pi
