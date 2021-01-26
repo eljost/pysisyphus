@@ -52,7 +52,6 @@ def test_zimmerman_xtb_gsm(fn, geoms, ref_energy, results_bag):
             "opt": {
                 "type": "string",
                 "lbfgs_when_full": True,
-                # "stop_in_when_full": 10,
                 "keep_last": 10,
                 "rms_force": 0.005,
                 "rms_force_only": True,
@@ -74,17 +73,13 @@ def test_zimmerman_xtb_gsm(fn, geoms, ref_energy, results_bag):
         ts_energy = ts_geom.energy
         ts_imag = ts_geom.get_imag_frequencies()[0]
 
-        assert results.ts_opt.is_converged
-
-        shutil.copy("ts_opt.xyz", f"{id_}_ts_opt.xyz")
-        rmsd = ts_ref.rmsd(ts_geom)
-
         # Reference values
         ts_ref_results = ts_geom.calculator.get_hessian(ts_ref.atoms, ts_ref.cart_coords)
         ts_ref_energy = ts_ref_results["energy"]
         ts_ref._hessian = ts_ref_results["hessian"]
         ts_ref_imag = ts_ref.get_imag_frequencies()[0]
 
+        rmsd = ts_ref.rmsd(ts_geom)
         diff = ts_ref_energy - ts_energy
         cmt = "Ref" if diff < 0.0 else " TS"
         print(f"RMSD: {rmsd:.4f}")
@@ -95,3 +90,6 @@ def test_zimmerman_xtb_gsm(fn, geoms, ref_energy, results_bag):
             f"@@@{id_} COMPARE@@@: rmsd={rmsd:.4f}, ΔE= {diff: .6f} {cmt} is lower, "
             f"Ref: {ts_ref_imag: >8.1f}, TS: {ts_imag: >8.1f} cm⁻¹"
         )
+
+        assert results.ts_opt.is_converged
+        shutil.copy("ts_opt.xyz", f"{id_}_ts_opt.xyz")
