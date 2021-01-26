@@ -25,7 +25,7 @@ def getZm(coord_type="cart"):
     Zm = Benchmark(
         "zimmerman",
         coord_type=coord_type,
-        calc_getter=calc_getter,
+        # calc_getter=calc_getter,
         # only=(0, ),
         exclude=TS_FAILS + SET_2,
     )
@@ -36,8 +36,10 @@ ZmTS = getZm("cart")
 
 
 @using("xtb")
-@pytest.mark.parametrize("fn, geoms, ref_energy", ZmTS)
-def test_zimmerman_ts_opt(fn, geoms, ref_energy):
+@pytest.mark.parametrize("fn, geoms, charge, mult, ref_energy", ZmTS.geom_iter)
+def test_zimmerman_ts_opt(fn, geoms, charge, mult, ref_energy):
+    for geom in geoms:
+        geom.set_calculator(calc_getter(charge, mult))
     ts = geoms[1]
     ts_ref = ts.copy()
     id_ = fn[-7:-4]
@@ -63,8 +65,10 @@ ZmGS = getZm("cart")
 
 
 @using("xtb")
-@pytest.mark.parametrize("fn, geoms, ref_energy", ZmGS)
-def test_zimmerman_gs_opt(fn, geoms, ref_energy):
+@pytest.mark.parametrize("fn, geoms, charge, mult, ref_energy", ZmGS.geom_iter)
+def test_zimmerman_gs_opt(fn, geoms, charge, mult, ref_energy):
+    for geom in geoms:
+        geom.set_calculator(calc_getter(charge, mult))
     start, _, end = geoms
     id_ = fn[-7:-4]
 
