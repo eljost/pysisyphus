@@ -11,6 +11,7 @@ class Benchmark:
         "s22": get_s22_data,
         "zimmerman": get_zimmerman_data,
         "zimmerman_xtb": get_zimmerman_xtb_data,
+        "birkholz_rx": get_birkholz_rx_data,
     }
 
     def __init__(

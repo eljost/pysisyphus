@@ -156,3 +156,33 @@ def get_zimmerman_xtb_data():
         data.append((fn, 0, 1, None))
     data = tuple(data)
     return prefix, data
+
+
+def get_birkholz_rx_data():
+    """
+    https://doi.org/10.1002/jcc.23910
+    """
+    data = (
+        ("00_c2no2.trj", 0, 1, None),
+        ("01_c5ht.trj", 0, 1, None),
+        ("02_hcn.trj", 0, 1, None),
+        ("03_cope.trj", 0, 1, None),
+        ("04_cpht.trj", 0, 1, None),
+        ("05_cycbut.trj", 0, 1, None),
+        ("06_dacp2.trj", 0, 1, None),
+        ("07_dacp_eth.trj", 0, 1, None),
+        ("08_dfcp.trj", 0, 1, None),
+        ("09_ene.trj", 0, 1, None),
+        ("10_grignard.trj", 0, 1, None),
+        ("11_h2co.trj", 0, 1, None),
+        ("12_hf_eth.trj", 0, 1, None),
+        ("13_hydro.trj", 0, 1, None),
+        ("14_meoh.trj", 0, 1, None),
+        ("15_oxirane.trj", -1, 1, None),
+        ("16_oxycope.trj", 0, 1, None),
+        ("17_silane.trj", 0, 1, None),
+        ("18_sn2.trj", -1, 1, None),
+        ("19_sulfolene.trj", 0, 1, None),
+    )
+    prefix = "lib:birkholz_rx/"
+    return prefix, data

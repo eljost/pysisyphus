@@ -10,6 +10,7 @@ BAKER_SIZE = 30
 BAKER_TS_SIZE = 25
 ZIMMERMAN_SIZE = 105
 ZIMMERMAN_XTB_SIZE = 65
+BIRKHOLZ_RX_SIZE = 20
 
 
 @pytest.mark.parametrize(
@@ -20,6 +21,7 @@ ZIMMERMAN_XTB_SIZE = 65
         ("baker_ts", BAKER_TS_SIZE),
         ("zimmerman", ZIMMERMAN_SIZE),
         ("zimmerman_xtb", ZIMMERMAN_XTB_SIZE),
+        ("birkholz_rx", BIRKHOLZ_RX_SIZE),
     ],
 )
 def test_benchmark_geoms(name, ref_size):
