@@ -12,7 +12,8 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 Bh = Benchmark(
     "birkholz_rx",
-    exclude=(2,),
+    # exclude=list(range(14)),
+    exclude=(2, ),
 )
 
 
@@ -33,12 +34,16 @@ def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
                 "fn": inp_trj,
             },
             "calc": {
-                "type": "orca",
+                # "type": "orca",
+                # "keywords": "b3lyp_g 6-31G** rijcosx",
+                "type": "xtb",
                 "pal": 6,
                 "mem": 750,
                 "charge": charge,
                 "mult": mult,
-                "keywords": "b3lyp_g 6-31G** rijcosx",
+            },
+            "preopt": {
+                "max_cycles": 5,
             },
             "cos": {
                 "type": "gs",
