@@ -1738,6 +1738,10 @@ def do_clean(force=False):
                 print(f"Deleted {p}")
             except FileNotFoundError:
                 pass
+        try:
+            os.unlink("cur_out")
+        except FileNotFoundError:
+            pass
 
     if force:
         delete()
