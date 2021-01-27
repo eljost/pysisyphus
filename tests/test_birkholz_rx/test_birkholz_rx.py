@@ -13,7 +13,9 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 Bh = Benchmark(
     "birkholz_rx",
     # exclude=list(range(14)),
-    exclude=(2, ),
+    # 16 does not work at all
+    # 18 has no TS at the GFN2-XTB level of theory
+    exclude=(16, 18),
 )
 
 
@@ -30,6 +32,7 @@ def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
 
         run_dict = {
             "geom": {
+                # "type": "cart" if id_ == "02" else "dlc",
                 "type": "dlc",
                 "fn": inp_trj,
             },
@@ -59,6 +62,7 @@ def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
             },
             "opt": {
                 "type": "string",
+                "max_step": 0.2,
                 # "lbfgs_when_full": True,
                 # "max_step": 0.25,
                 # "keep_last": 10,
