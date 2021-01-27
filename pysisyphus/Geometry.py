@@ -1037,6 +1037,9 @@ class Geometry:
         ])
         return Geometry(atoms_no_h, np.array(coords3d_no_h).flatten())
 
+    def describe(self):
+        return f"Geometry({self.sum_formula}, {len(self.atoms)} atoms)"
+
     def __str__(self):
         return f"Geometry({self.sum_formula})"
 

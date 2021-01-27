@@ -750,6 +750,8 @@ def run_opt(
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
+    print(f"\nInput structure: {geom.describe()}\n")
+
     opt.run()
 
     # ChainOfStates specific
