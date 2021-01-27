@@ -32,13 +32,10 @@ def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
 
         run_dict = {
             "geom": {
-                # "type": "cart" if id_ == "02" else "dlc",
-                "type": "dlc",
+                "type": "cart" if id_ == "02" else "dlc",
                 "fn": inp_trj,
             },
             "calc": {
-                # "type": "orca",
-                # "keywords": "b3lyp_g 6-31G** rijcosx",
                 "type": "xtb",
                 "pal": 6,
                 "mem": 750,
