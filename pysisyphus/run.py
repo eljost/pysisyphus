@@ -412,7 +412,7 @@ def run_tsopt_from_cos(
         )
         max_ovlp = ovlps[max_ovlp_ind]
         rel_ovlps = np.array(ovlps) / max(ovlps)
-        similar_inds = rel_ovlps > 0.85
+        similar_inds = rel_ovlps > 0.80
         # Only 1 big overlap is present
         if (max_ovlp >= ovlp_thresh) and (similar_inds.sum() == 1):
             ovlp_root = np.argmax(ovlps)
