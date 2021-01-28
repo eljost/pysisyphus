@@ -13,7 +13,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 Bh = Benchmark(
     "xtb_rx",
-    only=(18, 19,),
+    # only=(18, 19,),
 )
 
 
@@ -81,8 +81,8 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
                 # "max_nodes": 11,
                 # "reparam_check": "rms",
                 # "perp_thresh": 0.0125,
-                # "climb": True,
-                # "climb_rms": 0.0075,
+                "climb": True,
+                "climb_rms": 0.01,
                 # "climb_lanczos": True,
                 # "climb_lanczos_rms": 0.0075,
                 # "reset_dlc": True,
@@ -104,7 +104,6 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
                 "thresh": "gau",
                 "trust_max": 0.3,
                 "max_cycles": 100,
-                "root": 0,
             },
         }
 
