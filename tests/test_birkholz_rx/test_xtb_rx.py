@@ -12,18 +12,14 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 Bh = Benchmark(
-    "birkholz_rx",
-    # exclude=list(range(14)),
-    # 03 cope; GSM can't handle this
-    # 16 cope; GSM can't handle this
-    # 18 has no TS at the GFN2-XTB level of theory
-    exclude=(3, 16, 18),
+    "xtb_rx",
+    only=(18, 19,),
 )
 
 
 @using("xtb")
 @pytest.mark.parametrize("fn, geoms, charge, mult, ref_energy", Bh.geom_iter)
-def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
+def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
     start, ts_ref_org, end = geoms
     id_ = fn[:2]
 
@@ -84,9 +80,9 @@ def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
                 # "fix_ends": True,
                 # "max_nodes": 11,
                 # "reparam_check": "rms",
-                # "perp_thresh": 0.075,
-                "climb": True,
-                "climb_rms": 0.01,
+                # "perp_thresh": 0.0125,
+                # "climb": True,
+                # "climb_rms": 0.0075,
                 # "climb_lanczos": True,
                 # "climb_lanczos_rms": 0.0075,
                 # "reset_dlc": True,
@@ -104,9 +100,11 @@ def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
             "tsopt": {
                 "type": "rsirfo",
                 "do_hess": True,
+                # "hessian_recalc": 3,
                 "thresh": "gau",
                 "trust_max": 0.3,
                 "max_cycles": 100,
+                "root": 0,
             },
         }
 

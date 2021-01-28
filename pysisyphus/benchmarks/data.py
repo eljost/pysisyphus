@@ -186,3 +186,30 @@ def get_birkholz_rx_data():
     )
     prefix = "lib:birkholz_rx/"
     return prefix, data
+
+
+def get_xtb_rx_data():
+    data = (
+        ("00_c2no2.trj", 0, 1, None),
+        ("01_c5ht.trj", 0, 1, None),
+        ("02_hcn.trj", 0, 1, None),
+        ("03_cope.trj", 0, 1, None),
+        ("04_cpht.trj", 0, 1, None),
+        ("05_cycbut.trj", 0, 1, None),
+        ("06_dacp2.trj", 0, 1, None),
+        ("07_dacp_eth.trj", 0, 1, None),
+        ("08_ene.trj", 0, 1, None),
+        ("09_grignard.trj", 0, 1, None),
+        ("10_h2co.trj", 0, 1, None),
+        ("11_hf_eth.trj", 0, 1, None),
+        ("12_hydro.trj", 0, 1, None),
+        ("13_meoh.trj", 0, 1, None),
+        ("14_oxirane.trj", -1, 1, None),
+        ("15_oxycope.trj", 0, 1, None),
+        ("16_silane.trj", 0, 1, None),
+        ("17_sulfolene.trj", 0, 1, None),
+        ("18_mobh35_14.trj", 0, 1, None),
+        ("19_mobh35_30.trj", 0, 1, None),
+    )
+    prefix = "lib:xtb_rx/"
+    return prefix, data
