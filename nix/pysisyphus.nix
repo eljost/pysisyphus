@@ -1,4 +1,4 @@
-{ fetchFromGitHub, buildPythonApplication, lib, writeTextFile, writeScript, makeWrapper
+{ fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper
 # Python dependencies
 , autograd
 , dask
@@ -111,7 +111,7 @@ let
   };
 
 in
-  buildPythonApplication rec {
+  buildPythonPackage rec {
     inherit pname version;
 
     nativeBuildInputs = [
