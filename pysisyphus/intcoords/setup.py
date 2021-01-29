@@ -436,7 +436,8 @@ def setup_redundant(
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
     improper_dihedrals = keep_coords(improper_dihedrals, Torsion)
 
-    # Additional primitives to be defined.
+    # Additional primitives to be defined. The values define the lists, to which
+    # the respective coordinate(s) will be appended.
     define_map = {
         PrimTypes.BOND: "bonds",
         PrimTypes.AUX_BOND: "aux_bonds",
