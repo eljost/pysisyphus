@@ -43,32 +43,46 @@ class PrimTypes(OrderedEnum):
     CARTESIAN_Z = 21
 
 
+# Alias for easier access
+PT = PrimTypes
+
+
+PrimTypeShortcuts = {
+    "X": [PT.CARTESIAN_X],
+    "Y": [PT.CARTESIAN_Y],
+    "Z": [PT.CARTESIAN_Z],
+    "XY": [PT.CARTESIAN_X, PT.CARTESIAN_Y],
+    "XZ": [PT.CARTESIAN_X, PT.CARTESIAN_Z],
+    "YZ": [PT.CARTESIAN_Y, PT.CARTESIAN_Z],
+    "XYZ": [PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z],
+    "ATOM": [PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z],
+}
+
+
 # Maps primitive types to their classes
 PrimMap = {
-    PrimTypes.BOND: Stretch,
-    PrimTypes.AUX_BOND: Stretch,
-    PrimTypes.HYDROGEN_BOND: Stretch,
-    PrimTypes.INTERFRAG_BOND: Stretch,
-    PrimTypes.AUX_INTERFRAG_BOND: Stretch,
-    PrimTypes.BEND: Bend,
-    PrimTypes.LINEAR_BEND: LinearBend,
-    PrimTypes.LINEAR_BEND_COMPLEMENT: lambda indices: LinearBend(
+    PT.BOND: Stretch,
+    PT.AUX_BOND: Stretch,
+    PT.HYDROGEN_BOND: Stretch,
+    PT.INTERFRAG_BOND: Stretch,
+    PT.AUX_INTERFRAG_BOND: Stretch,
+    PT.BEND: Bend,
+    PT.LINEAR_BEND: LinearBend,
+    PT.LINEAR_BEND_COMPLEMENT: lambda indices: LinearBend(indices, complement=True),
+    PT.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
+    PT.IMPROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
+    PT.OUT_OF_PLANE: OutOfPlane,
+    PT.LINEAR_DISPLACEMENT: LinearDisplacement,
+    PT.LINEAR_DISPLACEMENT_COMPLEMENT: lambda indices: LinearDisplacement(
         indices, complement=True
     ),
-    PrimTypes.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
-    PrimTypes.IMPROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
-    PrimTypes.OUT_OF_PLANE: OutOfPlane,
-    PrimTypes.LINEAR_DISPLACEMENT: LinearDisplacement,
-    PrimTypes.LINEAR_DISPLACEMENT_COMPLEMENT: lambda indices: LinearDisplacement(
-        indices, complement=True
-    ),
-    PrimTypes.TRANSLATION_X: TranslationX,
-    PrimTypes.TRANSLATION_Y: TranslationY,
-    PrimTypes.TRANSLATION_Z: TranslationZ,
-    PrimTypes.ROTATION_A: RotationA,
-    PrimTypes.ROTATION_B: RotationB,
-    PrimTypes.ROTATION_C: RotationC,
-    PrimTypes.CARTESIAN_X: CartesianX,
-    PrimTypes.CARTESIAN_Y: CartesianY,
-    PrimTypes.CARTESIAN_Z: CartesianZ,
+    PT.TRANSLATION_X: TranslationX,
+    PT.TRANSLATION_Y: TranslationY,
+    PT.TRANSLATION_Z: TranslationZ,
+    PT.ROTATION_A: RotationA,
+    PT.ROTATION_B: RotationB,
+    PT.ROTATION_C: RotationC,
+    PT.CARTESIAN_X: CartesianX,
+    PT.CARTESIAN_Y: CartesianY,
+    PT.CARTESIAN_Z: CartesianZ,
 }
