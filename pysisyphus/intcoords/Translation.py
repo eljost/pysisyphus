@@ -9,7 +9,9 @@ from pysisyphus.intcoords.Primitive import Primitive
 class Translation(Primitive):
     """See (II. Theory) in [1], Eq. (2)"""
 
-    calc_kwargs = ("cart_axis",)
+    def __init__(self, *args, **kwargs):
+        kwargs["calc_kwargs"] = ("cart_axis",)
+        super().__init__(*args, **kwargs)
 
     @staticmethod
     def _weight(atoms, coords3d, indices, f_damping):
@@ -26,7 +28,7 @@ class Translation(Primitive):
         return value
 
     @staticmethod
-    def _jacobian(coords3d, indices):
+    def _jacobian(coords3d, indices, cart_axis):
         size = len(indices) * 3
         return np.zeros(size * size)
 
