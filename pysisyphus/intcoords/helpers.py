@@ -1,9 +1,6 @@
-import itertools as it
-
 import numpy as np
 
-from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimTypeShortcuts
-from pysisyphus.intcoords import RedundantCoords
+from pysisyphus.intcoords.RedundantCoords import RedundantCoords
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 
 
@@ -90,54 +87,3 @@ def form_coordinate_union(geom1, geom2):
     intersection = list(set(typed_prims1) & set(typed_prims2))
     intersection.sort()
     return intersection
-
-
-def normalize_prim_input(prim_inp):
-    """Normalize input for define_prims and constrain_prims
-
-    The intcoords.RedundantCoords constructor expects lists of integer lists
-    (tuples) for arguments like 'define_prims' and 'constrain_prims'. The first item
-    of every list determines the type of primitive coordinate. Currently
-    there are about 20 different types and it is hard to remember all of
-    them.
-
-    So we also allow a more human friendly input, that is normalized here.
-    The most common primitives are:
-
-    0: BOND
-    5: BEND
-    8: PROPER_DIHEDRAL
-
-    This function maps inputs like ["BOND", 1, 2] to [PrimTypes.BOND, 1, 2] etc.
-
-    Always returns a list of tuples, as some prim_inps expand to multiple
-    coordinates, e.g., XYZ or ATOM.
-    """
-    prim_type, *indices = prim_inp
-
-    # First check if we got something like an integer
-    try:
-        return [tuple([PrimTypes(int(prim_type))] + indices)]
-    # Raised when prim_type is, e.g., "BOND"
-    except ValueError:
-        pass
-
-    # Check if we got a PrimType name
-    try:
-        prim_type_ = getattr(PrimTypes, str(prim_type).upper())
-        return [tuple([prim_type_] + indices)]
-    except AttributeError:
-        pass
-
-    # Check if we got a shortcut, e.g, X/Y/Z/XYZ/ATOM etc.
-    try:
-        prim_types_ = PrimTypeShortcuts[str(prim_type).upper()]
-        return [tuple([prim_type_] + indices) for prim_type_ in prim_types_]
-    except KeyError as error:
-        print(f"Could not normalize 'prim_inp'={prim_inp}!")
-        raise error
-
-
-def normalize_prim_inputs(prim_inps):
-    # Flatten list of tuples
-    return list(it.chain(*[normalize_prim_input(pi) for pi in prim_inps]))

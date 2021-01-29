@@ -4,7 +4,10 @@ import pytest
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.PrimTypes import PrimTypes
-from pysisyphus.intcoords.helpers import normalize_prim_inputs, normalize_prim_input
+from pysisyphus.intcoords.RedundantCoords import (
+    normalize_prim_inputs,
+    normalize_prim_input,
+)
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
