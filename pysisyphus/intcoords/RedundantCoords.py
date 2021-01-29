@@ -5,9 +5,10 @@
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844 , Pulay 1992
 
-import math
 import itertools as it
 import logging
+import math
+from operator import itemgetter
 
 import numpy as np
 
@@ -139,13 +140,22 @@ class RedundantCoords:
             [prim_int.val for prim_int in self._prim_internals]
         )
 
-        bonds = len(self.bond_indices)
-        bends = len(self.bending_indices) + len(self.linear_bend_indices)
-        dihedrals = len(self.dihedral_indices)
-        # assert bonds + bends + dihedrals == len(self.primitives)
-        self._bonds_slice = slice(bonds)
-        self._bends_slice = slice(bonds, bonds + bends)
-        self._dihedrals_slice = slice(bonds + bends, bonds + bends + dihedrals)
+        assert len(self.primitives) == len(self.typed_prims)
+        prim_inds = {
+            2: list(),
+            3: list(),
+            4: list(),
+        }
+        keys = list(prim_inds.keys())
+        for i, prim in enumerate(self.primitives):
+            len_ = len(prim.indices)
+            if len_ not in keys:
+                continue
+            prim_inds[len_].append(i)
+        self._bond_prim_inds = prim_inds[2]
+        self._bend_prim_inds = prim_inds[3]
+        self._dihedral_prim_inds = prim_inds[4]
+
         self.backtransform_counter = 0
 
     def log(self, message):
@@ -199,17 +209,26 @@ class RedundantCoords:
     def return_inds(self, slice_):
         return np.array([prim_int.indices for prim_int in self.prim_internals[slice_]])
 
+    def get_prim_internals_by_indices(self, indices):
+        if len(indices) == 0:
+            pis = []
+        elif len(indices) == 1:
+            pis = [self.prim_internals[indices[0]]]
+        else:
+            pis = itemgetter(*indices)(self.prim_internals)
+        return pis
+
     @property
     def bonds(self):
-        return self.prim_internals[self._bonds_slice]
+        return self.get_prim_internals_by_indices(self._bond_prim_inds)
 
     @property
     def bends(self):
-        return self.prim_internals[self._bends_slice]
+        return self.get_prim_internals_by_indices(self._bend_prim_inds)
 
     @property
     def dihedrals(self):
-        return self.prim_internals[self._dihedrals_slice]
+        return self.get_prim_internals_by_indices(self._dihedral_prim_inds)
 
     @property
     def coords(self):
@@ -314,7 +333,7 @@ class RedundantCoords:
             # 2nd derivative of normal, but linear, bends is undefined.
             try:
                 dg = int_grad_item * primitive.jacobian(coords3d)
-            except (ValueError, ZeroDivisionError) as err:
+            except (ValueError, ZeroDivisionError):
                 self.log(
                     "Error in calculation of 2nd derivative of primitive "
                     f"internal {primitive.indices}."
