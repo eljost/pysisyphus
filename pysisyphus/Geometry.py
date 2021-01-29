@@ -199,7 +199,7 @@ class Geometry:
             # In our case get_tangent returns B - A, that is a vector pointing
             # from A to B.
             diff = -get_tangent(self.internal.prim_coords, other.internal.prim_coords,
-                                self.internal.dihed_start)
+                                self.internal.dihedral_inds)
         else:
             raise Exception("Invalid coord_type!")
 

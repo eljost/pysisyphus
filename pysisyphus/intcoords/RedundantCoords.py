@@ -231,12 +231,12 @@ class RedundantCoords:
         return self.get_prim_internals_by_indices(self._dihedral_prim_inds)
 
     @property
-    def coords(self):
-        return self.prim_coords
+    def dihedral_inds():
+        self._dihedral_prim_inds
 
     @property
-    def dihed_start(self):
-        return len(self.bond_indices) + len(self.bending_indices)
+    def coords(self):
+        return self.prim_coords
 
     def get_index_of_prim_coord(self, prim_ind):
         """Index of primitive internal for the given atom indices."""

@@ -30,8 +30,8 @@ class Redund(Interpolator):
                          coord_kwargs={"typed_prims": typed_prims,},
         )
 
-        dihed_start = geom1.internal.dihed_start
-        initial_tangent = get_tangent(geom1.coords, geom2.coords, dihed_start)
+        dihedral_inds = geom1.internal.dihedral_inds
+        initial_tangent = get_tangent(geom1.coords, geom2.coords, dihedral_inds)
         initial_diff = np.linalg.norm(initial_tangent)
         approx_stepsize = initial_diff / (self.between+1)
         final_prims = geom2.internal.prim_coords
@@ -40,7 +40,7 @@ class Redund(Interpolator):
         for i in range(self.between):
             print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
-            prim_tangent = get_tangent(new_geom.coords, final_prims, dihed_start)
+            prim_tangent = get_tangent(new_geom.coords, final_prims, dihedral_inds)
             # Form active set
             B = new_geom.internal.B_prim
             G = B.dot(B.T)

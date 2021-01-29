@@ -7,7 +7,7 @@ from pysisyphus.intcoords import RedundantCoords
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 
 
-def get_tangent(prims1, prims2, dihed_start, normalize=False):
+def get_tangent(prims1, prims2, dihedral_inds, normalize=False):
     """Normalized tangent between primitive internal coordinates.
 
     Tangent pointing from prims1 to prims2 in primitive
@@ -21,8 +21,8 @@ def get_tangent(prims1, prims2, dihed_start, normalize=False):
         (stretches, bends, dihedrals).
     prims2 : np.array
         See prims1.
-    dihed_start : int
-        Index of the first primitive dihedral in prims1 and prims2.
+    dihedral_inds : list of int
+        Dihedral indices in prims1 and prims2.
 
     Returns
     -------
@@ -33,14 +33,14 @@ def get_tangent(prims1, prims2, dihed_start, normalize=False):
         tangent = prims2 - prims1
     except ValueError:
         raise DifferentPrimitivesException
-    diheds = tangent[dihed_start:].copy()
+    diheds = tangent[dihedral_inds].copy()
     diheds_plus = diheds.copy() + 2 * np.pi
     diheds_minus = diheds.copy() - 2 * np.pi
     bigger = np.abs(diheds) > np.abs(diheds_plus)
     diheds[bigger] = diheds_plus[bigger]
     bigger = np.abs(diheds) > np.abs(diheds_minus)
     diheds[bigger] = diheds_minus[bigger]
-    tangent[dihed_start:] = diheds
+    tangent[dihedral_inds] = diheds
     if normalize:
         tangent /= np.linalg.norm(tangent)
     return tangent
@@ -53,7 +53,7 @@ def get_step(geom, coords):
         diff = geom.coords - coords
     elif geom.coord_type in ("redund", "dlc"):
         diff = -get_tangent(
-            geom.internal.prim_coords, coords, geom.internal.dihed_start
+            geom.internal.prim_coords, coords, geom.internal.dihedral_inds
         )
     else:
         raise Exception("Invalid coord_type!")
