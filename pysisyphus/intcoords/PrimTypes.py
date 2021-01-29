@@ -1,14 +1,20 @@
 from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (
-    Stretch,
     Bend,
+    CartesianX,
+    CartesianY,
+    CartesianZ,
     LinearBend,
     LinearDisplacement,
-    Torsion,
     OutOfPlane,
+    RotationA,
+    RotationB,
+    RotationC,
+    Stretch,
     TranslationX,
     TranslationY,
     TranslationZ,
+    Torsion,
 )
 
 
@@ -29,6 +35,12 @@ class PrimTypes(OrderedEnum):
     TRANSLATION_X = 13
     TRANSLATION_Y = 14
     TRANSLATION_Z = 15
+    ROTATION_A = 16
+    ROTATION_B = 17
+    ROTATION_C = 18
+    CARTESIAN_X = 19
+    CARTESIAN_Y = 20
+    CARTESIAN_Z = 21
 
 
 # Maps primitive types to their classes
@@ -53,4 +65,10 @@ PrimMap = {
     PrimTypes.TRANSLATION_X: TranslationX,
     PrimTypes.TRANSLATION_Y: TranslationY,
     PrimTypes.TRANSLATION_Z: TranslationZ,
+    PrimTypes.ROTATION_A: RotationA,
+    PrimTypes.ROTATION_B: RotationB,
+    PrimTypes.ROTATION_C: RotationC,
+    PrimTypes.CARTESIAN_X: CartesianX,
+    PrimTypes.CARTESIAN_Y: CartesianY,
+    PrimTypes.CARTESIAN_Z: CartesianZ,
 }
