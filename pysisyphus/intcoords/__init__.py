@@ -1,5 +1,8 @@
 __all__ = [
     "Bend",
+    "CartesianX",
+    "CartesianY",
+    "CartesianZ",
     "LinearBend",
     "LinearDisplacement",
     "OutOfPlane",
@@ -16,6 +19,7 @@ __all__ = [
 ]
 
 from pysisyphus.intcoords.Bend import Bend
+from pysisyphus.intcoords.Cartesian import CartesianX, CartesianY, CartesianZ
 from pysisyphus.intcoords.LinearBend import LinearBend
 from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
 from pysisyphus.intcoords.OutOfPlane import OutOfPlane

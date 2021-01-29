@@ -7,6 +7,9 @@ from pysisyphus.linalg import get_rot_mat
 from pysisyphus.intcoords import (
     Stretch,
     Bend,
+    CartesianX,
+    CartesianY,
+    CartesianZ,
     Torsion,
     OutOfPlane,
     LinearBend,
@@ -375,4 +378,22 @@ def test_rotation():
     for i, cls in enumerate((RotationA, RotationB, RotationC)):
         rot = cls(indices, ref_coords3d=coords3d)
         v = rot.calculate(coords3d_rot)
+        assert v == pytest.approx(v_ref[i])
+
+
+def test_cartesian():
+    zmat_str = f"""
+    C
+    C 1 3
+    """
+    zmat = zmat_from_str(zmat_str)
+    geom = geom_from_zmat(zmat)
+    coords3d = geom.coords3d
+    indices = [
+        0,
+    ]
+    v_ref = (0.0, 0.0, 0.0)
+    for i, cls in enumerate((CartesianX, CartesianY, CartesianZ)):
+        cart = cls(indices)
+        v = cart.calculate(coords3d)
         assert v == pytest.approx(v_ref[i])
