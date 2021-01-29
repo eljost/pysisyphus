@@ -51,11 +51,10 @@ def update_internals(
     internal_diffs = np.array(new_internals) - old_internals
 
     dihedrals = [prim_internals[i] for i in dihedral_inds]
-    dihedral_num = len(dihedrals)
-    if dihedral_num == 0:
+    if len(dihedrals) == 0:
         return prim_internals
 
-    dihedral_diffs = internal_diffs[-dihedral_num:]
+    dihedral_diffs = internal_diffs[dihedral_inds]
 
     # Find differences that are shifted by 2*pi
     shifted_by_2pi = np.abs(np.abs(dihedral_diffs) - 2 * np.pi) < np.pi / 2
@@ -93,6 +92,7 @@ def transform_int_step(
     cur_internals,
     Bt_inv_prim,
     primitives,
+    dihedral_inds,
     check_dihedrals=False,
     cart_rms_thresh=1e-6,
     logger=None,
@@ -103,10 +103,6 @@ def transform_int_step(
     new_cart_coords = old_cart_coords.copy()
     remaining_int_step = int_step
     target_internals = cur_internals + int_step
-
-    dihedral_inds = np.array(
-        [i for i, primitive in enumerate(primitives) if isinstance(primitive, Torsion)]
-    )
 
     last_rms = 9999
     old_internals = cur_internals

@@ -231,8 +231,8 @@ class RedundantCoords:
         return self.get_prim_internals_by_indices(self._dihedral_prim_inds)
 
     @property
-    def dihedral_inds():
-        self._dihedral_prim_inds
+    def dihedral_inds(self):
+        return self._dihedral_prim_inds
 
     @property
     def coords(self):
@@ -462,6 +462,7 @@ class RedundantCoords:
             self.prim_coords,
             self.Bt_inv_prim,
             self.primitives,
+            self.dihedral_inds,
             check_dihedrals=self.rebuild,
             logger=self.logger,
         )
