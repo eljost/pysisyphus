@@ -125,6 +125,12 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
             f"Ref: {ts_ref_imag: >8.1f}, TS: {ts_imag: >8.1f} cm⁻¹"
         )
 
+        results_bag.opt_converged = results.opt.is_converged
+        results_bag.opt_cycles = results.opt.cur_cycle + 1
+        results_bag.tsopt_converged = results.ts_opt.is_converged
+        results_bag.tsopt_cycles = results.ts_opt.cur_cycle + 1
+        results_bag.rmsd = rmsd
+
         assert results.ts_opt.is_converged
         shutil.copy("ts_opt.xyz", f"{id_}_ts_opt.xyz")
 
@@ -136,3 +142,25 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
         align_geoms(ts_geoms)
         ts_fns = f"{id_}_ts_geoms.trj"
         write_geoms_to_trj(ts_geoms, ts_fns)
+
+
+def test_xtb_rx_synthesis(fixture_store):
+    for i, fix in enumerate(fixture_store):
+        print(i, fix)
+
+    tot_opt_cycles = 0
+    opt_converged = 0
+    tot_tsopt_cycles = 0
+    tsopt_converged = 0
+    bags = fixture_store["results_bag"]
+    for k, v in bags.items():
+        print(k)
+        opt_converged += 1 if v["opt_converged"] else 0
+        for kk, vv in v.items():
+            print("\t", kk, vv)
+        if opt_converged:
+            tot_opt_cycles += v["opt_cycles"]
+            tot_tsopt_cycles += v["tsopt_cycles"]
+    print(f"Opts converged: {opt_converged}/{len(bags)}")
+    print(f"Total opt cycles: {tot_opt_cycles}")
+    print(f"Total tsopt cycles: {tot_tsopt_cycles}")
