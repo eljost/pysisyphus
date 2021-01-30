@@ -177,6 +177,9 @@ class RedundantCoords:
             self.typed_prims = valid_typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
 
+        # Sort by length
+        self.typed_prims.sort(key=lambda tp: tp[0])
+
         self.primitives = get_primitives(
             self.coords3d,
             self.typed_prims,
@@ -196,7 +199,10 @@ class RedundantCoords:
             [prim_int.val for prim_int in self._prim_internals]
         )
 
-        assert len(self.primitives) == len(self.typed_prims)
+        ref_num = len(self.typed_prims)
+        if self.bonds_only:
+            ref_num = len(self.bond_indices)
+        assert len(self.primitives) == ref_num
         prim_inds = {
             2: list(),
             3: list(),
