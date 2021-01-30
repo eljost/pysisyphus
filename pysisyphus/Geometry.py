@@ -917,6 +917,12 @@ class Geometry:
             comment = self.comment
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
+    def dump_xyz(self, fn):
+        if not fn.lower().endswith(".xyz"):
+            fn = fn + ".xyz"
+        with open(fn, "w") as handle:
+            handle.write(self.as_xyz())
+
     def get_subgeom(self, indices, coord_type="cart"):
         """Return a Geometry containing a subset of the current Geometry.
 

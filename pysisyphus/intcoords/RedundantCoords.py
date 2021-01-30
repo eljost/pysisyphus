@@ -52,6 +52,10 @@ def normalize_prim_input(prim_inp):
     """
     prim_type, *indices = prim_inp
 
+    # Nothing to do
+    if isinstance(prim_type, PrimTypes):
+        return [prim_inp]
+
     # First check if we got something like an integer
     try:
         return [tuple([PrimTypes(int(prim_type))] + indices)]

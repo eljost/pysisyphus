@@ -27,6 +27,7 @@ def get_force_unit(coord_type):
         force_unit += " (rad)⁻¹"
     return force_unit
 
+
 UNIT_DEKJMOL = "$\Delta$E / kJ mol⁻¹"
 
 
@@ -34,7 +35,7 @@ def spline_plot_cycles(cart_coords, energies):
     num_cycles = energies.shape[1]
 
     fig, ax = plt.subplots()
-    colors = matplotlib.cm.Greys(np.linspace(.2, 1, num=num_cycles))
+    colors = matplotlib.cm.Greys(np.linspace(0.2, 1, num=num_cycles))
     # for cycle, color in zip(energies, colors):
     for i, (cycle, color) in enumerate(zip(energies, colors)):
         ax.plot(cycle, "o-", color=color)
@@ -92,9 +93,13 @@ def plot_cycle(cart_coords, energies):
     max_en = last_energies[max_en_ind]
     nans = np.isnan(last_energies).sum()
     if nans:
-        print(f"The COS seems to be not fully grown (yet), {nans} energies are missing.")
-    print( "Barrier heights using actual energies (not splined) from "
-          f"cycle {energies.shape[0]-1}.")
+        print(
+            f"The COS seems to be not fully grown (yet), {nans} energies are missing."
+        )
+    print(
+        "Barrier heights using actual energies (not splined) from "
+        f"cycle {energies.shape[0]-1}."
+    )
     print(f"\tHighest energy image (HEI) at index {max_en_ind} (0-based)")
 
     first_barr = max_en - first_image_en
@@ -112,12 +117,12 @@ def anim_cos(cart_coords, energies):
     min_ = np.nanmin(energies)
     max_ = np.nanmax(energies)
 
-    coord_diffs = np.linalg.norm(cart_coords-cart_coords[0][0], axis=2)
+    coord_diffs = np.linalg.norm(cart_coords - cart_coords[0][0], axis=2)
     fig, ax = plt.subplots()
 
     # Initial energies
     lines = ax.plot(coord_diffs[0], energies[0], "o-")
-    y_max = (max_ - min_)
+    y_max = max_ - min_
     ax.set_ylim(0, y_max)
     ax.set_xlabel("Coordinate differences / Bohr")
     ax.set_ylabel(UNIT_DEKJMOL)
@@ -129,10 +134,10 @@ def anim_cos(cart_coords, energies):
 
     def animate():
         animation = FuncAnimation(
-                        fig,
-                        update_func,
-                        frames=num_cycles,
-                        interval=250,
+            fig,
+            update_func,
+            frames=num_cycles,
+            interval=250,
         )
         return animation
 
@@ -180,7 +185,7 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
     try:
         # We can't use coord_size because coord_type may be != cart and then
         # coord_size gives the number of internals.
-        cart_shape = (num_cycles, -1, 3* len(atoms))
+        cart_shape = (num_cycles, -1, 3 * len(atoms))
         _datasets["cart_coords"] = _datasets["cart_coords"].reshape(cart_shape)
     except KeyError:
         pass
@@ -196,7 +201,7 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
         by_image = np.full_like(arr, np.nan)
         for cyc, (img_ind, img_num) in enumerate(zip(image_inds, image_nums)):
             img_ind = img_ind[:img_num]
-            by_image[cyc,img_ind] = arr[cyc, :img_num]
+            by_image[cyc, img_ind] = arr[cyc, :img_num]
         return by_image
 
     for k, v in _datasets.items():
@@ -209,47 +214,56 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
 
 
 def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
-    results = load_h5(h5_fn, h5_group,
-                      datasets=("cart_coords", "energies"),
-                      attrs=("is_cos", ))
+    results = load_h5(
+        h5_fn, h5_group, datasets=("cart_coords", "energies"), attrs=("is_cos",)
+    )
     cart_coords = results["cart_coords"]
     energies = results["energies"]
 
     assert results["is_cos"]
 
     # Splined last cycle and plot of all cycles
-    fig_, ax_ = spline_plot_cycles(cart_coords, energies)  # lgtm [py/unused-local-variable]
+    fig_, ax_ = spline_plot_cycles(
+        cart_coords, energies
+    )  # lgtm [py/unused-local-variable]
     # Plot last cycle
-    fig_last, ax_last = plot_cycle(cart_coords, energies)  # lgtm [py/unused-local-variable]
+    fig_last, ax_last = plot_cycle(
+        cart_coords, energies
+    )  # lgtm [py/unused-local-variable]
     # Plot animation
-    anim, fig_anim, ax_anim = anim_cos(cart_coords, energies)  # lgtm [py/unused-local-variable]
+    anim, fig_anim, ax_anim = anim_cos(
+        cart_coords, energies
+    )  # lgtm [py/unused-local-variable]
 
     plt.show()
 
 
 def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
-    results = load_h5(h5_fn, h5_group,
-                      datasets=("forces", ),
-                      attrs=("is_cos", "coord_type", "max_force_thresh", "rms_force_thresh"))
+    results = load_h5(
+        h5_fn,
+        h5_group,
+        datasets=("forces",),
+        attrs=("is_cos", "coord_type", "max_force_thresh", "rms_force_thresh"),
+    )
     forces = results["forces"]
     coord_type = results["coord_type"]
 
     assert results["is_cos"]
 
-    last_axis = forces.ndim-1
+    last_axis = forces.ndim - 1
     max_ = np.nanmax(np.abs(forces), axis=last_axis)
-    rms = np.sqrt(np.mean(forces**2, axis=last_axis))
+    rms = np.sqrt(np.mean(forces ** 2, axis=last_axis))
 
     force_unit = get_force_unit(coord_type)
 
-    fig, (ax0, ax1)  = plt.subplots(sharex=True, nrows=2)
+    fig, (ax0, ax1) = plt.subplots(sharex=True, nrows=2)
 
     def plot(ax, data, title):
         colors = matplotlib.cm.Greys(np.linspace(0, 1, num=data.shape[0]))
         for row, color in zip(data, colors):
             ax.plot(row, "o-", color=color)
             ax.set_ylabel(force_unit)
-        ax.set_yscale('log')
+        ax.set_yscale("log")
         if title:
             ax.set_title(title)
 
@@ -296,7 +310,7 @@ def plot_all_energies(h5):
     if not flips[-1]:
         energies_.append(energies[-1])
         roots_.append(roots[-1])
-        steps.append(i+1)
+        steps.append(i + 1)
     else:
         print("Root flip occured in the last step. Not showing the last step.")
 
@@ -362,15 +376,16 @@ def plot_md(h5_group="run"):
 def plot_gau(gau_fns, num=50):
     print("Assuming constant Gaussian s & w!")
 
-    assert 0 < len(gau_fns) < 3, \
-        "Currently, only plotting of 1 or 2 collective variables is possible!"
+    assert (
+        0 < len(gau_fns) < 3
+    ), "Currently, only plotting of 1 or 2 collective variables is possible!"
 
     gaussians = list()
     centers = list()
     grids = list()
     for gau_fn in gau_fns:
         gau_data = np.loadtxt(gau_fn)
-        gau_centers = gau_data[:,3]
+        gau_centers = gau_data[:, 3]
         _, s, w, _ = gau_data[0]
         gau = Gaussian(w=w, s=s)
         print(f"Successfully loaded '{gau_fn}' with w={w:.6f}, s={s:.6f}")
@@ -393,7 +408,7 @@ def plot_gau(gau_fns, num=50):
 
     if len(gau_fns) == 1:
         grid = grids[0]
-        ens = -np.array([eval_gaussians(x) for x in grid[:,None]]) * AU2KJPERMOL
+        ens = -np.array([eval_gaussians(x) for x in grid[:, None]]) * AU2KJPERMOL
         ens -= ens.min()
         ax.plot(grid, ens)
         ax.set_xlabel(f"CV0, {gau_fns[0]}")
@@ -402,7 +417,10 @@ def plot_gau(gau_fns, num=50):
         grid0, grid1 = grids
         X, Y = np.meshgrid(grid0, grid1)
         xy_flat = np.stack((X.flatten(), Y.flatten()), axis=1)
-        ens = -np.array([eval_gaussians(xy) for xy in xy_flat]).reshape(num, num) * AU2KJPERMOL
+        ens = (
+            -np.array([eval_gaussians(xy) for xy in xy_flat]).reshape(num, num)
+            * AU2KJPERMOL
+        )
         ens -= ens.min()
         levels = np.linspace(ens.min(), 0.75 * ens.max(), num=15)
         # contour = ax.contour(X, Y, ens, levels=levels)
@@ -413,7 +431,7 @@ def plot_gau(gau_fns, num=50):
     plt.show()
 
 
-def plot_overlaps(h5, thresh=.1):
+def plot_overlaps(h5, thresh=0.1):
     with h5py.File(h5, "r") as handle:
         overlaps = handle["overlap_matrices"][:]
         ovlp_type = handle["ovlp_type"][()].decode()
@@ -467,49 +485,52 @@ def plot_overlaps(h5, thresh=.1):
             ax1 = None
         o = np.abs(overlaps[i])
         ax.imshow(o, vmin=0, vmax=1)
-        ax.grid(color="#CCCCCC", linestyle='--', linewidth=1)
+        ax.grid(color="#CCCCCC", linestyle="--", linewidth=1)
         ax.set_xticks(np.arange(n_states, dtype=np.int))
         ax.set_yticks(np.arange(n_states, dtype=np.int))
         # set_ylim is needed, otherwise set_yticks drastically shrinks the plot
-        ax.set_ylim(n_states-0.5, -0.5)
+        ax.set_ylim(n_states - 0.5, -0.5)
         ax.set_xlabel("new roots")
         ax.set_ylabel("reference roots")
-        for (l,k), value in np.ndenumerate(o):
+        for (l, k), value in np.ndenumerate(o):
             if np.isnan(value):
                 continue
             value_str = f"{abs(value):.2f}"
-            ax.text(k, l, value_str, ha='center', va='center')
-        j, k = ref_cycles[i], i+1
+            ax.text(k, l, value_str, ha="center", va="center")
+        j, k = ref_cycles[i], i + 1
         ref_root = ref_roots[i]
         ref_ind = ref_root - 1
         if ovlp_type == "wf":
             ref_ind += 1
-        old_root = calculated_roots[i+1]
-        new_root = roots[i+1]
+        old_root = calculated_roots[i + 1]
+        new_root = roots[i + 1]
         ref_overlaps = o[ref_ind]
         argmax = np.nanargmax(ref_overlaps)
-        xy = (argmax-0.5, ref_ind-0.5)
-        highlight = Rectangle(xy, 1, 1,
-                              fill=False, color="red", lw="4")
+        xy = (argmax - 0.5, ref_ind - 0.5)
+        highlight = Rectangle(xy, 1, 1, fill=False, color="red", lw="4")
         ax.add_artist(highlight)
         if ax1:
             ax1.imshow(cdd_imgs[i])
-        fig.suptitle(f"overlap {i:03d}\n"
-                     f"{ovlp_type} overlap between {j:03d} and {k:03d}\n"
-                     f"old root: {old_root}, new root: {new_root}")
+        fig.suptitle(
+            f"overlap {i:03d}\n"
+            f"{ovlp_type} overlap between {j:03d} and {k:03d}\n"
+            f"old root: {old_root}, new root: {new_root}"
+        )
         fig.canvas.draw()
+
     draw(0)
 
     i = 0
     i_backup = i
-    i_last = len(overlaps)-1
+    i_last = len(overlaps) - 1
+
     def press(event):
         nonlocal i
         nonlocal i_backup
         if event.key == "left":
-            i = max(0, i-1)
+            i = max(0, i - 1)
         elif event.key == "right":
-            i = min(i_last, i+1)
+            i = min(i_last, i + 1)
         # Switch between current and first cycle
         elif event.key == "i":
             if i == 0:
@@ -531,6 +552,7 @@ def plot_overlaps(h5, thresh=.1):
         else:
             return
         draw(i)
+
     fig.canvas.mpl_connect("key_press_event", press)
 
     plt.tight_layout()
@@ -558,13 +580,11 @@ def render_cdds(h5):
     # Create list of all final PNG filenames
     png_fns = [Path(cube).with_suffix(".png") for cube in cdd_cubes]
     # Check which cubes are already rendered
-    png_stems = [png.stem for png in png_fns
-                 if png.exists()]
+    png_stems = [png.stem for png in png_fns if png.exists()]
     print(f"{len(png_stems)} cubes seem already rendered.")
 
     # Only render cubes that are not yet rendered
-    cdd_cubes = [cube for cube in cdd_cubes
-                 if Path(cube).stem not in png_stems]
+    cdd_cubes = [cube for cube in cdd_cubes if Path(cube).stem not in png_stems]
     print(f"Rendering {len(cdd_cubes)} CDD cubes.")
 
     for i, cube in enumerate(cdd_cubes):
@@ -605,7 +625,7 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
     l1 = en_ax.plot(afir_ens, style1, label="AFIR")
     l2 = en_ax.plot(true_ens, style2, label="True")
     en_ax2 = en_ax.twinx()
-    l3 = en_ax2.plot(true_ens+afir_ens, style3, label="Sum")
+    l3 = en_ax2.plot(true_ens + afir_ens, style3, label="Sum")
     en_ax2.tick_params(axis="y", labelcolor="blue")
 
     lines = l1 + l2 + l3
@@ -641,8 +661,9 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
         highest = np.argmax(peak_ys)
 
         en_ax.scatter(peak_xs, peak_ys, s=100, marker="X", c="k", zorder=10)
-        en_ax.scatter(peak_xs[highest], peak_ys[highest],
-                    s=150, marker="X", c="k", zorder=10)
+        en_ax.scatter(
+            peak_xs[highest], peak_ys[highest], s=150, marker="X", c="k", zorder=10
+        )
         en_ax.axvline(peak_xs[highest], c="k", ls="--")
         forces_ax.axvline(peak_xs[highest], c="k", ls="--")
     except ValueError as err:
@@ -656,38 +677,38 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--h5_fn", default="overlap_data.h5")
-    parser.add_argument("--h5_group", default="opt",
-        help="HDF5 group to plot."
-    )
+    parser.add_argument("--h5_group", default="opt", help="HDF5 group to plot.")
     parser.add_argument("--orient", default="")
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--cosforces", "--cf", action="store_true",
-                        help="Plot image forces along a COS."
+    group.add_argument(
+        "--cosforces",
+        "--cf",
+        action="store_true",
+        help="Plot image forces along a COS.",
     )
-    group.add_argument("--cosens", "--ce", action="store_true",
-                        help="Plot COS energies.")
-    group.add_argument("--all_energies", "-a", action="store_true",
-        help="Plot ground and excited state energies from 'overlap_data.h5'."
+    group.add_argument(
+        "--cosens", "--ce", action="store_true", help="Plot COS energies."
     )
-    group.add_argument("--afir", action="store_true",
-        help="Plot AFIR and true -energies and -forces from an AFIR calculation."
+    group.add_argument(
+        "--all_energies",
+        "-a",
+        action="store_true",
+        help="Plot ground and excited state energies from 'overlap_data.h5'.",
     )
-    group.add_argument("--opt", action="store_true",
-        help="Plot optimization progress."
+    group.add_argument(
+        "--afir",
+        action="store_true",
+        help="Plot AFIR and true -energies and -forces from an AFIR calculation.",
     )
-    group.add_argument("--irc", action="store_true",
-        help="Plot IRC progress."
-    )
+    group.add_argument("--opt", action="store_true", help="Plot optimization progress.")
+    group.add_argument("--irc", action="store_true", help="Plot IRC progress.")
     group.add_argument("--overlaps", "-o", action="store_true")
     group.add_argument("--render_cdds", action="store_true")
-    group.add_argument("--h5_list", default=None,
-        help="List groups in HDF5 file."
-    )
-    group.add_argument("--md", action="store_true",
-        help="Plot MD."
-    )
+    group.add_argument("--h5_list", default=None, help="List groups in HDF5 file.")
+    group.add_argument("--md", action="store_true", help="Plot MD.")
     group.add_argument("--gau", nargs="*")
+    group.add_argument("--scan", action="store_true")
 
     return parser.parse_args(args)
 
@@ -699,8 +720,9 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
         except KeyError:
             groups = list(handle.keys())
             groups_str = "\t" + "\n\t".join(groups)
-            print(f"Could not find group '{h5_group}'!\nAvailable groups are:\n{groups_str}\n"
-                  f"Use '--h5_group [group]' to plot a different group."
+            print(
+                f"Could not find group '{h5_group}'!\nAvailable groups are:\n{groups_str}\n"
+                f"Use '--h5_group [group]' to plot a different group."
             )
             return
 
@@ -719,10 +741,12 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     ens *= AU2KJPERMOL
     if is_cos:
         text = textwrap.wrap(
-              "COS optimization detected. Plotting total energy of all images "
-              "in every cycle. Results from optimizing growing COS methods can "
-              "be plotted but the plots are not really useful as the varying "
-              "number of images is not considered.", width=80)
+            "COS optimization detected. Plotting total energy of all images "
+            "in every cycle. Results from optimizing growing COS methods can "
+            "be plotted but the plots are not really useful as the varying "
+            "number of images is not considered.",
+            width=80,
+        )
         print("\n".join(text))
         ens = ens.sum(axis=1)
     force_unit = get_force_unit(coord_type)
@@ -752,7 +776,7 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     ax2.legend()
 
     title = f"{h5_fn}/{h5_group}, converged={is_converged}"
-    fig.suptitle(title, y=.999)
+    fig.suptitle(title, y=0.999)
 
     plt.tight_layout()
     plt.show()
@@ -790,7 +814,7 @@ def plot_irc_h5(h5, title=None):
     energies *= AU2KJPERMOL
 
     cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
-    rms_grads = np.sqrt(np.mean(gradients**2, axis=1))
+    rms_grads = np.sqrt(np.mean(gradients ** 2, axis=1))
     max_grads = np.abs(gradients).max(axis=1)
 
     fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
@@ -826,6 +850,27 @@ def plot_irc_h5(h5, title=None):
         fig.tight_layout()
 
     return fig, (ax0, ax1, ax2)
+
+
+def plot_scan(h5_fn="scan.h5"):
+    with h5py.File(h5_fn, "r") as handle:
+        groups = list()
+        energies = list()
+        for k in handle.keys():
+            group = handle[k]
+            groups.append(k)
+            energies.append(group["energies"][:])
+    print(f"Found {len(groups)} groups in '{h5_fn}'.")
+
+    for group, ens in zip(groups, energies):
+        ens -= ens.min()
+        ens *= AU2KJPERMOL
+        fig, ax = plt.subplots()
+        ax.plot(ens, "o-")
+        ax.set_xlabel("Scan point")
+        ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+        ax.set_title(group)
+    plt.show()
 
 
 def list_h5_groups(h5_fn):
@@ -870,6 +915,8 @@ def run():
         plot_gau(args.gau)
     elif args.overlaps:
         plot_overlaps(h5=h5_fn)
+    elif args.scan:
+        plot_scan()
     elif args.render_cdds:
         render_cdds(h5=h5_fn)
 
