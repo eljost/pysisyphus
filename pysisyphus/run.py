@@ -27,7 +27,13 @@ from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
 from pysisyphus.exceptions import HEIIsFirstOrLastException
-from pysisyphus.dynamics import get_mb_velocities_for_geom, mdp, md, get_colvar, Gaussian
+from pysisyphus.dynamics import (
+    get_mb_velocities_for_geom,
+    mdp,
+    md,
+    get_colvar,
+    Gaussian,
+)
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
 # from pysisyphus.overlaps.couplings import couplings
@@ -44,6 +50,7 @@ from pysisyphus.helpers import (
 from pysisyphus.helpers_pure import merge_sets
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
+from pysisyphus.intcoords.PrimTypes import PrimTypes
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
@@ -210,6 +217,7 @@ def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None):
         iter_dict = dict()
 
     index = 0
+
     def calc_getter(**add_kwargs):
         nonlocal index
 
@@ -235,7 +243,13 @@ def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None):
 
 
 def run_tsopt_from_cos(
-    cos, tsopt_key, tsopt_kwargs, calc_getter=None, ovlp_thresh=0.4, hei_kind="splined"
+    cos,
+    tsopt_key,
+    tsopt_kwargs,
+    calc_getter=None,
+    ovlp_thresh=0.4,
+    hei_kind="splined",
+    coordinate_union="bonds",
 ):
     print(highlight_text(f"Running TS-optimization from COS"))
 
@@ -270,7 +284,9 @@ def run_tsopt_from_cos(
         close_to_last = hei_index > len(cos.images) - 1.5
         if close_to_first or close_to_last:
             close_to = "first" if close_to_first else "last"
-            print(f"Splined HEI is too close to the {close_to} image. Aborting TS optimization!")
+            print(
+                f"Splined HEI is too close to the {close_to} image. Aborting TS optimization!"
+            )
             raise HEIIsFirstOrLastException
         # The hei_index is a float. We split off the decimal part and mix the two
         # nearest tangents accordingly.
@@ -312,11 +328,25 @@ def run_tsopt_from_cos(
         internal_geom2 = get_int_geom(cos.images[-1])
         typed_prims = form_coordinate_union(internal_geom1, internal_geom2)
 
+    if coordinate_union == "all":
+        coord_kwargs = {
+            "typed_prims": typed_prims,
+        }
+        union_msg = "Using full coordinate union for TS guess."
+    else:
+        # Only keep actual bonds ...
+        valid_prim_types = (PrimTypes.BOND,)
+        # ... and bends and dihedrals, if requested
+        if coordinate_union == "bonds_bends_dihedrals":
+            valid_prim_types += (PrimTypes.BEND, PrimTypes.PROPER_DIHEDRAL)
+        coord_kwargs = {
+            "define_prims": [tp for tp in typed_prims if tp[0] in valid_prim_types]
+        }
+        union_msg = f"Kept primitive types: {valid_prim_types}"
+    print(union_msg)
+
     # Try to run in DLC per default
     ts_coord_type = tsopt_kwargs.pop("coord_type", "redund")
-    coord_kwargs= {
-        "typed_prims": typed_prims,
-    }
     if ts_coord_type == "cart":
         coord_kwargs = None
 
@@ -406,11 +436,11 @@ def run_tsopt_from_cos(
         for i, ov in enumerate(ovlps):
             print(f"\t{i:02d}: {ov:.6f}")
         max_ovlp_ind = np.argmax(ovlps)
-        print(
-            f"Imaginary mode {max_ovlp_ind} has highest overlap with splined "
-            "HEI tangent."
-        )
         max_ovlp = ovlps[max_ovlp_ind]
+        print(
+            f"Imaginary mode {max_ovlp_ind} has highest overlap ({max_ovlp:.2%}) "
+            "with splined HEI tangent."
+        )
         rel_ovlps = np.array(ovlps) / max(ovlps)
         similar_inds = rel_ovlps > 0.80
         # Only 1 big overlap is present
@@ -632,19 +662,18 @@ def run_md(geom, calc_getter, md_kwargs):
         g_s = g_kwargs.pop("s")
         g_stride = g_kwargs.pop("stride")
         gau = Gaussian(w=g_w, s=g_s, colvar=colvar, dump_name=g_name)
-        gaussians.append(
-            (g_name, gau, g_stride)
-        )
+        gaussians.append((g_name, gau, g_stride))
 
     remove_com_v = md_kwargs.get("remove_com_v")
-    v0 = get_mb_velocities_for_geom(geom, T_init_vel, seed=seed, remove_com_v=remove_com_v,
-                                    remove_rot_v=False).flatten()
+    v0 = get_mb_velocities_for_geom(
+        geom, T_init_vel, seed=seed, remove_com_v=remove_com_v, remove_rot_v=False
+    ).flatten()
     md_result = md(geom, v0=v0, steps=steps, dt=dt, gaussians=gaussians, **md_kwargs)
 
     # from pysisyphus.xyzloader import coords_to_trj
     # trj_fn = "md.trj"
     # _ = coords_to_trj(
-        # trj_fn, geom.atoms, md_result.coords[::md_kwargs["dump_stride"]]
+    # trj_fn, geom.atoms, md_result.coords[::md_kwargs["dump_stride"]]
     # )
     print()
 
@@ -776,9 +805,8 @@ def run_opt(
         print(f"Copied '{opt.final_fn}' to '{copy_fn}'.")
 
     if do_davidson and (not opt.stopped):
-        tsopt = (
-            isinstance(opt, TSHessianOptimizer.TSHessianOptimizer)
-            or isinstance(geom.calculator, Dimer)
+        tsopt = isinstance(opt, TSHessianOptimizer.TSHessianOptimizer) or isinstance(
+            geom.calculator, Dimer
         )
         type_ = "TS" if tsopt else "minimum"
         print(highlight_text(f"Davidson after {type_} search", level=1))
@@ -809,7 +837,7 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
         for s, y in zip(coord_diffs, grad_diffs):
             dH, _ = bfgs_update(H, s, y)
             H += dH
-    
+
     geom = opt.geometry
     if geom.coord_type != "cart":
         H = geom.internal.backtransform_hessian(H)
@@ -818,7 +846,7 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
     # Mass-weigh and project Hessian
     H = geom.eckart_projection(geom.mass_weigh_hessian(H))
     w, v = np.linalg.eigh(H)
-    inds = [0, 1] if tsopt else [6, ]
+    inds = [0, 1] if tsopt else [6]
     # Converge the lowest two modes for TS optimizations; for minimizations the lowest
     # mode would is enough.
     lowest = 2 if tsopt else 1
