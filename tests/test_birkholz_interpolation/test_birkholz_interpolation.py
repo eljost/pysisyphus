@@ -11,6 +11,7 @@ from pysisyphus.testing import using
     "fn, ref_energy",
     [
         ("lib:birkholz_rx/02_hcn_original.trj", -91.56485102),
+        # ("lib:birkholz_rx/03_cope.trj", -230.06026151),
     ],
 )
 def test_birkholz_interpolation(fn, ref_energy):
