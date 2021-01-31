@@ -13,7 +13,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 Bh = Benchmark(
     "xtb_rx",
-    # only=(13, 18, 19),
+    # only=(18, 19),
 )
 
 
@@ -62,7 +62,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
 
         run_dict = {
             "geom": {
-                "type": "cart" if id_ == "02" else "dlc",
+                "type": "dlc",
                 "fn": inp_trj,
             },
             "calc": {
@@ -77,7 +77,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
             },
             "cos": {
                 "type": "gs",
-                "climb": (id_ != "13"),  # Disable CI for MeOH
+                "climb": True,
                 "climb_rms": 0.01,
             },
             "opt": {
@@ -93,6 +93,13 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
                 "do_hess": True,
             },
         }
+        if id_ == "02":
+            run_dict["geom"]["type"] = "cart"
+        elif id_ == "13":
+            run_dict["calc"]["pal"] = 1
+            run_dict["cos"]["climb"] = False
+        elif id_ == "19":
+            run_dict["opt"]["rms_force"] = 0.003
 
         results = run_from_dict(run_dict)
         ts_geom = results.ts_geom
