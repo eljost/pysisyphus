@@ -143,7 +143,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
         ts_fns = f"{id_}_ts_geoms.trj"
         write_geoms_to_trj(ts_geoms, ts_fns)
 
-
+@using("xtb")
 def test_xtb_rx_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)
