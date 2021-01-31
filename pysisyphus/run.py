@@ -1367,11 +1367,13 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
     # New geometry input
     if run_dict["geom"]:
-        xyz = run_dict["geom"]["fn"]
-        coord_type = run_dict["geom"]["type"]
-        define_prims = run_dict["geom"].get("define_prims", None)
-        union = run_dict["geom"].get("union", None)
-        isotopes = run_dict["geom"].get("isotopes", None)
+        rdg = run_dict["geom"]  # Shortcut
+        xyz = rdg["fn"]
+        coord_type = rdg["type"]
+        define_prims = rdg.get("define_prims", None)
+        constrain_prims = rdg.get("constrain_prims", None)
+        union = rdg.get("union", None)
+        isotopes = rdg.get("isotopes", None)
     # Old geometry input
     else:
         xyz = run_dict["xyz"]
@@ -1444,6 +1446,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         between,
         coord_type=coord_type,
         define_prims=define_prims,
+        constrain_prims=constrain_prims,
         union=union,
         isotopes=isotopes,
     )
@@ -1499,8 +1502,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
         if run_dict["opt"]:
             if run_dict["shake"]:
+                print(highlight_text("Shake coordinates"))
                 shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
                 geom.coords = shaked_coords
+                print(f"Shaken coordinates:\n{geom.as_xyz()}")
             opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
             # Keep a backup of the optimized geometry
             if isinstance(opt_geom, ChainOfStates.ChainOfStates):
