@@ -31,6 +31,8 @@ class Benchmark:
         if only is None:
             only = tuple()
         self.exclude = exclude
+        if isinstance(only, int):
+            only = (only, )
         self.only = only
         self.coord_type = coord_type
         self.calc_getter = calc_getter

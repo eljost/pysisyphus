@@ -78,7 +78,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
             "cos": {
                 "type": "gs",
                 "climb": True,
-                "climb_rms": 0.075,
+                "climb_rms": 0.0075,
             },
             "opt": {
                 "type": "string",
