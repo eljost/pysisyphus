@@ -123,7 +123,7 @@ class Geometry:
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
-        self._coords = np.array(coords, dtype=np.float).flatten()
+        self._coords = np.array(coords, dtype=float).flatten()
         assert self._coords.size == (3*len(self.atoms)), \
             f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
             f"{self._coords.size}. Did you accidentally supply internal " \

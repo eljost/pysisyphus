@@ -111,7 +111,7 @@ class DLC(RedundantCoords):
             inv_thresh = self.svd_inv_thresh**2
 
         if self.full_set:
-            use_inds = np.full_like(eigvals, False, dtype=np.bool)
+            use_inds = np.full_like(eigvals, False, dtype=bool)
             dof = 3*len(self.atoms) - 6
             use_inds[-dof:] = True
         else:

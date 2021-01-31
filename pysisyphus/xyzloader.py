@@ -122,7 +122,7 @@ def parse_xyz_str(xyz_str, with_comment):
                     for line in xyz_str.strip().split("\n")[2:]
     ]
     atoms, coords = zip(*[(a, c) for a, *c in atoms_coords])
-    coords = np.array(coords, dtype=np.float)
+    coords = np.array(coords, dtype=float)
     if with_comment:
         return atoms, coords, comment_line
     else:
