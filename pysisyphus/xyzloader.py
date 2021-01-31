@@ -65,9 +65,9 @@ def split_xyz_str(xyz_str):
          X 2.0 4.0 0.0
 
     """
-    float_ = "([\+\d\-\.]+)"
-    header_re = re.compile("(\d+)")
-    coord_re = re.compile(f"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
+    float_ = r"([\+\d\-\.]+)"
+    header_re = re.compile(r"(\d+)")
+    coord_re = re.compile(fr"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
 
     lines = [l.strip() for l in xyz_str.strip().split("\n")]
 
