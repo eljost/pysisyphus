@@ -57,7 +57,7 @@ def relaxed_scan(
         print(f"         Difference: {step_norm:.6f} {unit}\n")
         if step_norm <= thresh:
             print(
-                f"Relaxed scan converged! Norm of proposed step n<= {thresh:.4f} {unit}"
+                f"Relaxed scan converged! Norm of proposed step <= {thresh:.4f} {unit}"
             )
             break
         if step_norm > trust_radius:
