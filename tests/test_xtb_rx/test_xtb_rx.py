@@ -13,7 +13,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 Bh = Benchmark(
     "xtb_rx",
-    # only=(18, 19,),
+    # only=(13, 18, 19),
 )
 
 
@@ -77,33 +77,20 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
             },
             "cos": {
                 "type": "gs",
-                # "fix_ends": True,
-                # "max_nodes": 11,
-                # "reparam_check": "rms",
-                # "perp_thresh": 0.0125,
-                "climb": True,
+                "climb": (id_ != "13"),  # Disable CI for MeOH
                 "climb_rms": 0.01,
-                # "climb_lanczos": True,
-                # "climb_lanczos_rms": 0.0075,
-                # "reset_dlc": True,
             },
             "opt": {
                 "type": "string",
                 "max_step": 0.2,
-                # "lbfgs_when_full": True,
-                # "max_step": 0.25,
-                # "keep_last": 10,
                 "rms_force": 0.005,
                 "rms_force_only": True,
-                # "double_damp": True,
             },
             "tsopt": {
                 "type": "rsirfo",
-                "do_hess": True,
-                # "hessian_recalc": 3,
                 "thresh": "gau",
-                "trust_max": 0.3,
-                "max_cycles": 100,
+                "trust_max": 0.5,
+                "do_hess": True,
             },
         }
 
@@ -142,6 +129,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
         align_geoms(ts_geoms)
         ts_fns = f"{id_}_ts_geoms.trj"
         write_geoms_to_trj(ts_geoms, ts_fns)
+
 
 @using("xtb")
 def test_xtb_rx_synthesis(fixture_store):
