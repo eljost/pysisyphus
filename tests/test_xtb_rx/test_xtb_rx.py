@@ -67,7 +67,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
             },
             "calc": {
                 "type": "xtb",
-                "pal": 6,
+                "pal": 1,
                 "mem": 750,
                 "charge": charge,
                 "mult": mult,
@@ -78,7 +78,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
             "cos": {
                 "type": "gs",
                 "climb": True,
-                "climb_rms": 0.01,
+                "climb_rms": 0.075,
             },
             "opt": {
                 "type": "string",
@@ -95,9 +95,6 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
         }
         if id_ == "02":
             run_dict["geom"]["type"] = "cart"
-        elif id_ == "13":
-            run_dict["calc"]["pal"] = 1
-            run_dict["cos"]["climb"] = False
         elif id_ == "19":
             run_dict["opt"]["rms_force"] = 0.003
 
