@@ -465,6 +465,10 @@ class Optimizer(metaclass=abc.ABCMeta):
                     # I should improve my logging :)
                     print(msg)
                     self.log(msg)
+                    sim_fn = "too_similar.trj"
+                    with open(sim_fn, "w") as handle:
+                        handle.write(self.geometry.as_xyz())
+                    print(f"Dumped latest coordinates to '{sim_fn}'.")
                     break
 
             # Check if something considerably changed in the optimization,
