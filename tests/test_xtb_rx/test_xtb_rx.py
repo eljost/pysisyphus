@@ -79,6 +79,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
                 "type": "gs",
                 "climb": True,
                 "climb_rms": 0.0075,
+                "reset_dlc": True,
             },
             "opt": {
                 "type": "string",
