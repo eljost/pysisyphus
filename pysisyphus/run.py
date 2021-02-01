@@ -328,21 +328,20 @@ def run_tsopt_from_cos(
         internal_geom2 = get_int_geom(cos.images[-1])
         typed_prims = form_coordinate_union(internal_geom1, internal_geom2)
 
+    coord_kwargs = dict()
     if coordinate_union == "all":
-        coord_kwargs = {
-            "typed_prims": typed_prims,
-        }
-        union_msg = "Using full coordinate union for TS guess."
-    else:
+        coord_kwargs["typed_prims"] = typed_prims
+        union_msg = "Using full coordinate union for TS guess. Probably a bad idea!"
+    elif coordinate_union in ("bonds", "bonds_bends_dihedrals"):
         # Only keep actual bonds ...
         valid_prim_types = (PrimTypes.BOND,)
         # ... and bends and dihedrals, if requested
         if coordinate_union == "bonds_bends_dihedrals":
             valid_prim_types += (PrimTypes.BEND, PrimTypes.PROPER_DIHEDRAL)
-        coord_kwargs = {
-            "define_prims": [tp for tp in typed_prims if tp[0] in valid_prim_types]
-        }
+        coord_kwargs["define_prims"] = [tp for tp in typed_prims if tp[0] in valid_prim_types]
         union_msg = f"Kept primitive types: {valid_prim_types}"
+    else:
+        union_msg = f"No coordinate union."
     print(union_msg)
 
     # Try to run in DLC per default
