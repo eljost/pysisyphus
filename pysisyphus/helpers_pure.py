@@ -1,3 +1,4 @@
+import collections.abc
 from enum import Enum
 import logging
 from pathlib import Path
@@ -150,3 +151,25 @@ def file_or_str(*args):
         return wrapped
 
     return inner_func
+
+
+def recursive_update(d, u):
+    """From https://stackoverflow.com/questions/3232943"""
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = recursive_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+
+def report_isotopes(geom, affect_str):
+    if (geom.isotopes is not None) and len(geom.isotopes) > 0:
+        print(f"Different isotopes were requested! This will affect {affect_str}.")
+        atoms = geom.atoms
+        masses = geom.masses
+        for atom_ind, _ in geom.isotopes:
+            print(f"\tAtom {atom_ind}{atoms[atom_ind]}: {masses[atom_ind]:.6f} au")
+        print()
+
+

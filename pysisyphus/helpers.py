@@ -13,7 +13,7 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
 from pysisyphus.io import geom_from_pdb, geom_from_cjson, save_hessian as save_h5_hessian
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
@@ -413,13 +413,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
     print(highlight_text("Hessian at final geometry", level=1))
     print()
 
-    if (geom.isotopes is not None) and len(geom.isotopes) > 0:
-        print("Different isotopes were requested! This will affect the frequencies.")
-        atoms = geom.atoms
-        masses = geom.masses
-        for atom_ind, _ in geom.isotopes:
-            print(f"\tAtom {atom_ind}{atoms[atom_ind]}: {masses[atom_ind]:.6f} au")
-        print()
+    report_isotopes(geom, "the_frequencies")
 
     # TODO: Add cartesian_hessian property to Geometry to avoid
     # accessing a "private" attribute.

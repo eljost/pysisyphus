@@ -11,7 +11,7 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import check_for_stop_sign, highlight_text, rms
-from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.xyzloader import make_trj_str, make_xyz_str
@@ -32,6 +32,8 @@ class IRC:
 
         self.geometry = geometry
         assert self.geometry.coord_type == "cart"
+
+        report_isotopes(self.geometry, "the IRC")
 
         self.step_length = step_length
         self.max_cycles = max_cycles
