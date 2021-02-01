@@ -47,7 +47,7 @@ from pysisyphus.helpers import (
     print_barrier,
     get_tangent_trj_str,
 )
-from pysisyphus.helpers_pure import merge_sets
+from pysisyphus.helpers_pure import merge_sets, recursive_update
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes
@@ -1016,11 +1016,12 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         print()
     to_opt = fragments_to_opt
 
-    coord_type = endopt_kwargs.pop("coord_type", "redund")
+    geom_kwargs = endopt_kwargs.pop("geom")
+    coord_type = geom_kwargs.pop("type")
     opt_geoms = list()
     opt_fns = list()
     for name, atoms, coords in to_opt:
-        geom = Geometry(atoms, coords, coord_type=coord_type)
+        geom = Geometry(atoms, coords, coord_type=coord_type, coord_kwargs=geom_kwargs)
 
         def wrapped_calc_getter():
             calc = calc_getter()
@@ -1124,10 +1125,10 @@ def get_defaults(conf_dict):
     }
 
     mol_opt_defaults = {
-        "type": "rfo",
         "dump": True,
-        "overachieve_factor": 3,
         "max_cycles": 100,
+        "overachieve_factor": 3,
+        "type": "rfo",
     }
     cos_opt_defaults = {
         "type": "qm",
@@ -1190,7 +1191,9 @@ def get_defaults(conf_dict):
                 # Preopt specific
                 "preopt": "both",
                 "strict": False,
-                "coord_type": "redund",
+                "geom": {
+                    "type": "redund",
+                },
             }
         )
 
@@ -1200,6 +1203,9 @@ def get_defaults(conf_dict):
             {
                 "thresh": "gau",
                 "fragments": False,
+                "geom": {
+                    "type": "redund",
+                },
             }
         )
 
@@ -1294,7 +1300,8 @@ def setup_run_dict(run_dict):
         )
     ):
         try:
-            run_dict[key].update(org_dict[key])
+            # Recursive update, because there may be nested dicts
+            recursive_update(run_dict[key], org_dict[key])
         except TypeError:
             print(f"Using default values for '{key}' section.")
     return run_dict
