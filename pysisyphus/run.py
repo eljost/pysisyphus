@@ -685,7 +685,6 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     updated xyz variable containing the optimized ends and any
     intermediate image that was present in the original list."""
     strict = preopt_kwargs.pop("strict", False)
-    coord_type = preopt_kwargs.pop("coord_type", "redund")
     preopt = preopt_kwargs.pop("preopt", "both")
     assert preopt in "first last both".split()
     first = (0, "first")
@@ -695,6 +694,8 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         "first": (first,),
         "last": (last,),
     }
+    geom_kwargs = preopt_kwargs.pop("geom")
+    coord_type = geom_kwargs.pop("coord_type", "redund")
 
     # Allow different sets of primitive internals with same_prims=False
     geoms = get_geoms(xyz, coord_type=coord_type, same_prims=False)
