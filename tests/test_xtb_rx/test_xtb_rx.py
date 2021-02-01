@@ -103,6 +103,9 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
         ts_energy = ts_geom.energy
         ts_imag = ts_geom.get_imag_frequencies()[0]
 
+        opt = results.opt
+        ts_opt = results.ts_opt
+
         rmsd = ts_ref.rmsd(ts_geom)
         diff = ts_ref_energy - ts_energy
         cmt = "Ref" if diff < 0.0 else " TS"
@@ -113,13 +116,14 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
         print(f"      Diff: {diff:.6f}")
         print(
             f"@@@{id_} COMPARE@@@: rmsd={rmsd:{rmsd_fmt}}, ΔE= {diff: .6f} {cmt} is lower, "
-            f"Ref: {ts_ref_imag: >8.1f}, TS: {ts_imag: >8.1f} cm⁻¹"
+            # f"Ref: {ts_ref_imag: >8.1f}, TS: {ts_imag: >8.1f} cm⁻¹"
+            f"fn={fn[:10]}, cycs: opt={opt.cur_cycle+1}, tsopt={ts_opt.cur_cycle+1}"
         )
 
-        results_bag.opt_converged = results.opt.is_converged
-        results_bag.opt_cycles = results.opt.cur_cycle + 1
-        results_bag.tsopt_converged = results.ts_opt.is_converged
-        results_bag.tsopt_cycles = results.ts_opt.cur_cycle + 1
+        results_bag.opt_converged = opt.is_converged
+        results_bag.opt_cycles = opt.cur_cycle + 1
+        results_bag.tsopt_converged = ts_opt.is_converged
+        results_bag.tsopt_cycles = ts_opt.cur_cycle + 1
         results_bag.rmsd = rmsd
 
         assert results.ts_opt.is_converged
