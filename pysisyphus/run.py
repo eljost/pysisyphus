@@ -248,7 +248,6 @@ def run_tsopt_from_cos(
     tsopt_kwargs,
     calc_getter=None,
     ovlp_thresh=0.4,
-    hei_kind="splined",
     coordinate_union="bonds",
 ):
     print(highlight_text(f"Running TS-optimization from COS"))
@@ -267,6 +266,7 @@ def run_tsopt_from_cos(
     else:
         cart_cos = cos
 
+    hei_kind = tsopt_kwargs.pop("hei_kind", "splined")
     # Use plain, unsplined, HEI
     if hei_kind == "plain":
         hei_index = cos.get_hei_index()
