@@ -8,7 +8,6 @@ from pysisyphus.socket_helper import (
     send_closure,
     recv_closure,
     get_fmts,
-    NINE_ZEROS,
     EYE3,
 )
 
