@@ -265,8 +265,7 @@ Related Literature
 
 1. `The efficient optimization of molecular geometries using redundant internal coordinates <https://doi.org/10.1063/1.1515483>`_
 2. `The generation and use of delocalized internal coordinates in geometry optimization <https://doi.org/10.1063/1.471864>`_
-3. `The efficient optimization of molecular geometries using redundant internal coordinates <https://doi.org/10.1063/1.1515483>`_
-4. `Geometry optimization in redundant internal coordinates <https://doi.org/10.1063/1.462844>`_
-5. `Geometry optimization made simple with translation and rotation coordinates <https://doi.org/10.1063/1.4952956>`_
+3. `Geometry optimization in redundant internal coordinates <https://doi.org/10.1063/1.462844>`_
+4. `Geometry optimization made simple with translation and rotation coordinates <https://doi.org/10.1063/1.4952956>`_
 
 
