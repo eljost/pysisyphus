@@ -1,0 +1,29 @@
+# IRC and subsquent optimization of endpoints with constrained Cartesians
+# of the carbon atom (index 0).
+geom:
+ type: cart
+ fn: |
+  3
+  HCN Iso TS, HF/3-21G
+  C  0.35648367  0.00000000  0.14254114
+  N -0.06842070  0.00000000  1.24606543
+  H  1.29729703  0.00000000  0.90815343
+ # Fix carbon atom in IRC, by specifying a very high mass.
+ isotopes: [[0, 1.e9]]
+calc:
+ type: pyscf
+ basis: 321g
+ pal: 2
+ charge: 0
+ mult: 1
+ verbose: 0
+irc:
+ max_cycles: 5
+endopt:
+ geom:
+  # Constrain carbon in endopt
+  constrain_prims: [["atom", 0]]
+
+# Carbon in 'forward_end_opt.xyz' and 'backward_end_opt.xyz' should have
+# the same Cartesian coordinates, as in the beginning.
+# (C  0.35648367  0.00000000  0.14254114)
