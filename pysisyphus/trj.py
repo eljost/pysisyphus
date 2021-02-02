@@ -240,6 +240,10 @@ def read_geoms(
             geom = [
                 geom_loader(fn, **geom_kwargs),
             ]
+        elif fn.endswith(".zmat"):
+            geom = [
+                geom_loader(fn, **geom_kwargs),
+            ]
         else:
             continue
         geoms.extend(geom)

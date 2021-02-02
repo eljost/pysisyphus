@@ -13,4 +13,4 @@ from pysisyphus.io.hessian import save_hessian
 from pysisyphus.io.molden import geoms_from_molden
 from pysisyphus.io.pdb import geom_from_pdb
 from pysisyphus.io.xyz import geoms_from_xyz
-from pysisyphus.io.zmat import geom_from_zmat
+from pysisyphus.io.zmat import geom_from_zmat, geom_from_zmat_fn
