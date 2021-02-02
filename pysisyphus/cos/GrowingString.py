@@ -17,7 +17,7 @@ class GrowingString(GrowingChainOfStates):
 
     def __init__(self, images, calc_getter, perp_thresh=0.05, param="equi",
                  reparam_every=2, reparam_every_full=3, reparam_tol=None,
-                 reparam_check="rms", max_micro_cycles=5, reset_dlc=False,
+                 reparam_check="rms", max_micro_cycles=5, reset_dlc=True,
                  climb=False, **kwargs):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
