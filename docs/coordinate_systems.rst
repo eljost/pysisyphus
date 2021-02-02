@@ -216,8 +216,7 @@ constrained coordinate to `define_prims`.
     # Examples
 
     # Constrain Cartesian coordinate of atom 0.
-    # All three lines result in the same constraint.
-    constrain_prims: [[0]]  # Special case: one atom index yields Cartesians of atom
+    # Both lines result in the same constraint.
     constrain_prims: [[XYZ, 0]]
     constrain_prims: [[ATOM, 0]]
 
@@ -252,12 +251,13 @@ mass closest to this integer is looked up in an internal database. Floats are us
     isotopes: [[2, 2.014101778]]
 
 Different isotope masses affect calculated frequencies and IRCs. Atoms can be fixed
-in IRC calculations by specifying a very high mass.
+in IRC calculations by specifying a very high mass. **YAML does not recognize 1e9 as
+float**, take care to add a dot (**1.e9**).
 
 .. code:: yaml
 
     # Fix atom 0 in IRC calculation.
-    isotopes: [[0, 1e9]]
+    isotopes: [[0, 1.e9]]
 
 
 Related Literature
