@@ -56,7 +56,10 @@ PrimTypeShortcuts = {
     "YZ": [PT.CARTESIAN_Y, PT.CARTESIAN_Z],
     "XYZ": [PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z],
     "ATOM": [PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z],
-    # Alias for proper dihedral
+    # Primitive aliases
+    "B": [PT.BOND],
+    "A": [PT.BEND],
+    "D": [PT.PROPER_DIHEDRAL],
     "DIHEDRAL": [PT.PROPER_DIHEDRAL],
 }
 
