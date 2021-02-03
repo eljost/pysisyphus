@@ -21,6 +21,7 @@ class IPIServer(Calculator):
         port=None,
         unlink=True,
         hdrlen=12,
+        max_retries=0,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -30,6 +31,7 @@ class IPIServer(Calculator):
         if self.host:
             assert self.port is not None
         self.hdrlen = hdrlen
+        self.max_retries = max_retries
 
         if self.address and unlink:
             self.unlink(self.address)
@@ -67,6 +69,7 @@ class IPIServer(Calculator):
             pass
         self._client_conn = None
         self._client_address = None
+        self.cur_retries = 0
 
     def listen_for(self, atoms, coords):
         atom_num = len(atoms)
@@ -76,7 +79,11 @@ class IPIServer(Calculator):
         if (self._client_conn is None) or (self._client_address is None):
             self.log("Waiting for a connection.")
             self._client_conn, self._client_address = self.sock.accept()
-            self.log("Got connection from {self._client_address}")
+            if self._client_address != "":
+                conn_msg = f"Got new connection from {self._client_address}."
+            else:
+                conn_msg = "Got new connection."
+            self.log(conn_msg)
             # Create send/receive functions for this connection
             self.fmts = get_fmts(coords_num)
             self.send_msg = send_closure(self._client_conn, self.hdrlen, self.fmts)
@@ -115,6 +122,18 @@ class IPIServer(Calculator):
         }
         return results
 
+    def retried_listen_for(self, atoms, coords):
+        while self.cur_retries < self.max_retries:
+            try:
+                result = self.listen_for(atoms, coords)
+                break
+            except Exception as err:
+                self.log(f"Caught exception: {err}.")
+                self.cur_retries += 1
+                self.reset_client_connection()
+                result = self.listen_for(atoms, coords)
+        return result
+
     def cleanup(self):
         self.send_msg("STATUS")
         _ = self.recv_msg()
@@ -127,5 +146,8 @@ class IPIServer(Calculator):
         return self.get_forces(atoms, coords)
 
     def get_forces(self, atoms, coords):
-        result = self.listen_for(atoms, coords)
+        if self.max_retries:
+            result = self.retried_listen_for(atoms, coords)
+        else:
+            result = self.listen_for(atoms, coords)
         return result
