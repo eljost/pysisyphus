@@ -46,11 +46,10 @@ class IPIServer(Calculator):
         self.sock.bind(*bind_args)
         self.sock.listen(1)
 
-        self._client_conn = None
-        self._client_address = None
         self.fmts = None
         self.send_msg = None
         self.recv_msg = None
+        self.reset_client_connection()
 
     def unlink(self, address):
         try:
@@ -58,6 +57,16 @@ class IPIServer(Calculator):
         except OSError as err:
             if os.path.exists(address):
                 raise err
+
+    def reset_client_connection(self):
+        self.log("Resetting client connection info.")
+        try:
+            self.conn.close()
+        except AttributeError:
+            self.log("No client connection present.")
+            pass
+        self._client_conn = None
+        self._client_address = None
 
     def listen_for(self, atoms, coords):
         atom_num = len(atoms)
@@ -110,8 +119,9 @@ class IPIServer(Calculator):
         self.send_msg("STATUS")
         _ = self.recv_msg()
         self.send_msg("EXIT")
-        self.conn.close()
-        self.unlink(self.address)
+        self.log("Sent EXIT to client.")
+        self.reset_client_connection()
+        # self.unlink(self.address)
 
     def get_energy(self, atoms, coords):
         return self.get_forces(atoms, coords)
