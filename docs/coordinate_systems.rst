@@ -24,8 +24,8 @@ Redundant Internal Coordinates
 * Easy estimation of diagonal model Hessians
 * **Support constraints**
 * Require sophisticated setup algorithm
-* Internal-Cartesian backtransformation required, to transform steps from internals to Cartesians
-* Redundant set
+* Iterative internal-Cartesian backtransformation, which may fail
+* Usually highly redundant set
 
 Delocalized Internal Coordinates (DLC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,14 +33,14 @@ Delocalized Internal Coordinates (DLC)
 * Complicated linear combinations of primitive internals
 * No coupling, coordinates are orthogonal to each other, at least at the geometrey they were defined at
 * Non redundant set
-* More efficient compared to RIC for bigger systems, if initial diagonalization is feasible
-* Same comments apply as for RICs
+* More efficient compared to RIC for bigger systems (if initial DLC generation is feasible)
+* Same comments apply, as for RICs
 
 Supported File Formats
 ----------------------
 
-All formats can be read, at least to a certain extend, by pysisyphus. Coordinate
-files are expected to be in Å, if not otherwise dictated by the respective format.
+All formats can be read, at least to a certain extent. Coordinate files are expected to be in Å,
+if not otherwise dictated by the respective format.
 
 ================ ===== =================================
 Suffix           Write   Comment            
@@ -65,10 +65,12 @@ Z-Matrix example
     H 2 1.4 1 110.0 3 -160.0
 
 Indexing in Z-matrices is 1-based, so the first atom has index 1. Variable substitution
-is not supported.
+is not supported in the current Z-matrix parser.
 
 YAML Input
 ----------
+
+See below for an explanation of the `geom` keys.
 
 .. code:: yaml
 
@@ -87,14 +89,14 @@ YAML Input
       ...                     # no 'fn' key here!
 
 Employed coordinates and coordinate systems in `preopt` and `endopt` are similary
-controlled by a `geom` block in the respective block. The same keywords are supported,
-as for the global `geom` block, except the `fn` key.
-block.
+controlled by a `geom` block. Same keywords are supported, as for the `geom` block,
+at the top level, except the `fn` key.
 
 Inline input
 ^^^^^^^^^^^^^
-Inline input is supported for XYZ format, coordinates are expected in Å. Take care
-of proper indentation.
+Inline coordinates are supported for XYZ format, and expected in Å. Take care
+of proper indentation. The example below would yield RIC for the hydrogen molecule
+(1 bond).
 
 .. code:: yaml
     
@@ -108,14 +110,14 @@ of proper indentation.
 
 Types of Primitive Coordinates
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Pysisyphus implements many different types of (primitive) internal coordinates.
+Pysisyphus implements many different (primitive) internal coordinates.
 Every coordinate is defined by its type and a set of atom indices,
 e.g., 2 indices for a bond, 3 indices for a bend and 4 indices for
 a dihedral.
 
 Specification of a type is necessary, as there are many
-different types of bonds, bends and dihedrals/out-of-plane coordinates.
-One can't assume, that a coordinate comprised of 3 atom indices is always a
+different kinds of bonds, bends and dihedrals/out-of-plane.
+One can't just assume, that a coordinate comprised of 3 atom indices is always a
 regular bend, as it may also be a linear bend or a translational coordinate
 (TRANSLATION_X, 13), describin the mean Cartesian X coordinate of 3 atoms.
 
@@ -177,7 +179,7 @@ of internal coordinates, but sometimes the algorithm misses an important one.
 Especially at transition state guesses, where increased atom
 distances are common, bonds may be missed.
 
-In such cases, additional coordinate can be requested explicitly. If additional
+In such cases, additional coordinates can be requested explicitly. If additional
 coordinates are requested, **a nested list is expected [[coord0], [coord1], ...]**.
 
 .. code:: yaml
@@ -201,7 +203,7 @@ coordinates are requested, **a nested list is expected [[coord0], [coord1], ...]
 
 Constraints
 ^^^^^^^^^^^
-Constraints are currently only supported in conjunction with RIC (`coord_type: redund`).
+**Constraints are currently only supported in conjunction with RIC (`coord_type: redund`).**
 It is not (yet) possible to modify the value of the specified coordinate via YAML
 input; the internal coordinate is constrained at its initial value. The same syntax
 as for `define_prims` is used. If the coordinate of the requested constraint is not
@@ -235,7 +237,7 @@ the final energy of an optimization. **But constraining more than one atome does
 Isotopes
 ^^^^^^^^
 Different isotope masses can be requested. The system works similar to Gaussians system.
-An list of pairs is expected, where the first number specifies the atom and the
+A list of pairs is expected, where the first number specifies the atom and the
 second number is either an integer or a float. If it is an integer, the isotope
 mass closest to this integer is looked up in an internal database. Floats are used as is.
 
