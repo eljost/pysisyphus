@@ -22,7 +22,8 @@ class IPIServer(Calculator):
         unlink=True,
         hdrlen=12,
         max_retries=0,
-        **kwargs
+        verbose=True,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.address = address
@@ -32,13 +33,14 @@ class IPIServer(Calculator):
             assert self.port is not None
         self.hdrlen = hdrlen
         self.max_retries = max_retries
+        self.verbose = verbose
 
         if self.address and unlink:
             self.unlink(self.address)
 
         if self.address:
             family = socket.AF_UNIX
-            bind_args = (self.address, )
+            bind_args = (self.address,)
         else:
             family = socket.AF_INET
             bind_args = (self.host, self.port)
@@ -86,8 +88,12 @@ class IPIServer(Calculator):
             self.log(conn_msg)
             # Create send/receive functions for this connection
             self.fmts = get_fmts(coords_num)
-            self.send_msg = send_closure(self._client_conn, self.hdrlen, self.fmts)
-            self.recv_msg = recv_closure(self._client_conn, self.hdrlen, self.fmts)
+            self.send_msg = send_closure(
+                self._client_conn, self.hdrlen, self.fmts, verbose=self.verbose
+            )
+            self.recv_msg = recv_closure(
+                self._client_conn, self.hdrlen, self.fmts, verbose=self.verbose
+            )
 
         # Reuse existing connection self._client_conn, wrapped in the
         # functions below.
@@ -112,6 +118,9 @@ class IPIServer(Calculator):
 
         energy = recv_msg(8, fmt="float")[0]
         client_atom_num = recv_msg(4, fmt="int")[0]
+        self.log(
+            f"Client sent number of atoms: {client_atom_num}, expecting {atom_num}."
+        )
         assert atom_num == client_atom_num
         forces = recv_msg(coords_num * 8, fmt="floats")
         virial = recv_msg(72, fmt="nine_floats")

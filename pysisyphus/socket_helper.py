@@ -26,8 +26,8 @@ def send_closure(sock, hdrlen, fmts, verbose=False):
                 msg = struct.pack(fmts[fmt], msg)
             else:
                 msg = f"{msg: <{hdrlen}}".encode("ascii")
-                if verbose:
-                    print(f"SENDING: {msg}")
+        if verbose:
+            print(f"SENDING: {msg}")
         sock.sendall(msg)
 
     return send_msg
@@ -53,8 +53,8 @@ def recv_closure(sock, hdrlen, fmts, verbose=False):
             msg = struct.unpack(fmts[fmt], msg)
         else:
             msg = msg.decode("ascii").strip()
-            if verbose:
-                print(f"RECEIVED: {msg}")
+        if verbose:
+            print(f"RECEIVED: {msg}")
         return msg
 
     return recv_msg
