@@ -22,7 +22,7 @@ class IPIServer(Calculator):
         unlink=True,
         hdrlen=12,
         max_retries=0,
-        verbose=True,
+        verbose=False,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -102,9 +102,9 @@ class IPIServer(Calculator):
 
         # Lets start talking
         send_msg("STATUS")
-        ready = recv_msg()  # ready
+        ready = recv_msg(expect="READY")  # ready
         send_msg("STATUS")
-        ready = recv_msg()  # ready
+        ready = recv_msg(expect="READY")  # ready
         send_msg("POSDATA")
         # Send cell vectors, inverse cell vectors, number of atoms and coordinates
         send_msg(EYE3, packed=True)  # cell vectors
@@ -112,9 +112,9 @@ class IPIServer(Calculator):
         send_msg(atom_num, fmt="int")
         send_msg(coords, fmt="floats")
         send_msg("STATUS")
-        have_data = recv_msg()
+        have_data = recv_msg(expect="HAVEDATA")
         send_msg("GETFORCE")
-        force_ready = recv_msg()
+        force_ready = recv_msg(expect="FORCEREADY")
 
         energy = recv_msg(8, fmt="float")[0]
         client_atom_num = recv_msg(4, fmt="int")[0]
@@ -122,9 +122,9 @@ class IPIServer(Calculator):
             f"Client sent number of atoms: {client_atom_num}, expecting {atom_num}."
         )
         assert atom_num == client_atom_num
-        forces = recv_msg(coords_num * 8, fmt="floats")
-        virial = recv_msg(72, fmt="nine_floats")
-        zero = recv_msg(4, fmt="int")
+        forces = recv_msg(coords_num * 8, fmt="floats", expect="forces")
+        virial = recv_msg(72, fmt="nine_floats", expect="virial")
+        zero = recv_msg(4, fmt="int", expect="zero")
         results = {
             "energy": energy,
             "forces": np.array(forces),

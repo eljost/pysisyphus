@@ -38,7 +38,7 @@ automatisch die korrekte anzahl an bytes erwartet"""
 
 
 def recv_closure(sock, hdrlen, fmts, verbose=False):
-    def recv_msg(nbytes=None, fmt=None):
+    def recv_msg(nbytes=None, fmt=None, expect=""):
         """Receive a message of given length from the socket.
 
         If nbytes is not given we expect hdrlen (header length) bytes.
@@ -54,7 +54,10 @@ def recv_closure(sock, hdrlen, fmts, verbose=False):
         else:
             msg = msg.decode("ascii").strip()
         if verbose:
-            print(f"RECEIVED: {msg}")
+            if expect:
+                expect = f", expected '{expect}'"
+
+            print(f"RECEIVED: {msg}{expect}")
         return msg
 
     return recv_msg
