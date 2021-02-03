@@ -26,7 +26,8 @@ class Bend(Primitive):
         u = u_dash / u_norm
         v = v_dash / v_norm
 
-        angle_rad = np.arccos(u.dot(v))
+        udv = max(-1.0, min(1.0, u.dot(v)))
+        angle_rad = np.arccos(udv)
 
         if gradient:
             cross_vec1 = ( 1, -1, 1)
