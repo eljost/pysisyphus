@@ -107,5 +107,6 @@ with open(yaml_fn) as handle:
     run_dict = yaml.load(handle.read(), Loader=yaml.SafeLoader)
 geom = geom_loader(run_dict["geom"]["fn"])
 address = run_dict["calc"]["address"]
+# address = "/tmp/ipi_h2o"  # For local testing with original I-PI server
 calc = XTB()
 calc_ipi_client(address, geom.atoms, calc)
