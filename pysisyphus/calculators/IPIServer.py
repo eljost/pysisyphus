@@ -73,7 +73,64 @@ class IPIServer(Calculator):
         self._client_address = None
         self.cur_retries = 0
 
-    def listen_for(self, atoms, coords):
+    def listen_for_client_atom_num(self, atom_num):
+        client_atom_num = self.recv_msg(4, fmt="int")[0]
+        self.log(
+            f"Client sent number of atoms: {client_atom_num}, expecting {atom_num}."
+        )
+        assert atom_num == client_atom_num
+        return atom_num
+
+    def listen_for_energy(self):
+        send_msg = self.send_msg
+        recv_msg = self.recv_msg
+
+        send_msg("GETENERGY")
+        recv_msg(expect="ENERGYREADY")
+        energy = recv_msg(8, fmt="float")[0]
+        results = {
+            "energy": energy,
+        }
+        return results
+
+    def listen_for_forces(self, atom_num):
+        send_msg = self.send_msg
+        recv_msg = self.recv_msg
+
+        send_msg("GETFORCE")
+        recv_msg(expect="FORCEREADY")
+        energy = recv_msg(8, fmt="float")[0]
+        self.listen_for_client_atom_num(atom_num)
+        coord_num = 3 * atom_num
+        forces = recv_msg(coord_num * 8, fmt="floats", expect="forces")
+        virial = recv_msg(72, fmt="nine_floats", expect="virial")
+        zero = recv_msg(4, fmt="int", expect="zero")
+        results = {
+            "energy": energy,
+            "forces": np.array(forces),
+        }
+        return results
+
+    def listen_for_hessian(self, atom_num):
+        send_msg = self.send_msg
+        recv_msg = self.recv_msg
+
+        send_msg("GETHESSIAN")
+        recv_msg(expect="HESSIANREADY")
+        energy = recv_msg(8, fmt="float")[0]
+        self.listen_for_client_atom_num(atom_num)
+        coord_num = 3 * atom_num
+        hessian = recv_msg(coord_num ** 2 * 8, fmt="floats_sq", expect="Hessian")
+        hessian = np.array(hessian).reshape(-1, coord_num)
+        results = {
+            "energy": energy,
+            "hessian": hessian,
+        }
+        return results
+
+    def listen_for(self, atoms, coords, kind="forces"):
+        assert kind in ("energy", "forces", "hessian")
+
         atom_num = len(atoms)
         coords_num = len(coords)
 
@@ -113,22 +170,12 @@ class IPIServer(Calculator):
         send_msg(coords, fmt="floats")
         send_msg("STATUS")
         have_data = recv_msg(expect="HAVEDATA")
-        send_msg("GETFORCE")
-        force_ready = recv_msg(expect="FORCEREADY")
-
-        energy = recv_msg(8, fmt="float")[0]
-        client_atom_num = recv_msg(4, fmt="int")[0]
-        self.log(
-            f"Client sent number of atoms: {client_atom_num}, expecting {atom_num}."
-        )
-        assert atom_num == client_atom_num
-        forces = recv_msg(coords_num * 8, fmt="floats", expect="forces")
-        virial = recv_msg(72, fmt="nine_floats", expect="virial")
-        zero = recv_msg(4, fmt="int", expect="zero")
-        results = {
-            "energy": energy,
-            "forces": np.array(forces),
-        }
+        if kind == "energy":
+            results = self.listen_for_energy()
+        elif kind == "forces":
+            results = self.listen_for_forces(atom_num)
+        elif kind == "hessian":
+            results = self.listen_for_hessian(atom_num)
         return results
 
     def retried_listen_for(self, atoms, coords):
@@ -143,7 +190,7 @@ class IPIServer(Calculator):
                 result = self.listen_for(atoms, coords)
         return result
 
-    def cleanup(self):
+    def __del__(self):
         self.send_msg("STATUS")
         _ = self.recv_msg()
         self.send_msg("EXIT")
@@ -152,11 +199,16 @@ class IPIServer(Calculator):
         # self.unlink(self.address)
 
     def get_energy(self, atoms, coords):
-        return self.get_forces(atoms, coords)
+        return self.listen_for(atoms, coords, kind="energy")
+
+    # def get_forces(self, atoms, coords):
+    # if self.max_retries:
+    # result = self.retried_listen_for(atoms, coords)
+    # else:
+    # result = self.listen_for(atoms, coords)
 
     def get_forces(self, atoms, coords):
-        if self.max_retries:
-            result = self.retried_listen_for(atoms, coords)
-        else:
-            result = self.listen_for(atoms, coords)
-        return result
+        return self.listen_for(atoms, coords, kind="forces")
+
+    def get_hessian(self, atoms, coords):
+        return self.listen_for(atoms, coords, kind="hessian")

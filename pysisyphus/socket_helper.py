@@ -65,9 +65,10 @@ def recv_closure(sock, hdrlen, fmts, verbose=False):
 
 def get_fmts(cartesians):
     fmts = {
-        "int": "i",
-        "float": "d",
-        "nine_floats": "d" * 9,
-        "floats": "d" * cartesians,
+        "int": "i",  # Atom number
+        "float": "d",  # Energy
+        "nine_floats": "d" * 9,  # (Inverse) cell vectors, virial, zeros
+        "floats": "d" * cartesians,  # Forces
+        "floats_sq": "d" * cartesians**2,  # Hessian
     }
     return fmts

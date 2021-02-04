@@ -10,7 +10,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.socket_helper import send_closure, recv_closure, get_fmts
 
 
-def ipi_client(addr, atoms, forces_getter, hdrlen=12):
+def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
     atom_num = len(atoms)
     # Number of entries in a Caretsian forces/coords vector
     cartesians = 3 * atom_num
@@ -30,6 +30,7 @@ def ipi_client(addr, atoms, forces_getter, hdrlen=12):
     send_msg = send_closure(sock, hdrlen, fmts)
     recv_msg = recv_closure(sock, hdrlen, fmts)
 
+    counter = 0
     while True:
         try:
             # The server initiates everything with a STATUS
@@ -54,22 +55,33 @@ def ipi_client(addr, atoms, forces_getter, hdrlen=12):
             # ... and the current coordinates.
             coords = np.array(recv_msg(floats_bytes, "floats"))
 
-            # Acutal QC calculation
-            forces, energy = forces_getter(coords)
-            print(f"Calculated energy: {energy:.6f}")
-
             status = recv_msg()
-            # Indicate, that energy and forces are available
+            # Indicate, that calculation is possible
             send_msg("HAVEDATA")
-            getforces = recv_msg()
-            send_msg("FORCEREADY")
-            # Send everything to the server
-            send_msg(energy, "float")
-            send_msg(atom_num, "int")
-            send_msg(forces, "floats")
-            send_msg(VIRIAL, packed=True)
-            # We don't want to send additional information, so just send 0.
-            send_msg(ZERO, packed=True)
+            get_what = recv_msg()
+            # Acutal QC calculations
+            if get_what == "GETFORCE":
+                forces, energy = forces_getter(coords)
+                print(f"Calculated energy & forces: {energy:.6f}, counter={counter}")
+                send_msg("FORCEREADY")
+                # Send everything to the server
+                send_msg(energy, "float")
+                send_msg(atom_num, "int")
+                send_msg(forces, "floats")
+                send_msg(VIRIAL, packed=True)
+                # We don't want to send additional information, so just send 0.
+                send_msg(ZERO, packed=True)
+            elif get_what == "GETHESSIAN":
+                hessian, energy = hessian_getter(coords)
+                hessian_packed = struct.pack("d" * cartesians ** 2, *hessian.flatten())
+                print(f"Calculated energy & Hessian: {energy:.6f}, counter={counter}")
+                send_msg("HESSIANREADY")
+                # Send everything to the server
+                send_msg(energy, "float")
+                send_msg(atom_num, "int")
+                send_msg(hessian_packed, packed=True)
+
+            counter += 1
         except Exception as err:
             raise err
 
@@ -81,7 +93,13 @@ def calc_ipi_client(addr, atoms, calc, **kwargs):
         energy = results["energy"]
         return forces, energy
 
-    ipi_client(addr, atoms, forces_getter, **kwargs)
+    def hessian_getter(coords):
+        results = calc.get_hessian(atoms, coords)
+        hessian = results["hessian"]
+        energy = results["energy"]
+        return hessian, energy
+
+    ipi_client(addr, atoms, forces_getter, hessian_getter, **kwargs)
 
 
 yaml_fn = "10_h2o_xtb_ipi_server.yaml"
