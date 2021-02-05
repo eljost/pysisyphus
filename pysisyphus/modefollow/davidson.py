@@ -54,9 +54,10 @@ def block_davidson(
         NormalMode(P.dot(mode.l_mw) / msqrt, masses_rep) for mode in guess_modes
     ]
 
-    col_fmts = "int int int float float str".split()
+    col_fmts = "int int int float_short float str".split()
     header = ("#", "subspace size", "mode", "ṽ / cm⁻¹", "rms(r)", "Conv")
-    table = TablePrinter(header, col_fmts, width=11)
+    fmts_update = {"float_short": "{: >11.2f}"}
+    table = TablePrinter(header, col_fmts, width=11, fmts_update=fmts_update)
     if print_level == 1:
         table.print_header()
 
