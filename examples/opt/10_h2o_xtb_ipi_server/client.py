@@ -36,7 +36,7 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
             # The server initiates everything with a STATUS
             recv_msg(expect="STATUS")
             send_msg("READY")
-            recv_msg(expect="STATUS")
+            status = recv_msg(expect="STATUS")
             # When the optimization converged EXIT will be returned .. not documented!
             if status == "EXIT":
                 print("Exited!")
