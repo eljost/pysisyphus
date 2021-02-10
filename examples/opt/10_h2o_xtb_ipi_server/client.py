@@ -55,7 +55,7 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
             # ... and the current coordinates.
             coords = np.array(recv_msg(floats_bytes, "floats"))
 
-            status = recv_msg()
+            recv_msg(expect="STATUS")
             # Indicate, that calculation is possible
             send_msg("HAVEDATA")
             get_what = recv_msg()
