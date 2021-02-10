@@ -34,9 +34,9 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
     while True:
         try:
             # The server initiates everything with a STATUS
-            status = recv_msg()
+            recv_msg(expect="STATUS")
             send_msg("READY")
-            status = recv_msg()
+            recv_msg(expect="STATUS")
             # When the optimization converged EXIT will be returned .. not documented!
             if status == "EXIT":
                 print("Exited!")
@@ -45,11 +45,11 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
             # It seems we have to send READY two times ... not documented!
             send_msg("READY")
             # The server then returns POSDATA.
-            posdata = recv_msg()
+            recv_msg(expect="POSDATA")
             # Receive cell vectors, inverse cell vectors and number of atoms ...
             # but we don't use them here, so we don't even try to convert them to something.
-            cell = sock.recv(72)
-            icell = sock.recv(72)
+            sock.recv(72)  # cell
+            sock.recv(72)  # icell
             ipi_atom_num = recv_msg(4, fmt="int")[0]
             assert ipi_atom_num == atom_num
             # ... and the current coordinates.

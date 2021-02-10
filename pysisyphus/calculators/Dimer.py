@@ -670,10 +670,7 @@ class Dimer(Calculator):
         return results
 
     def get_hessian(self, atoms, coords):
-        if self.forward_hessian:
-            results = self.calculator.get_hessian(atoms, coords)
-            return results
-        else:
+        if not self.forward_hessian:
             raise Exception("Actual Hessian method not forwarded by Dimer calculator!")
-
+        results = self.calculator.get_hessian(atoms, coords)
         return results

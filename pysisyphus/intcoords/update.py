@@ -2,7 +2,6 @@ import numpy as np
 
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.eval import eval_primitives
-from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.intcoords.valid import dihedral_valid
 

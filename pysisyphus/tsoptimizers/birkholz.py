@@ -47,9 +47,7 @@ def length_for_bond_order(bo, r0, b=2):
     return b / ((b - 1) * bo + 1) * r0
 
 
-def birkholz_interpolation(geoms, calc_getter, recreate=True, opt_kwargs=None):
-    if opt_kwargs is None:
-        opt_kwargs = dict()
+def birkholz_interpolation(geoms, calc_getter, recreate=True):
     assert len(geoms) >= 2
     start = geoms[0]
     end = geoms[-1]

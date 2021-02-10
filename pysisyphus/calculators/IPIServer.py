@@ -68,7 +68,6 @@ class IPIServer(Calculator):
             self.conn.close()
         except AttributeError:
             self.log("No client connection present.")
-            pass
         self._client_conn = None
         self._client_address = None
         self.cur_retries = 0
@@ -103,8 +102,8 @@ class IPIServer(Calculator):
         self.listen_for_client_atom_num(atom_num)
         coord_num = 3 * atom_num
         forces = recv_msg(coord_num * 8, fmt="floats", expect="forces")
-        virial = recv_msg(72, fmt="nine_floats", expect="virial")
-        zero = recv_msg(4, fmt="int", expect="zero")
+        recv_msg(72, fmt="nine_floats", expect="virial")
+        recv_msg(4, fmt="int", expect="zero")
         results = {
             "energy": energy,
             "forces": np.array(forces),
@@ -159,9 +158,9 @@ class IPIServer(Calculator):
 
         # Lets start talking
         send_msg("STATUS")
-        ready = recv_msg(expect="READY")  # ready
+        recv_msg(expect="READY")  # ready
         send_msg("STATUS")
-        ready = recv_msg(expect="READY")  # ready
+        recv_msg(expect="READY")  # ready
         send_msg("POSDATA")
         # Send cell vectors, inverse cell vectors, number of atoms and coordinates
         send_msg(EYE3, packed=True)  # cell vectors
@@ -169,7 +168,7 @@ class IPIServer(Calculator):
         send_msg(atom_num, fmt="int")
         send_msg(coords, fmt="floats")
         send_msg("STATUS")
-        have_data = recv_msg(expect="HAVEDATA")
+        recv_msg(expect="HAVEDATA")
         if kind == "energy":
             results = self.listen_for_energy()
         elif kind == "forces":
