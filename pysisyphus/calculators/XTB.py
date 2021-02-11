@@ -43,10 +43,9 @@ class XTB(Calculator):
         self.quiet = quiet
 
         self.topo_used = 0
-        valid_gfns = (1, 2, "ff")
-        assert self.gfn in valid_gfns, (
-            "Invalid gfn argument. " f"Allowed arguments are: {', '.join(valid_gfns)}!"
-        )
+        valid_gfns = (0, 1, 2, "ff")
+        assert self.gfn in valid_gfns, \
+            f"Invalid gfn argument. Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"

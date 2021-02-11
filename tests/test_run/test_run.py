@@ -1,9 +1,11 @@
 from pprint import pprint
 
+import numpy as np
 import pytest
 
-from pysisyphus.Geometry import Geometry
 from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import geom_loader
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
@@ -44,8 +46,10 @@ def test_diels_alder_growing_string():
             "pal": 2,
             "basis": "321g",
         },
-        "xyz": "lib:diels_alder_interpolated.trj",
-        "coord_type": "dlc",
+        "geom": {
+            "type": "dlc",
+            "fn": "lib:diels_alder_interpolated.trj",
+        },
     }
     results = run_from_dict(run_dict)
 
@@ -66,7 +70,10 @@ def test_diels_alder_growing_string():
 @using("pyscf")
 def test_run_results():
     run_dict = {
-        "xyz": "lib:h2o.xyz",
+        "geom": {
+            "type": "cart",
+            "fn": "lib:h2o.xyz",
+        },
         "calc": {"type": "pyscf", "basis": "sto3g"},
     }
     results = run_from_dict(run_dict)
@@ -100,7 +107,10 @@ def test_run_dimer_irc():
                 "pal": 2,
             }
         },
-        "xyz": "lib:hcn_ts_hf_321g.xyz",
+        "geom": {
+            "type": "cart",
+            "fn": "lib:hcn_ts_hf_321g.xyz",
+        }
     }
     results = run_from_dict(run_dict)
 
@@ -110,3 +120,43 @@ def test_run_dimer_irc():
     hcn, cnh = results.end_geoms
     assert hcn.energy == pytest.approx(-92.33966200907034)
     assert cnh.energy == pytest.approx(-92.35408370090339)
+
+
+@using("pyscf")
+def test_run_irc_constrained_endopt(this_dir):
+    geom_path = this_dir / "ts_inp_run_constrained_endopt.xyz"
+    ref_geom = geom_loader(geom_path)
+    ref_c3d = ref_geom.coords3d.copy()
+
+    constrain_ind = 0
+    max_cycles = 5
+    run_dict = {
+        "geom": {
+            "type": "cart",
+            "fn": str(this_dir / "ts_inp_run_constrained_endopt.xyz"),
+            "isotopes": [[constrain_ind, 1e9]]
+        },
+        "calc": {
+            "type": "pyscf",
+            "pal": 1,
+            "basis": "321g",
+            "verbose": 0,
+        },
+        "irc": {
+            "type": "eulerpc",
+            "max_cycles": max_cycles,
+        },
+        "endopt": {
+            "geom": {
+                "type": "redund",
+                "constrain_prims": [["atom", constrain_ind]],
+            },
+            "max_cycles": max_cycles,
+        },
+    }
+    results = run_from_dict(run_dict)
+    feg, beg = results.end_geoms
+    for end_geom in results.end_geoms:
+        c3d = end_geom.coords3d
+        np.testing.assert_allclose(c3d[constrain_ind], ref_c3d[constrain_ind])
+    # import pdb; pdb.set_trace()

@@ -106,12 +106,12 @@ class DLC(RedundantCoords):
             # S = sqrt(w)
             # w = S**2
             #
-            # To stay consistent with the SVD we derive eigenvalue threshold from
+            # To stay consistent with the SVD, we derive the eigenvalue threshold from
             # the SVD threshold.
             inv_thresh = self.svd_inv_thresh**2
 
         if self.full_set:
-            use_inds = np.full_like(eigvals, False, dtype=np.bool)
+            use_inds = np.full_like(eigvals, False, dtype=bool)
             dof = 3*len(self.atoms) - 6
             use_inds[-dof:] = True
         else:

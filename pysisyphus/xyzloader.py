@@ -65,9 +65,9 @@ def split_xyz_str(xyz_str):
          X 2.0 4.0 0.0
 
     """
-    float_ = "([\+\d\-\.]+)"
-    header_re = re.compile("(\d+)")
-    coord_re = re.compile(f"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
+    float_ = r"([\+\d\-\.]+)"
+    header_re = re.compile(r"(\d+)")
+    coord_re = re.compile(fr"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
 
     lines = [l.strip() for l in xyz_str.strip().split("\n")]
 
@@ -122,7 +122,7 @@ def parse_xyz_str(xyz_str, with_comment):
                     for line in xyz_str.strip().split("\n")[2:]
     ]
     atoms, coords = zip(*[(a, c) for a, *c in atoms_coords])
-    coords = np.array(coords, dtype=np.float)
+    coords = np.array(coords, dtype=float)
     if with_comment:
         return atoms, coords, comment_line
     else:

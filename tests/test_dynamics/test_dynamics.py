@@ -12,7 +12,7 @@ from pysisyphus.dynamics.helpers import (
     unscaled_velocity_distribution,
     get_mb_velocities_for_geom,
 )
-from pysisyphus.dynamics.velocity_verlet import md
+from pysisyphus.dynamics import md
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
@@ -40,10 +40,10 @@ def test_remove_com_velocity():
     atoms = 5
     velocities = np.ones((atoms, 3))
     masses = np.ones(atoms)
-    v_com = 1 - masses[0] / masses.sum()
+    v_ref = np.zeros_like(velocities)
 
-    v = remove_com_velocity(velocities, masses)
-    np.testing.assert_allclose(v, np.full_like(velocities, v_com))
+    v = remove_com_velocity(velocities, masses, keep_norm=False)
+    np.testing.assert_allclose(v, v_ref)
 
 
 def test_scale_velocities_to_temperatue():

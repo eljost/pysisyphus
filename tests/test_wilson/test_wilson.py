@@ -2,13 +2,24 @@ import numpy as np
 import pytest
 
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import geom_loader
+from pysisyphus.linalg import get_rot_mat
 from pysisyphus.intcoords import (
     Stretch,
     Bend,
+    CartesianX,
+    CartesianY,
+    CartesianZ,
     Torsion,
     OutOfPlane,
     LinearBend,
     LinearDisplacement,
+    RotationA,
+    RotationB,
+    RotationC,
+    TranslationX,
+    TranslationY,
+    TranslationZ,
 )
 from pysisyphus.intcoords.derivatives import (
     q_b,
@@ -263,13 +274,8 @@ def test_outofplane(dz):
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
 
 
-@pytest.mark.parametrize(
-    "deg", np.linspace(165, 180, 16)
-)
+@pytest.mark.parametrize("deg", np.linspace(165, 180, 16))
 def test_linear_displacement(deg):
-    from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
-    from pysisyphus.helpers import geom_loader
-
     zmat_str = f"""
     C
     C 1 1.5
@@ -298,3 +304,96 @@ def test_linear_displacement(deg):
     ref_dgrad = fin_diff_B(ld, coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
+
+
+def translation_tester(coords3d, indices):
+    for cls in (TranslationX, TranslationY, TranslationZ):
+        trans = cls(indices)
+
+        # First derivative
+        #   Manually programmed
+        val, grad = trans.calculate(coords3d, gradient=True)
+        # Finite difference reference values
+        ref_grad = np.zeros_like(coords3d)
+        ref_grad[indices] = fin_diff_prim(trans, coords3d).reshape(-1, 3)
+        np.testing.assert_allclose(grad, ref_grad.flatten())
+
+        # Second derivative
+        #   Manually programmed
+        dgrad = trans.jacobian(coords3d)
+        # Finite difference reference values
+        ref_dgrad = fin_diff_B(trans, coords3d)
+        np.testing.assert_allclose(dgrad, ref_dgrad)
+
+
+def test_trans_simple():
+    """Simple test for translation coordinates, as proposed by
+    Lee-Ping Wang in http://dx.doi.org/10.1063/1.4952956
+    """
+    zmat_str = f"""
+    C
+    C 1 3
+    """
+    zmat = zmat_from_str(zmat_str)
+    geom = geom_from_zmat(zmat)
+    coords3d = geom.coords3d
+    indices = [
+        0,
+    ]
+    translation_tester(coords3d, indices)
+
+
+def test_trans_complex():
+    """See test_trans_simple"""
+    hl = 1.5
+    dist = 6
+    c3d_bot = np.array(((hl, hl, 0.0), (hl, -hl, 0.0), (-hl, -hl, 0.0), (-hl, hl, 0.0)))
+    c3d_top = c3d_bot.copy()
+    c3d_top[:, 2] += dist
+    coords3d = np.concatenate((c3d_bot, c3d_top), axis=0)
+
+    indices_bot = [0, 1, 2, 3]
+    translation_tester(coords3d, indices_bot)
+
+    indices_top = [4, 5, 6, 7]
+    translation_tester(coords3d, indices_top)
+
+
+def test_rotation():
+    geom = geom_loader("lib:benzene.xyz")
+    coords3d = geom.coords3d
+    indices = list(range(len(geom.atoms)))
+
+    # Create rotated coordinates
+    abc = 0.5, 0.7, 0.1
+    # abc = None
+    R = get_rot_mat(abc)
+    coords3d_rot = R.dot(coords3d.T).T
+    # Reference values obtained from geometric
+    #
+    # from geometric.internal import Rotator
+    # grot = Rotator(a=indices, x0=coords3d)
+    # v_ref = grot.value(coords3d_rot)
+    v_ref = (0.14110539, -0.69609474, -0.57500707)
+    for i, cls in enumerate((RotationA, RotationB, RotationC)):
+        rot = cls(indices, ref_coords3d=coords3d)
+        v = rot.calculate(coords3d_rot)
+        assert v == pytest.approx(v_ref[i])
+
+
+def test_cartesian():
+    zmat_str = f"""
+    C
+    C 1 3
+    """
+    zmat = zmat_from_str(zmat_str)
+    geom = geom_from_zmat(zmat)
+    coords3d = geom.coords3d
+    indices = [
+        0,
+    ]
+    v_ref = (0.0, 0.0, 0.0)
+    for i, cls in enumerate((CartesianX, CartesianY, CartesianZ)):
+        cart = cls(indices)
+        v = cart.calculate(coords3d)
+        assert v == pytest.approx(v_ref[i])

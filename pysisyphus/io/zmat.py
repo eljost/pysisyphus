@@ -11,9 +11,7 @@ ZLine = namedtuple(
 )
 
 
-def geom_from_zmat(
-    zmat, coords3d=None, start_at=None, coord_type="cart", coord_kwargs=None
-):
+def geom_from_zmat(zmat, coords3d=None, start_at=None, **geom_kwargs):
     """Adapted from https://github.com/robashaw/geomConvert by Robert Shaw."""
     atoms = [zline.atom for zline in zmat]
 
@@ -94,7 +92,7 @@ def geom_from_zmat(
             b /= np.linalg.norm(b)
             coords3d[i] = O - w * x + b * y + a * z
 
-    geom = Geometry(atoms, coords3d, coord_type=coord_type, coord_kwargs=coord_kwargs)
+    geom = Geometry(atoms, coords3d, **geom_kwargs)
     return geom
 
 
@@ -127,3 +125,9 @@ def zmat_from_fn(fn):
     with open(fn) as handle:
         text = handle.read()
     return zmat_from_str(text)
+
+
+def geom_from_zmat_fn(fn, **geom_kwargs):
+    zmat = zmat_from_fn(fn)
+    geom = geom_from_zmat(zmat, **geom_kwargs)
+    return geom

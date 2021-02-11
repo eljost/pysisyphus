@@ -78,6 +78,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         max_cycles=50,
         rms_force=None,
         rms_force_only=False,
+        max_force_only=False,
         align=False,
         dump=False,
         dump_restart=None,
@@ -96,6 +97,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.thresh = thresh
         self.max_step = max_step
         self.rms_force_only = rms_force_only
+        self.max_force_only = max_force_only
         self.align = align
         self.dump = dump
         self.dump_restart = dump_restart
@@ -251,6 +253,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         if self.rms_force_only:
             self.log("Checking convergence with rms(forces) only!")
             return rms_force <= self.convergence["rms_force_thresh"]
+        elif self.max_force_only:
+            self.log("Checking convergence with max(forces) only!")
+            return max_force <= self.convergence["max_force_thresh"]
 
         # Check if force convergence is overachieved
         overachieved = False
@@ -316,6 +321,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         return steps
 
     def prepare_opt(self):
+        pass
+
+    def postprocess_opt(self):
         pass
 
     @abc.abstractmethod
@@ -457,6 +465,10 @@ class Optimizer(metaclass=abc.ABCMeta):
                     # I should improve my logging :)
                     print(msg)
                     self.log(msg)
+                    sim_fn = "too_similar.trj"
+                    with open(sim_fn, "w") as handle:
+                        handle.write(self.geometry.as_xyz())
+                    print(f"Dumped latest coordinates to '{sim_fn}'.")
                     break
 
             # Check if something considerably changed in the optimization,
@@ -593,6 +605,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
         print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
+        self.postprocess_opt()
         sys.stdout.flush()
 
     def _get_opt_restart_info(self):

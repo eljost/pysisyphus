@@ -33,151 +33,217 @@ INTERPOLATE = {
 def parse_args(args):
     parser = argparse.ArgumentParser("Utility to transform .xyz and .trj files.")
 
-    parser.add_argument("fns", nargs="+",
-        help="Filenames of .xyz and/or .trj files (xyz and trj can be mixed)."
+    parser.add_argument(
+        "fns",
+        nargs="+",
+        help="Filenames of .xyz and/or .trj files (xyz and trj can be mixed).",
     )
 
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("--between", type=int, default=0,
-        help="Interpolate additional images."
+    action_group.add_argument(
+        "--between", type=int, default=0, help="Interpolate additional images."
     )
-    action_group.add_argument("--align", action="store_true",
-        help="Align geometries onto the first geometry."
+    action_group.add_argument(
+        "--align", action="store_true", help="Align geometries onto the first geometry."
     )
-    action_group.add_argument("--split", action="store_true",
-        help="Split a supplied geometries in multiple .xyz files."
+    action_group.add_argument(
+        "--split",
+        action="store_true",
+        help="Split a supplied geometries in multiple .xyz files.",
     )
-    action_group.add_argument("--reverse", action="store_true",
-        help="Reverse a .trj file."
+    action_group.add_argument(
+        "--reverse", action="store_true", help="Reverse a .trj file."
     )
-    action_group.add_argument("--cleantrj", action="store_true",
-        help="Keep only the first four columns of xyz/trj files."
+    action_group.add_argument(
+        "--cleantrj",
+        action="store_true",
+        help="Keep only the first four columns of xyz/trj files.",
     )
-    action_group.add_argument("--spline", action="store_true",
-        help="Evenly redistribute geometries along a splined path."
+    action_group.add_argument(
+        "--spline",
+        action="store_true",
+        help="Evenly redistribute geometries along a splined path.",
     )
-    action_group.add_argument("--first", type=int,
-        help="Copy the first N geometries to a new .trj file."
+    action_group.add_argument(
+        "--first", type=int, help="Copy the first N geometries to a new .trj file."
     )
-    action_group.add_argument("--every", type=int,
+    action_group.add_argument(
+        "--every",
+        type=int,
         help="Create new .trj with every N-th geometry. "
-             "Always includes the first and last point."
+        "Always includes the first and last point.",
     )
-    action_group.add_argument("--center", action="store_true",
-        help="Move the molecules centroid into the origin."
+    action_group.add_argument(
+        "--center",
+        action="store_true",
+        help="Move the molecules centroid into the origin.",
     )
-    action_group.add_argument("--centerm", action="store_true",
-        help="Move the molecules center of mass into the origin."
+    action_group.add_argument(
+        "--centerm",
+        action="store_true",
+        help="Move the molecules center of mass into the origin.",
     )
-    action_group.add_argument("--translate", nargs=3, type=float,
-        help="Translate the molecule by the given vector given " \
-             "in Ångström."
+    action_group.add_argument(
+        "--translate",
+        nargs=3,
+        type=float,
+        help="Translate the molecule by the given vector given " "in Ångström.",
     )
-    action_group.add_argument("--append", action="store_true",
-        help="Combine the given .xyz files into one .xyz file."
+    action_group.add_argument(
+        "--append",
+        action="store_true",
+        help="Combine the given .xyz files into one .xyz file.",
     )
-    action_group.add_argument("--join", action="store_true",
-        help="Combine the given .xyz/.trj files into one .trj file."
+    action_group.add_argument(
+        "--join",
+        action="store_true",
+        help="Combine the given .xyz/.trj files into one .trj file.",
     )
-    action_group.add_argument("--match", action="store_true",
+    action_group.add_argument(
+        "--match",
+        action="store_true",
         help="Resort the second .xyz file so the atom order matches the "
-             "first .xyz file. Uses the hungarian method."
+        "first .xyz file. Uses the hungarian method.",
     )
-    action_group.add_argument("--std", action="store_true",
-        help="Move supplied geometry to its standard orientation."
+    action_group.add_argument(
+        "--std",
+        action="store_true",
+        help="Move supplied geometry to its standard orientation.",
     )
-    action_group.add_argument("--shake", action="store_true",
-        help="Shake (randomly displace) coordiantes."
+    action_group.add_argument(
+        "--shake", action="store_true", help="Shake (randomly displace) coordiantes."
     )
-    action_group.add_argument("--internals", action="store_true",
-        help="Print automatically generated internals."
+    action_group.add_argument(
+        "--internals",
+        action="store_true",
+        help="Print automatically generated internals.",
     )
-    action_group.add_argument("--get", type=int,
-        help="Get n-th geometry. Expects 0-based index input."
+    action_group.add_argument(
+        "--get", type=int, help="Get n-th geometry. Expects 0-based index input."
     )
-    action_group.add_argument("--geti", action="store_true",
-        help="Decide on geometry interactively."
+    action_group.add_argument(
+        "--geti", action="store_true", help="Decide on geometry interactively."
     )
-    action_group.add_argument("--origin", action="store_true",
-        help="Translate geometry, so that min(X/Y/Z) == 0."
+    action_group.add_argument(
+        "--origin",
+        action="store_true",
+        help="Translate geometry, so that min(X/Y/Z) == 0.",
     )
-    action_group.add_argument("--fragsort", action="store_true",
-        help="Resort atoms by fragments."
+    action_group.add_argument(
+        "--fragsort", action="store_true", help="Resort atoms by fragments."
     )
-    action_group.add_argument("--topdb", action="store_true",
-        help="Convert given geometry to PDB with automatic fragment detection."
+    action_group.add_argument(
+        "--topdb",
+        action="store_true",
+        help="Convert given geometry to PDB with automatic fragment detection.",
     )
 
     shake_group = parser.add_argument_group()
-    shake_group.add_argument("--scale", type=float, default=0.1,
-        help="Scales the displacement in --shake."
+    shake_group.add_argument(
+        "--scale", type=float, default=0.1, help="Scales the displacement in --shake."
     )
-    shake_group.add_argument("--seed", type=int, default=None,
-        help="Initialize the RNG for reproducible results."
+    shake_group.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Initialize the RNG for reproducible results.",
     )
 
     interpolate_group = parser.add_mutually_exclusive_group()
-    interpolate_group.add_argument("--idpp", action="store_true",
-        help="Interpolate using Image Dependent Pair Potential."
+    interpolate_group.add_argument(
+        "--idpp",
+        action="store_true",
+        help="Interpolate using Image Dependent Pair Potential.",
     )
-    interpolate_group.add_argument("--lst", action="store_true",
-        help="Interpolate by linear synchronous transit."
+    interpolate_group.add_argument(
+        "--lst", action="store_true", help="Interpolate by linear synchronous transit."
     )
-    interpolate_group.add_argument("--redund", action="store_true",
-        help="Interpolate in internal coordinates."
+    interpolate_group.add_argument(
+        "--redund", action="store_true", help="Interpolate in internal coordinates."
     )
 
-    parser.add_argument("--noipalign", action="store_false",
-        help="Don't align geometries when interpolating."
+    parser.add_argument(
+        "--noipalign",
+        action="store_false",
+        help="Don't align geometries when interpolating.",
     )
-    parser.add_argument("--bohr", action="store_true",
-        help="Input geometries are in Bohr instead of Angstrom."
+    parser.add_argument(
+        "--bohr",
+        action="store_true",
+        help="Input geometries are in Bohr instead of Angstrom.",
     )
-    parser.add_argument("--noxyz", action="store_false",
-        help="Disable dumping of single .xyz files."
+    parser.add_argument(
+        "--noxyz", action="store_false", help="Disable dumping of single .xyz files."
     )
-    parser.add_argument("--atoms", nargs="+", type=int, default=list(),
-        help="Used with --internals. Only print primitives including the given atoms."
+    parser.add_argument(
+        "--atoms",
+        nargs="+",
+        type=int,
+        default=list(),
+        help="Used with --internals. Only print primitives including the given atoms.",
     )
-    parser.add_argument("--add_prims", type=str, default="",
+    parser.add_argument(
+        "--add_prims",
+        type=str,
+        default="",
         help="Used with --internals. Define additional primitives. Expects a "
-             "string representation of a nested list that can be parsed as YAML "
-             "e.g. [[10,30],[1,2,3],[4,5,6,7]]."
+        "string representation of a nested list that can be parsed as YAML "
+        "e.g. [[10,30],[1,2,3],[4,5,6,7]].",
     )
 
     return parser.parse_args()
 
 
-def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
-               define_prims=None, typed_prims=None):
+def read_geoms(
+    xyz_fns,
+    in_bohr=False,
+    coord_type="cart",
+    define_prims=None,
+    constrain_prims=None,
+    typed_prims=None,
+    isotopes=None,
+):
     if isinstance(xyz_fns, str):
-        xyz_fns = [xyz_fns, ]
+        xyz_fns = [xyz_fns]
 
     geoms = list()
     geom_kwargs = {
         "coord_type": coord_type,
+        "isotopes": isotopes,
     }
     # Dont supply coord_kwargs with coord_type == "cart"
     if coord_type != "cart":
         geom_kwargs["coord_kwargs"] = {
             "define_prims": define_prims,
+            "constrain_prims": constrain_prims,
             "typed_prims": typed_prims,
         }
 
     for fn in xyz_fns:
         if "*" in fn:
             cwd = Path(".")
-            geom = [geom_loader(xyz_fn, **geom_kwargs)
-                    for xyz_fn in natsorted(cwd.glob(fn))]
+            geom = [
+                geom_loader(xyz_fn, **geom_kwargs) for xyz_fn in natsorted(cwd.glob(fn))
+            ]
         # Simplify this to use geom_loader...
         elif fn.endswith(".xyz"):
-            geom = [geom_loader(fn, **geom_kwargs), ]
+            geom = [
+                geom_loader(fn, **geom_kwargs),
+            ]
         elif fn.endswith(".trj"):
             geom = geom_loader(fn, **geom_kwargs)
         elif fn.endswith(".pdb"):
-            geom = [geom_loader(fn, **geom_kwargs), ]
+            geom = [
+                geom_loader(fn, **geom_kwargs),
+            ]
         elif fn.endswith(".cjson"):
-            geom = [geom_loader(fn, **geom_kwargs), ]
+            geom = [
+                geom_loader(fn, **geom_kwargs),
+            ]
+        elif fn.endswith(".zmat"):
+            geom = [
+                geom_loader(fn, **geom_kwargs),
+            ]
         else:
             continue
         geoms.extend(geom)
@@ -187,11 +253,14 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
         try:
             atoms_coords = split_xyz_str(fn)
             # We excpect the coordinates to be given in Angstrom
-            geoms = [Geometry(atoms, coords/BOHR2ANG, **geom_kwargs)
-                     for atoms, coords in atoms_coords]
+            geoms = [
+                Geometry(atoms, coords / BOHR2ANG, **geom_kwargs)
+                for atoms, coords in atoms_coords
+            ]
         except AssertionError:
-            raise Exception("Could not parse supplied 'xyz' values as either "
-                            ".xyz, .trj or xyz-formatted string.!"
+            raise Exception(
+                "Could not parse supplied 'xyz' values as either "
+                ".xyz, .trj or xyz-formatted string.!"
             )
 
     # Original coordinates are in bohr, but pysisyphus expects them
@@ -203,36 +272,57 @@ def read_geoms(xyz_fns, in_bohr=False, coord_type="cart",
     return geoms
 
 
-def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
-              comments=False, in_bohr=False, define_prims=None, union=None,
-              interpolate_align=True, same_prims=True, quiet=False):
+def get_geoms(
+    xyz_fns,
+    interpolate=None,
+    between=0,
+    coord_type="cart",
+    comments=False,
+    in_bohr=False,
+    define_prims=None,
+    constrain_prims=None,
+    union=None,
+    isotopes=None,
+    interpolate_align=True,
+    same_prims=True,
+    quiet=False,
+):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
     if union is not None:
-        assert coord_type != "cart", \
-            "union must not be used with coord_type=cart!"
+        assert coord_type != "cart", "union must not be used with coord_type=cart!"
         union_geoms = read_geoms(union, coord_type=coord_type)
-        assert len(union_geoms) == 2, \
-            f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
+        assert (
+            len(union_geoms) == 2
+        ), f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
         typed_prims_union = form_coordinate_union(*union_geoms)
     else:
         typed_prims_union = None
 
-    assert interpolate in list(INTERPOLATE.keys()) + [None], \
-        f"Unsupported type: '{interpolate}' given. Valid arguments are " \
+    assert interpolate in list(INTERPOLATE.keys()) + [None], (
+        f"Unsupported type: '{interpolate}' given. Valid arguments are "
         f"{list(INTERPOLATE.keys())}'"
+    )
 
-    geoms = read_geoms(xyz_fns, in_bohr, coord_type=coord_type,
-                       define_prims=define_prims, typed_prims=typed_prims_union)
+    geoms = read_geoms(
+        xyz_fns,
+        in_bohr,
+        coord_type=coord_type,
+        define_prims=define_prims,
+        constrain_prims=constrain_prims,
+        typed_prims=typed_prims_union,
+        isotopes=isotopes,
+    )
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
 
     atoms_0 = geoms[0].atoms
     atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
     atoms_0_str = atoms_strs[0]
-    assert all([atoms_str == atoms_0_str for atoms_str in atoms_strs]), \
-        "Atom ordering/numbering in the geometries is inconsistent!"
+    assert all(
+        [atoms_str == atoms_0_str for atoms_str in atoms_strs]
+    ), "Atom ordering/numbering in the geometries is inconsistent!"
 
     # Dont try to align 1-atom species
     interpolate_align = interpolate_align and len(geoms[0].atoms) > 1
@@ -260,8 +350,12 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
                 coord_kwargs = {
                     "typed_prims": geom.internal.typed_prims,
                 }
-            geom = Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type,
-                            comment=geom.comment, coord_kwargs=coord_kwargs
+            geom = Geometry(
+                geom.atoms,
+                geom.cart_coords,
+                coord_type=coord_type,
+                comment=geom.comment,
+                coord_kwargs=coord_kwargs,
             )
             recreated_geoms.append(geom)
         geoms = recreated_geoms
@@ -277,18 +371,32 @@ def get_geoms(xyz_fns, interpolate=None, between=0, coord_type="cart",
     # Recreate geometries with the same primitive internal coordinates
     if not same_prim_inds:
         typed_prims = form_coordinate_union(geoms[0], geoms[-1])
-        geoms = [Geometry(atoms_0, geom.cart_coords,
-                         coord_type=coord_type,
-                         coord_kwargs={"typed_prims": typed_prims},
-                 )
-                 for geom in geoms]
+        geoms = [
+            Geometry(
+                atoms_0,
+                geom.cart_coords,
+                coord_type=coord_type,
+                coord_kwargs={"typed_prims": typed_prims},
+                isotopes=isotopes,
+            )
+            for geom in geoms
+        ]
         # assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
-        assert all([len(geom.internal.typed_prims) == len(typed_prims) for geom in geoms])
+        assert all(
+            [len(geom.internal.typed_prims) == len(typed_prims) for geom in geoms]
+        )
     return geoms
 
 
-def dump_geoms(geoms, fn_base, trj_infix="", dump_trj=True, dump_xyz=True, dump_pdb=False,
-               ang=False):
+def dump_geoms(
+    geoms,
+    fn_base,
+    trj_infix="",
+    dump_trj=True,
+    dump_xyz=True,
+    dump_pdb=False,
+    ang=False,
+):
     xyz_per_geom = [geom.as_xyz() for geom in geoms]
     if dump_trj:
         trj_str = "\n".join(xyz_per_geom)
@@ -337,12 +445,12 @@ def every(geoms, every_nth):
     # The first geometry is always present, but the last geometry
     # may be missing.
     sampled_indices = list(range(0, len(geoms), every_nth))
-    if sampled_indices[-1] != len(geoms)-1:
-        sampled_indices.append(len(geoms)-1)
+    if sampled_indices[-1] != len(geoms) - 1:
+        sampled_indices.append(len(geoms) - 1)
     sampled_inds_str = ", ".join([str(i) for i in sampled_indices])
     print(f"Sampled indices {sampled_inds_str}")
     # if every_nth_geom[-1] != geoms[-1]:
-        # every_nth_geom.append(geoms[-1])
+    # every_nth_geom.append(geoms[-1])
     every_nth_geom = [geoms[i] for i in sampled_indices]
     return every_nth_geom
 
@@ -368,7 +476,9 @@ def translate(geoms, trans):
 def append(geoms):
     atoms = geoms[0].atoms * len(geoms)
     coords = list(it.chain([geom.coords for geom in geoms]))
-    return [Geometry(atoms, coords), ]
+    return [
+        Geometry(atoms, coords),
+    ]
 
 
 def match(ref_geom, geom_to_match):
@@ -396,7 +506,9 @@ def match(ref_geom, geom_to_match):
     matched_geom.coords = np.array(new_coords).flatten()
     rmsd_after = rmsd.kabsch_rmsd(ref_geom.coords3d, matched_geom.coords3d)
     print(f"Kabsch RMSD after: {rmsd_after:.4f}")
-    return [matched_geom, ]
+    return [
+        matched_geom,
+    ]
 
 
 def standard_orientation(geoms):
@@ -424,13 +536,19 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
         atom_inds = set(range(atom_num))
         # Atom indices must superset of filter_atoms
         invalid = filter_set - atom_inds
-        assert not invalid, \
-            f"Filter indices {invalid} are outside of the " \
-            f"valid range for the {i}-th geometry '{geom}' with {atom_num} " \
+        assert not invalid, (
+            f"Filter indices {invalid} are outside of the "
+            f"valid range for the {i}-th geometry '{geom}' with {atom_num} "
             f"atoms (valid indices: range(0,{atom_num}))."
+        )
 
-        int_geom = Geometry(geom.atoms, geom.coords, coord_type="redund",
-                            coord_kwargs={"define_prims": add_prims,},
+        int_geom = Geometry(
+            geom.atoms,
+            geom.coords,
+            coord_type="redund",
+            coord_kwargs={
+                "define_prims": add_prims,
+            },
         )
 
         prim_counter = 0
@@ -455,8 +573,10 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
             # want to filter for.
             if filter_set and not (set(pi.inds) & filter_set):
                 continue
-            print(f"{j:04d}: {pi_type}{prim_counter:03d}{str(pi.inds): >20} {val: >10.4f}"
-                  f"{unit}")
+            print(
+                f"{j:04d}: {pi_type}{prim_counter:03d}{str(pi.inds): >20} {val: >10.4f}"
+                f"{unit}"
+            )
             prim_counter += 1
             prev_len = len_
 
@@ -470,7 +590,9 @@ def get(geoms, index):
     # also return a index number to generate the filename.
     if index < 0:
         index += len(geoms)
-    return [geoms[index], ]
+    return [
+        geoms[index],
+    ]
 
 
 class GotNoGeometryException(Exception):
@@ -533,14 +655,11 @@ def frag_sort(geoms):
     for i, geom in enumerate(geoms):
         print(f"{i:02d}: {geom}")
         frags = get_fragments(geom.atoms, geom.coords)
-        print(f"\tFound {len(frags)} fragments.\n"
-               "\tResorting atoms and coordinates.")
+        print(f"\tFound {len(frags)} fragments.\n" "\tResorting atoms and coordinates.")
         new_indices = list(it.chain(*frags))
         new_atoms = [geom.atoms[i] for i in new_indices]
         new_coords = geom.coords3d[new_indices]
-        sorted_geoms.append(
-                Geometry(new_atoms, new_coords)
-        )
+        sorted_geoms.append(Geometry(new_atoms, new_coords))
     return sorted_geoms
 
 
@@ -559,8 +678,13 @@ def run():
         interpolate = None
 
     # Read supplied files and create Geometry objects
-    geoms = get_geoms(args.fns, interpolate, args.between, in_bohr=args.bohr,
-                      interpolate_align=args.noipalign)
+    geoms = get_geoms(
+        args.fns,
+        interpolate,
+        args.between,
+        in_bohr=args.bohr,
+        interpolate_align=args.noipalign,
+    )
 
     to_dump = geoms
     dump_trj = True
@@ -581,7 +705,7 @@ def run():
     elif args.cleantrj:
         fn_base = "cleaned"
     elif args.first:
-        to_dump = geoms[:args.first]
+        to_dump = geoms[: args.first]
         fn_base = "first"
         trj_infix = f"_{args.first}"
     elif args.spline:
@@ -642,8 +766,15 @@ def run():
     # Write transformed geometries
     dump_trj = dump_trj and (len(to_dump) > 1)
 
-    dump_geoms(to_dump, fn_base, trj_infix=trj_infix, dump_trj=dump_trj,
-               dump_xyz=dump_xyz, dump_pdb=dump_pdb)
+    dump_geoms(
+        to_dump,
+        fn_base,
+        trj_infix=trj_infix,
+        dump_trj=dump_trj,
+        dump_xyz=dump_xyz,
+        dump_pdb=dump_pdb,
+    )
+
 
 if __name__ == "__main__":
     run()

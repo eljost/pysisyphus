@@ -4,6 +4,8 @@
 #     Fischer, Almlöf, 1992
 # [3] https://onlinelibrary.wiley.com/doi/full/10.1002/qua.21049
 #     Swart, Bickelhaupt, 2006
+# [4] http://dx.doi.org/10.1063/1.4952956
+#     Lee-Ping Wang 2016
 
 from math import exp
 import itertools as it
@@ -15,6 +17,9 @@ from scipy.spatial.distance import pdist, squareform
 from pysisyphus.calculators.XTB import XTB
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.io.hessian import save_hessian
+
+
+CART_F = 0.05
 
 
 def fischer_guess(geom):
@@ -63,6 +68,7 @@ def fischer_guess(geom):
                 * exp(-2.85*(r_ab - r_ab_cov))
         )
     h_funcs = {
+        1: lambda _: CART_F,  # See [4], last sentences of III.
         2: h_bond,
         3: h_bend,
         4: h_dihedral,
@@ -108,6 +114,10 @@ def lindh_guess(geom):
     }
     k_diag = list()
     for prim_int in geom.internal.prim_internals:
+        if len(prim_int.inds) == 1:
+            k_diag.append(CART_F)  # See [4], last sentences of III.
+            continue
+
         rho_product = 1
         for i in range(len(prim_int.inds)-1):
             i1, i2 = prim_int.inds[i:i+2]
@@ -119,6 +129,7 @@ def lindh_guess(geom):
 
 def simple_guess(geom):
     h_dict = {
+        1: CART_F,  # See [4], last sentences of III.
         2: 0.5,  # Stretches/bonds
         3: 0.2,  # Bends/angles
         4: 0.1,  # Torsions/dihedrals
@@ -138,6 +149,10 @@ def swart_guess(geom):
     }
     k_diag = list()
     for primitive in geom.internal.primitives:
+        if len(primitive.indices) == 1:
+            k_diag.append(CART_F)  # See [4], last sentence of III.
+            continue
+
         rho_product = 1
         for i in range(len(primitive.indices)-1):
             i1, i2 = primitive.indices[i:i+2]

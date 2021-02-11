@@ -15,10 +15,9 @@ class RotationConverged(Exception):
 
 
 class Gaussian:
-
     def __init__(self, height, center, std, N):
         self.center = np.array(center)
-        self.height= float(height)
+        self.height = float(height)
         self.std = float(std)
         self.N = np.array(N)
 
@@ -28,28 +27,68 @@ class Gaussian:
         if height is None:
             height = self.height
 
-        return height * np.exp(-(R.dot(self.N) - self.s0)**2 / (2*self.std**2))
+        return height * np.exp(-((R.dot(self.N) - self.s0) ** 2) / (2 * self.std ** 2))
 
     def forces(self, R, height=None):
         if height is None:
             height = self.height
         s_diff = R.dot(self.N) - self.s0
 
-        return height * np.exp(-s_diff**2 / (2 * self.std**2)) * s_diff/self.std**2 * self.N
+        return (
+            height
+            * np.exp(-(s_diff ** 2) / (2 * self.std ** 2))
+            * s_diff
+            / self.std ** 2
+            * self.N
+        )
 
     def __str__(self):
-        return f"Gaussian(height={self.height:.4f}, center={self.center}, " \
-               f"s0={self.s0:.4f}, std={self.std:.4f}"
+        return (
+            f"Gaussian(height={self.height:.4f}, center={self.center}, "
+            f"s0={self.s0:.4f}, std={self.std:.4f}"
+        )
+
+
+# [1] https://aip.scitation.org/doi/abs/10.1063/1.480097
+#     Original Dimer paper
+#     Henkelmann, 1999
+# [2] https://doi.org/10.1063/1.1809574
+#     Comparison of TS search methods
+#     Olsen, 2004
+# [3] https://doi.org/10.1063/1.2104507
+#     Comparison of Dimer and P-RFO
+#     Heyden, 2005
+# [4] https://aip.scitation.org/doi/abs/10.1063/1.2815812
+#     Superlinear Dimer method
+#     Kästner, 2008
 
 
 class Dimer(Calculator):
-
-    def __init__(self, calculator, *args, N_raw=None, length=0.0189, rotation_max_cycles=15,
-                 rotation_method="fourier", rotation_thresh=1e-4, rotation_tol=1,
-                 rotation_max_element=0.001, rotation_interpolate=True,
-                 rotation_disable=False, bonds=None, bias_rotation=False,
-                 bias_translation=False, bias_gaussian_dot=0.1, seed=None,
-                 write_orientations=True, rotation_remove_trans=True, **kwargs):
+    def __init__(
+        self,
+        calculator,
+        *args,
+        N_raw=None,
+        length=0.0189,
+        rotation_max_cycles=15,
+        rotation_method="fourier",
+        rotation_thresh=1e-4,
+        rotation_tol=1,
+        rotation_max_element=0.001,
+        rotation_interpolate=True,
+        rotation_disable=False,
+        rotation_disable_pos_curv=True,
+        rotation_remove_trans=True,
+        trans_force_f_perp=True,
+        bonds=None,
+        bias_rotation=False,
+        bias_translation=False,
+        bias_gaussian_dot=0.1,
+        seed=None,
+        write_orientations=True,
+        forward_hessian=True,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.logger = logging.getLogger("dimer")
@@ -67,8 +106,9 @@ class Dimer(Calculator):
         try:
             self.rotation_method = rotation_methods[rotation_method]
         except KeyError as err:
-            print(f"Invalid rotation_method={rotation_method}! Valid types are: "
-                  f"{tuple(self.rotation_methods.keys())}"
+            print(
+                f"Invalid rotation_method={rotation_method}! Valid types are: "
+                f"{tuple(self.rotation_methods.keys())}"
             )
             raise err
         self.rotation_thresh = float(rotation_thresh)
@@ -76,13 +116,16 @@ class Dimer(Calculator):
         self.rotation_max_element = float(rotation_max_element)
         self.rotation_interpolate = bool(rotation_interpolate)
         self.rotation_disable = bool(rotation_disable)
+        self.rotation_disable_pos_curv = bool(rotation_disable_pos_curv)
         self.rotation_remove_trans = bool(rotation_remove_trans)
+        self.trans_force_f_perp = trans_force_f_perp
+        self.forward_hessian = forward_hessian
 
         # Regarding generation of initial orientation
         self.bonds = bonds
         # Bias
         self.bias_rotation = bool(bias_rotation)
-        self.bias_rotation_a = 0.
+        self.bias_rotation_a = 0.0
         self.bias_translation = bool(bias_translation)
         self.bias_gaussian_dot = float(bias_gaussian_dot)
 
@@ -193,15 +236,17 @@ class Dimer(Calculator):
 
     @property
     def can_bias_f1(self):
-        return self.bias_rotation \
-               and (self.N_init is not None) \
-               and (self.bias_rotation_a is not None) \
-               and (self.bias_rotation_a > 0.)
+        return (
+            self.bias_rotation
+            and (self.N_init is not None)
+            and (self.bias_rotation_a is not None)
+            and (self.bias_rotation_a > 0.0)
+        )
 
     @property
     def should_bias_f1(self):
         """May lead to calculation of f0 and/or f1 if present!"""
-        return self.can_bias_f1 and self.C > 0.
+        return self.can_bias_f1 and self.C > 0.0
 
     @property
     def can_bias_f0(self):
@@ -210,15 +255,14 @@ class Dimer(Calculator):
     @property
     def should_bias_f0(self):
         """May lead to calculation of f0 and/or f1 if present!"""
-        return self.can_bias_f0 and self.C > 0.
+        return self.can_bias_f0 and self.C > 0.0
 
     @property
     def f1_bias(self):
         # Apply bias force to f1 if desired. Dont apply bias if N_init is not (yet)
         # set. When N_raw was converged to a reasonable N_init we can add
         # the bias.
-        assert self.bias_rotation_a >= 0., \
-            "This should not be negative!"
+        assert self.bias_rotation_a >= 0.0, "This should not be negative!"
 
         fN = self.bias_rotation_a * self.length * self.N.dot(self.N_init) * self.N_init
 
@@ -258,8 +302,9 @@ class Dimer(Calculator):
             forces = np.sum(forces, axis=0)
         return forces
 
-    def add_gaussian(self, atoms, center, N, height=.1, std=0.0529,
-                     max_cycles=50, dot_ref=None):
+    def add_gaussian(
+        self, atoms, center, N, height=0.1, std=0.0529, max_cycles=50, dot_ref=None
+    ):
         # Create new gaussian object with default height that will be
         # refined later.
         gaussian = Gaussian(height=height, center=center, std=std, N=N)
@@ -268,13 +313,14 @@ class Dimer(Calculator):
             dot_ref = self.bias_gaussian_dot
 
         # Calculate real forces at inflection point of new gaussian
-        infl_coords = center + gaussian.std*N
+        infl_coords = center + gaussian.std * N
         infl_results = self.calculator.get_forces(atoms, infl_coords)
         self.force_evals += 1
         infl_forces = infl_results["forces"]
 
-        assert infl_forces.dot(N) < 0, \
-            "We probably overstepped the TS. See Section 2.3 in the paper."
+        assert (
+            infl_forces.dot(N) < 0
+        ), "We probably overstepped the TS. See Section 2.3 in the paper."
 
         forces = self.get_gaussian_forces(infl_coords) + infl_forces
 
@@ -289,7 +335,10 @@ class Dimer(Calculator):
             """Convergence indicator."""
             return abs(dot - dot_ref) <= 1e-3
 
-        def bisect(min_, max_, ):
+        def bisect(
+            min_,
+            max_,
+        ):
             for i in range(max_cycles):
                 if abs(min_ - max_) <= 1e-10:
                     raise Exception("min_ and max_ became too similar!")
@@ -352,8 +401,7 @@ class Dimer(Calculator):
             self.log("Using random guess.")
             N_raw = np.random.rand(coords.size)
         else:
-            bond_modes = [self.get_bond_mode(bond, coords)
-                          for bond in self.bonds]
+            bond_modes = [self.get_bond_mode(bond, coords) for bond in self.bonds]
             N_raw = np.sum(bond_modes, axis=0)
         # Make N_raw translationally invariant and normalize
         self.N = N_raw
@@ -366,18 +414,22 @@ class Dimer(Calculator):
         # Average vector components over cartesian directions (x,y,z)
         # Sum over each direction should equal zero if translationally invariant
         average = displacement.reshape(-1, 3).mean(axis=0)
-        
+
         if max(abs(average)) > 1e-8:
-            self.log(f"N-vector not translationally invariant. Shifting by ({average[0]}, {average[1]}, {average[2]}) before normalization.")
+            self.log(
+                f"N-vector not translationally invariant. Removing average before normalization."
+            )
         else:
             return displacement
         # Subtract the average component along each direction to make sum zero
-        invariant_displacement = (displacement.reshape(-1, 3) - average[None, :]).flatten()
+        invariant_displacement = (
+            displacement.reshape(-1, 3) - average[None, :]
+        ).flatten()
         return invariant_displacement
 
     def rotate_coords1(self, rad, theta):
         """Rotate dimer and produce new coords1."""
-        return self.coords0 + (self.N*np.cos(rad) + theta*np.sin(rad)) * self.length
+        return self.coords0 + (self.N * np.cos(rad) + theta * np.sin(rad)) * self.length
 
     def direct_rotation(self, optimizer, prev_step):
         rot_step = optimizer(self.rot_force, prev_step)
@@ -391,7 +443,7 @@ class Dimer(Calculator):
     def fourier_rotation(self, optimizer, prev_step):
         theta_dir = optimizer(self.rot_force, prev_step)
         # Remove component that is parallel to N
-        theta_dir = theta_dir - theta_dir.dot(self.N)*self.N
+        theta_dir = theta_dir - theta_dir.dot(self.N) * self.N
         theta = theta_dir / np.linalg.norm(theta_dir)
 
         # Get rotated endpoint geometries. The rotation takes place in a plane
@@ -402,11 +454,11 @@ class Dimer(Calculator):
         C = self.C
         # Derivative of the curvature, Eq. (29) in [2]
         # (f2 - f1) or -(f1 - f2)
-        dC = 2*(self.f0 - self.f1).dot(theta) / self.length
-        rad_trial = -0.5 * np.arctan2(dC, 2*abs(C))
-        # logger.debug(f"rad_trial={rad_trial:.2f}")
+        dC = 2 * (self.f0 - self.f1).dot(theta) / self.length
+        rad_trial = -0.5 * np.arctan2(dC, 2 * abs(C))
+        # self.log(f"rad_trial={rad_trial:.2f}")
         if np.abs(rad_trial) < self.rotation_tol:
-            # logger.debug(f"rad_trial={rad_trial:.2f} below threshold. Breaking.")
+            self.log(f"rad_trial={rad_trial:.2f} below threshold. Breaking.")
             raise RotationConverged
 
         # Trial rotation for finite difference calculation of rotational force
@@ -414,41 +466,43 @@ class Dimer(Calculator):
         coords1_trial = self.rotate_coords1(rad_trial, theta)
         f1_trial = self.calculator.get_forces(self.atoms, coords1_trial)["forces"]
         self.force_evals += 1
-        f2_trial = 2*self.f0 - f1_trial
+        f2_trial = 2 * self.f0 - f1_trial
         N_trial = make_unit_vec(coords1_trial, self.coords0)
         C_trial = self.curvature(f1_trial, f2_trial, N_trial)
 
         b1 = 0.5 * dC
-        a1 = (C - C_trial + b1 * np.sin(2 * rad_trial)) / (1 - np.cos(2 *  rad_trial))
+        a1 = (C - C_trial + b1 * np.sin(2 * rad_trial)) / (1 - np.cos(2 * rad_trial))
         a0 = 2 * (C - a1)
 
-        rad_min = 0.5 * np.arctan(b1/a1)
-        # logger.debug(f"rad_min={rad_min:.2f}")
+        rad_min = 0.5 * np.arctan(b1 / a1)
+        # self.log(f"rad_min={rad_min:.2f}")
         def get_C(theta_rad):
-            return a0/2 + a1*np.cos(2*theta_rad) + b1*np.sin(2*theta_rad)
+            return a0 / 2 + a1 * np.cos(2 * theta_rad) + b1 * np.sin(2 * theta_rad)
+
         C_min = get_C(rad_min)  # lgtm [py/multiple-definition]
         if C_min > C:
             rad_min += np.deg2rad(90)
             # C_min_new = get_C(rad_min)
-            # logger.debug( "Predicted theta_min lead us to a curvature maximum "
-                         # f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
-                         # f"(C(theta+pi/2)={C_min_new:.6f})"
+            # self.log("Predicted theta_min lead us to a curvature maximum "
+            # f"(C(theta)={C_min:.6f}). Adding pi/2 to theta_min. "
+            # f"(C(theta+pi/2)={C_min_new:.6f})"
             # )
 
         # TODO: handle cases where the curvature is still positive, but
         # the angle is small, so the rotation is skipped.
         # Don't do rotation for small angles
         if np.abs(rad_min) < self.rotation_tol:
-            # logger.debug(f"rad_min={rad_min:.2f} below threshold. Breaking.")
+            # self.log(f"rad_min={rad_min:.2f} below threshold. Breaking.")
             raise RotationConverged
 
         f1 = None
         # Interpolate force at coords1_rot; see Eq. (12) in [4]
         if self.rotation_interpolate:
-            f1 = (np.sin(rad_trial - rad_min) / np.sin(rad_trial) * self.f1
-                   + np.sin(rad_min) / np.sin(rad_trial) * f1_trial
-                   + (1 - np.cos(rad_min) - np.sin(rad_min)
-                      * np.tan(rad_trial / 2)) * self.f0
+            f1 = (
+                np.sin(rad_trial - rad_min) / np.sin(rad_trial) * self.f1
+                + np.sin(rad_min) / np.sin(rad_trial) * f1_trial
+                + (1 - np.cos(rad_min) - np.sin(rad_min) * np.tan(rad_trial / 2))
+                * self.f0
             )
 
         self.coords1 = self.rotate_coords1(rad_min, theta)
@@ -460,7 +514,7 @@ class Dimer(Calculator):
             rotation_thresh = self.rotation_thresh
             self.log(f"\tThreshold norm(rot_force)={rotation_thresh:.6f}")
 
-        lbfgs = small_lbfgs_closure()
+        lbfgs = small_lbfgs_closure(gamma_mult=True)
         try:
             N_first = self.N
             prev_step = None
@@ -470,14 +524,12 @@ class Dimer(Calculator):
                 rms_rot_force = rms(rot_force)
                 if self.should_bias_f1:
                     C_real = self.C
-                    C_bias = -self.bias_rotation_a * (self.N.dot(self.N_init))**2
+                    C_bias = -self.bias_rotation_a * (self.N.dot(self.N_init)) ** 2
                     C = C_real + C_bias
                     C_str = f"C={C: .6f}, C_real={C_real: .6f}, C_bias={C_bias: .6f}"
                 else:
                     C_str = f"C={self.C: .6f}"
-                self.log(
-                    f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f} {C_str}"
-                )
+                self.log(f"\t{i:02d}: rms(rot_force)={rms_rot_force:.6f} {C_str}")
                 if rms_rot_force <= rotation_thresh:
                     self.log("\trms(rot_force) is below threshold!")
                     raise RotationConverged
@@ -488,17 +540,20 @@ class Dimer(Calculator):
                 rot_deg = np.rad2deg(np.arccos(N_cur.dot(self.N)))
                 self.log(f"\t\tRotated by {rot_deg:.1f}°")
             else:
-                msg =  "\tDimer rotation did not converge in " \
-                      f"{self.rotation_max_cycles}"
+                msg = (
+                    "\tDimer rotation did not converge in "
+                    f"{self.rotation_max_cycles}"
+                )
         except RotationConverged:
             msg = f"\tDimer rotation converged in {i+1} cycle(s)."
-        self.log(msg )
-        self.log("\tN after rotation:\n\t" + str(self.N))
+        self.log(msg)
+        # self.log("\tN after rotation:\n\t" + str(self.N))
         self.log()
         # Restrict to interval [-1,1] where arccos is defined
         rot_deg = np.rad2deg(np.arccos(max(min(N_first.dot(self.N), 1.0), -1.0)))
-        self.log(f"\tRotated by {rot_deg:.1f}° w.r.t. the orientation "
-                  "before rotation(s).")
+        self.log(
+            f"\tRotated by {rot_deg:.1f}° w.r.t. the orientation " "before rotation(s)."
+        )
 
     def update_orientation(self, coords):
         # Generate random guess for the dimer orientation if not yet set
@@ -506,7 +561,7 @@ class Dimer(Calculator):
             self.set_N_raw(coords)
 
         # Refine N_raw to N_init if not yet done
-        if self.bias_rotation and self.N_init is None and self.C > 0.:
+        if self.bias_rotation and self.N_init is None and self.C > 0.0:
             # Run initial sweep with a much softer convergence threshold
             self.log("Initial sweep to refine N_raw to N_init.")
             self.do_dimer_rotations(10 * self.rotation_thresh)
@@ -523,11 +578,13 @@ class Dimer(Calculator):
                 # Determine proper scaling factor for the quadratic bias potential
                 # from the current curvature.
                 scale_fact = 1.5
-                self.bias_rotation_a = scale_fact*self.C
+                self.bias_rotation_a = scale_fact * self.C
                 self.log(f"Using a={scale_fact}*C={self.bias_rotation_a:.6f}")
             else:
-                self.log(f"Curvature after initial sweep C={self.C:.6f} is "
-                          "already negative. Not setting N_init and bias_rotation_a!")
+                self.log(
+                    f"Curvature after initial sweep C={self.C:.6f} is "
+                    "already negative. Not setting N_init and bias_rotation_a!"
+                )
 
         self.do_dimer_rotations()
 
@@ -535,14 +592,18 @@ class Dimer(Calculator):
         self.atoms = atoms
         self.coords0 = coords
 
+        try:
+            N_backup = self.N.copy()
+        except AttributeError:
+            N_backup = None
         if not self.rotation_disable:
             self.update_orientation(coords)
-        # Without update of self.N the calculations will be missing, so we
-        # do them here.
-        else:
-            self.f0
+        if (N_backup is not None) and self.rotation_disable_pos_curv and self.C > 0:
+            self.log("Rotation did not yield a negative curvature. "
+                     "Restoring previous orientation N before rotation."
+            )
+            self.N = N_backup
         # Now we (have an updated self.N and) can do the force projections
-
         N = self.N
         self.log(f"Orientation N:\n\t{N}")
         # Save orientation N in human-readable format, aka .trj
@@ -579,44 +640,37 @@ class Dimer(Calculator):
         norm_f0 = np.linalg.norm(f0)
         self.log(f"\tnorm(forces)={norm_f0:.6f}")
 
-        f_parallel = f0.dot(N)*N
+        f_parallel = f0.dot(N) * N
         norm_parallel = np.linalg.norm(f_parallel)
         self.log(f"\tnorm(forces_parallel)={norm_parallel:.6f}")
-        self.log(f"\tforce_parallel:\n\t{f_parallel}")
+        # self.log(f"\tforce_parallel:\n\t{f_parallel}")
 
         f_perp = f0 - f_parallel
         norm_perp = np.linalg.norm(f_perp)
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
         self.log(f"\tforce_perp:\n\t{f_perp}")
 
-        # if self.C < 0:
-            # print(f"Negative curvature: {self.C:.6f}")
-
         # Only return perpendicular component when curvature is negative
         f_tran = -f_parallel
 
-        if self.C < 0:
-            f_tran += f_perp
-            self.log("Curvature is negative. Returned reversed parallel and "
-                     "perpendicular component of f_tran.")
-        else:
-            self.log("Curvature is positive. Returned only reversed parallel "
-                     "component of f_tran.")
-        # Always return both components
-        # f_tran = f_perp - f_parallel
+        curv_str = "positive" if self.C > 0 else "negative"
 
+        force_str = "reversed parallel component of"
+        if (self.C < 0) or self.trans_force_f_perp:
+            f_tran += f_perp
+            force_str = "full"
+        self.log(f"Curvature is {curv_str}. Returning {force_str} f_tran.")
         self.log(f"\tf_tran:\n\t{f_tran}")
         self.log()
+
         self.calc_counter += 1
 
-        results = {
-            "energy": energy,
-            "forces": f_tran
-        }
+        results = {"energy": energy, "forces": f_tran}
 
         return results
 
     def get_hessian(self, atoms, coords):
+        if not self.forward_hessian:
+            raise Exception("Actual Hessian method not forwarded by Dimer calculator!")
         results = self.calculator.get_hessian(atoms, coords)
-
         return results

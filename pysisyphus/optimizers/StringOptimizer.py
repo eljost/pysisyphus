@@ -130,7 +130,7 @@ class StringOptimizer(Optimizer):
             prev_forces = self.forces[-2]
             # Fletcher-Reeves
             beta = forces.dot(forces) / prev_forces.dot(prev_forces)
-            # Polar-Ribiere
+            # Polak-Ribiere
             # beta = forces.dot(forces - prev_forces) / prev_forces.dot(prev_forces)
             beta = min(beta, 1)
             step = forces + beta*self.steps[-1]

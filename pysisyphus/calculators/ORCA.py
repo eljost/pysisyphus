@@ -172,7 +172,7 @@ class ORCA(OverlapCalculator):
 
         return stable
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
         calc_type = ""
 
         if self.do_stable:
@@ -202,7 +202,7 @@ class ORCA(OverlapCalculator):
                 results = self.get_forces(atoms, coords)
         return results
 
-    def get_hessian(self, atoms, coords):
+    def get_hessian(self, atoms, coords, prepare_kwargs=None):
         calc_type = self.freq_keyword
 
         if self.do_stable:

@@ -1,0 +1,15 @@
+# After starting pysisyphus with this input, execute "python client.py" in
+# another terminal/window/pane etc.
+geom:
+ type: redund 
+ fn: h2o.xyz
+calc:
+ type: ipiserver
+ address: ./opt_socket
+ #verbose: True
+opt:
+ thresh: gau
+ # Comment this out or set to False, if your client does not support GETHESSIAN
+ do_hess: True
+assert:
+ opt_geom.energy: -5.07054442

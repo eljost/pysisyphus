@@ -42,7 +42,7 @@ def test_water_hf_precon_opt(opt_cls, precon, ref_cycles):
     ]
 )
 def test_menthone(opt_cls, precon, ref_cycles):
-    geom = geom_loader("lib:baker/menthone.xyz")
+    geom = geom_loader("lib:baker/29_menthone.xyz")
     calc = Gaussian16("PM6", pal=2)
     geom.set_calculator(calc)
 

@@ -26,9 +26,10 @@ from collections import namedtuple
 
 import numpy as np
 
-from pysisyphus.calculators import Gaussian16, OpenMolcas, ORCA, Psi4, Turbomole, XTB
+from pysisyphus.calculators import Gaussian16, OpenMolcas, ORCA, Psi4, Turbomole, XTB, PyXTB
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers_pure import expand
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.intcoords.setup import get_bond_sets
 
@@ -36,18 +37,19 @@ from pysisyphus.intcoords.setup import get_bond_sets
 CALC_DICT = {
     "g16": Gaussian16,
     "openmolcas": OpenMolcas.OpenMolcas,
-    "orca": ORCA,
+    "orca": ORCA.ORCA,
     "psi4": Psi4,
     "turbomole": Turbomole,
     "xtb": XTB.XTB,
     # "pypsi4": PyPsi4,
-    # "pyxtb": PyXTB,
+    "pyxtb": PyXTB.PyXTB,
 }
 try:
     from pysisyphus.calculators.PySCF import PySCF
     CALC_DICT["pyscf"] = PySCF
 except ImportError:
-    print("Error importing PySCF in ONIOMv2")
+    # print("Error importing PySCF in ONIOMv2")
+    pass
 
 
 Link = namedtuple("Link", "ind parent_ind atom g")
@@ -357,6 +359,11 @@ class ONIOM(Calculator):
             f'"{real_key}" must be defined in "calcs"!'
 
         self.use_link_atoms = use_link_atoms
+
+        # Expand index-lists in models
+        for model in models.values():
+            if ".." in model["inds"]:
+                model["inds"] = expand(model["inds"])
 
         # When no ordering of layers is given we try to guess it from
         # the size of the respective models. It's probably a better idea

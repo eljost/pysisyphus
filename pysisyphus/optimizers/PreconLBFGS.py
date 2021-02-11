@@ -25,10 +25,11 @@ class PreconLBFGS(Optimizer):
         c_stab=None,
         **kwargs,
     ):
-        assert (
-            geometry.coord_type == "cart"
-        ), "Preconditioning makes only sense with 'coord_type: cart'"
-        # Set before calling the superclass constructor so we can the value
+        if precon:
+            assert (
+                geometry.coord_type == "cart"
+            ), "Preconditioning makes only sense with 'coord_type: cart'"
+        # Set before calling the superclass constructor so we can use the value
         # in _set_opt_restart_info.
         self.history = history
 
@@ -128,11 +129,12 @@ class PreconLBFGS(Optimizer):
 
         norm = np.linalg.norm(forces)
         if not self.is_cos:
-            self.log(f" Current energy={energy:.6f} au")
+            fmt = " >12.6f"
+            self.log(f" Current energy={energy:{fmt}} au")
             if self.cur_cycle > 0:
                 prev_energy = self.energies[-2]
-                self.log(f"Previous energy={prev_energy:.6f} au")
-                self.log(f"             ΔE={energy-prev_energy:.6f} au")
+                self.log(f"Previous energy={prev_energy:{fmt}} au")
+                self.log(f"             ΔE={energy-prev_energy:{fmt}} au")
         self.log(f"norm(forces)={norm:.6f}")
 
         # Steepest descent fallback

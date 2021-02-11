@@ -429,8 +429,14 @@ class ChainOfStates:
                 print(msg)
 
         already_climbing_lanczos = self.started_climbing_lanczos
-        if self.climb_lanczos and self.started_climbing and not already_climbing_lanczos:
-            self.started_climbing_lanczos = self.check_for_climbing_start(self.climb_lanczos_rms)
+        if (
+            self.climb_lanczos
+            and self.started_climbing
+            and not already_climbing_lanczos
+        ):
+            self.started_climbing_lanczos = self.check_for_climbing_start(
+                self.climb_lanczos_rms
+            )
             if self.started_climbing_lanczos:
                 msg = "Using Lanczos algorithm to converge HEI tangent."
                 self.log(msg)
@@ -547,8 +553,17 @@ class ChainOfStates:
         )
 
         # Reparametrize mesh
-        hei_coords = np.vstack([
-            splev([hei_x,], tck,) for tck in tcks]
+        hei_coords = np.vstack(
+            [
+                # WTF, Black? This looks horrible.
+                splev(
+                    [
+                        hei_x,
+                    ],
+                    tck,
+                )
+                for tck in tcks
+            ]
         )
         hei_coords = hei_coords.flatten()
 
@@ -557,7 +572,17 @@ class ChainOfStates:
         # much much better. In 'run_tsopt_from_cos' we actually mix two "normal" tangents
         # to obtain the HEI tangent.
         hei_tangent = np.vstack(
-            [splev([hei_x, ], tck, der=1,) for tck in tcks]
+            [
+                # WTF, Black? This looks horrible.
+                splev(
+                    [
+                        hei_x,
+                    ],
+                    tck,
+                    der=1,
+                )
+                for tck in tcks
+            ]
         ).T
         hei_tangent = hei_tangent.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
@@ -565,6 +590,11 @@ class ChainOfStates:
 
     def get_image_calc_counter_sum(self):
         return sum([image.calculator.calc_counter for image in self.images])
+
+    def describe(self):
+        imgs = self.images
+        img = imgs[0]
+        return f"ChainOfStates, {len(imgs)} images, ({img.sum_formula}, {len(img.atoms)} atoms) per image"
 
     def __str__(self):
         return self.__class__.__name__

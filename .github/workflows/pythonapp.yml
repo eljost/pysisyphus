@@ -6,7 +6,14 @@ on:
             - "docs/**"
             - "examples/**"
             - "tests_staging/**"
-    pull_request:
+            - "deprecated/**"
+    # CI jobs are executed twice when pushed to a PR ... disabling it for now
+    #pull_request:
+        #paths-ignore:
+            #- "docs/**"
+            #- "examples/**"
+            #- "tests_staging/**"
+            #- "deprecated/**"
     schedule:
         - cron: '0 */12 * * *'
 jobs:
@@ -51,4 +58,3 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         flags: unittests
-        yml: ./codecov.yml

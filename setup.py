@@ -27,6 +27,7 @@ setup(
     license="License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     platforms=["unix"],
     packages=find_packages(),
+    include_package_data=True,
     install_requires=[
         "autograd",
         "dask",

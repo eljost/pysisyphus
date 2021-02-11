@@ -1,4 +1,5 @@
 from collections import Counter, namedtuple
+import copy
 import itertools as it
 import re
 import subprocess
@@ -11,7 +12,7 @@ from scipy.spatial.distance import pdist
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.elem_data import MASS_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
+from pysisyphus.elem_data import MASS_DICT, ISOTOPE_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.intcoords import DLC, RedundantCoords
 from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
@@ -90,7 +91,7 @@ class Geometry:
     }
 
     def __init__(self, atoms, coords, fragments=None, coord_type="cart",
-                 coord_kwargs=None, comment=""):
+                 coord_kwargs=None, isotopes=None, comment=""):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -113,12 +114,16 @@ class Geometry:
         coord_kwargs : dict, optional
             Dictionary containing additional arguments that get passed
             to the constructor of the internal coordinate class.
+        isotopes : iterable of pairs, optional
+            Iterable of pairs consisting of 0-based atom index and either an integer
+            or a float. If an integer is given the closest isotope mass will be selected.
+            Given a float, this float will be directly used as mass.
         comment : str, optional
             Comment string.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
-        self._coords = np.array(coords, dtype=np.float).flatten()
+        self._coords = np.array(coords, dtype=float).flatten()
         assert self._coords.size == (3*len(self.atoms)), \
             f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
             f"{self._coords.size}. Did you accidentally supply internal " \
@@ -126,6 +131,9 @@ class Geometry:
         if fragments is None:
             fragments = dict()
         self.fragments = fragments
+        self.isotopes = isotopes
+        if self.isotopes is None:
+            self.isotopes = list()
 
         if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
             print("coord_type is set to 'cart' but coord_kwargs were given. "
@@ -142,16 +150,11 @@ class Geometry:
             self.internal = None
         self.comment = comment
 
+        self._masses = None
         self._energy = None
         self._forces = None
         self._hessian = None
         self.calculator = None
-
-        self.masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
-        self.total_mass = sum(self.masses)
-        # Some of the analytical potentials are only 2D
-        repeat_masses = 2 if (self._coords.size == 2) else 3
-        self.masses_rep = np.repeat(self.masses, repeat_masses)
 
     @property
     def sum_formula(self):
@@ -196,7 +199,7 @@ class Geometry:
             # In our case get_tangent returns B - A, that is a vector pointing
             # from A to B.
             diff = -get_tangent(self.internal.prim_coords, other.internal.prim_coords,
-                                self.internal.dihed_start)
+                                self.internal.dihedral_inds)
         else:
             raise Exception("Invalid coord_type!")
 
@@ -248,6 +251,7 @@ class Geometry:
         return Geometry(self.atoms, self._coords.copy(),
                         coord_type=coord_type,
                         coord_kwargs=_coord_kwargs,
+                        isotopes=copy.deepcopy(self.isotopes),
         )
 
     def copy_all(self, coord_type=None, coord_kwargs=None):
@@ -277,6 +281,10 @@ class Geometry:
     @property
     def atom_types(self):
         return set(self.atoms)
+
+    @property
+    def atomic_numbers(self):
+        return [ATOMIC_NUMBERS[a.lower()] for a in self.atoms]
 
     def get_fragments(self, regex):
         regex = re.compile(regex)
@@ -417,6 +425,7 @@ class Geometry:
     @coords3d.setter
     def coords3d(self, coords3d):
         self._coords = coords3d.flatten()
+        self.clear()
 
     @property
     def cart_coords(self):
@@ -454,12 +463,60 @@ class Geometry:
 
     @property
     def comment(self):
-        energy_str = f"{self._energy} , " if self._energy else ""
-        return f"{energy_str}{self._comment}"
+        en_width = 20
+        # Check if we have to drop an (old) energy entry
+        try:
+            _ = float(self._comment[:en_width])
+            # Drop old energy entry
+            self._comment = self._comment[en_width+2:]
+        except (ValueError, IndexError):
+            pass
+
+        # Prepend (new) energy, if present
+        if self._energy:
+            en_str = f"{self._energy: >{en_width}.8f}, "
+        else:
+            en_str = ""
+        return f"{en_str}{self._comment}"
 
     @comment.setter
     def comment(self, new_comment):
         self._comment = new_comment
+
+    @property
+    def masses(self):
+        if self._masses is None:
+            masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+            for atom_index, iso_mass in self.isotopes:
+                if "." not in str(iso_mass):
+                    atom = self.atoms[atom_index].lower()
+                    key = (atom, iso_mass)
+                    try:
+                        iso_mass = ISOTOPE_DICT[key]
+                    except KeyError as err:
+                        print(
+                            f"Found no suitable mass for '{atom.capitalize()}' with approx. "
+                            f"mass of ~{iso_mass} au!"
+                        )
+                        raise err
+                masses[atom_index] = float(iso_mass)
+            self.masses = masses
+        return self._masses
+
+    @masses.setter
+    def masses(self, masses):
+        assert len(masses) == len(self.atoms)
+        self._masses = np.array(masses, dtype=float)
+
+    @property
+    def masses_rep(self):
+        # Some of the analytical potentials are only 2D
+        repeat_masses = 2 if (self._coords.size == 2) else 3
+        return np.repeat(self.masses, repeat_masses)
+
+    @property
+    def total_mass(self):
+        return sum(self.masses)
 
     def center_of_mass_at(self, coords3d):
         """Returns the center of mass at given coords3d.
@@ -860,6 +917,12 @@ class Geometry:
             comment = self.comment
         return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
 
+    def dump_xyz(self, fn):
+        if not fn.lower().endswith(".xyz"):
+            fn = fn + ".xyz"
+        with open(fn, "w") as handle:
+            handle.write(self.as_xyz())
+
     def get_subgeom(self, indices, coord_type="cart"):
         """Return a Geometry containing a subset of the current Geometry.
 
@@ -979,6 +1042,9 @@ class Geometry:
             if atom.lower() != "h"
         ])
         return Geometry(atoms_no_h, np.array(coords3d_no_h).flatten())
+
+    def describe(self):
+        return f"Geometry({self.sum_formula}, {len(self.atoms)} atoms)"
 
     def __str__(self):
         return f"Geometry({self.sum_formula})"

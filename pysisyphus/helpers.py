@@ -13,8 +13,13 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.io import geom_from_pdb, geom_from_cjson, save_hessian as save_h5_hessian
+from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
+from pysisyphus.io import (
+    geom_from_pdb,
+    geom_from_cjson,
+    save_hessian as save_h5_hessian,
+    geom_from_zmat_fn,
+)
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -32,9 +37,11 @@ def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
         return geom_from_library(xyz_fn[4:], **kwargs)
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
     coords *= ANG2BOHR
-    geom = Geometry(atoms, coords.flatten(),
-                    comment=comment,
-                    **kwargs,
+    geom = Geometry(
+        atoms,
+        coords.flatten(),
+        comment=comment,
+        **kwargs,
     )
     return geom
 
@@ -49,11 +56,9 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
         # Drop lib: part
         return geom_from_library(trj_fn[4:], **kwargs)[:first]
     atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
-    geoms = [Geometry(atoms, coords.flatten()*ANG2BOHR,
-                      comment=comment,
-                      **kwargs
-             )
-             for atoms, coords, comment in atoms_coords_comments
+    geoms = [
+        Geometry(atoms, coords.flatten() * ANG2BOHR, comment=comment, **kwargs)
+        for atoms, coords, comment in atoms_coords_comments
     ]
     return geoms
 
@@ -76,200 +81,20 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
         return geom_from_pdb(fn, **kwargs)
     elif fn.endswith(".cjson"):
         return geom_from_cjson(fn, **kwargs)
+    elif fn.endswith(".zmat"):
+        return geom_from_zmat_fn(fn, **kwargs)
     else:
-        raise Exception("Unknown filetype!")
+        raise Exception(f"Unknown filetype for '{fn}'!")
 
 
 def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
     xyz_dir = THIS_DIR / "../xyz_files/"
     xyz_fn = xyz_dir / xyz_fn
-    return geom_loader(xyz_fn,
-                       coord_type=coord_type,
-                       **coord_kwargs,
+    return geom_loader(
+        xyz_fn,
+        coord_type=coord_type,
+        **coord_kwargs,
     )
-
-
-def get_baker_geoms(**kwargs):
-    baker_path = THIS_DIR / "../xyz_files/baker"
-    xyz_fns = baker_path.glob("*.xyz")
-    geoms = {
-        xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
-    }
-    # del geoms["acetylene.xyz"]
-    # From 10.1002/jcc.540140910
-    sto3g_energies = {
-        "water.xyz": -74.96590,
-        "ammonia.xyz": -55.45542,
-        "ethane.xyz": -78.30618,
-        "acetylene.xyz": -75.85625,
-        "allene.xyz": -114.42172,
-        "hydroxysulphane.xyz": -468.12592,
-        "benzene.xyz": -227.89136,
-        "methylamine.xyz": -94.01617,
-        "ethanol.xyz": -152.13267,
-        "acetone.xyz": -189.53603,
-        "disilylether.xyz": -648.58003,
-        "135trisilacyclohexane.xyz": -976.13242,
-        "benzaldehyde.xyz": -339.12084,
-        "13difluorobenzene.xyz": -422.81106,
-        "135trifluorobenzene.xyz": -520.27052,
-        "neopentane.xyz": -194.04677,
-        "furan.xyz": -225.75126,
-        "naphthalene.xyz": -378.68685,
-        "15difluoronaphthalene.xyz": -573.60633,
-        "2hydroxybicyclopentane.xyz": -265.46482,
-        "achtar10.xyz": -356.28265,
-        "acanil01.xyz": -432.03012,
-        "benzidine.xyz": -563.27798,
-        "pterin.xyz": -569.84884,
-        "difuropyrazine.xyz": -556.71910,
-        "mesityloxide.xyz": -304.05919,
-        "histidine.xyz": -538.54910,
-        "dimethylpentane.xyz": -271.20088,
-        "caffeine.xyz": -667.73565,
-        "menthone.xyz": -458.44639,
-    }
-    # Join both dicts
-    baker_dict = {}
-    for name, geom in geoms.items():
-        try:
-            baker_dict[name] = (geom, sto3g_energies[name])
-        except KeyError:
-            pass
-    return baker_dict
-
-
-def get_baker_ts_geoms(**kwargs):
-    baker_ts_path = THIS_DIR / "../xyz_files/baker_ts"
-    xyz_fns = baker_ts_path.glob("*.xyz")
-    geoms = {
-        xyz_fn.name: geom_from_xyz_file(xyz_fn, **kwargs) for xyz_fn in xyz_fns
-        if not ("downhill" in xyz_fn.name)
-    }
-    # From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7
-    meta_data = {
-        "01_hcn.xyz": (0, 1, -92.24604),
-        "02_hcch.xyz": (0, 1, -76.29343),
-        "03_h2co.xyz": (0, 1, -113.05003),
-        "04_ch3o.xyz": (0, 2, -113.69365),
-        "05_cyclopropyl.xyz": (0, 2, -115.72100),
-        "06_bicyclobutane.xyz": (0, 1, -153.90494),
-        "07_bicyclobutane.xyz": (0, 1, -153.89754),
-        "08_formyloxyethyl.xyz": (0, 2, -264.64757),
-        "09_parentdieslalder.xyz": (0, 1, -231.60321),
-        # 10 and 11 don't have any imaginary frequencies at the given
-        # geometry, so they may be skipped.
-        "10_tetrazine.xyz": (0, 1, -292.81026),
-        "11_trans_butadiene.xyz": (0, 1, -154.05046),
-        "12_ethane_h2_abstraction.xyz": (0, 1, -78.54323),
-        "13_hf_abstraction.xyz": (0, 1, -176.98453),
-        "14_vinyl_alcohol.xyz": (0, 1, -151.91310),
-        # 15 does not have an imaginary mode in cartesian coordinates
-        "15_hocl.xyz": (0, 1, -596.87865),
-        "16_h2po4_anion.xyz": (-1, 1, -637.92388),
-        "17_claisen.xyz": (0, 1, -267.23859),
-        "18_silyene_insertion.xyz": (0, 1, -367.20778),
-        "19_hnccs.xyz": (0, 1, -525.43040),
-        # The energy given in the paper (-168.24752 au) is the correct one
-        # if one forms the central (0,1) bond (0-based indexing). If this
-        # bond is missing, as it is if we autogenerate with bond-factor=1.3
-        # then a TS with -168.241392 will be found.
-        # For now we will use the original value from the paper.
-        "20_hconh3_cation.xyz": (1, 1, -168.24752),
-        "21_acrolein_rot.xyz": (0, 1, -189.67574),
-        # This energy will be obtained for a planar TS, without symmetry
-        # restrictions the TS will relax to -242.25695787.
-        "22_hconhoh.xyz": (0, 1, -242.25529),
-        "23_hcn_h2.xyz": (0, 1, -93.31114),
-        "24_h2cnh.xyz": (0, 1, -93.33296),
-        "25_hcnh2.xyz": (0, 1, -93.28172),
-    }
-    return geoms, meta_data
-
-
-def get_baker_ts_geoms_flat(**kwargs):
-     geoms, meta_data = get_baker_ts_geoms(**kwargs)
-     # Key: (geometry, charge, mult, ref_energy)
-     return [(mol,) + (geom, ) + meta_data[mol] for mol, geom in geoms.items()]
-
-
-def get_baker_opt_ts_geoms(**kwargs):
-    meta_data = {
-        "01_hcn_opt_ts.xyz": (0, 1),
-        # "02_hcch_opt_ts.xyz": (0, 1),
-        "03_h2co_opt_ts.xyz": (0, 1),
-        "04_ch3o_opt_ts.xyz": (0, 2),
-        "05_cyclopropyl_opt_ts.xyz": (0, 2),
-        "06_bicyclobutane_opt_ts.xyz": (0, 1),
-        "07_bicyclobutane_opt_ts.xyz": (0, 1),
-        "08_formyloxyethyl_opt_ts.xyz": (0, 2),
-        # "09_parentdieslalder_opt_ts.xyz": (0, 1),
-        # "10_tetrazine_opt_ts.xyz": (0, 1),
-        # "11_trans_butadiene_opt_ts.xyz": (0, 1),
-        # "12_ethane_h2_abstraction_opt_ts.xyz": (0, 1),
-        "13_hf_abstraction_opt_ts.xyz": (0, 1),
-        "14_vinyl_alcohol_opt_ts.xyz": (0, 1),
-        # "15_hocl_opt_ts.xyz": (0, 1),
-        "16_h2po4_anion_opt_ts.xyz": (-1, 1),
-        # "17_claisen_opt_ts.xyz": (0, 1),
-        "18_silyene_insertion_opt_ts.xyz": (0, 1),
-        "19_hnccs_opt_ts.xyz": (0, 1),
-        "20_hconh3_cation_opt_ts.xyz": (1, 1),
-        "21_acrolein_rot_opt_ts.xyz": (0, 1),
-        # "22_hconhoh_opt_ts.xyz": (0, 1),
-        "23_hcn_h2_opt_ts.xyz": (0, 1),
-        "24_h2cnh_opt_ts.xyz": (0, 1),
-        "25_hcnh2_opt_ts.xyz": (0, 1),
-    }
-    baker_ts_path = THIS_DIR / "../xyz_files/baker_opt_ts"
-    geoms = {
-        xyz_fn: geom_from_xyz_file(baker_ts_path / xyz_fn, **kwargs)
-        for xyz_fn in meta_data.keys()
-    }
-
-    return geoms, meta_data
-
-
-def get_baker_ts_data():
-    # From 10.1002/(SICI)1096-987X(199605)17:7<888::AID-JCC12>3.0.CO;2-7
-    data = {
-        "01_hcn.xyz": (0, 1, -92.24604),
-        "02_hcch.xyz": (0, 1, -76.29343),
-        "03_h2co.xyz": (0, 1, -113.05003),
-        "04_ch3o.xyz": (0, 2, -113.69365),
-        "05_cyclopropyl.xyz": (0, 2, -115.72100),
-        "06_bicyclobutane.xyz": (0, 1, -153.90494),
-        "07_bicyclobutane.xyz": (0, 1, -153.89754),
-        "08_formyloxyethyl.xyz": (0, 2, -264.64757),
-        "09_parentdieslalder.xyz": (0, 1, -231.60321),
-        # 10 and 11 don't have any imaginary frequencies at the given
-        # geometry, so they may be skipped.
-        "10_tetrazine.xyz": (0, 1, -292.81026),
-        "11_trans_butadiene.xyz": (0, 1, -154.05046),
-        "12_ethane_h2_abstraction.xyz": (0, 1, -78.54323),
-        "13_hf_abstraction.xyz": (0, 1, -176.98453),
-        "14_vinyl_alcohol.xyz": (0, 1, -151.91310),
-        # 15 does not have an imaginary mode in cartesian coordinates
-        "15_hocl.xyz": (0, 1, -596.87865),
-        "16_h2po4_anion.xyz": (-1, 1, -637.92388),
-        "17_claisen.xyz": (0, 1, -267.23859),
-        "18_silyene_insertion.xyz": (0, 1, -367.20778),
-        "19_hnccs.xyz": (0, 1, -525.43040),
-        # The energy given in the paper (-168.24752 au) is the correct one
-        # if one forms the central (0,1) bond (0-based indexing). If this
-        # bond is missing, as it is if we autogenerate with bond-factor=1.3
-        # then a TS with -168.241392 will be found.
-        # For now we will use the original value from the paper.
-        "20_hconh3_cation.xyz": (1, 1, -168.24752),
-        "21_acrolein_rot.xyz": (0, 1, -189.67574),
-        # This energy will be obtained for a planar TS, without symmetry
-        # restrictions the TS will relax to -242.25695787.
-        "22_hconhoh.xyz": (0, 1, -242.25529),
-        "23_hcn_h2.xyz": (0, 1, -93.31114),
-        "24_h2cnh.xyz": (0, 1, -93.33296),
-        "25_hcnh2.xyz": (0, 1, -93.28172),
-    }
-    return data
 
 
 def align_geoms(geoms):
@@ -283,7 +108,7 @@ def align_geoms(geoms):
 
     # Don't rotate the first image, so just add identitiy matrices
     # for every atom.
-    rot_mats = [np.eye(3)]*atoms_per_image
+    rot_mats = [np.eye(3)] * atoms_per_image
     for i, geom in enumerate(geoms[1:], 1):
         coords3d = geom.coords3d
         centroid = coords3d.mean(axis=0)
@@ -301,7 +126,7 @@ def align_geoms(geoms):
         geom.coords3d = rotated3d
         last_centered = rotated3d
         # Append one rotation matrix per atom
-        rot_mats.extend([rot_mat]*atoms_per_image)
+        rot_mats.extend([rot_mat] * atoms_per_image)
     return rot_mats
 
 
@@ -316,7 +141,7 @@ def procrustes(geometry):
 
     # Don't rotate the first image, so just add identitiy matrices
     # for every atom.
-    rot_mats = [np.eye(3)]*atoms_per_image
+    rot_mats = [np.eye(3)] * atoms_per_image
     for i, image in enumerate(geometry.images[1:], 1):
         coords3d = image.coords3d
         centroid = coords3d.mean(axis=0)
@@ -334,7 +159,7 @@ def procrustes(geometry):
         geometry.set_coords_at(i, rotated3d.flatten())
         last_centered = rotated3d
         # Append one rotation matrix per atom
-        rot_mats.extend([rot_mat]*atoms_per_image)
+        rot_mats.extend([rot_mat] * atoms_per_image)
     return rot_mats
 
 
@@ -370,9 +195,9 @@ def align_coords(coords_list):
 
 
 # def rmsd(coord_1, coord_2):
-    # aligned_1, aligned_2 = align_coords((coord_1, coord_2))
-    # result = np.sqrt(np.mean(aligned_1 - aligned_2)**2)
-    # return result
+# aligned_1, aligned_2 = align_coords((coord_1, coord_2))
+# result = np.sqrt(np.mean(aligned_1 - aligned_2)**2)
+# return result
 
 
 def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
@@ -389,7 +214,7 @@ def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
     if hessian is not None:
         # rotated_hessian = G.dot(hessian).dot(G.T)
         # rotated_hessian = G.T.dot(hessian).dot(G)
-        rotated_hessian = G*hessian*G.T
+        rotated_hessian = G * hessian * G.T
     return rotated_vectors, rotated_vector_lists, rotated_hessian
 
 
@@ -398,7 +223,7 @@ def chunks(l, n):
     https://stackoverflow.com/a/312464
     """
     for i in range(0, len(l), n):
-        yield l[i:i + n]
+        yield l[i : i + n]
 
 
 def slugify_worker(dask_worker):
@@ -415,11 +240,12 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         [2] 10.1021/acs.jcim.6b00516
     """
 
-    logging.warning("helpers.match_geoms is deprecated!"
-                    "Use stocastic.align.match_geom_atoms instead!")
+    logging.warning(
+        "helpers.match_geoms is deprecated!"
+        "Use stocastic.align.match_geom_atoms instead!"
+    )
 
-    assert len(ref_geom.atoms) == len(geom_to_match.atoms), \
-        "Atom numbers don't match!"
+    assert len(ref_geom.atoms) == len(geom_to_match.atoms), "Atom numbers don't match!"
 
     ref_coords, _ = ref_geom.coords_by_type
     coords_to_match, inds_to_match = geom_to_match.coords_by_type
@@ -469,7 +295,10 @@ def check_for_stop_sign():
 
 
 def check_for_end_sign():
-    signs = ("stop", "converged", )
+    signs = (
+        "stop",
+        "converged",
+    )
     sign_found = False
 
     for sign in signs:
@@ -503,12 +332,11 @@ def index_array_from_overlaps(overlaps, axis=1):
 def np_print(func, precision=2, suppress=True, linewidth=120):
     def wrapped(*args, **kwargs):
         org_print_dict = dict(np.get_printoptions())
-        np.set_printoptions(suppress=suppress,
-                            precision=precision,
-                            linewidth=linewidth)
+        np.set_printoptions(suppress=suppress, precision=precision, linewidth=linewidth)
         result = func(*args, **kwargs)
         np.set_printoptions(**org_print_dict)
         return result
+
     return wrapped
 
 
@@ -524,15 +352,18 @@ def get_geom_getter(ref_geom, calc_setter):
         new_geom.coords = coords
         new_geom.set_calculator(calc_setter())
         return new_geom
+
     return geom_from_coords
 
 
 def get_coords_diffs(coords, align=False):
     if align:
         coords = align_coords(coords)
-    cds = [0, ]
-    for i in range(len(coords)-1):
-        diff = np.linalg.norm(coords[i+1]-coords[i])
+    cds = [
+        0,
+    ]
+    for i in range(len(coords) - 1):
+        diff = np.linalg.norm(coords[i + 1] - coords[i])
         cds.append(diff)
     cds = np.cumsum(cds)
     cds /= cds.max()
@@ -548,23 +379,25 @@ def shake_coords(coords, scale=0.1, seed=None):
 
 def highlight_text(text, width=80, level=0):
     levels = {
-        #  horizontal    
+        #  horizontal
         #        vertical
         0: ("#", "#"),
         1: ("-", "|"),
-        } 
+    }
     full_length = len(text) + 4
     pad_len = width - full_length
     pad_len = (pad_len - (pad_len % 2)) // 2
     pad = " " * pad_len
     hchar, vchar = levels[level]
     full_row = hchar * full_length
-    highlight = f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
+    highlight = (
+        f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
+    )
     return highlight
 
 
 def rms(arr):
-    return np.sqrt(np.mean(arr**2))
+    return np.sqrt(np.mean(arr ** 2))
 
 
 def complete_fragments(atoms, fragments):
@@ -586,15 +419,17 @@ def complete_fragments(atoms, fragments):
     return fragments
 
 
-FinalHessianResult = namedtuple("FinalHessianResult",
-                                "neg_eigvals eigvals nus imag_fns",
+FinalHessianResult = namedtuple(
+    "FinalHessianResult",
+    "neg_eigvals eigvals nus imag_fns",
 )
 
 
-def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
-                     prefix=""):
+def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix=""):
     print(highlight_text("Hessian at final geometry", level=1))
     print()
+
+    report_isotopes(geom, "the_frequencies")
 
     # TODO: Add cartesian_hessian property to Geometry to avoid
     # accessing a "private" attribute.
@@ -643,10 +478,10 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False,
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
 
     res = FinalHessianResult(
-            neg_eigvals=neg_eigvals,
-            eigvals=eigvals,
-            nus=eigval_to_wavenumber(eigvals),
-            imag_fns=imag_fns,
+        neg_eigvals=neg_eigvals,
+        eigvals=eigvals,
+        nus=eigval_to_wavenumber(eigvals),
+        imag_fns=imag_fns,
     )
     return res
 
@@ -657,8 +492,7 @@ def print_barrier(ref_energy, comp_energy, ref_str, comp_str):
     return barrier
 
 
-def get_tangent_trj_str(atoms, coords, tangent, comment=None,
-                        points=10, displ=None):
+def get_tangent_trj_str(atoms, coords, tangent, comment=None, points=10, displ=None):
     if displ is None:
         # Linear equation. Will give displ~3 for 30 atoms and
         # displ ~ 1 for 3 atoms.
@@ -670,9 +504,9 @@ def get_tangent_trj_str(atoms, coords, tangent, comment=None,
         # systems and the log function converges against a certain value, whereas
         # the linear function just keeps growing.
         displ = 0.43429 * log(len(atoms)) + 0.52288
-    step_sizes = np.linspace(-displ, displ, 2*points + 1)
-    steps = step_sizes[:,None] * tangent
-    trj_coords = coords[None,:] + steps
+    step_sizes = np.linspace(-displ, displ, 2 * points + 1)
+    steps = step_sizes[:, None] * tangent
+    trj_coords = coords[None, :] + steps
     trj_coords = trj_coords.reshape(step_sizes.size, -1, 3) / ANG2BOHR
 
     comments = None
@@ -684,9 +518,7 @@ def get_tangent_trj_str(atoms, coords, tangent, comment=None,
 
 
 def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
-    NormalMode = namedtuple("NormalMode",
-                            "nu mode trj_str"
-    )
+    NormalMode = namedtuple("NormalMode", "nu mode trj_str")
     # We don't want to do start any calculation here, so we directly access
     # the attribute underlying the geom.hessian property.
     mw_H = geom.eckart_projection(geom.mass_weigh_hessian(geom._hessian))
@@ -697,12 +529,19 @@ def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
     imag_modes = list()
     for nu, eigvec in zip(nus[below_thresh], eigvecs[:, below_thresh].T):
         comment = f"{nu:.2f} cm⁻¹"
-        trj_str = get_tangent_trj_str(geom.atoms, geom.cart_coords, eigvec,
-                                      comment=comment, points=points, displ=displ)
+        trj_str = get_tangent_trj_str(
+            geom.atoms,
+            geom.cart_coords,
+            eigvec,
+            comment=comment,
+            points=points,
+            displ=displ,
+        )
         imag_modes.append(
-            NormalMode(nu=nu,
-                       mode=eigvec,
-                       trj_str=trj_str,
+            NormalMode(
+                nu=nu,
+                mode=eigvec,
+                trj_str=trj_str,
             )
         )
 

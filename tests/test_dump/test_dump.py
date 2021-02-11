@@ -1,3 +1,5 @@
+import os
+
 import h5py
 
 from pysisyphus.run import run_from_dict
@@ -6,6 +8,15 @@ from pysisyphus.testing import using
 
 @using("pyscf")
 def test_hcn_neb():
+    # At one point this test started to fail in the CI. My guess is, that somewhere
+    # else some test also creates an HDF5 with additional entries, that lead
+    # this test to fail. This tests just adds to the HDF5 file, but does not delete
+    # the entries, already present.
+    try:
+        os.remove("optimization.h5")
+    except FileNotFoundError:
+        pass
+
     run_dict = {
         "preopt": {
             "max_cycles": 3,
@@ -29,7 +40,10 @@ def test_hcn_neb():
             "pal": 1,
             "basis": "321g",
         },
-        "xyz": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"]
+        "geom": {
+            "type": "cart",
+            "fn": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"],
+        },
     }
     results = run_from_dict(run_dict)
 

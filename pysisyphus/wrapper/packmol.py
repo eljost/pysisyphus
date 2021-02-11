@@ -10,6 +10,7 @@ TPL = """tolerance {{ tolerance }}
 output {{ output_fn }}
 filetype pdb
 
+{% if solute_fn %}
 # Solute
 structure {{ solute_fn }}
  number {{ solute_num }}
@@ -18,6 +19,7 @@ structure {{ solute_fn }}
      centerofmass
  {% endif %}
 end structure
+{% endif %}
 
 # Solvent
 structure {{ solvent_fn }}
@@ -27,19 +29,24 @@ end structure
 """
 
 
-def make_input(output_fn, solute_fn, solute_num, solvent_fn, solvent_num,
-               sphere_radius, tolerance=2.0):
-    assert solute_num == 1, "Handling of > solutes is not yet implemented"
-
+def make_input(
+    output_fn,
+    solvent_fn,
+    solvent_num,
+    sphere_radius,
+    solute_fn=None,
+    solute_num=None,
+    tolerance=2.0,
+):
     tpl = Template(TPL)
     rendered = tpl.render(
-                tolerance=tolerance,
-                output_fn=output_fn,
-                solute_fn=solute_fn,
-                solute_num=solute_num,
-                solvent_fn=solvent_fn,
-                solvent_num=solvent_num,
-                sphere_radius=sphere_radius,
+        tolerance=tolerance,
+        output_fn=output_fn,
+        solute_fn=solute_fn,
+        solute_num=solute_num,
+        solvent_fn=solvent_fn,
+        solvent_num=solvent_num,
+        sphere_radius=sphere_radius,
     )
     return rendered
 
@@ -55,8 +62,8 @@ def call_packmol(inp):
             cmd,
             shell=True,
             stdout=subprocess.PIPE,
-            #stderr=subprocess.PIPE,
-            text=True
+            # stderr=subprocess.PIPE,
+            text=True,
         )
     # out = proc.stdout
     # err = proc.stderr

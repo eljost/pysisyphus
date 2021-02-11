@@ -58,8 +58,8 @@ is achieved before step convergence. By using `overachieve_factor: [n, float > 1
 the YAML input convergence will be signalled, when gradient convergence is overachieved
 by factor `n`.
 
-YAML example
-===============
+YAML Example
+============
 
 Below you can find an example YAML-input including the most important options
 that the user may want to modify when using the RFOptimizer.

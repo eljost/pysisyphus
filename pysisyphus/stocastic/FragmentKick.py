@@ -1,25 +1,30 @@
 # See [1] 10.1002/jcc.21026
 
 import itertools as it
-from math import cos, sin
 
 import numpy as np
 import rmsd
 
 from pysisyphus.Geometry import Geometry
+from pysisyphus.linalg import get_rot_mat
 from pysisyphus.stocastic.Kick import Kick
 
 
 class FragmentKick(Kick):
-
-    def __init__(self, geom, fragments, fix_fragments=None,
-                 displace_from=None, random_displacement=False,
-                 **kwargs):
+    def __init__(
+        self,
+        geom,
+        fragments,
+        fix_fragments=None,
+        displace_from=None,
+        random_displacement=False,
+        **kwargs,
+    ):
         super().__init__(geom, **kwargs)
 
         self.fragments = self.get_fragments(fragments)
         if fix_fragments is None:
-            fix_fragments = (0, )
+            fix_fragments = (0,)
         self.fix_fragments = fix_fragments
 
         if displace_from is None:
@@ -58,8 +63,9 @@ class FragmentKick(Kick):
         # number of atoms in the molecule.
         fragment_atoms = list(it.chain(*fragments))
         if len(fragment_atoms) != len(self.atoms):
-            self.log("Fragments were not fully specified. "
-                     "Determining remaining fragment.")
+            self.log(
+                "Fragments were not fully specified. " "Determining remaining fragment."
+            )
             all_indices = set(range(len(self.atoms)))
             new_fragment = list(all_indices - set(fragment_atoms))
             fragments.append(new_fragment)
@@ -97,24 +103,8 @@ class FragmentKick(Kick):
         random_ind = np.random.choice(frag_indices, size=1)[0]
         return frag_coords[random_ind]
 
-    def get_rot_mat(self):
-        # Euler angles
-        a, b, c = np.random.rand(3)*np.pi*2
-        R = np.array((
-            (cos(a)*cos(b)*cos(c)-sin(a)*sin(c),
-            -cos(a)*cos(b)*sin(c)-sin(a)*cos(c),
-             cos(a)*sin(b)),
-            (sin(a)*cos(b)*cos(c)+cos(a)*sin(c),
-            -sin(a)*cos(b)*sin(c)+cos(a)*cos(c),
-             sin(a)*sin(b)),
-            (-sin(b)*cos(c),
-              sin(b)*sin(c),
-              cos(b)))
-        )
-        return R
-
     def kick_fragment(self, frag_coords):
-        R = self.get_rot_mat()
+        R = get_rot_mat()
         kick = self.get_kick()[:3]
         # Fragment rotation
         rot_coords = R.dot(frag_coords.T).T
@@ -137,8 +127,6 @@ class FragmentKick(Kick):
         # fragments ((4, 3), (2, 1, 0)) would result 'new_coords3d' with the
         # coordinates of atom 4 at index 0, coordinates of atom 3 at index 1, etc.
         new_coords3d = new_coords3d[self.sort_inds]
-        new_coords = rmsd.kabsch_rotate(new_coords3d,
-                                        self.initial_coords3d
-        ).flatten()
+        new_coords = rmsd.kabsch_rotate(new_coords3d, self.initial_coords3d).flatten()
         new_geom = Geometry(self.atoms, new_coords)
         return new_geom
