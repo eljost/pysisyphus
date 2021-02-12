@@ -1,6 +1,7 @@
 from matplotlib import cm
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from sympy import symbols, diff, lambdify, sympify
 
@@ -117,6 +118,57 @@ class AnaPotBase(Calculator):
 
         if show:
             plt.show()
+
+    def plot3d(
+        self,
+        levels=None,
+        show=False,
+        zlim=None,
+        vmin=None,
+        vmax=None,
+        resolution=100,
+        rcount=50,
+        ccount=50,
+        nan_above=None,
+        init_view=None,
+        **figkwargs,
+    ):
+        self.fig = plt.figure(**figkwargs)
+        self.ax = self.fig.add_subplot(111, projection="3d")
+        x = np.linspace(*self.xlim, resolution)
+        y = np.linspace(*self.ylim, resolution)
+        X, Y = np.meshgrid(x, y)
+        Z = np.full_like(X, 0)
+        pot_coords = np.stack((X, Y, Z))
+        pot = self.get_energy(self.fake_atoms, pot_coords)["energy"]
+        if nan_above:
+            pot[pot > nan_above] = np.nan
+
+        if vmin is None:
+            vmin = np.nanmin(pot)
+        if vmax is None:
+            vmax = 0.125 * np.nanmax(pot)
+        surf = self.ax.plot_surface(
+            X,
+            Y,
+            pot,
+            rcount=rcount,
+            ccount=ccount,
+            cmap=cm.coolwarm,
+            vmin=vmin,
+            vmax=vmax,
+        )
+        if zlim is not None:
+            self.ax.set_zlim(*zlim)
+        # self.fig.colorbar(surf)
+
+        if init_view:
+            self.ax.view_init(*init_view)
+
+        if show:
+            plt.show()
+
+        return X, Y, pot
 
     def plot_eigenvalue_structure(self, grid=50, levels=None, show=False):
         self.plot(levels=levels)
