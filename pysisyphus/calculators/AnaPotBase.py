@@ -131,6 +131,7 @@ class AnaPotBase(Calculator):
         ccount=50,
         nan_above=None,
         init_view=None,
+        colorbar=False,
         **figkwargs,
     ):
         self.fig = plt.figure(**figkwargs)
@@ -160,7 +161,10 @@ class AnaPotBase(Calculator):
         )
         if zlim is not None:
             self.ax.set_zlim(*zlim)
-        # self.fig.colorbar(surf)
+
+        if colorbar:
+            cb = self.fig.colorbar(surf, shrink=.45, pad=0.0)
+            cb.set_label("f(x,y)")
 
         if init_view:
             self.ax.view_init(*init_view)
