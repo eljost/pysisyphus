@@ -1,5 +1,6 @@
 import collections.abc
 from enum import Enum
+import itertools as it
 import logging
 from pathlib import Path
 import time
@@ -130,9 +131,17 @@ def get_input(data, prompt, lbl_func=None):
 def expand(to_expand):
     if any([isinstance(to_expand, cls) for cls in (list, tuple, np.ndarray)]):
         return to_expand
-    else:
+    elif ".." in to_expand:
         start, end = [int(i) for i in to_expand.split("..")]
         return list(range(start, end))
+    # Numbers
+    else:
+        return [int(to_expand)]
+
+
+def full_expand(to_expand):
+    split = to_expand.strip().split(",")
+    return list(it.chain(*[expand(te) for te in split]))
 
 
 def file_or_str(*args):
