@@ -44,10 +44,11 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False, return_cbm
     return (bond_inds,) + add_returns
 
 
-def get_fragments(atoms, coords):
+def get_fragments(atoms, coords, bond_inds=None):
     coords3d = coords.reshape(-1, 3)
-    # Bond indices without interfragment bonds and/or hydrogen bonds
-    bond_inds = get_bond_sets(atoms, coords3d)
+    if bond_inds is None:
+        # Bond indices without interfragment bonds and/or hydrogen bonds
+        bond_inds = get_bond_sets(atoms, coords3d)
 
     bond_ind_sets = [frozenset(bi) for bi in bond_inds]
     fragments = merge_sets(bond_ind_sets)
