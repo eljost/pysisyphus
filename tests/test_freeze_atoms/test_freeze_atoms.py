@@ -20,7 +20,6 @@ def run_opt(geom):
 @pytest.mark.parametrize("ind", range(3))
 def test_freeze_one_atom(ind):
     """Freeze every atom once."""
-    # ind = 0
     geom = geom_loader("lib:h2o.xyz", freeze_atoms=[ind])
     org_coords = geom.coords3d[ind].copy()
     geom = run_opt(geom)
@@ -41,6 +40,7 @@ def test_freeze_two_atom():
     assert geom.energy == pytest.approx(-74.96484452)
 
 
+@using("pyscf")
 def test_run_dict_freeze():
     run_dict = {
         "geom": {
@@ -60,3 +60,16 @@ def test_run_dict_freeze():
 
     geom = result.opt_geom
     assert geom.energy == pytest.approx(-74.96484452)
+
+
+@using("pyscf")
+def test_frozen_atoms_get_forces_at():
+    ind = 0
+    geom = geom_loader("lib:h2o.xyz", freeze_atoms=[ind])
+    geom.set_calculator(PySCF(pal=1, basis="sto3g", verbose=0))
+
+    funcs = (geom.get_energy_and_cart_forces_at, geom.get_energy_and_forces_at)
+    for func in funcs:
+        results = func(geom.coords)
+        forces = results["forces"]
+        np.testing.assert_allclose(forces.reshape(-1, 3)[ind], np.zeros(3))

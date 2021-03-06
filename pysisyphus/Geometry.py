@@ -899,6 +899,7 @@ class Geometry:
             coords = self.cart_coords + cart_step
         self.assert_cart_coords(coords)
         results = self.calculator.get_forces(self.atoms, coords)
+        self.zero_frozen_forces(results["forces"])
 
         if self.coord_type != "cart":
             results["forces"] = self.internal.transform_forces(results["forces"])
@@ -907,12 +908,17 @@ class Geometry:
 
     def get_energy_and_cart_forces_at(self, cart_coords):
         self.assert_cart_coords(cart_coords)
-        return self.calculator.get_forces(self.atoms, cart_coords)
+        results = self.calculator.get_forces(self.atoms, cart_coords)
+        self.zero_frozen_forces(results["forces"])
+        return results
 
     def calc_double_ao_overlap(self, geom2):
         return self.calculator.run_double_mol_calculation(
             self.atoms, self.coords, geom2.coords
         )
+
+    def zero_frozen_forces(self, cart_forces):
+        cart_forces.reshape(-1, 3)[self.freeze_atoms] = 0.0
 
     def set_results(self, results):
         """Save the results from a dictionary.
@@ -938,7 +944,7 @@ class Geometry:
         for key in results:
             # Zero forces of frozen atoms
             if key == "forces":
-                results[key].reshape(-1, 3)[self.freeze_atoms] = 0.0
+                self.zero_frozen_forces(results[key])
 
             setattr(self, trans[key], results[key])
         self.results = results
