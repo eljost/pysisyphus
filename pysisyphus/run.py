@@ -1381,6 +1381,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         constrain_prims = rdg.get("constrain_prims", None)
         union = rdg.get("union", None)
         isotopes = rdg.get("isotopes", None)
+        freeze_atoms = rdg.get("freeze_atoms", None)
     # Old geometry input
     else:
         xyz = run_dict["xyz"]
@@ -1456,6 +1457,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         constrain_prims=constrain_prims,
         union=union,
         isotopes=isotopes,
+        freeze_atoms=freeze_atoms,
     )
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
