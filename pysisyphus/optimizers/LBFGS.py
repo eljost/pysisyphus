@@ -95,66 +95,9 @@ class LBFGS(Optimizer):
             self.coord_diffs = self.coord_diffs[-self.keep_last :]
             self.grad_diffs = self.grad_diffs[-self.keep_last :]
 
-        step = bfgs_multiply(
-            self.coord_diffs,
-            self.grad_diffs,
-            forces,
-            beta=self.beta,
-            gamma_mult=self.gamma_mult,
-            logger=self.logger,
-        )
-        step = scale_by_max_step(step, self.max_step)
-
-        return step
-
-    def optimize(self):
-        if self.is_cos and self.align:
-            rot_vecs, rot_vec_lists, _ = fit_rigid(
-                self.geometry,
-                vector_lists=(
-                    self.steps,
-                    self.forces,
-                    self.coord_diffs,
-                    self.grad_diffs,
-                ),
-            )
-            rot_steps, rot_forces, rot_coord_diffs, rot_grad_diffs = rot_vec_lists
-            self.steps = rot_steps
-            self.forces = rot_forces
-            self.coord_diffs = rot_coord_diffs
-            self.grad_diffs = rot_grad_diffs
-
-        forces = self.geometry.forces
-        self.forces.append(forces)
-        energy = self.geometry.energy
-        self.energies.append(energy)
-        norm = np.linalg.norm(forces)
-        self.log(f"norm(forces)={norm:.6f}")
-
-        if self.cur_cycle > 0:
-            y = self.forces[-2] - forces
-            s = self.steps[-1]
-            if self.double_damp:
-                s, y = double_damp(
-                    s, y, s_list=self.coord_diffs, y_list=self.grad_diffs
-                )
-            self.grad_diffs.append(y)
-            self.coord_diffs.append(s)
-
-            # Drop superfluous oldest vectors
-            self.coord_diffs = self.coord_diffs[-self.keep_last :]
-            self.grad_diffs = self.grad_diffs[-self.keep_last :]
-
         ###############
         # Line search #
         ###############
-
-    # cur_energy = energies[-1]
-    # prev_energy = energies[-2]
-
-    # prev_step = steps[-1]
-    # cur_grad = -forces[-1]
-    # prev_grad = -forces[-2]
 
         ip_gradient, ip_step = None, None
         if self.line_search and (self.cur_cycle > 0):
