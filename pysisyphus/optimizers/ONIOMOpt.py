@@ -95,15 +95,12 @@ class ONIOMOpt(Optimizer):
                 "prev_energy": prev_energy,
                 "prev_grad": prev_grad,
                 "prev_step": trial_step,
-                "prev_coords": coords,
-                "allow_cubic": True,
-                "allow_none": False,
-                "cubic_max": 2.,
-                "quartic_max": 4.,
+                "cubic_max_x": 2.,
+                "quartic_max_x": 4.,
             }
             ls_result = poly_fit.poly_line_search(**ls_kwargs)
             if ls_result[0] is not None:
-                energy, grad, new_coords, step = ls_result
+                energy, grad, step = ls_result
                 trial_length = np.linalg.norm(step)
                 break
             else:
@@ -189,15 +186,12 @@ class ONIOMOpt(Optimizer):
                 "prev_energy": prev_energy,
                 "prev_grad": prev_grad,
                 "prev_step": trial_step,
-                "prev_coords": coords,
-                "allow_cubic": True,
-                "allow_none": False,
                 "cubic_max": 2.,
                 "quartic_max": 4.,
             }
             ls_result = poly_fit.poly_line_search(**ls_kwargs)
             if ls_result[0] is not None:
-                energy, grad, new_coords, step = ls_result
+                energy, grad, step = ls_result
                 trial_length = np.linalg.norm(step)
                 break
             else:

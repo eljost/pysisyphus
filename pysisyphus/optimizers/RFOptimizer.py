@@ -8,7 +8,7 @@ import numpy as np
 
 from pysisyphus.helpers import rms
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
-from pysisyphus.optimizers.poly_fit import rfo_poly_line_search
+from pysisyphus.optimizers.poly_fit import poly_line_search
 from pysisyphus.optimizers.gdiis import gdiis, gediis
 
 
@@ -98,7 +98,7 @@ class RFOptimizer(HessianOptimizer):
 
         # Try line search if GDIIS failed or not requested
         if self.line_search and (diis_result is None) and (not resetted):
-            ip_energy, ip_gradient, ip_step = rfo_poly_line_search(
+            ip_energy, ip_gradient, ip_step = poly_line_search(
                 energy, self.energies[-2], gradient, -self.forces[-2], self.steps[-1],
                 cubic_max_x=-1, quartic_max_x=2, logger=self.logger
             )

@@ -5,7 +5,7 @@ from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.restrict_step import scale_by_max_step
-from pysisyphus.optimizers.poly_fit import rfo_poly_line_search
+from pysisyphus.optimizers.poly_fit import poly_line_search
 
 
 # See pysisyphus.optimizers.hessian_updates for double damping ref.
@@ -158,7 +158,7 @@ class LBFGS(Optimizer):
 
         ip_gradient, ip_step = None, None
         if self.line_search and (self.cur_cycle > 0):
-            ip_energy, ip_gradient, ip_step = rfo_poly_line_search(
+            ip_energy, ip_gradient, ip_step = poly_line_search(
                     energy, self.energies[-2], -forces, -self.forces[-2], self.steps[-1]
                 # self.energies, self.forces, self.steps
             )

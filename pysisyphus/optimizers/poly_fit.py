@@ -232,64 +232,6 @@ def poly_line_search(
     cur_grad,
     prev_grad,
     prev_step,
-    prev_coords,
-    allow_cubic=True,
-    allow_none=True,
-    cubic_max=2.0,
-    quartic_max=4.0,
-):
-    # Generate directional gradients by projecting them on the previous step.
-    prev_grad_proj = prev_step @ prev_grad
-    cur_grad_proj = prev_step @ cur_grad
-    cubic_result = cubic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
-    quartic_result = quartic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
-    accept = {
-        "cubic": lambda x: allow_cubic and (x > 0.0) and (x <= cubic_max),
-        "quartic": lambda x: (x > 0.0) and (x <= quartic_max),
-    }
-
-    fit_result = None
-    if quartic_result and accept["quartic"](quartic_result.x):
-        fit_result = quartic_result
-        deg = "quartic"
-    elif cubic_result and accept["cubic"](cubic_result.x):
-        fit_result = cubic_result
-        deg = "cubic"
-    # If we don't allow None we always return either the current point at
-    # x == 1, or the midpoint at x == 0.5.
-    elif not allow_none:
-        # Midpoint fallback as described by gaussian?
-        if cur_energy < prev_energy:
-            x = 1
-            y = cur_energy
-            deg = "current point"
-        else:
-            x = 0.5
-            y = (cur_energy + prev_energy) / 2
-            deg = "midpoint"
-        fit_result = FitResult(x, y, polys=None)
-
-    fit_energy = None
-    fit_grad = None
-    fit_coords = None
-    fit_step = None
-    if fit_result and fit_result.y < prev_energy:
-        x = fit_result.x
-        fit_energy = fit_result.y
-        logger.debug(f"\tDid '{deg}' interpolation with x={x:.6f}.")
-        # Interpolate coordinates and gradient
-        fit_step = x * prev_step
-        fit_coords = prev_coords + fit_step
-        fit_grad = (1 - x) * prev_grad + x * cur_grad
-    return fit_energy, fit_grad, fit_coords, fit_step
-
-
-def rfo_poly_line_search(
-    cur_energy,
-    prev_energy,
-    cur_grad,
-    prev_grad,
-    prev_step,
     cubic_max_x=2.0,
     quartic_max_x=4.0,
     logger=None,
