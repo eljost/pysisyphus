@@ -6,12 +6,10 @@ from pprint import pprint
 import numpy as np
 import sympy as sym
 
+from pysisyphus.helpers_pure import log
+
 
 logger = logging.getLogger("optimizer")
-
-
-def log(msg):
-    logger.debug(msg)
 
 
 def gen_solutions():
@@ -294,6 +292,7 @@ def rfo_poly_line_search(
     prev_step,
     cubic_max_x=2.0,
     quartic_max_x=4.0,
+    logger=None,
 ):
     """Generate directional gradients by projecting them on the previous step."""
     prev_grad_proj = prev_step @ prev_grad
@@ -319,7 +318,7 @@ def rfo_poly_line_search(
     if fit_result and fit_result.y < prev_energy:
         x = fit_result.x
         fit_energy = fit_result.y
-        # self.log(f"Did {deg} interpolation with x={x:.6f}.")
+        log(logger, f"Did {deg} interpolation with x={x:.6f}.")
 
         # Interpolate coordinates and gradient. 'fit_step' applied to the current
         # coordinates yields interpolated coordinates.
