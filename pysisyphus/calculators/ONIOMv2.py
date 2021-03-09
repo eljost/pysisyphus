@@ -110,6 +110,32 @@ def atom_inds_to_cart_inds(atom_inds):
     return cart_inds
 
 
+class ModelDummyCalc():
+
+    def __init__(self, model):#, all_atoms, all_coords):
+        self.model = model
+
+    def get_energy(self, atoms, coords):
+        energy = self.model.get_energy(atoms, coords, cap=False)
+        results = {"energy": energy}
+        return results
+
+    def get_forces(self, atoms, coords):
+        energy, forces = self.model.get_forces(atoms, coords, cap=False)
+        forces_ = np.zeros((len(atoms), 3))
+        forces_[:len(atoms)-len(self.model.links)] = forces.reshape(-1, 3)[self.model.atom_inds]
+        # if len(atoms) < 30:
+            # import pdb; pdb.set_trace()
+            # pass
+        results = {"energy": energy, "forces": forces_.flatten()}
+        return results
+
+    # def get_hessian(self, atoms, coords):
+        # energy, hessian = self.model.get_hessian(atoms, coords, cap=False)
+        # results = {"energy": energy, "hessian": hessian}
+        # return results
+
+
 class Model():
 
     def __init__(self, name, calc_level, calc,
@@ -232,9 +258,13 @@ class Model():
         return J
 
     def get_energy(self, atoms, coords, point_charges=None,
-                   parent_correction=True):
+                   parent_correction=True, cap=True):
         self.log("Energy calculation")
-        catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        if cap:
+            catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        else:
+            catoms = atoms
+            ccoords = coords
 
         prepare_kwargs = {
             "point_charges": point_charges,
@@ -256,9 +286,14 @@ class Model():
         return energy
 
     def get_forces(self, atoms, coords, point_charges=None,
-                   parent_correction=True):
+                   parent_correction=True, cap=True):
         self.log("Force calculation")
-        catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        # catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        if cap:
+            catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        else:
+            catoms = atoms
+            ccoords = coords
 
         prepare_kwargs = {
             "point_charges": point_charges,
@@ -286,9 +321,14 @@ class Model():
         return energy, forces
 
     def get_hessian(self, atoms, coords, point_charges=None,
-                    parent_correction=True):
+                    parent_correction=True, cap=True):
         self.log("Hessian calculation")
-        catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        # catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        if cap:
+            catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+        else:
+            catoms = atoms
+            ccoords = coords
 
         # prepare_kwargs = {
             # "point_charges": point_charges,
@@ -326,6 +366,13 @@ class Model():
             parent_charges = None
 
         return charges, parent_charges
+
+    def as_geom(self, all_atoms, all_coords):
+        capped_atoms, capped_coords3d = self.capped_atoms_coords(all_atoms, all_coords)
+        geom = Geometry(capped_atoms, capped_coords3d)
+        dummy_calc = ModelDummyCalc(self)
+        geom.set_calculator(dummy_calc)
+        return geom
     
     def __str__(self):
         return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
