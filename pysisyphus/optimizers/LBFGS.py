@@ -25,6 +25,9 @@ class LBFGS(Optimizer):
         **kwargs,
     ):
         """[1] Nocedal, Wright - Numerical Optimization, 2006"""
+
+        self.coord_diffs = list()
+        self.grad_diffs = list()
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         self.beta = beta
@@ -33,9 +36,6 @@ class LBFGS(Optimizer):
         self.gamma_mult = gamma_mult
         self.line_search = (not self.is_cos) and line_search
         self.control_step = control_step
-
-        self.coord_diffs = list()
-        self.grad_diffs = list()
 
     def reset(self):
         self.coord_diffs = list()
