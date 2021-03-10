@@ -496,10 +496,16 @@ def setup_redundant_from_geom(geom, *args, **kwargs):
 
 
 def get_primitives(coords3d, typed_prims, logger=None):
+    rot_pts = (PrimTypes.ROTATION_A, PrimTypes.ROTATION_B, PrimTypes.ROTATION_C)
     primitives = list()
     for type_, *indices in typed_prims:
         cls = PrimMap[type_]
-        primitives.append(cls(indices=indices))
+        cls_kwargs = {
+            "indices": indices
+        }
+        if type_ in rot_pts:
+            cls_kwargs["ref_coords3d"] = coords3d
+        primitives.append(cls(**cls_kwargs))
 
     msg = (
         "Defined primitives\n"
