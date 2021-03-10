@@ -1,6 +1,7 @@
 import itertools as it
 
 import numpy as np
+import pytest
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.PrimTypes import PrimTypes as PT
@@ -40,6 +41,7 @@ def test_two_waters(this_dir):
 
     opt_kwargs = {
         "dump": True,
+        "max_cycles": 5,
     }
     opt = LBFGS(geom, **opt_kwargs)
     opt.run()
@@ -66,3 +68,46 @@ def test_21_waters(this_dir):
     }
     opt = LBFGS(geom, **opt_kwargs)
     opt.run()
+
+# from geometric.internal import Rotator as geomRot
+# from pysisyphus.intcoords.Rotation import RotationA as pysisRot
+# from pysisyphus.linalg import get_rot_mat
+
+# @pytest.fixture
+# def prep_comp_h2o():
+    # ref = geom_loader("start.xyz")
+    # rot = geom_loader("rot.xyz")
+
+    # inds = (3, 4, 5)
+    # return (ref.coords3d, rot.coords3d, inds)
+
+
+# @pytest.fixture
+# def prep_comp_biaryl():
+    # # ref = geom_loader("biaryl.xyz")  # 30
+    # # ref = geom_loader("C60-Ih.xyz")  # 60
+    # ref = geom_loader("ptphen.xyz")  # 95
+    # inds = list(range(len(ref.atoms)))
+    # ref3d = ref.coords3d
+
+    # # Create rotated coordinates
+    # abc = 0.3, 0.2, 0.1
+    # R = get_rot_mat(abc)
+    # rot3d = R.dot(ref3d.T).T
+    # return ref3d, rot3d, inds
+
+
+# def test_this(prep_comp_biaryl):
+    # ref3d, rot3d, inds = prep_comp_biaryl
+    # # gr = geomRot(inds, ref3d)
+    # pr = pysisRot(inds, ref_coords3d=ref3d)
+    # val, grad = pr.calculate(rot3d, gradient=True)
+    # # print(val, grad)
+
+
+# def test_geom(prep_comp_biaryl):
+    # ref3d, rot3d, inds = prep_comp_biaryl
+    # gr = geomRot(inds, ref3d)
+    # val = gr.value(rot3d)
+    # grad = gr.derivative(rot3d)
+    # # print(val, grad)
