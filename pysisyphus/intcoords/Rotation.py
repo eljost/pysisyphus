@@ -80,7 +80,32 @@ class Rotation(Primitive):
         v = prefac * quat[1:]
 
         if gradient:
-            """See https://github.com/google/jax/issues/2748"""
+            dR = np.zeros((3, 3, *ref_c3d.shape))
+            dR[0, 0, :, 0] = ref_c3d[:, 0]
+            dR[0, 1, :, 0] = ref_c3d[:, 1]
+            dR[0, 2, :, 0] = ref_c3d[:, 2]
+
+            dR[1, 0, :, 1] = ref_c3d[:, 0]
+            dR[1, 1, :, 1] = ref_c3d[:, 1]
+            dR[1, 2, :, 1] = ref_c3d[:, 2]
+
+            dR[2, 0, :, 2] = ref_c3d[:, 0]
+            dR[2, 1, :, 2] = ref_c3d[:, 1]
+            dR[2, 2, :, 2] = ref_c3d[:, 2]
+
+            # dR_ = np.zeros((*ref_c3d.shape, 3, 3))
+            # dR_[:, 0, 0, 0] = ref_c3d[:, 0]
+            # dR_[:, 0, 0, 1] = ref_c3d[:, 1]
+            # dR_[:, 0, 0, 2] = ref_c3d[:, 2]
+
+            # dR_[:, 1, 1, 0] = ref_c3d[:, 0]
+            # dR_[:, 1, 1, 1] = ref_c3d[:, 1]
+            # dR_[:, 1, 1, 2] = ref_c3d[:, 2]
+
+            # dR_[:, 2, 2, 0] = ref_c3d[:, 0]
+            # dR_[:, 2, 2, 1] = ref_c3d[:, 1]
+            # dR_[:, 2, 2, 2] = ref_c3d[:, 2]
+
             raise Exception("Not implemented!")
 
         return v[index]
