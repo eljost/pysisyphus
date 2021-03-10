@@ -4,6 +4,20 @@
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.linalg import eigvec_grad
+
+
+def compare_to_geometric(c3d, ref_c3d, dR, dF, dqdx, dvdx):
+    from geometric.rotate import get_R_der, get_F_der, get_q_der, get_expmap_der
+
+    dR_ref = get_R_der(c3d, ref_c3d)
+    np.testing.assert_allclose(dR, dR_ref)
+    dF_ref = get_F_der(c3d, ref_c3d)
+    np.testing.assert_allclose(dF.reshape(-1, 3, 4, 4), dF_ref)
+    dq_ref = get_q_der(c3d, ref_c3d)
+    np.testing.assert_allclose(dqdx.reshape(-1, 3, 4), dq_ref)
+    dvdx_ref = get_expmap_der(c3d, ref_c3d)
+    np.testing.assert_allclose(dvdx, dvdx_ref.reshape(-1, 3).T)
 
 
 class Rotation(Primitive):
@@ -52,10 +66,11 @@ class Rotation(Primitive):
         #
         F[3, 3] = -R11 - R22 + R33
         # Eigenvalues, eigenvectors of upper triangular part.
-        w, v = np.linalg.eigh(F, UPLO="U")
+        w, v_ = np.linalg.eigh(F, UPLO="U")
         # Quaternion corresponds to biggest (last) eigenvalue.
         # np.linalg.eigh already returns sorted eigenvalues.
-        quat = v[:, -1]
+        quat = v_[:, -1]
+        quat_eigval = w[-1]
         # Eigenvector sign is ambigous. Force first item to be positive,
         # similar to geomeTRIC code.
         if quat[0] < 0.0:
@@ -74,40 +89,70 @@ class Rotation(Primitive):
         q0 = quat[0]
         if abs(q0 - 1.0) <= 1e-8:
             prefac = 2
+            dvdq0 = 0.0
         else:
-            prefac = 2 * np.arccos(q0) / np.sqrt(1 - q0 ** 2)
+            arccos_q0 = np.arccos(q0)
+            diff = 1 - q0 ** 2
+            prefac = 2 * arccos_q0 / np.sqrt(diff)
+            dvdq0 = quat[1:] * (2 * q0 * arccos_q0 / diff ** 1.5 - 2 / diff)
         # Exponential map
         v = prefac * quat[1:]
 
         if gradient:
-            dR = np.zeros((3, 3, *ref_c3d.shape))
-            dR[0, 0, :, 0] = ref_c3d[:, 0]
-            dR[0, 1, :, 0] = ref_c3d[:, 1]
-            dR[0, 2, :, 0] = ref_c3d[:, 2]
+            # Gradient of correlation matrix
+            y1, y2, y3 = ref_c3d.T
+            dR = np.zeros((*c3d.shape, 3, 3))
+            dR[:, 0, 0, 0] = y1
+            dR[:, 0, 0, 1] = y2
+            dR[:, 0, 0, 2] = y3
+            #
+            dR[:, 1, 1, 0] = y1
+            dR[:, 1, 1, 1] = y2
+            dR[:, 1, 1, 2] = y3
+            #
+            dR[:, 2, 2, 0] = y1
+            dR[:, 2, 2, 1] = y2
+            dR[:, 2, 2, 2] = y3
+            dR11, dR12, dR13, dR21, dR22, dR23, dR31, dR32, dR33 = dR.reshape(-1, 9).T
 
-            dR[1, 0, :, 1] = ref_c3d[:, 0]
-            dR[1, 1, :, 1] = ref_c3d[:, 1]
-            dR[1, 2, :, 1] = ref_c3d[:, 2]
+            # Gradient of F matrix. Construct full matrix, as we have to do a dot
+            # product later on.
+            dF = np.zeros((ref_c3d.size, 4, 4))
+            dF[:, 0, 0] = dR11 + dR22 + dR33
+            dF[:, 0, 1] = dR23 - dR32
+            dF[:, 0, 2] = dR31 - dR13
+            dF[:, 0, 3] = dR12 - dR21
+            #
+            dF[:, 1, 0] = dF[:, 0, 1]
+            dF[:, 1, 1] = dR11 - dR22 - dR33
+            dF[:, 1, 2] = dR12 + dR21
+            dF[:, 1, 3] = dR13 + dR31
+            #
+            dF[:, 2, 0] = dF[:, 0, 2]
+            dF[:, 2, 1] = dF[:, 1, 2]
+            dF[:, 2, 2] = -dR11 + dR22 - dR33
+            dF[:, 2, 3] = dR23 + dR32
+            #
+            dF[:, 3, 0] = dF[:, 0, 3]
+            dF[:, 3, 1] = dF[:, 1, 3]
+            dF[:, 3, 2] = dF[:, 2, 3]
+            dF[:, 3, 3] = -dR11 - dR22 + dR33
 
-            dR[2, 0, :, 2] = ref_c3d[:, 0]
-            dR[2, 1, :, 2] = ref_c3d[:, 1]
-            dR[2, 2, :, 2] = ref_c3d[:, 2]
+            # Quaternion gradient
+            dqdx = eigvec_grad(w, v_, ind=-1, mat_grad=dF)
 
-            # dR_ = np.zeros((*ref_c3d.shape, 3, 3))
-            # dR_[:, 0, 0, 0] = ref_c3d[:, 0]
-            # dR_[:, 0, 0, 1] = ref_c3d[:, 1]
-            # dR_[:, 0, 0, 2] = ref_c3d[:, 2]
+            dvdq = np.zeros((4, 3))
+            dvdq[0] = dvdq0
+            dvdq[1:] = np.diag((prefac, prefac, prefac))
 
-            # dR_[:, 1, 1, 0] = ref_c3d[:, 0]
-            # dR_[:, 1, 1, 1] = ref_c3d[:, 1]
-            # dR_[:, 1, 1, 2] = ref_c3d[:, 2]
+            # Gradient of exponential map from chain rule.
+            # See bottom-left on 214108-3 in [1], after Eq. (11).
+            dvdx = np.einsum("ij,ki->jk", dvdq, dqdx)
 
-            # dR_[:, 2, 2, 0] = ref_c3d[:, 0]
-            # dR_[:, 2, 2, 1] = ref_c3d[:, 1]
-            # dR_[:, 2, 2, 2] = ref_c3d[:, 2]
-
-            raise Exception("Not implemented!")
-
+            # compare_to_geometric(c3d, ref_c3d, dR, dF, dqdx, dvdx)
+            row = np.zeros_like(coords3d)
+            row[indices] = dvdx[index].reshape(-1, 3)
+            return v[index], row.flatten()
         return v[index]
 
     @staticmethod
