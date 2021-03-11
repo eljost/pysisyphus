@@ -36,19 +36,24 @@ class ONIOMOpt(Optimizer):
         self.lbfgs_closure = small_lbfgs_closure(history=10, gamma_mult=False)
         self.high_steps = list()
 
+        (self.real_model,), (self.high_model,) = self.geometry.layers
+        # Freeze high layer, but also freeze atoms in real layer that become
+        # link atoms in the high layer.
+        link_inds = [link.parent_ind for link in self.high_model.links]
+        self.freeze_in_real = self.high_model.atom_inds + link_inds
+
+        self.micros_converged = 0
+        self.micro_opt_cycles = list()
+
     def optimize(self):
-        (real_model,), (high_model,) = self.geometry.layers
 
         #######################
         # Relax real geometry #
         #######################
 
         coords3d_org = self.geometry.coords3d.copy()
-        real_geom = real_model.as_geom(self.geometry.atoms, coords3d_org.copy())
-        # Freeze high layer, but also freeze atoms in real layer that become
-        # link atoms in the high layer.
-        link_inds = [link.parent_ind for link in high_model.links]
-        real_geom.freeze_atoms = high_model.atom_inds + link_inds
+        real_geom = self.real_model.as_geom(self.geometry.atoms, coords3d_org.copy())
+        real_geom.freeze_atoms = self.freeze_in_real
 
         key = "real"
         micro_cycles = self.micro_cycles[0]
@@ -63,9 +68,12 @@ class ONIOMOpt(Optimizer):
             "align": False,
         }
         real_opt = LBFGS(real_geom, **real_opt_kwargs)
-        print(highlight_text(f"Opt Cycle {self.cur_cycle}, Micro cycles"))
+        print("\n" + highlight_text(f"Opt Cycle {self.cur_cycle}, Micro cycles") + "\n")
         real_opt.run()
         real_step = real_geom.coords3d - coords3d_org
+        self.micros_converged += real_opt.is_converged
+        self.micro_opt_cycles.append(real_opt.cur_cycle + 1)
+        print("\n" + highlight_text(f"Micro cycles finished") + "\n")
 
         # Calculate full ONIOM forces with releaxed, real coordinates
         results = self.geometry.get_energy_and_forces_at(real_geom.coords3d.flatten())
@@ -84,3 +92,13 @@ class ONIOMOpt(Optimizer):
             step = scale_by_max_step(step, self.max_step)
         step += real_step.flatten()
         return step
+
+    def postprocess_opt(self):
+        tot_micro_cycs = sum(self.micro_opt_cycles)
+        msg = (
+            f"\nMicro-cycle optimizations:\n"
+            f"\t        Attempted: {self.cur_cycle+1}\n"
+            f"\t        Converged: {self.micros_converged}\n"
+            f"\t     Total cycles: {tot_micro_cycs}\n"
+        )
+        self.log(msg)
