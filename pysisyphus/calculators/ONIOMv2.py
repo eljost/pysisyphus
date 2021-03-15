@@ -150,8 +150,8 @@ class Model():
         self.parent_calc_level = parent_calc_level
         self.parent_calc = parent_calc
 
-        self.atom_inds = atom_inds
-        self.parent_atom_inds = parent_atom_inds
+        self.atom_inds = list(atom_inds)
+        self.parent_atom_inds = list(parent_atom_inds)
 
         self.use_link_atoms = use_link_atoms
 
