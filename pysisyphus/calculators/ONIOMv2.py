@@ -151,7 +151,8 @@ class Model():
         self.parent_calc = parent_calc
 
         self.atom_inds = list(atom_inds)
-        self.parent_atom_inds = list(parent_atom_inds)
+        if parent_atom_inds is not None:
+            self.parent_atom_inds = list(parent_atom_inds)
 
         self.use_link_atoms = use_link_atoms
 
