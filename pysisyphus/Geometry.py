@@ -76,7 +76,10 @@ def get_trans_rot_vectors(cart_coords, masses):
         for c3d in ((zeros, -z, y), (z, zeros, -x), (-y, x, zeros)):
             _ = np.array(c3d).T.flatten()
             _ *= M_sqrt
-            yield _ / np.linalg.norm(_)
+            rot_vec = _ / np.linalg.norm(_)
+            if any(np.isnan(rot_vec)):
+                rot_vec = np.zeros_like(rot_vec)
+            yield rot_vec
 
     rot_vecs = list(get_rot_vecs())
     ortho_vecs = np.array(gram_schmidt(trans_vecs + rot_vecs))
@@ -158,9 +161,7 @@ class Geometry:
         if freeze_atoms is None:
             freeze_atoms = list()
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
-        # import pdb
 
-        # pdb.set_trace()
         assert all(self.freeze_atoms >= 0) and (
             (self.freeze_atoms.size == 0) or (self.freeze_atoms.max() < len(self.atoms))
         )
