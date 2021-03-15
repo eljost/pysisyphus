@@ -11,7 +11,6 @@ from pysisyphus.optimizers.hessian_updates import (
     damped_bfgs_update,
     bofill_update,
 )
-from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 

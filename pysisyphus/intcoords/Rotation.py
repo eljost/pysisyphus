@@ -70,7 +70,6 @@ class Rotation(Primitive):
         # Quaternion corresponds to biggest (last) eigenvalue.
         # np.linalg.eigh already returns sorted eigenvalues.
         quat = v_[:, -1]
-        quat_eigval = w[-1]
         # Eigenvector sign is ambigous. Force first item to be positive,
         # similar to geomeTRIC code.
         if quat[0] < 0.0:
