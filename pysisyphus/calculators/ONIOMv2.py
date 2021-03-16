@@ -395,6 +395,31 @@ class Model:
 
         return energy, hessian
 
+    # def get_delta_S(self, atoms, coords):
+        # self.log("ΔS calculation")
+        # catoms, ccoords = self.capped_atoms_coords(atoms, coords)
+
+        # # Parent calculator
+        # E_parent_real = self.parent_calc.get_energy(atoms, coords)["energy"]
+        # self.parent_calc.reset()
+        # E_parent_model = self.parent_calc.get_energy(catoms, ccoords)["energy"]
+        # S_low = E_parent_real - E_parent_model
+        # self.log(f"S_low={S_low:.6f} au")
+        # print(f"S_low={S_low:.6f} au")
+        # # High level calculator
+        # E_high_real = self.calc.get_energy(atoms, coords)["energy"]
+        # self.calc.reset()
+        # E_high_model = self.calc.get_energy(catoms, ccoords)["energy"]
+        # S_high = E_high_real - E_high_model
+        # self.log(f"S_high={S_high:.6f} au")
+        # print(f"S_high={S_high:.6f} au")
+
+        # delta_S = S_low - S_high
+        # self.log(f"ΔS={delta_S:.6f} au")
+        # print(f"ΔS={delta_S:.6f} au")
+
+        return delta_S
+
     def parse_charges(self):
         charges = self.calc.parse_charges()
         try:

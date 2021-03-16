@@ -57,3 +57,7 @@ class Composite(Calculator):
 
     def run_calculation(self, atoms, coords, prepare_kwargs=None):
         return self.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)
+
+    def reset(self):
+        for calc in self.keys_calcs.values():
+            calc.reset()
