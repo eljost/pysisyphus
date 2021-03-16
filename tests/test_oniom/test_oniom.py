@@ -18,7 +18,7 @@ def test_energy():
     geom = geom_loader("lib:alkyl17_sto3g_opt.xyz")
 
     real = set(range(len(geom.atoms)))
-    medmin = set((0,1,2,3,4,5,6, 46,47,48,49,50,51,52))
+    medmin = set((0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49, 50, 51, 52))
     med = list(real - medmin)
     h1 = list(range(13, 22))
     h2 = list(range(31, 40))
@@ -44,7 +44,7 @@ def test_energy():
         calc["charge"] = 0
 
     models = {
-        "med" : {
+        "med": {
             # "inds": (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14),
             "inds": med,
             "calc": "medium",
@@ -58,7 +58,7 @@ def test_energy():
             # "inds": (10, 11, 12),
             "inds": h2,
             "calc": "high2",
-        }
+        },
     }
 
     layers = ["med", ["h1", "h2"]]
@@ -77,25 +77,35 @@ def test_energy():
     [
         # From https://doi.org/10.1016/S0166-1280(98)00475-8
         pytest.param(
-            {"real": {"type": "g16", "route": "hf sto-3g"},
-             "high": {"type": "g16", "route": "b3lyp d95v"}},
-            -153.07432042299052 , 0.03768246934785125,
+            {
+                "real": {"type": "g16", "route": "hf sto-3g"},
+                "high": {"type": "g16", "route": "b3lyp d95v"},
+            },
+            -153.07432042299052,
+            0.03768246934785125,
             marks=using_gaussian16,
         ),
         # The following two tests should yield identical results
         pytest.param(
-            {"real": {"type": "g16", "route": "hf sto-3g"},
-             "high": {"type": "g16", "route": "b3lyp 3-21g"}},
-            -152.4529060634755 , 0.018462670668992546,
+            {
+                "real": {"type": "g16", "route": "hf sto-3g"},
+                "high": {"type": "g16", "route": "b3lyp 3-21g"},
+            },
+            -152.4529060634755,
+            0.018462670668992546,
             marks=using_gaussian16,
         ),
         pytest.param(
-            {"real": {"type": "pyscf", "basis": "sto3g"},
-             "high": {"type": "pyscf", "xc": "b3lypg", "basis": "321g"}},
-            -152.4529060634755, 0.01839279960703439,
+            {
+                "real": {"type": "pyscf", "basis": "sto3g"},
+                "high": {"type": "pyscf", "xc": "b3lypg", "basis": "321g"},
+            },
+            -152.4529060634755,
+            0.01839279960703439,
             marks=using_pyscf,
         ),
-])
+    ],
+)
 def test_gradient(calcs, ref_energy, ref_force_norm):
     geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
 
@@ -136,17 +146,17 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
     "calc_key, embedding, ref_energy, ref_force_norm",
     [
         # No embedding
-        pytest.param("g16", None,   -582.392035, 0.085568849,
-                     marks=using_gaussian16),
-        pytest.param("pyscf", None, -582.392035, 0.078387703,
-                     marks=using_pyscf),
-
+        pytest.param("g16", None, -582.392035, 0.085568849, marks=using_gaussian16),
+        pytest.param("pyscf", None, -582.392035, 0.078387703, marks=using_pyscf),
         # Electronic embedding
-        pytest.param("g16", "electronic",   -582.3997769406087, 0.08582761,
-                     marks=using_gaussian16),
-        pytest.param("pyscf", "electronic", -582.3997769406087, 0.07861744,
-                     marks=using_pyscf),
-])
+        pytest.param(
+            "g16", "electronic", -582.3997769406087, 0.08582761, marks=using_gaussian16
+        ),
+        pytest.param(
+            "pyscf", "electronic", -582.3997769406087, 0.07861744, marks=using_pyscf
+        ),
+    ],
+)
 def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     geom = geom_loader("lib:oniom_ee_model_system.xyz", coord_type="redund")
 
@@ -154,12 +164,21 @@ def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     high = list(sorted(all_ - set((21, 20, 19, 15, 14, 13))))
 
     calcs_dict = {
-        "g16": ({"real": {"type": "g16", "route": "hf sto-3g"},
-                 "high": {"type": "g16", "route": "hf 3-21g"},
-        }),
-        "pyscf": ({"real": {"type": "pyscf", "basis": "sto3g",},
-                   "high": {"type": "pyscf", "basis": "321g"},
-        }),
+        "g16": (
+            {
+                "real": {"type": "g16", "route": "hf sto-3g"},
+                "high": {"type": "g16", "route": "hf 3-21g"},
+            }
+        ),
+        "pyscf": (
+            {
+                "real": {
+                    "type": "pyscf",
+                    "basis": "sto3g",
+                },
+                "high": {"type": "pyscf", "basis": "321g"},
+            }
+        ),
     }
     calcs = calcs_dict[calc_key]
 
@@ -219,7 +238,7 @@ def test_oniom_13_coupling():
         "high": {
             "inds": range(4, 10),
             "calc": "high",
-        }
+        },
     }
 
     # "real" must not be defined; will be automatically set
@@ -237,7 +256,7 @@ def test_oniom_13_coupling():
 @using_gaussian16
 def test_acetaldehyde_opt():
     """
-        From https://doi.org/10.1016/S0166-1280(98)00475-8
+    From https://doi.org/10.1016/S0166-1280(98)00475-8
     """
     geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
 
@@ -246,7 +265,7 @@ def test_acetaldehyde_opt():
 
     calcs = {
         "real": {"type": "g16", "route": "hf sto-3g"},
-         "high": {"type": "g16", "route": "b3lyp d95v"}
+        "high": {"type": "g16", "route": "b3lyp d95v"},
     }
 
     for key, calc in calcs.items():
@@ -303,11 +322,11 @@ def test_yaml_oniom():
                     "inds": [4, 5, 6],
                     "calc": "high",
                 }
-            }
+            },
         },
         "opt": {
             "thresh": "gau_tight",
-        }
+        },
     }
     res = run_from_dict(run_dict)
 
@@ -353,7 +372,7 @@ def test_oniom3():
                     "inds": list(range(4, 19)),
                     "calc": "mid",
                 },
-            }
+            },
         },
         "opt": {
             "thresh": "gau_tight",
@@ -400,7 +419,7 @@ def test_oniomopt_water_dimer():
                     "inds": [0, 1, 2],
                     "calc": "high",
                 },
-            }
+            },
         },
         "opt": {
             "micro_cycles": [3, 1],
@@ -447,7 +466,7 @@ def test_oniom_microiters():
                     # "inds": [4, 5, 6],
                     "calc": "high",
                 },
-            }
+            },
         },
         "opt": {
             "micro_cycles": [3, 1],
