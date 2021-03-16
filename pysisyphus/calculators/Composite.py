@@ -49,7 +49,7 @@ class Composite(Calculator):
             energy = calc.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)["energy"]
             energies[key] = energy
 
-        final_energy = sympify(subst).subs(energies)
+        final_energy = sympify(subst).subs(energies).evalf()
         results = {
             "energy": final_energy,
         }
