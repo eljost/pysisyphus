@@ -418,7 +418,7 @@ class Model:
         # self.log(f"ΔS={delta_S:.6f} au")
         # print(f"ΔS={delta_S:.6f} au")
 
-        return delta_S
+        # return delta_S
 
     def parse_charges(self):
         charges = self.calc.parse_charges()

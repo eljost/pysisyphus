@@ -7,6 +7,7 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.testing import using
+from pysisyphus.run import run_from_dict
 
 try:
     from thermoanalysis.QCData import QCData
@@ -385,5 +386,5 @@ def test_deltas():
     # model_en = calc.get_energy(model.atoms, model.coords)["energy"]
     # print("model en", model_en)
     # dS = real_en - model_en
-    dS_kcal = dS * 630
-    print(f"dS={dS:.6f} au, dS={dS_kcal:.2f} kcal/mol")
+    # dS_kcal = dS * 630
+    # print(f"dS={dS:.6f} au, dS={dS_kcal:.2f} kcal/mol")
