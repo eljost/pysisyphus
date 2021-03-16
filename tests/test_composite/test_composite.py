@@ -1,7 +1,8 @@
 import pytest
 
-from pysisyphus.helpers import geom_loader
 from pysisyphus.calculators import Composite
+from pysisyphus.helpers import geom_loader
+from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
 
@@ -36,3 +37,31 @@ def test_ch4_composite(this_dir):
     en = geom.energy
     ref_energy = -40.42754204370099
     assert en == pytest.approx(ref_energy)
+
+
+@using("pyscf")
+def test_composite_run_dict(this_dir):
+    run_dict = {
+        "geom": {
+            "type": "cart",
+            "fn": str(this_dir / "00_ch4.xyz"),
+        },
+        "calc": {
+            "type": "composite",
+            "from_dict": {
+                "high": {
+                    "type": "pyscf",
+                    "basis": "321g",
+                },
+                "low": {
+                    "type": "pyscf",
+                    "basis": "sto3g",
+                }
+            },
+            "final": "high - low",
+            "pal": 4,
+        }
+    }
+    results = run_from_dict(run_dict)
+    geom = results.calced_geoms[0]
+    assert geom._energy == pytest.approx(-0.250071439626311)

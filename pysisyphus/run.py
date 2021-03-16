@@ -67,6 +67,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 CALC_DICT = {
     "afir": AFIR,
+    "composite": Composite,
     "dimer": Dimer,
     # "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,
@@ -510,8 +511,8 @@ def run_calculations(
     print("Running calculations")
 
     def par_calc(geom):
-        geom.calculator.run_calculation(geom.atoms, geom.coords)
-        return geom
+        results = geom.calculator.run_calculation(geom.atoms, geom.coords)
+        return results
 
     for geom in geoms:
         geom.set_calculator(calc_getter())
@@ -522,12 +523,14 @@ def run_calculations(
 
     if scheduler:
         client = Client(scheduler, pure=False, silence_logs=False)
-        geom_futures = client.map(par_calc, geoms)
-        geoms = client.gather(geom_futures)
+        results_futures = client.map(par_calc, geoms)
+        all_results = client.gather(results_futures)
     else:
+        all_results = list()
         for i, geom in enumerate(geoms):
             start = time.time()
-            geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+            results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+            all_results.append(results)
             if i < (len(geoms) - 2):
                 try:
                     cur_calculator = geom.calculator
@@ -539,6 +542,8 @@ def run_calculations(
             diff = end - start
             print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
             sys.stdout.flush()
+    for geom, results in zip(geoms, all_results):
+        geom.set_results(results)
     return geoms
 
 
