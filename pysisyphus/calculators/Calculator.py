@@ -18,7 +18,7 @@ class Calculator:
     conf_key = None
 
     def __init__(self, calc_number=0, charge=0, mult=1,
-                 base_name="calculator", pal=1,
+                 base_name="calculator", pal=1, mem=1000,
                  last_calc_cycle=None, clean_after=True, out_dir="./"):
         """Base-class of all calculators.
 
@@ -39,6 +39,8 @@ class Calculator:
         pal : int
             Positive integer that gives the number of physical cores to
             use on 1 node.
+        mem : int
+            Mememory per core in MB.
         last_calc_cycle : int
             Internal variable used in restarts.
         clean_after : bool
@@ -52,6 +54,7 @@ class Calculator:
         self.mult = int(mult)
         self.base_name = base_name
         self.pal = int(pal)
+        self.mem = int(mem)
         self.out_dir = Path(out_dir).resolve()
 
         assert pal > 0, "pal must be a non-negative integer!"
