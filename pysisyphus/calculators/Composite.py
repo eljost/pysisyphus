@@ -42,11 +42,11 @@ class Composite(Calculator):
         assert all([key in final for key in self.keys_calcs.keys()])
         self.final = final
 
-    def get_energy(self, atoms, coords, **prepare_kwargs):
+    def get_energy(self, atoms, coords, prepare_kwargs=None):
         subst = self.final
         energies = {}
         for key, calc in self.keys_calcs.items():
-            energy = calc.get_energy(atoms, coords, **prepare_kwargs)["energy"]
+            energy = calc.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)["energy"]
             energies[key] = energy
 
         final_energy = sympify(subst).subs(energies)
@@ -55,5 +55,5 @@ class Composite(Calculator):
         }
         return results
 
-    def run_calculation(self, atoms, coords, **kwargs):
-        return self.get_energy(atoms, coords, **kwargs)
+    def run_calculation(self, atoms, coords, prepare_kwargs=None):
+        return self.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)

@@ -26,7 +26,16 @@ from collections import namedtuple
 
 import numpy as np
 
-from pysisyphus.calculators import Gaussian16, OpenMolcas, ORCA, Psi4, Turbomole, XTB, PyXTB
+from pysisyphus.calculators import (
+    Composite,
+    Gaussian16,
+    OpenMolcas,
+    ORCA,
+    Psi4,
+    Turbomole,
+    XTB,
+    PyXTB,
+)
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import full_expand
@@ -35,6 +44,7 @@ from pysisyphus.intcoords.setup import get_bond_sets
 
 
 CALC_DICT = {
+    "composite": Composite,
     "g16": Gaussian16,
     "openmolcas": OpenMolcas.OpenMolcas,
     "orca": ORCA.ORCA,
@@ -46,6 +56,7 @@ CALC_DICT = {
 }
 try:
     from pysisyphus.calculators.PySCF import PySCF
+
     CALC_DICT["pyscf"] = PySCF
 except ImportError:
     # print("Error importing PySCF in ONIOMv2")
@@ -68,16 +79,16 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
     coords3d = coords.reshape(-1, 3)
 
     fragment_set = set(fragment)
-    
+
     # Determine bond(s) that connect fragment with the rest
     bonds = get_bond_sets(atoms, coords3d)
     bond_sets = [set(b) for b in bonds]
-    
+
     # Find all bonds that involve one atom of model. These bonds
     # connect the model to the real geometry. We want to cap these
     # bonds.
     break_bonds = [b for b in bond_sets if len(b & fragment_set) == 1]
-    
+
     # Put capping atoms at every bond to break.
     # The model fragment size corresponds to the length of the union of
     # the model set and the atoms in break_bonds.
@@ -86,9 +97,11 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
 
     # Index map between the new model geometry and the original indices
     # in the real geometry.
-    atom_map = {model_ind: real_ind for real_ind, model_ind
-                in zip(capped_inds, range(len(capped_inds)))}
-    
+    atom_map = {
+        model_ind: real_ind
+        for real_ind, model_ind in zip(capped_inds, range(len(capped_inds)))
+    }
+
     links = list()
     for bb in break_bonds:
         to_cap = bb - fragment_set
@@ -99,20 +112,19 @@ def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
             g = get_g_value(atoms[ind], atoms[parent_ind], link_atom)
         link = Link(ind=ind, parent_ind=parent_ind, atom=link_atom, g=g)
         links.append(link)
-    
+
     return atom_map, links
 
 
 def atom_inds_to_cart_inds(atom_inds):
     stencil = np.array((0, 1, 2), dtype=int)
     size_ = len(atom_inds)
-    cart_inds = np.tile(stencil, size_) + np.repeat(atom_inds, 3)*3
+    cart_inds = np.tile(stencil, size_) + np.repeat(atom_inds, 3) * 3
     return cart_inds
 
 
-class ModelDummyCalc():
-
-    def __init__(self, model):#, all_atoms, all_coords):
+class ModelDummyCalc:
+    def __init__(self, model):  # , all_atoms, all_coords):
         self.model = model
 
     def get_energy(self, atoms, coords):
@@ -123,24 +135,34 @@ class ModelDummyCalc():
     def get_forces(self, atoms, coords):
         energy, forces = self.model.get_forces(atoms, coords, cap=False)
         forces_ = np.zeros((len(atoms), 3))
-        forces_[:len(atoms)-len(self.model.links)] = forces.reshape(-1, 3)[self.model.atom_inds]
+        forces_[: len(atoms) - len(self.model.links)] = forces.reshape(-1, 3)[
+            self.model.atom_inds
+        ]
         # if len(atoms) < 30:
-            # import pdb; pdb.set_trace()
-            # pass
+        # import pdb; pdb.set_trace()
+        # pass
         results = {"energy": energy, "forces": forces_.flatten()}
         return results
 
     # def get_hessian(self, atoms, coords):
-        # energy, hessian = self.model.get_hessian(atoms, coords, cap=False)
-        # results = {"energy": energy, "hessian": hessian}
-        # return results
+    # energy, hessian = self.model.get_hessian(atoms, coords, cap=False)
+    # results = {"energy": energy, "hessian": hessian}
+    # return results
 
 
-class Model():
-
-    def __init__(self, name, calc_level, calc,
-                 parent_name, parent_calc_level, parent_calc,
-                 atom_inds, parent_atom_inds, use_link_atoms=True):
+class Model:
+    def __init__(
+        self,
+        name,
+        calc_level,
+        calc,
+        parent_name,
+        parent_calc_level,
+        parent_calc,
+        atom_inds,
+        parent_atom_inds,
+        use_link_atoms=True,
+    ):
 
         self.name = name
         self.calc_level = calc_level
@@ -151,8 +173,11 @@ class Model():
         self.parent_calc = parent_calc
 
         self.atom_inds = list(atom_inds)
-        if parent_atom_inds is not None:
+        # parent_atom_inds may be None
+        try:
             self.parent_atom_inds = list(parent_atom_inds)
+        except TypeError:
+            self.parent_atom_inds = None
 
         self.use_link_atoms = use_link_atoms
 
@@ -172,8 +197,10 @@ class Model():
         self.capped_atom_num = len(self.atom_inds) + len(self.links)
         for i, link in enumerate(self.links):
             ind, parent_ind = link.ind, link.parent_ind
-            self.log(f"\tCreated Link atom ({link.atom}) between {atoms[ind]}{ind} "
-                     f"and {atoms[parent_ind]}{parent_ind} (g={link.g:.6f})")
+            self.log(
+                f"\tCreated Link atom ({link.atom}) between {atoms[ind]}{ind} "
+                f"and {atoms[parent_ind]}{parent_ind} (g={link.g:.6f})"
+            )
 
         if len(self.links) == 0:
             self.log("Didn't create any link atoms!\n")
@@ -205,26 +232,28 @@ class Model():
 
             r1 = c3d[link.ind]
             r3 = c3d[link.parent_ind]
-            r2 = r1 + link.g*(r3-r1)
+            r2 = r1 + link.g * (r3 - r1)
             capped_coords[org_atom_num + i] = r2
         return capped_atoms, capped_coords
 
     # def coords(self, atoms, coords):
-        # """Wrapper for self.capped_atoms_coords."""
-        # return self.capped_atoms_coords(atoms, coords)
+    # """Wrapper for self.capped_atoms_coords."""
+    # return self.capped_atoms_coords(atoms, coords)
 
     def get_jacobian(self):
         try:
             # Shape of Jacobian is (model + link, real)
-            jac_shape = (len(self.atom_inds)*3 + len(self.links)*3,
-                         len(self.parent_atom_inds)*3)
+            jac_shape = (
+                len(self.atom_inds) * 3 + len(self.links) * 3,
+                len(self.parent_atom_inds) * 3,
+            )
         except TypeError:
             # Return array instead of 1, because the integer 1 can't be transposed
             # as we have to do for the hessian calculation.
             return np.array(1)
 
         # assert self.parent_atom_inds == list(range(self.parent_atom_inds[0],
-                                                   # self.parent_atom_inds[-1]+1))
+        # self.parent_atom_inds[-1]+1))
 
         J = np.zeros(jac_shape)
         # Stencil for diagonal elements of 3x3 submatrix
@@ -244,12 +273,12 @@ class Model():
         # Link atoms
         link_start = model_rows.max() + 1
         for i, (ind, parent_ind, atom, g) in enumerate(self.links):
-            rows = link_start + i*3 + stencil
-            cols = ind_map[ind]*3 + stencil
+            rows = link_start + i * 3 + stencil
+            cols = ind_map[ind] * 3 + stencil
 
             J[rows, cols] = 1 - g
             try:
-                parent_cols = self.parent_atom_inds.index(parent_ind)*3 + stencil
+                parent_cols = self.parent_atom_inds.index(parent_ind) * 3 + stencil
                 J[rows, parent_cols] = g
             # Raised when link atom is not coupled to layer above, but
             # to a layer higher above.
@@ -258,8 +287,9 @@ class Model():
 
         return J
 
-    def get_energy(self, atoms, coords, point_charges=None,
-                   parent_correction=True, cap=True):
+    def get_energy(
+        self, atoms, coords, point_charges=None, parent_correction=True, cap=True
+    ):
         self.log("Energy calculation")
         if cap:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
@@ -278,7 +308,9 @@ class Model():
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
-            parent_results= self.parent_calc.get_energy(catoms, ccoords, prepare_kwargs)
+            parent_results = self.parent_calc.get_energy(
+                catoms, ccoords, prepare_kwargs
+            )
             parent_energy = parent_results["energy"]
             energy -= parent_energy
         elif not parent_correction:
@@ -286,8 +318,9 @@ class Model():
 
         return energy
 
-    def get_forces(self, atoms, coords, point_charges=None,
-                   parent_correction=True, cap=True):
+    def get_forces(
+        self, atoms, coords, point_charges=None, parent_correction=True, cap=True
+    ):
         self.log("Force calculation")
         # catoms, ccoords = self.capped_atoms_coords(atoms, coords)
         if cap:
@@ -309,7 +342,9 @@ class Model():
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
-            parent_results = self.parent_calc.get_forces(catoms, ccoords, prepare_kwargs)
+            parent_results = self.parent_calc.get_forces(
+                catoms, ccoords, prepare_kwargs
+            )
             parent_forces = parent_results["forces"]
             parent_energy = parent_results["energy"]
 
@@ -321,8 +356,9 @@ class Model():
 
         return energy, forces
 
-    def get_hessian(self, atoms, coords, point_charges=None,
-                    parent_correction=True, cap=True):
+    def get_hessian(
+        self, atoms, coords, point_charges=None, parent_correction=True, cap=True
+    ):
         self.log("Hessian calculation")
         # catoms, ccoords = self.capped_atoms_coords(atoms, coords)
         if cap:
@@ -332,7 +368,7 @@ class Model():
             ccoords = coords
 
         # prepare_kwargs = {
-            # "point_charges": point_charges,
+        # "point_charges": point_charges,
         # }
         if point_charges is not None:
             raise Exception("point_charges & hessian is not yet implemented")
@@ -374,19 +410,30 @@ class Model():
         dummy_calc = ModelDummyCalc(self)
         geom.set_calculator(dummy_calc)
         return geom
-    
+
     def __str__(self):
-        return f"Model({self.name}, {len(self.atom_inds)} atoms, " \
-               f"level={self.calc_level}, parent_level={self.parent_calc_level})"
+        return (
+            f"Model({self.name}, {len(self.atom_inds)} atoms, "
+            f"level={self.calc_level}, parent_level={self.parent_calc_level})"
+        )
 
     def __repr__(self):
         return self.__str__()
 
 
 class ONIOM(Calculator):
-
-    def __init__(self, calcs, models, geom, layers=None, embedding=None,
-                 real_key="real", use_link_atoms=True, *args, **kwargs):
+    def __init__(
+        self,
+        calcs,
+        models,
+        geom,
+        layers=None,
+        embedding=None,
+        real_key="real",
+        use_link_atoms=True,
+        *args,
+        **kwargs,
+    ):
         """
         layer: list of models
             len(layer) == 1: normal ONIOM, len(layer) >= 1: multicenter ONIOM.
@@ -398,13 +445,13 @@ class ONIOM(Calculator):
         super().__init__(*args, **kwargs)
 
         valid_embeddings = (None, "electronic")
-        assert embedding in valid_embeddings, f"Valid embeddings are: {valid_embeddings}"
+        assert (
+            embedding in valid_embeddings
+        ), f"Valid embeddings are: {valid_embeddings}"
         self.embedding = embedding
 
-        assert real_key not in models, \
-            f'"{real_key}" must not be defined in "models"!'
-        assert real_key in calcs, \
-            f'"{real_key}" must be defined in "calcs"!'
+        assert real_key not in models, f'"{real_key}" must not be defined in "models"!'
+        assert real_key in calcs, f'"{real_key}" must be defined in "calcs"!'
 
         self.use_link_atoms = use_link_atoms
 
@@ -417,18 +464,21 @@ class ONIOM(Calculator):
         # the size of the respective models. It's probably a better idea
         # to always specify the layer ordering though ;)
         if layers is None:
-            self.log("No explicit layer ordering specified! Determining layer "
-                     "hierarchy from model sizes. This does not support multi-"
-                     "center ONIOM!")
+            self.log(
+                "No explicit layer ordering specified! Determining layer "
+                "hierarchy from model sizes. This does not support multi-"
+                "center ONIOM!"
+            )
             as_list = [(key, val) for key, val in models.items()]
             # Determine hierarchy of models, from biggest to smallest model
             layers = [
-                key for key, val
-                in sorted(as_list, key=lambda model: -len(model[1]["inds"]))
+                key
+                for key, val in sorted(
+                    as_list, key=lambda model: -len(model[1]["inds"])
+                )
             ]
 
-        assert real_key not in layers, \
-            f'"{real_key}" must not be defined in "layers"!'
+        assert real_key not in layers, f'"{real_key}" must not be defined in "layers"!'
 
         ############
         #          #
@@ -452,7 +502,12 @@ class ONIOM(Calculator):
         # Now we convert the single-model layers to lists of length 1, so
         # every layer is a list.
         layers = [
-            [layer, ] if isinstance(layer, str) else layer for layer in layers
+            [
+                layer,
+            ]
+            if isinstance(layer, str)
+            else layer
+            for layer in layers
         ]
         self.layer_num = len(layers)
         assert self.layer_num > 1, "ONIOM with only 1 layer requested. Aborting!"
@@ -474,12 +529,11 @@ class ONIOM(Calculator):
         # be another question to be answered ;).
         self.model_parent_layers = dict()
         for i, layer in enumerate(layers[1:]):
-            self.model_parent_layers.update(
-                {model: i for model in layer}
-            )
+            self.model_parent_layers.update({model: i for model in layer})
         model_keys = list(it.chain(*layers))
 
         cur_calc_num = 0
+
         def get_calc(calc_key, base_name=None):
             """Helper function for easier generation of calculators
             with incrementing calc_number."""
@@ -503,10 +557,11 @@ class ONIOM(Calculator):
             parent_layer_ind = self.model_parent_layers[model]
             parent_layer = layers[parent_layer_ind]
             parent_calc_keys = set([models[model]["calc"] for model in parent_layer])
-            assert len(parent_calc_keys) == 1, \
-                "It seems you are trying to run a multicenter ONIOM setup in " \
-                "an intermediate layer with different calculators. This is " \
+            assert len(parent_calc_keys) == 1, (
+                "It seems you are trying to run a multicenter ONIOM setup in "
+                "an intermediate layer with different calculators. This is "
                 "not supported right now."
+            )
 
             parent = parent_layer[0]
             model_calc_key = models[model]["calc"]
@@ -529,18 +584,20 @@ class ONIOM(Calculator):
                 use_link_atoms=self.use_link_atoms,
             )
             self.models.append(model)
-            self.layers[parent_layer_ind+1].append(model)
+            self.layers[parent_layer_ind + 1].append(model)
 
         # All real model
         real_calc = get_calc(real_key)
         real_model = Model(
-                name=real_key,
-                calc_level=real_key,
-                calc=real_calc,
-                parent_name=None, parent_calc_level=None, parent_calc=None,
-                atom_inds=list(range(len(geom.atoms))),
-                parent_atom_inds=None,
-            )
+            name=real_key,
+            calc_level=real_key,
+            calc=real_calc,
+            parent_name=None,
+            parent_calc_level=None,
+            parent_calc=None,
+            atom_inds=list(range(len(geom.atoms))),
+            parent_atom_inds=None,
+        )
         self.models.insert(0, real_model)
         self.layers[0].append(real_model)
 
@@ -549,18 +606,21 @@ class ONIOM(Calculator):
 
         self.log("Created all ONIOM layers:")
         for model in self.models:
-            self.log("\t"+str(model))
+            self.log("\t" + str(model))
 
         # Create link atoms
         [model.create_links(geom.atoms, geom.cart_coords) for model in self.models]
 
         # And do a quick sanity check
-        assert len(self.models[0].links) == 0, \
-            "There must not be any links in the 'real' layer!"
+        assert (
+            len(self.models[0].links) == 0
+        ), "There must not be any links in the 'real' layer!"
         # Look for link atoms that appear in two adjacent layers. In such situations
         # the higher layer is coupled to a layer two levels below. This may be a bad
         # idea.
-        for i, (lower_model, model) in enumerate(zip(self.models[:-1], self.models[1:])):
+        for i, (lower_model, model) in enumerate(
+            zip(self.models[:-1], self.models[1:])
+        ):
             lower_links = lower_model.links
             links = model.links
             same_links = [link for link in links if link in lower_links]
@@ -568,12 +628,16 @@ class ONIOM(Calculator):
                 print(f"Found {len(same_links)} link(s) that appear(s) in two layers!")
                 for j, link in enumerate(same_links):
                     print(f"\t{j:02d}: {link}")
-                print(f"Your current setup couples layer '{model.name}' to "
-                      f"to layer '{self.models[i-1].name}' two levels below! "
-                       "This is probably a bad idea!")
+                print(
+                    f"Your current setup couples layer '{model.name}' to "
+                    f"to layer '{self.models[i-1].name}' two levels below! "
+                    "This is probably a bad idea!"
+                )
 
-        self.log(f"Created ONIOM calculator with {self.layer_num} layers and "
-                 f"{len(self.models)} models.")
+        self.log(
+            f"Created ONIOM calculator with {self.layer_num} layers and "
+            f"{len(self.models)} models."
+        )
 
     def run_calculations(self, atoms, coords, method):
         titles = {
@@ -589,9 +653,10 @@ class ONIOM(Calculator):
             # layer. Otherwise this would result in additonal charges at
             # the same positions as the atoms we would like to calculate.
             if self.embedding == "electronic" and (i > 0):
-                parent_layer = self.layers[i-1]
-                assert len(parent_layer) == 1, \
-                    "Multicenter ONIOM in intermediate layer is not supported!"
+                parent_layer = self.layers[i - 1]
+                assert (
+                    len(parent_layer) == 1
+                ), "Multicenter ONIOM in intermediate layer is not supported!"
                 parent_model = parent_layer[0]
                 parent_inds = set(parent_model.atom_inds)
                 charges, _ = parent_model.parse_charges()
@@ -604,16 +669,19 @@ class ONIOM(Calculator):
                 ee_charge_sum = sum(ee_charges)
 
                 point_charges = np.zeros((ee_charges.size, 4))
-                point_charges[:,:3] = coords.reshape(-1, 3)[only_parent_inds]
-                point_charges[:,3] = ee_charges
+                point_charges[:, :3] = coords.reshape(-1, 3)[only_parent_inds]
+                point_charges[:, 3] = ee_charges
 
-                self.log(f"Polarizing calculation in layer {i} ({layer}) by "
-                         f"charges from layer {i-1} ({self.layers[i-1]})."
+                self.log(
+                    f"Polarizing calculation in layer {i} ({layer}) by "
+                    f"charges from layer {i-1} ({self.layers[i-1]})."
                 )
                 self.log(f"sum(charges)={ee_charge_sum:.4f}")
 
-            results = [getattr(model, method)(atoms, coords, point_charges=point_charges)
-                       for model in layer]
+            results = [
+                getattr(model, method)(atoms, coords, point_charges=point_charges)
+                for model in layer
+            ]
             all_results.extend(results)
         self.calc_counter += 1
 
@@ -629,7 +697,7 @@ class ONIOM(Calculator):
         energy = sum(all_energies)
 
         return {
-                "energy": energy,
+            "energy": energy,
         }
 
     def get_forces(self, atoms, coords):
@@ -644,8 +712,8 @@ class ONIOM(Calculator):
             forces[mdl.parent_atom_inds] += f
 
         return {
-                "energy": energy,
-                "forces": forces.flatten(),
+            "energy": energy,
+            "forces": forces.flatten(),
         }
 
     def get_hessian(self, atoms, coords):
@@ -658,11 +726,11 @@ class ONIOM(Calculator):
         for mdl, h in zip(self.models[1:], hessians[1:]):
             inds = atom_inds_to_cart_inds(mdl.parent_atom_inds)
             # Keep in mind that we modify hessians[0] in place
-            hessian[inds[:,None], inds[None,:]] += h
+            hessian[inds[:, None], inds[None, :]] += h
 
         return {
-                "energy": energy,
-                "hessian": hessian,
+            "energy": energy,
+            "hessian": hessian,
         }
 
     def atom_inds_in_layer(self, index, exclude_inner=False):
@@ -685,16 +753,15 @@ class ONIOM(Calculator):
 
         layer = self.layers[index]
         atom_inds = list(it.chain(*[model.atom_inds for model in layer]))
-        if exclude_inner and (index < len(self.layers)-1):
-            lower_inds = self.atom_inds_in_layer(index+1)
+        if exclude_inner and (index < len(self.layers) - 1):
+            lower_inds = self.atom_inds_in_layer(index + 1)
             # Drop indices that appear in inner layers
             atom_inds = [i for i in atom_inds if i not in lower_inds]
         return atom_inds
 
     def calc_layer(self, atoms, coords, index, parent_correction=True):
         layer = self.layers[index]
-        assert len(layer) == 1, \
-            "Multicenter not yet supported!"
-        model, = layer
+        assert len(layer) == 1, "Multicenter not yet supported!"
+        (model,) = layer
         result = model.get_forces(atoms, coords, parent_correction=parent_correction)
         return result
