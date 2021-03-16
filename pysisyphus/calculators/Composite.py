@@ -7,6 +7,11 @@ from pysisyphus.calculators import ORCA
 CALC_CLASSES = {
     "orca": ORCA.ORCA,
 }
+try:
+    from pysisyphus.calculators import PySCF
+    CALC_CLASSES["pyscf"] = PySCF.PySCF
+except ModuleNotFoundError:
+    pass
 
 
 class Composite(Calculator):
@@ -49,3 +54,6 @@ class Composite(Calculator):
             "energy": final_energy,
         }
         return results
+
+    def run_calculation(self, atoms, coords, **kwargs):
+        return self.get_energy(atoms, coords, **kwargs)
