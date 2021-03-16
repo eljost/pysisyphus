@@ -25,7 +25,7 @@ class Composite(Calculator):
             for i, (key, kwargs) in enumerate(from_dict.items()):
                 calc_kwargs = calc_kwargs_.copy()
                 calc_kwargs["calc_number"] = i
-                calc_kwargs["base_name"] = f"compound_{key}"
+                calc_kwargs["base_name"] = f"composite_{key}"
                 # Don't modify original dict
                 kwargs = kwargs.copy()
                 type_ = kwargs.pop("type")
