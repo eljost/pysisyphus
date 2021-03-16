@@ -3,11 +3,10 @@ import pytest
 
 from pysisyphus.calculators.ONIOMv2 import ONIOM
 from pysisyphus.helpers import do_final_hessian, geom_loader
-from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.run import run_from_dict
-from pysisyphus.testing import using_gaussian16, using_pyscf
+from pysisyphus.testing import using_gaussian16, using_pyscf, using
 
 
 init_logging()
@@ -109,7 +108,6 @@ def test_energy():
 def test_gradient(calcs, ref_energy, ref_force_norm):
     geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
 
-    real = set(range(len(geom.atoms)))
     high = [4, 5, 6]
 
     for key, calc in calcs.items():
@@ -260,7 +258,6 @@ def test_acetaldehyde_opt():
     """
     geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
 
-    real = set(range(len(geom.atoms)))
     high = [4, 5, 6]
 
     calcs = {
@@ -483,3 +480,76 @@ def test_oniom_microiters():
     # opt = res.opt
     # assert opt.is_converged
     # assert opt.cur_cycle == 13
+
+
+@using("orca")
+@pytest.mark.parametrize(
+    "fn, mult, high_inds, ref_energy",
+    [
+        (
+            "lib:subst_effect/toluene_b3lypG_631g.xyz",
+            1,
+            (0, 7, 8, 9),
+            -271.470945476921,
+        ),
+        (
+            "lib:subst_effect/toluene_minus_H_b3lypG_631g.xyz",
+            2,
+            (0, 7, 8),
+            -270.824806805671,
+        ),
+    ],
+)
+def test_composite_oniom(fn, mult, high_inds, ref_energy):
+    charge = 0
+    pal = 6
+    run_dict = {
+        "geom": {
+            "type": "cart",
+            "fn": fn,
+        },
+        "calc": {
+            "type": "oniom",
+            "calcs": {
+                "real": {
+                    "type": "orca",
+                    "keywords": "b3lyp_G 6-31G(d) tightscf",
+                    "charge": charge,
+                    "mult": mult,
+                    "pal": pal,
+                },
+                "high": {
+                    "type": "composite",
+                    "from_dict": {
+                        "ccsdt": {
+                            "type": "orca",
+                            "keywords": "ccsd(t) 6-31G(d) tightscf",
+                        },
+                        "mp2_high": {
+                            "type": "orca",
+                            "keywords": "mp2 6-311+G(2df,2p) tightscf",
+                        },
+                        "mp2_low": {
+                            "type": "orca",
+                            "keywords": "mp2 6-31G(d) tightscf",
+                        },
+                    },
+                    "charge": charge,
+                    "mult": mult,
+                    "pal": pal,
+                    "final": "ccsdt + mp2_high - mp2_low",
+                },
+            },
+            "models": {
+                "high": {
+                    "inds": high_inds,
+                    "calc": "high",
+                },
+            },
+        },
+    }
+    results = run_from_dict(run_dict)
+    geom = results.calced_geoms[0]
+    en = geom._energy
+    print(f"{fn}: {en:.6f} au")
+    assert geom._energy == pytest.approx(ref_energy)
