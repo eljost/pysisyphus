@@ -11,7 +11,6 @@ from pysisyphus.optimizers.hessian_updates import (
     damped_bfgs_update,
     bofill_update,
 )
-from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
@@ -289,67 +288,6 @@ class HessianOptimizer(Optimizer):
             dH, key = self.hessian_update_func(self.H, dx, dg)
             self.H = self.H + dH
             self.log(f"Did {key} Hessian update.")
-
-    def poly_line_search(self):
-        # Current energy & gradient are already appended.
-        cur_energy = self.energies[-1]
-        prev_energy = self.energies[-2]
-        # energy_increased = (cur_energy - prev_energy) > 0.
-
-        prev_step = self.steps[-1]
-        cur_grad = -self.forces[-1]
-        prev_grad = -self.forces[-2]
-
-        # TODO: always call line_search? Right now we could get some acceleration
-        # as we also accept steps > 1.
-        # if not energy_increased:
-        # return cur_grad
-
-        # Generate directional gradients by projecting them on the previous step.
-        prev_grad_proj = prev_step @ prev_grad
-        cur_grad_proj = prev_step @ cur_grad
-        cubic_result = poly_fit.cubic_fit(
-            prev_energy, cur_energy, prev_grad_proj, cur_grad_proj
-        )
-        quartic_result = poly_fit.quartic_fit(
-            prev_energy, cur_energy, prev_grad_proj, cur_grad_proj
-        )
-        accept = {
-            # cubic is disabled for now as it does not seem to help
-            "cubic": lambda x: (x > 2.0) and (x < 1),  # lgtm [py/redundant-comparison]
-            "quartic": lambda x: (x > 0.0) and (x <= 2),
-        }
-
-        fit_result = None
-        if quartic_result and accept["quartic"](quartic_result.x):
-            fit_result = quartic_result
-            deg = "quartic"
-        elif cubic_result and accept["cubic"](cubic_result.x):
-            fit_result = cubic_result
-            deg = "cubic"
-        # else:
-        # Midpoint fallback as described by gaussian?
-
-        fit_energy = None
-        fit_grad = None
-        fit_step = None
-        if fit_result and fit_result.y < prev_energy:
-            x = fit_result.x
-            fit_energy = fit_result.y
-            self.log(f"Did {deg} interpolation with x={x:.6f}.")
-
-            # Interpolate coordinates and gradient. 'fit_step' applied to the current
-            # coordinates yields interpolated coordinates.
-            #
-            # x == 0 would take us to the previous coordinates:
-            #  (1-0) * -prev_step = -prev_step (we revert the last step)
-            # x == 1 would preserve the current coordinates:
-            #  (1-1) * -prev_step = 0 (we stay at the current coordinates)
-            # x > 1 extrapolate along previous step direction:
-            #  with x=2, (1-2) * -prev_step = -1*-prev_step = prev_step
-            fit_step = (1 - x) * -prev_step
-            fit_grad = (1 - x) * prev_grad + x * cur_grad
-        return fit_energy, fit_grad, fit_step
 
     def solve_rfo(self, rfo_mat, kind="min", prev_eigvec=None):
         # When using the restricted step variant of RFO the RFO matrix

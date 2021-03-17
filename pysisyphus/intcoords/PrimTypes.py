@@ -64,6 +64,12 @@ PrimTypeShortcuts = {
 }
 
 
+def get_rot_coord(cls):
+    def func(indices, ref_coords3d):
+        return cls(indices, ref_coords3d=ref_coords3d)
+    return func
+
+
 # Maps primitive types to their classes
 PrimMap = {
     PT.BOND: Stretch,
@@ -84,9 +90,12 @@ PrimMap = {
     PT.TRANSLATION_X: TranslationX,
     PT.TRANSLATION_Y: TranslationY,
     PT.TRANSLATION_Z: TranslationZ,
-    PT.ROTATION_A: RotationA,
-    PT.ROTATION_B: RotationB,
-    PT.ROTATION_C: RotationC,
+    # PT.ROTATION_A: lambda indices, ref_coords3d: RotationA(indices, ref_coords3d=ref_coords3d),
+    # PT.ROTATION_B: lambda indices, ref_coords3d: RotationB(indices, ref_coords3d),
+    # PT.ROTATION_C: lambda indices, ref_coords3d: RotationC(indices, ref_coords3d),
+    PT.ROTATION_A: get_rot_coord(RotationA),
+    PT.ROTATION_B: get_rot_coord(RotationB),
+    PT.ROTATION_C: get_rot_coord(RotationC),
     PT.CARTESIAN_X: CartesianX,
     PT.CARTESIAN_Y: CartesianY,
     PT.CARTESIAN_Z: CartesianZ,

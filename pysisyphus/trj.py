@@ -202,6 +202,7 @@ def read_geoms(
     constrain_prims=None,
     typed_prims=None,
     isotopes=None,
+    freeze_atoms=None,
 ):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns]
@@ -210,6 +211,7 @@ def read_geoms(
     geom_kwargs = {
         "coord_type": coord_type,
         "isotopes": isotopes,
+        "freeze_atoms": freeze_atoms,
     }
     # Dont supply coord_kwargs with coord_type == "cart"
     if coord_type != "cart":
@@ -283,6 +285,7 @@ def get_geoms(
     constrain_prims=None,
     union=None,
     isotopes=None,
+    freeze_atoms=None,
     interpolate_align=True,
     same_prims=True,
     quiet=False,
@@ -313,6 +316,7 @@ def get_geoms(
         constrain_prims=constrain_prims,
         typed_prims=typed_prims_union,
         isotopes=isotopes,
+        freeze_atoms=freeze_atoms,
     )
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
@@ -378,6 +382,7 @@ def get_geoms(
                 coord_type=coord_type,
                 coord_kwargs={"typed_prims": typed_prims},
                 isotopes=isotopes,
+                freeze_atoms=freeze_atoms,
             )
             for geom in geoms
         ]

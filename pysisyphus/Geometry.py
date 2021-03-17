@@ -12,12 +12,18 @@ from scipy.spatial.distance import pdist
 import rmsd
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.elem_data import MASS_DICT, ISOTOPE_DICT, ATOMIC_NUMBERS, COVALENT_RADII as CR
+from pysisyphus.elem_data import (
+    MASS_DICT,
+    ISOTOPE_DICT,
+    ATOMIC_NUMBERS,
+    COVALENT_RADII as CR,
+)
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.intcoords import DLC, RedundantCoords
-from pysisyphus.intcoords.exceptions import (NeedNewInternalsException,
-                                             RebuiltInternalsException,
-                                             DifferentCoordLengthsException,
+from pysisyphus.intcoords.exceptions import (
+    NeedNewInternalsException,
+    RebuiltInternalsException,
+    DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.linalg import gram_schmidt
@@ -52,11 +58,13 @@ def get_trans_rot_vectors(cart_coords, masses):
     masses_rep = np.repeat(masses, 3)
     M_sqrt = np.sqrt(masses_rep)
     num = len(masses)
+
     def get_trans_vecs():
         """Mass-weighted unit vectors of the three cartesian axes."""
         for vec in ((1, 0, 0), (0, 1, 0), (0, 0, 1)):
             _ = M_sqrt * np.tile(vec, num)
             yield _ / np.linalg.norm(_)
+
     trans_vecs = list(get_trans_vecs())
 
     x, y, z = coords3d.T
@@ -68,7 +76,11 @@ def get_trans_rot_vectors(cart_coords, masses):
         for c3d in ((zeros, -z, y), (z, zeros, -x), (-y, x, zeros)):
             _ = np.array(c3d).T.flatten()
             _ *= M_sqrt
-            yield _ / np.linalg.norm(_)
+            rot_vec = _ / np.linalg.norm(_)
+            if any(np.isnan(rot_vec)):
+                rot_vec = np.zeros_like(rot_vec)
+            yield rot_vec
+
     rot_vecs = list(get_rot_vecs())
     ortho_vecs = np.array(gram_schmidt(trans_vecs + rot_vecs))
 
@@ -90,8 +102,17 @@ class Geometry:
         "dlc": DLC,
     }
 
-    def __init__(self, atoms, coords, fragments=None, coord_type="cart",
-                 coord_kwargs=None, isotopes=None, comment=""):
+    def __init__(
+        self,
+        atoms,
+        coords,
+        fragments=None,
+        coord_type="cart",
+        coord_kwargs=None,
+        isotopes=None,
+        freeze_atoms=None,
+        comment="",
+    ):
         """Object representing atoms in a coordinate system.
 
         The Geometry represents atoms and their positions in coordinate
@@ -118,34 +139,48 @@ class Geometry:
             Iterable of pairs consisting of 0-based atom index and either an integer
             or a float. If an integer is given the closest isotope mass will be selected.
             Given a float, this float will be directly used as mass.
+        freeze_atoms : iterable of integers
+            Specifies which atoms should remain fixed at their initial positions.
         comment : str, optional
             Comment string.
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords, dtype=float).flatten()
-        assert self._coords.size == (3*len(self.atoms)), \
-            f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got " \
-            f"{self._coords.size}. Did you accidentally supply internal " \
-             "coordinates?"
+        assert self._coords.size == (3 * len(self.atoms)), (
+            f"Expected 3N={3*len(self.atoms)} cartesian coordinates but got "
+            f"{self._coords.size}. Did you accidentally supply internal "
+            "coordinates?"
+        )
         if fragments is None:
             fragments = dict()
         self.fragments = fragments
+        if isotopes is None:
+            isotopes = list()
         self.isotopes = isotopes
-        if self.isotopes is None:
-            self.isotopes = list()
+        if freeze_atoms is None:
+            freeze_atoms = list()
+        self.freeze_atoms = np.array(freeze_atoms, dtype=int)
+
+        assert all(self.freeze_atoms >= 0) and (
+            (self.freeze_atoms.size == 0) or (self.freeze_atoms.max() < len(self.atoms))
+        )
 
         if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
-            print("coord_type is set to 'cart' but coord_kwargs were given. "
-                  "This is probably not intended. Exiting!")
+            print(
+                "coord_type is set to 'cart' but coord_kwargs were given. "
+                "This is probably not intended. Exiting!"
+            )
             sys.exit()
         self.coord_type = coord_type
         coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            assert coords.size != 3, \
-                "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            self.internal = coord_class(atoms, self.coords3d.copy(), **coord_kwargs)
+            assert (
+                coords.size != 3
+            ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
+            self.internal = coord_class(atoms, self.coords3d.copy(),
+                                        freeze_atoms=self.freeze_atoms, **coord_kwargs)
         else:
             self.internal = None
         self.comment = comment
@@ -159,7 +194,7 @@ class Geometry:
     @property
     def sum_formula(self):
         return "_".join(
-                [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
+            [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
         )
 
     def assert_compatibility(self, other):
@@ -198,8 +233,11 @@ class Geometry:
             # A - B = C, where C is a vector pointing from B to A (B + C = A)
             # In our case get_tangent returns B - A, that is a vector pointing
             # from A to B.
-            diff = -get_tangent(self.internal.prim_coords, other.internal.prim_coords,
-                                self.internal.dihedral_inds)
+            diff = -get_tangent(
+                self.internal.prim_coords,
+                other.internal.prim_coords,
+                self.internal.dihedral_inds,
+            )
         else:
             raise Exception("Invalid coord_type!")
 
@@ -248,10 +286,13 @@ class Geometry:
                 "check_bends": True,
             }
             _coord_kwargs.update(coord_kwargs)
-        return Geometry(self.atoms, self._coords.copy(),
-                        coord_type=coord_type,
-                        coord_kwargs=_coord_kwargs,
-                        isotopes=copy.deepcopy(self.isotopes),
+        return Geometry(
+            self.atoms,
+            self._coords.copy(),
+            coord_type=coord_type,
+            coord_kwargs=_coord_kwargs,
+            isotopes=copy.deepcopy(self.isotopes),
+            freeze_atoms=self.freeze_atoms.copy(),
         )
 
     def copy_all(self, coord_type=None, coord_kwargs=None):
@@ -274,8 +315,9 @@ class Geometry:
         """
         inds_dict = {}
         for atom_type in set(self.atoms):
-            inds_dict[atom_type] = [i for i, atom in enumerate(self.atoms)
-                                    if atom == atom_type]
+            inds_dict[atom_type] = [
+                i for i, atom in enumerate(self.atoms) if atom == atom_type
+            ]
         return inds_dict
 
     @property
@@ -297,7 +339,7 @@ class Geometry:
         i = 0
         for frag in frags:
             frag_atoms = len(self.fragments[frag])
-            new_fragments[frag] = list(range(i, i+frag_atoms))
+            new_fragments[frag] = list(range(i, i + frag_atoms))
             i += frag_atoms
         return Geometry(new_atoms, new_coords, fragments=new_fragments)
 
@@ -306,7 +348,7 @@ class Geometry:
         try:
             layers = self.calculator.layers
         except AttributeError:
-            layers = (None, )
+            layers = (None,)
         return layers
 
     def clear(self):
@@ -329,12 +371,12 @@ class Geometry:
         Returns a diagonal matrix containing the inverted atomic
         masses.
         """
-        return np.diag(1/self.masses_rep)
+        return np.diag(1 / self.masses_rep)
 
     @property
     def mm_sqrt_inv(self):
         """Inverted square root of the mass matrix."""
-        return np.diag(1/(self.masses_rep**0.5))
+        return np.diag(1 / (self.masses_rep ** 0.5))
 
     @property
     def coords(self):
@@ -361,6 +403,7 @@ class Geometry:
         """
         # Do the backtransformation from internal to cartesian.
         coords = np.array(coords).flatten()
+
         if self.internal:
             np.testing.assert_allclose(self.coords3d, self.internal.coords3d)
 
@@ -385,6 +428,10 @@ class Geometry:
                     typed_prims=self.internal.typed_prims.copy()
                 )
 
+        # Restore original coordinates of frozen atoms. Right now this should
+        # be redundant, as the Cartesian step is also constrainted in the
+        # Internal->Cartesian backtransformation. But we keep it for now.
+        coords.reshape(-1, 3)[self.freeze_atoms] = self.coords3d[self.freeze_atoms]
         # Set new cartesian coordinates
         self._coords = coords
         # Reset all values because no calculations with the new coords
@@ -409,7 +456,9 @@ class Geometry:
             return
 
         coord_class = self.coord_types[self.coord_type]
-        self.internal = coord_class(self.atoms, self.coords3d, typed_prims=new_typed_prims)
+        self.internal = coord_class(
+            self.atoms, self.coords3d, typed_prims=new_typed_prims
+        )
 
     @property
     def coords3d(self):
@@ -452,7 +501,7 @@ class Geometry:
         cbt = dict()
         inds = dict()
         # for i, (atom, c3d) in enumerate(zip(self.atoms, self.coords3d)):
-            # cbt.setdefault(atom, list()).append((i, c3d.tolist()))
+        # cbt.setdefault(atom, list()).append((i, c3d.tolist()))
         for i, (atom, c3d) in enumerate(zip(self.atoms, self.coords3d)):
             cbt.setdefault(atom, list()).append((c3d))
             inds.setdefault(atom, list()).append(i)
@@ -468,7 +517,7 @@ class Geometry:
         try:
             _ = float(self._comment[:en_width])
             # Drop old energy entry
-            self._comment = self._comment[en_width+2:]
+            self._comment = self._comment[en_width + 2 :]
         except (ValueError, IndexError):
             pass
 
@@ -531,7 +580,7 @@ class Geometry:
         R : np.array, shape(3, )
             Center of mass.
         """
-        return 1/self.total_mass * np.sum(coords3d*self.masses[:,None], axis=0)
+        return 1 / self.total_mass * np.sum(coords3d * self.masses[:, None], axis=0)
 
     @property
     def center_of_mass(self):
@@ -543,7 +592,6 @@ class Geometry:
             Center of mass.
         """
         return self.center_of_mass_at(self.coords3d)
-
 
     @property
     def centroid(self):
@@ -585,18 +633,14 @@ class Geometry:
                               | xz yz z² |
         """
         x, y, z = self.coords3d.T
-        squares = np.sum(self.coords3d**2 * self.masses[:,None], axis=0)
+        squares = np.sum(self.coords3d ** 2 * self.masses[:, None], axis=0)
         I_xx = squares[1] + squares[2]
         I_yy = squares[0] + squares[2]
         I_zz = squares[0] + squares[1]
-        I_xy = -np.sum(self.masses*x*y)
-        I_xz = -np.sum(self.masses*x*z)
-        I_yz = -np.sum(self.masses*y*z)
-        I = np.array((
-                (I_xx, I_xy, I_xz),
-                (I_xy, I_yy, I_yz),
-                (I_xz, I_yz, I_zz)
-        ))
+        I_xy = -np.sum(self.masses * x * y)
+        I_xz = -np.sum(self.masses * x * z)
+        I_yz = -np.sum(self.masses * y * z)
+        I = np.array(((I_xx, I_xy, I_xz), (I_xy, I_yy, I_yz), (I_xz, I_yz, I_zz)))
         return I
 
     def principal_axes_are_aligned(self):
@@ -630,6 +674,7 @@ class Geometry:
             aligned, vecs = self.principal_axes_are_aligned()
             if aligned:
                 break
+
     @property
     def energy(self):
         """Energy of the current atomic configuration.
@@ -715,9 +760,9 @@ class Geometry:
 
     # @gradient.setter
     # def gradient(self, gradient):
-        # """Internal wrapper for setting the gradient."""
-        # # No check here as this is handled by in the forces.setter.
-        # self.forces = -gradient
+    # """Internal wrapper for setting the gradient."""
+    # # No check here as this is handled by in the forces.setter.
+    # self.forces = -gradient
 
     @property
     def mw_gradient(self):
@@ -763,9 +808,9 @@ class Geometry:
 
     # @hessian.setter
     # def hessian(self, hessian):
-        # """Internal wrapper for setting the hessian."""
-        # assert hessian.shape == (self.coords.size, self.coords.size)
-        # self._hessian = hessian
+    # """Internal wrapper for setting the hessian."""
+    # assert hessian.shape == (self.coords.size, self.coords.size)
+    # self._hessian = hessian
 
     def mass_weigh_hessian(self, hessian):
         return self.mm_sqrt_inv.dot(hessian).dot(self.mm_sqrt_inv)
@@ -799,7 +844,7 @@ class Geometry:
         hessian : np.array
             2d array containing the hessian.
         """
-        mm_sqrt = np.diag(self.masses_rep**0.5)
+        mm_sqrt = np.diag(self.masses_rep ** 0.5)
         return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
 
     def set_h5_hessian(self, fn):
@@ -839,9 +884,10 @@ class Geometry:
         self.set_results(results)
 
     def assert_cart_coords(self, coords):
-        assert coords.size == self.cart_coords.size, \
-            "This method only works with cartesian coordinate input. " \
+        assert coords.size == self.cart_coords.size, (
+            "This method only works with cartesian coordinate input. "
             "Did you accidentally provide internal coordinates?"
+        )
 
     def get_energy_at(self, coords):
         self.assert_cart_coords(coords)
@@ -849,7 +895,7 @@ class Geometry:
 
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
-        
+
         The results are not saved in the Geometry object."""
         if self.coord_type != "cart":
             int_step = coords - self.internal.coords
@@ -857,6 +903,7 @@ class Geometry:
             coords = self.cart_coords + cart_step
         self.assert_cart_coords(coords)
         results = self.calculator.get_forces(self.atoms, coords)
+        self.zero_frozen_forces(results["forces"])
 
         if self.coord_type != "cart":
             results["forces"] = self.internal.transform_forces(results["forces"])
@@ -865,13 +912,17 @@ class Geometry:
 
     def get_energy_and_cart_forces_at(self, cart_coords):
         self.assert_cart_coords(cart_coords)
-        return self.calculator.get_forces(self.atoms, cart_coords)
+        results = self.calculator.get_forces(self.atoms, cart_coords)
+        self.zero_frozen_forces(results["forces"])
+        return results
 
     def calc_double_ao_overlap(self, geom2):
-        return self.calculator.run_double_mol_calculation(self.atoms,
-                                                          self.coords,
-                                                          geom2.coords
+        return self.calculator.run_double_mol_calculation(
+            self.atoms, self.coords, geom2.coords
         )
+
+    def zero_frozen_forces(self, cart_forces):
+        cart_forces.reshape(-1, 3)[self.freeze_atoms] = 0.0
 
     def set_results(self, results):
         """Save the results from a dictionary.
@@ -895,6 +946,10 @@ class Geometry:
         }
 
         for key in results:
+            # Zero forces of frozen atoms
+            if key == "forces":
+                self.zero_frozen_forces(results[key])
+
             setattr(self, trans[key], results[key])
         self.results = results
 
@@ -915,7 +970,7 @@ class Geometry:
         coords = self._coords * BOHR2ANG
         if comment == "":
             comment = self.comment
-        return make_xyz_str(self.atoms, coords.reshape((-1,3)), comment)
+        return make_xyz_str(self.atoms, coords.reshape((-1, 3)), comment)
 
     def dump_xyz(self, fn):
         if not fn.lower().endswith(".xyz"):
@@ -945,8 +1000,9 @@ class Geometry:
         return sub_geom
 
     def rmsd(self, geom):
-        return rmsd.kabsch_rmsd(self.coords3d-self.centroid,
-                                geom.coords3d-geom.centroid)
+        return rmsd.kabsch_rmsd(
+            self.coords3d - self.centroid, geom.coords3d - geom.centroid
+        )
 
     def as_g98_list(self):
         """Returns data for fake Gaussian98 standard orientation output.
@@ -958,11 +1014,10 @@ class Geometry:
             atomic number, atomic type (always 0 for now), X Y Z coordinates
             in Angstrom.
         """
-        Atom = namedtuple("Atom",
-                          "center_num atom_num atom_type x y z")
+        Atom = namedtuple("Atom", "center_num atom_num atom_type x y z")
         atoms = list()
         for i, (a, c) in enumerate(zip(self.atoms, self.coords3d), 1):
-            x, y, z = c*BOHR2ANG
+            x, y, z = c * BOHR2ANG
             atom = Atom(i, ATOMIC_NUMBERS[a.lower()], 0, x, y, z)
             atoms.append(atom)
         return atoms
@@ -987,7 +1042,7 @@ class Geometry:
             return None
 
         # ASE coordinates are in Angstrom
-        atoms = ase.Atoms(symbols=self.atoms, positions=self.coords3d*BOHR2ANG)
+        atoms = ase.Atoms(symbols=self.atoms, positions=self.coords3d * BOHR2ANG)
 
         if self.calculator is not None:
             from pysisyphus.calculators import FakeASE
@@ -1037,10 +1092,13 @@ class Geometry:
         return radius
 
     def without_hydrogens(self):
-        atoms_no_h, coords3d_no_h = zip(*[
-            (atom, coords) for atom, coords in zip(self.atoms, self.coords3d)
-            if atom.lower() != "h"
-        ])
+        atoms_no_h, coords3d_no_h = zip(
+            *[
+                (atom, coords)
+                for atom, coords in zip(self.atoms, self.coords3d)
+                if atom.lower() != "h"
+            ]
+        )
         return Geometry(atoms_no_h, np.array(coords3d_no_h).flatten())
 
     def describe(self):

@@ -377,8 +377,14 @@ def test_rotation():
     v_ref = (0.14110539, -0.69609474, -0.57500707)
     for i, cls in enumerate((RotationA, RotationB, RotationC)):
         rot = cls(indices, ref_coords3d=coords3d)
-        v = rot.calculate(coords3d_rot)
+        v, grad = rot.calculate(coords3d_rot, gradient=True)
+        # v = rot.calculate(coords3d_rot, gradient=True)
         assert v == pytest.approx(v_ref[i])
+
+        # Finite difference reference values
+        ref_grad = np.zeros_like(coords3d)
+        ref_grad[indices] = fin_diff_prim(rot, coords3d_rot).reshape(-1, 3)
+        np.testing.assert_allclose(grad, ref_grad.flatten(), atol=1e-8)
 
 
 def test_cartesian():
