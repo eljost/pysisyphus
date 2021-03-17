@@ -58,25 +58,16 @@ def hydrogen_bde(geom, mult, diss_geom, diss_mult, calc_getter, thermo_calc_gett
 
 
 @using("orca")
-def test_calc_bde():
+@pytest.mark.parametrize(
+    "low_keywords", [
+    "mp2 6-31G(d)",
+    "hf 6-31G(d)",
+    ]
+)
+def test_calc_bde(low_keywords):
     def thermo_calc_getter(charge=0, mult=1):
         return ORCA("B3lyp_G 6-31G tightscf", charge=charge, mult=mult, pal=6)
 
-    # def high_calc_getter(charge=0, mult=1):
-        # return Composite(
-            # **{
-                # "from_dict": {
-                    # "quick": {
-                        # "type": "orca",
-                        # "keywords": "pm3",
-                    # },
-                # },
-                # "charge": charge,
-                # "mult": mult,
-                # "pal": 1,
-                # "final": "quick",
-            # }
-        # )
     def high_calc_getter(charge=0, mult=1):
         return Composite(
             **{
@@ -102,9 +93,7 @@ def test_calc_bde():
         )
 
     def low_calc_getter(charge=0, mult=1):
-        return ORCA("mp2 6-31G(d)", charge=charge, mult=mult, pal=6)
-    # def low_calc_getter(charge=0, mult=1):
-        # return ORCA("bp86 def2-sv(p)",charge=charge, mult=mult, pal=6)
+        return ORCA(low_keywords, charge=charge, mult=mult, pal=6)
 
     pref = "lib:subst_effect/"
     model = geom_loader(pref + "ch4_model.xyz")
@@ -119,13 +108,15 @@ def test_calc_bde():
     S_low = low_real - low_model
     print("S_low", S_low)
 
-    high_real = hydrogen_bde(real, 1, diss_real, 2, high_calc_getter, thermo_calc_getter)
-    print("high_real", high_real)
-    high_model = hydrogen_bde(model, 1, diss_model, 2, high_calc_getter, thermo_calc_getter)
-    print("high_model", high_model)
-    S_high = high_real - high_model
+    # high_real = hydrogen_bde(real, 1, diss_real, 2, high_calc_getter, thermo_calc_getter)
+    # print("high_real", high_real)
+    # high_model = hydrogen_bde(model, 1, diss_model, 2, high_calc_getter, thermo_calc_getter)
+    # print("high_model", high_model)
+    # S_high = high_real - high_model
+    S_high = -0.0195031236259027
     print("S_high", S_high)
 
     dS = S_high - S_low
     dS_kcal = dS * 630
-    print(f"dS={dS:.6f} au, dS_kcal={dS_kcal:.2f} kcal/mol")
+    print(f"@@@{low_keywords}")
+    print(f"@@@ dS={dS:.6f} au, dS_kcal={dS_kcal:.2f} kcal/mol")
