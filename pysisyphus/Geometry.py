@@ -179,7 +179,8 @@ class Geometry:
             assert (
                 coords.size != 3
             ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            self.internal = coord_class(atoms, self.coords3d.copy(), **coord_kwargs)
+            self.internal = coord_class(atoms, self.coords3d.copy(),
+                                        freeze_atoms=self.freeze_atoms, **coord_kwargs)
         else:
             self.internal = None
         self.comment = comment
@@ -427,7 +428,9 @@ class Geometry:
                     typed_prims=self.internal.typed_prims.copy()
                 )
 
-        # Restore original coordinates of frozen atoms
+        # Restore original coordinates of frozen atoms. Right now this should
+        # be redundant, as the Cartesian step is also constrainted in the
+        # Internal->Cartesian backtransformation. But we keep it for now.
         coords.reshape(-1, 3)[self.freeze_atoms] = self.coords3d[self.freeze_atoms]
         # Set new cartesian coordinates
         self._coords = coords

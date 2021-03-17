@@ -17,10 +17,11 @@ def run_opt(geom):
 
 
 @using("pyscf")
+@pytest.mark.parametrize("coord_type", ("cart", "redund"))
 @pytest.mark.parametrize("ind", range(3))
-def test_freeze_one_atom(ind):
+def test_freeze_one_atom(coord_type, ind):
     """Freeze every atom once."""
-    geom = geom_loader("lib:h2o.xyz", freeze_atoms=[ind])
+    geom = geom_loader("lib:h2o.xyz", freeze_atoms=[ind], coord_type=coord_type)
     org_coords = geom.coords3d[ind].copy()
     geom = run_opt(geom)
 
