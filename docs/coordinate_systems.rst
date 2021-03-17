@@ -81,6 +81,7 @@ See below for an explanation of the `geom` keys.
      constrain_prims: null    # Primitive internals to be constrained
      union: null              # Define same set of primitives at multiple geometries
      isotopes: null           # Specify different isotopes
+     freeze_atoms: null       # Freeze Cartesians of certain atoms
     preopt:
      geom:                    # geom block in preopt takes same keywords as above
       ...                     # no 'fn' key here!
@@ -201,9 +202,23 @@ coordinates are requested, **a nested list is expected [[coord0], [coord1], ...]
     # Also define an additional dihedral, beside the bond
     define_prims: [[0, 4, 7], ["D", 0, 1, 2, 3]]
 
+Freeze Atoms
+^^^^^^^^^^^^
+
+All three Cartesian coordinates (X, Y, Z) of certain atoms can be frozen, so
+they always remain at their initial value.
+
+.. code:: yaml
+
+    freeze_atoms: [*atom indices]
+
+    # Example; fully freeze Cartesians of first and second atom.
+    freeze_atoms: [0, 1]
+
 Constraints
 ^^^^^^^^^^^
-**Constraints are currently only supported in conjunction with RIC (`coord_type: redund`).**
+**Constraints beyond frozen atoms are currently only supported in conjunction with
+RIC (`coord_type: redund`).**
 It is not (yet) possible to modify the value of the specified coordinate via YAML
 input; the internal coordinate is constrained at its initial value. The same syntax
 as for `define_prims` is used. If the coordinate of the requested constraint is not
