@@ -115,15 +115,15 @@ class Optimizer(metaclass=abc.ABCMeta):
         for key, value in self.convergence.items():
             setattr(self, key, value)
 
-        # Setting some default values
-        self.resetted = False
-        max_cycles_never = 1_000_000_000
-        if (self.thresh == "never") and (max_cycles < max_cycles_never):
-            max_cycles =  max_cycles_never
+        if self.thresh == "never":
+            max_cycles =  1_000_000_000
             self.dump = False
             self.log(f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
                       "and disabled dumping!")
         self.max_cycles = max_cycles
+
+        # Setting some default values
+        self.resetted = False
         self.out_dir = os.getcwd()
 
         if self.is_cos:
