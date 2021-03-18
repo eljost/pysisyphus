@@ -117,10 +117,12 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # Setting some default values
         self.resetted = False
-        max_cycles_never = 10_000
+        max_cycles_never = 1_000_000_000
         if (self.thresh == "never") and (max_cycles < max_cycles_never):
             max_cycles =  max_cycles_never
-            self.log(f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles}.")
+            self.dump = False
+            self.log(f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
+                      "and disabled dumping!")
         self.max_cycles = max_cycles
         self.out_dir = os.getcwd()
 
