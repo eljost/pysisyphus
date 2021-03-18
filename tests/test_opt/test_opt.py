@@ -108,3 +108,20 @@ def test_optimizers(opt_cls, opt_kwargs_, ref_cycle):
     assert diff_norm < 6e-5
 
     # print("@\tFinal coords", geom.coords)
+
+
+def test_thresh_never():
+    geom = AnaPot.get_geom((0.667, 1.609, 0.0))
+
+    opt_kwargs = {
+        "thresh": "never",
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
+    # Restrict max_cycles; will crash otherwise, as the BFGS upadte becomes
+    # faulty for vanishing step and gradient differences.
+    opt.max_cycles = 16
+    opt.run()
+
+    assert geom.energy == pytest.approx(0.98555442)
+    norm = np.linalg.norm(geom.forces)
+    assert norm == pytest.approx(0.0)
