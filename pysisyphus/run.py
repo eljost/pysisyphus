@@ -1950,7 +1950,8 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
-    return run_from_dict(run_dict, **run_kwargs)
+    run_result =  run_from_dict(run_dict, **run_kwargs)
+    return 0
 
 
 if __name__ == "__main__":
