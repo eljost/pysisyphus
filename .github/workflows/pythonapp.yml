@@ -44,10 +44,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install ASE
       run: |
-        pip install ase>=3.20.1 --use-feature=2020-resolver
+        pip install ase>=3.21.1 --use-feature=2020-resolver
     - name: Install pyscf
       run: |
-        pip install pyscf>=1.7.4 --use-feature=2020-resolver
+        pip install pyscf>=1.7.6 --use-feature=2020-resolver
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
