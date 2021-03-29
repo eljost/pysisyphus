@@ -47,7 +47,7 @@ jobs:
         pip install ase>=3.21.1 --use-feature=2020-resolver
     - name: Install pyscf
       run: |
-        pip install pyscf>=1.7.5.1 --use-feature=2020-resolver
+        pip install pyscf==1.7.5.1 --use-feature=2020-resolver
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
