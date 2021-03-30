@@ -1023,10 +1023,11 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
     geom_kwargs = endopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
+    freeze_atoms = geom_kwargs.get("freeze_atoms", None)
     opt_geoms = list()
     opt_fns = list()
     for name, atoms, coords in to_opt:
-        geom = Geometry(atoms, coords, coord_type=coord_type, coord_kwargs=geom_kwargs)
+        geom = Geometry(atoms, coords, coord_type=coord_type, coord_kwargs=geom_kwargs, freeze_atoms=freeze_atoms)
 
         def wrapped_calc_getter():
             calc = calc_getter()
