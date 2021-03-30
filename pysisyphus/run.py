@@ -339,7 +339,9 @@ def run_tsopt_from_cos(
         # ... and bends and dihedrals, if requested
         if coordinate_union == "bonds_bends_dihedrals":
             valid_prim_types += (PrimTypes.BEND, PrimTypes.PROPER_DIHEDRAL)
-        coord_kwargs["define_prims"] = [tp for tp in typed_prims if tp[0] in valid_prim_types]
+        coord_kwargs["define_prims"] = [
+            tp for tp in typed_prims if tp[0] in valid_prim_types
+        ]
         union_msg = f"Kept primitive types: {valid_prim_types}"
     else:
         union_msg = f"No coordinate union."
@@ -1027,7 +1029,13 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     opt_geoms = list()
     opt_fns = list()
     for name, atoms, coords in to_opt:
-        geom = Geometry(atoms, coords, coord_type=coord_type, coord_kwargs=geom_kwargs, freeze_atoms=freeze_atoms)
+        geom = Geometry(
+            atoms,
+            coords,
+            coord_type=coord_type,
+            coord_kwargs=geom_kwargs,
+            freeze_atoms=freeze_atoms,
+        )
 
         def wrapped_calc_getter():
             calc = calc_getter()
@@ -1951,7 +1959,7 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
-    run_result =  run_from_dict(run_dict, **run_kwargs)
+    run_result = run_from_dict(run_dict, **run_kwargs)
     return 0
 
 
