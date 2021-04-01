@@ -157,7 +157,17 @@ in
       path = ./..;
     };
 
-    doCheck = false;
+    doCheck = true;
+    checkInputs = with lib.lists; [
+      pytest
+    ]
+    ++ optional (turbomole != null) turbomole
+    ++ optional (gamess-us != null) gamess-us;
+    checkPhase = ''
+      export PYSISRC=${pysisrc}
+      export PATH=$PATH:${binSearchPath}
+      pytest -v # --pyargs pysisyphus.tests
+    '';
 
     binSearchPath = lib.makeSearchPath "bin" ([ ]
       ++ lib.optional (orca != null) orca
