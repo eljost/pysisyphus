@@ -158,12 +158,15 @@ in
     };
 
     doCheck = true;
-    checkInputs = [
+    checkInputs = with lib.lists; [
       pytest
-    ];
+    ]
+    ++ optional (turbomole != null) turbomole
+    ++ optional (gamess-us != null) gamess-us;
     checkPhase = ''
       export PYSISRC=${pysisrc}
-      pytest -v --pyargs pysisyphus.tests
+      export PATH=$PATH:${binSearchPath}
+      pytest -v # --pyargs pysisyphus.tests
     '';
 
     binSearchPath = lib.makeSearchPath "bin" ([ ]
