@@ -44,7 +44,7 @@ class WFOWrapper:
 
     def __init__(self, occ_mo_num, virt_mo_num, conf_thresh=1e-4,
                  calc_number=0, out_dir="./", wfow_mem=8000,
-                 ncore=0,):
+                 ncore=0, debug=False):
         try:
             self.base_cmd = Config["wfoverlap"]["cmd"]
         except KeyError:
@@ -55,6 +55,7 @@ class WFOWrapper:
         self.out_dir = Path(out_dir).resolve()
         self.wfow_mem = int(wfow_mem)
         self.ncore = int(ncore)
+        self.debug = debug
 
         self.name = f"WFOWrapper_{self.calc_number}"
         self.log(f"Using -m {self.wfow_mem} for wfoverlap.")
@@ -105,8 +106,12 @@ class WFOWrapper:
                                             joined=joined))
         return base.format(mo_strings="\n".join(mo_strings))
 
-    def ci_coeffs_above_thresh(self, ci_coeffs, thresh=1e-5):
-        mo_inds = np.where(np.abs(ci_coeffs) > thresh)
+    def ci_coeffs_above_thresh(self, ci_coeffs, thresh=None):
+        # Drop unimportant configurations, that are configurations
+        # having low weights in all states under consideration.
+        if thresh is None:
+            thresh = self.conf_thresh
+        mo_inds = np.where(np.abs(ci_coeffs) >= thresh)
         return mo_inds
 
     def make_det_string(self, inds):
@@ -147,9 +152,7 @@ class WFOWrapper:
             ab, ba = det_string
             from_mo, to_mo = inds
             per_state =  ci_coeffs[:,from_mo,to_mo]
-            # Drop unimportant configurations, that are configurations
-            # having low weights in all states under consideration.
-            if np.sum(per_state**2) < self.conf_thresh:
+            if (np.abs(per_state) < self.conf_thresh).all():
                 continue
             # A singlet determinant can be formed in two ways:
             # (up down) (up down) (up down) ...
@@ -158,7 +161,9 @@ class WFOWrapper:
             # We take this into account by expanding the singlet determinants
             # and using a proper normalization constant.
             # See 10.1063/1.3000012 Eq. (5) and 10.1021/acs.jpclett.7b01479 SI
-            per_state *= 1/2**0.5
+            # and "Principles of Molecular Photochemistry: An Introduction",
+            # Section 2.27 Vector model of Two Coupled Electron Spins, p. 91-92
+            per_state *= 1/(2**0.5)
             as_str = lambda arr: " ".join([self.fmt.format(cic)
                                            for cic in arr])
             ps_str = as_str(per_state)
@@ -284,7 +289,9 @@ class WFOWrapper:
                 pass
             shutil.copytree(tmp_dir, backup_path)
 
-            cmd = f"{self.base_cmd} -m {self.wfow_mem} -f {ciovl_fn}".split()
+            # Currently, debug==True crashes the subsequent parsing
+            debug_str = "--debug" if self.debug else ""
+            cmd = f"{self.base_cmd} -m {self.wfow_mem} -f {ciovl_fn} {debug_str}".split()
             result = subprocess.Popen(cmd, cwd=tmp_path,
                                       stdout=subprocess.PIPE)
             result.wait()
