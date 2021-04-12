@@ -93,12 +93,16 @@ def transform_int_step(
     primitives,
     dihedral_inds,
     check_dihedrals=False,
+    freeze_atoms=None,
     cart_rms_thresh=1e-6,
     logger=None,
 ):
     """Transformation is done in primitive internals, so int_step must be given
     in primitive internals and not in DLC!"""
 
+    if freeze_atoms is None:
+        freeze_atoms = list()
+    freeze_atoms = np.array(freeze_atoms, dtype=int)
     new_cart_coords = old_cart_coords.copy()
     remaining_int_step = int_step
     target_internals = cur_internals + int_step
@@ -108,6 +112,8 @@ def transform_int_step(
     backtransform_failed = True
     for i in range(25):
         cart_step = Bt_inv_prim.T.dot(remaining_int_step)
+        # Remove step from frozen atoms.
+        cart_step.reshape(-1, 3)[freeze_atoms] = 0.0
         cart_rms = np.sqrt(np.mean(cart_step ** 2))
         # Update cartesian coordinates
         new_cart_coords += cart_step

@@ -67,6 +67,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 CALC_DICT = {
     "afir": AFIR,
+    "composite": Composite,
     "dimer": Dimer,
     # "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,
@@ -338,7 +339,9 @@ def run_tsopt_from_cos(
         # ... and bends and dihedrals, if requested
         if coordinate_union == "bonds_bends_dihedrals":
             valid_prim_types += (PrimTypes.BEND, PrimTypes.PROPER_DIHEDRAL)
-        coord_kwargs["define_prims"] = [tp for tp in typed_prims if tp[0] in valid_prim_types]
+        coord_kwargs["define_prims"] = [
+            tp for tp in typed_prims if tp[0] in valid_prim_types
+        ]
         union_msg = f"Kept primitive types: {valid_prim_types}"
     else:
         union_msg = f"No coordinate union."
@@ -510,8 +513,8 @@ def run_calculations(
     print("Running calculations")
 
     def par_calc(geom):
-        geom.calculator.run_calculation(geom.atoms, geom.coords)
-        return geom
+        results = geom.calculator.run_calculation(geom.atoms, geom.coords)
+        return results
 
     for geom in geoms:
         geom.set_calculator(calc_getter())
@@ -522,12 +525,14 @@ def run_calculations(
 
     if scheduler:
         client = Client(scheduler, pure=False, silence_logs=False)
-        geom_futures = client.map(par_calc, geoms)
-        geoms = client.gather(geom_futures)
+        results_futures = client.map(par_calc, geoms)
+        all_results = client.gather(results_futures)
     else:
+        all_results = list()
         for i, geom in enumerate(geoms):
             start = time.time()
-            geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+            results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+            all_results.append(results)
             if i < (len(geoms) - 2):
                 try:
                     cur_calculator = geom.calculator
@@ -539,6 +544,8 @@ def run_calculations(
             diff = end - start
             print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
             sys.stdout.flush()
+    for geom, results in zip(geoms, all_results):
+        geom.set_results(results)
     return geoms
 
 
@@ -1018,10 +1025,17 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
     geom_kwargs = endopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
+    freeze_atoms = geom_kwargs.get("freeze_atoms", None)
     opt_geoms = list()
     opt_fns = list()
     for name, atoms, coords in to_opt:
-        geom = Geometry(atoms, coords, coord_type=coord_type, coord_kwargs=geom_kwargs)
+        geom = Geometry(
+            atoms,
+            coords,
+            coord_type=coord_type,
+            coord_kwargs=geom_kwargs,
+            freeze_atoms=freeze_atoms,
+        )
 
         def wrapped_calc_getter():
             calc = calc_getter()
@@ -1381,6 +1395,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         constrain_prims = rdg.get("constrain_prims", None)
         union = rdg.get("union", None)
         isotopes = rdg.get("isotopes", None)
+        freeze_atoms = rdg.get("freeze_atoms", None)
     # Old geometry input
     else:
         xyz = run_dict["xyz"]
@@ -1456,6 +1471,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         constrain_prims=constrain_prims,
         union=union,
         isotopes=isotopes,
+        freeze_atoms=freeze_atoms,
     )
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
@@ -1943,7 +1959,8 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
-    return run_from_dict(run_dict, **run_kwargs)
+    run_result = run_from_dict(run_dict, **run_kwargs)
+    return 0
 
 
 if __name__ == "__main__":

@@ -44,10 +44,11 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False, return_cbm
     return (bond_inds,) + add_returns
 
 
-def get_fragments(atoms, coords):
+def get_fragments(atoms, coords, bond_inds=None):
     coords3d = coords.reshape(-1, 3)
-    # Bond indices without interfragment bonds and/or hydrogen bonds
-    bond_inds = get_bond_sets(atoms, coords3d)
+    if bond_inds is None:
+        # Bond indices without interfragment bonds and/or hydrogen bonds
+        bond_inds = get_bond_sets(atoms, coords3d)
 
     bond_ind_sets = [frozenset(bi) for bi in bond_inds]
     fragments = merge_sets(bond_ind_sets)
@@ -495,10 +496,16 @@ def setup_redundant_from_geom(geom, *args, **kwargs):
 
 
 def get_primitives(coords3d, typed_prims, logger=None):
+    rot_pts = (PrimTypes.ROTATION_A, PrimTypes.ROTATION_B, PrimTypes.ROTATION_C)
     primitives = list()
     for type_, *indices in typed_prims:
         cls = PrimMap[type_]
-        primitives.append(cls(indices=indices))
+        cls_kwargs = {
+            "indices": indices
+        }
+        if type_ in rot_pts:
+            cls_kwargs["ref_coords3d"] = coords3d
+        primitives.append(cls(**cls_kwargs))
 
     msg = (
         "Defined primitives\n"

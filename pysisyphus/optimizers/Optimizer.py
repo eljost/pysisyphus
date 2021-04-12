@@ -68,6 +68,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
         "gau_vtight": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
         "baker": (3.0e-4, 2.0e-4, 3.0e-4, 2.0e-4),
+        # Dummy thresholds
+        "never": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
     }
 
     def __init__(
@@ -107,14 +109,21 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
 
+        self.logger = logging.getLogger("optimizer")
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         self.convergence = self.make_conv_dict(thresh, rms_force)
         for key, value in self.convergence.items():
             setattr(self, key, value)
 
+        if self.thresh == "never":
+            max_cycles =  1_000_000_000
+            self.dump = False
+            self.log(f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
+                      "and disabled dumping!")
+        self.max_cycles = max_cycles
+
         # Setting some default values
         self.resetted = False
-        self.max_cycles = max_cycles
         self.out_dir = os.getcwd()
 
         if self.is_cos:
@@ -136,8 +145,6 @@ class Optimizer(metaclass=abc.ABCMeta):
             os.remove(self.hei_trj_fn)
         except FileNotFoundError:
             pass
-
-        self.logger = logging.getLogger("optimizer")
 
         # Setting some empty lists as default. The actual shape of the respective
         # entries is not considered, which gives us some flexibility.
@@ -242,6 +249,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.rms_forces.append(rms_force)
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
+
+        if self.thresh == "never":
+            return False
 
         this_cycle = {
             "max_force_thresh": max_force,

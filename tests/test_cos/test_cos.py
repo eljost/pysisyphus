@@ -191,8 +191,6 @@ def test_neb_springs(neb_kwargs, ref_cycle):
 def test_mullerbrown_neb(k, ref_cycle):
     geoms = MullerBrownPot().get_path(num=17)
     cos = NEB(geoms, k_max=k, k_min=k)
-    cos.printf = False
-    cos.onlyone = False
 
     opt_kwargs = {
         "max_step": 0.04,

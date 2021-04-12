@@ -6,12 +6,10 @@ from pprint import pprint
 import numpy as np
 import sympy as sym
 
+from pysisyphus.helpers_pure import log
+
 
 logger = logging.getLogger("optimizer")
-
-
-def log(msg):
-    logger.debug(msg)
 
 
 def gen_solutions():
@@ -53,13 +51,16 @@ def gen_solutions():
 
     e0, e1, g0, g1, a0, a1, a2, a3 = sym.symbols("e0 e1 g0 g1 a:4")
 
-    a4 = sym.Rational(3, 8) * a3**2 / a2
-    s0, s1 = sym.solve((e0-a0,
-                        g0-a1,
-                        e1-a0-a1-a2-a3-a4,
-                        g1-a1-2*a2-3*a3-4*a4,
-                        3*a3**2 - 8*a2*a4),
-                        (a0, a1, a2, a3)
+    a4 = sym.Rational(3, 8) * a3 ** 2 / a2
+    s0, s1 = sym.solve(
+        (
+            e0 - a0,
+            g0 - a1,
+            e1 - a0 - a1 - a2 - a3 - a4,
+            g1 - a1 - 2 * a2 - 3 * a3 - 4 * a4,
+            3 * a3 ** 2 - 8 * a2 * a4,
+        ),
+        (a0, a1, a2, a3),
     )
     print("Solution 0")
     print("\t", s0)
@@ -78,9 +79,21 @@ def gen_solutions():
     print()
     # The terms in the sqrt-term correspond to binomial expansions and can be further
     # simplified.
-    ref_term = -12*e0**2 + 24*e0*e1 - 12*e0*g0 - 12*e0*g1 - 12*e1**2 + \
-                12*e1*g0 + 12*e1*g1 - 2*g0**2 - 8*g0*g1 - 2*g1**2
-    sqrt_term = -2*(6*(e0-e1)**2 + 6*(e0-e1)*(g0+g1) + (g0+g1)**2 + 2*g0*g1)
+    ref_term = (
+        -12 * e0 ** 2
+        + 24 * e0 * e1
+        - 12 * e0 * g0
+        - 12 * e0 * g1
+        - 12 * e1 ** 2
+        + 12 * e1 * g0
+        + 12 * e1 * g1
+        - 2 * g0 ** 2
+        - 8 * g0 * g1
+        - 2 * g1 ** 2
+    )
+    sqrt_term = -2 * (
+        6 * (e0 - e1) ** 2 + 6 * (e0 - e1) * (g0 + g1) + (g0 + g1) ** 2 + 2 * g0 * g1
+    )
     assert sym.simplify(sym.expand(sqrt_term) - ref_term) == 0
 
 
@@ -108,10 +121,10 @@ FitResult = namedtuple("FitResult", "x y polys")
 
 
 def quintic_fit(e0, e1, g0, g1, H0, H1):
-    a = -H0/2 + H1/2 - 6*e0 + 6*e1 - 3*g0 - 3*g1
-    b = 3*H0/2 - H1 + 15*e0 - 15*e1 + 8*g0 + 7*g1
-    c = -3*H0/2 + H1/2 - 10*e0 + 10*e1 - 6*g0 - 4*g1
-    d = H0/2
+    a = -H0 / 2 + H1 / 2 - 6 * e0 + 6 * e1 - 3 * g0 - 3 * g1
+    b = 3 * H0 / 2 - H1 + 15 * e0 - 15 * e1 + 8 * g0 + 7 * g1
+    c = -3 * H0 / 2 + H1 / 2 - 10 * e0 + 10 * e1 - 6 * g0 - 4 * g1
+    d = H0 / 2
     e = g0
     f = e0
 
@@ -121,7 +134,7 @@ def quintic_fit(e0, e1, g0, g1, H0, H1):
     except ValueError:
         return None
 
-    fit_result = FitResult(mr, mv, (poly, ))
+    fit_result = FitResult(mr, mv, (poly,))
     return fit_result
 
 
@@ -130,27 +143,34 @@ def quartic_fit(e0, e1, g0, g1, maximize=False):
     a0 = e0
     a1 = g0
     try:
-        sqrt_term = sqrt(-2*(6*(e0-e1)**2 + 6*(e0-e1)*(g0+g1) + (g0+g1)**2 + 2*g0*g1))
+        sqrt_term = sqrt(
+            -2
+            * (
+                6 * (e0 - e1) ** 2
+                + 6 * (e0 - e1) * (g0 + g1)
+                + (g0 + g1) ** 2
+                + 2 * g0 * g1
+            )
+        )
     except ValueError:
         # In these cases there is no intermediate minimum between 0 and 1 and the term
         # under the square root becomes negative.
         return None
 
-    a2_pre = -3*(e0 - e1) - 5*g0/2 - g1/2
-    a3_pre = 2*e0 - 2*e1 + 2*g0
+    a2_pre = -3 * (e0 - e1) - 5 * g0 / 2 - g1 / 2
+    a3_pre = 2 * e0 - 2 * e1 + 2 * g0
 
     def get_poly(a3, a2, a1, a0):
-        a4 = 3/8 * a3**2 / a2
+        a4 = 3 / 8 * a3 ** 2 / a2
         return np.poly1d((a4, a3, a2, a1, a0))
 
-    a2 = a2_pre - sqrt_term/2
+    a2 = a2_pre - sqrt_term / 2
     a3 = a3_pre + sqrt_term
     poly0 = get_poly(a3, a2, a1, a0)
 
-    a2 = a2_pre + sqrt_term/2
+    a2 = a2_pre + sqrt_term / 2
     a3 = a3_pre - sqrt_term
     poly1 = get_poly(a3, a2, a1, a0)
-
 
     get_func = get_maximum if maximize else get_minimum
     mr0, mv0 = get_func(poly0)
@@ -166,11 +186,11 @@ def quartic_fit(e0, e1, g0, g1, maximize=False):
     # a0, a1, a2, a3 = sym.symbols("a:4")
     # a4 = sym.Rational(3, 8) * a3**2 / a2
     # s0, s1 = sym.solve((e0-a0,
-                        # g0-a1,
-                        # e1-a0-a1-a2-a3-a4,
-                        # g1-a1-2*a2-3*a3-4*a4,
-                        # 3*a3**2 - 8*a2*a4),
-                        # (a0, a1, a2, a3)
+    # g0-a1,
+    # e1-a0-a1-a2-a3-a4,
+    # g1-a1-2*a2-3*a3-4*a4,
+    # 3*a3**2 - 8*a2*a4),
+    # (a0, a1, a2, a3)
     # )
     # N = lambda exprs: [sym.N(expr) for expr in exprs]
     # sym_poly0 = get_poly(*N(s0[::-1]))
@@ -185,16 +205,16 @@ def cubic_fit(e0, e1, g0, g1):
     # # Ok it is really slow ... and it's gone.
     # a0, a1, a2, a3 = sym.symbols("a:4")
     # s = sym.solve((e0-a0,
-                   # g0-a1,
-                   # e1-a0-a1-a2-a3,
-                   # g1-a1-2*a2-3*a3),
-                   # (a0, a1, a2, a3),
+    # g0-a1,
+    # e1-a0-a1-a2-a3,
+    # g1-a1-2*a2-3*a3),
+    # (a0, a1, a2, a3),
     # )
     # coeffs = [float(sym.N(expr)) for expr in (s[a3], s[a2], s[a1], s[a0])]
     d = e0
     c = g0
-    b = -(g1 + 2*g0 + 3*e0 - 3*e1)
-    a = 2*(e0 - e1) + g0 + g1
+    b = -(g1 + 2 * g0 + 3 * e0 - 3 * e1)
+    a = 2 * (e0 - e1) + g0 + g1
     # np.testing.assert_allclose([a, b, c, d], coeffs, atol=1e-10)
     poly = np.poly1d((a, b, c, d))
     try:
@@ -202,23 +222,28 @@ def cubic_fit(e0, e1, g0, g1):
     except ValueError:
         return None
 
-    fit_result = FitResult(mr, mv, (poly, ))
+    fit_result = FitResult(mr, mv, (poly,))
     return fit_result
 
 
-def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step,
-                     prev_coords, allow_cubic=True, allow_none=True,
-                     cubic_max=2., quartic_max=4.):
-    # Generate directional gradients by projecting them on the previous step.
+def poly_line_search(
+    cur_energy,
+    prev_energy,
+    cur_grad,
+    prev_grad,
+    prev_step,
+    cubic_max_x=2.0,
+    quartic_max_x=4.0,
+    logger=None,
+):
+    """Generate directional gradients by projecting them on the previous step."""
     prev_grad_proj = prev_step @ prev_grad
-    cur_grad_proj =  prev_step @ cur_grad
-    cubic_result = cubic_fit(prev_energy, cur_energy,
-                             prev_grad_proj, cur_grad_proj)
-    quartic_result = quartic_fit(prev_energy, cur_energy,
-                                 prev_grad_proj, cur_grad_proj)
+    cur_grad_proj = prev_step @ cur_grad
+    cubic_result = cubic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
+    quartic_result = quartic_fit(prev_energy, cur_energy, prev_grad_proj, cur_grad_proj)
     accept = {
-        "cubic": lambda x: allow_cubic and (x > 0.) and (x <= cubic_max),
-        "quartic": lambda x: (x > 0.) and (x <= quartic_max),
+        "cubic": lambda x: (x > 0.0) and (x < cubic_max_x),
+        "quartic": lambda x: (x > 0.0) and (x <= quartic_max_x),
     }
 
     fit_result = None
@@ -228,30 +253,24 @@ def poly_line_search(cur_energy, prev_energy, cur_grad, prev_grad, prev_step,
     elif cubic_result and accept["cubic"](cubic_result.x):
         fit_result = cubic_result
         deg = "cubic"
-    # If we don't allow None we always return either the current point at
-    # x == 1, or the midpoint at x == 0.5.
-    elif not allow_none:
-        # Midpoint fallback as described by gaussian?
-        if cur_energy < prev_energy:
-            x = 1
-            y = cur_energy
-            deg = "current point"
-        else:
-            x = 0.5
-            y = (cur_energy + prev_energy) / 2
-            deg = "midpoint"
-        fit_result = FitResult(x, y, polys=None)
 
     fit_energy = None
     fit_grad = None
-    fit_coords = None
     fit_step = None
     if fit_result and fit_result.y < prev_energy:
         x = fit_result.x
         fit_energy = fit_result.y
-        logger.debug(f"\tDid '{deg}' interpolation with x={x:.6f}.")
-        # Interpolate coordinates and gradient
-        fit_step = x * prev_step
-        fit_coords = prev_coords + fit_step
-        fit_grad = (1-x)*prev_grad + x*cur_grad
-    return fit_energy, fit_grad, fit_coords, fit_step
+        log(logger, f"Did {deg} interpolation with x={x:.6f}.")
+
+        # Interpolate coordinates and gradient. 'fit_step' applied to the current
+        # coordinates yields interpolated coordinates.
+        #
+        # x == 0 would take us to the previous coordinates:
+        #  (1-0) * -prev_step = -prev_step (we revert the last step)
+        # x == 1 would preserve the current coordinates:
+        #  (1-1) * -prev_step = 0 (we stay at the current coordinates)
+        # x > 1 extrapolate along previous step direction:
+        #  with x=2, (1-2) * -prev_step = -1*-prev_step = prev_step
+        fit_step = (1 - x) * -prev_step
+        fit_grad = (1 - x) * prev_grad + x * cur_grad
+    return fit_energy, fit_grad, fit_step
