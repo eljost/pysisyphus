@@ -1113,7 +1113,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
     else:
         print("Found inline xyz formatted string. No files to copy!")
     # Update yaml_fn to match destination
-    yaml_dest_fn = destination.with_suffix(".yaml")
+    yaml_dest_fn = Path(destination.stem).with_suffix(".yaml")
     shutil.copy(yaml_fn, destination / yaml_dest_fn)
     print("\t", yaml_fn)
 
@@ -1267,7 +1267,7 @@ def get_defaults(conf_dict):
 
 def get_last_calc_cycle():
     def keyfunc(path):
-        return re.match("image_\d+.(\d+).out", str(path))[1]
+        return re.match(r"image_\d+.(\d+).out", str(path))[1]
 
     cwd = Path(".")
     calc_logs = [str(cl) for cl in cwd.glob("image_*.*.out")]
@@ -1416,7 +1416,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
             print("Can't restart. Found no previous coordinates.")
             sys.exit()
         xyz = natsorted(trjs)[-1]
-        last_cycle = int(re.search("(\d+)", xyz)[0])
+        last_cycle = int(re.search(r"(\d+)", xyz)[0])
         print(f"Last cycle was {last_cycle}.")
         print(f"Using '{xyz}' as input geometries.")
         opt_kwargs["last_cycle"] = last_cycle
