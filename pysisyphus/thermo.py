@@ -1,3 +1,4 @@
+import h5py
 import jinja2
 
 try:
@@ -10,7 +11,28 @@ from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.helpers import highlight_text
 
 
-def get_thermoanalysis(geom, T=298.15):
+def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1"):
+    with h5py.File(h5_fn, "r") as handle:
+        masses = handle["masses"][:]
+        vibfreqs = handle["vibfreqs"][:]
+        coords3d = handle["coords3d"][:]
+        energy = handle.attrs["energy"]
+        mult = handle.attrs["mult"]
+
+    thermo_dict = {
+        "masses": masses,
+        "vibfreqs": vibfreqs,
+        "coords3d": coords3d,
+        "energy": energy,
+        "mult": mult,
+    }
+
+    qcd = QCData(thermo_dict, point_group=point_group)
+    thermo = thermochemistry(qcd, temperature=T)
+    return thermo
+
+
+def get_thermoanalysis(geom, T=298.15, point_group="c1"):
     hessian = geom.cart_hessian
     energy = geom.energy
     vibfreqs, *_ = geom.get_frequencies(hessian)
@@ -28,8 +50,8 @@ def get_thermoanalysis(geom, T=298.15):
         "mult": mult,
     }
 
-    qcd = QCData(thermo_dict)
-    thermo = thermochemistry(qcd, temperature=298.15)
+    qcd = QCData(thermo_dict, point_group=point_group)
+    thermo = thermochemistry(qcd, temperature=T)
 
     return thermo
 
@@ -40,8 +62,8 @@ Temperature       : {{ thermo.T }} K
 Pressure          : {{ thermo.p }} Pa
 Total Mass        : {{ thermo.M }} amu
 
-! Symmetry is currently not supported in pysisyphus, !
-! so point group will always be c1 and σ = 1.        !
+! Symmetry is currently not supported in pysisyphus. !
+! If not specified c1 and σ = 1 are assumed.         !
 Point Group       : {{ thermo.point_group }}
 Symmetry Number σ : {{ thermo.sym_num }}  
 
