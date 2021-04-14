@@ -1087,6 +1087,7 @@ def run_mdp(geom, calc_getter, mdp_kwargs):
 
 def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
     src_path = Path(yaml_fn).resolve().parent
+    destination = Path(destination)
     try:
         print(f"Trying to create directory '{destination}' ... ", end="")
         os.mkdir(destination)
@@ -1111,7 +1112,9 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
             print("\t", xyz)
     else:
         print("Found inline xyz formatted string. No files to copy!")
-    shutil.copy(yaml_fn, destination)
+    # Update yaml_fn to match destination
+    yaml_dest_fn = destination.with_suffix(".yaml")
+    shutil.copy(yaml_fn, destination / yaml_dest_fn)
     print("\t", yaml_fn)
 
 
