@@ -3,6 +3,7 @@ import sys
 
 from pysisyphus.thermo import get_thermoanalysis_from_hess_h5, print_thermoanalysis
 
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("hess_h5", help="HDF5 Hessian file from pysisyphus.")
