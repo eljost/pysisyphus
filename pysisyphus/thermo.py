@@ -58,6 +58,9 @@ def get_thermoanalysis(geom, T=298.15, point_group="c1"):
 
 THERMO_TPL = jinja2.Template(
     """
+{% if geom -%}
+Geometry          : {{ geom }}, {{ geom.atoms|length }} atoms
+{%- endif %}
 Temperature       : {{ thermo.T }} K
 Pressure          : {{ thermo.p }} Pa
 Total Mass        : {{ thermo.M }} amu
@@ -108,7 +111,7 @@ Symmetry Number σ : {{ thermo.sym_num }}
 )
 
 
-def print_thermoanalysis(thermo):
+def print_thermoanalysis(thermo, geom=None, level=0, title=None):
     """Print thermochemical analysis."""
 
     def fmt(key, hartree):
@@ -119,7 +122,12 @@ def print_thermoanalysis(thermo):
     # Separator
     sep = "+-----------------------------------------------------------------+"
 
-    rendered = THERMO_TPL.render(thermo=thermo, sep=sep, fmt=fmt)
+    rendered = THERMO_TPL.render(geom=geom, thermo=thermo, sep=sep, fmt=fmt)
 
-    print(highlight_text("Thermochemical corrections"))
+    if title is None:
+        title = ""
+    else:
+        title = f", {title}"
+    print(highlight_text(f"Thermochemical corrections{title}", level=level))
+    print()
     print(rendered)

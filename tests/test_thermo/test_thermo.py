@@ -38,6 +38,6 @@ def test_get_thermoanalysis(hcn_geom):
 def test_hcn_thermo(hcn_geom):
     hcn_geom.set_calculator(ORCA(keywords="HF sto-3g"))
     thermo = get_thermoanalysis(hcn_geom)
-    print_thermoanalysis(thermo)
+    print_thermoanalysis(thermo, geom=hcn_geom)
 
     assert thermo.dG == pytest.approx(-0.006280, abs=1e-5)
