@@ -860,16 +860,18 @@ class Geometry:
         if valid:
             self.cart_hessian = hessian
 
-    def get_imag_frequencies(self, hessian=None, thresh=1e-6):
+    def get_frequencies(self, hessian=None):
         if hessian is None:
             hessian = self.cart_hessian
 
         mw_hessian = self.mass_weigh_hessian(hessian)
         proj_hessian = self.eckart_projection(mw_hessian)
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-        neg_inds = eigvals < thresh
-        neg_eigvals = eigvals[neg_inds]
-        return eigval_to_wavenumber(neg_eigvals)
+        return eigval_to_wavenumber(eigvals), eigvals, eigvecs
+
+    def get_imag_frequencies(self, hessian=None, thresh=1e-6):
+        vibfreqs, eigvals, eigvecs = self.get_frequencies(hessian)
+        return vibfreqs[eigvals < thresh]
 
     def get_trans_rot_vectors(self):
         return get_trans_rot_vectors(self.cart_coords, masses=self.masses)
