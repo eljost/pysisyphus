@@ -29,10 +29,10 @@ def run_dict():
 @using("thermoanalysis")
 @using("xtb")
 @pytest.mark.parametrize(
-    "downhill, do_thermo", [(True, True), (True, False), (False, True), (False, False)]
+    "downhill, do_hess", [(True, True), (True, False), (False, True), (False, False)]
 )
-def test_hcn_endopt_barriers(run_dict, this_dir, downhill, do_thermo):
-    run_dict["endopt"]["do_thermo"] = do_thermo
+def test_hcn_endopt_barriers(run_dict, this_dir, downhill, do_hess):
+    run_dict["endopt"]["do_hess"] = do_hess
     if downhill:
         run_dict["geom"]["fn"] = str(this_dir / "test_quick_downhill.xyz")
         run_dict["irc"]["downhill"] = True
