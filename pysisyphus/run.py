@@ -1720,7 +1720,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
             # Dump TS and endopt geoms to .trj. But only when we did not optimize
             # separate fragments.
-            if len(left_geoms) == 1:
+            if len(left_geoms) == 1 and len(right_geoms) in (0, 1):
                 trj_fn = "left_irc_start_right.trj"
                 write_geoms_to_trj(
                     list(it.chain(left_geoms, [irc_geom], right_geoms)),
