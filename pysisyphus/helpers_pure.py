@@ -185,3 +185,20 @@ def report_isotopes(geom, affect_str):
         print()
 
 
+def highlight_text(text, width=80, level=0):
+    levels = {
+        #  horizontal
+        #        vertical
+        0: ("#", "#"),
+        1: ("-", "|"),
+    }
+    full_length = len(text) + 4
+    pad_len = width - full_length
+    pad_len = (pad_len - (pad_len % 2)) // 2
+    pad = " " * pad_len
+    hchar, vchar = levels[level]
+    full_row = hchar * full_length
+    highlight = (
+        f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
+    )
+    return highlight

@@ -43,12 +43,11 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
     confirm_input,
     shake_coords,
-    highlight_text,
     do_final_hessian,
     print_barrier,
     get_tangent_trj_str,
 )
-from pysisyphus.helpers_pure import merge_sets, recursive_update
+from pysisyphus.helpers_pure import merge_sets, recursive_update, highlight_text
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes
@@ -784,7 +783,6 @@ def run_opt(
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
-    do_thermo = opt_kwargs.pop("do_thermo", False)
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
@@ -1222,7 +1220,7 @@ def get_defaults(conf_dict):
         "max_cycles": 100,
         "overachieve_factor": 3,
         "type": "rfo",
-        "do_thermo": False,
+        "do_hess": False,
     }
     cos_opt_defaults = {
         "type": "qm",
@@ -1671,7 +1669,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
-            do_thermo = run_dict["endopt"].pop("do_thermo", False)
+            do_thermo = run_dict["endopt"].get("do_hess", False)
             endopt_geoms, endopt_fns = run_endopt(
                 geom, irc, endopt_key, endopt_kwargs, calc_getter
             )

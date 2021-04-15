@@ -4,7 +4,8 @@ from pathlib import Path
 import sys
 
 from pysisyphus.constants import AMU2KG
-from pysisyphus.helpers import geom_loader, highlight_text
+from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure highlight_text
 from pysisyphus.helpers_pure import get_input
 from pysisyphus.io.pdb import geom_to_pdb_str
 from pysisyphus.wrapper.packmol import make_input, call_packmol

@@ -10,7 +10,8 @@ import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
-from pysisyphus.helpers import check_for_end_sign, highlight_text, get_coords_diffs
+from pysisyphus.helpers import check_for_end_sign, get_coords_diffs
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 

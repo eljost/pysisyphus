@@ -10,7 +10,8 @@ import h5py
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import check_for_stop_sign, highlight_text, rms
+from pysisyphus.helpers import check_for_stop_sign, rms
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter

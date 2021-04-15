@@ -4,11 +4,13 @@ import jinja2
 try:
     from thermoanalysis.QCData import QCData
     from thermoanalysis.thermo import thermochemistry
+    can_thermoanalysis = True
 except ModuleNotFoundError:
     print("Could not import 'thermoanalysis'")
+    can_thermoanalysis = False
 
 from pysisyphus.constants import AU2KJPERMOL
-from pysisyphus.helpers import highlight_text
+from pysisyphus.helpers_pure import highlight_text
 
 
 def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1"):

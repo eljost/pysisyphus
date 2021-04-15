@@ -15,7 +15,7 @@ from pysisyphus.dynamics.helpers import (
     get_mb_velocities_for_geom,
     temperature_for_kinetic_energy,
 )
-from pysisyphus.helpers import highlight_text
+from pysisyphus.helpers_pure import highlight_text
 
 
 def parse_raw_term_func(raw_term_func):

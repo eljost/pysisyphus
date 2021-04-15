@@ -13,13 +13,14 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
+from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes, highlight_text
 from pysisyphus.io import (
     geom_from_pdb,
     geom_from_cjson,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
 )
+from pysisyphus.thermo import can_thermoanalysis, get_thermoanalysis, print_thermoanalysis
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -377,25 +378,6 @@ def shake_coords(coords, scale=0.1, seed=None):
     return coords + offset
 
 
-def highlight_text(text, width=80, level=0):
-    levels = {
-        #  horizontal
-        #        vertical
-        0: ("#", "#"),
-        1: ("-", "|"),
-    }
-    full_length = len(text) + 4
-    pad_len = width - full_length
-    pad_len = (pad_len - (pad_len % 2)) // 2
-    pad = " " * pad_len
-    hchar, vchar = levels[level]
-    full_row = hchar * full_length
-    highlight = (
-        f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
-    )
-    return highlight
-
-
 def rms(arr):
     return np.sqrt(np.mean(arr ** 2))
 
@@ -476,6 +458,11 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix="")
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
+        print()
+
+    if can_thermoanalysis:
+        thermo = get_thermoanalysis(geom)
+        print_thermoanalysis(thermo, level=1)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,

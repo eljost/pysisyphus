@@ -4,7 +4,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.closures import small_lbfgs_closure
 from pysisyphus.optimizers.restrict_step import scale_by_max_step
-from pysisyphus.helpers import highlight_text
+from pysisyphus.helpers_pure import highlight_text
 
 
 class ONIOMOpt(Optimizer):

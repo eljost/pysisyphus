@@ -1,7 +1,7 @@
 import numpy as np
 
 from pysisyphus.constants import AU2KJPERMOL
-from pysisyphus.helpers import highlight_text
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.thermo import get_thermoanalysis, print_thermoanalysis
 
 
