@@ -96,3 +96,43 @@ def test_oniom_opt_small(opt_dict):
     results = run_from_dict(run_dict)
 
     assert results.opt_geom.energy == pytest.approx(-10.419331913)
+
+
+@pytest.mark.skip
+def test_dmp():
+    run_dict = {
+        # "geom": {"type": "cart", "fn": "inp.xyz"},
+        "geom": {"type": "redund", "fn": "inp.xyz"},
+        "calc": {
+            "type": "oniom",
+            "calcs": {
+                "real": {
+                    "type": "pyscf",
+                    "basis": "sto3g",
+                    "pal": 2,
+                    "verbose": 0,
+                },
+                "high": {
+                    "type": "pyscf",
+                    "basis": "321g",
+                    "pal": 2,
+                    "verbose": 0,
+                },
+            },
+            "models": {
+                "high": {
+                    "inds": [15, 14, 1, 0],
+                    "calc": "high",
+                },
+            },
+        },
+        # "opt": {
+            # "type": "oniom",
+            # # "thresh": "gau_loose",
+            # "thresh": "gau",
+        # },
+        "opt": {"thresh": "gau"},
+    }
+    results = run_from_dict(run_dict)
+
+    # assert results.opt_geom.energy == pytest.approx(-10.419331913)
