@@ -34,6 +34,7 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
+from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
 # from pysisyphus.overlaps.couplings import couplings
@@ -783,6 +784,7 @@ def run_opt(
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
+    do_thermo = opt_kwargs.pop("do_thermo", False)
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
@@ -912,6 +914,7 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
     max_len = max(len(s) for s in xyz)
 
     print(highlight_text(f"RMSDs After End Optimizations"))
+    print()
 
     start_cbms = [get_bond_mat(geom) for geom in geoms]
     end_cbms = [get_bond_mat(geom) for geom in end_geoms]
@@ -937,35 +940,6 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
             )
         if not found_similar:
             print(f"\tRMSDs of end geometries are dissimilar to '{fn}'!")
-    print()
-
-
-def do_endopt_ts_barriers(end_geoms, end_fns, ts_geom):
-    if len(end_geoms) != 2:
-        return
-
-    print(highlight_text("Barrier heights after end optimizations"))
-
-    print("Thermochemical corrections are NOT included!")
-
-    ts_energy = ts_geom.energy
-    forward_geom, backward_geom = end_geoms
-    forward_energy = forward_geom.energy
-    backward_energy = backward_geom.energy
-    energies = np.array((forward_energy, ts_energy, backward_energy))
-    energies -= energies.min()
-    min_ind = energies.argmin()
-    energies *= AU2KJPERMOL
-
-    forward_fn, backward_fn = end_fns
-    fns = (forward_fn, "TS", backward_fn)
-    max_len = max(len(s) for s in fns)
-
-    print()
-    print(f"Minimum energy of {energies[min_ind]} kJ mol⁻¹ at '{fns[min_ind]}'.")
-    print()
-    for fn, en in zip(fns, energies):
-        print(f"\t{fn:>{max_len}s}: {en:>8.2f} kJ mol⁻¹")
     print()
 
 
@@ -1067,6 +1041,108 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     return opt_geoms, opt_fns
 
 
+def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
+    print(highlight_text(f"Optimizing IRC ends"))
+
+    # Gather geometries that shall be optimized and appropriate keys.
+    to_opt = list()
+    if irc.forward:
+        coords = irc.all_coords[0]
+        to_opt.append((coords, "forward"))
+    if irc.backward:
+        coords = irc.all_coords[-1]
+        to_opt.append((coords, "backward"))
+    if irc.downhill:
+        coords = irc.all_coords[-1]
+        to_opt.append((coords, "downhill"))
+
+    def to_frozensets(sets):
+        return [frozenset(_) for _ in sets]
+
+    separate_fragments = endopt_kwargs.pop("fragments", False)
+    # Convert to array for easy indexing with the fragment lists
+    atoms = np.array(geom.atoms)
+    fragments_to_opt = list()
+    # Expand endpoints into fragments if requested
+    for coords, key in to_opt:
+        base_name = f"{key}_end"
+        c3d = coords.reshape(-1, 3)
+        if separate_fragments:
+            bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
+            # Sort atom indices, so the atoms don't become totally scrambled.
+            fragments = [sorted(frag) for frag in merge_sets(bond_sets)]
+            # Disable higher fragment counts. I'm looking forward to the day
+            # this ever occurs and someone complains :)
+            assert len(fragments) < 10, "Something probably went wrong"
+            fragment_names = [
+                f"{base_name}_frag{i:03d}" for i, _ in enumerate(fragments)
+            ]
+            print(f"Found {len(fragments)} fragment(s) at {base_name}")
+            for frag_name, frag in zip(fragment_names, fragments):
+                print(f"\t{frag_name}: {len(frag)} atoms")
+        # Optimize the full geometries, without splitting them into fragments
+        else:
+            # Atom indices of the fragment atoms
+            fragments = [
+                range(len(atoms)),
+            ]
+            fragment_names = [
+                base_name,
+            ]
+        fragment_keys = [key] * len(fragments)
+        fragment_atoms = [tuple(atoms[list(frag)]) for frag in fragments]
+        fragment_coords = [c3d[frag].flatten() for frag in fragments]
+        fragments_to_opt.extend(
+            list(zip(fragment_keys, fragment_names, fragment_atoms, fragment_coords))
+        )
+        print()
+    to_opt = fragments_to_opt
+
+    geom_kwargs = endopt_kwargs.pop("geom")
+    coord_type = geom_kwargs.pop("type")
+    freeze_atoms = geom_kwargs.get("freeze_atoms", None)
+
+    opt_geoms = dict()
+    opt_fns = dict()
+    for key, name, atoms, coords in to_opt:
+        geom = Geometry(
+            atoms,
+            coords,
+            coord_type=coord_type,
+            coord_kwargs=geom_kwargs,
+            freeze_atoms=freeze_atoms,
+        )
+
+        def wrapped_calc_getter():
+            calc = calc_getter()
+            calc.base_name = name
+            return calc
+
+        opt_kwargs = endopt_kwargs.copy()
+        opt_kwargs.update(
+            {
+                "prefix": name,
+                "h5_group_name": name,
+                "dump": True,
+            }
+        )
+        _, opt = run_opt(
+            geom,
+            wrapped_calc_getter,
+            endopt_key,
+            opt_kwargs,
+            title=f"{name} Optimization",
+        )
+        opt_fn = f"{name}_opt.xyz"
+        shutil.move(opt.final_fn, opt_fn)
+        print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
+        print()
+        opt_geoms.setdefault(key, list()).append(geom)
+        opt_fns.setdefault(key, list()).append(opt_fn)
+    print()
+    return opt_geoms, opt_fns
+
+
 def run_mdp(geom, calc_getter, mdp_kwargs):
     cwd = Path(".").resolve()
     for i in range(3):
@@ -1146,6 +1222,7 @@ def get_defaults(conf_dict):
         "max_cycles": 100,
         "overachieve_factor": 3,
         "type": "rfo",
+        "do_thermo": False,
     }
     cos_opt_defaults = {
         "type": "qm",
@@ -1567,10 +1644,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                         title="TS-Optimization",
                         copy_final_geom="ts_opt.xyz",
                     )
-                geom = ts_geom.copy()
-                # Try to transfer Hessian to new geometry, to avaoid recalculation.
-                if ts_geom._hessian is not None:
-                    geom._hessian = ts_geom._hessian
+                geom = ts_geom.copy_all()
             except HEIIsFirstOrLastException:
                 abort = True
 
@@ -1586,11 +1660,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                 calc_getter = act_calc_getter
             irc_geom = geom.copy()
             irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
+            # IRC geom won't have a calculator, so we set the appropriate values here.
+            irc_geom.energy = irc.ts_energy
+            irc_geom.cart_hessian = irc.init_hessian
             ran_irc = True
-
-        if run_dict["mdp"]:
-            mdp_kwargs = run_dict["mdp"]
-            mdp_result = run_mdp(geom, calc_getter, mdp_kwargs)
 
         ##########
         # ENDOPT #
@@ -1598,26 +1671,67 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
-            end_geoms, end_fns = run_endopt(
+            do_thermo = run_dict["endopt"].pop("do_thermo", False)
+            endopt_geoms, endopt_fns = run_endopt(
                 geom, irc, endopt_key, endopt_kwargs, calc_getter
             )
 
-            if run_dict["cos"] and (len(end_geoms) == 2):
+            # Determine "left" and "right" geoms
+            # Only downhill
+            if irc.downhill:
+                left_key = "downhill"
+            # Only backward
+            elif irc.backward and not irc.forward:
+                left_key = "backward"
+            # Forward and backward run
+            else:
+                left_key = "forward"
+            left_geoms = endopt_geoms[left_key]
+            left_fns = endopt_fns[left_key]
+            try:
+                right_key = "backward"
+                right_geoms = endopt_geoms[right_key]
+                right_fns = endopt_fns[right_key]
+            except KeyError:
+                right_geoms = list()
+                right_fns = list()
+
+            if run_dict["cos"]:
+                end_geoms = left_geoms + right_geoms
+                end_fns = left_fns + right_fns
                 do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map)
 
-            if run_dict["tsopt"]:
-                do_endopt_ts_barriers(end_geoms, end_fns, ts_geom)
-
-            # Dump TS and endopt geoms into trj file
-            if len(end_geoms) == 2:
-                trj_fn = "end_geoms_and_ts.trj"
-                forward_end_geom, backward_end_geom = end_geoms
-                write_geoms_to_trj(
-                    (forward_end_geom, irc_geom, backward_end_geom),
-                    trj_fn,
-                    comments=("Forward end", "TS", "Backward end"),
+            # Try to compute barriers. Skip barriers if thermochemistry is requsted,
+            # but no analytical Hessian is avaialble for irc_geom, because there may
+            # be cases when irc_geom does not have a calculator. If it can be ensured
+            # that irc_geoms always has a calculator, then this restriction could be
+            # lifted.
+            if not (do_thermo and (irc.hessian_init != "calc")):
+                do_endopt_ts_barriers(
+                    irc_geom,
+                    left_geoms,
+                    right_geoms,
+                    left_fns=left_fns,
+                    right_fns=right_fns,
+                    do_thermo=do_thermo,
                 )
-                print(f"Wrote optimized end-geometries and TS to '{trj_fn}'")
+            else:
+                print("Barriers with IRC hessian_init != 'calc' not yet implemented!")
+
+            # Dump TS and endopt geoms to .trj. But only when we did not optimize
+            # separate fragments.
+            if len(left_geoms) == 1:
+                trj_fn = "left_irc_start_right.trj"
+                write_geoms_to_trj(
+                    list(it.chain(left_geoms, [irc_geom], right_geoms)),
+                    trj_fn,
+                    comments=list(it.chain(left_fns, ["IRC start"], right_fns)),
+                )
+                print(f"Wrote optimized end-geometries and IRC start to '{trj_fn}'")
+
+        if run_dict["mdp"]:
+            mdp_kwargs = run_dict["mdp"]
+            mdp_result = run_mdp(geom, calc_getter, mdp_kwargs)
     # Fallback when no specific job type was specified
     else:
         calced_geoms = run_calculations(

@@ -61,9 +61,9 @@ THERMO_TPL = jinja2.Template(
 {% if geom -%}
 Geometry          : {{ geom }}, {{ geom.atoms|length }} atoms
 {%- endif %}
-Temperature       : {{ thermo.T }} K
+Temperature       : {{ "%0.2f" % thermo.T }} K
 Pressure          : {{ thermo.p }} Pa
-Total Mass        : {{ thermo.M }} amu
+Total Mass        : {{ "%0.4f" % thermo.M }} amu
 
 ! Symmetry is currently not supported in pysisyphus. !
 ! If not specified c1 and σ = 1 are assumed.         !
