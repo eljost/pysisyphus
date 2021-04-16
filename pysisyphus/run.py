@@ -1697,8 +1697,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                 right_geoms = list()
                 right_fns = list()
 
+            end_geoms = left_geoms + right_geoms
             if run_dict["cos"]:
-                end_geoms = left_geoms + right_geoms
                 end_fns = left_fns + right_fns
                 do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map)
 
