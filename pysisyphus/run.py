@@ -783,6 +783,7 @@ def run_opt(
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
+    T = opt_kwargs.pop("T")
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
@@ -822,7 +823,7 @@ def run_opt(
         print()
         prefix = opt_kwargs.get("prefix", "")
         # final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
-        do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
+        do_final_hessian(geom, write_imag_modes=True, prefix=prefix, T=T)
     print()
 
     return opt.geometry, opt
@@ -1221,6 +1222,7 @@ def get_defaults(conf_dict):
         "overachieve_factor": 3,
         "type": "rfo",
         "do_hess": False,
+        "T": 298.15,
     }
     cos_opt_defaults = {
         "type": "qm",
@@ -1266,6 +1268,7 @@ def get_defaults(conf_dict):
             "dump": True,
             "overachieve_factor": 3,
             "h5_group_name": "tsopt",
+            "T": 298.15,
         }
 
     if "preopt" in conf_dict:

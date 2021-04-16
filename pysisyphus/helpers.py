@@ -407,7 +407,8 @@ FinalHessianResult = namedtuple(
 )
 
 
-def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix=""):
+def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix="",
+                     T=298.15):
     print(highlight_text("Hessian at final geometry", level=1))
     print()
 
@@ -461,7 +462,7 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix="")
         print()
 
     if can_thermoanalysis:
-        thermo = get_thermoanalysis(geom)
+        thermo = get_thermoanalysis(geom, T=T)
         print_thermoanalysis(thermo, level=1)
 
     res = FinalHessianResult(
