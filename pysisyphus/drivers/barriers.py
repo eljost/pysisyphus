@@ -72,13 +72,14 @@ def do_endopt_ts_barriers(
 
     print(highlight_text("Barriers", level=1))
     print()
+    def print_geoms_fns(geoms, fns):
+        for i, (geom, fn) in enumerate(zip(geoms, fns)):
+            print(f"\t{i}: {fn} ({geom}, {len(geom.atoms)} atoms)")
     print("Left geometries:")
-    for i, lfn in enumerate(left_fns):
-        print(f"\t{i}: {lfn}")
+    print_geoms_fns(left_geoms, left_fns)
     if right_geoms:
         print("Right geometries:")
-        for i, rfn in enumerate(right_fns):
-            print(f"\t{i}: {rfn}")
+        print_geoms_fns(right_geoms, right_fns)
     print()
 
     print(f"Minimum {en_key} of {energies[min_ind]} kJ mol⁻¹ at '{fns[min_ind]}'.")

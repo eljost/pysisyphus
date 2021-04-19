@@ -463,7 +463,8 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix="",
 
     if can_thermoanalysis:
         thermo = get_thermoanalysis(geom, T=T)
-        print_thermoanalysis(thermo, level=1)
+        # Disabled print for now, as this was already printed in the endopt-section.
+        # print_thermoanalysis(thermo, level=1)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,
