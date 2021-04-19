@@ -400,25 +400,26 @@ def run_tsopt_from_cos(
     print(f"Wrote {hei_kind} HEI coordinates to '{hei_xyz_fn}'")
 
     ts_calc = calc_getter()
+    def wrapped_calc_getter():
+        return ts_calc
     ts_geom.set_calculator(ts_calc)
-    ts_optimizer = TSOPT_DICT[tsopt_key]
-    dimer_kwargs = tsopt_kwargs.pop("dimer_kwargs", {})
-    do_hess = tsopt_kwargs.pop("do_hess", False)
+    tsopt_kwargs["prefix"] = "ts"
 
     if tsopt_key == "dimer":
         # Right now Dimer optimization is rectricted to cartesian
         # rotations and translations, even though translation in
         # internals would be possible.
         ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords)
+        dimer_kwargs = tsopt_kwargs.pop("dimer_kwargs", {})
         dimer_kwargs.update(
             {
                 "N_raw": cart_hei_tangent,
                 "base_name": "dimer",
             }
         )
-        dimer_calc = Dimer(ts_calc, **dimer_kwargs)
-        ts_geom.set_calculator(dimer_calc)
-        ts_opt = PreconLBFGS.PreconLBFGS(ts_geom, **tsopt_kwargs)
+        def wrapped_calc_getter():
+            return Dimer(ts_calc, **dimer_kwargs)
+        tsopt_key = "plbfgs"
     else:
         # Determine which imaginary mode has the highest overlap
         # with the splined HEI tangent.
@@ -480,9 +481,16 @@ def run_tsopt_from_cos(
                 f"Initial root={root} given, neglecting root {ovlp_root} "
                 "determined from overlaps."
             )
-        ts_opt = ts_optimizer(ts_geom, prefix="ts", **tsopt_kwargs)
 
-    ts_opt.run()
+    ts_geom, ts_opt = run_opt(
+        ts_geom,
+        calc_getter=wrapped_calc_getter,
+        opt_key=tsopt_key,
+        opt_kwargs=tsopt_kwargs,
+        title="TS-Optimization",
+        copy_final_geom="ts_opt.xyz",
+    )
+
     # Restore original calculator for Dimer calculations
     if tsopt_key == "dimer":
         ts_geom.set_calculator(ts_calc)
@@ -492,12 +500,7 @@ def run_tsopt_from_cos(
     ts_opt_fn = "ts_opt.xyz"
     with open(ts_opt_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
-    print(f"Wrote TS geometry to '{ts_opt_fn}'")
-
-    if do_hess and not ts_opt.stopped:
-        print()
-        do_final_hessian(ts_geom, write_imag_modes=True)
-    print()
+    print(f"Wrote TS geometry to '{ts_opt_fn}\n'")
 
     ts_energy = ts_geom.energy
     first_cos_energy = cos.images[0].energy
@@ -785,7 +788,7 @@ def run_opt(
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
-    T = opt_kwargs.pop("T")
+    T = opt_kwargs.pop("T", 298.15)
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
