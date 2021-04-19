@@ -86,7 +86,7 @@ class HessianOptimizer(Optimizer):
         ):
             self.hessian_init = "unit"
             self.log(f"Chosen initial (model) Hessian is incompatible with current "
-                     f"coord_type: {coord_type}!")
+                     f"coord_type: {self.geometry.coord_type}!")
 
         self._prev_eigvec_min = None
         self._prev_eigvec_max = None
