@@ -198,8 +198,10 @@ def parse_args(args):
     run_type_group.add_argument(
         "--cp",
         "--copy",
-        help="Copy .yaml file and corresponding geometries to a "
-        "new directory. Similar to TURBOMOLEs cpc command.",
+        nargs="+",
+        help="Copy .yaml file and corresponding geometries from the 'geom' section "
+        "to a new directory. The first argument is interpreted as destination. Any "
+        "remaining (optional) arguments are files that are also copied."
     )
 
     parser.add_argument(
@@ -1160,7 +1162,8 @@ def run_mdp(geom, calc_getter, mdp_kwargs):
     return mdp_result
 
 
-def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
+def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=None):
+    destination, *copy_also = dest_and_add_cp
     src_path = Path(yaml_fn).resolve().parent
     destination = Path(destination)
     try:
@@ -1174,6 +1177,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
     else:
         xyzs = run_dict["xyz"]
     print("Copying:")
+    # Copy geometries
     # When newlines are present we have an inline xyz formatted string
     if not "\n" in xyzs:
         if isinstance(xyzs, str):
@@ -1187,6 +1191,13 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
             print("\t", xyz)
     else:
         print("Found inline xyz formatted string. No files to copy!")
+    # Copy additional files
+    for src in copy_also:
+        try:
+            shutil.copy(src_path / src, destination)
+            print(f"\t{src}")
+        except FileNotFoundError:
+            print(f"\tCould not find '{src}'. Skipping!")
     # Update yaml_fn to match destination
     yaml_dest_fn = Path(destination.stem).with_suffix(".yaml")
     shutil.copy(yaml_fn, destination / yaml_dest_fn)
