@@ -77,14 +77,16 @@ class HessianOptimizer(Optimizer):
             self.adapt_norm = None
             self.predicted_energy_changes = list()
 
-        # Allow only calculated or unit hessian for geometries that don't
-        # use internal coordinates.
+        # Disallow model Hessians that rely on internal coordinates for
+        # optimizations in Cartesians.
         if (
             not hasattr(self.geometry, "internal")
             or (self.geometry.internal is None)
-            and self.hessian_init not in ("calc", "xtb", "xtb1")
+            and self.hessian_init in ("fischer", "lindh", "simple", "swart")
         ):
             self.hessian_init = "unit"
+            self.log(f"Chosen initial (model) Hessian is incompatible with current "
+                     f"coord_type: {coord_type}!")
 
         self._prev_eigvec_min = None
         self._prev_eigvec_max = None
