@@ -91,6 +91,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         restart_info=None,
         check_coord_diffs=True,
         coord_diff_thresh=0.01,
+        out_dir=".",
         h5_fn="optimization.h5",
         h5_group_name="opt",
     ):
@@ -125,7 +126,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # Setting some default values
         self.resetted = False
-        self.out_dir = os.getcwd()
+        self.out_dir = out_dir
 
         if self.is_cos:
             moving_image_num = len(self.geometry.moving_indices)
