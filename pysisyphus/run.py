@@ -201,7 +201,7 @@ def parse_args(args):
         nargs="+",
         help="Copy .yaml file and corresponding geometries from the 'geom' section "
         "to a new directory. The first argument is interpreted as destination. Any "
-        "remaining (optional) arguments are files that are also copied."
+        "remaining (optional) arguments are files that are also copied.",
     )
 
     parser.add_argument(
@@ -400,8 +400,10 @@ def run_tsopt_from_cos(
     print(f"Wrote {hei_kind} HEI coordinates to '{hei_xyz_fn}'")
 
     ts_calc = calc_getter()
+
     def wrapped_calc_getter():
         return ts_calc
+
     ts_geom.set_calculator(ts_calc)
     tsopt_kwargs["prefix"] = "ts"
 
@@ -417,8 +419,10 @@ def run_tsopt_from_cos(
                 "base_name": "dimer",
             }
         )
+
         def wrapped_calc_getter():
             return Dimer(ts_calc, **dimer_kwargs)
+
         tsopt_key = "plbfgs"
     else:
         # Determine which imaginary mode has the highest overlap
@@ -827,7 +831,6 @@ def run_opt(
     elif do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
-        # final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
         do_final_hessian(geom, write_imag_modes=True, prefix=prefix, T=T)
     print()
 
@@ -1283,6 +1286,7 @@ def get_defaults(conf_dict):
             "overachieve_factor": 3,
             "h5_group_name": "tsopt",
             "T": 298.15,
+            "prefix": "ts"
         }
 
     if "preopt" in conf_dict:
