@@ -20,16 +20,28 @@ from pysisyphus.xyzloader import make_trj_str, make_xyz_str
 
 
 class IRC:
-
-    def __init__(self, geometry, step_length=0.1, max_cycles=75,
-                 downhill=False, forward=True, backward=True,
-                 mode=0, hessian_init=None,
-                 displ="energy", displ_energy=5e-4, displ_length=0.1,
-                 rms_grad_thresh=3e-3, energy_thresh=1e-6, force_inflection=True,
-                 out_dir=".",
-                 dump_fn="irc_data.h5", dump_every=5):
-        assert(step_length > 0), "step_length must be positive"
-        assert(max_cycles > 0), "max_cycles must be positive"
+    def __init__(
+        self,
+        geometry,
+        step_length=0.1,
+        max_cycles=75,
+        downhill=False,
+        forward=True,
+        backward=True,
+        mode=0,
+        hessian_init=None,
+        displ="energy",
+        displ_energy=5e-4,
+        displ_length=0.1,
+        rms_grad_thresh=3e-3,
+        energy_thresh=1e-6,
+        force_inflection=True,
+        out_dir=".",
+        dump_fn="irc_data.h5",
+        dump_every=5,
+    ):
+        assert step_length > 0, "step_length must be positive"
+        assert max_cycles > 0, "max_cycles must be positive"
 
         self.logger = logging.getLogger("irc")
 
@@ -50,8 +62,10 @@ class IRC:
             hessian_init = "calc" if not self.downhill else "unit"
         self.hessian_init = hessian_init
         self.displ = displ
-        assert self.displ in ("energy", "length"), \
-            "displ must be either 'energy' or 'length'"
+        assert self.displ in (
+            "energy",
+            "length",
+        ), "displ must be either 'energy' or 'length'"
         self.displ_energy = float(displ_energy)
         self.displ_length = float(displ_length)
         self.rms_grad_thresh = float(rms_grad_thresh)
@@ -111,9 +125,9 @@ class IRC:
 
     # @property
     # def mw_hessian(self):
-        # # TODO: This can be removed when the mw_hessian property is updated
-        # #       in Geometry.py.
-        # return self.geometry.mw_hessian
+    # # TODO: This can be removed when the mw_hessian property is updated
+    # #       in Geometry.py.
+    # return self.geometry.mw_hessian
 
     def log(self, msg):
         # self.logger.debug(f"step {self.cur_cycle:03d}, {msg}")
@@ -160,11 +174,12 @@ class IRC:
 
         # Do inital displacement from the TS
         init_factor = 1 if (direction == "forward") else -1
-        initial_step = init_factor*self.init_displ
+        initial_step = init_factor * self.init_displ
         self.coords = self.ts_coords + initial_step
         initial_step_length = np.linalg.norm(initial_step)
-        self.logger.info(f"Did inital step of length {initial_step_length:.4f} "
-                          "from the TS.")
+        self.logger.info(
+            f"Did inital step of length {initial_step_length:.4f} " "from the TS."
+        )
 
     def initial_displacement(self):
         """Returns a non-mass-weighted step in angstrom for an initial
@@ -183,9 +198,11 @@ class IRC:
         neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
         min_eigval = eigvals[self.mode]
-        self.log(f"Transition vector is mode {self.mode} with wavenumber "
-                 f"{eigval_to_wavenumber(min_eigval):.2f} cm⁻¹.")
-        mw_trans_vec = eigvecs[:,self.mode]
+        self.log(
+            f"Transition vector is mode {self.mode} with wavenumber "
+            f"{eigval_to_wavenumber(min_eigval):.2f} cm⁻¹."
+        )
+        mw_trans_vec = eigvecs[:, self.mode]
         self.mw_transition_vector = mw_trans_vec
         # Un-mass-weight the transition vector
         trans_vec = mm_sqr_inv.dot(mw_trans_vec)
@@ -206,9 +223,7 @@ class IRC:
             # See 10.1021/ja00295a002 and 10.1063/1.462674
             # 10.1002/jcc.540080808 proposes 3 kcal/mol as initial energy lowering
             self.log("Using energy-based initial displacement from the TS.")
-            step_length = np.sqrt(self.displ_energy*2
-                                  / np.abs(min_eigval)
-            )
+            step_length = np.sqrt(self.displ_energy * 2 / np.abs(min_eigval))
             # This calculation is derived from the mass-weighted hessian, so we
             # probably have to multiply this step length with the mass-weighted
             # mode and un-weigh it.
@@ -218,7 +233,7 @@ class IRC:
         self.log("")
         return step
 
-    def get_conv_fact(self, mw_grad, min_fact=2.):
+    def get_conv_fact(self, mw_grad, min_fact=2.0):
         # Numerical integration of differential equations requires a step length and/or
         # we have to terminate the integration at some point, e.g. when the desired
         # step length is reached. IRCs are integrated in mass-weighted coordinates,
@@ -392,19 +407,23 @@ class IRC:
         ts_grad_max = np.abs(self.ts_gradient).max()
         ts_grad_rms = rms(self.ts_gradient)
 
-        self.log( "Transition state (TS):\n"
-                 f"\tnorm(grad)={ts_grad_norm:.6f}\n"
-                 f"\t max(grad)={ts_grad_max:.6f}\n"
-                 f"\t rms(grad)={ts_grad_rms:.6f}"
+        self.log(
+            "Transition state (TS):\n"
+            f"\tnorm(grad)={ts_grad_norm:.6f}\n"
+            f"\t max(grad)={ts_grad_max:.6f}\n"
+            f"\t rms(grad)={ts_grad_rms:.6f}"
         )
 
-        print("IRC length in mw. coords, max(|grad|) and rms(grad) in "
-              "unweighted coordinates.")
+        print(
+            "IRC length in mw. coords, max(|grad|) and rms(grad) in "
+            "unweighted coordinates."
+        )
 
-        self.init_hessian, hess_str = get_guess_hessian(self.geometry,
-                                                        self.hessian_init,
-                                                        cart_gradient=self.ts_gradient,
-                                                        h5_fn=f"hess_init_irc.h5",
+        self.init_hessian, hess_str = get_guess_hessian(
+            self.geometry,
+            self.hessian_init,
+            cart_gradient=self.ts_gradient,
+            h5_fn=f"hess_init_irc.h5",
         )
         self.log(f"Initial hessian: {hess_str}")
 
@@ -450,9 +469,10 @@ class IRC:
             self.dump_data(dump_fn, full=True)
 
         # Convert to arrays
-        [setattr(self, name, np.array(getattr(self, name)))
-         for name in "all_energies all_coords all_gradients "
-                     "all_mw_coords all_mw_gradients".split()
+        [
+            setattr(self, name, np.array(getattr(self, name)))
+            for name in "all_energies all_coords all_gradients "
+            "all_mw_coords all_mw_gradients".split()
         ]
 
         # Right now self.all_mw_coords is still in mass-weighted coordinates.
@@ -510,10 +530,12 @@ class IRC:
         get_data = self.get_full_irc_data if full else self.get_irc_data
         data_dict = get_data()
 
-        data_dict.update({
+        data_dict.update(
+            {
                 "atoms": np.array(self.atoms, dtype="S"),
                 "rms_grad_thresh": np.array(self.rms_grad_thresh),
-        })
+            }
+        )
 
         if dump_fn is None:
             dump_fn = self.get_path_for_fn(self.dump_fn)
