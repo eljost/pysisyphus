@@ -3,7 +3,8 @@
 
 import logging
 from math import ceil, log
-import pathlib
+import os
+from pathlib import Path
 import sys
 
 import h5py
@@ -25,6 +26,7 @@ class IRC:
                  mode=0, hessian_init=None,
                  displ="energy", displ_energy=5e-4, displ_length=0.1,
                  rms_grad_thresh=3e-3, energy_thresh=1e-6, force_inflection=True,
+                 out_dir=".",
                  dump_fn="irc_data.h5", dump_every=5):
         assert(step_length > 0), "step_length must be positive"
         assert(max_cycles > 0), "max_cycles must be positive"
@@ -32,6 +34,7 @@ class IRC:
         self.logger = logging.getLogger("irc")
 
         self.geometry = geometry
+        self.atoms = self.geometry.atoms
         assert self.geometry.coord_type == "cart"
 
         report_isotopes(self.geometry, "the IRC")
@@ -54,11 +57,14 @@ class IRC:
         self.rms_grad_thresh = float(rms_grad_thresh)
         self.energy_thresh = float(energy_thresh)
         self.force_inflection = force_inflection
+        self.out_dir = out_dir
+        self.out_dir = Path(self.out_dir)
+        if not self.out_dir.exists():
+            os.mkdir(self.out_dir)
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
 
         self._m_sqrt = np.sqrt(self.geometry.masses_rep)
-
         self.all_energies = list()
         self.all_coords = list()
         self.all_gradients = list()
@@ -71,6 +77,9 @@ class IRC:
         self.table = TablePrinter(header, col_fmts)
 
         self.cycle_places = ceil(log(self.max_cycles, 10))
+
+    def get_path_for_fn(self, fn):
+        return self.out_dir / fn
 
     @property
     def coords(self):
@@ -141,6 +150,9 @@ class IRC:
         # the updated hessian from the end of the first run for the second
         # run.
         self.mw_hessian = self.mass_weigh_hessian(self.init_hessian)
+
+        trj_fn = self.get_path_for_fn(f"{direction}_irc.trj")
+        self.trj_handle = open(trj_fn, "w")
 
         # We don't need an initial displacement when going downhill
         if self.downhill:
@@ -236,7 +248,6 @@ class IRC:
 
     def irc(self, direction):
         self.log(highlight_text(f"IRC {direction}", level=1))
-
         self.cur_direction = direction
         self.prepare(direction)
         # Calculate gradient
@@ -253,8 +264,16 @@ class IRC:
         for self.cur_cycle in range(self.max_cycles):
             self.log(highlight_text(f"IRC step {self.cur_cycle:03d}") + "\n")
 
-            # Do macroiteration/IRC step to update the geometry
+            # Dump current coordinates to trj
+            comment = f"{direction} IRC, step {self.cur_cycle}"
+            coords_str = make_xyz_str(self.atoms, self.coords.reshape((-1, 3)), comment)
+            self.trj_handle.write(coords_str + "\n")
+            self.trj_handle.flush()
+
             self.log(f"Current energy: {self.energy:.6f} au")
+            #
+            # Take IRC step.
+            #
             self.step()
 
             # Calculate gradient and energy on the new geometry
@@ -333,6 +352,7 @@ class IRC:
             self.dump_data(dump_fn)
 
         self.cur_direction = None
+        self.trj_handle.close()
 
     def set_data(self, prefix):
         energies_name = f"{prefix}_energies"
@@ -357,7 +377,7 @@ class IRC:
         setattr(self, f"{prefix}_energy_increased", self.energy_increased)
         setattr(self, f"{prefix}_energy_converged", self.energy_converged)
         setattr(self, f"{prefix}_cycle", self.cur_cycle)
-        self.write_trj(".", prefix, getattr(self, mw_coords_name))
+        self.dump_ends(".", prefix, getattr(self, mw_coords_name))
 
     def run(self):
         # Calculate data at TS and create backup
@@ -423,10 +443,10 @@ class IRC:
         self.all_energies = np.array(self.all_energies)
         self.postprocess()
         if not self.downhill:
-            self.write_trj(".", "finished")
+            self.dump_ends(".", "finished", trj=True)
 
             # Dump the whole IRC to HDF5
-            dump_fn = "finished_" + self.dump_fn
+            dump_fn = self.get_path_for_fn("finished_" + self.dump_fn)
             self.dump_data(dump_fn, full=True)
 
         # Convert to arrays
@@ -442,29 +462,28 @@ class IRC:
     def postprocess(self):
         pass
 
-    def write_trj(self, path, prefix, coords=None):
-        path = pathlib.Path(path)
-        atoms = self.geometry.atoms
+    def dump_ends(self, path, prefix, coords=None, trj=False):
+        path = Path(path)
         if coords is None:
             coords = self.all_mw_coords
         coords = coords.copy()
         coords /= self.m_sqrt
-        coords = coords.reshape(-1, len(atoms), 3) * BOHR2ANG
-        # all_mw_coords = self.all_mw_coords.flatten()
-        trj_string = make_trj_str(atoms, coords, comments=self.all_energies)
-        trj_fn = f"{prefix}_irc.trj"
-        with open(path / trj_fn, "w") as handle:
-            handle.write(trj_string)
+        coords = coords.reshape(-1, len(self.atoms), 3) * BOHR2ANG
+        if trj:
+            trj_string = make_trj_str(self.atoms, coords, comments=self.all_energies)
+            trj_fn = self.get_path_for_fn(f"{prefix}_irc.trj")
+            with open(trj_fn, "w") as handle:
+                handle.write(trj_string)
 
         first_coords = coords[0]
-        first_fn = f"{prefix}_first.xyz"
-        with open(path / first_fn, "w") as handle:
-            handle.write(make_xyz_str(atoms, first_coords))
+        first_fn = self.get_path_for_fn(f"{prefix}_first.xyz")
+        with open(first_fn, "w") as handle:
+            handle.write(make_xyz_str(self.atoms, first_coords))
 
         last_coords = coords[-1]
-        first_fn = f"{prefix}_last.xyz"
-        with open(path / first_fn, "w") as handle:
-            handle.write(make_xyz_str(atoms, last_coords))
+        first_fn = self.get_path_for_fn(f"{prefix}_last.xyz")
+        with open(first_fn, "w") as handle:
+            handle.write(make_xyz_str(self.atoms, last_coords))
 
     def get_irc_data(self):
         data_dict = {
@@ -492,12 +511,12 @@ class IRC:
         data_dict = get_data()
 
         data_dict.update({
-                "atoms": np.array(self.geometry.atoms, dtype="S"),
+                "atoms": np.array(self.atoms, dtype="S"),
                 "rms_grad_thresh": np.array(self.rms_grad_thresh),
         })
 
         if dump_fn is None:
-            dump_fn = self.dump_fn
+            dump_fn = self.get_path_for_fn(self.dump_fn)
 
         with h5py.File(dump_fn, "w") as handle:
             for key, val in data_dict.items():
