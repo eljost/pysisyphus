@@ -185,7 +185,10 @@ class IRC:
         """Returns a non-mass-weighted step in angstrom for an initial
         displacement from the TS along the transition vector.
 
-        See https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
+        See
+            https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
+        and
+            https://aip.scitation.org/doi/pdf/10.1063/1.459634
         """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
         mw_hessian = self.mass_weigh_hessian(self.init_hessian)
