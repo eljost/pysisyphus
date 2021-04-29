@@ -605,7 +605,7 @@ class Dimer(Calculator):
             self.N = N_backup
         # Now we (have an updated self.N and) can do the force projections
         N = self.N
-        self.log(f"Orientation N:\n\t{N}")
+        # self.log(f"Orientation N:\n\t{N}")
         # Save orientation N in human-readable format, aka .trj
         # file in Angstrom.
         if self.write_orientations:
