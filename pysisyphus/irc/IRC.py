@@ -14,12 +14,15 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import check_for_stop_sign, rms
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
+from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.xyzloader import make_trj_str, make_xyz_str
 
 
 class IRC:
+    valid_displs = ("energy", "length", "energy_cubic")
+
     def __init__(
         self,
         geometry,
@@ -31,9 +34,9 @@ class IRC:
         mode=0,
         hessian_init=None,
         displ="energy",
-        displ_energy=5e-4,
+        displ_energy=1e-3,
         displ_length=0.1,
-        rms_grad_thresh=3e-3,
+        rms_grad_thresh=1e-3,
         energy_thresh=1e-6,
         force_inflection=True,
         out_dir=".",
@@ -62,10 +65,9 @@ class IRC:
             hessian_init = "calc" if not self.downhill else "unit"
         self.hessian_init = hessian_init
         self.displ = displ
-        assert self.displ in (
-            "energy",
-            "length",
-        ), "displ must be either 'energy' or 'length'"
+        assert (
+            self.displ in self.valid_displs
+        ), f"'displ: {self.displ}' not in {self.valid_displs}"
         self.displ_energy = float(displ_energy)
         self.displ_length = float(displ_length)
         self.rms_grad_thresh = float(rms_grad_thresh)
@@ -214,9 +216,9 @@ class IRC:
         if self.downhill:
             step = np.zeros_like(self.transition_vector)
         elif self.displ == "length":
-            self.log("Using length-based initial displacement from the TS.")
+            msg = "Using length-based initial displacement from the TS."
             step = self.displ_length * self.transition_vector
-        else:
+        elif self.displ == "energy":
             # Calculate the length of the initial step away from the TS to initiate
             # the IRC/MEP. We assume a quadratic potential and calculate the
             # displacement for a given energy lowering.
@@ -225,13 +227,22 @@ class IRC:
             # dq = sqrt(dE*2/k)
             # See 10.1021/ja00295a002 and 10.1063/1.462674
             # 10.1002/jcc.540080808 proposes 3 kcal/mol as initial energy lowering
-            self.log("Using energy-based initial displacement from the TS.")
+            msg = "Using energy-based initial displacement from the TS."
             step_length = np.sqrt(self.displ_energy * 2 / np.abs(min_eigval))
             # This calculation is derived from the mass-weighted hessian, so we
             # probably have to multiply this step length with the mass-weighted
             # mode and un-weigh it.
             mw_step = step_length * mw_trans_vec
             step = mw_step / self.m_sqrt
+        elif self.displ == "energy_cubic":
+            Gv = third_deriv_fd(self.geometry, mw_trans_vec)
+            step = cubic_displ(
+                mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
+            )
+            msg = "Energy-based initial displacement from the TS using 3rd derivatives."
+        else:
+            raise Exception(f"self.displ={self.displ} is invalid!")
+        self.log(msg)
         print(f"Norm of initial displacement step: {np.linalg.norm(step):.4f}")
         self.log("")
         return step

@@ -37,20 +37,18 @@ that the user may want to modify.
     irc:
      type: eulerpc                      # Similar to EulerPC from Gaussian
 
-     #displ: energy|length              # How to do the initial displacement
-     #displ_energy: 0.0005              # Energy lowering in au (Hartree)
+     #displ: energy|length|energy_cubic # How to do the initial displacement
+     #displ_energy: 0.001               # Energy lowering in au (Hartree)
      #displ_length: 0.1                 # Step length along the TV
 
      #forward: True
      #backward: True
      #downhill: False                   # Only integrate downhill
 
-     #rms_grad_thresh: 0.0005           # Convergence threshold
+     #rms_grad_thresh: 0.001            # Convergence threshold
     endopt:
-     #fragments: False           # Optimize potential fragments separately
-     coord_type: redund_v2       # Use different coordinates if desired
-     trust_max: 0.1
-     thresh: gau_tight
+     #fragments: False                  # Optimize potential fragments separately
+     do_hess: False                     # Frequency calculation at the end
     calc:
      type: xtb                          # extended tight-binding calculator
      pal: 4

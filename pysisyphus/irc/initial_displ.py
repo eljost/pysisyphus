@@ -71,6 +71,7 @@ def third_deriv_fd(geom, vec, ds=0.001):
 
 
 def cubic_displ(H, v0, w0, Gv, dE):
+    assert dE < 0., "Supplied dE={dE:.6f} is positive but it must be negative!"
     v1 = get_curv_vec(H, Gv, v0, w0)
     E_taylor = taylor_closure(H, Gv, v0, v1, w0)
 
@@ -88,7 +89,8 @@ def cubic_displ_for_geom(geom, dE=-5e-4):
     if geom.coords.size > 3:
         H = geom.eckart_projection(H)
     w, v = np.linalg.eigh(H)
-    w0 = w[0]
+    # Transition vector (imaginary mode) and corresponding eigenvalue
     v0 = v[:, 0]
+    w0 = w[0]
     Gv = third_deriv_fd(geom, v0)
     return cubic_displ(H, v0, w0, Gv, dE=dE)

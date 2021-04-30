@@ -264,10 +264,11 @@ def test_mb_gs2(step_length):
 )
 def test_hcn_iso_gs2(step_length):
     geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
-    calc = PySCF(basis="sto3g")
+    calc = PySCF(basis="sto3g", verbose=0)
     geom.set_calculator(calc)
     irc_kwargs = {
         "step_length": step_length,
+        "displ_energy": 0.0005,
     }
     irc = GonzalezSchlegel(geom, **irc_kwargs)
     irc.run()
