@@ -918,6 +918,11 @@ class Geometry:
         self.zero_frozen_forces(results["forces"])
         return results
 
+    def get_energy_and_cart_hessian_at(self, cart_coords):
+        self.assert_cart_coords(cart_coords)
+        results = self.calculator.get_hessian(self.atoms, cart_coords)
+        return results
+
     def calc_double_ao_overlap(self, geom2):
         return self.calculator.run_double_mol_calculation(
             self.atoms, self.coords, geom2.coords
