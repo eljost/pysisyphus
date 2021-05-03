@@ -2003,7 +2003,7 @@ def run_from_dict(
     if cwd is None:
         cwd = Path(".")
 
-    start_time = time.time()
+    start_time = datetime.datetime.now()
     print_header()
 
     # Citation
@@ -2053,9 +2053,11 @@ def run_from_dict(
         print()
         check_asserts(run_result, run_dict)
 
-    end_time = time.time()
-    duration = int(end_time - start_time)
-    print(f"pysisyphus run took {duration}s.")
+    end_time = datetime.datetime.now()
+    duration = end_time - start_time
+    # Only keep hh:mm:ss
+    duration_hms = str(duration).split(".")[0]
+    print(f"pysisyphus run took {duration_hms} h.")
 
     return run_result
 
