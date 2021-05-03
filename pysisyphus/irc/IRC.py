@@ -237,7 +237,7 @@ class IRC:
         elif self.displ == "energy_cubic":
             Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
             h5_fn = self.get_path_for_fn("third_deriv.h5")
-            save_third_deriv(h5_fn, self.geometry, third_deriv_res)
+            save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
             mw_step = cubic_displ(
                 mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
             )

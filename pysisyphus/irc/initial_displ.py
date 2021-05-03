@@ -5,6 +5,7 @@
 
 from collections import namedtuple
 
+import h5py
 import numpy as np
 from scipy.optimize import bisect
 
@@ -94,6 +95,8 @@ def third_deriv_fd(geom, vec, ds=0.001):
 
 def cubic_displ(H, v0, w0, Gv, dE):
     assert dE < 0.0, "Supplied dE={dE:.6f} is positive but it must be negative!"
+    assert w0 < 0.0, \
+        "Expected first eigenvalue to be negative but it is w0={w0:.6e}!"
     v1 = get_curv_vec(H, Gv, v0, w0)
     E_taylor = taylor_closure(H, Gv, v0, v1, w0)
 
@@ -103,6 +106,17 @@ def cubic_displ(H, v0, w0, Gv, dE):
     ds, rr = bisect(func, 0, 1, full_output=True)
     step = ds * v0 + ds ** 2 * v1 / 2
     return step
+
+
+def cubic_displ_for_h5(h5_fn, dE=-5e-4):
+    with h5py.File(h5_fn, "r") as handle:
+        H_mw = handle["H_mw"][:]
+        Gv = handle["G_vec"][:]
+
+    w, v = np.linalg.eigh(H_mw)
+    w0 = w[0]
+    v0 = v[:, 0]
+    return cubic_displ(H_mw, v0, w0, Gv, dE)
 
 
 def cubic_displ_for_geom(geom, dE=-5e-4):
@@ -116,3 +130,5 @@ def cubic_displ_for_geom(geom, dE=-5e-4):
     w0 = w[0]
     Gv, third_deriv_res = third_deriv_fd(geom, v0)
     return cubic_displ(H, v0, w0, Gv, dE=dE), third_deriv_res
+    # with h5py.File(open
+    cubic_displ
