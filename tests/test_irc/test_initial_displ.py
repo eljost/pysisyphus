@@ -14,7 +14,7 @@ def anapot_ts():
 
 
 def test_cubic_displ(anapot_ts):
-    step = cubic_displ_for_geom(anapot_ts)
+    step, _ = cubic_displ_for_geom(anapot_ts)
     print(np.array2string(step, precision=12))
 
     ref_step = (-0.013523096972, -0.009151256346, 0.0)
@@ -32,3 +32,5 @@ def test_irc_cubic_displ(displ, anapot_ts):
     }
     irc = EulerPC(anapot_ts, **irc_kwargs)
     irc.run()
+
+    # calc = anapot_ts.calculator.plot_irc(irc, show=True)

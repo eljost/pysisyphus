@@ -34,3 +34,12 @@ def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
         handle.attrs["atoms"] = [atom.lower() for atom in atoms]
         handle.attrs["energy"] = energy
         handle.attrs["mult"] = mult
+
+
+def save_third_deriv(h5_fn, geom, third_deriv_result):
+    with h5py.File(h5_fn, "w") as handle:
+        for key, value in third_deriv_result._asdict().items():
+            handle.create_dataset(key, data=value)
+
+        handle.create_dataset("atoms", data=geom.atoms)
+        handle.create_dataset("masses", data=geom.masses)

@@ -3,6 +3,8 @@
 # [2] https://aip.scitation.org/doi/abs/10.1063/1.459634
 #     Page, Doubleday, McIver, 1990
 
+from collections import namedtuple
+
 import numpy as np
 from scipy.optimize import bisect
 
@@ -50,28 +52,48 @@ def taylor_closure(H, Gv, v0, v1, w0):
     return dE
 
 
+ThirdDerivResult = namedtuple(
+    "ThirdDerivResult",
+    "coords_plus energy_plus H_plus coords_minus energy_minus H_minus G_vec vec ds",
+)
+
+
 def third_deriv_fd(geom, vec, ds=0.001):
     """Third derivative of the energy in direction 'vec'."""
 
     def get_H(geom, coords):
-        H = geom.get_energy_and_cart_hessian_at(coords)["hessian"]
-        H = geom.mass_weigh_hessian(H)
+        results = geom.get_energy_and_cart_hessian_at(coords)
+        energy = results["energy"]
+        H = results["hessian"]
+        H_mw = geom.mass_weigh_hessian(H)
         # Only project for multi-atomic geometries.
         if geom.coords.size > 3:
-            H = geom.eckart_projection(H)
-        return H
+            H_mw = geom.eckart_projection(H_mw)
+        return H_mw, H, energy
 
     delta = ds * vec
     plus = geom.coords + delta
     minus = geom.coords - delta
-    H_plus = get_H(geom, plus)
-    H_minus = get_H(geom, minus)
-    G_vec = (H_plus - H_minus) / (2 * ds)
-    return G_vec
+    H_mw_plus, H_plus, energy_plus = get_H(geom, plus)
+    H_mw_minus, H_minus, energy_minus = get_H(geom, minus)
+    G_vec = (H_mw_plus - H_mw_minus) / (2 * ds)
+
+    third_deriv_res = ThirdDerivResult(
+        coords_plus=plus,
+        energy_plus=energy_plus,
+        H_plus=H_plus,
+        coords_minus=minus,
+        energy_minus=energy_minus,
+        H_minus=H_minus,
+        G_vec=G_vec,
+        vec=vec,
+        ds=ds,
+    )
+    return G_vec, third_deriv_res
 
 
 def cubic_displ(H, v0, w0, Gv, dE):
-    assert dE < 0., "Supplied dE={dE:.6f} is positive but it must be negative!"
+    assert dE < 0.0, "Supplied dE={dE:.6f} is positive but it must be negative!"
     v1 = get_curv_vec(H, Gv, v0, w0)
     E_taylor = taylor_closure(H, Gv, v0, v1, w0)
 
@@ -92,5 +114,5 @@ def cubic_displ_for_geom(geom, dE=-5e-4):
     # Transition vector (imaginary mode) and corresponding eigenvalue
     v0 = v[:, 0]
     w0 = w[0]
-    Gv = third_deriv_fd(geom, v0)
-    return cubic_displ(H, v0, w0, Gv, dE=dE)
+    Gv, third_deriv_res = third_deriv_fd(geom, v0)
+    return cubic_displ(H, v0, w0, Gv, dE=dE), third_deriv_res
