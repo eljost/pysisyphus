@@ -41,6 +41,6 @@ def save_third_deriv(h5_fn, geom, third_deriv_result, H_mw):
         for key, value in third_deriv_result._asdict().items():
             handle.create_dataset(key, data=value)
 
-        handle.create_dataset("atoms", data=geom.atoms)
         handle.create_dataset("masses", data=geom.masses)
         handle.create_dataset("H_mw", data=H_mw)
+        handle.attrs["atoms"] = [atom.lower() for atom in geom.atoms]
