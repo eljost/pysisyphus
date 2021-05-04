@@ -19,9 +19,15 @@ def test_cubic_displ(anapot_ts):
     np.testing.assert_allclose(step_plus, ref_step_plus)
 
 
+@pytest.mark.parametrize(
+    "displ", [
+        "energy",
+        "energy_cubic",
+    ]
+)
 def test_irc_cubic_displ(displ, anapot_ts):
     irc_kwargs = {
-        "displ": "energy_cubic",
+        "displ": displ,
         "displ_energy": 1,
     }
     irc = EulerPC(anapot_ts, **irc_kwargs)
