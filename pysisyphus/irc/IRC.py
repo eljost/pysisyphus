@@ -321,7 +321,9 @@ class IRC:
 
             # Dump current coordinates to trj
             comment = f"{direction} IRC, step {self.cur_cycle}"
-            coords_str = make_xyz_str(self.atoms, self.coords.reshape((-1, 3)), comment)
+            coords_str = make_xyz_str(
+                self.atoms, BOHR2ANG * self.coords.reshape((-1, 3)), comment
+            )
             self.trj_handle.write(coords_str + "\n")
             self.trj_handle.flush()
 
