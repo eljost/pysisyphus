@@ -28,12 +28,5 @@ def test_tshessian_opts(opt_cls, ref_cur_cycle):
     assert opt.is_converged
     assert opt.cur_cycle == ref_cur_cycle
 
-    # cs = np.array(opt.coords)
     # calc = geom.calculator
-    # calc.plot()
-    # ax = calc.ax
-    # ax.plot(*cs.T[:2], "o-")
-    # plt.show()
-
-if __name__ == "__main__":
-    test_tshessian_opts()
+    # calc.plot_opt(opt, show=True)
