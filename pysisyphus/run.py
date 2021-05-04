@@ -953,104 +953,6 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
 def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     print(highlight_text(f"Optimizing IRC ends"))
 
-    # Gather geometries that shall be optimized
-    to_opt = list()
-    if irc.forward:
-        coords = irc.all_coords[0]
-        to_opt.append((coords, "forward_end"))
-    if irc.backward:
-        coords = irc.all_coords[-1]
-        to_opt.append((coords, "backward_end"))
-    if irc.downhill:
-        coords = irc.all_coords[-1]
-        to_opt.append((coords, "downhill_end"))
-
-    def to_frozensets(sets):
-        return [frozenset(_) for _ in sets]
-
-    separate_fragments = endopt_kwargs.pop("fragments", False)
-    # Convert to array for easy indexing with the fragment lists
-    atoms = np.array(geom.atoms)
-    fragments_to_opt = list()
-    for coords, base_name in to_opt:
-        c3d = coords.reshape(-1, 3)
-        if separate_fragments:
-            bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
-            # Sort atom indices, so the atoms don't become totally scrambled.
-            fragments = [sorted(frag) for frag in merge_sets(bond_sets)]
-            # Disable higher fragment counts. I'm looking forward to the day
-            # this ever occurs and someone complains :)
-            assert len(fragments) < 10, "Something probably went wrong"
-            fragment_names = [
-                f"{base_name}_frag{i:03d}" for i, _ in enumerate(fragments)
-            ]
-            print(f"Found {len(fragments)} fragment(s) at {base_name}")
-            for frag_name, frag in zip(fragment_names, fragments):
-                print(f"\t{frag_name}: {len(frag)} atoms")
-        # Optimize the full geometries, without splitting them into fragments
-        else:
-            # Atom indices of the fragment atoms
-            fragments = [
-                range(len(atoms)),
-            ]
-            fragment_names = [
-                base_name,
-            ]
-        fragment_atoms = [tuple(atoms[list(frag)]) for frag in fragments]
-        fragment_coords = [c3d[frag].flatten() for frag in fragments]
-        fragments_to_opt.extend(
-            list(zip(fragment_names, fragment_atoms, fragment_coords))
-        )
-        print()
-    to_opt = fragments_to_opt
-
-    geom_kwargs = endopt_kwargs.pop("geom")
-    coord_type = geom_kwargs.pop("type")
-    freeze_atoms = geom_kwargs.get("freeze_atoms", None)
-    opt_geoms = list()
-    opt_fns = list()
-    for name, atoms, coords in to_opt:
-        geom = Geometry(
-            atoms,
-            coords,
-            coord_type=coord_type,
-            coord_kwargs=geom_kwargs,
-            freeze_atoms=freeze_atoms,
-        )
-
-        def wrapped_calc_getter():
-            calc = calc_getter()
-            calc.base_name = name
-            return calc
-
-        opt_kwargs = endopt_kwargs.copy()
-        opt_kwargs.update(
-            {
-                "prefix": name,
-                "h5_group_name": name,
-                "dump": True,
-            }
-        )
-        _, opt = run_opt(
-            geom,
-            wrapped_calc_getter,
-            endopt_key,
-            opt_kwargs,
-            title=f"{name} Optimization",
-        )
-        opt_fn = f"{name}_opt.xyz"
-        shutil.move(opt.final_fn, opt_fn)
-        print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
-        print()
-        opt_geoms.append(geom)
-        opt_fns.append(opt_fn)
-    print()
-    return opt_geoms, opt_fns
-
-
-def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
-    print(highlight_text(f"Optimizing IRC ends"))
-
     # Gather geometries that shall be optimized and appropriate keys.
     to_opt = list()
     if irc.forward:
@@ -1691,6 +1593,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
             do_thermo = run_dict["endopt"].get("do_hess", False)
+            T = run_dict["endopt"]["T"]
             endopt_geoms, endopt_fns = run_endopt(
                 geom, irc, endopt_key, endopt_kwargs, calc_getter
             )
@@ -1733,6 +1636,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                     left_fns=left_fns,
                     right_fns=right_fns,
                     do_thermo=do_thermo,
+                    T=T,
                 )
             else:
                 print("Barriers with IRC hessian_init != 'calc' not yet implemented!")
