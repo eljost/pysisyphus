@@ -94,18 +94,44 @@ def third_deriv_fd(geom, vec, ds=0.001):
 
 
 def cubic_displ(H, v0, w0, Gv, dE):
+    """
+    According to Eq. (26) in [2] v1 does not depend on the sign of v0.
+        v1 = (F0 - 2v0^T F0 v0 I)⁻¹ x ([G0v0] - v0^T [G0v0] v0 I) v0
+    The first term is obviously independent of v0's sign. Using v0' = -v0 the
+    second term becomes
+        ([G0v0'] - v0'^T [G0v0'] v0' I) v0'
+        (-[G0v0] - v0^T [G0v0'] v0 I) v0'
+        (-[G0v0] + v0^T [G0v0] v0 I) v0'
+        -(-[G0v0] + v0^T [G0v0] v0 I) v0
+        ([G0v0] - v0^T [G0v0] v0 I) v0
+    Strictly speaking the contraction [G0v0] should depend on the sign of v0.
+    In the current implementation, the direction of v0 is not taken into account,
+    but
+        get_curv_vec(H, Gv, v0, w0) == get_curv_vec(H, -Gv, -v0, w0) .
+    But somehow the Taylor expansion gives bogus results when called with -Gv and -v0...
+    """
+
     assert dE < 0.0, "Supplied dE={dE:.6f} is positive but it must be negative!"
-    assert w0 < 0.0, \
-        "Expected first eigenvalue to be negative but it is w0={w0:.6e}!"
+    assert w0 < 0.0, "Expected first eigenvalue to be negative but it is w0={w0:.6e}!"
+
     v1 = get_curv_vec(H, Gv, v0, w0)
     E_taylor = taylor_closure(H, Gv, v0, v1, w0)
 
     def func(ds):
         return E_taylor(ds) - dE
 
-    ds, rr = bisect(func, 0, 1, full_output=True)
-    step = ds * v0 + ds ** 2 * v1 / 2
-    return step
+    def bisect_(a, b):
+        return bisect(func, a=a, b=b, full_output=True)
+
+    ds_plus, rr_plus = bisect_(0, 1)
+    ds_minus, rr_minus = bisect_(0, -1)
+
+    def step(ds):
+        return ds * v0 + ds ** 2 * v1 / 2
+
+    step_plus = step(ds_plus)
+    step_minus = step(ds_minus)
+    return step_plus, step_minus
 
 
 def cubic_displ_for_h5(h5_fn, dE=-5e-4):
@@ -129,6 +155,5 @@ def cubic_displ_for_geom(geom, dE=-5e-4):
     v0 = v[:, 0]
     w0 = w[0]
     Gv, third_deriv_res = third_deriv_fd(geom, v0)
-    return cubic_displ(H, v0, w0, Gv, dE=dE), third_deriv_res
-    # with h5py.File(open
-    cubic_displ
+    step_plus, step_minus = cubic_displ(H, v0, w0, Gv, dE=dE)
+    return step_plus, step_minus, third_deriv_res

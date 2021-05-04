@@ -176,8 +176,12 @@ class IRC:
             return
 
         # Do inital displacement from the TS
-        init_factor = 1 if (direction == "forward") else -1
-        initial_step = init_factor * self.init_displ
+        if direction == "forward":
+            initial_step = self.init_displ_plus
+        elif direction == "backward":
+            initial_step = self.init_displ_minus
+        else:
+            raise Exception("Invalid direction='{direction}'!")
         self.coords = self.ts_coords + initial_step
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(
@@ -185,12 +189,27 @@ class IRC:
         )
 
     def initial_displacement(self):
-        """Returns a non-mass-weighted step in angstrom for an initial
-        displacement from the TS along the transition vector.
+        """Returns non-mass-weighted steps in +s and -s direction
+        for initial displacement from the TS. Earlier version only
+        returned one step, that was later multiplied by either 1 or -1,
+        depending on the desired IRC direction (forward/backward).
+        The current implementation directly returns two steps for forward
+        and backward direction. Whereas for plus and minus steps for
+        displ 'length' and displ 'energy'
+            step_plus = -step_minus
+        is valid, it is not valid for dipsl 'energy_cubic' anymore. The
+        latter step is formed as
+            x(ds) = ds * v0 + ds**2 * v1
+        so
+            x(ds) != -x(ds)
+        as
+            ds * v0 + ds**2 * v1 != -ds * v0 - ds**2 * v1 .
+
+        So, all required step are formed directly and later used as appropriate.
 
         See
-            https://aip.scitation.org/doi/pdf/10.1063/1.454172?class=pdf
-        and
+            https://aip.scitation.org/doi/pdf/10.1063/1.454172
+            https://pubs.acs.org/doi/10.1021/j100338a027
             https://aip.scitation.org/doi/pdf/10.1063/1.459634
         """
         mm_sqr_inv = self.geometry.mm_sqrt_inv
@@ -218,7 +237,8 @@ class IRC:
             mw_step = np.zeros_like(self.transition_vector)
         elif self.displ == "length":
             msg = "Using length-based initial displacement from the TS."
-            mw_step = self.displ_length * mw_trans_vec
+            mw_step_plus = self.displ_length * mw_trans_vec
+            mw_step_minus = -mw_step_plus
         elif self.displ == "energy":
             # Calculate the length of the initial step away from the TS to initiate
             # the IRC/MEP. We assume a quadratic potential and calculate the
@@ -233,23 +253,25 @@ class IRC:
             # This calculation is derived from the mass-weighted hessian, so we
             # have to multiply this step length with the mass-weighted
             # mode and un-weigh it.
-            mw_step = step_length * mw_trans_vec
+            mw_step_plus = step_length * mw_trans_vec
+            mw_step_minus = -mw_step_plus
         elif self.displ == "energy_cubic":
             Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
             h5_fn = self.get_path_for_fn("third_deriv.h5")
             save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
-            mw_step = cubic_displ(
+            mw_step_plus, mw_step_minus = cubic_displ(
                 mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
             )
             msg = "Energy-based initial displacement from the TS using 3rd derivatives."
         else:
             raise Exception(f"self.displ={self.displ} is invalid!")
 
-        step = mw_step / self.m_sqrt
+        step_plus = mw_step_plus / self.m_sqrt
+        step_minus = mw_step_minus / self.m_sqrt
         self.log(msg)
-        print(f"Norm of initial displacement step: {np.linalg.norm(step):.4f}")
-        self.log("")
-        return step
+        # print(f"Norm of initial displacement step: {np.linalg.norm(step):.4f}")
+        # self.log("")
+        return step_plus, step_minus
 
     def get_conv_fact(self, mw_grad, min_fact=2.0):
         # Numerical integration of differential equations requires a step length and/or
@@ -451,7 +473,7 @@ class IRC:
         # non-stationary point (with non-vanishing gradient) depends on the
         # actual IRC integrator (e.g. EulerPC and LQA need a Hessian).
         if not self.downhill:
-            self.init_displ = self.initial_displacement()
+            self.init_displ_plus, self.init_displ_minus = self.initial_displacement()
 
         if self.forward:
             print("\n" + highlight_text("IRC - Forward") + "\n")
