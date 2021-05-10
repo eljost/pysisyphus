@@ -16,7 +16,10 @@ except ModuleNotFoundError:
 
 class Composite(Calculator):
     def __init__(self, final, keys_calcs=None, from_dict=None, **kwargs):
+        # Either directly supply a dictionary with Calculator objects (key_calcs)
+        # or a dictionary containing information to set up calculators.
         assert keys_calcs or from_dict
+
         super().__init__(**kwargs)
 
         if from_dict:
