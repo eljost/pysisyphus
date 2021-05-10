@@ -563,9 +563,12 @@ def run_calculations(
     print()
 
     for geom, results in zip(geoms, all_results):
-        geom.set_results(results)
+        try:
+            geom.set_results(results)
+        except KeyError:
+            pass
 
-    return geoms
+    return geoms, all_results
 
 
 def run_stocastic(stoc):
@@ -1267,8 +1270,8 @@ RunResult = namedtuple(
         "end_geoms irc irc_geom "
         "mdp_result "
         "opt_geom opt "
-        "calced_geoms stocastic "
-        "calc_getter "
+        "calced_geoms calced_results "
+        "stocastic calc_getter "
     ),
 )
 
@@ -1586,7 +1589,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
             mdp_result = run_mdp(geom, calc_getter, mdp_kwargs)
     # Fallback when no specific job type was specified
     else:
-        calced_geoms = run_calculations(
+        calced_geoms, calced_results = run_calculations(
             geoms, calc_getter, yaml_dir, calc_key, calc_kwargs, scheduler
         )
 
