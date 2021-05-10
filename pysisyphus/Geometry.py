@@ -112,6 +112,7 @@ class Geometry:
         isotopes=None,
         freeze_atoms=None,
         comment="",
+        name="",
     ):
         """Object representing atoms in a coordinate system.
 
@@ -143,6 +144,8 @@ class Geometry:
             Specifies which atoms should remain fixed at their initial positions.
         comment : str, optional
             Comment string.
+        name : str, optional
+            Verbose name of the geometry, e.g. methanal or water. Used for printing
         """
         self.atoms = atoms
         # self._coords always holds cartesian coordinates.
@@ -184,6 +187,7 @@ class Geometry:
         else:
             self.internal = None
         self.comment = comment
+        self.name = name
 
         self._masses = None
         self._energy = None
@@ -1112,7 +1116,10 @@ class Geometry:
         return f"Geometry({self.sum_formula}, {len(self.atoms)} atoms)"
 
     def __str__(self):
-        return f"Geometry({self.sum_formula})"
+        name = ""
+        if self.name:
+            name = f"{self.name}, "
+        return f"Geometry({name}{self.sum_formula})"
 
     def __repr__(self):
         return self.__str__()
