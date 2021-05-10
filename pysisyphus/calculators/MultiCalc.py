@@ -9,6 +9,13 @@ CALC_CLASSES = {
     "xtb": XTB.XTB,
 }
 
+try:
+    from pysisyphus.calculators import PySCF
+
+    CALC_CLASSES["pyscf"] = PySCF.PySCF
+except ModuleNotFoundError:
+    pass
+
 
 def calcs_from_dict(calc_dict, base_name, charge, mult, pal, mem):
     keys_calcs = {}
@@ -34,6 +41,9 @@ class MultiCalc(Calculator):
     def __init__(self, calcs, **kwargs):
         super().__init__(**kwargs)
 
+        self.do_hess = {
+            key: calc_dict.pop("do_hess", False) for key, calc_dict in calcs.items()
+        }
         self.keys_calcs = calcs_from_dict(
             calcs, self.base_name, self.charge, self.mult, self.pal, self.mem
         )
@@ -41,12 +51,19 @@ class MultiCalc(Calculator):
         self.max_fmt = f" >{max_len+2}"
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
+        all_results = {}
         for name, calc in self.keys_calcs.items():
+            if self.do_hess[name]:
+                run_func = calc.get_hessian
+            else:
+                run_func = calc.run_calculation
+            key = f"{self.base_name}_{name}"
             print(f"Running {name:{self.max_fmt}} ... ", end="")
             start = time.time()
-            results = calc.run_calculation(atoms, coords, **prepare_kwargs)
+            results = run_func(atoms, coords, **prepare_kwargs)
             end = time.time()
             duration = end - start
             print(f"took {duration:.0f} s.")
             sys.stdout.flush()
-        return {}
+            all_results[key] = results
+        return all_results
