@@ -13,7 +13,7 @@ def test_ch4_composite(this_dir):
     geom = geom_loader(this_dir / "00_ch4.xyz")
 
     calc_kwargs = {
-        "from_dict": {
+        "calcs": {
             "ccsdt": {
                 "type": "orca",
                 "keywords": "ccsd(t) 6-31G(d) tightscf",
@@ -48,7 +48,7 @@ def test_composite_run_dict(this_dir):
         },
         "calc": {
             "type": "composite",
-            "from_dict": {
+            "calcs": {
                 "high": {
                     "type": "pyscf",
                     "basis": "321g",

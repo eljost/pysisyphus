@@ -9,20 +9,21 @@ CALC_CLASSES = {
 }
 try:
     from pysisyphus.calculators import PySCF
+
     CALC_CLASSES["pyscf"] = PySCF.PySCF
 except ModuleNotFoundError:
     pass
 
 
 class Composite(Calculator):
-    def __init__(self, final, keys_calcs=None, from_dict=None, **kwargs):
+    def __init__(self, final, keys_calcs=None, calcs=None, **kwargs):
         # Either directly supply a dictionary with Calculator objects (key_calcs)
         # or a dictionary containing information to set up calculators.
-        assert keys_calcs or from_dict
+        assert keys_calcs or calcs
 
         super().__init__(**kwargs)
 
-        if from_dict:
+        if calcs:
             keys_calcs = {}
             calc_kwargs_ = {
                 "charge": self.charge,
@@ -30,7 +31,7 @@ class Composite(Calculator):
                 "pal": self.pal,
                 "mem": self.mem,
             }
-            for i, (key, kwargs) in enumerate(from_dict.items()):
+            for i, (key, kwargs) in enumerate(calcs.items()):
                 calc_kwargs = calc_kwargs_.copy()
                 calc_kwargs["calc_number"] = i
                 calc_kwargs["base_name"] = f"composite_{key}"
@@ -49,7 +50,9 @@ class Composite(Calculator):
         subst = self.final
         energies = {}
         for key, calc in self.keys_calcs.items():
-            energy = calc.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)["energy"]
+            energy = calc.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)[
+                "energy"
+            ]
             energies[key] = energy
 
         final_energy = sympify(subst).subs(energies).evalf()
