@@ -74,6 +74,7 @@ CALC_DICT = {
     "g16": Gaussian16,
     "ipiserver": IPIServer,
     "mopac": MOPAC,
+    "multi": MultiCalc,
     "oniom": ONIOM,
     "openmolcas": OpenMolcas,
     "orca": ORCA,
@@ -519,14 +520,14 @@ def run_tsopt_from_cos(
 def run_calculations(
     geoms, calc_getter, path, calc_key, calc_kwargs, scheduler=None, assert_track=False
 ):
-    print("Running calculations")
+    print(highlight_text("Running calculations"))
 
     def par_calc(geom):
-        results = geom.calculator.run_calculation(geom.atoms, geom.coords)
-        return results
+        return geom.calculator.run_calculation(geom.atoms, geom.coords)
 
     for geom in geoms:
         geom.set_calculator(calc_getter())
+
     if assert_track:
         assert all(
             [geom.calculator.track for geom in geoms]
@@ -538,111 +539,33 @@ def run_calculations(
         all_results = client.gather(results_futures)
     else:
         all_results = list()
+        i_fmt = "02d"
         for i, geom in enumerate(geoms):
+            print(highlight_text(f"Calculation {i:{i_fmt}}", level=1))
+
             start = time.time()
+            print(geom)
             results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
             all_results.append(results)
-            if i < (len(geoms) - 2):
+            if i < (len(geoms) - 1):
                 try:
                     cur_calculator = geom.calculator
                     next_calculator = geoms[i + 1].calculator
                     next_calculator.set_chkfiles(cur_calculator.get_chkfiles())
+                    msg = f"Set chkfiles on calculator {i:{i_fmt}}"
                 except AttributeError:
-                    print("Calculators don't support set/get_chkfiles!")
+                    msg = "Calculator does not support set/get_chkfiles!"
+                print(msg)
             end = time.time()
             diff = end - start
-            print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
+            print(f"Calculation took {diff:.1f} s.\n")
             sys.stdout.flush()
+    print()
+
     for geom, results in zip(geoms, all_results):
         geom.set_results(results)
+
     return geoms
-
-
-# def get_overlapper(run_dict):
-# try:
-# calc_key = run_dict["calc"].pop("type")
-# except KeyError:
-# print("Creating Overlapper without calc_key.")
-# calc_key = None
-# calc_kwargs = run_dict["calc"]
-# cwd = Path(".")
-# ovlp_with = run_dict["overlaps"]["ovlp_with"]
-# prev_n = run_dict["overlaps"]["prev_n"]
-# overlapper = Overlapper(cwd, ovlp_with, prev_n, calc_key, calc_kwargs)
-# return overlapper
-
-
-# def restore_calculators(run_dict):
-# overlapper = get_overlapper(run_dict)
-
-# cwd = Path(".")
-# glob = run_dict["overlaps"]["glob"]
-# regex = run_dict["overlaps"]["regex"]
-# # First try globbing
-# if glob:
-# paths = natsorted([p for p in cwd.glob(glob)])
-# if len(paths) == 0:
-# raise Exception("Couldn't find any paths! Are you sure that your "
-# f"glob '{glob}' is right?")
-# xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
-# geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-# if regex:
-# mobjs = [re.search(regex, str(path)) for path in paths]
-# calc_numbers = [int(mobj[1]) for mobj in mobjs]
-# assert len(calc_numbers) == len(paths)
-# else:
-# calc_numbers = range(len(paths))
-# [overlapper.set_files_from_dir(geom, path, calc_number)
-# for calc_number, geom, path in zip(calc_numbers, geoms, paths)]
-# else:
-# # Otherwise check if geometries are defined in the run_dict
-# if run_dict["xyz"]:
-# geoms = get_geoms(run_dict["xyz"])
-# else:
-# # Else resort to globbing arbitrary xyz files
-# xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
-# geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-# # geoms = geoms[:2]
-# calc_num = overlapper.restore_calculators(geoms)
-# geoms = geoms[:calc_num]
-# return overlapper, geoms
-
-
-# def overlaps(run_dict, geoms=None):
-# pickle_path = Path("pickles")
-# if pickle_path.is_file() and confirm_input("Load pickled geoms?"):
-# with open(pickle_path, "rb") as handle:
-# overlapper, *geoms = cloudpickle.load(handle)
-# print(f"Loaded overlap and {len(geoms)} from {str(pickle_path)}.")
-# else:
-# if not geoms:
-# overlapper, geoms = restore_calculators(run_dict)
-# else:
-# overlapper = get_overlapper(run_dict)
-
-# to_pickle = [overlapper] + geoms
-# with open(pickle_path, "wb") as handle:
-# cloudpickle.dump(to_pickle, handle)
-
-# ovlp_dict = run_dict["overlaps"]
-# ovlp_type = ovlp_dict["type"]
-# double_mol = ovlp_dict["ao_ovlps"]
-# recursive = ovlp_dict["recursive"]
-# consider_first = ovlp_dict["consider_first"]
-# skip = ovlp_dict["skip"]
-
-# if ovlp_type == "wf" and double_mol:
-# print("!"*10)
-# print("WFOverlaps with true AO overlaps seem faulty right now!")
-# print("!"*10)
-
-
-# overlapper.overlaps_for_geoms(geoms,
-# ovlp_type=ovlp_type,
-# double_mol=double_mol,
-# recursive=recursive,
-# consider_first=consider_first,
-# skip=skip,)
 
 
 def run_stocastic(stoc):
@@ -1188,7 +1111,7 @@ def get_defaults(conf_dict):
             "overachieve_factor": 3,
             "h5_group_name": "tsopt",
             "T": 298.15,
-            "prefix": "ts"
+            "prefix": "ts",
         }
 
     if "preopt" in conf_dict:
@@ -1421,20 +1344,24 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         last_calc_cycle = get_last_calc_cycle()
         run_dict["calc"]["last_calc_cycle"] = last_calc_cycle
 
+    ####################
+    # CALCULATOR SETUP #
+    ####################
+
     # Prepare calculator
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
-    # calc_getter_kwargs = {
-    # "base_name": "image",
-    # "calc_key": calc_key,
-    # "calc_kwargs": calc_kwargs,
-    # }
     iter_dict = None
     if calc_key == "oniom":
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
             "geom": iter(geoms),
+        }
+    elif calc_key == "multi":
+        geoms = get_geoms(xyz, quiet=True)
+        iter_dict = {
+            "base_name": iter([geom.name for geom in geoms]),
         }
     calc_getter = get_calc_closure(
         "calculator", calc_key, calc_kwargs, iter_dict=iter_dict
@@ -1491,9 +1418,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         ):
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         geom = COS_DICT[cos_key](geoms, **cos_kwargs)
-    else:
-        assert len(geoms) == 1
+    elif len(geoms) == 1:
         geom = geoms[0]
+    # else:
+    # assert len(geoms) == 1
+    # geom = geoms[0]
 
     if run_dict["stocastic"]:
         stoc_kwargs["calc_kwargs"] = calc_kwargs

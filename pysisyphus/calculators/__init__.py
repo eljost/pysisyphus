@@ -13,6 +13,7 @@ __all__ = [
     "IPIServer",
     "LennardJones",
     "MOPAC",
+    "MultiCalc",
     "ONIOM",
     "OpenMolcas",
     "ORCA",
@@ -35,6 +36,7 @@ from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.IPIServer import IPIServer
 from pysisyphus.calculators.LennardJones import LennardJones
+from pysisyphus.calculators.MultiCalc import MultiCalc
 from pysisyphus.calculators.MOPAC import MOPAC
 from pysisyphus.calculators.Psi4 import Psi4
 from pysisyphus.calculators.ONIOMv2 import ONIOM
