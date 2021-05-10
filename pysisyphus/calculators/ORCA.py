@@ -212,7 +212,7 @@ class ORCA(OverlapCalculator):
         results = self.run(inp, calc="hessian")
         return results
 
-    def run_calculation(self, atoms, coords):
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
         to execute ORCA with the stored cmd of this calculator."""
         inp = self.prepare_input(atoms, coords, "noparse")
