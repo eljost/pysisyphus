@@ -206,6 +206,12 @@ def read_geoms(
 ):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns]
+        names = [""]
+    # Dictionary with names as keys and fns as values.
+    elif isinstance(xyz_fns, dict):
+        names, xyz_fns = zip(*xyz_fns.items())
+    else:
+        names = [""] *  len(xyz_fns)
 
     geoms = list()
     geom_kwargs = {
@@ -222,33 +228,9 @@ def read_geoms(
         }
 
     for fn in xyz_fns:
-        if "*" in fn:
-            cwd = Path(".")
-            geom = [
-                geom_loader(xyz_fn, **geom_kwargs) for xyz_fn in natsorted(cwd.glob(fn))
-            ]
-        # Simplify this to use geom_loader...
-        elif fn.endswith(".xyz"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        elif fn.endswith(".trj"):
-            geom = geom_loader(fn, **geom_kwargs)
-        elif fn.endswith(".pdb"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        elif fn.endswith(".cjson"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        elif fn.endswith(".zmat"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        else:
-            continue
-        geoms.extend(geom)
+        # Valid for non-inline coordinates
+        if Path(fn).suffix:
+            geoms.extend(geom_loader(fn, iterable=True, **geom_kwargs))
 
     # Try to parse as inline xyz formatted string
     if len(geoms) == 0:
@@ -271,6 +253,10 @@ def read_geoms(
     if in_bohr:
         for geom in geoms:
             geom.coords *= BOHR2ANG
+
+    # Set names
+    for name, geom in zip(names, geoms):
+        geom.name = name
     return geoms
 
 
@@ -324,9 +310,9 @@ def get_geoms(
     atoms_0 = geoms[0].atoms
     atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
     atoms_0_str = atoms_strs[0]
-    assert all(
-        [atoms_str == atoms_0_str for atoms_str in atoms_strs]
-    ), "Atom ordering/numbering in the geometries is inconsistent!"
+    # assert all(
+        # [atoms_str == atoms_0_str for atoms_str in atoms_strs]
+    # ), "Atom ordering/numbering in the geometries is inconsistent!"
 
     # Dont try to align 1-atom species
     interpolate_align = interpolate_align and len(geoms[0].atoms) > 1
