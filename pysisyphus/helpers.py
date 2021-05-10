@@ -13,14 +13,22 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes, highlight_text
+from pysisyphus.helpers_pure import (
+    eigval_to_wavenumber,
+    report_isotopes,
+    highlight_text,
+)
 from pysisyphus.io import (
     geom_from_pdb,
     geom_from_cjson,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
 )
-from pysisyphus.thermo import can_thermoanalysis, get_thermoanalysis, print_thermoanalysis
+from pysisyphus.thermo import (
+    can_thermoanalysis,
+    get_thermoanalysis,
+    print_thermoanalysis,
+)
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
 
@@ -64,8 +72,18 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     return geoms
 
 
-def geom_loader(fn, coord_type="cart", **coord_kwargs):
+def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     fn = str(fn)
+    ext = Path(fn).suffix
+
+    funcs = {
+        ".xyz": geom_from_xyz_file,
+        ".trj": geoms_from_trj,
+        ".pdb": geom_from_pdb,
+        ".cjson": geom_from_cjson,
+        ".zmat": geom_from_zmat_fn,
+    }
+    assert ext in funcs, "Unknown filetype for '{fn}'!"
 
     if fn.startswith("lib:"):
         fn = str(THIS_DIR / "../xyz_files/" / fn[4:])
@@ -74,18 +92,14 @@ def geom_loader(fn, coord_type="cart", **coord_kwargs):
         "coord_type": coord_type,
     }
     kwargs.update(coord_kwargs)
-    if fn.endswith(".xyz"):
-        return geom_from_xyz_file(fn, **kwargs)
-    elif fn.endswith(".trj"):
-        return geoms_from_trj(fn, **kwargs)
-    elif fn.endswith(".pdb"):
-        return geom_from_pdb(fn, **kwargs)
-    elif fn.endswith(".cjson"):
-        return geom_from_cjson(fn, **kwargs)
-    elif fn.endswith(".zmat"):
-        return geom_from_zmat_fn(fn, **kwargs)
-    else:
-        raise Exception(f"Unknown filetype for '{fn}'!")
+    geom = funcs[ext](fn, **kwargs)
+
+    if iterable and (ext == ".trj"):
+        geom = tuple(geom)
+    elif iterable:
+        geom = (geom,)
+
+    return geom
 
 
 def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
@@ -407,8 +421,9 @@ FinalHessianResult = namedtuple(
 )
 
 
-def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix="",
-                     T=298.15):
+def do_final_hessian(
+    geom, save_hessian=True, write_imag_modes=False, prefix="", T=298.15
+):
     print(highlight_text("Hessian at final geometry", level=1))
     print()
 
