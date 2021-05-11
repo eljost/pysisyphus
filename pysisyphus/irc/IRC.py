@@ -248,7 +248,10 @@ class IRC:
             # dq = sqrt(dE*2/k)
             # See 10.1021/ja00295a002 and 10.1063/1.462674
             # 10.1002/jcc.540080808 proposes 3 kcal/mol as initial energy lowering
-            msg = "Using energy-based initial displacement from the TS."
+            msg = (
+                f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
+                "the TS using 2rd derivatives."
+            )
             step_length = np.sqrt(self.displ_energy * 2 / np.abs(min_eigval))
             # This calculation is derived from the mass-weighted hessian, so we
             # have to multiply this step length with the mass-weighted
@@ -262,7 +265,10 @@ class IRC:
             mw_step_plus, mw_step_minus = cubic_displ(
                 mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
             )
-            msg = "Energy-based initial displacement from the TS using 3rd derivatives."
+            msg = (
+                f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
+                "the TS using 3rd derivatives."
+            )
         else:
             raise Exception(f"self.displ={self.displ} is invalid!")
 
