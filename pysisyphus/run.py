@@ -54,6 +54,7 @@ from pysisyphus.intcoords.PrimTypes import PrimTypes
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
+from pysisyphus.io import save_hessian
 from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
 from pysisyphus.optimizers.hessian_updates import bfgs_update
@@ -546,6 +547,23 @@ def run_calculations(
             start = time.time()
             print(geom)
             results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+
+            hess_keys = [
+                key
+                for key, val in results.items()
+                if isinstance(val, dict) and "hessian" in val
+            ]
+            for hkey in hess_keys:
+                hres = results[hkey]
+                hfn = f"{hkey}_hessian.h5"
+                save_hessian(
+                    hfn,
+                    geom,
+                    cart_hessian=hres["hessian"],
+                    energy=hres["energy"],
+                )
+                print(f"Dumped hessian to '{hfn}'.")
+
             all_results.append(results)
             if i < (len(geoms) - 1):
                 try:
