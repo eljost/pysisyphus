@@ -59,11 +59,15 @@ class MultiCalc(Calculator):
                 run_func = calc.run_calculation
             key = f"{self.base_name}_{name}"
             print(f"Running {name:{self.max_fmt}} ... ", end="")
-            start = time.time()
-            results = run_func(atoms, coords, **prepare_kwargs)
-            end = time.time()
-            duration = end - start
-            print(f"took {duration:.0f} s.")
+            try:
+                start = time.time()
+                results = run_func(atoms, coords, **prepare_kwargs)
+                end = time.time()
+                duration = end - start
+                print(f"took {duration:.0f} s.")
+            except Exception as err:
+                print("\nCalculation failed!")
+                print(err)
             sys.stdout.flush()
             all_results[key] = results
         return all_results
