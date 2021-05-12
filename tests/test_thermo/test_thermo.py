@@ -14,7 +14,7 @@ def test_thermoanalysis(this_dir):
     thermo = get_thermoanalysis_from_hess_h5(this_dir / "h2o_hessian.h5")
 
     assert thermo.M == pytest.approx(18.01528)
-    assert thermo.dG == pytest.approx(0.002267160)
+    assert thermo.dG == pytest.approx(0.002267155)
 
 
 @pytest.fixture
