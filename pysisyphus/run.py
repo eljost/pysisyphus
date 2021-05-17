@@ -965,6 +965,9 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             coord_kwargs=geom_kwargs,
             freeze_atoms=freeze_atoms,
         )
+        initial_fn = f"{name}_initial.xyz"
+        with open(initial_fn, "w") as handle:
+            handle.write(geom.as_xyz())
 
         def wrapped_calc_getter():
             calc = calc_getter()
@@ -979,19 +982,23 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
                 "dump": True,
             }
         )
-        _, opt = run_opt(
-            geom,
-            wrapped_calc_getter,
-            endopt_key,
-            opt_kwargs,
-            title=f"{name} Optimization",
-        )
-        opt_fn = f"{name}_opt.xyz"
-        shutil.move(opt.final_fn, opt_fn)
-        print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
-        print()
-        opt_geoms.setdefault(key, list()).append(geom)
-        opt_fns.setdefault(key, list()).append(opt_fn)
+        try:
+            _, opt = run_opt(
+                geom,
+                wrapped_calc_getter,
+                endopt_key,
+                opt_kwargs,
+                title=f"{name} Optimization",
+            )
+            opt_fn = f"{name}_opt.xyz"
+            shutil.move(opt.final_fn, opt_fn)
+            print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
+            print()
+            opt_geoms.setdefault(key, list()).append(geom)
+            opt_fns.setdefault(key, list()).append(opt_fn)
+        except Exception as err:
+            print(f"Optimization failed!\n{err}")
+            return opt.geometry, opt
     print()
     return opt_geoms, opt_fns
 
