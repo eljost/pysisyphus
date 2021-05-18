@@ -19,8 +19,10 @@ def get_fh_logger(name, log_fn):
         fh = logging.FileHandler(log_fn, mode="w", delay=True)
         fh.setLevel(logging.DEBUG)
         # fmt_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        # fmt_str = "%(asctime)s - %(message)s"
         fmt_str = "%(asctime)s - %(message)s"
-        formatter = logging.Formatter(fmt_str)
+        datefmt = "%y-%m-%d %H:%M:%S"
+        formatter = logging.Formatter(fmt_str, datefmt=datefmt)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
         # Uncommented this for now as the host is already in the filename
