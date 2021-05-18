@@ -520,7 +520,7 @@ def test_composite_oniom(fn, mult, high_inds, ref_energy):
                 },
                 "high": {
                     "type": "composite",
-                    "from_dict": {
+                    "calcs": {
                         "ccsdt": {
                             "type": "orca",
                             "keywords": "ccsd(t) 6-31G(d) tightscf",

@@ -461,7 +461,7 @@ class Model:
 
 class ONIOM(Calculator):
     embeddings = {
-        None: "",
+        "": "",
         "electronic": "Electronic embedding",
         "electronic_rc": "Electronic embedding with charge redistribution",
     }
@@ -472,7 +472,7 @@ class ONIOM(Calculator):
         models,
         geom,
         layers=None,
-        embedding=None,
+        embedding="",
         real_key="real",
         use_link_atoms=True,
         *args,
