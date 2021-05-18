@@ -234,7 +234,7 @@ class IRC:
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
 
         if self.downhill:
-            mw_step = np.zeros_like(self.transition_vector)
+            mw_step_plus = mw_step_minus = np.zeros_like(self.transition_vector)
         elif self.displ == "length":
             msg = "Using length-based initial displacement from the TS."
             mw_step_plus = self.displ_length * mw_trans_vec
@@ -532,7 +532,6 @@ class IRC:
         pass
 
     def dump_ends(self, path, prefix, coords=None, trj=False):
-        path = Path(path)
         if coords is None:
             coords = self.all_mw_coords
         coords = coords.copy()

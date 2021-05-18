@@ -5,7 +5,6 @@ import re
 import sys
 
 import matplotlib.pyplot as plt
-from natsort import natsorted
 import numpy as np
 import rmsd as rmsd
 import yaml
@@ -309,7 +308,7 @@ def get_geoms(
 
     atoms_0 = geoms[0].atoms
     atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
-    atoms_0_str = atoms_strs[0]
+    # atoms_0_str = atoms_strs[0]
     # assert all(
         # [atoms_str == atoms_0_str for atoms_str in atoms_strs]
     # ), "Atom ordering/numbering in the geometries is inconsistent!"

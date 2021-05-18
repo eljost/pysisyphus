@@ -27,7 +27,6 @@ from pysisyphus.io import (
 from pysisyphus.thermo import (
     can_thermoanalysis,
     get_thermoanalysis,
-    print_thermoanalysis,
 )
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
@@ -417,7 +416,7 @@ def complete_fragments(atoms, fragments):
 
 FinalHessianResult = namedtuple(
     "FinalHessianResult",
-    "neg_eigvals eigvals nus imag_fns",
+    "neg_eigvals eigvals nus imag_fns thermo",
 )
 
 
@@ -478,14 +477,13 @@ def do_final_hessian(
 
     if can_thermoanalysis:
         thermo = get_thermoanalysis(geom, T=T)
-        # Disabled print for now, as this was already printed in the endopt-section.
-        # print_thermoanalysis(thermo, level=1)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,
         eigvals=eigvals,
         nus=eigval_to_wavenumber(eigvals),
         imag_fns=imag_fns,
+        thermo=thermo,
     )
     return res
 

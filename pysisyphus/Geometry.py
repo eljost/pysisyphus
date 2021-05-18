@@ -436,9 +436,9 @@ class Geometry:
                 # Update Cartesians of internal coordinate object and calculate
                 # new internals.
                 self.internal.coords3d = coords
+                # Determine new internal coordinates, so we can later calculate a
+                # step in internal coordinates.
                 coords = self.internal.coords
-                # Determine step in internal coordinates.
-                int_step = self.coords - coords
                 # Finally we also update the Cartesian coordinates of the Geometry object,
                 # so the subsequent sanity check does not fail. This also allows updating
                 # the coordiantes of atoms that are frozen. We set Geometry._coords directly,
