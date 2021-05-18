@@ -259,10 +259,10 @@ class PySCF(OverlapCalculator):
         return mo_coeffs, ci_coeffs, all_energies
 
     def parse_charges(self):
-        # Mulliken charges
         results = self.mf.analyze(with_meta_lowdin=False)
-
-        return results[0][1]
+        # Mulliken charges
+        charges = results[0][1]
+        return charges
 
     def get_chkfiles(self):
         return {
