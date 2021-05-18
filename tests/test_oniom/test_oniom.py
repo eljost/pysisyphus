@@ -553,3 +553,40 @@ def test_composite_oniom(fn, mult, high_inds, ref_energy):
     en = geom._energy
     print(f"{fn}: {en:.6f} au")
     assert geom._energy == pytest.approx(ref_energy)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "embedding, ref_energy",
+    [
+        ("electronic", -151.817564),
+        ("electronic_rc", -151.814822),
+    ],
+)
+def test_oniom_ee_charge_distribution(embedding, ref_energy):
+    geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
+
+    calcs = {
+        "high": {
+            "type": "pyscf",
+            "basis": "321g",
+            "verbose": 0,
+        },
+        "real": {
+            "type": "pyscf",
+            "basis": "sto3g",
+            "verbose": 0,
+        },
+    }
+    models = {
+        "high": {
+            "inds": [4, 5, 6],
+            "calc": "high",
+        },
+    }
+
+    oniom = ONIOM(calcs, models, geom, layers=None, embedding=embedding)
+    geom.set_calculator(oniom)
+
+    en = geom.energy
+    assert en == pytest.approx(ref_energy)
