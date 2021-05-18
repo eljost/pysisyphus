@@ -12,18 +12,30 @@ from pysisyphus.intcoords.valid import bend_valid
 
 logger = logging.getLogger("internal_coords")
 
+BOND_FACTOR = 1.3
 
-def find_bonds(geom, bond_factor=1.3):
-    atoms = [atom.lower() for atom in geom.atoms]
-    c3d = geom.coords3d
+
+def get_max_bond_dists(atoms, bond_factor, covalent_radii=None):
+    if covalent_radii is None:
+        cr = CR
+    else:
+        cr = {atom: covrad for atom, covrad in zip(atoms, covalent_radii)}
+
     unique_atoms = set(atoms)
     atom_pairs = it.combinations_with_replacement(unique_atoms, 2)
     max_bond_dists = {
-        frozenset((from_, to_)): bond_factor * (CR[from_] + CR[to_])
+        frozenset((from_, to_)): bond_factor * (cr[from_] + cr[to_])
         for from_, to_ in atom_pairs
     }
+    return max_bond_dists
 
-    cr = geom.covalent_radii
+
+def find_bonds(atoms, coords3d, covalent_radii, bond_factor=BOND_FACTOR):
+    atoms = [atom.lower() for atom in atoms]
+    c3d = coords3d
+    cr = covalent_radii
+
+    max_bond_dists = get_max_bond_dists(atoms, bond_factor, covalent_radii=cr)
     radii = bond_factor * (cr.copy() + max(cr))
     kdt = KDTree(c3d)
     res, dists = kdt.query_radius(c3d, radii, return_distance=True)
@@ -36,6 +48,43 @@ def find_bonds(geom, bond_factor=1.3):
             bonds_.append(frozenset((i, to_)))
     bonds = np.array([tuple((from_, to_)) for from_, to_ in set(bonds_)])
     return bonds
+
+
+def find_bonds_for_geom(geom, bond_factor=BOND_FACTOR):
+    return find_bonds(geom.atoms, geom.coords3d, geom.covalent_radii)
+
+
+def get_bond_vec_getter(
+    atoms, covalent_radii, bonds_for_inds, no_bonds_with=None, bond_factor=BOND_FACTOR
+):
+    max_bond_dists = get_max_bond_dists(
+        atoms, bond_factor, covalent_radii=covalent_radii
+    )
+    max_bond_dists_for_inds = [
+        [max_bond_dists[frozenset((atoms[ind], atom_))] * bond_factor for atom_ in atoms]
+        for ind in bonds_for_inds
+    ]
+    if no_bonds_with is None:
+        # List of empty lists
+        no_bonds_with = [[] * len(bonds_for_inds)]
+
+    # Set it to a negative value, so the calculated distance, which is always positive
+    # can't be smaller than this value.
+    for mbd, nbw in zip(max_bond_dists_for_inds, no_bonds_with):
+        mbd[nbw] = -1
+
+    def get_bond_vecs(coords):
+        coords3d = coords.reshape(-1, 3)
+        bond_vecs = list()
+        for ind, max_dists in zip(bonds_for_inds, max_bond_dists_for_inds):
+            distance_vecs = coords3d - coords3d[ind]
+            distances = np.linalg.norm(distance_vecs, axis=1)
+            # Set distance of atom 'ind' to a negative value, so we don't create
+            # a 'ind'-'ind' bond
+            distances[ind] = 10_000
+            bond_vecs.append(distance_vecs[distances <= max_dists])
+        return np.array(bond_vecs)
+    return get_bond_vecs
 
 
 def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
@@ -64,9 +113,9 @@ def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
     return [list(bend) for bend in bend_set]
 
 
-def find_bonds_bends(geom, bond_factor=1.3, min_deg=15, max_deg=175):
+def find_bonds_bends(geom, bond_factor=BOND_FACTOR, min_deg=15, max_deg=175):
     log(logger, "Starting detection of bonds and bends.")
-    bonds = find_bonds(geom, bond_factor=bond_factor)
+    bonds = find_bonds_for_geom(geom, bond_factor=bond_factor)
     log(logger, f"Found {len(bonds)} bonds.")
     bends = find_bends(geom.coords3d, bonds, min_deg=min_deg, max_deg=max_deg)
     log(logger, f"Found {len(bends)} bends.")
@@ -74,7 +123,7 @@ def find_bonds_bends(geom, bond_factor=1.3, min_deg=15, max_deg=175):
 
 
 @timed(logger)
-def find_bonds_bends_dihedrals(geom, bond_factor=1.3, min_deg=15, max_deg=175):
+def find_bonds_bends_dihedrals(geom, bond_factor=BOND_FACTOR, min_deg=15, max_deg=175):
     log(logger, f"Detecting bonds, bends and dihedrals for {len(geom.atoms)} atoms.")
     bonds, bends = find_bonds_bends(
         geom, bond_factor=bond_factor, min_deg=min_deg, max_deg=max_deg
