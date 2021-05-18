@@ -182,8 +182,12 @@ class Geometry:
             assert (
                 coords.size != 3
             ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            self.internal = coord_class(atoms, self.coords3d.copy(),
-                                        freeze_atoms=self.freeze_atoms, **coord_kwargs)
+            self.internal = coord_class(
+                atoms,
+                self.coords3d.copy(),
+                freeze_atoms=self.freeze_atoms,
+                **coord_kwargs,
+            )
         else:
             self.internal = None
         self.comment = comment
@@ -392,28 +396,64 @@ class Geometry:
             1d array holding the current coordinates.
         """
         if self.internal:
-            return self.internal.coords
-        return self._coords
+            coords = self.internal.coords
+        else:
+            # self._coords will always hold Cartesian coordinates.
+            coords = self._coords
+        return coords
 
-    @coords.setter
-    def coords(self, coords):
-        """Wrapper for saving coordinates internally.
+    def set_coord(self, ind, coord):
+        """Set a coordinate by index.
 
         Parameters
         ----------
-        coords : np.array
-            1d array containing atomic coordiantes. It's length
-            depends on the coordinate system.
+        ind : int
+            Index in of the coordinate to set in the self.coords array.
+        coord : float
+            Coordinate value.
         """
-        # Do the backtransformation from internal to cartesian.
+        assert (
+            self.coord_type == "cart" and len(self.freeze_atoms) == 0
+        ), "set_coord was not yet tested with coord_type != 'cart' and frozen atoms!"
+        self.coords[ind] = coord
+        self.clear()
+
+    def set_coords(self, coords, cartesian=False):
         coords = np.array(coords).flatten()
 
+        # Do Internal->Cartesian backtransformation if internal coordinates are used.
         if self.internal:
+            # When internal coordinates are employed it may happen, that the underlying
+            # Cartesian coordinates are updated, e.g. from the IPIServer calculator, which
+            # may yield different internal coordinates.
+            #
+            # Here we update the Cartesians of the internal coordinate object to the new
+            # values and calculate new internal coordinates, from which we can derive a step
+            # in internals.
+            if cartesian:
+                self.assert_cart_coords(coords)
+                cart_coords = coords.copy()
+                # Update Cartesians of internal coordinate object and calculate
+                # new internals.
+                self.internal.coords3d = coords
+                coords = self.internal.coords
+                # Determine step in internal coordinates.
+                int_step = self.coords - coords
+                # Finally we also update the Cartesian coordinates of the Geometry object,
+                # so the subsequent sanity check does not fail. This also allows updating
+                # the coordiantes of atoms that are frozen. We set Geometry._coords directly,
+                # instead of Geometry.cart_coords or Geometry.coords3d, to avoid an infinite
+                # recursion.
+                self._coords = cart_coords
+
+            # Sanity check, asserting that the cartesian coordinates of the
+            # Geometry object and the internal coordinate object are the same.
             np.testing.assert_allclose(self.coords3d, self.internal.coords3d)
 
             try:
                 int_step = coords - self.internal.coords
                 cart_step = self.internal.transform_int_step(int_step)
+                # From now on coords will always hold Cartesian coordinates!
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
                 invalid_inds = exception.invalid_inds
@@ -442,19 +482,6 @@ class Geometry:
         # have been performed yet.
         self.clear()
 
-    def set_coord(self, ind, coord):
-        """Set a coordinate by index.
-
-        Parameters
-        ----------
-        ind : int
-            Index in of the coordinate to set in the self.coords array.
-        coord : float
-            Coordinate value.
-        """
-        self.coords[ind] = coord
-        self.clear()
-
     def reset_coords(self, new_typed_prims):
         if self.coord_type == "cart":
             return
@@ -463,6 +490,18 @@ class Geometry:
         self.internal = coord_class(
             self.atoms, self.coords3d, typed_prims=new_typed_prims
         )
+
+    @coords.setter
+    def coords(self, coords):
+        """Wrapper for saving coordinates internally.
+
+        Parameters
+        ----------
+        coords : np.array
+            1d array containing atomic coordiantes. It's length
+            depends on the coordinate system.
+        """
+        self.set_coords(coords)
 
     @property
     def coords3d(self):
@@ -477,8 +516,7 @@ class Geometry:
 
     @coords3d.setter
     def coords3d(self, coords3d):
-        self._coords = coords3d.flatten()
-        self.clear()
+        self.set_coords(coords3d, cartesian=True)
 
     @property
     def cart_coords(self):
@@ -486,7 +524,7 @@ class Geometry:
 
     @cart_coords.setter
     def cart_coords(self, coords):
-        self._coords = coords
+        self.set_coords(coords, cartesian=True)
 
     @property
     def coords_by_type(self):
@@ -678,6 +716,16 @@ class Geometry:
             aligned, vecs = self.principal_axes_are_aligned()
             if aligned:
                 break
+
+    def reparametrize(self):
+        try:
+            # TODO: allow skipping the update
+            results = self.calculator.get_coords(self.atoms, self.cart_coords)
+            self.set_coords(results["coords"], cartesian=True)
+            reparametrized = True
+        except AttributeError:
+            reparametrized = False
+        return reparametrized
 
     @property
     def energy(self):

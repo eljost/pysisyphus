@@ -13,6 +13,8 @@ from pysisyphus.socket_helper import (
 
 
 class IPIServer(Calculator):
+    listen_kinds = ("coords", "energy", "forces", "hessian")
+
     def __init__(
         self,
         *args,
@@ -128,7 +130,7 @@ class IPIServer(Calculator):
         return results
 
     def listen_for(self, atoms, coords, kind="forces"):
-        assert kind in ("energy", "forces", "hessian")
+        assert kind in self.listen_kinds
 
         atom_num = len(atoms)
         coords_num = len(coords)
@@ -158,23 +160,39 @@ class IPIServer(Calculator):
 
         # Lets start talking
         send_msg("STATUS")
-        recv_msg(expect="READY")  # ready
-        send_msg("STATUS")
-        recv_msg(expect="READY")  # ready
-        send_msg("POSDATA")
-        # Send cell vectors, inverse cell vectors, number of atoms and coordinates
-        send_msg(EYE3, packed=True)  # cell vectors
-        send_msg(EYE3, packed=True)  # inverse cell vectors
-        send_msg(atom_num, fmt="int")
-        send_msg(coords, fmt="floats")
-        send_msg("STATUS")
-        recv_msg(expect="HAVEDATA")
-        if kind == "energy":
-            results = self.listen_for_energy()
-        elif kind == "forces":
-            results = self.listen_for_forces(atom_num)
-        elif kind == "hessian":
-            results = self.listen_for_hessian(atom_num)
+        recv_msg(expect="READY")
+
+        # This path handles a coordinate update through the client.
+        if kind == "coords":
+            send_msg("NEEDPOS")
+            # TODO: allow skipping the update
+            recv_msg(expect="HAVEPOS")
+            # Send current atom number and coordinates
+            send_msg(atom_num, fmt="int")
+            send_msg(coords, fmt="floats")
+            # Receive atom number and potentially modified coordinates from the client.
+            self.listen_for_client_atom_num(atom_num)
+            new_coords = recv_msg(atom_num * 3 * 8, fmt="floats")
+            results = {"coords": np.array(new_coords)}
+        # The path below leads to sending of coordinates and calculation of
+        # energy and maybe its derivatives by the client.
+        else:
+            send_msg("STATUS")
+            recv_msg(expect="READY")
+            send_msg("POSDATA")
+            # Send cell vectors, inverse cell vectors, number of atoms and coordinates
+            send_msg(EYE3, packed=True)  # cell vectors
+            send_msg(EYE3, packed=True)  # inverse cell vectors
+            send_msg(atom_num, fmt="int")
+            send_msg(coords, fmt="floats")
+            send_msg("STATUS")
+            recv_msg(expect="HAVEDATA")
+            if kind == "energy":
+                results = self.listen_for_energy()
+            elif kind == "forces":
+                results = self.listen_for_forces(atom_num)
+            elif kind == "hessian":
+                results = self.listen_for_hessian(atom_num)
         return results
 
     def retried_listen_for(self, atoms, coords):
@@ -205,6 +223,9 @@ class IPIServer(Calculator):
     # result = self.retried_listen_for(atoms, coords)
     # else:
     # result = self.listen_for(atoms, coords)
+
+    def get_coords(self, atoms, coords):
+        return self.listen_for(atoms, coords, kind="coords")
 
     def get_forces(self, atoms, coords):
         return self.listen_for(atoms, coords, kind="forces")

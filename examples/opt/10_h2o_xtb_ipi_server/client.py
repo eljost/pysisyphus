@@ -33,10 +33,22 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
     counter = 0
     while True:
         try:
-            # The server initiates everything with a STATUS
-            recv_msg(expect="STATUS")
+            # Lets start talking
+            recv_msg(expect="STATUS")  # The server initiates with a STATUS
             send_msg("READY")
+
             status = recv_msg(expect="STATUS")
+            if status == "NEEDPOS":
+                assert coords.size % 3 == 0  # Assert Cartesian coordinates
+                send_msg("HAVEPOS")
+                _ = recv_msg(4, fmt="int")[0]  # Recive atom num from IPI
+                coords = np.array(recv_msg(floats_bytes, "floats"))  # Receive current coords
+                send_msg(atom_num, "int")
+                # Just send back the current coordinates or translate all atoms in +X
+                coords.reshape(-1, 3)[:, 0] += 1
+                send_msg(coords, "floats")
+                continue
+
             # When the optimization converged EXIT will be returned .. not documented!
             if status == "EXIT":
                 print("Exited!")
