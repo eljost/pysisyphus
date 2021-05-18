@@ -488,6 +488,8 @@ class ONIOM(Calculator):
 
         super().__init__(*args, **kwargs)
 
+        if embedding is None:
+            embedding = ""
         assert (
             embedding in self.embeddings.keys()
         ), f"Valid embeddings are: {self.embeddings.keys()}"
