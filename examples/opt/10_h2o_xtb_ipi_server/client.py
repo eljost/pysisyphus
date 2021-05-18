@@ -39,10 +39,10 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
 
             status = recv_msg(expect="STATUS")
             if status == "NEEDPOS":
-                assert coords.size % 3 == 0  # Assert Cartesian coordinates
                 send_msg("HAVEPOS")
                 _ = recv_msg(4, fmt="int")[0]  # Recive atom num from IPI
                 coords = np.array(recv_msg(floats_bytes, "floats"))  # Receive current coords
+                assert coords.size % 3 == 0  # Assert Cartesian coordinates
                 send_msg(atom_num, "int")
                 # Just send back the current coordinates or translate all atoms in +X
                 coords.reshape(-1, 3)[:, 0] += 1
