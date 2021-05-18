@@ -583,7 +583,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             cur_coords = self.geometry.coords
             prev_coords = self.coords[-1]
             if (
-                self.reparam_check_rms
+                self.is_cos
+                and self.reparam_check_rms
                 and reparametrized
                 and (cur_coords.size == prev_coords.size)
             ):
