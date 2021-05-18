@@ -87,6 +87,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         dump_restart=None,
         prefix="",
         reparam_thresh=1e-3,
+        reparam_check_rms=True,
         overachieve_factor=0.0,
         restart_info=None,
         check_coord_diffs=True,
@@ -107,6 +108,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.dump_restart = dump_restart
         self.prefix = f"{prefix}_" if prefix else prefix
         self.reparam_thresh = reparam_thresh
+        self.reparam_check_rms = reparam_check_rms
         self.overachieve_factor = float(overachieve_factor)
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
@@ -118,10 +120,12 @@ class Optimizer(metaclass=abc.ABCMeta):
             setattr(self, key, value)
 
         if self.thresh == "never":
-            max_cycles =  1_000_000_000
+            max_cycles = 1_000_000_000
             self.dump = False
-            self.log(f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
-                      "and disabled dumping!")
+            self.log(
+                f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
+                "and disabled dumping!"
+            )
         self.max_cycles = max_cycles
 
         # Setting some default values
@@ -575,7 +579,11 @@ class Optimizer(metaclass=abc.ABCMeta):
                 cur_coords = self.geometry.coords
                 prev_coords = self.coords[-1]
 
-                if reparametrized and (cur_coords.size == prev_coords.size):
+                if (
+                    self.reparam_check_rms
+                    and reparametrized
+                    and (cur_coords.size == prev_coords.size)
+                ):
                     self.log("Did reparametrization")
 
                     rms = np.sqrt(np.mean((prev_coords - cur_coords) ** 2))
