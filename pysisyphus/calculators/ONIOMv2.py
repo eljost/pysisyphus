@@ -463,7 +463,8 @@ class ONIOM(Calculator):
     embeddings = {
         "": "",
         "electronic": "Electronic embedding",
-        "electronic_rc": "Electronic embedding with charge redistribution",
+        "electronic_rc": "Electronic embedding with redistributed charges",
+        "electronic_rcd": "Electronic embedding with redistributed charges and dipoles",
     }
 
     def __init__(
@@ -744,15 +745,18 @@ class ONIOM(Calculator):
                     assert len(del_charge_inds) == len(
                         set(del_charge_inds)
                     ), "I did not think about cases like that yet!"
-                    rc_point_charges = list()
-                    for opi in only_parent_inds:
-                        if opi in del_charge_inds:
-                            continue
-                        rc_point_charges.append([*coords3d[opi], ee_charges[opi]])
-                    rc_point_charges = np.concatenate(
-                        (rc_point_charges, split_coords_charges), axis=0
+                    # Only keep charges that are not on link atom hosts/parents
+                    keep_mask = [
+                        opi for opi in only_parent_inds if opi not in del_charge_inds
+                    ]
+                    kept_point_charges = point_charges[keep_mask]
+
+                    # Join unmodified charges and redistributed charges
+                    point_charges = np.concatenate(
+                        (kept_point_charges, split_coords_charges), axis=0
                     )
-                    point_charges = rc_point_charges
+            elif (self.embedding == "electronic_rcd") and (i > 0):
+                pass
 
                 # Enable for debugging
                 if False and (i > 0) and (len(layer) == 1):
