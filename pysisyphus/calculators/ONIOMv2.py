@@ -459,6 +459,77 @@ class Model:
         return self.__str__()
 
 
+def get_embedding_charges(embedding, layer, parent_layer, coords3d):
+    # Only consider charges that belong to atoms in the parent
+    # layer. Otherwise this would result in additonal charges at
+    # the same positions as the atoms we would like to calculate.
+    if "electronic" in embedding:
+        assert (
+            len(parent_layer) == 1
+        ), "Multicenter ONIOM in intermediate layer is not supported!"
+        parent_model = parent_layer[0]
+        parent_inds = parent_model.atom_inds
+        charges, _ = parent_model.parse_charges()
+
+        layer_inds = set(*it.chain([model.atom_inds for model in layer]))
+        # Determine indices of atoms that are in the parent layer, but
+        # not in the current layer
+        only_parent_inds = list(set(parent_inds) - layer_inds)
+        ee_charges = charges[only_parent_inds]
+
+        point_charges = np.zeros((ee_charges.size, 4))
+        point_charges[:, :3] = coords3d[only_parent_inds]
+        point_charges[:, 3] = ee_charges
+
+    # Simple charge redistribution along bonds, connected to link atom host.
+    # See [5].
+    if embedding == "electronic_rc":
+        split_coords_charges = list()
+        del_charge_inds = list()
+        for model in layer:
+            # Determine bonds, connected to link parent.
+            link_host_bond_vecs = model.get_bond_vecs(coords3d)
+            # Determine link atoms
+            links = model.links
+            for link, bond_vecs in zip(links, link_host_bond_vecs):
+                parent_ind = link.parent_ind
+                # Presence of a link atom implies a bond.
+                assert len(bond_vecs) > 0
+                # *parent_coords, parent_charge = point_charges[link.parent_ind]
+                parent_charge = ee_charges[parent_ind]
+                parent_coords = coords3d[parent_ind]
+                bond_num = len(bond_vecs)
+                split_charge = parent_charge / bond_num
+                # Put modified charges halfway on the bonds
+                split_coords = parent_coords + bond_vecs / 2
+                split_coords_charges.extend(
+                    [(*coords, split_charge) for coords in split_coords]
+                )
+                del_charge_inds.append(parent_ind)
+            assert len(del_charge_inds) == len(
+                set(del_charge_inds)
+            ), "I did not think about cases like that yet!"
+            # Only keep charges that are not on link atom hosts/parents
+            keep_mask = [opi for opi in only_parent_inds if opi not in del_charge_inds]
+            kept_point_charges = point_charges[keep_mask]
+
+            # Join unmodified charges and redistributed charges
+            point_charges = np.concatenate(
+                (kept_point_charges, split_coords_charges), axis=0
+            )
+    elif embedding == "electronic_rcd":
+        pass
+
+    # Enable for debugging
+    if False and (i > 0) and (len(layer) == 1):
+        tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
+        tmp_atoms += ["X"] * len(point_charges)
+        tmp_coords = np.concatenate((tmp_coords, point_charges[:, :3]), axis=0)
+        geom = Geometry(tmp_atoms, tmp_coords)
+        geom.jmol()
+    return point_charges
+
+
 class ONIOM(Calculator):
     embeddings = {
         "": "",
@@ -691,96 +762,29 @@ class ONIOM(Calculator):
         self.log(f"{self.embeddings[self.embedding]} ONIOM calculation")
 
         all_results = list()
-        point_charges = None
         for i, layer in enumerate(self.layers):
-            # Only consider charges that belong to atoms in the parent
-            # layer. Otherwise this would result in additonal charges at
-            # the same positions as the atoms we would like to calculate.
-            if ("electronic" in self.embedding) and (i > 0):
+            if self.embedding and (i > 0):
                 parent_layer = self.layers[i - 1]
-                assert (
-                    len(parent_layer) == 1
-                ), "Multicenter ONIOM in intermediate layer is not supported!"
-                parent_model = parent_layer[0]
-                parent_inds = parent_model.atom_inds
-                charges, _ = parent_model.parse_charges()
-
-                layer_inds = set(*it.chain([model.atom_inds for model in layer]))
-                # Determine indices of atoms that are in the parent layer, but
-                # not in the current layer
-                only_parent_inds = list(set(parent_inds) - layer_inds)
-                ee_charges = charges[only_parent_inds]
-                ee_charge_sum = sum(ee_charges)
-
                 coords3d = coords.reshape(-1, 3)
-                point_charges = np.zeros((ee_charges.size, 4))
-                point_charges[:, :3] = coords3d[only_parent_inds]
-                point_charges[:, 3] = ee_charges
-
-            # Simple charge redistribution along bonds, connected to link atom host.
-            # See [5].
-            if (self.embedding == "electronic_rc") and (i > 0):
-                split_coords_charges = list()
-                del_charge_inds = list()
-                for model in layer:
-                    # Determine bonds, connected to link parent.
-                    link_host_bond_vecs = model.get_bond_vecs(coords3d)
-                    # Determine link atoms
-                    links = model.links
-                    for link, bond_vecs in zip(links, link_host_bond_vecs):
-                        parent_ind = link.parent_ind
-                        # Presence of a link atom implies a bond.
-                        assert len(bond_vecs) > 0
-                        # *parent_coords, parent_charge = point_charges[link.parent_ind]
-                        parent_charge = ee_charges[parent_ind]
-                        parent_coords = coords3d[parent_ind]
-                        bond_num = len(bond_vecs)
-                        split_charge = parent_charge / bond_num
-                        # Put modified charges halfway on the bonds
-                        split_coords = parent_coords + bond_vecs / 2
-                        split_coords_charges.extend(
-                            [(*coords, split_charge) for coords in split_coords]
-                        )
-                        del_charge_inds.append(parent_ind)
-                    assert len(del_charge_inds) == len(
-                        set(del_charge_inds)
-                    ), "I did not think about cases like that yet!"
-                    # Only keep charges that are not on link atom hosts/parents
-                    keep_mask = [
-                        opi for opi in only_parent_inds if opi not in del_charge_inds
-                    ]
-                    kept_point_charges = point_charges[keep_mask]
-
-                    # Join unmodified charges and redistributed charges
-                    point_charges = np.concatenate(
-                        (kept_point_charges, split_coords_charges), axis=0
-                    )
-            elif (self.embedding == "electronic_rcd") and (i > 0):
-                pass
-
-                # Enable for debugging
-                if False and (i > 0) and (len(layer) == 1):
-                    tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
-                    tmp_atoms += ["X"] * len(point_charges)
-                    tmp_coords = np.concatenate(
-                        (tmp_coords, point_charges[:, :3]), axis=0
-                    )
-                    geom = Geometry(tmp_atoms, tmp_coords)
-                    geom.jmol()
-
+                point_charges = get_embedding_charges(
+                    self.embedding, layer, parent_layer, coords3d
+                )
                 self.log(
                     f"Polarizing calculation in layer {i} ({layer}) by "
                     f"charges from layer {i-1} ({self.layers[i-1]})."
                 )
+                ee_charge_sum = point_charges[:, -1].sum()
                 self.log(f"sum(charges)={ee_charge_sum:.4f}")
+            else:
+                point_charges = None
 
             results = [
                 getattr(model, method)(atoms, coords, point_charges=point_charges)
                 for model in layer
             ]
             all_results.extend(results)
-        self.calc_counter += 1
 
+        self.calc_counter += 1
         return all_results
 
     def run_calculation(self, atoms, coords):
