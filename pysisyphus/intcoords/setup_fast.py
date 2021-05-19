@@ -76,17 +76,26 @@ def get_bond_vec_getter(
     for mbd, nbw in zip(max_bond_dists_for_inds, no_bonds_with):
         mbd[nbw] = -1
 
-    def get_bond_vecs(coords):
+    all_inds = np.arange(len(atoms))
+
+    def get_bond_vecs(coords, return_bonded_inds=False):
         coords3d = coords.reshape(-1, 3)
-        bond_vecs = list()
+        all_bond_vecs = list()
+        all_bonded_inds = list()
         for ind, max_dists in zip(bonds_for_inds, max_bond_dists_for_inds):
             distance_vecs = coords3d - coords3d[ind]
             distances = np.linalg.norm(distance_vecs, axis=1)
             # Set distance of atom 'ind' to a negative value, so we don't create
             # a 'ind'-'ind' bond
             distances[ind] = 10_000
-            bond_vecs.append(distance_vecs[distances <= max_dists])
-        return np.array(bond_vecs)
+            bond_mask = distances <= max_dists
+            all_bond_vecs.append(distance_vecs[bond_mask])
+            all_bonded_inds.append(all_inds[bond_mask])
+
+        if return_bonded_inds:
+            return all_bond_vecs, all_bonded_inds
+        else:
+            return all_bond_vecs
 
     return get_bond_vecs
 
