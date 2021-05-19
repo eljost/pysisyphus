@@ -61,10 +61,10 @@ def get_bond_vec_getter(
         atoms, bond_factor, covalent_radii=covalent_radii
     )
     max_bond_dists_for_inds = [
-        [
+        np.array([
             max_bond_dists[frozenset((atoms[ind], atom_))] * bond_factor
             for atom_ in atoms
-        ]
+        ])
         for ind in bonds_for_inds
     ]
     if no_bonds_with is None:

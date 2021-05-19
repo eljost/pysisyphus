@@ -241,7 +241,7 @@ class Model:
 
     def create_bond_vec_getters(self, atoms):
         link_parent_inds = [link.parent_ind for link in self.links]
-        no_bonds_with = [link.ind for link in self.links]
+        no_bonds_with = [[link.ind, ] for link in self.links]
         self.log(
             f"Model has {len(link_parent_inds)} link atom hosts: {link_parent_inds}"
         )
