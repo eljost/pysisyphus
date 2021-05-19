@@ -23,6 +23,7 @@ from pysisyphus.io import (
     geom_from_cjson,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
+    geoms_from_inline_xyz,
 )
 from pysisyphus.thermo import (
     can_thermoanalysis,
@@ -73,7 +74,7 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
 
 def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     fn = str(fn)
-    ext = Path(fn).suffix
+    ext = "" if "\n" in fn else Path(fn).suffix
 
     funcs = {
         ".xyz": geom_from_xyz_file,
@@ -81,6 +82,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".pdb": geom_from_pdb,
         ".cjson": geom_from_cjson,
         ".zmat": geom_from_zmat_fn,
+        "": geoms_from_inline_xyz,
     }
     assert ext in funcs, "Unknown filetype for '{fn}'!"
 
@@ -93,7 +95,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     kwargs.update(coord_kwargs)
     geom = funcs[ext](fn, **kwargs)
 
-    if iterable and (ext == ".trj"):
+    if iterable and (ext in (".trj", "")):
         geom = tuple(geom)
     elif iterable:
         geom = (geom,)

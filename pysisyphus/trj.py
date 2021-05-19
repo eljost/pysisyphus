@@ -210,7 +210,7 @@ def read_geoms(
     elif isinstance(xyz_fns, dict):
         names, xyz_fns = zip(*xyz_fns.items())
     else:
-        names = [""] *  len(xyz_fns)
+        names = [""] * len(xyz_fns)
 
     geoms = list()
     geom_kwargs = {
@@ -230,21 +230,6 @@ def read_geoms(
         # Valid for non-inline coordinates
         if Path(fn).suffix:
             geoms.extend(geom_loader(fn, iterable=True, **geom_kwargs))
-
-    # Try to parse as inline xyz formatted string
-    if len(geoms) == 0:
-        try:
-            atoms_coords = split_xyz_str(fn)
-            # We excpect the coordinates to be given in Angstrom
-            geoms = [
-                Geometry(atoms, coords / BOHR2ANG, **geom_kwargs)
-                for atoms, coords in atoms_coords
-            ]
-        except AssertionError:
-            raise Exception(
-                "Could not parse supplied 'xyz' values as either "
-                ".xyz, .trj or xyz-formatted string.!"
-            )
 
     # Original coordinates are in bohr, but pysisyphus expects them
     # to be in Angstrom, so right now they are already multiplied
@@ -310,7 +295,7 @@ def get_geoms(
     atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
     # atoms_0_str = atoms_strs[0]
     # assert all(
-        # [atoms_str == atoms_0_str for atoms_str in atoms_strs]
+    # [atoms_str == atoms_0_str for atoms_str in atoms_strs]
     # ), "Atom ordering/numbering in the geometries is inconsistent!"
 
     # Dont try to align 1-atom species
