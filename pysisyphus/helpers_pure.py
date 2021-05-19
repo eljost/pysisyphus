@@ -15,9 +15,9 @@ the constants module, but only from the stdlib and from third parties."""
 
 
 def eigval_to_wavenumber(ev):
-    conv = AU2J/(AMU2KG*BOHR2M**2)
+    conv = AU2J / (AMU2KG * BOHR2M ** 2)
 
-    return np.sign(ev) * np.sqrt(np.abs(ev)*conv)/(2*np.pi*3e10)
+    return np.sign(ev) * np.sqrt(np.abs(ev) * conv) / (2 * np.pi * 3e10)
 
 
 def hash_arr(arr, precision=4):
@@ -74,7 +74,6 @@ def remove_duplicates(seq):
 
 
 class OrderedEnum(Enum):
-
     def __ge__(self, other):
         if self.__class__ is other.__class__:
             return self.value >= other.value
@@ -105,7 +104,9 @@ def timed(logger):
             duration = end - start
             log(logger, f"Execution of '{func.__name__}' took {duration:.2f} s.")
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -146,6 +147,7 @@ def full_expand(to_expand):
 
 def file_or_str(*args):
     exts = args
+
     def inner_func(func):
         def wrapped(inp, *args, **kwargs):
             p = Path(inp)
@@ -202,3 +204,22 @@ def highlight_text(text, width=80, level=0):
         f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
     )
     return highlight
+
+
+def interpolate_colors(values, c1, c2, num=32):
+    """Expects two RGB colors c1 and c2."""
+    c_diff = c2 - c1
+    step = c_diff / (num - 1)
+    colors = (c1 + np.arange(num)[:, None] * step).astype(int)
+
+    # Map value interval onto interval range(num)
+    # y = m*x + n
+    val_min = values.min()
+    val_max = values.max()
+    val_diff = val_min - val_max
+    m = abs((num - 1) / (val_min - val_max))
+    n = -m * val_min
+    inds = np.around(m * values + n).astype(int)
+    rgb_colors = colors[inds]
+    hex_colors = [f"#{r:02x}{g:02x}{b:02x}" for r, g, b in rgb_colors]
+    return rgb_colors, hex_colors

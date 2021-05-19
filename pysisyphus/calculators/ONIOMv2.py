@@ -44,6 +44,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import full_expand
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.intcoords.setup_fast import get_bond_vec_getter
+from pysisyphus.wrapper.jmol import render_geom_and_charges
 
 
 CALC_DICT = {
@@ -542,14 +543,6 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
         point_charges = np.concatenate(
             (kept_point_charges, all_redist_coords_charges), axis=0
         )
-
-    # Enable for debugging
-    if False and (i > 0) and (len(layer) == 1):
-        tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
-        tmp_atoms += ["X"] * len(point_charges)
-        tmp_coords = np.concatenate((tmp_coords, point_charges[:, :3]), axis=0)
-        geom = Geometry(tmp_atoms, tmp_coords)
-        geom.jmol()
     return point_charges
 
 
@@ -800,6 +793,12 @@ class ONIOM(Calculator):
                 )
                 ee_charge_sum = point_charges[:, -1].sum()
                 self.log(f"sum(charges)={ee_charge_sum:.4f}")
+
+                # Enable for debugging
+                if False and (len(layer) == 1):
+                    model = layer[0]
+                    tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
+                    render_geom_and_charges(Geometry(tmp_atoms, tmp_coords), point_charges)
 
             results = [
                 getattr(model, method)(atoms, coords, point_charges=point_charges)
