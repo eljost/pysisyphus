@@ -67,6 +67,7 @@ class XTB(Calculator):
             "md": self.parse_md,
             "topo": self.parse_topo,
             "noparse": lambda path: None,
+            "calc": self.parse_energy,
         }
 
         self.base_cmd = self.get_cmd("cmd")
@@ -155,10 +156,11 @@ class XTB(Calculator):
         self.prepare_input(atoms, coords, "calculation")
         inp = self.prepare_coords(atoms, coords)
         kwargs = {
-            "calc": "noparse",
+            "calc": "calc",
             "env": self.get_pal_env(),
         }
-        results = self.run(inp, **kwargs)
+        energy = self.run(inp, **kwargs)
+        results = {"energy": energy}
         return results
 
     def run_topo(self, atoms, coords):
