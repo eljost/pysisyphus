@@ -481,14 +481,25 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
         point_charges[:, :3] = coords3d[only_parent_inds]
         point_charges[:, 3] = ee_charges
 
-    # Simple charge redistribution along bonds, connected to link atom host.
-    # See [5].
-    if embedding == "electronic_rc":
-        split_coords_charges = list()
-        del_charge_inds = list()
+    del_charge_inds = list()
+    all_redist_coords_charges = list()
+    # Here, redistributed and scaled charges are calculated. In the EE-RC and EE-RCD
+    # schemes the link atom parent (LAP) charges are divided by the number of bonds
+    # connected to the LAP minus 1. They are put halfway along theses bonds.
+    # See [5] for a discussion.
+    # EE-RC and EE-RCD are very similar. The block below handles calculations that
+    # are common to both methods, e.g. calculation of the redistributed charges and
+    # their coordinates.
+    #
+    # This will be executed for 'electronic_rc' and 'electronic_rcd'
+    if "electronic_rc" in embedding:
         for model in layer:
+            redist_coords_charges = list()
+            single_redist_charges = list()
             # Determine bonds, connected to link parent.
-            link_host_bond_vecs = model.get_bond_vecs(coords3d)
+            link_host_bond_vecs, bonded_inds = model.get_bond_vecs(
+                coords3d, return_bonded_inds=True
+            )
             # Determine link atoms
             links = model.links
             for link, bond_vecs in zip(links, link_host_bond_vecs):
@@ -499,26 +510,38 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
                 parent_charge = ee_charges[parent_ind]
                 parent_coords = coords3d[parent_ind]
                 bond_num = len(bond_vecs)
-                split_charge = parent_charge / bond_num
+                redist_charge = parent_charge / bond_num
+                single_redist_charges.append(redist_charge)
                 # Put modified charges halfway on the bonds
-                split_coords = parent_coords + bond_vecs / 2
-                split_coords_charges.extend(
-                    [(*coords, split_charge) for coords in split_coords]
+                redist_coords = parent_coords + bond_vecs / 2
+                redist_coords_charges.extend(
+                    [(*coords, redist_charge) for coords in redist_coords]
                 )
                 del_charge_inds.append(parent_ind)
-            assert len(del_charge_inds) == len(
-                set(del_charge_inds)
-            ), "I did not think about cases like that yet!"
-            # Only keep charges that are not on link atom hosts/parents
-            keep_mask = [opi for opi in only_parent_inds if opi not in del_charge_inds]
-            kept_point_charges = point_charges[keep_mask]
+            redist_coords_charges = np.array(redist_coords_charges)
 
-            # Join unmodified charges and redistributed charges
-            point_charges = np.concatenate(
-                (kept_point_charges, split_coords_charges), axis=0
-            )
-    elif embedding == "electronic_rcd":
-        pass
+            # Redistributed charges and dipoles to preserve the M1-M2 bond dipoles. See [5].
+            if embedding == "electronic_rcd":
+                # Multiply all redistributed charges by 2
+                redist_coords_charges[:, -1] *= 2
+                # Substract original redistributed charge from M2 charges
+                for binds, src in zip(bonded_inds, single_redist_charges):
+                    point_charges[binds, -1] -= src
+            all_redist_coords_charges.extend(redist_coords_charges)
+
+    assert len(del_charge_inds) == len(set(del_charge_inds)), (
+        "It seems that one parent hosts multiple link atoms. I did not think about "
+        "cases like that yet!"
+    )
+    # Only keep charges that are not on link atom hosts/parents
+    keep_mask = [opi for opi in only_parent_inds if opi not in del_charge_inds]
+    kept_point_charges = point_charges[keep_mask]
+
+    # Join unmodified charges and redistributed charges
+    if len(all_redist_coords_charges) > 0:
+        point_charges = np.concatenate(
+            (kept_point_charges, all_redist_coords_charges), axis=0
+        )
 
     # Enable for debugging
     if False and (i > 0) and (len(layer) == 1):
@@ -763,6 +786,8 @@ class ONIOM(Calculator):
 
         all_results = list()
         for i, layer in enumerate(self.layers):
+            point_charges = None
+            # Calculate embedding charges, if required
             if self.embedding and (i > 0):
                 parent_layer = self.layers[i - 1]
                 coords3d = coords.reshape(-1, 3)
@@ -775,8 +800,6 @@ class ONIOM(Calculator):
                 )
                 ee_charge_sum = point_charges[:, -1].sum()
                 self.log(f"sum(charges)={ee_charge_sum:.4f}")
-            else:
-                point_charges = None
 
             results = [
                 getattr(model, method)(atoms, coords, point_charges=point_charges)

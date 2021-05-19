@@ -559,8 +559,10 @@ def test_composite_oniom(fn, mult, high_inds, ref_energy):
 @pytest.mark.parametrize(
     "embedding, ref_energy",
     [
+        ("", -151.8130757),
         ("electronic", -151.817564),
         ("electronic_rc", -151.814822),
+        ("electronic_rcd", -151.817018),
     ],
 )
 def test_oniom_ee_charge_distribution(embedding, ref_energy):
