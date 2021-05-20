@@ -803,12 +803,12 @@ class ONIOM(Calculator):
                 self.log(f"sum(charges)={ee_charge_sum:.4f}")
 
                 # Enable for debugging
-                if False and (len(layer) == 1):
-                    model = layer[0]
-                    tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
-                    render_geom_and_charges(
-                        Geometry(tmp_atoms, tmp_coords), point_charges
-                    )
+                # if len(layer) == 1:
+                    # model = layer[0]
+                    # tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
+                    # render_geom_and_charges(
+                        # Geometry(tmp_atoms, tmp_coords), point_charges
+                    # )
 
             results = [
                 getattr(model, method)(atoms, coords, point_charges=point_charges)

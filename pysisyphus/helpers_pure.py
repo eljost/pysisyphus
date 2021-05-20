@@ -216,7 +216,6 @@ def interpolate_colors(values, c1, c2, num=32):
     # y = m*x + n
     val_min = values.min()
     val_max = values.max()
-    val_diff = val_min - val_max
     m = abs((num - 1) / (val_min - val_max))
     n = -m * val_min
     inds = np.around(m * values + n).astype(int)

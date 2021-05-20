@@ -18,7 +18,6 @@ from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.io.pdb import geom_to_pdb_str
 from pysisyphus.stocastic.align import match_geom_atoms
-from pysisyphus.xyzloader import split_xyz_str
 
 
 INTERPOLATE = {
@@ -292,7 +291,7 @@ def get_geoms(
         print(f"Read {len(geoms)} geometries.")
 
     atoms_0 = geoms[0].atoms
-    atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
+    # atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
     # atoms_0_str = atoms_strs[0]
     # assert all(
     # [atoms_str == atoms_0_str for atoms_str in atoms_strs]
