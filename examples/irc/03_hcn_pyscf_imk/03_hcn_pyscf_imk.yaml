@@ -1,0 +1,23 @@
+geom:
+ type: redund
+ fn: |
+  3
+
+  C  0.29569191  0.63254517  0.00000000
+  H -1.03196195  0.62885468  0.00000000
+  N -0.08478897 -0.50737087  0.00000000
+calc:
+ type: pyscf
+ basis: 321g
+ pal: 4
+ charge: 0
+ mult: 1
+ verbose: 0
+tsopt:
+ thresh: gau
+irc:
+ type: imk
+endopt:
+assert:
+ irc.forward_is_converged: True
+ irc.backward_is_converged: True

@@ -6,26 +6,21 @@ interpol:
  between: 18
 cos:
  type: neb
- fix_ends: True
- climb: True
 opt:
  type: lbfgs
  align: True
- max_cycles: 25
+ max_cycles: 15
 calc:
  type: xtb
  charge: 0
  mult: 1
  pal: 4
 tsopt:
+ root: 0
  do_hess: True
- hessian_recalc: 5
- coord_type: redund
 geom:
  type: cart
  fn: [09_htransfer_product.xyz, 10_po_diss_product_xtbopt.xyz]
 assert:
- opt.cur_cycle: 24
  ts_opt.is_converged: True
- ts_opt.cur_cycle: 10
- ts_geom._energy: -80.70048732
+ ts_geom.energy: -80.70117968
