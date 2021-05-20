@@ -88,8 +88,8 @@ def render_geom_and_charges(geom, point_charges):
         f"charges:\n{np.array2string(point_charges, precision=4)}\n"
         f"min(charges): {chrg_min: .4f}\nmax(charges): {chrg_max: .4f}\n"
     )
-    c1 = cr if chrg_min < 0.0 else cw
-    c2 = cb if chrg_max > 0.0 else cw
+    c1 = cb if chrg_min < 0.0 else cw
+    c2 = cr if chrg_max > 0.0 else cw
     rgb_colors, _ = interpolate_colors(charges, c1, c2)
 
     # Dump geometry to temporary file
