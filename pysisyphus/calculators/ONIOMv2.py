@@ -242,7 +242,12 @@ class Model:
 
     def create_bond_vec_getters(self, atoms):
         link_parent_inds = [link.parent_ind for link in self.links]
-        no_bonds_with = [[link.ind, ] for link in self.links]
+        no_bonds_with = [
+            [
+                link.ind,
+            ]
+            for link in self.links
+        ]
         self.log(
             f"Model has {len(link_parent_inds)} link atom hosts: {link_parent_inds}"
         )
@@ -470,17 +475,12 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
         ), "Multicenter ONIOM in intermediate layer is not supported!"
         parent_model = parent_layer[0]
         parent_inds = parent_model.atom_inds
-        charges, _ = parent_model.parse_charges()
+        point_charges, _ = parent_model.parse_charges()
 
         layer_inds = set(*it.chain([model.atom_inds for model in layer]))
         # Determine indices of atoms that are in the parent layer, but
         # not in the current layer
         only_parent_inds = list(set(parent_inds) - layer_inds)
-        ee_charges = charges[only_parent_inds]
-
-        point_charges = np.zeros((ee_charges.size, 4))
-        point_charges[:, :3] = coords3d[only_parent_inds]
-        point_charges[:, 3] = ee_charges
 
     del_charge_inds = list()
     all_redist_coords_charges = list()
@@ -494,6 +494,7 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
     #
     # This will be executed for 'electronic_rc' and 'electronic_rcd'
     if "electronic_rc" in embedding:
+        # Collect charges for models in a layer, e.g., for multicenter ONIOM.
         for model in layer:
             redist_coords_charges = list()
             single_redist_charges = list()
@@ -508,7 +509,8 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
                 # Presence of a link atom implies a bond.
                 assert len(bond_vecs) > 0
                 # *parent_coords, parent_charge = point_charges[link.parent_ind]
-                parent_charge = ee_charges[parent_ind]
+                # parent_charge = ee_charges[parent_ind]
+                parent_charge = point_charges[parent_ind]
                 parent_coords = coords3d[parent_ind]
                 bond_num = len(bond_vecs)
                 redist_charge = parent_charge / bond_num
@@ -527,7 +529,9 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
                 redist_coords_charges[:, -1] *= 2
                 # Substract original redistributed charge from M2 charges
                 for binds, src in zip(bonded_inds, single_redist_charges):
-                    point_charges[binds, -1] -= src
+                    point_charges[binds] -= src
+
+            # Gather redistributed charges of separate models (centers)
             all_redist_coords_charges.extend(redist_coords_charges)
 
     assert len(del_charge_inds) == len(set(del_charge_inds)), (
@@ -537,13 +541,17 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
     # Only keep charges that are not on link atom hosts/parents
     keep_mask = [opi for opi in only_parent_inds if opi not in del_charge_inds]
     kept_point_charges = point_charges[keep_mask]
+    kept_coords3d = coords3d[keep_mask]
+    kept_coords_point_charges = np.concatenate(
+        (kept_coords3d, kept_point_charges[:, None]), axis=1
+    )
 
     # Join unmodified charges and redistributed charges
     if len(all_redist_coords_charges) > 0:
-        point_charges = np.concatenate(
-            (kept_point_charges, all_redist_coords_charges), axis=0
+        kept_coords_point_charges = np.concatenate(
+            (kept_coords_point_charges, all_redist_coords_charges), axis=0
         )
-    return point_charges
+    return kept_coords_point_charges
 
 
 class ONIOM(Calculator):
@@ -798,7 +806,9 @@ class ONIOM(Calculator):
                 if False and (len(layer) == 1):
                     model = layer[0]
                     tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
-                    render_geom_and_charges(Geometry(tmp_atoms, tmp_coords), point_charges)
+                    render_geom_and_charges(
+                        Geometry(tmp_atoms, tmp_coords), point_charges
+                    )
 
             results = [
                 getattr(model, method)(atoms, coords, point_charges=point_charges)
