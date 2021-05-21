@@ -41,9 +41,6 @@ def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
     }
     kwargs.update(coord_kwargs)
     xyz_fn = str(xyz_fn)
-    if xyz_fn.startswith("lib:"):
-        # Drop lib: part
-        return geom_from_library(xyz_fn[4:], **kwargs)
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
     coords *= ANG2BOHR
     geom = Geometry(
@@ -61,9 +58,6 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
         "coord_type": coord_type,
     }
     kwargs.update(coord_kwargs)
-    if trj_fn.startswith("lib:"):
-        # Drop lib: part
-        return geom_from_library(trj_fn[4:], **kwargs)[:first]
     atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
     geoms = [
         Geometry(atoms, coords.flatten() * ANG2BOHR, comment=comment, **kwargs)
@@ -87,7 +81,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     assert ext in funcs, "Unknown filetype for '{fn}'!"
 
     if fn.startswith("lib:"):
-        fn = str(THIS_DIR / "../xyz_files/" / fn[4:])
+        fn = str(THIS_DIR / "geom_library/" / fn[4:])
 
     kwargs = {
         "coord_type": coord_type,
@@ -104,7 +98,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
 
 
 def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
-    xyz_dir = THIS_DIR / "../xyz_files/"
+    xyz_dir = THIS_DIR / "/geom_library/"
     xyz_fn = xyz_dir / xyz_fn
     return geom_loader(
         xyz_fn,

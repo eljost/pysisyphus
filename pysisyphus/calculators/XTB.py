@@ -10,7 +10,7 @@ import numpy as np
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.constants import BOHR2ANG, BOHRPERFS2AU
-from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
+from pysisyphus.helpers import geom_loader
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -245,7 +245,7 @@ class XTB(Calculator):
 
     def parse_md(self, path):
         assert (path / "xtbmdok").exists(), "File xtbmdok does not exist!"
-        geoms = geoms_from_trj(path / "xtb.trj")
+        geoms = geom_loader(path / "xtb.trj")
         return geoms
 
     def run_opt(self, atoms, coords, keep=True, keep_log=False):
@@ -267,7 +267,7 @@ class XTB(Calculator):
         if not xtbopt.exists():
             self.log(f"{self.calc_number:03d} failed")
             return None
-        opt_geom = geom_from_xyz_file(xtbopt)
+        opt_geom = geom_loader(xtbopt)
         opt_geom.energy = self.parse_energy(path)
 
         opt_log = None
