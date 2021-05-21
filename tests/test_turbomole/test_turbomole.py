@@ -4,7 +4,7 @@ import pytest
 
 from pysisyphus.calculators import Turbomole
 from pysisyphus.testing import using
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 
 
@@ -15,7 +15,7 @@ def this_dir(request):
 
 @using("turbomole")
 def test_turbomole_hessian(this_dir):
-    geom = geom_from_library("h2o_bp86_def2svp_opt.xyz")
+    geom = geom_loader("h2o_bp86_def2svp_opt.xyz")
 
     turbo_kwargs = {
         "control_path": this_dir / "./control_path_dft_gs",
@@ -51,7 +51,7 @@ def test_turbomole_hessian(this_dir):
         ],
 )
 def test_h2o_energy(control_path, ref_energy, this_dir):
-    geom = geom_from_library("h2o_bp86_def2svp_opt.xyz")
+    geom = geom_loader("h2o_bp86_def2svp_opt.xyz")
     turbo_kwargs = {
         "control_path": this_dir / control_path,
     }
@@ -78,7 +78,7 @@ def test_h2o_energy(control_path, ref_energy, this_dir):
         ],
 )
 def test_h2o_forces(control_path, ref_energy, ref_force_norm, this_dir):
-    geom = geom_from_library("h2o_bp86_def2svp_opt.xyz")
+    geom = geom_loader("h2o_bp86_def2svp_opt.xyz")
     turbo_kwargs = {
         "control_path": control_path,
     }

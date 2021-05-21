@@ -4,7 +4,7 @@ import pytest
 
 from pysisyphus.calculators import Gaussian16
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.augment_bonds import augment_bonds
 from pysisyphus.testing import using
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
@@ -21,7 +21,7 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
     ]
 )
 def test_augment_coordinates_silyl(augment, ref_cycle):
-    geom = geom_from_library("baker_ts/18_silyene_insertion.xyz",
+    geom = geom_loader("baker_ts/18_silyene_insertion.xyz",
                              coord_type="redund")
 
     opt_kwargs = {
@@ -60,7 +60,7 @@ def test_augment_coordinates_silyl(augment, ref_cycle):
     ]
 )
 def test_augment_biaryl_bare(augment, ref_cycle):
-    geom = geom_from_library("biaryl_bare_pm6_splined_hei.xyz",
+    geom = geom_loader("biaryl_bare_pm6_splined_hei.xyz",
                              coord_type="redund")
 
     calc = Gaussian16("PM6", pal=4)

@@ -8,7 +8,7 @@ import pytest
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 
@@ -30,7 +30,7 @@ def test_lennard_jones():
 
 
 def test_ar_cluster():
-    geom = geom_from_library("ar14cluster.xyz")
+    geom = geom_loader("ar14cluster.xyz")
     geom.set_calculator(LennardJones())
 
     opt_kwargs = {

@@ -6,7 +6,7 @@ from pysisyphus.calculators import ExternalPotential, XTB
 from pysisyphus.calculators.ExternalPotential import HarmonicSphere
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.optimizers.QuickMin import QuickMin
@@ -49,7 +49,7 @@ def test_lj_external_potential():
 
 
 def test_geometry_sphere_radius():
-    geom = geom_from_library("benzene.xyz")
+    geom = geom_loader("benzene.xyz")
     radius = geom.get_sphere_radius(offset=4)
 
     assert radius == pytest.approx(8.7142660)
@@ -64,7 +64,7 @@ def test_h2o_xtb_opt():
         "max_cycles": 500,
     }
 
-    ref_geom = geom_from_library("h2o_30_sphere.xyz")
+    ref_geom = geom_loader("h2o_30_sphere.xyz")
     ref_com = ref_geom.center_of_mass
     ref_radius = 7 / BOHR2ANG
     print("Reference center of mass", ref_com)
@@ -74,7 +74,7 @@ def test_h2o_xtb_opt():
     # assert ref_opt.is_converged
     # return
 
-    geom = geom_from_library("h2o_30_sphere_translated_2_2_2.xyz")
+    geom = geom_loader("h2o_30_sphere_translated_2_2_2.xyz")
     com = geom.center_of_mass
     print("Translated center of mass", com)
     org_diff = ref_com - com

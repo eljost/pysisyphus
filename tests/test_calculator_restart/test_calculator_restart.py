@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA, Gaussian16, Turbomole
 from pysisyphus.calculators.PySCF import PySCF
@@ -46,7 +46,7 @@ def this_dir(request):
     ]
 )
 def test_restart(calc_cls, calc_kwargs, chk_exts, this_dir):
-    geom = geom_from_library("benzene.xyz")
+    geom = geom_loader("benzene.xyz")
 
     if calc_cls == Turbomole:
         calc_kwargs["control_path"] = this_dir / calc_kwargs["control_path"]
@@ -74,7 +74,7 @@ def test_restart(calc_cls, calc_kwargs, chk_exts, this_dir):
 
 @using("pyscf")
 def test_geometry_get_restart_info():
-    geom = geom_from_library("benzene.xyz")
+    geom = geom_loader("benzene.xyz")
     calc = PySCF(method="scf", basis="def2svp")
 
     geom.set_calculator(calc)
@@ -107,7 +107,7 @@ def test_opt_restart(opt_cls, opt_kwargs_, ref_norm):
         return PySCF(method="scf", basis="def2svp")
 
     def get_geom():
-        geom = geom_from_library("h2o_shaken.xyz")
+        geom = geom_loader("h2o_shaken.xyz")
         geom.set_calculator(get_calc())
         return geom
 

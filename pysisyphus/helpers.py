@@ -97,16 +97,6 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     return geom
 
 
-def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
-    xyz_dir = THIS_DIR / "/geom_library/"
-    xyz_fn = xyz_dir / xyz_fn
-    return geom_loader(
-        xyz_fn,
-        coord_type=coord_type,
-        **coord_kwargs,
-    )
-
-
 def align_geoms(geoms):
     # http://nghiaho.com/?page_id=671#comment-559906
     first_geom = geoms[0]

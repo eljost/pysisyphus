@@ -4,7 +4,7 @@ import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import Turbomole, ORCA, Gaussian16, Psi4
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
@@ -39,7 +39,7 @@ def this_dir(request):
             marks=using("turbomole")),
 ])
 def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
-    geom = geom_from_library("cytosin.xyz", coord_type="redund")
+    geom = geom_loader("cytosin.xyz", coord_type="redund")
 
     print("@Using", calc_cls)
     calc_kwargs = {
@@ -90,7 +90,7 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
         )
 ])
 def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):
-    geom = geom_from_library("cytosin.xyz", coord_type="redund")
+    geom = geom_loader("cytosin.xyz", coord_type="redund")
 
     if "control_path" in calc_kwargs:
         calc_kwargs["control_path"] = this_dir / calc_kwargs["control_path"]
