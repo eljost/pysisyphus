@@ -272,7 +272,7 @@ class XTB(Calculator):
 
         opt_log = None
         if keep_log:
-            opt_log = geoms_from_trj(path / "xtbopt.log")
+            opt_log = geom_loader(path / "xtbopt.log")
 
         opt_result = OptResult(opt_geom=opt_geom, opt_log=opt_log)
         return opt_result
