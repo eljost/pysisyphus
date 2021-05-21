@@ -1,3 +1,5 @@
+include tests/test_*/test_*.py
+include xyz_files/*.xyz
 include versioneer.py
 include pysisyphus/_version.py
 recursive-include pysisyphus/db/guess *.xyz
