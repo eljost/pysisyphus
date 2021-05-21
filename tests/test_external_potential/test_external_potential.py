@@ -49,7 +49,7 @@ def test_lj_external_potential():
 
 
 def test_geometry_sphere_radius():
-    geom = geom_loader("benzene.xyz")
+    geom = geom_loader("lib:benzene.xyz")
     radius = geom.get_sphere_radius(offset=4)
 
     assert radius == pytest.approx(8.7142660)
@@ -64,7 +64,7 @@ def test_h2o_xtb_opt():
         "max_cycles": 500,
     }
 
-    ref_geom = geom_loader("h2o_30_sphere.xyz")
+    ref_geom = geom_loader("lib:h2o_30_sphere.xyz")
     ref_com = ref_geom.center_of_mass
     ref_radius = 7 / BOHR2ANG
     print("Reference center of mass", ref_com)

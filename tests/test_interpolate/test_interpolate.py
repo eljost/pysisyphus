@@ -9,8 +9,8 @@ from pysisyphus.interpolate.Redund import Redund
 
 
 def test_idpp():
-    initial = geom_loader("09_htransfer_product.xyz")
-    final = geom_loader("10_po_diss_product_xtbopt.xyz")
+    initial = geom_loader("lib:09_htransfer_product.xyz")
+    final = geom_loader("lib:10_po_diss_product_xtbopt.xyz")
 
     geoms = (initial, final)
     idpp = IDPP(geoms, 18, align=True)
@@ -30,8 +30,8 @@ def test_idpp():
     ]
 )
 def test_ala_dipeptide_interpol(interpol_cls):
-    initial = geom_loader("dipeptide_init.xyz")
-    final = geom_loader("dipeptide_fin.xyz")
+    initial = geom_loader("lib:dipeptide_init.xyz")
+    final = geom_loader("lib:dipeptide_fin.xyz")
 
     geoms = (initial, final)
     interpolator = interpol_cls(geoms, 28, align=True)

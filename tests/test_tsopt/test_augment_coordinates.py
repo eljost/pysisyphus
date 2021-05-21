@@ -18,11 +18,10 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
         # 57 cycles are needed when 45 < VALID_BEND_DEG < 170
         # (False, 57),
         (False, 6),
-    ]
+    ],
 )
 def test_augment_coordinates_silyl(augment, ref_cycle):
-    geom = geom_loader("baker_ts/18_silyene_insertion.xyz",
-                             coord_type="redund")
+    geom = geom_loader("lib:baker_ts/18_silyene_insertion.xyz", coord_type="redund")
 
     opt_kwargs = {
         "thresh": "baker",
@@ -57,11 +56,10 @@ def test_augment_coordinates_silyl(augment, ref_cycle):
     [
         (True, 28),
         (False, 40),
-    ]
+    ],
 )
 def test_augment_biaryl_bare(augment, ref_cycle):
-    geom = geom_loader("biaryl_bare_pm6_splined_hei.xyz",
-                             coord_type="redund")
+    geom = geom_loader("lib:biaryl_bare_pm6_splined_hei.xyz", coord_type="redund")
 
     calc = Gaussian16("PM6", pal=4)
     geom.set_calculator(calc)

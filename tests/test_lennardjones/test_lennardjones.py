@@ -30,7 +30,7 @@ def test_lennard_jones():
 
 
 def test_ar_cluster():
-    geom = geom_loader("ar14cluster.xyz")
+    geom = geom_loader("lib:ar14cluster.xyz")
     geom.set_calculator(LennardJones())
 
     opt_kwargs = {

@@ -8,7 +8,7 @@ from pysisyphus.testing import using_pyscf
 
 @using_pyscf
 def test_mulliken_charges():
-    geom = geom_loader("oniom_ee_model_system.xyz", coord_type="redund")
+    geom = geom_loader("lib:oniom_ee_model_system.xyz", coord_type="redund")
 
     calc_kwargs = {
         "basis": "sto3g",
