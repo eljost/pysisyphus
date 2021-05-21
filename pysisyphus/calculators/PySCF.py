@@ -140,8 +140,6 @@ class PySCF(OverlapCalculator):
 
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol, point_charges=point_charges)
-        # >>> mf.chkfile = '/path/to/chkfile'
-        # >>> mf.init_guess = 'chkfile'
         grad_driver = mf.Gradients()
         if self.root:
             grad_driver.state = self.root
