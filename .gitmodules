@@ -1,3 +1,0 @@
-[submodule "nix/nixwithchemistry"]
-	path = nix/nixwithchemistry
-	url = https://gitlab.com/theoretical-chemistry-jena/nixwithchemistry.git
