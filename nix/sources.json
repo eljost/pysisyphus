@@ -1,0 +1,26 @@
+{
+    "NixOS-QChem": {
+        "branch": "pysisyphus",
+        "description": "Nix derivations for HPC/Quantum chemistry software packages",
+        "homepage": null,
+        "owner": "sheepforce",
+        "repo": "NixOS-QChem",
+        "rev": "78525902c024b5cd233e0be28ff86d7847542db0",
+        "sha256": "1vxflq0m2c0fk9gy9fmxlph8zaym2zzxpr818mmfsh1w5lr0zmv3",
+        "type": "tarball",
+        "url": "https://github.com/sheepforce/NixOS-QChem/archive/78525902c024b5cd233e0be28ff86d7847542db0.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "nixpkgs-unstable",
+        "description": "Nix Packages collection",
+        "homepage": "",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "278bcdce1f0da616661a6205161b13bd89a2f3bf",
+        "sha256": "0drsyr3f583yixkd28wavg6dg4zlmwjbnmhn9vbs9hbfxp1n395v",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/278bcdce1f0da616661a6205161b13bd89a2f3bf.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}
