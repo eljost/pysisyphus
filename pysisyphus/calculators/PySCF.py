@@ -114,9 +114,7 @@ class PySCF(OverlapCalculator):
 
         return mol
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         point_charges = prepare_kwargs.get("point_charges", None)
 
         mol = self.prepare_input(atoms, coords)
@@ -129,13 +127,11 @@ class PySCF(OverlapCalculator):
             self.store_overlap_data(atoms, coords)
             if self.track_root():
                 # Redo the calculation with the updated root
-                results = self.get_energy(atoms, coords, prepare_kwargs)
+                results = self.get_energy(atoms, coords, **prepare_kwargs)
 
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         point_charges = prepare_kwargs.get("point_charges", None)
 
         mol = self.prepare_input(atoms, coords)
@@ -160,12 +156,10 @@ class PySCF(OverlapCalculator):
             self.store_overlap_data(atoms, coords)
             if self.track_root():
                 # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords, prepare_kwargs)
+                results = self.get_forces(atoms, coords, **prepare_kwargs)
         return results
 
-    def get_hessian(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         point_charges = prepare_kwargs.get("point_charges", None)
 
         mol = self.prepare_input(atoms, coords)
@@ -182,8 +176,8 @@ class PySCF(OverlapCalculator):
 
         return results
 
-    def run_calculation(self, atoms, coords, prepare_kwargs=None):
-        return self.get_energy(atoms, coords, prepare_kwargs)
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
+        return self.get_energy(atoms, coords, **prepare_kwargs)
 
     def run(self, mol, point_charges=None):
         steps = self.multisteps[self.method]

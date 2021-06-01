@@ -172,20 +172,17 @@ class ORCA(OverlapCalculator):
 
         return stable
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         calc_type = ""
 
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="energy")
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
-
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
@@ -202,20 +199,20 @@ class ORCA(OverlapCalculator):
                 results = self.get_forces(atoms, coords)
         return results
 
-    def get_hessian(self, atoms, coords, prepare_kwargs=None):
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         calc_type = self.freq_keyword
 
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="hessian")
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
         to execute ORCA with the stored cmd of this calculator."""
-        inp = self.prepare_input(atoms, coords, "noparse")
+        inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
                 "calc": "noparse",
         }

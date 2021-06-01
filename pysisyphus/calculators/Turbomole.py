@@ -297,10 +297,7 @@ class Turbomole(OverlapCalculator):
 
         return env_copy
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
-
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         self.prepare_input(atoms, coords, "energy", **prepare_kwargs)
         kwargs = {
                 "calc": "energy",
@@ -311,9 +308,7 @@ class Turbomole(OverlapCalculator):
         results = self.run(None, **kwargs)
         return results
 
-    def get_forces(self, atoms, coords, cmd=None, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
+    def get_forces(self, atoms, coords, cmd=None, **prepare_kwargs):
         self.prepare_input(atoms, coords, "force", **prepare_kwargs)
 
         if cmd is None:
@@ -348,11 +343,11 @@ class Turbomole(OverlapCalculator):
             self.log(f"'{self.last_run_path}' has already been deleted!")
         return results
 
-    def get_hessian(self, atoms, coords):
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         if self.td or self.ricc2:
             raise Exception("ricc2 or TD-DFT/TDA hessian not yet supported!")
 
-        self.prepare_input(atoms, coords, "hessian")
+        self.prepare_input(atoms, coords, "hessian", **prepare_kwargs)
         kwargs = {
                 "calc": "hessian",
                 "shell": True, # To allow chained commands like 'ridft; rdgrad'

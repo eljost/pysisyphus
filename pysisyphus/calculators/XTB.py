@@ -131,16 +131,12 @@ class XTB(Calculator):
 
         return env_copy
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}  # lgtm [py/unused-local-variable]
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         results = self.get_forces(atoms, coords)
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}  # lgtm [py/unused-local-variable]
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         self.prepare_input(atoms, coords, "forces")
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--grad"]
@@ -155,9 +151,7 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
-    def get_hessian(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}  # lgtm [py/unused-local-variable]
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         self.prepare_input(atoms, coords, "hessian")
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--hess"]
