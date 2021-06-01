@@ -62,7 +62,7 @@ def get_bond_vec_getter(
     )
     max_bond_dists_for_inds = [
         np.array([
-            max_bond_dists[frozenset((atoms[ind], atom_))] * bond_factor
+            max_bond_dists[frozenset((atoms[ind], atom_))]
             for atom_ in atoms
         ])
         for ind in bonds_for_inds
@@ -85,8 +85,8 @@ def get_bond_vec_getter(
         for ind, max_dists in zip(bonds_for_inds, max_bond_dists_for_inds):
             distance_vecs = coords3d - coords3d[ind]
             distances = np.linalg.norm(distance_vecs, axis=1)
-            # Set distance of atom 'ind' to a negative value, so we don't create
-            # a 'ind'-'ind' bond
+            # Set 0.0 distance of atom with itself to a high value to not form
+            # and ind-ind bond.
             distances[ind] = 10_000
             bond_mask = distances <= max_dists
             all_bond_vecs.append(distance_vecs[bond_mask])
