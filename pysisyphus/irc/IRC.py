@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import check_for_stop_sign, rms
+from pysisyphus.helpers import check_for_stop_sign, rms, check_for_end_sign
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
 from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd
@@ -397,7 +397,7 @@ class IRC:
                 self.table.print(break_msg)
                 break
 
-            if check_for_stop_sign():
+            if check_for_end_sign():
                 break
             self.log("")
             sys.stdout.flush()
