@@ -321,14 +321,14 @@ class Model:
         }
 
         self.log("Calculation at layer level")
-        results = self.calc.get_energy(catoms, ccoords, prepare_kwargs)
+        results = self.calc.get_energy(catoms, ccoords, **prepare_kwargs)
         energy = results["energy"]
 
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
             parent_results = self.parent_calc.get_energy(
-                catoms, ccoords, prepare_kwargs
+                catoms, ccoords, **prepare_kwargs
             )
             parent_energy = parent_results["energy"]
             energy -= parent_energy
@@ -353,7 +353,7 @@ class Model:
         }
 
         self.log("Calculation at layer level")
-        results = self.calc.get_forces(catoms, ccoords, prepare_kwargs)
+        results = self.calc.get_forces(catoms, ccoords, **prepare_kwargs)
         forces = results["forces"]
         energy = results["energy"]
         forces = forces.dot(self.J)
@@ -362,7 +362,7 @@ class Model:
         if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
             parent_results = self.parent_calc.get_forces(
-                catoms, ccoords, prepare_kwargs
+                catoms, ccoords, **prepare_kwargs
             )
             parent_forces = parent_results["forces"]
             parent_energy = parent_results["energy"]
@@ -386,15 +386,13 @@ class Model:
             catoms = atoms
             ccoords = coords
 
-        # prepare_kwargs = {
-        # "point_charges": point_charges,
-        # }
-        if point_charges is not None:
-            raise Exception("point_charges & hessian is not yet implemented")
+        prepare_kwargs = {
+            "point_charges": point_charges,
+        }
 
         self.log("Calculation at layer level")
         # results = self.calc.get_hessian(catoms, ccoords, prepare_kwargs)
-        results = self.calc.get_hessian(catoms, ccoords)
+        results = self.calc.get_hessian(catoms, ccoords, **prepare_kwargs)
         hessian = results["hessian"]
         energy = results["energy"]
         hessian = self.J.T.dot(hessian.dot(self.J))
@@ -402,7 +400,7 @@ class Model:
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
-            parent_results = self.parent_calc.get_hessian(catoms, ccoords)
+            parent_results = self.parent_calc.get_hessian(catoms, ccoords, **prepare_kwargs)
             parent_hessian = parent_results["hessian"]
             parent_energy = parent_results["energy"]
 
