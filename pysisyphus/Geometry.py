@@ -40,6 +40,8 @@ def get_trans_rot_vectors(cart_coords, masses):
     of Molecular Systems, 2007, Cambridge University Press, Eq. (8.23),
     (8.24) and (8.26) for the actual projection.
 
+    See also https://chemistry.stackexchange.com/a/74923.
+
     Parameters
     ----------
     cart_coorrds : np.array, 1d, shape (3 * atoms.size, )
