@@ -1,5 +1,6 @@
 from collections import namedtuple
 import io
+# import json
 import os
 import re
 import shutil
@@ -44,8 +45,9 @@ class XTB(Calculator):
 
         self.topo_used = 0
         valid_gfns = (0, 1, 2, "ff")
-        assert self.gfn in valid_gfns, \
-            f"Invalid gfn argument. Allowed arguments are: {', '.join(valid_gfns)}!"
+        assert (
+            self.gfn in valid_gfns
+        ), f"Invalid gfn argument. Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
@@ -56,6 +58,8 @@ class XTB(Calculator):
             "xtbopt.xyz",
             "g98.out",
             "xtb.trj",
+            # "json:xtbout.json",
+            "charges:charges",
         )
         if self.quiet:
             self.to_keep = ()
@@ -95,7 +99,7 @@ class XTB(Calculator):
             self.log(f"Using toplogy given in {self.topo}.")
             self.topo_used += 1
 
-    def prepare_add_args(self):
+    def prepare_add_args(self, xcontrol=None):
         add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
         # Use solvent model if specified
         if self.gbsa:
@@ -104,7 +108,19 @@ class XTB(Calculator):
         # Select parametrization
         gfn = ["--gfnff"] if self.gfn == "ff" else f"--gfn {self.gfn}".split()
         add_args = add_args + gfn
+        if xcontrol:
+            add_args = add_args + ["--input", "xcontrol"]
         return add_args
+
+    def prepare_json_xcontrol(self):
+        path = self.prepare_path(use_in_run=True)
+        xcontrol_str = """
+        $write
+            json=true
+        """
+        with open(path / "xcontrol", "w") as handle:
+            handle.write(xcontrol_str)
+        return path
 
     def get_pal_env(self):
         env_copy = os.environ.copy()
@@ -128,6 +144,8 @@ class XTB(Calculator):
         self.prepare_input(atoms, coords, "forces")
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--grad"]
+        # self.prepare_json_xcontrol()
+        # add_args = self.prepare_add_args() + ["--grad", "--input", "xcontrol"]
         self.log(f"Executing {self.base_cmd} {add_args}")
         kwargs = {
             "calc": "grad",
@@ -299,6 +317,28 @@ class XTB(Calculator):
             "hessian": hessian,
         }
         return results
+
+    def parse_charges(self, fn=None):
+        if fn is None:
+            fn = self.charges
+        charges = np.loadtxt(fn, dtype=float)
+        return charges
+
+    def parse_charges_from_json(self, fn=None):
+        if fn is None:
+            fn = self.json
+        with open(fn, "r") as handle:
+            dump = json.load(handle)
+        charges = dump["partial charges"]
+        return charges
+
+    def keep(self, path):
+        kept_fns = super().keep(path)
+        self.charges = kept_fns["charges"]
+        # try:
+        # self.json = kept_fns["json"]
+        # except KeyError:
+        # pass
 
     def __str__(self):
         return "XTB calculator"

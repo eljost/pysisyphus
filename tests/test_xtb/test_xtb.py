@@ -36,15 +36,15 @@ def test_xtb_hessian(geom):
 
     w, v = np.linalg.eigh(Hmw)
     nus = eigval_to_wavenumber(w)
-    assert nus[0] == pytest.approx(-571.77084564)
-    assert nus[-1] == pytest.approx(1554.94377536)
+    assert nus[0] == pytest.approx(-571.7752565)
+    assert nus[-1] == pytest.approx(1554.950531)
 
 
 @using("xtb")
 def test_run_md(geom):
     T = 298.15
     seed = 20182503
-    energy_ref = -20.4717278924  # Obtained with xtb 6.3.2
+    energy_ref = -20.47232690901  # Obtained with xtb 6.4.0
     velocities = get_mb_velocities_for_geom(geom, T=T, seed=seed)
     calc = geom.calculator
     geoms = calc.run_md(geom.atoms, geom.cart_coords, t=200, dt=0.1,
@@ -54,3 +54,13 @@ def test_run_md(geom):
     last_geom = geoms[-1]
     energy = calc.get_energy(last_geom.atoms, last_geom.cart_coords)["energy"]
     assert energy == pytest.approx(energy_ref)
+
+
+@using("xtb")
+def test_parse_charges(geom):
+    energy = geom.energy
+    calc = geom.calculator
+    charges = calc.parse_charges()
+    print(charges)
+    assert len(charges) == 6
+    assert charges[0] == pytest.approx(1.55773)
