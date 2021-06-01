@@ -1,6 +1,6 @@
 from collections import namedtuple
 import io
-# import json
+import json
 import os
 import re
 import shutil
@@ -329,10 +329,10 @@ class XTB(Calculator):
     def keep(self, path):
         kept_fns = super().keep(path)
         self.charges = kept_fns["charges"]
-        # try:
-        # self.json = kept_fns["json"]
-        # except KeyError:
-        # pass
+        try:
+            self.json = kept_fns["json"]
+        except KeyError:
+            pass
 
     def __str__(self):
         return "XTB calculator"
