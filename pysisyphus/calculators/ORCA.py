@@ -24,6 +24,25 @@ def make_sym_mat(table_block):
     return np.concatenate(cbs, axis=1)
 
 
+def save_orca_pc_file(point_charges, pc_fn, hardness=None):
+    point_charges = point_charges.copy()
+    # ORCA excepcts point charge positions in Angstrom
+    point_charges[:,:3] *= BOHR2ANG
+
+    # ORCA also expects the ordering <q> <x> <y> <z>, so we have to resort.
+    shape = point_charges.shape
+    if hardness is not None:
+        shape = shape[0], shape[1]+1
+    _ = np.zeros_like(point_charges)
+    _ = np.zeros(shape)
+    _[:,0] = point_charges[:,3]
+    _[:,1:4] = point_charges[:,:3]
+
+    if hardness:
+        _[:,4] = hardness
+    np.savetxt(pc_fn, _, fmt="%16.10f", header=str(len(point_charges)), comments="")
+
+
 class ORCA(OverlapCalculator):
 
     conf_key = "orca"
@@ -105,16 +124,8 @@ class ORCA(OverlapCalculator):
 
         pc_str = ""
         if point_charges is not None:
-            # ORCA excepcts point charge positions in Angstrom
             pc_fn = self.make_fn("pointcharges_inp.pc")
-            point_charges[:,:3] *= BOHR2ANG
-            # ORCA also expects the ordering <q> <x> <y> <z>, so we have to
-            # resort.
-            _ = np.zeros_like(point_charges)
-            _[:,0] = point_charges[:,3]
-            _[:,1:] = point_charges[:,:3]
-            np.savetxt(pc_fn, _,
-                       fmt="%16.10f", header=str(len(point_charges)), comments="")
+            save_orca_pc_file(point_charges, pc_fn)
             pc_str = f'%pointcharges "{pc_fn}"'
         stable_block = "\n%scf stabperform true hftyp uhf end" if do_stable else ""
         blocks = self.get_block_str() + stable_block
