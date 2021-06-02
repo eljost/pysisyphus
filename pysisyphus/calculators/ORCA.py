@@ -338,7 +338,7 @@ class ORCA(OverlapCalculator):
         engrad = re.findall(r"([\d\-\.]+)", engrad)
         atoms = int(engrad.pop(0))
         energy = float(engrad.pop(0))
-        force = -np.array(engrad[:3*atoms], dtype=np.float)
+        force = -np.array(engrad[:3*atoms], dtype=float)
         results["energy"] = energy
         results["forces"] = force
 
