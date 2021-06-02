@@ -2,7 +2,7 @@ import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.cos.NEB import NEB
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.testing import using
@@ -16,7 +16,7 @@ from pysisyphus.testing import using
     ]
 )
 def test_diels_alder_neb(opt_cls):
-    geoms = geom_from_library("diels_alder_interpolated.trj")
+    geoms = geom_loader("diels_alder_interpolated.trj")
     for i, geom in enumerate(geoms):
         calc_kwargs = {
             "basis": "sto3g",

@@ -408,7 +408,7 @@ class Dimer(Calculator):
         # Now we keep the normalized dimer orientation
         self.N_raw = self.N
 
-        self.log(f"Initial orientation:\n\t{self.N}")
+        # self.log(f"Initial orientation:\n\t{self.N}")
 
     def remove_translation(self, displacement):
         # Average vector components over cartesian directions (x,y,z)
@@ -605,7 +605,7 @@ class Dimer(Calculator):
             self.N = N_backup
         # Now we (have an updated self.N and) can do the force projections
         N = self.N
-        self.log(f"Orientation N:\n\t{N}")
+        # self.log(f"Orientation N:\n\t{N}")
         # Save orientation N in human-readable format, aka .trj
         # file in Angstrom.
         if self.write_orientations:
@@ -648,7 +648,7 @@ class Dimer(Calculator):
         f_perp = f0 - f_parallel
         norm_perp = np.linalg.norm(f_perp)
         self.log(f"\tnorm(forces_perp)={norm_perp:.6f}")
-        self.log(f"\tforce_perp:\n\t{f_perp}")
+        # self.log(f"\tforce_perp:\n\t{f_perp}")
 
         # Only return perpendicular component when curvature is negative
         f_tran = -f_parallel
@@ -660,7 +660,7 @@ class Dimer(Calculator):
             f_tran += f_perp
             force_str = "full"
         self.log(f"Curvature is {curv_str}. Returning {force_str} f_tran.")
-        self.log(f"\tf_tran:\n\t{f_tran}")
+        # self.log(f"\tf_tran:\n\t{f_tran}")
         self.log()
 
         self.calc_counter += 1

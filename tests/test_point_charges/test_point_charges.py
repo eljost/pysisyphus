@@ -3,7 +3,7 @@ import pytest
 
 from pysisyphus.calculators import Gaussian16, Turbomole, ORCA
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 
 
@@ -39,7 +39,7 @@ from pysisyphus.testing import using
             marks=using("pyscf"),),
 ])
 def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
-    geom = geom_from_library("methane_bp86_def2svp_opt.xyz")
+    geom = geom_loader("lib:methane_bp86_def2svp_opt.xyz")
 
     calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)
@@ -49,10 +49,7 @@ def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
         (2.0, -1.78620256244410,   0.0,     0.3),
     ))
 
-    prep_kwargs = {
-        "point_charges": point_charges,
-    }
-    results = calc.get_forces(geom.atoms, geom.coords, prepare_kwargs=prep_kwargs)
+    results = calc.get_forces(geom.atoms, geom.coords, point_charges=point_charges)
 
     assert results["energy"] == pytest.approx(ref_energy)
     assert np.linalg.norm(results["forces"]) == pytest.approx(ref_force_norm)
@@ -72,7 +69,7 @@ def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
             marks=using("gaussian16"),),
 ])
 def test_parse_charges(calc_cls, calc_kwargs, ref_energy, ref_charges):
-    geom = geom_from_library("methane_bp86_def2svp_opt.xyz")
+    geom = geom_loader("lib:methane_bp86_def2svp_opt.xyz")
 
     calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)

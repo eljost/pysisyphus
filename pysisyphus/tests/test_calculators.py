@@ -30,7 +30,15 @@ except ImportError:
         pass
 
 
+try:
+    from pysisyphus.calculators.OBabel import OBabel
+except ImportError:
+    class OBabel:
+        pass
+
+
 from pysisyphus.helpers import Geometry, geom_loader
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
 
@@ -167,3 +175,22 @@ def test_h2o_openmolcas(this_dir):
 
     assert energy == pytest.approx(-76.1237706323)
     assert forces_norm == pytest.approx(0.040632182)
+
+
+@using("obabel")
+@pytest.mark.parametrize(
+    "ff, ref_energy",
+    [
+        ("mmff94", 0.02585932),
+        ("uff", 0.01686154),
+        ("gaff", 0.00680588),
+        ("ghemical", 0.003055675),
+    ],
+)
+def test_benzene_opt(ff, ref_energy):
+    geom = geom_loader("lib:benzene.xyz", coord_type="redund")
+    calc = OBabel(ff=ff)
+    geom.set_calculator(calc)
+    opt = RFOptimizer(geom, thresh="gau_tight")
+    opt.run()
+    assert geom.energy == pytest.approx(ref_energy)

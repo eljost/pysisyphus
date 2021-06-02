@@ -5,7 +5,6 @@ import re
 import sys
 
 import matplotlib.pyplot as plt
-from natsort import natsorted
 import numpy as np
 import rmsd as rmsd
 import yaml
@@ -19,7 +18,6 @@ from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.io.pdb import geom_to_pdb_str
 from pysisyphus.stocastic.align import match_geom_atoms
-from pysisyphus.xyzloader import split_xyz_str
 
 
 INTERPOLATE = {
@@ -202,14 +200,22 @@ def read_geoms(
     constrain_prims=None,
     typed_prims=None,
     isotopes=None,
+    freeze_atoms=None,
 ):
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns]
+        names = [""]
+    # Dictionary with names as keys and fns as values.
+    elif isinstance(xyz_fns, dict):
+        names, xyz_fns = zip(*xyz_fns.items())
+    else:
+        names = [""] * len(xyz_fns)
 
     geoms = list()
     geom_kwargs = {
         "coord_type": coord_type,
         "isotopes": isotopes,
+        "freeze_atoms": freeze_atoms,
     }
     # Dont supply coord_kwargs with coord_type == "cart"
     if coord_type != "cart":
@@ -220,48 +226,9 @@ def read_geoms(
         }
 
     for fn in xyz_fns:
-        if "*" in fn:
-            cwd = Path(".")
-            geom = [
-                geom_loader(xyz_fn, **geom_kwargs) for xyz_fn in natsorted(cwd.glob(fn))
-            ]
-        # Simplify this to use geom_loader...
-        elif fn.endswith(".xyz"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        elif fn.endswith(".trj"):
-            geom = geom_loader(fn, **geom_kwargs)
-        elif fn.endswith(".pdb"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        elif fn.endswith(".cjson"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        elif fn.endswith(".zmat"):
-            geom = [
-                geom_loader(fn, **geom_kwargs),
-            ]
-        else:
-            continue
-        geoms.extend(geom)
-
-    # Try to parse as inline xyz formatted string
-    if len(geoms) == 0:
-        try:
-            atoms_coords = split_xyz_str(fn)
-            # We excpect the coordinates to be given in Angstrom
-            geoms = [
-                Geometry(atoms, coords / BOHR2ANG, **geom_kwargs)
-                for atoms, coords in atoms_coords
-            ]
-        except AssertionError:
-            raise Exception(
-                "Could not parse supplied 'xyz' values as either "
-                ".xyz, .trj or xyz-formatted string.!"
-            )
+        # Valid for non-inline coordinates
+        if Path(fn).suffix:
+            geoms.extend(geom_loader(fn, iterable=True, **geom_kwargs))
 
     # Original coordinates are in bohr, but pysisyphus expects them
     # to be in Angstrom, so right now they are already multiplied
@@ -269,6 +236,10 @@ def read_geoms(
     if in_bohr:
         for geom in geoms:
             geom.coords *= BOHR2ANG
+
+    # Set names
+    for name, geom in zip(names, geoms):
+        geom.name = name
     return geoms
 
 
@@ -283,6 +254,7 @@ def get_geoms(
     constrain_prims=None,
     union=None,
     isotopes=None,
+    freeze_atoms=None,
     interpolate_align=True,
     same_prims=True,
     quiet=False,
@@ -313,16 +285,17 @@ def get_geoms(
         constrain_prims=constrain_prims,
         typed_prims=typed_prims_union,
         isotopes=isotopes,
+        freeze_atoms=freeze_atoms,
     )
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
 
     atoms_0 = geoms[0].atoms
-    atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
-    atoms_0_str = atoms_strs[0]
-    assert all(
-        [atoms_str == atoms_0_str for atoms_str in atoms_strs]
-    ), "Atom ordering/numbering in the geometries is inconsistent!"
+    # atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
+    # atoms_0_str = atoms_strs[0]
+    # assert all(
+    # [atoms_str == atoms_0_str for atoms_str in atoms_strs]
+    # ), "Atom ordering/numbering in the geometries is inconsistent!"
 
     # Dont try to align 1-atom species
     interpolate_align = interpolate_align and len(geoms[0].atoms) > 1
@@ -378,6 +351,7 @@ def get_geoms(
                 coord_type=coord_type,
                 coord_kwargs={"typed_prims": typed_prims},
                 isotopes=isotopes,
+                freeze_atoms=freeze_atoms,
             )
             for geom in geoms
         ]

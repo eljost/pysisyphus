@@ -35,10 +35,7 @@ class Dalton(Calculator):
             mol, self.basis, self.method, prop, compute_settings=self.compute_settings
         )
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
-        # if prepare_kwargs is None:
-            # prepare_kwargs = {}
-
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         mol = self.prepare_input(atoms, coords)
         prop = dp.Property(energy=True)
         res = self.compute(mol, prop)
@@ -49,10 +46,7 @@ class Dalton(Calculator):
         return results
 
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        # if prepare_kwargs is None:
-            # prepare_kwargs = {}
-
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         mol = self.prepare_input(atoms, coords)
         prop = dp.Property(energy=True, gradients=True)
         res = self.compute(mol, prop)

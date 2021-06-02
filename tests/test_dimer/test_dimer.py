@@ -5,7 +5,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.testing import using
@@ -63,7 +63,7 @@ def test_dimer(rotation_method, ref_cycle):
     ]
 )
 def test_dimer_hcn(bonds, ref_cycle):
-    geom = geom_from_library("baker_ts/01_hcn.xyz")
+    geom = geom_loader("lib:baker_ts/01_hcn.xyz")
     ref_energy = -92.24604
     N_raw = " 0.5858  0.      0.0543 " \
              "-0.7697 -0.      0.061 " \
@@ -103,7 +103,7 @@ def test_dimer_hcn(bonds, ref_cycle):
     ]
 )
 def test_N_raw(bonds):
-    geom = geom_from_library("baker_ts/08_formyloxyethyl.xyz")
+    geom = geom_loader("lib:baker_ts/08_formyloxyethyl.xyz")
 
     dimer_kwargs = {
         "calculator": None,
@@ -123,18 +123,7 @@ def test_N_raw(bonds):
 
 
 def test_bias_rotation():
-    # geom = geom_from_library("claisen_forward.xyz")
-    # bonds = ((10, 11, 1), (12, 13, -1))
-    # calc_kwargs = {
-        # "xc": "pbe",
-        # # "basis": "def2svp",
-        # # "auxbasis": "weigend",
-        # "basis": "321g",
-        # "pal": 4,
-    # }
-    # calc = PySCF(**calc_kwargs)
-
-    geom = geom_from_library("baker_ts/01_hcn.xyz")
+    geom = geom_loader("lib:baker_ts/01_hcn.xyz")
     bonds = ((1, 2, -1), (2, 0, 1))
     calc = PySCF("321g", pal=2)
 
@@ -182,8 +171,8 @@ def test_remove_translation(rotation_remove_trans):
     name = "01_hcn.xyz with translations removed" if rotation_remove_trans \
            else "01_hcn.xyz without translations removed"
     ref_energy = -92.24604
-    geom = geom_from_library("baker_ts/01_hcn.xyz")
-    downhill_geom = geom_from_library("baker_ts/01_hcn_downhill.xyz")
+    geom = geom_loader("lib:baker_ts/01_hcn.xyz")
+    downhill_geom = geom_loader("lib:baker_ts/01_hcn_downhill.xyz")
     N_raw = geom.coords - downhill_geom.coords
 
     calc = PySCF("321g", pal=2)

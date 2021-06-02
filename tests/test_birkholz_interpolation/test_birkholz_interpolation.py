@@ -1,7 +1,8 @@
 import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import geom_loader, do_final_hessian, highlight_text
+from pysisyphus.helpers import geom_loader, do_final_hessian
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.tsoptimizers import RSPRFOptimizer, birkholz_interpolation
 from pysisyphus.testing import using
 

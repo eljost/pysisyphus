@@ -10,7 +10,8 @@ import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
-from pysisyphus.helpers import check_for_end_sign, highlight_text, get_coords_diffs
+from pysisyphus.helpers import check_for_end_sign, get_coords_diffs
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 
@@ -68,6 +69,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
         "gau_vtight": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
         "baker": (3.0e-4, 2.0e-4, 3.0e-4, 2.0e-4),
+        # Dummy thresholds
+        "never": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
     }
 
     def __init__(
@@ -84,10 +87,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         dump_restart=None,
         prefix="",
         reparam_thresh=1e-3,
+        reparam_check_rms=True,
         overachieve_factor=0.0,
         restart_info=None,
         check_coord_diffs=True,
         coord_diff_thresh=0.01,
+        out_dir=".",
         h5_fn="optimization.h5",
         h5_group_name="opt",
     ):
@@ -103,19 +108,29 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.dump_restart = dump_restart
         self.prefix = f"{prefix}_" if prefix else prefix
         self.reparam_thresh = reparam_thresh
+        self.reparam_check_rms = reparam_check_rms
         self.overachieve_factor = float(overachieve_factor)
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
 
+        self.logger = logging.getLogger("optimizer")
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
         self.convergence = self.make_conv_dict(thresh, rms_force)
         for key, value in self.convergence.items():
             setattr(self, key, value)
 
+        if self.thresh == "never":
+            max_cycles = 1_000_000_000
+            self.dump = False
+            self.log(
+                f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
+                "and disabled dumping!"
+            )
+        self.max_cycles = max_cycles
+
         # Setting some default values
         self.resetted = False
-        self.max_cycles = max_cycles
-        self.out_dir = os.getcwd()
+        self.out_dir = out_dir
 
         if self.is_cos:
             moving_image_num = len(self.geometry.moving_indices)
@@ -136,8 +151,6 @@ class Optimizer(metaclass=abc.ABCMeta):
             os.remove(self.hei_trj_fn)
         except FileNotFoundError:
             pass
-
-        self.logger = logging.getLogger("optimizer")
 
         # Setting some empty lists as default. The actual shape of the respective
         # entries is not considered, which gives us some flexibility.
@@ -242,6 +255,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.rms_forces.append(rms_force)
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
+
+        if self.thresh == "never":
+            return False
 
         this_cycle = {
             "max_force_thresh": max_force,
@@ -558,24 +574,32 @@ class Optimizer(metaclass=abc.ABCMeta):
                         image.reset_coords(exception.typed_prims)
                 self.reset()
 
-            if hasattr(self.geometry, "reparametrize"):
+            # Coordinates may be updated here.
+            try:
                 reparametrized = self.geometry.reparametrize()
-                cur_coords = self.geometry.coords
-                prev_coords = self.coords[-1]
+            except AttributeError:
+                reparametrized = False
 
-                if reparametrized and (cur_coords.size == prev_coords.size):
-                    self.log("Did reparametrization")
+            cur_coords = self.geometry.coords
+            prev_coords = self.coords[-1]
+            if (
+                self.is_cos
+                and self.reparam_check_rms
+                and reparametrized
+                and (cur_coords.size == prev_coords.size)
+            ):
+                self.log("Did reparametrization")
 
-                    rms = np.sqrt(np.mean((prev_coords - cur_coords) ** 2))
-                    self.log(f"rms of coordinates after reparametrization={rms:.6f}")
-                    self.is_converged = rms < self.reparam_thresh
-                    if self.is_converged:
-                        print(
-                            "Insignificant coordinate change after "
-                            "reparametrization. Signalling convergence!"
-                        )
-                        print()
-                        break
+                rms = np.sqrt(np.mean((prev_coords - cur_coords) ** 2))
+                self.log(f"rms of coordinates after reparametrization={rms:.6f}")
+                self.is_converged = rms < self.reparam_thresh
+                if self.is_converged:
+                    print(
+                        "Insignificant coordinate change after "
+                        "reparametrization. Signalling convergence!"
+                    )
+                    print()
+                    break
 
             sys.stdout.flush()
             sign = check_for_end_sign()

@@ -2,13 +2,13 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using_pyscf
 
 
 @using_pyscf
 def test_mulliken_charges():
-    geom = geom_from_library("oniom_ee_model_system.xyz", coord_type="redund")
+    geom = geom_loader("lib:oniom_ee_model_system.xyz", coord_type="redund")
 
     calc_kwargs = {
         "basis": "sto3g",

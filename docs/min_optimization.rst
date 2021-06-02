@@ -59,7 +59,7 @@ the YAML input convergence will be signalled, when gradient convergence is overa
 by factor `n`.
 
 YAML Example
-============
+------------
 
 Below you can find an example YAML-input including the most important options
 that the user may want to modify when using the RFOptimizer.
@@ -124,21 +124,52 @@ that the user may want to modify when using the RFOptimizer.
 Further examples for optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/opt>`_.
 
-HessianOptimizer base class
-=============================
+Convergence Thresholds
+----------------------
+Optimization convergence is indicated when four critera are met. Each
+cycle the root-mean-square and the absolute maximum of force and proposed
+step vectors are checked. The default criteria in pysisyphus correspond
+to the `opt=loose` in Gaussian. Different thresholds can easily be requested
+by supplying the respective keyword in the YAML input.
 
-Base class for optimizers that empoly a hessian.
+Convergence is also indicated, when max(force) and rms(force) are overachieved,
+by a certain factor (`overachieve_factor`, default=3), similar to ORCAs optimizer.
+Further keywords, controlling the convergence check are found below.
+
+.. code:: yaml
+
+    opt:
+     ...
+     thresh: gau_loose           # See table below for different thresholds.
+     overachieve_factor: 3
+     rms_force: null             # Derive four critera from this value
+     rms_force_only: False       # Only check rms(force)
+     max_force_only: False       # Only check max(force)
+     # Chain-of-States specific
+     coord_diff_thresh: 0.01     # Terminate on insignificant coordinate change
+     reparam_thresh: 0.001       # Terminate on insignificant coordinate change upon reparametrization
+     ...
+
+============ ========== =========== ========= ========= =======
+Threshold    max(force) rms(forces) max(step) rms(step) Comment
+============ ========== =========== ========= ========= =======
+`gau_loose`  2.5e-3     1.7e-3      1.0e-2    6.7e-3    default
+`gau`        4.5e-4     3.0e-4      1.8e-3    1.2e-3
+`gau_tight`  1.5e-5     1.0e-5      6.0e-5    4.0e-5
+`gau_vtight` 2.0e-6     1.0e-6      6.0e-6    4.0e-6
+`baker`      3.0e-4     2.0e-4      3.0e-4    2.0e-4    energy difference and step also checked
+`never`      2.0e-6     1.0e-6      6.0e-6    4.0e-6    dummy thresholds; never converges
+============ ========== =========== ========= ========= =======
+
+Available Optimizers
+---------------------------
+
+Base class for optimizers that utilize Hessian information.
 
 .. automodule:: pysisyphus.optimizers.HessianOptimizer
     :members:
     :undoc-members:
     :show-inheritance:
-
-Optimizers using hessian information
-======================================
-
-Restricted-Step RFO
--------------------------------
 
 .. automodule:: pysisyphus.optimizers.RFOptimizer
     :members:

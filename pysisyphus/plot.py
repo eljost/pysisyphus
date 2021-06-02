@@ -724,7 +724,11 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
                 f"Could not find group '{h5_group}'!\nAvailable groups are:\n{groups_str}\n"
                 f"Use '--h5_group [group]' to plot a different group."
             )
-            return
+            if groups:
+                group = handle[groups[0]]
+                print(f"Using first group '{group}'.")
+            else:
+                return
 
         cur_cycle = group.attrs["cur_cycle"]
         is_cos = group.attrs["is_cos"]

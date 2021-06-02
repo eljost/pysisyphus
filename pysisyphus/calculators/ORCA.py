@@ -24,6 +24,25 @@ def make_sym_mat(table_block):
     return np.concatenate(cbs, axis=1)
 
 
+def save_orca_pc_file(point_charges, pc_fn, hardness=None):
+    point_charges = point_charges.copy()
+    # ORCA excepcts point charge positions in Angstrom
+    point_charges[:,:3] *= BOHR2ANG
+
+    # ORCA also expects the ordering <q> <x> <y> <z>, so we have to resort.
+    shape = point_charges.shape
+    if hardness is not None:
+        shape = shape[0], shape[1]+1
+    _ = np.zeros_like(point_charges)
+    _ = np.zeros(shape)
+    _[:,0] = point_charges[:,3]
+    _[:,1:4] = point_charges[:,:3]
+
+    if hardness:
+        _[:,4] = hardness
+    np.savetxt(pc_fn, _, fmt="%16.10f", header=str(len(point_charges)), comments="")
+
+
 class ORCA(OverlapCalculator):
 
     conf_key = "orca"
@@ -51,7 +70,7 @@ class ORCA(OverlapCalculator):
         if "tddft" in self.blocks:
             self.do_tddft = True
             try:
-                self.root = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
+                self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
         self.inp_fn = "orca.inp"
@@ -105,16 +124,8 @@ class ORCA(OverlapCalculator):
 
         pc_str = ""
         if point_charges is not None:
-            # ORCA excepcts point charge positions in Angstrom
             pc_fn = self.make_fn("pointcharges_inp.pc")
-            point_charges[:,:3] *= BOHR2ANG
-            # ORCA also expects the ordering <q> <x> <y> <z>, so we have to
-            # resort.
-            _ = np.zeros_like(point_charges)
-            _[:,0] = point_charges[:,3]
-            _[:,1:] = point_charges[:,:3]
-            np.savetxt(pc_fn, _,
-                       fmt="%16.10f", header=str(len(point_charges)), comments="")
+            save_orca_pc_file(point_charges, pc_fn)
             pc_str = f'%pointcharges "{pc_fn}"'
         stable_block = "\n%scf stabperform true hftyp uhf end" if do_stable else ""
         blocks = self.get_block_str() + stable_block
@@ -137,7 +148,7 @@ class ORCA(OverlapCalculator):
         block_str = self.blocks
         # Use the correct root if we track it
         if self.track:
-            block_str = re.sub("iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
+            block_str = re.sub(r"iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
             self.log(f"Using iroot '{self.root}' for excited state gradient.")
         return block_str
 
@@ -172,20 +183,17 @@ class ORCA(OverlapCalculator):
 
         return stable
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         calc_type = ""
 
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="energy")
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
-
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
@@ -202,20 +210,20 @@ class ORCA(OverlapCalculator):
                 results = self.get_forces(atoms, coords)
         return results
 
-    def get_hessian(self, atoms, coords, prepare_kwargs=None):
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         calc_type = self.freq_keyword
 
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="hessian")
         return results
 
-    def run_calculation(self, atoms, coords):
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
         to execute ORCA with the stored cmd of this calculator."""
-        inp = self.prepare_input(atoms, coords, "noparse")
+        inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
                 "calc": "noparse",
         }
@@ -292,7 +300,7 @@ class ORCA(OverlapCalculator):
         with open(orca_log_fn) as handle:
             log_text = handle.read()
 
-        energy_re = "FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
+        energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, log_text)
         energy = float(energy_mobj.groups()[0])
         results["energy"] = energy
@@ -313,7 +321,7 @@ class ORCA(OverlapCalculator):
         log_fn = log_fn[0]
         with open(log_fn) as handle:
             text = handle.read()
-        mobj = re.search("FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
+        mobj = re.search(r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
         energy = float(mobj[1])
         return {"energy": energy}
 
@@ -327,10 +335,10 @@ class ORCA(OverlapCalculator):
         engrad_fn = engrad_fn[0]
         with open(engrad_fn) as handle:
             engrad = handle.read()
-        engrad = re.findall("([\d\-\.]+)", engrad)
+        engrad = re.findall(r"([\d\-\.]+)", engrad)
         atoms = int(engrad.pop(0))
         energy = float(engrad.pop(0))
-        force = -np.array(engrad[:3*atoms], dtype=np.float)
+        force = -np.array(engrad[:3*atoms], dtype=float)
         results["energy"] = energy
         results["forces"] = force
 
@@ -462,13 +470,13 @@ class ORCA(OverlapCalculator):
         with open(self.out) as handle:
             text = handle.read()
 
-        energy_re = "FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
+        energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, text)
         gs_energy = float(energy_mobj.groups()[0])
         all_energies = [gs_energy]
 
         if self.do_tddft:
-            tddft_re = re.compile("STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
+            tddft_re = re.compile(r"STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
             excitation_ens = [float(en) for en in tddft_re.findall(text)]
             all_energies += (np.array(excitation_ens) + gs_energy).tolist()
         all_energies = np.array(all_energies)
@@ -477,12 +485,12 @@ class ORCA(OverlapCalculator):
     def parse_mo_numbers(self, out_fn):
         with open(out_fn) as handle:
             text = handle.read()
-        electron_re = "NEL\s*....\s*(\d+)"
+        electron_re = r"NEL\s*....\s*(\d+)"
         electrons = int(re.search(electron_re, text)[1])
         assert(electrons % 2 == 0), "unrestricted is not yet supported!"
         occ_num = int(electrons / 2)
 
-        mo_re = "Dim\s*....\s*(\d+)"
+        mo_re = r"Dim\s*....\s*(\d+)"
         mo_num = int(re.search(mo_re, text)[1])
         virt_num = mo_num - occ_num
         self.log(f"found {electrons} electrons, {mo_num} MOs, with "

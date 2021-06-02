@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
 
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.calculators.SocketCalc import SocketCalc
 
 @pytest.mark.skip
 def test_socketcalc():
-    geom = geom_from_library("h2o.xyz")
+    geom = geom_loader("h2o.xyz")
     calc = SocketCalc()
     geom.set_calculator(calc)
     energy = geom.energy

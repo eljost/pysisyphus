@@ -105,6 +105,7 @@ def test_run_dimer_irc():
                 "type": "pyscf",
                 "basis": "321g",
                 "pal": 2,
+                "verbose": 0,
             }
         },
         "geom": {

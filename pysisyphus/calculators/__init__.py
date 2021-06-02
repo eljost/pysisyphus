@@ -3,6 +3,7 @@ import logging
 __all__ = [
     # "AnaPot",
     "AFIR",
+    "Composite",
     "DFTBp",
     "Dimer",
     "ExternalPotential",
@@ -12,6 +13,7 @@ __all__ = [
     "IPIServer",
     "LennardJones",
     "MOPAC",
+    "MultiCalc",
     "ONIOM",
     "OpenMolcas",
     "ORCA",
@@ -26,6 +28,7 @@ __all__ = [
 
 # from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.AFIR import AFIR
+from pysisyphus.calculators.Composite import Composite
 from pysisyphus.calculators.DFTBp import DFTBp
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
@@ -33,6 +36,7 @@ from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.IPIServer import IPIServer
 from pysisyphus.calculators.LennardJones import LennardJones
+from pysisyphus.calculators.MultiCalc import MultiCalc
 from pysisyphus.calculators.MOPAC import MOPAC
 from pysisyphus.calculators.Psi4 import Psi4
 from pysisyphus.calculators.ONIOMv2 import ONIOM

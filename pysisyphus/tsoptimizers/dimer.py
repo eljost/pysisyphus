@@ -6,8 +6,8 @@ import cloudpickle
 import numpy as np
 
 from pysisyphus.constants import EVANG2AUBOHR
-from pysisyphus.helpers import (check_for_stop_sign, get_geom_getter,
-                                highlight_text)
+from pysisyphus.helpers import check_for_stop_sign, get_geom_getter
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.optimizers.closures import lbfgs_closure_
 import pysisyphus.optimizers.closures as closures
 from pysisyphus.TablePrinter import TablePrinter

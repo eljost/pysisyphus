@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 
-from pysisyphus.helpers import highlight_text
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 

@@ -207,12 +207,12 @@ class DFTBp(OverlapCalculator):
         )
         return inp, path
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         inp, path = self.prepare_input(atoms, coords, "energy")
         results = self.run(inp, "energy")
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         inp, path = self.prepare_input(atoms, coords, "forces")
         run_kwargs = {
             "calc": "forces",
@@ -232,8 +232,8 @@ class DFTBp(OverlapCalculator):
         return results
 
     def parse_total_energy(self, text):
-        energy_re = re.compile("Total energy:\s*([-\d\.]+)\s*H")
-        exc_energy_re = re.compile("Excitation Energy:\s*([\-\.\d]+)\s*H")
+        energy_re = re.compile(r"Total energy:\s*([-\d\.]+)\s*H")
+        exc_energy_re = re.compile(r"Excitation Energy:\s*([\-\.\d]+)\s*H")
         energy = float(energy_re.search(text)[1])
         exc_mobj = exc_energy_re.search(text)
         if exc_mobj:
@@ -299,7 +299,7 @@ class DFTBp(OverlapCalculator):
         #
         # CI coefficients
         #
-        electron_re = re.compile("Nr. of electrons \(up\):\s*([\d\.]+)")
+        electron_re = re.compile(r"Nr. of electrons \(up\):\s*([\d\.]+)")
         mobj = electron_re.search(detailed)
         electrons = int(float(mobj[1]))
         assert electrons % 2 == 0

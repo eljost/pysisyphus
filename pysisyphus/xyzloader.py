@@ -6,24 +6,29 @@ from pysisyphus.constants import BOHR2ANG
 
 
 def make_xyz_str(atoms, coords, comment=""):
-    assert(len(atoms) == len(coords))
+    assert len(atoms) == len(coords)
 
     coord_fmt = "{: 03.8f}"
-    line_fmt = "{:>3s} " + " ".join([coord_fmt, ]*3)
+    line_fmt = "{:>3s} " + " ".join(
+        [
+            coord_fmt,
+        ]
+        * 3
+    )
 
-    body = [line_fmt.format(a, *xyz)
-            for a, xyz
-            in zip(atoms, coords)]
+    body = [line_fmt.format(a, *xyz) for a, xyz in zip(atoms, coords)]
     body = "\n".join(body)
- 
+
     return f"{len(atoms)}\n{comment}\n{body}"
 
 
 def make_trj_str(atoms, coords_list, comments=None):
     if comments is None:
         comments = ["" for _ in coords_list]
-    xyz_strings = [make_xyz_str(atoms, coords, comment)
-                   for coords, comment in zip(coords_list, comments)]
+    xyz_strings = [
+        make_xyz_str(atoms, coords, comment)
+        for coords, comment in zip(coords_list, comments)
+    ]
     return "\n".join(xyz_strings)
 
 
@@ -38,7 +43,7 @@ def coords_to_trj(trj_fn, atoms, coords_list, comments=None):
 
 def make_trj_str_from_geoms(geoms, comments=None, energy_comments=False):
     atoms = geoms[0].atoms
-    coords_list = [geom.coords3d*BOHR2ANG for geom in geoms]
+    coords_list = [geom.coords3d * BOHR2ANG for geom in geoms]
     if energy_comments and comments is None:
         comments = [str(geom._energy) for geom in geoms]
     elif comments is not None:
@@ -56,13 +61,13 @@ def write_geoms_to_trj(geoms, fn, comments=None):
 def split_xyz_str(xyz_str):
     """Example:
 
-        xyz:
-         1
+    xyz:
+     1
 
-         X -1.2 1.4 0.0
-         1
+     X -1.2 1.4 0.0
+     1
 
-         X 2.0 4.0 0.0
+     X 2.0 4.0 0.0
 
     """
     float_ = r"([\+\d\-\.]+)"
@@ -77,14 +82,14 @@ def split_xyz_str(xyz_str):
     while lines_remaining:
         header_mobj = header_re.match(lines[cur_line])
         expect_lines = int(header_mobj[1])
-        slice_ = slice(cur_line+2, cur_line+2+expect_lines)  # lgtm [py/hash-unhashable-value]
+        slice_ = slice(
+            cur_line + 2, cur_line + 2 + expect_lines
+        )  # lgtm [py/hash-unhashable-value]
         check_lines = lines[slice_]
         assert len(check_lines) == expect_lines
         assert all([coord_re.match(line.strip()) for line in check_lines])
 
-        valid_xyz_strs.append(
-            str(expect_lines) + "\n\n" + "\n".join(check_lines)
-        )
+        valid_xyz_strs.append(str(expect_lines) + "\n\n" + "\n".join(check_lines))
 
         lines_read = expect_lines + 2
         lines_remaining -= lines_read
@@ -118,8 +123,8 @@ def parse_xyz_str(xyz_str, with_comment):
     comment_line = xyz_lines[1]
 
     # Only consider the first four items on a line
-    atoms_coords = [line.strip().split()[:4]
-                    for line in xyz_str.strip().split("\n")[2:]
+    atoms_coords = [
+        line.strip().split()[:4] for line in xyz_str.strip().split("\n")[2:]
     ]
     atoms, coords = zip(*[(a, c) for a, *c in atoms_coords])
     coords = np.array(coords, dtype=float)
@@ -148,10 +153,11 @@ def parse_trj_str(trj_str, with_comments=False):
     number_of_atoms = int(trj_lines[0].strip())
     xyz_lines = number_of_atoms + 2
     # Split the trj file in evenly sized strings
-    xyz_strs = ["\n".join(trj_lines[i:i+xyz_lines])
-                for i in range(0, len(trj_lines), xyz_lines)]
-    xyzs = [parse_xyz_str(xyz_str, with_comments)
-            for xyz_str in xyz_strs]
+    xyz_strs = [
+        "\n".join(trj_lines[i : i + xyz_lines])
+        for i in range(0, len(trj_lines), xyz_lines)
+    ]
+    xyzs = [parse_xyz_str(xyz_str, with_comments) for xyz_str in xyz_strs]
 
-    assert(len(xyzs) == (len(trj_lines) / xyz_lines))
+    assert len(xyzs) == (len(trj_lines) / xyz_lines)
     return xyzs

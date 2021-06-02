@@ -38,36 +38,6 @@ class BacktrackingOptimizer(Optimizer):
         self.alpha = opt_restart_info["alpha"]
         self.cycles_since_backtrack = opt_restart_info["cycles_since_backtrack"]
 
-    def scale_alpha(self, unscaled_steps, alpha):
-        # When using an accelerated backtracking optimizer we will vary
-        # alpha until a suitable step size is found. If we did a bad step
-        # that is discared by self.backtrack(...) we will scale down alpha
-        # and try a new step from the last geometry.
-        #
-        # steps = alpha * direction
-        #
-        # If alpha is unreasonably big, scaling by a maximum step size will
-        # lead to the same scaled step even for different alphas as obtained
-        # after several skipping backtracking iterations. So scaling alpha
-        # down won't yield an improved step, until alpha becomes very small.
-        #
-        # If the biggest element in the steps vector for alpha = 1 is e.g.
-        # 50 times the maximum allwod step size, halving alpha to 0.5 will
-        # still yield a steps vector with a maximum element of 25 times the
-        # maximum allowed step size. Both steps vectors would yield the
-        # same scaled down steps vector that won't improve our geometry.
-
-        scaled_alphas = alpha * self.scale_factor**np.arange(5)
-        scaled_steps = unscaled_steps * scaled_alphas[:,None]
-        scaled_steps = np.apply_along_axis(self.scale_by_max_step, 1, scaled_steps)
-        max_steps = np.apply_along_axis(np.max, 1, scaled_steps)
-        # Check which alpha produces steps below the maximum size.
-        below_max_step = np.argmax(max_steps < self.max_step)
-        new_alpha = scaled_alphas[below_max_step]
-        print(f"First improvement is expected for {new_alpha:.06f}")
-        self.alpha = new_alpha
-        print(f"got alpha {alpha}, will use new alpha {new_alpha}")
-
     def reset(self):
         if self.alpha > self.alpha0:
             self.alpha = self.alpha0

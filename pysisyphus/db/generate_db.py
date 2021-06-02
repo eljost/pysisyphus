@@ -5,7 +5,8 @@ import sys
 import numpy as np
 
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-from pysisyphus.helpers import geom_loader, do_final_hessian, highlight_text
+from pysisyphus.helpers import geom_loader, do_final_hessian
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.db import LEVELS, MOLECULES, GUESS_DIR, LEVEL_DIR, OPT_FLAG, THIS_DIR
 import pysisyphus.db.helpers as dbhelpers
 

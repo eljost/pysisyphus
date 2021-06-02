@@ -7,7 +7,7 @@ from scipy.sparse import dok_matrix
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.intcoords.setup_fast import (
-    find_bonds,
+    find_bonds_for_geom,
     find_bonds_bends,
     find_bonds_bends_dihedrals,
 )
@@ -129,7 +129,7 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
     elif kind == "bonds_bends":
         bonds, bends = find_bonds_bends(geom)
     elif kind == "bonds":
-        bonds = find_bonds(geom)
+        bonds = find_bonds_for_geom(geom)
 
     msg = (
         f"Constructing preconditioner from {len(bonds)} bonds, {len(bends)} bends "

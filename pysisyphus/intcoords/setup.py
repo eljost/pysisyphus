@@ -44,10 +44,11 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False, return_cbm
     return (bond_inds,) + add_returns
 
 
-def get_fragments(atoms, coords):
+def get_fragments(atoms, coords, bond_inds=None):
     coords3d = coords.reshape(-1, 3)
-    # Bond indices without interfragment bonds and/or hydrogen bonds
-    bond_inds = get_bond_sets(atoms, coords3d)
+    if bond_inds is None:
+        # Bond indices without interfragment bonds and/or hydrogen bonds
+        bond_inds = get_bond_sets(atoms, coords3d)
 
     bond_ind_sets = [frozenset(bi) for bi in bond_inds]
     fragments = merge_sets(bond_ind_sets)
@@ -231,8 +232,8 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
         if len(intersect) != 1:
             continue
         # if bond == frozenset((0, 11)) and bend == (0, 3, 4):
-            # import pdb; pdb.set_trace()
-            # pass
+        # import pdb; pdb.set_trace()
+        # pass
 
         # TODO: check collinearity of bond and bend.
 
@@ -259,17 +260,25 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
                     for botb in bond_terminal_bonds
                 ]
                 # Hardcoded for now ... look ahead to next shell of atoms
-                if not any([dihedral_valid(coords3d, inds, deg_thresh=max_deg)
-                            for inds in set_dihedrals]):
+                if not any(
+                    [
+                        dihedral_valid(coords3d, inds, deg_thresh=max_deg)
+                        for inds in set_dihedrals
+                    ]
+                ):
                     set_dihedrals = []
                     for betb in bend_terminal_bonds:
-                        bend_terminal_bonds_v2 = set(bond_dict[betb]) - bend_set - bond_set
+                        bend_terminal_bonds_v2 = (
+                            set(bond_dict[betb]) - bend_set - bond_set
+                        )
                         set_dihedrals = [
                             (terminal, intersecting_atom, betb, betb_v2)
                             for betb_v2 in bend_terminal_bonds_v2
                         ]
                     for botb in bond_terminal_bonds:
-                        bond_terminal_bonds_v2 = set(bond_dict[botb]) - bend_set - bond_set
+                        bond_terminal_bonds_v2 = (
+                            set(bond_dict[botb]) - bend_set - bond_set
+                        )
                         set_dihedrals = [
                             (bend_terminal, intersecting_atom, botb, botb_v2)
                             for botb_v2 in bond_terminal_bonds_v2
@@ -431,7 +440,11 @@ def setup_redundant(
     bends_for_dihedrals = bends + linear_bends
     proper_dihedrals, improper_dihedrals = get_dihedral_inds(
         # coords3d, bonds_for_bends, bends, max_deg=dihed_max_deg, logger=logger
-        coords3d, bonds_for_bends, bends_for_dihedrals, max_deg=dihed_max_deg, logger=logger
+        coords3d,
+        bonds_for_bends,
+        bends_for_dihedrals,
+        max_deg=dihed_max_deg,
+        logger=logger,
     )
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
     improper_dihedrals = keep_coords(improper_dihedrals, Torsion)
@@ -495,10 +508,14 @@ def setup_redundant_from_geom(geom, *args, **kwargs):
 
 
 def get_primitives(coords3d, typed_prims, logger=None):
+    rot_pts = (PrimTypes.ROTATION_A, PrimTypes.ROTATION_B, PrimTypes.ROTATION_C)
     primitives = list()
     for type_, *indices in typed_prims:
         cls = PrimMap[type_]
-        primitives.append(cls(indices=indices))
+        cls_kwargs = {"indices": indices}
+        if type_ in rot_pts:
+            cls_kwargs["ref_coords3d"] = coords3d
+        primitives.append(cls(**cls_kwargs))
 
     msg = (
         "Defined primitives\n"

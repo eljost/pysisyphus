@@ -21,6 +21,7 @@ irc:
  type: eulerpc
  rms_grad_thresh: 0.0005 
 endopt:
+ fragments: True
 calc:
  type: xtb
  charge: 0
@@ -31,4 +32,4 @@ geom:
  fn: diels_alder.trj
 assert:
  ts_geom.energy: -17.81225938
- ts_opt.cur_cycle: 15
+ ts_opt.cur_cycle: 14

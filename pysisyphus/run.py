@@ -34,6 +34,7 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
+from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
 # from pysisyphus.overlaps.couplings import couplings
@@ -42,18 +43,18 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
     confirm_input,
     shake_coords,
-    highlight_text,
     do_final_hessian,
     print_barrier,
     get_tangent_trj_str,
 )
-from pysisyphus.helpers_pure import merge_sets, recursive_update
+from pysisyphus.helpers_pure import merge_sets, recursive_update, highlight_text
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
+from pysisyphus.io import save_hessian
 from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
 from pysisyphus.optimizers.hessian_updates import bfgs_update
@@ -67,12 +68,14 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 CALC_DICT = {
     "afir": AFIR,
+    "composite": Composite,
     "dimer": Dimer,
     # "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "ipiserver": IPIServer,
     "mopac": MOPAC,
+    "multi": MultiCalc,
     "oniom": ONIOM,
     "openmolcas": OpenMolcas,
     "orca": ORCA,
@@ -197,8 +200,10 @@ def parse_args(args):
     run_type_group.add_argument(
         "--cp",
         "--copy",
-        help="Copy .yaml file and corresponding geometries to a "
-        "new directory. Similar to TURBOMOLEs cpc command.",
+        nargs="+",
+        help="Copy .yaml file and corresponding geometries from the 'geom' section "
+        "to a new directory. The first argument is interpreted as destination. Any "
+        "remaining (optional) arguments are files that are also copied.",
     )
 
     parser.add_argument(
@@ -338,7 +343,9 @@ def run_tsopt_from_cos(
         # ... and bends and dihedrals, if requested
         if coordinate_union == "bonds_bends_dihedrals":
             valid_prim_types += (PrimTypes.BEND, PrimTypes.PROPER_DIHEDRAL)
-        coord_kwargs["define_prims"] = [tp for tp in typed_prims if tp[0] in valid_prim_types]
+        coord_kwargs["define_prims"] = [
+            tp for tp in typed_prims if tp[0] in valid_prim_types
+        ]
         union_msg = f"Kept primitive types: {valid_prim_types}"
     else:
         union_msg = f"No coordinate union."
@@ -395,25 +402,30 @@ def run_tsopt_from_cos(
     print(f"Wrote {hei_kind} HEI coordinates to '{hei_xyz_fn}'")
 
     ts_calc = calc_getter()
+
+    def wrapped_calc_getter():
+        return ts_calc
+
     ts_geom.set_calculator(ts_calc)
-    ts_optimizer = TSOPT_DICT[tsopt_key]
-    dimer_kwargs = tsopt_kwargs.pop("dimer_kwargs", {})
-    do_hess = tsopt_kwargs.pop("do_hess", False)
+    tsopt_kwargs["prefix"] = "ts"
 
     if tsopt_key == "dimer":
         # Right now Dimer optimization is rectricted to cartesian
         # rotations and translations, even though translation in
         # internals would be possible.
         ts_geom = Geometry(hei_image.atoms, hei_image.cart_coords)
+        dimer_kwargs = tsopt_kwargs.pop("dimer_kwargs", {})
         dimer_kwargs.update(
             {
                 "N_raw": cart_hei_tangent,
                 "base_name": "dimer",
             }
         )
-        dimer_calc = Dimer(ts_calc, **dimer_kwargs)
-        ts_geom.set_calculator(dimer_calc)
-        ts_opt = PreconLBFGS.PreconLBFGS(ts_geom, **tsopt_kwargs)
+
+        def wrapped_calc_getter():
+            return Dimer(ts_calc, **dimer_kwargs)
+
+        tsopt_key = "plbfgs"
     else:
         # Determine which imaginary mode has the highest overlap
         # with the splined HEI tangent.
@@ -475,9 +487,16 @@ def run_tsopt_from_cos(
                 f"Initial root={root} given, neglecting root {ovlp_root} "
                 "determined from overlaps."
             )
-        ts_opt = ts_optimizer(ts_geom, prefix="ts", **tsopt_kwargs)
 
-    ts_opt.run()
+    ts_geom, ts_opt = run_opt(
+        ts_geom,
+        calc_getter=wrapped_calc_getter,
+        opt_key=tsopt_key,
+        opt_kwargs=tsopt_kwargs,
+        title="TS-Optimization",
+        copy_final_geom="ts_opt.xyz",
+    )
+
     # Restore original calculator for Dimer calculations
     if tsopt_key == "dimer":
         ts_geom.set_calculator(ts_calc)
@@ -487,12 +506,7 @@ def run_tsopt_from_cos(
     ts_opt_fn = "ts_opt.xyz"
     with open(ts_opt_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
-    print(f"Wrote TS geometry to '{ts_opt_fn}'")
-
-    if do_hess and not ts_opt.stopped:
-        print()
-        do_final_hessian(ts_geom, write_imag_modes=True)
-    print()
+    print(f"Wrote TS geometry to '{ts_opt_fn}\n'")
 
     ts_energy = ts_geom.energy
     first_cos_energy = cos.images[0].energy
@@ -507,14 +521,14 @@ def run_tsopt_from_cos(
 def run_calculations(
     geoms, calc_getter, path, calc_key, calc_kwargs, scheduler=None, assert_track=False
 ):
-    print("Running calculations")
+    print(highlight_text("Running calculations"))
 
     def par_calc(geom):
-        geom.calculator.run_calculation(geom.atoms, geom.coords)
-        return geom
+        return geom.calculator.run_calculation(geom.atoms, geom.coords)
 
     for geom in geoms:
         geom.set_calculator(calc_getter())
+
     if assert_track:
         assert all(
             [geom.calculator.track for geom in geoms]
@@ -522,111 +536,57 @@ def run_calculations(
 
     if scheduler:
         client = Client(scheduler, pure=False, silence_logs=False)
-        geom_futures = client.map(par_calc, geoms)
-        geoms = client.gather(geom_futures)
+        results_futures = client.map(par_calc, geoms)
+        all_results = client.gather(results_futures)
     else:
+        all_results = list()
+        i_fmt = "02d"
         for i, geom in enumerate(geoms):
+            print(highlight_text(f"Calculation {i:{i_fmt}}", level=1))
+
             start = time.time()
-            geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
-            if i < (len(geoms) - 2):
+            print(geom)
+            results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+
+            hess_keys = [
+                key
+                for key, val in results.items()
+                if isinstance(val, dict) and "hessian" in val
+            ]
+            for hkey in hess_keys:
+                hres = results[hkey]
+                hfn = f"{hkey}_hessian.h5"
+                save_hessian(
+                    hfn,
+                    geom,
+                    cart_hessian=hres["hessian"],
+                    energy=hres["energy"],
+                )
+                print(f"Dumped hessian to '{hfn}'.")
+
+            all_results.append(results)
+            if i < (len(geoms) - 1):
                 try:
                     cur_calculator = geom.calculator
                     next_calculator = geoms[i + 1].calculator
                     next_calculator.set_chkfiles(cur_calculator.get_chkfiles())
+                    msg = f"Set chkfiles on calculator {i:{i_fmt}}"
                 except AttributeError:
-                    print("Calculators don't support set/get_chkfiles!")
+                    msg = "Calculator does not support set/get_chkfiles!"
+                print(msg)
             end = time.time()
             diff = end - start
-            print(f"Ran calculation {i+1:02d}/{len(geoms):02d} in {diff:.1f} s.")
+            print(f"Calculation took {diff:.1f} s.\n")
             sys.stdout.flush()
-    return geoms
+    print()
 
+    for geom, results in zip(geoms, all_results):
+        try:
+            geom.set_results(results)
+        except KeyError:
+            pass
 
-# def get_overlapper(run_dict):
-# try:
-# calc_key = run_dict["calc"].pop("type")
-# except KeyError:
-# print("Creating Overlapper without calc_key.")
-# calc_key = None
-# calc_kwargs = run_dict["calc"]
-# cwd = Path(".")
-# ovlp_with = run_dict["overlaps"]["ovlp_with"]
-# prev_n = run_dict["overlaps"]["prev_n"]
-# overlapper = Overlapper(cwd, ovlp_with, prev_n, calc_key, calc_kwargs)
-# return overlapper
-
-
-# def restore_calculators(run_dict):
-# overlapper = get_overlapper(run_dict)
-
-# cwd = Path(".")
-# glob = run_dict["overlaps"]["glob"]
-# regex = run_dict["overlaps"]["regex"]
-# # First try globbing
-# if glob:
-# paths = natsorted([p for p in cwd.glob(glob)])
-# if len(paths) == 0:
-# raise Exception("Couldn't find any paths! Are you sure that your "
-# f"glob '{glob}' is right?")
-# xyz_fns = [list(p.glob("*.xyz"))[0] for p in paths]
-# geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-# if regex:
-# mobjs = [re.search(regex, str(path)) for path in paths]
-# calc_numbers = [int(mobj[1]) for mobj in mobjs]
-# assert len(calc_numbers) == len(paths)
-# else:
-# calc_numbers = range(len(paths))
-# [overlapper.set_files_from_dir(geom, path, calc_number)
-# for calc_number, geom, path in zip(calc_numbers, geoms, paths)]
-# else:
-# # Otherwise check if geometries are defined in the run_dict
-# if run_dict["xyz"]:
-# geoms = get_geoms(run_dict["xyz"])
-# else:
-# # Else resort to globbing arbitrary xyz files
-# xyz_fns = [str(p) for p in cwd.glob("*.xyz")]
-# geoms = [geom_from_xyz_file(xyz) for xyz in xyz_fns]
-# # geoms = geoms[:2]
-# calc_num = overlapper.restore_calculators(geoms)
-# geoms = geoms[:calc_num]
-# return overlapper, geoms
-
-
-# def overlaps(run_dict, geoms=None):
-# pickle_path = Path("pickles")
-# if pickle_path.is_file() and confirm_input("Load pickled geoms?"):
-# with open(pickle_path, "rb") as handle:
-# overlapper, *geoms = cloudpickle.load(handle)
-# print(f"Loaded overlap and {len(geoms)} from {str(pickle_path)}.")
-# else:
-# if not geoms:
-# overlapper, geoms = restore_calculators(run_dict)
-# else:
-# overlapper = get_overlapper(run_dict)
-
-# to_pickle = [overlapper] + geoms
-# with open(pickle_path, "wb") as handle:
-# cloudpickle.dump(to_pickle, handle)
-
-# ovlp_dict = run_dict["overlaps"]
-# ovlp_type = ovlp_dict["type"]
-# double_mol = ovlp_dict["ao_ovlps"]
-# recursive = ovlp_dict["recursive"]
-# consider_first = ovlp_dict["consider_first"]
-# skip = ovlp_dict["skip"]
-
-# if ovlp_type == "wf" and double_mol:
-# print("!"*10)
-# print("WFOverlaps with true AO overlaps seem faulty right now!")
-# print("!"*10)
-
-
-# overlapper.overlaps_for_geoms(geoms,
-# ovlp_type=ovlp_type,
-# double_mol=double_mol,
-# recursive=recursive,
-# consider_first=consider_first,
-# skip=skip,)
+    return geoms, all_results
 
 
 def run_stocastic(stoc):
@@ -776,6 +736,7 @@ def run_opt(
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
+    T = opt_kwargs.pop("T", 298.15)
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
@@ -814,8 +775,7 @@ def run_opt(
     elif do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
-        # final_hessian_result = do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
-        do_final_hessian(geom, write_imag_modes=True, prefix=prefix)
+        do_final_hessian(geom, write_imag_modes=True, prefix=prefix, T=T)
     print()
 
     return opt.geometry, opt
@@ -905,6 +865,7 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
     max_len = max(len(s) for s in xyz)
 
     print(highlight_text(f"RMSDs After End Optimizations"))
+    print()
 
     start_cbms = [get_bond_mat(geom) for geom in geoms]
     end_cbms = [get_bond_mat(geom) for geom in end_geoms]
@@ -933,49 +894,20 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
     print()
 
 
-def do_endopt_ts_barriers(end_geoms, end_fns, ts_geom):
-    if len(end_geoms) != 2:
-        return
-
-    print(highlight_text("Barrier heights after end optimizations"))
-
-    print("Thermochemical corrections are NOT included!")
-
-    ts_energy = ts_geom.energy
-    forward_geom, backward_geom = end_geoms
-    forward_energy = forward_geom.energy
-    backward_energy = backward_geom.energy
-    energies = np.array((forward_energy, ts_energy, backward_energy))
-    energies -= energies.min()
-    min_ind = energies.argmin()
-    energies *= AU2KJPERMOL
-
-    forward_fn, backward_fn = end_fns
-    fns = (forward_fn, "TS", backward_fn)
-    max_len = max(len(s) for s in fns)
-
-    print()
-    print(f"Minimum energy of {energies[min_ind]} kJ mol⁻¹ at '{fns[min_ind]}'.")
-    print()
-    for fn, en in zip(fns, energies):
-        print(f"\t{fn:>{max_len}s}: {en:>8.2f} kJ mol⁻¹")
-    print()
-
-
 def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     print(highlight_text(f"Optimizing IRC ends"))
 
-    # Gather geometries that shall be optimized
+    # Gather geometries that shall be optimized and appropriate keys.
     to_opt = list()
     if irc.forward:
         coords = irc.all_coords[0]
-        to_opt.append((coords, "forward_end"))
+        to_opt.append((coords, "forward"))
     if irc.backward:
         coords = irc.all_coords[-1]
-        to_opt.append((coords, "backward_end"))
+        to_opt.append((coords, "backward"))
     if irc.downhill:
         coords = irc.all_coords[-1]
-        to_opt.append((coords, "downhill_end"))
+        to_opt.append((coords, "downhill"))
 
     def to_frozensets(sets):
         return [frozenset(_) for _ in sets]
@@ -984,7 +916,9 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     # Convert to array for easy indexing with the fragment lists
     atoms = np.array(geom.atoms)
     fragments_to_opt = list()
-    for coords, base_name in to_opt:
+    # Expand endpoints into fragments if requested
+    for coords, key in to_opt:
+        base_name = f"{key}_end"
         c3d = coords.reshape(-1, 3)
         if separate_fragments:
             bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
@@ -1008,20 +942,32 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             fragment_names = [
                 base_name,
             ]
+        fragment_keys = [key] * len(fragments)
         fragment_atoms = [tuple(atoms[list(frag)]) for frag in fragments]
         fragment_coords = [c3d[frag].flatten() for frag in fragments]
         fragments_to_opt.extend(
-            list(zip(fragment_names, fragment_atoms, fragment_coords))
+            list(zip(fragment_keys, fragment_names, fragment_atoms, fragment_coords))
         )
         print()
     to_opt = fragments_to_opt
 
     geom_kwargs = endopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
-    opt_geoms = list()
-    opt_fns = list()
-    for name, atoms, coords in to_opt:
-        geom = Geometry(atoms, coords, coord_type=coord_type, coord_kwargs=geom_kwargs)
+    freeze_atoms = geom_kwargs.get("freeze_atoms", None)
+
+    opt_geoms = dict()
+    opt_fns = dict()
+    for key, name, atoms, coords in to_opt:
+        geom = Geometry(
+            atoms,
+            coords,
+            coord_type=coord_type,
+            coord_kwargs=geom_kwargs,
+            freeze_atoms=freeze_atoms,
+        )
+        initial_fn = f"{name}_initial.xyz"
+        with open(initial_fn, "w") as handle:
+            handle.write(geom.as_xyz())
 
         def wrapped_calc_getter():
             calc = calc_getter()
@@ -1036,19 +982,23 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
                 "dump": True,
             }
         )
-        _, opt = run_opt(
-            geom,
-            wrapped_calc_getter,
-            endopt_key,
-            opt_kwargs,
-            title=f"{name} Optimization",
-        )
-        opt_fn = f"{name}_opt.xyz"
-        shutil.move(opt.final_fn, opt_fn)
-        print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
-        print()
-        opt_geoms.append(geom)
-        opt_fns.append(opt_fn)
+        try:
+            _, opt = run_opt(
+                geom,
+                wrapped_calc_getter,
+                endopt_key,
+                opt_kwargs,
+                title=f"{name} Optimization",
+            )
+            opt_fn = f"{name}_opt.xyz"
+            shutil.move(opt.final_fn, opt_fn)
+            print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
+            print()
+            opt_geoms.setdefault(key, list()).append(geom)
+            opt_fns.setdefault(key, list()).append(opt_fn)
+        except Exception as err:
+            print(f"Optimization failed!\n{err}")
+            return opt.geometry, opt
     print()
     return opt_geoms, opt_fns
 
@@ -1071,8 +1021,10 @@ def run_mdp(geom, calc_getter, mdp_kwargs):
     return mdp_result
 
 
-def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
+def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=None):
+    destination, *copy_also = dest_and_add_cp
     src_path = Path(yaml_fn).resolve().parent
+    destination = Path(destination)
     try:
         print(f"Trying to create directory '{destination}' ... ", end="")
         os.mkdir(destination)
@@ -1084,6 +1036,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
     else:
         xyzs = run_dict["xyz"]
     print("Copying:")
+    # Copy geometries
     # When newlines are present we have an inline xyz formatted string
     if not "\n" in xyzs:
         if isinstance(xyzs, str):
@@ -1097,7 +1050,16 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, destination, new_yaml_fn=None):
             print("\t", xyz)
     else:
         print("Found inline xyz formatted string. No files to copy!")
-    shutil.copy(yaml_fn, destination)
+    # Copy additional files
+    for src in copy_also:
+        try:
+            shutil.copy(src_path / src, destination)
+            print(f"\t{src}")
+        except FileNotFoundError:
+            print(f"\tCould not find '{src}'. Skipping!")
+    # Update yaml_fn to match destination
+    yaml_dest_fn = Path(destination.stem).with_suffix(".yaml")
+    shutil.copy(yaml_fn, destination / yaml_dest_fn)
     print("\t", yaml_fn)
 
 
@@ -1129,6 +1091,8 @@ def get_defaults(conf_dict):
         "max_cycles": 100,
         "overachieve_factor": 3,
         "type": "rfo",
+        "do_hess": False,
+        "T": 298.15,
     }
     cos_opt_defaults = {
         "type": "qm",
@@ -1174,6 +1138,8 @@ def get_defaults(conf_dict):
             "dump": True,
             "overachieve_factor": 3,
             "h5_group_name": "tsopt",
+            "T": 298.15,
+            "prefix": "ts",
         }
 
     if "preopt" in conf_dict:
@@ -1250,7 +1216,7 @@ def get_defaults(conf_dict):
 
 def get_last_calc_cycle():
     def keyfunc(path):
-        return re.match("image_\d+.(\d+).out", str(path))[1]
+        return re.match(r"image_\d+.(\d+).out", str(path))[1]
 
     cwd = Path(".")
     calc_logs = [str(cl) for cl in cwd.glob("image_*.*.out")]
@@ -1329,8 +1295,8 @@ RunResult = namedtuple(
         "end_geoms irc irc_geom "
         "mdp_result "
         "opt_geom opt "
-        "calced_geoms stocastic "
-        "calc_getter "
+        "calced_geoms calced_results "
+        "stocastic calc_getter "
     ),
 )
 
@@ -1381,6 +1347,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         constrain_prims = rdg.get("constrain_prims", None)
         union = rdg.get("union", None)
         isotopes = rdg.get("isotopes", None)
+        freeze_atoms = rdg.get("freeze_atoms", None)
     # Old geometry input
     else:
         xyz = run_dict["xyz"]
@@ -1398,28 +1365,33 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
             print("Can't restart. Found no previous coordinates.")
             sys.exit()
         xyz = natsorted(trjs)[-1]
-        last_cycle = int(re.search("(\d+)", xyz)[0])
+        last_cycle = int(re.search(r"(\d+)", xyz)[0])
         print(f"Last cycle was {last_cycle}.")
         print(f"Using '{xyz}' as input geometries.")
         opt_kwargs["last_cycle"] = last_cycle
         last_calc_cycle = get_last_calc_cycle()
         run_dict["calc"]["last_calc_cycle"] = last_calc_cycle
 
+    ####################
+    # CALCULATOR SETUP #
+    ####################
+
     # Prepare calculator
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
-    # calc_getter_kwargs = {
-    # "base_name": "image",
-    # "calc_key": calc_key,
-    # "calc_kwargs": calc_kwargs,
-    # }
-    iter_dict = None
     if calc_key == "oniom":
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
             "geom": iter(geoms),
         }
+    elif calc_key == "multi":
+        geoms = get_geoms(xyz, quiet=True)
+        iter_dict = {
+            "base_name": iter([geom.name for geom in geoms]),
+        }
+    else:
+        iter_dict = None
     calc_getter = get_calc_closure(
         "calculator", calc_key, calc_kwargs, iter_dict=iter_dict
     )
@@ -1456,6 +1428,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         constrain_prims=constrain_prims,
         union=union,
         isotopes=isotopes,
+        freeze_atoms=freeze_atoms,
     )
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
@@ -1474,9 +1447,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         ):
             cos_kwargs["calc_getter"] = get_calc_closure("image", calc_key, calc_kwargs)
         geom = COS_DICT[cos_key](geoms, **cos_kwargs)
-    else:
-        assert len(geoms) == 1
+    elif len(geoms) == 1:
         geom = geoms[0]
+    # else:
+    # assert len(geoms) == 1
+    # geom = geoms[0]
 
     if run_dict["stocastic"]:
         stoc_kwargs["calc_kwargs"] = calc_kwargs
@@ -1548,10 +1523,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                         title="TS-Optimization",
                         copy_final_geom="ts_opt.xyz",
                     )
-                geom = ts_geom.copy()
-                # Try to transfer Hessian to new geometry, to avaoid recalculation.
-                if ts_geom._hessian is not None:
-                    geom._hessian = ts_geom._hessian
+                geom = ts_geom.copy_all()
             except HEIIsFirstOrLastException:
                 abort = True
 
@@ -1567,11 +1539,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                 calc_getter = act_calc_getter
             irc_geom = geom.copy()
             irc = run_irc(geom, irc_key, irc_kwargs, calc_getter)
+            # IRC geom won't have a calculator, so we set the appropriate values here.
+            irc_geom.energy = irc.ts_energy
+            irc_geom.cart_hessian = irc.init_hessian
             ran_irc = True
-
-        if run_dict["mdp"]:
-            mdp_kwargs = run_dict["mdp"]
-            mdp_result = run_mdp(geom, calc_getter, mdp_kwargs)
 
         ##########
         # ENDOPT #
@@ -1579,29 +1550,72 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
-            end_geoms, end_fns = run_endopt(
+            do_thermo = run_dict["endopt"].get("do_hess", False)
+            T = run_dict["endopt"]["T"]
+            endopt_geoms, endopt_fns = run_endopt(
                 geom, irc, endopt_key, endopt_kwargs, calc_getter
             )
 
-            if run_dict["cos"] and (len(end_geoms) == 2):
+            # Determine "left" and "right" geoms
+            # Only downhill
+            if irc.downhill:
+                left_key = "downhill"
+            # Only backward
+            elif irc.backward and not irc.forward:
+                left_key = "backward"
+            # Forward and backward run
+            else:
+                left_key = "forward"
+            left_geoms = endopt_geoms[left_key]
+            left_fns = endopt_fns[left_key]
+            try:
+                right_key = "backward"
+                right_geoms = endopt_geoms[right_key]
+                right_fns = endopt_fns[right_key]
+            except KeyError:
+                right_geoms = list()
+                right_fns = list()
+
+            end_geoms = left_geoms + right_geoms
+            if run_dict["cos"]:
+                end_fns = left_fns + right_fns
                 do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map)
 
-            if run_dict["tsopt"]:
-                do_endopt_ts_barriers(end_geoms, end_fns, ts_geom)
-
-            # Dump TS and endopt geoms into trj file
-            if len(end_geoms) == 2:
-                trj_fn = "end_geoms_and_ts.trj"
-                forward_end_geom, backward_end_geom = end_geoms
-                write_geoms_to_trj(
-                    (forward_end_geom, irc_geom, backward_end_geom),
-                    trj_fn,
-                    comments=("Forward end", "TS", "Backward end"),
+            # Try to compute barriers. Skip barriers if thermochemistry is requsted,
+            # but no analytical Hessian is avaialble for irc_geom, because there may
+            # be cases when irc_geom does not have a calculator. If it can be ensured
+            # that irc_geoms always has a calculator, then this restriction could be
+            # lifted.
+            if not (do_thermo and (irc.hessian_init != "calc")):
+                do_endopt_ts_barriers(
+                    irc_geom,
+                    left_geoms,
+                    right_geoms,
+                    left_fns=left_fns,
+                    right_fns=right_fns,
+                    do_thermo=do_thermo,
+                    T=T,
                 )
-                print(f"Wrote optimized end-geometries and TS to '{trj_fn}'")
+            else:
+                print("Barriers with IRC hessian_init != 'calc' not yet implemented!")
+
+            # Dump TS and endopt geoms to .trj. But only when we did not optimize
+            # separate fragments.
+            if len(left_geoms) == 1 and len(right_geoms) in (0, 1):
+                trj_fn = "left_irc_start_right.trj"
+                write_geoms_to_trj(
+                    list(it.chain(left_geoms, [irc_geom], right_geoms)),
+                    trj_fn,
+                    comments=list(it.chain(left_fns, ["IRC start"], right_fns)),
+                )
+                print(f"Wrote optimized end-geometries and IRC start to '{trj_fn}'")
+
+        if run_dict["mdp"]:
+            mdp_kwargs = run_dict["mdp"]
+            mdp_result = run_mdp(geom, calc_getter, mdp_kwargs)
     # Fallback when no specific job type was specified
     else:
-        calced_geoms = run_calculations(
+        calced_geoms, calced_results = run_calculations(
             geoms, calc_getter, yaml_dir, calc_key, calc_kwargs, scheduler
         )
 
@@ -1851,7 +1865,7 @@ def run_from_dict(
     if cwd is None:
         cwd = Path(".")
 
-    start_time = time.time()
+    start_time = datetime.datetime.now()
     print_header()
 
     # Citation
@@ -1901,9 +1915,11 @@ def run_from_dict(
         print()
         check_asserts(run_result, run_dict)
 
-    end_time = time.time()
-    duration = int(end_time - start_time)
-    print(f"pysisyphus run took {duration}s.")
+    end_time = datetime.datetime.now()
+    duration = end_time - start_time
+    # Only keep hh:mm:ss
+    duration_hms = str(duration).split(".")[0]
+    print(f"pysisyphus run took {duration_hms} h.")
 
     return run_result
 
@@ -1943,7 +1959,8 @@ def run():
         "restart": args.restart,
         "dryrun": args.dryrun,
     }
-    return run_from_dict(run_dict, **run_kwargs)
+    run_result = run_from_dict(run_dict, **run_kwargs)
+    return 0
 
 
 if __name__ == "__main__":

@@ -13,12 +13,21 @@ from scipy.spatial.distance import cdist
 
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import eigval_to_wavenumber, report_isotopes
+from pysisyphus.helpers_pure import (
+    eigval_to_wavenumber,
+    report_isotopes,
+    highlight_text,
+)
 from pysisyphus.io import (
     geom_from_pdb,
     geom_from_cjson,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
+    geoms_from_inline_xyz,
+)
+from pysisyphus.thermo import (
+    can_thermoanalysis,
+    get_thermoanalysis,
 )
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
@@ -32,9 +41,6 @@ def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
     }
     kwargs.update(coord_kwargs)
     xyz_fn = str(xyz_fn)
-    if xyz_fn.startswith("lib:"):
-        # Drop lib: part
-        return geom_from_library(xyz_fn[4:], **kwargs)
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
     coords *= ANG2BOHR
     geom = Geometry(
@@ -52,9 +58,6 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
         "coord_type": coord_type,
     }
     kwargs.update(coord_kwargs)
-    if trj_fn.startswith("lib:"):
-        # Drop lib: part
-        return geom_from_library(trj_fn[4:], **kwargs)[:first]
     atoms_coords_comments = parse_trj_file(trj_fn, with_comments=True)[:first]
     geoms = [
         Geometry(atoms, coords.flatten() * ANG2BOHR, comment=comment, **kwargs)
@@ -63,38 +66,35 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     return geoms
 
 
-def geom_loader(fn, coord_type="cart", **coord_kwargs):
+def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     fn = str(fn)
+    ext = "" if "\n" in fn else Path(fn).suffix
+
+    funcs = {
+        ".xyz": geom_from_xyz_file,
+        ".trj": geoms_from_trj,
+        ".pdb": geom_from_pdb,
+        ".cjson": geom_from_cjson,
+        ".zmat": geom_from_zmat_fn,
+        "": geoms_from_inline_xyz,
+    }
+    assert ext in funcs, "Unknown filetype for '{fn}'!"
 
     if fn.startswith("lib:"):
-        fn = str(THIS_DIR / "../xyz_files/" / fn[4:])
+        fn = str(THIS_DIR / "geom_library/" / fn[4:])
 
     kwargs = {
         "coord_type": coord_type,
     }
     kwargs.update(coord_kwargs)
-    if fn.endswith(".xyz"):
-        return geom_from_xyz_file(fn, **kwargs)
-    elif fn.endswith(".trj"):
-        return geoms_from_trj(fn, **kwargs)
-    elif fn.endswith(".pdb"):
-        return geom_from_pdb(fn, **kwargs)
-    elif fn.endswith(".cjson"):
-        return geom_from_cjson(fn, **kwargs)
-    elif fn.endswith(".zmat"):
-        return geom_from_zmat_fn(fn, **kwargs)
-    else:
-        raise Exception(f"Unknown filetype for '{fn}'!")
+    geom = funcs[ext](fn, **kwargs)
 
+    if iterable and (ext in (".trj", "")):
+        geom = tuple(geom)
+    elif iterable:
+        geom = (geom,)
 
-def geom_from_library(xyz_fn, coord_type="cart", **coord_kwargs):
-    xyz_dir = THIS_DIR / "../xyz_files/"
-    xyz_fn = xyz_dir / xyz_fn
-    return geom_loader(
-        xyz_fn,
-        coord_type=coord_type,
-        **coord_kwargs,
-    )
+    return geom
 
 
 def align_geoms(geoms):
@@ -377,25 +377,6 @@ def shake_coords(coords, scale=0.1, seed=None):
     return coords + offset
 
 
-def highlight_text(text, width=80, level=0):
-    levels = {
-        #  horizontal
-        #        vertical
-        0: ("#", "#"),
-        1: ("-", "|"),
-    }
-    full_length = len(text) + 4
-    pad_len = width - full_length
-    pad_len = (pad_len - (pad_len % 2)) // 2
-    pad = " " * pad_len
-    hchar, vchar = levels[level]
-    full_row = hchar * full_length
-    highlight = (
-        f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
-    )
-    return highlight
-
-
 def rms(arr):
     return np.sqrt(np.mean(arr ** 2))
 
@@ -421,11 +402,13 @@ def complete_fragments(atoms, fragments):
 
 FinalHessianResult = namedtuple(
     "FinalHessianResult",
-    "neg_eigvals eigvals nus imag_fns",
+    "neg_eigvals eigvals nus imag_fns thermo",
 )
 
 
-def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix=""):
+def do_final_hessian(
+    geom, save_hessian=True, write_imag_modes=False, prefix="", T=298.15
+):
     print(highlight_text("Hessian at final geometry", level=1))
     print()
 
@@ -476,12 +459,17 @@ def do_final_hessian(geom, save_hessian=True, write_imag_modes=False, prefix="")
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
+        print()
+
+    if can_thermoanalysis:
+        thermo = get_thermoanalysis(geom, T=T)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,
         eigvals=eigvals,
         nus=eigval_to_wavenumber(eigvals),
         imag_fns=imag_fns,
+        thermo=thermo,
     )
     return res
 

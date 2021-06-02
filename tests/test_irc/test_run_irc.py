@@ -1,7 +1,7 @@
 import pytest
 
 from pysisyphus.calculators import XTB
-from pysisyphus.helpers import geom_from_library
+from pysisyphus.helpers import geom_loader
 from pysisyphus.run import run_irc, run_endopt
 from pysisyphus.testing import using
 
@@ -14,7 +14,7 @@ from pysisyphus.testing import using
     ]
 )
 def test_run_irc_opt_ends(fragments, opt_geom_num):
-    geom = geom_from_library("hfabstraction_ts_opt_xtb.xyz")
+    geom = geom_loader("hfabstraction_ts_opt_xtb.xyz")
     calc = XTB(pal=2)
     geom.set_calculator(calc)
 

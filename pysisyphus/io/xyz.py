@@ -3,6 +3,7 @@ import numpy as np
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.xyzloader import split_xyz_str
 
 
 @file_or_str(".xyz", ".trj")
@@ -42,5 +43,14 @@ def geoms_from_xyz(fn, **kwargs):
     geoms = [
         Geometry(atoms, coords.flatten(), comment=comment, **kwargs)
         for (atoms, coords), comment in zip(atoms_coords, comments)
+    ]
+    return geoms
+
+
+def geoms_from_inline_xyz(inline_xyz, **kwargs):
+    atoms_coords = split_xyz_str(inline_xyz)
+    # We excpect the coordinates to be given in Angstrom
+    geoms = [
+        Geometry(atoms, coords * ANG2BOHR, **kwargs) for atoms, coords in atoms_coords
     ]
     return geoms

@@ -93,6 +93,7 @@ class RedundantCoords:
         typed_prims=None,
         define_prims=None,
         constrain_prims=None,
+        freeze_atoms=None,
         bonds_only=False,
         check_bends=True,
         rebuild=True,
@@ -112,6 +113,9 @@ class RedundantCoords:
         if define_prims is None:
             define_prims = list()
         self.define_prims = normalize_prim_inputs(define_prims)
+        if freeze_atoms is None:
+            freeze_atoms = list()
+        self.freeze_atoms = np.array(freeze_atoms, dtype=int)
         # Constrain primitives
         if constrain_prims is None:
             constrain_prims = list()
@@ -530,6 +534,7 @@ class RedundantCoords:
             self.primitives,
             self.dihedral_inds,
             check_dihedrals=self.rebuild,
+            freeze_atoms=self.freeze_atoms,
             logger=self.logger,
         )
         # Update coordinates

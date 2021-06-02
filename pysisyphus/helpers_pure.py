@@ -1,5 +1,6 @@
 import collections.abc
 from enum import Enum
+import itertools as it
 import logging
 from pathlib import Path
 import time
@@ -14,9 +15,9 @@ the constants module, but only from the stdlib and from third parties."""
 
 
 def eigval_to_wavenumber(ev):
-    conv = AU2J/(AMU2KG*BOHR2M**2)
+    conv = AU2J / (AMU2KG * BOHR2M ** 2)
 
-    return np.sign(ev) * np.sqrt(np.abs(ev)*conv)/(2*np.pi*3e10)
+    return np.sign(ev) * np.sqrt(np.abs(ev) * conv) / (2 * np.pi * 3e10)
 
 
 def hash_arr(arr, precision=4):
@@ -73,7 +74,6 @@ def remove_duplicates(seq):
 
 
 class OrderedEnum(Enum):
-
     def __ge__(self, other):
         if self.__class__ is other.__class__:
             return self.value >= other.value
@@ -104,7 +104,9 @@ def timed(logger):
             duration = end - start
             log(logger, f"Execution of '{func.__name__}' took {duration:.2f} s.")
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -130,13 +132,22 @@ def get_input(data, prompt, lbl_func=None):
 def expand(to_expand):
     if any([isinstance(to_expand, cls) for cls in (list, tuple, np.ndarray)]):
         return to_expand
-    else:
+    elif ".." in to_expand:
         start, end = [int(i) for i in to_expand.split("..")]
         return list(range(start, end))
+    # Numbers
+    else:
+        return [int(to_expand)]
+
+
+def full_expand(to_expand):
+    split = to_expand.strip().split(",")
+    return list(it.chain(*[expand(te) for te in split]))
 
 
 def file_or_str(*args):
     exts = args
+
     def inner_func(func):
         def wrapped(inp, *args, **kwargs):
             p = Path(inp)
@@ -176,3 +187,38 @@ def report_isotopes(geom, affect_str):
         print()
 
 
+def highlight_text(text, width=80, level=0):
+    levels = {
+        #  horizontal
+        #        vertical
+        0: ("#", "#"),
+        1: ("-", "|"),
+    }
+    full_length = len(text) + 4
+    pad_len = width - full_length
+    pad_len = (pad_len - (pad_len % 2)) // 2
+    pad = " " * pad_len
+    hchar, vchar = levels[level]
+    full_row = hchar * full_length
+    highlight = (
+        f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
+    )
+    return highlight
+
+
+def interpolate_colors(values, c1, c2, num=32):
+    """Expects two RGB colors c1 and c2."""
+    c_diff = c2 - c1
+    step = c_diff / (num - 1)
+    colors = (c1 + np.arange(num)[:, None] * step).astype(int)
+
+    # Map value interval onto interval range(num)
+    # y = m*x + n
+    val_min = values.min()
+    val_max = values.max()
+    m = abs((num - 1) / (val_min - val_max))
+    n = -m * val_min
+    inds = np.around(m * values + n).astype(int)
+    rgb_colors = colors[inds]
+    hex_colors = [f"#{r:02x}{g:02x}{b:02x}" for r, g, b in rgb_colors]
+    return rgb_colors, hex_colors
