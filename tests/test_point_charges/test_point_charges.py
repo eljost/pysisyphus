@@ -49,10 +49,7 @@ def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
         (2.0, -1.78620256244410,   0.0,     0.3),
     ))
 
-    prep_kwargs = {
-        "point_charges": point_charges,
-    }
-    results = calc.get_forces(geom.atoms, geom.coords, prepare_kwargs=prep_kwargs)
+    results = calc.get_forces(geom.atoms, geom.coords, point_charges=point_charges)
 
     assert results["energy"] == pytest.approx(ref_energy)
     assert np.linalg.norm(results["forces"]) == pytest.approx(ref_force_norm)
