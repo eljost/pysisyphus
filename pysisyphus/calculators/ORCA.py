@@ -24,6 +24,25 @@ def make_sym_mat(table_block):
     return np.concatenate(cbs, axis=1)
 
 
+def save_orca_pc_file(point_charges, pc_fn, hardness=None):
+    point_charges = point_charges.copy()
+    # ORCA excepcts point charge positions in Angstrom
+    point_charges[:,:3] *= BOHR2ANG
+
+    # ORCA also expects the ordering <q> <x> <y> <z>, so we have to resort.
+    shape = point_charges.shape
+    if hardness is not None:
+        shape = shape[0], shape[1]+1
+    _ = np.zeros_like(point_charges)
+    _ = np.zeros(shape)
+    _[:,0] = point_charges[:,3]
+    _[:,1:4] = point_charges[:,:3]
+
+    if hardness:
+        _[:,4] = hardness
+    np.savetxt(pc_fn, _, fmt="%16.10f", header=str(len(point_charges)), comments="")
+
+
 class ORCA(OverlapCalculator):
 
     conf_key = "orca"
@@ -105,16 +124,8 @@ class ORCA(OverlapCalculator):
 
         pc_str = ""
         if point_charges is not None:
-            # ORCA excepcts point charge positions in Angstrom
             pc_fn = self.make_fn("pointcharges_inp.pc")
-            point_charges[:,:3] *= BOHR2ANG
-            # ORCA also expects the ordering <q> <x> <y> <z>, so we have to
-            # resort.
-            _ = np.zeros_like(point_charges)
-            _[:,0] = point_charges[:,3]
-            _[:,1:] = point_charges[:,:3]
-            np.savetxt(pc_fn, _,
-                       fmt="%16.10f", header=str(len(point_charges)), comments="")
+            save_orca_pc_file(point_charges, pc_fn)
             pc_str = f'%pointcharges "{pc_fn}"'
         stable_block = "\n%scf stabperform true hftyp uhf end" if do_stable else ""
         blocks = self.get_block_str() + stable_block
@@ -172,20 +183,17 @@ class ORCA(OverlapCalculator):
 
         return stable
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         calc_type = ""
 
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="energy")
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
-
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
@@ -202,20 +210,20 @@ class ORCA(OverlapCalculator):
                 results = self.get_forces(atoms, coords)
         return results
 
-    def get_hessian(self, atoms, coords, prepare_kwargs=None):
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         calc_type = self.freq_keyword
 
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="hessian")
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
         to execute ORCA with the stored cmd of this calculator."""
-        inp = self.prepare_input(atoms, coords, "noparse")
+        inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
                 "calc": "noparse",
         }

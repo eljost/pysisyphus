@@ -207,12 +207,12 @@ class DFTBp(OverlapCalculator):
         )
         return inp, path
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         inp, path = self.prepare_input(atoms, coords, "energy")
         results = self.run(inp, "energy")
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         inp, path = self.prepare_input(atoms, coords, "forces")
         run_kwargs = {
             "calc": "forces",

@@ -279,16 +279,12 @@ class Gaussian16(OverlapCalculator):
                 results_dict[key] = np.array(res[2:])
         return results_dict
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
-        results = self.get_forces(atoms, coords, prepare_kwargs)
+    def get_energy(self, atoms, coords, **prepare_kwargs):
+        results = self.get_forces(atoms, coords, **prepare_kwargs)
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         did_stable = False
         if self.stable:
             is_stable = self.run_stable(atoms, coords)
@@ -307,16 +303,16 @@ class Gaussian16(OverlapCalculator):
                 results = self.get_forces(atoms, coords)
         return results
 
-    def get_hessian(self, atoms, coords):
-        inp = self.prepare_input(atoms, coords, "freq")
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
+        inp = self.prepare_input(atoms, coords, "freq", **prepare_kwargs)
         kwargs = {
             "calc": "hessian",
         }
         results = self.run(inp, **kwargs)
         return results
 
-    def run_stable(self, atoms, coords):
-        inp = self.prepare_input(atoms, coords, self.stable)
+    def run_stable(self, atoms, coords, **prepare_kwargs):
+        inp = self.prepare_input(atoms, coords, self.stable, **prepare_kwargs)
         self.log(f"Running stability analysis with {self.stable}")
         kwargs = {
             "calc": "stable",
@@ -337,8 +333,8 @@ class Gaussian16(OverlapCalculator):
         is_stable = bool(mobj)
         return is_stable
 
-    def run_calculation(self, atoms, coords):
-        inp = self.prepare_input(atoms, coords, "")
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
+        inp = self.prepare_input(atoms, coords, "", **prepare_kwargs)
         kwargs = {
             "calc": "noparse",
         }

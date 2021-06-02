@@ -1,5 +1,6 @@
 from collections import namedtuple
 import io
+import json
 import os
 import re
 import shutil
@@ -9,8 +10,9 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.parser import parse_turbo_gradient
+from pysisyphus.calculators.ORCA import save_orca_pc_file
 from pysisyphus.constants import BOHR2ANG, BOHRPERFS2AU
-from pysisyphus.helpers import geom_from_xyz_file, geoms_from_trj
+from pysisyphus.helpers import geom_loader
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -44,8 +46,9 @@ class XTB(Calculator):
 
         self.topo_used = 0
         valid_gfns = (0, 1, 2, "ff")
-        assert self.gfn in valid_gfns, \
-            f"Invalid gfn argument. Allowed arguments are: {', '.join(valid_gfns)}!"
+        assert (
+            self.gfn in valid_gfns
+        ), f"Invalid gfn argument. Allowed arguments are: {', '.join(valid_gfns)}!"
         self.uhf = self.mult - 1
 
         self.inp_fn = "xtb.xyz"
@@ -56,6 +59,9 @@ class XTB(Calculator):
             "xtbopt.xyz",
             "g98.out",
             "xtb.trj",
+            # "json:xtbout.json",
+            "charges:charges",
+            "xcontrol",
         )
         if self.quiet:
             self.to_keep = ()
@@ -79,7 +85,29 @@ class XTB(Calculator):
         coords = coords * BOHR2ANG
         return make_xyz_str(atoms, coords.reshape((-1, 3)))
 
-    def prepare_input(self, atoms, coords, calc_type):
+    def prepare_input(self, atoms, coords, calc_type, point_charges=None):
+        path = self.prepare_path(use_in_run=True)
+
+        xcontrol_str = """
+        $write
+            json=true
+        $end
+        """
+
+        if point_charges is not None:
+            pc_fn = self.make_fn("pointcharges_inp.pc")
+            save_orca_pc_file(point_charges, pc_fn, hardness=99)
+            xcontrol_str += f"""
+            $embedding
+               input={pc_fn}
+               interface=orca
+            $end
+            """
+
+        xcontrol_str = textwrap.dedent(xcontrol_str.strip())
+        with open(path / "xcontrol", "w") as handle:
+            handle.write(xcontrol_str)
+
         # Check if the topology has to be recreated/updated
         if (
             self.topo_used > 0
@@ -90,13 +118,15 @@ class XTB(Calculator):
             self.topo = results["topo"]
             self.log(f"Updated topology! Saved to '{self.topo}'.")
         if self.topo:
-            path = self.prepare_path(use_in_run=True)
             shutil.copy(self.topo, path / "gfnff_topo")
             self.log(f"Using toplogy given in {self.topo}.")
             self.topo_used += 1
 
-    def prepare_add_args(self):
-        add_args = f"--chrg {self.charge} --uhf {self.uhf} --acc {self.acc}".split()
+    def prepare_add_args(self, xcontrol=None):
+        add_args = (
+            f"--input xcontrol --chrg {self.charge} --uhf {self.uhf} "
+            f"--acc {self.acc}".split()
+        )
         # Use solvent model if specified
         if self.gbsa:
             gbsa = f"--gbsa {self.gbsa}".split()
@@ -115,17 +145,13 @@ class XTB(Calculator):
 
         return env_copy
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}  # lgtm [py/unused-local-variable]
-        results = self.get_forces(atoms, coords)
+    def get_energy(self, atoms, coords, **prepare_kwargs):
+        results = self.get_forces(atoms, coords, **prepare_kwargs)
         del results["forces"]
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}  # lgtm [py/unused-local-variable]
-        self.prepare_input(atoms, coords, "forces")
+    def get_forces(self, atoms, coords, **prepare_kwargs):
+        self.prepare_input(atoms, coords, "forces", **prepare_kwargs)
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--grad"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -137,10 +163,8 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
-    def get_hessian(self, atoms, coords, prepare_kwargs=None):
-        if prepare_kwargs is None:
-            prepare_kwargs = {}  # lgtm [py/unused-local-variable]
-        self.prepare_input(atoms, coords, "hessian")
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
+        self.prepare_input(atoms, coords, "hessian", **prepare_kwargs)
         inp = self.prepare_coords(atoms, coords)
         add_args = self.prepare_add_args() + ["--hess"]
         self.log(f"Executing {self.base_cmd} {add_args}")
@@ -152,8 +176,8 @@ class XTB(Calculator):
         results = self.run(inp, **kwargs)
         return results
 
-    def run_calculation(self, atoms, coords):
-        self.prepare_input(atoms, coords, "calculation")
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
+        self.prepare_input(atoms, coords, "calculation", **prepare_kwargs)
         inp = self.prepare_coords(atoms, coords)
         kwargs = {
             "calc": "calc",
@@ -245,7 +269,7 @@ class XTB(Calculator):
 
     def parse_md(self, path):
         assert (path / "xtbmdok").exists(), "File xtbmdok does not exist!"
-        geoms = geoms_from_trj(path / "xtb.trj")
+        geoms = geom_loader(path / "xtb.trj")
         return geoms
 
     def run_opt(self, atoms, coords, keep=True, keep_log=False):
@@ -267,12 +291,12 @@ class XTB(Calculator):
         if not xtbopt.exists():
             self.log(f"{self.calc_number:03d} failed")
             return None
-        opt_geom = geom_from_xyz_file(xtbopt)
+        opt_geom = geom_loader(xtbopt)
         opt_geom.energy = self.parse_energy(path)
 
         opt_log = None
         if keep_log:
-            opt_log = geoms_from_trj(path / "xtbopt.log")
+            opt_log = geom_loader(path / "xtbopt.log")
 
         opt_result = OptResult(opt_geom=opt_geom, opt_log=opt_log)
         return opt_result
@@ -299,6 +323,28 @@ class XTB(Calculator):
             "hessian": hessian,
         }
         return results
+
+    def parse_charges(self, fn=None):
+        if fn is None:
+            fn = self.charges
+        charges = np.loadtxt(fn, dtype=float)
+        return charges
+
+    def parse_charges_from_json(self, fn=None):
+        if fn is None:
+            fn = self.json
+        with open(fn, "r") as handle:
+            dump = json.load(handle)
+        charges = dump["partial charges"]
+        return charges
+
+    def keep(self, path):
+        kept_fns = super().keep(path)
+        self.charges = kept_fns["charges"]
+        try:
+            self.json = kept_fns["json"]
+        except KeyError:
+            pass
 
     def __str__(self):
         return "XTB calculator"

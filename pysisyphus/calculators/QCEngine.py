@@ -61,7 +61,7 @@ class QCEngine(Calculator):
             with open(self.make_fn(f"qce_{self.program}_stdout"), "w") as handle:
                     handle.write(res["stdout"])
 
-    def get_energy(self, atoms, coords, prepare_kwargs=None):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         mol = self.get_molecule(atoms, coords)
 
         res = self.compute(mol, driver="energy")
@@ -73,7 +73,7 @@ class QCEngine(Calculator):
 
         return results
 
-    def get_forces(self, atoms, coords, prepare_kwargs=None):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         mol = self.get_molecule(atoms, coords)
 
         res = self.compute(mol, driver="gradient")
@@ -86,7 +86,7 @@ class QCEngine(Calculator):
 
         return results
 
-    def get_hessian(self, atoms, coords, prepare_kwargs=None):
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         mol = self.get_molecule(atoms, coords)
 
         res = self.compute(mol, driver="hessian")

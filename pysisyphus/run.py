@@ -1380,7 +1380,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
-    iter_dict = None
     if calc_key == "oniom":
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
@@ -1391,6 +1390,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         iter_dict = {
             "base_name": iter([geom.name for geom in geoms]),
         }
+    else:
+        iter_dict = None
     calc_getter = get_calc_closure(
         "calculator", calc_key, calc_kwargs, iter_dict=iter_dict
     )
