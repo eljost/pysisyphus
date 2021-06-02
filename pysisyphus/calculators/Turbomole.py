@@ -35,8 +35,8 @@ class Turbomole(OverlapCalculator):
         if self.double_mol_path:
             with open(self.double_mol_path / "control") as handle:
                 text = handle.read()
-            assert (re.search("\$intsdebug\s*sao", text) and
-                    re.search("\$scfiterlimit\s*0", text)), "Please set " \
+            assert (re.search(r"\$intsdebug\s*sao", text) and
+                    re.search(r"\$scfiterlimit\s*0", text)), "Please set " \
                    "$intsdebug sao and $scfiterlimit 0 !"
 
         self.to_keep = ("control", "mos", "alpha", "beta", "out",
@@ -88,7 +88,7 @@ class Turbomole(OverlapCalculator):
         self.ricc2_opt = False
         # Check for excited state calculation
         if "$exopt" in text:
-            exopt_re = "\$exopt\s*(\d+)"
+            exopt_re = r"\$exopt\s*(\d+)"
             self.root = int(re.search(exopt_re, text)[1])
             second_cmd = "egrad"
             self.prepare_td(text)
@@ -103,7 +103,7 @@ class Turbomole(OverlapCalculator):
             second_cmd = "ricc2"
             self.prepare_td(text)
             self.root = self.get_ricc2_root(text)
-            self.frozen_mos = int(re.search("implicit core=\s*(\d+)", text)[1])
+            self.frozen_mos = int(re.search(r"implicit core=\s*(\d+)", text)[1])
             self.log(f"Found {self.frozen_mos} frozen orbitals.")
         if self.track:
             assert (self.td or self.ricc2), "track=True can only be used " \
@@ -138,7 +138,7 @@ class Turbomole(OverlapCalculator):
 
     def set_occ_and_mo_nums(self, text):
         # Determine number of basis functions
-        nbf_re = "nbf\(AO\)=(\d+)"
+        nbf_re = r"nbf\(AO\)=(\d+)"
         nbf = int(re.search(nbf_re, text)[1])
 
         self.occ_mos = None
@@ -146,23 +146,23 @@ class Turbomole(OverlapCalculator):
 
         # Determine number of occupied orbitals
         if not self.uhf:
-            occ_re = "closed shells\s+(\w)\s*\d+-(\d+)"
+            occ_re = r"closed shells\s+(\w)\s*\d+-(\d+)"
             self.occ_mos = int(re.search(occ_re, text)[2])
             self.log(f"Found {self.occ_mos} occupied MOs.")
             # Number of spherical basis functions. May be different from CAO
             # Determine number of virtual orbitals
             self.virt_mos = nbf - self.occ_mos
         else:
-            alpha_re = "alpha shells\s+(\w)\s*\d+-(\d+)"
+            alpha_re = r"alpha shells\s+(\w)\s*\d+-(\d+)"
             alpha_mos = int(re.search(alpha_re, text)[2])
             self.log(f"Found {alpha_mos} occupied alpha MOs.")
 
-            beta_re = "beta shells\s+(\w)\s*\d+-(\d+)"
+            beta_re = r"beta shells\s+(\w)\s*\d+-(\d+)"
             beta_mos = int(re.search(beta_re, text)[2])
             self.log(f"Found {beta_mos} occupied beta MOs.")
 
     def get_ricc2_root(self, text):
-        regex = "geoopt.+?state=\((.+?)\)"
+        regex = r"geoopt.+?state=\((.+?)\)"
         mobj = re.search(regex, text)
         if not mobj:
             root = None
@@ -245,7 +245,7 @@ class Turbomole(OverlapCalculator):
         root_log_msg = f"with current root information: {self.root}"
         if self.root and self.td:
             repl = f"$exopt {self.root}"
-            self.sub_control("\$exopt\s*(\d+)", f"$exopt {self.root}",
+            self.sub_control(r"\$exopt\s*(\d+)", f"$exopt {self.root}",
                              root_log_msg)
             self.log(f"Using '{repl}'")
 
@@ -258,19 +258,19 @@ class Turbomole(OverlapCalculator):
             # )
         if self.root and self.ricc2:
             repl = f"state=(a {self.root})"
-            self.sub_control("state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})",
+            self.sub_control(r"state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})",
                              root_log_msg)
             self.log(f"Using '{repl}' for geoopt.")
 
         if point_charges is not None:
             charge_num = len(point_charges)
             pc_str = self.prepare_point_charges(point_charges)
-            self.sub_control( "\$end", pc_str + "\n$end",
+            self.sub_control(r"\$end", pc_str + "\n$end",
                              f"appended {charge_num} point charges")
             # Activate calculation of gradients on point charges
-            self.sub_control("\$drvopt", "$drvopt\npoint charges\n")
+            self.sub_control(r"\$drvopt", "$drvopt\npoint charges\n")
             # Write point charge gradients to file
-            self.sub_control("\$end", "$point_charge_gradients file=pc_gradients\n$end")
+            self.sub_control(r"\$end", "$point_charge_gradients file=pc_gradients\n$end")
 
         if calc_type == "hessian":
             self.append_control("$noproj\n$nprhessian file=nprhessian")
@@ -287,7 +287,7 @@ class Turbomole(OverlapCalculator):
             handle.write(text)
 
     def append_control(self, to_append, log_msg="", **kwargs):
-        self.sub_control("\$end", f"{to_append}\n$end", log_msg, **kwargs)
+        self.sub_control(r"\$end", f"{to_append}\n$end", log_msg, **kwargs)
 
     def get_pal_env(self):
         env_copy = os.environ.copy()
@@ -397,7 +397,7 @@ class Turbomole(OverlapCalculator):
         to be used with WFOWrapper."""
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        regex = "OVERLAP\(SAO\)\s+-+([\d\.E\-\s*\+]+)\s+-+"
+        regex = r"OVERLAP\(SAO\)\s+-+([\d\.E\-\s*\+]+)\s+-+"
         ovlp_str = re.search(regex, text)[1]
         ovlp = np.array(ovlp_str.strip().split(), dtype=np.float64)
         mo_num = self.occ_mos + self.virt_mos
@@ -413,7 +413,7 @@ class Turbomole(OverlapCalculator):
     def parse_energy(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        en_regex = re.compile("Total energy\s*:?\s*=?\s*([\d\-\.]+)", re.IGNORECASE)
+        en_regex = re.compile(r"Total energy\s*:?\s*=?\s*([\d\-\.]+)", re.IGNORECASE)
         tot_ens = en_regex.findall(text)
 
         if self.td:
@@ -532,19 +532,19 @@ class Turbomole(OverlapCalculator):
             Final MP2 energy from turbomole.out with ADC(2)
             Final CC2 energy from turbomole.out with CC(2)
         """
-        float_re = "([\d\-\.E]+)"
+        float_re = r"([\d\-\.E]+)"
         regexs = [
                   # CC2 ground state energy
-                  ("out", "Final CC2 energy\s*:\s*" + float_re, 0),
+                  ("out", r"Final CC2 energy\s*:\s*" + float_re, 0),
                   # ADC(2) ground state energy
-                  ("out", "Final MP2 energy\s*:\s*" + float_re, 0),
-                  ("control", "\$subenergy.*$\s*" + float_re, re.MULTILINE),
+                  ("out", r"Final MP2 energy\s*:\s*" + float_re, 0),
+                  ("control", r"\$subenergy.*$\s*" + float_re, re.MULTILINE),
                   # DSCF ground state energy
-                  ("out", "total energy\s*=\s*" + float_re, 0),
+                  ("out", r"total energy\s*=\s*" + float_re, 0),
                   # From egrad when a rootflip occured. Then only the excited
                   # state calculation will be redone and the ground state calculation
                   # won't be present in the out-file.
-                  ("out", "Ground state\s*?Total energy:\s+" + float_re, re.MULTILINE),
+                  ("out", r"Ground state\s*?Total energy:\s+" + float_re, re.MULTILINE),
         ]
         for file_attr, regex, flag in regexs:
             regex_ = re.compile(regex, flags=flag)

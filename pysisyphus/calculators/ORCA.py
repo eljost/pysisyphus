@@ -70,7 +70,7 @@ class ORCA(OverlapCalculator):
         if "tddft" in self.blocks:
             self.do_tddft = True
             try:
-                self.root = int(re.search("iroot\s*(\d+)", self.blocks).group(1))
+                self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
         self.inp_fn = "orca.inp"
@@ -148,7 +148,7 @@ class ORCA(OverlapCalculator):
         block_str = self.blocks
         # Use the correct root if we track it
         if self.track:
-            block_str = re.sub("iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
+            block_str = re.sub(r"iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
             self.log(f"Using iroot '{self.root}' for excited state gradient.")
         return block_str
 
@@ -300,7 +300,7 @@ class ORCA(OverlapCalculator):
         with open(orca_log_fn) as handle:
             log_text = handle.read()
 
-        energy_re = "FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
+        energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, log_text)
         energy = float(energy_mobj.groups()[0])
         results["energy"] = energy
@@ -321,7 +321,7 @@ class ORCA(OverlapCalculator):
         log_fn = log_fn[0]
         with open(log_fn) as handle:
             text = handle.read()
-        mobj = re.search("FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
+        mobj = re.search(r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
         energy = float(mobj[1])
         return {"energy": energy}
 
@@ -335,7 +335,7 @@ class ORCA(OverlapCalculator):
         engrad_fn = engrad_fn[0]
         with open(engrad_fn) as handle:
             engrad = handle.read()
-        engrad = re.findall("([\d\-\.]+)", engrad)
+        engrad = re.findall(r"([\d\-\.]+)", engrad)
         atoms = int(engrad.pop(0))
         energy = float(engrad.pop(0))
         force = -np.array(engrad[:3*atoms], dtype=np.float)
@@ -470,13 +470,13 @@ class ORCA(OverlapCalculator):
         with open(self.out) as handle:
             text = handle.read()
 
-        energy_re = "FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
+        energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, text)
         gs_energy = float(energy_mobj.groups()[0])
         all_energies = [gs_energy]
 
         if self.do_tddft:
-            tddft_re = re.compile("STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
+            tddft_re = re.compile(r"STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
             excitation_ens = [float(en) for en in tddft_re.findall(text)]
             all_energies += (np.array(excitation_ens) + gs_energy).tolist()
         all_energies = np.array(all_energies)
@@ -485,12 +485,12 @@ class ORCA(OverlapCalculator):
     def parse_mo_numbers(self, out_fn):
         with open(out_fn) as handle:
             text = handle.read()
-        electron_re = "NEL\s*....\s*(\d+)"
+        electron_re = r"NEL\s*....\s*(\d+)"
         electrons = int(re.search(electron_re, text)[1])
         assert(electrons % 2 == 0), "unrestricted is not yet supported!"
         occ_num = int(electrons / 2)
 
-        mo_re = "Dim\s*....\s*(\d+)"
+        mo_re = r"Dim\s*....\s*(\d+)"
         mo_num = int(re.search(mo_re, text)[1])
         virt_num = mo_num - occ_num
         self.log(f"found {electrons} electrons, {mo_num} MOs, with "

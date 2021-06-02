@@ -54,7 +54,7 @@ class Gaussian16(OverlapCalculator):
             self.exc_args = {k:v for k, v in exc_dict.items()
                              if k not in ("nstates", "root")}
             # Delete exc keyword, as we build it later on
-            self.route = re.sub("((?:td|cis|tda).+?(:?\s|$))", "", self.route)
+            self.route = re.sub(r"((?:td|cis|tda).+?(:?\s|$))", "", self.route)
 
 
         self.to_keep = ("com", "fchk", "log", "dump_635r", "input.xyz")
@@ -364,7 +364,7 @@ class Gaussian16(OverlapCalculator):
     def parse_tddft(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        td_re = "Excited State\s*\d+:\s*[\.\w\?-]+\s*([\d\.-]+?)\s*eV"
+        td_re = r"Excited State\s*\d+:\s*[\.\w\?-]+\s*([\d\.-]+?)\s*eV"
         matches = re.findall(td_re, text)
         assert len(matches) == self.nstates
         # Excitation energies in eV
@@ -393,7 +393,7 @@ class Gaussian16(OverlapCalculator):
         # as requested in the first iterations of the calculation. This will
         # lead to a much higher number of expected number of CI-coefficients
         # when parsing the 635r dump later on.
-        roots_re = "Root\s+(\d+)"
+        roots_re = r"Root\s+(\d+)"
         roots = np.array(re.findall(roots_re, text), dtype=int).max()
 
         # NBasis=    16 NAE=    12 NBE=    12 NFC=     6 NFV=     0
@@ -425,7 +425,7 @@ class Gaussian16(OverlapCalculator):
         self.log(f"Parsing 635r dump '{dump_path}'")
         with open(dump_path) as handle:
             text = handle.read()
-        regex = "read left to right\):\s*(.+)"
+        regex = r"read left to right\):\s*(.+)"
         mobj = re.search(regex, text, re.DOTALL)
         arr_str = mobj[1].replace("D", "E")
         # Drop the first 12 items as they are always 0
@@ -571,7 +571,7 @@ class Gaussian16(OverlapCalculator):
         with open(path / self.out_fn) as handle:
             text = handle.read()
         # Number of basis functions in the double molecule
-        nbas = int(re.search("NBasis =\s*(\d+)", text)[1])
+        nbas = int(re.search(r"NBasis =\s*(\d+)", text)[1])
         assert nbas % 2 == 0
         # Gaussian prints columns of a triangular matrix including
         # the diagonal
