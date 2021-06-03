@@ -591,9 +591,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.reset()
 
             # Coordinates may be updated here.
-            try:
+            if hasattr(self.geometry, "reparametrize"):
                 reparametrized = self.geometry.reparametrize()
-            except AttributeError:
+            else:
                 reparametrized = False
 
             cur_coords = self.geometry.coords
