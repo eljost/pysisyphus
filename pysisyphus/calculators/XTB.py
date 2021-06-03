@@ -340,7 +340,11 @@ class XTB(Calculator):
 
     def keep(self, path):
         kept_fns = super().keep(path)
-        self.charges = kept_fns["charges"]
+        try:
+            self.charges = kept_fns["charges"]
+        except KeyError:
+            # Will fail when run in quiet mode
+            pass
         try:
             self.json = kept_fns["json"]
         except KeyError:
