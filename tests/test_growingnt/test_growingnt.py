@@ -12,7 +12,7 @@ def test_mb_growingnt():
     geom0, geom1 = geoms
 
     gnt_kwargs = {
-        "step_len": 0.05,
+        "between": 10,
         "final_geom": geom1,
         "rms_thresh": 0.5,
     }
@@ -23,5 +23,8 @@ def test_mb_growingnt():
     opt = PreconLBFGS(gnt, **opt_kwargs)
     opt.run()
 
-    calc = geoms[0].calculator
-    calc.plot_geoms(gnt.images, show=True)
+    # calc = geoms[0].calculator
+    # calc.plot_geoms(gnt.images, show=True)
+    # calc.plot_geoms(gnt.sp_images, show=True)
+
+    assert opt.is_converged

@@ -1,9 +1,18 @@
 import numpy as np
 
+from pysisyphus.helpers import rms
+
 
 class GrowingNT:
     def __init__(
-        self, geom, step_len=0.5, rms_thresh=1e-3, r=None, final_geom=None, between=10
+        self,
+        geom,
+        step_len=0.5,
+        rms_thresh=1.7e-3,
+        r=None,
+        final_geom=None,
+        between=None,
+        update_r=False,
     ):
         assert geom.coord_type == "cart"
 
@@ -12,7 +21,7 @@ class GrowingNT:
         self.rms_thresh = rms_thresh
 
         self.coord_type = self.geom.coord_type
-        if final_geom is not None:
+        if final_geom:
             r = final_geom - geom
             r = r / np.linalg.norm(r)
             self.converge_to_geom = final_geom
@@ -21,10 +30,19 @@ class GrowingNT:
         else:
             raise Exception("Please supply either 'r' or 'final_geom'!")
 
+        if final_geom and between:
+            # Determine appropriate step_len from between
+            self.step_len = np.linalg.norm(final_geom.coords - geom.coords) / (
+                between + 1
+            )
+
         self.r = r
         self.P = np.eye(self.coords.size) - np.outer(r, r)
 
         self.images = [self.geom.copy()]
+        self.sp_images = [self.geom.copy()]  # Stationary points
+        self.all_energies = list()
+        self.all_forces = list()
         # Do initial displacement towards final_geom along r
         step = self.step_len * self.r
         self.geom.coords += step
@@ -66,12 +84,17 @@ class GrowingNT:
         return self.geom.as_xyz()
 
     def reparametrize(self):
-        norm = np.linalg.norm(self.forces)
-        reparametrized = norm <= self.rms_thresh
+        real_forces = self.geom.forces  # Unprojected forces
+        energy = self.energy
+        if rms(real_forces) <= self.rms_thresh:
+            self.sp_images.append(self.geom.copy())
+
+        forces = self.forces  # Projected forces
+        reparametrized = rms(forces) <= self.rms_thresh
         if reparametrized:
             self.images.append(self.geom.copy())
+            self.all_forces.append(forces)
+            self.all_energies.append(energy)
             step = self.step_len * self.r
-            new_coords = self.coords + step  # self.step * self.r
-            self.coords = new_coords
-            print("Reparametrized")
+            self.coords = self.coords + step
         return reparametrized
