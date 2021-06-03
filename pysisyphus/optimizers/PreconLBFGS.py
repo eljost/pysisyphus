@@ -37,10 +37,18 @@ class PreconLBFGS(Optimizer):
 
         self.alpha_init = alpha_init
         self.precon = precon
+        # Disable preconditioning for 1 atom species, e.g. analytical potentials
+        if self.precon and (self.geometry.cart_coords.size == 3):
+            self.precon = None
         self.precon_update = precon_update
         self.precon_kind = precon_kind
 
-        is_dimer = isinstance(self.geometry.calculator, Dimer)
+        try:
+            is_dimer = isinstance(self.geometry.calculator, Dimer)
+        # COS objectes may not have a calculator
+        except AttributeError:
+            is_dimer = False
+
         if c_stab is None:
             self.log("No c_stab specified.")
             if is_dimer:

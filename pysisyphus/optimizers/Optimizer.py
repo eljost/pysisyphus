@@ -82,6 +82,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         rms_force=None,
         rms_force_only=False,
         max_force_only=False,
+        converge_to_geom_rms_thresh=0.05,
         align=False,
         dump=False,
         dump_restart=None,
@@ -103,6 +104,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.max_step = max_step
         self.rms_force_only = rms_force_only
         self.max_force_only = max_force_only
+        self.converge_to_geom_rms_thresh = converge_to_geom_rms_thresh
         self.align = align
         self.dump = dump
         self.dump_restart = dump_restart
@@ -115,6 +117,8 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         self.logger = logging.getLogger("optimizer")
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
+
+        # Set up convergence thresholds
         self.convergence = self.make_conv_dict(thresh, rms_force)
         for key, value in self.convergence.items():
             setattr(self, key, value)
@@ -126,6 +130,11 @@ class Optimizer(metaclass=abc.ABCMeta):
                 f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
                 "and disabled dumping!"
             )
+        try:
+            self.converge_to_geom = self.geometry.converge_to_geom
+        except AttributeError:
+            # TODO: log that attribute is not present at debug level
+            self.converge_to_geom = None
         self.max_cycles = max_cycles
 
         # Setting some default values
@@ -255,6 +264,13 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.rms_forces.append(rms_force)
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
+
+        # One may return after this comment, but not before!
+        if self.converge_to_geom is not None:
+            rmsd = np.sqrt(
+                np.mean((self.converge_to_geom.coords - self.geometry.coords) ** 2)
+            )
+            return rmsd < self.converge_to_geom_rms_thresh
 
         if self.thresh == "never":
             return False
@@ -430,7 +446,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         # If the optimization was stopped _forces may not be set, so
         # then we force a calculation if it was not already set.
         _ = self.geometry.forces
-        cart_forces = self.geometry._forces
+        cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
         rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
         int_str = ""

@@ -1,13 +1,14 @@
 import logging
 
 __all__ = [
-    "NEB",
     "AdaptiveNEB",
-    "FreeEndNEB",
-    "SimpleZTS",
     "ChainOfStates",
-    "GrowingString",
+    "FreeEndNEB",
     "FreezingString",
+    "GrowingNT",
+    "GrowingString",
+    "NEB",
+    "SimpleZTS",
 ]
 
 logger = logging.getLogger("cos")
