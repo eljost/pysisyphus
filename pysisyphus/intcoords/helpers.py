@@ -1,7 +1,8 @@
 import numpy as np
 
-from pysisyphus.intcoords.RedundantCoords import RedundantCoords
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
+from pysisyphus.intcoords.RedundantCoords import RedundantCoords
+from pysisyphus.intcoords.Stretch import Stretch
 
 
 def get_tangent(prims1, prims2, dihedral_inds, normalize=False):
@@ -87,3 +88,20 @@ def form_coordinate_union(geom1, geom2):
     intersection = list(set(typed_prims1) & set(typed_prims2))
     intersection.sort()
     return intersection
+
+
+def get_weighted_bond_mode(weighted_bonds, coords3d, remove_translation=True):
+    bond_mode = np.zeros_like(coords3d.flatten())
+    for *indices, weight in weighted_bonds:
+        val, grad = Stretch._calculate(coords3d, indices, gradient=True)
+        # The gradient gives us the direction into which the bond increases, but
+        # want that positive weights correspond to bond formation and negative
+        # weights to bond breaking, so we reverse the sign of the weight.
+        bond_mode += -weight * grad
+
+    if remove_translation:
+        bm3d = bond_mode.reshape(-1, 3)
+        bond_mode = (bm3d - bm3d.mean(axis=0)[None, :]).flatten()
+
+    bond_mode /= np.linalg.norm(bond_mode)
+    return bond_mode
