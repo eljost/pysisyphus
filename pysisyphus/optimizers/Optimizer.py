@@ -270,7 +270,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             rmsd = np.sqrt(
                 np.mean((self.converge_to_geom.coords - self.geometry.coords) ** 2)
             )
-            return rmsd < self.converge_to_geom_rms_thresh
+            converged = rmsd < self.converge_to_geom_rms_thresh
+            return converged
 
         if self.thresh == "never":
             return False
@@ -342,7 +343,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         try:
             # Geometries/ChainOfStates objects can also do some printing.
             add_info = self.geometry.get_additional_print()
-            print(add_info)
+            if add_info:
+                print(add_info)
         except AttributeError:
             pass
 
