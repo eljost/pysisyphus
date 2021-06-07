@@ -1,12 +1,11 @@
+{ fullTest ? false
+, postOverlays ? []
+} :
+
 let
-  sources = import ./sources.nix;
-  qchem = import sources.NixOS-QChem;
-  nixpkgs = import sources.nixpkgs {
-    overlays = [ qchem ];
-    allowUnfree = true;
-  };
-  pysis = { pysisyphus = import ./default.nix; };
-  allPkgs = nixpkgs // pysis;
+  pkgs = import ./pkgs.nix { inherit postOverlays; };
+  pysis = { pysisyphus = import ./default.nix { inherit fullTest; }; };
+  allPkgs = pkgs // pysis;
 in
   with allPkgs;
   mkShell {

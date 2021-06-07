@@ -1,13 +1,9 @@
-{ fullTest ? false } :
+{ fullTest ? false
+, postOverlays ? []
+} :
 
-let
-  sources = import ./sources.nix;
-  qchemOverlay = import sources.NixOS-QChem;
-  nixpkgs = import sources.nixpkgs {
-    overlays = [ qchemOverlay ];
-    allowUnfree = true;
-  };
-in with nixpkgs; qchem.python3.pkgs.callPackage ./pysisyphus.nix {
+let pkgs = import ./pkgs.nix { inherit postOverlays; };
+in with pkgs; qchem.python3.pkgs.callPackage ./pysisyphus.nix {
   multiwfn = qchem.multiwfn;
   xtb = qchem.xtb;
   wfoverlap = qchem.wfoverlap;
@@ -20,6 +16,6 @@ in with nixpkgs; qchem.python3.pkgs.callPackage ./pysisyphus.nix {
   orca = qchem.orca;
   turbomole = qchem.turbomole;
   cfour = qchem.cfour;
-  # molpro = qchem.molpro;
-  # gaussian = qchem.gaussian;
+  molpro = qchem.molpro;
+  gaussian = qchem.gaussian;
 }
