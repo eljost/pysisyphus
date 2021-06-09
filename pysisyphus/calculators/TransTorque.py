@@ -52,29 +52,29 @@ def get_trans_torque_forces(
     return forces
 
 
-class TransTorqueCalculator:
+class TransTorque:
     def __init__(
         self,
         frags,
         iter_frags,
-        b_coords3d,
         a_mats,
         b_mats,
         weight_func=None,
         skip=True,
         kappa=1.0,
+        b_coords3d=None,
     ):
         """Translational and torque forces.
         See A.4. [1], Eqs. (A3) - (A5).
         """
         self.frags = frags
         self.iter_frags = iter_frags
-        self.b_coords3d = b_coords3d
         self.a_mats = a_mats
         self.b_mats = b_mats
         self.weight_func = weight_func
         self.kappa = kappa
         self.skip = skip
+        self.b_coords3d = b_coords3d
 
         self.set_N_invs()
 
@@ -96,12 +96,14 @@ class TransTorqueCalculator:
         c3d = coords.reshape(-1, 3)
         forces = np.zeros_like(c3d)
 
+        b_coords3d = c3d if self.b_coords3d is None else self.b_coords3d
+
         for m, mfrag in enumerate(self.frags):
             N_inv = self.N_invs[m]
             tt_forces = get_trans_torque_forces(
                 mfrag,
                 c3d,
-                self.b_coords3d,
+                b_coords3d,
                 self.a_mats,
                 self.b_mats,
                 m,

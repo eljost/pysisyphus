@@ -10,7 +10,7 @@ __all__ = [
     "FakeASE",
     "Gaussian09",
     "Gaussian16",
-    "HardSphereCalculator",
+    "HardSphere",
     "IPIServer",
     "LennardJones",
     "MOPAC",
@@ -23,7 +23,7 @@ __all__ = [
     "PyXTB",
     "TIP3P",
     "Turbomole",
-    "TransTorqueCalculator",
+    "TransTorque",
     "XTB",
 ]
 
@@ -37,7 +37,7 @@ from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.IPIServer import IPIServer
-from pysisyphus.calculators.HardSphereCalculator import HardSphereCalculator
+from pysisyphus.calculators.HardSphere import HardSphere
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.calculators.MultiCalc import MultiCalc
 from pysisyphus.calculators.MOPAC import MOPAC
@@ -48,7 +48,7 @@ from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
 from pysisyphus.calculators.TIP3P import TIP3P
-from pysisyphus.calculators.TransTorqueCalculator import TransTorqueCalculator
+from pysisyphus.calculators.TransTorque import TransTorque
 from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.calculators.XTB import XTB
 

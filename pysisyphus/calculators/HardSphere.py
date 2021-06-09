@@ -8,7 +8,7 @@ import numpy as np
 from pysisyphus.helpers_pure import get_molecular_radius
 
 
-class HardSphereCalculator:
+class HardSphere:
     def __init__(self, geom, frags, kappa=1.0, permutations=False, **kwargs):
         """Intra-Image Inter-Molecular Hard-Sphere force.
 
