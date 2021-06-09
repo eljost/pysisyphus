@@ -12,7 +12,7 @@ class HardSphereCalculator:
     def __init__(self, geom, frag_lists, kappa=1.0, permutations=False):
         """Intra-Image Inter-Molecular Hard-Sphere force.
 
-        See A.2. S_2 in [1], Eqs. (A1).
+        See A.2. in [1], Eq. (A1).
         """
         self.frag_lists = frag_lists
         self.kappa = kappa

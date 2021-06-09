@@ -59,7 +59,7 @@ def test_dimer(rotation_method, ref_cycle):
     "bonds, ref_cycle",
     [
         (None, 9),
-        ([[1, 2, -1], [2, 0, 1]], 8),
+        ([[1, 2, -1], [2, 0, 1]], 9),
     ]
 )
 def test_dimer_hcn(bonds, ref_cycle):
