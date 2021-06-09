@@ -23,6 +23,7 @@ __all__ = [
     "PyXTB",
     "TIP3P",
     "Turbomole",
+    "TransTorqueCalculator",
     "XTB",
 ]
 
@@ -47,6 +48,7 @@ from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
 from pysisyphus.calculators.TIP3P import TIP3P
+from pysisyphus.calculators.TransTorqueCalculator import TransTorqueCalculator
 from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.calculators.XTB import XTB
 
