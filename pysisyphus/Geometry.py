@@ -256,6 +256,11 @@ class Geometry:
             diff = self.internal.U.T.dot(diff)
         return diff
 
+    def __add__(self, other):
+        atoms = tuple(self.atoms) + tuple(other.atoms)
+        coords = np.concatenate((self.cart_coords, other.cart_coords))
+        return Geometry(atoms, coords)
+
     def atom_xyz_iter(self):
         return iter(zip(self.atoms, self.coords3d))
 
