@@ -47,7 +47,12 @@ from pysisyphus.helpers import (
     print_barrier,
     get_tangent_trj_str,
 )
-from pysisyphus.helpers_pure import merge_sets, recursive_update, highlight_text
+from pysisyphus.helpers_pure import (
+    merge_sets,
+    recursive_update,
+    highlight_text,
+    report_frozen_atoms,
+)
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes
@@ -740,7 +745,9 @@ def run_opt(
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
-    print(f"\nInput structure: {geom.describe()}\n")
+    print(f"\nInput structure: {geom.describe()}")
+    report_frozen_atoms(geom)
+    print()
 
     opt.run()
 
@@ -953,7 +960,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
     geom_kwargs = endopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
-    freeze_atoms = geom_kwargs.get("freeze_atoms", None)
+    freeze_atoms = geom_kwargs.pop("freeze_atoms", None)
 
     opt_geoms = dict()
     opt_fns = dict()

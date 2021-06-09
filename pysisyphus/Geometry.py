@@ -184,10 +184,11 @@ class Geometry:
             assert (
                 coords.size != 3
             ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
+            if (self.freeze_atoms is not None) and ("freeze_atoms" not in coord_kwargs):
+                coord_kwargs["freeze_atoms"] = freeze_atoms
             self.internal = coord_class(
                 atoms,
                 self.coords3d.copy(),
-                freeze_atoms=self.freeze_atoms,
                 **coord_kwargs,
             )
         else:

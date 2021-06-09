@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from pysisyphus.constants import AU2J, AMU2KG, BOHR2M
+from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG
 
 
 """Functions defined here don't import anything from pysisyphus, besides
@@ -184,6 +184,21 @@ def report_isotopes(geom, affect_str):
         masses = geom.masses
         for atom_ind, _ in geom.isotopes:
             print(f"\tAtom {atom_ind}{atoms[atom_ind]}: {masses[atom_ind]:.6f} au")
+        print()
+
+
+def report_frozen_atoms(geom):
+    if len(geom.freeze_atoms) > 0:
+        print(f"Frozen atoms were requested:")
+        atoms = geom.atoms
+        coords3d = geom.coords3d * BOHR2ANG
+        # for atom_ind, c3d in enumerate(zip(atoms, coords3d):
+        fmt = " >12.8f"
+        print(f"\t{len(geom.freeze_atoms)}\n")
+        for atom_ind in geom.freeze_atoms:
+            atom = atoms[atom_ind]
+            x, y, z = coords3d[atom_ind]
+            print(f"\t{atom} {x:{fmt}} {y:{fmt}} {z:{fmt}}")
         print()
 
 
