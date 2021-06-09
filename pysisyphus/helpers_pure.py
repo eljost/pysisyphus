@@ -222,3 +222,13 @@ def interpolate_colors(values, c1, c2, num=32):
     rgb_colors = colors[inds]
     hex_colors = [f"#{r:02x}{g:02x}{b:02x}" for r, g, b in rgb_colors]
     return rgb_colors, hex_colors
+
+
+def get_molecular_radius(coords3d, min_offset=0.9452):
+    coords3d = coords3d.copy()
+    mean = coords3d.mean(axis=0)
+    coords3d -= mean[None, :]
+    distances = np.linalg.norm(coords3d, axis=1)
+    std = max(min_offset, np.std(distances))  # at least 2 angstrom apart
+    radius = distances.mean() + 2 * std
+    return radius

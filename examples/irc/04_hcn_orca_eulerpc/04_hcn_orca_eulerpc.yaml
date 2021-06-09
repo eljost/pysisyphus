@@ -1,0 +1,27 @@
+geom:
+ type: redund
+ fn: |
+  3
+
+  C  0.29569191  0.63254517  0.00000000
+  H -1.03196195  0.62885468  0.00000000
+  N -0.08478897 -0.50737087  0.00000000
+calc:
+ type: orca
+ keywords: hf 3-21g tightscf
+ # Blocks can be specified as given below.
+ #blocks: "%tddft nroots 2 iroot 1 tda false end"
+ pal: 4
+ mem: 1000
+ charge: 0
+ mult: 1
+tsopt:
+ thresh: gau
+irc:
+ type: eulerpc
+ #displ: energy
+ #displ_energy: 0.001
+ #rms_grad_thresh: 0.001
+assert:
+ irc.forward_is_converged: True
+ irc.backward_is_converged: True
