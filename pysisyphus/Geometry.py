@@ -44,7 +44,7 @@ def get_trans_rot_vectors(cart_coords, masses):
 
     Parameters
     ----------
-    cart_coorrds : np.array, 1d, shape (3 * atoms.size, )
+    cart_coords : np.array, 1d, shape (3 * atoms.size, )
         Atomic masses in amu.
     masses : iterable, 1d, shape (atoms.size, )
         Atomic masses in amu.
@@ -1020,7 +1020,7 @@ class Geometry:
             setattr(self, trans[key], results[key])
         self.results = results
 
-    def as_xyz(self, comment=""):
+    def as_xyz(self, comment="", cart_coords=None):
         """Current geometry as a string in XYZ-format.
 
         Parameters
@@ -1028,16 +1028,21 @@ class Geometry:
         comment : str, optional
             Will be written in the second line (comment line) of the
             XYZ-string.
+        cart_coords : np.array, 1d, shape (3 * atoms.size, )
+            Cartesians for dumping instead of self._coords.
 
         Returns
         -------
         xyz_str : str
             Current geometry as string in XYZ-format.
         """
-        coords = self._coords * BOHR2ANG
+        if cart_coords is None:
+            cart_coords = self._coords
+        cart_coords = cart_coords.copy()
+        cart_coords *= BOHR2ANG
         if comment == "":
             comment = self.comment
-        return make_xyz_str(self.atoms, coords.reshape((-1, 3)), comment)
+        return make_xyz_str(self.atoms, cart_coords.reshape((-1, 3)), comment)
 
     def dump_xyz(self, fn):
         if not fn.lower().endswith(".xyz"):
