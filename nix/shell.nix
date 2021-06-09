@@ -1,13 +1,13 @@
+{ fullTest ? false
+, postOverlays ? []
+} :
+
 let
-  nixpkgs = import ./nixpkgs.nix;
-  pysis = { pysisyphus = import ./default.nix; };
-  allPkgs = nixpkgs // pysis;
+  pkgs = import ./pkgs.nix { inherit postOverlays; };
+  pysis = { pysisyphus = import ./default.nix { inherit fullTest; }; };
+  allPkgs = pkgs // pysis;
 in
   with allPkgs;
   mkShell {
-    buildInputs = [
-      pysisyphus
-      nano
-      vim
-    ];
+    buildInputs = [ pysisyphus ];
   }

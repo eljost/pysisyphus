@@ -1,11 +1,21 @@
-let nixpkgs = import ./nixpkgs.nix;
-    config = import ./nixwithchemistry/config.nix;
-in  with nixpkgs; python3Packages.callPackage ./pysisyphus.nix {
-      orca = if config.orca then orca else null;
-      turbomole = if config.turbomole then turbomole else null;
-      gaussian = if config.gaussian then gaussian else null;
-      gamess-us = if config.gamess-us then gamess-us else null;
-      cfour = if config.cfour then cfour else null;
-      molpro = if (config.molpro != null && config.molpro.enable) then molpro else null;
-      mopac = null;
-    }
+{ fullTest ? false
+, postOverlays ? []
+} :
+
+let pkgs = import ./pkgs.nix { inherit postOverlays; };
+in with pkgs; qchem.python3.pkgs.callPackage ./pysisyphus.nix {
+  multiwfn = qchem.multiwfn;
+  xtb = qchem.xtb;
+  wfoverlap = qchem.wfoverlap;
+  nwchem = qchem.nwchem;
+
+  # Perform full testing?
+  inherit fullTest;
+
+  # Uncomment below to enable optional engines.
+  orca = qchem.orca;
+  turbomole = qchem.turbomole;
+  cfour = qchem.cfour;
+  molpro = qchem.molpro;
+  gaussian = qchem.gaussian;
+}
