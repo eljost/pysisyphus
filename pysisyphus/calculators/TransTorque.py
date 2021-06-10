@@ -1,7 +1,6 @@
 # [1] https://doi.org/10.1002/jcc.26495
 #     Habershon, 2021
 
-
 import numpy as np
 
 
@@ -37,7 +36,7 @@ def get_trans_torque_forces(
             for b in bnm:
                 rd = b_coords3d[b] - a_coords3d[a]
                 gd = a_coords3d[a] - gm
-                weight = weight_func(a, b, m, n)
+                weight = weight_func(m, n, a, b)
 
                 trans_vec += weight * abs(rd.dot(gd)) * rd / np.linalg.norm(rd)
                 if np.isnan(trans_vec).any():
