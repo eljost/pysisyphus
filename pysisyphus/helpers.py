@@ -68,6 +68,8 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
 
 
 def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
+    """After introducing the pubchem functionality I don't like this 
+    function anymore :) Too complicated."""
     fn = str(fn)
     org_fn = fn
     ext = "" if "\n" in fn else Path(fn).suffix
