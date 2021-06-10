@@ -113,11 +113,9 @@ def test_N_raw(bonds):
     dimer = Dimer(**dimer_kwargs)
     dimer.set_N_raw(geom.coords)
     N = dimer.N.reshape(-1, 3)
-    # print()
-    # print(N)
 
     from_, to_, weight = bonds[0]
-    ref_row = np.array((-0.66128738, -0.24330643, 0.05916908))
+    ref_row = np.array((0.66128738, 0.24330643, -0.05916908))
     np.testing.assert_allclose(N[from_], weight * ref_row)
     np.testing.assert_allclose(N[to_], -weight * ref_row)
 

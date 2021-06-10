@@ -94,9 +94,12 @@ def get_weighted_bond_mode(weighted_bonds, coords3d, remove_translation=True):
     bond_mode = np.zeros_like(coords3d.flatten())
     for *indices, weight in weighted_bonds:
         val, grad = Stretch._calculate(coords3d, indices, gradient=True)
-        # The gradient gives us the direction into which the bond increases, but
-        # want that positive weights correspond to bond formation and negative
-        # weights to bond breaking, so we reverse the sign of the weight.
+        """
+        The gradient gives us the direction into which the bond increases, but
+        we want that positive weights correspond to bond formation (distance
+        decrease) and negative weights to bond breaking (distance increase),
+        so we reverse the sign of the weight.
+        """
         bond_mode += -weight * grad
 
     if remove_translation:
