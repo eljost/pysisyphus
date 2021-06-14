@@ -89,6 +89,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         prefix="",
         reparam_thresh=1e-3,
         reparam_check_rms=True,
+        reparam_when="after",
         overachieve_factor=0.0,
         restart_info=None,
         check_coord_diffs=True,
@@ -111,6 +112,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.prefix = f"{prefix}_" if prefix else prefix
         self.reparam_thresh = reparam_thresh
         self.reparam_check_rms = reparam_check_rms
+        self.reparam_when = reparam_when
+        assert self.reparam_when in ("after", "before", None)
         self.overachieve_factor = float(overachieve_factor)
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
@@ -522,6 +525,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             if reset_flag:
                 self.reset()
 
+            # Coordinates may be updated here.
+            if self.reparam_when == "before" and hasattr(self.geometry, "reparametrize"):
+                reparametrized = self.geometry.reparametrize()
+
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
 
@@ -593,7 +600,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.reset()
 
             # Coordinates may be updated here.
-            if hasattr(self.geometry, "reparametrize"):
+            if (self.reparam_when == "after") and hasattr(self.geometry, "reparametrize"):
                 reparametrized = self.geometry.reparametrize()
             else:
                 reparametrized = False

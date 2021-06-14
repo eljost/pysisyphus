@@ -18,7 +18,7 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
     # Bytes needed, to store a forces/coords vector
     floats_bytes = 8 * cartesians
     # Virial is hardcoded to the zero vector.
-    VIRIAL = struct.pack("d" * 9, *np.zeros(cartesians))
+    VIRIAL = struct.pack("d" * 9, *np.zeros(9))
     ZERO = struct.pack("i", 0)
 
     fmts = get_fmts(cartesians)
