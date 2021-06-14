@@ -16,6 +16,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class HessianOptimizer(Optimizer):
     hessian_update_funcs = {
+        "none": lambda H, dx, dg: (np.zeros_like(H), "no"),
         "bfgs": bfgs_update,
         "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
