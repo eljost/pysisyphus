@@ -36,6 +36,10 @@ class HardSphere:
             kappa = self.kappa
         c3d = coords.reshape(-1, 3)
 
+        # Break early when only 1 fragment is present
+        if len(self.pair_inds) == 0:
+            return {"energy": 1, "forces": np.zeros_like(coords)}
+
         centroids = np.array([c3d[frag].mean(axis=0) for frag in self.frags])
         mm, nn = np.array(self.pair_inds).T
         gdiffs = centroids[mm] - centroids[nn]
@@ -46,7 +50,8 @@ class HardSphere:
             N[frag_ind] += H_
         nonzero = H > 0
         N *= 3 * self.frag_sizes[self.frag_inds]
-        phi = np.where(N > 0, kappa / N * (gnorms - self.radii_sums), 0)
+        N_invs = np.divide(1, N, out=np.zeros_like(N).astype(float), where=N != 0)
+        phi = kappa * N_invs * (gnorms - self.radii_sums)
         frag_forces = (phi * H / gnorms)[:, None] * gdiffs
         forces = np.zeros_like(c3d)
         # Distribute forces onto fragments
