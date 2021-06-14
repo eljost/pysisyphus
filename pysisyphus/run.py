@@ -88,8 +88,6 @@ CALC_DICT = {
     "pyxtb": PyXTB,
     "turbomole": Turbomole,
     "xtb": XTB,
-    # Analytical potentials
-    # "anapot": AnaPot,
 }
 
 try:
