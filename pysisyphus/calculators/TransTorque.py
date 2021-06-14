@@ -39,11 +39,6 @@ def get_trans_torque_forces(
                 weight = weight_func(m, n, a, b)
 
                 trans_vec += weight * abs(rd.dot(gd)) * rd / np.linalg.norm(rd)
-                if np.isnan(trans_vec).any():
-                    import pdb
-
-                    pdb.set_trace()
-                    pass
                 rot_vec += weight * np.cross(rd, gd)
     trans_vec *= N_inv
     rot_vec *= N_inv
@@ -87,7 +82,7 @@ class TransTorque:
                 bnm = self.b_mats[(n, m)]
                 Ns[m] += len(amn) * len(bnm)
             Ns[m] *= 3 * len(mfrag)
-        self.N_invs = 1 / np.array(Ns)
+        self.N_invs = np.divide(1, Ns, out=np.zeros_like(Ns), where=Ns != 0)
 
     def get_forces(self, atoms, coords, kappa=None):
         if kappa is None:
