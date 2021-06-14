@@ -1,3 +1,4 @@
+import numpy as np
 import sympy as sym
 
 # from sympy import sympify, lambdify,
@@ -77,6 +78,10 @@ class Composite(Calculator):
             results = calc.get_forces(atoms, coords, **prepare_kwargs)
             energies[key] = results["energy"]
             forces[key] = results["forces"]
+        keys = self.keys_calcs.keys()
+        for key in keys:
+            self.log(f"|forces_{key}|={np.linalg.norm(forces[key]):.6f}")
+        self.log("")
 
         final_energy = self.energy_expr.subs(energies).evalf()
         final_forces = self.forces_expr(**forces)
