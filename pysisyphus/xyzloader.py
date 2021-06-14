@@ -123,6 +123,10 @@ def parse_xyz_str(xyz_str, with_comment):
     comment_line = xyz_lines[1]
 
     # Only consider the first four items on a line
+    atom_num = int(xyz_lines[0])
+    atoms_present = len(xyz_lines) - 2
+    assert len(xyz_lines) == atom_num + 2, \
+        f"Expected {atom_num} atoms, but found only {atoms_present}!"
     atoms_coords = [
         line.strip().split()[:4] for line in xyz_str.strip().split("\n")[2:]
     ]
