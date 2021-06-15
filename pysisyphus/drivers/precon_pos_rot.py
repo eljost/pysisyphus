@@ -85,6 +85,12 @@ def get_fragments_and_bonds(geoms):
         coords3d = geom.coords3d
         bonds = [frozenset(bond) for bond in get_bond_sets(atoms, coords3d)]
         fragments = get_fragments(atoms, coords3d.flatten(), bond_inds=bonds)
+        frag_inds = list(it.chain(*fragments))
+        if len(frag_inds) != len(atoms):
+            all_inds = list(range(len(atoms)))
+            missing_inds = set(all_inds) - set(frag_inds)
+            for mi in missing_inds:
+                fragments.append(frozenset((mi,)))
 
         frag_bonds = [
             list(filter(lambda bond: bond <= frag, bonds)) for frag in fragments
@@ -121,108 +127,6 @@ def get_rot_mat(coords3d_1, coords3d_2, center=False):
         U[:, -1] *= -1
         rot_mat = U.dot(Vt)
     return rot_mat
-
-
-def get_trans_rot_vecs(coords3d, A, m, frag_lists, kappa=1):
-    mfrag = frag_lists[m]
-    mcoords3d = coords3d[mfrag]
-    gm = mcoords3d.mean(axis=0)
-
-    vt = np.zeros(3)
-    vr = np.zeros(3)
-    N = 0
-    for n, nfrag in enumerate(frag_lists):
-        if m == n:
-            continue
-        Amn = A[(m, n)]
-        Anm = A[(n, m)]
-        N += len(Amn) + len(Anm)
-        for a in Amn:
-            for b in Anm:
-                rd = coords3d[b] - coords3d[a]
-                gd = coords3d[a] - gm
-
-                vt += abs(rd.dot(gd)) * rd / np.linalg.norm(rd)
-                vr += np.cross(rd, gd)
-
-    N *= 3 * len(mfrag)
-    N_inv = 1 / N
-    vt *= N_inv
-    vr *= N_inv
-
-    forces = kappa * (np.cross(-vr, mcoords3d - gm) + vt[None, :])
-    return forces
-
-
-def get_trans_rot_vecs2(
-    mfrag,
-    a_coords3d,
-    b_coords3d,
-    a_mats,
-    b_mats,
-    m,
-    frag_lists,
-    weight_func=None,
-    skip=True,
-    kappa=1,
-):
-    mcoords3d = a_coords3d[mfrag]
-    gm = mcoords3d.mean(axis=0)
-
-    if weight_func is None:
-
-        def weight_func(m, n, a, b):
-            return 1
-
-    trans_vec = np.zeros(3)
-    rot_vec = np.zeros(3)
-    N = 0
-    for n, nfrag in enumerate(frag_lists):
-        if skip and (m == n):
-            continue
-        amn = a_mats[(m, n)]
-        bnm = b_mats[(n, m)]
-        N += len(amn) * len(bnm)
-        for a in amn:
-            for b in bnm:
-                rd = b_coords3d[b] - a_coords3d[a]
-                gd = a_coords3d[a] - gm
-                weight = weight_func(a, b, m, n)
-
-                trans_vec += weight * abs(rd.dot(gd)) * rd / np.linalg.norm(rd)
-                rot_vec += weight * np.cross(rd, gd)
-
-    N *= 3 * len(mfrag)
-    N_inv = 1 / N
-    trans_vec *= N_inv
-    rot_vec *= N_inv
-
-    forces = kappa * (np.cross(-rot_vec, mcoords3d - gm) + trans_vec[None, :])
-    return forces
-
-
-def sd_opt(geom, forces_getter, max_cycles=1000, max_step=0.05, rms_thresh=0.05):
-    coords = geom.coords.copy()
-    all_coords = np.zeros((max_cycles, coords.size))
-
-    for i in range(max_cycles):
-        all_coords[i] = coords.copy()
-        forces = forces_getter(coords)
-        norm = np.linalg.norm(forces)
-        rms = np.sqrt(np.mean(forces ** 2))
-        if rms <= rms_thresh:
-            print(f"Converged in cycle {i}. Breaking.")
-            break
-        step = forces.copy()
-        step *= min(max_step / np.abs(step).max(), 1)
-        if i % 25 == 0:
-            print(
-                f"{i:03d}: |forces|={norm: >12.6f} rms(forces)={np.sqrt(np.mean(forces**2)): >12.6f} "
-                f"|step|={np.linalg.norm(step): >12.6f}"
-            )
-        coords += step
-
-    return coords, all_coords[: i + 1]
 
 
 def get_steps_to_active_atom_mean(frag_lists, ind_dict, coords3d):
@@ -303,6 +207,9 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     rfrags, rfrag_bonds, rbonds, runion = get_fragments_and_bonds(reactants)
     pfrags, pfrag_bonds, pbonds, punion = get_fragments_and_bonds(products)
 
+    pbond_diff = pbonds - rbonds  # Present in product(s)
+    rbond_diff = rbonds - pbonds  # Present in reactant(s)
+
     def get_which_frag(frags):
         which_frag = dict()
         for frag_ind, frag in enumerate(frags):
@@ -320,9 +227,6 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
 
     rfrag_lists = [list(frag) for frag in rfrags]
     pfrag_lists = [list(frag) for frag in pfrags]
-
-    pbond_diff = pbonds - rbonds  # Present in product(s)
-    rbond_diff = rbonds - pbonds  # Present in reactant(s)
 
     report_frags(runion, punion, rfrags, pfrags, rbond_diff, pbond_diff)
 
@@ -538,7 +442,7 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
         geom.set_calculator(calc)
         opt_kwargs = {
             "max_step": 0.05,
-            "max_cycles": 1000,
+            "max_cycles": 2000,
             "rms_force": rms_force,
         }
         opt = SteepestDescent(geom, **opt_kwargs)
