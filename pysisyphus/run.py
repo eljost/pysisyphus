@@ -74,6 +74,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 CALC_DICT = {
     "afir": AFIR,
     "composite": Composite,
+    "dftb+": DFTBp,
     "dimer": Dimer,
     # "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,

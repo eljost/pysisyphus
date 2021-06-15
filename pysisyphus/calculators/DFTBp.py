@@ -231,6 +231,18 @@ class DFTBp(OverlapCalculator):
             self.log(f"'{path}' has already been deleted!")
         return results
 
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
+        inp, path = self.prepare_input(atoms, coords, "energy")
+        run_kwargs = {
+            "calc": "energy",
+            "hold": self.track,
+        }
+        results = self.run(inp, **run_kwargs)
+        if self.track:
+            self.calc_counter += 1
+            self.store_overlap_data(atoms, coords, path)
+        return results
+
     def parse_total_energy(self, text):
         energy_re = re.compile(r"Total energy:\s*([-\d\.]+)\s*H")
         exc_energy_re = re.compile(r"Excitation Energy:\s*([\-\.\d]+)\s*H")
