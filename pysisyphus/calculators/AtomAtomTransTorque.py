@@ -26,17 +26,11 @@ class AtomAtomTransTorque:
         self.kappa = kappa
 
         self.frag_num = len(self.frags)
-        self.frag_atoms = [
-            [self.geom.atoms[a].lower() for a in frag] for frag in self.frags
-        ]
-        self.frag_sizes_sq = np.array(
-            [len(frag_atoms) ** 2 for frag_atoms in self.frag_atoms]
-        )
         self.pair_inds = list(it.permutations(range(self.frag_num), 2))
+        self.frag_sizes_sq = [len(self.frags[m]) ** 2 for m, _ in self.pair_inds]
 
-        frag_cov_rads = [
-            np.array([CR[fa.lower()] for fa in fas]) for fas in self.frag_atoms
-        ]
+        frag_atoms = [[self.geom.atoms[a].lower() for a in frag] for frag in self.frags]
+        frag_cov_rads = [np.array([CR[fa.lower()] for fa in fas]) for fas in frag_atoms]
         self.avg_cov_radii = list()
         for m, n in self.pair_inds:
             m_cov_rads = frag_cov_rads[m]
@@ -132,7 +126,6 @@ class AtomAtomTransTorque:
             norms = np.linalg.norm(coord_diffs, axis=2)
             H = norms < phi[:, None] * avg_cov_radii
             H_sum = H.sum()
-           # print(f"H_sum={H_sum}")
             if H_sum == 0:
                 continue
             Hs[m] += H_sum
