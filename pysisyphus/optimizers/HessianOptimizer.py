@@ -364,8 +364,8 @@ class HessianOptimizer(Optimizer):
             # Allows gradient differences
             len(self.forces) > 1
             and (self.forces[-2].shape == gradient.shape)
-            # Allows coordinat differences
             and len(self.coords) > 1
+            # Coordinates may have been rebuilt. Take care of that.
             and (self.coords[-2].shape == self.coords[1].shape)
             and len(self.energies) > 1
         )
