@@ -59,7 +59,7 @@ class TransTorque:
         skip=True,
         kappa=1.0,
         b_coords3d=None,
-        do_trans=False,
+        do_trans=True,
     ):
         """Translational and torque forces.
         See A.4. [1], Eqs. (A3) - (A5).
