@@ -430,11 +430,14 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         punion.coords3d[pfrag] += bsh
 
     backup_coords(1)
+    print()
 
     """
     STAGE 2
     Intra-image Inter-molecular Hard-Sphere forces
     """
+
+    print(highlight_text("Stage 2, Hard-Sphere Forces"))
 
     s2_hs_kappa = c["s2_hs_kappa"]
 
@@ -450,15 +453,18 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         opt = SteepestDescent(geom, **opt_kwargs)
         opt.run()
 
-    hardsphere_sd_opt(runion, rfrag_lists, "Stage 2, R")
-    hardsphere_sd_opt(punion, pfrag_lists, "Stage 2, P")
+    hardsphere_sd_opt(runion, rfrag_lists, "Reactants")
+    hardsphere_sd_opt(punion, pfrag_lists, "Products")
 
     backup_coords(2)
+    print()
 
     """
     STAGE 3
     Initial orientation of molecules
     """
+
+    print(highlight_text("Stage 3, Initial Orientation"))
 
     # Rotate R fragments
     alphas = get_steps_to_active_atom_mean(rfrag_lists, AR, runion.coords3d)
@@ -499,6 +505,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         punion.coords3d[pfrag] = rot_coords + gm - rot_coords.mean(axis=0)
 
     backup_coords(3)
+    print()
 
     """
     STAGE 4
@@ -513,6 +520,8 @@ def precon_pos_rot(reactants, products, config=CONFIG):
     is usually attractive, which is counteracted by the repulsive hard-sphere
     forces.
     """
+
+    print(highlight_text("Stage 4, Alignment Of Reactive Atoms"))
 
     def composite_sd_opt(geom, keys_calcs, title):
         print(highlight_text(title, level=1))
@@ -582,7 +591,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         "v": vr_trans_torque,
         "w": wr_trans_torque,
     }
-    composite_sd_opt(runion, r_keys_calcs, "Stage 4, R")
+    composite_sd_opt(runion, r_keys_calcs, "Reactants")
 
     vp_trans_torque = get_vp_trans_torque(kappa=s4_v_kappa)
     wp_trans_torque = get_wp_trans_torque(kappa=s4_w_kappa)
@@ -591,14 +600,17 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         "v": vp_trans_torque,
         "w": wp_trans_torque,
     }
-    composite_sd_opt(punion, p_keys_calcs, "Stage 4, P")
+    composite_sd_opt(punion, p_keys_calcs, "Products")
 
     backup_coords(4)
+    print()
 
     """
     STAGE 5
     Refinement of atomic positions using further hard-sphere forces.
     """
+
+    print(highlight_text("Stage 5, Refinement"))
 
     s5_v_kappa = c["s5_v_kappa"]
     s5_w_kappa = c["s5_w_kappa"]
@@ -615,7 +627,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         "hardsphere": HardSphere(runion, rfrag_lists, kappa=s5_hs_kappa),
         "z": zr_aa_trans_torque,
     }
-    composite_sd_opt(runion, r_keys_calcs, "Stage 5, R")
+    composite_sd_opt(runion, r_keys_calcs, "Reactants")
 
     vp_trans_torque = get_vp_trans_torque(kappa=s5_v_kappa, do_trans=s5_trans)
     wp_trans_torque = get_wp_trans_torque(kappa=s5_w_kappa, do_trans=s5_trans)
@@ -626,9 +638,10 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         "hardsphere": HardSphere(punion, pfrag_lists, kappa=s5_hs_kappa),
         "z": zp_aa_trans_torque,
     }
-    composite_sd_opt(punion, p_keys_calcs, "Stage 5, P")
+    composite_sd_opt(punion, p_keys_calcs, "Products")
 
     backup_coords(5)
+    print()
 
     with open("s5.trj", "w") as handle:
         handle.write("\n".join([geom.as_xyz() for geom in (runion, punion)]))

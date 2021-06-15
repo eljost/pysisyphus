@@ -192,7 +192,6 @@ def report_frozen_atoms(geom):
         print(f"Frozen atoms were requested:")
         atoms = geom.atoms
         coords3d = geom.coords3d * BOHR2ANG
-        # for atom_ind, c3d in enumerate(zip(atoms, coords3d):
         fmt = " >12.8f"
         print(f"\t{len(geom.freeze_atoms)}\n")
         for atom_ind in geom.freeze_atoms:
@@ -205,16 +204,17 @@ def report_frozen_atoms(geom):
 def highlight_text(text, width=80, level=0):
     levels = {
         #  horizontal
-        #        vertical
-        0: ("#", "#"),
-        1: ("-", "|"),
+        #       vertical
+        #           corner
+        0: ("#", "#", "#"),
+        1: ("-", "|", "+"),
     }
     full_length = len(text) + 4
     pad_len = width - full_length
     pad_len = (pad_len - (pad_len % 2)) // 2
     pad = " " * pad_len
-    hchar, vchar = levels[level]
-    full_row = hchar * full_length
+    hchar, vchar, cornerchar = levels[level]
+    full_row = cornerchar + (hchar * (full_length-2)) + cornerchar
     highlight = (
         f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
     )
