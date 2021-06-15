@@ -129,13 +129,15 @@ def get_rot_mat(coords3d_1, coords3d_2, center=False):
     return rot_mat
 
 
-def get_steps_to_active_atom_mean(frag_lists, ind_dict, coords3d):
+def get_steps_to_active_atom_mean(
+    frag_lists, iter_frag_lists, ind_dict, coords3d, skip=True
+):
     frag_num = len(frag_lists)
     steps = np.zeros((frag_num, 3))
     for m, frag_m in enumerate(frag_lists):
         step_m = np.zeros(3)
-        for n, _ in enumerate(frag_lists):
-            if m == n:
+        for n, _ in enumerate(iter_frag_lists):
+            if skip and m == n:
                 continue
             active_inds = ind_dict[(n, m)]
             if len(active_inds) == 0:
@@ -297,17 +299,19 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     )
     report_mats("AP", AP)
 
-    def form_G(frags, A):
+    def form_G(A):
         G = dict()
-        for m, _ in enumerate(frags):
-            for n, _ in enumerate(frags):
-                if m == n:
-                    continue
-                G.setdefault(m, list()).extend(A[m, n])
+        for (m, n), inds in A.items():
+            G.setdefault(m, set())
+            G[m] |= set(inds)
+
+        for k, v in G.items():
+            G[k] = list(v)
         return G
 
-    G = form_G(rfrags, AR)
-    print(f"G: {G}")
+    GR = form_G(AR)
+
+    print(f"GR: {GR}")
 
     # Initial, centered, coordinates and 5 stages
     r_coords = np.zeros((6, runion.coords.size))
@@ -330,13 +334,19 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     backup_coords(0)
 
     # Translate reactant molecules
-    alphas = get_steps_to_active_atom_mean(rfrag_lists, AR, runion.coords3d)
+    alphas = get_steps_to_active_atom_mean(
+        rfrag_lists, rfrag_lists, AR, runion.coords3d
+    )
     for rfrag, alpha in zip(rfrag_lists, alphas):
         runion.coords3d[rfrag] += alpha
 
     # Translate product molecules
-    betas = get_steps_to_active_atom_mean(pfrag_lists, BR, punion.coords3d)
-    sigmas = get_steps_to_active_atom_mean(pfrag_lists, CR, punion.coords3d)
+    betas = get_steps_to_active_atom_mean(
+        pfrag_lists, rfrag_lists, BR, punion.coords3d, skip=False
+    )
+    sigmas = get_steps_to_active_atom_mean(
+        pfrag_lists, rfrag_lists, CR, punion.coords3d, skip=False
+    )
     bs_half = (betas + sigmas) / 2
     for pfrag, bsh in zip(pfrag_lists, bs_half):
         punion.coords3d[pfrag] += bsh
@@ -379,10 +389,10 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     print(highlight_text("Stage 3, Initial Orientation"))
 
     # Rotate R fragments
-    alphas = get_steps_to_active_atom_mean(rfrag_lists, AR, runion.coords3d)
+    alphas = get_steps_to_active_atom_mean(rfrag_lists, rfrag_lists, AR, runion.coords3d)
     gammas = np.zeros_like(alphas)
     for m, rfrag in enumerate(rfrag_lists):
-        Gm = G[m]
+        Gm = GR[m]
         gammas[m] = runion.coords3d[Gm].mean(axis=0)
     r_means = np.array([runion.coords3d[frag].mean(axis=0) for frag in rfrag_lists])
 
