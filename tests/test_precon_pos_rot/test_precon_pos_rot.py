@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from pysisyphus.benchmarks import Benchmark
@@ -13,8 +15,8 @@ def test_precon_pos_rot_figure2(this_dir):
     rgeom, pgeom = precon_pos_rot(educt, product, prefix="figure2_")
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize("fn, geoms, ref_energy", Bm)
 def test_birkholz_benchmark(fn, geoms, ref_energy):
+    prefix = Path(fn).stem + "_"
     reactants, _, products = geoms
-    rgeom, pgeom = precon_pos_rot(reactants, products)
+    rgeom, pgeom = precon_pos_rot(reactants, products, prefix=prefix)

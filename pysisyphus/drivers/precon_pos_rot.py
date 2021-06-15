@@ -314,9 +314,9 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
         return G
 
     GR = form_G(AR)
-    GP = form_G(AP)
+    # GP = form_G(AP)
     print(f"GR: {GR}")
-    print(f"GP: {GP}")
+    # print(f"GP: {GP}")
 
     # Initial, centered, coordinates and 5 stages
     r_coords = np.zeros((6, runion.coords.size))
@@ -394,18 +394,19 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     print(highlight_text("Stage 3, Initial Orientation"))
 
     # Rotate R fragments
-    alphas = get_steps_to_active_atom_mean(rfrag_lists, rfrag_lists, AR, runion.coords3d)
-    gammas = np.zeros_like(alphas)
-    for m, rfrag in enumerate(rfrag_lists):
-        Gm = GR[m]
-        gammas[m] = runion.coords3d[Gm].mean(axis=0)
-    r_means = np.array([runion.coords3d[frag].mean(axis=0) for frag in rfrag_lists])
+    if len(rfrag_lists) > 1:
+        alphas = get_steps_to_active_atom_mean(rfrag_lists, rfrag_lists, AR, runion.coords3d)
+        gammas = np.zeros_like(alphas)
+        for m, rfrag in enumerate(rfrag_lists):
+            Gm = GR[m]
+            gammas[m] = runion.coords3d[Gm].mean(axis=0)
+        r_means = np.array([runion.coords3d[frag].mean(axis=0) for frag in rfrag_lists])
 
-    for m, rfrag in enumerate(rfrag_lists):
-        gm = r_means[m]
-        rot_mat = get_rot_mat(gammas[m] - gm, alphas[m] - gm)
-        rot_coords = (runion.coords3d[rfrag] - gm).dot(rot_mat)
-        runion.coords3d[rfrag] = rot_coords + gm - rot_coords.mean(axis=0)
+        for m, rfrag in enumerate(rfrag_lists):
+            gm = r_means[m]
+            rot_mat = get_rot_mat(gammas[m] - gm, alphas[m] - gm)
+            rot_coords = (runion.coords3d[rfrag] - gm).dot(rot_mat)
+            runion.coords3d[rfrag] = rot_coords + gm - rot_coords.mean(axis=0)
 
     Ns = [0] * len(pfrag_lists)
     for (m, n), CPmn in CP.items():
@@ -423,7 +424,7 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
             RPmRn = get_rot_mat(
                 punion.coords3d[CPmn], runion.coords3d[CPmn], center=True
             )
-            print(f"m={m}, n={n}, len(CPmn)={len(CPmn)}, rot_mat={rot_mat.shape}")
+            print(f"m={m}, n={n}, len(CPmn)={len(CPmn)}")
             # Eq. (A2) in [1]
             r0Pmn = np.einsum("ij,jk->ki", RPmRn, r0Pm.T)
             mu_Pm += len(CPmn) ** 2 / N * r0Pmn
