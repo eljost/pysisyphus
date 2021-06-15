@@ -211,6 +211,8 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
 
     pbond_diff = pbonds - rbonds  # Present in product(s)
     rbond_diff = rbonds - pbonds  # Present in reactant(s)
+    involved_atoms = set(tuple(it.chain(*pbond_diff)))
+    involved_atoms |= set(tuple(it.chain(*rbond_diff)))
 
     def get_which_frag(frags):
         which_frag = dict()
@@ -252,7 +254,7 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     print("CP(m, n), subset of atoms in molecule Pn which are in Rm before reaction.")
     report_mats("CP", CP)
 
-    def form_B(C, bonds_formed):
+    def form_B(C):
         """Construct the B-matrices.
 
         Returns a dict with (m, n) keys, containing the respective
@@ -260,14 +262,15 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
         """
         B = dict()
         for (m, n), union in C.items():
-            B[(m, n)] = set()
-            for bond in bonds_formed:
-                B[(m, n)] |= set(union) & bond
-        B = {key: list(intersection) for key, intersection in B.items()}
+            key = (m, n)
+            B.setdefault(key, set())
+            B[key] |= set(union) & involved_atoms
+        for k, v in B.items():
+            B[k] = list(v)
         return B
 
-    BR = form_B(CR, pbond_diff)
-    BP = {(n, m): intersection for (m, n), intersection in BR.items()}
+    BR = form_B(CR)
+    BP = form_B(CP)
     print(
         "BR(m, n), subset of atoms in CRnm actually involved in bond forming/breaking."
     )
@@ -307,11 +310,13 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
 
         for k, v in G.items():
             G[k] = list(v)
+            assert len(v) > 0
         return G
 
     GR = form_G(AR)
-
+    GP = form_G(AP)
     print(f"GR: {GR}")
+    print(f"GP: {GP}")
 
     # Initial, centered, coordinates and 5 stages
     r_coords = np.zeros((6, runion.coords.size))
