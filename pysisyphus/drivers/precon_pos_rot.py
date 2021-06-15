@@ -287,6 +287,7 @@ CONFIG = {
     "s5_hs_kappa": 10.0,
     "s5_z_kappa": 2.0,
     "s5_trans": True,
+    "s5_rms_force": 0.01,
 }
 
 
@@ -523,7 +524,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
 
     print(highlight_text("Stage 4, Alignment Of Reactive Atoms"))
 
-    def composite_sd_opt(geom, keys_calcs, title):
+    def composite_sd_opt(geom, keys_calcs, title, rms_force=0.05):
         print(highlight_text(title, level=1))
         final = " + ".join([k for k in keys_calcs.keys()])
         calc = Composite(final, keys_calcs=keys_calcs)
@@ -531,7 +532,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         opt_kwargs = {
             "max_step": 0.05,
             "max_cycles": 1000,
-            "rms_force": 0.05,
+            "rms_force": rms_force,
         }
         opt = SteepestDescent(geom, **opt_kwargs)
         opt.run()
@@ -617,6 +618,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
     s5_hs_kappa = c["s5_hs_kappa"]
     s5_z_kappa = c["s5_z_kappa"]
     s5_trans = c["s5_trans"]
+    s5_rms_force = c["s5_rms_force"]
 
     vr_trans_torque = get_vr_trans_torque(kappa=s5_v_kappa, do_trans=s5_trans)
     wr_trans_torque = get_wr_trans_torque(kappa=s5_w_kappa, do_trans=s5_trans)
@@ -627,7 +629,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         "hardsphere": HardSphere(runion, rfrag_lists, kappa=s5_hs_kappa),
         "z": zr_aa_trans_torque,
     }
-    composite_sd_opt(runion, r_keys_calcs, "Reactants")
+    composite_sd_opt(runion, r_keys_calcs, "Reactants", rms_force=s5_rms_force)
 
     vp_trans_torque = get_vp_trans_torque(kappa=s5_v_kappa, do_trans=s5_trans)
     wp_trans_torque = get_wp_trans_torque(kappa=s5_w_kappa, do_trans=s5_trans)
@@ -638,7 +640,7 @@ def precon_pos_rot(reactants, products, config=CONFIG):
         "hardsphere": HardSphere(punion, pfrag_lists, kappa=s5_hs_kappa),
         "z": zp_aa_trans_torque,
     }
-    composite_sd_opt(punion, p_keys_calcs, "Products")
+    composite_sd_opt(punion, p_keys_calcs, "Products", rms_force=s5_rms_force)
 
     backup_coords(5)
     print()
