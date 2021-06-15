@@ -16,6 +16,7 @@ def get_trans_torque_forces(
     weight_func=None,
     skip=True,
     kappa=1,
+    do_trans=True,
 ):
     mcoords3d = a_coords3d[mfrag]
     gm = mcoords3d.mean(axis=0)
@@ -38,8 +39,9 @@ def get_trans_torque_forces(
                 gd = a_coords3d[a] - gm
                 weight = weight_func(m, n, a, b)
 
-                trans_vec += weight * abs(rd.dot(gd)) * rd / np.linalg.norm(rd)
                 rot_vec += weight * np.cross(rd, gd)
+                if do_trans:
+                    trans_vec += weight * abs(rd.dot(gd)) * rd / np.linalg.norm(rd)
     trans_vec *= N_inv
     rot_vec *= N_inv
     forces = kappa * (np.cross(-rot_vec, mcoords3d - gm) + trans_vec[None, :])
@@ -57,6 +59,7 @@ class TransTorque:
         skip=True,
         kappa=1.0,
         b_coords3d=None,
+        do_trans=False,
     ):
         """Translational and torque forces.
         See A.4. [1], Eqs. (A3) - (A5).
@@ -69,6 +72,7 @@ class TransTorque:
         self.kappa = kappa
         self.skip = skip
         self.b_coords3d = b_coords3d
+        self.do_trans = do_trans
 
         self.set_N_invs()
 
@@ -105,6 +109,7 @@ class TransTorque:
                 N_inv,
                 weight_func=self.weight_func,
                 skip=self.skip,
+                do_trans=self.do_trans,
             )
             forces[mfrag] = tt_forces
 

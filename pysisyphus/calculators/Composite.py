@@ -5,14 +5,11 @@ import sympy as sym
 
 from pysisyphus.calculators.Calculator import Calculator
 
-# from pysisyphus.calculators import ORCA, HardSphere, TransTorque
-from pysisyphus.calculators import ORCA  # , HardSphere, TransTorque
+from pysisyphus.calculators import ORCA
 
 
 CALC_CLASSES = {
     "orca": ORCA.ORCA,
-    # "hardsphere": HardSphere.HardSphere,
-    # "transtorque": TransTorque.TransTorque,
 }
 try:
     from pysisyphus.calculators import PySCF

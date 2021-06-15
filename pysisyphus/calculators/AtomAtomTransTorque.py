@@ -133,7 +133,6 @@ class AtomAtomTransTorque:
             ynorms = np.linalg.norm(y, axis=2)
             mcoords3d_centered = frag_centered[m]
             dot = np.abs(np.einsum("ijk,ik->ij", y, mcoords3d_centered))
-            # dot = np.einsum("ijk,ik->ij", y, mcoords3d_centered)
             zt[m] += (H[:, :, None] * dot[:, :, None] * y / ynorms[:, :, None]).sum(
                 axis=(0, 1)
             )
