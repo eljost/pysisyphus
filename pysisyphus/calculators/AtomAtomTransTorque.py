@@ -107,6 +107,9 @@ class AtomAtomTransTorque:
     def get_forces(self, atoms, coords):
         c3d = coords.reshape(-1, 3)
 
+        if len(self.pair_inds) == 0:
+            return {"energy": 1, "forces": np.zeros_like(coords)}
+
         frag_coords = [c3d[frag] for frag in self.frags]
         frag_centroids = np.array([c3d[frag].mean(axis=0) for frag in self.frags])
         frag_centered = [
