@@ -291,8 +291,15 @@ CONFIG = {
 }
 
 
-def precon_pos_rot(reactants, products, config=CONFIG):
+def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     c = config
+
+    if prefix is None:
+        prefix = ""
+
+    def make_fn(fn):
+        return prefix + fn
+
     rfrags, rfrag_bonds, rbonds, runion = get_fragments_and_bonds(reactants)
     pfrags, pfrag_bonds, pbonds, punion = get_fragments_and_bonds(products)
 
@@ -645,12 +652,13 @@ def precon_pos_rot(reactants, products, config=CONFIG):
     backup_coords(5)
     print()
 
-    with open("s5.trj", "w") as handle:
+    with open(make_fn("s5.trj"), "w") as handle:
         handle.write("\n".join([geom.as_xyz() for geom in (runion, punion)]))
 
     def dump_stages(fn, atoms, coords_list):
         align_coords(coords_list)
         comments = [f"Stage {i}" for i in range(coords_list.shape[0])]
+        fn = make_fn(fn)
         coords_to_trj(fn, atoms, coords_list, comments=comments)
 
     dump_stages("r_coords.trj", runion.atoms, r_coords)

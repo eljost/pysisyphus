@@ -213,3 +213,23 @@ def get_xtb_rx_data():
     )
     prefix = "lib:xtb_rx/"
     return prefix, data
+
+
+def get_precon_pos_rot_data():
+    """
+    https://doi.org/10.1002/jcc.23910
+    """
+    data = (
+        ("01_c5ht.trj", 0, 1, None),
+        ("06_dacp2.trj", 0, 1, None),
+        ("07_dacp_eth.trj", 0, 1, None),
+        ("08_dfcp.trj", 0, 1, None),
+        ("09_ene.trj", 0, 1, None),
+        ("11_h2co.trj", 0, 1, None),
+        ("12_hf_eth.trj", 0, 1, None),
+        ("14_meoh.trj", 0, 1, None),
+        ("18_sn2.trj", -1, 1, None),
+        ("19_sulfolene.trj", 0, 1, None),
+    )
+    prefix = "lib:birkholz_rx/"
+    return prefix, data
