@@ -220,7 +220,7 @@ def get_precon_pos_rot_data():
     https://doi.org/10.1002/jcc.23910
     """
     data = (
-        ("01_c5ht.trj", 0, 1, None),
+        ("00_c2no2.trj", 0, 1, None),
         ("06_dacp2.trj", 0, 1, None),
         ("07_dacp_eth.trj", 0, 1, None),
         ("08_dfcp.trj", 0, 1, None),
