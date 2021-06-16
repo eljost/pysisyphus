@@ -3,6 +3,8 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import KB, AU2J
+from pysisyphus.intcoords.RedundantCoords import normalize_prim_input
+from pysisyphus.intcoords.PrimTypes import PrimMap
 
 
 class LogFermi:
@@ -28,8 +30,8 @@ class LogFermi:
         if not gradient:
             return energy
 
-        gradient = self.kT * ((self.beta * t2) / ((1 + t2) * t1))[:, None] * t0
-        return energy, gradient.flatten()
+        grad = self.kT * ((self.beta * t2) / ((1 + t2) * t1))[:, None] * t0
+        return energy, grad.flatten()
 
     def __repr__(self):
         return (
@@ -60,14 +62,14 @@ class HarmonicSphere:
         dr/dx = x/r
         dE/dr * dr/dx = 2*k*x
         """
-        gradient = np.where(distances > self.radius, 2 * self.k * c3d_wrt_origin, 0.0)
+        grad = np.where(distances > self.radius, 2 * self.k * c3d_wrt_origin, 0.0)
 
-        return energy, gradient.flatten()
+        return energy, grad.flatten()
 
     @property
     def surface_area(self):
         """In Bohr**2"""
-        return 4 * pi * self.radius**2
+        return 4 * pi * self.radius ** 2
 
     def instant_pressure(self, coords3d):
         _, gradient = self.calc(coords3d, gradient=True)
@@ -76,11 +78,60 @@ class HarmonicSphere:
         return p
 
 
+class Restraint:
+    def __init__(self, restraints, geom=None):
+        self.restraints = list()
+
+        for prim_inp, *rest in restraints:
+            norm_prim_inp = normalize_prim_input(prim_inp)
+            assert len(norm_prim_inp) == 1
+            norm_prim_inp = norm_prim_inp[0]
+            prim_type, *indices = norm_prim_inp
+            prim_cls = PrimMap[prim_type]
+            prim = prim_cls(indices)
+            force_const = rest.pop(0)
+
+            try:
+                ref_val = rest.pop(0)
+            except IndexError:
+                assert (
+                    geom is not None
+                ), "Need initial coordinates when no reference value is specified!"
+                ref_val = prim.calculate(geom.coords3d)
+
+            self.restraints.append((prim, force_const, ref_val))
+
+    @staticmethod
+    def calc_prim_restraint(prim, coords3d, force_const, ref_val):
+        val, grad = prim.calculate(coords3d, gradient=True)
+        diff = val - ref_val
+        pot = force_const * diff ** 2
+        pot_grad = 2 * force_const * diff * grad
+        return pot, pot_grad
+
+    def calc(self, coords3d, gradient=False):
+        energy = 0.0
+        grad = np.zeros(coords3d.size)
+
+        for prim, force_const, ref_val in self.restraints:
+            penergy, pgrad = self.calc_prim_restraint(
+                prim, coords3d, force_const, ref_val
+            )
+            energy += penergy
+            grad += pgrad
+
+        if not gradient:
+            return energy
+
+        return energy, grad.flatten()
+
+
 class ExternalPotential(Calculator):
 
     available_potentials = {
         "logfermi": LogFermi,
         "harmonic_sphere": HarmonicSphere,
+        "restraint": Restraint,
     }
 
     def __init__(self, calculator=None, potentials=None, **kwargs):

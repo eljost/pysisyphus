@@ -76,7 +76,7 @@ CALC_DICT = {
     "composite": Composite,
     "dftb+": DFTBp,
     "dimer": Dimer,
-    # "ext": ExternalPotential,
+    "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "ipiserver": IPIServer,
@@ -1387,7 +1387,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
-    if calc_key == "oniom":
+    if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
             "geom": iter(geoms),
