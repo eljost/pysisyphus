@@ -26,6 +26,7 @@ def get_coords(atoms, cart_coords):
     [
         "sd",
         "cg",
+        "lbfgs",
     ],
 )
 def test_micro_optimizer(coord_type, step):
@@ -36,3 +37,6 @@ def test_micro_optimizer(coord_type, step):
     geom.set_calculator(calc)
     opt = MicroOptimizer(geom, step=step, rms_force=1e-5)
     opt.run()
+
+    assert opt.is_converged
+    assert opt.cur_cycle in (3, 4)  # Depends on step and coord_type...
