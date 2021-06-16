@@ -5,6 +5,7 @@ import pytest
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.drivers.precon_pos_rot import precon_pos_rot
 from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure import filter_fixture_store
 
 
 Bm = Benchmark("precon_pos_rot")
@@ -41,6 +42,7 @@ def test_birkholz_benchmark(fn, geoms, ref_energy, results_bag):
     results_bag.trj = trj
 
 
+@filter_fixture_store("test_birkholz_benchmark")
 def test_birkholz_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)

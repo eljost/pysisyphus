@@ -247,3 +247,17 @@ def get_molecular_radius(coords3d, min_offset=0.9452):
     std = max(min_offset, np.std(distances))  # at least 2 angstrom apart
     radius = distances.mean() + 2 * std
     return radius
+
+
+def filter_fixture_store(test_name):
+    def inner_function(function):
+        def wrapper(fixture_store):
+            rb = fixture_store["results_bag"]
+            filtered = {
+                "results_bag": {
+                    k: v for k, v in rb.items() if k.startswith(test_name)
+                }
+            }
+            return function(filtered)
+        return wrapper
+    return inner_function

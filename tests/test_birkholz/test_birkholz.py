@@ -2,6 +2,7 @@ import pytest
 
 from pysisyphus.calculators import XTB
 from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
@@ -57,6 +58,7 @@ def test_birkholz_set(xyz_fn, charge, mult, results_bag):
     assert opt.is_converged
 
 
+@filter_fixture_store("test_birkholz_set")
 def test_birkholz_set_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)

@@ -6,6 +6,7 @@ import pytest
 
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.helpers import align_geoms
+from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 from pysisyphus.xyzloader import write_geoms_to_trj
@@ -123,7 +124,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
 
         results_bag.opt_converged = opt.is_converged
         results_bag.opt_cycles = opt.cur_cycle + 1
-        results_bag.tsopt_converged = ts_opt.is_converged
+        # results_bag.tsopt_converged = ts_opt.is_converged
         results_bag.tsopt_cycles = ts_opt.cur_cycle + 1
         results_bag.rmsd = rmsd
 
@@ -141,6 +142,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
 
 
 @using("xtb")
+@filter_fixture_store("test_xtb_rx")
 def test_xtb_rx_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)
@@ -148,7 +150,7 @@ def test_xtb_rx_synthesis(fixture_store):
     tot_opt_cycles = 0
     opt_converged = 0
     tot_tsopt_cycles = 0
-    tsopt_converged = 0
+    # tsopt_converged = 0
     bags = fixture_store["results_bag"]
     for k, v in bags.items():
         print(k)
