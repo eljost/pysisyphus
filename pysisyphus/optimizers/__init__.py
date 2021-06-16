@@ -5,6 +5,7 @@ __all__ = [
     "ConjugateGradient",
     "FIRE",
     "LBFGS",
+    "MicroOptimizer",
     "NCOptimizer",
     "ONIOMOpt",
     "PreconLBFGS",
@@ -17,6 +18,7 @@ __all__ = [
 ]
 
 from pysisyphus.optimizers.ONIOMOpt import ONIOMOpt
+from pysisyphus.optimizers.MicroOptimizer import MicroOptimizer
 
 logger = logging.getLogger("optimizer")
 logger.setLevel(logging.DEBUG)
