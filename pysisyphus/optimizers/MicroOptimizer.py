@@ -123,14 +123,6 @@ class MicroOptimizer:
         step = forces
         return step
 
-    # def cg_step(self, forces):
-    # if (self.prev_step is None) or (self.prev_forces is None):
-    # step = self.sd_step(forces)
-    # else:
-    # beta = forces.dot(forces) / self.prev_forces.dot(self.prev_forces)
-    # step = forces + beta * self.prev_step
-    # return step
-
     def cg_step(self, forces):
         beta = forces.dot(forces) / self.prev_forces.dot(self.prev_forces)
         step = forces + beta * self.prev_step
