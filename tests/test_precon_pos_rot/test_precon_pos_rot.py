@@ -12,7 +12,7 @@ Bm = Benchmark("precon_pos_rot")
 
 
 def test_precon_pos_rot_figure2(this_dir):
-    educt, product = geom_loader("figure2_mod.trj")
+    educt, product = geom_loader(this_dir / "figure2_mod.trj")
     rgeom, pgeom = precon_pos_rot(educt, product, prefix="figure2_")
 
 
