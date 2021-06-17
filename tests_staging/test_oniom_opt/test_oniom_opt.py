@@ -65,6 +65,9 @@ def test_oniom_opt_big():
 def test_oniom_opt_small(opt_dict):
     opt_dict.update({
         "thresh": "gau",
+        "step": "full",
+        # "step": "high",
+        "dump": True,
     })
     run_dict = {
         "geom": {"type": "cart", "fn": "lib:acetaldehyd_oniom.xyz"},

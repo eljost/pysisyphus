@@ -16,12 +16,15 @@ class ONIOMOpt(Optimizer):
         max_micro_cycles=50,
         control_step=False,
         max_step=0.2,
+        step="full",
         **kwargs,
     ):
         super().__init__(geometry, max_step=max_step, **kwargs)
 
         self.max_micro_cycles = max_micro_cycles
         self.control_step = control_step
+        self.step = step
+        assert self.step in ("full", "high")
 
         layers = self.geometry.layers
         assert len(layers) == 2, "Only ONIOM2 supported yet!"
@@ -41,6 +44,8 @@ class ONIOMOpt(Optimizer):
         # link atoms in the high layer.
         link_inds = [link.parent_ind for link in self.high_model.links]
         self.freeze_in_real = self.high_model.atom_inds + link_inds
+        self.freeze_in_high = [2, 1, 3]
+        print("!!! HARDCODED self.freeze_in_high !!!")
 
         self.micros_converged = 0
         self.micro_opt_cycles = list()
@@ -75,7 +80,11 @@ class ONIOMOpt(Optimizer):
         self.micro_opt_cycles.append(real_opt.cur_cycle + 1)
         print("\n" + highlight_text(f"Micro cycles finished") + "\n")
 
-        # Calculate full ONIOM forces with releaxed, real coordinates
+        #######################
+        # Relax full geometry #
+        #######################
+
+        # Calculate full ONIOM forces with previously releaxed, real coordinates
         results = self.geometry.get_energy_and_forces_at(real_geom.coords3d.flatten())
         energy = results["energy"]
         forces = results["forces"]
@@ -86,6 +95,8 @@ class ONIOMOpt(Optimizer):
             prev_step = self.steps[-1] + real_step.flatten()
         except IndexError:
             prev_step = None
+        if self.step == "high":
+            forces.reshape(-1, 3)[self.freeze_in_high] = 0.0
         step = self.lbfgs_closure(forces, prev_step=prev_step)
 
         if self.control_step:
