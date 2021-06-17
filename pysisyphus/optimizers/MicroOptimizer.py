@@ -60,6 +60,8 @@ class MicroOptimizer:
         self.logger.debug(msg)
 
     def run(self):
+        self.geometry.reparametrize()
+
         for self.cur_cycle in range(self.max_cycles):
             if self.dump:
                 with open(self.trj_fn, "a") as handle:
