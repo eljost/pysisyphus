@@ -139,7 +139,7 @@ class ExternalPotential(Calculator):
         "restraint": Restraint,
     }
 
-    def __init__(self, calculator=None, potentials=None, **kwargs):
+    def __init__(self, calculator=None, potentials=None, geom=None, **kwargs):
         super().__init__(**kwargs)
 
         self.calculator = calculator
@@ -147,6 +147,7 @@ class ExternalPotential(Calculator):
         self.potentials = list()
         self.log("Creating external potentials")
         for i, pot_kwargs in enumerate(potentials):
+            pot_kwargs.update({"geom": geom})
             pot_key = pot_kwargs.pop("type")
             pot_cls = self.available_potentials[pot_key]
             pot = pot_cls(**pot_kwargs)

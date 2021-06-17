@@ -7,9 +7,13 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   pysisyphus.benchmarks
    pysisyphus.calculators
    pysisyphus.cos
+   pysisyphus.db
+   pysisyphus.drivers
    pysisyphus.dynamics
+   pysisyphus.geom_library
    pysisyphus.intcoords
    pysisyphus.interpolate
    pysisyphus.io
@@ -19,6 +23,7 @@ Subpackages
    pysisyphus.optimizers
    pysisyphus.plotters
    pysisyphus.stocastic
+   pysisyphus.tests
    pysisyphus.tsoptimizers
    pysisyphus.wrapper
 
@@ -81,6 +86,14 @@ pysisyphus.elem\_data module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.exceptions module
+----------------------------
+
+.. automodule:: pysisyphus.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.filtertrj module
 ---------------------------
 
@@ -129,6 +142,14 @@ pysisyphus.pack module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.pansi module
+-----------------------
+
+.. automodule:: pysisyphus.pansi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.peakdetect module
 ----------------------------
 
@@ -145,14 +166,6 @@ pysisyphus.plot module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.po module
---------------------
-
-.. automodule:: pysisyphus.po
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.run module
 ---------------------
 
@@ -161,10 +174,26 @@ pysisyphus.run module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.socket\_helper module
+--------------------------------
+
+.. automodule:: pysisyphus.socket_helper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.testing module
 -------------------------
 
 .. automodule:: pysisyphus.testing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.thermo module
+------------------------
+
+.. automodule:: pysisyphus.thermo
    :members:
    :undoc-members:
    :show-inheritance:

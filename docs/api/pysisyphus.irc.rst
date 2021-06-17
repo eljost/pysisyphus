@@ -36,10 +36,10 @@ pysisyphus.irc.EulerPC module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.irc.GonzalesSchlegel module
+pysisyphus.irc.GonzalezSchlegel module
 --------------------------------------
 
-.. automodule:: pysisyphus.irc.GonzalesSchlegel
+.. automodule:: pysisyphus.irc.GonzalezSchlegel
    :members:
    :undoc-members:
    :show-inheritance:
@@ -88,6 +88,14 @@ pysisyphus.irc.RK4 module
 -------------------------
 
 .. automodule:: pysisyphus.irc.RK4
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.irc.initial\_displ module
+------------------------------------
+
+.. automodule:: pysisyphus.irc.initial_displ
    :members:
    :undoc-members:
    :show-inheritance:

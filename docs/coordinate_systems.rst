@@ -249,6 +249,9 @@ constrained coordinate to `define_prims`.
 Constraining the Cartesian coordinates (X, Y and Z) of one atom does not affect
 the final energy of an optimization. **But constraining more than one atome does.**
 
+Harmonic restraints to selected primitive internals can be specified in the `calc:`
+section (see the :ref:`Restraint` documentation).
+
 Isotopes
 ^^^^^^^^
 Different isotope masses can be requested. The system works similar to Gaussians system.

@@ -4,10 +4,26 @@ pysisyphus.dynamics package
 Submodules
 ----------
 
-pysisyphus.dynamics.csvr module
--------------------------------
+pysisyphus.dynamics.Gaussian module
+-----------------------------------
 
-.. automodule:: pysisyphus.dynamics.csvr
+.. automodule:: pysisyphus.dynamics.Gaussian
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.dynamics.colvars module
+----------------------------------
+
+.. automodule:: pysisyphus.dynamics.colvars
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.dynamics.driver module
+---------------------------------
+
+.. automodule:: pysisyphus.dynamics.driver
    :members:
    :undoc-members:
    :show-inheritance:
@@ -44,10 +60,18 @@ pysisyphus.dynamics.rattle module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.dynamics.velocity\_verlet module
--------------------------------------------
+pysisyphus.dynamics.thermostats module
+--------------------------------------
 
-.. automodule:: pysisyphus.dynamics.velocity_verlet
+.. automodule:: pysisyphus.dynamics.thermostats
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.dynamics.wigner module
+---------------------------------
+
+.. automodule:: pysisyphus.dynamics.wigner
    :members:
    :undoc-members:
    :show-inheritance:

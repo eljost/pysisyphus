@@ -44,6 +44,14 @@ pysisyphus.cos.GrowingChainOfStates module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.cos.GrowingNT module
+-------------------------------
+
+.. automodule:: pysisyphus.cos.GrowingNT
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.cos.GrowingString module
 -----------------------------------
 
