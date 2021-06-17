@@ -237,7 +237,7 @@ def test_harmonic_sphere_pressure(coords, ref_pressure):
 
 
 @using("pyscf")
-@pytest.mark.parametrize("ref_val", np.linspace(0.6, 1.5, num=10))
+@pytest.mark.parametrize("ref_val", np.linspace(0.6, 1.5, num=5))
 def test_h2_restraint(ref_val):
     geom = geom_loader("lib:h2.xyz", coord_type="redund")
     restraints = [
@@ -261,3 +261,32 @@ def test_h2_restraint(ref_val):
     val = geom.coords[0]
     print(f"@@@ {ref_val:.8f} {geom.coords[0]:.8f})")
     assert val == pytest.approx(ref_val, abs=0.08)
+
+
+@using("pyscf")
+@pytest.mark.parametrize("ref_val", np.linspace(-np.pi / 2, np.pi / 2, 5))
+def test_torsion_restraint(ref_val):
+    geom = geom_loader("lib:h2o2_hf_321g_opt.xyz", coord_type="redund")
+    restraints = [
+        [["TORSION", 1, 3, 2, 0], 0.5, ref_val],
+    ]
+    calc = PySCF(basis="sto3g", verbose=0)
+    R = Restraint(restraints, geom)
+    en, grad = R.calc(geom.coords3d, gradient=True)
+
+    potentials = [
+        {
+            "type": "restraint",
+            "restraints": restraints,
+            "geom": geom,
+        },
+    ]
+    ext = ExternalPotential(calc, potentials=potentials)
+    geom.set_calculator(ext)
+    opt = RFOptimizer(geom, dump=True)
+    opt.run()
+    val = geom.coords[-1]
+    val = np.rad2deg(val)
+    ref_val = np.rad2deg(ref_val)
+    print(f"@@@ ref={ref_val:.4f} val={val:.4f} Δ={val-ref_val:.4f})")
+    # assert val == pytest.approx(ref_val, abs=0.08)

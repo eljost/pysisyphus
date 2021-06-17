@@ -5,6 +5,8 @@ from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import KB, AU2J
 from pysisyphus.intcoords.RedundantCoords import normalize_prim_input
 from pysisyphus.intcoords.PrimTypes import PrimMap
+from pysisyphus.intcoords.update import correct_dihedrals
+from pysisyphus.intcoords import Torsion
 
 
 class LogFermi:
@@ -104,6 +106,9 @@ class Restraint:
     @staticmethod
     def calc_prim_restraint(prim, coords3d, force_const, ref_val):
         val, grad = prim.calculate(coords3d, gradient=True)
+        if isinstance(prim, Torsion):
+            # correct_dihedrals always returns a 1d array, even for scalar inputs
+            val = correct_dihedrals(val, ref_val)[0]
         diff = val - ref_val
         pot = force_const * diff ** 2
         pot_grad = 2 * force_const * diff * grad

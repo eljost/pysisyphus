@@ -61,6 +61,7 @@ PrimTypeShortcuts = {
     "A": [PT.BEND],
     "D": [PT.PROPER_DIHEDRAL],
     "DIHEDRAL": [PT.PROPER_DIHEDRAL],
+    "TORSION": [PT.PROPER_DIHEDRAL],
 }
 
 
