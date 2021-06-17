@@ -58,7 +58,7 @@ def test_birkholz_set(xyz_fn, charge, mult, results_bag):
     assert opt.is_converged
 
 
-@filter_fixture_store("test_birkholz_set")
+# @filter_fixture_store("test_birkholz_set")
 def test_birkholz_set_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)
