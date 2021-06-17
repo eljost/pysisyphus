@@ -6,7 +6,7 @@ import pytest
 
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.helpers import align_geoms
-from pysisyphus.helpers_pure import filter_fixture_store
+# from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 from pysisyphus.xyzloader import write_geoms_to_trj
@@ -153,6 +153,8 @@ def test_xtb_rx_synthesis(fixture_store):
     # tsopt_converged = 0
     bags = fixture_store["results_bag"]
     for k, v in bags.items():
+        if not k.startswith("test_xtb_rx"):
+            continue
         print(k)
         opt_converged += 1 if v["opt_converged"] else 0
         for kk, vv in v.items():

@@ -40,3 +40,17 @@ def fixture_store(request):
 def this_dir(request):
     path = Path(request.fspath)
     return path.parent
+
+
+# def pytest_collection_modifyitems(session, config, items):
+    # modified = list()
+    # synths = dict()
+    # for i, item in enumerate(items):
+        # name = item.name
+        # if "synthesis" in name:
+            # base_name = name.split("_synthesis")[0]
+            # synths[base_name] = name
+        # else:
+            # modified.append(item)
+    # import pdb; pdb.set_trace()
+    # print("Hallo")
