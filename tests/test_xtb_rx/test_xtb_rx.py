@@ -142,7 +142,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
 
 
 @using("xtb")
-@filter_fixture_store("test_xtb_rx")
+# @filter_fixture_store("test_xtb_rx")
 def test_xtb_rx_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)
