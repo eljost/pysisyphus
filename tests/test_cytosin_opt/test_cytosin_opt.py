@@ -86,7 +86,8 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
         pytest.param(PySCF,
             {"xc": "pbe0", "method": "tddft", "basis": "def2SVP",
              "nstates": 2, "root": 1},
-            marks=(using("pyscf"), pytest.mark.pyscf),
+            # Skip for now, as this takes 30 min in the CI
+            marks=(using("pyscf"), pytest.mark.pyscf, pytest.mark.skip),
         )
 ])
 def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):

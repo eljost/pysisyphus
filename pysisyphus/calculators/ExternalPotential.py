@@ -10,7 +10,7 @@ from pysisyphus.intcoords import Torsion
 
 
 class LogFermi:
-    def __init__(self, beta, radius, T=300, origin=(0.0, 0.0, 0.0)):
+    def __init__(self, beta, radius, T=300, origin=(0.0, 0.0, 0.0), geom=None):
         """As described in the XTB docs.
 
         https://xtb-docs.readthedocs.io/en/latest/xcontrol.html#confining-in-a-cavity
@@ -43,7 +43,7 @@ class LogFermi:
 
 
 class HarmonicSphere:
-    def __init__(self, k, radius, origin=(0.0, 0.0, 0.0)):
+    def __init__(self, k, radius, origin=(0.0, 0.0, 0.0), geom=None):
         self.k = k
         self.radius = radius
         self.origin = np.array(origin)
