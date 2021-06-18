@@ -110,6 +110,7 @@ class TransTorque:
                 weight_func=self.weight_func,
                 skip=self.skip,
                 do_trans=self.do_trans,
+                kappa=kappa,
             )
             forces[mfrag] = tt_forces
 
