@@ -28,10 +28,42 @@ pysisyphus.io.hessian module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.io.molden module
+---------------------------
+
+.. automodule:: pysisyphus.io.molden
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.io.pdb module
 ------------------------
 
 .. automodule:: pysisyphus.io.pdb
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.io.pubchem module
+----------------------------
+
+.. automodule:: pysisyphus.io.pubchem
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.io.sdf module
+------------------------
+
+.. automodule:: pysisyphus.io.sdf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.io.xyz module
+------------------------
+
+.. automodule:: pysisyphus.io.xyz
    :members:
    :undoc-members:
    :show-inheritance:

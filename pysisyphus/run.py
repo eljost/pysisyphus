@@ -47,7 +47,12 @@ from pysisyphus.helpers import (
     print_barrier,
     get_tangent_trj_str,
 )
-from pysisyphus.helpers_pure import merge_sets, recursive_update, highlight_text
+from pysisyphus.helpers_pure import (
+    merge_sets,
+    recursive_update,
+    highlight_text,
+    report_frozen_atoms,
+)
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes
@@ -69,8 +74,9 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 CALC_DICT = {
     "afir": AFIR,
     "composite": Composite,
+    "dftb+": DFTBp,
     "dimer": Dimer,
-    # "ext": ExternalPotential,
+    "ext": ExternalPotential,
     "g09": Gaussian09.Gaussian09,
     "g16": Gaussian16,
     "ipiserver": IPIServer,
@@ -83,8 +89,6 @@ CALC_DICT = {
     "pyxtb": PyXTB,
     "turbomole": Turbomole,
     "xtb": XTB,
-    # Analytical potentials
-    # "anapot": AnaPot,
 }
 
 try:
@@ -111,10 +115,11 @@ COS_DICT = {
 }
 
 OPT_DICT = {
-    "cg": ConjugateGradient.ConjugateGradient,
     "bfgs": BFGS.BFGS,
+    "cg": ConjugateGradient.ConjugateGradient,
     "fire": FIRE.FIRE,
     "lbfgs": LBFGS.LBFGS,
+    "micro": MicroOptimizer,
     "nc": NCOptimizer.NCOptimizer,
     "oniom": ONIOMOpt,
     "plbfgs": PreconLBFGS.PreconLBFGS,
@@ -740,7 +745,9 @@ def run_opt(
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}"))
-    print(f"\nInput structure: {geom.describe()}\n")
+    print(f"\nInput structure: {geom.describe()}")
+    report_frozen_atoms(geom)
+    print()
 
     opt.run()
 
@@ -953,7 +960,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
     geom_kwargs = endopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
-    freeze_atoms = geom_kwargs.get("freeze_atoms", None)
+    freeze_atoms = geom_kwargs.pop("freeze_atoms", None)
 
     opt_geoms = dict()
     opt_fns = dict()
@@ -1380,7 +1387,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_kwargs["out_dir"] = yaml_dir
-    if calc_key == "oniom":
+    if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
             "geom": iter(geoms),

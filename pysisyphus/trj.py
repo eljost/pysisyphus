@@ -227,7 +227,7 @@ def read_geoms(
 
     for fn in xyz_fns:
         # Valid for non-inline coordinates
-        if Path(fn).suffix:
+        if Path(fn).suffix or fn.startswith("pubchem:"):
             geoms.extend(geom_loader(fn, iterable=True, **geom_kwargs))
 
     # Original coordinates are in bohr, but pysisyphus expects them

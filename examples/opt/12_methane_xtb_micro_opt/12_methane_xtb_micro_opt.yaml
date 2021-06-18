@@ -1,0 +1,10 @@
+geom:
+ type: redund 
+ fn: lib:methane.xyz
+calc:
+ type: ipiserver
+ address: ./opt_socket
+opt:
+ type: micro
+ rms_force: 0.00001
+ step: lbfgs

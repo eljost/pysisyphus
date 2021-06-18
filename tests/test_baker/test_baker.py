@@ -2,6 +2,7 @@ import pytest
 
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators.PySCF import PySCF
+# from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using_pyscf
 
@@ -30,7 +31,8 @@ def test_baker_gs_opt(fn, geom, ref_energy, results_bag):
     assert geom.energy == pytest.approx(ref_energy)
 
 
-def test_baker_synthesis(fixture_store):
+# @filter_fixture_store("test_baker_gs_opt")
+def test_baker_gs_opt_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)
 
@@ -38,6 +40,8 @@ def test_baker_synthesis(fixture_store):
     converged = 0
     bags = fixture_store["results_bag"]
     for k, v in bags.items():
+        if not k.startswith("test_baker_gs_opt"):
+            continue
         print(k)
         try:
             tot_cycles += v["cycles"]

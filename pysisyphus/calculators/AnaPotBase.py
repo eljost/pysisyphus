@@ -204,6 +204,11 @@ class AnaPotBase(Calculator):
         xs, ys = np.array(opt.coords).T[:2]
         self.plot_coords(xs, ys, *args, **kwargs)
 
+    def plot_geoms(self, geoms, **kwargs):
+        coords = np.array([geom.coords for geom in geoms])
+        xs, ys = coords.T[:2]
+        self.plot_coords(xs, ys, **kwargs)
+
     def plot_irc(self, irc, *args, **kwargs):
         xs, ys = irc.all_coords.T[:2]
         self.plot_coords(xs, ys, *args, **kwargs)

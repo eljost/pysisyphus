@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from pysisyphus.constants import AU2J, AMU2KG, BOHR2M
+from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG
 
 
 """Functions defined here don't import anything from pysisyphus, besides
@@ -187,19 +187,34 @@ def report_isotopes(geom, affect_str):
         print()
 
 
+def report_frozen_atoms(geom):
+    if hasattr(geom, "freeze_atoms") and len(geom.freeze_atoms) > 0:
+        print(f"Frozen atoms were requested:")
+        atoms = geom.atoms
+        coords3d = geom.coords3d * BOHR2ANG
+        fmt = " >12.8f"
+        print(f"\t{len(geom.freeze_atoms)}\n")
+        for atom_ind in geom.freeze_atoms:
+            atom = atoms[atom_ind]
+            x, y, z = coords3d[atom_ind]
+            print(f"\t{atom} {x:{fmt}} {y:{fmt}} {z:{fmt}}")
+        print()
+
+
 def highlight_text(text, width=80, level=0):
     levels = {
         #  horizontal
-        #        vertical
-        0: ("#", "#"),
-        1: ("-", "|"),
+        #       vertical
+        #           corner
+        0: ("#", "#", "#"),
+        1: ("-", "|", "+"),
     }
     full_length = len(text) + 4
     pad_len = width - full_length
     pad_len = (pad_len - (pad_len % 2)) // 2
     pad = " " * pad_len
-    hchar, vchar = levels[level]
-    full_row = hchar * full_length
+    hchar, vchar, cornerchar = levels[level]
+    full_row = cornerchar + (hchar * (full_length-2)) + cornerchar
     highlight = (
         f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
     )
@@ -222,3 +237,27 @@ def interpolate_colors(values, c1, c2, num=32):
     rgb_colors = colors[inds]
     hex_colors = [f"#{r:02x}{g:02x}{b:02x}" for r, g, b in rgb_colors]
     return rgb_colors, hex_colors
+
+
+def get_molecular_radius(coords3d, min_offset=0.9452):
+    coords3d = coords3d.copy()
+    mean = coords3d.mean(axis=0)
+    coords3d -= mean[None, :]
+    distances = np.linalg.norm(coords3d, axis=1)
+    std = max(min_offset, np.std(distances))  # at least 2 angstrom apart
+    radius = distances.mean() + 2 * std
+    return radius
+
+
+def filter_fixture_store(test_name):
+    def inner_function(function):
+        def wrapper(fixture_store):
+            rb = fixture_store["results_bag"]
+            filtered = {
+                "results_bag": {
+                    k: v for k, v in rb.items() if k.startswith(test_name)
+                }
+            }
+            return function(filtered)
+        return wrapper
+    return inner_function

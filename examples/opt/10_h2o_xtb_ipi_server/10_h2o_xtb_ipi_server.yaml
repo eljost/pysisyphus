@@ -11,5 +11,6 @@ opt:
  thresh: gau
  # Comment this out or set to False, if your client does not support GETHESSIAN
  do_hess: True
+ reparam_when: after
 assert:
  opt_geom.energy: -5.07054442

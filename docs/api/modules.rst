@@ -1,5 +1,5 @@
-Module Reference
-================
+pysisyphus
+==========
 
 .. toctree::
    :maxdepth: 4

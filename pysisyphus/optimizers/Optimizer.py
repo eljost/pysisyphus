@@ -82,12 +82,14 @@ class Optimizer(metaclass=abc.ABCMeta):
         rms_force=None,
         rms_force_only=False,
         max_force_only=False,
+        converge_to_geom_rms_thresh=0.05,
         align=False,
         dump=False,
         dump_restart=None,
         prefix="",
         reparam_thresh=1e-3,
         reparam_check_rms=True,
+        reparam_when="after",
         overachieve_factor=0.0,
         restart_info=None,
         check_coord_diffs=True,
@@ -103,18 +105,23 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.max_step = max_step
         self.rms_force_only = rms_force_only
         self.max_force_only = max_force_only
+        self.converge_to_geom_rms_thresh = converge_to_geom_rms_thresh
         self.align = align
         self.dump = dump
         self.dump_restart = dump_restart
         self.prefix = f"{prefix}_" if prefix else prefix
         self.reparam_thresh = reparam_thresh
         self.reparam_check_rms = reparam_check_rms
+        self.reparam_when = reparam_when
+        assert self.reparam_when in ("after", "before", None)
         self.overachieve_factor = float(overachieve_factor)
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
 
         self.logger = logging.getLogger("optimizer")
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
+
+        # Set up convergence thresholds
         self.convergence = self.make_conv_dict(thresh, rms_force)
         for key, value in self.convergence.items():
             setattr(self, key, value)
@@ -126,6 +133,11 @@ class Optimizer(metaclass=abc.ABCMeta):
                 f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
                 "and disabled dumping!"
             )
+        try:
+            self.converge_to_geom = self.geometry.converge_to_geom
+        except AttributeError:
+            # TODO: log that attribute is not present at debug level
+            self.converge_to_geom = None
         self.max_cycles = max_cycles
 
         # Setting some default values
@@ -256,6 +268,14 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
 
+        # One may return after this comment, but not before!
+        if self.converge_to_geom is not None:
+            rmsd = np.sqrt(
+                np.mean((self.converge_to_geom.coords - self.geometry.coords) ** 2)
+            )
+            converged = rmsd < self.converge_to_geom_rms_thresh
+            return converged
+
         if self.thresh == "never":
             return False
 
@@ -326,7 +346,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         try:
             # Geometries/ChainOfStates objects can also do some printing.
             add_info = self.geometry.get_additional_print()
-            print(add_info)
+            if add_info:
+                print(add_info)
         except AttributeError:
             pass
 
@@ -430,7 +451,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         # If the optimization was stopped _forces may not be set, so
         # then we force a calculation if it was not already set.
         _ = self.geometry.forces
-        cart_forces = self.geometry._forces
+        cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
         rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
         int_str = ""
@@ -504,6 +525,11 @@ class Optimizer(metaclass=abc.ABCMeta):
             if reset_flag:
                 self.reset()
 
+            # Coordinates may be updated here.
+            if self.reparam_when == "before" and hasattr(self.geometry, "reparametrize"):
+                # This call actually returns a bool, but right now we just drop it.
+                self.geometry.reparametrize()
+
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
 
@@ -575,9 +601,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.reset()
 
             # Coordinates may be updated here.
-            try:
+            if (self.reparam_when == "after") and hasattr(self.geometry, "reparametrize"):
                 reparametrized = self.geometry.reparametrize()
-            except AttributeError:
+            else:
                 reparametrized = False
 
             cur_coords = self.geometry.coords

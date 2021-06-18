@@ -1,7 +1,6 @@
 from pysisyphus.helpers import Geometry
 from pysisyphus.helpers import geom_loader
 from pysisyphus.benchmarks.data import *
-#get_baker_data, get_baker_ts_data, get_s22_data
 
 
 class Benchmark:
@@ -13,6 +12,7 @@ class Benchmark:
         "zimmerman_xtb": get_zimmerman_xtb_data,
         "birkholz_rx": get_birkholz_rx_data,
         "xtb_rx": get_xtb_rx_data,
+        "precon_pos_rot": get_precon_pos_rot_data,
     }
 
     def __init__(

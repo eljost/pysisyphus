@@ -137,6 +137,8 @@ def test_rastrigin():
     # plt.show()
 
 
+# Takes 30 min in the CI which is way too much for a rarely used feature
+@pytest.mark.skip
 @using("pyscf")
 def test_pyscf_stocastic():
     geom = geom_loader("lib:benzene_and_no.xyz")

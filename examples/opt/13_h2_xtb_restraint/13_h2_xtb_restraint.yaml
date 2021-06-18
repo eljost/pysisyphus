@@ -1,0 +1,30 @@
+geom:
+ type: cart
+ fn: |
+  2
+
+  H 0.0 0.0 0.0
+  H 0.0 0.0 0.7763
+calc:
+ # Wrap actual PySCF calculator in external potential
+ type: ext
+ # Multiple potentials could be specified here
+ potentials:
+   # Primitive internal coordinate restraint
+   - type: restraint
+     # List of restraints; could also be multiple restraints. Each restraint is given as
+     # list of 2 or 3 items. The first item always specifies an internal coordinate,
+     # whereas the second argument is a force constant (in atomic units; actual units
+     # depend on the coordinate). Optionally a reference value (third argument) can be
+     # given. If omitted, the initial coordinate value is used as reference value.
+     restraints: [[[BOND, 0, 1], 10, 3.0]]
+     # The commented out input below would restrain the bond at its initial value.
+     #restraints: [[[BOND, 0, 1], 10]]
+     # Multiple restraints are specified as given below. As H2 has only two atoms
+     # this input would be invalid.
+     #restraints: [[[BOND, 0, 1], 10], [[BEND, 0, 1, 2], 1.0]]
+ calc:
+  type: pyscf
+  basis: sto3g
+opt:
+ thresh: gau

@@ -7,6 +7,7 @@ import pytest
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators import Dimer
 from pysisyphus.calculators.PySCF import PySCF
+# from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.testing import using
 
@@ -80,6 +81,7 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
     )
 
 
+# @filter_fixture_store("test_baker_ts_dimer")
 def test_baker_ts_dimer_synthesis(fixture_store):
     converged = 0
     tot_cycles = 0
@@ -89,6 +91,8 @@ def test_baker_ts_dimer_synthesis(fixture_store):
 
     bags = fixture_store["results_bag"]
     for k, v in bags.items():
+        if not k.startswith("test_baker_ts_dimer"):
+            continue
         print(k)
         try:
             energies_match = v["energies_match"]

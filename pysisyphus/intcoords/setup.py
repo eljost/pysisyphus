@@ -45,6 +45,7 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False, return_cbm
 
 
 def get_fragments(atoms, coords, bond_inds=None):
+    """This misses unconnected single atoms!"""
     coords3d = coords.reshape(-1, 3)
     if bond_inds is None:
         # Bond indices without interfragment bonds and/or hydrogen bonds

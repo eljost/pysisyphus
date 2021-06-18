@@ -12,6 +12,14 @@ pysisyphus.intcoords.Bend module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.Cartesian module
+-------------------------------------
+
+.. automodule:: pysisyphus.intcoords.Cartesian
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.intcoords.DLC module
 -------------------------------
 
@@ -68,6 +76,14 @@ pysisyphus.intcoords.RedundantCoords module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.Rotation module
+------------------------------------
+
+.. automodule:: pysisyphus.intcoords.Rotation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.intcoords.Stretch module
 -----------------------------------
 
@@ -80,6 +96,14 @@ pysisyphus.intcoords.Torsion module
 -----------------------------------
 
 .. automodule:: pysisyphus.intcoords.Torsion
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.Translation module
+---------------------------------------
+
+.. automodule:: pysisyphus.intcoords.Translation
    :members:
    :undoc-members:
    :show-inheritance:
@@ -168,6 +192,14 @@ pysisyphus.intcoords.setup\_fail module
 ---------------------------------------
 
 .. automodule:: pysisyphus.intcoords.setup_fail
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.setup\_fast module
+---------------------------------------
+
+.. automodule:: pysisyphus.intcoords.setup_fast
    :members:
    :undoc-members:
    :show-inheritance:

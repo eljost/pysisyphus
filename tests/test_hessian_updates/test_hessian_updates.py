@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 
+from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.hessian_updates import (
     bfgs_update,
     damped_bfgs_update,
@@ -11,6 +13,8 @@ from pysisyphus.optimizers.hessian_updates import (
     mod_flowchart_update,
     bofill_update,
 )
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.testing import using
 
 
 @pytest.mark.parametrize(
@@ -31,4 +35,18 @@ def test_hessian_updates(update_func):
     dH = update_func(H, dx, dg)
 
 
-# double_damp
+@using("pyscf")
+@pytest.mark.parametrize(
+    "hessian_update", [
+        "bfgs",
+        "none",
+    ]
+)
+def test_no_hessian_update(hessian_update):
+    geom = geom_loader("lib:h2o.xyz")
+    calc = PySCF(basis="sto3g", pal=2)
+    geom.set_calculator(calc)
+    opt = RFOptimizer(geom, thresh="gau", hessian_update=hessian_update)
+    opt.run()
+
+    assert geom.energy == pytest.approx(-74.96590119)

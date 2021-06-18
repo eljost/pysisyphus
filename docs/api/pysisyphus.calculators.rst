@@ -60,6 +60,14 @@ pysisyphus.calculators.AnaPotCBM module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.AtomAtomTransTorque module
+-------------------------------------------------
+
+.. automodule:: pysisyphus.calculators.AtomAtomTransTorque
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.Calculator module
 ----------------------------------------
 
@@ -72,6 +80,30 @@ pysisyphus.calculators.CerjanMiller module
 ------------------------------------------
 
 .. automodule:: pysisyphus.calculators.CerjanMiller
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.Composite module
+---------------------------------------
+
+.. automodule:: pysisyphus.calculators.Composite
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.DFTBp module
+-----------------------------------
+
+.. automodule:: pysisyphus.calculators.DFTBp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.Dalton module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.Dalton
    :members:
    :undoc-members:
    :show-inheritance:
@@ -132,10 +164,26 @@ pysisyphus.calculators.Gaussian16 module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.HardSphere module
+----------------------------------------
+
+.. automodule:: pysisyphus.calculators.HardSphere
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.IDPPCalculator module
 --------------------------------------------
 
 .. automodule:: pysisyphus.calculators.IDPPCalculator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.IPIServer module
+---------------------------------------
+
+.. automodule:: pysisyphus.calculators.IPIServer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -176,6 +224,22 @@ pysisyphus.calculators.MullerBrownSympyPot module
 -------------------------------------------------
 
 .. automodule:: pysisyphus.calculators.MullerBrownSympyPot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.MultiCalc module
+---------------------------------------
+
+.. automodule:: pysisyphus.calculators.MultiCalc
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.OBabel module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.OBabel
    :members:
    :undoc-members:
    :show-inheritance:
@@ -284,6 +348,14 @@ pysisyphus.calculators.TIP3P module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.TransTorque module
+-----------------------------------------
+
+.. automodule:: pysisyphus.calculators.TransTorque
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.Turbomole module
 ---------------------------------------
 
@@ -320,14 +392,6 @@ pysisyphus.calculators.parser module
 ------------------------------------
 
 .. automodule:: pysisyphus.calculators.parser
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.calculators.px module
---------------------------------
-
-.. automodule:: pysisyphus.calculators.px
    :members:
    :undoc-members:
    :show-inheritance:

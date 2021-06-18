@@ -4,10 +4,11 @@ from pathlib import Path
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.helpers import rms, get_tangent_trj_str
+from pysisyphus.intcoords.helpers import get_weighted_bond_mode
 from pysisyphus.linalg import perp_comp, make_unit_vec
 from pysisyphus.optimizers.closures import small_lbfgs_closure
 from pysisyphus.optimizers.restrict_step import get_scale_max
-from pysisyphus.helpers import rms, get_tangent_trj_str
 
 
 class RotationConverged(Exception):
@@ -383,32 +384,17 @@ class Dimer(Calculator):
 
         return gaussian
 
-    def get_bond_mode(self, bond, coords):
-        from_, to_, weight = bond
-        c3d = coords.reshape(-1, 3)
-        bond_vec = c3d[from_] - c3d[to_]
-        # Normalization is done nonetheless in the setter of self.N
-        bond_vec /= weight * np.linalg.norm(bond_vec)
-
-        N = np.zeros_like(c3d)
-        N[from_] = bond_vec
-        N[to_] = -bond_vec
-        return N
-
     def set_N_raw(self, coords):
         self.log("No initial orientation given. Generating one.")
         if self.bonds is None:
             self.log("Using random guess.")
             N_raw = np.random.rand(coords.size)
         else:
-            bond_modes = [self.get_bond_mode(bond, coords) for bond in self.bonds]
-            N_raw = np.sum(bond_modes, axis=0)
+            N_raw = get_weighted_bond_mode(self.bonds, coords.reshape(-1, 3))
         # Make N_raw translationally invariant and normalize
         self.N = N_raw
         # Now we keep the normalized dimer orientation
         self.N_raw = self.N
-
-        # self.log(f"Initial orientation:\n\t{self.N}")
 
     def remove_translation(self, displacement):
         # Average vector components over cartesian directions (x,y,z)

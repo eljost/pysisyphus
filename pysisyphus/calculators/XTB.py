@@ -340,11 +340,14 @@ class XTB(Calculator):
 
     def keep(self, path):
         kept_fns = super().keep(path)
-        self.charges = kept_fns["charges"]
+        try:
+            self.charges = kept_fns["charges"]
+        except KeyError:
+            self.log("Skip setting 'charges' file in quiet mode.")
         try:
             self.json = kept_fns["json"]
         except KeyError:
-            pass
+            self.log("Skip setting of 'json' file.")
 
     def __str__(self):
         return "XTB calculator"

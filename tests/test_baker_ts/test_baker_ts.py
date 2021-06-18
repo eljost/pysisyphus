@@ -3,6 +3,7 @@ import pytest
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
+# from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.intcoords.augment_bonds import augment_bonds
 from pysisyphus.testing import using_pyscf
 from pysisyphus.tsoptimizers import *
@@ -46,6 +47,7 @@ def test_baker_tsopt(fn, geom, ref_energy, results_bag):
     assert geom.energy == pytest.approx(ref_energy)
 
 
+# @filter_fixture_store("test_baker_tsopt")
 def test_baker_tsopt_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)
@@ -54,6 +56,8 @@ def test_baker_tsopt_synthesis(fixture_store):
     converged = 0
     bags = fixture_store["results_bag"]
     for k, v in bags.items():
+        if not k.startswith("test_baker_tsopt"):
+            continue
         print(k)
         try:
             tot_cycles += v["cycles"]

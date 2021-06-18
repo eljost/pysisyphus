@@ -1,6 +1,10 @@
-from sympy import sympify
+import numpy as np
+import sympy as sym
+
+# from sympy import sympify, lambdify,
 
 from pysisyphus.calculators.Calculator import Calculator
+
 from pysisyphus.calculators import ORCA
 
 
@@ -46,20 +50,41 @@ class Composite(Calculator):
         assert all([key in final for key in self.keys_calcs.keys()])
         self.final = final
 
+        self.energy_expr = sym.sympify(self.final)
+        self.forces_args = sym.symbols(" ".join(self.keys_calcs.keys()))
+        self.forces_expr = sym.lambdify(self.forces_args, self.energy_expr)
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        subst = self.final
         energies = {}
         for key, calc in self.keys_calcs.items():
-            energy = calc.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)[
-                "energy"
-            ]
+            energy = calc.get_energy(atoms, coords, **prepare_kwargs)["energy"]
             energies[key] = energy
 
-        final_energy = sympify(subst).subs(energies).evalf()
+        final_energy = self.energy_expr.subs(energies).evalf()
         results = {
             "energy": final_energy,
         }
         return results
 
+    def get_forces(self, atoms, coords, **prepare_kwargs):
+        energies = {}
+        forces = {}
+        for key, calc in self.keys_calcs.items():
+            results = calc.get_forces(atoms, coords, **prepare_kwargs)
+            energies[key] = results["energy"]
+            forces[key] = results["forces"]
+        keys = self.keys_calcs.keys()
+        for key in keys:
+            self.log(f"|forces_{key}|={np.linalg.norm(forces[key]):.6f}")
+        self.log("")
+
+        final_energy = self.energy_expr.subs(energies).evalf()
+        final_forces = self.forces_expr(**forces)
+        results = {
+            "energy": final_energy,
+            "forces": final_forces,
+        }
+        return results
+
     def run_calculation(self, atoms, coords, **prepare_kwargs):
-        return self.get_energy(atoms, coords, prepare_kwargs=prepare_kwargs)
+        return self.get_energy(atoms, coords, **prepare_kwargs)

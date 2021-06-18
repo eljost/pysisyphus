@@ -11,11 +11,11 @@ def correct_dihedrals(new_dihedrals, old_dihedrals):
     but a step of 2°. By considering the actual distance of the dihedrals from
     π the correct step can be calculated.
 
-    dihedral step length  = abs(abs(new_dihedral) - π) + abs(abs(old_dihedral)- π)
+        dihedral step length  = abs(abs(new_dihedral) - π) + abs(abs(old_dihedral) - π)
 
     or put differently
 
-    dihedral step length = abs(abs(new_dihedral - old_dihedral) - 2*π)
+        dihedral step length = abs(abs(new_dihedral - old_dihedral) - 2*π)
 
     The sign is left to be determined. Going from -179° to 179° (roughly π - -π = 2π)
     is a counter clockwise rotation and the dihedral has to decrease below -π. Going
@@ -26,8 +26,10 @@ def correct_dihedrals(new_dihedrals, old_dihedrals):
     original difference  2π -> dihedral must decrease -> sign = -1
     original difference -2π -> dihedral must increase -> sign = +1
 
-    Overall the old dihedral is then modified by the actual step length with the correct
+    Overall, the old dihedral is modified by the actual step length with the correct
     sign."""
+    new_dihedrals = np.atleast_1d(new_dihedrals)
+    old_dihedrals = np.atleast_1d(old_dihedrals)
     dihedrals_step = new_dihedrals - old_dihedrals
     shifted_by_2pi = np.abs(np.abs(dihedrals_step) - 2 * np.pi) < np.pi / 2
     corrected_dihedrals = new_dihedrals.copy()

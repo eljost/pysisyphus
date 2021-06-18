@@ -127,6 +127,14 @@ class ChainOfStates:
             # TODO: move this to another logging level?!
             self.log("There are no tangents to reset.")
 
+    # @property
+    # def freeze_atoms(self):
+        # image_freeze_atoms = [image.freeze_atoms for image in self.images]
+        # lens = [len(fa) for fa in image_freeze_atoms]
+        # len0 = lens[0]
+        # assert all([len_ == len0 for len_ in lens])
+        # return image_freeze_atoms[0]
+
     @property
     def atoms(self):
         atoms_ = self.images[0].atoms

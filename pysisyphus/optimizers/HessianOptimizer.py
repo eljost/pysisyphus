@@ -16,6 +16,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 
 class HessianOptimizer(Optimizer):
     hessian_update_funcs = {
+        "none": lambda H, dx, dg: (np.zeros_like(H), "no"),
         "bfgs": bfgs_update,
         "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
@@ -363,8 +364,8 @@ class HessianOptimizer(Optimizer):
             # Allows gradient differences
             len(self.forces) > 1
             and (self.forces[-2].shape == gradient.shape)
-            # Allows coordinat differences
             and len(self.coords) > 1
+            # Coordinates may have been rebuilt. Take care of that.
             and (self.coords[-2].shape == self.coords[1].shape)
             and len(self.energies) > 1
         )
