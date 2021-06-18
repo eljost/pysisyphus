@@ -527,7 +527,8 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             # Coordinates may be updated here.
             if self.reparam_when == "before" and hasattr(self.geometry, "reparametrize"):
-                reparametrized = self.geometry.reparametrize()
+                # This call actually returns a bool, but right now we just drop it.
+                self.geometry.reparametrize()
 
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())

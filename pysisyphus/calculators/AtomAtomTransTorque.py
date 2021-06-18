@@ -48,61 +48,60 @@ class AtomAtomTransTorque:
             A = self.A_mats[key]
             self.phis.append(np.array([phi_func(A, a) for a in self.frags[m]]))
 
-    def get_forces_naive(self, atoms, coords):
-        def p(s):
-            print(f"REF: {s}")
+    # def get_forces_naive(self, atoms, coords):
+        # def p(s):
+            # print(f"REF: {s}")
 
-        c3d = coords.reshape(-1, 3)
-        gs = [c3d[frag].mean(axis=0) for frag in self.frags]
+        # c3d = coords.reshape(-1, 3)
+        # gs = [c3d[frag].mean(axis=0) for frag in self.frags]
 
-        zt = np.zeros((self.frag_num, 3))
-        zr = np.zeros((self.frag_num, 3))
-        forces = np.zeros_like(c3d)
-        for (m, n), phis in zip(self.pair_inds, self.phis):
-            p(f"m={m}, n={n}")
-            mfrag = self.frags[m]
-            nfrag = self.frags[n]
-            A = self.A_mats[(m, n)]
-            g = gs[m]
-            N = 0
-            for a in mfrag:
-                ra = c3d[a]
-                ramg = ra - g
-                for b in nfrag:
-                    rb = c3d[b]
-                    rmr = rb - ra
-                    a_atm = atoms[a].lower()
-                    b_atm = atoms[b].lower()
-                    cab = (CR[a_atm] + CR[b_atm]) / 2
-                    phi = 1.5 if a in A else 2
-                    nrmr = np.linalg.norm(rmr)
-                    H = 1 if nrmr < (phi * cab) else 0
-                    y = cab * rmr / np.linalg.norm(rmr) - rmr
-                    p(f"y_(a={a},b={b})={y}")
-                    ny = np.linalg.norm(y)
-                    zt[m] += H * y.dot(ramg) * y / ny
-                    p(f"dot={y.dot(ramg)}")
-                    zr[m] += H * np.cross(y, ramg)
-                    p(f"zt={zt}")
-                    p(f"zr={zr}")
-                    N += H
-            N *= self.frag_sizes_sq[m]
-            p(f"N={N}")
-            if N == 0:
-                N_inv = 0
-            else:
-                N_inv = 1 / N
-            zt[m] *= N_inv
-            zr[m] *= N_inv
+        # zt = np.zeros((self.frag_num, 3))
+        # zr = np.zeros((self.frag_num, 3))
+        # for (m, n), phis in zip(self.pair_inds, self.phis):
+            # p(f"m={m}, n={n}")
+            # mfrag = self.frags[m]
+            # nfrag = self.frags[n]
+            # A = self.A_mats[(m, n)]
+            # g = gs[m]
+            # N = 0
+            # for a in mfrag:
+                # ra = c3d[a]
+                # ramg = ra - g
+                # for b in nfrag:
+                    # rb = c3d[b]
+                    # rmr = rb - ra
+                    # a_atm = atoms[a].lower()
+                    # b_atm = atoms[b].lower()
+                    # cab = (CR[a_atm] + CR[b_atm]) / 2
+                    # phi = 1.5 if a in A else 2
+                    # nrmr = np.linalg.norm(rmr)
+                    # H = 1 if nrmr < (phi * cab) else 0
+                    # y = cab * rmr / np.linalg.norm(rmr) - rmr
+                    # p(f"y_(a={a},b={b})={y}")
+                    # ny = np.linalg.norm(y)
+                    # zt[m] += H * y.dot(ramg) * y / ny
+                    # p(f"dot={y.dot(ramg)}")
+                    # zr[m] += H * np.cross(y, ramg)
+                    # p(f"zt={zt}")
+                    # p(f"zr={zr}")
+                    # N += H
+            # N *= self.frag_sizes_sq[m]
+            # p(f"N={N}")
+            # if N == 0:
+                # N_inv = 0
+            # else:
+                # N_inv = 1 / N
+            # zt[m] *= N_inv
+            # zr[m] *= N_inv
 
-        forces = np.zeros_like(c3d)
-        for m, mfrag in enumerate(self.frags):
-            forces[mfrag] = np.cross(-zr[m], c3d[mfrag] - gs[m]) + zt[m]
-        forces *= self.kappa
-        # return zt, zr
-        print("REF")
-        print(forces)
-        return {"energy": 1, "forces": forces.flatten()}
+        # forces = np.zeros_like(c3d)
+        # for m, mfrag in enumerate(self.frags):
+            # forces[mfrag] = np.cross(-zr[m], c3d[mfrag] - gs[m]) + zt[m]
+        # forces *= self.kappa
+        # # return zt, zr
+        # print("REF")
+        # print(forces)
+        # return {"energy": 1, "forces": forces.flatten()}
 
     def get_forces(self, atoms, coords):
         c3d = coords.reshape(-1, 3)

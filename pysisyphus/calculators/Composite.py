@@ -55,7 +55,6 @@ class Composite(Calculator):
         self.forces_expr = sym.lambdify(self.forces_args, self.energy_expr)
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        subst = self.final
         energies = {}
         for key, calc in self.keys_calcs.items():
             energy = calc.get_energy(atoms, coords, **prepare_kwargs)["energy"]
@@ -68,7 +67,6 @@ class Composite(Calculator):
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
-        subst = self.final
         energies = {}
         forces = {}
         for key, calc in self.keys_calcs.items():

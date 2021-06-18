@@ -11,7 +11,7 @@ def parse_coord_line(line):
 
 def parse_sdf(text):
     lines = text.split("\n")
-    title, program, comment = lines[:3]
+    # title, program, comment = lines[:3]
     count = lines[3]
     atoms, *_ = count.split()
     atoms = int(atoms)

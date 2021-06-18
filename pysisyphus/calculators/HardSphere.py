@@ -48,7 +48,6 @@ class HardSphere:
         N = np.zeros_like(H)
         for frag_ind, H_ in zip(self.frag_inds, H):
             N[frag_ind] += H_
-        nonzero = H > 0
         N *= 3 * self.frag_sizes[self.frag_inds]
         N_invs = np.divide(1, N, out=np.zeros_like(N).astype(float), where=N != 0)
         phi = kappa * N_invs * (gnorms - self.radii_sums)
