@@ -32,7 +32,7 @@ setup(
         "autograd",
         "dask",
         "distributed",
-        "h5py",
+        "h5py==3.2.1",
         "jinja2",
         "matplotlib",
         "numpy>=1.18.1",
