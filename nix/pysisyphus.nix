@@ -57,7 +57,7 @@ let
 in
   buildPythonPackage rec {
     pname = "pysisyphus";
-    version = "0.7rc1";
+    version = "0.7.post1";
 
     nativeBuildInputs = [ makeWrapper ];
 
