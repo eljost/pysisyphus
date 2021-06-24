@@ -374,6 +374,12 @@ class Geometry:
         self._forces = None
         self._hessian = None
 
+    def del_atoms(self, inds, **kwargs):
+        atoms = [atom for i, atom in enumerate(self.atoms) if not (i in inds)]
+        c3d = self.coords3d
+        coords3d = np.array([c3d[i] for i, _ in enumerate(self.atoms) if not (i in inds)])
+        return Geometry(atoms, coords3d.flatten(), **kwargs)
+
     def set_calculator(self, calculator, clear=True):
         """Reset the object and set a calculator."""
         if clear:
