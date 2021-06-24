@@ -20,7 +20,8 @@ except ModuleNotFoundError:
 
 
 class Composite(Calculator):
-    def __init__(self, final, keys_calcs=None, calcs=None, **kwargs):
+    def __init__(self, final, keys_calcs=None, calcs=None, remove_translation=False,
+            **kwargs):
         # Either directly supply a dictionary with Calculator objects (key_calcs)
         # or a dictionary containing information to set up calculators.
         assert keys_calcs or calcs
@@ -49,6 +50,7 @@ class Composite(Calculator):
         self.keys_calcs = keys_calcs
         assert all([key in final for key in self.keys_calcs.keys()])
         self.final = final
+        self.remove_translation = remove_translation
 
         self.energy_expr = sym.sympify(self.final)
         self.forces_args = sym.symbols(" ".join(self.keys_calcs.keys()))
@@ -80,6 +82,12 @@ class Composite(Calculator):
 
         final_energy = self.energy_expr.subs(energies).evalf()
         final_forces = self.forces_expr(**forces)
+
+        # Remove overall translation
+        if self.remove_translation:
+            f3d = final_forces.reshape(-1, 3)
+            f3d -= f3d.mean(axis=0)[None, :]
+
         results = {
             "energy": final_energy,
             "forces": final_forces,
