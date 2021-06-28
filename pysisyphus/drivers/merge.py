@@ -142,6 +142,7 @@ def align_on_subset(geom1, union, del1=None):
 
     # Align merged system
     coords3d_2_aligned = (coords3d_2 - coords3d_2.mean(axis=0)[None, :]).dot(rot_mat)
+
     # Translate aligned system so that centroids of subsets match
     centroid_1 = coords3d_1.mean(axis=0)
     centroid_2 = coords3d_2_aligned[:num1].mean(axis=0)
