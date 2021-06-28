@@ -55,17 +55,27 @@ class SteepestDescent:
     def run(self):
         coords = self.geom.coords.copy()
 
+        to_dump = []
+
         for i in range(self.max_cycles):
             self.all_coords[i] = coords.copy()
+            if self.dump and (i % 100) == 0:
+                to_dump.append(self.geom.as_xyz(cart_coords=coords))
             results = self.geom.get_energy_and_forces_at(coords)
             forces = results["forces"]
-            # forces = forces_getter(coords)
             norm = np.linalg.norm(forces)
             rms = np.sqrt(np.mean(forces ** 2))
             if rms <= self.rms_force:
                 print(f"Converged in cycle {i}. Breaking.")
                 break
-            step = forces.copy()
+
+            if i > 0:
+                beta = forces.dot(forces) / self.prev_forces.dot(self.prev_forces)
+                step = forces + beta * self.prev_step
+            else:
+                step = forces.copy()
+            # step = forces.copy()
+
             step *= min(self.max_step / np.abs(step).max(), 1)
             if i % self.print_mod == 0:
                 print(
@@ -74,8 +84,15 @@ class SteepestDescent:
                     f"|step|={np.linalg.norm(step): >12.6f}"
                 )
             coords += step
+
+            self.prev_step = step
+            self.prev_forces = forces
         self.geom.coords = coords
         self.all_coords = self.all_coords[: i + 1]
+
+        if to_dump:
+            with open("optimization.trj", "w") as handle:
+                handle.write("\n".join(to_dump))
 
 
 def get_fragments_and_bonds(geoms):
