@@ -204,12 +204,6 @@ def align_coords(coords_list):
     return aligned_coords
 
 
-# def rmsd(coord_1, coord_2):
-# aligned_1, aligned_2 = align_coords((coord_1, coord_2))
-# result = np.sqrt(np.mean(aligned_1 - aligned_2)**2)
-# return result
-
-
 def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
     rotated_vector_lists = list()
     rotated_hessian = None
