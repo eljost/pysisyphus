@@ -133,7 +133,7 @@ def atoms_coords_to_pdb_str(atoms, coords, fragments=None):
     tempFactor = 0.0
 
     lines = list()
-    serial = 0
+    serial = 1
     for resSeq, fragment in enumerate(fragments):
         for id_ in fragment:
             name = atoms[id_]
