@@ -233,7 +233,7 @@ def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
         0.1,
         0.2,
         0.3,
-        0.4  # requires hessian_recalc=1
+        # 0.4  # requires hessian_recalc=1
     ]
 )
 def test_mb_gs2(step_length):
