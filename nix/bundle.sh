@@ -5,4 +5,5 @@ export NIX_PATH=nixpkgs=https://github.com/NixOS/nixpkgs/archive/71326cd12ddfa0f
 
 for i in pysis pysisfilter pysispack pysisplot pysisthermo pysistrj; do
   nix-bundle '(import ./default.nix { })' /bin/$i > $i
+  chmod +x $i
 done

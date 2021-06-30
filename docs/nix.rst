@@ -83,7 +83,7 @@ These archives can be build using
 
 .. code-block:: bash
 
-  ./nix/bundle.sh
+  cd nix && ./bundle.sh
 
 and come by default with the open source quantum chemistry codes. If others are required, you may point the :code:`PYSISRC` environment variable to a pysisyphus rc, where e.g. Gaussian is configured.
 
