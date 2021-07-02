@@ -4,7 +4,7 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.drivers import birkholz_interpolation
 from pysisyphus.helpers import geom_loader, do_final_hessian
 from pysisyphus.helpers_pure import highlight_text
-from pysisyphus.tsoptimizers import RSPRFOptimizer, birkholz_interpolation
+from pysisyphus.tsoptimizers import RSPRFOptimizer
 from pysisyphus.testing import using
 
 
