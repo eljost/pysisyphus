@@ -40,3 +40,33 @@ def test_h2o2_relaxed_scan(start, end, step_size):
     results = run_from_dict(run_dict)
     # Original geometry is also returned
     assert len(results.scan_geoms) == (steps + 1)
+
+
+@using("pyscf")
+def test_h2o2_relaxed_scan_symmetric():
+    steps = 3
+    run_dict = {
+        "geom": {
+            "type": "redund",
+            "fn": "lib:h2o2_hf_321g_opt.xyz",
+        },
+        "calc": {
+            "type": "pyscf",
+            "pal": 2,
+            "basis": "321g",
+            "verbose": 0,
+        },
+        "scan": {
+            "type": "BOND",
+            "indices": [2, 3],
+            "steps": 3,
+            "step_size": 0.2,
+            "symmetric": True,
+            "opt": {
+                "thresh": "gau",
+            },
+        },
+    }
+    results = run_from_dict(run_dict)
+    # Original geometry is also returned
+    assert len(results.scan_geoms) == 7

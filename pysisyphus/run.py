@@ -33,7 +33,7 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
-from pysisyphus.drivers import relaxed_prim_scan
+from pysisyphus.drivers import relaxed_prim_scan, run_opt
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
@@ -58,8 +58,6 @@ from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
 from pysisyphus.io import save_hessian
-from pysisyphus.modefollow import NormalMode, geom_davidson
-from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.stocastic import *
 from pysisyphus.trj import get_geoms, dump_geoms
 from pysisyphus._version import get_versions
@@ -616,24 +614,33 @@ def run_md(geom, calc_getter, md_kwargs):
 
 
 def run_scan(geom, calc_getter, scan_kwargs):
-    print(highlight_text("Relaxed Scan"))
+    print(highlight_text("Relaxed Scan") + "\n")
     type_ = scan_kwargs["type"]
     indices = scan_kwargs["indices"]
     steps = scan_kwargs["steps"]
     start = scan_kwargs.get("start", None)
     end = scan_kwargs.get("end", None)
     step_size = scan_kwargs.get("step_size", None)
+    symmetric = scan_kwargs.get("symmetric", False)
     # The final prim value is determined either as
     #  start + steps*step_size
     # or
     #  (end - start) / steps .
     #
-    # So we always require steps and either end or step_size
-    assert (steps > 1) and (end or step_size)
+    # So we always require steps and either end or step_size.
+    # bool(a) != bool(b) amounts to an logical XOR.
+    assert (steps > 1) and (
+        bool(end) != bool(step_size)
+    ), "Please specify either 'end' or 'step_size'!"
+    if symmetric:
+        assert step_size and (
+            start is None
+        ), "'symmetric: True' requires 'step_size' and 'start == None'!"
 
-    constrain_prims = normalize_prim_inputs(((type_, *indices), ))
+    constrain_prims = normalize_prim_inputs(((type_, *indices),))
 
-    if start is None:
+    start_was_none = start is None
+    if start_was_none:
         constr_ind = geom.internal.typed_prims.index(constrain_prims[0])
         start = geom.coords[constr_ind]
 
@@ -642,9 +649,32 @@ def run_scan(geom, calc_getter, scan_kwargs):
     opt_kwargs = scan_kwargs["opt"].copy()
     opt_key = opt_kwargs.pop("type")
 
-    scan_geoms = relaxed_prim_scan(
-        geom, calc_getter, constrain_prims, start, step_size, steps, opt_key, opt_kwargs
-    )
+    def wrapper(start, step_size, pref=None):
+        # Modify the starting coordinates (take one step), if we start
+        # from the original, initial coordinates
+        if start_was_none:
+            start += step_size
+        return relaxed_prim_scan(
+            geom,
+            calc_getter,
+            constrain_prims,
+            start,
+            step_size,
+            steps,
+            opt_key,
+            opt_kwargs,
+            pref=pref,
+        )
+
+    if not symmetric:
+        scan_geoms = wrapper(start, step_size)
+    else:
+        minus_geoms = wrapper(start, -step_size, pref="minus")  # Negative direction
+        plus_geoms = wrapper(start, step_size, pref="plus")  # Positive direction
+        scan_geoms = minus_geoms[1:][::-1] + plus_geoms
+        trj = "\n".join([geom.as_xyz() for geom in scan_geoms])
+        with open("relaxed_scan.trj", "w") as handle:
+            handle.write(trj)
     return scan_geoms
 
 
@@ -721,49 +751,6 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     print()
 
     return out_xyz
-
-
-def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
-    try:
-        H = opt.H
-    except AttributeError:
-        if tsopt:
-            raise Exception("Can't handle TS optimization without Hessian yet!")
-
-        # Create approximate updated Hessian
-        cart_coords = opt.cart_coords
-        cart_forces = opt.cart_forces
-        coord_diffs = np.diff(cart_coords, axis=0)
-        grad_diffs = -np.diff(cart_forces, axis=0)
-        H = np.eye(cart_coords[0].size)
-        for s, y in zip(coord_diffs, grad_diffs):
-            dH, _ = bfgs_update(H, s, y)
-            H += dH
-
-    geom = opt.geometry
-    if geom.coord_type != "cart":
-        H = geom.internal.backtransform_hessian(H)
-
-    masses_rep = geom.masses_rep
-    # Mass-weigh and project Hessian
-    H = geom.eckart_projection(geom.mass_weigh_hessian(H))
-    w, v = np.linalg.eigh(H)
-    inds = [0, 1] if tsopt else [6]
-    # Converge the lowest two modes for TS optimizations; for minimizations the lowest
-    # mode would is enough.
-    lowest = 2 if tsopt else 1
-    guess_modes = [NormalMode(l, masses_rep) for l in v[:, inds].T]
-
-    davidson_kwargs = {
-        "hessian_precon": H,
-        "guess_modes": guess_modes,
-        "lowest": lowest,
-        "res_rms_thresh": res_rms_thresh,
-        "remove_trans_rot": True,
-    }
-
-    result = geom_davidson(geom, **davidson_kwargs)
-    return result
 
 
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
@@ -1144,6 +1131,7 @@ def get_defaults(conf_dict):
     if "scan" in conf_dict:
         dd["scan"] = {
             "opt": mol_opt_defaults.copy(),
+            "symmetric": False,
         }
 
     if "md" in conf_dict:

@@ -112,9 +112,22 @@ def relaxed_scan(
 
 
 def relaxed_prim_scan(
-    geom, calc_getter, constrain_prims, start, step_size, steps, opt_key, opt_kwargs
+    geom,
+    calc_getter,
+    constrain_prims,
+    start,
+    step_size,
+    steps,
+    opt_key,
+    opt_kwargs,
+    pref=None,
 ):
-    constr_ind = geom.internal.typed_prims.index(constrain_prims[0])
+    if pref is None:
+        pref = ""
+    else:
+        pref = f"{pref}_"
+    constr_prim = constrain_prims[0]
+    constr_ind = geom.internal.typed_prims.index(constr_prim)
     copy_kwargs = {
         "coord_type": "redund",
         "coord_kwargs": {"constrain_prims": constrain_prims},
@@ -123,26 +136,41 @@ def relaxed_prim_scan(
     scan_geoms = [constr_geom]
     xyzs = [constr_geom.as_xyz()]  # Keep XYZ coordinates as strings
 
+    unit = "au" if len(constr_prim[1:]) == 2 else "rad"
+
     cur_val = start
+    init_val = constr_geom.coords[constr_ind]
+    end_val = cur_val + steps * (step_size - 1)
+    print(
+        f"    Coordinate: {constr_prim}\n"
+        f"Original value: {init_val:.4f} {unit}\n"
+        f"Starting value: {cur_val:.4f} {unit}\n"
+        f"   Final value: {end_val:.4f} {unit}\n"
+        f"         Steps: {steps}\n"
+        f"     Step size: {step_size:.4f} {unit}\n"
+    )
+
     for cycle in range(steps):
         opt_kwargs_ = opt_kwargs.copy()
-        opt_kwargs_["prefix"] = f"relaxed_scan_{cycle:02d}"
+        name = f"{pref}relaxed_scan_{cycle:04d}"
+        opt_kwargs_["prefix"] = name
+        opt_kwargs_["h5_group_name"] = name
         constr_geom = constr_geom.copy(**copy_kwargs)
         scan_geoms.append(constr_geom)
         new_coords = constr_geom.coords
         new_coords[constr_ind] = cur_val
         constr_geom.coords = new_coords
-        title = f"Step {cycle:02d}, coord={cur_val:.2f} au (rad)"
+        title = f"{pref}Step {cycle:02d}, coord={cur_val:.4f} {unit}"
         _, opt = run_opt(
             constr_geom, calc_getter, opt_key, opt_kwargs_, title=title, level=1
         )
         xyzs.append(constr_geom.as_xyz())
         if not opt.is_converged:
-            print("Step {cycle} did not converge. Breaking!")
+            print(f"Step {cycle} did not converge. Breaking!")
             break
         cur_val += step_size  # Take step
 
-    with open("relaxed_scan.trj", "w") as handle:
+    with open(f"{pref}relaxed_scan.trj", "w") as handle:
         handle.write("\n".join(xyzs))
 
     return scan_geoms
