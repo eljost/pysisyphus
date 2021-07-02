@@ -19,8 +19,9 @@ from pysisyphus.helpers_pure import (
     highlight_text,
 )
 from pysisyphus.io import (
-    geom_from_pdb,
     geom_from_cjson,
+    geom_from_crd,
+    geom_from_pdb,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
     geoms_from_inline_xyz,
@@ -75,6 +76,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     ext = "" if "\n" in fn else Path(fn).suffix
 
     funcs = {
+        ".crd": geom_from_crd,
         ".xyz": geom_from_xyz_file,
         ".trj": geoms_from_trj,
         ".pdb": geom_from_pdb,
