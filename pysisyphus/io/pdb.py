@@ -79,7 +79,7 @@ def parse_pdb(fn):
 
     for i, line in enumerate(atm_lines):
         # Charge is not considered right now ...
-        fields = atm_parse(line[:78])
+        fields = atm_parse(f"{line[:78]: <78}")
         res_name = fields[4].strip()
         chain = fields[5].strip()
         res_seq = int(fields[6])
