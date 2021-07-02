@@ -1,10 +1,19 @@
+import pytest
+
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
 
 @using("pyscf")
-def test_h2o2_relaxed_scan():
-    end = 4.0
+@pytest.mark.parametrize(
+    "start, end, step_size", (
+        (None, 4.0, None),  # Use initial value
+        (3.0, 4.0, None),  # Start from 3.0
+        (None, None, 0.2) # 3 steps with 0.2
+    )
+)
+def test_h2o2_relaxed_scan(start, end, step_size):
+    steps = 3
     run_dict = {
         "geom": {
             "type": "redund",
@@ -19,13 +28,15 @@ def test_h2o2_relaxed_scan():
         "scan": {
             "type": "BOND",
             "indices": [2, 3],
-            "start": 3.0,
+            "start": start,
             "end": end,
-            "steps": 5,
+            "steps": steps,
+            "step_size": step_size,
             "opt": {
                 "thresh": "gau",
             },
         },
     }
     results = run_from_dict(run_dict)
-    assert len(results.scan_geoms) == 6
+    # Original geometry is also returned
+    assert len(results.scan_geoms) == (steps + 1)

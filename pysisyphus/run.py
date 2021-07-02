@@ -53,7 +53,7 @@ from pysisyphus.helpers_pure import (
 )
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
-from pysisyphus.intcoords.PrimTypes import PrimTypes
+from pysisyphus.intcoords.PrimTypes import PrimTypes, normalize_prim_inputs
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
@@ -619,8 +619,8 @@ def run_scan(geom, calc_getter, scan_kwargs):
     print(highlight_text("Relaxed Scan"))
     type_ = scan_kwargs["type"]
     indices = scan_kwargs["indices"]
-    start = scan_kwargs["start"]
     steps = scan_kwargs["steps"]
+    start = scan_kwargs.get("start", None)
     end = scan_kwargs.get("end", None)
     step_size = scan_kwargs.get("step_size", None)
     # The final prim value is determined either as
@@ -630,15 +630,18 @@ def run_scan(geom, calc_getter, scan_kwargs):
     #
     # So we always require steps and either end or step_size
     assert (steps > 1) and (end or step_size)
+
+    constrain_prims = normalize_prim_inputs(((type_, *indices), ))
+
+    if start is None:
+        constr_ind = geom.internal.typed_prims.index(constrain_prims[0])
+        start = geom.coords[constr_ind]
+
     if step_size is None:
         step_size = (end - start) / steps
     opt_kwargs = scan_kwargs["opt"].copy()
     opt_key = opt_kwargs.pop("type")
 
-    type_ = "BOND"
-    indices = (2, 3)
-    from pysisyphus.intcoords.PrimTypes import normalize_prim_inputs
-    constrain_prims = normalize_prim_inputs(((type_, *indices), ))
     scan_geoms = relaxed_prim_scan(
         geom, calc_getter, constrain_prims, start, step_size, steps, opt_key, opt_kwargs
     )
