@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
 
+from pysisyphus.drivers.opt import run_opt
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
@@ -107,5 +108,41 @@ def relaxed_scan(
                 "constrain_prims", (len(target_values),), dtype=dt
             )
             cp_dataset[:] = cp
-
     return scan_geom, scan_cart_coords, scan_energies
+
+
+def relaxed_prim_scan(
+    geom, calc_getter, constrain_prims, start, step_size, steps, opt_key, opt_kwargs
+):
+    constr_ind = geom.internal.typed_prims.index(constrain_prims[0])
+    copy_kwargs = {
+        "coord_type": "redund",
+        "coord_kwargs": {"constrain_prims": constrain_prims},
+    }
+    constr_geom = geom.copy(**copy_kwargs)
+    scan_geoms = [constr_geom]
+    xyzs = [constr_geom.as_xyz()]  # Keep XYZ coordinates as strings
+
+    cur_val = start
+    for cycle in range(steps):
+        opt_kwargs_ = opt_kwargs.copy()
+        opt_kwargs_["prefix"] = f"relaxed_scan_{cycle:02d}"
+        constr_geom = constr_geom.copy(**copy_kwargs)
+        scan_geoms.append(constr_geom)
+        new_coords = constr_geom.coords
+        new_coords[constr_ind] = cur_val
+        constr_geom.coords = new_coords
+        title = f"Step {cycle:02d}, coord={cur_val:.2f} au (rad)"
+        _, opt = run_opt(
+            constr_geom, calc_getter, opt_key, opt_kwargs_, title=title, level=1
+        )
+        xyzs.append(constr_geom.as_xyz())
+        if not opt.is_converged:
+            print("Step {cycle} did not converge. Breaking!")
+            break
+        cur_val += step_size  # Take step
+
+    with open("relaxed_scan.trj", "w") as handle:
+        handle.write("\n".join(xyzs))
+
+    return scan_geoms

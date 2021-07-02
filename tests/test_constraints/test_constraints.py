@@ -3,8 +3,8 @@ import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
-from pysisyphus.intcoords.PrimTypes import PrimTypes
-from pysisyphus.intcoords.RedundantCoords import (
+from pysisyphus.intcoords.PrimTypes import (
+    PrimTypes,
     normalize_prim_inputs,
     normalize_prim_input,
 )

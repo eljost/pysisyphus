@@ -4,7 +4,7 @@ import copy
 import datetime
 import itertools as it
 import os
-from math import ceil, floor, modf
+from math import modf
 from pathlib import Path
 import platform
 from pprint import pprint
@@ -21,7 +21,6 @@ import scipy as sp
 import pytest
 import yaml
 
-from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.calculators import *
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
@@ -34,6 +33,7 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
+from pysisyphus.drivers import relaxed_prim_scan
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
@@ -43,7 +43,6 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
     confirm_input,
     shake_coords,
-    do_final_hessian,
     print_barrier,
     get_tangent_trj_str,
 )
@@ -51,7 +50,6 @@ from pysisyphus.helpers_pure import (
     merge_sets,
     recursive_update,
     highlight_text,
-    report_frozen_atoms,
 )
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
@@ -61,12 +59,9 @@ from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.irc import *
 from pysisyphus.io import save_hessian
 from pysisyphus.modefollow import NormalMode, geom_davidson
-from pysisyphus.optimizers import *
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.stocastic import *
-from pysisyphus.tsoptimizers import *
 from pysisyphus.trj import get_geoms, dump_geoms
-from pysisyphus.tsoptimizers.dimer import dimer_method
 from pysisyphus._version import get_versions
 from pysisyphus.xyzloader import write_geoms_to_trj
 
@@ -112,30 +107,6 @@ COS_DICT = {
     "szts": SimpleZTS.SimpleZTS,
     "gs": GrowingString.GrowingString,
     "fs": FreezingString.FreezingString,
-}
-
-OPT_DICT = {
-    "bfgs": BFGS.BFGS,
-    "cg": ConjugateGradient.ConjugateGradient,
-    "fire": FIRE.FIRE,
-    "lbfgs": LBFGS.LBFGS,
-    "micro": MicroOptimizer,
-    "nc": NCOptimizer.NCOptimizer,
-    "oniom": ONIOMOpt,
-    "plbfgs": PreconLBFGS.PreconLBFGS,
-    "psd": PreconSteepestDescent.PreconSteepestDescent,
-    "qm": QuickMin.QuickMin,
-    "rfo": RFOptimizer.RFOptimizer,
-    "sd": SteepestDescent.SteepestDescent,
-    "sqnm": StabilizedQNMethod.StabilizedQNMethod,
-    "string": StringOptimizer.StringOptimizer,
-}
-
-TSOPT_DICT = {
-    "dimer": dimer_method,
-    "rsprfo": RSPRFOptimizer,
-    "trim": TRIM,
-    "rsirfo": RSIRFOptimizer,
 }
 
 IRC_DICT = {
@@ -353,7 +324,7 @@ def run_tsopt_from_cos(
         ]
         union_msg = f"Kept primitive types: {valid_prim_types}"
     else:
-        union_msg = f"No coordinate union."
+        union_msg = "No coordinate union."
     print(union_msg)
 
     # Try to run in DLC per default
@@ -644,6 +615,36 @@ def run_md(geom, calc_getter, md_kwargs):
     return md_result
 
 
+def run_scan(geom, calc_getter, scan_kwargs):
+    print(highlight_text("Relaxed Scan"))
+    type_ = scan_kwargs["type"]
+    indices = scan_kwargs["indices"]
+    start = scan_kwargs["start"]
+    steps = scan_kwargs["steps"]
+    end = scan_kwargs.get("end", None)
+    step_size = scan_kwargs.get("step_size", None)
+    # The final prim value is determined either as
+    #  start + steps*step_size
+    # or
+    #  (end - start) / steps .
+    #
+    # So we always require steps and either end or step_size
+    assert (steps > 1) and (end or step_size)
+    if step_size is None:
+        step_size = (end - start) / steps
+    opt_kwargs = scan_kwargs["opt"].copy()
+    opt_key = opt_kwargs.pop("type")
+
+    type_ = "BOND"
+    indices = (2, 3)
+    from pysisyphus.intcoords.PrimTypes import normalize_prim_inputs
+    constrain_prims = normalize_prim_inputs(((type_, *indices), ))
+    scan_geoms = relaxed_prim_scan(
+        geom, calc_getter, constrain_prims, start, step_size, steps, opt_key, opt_kwargs
+    )
+    return scan_geoms
+
+
 def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     """Run optimization on first and last geometry in xyz and return
     updated xyz variable containing the optimized ends and any
@@ -717,75 +718,6 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
     print()
 
     return out_xyz
-
-
-def get_opt_cls(opt_key):
-    try:
-        opt_cls = OPT_DICT[opt_key]
-    except KeyError:
-        opt_cls = TSOPT_DICT[opt_key]
-    return opt_cls
-
-
-def run_opt(
-    geom, calc_getter, opt_key, opt_kwargs, title="Optimization", copy_final_geom=None
-):
-    is_cos = issubclass(type(geom), ChainOfStates.ChainOfStates)
-
-    if is_cos:
-        for image in geom.images:
-            image.set_calculator(calc_getter())
-            title = str(geom)
-    else:
-        geom.set_calculator(calc_getter())
-
-    do_hess = opt_kwargs.pop("do_hess", False)
-    do_davidson = opt_kwargs.pop("do_davidson", False)
-    T = opt_kwargs.pop("T", 298.15)
-
-    opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
-    print(highlight_text(f"Running {title}"))
-    print(f"\nInput structure: {geom.describe()}")
-    report_frozen_atoms(geom)
-    print()
-
-    opt.run()
-
-    # ChainOfStates specific
-    if is_cos and (not opt.stopped):
-        hei_coords, hei_energy, hei_tangent, hei_frac_index = geom.get_splined_hei()
-        floor_ind = floor(hei_frac_index)
-        ceil_ind = ceil(hei_frac_index)
-        print(
-            f"Splined HEI is at {hei_frac_index:.2f}/{len(geom.images)-1:.2f}, "
-            f"between image {floor_ind} and {ceil_ind} (0-based indexing)."
-        )
-        hei_geom = Geometry(geom.images[0].atoms, hei_coords)
-        hei_geom.energy = hei_energy
-        hei_fn = "splined_hei.xyz"
-        with open(hei_fn, "w") as handle:
-            handle.write(hei_geom.as_xyz())
-        print(f"Wrote splined HEI to '{hei_fn}'")
-
-    if copy_final_geom and opt.is_converged:
-        copy_fn = copy_final_geom
-        shutil.copy(opt.final_fn, copy_fn)
-        print(f"Copied '{opt.final_fn}' to '{copy_fn}'.")
-
-    if do_davidson and (not opt.stopped):
-        tsopt = isinstance(opt, TSHessianOptimizer.TSHessianOptimizer) or isinstance(
-            geom.calculator, Dimer
-        )
-        type_ = "TS" if tsopt else "minimum"
-        print(highlight_text(f"Davidson after {type_} search", level=1))
-        opt_davidson(opt, tsopt=tsopt)
-    elif do_hess and (not opt.stopped):
-        print()
-        prefix = opt_kwargs.get("prefix", "")
-        do_final_hessian(geom, write_imag_modes=True, prefix=prefix, T=T)
-    print()
-
-    return opt.geometry, opt
 
 
 def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
@@ -1080,6 +1012,7 @@ def get_defaults(conf_dict):
         },
         "preopt": None,
         "endopt": None,
+        "scan": None,
         "opt": None,
         "tsopt": None,
         # "overlaps": None,
@@ -1205,6 +1138,11 @@ def get_defaults(conf_dict):
     if "mdp" in conf_dict:
         dd["mdp"] = {}
 
+    if "scan" in conf_dict:
+        dd["scan"] = {
+            "opt": mol_opt_defaults.copy(),
+        }
+
     if "md" in conf_dict:
         md_T = 298.15
         dd["md"] = {
@@ -1267,6 +1205,7 @@ def setup_run_dict(run_dict):
             "opt",
             "overlaps",
             "preopt",
+            "scan",
             "shake",
             "stocastic",
             "tsopt",
@@ -1304,6 +1243,7 @@ RunResult = namedtuple(
         "opt_geom opt "
         "calced_geoms calced_results "
         "stocastic calc_getter "
+        "scan_geoms "
     ),
 )
 
@@ -1467,6 +1407,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
     elif run_dict["md"]:
         md_kwargs = run_dict["md"].copy()
         run_md(geom, calc_getter, md_kwargs)
+    elif run_dict["scan"]:
+        scan_kwargs = run_dict["scan"]
+        scan_geoms = run_scan(geom, calc_getter, scan_kwargs)
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #
@@ -1703,6 +1646,8 @@ def do_clean(force=False):
         # XTB specific
         "image*.grad",
         "calculator*.grad",
+        "calculator*.xcontrol",
+        "calculator*.charges",
         "image_*",
         "splined_ts_guess.xyz",
         "splined_hei_tangent",
@@ -1763,6 +1708,7 @@ def do_clean(force=False):
         "rebuilt_primitives.xyz",
         "RUN.yaml",
         "middle_for_preopt.trj",
+        "relaxed_scan.trj",
         # MDP
         "mdp_ee_ascent.trj",
         "mdp_ee_fin_*.trj",

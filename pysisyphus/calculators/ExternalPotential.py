@@ -3,8 +3,7 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import KB, AU2J
-from pysisyphus.intcoords.RedundantCoords import normalize_prim_input
-from pysisyphus.intcoords.PrimTypes import PrimMap
+from pysisyphus.intcoords.PrimTypes import prims_from_prim_inputs
 from pysisyphus.intcoords.update import correct_dihedrals
 from pysisyphus.intcoords import Torsion
 
@@ -85,12 +84,9 @@ class Restraint:
         self.restraints = list()
 
         for prim_inp, *rest in restraints:
-            norm_prim_inp = normalize_prim_input(prim_inp)
-            assert len(norm_prim_inp) == 1
-            norm_prim_inp = norm_prim_inp[0]
-            prim_type, *indices = norm_prim_inp
-            prim_cls = PrimMap[prim_type]
-            prim = prim_cls(indices)
+            prims = prims_from_prim_inputs((prim_inp, ))
+            assert len(prims) == 1
+            prim = prims[0]
             force_const = rest.pop(0)
 
             try:
