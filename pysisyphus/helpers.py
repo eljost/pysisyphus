@@ -84,7 +84,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".zmat": geom_from_zmat_fn,
         "": geoms_from_inline_xyz,
     }
-    assert ext in funcs, "Unknown filetype for '{fn}'!"
+    assert ext in funcs, f"Unknown filetype for '{fn}'!"
     func = funcs[ext]
 
     if fn.startswith("lib:"):
