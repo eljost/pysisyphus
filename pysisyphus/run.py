@@ -629,7 +629,7 @@ def run_scan(geom, calc_getter, scan_kwargs):
     #
     # So we always require steps and either end or step_size.
     # bool(a) != bool(b) amounts to an logical XOR.
-    assert (steps > 1) and (
+    assert (steps > 0) and (
         bool(end) != bool(step_size)
     ), "Please specify either 'end' or 'step_size'!"
     if symmetric:
@@ -649,11 +649,7 @@ def run_scan(geom, calc_getter, scan_kwargs):
     opt_kwargs = scan_kwargs["opt"].copy()
     opt_key = opt_kwargs.pop("type")
 
-    def wrapper(start, step_size, pref=None):
-        # Modify the starting coordinates (take one step), if we start
-        # from the original, initial coordinates
-        if start_was_none:
-            start += step_size
+    def wrapper(start, step_size, steps, pref=None):
         return relaxed_prim_scan(
             geom,
             calc_getter,
@@ -667,15 +663,28 @@ def run_scan(geom, calc_getter, scan_kwargs):
         )
 
     if not symmetric:
-        scan_geoms = wrapper(start, step_size)
+        scan_geoms, scan_vals, scan_energies = wrapper(start, step_size, steps)
     else:
-        minus_geoms = wrapper(start, -step_size, pref="minus")  # Negative direction
-        plus_geoms = wrapper(start, step_size, pref="plus")  # Positive direction
-        scan_geoms = minus_geoms[1:][::-1] + plus_geoms
+        # Negative direction
+        minus_geoms, minus_vals, minus_energies = wrapper(
+            start, -step_size, steps, pref="minus"
+        )
+        # Positive direction
+        plus_start = start + step_size
+        plus_steps = steps - 1
+        plus_geoms, plus_vals, plus_energies = wrapper(
+            plus_start, step_size, plus_steps, pref="plus"
+        )
+        scan_geoms = minus_geoms[::-1] + plus_geoms
+        scan_vals = np.concatenate((minus_vals[::-1], plus_vals))
+        scan_energies = np.concatenate((minus_energies[::-1], plus_energies))
+
         trj = "\n".join([geom.as_xyz() for geom in scan_geoms])
         with open("relaxed_scan.trj", "w") as handle:
             handle.write(trj)
-    return scan_geoms
+        scan_data = np.stack((scan_vals, scan_energies), axis=1)
+        np.savetxt(f"relaxed_scan.dat", scan_data)
+    return scan_geoms, scan_vals, scan_energies
 
 
 def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):

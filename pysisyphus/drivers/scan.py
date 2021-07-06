@@ -133,30 +133,33 @@ def relaxed_prim_scan(
         "coord_kwargs": {"constrain_prims": constrain_prims},
     }
     constr_geom = geom.copy(**copy_kwargs)
-    scan_geoms = [constr_geom]
-    xyzs = [constr_geom.as_xyz()]  # Keep XYZ coordinates as strings
 
     unit = "au" if len(constr_prim[1:]) == 2 else "rad"
 
     cur_val = start
     init_val = constr_geom.coords[constr_ind]
-    end_val = cur_val + steps * (step_size - 1)
+    end_val = cur_val + step_size * steps
     print(
         f"    Coordinate: {constr_prim}\n"
         f"Original value: {init_val:.4f} {unit}\n"
         f"Starting value: {cur_val:.4f} {unit}\n"
         f"   Final value: {end_val:.4f} {unit}\n"
-        f"         Steps: {steps}\n"
+        f"         Steps: {steps}+1\n"
         f"     Step size: {step_size:.4f} {unit}\n"
     )
+    scan_vals = list()
+    scan_geoms = list()
+    scan_energies = list()
+    scan_xyzs = list()
 
-    for cycle in range(steps):
+    for cycle in range(steps + 1):
         opt_kwargs_ = opt_kwargs.copy()
         name = f"{pref}relaxed_scan_{cycle:04d}"
         opt_kwargs_["prefix"] = name
         opt_kwargs_["h5_group_name"] = name
         constr_geom = constr_geom.copy(**copy_kwargs)
         scan_geoms.append(constr_geom)
+
         new_coords = constr_geom.coords
         new_coords[constr_ind] = cur_val
         constr_geom.coords = new_coords
@@ -164,13 +167,18 @@ def relaxed_prim_scan(
         _, opt = run_opt(
             constr_geom, calc_getter, opt_key, opt_kwargs_, title=title, level=1
         )
-        xyzs.append(constr_geom.as_xyz())
+        scan_xyzs.append(constr_geom.as_xyz())
+        scan_vals.append(cur_val)
+        scan_energies.append(constr_geom.energy)
         if not opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break
         cur_val += step_size  # Take step
 
     with open(f"{pref}relaxed_scan.trj", "w") as handle:
-        handle.write("\n".join(xyzs))
+        handle.write("\n".join(scan_xyzs))
 
-    return scan_geoms
+    scan_data = np.stack((scan_vals, scan_energies), axis=1)
+    np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
+    scan_vals, scan_energies = scan_data.T
+    return scan_geoms, scan_vals, scan_energies
