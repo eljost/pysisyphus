@@ -1243,7 +1243,7 @@ RunResult = namedtuple(
         "opt_geom opt "
         "calced_geoms calced_results "
         "stocastic calc_getter "
-        "scan_geoms "
+        "scan_geoms scan_vals scan_energies "
     ),
 )
 
@@ -1409,7 +1409,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         run_md(geom, calc_getter, md_kwargs)
     elif run_dict["scan"]:
         scan_kwargs = run_dict["scan"]
-        scan_geoms = run_scan(geom, calc_getter, scan_kwargs)
+        scan_geoms, scan_vals, scan_energies = run_scan(geom, calc_getter, scan_kwargs)
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #

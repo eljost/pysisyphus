@@ -160,4 +160,3 @@ def test_run_irc_constrained_endopt(this_dir):
     for end_geom in results.end_geoms:
         c3d = end_geom.coords3d
         np.testing.assert_allclose(c3d[constrain_ind], ref_c3d[constrain_ind])
-    # import pdb; pdb.set_trace()
