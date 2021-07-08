@@ -198,6 +198,9 @@ class RedundantCoords:
                 append_to = self._dihedral_prim_inds
             elif pt in Rotations:
                 append_to = self._rotation_prim_inds
+            else:
+                self.log("Index of {tp} is not stored.")
+                continue
             append_to.append(i)
 
         self.backtransform_counter = 0
@@ -541,6 +544,10 @@ class RedundantCoords:
             self.prim_internals = new_prim_internals
             self.backtransform_counter += 1
         return cart_step
+
+    def print_typed_prims(self):
+        for i, tp in enumerate(self.typed_prims):
+            print(i, tp)
 
     def __str__(self):
         bonds = len(self.bond_indices)

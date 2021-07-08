@@ -59,7 +59,6 @@ def fischer_guess(geom):
         )
 
     def h_dihedral(dihedral):
-        # import pdb; pdb.set_trace()
         c, a, b, d = dihedral.indices
         r_ab = dist_mat[a, b]
         r_ab_cov = pair_cov_radii_mat[a, b]
