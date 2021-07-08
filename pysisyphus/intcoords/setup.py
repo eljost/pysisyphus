@@ -338,7 +338,9 @@ CoordInfo = namedtuple(
     "bonds hydrogen_bonds interfrag_bonds aux_interfrag_bonds "
     "bends linear_bends linear_bend_complements "
     # "dihedrals typed_prims fragments cdm cbm".split(),
-    "proper_dihedrals improper_dihedrals " "typed_prims fragments".split(),
+    "proper_dihedrals improper_dihedrals "
+    "translation_inds rotation_inds "
+    "typed_prims fragments".split(),
 )
 
 
@@ -352,6 +354,8 @@ def setup_redundant(
     lb_min_deg=None,
     lb_max_bonds=4,
     min_weight=None,
+    tric=False,
+    interfrag_hbonds=True,
     logger=None,
 ):
     if define_prims is None:
@@ -387,16 +391,27 @@ def setup_redundant(
     unbonded_set = set(range(len(atoms))) - bonded_set
     fragments.extend([frozenset((atom,)) for atom in unbonded_set])
 
-    # Check for disconnected fragments. If they are present, create interfragment
-    # bonds between them.
-    interfrag_bonds, aux_interfrag_bonds = connect_fragments(
-        cdm, fragments, logger=logger
-    )
+    interfrag_bonds = list()
+    aux_interfrag_bonds = list()
+    translation_inds = list()
+    rotation_inds = list()
+    # With translational & rotational internal coordinates (TRIC) we don't need
+    # interfragment coordinates.
+    if tric:
+        translation_inds = [list(fragment) for fragment in fragments]
+        rotation_inds = [list(fragment) for fragment in fragments]
+    # Without TRIC we have to somehow connect all fragments.
+    else:
+        interfrag_bonds, aux_interfrag_bonds = connect_fragments(
+            cdm, fragments, logger=logger
+        )
 
     # Hydrogen bonds
+    assert interfrag_hbonds, "Disabling interfrag_hbonds is not yet supported!"
     hydrogen_bonds = get_hydrogen_bond_inds(atoms, coords3d, bonds, logger=logger)
-
     hydrogen_set = [frozenset(bond) for bond in hydrogen_bonds]
+
+    # Remove newly obtained hydrogen bonds from other lists
     interfrag_bonds = [
         bond for bond in interfrag_bonds if set(bond) not in hydrogen_set
     ]
@@ -404,23 +419,25 @@ def setup_redundant(
         bond for bond in aux_interfrag_bonds if set(bond) not in hydrogen_set
     ]
     bonds = [bond for bond in bonds if set(bond) not in hydrogen_set]
-    aux_bonds = list()
+    aux_bonds = list()  # Not defined by default
 
     # Don't use auxilary interfragment bonds for bend detection
-    bonds_for_bends = set(
-        [frozenset(bond) for bond in bonds + hydrogen_bonds + interfrag_bonds]
-    )
+    bonds_for_bends = bonds
+    # With TRIC we don't need interfragment bends.
+    if not tric:
+        bonds_for_bends += hydrogen_bonds + interfrag_bonds
+    bonds_for_bends = set([frozenset(bond) for bond in bonds_for_bends])
 
     # Bends
     bends = get_bend_inds(
         coords3d,
         bonds_for_bends,
         min_deg=min_deg,
+        # All bends will be checked, for being (close to) linear and will be removed from
+        # bend_inds, if needed. Thats why we keep 180° here.
         max_deg=180.0,
         logger=logger,
     )
-    # All bends will be checked, for being linear bends and will be removed from
-    # bend_inds, if needed.
     bends = keep_coords(bends, Bend)
 
     # Linear Bends and orthogonal complements
@@ -440,7 +457,6 @@ def setup_redundant(
     # Dihedrals
     bends_for_dihedrals = bends + linear_bends
     proper_dihedrals, improper_dihedrals = get_dihedral_inds(
-        # coords3d, bonds_for_bends, bends, max_deg=dihed_max_deg, logger=logger
         coords3d,
         bonds_for_bends,
         bends_for_dihedrals,
@@ -449,6 +465,7 @@ def setup_redundant(
     )
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
     improper_dihedrals = keep_coords(improper_dihedrals, Torsion)
+    improper_dihedrals = []
 
     # Additional primitives to be defined. The values define the lists, to which
     # the respective coordinate(s) will be appended.
@@ -463,6 +480,12 @@ def setup_redundant(
         PrimTypes.LINEAR_BEND_COMPLEMENT: "linear_bend_complements",
         PrimTypes.PROPER_DIHEDRAL: "proper_dihedrals",
         PrimTypes.IMPROPER_DIHEDRAL: "improper_dihedrals",
+        # PrimTypes.TRANSLATION_X: "translation_inds",
+        # PrimTypes.TRANSLATION_Y: "translation_inds",
+        # PrimTypes.TRANSLATION_Z: "translation_inds",
+        # PrimTypes.ROTATION_A: "rotation_inds",
+        # PrimTypes.ROTATION_B: "rotation_inds",
+        # PrimTypes.ROTATION_C: "rotation_inds",
     }
     for type_, *indices in define_prims:
         try:
@@ -487,6 +510,18 @@ def setup_redundant(
         + [(pt.PROPER_DIHEDRAL, *pdihedral) for pdihedral in proper_dihedrals]
         + [(pt.IMPROPER_DIHEDRAL, *idihedral) for idihedral in improper_dihedrals]
     )
+    for frag in translation_inds:
+        typed_prims += [
+            (pt.TRANSLATION_X, *frag),
+            (pt.TRANSLATION_Y, *frag),
+            (pt.TRANSLATION_Z, *frag),
+        ]
+    for frag in rotation_inds:
+        typed_prims += [
+            (pt.ROTATION_A, *frag),
+            (pt.ROTATION_B, *frag),
+            (pt.ROTATION_C, *frag),
+        ]
 
     coord_info = CoordInfo(
         bonds=bonds,
@@ -498,6 +533,8 @@ def setup_redundant(
         linear_bend_complements=linear_bend_complements,
         proper_dihedrals=proper_dihedrals,
         improper_dihedrals=improper_dihedrals,
+        translation_inds=translation_inds,
+        rotation_inds=rotation_inds,
         typed_prims=typed_prims,
         fragments=fragments,
     )

@@ -8,7 +8,7 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import XTB
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.PrimTypes import PrimTypes
-from pysisyphus.intcoords.setup import get_fragments
+from pysisyphus.intcoords.setup import get_fragments, setup_redundant
 from pysisyphus.intcoords.valid import check_typed_prims
 from pysisyphus.io.zmat import geom_from_zmat_str
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -218,3 +218,15 @@ def test_opt_linear_dihedrals():
     assert opt.is_converged
     assert opt.cur_cycle == 16
     assert geom.energy == pytest.approx(-10.48063133)
+
+
+@pytest.mark.parametrize(
+    "interfrag_hbonds", [
+        True,
+        False
+    ]
+)
+def test_interfragment_hydrogen_bonds(interfrag_hbonds):
+    geom = geom_loader("lib:interfrag_hydrogen_bond.xyz")
+    coord_info = setup_redundant(geom.atoms, geom.coords3d, interfrag_hbonds=interfrag_hbonds)
+    assert bool(len(coord_info.hydrogen_bonds)) == interfrag_hbonds
