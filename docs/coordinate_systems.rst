@@ -46,6 +46,8 @@ Translation & Rotation Internal Coordinates (TRIC)
 * Translation and rotation coordinates are assigned to every fragment
 * Avoids error-prone assignment of interfragment coordinates
 * See `10.1063/1.4952956 <https://doi.org/10.1063/1.4952956>`_ for a full discussion
+* By default the B-Matrix is recalculated in every step of the internal-Cartesian
+  backtransformation when TRIC is enabled
 * :code:`coord_type: tric`
 
 Supported File Formats

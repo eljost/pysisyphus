@@ -10,6 +10,11 @@ them up.
 
 **Please consider reading the relevant sections (2 and 3; 4 discusses examples) of
 the** `pysisyphus paper <https://onlinelibrary.wiley.com/doi/full/10.1002/qua.26390>`_.
+Additionally the user should think about the relevance between equilibrium/non-equilibrium
+solvation when calculating ES-gradients with implicit solvation. Serveral programs,
+e.g., Gaussian use equilibrium solvation when doing ES-optimization. It is in the
+responsibility of the user to add the relevant keywords when using pysisyphus, e.g.,
+:code:`EqSolv` for Gaussian.
 
 A bare-bone input for the S\ :sub:`1` optimization of the 1H-amino-keto
 tautomer of cytosin at the TD-DFT/PBE0/def2-SVP level of theory using ORCA is

@@ -554,4 +554,5 @@ class TRIC(RedundantCoords):
 
     def __init__(self, *args, **kwargs):
         kwargs["tric"] = True
+        kwargs["recalc_B"] = True
         super().__init__(*args, **kwargs)
