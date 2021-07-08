@@ -140,16 +140,18 @@ Atom indices start at 0!
     OUT_OF_PLANE = 10
     LINEAR_DISPLACEMENT = 11
     LINEAR_DISPLACEMENT_COMPLEMENT = 12
-    TRANSLATION_X = 13
-    TRANSLATION_Y = 14
-    TRANSLATION_Z = 15
-    # Rotational coordinates are not yet fully implemented
-    #ROTATION_A = 16
-    #ROTATION_B = 17
-    #ROTATION_C = 18
-    CARTESIAN_X = 19
-    CARTESIAN_Y = 20
-    CARTESIAN_Z = 21
+    # TRANSLATION = 13  # Dummy coordinate
+    TRANSLATION_X = 14
+    TRANSLATION_Y = 15
+    TRANSLATION_Z = 16
+    # ROTATION = 17  # Dummy coordinate
+    ROTATION_A = 18
+    ROTATION_B = 19
+    ROTATION_C = 20
+    CARTESIAN = 21
+    CARTESIAN_X = 22
+    CARTESIAN_Y = 23
+    CARTESIAN_Z = 24
 
 As some of these types are quite unwieldy, several shortcuts are supported,
 that can be used in place of the types above.
@@ -172,6 +174,10 @@ that can be used in place of the types above.
     "A": [PT.BEND],
     "D": [PT.PROPER_DIHEDRAL],
     "DIHEDRAL": [PT.PROPER_DIHEDRAL],
+    "TORSION": [PT.PROPER_DIHEDRAL],
+    # Translation & Rotation coordinates
+    "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
+    "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
 
 Define Additional Primitives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

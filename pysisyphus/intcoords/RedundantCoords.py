@@ -21,8 +21,14 @@ from pysisyphus.intcoords.eval import (
 )
 
 from pysisyphus.intcoords.PrimTypes import (
-    PrimTypes,
     normalize_prim_inputs,
+    PrimTypes,
+    Bonds,
+    Bends,
+    Cartesians,
+    Dihedrals,
+    Rotations,
+    Translations,
 )
 
 from pysisyphus.intcoords.setup import (
@@ -53,6 +59,8 @@ class RedundantCoords:
         # Corresponds to a threshold of 1e-7 for eigenvalues of G, as proposed by
         # Pulay in [5].
         svd_inv_thresh=3.16e-4,
+        recalc_B=False,
+        tric=False,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -78,6 +86,8 @@ class RedundantCoords:
         self.min_weight = float(min_weight)
         assert self.min_weight > 0.0, "min_weight must be a positive rational!"
         self.svd_inv_thresh = svd_inv_thresh
+        self.recalc_B = recalc_B
+        self.tric = tric
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -133,8 +143,22 @@ class RedundantCoords:
             self.typed_prims = valid_typed_prims
             self.set_inds_from_typed_prims(self.typed_prims)
 
-        # Sort by length
-        self.typed_prims.sort(key=lambda tp: tp[0])
+        def tp_sort(tp):
+            pt, *indices = tp
+            key = pt
+            # We use the fact that list.sort is stable, that is elements that compare
+            # equal retain their order. So we assign PrimTypes.ROTATION to all rotations,
+            # to remain the ABC-order for each fragment. The same goes for the translations.
+            if pt in Rotations:
+                key = PrimTypes.ROTATION
+            elif pt in Translations:
+                key = PrimTypes.TRANSLATION
+            elif pt in Cartesians:
+                key = PrimTypes.CARTESIAN
+            return key
+
+        # Sort by PrimType
+        self.typed_prims.sort(key=tp_sort)
 
         self.primitives = get_primitives(
             self.coords3d,
@@ -148,31 +172,33 @@ class RedundantCoords:
             self.primitives = [
                 prim for prim in self.primitives if isinstance(prim, Stretch)
             ]
-        check_primitives(self.coords3d, self.primitives, logger=self.logger)
-
+        # First evaluation of internal coordinates
         self._prim_internals = self.eval(self.coords3d)
         self._prim_coords = np.array(
             [prim_int.val for prim_int in self._prim_internals]
         )
+        check_primitives(self.coords3d, self.primitives, B=self.B, logger=self.logger)
 
         ref_num = len(self.typed_prims)
         if self.bonds_only:
             ref_num = len(self.bond_indices)
         assert len(self.primitives) == ref_num
-        prim_inds = {
-            2: list(),
-            3: list(),
-            4: list(),
-        }
-        keys = list(prim_inds.keys())
-        for i, prim in enumerate(self.primitives):
-            len_ = len(prim.indices)
-            if len_ not in keys:
-                continue
-            prim_inds[len_].append(i)
-        self._bond_prim_inds = prim_inds[2]
-        self._bend_prim_inds = prim_inds[3]
-        self._dihedral_prim_inds = prim_inds[4]
+
+        self._bond_prim_inds = list()
+        self._bend_prim_inds = list()
+        self._dihedral_prim_inds = list()
+        self._rotation_prim_inds = list()
+        for i, tp in enumerate(self.typed_prims):
+            pt = tp[0]
+            if pt in Bonds:
+                append_to = self._bond_prim_inds
+            elif pt in Bends:
+                append_to = self._bend_prim_inds
+            elif pt in Dihedrals:
+                append_to = self._dihedral_prim_inds
+            elif pt in Rotations:
+                append_to = self._rotation_prim_inds
+            append_to.append(i)
 
         self.backtransform_counter = 0
 
@@ -251,6 +277,10 @@ class RedundantCoords:
     @property
     def dihedral_inds(self):
         return self._dihedral_prim_inds
+
+    @property
+    def rotation_inds(self):
+        return self._rotation_prim_inds
 
     @property
     def coords(self):
@@ -417,6 +447,16 @@ class RedundantCoords:
             "hydrogen_bond": list(),
         }
         for type_, *indices in typed_prims:
+            if type_ in (
+                PrimTypes.TRANSLATION_X,
+                PrimTypes.TRANSLATION_Y,
+                PrimTypes.TRANSLATION_Z,
+                PrimTypes.ROTATION_A,
+                PrimTypes.ROTATION_B,
+                PrimTypes.ROTATION_C,
+            ):
+                continue
+
             key = len(indices)
             if type_ in (linear_bend_types):
                 key = "linear_bend"
@@ -433,9 +473,6 @@ class RedundantCoords:
         self.linear_bend_indices = per_type["linear_bend"]
         self.hydrogen_bond_indices = per_type["hydrogen_bond"]
 
-        # TODO
-        # self.fragments = coord_info.fragments
-
     def set_primitive_indices(
         self,
         atoms,
@@ -450,6 +487,7 @@ class RedundantCoords:
             dihed_max_deg=self.dihed_max_deg,
             lb_min_deg=self.lb_min_deg,
             min_weight=self.min_weight if self.weighted else None,
+            tric=self.tric,
             logger=self.logger,
         )
 
@@ -457,6 +495,7 @@ class RedundantCoords:
         for cp in self.constrain_prims:
             if cp not in self.typed_prims:
                 self.typed_prims.append(cp)
+
         # Check if constrained primitives are present; if not create them.
         self.set_inds_from_typed_prims(self.typed_prims)
 
@@ -474,6 +513,15 @@ class RedundantCoords:
 
     def transform_int_step(self, int_step, pure=False):
         self.log(f"Backtransformation {self.backtransform_counter}")
+
+        def Bt_inv_prim_getter(cart_coords):
+            coords3d = cart_coords.reshape(-1, 3)
+            B_prim = np.zeros((len(self.primitives), coords3d.size))
+            for i, primitive in enumerate(self.primitives):
+                _, gradient = primitive.calculate(coords3d, gradient=True)
+                B_prim[i] = gradient
+            return self.inv_Bt(B_prim)
+
         new_prim_internals, cart_step, failed = transform_int_step(
             int_step,
             self.coords3d.flatten(),
@@ -481,9 +529,11 @@ class RedundantCoords:
             self.Bt_inv_prim,
             self.primitives,
             self.dihedral_inds,
+            self.rotation_inds,
             check_dihedrals=self.rebuild,
             freeze_atoms=self.freeze_atoms,
             logger=self.logger,
+            Bt_inv_prim_getter=Bt_inv_prim_getter if self.recalc_B else None,
         )
         # Update coordinates
         if not pure:

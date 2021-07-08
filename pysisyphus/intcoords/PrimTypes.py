@@ -34,15 +34,18 @@ class PrimTypes(OrderedEnum):
     OUT_OF_PLANE = 10
     LINEAR_DISPLACEMENT = 11
     LINEAR_DISPLACEMENT_COMPLEMENT = 12
-    TRANSLATION_X = 13
-    TRANSLATION_Y = 14
-    TRANSLATION_Z = 15
-    ROTATION_A = 16
-    ROTATION_B = 17
-    ROTATION_C = 18
-    CARTESIAN_X = 19
-    CARTESIAN_Y = 20
-    CARTESIAN_Z = 21
+    TRANSLATION = 13
+    TRANSLATION_X = 14
+    TRANSLATION_Y = 15
+    TRANSLATION_Z = 16
+    ROTATION = 17
+    ROTATION_A = 18
+    ROTATION_B = 19
+    ROTATION_C = 20
+    CARTESIAN = 21
+    CARTESIAN_X = 22
+    CARTESIAN_Y = 23
+    CARTESIAN_Z = 24
 
 
 # Alias for easier access
@@ -64,12 +67,37 @@ PrimTypeShortcuts = {
     "D": [PT.PROPER_DIHEDRAL],
     "DIHEDRAL": [PT.PROPER_DIHEDRAL],
     "TORSION": [PT.PROPER_DIHEDRAL],
+    # Translation & Rotation coordinates
+    "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
+    "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
 }
+
+# The tuples below can be used to decide whether a given type belongs
+# to a certain class of primitive.
+Bonds = (
+    PT.BOND,
+    PT.AUX_BOND,
+    PT.HYDROGEN_BOND,
+    PT.INTERFRAG_BOND,
+    PT.AUX_INTERFRAG_BOND,
+)
+Bends = (
+    PT.BEND,
+    PT.LINEAR_BEND,
+    PT.LINEAR_BEND_COMPLEMENT,
+    PT.LINEAR_DISPLACEMENT,
+    PT.LINEAR_DISPLACEMENT_COMPLEMENT,
+)
+Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL)
+Cartesians = (PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z)
+Rotations = (PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C)
+Translations = (PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z)
 
 
 def get_rot_coord(cls):
     def func(indices, ref_coords3d):
         return cls(indices, ref_coords3d=ref_coords3d)
+
     return func
 
 
@@ -93,9 +121,6 @@ PrimMap = {
     PT.TRANSLATION_X: TranslationX,
     PT.TRANSLATION_Y: TranslationY,
     PT.TRANSLATION_Z: TranslationZ,
-    # PT.ROTATION_A: lambda indices, ref_coords3d: RotationA(indices, ref_coords3d=ref_coords3d),
-    # PT.ROTATION_B: lambda indices, ref_coords3d: RotationB(indices, ref_coords3d),
-    # PT.ROTATION_C: lambda indices, ref_coords3d: RotationC(indices, ref_coords3d),
     PT.ROTATION_A: get_rot_coord(RotationA),
     PT.ROTATION_B: get_rot_coord(RotationB),
     PT.ROTATION_C: get_rot_coord(RotationC),

@@ -138,6 +138,37 @@ def simple_guess(geom):
     return np.diagflat(h_diag)
 
 
+def simple_guess(geom):
+    from pysisyphus.intcoords.PrimTypes import PrimTypes
+    PT = PrimTypes
+    k_map = {
+        PT.BOND: 0.5,
+        PT.AUX_BOND: 0.1,
+        PT.HYDROGEN_BOND: 0.1,
+        PT.INTERFRAG_BOND: 0.1,
+        PT.AUX_INTERFRAG_BOND: 0.05,
+        PT.BEND: 0.2,
+        PT.LINEAR_BEND: 0.1,
+        PT.LINEAR_BEND_COMPLEMENT: 0.1,
+        PT.PROPER_DIHEDRAL: 0.1,
+        PT.IMPROPER_DIHEDRAL: 0.1,
+        PT.OUT_OF_PLANE: 0.1,
+        PT.LINEAR_DISPLACEMENT: 0.1,
+        PT.LINEAR_DISPLACEMENT_COMPLEMENT: 0.1,
+        PT.TRANSLATION_X: CART_F,
+        PT.TRANSLATION_Y: CART_F,
+        PT.TRANSLATION_Z: CART_F,
+        PT.ROTATION_A: CART_F,
+        PT.ROTATION_B: CART_F,
+        PT.ROTATION_C: CART_F,
+        PT.CARTESIAN_X: CART_F,
+        PT.CARTESIAN_Y: CART_F,
+        PT.CARTESIAN_Z: CART_F,
+    }
+    h_diag = [k_map[type_] for type_, *_ in geom.internal.typed_prims]
+    return np.diagflat(h_diag)
+
+
 def swart_guess(geom):
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     cdm = pdist(geom.coords3d)
