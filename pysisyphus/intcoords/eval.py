@@ -34,12 +34,13 @@ def eval_B(coords3d, primitives):
     return np.array([prim_int.grad for prim_int in prim_internals])
 
 
-def check_primitives(coords3d, primitives, thresh=1e-6, logger=None):
+def check_primitives(coords3d, primitives, B=None,thresh=1e-6, logger=None):
     def log(msg, level=logging.DEBUG):
         if logger is not None:
             logger.log(level, msg)
 
-    B = eval_B(coords3d, primitives)
+    if B is None:
+        B = eval_B(coords3d, primitives)
     G = B.T.dot(B)
     w, v = np.linalg.eigh(G)
     nonzero_inds = np.abs(w) > thresh
