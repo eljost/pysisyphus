@@ -177,7 +177,7 @@ class RedundantCoords:
         self._prim_coords = np.array(
             [prim_int.val for prim_int in self._prim_internals]
         )
-        check_primitives(self.coords3d, self.primitives, B=self.B, logger=self.logger)
+        check_primitives(self.coords3d, self.primitives, B=self.B_prim, logger=self.logger)
 
         ref_num = len(self.typed_prims)
         if self.bonds_only:
