@@ -19,7 +19,7 @@ from pysisyphus.elem_data import (
     COVALENT_RADII as CR,
 )
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.intcoords import DLC, RedundantCoords
+from pysisyphus.intcoords import DLC, RedundantCoords, TRIC
 from pysisyphus.intcoords.exceptions import (
     NeedNewInternalsException,
     RebuiltInternalsException,
@@ -102,6 +102,7 @@ class Geometry:
         "cart": None,
         "redund": RedundantCoords,
         "dlc": DLC,
+        "tric": TRIC,
     }
 
     def __init__(

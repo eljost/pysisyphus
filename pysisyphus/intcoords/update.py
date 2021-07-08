@@ -56,7 +56,7 @@ def update_internals(
     new_rotations = new_internals[rotation_inds]
     # Check for approaching singularity as discussed in the geomeTRIC paper. The
     # original code seems to check this only for linear molecules and instead
-    # does some +2π/-2π magic.
+    # does some +2π/-2π magic, similar to how dihedrals differences are handled.
     if (np.abs(new_rotations / np.pi) >= rotation_thresh).any():
         raise NeedNewInternalsException(new_coords3d)
 

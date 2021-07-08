@@ -548,3 +548,10 @@ class RedundantCoords:
         dihedrals = len(self.dihedral_indices)
         name = self.__class__.__name__
         return f"{name}({bonds} bonds, {bends} bends, {dihedrals} dihedrals)"
+
+
+class TRIC(RedundantCoords):
+
+    def __init__(self, *args, **kwargs):
+        kwargs["tric"] = True
+        super().__init__(*args, **kwargs)

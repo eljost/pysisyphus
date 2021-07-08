@@ -15,6 +15,7 @@ Cartesian Coordinates
 * Strong coupling
 * Unambiguously defined, if translation and rotation (TR) are removed
 * Redundant set, if TR are not removed
+* :code:`coord_type: cart`
 
 Redundant Internal Coordinates
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,6 +27,7 @@ Redundant Internal Coordinates
 * Require sophisticated setup algorithm
 * Iterative internal-Cartesian backtransformation, which may fail
 * Usually highly redundant set
+* :code:`coord_type: redund`
 
 Delocalized Internal Coordinates (DLC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,6 +37,16 @@ Delocalized Internal Coordinates (DLC)
 * Non redundant set
 * More efficient compared to RIC for bigger systems (if initial DLC generation is feasible)
 * Same comments apply, as for RICs
+* :code:`coord_type: dlc`
+
+Translation & Rotation Internal Coordinates (TRIC)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Especially suited to optimize solvated/non-covalently bound systems
+* Translation and rotation coordinates are assigned to every fragment
+* Avoids error-prone assignment of interfragment coordinates
+* See `10.1063/1.4952956 <https://doi.org/10.1063/1.4952956>`_ for a full discussion
+* :code:`coord_type: tric`
 
 Supported File Formats
 ----------------------
@@ -51,6 +63,8 @@ Suffix           Write   Comment
 .molden          ✗     Restricted to [Geometries] block.
 .zmat            ✗     Z-Matrix, see below for an example.
 .cjson           ✗     As saved by Avogadro.
+.crd             ✗     CHARMM card format
+.sdf             ✗     Structure-data file
 ================ ===== =================================
 
 Z-Matrix example
@@ -75,7 +89,7 @@ See below for an explanation of the `geom` keys.
 .. code:: yaml
 
     geom:
-     type: cart               # Coordinate system (cart/redund/dlc)
+     type: cart               # Coordinate system (cart/redund/dlc/tric)
      fn: [input]              # File name or inline input
      define_prims: null       # Additional primitives, to be defined
      constrain_prims: null    # Primitive internals to be constrained
@@ -120,7 +134,7 @@ Specification of a type is necessary, as there are many
 different kinds of bonds, bends and dihedrals/out-of-plane.
 One can't just assume, that a coordinate comprised of 3 atom indices is always a
 regular bend, as it may also be a linear bend or a translational coordinate
-(TRANSLATION_X, 13), describin the mean Cartesian X coordinate of 3 atoms.
+(TRANSLATION_X, 14), describin the mean Cartesian X coordinate of 3 atoms.
 
 Atom indices start at 0!
 
@@ -148,7 +162,7 @@ Atom indices start at 0!
     ROTATION_A = 18
     ROTATION_B = 19
     ROTATION_C = 20
-    CARTESIAN = 21
+    # CARTESIAN = 21  # Dummy coordinate
     CARTESIAN_X = 22
     CARTESIAN_Y = 23
     CARTESIAN_Z = 24
