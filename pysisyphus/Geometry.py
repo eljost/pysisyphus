@@ -1139,10 +1139,10 @@ class Geometry:
             "comment": self.comment,
         }
         try:
-            prim_inds = self.internal.prim_indices
+            typed_prims = self.internal.typed_prims
         except AttributeError:
-            prim_inds = None
-        restart_info["prim_inds"] = prim_inds
+            typed_prims = None
+        restart_info["typed_prims"] = typed_prims
 
         # Calculator restart information
         try:

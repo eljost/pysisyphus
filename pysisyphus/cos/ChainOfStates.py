@@ -73,9 +73,9 @@ class ChainOfStates:
             [img.coord_type == self.coord_type for img in self.images]
         ), "coord_type of images differ!"
         try:
-            self.prim_indices = img0.internal.prim_indices
+            self.typed_prims = img0.internal.typed_prims
         except AttributeError:
-            self.prim_indices = None
+            self.typed_prims = None
 
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")

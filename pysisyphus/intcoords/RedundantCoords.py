@@ -231,13 +231,13 @@ class RedundantCoords:
     def primitives(self, primitives):
         self._primitives = primitives
 
-    @property
-    def prim_indices(self):
-        return [self.bond_indices, self.bending_indices, self.dihedral_indices]
+    # @property
+    # def prim_indices(self):
+        # return [self.bond_indices, self.bending_indices, self.dihedral_indices]
 
     @property
     def prim_indices_set(self):
-        return set([tuple(prim_ind) for prim_ind in it.chain(*self.prim_indices)])
+        return set([tuple(indices) for pt, *indices in self.typed_prims])
 
     @property
     def prim_internals(self):
