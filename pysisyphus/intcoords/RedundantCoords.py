@@ -199,7 +199,7 @@ class RedundantCoords:
             elif pt in Rotations:
                 append_to = self._rotation_prim_inds
             else:
-                self.log("Index of {tp} is not stored.")
+                self.log(f"Index of {tp} is not stored.")
                 continue
             append_to.append(i)
 

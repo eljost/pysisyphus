@@ -223,18 +223,13 @@ def get_dihedral_inds(coords3d, bond_inds, bend_inds, max_deg, logger=None):
             improper_dihedral_inds.append(dihed)
 
     for bond, bend in it.product(bond_inds, bend_inds):
-        # print("bond", bond, "bend", bend)
         central = bend[1]
         bend_set = set(bend)
         bond_set = set(bond)
         # Check if the two sets share one common atom. If not continue.
         intersect = bend_set & bond_set
-        # print("intersect", intersect)
         if len(intersect) != 1:
             continue
-        # if bond == frozenset((0, 11)) and bend == (0, 3, 4):
-        # import pdb; pdb.set_trace()
-        # pass
 
         # TODO: check collinearity of bond and bend.
 
@@ -422,11 +417,11 @@ def setup_redundant(
     aux_bonds = list()  # Not defined by default
 
     # Don't use auxilary interfragment bonds for bend detection
-    bonds_for_bends = bonds
+    bonds_for_bends = [bonds, ]
     # With TRIC we don't need interfragment bends.
     if not tric:
-        bonds_for_bends += hydrogen_bonds + interfrag_bonds
-    bonds_for_bends = set([frozenset(bond) for bond in bonds_for_bends])
+        bonds_for_bends += [hydrogen_bonds, interfrag_bonds]
+    bonds_for_bends = set([frozenset(bond) for bond in it.chain(*bonds_for_bends)])
 
     # Bends
     bends = get_bend_inds(
@@ -465,7 +460,9 @@ def setup_redundant(
     )
     proper_dihedrals = keep_coords(proper_dihedrals, Torsion)
     improper_dihedrals = keep_coords(improper_dihedrals, Torsion)
-    improper_dihedrals = []
+    # Improper dihedrals are disabled for now in TRIC
+    if tric:
+        improper_dihedrals = []
 
     # Additional primitives to be defined. The values define the lists, to which
     # the respective coordinate(s) will be appended.
