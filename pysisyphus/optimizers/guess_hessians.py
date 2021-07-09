@@ -77,7 +77,7 @@ def fischer_guess(geom):
 
     # For the dihedral force constants we also have to count the number
     # of bonds formed with the centrals atoms of the dihedral.
-    central_atoms = [dh[1:3] for dh in geom.internal.dihedral_indices]
+    central_atoms = [inds[1:3] for inds in geom.internal.dihedral_atom_indices]
     bond_factor = geom.internal.bond_factor
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
     tors_atom_bonds = dict()
@@ -142,6 +142,16 @@ def lindh_style_guess(geom, ks, rhos):
     return H
 
 
+def get_lindh_alpha(atom1, atom2):
+    first_period = "h", "he"
+    if (atom1 in first_period) and (atom2 in first_period):
+        return 1.0
+    elif (atom1 in first_period) or (atom2 in first_period):
+        return 0.3949
+    else:
+        return 0.28
+
+
 def lindh_guess(geom):
     """Slightly modified Lindh model hessian as described in [1].
 
@@ -152,18 +162,9 @@ def lindh_guess(geom):
     If values for elements > 3rd are requested the alpha values for the 3rd
     period will be (re)used.
     """
-    first_period = "h he".split()
-
-    def get_alpha(atom1, atom2):
-        if (atom1 in first_period) and (atom2 in first_period):
-            return 1.0
-        elif (atom1 in first_period) or (atom2 in first_period):
-            return 0.3949
-        else:
-            return 0.28
 
     atoms = [a.lower() for a in geom.atoms]
-    alphas = [get_alpha(a1, a2) for a1, a2 in it.combinations(atoms, 2)]
+    alphas = [get_lindh_alpha(a1, a2) for a1, a2 in it.combinations(atoms, 2)]
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     cdm = pdist(geom.coords3d)
     rhos = squareform(np.exp(alphas * (pair_cov_radii ** 2 - cdm ** 2)))
