@@ -33,8 +33,6 @@ def parse_filter(raw_filter):
 
 
 def get_unique_internals(geom):
-    # Bending indices, dihedral_indices are still derived from ALL
-    # bond_indnices including hydrogen bonds and interfragment bonds
     attrs = ("bond_atom_indices", "bend_atom_indices", "dihedral_atom_indices")
     atoms_arr = np.array(geom.atoms)
     unique_internals = list()
