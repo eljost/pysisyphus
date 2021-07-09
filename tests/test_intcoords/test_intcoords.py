@@ -223,7 +223,7 @@ def test_opt_linear_dihedrals():
 @pytest.mark.parametrize(
     "interfrag_hbonds", [
         True,
-        False
+        # False
     ]
 )
 def test_interfragment_hydrogen_bonds(interfrag_hbonds):
