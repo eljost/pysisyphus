@@ -15,11 +15,60 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.intcoords.PrimTypes import PrimTypes as PT, Bonds, Bends, Dihedrals
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.io.hessian import save_hessian
 
 
+# See [4], last sentences of III.
 CART_F = 0.05
+# Default force constants
+DEFAULT_F = {
+    PT.BOND: 0.5,
+    PT.AUX_BOND: 0.1,
+    PT.HYDROGEN_BOND: 0.1,
+    PT.INTERFRAG_BOND: 0.1,
+    PT.AUX_INTERFRAG_BOND: 0.05,
+    PT.BEND: 0.2,
+    PT.LINEAR_BEND: 0.1,
+    PT.LINEAR_BEND_COMPLEMENT: 0.1,
+    PT.PROPER_DIHEDRAL: 0.1,
+    PT.IMPROPER_DIHEDRAL: 0.1,
+    PT.OUT_OF_PLANE: 0.1,
+    PT.LINEAR_DISPLACEMENT: 0.1,
+    PT.LINEAR_DISPLACEMENT_COMPLEMENT: 0.1,
+    PT.TRANSLATION_X: CART_F,
+    PT.TRANSLATION_Y: CART_F,
+    PT.TRANSLATION_Z: CART_F,
+    PT.ROTATION_A: CART_F,
+    PT.ROTATION_B: CART_F,
+    PT.ROTATION_C: CART_F,
+    PT.CARTESIAN_X: CART_F,
+    PT.CARTESIAN_Y: CART_F,
+    PT.CARTESIAN_Z: CART_F,
+}
+
+
+def simple_guess(geom):
+    """Default force constants."""
+    h_diag = [DEFAULT_F[type_] for type_, *_ in geom.internal.typed_prims]
+    return np.diag(h_diag)
+
+
+def improved_guess(geom, bond_func, bend_func, dihedral_func):
+    H_guess = simple_guess(geom)
+    for i, (pt, *indices) in enumerate(geom.internal.typed_prims):
+        if pt in Bonds:
+            f_func = bond_func
+        elif pt in Bends:
+            f_func = bend_func
+        elif pt in Dihedrals:
+            f_func = dihedral_func
+        else:
+            continue
+        new_f = f_func(indices)
+        H_guess[i, i] = new_f
+    return H_guess
 
 
 def fischer_guess(geom):
@@ -42,42 +91,55 @@ def fischer_guess(geom):
     dist_mat = squareform(cdm)
     pair_cov_radii_mat = squareform(pair_cov_radii)
 
-    def h_bond(bond):
-        a, b = bond.indices
+    def h_bond(indices):
+        a, b = indices
         r_ab = dist_mat[a, b]
         r_ab_cov = pair_cov_radii_mat[a, b]
-        return 0.3601 * exp(-1.944*(r_ab - r_ab_cov))
+        return 0.3601 * exp(-1.944 * (r_ab - r_ab_cov))
 
-    def h_bend(bend):
-        b, a, c = bend.indices
+    def h_bend(indices):
+        b, a, c = indices
         r_ab = dist_mat[a, b]
         r_ac = dist_mat[a, c]
         r_ab_cov = pair_cov_radii_mat[a, b]
         r_ac_cov = pair_cov_radii_mat[a, c]
-        return (0.089 + 0.11/(r_ab_cov*r_ac_cov)**(-0.42)
-                * exp(-0.44*(r_ab + r_ac - r_ab_cov - r_ac_cov))
+        return 0.089 + 0.11 / (r_ab_cov * r_ac_cov) ** (-0.42) * exp(
+            -0.44 * (r_ab + r_ac - r_ab_cov - r_ac_cov)
         )
 
-    def h_dihedral(dihedral):
-        c, a, b, d = dihedral.indices
+    def h_dihedral(indices):
+        c, a, b, d = indices
         r_ab = dist_mat[a, b]
         r_ab_cov = pair_cov_radii_mat[a, b]
         bond_sum = max(tors_atom_bonds[(a, b)], 0)
-        return (0.0015 + 14.0*bond_sum**0.57 / (r_ab*r_ab_cov)**4.0
-                * exp(-2.85*(r_ab - r_ab_cov))
+        return 0.0015 + 14.0 * bond_sum ** 0.57 / (r_ab * r_ab_cov) ** 4.0 * exp(
+            -2.85 * (r_ab - r_ab_cov)
         )
-    h_funcs = {
-        1: lambda _: CART_F,  # See [4], last sentences of III.
-        2: h_bond,
-        3: h_bend,
-        4: h_dihedral,
-    }
 
-    h_diag = list()
-    for primitive in geom.internal.primitives:
-        f = h_funcs[len(primitive.indices)]
-        h_diag.append(f(primitive))
-    H = np.array(np.diagflat(h_diag))
+    H = improved_guess(
+        geom, bond_func=h_bond, bend_func=h_bend, dihedral_func=h_dihedral
+    )
+    return H
+
+
+def lindh_style_guess(geom, ks, rhos):
+    """Approximate force constants according to Lindh.[1]
+
+    Bonds:       k_ij = k_r * rho_ij
+    Bends:      k_ijk = k_b * rho_ij * rho_jk
+    Dihedrals: k_ijkl = k_d * rho_ij * rho_jk * rho_kl
+    """
+
+    def k_func(indices):
+        rho_product = 1
+        inds_len = len(indices)
+        for i, ind in enumerate(indices[:-1], 1):
+            i1, i2 = ind, indices[i]
+            rho_product *= rhos[i1, i2]
+        k = ks[inds_len] * rho_product
+        return k
+
+    H = improved_guess(geom, bond_func=k_func, bend_func=k_func, dihedral_func=k_func)
     return H
 
 
@@ -92,112 +154,44 @@ def lindh_guess(geom):
     period will be (re)used.
     """
     first_period = "h he".split()
+
     def get_alpha(atom1, atom2):
         if (atom1 in first_period) and (atom2 in first_period):
-            return 1.
+            return 1.0
         elif (atom1 in first_period) or (atom2 in first_period):
             return 0.3949
         else:
             return 0.28
+
     atoms = [a.lower() for a in geom.atoms]
-    alphas = [get_alpha(a1, a2)
-              for a1, a2 in it.combinations(atoms, 2)]
+    alphas = [get_alpha(a1, a2) for a1, a2 in it.combinations(atoms, 2)]
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     cdm = pdist(geom.coords3d)
-    rhos = squareform(np.exp(alphas*(pair_cov_radii**2-cdm**2)))
+    rhos = squareform(np.exp(alphas * (pair_cov_radii ** 2 - cdm ** 2)))
 
-    k_dict = {
+    ks = {
         2: 0.45,  # Stretches/bonds
         3: 0.15,  # Bends/angles
         4: 0.005,  # Torsions/dihedrals
     }
-    k_diag = list()
-    for prim_int in geom.internal.prim_internals:
-        if len(prim_int.inds) == 1:
-            k_diag.append(CART_F)  # See [4], last sentences of III.
-            continue
-
-        rho_product = 1
-        for i in range(len(prim_int.inds)-1):
-            i1, i2 = prim_int.inds[i:i+2]
-            rho_product *= rhos[i1, i2]
-        k_diag.append(k_dict[len(prim_int.inds)] * rho_product)
-    H = np.diagflat(k_diag)
-    return H
-
-
-def simple_guess(geom):
-    h_dict = {
-        1: CART_F,  # See [4], last sentences of III.
-        2: 0.5,  # Stretches/bonds
-        3: 0.2,  # Bends/angles
-        4: 0.1,  # Torsions/dihedrals
-    }
-    h_diag = [h_dict[len(prim.indices)] for prim in geom.internal.primitives]
-    return np.diagflat(h_diag)
-
-
-def simple_guess(geom):
-    from pysisyphus.intcoords.PrimTypes import PrimTypes
-    PT = PrimTypes
-    k_map = {
-        PT.BOND: 0.5,
-        PT.AUX_BOND: 0.1,
-        PT.HYDROGEN_BOND: 0.1,
-        PT.INTERFRAG_BOND: 0.1,
-        PT.AUX_INTERFRAG_BOND: 0.05,
-        PT.BEND: 0.2,
-        PT.LINEAR_BEND: 0.1,
-        PT.LINEAR_BEND_COMPLEMENT: 0.1,
-        PT.PROPER_DIHEDRAL: 0.1,
-        PT.IMPROPER_DIHEDRAL: 0.1,
-        PT.OUT_OF_PLANE: 0.1,
-        PT.LINEAR_DISPLACEMENT: 0.1,
-        PT.LINEAR_DISPLACEMENT_COMPLEMENT: 0.1,
-        PT.TRANSLATION_X: CART_F,
-        PT.TRANSLATION_Y: CART_F,
-        PT.TRANSLATION_Z: CART_F,
-        PT.ROTATION_A: CART_F,
-        PT.ROTATION_B: CART_F,
-        PT.ROTATION_C: CART_F,
-        PT.CARTESIAN_X: CART_F,
-        PT.CARTESIAN_Y: CART_F,
-        PT.CARTESIAN_Z: CART_F,
-    }
-    h_diag = [k_map[type_] for type_, *_ in geom.internal.typed_prims]
-    return np.diagflat(h_diag)
+    return lindh_style_guess(geom, ks, rhos)
 
 
 def swart_guess(geom):
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     cdm = pdist(geom.coords3d)
-    rhos = squareform(np.exp(-cdm/pair_cov_radii + 1))
-    k_dict = {
+    rhos = squareform(np.exp(-cdm / pair_cov_radii + 1))
+    ks = {
         2: 0.35,
         3: 0.15,
         4: 0.005,
     }
-    k_diag = list()
-    for primitive in geom.internal.primitives:
-        if len(primitive.indices) == 1:
-            k_diag.append(CART_F)  # See [4], last sentence of III.
-            continue
-
-        rho_product = 1
-        for i in range(len(primitive.indices)-1):
-            i1, i2 = primitive.indices[i:i+2]
-            rho_product *= rhos[i1, i2]
-        k_diag.append(k_dict[len(primitive.indices)] * rho_product)
-    return np.diagflat(k_diag)
+    return lindh_style_guess(geom, ks, rhos)
 
 
 def xtb_hessian(geom, gfn=None):
     calc = geom.calculator
-    xtb_kwargs = {
-        "charge": calc.charge,
-        "mult": calc.mult,
-        "pal": calc.pal
-    }
+    xtb_kwargs = {"charge": calc.charge, "mult": calc.mult, "pal": calc.pal}
     if gfn is not None:
         xtb_kwargs["gfn"] = gfn
     xtb_calc = XTB(**xtb_kwargs)
@@ -206,8 +200,9 @@ def xtb_hessian(geom, gfn=None):
     return geom_.hessian
 
 
-def get_guess_hessian(geometry, hessian_init, int_gradient=None,
-                      cart_gradient=None, h5_fn=None):
+def get_guess_hessian(
+    geometry, hessian_init, int_gradient=None, cart_gradient=None, h5_fn=None
+):
     """Obtain/calculate (model) Hessian.
 
     For hessian_init="calc" the Hessian will be in the coord_type
@@ -238,6 +233,8 @@ def get_guess_hessian(geometry, hessian_init, int_gradient=None,
         "xtb": lambda: (xtb_hessian(geometry, gfn=2), "GFN2-XTB"),
         # XTB hessian using GFN-1
         "xtb1": lambda: (xtb_hessian(geometry, gfn=1), "GFN1-XTB"),
+        # XTB hessian using GFN-FF
+        "xtbff": lambda: (xtb_hessian(geometry, gfn="ff"), "GFN-FF"),
     }
     try:
         H, hess_str = hess_funcs[hessian_init]()
@@ -285,7 +282,7 @@ def ts_hessian(hessian, coord_inds, damp=0.25):
         # fj = force_constants[j]
         fi = diag[i]
         fj = diag[j]
-        f = -(2*fi*fj)**0.5
-        ts_hess[i,j] = f
-        ts_hess[j,i] = f
+        f = -((2 * fi * fj) ** 0.5)
+        ts_hess[i, j] = f
+        ts_hess[j, i] = f
     return ts_hess
