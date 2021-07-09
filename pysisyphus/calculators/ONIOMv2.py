@@ -27,6 +27,7 @@ import logging
 from collections import namedtuple
 
 import numpy as np
+import scipy.sparse as sparse
 
 from pysisyphus.calculators import (
     Composite,
@@ -142,9 +143,6 @@ class ModelDummyCalc:
         forces_[: len(atoms) - len(self.model.links)] = forces.reshape(-1, 3)[
             self.model.atom_inds
         ]
-        # if len(atoms) < 30:
-        # import pdb; pdb.set_trace()
-        # pass
         results = {"energy": energy, "forces": forces_.flatten()}
         return results
 
@@ -209,6 +207,7 @@ class Model:
         if len(self.links) == 0:
             self.log("Didn't create any link atoms!\n")
 
+        self.Js = self.get_sparse_jacobian()
         try:
             self.J = self.get_jacobian()
         except TypeError:
@@ -261,18 +260,14 @@ class Model:
 
     def get_jacobian(self):
         try:
-            # Shape of Jacobian is (model + link, real)
+            # Shape of Jacobian is (model + link, real). TypeError will be raised
+            # when self.parent_atom_inds is None.
             jac_shape = (
                 len(self.atom_inds) * 3 + len(self.links) * 3,
                 len(self.parent_atom_inds) * 3,
             )
         except TypeError:
-            # Return array instead of 1, because the integer 1 can't be transposed
-            # as we have to do for the hessian calculation.
-            return np.array(1)
-
-        # assert self.parent_atom_inds == list(range(self.parent_atom_inds[0],
-        # self.parent_atom_inds[-1]+1))
+            return None
 
         J = np.zeros(jac_shape)
         # Stencil for diagonal elements of 3x3 submatrix
@@ -303,6 +298,57 @@ class Model:
             # to a layer higher above.
             except ValueError:
                 pass
+
+        return J
+
+    def get_sparse_jacobian(self):
+        try:
+            # Shape of Jacobian is (model + link, real). TypeError will be raised
+            # when self.parent_atom_inds is None.
+            jac_shape = (
+                len(self.atom_inds) * 3 + len(self.links) * 3,
+                len(self.parent_atom_inds) * 3,
+            )
+        except TypeError:
+            return None
+
+        # Stencil for diagonal elements of 3x3 submatrix
+        stencil = np.array((0, 1, 2), dtype=int)
+        ones = np.ones_like(stencil)
+        size_ = len(self.atom_inds)
+
+        model_rows = np.arange(size_ * 3)
+        # When more than two layers are present the inner layers aren't directly
+        # embedded in the outermost layer. This means parent_inds does not begin
+        # at 0, but with a higher index. So we need a map of the actual indices
+        # (not starting at 0) to the indices in the Jacobian which start at 0.
+        atom_inds = [self.parent_atom_inds.index(ind) for ind in self.atom_inds]
+        ind_map = {k: v for k, v in zip(self.atom_inds, atom_inds)}
+        model_cols = atom_inds_to_cart_inds(atom_inds)
+
+        jac_rows = model_rows.tolist()
+        jac_cols = model_cols.tolist()
+        jac_data = np.ones_like(jac_cols).tolist()
+
+        # Link atoms
+        link_start = model_rows.max() + 1
+        for i, (ind, parent_ind, atom, g) in enumerate(self.links):
+            rows = (link_start + i * 3 + stencil).tolist()
+            cols = (ind_map[ind] * 3 + stencil).tolist()
+            jac_rows += rows
+            jac_cols += cols
+            jac_data += (ones - g).tolist()
+
+            try:
+                parent_cols = (self.parent_atom_inds.index(parent_ind) * 3 + stencil).tolist()
+                jac_rows += rows
+                jac_cols += parent_cols
+                jac_data += np.full_like(parent_cols, g, dtype=float).tolist()
+            # Raised when link atom is not coupled to layer above, but
+            # to a layer higher above.
+            except ValueError:
+                pass
+        J = sparse.csr_matrix((jac_data, (jac_rows, jac_cols)), shape=jac_shape)
 
         return J
 
@@ -356,7 +402,9 @@ class Model:
         results = self.calc.get_forces(catoms, ccoords, **prepare_kwargs)
         forces = results["forces"]
         energy = results["energy"]
-        forces = forces.dot(self.J)
+        if self.Js is not None:
+            # forces = forces.dot(self.J)
+            forces = self.Js.T @ forces
 
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
@@ -369,7 +417,7 @@ class Model:
 
             # Correct energy and forces
             energy -= parent_energy
-            forces -= parent_forces.dot(self.J)
+            forces -= self.Js.T @ parent_forces
         elif not parent_correction:
             self.log("No parent correction!")
 
@@ -395,7 +443,9 @@ class Model:
         results = self.calc.get_hessian(catoms, ccoords, **prepare_kwargs)
         hessian = results["hessian"]
         energy = results["energy"]
-        hessian = self.J.T.dot(hessian.dot(self.J))
+        if self.J is not None:
+            # hessian = self.J.T.dot(hessian.dot(self.J))
+            hessian = (self.Js.T @ hessian) @ self.Js
 
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
@@ -406,7 +456,8 @@ class Model:
 
             # Correct energy and hessian
             energy -= parent_energy
-            hessian -= self.J.T.dot(parent_hessian.dot(self.J))
+            # hessian -= self.J.T.dot(parent_hessian.dot(self.J))
+            hessian -= (self.Js.T @ parent_hessian) @ self.Js
         elif not parent_correction:
             self.log("No parent correction!")
 
