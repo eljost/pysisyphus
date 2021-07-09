@@ -265,17 +265,17 @@ class RedundantCoords:
             pis = itemgetter(*indices)(self.prim_internals)
         return pis
 
-    @property
-    def bonds(self):
-        return self.get_prim_internals_by_indices(self._bond_prim_inds)
+    # @property
+    # def bonds(self):
+        # return self.get_prim_internals_by_indices(self._bond_prim_inds)
 
-    @property
-    def bends(self):
-        return self.get_prim_internals_by_indices(self._bend_prim_inds)
+    # @property
+    # def bends(self):
+        # return self.get_prim_internals_by_indices(self._bend_prim_inds)
 
-    @property
-    def dihedrals(self):
-        return self.get_prim_internals_by_indices(self._dihedral_prim_inds)
+    # @property
+    # def dihedrals(self):
+        # return self.get_prim_internals_by_indices(self._dihedral_prim_inds)
 
     @property
     def dihedral_inds(self):

@@ -123,7 +123,7 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
         internal = RedundantCoords(atoms, geom.cart_coords)
         bonds = internal.bond_indices
         bends = internal.bending_indices
-        dihedrals = internal.dihedrals
+        dihedrals = internal.dihedral_indices
     elif kind == "full_fast":
         bonds, bends, dihedrals = find_bonds_bends_dihedrals(geom)
     elif kind == "bonds_bends":

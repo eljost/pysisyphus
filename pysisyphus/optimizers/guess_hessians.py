@@ -75,10 +75,9 @@ def fischer_guess(geom):
     cdm = pdist(geom.coords3d)
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
 
-    dihedrals = geom.internal.dihedrals
     # For the dihedral force constants we also have to count the number
     # of bonds formed with the centrals atoms of the dihedral.
-    central_atoms = [dh.inds[1:3] for dh in dihedrals]
+    central_atoms = [dh[1:3] for dh in geom.internal.dihedral_indices]
     bond_factor = geom.internal.bond_factor
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
     tors_atom_bonds = dict()

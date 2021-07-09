@@ -6,18 +6,16 @@ import numpy as np
 
 class PrimInternal:
 
-    def __init__(self, inds, val, grad):
+    def __init__(self, inds, val, grad=None):
         self.inds = inds
         self.val = val
         self.grad = grad
 
+    def __str__(self):
+        return f"PrimInternal({self.inds})"
 
-# PrimInternal = namedtuple("PrimitiveInternal", "inds val grad")
-
-
-# def are_parallel(u, v, thresh=1e-6):
-    # dot = u.dot(v) / (np.linalg.norm(u) * np.linalg.norm(v))
-    # return (1 - abs(dot)) < thresh
+    def __repr__(self):
+        return f"PrimInternal({self.inds}, {self.val:.4f})"
 
 
 def eval_primitives(coords3d, primitives):
