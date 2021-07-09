@@ -26,6 +26,7 @@ from pysisyphus.intcoords.PrimTypes import (
     # PrimType classes
     Bonds,
     Bends,
+    LinearBends,
     Cartesians,
     Dihedrals,
     OutOfPlanes,
@@ -93,8 +94,6 @@ class RedundantCoords:
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
-        # Linear bends may have been disabled, so we create the list here.
-        self.linear_bend_indices = list()
         self.logger = logging.getLogger("internal_coords")
 
         if self.weighted:
@@ -126,6 +125,9 @@ class RedundantCoords:
         else:
             self.typed_prims = typed_prims
 
+        if self.bonds_only:
+            self.typed_prims = self.bond_typed_prims
+
         def tp_sort(tp):
             pt, *indices = tp
             key = pt
@@ -148,13 +150,7 @@ class RedundantCoords:
             self.typed_prims,
             logger=self.logger,
         )
-        if self.bonds_only:
-            self.bending_indices = list()
-            self.dihedral_indices = list()
-            self.linear_bend_indices = list()
-            self.primitives = [
-                prim for prim in self.primitives if isinstance(prim, Stretch)
-            ]
+
         # First evaluation of internal coordinates
         self._prim_internals = self.eval(self.coords3d)
         self._prim_coords = np.array(
@@ -174,6 +170,7 @@ class RedundantCoords:
         # in self.typed_prims
         self._bond_inds = list()
         self._bend_inds = list()
+        self._linear_bend_inds = list()
         self._dihedral_inds = list()
         self._rotation_inds = list()
         self._translation_inds = list()
@@ -184,13 +181,18 @@ class RedundantCoords:
         self._bend_atom_inds = list()
         self._dihedral_atom_inds = list()
 
+        self._bond_typed_prims = list()
+
         for i, (pt, *indices) in enumerate(typed_prims):
             if pt in Bonds:
                 append_to = self._bond_inds
                 self._bond_atom_inds.append(indices)
+                self._bond_typed_prims.append((pt, *indices))
             elif pt in Bends:
                 append_to = self._bend_inds
                 self._bend_atom_inds.append(indices)
+            elif pt in LinearBends:
+                append_to = self._linear_bend_inds
             elif pt in Dihedrals:
                 append_to = self._dihedral_inds
                 self._dihedral_atom_inds.append(indices)
@@ -298,12 +300,20 @@ class RedundantCoords:
         return self._bond_atom_inds
 
     @property
+    def bond_typed_prims(self):
+        return self._bond_typed_prims
+
+    @property
     def bend_indices(self):
         return self._bend_inds
 
     @property
     def bend_atom_indices(self):
         return self._bend_atom_inds
+
+    @property
+    def linear_bend_indices(self):
+        return self._linear_bend_inds
 
     @property
     def dihedral_indices(self):

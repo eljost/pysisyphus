@@ -248,7 +248,7 @@ class Geometry:
             diff = -get_tangent(
                 self.internal.prim_coords,
                 other.internal.prim_coords,
-                self.internal.dihedral_inds,
+                self.internal.dihedral_indices,
             )
         else:
             raise Exception("Invalid coord_type!")

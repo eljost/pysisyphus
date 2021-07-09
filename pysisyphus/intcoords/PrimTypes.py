@@ -81,8 +81,8 @@ Bonds = (
     PT.INTERFRAG_BOND,
     PT.AUX_INTERFRAG_BOND,
 )
-Bends = (
-    PT.BEND,
+Bends = (PT.BEND, )
+LinearBends = (
     PT.LINEAR_BEND,
     PT.LINEAR_BEND_COMPLEMENT,
     PT.LINEAR_DISPLACEMENT,
