@@ -207,11 +207,8 @@ class Model:
         if len(self.links) == 0:
             self.log("Didn't create any link atoms!\n")
 
-        self.Js = self.get_sparse_jacobian()
-        try:
-            self.J = self.get_jacobian()
-        except TypeError:
-            self.log("Skipping definition of jacobian shape")
+        # self.J = self.get_jacobian()
+        self.J = self.get_sparse_jacobian()
 
         if debug:
             catoms, ccoords = self.capped_atoms_coords(atoms, coords)
@@ -402,9 +399,12 @@ class Model:
         results = self.calc.get_forces(catoms, ccoords, **prepare_kwargs)
         forces = results["forces"]
         energy = results["energy"]
-        if self.Js is not None:
+        if self.J is not None:
             # forces = forces.dot(self.J)
-            forces = self.Js.T @ forces
+            # f^T J = (J^T f)^T
+            # The transpose of the term in brackets can be ignored here, as numpy
+            # does not distinguish between f and f^T for a 1d-array.
+            forces = self.J.T @ forces
 
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
@@ -417,7 +417,7 @@ class Model:
 
             # Correct energy and forces
             energy -= parent_energy
-            forces -= self.Js.T @ parent_forces
+            forces -= self.J.T @ parent_forces
         elif not parent_correction:
             self.log("No parent correction!")
 
@@ -445,7 +445,7 @@ class Model:
         energy = results["energy"]
         if self.J is not None:
             # hessian = self.J.T.dot(hessian.dot(self.J))
-            hessian = (self.Js.T @ hessian) @ self.Js
+            hessian = (self.J.T @ hessian) @ self.J
 
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
@@ -457,7 +457,7 @@ class Model:
             # Correct energy and hessian
             energy -= parent_energy
             # hessian -= self.J.T.dot(parent_hessian.dot(self.J))
-            hessian -= (self.Js.T @ parent_hessian) @ self.Js
+            hessian -= (self.J.T @ parent_hessian) @ self.J
         elif not parent_correction:
             self.log("No parent correction!")
 
