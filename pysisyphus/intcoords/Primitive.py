@@ -84,7 +84,7 @@ class Primitive(metaclass=abc.ABCMeta):
             indices = self.indices
 
         if self.cache:
-            cur_hash = hash_arr(coords3d, precision=8)
+            cur_hash = hash_arr(coords3d[indices], precision=8)
             try:
                 val = self.val_cache[cur_hash]
                 if gradient:
