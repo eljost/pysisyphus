@@ -1,11 +1,13 @@
+import re
 import struct
 import textwrap
 
 from jinja2 import Template
 import numpy as np
 
-from pysisyphus.Geometry import Geometry
+from pysisyphus.elem_data import KNOWN_ATOMS
 from pysisyphus.constants import ANG2BOHR
+from pysisyphus.Geometry import Geometry
 
 
 AMINOS = "ALA CYS ASP GLU PHE GLY HIS ILE LYS LEU" \
@@ -17,6 +19,24 @@ def get_parser(widths):
     fieldstruct = struct.Struct(fmt)
     parse = lambda line: tuple(s.decode() for s in fieldstruct.unpack(line.encode()))
     return parse
+
+STRIP_RE = re.compile("[\d\s]*")
+NAME_MAP = {
+    "hh": "H",
+    "he": "H",
+}
+
+def parse_atom_name(name):
+    org_name = name
+    assert len(name) == 4
+    name = name[:2]
+    stripped = STRIP_RE.sub("", name).lower()
+    try:
+        mapped = NAME_MAP[stripped]
+    except KeyError:
+        assert stripped in KNOWN_ATOMS, f"Could not parse atom name '{org_name}'"
+        mapped = stripped
+    return mapped.capitalize()
 
 
 def parse_pdb(fn):
@@ -87,6 +107,9 @@ def parse_pdb(fn):
 
         xyz = fields[8:11]
         atom = fields[13].strip()
+        if not atom.lower() in KNOWN_ATOMS:
+            name = fields[2]
+            atom = parse_atom_name(name)
         atoms.append(atom)
         coords.append(xyz)
 
