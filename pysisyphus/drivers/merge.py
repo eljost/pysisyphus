@@ -10,35 +10,20 @@ from pysisyphus.drivers.precon_pos_rot import (
     SteepestDescent,
 )
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import align_coords
 from pysisyphus.optimizers.LBFGS import LBFGS
+from pysisyphus.xyzloader import coords_to_trj
 
 
-def prepare_merge(geom1, geom2, bond_diff, del1=None, del2=None):
-    if del1:
-        geom1 = geom1.del_atoms(del1)
-    if del2:
-        geom2 = geom2.del_atoms(del2)
-
+def hardsphere_merge(geom1, geom2):
     union = geom1 + geom2
+
     atom_num = len(geom1.atoms)
     # Set up lists containing the atom indices for the two fragments
     frag_lists = [
         [i for i, _ in enumerate(geom1.atoms)],
         [atom_num + i for i, _ in enumerate(geom2.atoms)],
     ]
-    fragments = {"geom1": frag_lists[0], "geom2": frag_lists[1]}
-    union.fragments = fragments
-
-    which_frag = get_which_frag(frag_lists)
-    AR = form_A(frag_lists, which_frag, bond_diff)
-
-    # Center fragments at their geometric average
-    center_fragments(frag_lists, union)
-
-    # Translate centroid of active atoms to origin
-    alphas = get_steps_to_active_atom_mean(frag_lists, frag_lists, AR, union.coords3d)
-    for frag, alpha in zip(frag_lists, alphas):
-        union.coords3d[frag] += alpha
 
     def get_hs(kappa=1.0):
         return HardSphere(
@@ -56,9 +41,69 @@ def prepare_merge(geom1, geom2, bond_diff, del1=None, del2=None):
     }
     opt = SteepestDescent(union, **opt_kwargs)
     opt.run()
+    return union
+
+
+def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False):
+    if del1:
+        geom1 = geom1.del_atoms(del1)
+    if del2:
+        geom2 = geom2.del_atoms(del2)
+
+    if geom2:
+        union = geom1 + geom2
+        atom_num = len(geom1.atoms)
+        # Set up lists containing the atom indices for the two fragments
+        frag_lists = [
+            [i for i, _ in enumerate(geom1.atoms)],
+            [atom_num + i for i, _ in enumerate(geom2.atoms)],
+        ]
+        fragments = {"geom1": frag_lists[0], "geom2": frag_lists[1]}
+        union.fragments = fragments
+    else:
+        union = geom1
+    frag_lists = [union.fragments["geom1"], union.fragments["geom2"]]
+
+    backup = list()
+
+    def keep(comment):
+        backup.append((union.cart_coords.copy(), comment))
+
+    keep("Initial union")
+
+    which_frag = get_which_frag(frag_lists)
+    AR = form_A(frag_lists, which_frag, bond_diff)
+
+    # Center fragments at their geometric average
+    center_fragments(frag_lists, union)
+    keep("Centered fragments")
+
+    # Translate centroid of active atoms to origin
+    alphas = get_steps_to_active_atom_mean(frag_lists, frag_lists, AR, union.coords3d)
+    for frag, alpha in zip(frag_lists, alphas):
+        union.coords3d[frag] += alpha
+    keep("Shifted centroids to active atoms")
+
+    def get_hs(kappa=1.0):
+        return HardSphere(
+            union,
+            frag_lists,
+            permutations=True,
+            kappa=kappa,
+        )
+
+    union.set_calculator(get_hs(1.0))
+    opt_kwargs = {
+        "max_cycles": 1000,
+        "max_step": 0.5,
+        "rms_force": 0.0005,
+    }
+    opt = SteepestDescent(union, **opt_kwargs)
+    opt.run()
+    keep("Initial hardsphere optimization")
 
     keys_calcs = {
-        "hs": get_hs(1.0),
+        "hs": get_hs(10.0),
         "tt": TransTorque(frag_lists, frag_lists, AR, AR, kappa=2, do_trans=True),
     }
     comp = Composite("hs + tt", keys_calcs, remove_translation=True)
@@ -75,6 +120,13 @@ def prepare_merge(geom1, geom2, bond_diff, del1=None, del2=None):
     }
     opt = SteepestDescent(union, **opt_kwargs)
     opt.run()
+    keep("Hardsphere + TransTorque optimization")
+
+    if dump:
+        kept_coords, kept_comments = zip(*backup)
+        align_coords(kept_coords)
+        fn = "merge_dump.trj"
+        coords_to_trj(fn, union.atoms, kept_coords, comments=kept_comments)
 
     return union
 
@@ -90,7 +142,7 @@ def merge_opt(union, bond_diff, ff="uff"):
     mol = pybel.readstring("xyz", union.as_xyz())
     obmol = mol.OBMol
     for from_, to_ in bond_diff:
-        obmol.AddBond(from_ + 1, to_ + 1, 1)
+        obmol.AddBond(int(from_ + 1), int(to_ + 1), 1)
 
     # Use modified pybel.Molecule
     calc = OBabel(mol=mol, ff=ff)
@@ -148,12 +200,6 @@ def align_on_subset(geom1, union, del1=None):
     centroid_2 = coords3d_2_aligned[:num1].mean(axis=0)
     coords3d_2_aligned += centroid_1 - centroid_2
 
-    # with open("aligned.trj", "w") as handle:
-        # handle.write(
-            # geom1.as_xyz()
-            # + "\n"
-            # + union.as_xyz(cart_coords=coords3d_2_aligned.flatten())
-        # )
     aligned = Geometry(atoms2, coords3d_2_aligned)
     subset = Geometry(atoms2[:num1], coords3d_2_aligned[:num1])
     rest = Geometry(atoms2[num1:], coords3d_2_aligned[num1:])
