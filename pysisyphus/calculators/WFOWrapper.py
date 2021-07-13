@@ -10,7 +10,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.config import Config
-from pysisyphus.helpers import chunks
+from pysisyphus.helpers_pure import chunks
 
 
 CIOVL="""mix_aoovl=ao_ovl

@@ -224,14 +224,6 @@ def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
     return rotated_vectors, rotated_vector_lists, rotated_hessian
 
 
-def chunks(l, n):
-    """Yield successive n-sized chunks from l.
-    https://stackoverflow.com/a/312464
-    """
-    for i in range(0, len(l), n):
-        yield l[i : i + n]
-
-
 def slugify_worker(dask_worker):
     slug = re.sub("tcp://", "host_", dask_worker)
     slug = re.sub("\.", "_", slug)
