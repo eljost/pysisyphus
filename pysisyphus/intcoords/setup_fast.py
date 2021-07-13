@@ -29,10 +29,12 @@ def get_max_bond_dists(atoms, bond_factor, covalent_radii=None):
     return max_bond_dists
 
 
-def find_bonds(atoms, coords3d, covalent_radii, bond_factor=BOND_FACTOR):
+def find_bonds(atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR):
     atoms = [atom.lower() for atom in atoms]
-    c3d = coords3d
-    cr = covalent_radii
+    c3d = coords3d.reshape(-1, 3)
+    if covalent_radii is None:
+        covalent_radii = [CR[atom] for atom in atoms]
+    cr = np.array(covalent_radii)
 
     max_bond_dists = get_max_bond_dists(atoms, bond_factor, covalent_radii=cr)
     radii = bond_factor * (cr.copy() + max(cr))
