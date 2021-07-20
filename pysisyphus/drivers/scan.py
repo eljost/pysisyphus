@@ -127,7 +127,7 @@ def relaxed_prim_scan(
     else:
         pref = f"{pref}_"
     constr_prim = constrain_prims[0]
-    constr_ind = geom.internal.typed_prims.index(constr_prim)
+    constr_ind = geom.internal.get_index_of_typed_prim(constrain_prims[0])
     copy_kwargs = {
         "coord_type": "redund",
         "coord_kwargs": {"constrain_prims": constrain_prims},

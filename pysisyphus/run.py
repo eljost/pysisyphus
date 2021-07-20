@@ -638,10 +638,14 @@ def run_scan(geom, calc_getter, scan_kwargs):
         ), "'symmetric: True' requires 'step_size' and 'start == None'!"
 
     constrain_prims = normalize_prim_inputs(((type_, *indices),))
+    constr_prim = constrain_prims[0]
 
     start_was_none = start is None
     if start_was_none:
-        constr_ind = geom.internal.typed_prims.index(constrain_prims[0])
+        constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
+        # The given indices may not correspond exactly to a typed primitives,
+        # as they may be reversed. So we fetch the actual typed primitive.
+        constr_prim = geom.internal.typed_prims[constr_ind]
         start = geom.coords[constr_ind]
 
     if step_size is None:
@@ -653,7 +657,7 @@ def run_scan(geom, calc_getter, scan_kwargs):
         return relaxed_prim_scan(
             geom,
             calc_getter,
-            constrain_prims,
+            [constr_prim, ],
             start,
             step_size,
             steps,
@@ -666,10 +670,12 @@ def run_scan(geom, calc_getter, scan_kwargs):
         scan_geoms, scan_vals, scan_energies = wrapper(start, step_size, steps)
     else:
         # Negative direction
+        print(highlight_text("Negative direction", level=1) + "\n")
         minus_geoms, minus_vals, minus_energies = wrapper(
             start, -step_size, steps, pref="minus"
         )
         # Positive direction
+        print(highlight_text("Positive direction", level=1) + "\n")
         plus_start = start + step_size
         plus_steps = steps - 1
         plus_geoms, plus_vals, plus_energies = wrapper(
