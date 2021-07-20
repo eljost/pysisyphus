@@ -154,24 +154,25 @@ class DLC(RedundantCoords):
         U_proj = orthonormalized[:, constr_num:]
         return U_proj
 
-    def freeze_primitives(self, prim_atom_indices):
+    def freeze_primitives(self, typed_prims):
         """Freeze primitive internal coordinates.
 
         Parameters
         ----------
-        prim_atom_indices : iterable of atom index iterables
-            Iterable containing atom index iterables that define the primitive
-            internal to be frozen.
+        typed_prims : iterable of typed primitives
+            Iterable containing typed_primitives, starting with a PrimType and
+            followed by atom indices.
         """
-        prim_indices = [self.get_index_of_prim_coord(pai) for pai in prim_atom_indices]
+        prim_indices = [self.get_index_of_typed_prim(tp) for tp in typed_prims]
         not_defined = [
-            prim_coord
-            for prim_coord, prim_ind in zip(prim_atom_indices, prim_indices)
+            tp
+            for tp, prim_ind in zip(typed_prims, prim_indices)
             if prim_ind is None
         ]
         assert (
             None not in prim_indices
         ), f"Some primitive internals are not defined ({not_defined})!"
-        _ = [self.project_primitive_on_active_set(pi) for pi in prim_indices]
-        projected_primitives = np.array(_).T
+        projected_primitives = np.array([
+            self.project_primitive_on_active_set(pi) for pi in prim_indices
+        ]).T
         self.constraints = projected_primitives

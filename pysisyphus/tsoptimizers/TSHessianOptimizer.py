@@ -2,6 +2,7 @@ import numpy as np
 
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.augment_bonds import augment_bonds
+from pysisyphus.intcoords.PrimTypes import normalize_prim_input, normalize_prim_inputs
 from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.guess_hessians import ts_hessian
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
@@ -61,9 +62,22 @@ class TSHessianOptimizer(HessianOptimizer):
             )
         except ValueError as err:
             self.log(f"No reference Hessian provided.")
+
+        # Select initial root according to highest contribution of 'prim_coord'
+        if prim_coord is not None:
+            prim_coord = normalize_prim_input(prim_coord)[0]
         self.prim_coord = prim_coord
+
+        # Construct initial imaginary mode according the primitive internals in
+        # 'rx_coords' by modifying a model Hessian.
+        if rx_coords is not None:
+            rx_coords = normalize_prim_inputs(rx_coords)
         self.rx_coords = rx_coords
+
+        # Construct initial imaginary mode from the given inputs while respecting
+        # the given weight/phase factors.
         self.rx_mode = rx_mode
+
         # Bond augmentation is only useful with calculated hessians
         self.augment_bonds = augment_bonds and (self.hessian_init == "calc")
         self.min_line_search = min_line_search
@@ -100,7 +114,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 "(coord_type=redund)"
             )
             prim_inds = [
-                self.geometry.internal.get_index_of_prim_coord(rxc)
+                self.geometry.internal.get_index_of_typed_prim(rxc)
                 for rxc in self.rx_coords
             ]
             missing_prim_inds = [
@@ -123,7 +137,7 @@ class TSHessianOptimizer(HessianOptimizer):
         # Select an initial TS-mode by highest overlap with eigenvectors from
         # reference Hessian.
         if self.prim_coord:
-            prim_ind = self.geometry.internal.get_index_of_prim_coord(self.prim_coord)
+            prim_ind = self.geometry.internal.get_index_of_typed_prim(self.prim_coord)
             if prim_ind is None:
                 raise Exception(f"Primitive internal {self.prim_coord} is not defined!")
             # Select row of eigenvector-matrix that corresponds to this coordinate
@@ -186,10 +200,11 @@ class TSHessianOptimizer(HessianOptimizer):
             assert self.geometry.coord_type != "cart"
             mode = np.zeros_like(self.geometry.coords)
             int_ = self.geometry.internal
-            for prim_inds, val in self.rx_mode:
-                ind = int_.get_index_of_prim_coord(prim_inds)
+            for typed_prim, val in self.rx_mode:
+                typed_prim = normalize_prim_input(typed_prim)[0]
+                ind = int_.get_index_of_typed_prim(typed_prim)
                 mode[ind] = val
-                self.log(f"\tIndex {ind} (coordinate {prim_inds}) set to {val:.4f}")
+                self.log(f"\tIndex {ind} (coordinate {typed_prim}) set to {val:.4f}")
             mode /= np.linalg.norm(mode)
             mode_str = np.array2string(mode, precision=2)
             self.log(f"Final, normalized, reference mode: {mode_str}")

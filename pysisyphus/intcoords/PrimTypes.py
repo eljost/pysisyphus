@@ -152,6 +152,9 @@ def normalize_prim_input(prim_inp):
     Always returns a list of tuples, as some prim_inps expand to multiple
     coordinates, e.g., XYZ or ATOM.
     """
+    if prim_inp is None:
+        return []
+
     prim_type, *indices = prim_inp
 
     # Nothing to do

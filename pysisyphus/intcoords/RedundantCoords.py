@@ -343,11 +343,15 @@ class RedundantCoords:
     def coords(self):
         return self.prim_coords
 
-    def get_index_of_prim_coord(self, prim_ind):
-        """Index of primitive internal for the given atom indices."""
-        prim_ind_set = set(prim_ind)
-        for i, prim in enumerate(self.primitives):
-            if set(prim.indices) == prim_ind_set:
+    def get_index_of_typed_prim(self, typed_prim):
+        """Index in self.typed_prims for the supplied typed_prim."""
+        ref_len = len(typed_prim)
+        ref_inds = typed_prim[1:]
+        for i, tp in enumerate(self.typed_prims):
+            if (len(tp) != ref_len) or tp[0] != typed_prim[0]:
+                continue
+
+            if (tp[1:] == ref_inds) or (tp[1:] == ref_inds[::-1]):
                 return i
         self.log(f"Primitive internal with indices {prim_ind} " "is not defined!")
         return None

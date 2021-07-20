@@ -43,9 +43,21 @@ RS-P-RFO, TRIM).
                                     # Very costly but a small number like 5 may be a good
                                     # idea.
 
-     prim_coord: [3, 18]            # Select the mode to follow uphill by overlap with
-                                    # this primitive internal coordinate. Expects indices
-                                    # for one primitive internal.
+     prim_coord: [BOND, 3, 18]      # Select the mode to follow uphill by overlap with
+                                    # this primitive internal coordinate. Expects exactly
+                                    # one typed primitive.
+
+    rx_mode: [[[BOND, 3, 18], 1]]   # Select initial mode based on overlaps with a
+                                    # constructed mode. Can be seen as generalization of
+                                    # prim_coord. Expects a list of pairs, with each pair
+                                    # comprising a typed primitive and a phase factor.
+                                    #
+                                    # See examples/{05,06}... for examples.
+
+     #rx_coords: [[BOND, 3, 18],]   # Obtain initial mode by modifying a model Hessian.  Has
+                                    # to be used with 'hess_init: swart|fischer|lindh|xtb'
+                                    # to avoid calculation of exact hessian.
+                                    # Also requires 'redund' or 'dlc' to work.
 
      #root: 0                       # Follow the n-th imaginary mode uphill, minimize
                                     # along the others.
@@ -60,11 +72,6 @@ RS-P-RFO, TRIM).
                                     # by highest overlap with imaginary mode from the reference
                                     # hessian.
 
-     #rx_coords: [[3, 18],]         # Skip calculation of hessian and modify a model hessian
-                                    # maximize along the given primitive internals. Has to be
-                                    # used with 'hess_init: swart|fischer|lindh|xtb' to avoid
-                                    # calculation of exact hessian. Also requires 'coord_type:
-                                    # redund|dlc' to work.
 
      #max_micro_cycles: 50          # No. of micro cycles for the RS-variants. Does not apply
                                     # to TRIM.

@@ -66,7 +66,7 @@ def test_ts_hessian_opt(tsopt_cls, ref_cycle):
     opt_kwargs = {
         "hessian_init": "fischer",
         "dump": True,
-        "rx_coords": ((2, 1, 0), ),
+        "rx_coords": (("BEND", 2, 1, 0), ),
         "thresh": "gau_tight",
         "max_line_search": True,
         "min_line_search": True,
