@@ -1,5 +1,6 @@
 import re
 
+import jinja2
 import numpy as np
 
 from pysisyphus.constants import ANG2BOHR
@@ -28,3 +29,54 @@ def parse_crd(crd):
 def geom_from_crd(fn, **kwargs):
     atoms, coords = parse_crd(fn)
     return Geometry(atoms, coords, **kwargs)
+
+
+# I10   I10 2X A8 2X A8       3F20.10     2X A8 2X A8 F20.10
+CRD_TPL = """* Created by pysisyphus
+*
+{{ i10(atomnum) }}  EXT
+{% for atom, x, y, z in atoms_xyz -%}
+ {{ i10(loop.index) }}{{ i10(resno) }}  {{ a8(res) }}  {{ a8(atom) }}{{ f20(x) }}{{ f20(y) }}{{ f20(z) }}  {{ a8(segid) }}  {{ a8(resid) }}{{ f20(0.0) }}
+{% endfor %}
+"""
+
+
+def i10(int_):
+    return f"{int_:10d}"
+
+def f20(float_):
+    return f"{float_:>20.10f}"
+
+def a8(str_):
+    return f"{str(str_):<8s}"
+
+
+def atoms_coords_to_crd_str(atoms, coords, resno=1, res="UNL1", segid=None, resid=1):
+    if segid is None:
+        segid = res
+
+    env = jinja2.Environment(loader=jinja2.BaseLoader)
+    env.globals.update(i10=i10, f20=f20, a8=a8)
+
+    tpl = env.from_string(CRD_TPL)
+    coords3d = coords.reshape(-1, 3) / ANG2BOHR
+    counter = dict()
+    atom_names = list()
+    for atom in atoms:
+        counter.setdefault(atom, 1)
+        atom_names.append(f"{atom}{counter[atom]}")
+        counter[atom] += 1
+    atoms_xyz = list(zip(atom_names, *coords3d.T))
+    rendered = tpl.render(
+        atomnum=len(atoms_xyz),
+        atoms_xyz=atoms_xyz,
+        resno=resno,
+        res=res,
+        resid=resid,
+        segid=segid,
+    )
+    return rendered
+
+
+def geom_to_crd_str(geom, **kwargs):
+    return atoms_coords_to_crd_str(geom.atoms, geom.cart_coords, **kwargs)
