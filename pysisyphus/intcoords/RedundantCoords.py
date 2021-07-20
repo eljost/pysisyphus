@@ -353,7 +353,7 @@ class RedundantCoords:
 
             if (tp[1:] == ref_inds) or (tp[1:] == ref_inds[::-1]):
                 return i
-        self.log(f"Primitive internal with indices {prim_ind} " "is not defined!")
+        self.log(f"Typed primitive {typed_prim} is not defined!")
         return None
 
     @property
