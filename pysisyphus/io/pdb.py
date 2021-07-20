@@ -144,8 +144,8 @@ def get_conect_lines(atoms, coords):
     # PDB indexing is 1-based
     bonds += 1
     # Bring in a suitable order for CONECT entries
-    bonds_org = bonds.copy()
     bonds.sort(axis=1)
+    bonds = sorted(bonds, key=lambda row: row[0])
     conect = OrderedDict()
     for from_, to_ in bonds:
         conect.setdefault(from_, list()).append(to_)
@@ -185,7 +185,6 @@ def atoms_coords_to_pdb_str(atoms, coords, fragments=None, resname="", conect=Tr
     occupancy = 1.0
     tempFactor = 0.0
 
-    assert len(fragments) == 1
     lines = list()
     serial = 1
     for resSeq, fragment in enumerate(fragments, 1):
