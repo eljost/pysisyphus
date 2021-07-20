@@ -6,6 +6,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.tsoptimizers import *
+from pysisyphus.testing import using
 
 
 @pytest.mark.parametrize(
@@ -33,6 +34,7 @@ def test_tshessian_opts(opt_cls, ref_cur_cycle):
     # calc.plot_opt(opt, show=True)
 
 
+@using("pyscf")
 @pytest.mark.parametrize(
     "kwargs",
     [
