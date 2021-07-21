@@ -13,6 +13,7 @@ from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.setup import get_fragments
+from pysisyphus.intcoords.PrimTypes import Bonds
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
@@ -497,17 +498,12 @@ def shake(geoms, scale=0.1, seed=None):
 
 
 def print_internals(geoms, filter_atoms=None, add_prims=""):
-    if filter_atoms is None:
-        filter_atoms = set()
-
-    filter_set = set(filter_atoms)
-    pi_types = {2: "B", 3: "A", 4: "D"}
-    add_prims = yaml.safe_load(add_prims)
-
     for i, geom in enumerate(geoms):
         print(geom)
-        atom_num = len(geom.atoms)
+        atoms = geom.atoms
+        atom_num = len(atoms)
         atom_inds = set(range(atom_num))
+        filter_set = set(filter_atoms)
         # Atom indices must superset of filter_atoms
         invalid = filter_set - atom_inds
         assert not invalid, (
@@ -517,38 +513,40 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
         )
 
         int_geom = Geometry(
-            geom.atoms,
+            atoms,
             geom.coords,
             coord_type="redund",
-            coord_kwargs={
-                "define_prims": add_prims,
-            },
         )
+        int_ = int_geom.internal
 
         prim_counter = 0
-        prev_len = 2
-        for j, pi in enumerate(int_geom.internal._prim_internals):
-            pi_type = pi_types[len(pi.inds)]
+        prev_len = None
+
+        zipped = zip(int_.typed_prims, int_._prim_internals)
+        for j, ((pt, *inds), pi) in enumerate(zipped):
+            if filter_set and not (set(inds) & filter_set):
+                continue
+
             val = pi.val
             len_ = len(pi.inds)
-            if len_ > 2:
-                unit = "°"
-                val = np.rad2deg(val)
-            else:
+
+            if prev_len is None:
+                prev_len = len(inds)
+            if pt in Bonds:
                 val *= BOHR2ANG
                 unit = " Å"
+            else:
+                unit = "°"
+                val = np.rad2deg(val)
 
             if len_ > prev_len:
                 prim_counter = 0
                 print()
 
-            # Continue if we want to filter and there is no intersection
-            # between the atoms of the current primitive and the atoms we
-            # want to filter for.
-            if filter_set and not (set(pi.inds) & filter_set):
-                continue
+            inds_str = ", ".join([f"{atoms[i]: >2s}{i: <4d}" for i in inds])
+            inds_str = f"[{inds_str}]"
             print(
-                f"{j:04d}: {pi_type}{prim_counter:03d}{str(pi.inds): >20} {val: >10.4f}"
+                f"{j:04d}: {pt: >20} {prim_counter:03d} {inds_str} {val: >10.4f}"
                 f"{unit}"
             )
             prim_counter += 1

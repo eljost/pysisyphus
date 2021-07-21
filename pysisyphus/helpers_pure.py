@@ -94,6 +94,9 @@ class OrderedEnum(Enum):
             return self.value < other.value
         return NotImplemented
 
+    def __str__(self):
+        return self.name
+
 
 def timed(logger):
     def decorator(func):
