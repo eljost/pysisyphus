@@ -11,11 +11,13 @@ from pysisyphus.constants import BOHR2ANG
 
 
 class OpenMM:
-    def __init__(self, topology, system):
-        self.system = system
+    def __init__(self, topology, params):
+        self.topology = topology
+        self.params = params
+        self.system = self.topology.createSystem(self.params, nonbondedMethod=app.NoCutoff)
 
         dummy_int = mm.VerletIntegrator(0.001)
-        self.simulation = app.Simulation(topology, system, dummy_int)
+        self.simulation = app.Simulation(self.topology, self.system, dummy_int)
         self.context = self.simulation.context
 
         self.en2au = 1 / unit.hartree / unit.AVOGADRO_CONSTANT_NA
