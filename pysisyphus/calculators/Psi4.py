@@ -72,6 +72,7 @@ class Psi4(Calculator):
         method = calc_types[calc_type].format(self.method)
         wfn_path = self.make_fn("wfn.npy")
         method += f"\nWavefunction.to_file(wfn, '{wfn_path}')"
+        method += "\nprint('PARSE ENERGY:', wfn.energy())"
         set_strs = [f"set {key} {value}" for key, value in self.to_set.items()]
         set_strs = "\n".join(set_strs)
 
@@ -154,7 +155,7 @@ class Psi4(Calculator):
     def parse_energy(self, path):
         with open(path / "psi4.out") as handle:
             text = handle.read()
-        en_regex = re.compile("Total Energy =\s*([\d\-\.]+)")
+        en_regex = re.compile("PARSE ENERGY: ([\d\-\.]+)")
         mobj = en_regex.search(text)
         result = {
             "energy": float(mobj[1])
