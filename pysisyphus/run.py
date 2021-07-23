@@ -653,7 +653,7 @@ def run_scan(geom, calc_getter, scan_kwargs):
     opt_kwargs = scan_kwargs["opt"].copy()
     opt_key = opt_kwargs.pop("type")
 
-    def wrapper(start, step_size, steps, pref=None):
+    def wrapper(geom, start, step_size, steps, pref=None):
         return relaxed_prim_scan(
             geom,
             calc_getter,
@@ -667,19 +667,21 @@ def run_scan(geom, calc_getter, scan_kwargs):
         )
 
     if not symmetric:
-        scan_geoms, scan_vals, scan_energies = wrapper(start, step_size, steps)
+        scan_geoms, scan_vals, scan_energies = wrapper(geom, start, step_size, steps)
     else:
         # Negative direction
         print(highlight_text("Negative direction", level=1) + "\n")
         minus_geoms, minus_vals, minus_energies = wrapper(
-            start, -step_size, steps, pref="minus"
+            geom, start, -step_size, steps, pref="minus"
         )
+        init_geom = minus_geoms[0].copy()
         # Positive direction
         print(highlight_text("Positive direction", level=1) + "\n")
         plus_start = start + step_size
+        # Do one step less, as we already start from the optimized geometry
         plus_steps = steps - 1
         plus_geoms, plus_vals, plus_energies = wrapper(
-            plus_start, step_size, plus_steps, pref="plus"
+            init_geom, plus_start, step_size, plus_steps, pref="plus"
         )
         scan_geoms = minus_geoms[::-1] + plus_geoms
         scan_vals = np.concatenate((minus_vals[::-1], plus_vals))
