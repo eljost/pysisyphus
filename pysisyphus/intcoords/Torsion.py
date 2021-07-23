@@ -51,11 +51,15 @@ class Torsion(Primitive):
         #
         # (v ⨯ w) · u will be < 0 when both vectors point in different directions.
         #
-        #  M  --->  N
+        #  M  --->   N
+        #  ^        ^
         #   \      /
         #    u    v    positive dihedral, M rotates into N clockwise
         #     \  /     (v ⨯ w) · u > 0, keep positive sign
         #      OwP
+        #              w points downward, into the screen plane.
+        #              The vector resulting from the cross-product is easily
+        #              visualized with your right hand.
         #
         #  M
         #   \
