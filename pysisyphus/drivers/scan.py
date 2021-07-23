@@ -122,10 +122,13 @@ def relaxed_prim_scan(
     opt_kwargs,
     pref=None,
 ):
+    assert geom.coord_type == "redund", \
+        "'coord_type: redund' is required!"
     if pref is None:
         pref = ""
     else:
         pref = f"{pref}_"
+
     constr_prim = constrain_prims[0]
     constr_ind = geom.internal.get_index_of_typed_prim(constrain_prims[0])
     copy_kwargs = {
@@ -133,6 +136,10 @@ def relaxed_prim_scan(
         "coord_kwargs": {"constrain_prims": constrain_prims},
     }
     constr_geom = geom.copy(**copy_kwargs)
+    calc = calc_getter()
+    # Always return same calculator, so orbitals can be reused etc.
+    def _calc_getter():
+        return calc
 
     unit = "au" if len(constr_prim[1:]) == 2 else "rad"
 
@@ -157,15 +164,16 @@ def relaxed_prim_scan(
         name = f"{pref}relaxed_scan_{cycle:04d}"
         opt_kwargs_["prefix"] = name
         opt_kwargs_["h5_group_name"] = name
-        constr_geom = constr_geom.copy(**copy_kwargs)
-        scan_geoms.append(constr_geom)
-
+        # Keep a copy
+        scan_geoms.append(constr_geom.copy())
+        # Update constrained coordinate
         new_coords = constr_geom.coords
         new_coords[constr_ind] = cur_val
         constr_geom.coords = new_coords
+
         title = f"{pref}Step {cycle:02d}, coord={cur_val:.4f} {unit}"
         _, opt = run_opt(
-            constr_geom, calc_getter, opt_key, opt_kwargs_, title=title, level=1
+            constr_geom, _calc_getter, opt_key, opt_kwargs_, title=title, level=1
         )
         scan_xyzs.append(constr_geom.as_xyz())
         scan_vals.append(cur_val)
@@ -173,7 +181,7 @@ def relaxed_prim_scan(
         if not opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break
-        cur_val += step_size  # Take step
+        cur_val += step_size
 
     with open(f"{pref}relaxed_scan.trj", "w") as handle:
         handle.write("\n".join(scan_xyzs))
