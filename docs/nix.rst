@@ -74,8 +74,22 @@ from within the pysisyphus repository.
 
 Do not be confused if the commands of the underlying quantum chemistry codes are not available. They are made available to directly to the pysisyphus entry point, but not necessarily to your shell.
 
+Static Pysisyphus
+=================
+
+Using `Nix Bundle`, it is possible to obtain fully self-contained archives, that run independent of Nix and the linux distribution.
+
+These archives can be build using
+
+.. code-block:: bash
+
+  cd nix && ./bundle.sh
+
+and come by default with the open source quantum chemistry codes. If others are required, you may point the :code:`PYSISRC` environment variable to a pysisyphus rc, where e.g. Gaussian is configured.
+
 .. _`Nix package manager`: https://nixos.org/download.html
 .. _`NixOS-QChem`: https://github.com/markuskowa/NixOS-QChem
 .. _`nix-shell`: https://nixos.org/nix/manual/#sec-nix-shell
 .. _`nix manual`: https://nixos.org/manual/nix/stable/
 .. _`Nix Pills`: https://nixos.org/guides/nix-pills/index.html
+.. _`Nix Bundle`: https://github.com/matthewbauer/nix-bundle

@@ -13,9 +13,10 @@ in with pkgs; qchem.python3.pkgs.callPackage ./pysisyphus.nix {
   inherit fullTest;
 
   # Uncomment below to enable optional engines.
-  orca = qchem.orca;
-  turbomole = qchem.turbomole;
-  cfour = qchem.cfour;
-  molpro = qchem.molpro;
-  gaussian = qchem.gaussian;
+  # orca = qchem.orca;
+  orca = null; # Uses the screenreader if not given
+  # turbomole = qchem.turbomole;
+  # cfour = qchem.cfour;
+  # molpro = qchem.molpro;
+  # gaussian = qchem.gaussian;
 }
