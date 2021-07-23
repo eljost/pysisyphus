@@ -498,6 +498,9 @@ def shake(geoms, scale=0.1, seed=None):
 
 
 def print_internals(geoms, filter_atoms=None, add_prims=""):
+    if filter_atoms is None:
+        filter_atoms = list()
+
     for i, geom in enumerate(geoms):
         print(geom)
         atoms = geom.atoms
