@@ -56,6 +56,8 @@ class Calculator:
         self.pal = int(pal)
         self.mem = int(mem)
         self.out_dir = Path(out_dir).resolve()
+        if not self.out_dir.exists():
+            os.mkdir(self.out_dir)
 
         assert pal > 0, "pal must be a non-negative integer!"
 
