@@ -1,3 +1,11 @@
+geom:
+ type: cart
+ fn: |
+  3
+
+  O                 -0.00000000   -0.11081188    0.00000000
+  H                  0.78397589    0.44324751    0.00000000
+  H                 -0.78397589    0.44324751    0.00000000
 # Adapted from https://github.com/psi4/psi4/blob/master/samples/cc25/input.dat
 calc:
  type: psi4
@@ -13,11 +21,4 @@ calc:
  basis: DZ
  charge: 1
  mult: 2
-geom:
- type: cart
- fn: |
-  3
-
-  O                 -0.00000000   -0.11081188    0.00000000
-  H                  0.78397589    0.44324751    0.00000000
-  H                 -0.78397589    0.44324751    0.00000000
+ write_fchk: True
