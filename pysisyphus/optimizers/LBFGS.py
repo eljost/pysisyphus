@@ -41,14 +41,15 @@ class LBFGS(Optimizer):
         self.line_search = (not self.is_cos) and line_search
         self.control_step = control_step
 
+        self.tot_adapt_mu_cycles = 0
         if self.mu_reg:
             self.mu_reg_0 = self.mu_reg  # Backup value
-            self.update_mu_reg = get_update_mu_reg()
+            self.update_mu_reg = get_update_mu_reg(logger=self.logger)
             self.control_step = False
             self.double_damp = False
             self.line_search = False
             self.log(
-                f"Regularized-L-BFGS (μ_reg={self.mu_reg:.6f}) requested. "
+                f"Regularized-L-BFGS (μ_reg={self.mu_reg:.6f}) requested.\n"
                 f"Disabling double damping, step control and line search."
             )
 
@@ -169,6 +170,9 @@ class LBFGS(Optimizer):
             step = self.get_lbfgs_step(forces)
             adapt_mu_cycles += 1
 
+        if self.mu_reg:
+            self.tot_adapt_mu_cycles += adapt_mu_cycles + 1
+
         # Form full step. If we did not interpolate or interpolation failed,
         # ip_step will be zero.
         step = step + ip_step
@@ -178,3 +182,8 @@ class LBFGS(Optimizer):
             step = scale_by_max_step(step, self.max_step)
 
         return step
+
+    def postprocess_opt(self):
+        if self.mu_reg:
+            msg = f"\nNumber of μ updates: {self.tot_adapt_mu_cycles}"
+            self.log(msg)

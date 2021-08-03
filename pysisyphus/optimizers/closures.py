@@ -9,11 +9,17 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 
 
-def get_update_mu_reg(mu_min=1e-3, gamma_1=0.1, gamma_2=10.0, eta_1=0.01, eta_2=0.9):
+def get_update_mu_reg(
+    mu_min=1e-3, gamma_1=0.1, gamma_2=5.0, eta_1=0.01, eta_2=0.9, logger=None
+):
     """See 5.1 in [1]"""
     assert 0.0 < mu_min
     assert 0.0 < gamma_1 <= 1.0 < gamma_2
     assert 0.0 < eta_1 < eta_2 <= 1.0
+
+    def log(msg):
+        if logger is not None:
+            logger.debug(msg)
 
     def update_mu_reg(mu, cur_energy, trial_energy, cur_grad, step):
         """Update regularization parameter μ_reg according to ratio r.
@@ -34,7 +40,14 @@ def get_update_mu_reg(mu_min=1e-3, gamma_1=0.1, gamma_2=10.0, eta_1=0.01, eta_2=
         r = -2 * (f(x) - f(x + step) / (df(x)^T step(mu))
 
         """
-        r = -2 * (cur_energy - trial_energy) / cur_grad.dot(step)
+        log(f"  Cur energy: {cur_energy:.8f}")
+        log(f"Trial energy: {trial_energy:.8f}")
+        act_change = cur_energy - trial_energy
+        log(f"   Actual change: {act_change: .8f}")
+        pred_change = -1/2 * cur_grad.dot(step)
+        log(f"Predicted change: {pred_change: .8f}")
+        r = act_change / pred_change
+        log(f"Ratio r={r:.8f}")
 
         # Default case for eta_1 <= r < eta_2. Keep mu and accept step.
         mu_updated = mu
@@ -43,9 +56,11 @@ def get_update_mu_reg(mu_min=1e-3, gamma_1=0.1, gamma_2=10.0, eta_1=0.01, eta_2=
         if r < eta_1:
             mu_updated *= gamma_2
             recompute_step = True
+            log(f"Increased μ_reg to {mu_updated:.6f}.")
         # Significant actual reduction. Reduce shift parameter und accept step.
         elif r >= eta_2:
-            mu_updated = max(mu_min, mu_updated*gamma_1)
+            mu_updated = max(mu_min, mu_updated * gamma_1)
+            log(f"Decreased μ_reg to {mu_updated:.6f}.")
         return mu_updated, recompute_step
 
     return update_mu_reg
@@ -133,7 +148,7 @@ def bfgs_multiply(
     if logger is not None:
         msg = f"BFGS multiply using {cycles} previous cycles with {msg}."
         if len(s_list) == 0:
-            msg += " Produced simple SD step."
+            msg += "\nProduced simple SD step."
         logger.debug(msg)
 
     for i in range(cycles):
