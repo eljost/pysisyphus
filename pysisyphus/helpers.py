@@ -459,6 +459,7 @@ def do_final_hessian(
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
         print()
 
+    thermo = None
     if can_thermoanalysis:
         thermo = get_thermoanalysis(geom, T=T)
 
