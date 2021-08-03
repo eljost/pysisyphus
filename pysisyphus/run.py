@@ -33,7 +33,7 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
-from pysisyphus.drivers import relaxed_prim_scan, run_opt
+from pysisyphus.drivers import relaxed_1d_scan, run_opt
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 # from pysisyphus.overlaps.Overlapper import Overlapper
@@ -654,7 +654,7 @@ def run_scan(geom, calc_getter, scan_kwargs):
     opt_key = opt_kwargs.pop("type")
 
     def wrapper(geom, start, step_size, steps, pref=None):
-        return relaxed_prim_scan(
+        return relaxed_1d_scan(
             geom,
             calc_getter,
             [constr_prim, ],
@@ -675,7 +675,8 @@ def run_scan(geom, calc_getter, scan_kwargs):
             geom, start, -step_size, steps, pref="minus"
         )
         init_geom = minus_geoms[0].copy()
-        # Positive direction
+        # Positive direction. Compared to the negative direction we start at a
+        # displaced geometry and reduce the number of steps by 1.
         print(highlight_text("Positive direction", level=1) + "\n")
         plus_start = start + step_size
         # Do one step less, as we already start from the optimized geometry

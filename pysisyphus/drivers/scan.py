@@ -17,7 +17,7 @@ def relaxed_scan(
     thresh=1e-2,
     dump=True,
 ):
-    """Relaxed scan driver."""
+    """Relaxed scan, allowing fixing of multiple primitive internals."""
 
     # Constrain desired primitives
     copy_kwargs = {
@@ -111,7 +111,7 @@ def relaxed_scan(
     return scan_geom, scan_cart_coords, scan_energies
 
 
-def relaxed_prim_scan(
+def relaxed_1d_scan(
     geom,
     calc_getter,
     constrain_prims,
