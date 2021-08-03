@@ -378,7 +378,9 @@ class Geometry:
     def del_atoms(self, inds, **kwargs):
         atoms = [atom for i, atom in enumerate(self.atoms) if not (i in inds)]
         c3d = self.coords3d
-        coords3d = np.array([c3d[i] for i, _ in enumerate(self.atoms) if not (i in inds)])
+        coords3d = np.array(
+            [c3d[i] for i, _ in enumerate(self.atoms) if not (i in inds)]
+        )
         return Geometry(atoms, coords3d.flatten(), **kwargs)
 
     def set_calculator(self, calculator, clear=True):
@@ -958,19 +960,23 @@ class Geometry:
             "Did you accidentally provide internal coordinates?"
         )
 
-    def get_energy_at(self, coords):
+    def get_temporary_coords(self, coords):
+        if self.coord_type != "cart":
+            int_step = coords - self.internal.coords
+            cart_step = self.internal.transform_int_step(int_step, pure=True)
+            coords = self.cart_coords + cart_step
         self.assert_cart_coords(coords)
+        return coords
+
+    def get_energy_at(self, coords):
+        coords = self.get_temporary_coords(coords)
         return self.calculator.get_energy(self.atoms, coords)["energy"]
 
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
 
         The results are not saved in the Geometry object."""
-        if self.coord_type != "cart":
-            int_step = coords - self.internal.coords
-            cart_step = self.internal.transform_int_step(int_step, pure=True)
-            coords = self.cart_coords + cart_step
-        self.assert_cart_coords(coords)
+        coords = self.get_temporary_coords(coords)
         results = self.calculator.get_forces(self.atoms, coords)
         self.zero_frozen_forces(results["forces"])
 
