@@ -65,19 +65,19 @@ class Primitive(metaclass=abc.ABCMeta):
         cov_rad_sum = CR[atoms[i].lower()] + CR[atoms[j].lower()]
         return exp(-(distance / cov_rad_sum - 1))
 
-    def calculate(self, coords3d, indices=None, gradient=False):
-        if indices is None:
-            indices = self.indices
+    # def calculate(self, coords3d, indices=None, gradient=False):
+        # if indices is None:
+            # indices = self.indices
 
-        # Gather calc_kwargs
-        calc_kwargs = {key: getattr(self, key) for key in self.calc_kwargs}
+        # # Gather calc_kwargs
+        # calc_kwargs = {key: getattr(self, key) for key in self.calc_kwargs}
 
-        return self._calculate(
-            coords3d=coords3d,
-            indices=indices,
-            gradient=gradient,
-            **calc_kwargs,
-        )
+        # return self._calculate(
+            # coords3d=coords3d,
+            # indices=indices,
+            # gradient=gradient,
+            # **calc_kwargs,
+        # )
 
     def calculate(self, coords3d, indices=None, gradient=False):
         if indices is None:

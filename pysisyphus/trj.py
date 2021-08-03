@@ -7,7 +7,6 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import rmsd as rmsd
-import yaml
 
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
