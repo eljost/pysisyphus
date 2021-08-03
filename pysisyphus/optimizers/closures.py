@@ -1,41 +1,113 @@
+# [1] https://arxiv.org/pdf/2101.04413.pdf
+#     A Regularized Limited Memory BFGS method for Large-Scale Unconstrained
+#     Optimization and itsefficient Implementations
+#     Tankaria, Sugimoto, Yamashita, 2021
+
 from collections import deque
 
 import numpy as np
 from scipy.sparse.linalg import spsolve
 
 
-def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
-                  gamma_mult=True, inds=None, cur_size=None):
+def get_update_mu_reg(mu_min=1e-3, gamma_1=0.1, gamma_2=10.0, eta_1=0.01, eta_2=0.9):
+    """See 5.1 in [1]"""
+    assert 0.0 < mu_min
+    assert 0.0 < gamma_1 <= 1.0 < gamma_2
+    assert 0.0 < eta_1 < eta_2 <= 1.0
+
+    def update_mu_reg(mu, cur_energy, trial_energy, cur_grad, step):
+        """Update regularization parameter μ_reg according to ratio r.
+        See 2.3 in [1].
+
+        r = actual_reduction / predicted_reduction
+        r = (f(x) - f(x + step)) / (f(x) - model_func(step, mu))
+
+        mode_func(step, mu) = f(x) + df(x)^T step(mu) + 1/2 step(mu)^T H^-1 step(mu)
+
+        f(x) - model_func(step, mu)
+        = f(x) - (f(x) + df(x)^T step(mu) + 1/2 step(mu)^T H(mu)^-1 step(mu))
+        = -df(x)^T step(mu) - 1/2 step(mu)^T H(mu)^-1 step(mu)
+        = -df(x)^T step(mu) + 1/2 step(mu)^T df(x)
+        = -1/2 df(x)^T step(mu)
+
+        r = (f(x) - f(x + step) / (-1/2 df(x)^T step(mu))
+        r = -2 * (f(x) - f(x + step) / (df(x)^T step(mu))
+
+        """
+        r = -2 * (cur_energy - trial_energy) / cur_grad.dot(step)
+
+        # Default case for eta_1 <= r < eta_2. Keep mu and accept step.
+        mu_updated = mu
+        recompute_step = False
+        # Poor actual reduction. Increase shift parameter and request new step.
+        if r < eta_1:
+            mu_updated *= gamma_2
+            recompute_step = True
+        # Significant actual reduction. Reduce shift parameter und accept step.
+        elif r >= eta_2:
+            mu_updated = max(mu_min, mu_updated*gamma_1)
+        return mu_updated, recompute_step
+
+    return update_mu_reg
+
+
+def bfgs_multiply(
+    s_list,
+    y_list,
+    vector,
+    beta=1,
+    P=None,
+    logger=None,
+    gamma_mult=True,
+    mu_reg=None,
+    inds=None,
+    cur_size=None,
+):
     """Matrix-vector product H·v.
 
     Multiplies given vector with inverse Hessian, obtained
     from repeated BFGS updates calculated from steps in 's_list'
     and gradient differences in 'y_list'.
-    
+
     Based on algorithm 7.4 Nocedal, Num. Opt., p. 178."""
 
-    assert len(s_list) == len(y_list), \
-        "lengths of step list 's_list' and gradient list 'y_list' differ!"
+    assert len(s_list) == len(
+        y_list
+    ), "lengths of step list 's_list' and gradient list 'y_list' differ!"
 
-    q = vector.copy()
     cycles = len(s_list)
+    q = vector.copy()
     alphas = list()
     rhos = list()
+
+    if mu_reg is not None:
+        # Regularized L-BFGS with ŷ = y + μs, see [1]
+        assert mu_reg > 0.0
+        y_list_reg = list()
+        for i, si in enumerate(s_list):
+            yi = y_list[i]
+            y_hat = yi + mu_reg * si
+            if y_hat.dot(si) <= 0:
+                # See 2 in [1]
+                y_hat = yi + (max(0, -si.dot(yi) / si.dot(si)) + mu_reg) + si
+            y_list_reg.append(y_hat)
+        y_list = y_list_reg
+
     # Store rho and alphas as they are also needed in the second loop
     for i in reversed(range(cycles)):
         s = s_list[i]
         y = y_list[i]
-        rho = 1/y.dot(s)
+        rho = 1 / y.dot(s)
         rhos.append(rho)
         try:
             alpha = rho * s.dot(q)
-            q -= alpha*y
+            q -= alpha * y
         except ValueError:
             inds_i = inds[i]
             q_ = q.reshape(cur_size, -1)
             alpha = rho * s.dot(q_[inds_i].flatten())
             # This also modifies q!
-            q_[inds_i] -= alpha*y.reshape(len(inds_i), -1)
+            q_[inds_i] -= alpha * y.reshape(len(inds_i), -1)
         alphas.append(alpha)
 
     # Restore original order, so that rho[i] = 1/s_list[i].dot(y_list[i]) etc.
@@ -44,7 +116,7 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
 
     if P is not None:
         r = spsolve(P, q)
-        msg = "preconditioner."
+        msg = "preconditioner"
     elif gamma_mult and (cycles > 0):
         s = s_list[-1]
         y = y_list[-1]
@@ -54,6 +126,9 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
     else:
         r = beta * q
         msg = f"beta={beta:.4f}"
+
+    if mu_reg is not None:
+        msg += f" and μ_reg={mu_reg:.6f}"
 
     if logger is not None:
         msg = f"BFGS multiply using {cycles} previous cycles with {msg}."
@@ -66,13 +141,13 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
         y = y_list[i]
         try:
             beta = rhos[i] * y.dot(r)
-            r += s*(alphas[i] - beta)
+            r += s * (alphas[i] - beta)
         except ValueError:
             inds_i = inds[i]
             r_ = r.reshape(cur_size, -1)
             beta = rhos[i] * y.dot(r_[inds_i].flatten())
             # This also modifies r!
-            r_[inds_i] += s.reshape(len(inds_i), -1) *(alphas[i] - beta)
+            r_[inds_i] += s.reshape(len(inds_i), -1) * (alphas[i] - beta)
 
     return r
 
@@ -80,7 +155,9 @@ def bfgs_multiply(s_list, y_list, vector, beta=1, P=None, logger=None,
 def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
     s_list = list()
     y_list = list()
-    forces = [first_force, ]
+    forces = [
+        first_force,
+    ]
     cur_cycle = 0
 
     if restrict_step is None:
@@ -106,6 +183,7 @@ def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
         y_list = y_list[-m:]
         cur_cycle += 1
         return new_x, step, new_forces
+
     return lbfgs
 
 
@@ -143,6 +221,7 @@ def lbfgs_closure_(force_getter, M=10, beta=1, restrict_step=None):
         y_list = y_list[-M:]
         cur_cycle += 1
         return step, force
+
     return lbfgs
 
 
@@ -153,8 +232,6 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
 
     dxs = list()
     dFs = list()
-    # As used in scipy
-    x = None
     F = None
     # The next line is used in SciPy, but then beta strongly depends
     # on the magnitude of x, which is quite weird. Disregarding the
@@ -185,13 +262,13 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
                 for m, dF_m in enumerate(dFs):
                     a[k, m] = dF_k.dot(dF_m)
         F = F_new
-        dx = -beta*F
+        dx = -beta * F
 
         if len(dxs) > 0:
             # Calculate gamma
             dF_F = [dF_k.dot(F) for dF_k in dFs]
-            gammas = np.linalg.solve(a, dF_F)[:,None]
-            _ = np.array(dxs) - beta*np.array(dFs)
+            gammas = np.linalg.solve(a, dF_F)[:, None]
+            _ = np.array(dxs) - beta * np.array(dFs)
             # Substract step correction
             dx = dx - np.sum(gammas * _, axis=0)
         dx = restrict_step(x, dx)
@@ -201,6 +278,7 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
         dxs = dxs[-M:]
 
         return dx, -F
+
     return modified_broyden
 
 
@@ -235,4 +313,5 @@ def small_lbfgs_closure(history=5, gamma_mult=True):
         prev_forces = forces
         cur_cycle += 1
         return step
+
     return lbfgs

@@ -36,3 +36,18 @@ def test_anapot_lbfgs_line_search(line_search):
     # pot.plot_opt(opt, show=True)
 
     assert opt.is_converged
+
+
+@pytest.mark.parametrize("mu_reg", [None, 0.1, 0.5, 1.0, 2.5])
+def test_regularized_lbfgs(mu_reg):
+    pot = AnaPot()
+    geom = pot.get_geom((-0.7, 2.46, 0.0))
+    opt_kwargs = {
+        "mu_reg": mu_reg,
+    }
+    opt = LBFGS(geom, **opt_kwargs)
+    opt.run()
+    # pot.plot_opt(opt, show=True)
+
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(-0.5134, abs=5e-5)
