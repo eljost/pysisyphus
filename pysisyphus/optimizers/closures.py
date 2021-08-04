@@ -2,6 +2,10 @@
 #     A Regularized Limited Memory BFGS method for Large-Scale Unconstrained
 #     Optimization and itsefficient Implementations
 #     Tankaria, Sugimoto, Yamashita, 2021
+# [2] Regularization of Limited Memory Quasi-Newton Methods for Large-Scale
+#     Nonconvex Minimization
+#     https://arxiv.org/pdf/1911.04584.pdf
+#     Kanzow, Steck 2021
 
 from collections import deque
 
