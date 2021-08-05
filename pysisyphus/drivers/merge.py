@@ -178,11 +178,12 @@ def align_on_subset(geom1, union, del1=None):
     """Align 'union' onto subset of 'geom1'"""
 
     # Delete some coordinates (atoms) in geom1, that are not present in union
-    coords3d_1 = geom1.coords3d
+    coords3d_1 = geom1.coords3d.copy()
+    atoms1 = geom1.atoms
     if del1 is not None:
-        atoms1 = tuple([atom for i, atom in enumerate(geom1.atoms) if i not in del1])
+        atoms1 = [atom for i, atom in enumerate(atoms1) if i not in del1]
         coords3d_1 = np.delete(coords3d_1, del1, axis=0)
-    coords3d_1 = coords3d_1.copy()
+    atoms1 = tuple(atoms1)
     num1 = coords3d_1.shape[0]
     # Restrict length of union to length of coords3d_1
     coords3d_2 = union.coords3d.copy()

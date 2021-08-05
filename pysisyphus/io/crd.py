@@ -44,28 +44,47 @@ CRD_TPL = """* Created by pysisyphus
 def i10(int_):
     return f"{int_:10d}"
 
+
 def f20(float_):
     return f"{float_:>20.10f}"
+
 
 def a8(str_):
     return f"{str(str_):<8s}"
 
 
-def atoms_coords_to_crd_str(atoms, coords, resno=1, res="UNL1", segid=None, resid=1):
+def atoms_coords_to_crd_str(
+    atoms,
+    coords,
+    resno=1,
+    res="UNL1",
+    segid=None,
+    resid=1,
+    ref_atoms=None,
+    del_atoms=None,
+):
     if segid is None:
         segid = res
+    if del_atoms is None:
+        del_atoms = []
 
     env = jinja2.Environment(loader=jinja2.BaseLoader)
     env.globals.update(i10=i10, f20=f20, a8=a8)
-
     tpl = env.from_string(CRD_TPL)
-    coords3d = coords.reshape(-1, 3) / ANG2BOHR
+
+    if ref_atoms is not None:
+        atoms_for_names = ref_atoms
+    else:
+        atoms_for_names = atoms
     counter = dict()
     atom_names = list()
-    for atom in atoms:
+    for atom in atoms_for_names:
         counter.setdefault(atom, 1)
         atom_names.append(f"{atom}{counter[atom]}")
         counter[atom] += 1
+    atom_names = [an for i, an in enumerate(atom_names) if i not in del_atoms]
+
+    coords3d = coords.reshape(-1, 3) / ANG2BOHR
     atoms_xyz = list(zip(atom_names, *coords3d.T))
     rendered = tpl.render(
         atomnum=len(atoms_xyz),
