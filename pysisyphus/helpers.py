@@ -19,8 +19,9 @@ from pysisyphus.helpers_pure import (
     highlight_text,
 )
 from pysisyphus.io import (
-    geom_from_pdb,
     geom_from_cjson,
+    geom_from_crd,
+    geom_from_pdb,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
     geoms_from_inline_xyz,
@@ -75,6 +76,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     ext = "" if "\n" in fn else Path(fn).suffix
 
     funcs = {
+        ".crd": geom_from_crd,
         ".xyz": geom_from_xyz_file,
         ".trj": geoms_from_trj,
         ".pdb": geom_from_pdb,
@@ -82,7 +84,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".zmat": geom_from_zmat_fn,
         "": geoms_from_inline_xyz,
     }
-    assert ext in funcs, "Unknown filetype for '{fn}'!"
+    assert ext in funcs, f"Unknown filetype for '{fn}'!"
     func = funcs[ext]
 
     if fn.startswith("lib:"):
@@ -204,12 +206,6 @@ def align_coords(coords_list):
     return aligned_coords
 
 
-# def rmsd(coord_1, coord_2):
-# aligned_1, aligned_2 = align_coords((coord_1, coord_2))
-# result = np.sqrt(np.mean(aligned_1 - aligned_2)**2)
-# return result
-
-
 def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
     rotated_vector_lists = list()
     rotated_hessian = None
@@ -226,14 +222,6 @@ def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
         # rotated_hessian = G.T.dot(hessian).dot(G)
         rotated_hessian = G * hessian * G.T
     return rotated_vectors, rotated_vector_lists, rotated_hessian
-
-
-def chunks(l, n):
-    """Yield successive n-sized chunks from l.
-    https://stackoverflow.com/a/312464
-    """
-    for i in range(0, len(l), n):
-        yield l[i : i + n]
 
 
 def slugify_worker(dask_worker):
@@ -471,6 +459,7 @@ def do_final_hessian(
             print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
         print()
 
+    thermo = None
     if can_thermoanalysis:
         thermo = get_thermoanalysis(geom, T=T)
 

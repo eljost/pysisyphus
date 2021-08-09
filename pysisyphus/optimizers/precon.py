@@ -13,21 +13,11 @@ from pysisyphus.intcoords.setup_fast import (
 )
 from pysisyphus.intcoords.derivatives import dq_b, dq_a, dq_d
 from pysisyphus.intcoords import RedundantCoords
+from pysisyphus.optimizers.guess_hessians import get_lindh_alpha
 
 
 # [1] https://www.nature.com/articles/s41598-018-32105-x
 #     Mones, 2018
-
-
-def get_lindh_alpha(atom1, atom2):
-    first_period = ("h", "he")
-
-    if (atom1 in first_period) and (atom2 in first_period):
-        return 1.0
-    elif (atom1 in first_period) or (atom2 in first_period):
-        return 0.3949
-    else:
-        return 0.28
 
 
 def get_lindh_k(atoms, coords3d, bonds=None, angles=None, torsions=None):
@@ -121,9 +111,9 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
     dihedrals = list()
     if kind == "full":
         internal = RedundantCoords(atoms, geom.cart_coords)
-        bonds = internal.bond_indices
-        bends = internal.bending_indices
-        dihedrals = internal.dihedrals
+        bonds = internal.bond_atom_indices
+        bends = internal.bend_atom_indices
+        dihedrals = internal.dihedral_atom_indices
     elif kind == "full_fast":
         bonds, bends, dihedrals = find_bonds_bends_dihedrals(geom)
     elif kind == "bonds_bends":

@@ -57,3 +57,20 @@ def test_pcm_energy(azetidine, pcm, ref_energy):
     calc.pcm = pcm
     energy = azetidine.energy
     assert energy == pytest.approx(ref_energy)
+
+
+@using("psi4")
+def test_mp2_energy():
+    geom = geom_loader("lib:h2o.xyz")
+    calc_kwargs = {
+        "pal": 2,
+        "method": "mp2",
+        "basis": "6-31G*",
+        "to_set": {
+            "freeze_core": True,
+        },
+    }
+    calc = Psi4(**calc_kwargs)
+    geom.set_calculator(calc)
+    energy = geom.energy
+    assert energy == pytest.approx(-76.1959046366989412)

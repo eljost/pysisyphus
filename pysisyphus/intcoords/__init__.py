@@ -16,6 +16,7 @@ __all__ = [
     "TranslationZ",
     "DLC",
     "RedundantCoords",
+    "TRIC",
 ]
 
 from pysisyphus.intcoords.Bend import Bend
@@ -27,7 +28,7 @@ from pysisyphus.intcoords.Rotation import RotationA, RotationB, RotationC
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.intcoords.Torsion import Torsion
 from pysisyphus.intcoords.Translation import TranslationX, TranslationY, TranslationZ
-from pysisyphus.intcoords.RedundantCoords import RedundantCoords
+from pysisyphus.intcoords.RedundantCoords import RedundantCoords, TRIC
 
 # DLC inherits from RedundantCoords
 from pysisyphus.intcoords.DLC import DLC

@@ -38,6 +38,7 @@ def parse_xyz(xyz_str, with_comment=False):
     return atoms_coords, comments
 
 
+
 def geoms_from_xyz(fn, **kwargs):
     atoms_coords, comments = parse_xyz(fn, with_comment=True)
     geoms = [
@@ -45,6 +46,10 @@ def geoms_from_xyz(fn, **kwargs):
         for (atoms, coords), comment in zip(atoms_coords, comments)
     ]
     return geoms
+
+
+def geom_from_xyz(fn, **kwargs):
+    return geoms_from_xyz(fn, **kwargs)[0]
 
 
 def geoms_from_inline_xyz(inline_xyz, **kwargs):

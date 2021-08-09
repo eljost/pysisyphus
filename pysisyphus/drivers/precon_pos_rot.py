@@ -55,17 +55,27 @@ class SteepestDescent:
     def run(self):
         coords = self.geom.coords.copy()
 
+        to_dump = []
+
         for i in range(self.max_cycles):
             self.all_coords[i] = coords.copy()
+            if self.dump and (i % 100) == 0:
+                to_dump.append(self.geom.as_xyz(cart_coords=coords))
             results = self.geom.get_energy_and_forces_at(coords)
             forces = results["forces"]
-            # forces = forces_getter(coords)
             norm = np.linalg.norm(forces)
             rms = np.sqrt(np.mean(forces ** 2))
             if rms <= self.rms_force:
                 print(f"Converged in cycle {i}. Breaking.")
                 break
-            step = forces.copy()
+
+            if i > 0:
+                beta = forces.dot(forces) / self.prev_forces.dot(self.prev_forces)
+                step = forces + beta * self.prev_step
+            else:
+                step = forces.copy()
+            # step = forces.copy()
+
             step *= min(self.max_step / np.abs(step).max(), 1)
             if i % self.print_mod == 0:
                 print(
@@ -74,8 +84,15 @@ class SteepestDescent:
                     f"|step|={np.linalg.norm(step): >12.6f}"
                 )
             coords += step
+
+            self.prev_step = step
+            self.prev_forces = forces
         self.geom.coords = coords
         self.all_coords = self.all_coords[: i + 1]
+
+        if to_dump:
+            with open("optimization.trj", "w") as handle:
+                handle.write("\n".join(to_dump))
 
 
 def get_fragments_and_bonds(geoms):
@@ -183,6 +200,34 @@ def report_mats(name, mats):
     print()
 
 
+def center_fragments(frag_list, geom):
+    c3d = geom.coords3d
+    for frag in frag_list:
+        mean = c3d[frag].mean(axis=0)
+        c3d[frag] -= mean[None, :]
+
+
+def get_which_frag(frags):
+    which_frag = dict()
+    for frag_ind, frag in enumerate(frags):
+        which_frag.update({atom_ind: frag_ind for atom_ind in frag})
+    return which_frag
+
+
+def form_A(frags, which_frag, formed_bonds):
+    """Construct the A-matrices.
+
+    AR[(m, n)] (AP[(m, n)]) contains the subset of atoms in Rm (Pm) that forms
+    bonds with Rn (Pn).
+    """
+    A = dict()
+    for m, n in formed_bonds:
+        key = (which_frag[m], which_frag[n])
+        A.setdefault(key, list()).append(m)
+        A.setdefault(key[::-1], list()).append(n)
+    return A
+
+
 CONFIG = {
     "s2_hs_kappa": 1.0,
     "s4_hs_kappa": 50.0,
@@ -214,20 +259,8 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     involved_atoms = set(tuple(it.chain(*pbond_diff)))
     involved_atoms |= set(tuple(it.chain(*rbond_diff)))
 
-    def get_which_frag(frags):
-        which_frag = dict()
-        for frag_ind, frag in enumerate(frags):
-            which_frag.update({atom_ind: frag_ind for atom_ind in frag})
-        return which_frag
-
     which_rfrag = get_which_frag(rfrags)
     which_pfrag = get_which_frag(pfrags)
-
-    def center_fragments(frag_list, geom):
-        c3d = geom.coords3d
-        for frag in frag_list:
-            mean = c3d[frag].mean(axis=0)
-            c3d[frag] -= mean[None, :]
 
     rfrag_lists = [list(frag) for frag in rfrags]
     pfrag_lists = [list(frag) for frag in pfrags]
@@ -279,19 +312,6 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
         "BP(m, n), subset of atoms in CPnm actually involved in bond forming/breaking."
     )
     report_mats("BP", BP)
-
-    def form_A(frags, which_frag, formed_bonds):
-        """Construct the A-matrices.
-
-        AR[(m, n)] (AP[(m, n)]) contains the subset of atoms in Rm (Pm) that forms
-        bonds with Rn (Pn).
-        """
-        A = dict()
-        for m, n in formed_bonds:
-            key = (which_frag[m], which_frag[n])
-            A.setdefault(key, list()).append(m)
-            A.setdefault(key[::-1], list()).append(n)
-        return A
 
     AR = form_A(rfrags, which_rfrag, pbond_diff)
     AP = form_A(pfrags, which_pfrag, rbond_diff)

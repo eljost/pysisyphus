@@ -4,7 +4,14 @@ import pytest
 from pysisyphus.calculators import XTB
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
-from pysisyphus.intcoords import Bend, LinearBend, Stretch, Bend, Torsion
+from pysisyphus.intcoords import (
+    Bend,
+    LinearBend,
+    Stretch,
+    Bend,
+    Torsion,
+)
+from pysisyphus.intcoords.PrimTypes import PrimTypes as PT
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
@@ -51,8 +58,10 @@ def test_allene_opt():
 
 
 def test_hydrogen_bonds_fragments():
-    geom = geom_loader("lib:hydrogen_bond_fragments_test.xyz",
-                       coord_type="redund")
+    geom = geom_loader("lib:hydrogen_bond_fragments_test.xyz", coord_type="redund")
     int_ = geom.internal
-    assert len(int_.hydrogen_bond_indices) == 1
+    hydrogen_bonds = sum(
+        [1 for pt, *indices in geom.internal.typed_prims if pt == PT.HYDROGEN_BOND]
+    )
+    assert hydrogen_bonds == 1
     assert len(int_.fragments) == 3

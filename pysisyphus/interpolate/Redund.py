@@ -47,8 +47,8 @@ class Redund(Interpolator):
             },
         )
 
-        dihedral_inds = geom1.internal.dihedral_inds
-        initial_tangent = get_tangent(geom1.coords, geom2.coords, dihedral_inds)
+        dihedral_indices = geom1.internal.dihedral_indices
+        initial_tangent = get_tangent(geom1.coords, geom2.coords, dihedral_indices)
         initial_diff = np.linalg.norm(initial_tangent)
         approx_stepsize = initial_diff / (self.between + 1)
         final_prims = geom2.internal.prim_coords
@@ -60,7 +60,7 @@ class Redund(Interpolator):
             print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
             try:
-                prim_tangent = get_tangent(new_geom.coords, final_prims, dihedral_inds)
+                prim_tangent = get_tangent(new_geom.coords, final_prims, dihedral_indices)
             # This will result in a different number of internals at the two outer and
             # the inner geometries.
             except DifferentPrimitivesException:

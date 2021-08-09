@@ -94,6 +94,9 @@ class OrderedEnum(Enum):
             return self.value < other.value
         return NotImplemented
 
+    def __str__(self):
+        return self.name
+
 
 def timed(logger):
     def decorator(func):
@@ -214,7 +217,7 @@ def highlight_text(text, width=80, level=0):
     pad_len = (pad_len - (pad_len % 2)) // 2
     pad = " " * pad_len
     hchar, vchar, cornerchar = levels[level]
-    full_row = cornerchar + (hchar * (full_length-2)) + cornerchar
+    full_row = cornerchar + (hchar * (full_length - 2)) + cornerchar
     highlight = (
         f"""{pad}{full_row}\n{pad}{vchar} {text.upper()} {vchar}\n{pad}{full_row}"""
     )
@@ -254,10 +257,31 @@ def filter_fixture_store(test_name):
         def wrapper(fixture_store):
             rb = fixture_store["results_bag"]
             filtered = {
-                "results_bag": {
-                    k: v for k, v in rb.items() if k.startswith(test_name)
-                }
+                "results_bag": {k: v for k, v in rb.items() if k.startswith(test_name)}
             }
             return function(filtered)
+
         return wrapper
+
     return inner_function
+
+
+def get_clock():
+    ref = time.time()
+    def clock(msg=""):
+        nonlocal ref
+        now = time.time()
+        dur = now - ref
+        ref = now
+        print(f"{msg: >32}, {dur:.3f} s since last call!")
+    return clock
+
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l.
+    https://stackoverflow.com/a/312464
+    """
+    for i in range(0, len(l), n):
+        yield l[i : i + n]
+
+

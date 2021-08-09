@@ -26,7 +26,7 @@ class OBabel(Calculator):
         "kcal/mol": AU2KCALMOL,
     }
 
-    def __init__(self, ff="gaff", **kwargs):
+    def __init__(self, ff="gaff", mol=None, **kwargs):
         super().__init__(**kwargs)
 
         if self.charge != 0:
@@ -37,6 +37,7 @@ class OBabel(Calculator):
             ob.OBForceField.FindType, _getpluginnames("forcefields")
         )
         self.ff = avail_ffs[self.ff_name]
+        self.mol = mol
 
         unit = self.ff.GetUnit()
         an_grad = self.ff.HasAnalyticalGradients()
@@ -48,13 +49,17 @@ class OBabel(Calculator):
 
     def setup(self, atoms, coords):
         xyz = self.prepare_xyz_string(atoms, coords)
-        mol = pybel.readstring("xyz", xyz)
+        if self.mol is None:
+            self.mol = pybel.readstring("xyz", xyz)
+        else:
+            self.mol.OBMol.SetCoordinates(ob.double_array(coords*BOHR2ANG))
+
         if not self.is_setup:
-            self.is_setup = self.ff.Setup(mol.OBMol)
+            self.is_setup = self.ff.Setup(self.mol.OBMol)
             assert self.is_setup
         else:
-            self.ff.SetCoordinates(mol.OBMol)
-        return mol
+            self.ff.SetCoordinates(self.mol.OBMol)
+        return self.mol
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
         self.setup(atoms, coords)

@@ -7,7 +7,7 @@ from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.linalg import eigvec_grad
 
 
-def compare_to_geometric(c3d, ref_c3d, dR, dF, dqdx, dvdx):
+def compare_to_geometric(c3d, ref_c3d, dR, dF, dqdx, dvdx, atol=1e-14):
     from geometric.rotate import get_R_der, get_F_der, get_q_der, get_expmap_der
 
     dR_ref = get_R_der(c3d, ref_c3d)
@@ -15,9 +15,9 @@ def compare_to_geometric(c3d, ref_c3d, dR, dF, dqdx, dvdx):
     dF_ref = get_F_der(c3d, ref_c3d)
     np.testing.assert_allclose(dF.reshape(-1, 3, 4, 4), dF_ref)
     dq_ref = get_q_der(c3d, ref_c3d)
-    np.testing.assert_allclose(dqdx.reshape(-1, 3, 4), dq_ref)
+    np.testing.assert_allclose(dqdx.T.flatten(), dq_ref.flatten(), atol=atol)
     dvdx_ref = get_expmap_der(c3d, ref_c3d)
-    np.testing.assert_allclose(dvdx, dvdx_ref.reshape(-1, 3).T)
+    np.testing.assert_allclose(dvdx.T.flatten(), dvdx_ref.flatten(), atol=atol)
 
 
 class Rotation(Primitive):
@@ -25,8 +25,9 @@ class Rotation(Primitive):
 
     index = None
 
-    def __init__(self, *args, ref_coords3d, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, indices, *args, ref_coords3d, **kwargs):
+        kwargs["cache"] = False
+        super().__init__(indices, *args, **kwargs)
 
         self.calc_kwargs = ("index", "ref_coords3d")
         self.ref_coords3d = ref_coords3d.reshape(-1, 3).copy()
@@ -87,13 +88,14 @@ class Rotation(Primitive):
         #   output: lim v(x) for x -> 1 becomes 2.
         q0 = quat[0]
         if abs(q0 - 1.0) <= 1e-8:
-            prefac = 2
-            dvdq0 = 0.0
+            prefac = 2 - 2/3 *(q0-1)
+            dvdq0 = -2/3
         else:
             arccos_q0 = np.arccos(q0)
             diff = 1 - q0 ** 2
             prefac = 2 * arccos_q0 / np.sqrt(diff)
-            dvdq0 = quat[1:] * (2 * q0 * arccos_q0 / diff ** 1.5 - 2 / diff)
+            dvdq0 = 2 * q0 * arccos_q0 / diff ** 1.5 - 2 / diff
+
         # Exponential map
         v = prefac * quat[1:]
 
@@ -140,16 +142,18 @@ class Rotation(Primitive):
             # Quaternion gradient
             dqdx = eigvec_grad(w, v_, ind=-1, mat_grad=dF)
 
-            dvdq = np.zeros((4, 3))
-            dvdq[0] = dvdq0
-            dvdq[1:] = np.diag((prefac, prefac, prefac))
+            dvdq = np.zeros((3, 4))
+            dvdq[:, 0] = dvdq0 * quat[1:]
+            dvdq[:, 1:] = np.diag((prefac, prefac, prefac))
 
             # Gradient of exponential map from chain rule.
             # See bottom-left on 214108-3 in [1], after Eq. (11).
-            dvdx = np.einsum("ij,ki->jk", dvdq, dqdx)
+            dvdx = np.einsum("ji,ik->jk", dvdq, dqdx)
 
             # compare_to_geometric(c3d, ref_c3d, dR, dF, dqdx, dvdx)
             row = np.zeros_like(coords3d)
+            if index is None:
+                return v, dvdx.reshape(3, -1)
             row[indices] = dvdx[index].reshape(-1, 3)
             return v[index], row.flatten()
         return v[index]

@@ -6,8 +6,7 @@ from sklearn.neighbors import KDTree
 
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.helpers_pure import log, timed
-from pysisyphus.intcoords.setup import get_dihedral_inds
-from pysisyphus.intcoords.valid import bend_valid
+from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
 
 logger = logging.getLogger("internal_coords")
@@ -30,10 +29,12 @@ def get_max_bond_dists(atoms, bond_factor, covalent_radii=None):
     return max_bond_dists
 
 
-def find_bonds(atoms, coords3d, covalent_radii, bond_factor=BOND_FACTOR):
+def find_bonds(atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR):
     atoms = [atom.lower() for atom in atoms]
-    c3d = coords3d
-    cr = covalent_radii
+    c3d = coords3d.reshape(-1, 3)
+    if covalent_radii is None:
+        covalent_radii = [CR[atom] for atom in atoms]
+    cr = np.array(covalent_radii)
 
     max_bond_dists = get_max_bond_dists(atoms, bond_factor, covalent_radii=cr)
     radii = bond_factor * (cr.copy() + max(cr))
@@ -123,6 +124,29 @@ def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
     return [list(bend) for bend in bend_set]
 
 
+def find_dihedrals(coords3d, bonds, bends, max_deg, logger=None):
+    bond_dict = {}
+    bonds = [tuple(bond) for bond in bonds]
+    for from_, to_ in bonds:
+        bond_dict.setdefault(from_, list()).append(to_)
+        bond_dict.setdefault(to_, list()).append(from_)
+
+    dihedral_set = set()
+    for bend in bends:
+        bend = tuple(bend)
+        from_, central, to_ = bend
+        from_neighs = set(bond_dict[from_]) - set((to_, central))
+        to_neighs = set(bond_dict[to_]) - set((from_, central))
+        dihedral_candidates = [(neigh,) + bend for neigh in from_neighs] + [
+            bend + (neigh,) for neigh in to_neighs
+        ]
+        for indices in dihedral_candidates:
+            if not dihedral_valid(coords3d, indices, deg_thresh=max_deg):
+                continue
+            dihedral_set.add(indices)
+    return [list(dihedral) for dihedral in dihedral_set]
+
+
 def find_bonds_bends(geom, bond_factor=BOND_FACTOR, min_deg=15, max_deg=175):
     log(logger, "Starting detection of bonds and bends.")
     bonds = find_bonds_for_geom(geom, bond_factor=bond_factor)
@@ -138,12 +162,6 @@ def find_bonds_bends_dihedrals(geom, bond_factor=BOND_FACTOR, min_deg=15, max_de
     bonds, bends = find_bonds_bends(
         geom, bond_factor=bond_factor, min_deg=min_deg, max_deg=max_deg
     )
-    proper_diheds, improper_diheds = get_dihedral_inds(
-        geom.coords3d, bonds, bends, max_deg=max_deg
-    )
-    log(
-        logger,
-        f"Found {len(proper_diheds)} proper and improper "
-        f"{len(improper_diheds)} dihedrals.",
-    )
-    return bonds, bends, proper_diheds + improper_diheds
+    proper_dihedrals = find_dihedrals(geom.coords3d, bonds, bends, max_deg)
+    log(logger, f"Found {len(proper_dihedrals)} proper dihedrals.")
+    return bonds, bends, proper_dihedrals

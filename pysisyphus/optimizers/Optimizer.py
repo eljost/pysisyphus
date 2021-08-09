@@ -546,6 +546,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.image_nums.append(image_num)
 
             step = self.optimize()
+            self.log(f"norm(step)={np.linalg.norm(step):.6f} au (rad)")
 
             if step is None:
                 # Remove the previously added coords

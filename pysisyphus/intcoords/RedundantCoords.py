@@ -13,75 +13,32 @@ from operator import itemgetter
 import numpy as np
 
 from pysisyphus.linalg import svd_inv
-from pysisyphus.intcoords import Stretch, Torsion
+from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
     eval_primitives,
     check_primitives,
 )
 
-from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimTypeShortcuts
+from pysisyphus.intcoords.PrimTypes import (
+    normalize_prim_inputs,
+    PrimTypes,
+    # PrimType classes
+    Bonds,
+    Bends,
+    LinearBends,
+    Cartesians,
+    Dihedrals,
+    OutOfPlanes,
+    Rotations,
+    Translations,
+)
 
 from pysisyphus.intcoords.setup import (
     setup_redundant,
     get_primitives,
 )
 from pysisyphus.intcoords.valid import check_typed_prims
-
-
-def normalize_prim_input(prim_inp):
-    """Normalize input for define_prims and constrain_prims
-
-    The intcoords.RedundantCoords constructor expects lists of integer lists
-    (tuples) for arguments like 'define_prims' and 'constrain_prims'. The first item
-    of every list determines the type of primitive coordinate. Currently
-    there are about 20 different types and it is hard to remember all of
-    them.
-
-    So we also allow a more human friendly input, that is normalized here.
-    The most common primitives are:
-
-    0: BOND
-    5: BEND
-    8: PROPER_DIHEDRAL
-
-    This function maps inputs like ["BOND", 1, 2] to [PrimTypes.BOND, 1, 2] etc.
-
-    Always returns a list of tuples, as some prim_inps expand to multiple
-    coordinates, e.g., XYZ or ATOM.
-    """
-    prim_type, *indices = prim_inp
-
-    # Nothing to do
-    if isinstance(prim_type, PrimTypes):
-        return [prim_inp]
-
-    # First check if we got something like an integer
-    try:
-        return [tuple([PrimTypes(int(prim_type))] + indices)]
-    # Raised when prim_type is, e.g., "BOND"
-    except ValueError:
-        pass
-
-    # Check if we got a PrimType name
-    try:
-        prim_type_ = getattr(PrimTypes, str(prim_type).upper())
-        return [tuple([prim_type_] + indices)]
-    except AttributeError:
-        pass
-
-    # Check if we got a shortcut, e.g, X/Y/Z/XYZ/ATOM etc.
-    try:
-        prim_types_ = PrimTypeShortcuts[str(prim_type).upper()]
-        return [tuple([prim_type_] + indices) for prim_type_ in prim_types_]
-    except KeyError as error:
-        print(f"Could not normalize 'prim_inp'={prim_inp}!")
-        raise error
-
-
-def normalize_prim_inputs(prim_inps):
-    # Flatten list of tuples
-    return list(it.chain(*[normalize_prim_input(pi) for pi in prim_inps]))
 
 
 class RedundantCoords:
@@ -105,6 +62,8 @@ class RedundantCoords:
         # Corresponds to a threshold of 1e-7 for eigenvalues of G, as proposed by
         # Pulay in [5].
         svd_inv_thresh=3.16e-4,
+        recalc_B=False,
+        tric=False,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -130,11 +89,11 @@ class RedundantCoords:
         self.min_weight = float(min_weight)
         assert self.min_weight > 0.0, "min_weight must be a positive rational!"
         self.svd_inv_thresh = svd_inv_thresh
+        self.recalc_B = recalc_B
+        self.tric = tric
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
-        # Linear bends may have been disabled, so we create the list here.
-        self.linear_bend_indices = list()
         self.logger = logging.getLogger("internal_coords")
 
         if self.weighted:
@@ -164,69 +123,90 @@ class RedundantCoords:
             )
         # Use supplied typed_prims
         else:
-            self.log(f"{len(typed_prims)} primitives were supplied. Checking them.")
-            valid_typed_prims = check_typed_prims(
-                self.coords3d,
-                typed_prims,
-                bend_min_deg=self.bend_min_deg,
-                dihed_max_deg=self.dihed_max_deg,
-                lb_min_deg=self.lb_min_deg,
-                check_bends=self.check_bends,
-            )
-            self.log(
-                f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
-            )
-            if len(valid_typed_prims) != len(typed_prims):
-                self.log("Invalid primitives:")
-                for i, invalid_prim in enumerate(
-                    set(typed_prims) - set(valid_typed_prims)
-                ):
-                    self.log(f"\t{i:02d}: {invalid_prim}")
-            self.typed_prims = valid_typed_prims
-            self.set_inds_from_typed_prims(self.typed_prims)
+            self.typed_prims = typed_prims
 
-        # Sort by length
-        self.typed_prims.sort(key=lambda tp: tp[0])
+        if self.bonds_only:
+            self.typed_prims = self.bond_typed_prims
+
+        def tp_sort(tp):
+            pt, *indices = tp
+            key = pt
+            # We use the fact that list.sort is stable, that is elements that compare
+            # equal retain their order. So we assign PrimTypes.ROTATION to all rotations,
+            # to remain the ABC-order for each fragment. The same goes for the translations.
+            if pt in Rotations:
+                key = PrimTypes.ROTATION
+            elif pt in Translations:
+                key = PrimTypes.TRANSLATION
+            elif pt in Cartesians:
+                key = PrimTypes.CARTESIAN
+            return key
+
+        # Sort by PrimType
+        self.typed_prims.sort(key=tp_sort)
 
         self.primitives = get_primitives(
             self.coords3d,
             self.typed_prims,
             logger=self.logger,
         )
-        if self.bonds_only:
-            self.bending_indices = list()
-            self.dihedral_indices = list()
-            self.linear_bend_indices = list()
-            self.primitives = [
-                prim for prim in self.primitives if isinstance(prim, Stretch)
-            ]
-        check_primitives(self.coords3d, self.primitives, logger=self.logger)
 
+        # First evaluation of internal coordinates
         self._prim_internals = self.eval(self.coords3d)
         self._prim_coords = np.array(
             [prim_int.val for prim_int in self._prim_internals]
         )
+        check_primitives(self.coords3d, self.primitives, B=self.B_prim, logger=self.logger)
 
         ref_num = len(self.typed_prims)
         if self.bonds_only:
             ref_num = len(self.bond_indices)
         assert len(self.primitives) == ref_num
-        prim_inds = {
-            2: list(),
-            3: list(),
-            4: list(),
-        }
-        keys = list(prim_inds.keys())
-        for i, prim in enumerate(self.primitives):
-            len_ = len(prim.indices)
-            if len_ not in keys:
-                continue
-            prim_inds[len_].append(i)
-        self._bond_prim_inds = prim_inds[2]
-        self._bend_prim_inds = prim_inds[3]
-        self._dihedral_prim_inds = prim_inds[4]
 
         self.backtransform_counter = 0
+
+    def set_inds_from_typed_prims(self, typed_prims):
+        # These lists will hold the index of the respective typed_prims
+        # in self.typed_prims
+        self._bond_inds = list()
+        self._bend_inds = list()
+        self._linear_bend_inds = list()
+        self._dihedral_inds = list()
+        self._rotation_inds = list()
+        self._translation_inds = list()
+        self._cartesian_inds = list()
+        self._outofplane_inds = list()
+
+        self._bond_atom_inds = list()
+        self._bend_atom_inds = list()
+        self._dihedral_atom_inds = list()
+
+        self._bond_typed_prims = list()
+
+        for i, (pt, *indices) in enumerate(typed_prims):
+            if pt in Bonds:
+                append_to = self._bond_inds
+                self._bond_atom_inds.append(indices)
+                self._bond_typed_prims.append((pt, *indices))
+            elif pt in Bends:
+                append_to = self._bend_inds
+                self._bend_atom_inds.append(indices)
+            elif pt in LinearBends:
+                append_to = self._linear_bend_inds
+            elif pt in Dihedrals:
+                append_to = self._dihedral_inds
+                self._dihedral_atom_inds.append(indices)
+            elif pt in Rotations:
+                append_to = self._rotation_inds
+            elif pt in Translations:
+                append_to = self._translation_inds
+            elif pt in Cartesians:
+                append_to = self._cartesian_inds
+            elif pt in OutOfPlanes:
+                append_to = self._outofplane_inds
+            else:
+                raise Exception("Unhandled PrimType!")
+            append_to.append(i)
 
     def log(self, message):
         self.logger.debug(message)
@@ -247,6 +227,33 @@ class RedundantCoords:
         self.clear()
 
     @property
+    def typed_prims(self):
+        return self._typed_prims
+
+    @typed_prims.setter
+    def typed_prims(self, typed_prims):
+        self.log(f"Checking {len(typed_prims)} supplied typed primitives.")
+        valid_typed_prims = check_typed_prims(
+            self.coords3d,
+            typed_prims,
+            bend_min_deg=self.bend_min_deg,
+            dihed_max_deg=self.dihed_max_deg,
+            lb_min_deg=self.lb_min_deg,
+            check_bends=self.check_bends,
+        )
+        self.log(
+            f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
+        )
+        if len(valid_typed_prims) != len(typed_prims):
+            self.log("Invalid primitives:")
+            for i, invalid_prim in enumerate(
+                set(typed_prims) - set(valid_typed_prims)
+            ):
+                self.log(f"\t{i:02d}: {invalid_prim}")
+        self._typed_prims = valid_typed_prims
+        self.set_inds_from_typed_prims(self.typed_prims)
+
+    @property
     def primitives(self):
         return self._primitives
 
@@ -255,12 +262,8 @@ class RedundantCoords:
         self._primitives = primitives
 
     @property
-    def prim_indices(self):
-        return [self.bond_indices, self.bending_indices, self.dihedral_indices]
-
-    @property
     def prim_indices_set(self):
-        return set([tuple(prim_ind) for prim_ind in it.chain(*self.prim_indices)])
+        return set([tuple(indices) for pt, *indices in self.typed_prims])
 
     @property
     def prim_internals(self):
@@ -289,32 +292,68 @@ class RedundantCoords:
         return pis
 
     @property
-    def bonds(self):
-        return self.get_prim_internals_by_indices(self._bond_prim_inds)
+    def bond_indices(self):
+        return self._bond_inds
 
     @property
-    def bends(self):
-        return self.get_prim_internals_by_indices(self._bend_prim_inds)
+    def bond_atom_indices(self):
+        return self._bond_atom_inds
 
     @property
-    def dihedrals(self):
-        return self.get_prim_internals_by_indices(self._dihedral_prim_inds)
+    def bond_typed_prims(self):
+        return self._bond_typed_prims
 
     @property
-    def dihedral_inds(self):
-        return self._dihedral_prim_inds
+    def bend_indices(self):
+        return self._bend_inds
+
+    @property
+    def bend_atom_indices(self):
+        return self._bend_atom_inds
+
+    @property
+    def linear_bend_indices(self):
+        return self._linear_bend_inds
+
+    @property
+    def dihedral_indices(self):
+        return self._dihedral_inds
+
+    @property
+    def dihedral_atom_indices(self):
+        return self._dihedral_atom_inds
+
+    @property
+    def rotation_indices(self):
+        return self._rotation_inds
+
+    @property
+    def translation_indices(self):
+        return self._translation_inds
+
+    @property
+    def cartesian_indices(self):
+        return self._cartesian_inds
+
+    @property
+    def outofplane_indices(self):
+        return self._outofplane_inds
 
     @property
     def coords(self):
         return self.prim_coords
 
-    def get_index_of_prim_coord(self, prim_ind):
-        """Index of primitive internal for the given atom indices."""
-        prim_ind_set = set(prim_ind)
-        for i, prim in enumerate(self.primitives):
-            if set(prim.indices) == prim_ind_set:
+    def get_index_of_typed_prim(self, typed_prim):
+        """Index in self.typed_prims for the supplied typed_prim."""
+        ref_len = len(typed_prim)
+        ref_inds = typed_prim[1:]
+        for i, tp in enumerate(self.typed_prims):
+            if (len(tp) != ref_len) or tp[0] != typed_prim[0]:
+                continue
+
+            if (tp[1:] == ref_inds) or (tp[1:] == ref_inds[::-1]):
                 return i
-        self.log(f"Primitive internal with indices {prim_ind} " "is not defined!")
+        self.log(f"Typed primitive {typed_prim} is not defined!")
         return None
 
     @property
@@ -458,36 +497,6 @@ class RedundantCoords:
         """Project supplied vector onto range of B."""
         return self.P.dot(vector)
 
-    def set_inds_from_typed_prims(self, typed_prims):
-        linear_bend_types = (PrimTypes.LINEAR_BEND, PrimTypes.LINEAR_BEND_COMPLEMENT)
-        per_type = {
-            1: list(),
-            2: list(),
-            3: list(),
-            4: list(),
-            "linear_bend": list(),
-            "hydrogen_bond": list(),
-        }
-        for type_, *indices in typed_prims:
-            key = len(indices)
-            if type_ in (linear_bend_types):
-                key = "linear_bend"
-            per_type[key].append(indices)
-
-            # Also keep hydrogen bonds
-            if type_ == PrimTypes.HYDROGEN_BOND:
-                per_type["hydrogen_bond"].append(indices)
-
-        self.cartesian_indices = per_type[1]
-        self.bond_indices = per_type[2]
-        self.bending_indices = per_type[3]
-        self.dihedral_indices = per_type[4]
-        self.linear_bend_indices = per_type["linear_bend"]
-        self.hydrogen_bond_indices = per_type["hydrogen_bond"]
-
-        # TODO
-        # self.fragments = coord_info.fragments
-
     def set_primitive_indices(
         self,
         atoms,
@@ -502,6 +511,7 @@ class RedundantCoords:
             dihed_max_deg=self.dihed_max_deg,
             lb_min_deg=self.lb_min_deg,
             min_weight=self.min_weight if self.weighted else None,
+            tric=self.tric,
             logger=self.logger,
         )
 
@@ -509,8 +519,6 @@ class RedundantCoords:
         for cp in self.constrain_prims:
             if cp not in self.typed_prims:
                 self.typed_prims.append(cp)
-        # Check if constrained primitives are present; if not create them.
-        self.set_inds_from_typed_prims(self.typed_prims)
 
         self.fragments = coord_info.fragments
 
@@ -526,16 +534,27 @@ class RedundantCoords:
 
     def transform_int_step(self, int_step, pure=False):
         self.log(f"Backtransformation {self.backtransform_counter}")
+
+        def Bt_inv_prim_getter(cart_coords):
+            coords3d = cart_coords.reshape(-1, 3)
+            B_prim = np.zeros((len(self.primitives), coords3d.size))
+            for i, primitive in enumerate(self.primitives):
+                _, gradient = primitive.calculate(coords3d, gradient=True)
+                B_prim[i] = gradient
+            return self.inv_Bt(B_prim)
+
         new_prim_internals, cart_step, failed = transform_int_step(
             int_step,
             self.coords3d.flatten(),
             self.prim_coords,
             self.Bt_inv_prim,
             self.primitives,
-            self.dihedral_inds,
+            self.dihedral_indices,
+            self.rotation_indices,
             check_dihedrals=self.rebuild,
             freeze_atoms=self.freeze_atoms,
             logger=self.logger,
+            Bt_inv_prim_getter=Bt_inv_prim_getter if self.recalc_B else None,
         )
         # Update coordinates
         if not pure:
@@ -544,9 +563,21 @@ class RedundantCoords:
             self.backtransform_counter += 1
         return cart_step
 
+    def print_typed_prims(self):
+        for i, tp in enumerate(self.typed_prims):
+            print(i, tp)
+
     def __str__(self):
         bonds = len(self.bond_indices)
         bends = len(self.bending_indices)
         dihedrals = len(self.dihedral_indices)
         name = self.__class__.__name__
         return f"{name}({bonds} bonds, {bends} bends, {dihedrals} dihedrals)"
+
+
+class TRIC(RedundantCoords):
+
+    def __init__(self, *args, **kwargs):
+        kwargs["tric"] = True
+        kwargs["recalc_B"] = True
+        super().__init__(*args, **kwargs)

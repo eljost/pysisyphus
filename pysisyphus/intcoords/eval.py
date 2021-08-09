@@ -6,18 +6,16 @@ import numpy as np
 
 class PrimInternal:
 
-    def __init__(self, inds, val, grad):
+    def __init__(self, inds, val, grad=None):
         self.inds = inds
         self.val = val
         self.grad = grad
 
+    def __str__(self):
+        return f"PrimInternal({self.inds})"
 
-# PrimInternal = namedtuple("PrimitiveInternal", "inds val grad")
-
-
-# def are_parallel(u, v, thresh=1e-6):
-    # dot = u.dot(v) / (np.linalg.norm(u) * np.linalg.norm(v))
-    # return (1 - abs(dot)) < thresh
+    def __repr__(self):
+        return f"PrimInternal({self.inds}, {self.val:.4f})"
 
 
 def eval_primitives(coords3d, primitives):
@@ -34,12 +32,13 @@ def eval_B(coords3d, primitives):
     return np.array([prim_int.grad for prim_int in prim_internals])
 
 
-def check_primitives(coords3d, primitives, thresh=1e-6, logger=None):
+def check_primitives(coords3d, primitives, B=None,thresh=1e-6, logger=None):
     def log(msg, level=logging.DEBUG):
         if logger is not None:
             logger.log(level, msg)
 
-    B = eval_B(coords3d, primitives)
+    if B is None:
+        B = eval_B(coords3d, primitives)
     G = B.T.dot(B)
     w, v = np.linalg.eigh(G)
     nonzero_inds = np.abs(w) > thresh

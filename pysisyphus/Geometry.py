@@ -19,7 +19,7 @@ from pysisyphus.elem_data import (
     COVALENT_RADII as CR,
 )
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.intcoords import DLC, RedundantCoords
+from pysisyphus.intcoords import DLC, RedundantCoords, TRIC
 from pysisyphus.intcoords.exceptions import (
     NeedNewInternalsException,
     RebuiltInternalsException,
@@ -102,6 +102,7 @@ class Geometry:
         "cart": None,
         "redund": RedundantCoords,
         "dlc": DLC,
+        "tric": TRIC,
     }
 
     def __init__(
@@ -247,7 +248,7 @@ class Geometry:
             diff = -get_tangent(
                 self.internal.prim_coords,
                 other.internal.prim_coords,
-                self.internal.dihedral_inds,
+                self.internal.dihedral_indices,
             )
         else:
             raise Exception("Invalid coord_type!")
@@ -373,6 +374,14 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
+
+    def del_atoms(self, inds, **kwargs):
+        atoms = [atom for i, atom in enumerate(self.atoms) if not (i in inds)]
+        c3d = self.coords3d
+        coords3d = np.array(
+            [c3d[i] for i, _ in enumerate(self.atoms) if not (i in inds)]
+        )
+        return Geometry(atoms, coords3d.flatten(), **kwargs)
 
     def set_calculator(self, calculator, clear=True):
         """Reset the object and set a calculator."""
@@ -951,19 +960,23 @@ class Geometry:
             "Did you accidentally provide internal coordinates?"
         )
 
-    def get_energy_at(self, coords):
+    def get_temporary_coords(self, coords):
+        if self.coord_type != "cart":
+            int_step = coords - self.internal.coords
+            cart_step = self.internal.transform_int_step(int_step, pure=True)
+            coords = self.cart_coords + cart_step
         self.assert_cart_coords(coords)
+        return coords
+
+    def get_energy_at(self, coords):
+        coords = self.get_temporary_coords(coords)
         return self.calculator.get_energy(self.atoms, coords)["energy"]
 
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
 
         The results are not saved in the Geometry object."""
-        if self.coord_type != "cart":
-            int_step = coords - self.internal.coords
-            cart_step = self.internal.transform_int_step(int_step, pure=True)
-            coords = self.cart_coords + cart_step
-        self.assert_cart_coords(coords)
+        coords = self.get_temporary_coords(coords)
         results = self.calculator.get_forces(self.atoms, coords)
         self.zero_frozen_forces(results["forces"])
 
@@ -1132,10 +1145,10 @@ class Geometry:
             "comment": self.comment,
         }
         try:
-            prim_inds = self.internal.prim_indices
+            typed_prims = self.internal.typed_prims
         except AttributeError:
-            prim_inds = None
-        restart_info["prim_inds"] = prim_inds
+            typed_prims = None
+        restart_info["typed_prims"] = typed_prims
 
         # Calculator restart information
         try:

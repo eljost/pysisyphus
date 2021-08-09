@@ -76,11 +76,12 @@ def eigvec_grad(w, v, ind, mat_grad):
     eigvec = v[:, ind]
 
     w_diff = eigval - w
-    w_inv = 1 / w_diff
-    w_inv[ind] = 0
+    w_inv = np.divide(
+        1.0, w_diff, out=np.zeros_like(w_diff).astype(float), where=w_diff != 0.0
+    )
     assert np.isfinite(w_inv).all()
     pinv = v.dot(np.diag(w_inv)).dot(v.T)
     pinv.dot(mat_grad)
 
     wh = pinv.dot(mat_grad).dot(eigvec)
-    return wh.T
+    return wh

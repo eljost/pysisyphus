@@ -115,3 +115,47 @@ class TransTorque:
             forces[mfrag] = tt_forces
 
         return {"energy": 1, "forces": forces.flatten()}
+
+    def get_forces_naive(self, atoms, coords, kappa=None):
+        if kappa is None:
+            kappa = self.kappa
+
+        AR = self.a_mats
+        Ns = np.zeros(len(self.frags))
+        for m, mfrag in enumerate(self.frags):
+            for n, nfrag in enumerate(self.frags):
+                if m == n:
+                    continue
+                Ns[m] += len(AR[(n, m)]) * len(AR[(m, n)])
+            Ns[m] *= 3 * len(mfrag)
+
+        c3d = coords.reshape(-1, 3).copy()
+        f3d = np.zeros_like(c3d)
+        vts = np.zeros((len(self.frags), 3))
+        vrs = np.zeros((len(self.frags), 3))
+        for m, mfrag in enumerate(self.frags):
+            gm = c3d[mfrag].mean(axis=0)
+            c3dm = c3d[mfrag]
+            for n, nfrag in enumerate(self.frags):
+                if m == n:
+                    continue
+                for a in AR[(m, n)]:
+                    for b in AR[(n, m)]:
+                        rdiff = c3d[b] - c3d[a]
+                        rdiffn = np.linalg.norm(rdiff)
+                        rg = c3d[a] - gm
+                        quot = rdiff / rdiffn
+                        dot = rdiff.dot(rg)
+                        vts[m] += abs(dot) * quot
+                        vrs[m] += np.cross(rdiff, rg)
+            vts[m] /= Ns[m]
+            vrs[m] /= Ns[m]
+            if not self.do_trans:
+                vts[m] = 0.0
+            f3d[mfrag] = kappa * (-np.cross(vrs[m], c3dm-gm[None, :]) + vts[m])
+
+        forces = f3d.flatten()
+        return {"energy": 1, "forces": forces}
+
+    # def get_forces(self, atoms, coords, kappa=None):
+        # return self.get_forces_naive(atoms, coords, kappa=kappa)

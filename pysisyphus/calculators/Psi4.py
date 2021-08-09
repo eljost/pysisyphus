@@ -11,7 +11,7 @@ class Psi4(Calculator):
     conf_key = "psi4"
 
     def __init__(self, method, basis, to_set=None, pcm="iefpcm",
-                 solvent=None, mem=2000, **kwargs):
+                 solvent=None, mem=2000, write_fchk=False, **kwargs):
         super().__init__(**kwargs)
 
         self.method = method
@@ -19,6 +19,7 @@ class Psi4(Calculator):
         self.to_set = {} if to_set is None else dict(to_set)
         self.pcm = pcm
         self.solvent = solvent
+        self.write_fchk = write_fchk
         self.mem = mem
 
         self.inp_fn = "psi4.inp"
@@ -48,7 +49,19 @@ class Psi4(Calculator):
         {pcm}
 
         {method}
+
+        {fchk}
         """)
+
+    def get_fchk_str(self):
+        fchk_str = ""
+        if self.write_fchk:
+            fchk_fn = self.make_fn("wfn.fchk")
+            fchk_str = (
+                "fchk_writer = psi4.FCHKWriter(wfn)\n"
+                f"fchk_writer.write('{fchk_fn}')"
+            )
+        return fchk_str
 
     def prepare_input(self, atoms, coords, calc_type):
         xyz = self.prepare_coords(atoms, coords)
@@ -72,6 +85,7 @@ class Psi4(Calculator):
         method = calc_types[calc_type].format(self.method)
         wfn_path = self.make_fn("wfn.npy")
         method += f"\nWavefunction.to_file(wfn, '{wfn_path}')"
+        method += "\nprint('PARSE ENERGY:', wfn.energy())"
         set_strs = [f"set {key} {value}" for key, value in self.to_set.items()]
         set_strs = "\n".join(set_strs)
 
@@ -126,6 +140,7 @@ class Psi4(Calculator):
                 method=method,
                 pal=self.pal,
                 mem=self.mem,
+                fchk=self.get_fchk_str(),
         )
         # inp = "\n".join([line.strip() for line in inp.split("\n")])
         return inp
@@ -154,7 +169,7 @@ class Psi4(Calculator):
     def parse_energy(self, path):
         with open(path / "psi4.out") as handle:
             text = handle.read()
-        en_regex = re.compile("Total Energy =\s*([\d\-\.]+)")
+        en_regex = re.compile("PARSE ENERGY: ([\d\-\.]+)")
         mobj = en_regex.search(text)
         result = {
             "energy": float(mobj[1])

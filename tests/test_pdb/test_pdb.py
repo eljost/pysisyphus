@@ -29,7 +29,7 @@ def test_pdb_write(this_dir):
     geom = geom_loader("lib:h2o.xyz")
     pdb_str = geom_to_pdb_str(geom)
 
-    # with open("h2o.pdb", "w") as handle:
+    # with open("h2o_ref.pdb", "w") as handle:
         # handle.write(pdb_str)
 
     # Reference pdb
@@ -42,6 +42,10 @@ def test_pdb_write(this_dir):
 def test_geom_to_pdb(this_dir):
     geom = geom_loader(this_dir / "five_chloroforms_xtbopt.xyz")
     pdb_str = geom_to_pdb_str(geom, detect_fragments=True)
+
+    with open("five_chloroforms_ref.pdb", "w") as handle:
+        handle.write(pdb_str)
+
     # Reference pdb
     with open(this_dir / "five_chloroforms_ref.pdb") as handle:
         ref = handle.read()

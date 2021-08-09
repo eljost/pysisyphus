@@ -6,9 +6,11 @@ class NeedNewInternalsException(Exception):
         super().__init__(*args, **kwargs)
 
         self.coords3d = coords3d
+        if invalid_inds is None:
+            invalid_inds = ()
+        self.invalid_inds = invalid_inds
         if invalid_prims is None:
             invalid_prims = ()
-        self.invalid_inds = invalid_inds
         self.invalid_prims = invalid_prims
 
 

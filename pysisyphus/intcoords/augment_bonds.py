@@ -47,7 +47,7 @@ def find_missing_strong_bonds(geom, hessian, bond_factor=1.7, thresh=0.3,
     # Define only bonds
     red = RedundantCoords(geom.atoms, geom.cart_coords,
                           bond_factor=bond_factor, bonds_only=True)
-    cur_bonds = set([frozenset(b) for b in geom.internal.bond_indices])
+    cur_bonds = set([frozenset(b) for b in geom.internal.bond_atom_indices])
 
     # Transform cartesian hessian to bond hessian
     bond_hess = red.transform_hessian(hessian)
@@ -60,7 +60,7 @@ def find_missing_strong_bonds(geom, hessian, bond_factor=1.7, thresh=0.3,
     trans_vec = eigvecs[:, root]
     # Find bonds that strongly contribute to the selected transition vector
     strong = np.abs(trans_vec) > thresh
-    strong_bonds = np.array(red.bond_indices)[strong]
+    strong_bonds = np.array(red.bond_atom_indices)[strong]
     strong_bonds = set([frozenset(b) for b in strong_bonds])
 
     # Check which strong bonds are missing from the currently defiend bonds
@@ -75,7 +75,7 @@ def find_missing_bonds_by_projection(geom, hessian, bond_factor=2.0, bond_thresh
     def array2set(arr):
         return set([tuple(_) for _ in arr])
 
-    bonds_present = array2set(geom.internal.bond_indices)
+    bonds_present = array2set(geom.internal.bond_atom_indices)
     eigvals, eigvecs = np.linalg.eigh(hessian)
 
     # There are probably no bonds missing if there are no negative eigenvalues

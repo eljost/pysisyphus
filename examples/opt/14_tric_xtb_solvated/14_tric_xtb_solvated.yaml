@@ -1,0 +1,16 @@
+geom:
+ type: tric
+ fn: lib:SulfateInSolution.xyz
+calc:
+ type: xtb
+ pal: 6
+ charge: -2
+ quiet: True
+opt:
+ hessian_init: simple
+ max_cycles: 175
+ # Avoid premature convergence
+ overachieve_factor: 0.0
+assert:
+ opt.is_converged: True
+ opt_geom.energy: -167.542527

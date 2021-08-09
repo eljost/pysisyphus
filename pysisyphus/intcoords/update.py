@@ -44,12 +44,21 @@ def update_internals(
     old_internals,
     primitives,
     dihedral_inds,
+    rotation_inds,
     check_dihedrals=False,
+    rotation_thresh=0.9,
     logger=None,
 ):
     prim_internals = eval_primitives(new_coords3d, primitives)
-    new_internals = [prim_int.val for prim_int in prim_internals]
-    internal_diffs = np.array(new_internals) - old_internals
+    new_internals = np.array([prim_int.val for prim_int in prim_internals])
+    internal_diffs = new_internals - old_internals
+
+    new_rotations = new_internals[rotation_inds]
+    # Check for approaching singularity as discussed in the geomeTRIC paper. The
+    # original code seems to check this only for linear molecules and instead
+    # does some +2π/-2π magic, similar to how dihedrals differences are handled.
+    if (np.abs(new_rotations / np.pi) >= rotation_thresh).any():
+        raise NeedNewInternalsException(new_coords3d)
 
     dihedrals = [prim_internals[i] for i in dihedral_inds]
     if len(dihedrals) == 0:
@@ -94,9 +103,11 @@ def transform_int_step(
     Bt_inv_prim,
     primitives,
     dihedral_inds,
+    rotation_inds,
     check_dihedrals=False,
     freeze_atoms=None,
     cart_rms_thresh=1e-6,
+    Bt_inv_prim_getter=None,
     logger=None,
 ):
     """Transformation is done in primitive internals, so int_step must be given
@@ -113,6 +124,10 @@ def transform_int_step(
     old_internals = cur_internals
     backtransform_failed = True
     for i in range(25):
+        if Bt_inv_prim_getter is not None:
+            Bt_inv_prim = Bt_inv_prim_getter(new_cart_coords)
+            log(logger, f"Recalculated (B^T)^+ in microcycle {i}")
+
         cart_step = Bt_inv_prim.T.dot(remaining_int_step)
         # Remove step from frozen atoms.
         cart_step.reshape(-1, 3)[freeze_atoms] = 0.0
@@ -125,6 +140,7 @@ def transform_int_step(
             old_internals,
             primitives,
             dihedral_inds,
+            rotation_inds,
             check_dihedrals=check_dihedrals,
             logger=logger,
         )

@@ -5,19 +5,27 @@ from math import exp
 import numpy as np
 
 from pysisyphus.elem_data import COVALENT_RADII as CR
+from pysisyphus.helpers_pure import hash_arr
 
 
 class Primitive(metaclass=abc.ABCMeta):
-    def __init__(self, indices, periodic=False, calc_kwargs=None):
+    def __init__(self, indices, periodic=False, calc_kwargs=None, cache=False):
         self.indices = list(indices)
         self.periodic = periodic
         if calc_kwargs is None:
             calc_kwargs = ()
         self.calc_kwargs = calc_kwargs
+        self.cache = cache
+
         self.logger = logging.getLogger("internal_coords")
+        self.val_cache = {}
+        self.grad_cache = {}
 
     def log(self, msg, lvl=logging.DEBUG):
         self.logger.log(lvl, msg)
+
+    def log_dbg(self, msg):
+        self.log(msg, lvl=logging.DEBUG)
 
     @staticmethod
     def parallel(u, v, thresh=1e-6):
@@ -57,19 +65,56 @@ class Primitive(metaclass=abc.ABCMeta):
         cov_rad_sum = CR[atoms[i].lower()] + CR[atoms[j].lower()]
         return exp(-(distance / cov_rad_sum - 1))
 
+    # def calculate(self, coords3d, indices=None, gradient=False):
+        # if indices is None:
+            # indices = self.indices
+
+        # # Gather calc_kwargs
+        # calc_kwargs = {key: getattr(self, key) for key in self.calc_kwargs}
+
+        # return self._calculate(
+            # coords3d=coords3d,
+            # indices=indices,
+            # gradient=gradient,
+            # **calc_kwargs,
+        # )
+
     def calculate(self, coords3d, indices=None, gradient=False):
         if indices is None:
             indices = self.indices
 
+        if self.cache:
+            cur_hash = hash_arr(coords3d[indices], precision=8)
+            try:
+                val = self.val_cache[cur_hash]
+                if gradient:
+                    grad = self.grad_cache[cur_hash]
+                    self.log_dbg(f"Returning cached value & gradient for hash '{cur_hash}'.")
+                    return val, grad
+                else:
+                    self.log_dbg(f"Returning cached value for hash '{cur_hash}'.")
+                    return val
+            except KeyError:
+                self.log_dbg(f"Hash '{cur_hash}' is not yet cached.")
+
         # Gather calc_kwargs
         calc_kwargs = {key: getattr(self, key) for key in self.calc_kwargs}
 
-        return self._calculate(
+        results =  self._calculate(
             coords3d=coords3d,
             indices=indices,
             gradient=gradient,
             **calc_kwargs,
         )
+
+        if self.cache:
+            if gradient:
+                val, grad = results
+                self.val_cache[cur_hash] = val
+                self.grad_cache[cur_hash] = grad
+            else:
+                self.val_cache[cur_hash] = results
+        return results
 
     def jacobian(self, coords3d, indices=None):
         if indices is None:

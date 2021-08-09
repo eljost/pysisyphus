@@ -359,6 +359,9 @@ class HessianOptimizer(Optimizer):
         energy = self.geometry.energy
         self.forces.append(-gradient)
         self.energies.append(energy)
+        self.log(f"    Energy: {energy: >12.6f} au")
+        self.log(f"norm(grad): {np.linalg.norm(gradient): >12.6f} au / bohr (rad)")
+        self.log(f" rms(grad): {np.sqrt(np.mean(gradient**2)): >12.6f} au / bohr (rad)")
 
         can_update = (
             # Allows gradient differences

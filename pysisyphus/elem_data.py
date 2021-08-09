@@ -29,6 +29,7 @@ MASS_DICT = {
     'bh': 264, 'hs': 277, 'mt': 268, 'ds': 281, 'rg': 272, 'cn': 285, 'nh': 286,
     'fl': 289,'mc': 289, 'lv': 293, 'ts': 294, 'og': 294
 }
+KNOWN_ATOMS = tuple(MASS_DICT.keys())
 
 
 # Taken from periodictable-1.5.3

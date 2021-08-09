@@ -4,7 +4,6 @@ from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
 from pysisyphus.tsoptimizers.TRIM import TRIM
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 from pysisyphus.tsoptimizers.dimer import dimer_method
-from pysisyphus.tsoptimizers.birkholz import birkholz_interpolation
 
 __all__ = [
     "RSPRFOptimizer",

@@ -35,6 +35,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    coordinate_systems.rst
    calculators.rst
    min_optimization.rst
+   scans.rst
    es_optimization.rst
    chainofstates.rst
    tsoptimization.rst

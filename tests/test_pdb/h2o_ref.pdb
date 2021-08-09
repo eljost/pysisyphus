@@ -1,5 +1,7 @@
 REMARK 1 Created by pysisyphus
-HETATM    0    O         0      -0.000  -0.111   0.000  1.00  0.00           O
-HETATM    1    H         0       0.784   0.443   0.000  1.00  0.00           H
-HETATM    2    H         0      -0.784   0.443   0.000  1.00  0.00           H
+HETATM    1    O         1      -0.000  -0.111   0.000  1.00  0.00           O
+HETATM    2    H         1       0.784   0.443   0.000  1.00  0.00           H
+HETATM    3    H         1      -0.784   0.443   0.000  1.00  0.00           H
+TER       4              1
+CONECT    1    2    3
 END
