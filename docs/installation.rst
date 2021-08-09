@@ -11,7 +11,7 @@ whether it is an `Anaconda <https://www.anaconda.com/>`_ environment or a
 .. code-block:: bash
 
     # Optional: Create separate Anaconda environment
-    conda create -n pysis-env python=3.7
+    conda create -n pysis-env python=3.9
     activate pysis-env
     # or virtual environment
     python3 -m venv pysis-env
@@ -27,7 +27,7 @@ do any development this is probably the preferred way of installation.
 
     pip install pysisyphus
     # Installation of extras is also possible
-    # pip install pysisyphus[qcengine]
+    # pip install pysisyphus[qcengine,ase,pyscf,sphinx]
 
 Installation from source
 ========================
@@ -171,4 +171,5 @@ Example runmopac.sh
 Verifying Installation
 ==================================
 By executing :code:`pytest -v --pyargs pysisyphus.tests` a series of quick tests can be
-executed, verifing successful calculator setup.
+executed, verifing successful calculator setup. Running these tests requires `pyscf` to be
+present (`pip install pyscf`).
