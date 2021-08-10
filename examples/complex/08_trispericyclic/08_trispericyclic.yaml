@@ -1,0 +1,28 @@
+# See
+#   https://pubs.acs.org/doi/pdf/10.1021/jacs.8b12674
+# and
+#   http://comporgchem.com/blog/?p=4329
+geom:
+ type: dlc
+ fn: [min_xtbopt.xyz, prod_xtbopt.xyz]
+preopt:
+cos:
+ type: gs
+ max_nodes: 18
+ climb: True
+opt:
+ type: string
+ align: False
+ max_cycles: 20
+tsopt:
+ type: rsirfo
+ do_hess: True
+ thresh: gau
+ hessian_recalc: 3
+irc:
+ type: eulerpc
+ rms_grad_thresh: 0.0005
+endopt:
+calc:
+ type: xtb
+ pal: 6
