@@ -16,10 +16,11 @@ def make_sym_mat(table_block):
     mat_size = int(table_block[1])
     # Orca prints blocks of 5 columns
     arr = np.array(table_block[2:], dtype=np.float)
-    assert(arr.size == mat_size**2)
-    block_size = 5*mat_size
-    cbs = [arr[i*block_size:(i+1)*block_size].reshape(mat_size, -1)
-           for i in range(arr.size // block_size + 1)
+    assert arr.size == mat_size ** 2
+    block_size = 5 * mat_size
+    cbs = [
+        arr[i * block_size : (i + 1) * block_size].reshape(mat_size, -1)
+        for i in range(arr.size // block_size + 1)
     ]
     return np.concatenate(cbs, axis=1)
 
@@ -27,19 +28,19 @@ def make_sym_mat(table_block):
 def save_orca_pc_file(point_charges, pc_fn, hardness=None):
     point_charges = point_charges.copy()
     # ORCA excepcts point charge positions in Angstrom
-    point_charges[:,:3] *= BOHR2ANG
+    point_charges[:, :3] *= BOHR2ANG
 
     # ORCA also expects the ordering <q> <x> <y> <z>, so we have to resort.
     shape = point_charges.shape
     if hardness is not None:
-        shape = shape[0], shape[1]+1
+        shape = shape[0], shape[1] + 1
     _ = np.zeros_like(point_charges)
     _ = np.zeros(shape)
-    _[:,0] = point_charges[:,3]
-    _[:,1:4] = point_charges[:,:3]
+    _[:, 0] = point_charges[:, 3]
+    _[:, 1:4] = point_charges[:, :3]
 
     if hardness:
-        _[:,4] = hardness
+        _[:, 4] = hardness
     np.savetxt(pc_fn, _, fmt="%16.10f", header=str(len(point_charges)), comments="")
 
 
@@ -47,8 +48,44 @@ class ORCA(OverlapCalculator):
 
     conf_key = "orca"
 
-    def __init__(self, keywords, blocks="", gbw=None, mem=2000,
-                 do_stable=False, numfreq=False, **kwargs):
+    def __init__(
+        self,
+        keywords,
+        blocks="",
+        gbw=None,
+        do_stable=False,
+        numfreq=False,
+        mem=2000,
+        **kwargs,
+    ):
+        """ORCA calculator.
+
+        Wrapper for creating ORCA input files for energy, gradient
+        and Hessian calculations. The PAL and memory inputs must not
+        be given in the keywords and/or blocks, as they are handled
+        by the 'pal' and 'memory' arguments.
+
+        Parameters
+        ----------
+        keywords : str
+            Keyword line, as normally given in ORCA, excluding the
+            leading "!".
+        blocks : str, optional
+            ORCA block input(s), e.g. for TD-DFT calculations (%tddft ... end).
+            As the blocks start with a leading "%", wrapping the input in quotes
+            ("") is required, otherwise the parsing will fail.
+        gbw : str, optional
+            Path to an input gbw file, which will be used as initial guess
+            for the first calculation. Will be overriden later, with the
+            path to the gbw file of a previous calculation.
+        do_stable: bool, optional
+            Run stability analysis until a stable wavefunction is obtained,
+            before every calculation.
+        numfreq : boo, optional
+            Use numerical frequencies instead of analytical ones.
+        mem : int
+            Mememory per core in MB.
+        """
         super().__init__(**kwargs)
 
         self.keywords = keywords
@@ -58,14 +95,24 @@ class ORCA(OverlapCalculator):
         self.do_stable = bool(do_stable)
         self.freq_keyword = "numfreq" if numfreq else "freq"
 
-        assert (("pal" not in keywords.lower())
-                and ("nprocs" not in blocks.lower())), "PALn/nprocs not " \
-                "allowed! Use 'pal: n' in the 'calc' section instead."
-        assert "maxcore" not in blocks.lower(), "maxcore not allowed! " \
-                "Use 'mem: n' in the 'calc' section instead!"
+        assert ("pal" not in keywords.lower()) and ("nprocs" not in blocks.lower()), (
+            "PALn/nprocs not " "allowed! Use 'pal: n' in the 'calc' section instead."
+        )
+        assert "maxcore" not in blocks.lower(), (
+            "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
+        )
 
-        self.to_keep = ("inp", "out:orca.out", "gbw", "engrad", "hessian",
-                        "cis", "molden:orca.molden", "hess", "pcgrad")
+        self.to_keep = (
+            "inp",
+            "out:orca.out",
+            "gbw",
+            "engrad",
+            "hessian",
+            "cis",
+            "molden:orca.molden",
+            "hess",
+            "pcgrad",
+        )
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -76,7 +123,7 @@ class ORCA(OverlapCalculator):
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
-        self.orca_input="""!{keywords} {calc_type}
+        self.orca_input = """!{keywords} {calc_type}
         {moinp}
 
         %pal nprocs {pal} end
@@ -112,8 +159,9 @@ class ORCA(OverlapCalculator):
             %moinp "{os.path.abspath(gbw)}" """
         return moinp_str
 
-    def prepare_input(self, atoms, coords, calc_type, point_charges=None,
-                      do_stable=False):
+    def prepare_input(
+        self, atoms, coords, calc_type, point_charges=None, do_stable=False
+    ):
         coords = self.prepare_coords(atoms, coords)
         if self.gbw:
             self.log(f"Using {self.gbw}")
@@ -131,16 +179,16 @@ class ORCA(OverlapCalculator):
         blocks = self.get_block_str() + stable_block
 
         inp = self.orca_input.format(
-                                keywords=self.keywords,
-                                calc_type=calc_type,
-                                moinp=self.get_moinp_str(self.gbw),
-                                pal=self.pal,
-                                mem=self.mem,
-                                blocks=blocks,
-                                pointcharges=pc_str,
-                                coords=coords,
-                                charge=self.charge,
-                                mult=self.mult,
+            keywords=self.keywords,
+            calc_type=calc_type,
+            moinp=self.get_moinp_str(self.gbw),
+            pal=self.pal,
+            mem=self.mem,
+            blocks=blocks,
+            pointcharges=pc_str,
+            coords=coords,
+            charge=self.charge,
+            mult=self.mult,
         )
         return inp
 
@@ -166,8 +214,9 @@ class ORCA(OverlapCalculator):
                 self.log(f"Found stable wavefunction in cycle {i}!")
                 break
         else:
-            raise Exception("Could not find stable wavefunction in {max_cycles}! "
-                            "Aborting.")
+            raise Exception(
+                "Could not find stable wavefunction in {max_cycles}! " "Aborting."
+            )
 
     def parse_stable(self, path):
         with open(path / "orca.out") as handle:
@@ -225,7 +274,7 @@ class ORCA(OverlapCalculator):
         to execute ORCA with the stored cmd of this calculator."""
         inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
-                "calc": "noparse",
+            "calc": "noparse",
         }
         results = self.run(inp, **kwargs)
         if self.track:
@@ -236,16 +285,20 @@ class ORCA(OverlapCalculator):
         # Create .molden file when CDDs are requested
         if self.cdds:
             cmd = "orca_2mkl orca -molden".split()
-            proc = subprocess.Popen(cmd, cwd=path, universal_newlines=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+            proc = subprocess.Popen(
+                cmd,
+                cwd=path,
+                universal_newlines=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             proc.wait()
             shutil.copy(path / "orca.molden.input", path / "orca.molden")
 
     def parse_hessian(self, path):
         results = {}
         hessian_fn = glob.glob(os.path.join(path, "*.hess"))
-        assert(len(hessian_fn) == 1)
+        assert len(hessian_fn) == 1
         hessian_fn = hessian_fn[0]
         if not hessian_fn:
             raise Exception("ORCA calculation failed.")
@@ -264,9 +317,7 @@ class ORCA(OverlapCalculator):
         scientific_block = table_header_line + pp.OneOrMore(scientific_line)
         float_line = pp.Suppress(integer) + float_
         comment_line = pp.Literal("#") + pp.restOfLine
-        mass_xyz_line = (pp.Word(pp.alphas) + float_ +
-                         pp.Group(pp.OneOrMore(float_))
-        )
+        mass_xyz_line = pp.Word(pp.alphas) + float_ + pp.Group(pp.OneOrMore(float_))
 
         block_name = pp.Word(pp.alphas + "$_")
         block_length = integer
@@ -274,8 +325,8 @@ class ORCA(OverlapCalculator):
         block_int = block_name + block_length
         block_float = block_name + float_
         block_table = block_name + integer + pp.OneOrMore(scientific_block)
-        block_table_two_int = (block_name + integer + pp.Suppress(integer)
-                               + pp.OneOrMore(scientific_block)
+        block_table_two_int = (
+            block_name + integer + pp.Suppress(integer) + pp.OneOrMore(scientific_block)
         )
         block_float_table = block_name + integer + pp.OneOrMore(float_line)
         block_atoms = block_name + integer + pp.OneOrMore(mass_xyz_line)
@@ -288,9 +339,16 @@ class ORCA(OverlapCalculator):
         normal_modes = block_table_two_int.setResultsName("normal_modes")
         atoms = block_atoms.setResultsName("atoms")
 
-        parser = (block_name + act_atom + act_coord + act_energy
-                  + hessian + vib_freqs + normal_modes
-                  + pp.OneOrMore(comment_line) + atoms
+        parser = (
+            block_name
+            + act_atom
+            + act_coord
+            + act_energy
+            + hessian
+            + vib_freqs
+            + normal_modes
+            + pp.OneOrMore(comment_line)
+            + atoms
         )
         parsed = parser.parseString(text)
         results["hessian"] = make_sym_mat(parsed["hessian"])
@@ -308,8 +366,9 @@ class ORCA(OverlapCalculator):
         if self.do_tddft:
             """FIXME: Store the right energy etc. similar to
             parse_engrad."""
-            raise Exception("Proper handling of TDDFT and hessian "
-                            " is not yet implemented.")
+            raise Exception(
+                "Proper handling of TDDFT and hessian " " is not yet implemented."
+            )
         return results
 
     def parse_energy(self, path):
@@ -317,7 +376,7 @@ class ORCA(OverlapCalculator):
         if not log_fn:
             raise Exception("ORCA calculation failed.")
 
-        assert(len(log_fn) == 1)
+        assert len(log_fn) == 1
         log_fn = log_fn[0]
         with open(log_fn) as handle:
             text = handle.read()
@@ -331,14 +390,14 @@ class ORCA(OverlapCalculator):
         if not engrad_fn:
             raise Exception("ORCA calculation failed.")
 
-        assert(len(engrad_fn) == 1)
+        assert len(engrad_fn) == 1
         engrad_fn = engrad_fn[0]
         with open(engrad_fn) as handle:
             engrad = handle.read()
         engrad = re.findall(r"([\d\-\.]+)", engrad)
         atoms = int(engrad.pop(0))
         energy = float(engrad.pop(0))
-        force = -np.array(engrad[:3*atoms], dtype=float)
+        force = -np.array(engrad[: 3 * atoms], dtype=float)
         results["energy"] = energy
         results["forces"] = force
 
@@ -355,7 +414,7 @@ class ORCA(OverlapCalculator):
 
         # the header consists of 9 4-byte integers, the first 5
         # of which give useful info.
-        nvec  = struct.unpack('i', cis_handle.read(4))[0]
+        nvec = struct.unpack("i", cis_handle.read(4))[0]
         # header array contains:
         # [0] index of first alpha occ,  is equal to number of frozen alphas
         # [1] index of last  alpha occ
@@ -365,8 +424,7 @@ class ORCA(OverlapCalculator):
         # [5] index of last  beta  occ,  for restricted equal to -1
         # [6] index of first beta  virt, for restricted equal to -1
         # [7] index of last  beta  virt, for restricted equal to -1
-        header = [struct.unpack('i', cis_handle.read(4))[0]
-                  for i in range(8)]
+        header = [struct.unpack("i", cis_handle.read(4))[0] for i in range(8)]
 
         if any([flag != -1 for flag in header[4:8]]):
             raise Exception("parse_cis, no support for unrestricted MOs")
@@ -374,7 +432,7 @@ class ORCA(OverlapCalculator):
         nfrzc = header[0]
         nocc = header[1] + 1
         nact = nocc - nfrzc
-        nmo  = header[3] + 1
+        nmo = header[3] + 1
         nvir = nmo - header[2]
         lenci = nact * nvir
         self.log(f"nmo = {nmo}, nocc = {nocc}, nact = {nact}, nvir = {nvir}")
@@ -386,11 +444,11 @@ class ORCA(OverlapCalculator):
         for ivec in range(nvec):
             # header of each vector
             # contains 6 4-byte ints, then 1 8-byte double, then 8 byte unknown
-            nele,d1,mult,d2,iroot,d3 = struct.unpack('iiiiii', cis_handle.read(24))
-            ene,d3 = struct.unpack('dd', cis_handle.read(16))
+            nele, d1, mult, d2, iroot, d3 = struct.unpack("iiiiii", cis_handle.read(24))
+            ene, d3 = struct.unpack("dd", cis_handle.read(16))
             self.log(f"nele = {nele}, mult = {mult}, iroot = {iroot}")
             # then comes nact * nvirt 8-byte doubles with the coefficients
-            coeff = struct.unpack(lenci*'d', cis_handle.read(lenci*8))
+            coeff = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
             coeff = np.array(coeff).reshape(-1, nvir)
             # create full array, i.e nocc x nvirt
             coeff_full = np.zeros((nocc, nvir))
@@ -399,15 +457,15 @@ class ORCA(OverlapCalculator):
             # in this case, we have a non-TDA state!
             # and we need to compute (prevvector+currentvector)/2 = X vector
             if prevroot == iroot:
-                self.log('Constructing X-vector of RPA state')
+                self.log("Constructing X-vector of RPA state")
                 x_plus_y = coeffs[-1]
                 x_minus_y = coeff_full
-                x = 0.5*(x_plus_y + x_minus_y)
+                x = 0.5 * (x_plus_y + x_minus_y)
                 coeffs[-1] = x
             else:
                 coeffs.append(coeff_full)
 
-            prevroot=iroot
+            prevroot = iroot
         cis_handle.close()
         return np.array(coeffs)
 
@@ -424,46 +482,46 @@ class ORCA(OverlapCalculator):
         Pointer @+32: ECP data
         """
 
-        with open(gbw_fn, 'rb') as handle:
+        with open(gbw_fn, "rb") as handle:
             handle.seek(24)
-            offset = struct.unpack('<q', handle.read(8))[0]
+            offset = struct.unpack("<q", handle.read(8))[0]
             handle.seek(offset)
-            operators = struct.unpack('<i', handle.read(4))[0]
-            dimension = struct.unpack('<i', handle.read(4))[0]
+            operators = struct.unpack("<i", handle.read(4))[0]
+            dimension = struct.unpack("<i", handle.read(4))[0]
 
             # print('Offset: {}'.format(offset))
             # print('Number of Operators: {}'.format(operators))
             # print('Basis Dimension: {}'.format(dimension))
 
-            coeffs_fmt = "<" + dimension**2 * "d"
+            coeffs_fmt = "<" + dimension ** 2 * "d"
 
             assert operators == 1, "Unrestricted case is not implemented!"
 
             for i in range(operators):
-                #print('\nOperator: {}'.format(i))
-                coeffs = struct.unpack(coeffs_fmt, handle.read(8*dimension**2))
-                occupations = struct.iter_unpack('<d', handle.read(8*dimension))
-                energies = struct.iter_unpack('<d', handle.read(8*dimension))
-                irreps = struct.iter_unpack('<i', handle.read(4*dimension))
-                cores = struct.iter_unpack('<i', handle.read(4*dimension))
+                # print('\nOperator: {}'.format(i))
+                coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension ** 2))
+                occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
+                energies = struct.iter_unpack("<d", handle.read(8 * dimension))
+                irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
+                cores = struct.iter_unpack("<i", handle.read(4 * dimension))
 
                 coeffs = np.array(coeffs).reshape(-1, dimension).T
 
                 # print('Coefficients')
                 # for coef in coefficients:
-                    # print('{:16.12f}'.format(*coef))
+                # print('{:16.12f}'.format(*coef))
                 # print('Occupations')
                 # for occupation in occupations:
-                    # print('{:16.12f}'.format(*occupation))
+                # print('{:16.12f}'.format(*occupation))
                 # print('Energies')
                 # for energy in energies:
-                    # print('{:16.12f}'.format(*energy))
+                # print('{:16.12f}'.format(*energy))
                 # print('Irreps')
                 # for irrep in irreps:
-                    # print('{}'.format(*irrep))
+                # print('{}'.format(*irrep))
                 # print('Core')
                 # for core in cores:
-                    # print('{}'.format(*core))
+                # print('{}'.format(*core))
             return coeffs
 
     def parse_all_energies(self):
@@ -487,14 +545,16 @@ class ORCA(OverlapCalculator):
             text = handle.read()
         electron_re = r"NEL\s*....\s*(\d+)"
         electrons = int(re.search(electron_re, text)[1])
-        assert(electrons % 2 == 0), "unrestricted is not yet supported!"
+        assert electrons % 2 == 0, "unrestricted is not yet supported!"
         occ_num = int(electrons / 2)
 
         mo_re = r"Dim\s*....\s*(\d+)"
         mo_num = int(re.search(mo_re, text)[1])
         virt_num = mo_num - occ_num
-        self.log(f"found {electrons} electrons, {mo_num} MOs, with "
-                 f"{occ_num} occupied and {virt_num} virtual.")
+        self.log(
+            f"found {electrons} electrons, {mo_num} MOs, with "
+            f"{occ_num} occupied and {virt_num} virtual."
+        )
         return occ_num, virt_num
 
     def set_mo_coeffs(self, mo_coeffs=None, gbw=None):
