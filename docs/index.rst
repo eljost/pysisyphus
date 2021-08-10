@@ -24,7 +24,7 @@ Contrubtions are welcome, so feel free to submit a PR.
 .. _issue: https://github.com/eljost/pysisyphus/issues
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 4
    :numbered:
    :caption: Contents:
 

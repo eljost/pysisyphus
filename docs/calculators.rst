@@ -2,14 +2,16 @@ Calculators
 ***********
 
 Exploring potential energy surfaces (PESs) requires calculation of energies
-and its derivatives (gradients, Hessian matrices). Pysisyphus implements various
-analytical 2d potentials for testing purposes, as they allow fast evaluations.
+and its derivatives (gradients, Hessian matrices).
+
+For testing purposes and method development, pysisyphus implements various analytical
+2d potentials, as they allow fast evaluations of the aforementioned quantities.
 Actual (production) calculations are carried out by wrapping existing quantum chemistry
 codes (ORCA, TURBOMOLE, Gaussian etc.) and delegating the required calculations to them.
-Pysisyphus generates all necessary inputs, exectes the code and parses the outputs
-for the required quantities.
+Pysisyphus generates all necessary inputs, executes the QC code and parses their output
+for the requested quantities.
 
-Furthermore pysisyphus provides several "meta"-calculators which wrap other calculators
+Furthermore pysisyphus provides several "meta"-calculators which wrap other (actual) calculators,
 to modify calculated energies and forces. Examples for this are the `Dimer`_ calculator,
 used for carrying out transition state searches or the `ONIOM`_ calculator,
 allowing  multi-level calculations comprising different levels of theory.
@@ -18,17 +20,63 @@ External forces, e.g. a restraining spherical potential or harmonic restraints o
 primitive internal coordinates (stretches, bends, torsion) can be applied with
 `ExternalPotential`_.
 
-Calculators with Excited state capabilities
-===========================================
+YAML input
+==========
 
-Calculators with excited state (ES) capabilities inherit from OverlapCalculator.
+Possible keywords for the YAML input can be derived from inspecting the possible arguments
+of the `Calculator` base-class (see below) and the possible arguments of the respective calculator,
+e.g. ORCA or XTB.
+
+The most commonly used keywords, derived from the `Calculator` baseclass are `mem`,
+handling the requested memory per core in MB, `pal`, handling the number of requested CPU cores,
+`charge`, the total charge of the system and `mult`, the systems multiplicity.
+
+For (excited state, ES) calculations carried out with calculators derived from `OverlapCalculator`
+additional keywords are possible. The most common keywords controlling ES calculations are `track`, activating
+ES tracking, `ovlp_type`, selecting the tracking algorithm and `ovlp_with`, handling the selection of the
+reference cycle.
+
+An example input highlighting the most important keywords is shown below.
+
+.. code-block:: yaml
+
+    geom:
+     [... omitted ...]
+    calc:
+     type: orca                     # Calculator type, e.g. g09/g16/openmolcas/
+                                    # orca/pyscf/turbomole/dftb+/mopac/psi4/xtb
+
+     pal: 1                         # Number of CPU cores
+     mem: 1000                      # Memory per core
+     charge: 0                      # Charge
+     mult: 1                        # Multiplicity
+     # Keywords for ES calculations
+     track: False                   # Activate ES tracking
+     ovlp_type: tden                # Tracking algorithm
+     ovlp_with: previous            # Reference cycle selection
+     # Additional calculator specific keywords
+     [... omitted ...]
+    opt:
+     [... omitted ...]
+
+
+Calculator base classes
+=======================
+
+.. automodule:: pysisyphus.calculators.Calculator
+    :members:
+    :undoc-members:
 
 OverlapCalculator base class
-----------------------------
+============================
 .. automodule:: pysisyphus.calculators.OverlapCalculator
     :members:
     :undoc-members:
     :show-inheritance:
+
+
+Calculators with Excited state capabilities
+===========================================
 
 Gaussian09
 ----------
@@ -50,14 +98,14 @@ OpenMolcas
     :undoc-members:
     :show-inheritance:
 
-ORCA 4.2.1
+ORCA 4.2.1 / 5.0.1
 ----------
 .. automodule:: pysisyphus.calculators.ORCA
     :members:
     :undoc-members:
     :show-inheritance:
 
-PySCF 1.7.x
+PySCF 1.7.6
 -----------
 .. automodule:: pysisyphus.calculators.PySCF
     :members:
@@ -244,10 +292,3 @@ TIP3P
     :members:
     :undoc-members:
     :show-inheritance:
-
-Calculator base class
-=====================
-
-.. automodule:: pysisyphus.calculators.Calculator
-    :members:
-    :undoc-members:

@@ -26,25 +26,27 @@ class Calculator:
 
         Parameters
         ----------
-        calc_number : int
+        calc_number : int, default=0
             Identifier of the Calculator. Used in distinguishing it from
             other Calculators, e.g. in ChainOfStates calculations. Also
             used in the creation of filenames.
-        charge : int
+        charge : int, default=0
             Molecular charge.
-        mult : int
+        mult : int, default=1
             Molecular multiplicity (1 = singlet, 2 = doublet, ...)
-        base_name : str
+        base_name : str, default=calculator
             Generated filenames will start with this string.
-        pal : int
+        pal : int, default=1
             Positive integer that gives the number of physical cores to
             use on 1 node.
-        mem : int
-            Mememory per core in MB.
+        mem : int, default=1000
+            Mememory per core in MB. The total amount of memory is given as
+            mem*pal.
         last_calc_cycle : int
             Internal variable used in restarts.
         clean_after : bool
-            Delete the temporary directory after calculations.
+            Delete temporary directory were calculations were executed
+            after a calculation.
         out_dir : str
             Path that is prepended to generated filenames.
         """
