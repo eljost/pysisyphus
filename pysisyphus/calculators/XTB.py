@@ -34,6 +34,32 @@ class XTB(Calculator):
         quiet=False,
         **kwargs,
     ):
+        """XTB calculator.
+
+        Wrapper for running energy, gradient and Hessian calculations by
+        XTB.
+
+        Parameters
+        ----------
+        gbsa : str, optional
+            Solvent for GBSA calculation, by default no solvent model is
+            used.
+        gfn : int or str, must be (0, 1, 2, or "ff")
+            Hamiltonian for the XTB calculation (GFN0, GFN1, GFN2, or GFNFF).
+        acc : float, optional
+            Accuracy control of the calculation, the lower the tighter several
+            numerical thresholds are chosen.
+        topo: str, optional
+            Path the a GFNFF-topolgy file. As setting up the topology may take
+            some time for sizable systems, it may be desired to reuse the file.
+        topo_update : int
+            Integer controlling the update interval of the GFNFF topology update.
+            If supplied, the topolgy will be recreated every N-th calculation.
+        mem : int
+            Mememory per core in MB.
+        quiet : bool, optional
+            Suppress creation of log files.
+        """
         super().__init__(**kwargs)
 
         self.gbsa = gbsa
