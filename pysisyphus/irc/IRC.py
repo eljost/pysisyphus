@@ -279,7 +279,7 @@ class IRC:
         step_minus = mw_step_minus / self.m_sqrt
         self.log(msg)
         print(msg)
-        print(f"Norm of initial displacement step: {np.linalg.norm(step_plus):.4f}")
+        print(f"Initial step length (not mass-weighted): {np.linalg.norm(step_plus):.4f}")
         # self.log("")
         return step_plus, step_minus
 
