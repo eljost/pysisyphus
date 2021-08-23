@@ -772,7 +772,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
 
 
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
-    print(highlight_text(f"Running IRC"))
+    print(highlight_text(f"Running IRC") + "\n")
 
     calc = calc_getter()
     calc.base_name = "irc"

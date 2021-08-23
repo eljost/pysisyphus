@@ -17,7 +17,7 @@ from pysisyphus.helpers_pure import (
     eigval_to_wavenumber,
     report_isotopes,
 )
-from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd
+from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd, cubic_displ_for_h5
 from pysisyphus.io import save_third_deriv
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
@@ -40,6 +40,7 @@ class IRC:
         displ="energy",
         displ_energy=1e-3,
         displ_length=0.1,
+        displ_third_h5=None,
         rms_grad_thresh=1e-3,
         energy_thresh=1e-6,
         force_inflection=True,
@@ -74,6 +75,7 @@ class IRC:
         ), f"'displ: {self.displ}' not in {self.valid_displs}"
         self.displ_energy = float(displ_energy)
         self.displ_length = float(displ_length)
+        self.displ_third_h5 = displ_third_h5
         self.rms_grad_thresh = float(rms_grad_thresh)
         self.energy_thresh = float(energy_thresh)
         self.force_inflection = force_inflection
@@ -238,6 +240,7 @@ class IRC:
 
         if self.downhill:
             mw_step_plus = mw_step_minus = np.zeros_like(self.transition_vector)
+            msg = "Downhill run. No initial displacement from the TS."
         elif self.displ == "length":
             msg = "Using length-based initial displacement from the TS."
             mw_step_plus = self.displ_length * mw_trans_vec
@@ -262,12 +265,18 @@ class IRC:
             mw_step_plus = step_length * mw_trans_vec
             mw_step_minus = -mw_step_plus
         elif self.displ == "energy_cubic":
-            Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
-            h5_fn = self.get_path_for_fn("third_deriv.h5")
-            save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
-            mw_step_plus, mw_step_minus = cubic_displ(
-                mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
-            )
+            if self.displ_third_h5:
+                self.log(f"Loaded 3rd derivative data from '{self.displ_third_h5}'")
+                mw_step_plus, mw_step_minus = cubic_displ_for_h5(
+                    self.displ_third_h5, -self.displ_energy
+                )
+            else:
+                Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
+                h5_fn = self.get_path_for_fn("third_deriv.h5")
+                save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
+                mw_step_plus, mw_step_minus = cubic_displ(
+                    mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
+                )
             msg = (
                 f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
                 "the TS using 3rd derivatives."
@@ -279,8 +288,11 @@ class IRC:
         step_minus = mw_step_minus / self.m_sqrt
         self.log(msg)
         print(msg)
-        print(f"Initial step length (not mass-weighted): {np.linalg.norm(step_plus):.4f}")
-        # self.log("")
+        print(
+            "Initial step lengths (not mass-weighted):\n"
+            f"\t Forward: {np.linalg.norm(step_plus):.4f} au\n"
+            f"\tBackward: {np.linalg.norm(step_minus):.4f} au"
+        )
         return step_plus, step_minus
 
     def get_conv_fact(self, mw_grad, min_fact=2.0):
