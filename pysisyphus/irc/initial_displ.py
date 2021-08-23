@@ -120,11 +120,51 @@ def cubic_displ(H, v0, w0, Gv, dE):
     def func(ds):
         return E_taylor(ds) - dE
 
-    def bisect_(a, b):
-        return bisect(func, a=a, b=b, full_output=True)
+    def prepare_bisect(x0, theta=1.25, max_cycles=20):
+        assert theta > 1.0
 
-    ds_plus, rr_plus = bisect_(0, 1)
-    ds_minus, rr_minus = bisect_(0, -1)
+        ds = x0
+        dE_min = func(0.0)
+        ds_min = ds
+        # Grow until we find an upper (lower) bound of the interval
+        for _ in range(max_cycles):
+            dE = func(ds)
+            if dE <= dE_min:
+                dE_min = dE_min
+                ds_min = ds
+            if dE <= 0.0:
+                break
+            ds *= theta
+        # Use best guess
+        else:
+            ds = ds_min
+        return ds
+
+    def bisect_(ds0):
+        try:
+            ds_, rr = bisect(func, a=0.0, b=ds0, full_output=True)
+        # Will be raised when f(a) and f(b) have the same sign.
+        except ValueError:
+            ds_ = ds0
+        return ds_
+
+    # import matplotlib.pyplot as plt
+    # dss = np.linspace(-1, 1, num=51)
+    # Es = E_taylor(dss) - E_taylor(0.0)
+    # Es *= 2625.499
+    # _, ax = plt.subplots()
+    # ax.plot(dss, Es, "o-")
+    # ax.axvline(0.0, c="k", ls="--")
+    # ax.axhline(dE*2625.499, c="k", ls=":")
+    # ax.set_xlabel("ds")
+    # ax.set_ylabel("dE / kJ mol⁻¹")
+    # plt.show()
+
+    plus_bound = prepare_bisect(0.1)
+    ds_plus = bisect_(plus_bound)
+
+    minus_bound = prepare_bisect(-0.1)
+    ds_minus = bisect_(minus_bound)
 
     def step(ds):
         return ds * v0 + ds ** 2 * v1 / 2
