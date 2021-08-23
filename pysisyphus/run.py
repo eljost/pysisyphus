@@ -1792,6 +1792,7 @@ def print_header():
         f"Git commit {get_versions()['full-revisionid']}\n"
         f"Executed at {datetime.datetime.now().strftime('%c')} on '{platform.node()}'\n"
         f"Platform: {platform.platform()}\n"
+        f"Interpreter: {sys.executable}\n"
     )
 
 
