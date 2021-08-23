@@ -48,6 +48,58 @@ class IRC:
         dump_fn="irc_data.h5",
         dump_every=5,
     ):
+        """Base class for IRC calculations.
+
+        Parameters
+        ----------
+        geometry : Geometry
+            Transtion state geometry, or initial geometry for downhill run.
+        step_length : float, optional
+            Step length in unweighted coordinates.
+        max_cycles : int, optional
+            Positive integer, controlloing the maximum number of IRC steps
+            taken in a direction (forward/backward/downhill).
+        downhill : bool, default=False
+            Downhill run from a non-stationary point with non-vanishing
+            gradient. Disables forward and backward runs.
+        forward : bool, default=True
+            Integrate IRC in positive s direction.
+        backward : bool, default=True
+            Integrate IRC in negative s direction.
+        mode : int, default=0
+            Use n-th root for initial displacement from TS.
+        hessian_init : str, default=None
+            Path to Hessian HDF5 file, e.g., from a previous TS calculation.
+        displ: str, one of ("energy", "length", "energy_cubic")
+            Controlls initial displacement from the TS. 'energy' assumes a
+            quadratic model, from which a step length for a given energy
+            lowering (see 'displ_energy') is determined. 'length' corresponds
+            to a displacement along the transition vector. 'energy_cubic' considers
+            3rd derivatives of the energy along the transition vector.
+        displ_energy : float, default=1e-3
+            Required energy lowering from the TS in au (Hartree). Used with
+            'displ: energy|energy_cubic'.
+        displ_length : float, default=0.1
+            Step length along the transition vector. Used only with
+            'displ: length'.
+        displ_third_h5: str, optional
+            Path to HDF5 file containing 3rd derivative information. Used with
+            'displ: energy_cubic'.
+        rms_grad_thresh : float, default=1e-3,
+            Convergence is signalled when to root mean square of the gradient
+            is less than or equal to 'rms_grad_thresh'.
+        energy_thresh : float, default=1e-6,
+            Signal convergence when the energy difference between two points
+            is equal to or less than 'energy_thresh'.
+        force_inflection : bool, optional
+            Don't indicate convergence before passing an inflection point.
+        out_dir : str, optional
+            Dump everything into 'out_dir' directory instead of the CWD.
+        dump_fn : str, optional
+            Base name for the HDF5 files.
+        dump_every : int, optional
+            Dump to HDF5 every n-th cycle.
+        """
         assert step_length > 0, "step_length must be positive"
         assert max_cycles > 0, "max_cycles must be positive"
 
