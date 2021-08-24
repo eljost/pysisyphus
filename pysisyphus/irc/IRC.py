@@ -17,7 +17,7 @@ from pysisyphus.helpers_pure import (
     eigval_to_wavenumber,
     report_isotopes,
 )
-from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd
+from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd, cubic_displ_for_h5
 from pysisyphus.io import save_third_deriv
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
@@ -40,6 +40,7 @@ class IRC:
         displ="energy",
         displ_energy=1e-3,
         displ_length=0.1,
+        displ_third_h5=None,
         rms_grad_thresh=1e-3,
         energy_thresh=1e-6,
         force_inflection=True,
@@ -47,6 +48,58 @@ class IRC:
         dump_fn="irc_data.h5",
         dump_every=5,
     ):
+        """Base class for IRC calculations.
+
+        Parameters
+        ----------
+        geometry : Geometry
+            Transtion state geometry, or initial geometry for downhill run.
+        step_length : float, optional
+            Step length in unweighted coordinates.
+        max_cycles : int, optional
+            Positive integer, controlloing the maximum number of IRC steps
+            taken in a direction (forward/backward/downhill).
+        downhill : bool, default=False
+            Downhill run from a non-stationary point with non-vanishing
+            gradient. Disables forward and backward runs.
+        forward : bool, default=True
+            Integrate IRC in positive s direction.
+        backward : bool, default=True
+            Integrate IRC in negative s direction.
+        mode : int, default=0
+            Use n-th root for initial displacement from TS.
+        hessian_init : str, default=None
+            Path to Hessian HDF5 file, e.g., from a previous TS calculation.
+        displ: str, one of ("energy", "length", "energy_cubic")
+            Controlls initial displacement from the TS. 'energy' assumes a
+            quadratic model, from which a step length for a given energy
+            lowering (see 'displ_energy') is determined. 'length' corresponds
+            to a displacement along the transition vector. 'energy_cubic' considers
+            3rd derivatives of the energy along the transition vector.
+        displ_energy : float, default=1e-3
+            Required energy lowering from the TS in au (Hartree). Used with
+            'displ: energy|energy_cubic'.
+        displ_length : float, default=0.1
+            Step length along the transition vector. Used only with
+            'displ: length'.
+        displ_third_h5: str, optional
+            Path to HDF5 file containing 3rd derivative information. Used with
+            'displ: energy_cubic'.
+        rms_grad_thresh : float, default=1e-3,
+            Convergence is signalled when to root mean square of the gradient
+            is less than or equal to 'rms_grad_thresh'.
+        energy_thresh : float, default=1e-6,
+            Signal convergence when the energy difference between two points
+            is equal to or less than 'energy_thresh'.
+        force_inflection : bool, optional
+            Don't indicate convergence before passing an inflection point.
+        out_dir : str, optional
+            Dump everything into 'out_dir' directory instead of the CWD.
+        dump_fn : str, optional
+            Base name for the HDF5 files.
+        dump_every : int, optional
+            Dump to HDF5 every n-th cycle.
+        """
         assert step_length > 0, "step_length must be positive"
         assert max_cycles > 0, "max_cycles must be positive"
 
@@ -74,6 +127,7 @@ class IRC:
         ), f"'displ: {self.displ}' not in {self.valid_displs}"
         self.displ_energy = float(displ_energy)
         self.displ_length = float(displ_length)
+        self.displ_third_h5 = displ_third_h5
         self.rms_grad_thresh = float(rms_grad_thresh)
         self.energy_thresh = float(energy_thresh)
         self.force_inflection = force_inflection
@@ -238,6 +292,7 @@ class IRC:
 
         if self.downhill:
             mw_step_plus = mw_step_minus = np.zeros_like(self.transition_vector)
+            msg = "Downhill run. No initial displacement from the TS."
         elif self.displ == "length":
             msg = "Using length-based initial displacement from the TS."
             mw_step_plus = self.displ_length * mw_trans_vec
@@ -262,12 +317,18 @@ class IRC:
             mw_step_plus = step_length * mw_trans_vec
             mw_step_minus = -mw_step_plus
         elif self.displ == "energy_cubic":
-            Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
-            h5_fn = self.get_path_for_fn("third_deriv.h5")
-            save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
-            mw_step_plus, mw_step_minus = cubic_displ(
-                mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
-            )
+            if self.displ_third_h5:
+                self.log(f"Loaded 3rd derivative data from '{self.displ_third_h5}'")
+                mw_step_plus, mw_step_minus = cubic_displ_for_h5(
+                    self.displ_third_h5, -self.displ_energy
+                )
+            else:
+                Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
+                h5_fn = self.get_path_for_fn("third_deriv.h5")
+                save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
+                mw_step_plus, mw_step_minus = cubic_displ(
+                    mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
+                )
             msg = (
                 f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
                 "the TS using 3rd derivatives."
@@ -279,8 +340,11 @@ class IRC:
         step_minus = mw_step_minus / self.m_sqrt
         self.log(msg)
         print(msg)
-        print(f"Norm of initial displacement step: {np.linalg.norm(step_plus):.4f}")
-        # self.log("")
+        print(
+            "Initial step lengths (not mass-weighted):\n"
+            f"\t Forward: {np.linalg.norm(step_plus):.4f} au\n"
+            f"\tBackward: {np.linalg.norm(step_minus):.4f} au"
+        )
         return step_plus, step_minus
 
     def get_conv_fact(self, mw_grad, min_fact=2.0):

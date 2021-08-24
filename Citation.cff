@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Steinmetzer
+    given-names: Johannes
+    orcid: https://orcid.org/0000-0003-2493-6893
+title: pysisyphus
+version: 0.7.1
+license: GPLv3
+commit: 78a2a11a171efacfca7b1cf6fd11d9bd5d6a8a52
+doi: 10.5281/zenodo.5172406
+preferred-citation:
+  type: article
+  title: "pysisyphus: Exploring potential energy surfaces in ground and excited states"
+  authors:
+  - family-names: Steinmetzer
+    given-names: Johannes
+    orcid: https://orcid.org/0000-0003-2493-6893
+  - family-names: Kupfer
+    given-names: Stephan
+    orcid: https://orcid.org/0000-0002-6428-7528
+  - family-names: Gräfe
+    given-names: Stefanie
+    orcid: https://orcid.org/0000-0002-1747-5809
+  month: 8
+  year: 2020
+  doi: 10.1002/qua.26390
+  publisher: Wiley
+  journal: "International Journal of Quantum Chemistry"
+date-released: 2021-08-09
