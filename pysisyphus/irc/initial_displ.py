@@ -9,6 +9,8 @@ import h5py
 import numpy as np
 from scipy.optimize import bisect
 
+from pysisyphus.constants import AU2KJPERMOL
+
 
 def get_curv_vec(H, Gv, v0, w0):
     v0 = v0[:, None]
@@ -111,8 +113,8 @@ def cubic_displ(H, v0, w0, Gv, dE):
     But somehow the Taylor expansion gives bogus results when called with -Gv and -v0...
     """
 
-    assert dE < 0.0, "Supplied dE={dE:.6f} is positive but it must be negative!"
-    assert w0 < 0.0, "Expected first eigenvalue to be negative but it is w0={w0:.6e}!"
+    assert dE < 0.0, f"Supplied dE={dE:.6f} is positive but it must be negative!"
+    assert w0 < 0.0, f"Expected first eigenvalue to be negative but it is w0={w0:.6e}!"
 
     v1 = get_curv_vec(H, Gv, v0, w0)
     E_taylor = taylor_closure(H, Gv, v0, v1, w0)
@@ -121,23 +123,33 @@ def cubic_displ(H, v0, w0, Gv, dE):
         return E_taylor(ds) - dE
 
     def prepare_bisect(x0, theta=1.25, max_cycles=20):
+        """Determine (lower) upper bound for scipy.optimize.bisect."""
         assert theta > 1.0
 
         ds = x0
         dE_min = func(0.0)
+        dE_prev = dE_min
         ds_min = ds
         # Grow until we find an upper (lower) bound of the interval
         for _ in range(max_cycles):
             dE = func(ds)
-            if dE <= dE_min:
-                dE_min = dE_min
-                ds_min = ds
+            # print(
+                # f"ds={ds:.4f} dE={dE*AU2KJPERMOL:.3f} dE_min={dE_min*AU2KJPERMOL:.3f}"
+            # )
+
             if dE <= 0.0:
                 break
-            ds *= theta
-        # Use best guess
-        else:
-            ds = ds_min
+            # Keep best guess
+            elif dE <= dE_min:
+                dE_min = dE
+                ds_min = ds
+            # Return (yet) best guess when function value grows again
+            elif dE >= dE_prev:
+                ds = ds_min
+                break
+
+            dE_prev = dE
+            ds *= theta  # Grow ds
         return ds
 
     def bisect_(ds0):
@@ -148,23 +160,27 @@ def cubic_displ(H, v0, w0, Gv, dE):
             ds_ = ds0
         return ds_
 
-    # import matplotlib.pyplot as plt
-    # dss = np.linspace(-1, 1, num=51)
-    # Es = E_taylor(dss) - E_taylor(0.0)
-    # Es *= 2625.499
-    # _, ax = plt.subplots()
-    # ax.plot(dss, Es, "o-")
-    # ax.axvline(0.0, c="k", ls="--")
-    # ax.axhline(dE*2625.499, c="k", ls=":")
-    # ax.set_xlabel("ds")
-    # ax.set_ylabel("dE / kJ mol⁻¹")
-    # plt.show()
-
     plus_bound = prepare_bisect(0.1)
     ds_plus = bisect_(plus_bound)
 
     minus_bound = prepare_bisect(-0.1)
     ds_minus = bisect_(minus_bound)
+
+    # import matplotlib.pyplot as plt
+    # dss = np.linspace(-1, 1, num=51)
+    # # dss = np.linspace(-6, 6, num=200)
+    # E0 = E_taylor(0.0)
+    # Es = E_taylor(dss) - E0
+    # Es *= AU2KJPERMOL
+    # Emp = (np.array((E_taylor(ds_minus), E_taylor(ds_plus))) - E0) * AU2KJPERMOL
+    # _, ax = plt.subplots()
+    # ax.plot(dss, Es, "o-")
+    # ax.axvline(0.0, c="k", ls="--")
+    # ax.axhline(dE*AU2KJPERMOL, c="k", ls=":")
+    # ax.scatter((ds_minus, ds_plus), Emp, s=75, marker="x", c="r", zorder=3)
+    # ax.set_xlabel("ds")
+    # ax.set_ylabel("dE / kJ mol⁻¹")
+    # plt.show()
 
     def step(ds):
         return ds * v0 + ds ** 2 * v1 / 2
@@ -174,7 +190,7 @@ def cubic_displ(H, v0, w0, Gv, dE):
     return step_plus, step_minus
 
 
-def cubic_displ_for_h5(h5_fn, dE=-5e-4):
+def cubic_displ_for_h5(h5_fn="third_deriv.h5", dE=-5e-4):
     with h5py.File(h5_fn, "r") as handle:
         H_mw = handle["H_mw"][:]
         Gv = handle["G_vec"][:]
