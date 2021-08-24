@@ -48,7 +48,7 @@ def test_turbomole_hessian_compare(this_dir):
         "keywords": {
             "ri": True,
             "grid": "m5",
-        }
+        },
     }
     qce_calc = QCEngine(**qce_kwargs)
     geom.set_calculator(qce_calc)
@@ -92,8 +92,8 @@ def test_qcengine_mopac():
 @using_qcengine
 def test_qcengine_openmm():
     """
-        conda install -c omnia -c conda-forge openmm
-        conda install -c omnia -c conda-forge openforcefield
+    conda install -c omnia -c conda-forge openmm
+    conda install -c omnia -c conda-forge openforcefield
     """
     geom = geom_loader("lib:h2o_guess.xyz")
 
@@ -103,7 +103,7 @@ def test_qcengine_openmm():
             "method": "openmm",
             "basis": "openff-1.0.0",
             "offxml": "openff-1.0.0.offxml",
-        "connectivity": ((0, 1, 1), (0, 2, 1)),
+            "connectivity": ((0, 1, 1), (0, 2, 1)),
         },
     }
     qce = QCEngine(**qce_kwargs)
@@ -114,8 +114,8 @@ def test_qcengine_openmm():
     energy = geom.energy
     norm = np.linalg.norm(forces)
 
-    assert energy == pytest.approx(6.4193809337e+20)
-    assert norm == pytest.approx(1.4649609864e+22)
+    assert energy == pytest.approx(6.4193809337e20)
+    assert norm == pytest.approx(1.4649609864e22)
 
     # from pysisyphus.optimizers.RFOptimizer import RFOptimizer
     # opt = RFOptimizer(geom)
@@ -135,7 +135,7 @@ def test_qcengine_gamess():
         },
         "keywords": {
             "contrl__ispher": 1,
-        }
+        },
     }
     qce = QCEngine(**qce_kwargs)
 

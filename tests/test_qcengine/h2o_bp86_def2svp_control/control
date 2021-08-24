@@ -1,0 +1,78 @@
+$title
+$symmetry c1
+$redundant    file=coord
+$user-defined bonds    file=coord
+$coord    file=coord
+$optimize
+ internal   on
+ redundant  on
+ cartesian  off
+ global     off
+ basis      off
+$atoms
+o  1                                                                           \
+   basis =o def2-SVP                                                           \
+   jbas  =o def2-SVP
+h  2-3                                                                         \
+   basis =h def2-SVP                                                           \
+   jbas  =h def2-SVP
+$basis    file=basis
+$scfmo   file=mos
+$scfiterlimit      150
+$thize     0.10000000E-04
+$thime        5
+$scfdamp   start=0.300  step=0.050  min=0.100
+$scfdump
+$scfintunit
+ unit=30       size=0        file=twoint
+$scfdiis
+$maxcor    500 MiB  per_core
+$scforbitalshift  automatic=.1
+$drvopt
+   cartesian  on
+   basis      off
+   global     off
+   hessian    on
+   dipole     on
+   nuclear polarizability
+$interconversion  off
+   qconv=1.d-7
+   maxiter=25
+$coordinateupdate
+   dqmax=0.3
+   interpolate  on
+   statistics    5
+$forceupdate
+   ahlrichs numgeo=0  mingeo=3 maxgeo=4 modus=<g|dq> dynamic fail=0.3
+   threig=0.005  reseig=0.005  thrbig=3.0  scale=1.00  damping=0.0
+$forceinit on
+   diag=default
+$energy    file=energy
+$grad    file=gradient
+$forceapprox    file=forceapprox
+$dft
+   functional b-p
+   gridsize   m5
+$scfconv        8
+$ricore      500
+$rij
+$jbas    file=auxbasis
+$rundimensions
+   natoms=3
+   nbf(CAO)=25
+   nbf(AO)=24
+$last SCF energy change = -.41425210E-08
+$charge from ridft
+          0.000 (not to be modified here)
+$dipole from ridft
+  x    -0.00000000000001    y     0.78110240035557    z    -0.00000000000000    a.u.
+   | dipole | =    1.9853792738  debye
+$optinfo       file=optinfo
+$hessapprox   file=hessapprox
+$orbital_max_rnorm 0.29228395526384E-06
+$subenergy  Etot         E1                  Ej                Ex                 Ec                 En
+-76.36358218353    -122.7913771257     46.74061640448    -8.978373445174    -.3664990894832     9.032051072295
+$closed shells
+ a       1-5                                    ( 2 )
+$last step     define
+$end
