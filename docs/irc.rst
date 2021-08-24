@@ -34,28 +34,28 @@ that the user may want to modify.
 
 .. code:: yaml
 
-    irc:
-     type: eulerpc                      # Similar to EulerPC from Gaussian
-
-     #displ: energy|length|energy_cubic # How to do the initial displacement
-     #displ_energy: 0.001               # Energy lowering in au (Hartree)
-     #displ_length: 0.1                 # Step length along the TV
-
-     #forward: True
-     #backward: True
-     #downhill: False                   # Only integrate downhill
-
-     #rms_grad_thresh: 0.001            # Convergence threshold
-    endopt:
-     #fragments: False                  # Optimize potential fragments separately
-     do_hess: False                     # Frequency calculation at the end
+    geom:
+     fn: hfabstraction_ts_opt_xtb.xyz   # Input coordinates
     calc:
      type: xtb                          # extended tight-binding calculator
      pal: 4
      charge: 0
      mult: 1
-    geom:
-     fn: hfabstraction_ts_opt_xtb.xyz   # Input coordinates
+    irc:
+     type: eulerpc                      # Similar to EulerPC from Gaussian
+
+     #rms_grad_thresh: 0.001            # Convergence threshold
+     #displ: energy|length|energy_cubic # How to do the initial displacement
+     #displ_energy: 0.001               # Energy lowering in au (Hartree)
+     #displ_length: 0.1                 # Step length along the TV
+     #forward: True
+     #backward: True
+     #downhill: False                   # Only integrate downhill, disables forward/backward
+     #hessian_init: null                # Path to HDF5 Hessian file
+     #displ_third_h5: null              # Path to HDF5 file containing third derivative data
+    endopt:
+     #fragments: False                  # Detect & optimize fragments separately
+     do_hess: False                     # Frequency calculation at the end
 
 Further examples for IRC calculations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/master/examples/irc>`_.
