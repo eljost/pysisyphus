@@ -114,18 +114,33 @@ PySCF 1.7.6
 
 Turbomole 7.x
 -------------
-For now I have chosen the "easy" way and didnt't try to implement a wrapper for
-`define`. That's why the user has to manually prepare a valid TURBOMOLE job directory
-beforehand, which is then supplied to the calculator via the `control_path` argument.
+Pysisyphus does not implement a wrapper for `define`, so the user has to
+manually prepare a directory containing a valid control file.
+An automated `define` wrapper, restricted to ground state functionality, is
+available via the `QCEngine project <https://github.com/MolSSI/QCEngine>`_,
+to which I contributed the Turbomole harness.
 
-If an excited-state optimization is desired care has to be taken to include
+Care should be taken to include only the minimum amount of necessary files in the
+`control_path` directory, e.g., `(auxbasis, basis, control, coord, mos)` for a
+closed-shell calculation using RI. **A gradient file must not be present
+in control_path, as well as other subdirectories and files with .out extension.**
+The `coord` file, while not strictly required, should be kept too, to facilitate
+testing of the setup with standalone Turbomole.
+
+It may be a good idea to pre-converge the calculation in `control_path`,
+to see if the setup is correct and actually works. Resulting files like
+`energy`, `statistics` can be deleted; `mos` should be kept, as the converged
+MOs are reused in pysisyphus.
+
+If an excited-state optimization is desired, care has to be taken, to include
 **$exopt [n]** for TD-DFT/TDA or the **geoopt state=([n])** (ricc2)! Tracking
 of excited states is currently possible for closed shell `egrad` and `ricc2` calculations.
 
-**Right now care has to be taken that no** `gradient` **file is present in the** `control_path`!
-
-An easier, alternative way to use TURBOMOLE in `pysisyphus` is via its `QCEngine` wrapper,
-albeit with restricted funtionality (no excited states right now).
+The current implementation was tested against Turbomole 7.4.1 and QCEngine 0.19.0.
+Please see `examples/complex/11_turbomole_gs_tsopt <https://github.com/eljost/pysisyphus/tree/master/examples/complex/11_turbomole_gs_tsopt>`_ for a full example where Turbmole is
+utilized in a growing string calculation. The same example, using QCEngine, is found
+in `examples/complex/12_qcengine_turbomole_gs_tsopt <https://github.com/eljost/pysisyphus/tree/master/examples/complex/12_qcengine_turbomole_gs_tsopt>`_. MOs are not reused with the
+QCEngine calculator, so the native pysisyphus calculator is probably faster.
 
 .. automodule:: pysisyphus.calculators.Turbomole
     :members:
