@@ -1561,7 +1561,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
             # Dump TS and endopt geoms to .trj. But only when we did not optimize
             # separate fragments.
             if len(left_geoms) == 1 and len(right_geoms) in (0, 1):
-                trj_fn = "left_irc_start_right.trj"
+                trj_fn = "left_ts_right_geoms.trj"
                 write_geoms_to_trj(
                     list(it.chain(left_geoms, [irc_geom], right_geoms)),
                     trj_fn,
@@ -1739,6 +1739,8 @@ def do_clean(force=False):
         "rsprfo_*",
         "reparametrized.trj",
         "end_geoms_and_ts.trj",
+        "left_ts_right_geoms.trj",
+        "ts_final_hessian.h5",
     )
     to_rm_paths = list()
     for glob in rm_globs:
