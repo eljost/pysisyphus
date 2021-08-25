@@ -24,6 +24,7 @@ def retry_geom():
     return geom
 
 
+@using("orca")
 def test_orca_check_termination(retry_geom, this_dir):
     calc = retry_geom.calculator
     normal_term_out = this_dir / "normal_term.orca.out"
@@ -38,6 +39,7 @@ def test_orca_check_termination(retry_geom, this_dir):
     assert not calc.check_termination(fail_term_out)
 
 
+@using("orca")
 def test_print_capabilities(retry_geom):
     retry_geom.calculator.print_capabilities()
 
