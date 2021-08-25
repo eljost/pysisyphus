@@ -10,6 +10,7 @@ import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.helpers_pure import file_or_str
 
 
 def make_sym_mat(table_block):
@@ -56,6 +57,7 @@ class ORCA(OverlapCalculator):
         do_stable=False,
         numfreq=False,
         mem=2000,
+        retry_calc=1,
         **kwargs,
     ):
         """ORCA calculator.
@@ -611,6 +613,12 @@ class ORCA(OverlapCalculator):
             self.log(f"Set chkfile '{gbw}' as gbw.")
         except KeyError:
             self.log("Found no gbw information in chkfiles!")
+
+    @file_or_str(".out", method=True)
+    def check_termination(self, text):
+        term_re = re.compile(r"\*{4}ORCA TERMINATED NORMALLY\*{4}")
+        mobj = term_re.search(text)
+        return bool(mobj)
 
     def __str__(self):
         return f"ORCA({self.name})"
