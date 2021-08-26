@@ -280,10 +280,11 @@ class IRC:
         neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
         min_eigval = eigvals[self.mode]
-        self.log(
-            f"Transition vector is mode {self.mode} with wavenumber "
-            f"{eigval_to_wavenumber(min_eigval):.2f} cm⁻¹."
-        )
+        min_nu = eigval_to_wavenumber(min_eigval)
+        min_msg = f"Transition vector is mode {self.mode} with wavenumber {min_nu:.2f} cm⁻¹."
+        # Doing it this way hurts ... I'll have to improve my logging game...
+        self.log(min_msg)
+        print(min_msg)
         mw_trans_vec = eigvecs[:, self.mode]
         self.mw_transition_vector = mw_trans_vec
         # Un-mass-weight the transition vector

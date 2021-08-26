@@ -115,6 +115,7 @@ def run_opt(
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}", level=level))
     print(f"\nInput structure: {geom.describe()}")
+    print(f"Coordinate system: {geom.coord_type}")
     report_frozen_atoms(geom)
     print()
 

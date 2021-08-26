@@ -1567,7 +1567,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                     trj_fn,
                     comments=list(it.chain(left_fns, ["IRC start"], right_fns)),
                 )
-                print(f"Wrote optimized end-geometries and IRC start to '{trj_fn}'")
+                print(f"Wrote optimized end-geometries and TS to '{trj_fn}'")
 
         if run_dict["mdp"]:
             mdp_kwargs = run_dict["mdp"]
@@ -1741,6 +1741,7 @@ def do_clean(force=False):
         "end_geoms_and_ts.trj",
         "left_ts_right_geoms.trj",
         "ts_final_hessian.h5",
+        "third_deriv.h5",
     )
     to_rm_paths = list()
     for glob in rm_globs:
