@@ -25,7 +25,7 @@ class Calculator:
         base_name="calculator",
         pal=1,
         mem=1000,
-        retry_calc=0,
+        retry_calc=1,
         last_calc_cycle=None,
         clean_after=True,
         out_dir="./",
@@ -430,6 +430,10 @@ class Calculator:
                 else:
                     print("Abnormal termination! Retrying calculation.")
                     shutil.copy(tmp_out_fn, str(tmp_out_fn) + f".fail_{retry:02d}")
+                    try:
+                        self.clean_tmp(path)
+                    except AttributeError:
+                        self.log(f"'self.clean_path()' not implemented!")
                     # Clear tmp_out_fn
                     handle.seek(0)
                     handle.truncate()

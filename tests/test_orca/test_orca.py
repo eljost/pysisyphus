@@ -63,7 +63,7 @@ def test_orca_restart():
         return "forces returned"
 
     def kill_orca():
-        secs = 5
+        secs = 2
         sleep(secs)
         print(f"Waited {secs} s ")
         pid = check_output(["pidof", "orca"], text=True)
@@ -72,9 +72,6 @@ def test_orca_restart():
         print("Killed orca")
         return "kill returned"
 
-    # Somehow this seems unreliable ... sometimes it works, sometimes not.
-    # Don't know why ...
-    # Increasing the sleep time from 2 s to 5 s seems to help.
     with ThreadPoolExecutor() as executor:
         running_tasks = [executor.submit(task) for task in (run_orca, kill_orca)]
         for running_task in running_tasks:

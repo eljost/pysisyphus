@@ -57,7 +57,6 @@ class ORCA(OverlapCalculator):
         do_stable=False,
         numfreq=False,
         mem=2000,
-        retry_calc=1,
         **kwargs,
     ):
         """ORCA calculator.
@@ -619,6 +618,12 @@ class ORCA(OverlapCalculator):
         term_re = re.compile(r"\*{4}ORCA TERMINATED NORMALLY\*{4}")
         mobj = term_re.search(text)
         return bool(mobj)
+
+    def clean_tmp(self, path):
+        tmp_fns = path.glob("*.tmp")
+        for tmp in tmp_fns:
+            os.remove(tmp)
+            self.log(f"Removed '{tmp}'")
 
     def __str__(self):
         return f"ORCA({self.name})"
