@@ -6,7 +6,6 @@ try:
     from thermoanalysis.thermo import thermochemistry
     can_thermoanalysis = True
 except ModuleNotFoundError:
-    print("Could not import 'thermoanalysis'")
     can_thermoanalysis = False
 
 from pysisyphus.constants import AU2KJPERMOL
