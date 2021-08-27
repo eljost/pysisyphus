@@ -18,6 +18,7 @@ __all__ = [
     "ONIOM",
     "OpenMolcas",
     "ORCA",
+    "ORCA5",
     "Psi4",
     "PyPsi4",
     "PyXTB",
@@ -45,6 +46,7 @@ from pysisyphus.calculators.Psi4 import Psi4
 from pysisyphus.calculators.ONIOMv2 import ONIOM
 from pysisyphus.calculators.OpenMolcas import OpenMolcas
 from pysisyphus.calculators.ORCA import ORCA
+from pysisyphus.calculators.ORCA5 import ORCA5
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
 from pysisyphus.calculators.TIP3P import TIP3P

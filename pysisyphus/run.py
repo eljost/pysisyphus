@@ -78,6 +78,7 @@ CALC_DICT = {
     "oniom": ONIOM,
     "openmolcas": OpenMolcas,
     "orca": ORCA,
+    "orca5": ORCA5,
     "psi4": Psi4,
     "pyxtb": PyXTB,
     "turbomole": Turbomole,
