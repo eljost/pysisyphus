@@ -658,7 +658,9 @@ def run_scan(geom, calc_getter, scan_kwargs):
         return relaxed_1d_scan(
             geom,
             calc_getter,
-            [constr_prim, ],
+            [
+                constr_prim,
+            ],
             start,
             step_size,
             steps,
@@ -861,6 +863,8 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         return [frozenset(_) for _ in sets]
 
     separate_fragments = endopt_kwargs.pop("fragments", False)
+    total = separate_fragments in ("total", False)
+
     # Convert to array for easy indexing with the fragment lists
     atoms = np.array(geom.atoms)
     fragments_to_opt = list()
@@ -868,28 +872,45 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     for coords, key in to_opt:
         base_name = f"{key}_end"
         c3d = coords.reshape(-1, 3)
+        fragments = list()
+        fragment_names = list()
+
         if separate_fragments:
             bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
             # Sort atom indices, so the atoms don't become totally scrambled.
-            fragments = [sorted(frag) for frag in merge_sets(bond_sets)]
+            fragments.extend([sorted(frag) for frag in merge_sets(bond_sets)])
             # Disable higher fragment counts. I'm looking forward to the day
             # this ever occurs and someone complains :)
             assert len(fragments) < 10, "Something probably went wrong"
-            fragment_names = [
-                f"{base_name}_frag{i:03d}" for i, _ in enumerate(fragments)
-            ]
+            fragment_names.extend(
+                [f"{base_name}_frag{i:03d}" for i, _ in enumerate(fragments)]
+            )
             print(f"Found {len(fragments)} fragment(s) at {base_name}")
             for frag_name, frag in zip(fragment_names, fragments):
                 print(f"\t{frag_name}: {len(frag)} atoms")
-        # Optimize the full geometries, without splitting them into fragments
-        else:
+
+        # Optimize the whole geometries, without splitting them into fragments
+        # Skip this optimization if separate fragments are requested and only
+        # one fragment is present, which would result in twice the same optimization.
+        skip_one_frag = separate_fragments and len(fragments) == 1
+        if total and not skip_one_frag:
             # Atom indices of the fragment atoms
-            fragments = [
-                range(len(atoms)),
-            ]
-            fragment_names = [
-                base_name,
-            ]
+            fragments.extend(
+                [
+                    range(len(atoms)),
+                ]
+            )
+            fragment_names.extend(
+                [
+                    base_name,
+                ]
+            )
+        elif skip_one_frag:
+            print(
+                f"Only one fragment present for '{key}'. Skipping optimization "
+                "of total system."
+            )
+
         fragment_keys = [key] * len(fragments)
         fragment_atoms = [tuple(atoms[list(frag)]) for frag in fragments]
         fragment_coords = [c3d[frag].flatten() for frag in fragments]
@@ -897,6 +918,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             list(zip(fragment_keys, fragment_names, fragment_atoms, fragment_coords))
         )
         print()
+
     to_opt = fragments_to_opt
 
     geom_kwargs = endopt_kwargs.pop("geom")
@@ -1091,6 +1113,10 @@ def get_defaults(conf_dict):
             "prefix": "ts",
         }
 
+    peopt_geom_default = {
+        "type": "redund",
+    }
+
     if "preopt" in conf_dict:
         # We can't just copy dd["opt"] because there will probably be
         # some COS specific optimizer, but we just wan't to optimize the
@@ -1106,9 +1132,7 @@ def get_defaults(conf_dict):
                 # Preopt specific
                 "preopt": "both",
                 "strict": False,
-                "geom": {
-                    "type": "redund",
-                },
+                "geom": peopt_geom_default,
             }
         )
 
@@ -1118,9 +1142,7 @@ def get_defaults(conf_dict):
             {
                 "thresh": "gau",
                 "fragments": False,
-                "geom": {
-                    "type": "redund",
-                },
+                "geom": peopt_geom_default,
             }
         )
 
