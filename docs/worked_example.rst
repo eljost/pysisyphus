@@ -214,7 +214,6 @@ also see the default values chosen for :code:`preopt` and :code:`endopt`.
 .. code-block:: bash
 
     {'calc': {'pal': 6, 'type': 'xtb'},
-     'coord_type': 'cart',
      'cos': {'climb': True, 'fix_ends': True, 'max_nodes': 18, 'type': 'gs'},
      'endopt': {'dump': True,
                 'fragments': False,
@@ -226,8 +225,7 @@ also see the default values chosen for :code:`preopt` and :code:`endopt`.
      'interpol': {'between': 0, 'type': None},
      'irc': {'rms_grad_thresh': 0.0005, 'type': 'eulerpc'},
      'opt': {'align': False, 'dump': True, 'max_cycles': 30, 'type': 'string'},
-     'preopt': {'coord_type': 'redund',
-                'dump': True,
+     'preopt': {'dump': True,
                 'max_cycles': 100,
                 'overachieve_factor': 3,
                 'preopt': 'both',

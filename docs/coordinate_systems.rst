@@ -15,7 +15,7 @@ Cartesian Coordinates
 * Strong coupling
 * Unambiguously defined, if translation and rotation (TR) are removed
 * Redundant set, if TR are not removed
-* :code:`coord_type: cart`
+* :code:`type: cart`
 
 Redundant Internal Coordinates
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ Redundant Internal Coordinates
 * Require sophisticated setup algorithm
 * Iterative internal-Cartesian backtransformation, which may fail
 * Usually highly redundant set
-* :code:`coord_type: redund`
+* :code:`type: redund`
 
 Delocalized Internal Coordinates (DLC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ Delocalized Internal Coordinates (DLC)
 * Non redundant set
 * More efficient compared to RIC for bigger systems (if initial DLC generation is feasible)
 * Same comments apply, as for RICs
-* :code:`coord_type: dlc`
+* :code:`type: dlc`
 
 Translation & Rotation Internal Coordinates (TRIC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ Translation & Rotation Internal Coordinates (TRIC)
 * See `10.1063/1.4952956 <https://doi.org/10.1063/1.4952956>`_ for a full discussion
 * By default the B-Matrix is recalculated in every step of the internal-Cartesian
   backtransformation when TRIC is enabled
-* :code:`coord_type: tric`
+* :code:`type: tric`
 
 Supported File Formats
 ----------------------
@@ -240,7 +240,7 @@ they always remain at their initial value.
 Constraints
 ^^^^^^^^^^^
 **Constraints beyond frozen atoms are currently only supported in conjunction with
-RIC (`coord_type: redund`).**
+RIC (`type: redund`).**
 It is not (yet) possible to modify the value of the specified coordinate via YAML
 input; the internal coordinate is constrained at its initial value. The same syntax
 as for `define_prims` is used. If the coordinate of the requested constraint is not
