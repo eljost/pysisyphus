@@ -69,10 +69,17 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
 
 
 def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
-    """After introducing the pubchem functionality I don't like this 
+    """After introducing the pubchem functionality I don't like this
     function anymore :) Too complicated."""
     fn = str(fn)
     org_fn = fn
+
+    split_ = re.split("\[(\d+)\]$", fn)
+    fn = split_.pop(0)
+    if split_:
+        index = int(split_.pop(0))
+    else:
+        index = None
     ext = "" if "\n" in fn else Path(fn).suffix
 
     funcs = {
@@ -99,9 +106,12 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     kwargs.update(coord_kwargs)
     geom = func(fn, **kwargs)
 
+    if index is not None:
+        geom = geom[index]
+
     if iterable and org_fn.startswith("pubchem:"):
-        geom = (geom, )
-    if iterable and (ext in (".trj", "")):
+        geom = (geom,)
+    if iterable and (ext in (".trj", "")) and index is None:
         geom = tuple(geom)
     elif iterable:
         geom = (geom,)
