@@ -326,16 +326,15 @@ def run_tsopt_from_cos(
         union_msg = "No coordinate union."
     print(union_msg)
 
-    # Try to run in DLC per default
-    ts_coord_type = tsopt_kwargs.pop("coord_type", "redund")
-    if ts_coord_type == "cart":
-        coord_kwargs = None
+    ts_geom_kwargs = tsopt_kwargs.pop("geom")
+    ts_geom_kwargs["coord_kwargs"].update(coord_kwargs)
+    ts_coord_type = ts_geom_kwargs.pop("type")
 
     ts_geom = Geometry(
         hei_image.atoms,
         hei_image.cart_coords,
         coord_type=ts_coord_type,
-        coord_kwargs=coord_kwargs,
+        **ts_geom_kwargs,
     )
 
     # Convert tangent from whatever coordinates to redundant internals.
@@ -716,7 +715,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         "last": (last,),
     }
     geom_kwargs = preopt_kwargs.pop("geom")
-    coord_type = geom_kwargs.pop("coord_type", "redund")
+    coord_type = geom_kwargs.pop("type")
 
     # Allow different sets of primitive internals with same_prims=False
     geoms = get_geoms(xyz, coord_type=coord_type, same_prims=False)
@@ -925,7 +924,6 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
 
     geom_kwargs = endopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
-    freeze_atoms = geom_kwargs.pop("freeze_atoms", None)
 
     opt_geoms = dict()
     opt_fns = dict()
@@ -934,8 +932,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             atoms,
             coords,
             coord_type=coord_type,
-            coord_kwargs=geom_kwargs,
-            freeze_atoms=freeze_atoms,
+            **geom_kwargs,
         )
         initial_fn = f"{name}_initial.xyz"
         with open(initial_fn, "w") as handle:
@@ -1074,8 +1071,8 @@ def get_defaults(conf_dict):
     }
     if "interpol" in conf_dict:
         dd["interpol"] = {
-            "type": None,
-            "between": 0,
+            "type": "linear",
+            "between": 5,
         }
 
     if "cos" in conf_dict:
@@ -1105,6 +1102,12 @@ def get_defaults(conf_dict):
             "type": "frag",
         }
 
+    def get_opt_geom_defaults():
+        return {
+            "type": "redund",
+            "coord_kwargs": {},
+        }
+
     if "tsopt" in conf_dict:
         dd["tsopt"] = {
             "type": "rsprfo",
@@ -1113,11 +1116,8 @@ def get_defaults(conf_dict):
             "h5_group_name": "tsopt",
             "T": 298.15,
             "prefix": "ts",
+            "geom": get_opt_geom_defaults(),
         }
-
-    peopt_geom_default = {
-        "type": "redund",
-    }
 
     if "preopt" in conf_dict:
         # We can't just copy dd["opt"] because there will probably be
@@ -1134,7 +1134,7 @@ def get_defaults(conf_dict):
                 # Preopt specific
                 "preopt": "both",
                 "strict": False,
-                "geom": peopt_geom_default,
+                "geom": get_opt_geom_defaults(),
             }
         )
 
@@ -1144,7 +1144,7 @@ def get_defaults(conf_dict):
             {
                 "thresh": "gau",
                 "fragments": False,
-                "geom": peopt_geom_default,
+                "geom": get_opt_geom_defaults(),
             }
         )
 
