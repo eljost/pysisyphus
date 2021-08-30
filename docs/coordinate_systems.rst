@@ -86,14 +86,17 @@ is not supported in the current Z-matrix parser.
 YAML Input
 ----------
 
-See below for an explanation of the `geom` keys.
+See below for an explanation of possible inputs in the `geom` section. Input related
+to internal coordinates is given mostly in the `coord_kwargs` subgroup, whereas
+atom-related input (`isotops`, `freeze_atoms`) is given one level above. See the
+example below:
 
 .. code:: yaml
 
     geom:
      type: cart               # Coordinate system (cart/redund/dlc/tric)
      fn: [input]              # File name or inline input
-     union: null              # Define same set of primitives at multiple geometries
+     union: False             # Define same set of primitives at multiple geometries
      isotopes: null           # Specify different isotopes
      freeze_atoms: null       # Freeze Cartesians of certain atoms
      coord_kwargs:            # Keywords that are passed to the internal coordinate class
@@ -302,6 +305,21 @@ float**, take care to add a dot (**1.e9**).
     # Fix atom 0 in IRC calculation.
     isotopes: [[0, 1.e9]]
 
+Geometry & RedundantCoords
+--------------------------
+
+The central class in pysisyphus, handling coordinates and delegating calculations
+to (external QC) codes, is the `Geometry` class, similar to ASE's `Atoms`.
+
+.. automodule:: pysisyphus.Geometry
+    :members:
+    :undoc-members:
+
+Basic infrastructure to work with internal coordinates is provided by `RedundantCoords`.
+
+.. automodule:: pysisyphus.intcoords.RedundantCoords
+    :members:
+    :undoc-members:
 
 Related Literature
 ------------------
