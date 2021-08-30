@@ -1,4 +1,5 @@
 import argparse
+import copy
 import itertools as it
 from pathlib import Path
 import re
@@ -281,25 +282,30 @@ def get_geoms(
     # be a difference between the coord_type used for interpolation and
     # the desired coord_type as specified in the function arguments.
     if coord_type != geoms[0].coord_type:
-        raise Exception("Handle me!")
         recreated_geoms = list()
         for geom in geoms:
-            coord_kwargs = None
-            if coord_type != "cart":
-                coord_kwargs = {
+            geom_kwargs_ = copy.deepcopy(geom_kwargs)
+            try:
+                typed_prims = {
                     "typed_prims": geom.internal.typed_prims,
                 }
+                geom_kwargs_["coord_kwargs"]["typed_prims"] = typed_prims
+            except AttributeError:
+                typed_prims = None
+
+            if coord_type == "cart":
+                geom_kwargs_["coord_kwargs"] = {}
+
             geom = Geometry(
                 geom.atoms,
                 geom.cart_coords,
                 coord_type=coord_type,
-                comment=geom.comment,
-                coord_kwargs=coord_kwargs,
+                **geom_kwargs_,
             )
             recreated_geoms.append(geom)
         geoms = recreated_geoms
 
-    if not same_prims and (coord_type != "cart"):
+    if not same_prims or (coord_type == "cart"):
         return geoms
 
     geom_prim_inds = [geom.internal.typed_prims for geom in geoms]

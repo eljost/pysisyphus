@@ -1,5 +1,6 @@
 import pytest
 
+from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 from pysisyphus.run import run_from_dict
 
@@ -36,4 +37,23 @@ def test_hcn_endopt_barriers(run_dict, this_dir, downhill, do_hess):
     if downhill:
         run_dict["geom"]["fn"] = str(this_dir / "test_quick_downhill.xyz")
         run_dict["irc"]["downhill"] = True
+    results = run_from_dict(run_dict)
+
+
+@pytest.mark.skip
+@using("xtb")
+def test_total_endopt_barriers(run_dict):
+    run_dict = {
+        "geom": {
+            "fn": "lib:xtb_rx/00_c2no2.trj[1]",
+        },
+        "calc": {
+            "type": "xtb",
+            "pal": 2,
+        },
+        "irc": {
+            "max_cycles": 15,
+        },
+        "endopt": {"fragments": "total", "geom": {"type": "tric"}},
+    }
     results = run_from_dict(run_dict)

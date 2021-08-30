@@ -45,8 +45,8 @@ def test_freeze_two_atom():
 def test_run_dict_freeze():
     run_dict = {
         "geom": {
+            "type": "cart",
             "fn": "lib:h2o.xyz",
-            "coord_type": "cart",
             "freeze_atoms": [0, 1],
         },
         "calc": {
