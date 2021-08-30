@@ -1166,6 +1166,7 @@ def get_defaults(conf_dict):
     if "geom" in conf_dict:
         dd["geom"] = {
             "type": "cart",
+            "coord_kwargs": {},
         }
 
     if "mdp" in conf_dict:
