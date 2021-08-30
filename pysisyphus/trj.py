@@ -166,11 +166,6 @@ def parse_args(args):
         help="Don't align geometries when interpolating.",
     )
     parser.add_argument(
-        "--bohr",
-        action="store_true",
-        help="Input geometries are in Bohr instead of Angstrom.",
-    )
-    parser.add_argument(
         "--noxyz", action="store_false", help="Disable dumping of single .xyz files."
     )
     parser.add_argument(
@@ -194,48 +189,30 @@ def parse_args(args):
 
 def read_geoms(
     xyz_fns,
-    in_bohr=False,
     coord_type="cart",
-    define_prims=None,
-    constrain_prims=None,
-    typed_prims=None,
-    isotopes=None,
-    freeze_atoms=None,
+    geom_kwargs=None,
 ):
+    if geom_kwargs is None:
+        geom_kwargs = {}
+
+    # Single filename
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns]
         names = [""]
     # Dictionary with names as keys and fns as values.
     elif isinstance(xyz_fns, dict):
         names, xyz_fns = zip(*xyz_fns.items())
+    # Create empty names for all geometries
     else:
         names = [""] * len(xyz_fns)
 
     geoms = list()
-    geom_kwargs = {
-        "coord_type": coord_type,
-        "isotopes": isotopes,
-        "freeze_atoms": freeze_atoms,
-    }
-    # Dont supply coord_kwargs with coord_type == "cart"
-    if coord_type != "cart":
-        geom_kwargs["coord_kwargs"] = {
-            "define_prims": define_prims,
-            "constrain_prims": constrain_prims,
-            "typed_prims": typed_prims,
-        }
-
     for fn in xyz_fns:
         # Valid for non-inline coordinates
         if Path(fn).suffix or fn.startswith("pubchem:"):
-            geoms.extend(geom_loader(fn, iterable=True, **geom_kwargs))
-
-    # Original coordinates are in bohr, but pysisyphus expects them
-    # to be in Angstrom, so right now they are already multiplied
-    # by ANG2BOHR. We revert this.
-    if in_bohr:
-        for geom in geoms:
-            geom.coords *= BOHR2ANG
+            geoms.extend(
+                geom_loader(fn, coord_type=coord_type, iterable=True, **geom_kwargs)
+            )
 
     # Set names
     for name, geom in zip(names, geoms):
@@ -245,32 +222,26 @@ def read_geoms(
 
 def get_geoms(
     xyz_fns,
-    interpolate=None,
-    between=0,
     coord_type="cart",
-    comments=False,
-    in_bohr=False,
-    define_prims=None,
-    constrain_prims=None,
-    union=None,
-    isotopes=None,
-    freeze_atoms=None,
-    interpolate_align=True,
+    geom_kwargs=None,
+    union=False,
     same_prims=True,
+    # Interpolation related
+    interpolate=None,
+    interpolate_align=True,
+    between=0,
     quiet=False,
 ):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
-    if union is not None:
-        assert coord_type != "cart", "union must not be used with coord_type=cart!"
+    if union:
+        assert coord_type != "cart", "union must not be used with coord_type == cart!"
         union_geoms = read_geoms(union, coord_type=coord_type)
         assert (
             len(union_geoms) == 2
         ), f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
-        typed_prims_union = form_coordinate_union(*union_geoms)
-    else:
-        typed_prims_union = None
+        geom_kwargs["coord_kwargs"]["typed_prims"] = form_coordinate_union(*union_geoms)
 
     assert interpolate in list(INTERPOLATE.keys()) + [None], (
         f"Unsupported type: '{interpolate}' given. Valid arguments are "
@@ -279,13 +250,8 @@ def get_geoms(
 
     geoms = read_geoms(
         xyz_fns,
-        in_bohr,
         coord_type=coord_type,
-        define_prims=define_prims,
-        constrain_prims=constrain_prims,
-        typed_prims=typed_prims_union,
-        isotopes=isotopes,
-        freeze_atoms=freeze_atoms,
+        geom_kwargs=geom_kwargs,
     )
     if not quiet:
         print(f"Read {len(geoms)} geometries.")
@@ -314,8 +280,8 @@ def get_geoms(
     # Recreate Geometries so they have the correct coord_type. There may
     # be a difference between the coord_type used for interpolation and
     # the desired coord_type as specified in the function arguments.
-    # prim_indices = [None for geom in geoms]
     if coord_type != geoms[0].coord_type:
+        raise Exception("Handle me!")
         recreated_geoms = list()
         for geom in geoms:
             coord_kwargs = None
@@ -333,29 +299,25 @@ def get_geoms(
             recreated_geoms.append(geom)
         geoms = recreated_geoms
 
-    if not same_prims:
+    if not same_prims and (coord_type != "cart"):
         return geoms
 
-    same_prim_inds = True
-    if coord_type != "cart":
-        geom_prim_inds = [geom.internal.typed_prims for geom in geoms]
-        first_set = geom_prim_inds[0]
-        same_prim_inds = all([ith_set == first_set for ith_set in geom_prim_inds[1:]])
+    geom_prim_inds = [geom.internal.typed_prims for geom in geoms]
+    first_set = geom_prim_inds[0]
+    same_prim_inds = all([ith_set == first_set for ith_set in geom_prim_inds[1:]])
     # Recreate geometries with the same primitive internal coordinates
     if not same_prim_inds:
         typed_prims = form_coordinate_union(geoms[0], geoms[-1])
+        geom_kwargs["coord_kwargs"]["typed_prims"] = typed_prims
         geoms = [
             Geometry(
                 atoms_0,
                 geom.cart_coords,
                 coord_type=coord_type,
-                coord_kwargs={"typed_prims": typed_prims},
-                isotopes=isotopes,
-                freeze_atoms=freeze_atoms,
+                **geom_kwargs
             )
             for geom in geoms
         ]
-        # assert all([geom.coords.size == geoms[0].coords.size for geom in geoms])
         assert all(
             [len(geom.internal.typed_prims) == len(typed_prims) for geom in geoms]
         )
@@ -654,9 +616,8 @@ def run():
     # Read supplied files and create Geometry objects
     geoms = get_geoms(
         args.fns,
-        interpolate,
-        args.between,
-        in_bohr=args.bohr,
+        interpolate=interpolate,
+        between=args.between,
         interpolate_align=args.noipalign,
     )
 

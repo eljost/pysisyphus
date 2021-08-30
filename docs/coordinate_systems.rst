@@ -93,11 +93,12 @@ See below for an explanation of the `geom` keys.
     geom:
      type: cart               # Coordinate system (cart/redund/dlc/tric)
      fn: [input]              # File name or inline input
-     define_prims: null       # Additional primitives, to be defined
-     constrain_prims: null    # Primitive internals to be constrained
      union: null              # Define same set of primitives at multiple geometries
      isotopes: null           # Specify different isotopes
      freeze_atoms: null       # Freeze Cartesians of certain atoms
+     coord_kwargs:            # Keywords that are passed to the internal coordinate class
+      define_prims: null      # Additionally define these primitives
+      constrain_prims: null   # Primitive internals to be constrained
     preopt:
      geom:                    # geom block in preopt takes same keywords as above
       ...                     # no 'fn' key here!

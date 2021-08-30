@@ -26,26 +26,27 @@ geom:
  # For now (8758747db4) constraints are only supported with coord_type: redund.
  # Cartesian coordinates of atoms are constrained as shown below.
  # 
- # Primitive coordinates are constrained as follows:
- #
- #  ["bond", index0, index1]
- #  ["bend", index0, index1, index2]
- #  ["dihedral", index0, index1, index2, index3]
- #
- # Other possible Cartesian constraints are:
- #  ["x", index0]
- #  ["y", index0]
- #  ["z", index0]
- #  ["xy", index0]
- #  ["xz", index0]
- #  ["yz", index0]
- #  ["xyz", index0], same as ["atom", index0]
- #
- # Constraining three atoms already leads to one significant, imaginary
- # frequency at the final geometry.
- constrain_prims: [["atom", 0], ["atom", 1], ["atom", 2]]  # -30.94248563
- #constrain_prims: [["atom", 0]]                            # -30.94619833
- #constrain_prims: [["atom", 0], ["atom", 2]]               # -30.94445486
+ coord_kwargs:
+  # Primitive coordinates are constrained as follows:
+  #
+  #  ["bond", index0, index1]
+  #  ["bend", index0, index1, index2]
+  #  ["dihedral", index0, index1, index2, index3]
+  #
+  # Other possible Cartesian constraints are:
+  #  ["x", index0]
+  #  ["y", index0]
+  #  ["z", index0]
+  #  ["xy", index0]
+  #  ["xz", index0]
+  #  ["yz", index0]
+  #  ["xyz", index0], same as ["atom", index0]
+  #
+  # Constraining three atoms already leads to one significant, imaginary
+  # frequency at the final geometry.
+  constrain_prims: [["atom", 0], ["atom", 1], ["atom", 2]]  # -30.94248563
+  #constrain_prims: [["atom", 0]]                            # -30.94619833
+  #constrain_prims: [["atom", 0], ["atom", 2]]               # -30.94445486
 calc:
  type: xtb
  pal: 4

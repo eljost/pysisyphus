@@ -1319,22 +1319,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
 
-    # New geometry input
-    if run_dict["geom"]:
-        rdg = run_dict["geom"]  # Shortcut
-        xyz = rdg["fn"]
-        coord_type = rdg["type"]
-        define_prims = rdg.get("define_prims", None)
-        constrain_prims = rdg.get("constrain_prims", None)
-        union = rdg.get("union", None)
-        isotopes = rdg.get("isotopes", None)
-        freeze_atoms = rdg.get("freeze_atoms", None)
-    # Old geometry input
-    else:
-        xyz = run_dict["xyz"]
-        define_prims = run_dict["define_prims"]
-        coord_type = run_dict["coord_type"]
-        union = None
+    # Handle geometry input
+    geom_kwargs = run_dict["geom"]
+    xyz = geom_kwargs.pop("fn")
+    coord_type = geom_kwargs.pop("type")
+    union = geom_kwargs.pop("union", None)
 
     if restart:
         print("Trying to restart calculation. Skipping interpolation.")
@@ -1402,14 +1391,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
 
     geoms = get_geoms(
         xyz,
-        interpolate,
-        between,
         coord_type=coord_type,
-        define_prims=define_prims,
-        constrain_prims=constrain_prims,
+        geom_kwargs=geom_kwargs,
         union=union,
-        isotopes=isotopes,
-        freeze_atoms=freeze_atoms,
+        interpolate=interpolate,
+        between=between,
     )
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")

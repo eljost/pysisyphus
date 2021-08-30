@@ -150,7 +150,9 @@ def test_run_irc_constrained_endopt(this_dir):
         "endopt": {
             "geom": {
                 "type": "redund",
-                "constrain_prims": [["atom", constrain_ind]],
+                "coord_kwargs": {
+                    "constrain_prims": [["atom", constrain_ind]],
+                },
             },
             "max_cycles": max_cycles,
         },
