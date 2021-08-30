@@ -95,6 +95,7 @@ def run_opt(
     calc_getter,
     opt_key,
     opt_kwargs,
+    cart_hessian=None,
     title="Optimization",
     copy_final_geom=None,
     level=0,
@@ -107,6 +108,7 @@ def run_opt(
             title = str(geom)
     else:
         geom.set_calculator(calc_getter())
+        geom.cart_hessian = cart_hessian
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)

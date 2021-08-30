@@ -401,16 +401,17 @@ def run_tsopt_from_cos(
             return Dimer(ts_calc, **dimer_kwargs)
 
         tsopt_key = "plbfgs"
+        # When calling run_opt we pass the Hessian as additional argument,
+        # so it is not recalculated unecessary. As no Hessian is available
+        # for the dimer method we set it None.
+        cart_hessian = None
+    # Determine which imaginary mode has the highest overlap with the splined HEI tangent.
     else:
-        # Determine which imaginary mode has the highest overlap
-        # with the splined HEI tangent.
         print(f"Calculating Hessian at {hei_kind} TS guess.")
+        # Calculate Hessian
+        cart_hessian = ts_geom.cart_hessian
+        # Continue Hessian in whatever coordinate system is actually in use
         H = ts_geom.hessian
-        if ts_coord_type == "dlc":
-            U = ts_geom.internal.U
-            H = U.dot(H).dot(U.T)
-        elif ts_coord_type == "cart":
-            H = ts_geom.cart_hessian
         eigvals, eigvecs = np.linalg.eigh(H)
         neg_inds = eigvals < -1e-4
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
@@ -468,6 +469,7 @@ def run_tsopt_from_cos(
         calc_getter=wrapped_calc_getter,
         opt_key=tsopt_key,
         opt_kwargs=tsopt_kwargs,
+        cart_hessian=cart_hessian,
         title="TS-Optimization",
         copy_final_geom="ts_opt.xyz",
     )

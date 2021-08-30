@@ -853,8 +853,9 @@ class Geometry:
 
     @cart_hessian.setter
     def cart_hessian(self, cart_hessian):
-        cart_hessian = np.array(cart_hessian)
-        assert cart_hessian.shape == (self.cart_coords.size, self.cart_coords.size)
+        if cart_hessian is not None:
+            cart_hessian = np.array(cart_hessian)
+            assert cart_hessian.shape == (self.cart_coords.size, self.cart_coords.size)
         self._hessian = cart_hessian
 
     @property
