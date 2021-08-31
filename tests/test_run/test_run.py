@@ -56,7 +56,6 @@ def test_diels_alder_growing_string():
 
     pprint(results)
 
-    assert len(results.preopt_xyz) == 3
     assert isinstance(results.cos, ChainOfStates)
     assert results.cos_opt.is_converged
     assert results.ts_opt.is_converged

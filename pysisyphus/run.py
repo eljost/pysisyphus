@@ -33,7 +33,7 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
-from pysisyphus.drivers import relaxed_1d_scan, run_opt
+from pysisyphus.drivers import relaxed_1d_scan, run_opt, run_precontr
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 from pysisyphus.Geometry import Geometry
@@ -1054,6 +1054,11 @@ def get_defaults(conf_dict):
             "geom": get_opt_geom_defaults(),
         }
 
+    if "precontr" in conf_dict:
+        dd["precontr"] = {
+            "prefix": "precontr",
+        }
+
     if "preopt" in conf_dict:
         # We can't just copy dd["opt"] because there will probably be
         # some COS specific optimizer, but we just wan't to optimize the
@@ -1071,6 +1076,7 @@ def get_defaults(conf_dict):
                 "strict": False,
             }
         )
+        dd["preopt"]["geom"]["type"] = "tric"
 
     if "endopt" in conf_dict:
         dd["endopt"] = mol_opt_defaults.copy()
@@ -1172,7 +1178,7 @@ def setup_run_dict(run_dict):
             "md",
             "mdp",
             "opt",
-            "precontr"
+            "precontr",
             "preopt",
             "scan",
             "shake",
@@ -1302,9 +1308,30 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Initial loading of geometries from file(s)
     geoms = get_geoms(xyz, coord_type="cart")
 
+    #------------------------+
+    #   Preconditioning of   |
+    # Translation & Rotation |
+    #------------------------+
+
+    if run_dict["precontr"]:
+        ptr_geom0, ptr_geom_m1 = run_precontr(
+            geoms[0], geoms[1], prefix=run_dict["precontr"]["prefix"]
+        )
+        geoms[0] = ptr_geom0
+        geoms[-1] = ptr_geom_m1
+
+    #-----------------------+
+    # Preoptimization of    |
+    # first & last image(s) |
+    #-----------------------+
+
     if run_dict["preopt"]:
         first_opt_result, last_opt_result = run_preopt(
-            geoms[0], geoms[-1], calc_getter, preopt_key, preopt_kwargs,
+            geoms[0],
+            geoms[-1],
+            calc_getter,
+            preopt_key,
+            preopt_kwargs,
         )
         # Update with (pre)optimized geometries
         geoms[0] = preopt_first_geom = first_opt_result.geom.copy(coord_type=coord_type)

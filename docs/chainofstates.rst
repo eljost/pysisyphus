@@ -63,6 +63,7 @@ that the user may want to modify when running a GSM optimization.
 
 .. code:: yaml
 
+    precontr:                                # Preconditioning of translation & rotation
     preopt:                                  # Preoptimize inital and final geometry
     cos:
      type: gs                                # Do a growing string

@@ -174,7 +174,7 @@ def report_frags(rgeom, pgeom, rfrags, pfrags, rbond_diff, pbond_diff):
         return [atoms[i] for i in frag]
 
     for name, geom, frags in (("reactant", rgeom, rfrags), ("product", pgeom, pfrags)):
-        print(f"{len(frags)} fragment(s) in {name} image\n")
+        print(f"{len(frags)} Fragment(s) in {name} image:\n")
         for frag in frags:
             frag_atoms = get_frag_atoms(geom, frag)
             frag_coords = geom.coords3d[list(frag)]
@@ -415,7 +415,9 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
 
     # Rotate R fragments
     if len(rfrag_lists) > 1:
-        alphas = get_steps_to_active_atom_mean(rfrag_lists, rfrag_lists, AR, runion.coords3d)
+        alphas = get_steps_to_active_atom_mean(
+            rfrag_lists, rfrag_lists, AR, runion.coords3d
+        )
         gammas = np.zeros_like(alphas)
         for m, rfrag in enumerate(rfrag_lists):
             Gm = GR[m]
@@ -607,3 +609,12 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     runion.set_calculator(None)
     punion.set_calculator(None)
     return runion, punion
+
+
+def run_precontr(reactant_geom, product_geom, **kwargs):
+    print(
+        highlight_text("Preconditioning of Translation & Rotation")
+        + "\n\nPlease cite https://doi.org/10.1002/jcc.26495\n"
+    )
+
+    return precon_pos_rot(reactant_geom, product_geom, **kwargs)
