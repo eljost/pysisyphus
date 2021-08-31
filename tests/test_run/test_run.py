@@ -45,6 +45,7 @@ def test_diels_alder_growing_string():
             "type": "pyscf",
             "pal": 2,
             "basis": "321g",
+            "verbose": 0,
         },
         "geom": {
             "type": "dlc",

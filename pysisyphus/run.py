@@ -36,9 +36,6 @@ from pysisyphus.dynamics import (
 from pysisyphus.drivers import relaxed_1d_scan, run_opt
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
-# from pysisyphus.overlaps.Overlapper import Overlapper
-# from pysisyphus.overlaps.couplings import couplings
-# from pysisyphus.overlaps.sorter import sort_by_overlaps
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
     confirm_input,
@@ -146,14 +143,6 @@ def parse_args(args):
         action="store_true",
         help="Print bibtex string for pysisyphus paper.",
     )
-    # action_group.add_argument("--couplings", type=int, nargs="+",
-    # help="Create coupling elements."
-    # )
-    # action_group.add_argument("--sort-by-overlaps", nargs=2,
-    # metavar=("ENERGIES", "OVERLAPS"),
-    # help="Sort precomputed energies of (excited) states by precomputed "
-    # "overlaps."
-    # )
     action_group.add_argument(
         "-v", "--version", action="store_true", help="Print pysisyphus version."
     )
@@ -164,10 +153,6 @@ def parse_args(args):
         action="store_true",
         help="Continue a previously crashed/aborted/... pysisphus run.",
     )
-    # run_type_group.add_argument("--overlaps", action="store_true",
-    # help="Calculate overlaps between transition density matrices "
-    # "(tden) or wavefunctions (wf)."
-    # )
     run_type_group.add_argument(
         "--cp",
         "--copy",
@@ -180,11 +165,6 @@ def parse_args(args):
     parser.add_argument(
         "--scheduler", default=None, help="Address of the dask scheduler."
     )
-    # parser.add_argument("--consider-first", type=int, default=None,
-    # help="Consider the first N states for sorting according "
-    # "to overlaps."
-    # )
-
     return parser.parse_args()
 
 
@@ -1007,12 +987,12 @@ def get_defaults(conf_dict):
         "calc": {
             "pal": 1,
         },
+        "precontr": None,
         "preopt": None,
         "endopt": None,
         "scan": None,
         "opt": None,
         "tsopt": None,
-        # "overlaps": None,
         "glob": None,
         "stocastic": None,
         "shake": None,
@@ -1052,18 +1032,6 @@ def get_defaults(conf_dict):
     # with a COS-optimization.
     elif "opt" in conf_dict:
         dd["opt"] = mol_opt_defaults.copy()
-    # elif "overlaps" in conf_dict:
-    # dd["overlaps"] = {
-    # "type": "tden",
-    # "ao_ovlps": None,
-    # "glob": None,
-    # "recursive": False,
-    # "consider_first": None,
-    # "skip": 0,
-    # "regex": None,
-    # "ovlp_with": "previous",
-    # "prev_n": 0,
-    # }
     elif "stocastic" in conf_dict:
         dd["stocastic"] = {
             "type": "frag",
@@ -1204,7 +1172,7 @@ def setup_run_dict(run_dict):
             "md",
             "mdp",
             "opt",
-            "overlaps",
+            "precontr"
             "preopt",
             "scan",
             "shake",
@@ -1819,16 +1787,6 @@ def run_from_dict(
     print()
     sys.stdout.flush()
 
-    # if args.overlaps:
-    # overlaps(run_dict)
-    # elif args.couplings:
-    # couplings(args.couplings)
-    # elif args.sort_by_overlaps:
-    # energies_fn, max_ovlp_inds_fn = args.sort_by_overlaps
-    # consider_first = args.consider_first
-    # sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
-    # else:
-    # main(run_dict, args.restart, yaml_dir, args.scheduler)
     run_result = main(run_dict, restart, cwd, scheduler)
 
     if run_dict["assert"] is not None:
