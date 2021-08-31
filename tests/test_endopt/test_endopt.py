@@ -62,7 +62,7 @@ def test_endopt(fragments, geoms_expected, ts, irc):
             "type": "redund",
         }
     }
-    opt_geoms, _ = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+    # opt_geoms, _ = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+    opt_results = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
 
-    flat_geoms = list(it.chain(*[geoms for key, geoms in opt_geoms.items()]))
-    assert len(flat_geoms) == geoms_expected
+    assert len(flattened) == geoms_expected

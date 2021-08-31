@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 from math import floor, ceil
+from pathlib import Path
 import shutil
 
 import numpy as np
@@ -9,8 +11,10 @@ from pysisyphus.helpers import do_final_hessian
 from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
 from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
+from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.tsoptimizers import *
+
 
 OPT_DICT = {
     "bfgs": BFGS.BFGS,
@@ -88,6 +92,11 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
     return result
 
 
+@dataclass
+class OptResult:
+    opt: Optimizer
+    geom: Geometry
+    fn: Path
 
 
 def run_opt(
@@ -157,4 +166,5 @@ def run_opt(
         do_final_hessian(geom, write_imag_modes=True, prefix=prefix, T=T)
     print()
 
-    return opt.geometry, opt
+    opt_result = OptResult(opt, opt.geometry, opt.final_fn)
+    return opt_result

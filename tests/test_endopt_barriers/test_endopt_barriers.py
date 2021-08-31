@@ -40,7 +40,7 @@ def test_hcn_endopt_barriers(run_dict, this_dir, downhill, do_hess):
     results = run_from_dict(run_dict)
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 @using("xtb")
 def test_total_endopt_barriers(run_dict):
     run_dict = {
@@ -52,7 +52,7 @@ def test_total_endopt_barriers(run_dict):
             "pal": 2,
         },
         "irc": {
-            "max_cycles": 15,
+            "max_cycles": 10,
         },
         "endopt": {"fragments": "total", "geom": {"type": "tric"}},
     }

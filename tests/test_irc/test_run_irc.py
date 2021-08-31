@@ -39,5 +39,5 @@ def test_run_irc_opt_ends(fragments, opt_geom_num):
             "type": "redund",
         },
     }
-    opt_geoms, _ = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
-    assert len(opt_geoms["forward"] + opt_geoms["backward"]) == opt_geom_num
+    fw_results, bw_results, _ = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+    assert len(fw_results) + len(bw_results) == opt_geom_num

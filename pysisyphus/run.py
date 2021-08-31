@@ -463,7 +463,7 @@ def run_tsopt_from_cos(
                 "determined from overlaps."
             )
 
-    ts_geom, ts_opt = run_opt(
+    opt_result = run_opt(
         ts_geom,
         calc_getter=wrapped_calc_getter,
         opt_key=tsopt_key,
@@ -472,6 +472,7 @@ def run_tsopt_from_cos(
         title="TS-Optimization",
         copy_final_geom="ts_opt.xyz",
     )
+    ts_geom = opt_result.geom
 
     # Restore original calculator for Dimer calculations
     if tsopt_key == "dimer":
@@ -491,7 +492,7 @@ def run_tsopt_from_cos(
     print_barrier(ts_energy, last_cos_energy, "TS", "last COS image")
 
     print()
-    return ts_geom, ts_opt
+    return opt_result
 
 
 def run_calculations(
@@ -740,9 +741,10 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
                 "h5_group_name": prefix,
             }
         )
-        preopt_geom, opt = run_opt(
+        opt_result = run_opt(
             geom, calc_getter, preopt_key, opt_kwargs, title=f"{str_} preoptimization"
         )
+        opt = opt_result.opt
 
         # Continue with next pre-optimization when stopped manually
         if strict and not opt.stopped and not opt.is_converged:
@@ -754,7 +756,7 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
         out_xyz.append(opt_fn)
 
-        rmsd = org_geom.rmsd(preopt_geom)
+        rmsd = org_geom.rmsd(opt_result.geom)
         print(f"RMSD with initial geometry: {rmsd:.6f} au")
         print()
 
@@ -925,8 +927,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     geom_kwargs = endopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
 
-    opt_geoms = dict()
-    opt_fns = dict()
+    results = {k: list() for k in ("forward", "backward", "downhill")}
     for key, name, atoms, coords in to_opt:
         geom = Geometry(
             atoms,
@@ -952,24 +953,23 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             }
         )
         try:
-            _, opt = run_opt(
+            opt_result = run_opt(
                 geom,
                 wrapped_calc_getter,
                 endopt_key,
                 opt_kwargs,
                 title=f"{name} Optimization",
             )
-            opt_fn = f"{name}_opt.xyz"
-            shutil.move(opt.final_fn, opt_fn)
-            print(f"Moved '{opt.final_fn.name}' to '{opt_fn}'.")
-            print()
-            opt_geoms.setdefault(key, list()).append(geom)
-            opt_fns.setdefault(key, list()).append(opt_fn)
-        except Exception as err:
-            print(f"Optimization failed!\n{err}")
-            return opt.geometry, opt
+        except Exception:
+            print("Optimization crashed!")
+            continue
+        final_fn = opt_result.opt.final_fn
+        opt_fn = f"{name}_opt.xyz"
+        shutil.move(final_fn, opt_fn)
+        print(f"Moved '{final_fn.name}' to '{opt_fn}'.\n")
+        results[key].append(opt_result)
     print()
-    return opt_geoms, opt_fns
+    return results["forward"], results["backward"], results["downhill"]
 
 
 def run_mdp(geom, calc_getter, mdp_kwargs):
@@ -1459,7 +1459,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                 shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
                 geom.coords = shaked_coords
                 print(f"Shaken coordinates:\n{geom.as_xyz()}")
-            opt_geom, opt = run_opt(geom, calc_getter, opt_key, opt_kwargs)
+            opt_result = run_opt(geom, calc_getter, opt_key, opt_kwargs)
+            opt_geom = opt_result.geom
+            opt = opt_result.opt
             # Keep a backup of the optimized geometry
             if isinstance(opt_geom, ChainOfStates.ChainOfStates):
                 # Set some variables that are later collected into RunResult
@@ -1482,11 +1484,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
             try:
                 if isinstance(geom, ChainOfStates.ChainOfStates):
                     ts_calc_getter = get_calc_closure(tsopt_key, calc_key, calc_kwargs)
-                    ts_geom, ts_opt = run_tsopt_from_cos(
+                    ts_opt_result = run_tsopt_from_cos(
                         geom, tsopt_key, tsopt_kwargs, ts_calc_getter
                     )
                 else:
-                    ts_geom, ts_opt = run_opt(
+                    ts_opt_result = run_opt(
                         geom,
                         calc_getter,
                         tsopt_key,
@@ -1494,6 +1496,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
                         title="TS-Optimization",
                         copy_final_geom="ts_opt.xyz",
                     )
+                ts_geom = ts_opt_result.geom
+                ts_opt = ts_opt_result.opt
                 geom = ts_geom.copy_all()
             except HEIIsFirstOrLastException:
                 abort = True
@@ -1523,29 +1527,27 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
         if ran_irc and run_dict["endopt"]:
             do_thermo = run_dict["endopt"].get("do_hess", False)
             T = run_dict["endopt"]["T"]
-            endopt_geoms, endopt_fns = run_endopt(
+            # Order is forward, backward, downhill
+            endopt_results = run_endopt(
                 geom, irc, endopt_key, endopt_kwargs, calc_getter
             )
 
             # Determine "left" and "right" geoms
             # Only downhill
             if irc.downhill:
-                left_key = "downhill"
+                left_results = endopt_results[2]
             # Only backward
             elif irc.backward and not irc.forward:
-                left_key = "backward"
+                left_results = endopt_results[1]
             # Forward and backward run
             else:
-                left_key = "forward"
-            left_geoms = endopt_geoms[left_key]
-            left_fns = endopt_fns[left_key]
-            try:
-                right_key = "backward"
-                right_geoms = endopt_geoms[right_key]
-                right_fns = endopt_fns[right_key]
-            except KeyError:
-                right_geoms = list()
-                right_fns = list()
+                left_results = endopt_results[0]
+
+            left_geoms = [result.geom for result in left_results]
+            left_fns = [result.fn for result in left_results]
+            # Use 'backward' results; might be empty.
+            right_geoms = [result.geom for result in endopt_results[1]]
+            right_fns = [result.fn for result in endopt_results[1]]
 
             end_geoms = left_geoms + right_geoms
             if run_dict["cos"]:

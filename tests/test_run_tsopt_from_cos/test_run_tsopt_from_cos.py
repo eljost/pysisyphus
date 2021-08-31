@@ -43,15 +43,15 @@ def test_run_tsopt_from_cos(coord_type, cos):
         "coord_type": coord_type,
         "hessian_recalc": 5,
     }
-    ts_geom, ts_opt = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
+    opt_result = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
 
-    assert ts_geom.energy == pytest.approx(-11.44519302)
+    assert opt_result.geom.energy == pytest.approx(-11.44519302)
 
 
 @using("xtb")
 def test_run_tsopt_from_cos_dimer(cos):
-    ts_geom, ts_opt = run_tsopt_from_cos(
+    opt_result = run_tsopt_from_cos(
         cos, tsopt_key="dimer", tsopt_kwargs={}, calc_getter=XTB
     )
 
-    assert ts_geom.energy == pytest.approx(-11.44519302, abs=2e-5)
+    assert opt_result.geom.energy == pytest.approx(-11.44519302, abs=2e-5)
