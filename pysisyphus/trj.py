@@ -325,9 +325,17 @@ def get_geoms(
     return geoms
 
 
-def standardize_geoms(geoms, coord_type, geom_kwargs, same_prims=True):
-    if same_prims and coord_type != "cart":
-        typed_prims = form_coordinate_union(geoms[0], geoms[-1])
+def standardize_geoms(geoms, coord_type, geom_kwargs, same_prims=True, union=False):
+    if union and coord_type != "cart":
+        union_geoms = read_geoms(union, coord_type=coord_type)
+        assert (
+            len(union_geoms) == 2
+        ), f"Got {len(union_geoms)} geometries for 'union'! Please supply only two!"
+        geom_kwargs["coord_kwargs"]["typed_prims"] = form_coordinate_union(*union_geoms)
+    elif same_prims and coord_type != "cart":
+        geom_0 = geoms[0].copy(coord_type="redund")
+        geom_m1 = geoms[-1].copy(coord_type="redund")
+        typed_prims = form_coordinate_union(geom_0, geom_m1)
         geom_kwargs["coord_kwargs"]["typed_prims"] = typed_prims
 
     return [

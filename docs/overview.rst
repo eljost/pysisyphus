@@ -35,7 +35,7 @@ Called with a YAML-input file. Simple and more complex examples can be found in 
 
 .. code:: bash
 
-    usage: pysis [-h] [--clean] [--dryrun | --cp CP]
+    usage: pysis [-h] [--clean] --cp CP]
              [yaml]
 
     positional arguments:
@@ -43,8 +43,6 @@ Called with a YAML-input file. Simple and more complex examples can be found in 
 
     optional arguments:
         --clean               Ask for confirmation before cleaning.
-        --dryrun              Only generate a sample input (if meaningful) for
-                              checking.
         --cp CP, --copy CP    Copy .yaml file and corresponding geometries to a new
                               directory. Similar to TURBOMOLEs cpc command.
 

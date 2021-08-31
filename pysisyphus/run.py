@@ -1272,8 +1272,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     if run_dict["irc"]:
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
-
-    # Handle geometry input
+    # Handle geometry input. This section has to be always present.
     geom_kwargs = run_dict["geom"]
     xyz = geom_kwargs.pop("fn")
     coord_type = geom_kwargs.pop("type")
@@ -1328,6 +1327,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             "act_calculator", act_calc_key, act_calc_kwargs
         )
 
+    ##################
+    # GEOMETRY SETUP #
+    ##################
+
     # Initial loading of geometries from file(s)
     geoms = get_geoms(xyz, coord_type="cart")
 
@@ -1342,7 +1345,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Interpolate. Will return the original geometries for between = 0
     geoms = interpolate_all(geoms, between=between, kind=interpolate, align=True)
     # Recreate geometries with desired coordinate type and keyword arguments
-    geoms = standardize_geoms(geoms, coord_type, geom_kwargs)
+    geoms = standardize_geoms(geoms, coord_type, geom_kwargs, union=union)
 
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
@@ -1358,9 +1361,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         geom = COS_DICT[cos_key](geoms, **cos_kwargs)
     elif len(geoms) == 1:
         geom = geoms[0]
-    # else:
-    # assert len(geoms) == 1
-    # geom = geoms[0]
 
     if run_dict["stocastic"]:
         stoc_kwargs["calc_kwargs"] = calc_kwargs

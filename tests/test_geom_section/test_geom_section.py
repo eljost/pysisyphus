@@ -15,21 +15,15 @@ def test_run_geom_section_union():
         int_ = geom.internal
         assert len(int_.prim_indices_set) == prim_len
 
-        # import numpy as np
-        # H = geom.hessian
-        # w, v = np.linalg.eigh(H)
-        # first = 5
-        # print("eigvals", w[:first])
-
     def get_run_dict():
         return {
-            "calc": {
-                "type": "pyscf",
-                "basis": "sto3g",
-            },
             "geom": {
                 "type": "redund",
                 "fn": "lib:test_union_ts_001.xyz",
+            },
+            "calc": {
+                "type": "pyscf",
+                "basis": "sto3g",
             },
         }
 
