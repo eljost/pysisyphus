@@ -21,6 +21,9 @@ def test_preopt(coord_type, cos_type, this_dir):
         },
         "preopt": {
             "max_cycles": 3,
+            "geom": {
+                "type": "tric",
+            },
         },
         "cos": {
             "type": cos_type,
