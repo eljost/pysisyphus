@@ -316,18 +316,24 @@ def get_geoms(
         typed_prims = form_coordinate_union(geoms[0], geoms[-1])
         geom_kwargs["coord_kwargs"]["typed_prims"] = typed_prims
         geoms = [
-            Geometry(
-                atoms_0,
-                geom.cart_coords,
-                coord_type=coord_type,
-                **geom_kwargs
-            )
+            Geometry(atoms_0, geom.cart_coords, coord_type=coord_type, **geom_kwargs)
             for geom in geoms
         ]
         assert all(
             [len(geom.internal.typed_prims) == len(typed_prims) for geom in geoms]
         )
     return geoms
+
+
+def standardize_geoms(geoms, coord_type, geom_kwargs, same_prims=True):
+    if same_prims and coord_type != "cart":
+        typed_prims = form_coordinate_union(geoms[0], geoms[-1])
+        geom_kwargs["coord_kwargs"]["typed_prims"] = typed_prims
+
+    return [
+        Geometry(geom.atoms, geom.cart_coords, coord_type=coord_type, **geom_kwargs)
+        for geom in geoms
+    ]
 
 
 def dump_geoms(

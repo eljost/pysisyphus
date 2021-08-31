@@ -56,10 +56,11 @@ from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes, normalize_prim_inputs
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.setup import get_bond_sets
+from pysisyphus.interpolate import interpolate_all
 from pysisyphus.irc import *
 from pysisyphus.io import save_hessian
 from pysisyphus.stocastic import *
-from pysisyphus.trj import get_geoms, dump_geoms
+from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
 from pysisyphus._version import get_versions
 from pysisyphus.xyzloader import write_geoms_to_trj
 
@@ -158,11 +159,6 @@ def parse_args(args):
     )
 
     run_type_group = parser.add_mutually_exclusive_group(required=False)
-    run_type_group.add_argument(
-        "--dryrun",
-        action="store_true",
-        help="Only generate a sample input (if meaningful) for checking.",
-    )
     run_type_group.add_argument(
         "--restart",
         action="store_true",
@@ -701,39 +697,24 @@ def run_scan(geom, calc_getter, scan_kwargs):
     return scan_geoms, scan_vals, scan_energies
 
 
-def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
-    """Run optimization on first and last geometry in xyz and return
-    updated xyz variable containing the optimized ends and any
-    intermediate image that was present in the original list."""
+def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
     strict = preopt_kwargs.pop("strict", False)
-    preopt = preopt_kwargs.pop("preopt", "both")
-    assert preopt in "first last both".split()
-    first = (0, "first")
-    last = (-1, "last")
-    to_preopt = {
-        "both": (first, last),
-        "first": (first,),
-        "last": (last,),
-    }
+
     geom_kwargs = preopt_kwargs.pop("geom")
     coord_type = geom_kwargs.pop("type")
 
-    # Allow different sets of primitive internals with same_prims=False
-    geoms = get_geoms(xyz, coord_type=coord_type, same_prims=False)
-    assert len(geoms) >= 2, "Need at least two geometries!"
+    def recreate_geom(geom):
+        return Geometry(geom.atoms, geom.coords, coord_type=coord_type, **geom_kwargs)
 
-    middle_geoms = geoms[1:-1]
-    middle_fn = None
-    if len(middle_geoms) > 0:
-        middle_fn = "middle_for_preopt.trj"
-        write_geoms_to_trj(middle_geoms, middle_fn)
+    first_geom = recreate_geom(first_geom)
+    last_geom = recreate_geom(last_geom)
 
-    out_xyz = list()
-    for ind, str_ in to_preopt[preopt]:
-        geom = geoms[ind]
+    opt_results = list()
+    for geom, key in ((first_geom, "first"), (last_geom, "last")):
         # Backup original geometry for RMSD calculation
         org_geom = geom.copy(coord_type="cart")
-        prefix = f"{str_}_pre"
+
+        prefix = f"{key}_pre"
         opt_kwargs = preopt_kwargs.copy()
         opt_kwargs.update(
             {
@@ -742,39 +723,25 @@ def run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs):
             }
         )
         opt_result = run_opt(
-            geom, calc_getter, preopt_key, opt_kwargs, title=f"{str_} preoptimization"
+            geom, calc_getter, preopt_key, opt_kwargs, title=f"{key} preoptimization"
         )
         opt = opt_result.opt
+        opt_results.append(opt_result)
 
         # Continue with next pre-optimization when stopped manually
         if strict and not opt.stopped and not opt.is_converged:
-            print(f"Problem in preoptimization of {str_}. Exiting!")
+            print(f"Problem in preoptimization of {key}. Exiting!")
             sys.exit()
-        print(f"Preoptimization of {str_} geometry converged!")
-        opt_fn = f"{str_}_preopt.xyz"
+        print(f"Preoptimization of {key} geometry converged!")
+        opt_fn = f"{key}_preopt.xyz"
         shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
-        out_xyz.append(opt_fn)
 
         rmsd = org_geom.rmsd(opt_result.geom)
         print(f"RMSD with initial geometry: {rmsd:.6f} au")
         print()
 
-    if preopt == "last":
-        fn = "first_not_preopt.xyz"
-        with open(fn, "w") as handle:
-            handle.write(geoms[0].as_xyz())
-        out_xyz.insert(0, fn)
-    if middle_fn:
-        out_xyz.insert(1, middle_fn)
-    if preopt == "first":
-        fn = "last_not_preopt.xyz"
-        with open(fn, "w") as handle:
-            handle.write(geoms[-1].as_xyz())
-        out_xyz.append(fn)
-    print()
-
-    return out_xyz
+    return opt_results
 
 
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
@@ -1131,10 +1098,9 @@ def get_defaults(conf_dict):
                 "max_cycles": 100,
                 "thresh": "gau_loose",
                 "trust_max": 0.3,
-                # Preopt specific
-                "preopt": "both",
-                "strict": False,
                 "geom": get_opt_geom_defaults(),
+                # Preopt specific
+                "strict": False,
             }
         )
 
@@ -1254,23 +1220,10 @@ def setup_run_dict(run_dict):
     return run_dict
 
 
-def dry_run(calc, geom):
-    atoms, c3d = geom.atoms, geom.coords3d
-
-    try:
-        inp = calc.prepare_input(atoms, c3d.flatten())
-    except Exception as err:
-        print(f"Calculator {calc} does not support '--dryrun'!\n")
-        raise err
-    with open(calc.inp_fn, "w") as handle:
-        handle.write(inp)
-    print(f"Wrote input to {calc.inp_fn}.")
-
-
 RunResult = namedtuple(
     "RunResult",
     (
-        "preopt_xyz "
+        "preopt_first_geom preopt_last_geom "
         "cos cos_opt "
         "ts_geom ts_opt "
         "end_geoms irc irc_geom "
@@ -1283,7 +1236,7 @@ RunResult = namedtuple(
 )
 
 
-def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
+def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
     # Dump actual run_dict
     with open("RUN.yaml", "w") as handle:
@@ -1375,36 +1328,24 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None, dryrun=None):
             "act_calculator", act_calc_key, act_calc_kwargs
         )
 
-    # Backup original filenames
-    preopt_map = None
-    if (not dryrun) and run_dict["preopt"]:
-        preopt_xyz = run_preopt(xyz, calc_getter, preopt_key, preopt_kwargs)
-        # Update xyz list with optimized endpoint filenames
-        if isinstance(xyz, str):
-            org_xyz = (f"{xyz}, first_entry", f"{xyz}, last entry")
-        else:
-            org_xyz = (xyz[0], xyz[-1])
-        preopt_map = {
-            preopt: org for preopt, org in zip((preopt_xyz[0], preopt_xyz[-1]), org_xyz)
-        }
-        xyz = preopt_xyz
-        sys.stdout.flush()
+    # Initial loading of geometries from file(s)
+    geoms = get_geoms(xyz, coord_type="cart")
 
-    geoms = get_geoms(
-        xyz,
-        coord_type=coord_type,
-        geom_kwargs=geom_kwargs,
-        union=union,
-        interpolate=interpolate,
-        between=between,
-    )
+    if run_dict["preopt"]:
+        first_opt_result, last_opt_result = run_preopt(
+            geoms[0], geoms[-1], calc_getter, preopt_key, preopt_kwargs,
+        )
+        # Update with (pre)optimized geometries
+        geoms[0] = preopt_first_geom = first_opt_result.geom
+        geoms[-1] = preopt_last_geom = last_opt_result.geom
+
+    # Interpolate. Will return the original geometries for between = 0
+    geoms = interpolate_all(geoms, between=between, kind=interpolate, align=True)
+    # Recreate geometries with desired coordinate type and keyword arguments
+    geoms = standardize_geoms(geoms, coord_type, geom_kwargs)
+
     if between and len(geoms) > 1:
         dump_geoms(geoms, "interpolated")
-
-    if dryrun:
-        calc = calc_getter()
-        dry_run(calc, geoms[0])
-        return
 
     # Create COS objects and supply a function that yields new Calculators,
     # as needed for growing COS classes, where images are added over time.
@@ -1840,7 +1781,6 @@ def run_from_dict(
     fclean=False,
     version=False,
     restart=False,
-    dryrun=False,
 ):
     if cwd is None:
         cwd = Path(".")
@@ -1888,8 +1828,8 @@ def run_from_dict(
     # consider_first = args.consider_first
     # sort_by_overlaps(energies_fn, max_ovlp_inds_fn, consider_first)
     # else:
-    # main(run_dict, args.restart, yaml_dir, args.scheduler, args.dryrun)
-    run_result = main(run_dict, restart, cwd, scheduler, dryrun)
+    # main(run_dict, args.restart, yaml_dir, args.scheduler)
+    run_result = main(run_dict, restart, cwd, scheduler)
 
     if run_dict["assert"] is not None:
         print()
@@ -1937,7 +1877,6 @@ def run():
         "fclean": args.fclean,
         "version": args.version,
         "restart": args.restart,
-        "dryrun": args.dryrun,
     }
     run_result = run_from_dict(run_dict, **run_kwargs)
     return 0
