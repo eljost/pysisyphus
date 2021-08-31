@@ -1339,8 +1339,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             geoms[0], geoms[-1], calc_getter, preopt_key, preopt_kwargs,
         )
         # Update with (pre)optimized geometries
-        geoms[0] = preopt_first_geom = first_opt_result.geom
-        geoms[-1] = preopt_last_geom = last_opt_result.geom
+        geoms[0] = preopt_first_geom = first_opt_result.geom.copy(coord_type=coord_type)
+        geoms[-1] = preopt_last_geom = last_opt_result.geom.copy(coord_type=coord_type)
 
     # Interpolate. Will return the original geometries for between = 0
     geoms = interpolate_all(geoms, between=between, kind=interpolate, align=True)
