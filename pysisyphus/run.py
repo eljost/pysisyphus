@@ -1493,7 +1493,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             end_geoms = left_geoms + right_geoms
             if run_dict["cos"]:
                 end_fns = left_fns + right_fns
-                do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map)
+                do_rmsds(xyz, geoms, end_fns, end_geoms)
 
             # Try to compute barriers. Skip barriers if thermochemistry is requsted,
             # but no analytical Hessian is avaialble for irc_geom, because there may

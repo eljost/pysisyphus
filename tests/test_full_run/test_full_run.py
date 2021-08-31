@@ -54,7 +54,8 @@ def test_full_run_hf_abstraction():
     }
     results = run_from_dict(run_dict)
 
-    assert len(results.preopt_xyz) == 2
+    assert results.preopt_first_geom
+    assert results.preopt_last_geom
     assert isinstance(results.cos, ChainOfStates)
     assert results.ts_opt.is_converged
     assert results.ts_geom._energy == pytest.approx(-176.98452438)
