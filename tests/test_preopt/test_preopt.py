@@ -1,12 +1,13 @@
 import pytest
 
+from pysisyphus.helpers import geom_loader
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
 
 @using("pyscf")
 @pytest.mark.parametrize("coord_type, cos_type", [("dlc", "gs"), ("cart", "neb")])
-def test_preopt(coord_type, cos_type):
+def test_preopt(coord_type, cos_type, this_dir):
     run_dict = {
         "geom": {
             "type": coord_type,
@@ -37,10 +38,15 @@ def test_preopt(coord_type, cos_type):
         }
     results = run_from_dict(run_dict)
 
-    first_en = -258.2759597602544
-    assert results.preopt_first_geom.energy == pytest.approx(first_en)
-    assert results.cos.images[0].energy == pytest.approx(first_en)
+    # first_en = -258.2759597602544
+    # assert results.preopt_first_geom.energy == pytest.approx(first_en)
+    # assert results.cos.images[0].energy == pytest.approx(first_en)
 
-    last_en = -258.42817036587434
-    assert results.preopt_last_geom.energy == pytest.approx(last_en)
-    assert results.cos.images[-1].energy == pytest.approx(last_en)
+    # last_en = -258.42817036587434
+    # assert results.preopt_last_geom.energy == pytest.approx(last_en)
+    # assert results.cos.images[-1].energy == pytest.approx(last_en)
+
+    first_ref = geom_loader(this_dir / "ref_first_preopt.xyz")
+    assert first_ref.rmsd(results.cos.images[0]) <= 1e-6
+    last_ref = geom_loader(this_dir / "ref_last_preopt.xyz")
+    assert last_ref.rmsd(results.cos.images[-1]) <= 1e-6
