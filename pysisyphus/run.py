@@ -1076,7 +1076,7 @@ def get_defaults(conf_dict):
                 "strict": False,
             }
         )
-        dd["preopt"]["geom"]["type"] = "tric"
+        #dd["preopt"]["geom"]["type"] = "tric"
 
     if "endopt" in conf_dict:
         dd["endopt"] = mol_opt_defaults.copy()
