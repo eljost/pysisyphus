@@ -31,7 +31,7 @@ class IRC:
         self,
         geometry,
         step_length=0.1,
-        max_cycles=75,
+        max_cycles=125,
         downhill=False,
         forward=True,
         backward=True,
