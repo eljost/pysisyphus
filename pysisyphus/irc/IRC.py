@@ -10,7 +10,7 @@ import sys
 import h5py
 import numpy as np
 
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.helpers import check_for_stop_sign, rms, check_for_end_sign
 from pysisyphus.helpers_pure import (
     highlight_text,
@@ -240,6 +240,22 @@ class IRC:
         else:
             raise Exception("Invalid direction='{direction}'!")
         self.coords = self.ts_coords + initial_step
+
+        if self.displ in ("energy", "energy_cubic"):
+            actual_energy = self.energy
+            actual_lowering = self.ts_energy - actual_energy
+            if actual_lowering < 0.0:
+                print("Displaced geometry is higher in energy compared to TS!")
+            diff = self.displ_energy - actual_lowering
+
+            def en_str(en):
+                return f"{en: .4f} au ({en*AU2KJPERMOL: .2f} kJ mol⁻¹)"
+
+            print(
+                f"Requested energy lowering: {en_str(self.displ_energy)}\n"
+                f"   Actual energy lowering: {en_str(actual_lowering)}\n"
+                f"                        Δ: {en_str(diff)}\n"
+            )
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(
             f"Did inital step of length {initial_step_length:.4f} " "from the TS."
@@ -281,7 +297,9 @@ class IRC:
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
         min_eigval = eigvals[self.mode]
         min_nu = eigval_to_wavenumber(min_eigval)
-        min_msg = f"Transition vector is mode {self.mode} with wavenumber {min_nu:.2f} cm⁻¹."
+        min_msg = (
+            f"Transition vector is mode {self.mode} with wavenumber {min_nu:.2f} cm⁻¹."
+        )
         # Doing it this way hurts ... I'll have to improve my logging game...
         self.log(min_msg)
         print(min_msg)
