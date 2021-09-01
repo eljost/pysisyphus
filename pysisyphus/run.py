@@ -1054,8 +1054,9 @@ def get_defaults(conf_dict):
             "h5_group_name": "tsopt",
             "T": 298.15,
             "prefix": "ts",
-            "geom": get_opt_geom_defaults(),
         }
+        if "cos" in conf_dict:
+            dd["tsopt"]["geom"] = get_opt_geom_defaults()
 
     if "precontr" in conf_dict:
         dd["precontr"] = {
