@@ -32,7 +32,7 @@ class PySCF(OverlapCalculator):
 
     def __init__(self, basis, xc=None, method="scf",  mem=2000,
                  root=None, nstates=None, auxbasis=None, keep_chk=True,
-                 verbose=4, **kwargs):
+                 verbose=0, **kwargs):
         super().__init__(**kwargs)
 
         self.basis = basis
