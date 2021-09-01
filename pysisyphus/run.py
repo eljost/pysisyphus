@@ -389,6 +389,8 @@ def run_tsopt_from_cos(
         H = ts_geom.hessian
         eigvals, eigvecs = np.linalg.eigh(H)
         neg_inds = eigvals < -1e-4
+        if sum(neg_inds) == 0:
+            raise Exception("No negative eigenvalues found at splined HEI. Exiting!")
         eigval_str = np.array2string(eigvals[neg_inds], precision=6)
         print(f"Negative eigenvalues at splined HEI:\n{eigval_str}")
         neg_eigvals = eigvals[neg_inds]
@@ -744,6 +746,7 @@ def run_irc(geom, irc_key, irc_kwargs, calc_getter):
 def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.25):
     if len(end_fns) != 2 or len(end_geoms) != 2:
         return
+    end_fns = [str(fn) for fn in end_fns]
     max_end_len = max(len(s) for s in end_fns)
 
     if len(geoms) == 1:

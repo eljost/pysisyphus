@@ -236,6 +236,11 @@ def get_geoms(
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
 
+    if geom_kwargs is None:
+        geom_kwargs = {
+            "coord_kwargs": {},
+        }
+
     if union:
         assert coord_type != "cart", "union must not be used with coord_type == cart!"
         union_geoms = read_geoms(union, coord_type=coord_type)
