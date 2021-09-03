@@ -15,6 +15,7 @@ import numpy as np
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.constants import AU2EV
+from pysisyphus.helpers_pure import describe
 from pysisyphus.wrapper.mwfn import make_cdd
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
 from pysisyphus.testing import available
@@ -156,6 +157,7 @@ class OverlapCalculator(Calculator):
     @staticmethod
     def get_mo_norms(mo_coeffs, ao_ovlp):
         """MOs are in rows."""
+        # return np.diag(mo_coeffs.dot(ao_ovlp).dot(mo_coeffs.T))
         return np.einsum("ki,kj,ij->k", mo_coeffs, mo_coeffs, ao_ovlp)
 
     @staticmethod
@@ -204,11 +206,28 @@ class OverlapCalculator(Calculator):
 
         # return *return_mos, ao_ovlp
         # The statement above is only valid in python>=3.8
+        norms0 = self.get_mo_norms(return_mos[0], ao_ovlp)
+        norms1 = self.get_mo_norms(return_mos[1], ao_ovlp)
+        self.log(f"norm(MOs_0): {describe(norms0)}")
+        self.log(f"norm(MOs_1): {describe(norms1)}")
         return return_mos[0], return_mos[1], ao_ovlp
 
     @staticmethod
     def get_sao_from_mo_coeffs(mo_coeffs):
-        """Recover AO overlaps from given MO coefficients."""
+        """Recover AO overlaps from given MO coefficients.
+
+        For MOs in the columns of mo_coeffs:
+
+            S_AO = C⁻¹^T C⁻¹
+            S_AO C = C⁻¹^T
+            (S_AO C)^T = C⁻¹
+            C^T S_AO^T = C⁻¹
+            C^T S_AO C = I
+
+        Here, MOs are expected to be in rows of mo_coeffs, yielding
+
+            C S_AO C^T = I
+        """
         mo_coeffs_inv = np.linalg.pinv(mo_coeffs, rcond=1e-8)
         ao_ovlp = mo_coeffs_inv.dot(mo_coeffs_inv.T)
         return ao_ovlp
@@ -258,8 +277,6 @@ class OverlapCalculator(Calculator):
 
     def get_tden_overlaps(self, indices=None, ao_ovlp=None):
         mo_coeffs_ref, mo_coeffs_cur, ao_ovlp = self.get_orbital_matrices(indices, ao_ovlp)
-        ref_norms = self.get_mo_norms(mo_coeffs_ref, ao_ovlp)
-        cur_norms = self.get_mo_norms(mo_coeffs_cur, ao_ovlp)
 
         ref, cur = self.get_indices(indices)
         ci_coeffs_ref = self.ci_coeff_list[ref]

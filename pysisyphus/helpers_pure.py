@@ -162,7 +162,9 @@ def file_or_str(*args, method=False):
                 with open(p) as handle:
                     inp = handle.read()
             elif looks_like_file and not p.exists():
-                raise FileNotFoundError(f"{inp} looks like a file/path, but it does not exist!")
+                raise FileNotFoundError(
+                    f"{inp} looks like a file/path, but it does not exist!"
+                )
             if method:
                 res = func(obj, inp, *args, **kwargs)
             else:
@@ -275,12 +277,14 @@ def filter_fixture_store(test_name):
 
 def get_clock():
     ref = time.time()
+
     def clock(msg=""):
         nonlocal ref
         now = time.time()
         dur = now - ref
         ref = now
         print(f"{msg: >32}, {dur:.3f} s since last call!")
+
     return clock
 
 
@@ -292,3 +296,15 @@ def chunks(l, n):
         yield l[i : i + n]
 
 
+def describe(arr):
+    shape = arr.shape
+    min_ = arr.min()
+    max_ = arr.max()
+    mean = np.mean(arr)
+    median = np.median(arr)
+    var = np.var(arr)
+    fmt = ".4f"
+    return (
+        f"shape={shape}, min={min_:{fmt}}, mean={mean:{fmt}}, "
+        f"median={median:{fmt}}, max={max_:{fmt}}, variance={var:.4e}"
+    )
