@@ -256,6 +256,7 @@ class IRC:
                 f"   Actual energy lowering: {en_str(actual_lowering)}\n"
                 f"                        Δ: {en_str(diff)}\n"
             )
+            sys.stdout.flush()
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(
             f"Did inital step of length {initial_step_length:.4f} " "from the TS."
@@ -544,6 +545,7 @@ class IRC:
 
         self.log(
             "Transition state (TS):\n"
+            f"\t    energy={self.ts_energy:.6f} au\n"
             f"\tnorm(grad)={ts_grad_norm:.6f}\n"
             f"\t max(grad)={ts_grad_max:.6f}\n"
             f"\t rms(grad)={ts_grad_rms:.6f}"
