@@ -209,7 +209,7 @@ class OverlapCalculator(Calculator):
     @staticmethod
     def get_sao_from_mo_coeffs(mo_coeffs):
         """Recover AO overlaps from given MO coefficients."""
-        mo_coeffs_inv = np.linalg.inv(mo_coeffs)
+        mo_coeffs_inv = np.linalg.pinv(mo_coeffs, rcond=1e-8)
         ao_ovlp = mo_coeffs_inv.dot(mo_coeffs_inv.T)
         return ao_ovlp
 
@@ -526,8 +526,7 @@ class OverlapCalculator(Calculator):
             two_coords = self.coords_list[old], self.coords_list[new]
             ao_ovlp = self.run_double_mol_calculation(self.atoms, *two_coords)
         elif (self.double_mol is False) and (self.ovlp_type == "wf"):
-            mos_inv = np.linalg.inv(self.mo_coeff_list[-1])
-            ao_ovlp = mos_inv.dot(mos_inv.T)
+            ao_ovlp = self.get_sao_from_mo_coeffs(self.mo_coeff_list[-1])
             self.log("Creating S_AO by myself to avoid its creation in "
                      "WFOverlap.")
 
