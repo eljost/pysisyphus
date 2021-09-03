@@ -26,8 +26,27 @@ from pysisyphus.intcoords.exceptions import (
     DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
-from pysisyphus.linalg import gram_schmidt
+from pysisyphus.linalg import gram_schmidt, orthogonalize_against
 from pysisyphus.xyzloader import make_xyz_str
+
+
+def inertia_tensor(coords3d, masses):
+    """Inertita tensor.
+
+                          | x² xy xz |
+    (x y z)^T . (x y z) = | xy y² yz |
+                          | xz yz z² |
+    """
+    x, y, z = coords3d.T
+    squares = np.sum(coords3d ** 2 * masses[:, None], axis=0)
+    I_xx = squares[1] + squares[2]
+    I_yy = squares[0] + squares[2]
+    I_zz = squares[0] + squares[1]
+    I_xy = -np.sum(masses * x * y)
+    I_xz = -np.sum(masses * x * z)
+    I_yz = -np.sum(masses * y * z)
+    I = np.array(((I_xx, I_xy, I_xz), (I_xy, I_yy, I_yz), (I_xz, I_yz, I_zz)))
+    return I
 
 
 def get_trans_rot_vectors(cart_coords, masses):
@@ -57,42 +76,62 @@ def get_trans_rot_vectors(cart_coords, masses):
     """
 
     coords3d = np.reshape(cart_coords, (-1, 3))
+    total_mass = masses.sum()
+    com = 1 / total_mass * np.sum(coords3d * masses[:, None], axis=0)
+    coords3d_centered = coords3d - com[None, :]
+
+    I = inertia_tensor(coords3d, masses)
+    _, Iv = np.linalg.eigh(I)
+    Iv = Iv.T
+
     masses_rep = np.repeat(masses, 3)
-    M_sqrt = np.sqrt(masses_rep)
+    sqrt_masses = np.sqrt(masses_rep)
     num = len(masses)
 
     def get_trans_vecs():
         """Mass-weighted unit vectors of the three cartesian axes."""
+
         for vec in ((1, 0, 0), (0, 1, 0), (0, 0, 1)):
-            _ = M_sqrt * np.tile(vec, num)
+            _ = sqrt_masses * np.tile(vec, num)
             yield _ / np.linalg.norm(_)
 
-    trans_vecs = list(get_trans_vecs())
-
-    x, y, z = coords3d.T
-    zeros = np.zeros(x.size)
-
     def get_rot_vecs():
-        """Mass-weighted unit vectors Rx ~ (0, -z, y, 0, -z, y, ...)
-        Ry ~ (z, 0, -x, z, 0, -x, ...) and Rz ~ (-y, x, 0, -y, x, 0)."""
-        for c3d in ((zeros, -z, y), (z, zeros, -x), (-y, x, zeros)):
-            _ = np.array(c3d).T.flatten()
-            _ *= M_sqrt
-            rot_vec = _ / np.linalg.norm(_)
-            if any(np.isnan(rot_vec)):
-                rot_vec = np.zeros_like(rot_vec)
-            yield rot_vec
+        """As done in geomeTRIC."""
 
+        rot_vecs = np.zeros((3, cart_coords.size))
+        # p_vecs = Iv.dot(coords3d_centered.T).T
+        for i in range(masses.size):
+            p_vec = Iv.dot(coords3d_centered[i])
+            for ix in range(3):
+                rot_vecs[0, 3 * i + ix] = Iv[2, ix] * p_vec[1] - Iv[1, ix] * p_vec[2]
+                rot_vecs[1, 3 * i + ix] = Iv[2, ix] * p_vec[0] - Iv[0, ix] * p_vec[2]
+                rot_vecs[2, 3 * i + ix] = Iv[0, ix] * p_vec[1] - Iv[1, ix] * p_vec[0]
+        rot_vecs *= sqrt_masses[None, :]
+        return rot_vecs
+
+    trans_vecs = list(get_trans_vecs())
     rot_vecs = list(get_rot_vecs())
-    ortho_vecs = np.array(gram_schmidt(trans_vecs + rot_vecs))
+    tr_vecs = np.array(trans_vecs + rot_vecs)
 
-    return ortho_vecs
+    # Normalize & orthogonalize
+    tr_vecs /= np.linalg.norm(tr_vecs, axis=1)[:, None]
+    tr_vecs = gram_schmidt(tr_vecs)
+
+    return tr_vecs
 
 
 def get_trans_rot_projector(cart_coords, masses):
-    P = np.eye(cart_coords.size)
-    for vec in get_trans_rot_vectors(cart_coords, masses=masses):
-        P -= np.outer(vec, vec)
+    tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
+    tr_num = tr_vecs.shape[0]
+
+    # Spanning the whole space
+    basis = np.identity(cart_coords.size)
+    # Project out translation & rotation vectors
+    basis = orthogonalize_against(basis, tr_vecs)
+
+    w, v = np.linalg.eigh(basis.dot(basis.T))
+    norm_vecs = v.T[tr_num:] / np.sqrt(w[tr_num:, None])
+    P = norm_vecs.dot(basis)
     return P
 
 
@@ -685,22 +724,7 @@ class Geometry:
 
     @property
     def inertia_tensor(self):
-        """Inertita tensor.
-
-                              | x² xy xz |
-        (x y z)^T . (x y z) = | xy y² yz |
-                              | xz yz z² |
-        """
-        x, y, z = self.coords3d.T
-        squares = np.sum(self.coords3d ** 2 * self.masses[:, None], axis=0)
-        I_xx = squares[1] + squares[2]
-        I_yy = squares[0] + squares[2]
-        I_zz = squares[0] + squares[1]
-        I_xy = -np.sum(self.masses * x * y)
-        I_xz = -np.sum(self.masses * x * z)
-        I_yz = -np.sum(self.masses * y * z)
-        I = np.array(((I_xx, I_xy, I_xz), (I_xy, I_yy, I_yz), (I_xz, I_yz, I_zz)))
-        return I
+        return inertia_tensor(self.coords3d, self.masses)
 
     def principal_axes_are_aligned(self):
         """Check if the principal axes are aligned with the cartesian axes.
@@ -948,7 +972,7 @@ class Geometry:
 
     def eckart_projection(self, mw_hessian):
         P = get_trans_rot_projector(self.cart_coords, masses=self.masses)
-        return P.T.dot(mw_hessian).dot(P)
+        return P.dot(mw_hessian).dot(P.T)
 
     def calc_energy_and_forces(self):
         """Force a calculation of the current energy and forces."""

@@ -25,6 +25,31 @@ def gram_schmidt(vecs, thresh=1e-8):
     return np.array(ortho)
 
 
+def orthogonalize_against(mat, vecs, max_cycles=5, thresh=1e-10):
+    """Orthogonalize rows of 'mat' against rows in 'vecs'
+
+    Returns a (modified) copy of mat.
+    """
+
+    omat = mat.copy()
+    for _ in range(max_cycles):
+        max_overlap = 0.0
+        for row in omat:
+            for ovec in vecs:
+                row -= ovec.dot(row) * ovec
+
+            # Remaining overlap
+            overlap = np.sum(np.dot(vecs, row))
+            max_overlap = max(overlap, max_overlap)        
+
+        if max_overlap < thresh:
+            break
+    else:
+        raise Exception(f"Orthogonalization did not succeed in {max_cycles} cycles!")
+    
+    return omat
+
+
 def perp_comp(vec, along):
     """Return the perpendicular component of vec along along."""
     return vec - vec.dot(along) * along
