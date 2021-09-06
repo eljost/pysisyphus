@@ -428,6 +428,7 @@ class ORCA(OverlapCalculator):
         # [7] index of last  beta  virt, for restricted equal to -1
         header = [struct.unpack("i", cis_handle.read(4))[0] for i in range(8)]
 
+        # Assert that all flags regarding unrestricted calculations are -1
         if any([flag != -1 for flag in header[4:8]]):
             raise Exception("parse_cis, no support for unrestricted MOs")
 
@@ -441,14 +442,35 @@ class ORCA(OverlapCalculator):
 
         # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
         # X+Y of 2, X-Y of 2, ...
-        prevroot = -1
+        prev_root = -1
+        prev_mult = 1
         coeffs = list()
+        iroot_triplets = 0
+
+        # Flags that may later be set to True
+        triplets = False
+        tda = False
+
         for ivec in range(nvec):
             # header of each vector
             # contains 6 4-byte ints, then 1 8-byte double, then 8 byte unknown
             nele, d1, mult, d2, iroot, d3 = struct.unpack("iiiiii", cis_handle.read(24))
+
+            # Will evaluate True only once when triplets were requested.
+            if prev_mult != mult:
+                triplets = True
+                prev_root = -1
+
+            # When we encounter the second "state" we can decide if it is a TDA
+            # calculation (without Y-vector).
+            if (ivec == 1) and (iroot == prev_root + 1):
+                tda = True
+
+            if triplets:
+                iroot = iroot_triplets
+
             ene, d3 = struct.unpack("dd", cis_handle.read(16))
-            self.log(f"nele = {nele}, mult = {mult}, iroot = {iroot}")
+            self.log(f"ivec={ivec}, nele={nele}, mult={mult}, iroot={iroot}")
             # then comes nact * nvirt 8-byte doubles with the coefficients
             coeff = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
             coeff = np.array(coeff).reshape(-1, nvir)
@@ -456,9 +478,9 @@ class ORCA(OverlapCalculator):
             coeff_full = np.zeros((nocc, nvir))
             coeff_full[nfrzc:] = coeff
 
-            # in this case, we have a non-TDA state!
+            # In this case, we have a non-TDA state!
             # and we need to compute (prevvector+currentvector)/2 = X vector
-            if prevroot == iroot:
+            if prev_root == iroot:
                 self.log("Constructing X-vector of RPA state")
                 x_plus_y = coeffs[-1]
                 x_minus_y = coeff_full
@@ -467,9 +489,21 @@ class ORCA(OverlapCalculator):
             else:
                 coeffs.append(coeff_full)
 
-            prevroot = iroot
+            # Somehow ORCA stops to update iroot correctly after the singlet states.
+            if (mult == 3) and (tda or (ivec % 2) == 1):
+                iroot_triplets += 1
+
+            prev_root = iroot
+            prev_mult = mult
         cis_handle.close()
-        return np.array(coeffs)
+
+        coeffs = np.array(coeffs)
+        # Only return triplet states if present
+        if triplets:
+            assert (coeffs.shape[0] % 2) == 0
+            states = coeffs.shape[0] // 2
+            coeffs = coeffs[states:]
+        return coeffs
 
     def parse_gbw(self, gbw_fn):
         """Adapted from

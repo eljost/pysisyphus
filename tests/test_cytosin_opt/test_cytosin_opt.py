@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.calculators import Turbomole, ORCA, Gaussian16, Psi4
+from pysisyphus.calculators import Turbomole, ORCA, ORCA5, Gaussian16, Psi4
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -79,7 +79,7 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
             {"control_path": "./control_path_pbe0_def2svp_s1"},
             marks=using("turbomole")
         ),
-        # pytest.param(ORCA,
+        # pytest.param(ORCA5,
             # {"keywords": "PBE0 def2-SVP tightscf",
              # "blocks": "%tddft nroots 2 iroot 1 tda false end"}
         # ),
