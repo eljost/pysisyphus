@@ -89,17 +89,17 @@ class ORCA(OverlapCalculator):
         """
         super().__init__(**kwargs)
 
-        self.keywords = keywords
-        self.blocks = blocks
+        self.keywords = keywords.lower()
+        self.blocks = blocks.lower()
         self.gbw = gbw
         self.mem = int(mem)
         self.do_stable = bool(do_stable)
         self.freq_keyword = "numfreq" if numfreq else "freq"
 
-        assert ("pal" not in keywords.lower()) and ("nprocs" not in blocks.lower()), (
+        assert ("pal" not in keywords) and ("nprocs" not in blocks), (
             "PALn/nprocs not " "allowed! Use 'pal: n' in the 'calc' section instead."
         )
-        assert "maxcore" not in blocks.lower(), (
+        assert "maxcore" not in blocks, (
             "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
         )
 
@@ -121,6 +121,7 @@ class ORCA(OverlapCalculator):
                 self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
+        self.triplets = bool(re.search("triplets\s+true", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
@@ -525,7 +526,10 @@ class ORCA(OverlapCalculator):
                 # print('{}'.format(*core))
             return coeffs
 
-    def parse_all_energies(self):
+    def parse_all_energies(self, triplets=None):
+        if triplets is None:
+            triplets = self.triplets
+
         with open(self.out) as handle:
             text = handle.read()
 
@@ -535,9 +539,16 @@ class ORCA(OverlapCalculator):
         all_energies = [gs_energy]
 
         if self.do_tddft:
-            tddft_re = re.compile(r"STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
-            excitation_ens = [float(en) for en in tddft_re.findall(text)]
-            all_energies += (np.array(excitation_ens) + gs_energy).tolist()
+            tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([\d\.]+)\s*au")
+            states, exc_ens = zip(
+                *[(int(state), float(en)) for state, en in tddft_re.findall(text)]
+            )
+            if triplets:
+                roots = len(states) // 2
+                exc_ens = exc_ens[-roots:]
+                states = states[-roots:]
+            assert len(exc_ens) == len(set(states))
+            all_energies += (np.array(exc_ens) + gs_energy).tolist()
         all_energies = np.array(all_energies)
         return all_energies
 

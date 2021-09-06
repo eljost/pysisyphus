@@ -1586,6 +1586,7 @@ def do_clean(force=False):
         "*.orca.hessian",
         "*.orca.inp",
         "*.orca.hess",
+        "*.orca.molden",
         # OpenMOLCAS specific
         "calculator*.out",
         "calculator*.JobIph",

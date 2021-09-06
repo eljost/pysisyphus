@@ -489,6 +489,8 @@ class OverlapCalculator(Calculator):
         if self.atoms is None:
             self.atoms = atoms
         mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data(path)
+        ci_norms = np.linalg.norm(ci_coeffs, axis=(1,2))
+        self.log(f"CI-vector norms: {ci_norms}")
 
         # Don't create the object when we use a different ovlp method.
         if (self.ovlp_type == "wf") and (self.wfow is None):

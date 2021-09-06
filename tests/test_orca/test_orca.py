@@ -4,6 +4,7 @@ from signal import SIGTERM
 from subprocess import check_output
 from time import sleep
 
+import numpy as np
 import pytest
 
 from pysisyphus.helpers import geom_loader
@@ -80,3 +81,14 @@ def test_orca_restart():
     # Run ORCA here and kill it manually with `pkill orca`. This seems quite
     # reliable.
     # run_orca()
+
+
+@using("orca")
+def test_orca_parse_triplet_enrgies():
+    out_fn = "orca_tddft_triplets.out"
+    calc = ORCA("")
+    calc.do_tddft = True
+    calc.out = out_fn
+    ens = calc.parse_all_energies(triplets=True)
+    ref_ens = [-394.03420332, -393.90708832, -393.87839532]
+    np.testing.assert_allclose(ens, ref_ens)
