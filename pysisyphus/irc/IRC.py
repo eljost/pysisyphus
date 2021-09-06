@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
-from pysisyphus.helpers import check_for_stop_sign, rms, check_for_end_sign
+from pysisyphus.helpers import check_for_end_sign, rms
 from pysisyphus.helpers_pure import (
     highlight_text,
     eigval_to_wavenumber,
