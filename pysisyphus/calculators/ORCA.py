@@ -234,6 +234,14 @@ class ORCA(OverlapCalculator):
 
         return stable
 
+    def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = func(atoms, coords, **prepare_kwargs)
+        return results
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         calc_type = ""
 
@@ -242,6 +250,9 @@ class ORCA(OverlapCalculator):
 
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="energy")
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -254,11 +265,9 @@ class ORCA(OverlapCalculator):
             "calc": "grad",
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            self.store_overlap_data(atoms, coords)
-            if self.track_root():
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
+        results = self.store_and_track(
+            results, self.get_forces, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
@@ -269,6 +278,9 @@ class ORCA(OverlapCalculator):
 
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="hessian")
+        # results = self.store_and_track(
+        # results, self.get_hessian, atoms, coords, **prepare_kwargs
+        # )
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):

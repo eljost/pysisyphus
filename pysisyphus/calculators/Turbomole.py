@@ -9,18 +9,21 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.calculators.parser import (parse_turbo_gradient,
-                                           parse_turbo_ccre0_ascii,
-                                           parse_turbo_mos,
-                                           parse_turbo_exstates)
+from pysisyphus.calculators.parser import (
+    parse_turbo_gradient,
+    parse_turbo_ccre0_ascii,
+    parse_turbo_mos,
+    parse_turbo_exstates,
+)
 
 
 class Turbomole(OverlapCalculator):
 
     conf_key = "turbomole"
 
-    def __init__(self, control_path, root=None,
-                 double_mol_path=None, mem=1000, **kwargs):
+    def __init__(
+        self, control_path, root=None, double_mol_path=None, mem=1000, **kwargs
+    ):
         super(Turbomole, self).__init__(**kwargs)
 
         self.control_path = Path(control_path)
@@ -35,15 +38,27 @@ class Turbomole(OverlapCalculator):
         if self.double_mol_path:
             with open(self.double_mol_path / "control") as handle:
                 text = handle.read()
-            assert (re.search(r"\$intsdebug\s*sao", text) and
-                    re.search(r"\$scfiterlimit\s*0", text)), "Please set " \
-                   "$intsdebug sao and $scfiterlimit 0 !"
+            assert re.search(r"\$intsdebug\s*sao", text) and re.search(
+                r"\$scfiterlimit\s*0", text
+            ), ("Please set " "$intsdebug sao and $scfiterlimit 0 !")
 
-        self.to_keep = ("control", "mos", "alpha", "beta", "out",
-                        "ciss_a", "ucis_a", "gradient", "sing_a",
-                        "__ccre*", "exstates", "coord",
-                        "mwfn_wf:wavefunction.molden",
-                        "input.xyz", "pc_gradients", "nprhessian",
+        self.to_keep = (
+            "control",
+            "mos",
+            "alpha",
+            "beta",
+            "out",
+            "ciss_a",
+            "ucis_a",
+            "gradient",
+            "sing_a",
+            "__ccre*",
+            "exstates",
+            "coord",
+            "mwfn_wf:wavefunction.molden",
+            "input.xyz",
+            "pc_gradients",
+            "nprhessian",
         )
 
         self.parser_funcs = {
@@ -77,10 +92,11 @@ class Turbomole(OverlapCalculator):
 
         self.set_occ_and_mo_nums(text)
 
-        assert not (("$exopt" in text) and ("$ricc2" in text)), \
-            "Found $exopt and $ricc2 in the control file! $exopt is used " \
-            "for TD-DFT/TDA gradients whereas $ricc2 with 'geoopt ...' " \
+        assert not (("$exopt" in text) and ("$ricc2" in text)), (
+            "Found $exopt and $ricc2 in the control file! $exopt is used "
+            "for TD-DFT/TDA gradients whereas $ricc2 with 'geoopt ...' "
             "leads to ricc2 gradients. Please delete one of the keywords!"
+        )
 
         self.td = False
         self.td_vec_fn = None
@@ -106,8 +122,10 @@ class Turbomole(OverlapCalculator):
             self.frozen_mos = int(re.search(r"implicit core=\s*(\d+)", text)[1])
             self.log(f"Found {self.frozen_mos} frozen orbitals.")
         if self.track:
-            assert (self.td or self.ricc2), "track=True can only be used " \
+            assert self.td or self.ricc2, (
+                "track=True can only be used "
                 "in connection with excited state calculations."
+            )
         # Right now this can't handle a root flip from some excited state
         # to the ground state ... Then we would need grad/rdgrad again,
         # instead of egrad.
@@ -119,22 +137,28 @@ class Turbomole(OverlapCalculator):
             return ";".join((self.scf_cmd, cmd))
 
         if self.td:
-            self.energy_cmd  = get_cmd("escf") 
+            self.energy_cmd = get_cmd("escf")
             self.forces_cmd = get_cmd("egrad")
             self.hessian_cmd = "not_yet_implemented"
         elif self.ricc2:
             ricc2_cmd = get_cmd("ricc2")
-            self.energy_cmd  = ricc2_cmd
+            self.energy_cmd = ricc2_cmd
             self.forces_cmd = ricc2_cmd
             self.hessian_cmd = "not_yet_implemented"
         else:
-            self.energy_cmd  = self.scf_cmd
+            self.energy_cmd = self.scf_cmd
             self.forces_cmd = get_cmd(second_cmd)
             self.hessian_cmd = get_cmd("aoforce")
         self.log(f"Prepared commands:")
         self.log(f"\tEnergy cmd: " + self.energy_cmd)
         self.log(f"\tForces cmd: " + self.forces_cmd)
         self.log(f"\tHessian cmd: " + self.hessian_cmd)
+
+        if self.td or self.ricc2:
+            assert self.root is not None, (
+                "No root set! Either include '$exopt' for TDA/TDDFT or 'geoopt' for ricc2 "
+                "in the control or supply a value for 'root'!"
+            )
 
     def set_occ_and_mo_nums(self, text):
         # Determine number of basis functions
@@ -181,7 +205,7 @@ class Turbomole(OverlapCalculator):
 
     def prepare_point_charges(self, point_charges):
         """$point_charges
-                <x> <y> <z> <q>
+        <x> <y> <z> <q>
         """
         lines = [f"{x:.12} {y:.12f} {z:.12f} {q:.12f}" for x, y, z, q in point_charges]
 
@@ -194,16 +218,12 @@ class Turbomole(OverlapCalculator):
         it. Then we select the following binary on demand, e.g. aoforce
         or rdgrad or egrad etc."""
 
-        valid_calc_types = (
-                "energy",
-                "force",
-                "double_mol",
-                "noparse",
-                "hessian"
-        )
+        valid_calc_types = ("energy", "force", "double_mol", "noparse", "hessian")
         if calc_type not in valid_calc_types:
-            raise Exception(f"Invalid calc_type '{calc_type}'! Supported "
-                            f"calc_types are '{valid_calc_types}'.")
+            raise Exception(
+                f"Invalid calc_type '{calc_type}'! Supported "
+                f"calc_types are '{valid_calc_types}'."
+            )
 
         path = self.prepare_path(use_in_run=True)
         if calc_type == "double_mol":
@@ -245,32 +265,35 @@ class Turbomole(OverlapCalculator):
         root_log_msg = f"with current root information: {self.root}"
         if self.root and self.td:
             repl = f"$exopt {self.root}"
-            self.sub_control(r"\$exopt\s*(\d+)", f"$exopt {self.root}",
-                             root_log_msg)
+            self.sub_control(r"\$exopt\s*(\d+)", f"$exopt {self.root}", root_log_msg)
             self.log(f"Using '{repl}'")
 
             # Adapt number of roots
             # roots_number_repl = "\$soes\s+a\s+(\d+)"
             # self.sub_control(roots_number_repl,
-                             # f"$soes\n a {self.roots_number}",
-                              # "with number of roots to be calculated: "
-                             # f"{self.roots_number}"
+            # f"$soes\n a {self.roots_number}",
+            # "with number of roots to be calculated: "
+            # f"{self.roots_number}"
             # )
         if self.root and self.ricc2:
             repl = f"state=(a {self.root})"
-            self.sub_control(r"state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})",
-                             root_log_msg)
+            self.sub_control(
+                r"state=\(a\s+(?P<state>\d+)\)", f"state=(a {self.root})", root_log_msg
+            )
             self.log(f"Using '{repl}' for geoopt.")
 
         if point_charges is not None:
             charge_num = len(point_charges)
             pc_str = self.prepare_point_charges(point_charges)
-            self.sub_control(r"\$end", pc_str + "\n$end",
-                             f"appended {charge_num} point charges")
+            self.sub_control(
+                r"\$end", pc_str + "\n$end", f"appended {charge_num} point charges"
+            )
             # Activate calculation of gradients on point charges
             self.sub_control(r"\$drvopt", "$drvopt\npoint charges\n")
             # Write point charge gradients to file
-            self.sub_control(r"\$end", "$point_charge_gradients file=pc_gradients\n$end")
+            self.sub_control(
+                r"\$end", "$point_charge_gradients file=pc_gradients\n$end"
+            )
 
         if calc_type == "hessian":
             self.append_control("$noproj\n$nprhessian file=nprhessian")
@@ -297,15 +320,34 @@ class Turbomole(OverlapCalculator):
 
         return env_copy
 
+    def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        if self.track:
+            prev_run_path = self.last_run_path
+            self.store_overlap_data(atoms, coords)
+            # Redo the calculation with the updated root
+            if self.track_root():
+                self.calc_counter += 1
+                results = func(atoms, coords, **prepare_kwargs)
+            self.last_run_path = prev_run_path
+        try:
+            shutil.rmtree(self.last_run_path)
+        except FileNotFoundError:
+            self.log(f"'{self.last_run_path}' has already been deleted!")
+        return results
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         self.prepare_input(atoms, coords, "energy", **prepare_kwargs)
         kwargs = {
-                "calc": "energy",
-                "shell": True,
-                "env": self.get_pal_env(),
-                "cmd": self.energy_cmd,
+            "calc": "energy",
+            "shell": True,
+            "hold": self.track,
+            "env": self.get_pal_env(),
+            "cmd": self.energy_cmd,
         }
         results = self.run(None, **kwargs)
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, cmd=None, **prepare_kwargs):
@@ -315,32 +357,18 @@ class Turbomole(OverlapCalculator):
             cmd = self.forces_cmd
 
         kwargs = {
-                "calc": "force",
-                "shell": True, # To allow chained commands like 'ridft; rdgrad'
-                "hold": self.track, # Keep the files for WFOverlap
-                "env": self.get_pal_env(),
-                "cmd": cmd,
+            "calc": "force",
+            "shell": True,  # To allow chained commands like 'ridft; rdgrad'
+            "hold": self.track,  # Keep the files for WFOverlap
+            "env": self.get_pal_env(),
+            "cmd": cmd,
         }
         # Use inp=None because we don't use any dedicated input besides
         # the previously prepared control file and the current coords.
         results = self.run(None, **kwargs)
-        if self.track:
-            prev_run_path = self.last_run_path
-            self.store_overlap_data(atoms, coords)
-            root_flipped = self.track_root()
-            self.calc_counter += 1
-            if root_flipped:
-                # # Redo gradient calculation for new root. Skip scf_cmd and only
-                # # use self.second_cmd (egrad/ricc2).
-                # results = self.get_forces(atoms, coords, cmd=self.second_cmd)
-
-                # Redo gradient calculation for new root.
-                results = self.get_forces(atoms, coords, cmd=cmd)
-            self.last_run_path = prev_run_path
-        try:
-            shutil.rmtree(self.last_run_path)
-        except FileNotFoundError:
-            self.log(f"'{self.last_run_path}' has already been deleted!")
+        results = self.store_and_track(
+            results, self.get_forces, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
@@ -349,12 +377,16 @@ class Turbomole(OverlapCalculator):
 
         self.prepare_input(atoms, coords, "hessian", **prepare_kwargs)
         kwargs = {
-                "calc": "hessian",
-                "shell": True, # To allow chained commands like 'ridft; rdgrad'
-                "env": self.get_pal_env(),
-                "cmd": self.hessian_cmd,
+            "calc": "hessian",
+            "shell": True,  # To allow chained commands like 'ridft; rdgrad'
+            "hold": self.track,
+            "env": self.get_pal_env(),
+            "cmd": self.hessian_cmd,
         }
         results = self.run(None, **kwargs)
+        results = self.store_and_track(
+            results, self.get_hessian, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def run_calculation(self, atoms, coords):
@@ -362,10 +394,10 @@ class Turbomole(OverlapCalculator):
         to execute Turbomole with the stored cmd of this calculator."""
         self.prepare_input(atoms, coords, "noparse")
         kwargs = {
-                "calc": "noparse",
-                "shell": True,
-                # "hold": self.track, # Keep the files for WFOverlap
-                "env": self.get_pal_env(),
+            "calc": "noparse",
+            "shell": True,
+            # "hold": self.track, # Keep the files for WFOverlap
+            "env": self.get_pal_env(),
         }
         results = self.run(None, **kwargs)
         if self.track:
@@ -374,20 +406,22 @@ class Turbomole(OverlapCalculator):
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
         if not self.double_mol_path:
-            self.log("Skipping double molecule calculations as double mol "
-                     "path is not specified.!")
+            self.log(
+                "Skipping double molecule calculations as double mol "
+                "path is not specified.!"
+            )
             return None
         self.log("Running double molecule calculation")
         double_atoms = atoms + atoms
         double_coords = np.hstack((coords1, coords2))
         self.prepare_input(double_atoms, double_coords, "double_mol")
         kwargs = {
-                "calc": "double_mol",
-                "shell": True,
-                "keep": False,
-                "hold": True,
-                "cmd": self.scf_cmd,
-                "env": self.get_pal_env(),
+            "calc": "double_mol",
+            "shell": True,
+            "keep": False,
+            "hold": True,
+            "cmd": self.scf_cmd,
+            "env": self.get_pal_env(),
         }
         results = self.run(None, **kwargs)
         return results
@@ -404,7 +438,7 @@ class Turbomole(OverlapCalculator):
         double_mo_num = 2 * mo_num
         full_ovlp = np.zeros((double_mo_num, double_mo_num))
         full_ovlp[np.tril_indices(double_mo_num)] = ovlp
-        double_mol_S = full_ovlp[mo_num:,:mo_num]
+        double_mol_S = full_ovlp[mo_num:, :mo_num]
         return double_mol_S
 
     def parse_mos(self):
@@ -428,7 +462,9 @@ class Turbomole(OverlapCalculator):
             tot_en = tot_ens[0]
 
         tot_en = float(tot_en)
-        return {"energy": tot_en, }
+        return {
+            "energy": tot_en,
+        }
 
     def parse_force(self, path):
         results = parse_turbo_gradient(path)
@@ -465,6 +501,7 @@ class Turbomole(OverlapCalculator):
         normalization can then by checked as
             np.concatenate((X, Y)).dot(np.concatenate((X, -Y)))
         and should be 1."""
+
         def to_float(s, loc, toks):
             match = toks[0].replace("D", "E")
             return float(match)
@@ -475,32 +512,38 @@ class Turbomole(OverlapCalculator):
         float_20 = pp.Word(float_chrs, exact=20).setParseAction(to_float)
 
         title = pp.Literal("$title")
-        symmetry = pp.Literal("$symmetry") \
-                   + pp.Word(pp.alphanums).setResultsName("symmetry")
-        tensor_dim = pp.Literal("$tensor space dimension") \
-                    + integer.setResultsName("tensor_dim")
-        scfinstab = pp.Literal("$scfinstab") \
-                    + pp.Word(pp.alphanums).setResultsName("scfinstab")
-        subspace_dim = pp.Literal("$current subspace dimension") \
-                       + integer.setResultsName("subspace_dim")
+        symmetry = pp.Literal("$symmetry") + pp.Word(pp.alphanums).setResultsName(
+            "symmetry"
+        )
+        tensor_dim = pp.Literal("$tensor space dimension") + integer.setResultsName(
+            "tensor_dim"
+        )
+        scfinstab = pp.Literal("$scfinstab") + pp.Word(pp.alphanums).setResultsName(
+            "scfinstab"
+        )
+        subspace_dim = pp.Literal(
+            "$current subspace dimension"
+        ) + integer.setResultsName("subspace_dim")
         converged = pp.Literal("$current iteration converged")
         eigenpairs = pp.Literal("$eigenpairs")
         eigenpair = pp.Group(
-                        integer.setResultsName("state")
-                        + pp.Literal("eigenvalue =")
-                        + float_.setResultsName("eigenvalue")
-                        + pp.Group(pp.OneOrMore(float_20)).setResultsName("vector"))
+            integer.setResultsName("state")
+            + pp.Literal("eigenvalue =")
+            + float_.setResultsName("eigenvalue")
+            + pp.Group(pp.OneOrMore(float_20)).setResultsName("vector")
+        )
         end = pp.Literal("$end")
 
-        parser = (title
-                  + symmetry
-                  + tensor_dim
-                  + scfinstab
-                  + subspace_dim
-                  + converged
-                  + eigenpairs
-                  + pp.OneOrMore(eigenpair).setResultsName("eigenpairs")
-                  + end
+        parser = (
+            title
+            + symmetry
+            + tensor_dim
+            + scfinstab
+            + subspace_dim
+            + converged
+            + eigenpairs
+            + pp.OneOrMore(eigenpair).setResultsName("eigenpairs")
+            + end
         )
         result = parser.parseString(text)
         states = result["subspace_dim"]
@@ -515,36 +558,36 @@ class Turbomole(OverlapCalculator):
         coeffs = coeffs.reshape(-1, self.virt_mos)
 
         eigenpairs_full = np.zeros((self.occ_mos, self.virt_mos))
-        eigenpairs_full[self.frozen_mos:,:] = coeffs
-        from_inds, to_inds = np.where(np.abs(eigenpairs_full) > .1)
+        eigenpairs_full[self.frozen_mos :, :] = coeffs
+        from_inds, to_inds = np.where(np.abs(eigenpairs_full) > 0.1)
 
         # for i, (from_, to_) in enumerate(zip(from_inds, to_inds)):
-            # sq = eigenpairs_full[from_, to_]**2
-            # print(f"{from_+1:02d} -> {to_+self.occ_mos+1:02d}: {sq:.2%}")
+        # sq = eigenpairs_full[from_, to_]**2
+        # print(f"{from_+1:02d} -> {to_+self.occ_mos+1:02d}: {sq:.2%}")
         # print()
 
         return eigenpairs_full
 
     def parse_gs_energy(self):
         """Several places are possible:
-            $subenergy from control file
-            total energy from turbomole.out
-            Final MP2 energy from turbomole.out with ADC(2)
-            Final CC2 energy from turbomole.out with CC(2)
+        $subenergy from control file
+        total energy from turbomole.out
+        Final MP2 energy from turbomole.out with ADC(2)
+        Final CC2 energy from turbomole.out with CC(2)
         """
         float_re = r"([\d\-\.E]+)"
         regexs = [
-                  # CC2 ground state energy
-                  ("out", r"Final CC2 energy\s*:\s*" + float_re, 0),
-                  # ADC(2) ground state energy
-                  ("out", r"Final MP2 energy\s*:\s*" + float_re, 0),
-                  ("control", r"\$subenergy.*$\s*" + float_re, re.MULTILINE),
-                  # DSCF ground state energy
-                  ("out", r"total energy\s*=\s*" + float_re, 0),
-                  # From egrad when a rootflip occured. Then only the excited
-                  # state calculation will be redone and the ground state calculation
-                  # won't be present in the out-file.
-                  ("out", r"Ground state\s*?Total energy:\s+" + float_re, re.MULTILINE),
+            # CC2 ground state energy
+            ("out", r"Final CC2 energy\s*:\s*" + float_re, 0),
+            # ADC(2) ground state energy
+            ("out", r"Final MP2 energy\s*:\s*" + float_re, 0),
+            ("control", r"\$subenergy.*$\s*" + float_re, re.MULTILINE),
+            # DSCF ground state energy
+            ("out", r"total energy\s*=\s*" + float_re, 0),
+            # From egrad when a rootflip occured. Then only the excited
+            # state calculation will be redone and the ground state calculation
+            # won't be present in the out-file.
+            ("out", r"Ground state\s*?Total energy:\s+" + float_re, re.MULTILINE),
         ]
         for file_attr, regex, flag in regexs:
             regex_ = re.compile(regex, flags=flag)
@@ -553,8 +596,10 @@ class Turbomole(OverlapCalculator):
             mobj = regex_.search(text)
             try:
                 gs_energy = float(mobj[1])
-                self.log(f"Parsed ground state energy from '{file_attr}' using "
-                         f"regex '{regex[:11]}'.")
+                self.log(
+                    f"Parsed ground state energy from '{file_attr}' using "
+                    f"regex '{regex[:11]}'."
+                )
                 return gs_energy
             except TypeError:
                 continue
@@ -570,7 +615,7 @@ class Turbomole(OverlapCalculator):
             ci_coeffs = self.parse_td_vectors(text)
             exc_energies = [cc["eigenvalue"] for cc in ci_coeffs]
             ci_coeffs = [cc["vector"] for cc in ci_coeffs]
-            all_energies = np.full(len(exc_energies)+1, gs_energy)
+            all_energies = np.full(len(exc_energies) + 1, gs_energy)
             all_energies[1:] += exc_energies
             # s1 = np.array(ci_coeffs[0])
             # # XmY, XpY = s1.reshape(2, -1)
@@ -579,26 +624,27 @@ class Turbomole(OverlapCalculator):
             # Y = XpY-X
         # Parse eigenvectors from ricc2 calculation
         else:
-            ci_coeffs = [self.parse_cc2_vectors(ccre)
-                         for ccre in self.ccres]
+            ci_coeffs = [self.parse_cc2_vectors(ccre) for ccre in self.ccres]
             with open(self.exstates) as handle:
                 exstates_text = handle.read()
             exc_energies_by_model = parse_turbo_exstates(exstates_text)
             # Drop CCS and take energies from whatever model was used
-            exc_energies = [(model, exc_ens) for model, exc_ens in exc_energies_by_model
-                            if model != "CCS"]
+            exc_energies = [
+                (model, exc_ens)
+                for model, exc_ens in exc_energies_by_model
+                if model != "CCS"
+            ]
             assert len(exc_energies) == 1
             model, exc_energies = exc_energies[0]
-            all_energies = np.full(len(exc_energies)+1, gs_energy)
+            all_energies = np.full(len(exc_energies) + 1, gs_energy)
             all_energies[1:] += exc_energies
             self.log("Parsing of all energies for ricc2 is not yet implemented!")
         ci_coeffs = np.array(ci_coeffs)
         states = ci_coeffs.shape[0]
         X_len = self.occ_mos * self.virt_mos
-        if ci_coeffs.shape[1] == (2*X_len):
-            self.log("TDDFT calculation with X and Y vectors present. "
-            )
-            ci_coeffs = ci_coeffs[:,:X_len]
+        if ci_coeffs.shape[1] == (2 * X_len):
+            self.log("TDDFT calculation with X and Y vectors present. ")
+            ci_coeffs = ci_coeffs[:, :X_len]
         ci_coeffs = ci_coeffs.reshape(states, self.occ_mos, self.virt_mos)
         self.log(f"Reading MO coefficients from '{self.mos}'.")
         with open(self.mos) as handle:
@@ -618,11 +664,12 @@ class Turbomole(OverlapCalculator):
             self.mos = kept_fns["mos"]
         # Maybe copy more files like the vectors from egrad
         # sing_a, trip_a, dipl_a etc.
-        assert"ucis_a" not in kept_fns, "Implement for UKS TDA"
+        assert "ucis_a" not in kept_fns, "Implement for UKS TDA"
         if self.track:
             if self.td:
-                td_key_present = [k for k in ("ciss_a", "sing_a", "ucis_a")
-                                  if k in kept_fns][0]
+                td_key_present = [
+                    k for k in ("ciss_a", "sing_a", "ucis_a") if k in kept_fns
+                ][0]
                 self.td_vec_fn = kept_fns[td_key_present]
             elif self.ricc2:
                 self.ccres = kept_fns["ccres"]
@@ -635,9 +682,9 @@ class Turbomole(OverlapCalculator):
         # Convert binary CCRE0 files to ASCII for easier parsing
         for ccre in path.glob("CCRE0-*"):
             cmd = f"ricctools -dump {ccre.name}".split()
-            result = subprocess.Popen(cmd, cwd=path,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE)
+            result = subprocess.Popen(
+                cmd, cwd=path, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             result.wait()
 
         if self.td:
@@ -666,10 +713,14 @@ class Turbomole(OverlapCalculator):
         stdin = f"""{fn}
 
         """
-        res = subprocess.Popen(cmd, cwd=path, universal_newlines=True,
-                               stdin=subprocess.PIPE,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+        res = subprocess.Popen(
+            cmd,
+            cwd=path,
+            universal_newlines=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         stdout, stderr = res.communicate(stdin)
         res.terminate()
 
