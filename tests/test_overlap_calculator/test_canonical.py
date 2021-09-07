@@ -16,6 +16,7 @@ np.set_printoptions(suppress=True, precision=8)
 @pytest.mark.parametrize(
     "calc_cls, calc_kwargs",
     [
+            # ORCA TDA, Singlet -> Singlet
             pytest.param(
                 ORCA5,
                 {
@@ -25,7 +26,7 @@ np.set_printoptions(suppress=True, precision=8)
                 },
                 marks=using("orca5"),
             ),
-            # Singlet->Triplet
+            # ORCA TDA, Singlet -> Triplet
             pytest.param(
                 ORCA5,
                 {

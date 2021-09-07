@@ -640,7 +640,6 @@ class Turbomole(OverlapCalculator):
         X_len = self.occ_mos * self.virt_mos
         if ci_coeffs.shape[1] == (2 * X_len):
             self.log("TDDFT calculation with X and Y vectors present. ")
-            ci_coeffs = ci_coeffs[:, :X_len]
             X = ci_coeffs[:, :X_len]
             Y = ci_coeffs[:, X_len:]
         else:

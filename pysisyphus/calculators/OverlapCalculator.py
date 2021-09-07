@@ -493,6 +493,8 @@ class OverlapCalculator(Calculator):
             self.atoms = atoms
         # mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data(path)
         mo_coeffs, X, Y, all_ens = self.prepare_overlap_data(path)
+        ao_ovlp = self.get_sao_from_mo_coeffs(mo_coeffs)
+        mo_coeffs = self.renorm_mos(mo_coeffs, ao_ovlp)
         if self.XY == "X":
             ci_coeffs = X
         elif self.XY == "X+Y":

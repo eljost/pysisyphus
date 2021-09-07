@@ -492,17 +492,18 @@ class ORCA(OverlapCalculator):
             coeffs_full = np.zeros((nocc, nvir))
             coeffs_full[nfrzc:] = coeffs
 
-            # In this case, we have a non-TDA state!
-            # and we need to compute (prevvector+currentvector)/2 = X vector
+            # In this case, we have a non-TDA state, where Y is present!
+            # We can recover the original X and Y by first computing X as
+            #   X = (X+Y + X-Y) / 2
+            # and then
+            #   Y = X+Y - X
             if prev_root == iroot:
-                self.log("Constructing X-vector of RPA state")
-                # X_plus_Y = coeffs[-1]
-                X_plus_Y = Xs[-1] + Ys[-1]
+                X_plus_Y = Xs[-1]
                 X_minus_Y = coeffs_full
                 X = 0.5 * (X_plus_Y + X_minus_Y)
                 Y = X_plus_Y - X
-                Xs.append(X)
-                Ys.append(Y)
+                Xs[-1] = X
+                Ys[-1] = Y
             else:
                 Xs.append(coeffs_full)
                 Ys.append(np.zeros_like(coeffs_full))
