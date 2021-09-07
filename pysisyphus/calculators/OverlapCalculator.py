@@ -37,7 +37,7 @@ class OverlapCalculator(Calculator):
     VALID_XY = ("X", "X+Y", "X-Y")
 
     def __init__(self, *args, track=False, ovlp_type="tden", double_mol=False,
-                 ovlp_with="previous", XY="X-Y", adapt_args=(0.5, 0.3, 0.6),
+                 ovlp_with="previous", XY="X+Y", adapt_args=(0.5, 0.3, 0.6),
                  use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
                  ncore=0, conf_thresh=1e-3, dyn_roots=0, mos_ref="cur", mos_renorm=False,
                  **kwargs):
