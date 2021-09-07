@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-from pysisyphus.Geometry import get_trans_rot_vectors
 from pysisyphus.helpers import geom_loader
 
 
@@ -33,14 +32,3 @@ def test_inertia_tensor(geom, this_dir):
     np.testing.assert_allclose(I_so,I_so.T)
     w, v = np.linalg.eigh(I_so)
     np.testing.assert_allclose(w, np.array((317.60004608, 317.61686026, 635.21687793)))
-
-
-def test_trans_rot_vec(geom, this_dir):
-    vecs = geom.get_trans_rot_vectors()
-
-    vecs_ref_fn = this_dir / "benzene_trans_rot_vecs_ref"
-    vecs_ref = np.loadtxt(vecs_ref_fn)
-    np.testing.assert_allclose(vecs, vecs_ref)
-
-    trv = get_trans_rot_vectors(geom.cart_coords, geom.masses)
-    np.testing.assert_allclose(trv, vecs)

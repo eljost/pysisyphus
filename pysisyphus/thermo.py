@@ -36,7 +36,7 @@ def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1"):
 def get_thermoanalysis(geom, T=298.15, point_group="c1"):
     hessian = geom.cart_hessian
     energy = geom.energy
-    vibfreqs, *_ = geom.get_frequencies(hessian)
+    vibfreqs, *_ = geom.get_normal_modes(hessian)
     try:
         mult = geom.calculator.mult
     except AttributeError:

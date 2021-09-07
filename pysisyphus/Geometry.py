@@ -954,24 +954,27 @@ class Geometry:
         if valid:
             self.cart_hessian = hessian
 
-    def get_frequencies(self, hessian=None):
-        if hessian is None:
-            hessian = self.cart_hessian
+    def get_normal_modes(self, cart_hessian=None):
+        """Normal mode wavenumbers, eigenvalues and Cartesian displacements Hessian."""
+        if cart_hessian is None:
+            cart_hessian = self.cart_hessian
 
-        mw_hessian = self.mass_weigh_hessian(hessian)
-        proj_hessian = self.eckart_projection(mw_hessian)
+        mw_hessian = self.mass_weigh_hessian(cart_hessian)
+        P = self.get_trans_rot_projector()
+        proj_hessian = P.dot(mw_hessian).dot(P.T)
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-        return eigval_to_wavenumber(eigvals), eigvals, eigvecs
+        cart_displs = self.mm_sqrt_inv.dot(P.T).dot(eigvecs)
+        return eigval_to_wavenumber(eigvals), eigvals, cart_displs
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
-        vibfreqs, eigvals, eigvecs = self.get_frequencies(hessian)
+        vibfreqs, eigvals, _ = self.get_normal_modes(hessian)
         return vibfreqs[eigvals < thresh]
 
-    def get_trans_rot_vectors(self):
-        return get_trans_rot_vectors(self.cart_coords, masses=self.masses)
+    def get_trans_rot_projector(self):
+        return get_trans_rot_projector(self.cart_coords, masses=self.masses)
 
     def eckart_projection(self, mw_hessian):
-        P = get_trans_rot_projector(self.cart_coords, masses=self.masses)
+        P = self.get_trans_rot_projector()
         return P.dot(mw_hessian).dot(P.T)
 
     def calc_energy_and_forces(self):

@@ -4,7 +4,11 @@ from pysisyphus.calculators import ORCA
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
-from pysisyphus.thermo import get_thermoanalysis, print_thermoanalysis, get_thermoanalysis_from_hess_h5
+from pysisyphus.thermo import (
+    get_thermoanalysis,
+    print_thermoanalysis,
+    get_thermoanalysis_from_hess_h5,
+)
 from pysisyphus.run import run_from_dict
 
 
@@ -31,7 +35,7 @@ def test_get_thermoanalysis(hcn_geom):
     thermo = get_thermoanalysis(hcn_geom)
     print_thermoanalysis(thermo)
 
-    assert thermo.dG == pytest.approx(-0.006280, abs=1e-5)
+    assert thermo.dG == pytest.approx(-0.002, abs=1e-5)
 
 
 @using("orca")
@@ -41,7 +45,7 @@ def test_hcn_thermo(hcn_geom):
     thermo = get_thermoanalysis(hcn_geom)
     print_thermoanalysis(thermo, geom=hcn_geom)
 
-    assert thermo.dG == pytest.approx(-0.006280, abs=1e-5)
+    assert thermo.dG == pytest.approx(-0.002, abs=1e-5)
 
 
 @using("pyscf")
@@ -62,6 +66,6 @@ def test_opt_h2o_do_hess():
             "thresh": "gau",
             "do_hess": True,
             "T": 398.15,
-        }
+        },
     }
     run_result = run_from_dict(run_dict)
