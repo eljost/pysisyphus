@@ -484,7 +484,7 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_ntos = lambdas.sum() / (lambdas ** 2).sum()
+            pr_ntos = lambdas.sum()**2 / (lambdas ** 2).sum()
             if pr_ntos:
                 use_ntos = int(np.round(pr_ntos))
                 self.log(f"PR_NTO={pr_ntos:.2f}")
