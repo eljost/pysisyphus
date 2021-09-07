@@ -36,6 +36,7 @@ from pysisyphus.calculators.DFTBp import DFTBp
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.FakeASE import FakeASE
+from pysisyphus.calculators.Gaussian09 import Gaussian09
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.IPIServer import IPIServer
 from pysisyphus.calculators.HardSphere import HardSphere
