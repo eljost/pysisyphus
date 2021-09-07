@@ -105,6 +105,11 @@ below.
      #
      # Possible values: positive integer
      use_ntos: 4
+     # Dynamically decide on number of NTOs according to their participation ratio. Only
+     # relevant for 'nto_org'
+     #
+     # Possible values: boolean
+     pr_ntos: False
      # 
      # wfoverlap/wavefunction overlaps specific
      # 

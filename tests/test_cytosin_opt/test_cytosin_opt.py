@@ -79,10 +79,10 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
             {"control_path": "./control_path_pbe0_def2svp_s1"},
             marks=using("turbomole")
         ),
-        # pytest.param(ORCA5,
-            # {"keywords": "PBE0 def2-SVP tightscf",
-             # "blocks": "%tddft nroots 2 iroot 1 tda false end"}
-        # ),
+        pytest.param(ORCA5,
+            {"keywords": "PBE0 def2-SVP tightscf",
+             "blocks": "%tddft nroots 2 iroot 1 tda false end",}
+        ),
         pytest.param(PySCF,
             {"xc": "pbe0", "method": "tddft", "basis": "def2SVP",
              "nstates": 2, "root": 1},
@@ -100,6 +100,7 @@ def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):
         "mem": 2000,
         "pal": 4,
         "ovlp_type": "tden",
+        "mos_renorm": True,
         "track": True,
     })
     calc = calc_cls(**calc_kwargs)

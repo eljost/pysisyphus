@@ -32,21 +32,41 @@ class OverlapCalculator(Calculator):
         # As described in 10.1002/jcc.25800
         "nto_org": "original natural transition orbital overlap",
     }
-    VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]  # lgtm [py/non-iterable-in-for-loop]
+    VALID_KEYS = [
+        k for k in OVLP_TYPE_VERBOSE.keys()
+    ]  # lgtm [py/non-iterable-in-for-loop]
     VALID_CDDS = (None, "calc", "render")
     VALID_XY = ("X", "X+Y", "X-Y")
 
-    def __init__(self, *args, track=False, ovlp_type="tden", double_mol=False,
-                 ovlp_with="previous", XY="X+Y", adapt_args=(0.5, 0.3, 0.6),
-                 use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
-                 ncore=0, conf_thresh=1e-3, dyn_roots=0, mos_ref="cur", mos_renorm=False,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        track=False,
+        ovlp_type="tden",
+        double_mol=False,
+        ovlp_with="previous",
+        XY="X+Y",
+        adapt_args=(0.5, 0.3, 0.6),
+        use_ntos=4,
+        pr_ntos=False,
+        nto_thresh=0.3,
+        cdds=None,
+        orient="",
+        dump_fn="overlap_data.h5",
+        ncore=0,
+        conf_thresh=1e-3,
+        dyn_roots=0,
+        mos_ref="cur",
+        mos_renorm=False,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.track = track
         self.ovlp_type = ovlp_type
-        assert self.ovlp_type in self.OVLP_TYPE_VERBOSE.keys(), \
-		f"Valid overlap types are {self.VALID_KEYS}"
+        assert (
+            self.ovlp_type in self.OVLP_TYPE_VERBOSE.keys()
+        ), f"Valid overlap types are {self.VALID_KEYS}"
         self.double_mol = double_mol
         assert ovlp_with in ("previous", "first", "adapt")
         self.ovlp_with = ovlp_with
@@ -55,13 +75,16 @@ class OverlapCalculator(Calculator):
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
         self.use_ntos = use_ntos
+        self.nto_thresh = nto_thresh
         self.cdds = cdds
         # When calculation/rendering of charge density differences is requested
         # check if the appropriate programs are available. If not, we fallback
         # to a more sensible command and print a warning.
-        msg = "'cdds: {0}' requested, but {1} was not found! " \
-              "Falling back to 'cdds: {2}'! Consider defining the {1} " \
-              "command in '.pysisyphusrc'."
+        msg = (
+            "'cdds: {0}' requested, but {1} was not found! "
+            "Falling back to 'cdds: {2}'! Consider defining the {1} "
+            "command in '.pysisyphusrc'."
+        )
         if (self.cdds == "render") and (not available("jmol")):
             print(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
@@ -102,7 +125,9 @@ class OverlapCalculator(Calculator):
         self.all_energies_list = list()
         # Why did is there already False in the list? Probably related
         # to plotting...
-        self.root_flips = [False, ]
+        self.root_flips = [
+            False,
+        ]
         self.first_root = None
         self.overlap_matrices = list()
         self.row_inds = list()
@@ -114,9 +139,10 @@ class OverlapCalculator(Calculator):
         self.root = None
 
         if track:
-            self.log("Tracking excited states with "
-                    f"{self.OVLP_TYPE_VERBOSE[ovlp_type]}s "
-                    f"between the current and the {self.ovlp_with} geometry."
+            self.log(
+                "Tracking excited states with "
+                f"{self.OVLP_TYPE_VERBOSE[ovlp_type]}s "
+                f"between the current and the {self.ovlp_with} geometry."
             )
             if self.ovlp_with == "adapt":
                 self.log(f"Adapt args: {self.adapt_args}")
@@ -127,8 +153,8 @@ class OverlapCalculator(Calculator):
 
     def blowup_ci_coeffs(self, ci_coeffs):
         states, occ, virt = ci_coeffs.shape
-        full = np.zeros((states, occ, occ+virt))
-        full[:,:,occ:] = ci_coeffs
+        full = np.zeros((states, occ, occ + virt))
+        full[:, :, occ:] = ci_coeffs
         return full
 
     def get_indices(self, indices=None):
@@ -167,7 +193,7 @@ class OverlapCalculator(Calculator):
     def renorm_mos(mo_coeffs, ao_ovlp):
         norms = OverlapCalculator.get_mo_norms(mo_coeffs, ao_ovlp)
         sqrts = np.sqrt(norms)
-        return mo_coeffs / sqrts[:,None]
+        return mo_coeffs / sqrts[:, None]
 
     def get_ref_mos(self, ref_mo_coeffs, cur_mo_coeffs):
         return {
@@ -271,22 +297,25 @@ class OverlapCalculator(Calculator):
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
 
-        overlaps = [np.sum(S_MO_occ.dot(state1).dot(S_MO) * state2)
-                    for state1, state2 in it.product(ci_full1, ci_full2)
+        overlaps = [
+            np.sum(S_MO_occ.dot(state1).dot(S_MO) * state2)
+            for state1, state2 in it.product(ci_full1, ci_full2)
         ]
         overlaps = np.array(overlaps).reshape(states, -1)
 
         return overlaps
 
     def get_tden_overlaps(self, indices=None, ao_ovlp=None):
-        mo_coeffs_ref, mo_coeffs_cur, ao_ovlp = self.get_orbital_matrices(indices, ao_ovlp)
+        mo_coeffs_ref, mo_coeffs_cur, ao_ovlp = self.get_orbital_matrices(
+            indices, ao_ovlp
+        )
 
         ref, cur = self.get_indices(indices)
         ci_coeffs_ref = self.ci_coeff_list[ref]
         ci_coeffs_cur = self.ci_coeff_list[cur]
-        overlaps = self.tden_overlaps(mo_coeffs_ref, ci_coeffs_ref,
-                                      mo_coeffs_cur, ci_coeffs_cur,
-                                      ao_ovlp)
+        overlaps = self.tden_overlaps(
+            mo_coeffs_ref, ci_coeffs_ref, mo_coeffs_cur, ci_coeffs_cur, ao_ovlp
+        )
         return overlaps
 
     def tdens_overlap_with_calculator(self, calc, ao_ovlp=None):
@@ -294,20 +323,19 @@ class OverlapCalculator(Calculator):
         ci_coeffs1 = self.ci_coeff_list[-1]
         mo_coeffs2 = calc.mo_coeff_list[-1]
         ci_coeffs2 = calc.ci_coeff_list[-1]
-        overlaps = self.tden_overlaps(mo_coeffs1, ci_coeffs1,
-                                      mo_coeffs2, ci_coeffs2,
-                                      ao_ovlp=ao_ovlp)
+        overlaps = self.tden_overlaps(
+            mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp=ao_ovlp
+        )
         return overlaps
 
     def calculate_state_ntos(self, state_ci_coeffs, mos):
         normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
         # u, s, vh = np.linalg.svd(state_ci_coeffs)
         u, s, vh = np.linalg.svd(normed)
-        lambdas = s**2
+        lambdas = s ** 2
         self.log("Normalized transition density vector to 1.")
         self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
-        lambdas_str = np.array2string(lambdas[:3], precision=4,
-                                      suppress_small=True)
+        lambdas_str = np.array2string(lambdas[:3], precision=4, suppress_small=True)
         self.log(f"First three lambdas: {lambdas_str}")
 
         occ_mo_num = state_ci_coeffs.shape[0]
@@ -328,7 +356,9 @@ class OverlapCalculator(Calculator):
         ntos_1 = self.nto_list[ref]
         ntos_2 = self.nto_list[cur]
         if org:
-            overlaps = self.nto_org_overlaps(ntos_1, ntos_2, ao_ovlp)
+            overlaps = self.nto_org_overlaps(
+                ntos_1, ntos_2, ao_ovlp, nto_thresh=self.nto_thresh
+            )
         else:
             overlaps = self.nto_overlaps(ntos_1, ntos_2, ao_ovlp)
         return overlaps
@@ -339,32 +369,34 @@ class OverlapCalculator(Calculator):
         ovlps = np.zeros((states1, states2))
         for i in range(states1):
             n_i = ntos_1[i]
-            l_i = n_i.lambdas[:,None]
-            ntos_i = l_i*n_i.ntos
+            l_i = n_i.lambdas[:, None]
+            ntos_i = l_i * n_i.ntos
             for j in range(i, states2):
                 n_j = ntos_2[j]
-                l_j = n_j.lambdas[:,None]
-                ntos_j = l_j*n_j.ntos
+                l_j = n_j.lambdas[:, None]
+                ntos_j = l_j * n_j.ntos
                 ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
                 ovlps[i, j] = ovlp
                 ovlps[j, i] = ovlp
         return ovlps
 
-    def nto_org_overlaps(self, ntos_1, ntos_2, ao_ovlp, nto_thresh=.3):
+    def nto_org_overlaps(self, ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
         states_1 = len(ntos_1)
         states_2 = len(ntos_2)
         ovlps = np.zeros((states_1, states_2))
 
         for i in range(states_1):
             n_i = ntos_1[i]
-            l_i = n_i.lambdas[:,None]
+            l_i = n_i.lambdas[:, None]
             ntos_i = n_i.ntos[(l_i >= nto_thresh).flatten()]
             l_i_big = l_i[l_i >= nto_thresh]
             for j in range(i, states_2):
                 n_j = ntos_2[j]
-                l_j = n_j.lambdas[:,None]
+                l_j = n_j.lambdas[:, None]
                 ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
-                ovlp = np.sum(l_i_big[:,None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
+                ovlp = np.sum(
+                    l_i_big[:, None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T))
+                )
                 ovlps[i, j] = ovlp
                 ovlps[j, i] = ovlp
         return ovlps
@@ -382,7 +414,7 @@ class OverlapCalculator(Calculator):
             "coords": np.array(self.coords_list, dtype=float),
             "all_energies": np.array(self.all_energies_list, dtype=float),
             "orient": np.array(self.orient, dtype="S"),
-            "atoms": np.array(self.atoms, dtype="S")
+            "atoms": np.array(self.atoms, dtype="S"),
         }
         if self.root:
             root_dict = {
@@ -447,14 +479,21 @@ class OverlapCalculator(Calculator):
         ntos_for_cycle = list()
         for root in range(roots):
             sn_ci_coeffs = ci_coeffs[root]
-            self.log("Calculating NTOs for root {root+1}")
+            self.log(f"Calculating NTOs for root {root+1}")
             occ_ntos, vir_ntos, lambdas = self.calculate_state_ntos(
-                                                    sn_ci_coeffs,
-                                                    mo_coeffs,
+                sn_ci_coeffs,
+                mo_coeffs,
             )
-            ovlp_occ_ntos = occ_ntos.T[:self.use_ntos]
-            ovlp_vir_ntos = vir_ntos.T[:self.use_ntos]
-            ovlp_lambdas = lambdas[:self.use_ntos]
+            pr_ntos = lambdas.sum() / (lambdas ** 2).sum()
+            if pr_ntos:
+                use_ntos = int(np.round(pr_ntos))
+                self.log(f"PR_NTO={pr_ntos:.2f}")
+            else:
+                use_ntos = self.use_ntos
+            self.log(f"Using {use_ntos} NTOS")
+            ovlp_occ_ntos = occ_ntos.T[:use_ntos]
+            ovlp_vir_ntos = vir_ntos.T[:use_ntos]
+            ovlp_lambdas = lambdas[:use_ntos]
             ovlp_lambdas = np.concatenate((ovlp_lambdas, ovlp_lambdas))
             ovlp_ntos = np.concatenate((ovlp_occ_ntos, ovlp_vir_ntos), axis=0)
             ntos = NTOs(ntos=ovlp_ntos, lambdas=ovlp_lambdas)
@@ -468,25 +507,25 @@ class OverlapCalculator(Calculator):
 
         # # We only have to update the first dimension
         # to_update = (
-            # "all_energies_list",
-            # "overlap_matrices",
-            # "ci_coeff_list",
+        # "all_energies_list",
+        # "overlap_matrices",
+        # "ci_coeff_list",
         # )
         # for name in to_update:
-            # arr_list = getattr(self, name)
-            # first_dims = [arr.shape[0] for arr in arr_list]
-            # max_ = max(first_dims)
-            # print(f"name: {name} first_dims: {first_dims}")
+        # arr_list = getattr(self, name)
+        # first_dims = [arr.shape[0] for arr in arr_list]
+        # max_ = max(first_dims)
+        # print(f"name: {name} first_dims: {first_dims}")
 
         # try:
-            # # With dyn_root > 0 the size of all_ens may be different from cycle to
-            # # cycle. Here we assure that the stored array will always have the same
-            # # size and shape as the first array in the list.
-            # all_ens_zero = np.full_like(self.all_energies_list[0], np.nan, dtype=float)
-            # all_ens_zero[:all_ens.size] = all_ens
-            # all_ens = all_ens_zero
+        # # With dyn_root > 0 the size of all_ens may be different from cycle to
+        # # cycle. Here we assure that the stored array will always have the same
+        # # size and shape as the first array in the list.
+        # all_ens_zero = np.full_like(self.all_energies_list[0], np.nan, dtype=float)
+        # all_ens_zero[:all_ens.size] = all_ens
+        # all_ens = all_ens_zero
         # except IndexError:
-            # pass
+        # pass
 
     def store_overlap_data(self, atoms, coords, path=None):
         if self.atoms is None:
@@ -502,13 +541,15 @@ class OverlapCalculator(Calculator):
         elif self.XY == "X-Y":
             ci_coeffs = X - Y
         else:
-            raise Exception(f"Invalid 'XY' value. Allowed values are: '{self.VALID_XY}'!")
+            raise Exception(
+                f"Invalid 'XY' value. Allowed values are: '{self.VALID_XY}'!"
+            )
 
         # Norm (X+Y) to 1 for every state
         ci_norms = np.linalg.norm(ci_coeffs, axis=(1, 2))
         ci_coeffs /= ci_norms[:, None, None]
 
-        ci_norms = np.linalg.norm(ci_coeffs, axis=(1,2))
+        ci_norms = np.linalg.norm(ci_coeffs, axis=(1, 2))
         self.log(f"CI-vector norms: {ci_norms}")
 
         # Don't create the object when we use a different ovlp method.
@@ -518,9 +559,13 @@ class OverlapCalculator(Calculator):
                 wfow_mem = self.pal * self.mem
             except AttributeError:
                 wfow_mem = 8000
-            self.wfow = WFOWrapper(occ_mo_num, virt_mo_num,
-                                   calc_number=self.calc_number, wfow_mem=wfow_mem,
-                                   ncore=self.ncore, conf_thresh=self.conf_thresh,
+            self.wfow = WFOWrapper(
+                occ_mo_num,
+                virt_mo_num,
+                calc_number=self.calc_number,
+                wfow_mem=wfow_mem,
+                ncore=self.ncore,
+                conf_thresh=self.conf_thresh,
             )
 
         if self.first_root is None:
@@ -551,8 +596,9 @@ class OverlapCalculator(Calculator):
             ovlp_type = self.ovlp_type
         # Nothing to compare to if only one calculation was done yet
         if len(self.ci_coeff_list) < 2:
-            self.log("Skipping overlap calculation in the first cycle "
-                     "as there is nothing to compare to."
+            self.log(
+                "Skipping overlap calculation in the first cycle "
+                "as there is nothing to compare to."
             )
             return False
 
@@ -565,8 +611,7 @@ class OverlapCalculator(Calculator):
             ao_ovlp = self.run_double_mol_calculation(self.atoms, *two_coords)
         elif (self.double_mol is False) and (self.ovlp_type == "wf"):
             ao_ovlp = self.get_sao_from_mo_coeffs(self.mo_coeff_list[-1])
-            self.log("Creating S_AO by myself to avoid its creation in "
-                     "WFOverlap.")
+            self.log("Creating S_AO by myself to avoid its creation in " "WFOverlap.")
 
         if ovlp_type == "wf":
             overlap_mats = self.get_wf_overlaps(ao_ovlp=ao_ovlp)
@@ -579,8 +624,9 @@ class OverlapCalculator(Calculator):
         elif ovlp_type == "nto_org":
             overlaps = self.get_nto_overlaps(ao_ovlp=ao_ovlp, org=True)
         else:
-            raise Exception("Invalid overlap type key! Use one of "
-			    + ", ".join(self.VALID_KEYS))
+            raise Exception(
+                "Invalid overlap type key! Use one of " + ", ".join(self.VALID_KEYS)
+            )
         self.overlap_matrices.append(overlaps)
         overlaps = np.abs(overlaps)
 
@@ -602,8 +648,9 @@ class OverlapCalculator(Calculator):
             row_ind += 1
         self.row_inds.append(row_ind)
         self.ref_cycles.append(self.ref_cycle)
-        self.log(f"Reference is cycle {self.ref_cycle}, root {ref_root}. "
-                 f"Analyzing row {row_ind} of the overlap matrix."
+        self.log(
+            f"Reference is cycle {self.ref_cycle}, root {ref_root}. "
+            f"Analyzing row {row_ind} of the overlap matrix."
         )
 
         ref_root_row = overlaps[row_ind]
@@ -623,8 +670,9 @@ class OverlapCalculator(Calculator):
         if not root_flip:
             self.log(f"Keeping current root {self.root}.")
         else:
-            self.log(f"Root flip! New root is {self.root}. Root at previous "
-                     f"step was {prev_root}."
+            self.log(
+                f"Root flip! New root is {self.root}. Root at previous "
+                f"step was {prev_root}."
             )
         # Look for a new reference state if requested. We want to avoid
         # overlap matrices just after a root flip.
@@ -635,14 +683,19 @@ class OverlapCalculator(Calculator):
             sorted_inds = ref_root_row.argsort()
             sec_highest, highest = ref_root_row[sorted_inds[-2:]]
             ratio = sec_highest / highest
-            self.log(f"Two highest overlaps: {sec_highest:.2%}, {highest:.2%}, "
-                     f"ratio={ratio:.4f}")
+            self.log(
+                f"Two highest overlaps: {sec_highest:.2%}, {highest:.2%}, "
+                f"ratio={ratio:.4f}"
+            )
             above_thresh = highest >= self.adpt_thresh
-            self.log(f"Highest overlap is above threshold? (>= {self.adpt_thresh:.4f}): "
-                     f"{above_thresh}")
+            self.log(
+                f"Highest overlap is above threshold? (>= {self.adpt_thresh:.4f}): "
+                f"{above_thresh}"
+            )
             valid_ratio = self.adpt_min < ratio < self.adpt_max
-            self.log(f"Ratio is valid? (between {self.adpt_min:.4f} and "
-                     f"{self.adpt_max:.4f}): {valid_ratio}"
+            self.log(
+                f"Ratio is valid? (between {self.adpt_min:.4f} and "
+                f"{self.adpt_max:.4f}): {valid_ratio}"
             )
             """Only adapt the reference cycle when the overlaps are well
             behaved and the following two conditions are True:
@@ -680,6 +733,7 @@ class OverlapCalculator(Calculator):
                 self.render_cdd_cube()
 
         self.dump_overlap_data()
+        self.log("\n")
 
         # True if a root flip occured
         return root_flip
@@ -695,12 +749,14 @@ class OverlapCalculator(Calculator):
         exc_str = ""
         mult = 1
         self.log(f"Using dummy multiplicity={mult} in get_mwfn_exc_str")
-        for root_, (root_ci_coeffs, exc_en) in enumerate(zip(ci_coeffs, exc_energies), 1):
+        for root_, (root_ci_coeffs, exc_en) in enumerate(
+            zip(ci_coeffs, exc_energies), 1
+        ):
             exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
             for (occ, virt), coeff in np.ndenumerate(root_ci_coeffs):
                 if abs(coeff) < thresh:
                     continue
-                occ_mo = occ+1
+                occ_mo = occ + 1
                 virt_mo = occ_mos + 1 + virt
                 exc_str += f"{occ_mo:>8d} -> {virt_mo}       {coeff: .5f}\n"
             exc_str += "\n"
@@ -708,9 +764,11 @@ class OverlapCalculator(Calculator):
 
     def calc_cdd_cube(self, root, cycle=-1):
         # Check if Calculator provides an input file (.fchk/.molden) for Mwfn
-        if (not hasattr(self, "mwfn_wf")):
-            self.log("Calculator does not provide an input file for Multiwfn, "
-                     "as 'self.mwfn_wf' is not set! Skipping CDD cube generation!")
+        if not hasattr(self, "mwfn_wf"):
+            self.log(
+                "Calculator does not provide an input file for Multiwfn, "
+                "as 'self.mwfn_wf' is not set! Skipping CDD cube generation!"
+            )
         if cycle != -1:
             self.log("'cycle' argument to make_cdd_cube is currently ignored!")
         exc_str = self.get_mwfn_exc_str(cycle)
