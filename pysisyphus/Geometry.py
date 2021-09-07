@@ -120,7 +120,7 @@ def get_trans_rot_vectors(cart_coords, masses):
     return tr_vecs
 
 
-def get_trans_rot_projector(cart_coords, masses):
+def get_trans_rot_projector(cart_coords, masses, orthogonal=False):
     tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
     tr_num = tr_vecs.shape[0]
 
@@ -128,6 +128,8 @@ def get_trans_rot_projector(cart_coords, masses):
     basis = np.identity(cart_coords.size)
     # Project out translation & rotation vectors
     basis = orthogonalize_against(basis, tr_vecs)
+    if orthogonal:
+        return basis
 
     w, v = np.linalg.eigh(basis.dot(basis.T))
     norm_vecs = v.T[tr_num:] / np.sqrt(w[tr_num:, None])
