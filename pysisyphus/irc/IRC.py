@@ -286,28 +286,37 @@ class IRC:
             https://pubs.acs.org/doi/10.1021/j100338a027
             https://aip.scitation.org/doi/pdf/10.1063/1.459634
         """
-        mm_sqr_inv = self.geometry.mm_sqrt_inv
-        mw_hessian = self.mass_weigh_hessian(self.init_hessian)
-        try:
-            if not self.geometry.calculator.analytical_2d:
-                mw_hessian = self.geometry.eckart_projection(mw_hessian)
-        except AttributeError:
-            pass
-        eigvals, eigvecs = np.linalg.eigh(mw_hessian)
+
+        mw_hessian = self.geometry.mass_weigh_hessian(self.init_hessian)
+        P = self.geometry.get_trans_rot_projector()
+        if self.coords.size > 3:
+            proj_hessian, P = self.geometry.eckart_projection(mw_hessian, return_P=True)
+        # Don't project single atom species and analytical potentials
+        else:
+            proj_hessian = mw_hessian
+            P = np.eye(self.coords.size)
+        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+        mw_cart_displs = P.T.dot(eigvecs)
+        cart_displs = self.geometry.mm_sqrt_inv.dot(mw_cart_displs)
+        nus = eigval_to_wavenumber(eigvals)
+
         neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
+
         min_eigval = eigvals[self.mode]
-        min_nu = eigval_to_wavenumber(min_eigval)
+        min_nu = nus[self.mode]
         min_msg = (
             f"Transition vector is mode {self.mode} with wavenumber {min_nu:.2f} cm⁻¹."
         )
         # Doing it this way hurts ... I'll have to improve my logging game...
         self.log(min_msg)
         print(min_msg)
-        mw_trans_vec = eigvecs[:, self.mode]
+
+        # Mass-weighted
+        mw_trans_vec = mw_cart_displs[:, self.mode]
         self.mw_transition_vector = mw_trans_vec
-        # Un-mass-weight the transition vector
-        trans_vec = mm_sqr_inv.dot(mw_trans_vec)
+        # Not mass-weighted
+        trans_vec = cart_displs[:, self.mode]
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
 
         if self.downhill:
@@ -347,8 +356,14 @@ class IRC:
                 h5_fn = self.get_path_for_fn("third_deriv.h5")
                 save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
                 mw_step_plus, mw_step_minus = cubic_displ(
-                    mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
+                    proj_hessian,
+                    eigvecs[:, self.mode],
+                    min_eigval,
+                    Gv,
+                    -self.displ_energy,
                 )
+                mw_step_plus = P.T.dot(mw_step_plus)
+                mw_step_minus = P.T.dot(mw_step_minus)
             msg = (
                 f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
                 "the TS using 3rd derivatives."

@@ -507,7 +507,7 @@ def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
 
     # We don't want to do start any calculation here, so we directly access
     # the attribute underlying the geom.hessian property.
-    nus, _, cart_displs = geom.get_normal_modes(geom._hessian)
+    nus, _, _, cart_displs = geom.get_normal_modes(geom._hessian)
     below_thresh = nus < freq_thresh
 
     imag_modes = list()

@@ -49,7 +49,7 @@ def inertia_tensor(coords3d, masses):
     return I
 
 
-def get_trans_rot_vectors(cart_coords, masses):
+def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-8):
     """Orthonormal vectors describing translation and rotation.
 
     These vectors are used for the Eckart projection by constructing
@@ -110,8 +110,10 @@ def get_trans_rot_vectors(cart_coords, masses):
         return rot_vecs
 
     trans_vecs = list(get_trans_vecs())
-    rot_vecs = list(get_rot_vecs())
-    tr_vecs = np.array(trans_vecs + rot_vecs)
+    rot_vecs = np.array(get_rot_vecs())
+    # Drop vectors with vanishing norms
+    rot_vecs = rot_vecs[np.linalg.norm(rot_vecs, axis=1) > rot_thresh]
+    tr_vecs = np.concatenate((trans_vecs, rot_vecs), axis=0)
 
     # Normalize & orthogonalize
     tr_vecs /= np.linalg.norm(tr_vecs, axis=1)[:, None]
@@ -963,21 +965,26 @@ class Geometry:
 
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
         P = self.get_trans_rot_projector()
-        proj_hessian = P.dot(mw_hessian).dot(P.T)
+        proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True)
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-        cart_displs = self.mm_sqrt_inv.dot(P.T).dot(eigvecs)
-        return eigval_to_wavenumber(eigvals), eigvals, cart_displs
+        mw_cart_displs = P.T.dot(eigvecs)
+        cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
+        return eigval_to_wavenumber(eigvals), eigvals, mw_cart_displs, cart_displs
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
-        vibfreqs, eigvals, _ = self.get_normal_modes(hessian)
+        vibfreqs, eigvals, *_ = self.get_normal_modes(hessian)
         return vibfreqs[eigvals < thresh]
 
     def get_trans_rot_projector(self):
         return get_trans_rot_projector(self.cart_coords, masses=self.masses)
 
-    def eckart_projection(self, mw_hessian):
+    def eckart_projection(self, mw_hessian, return_P=False):
         P = self.get_trans_rot_projector()
-        return P.dot(mw_hessian).dot(P.T)
+        proj_hessian = P.dot(mw_hessian).dot(P.T)
+        if return_P:
+            return proj_hessian, P
+        else:
+            return proj_hessian
 
     def calc_energy_and_forces(self):
         """Force a calculation of the current energy and forces."""
