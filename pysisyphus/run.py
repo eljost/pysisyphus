@@ -68,7 +68,7 @@ CALC_DICT = {
     "dftb+": DFTBp,
     "dimer": Dimer,
     "ext": ExternalPotential,
-    "g09": Gaussian09.Gaussian09,
+    "g09": Gaussian09,
     "g16": Gaussian16,
     "ipiserver": IPIServer,
     "mopac": MOPAC,
