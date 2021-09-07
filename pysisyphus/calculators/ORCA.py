@@ -462,6 +462,8 @@ class ORCA(OverlapCalculator):
         # Flags that may later be set to True
         triplets = False
         tda = False
+        Xs = list()
+        Ys = list()
 
         for ivec in range(nvec):
             # header of each vector
@@ -483,23 +485,27 @@ class ORCA(OverlapCalculator):
 
             ene, d3 = struct.unpack("dd", cis_handle.read(16))
             self.log(f"ivec={ivec}, nele={nele}, mult={mult}, iroot={iroot}")
-            # then comes nact * nvirt 8-byte doubles with the coefficients
-            coeff = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
-            coeff = np.array(coeff).reshape(-1, nvir)
+            # Then come nact * nvirt 8-byte doubles with the coefficients
+            coeffs = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
+            coeffs = np.array(coeffs).reshape(-1, nvir)
             # create full array, i.e nocc x nvirt
-            coeff_full = np.zeros((nocc, nvir))
-            coeff_full[nfrzc:] = coeff
+            coeffs_full = np.zeros((nocc, nvir))
+            coeffs_full[nfrzc:] = coeffs
 
             # In this case, we have a non-TDA state!
             # and we need to compute (prevvector+currentvector)/2 = X vector
             if prev_root == iroot:
                 self.log("Constructing X-vector of RPA state")
-                x_plus_y = coeffs[-1]
-                x_minus_y = coeff_full
-                x = 0.5 * (x_plus_y + x_minus_y)
-                coeffs[-1] = x
+                # X_plus_Y = coeffs[-1]
+                X_plus_Y = Xs[-1] + Ys[-1]
+                X_minus_Y = coeffs_full
+                X = 0.5 * (X_plus_Y + X_minus_Y)
+                Y = X_plus_Y - X
+                Xs.append(X)
+                Ys.append(Y)
             else:
-                coeffs.append(coeff_full)
+                Xs.append(coeffs_full)
+                Ys.append(np.zeros_like(coeffs_full))
 
             # Somehow ORCA stops to update iroot correctly after the singlet states.
             if (mult == 3) and (tda or (ivec % 2) == 1):
@@ -509,13 +515,16 @@ class ORCA(OverlapCalculator):
             prev_mult = mult
         cis_handle.close()
 
-        coeffs = np.array(coeffs)
+        Xs = np.array(Xs)
+        Ys = np.array(Ys)
+
         # Only return triplet states if present
         if triplets:
-            assert (coeffs.shape[0] % 2) == 0
-            states = coeffs.shape[0] // 2
-            coeffs = coeffs[states:]
-        return coeffs
+            assert (len(Xs) % 2) == 0
+            states = len(Xs) // 2
+            Xs = Xs[states:]
+            Ys = Ys[states:]
+        return Xs, Ys
 
     def parse_gbw(self, gbw_fn):
         """Adapted from
@@ -626,25 +635,14 @@ class ORCA(OverlapCalculator):
         self.log(f"Setting MO coefficients from {gbw}.")
         self.mo_coeffs = self.parse_gbw(self.gbw)
 
-    def set_ci_coeffs(self, ci_coeffs=None, cis=None):
-        if ci_coeffs is not None:
-            self.ci_coeffs = ci_coeffs
-            return
-        if not cis and self.cis:
-            cis = self.cis
-        else:
-            raise Exception("Got no .cis file to parse!")
-        self.log(f"Setting CI coefficients from {cis}.")
-        self.ci_coeffs = self.parse_cis(cis)
-
     def prepare_overlap_data(self, path):
         # Parse eigenvectors from tda/tddft calculation
-        ci_coeffs = self.parse_cis(self.cis)
+        X, Y = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
-        return mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, X, Y, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)

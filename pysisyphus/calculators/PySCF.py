@@ -254,20 +254,18 @@ class PySCF(OverlapCalculator):
         ci_coeffs = np.array(exc_mf.xy)
         # In TDA calculations Y is just the integer 0.
         if ci_coeffs.ndim == 2:
-            ci_coeffs = np.array([state[0] for state in exc_mf.xy])
+            X = np.array([state[0] for state in exc_mf.xy])
+            Y = np.zeros_like(X)
         # In TD-DFT calculations the Y vectors is also present
         else:
-            # Sum X and Y to X+Y
-            ci_coeffs = ci_coeffs.sum(axis=1)
-        # Norm (X+Y) to 1 for every state
-        norms = np.linalg.norm(ci_coeffs, axis=(1, 2))
-        ci_coeffs /= norms[:, None, None]
+            X = ci_coeffs[:, 0]
+            Y = ci_coeffs[:, 1]
 
         exc_energies = exc_mf.e_tot
         all_energies = np.zeros(exc_energies.size + 1)
         all_energies[0] = gs_energy
         all_energies[1:] = exc_energies
-        return mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, X, Y, all_energies
 
     def parse_charges(self):
         results = self.mf.analyze(with_meta_lowdin=False)

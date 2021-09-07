@@ -11,6 +11,9 @@ np.set_printoptions(suppress=True, precision=8)
 
 
 @pytest.mark.parametrize(
+    "XY", ["X", "X+Y", "X-Y"]
+)
+@pytest.mark.parametrize(
     "calc_cls, calc_kwargs",
     [
             pytest.param(
@@ -67,7 +70,7 @@ np.set_printoptions(suppress=True, precision=8)
             )
     ],
 )
-def test_h2o2_overlaps(calc_cls, calc_kwargs, this_dir):
+def test_h2o2_overlaps(XY, calc_cls, calc_kwargs, this_dir):
     geom = geom_loader("lib:h2o2_def2svp_hf_opt.xyz")
 
     try:
@@ -81,6 +84,7 @@ def test_h2o2_overlaps(calc_cls, calc_kwargs, this_dir):
             "mem": 1000,
             "track": True,
             "ovlp_type": "tden",
+            "XY": XY,
         }
     )
     calc = calc_cls(**calc_kwargs)

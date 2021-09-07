@@ -34,11 +34,12 @@ class OverlapCalculator(Calculator):
     }
     VALID_KEYS = [k for k in OVLP_TYPE_VERBOSE.keys()]  # lgtm [py/non-iterable-in-for-loop]
     VALID_CDDS = (None, "calc", "render")
+    VALID_XY = ("X", "X+Y", "X-Y")
 
     def __init__(self, *args, track=False, ovlp_type="tden", double_mol=False,
-                 ovlp_with="previous", adapt_args=(0.5, 0.3, 0.6),
+                 ovlp_with="previous", XY="X-Y", adapt_args=(0.5, 0.3, 0.6),
                  use_ntos=4, cdds=None, orient="", dump_fn="overlap_data.h5",
-                 ncore=0, conf_thresh=1e-4, dyn_roots=0, mos_ref="cur", mos_renorm=False,
+                 ncore=0, conf_thresh=1e-3, dyn_roots=0, mos_ref="cur", mos_renorm=False,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -49,6 +50,8 @@ class OverlapCalculator(Calculator):
         self.double_mol = double_mol
         assert ovlp_with in ("previous", "first", "adapt")
         self.ovlp_with = ovlp_with
+        self.XY = XY
+        assert self.XY in self.VALID_XY
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
         self.use_ntos = use_ntos
@@ -488,7 +491,21 @@ class OverlapCalculator(Calculator):
     def store_overlap_data(self, atoms, coords, path=None):
         if self.atoms is None:
             self.atoms = atoms
-        mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data(path)
+        # mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data(path)
+        mo_coeffs, X, Y, all_ens = self.prepare_overlap_data(path)
+        if self.XY == "X":
+            ci_coeffs = X
+        elif self.XY == "X+Y":
+            ci_coeffs = X + Y
+        elif self.XY == "X-Y":
+            ci_coeffs = X - Y
+        else:
+            raise Exception(f"Invalid 'XY' value. Allowed values are: '{self.VALID_XY}'!")
+
+        # Norm (X+Y) to 1 for every state
+        ci_norms = np.linalg.norm(ci_coeffs, axis=(1, 2))
+        ci_coeffs /= ci_norms[:, None, None]
+
         ci_norms = np.linalg.norm(ci_coeffs, axis=(1,2))
         self.log(f"CI-vector norms: {ci_norms}")
 

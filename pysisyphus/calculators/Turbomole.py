@@ -617,11 +617,6 @@ class Turbomole(OverlapCalculator):
             ci_coeffs = [cc["vector"] for cc in ci_coeffs]
             all_energies = np.full(len(exc_energies) + 1, gs_energy)
             all_energies[1:] += exc_energies
-            # s1 = np.array(ci_coeffs[0])
-            # # XmY, XpY = s1.reshape(2, -1)
-            # XpY, XmY = s1.reshape(2, -1)
-            # X = (XmY+XpY)/2
-            # Y = XpY-X
         # Parse eigenvectors from ricc2 calculation
         else:
             ci_coeffs = [self.parse_cc2_vectors(ccre) for ccre in self.ccres]
@@ -639,19 +634,27 @@ class Turbomole(OverlapCalculator):
             all_energies = np.full(len(exc_energies) + 1, gs_energy)
             all_energies[1:] += exc_energies
             self.log("Parsing of all energies for ricc2 is not yet implemented!")
+
         ci_coeffs = np.array(ci_coeffs)
         states = ci_coeffs.shape[0]
         X_len = self.occ_mos * self.virt_mos
         if ci_coeffs.shape[1] == (2 * X_len):
             self.log("TDDFT calculation with X and Y vectors present. ")
             ci_coeffs = ci_coeffs[:, :X_len]
-        ci_coeffs = ci_coeffs.reshape(states, self.occ_mos, self.virt_mos)
+            X = ci_coeffs[:, :X_len]
+            Y = ci_coeffs[:, X_len:]
+        else:
+            X = ci_coeffs
+            Y = np.zeros_like(X)
+        ci_shape = (states, self.occ_mos, self.virt_mos)
+        X = X.reshape(ci_shape)
+        Y = Y.reshape(ci_shape)
         self.log(f"Reading MO coefficients from '{self.mos}'.")
         with open(self.mos) as handle:
             text = handle.read()
         mo_coeffs = parse_turbo_mos(text)
         self.log(f"Reading electronic energies from '{self.out}'.")
-        return mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, X, Y, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)

@@ -483,8 +483,9 @@ class Gaussian16(OverlapCalculator):
     def prepare_overlap_data(self, path):
         # Parse X eigenvector from 635r dump
         X, Y = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
-        ci_coeffs = X+Y
-        # From http://gaussian.com/cis/, Examples tab, Normalization
+
+        # From http://gaussian.com/cis/, Examples tab, Normalization:
+        #
         # 'For closed shell calculations, the sum of the squares of the
         # expansion coefficients is normalized to total 1/2 (as the beta
         # coefficients are not shown).'
@@ -492,7 +493,8 @@ class Gaussian16(OverlapCalculator):
         # Right now we only deal with restricted calculatios, so alpha == beta
         # and we ignore beta. So we are lacking a factor of sqrt(2). Another
         # option would be to normalize all states to 1.
-        ci_coeffs *= 2**0.5
+        # ci_coeffs *= 2**0.5
+
         # Parse mo coefficients from .fchk file and write a 'fake' turbomole
         # mos file.
         keys = (
@@ -513,7 +515,7 @@ class Gaussian16(OverlapCalculator):
         all_energies = np.zeros(len(exc_energies)+1)
         all_energies[0] = gs_energy
         all_energies[1:] += exc_energies
-        return mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, X, Y, all_energies
 
     def parse_force(self, path):
         results = {}
