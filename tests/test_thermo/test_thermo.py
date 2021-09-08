@@ -69,3 +69,10 @@ def test_opt_h2o_do_hess():
         },
     }
     run_result = run_from_dict(run_dict)
+
+
+def test_print_thermo(this_dir):
+    thermo, geom = get_thermoanalysis_from_hess_h5(
+        this_dir / "hcn_orca_b973c_hessian.h5", return_geom=True
+    )
+    print_thermoanalysis(thermo, geom=geom)

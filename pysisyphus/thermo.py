@@ -78,6 +78,14 @@ Point Group       : {{ thermo.point_group }}
 Symmetry Number σ : {{ thermo.sym_num }}  
 
 +
+| Normal Mode Frequencies
+{{ sep }}
+{% for nu in nus -%}
+ {{ "\t%04d" % loop.index }}: {{ nu }} cm⁻¹
+{% endfor -%}
+{{ sep }}
+
++
 | Inner energy U = U_el + U_vib + U_rot + U_trans
 {{ sep }}
 {{ fmt("U_el", thermo.U_el) }}
@@ -124,12 +132,13 @@ def print_thermoanalysis(thermo, geom=None, level=0, title=None):
     def fmt(key, hartree):
         """Output key & energy in Hartree and kJ/mol."""
         kjm = hartree * AU2KJPERMOL
-        return f"{key:<18}: {hartree: >16.6f} Eh ({kjm: >18.2f} kJ/mol)"
+        return f"{key:<18}: {hartree: >16.8f} Eh ({kjm: >18.2f} kJ/mol)"
 
     # Separator
     sep = "+-----------------------------------------------------------------+"
 
-    rendered = THERMO_TPL.render(geom=geom, thermo=thermo, sep=sep, fmt=fmt)
+    nus = [f"{nu: >8.2f}" for nu in thermo.wavenumbers]
+    rendered = THERMO_TPL.render(geom=geom, thermo=thermo, nus=nus, sep=sep, fmt=fmt)
 
     if title is None:
         title = ""
