@@ -48,7 +48,7 @@ class OverlapCalculator(Calculator):
         XY="X+Y",
         adapt_args=(0.5, 0.3, 0.6),
         use_ntos=4,
-        pr_ntos=False,
+        pr_nto=False,
         nto_thresh=0.3,
         cdds=None,
         orient="",
@@ -484,10 +484,10 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_ntos = lambdas.sum()**2 / (lambdas ** 2).sum()
-            if pr_ntos:
-                use_ntos = int(np.round(pr_ntos))
-                self.log(f"PR_NTO={pr_ntos:.2f}")
+            pr_nto = lambdas.sum()**2 / (lambdas ** 2).sum()
+            if pr_nto:
+                use_ntos = int(np.round(pr_nto))
+                self.log(f"PR_NTO={pr_nto:.2f}")
             else:
                 use_ntos = self.use_ntos
             self.log(f"Using {use_ntos} NTOS")

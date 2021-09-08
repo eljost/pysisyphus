@@ -109,7 +109,7 @@ below.
      # relevant for 'nto_org'
      #
      # Possible values: boolean
-     pr_ntos: False
+     pr_nto: False
      # 
      # wfoverlap/wavefunction overlaps specific
      # 

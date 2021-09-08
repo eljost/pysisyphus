@@ -1697,6 +1697,7 @@ def do_clean(force=False):
         "left_ts_right_geoms.trj",
         "ts_final_hessian.h5",
         "third_deriv.h5",
+        "*.ao_ovlp_rec",
     )
     to_rm_paths = list()
     for glob in rm_globs:
