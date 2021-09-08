@@ -7,6 +7,7 @@ from pysisyphus.constants import BOHR2ANG
 
 def make_xyz_str(atoms, coords, comment=""):
     assert len(atoms) == len(coords)
+    atoms = [a.capitalize() for a in atoms]
 
     coord_fmt = "{: 03.8f}"
     line_fmt = "{:>3s} " + " ".join(

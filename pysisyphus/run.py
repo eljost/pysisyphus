@@ -1399,7 +1399,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
                 shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
                 geom.coords = shaked_coords
                 print(f"Shaken coordinates:\n{geom.as_xyz()}")
-            opt_result = run_opt(geom, calc_getter, opt_key, opt_kwargs)
+            opt_result = run_opt(geom, calc_getter, opt_key, opt_kwargs, print_thermo=True)
             opt_geom = opt_result.geom
             opt = opt_result.opt
             # Keep a backup of the optimized geometry

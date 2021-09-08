@@ -105,6 +105,7 @@ def run_opt(
     opt_key,
     opt_kwargs,
     cart_hessian=None,
+    print_thermo=False,
     title="Optimization",
     copy_final_geom=None,
     level=0,
@@ -164,7 +165,9 @@ def run_opt(
     elif do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
-        do_final_hessian(geom, write_imag_modes=True, prefix=prefix, T=T)
+        do_final_hessian(
+            geom, write_imag_modes=True, prefix=prefix, T=T, print_thermo=print_thermo
+        )
     print()
 
     opt_result = OptResult(opt, opt.geometry, opt.final_fn)

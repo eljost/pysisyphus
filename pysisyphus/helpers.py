@@ -30,6 +30,7 @@ from pysisyphus.io import (
 from pysisyphus.thermo import (
     can_thermoanalysis,
     get_thermoanalysis,
+    print_thermoanalysis,
 )
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
@@ -403,7 +404,12 @@ FinalHessianResult = namedtuple(
 
 
 def do_final_hessian(
-    geom, save_hessian=True, write_imag_modes=False, prefix="", T=298.15
+    geom,
+    save_hessian=True,
+    write_imag_modes=False,
+    prefix="",
+    T=298.15,
+    print_thermo=False,
 ):
     print(highlight_text("Hessian at final geometry", level=1))
     print()
@@ -460,6 +466,8 @@ def do_final_hessian(
     thermo = None
     if can_thermoanalysis:
         thermo = get_thermoanalysis(geom, T=T)
+        if print_thermo:
+            print_thermoanalysis(thermo, geom=geom)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,

@@ -10,15 +10,17 @@ except ModuleNotFoundError:
 
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.helpers_pure import highlight_text
+from pysisyphus.Geometry import Geometry
 
 
-def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1"):
+def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1", return_geom=False):
     with h5py.File(h5_fn, "r") as handle:
         masses = handle["masses"][:]
         vibfreqs = handle["vibfreqs"][:]
         coords3d = handle["coords3d"][:]
         energy = handle.attrs["energy"]
         mult = handle.attrs["mult"]
+        atoms = handle.attrs["atoms"]
 
     thermo_dict = {
         "masses": masses,
@@ -30,7 +32,11 @@ def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1"):
 
     qcd = QCData(thermo_dict, point_group=point_group)
     thermo = thermochemistry(qcd, temperature=T)
-    return thermo
+    if return_geom:
+        geom = Geometry(atoms=atoms, coords=coords3d)
+        return thermo, geom
+    else:
+        return thermo
 
 
 def get_thermoanalysis(geom, T=298.15, point_group="c1"):
