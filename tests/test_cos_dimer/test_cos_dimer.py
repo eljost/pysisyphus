@@ -49,6 +49,6 @@ def test_hcn_neb_dimer_irc():
 
     irc = results.irc
     assert irc.forward_is_converged
-    assert irc.forward_cycle == 30
+    assert irc.forward_cycle == 35
     assert irc.backward_is_converged
-    assert irc.backward_cycle == 35
+    assert irc.backward_cycle == 30

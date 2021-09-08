@@ -46,4 +46,4 @@ def test_modekill_pyscf(this_dir):
 
     w, v = np.linalg.eigh(geom.eckart_projection(geom.mw_hessian))
     nus = eigval_to_wavenumber(w)
-    assert nus[0] == pytest.approx(-4.5086469e-05, abs=1e-4)
+    assert nus[0] == pytest.approx(324.211369, abs=1e-4)

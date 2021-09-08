@@ -118,9 +118,16 @@ def test_run_dimer_irc():
     assert results.opt.is_converged
     assert results.irc.backward_is_converged
     assert results.irc.forward_is_converged
-    hcn, cnh = results.end_geoms
-    assert hcn.energy == pytest.approx(-92.33966200907034)
-    assert cnh.energy == pytest.approx(-92.35408370090339)
+    cnh, hcn = results.end_geoms
+    cnh_ref_energy = -92.33966200907034
+    hcn_ref_energy = -92.35408370090339
+    # Sometimes mixed up, depending on the numpy version?!
+    try:
+        assert hcn.energy == pytest.approx(hcn_ref_energy)
+        assert cnh.energy == pytest.approx(cnh_ref_energy)
+    except AssertionError:
+        assert hcn.energy == pytest.approx(cnh_ref_energy)
+        assert cnh.energy == pytest.approx(hcn_ref_energy)
 
 
 @using("pyscf")

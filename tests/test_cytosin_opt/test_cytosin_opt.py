@@ -81,7 +81,8 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
         ),
         pytest.param(ORCA5,
             {"keywords": "PBE0 def2-SVP tightscf",
-             "blocks": "%tddft nroots 2 iroot 1 tda false end",}
+             "blocks": "%tddft nroots 2 iroot 1 tda false end"},
+            marks=using("orca5")
         ),
         pytest.param(PySCF,
             {"xc": "pbe0", "method": "tddft", "basis": "def2SVP",
