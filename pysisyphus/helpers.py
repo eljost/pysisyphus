@@ -75,7 +75,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     fn = str(fn)
     org_fn = fn
 
-    split_ = re.split("\[(\d+)\]$", fn)
+    split_ = re.split("\[(-?\d+)\]$", fn)
     fn = split_.pop(0)
     if split_:
         index = int(split_.pop(0))
