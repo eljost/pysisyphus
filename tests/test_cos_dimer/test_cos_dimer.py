@@ -48,7 +48,6 @@ def test_hcn_neb_dimer_irc():
     assert results.ts_geom.energy == pytest.approx(-92.2460427)
 
     irc = results.irc
-    assert irc.forward_is_converged
-    assert irc.forward_cycle == 30
-    assert irc.backward_is_converged
-    assert irc.backward_cycle == 35
+    cycles = {irc.forward_cycle, irc.backward_cycle}
+    ref_cycles = {35, 30}
+    assert cycles == ref_cycles

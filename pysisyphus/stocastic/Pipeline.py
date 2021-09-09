@@ -8,7 +8,7 @@ import rmsd
 from scipy.spatial.distance import pdist
 
 from pysisyphus.calculators.XTB import XTB
-from pysisyphus.helpers import check_for_stop_sign
+from pysisyphus.helpers import check_for_end_sign
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -271,7 +271,7 @@ class Pipeline:
             cycle_duration = cycle_end - cycle_start
             self.log(f"Cycle {i} took {cycle_duration:.0f} s.")
             self.log("")
-            if check_for_stop_sign():
+            if check_for_end_sign():
                 break
 
         self.log(f"Run produced {len(self.new_energies)} geometries!")

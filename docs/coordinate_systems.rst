@@ -15,7 +15,7 @@ Cartesian Coordinates
 * Strong coupling
 * Unambiguously defined, if translation and rotation (TR) are removed
 * Redundant set, if TR are not removed
-* :code:`coord_type: cart`
+* :code:`type: cart`
 
 Redundant Internal Coordinates
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ Redundant Internal Coordinates
 * Require sophisticated setup algorithm
 * Iterative internal-Cartesian backtransformation, which may fail
 * Usually highly redundant set
-* :code:`coord_type: redund`
+* :code:`type: redund`
 
 Delocalized Internal Coordinates (DLC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ Delocalized Internal Coordinates (DLC)
 * Non redundant set
 * More efficient compared to RIC for bigger systems (if initial DLC generation is feasible)
 * Same comments apply, as for RICs
-* :code:`coord_type: dlc`
+* :code:`type: dlc`
 
 Translation & Rotation Internal Coordinates (TRIC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ Translation & Rotation Internal Coordinates (TRIC)
 * See `10.1063/1.4952956 <https://doi.org/10.1063/1.4952956>`_ for a full discussion
 * By default the B-Matrix is recalculated in every step of the internal-Cartesian
   backtransformation when TRIC is enabled
-* :code:`coord_type: tric`
+* :code:`type: tric`
 
 Supported File Formats
 ----------------------
@@ -86,18 +86,22 @@ is not supported in the current Z-matrix parser.
 YAML Input
 ----------
 
-See below for an explanation of the `geom` keys.
+See below for an explanation of possible inputs in the `geom` section. Input related
+to internal coordinates is given mostly in the `coord_kwargs` subgroup, whereas
+atom-related input (`isotops`, `freeze_atoms`) is given one level above. See the
+example below:
 
 .. code:: yaml
 
     geom:
      type: cart               # Coordinate system (cart/redund/dlc/tric)
      fn: [input]              # File name or inline input
-     define_prims: null       # Additional primitives, to be defined
-     constrain_prims: null    # Primitive internals to be constrained
-     union: null              # Define same set of primitives at multiple geometries
+     union: False             # Define same set of primitives at multiple geometries
      isotopes: null           # Specify different isotopes
      freeze_atoms: null       # Freeze Cartesians of certain atoms
+     coord_kwargs:            # Keywords that are passed to the internal coordinate class
+      define_prims: null      # Additionally define these primitives
+      constrain_prims: null   # Primitive internals to be constrained
     preopt:
      geom:                    # geom block in preopt takes same keywords as above
       ...                     # no 'fn' key here!
@@ -240,7 +244,7 @@ they always remain at their initial value.
 Constraints
 ^^^^^^^^^^^
 **Constraints beyond frozen atoms are currently only supported in conjunction with
-RIC (`coord_type: redund`).**
+RIC (`type: redund`).**
 It is not (yet) possible to modify the value of the specified coordinate via YAML
 input; the internal coordinate is constrained at its initial value. The same syntax
 as for `define_prims` is used. If the coordinate of the requested constraint is not
@@ -301,6 +305,21 @@ float**, take care to add a dot (**1.e9**).
     # Fix atom 0 in IRC calculation.
     isotopes: [[0, 1.e9]]
 
+Geometry & RedundantCoords
+--------------------------
+
+The central class in pysisyphus, handling coordinates and delegating calculations
+to (external QC) codes, is the `Geometry` class, similar to ASE's `Atoms`.
+
+.. automodule:: pysisyphus.Geometry
+    :members:
+    :undoc-members:
+
+Basic infrastructure to work with internal coordinates is provided by `RedundantCoords`.
+
+.. automodule:: pysisyphus.intcoords.RedundantCoords
+    :members:
+    :undoc-members:
 
 Related Literature
 ------------------

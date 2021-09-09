@@ -21,7 +21,8 @@ the required step length. The default required energy lowering is
 The resulting endpoints of the IRC integration can be further optimized to stationary poins
 by adding the `endopt:` section (vide infra). By setting `fragments: True` in `endopt` separate
 fragments will be detected and optimized individually. This may be useful if the molecules are
-only weakly bound.
+only weakly bound. By setting `fragments: total` the total system, as well as the separate
+fragments will be optimized.
 
 By default IRC path data is dumped to `dump_fn: irc_data.h5` every `dump_every: 5` cycles.
 IRC paths can be plotted with `pysisplot --irc`.
@@ -54,7 +55,9 @@ that the user may want to modify.
      #hessian_init: null                # Path to HDF5 Hessian file
      #displ_third_h5: null              # Path to HDF5 file containing third derivative data
     endopt:
-     #fragments: False                  # Detect & optimize fragments separately
+     #fragments: False|True|total       # Detect & optimize fragments separately. Default is
+                                        # False. When set to 'total' the total system as well
+                                        # as the fragments are optimized.
      do_hess: False                     # Frequency calculation at the end
 
 Further examples for IRC calculations from `.yaml` input can be found

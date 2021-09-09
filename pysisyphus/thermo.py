@@ -6,20 +6,21 @@ try:
     from thermoanalysis.thermo import thermochemistry
     can_thermoanalysis = True
 except ModuleNotFoundError:
-    print("Could not import 'thermoanalysis'")
     can_thermoanalysis = False
 
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.helpers_pure import highlight_text
+from pysisyphus.Geometry import Geometry
 
 
-def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1"):
+def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1", return_geom=False):
     with h5py.File(h5_fn, "r") as handle:
         masses = handle["masses"][:]
         vibfreqs = handle["vibfreqs"][:]
         coords3d = handle["coords3d"][:]
         energy = handle.attrs["energy"]
         mult = handle.attrs["mult"]
+        atoms = handle.attrs["atoms"]
 
     thermo_dict = {
         "masses": masses,
@@ -31,13 +32,17 @@ def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1"):
 
     qcd = QCData(thermo_dict, point_group=point_group)
     thermo = thermochemistry(qcd, temperature=T)
-    return thermo
+    if return_geom:
+        geom = Geometry(atoms=atoms, coords=coords3d)
+        return thermo, geom
+    else:
+        return thermo
 
 
 def get_thermoanalysis(geom, T=298.15, point_group="c1"):
     hessian = geom.cart_hessian
     energy = geom.energy
-    vibfreqs, *_ = geom.get_frequencies(hessian)
+    vibfreqs, *_ = geom.get_normal_modes(hessian)
     try:
         mult = geom.calculator.mult
     except AttributeError:
@@ -71,6 +76,14 @@ Total Mass        : {{ "%0.4f" % thermo.M }} amu
 ! If not specified c1 and σ = 1 are assumed.         !
 Point Group       : {{ thermo.point_group }}
 Symmetry Number σ : {{ thermo.sym_num }}  
+
++
+| Normal Mode Frequencies
+{{ sep }}
+{% for nu in nus -%}
+ {{ "\t%04d" % loop.index }}: {{ nu }} cm⁻¹
+{% endfor -%}
+{{ sep }}
 
 +
 | Inner energy U = U_el + U_vib + U_rot + U_trans
@@ -119,12 +132,13 @@ def print_thermoanalysis(thermo, geom=None, level=0, title=None):
     def fmt(key, hartree):
         """Output key & energy in Hartree and kJ/mol."""
         kjm = hartree * AU2KJPERMOL
-        return f"{key:<18}: {hartree: >16.6f} Eh ({kjm: >18.2f} kJ/mol)"
+        return f"{key:<18}: {hartree: >16.8f} Eh ({kjm: >18.2f} kJ/mol)"
 
     # Separator
     sep = "+-----------------------------------------------------------------+"
 
-    rendered = THERMO_TPL.render(geom=geom, thermo=thermo, sep=sep, fmt=fmt)
+    nus = [f"{nu: >8.2f}" for nu in thermo.wavenumbers]
+    rendered = THERMO_TPL.render(geom=geom, thermo=thermo, nus=nus, sep=sep, fmt=fmt)
 
     if title is None:
         title = ""

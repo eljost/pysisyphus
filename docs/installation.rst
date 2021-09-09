@@ -12,22 +12,34 @@ whether it is an `Anaconda <https://www.anaconda.com/>`_ environment or a
 
     # Optional: Create separate Anaconda environment
     conda create -n pysis-env python=3.9
-    activate pysis-env
-    # or virtual environment
-    python3 -m venv pysis-env
+    # Activate conda environment
+    conda activate pysis-env
+
+    # Optional: Create separate virtual environment
+    python -m venv pysis-env
+    # On some linux distributions 'python3' is used instead of 'python', e.g. Ubuntu
+    # python3 -m venv pysis-env
+    # Activate  virtual environment. Preferably, an absolute path pointing to the
+    # 'activate' script should be used.
     source pysis-env/bin/activate
 
 Installation from PyPI with pip
 ===============================
 
 This installs the latest stable release as published on PyPI. If you don't want to
-do any development this is probably the preferred way of installation.
+do any development work this is the preferred way of installing pysisyphus.
 
 .. code-block:: bash
 
     pip install pysisyphus
-    # Installation of extras is also possible
+    # Installation of additional optional dependencies is also possible
     # pip install pysisyphus[qcengine,ase,pyscf,sphinx]
+
+For Ubuntu 20.04 LTS it was observed that the `setuptools` must be upgraded to
+version >= 0.45, prior to the installation of pysisyphus.
+
+.. code-block:: bash
+   pip install --upgrade setuptools
 
 Installation from source
 ========================

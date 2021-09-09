@@ -14,11 +14,11 @@ from pysisyphus.testing import using
     ]
 )
 def test_run_irc_opt_ends(fragments, opt_geom_num):
-    geom = geom_loader("hfabstraction_ts_opt_xtb.xyz")
+    geom = geom_loader("lib:hfabstraction_ts_opt_xtb.xyz")
     calc = XTB(pal=2)
     geom.set_calculator(calc)
 
-    def calc_getter(calc_number):
+    def calc_getter(calc_number=0):
         calc = XTB(calc_number=calc_number, pal=2)
         return calc
 
@@ -35,6 +35,9 @@ def test_run_irc_opt_ends(fragments, opt_geom_num):
         "thresh": "gau_tight",
         "fragments": fragments,
         "do_hess": True,
+        "geom": {
+            "type": "redund",
+        },
     }
-    opt_geoms = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
-    assert len(opt_geoms) == opt_geom_num
+    fw_results, bw_results, _ = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+    assert len(fw_results) + len(bw_results) == opt_geom_num

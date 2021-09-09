@@ -21,8 +21,9 @@ irc:
  max_cycles: 5
 endopt:
  geom:
-  # Constrain carbon in endopt
-  constrain_prims: [["atom", 0]]
+  coord_kwargs:
+   # Constrain carbon in endopt
+   constrain_prims: [["atom", 0]]
 
 # Carbon in 'forward_end_opt.xyz' and 'backward_end_opt.xyz' should have
 # the same Cartesian coordinates, as in the beginning.

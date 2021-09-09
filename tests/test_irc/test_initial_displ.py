@@ -2,8 +2,11 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.initial_displ import cubic_displ_for_geom
 from pysisyphus.irc import EulerPC
+from pysisyphus.testing import using
 
 
 @pytest.fixture
@@ -20,10 +23,11 @@ def test_cubic_displ(anapot_ts):
 
 
 @pytest.mark.parametrize(
-    "displ", [
+    "displ",
+    [
         "energy",
         "energy_cubic",
-    ]
+    ],
 )
 def test_irc_cubic_displ(displ, anapot_ts):
     irc_kwargs = {
@@ -34,3 +38,12 @@ def test_irc_cubic_displ(displ, anapot_ts):
     irc.run()
 
     # calc = anapot_ts.calculator.plot_irc(irc, show=True)
+
+
+@using("pyscf")
+@pytest.mark.parametrize("displ", ("energy", "length", "energy_cubic"))
+def test_hcn_initial_displ(displ):
+    geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
+    geom.set_calculator(PySCF(pal=2, basis="sto3g"))
+    irc = EulerPC(geom, displ=displ, max_cycles=1)
+    irc.run()

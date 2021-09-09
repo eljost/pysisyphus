@@ -10,8 +10,8 @@ import sys
 import h5py
 import numpy as np
 
-from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers import check_for_stop_sign, rms, check_for_end_sign
+from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
+from pysisyphus.helpers import check_for_end_sign, rms
 from pysisyphus.helpers_pure import (
     highlight_text,
     eigval_to_wavenumber,
@@ -31,7 +31,7 @@ class IRC:
         self,
         geometry,
         step_length=0.1,
-        max_cycles=75,
+        max_cycles=125,
         downhill=False,
         forward=True,
         backward=True,
@@ -240,6 +240,23 @@ class IRC:
         else:
             raise Exception("Invalid direction='{direction}'!")
         self.coords = self.ts_coords + initial_step
+
+        if self.displ in ("energy", "energy_cubic"):
+            actual_energy = self.energy
+            actual_lowering = self.ts_energy - actual_energy
+            if actual_lowering < 0.0:
+                print("Displaced geometry is higher in energy compared to TS!")
+            diff = self.displ_energy - actual_lowering
+
+            def en_str(en):
+                return f"{en: .4f} au ({en*AU2KJPERMOL: .2f} kJ mol⁻¹)"
+
+            print(
+                f"Requested energy lowering: {en_str(self.displ_energy)}\n"
+                f"   Actual energy lowering: {en_str(actual_lowering)}\n"
+                f"                        Δ: {en_str(diff)}\n"
+            )
+            sys.stdout.flush()
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(
             f"Did inital step of length {initial_step_length:.4f} " "from the TS."
@@ -269,25 +286,36 @@ class IRC:
             https://pubs.acs.org/doi/10.1021/j100338a027
             https://aip.scitation.org/doi/pdf/10.1063/1.459634
         """
-        mm_sqr_inv = self.geometry.mm_sqrt_inv
-        mw_hessian = self.mass_weigh_hessian(self.init_hessian)
-        try:
-            if not self.geometry.calculator.analytical_2d:
-                mw_hessian = self.geometry.eckart_projection(mw_hessian)
-        except AttributeError:
-            pass
-        eigvals, eigvecs = np.linalg.eigh(mw_hessian)
+
+        mw_hessian = self.geometry.mass_weigh_hessian(self.init_hessian)
+        if self.coords.size > 3:
+            proj_hessian, P = self.geometry.eckart_projection(mw_hessian, return_P=True)
+        # Don't project single atom species and analytical potentials
+        else:
+            proj_hessian = mw_hessian
+            P = np.eye(self.coords.size)
+        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+        mw_cart_displs = P.T.dot(eigvecs)
+        cart_displs = self.geometry.mm_sqrt_inv.dot(mw_cart_displs)
+        nus = eigval_to_wavenumber(eigvals)
+
         neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
+
         min_eigval = eigvals[self.mode]
-        self.log(
-            f"Transition vector is mode {self.mode} with wavenumber "
-            f"{eigval_to_wavenumber(min_eigval):.2f} cm⁻¹."
+        min_nu = nus[self.mode]
+        min_msg = (
+            f"Transition vector is mode {self.mode} with wavenumber {min_nu:.2f} cm⁻¹."
         )
-        mw_trans_vec = eigvecs[:, self.mode]
+        # Doing it this way hurts ... I'll have to improve my logging game...
+        self.log(min_msg)
+        print(min_msg)
+
+        # Mass-weighted
+        mw_trans_vec = mw_cart_displs[:, self.mode]
         self.mw_transition_vector = mw_trans_vec
-        # Un-mass-weight the transition vector
-        trans_vec = mm_sqr_inv.dot(mw_trans_vec)
+        # Not mass-weighted
+        trans_vec = cart_displs[:, self.mode]
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
 
         if self.downhill:
@@ -327,8 +355,14 @@ class IRC:
                 h5_fn = self.get_path_for_fn("third_deriv.h5")
                 save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
                 mw_step_plus, mw_step_minus = cubic_displ(
-                    mw_hessian, mw_trans_vec, min_eigval, Gv, -self.displ_energy
+                    proj_hessian,
+                    eigvecs[:, self.mode],
+                    min_eigval,
+                    Gv,
+                    -self.displ_energy,
                 )
+                mw_step_plus = P.T.dot(mw_step_plus)
+                mw_step_minus = P.T.dot(mw_step_minus)
             msg = (
                 f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
                 "the TS using 3rd derivatives."
@@ -525,6 +559,7 @@ class IRC:
 
         self.log(
             "Transition state (TS):\n"
+            f"\t    energy={self.ts_energy:.6f} au\n"
             f"\tnorm(grad)={ts_grad_norm:.6f}\n"
             f"\t max(grad)={ts_grad_max:.6f}\n"
             f"\t rms(grad)={ts_grad_rms:.6f}"

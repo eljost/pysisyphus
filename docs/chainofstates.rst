@@ -63,6 +63,7 @@ that the user may want to modify when running a GSM optimization.
 
 .. code:: yaml
 
+    precontr:                                # Preconditioning of translation & rotation
     preopt:                                  # Preoptimize inital and final geometry
     cos:
      type: gs                                # Do a growing string
@@ -109,6 +110,14 @@ desired it must be done manually.
 .. code:: yaml
 
     # Taken from examples/complex/06_diels_alder...
+    geom:
+     type: cart
+     fn: diels_alder.trj
+    calc:
+     type: xtb
+     charge: 0
+     mult: 1
+     pal: 4
     preopt:
      max_cycles: 5
     interpol:                       # In NEBs the whole path is interpolated beforehand.
@@ -130,23 +139,11 @@ desired it must be done manually.
      do_hess: True
      max_cycles: 75
      thresh: gau_tight
-     coord_type: redund
      hessian_recalc: 7
     irc:
      type: eulerpc
      rms_grad_thresh: 0.0005 
     endopt:
-    calc:
-     type: xtb
-     charge: 0
-     mult: 1
-     pal: 4
-    geom:
-     type: cart
-     fn: diels_alder.trj
-    assert:
-     ts_geom.energy: -17.81225938
-     ts_opt.cur_cycle: 15
 
 Further examples for COS optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/dev/examples/complex>`_.

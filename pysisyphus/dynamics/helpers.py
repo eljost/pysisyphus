@@ -222,8 +222,9 @@ def get_mb_velocities(masses, cart_coords, T, remove_com_v=True, remove_rot_v=Tr
         fixed_dof += 3
 
     if remove_rot_v:
-        P = get_trans_rot_projector(cart_coords, masses)
-        v = P.dot(v.flatten()).reshape(-1, 3)
+        P_ortho = get_trans_rot_projector(cart_coords, masses, orthogonal=True)
+        v = v.flatten() - P_ortho.dot(v.flatten())
+        v = v.reshape(-1, 3)
         # Right now this also removes the translational components
         fixed_dof = 6
 

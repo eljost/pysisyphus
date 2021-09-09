@@ -10,20 +10,21 @@ opt:
  thresh: gau_tight
 geom:
  type: redund
- # Additional bond between the hydrogens.
- # 
- # define_prims expects a list of lists. The first integer defines the primitive type,
- # he remaining integers are 0-based atom indices. Common types are:
- # 	0: BOND
- # 	5: BEND
- # 	8: PROPER_DIHEDRAL
- # See pysisyphus.intcoord.PrimTypes for the remaining types.
- define_prims: [[0, 1, 2]]
  fn: |
   3
 
   O                 -0.00000000   -0.11081188    0.00000000
   H                  0.78397589    0.44324751    0.00000000
   H                 -0.78397589    0.44324751    0.00000000
+ coord_kwargs:
+  # Additional bond between the hydrogens.
+  # 
+  # define_prims expects a list of lists. The first integer defines the primitive type,
+  # he remaining integers are 0-based atom indices. Common types are:
+  # 	0: BOND
+  # 	5: BEND
+  # 	8: PROPER_DIHEDRAL
+  # See pysisyphus.intcoord.PrimTypes for the remaining types.
+  define_prims: [[0, 1, 2]]
 assert:
  opt_geom.energy: -76.00995421

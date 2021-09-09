@@ -10,6 +10,7 @@ import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.helpers_pure import file_or_str
 
 
 def make_sym_mat(table_block):
@@ -88,17 +89,17 @@ class ORCA(OverlapCalculator):
         """
         super().__init__(**kwargs)
 
-        self.keywords = keywords
-        self.blocks = blocks
+        self.keywords = keywords.lower()
+        self.blocks = blocks.lower()
         self.gbw = gbw
         self.mem = int(mem)
         self.do_stable = bool(do_stable)
         self.freq_keyword = "numfreq" if numfreq else "freq"
 
-        assert ("pal" not in keywords.lower()) and ("nprocs" not in blocks.lower()), (
+        assert ("pal" not in keywords) and ("nprocs" not in blocks), (
             "PALn/nprocs not " "allowed! Use 'pal: n' in the 'calc' section instead."
         )
-        assert "maxcore" not in blocks.lower(), (
+        assert "maxcore" not in blocks, (
             "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
         )
 
@@ -120,6 +121,7 @@ class ORCA(OverlapCalculator):
                 self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
+        self.triplets = bool(re.search("triplets\s+true", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
@@ -232,6 +234,14 @@ class ORCA(OverlapCalculator):
 
         return stable
 
+    def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = func(atoms, coords, **prepare_kwargs)
+        return results
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         calc_type = ""
 
@@ -240,6 +250,9 @@ class ORCA(OverlapCalculator):
 
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="energy")
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -252,11 +265,9 @@ class ORCA(OverlapCalculator):
             "calc": "grad",
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            self.store_overlap_data(atoms, coords)
-            if self.track_root():
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
+        results = self.store_and_track(
+            results, self.get_forces, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
@@ -267,6 +278,9 @@ class ORCA(OverlapCalculator):
 
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc="hessian")
+        # results = self.store_and_track(
+        # results, self.get_hessian, atoms, coords, **prepare_kwargs
+        # )
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
@@ -426,6 +440,7 @@ class ORCA(OverlapCalculator):
         # [7] index of last  beta  virt, for restricted equal to -1
         header = [struct.unpack("i", cis_handle.read(4))[0] for i in range(8)]
 
+        # Assert that all flags regarding unrestricted calculations are -1
         if any([flag != -1 for flag in header[4:8]]):
             raise Exception("parse_cis, no support for unrestricted MOs")
 
@@ -439,35 +454,77 @@ class ORCA(OverlapCalculator):
 
         # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
         # X+Y of 2, X-Y of 2, ...
-        prevroot = -1
-        coeffs = list()
+        prev_root = -1
+        prev_mult = 1
+        iroot_triplets = 0
+
+        # Flags that may later be set to True
+        triplets = False
+        tda = False
+        Xs = list()
+        Ys = list()
+
         for ivec in range(nvec):
             # header of each vector
             # contains 6 4-byte ints, then 1 8-byte double, then 8 byte unknown
             nele, d1, mult, d2, iroot, d3 = struct.unpack("iiiiii", cis_handle.read(24))
+
+            # Will evaluate True only once when triplets were requested.
+            if prev_mult != mult:
+                triplets = True
+                prev_root = -1
+
+            # When we encounter the second "state" we can decide if it is a TDA
+            # calculation (without Y-vector).
+            if (ivec == 1) and (iroot == prev_root + 1):
+                tda = True
+
+            if triplets:
+                iroot = iroot_triplets
+
             ene, d3 = struct.unpack("dd", cis_handle.read(16))
-            self.log(f"nele = {nele}, mult = {mult}, iroot = {iroot}")
-            # then comes nact * nvirt 8-byte doubles with the coefficients
-            coeff = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
-            coeff = np.array(coeff).reshape(-1, nvir)
+            self.log(f"ivec={ivec}, nele={nele}, mult={mult}, iroot={iroot}")
+            # Then come nact * nvirt 8-byte doubles with the coefficients
+            coeffs = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
+            coeffs = np.array(coeffs).reshape(-1, nvir)
             # create full array, i.e nocc x nvirt
-            coeff_full = np.zeros((nocc, nvir))
-            coeff_full[nfrzc:] = coeff
+            coeffs_full = np.zeros((nocc, nvir))
+            coeffs_full[nfrzc:] = coeffs
 
-            # in this case, we have a non-TDA state!
-            # and we need to compute (prevvector+currentvector)/2 = X vector
-            if prevroot == iroot:
-                self.log("Constructing X-vector of RPA state")
-                x_plus_y = coeffs[-1]
-                x_minus_y = coeff_full
-                x = 0.5 * (x_plus_y + x_minus_y)
-                coeffs[-1] = x
+            # In this case, we have a non-TDA state, where Y is present!
+            # We can recover the original X and Y by first computing X as
+            #   X = (X+Y + X-Y) / 2
+            # and then
+            #   Y = X+Y - X
+            if prev_root == iroot:
+                X_plus_Y = Xs[-1]
+                X_minus_Y = coeffs_full
+                X = 0.5 * (X_plus_Y + X_minus_Y)
+                Y = X_plus_Y - X
+                Xs[-1] = X
+                Ys[-1] = Y
             else:
-                coeffs.append(coeff_full)
+                Xs.append(coeffs_full)
+                Ys.append(np.zeros_like(coeffs_full))
 
-            prevroot = iroot
+            # Somehow ORCA stops to update iroot correctly after the singlet states.
+            if (mult == 3) and (tda or (ivec % 2) == 1):
+                iroot_triplets += 1
+
+            prev_root = iroot
+            prev_mult = mult
         cis_handle.close()
-        return np.array(coeffs)
+
+        Xs = np.array(Xs)
+        Ys = np.array(Ys)
+
+        # Only return triplet states if present
+        if triplets:
+            assert (len(Xs) % 2) == 0
+            states = len(Xs) // 2
+            Xs = Xs[states:]
+            Ys = Ys[states:]
+        return Xs, Ys
 
     def parse_gbw(self, gbw_fn):
         """Adapted from
@@ -524,7 +581,10 @@ class ORCA(OverlapCalculator):
                 # print('{}'.format(*core))
             return coeffs
 
-    def parse_all_energies(self):
+    def parse_all_energies(self, triplets=None):
+        if triplets is None:
+            triplets = self.triplets
+
         with open(self.out) as handle:
             text = handle.read()
 
@@ -534,9 +594,16 @@ class ORCA(OverlapCalculator):
         all_energies = [gs_energy]
 
         if self.do_tddft:
-            tddft_re = re.compile(r"STATE\s*\d+:\s*E=\s*([\d\.]+)\s*au")
-            excitation_ens = [float(en) for en in tddft_re.findall(text)]
-            all_energies += (np.array(excitation_ens) + gs_energy).tolist()
+            tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([\d\.]+)\s*au")
+            states, exc_ens = zip(
+                *[(int(state), float(en)) for state, en in tddft_re.findall(text)]
+            )
+            if triplets:
+                roots = len(states) // 2
+                exc_ens = exc_ens[-roots:]
+                states = states[-roots:]
+            assert len(exc_ens) == len(set(states))
+            all_energies += (np.array(exc_ens) + gs_energy).tolist()
         all_energies = np.array(all_energies)
         return all_energies
 
@@ -568,25 +635,14 @@ class ORCA(OverlapCalculator):
         self.log(f"Setting MO coefficients from {gbw}.")
         self.mo_coeffs = self.parse_gbw(self.gbw)
 
-    def set_ci_coeffs(self, ci_coeffs=None, cis=None):
-        if ci_coeffs is not None:
-            self.ci_coeffs = ci_coeffs
-            return
-        if not cis and self.cis:
-            cis = self.cis
-        else:
-            raise Exception("Got no .cis file to parse!")
-        self.log(f"Setting CI coefficients from {cis}.")
-        self.ci_coeffs = self.parse_cis(cis)
-
     def prepare_overlap_data(self, path):
         # Parse eigenvectors from tda/tddft calculation
-        ci_coeffs = self.parse_cis(self.cis)
+        X, Y = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
         mo_coeffs = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
-        return mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, X, Y, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)
@@ -611,6 +667,18 @@ class ORCA(OverlapCalculator):
             self.log(f"Set chkfile '{gbw}' as gbw.")
         except KeyError:
             self.log("Found no gbw information in chkfiles!")
+
+    @file_or_str(".out", method=True)
+    def check_termination(self, text):
+        term_re = re.compile(r"\*{4}ORCA TERMINATED NORMALLY\*{4}")
+        mobj = term_re.search(text)
+        return bool(mobj)
+
+    def clean_tmp(self, path):
+        tmp_fns = path.glob("*.tmp")
+        for tmp in tmp_fns:
+            os.remove(tmp)
+            self.log(f"Removed '{tmp}'")
 
     def __str__(self):
         return f"ORCA({self.name})"

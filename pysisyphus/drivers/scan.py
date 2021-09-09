@@ -172,13 +172,13 @@ def relaxed_1d_scan(
         constr_geom.coords = new_coords
 
         title = f"{pref}Step {cycle:02d}, coord={cur_val:.4f} {unit}"
-        _, opt = run_opt(
+        opt_result = run_opt(
             constr_geom, _calc_getter, opt_key, opt_kwargs_, title=title, level=1
         )
         scan_xyzs.append(constr_geom.as_xyz())
         scan_vals.append(cur_val)
         scan_energies.append(constr_geom.energy)
-        if not opt.is_converged:
+        if not opt_result.opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break
         cur_val += step_size

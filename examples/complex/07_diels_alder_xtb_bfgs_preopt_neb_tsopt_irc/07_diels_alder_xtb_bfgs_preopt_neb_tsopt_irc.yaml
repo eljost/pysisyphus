@@ -1,3 +1,11 @@
+geom:
+ type: cart
+ fn: diels_alder.trj
+calc:
+ type: xtb
+ charge: 0
+ mult: 1
+ pal: 4
 preopt:
  max_cycles: 5
 interpol:
@@ -16,18 +24,9 @@ tsopt:
  max_cycles: 75
  thresh: gau_tight
  hessian_recalc: 10
- coord_type: redund
 irc:
  type: eulerpc
  rms_grad_thresh: 0.0005 
-calc:
- type: xtb
- charge: 0
- mult: 1
- pal: 4
-geom:
- type: cart
- fn: diels_alder.trj
 assert:
  ts_geom.energy: -17.81225938
- ts_opt.cur_cycle: 19
+ ts_opt.cur_cycle: 12

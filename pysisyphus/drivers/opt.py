@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 from math import floor, ceil
+from pathlib import Path
 import shutil
 
 import numpy as np
@@ -9,8 +11,10 @@ from pysisyphus.helpers import do_final_hessian
 from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
 from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
+from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.tsoptimizers import *
+
 
 OPT_DICT = {
     "bfgs": BFGS.BFGS,
@@ -88,6 +92,11 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
     return result
 
 
+@dataclass
+class OptResult:
+    opt: Optimizer
+    geom: Geometry
+    fn: Path
 
 
 def run_opt(
@@ -95,6 +104,8 @@ def run_opt(
     calc_getter,
     opt_key,
     opt_kwargs,
+    cart_hessian=None,
+    print_thermo=False,
     title="Optimization",
     copy_final_geom=None,
     level=0,
@@ -107,6 +118,7 @@ def run_opt(
             title = str(geom)
     else:
         geom.set_calculator(calc_getter())
+        geom.cart_hessian = cart_hessian
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
@@ -114,7 +126,9 @@ def run_opt(
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}", level=level))
-    print(f"\nInput structure: {geom.describe()}")
+    print(f"\n Input geometry: {geom.describe()}")
+    print(f"Coordinate system: {geom.coord_type}")
+    print(f"        Optimizer: {opt_key}")
     report_frozen_atoms(geom)
     print()
 
@@ -151,7 +165,10 @@ def run_opt(
     elif do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
-        do_final_hessian(geom, write_imag_modes=True, prefix=prefix, T=T)
+        do_final_hessian(
+            geom, write_imag_modes=True, prefix=prefix, T=T, print_thermo=print_thermo
+        )
     print()
 
-    return opt.geometry, opt
+    opt_result = OptResult(opt, opt.geometry, opt.final_fn)
+    return opt_result

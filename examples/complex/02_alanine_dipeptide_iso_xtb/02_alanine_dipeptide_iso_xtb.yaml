@@ -1,3 +1,11 @@
+geom:
+ type: dlc
+ fn: [ala_start.xyz, ala_end.xyz]       # Run GrowingString in delocalized internal coordinates
+calc:
+ type: xtb
+ pal: 4
+ charge: 0
+ mult: 1
 preopt:
 cos:
  type: gs                                # GrowingString
@@ -14,16 +22,7 @@ tsopt:
  trust_max: 0.3
  thresh: gau
  hessian_recalc: 3
-calc:
- type: xtb
- pal: 4
- charge: 0
- mult: 1
-geom:
- type: dlc
- fn: [ala_start.xyz, ala_end.xyz]       # Run GrowingString in delocalized internal coordinates
-                                        # (preferred).
 assert:
  opt.is_converged: True
  ts_geom.energy: -32.9647645
- ts_opt.cur_cycle: 18
+ ts_opt.cur_cycle: 10

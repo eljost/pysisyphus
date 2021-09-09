@@ -30,6 +30,7 @@ from pysisyphus.io import (
 from pysisyphus.thermo import (
     can_thermoanalysis,
     get_thermoanalysis,
+    print_thermoanalysis,
 )
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
 
@@ -69,10 +70,17 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
 
 
 def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
-    """After introducing the pubchem functionality I don't like this 
+    """After introducing the pubchem functionality I don't like this
     function anymore :) Too complicated."""
     fn = str(fn)
     org_fn = fn
+
+    split_ = re.split("\[(-?\d+)\]$", fn)
+    fn = split_.pop(0)
+    if split_:
+        index = int(split_.pop(0))
+    else:
+        index = None
     ext = "" if "\n" in fn else Path(fn).suffix
 
     funcs = {
@@ -99,9 +107,12 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     kwargs.update(coord_kwargs)
     geom = func(fn, **kwargs)
 
+    if index is not None:
+        geom = geom[index]
+
     if iterable and org_fn.startswith("pubchem:"):
-        geom = (geom, )
-    if iterable and (ext in (".trj", "")):
+        geom = (geom,)
+    if iterable and (ext in (".trj", "")) and index is None:
         geom = tuple(geom)
     elif iterable:
         geom = (geom,)
@@ -280,18 +291,6 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
 
 
-def check_for_stop_sign():
-    stop_signs = ("stop", "STOP")
-    stop_sign_found = False
-
-    for ss in stop_signs:
-        if os.path.exists(ss):
-            print("Found stop sign. Stopping run.")
-            os.remove(ss)
-            stop_sign_found = True
-    return stop_sign_found
-
-
 def check_for_end_sign():
     signs = (
         "stop",
@@ -405,7 +404,12 @@ FinalHessianResult = namedtuple(
 
 
 def do_final_hessian(
-    geom, save_hessian=True, write_imag_modes=False, prefix="", T=298.15
+    geom,
+    save_hessian=True,
+    write_imag_modes=False,
+    prefix="",
+    T=298.15,
+    print_thermo=False,
 ):
     print(highlight_text("Hessian at final geometry", level=1))
     print()
@@ -462,6 +466,8 @@ def do_final_hessian(
     thermo = None
     if can_thermoanalysis:
         thermo = get_thermoanalysis(geom, T=T)
+        if print_thermo:
+            print_thermoanalysis(thermo, geom=geom)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,
@@ -506,15 +512,14 @@ def get_tangent_trj_str(atoms, coords, tangent, comment=None, points=10, displ=N
 
 def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
     NormalMode = namedtuple("NormalMode", "nu mode trj_str")
+
     # We don't want to do start any calculation here, so we directly access
     # the attribute underlying the geom.hessian property.
-    mw_H = geom.eckart_projection(geom.mass_weigh_hessian(geom._hessian))
-    eigvals, eigvecs = np.linalg.eigh(mw_H)
-    nus = eigval_to_wavenumber(eigvals)
+    nus, _, _, cart_displs = geom.get_normal_modes(geom._hessian)
     below_thresh = nus < freq_thresh
 
     imag_modes = list()
-    for nu, eigvec in zip(nus[below_thresh], eigvecs[:, below_thresh].T):
+    for nu, eigvec in zip(nus[below_thresh], cart_displs[:, below_thresh].T):
         comment = f"{nu:.2f} cm⁻¹"
         trj_str = get_tangent_trj_str(
             geom.atoms,

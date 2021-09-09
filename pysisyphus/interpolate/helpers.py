@@ -24,6 +24,9 @@ def interpolate(initial_geom, final_geom, between, kind="linear",
 
 
 def interpolate_all(geoms, between, kind="linear", align=False):
+    if (between == 0) or (kind is None):
+        return geoms
+
     interpolate_class = INTERPOLATE[kind]
     interpolator = interpolate_class(geoms, between, align=align)
 

@@ -1,9 +1,12 @@
+import h5py
+import numpy as np
 import pytest
 
 import pysisyphus
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure import describe
 from pysisyphus.init_logging import init_logging
 from pysisyphus.testing import using
 
@@ -72,3 +75,41 @@ def test_mwfn_crash_fallback(water, monkeypatch):
 
     # Check that CDD calculation was disabled, after calc_cdds_crashed
     assert calc.cdds == None
+
+
+@pytest.mark.parametrize(
+    "h5_fn", [
+        "cytosin_orca_overlap_data.h5",
+        "cytosin_trip_orca_overlap_data.h5",
+    ]
+)
+def test_tden_self_overlap(h5_fn, this_dir):
+    with h5py.File(this_dir / h5_fn, "r") as handle:
+        mo_coeffs = handle["mo_coeffs"][:]
+        ci_coeffs = handle["ci_coeffs"][:]
+
+    calc = OverlapCalculator()
+
+    def tden_self_overlap(mo_coeffs, ci_coeffs):
+        ao_ovlp = calc.get_sao_from_mo_coeffs(mo_coeffs)
+
+        ci_norm = np.linalg.norm(ci_coeffs, axis=(1,2))
+        mo_norm = calc.get_mo_norms(mo_coeffs, ao_ovlp)
+
+        ci_coeffs = ci_coeffs / ci_norm[:, None, None]
+        mo_coeffs = calc.renorm_mos(mo_coeffs, ao_ovlp)
+
+        ci_norm = np.linalg.norm(ci_coeffs, axis=(1,2))
+        mo_norm = calc.get_mo_norms(mo_coeffs, ao_ovlp)
+        # print(f"norm(CI): {ci_norm}")
+        # print(f"norm(MOs): {describe(mo_norm)}")
+
+        overlaps = calc.tden_overlaps(mo_coeffs, ci_coeffs, mo_coeffs, ci_coeffs, ao_ovlp)
+        return overlaps
+
+    for i, (moc, cic) in enumerate(zip(mo_coeffs, ci_coeffs)):
+        ovlps = tden_self_overlap(moc, cic)
+        I = np.eye(ovlps.shape[0])
+        np.testing.assert_allclose(ovlps, I, atol=5e-5)
+
+

@@ -2,6 +2,7 @@ from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.cos.AdaptiveNEB import AdaptiveNEB
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.run import run_from_dict
+from pysisyphus.testing import using
 
 
 def test_anapot_aneb():
@@ -21,6 +22,7 @@ def test_anapot_aneb():
     assert opt.cur_cycle == 21
 
 
+@using("pyscf")
 def test_hcn_aneb():
     run_dict = {
         "preopt": {

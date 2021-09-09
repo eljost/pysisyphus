@@ -5,6 +5,7 @@ import numpy as np
 import pyscf
 from pyscf import gto, grad, lib, hessian, tddft, qmmm
 from pyscf.dft import xcfun
+
 # from pyscf.lib.chkfile import save_mol
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
@@ -23,32 +24,44 @@ class PySCF(OverlapCalculator):
         ("mp2", True): pyscf.mp.UMP2,
     }
     multisteps = {
-        "scf": ("scf", ),
-        "dft": ("dft", ),
+        "scf": ("scf",),
+        "dft": ("dft",),
         "mp2": ("scf", "mp2"),
         "tddft": ("dft", "tddft"),
         "tda": ("dft", "tda"),
     }
 
-    def __init__(self, basis, xc=None, method="scf",  mem=2000,
-                 root=None, nstates=None, auxbasis=None, keep_chk=True,
-                 verbose=4, **kwargs):
+    def __init__(
+        self,
+        basis,
+        xc=None,
+        method="scf",
+        mem=2000,
+        root=None,
+        nstates=None,
+        auxbasis=None,
+        keep_chk=True,
+        verbose=0,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.basis = basis
         self.xc = xc
         self.method = method.lower()
+        if self.method in ("tda", "tddft") and self.xc is None:
+            self.multisteps[self.method] = ("scf", self.method)
         if self.xc and self.method != "tddft":
             self.method = "dft"
-        # self.multistep = self.method in ("mp2 tddft".split())
         self.mem = mem
         self.root = root
         self.nstates = nstates
         if self.method == "tddft":
             assert self.nstates, "nstates must be set with method='tddft'!"
         if self.track:
-            assert self.root <= self.nstates, "'root' must be smaller " \
-                "than 'nstates'!"
+            assert self.root <= self.nstates, (
+                "'root' must be smaller " "than 'nstates'!"
+            )
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
@@ -92,8 +105,7 @@ class PySCF(OverlapCalculator):
 
     def prepare_input(self, atoms, coords):
         mol = gto.Mole()
-        mol.atom = [(atom, c) for atom, c
-                    in zip(atoms, coords.reshape(-1, 3))]
+        mol.atom = [(atom, c) for atom, c in zip(atoms, coords.reshape(-1, 3))]
         mol.basis = self.basis
         mol.unit = "Bohr"
         mol.charge = self.charge
@@ -114,6 +126,14 @@ class PySCF(OverlapCalculator):
 
         return mol
 
+    def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = func(atoms, coords, **prepare_kwargs)
+        return results
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         point_charges = prepare_kwargs.get("point_charges", None)
 
@@ -122,13 +142,9 @@ class PySCF(OverlapCalculator):
         results = {
             "energy": mf.e_tot,
         }
-
-        if self.track:
-            self.store_overlap_data(atoms, coords)
-            if self.track_root():
-                # Redo the calculation with the updated root
-                results = self.get_energy(atoms, coords, **prepare_kwargs)
-
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -151,12 +167,9 @@ class PySCF(OverlapCalculator):
             "energy": e_tot,
             "forces": -gradient.flatten(),
         }
-
-        if self.track:
-            self.store_overlap_data(atoms, coords)
-            if self.track_root():
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords, **prepare_kwargs)
+        results = self.store_and_track(
+            results, self.get_forces, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
@@ -173,7 +186,9 @@ class PySCF(OverlapCalculator):
             "energy": mf.e_tot,
             "hessian": H,
         }
-
+        # results = self.store_and_track(
+        # results, self.get_hessian, atoms, coords, **prepare_kwargs
+        # )
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
@@ -193,15 +208,19 @@ class PySCF(OverlapCalculator):
                     self.chkfile = new_chkfile
                     mf.chkfile = self.chkfile
                     mf.init_guess = "chkfile"
-                    self.log(f"Using '{self.chkfile}' as initial guess for {step} calculation.")
+                    self.log(
+                        f"Using '{self.chkfile}' as initial guess for {step} calculation."
+                    )
                 if self.auxbasis:
                     mf.density_fit(auxbasis=self.auxbasis)
                     self.log(f"Using density fitting with auxbasis {self.auxbasis}.")
 
                 if point_charges is not None:
-                    mf = qmmm.mm_charge(mf, point_charges[:,:3], point_charges[:,3])
-                    self.log(f"Added {len(point_charges)} point charges with "
-                             f"sum(q)={sum(point_charges[:,3]):.4f}.")
+                    mf = qmmm.mm_charge(mf, point_charges[:, :3], point_charges[:, 3])
+                    self.log(
+                        f"Added {len(point_charges)} point charges with "
+                        f"sum(q)={sum(point_charges[:,3]):.4f}."
+                    )
             else:
                 mf = self.get_driver(step, mf=prev_mf)  # noqa: F821
 
@@ -235,20 +254,18 @@ class PySCF(OverlapCalculator):
         ci_coeffs = np.array(exc_mf.xy)
         # In TDA calculations Y is just the integer 0.
         if ci_coeffs.ndim == 2:
-            ci_coeffs = np.array([state[0] for state in exc_mf.xy])
+            X = np.array([state[0] for state in exc_mf.xy])
+            Y = np.zeros_like(X)
         # In TD-DFT calculations the Y vectors is also present
         else:
-            # Sum X and Y to X+Y
-            ci_coeffs = ci_coeffs.sum(axis=1)
-        # Norm (X+Y) to 1 for every state
-        norms = np.linalg.norm(ci_coeffs, axis=(1,2))
-        ci_coeffs /= norms[:,None,None]
+            X = ci_coeffs[:, 0]
+            Y = ci_coeffs[:, 1]
 
         exc_energies = exc_mf.e_tot
         all_energies = np.zeros(exc_energies.size + 1)
         all_energies[0] = gs_energy
         all_energies[1:] = exc_energies
-        return mo_coeffs, ci_coeffs, all_energies
+        return mo_coeffs, X, Y, all_energies
 
     def parse_charges(self):
         results = self.mf.analyze(with_meta_lowdin=False)
@@ -268,7 +285,6 @@ class PySCF(OverlapCalculator):
             self.log(f"Set chkfile '{chkfile}' as chkfile.")
         except KeyError:
             self.log("Found no chkfile information in chkfiles!")
-
 
     def __str__(self):
         return f"PySCF({self.name})"

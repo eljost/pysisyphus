@@ -148,19 +148,28 @@ def full_expand(to_expand):
     return list(it.chain(*[expand(te) for te in split]))
 
 
-def file_or_str(*args):
+def file_or_str(*args, method=False):
     exts = args
 
     def inner_func(func):
         def wrapped(inp, *args, **kwargs):
+            if method:
+                obj = inp
+                inp, *args = args
             p = Path(inp)
             looks_like_file = exts and (p.suffix in exts)
             if looks_like_file and p.is_file():
                 with open(p) as handle:
                     inp = handle.read()
             elif looks_like_file and not p.exists():
-                raise Exception(f"{inp} looks like a file/path, but it does not exist!")
-            return func(inp, *args, **kwargs)
+                raise FileNotFoundError(
+                    f"{inp} looks like a file/path, but it does not exist!"
+                )
+            if method:
+                res = func(obj, inp, *args, **kwargs)
+            else:
+                res = func(inp, *args, **kwargs)
+            return res
 
         return wrapped
 
@@ -268,12 +277,14 @@ def filter_fixture_store(test_name):
 
 def get_clock():
     ref = time.time()
+
     def clock(msg=""):
         nonlocal ref
         now = time.time()
         dur = now - ref
         ref = now
         print(f"{msg: >32}, {dur:.3f} s since last call!")
+
     return clock
 
 
@@ -285,3 +296,15 @@ def chunks(l, n):
         yield l[i : i + n]
 
 
+def describe(arr):
+    shape = arr.shape
+    min_ = arr.min()
+    max_ = arr.max()
+    mean = np.mean(arr)
+    median = np.median(arr)
+    var = np.var(arr)
+    fmt = ".4f"
+    return (
+        f"shape={shape}, min={min_:{fmt}}, mean={mean:{fmt}}, "
+        f"median={median:{fmt}}, max={max_:{fmt}}, variance={var:.4e}"
+    )

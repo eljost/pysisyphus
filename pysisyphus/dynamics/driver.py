@@ -13,7 +13,7 @@ from pysisyphus.dynamics.helpers import (
 )
 from pysisyphus.dynamics.thermostats import csvr_closure, csvr_closure_2, berendsen_closure
 from pysisyphus.dynamics.rattle import rattle_closure
-from pysisyphus.helpers import check_for_stop_sign
+from pysisyphus.helpers import check_for_end_sign
 from pysisyphus.helpers_pure import log
 from pysisyphus.io.hdf5 import get_h5_group
 
@@ -277,7 +277,7 @@ def md(
             log(logger, f"Termination function '{name}' evaluted to True. Breaking.")
             break
 
-        if check_for_stop_sign():
+        if check_for_end_sign():
             break
 
         # Advance time

@@ -17,9 +17,19 @@ class Calculator:
 
     conf_key = None
 
-    def __init__(self, calc_number=0, charge=0, mult=1,
-                 base_name="calculator", pal=1, mem=1000,
-                 last_calc_cycle=None, clean_after=True, out_dir="./"):
+    def __init__(
+        self,
+        calc_number=0,
+        charge=0,
+        mult=1,
+        base_name="calculator",
+        pal=1,
+        mem=1000,
+        retry_calc=1,
+        last_calc_cycle=None,
+        clean_after=True,
+        out_dir="./",
+    ):
         """Base-class of all calculators.
 
         Meant to be extended.
@@ -42,6 +52,8 @@ class Calculator:
         mem : int, default=1000
             Mememory per core in MB. The total amount of memory is given as
             mem*pal.
+        retry_calc : int, default=0
+            Number of additional retries when calculation failed.
         last_calc_cycle : int
             Internal variable used in restarts.
         clean_after : bool
@@ -57,6 +69,9 @@ class Calculator:
         self.base_name = base_name
         self.pal = int(pal)
         self.mem = int(mem)
+        # Disasble retries if check_termination method is not implemented
+        self.retry_calc = int(retry_calc) if hasattr(self, "check_termination") else 0
+        assert self.retry_calc >= 0
         self.out_dir = Path(out_dir).resolve()
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
@@ -72,7 +87,7 @@ class Calculator:
         self.calc_counter = 0
         # Handle restarts
         if last_calc_cycle:
-            self.calc_counter = int(last_calc_cycle)+1
+            self.calc_counter = int(last_calc_cycle) + 1
             self.reattach(int(last_calc_cycle))
             self.log(f"Set {self.calc_counter} for this calculation")
         self.clean_after = clean_after
@@ -87,15 +102,17 @@ class Calculator:
         self.backup_dir = None
 
     def get_cmd(self, key):
-        assert self.conf_key, \
-            "Tried loading a cmd from the config file but no conf_key " \
+        assert self.conf_key, (
+            "Tried loading a cmd from the config file but no conf_key "
             "was specified in the Calculator!"
+        )
 
         try:
             return Config[self.conf_key][key]
         except KeyError:
-            print(f"Failed to load key '{key}' from section '{self.conf_key}'. "
-                   "Exiting!")
+            print(
+                f"Failed to load key '{key}' from section '{self.conf_key}'. Exiting!"
+            )
             sys.exit()
 
     @property
@@ -146,7 +163,7 @@ class Calculator:
         -------
         fn : str
             Filename.
-        """            
+        """
 
         if not counter:
             counter = self.calc_counter
@@ -172,7 +189,7 @@ class Calculator:
             path: Path
                 Prepared directory.
         """
-        
+
         prefix = f"{self.name}_{self.calc_counter:03d}_"
         path = Path(tempfile.mkdtemp(prefix=prefix))
         if use_in_run:
@@ -246,7 +263,7 @@ class Calculator:
         fmt = "{:<20.014f}"
         coord_str = "$coord\n"
         for atom, coord in zip(atoms, coords.reshape(-1, 3)):
-            coord_line = (fmt+fmt+fmt).format(*coord) + atom.lower() + "\n"
+            coord_line = (fmt + fmt + fmt).format(*coord) + atom.lower() + "\n"
             coord_str += coord_line
         coord_str += "$end"
         return coord_str
@@ -270,7 +287,10 @@ class Calculator:
         """
         coords = coords.reshape(-1, 3) * BOHR2ANG
         coords = "\n".join(
-                ["{} {:10.08f} {:10.08f} {:10.08f}".format(a, *c) for a, c in zip(atoms, coords)]
+            [
+                "{} {:10.08f} {:10.08f} {:10.08f}".format(a, *c)
+                for a, c in zip(atoms, coords)
+            ]
         )
         return coords
 
@@ -292,9 +312,21 @@ class Calculator:
 
         return f"{len(atoms)}\n\n{self.prepare_coords(atoms, coords)}"
 
-    def run(self, inp, calc, add_args=None, env=None, shell=False,
-            hold=False, keep=True, cmd=None, inc_counter=True,
-            run_after=True, parser_kwargs=None, symlink=True):
+    def run(
+        self,
+        inp,
+        calc,
+        add_args=None,
+        env=None,
+        shell=False,
+        hold=False,
+        keep=True,
+        cmd=None,
+        inc_counter=True,
+        run_after=True,
+        parser_kwargs=None,
+        symlink=True,
+    ):
         """Run a calculation.
 
         The bread-and-butter method to actually run an external quantum
@@ -339,14 +371,15 @@ class Calculator:
             cmd = self.base_cmd
 
         if isinstance(cmd, str):
-            cmd  = [cmd]
+            cmd = [cmd]
 
         args = cmd + [self.inp_fn]
         if add_args:
             args.extend(add_args)
         if not env:
             env = os.environ.copy()
-        with open(path / self.out_fn, "w") as handle:
+        tmp_out_fn = path / self.out_fn
+        with open(tmp_out_fn, "w") as handle:
             if symlink:
                 # We can't use resolve here as a previous symlink may already
                 # exist. Calling resolve would translate this to the original
@@ -359,15 +392,54 @@ class Calculator:
                     pass
 
                 try:
-                    os.symlink(path / self.out_fn, sym_fn)
+                    os.symlink(tmp_out_fn, sym_fn)
                     self.log(f"Created symlink in '{sym_fn}'")
                 # This may happen if we use a dask scheduler
                 except FileExistsError:
                     self.log("Symlink already exists. Skipping generation.")
-            result = subprocess.Popen(args, cwd=path,
-                                      stdout=handle, stderr=subprocess.PIPE,
-                                      env=env, shell=shell)
-            result.wait()
+
+            # Do at least one cycle. When retries are disabled retry_calc == 0
+            # and range(0+1) will result in one cycle
+            for retry in range(self.retry_calc + 1):
+                result = subprocess.Popen(
+                    args,
+                    cwd=path,
+                    stdout=handle,
+                    stderr=subprocess.PIPE,
+                    env=env,
+                    shell=shell,
+                )
+                result.wait()
+                try:
+                    normal_termination = False
+                    # Calling check_termination may result in an exception and
+                    # normal_termination will stay at False
+                    normal_termination = self.check_termination(tmp_out_fn)
+                # Method check_termination may not be implemented, so we will always
+                # do only one try.
+                except AttributeError:
+                    normal_termination = True
+                # The out file may not be present
+                except FileNotFoundError:
+                    self.log(
+                        f"Could not find out-file {str(tmp_out_fn)} for termination status check!"
+                    )
+
+                if normal_termination:
+                    break
+                else:
+                    print("Abnormal termination! Retrying calculation.")
+                    shutil.copy(tmp_out_fn, str(tmp_out_fn) + f".fail_{retry:02d}")
+                    try:
+                        self.clean_tmp(path)
+                    except AttributeError:
+                        self.log(f"'self.clean_path()' not implemented!")
+                    # Clear tmp_out_fn
+                    handle.seek(0)
+                    handle.truncate()
+                    self.log("Detected abnormal termination! Retrying calculation.")
+
+        # Parse results for desired quantities
         try:
             if run_after:
                 self.run_after(path)
@@ -383,8 +455,9 @@ class Calculator:
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
             shutil.copytree(path, backup_dir)
-            print(f"Copied contents of\n\t'{path}'\nto\n\t'{backup_dir}'.\n"
-                   "Consider checking the log files there.\n"
+            print(
+                f"Copied contents of\n\t'{path}'\nto\n\t'{backup_dir}'.\n"
+                "Consider checking the log files there.\n"
             )
             raise err
         finally:
@@ -465,9 +538,11 @@ class Calculator:
             pattern, multi, key = self.prepare_pattern(raw_pattern)
             globbed = natsorted(path.glob(pattern))
             if not multi:
-                assert(len(globbed) <= 1), f"Expected at most one file " \
-                 f"matching {pattern} in {path}. Found {len(globbed)} " \
-                 f"files instead ({', '.join([g.name for g in globbed])})!"
+                assert len(globbed) <= 1, (
+                    f"Expected at most one file "
+                    f"matching {pattern} in {path}. Found {len(globbed)} "
+                    f"files instead ({', '.join([g.name for g in globbed])})!"
+                )
             else:
                 kept_fns[key] = list()
             for tmp_fn in globbed:
@@ -502,9 +577,7 @@ class Calculator:
         """
         try:
             # Convert possible Paths to str
-            chkfiles = {
-                k: str(v) for k, v in self.get_chkfiles().items()
-            }
+            chkfiles = {k: str(v) for k, v in self.get_chkfiles().items()}
         except AttributeError:
             chkfiles = dict()
 
@@ -536,8 +609,10 @@ class Calculator:
             chkfile = Path(chkfile)
             # If the chkfile exists at the given path we use it as it is.
             if not chkfile.exists():
-                self.log(f"Given chkfile '{chkfile}' could not be found! Dropping "
-                          "absolute part and trying only its name.")
+                self.log(
+                    f"Given chkfile '{chkfile}' could not be found! Dropping "
+                    "absolute part and trying only its name."
+                )
                 # Check if relative path exists. This may happen if the calculation
                 # has been moved to a different folder.
                 name = Path(chkfile.name)
@@ -564,10 +639,18 @@ class Calculator:
         except KeyError:
             self.log("No chkfiles preset in restart_info")
         except AttributeError:
-            self.log("Found chkfiles on restart_info, but 'set_chkfiles' is not "
-                     "implemented for Calculator.")
+            self.log(
+                "Found chkfiles on restart_info, but 'set_chkfiles' is not "
+                "implemented for Calculator."
+            )
 
         self.log("Setting restart_info")
         for key, value in restart_info.items():
             setattr(self, key, value)
             self.log(f"\t{key}: {value}")
+
+    def print_capabilities(self):
+        print(
+            f"    Can retry?: {hasattr(self, 'check_termination')}\n"
+            f"Can track ES??: {hasattr(self, 'prepare_overlap_data')}\n"
+        )

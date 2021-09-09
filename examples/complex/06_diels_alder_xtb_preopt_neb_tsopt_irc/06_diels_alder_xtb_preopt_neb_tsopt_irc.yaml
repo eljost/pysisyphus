@@ -15,7 +15,6 @@ tsopt:
  do_hess: True
  max_cycles: 75
  thresh: gau_tight
- coord_type: redund
  hessian_recalc: 7
 irc:
  type: eulerpc
