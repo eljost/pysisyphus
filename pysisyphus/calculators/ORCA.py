@@ -377,12 +377,6 @@ class ORCA(OverlapCalculator):
         energy = float(energy_mobj.groups()[0])
         results["energy"] = energy
 
-        if self.do_tddft:
-            """FIXME: Store the right energy etc. similar to
-            parse_engrad."""
-            raise Exception(
-                "Proper handling of TDDFT and hessian " " is not yet implemented."
-            )
         return results
 
     def parse_energy(self, path):
