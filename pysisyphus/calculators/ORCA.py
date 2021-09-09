@@ -456,7 +456,6 @@ class ORCA(OverlapCalculator):
         # X+Y of 2, X-Y of 2, ...
         prev_root = -1
         prev_mult = 1
-        coeffs = list()
         iroot_triplets = 0
 
         # Flags that may later be set to True

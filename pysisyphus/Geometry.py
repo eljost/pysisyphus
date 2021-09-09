@@ -964,7 +964,6 @@ class Geometry:
             cart_hessian = self.cart_hessian
 
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
-        P = self.get_trans_rot_projector()
         proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True)
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
         mw_cart_displs = P.T.dot(eigvecs)

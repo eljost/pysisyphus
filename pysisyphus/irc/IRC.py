@@ -288,7 +288,6 @@ class IRC:
         """
 
         mw_hessian = self.geometry.mass_weigh_hessian(self.init_hessian)
-        P = self.geometry.get_trans_rot_projector()
         if self.coords.size > 3:
             proj_hessian, P = self.geometry.eckart_projection(mw_hessian, return_P=True)
         # Don't project single atom species and analytical potentials
