@@ -4,6 +4,7 @@ __all__ = [
     "AFIR",
     "AtomAtomTransTorque",
     "Composite",
+    "ConicalIntersection",
     "DFTBp",
     "Dimer",
     "ExternalPotential",
@@ -32,6 +33,7 @@ __all__ = [
 from pysisyphus.calculators.AFIR import AFIR
 from pysisyphus.calculators.AtomAtomTransTorque import AtomAtomTransTorque
 from pysisyphus.calculators.Composite import Composite
+from pysisyphus.calculators.ConicalIntersection import ConicalIntersection
 from pysisyphus.calculators.DFTBp import DFTBp
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
