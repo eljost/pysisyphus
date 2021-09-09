@@ -75,6 +75,7 @@ class OverlapCalculator(Calculator):
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
         self.use_ntos = use_ntos
+        self.pr_nto = pr_nto
         self.nto_thresh = nto_thresh
         self.cdds = cdds
         # When calculation/rendering of charge density differences is requested
@@ -485,7 +486,7 @@ class OverlapCalculator(Calculator):
                 mo_coeffs,
             )
             pr_nto = lambdas.sum()**2 / (lambdas ** 2).sum()
-            if pr_nto:
+            if self.pr_nto:
                 use_ntos = int(np.round(pr_nto))
                 self.log(f"PR_NTO={pr_nto:.2f}")
             else:
