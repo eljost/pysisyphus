@@ -1216,9 +1216,11 @@ RunResult = namedtuple(
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
-    # Dump actual run_dict
+    # Dump run_dict
+    run_dict_copy = run_dict.copy()
+    run_dict_copy["version"] = get_versions()["version"]
     with open("RUN.yaml", "w") as handle:
-        yaml.dump(run_dict, handle)
+        yaml.dump(run_dict_copy, handle)
 
     if run_dict["interpol"]:
         interpolate = run_dict["interpol"]["type"]
