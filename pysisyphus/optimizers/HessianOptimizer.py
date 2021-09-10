@@ -14,9 +14,15 @@ from pysisyphus.optimizers.hessian_updates import (
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
+def dummy_hessian_update(H, dx, dg):
+    return np.zeros_like(H), "no"
+
+
 class HessianOptimizer(Optimizer):
     hessian_update_funcs = {
-        "none": lambda H, dx, dg: (np.zeros_like(H), "no"),
+        "none": dummy_hessian_update,
+        None: dummy_hessian_update,
+        False: dummy_hessian_update,
         "bfgs": bfgs_update,
         "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
@@ -86,8 +92,10 @@ class HessianOptimizer(Optimizer):
             and self.hessian_init in ("fischer", "lindh", "simple", "swart")
         ):
             self.hessian_init = "unit"
-            self.log(f"Chosen initial (model) Hessian is incompatible with current "
-                     f"coord_type: {self.geometry.coord_type}!")
+            self.log(
+                f"Chosen initial (model) Hessian is incompatible with current "
+                f"coord_type: {self.geometry.coord_type}!"
+            )
 
         self._prev_eigvec_min = None
         self._prev_eigvec_max = None
