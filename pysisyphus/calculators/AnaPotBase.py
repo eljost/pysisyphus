@@ -63,6 +63,9 @@ class AnaPotBase(Calculator):
         self.mult = 1
         self.charge = 0
 
+        self.fig = None
+        self.ax = None
+
     def get_energy(self, atoms, coords):
         self.energy_calcs += 1
         x, y, z = coords
@@ -98,7 +101,9 @@ class AnaPotBase(Calculator):
         )
 
     def plot(self, levels=None, show=False, **figkwargs):
-        self.fig, self.ax = plt.subplots(**figkwargs)
+        if not self.fig or not self.ax:
+            self.fig, self.ax = plt.subplots(**figkwargs)
+
         x = np.linspace(*self.xlim, 100)
         y = np.linspace(*self.ylim, 100)
         X, Y = np.meshgrid(x, y)
@@ -114,7 +119,10 @@ class AnaPotBase(Calculator):
 
         # Draw the contourlines of the potential
         contours = self.ax.contour(X, Y, pot, levels)
-        self.fig.colorbar(contours)
+
+        # Avoid duplicated colorbars
+        if len(self.fig.axes) == 1:
+            self.fig.colorbar(contours)
 
         if show:
             plt.show()
