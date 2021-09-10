@@ -21,7 +21,7 @@ class GrowingNT:
         final_geom=None,
         between=None,
         bonds=None,
-        update_r=False,
+        update_r=True,
     ):
         assert geom.coord_type == "cart"
 
@@ -45,14 +45,14 @@ class GrowingNT:
                 self.between + 1
             )
 
+        self._initialized = False
         self.images = [self.geom.copy()]
-        self.sp_images = [self.geom.copy()]  # Stationary points
         self.all_energies = list()
-        self.all_forces = list()
-
-        # Do initial displacement towards final_geom along r
-        step = self.step_len * self.r
-        self.geom.coords += step
+        self.all_real_forces = list()
+        self.sp_images = [self.geom.copy()]  # Stationary points
+        # Right now this leads to a gradient calculation in the momement,
+        # this object is constructed, which is bad.
+        self.initialize()
 
     @staticmethod
     def get_r(geom, final_geom, bonds, r):
@@ -105,6 +105,42 @@ class GrowingNT:
     def cart_coords(self):
         return self.geom.cart_coords
 
+    def grow_image(self):
+        self.images[-1] = self.geom.copy()
+        # Update coordinates of newly grown image. Try to use Eq. (6) in [1].
+        if self._initialized and self.final_geom and self.between:
+            m = self.between + 2
+            k = len(self.images) - 1
+            lambda_ = (m - k) / (m + 1 - k)
+            # Adapted from [6] to produce a step instead of new coords
+            step = (
+                self.coords * (lambda_ - 1) + (1 - lambda_) * self.final_geom.coords
+            )
+        # If no final image is given we just displace along r
+        else:
+            step = self.step_len * self.r
+        # print("\t Grow from", self.coords)
+        self.coords = self.coords + step
+
+        # Calculate energy and forces at newly grown geometry and append new frontier
+        # image.
+        real_forces = self.geom.forces
+        energy = self.geom.energy
+        self.all_energies.append(energy)
+        self.all_real_forces.append(real_forces)
+        self.images.append(self.geom)
+
+    def initialize(self):
+        assert not self._initialized, "GrowingNT.initialize() can only be called once!"
+        # Calculation at initial geometry
+        init_results = self.geom.get_energy_and_forces_at(self.images[0].coords)
+        self.all_energies.append(init_results["energy"])
+        self.all_real_forces.append(init_results["forces"])
+        # Do initial displacement
+        self.grow_image()
+        # Indicate the GrowingNT was properly initialized
+        self._initialized = True
+
     @property
     def energy(self):
         return self.geom.energy
@@ -126,36 +162,40 @@ class GrowingNT:
         return self.geom.as_xyz()
 
     def reparametrize(self):
-        # TODO: use already calculated quantities to decide this
-        real_forces = self.geom.forces  # Unprojected forces
+        """Check if GNT can be grown."""
+
+        # Real, unprojected, forces of the underlying geometry
+        real_forces = self.geom.forces
         energy = self.energy
-        if rms(real_forces) <= self.rms_thresh:
-            self.sp_images.append(self.geom.copy())
+        # Update the last element in all_real_forces and energies with the
+        # current values.
+        self.all_real_forces[-1] = real_forces
+        self.all_energies[-1] = energy
 
-        forces = self.forces  # Projected forces
-        reparametrized = rms(forces) <= self.rms_thresh
-        # Check if we passed a stationary point by comparing energies
-        if reparametrized and len(self.all_energies) > 2:
-            prev_prev_energy, prev_energy = self.all_energies[-3:-1]
-            self.prev_energy_increased = prev_energy > prev_prev_energy
-            sp_passed = energy < prev_energy
-            if sp_passed:
+        # See if we can grow the NT, by checking the convergence of the frontier
+        # image using projected forces.
+        forces = self.forces
+        can_grow = rms(forces) <= self.rms_thresh
+
+        if can_grow:
+            ae = self.all_energies  # Shortcut
+            passed_min = len(ae) >= 3 and ae[-3] > ae[-2] < ae[-1]
+            passed_ts = len(ae) >= 3 and ae[-3] < ae[-2] > ae[-1]
+            if passed_min or passed_ts:
+                self.sp_images.append(self.images[-2].copy())
                 self.log(f"Passed stationary point!\n{self.geom.as_xyz()}")
-                self.sp_images.append(self.geom.copy())
-            if sp_passed and self.update_r:
-                self.r = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
-            if len(self.images) == 5:
-                self.r = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
+                r_new = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
+                # update_r = self.update_r and r_now.dot(self.r) < 0.5
+                # if self.update_r and (dot_ := r_new.dot(self.r) < 0.5):
+                if self.update_r:
+                    self.r = r_new
 
-        if reparametrized:
-            self.images.append(self.geom.copy())
-            self.all_forces.append(real_forces)
-            self.all_energies.append(energy)
-            step = self.step_len * self.r
-            self.coords = self.coords + step
+            # Grow new image
+            self.grow_image()
+            assert len(self.images) == len(self.all_energies) == len(self.all_real_forces)
 
-        self.did_reparametrization = reparametrized
-        return reparametrized
+        self.did_reparametrization = can_grow
+        return can_grow
 
     def get_additional_print(self):
         if self.did_reparametrization:

@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+import pytest
+
 from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.cos.GrowingNT import GrowingNT
@@ -8,35 +10,47 @@ from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 
 
 def plot_gnt(calc, gnt):
-    calc.plot_geoms(gnt.images, show=True)
-    calc.plot_geoms(gnt.sp_images, show=True)
-    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
-    ens = np.array(gnt.all_energies)
-    xs = np.arange(ens.size)
-    ens -= ens.min()
-    max_ind = ens.argmax()
-    norms = np.array(gnt.all_forces)
-    norms = np.linalg.norm(norms, axis=1)
-    ax0.plot(ens, "o-")
-    ax1.plot(norms, "o-")
-    for ax in (ax0, ax1):
-        ax.axvline(xs[max_ind], c="k", ls="--")
+    calc.plot_geoms(gnt.images)
+    calc.plot_geoms(gnt.sp_images)
+
+    # fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+    # ens = np.array(gnt.all_energies)
+    # xs = np.arange(ens.size)
+    # ens -= ens.min()
+    # max_ind = ens.argmax()
+    # norms = np.array(gnt.all_real_forces)
+    # norms = np.linalg.norm(norms, axis=1)
+    # ax0.plot(ens, "o-")
+    # ax0.set_title("Energies")
+    # ax1.plot(norms, "o-")
+    # ax1.set_title("norm(forces)")
+    # ax1.set_xlabel("Image")
+    # for ax in (ax0, ax1):
+        # ax.axvline(xs[max_ind], c="k", ls="--")
     plt.show()
 
 
-def test_mb_growingnt():
+@pytest.mark.parametrize(
+    "between",
+    [
+        9,
+        21,
+    ],
+)
+def test_mb_growingnt(between):
     geoms = MullerBrownPot().get_minima()
     geoms = geoms[1], geoms[0]
     geom0, geom1 = geoms
 
     gnt_kwargs = {
-        "between": 11,
+        "between": between,
         "rms_thresh": 0.08,
         "final_geom": geom1,
+        "update_r": False,
     }
     gnt = GrowingNT(geom0, **gnt_kwargs)
     opt_kwargs = {
-        "max_cycles": 100,
+        "max_cycles": 150,
     }
     opt = PreconLBFGS(gnt, **opt_kwargs)
     opt.run()
@@ -54,6 +68,7 @@ def test_four_well_growingnt():
         "between": 23,
         "rms_thresh": 0.005,
         "final_geom": geom1,
+        # "update_r": True,
     }
     gnt = GrowingNT(geom0, **gnt_kwargs)
     opt_kwargs = {
@@ -117,7 +132,9 @@ def test_biaryl_growingnt(bonds, this_dir):
     ],
 )
 def test_diels_alder_growingnt(bonds, this_dir):
-    geoms = geom_loader("/home/johannes/Code/pysisyphus/pysisyphus/geom_library/birkholz_rx/02_hcn_original.trj")
+    geoms = geom_loader(
+        "/home/johannes/Code/pysisyphus/pysisyphus/geom_library/birkholz_rx/02_hcn_original.trj"
+    )
     geoms = geom_loader("lib:diels_alder_interpolated.trj")
     geom0 = geoms[0]
     geom1 = geoms[-1]
@@ -171,6 +188,7 @@ def test_hcn_growingnt():
     }
     # opt = PreconLBFGS(gnt, **opt_kwargs)
     from pysisyphus.optimizers.LBFGS import LBFGS
+
     opt = LBFGS(gnt, max_step=0.1)
 
     opt.run()
