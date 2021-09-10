@@ -44,7 +44,9 @@ class CIQuantities:
     gradient_diff: np.ndarray
     gradient_mean: np.ndarray
     P: np.ndarray
+    # Difference gradient vector
     x: np.ndarray
+    # Derivative coupling vector
     y: np.ndarray
     energy: float
     forces: np.ndarray
@@ -67,9 +69,11 @@ class ConicalIntersection(Calculator):
         self.ciq_store = dict()
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
+        """Energy of calculator 1."""
         return self.calc1.get_energy(atoms, coords, **prepare_kwargs)
 
     def get_ci_quantities(self, atoms, coords, **prepare_kwargs):
+        """Relavent quantities including branching plane and projector P."""
         hash_ = hash_args(atoms, coords, *prepare_kwargs.values(), precision=6)
         if hash_ in self.ciq_store:
             ciq = self.ciq_store[hash_]
@@ -139,6 +143,7 @@ class ConicalIntersection(Calculator):
         return ciq
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
+        """Projected gradient for CI optimization."""
         ciq = self.get_ci_quantities(atoms, coords, **prepare_kwargs)
 
         return {
@@ -147,6 +152,7 @@ class ConicalIntersection(Calculator):
         }
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
+        """Projected Hessian."""
         ciq = self.get_ci_quantities(atoms, coords, **prepare_kwargs)
 
         hessian1 = self.calc1.get_hessian(atoms, coords, **prepare_kwargs)["hessian"]
