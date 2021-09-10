@@ -4,12 +4,15 @@
 #     Maeda, Ohno, Morokuma, 2010
 
 
+from copy import deepcopy
 from dataclasses import dataclass
 from math import sqrt
 
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.constants import AU2KJPERMOL
+from pysisyphus.helpers_pure import hash_args
 
 
 def update_y(x, x_prev, y_prev):
@@ -61,11 +64,20 @@ class ConicalIntersection(Calculator):
 
         self.x_prev = None
         self.y_prev = None
+        self.ciq_store = dict()
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
         return self.calc1.get_energy(atoms, coords, **prepare_kwargs)
 
     def get_ci_quantities(self, atoms, coords, **prepare_kwargs):
+        hash_ = hash_args(atoms, coords, *prepare_kwargs.values(), precision=6)
+        if hash_ in self.ciq_store:
+            ciq = self.ciq_store[hash_]
+            self.log(f"Returning cached CI quantities for hash='{hash_}'.")
+            return ciq
+        else:
+            self.log(f"Calculating CI quantities for hash='{hash_}'.")
+
         res1 = self.calc1.get_forces(atoms, coords, **prepare_kwargs)
         energy1 = res1["energy"]
         gradient1 = -res1["forces"]
@@ -84,21 +96,23 @@ class ConicalIntersection(Calculator):
         # x vector; unit vector parallel to DGV
         x = gradient_diff / np.linalg.norm(gradient_diff)
 
-        # Initialize y
+        # Initialize y when it is not yet set ...
         if self.y_prev is None:
             y = gradient_mean / np.linalg.norm(gradient_mean)
-            # Orthogonalize against x
-            y -= y.dot(x) * x
-            # And renormalize
-            y /= np.linalg.norm(y)
+        # ... or update it in later calculations
         else:
             y = update_y(x, self.x_prev, self.y_prev)
 
-        # Projector to remove components along x and y from gradient.
+        # Orthogonalize against x
+        y -= y.dot(x) * x
+        # And renormalize
+        y /= np.linalg.norm(y)
+
+        # Projector to remove components along x and y (in BP) from gradient.
         # Eq. (7) in [1].
         P = get_P(x, y)
 
-        self.log(f"ΔE={energy_diff:.6f} au")
+        self.log(f"ΔE={energy_diff:.6f} au ({energy_diff*AU2KJPERMOL:.2f} kJ mol⁻¹)")
         # Store vectors for next calculation
         self.x_prev = x
         self.y_prev = y
@@ -121,6 +135,7 @@ class ConicalIntersection(Calculator):
             energy=energy1,
             forces=forces,
         )
+        self.ciq_store[hash_] = deepcopy(ciq)
         return ciq
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
