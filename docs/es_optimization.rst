@@ -132,7 +132,7 @@ below.
      # normalized, and vice versa.
      #
      # Possible values: (True, False)
-     mos_renorm: False
+     mos_renorm: True
 
 By brief reasoning it would seem that :code:`mos_ref: ref` and :code:`mos_renorm: True` are
 more sensible choices, which is possibly true. Right now the present defaults are kept for

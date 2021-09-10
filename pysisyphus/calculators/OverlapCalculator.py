@@ -57,7 +57,7 @@ class OverlapCalculator(Calculator):
         conf_thresh=1e-3,
         dyn_roots=0,
         mos_ref="cur",
-        mos_renorm=False,
+        mos_renorm=True,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
