@@ -14,15 +14,29 @@ from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG
 the constants module, but only from the stdlib and from third parties."""
 
 
+HASH_PREC = 4
+
+
 def eigval_to_wavenumber(ev):
     conv = AU2J / (AMU2KG * BOHR2M ** 2)
 
     return np.sign(ev) * np.sqrt(np.abs(ev) * conv) / (2 * np.pi * 3e10)
 
 
-def hash_arr(arr, precision=4):
-    str_ = np.array2string(arr, precision=4)
+def hash_arr(arr, precision=HASH_PREC):
+    str_ = np.array2string(arr, precision=precision)
     return hash(str_)
+
+
+def hash_args(*args, precision=HASH_PREC):
+    hashes = list()
+    for arg in args:
+        try:
+            hash_ = hash(arg)
+        except TypeError:
+            hash_ = hash_arr(arg, precision=precision)
+        hashes.append(hash_)
+    return hash(tuple(hashes))
 
 
 def log(logger, msg, level=logging.DEBUG):
