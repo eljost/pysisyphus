@@ -31,13 +31,13 @@ def plot_gnt(calc, gnt):
 
 
 @pytest.mark.parametrize(
-    "between",
+    "between, r_update",
     [
-        9,
-        21,
+        (9, False),
+        (21, False),
     ],
 )
-def test_mb_growingnt(between):
+def test_mb_growingnt(between, r_update):
     geoms = MullerBrownPot().get_minima()
     geoms = geoms[1], geoms[0]
     geom0, geom1 = geoms
@@ -46,16 +46,18 @@ def test_mb_growingnt(between):
         "between": between,
         "rms_thresh": 0.08,
         "final_geom": geom1,
-        "update_r": False,
+        "r_update_thresh": 0.9,
+        # "r_update": r_update,
+        "r_update": True,
     }
     gnt = GrowingNT(geom0, **gnt_kwargs)
     opt_kwargs = {
-        "max_cycles": 150,
+        "max_cycles": 100,
     }
     opt = PreconLBFGS(gnt, **opt_kwargs)
     opt.run()
 
-    # plot_gnt(geoms[0].calculator, gnt)
+    plot_gnt(geoms[0].calculator, gnt)
     assert opt.is_converged
 
 
@@ -68,7 +70,6 @@ def test_four_well_growingnt():
         "between": 23,
         "rms_thresh": 0.005,
         "final_geom": geom1,
-        # "update_r": True,
     }
     gnt = GrowingNT(geom0, **gnt_kwargs)
     opt_kwargs = {
@@ -77,7 +78,7 @@ def test_four_well_growingnt():
     opt = PreconLBFGS(gnt, **opt_kwargs)
     opt.run()
 
-    # plot_gnt(geoms[0].calculator, gnt)
+    plot_gnt(geoms[0].calculator, gnt)
     assert opt.is_converged
 
 

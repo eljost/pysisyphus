@@ -21,7 +21,8 @@ class GrowingNT:
         final_geom=None,
         between=None,
         bonds=None,
-        update_r=True,
+        r_update=True,
+        r_update_thresh=1.0,
     ):
         assert geom.coord_type == "cart"
 
@@ -31,7 +32,8 @@ class GrowingNT:
         self.final_geom = final_geom
         self.between = between
         self.bonds = bonds
-        self.update_r = update_r
+        self.r_update = r_update
+        self.r_update_thresh = r_update_thresh
 
         self.coord_type = self.geom.coord_type
         if self.final_geom:
@@ -39,6 +41,7 @@ class GrowingNT:
 
         # Determine search direction
         self.r = self.get_r(self.geom, self.final_geom, self.bonds, r)
+        self.r_org = self.r.copy()
         # Determine appropriate step_len from between
         if final_geom and self.between:
             self.step_len = np.linalg.norm(final_geom.coords - geom.coords) / (
@@ -113,9 +116,7 @@ class GrowingNT:
             k = len(self.images) - 1
             lambda_ = (m - k) / (m + 1 - k)
             # Adapted from [6] to produce a step instead of new coords
-            step = (
-                self.coords * (lambda_ - 1) + (1 - lambda_) * self.final_geom.coords
-            )
+            step = self.coords * (lambda_ - 1) + (1 - lambda_) * self.final_geom.coords
         # If no final image is given we just displace along r
         else:
             step = self.step_len * self.r
@@ -178,21 +179,39 @@ class GrowingNT:
         can_grow = rms(forces) <= self.rms_thresh
 
         if can_grow:
+            """
+            Check if we passed a stationary point (SP).
+            ^ Energy
+            |
+            | -3     -1     -2
+            |   \    /     /  \
+            |    \  /     /    \
+            |     -2     -3    -1
+            | Minimum       TS
+            """
             ae = self.all_energies  # Shortcut
             passed_min = len(ae) >= 3 and ae[-3] > ae[-2] < ae[-1]
             passed_ts = len(ae) >= 3 and ae[-3] < ae[-2] > ae[-1]
-            if passed_min or passed_ts:
+            passed_sp = passed_min or passed_ts
+            if passed_sp:
                 self.sp_images.append(self.images[-2].copy())
                 self.log(f"Passed stationary point!\n{self.geom.as_xyz()}")
-                r_new = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
-                # update_r = self.update_r and r_now.dot(self.r) < 0.5
-                # if self.update_r and (dot_ := r_new.dot(self.r) < 0.5):
-                if self.update_r:
-                    self.r = r_new
+
+            # Update direction 'r', if requested
+            r_new = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
+            r_dot = r_new.dot(self.r)
+            r_org_dot = r_new.dot(self.r_org)
+            self.log(f"r.dot(r')={r_dot:.6f} r_org.dot(r')={r_org_dot:.6f}")
+            # Only update when passed SP?
+            if self.r_update and (r_org_dot <= self.r_update_thresh:
+                self.r = r_new
+                self.log("Updated r")
 
             # Grow new image
             self.grow_image()
-            assert len(self.images) == len(self.all_energies) == len(self.all_real_forces)
+            assert (
+                len(self.images) == len(self.all_energies) == len(self.all_real_forces)
+            )
 
         self.did_reparametrization = can_grow
         return can_grow
