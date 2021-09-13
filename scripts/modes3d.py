@@ -15,10 +15,13 @@ from pysisyphus.io.hessian import geom_from_hessian
 
 C = {
     "h": color.white,
-    "o": color.red,
     "c": color.gray,
     "n": color.blue,
+    "o": color.red,
+    "f": color.lime,
     "s": color.yellow,
+    "cl": color.green,
+    "p": color.orange,
 }
 S = {
     "h": 1.0,
@@ -37,7 +40,7 @@ def render_molecule(atoms, coords3d, bonds=None):
         atom = atom.lower()
         scale_ = S.get(atom, 1.0)
         scale = (scale_, scale_, scale_)
-        acolor = C[atom]
+        acolor = C.get(atom, color.pink)
         sphere = Entity(
             model="sphere",
             color=acolor,
