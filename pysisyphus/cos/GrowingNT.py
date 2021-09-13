@@ -202,8 +202,7 @@ class GrowingNT:
             r_dot = r_new.dot(self.r)
             r_org_dot = r_new.dot(self.r_org)
             self.log(f"r.dot(r')={r_dot:.6f} r_org.dot(r')={r_org_dot:.6f}")
-            # Only update when passed SP?
-            if self.r_update and (r_org_dot <= self.r_update_thresh:
+            if self.r_update and (r_org_dot <= self.r_update_thresh) and passed_min:
                 self.r = r_new
                 self.log("Updated r")
 
