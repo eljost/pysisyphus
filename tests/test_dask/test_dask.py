@@ -13,7 +13,7 @@ def test_dask():
     with LocalCluster(n_workers=2) as cluster:
         address = cluster.scheduler_address
 
-        geoms = geom_loader("ala_dipeptide_iso_b3lyp_631gd_10_images.trj")
+        geoms = geom_loader("lib:ala_dipeptide_iso_b3lyp_631gd_10_images.trj")
 
         for i, geom in enumerate(geoms):
             calc = XTB(pal=1, calc_number=i)

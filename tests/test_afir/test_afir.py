@@ -23,7 +23,7 @@ init_logging()
             2.67745,
             marks=using("pyscf"),
         ),
-        pytest.param(XTB, {}, 27, 5.26346, 2.62731, marks=using("xtb")),
+        pytest.param(XTB, {}, 27, 5.263561, 2.62731, marks=using("xtb")),
     ],
 )
 def test_ohch3f_anion(calc_cls, calc_kwargs, ref_cycle, ccl_dist, oc_dist):

@@ -50,6 +50,9 @@ def test_run_md(geom):
     geoms = calc.run_md(geom.atoms, geom.cart_coords, t=200, dt=0.1,
                         velocities=velocities)
 
+    # trj = "\n".join([geom.as_xyz() for geom in geoms])
+    # with open("md.trj", "w") as handle:
+        # handle.write(trj)
     assert len(geoms) == 200
     last_geom = geoms[-1]
     energy = calc.get_energy(last_geom.atoms, last_geom.cart_coords)["energy"]

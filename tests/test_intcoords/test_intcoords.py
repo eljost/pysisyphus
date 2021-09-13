@@ -216,7 +216,7 @@ def test_opt_linear_dihedrals():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 16
+    assert opt.cur_cycle == 14
     assert geom.energy == pytest.approx(-10.48063133)
 
 

@@ -13,8 +13,8 @@ from pysisyphus.testing import using
 @pytest.mark.parametrize(
     "precon, ref_cyc, ref_nu",
     [
-        (True, 3, 1691.0526969),
-        (False, 5, 1691.0311213),
+        (True, 1, 1690.976973),
+        (False, 3, 1690.970311),
     ],
 )
 def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
@@ -22,24 +22,26 @@ def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
     calc = XTB(pal=2)
     geom.set_calculator(calc)
 
-    mw_H = geom.mw_hessian
-    H = geom.eckart_projection(mw_H)
-    w, v = np.linalg.eigh(H)
-    inds = [16, 8]
+    *_, cart_displs = geom.get_normal_modes()
+    inds = [10, 2]
 
     rg = np.random.default_rng(20180325)
 
     def get_guess(vec, masses_rep, scale=5e-3):
         return NormalMode(vec + scale * rg.random(*vec.shape), masses_rep)
 
-    guess_modes = [get_guess(v[:, ind], geom.masses_rep) for ind in inds]
+    guess_modes = [get_guess(cart_displs[:, ind], geom.masses_rep) for ind in inds]
 
     hessian_precon = None
     if precon:
         hessian_precon = np.loadtxt(this_dir / "hessian_precon")
 
     result = geom_davidson(
-        geom, guess_modes, hessian_precon=hessian_precon, start_precon=5, print_level=1,
+        geom,
+        guess_modes,
+        hessian_precon=hessian_precon,
+        start_precon=5,
+        print_level=1,
     )
 
     nu = result.nus[result.mode_inds[0]]

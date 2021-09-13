@@ -166,8 +166,9 @@ def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
     irc.run()
 
     # approx. +- 0.5 kJ/mol
-    assert irc.forward_energies[0] == pytest.approx(-91.64442379051056)
-    assert irc.backward_energies[-1] == pytest.approx(-91.67520894777218)
+    ref_energies = [pytest.approx(en) for en in (-91.6444238, -91.67520895)]
+    assert irc.forward_energies[0] in ref_energies
+    assert irc.backward_energies[-1] in ref_energies
 
 
 @pytest.mark.parametrize(

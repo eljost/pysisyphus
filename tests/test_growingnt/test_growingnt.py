@@ -129,6 +129,7 @@ def test_biaryl_growingnt(bonds, this_dir):
     opt.run()
 
 
+@pytest.mark.skip
 @using("xtb")
 @pytest.mark.parametrize(
     "bonds",

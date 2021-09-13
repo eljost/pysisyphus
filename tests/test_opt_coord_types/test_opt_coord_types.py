@@ -6,12 +6,12 @@ from pysisyphus.testing import using
 
 
 @using("xtb")
-def test_opt_coord_type():
+def test_opt_coord_type(this_dir):
     preopt_ct, tsopt_ct, endopt_ct = ("dlc", "redund", "tric")
     run_dict = {
         "geom": {
             "type": "cart",
-            "fn": "test_geoms.trj",
+            "fn": str(this_dir / "test_geoms.trj"),
         },
         "calc": {
             "type": "xtb",

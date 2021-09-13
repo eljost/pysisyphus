@@ -40,8 +40,11 @@ def test_run_tsopt_from_cos(coord_type, cos):
     tsopt_key = "rsirfo"
     tsopt_kwargs = {
         "do_hess": True,
-        "coord_type": coord_type,
         "hessian_recalc": 5,
+        "geom": {
+            "type": coord_type,
+            "coord_kwargs": {},
+        },
     }
     opt_result = run_tsopt_from_cos(cos, tsopt_key, tsopt_kwargs, calc_getter)
 
@@ -51,7 +54,14 @@ def test_run_tsopt_from_cos(coord_type, cos):
 @using("xtb")
 def test_run_tsopt_from_cos_dimer(cos):
     opt_result = run_tsopt_from_cos(
-        cos, tsopt_key="dimer", tsopt_kwargs={}, calc_getter=XTB
+        cos,
+        tsopt_key="dimer",
+        tsopt_kwargs={
+            "geom": {
+                "type": "cart",
+            }
+        },
+        calc_getter=XTB,
     )
 
     assert opt_result.geom.energy == pytest.approx(-11.44519302, abs=2e-5)

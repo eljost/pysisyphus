@@ -17,8 +17,8 @@ def test_modekill_xtb(this_dir):
     geom.set_calculator(calc)
     w, v = np.linalg.eigh(geom.mw_hessian)
     nus = eigval_to_wavenumber(w)
-    assert nus[0] == pytest.approx(-199.5586146) 
-    assert nus[1] == pytest.approx(-94.01553723) 
+    assert nus[0] == pytest.approx(-199.532846)
+    assert nus[1] == pytest.approx(-93.9897634)
 
     modekill = ModeKill(geom, kill_inds=[0, ])
     modekill.run()
@@ -26,7 +26,7 @@ def test_modekill_xtb(this_dir):
     w, v = np.linalg.eigh(geom.mw_hessian)
     nus = eigval_to_wavenumber(w)
 
-    assert nus[0] == pytest.approx(-96.31027310)
+    assert nus[0] == pytest.approx(-96.1364439)
 
 
 @using("pyscf")

@@ -303,8 +303,9 @@ def run_tsopt_from_cos(
     print(union_msg)
 
     ts_geom_kwargs = tsopt_kwargs.pop("geom")
-    ts_geom_kwargs["coord_kwargs"].update(coord_kwargs)
     ts_coord_type = ts_geom_kwargs.pop("type")
+    if ts_coord_type != "cart":
+        ts_geom_kwargs["coord_kwargs"].update(coord_kwargs)
 
     ts_geom = Geometry(
         hei_image.atoms,
@@ -318,7 +319,7 @@ def run_tsopt_from_cos(
     if ts_coord_type == "cart":
         ref_tangent = cart_hei_tangent
     elif ts_coord_type in ("redund", "dlc"):
-        ref_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
+        ref_tangent = ts_geom.internal.B @ cart_hei_tangent
     else:
         raise Exception(f"Invalid coord_type='{ts_coord_type}'!")
     ref_tangent /= np.linalg.norm(ref_tangent)
