@@ -120,7 +120,6 @@ class GrowingNT:
         # If no final image is given we just displace along r
         else:
             step = self.step_len * self.r
-        # print("\t Grow from", self.coords)
         self.coords = self.coords + step
 
         # Calculate energy and forces at newly grown geometry and append new frontier

@@ -57,8 +57,10 @@ def test_mb_growingnt(between, r_update):
     opt = PreconLBFGS(gnt, **opt_kwargs)
     opt.run()
 
-    plot_gnt(geoms[0].calculator, gnt)
+    # plot_gnt(geoms[0].calculator, gnt)
+
     assert opt.is_converged
+    assert gnt.images[-1].energy == pytest.approx(-146.69951721)
 
 
 def test_four_well_growingnt():
@@ -78,8 +80,10 @@ def test_four_well_growingnt():
     opt = PreconLBFGS(gnt, **opt_kwargs)
     opt.run()
 
-    plot_gnt(geoms[0].calculator, gnt)
+    # plot_gnt(geoms[0].calculator, gnt)
+
     assert opt.is_converged
+    assert gnt.images[-1].energy == pytest.approx(-6.76245257)
 
 
 import pytest
@@ -170,14 +174,15 @@ def test_hcn_growingnt():
     geom1 = geoms[-1]
     geom0.set_calculator(XTB(pal=1, quiet=True))
 
-    from pysisyphus.intcoords import Bend
-
-    indices = (1, 0, 2)
-    _, r = Bend._calculate(geom0.coords3d, indices, gradient=True)
+    # from pysisyphus.intcoords import Bend
+    # indices = (1, 0, 2)
+    # _, r = Bend._calculate(geom0.coords3d, indices, gradient=True)
 
     gnt_kwargs = {
-        "step_len": 0.2,
-        "r": r,
+        # "step_len": 0.2,
+        "final_geom": geom1,
+        "between": 18,
+        # "r": r,
         # "rms_thresh": 0.001,
     }
     gnt = GrowingNT(geom0, **gnt_kwargs)
@@ -187,9 +192,8 @@ def test_hcn_growingnt():
         "max_step": 0.1,
         "line_search": False,
     }
-    # opt = PreconLBFGS(gnt, **opt_kwargs)
-    from pysisyphus.optimizers.LBFGS import LBFGS
-
-    opt = LBFGS(gnt, max_step=0.1)
+    opt = PreconLBFGS(gnt, **opt_kwargs)
+    # from pysisyphus.optimizers.LBFGS import LBFGS
+    # opt = LBFGS(gnt, **opt_kwargs)
 
     opt.run()
