@@ -244,8 +244,6 @@ class IRC:
         if self.displ in ("energy", "energy_cubic"):
             actual_energy = self.energy
             actual_lowering = self.ts_energy - actual_energy
-            if actual_lowering < 0.0:
-                print("Displaced geometry is higher in energy compared to TS!")
             diff = self.displ_energy - actual_lowering
 
             def en_str(en):
@@ -256,6 +254,8 @@ class IRC:
                 f"   Actual energy lowering: {en_str(actual_lowering)}\n"
                 f"                        Δ: {en_str(diff)}\n"
             )
+            if actual_lowering < 0.0:
+                print("Displaced geometry is higher in energy compared to TS!")
             sys.stdout.flush()
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(
