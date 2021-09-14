@@ -6,9 +6,22 @@ from math import log
 import sys
 
 import numpy as np
-from ursina import *
+from ursina import (
+    color,
+    Cylinder,
+    destroy,
+    DirectionalLight,
+    EditorCamera,
+    Entity,
+    Func,
+    Sequence,
+    Text,
+    Ursina,
+    window,
+)
 from ursina.shaders import lit_with_shadows_shader
 
+from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.io.hessian import geom_from_hessian
 
@@ -31,10 +44,28 @@ S = {
 }
 
 
-def render_molecule(atoms, coords3d, bonds=None):
-    if bonds is None:
-        bonds = list()
+def get_bond_data(coords3d, bonds):
+    directions = list()
+    vals = list()
+    xyz = list()
+    for bond in bonds:
+        from_, to_ = bond
+        direction = coords3d[to_] - coords3d[from_]
+        direction /= np.linalg.norm(direction)
+        direction = tuple(direction)
+        val = Stretch._calculate(coords3d, bond)
+        x, y, z = coords3d[from_]
+        directions.append(direction)
+        vals.append(val)
+        xyz.append((x, y, z))
+    return directions, vals, xyz
 
+
+def get_bond_data_from_geom(geom):
+    return get_bond_data(geom.coords3d, geom.internal.bond_atom_indices)
+
+
+def render_atoms(atoms, coords3d):
     spheres = list()
     for atom, (x, y, z) in zip(atoms, coords3d):
         atom = atom.lower()
@@ -51,16 +82,16 @@ def render_molecule(atoms, coords3d, bonds=None):
             shader=lit_with_shadows_shader,
         )
         spheres.append(sphere)
+    return spheres
 
-    bonds_ = list()
-    for i, bond in enumerate(bonds):
-        from_, to_ = bond
-        direction = coords3d[to_] - coords3d[from_]
-        direction /= np.linalg.norm(direction)
-        direction = tuple(direction)
-        val = Stretch._calculate(coords3d, bond)
-        x, y, z = coords3d[from_]
 
+def render_bonds(coords3d, bonds=None):
+    if bonds is None:
+        bonds = list()
+
+    directions, vals, xyz = get_bond_data(coords3d, bonds)
+    cylinders = list()
+    for direction, val, (x, y, z) in zip(directions, vals, xyz):
         cyl_ = Cylinder(direction=direction, radius=0.1, height=val)
         cyl = Entity(
             model=cyl_,
@@ -69,8 +100,9 @@ def render_molecule(atoms, coords3d, bonds=None):
             z=z,
             shader=lit_with_shadows_shader,
         )
-        bonds_.append(cyl)
-    return spheres, bonds
+        cyl.hide()
+        cylinders.append(cyl)
+    return cylinders
 
 
 def input(key):
@@ -95,17 +127,15 @@ def get_tangent_trj_coords(coords, tangent, points=10, displ=None):
     return trj_coords
 
 
-def parse_args(args):
-    parser = argparse.ArgumentParser()
+def palindrome_cycler(iterable):
+    inds = list(range(len(iterable)))
+    cycler = it.cycle(inds + inds[1:-1][::-1])
+    return cycler
 
-    parser.add_argument("hessian")
-    return parser.parse_args(args)
 
-
-def run():
-    args = parse_args(sys.argv[1:])
-
-    geom = geom_from_hessian(args.hessian, coord_type="redund")
+def from_h5_hessian(fn):
+    geom = geom_from_hessian(fn, coord_type="redund")
+    geoms = (geom,)
 
     # Cartesian displacements
     nus, *_, displs = geom.get_normal_modes()
@@ -114,7 +144,7 @@ def run():
     # Imaginary frequencies
     imag_mask = nus < 0
     imag_trj_coords = list()
-    for i, (nu, displ) in enumerate(zip(nus[imag_mask], displs.T[imag_mask])):
+    for i, nu in enumerate(nus[imag_mask]):
         print(f"Imaginary Mode {i:02d}: {nu:.4f} cm⁻¹")
         imag_trj_coords.append(get_tangent_trj_coords(geom.cart_coords, displs[:, i]))
 
@@ -123,29 +153,78 @@ def run():
     global imag_ind
     imag_cycler = it.cycle(range(imag_num))
     imag_ind = next(imag_cycler)
-    inds = list(range(len(imag_trj_coords[0])))
-    # Palindrome
-    c3d_cycler = it.cycle(inds + inds[1:-1][::-1])
+    c3d_cycler = palindrome_cycler(imag_trj_coords[0])
+    return geoms, c3d_cycler, imag_trj_coords
 
-    def update_positions():
-        ind = next(c3d_cycler)
-        c3d = imag_trj_coords[imag_ind][ind]
-        for sphere, xyz in zip(spheres, c3d):
-            sphere.position = xyz
 
-    window.title = "pysisyphus normal mode viewer"
+def from_geom(fn):
+    geoms = geom_loader(fn, coord_type="redund")
+    trj_coords = [geom.coords3d for geom in geoms]
+    cycler = palindrome_cycler(trj_coords)
+    return geoms, cycler, trj_coords
+
+
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("fn")
+    parser.add_argument("--delay", type=float, default=0.025)
+    return parser.parse_args(args)
+
+
+def run():
+    args = parse_args(sys.argv[1:])
+
+    fn = args.fn
+    delay = args.delay
+
+    if fn.endswith(".h5"):
+        geoms, cycler, trj_coords = from_h5_hessian(fn)
+    else:
+        geoms, cycler, trj_coords = from_geom(fn)
+
+    window.title = "pysisyphus molecule viewer"
     window.borderless = False
     window.windowed_resolution = (1920, 1080)
+
     app = Ursina()
     window.update_aspect_ratio()
     EditorCamera(rotate_around_mouse_hit=True)
-    spheres, bonds = render_molecule(
-        geom.atoms, geom.coords3d, geom.internal.bond_atom_indices
-    )
+
+    geom = geoms[0]
+    spheres = render_atoms(geom.atoms, geom.coords3d)
+    cylinders = [
+        render_bonds(geom.coords3d, geom.internal.bond_atom_indices) for geom in geoms
+    ]
+    cur_cylinders = cylinders[0]
+
+    def update_positions():
+        nonlocal cur_cylinders
+
+        ind = next(cycler)
+        try:
+            c3d = trj_coords[imag_ind][ind]
+            # No bond update yet for Hessian
+            new_cylinders = cur_cylinders
+        except NameError:
+            c3d = trj_coords[ind]
+            new_cylinders = cylinders[ind]
+
+        for sphere, xyz in zip(spheres, c3d):
+            sphere.position = xyz
+
+        for cylinder in cur_cylinders:
+            cylinder.hide()
+
+        for cylinder in new_cylinders:
+            cylinder.show()
+
+        cur_cylinders = new_cylinders
+
     # Light and shadows
     pivot = Entity()
     DirectionalLight(parent=pivot, shadows=True)
-    seq = Sequence(0.05, Func(update_positions), loop=True)
+    seq = Sequence(delay, Func(update_positions), loop=True)
     seq.start()
     app.run()
 
