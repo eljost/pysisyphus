@@ -9,20 +9,12 @@ on:
             - "deprecated/**"
             - "scripts/**"
     workflow_dispatch:
-    # CI jobs are executed twice when pushed to a PR ... disabling it for now
-    #pull_request:
-        #paths-ignore:
-            #- "docs/**"
-            #- "examples/**"
-            #- "tests_staging/**"
-            #- "deprecated/**"
     schedule:
         - cron: '0 */12 * * *'
 jobs:
   build:
 
-    #runs-on: ubuntu-latest
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
