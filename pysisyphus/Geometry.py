@@ -1099,7 +1099,7 @@ class Geometry:
         with open(fn, "w") as handle:
             handle.write(self.as_xyz())
 
-    def get_subgeom(self, indices, coord_type="cart"):
+    def get_subgeom(self, indices, coord_type="cart", sort=False):
         """Return a Geometry containing a subset of the current Geometry.
 
         Parameters
@@ -1114,6 +1114,8 @@ class Geometry:
         sub_geom : Geometry
             Subset of the current Geometry.
         """
+        if sort:
+            indices = sorted(indices)
         ind_list = list(indices)
         sub_atoms = [self.atoms[i] for i in ind_list]
         sub_coords = self.coords3d[ind_list]
