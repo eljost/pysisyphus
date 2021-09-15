@@ -68,6 +68,8 @@ class RedundantCoords:
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
         self.bond_factor = bond_factor
+        if typed_prims is not None:
+            typed_prims = normalize_prim_inputs(typed_prims)
         # Define additional primitives
         if define_prims is None:
             define_prims = list()
