@@ -536,7 +536,7 @@ class Geometry:
         # be redundant, as the Cartesian step is also constrainted in the
         # Internal->Cartesian backtransformation. But we keep it for now.
         coords.reshape(-1, 3)[self.freeze_atoms] = self.coords3d[self.freeze_atoms]
-        # Set new cartesian coordinates
+        # Set new Cartesian coordinates
         self._coords = coords
         # Reset all values because no calculations with the new coords
         # have been performed yet.
