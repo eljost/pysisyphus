@@ -13,9 +13,18 @@ ZLine = namedtuple(
 
 
 def geom_from_zmat(
-    zmat, atoms=None, coords3d=None, geom=None, start_at=None, **geom_kwargs
+    zmat,
+    atoms=None,
+    coords3d=None,
+    geom=None,
+    start_at=None,
+    drop_dummy=True,
+    **geom_kwargs
 ):
     """Adapted from https://github.com/robashaw/geomConvert by Robert Shaw."""
+
+    if isinstance(zmat, str):
+        zmat = zmat_from_str(zmat)
 
     zmat_atoms = [zline.atom for zline in zmat]
     # Extend supplied geometry by zmat
@@ -114,6 +123,17 @@ def geom_from_zmat(
             b = np.cross(a, w)
             b /= np.linalg.norm(b)
             coords3d[i] = O - w * x + b * y + a * z
+
+    if drop_dummy:
+        atoms_ = list()
+        coords3d_ = list()
+        for atom, xyz in zip(atoms, coords3d):
+            if atom.lower() == "x":
+                continue
+            atoms_.append(atom)
+            coords3d_.append(xyz)
+        atoms = atoms_
+        coords3d = np.array(coords3d_)
 
     geom = Geometry(atoms, coords3d, **geom_kwargs)
     return geom
