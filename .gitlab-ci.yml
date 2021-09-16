@@ -1,0 +1,22 @@
+stages:
+  - build
+
+before_script:
+  - export NIX_PATH=nixpkgs=/root/.nix-defexpr/channels/nixpkgs
+  # Install dependencies
+  - nix-env -iA nixpkgs.bash nixpkgs.git nixpkgs.niv nixpkgs.openssh;
+  - export NIXPKGS_ALLOW_UNFREE=1;
+  # QChem configuration for external packages and tuning.
+  - export NIXQC_SRCURL=http://sol/nix-src
+  - export NIXQC_AVX=1
+
+# Reproducible nix build with everything pinned and all dependencies build.
+pysisyphusBuild:
+  stage: build
+  tags:
+    - nix
+    - turbomole
+    - orca
+  script:
+    - cd nix
+    - nix-build --arg fullTest false
