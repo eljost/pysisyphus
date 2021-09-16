@@ -1,7 +1,7 @@
 { fetchPypi, fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper,
  # Python dependencies
  autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pytest, pyyaml, rmsd, scipy,
- sympy, scikitlearn, qcengine, ase, xtb-python, openbabel-bindings,
+ sympy, scikit-learn, qcengine, ase, xtb-python, openbabel-bindings,
  # Runtime dependencies
  runtimeShell, jmol ? null, multiwfn ? null, xtb ? null, openmolcas ? null,
  pyscf ? null, psi4 ? null, wfoverlap ? null, nwchem ? null, orca ? null,
@@ -58,7 +58,7 @@ let
 in
   buildPythonPackage rec {
     pname = "pysisyphus";
-    version = "0.7.post1";
+    version = "0.7.2";
 
     nativeBuildInputs = [ makeWrapper ];
 
@@ -75,7 +75,7 @@ in
       rmsd
       scipy
       sympy
-      scikitlearn
+      scikit-learn
       qcengine
       ase
       openbabel-bindings
