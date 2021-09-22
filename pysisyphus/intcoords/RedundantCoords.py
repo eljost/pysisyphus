@@ -142,7 +142,9 @@ class RedundantCoords:
         self._prim_coords = np.array(
             [prim_int.val for prim_int in self._prim_internals]
         )
-        check_primitives(self.coords3d, self.primitives, B=self.B_prim, logger=self.logger)
+        check_primitives(
+            self.coords3d, self.primitives, B=self.B_prim, logger=self.logger
+        )
 
         ref_num = len(self.typed_prims)
         if self.bonds_only:
@@ -250,9 +252,7 @@ class RedundantCoords:
         )
         if len(valid_typed_prims) != len(typed_prims):
             self.log("Invalid primitives:")
-            for i, invalid_prim in enumerate(
-                set(typed_prims) - set(valid_typed_prims)
-            ):
+            for i, invalid_prim in enumerate(set(typed_prims) - set(valid_typed_prims)):
                 self.log(f"\t{i:02d}: {invalid_prim}")
         self._typed_prims = valid_typed_prims
         self.set_inds_from_typed_prims(self.typed_prims)
@@ -580,7 +580,6 @@ class RedundantCoords:
 
 
 class TRIC(RedundantCoords):
-
     def __init__(self, *args, **kwargs):
         kwargs["tric"] = True
         kwargs["recalc_B"] = True
