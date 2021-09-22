@@ -1253,7 +1253,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     if run_dict["irc"]:
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
-    # Handle geometry input. This section has to be always present.
+
+    # Handle geometry input. This section must always be present.
     geom_kwargs = run_dict["geom"]
     xyz = geom_kwargs.pop("fn")
     coord_type = geom_kwargs.pop("type")

@@ -14,6 +14,7 @@ import numpy as np
 
 from pysisyphus.linalg import svd_inv
 from pysisyphus.intcoords import Torsion
+from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
     eval_primitives,
@@ -125,27 +126,10 @@ class RedundantCoords:
             )
         # Use supplied typed_prims
         else:
-            self.typed_prims = typed_prims
+            self.typed_prims = typed_prims + self.define_prims
 
         if self.bonds_only:
             self.typed_prims = self.bond_typed_prims
-
-        def tp_sort(tp):
-            pt, *indices = tp
-            key = pt
-            # We use the fact that list.sort is stable, that is elements that compare
-            # equal retain their order. So we assign PrimTypes.ROTATION to all rotations,
-            # to remain the ABC-order for each fragment. The same goes for the translations.
-            if pt in Rotations:
-                key = PrimTypes.ROTATION
-            elif pt in Translations:
-                key = PrimTypes.TRANSLATION
-            elif pt in Cartesians:
-                key = PrimTypes.CARTESIAN
-            return key
-
-        # Sort by PrimType
-        self.typed_prims.sort(key=tp_sort)
 
         self.primitives = get_primitives(
             self.coords3d,
@@ -243,6 +227,24 @@ class RedundantCoords:
             lb_min_deg=self.lb_min_deg,
             check_bends=self.check_bends,
         )
+
+        def tp_sort(tp):
+            pt, *indices = tp
+            key = pt
+            # We use the fact that list.sort is stable, that is elements that compare
+            # equal retain their order. So we assign PrimTypes.ROTATION to all rotations,
+            # to remain the ABC-order for each fragment. The same goes for the translations.
+            if pt in Rotations:
+                key = PrimTypes.ROTATION
+            elif pt in Translations:
+                key = PrimTypes.TRANSLATION
+            elif pt in Cartesians:
+                key = PrimTypes.CARTESIAN
+            return key
+
+        # Sort by PrimType
+        valid_typed_prims.sort(key=tp_sort)
+
         self.log(
             f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
         )
@@ -356,7 +358,7 @@ class RedundantCoords:
             if (tp[1:] == ref_inds) or (tp[1:] == ref_inds[::-1]):
                 return i
         self.log(f"Typed primitive {typed_prim} is not defined!")
-        return None
+        raise PrimitiveNotDefinedException(typed_prim)
 
     @property
     def B_prim(self):

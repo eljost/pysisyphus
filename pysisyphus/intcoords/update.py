@@ -88,7 +88,9 @@ def update_internals(
         ]
         if len(invalid_inds) > 0:
             invalid_prims = [primitives[i] for i in invalid_inds]
+            invalid_msg = ", ".join([str(tp) for tp in invalid_prims])
             log(logger, "Dihedral(s) became invalid! Need new internal coordinates!")
+            log(logger, f"Invalid primitives: {invalid_msg}")
             raise NeedNewInternalsException(
                 new_coords3d, invalid_inds=invalid_inds, invalid_prims=invalid_prims
             )

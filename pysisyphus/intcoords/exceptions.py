@@ -28,3 +28,10 @@ class DifferentPrimitivesException(Exception):
 
 class DifferentCoordLengthsException(Exception):
     pass
+
+
+class PrimitiveNotDefinedException(Exception):
+
+    def __init__(self, typed_prim, *args, **kwargs):
+        self.typed_prim = typed_prim
+        super().__init__(*args, **kwargs)
