@@ -158,7 +158,7 @@ def from_h5_hessian(fn):
 
 
 def from_geom(fn):
-    geoms = geom_loader(fn, coord_type="redund")
+    geoms = geom_loader(fn, coord_type="redund", iterable=True)
     trj_coords = [geom.coords3d for geom in geoms]
     cycler = palindrome_cycler(trj_coords)
     return geoms, cycler, trj_coords
