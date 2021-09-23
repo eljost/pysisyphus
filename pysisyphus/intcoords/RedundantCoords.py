@@ -40,6 +40,7 @@ from pysisyphus.intcoords.setup import (
     get_primitives,
 )
 from pysisyphus.intcoords.valid import check_typed_prims
+from pysisyphus.io.zmat import zmat_from_str
 
 
 class RedundantCoords:
@@ -65,6 +66,7 @@ class RedundantCoords:
         svd_inv_thresh=3.16e-4,
         recalc_B=False,
         tric=False,
+        dummy_atoms=None,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -94,6 +96,11 @@ class RedundantCoords:
         self.svd_inv_thresh = svd_inv_thresh
         self.recalc_B = recalc_B
         self.tric = tric
+        if dummy_atoms is None:
+            dummy_atoms = []
+        self.dummy_atoms = list()
+        for dummy_atom in dummy_atoms:
+            self.dummy_atoms.append(zmat_from_str(dummy_atom))
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
