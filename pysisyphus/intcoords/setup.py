@@ -8,7 +8,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
-from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap
+from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap, Rotations
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
 
@@ -418,7 +418,8 @@ def setup_redundant(
 
     # Don't use auxilary interfragment bonds for bend detection
     bonds_for_bends = [bonds, ]
-    # With TRIC we don't need interfragment bends.
+    # If we use regular redundant internals (not TRIC) we define interfragment
+    # bends.
     if not tric:
         bonds_for_bends += [hydrogen_bonds, interfrag_bonds]
     bonds_for_bends = set([frozenset(bond) for bond in it.chain(*bonds_for_bends)])
@@ -543,12 +544,11 @@ def setup_redundant_from_geom(geom, *args, **kwargs):
 
 
 def get_primitives(coords3d, typed_prims, logger=None):
-    rot_pts = (PrimTypes.ROTATION_A, PrimTypes.ROTATION_B, PrimTypes.ROTATION_C)
     primitives = list()
     for type_, *indices in typed_prims:
         cls = PrimMap[type_]
         cls_kwargs = {"indices": indices}
-        if type_ in rot_pts:
+        if type_ in Rotations:
             cls_kwargs["ref_coords3d"] = coords3d
         primitives.append(cls(**cls_kwargs))
 

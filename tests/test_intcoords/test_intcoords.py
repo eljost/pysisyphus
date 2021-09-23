@@ -259,3 +259,23 @@ def test_bonded_frag():
     from_, to_ = bond
     assert np.linalg.norm(c3d[from_] - c3d[to_]) == pytest.approx(8.1692299)
     assert np.linalg.norm(c3d[h2o[1]] - c3d[to_]) == pytest.approx(8.8498170)
+
+
+def test_dummy_torsion():
+    geom = geom_loader(
+        "lib:h2o.xyz",
+        coord_type="redund",
+        coord_kwargs={
+            "typed_prims": (("DUMMY_TORSION", 2, 0, 1),),
+        },
+    )
+    steps = 10
+    step = np.array((-0.2,))
+    trj = list()
+    for _ in range(steps):
+        new_coords = geom.coords + step
+        geom.coords = new_coords
+        trj.append(geom.as_xyz())
+    with open("dummy_torsion.trj", "w") as handle:
+        handle.write("\n".join(trj))
+    assert geom.coords[0] == pytest.approx(np.pi + steps * step[0], abs=1e-5)

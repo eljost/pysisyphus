@@ -4,6 +4,7 @@ from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (
     Bend,
     BondedFragment,
+    DummyTorsion,
     CartesianX,
     CartesianY,
     CartesianZ,
@@ -48,6 +49,7 @@ class PrimTypes(OrderedEnum):
     CARTESIAN_Y = 23
     CARTESIAN_Z = 24
     BONDED_FRAGMENT = 25
+    DUMMY_TORSION = 26
 
 
 # Alias for easier access
@@ -90,11 +92,13 @@ LinearBends = (
     PT.LINEAR_DISPLACEMENT,
     PT.LINEAR_DISPLACEMENT_COMPLEMENT,
 )
+# Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL, PT.DUMMY_TORSION)
 Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL)
 OutOfPlanes = (PT.OUT_OF_PLANE,)
 Cartesians = (PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z)
 Rotations = (PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C)
 Translations = (PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z, PT.BONDED_FRAGMENT)
+DummyCoords = (PT.DUMMY_TORSION, )
 
 
 def get_rot_coord(cls):
@@ -137,7 +141,8 @@ PrimMap = {
     PT.CARTESIAN_X: CartesianX,
     PT.CARTESIAN_Y: CartesianY,
     PT.CARTESIAN_Z: CartesianZ,
-    PT.BONDED_FRAGMENT: get_bonded_frag_coord()
+    PT.BONDED_FRAGMENT: get_bonded_frag_coord(),
+    PT.DUMMY_TORSION: lambda indices: DummyTorsion(indices, periodic=True,)
 }
 
 

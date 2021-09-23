@@ -27,6 +27,7 @@ from pysisyphus.intcoords.PrimTypes import (
     # PrimType classes
     Bonds,
     Bends,
+    DummyCoords,
     LinearBends,
     Cartesians,
     Dihedrals,
@@ -65,7 +66,6 @@ class RedundantCoords:
         svd_inv_thresh=3.16e-4,
         recalc_B=False,
         tric=False,
-        dummy_zmat=None,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -95,9 +95,6 @@ class RedundantCoords:
         self.svd_inv_thresh = svd_inv_thresh
         self.recalc_B = recalc_B
         self.tric = tric
-        if dummy_zmat is None:
-            dummy_zmat = []
-        self.dummy_zmat = dummy_zmat
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -168,6 +165,7 @@ class RedundantCoords:
         self._translation_inds = list()
         self._cartesian_inds = list()
         self._outofplane_inds = list()
+        self._dummycoord_inds = list()
 
         self._bond_atom_inds = list()
         self._bend_atom_inds = list()
@@ -196,6 +194,8 @@ class RedundantCoords:
                 append_to = self._cartesian_inds
             elif pt in OutOfPlanes:
                 append_to = self._outofplane_inds
+            elif pt in DummyCoords:
+                append_to = self._dummycoord_inds
             else:
                 raise Exception("Unhandled PrimType!")
             append_to.append(i)

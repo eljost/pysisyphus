@@ -5,18 +5,20 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_loader
 from pysisyphus.linalg import get_rot_mat
 from pysisyphus.intcoords import (
-    Stretch,
     Bend,
+    BondedFragment,
     CartesianX,
     CartesianY,
     CartesianZ,
-    Torsion,
-    OutOfPlane,
+    DummyTorsion,
     LinearBend,
     LinearDisplacement,
+    OutOfPlane,
     RotationA,
     RotationB,
     RotationC,
+    Stretch,
+    Torsion,
     TranslationX,
     TranslationY,
     TranslationZ,
@@ -403,3 +405,47 @@ def test_cartesian():
         cart = cls(indices)
         v = cart.calculate(coords3d)
         assert v == pytest.approx(v_ref[i])
+
+
+def test_bonded_fragment():
+    geom = geom_loader("lib:bonded_frag_test.xyz")
+    coords3d = geom.coords3d
+    h2o = [6, 13, 14]
+    bond = [6, 10]
+    bf = BondedFragment(h2o, bond_indices=bond)
+
+    val, grad = bf.calculate(coords3d, gradient=True)
+    assert val == pytest.approx(6.1693091)
+    grad3d = grad.reshape(-1, 3)
+
+    # Reference gradient returned in order [0, 1, 2, 3]
+    ref_grad3d_ = fin_diff_prim(bf, coords3d).reshape(-1, 3)
+    ref_grad3d = np.zeros_like(grad3d)
+    ref_grad3d[h2o] = ref_grad3d_
+
+    # In this case the gradient only depends on the bonded atom (index 6),
+    # as the 6-10 bond is independent of the other atoms (13, 14) in the fragment.
+    np.testing.assert_allclose(grad3d[bond[0]], ref_grad3d[bond[0]], atol=1e-10)
+
+
+@pytest.mark.parametrize(
+    "fix_inner", [
+        True,
+        False
+])
+def test_dummy_torsion(fix_inner):
+    geom = geom_loader(
+        "lib:h2o.xyz",
+        coord_type="redund",
+        coord_kwargs={
+            "typed_prims": [["DUMMY_TORSION", 2, 0, 1]],
+        },
+    )
+    indices = [2, 0, 1]
+    c3d = geom.coords3d
+    dt = DummyTorsion(indices, fix_inner=fix_inner)
+    val, grad = dt.calculate(c3d, gradient=True)
+    assert val == pytest.approx(np.pi)
+    assert grad.size == geom.cart_coords.size
+    if fix_inner:
+        np.testing.assert_allclose(grad.reshape(-1, 3)[[0, 1]], np.zeros((2, 3)))
