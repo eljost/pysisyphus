@@ -3,6 +3,7 @@ import itertools as it
 from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (
     Bend,
+    BondedFragment,
     CartesianX,
     CartesianY,
     CartesianZ,
@@ -46,6 +47,7 @@ class PrimTypes(OrderedEnum):
     CARTESIAN_X = 22
     CARTESIAN_Y = 23
     CARTESIAN_Z = 24
+    BONDED_FRAGMENT = 25
 
 
 # Alias for easier access
@@ -81,7 +83,7 @@ Bonds = (
     PT.INTERFRAG_BOND,
     PT.AUX_INTERFRAG_BOND,
 )
-Bends = (PT.BEND, )
+Bends = (PT.BEND,)
 LinearBends = (
     PT.LINEAR_BEND,
     PT.LINEAR_BEND_COMPLEMENT,
@@ -89,16 +91,23 @@ LinearBends = (
     PT.LINEAR_DISPLACEMENT_COMPLEMENT,
 )
 Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL)
-OutOfPlanes = (PT.OUT_OF_PLANE, )
+OutOfPlanes = (PT.OUT_OF_PLANE,)
 Cartesians = (PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z)
 Rotations = (PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C)
-Translations = (PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z)
+Translations = (PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z, PT.BONDED_FRAGMENT)
 
 
 def get_rot_coord(cls):
     def func(indices, ref_coords3d):
         return cls(indices, ref_coords3d=ref_coords3d)
+    return func
 
+
+def get_bonded_frag_coord():
+    def func(indices):
+        indices_ = indices[:-2]
+        bond_indices = indices[-2:]
+        return BondedFragment(indices_, bond_indices=bond_indices)
     return func
 
 
@@ -128,6 +137,7 @@ PrimMap = {
     PT.CARTESIAN_X: CartesianX,
     PT.CARTESIAN_Y: CartesianY,
     PT.CARTESIAN_Z: CartesianZ,
+    PT.BONDED_FRAGMENT: get_bonded_frag_coord()
 }
 
 

@@ -172,6 +172,7 @@ Atom indices start at 0!
     CARTESIAN_X = 22
     CARTESIAN_Y = 23
     CARTESIAN_Z = 24
+    BONDED_FRAGMENT = 25
 
 As some of these types are quite unwieldy, several shortcuts are supported,
 that can be used in place of the types above.

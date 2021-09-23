@@ -221,12 +221,41 @@ def test_opt_linear_dihedrals():
 
 
 @pytest.mark.parametrize(
-    "interfrag_hbonds", [
+    "interfrag_hbonds",
+    [
         True,
         # False
-    ]
+    ],
 )
 def test_interfragment_hydrogen_bonds(interfrag_hbonds):
     geom = geom_loader("lib:interfrag_hydrogen_bond.xyz")
-    coord_info = setup_redundant(geom.atoms, geom.coords3d, interfrag_hbonds=interfrag_hbonds)
+    coord_info = setup_redundant(
+        geom.atoms, geom.coords3d, interfrag_hbonds=interfrag_hbonds
+    )
     assert bool(len(coord_info.hydrogen_bonds)) == interfrag_hbonds
+
+
+def test_bonded_frag():
+    h2o = [6, 13, 14]
+    bond = [6, 10]
+    typed_prims = (("BONDED_FRAGMENT", *h2o, *bond),)
+    geom = geom_loader(
+        "lib:bonded_frag_test.xyz",
+        coord_type="redund",
+        coord_kwargs={
+            "typed_prims": typed_prims,
+        },
+    )
+    steps = 10
+    step = np.array((0.2,))
+    # trj = list()
+    for _ in range(steps):
+        new_coords = geom.coords + step
+        geom.coords = new_coords
+        # trj.append(geom.as_xyz())
+    # with open("bonded_frag.trj", "w") as handle:
+    # handle.write("\n".join(trj))
+    c3d = geom.coords3d
+    from_, to_ = bond
+    assert np.linalg.norm(c3d[from_] - c3d[to_]) == pytest.approx(8.1692299)
+    assert np.linalg.norm(c3d[h2o[1]] - c3d[to_]) == pytest.approx(8.8498170)
