@@ -3000,7 +3000,7 @@ ISOTOPE_DICT = {
 
 # In Bohr
 COVALENT_RADII = {
-    'x': 1.0,
+    'x': 0.0,
     # Hydrogen uses a hardcoded value of 0.4 Angstrom instead of 0.31 Angstrom
     # (0.5858 au).
     'n': 1.3417, 'h': 0.7561, 'he': 0.5291, 'li': 2.4188, 'be': 1.8141,
