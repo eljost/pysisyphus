@@ -596,6 +596,10 @@ class ORCA(OverlapCalculator):
                 roots = len(states) // 2
                 exc_ens = exc_ens[-roots:]
                 states = states[-roots:]
+            exc_en = exc_ens[self.root - 1]
+            # The excitation energy was/is already added to the GS energy
+            gs_energy -= exc_en
+            all_energies[0] = gs_energy
             assert len(exc_ens) == len(set(states))
             all_energies += (np.array(exc_ens) + gs_energy).tolist()
         all_energies = np.array(all_energies)
