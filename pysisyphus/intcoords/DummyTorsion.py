@@ -4,7 +4,7 @@ from pysisyphus.intcoords.Torsion import Torsion
 
 
 class DummyTorsion(Torsion):
-    def __init__(self, indices, *args, fix_inner=False, **kwargs):
+    def __init__(self, indices, *args, fix_inner=True, **kwargs):
         self.fix_inner = fix_inner
         kwargs["calc_kwargs"] = ("fix_inner",)
         super().__init__(indices, *args, **kwargs)
