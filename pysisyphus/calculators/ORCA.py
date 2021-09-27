@@ -646,7 +646,7 @@ class ORCA(OverlapCalculator):
         kept_fns = super().keep(path)
         self.gbw = kept_fns["gbw"]
         self.out = kept_fns["out"]
-        if self.track and self.do_tddft:
+        if self.do_tddft:
             self.cis = kept_fns["cis"]
         try:
             self.mwfn_wf = kept_fns["molden"]

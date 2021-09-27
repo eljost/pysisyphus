@@ -722,6 +722,16 @@ class Geometry:
         """Set mass-weighted coordinates."""
         self.coords = mw_coords / np.sqrt(self.masses_rep)
 
+    def fd_coords3d_gen(self, step_size=1e-3):
+        """Iterator returning 3d Cartesians for finite-differences."""
+        coords3d = self.coords3d.copy()
+        zeros = np.zeros_like(coords3d)
+        for i, _ in enumerate(self.coords3d):
+            for j in (0, 1, 2):
+                step = zeros.copy()
+                step[i, j] = step_size
+                yield i, j, coords3d + step, coords3d - step
+
     @property
     def covalent_radii(self):
         return np.array([CR[a.lower()] for a in self.atoms])

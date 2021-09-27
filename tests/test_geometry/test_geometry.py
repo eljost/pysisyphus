@@ -32,3 +32,9 @@ def test_inertia_tensor(geom, this_dir):
     np.testing.assert_allclose(I_so,I_so.T)
     w, v = np.linalg.eigh(I_so)
     np.testing.assert_allclose(w, np.array((317.60004608, 317.61686026, 635.21687793)))
+
+
+def test_fd_coords3d_gen():
+    geom = geom_loader("lib:h2o.xyz")
+    fd_coords3d = list(geom.fd_coords3d_gen())
+    assert len(fd_coords3d) == geom.coords3d.size
