@@ -414,8 +414,6 @@ class OverlapCalculator(Calculator):
             "ci_coeffs": np.array(self.ci_coeff_list, dtype=float),
             "coords": np.array(self.coords_list, dtype=float),
             "all_energies": np.array(self.all_energies_list, dtype=float),
-            "orient": np.array(self.orient, dtype="S"),
-            "atoms": np.array(self.atoms, dtype="S"),
         }
         if self.root:
             root_dict = {
@@ -437,8 +435,10 @@ class OverlapCalculator(Calculator):
         with h5py.File(self.dump_fn, "w") as handle:
             for key, val in data_dict.items():
                 handle.create_dataset(name=key, dtype=val.dtype, data=val)
-            handle.create_dataset(name="ovlp_type", data=np.string_(self.ovlp_type))
-            handle.create_dataset(name="ovlp_with", data=np.string_(self.ovlp_with))
+            handle.attrs["ovlp_type"] = self.ovlp_type
+            handle.attrs["ovlp_with"] = self.ovlp_with
+            handle.attrs["orient"] = self.orient
+            handle.attrs["atoms"] = self.atoms
 
     @staticmethod
     def from_overlap_data(h5_fn):
@@ -595,8 +595,10 @@ class OverlapCalculator(Calculator):
 
         if ovlp_type is None:
             ovlp_type = self.ovlp_type
+
         # Nothing to compare to if only one calculation was done yet
         if len(self.ci_coeff_list) < 2:
+            self.dump_overlap_data()
             self.log(
                 "Skipping overlap calculation in the first cycle "
                 "as there is nothing to compare to."
