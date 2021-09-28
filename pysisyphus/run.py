@@ -57,6 +57,7 @@ from pysisyphus.interpolate import interpolate_all
 from pysisyphus.irc import *
 from pysisyphus.io import save_hessian
 from pysisyphus.stocastic import *
+from pysisyphus.thermo import can_thermoanalysis
 from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
 from pysisyphus._version import get_versions
 from pysisyphus.xyzloader import write_geoms_to_trj
@@ -1469,7 +1470,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
-            do_thermo = run_dict["endopt"].get("do_hess", False)
+            do_thermo = run_dict["endopt"].get("do_hess", False) and can_thermoanalysis
             T = run_dict["endopt"]["T"]
             # Order is forward, backward, downhill
             endopt_results = run_endopt(
