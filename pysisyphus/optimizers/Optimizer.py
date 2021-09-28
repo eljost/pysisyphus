@@ -78,7 +78,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         geometry,
         thresh="gau_loose",
         max_step=0.04,
-        max_cycles=50,
+        max_cycles=100,
         rms_force=None,
         rms_force_only=False,
         max_force_only=False,
