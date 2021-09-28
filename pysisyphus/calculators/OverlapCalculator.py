@@ -274,6 +274,22 @@ class OverlapCalculator(Calculator):
         new_cycle = (self.mo_coeff_list[new], self.ci_coeff_list[new])
         return self.wfow.wf_overlap(old_cycle, new_cycle, ao_ovlp)
 
+    def wf_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp=None):
+        cycle1 = (mo_coeffs1, ci_coeffs1)
+        cycle2 = (mo_coeffs2, ci_coeffs2)
+        overlaps = self.wfow.wf_overlap(cycle1, cycle2, ao_ovlp=ao_ovlp)
+        return overlaps
+
+    def wf_overlap_with_calculator(self, calc, ao_ovlp=None):
+        mo_coeffs1 = self.mo_coeff_list[-1]
+        ci_coeffs1 = self.ci_coeff_list[-1]
+        mo_coeffs2 = calc.mo_coeff_list[-1]
+        ci_coeffs2 = calc.ci_coeff_list[-1]
+        overlaps = self.wf_overlaps(
+            mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp=ao_ovlp
+        )
+        return overlaps
+
     def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp):
         """
         Parameters
@@ -319,7 +335,7 @@ class OverlapCalculator(Calculator):
         )
         return overlaps
 
-    def tdens_overlap_with_calculator(self, calc, ao_ovlp=None):
+    def tden_overlap_with_calculator(self, calc, ao_ovlp=None):
         mo_coeffs1 = self.mo_coeff_list[-1]
         ci_coeffs1 = self.ci_coeff_list[-1]
         mo_coeffs2 = calc.mo_coeff_list[-1]
@@ -485,7 +501,7 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_nto = lambdas.sum()**2 / (lambdas ** 2).sum()
+            pr_nto = lambdas.sum() ** 2 / (lambdas ** 2).sum()
             if self.pr_nto:
                 use_ntos = int(np.round(pr_nto))
                 self.log(f"PR_NTO={pr_nto:.2f}")
