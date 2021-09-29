@@ -5,6 +5,7 @@ from math import log
 import os
 from pathlib import Path
 import re
+import sys
 
 import numpy as np
 import scipy as sp
@@ -295,6 +296,7 @@ def check_for_end_sign():
     signs = (
         "stop",
         "converged",
+        "exit"
     )
     sign_found = False
 
@@ -303,6 +305,9 @@ def check_for_end_sign():
             print(f"Found sign '{sign}'. Ending run.")
             os.remove(sign)
             sign_found = sign
+
+            if sign == "exit":
+                sys.exit()
     return sign_found
 
 
