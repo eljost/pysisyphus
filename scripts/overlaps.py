@@ -69,6 +69,10 @@ def run():
     calc1 = get_calc("calc1")
     calc2 = get_calc("calc2")
 
+    # Dummy roots
+    for calc in (calc1, calc2):
+        calc.root = 1
+
     calc_args = (geom.atoms, geom.coords)
     def calc_es(calc):
         print(f"Calculating ES for {calc} ... ", end="")
