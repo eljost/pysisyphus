@@ -3169,4 +3169,5 @@ ATOMIC_NUMBERS = {
     'og': 118
 }
 
+VALID_ATOMS = set(ATOMIC_NUMBERS.keys())
 INV_ATOMIC_NUMBERS = {num: elem for elem, num in ATOMIC_NUMBERS.items()}
