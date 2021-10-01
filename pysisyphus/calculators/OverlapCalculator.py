@@ -467,8 +467,12 @@ class OverlapCalculator(Calculator):
 
         root_info = False
         with h5py.File(h5_fn) as handle:
-            ovlp_with = handle["ovlp_with"][()].decode()
-            ovlp_type = handle["ovlp_type"][()].decode()
+            try:
+                ovlp_with = handle["ovlp_with"][()].decode()
+                ovlp_type = handle["ovlp_type"][()].decode()
+            except KeyError:
+                ovlp_with = handle.attrs["ovlp_with"]
+                ovlp_type = handle.attrs["ovlp_type"]
             mo_coeffs = handle["mo_coeffs"][:]
             ci_coeffs = handle["ci_coeffs"][:]
             all_energies = handle["all_energies"][:]
@@ -486,8 +490,14 @@ class OverlapCalculator(Calculator):
         if root_info:
             calc.roots_list = list(roots)
             calc.calculated_roots = list(calculated_roots)
-            calc.first_root = ref_roots[0]
-            calc.root = calc.first_root
+            try:
+                calc.first_root = ref_roots[0]
+                calc.root = calc.first_root
+            except IndexError:
+                calc.root = roots[0]
+
+        if ovlp_type == "wf":
+            calc.set_wfow(ci_coeffs[0])
 
         return calc
 
@@ -544,6 +554,21 @@ class OverlapCalculator(Calculator):
         # except IndexError:
         # pass
 
+    def set_wfow(self, ci_coeffs):
+        occ_mo_num, virt_mo_num = ci_coeffs[0].shape
+        try:
+            wfow_mem = self.pal * self.mem
+        except AttributeError:
+            wfow_mem = 8000
+        self.wfow = WFOWrapper(
+            occ_mo_num,
+            virt_mo_num,
+            calc_number=self.calc_number,
+            wfow_mem=wfow_mem,
+            ncore=self.ncore,
+            conf_thresh=self.conf_thresh,
+        )
+
     def store_overlap_data(self, atoms, coords, path=None):
         if self.atoms is None:
             self.atoms = atoms
@@ -571,19 +596,7 @@ class OverlapCalculator(Calculator):
 
         # Don't create the object when we use a different ovlp method.
         if (self.ovlp_type == "wf") and (self.wfow is None):
-            occ_mo_num, virt_mo_num = ci_coeffs[0].shape
-            try:
-                wfow_mem = self.pal * self.mem
-            except AttributeError:
-                wfow_mem = 8000
-            self.wfow = WFOWrapper(
-                occ_mo_num,
-                virt_mo_num,
-                calc_number=self.calc_number,
-                wfow_mem=wfow_mem,
-                ncore=self.ncore,
-                conf_thresh=self.conf_thresh,
-            )
+            self.set_wfow(ci_coeffs)
 
         if self.first_root is None:
             self.first_root = self.root

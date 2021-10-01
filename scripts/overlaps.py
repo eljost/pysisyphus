@@ -41,6 +41,8 @@ def parse_args(args):
 
     parser.add_argument("yaml")
     parser.add_argument("--ovlp-fn", dest="ovlp_fn", default="ovlp_mat.dat")
+    parser.add_argument("--skip-calc", dest="do_calc", action="store_false")
+    parser.add_argument("--h5-fns", dest="h5_fns", nargs=2, default=None)
 
     return parser.parse_args(args)
 
@@ -64,6 +66,8 @@ def run():
         calc_key = calc_kwargs.pop("type")
         dump_fn = f"overlap_data_{key}.h5"
         calc = CALCS[calc_key](**calc_kwargs, base_name=key, dump_fn=dump_fn)
+        assert calc.root, \
+            "No 'root' set on calculator. Please specify an initial root."
         return calc
 
     calc1 = get_calc("calc1")
@@ -83,8 +87,18 @@ def run():
         calc.store_overlap_data(*calc_args)
         calc.dump_overlap_data()
 
-    calc_es(calc1)
-    calc_es(calc2)
+    if args.do_calc:
+        calc_es(calc1)
+        calc_es(calc2)
+    else:
+        try:
+            h5_fn1, h5_fn2 = args.h5_fns
+        except TypeError:
+            h5_fn1 = calc1.dump_fn
+            h5_fn2 = calc2.dump_fn
+        print(f"Taking overlap_data from '{h5_fn1}' and '{h5_fn2}'.")
+        calc1 = calc1.from_overlap_data(h5_fn1)
+        calc2 = calc2.from_overlap_data(h5_fn2)
 
     ao_ovlp = calc1.get_sao_from_mo_coeffs(calc1.mo_coeff_list[-1])
     print("Recreate S_AO from MO coeffs at calc1")
