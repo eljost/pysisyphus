@@ -624,8 +624,11 @@ class ORCA(OverlapCalculator):
     @file_or_str(".out", method=False)
     def parse_engrad_info(text):
         soi_re = re.compile("State of interest\s+\.{3}\s+(\d+)")
-        root = soi_re.search(text).group(1)
-        root = int(root)
+        try:
+            root = soi_re.search(text).group(1)
+            root = int(root)
+        except AttributeError:
+            root = None
         triplets = bool(re.search("triplets\s+true", text))
         return root, triplets
 
