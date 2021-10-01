@@ -454,14 +454,12 @@ class OverlapCalculator(Calculator):
             handle.attrs["ovlp_type"] = self.ovlp_type
             handle.attrs["ovlp_with"] = self.ovlp_with
             handle.attrs["orient"] = self.orient
-            handle.attrs["atoms"] = self.atoms
+            handle.attrs["atoms"] = np.array(self.atoms, "S1")
 
     @staticmethod
     def from_overlap_data(h5_fn):
         calc_kwargs = {
             "track": True,
-            # "ovlp_with": ovlp_with,
-            # "ovlp_type": ovlp_type,
         }
         calc = OverlapCalculator(**calc_kwargs)
 
@@ -569,11 +567,14 @@ class OverlapCalculator(Calculator):
             conf_thresh=self.conf_thresh,
         )
 
-    def store_overlap_data(self, atoms, coords, path=None):
+    def store_overlap_data(self, atoms, coords, path=None, overlap_data=None):
         if self.atoms is None:
             self.atoms = atoms
-        # mo_coeffs, ci_coeffs, all_ens = self.prepare_overlap_data(path)
-        mo_coeffs, X, Y, all_ens = self.prepare_overlap_data(path)
+
+        if overlap_data is None:
+            overlap_data = self.prepare_overlap_data(path)
+        mo_coeffs, X, Y, all_ens = overlap_data
+
         ao_ovlp = self.get_sao_from_mo_coeffs(mo_coeffs)
         mo_coeffs = self.renorm_mos(mo_coeffs, ao_ovlp)
         if self.XY == "X":

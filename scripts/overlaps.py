@@ -60,14 +60,14 @@ def run():
     CALCS = {"orca": ORCA, "gaussian16": Gaussian16, "orca5": ORCA5}
 
     ovlp_type = run_dict["ovlp_type"]
+
     def get_calc(key):
         calc_kwargs = run_dict[key]
         calc_kwargs["ovlp_type"] = ovlp_type
         calc_key = calc_kwargs.pop("type")
         dump_fn = f"overlap_data_{key}.h5"
         calc = CALCS[calc_key](**calc_kwargs, base_name=key, dump_fn=dump_fn)
-        assert calc.root, \
-            "No 'root' set on calculator. Please specify an initial root."
+        assert calc.root, "No 'root' set on calculator. Please specify an initial root."
         return calc
 
     calc1 = get_calc("calc1")
@@ -78,6 +78,7 @@ def run():
         calc.root = 1
 
     calc_args = (geom.atoms, geom.coords)
+
     def calc_es(calc):
         print(f"Calculating ES for {calc} ... ", end="")
         start = time.time()

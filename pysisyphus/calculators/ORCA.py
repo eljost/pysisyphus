@@ -9,7 +9,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.helpers_pure import file_or_str
 
 
@@ -575,12 +575,13 @@ class ORCA(OverlapCalculator):
                 # print('{}'.format(*core))
             return coeffs
 
-    def parse_all_energies(self, triplets=None):
+    def parse_all_energies(self, text=None, triplets=None):
         if triplets is None:
             triplets = self.triplets
 
-        with open(self.out) as handle:
-            text = handle.read()
+        if text is None:
+            with open(self.out) as handle:
+                text = handle.read()
 
         energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, text)
@@ -604,6 +605,29 @@ class ORCA(OverlapCalculator):
             all_energies += (np.array(exc_ens) + gs_energy).tolist()
         all_energies = np.array(all_energies)
         return all_energies
+
+    @staticmethod
+    @file_or_str(".out", method=False)
+    def parse_atoms_coords(text):
+        ac_re = re.compile(
+            "CARTESIAN COORDINATES \(ANGSTROEM\)\s+\-{33}(.+?)\s+\-{28}", re.DOTALL
+        )
+        mobj = ac_re.search(text)
+        atoms_coords = mobj.group(1).strip().split()
+        # atoms, *coords = np.array(atoms_coords).reshape(-1, 4).T
+        atoms_coords = np.array(atoms_coords).reshape(-1, 4)
+        atoms = tuple(atoms_coords[:, 0])
+        coords = atoms_coords[:, 1:].astype(float).flatten() * ANG2BOHR
+        return atoms, coords
+
+    @staticmethod
+    @file_or_str(".out", method=False)
+    def parse_engrad_info(text):
+        soi_re = re.compile("State of interest\s+\.{3}\s+(\d+)")
+        root = soi_re.search(text).group(1)
+        root = int(root)
+        triplets = bool(re.search("triplets\s+true", text))
+        return root, triplets
 
     def parse_mo_numbers(self, out_fn):
         with open(out_fn) as handle:
