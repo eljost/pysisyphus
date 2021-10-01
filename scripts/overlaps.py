@@ -28,10 +28,11 @@ import numpy as np
 import yaml
 
 from pysisyphus.calculators import ORCA, ORCA5, Gaussian16
-from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.helpers import geom_loader
+from pysisyphus.init_logging import init_logging
 
 
+init_logging()
 np.set_printoptions(suppress=True, precision=6)
 
 
@@ -41,8 +42,9 @@ def parse_args(args):
 
     parser.add_argument("yaml")
     parser.add_argument("--ovlp-fn", dest="ovlp_fn", default="ovlp_mat.dat")
-    parser.add_argument("--skip-calc", dest="do_calc", action="store_false")
+    parser.add_argument("--skip-calcs", dest="do_calc", action="store_false")
     parser.add_argument("--h5-fns", dest="h5_fns", nargs=2, default=None)
+    parser.add_argument("--conf-thresh", dest="conf_thresh", default=0.001, type=float)
 
     return parser.parse_args(args)
 
@@ -73,10 +75,6 @@ def run():
     calc1 = get_calc("calc1")
     calc2 = get_calc("calc2")
 
-    # Dummy roots
-    for calc in (calc1, calc2):
-        calc.root = 1
-
     calc_args = (geom.atoms, geom.coords)
 
     def calc_es(calc):
@@ -98,8 +96,13 @@ def run():
             h5_fn1 = calc1.dump_fn
             h5_fn2 = calc2.dump_fn
         print(f"Taking overlap_data from '{h5_fn1}' and '{h5_fn2}'.")
-        calc1 = calc1.from_overlap_data(h5_fn1)
+        calc1 = calc1.from_overlap_data(h5_fn1, set_wfow=True)
         calc2 = calc2.from_overlap_data(h5_fn2)
+
+    conf_thresh = args.conf_thresh
+    calc1.conf_thresh = conf_thresh
+    if ovlp_type == "wf":
+        calc1.wfow.conf_thresh = conf_thresh
 
     ao_ovlp = calc1.get_sao_from_mo_coeffs(calc1.mo_coeff_list[-1])
     print("Recreate S_AO from MO coeffs at calc1")
@@ -108,6 +111,7 @@ def run():
         "wf": "wf_overlap_with_calculator",
     }
     ovlp_func = ovlp_funcs[ovlp_type]
+    print(f"Calculating {ovlp_type} overlaps")
     ovlp_mat = getattr(calc1, ovlp_func)(calc2, ao_ovlp=ao_ovlp)
     if ovlp_type == "wf":
         ovlp_mat = ovlp_mat[0]

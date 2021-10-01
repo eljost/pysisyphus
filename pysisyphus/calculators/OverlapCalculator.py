@@ -457,7 +457,7 @@ class OverlapCalculator(Calculator):
             handle.attrs["atoms"] = np.array(self.atoms, "S1")
 
     @staticmethod
-    def from_overlap_data(h5_fn):
+    def from_overlap_data(h5_fn, set_wfow=False):
         calc_kwargs = {
             "track": True,
         }
@@ -494,7 +494,7 @@ class OverlapCalculator(Calculator):
             except IndexError:
                 calc.root = roots[0]
 
-        if ovlp_type == "wf":
+        if (ovlp_type == "wf") or set_wfow:
             calc.set_wfow(ci_coeffs[0])
 
         return calc
