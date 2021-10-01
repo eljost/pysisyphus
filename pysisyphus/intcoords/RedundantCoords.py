@@ -404,11 +404,15 @@ class RedundantCoords:
         return self.inv_B(self.B)
 
     @property
+    def constrained_indices(self):
+        return [self.typed_prims.index(cp) for cp in self.constrain_prims]
+
+    @property
     def C(self):
         """Diagonal matrix. Entries for constraints are set to one."""
         size = len(self.typed_prims)
         C = np.zeros((size, size))
-        inds = [self.typed_prims.index(cp) for cp in self.constrain_prims]
+        inds = self.constrained_indices
         C[inds, inds] = 1
         return C
 
