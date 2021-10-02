@@ -598,6 +598,9 @@ def run_md(geom, calc_getter, md_kwargs):
 
 def run_scan(geom, calc_getter, scan_kwargs):
     print(highlight_text("Relaxed Scan") + "\n")
+    assert geom.coord_type != "cart", \
+        "Internal coordinates are required for coordinate scans."
+
     type_ = scan_kwargs["type"]
     indices = scan_kwargs["indices"]
     steps = scan_kwargs["steps"]

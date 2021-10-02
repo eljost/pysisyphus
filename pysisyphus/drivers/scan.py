@@ -141,15 +141,17 @@ def relaxed_1d_scan(
     def _calc_getter():
         return calc
 
+    # Drop PrimType at index 0
     unit = "au" if len(constr_prim[1:]) == 2 else "rad"
 
+    org_val = constr_geom.coords[constr_ind]
     cur_val = start
-    init_val = constr_geom.coords[constr_ind]
-    end_val = cur_val + step_size * steps
+    end_val = start + step_size * steps
+    target_scan_vals = np.linspace(cur_val, end_val, steps+1)
     print(
         f"    Coordinate: {constr_prim}\n"
-        f"Original value: {init_val:.4f} {unit}\n"
-        f"Starting value: {cur_val:.4f} {unit}\n"
+        f"Original value: {org_val:.4f} {unit}\n"
+        f" Initial value: {cur_val:.4f} {unit}\n"
         f"   Final value: {end_val:.4f} {unit}\n"
         f"         Steps: {steps}+1\n"
         f"     Step size: {step_size:.4f} {unit}\n"
@@ -159,7 +161,7 @@ def relaxed_1d_scan(
     scan_energies = list()
     scan_xyzs = list()
 
-    for cycle in range(steps + 1):
+    for cycle, cur_val in enumerate(target_scan_vals):
         opt_kwargs_ = opt_kwargs.copy()
         name = f"{pref}relaxed_scan_{cycle:04d}"
         opt_kwargs_["prefix"] = name
@@ -181,7 +183,6 @@ def relaxed_1d_scan(
         if not opt_result.opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break
-        cur_val += step_size
 
     with open(f"{pref}relaxed_scan.trj", "w") as handle:
         handle.write("\n".join(scan_xyzs))
