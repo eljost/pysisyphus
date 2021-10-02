@@ -478,7 +478,7 @@ class Geometry:
         self.coords[ind] = coord
         self.clear()
 
-    def set_coords(self, coords, cartesian=False):
+    def set_coords(self, coords, cartesian=False, update_constraints=False):
         coords = np.array(coords).flatten()
 
         # Do Internal->Cartesian backtransformation if internal coordinates are used.
@@ -512,7 +512,9 @@ class Geometry:
 
             try:
                 int_step = coords - self.internal.coords
-                cart_step = self.internal.transform_int_step(int_step)
+                cart_step = self.internal.transform_int_step(
+                    int_step, update_constraints=update_constraints
+                )
                 # From now on coords will always hold Cartesian coordinates!
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:

@@ -65,7 +65,7 @@ def relaxed_scan(
             step = trust_radius * step / step_norm
         new_coords = scan_geom.coords.copy()
         new_coords[constr_inds] += step
-        scan_geom.coords = new_coords
+        scan_geom.set_coords(new_coords, update_constraints=True)
 
         prefix = f"{title}_step_{i}"
         opt_kwargs = {
@@ -122,8 +122,7 @@ def relaxed_1d_scan(
     opt_kwargs,
     pref=None,
 ):
-    assert geom.coord_type == "redund", \
-        "'coord_type: redund' is required!"
+    assert geom.coord_type == "redund", "'coord_type: redund' is required!"
     if pref is None:
         pref = ""
     else:
@@ -133,7 +132,10 @@ def relaxed_1d_scan(
     constr_ind = geom.internal.get_index_of_typed_prim(constrain_prims[0])
     copy_kwargs = {
         "coord_type": "redund",
-        "coord_kwargs": {"constrain_prims": constrain_prims},
+        "coord_kwargs": {
+            "constrain_prims": constrain_prims,
+            "recalc_B": True,
+        },
     }
     constr_geom = geom.copy(**copy_kwargs)
     calc = calc_getter()
@@ -147,7 +149,7 @@ def relaxed_1d_scan(
     org_val = constr_geom.coords[constr_ind]
     cur_val = start
     end_val = start + step_size * steps
-    target_scan_vals = np.linspace(cur_val, end_val, steps+1)
+    target_scan_vals = np.linspace(cur_val, end_val, steps + 1)
     print(
         f"    Coordinate: {constr_prim}\n"
         f"Original value: {org_val:.4f} {unit}\n"
@@ -168,18 +170,20 @@ def relaxed_1d_scan(
         opt_kwargs_["h5_group_name"] = name
         # Keep a copy
         scan_geoms.append(constr_geom.copy())
+
         # Update constrained coordinate
         new_coords = constr_geom.coords
         new_coords[constr_ind] = cur_val
-        constr_geom.coords = new_coords
+        constr_geom.set_coords(new_coords, update_constraints=True)
 
         title = f"{pref}Step {cycle:02d}, coord={cur_val:.4f} {unit}"
         opt_result = run_opt(
             constr_geom, _calc_getter, opt_key, opt_kwargs_, title=title, level=1
         )
         scan_xyzs.append(constr_geom.as_xyz())
-        scan_vals.append(cur_val)
+        scan_vals.append(constr_geom.coords[constr_ind])
         scan_energies.append(constr_geom.energy)
+
         if not opt_result.opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break

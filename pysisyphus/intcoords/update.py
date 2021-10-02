@@ -108,8 +108,11 @@ def transform_int_step(
     rotation_inds,
     check_dihedrals=False,
     freeze_atoms=None,
+    constrained_inds=None,
+    update_constraints=False,
     cart_rms_thresh=1e-6,
     Bt_inv_prim_getter=None,
+    max_cycles=25,
     logger=None,
 ):
     """Transformation is done in primitive internals, so int_step must be given
@@ -117,18 +120,25 @@ def transform_int_step(
 
     if freeze_atoms is None:
         freeze_atoms = list()
+
+    if constrained_inds is None:
+        constrained_inds = list()
+
     freeze_atoms = np.array(freeze_atoms, dtype=int)
     new_cart_coords = old_cart_coords.copy()
     remaining_int_step = int_step
     target_internals = cur_internals + int_step
+    # When we want to update the constraints we use the target primitive internals,
+    if update_constraints:
+        constrained_vals = target_internals[constrained_inds]
+    # otherwise we try to stay with the original constrained values.
+    else:
+        constrained_vals = cur_internals[constrained_inds]
 
-    last_rms = 9999
-    old_internals = cur_internals
-    backtransform_failed = True
-    for i in range(25):
-        if Bt_inv_prim_getter is not None:
-            Bt_inv_prim = Bt_inv_prim_getter(new_cart_coords)
-            log(logger, f"Recalculated (B^T)^+ in microcycle {i}")
+    def backtransform(remaining_int_step, Bt_inv_prim):
+        """Separate function so it can be a called after the main loop
+        finished to re-enforce the constraints."""
+        nonlocal new_cart_coords
 
         cart_step = Bt_inv_prim.T.dot(remaining_int_step)
         # Remove step from frozen atoms.
@@ -147,6 +157,19 @@ def transform_int_step(
             logger=logger,
         )
         new_internals = [prim.val for prim in new_prim_ints]
+        return new_prim_ints, new_internals, cart_rms
+
+    last_rms = 9999
+    old_internals = cur_internals
+    backtransform_failed = True
+    for i in range(max_cycles):
+        if Bt_inv_prim_getter is not None:
+            Bt_inv_prim = Bt_inv_prim_getter(new_cart_coords)
+            log(logger, f"Recalculated (B^T)^+ in microcycle {i}")
+
+        new_prim_ints, new_internals, cart_rms = backtransform(
+            remaining_int_step, Bt_inv_prim
+        )
         remaining_int_step = target_internals - new_internals
         internal_rms = np.sqrt(np.mean(remaining_int_step ** 2))
         log(
@@ -181,10 +204,19 @@ def transform_int_step(
             backtransform_failed = False
             break
 
-    # if check_dihedrals and (
-    # not dihedrals_are_valid(new_cart_coords.reshape(-1, 3), dihedral_inds)
-    # ):
-    # raise NeedNewInternalsException(new_cart_coords)
+    if constrained_inds is not None:
+        for j in range(max_cycles):
+            cur_constrained_vals = np.array(new_internals)[constrained_inds]
+            diff = constrained_vals - cur_constrained_vals
+            if np.abs(diff) <= 1e-5:
+                break
+            remaining_int_step = np.zeros_like(remaining_int_step)
+            remaining_int_step[constrained_inds] = diff
+            new_prim_ints, new_internals, _ = backtransform(
+                remaining_int_step, Bt_inv_prim
+            )
+        if j > 0:
+            log(logger, "Re-enforced constraints in {j} additional cycle(s).")
 
     log(logger, "")
 

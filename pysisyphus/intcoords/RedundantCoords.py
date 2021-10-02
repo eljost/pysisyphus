@@ -544,7 +544,7 @@ class RedundantCoords:
 
         return prim_internals
 
-    def transform_int_step(self, int_step, pure=False):
+    def transform_int_step(self, int_step, update_constraints=False, pure=False):
         self.log(f"Backtransformation {self.backtransform_counter}")
 
         def Bt_inv_prim_getter(cart_coords):
@@ -565,6 +565,8 @@ class RedundantCoords:
             self.rotation_indices,
             check_dihedrals=self.rebuild,
             freeze_atoms=self.freeze_atoms,
+            constrained_inds=self.constrained_indices,
+            update_constraints=update_constraints,
             logger=self.logger,
             Bt_inv_prim_getter=Bt_inv_prim_getter if self.recalc_B else None,
         )
