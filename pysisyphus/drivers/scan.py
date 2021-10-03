@@ -4,6 +4,7 @@ import numpy as np
 from pysisyphus.drivers.opt import run_opt
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.TablePrinter import TablePrinter
 
 
 def relaxed_scan(
@@ -194,4 +195,13 @@ def relaxed_1d_scan(
     scan_data = np.stack((scan_vals, scan_energies), axis=1)
     np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
     scan_vals, scan_energies = scan_data.T
+
+    print(highlight_text(f"Scan summary", level=1))
+    col_fmts = "int float float float float".split()
+    header = ("Step", f"Target / {unit}", f"Actual / {unit}", f"Δ / {unit}", "E / au")
+    table = TablePrinter(header, col_fmts, width=14)
+    table.print_header()
+    for step, (target, act, en) in enumerate(zip(target_scan_vals, scan_vals, scan_energies)):
+        delta = target - act
+        table.print_row((step, target, act, delta, en))
     return scan_geoms, scan_vals, scan_energies
