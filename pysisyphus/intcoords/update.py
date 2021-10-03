@@ -208,7 +208,7 @@ def transform_int_step(
         for j in range(max_cycles):
             cur_constrained_vals = np.array(new_internals)[constrained_inds]
             diff = constrained_vals - cur_constrained_vals
-            if np.abs(diff) <= 1e-5:
+            if any(np.abs(diff) <= 1e-5):
                 break
             remaining_int_step = np.zeros_like(remaining_int_step)
             remaining_int_step[constrained_inds] = diff
