@@ -2,6 +2,7 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords.derivatives import dq_ld, d2q_ld
+from pysisyphus.linalg import cross
 
 
 class LinearDisplacement(Primitive):
@@ -38,11 +39,11 @@ class LinearDisplacement(Primitive):
             cross_vec = LinearDisplacement._get_cross_vec(coords3d, indices)
 
         if complement:
-            cross_vec = np.cross(w, cross_vec)
+            cross_vec = cross(w, cross_vec)
         cross_vec /= np.linalg.norm(cross_vec)
 
         # Orthogonal direction
-        y = np.cross(w, cross_vec)
+        y = cross(w, cross_vec)
         y /= np.linalg.norm(y)
 
         lin_disp = y.dot(u) + y.dot(v)
@@ -69,7 +70,7 @@ class LinearDisplacement(Primitive):
             m, _, n = indices
             w_dash = coords3d[n] - coords3d[m]
             w = w_dash / np.linalg.norm(w_dash)
-            cross_vec = np.cross(w, cross_vec)
+            cross_vec = cross(w, cross_vec)
 
         return d2q_ld(*coords3d[indices].flatten(), *cross_vec)
 

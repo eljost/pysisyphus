@@ -110,3 +110,14 @@ def eigvec_grad(w, v, ind, mat_grad):
 
     wh = pinv.dot(mat_grad).dot(eigvec)
     return wh
+
+
+def cross(a, b):
+    """10x times as fast as np.cross for to 1d vecs of length 3."""
+    return np.array(
+        (
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        )
+    )

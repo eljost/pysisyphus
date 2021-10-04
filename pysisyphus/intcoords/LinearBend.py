@@ -4,6 +4,7 @@ import numpy as np
 
 from pysisyphus.intcoords.derivatives import dq_lb, d2q_lb
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.linalg import cross
 
 
 # [1] 10.1080/00268977200102361
@@ -50,12 +51,12 @@ class LinearBend(Primitive):
         if cross_vec is None:
             cross_vec = LinearBend._get_cross_vec(coords3d, indices)
         # Generate first orthogonal direction
-        w_dash = np.cross(u, cross_vec)
+        w_dash = cross(u, cross_vec)
         w = w_dash / np.linalg.norm(w_dash)
 
         # Generate second orthogonal direction
         if complement:
-            w = np.cross(u, w)
+            w = cross(u, w)
         return w
 
     def calculate(self, coords3d, indices=None, gradient=False):
@@ -75,7 +76,7 @@ class LinearBend(Primitive):
             coords3d, indices, complement, cross_vec
         )
 
-        lb_rad = w.dot(np.cross(u_dash, v_dash)) / (u_norm * v_norm)
+        lb_rad = w.dot(cross(u_dash, v_dash)) / (u_norm * v_norm)
 
         if gradient:
             # Fourth argument is the orthogonal direction

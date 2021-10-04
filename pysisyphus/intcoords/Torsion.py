@@ -5,11 +5,10 @@ import numpy as np
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords import Bend
 from pysisyphus.intcoords.derivatives import d2q_d
-
+from pysisyphus.linalg import cross
 
 
 class Torsion(Primitive):
-
     @staticmethod
     def _weight(atoms, coords3d, indices, f_damping):
         m, o, p, n = indices
@@ -19,9 +18,9 @@ class Torsion(Primitive):
         rad_mop = Bend._calculate(coords3d, (m, o, p))
         rad_opn = Bend._calculate(coords3d, (o, p, n))
         return (
-            (rho_mo * rho_op * rho_pn)**(1/3)
-            * (f_damping + (1-f_damping)*sin(rad_mop))
-            * (f_damping + (1-f_damping)*sin(rad_opn))
+            (rho_mo * rho_op * rho_pn) ** (1 / 3)
+            * (f_damping + (1 - f_damping) * sin(rad_mop))
+            * (f_damping + (1 - f_damping) * sin(rad_opn))
         )
 
     @staticmethod
@@ -38,9 +37,9 @@ class Torsion(Primitive):
         w = w_dash / w_norm
         phi_u = np.arccos(u.dot(w))
         phi_v = np.arccos(-w.dot(v))
-        uxw = np.cross(u, w)
-        vxw = np.cross(v, w)
-        cos_dihed = uxw.dot(vxw)/(np.sin(phi_u)*np.sin(phi_v))
+        uxw = cross(u, w)
+        vxw = cross(v, w)
+        cos_dihed = uxw.dot(vxw) / (np.sin(phi_u) * np.sin(phi_v))
         # Restrict cos_dihed to the allowed interval for arccos [-1, 1]
         cos_dihed = min(1, max(cos_dihed, -1))
 
@@ -82,16 +81,16 @@ class Torsion(Primitive):
             # sign_factor(apn) |  0  | -1  |  0  |  1  | 2nd term
             # sign_factor(aop) |  0  |  0  |  1  | -1  | 3rd term
             # sign_factor(apo) |  0  |  0  | -1  |  1  | 4th term
-            sin2_u = np.sin(phi_u)**2
-            sin2_v = np.sin(phi_v)**2
-            first_term  = uxw/(u_norm*sin2_u)
-            second_term = vxw/(v_norm*sin2_v)
-            third_term  = uxw*np.cos(phi_u)/(w_norm*sin2_u)
-            fourth_term = -vxw*np.cos(phi_v)/(w_norm*sin2_v)
-            row[m,:] = first_term
-            row[n,:] = -second_term
-            row[o,:] = -first_term + third_term - fourth_term
-            row[p,:] = second_term - third_term + fourth_term
+            sin2_u = np.sin(phi_u) ** 2
+            sin2_v = np.sin(phi_v) ** 2
+            first_term = uxw / (u_norm * sin2_u)
+            second_term = vxw / (v_norm * sin2_v)
+            third_term = uxw * np.cos(phi_u) / (w_norm * sin2_u)
+            fourth_term = -vxw * np.cos(phi_v) / (w_norm * sin2_v)
+            row[m, :] = first_term
+            row[n, :] = -second_term
+            row[o, :] = -first_term + third_term - fourth_term
+            row[p, :] = second_term - third_term + fourth_term
             row = row.flatten()
             return dihedral_rad, row
         return dihedral_rad

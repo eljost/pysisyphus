@@ -216,7 +216,7 @@ def transform_int_step(
                 remaining_int_step, Bt_inv_prim
             )
         if j > 0:
-            log(logger, "Re-enforced constraints in {j} additional cycle(s).")
+            log(logger, f"Re-enforced constraints in {j} additional cycle(s).")
 
     log(logger, "")
 
