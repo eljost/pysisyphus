@@ -4,7 +4,7 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords.derivatives import d2q_a
-from pysisyphus.linalg import cross
+from pysisyphus.linalg import cross3, norm3
 
 
 class Bend(Primitive):
@@ -22,8 +22,8 @@ class Bend(Primitive):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
-        u_norm = np.linalg.norm(u_dash)
-        v_norm = np.linalg.norm(v_dash)
+        u_norm = norm3(u_dash)
+        v_norm = norm3(v_dash)
         u = u_dash / u_norm
         v = v_dash / v_norm
 
@@ -44,11 +44,11 @@ class Bend(Primitive):
             else:
                 cross_vec = cross_vec2
 
-            w_dash = cross(u, cross_vec)
-            w = w_dash / np.linalg.norm(w_dash)
+            w_dash = cross3(u, cross_vec)
+            w = w_dash / norm3(w_dash)
 
-            uxw = cross(u, w)
-            wxv = cross(w, v)
+            uxw = cross3(u, w)
+            wxv = cross3(w, v)
 
             row = np.zeros_like(coords3d)
             #                  |  m  |  n  |  o  |

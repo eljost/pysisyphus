@@ -2,7 +2,7 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords.derivatives import dq_oop, d2q_oop
-from pysisyphus.linalg import cross
+from pysisyphus.linalg import cross3, norm3
 
 
 class OutOfPlane(Primitive):
@@ -32,12 +32,12 @@ class OutOfPlane(Primitive):
         v_dash = coords3d[n] - coords3d[p]
         w_dash = coords3d[o] - coords3d[p]
 
-        u = u_dash / np.linalg.norm(u_dash)
-        v = v_dash / np.linalg.norm(v_dash)
-        w = w_dash / np.linalg.norm(w_dash)
+        u = u_dash / norm3(u_dash)
+        v = v_dash / norm3(v_dash)
+        w = w_dash / norm3(w_dash)
 
-        z_dash = cross(u, v) + cross(v, w) + cross(w, u)
-        z = z_dash / np.linalg.norm(z_dash)
+        z_dash = cross3(u, v) + cross3(v, w) + cross3(w, u)
+        z = z_dash / norm3(z_dash)
 
         oop_coord = z.dot(u)
 

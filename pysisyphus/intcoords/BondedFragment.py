@@ -1,6 +1,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.linalg import norm3
 
 
 class BondedFragment(Primitive):
@@ -20,7 +21,7 @@ class BondedFragment(Primitive):
     def _calculate(coords3d, indices, gradient=False, bond_indices=None):
         from_frag, to_ = bond_indices
         bond = coords3d[to_] - coords3d[from_frag]
-        value = np.linalg.norm(bond)
+        value = norm3(bond)
 
         if gradient:
             bond_normed = bond / value

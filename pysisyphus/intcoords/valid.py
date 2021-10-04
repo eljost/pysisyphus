@@ -3,6 +3,7 @@ import numpy as np
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.PrimTypes import PrimTypes
 from pysisyphus.intcoords import Bend
+from pysisyphus.linalg import norm3
 
 
 def bend_valid(coords3d, indices, min_deg, max_deg):
@@ -31,9 +32,9 @@ def dihedral_valid(coords3d, inds, deg_thresh=179.5):
     u_dash = coords3d[m] - coords3d[o]
     v_dash = coords3d[n] - coords3d[p]
     w_dash = coords3d[p] - coords3d[o]
-    u_norm = np.linalg.norm(u_dash)
-    v_norm = np.linalg.norm(v_dash)
-    w_norm = np.linalg.norm(w_dash)
+    u_norm = norm3(u_dash)
+    v_norm = norm3(v_dash)
+    w_norm = norm3(w_dash)
     u = u_dash / u_norm
     v = v_dash / v_norm
     w = w_dash / w_norm

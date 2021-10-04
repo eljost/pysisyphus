@@ -5,7 +5,7 @@ import numpy as np
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords import Bend
 from pysisyphus.intcoords.derivatives import d2q_d
-from pysisyphus.linalg import cross
+from pysisyphus.linalg import cross3, norm3
 
 
 class Torsion(Primitive):
@@ -29,16 +29,16 @@ class Torsion(Primitive):
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[p]
         w_dash = coords3d[p] - coords3d[o]
-        u_norm = np.linalg.norm(u_dash)
-        v_norm = np.linalg.norm(v_dash)
-        w_norm = np.linalg.norm(w_dash)
+        u_norm = norm3(u_dash)
+        v_norm = norm3(v_dash)
+        w_norm = norm3(w_dash)
         u = u_dash / u_norm
         v = v_dash / v_norm
         w = w_dash / w_norm
         phi_u = np.arccos(u.dot(w))
         phi_v = np.arccos(-w.dot(v))
-        uxw = cross(u, w)
-        vxw = cross(v, w)
+        uxw = cross3(u, w)
+        vxw = cross3(v, w)
         cos_dihed = uxw.dot(vxw) / (np.sin(phi_u) * np.sin(phi_v))
         # Restrict cos_dihed to the allowed interval for arccos [-1, 1]
         cos_dihed = min(1, max(cos_dihed, -1))

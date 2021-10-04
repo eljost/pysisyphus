@@ -1,4 +1,4 @@
-from math import cos, sin
+from math import cos, sin, sqrt
 
 import numpy as np
 
@@ -112,8 +112,8 @@ def eigvec_grad(w, v, ind, mat_grad):
     return wh
 
 
-def cross(a, b):
-    """10x times as fast as np.cross for to 1d vecs of length 3."""
+def cross3(a, b):
+    """10x as fast as np.cross for two 1d arrays of size 3."""
     return np.array(
         (
             a[1] * b[2] - a[2] * b[1],
@@ -121,3 +121,8 @@ def cross(a, b):
             a[0] * b[1] - a[1] * b[0],
         )
     )
+
+
+def norm3(a):
+    """5x as fas as np.linalg.norm for a 1d array of size 3."""
+    return sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
