@@ -23,6 +23,7 @@ class GrowingNT:
         bonds=None,
         r_update=True,
         r_update_thresh=1.0,
+        stop_after_ts=False,
     ):
         assert geom.coord_type == "cart"
 
@@ -34,6 +35,7 @@ class GrowingNT:
         self.bonds = bonds
         self.r_update = r_update
         self.r_update_thresh = r_update_thresh
+        self.stop_after_ts = stop_after_ts
 
         self.coord_type = self.geom.coord_type
         if self.final_geom:
@@ -53,6 +55,8 @@ class GrowingNT:
         self.all_energies = list()
         self.all_real_forces = list()
         self.sp_images = [self.geom.copy()]  # Stationary points
+        self.ts_images = list()
+        self.min_images = list()
         # Right now this leads to a gradient calculation in the momement,
         # this object is constructed, which is bad.
         self.initialize()
@@ -158,8 +162,15 @@ class GrowingNT:
     def get_energy_at(self, coords):
         return self.geom.get_energy_at(coords)
 
+    def get_energy_and_forces_at(self, coords):
+        return self.geom.get_energy_and_forces_at(coords)
+
     def as_xyz(self):
         return self.geom.as_xyz()
+
+    def clear_passed(self):
+        self.passed_min = False
+        self.passed_ts = False
 
     def reparametrize(self):
         """Check if GNT can be grown."""
@@ -189,19 +200,32 @@ class GrowingNT:
             | Minimum       TS
             """
             ae = self.all_energies  # Shortcut
-            passed_min = len(ae) >= 3 and ae[-3] > ae[-2] < ae[-1]
-            passed_ts = len(ae) >= 3 and ae[-3] < ae[-2] > ae[-1]
-            passed_sp = passed_min or passed_ts
+            self.passed_min = len(ae) >= 3 and ae[-3] > ae[-2] < ae[-1]
+            self.passed_ts = len(ae) >= 3 and ae[-3] < ae[-2] > ae[-1]
+            passed_sp = self.passed_min or self.passed_ts
             if passed_sp:
-                self.sp_images.append(self.images[-2].copy())
-                self.log(f"Passed stationary point!\n{self.geom.as_xyz()}")
+                sp_image = self.images[-2].copy()
+                sp_kind = "Minimum" if self.passed_min else "TS"
+                self.sp_images.append(sp_image)
+                self.log(
+                    f"Passed stationary point! It seems to be a {sp_kind}."
+                    f"\n{self.geom.as_xyz()}"
+                )
+                if self.passed_ts:
+                    self.ts_images.append(sp_image)
+                elif self.passed_min:
+                    self.min_images.append(sp_image)
 
             # Update direction 'r', if requested
             r_new = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
             r_dot = r_new.dot(self.r)
             r_org_dot = r_new.dot(self.r_org)
             self.log(f"r.dot(r')={r_dot:.6f} r_org.dot(r')={r_org_dot:.6f}")
-            if self.r_update and (r_org_dot <= self.r_update_thresh) and passed_min:
+            if (
+                self.r_update
+                and (r_org_dot <= self.r_update_thresh)
+                and self.passed_min
+            ):
                 self.r = r_new
                 self.log("Updated r")
 
@@ -214,11 +238,20 @@ class GrowingNT:
         self.did_reparametrization = can_grow
         return can_grow
 
+    def check_convergence(self, *args, **kwargs):
+        return self.stop_after_ts and len(self.ts_images) > 0
+
     def get_additional_print(self):
         if self.did_reparametrization:
             str_ = "Grew Newton trajectory."
+            if self.passed_min:
+                str_ += " Passed minimum geometry."
+            elif self.passed_ts:
+                str_ += " Passed transition state geometry."
         else:
             str_ = None
+
         self.did_reparametrization = False
+        self.clear_passed()
 
         return str_

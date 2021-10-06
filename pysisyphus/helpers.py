@@ -415,7 +415,12 @@ def do_final_hessian(
     prefix="",
     T=298.15,
     print_thermo=False,
+    out_dir=None,
 ):
+    if out_dir is None:
+        out_dir = "."
+    out_dir = Path(out_dir)
+
     print(highlight_text("Hessian at final geometry", level=1))
     print()
 
@@ -454,14 +459,14 @@ def do_final_hessian(
 
         # Also write HD5 hessian
         final_h5_hessian_fn = prefix + "final_hessian.h5"
-        save_h5_hessian(final_h5_hessian_fn, geom)
+        save_h5_hessian(out_dir / final_h5_hessian_fn, geom)
         print(f"Wrote Hessian data HD5 file '{final_h5_hessian_fn}'.")
 
     imag_fns = list()
     if write_imag_modes:
         imag_modes = imag_modes_from_geom(geom)
         for i, imag_mode in enumerate(imag_modes):
-            trj_fn = prefix + f"imaginary_mode_{i:03d}.trj"
+            trj_fn = out_dir / (prefix + f"imaginary_mode_{i:03d}.trj")
             imag_fns.append(trj_fn)
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)

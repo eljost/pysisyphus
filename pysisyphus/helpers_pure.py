@@ -322,3 +322,10 @@ def describe(arr):
         f"shape={shape}, min={min_:{fmt}}, mean={mean:{fmt}}, "
         f"median={median:{fmt}}, max={max_:{fmt}}, variance={var:.4e}"
     )
+
+
+def touch(fn):
+    try:
+        Path(fn).touch()
+    except IsADirectoryError:
+        pass
