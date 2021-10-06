@@ -596,7 +596,7 @@ def run_md(geom, calc_getter, md_kwargs):
     return md_result
 
 
-def run_scan(geom, calc_getter, scan_kwargs):
+def run_scan(geom, calc_getter, scan_kwargs, callback=None):
     print(highlight_text("Relaxed Scan") + "\n")
     assert geom.coord_type != "cart", \
         "Internal coordinates are required for coordinate scans."
@@ -652,6 +652,7 @@ def run_scan(geom, calc_getter, scan_kwargs):
             opt_key,
             opt_kwargs,
             pref=pref,
+            callback=callback,
         )
 
     if not symmetric:
@@ -1794,7 +1795,6 @@ def run_from_dict(
     if cwd is None:
         cwd = Path(".")
 
-    start_time = datetime.datetime.now()
     print_header()
 
     # Citation
@@ -1834,16 +1834,11 @@ def run_from_dict(
         print()
         check_asserts(run_result, run_dict)
 
-    end_time = datetime.datetime.now()
-    duration = end_time - start_time
-    # Only keep hh:mm:ss
-    duration_hms = str(duration).split(".")[0]
-    print(f"pysisyphus run took {duration_hms} h.")
-
     return run_result
 
 
 def run():
+    start_time = datetime.datetime.now()
     args = parse_args(sys.argv[1:])
 
     # Defaults
@@ -1878,6 +1873,13 @@ def run():
         "restart": args.restart,
     }
     run_result = run_from_dict(run_dict, **run_kwargs)
+
+    end_time = datetime.datetime.now()
+    duration = end_time - start_time
+    # Only keep hh:mm:ss
+    duration_hms = str(duration).split(".")[0]
+    print(f"pysisyphus run took {duration_hms} h.")
+
     return 0
 
 

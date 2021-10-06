@@ -122,6 +122,7 @@ def relaxed_1d_scan(
     opt_key,
     opt_kwargs,
     pref=None,
+    callback=None,
 ):
     assert geom.coord_type == "redund", "'coord_type: redund' is required!"
     if pref is None:
@@ -181,6 +182,8 @@ def relaxed_1d_scan(
         opt_result = run_opt(
             constr_geom, _calc_getter, opt_key, opt_kwargs_, title=title, level=1
         )
+        if callback is not None:
+            callback(opt_result)
         scan_xyzs.append(constr_geom.as_xyz())
         scan_vals.append(constr_geom.coords[constr_ind])
         scan_energies.append(constr_geom.energy)
@@ -201,7 +204,9 @@ def relaxed_1d_scan(
     header = ("Step", f"Target / {unit}", f"Actual / {unit}", f"Δ / {unit}", "E / au")
     table = TablePrinter(header, col_fmts, width=14)
     table.print_header()
-    for step, (target, act, en) in enumerate(zip(target_scan_vals, scan_vals, scan_energies)):
+    for step, (target, act, en) in enumerate(
+        zip(target_scan_vals, scan_vals, scan_energies)
+    ):
         delta = target - act
         table.print_row((step, target, act, delta, en))
     return scan_geoms, scan_vals, scan_energies
