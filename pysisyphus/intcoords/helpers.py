@@ -3,7 +3,6 @@ import numpy as np
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
 from pysisyphus.intcoords.Stretch import Stretch
-from pysisyphus.linalg import norm3
 
 
 def get_tangent(prims1, prims2, dihedral_inds, normalize=False):
@@ -107,5 +106,5 @@ def get_weighted_bond_mode(weighted_bonds, coords3d, remove_translation=True):
         bm3d = bond_mode.reshape(-1, 3)
         bond_mode = (bm3d - bm3d.mean(axis=0)[None, :]).flatten()
 
-    bond_mode /= norm3(bond_mode)
+    bond_mode /= np.linalg.norm(bond_mode)
     return bond_mode
