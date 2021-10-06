@@ -45,7 +45,7 @@ def run():
             print(f"\tNo iroot found for '{log=}! Setting {root=}.")
         calc.root = root
         atoms, coords = calc.parse_atoms_coords(log)
-        mo_coeffs = calc.parse_gbw(gbw)
+        mo_coeffs, _ = calc.parse_gbw(gbw)
         X, Y = calc.parse_cis(cis)
         with open(log) as handle:
             text = handle.read()

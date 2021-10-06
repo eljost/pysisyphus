@@ -557,6 +557,7 @@ class ORCA(OverlapCalculator):
                 cores = struct.iter_unpack("<i", handle.read(4 * dimension))
 
                 coeffs = np.array(coeffs).reshape(-1, dimension).T
+                energies = np.array([en[0] for en in energies])
 
                 # print('Coefficients')
                 # for coef in coefficients:
@@ -573,7 +574,31 @@ class ORCA(OverlapCalculator):
                 # print('Core')
                 # for core in cores:
                 # print('{}'.format(*core))
-            return coeffs
+            return coeffs, energies
+
+    @staticmethod
+    def set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs):
+        """See self.parse_gbw."""
+
+        with open(in_gbw_fn, "rb") as handle:
+            handle.seek(24)
+            offset = struct.unpack("<q", handle.read(8))[0]
+            handle.seek(offset)
+            operators = struct.unpack("<i", handle.read(4))[0]
+            dimension = struct.unpack("<i", handle.read(4))[0]
+            assert operators == 1, "Unrestricted case is not implemented!"
+
+            handle.seek(0)
+            gbw_bytes = handle.read()
+
+        tot_offset = offset + 4 + 4
+        start = gbw_bytes[:tot_offset]
+        end = gbw_bytes[tot_offset + 8 * dimension ** 2 :]
+        # Construct new gbw content by replacing the MO coefficients in the middle
+        mod_gbw_bytes = start + mo_coeffs.T.tobytes() + end
+
+        with open(out_gbw_fn, "wb") as handle:
+            handle.write(mod_gbw_bytes)
 
     def parse_all_energies(self, text=None, triplets=None):
         if triplets is None:
@@ -658,14 +683,14 @@ class ORCA(OverlapCalculator):
         else:
             raise Exception("Got no .gbw file to parse!")
         self.log(f"Setting MO coefficients from {gbw}.")
-        self.mo_coeffs = self.parse_gbw(self.gbw)
+        self.mo_coeffs, _ = self.parse_gbw(self.gbw)
 
     def prepare_overlap_data(self, path):
         # Parse eigenvectors from tda/tddft calculation
         X, Y = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
-        mo_coeffs = self.parse_gbw(self.gbw)
+        mo_coeffs, _ = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
         return mo_coeffs, X, Y, all_energies
 
