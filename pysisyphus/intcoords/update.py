@@ -204,7 +204,7 @@ def transform_int_step(
             backtransform_failed = False
             break
 
-    if constrained_inds is not None:
+    if len(constrained_inds) > 0:
         for j in range(max_cycles):
             cur_constrained_vals = np.array(new_internals)[constrained_inds]
             diff = constrained_vals - cur_constrained_vals
