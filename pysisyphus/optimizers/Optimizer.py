@@ -268,6 +268,13 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
 
+        # Give geometry a chance to signal convergence, e.g. GrowingNT that
+        # is supposed to stop when a TS was passed.
+        try:
+            geom_converged = self.geometry.check_convergence()
+        except AttributeError:
+            geom_converged = False
+
         # One may return after this comment, but not before!
         if self.converge_to_geom is not None:
             rmsd = np.sqrt(
@@ -322,7 +329,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
             converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
-        return any((converged, overachieved))
+        return any((converged, overachieved, geom_converged))
 
     def print_header(self):
         hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
