@@ -47,12 +47,13 @@ def test_run_md(geom):
     energy_ref = -20.47232690901  # Obtained with xtb 6.4.0
     velocities = get_mb_velocities_for_geom(geom, T=T, seed=seed)
     calc = geom.calculator
-    geoms = calc.run_md(geom.atoms, geom.cart_coords, t=200, dt=0.1,
-                        velocities=velocities)
+    geoms = calc.run_md(
+        geom.atoms, geom.cart_coords, t=200, dt=0.1, velocities=velocities
+    )
 
     # trj = "\n".join([geom.as_xyz() for geom in geoms])
     # with open("md.trj", "w") as handle:
-        # handle.write(trj)
+    # handle.write(trj)
     assert len(geoms) == 200
     last_geom = geoms[-1]
     energy = calc.get_energy(last_geom.atoms, last_geom.cart_coords)["energy"]
@@ -67,3 +68,16 @@ def test_parse_charges(geom):
     print(charges)
     assert len(charges) == 6
     assert charges[0] == pytest.approx(1.55773)
+
+
+def test_xtb_normal_termination(this_dir):
+    assert XTB.check_termination(this_dir / "xtb_pass.out")
+    assert not XTB.check_termination(this_dir / "xtb_crash.out")
+
+
+@using("xtb")
+def test_xtb_retry_calc(this_dir):
+    geom = geom_loader(this_dir / "recover.xyz")
+    geom.set_calculator(XTB(pal=6, retry_etemp=1000.0, retry_calc=1))
+    en = geom.energy
+    assert en == pytest.approx(-108.70462911348)

@@ -400,6 +400,7 @@ class Calculator:
 
             # Do at least one cycle. When retries are disabled retry_calc == 0
             # and range(0+1) will result in one cycle
+            added_retry_args = False
             for retry in range(self.retry_calc + 1):
                 result = subprocess.Popen(
                     args,
@@ -438,6 +439,13 @@ class Calculator:
                     handle.seek(0)
                     handle.truncate()
                     self.log("Detected abnormal termination! Retrying calculation.")
+
+                    if not added_retry_args:
+                        try:
+                            args += self.get_retry_args()
+                            added_retry_args = True
+                        except AttributeError:
+                            self.log(f"'self.get_retry_args()' not implemented!")
 
         # Parse results for desired quantities
         try:
