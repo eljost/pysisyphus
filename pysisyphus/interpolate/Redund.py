@@ -50,7 +50,7 @@ class Redund(Interpolator):
         dihedral_indices = geom1.internal.dihedral_indices
         initial_tangent = get_tangent(geom1.coords, geom2.coords, dihedral_indices)
         initial_diff = np.linalg.norm(initial_tangent)
-        approx_stepsize = initial_diff / (self.between + 1)
+        approx_step_size = initial_diff / (self.between + 1)
         final_prims = geom2.internal.prim_coords
 
         geoms = [
@@ -60,7 +60,9 @@ class Redund(Interpolator):
             print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
             try:
-                prim_tangent = get_tangent(new_geom.coords, final_prims, dihedral_indices)
+                prim_tangent = get_tangent(
+                    new_geom.coords, final_prims, dihedral_indices
+                )
             # This will result in a different number of internals at the two outer and
             # the inner geometries.
             except DifferentPrimitivesException:
@@ -72,21 +74,16 @@ class Redund(Interpolator):
                     "Restarting interpolation with reduced number of internals "
                     "at all geometries."
                 )
-                self.dump_progress(geoms, out_fn=f"redund_interpol_fail_at_{i+1:03d}.trj")
+                self.dump_progress(
+                    geoms, out_fn=f"redund_interpol_fail_at_{i+1:03d}.trj"
+                )
                 print()
                 # Recursive call with reduced set of primitive internals
                 return self.interpolate(
                     initial_geom, final_geom, typed_prims=new_typed_prims
                 )
 
-            # Form active set
-            B = new_geom.internal.B_prim
-            G = B.dot(B.T)
-            eigvals, eigvectors = np.linalg.eigh(G)
-            U = eigvectors[:, np.abs(eigvals) > 1e-6]
-            reduced_tangent = (np.einsum("i,ij->j", prim_tangent, U) * U).sum(axis=1)
-            reduced_tangent /= np.linalg.norm(reduced_tangent)
-            step = approx_stepsize * reduced_tangent
+            step = self.step_along_tangent(new_geom, prim_tangent, approx_step_size)
             try:
                 new_coords = new_geom.coords + step
             except ValueError as err:
@@ -95,5 +92,17 @@ class Redund(Interpolator):
 
             new_geom.coords = new_coords
             geoms.append(new_geom)
+
         print()
         return geoms[1:]
+
+    def step_along_tangent(self, geom, prim_tangent, step_size):
+        # Form active set
+        B = geom.internal.B_prim
+        G = B.dot(B.T)
+        eigvals, eigvectors = np.linalg.eigh(G)
+        U = eigvectors[:, np.abs(eigvals) > 1e-6]
+        reduced_tangent = (np.einsum("i,ij->j", prim_tangent, U) * U).sum(axis=1)
+        reduced_tangent /= np.linalg.norm(reduced_tangent)
+        step = step_size * reduced_tangent
+        return step
