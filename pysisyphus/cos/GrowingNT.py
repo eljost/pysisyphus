@@ -243,11 +243,12 @@ class GrowingNT:
 
     def get_additional_print(self):
         if self.did_reparametrization:
-            str_ = "Grew Newton trajectory."
+            img_num = len(self.images)
+            str_ = f"Grew Newton trajectory to {img_num} images."
             if self.passed_min:
-                str_ += " Passed minimum geometry."
+                str_ += f" Passed minimum geometry at image {img_num-1}."
             elif self.passed_ts:
-                str_ += " Passed transition state geometry."
+                str_ += f" Passed transition state geometry at image {img_num-1}."
         else:
             str_ = None
 

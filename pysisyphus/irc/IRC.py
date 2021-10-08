@@ -45,6 +45,7 @@ class IRC:
         energy_thresh=1e-6,
         force_inflection=True,
         out_dir=".",
+        prefix="",
         dump_fn="irc_data.h5",
         dump_every=5,
     ):
@@ -95,6 +96,9 @@ class IRC:
             Don't indicate convergence before passing an inflection point.
         out_dir : str, optional
             Dump everything into 'out_dir' directory instead of the CWD.
+        prefix : str, optional
+            Short string that is prepended to all files that are created
+            by this class, e.g., trajectories and HDF5 dumps.
         dump_fn : str, optional
             Base name for the HDF5 files.
         dump_every : int, optional
@@ -135,6 +139,7 @@ class IRC:
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
+        self.prefix = f"{prefix}_" if prefix else prefix
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
 
@@ -153,7 +158,7 @@ class IRC:
         self.cycle_places = ceil(log(self.max_cycles, 10))
 
     def get_path_for_fn(self, fn):
-        return self.out_dir / fn
+        return self.out_dir / f"{self.prefix}{fn}"
 
     @property
     def coords(self):
@@ -491,7 +496,7 @@ class IRC:
 
             dumped = (self.cur_cycle % self.dump_every) == 0
             if dumped:
-                dump_fn = f"{direction}_{self.dump_fn}"
+                dump_fn = self.get_path_for_fn(f"{direction}_{self.dump_fn}")
                 self.dump_data(dump_fn)
 
             if break_msg:
@@ -574,7 +579,7 @@ class IRC:
             self.geometry,
             self.hessian_init,
             cart_gradient=self.ts_gradient,
-            h5_fn=f"hess_init_irc.h5",
+            h5_fn=self.get_path_for_fn(f"hess_init_irc.h5"),
         )
         self.log(f"Initial hessian: {hess_str}")
 
