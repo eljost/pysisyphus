@@ -33,7 +33,13 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
-from pysisyphus.drivers import relaxed_1d_scan, run_opt, run_precontr
+from pysisyphus.drivers import (
+    relaxed_1d_scan,
+    run_opt,
+    run_precontr,
+    run_perf,
+    print_perf_results,
+)
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 from pysisyphus.Geometry import Geometry
@@ -598,8 +604,9 @@ def run_md(geom, calc_getter, md_kwargs):
 
 def run_scan(geom, calc_getter, scan_kwargs, callback=None):
     print(highlight_text("Relaxed Scan") + "\n")
-    assert geom.coord_type != "cart", \
-        "Internal coordinates are required for coordinate scans."
+    assert (
+        geom.coord_type != "cart"
+    ), "Internal coordinates are required for coordinate scans."
 
     type_ = scan_kwargs["type"]
     indices = scan_kwargs["indices"]
@@ -1010,6 +1017,7 @@ def get_defaults(conf_dict):
         "geom": None,
         "mdp": None,
         "md": None,
+        "perf": None,
     }
 
     mol_opt_defaults = {
@@ -1086,7 +1094,7 @@ def get_defaults(conf_dict):
                 "strict": False,
             }
         )
-        #dd["preopt"]["geom"]["type"] = "tric"
+        # dd["preopt"]["geom"]["type"] = "tric"
 
     if "endopt" in conf_dict:
         dd["endopt"] = mol_opt_defaults.copy()
@@ -1141,6 +1149,13 @@ def get_defaults(conf_dict):
             "remove_com_v": True,
         }
 
+    if "perf" in conf_dict:
+        dd["perf"] = {
+            "pal_range": [1, 7, 1],
+            "mem_range": 1500,
+            "repeat": None,
+        }
+
     return dd
 
 
@@ -1175,6 +1190,7 @@ def setup_run_dict(run_dict):
     # Load defaults to have a sane baseline
     run_dict = get_defaults(run_dict)
     # Update nested entries that are dicts by themselves
+    # Take care to insert a , after the string!
     key_set = set(org_dict.keys())
     for key in key_set & set(
         (
@@ -1188,6 +1204,7 @@ def setup_run_dict(run_dict):
             "md",
             "mdp",
             "opt",
+            "perf",
             "precontr",
             "preopt",
             "scan",
@@ -1216,6 +1233,7 @@ RunResult = namedtuple(
         "calced_geoms calced_results "
         "stocastic calc_getter "
         "scan_geoms scan_vals scan_energies "
+        "perf_results "
     ),
 )
 
@@ -1321,10 +1339,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Initial loading of geometries from file(s)
     geoms = get_geoms(xyz, coord_type="cart")
 
-    #------------------------+
+    # ------------------------+
     #   Preconditioning of   |
     # Translation & Rotation |
-    #------------------------+
+    # ------------------------+
 
     if run_dict["precontr"]:
         ptr_geom0, ptr_geom_m1 = run_precontr(
@@ -1333,10 +1351,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         geoms[0] = ptr_geom0
         geoms[-1] = ptr_geom_m1
 
-    #-----------------------+
+    # -----------------------+
     # Preoptimization of    |
     # first & last image(s) |
-    #-----------------------+
+    # -----------------------+
 
     if run_dict["preopt"]:
         first_opt_result, last_opt_result = run_preopt(
@@ -1380,6 +1398,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     elif run_dict["scan"]:
         scan_kwargs = run_dict["scan"]
         scan_geoms, scan_vals, scan_energies = run_scan(geom, calc_getter, scan_kwargs)
+    elif run_dict["perf"]:
+        perf_results = run_perf(geom, calc_getter, **run_dict["perf"])
+        print_perf_results(perf_results)
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #
@@ -1408,7 +1429,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
                 shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
                 geom.coords = shaked_coords
                 print(f"Shaken coordinates:\n{geom.as_xyz()}")
-            opt_result = run_opt(geom, calc_getter, opt_key, opt_kwargs, print_thermo=True)
+            opt_result = run_opt(
+                geom, calc_getter, opt_key, opt_kwargs, print_thermo=True
+            )
             opt_geom = opt_result.geom
             opt = opt_result.opt
             # Keep a backup of the optimized geometry
