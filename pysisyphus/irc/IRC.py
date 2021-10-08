@@ -42,6 +42,7 @@ class IRC:
         displ_length=0.1,
         displ_third_h5=None,
         rms_grad_thresh=1e-3,
+        hard_rms_grad_thresh=None,
         energy_thresh=1e-6,
         force_inflection=True,
         out_dir=".",
@@ -133,6 +134,7 @@ class IRC:
         self.displ_length = float(displ_length)
         self.displ_third_h5 = displ_third_h5
         self.rms_grad_thresh = float(rms_grad_thresh)
+        self.hard_rms_grad_thresh = hard_rms_grad_thresh
         self.energy_thresh = float(energy_thresh)
         self.force_inflection = force_inflection
         self.out_dir = out_dir
@@ -487,6 +489,12 @@ class IRC:
             elif self.past_inflection and (rms_grad <= self.rms_grad_thresh):
                 break_msg = "rms(grad) converged!"
                 self.converged = True
+            elif (
+                self.hard_rms_grad_thresh
+                and (not self.past_inflection)
+                and (rms_grad <= self.hard_rms_grad_thresh)
+            ):
+                break_msg = "rms(grad) below hard threshold."
             # TODO: Allow some threshold?
             elif self.energy_increased:
                 break_msg = "Energy increased!"

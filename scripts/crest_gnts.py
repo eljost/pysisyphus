@@ -11,6 +11,7 @@ import traceback
 
 import orjson
 import numpy as np
+import psutil
 
 from pysisyphus.calculators import XTB
 from pysisyphus.constants import AU2KJPERMOL
@@ -63,7 +64,7 @@ def run_gnt(id_, geom, bonds, flag="CONVERGED", opt_ts=False, irc=False, force=F
     os.mkdir(work_dir)
 
     calc = XTB(
-        pal=6,
+        pal=psutil.cpu_count(logical=False),
         quiet=True,
         gfn=2,
         out_dir=work_dir,
@@ -196,8 +197,10 @@ def run_gnt(id_, geom, bonds, flag="CONVERGED", opt_ts=False, irc=False, force=F
             out_dir=work_dir,
             hessian_recalc=10,
             prefix=id_,
+            hard_rms_grad_thresh=5e-4,
         )
         irc.run()
+        print(f"@@@ {id_}: IRC converged? {irc.converged}")
 
     cgntres = CGNTResult(**cgntres_kwargs)
     with open(get_fn(f"{id_}_dump.json"), "wb") as handle:
@@ -263,9 +266,11 @@ def run():
             traceback.print_exception(*exc_info)
             converged = "error"
         print(f"@@@ {id_}: converged? {converged}")
+        print("@@@")
         conv_num += 1 if (converged is True) else 0
         if check_for_end_sign():
             break
+        print()
     print(f"@@@ converged: {conv_num}/{len(geoms)}")
     dur = time.time() - start
     print(f"@@@ crestnt.py run took {dur/60:.2f} min")
