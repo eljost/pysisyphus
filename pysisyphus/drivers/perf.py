@@ -6,17 +6,39 @@ from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.TablePrinter import TablePrinter
 
 
-def run_perf(geom, calc_getter, pal_range, mem_range, repeat=1):
+def run_perf(
+    geom,
+    calc_getter,
+    pals=None,
+    mems=None,
+    pal_range=None,
+    mem_range=None,
+    repeat=1,
+    kind="forces",
+):
     assert repeat > 0
+    assert pals or pal_range
+    assert mems or mem_range
 
+    func_names = {
+        "energy": "get_energy",
+        "forces": "get_forces",
+        "hessian": "get_hessian",
+    }
+
+    if pal_range is not None:
+        pals = range(*pal_range)
     try:
-        pal_iter = range(*pal_range)
-    except TypeError:
-        pal_iter = (pal_range,)
+        pal_iter = tuple(pals)
+    except TypeError:  # When 'pals' is a single integer
+        pal_iter = tuple((pals,))
+
+    if mem_range is not None:
+        mems = range(*mem_range)
     try:
-        mem_iter = range(*mem_range)
-    except TypeError:
-        mem_iter = (mem_range,)
+        mem_iter = tuple(mems)
+    except TypeError:  # When 'mems' is a single integer
+        mem_iter = tuple((mems,))
 
     results = {}
     for pal in pal_iter:
@@ -24,12 +46,13 @@ def run_perf(geom, calc_getter, pal_range, mem_range, repeat=1):
         for mem in mem_iter:
             print(f"{mem=}:")
             for i in range(repeat):
-                print(f"\tRunning cycle {i} ... ", end="")
+                print(f"\tRunning {kind} cycle {i:02d} ... ", end="")
                 calc = calc_getter()
                 calc.pal = pal
                 calc.mem = mem
                 start = time.time()
-                _ = calc.get_forces(geom.atoms, geom.cart_coords)
+                func = getattr(calc, func_names[kind])
+                _ = func(geom.atoms, geom.cart_coords)
                 dur = time.time() - start
                 td = timedelta(seconds=dur)
                 print(f"finished in {td} h")

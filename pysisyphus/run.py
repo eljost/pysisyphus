@@ -1151,9 +1151,8 @@ def get_defaults(conf_dict):
 
     if "perf" in conf_dict:
         dd["perf"] = {
-            "pal_range": [1, 7, 1],
-            "mem_range": 1500,
-            "repeat": None,
+            "mems": 2500,
+            "repeat": 3,
         }
 
     return dd
