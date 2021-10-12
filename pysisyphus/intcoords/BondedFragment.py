@@ -5,13 +5,13 @@ from pysisyphus.linalg import norm3
 
 
 class BondedFragment(Primitive):
-    def __init__(self, indices, *args, bond_indices, **kwargs):
+    def __init__(self, indices, bond_indices, **kwargs):
         from_frag, to_ = bond_indices
         assert from_frag in indices
         assert to_ not in indices
         self.bond_indices = list(bond_indices)
         kwargs["calc_kwargs"] = ("bond_indices",)
-        super().__init__(indices, *args, **kwargs)
+        super().__init__(indices, **kwargs)
 
     @staticmethod
     def _weight(atoms, coords3d, indices, f_damping):

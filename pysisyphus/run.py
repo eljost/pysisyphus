@@ -54,6 +54,7 @@ from pysisyphus.helpers_pure import (
     recursive_update,
     highlight_text,
 )
+from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes, normalize_prim_inputs
@@ -635,7 +636,14 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
 
     start_was_none = start is None
     if start_was_none:
-        constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
+        try:
+            constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
+        # Recreate geom with appropriate primitive
+        except PrimitiveNotDefinedException:
+            geom = geom.copy(
+                coord_kwargs={"define_prims": constrain_prims}
+            )
+            constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
         # The given indices may not correspond exactly to a typed primitives,
         # as they may be reversed. So we fetch the actual typed primitive.
         constr_prim = geom.internal.typed_prims[constr_ind]
@@ -1135,6 +1143,7 @@ def get_defaults(conf_dict):
             "opt": mol_opt_defaults.copy(),
             "symmetric": False,
         }
+        dd["scan"]["opt"]["dump"] = False
 
     if "md" in conf_dict:
         md_T = 298.15
@@ -1306,7 +1315,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Prepare calculator
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
-    calc_kwargs["out_dir"] = yaml_dir
+    calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir)
     if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {

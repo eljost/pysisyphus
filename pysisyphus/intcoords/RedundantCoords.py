@@ -156,7 +156,7 @@ class RedundantCoords:
 
     def set_inds_from_typed_prims(self, typed_prims):
         # These lists will hold the index of the respective typed_prims
-        # in self.typed_prims
+        # in 'self.typed_prims'.
         self._bond_inds = list()
         self._bend_inds = list()
         self._linear_bend_inds = list()

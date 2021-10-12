@@ -10,6 +10,7 @@ from pysisyphus.intcoords import (
     CartesianX,
     CartesianY,
     CartesianZ,
+    DistanceFunction,
     DummyTorsion,
     LinearBend,
     LinearDisplacement,
@@ -449,3 +450,21 @@ def test_dummy_torsion(fix_inner):
     assert grad.size == geom.cart_coords.size
     if fix_inner:
         np.testing.assert_allclose(grad.reshape(-1, 3)[[0, 1]], np.zeros((2, 3)))
+
+
+def test_distance_function():
+    geom = geom_loader("lib:birkholz_rx/18_sn2.trj")[0]
+    coords3d = geom.coords3d
+    indices = [0, 4, 5, 0]
+    coeff = -1
+    df = DistanceFunction(indices, coeff=coeff)
+
+    val, grad = df.calculate(coords3d, gradient=True)
+    assert val == pytest.approx(-1.68855911)
+    grad3d = grad.reshape(-1, 3)
+
+    ref_grad3d_ = fin_diff_prim(df, coords3d).reshape(-1, 3)
+    ref_grad3d = np.zeros_like(grad3d)
+    ref_grad3d[indices[:3]] = ref_grad3d_[:3]
+
+    np.testing.assert_allclose(grad3d, ref_grad3d, atol=1e-8)

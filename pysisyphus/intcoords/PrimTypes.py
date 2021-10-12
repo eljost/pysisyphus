@@ -5,6 +5,7 @@ from pysisyphus.intcoords import (
     Bend,
     BondedFragment,
     DummyTorsion,
+    DistanceFunction,
     CartesianX,
     CartesianY,
     CartesianZ,
@@ -50,6 +51,7 @@ class PrimTypes(OrderedEnum):
     CARTESIAN_Z = 24
     BONDED_FRAGMENT = 25
     DUMMY_TORSION = 26
+    DISTANCE_FUNCTION = 27
 
 
 # Alias for easier access
@@ -74,6 +76,7 @@ PrimTypeShortcuts = {
     # Translation & Rotation coordinates
     "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
     "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
+    "DIST_FUNC": [PT.DISTANCE_FUNCTION],
 }
 
 # The tuples below can be used to decide whether a given type belongs
@@ -84,6 +87,7 @@ Bonds = (
     PT.HYDROGEN_BOND,
     PT.INTERFRAG_BOND,
     PT.AUX_INTERFRAG_BOND,
+    PT.DISTANCE_FUNCTION,
 )
 Bends = (PT.BEND,)
 LinearBends = (
@@ -97,13 +101,19 @@ Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL)
 OutOfPlanes = (PT.OUT_OF_PLANE,)
 Cartesians = (PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z)
 Rotations = (PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C)
-Translations = (PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z, PT.BONDED_FRAGMENT)
-DummyCoords = (PT.DUMMY_TORSION, )
+Translations = (
+    PT.TRANSLATION_X,
+    PT.TRANSLATION_Y,
+    PT.TRANSLATION_Z,
+    PT.BONDED_FRAGMENT,
+)
+DummyCoords = (PT.DUMMY_TORSION,)
 
 
 def get_rot_coord(cls):
     def func(indices, ref_coords3d):
         return cls(indices, ref_coords3d=ref_coords3d)
+
     return func
 
 
@@ -112,6 +122,16 @@ def get_bonded_frag_coord():
         indices_ = indices[:-2]
         bond_indices = indices[-2:]
         return BondedFragment(indices_, bond_indices=bond_indices)
+
+    return func
+
+
+def get_dist_func():
+    def func(indices):
+        indices_ = indices[:4]
+        coeff = indices[4]
+        return DistanceFunction(indices_, coeff=coeff)
+
     return func
 
 
@@ -142,7 +162,11 @@ PrimMap = {
     PT.CARTESIAN_Y: CartesianY,
     PT.CARTESIAN_Z: CartesianZ,
     PT.BONDED_FRAGMENT: get_bonded_frag_coord(),
-    PT.DUMMY_TORSION: lambda indices: DummyTorsion(indices, periodic=True,)
+    PT.DUMMY_TORSION: lambda indices: DummyTorsion(
+        indices,
+        periodic=True,
+    ),
+    PT.DISTANCE_FUNCTION: get_dist_func(),
 }
 
 
