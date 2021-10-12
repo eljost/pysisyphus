@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import h5py
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
@@ -82,6 +83,7 @@ class Dimer(Calculator):
         rotation_remove_trans=True,
         trans_force_f_perp=True,
         bonds=None,
+        N_hessian=None,
         bias_rotation=False,
         bias_translation=False,
         bias_gaussian_dot=0.1,
@@ -124,6 +126,7 @@ class Dimer(Calculator):
 
         # Regarding generation of initial orientation
         self.bonds = bonds
+        self.N_hessian = N_hessian
         # Bias
         self.bias_rotation = bool(bias_rotation)
         self.bias_rotation_a = 0.0
@@ -384,13 +387,26 @@ class Dimer(Calculator):
 
         return gaussian
 
+    def get_N_raw_from_hessian(self, h5_fn):
+        with h5py.File(h5_fn, "r") as handle:
+            hessian = handle["hessian"][:]
+        w, v = np.linalg.eigh(hessian)
+        assert w < -1e-3
+        N_raw = v[:, 0]
+        return N_raw
+
     def set_N_raw(self, coords):
         self.log("No initial orientation given. Generating one.")
-        if self.bonds is None:
-            self.log("Using random guess.")
-            N_raw = np.random.rand(coords.size)
-        else:
+        if self.bonds is not None:
             N_raw = get_weighted_bond_mode(self.bonds, coords.reshape(-1, 3))
+            msg = "weighted bond mode"
+        elif self.N_hessian is not None:
+            N_raw = self.get_N_raw_from_hessian(self.N_hessian)
+            msg = "first imaginary mode of HDF5 Hessian"
+        else:
+            msg = "random guess"
+            N_raw = np.random.rand(coords.size)
+        self.log(f"Obtained initial orientation from {msg}.")
         # Make N_raw translationally invariant and normalize
         self.N = N_raw
         # Now we keep the normalized dimer orientation
