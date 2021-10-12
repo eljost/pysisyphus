@@ -2,6 +2,7 @@ import numpy as np
 
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
+from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.intcoords.Stretch import Stretch
 
 
@@ -93,7 +94,7 @@ def form_coordinate_union(geom1, geom2):
 def get_weighted_bond_mode(weighted_bonds, coords3d, remove_translation=True):
     bond_mode = np.zeros_like(coords3d.flatten())
     for *indices, weight in weighted_bonds:
-        val, grad = Stretch._calculate(coords3d, indices, gradient=True)
+        _, grad = Stretch._calculate(coords3d, indices, gradient=True)
         """
         The gradient gives us the direction into which the bond increases, but
         we want that positive weights correspond to bond formation (distance
@@ -108,3 +109,35 @@ def get_weighted_bond_mode(weighted_bonds, coords3d, remove_translation=True):
 
     bond_mode /= np.linalg.norm(bond_mode)
     return bond_mode
+
+
+def get_weighted_bond_mode_getter(target_weighted_bonds, bond_factor=1.2):
+    """Create input for intcoords.helpers.get_weighted_bond_mode.
+
+    Compared to the rest of pysisyphus this method uses a slightly lowered
+    bond factor, so it is more strict regarding what is considered a bond
+    and what not."""
+
+    def func(atoms, coords3d):
+        bond_sets = [
+            set(bond)
+            for bond in get_bond_sets(atoms, coords3d, bond_factor=bond_factor).tolist()
+        ]
+        bonds = list()
+        for tbond in target_weighted_bonds:
+            *inds, weight = tbond
+            assert weight != 0.0
+            tset = set(inds)
+            """
+            Skip target bond if weight is positive (bond is to be formed) and
+            bond is already present. Similarly, skip when the bond is to be broken
+            and it is already broken.
+            """
+            if (weight > 0 and tset in bond_sets) or (
+                weight < 0 and tset not in bond_sets
+            ):
+                continue
+            bonds.append(tbond)
+        return bonds
+
+    return func

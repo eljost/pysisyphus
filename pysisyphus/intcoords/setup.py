@@ -12,6 +12,9 @@ from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap, Rotations
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
 
+BOND_FACTOR = 1.3
+
+
 def get_pair_covalent_radii(atoms):
     atoms = [a.lower() for a in atoms]
     cov_radii = np.array([CR[a] for a in atoms])
@@ -19,14 +22,17 @@ def get_pair_covalent_radii(atoms):
     return pair_cov_radii
 
 
-def get_bond_mat(geom, bond_factor=1.3):
+def get_bond_mat(geom, bond_factor=BOND_FACTOR):
     cdm = pdist(geom.coords3d)
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
     return bond_mat
 
 
-def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False, return_cbm=False):
+def get_bond_sets(
+    atoms, coords3d, bond_factor=BOND_FACTOR, return_cdm=False, return_cbm=False
+):
+    """I'm sorry, but this function does not return sets, but an int ndarray."""
     cdm = pdist(coords3d)
     # Generate indices corresponding to the atom pairs in the
     # condensed distance matrix cdm.
@@ -57,7 +63,9 @@ def get_fragments(atoms, coords, bond_inds=None):
     return fragments
 
 
-def connect_fragments(cdm, fragments, max_aux=3.78, aux_factor=1.3, logger=None):
+def connect_fragments(
+    cdm, fragments, max_aux=3.78, aux_factor=BOND_FACTOR, logger=None
+):
     """Determine the smallest interfragment bond for a list
     of fragments and a condensed distance matrix."""
     if len(fragments) > 1:
@@ -342,7 +350,7 @@ CoordInfo = namedtuple(
 def setup_redundant(
     atoms,
     coords3d,
-    factor=1.3,
+    factor=BOND_FACTOR,
     define_prims=None,
     min_deg=15,
     dihed_max_deg=175.0,
@@ -417,7 +425,9 @@ def setup_redundant(
     aux_bonds = list()  # Not defined by default
 
     # Don't use auxilary interfragment bonds for bend detection
-    bonds_for_bends = [bonds, ]
+    bonds_for_bends = [
+        bonds,
+    ]
     # If we use regular redundant internals (not TRIC) we define interfragment
     # bends.
     if not tric:
