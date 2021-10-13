@@ -29,17 +29,19 @@ class MOPAC(Calculator):
         "hessian": "DFORCE FORCE LET",
     }
 
-    METHODS = [m.lower() for m in  # lgtm [py/non-iterable-in-for-loop]
-               "AM1 PM3 PM6 PM6-DH2 PM6-D3 PM6-DH+ PM6-DH2 PM6-DH2X " \
-               "PM6-D3H4 PM6-D3H4X PM7 PM7-TS".split()
+    METHODS = [
+        m.lower()
+        for m in "AM1 PM3 PM6 PM6-DH2 PM6-D3 PM6-DH+ PM6-DH2 PM6-DH2X "  # lgtm [py/non-iterable-in-for-loop]
+        "PM6-D3H4 PM6-D3H4X PM7 PM7-TS".split()
     ]
 
     def __init__(self, method="PM7", **kwargs):
         super().__init__(**kwargs)
 
         self.method = method
-        assert self.method.lower() in self.METHODS, \
-            f"Invalid method={self.method}! Supported methods are ({self.METHODS})"
+        assert (
+            self.method.lower() in self.METHODS
+        ), f"Invalid method={self.method}! Supported methods are ({self.METHODS})"
 
         self.uhf = "UHF" if self.mult != 1 else ""
 
@@ -63,12 +65,14 @@ class MOPAC(Calculator):
         NOREO: Dont reorient geometry
         """
 
-        self.inp = textwrap.dedent("""
+        self.inp = textwrap.dedent(
+            """
         NOSYM PM7 {mult} CHARGE={charge} {calc_type} {uhf} THREADS={pal} AUX(6,PRECISION=9) NOREOR
 
  
         {coord_str}
-        """).strip()
+        """
+        ).strip()
 
         self.log(f"Created MOPAC calculator using the '{self.method}' method.")
 
@@ -77,8 +81,10 @@ class MOPAC(Calculator):
         # Optimization flag for coordinate
         of = 1 if opt else 0
         coord_str = "\n".join(
-                [f"{a} {c[0]: 10.08f} {of} {c[1]: 10.08f} {of} {c[2]: 10.08f} {of}"
-                 for a, c in zip(atoms, coords)]
+            [
+                f"{a} {c[0]: 10.08f} {of} {c[1]: 10.08f} {of} {c[2]: 10.08f} {of}"
+                for a, c in zip(atoms, coords)
+            ]
         )
         return coord_str
 
@@ -86,13 +92,13 @@ class MOPAC(Calculator):
         coord_str = self.prepare_coords(atoms, coords, opt)
 
         inp = self.inp.format(
-                charge=self.charge,
-                mult=self.MULT_STRS[self.mult],
-                uhf=self.uhf,
-                calc_type=self.CALC_TYPES[calc_type],
-                coord_str=coord_str,
-                pal=self.pal,
-                # mem=self.mem,
+            charge=self.charge,
+            mult=self.MULT_STRS[self.mult],
+            uhf=self.uhf,
+            calc_type=self.CALC_TYPES[calc_type],
+            coord_str=coord_str,
+            pal=self.pal,
+            # mem=self.mem,
         )
         return inp
 
@@ -100,7 +106,7 @@ class MOPAC(Calculator):
         calc_type = "energy"
         inp = self.prepare_input(atoms, coords, calc_type)
         # with open("inp.mop", "w") as handle:
-            # handle.write(inp)
+        # handle.write(inp)
         # import sys; sys.exit()
         results = self.run(inp, calc="energy")
         return results
@@ -124,7 +130,7 @@ class MOPAC(Calculator):
 
     def parse_energy(self, path):
         # with open(path / self.out_fn) as handle:
-            # text = handle.read()
+        # text = handle.read()
         # energy_re = "TOTAL ENERGY\s+=\s+([\-\.\d]+) EV"
 
         text = self.read_aux(path)
@@ -137,7 +143,6 @@ class MOPAC(Calculator):
         }
         return result
 
-
     def parse_grad(self, path):
         text = self.read_aux(path)
         # grad_re = "GRADIENTS:KCAL.+$\s+(.+)$"
@@ -147,7 +152,7 @@ class MOPAC(Calculator):
         # Gradients are given in kcal*mol/angstrom
         gradients = np.array(mobj[1].split(), dtype=float)
         # Convert to hartree/bohr
-        gradients /= AU2KCALMOL / BOHR2ANG
+        gradients = gradients / AU2KCALMOL / BOHR2ANG
 
         forces = -gradients
         result = {
@@ -172,7 +177,7 @@ class MOPAC(Calculator):
         hess_re = " #  Lower half triangle only\s+([\s\.\-\d]+)\s+NORMAL_MODE"
         tril_hess = re.search(hess_re, text)[1].strip().split()
         tril_hess = np.array(tril_hess, dtype=float)
-        assert tril_hess.size == sum(range(coord_num+1))
+        assert tril_hess.size == sum(range(coord_num + 1))
         hessian_m = np.zeros((coord_num, coord_num))
         tril_indices = np.tril_indices(coord_num)
         hessian_m[tril_indices] = tril_hess
