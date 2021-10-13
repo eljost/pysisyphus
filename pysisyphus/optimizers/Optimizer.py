@@ -151,7 +151,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
-        self.h5_fn = self.out_dir / h5_fn
+        self.h5_fn = self.get_path_for_fn(h5_fn)
         self.h5_group_name = h5_group_name
 
         current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
