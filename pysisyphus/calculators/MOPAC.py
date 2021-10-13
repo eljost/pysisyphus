@@ -5,6 +5,7 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2ANG, AU2KCALMOL
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.helpers_pure import file_or_str
 
 
 class MOPAC(Calculator):
@@ -129,11 +130,11 @@ class MOPAC(Calculator):
         return text
 
     def parse_energy(self, path):
-        # with open(path / self.out_fn) as handle:
-        # text = handle.read()
-        # energy_re = "TOTAL ENERGY\s+=\s+([\-\.\d]+) EV"
+        return self.parse_energy_from_aux(self.read_aux(path))
 
-        text = self.read_aux(path)
+    @staticmethod
+    @file_or_str(".aux", method=False)
+    def parse_energy_from_aux(text):
         energy_re = "HEAT_OF_FORMATION:KCAL/MOL=([\d\-D+\.]+)"
         mobj = re.search(energy_re, text)
         energy = float(mobj[1].replace("D", "E")) / AU2KCALMOL
@@ -162,13 +163,17 @@ class MOPAC(Calculator):
         return result
 
     def parse_hessian(self, path):
-        text = self.read_aux(path)
+        return self.parse_hessian_from_aux(self.read_aux(path))
 
+    @staticmethod
+    @file_or_str(".aux", method=False)
+    def parse_hessian_from_aux(text):
         # Parse employed masses, as the given hessian is mass-weighted
         # and we have to un-weigh it.
-        mass_re = "ISOTOPIC_MASSES.+\s*(.+)"
-        mobj = re.search(mass_re, text, re.MULTILINE)
-        masses = np.array(mobj[1].strip().split(), dtype=float)
+        mass_re = re.compile("ISOTOPIC_MASSES\[(\d+)\]=\s*(.+?)ROTAT_CONSTS", re.DOTALL)
+        # mobj = re.search(mass_re, text, re.MULTILINE)
+        mass_mobj = mass_re.search(text)
+        masses = np.array(mass_mobj[2].strip().split(), dtype=float)
         # This matrix is used to un-weigh the hessian
         M = np.diag(np.sqrt(np.repeat(masses, 3)))
         # For N atoms we expect 3N cartesian coordinates
@@ -196,10 +201,12 @@ class MOPAC(Calculator):
         #     1 mydn/Å * (100 / 1556.8931 Hartree/Bohr² * Å/mydn) = 0.06423 Hartree/Bohr²
         hessian *= 0.06423
 
+        energy = MOPAC.parse_energy_from_aux(text)["energy"]
+
         result = {
+            "energy": energy,
             "hessian": hessian,
         }
-        result.update(self.parse_energy(path))
         return result
 
     def __str__(self):

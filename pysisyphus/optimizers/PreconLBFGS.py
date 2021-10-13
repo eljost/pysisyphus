@@ -5,6 +5,7 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 
 from pysisyphus.calculators import Dimer
+from pysisyphus.cos.GrowingNT import GrowingNT
 from pysisyphus.line_searches import *
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -44,26 +45,31 @@ class PreconLBFGS(Optimizer):
         self.precon_kind = precon_kind
 
         try:
-            is_dimer = isinstance(self.geometry.calculator, Dimer)
+            go_uphill = isinstance(self.geometry.calculator, Dimer) or isinstance(
+                self.geometry, GrowingNT
+            )
         # COS objectes may not have a calculator
         except AttributeError:
-            is_dimer = False
+            go_uphill = False
 
         if c_stab is None:
             self.log("No c_stab specified.")
-            if is_dimer:
-                self.log("Found Dimer calculator, using bigger stabilization.")
+            if go_uphill:
                 c_stab = 0.103  # 1 eV/Å²
+                self.log(
+                    "Found climbing calculation. Using higher regularization "
+                    f"c_stab={c_stab:.4f} au/bohr**2."
+                )
             else:
                 c_stab = 0.0103  # 0.1 eV/Å²
 
         self.c_stab = float(c_stab)
         self.log(f"Using c_stab={self.c_stab:.6f}")
 
-        if max_step_element is None and is_dimer:
+        if max_step_element is None and go_uphill:
             max_step_element = 0.25
             self.log(
-                f"Found Dimer calculator. Using max_step_element={max_step_element:.2f}"
+                f"Found climbing calculation. Using max_step_element={max_step_element:.2f}"
             )
         elif max_step_element is None and line_search in (None, False):
             max_step_element = 0.2

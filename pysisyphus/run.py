@@ -1738,6 +1738,11 @@ def do_clean(force=False):
         "ts_final_hessian.h5",
         "third_deriv.h5",
         "*.ao_ovlp_rec",
+        # MOPAC
+        "*.mopac.aux",
+        "*.mopac.arc",
+        "*.mopac.mop",
+        "*.mopac.out",
     )
     to_rm_paths = list()
     for glob in rm_globs:
