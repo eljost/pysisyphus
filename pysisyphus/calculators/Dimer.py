@@ -387,12 +387,12 @@ class Dimer(Calculator):
 
         return gaussian
 
-    def get_N_raw_from_hessian(self, h5_fn):
+    def get_N_raw_from_hessian(self, h5_fn, root=0):
         with h5py.File(h5_fn, "r") as handle:
             hessian = handle["hessian"][:]
         w, v = np.linalg.eigh(hessian)
-        assert w < -1e-3
-        N_raw = v[:, 0]
+        assert w[root] < -1e-3
+        N_raw = v[:, root]
         return N_raw
 
     def set_N_raw(self, coords):
@@ -602,7 +602,7 @@ class Dimer(Calculator):
             self.update_orientation(coords)
         if (N_backup is not None) and self.rotation_disable_pos_curv and self.C > 0:
             self.log("Rotation did not yield a negative curvature. "
-                     "Restoring previous orientation N before rotation."
+                     "Restoring previous unrotated N."
             )
             self.N = N_backup
         # Now we (have an updated self.N and) can do the force projections
