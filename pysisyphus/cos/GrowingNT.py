@@ -24,6 +24,7 @@ class GrowingNT:
         r_update=True,
         r_update_thresh=1.0,
         stop_after_ts=False,
+        require_imag_freq=0.0,
     ):
         assert geom.coord_type == "cart"
 
@@ -36,6 +37,7 @@ class GrowingNT:
         self.r_update = r_update
         self.r_update_thresh = r_update_thresh
         self.stop_after_ts = stop_after_ts
+        self.require_imag_freq = require_imag_freq
 
         self.coord_type = self.geom.coord_type
         if self.final_geom:
@@ -57,6 +59,9 @@ class GrowingNT:
         self.sp_images = [self.geom.copy()]  # Stationary points
         self.ts_images = list()
         self.min_images = list()
+
+        self.ts_imag_freqs = list()
+
         # Right now this leads to a gradient calculation in the momement,
         # this object is constructed, which is bad.
         self.initialize()
@@ -213,6 +218,8 @@ class GrowingNT:
                 )
                 if self.passed_ts:
                     self.ts_images.append(sp_image)
+                    if self.require_imag_freq < 0.0:
+                        self.ts_imag_freqs.append(self.geom.get_imag_frequencies())
                 elif self.passed_min:
                     self.min_images.append(sp_image)
 
@@ -239,7 +246,15 @@ class GrowingNT:
         return can_grow
 
     def check_convergence(self, *args, **kwargs):
-        return self.stop_after_ts and len(self.ts_images) > 0
+        try:
+            latest_ts = self.ts_images[-1]
+        except IndexError:
+            return False
+
+        converged = self.stop_after_ts
+        if self.require_imag_freq:
+            converged = converged and self.ts_imag_freqs[-1][0] <= self.require_imag_freq
+        return converged
 
     def get_additional_print(self):
         if self.did_reparametrization:
