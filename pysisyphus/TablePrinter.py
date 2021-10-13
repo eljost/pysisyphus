@@ -24,6 +24,7 @@ class TablePrinter:
         self.fmts = {
             "int": "{:>" + w + "d}",
             "float": "{: >" + w + ".6f}",
+            "float_short": "{: >" + w + ".2f}",
             "str": "{:>" + w + "s}",
         }
         self.fmts.update(fmts_update)

@@ -213,7 +213,7 @@ class HessianOptimizer(Optimizer):
             last_step_norm = np.linalg.norm(step)
             self.set_new_trust_radius(coeff, last_step_norm)
             if unexpected_increase:
-                print(
+                self.table.print(
                     f"Unexpected energy increase ({actual_change:.6f} au)! "
                     f"Trust radius: old={old_trust:.4}, new={self.trust_radius:.4}"
                 )

@@ -470,7 +470,7 @@ def do_final_hessian(
             imag_fns.append(trj_fn)
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
-            print(f"Wrote imaginary mode with ṽ={imag_mode.nu:.2f} cm⁻¹ to '{trj_fn}'")
+            print(f"Wrote imaginary mode with ṽ={imag_mode.nu: >10.2f} cm⁻¹ to '{trj_fn}'")
         print()
 
     thermo = None

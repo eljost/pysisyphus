@@ -198,7 +198,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         header = (
             "cycle Δ(energy) max(force) rms(force) max(step) rms(step) s/cycle".split()
         )
-        col_fmts = "int float float float float float float".split()
+        col_fmts = "int float float float float float float_short".split()
         self.table = TablePrinter(header, col_fmts, width=12)
 
     def get_path_for_fn(self, fn):
@@ -502,7 +502,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             prep_time = prep_end_time - prep_start_time
             print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
-        print("All quantities in au.\n")
+        print("If not specified otherwise, all quantities are given in au.\n")
         self.table.print_header(with_sep=False)
         self.stopped = False
         # Actual optimization loop
