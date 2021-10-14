@@ -25,6 +25,7 @@ class GrowingNT:
         r_update_thresh=1.0,
         stop_after_ts=False,
         require_imag_freq=0.0,
+        hessian_at_ts=False,
     ):
         assert geom.coord_type == "cart"
 
@@ -38,6 +39,7 @@ class GrowingNT:
         self.r_update_thresh = r_update_thresh
         self.stop_after_ts = stop_after_ts
         self.require_imag_freq = require_imag_freq
+        self.hessian_at_ts = hessian_at_ts
 
         self.coord_type = self.geom.coord_type
         if self.final_geom:
@@ -150,6 +152,11 @@ class GrowingNT:
         # Indicate the GrowingNT was properly initialized
         self._initialized = True
 
+    def calc_hessian_for(self, other_geom):
+        res = self.geom.get_energy_and_cart_hessian_at(other_geom.cart_coords)
+        cart_hessian = res["hessian"]
+        return cart_hessian
+
     @property
     def energy(self):
         return self.geom.energy
@@ -214,12 +221,20 @@ class GrowingNT:
                 self.sp_images.append(sp_image)
                 self.log(
                     f"Passed stationary point! It seems to be a {sp_kind}."
-                    f"\n{self.geom.as_xyz()}"
+                    f"\n{sp_image.as_xyz()}"
                 )
                 if self.passed_ts:
                     self.ts_images.append(sp_image)
+                    if self.hessian_at_ts:
+                        sp_hessian = self.calc_hessian_for(sp_image)
+                        nus, *_ = sp_image.get_normal_modes(sp_hessian)
+                        self.log(f"First 5 frequencies: {nus[:5]}")
                     if self.require_imag_freq < 0.0:
-                        self.ts_imag_freqs.append(self.geom.get_imag_frequencies())
+                        try:
+                            sp_hessian
+                        except NameError:
+                            sp_hessian = self.calc_hessian_for(sp_image)
+                        self.ts_imag_freqs.append(sp_image.get_imag_frequencies(sp_hessian))
                 elif self.passed_min:
                     self.min_images.append(sp_image)
 
