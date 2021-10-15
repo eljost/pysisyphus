@@ -38,19 +38,18 @@ class PreconLBFGS(Optimizer):
 
         self.alpha_init = alpha_init
         self.precon = precon
-        # Disable preconditioning for 1 atom species, e.g. analytical potentials
+        # Disable preconditioning for 1 atom species, e.g., analytical potentials
         if self.precon and (self.geometry.cart_coords.size == 3):
             self.precon = None
         self.precon_update = precon_update
         self.precon_kind = precon_kind
 
         try:
-            go_uphill = isinstance(self.geometry.calculator, Dimer) or isinstance(
-                self.geometry, GrowingNT
-            )
+            is_dimer = isinstance(self.geometry.calculator, Dimer)
         # COS objectes may not have a calculator
         except AttributeError:
-            go_uphill = False
+            is_dimer = False
+        go_uphill = is_dimer or isinstance(self.geometry, GrowingNT)
 
         if c_stab is None:
             self.log("No c_stab specified.")
@@ -197,7 +196,7 @@ class PreconLBFGS(Optimizer):
                 )
             except TypeError:
                 self.log("Line search did not converge!")
-                step = self.scale_max_element(step, self.max_step)
+                step = self.scale_max_element(step, self.max_step_element)
         else:
             step = self.scale_max_element(step, self.max_step_element)
         step_norm = np.linalg.norm(step)
