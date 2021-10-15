@@ -5,7 +5,7 @@ __all__ = [
     "CartesianY",
     "CartesianZ",
     "DummyTorsion",
-    "DistanceFunction"
+    "DistanceFunction",
     "LinearBend",
     "LinearDisplacement",
     "OutOfPlane",

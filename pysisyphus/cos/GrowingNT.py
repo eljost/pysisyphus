@@ -261,9 +261,7 @@ class GrowingNT:
         return can_grow
 
     def check_convergence(self, *args, **kwargs):
-        try:
-            latest_ts = self.ts_images[-1]
-        except IndexError:
+        if len(self.ts_images) == 0:
             return False
 
         converged = self.stop_after_ts

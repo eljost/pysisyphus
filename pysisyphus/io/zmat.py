@@ -1,5 +1,4 @@
 from collections import namedtuple
-import itertools as it
 
 import numpy as np
 

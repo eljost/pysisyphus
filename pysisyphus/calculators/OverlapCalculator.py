@@ -458,10 +458,7 @@ class OverlapCalculator(Calculator):
 
     @staticmethod
     def from_overlap_data(h5_fn, set_wfow=False):
-        calc_kwargs = {
-            "track": True,
-        }
-        calc = OverlapCalculator(**calc_kwargs)
+        calc = OverlapCalculator(track=True)
 
         root_info = False
         with h5py.File(h5_fn) as handle:
@@ -482,6 +479,8 @@ class OverlapCalculator(Calculator):
             except KeyError:
                 print(f"Couldn't find root information in '{h5_fn}'.")
 
+        calc.ovlp_type = ovlp_type
+        calc.ovlp_with = ovlp_with
         calc.mo_coeff_list = list(mo_coeffs)
         calc.ci_coeff_list = list(ci_coeffs)
         calc.all_energies_list = list(all_energies)

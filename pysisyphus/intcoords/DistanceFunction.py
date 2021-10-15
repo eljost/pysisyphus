@@ -1,8 +1,5 @@
-import numpy as np
-
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords.Stretch import Stretch
-from pysisyphus.linalg import norm3
 
 
 class DistanceFunction(Primitive):

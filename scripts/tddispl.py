@@ -1,8 +1,6 @@
 import argparse
 import sys
 
-import h5py
-
 from pysisyphus.irc.initial_displ import cubic_displ_for_h5
 
 

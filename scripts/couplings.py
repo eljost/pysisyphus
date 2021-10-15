@@ -2,7 +2,6 @@
 
 import argparse
 import sys
-import itertools as it
 
 import h5py
 import matplotlib.pyplot as plt

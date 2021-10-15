@@ -214,24 +214,6 @@ def run_gnt(id_, geom, bonds, flag="CONVERGED", opt_ts=False, irc=False, force=F
     return opt.is_converged
 
 
-def plot_ens():
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    from pysisyphus.constants import AU2KJPERMOL
-
-    geoms = geom_loader("gnt.trj")
-    calc = XTB(pal=6)
-    ens = [calc.get_energy(geom.atoms, geom.coords)["energy"] for geom in geoms]
-    ens = np.array(ens)
-    ens -= ens.min()
-    ens *= AU2KJPERMOL
-
-    fig, ax = plt.subplots()
-    ax.plot(ens)
-    plt.show()
-
-
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("name")
