@@ -10,6 +10,9 @@ from pysisyphus.optimizers.hessian_updates import (
     flowchart_update,
     damped_bfgs_update,
     bofill_update,
+    ts_bfgs_update,
+    ts_bfgs_update_org,
+    ts_bfgs_update_revised,
 )
 from pysisyphus.optimizers.Optimizer import Optimizer
 
@@ -27,6 +30,9 @@ class HessianOptimizer(Optimizer):
         "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
         "bofill": bofill_update,
+        "ts_bfgs": ts_bfgs_update,
+        "ts_bfgs_org": ts_bfgs_update_org,
+        "ts_bfgs_rev": ts_bfgs_update_revised,
     }
 
     rfo_dict = {
@@ -472,7 +478,10 @@ class HessianOptimizer(Optimizer):
                 step_ = self.get_newton_step_on_trust(
                     eigvals, eigvecs, gradient, transform=False
                 )
+                # # Simple, downscaled RFO step
                 # step_ = rfo_step_ / rfo_norm_ * self.trust_radius
+            else:
+                step_ = rfo_step_
 
         # Transform step back to original basis
         step = eigvecs.dot(step_)

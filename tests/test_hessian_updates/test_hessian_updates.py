@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from pysisyphus.calculators import XTB
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.hessian_updates import (
@@ -15,6 +16,7 @@ from pysisyphus.optimizers.hessian_updates import (
 )
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
+from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 
 
 @pytest.mark.parametrize(
@@ -37,10 +39,11 @@ def test_hessian_updates(update_func):
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "hessian_update", [
+    "hessian_update",
+    [
         "bfgs",
         "none",
-    ]
+    ],
 )
 def test_no_hessian_update(hessian_update):
     geom = geom_loader("lib:h2o.xyz")
@@ -50,3 +53,29 @@ def test_no_hessian_update(hessian_update):
     opt.run()
 
     assert geom.energy == pytest.approx(-74.96590119)
+
+
+@using("xtb")
+@pytest.mark.parametrize(
+    "hessian_update",
+    (
+        "bofill",
+        "ts_bfgs",
+        "ts_bfgs_org",
+        "ts_bfgs_rev",
+    ),
+)
+def test_ts_hessian_update(this_dir, hessian_update):
+    geom = geom_loader(this_dir / "tsbfgs_init.xyz", coord_type="redund")
+    calc = XTB(pal=6)
+
+    geom.set_calculator(calc)
+
+    opt = RSIRFOptimizer(
+        geom,
+        hessian_init=this_dir / "tsbfgs_init_hess.h5",
+        hessian_update=hessian_update,
+    )
+    opt.run()
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(-17.81225910)

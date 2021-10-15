@@ -12,6 +12,8 @@ from pysisyphus.optimizers.Optimizer import get_data_model, get_h5_group
 class TSHessianOptimizer(HessianOptimizer):
     """Optimizer to find first-order saddle points."""
 
+    valid_updates = ("bofill", "ts_bfgs", "ts_bfgs_org", "ts_bfgs_rev")
+
     def __init__(
         self,
         geometry,
@@ -21,7 +23,7 @@ class TSHessianOptimizer(HessianOptimizer):
         rx_coords=None,
         rx_mode=None,
         hessian_init="calc",
-        hessian_update="bofill",
+        hessian_update="ts_bfgs",
         hessian_recalc_reset=True,
         max_micro_cycles=50,
         trust_radius=0.3,
@@ -32,8 +34,8 @@ class TSHessianOptimizer(HessianOptimizer):
     ):
 
         assert (
-            hessian_update == "bofill"
-        ), "Bofill update is recommended in a TS-optimization."
+            hessian_update in self.valid_updates
+        ), f"Invalid Hessian update. Please chose from: {self.valid_updates}!"
 
         super().__init__(
             geometry,
