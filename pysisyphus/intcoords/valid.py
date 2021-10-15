@@ -24,7 +24,7 @@ def are_collinear(vec1, vec2, deg_thresh=179.5):
     return abs(vec1.dot(vec2)) >= abs(thresh)
 
 
-def dihedral_valid(coords3d, inds, deg_thresh=179.5):
+def dihedral_valid(coords3d, inds, deg_thresh=177.5):
     if len(set(inds)) != 4:
         return False
 

@@ -14,6 +14,9 @@ def test_full_run_hf_abstraction():
         "preopt": {
             "max_cycles": 25,
             "trust_max": 0.3,
+            # "geom": {
+                # "type": "tric",
+            # },
         },
         "interpol": {
             "type": "redund",

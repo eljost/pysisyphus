@@ -18,9 +18,9 @@ init_logging()
     [
         pytest.param(
             PySCF, {"basis": "6-31g*", "xc": "b3lyp", "pal": 2},
-            29,
-            4.79584,
-            2.67745,
+            28,
+            4.794052,
+            2.677647,
             marks=using("pyscf"),
         ),
         pytest.param(XTB, {}, 27, 5.263561, 2.62731, marks=using("xtb")),

@@ -464,9 +464,8 @@ class HessianOptimizer(Optimizer):
         # Otherwise, use trust region newton step
         else:
             self.log(
-                "RS algorithm did not produce a desired step length "
-                f"after {self.max_micro_cycles} micro cycles. Using "
-                "simple downscaled step with alpha=1."
+                "RS algorithm did not produce a desired step length in "
+                f"{self.max_micro_cycles} micro cycles. Trying RFO with α=1.0."
             )
             H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.0)
             rfo_step_, eigval_min, nu, _ = self.solve_rfo(H_aug, "min")
@@ -475,10 +474,14 @@ class HessianOptimizer(Optimizer):
             # This should always be True if the above algorithm failed but we
             # keep this line nonetheless,  to make it more obvious.
             if rfo_norm_ > self.trust_radius:
+                self.log(
+                    f"Proposed RFO step with norm {rfo_norm_:.4f} is outside trust "
+                    f"radius Δ={self.trust_radius:.4f}. "
+                )
                 step_ = self.get_newton_step_on_trust(
                     eigvals, eigvecs, gradient, transform=False
                 )
-                # # Simple, downscaled RFO step
+                # Simple, downscaled RFO step
                 # step_ = rfo_step_ / rfo_norm_ * self.trust_radius
             else:
                 step_ = rfo_step_
@@ -496,6 +499,10 @@ class HessianOptimizer(Optimizer):
         return eigvecs.dot(eigvecs.T.dot(gradient) / eigvals)
 
     def get_newton_step_on_trust(self, eigvals, eigvecs, gradient, transform=True):
+        """Step on trust-radius.
+
+        See Nocedal 4.3 Iterative solutions of the subproblem
+        """
         min_ind = eigvals.argmin()
         min_eigval = eigvals[min_ind]
         pos_definite = (eigvals > 0.0).all()
@@ -553,30 +560,38 @@ class HessianOptimizer(Optimizer):
 
         BRACKET_END = 1e10
         if not hard_case:
-            bracket_start = 0.0 if pos_definite else -min_eigval - 1e-3
+            bracket_start = 0.0 if pos_definite else -min_eigval + 1e-2
             bracket = (bracket_start, BRACKET_END)
-            res = root_search(bracket)
-            assert res.converged
-            return finalize_step(res.root)
-
-        # Hard case.
-        # First we try the bracket (-b1, ∞)
-        bracket = (-min_eigval, BRACKET_END)
-        res = root_search(bracket)
-        if res.converged:
-            return finalize_step(res.root)
+            try:
+                res = root_search(bracket)
+                assert res.converged
+                return finalize_step(res.root)
+            # ValueError may be raised when the function values for the
+            # initial bracket have the same sign. If so, we continue with
+            # treating it as a hard case.
+            except ValueError:
+                pass
 
         # Now we would try the bracket (-b2, -b1). The resulting step should have
         # a suitable length, but the (shifted) Hessian would have an incorrect
         # eigenvalue spectrum (not positive definite). To solve this we use a
         # different formula to calculate the step.
+        # import pdb; pdb.set_trace()  # fmt: skip
         without_first = gradient_trans[1:] / (eigvals[1:] - min_eigval)
-        tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
-        step_trans = [tau] + -without_first.tolist()
+        try:
+            tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
+            step_trans = [tau] + (-without_first).tolist()
+        except ValueError:
+            # Hard case.
+            bracket = (-min_eigval, BRACKET_END)
+            res = root_search(bracket)
+            if res.converged:
+                return finalize_step(res.root)
 
-        if transform:
-            step = eigvecs.dot(step_trans)
-        return step
+        if not transform:
+            return step_trans
+
+        return eigvecs.dot(step_trans)
 
     @staticmethod
     def quadratic_model(gradient, hessian, step):

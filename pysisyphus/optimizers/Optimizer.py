@@ -152,7 +152,10 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
-        self.h5_fn = self.get_path_for_fn(h5_fn)
+
+        # Don't use prefix for this fn, as different optimizations
+        # can be distinguished according to their group in the HDF5 file.
+        self.h5_fn = self.get_path_for_fn(h5_fn, with_prefix=False)
         self.h5_group_name = h5_group_name
 
         current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
@@ -201,8 +204,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         col_fmts = "int float float float float float float_short".split()
         self.table = TablePrinter(header, col_fmts, width=12)
 
-    def get_path_for_fn(self, fn):
-        return self.out_dir / (self.prefix + fn)
+    def get_path_for_fn(self, fn, with_prefix=True):
+        prefix = self.prefix if with_prefix else ""
+        return self.out_dir / (prefix + fn)
 
     def make_conv_dict(self, key, rms_force=None):
         if not rms_force:

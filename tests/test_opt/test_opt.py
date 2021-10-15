@@ -23,15 +23,15 @@ from pysisyphus.optimizers.StabilizedQNMethod import StabilizedQNMethod
 @pytest.mark.parametrize(
     "calc_cls, start, ref_cycle, ref_coords",
     [
-        (AnaPot, (0.667, 1.609, 0.0), 12, (1.941, 3.8543, 0.0)),
+        (AnaPot, (0.667, 1.609, 0.0), 18, (1.941, 3.8543, 0.0)),
         (AnaPot3, (-0.36, 0.93, 0.0), 10, (-1.0, 0.0, 0.0)),
-        (AnaPot4, (-0.50, 3.32, 0.0), 12, (-2.2102, 0.3297, 0.0)),
+        (AnaPot4, (-0.50, 3.32, 0.0), 11, (-2.2102, 0.3297, 0.0)),
         (AnaPotCBM, (-0.32, 0.71, 0.0), 10, (-1.0, 0.0, 0.0)),
         (CerjanMiller, (-0.46, 1.48, 0.0), 10, (0.0, 0.0, 0.0)),
-        (FourWellAnaPot, (1.45, 0.04, 0.0), 12, (1.1241, -1.4853, 0.0)),
+        (FourWellAnaPot, (1.45, 0.04, 0.0), 10, (1.1241, -1.4853, 0.0)),
         (LEPSBase, (1.31, 0.82, 0.0), 27, (0.74200064, 7.17588688, 0.0)),
         (MullerBrownPot, (-0.69, 0.55, 0.0), 12, (-0.05, 0.4667, 0.0)),
-        (Rosenbrock, (-1.00, 1.00, 0.0), 40, (1.0, 1.0, 0.0)),
+        (Rosenbrock, (-1.00, 1.00, 0.0), 28, (1.0, 1.0, 0.0)),
     ],
 )
 def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
@@ -71,8 +71,8 @@ def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
 @pytest.mark.parametrize(
     "opt_cls, opt_kwargs_, ref_cycle",
     [
-        (RFOptimizer, {}, 12),
-        (RFOptimizer, {"adapt_step_func": True}, 12),
+        (RFOptimizer, {}, 18),
+        (RFOptimizer, {"adapt_step_func": True}, 18),
         (NCOptimizer, {}, 13),
         # LBFGS converged to the saddle point, as the 'hessian' has the
         # wrong eigenvalue structure. Ok, ok we don't have a hessian but
@@ -144,7 +144,7 @@ def test_thresh_never():
     opt = RFOptimizer(geom, **opt_kwargs)
     # Restrict max_cycles; will crash otherwise, as the BFGS upadte becomes
     # faulty for vanishing step and gradient differences.
-    opt.max_cycles = 16
+    opt.max_cycles = 20
     opt.run()
 
     assert geom.energy == pytest.approx(0.98555442)

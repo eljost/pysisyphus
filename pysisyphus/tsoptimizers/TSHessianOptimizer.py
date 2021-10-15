@@ -27,9 +27,11 @@ class TSHessianOptimizer(HessianOptimizer):
         hessian_recalc_reset=True,
         max_micro_cycles=50,
         trust_radius=0.3,
+        trust_max=0.5,
         augment_bonds=False,
         min_line_search=False,
         max_line_search=False,
+        assert_neg_eigval=False,
         **kwargs,
     ):
 
@@ -42,6 +44,7 @@ class TSHessianOptimizer(HessianOptimizer):
             hessian_init=hessian_init,
             hessian_update=hessian_update,
             trust_radius=trust_radius,
+            trust_max=trust_max,
             hessian_recalc_reset=hessian_recalc_reset,
             **kwargs,
         )
@@ -84,6 +87,7 @@ class TSHessianOptimizer(HessianOptimizer):
         self.augment_bonds = augment_bonds and (self.hessian_init == "calc")
         self.min_line_search = min_line_search
         self.max_line_search = max_line_search
+        self.assert_neg_eigval = assert_neg_eigval
 
         self.ts_mode = None
         self.max_micro_cycles = max_micro_cycles
@@ -255,16 +259,17 @@ class TSHessianOptimizer(HessianOptimizer):
         # When we left the convex region of the PES we only compare to other
         # imaginary modes ... is this a bad idea? Maybe we should use all modes
         # for the overlaps?!
-        if self.ts_mode_eigval < 0:
+        if self.ts_mode_eigval < 0 and neg_num > 0:
             infix = "imaginary "
             ovlp_eigvecs = eigvecs[:, :neg_num]
             eigvals = eigvals[:neg_num]
             # When the eigenvalue corresponding to the TS mode has been negative once,
             # we should not lose all negative eigenvalues. If this happens something went
             # wrong and we crash :)
-            assert (
-                neg_num >= 1
-            ), "Need at least 1 negative eigenvalue for TS optimization."
+            if self.assert_neg_eigval and neg_num == 0:
+                raise AssertionError(
+                    "Need at least 1 negative eigenvalue for TS optimization."
+                )
         # Use all eigenvectors for overlaps when the eigenvalue corresponding to the TS
         # mode is still positive.
         else:

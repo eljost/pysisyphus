@@ -13,17 +13,18 @@ import numpy as np
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "hessian_init, ref_cycle", [
+    "hessian_init, ref_cycle",
+    [
         ("calc", 11),
         # Converges to wrong minimum
         # ("unit", 9),
-        ("fischer", 15),
-        ("lindh", 21),
+        ("fischer", 16),
+        ("lindh", 24),
         ("simple", 22),
         ("swart", 15),
         pytest.param("xtb", 17, marks=[using("pyscf"), using("xtb")]),
         pytest.param("xtb1", 16, marks=[using("pyscf"), using("xtb")]),
-    ]
+    ],
 )
 def test_guess_hessians(hessian_init, ref_cycle):
     geom = geom_loader("lib:h2o2_hf_321g_opt.xyz", coord_type="redund")
@@ -54,10 +55,11 @@ def test_ts_hessian():
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "tsopt_cls, ref_cycle", [
-        (RSPRFOptimizer, 8),
+    "tsopt_cls, ref_cycle",
+    [
+        (RSPRFOptimizer, 13),
         # (RSIRFOptimizer, 12),
-    ]
+    ],
 )
 def test_ts_hessian_opt(tsopt_cls, ref_cycle):
     geom = geom_loader("lib:baker_ts/01_hcn.xyz", coord_type="redund")
@@ -66,10 +68,9 @@ def test_ts_hessian_opt(tsopt_cls, ref_cycle):
     opt_kwargs = {
         "hessian_init": "fischer",
         "dump": True,
-        "rx_coords": (("BEND", 2, 1, 0), ),
+        "rx_coords": (("BEND", 2, 1, 0),),
         "thresh": "gau_tight",
-        "max_line_search": True,
-        "min_line_search": True,
+        "trust_max": 0.3,
     }
     opt = tsopt_cls(geom, **opt_kwargs)
     opt.run()
