@@ -433,6 +433,13 @@ class Geometry:
         self.calculator = calculator
 
     @property
+    def is_analytical_2d(self):
+        try:
+            return self.calculator.analytical_2d
+        except AttributeError:
+            return False
+
+    @property
     def mm_inv(self):
         """Inverted mass matrix.
 

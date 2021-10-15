@@ -75,7 +75,7 @@ class HessianOptimizer(Optimizer):
         # Restricted-step related
         self.alpha0 = alpha0
         self.max_micro_cycles = int(max_micro_cycles)
-        assert max_micro_cycles >= 1
+        assert max_micro_cycles >= 0
         self.rfo_overlaps = rfo_overlaps
 
         assert self.small_eigval_thresh > 0.0, "small_eigval_thresh must be > 0.!"
@@ -147,6 +147,10 @@ class HessianOptimizer(Optimizer):
             hessian_init = self.hessian_init
 
         self.H, hess_str = get_guess_hessian(self.geometry, hessian_init)
+        if self.hessian_init != "calc" and self.geometry.is_analytical_2d:
+            assert self.H.shape == (3, 3)
+            self.H[2, 2] = 0.0
+
         msg = f"Using {hess_str} Hessian"
         if hess_str == "saved":
             msg += f" from '{hessian_init}'"
@@ -451,6 +455,7 @@ class HessianOptimizer(Optimizer):
             )
             alpha += alpha_step
             self.log("")
+        # Otherwise, use trust region newton step
         else:
             self.log(
                 "RS algorithm did not produce a desired step length "
@@ -460,11 +465,14 @@ class HessianOptimizer(Optimizer):
             H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.0)
             rfo_step_, eigval_min, nu, _ = self.solve_rfo(H_aug, "min")
             rfo_norm_ = np.linalg.norm(rfo_step_)
+
             # This should always be True if the above algorithm failed but we
-            # keep this line here nonetheless to make it more obvious what
-            # we are doing.
+            # keep this line nonetheless,  to make it more obvious.
             if rfo_norm_ > self.trust_radius:
-                step_ = rfo_step_ / rfo_norm_ * self.trust_radius
+                step_ = self.get_newton_step_on_trust(
+                    eigvals, eigvecs, gradient, transform=False
+                )
+                # step_ = rfo_step_ / rfo_norm_ * self.trust_radius
 
         # Transform step back to original basis
         step = eigvecs.dot(step_)
@@ -478,10 +486,10 @@ class HessianOptimizer(Optimizer):
     def get_newton_step(eigvals, eigvecs, gradient):
         return eigvecs.dot(eigvecs.T.dot(gradient) / eigvals)
 
-    def get_newton_step_on_trust(self, eigvals, eigvecs, gradient):
+    def get_newton_step_on_trust(self, eigvals, eigvecs, gradient, transform=True):
         min_ind = eigvals.argmin()
         min_eigval = eigvals[min_ind]
-        pos_definite = min_eigval > 0.0
+        pos_definite = (eigvals > 0.0).all()
         gradient_trans = eigvecs.T.dot(gradient)
 
         # This will be also be True when we come close to a minimizer,
@@ -504,7 +512,8 @@ class HessianOptimizer(Optimizer):
 
         def finalize_step(shift):
             step = get_step(shift)
-            step = eigvecs.dot(step)
+            if transform:
+                step = eigvecs.dot(step)
             return step
 
         # Simplest case. Positive definite Hessian and predicted step is
@@ -555,7 +564,9 @@ class HessianOptimizer(Optimizer):
         without_first = gradient_trans[1:] / (eigvals[1:] - min_eigval)
         tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
         step_trans = [tau] + -without_first.tolist()
-        step = eigvecs.dot(step_trans)
+
+        if transform:
+            step = eigvecs.dot(step_trans)
         return step
 
     @staticmethod
