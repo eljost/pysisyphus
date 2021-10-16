@@ -23,7 +23,7 @@ class TSHessianOptimizer(HessianOptimizer):
         rx_coords=None,
         rx_mode=None,
         hessian_init="calc",
-        hessian_update="ts_bfgs",
+        hessian_update="bofill",
         hessian_recalc_reset=True,
         max_micro_cycles=50,
         trust_radius=0.3,
