@@ -50,12 +50,12 @@ def get_bond_sets(
     return (bond_inds,) + add_returns
 
 
-def get_fragments(atoms, coords, bond_inds=None):
+def get_fragments(atoms, coords, bond_inds=None, bond_factor=BOND_FACTOR):
     """This misses unconnected single atoms!"""
     coords3d = coords.reshape(-1, 3)
     if bond_inds is None:
         # Bond indices without interfragment bonds and/or hydrogen bonds
-        bond_inds = get_bond_sets(atoms, coords3d)
+        bond_inds = get_bond_sets(atoms, coords3d, bond_factor=bond_factor)
 
     bond_ind_sets = [frozenset(bi) for bi in bond_inds]
     fragments = merge_sets(bond_ind_sets)
