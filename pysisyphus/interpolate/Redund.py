@@ -2,7 +2,10 @@ import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
-from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
+from pysisyphus.intcoords.exceptions import (
+    DifferentPrimitivesException,
+    RebuiltInternalsException,
+)
 from pysisyphus.intcoords.helpers import get_tangent, form_coordinate_union
 from pysisyphus.xyzloader import write_geoms_to_trj
 
@@ -56,45 +59,57 @@ class Redund(Interpolator):
         geoms = [
             geom1,
         ]
+
+        def restart(new_geom):
+            return self.restart_interpolate(initial_geom, final_geom, geoms, new_geom)
+
         for i in range(self.between):
             print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
+            # Try to use the target primtive internals (final_prims) to calculate
+            # a tangent at the current, new geometry. As some primitives may be
+            # invalid at 'new_geom', DifferentPrimitivesException may be raised.
             try:
                 prim_tangent = get_tangent(
                     new_geom.coords, final_prims, dihedral_indices
                 )
-            # This will result in a different number of internals at the two outer and
-            # the inner geometries.
+            # If this is raised we update our target primitives and try to continue
+            # with them.
             except DifferentPrimitivesException:
-                new_typed_prims = new_geom.internal.typed_prims
-                new_num = len(new_typed_prims)
-                print(
-                    f"Encountered different number of primitive internals ({new_num} vs. "
-                    f"{len(typed_prims)}) at geometry {i+1}!\n"
-                    "Restarting interpolation with reduced number of internals "
-                    "at all geometries."
-                )
-                self.dump_progress(
-                    geoms, out_fn=f"redund_interpol_fail_at_{i+1:03d}.trj"
-                )
-                print()
-                # Recursive call with reduced set of primitive internals
-                return self.interpolate(
-                    initial_geom, final_geom, typed_prims=new_typed_prims
-                )
+                # return self.restart_interpolate(initial_geom, final_geom, new_geom)
+                return restart(new_geom)
 
             step = self.step_along_tangent(new_geom, prim_tangent, approx_step_size)
             try:
                 new_coords = new_geom.coords + step
-            except ValueError as err:
-                self.dump_progress(geoms)
-                raise err
+            # Will be raised when the sizes of both vectors differ
+            except ValueError:
+                # return self.restart_interpolate(initial_geom, final_geom, new_geom)
+                return restart(new_geom)
 
-            new_geom.coords = new_coords
+            # The current primitives may also break down when a step along the
+            # tangent is taken.
+            try:
+                new_geom.coords = new_coords
+            except RebuiltInternalsException:
+                # return self.restart_interpolate(initial_geom, final_geom, new_geom)
+                return restart(new_geom)
+
             geoms.append(new_geom)
 
         print()
         return geoms[1:]
+
+    def restart_interpolate(self, initial_geom, final_geom, geoms, new_geom):
+        new_typed_prims = new_geom.internal.typed_prims
+        print(
+            f"Encountered breakdown of current primitive internals.\n "
+            "Restarting interpolation with reduced number of internals."
+        )
+        self.dump_progress(geoms, out_fn=f"redund_interpol_fail.trj")
+        print()
+        # Recursive call with reduced set of primitive internals
+        return self.interpolate(initial_geom, final_geom, typed_prims=new_typed_prims)
 
     def step_along_tangent(self, geom, prim_tangent, step_size):
         # Form active set
