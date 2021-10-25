@@ -576,14 +576,17 @@ class HessianOptimizer(Optimizer):
         # a suitable length, but the (shifted) Hessian would have an incorrect
         # eigenvalue spectrum (not positive definite). To solve this we use a
         # different formula to calculate the step.
-        # import pdb; pdb.set_trace()  # fmt: skip
-        without_first = gradient_trans[1:] / (eigvals[1:] - min_eigval)
+        mask = np.ones_like(gradient_trans)
+        mask[min_ind] = 0
+        mask = mask.astype(bool)
+        without_min = gradient_trans[mask] / (eigvals[mask] - min_eigval)
         try:
-            tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
-            step_trans = [tau] + (-without_first).tolist()
+            tau = sqrt(self.trust_radius ** 2 - (without_min ** 2).sum())
+            step_trans = [tau] + (-without_min).tolist()
+        # Hard case. Search in open interval (endpoints not included)
+        # (-min_eigval, inf).
         except ValueError:
-            # Hard case.
-            bracket = (-min_eigval, BRACKET_END)
+            bracket = (-min_eigval + 1e-6, BRACKET_END)
             res = root_search(bracket)
             if res.converged:
                 return finalize_step(res.root)
