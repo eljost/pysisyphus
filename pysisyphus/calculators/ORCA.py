@@ -288,7 +288,7 @@ class ORCA(OverlapCalculator):
         to execute ORCA with the stored cmd of this calculator."""
         inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
-            "calc": "noparse",
+            "calc": "energy",
         }
         results = self.run(inp, **kwargs)
         if self.track:
