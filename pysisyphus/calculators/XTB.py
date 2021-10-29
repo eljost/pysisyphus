@@ -27,6 +27,7 @@ class XTB(Calculator):
     def __init__(
         self,
         gbsa="",
+        alpb="",
         gfn=2,
         acc=1.0,
         etemp=None,
@@ -47,6 +48,9 @@ class XTB(Calculator):
         gbsa : str, optional
             Solvent for GBSA calculation, by default no solvent model is
             used.
+        alpb : str, optional
+            Solvent for ALPB calculation, by default no solvent model is
+            used.
         gfn : int or str, must be (0, 1, 2, or "ff")
             Hamiltonian for the XTB calculation (GFN0, GFN1, GFN2, or GFNFF).
         acc : float, optional
@@ -66,6 +70,7 @@ class XTB(Calculator):
         super().__init__(**kwargs)
 
         self.gbsa = gbsa
+        self.alpb = alpb
         self.gfn = gfn
         self.acc = acc
         self.etemp = etemp
@@ -170,6 +175,9 @@ class XTB(Calculator):
         if self.gbsa:
             gbsa = f"--gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
+        elif self.alpb:
+            alpb = f"--alpb {self.alpb}".split()
+            add_args = add_args + alpb
         # Select parametrization
         gfn = ["--gfnff"] if self.gfn == "ff" else f"--gfn {self.gfn}".split()
         add_args = add_args + gfn
