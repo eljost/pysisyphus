@@ -103,7 +103,7 @@ class Redund(Interpolator):
     def restart_interpolate(self, initial_geom, final_geom, geoms, new_geom):
         new_typed_prims = new_geom.internal.typed_prims
         print(
-            f"Encountered breakdown of current primitive internals.\n "
+            f"Encountered breakdown of current primitive internals.\n"
             "Restarting interpolation with reduced number of internals."
         )
         self.dump_progress(geoms, out_fn=f"redund_interpol_fail.trj")
