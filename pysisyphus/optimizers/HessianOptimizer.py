@@ -2,6 +2,7 @@ from math import sqrt
 import numpy as np
 from scipy.optimize import root_scalar
 
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import rms
 from pysisyphus.io.hessian import save_hessian
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
@@ -61,6 +62,9 @@ class HessianOptimizer(Optimizer):
         **kwargs,
     ):
         super().__init__(geometry, **kwargs)
+
+        assert not issubclass(type(geometry), ChainOfStates), \
+            "HessianOptimizer can't be used for and ChainOfStates objects!"
 
         self.trust_update = bool(trust_update)
         assert trust_min <= trust_max, "trust_min must be <= trust_max!"
