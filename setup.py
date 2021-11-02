@@ -61,6 +61,7 @@ setup(
             "pysisfilter = pysisyphus.filtertrj:run",
             "pysispack = pysisyphus.pack:run",
             "pysisthermo = pysisyphus.drivers.thermo:run_thermo",
+            "pysismerge = pysisyphus.drivers.merge:run_merge",
         ]
     },
 )

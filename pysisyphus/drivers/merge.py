@@ -1,3 +1,6 @@
+import argparse
+import sys
+
 import numpy as np
 
 from pysisyphus.calculators import Composite, HardSphere, TransTorque
@@ -10,9 +13,59 @@ from pysisyphus.drivers.precon_pos_rot import (
     SteepestDescent,
 )
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import align_coords
+from pysisyphus.helpers import align_coords, geom_loader
+from pysisyphus.io import geom_to_crd_str
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.xyzloader import coords_to_trj
+
+
+def merge_geoms(geom1, geom2, geom1_del=None, geom2_del=None, make_bonds=None):
+    """Merge geom1 and geom2 while keeping the original coordinates.
+
+    Supports deleting certain atoms.
+    """
+
+    if geom1_del is None:
+        geom1_del = list()
+    if geom2_del is None:
+        geom2_del = list()
+
+    atom_num1 = len(geom1.atoms)
+    geom2_del = np.array(geom2_del)
+    # Offset by number of atoms in geom1
+    geom2_del += atom_num1
+
+    if make_bonds is not None:
+        make_bonds = np.array(make_bonds, dtype=int)
+        geom1_bond_inds, geom2_bond_inds = make_bonds.T
+        geom2_bond_inds += atom_num1
+
+        # Correct original bond indices given in make_bonds
+        to_del = np.concatenate((geom1_del, geom2_del))
+        # If geom1_del/geom2_del are empty then there is nothing to do
+        for to_del in geom1_del:
+            mask = geom1_bond_inds > to_del
+            geom1_bond_inds[mask] -= 1
+            geom2_bond_inds -= 1
+
+        for to_del in geom2_del:
+            mask = geom2_bond_inds > to_del
+            geom2_bond_inds[mask] -= 1
+        make_bonds_cor = np.stack((geom1_bond_inds, geom2_bond_inds), axis=1)
+    else:
+        make_bonds_cor = None
+
+    union = geom1 + geom2
+    union = union.del_atoms(list(geom1_del) + list(geom2_del))
+
+    # Set appropriate fragments
+    atom_num1 -= len(geom1_del)
+    frag1 = np.arange(atom_num1)
+    lig_atoms = geom2.atoms
+    frag2 = np.arange(atom_num1, atom_num1 + len(lig_atoms) - len(geom2_del))
+    union.fragments = {"geom1": frag1.tolist(), "geom2": frag2.tolist()}
+
+    return union, make_bonds_cor
 
 
 def hardsphere_merge(geom1, geom2):
@@ -205,3 +258,95 @@ def align_on_subset(geom1, union, del1=None):
     subset = Geometry(atoms2[:num1], coords3d_2_aligned[:num1])
     rest = Geometry(atoms2[num1:], coords3d_2_aligned[num1:])
     return aligned, subset, rest
+
+
+def merge_with_frozen_geom(frozen_geom, lig_geom, make_bonds, frozen_del, lig_del):
+    union, make_bonds_cor = merge_geoms(
+        frozen_geom, lig_geom, frozen_del, lig_del, make_bonds
+    )
+    atoms = union.atoms
+    print("Docking to form bonds:")
+    for i, (from_, to_) in enumerate(make_bonds):
+        from_atom = atoms[from_]
+        to_atom = atoms[to_]
+        print(f"\t{i:02d} {from_atom}{from_}-{to_atom}{to_}")
+
+    union = prepare_merge(union, make_bonds_cor, dump=True)
+    opt_union = merge_opt(union, make_bonds_cor, ff="uff")
+    # aligned: whole system
+    # subset: frozen_geom - deleted atoms
+    # rest: aligned ligand
+    aligned, subset, rest = align_on_subset(frozen_geom, opt_union, frozen_del)
+    return aligned, subset, rest
+
+
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("frozen_fn", help="Filename of the frozen geometry.")
+    parser.add_argument("lig_fn", help="Filename of the ligand to be merged.")
+    parser.add_argument(
+        "--frozen-del",
+        nargs="+",
+        type=int,
+        help="0-based atom indices to be deleted from frozen_fn.",
+    )
+    parser.add_argument(
+        "--lig-del",
+        nargs="+",
+        type=int,
+        help="0-based atom indices to be deleted from lig_fn.",
+    )
+    parser.add_argument(
+        "--make-bonds",
+        nargs="+",
+        type=int,
+        help="0-based indices of atom pairs (frozen, lig), forming bonds "
+        "in the merged geometry. lig indices should start at 0.",
+    )
+    parser.add_argument("--res", default="LIG")
+    parser.add_argument("--resno", type=int)
+
+    return parser.parse_args(args)
+
+
+def run_merge():
+    args = parse_args(sys.argv[1:])
+
+    frozen_fn = args.frozen_fn
+    lig_fn = args.lig_fn
+    protein_pdb = frozen_fn
+    lig_pdb = lig_fn
+
+    frozen_geom = geom_loader(protein_pdb)
+    lig_geom = geom_loader(lig_pdb)
+
+    prot_del = args.frozen_del
+    lig_del = args.lig_del
+    make_bonds = args.make_bonds
+    make_bonds = np.array(make_bonds, dtype=int).reshape(-1, 2)
+    aligned, subset, rest = merge_with_frozen_geom(
+        frozen_geom, lig_geom, make_bonds, prot_del, lig_del
+    )
+    aligned.jmol()
+
+    trj_fn = "merged.trj"
+    trj = "\n".join([geom.as_xyz() for geom in (aligned, rest)])
+    with open(trj_fn, "w") as handle:
+        handle.write(trj)
+    print(f"Dumped geometries to '{trj_fn}'.")
+
+    res = args.res
+    resno = args.resno
+    if (res is not None) and (resno is not None):
+        crd_str = geom_to_crd_str(
+            rest, res=res, resno=resno, ref_atoms=lig_geom.atoms, del_atoms=lig_del
+        )
+        crd_fn = "lig_aligned.crd"
+        with open(crd_fn, "w") as handle:
+            handle.write(crd_str)
+        print(f"Dumped ligand coordinates to  to '{crd_fn}'.")
+
+
+if __name__ == "__main__":
+    run_merge()
