@@ -12,6 +12,7 @@ __all__ = [
     "OutOfPlane",
     "Stretch",
     "Torsion",
+    "Torsion2",
     "RotationA",
     "RotationB",
     "RotationC",
@@ -36,6 +37,7 @@ from pysisyphus.intcoords.OutOfPlane import OutOfPlane
 from pysisyphus.intcoords.Rotation import RotationA, RotationB, RotationC
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.intcoords.Torsion import Torsion
+from pysisyphus.intcoords.Torsion2 import Torsion2
 from pysisyphus.intcoords.Translation import TranslationX, TranslationY, TranslationZ
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords, TRIC
 

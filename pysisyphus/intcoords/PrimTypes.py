@@ -21,6 +21,7 @@ from pysisyphus.intcoords import (
     TranslationY,
     TranslationZ,
     Torsion,
+    Torsion2,
 )
 
 
@@ -53,7 +54,9 @@ class PrimTypes(OrderedEnum):
     BONDED_FRAGMENT = 25
     DUMMY_TORSION = 26
     DISTANCE_FUNCTION = 27
+    # atan2 based bend and torsion
     BEND2 = 28
+    PROPER_DIHEDRAL2 = 29
 
 
 # Alias for easier access
@@ -74,8 +77,11 @@ PrimTypeShortcuts = {
     "A": [PT.BEND],
     "A2": [PT.BEND2],
     "D": [PT.PROPER_DIHEDRAL],
+    "D2": [PT.PROPER_DIHEDRAL2],
     "DIHEDRAL": [PT.PROPER_DIHEDRAL],
+    "DIHEDRAL2": [PT.PROPER_DIHEDRAL2],
     "TORSION": [PT.PROPER_DIHEDRAL],
+    "TORSION2": [PT.PROPER_DIHEDRAL2],
     # Translation & Rotation coordinates
     "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
     "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
@@ -99,8 +105,7 @@ LinearBends = (
     PT.LINEAR_DISPLACEMENT,
     PT.LINEAR_DISPLACEMENT_COMPLEMENT,
 )
-# Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL, PT.DUMMY_TORSION)
-Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL)
+Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL, PT.PROPER_DIHEDRAL2)
 OutOfPlanes = (PT.OUT_OF_PLANE,)
 Cartesians = (PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z)
 Rotations = (PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C)
@@ -150,6 +155,7 @@ PrimMap = {
     PT.LINEAR_BEND: LinearBend,
     PT.LINEAR_BEND_COMPLEMENT: lambda indices: LinearBend(indices, complement=True),
     PT.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
+    PT.PROPER_DIHEDRAL2: lambda indices: Torsion2(indices, periodic=True),
     PT.IMPROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
     PT.OUT_OF_PLANE: OutOfPlane,
     PT.LINEAR_DISPLACEMENT: LinearDisplacement,

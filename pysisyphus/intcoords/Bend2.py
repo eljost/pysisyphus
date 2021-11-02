@@ -1,5 +1,6 @@
 # See
 # https://www.jwwalker.com/pages/angle-between-vectors.html
+
 import numpy as np
 
 from pysisyphus.intcoords.Bend import Bend

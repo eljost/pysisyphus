@@ -21,6 +21,7 @@ from pysisyphus.intcoords import (
     RotationC,
     Stretch,
     Torsion,
+    Torsion2,
     TranslationX,
     TranslationY,
     TranslationZ,
@@ -127,10 +128,14 @@ def test_bend(bend_cls, deg):
 
 
 @pytest.mark.parametrize(
+    "tors_cls", (Torsion, Torsion2)
+)
+@pytest.mark.parametrize(
     "dihedral",
     [
         # First derivative fails alread for 1e-3, -1e-3
         # Fails for ~ 180, ~ 0 and ~ -180
+        179.9,
         179,
         140,
         100,
@@ -143,9 +148,10 @@ def test_bend(bend_cls, deg):
         -100,
         -140,
         -179,
+        -179.9,
     ],
 )
-def test_torsion(dihedral):
+def test_torsion(tors_cls, dihedral):
     indices = [3, 2, 0, 1]
     zmat_str = f"""
     C
@@ -157,11 +163,17 @@ def test_torsion(dihedral):
     geom = geom_from_zmat(zmat)
     coords3d = geom.coords3d
 
-    # Explicitly implemented
-    # Gradient returned in order [3, 2, 0, 1]
-    val, grad = Torsion._calculate(coords3d, indices, gradient=True)
-    sign = np.sign(val)
+    val, grad = tors_cls._calculate(coords3d, indices, gradient=True)
 
+    assert val == pytest.approx(np.deg2rad(dihedral))
+
+    tors = tors_cls(indices=indices)
+    ref_grad_ = fin_diff_prim(tors, geom.coords3d)
+    ref_grad = np.zeros_like(geom.coords3d)
+    ref_grad[indices] = ref_grad_.reshape(-1, 3)
+    np.testing.assert_allclose(grad, ref_grad.flatten(), atol=1e-6)
+
+    """
     # Reference values, code generated
     args = coords3d[indices].flatten()
     ref_val = q_d(*args)
@@ -196,6 +208,7 @@ def test_torsion(dihedral):
     ref_dgrad = fin_diff_B(Torsion(indices), coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-8, err_msg="2nd derivative")
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-8, err_msg="2nd derivative")
+    """
 
 
 @pytest.mark.parametrize("deg", np.linspace(165, 180, num=16))

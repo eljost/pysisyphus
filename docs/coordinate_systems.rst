@@ -175,7 +175,9 @@ Atom indices start at 0!
     BONDED_FRAGMENT = 25
     DUMMY_TORSION = 26
     DISTANCE_FUNCTION = 27
+    # atan2 based coordinates
     BEND2 = 28
+    TORSION2 = 29
 
 As some of these types are quite unwieldy, several shortcuts are supported,
 that can be used in place of the types above.
@@ -200,6 +202,9 @@ that can be used in place of the types above.
     "D": [PT.PROPER_DIHEDRAL],
     "DIHEDRAL": [PT.PROPER_DIHEDRAL],
     "TORSION": [PT.PROPER_DIHEDRAL],
+    "D2": [PT.PROPER_DIHEDRAL2],
+    "DIHEDRAL2": [PT.PROPER_DIHEDRAL2],
+    "TORSION2": [PT.PROPER_DIHEDRAL2],
     # Translation & Rotation coordinates
     "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
     "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
