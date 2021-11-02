@@ -39,10 +39,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install ASE
       run: |
-        pip install ase>=3.21.1
+        pip install ase>=3.22.0
     - name: Install pyscf
       run: |
-        pip install pyscf==1.7.5.1
+        pip install pyscf==1.7.6.post1
     - name: Install thermoanalysis
       run: |
         pip install git+https://github.com/eljost/thermoanalysis.git
