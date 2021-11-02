@@ -32,7 +32,7 @@ setup(
         "autograd",
         "dask",
         "distributed",
-        "h5py==3.2.1",
+        "h5py",
         "jinja2",
         "matplotlib",
         "numpy>=1.18.1",
@@ -42,7 +42,7 @@ setup(
         "rmsd",
         "scipy>=1.4.1",
         "sympy>=1.5.1",
-        "scikit-learn>=0.24.2",
+        "scikit-learn>=0.24.1",
     ],
     # Install locally with
     #   pip install -e .[extra]
