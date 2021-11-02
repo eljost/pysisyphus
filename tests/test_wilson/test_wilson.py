@@ -6,6 +6,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.linalg import get_rot_mat
 from pysisyphus.intcoords import (
     Bend,
+    Bend2,
     BondedFragment,
     CartesianX,
     CartesianY,
@@ -31,6 +32,9 @@ from pysisyphus.intcoords.derivatives import (
     q_a,
     dq_a,
     d2q_a,
+    q_a2,
+    dq_a2,
+    d2q_a2,
     q_d,
     dq_d,
     d2q_d,
@@ -76,8 +80,9 @@ def test_stretch(length):
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-12)
 
 
-@pytest.mark.parametrize("deg", np.linspace(5, 175, num=35))
-def test_bend(deg):
+@pytest.mark.parametrize("bend_cls", (Bend, Bend2))
+@pytest.mark.parametrize("deg", np.linspace(1, 179, num=35))
+def test_bend(bend_cls, deg):
     indices = [1, 0, 2]
 
     zmat_str = f"""
@@ -91,7 +96,7 @@ def test_bend(deg):
 
     # Explicitly implemented
     # Gradient returned in order [0, 1, 2]
-    val, grad = Bend._calculate(coords3d, indices, gradient=True)
+    val, grad = bend_cls._calculate(coords3d, indices, gradient=True)
 
     # Reference values, code generated
     args = coords3d[indices].flatten()
@@ -116,7 +121,7 @@ def test_bend(deg):
     mp_dgrad = mp_d.d2q_a(*args)
 
     # Finite difference reference values
-    ref_dgrad = fin_diff_B(Bend(indices), coords3d)
+    ref_dgrad = fin_diff_B(bend_cls(indices), coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
 

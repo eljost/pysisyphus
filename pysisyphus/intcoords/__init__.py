@@ -1,6 +1,7 @@
 __all__ = [
     "PrimitiveNotDefinedException",
     "Bend",
+    "Bend2",
     "CartesianX",
     "CartesianY",
     "CartesianZ",
@@ -24,6 +25,7 @@ __all__ = [
 
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.Bend import Bend
+from pysisyphus.intcoords.Bend2 import Bend2
 from pysisyphus.intcoords.BondedFragment import BondedFragment
 from pysisyphus.intcoords.Cartesian import CartesianX, CartesianY, CartesianZ
 from pysisyphus.intcoords.DistanceFunction import DistanceFunction

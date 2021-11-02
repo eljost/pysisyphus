@@ -180,6 +180,25 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         )
         return func_result_a
 
+    def bend2():
+        # See
+        # https://www.jwwalker.com/pages/angle-between-vectors.html
+        # Bend/Angle using atan2 instead of acos
+        U = M.position_wrt(O)
+        V = N.position_wrt(O)
+        q_a2 = sym.atan2(U.cross(V).magnitude(), U.dot(V))
+        dx_a2 = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
+        args_a2 = "m0, m1, m2, o0, o1, o2, n0, n1, n2"
+        func_result_a = make_deriv_funcs(
+            q_a2,
+            dx_a2,
+            args_a2,
+            ("q_a2", "dq_a2", "d2q_a2"),
+            "Bend2",
+            use_mpmath=use_mpmath,
+        )
+        return func_result_a
+
     def dihedral():
         # Dihedral/Torsion
         U = M.position_wrt(O)
@@ -286,17 +305,17 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         generate = (
             "bond",
             "bend",
+            "bend2",
             "dihedral",
             "linear_bend",
             "out_of_plane",
             "linear_displacement",
         )
-        # # generate = ("out_of_plane", )
-        # generate = ("linear_displacement", )
 
     avail_funcs = {
         "bond": bond,
         "bend": bend,
+        "bend2": bend2,
         "dihedral": dihedral,
         "linear_bend": linear_bend,
         "out_of_plane": out_of_plane,

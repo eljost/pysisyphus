@@ -3,6 +3,7 @@ import itertools as it
 from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (
     Bend,
+    Bend2,
     BondedFragment,
     DummyTorsion,
     DistanceFunction,
@@ -52,6 +53,7 @@ class PrimTypes(OrderedEnum):
     BONDED_FRAGMENT = 25
     DUMMY_TORSION = 26
     DISTANCE_FUNCTION = 27
+    BEND2 = 28
 
 
 # Alias for easier access
@@ -70,6 +72,7 @@ PrimTypeShortcuts = {
     # Primitive aliases
     "B": [PT.BOND],
     "A": [PT.BEND],
+    "A2": [PT.BEND2],
     "D": [PT.PROPER_DIHEDRAL],
     "DIHEDRAL": [PT.PROPER_DIHEDRAL],
     "TORSION": [PT.PROPER_DIHEDRAL],
@@ -89,7 +92,7 @@ Bonds = (
     PT.AUX_INTERFRAG_BOND,
     PT.DISTANCE_FUNCTION,
 )
-Bends = (PT.BEND,)
+Bends = (PT.BEND, PT.BEND2)
 LinearBends = (
     PT.LINEAR_BEND,
     PT.LINEAR_BEND_COMPLEMENT,
@@ -143,6 +146,7 @@ PrimMap = {
     PT.INTERFRAG_BOND: Stretch,
     PT.AUX_INTERFRAG_BOND: Stretch,
     PT.BEND: Bend,
+    PT.BEND2: Bend2,
     PT.LINEAR_BEND: LinearBend,
     PT.LINEAR_BEND_COMPLEMENT: lambda indices: LinearBend(indices, complement=True),
     PT.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
