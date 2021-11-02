@@ -57,7 +57,7 @@ def test_ts_hessian():
 @pytest.mark.parametrize(
     "tsopt_cls, ref_cycle",
     [
-        (RSPRFOptimizer, 13),
+        (RSPRFOptimizer, 10),
         # (RSIRFOptimizer, 12),
     ],
 )

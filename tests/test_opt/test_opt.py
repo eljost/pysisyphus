@@ -31,7 +31,7 @@ from pysisyphus.optimizers.StabilizedQNMethod import StabilizedQNMethod
         (FourWellAnaPot, (1.45, 0.04, 0.0), 10, (1.1241, -1.4853, 0.0)),
         (LEPSBase, (1.31, 0.82, 0.0), 27, (0.74200064, 7.17588688, 0.0)),
         (MullerBrownPot, (-0.69, 0.55, 0.0), 12, (-0.05, 0.4667, 0.0)),
-        (Rosenbrock, (-1.00, 1.00, 0.0), 28, (1.0, 1.0, 0.0)),
+        (Rosenbrock, (-1.00, 1.00, 0.0), 43, (1.0, 1.0, 0.0)),
     ],
 )
 def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):

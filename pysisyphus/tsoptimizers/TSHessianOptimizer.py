@@ -328,9 +328,13 @@ class TSHessianOptimizer(HessianOptimizer):
         if self.max_line_search and self.cur_cycle > 0:
             prev_energy = self.energies[-2]
             prev_gradient = -self.forces[-2]
-            prev_gradient_trans = eigvecs.T.dot(prev_gradient)
-            prev_step = self.steps[-1]
-            prev_step_trans = eigvecs.T.dot(prev_step)
+            try:
+                prev_gradient_trans = eigvecs.T.dot(prev_gradient)
+                prev_step = self.steps[-1]
+                prev_step_trans = eigvecs.T.dot(prev_step)
+            # Will be raised when coordinates were rebuilt and the array shapes differe.
+            except ValueError:
+                return ip_step, ip_gradient_trans
 
             # Max subspace
             # max_energy, max_gradient, max_step = self.do_max_line_search(
