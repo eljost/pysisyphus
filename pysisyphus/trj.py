@@ -564,7 +564,7 @@ class GotNoGeometryException(Exception):
 
 def get_interactively(geoms):
     # Try to parse energies from geoms
-    energy_re = re.compile("[-\.\d]+")
+    energy_re = re.compile(r"[-\.\d]+")
     energies = list()
     for geom in geoms:
         mobj = energy_re.search(geom.comment)
