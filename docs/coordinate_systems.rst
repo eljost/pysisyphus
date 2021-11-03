@@ -94,20 +94,21 @@ example below:
 .. code:: yaml
 
     geom:
-     type: cart               # Coordinate system (cart/redund/dlc/tric)
-     fn: [input]              # File name or inline input
-     union: False             # Define same set of primitives at multiple geometries
-     isotopes: null           # Specify different isotopes
-     freeze_atoms: null       # Freeze Cartesians of certain atoms
-     coord_kwargs:            # Keywords that are passed to the internal coordinate class
-      define_prims: null      # Additionally define these primitives
-      constrain_prims: null   # Primitive internals to be constrained
+     type: cart                     # Coordinate system (cart/redund/dlc/tric)
+     fn: [input]                    # File name or inline input
+     union: False                   # Define same set of primitives at multiple geometries
+     isotopes: null                 # Specify different isotopes
+     freeze_atoms: null             # Freeze Cartesians of certain atoms
+     coord_kwargs:                  # Keywords that are passed to the internal coordinate class
+      define_prims: null            # Additionally define these primitives
+      constrain_prims: null         # Primitive internals to be constrained
+      freeze_atoms_exclude: False   # Whether to set up internal coordinates for frozen atoms
     preopt:
-     geom:                    # geom block in preopt takes same keywords as above
-      ...                     # no 'fn' key here!
+     geom:                          # geom block in preopt takes same keywords as above
+      ...                           # no 'fn' key here!
     endopt:
-     geom:                    # geom block in endopt takes same keywords as above
-      ...                     # no 'fn' key here!
+     geom:                          # geom block in endopt takes same keywords as above
+      ...                           # no 'fn' key here!
 
 Employed coordinates and coordinate systems in `preopt` and `endopt` are similary
 controlled by a `geom` block. Same keywords are supported, as for the `geom` block,
@@ -244,14 +245,26 @@ Freeze Atoms
 ^^^^^^^^^^^^
 
 All three Cartesian coordinates (X, Y, Z) of certain atoms can be frozen, so
-they always remain at their initial value.
+they always remain at their initial value. By setting `freeze_atoms_exclude`
+in `coord_kwargs`, frozen atoms can be excluded from the internal coordinate setup.
+By default frozen atoms are included.
 
 .. code:: yaml
 
-    freeze_atoms: [*atom indices]
+    geom:
+     type: [type]
+     fn: [fn]
+     freeze_atoms: [*atom indices]
+     coord_kwargs:
+      freeze_atoms_exclude: False
 
     # Example; fully freeze Cartesians of first and second atom.
-    freeze_atoms: [0, 1]
+    geom:
+     type: cart
+     fn: input.xyz
+     freeze_atoms: [0, 1]
+     coord_kwargs:
+      freeze_atoms: True
 
 Constraints
 ^^^^^^^^^^^

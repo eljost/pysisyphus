@@ -53,6 +53,7 @@ class RedundantCoords:
         define_prims=None,
         constrain_prims=None,
         freeze_atoms=None,
+        freeze_atoms_exclude=False,
         bonds_only=False,
         check_bends=True,
         rebuild=True,
@@ -79,6 +80,7 @@ class RedundantCoords:
         if freeze_atoms is None:
             freeze_atoms = list()
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
+        self.freeze_atoms_exclude = freeze_atoms_exclude
         # Constrain primitives
         if constrain_prims is None:
             constrain_prims = list()
@@ -524,7 +526,7 @@ class RedundantCoords:
             lb_min_deg=self.lb_min_deg,
             min_weight=self.min_weight if self.weighted else None,
             tric=self.tric,
-            freeze_atoms=self.freeze_atoms,
+            freeze_atoms=self.freeze_atoms if self.freeze_atoms_exclude else None,
             logger=self.logger,
         )
 

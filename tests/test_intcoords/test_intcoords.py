@@ -290,6 +290,9 @@ def test_dummy_torsion():
 def test_frozen_atom_setup(freeze_atoms, tp_num):
     geom = geom_loader(
         "lib:frozen_atom_internal_setup.xyz", coord_type="tric", freeze_atoms=freeze_atoms,
+        coord_kwargs={
+            "freeze_atoms_exclude": True,
+        }
     )
     # geom.internal.print_typed_prims()
     assert len(geom.coords) == tp_num
