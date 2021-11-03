@@ -9,7 +9,8 @@ let
 
     # See https://github.com/markuskowa/NixOS-QChem#configuration-via-nixpkgs
     qchem-config = {
-      optAVX = true;
+      optAVX = false;
+      optArch = null;
       useCuda = false;
     };
   };
