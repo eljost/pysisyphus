@@ -524,6 +524,7 @@ class RedundantCoords:
             lb_min_deg=self.lb_min_deg,
             min_weight=self.min_weight if self.weighted else None,
             tric=self.tric,
+            freeze_atoms=self.freeze_atoms,
             logger=self.logger,
         )
 

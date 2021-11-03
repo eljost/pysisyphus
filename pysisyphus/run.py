@@ -640,9 +640,7 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
             constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
         # Recreate geom with appropriate primitive
         except PrimitiveNotDefinedException:
-            geom = geom.copy(
-                coord_kwargs={"define_prims": constrain_prims}
-            )
+            geom = geom.copy(coord_kwargs={"define_prims": constrain_prims})
             constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
         # The given indices may not correspond exactly to a typed primitives,
         # as they may be reversed. So we fetch the actual typed primitive.

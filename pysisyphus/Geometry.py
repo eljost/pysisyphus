@@ -18,7 +18,7 @@ from pysisyphus.elem_data import (
     ATOMIC_NUMBERS,
     COVALENT_RADII as CR,
 )
-from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand
 from pysisyphus.intcoords import DLC, RedundantCoords, TRIC
 from pysisyphus.intcoords.exceptions import (
     NeedNewInternalsException,
@@ -209,6 +209,8 @@ class Geometry:
         self.isotopes = isotopes
         if freeze_atoms is None:
             freeze_atoms = list()
+        elif type(freeze_atoms) is str:
+            freeze_atoms = full_expand(freeze_atoms)
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
 
         assert all(self.freeze_atoms >= 0) and (

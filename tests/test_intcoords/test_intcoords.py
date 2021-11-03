@@ -279,3 +279,17 @@ def test_dummy_torsion():
     with open("dummy_torsion.trj", "w") as handle:
         handle.write("\n".join(trj))
     assert geom.coords[0] == pytest.approx(np.pi + steps * step[0], abs=1e-5)
+
+
+@pytest.mark.parametrize(
+    "freeze_atoms, tp_num", (
+        (None, 319),
+        ([0, 1, 2] + list(range(8, 106)), 16),
+    )
+)
+def test_frozen_atom_setup(freeze_atoms, tp_num):
+    geom = geom_loader(
+        "lib:frozen_atom_internal_setup.xyz", coord_type="tric", freeze_atoms=freeze_atoms,
+    )
+    # geom.internal.print_typed_prims()
+    assert len(geom.coords) == tp_num
