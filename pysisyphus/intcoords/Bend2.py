@@ -4,7 +4,6 @@
 import numpy as np
 
 from pysisyphus.intcoords.Bend import Bend
-from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords.derivatives import q_a2, dq_a2, d2q_a2
 
 

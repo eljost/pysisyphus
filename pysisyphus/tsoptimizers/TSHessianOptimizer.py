@@ -263,13 +263,13 @@ class TSHessianOptimizer(HessianOptimizer):
             infix = "imaginary "
             ovlp_eigvecs = eigvecs[:, :neg_num]
             eigvals = eigvals[:neg_num]
-            # When the eigenvalue corresponding to the TS mode has been negative once,
-            # we should not lose all negative eigenvalues. If this happens something went
-            # wrong and we crash :)
-            if self.assert_neg_eigval and neg_num == 0:
-                raise AssertionError(
-                    "Need at least 1 negative eigenvalue for TS optimization."
-                )
+        # When the eigenvalue corresponding to the TS mode has been negative once,
+        # we should not lose all negative eigenvalues. If this happens something went
+        # wrong and we crash :)
+        elif self.assert_neg_eigval and neg_num == 0:
+            raise AssertionError(
+                "Need at least 1 negative eigenvalue for TS optimization."
+            )
         # Use all eigenvectors for overlaps when the eigenvalue corresponding to the TS
         # mode is still positive.
         else:
