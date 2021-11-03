@@ -519,10 +519,10 @@ class Gaussian16(OverlapCalculator):
 
     def parse_force(self, path):
         results = {}
-        keys = ("Total Energy", "Cartesian Gradient")
+        keys = ("Total Energy", "SCF Energy", "Cartesian Gradient")
         fchk_path = Path(path) / f"{self.fn_base}.fchk"
         fchk_dict = self.parse_fchk(fchk_path, keys)
-        results["energy"] = fchk_dict["Total Energy"]
+        results["energy"] = fchk_dict["SCF Energy"]
         results["forces"] = -fchk_dict["Cartesian Gradient"]
 
         if self.nstates:
@@ -532,7 +532,7 @@ class Gaussian16(OverlapCalculator):
             # G16 root input is 1 based, so we substract 1 to get
             # the right index here.
             root_exc_en = exc_energies[self.root-1]
-            gs_energy = results["energy"]
+            gs_energy = fchk_dict["SCF Energy"]
             # Add excitation energy to ground state energy.
             results["energy"] += root_exc_en
             # Create a new array including the ground state energy

@@ -22,7 +22,7 @@ class RFOptimizer(HessianOptimizer):
         gdiis_thresh=2.5e-3,
         gediis_thresh=1e-2,
         gdiis_test_direction=True,
-        max_micro_cycles=1,
+        max_micro_cycles=0,
         adapt_step_func=False,
         *args,
         **kwargs,

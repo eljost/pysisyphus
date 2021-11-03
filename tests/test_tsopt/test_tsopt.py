@@ -12,9 +12,9 @@ from pysisyphus.testing import using
 @pytest.mark.parametrize(
     "opt_cls, ref_cur_cycle",
     [
-        pytest.param(TRIM, 7),
+        pytest.param(TRIM, 9),
         pytest.param(RSIRFOptimizer, 8),
-        pytest.param(RSPRFOptimizer, 11),
+        pytest.param(RSPRFOptimizer, 10),
     ],
 )
 def test_tshessian_opts(opt_cls, ref_cur_cycle):

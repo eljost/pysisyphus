@@ -207,7 +207,6 @@ class StabilizedQNMethod(Optimizer):
             precon_grad = self.precondition_gradient(
                 gradient, steps, grad_diffs, self.eps
             )
-            print("ohoh")
             step = -precon_grad
         else:
             self.log("Took pure steepest descent step.")

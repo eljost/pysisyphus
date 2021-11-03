@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+import pytest
+
 from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.cos.GrowingNT import GrowingNT
@@ -8,31 +10,45 @@ from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 
 
 def plot_gnt(calc, gnt):
-    calc.plot_geoms(gnt.images, show=True)
-    calc.plot_geoms(gnt.sp_images, show=True)
-    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
-    ens = np.array(gnt.all_energies)
-    xs = np.arange(ens.size)
-    ens -= ens.min()
-    max_ind = ens.argmax()
-    norms = np.array(gnt.all_forces)
-    norms = np.linalg.norm(norms, axis=1)
-    ax0.plot(ens, "o-")
-    ax1.plot(norms, "o-")
-    for ax in (ax0, ax1):
-        ax.axvline(xs[max_ind], c="k", ls="--")
+    calc.plot_geoms(gnt.images)
+    calc.plot_geoms(gnt.sp_images)
+
+    # fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+    # ens = np.array(gnt.all_energies)
+    # xs = np.arange(ens.size)
+    # ens -= ens.min()
+    # max_ind = ens.argmax()
+    # norms = np.array(gnt.all_real_forces)
+    # norms = np.linalg.norm(norms, axis=1)
+    # ax0.plot(ens, "o-")
+    # ax0.set_title("Energies")
+    # ax1.plot(norms, "o-")
+    # ax1.set_title("norm(forces)")
+    # ax1.set_xlabel("Image")
+    # for ax in (ax0, ax1):
+        # ax.axvline(xs[max_ind], c="k", ls="--")
     plt.show()
 
 
-def test_mb_growingnt():
+@pytest.mark.parametrize(
+    "between, r_update",
+    [
+        (9, False),
+        (21, False),
+    ],
+)
+def test_mb_growingnt(between, r_update):
     geoms = MullerBrownPot().get_minima()
     geoms = geoms[1], geoms[0]
     geom0, geom1 = geoms
 
     gnt_kwargs = {
-        "between": 11,
+        "between": between,
         "rms_thresh": 0.08,
         "final_geom": geom1,
+        "r_update_thresh": 0.9,
+        # "r_update": r_update,
+        "r_update": True,
     }
     gnt = GrowingNT(geom0, **gnt_kwargs)
     opt_kwargs = {
@@ -42,7 +58,9 @@ def test_mb_growingnt():
     opt.run()
 
     # plot_gnt(geoms[0].calculator, gnt)
+
     assert opt.is_converged
+    assert gnt.images[-1].energy == pytest.approx(-146.69951721)
 
 
 def test_four_well_growingnt():
@@ -63,7 +81,9 @@ def test_four_well_growingnt():
     opt.run()
 
     # plot_gnt(geoms[0].calculator, gnt)
+
     assert opt.is_converged
+    assert gnt.images[-1].energy == pytest.approx(-6.76245257)
 
 
 import pytest
@@ -109,6 +129,7 @@ def test_biaryl_growingnt(bonds, this_dir):
     opt.run()
 
 
+@pytest.mark.skip
 @using("xtb")
 @pytest.mark.parametrize(
     "bonds",
@@ -117,7 +138,9 @@ def test_biaryl_growingnt(bonds, this_dir):
     ],
 )
 def test_diels_alder_growingnt(bonds, this_dir):
-    geoms = geom_loader("/home/johannes/Code/pysisyphus/pysisyphus/geom_library/birkholz_rx/02_hcn_original.trj")
+    geoms = geom_loader(
+        "/home/johannes/Code/pysisyphus/pysisyphus/geom_library/birkholz_rx/02_hcn_original.trj"
+    )
     geoms = geom_loader("lib:diels_alder_interpolated.trj")
     geom0 = geoms[0]
     geom1 = geoms[-1]
@@ -152,14 +175,15 @@ def test_hcn_growingnt():
     geom1 = geoms[-1]
     geom0.set_calculator(XTB(pal=1, quiet=True))
 
-    from pysisyphus.intcoords import Bend
-
-    indices = (1, 0, 2)
-    _, r = Bend._calculate(geom0.coords3d, indices, gradient=True)
+    # from pysisyphus.intcoords import Bend
+    # indices = (1, 0, 2)
+    # _, r = Bend._calculate(geom0.coords3d, indices, gradient=True)
 
     gnt_kwargs = {
-        "step_len": 0.2,
-        "r": r,
+        # "step_len": 0.2,
+        "final_geom": geom1,
+        "between": 18,
+        # "r": r,
         # "rms_thresh": 0.001,
     }
     gnt = GrowingNT(geom0, **gnt_kwargs)
@@ -169,8 +193,8 @@ def test_hcn_growingnt():
         "max_step": 0.1,
         "line_search": False,
     }
-    # opt = PreconLBFGS(gnt, **opt_kwargs)
-    from pysisyphus.optimizers.LBFGS import LBFGS
-    opt = LBFGS(gnt, max_step=0.1)
+    opt = PreconLBFGS(gnt, **opt_kwargs)
+    # from pysisyphus.optimizers.LBFGS import LBFGS
+    # opt = LBFGS(gnt, **opt_kwargs)
 
     opt.run()

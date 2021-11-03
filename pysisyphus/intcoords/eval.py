@@ -5,7 +5,6 @@ import numpy as np
 
 
 class PrimInternal:
-
     def __init__(self, inds, val, grad=None):
         self.inds = inds
         self.val = val
@@ -32,7 +31,9 @@ def eval_B(coords3d, primitives):
     return np.array([prim_int.grad for prim_int in prim_internals])
 
 
-def check_primitives(coords3d, primitives, B=None,thresh=1e-6, logger=None):
+def check_primitives(coords3d, primitives, B=None, thresh=1e-6, logger=None):
+    assert len(primitives) > 0
+
     def log(msg, level=logging.DEBUG):
         if logger is not None:
             logger.log(level, msg)
@@ -47,14 +48,15 @@ def check_primitives(coords3d, primitives, B=None,thresh=1e-6, logger=None):
     nonzero_num = sum(nonzero_inds)
     missing = expected - nonzero_num
     if missing > 0:
-        log( "Not enough internal coordinates defined! Expected at least "
+        log(
+            "Not enough internal coordinates defined! Expected at least "
             f"{expected} nonzero eigenvalues. Found only {nonzero_num}!"
         )
     nonzero_w = w[nonzero_inds]
     # Condition number
-    kappa = abs(nonzero_w.max()/nonzero_w.min())
+    kappa = abs(nonzero_w.max() / nonzero_w.min())
     log(f"Condition number of B^T.B=G: {kappa:.4e}")
-    return missing+1, kappa
+    return missing + 1, kappa
 
 
 def augment_primitives(missing_prims, coords3d, prim_indices, fragments):

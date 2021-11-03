@@ -13,6 +13,7 @@ from pysisyphus.calculators.parser import parse_turbo_gradient
 from pysisyphus.calculators.ORCA import save_orca_pc_file
 from pysisyphus.constants import BOHR2ANG, BOHRPERFS2AU
 from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -26,8 +27,11 @@ class XTB(Calculator):
     def __init__(
         self,
         gbsa="",
+        alpb="",
         gfn=2,
         acc=1.0,
+        etemp=None,
+        retry_etemp=None,
         topo=None,
         topo_update=None,
         mem=1000,
@@ -43,6 +47,9 @@ class XTB(Calculator):
         ----------
         gbsa : str, optional
             Solvent for GBSA calculation, by default no solvent model is
+            used.
+        alpb : str, optional
+            Solvent for ALPB calculation, by default no solvent model is
             used.
         gfn : int or str, must be (0, 1, 2, or "ff")
             Hamiltonian for the XTB calculation (GFN0, GFN1, GFN2, or GFNFF).
@@ -63,8 +70,15 @@ class XTB(Calculator):
         super().__init__(**kwargs)
 
         self.gbsa = gbsa
+        self.alpb = alpb
         self.gfn = gfn
         self.acc = acc
+        self.etemp = etemp
+        self.retry_etemp = retry_etemp
+        if self.etemp is not None:
+            assert (
+                self.retry_etemp is None
+            ), "Using 'etemp' and 'retry_etemp' simultaneously is not possible!"
         self.topo = topo
         self.topo_update = topo_update
         self.mem = mem
@@ -153,10 +167,17 @@ class XTB(Calculator):
             f"--input xcontrol --chrg {self.charge} --uhf {self.uhf} "
             f"--acc {self.acc}".split()
         )
+        if self.etemp:
+            etemp = f"--etemp {self.etemp}".split()
+            add_args = add_args + etemp
+
         # Use solvent model if specified
         if self.gbsa:
             gbsa = f"--gbsa {self.gbsa}".split()
             add_args = add_args + gbsa
+        elif self.alpb:
+            alpb = f"--alpb {self.alpb}".split()
+            add_args = add_args + alpb
         # Select parametrization
         gfn = ["--gfnff"] if self.gfn == "ff" else f"--gfn {self.gfn}".split()
         add_args = add_args + gfn
@@ -374,6 +395,20 @@ class XTB(Calculator):
             self.json = kept_fns["json"]
         except KeyError:
             self.log("Skip setting of 'json' file.")
+
+    @staticmethod
+    @file_or_str(".out")
+    def check_termination(text):
+        term_re = re.compile("finished run on")
+        mobj = term_re.search(text)
+        return bool(mobj)
+
+    def get_retry_args(self):
+        if self.retry_etemp is None:
+            return []
+
+        self.log(f"Retrying calculation with increased etemp={self.retry_etemp}")
+        return f"--etemp {self.retry_etemp}".split()
 
     def __str__(self):
         return "XTB calculator"

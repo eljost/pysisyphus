@@ -11,17 +11,47 @@ ZLine = namedtuple(
 )
 
 
-def geom_from_zmat(zmat, coords3d=None, start_at=None, **geom_kwargs):
+def geom_from_zmat(
+    zmat,
+    atoms=None,
+    coords3d=None,
+    geom=None,
+    start_at=None,
+    drop_dummy=True,
+    **geom_kwargs
+):
     """Adapted from https://github.com/robashaw/geomConvert by Robert Shaw."""
-    atoms = [zline.atom for zline in zmat]
 
-    if coords3d is None:
+    if isinstance(zmat, str):
+        zmat = zmat_from_str(zmat)
+
+    zmat_atoms = [zline.atom for zline in zmat]
+    # Extend supplied geometry by zmat
+    if geom is not None:
+        atoms = geom.atoms
+        coords3d = geom.coords3d
+        start_at = len(geom.atoms)
+
+    if atoms is not None:
+        atoms = list(atoms) + zmat_atoms
+    else:
+        atoms = zmat_atoms
+
+    # Grow coordindate array and assign old coordinates
+    if coords3d is not None:
+        _coords3d = np.zeros((len(coords3d) + len(zmat), 3))
+        _coords3d[: len(coords3d)] = coords3d
+        coords3d = _coords3d
+    else:
         coords3d = np.zeros((len(zmat), 3), dtype=float)
+
+    if atoms or coords3d:
+        assert len(coords3d) == len(atoms)
 
     if start_at is None:
         start_at = 0
 
-    for i, zline in enumerate(zmat[start_at:], start_at):
+    for i, zline in enumerate(zmat, start_at):
         assert all(
             [
                 (ind is None) or (ind >= 0)
@@ -30,6 +60,7 @@ def geom_from_zmat(zmat, coords3d=None, start_at=None, **geom_kwargs):
         ), "Found invalid atom index. Atom indices start with 1, not 0!"
 
         r = zline.r
+        # First atom is placed at the origin
         if i == 0:
             continue
         # Bond along x-axis
@@ -91,6 +122,17 @@ def geom_from_zmat(zmat, coords3d=None, start_at=None, **geom_kwargs):
             b = np.cross(a, w)
             b /= np.linalg.norm(b)
             coords3d[i] = O - w * x + b * y + a * z
+
+    if drop_dummy:
+        atoms_ = list()
+        coords3d_ = list()
+        for atom, xyz in zip(atoms, coords3d):
+            if atom.lower() == "x":
+                continue
+            atoms_.append(atom)
+            coords3d_.append(xyz)
+        atoms = atoms_
+        coords3d = np.array(coords3d_)
 
     geom = Geometry(atoms, coords3d, **geom_kwargs)
     return geom

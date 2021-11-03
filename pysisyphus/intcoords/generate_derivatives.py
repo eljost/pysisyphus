@@ -180,11 +180,28 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         )
         return func_result_a
 
+    def bend2():
+        # atan2 based Bend/Angle
+        U = M.position_wrt(O)
+        V = N.position_wrt(O)
+        q_a2 = sym.atan2(U.cross(V).magnitude(), U.dot(V))
+        dx_a2 = (m0, m1, m2, o0, o1, o2, n0, n1, n2)
+        args_a2 = "m0, m1, m2, o0, o1, o2, n0, n1, n2"
+        func_result_a = make_deriv_funcs(
+            q_a2,
+            dx_a2,
+            args_a2,
+            ("q_a2", "dq_a2", "d2q_a2"),
+            "Bend2",
+            use_mpmath=use_mpmath,
+        )
+        return func_result_a
+
     def dihedral():
         # Dihedral/Torsion
         U = M.position_wrt(O)
-        V = N.position_wrt(P)
         W = P.position_wrt(O)
+        V = N.position_wrt(P)
         U_ = U.normalize()
         W_ = W.normalize()
         V_ = V.normalize()
@@ -193,9 +210,6 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         q_d = sym.acos(
             U_.cross(W_).dot(V_.cross(W_)) / (sym.sin(phi_u) * sym.sin(phi_v))
         )
-        # sin_phi_u = sym.sqrt(1 - (U_.dot(W_))**2)
-        # sin_phi_v = sym.sqrt(1 - (V_.dot(W_))**2)
-        # q_d = sym.acos(U_.cross(W_).dot(V_.cross(W_))/(sin_phi_u*sin_phi_v))
         dx_d = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
         args_d = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
         func_result_d = make_deriv_funcs(
@@ -204,6 +218,25 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
             args_d,
             ("q_d", "dq_d", "d2q_d"),
             "Torsion",
+            use_mpmath=use_mpmath,
+        )
+        return func_result_d
+
+    def dihedral2():
+        # atan2 based Dihedral/Torsion
+        U1 = O.position_wrt(M)
+        U2 = P.position_wrt(O)
+        U3 = N.position_wrt(P)
+        cross_U2U3 = U2.cross(U3)
+        q_d2 = sym.atan2((U2.magnitude() * U1).dot(cross_U2U3), cross_U2U3.dot(U1.cross(U2)))
+        dx_d2 = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
+        args_d2 = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
+        func_result_d = make_deriv_funcs(
+            q_d2,
+            dx_d2,
+            args_d2,
+            ("q_d2", "dq_d2", "d2q_d2"),
+            "Torsion2",
             use_mpmath=use_mpmath,
         )
         return func_result_d
@@ -286,18 +319,20 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         generate = (
             "bond",
             "bend",
+            "bend2",
             "dihedral",
+            "dihedral2",
             "linear_bend",
             "out_of_plane",
             "linear_displacement",
         )
-        # # generate = ("out_of_plane", )
-        # generate = ("linear_displacement", )
 
     avail_funcs = {
         "bond": bond,
         "bend": bend,
+        "bend2": bend2,
         "dihedral": dihedral,
+        "dihedral2": dihedral2,
         "linear_bend": linear_bend,
         "out_of_plane": out_of_plane,
         "linear_displacement": linear_displacement,

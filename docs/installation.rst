@@ -45,7 +45,7 @@ Installation from source
 ========================
 
 Decide on an **$install_dir** and clone the repository from github. If you want to change
-the code after installation do an editable (-e) installation with pip.
+the code after installation (develop) do an editable (-e) installation with pip.
 
 .. code-block:: bash
 
@@ -56,6 +56,13 @@ the code after installation do an editable (-e) installation with pip.
     # Installation of extras is also possible. 'sphinx' is only needed if you
     # want to build the documentation.
     # pip install [-e] .[qcengine,ase,pyscf,sphinx]
+
+With an editable installation it is also easy to use other branches, besides the `master`
+branch, e.g., the `dev` branch to test out a new feature.
+
+.. code-block:: bash
+
+    git switch dev
 
 .. _pysisrc-label:
 

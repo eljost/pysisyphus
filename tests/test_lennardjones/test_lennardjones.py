@@ -42,4 +42,4 @@ def test_ar_cluster():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 93
+    assert opt.cur_cycle == 110

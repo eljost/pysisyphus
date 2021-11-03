@@ -1,4 +1,4 @@
-Excited state Optimization
+Excited State Optimization
 **************************
 
 pysisyphus offers excited state (ES) tracking, to follow diadiabatic states
@@ -15,6 +15,9 @@ solvation when calculating ES-gradients with implicit solvation. Serveral progra
 e.g., Gaussian use equilibrium solvation when doing ES-optimization. It is in the
 responsibility of the user to add the relevant keywords when using pysisyphus, e.g.,
 :code:`EqSolv` for Gaussian.
+
+YAML Example
+------------
 
 A bare-bone input for the S\ :sub:`1` optimization of the 1H-amino-keto
 tautomer of cytosin at the TD-DFT/PBE0/def2-SVP level of theory using ORCA is
@@ -132,7 +135,7 @@ below.
      # normalized, and vice versa.
      #
      # Possible values: (True, False)
-     mos_renorm: False
+     mos_renorm: True
 
 By brief reasoning it would seem that :code:`mos_ref: ref` and :code:`mos_renorm: True` are
 more sensible choices, which is possibly true. Right now the present defaults are kept for
@@ -140,3 +143,13 @@ legacy reasons, and I'll update them after testing out the alternatives.
 
 Please also see :ref:`Example - Excited State Tracking <Plotting ES optimizations>`
 for possible visualizations when optimizing ES.
+
+Optimization of Conical Intersections
+-------------------------------------
+
+pysisyphus implements the `projected gradient method using
+an updated branching plane`_, as developed
+by Maede, Ohno and Morokuma. Currently, CI-optimization is not enabled for YAML input.
+An illustrative example is found in *tests/test_conic_intersect*.
+
+.. _projected gradient method using an updated branching plane: https://pubs.acs.org/doi/pdf/10.1021/ct1000268

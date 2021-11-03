@@ -202,7 +202,10 @@ class Pipeline:
         else:
             calc = XTB(calc_number=self.calc_counter, **self.calc_kwargs)
             opt_result = calc.run_opt(geom.atoms, geom.coords, keep=False)
-            opt_geom = opt_result.opt_geom
+            try:
+                opt_geom = opt_result.opt_geom
+            except AttributeError:
+                opt_geom = None
 
         self.calc_counter += 1
         return opt_geom

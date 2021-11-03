@@ -14,6 +14,7 @@ from pysisyphus.helpers import check_for_end_sign, get_coords_diffs
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
+from pysisyphus.TablePrinter import TablePrinter
 
 
 def get_data_model(geometry, is_cos, max_cycles):
@@ -78,7 +79,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         geometry,
         thresh="gau_loose",
         max_step=0.04,
-        max_cycles=50,
+        max_cycles=100,
         rms_force=None,
         rms_force_only=False,
         max_force_only=False,
@@ -151,7 +152,10 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
-        self.h5_fn = self.out_dir / h5_fn
+
+        # Don't use prefix for this fn, as different optimizations
+        # can be distinguished according to their group in the HDF5 file.
+        self.h5_fn = self.get_path_for_fn(h5_fn, with_prefix=False)
         self.h5_group_name = h5_group_name
 
         current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
@@ -194,8 +198,15 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.set_restart_info(restart_info)
             self.restarted = True
 
-    def get_path_for_fn(self, fn):
-        return self.out_dir / (self.prefix + fn)
+        header = (
+            "cycle Δ(energy) max(force) rms(force) max(step) rms(step) s/cycle".split()
+        )
+        col_fmts = "int float float float float float float_short".split()
+        self.table = TablePrinter(header, col_fmts, width=12)
+
+    def get_path_for_fn(self, fn, with_prefix=True):
+        prefix = self.prefix if with_prefix else ""
+        return self.out_dir / (prefix + fn)
 
     def make_conv_dict(self, key, rms_force=None):
         if not rms_force:
@@ -268,6 +279,13 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.max_steps.append(max_step)
         self.rms_steps.append(rms_step)
 
+        # Give geometry a chance to signal convergence, e.g. GrowingNT that
+        # is supposed to stop when a TS was passed.
+        try:
+            geom_converged = self.geometry.check_convergence()
+        except AttributeError:
+            geom_converged = False
+
         # One may return after this comment, but not before!
         if self.converge_to_geom is not None:
             rmsd = np.sqrt(
@@ -322,20 +340,29 @@ class Optimizer(metaclass=abc.ABCMeta):
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
             converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
-        return any((converged, overachieved))
-
-    def print_header(self):
-        hs = "max(force) rms(force) max(step) rms(step) s/cycle".split()
-        header = "cycle" + " ".join([h.rjust(13) for h in hs])
-        print(header)
+        return any((converged, overachieved, geom_converged))
 
     def print_opt_progress(self):
-        int_fmt = "{:>5d}"
-        float_fmt = "{:>12.6f}"
-        conv_str = int_fmt + " " + (float_fmt + " ") * 4 + "{:>12.1f}"
-        print(
-            conv_str.format(
+        try:
+            energy_diff = self.energies[-1] - self.energies[-2]
+        # ValueError: maybe raised when the number of images differ in cycles
+        # IndexError: raised in first cycle when only one energy is present
+        except (ValueError, IndexError):
+            energy_diff = float("nan")
+
+        # Try to sum COS energies
+        try:
+            energy_diff = sum(energy_diff)
+        except TypeError:
+            pass
+
+        if self.cur_cycle % 10 == 0:
+            self.table.print_sep()
+
+        self.table.print_row(
+            (
                 self.cur_cycle,
+                energy_diff,
                 self.max_forces[-1],
                 self.rms_forces[-1],
                 self.max_steps[-1],
@@ -347,7 +374,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             # Geometries/ChainOfStates objects can also do some printing.
             add_info = self.geometry.get_additional_print()
             if add_info:
-                print(add_info)
+                self.table.print(add_info)
         except AttributeError:
             pass
 
@@ -479,7 +506,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             prep_time = prep_end_time - prep_start_time
             print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
-        self.print_header()
+        print("If not specified otherwise, all quantities are given in au.\n")
+        self.table.print_header(with_sep=False)
         self.stopped = False
         # Actual optimization loop
         for self.cur_cycle in range(self.last_cycle, self.max_cycles):
@@ -526,7 +554,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.reset()
 
             # Coordinates may be updated here.
-            if self.reparam_when == "before" and hasattr(self.geometry, "reparametrize"):
+            if self.reparam_when == "before" and hasattr(
+                self.geometry, "reparametrize"
+            ):
                 # This call actually returns a bool, but right now we just drop it.
                 self.geometry.reparametrize()
 
@@ -580,8 +610,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             self.print_opt_progress()
             if self.is_converged:
-                print("Converged!")
-                print()
+                self.table.print("Converged!")
                 break
 
             # Update coordinates
@@ -602,7 +631,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.reset()
 
             # Coordinates may be updated here.
-            if (self.reparam_when == "after") and hasattr(self.geometry, "reparametrize"):
+            if (self.reparam_when == "after") and hasattr(
+                self.geometry, "reparametrize"
+            ):
                 reparametrized = self.geometry.reparametrize()
             else:
                 reparametrized = False
@@ -621,11 +652,10 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.log(f"rms of coordinates after reparametrization={rms:.6f}")
                 self.is_converged = rms < self.reparam_thresh
                 if self.is_converged:
-                    print(
+                    self.table.print(
                         "Insignificant coordinate change after "
                         "reparametrization. Signalling convergence!"
                     )
-                    print()
                     break
 
             sys.stdout.flush()
@@ -635,14 +665,15 @@ class Optimizer(metaclass=abc.ABCMeta):
                 break
             elif sign == "converged":
                 self.converged = True
-                print("Operator indicated convergence!")
+                self.table.print("Operator indicated convergence!")
                 break
 
             self.log("")
         else:
-            print("Number of cycles exceeded!")
+            self.table.print("Number of cycles exceeded!")
 
         # Outside loop
+        print()
         if self.dump:
             self.out_trj_handle.close()
 
@@ -655,7 +686,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.log(f"Tried to delete '{self.current_fn}'. Couldn't find it.")
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
-        print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
+        self.table.print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
         self.postprocess_opt()
         sys.stdout.flush()
 

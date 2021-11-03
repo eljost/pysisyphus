@@ -46,6 +46,9 @@ DEFAULT_F = {
     PT.CARTESIAN_X: CART_F,
     PT.CARTESIAN_Y: CART_F,
     PT.CARTESIAN_Z: CART_F,
+    PT.BONDED_FRAGMENT: CART_F,
+    PT.DUMMY_TORSION: 0.1,
+    PT.DISTANCE_FUNCTION: 0.1,
 }
 
 
@@ -91,7 +94,7 @@ def fischer_guess(geom):
     pair_cov_radii_mat = squareform(pair_cov_radii)
 
     def h_bond(indices):
-        a, b = indices
+        a, b = indices[:2]
         r_ab = dist_mat[a, b]
         r_ab_cov = pair_cov_radii_mat[a, b]
         return 0.3601 * exp(-1.944 * (r_ab - r_ab_cov))

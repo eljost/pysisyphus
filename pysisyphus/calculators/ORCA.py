@@ -9,7 +9,7 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
-from pysisyphus.constants import BOHR2ANG
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.helpers_pure import file_or_str
 
 
@@ -288,7 +288,7 @@ class ORCA(OverlapCalculator):
         to execute ORCA with the stored cmd of this calculator."""
         inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
-            "calc": "noparse",
+            "calc": "energy",
         }
         results = self.run(inp, **kwargs)
         if self.track:
@@ -377,12 +377,6 @@ class ORCA(OverlapCalculator):
         energy = float(energy_mobj.groups()[0])
         results["energy"] = energy
 
-        if self.do_tddft:
-            """FIXME: Store the right energy etc. similar to
-            parse_engrad."""
-            raise Exception(
-                "Proper handling of TDDFT and hessian " " is not yet implemented."
-            )
         return results
 
     def parse_energy(self, path):
@@ -563,6 +557,7 @@ class ORCA(OverlapCalculator):
                 cores = struct.iter_unpack("<i", handle.read(4 * dimension))
 
                 coeffs = np.array(coeffs).reshape(-1, dimension).T
+                energies = np.array([en[0] for en in energies])
 
                 # print('Coefficients')
                 # for coef in coefficients:
@@ -579,14 +574,39 @@ class ORCA(OverlapCalculator):
                 # print('Core')
                 # for core in cores:
                 # print('{}'.format(*core))
-            return coeffs
+            return coeffs, energies
 
-    def parse_all_energies(self, triplets=None):
+    @staticmethod
+    def set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs):
+        """See self.parse_gbw."""
+
+        with open(in_gbw_fn, "rb") as handle:
+            handle.seek(24)
+            offset = struct.unpack("<q", handle.read(8))[0]
+            handle.seek(offset)
+            operators = struct.unpack("<i", handle.read(4))[0]
+            dimension = struct.unpack("<i", handle.read(4))[0]
+            assert operators == 1, "Unrestricted case is not implemented!"
+
+            handle.seek(0)
+            gbw_bytes = handle.read()
+
+        tot_offset = offset + 4 + 4
+        start = gbw_bytes[:tot_offset]
+        end = gbw_bytes[tot_offset + 8 * dimension ** 2 :]
+        # Construct new gbw content by replacing the MO coefficients in the middle
+        mod_gbw_bytes = start + mo_coeffs.T.tobytes() + end
+
+        with open(out_gbw_fn, "wb") as handle:
+            handle.write(mod_gbw_bytes)
+
+    def parse_all_energies(self, text=None, triplets=None):
         if triplets is None:
             triplets = self.triplets
 
-        with open(self.out) as handle:
-            text = handle.read()
+        if text is None:
+            with open(self.out) as handle:
+                text = handle.read()
 
         energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, text)
@@ -602,10 +622,40 @@ class ORCA(OverlapCalculator):
                 roots = len(states) // 2
                 exc_ens = exc_ens[-roots:]
                 states = states[-roots:]
+            exc_en = exc_ens[self.root - 1]
+            # The excitation energy was/is already added to the GS energy
+            gs_energy -= exc_en
+            all_energies[0] = gs_energy
             assert len(exc_ens) == len(set(states))
             all_energies += (np.array(exc_ens) + gs_energy).tolist()
         all_energies = np.array(all_energies)
         return all_energies
+
+    @staticmethod
+    @file_or_str(".out", method=False)
+    def parse_atoms_coords(text):
+        ac_re = re.compile(
+            "CARTESIAN COORDINATES \(ANGSTROEM\)\s+\-{33}(.+?)\s+\-{28}", re.DOTALL
+        )
+        mobj = ac_re.search(text)
+        atoms_coords = mobj.group(1).strip().split()
+        # atoms, *coords = np.array(atoms_coords).reshape(-1, 4).T
+        atoms_coords = np.array(atoms_coords).reshape(-1, 4)
+        atoms = tuple(atoms_coords[:, 0])
+        coords = atoms_coords[:, 1:].astype(float).flatten() * ANG2BOHR
+        return atoms, coords
+
+    @staticmethod
+    @file_or_str(".out", method=False)
+    def parse_engrad_info(text):
+        soi_re = re.compile("State of interest\s+\.{3}\s+(\d+)")
+        try:
+            root = soi_re.search(text).group(1)
+            root = int(root)
+        except AttributeError:
+            root = None
+        triplets = bool(re.search("triplets\s+true", text))
+        return root, triplets
 
     def parse_mo_numbers(self, out_fn):
         with open(out_fn) as handle:
@@ -633,14 +683,14 @@ class ORCA(OverlapCalculator):
         else:
             raise Exception("Got no .gbw file to parse!")
         self.log(f"Setting MO coefficients from {gbw}.")
-        self.mo_coeffs = self.parse_gbw(self.gbw)
+        self.mo_coeffs, _ = self.parse_gbw(self.gbw)
 
     def prepare_overlap_data(self, path):
         # Parse eigenvectors from tda/tddft calculation
         X, Y = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
-        mo_coeffs = self.parse_gbw(self.gbw)
+        mo_coeffs, _ = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
         return mo_coeffs, X, Y, all_energies
 
@@ -648,7 +698,7 @@ class ORCA(OverlapCalculator):
         kept_fns = super().keep(path)
         self.gbw = kept_fns["gbw"]
         self.out = kept_fns["out"]
-        if self.track and self.do_tddft:
+        if self.do_tddft:
             self.cis = kept_fns["cis"]
         try:
             self.mwfn_wf = kept_fns["molden"]

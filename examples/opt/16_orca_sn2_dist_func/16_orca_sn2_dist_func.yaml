@@ -1,0 +1,25 @@
+geom:
+ type: redund
+ fn: lib:birkholz_rx/18_sn2.trj[0]
+calc:
+ type: orca
+ keywords: hf-3c
+ pal: 2
+ charge: -1
+ out_dir: qm_calcs
+scan:
+ type: DIST_FUNC
+ # DistanceFunction, as implemented in CP2K. The first 4 indices define
+ # two bonds, whereas the 5th (last) index is a coefficient, so that
+ #
+ #   dist_func = bond1 + coeff*bond2
+ #
+ # The current example scans
+ #
+ #  dist_func = (C-Cl) + (-1) * (F-C)
+ indices: [0, 4, 5, 0, -1]
+ steps: 15
+ # step_size in au (bohr)
+ step_size: 0.2
+ opt:
+  thresh: gau

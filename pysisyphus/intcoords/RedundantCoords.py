@@ -14,6 +14,7 @@ import numpy as np
 
 from pysisyphus.linalg import svd_inv
 from pysisyphus.intcoords import Torsion
+from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
     eval_primitives,
@@ -26,6 +27,7 @@ from pysisyphus.intcoords.PrimTypes import (
     # PrimType classes
     Bonds,
     Bends,
+    DummyCoords,
     LinearBends,
     Cartesians,
     Dihedrals,
@@ -68,6 +70,8 @@ class RedundantCoords:
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
         self.bond_factor = bond_factor
+        if typed_prims is not None:
+            typed_prims = normalize_prim_inputs(typed_prims)
         # Define additional primitives
         if define_prims is None:
             define_prims = list()
@@ -123,27 +127,10 @@ class RedundantCoords:
             )
         # Use supplied typed_prims
         else:
-            self.typed_prims = typed_prims
+            self.typed_prims = typed_prims + self.define_prims
 
         if self.bonds_only:
             self.typed_prims = self.bond_typed_prims
-
-        def tp_sort(tp):
-            pt, *indices = tp
-            key = pt
-            # We use the fact that list.sort is stable, that is elements that compare
-            # equal retain their order. So we assign PrimTypes.ROTATION to all rotations,
-            # to remain the ABC-order for each fragment. The same goes for the translations.
-            if pt in Rotations:
-                key = PrimTypes.ROTATION
-            elif pt in Translations:
-                key = PrimTypes.TRANSLATION
-            elif pt in Cartesians:
-                key = PrimTypes.CARTESIAN
-            return key
-
-        # Sort by PrimType
-        self.typed_prims.sort(key=tp_sort)
 
         self.primitives = get_primitives(
             self.coords3d,
@@ -156,7 +143,9 @@ class RedundantCoords:
         self._prim_coords = np.array(
             [prim_int.val for prim_int in self._prim_internals]
         )
-        check_primitives(self.coords3d, self.primitives, B=self.B_prim, logger=self.logger)
+        check_primitives(
+            self.coords3d, self.primitives, B=self.B_prim, logger=self.logger
+        )
 
         ref_num = len(self.typed_prims)
         if self.bonds_only:
@@ -167,7 +156,7 @@ class RedundantCoords:
 
     def set_inds_from_typed_prims(self, typed_prims):
         # These lists will hold the index of the respective typed_prims
-        # in self.typed_prims
+        # in 'self.typed_prims'.
         self._bond_inds = list()
         self._bend_inds = list()
         self._linear_bend_inds = list()
@@ -176,6 +165,7 @@ class RedundantCoords:
         self._translation_inds = list()
         self._cartesian_inds = list()
         self._outofplane_inds = list()
+        self._dummycoord_inds = list()
 
         self._bond_atom_inds = list()
         self._bend_atom_inds = list()
@@ -204,6 +194,8 @@ class RedundantCoords:
                 append_to = self._cartesian_inds
             elif pt in OutOfPlanes:
                 append_to = self._outofplane_inds
+            elif pt in DummyCoords:
+                append_to = self._dummycoord_inds
             else:
                 raise Exception("Unhandled PrimType!")
             append_to.append(i)
@@ -241,14 +233,30 @@ class RedundantCoords:
             lb_min_deg=self.lb_min_deg,
             check_bends=self.check_bends,
         )
+
+        def tp_sort(tp):
+            pt, *indices = tp
+            key = pt
+            # We use the fact that list.sort is stable, that is elements that compare
+            # equal retain their order. So we assign PrimTypes.ROTATION to all rotations,
+            # to remain the ABC-order for each fragment. The same goes for the translations.
+            if pt in Rotations:
+                key = PrimTypes.ROTATION
+            elif pt in Translations:
+                key = PrimTypes.TRANSLATION
+            elif pt in Cartesians:
+                key = PrimTypes.CARTESIAN
+            return key
+
+        # Sort by PrimType
+        valid_typed_prims.sort(key=tp_sort)
+
         self.log(
             f"{len(valid_typed_prims)} primitives are valid at the current Cartesians."
         )
         if len(valid_typed_prims) != len(typed_prims):
             self.log("Invalid primitives:")
-            for i, invalid_prim in enumerate(
-                set(typed_prims) - set(valid_typed_prims)
-            ):
+            for i, invalid_prim in enumerate(set(typed_prims) - set(valid_typed_prims)):
                 self.log(f"\t{i:02d}: {invalid_prim}")
         self._typed_prims = valid_typed_prims
         self.set_inds_from_typed_prims(self.typed_prims)
@@ -354,7 +362,7 @@ class RedundantCoords:
             if (tp[1:] == ref_inds) or (tp[1:] == ref_inds[::-1]):
                 return i
         self.log(f"Typed primitive {typed_prim} is not defined!")
-        return None
+        raise PrimitiveNotDefinedException(typed_prim)
 
     @property
     def B_prim(self):
@@ -396,11 +404,15 @@ class RedundantCoords:
         return self.inv_B(self.B)
 
     @property
+    def constrained_indices(self):
+        return [self.typed_prims.index(cp) for cp in self.constrain_prims]
+
+    @property
     def C(self):
         """Diagonal matrix. Entries for constraints are set to one."""
         size = len(self.typed_prims)
         C = np.zeros((size, size))
-        inds = [self.typed_prims.index(cp) for cp in self.constrain_prims]
+        inds = self.constrained_indices
         C[inds, inds] = 1
         return C
 
@@ -532,7 +544,7 @@ class RedundantCoords:
 
         return prim_internals
 
-    def transform_int_step(self, int_step, pure=False):
+    def transform_int_step(self, int_step, update_constraints=False, pure=False):
         self.log(f"Backtransformation {self.backtransform_counter}")
 
         def Bt_inv_prim_getter(cart_coords):
@@ -553,6 +565,8 @@ class RedundantCoords:
             self.rotation_indices,
             check_dihedrals=self.rebuild,
             freeze_atoms=self.freeze_atoms,
+            constrained_inds=self.constrained_indices,
+            update_constraints=update_constraints,
             logger=self.logger,
             Bt_inv_prim_getter=Bt_inv_prim_getter if self.recalc_B else None,
         )
@@ -576,7 +590,6 @@ class RedundantCoords:
 
 
 class TRIC(RedundantCoords):
-
     def __init__(self, *args, **kwargs):
         kwargs["tric"] = True
         kwargs["recalc_B"] = True

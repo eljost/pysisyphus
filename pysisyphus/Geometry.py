@@ -433,6 +433,13 @@ class Geometry:
         self.calculator = calculator
 
     @property
+    def is_analytical_2d(self):
+        try:
+            return self.calculator.analytical_2d
+        except AttributeError:
+            return False
+
+    @property
     def mm_inv(self):
         """Inverted mass matrix.
 
@@ -478,7 +485,7 @@ class Geometry:
         self.coords[ind] = coord
         self.clear()
 
-    def set_coords(self, coords, cartesian=False):
+    def set_coords(self, coords, cartesian=False, update_constraints=False):
         coords = np.array(coords).flatten()
 
         # Do Internal->Cartesian backtransformation if internal coordinates are used.
@@ -512,7 +519,9 @@ class Geometry:
 
             try:
                 int_step = coords - self.internal.coords
-                cart_step = self.internal.transform_int_step(int_step)
+                cart_step = self.internal.transform_int_step(
+                    int_step, update_constraints=update_constraints
+                )
                 # From now on coords will always hold Cartesian coordinates!
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
@@ -536,7 +545,7 @@ class Geometry:
         # be redundant, as the Cartesian step is also constrainted in the
         # Internal->Cartesian backtransformation. But we keep it for now.
         coords.reshape(-1, 3)[self.freeze_atoms] = self.coords3d[self.freeze_atoms]
-        # Set new cartesian coordinates
+        # Set new Cartesian coordinates
         self._coords = coords
         # Reset all values because no calculations with the new coords
         # have been performed yet.
@@ -721,6 +730,16 @@ class Geometry:
     def mw_coords(self, mw_coords):
         """Set mass-weighted coordinates."""
         self.coords = mw_coords / np.sqrt(self.masses_rep)
+
+    def fd_coords3d_gen(self, step_size=1e-3):
+        """Iterator returning 3d Cartesians for finite-differences."""
+        coords3d = self.coords3d.copy()
+        zeros = np.zeros_like(coords3d)
+        for i, _ in enumerate(self.coords3d):
+            for j in (0, 1, 2):
+                step = zeros.copy()
+                step[i, j] = step_size
+                yield i, j, coords3d + step, coords3d - step
 
     @property
     def covalent_radii(self):
@@ -1099,7 +1118,7 @@ class Geometry:
         with open(fn, "w") as handle:
             handle.write(self.as_xyz())
 
-    def get_subgeom(self, indices, coord_type="cart"):
+    def get_subgeom(self, indices, coord_type="cart", sort=False):
         """Return a Geometry containing a subset of the current Geometry.
 
         Parameters
@@ -1114,6 +1133,8 @@ class Geometry:
         sub_geom : Geometry
             Subset of the current Geometry.
         """
+        if sort:
+            indices = sorted(indices)
         ind_list = list(indices)
         sub_atoms = [self.atoms[i] for i in ind_list]
         sub_coords = self.coords3d[ind_list]

@@ -4,6 +4,7 @@ import numpy as np
 from pysisyphus.drivers.opt import run_opt
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.TablePrinter import TablePrinter
 
 
 def relaxed_scan(
@@ -65,7 +66,7 @@ def relaxed_scan(
             step = trust_radius * step / step_norm
         new_coords = scan_geom.coords.copy()
         new_coords[constr_inds] += step
-        scan_geom.coords = new_coords
+        scan_geom.set_coords(new_coords, update_constraints=True)
 
         prefix = f"{title}_step_{i}"
         opt_kwargs = {
@@ -121,9 +122,9 @@ def relaxed_1d_scan(
     opt_key,
     opt_kwargs,
     pref=None,
+    callback=None,
 ):
-    assert geom.coord_type == "redund", \
-        "'coord_type: redund' is required!"
+    assert geom.coord_type == "redund", "'coord_type: redund' is required!"
     if pref is None:
         pref = ""
     else:
@@ -133,7 +134,10 @@ def relaxed_1d_scan(
     constr_ind = geom.internal.get_index_of_typed_prim(constrain_prims[0])
     copy_kwargs = {
         "coord_type": "redund",
-        "coord_kwargs": {"constrain_prims": constrain_prims},
+        "coord_kwargs": {
+            "constrain_prims": constrain_prims,
+            "recalc_B": True,
+        },
     }
     constr_geom = geom.copy(**copy_kwargs)
     calc = calc_getter()
@@ -141,15 +145,17 @@ def relaxed_1d_scan(
     def _calc_getter():
         return calc
 
+    # Drop PrimType at index 0
     unit = "au" if len(constr_prim[1:]) == 2 else "rad"
 
+    org_val = constr_geom.coords[constr_ind]
     cur_val = start
-    init_val = constr_geom.coords[constr_ind]
-    end_val = cur_val + step_size * steps
+    end_val = start + step_size * steps
+    target_scan_vals = np.linspace(cur_val, end_val, steps + 1)
     print(
         f"    Coordinate: {constr_prim}\n"
-        f"Original value: {init_val:.4f} {unit}\n"
-        f"Starting value: {cur_val:.4f} {unit}\n"
+        f"Original value: {org_val:.4f} {unit}\n"
+        f" Initial value: {cur_val:.4f} {unit}\n"
         f"   Final value: {end_val:.4f} {unit}\n"
         f"         Steps: {steps}+1\n"
         f"     Step size: {step_size:.4f} {unit}\n"
@@ -159,29 +165,32 @@ def relaxed_1d_scan(
     scan_energies = list()
     scan_xyzs = list()
 
-    for cycle in range(steps + 1):
+    for cycle, cur_val in enumerate(target_scan_vals):
         opt_kwargs_ = opt_kwargs.copy()
         name = f"{pref}relaxed_scan_{cycle:04d}"
         opt_kwargs_["prefix"] = name
         opt_kwargs_["h5_group_name"] = name
         # Keep a copy
         scan_geoms.append(constr_geom.copy())
+
         # Update constrained coordinate
         new_coords = constr_geom.coords
         new_coords[constr_ind] = cur_val
-        constr_geom.coords = new_coords
+        constr_geom.set_coords(new_coords, update_constraints=True)
 
         title = f"{pref}Step {cycle:02d}, coord={cur_val:.4f} {unit}"
         opt_result = run_opt(
             constr_geom, _calc_getter, opt_key, opt_kwargs_, title=title, level=1
         )
+        if callback is not None:
+            callback(opt_result)
         scan_xyzs.append(constr_geom.as_xyz())
-        scan_vals.append(cur_val)
+        scan_vals.append(constr_geom.coords[constr_ind])
         scan_energies.append(constr_geom.energy)
+
         if not opt_result.opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break
-        cur_val += step_size
 
     with open(f"{pref}relaxed_scan.trj", "w") as handle:
         handle.write("\n".join(scan_xyzs))
@@ -189,4 +198,15 @@ def relaxed_1d_scan(
     scan_data = np.stack((scan_vals, scan_energies), axis=1)
     np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
     scan_vals, scan_energies = scan_data.T
+
+    print(highlight_text(f"Scan summary", level=1))
+    col_fmts = "int float float float float".split()
+    header = ("Step", f"Target / {unit}", f"Actual / {unit}", f"Δ / {unit}", "E / au")
+    table = TablePrinter(header, col_fmts, width=14)
+    table.print_header()
+    for step, (target, act, en) in enumerate(
+        zip(target_scan_vals, scan_vals, scan_energies)
+    ):
+        delta = target - act
+        table.print_row((step, target, act, delta, en))
     return scan_geoms, scan_vals, scan_energies

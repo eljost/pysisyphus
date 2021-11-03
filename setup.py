@@ -32,7 +32,7 @@ setup(
         "autograd",
         "dask",
         "distributed",
-        "h5py==3.2.1",
+        "h5py<3.3.0",
         "jinja2",
         "matplotlib",
         "numpy>=1.18.1",
@@ -61,6 +61,7 @@ setup(
             "pysisfilter = pysisyphus.filtertrj:run",
             "pysispack = pysisyphus.pack:run",
             "pysisthermo = pysisyphus.drivers.thermo:run_thermo",
+            "pysismerge = pysisyphus.drivers.merge:run_merge",
         ]
     },
 )

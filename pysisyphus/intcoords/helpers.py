@@ -1,7 +1,9 @@
 import numpy as np
 
+from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
+from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.intcoords.Stretch import Stretch
 
 
@@ -93,7 +95,7 @@ def form_coordinate_union(geom1, geom2):
 def get_weighted_bond_mode(weighted_bonds, coords3d, remove_translation=True):
     bond_mode = np.zeros_like(coords3d.flatten())
     for *indices, weight in weighted_bonds:
-        val, grad = Stretch._calculate(coords3d, indices, gradient=True)
+        _, grad = Stretch._calculate(coords3d, indices, gradient=True)
         """
         The gradient gives us the direction into which the bond increases, but
         we want that positive weights correspond to bond formation (distance
@@ -108,3 +110,52 @@ def get_weighted_bond_mode(weighted_bonds, coords3d, remove_translation=True):
 
     bond_mode /= np.linalg.norm(bond_mode)
     return bond_mode
+
+
+def get_weighted_bond_mode_getter(
+    target_weighted_bonds, bond_factor=1.2, fractional=False
+):
+    """Create input for intcoords.helpers.get_weighted_bond_mode.
+
+    Compared to the rest of pysisyphus this method uses a slightly lowered
+    bond factor, so it is more strict regarding what is considered a bond
+    and what not."""
+
+    def func(atoms, coords3d):
+        bond_sets = [
+            set(bond)
+            for bond in get_bond_sets(atoms, coords3d, bond_factor=bond_factor).tolist()
+        ]
+        bonds = list()
+        frac_weights = list()
+        for tbond in target_weighted_bonds:
+            *inds, weight = tbond
+            assert weight != 0.0
+            tset = set(inds)
+            """
+            Skip target bond if weight is positive (bond is to be formed) and
+            bond is already present. Similarly, skip when the bond is to be broken
+            and it is not present.
+            """
+            if (weight > 0 and tset in bond_sets) or (
+                weight < 0 and tset not in bond_sets
+            ):
+                continue
+            bonds.append(tbond)
+
+            if fractional:
+                from_, to_ = inds
+                ref_len = CR[atoms[from_].lower()] + CR[atoms[to_].lower()]
+                act_len = np.linalg.norm(coords3d[from_] - coords3d[to_])
+                fw = (act_len / ref_len) ** weight
+                frac_weights.append(fw)
+
+        if fractional:
+            frac_weights = np.array(frac_weights)
+            frac_weights /= frac_weights.sum()
+            frac_weights = frac_weights ** 2
+            frac_weights /= frac_weights.max()
+            bonds = [(*inds, fw) for ((*inds, _), fw) in zip(bonds, frac_weights)]
+        return bonds
+
+    return func

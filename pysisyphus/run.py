@@ -33,7 +33,13 @@ from pysisyphus.dynamics import (
     get_colvar,
     Gaussian,
 )
-from pysisyphus.drivers import relaxed_1d_scan, run_opt, run_precontr
+from pysisyphus.drivers import (
+    relaxed_1d_scan,
+    run_opt,
+    run_precontr,
+    run_perf,
+    print_perf_results,
+)
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
 
 from pysisyphus.Geometry import Geometry
@@ -48,6 +54,7 @@ from pysisyphus.helpers_pure import (
     recursive_update,
     highlight_text,
 )
+from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.PrimTypes import PrimTypes, normalize_prim_inputs
@@ -57,6 +64,7 @@ from pysisyphus.interpolate import interpolate_all
 from pysisyphus.irc import *
 from pysisyphus.io import save_hessian
 from pysisyphus.stocastic import *
+from pysisyphus.thermo import can_thermoanalysis
 from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
 from pysisyphus._version import get_versions
 from pysisyphus.xyzloader import write_geoms_to_trj
@@ -303,8 +311,9 @@ def run_tsopt_from_cos(
     print(union_msg)
 
     ts_geom_kwargs = tsopt_kwargs.pop("geom")
-    ts_geom_kwargs["coord_kwargs"].update(coord_kwargs)
     ts_coord_type = ts_geom_kwargs.pop("type")
+    if ts_coord_type != "cart":
+        ts_geom_kwargs["coord_kwargs"].update(coord_kwargs)
 
     ts_geom = Geometry(
         hei_image.atoms,
@@ -318,7 +327,7 @@ def run_tsopt_from_cos(
     if ts_coord_type == "cart":
         ref_tangent = cart_hei_tangent
     elif ts_coord_type in ("redund", "dlc"):
-        ref_tangent = ts_geom.internal.B_prim @ cart_hei_tangent
+        ref_tangent = ts_geom.internal.B @ cart_hei_tangent
     else:
         raise Exception(f"Invalid coord_type='{ts_coord_type}'!")
     ref_tangent /= np.linalg.norm(ref_tangent)
@@ -594,8 +603,12 @@ def run_md(geom, calc_getter, md_kwargs):
     return md_result
 
 
-def run_scan(geom, calc_getter, scan_kwargs):
+def run_scan(geom, calc_getter, scan_kwargs, callback=None):
     print(highlight_text("Relaxed Scan") + "\n")
+    assert (
+        geom.coord_type != "cart"
+    ), "Internal coordinates are required for coordinate scans."
+
     type_ = scan_kwargs["type"]
     indices = scan_kwargs["indices"]
     steps = scan_kwargs["steps"]
@@ -623,7 +636,14 @@ def run_scan(geom, calc_getter, scan_kwargs):
 
     start_was_none = start is None
     if start_was_none:
-        constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
+        try:
+            constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
+        # Recreate geom with appropriate primitive
+        except PrimitiveNotDefinedException:
+            geom = geom.copy(
+                coord_kwargs={"define_prims": constrain_prims}
+            )
+            constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
         # The given indices may not correspond exactly to a typed primitives,
         # as they may be reversed. So we fetch the actual typed primitive.
         constr_prim = geom.internal.typed_prims[constr_ind]
@@ -647,6 +667,7 @@ def run_scan(geom, calc_getter, scan_kwargs):
             opt_key,
             opt_kwargs,
             pref=pref,
+            callback=callback,
         )
 
     if not symmetric:
@@ -1004,6 +1025,7 @@ def get_defaults(conf_dict):
         "geom": None,
         "mdp": None,
         "md": None,
+        "perf": None,
     }
 
     mol_opt_defaults = {
@@ -1080,7 +1102,7 @@ def get_defaults(conf_dict):
                 "strict": False,
             }
         )
-        #dd["preopt"]["geom"]["type"] = "tric"
+        # dd["preopt"]["geom"]["type"] = "tric"
 
     if "endopt" in conf_dict:
         dd["endopt"] = mol_opt_defaults.copy()
@@ -1121,6 +1143,7 @@ def get_defaults(conf_dict):
             "opt": mol_opt_defaults.copy(),
             "symmetric": False,
         }
+        dd["scan"]["opt"]["dump"] = False
 
     if "md" in conf_dict:
         md_T = 298.15
@@ -1133,6 +1156,12 @@ def get_defaults(conf_dict):
             "print_stride": 100,
             "dump_stride": 10,
             "remove_com_v": True,
+        }
+
+    if "perf" in conf_dict:
+        dd["perf"] = {
+            "mems": 2500,
+            "repeat": 3,
         }
 
     return dd
@@ -1169,6 +1198,7 @@ def setup_run_dict(run_dict):
     # Load defaults to have a sane baseline
     run_dict = get_defaults(run_dict)
     # Update nested entries that are dicts by themselves
+    # Take care to insert a , after the string!
     key_set = set(org_dict.keys())
     for key in key_set & set(
         (
@@ -1182,6 +1212,7 @@ def setup_run_dict(run_dict):
             "md",
             "mdp",
             "opt",
+            "perf",
             "precontr",
             "preopt",
             "scan",
@@ -1210,15 +1241,18 @@ RunResult = namedtuple(
         "calced_geoms calced_results "
         "stocastic calc_getter "
         "scan_geoms scan_vals scan_energies "
+        "perf_results "
     ),
 )
 
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
-    # Dump actual run_dict
+    # Dump run_dict
+    run_dict_copy = run_dict.copy()
+    run_dict_copy["version"] = get_versions()["version"]
     with open("RUN.yaml", "w") as handle:
-        yaml.dump(run_dict, handle)
+        yaml.dump(run_dict_copy, handle)
 
     if run_dict["interpol"]:
         interpolate = run_dict["interpol"]["type"]
@@ -1250,7 +1284,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     if run_dict["irc"]:
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
-    # Handle geometry input. This section has to be always present.
+
+    # Handle geometry input. This section must always be present.
     geom_kwargs = run_dict["geom"]
     xyz = geom_kwargs.pop("fn")
     coord_type = geom_kwargs.pop("type")
@@ -1280,7 +1315,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Prepare calculator
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
-    calc_kwargs["out_dir"] = yaml_dir
+    calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir)
     if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
@@ -1312,10 +1347,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Initial loading of geometries from file(s)
     geoms = get_geoms(xyz, coord_type="cart")
 
-    #------------------------+
+    # ------------------------+
     #   Preconditioning of   |
     # Translation & Rotation |
-    #------------------------+
+    # ------------------------+
 
     if run_dict["precontr"]:
         ptr_geom0, ptr_geom_m1 = run_precontr(
@@ -1324,10 +1359,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         geoms[0] = ptr_geom0
         geoms[-1] = ptr_geom_m1
 
-    #-----------------------+
+    # -----------------------+
     # Preoptimization of    |
     # first & last image(s) |
-    #-----------------------+
+    # -----------------------+
 
     if run_dict["preopt"]:
         first_opt_result, last_opt_result = run_preopt(
@@ -1371,6 +1406,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     elif run_dict["scan"]:
         scan_kwargs = run_dict["scan"]
         scan_geoms, scan_vals, scan_energies = run_scan(geom, calc_getter, scan_kwargs)
+    elif run_dict["perf"]:
+        perf_results = run_perf(geom, calc_getter, **run_dict["perf"])
+        print_perf_results(perf_results)
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #
@@ -1399,7 +1437,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
                 shaked_coords = shake_coords(geom.coords, **run_dict["shake"])
                 geom.coords = shaked_coords
                 print(f"Shaken coordinates:\n{geom.as_xyz()}")
-            opt_result = run_opt(geom, calc_getter, opt_key, opt_kwargs, print_thermo=True)
+            opt_result = run_opt(
+                geom, calc_getter, opt_key, opt_kwargs, print_thermo=True
+            )
             opt_geom = opt_result.geom
             opt = opt_result.opt
             # Keep a backup of the optimized geometry
@@ -1465,7 +1505,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
         # Only run 'endopt' when a previous IRC calculation was done
         if ran_irc and run_dict["endopt"]:
-            do_thermo = run_dict["endopt"].get("do_hess", False)
+            do_thermo = run_dict["endopt"].get("do_hess", False) and can_thermoanalysis
             T = run_dict["endopt"]["T"]
             # Order is forward, backward, downhill
             endopt_results = run_endopt(
@@ -1698,6 +1738,11 @@ def do_clean(force=False):
         "ts_final_hessian.h5",
         "third_deriv.h5",
         "*.ao_ovlp_rec",
+        # MOPAC
+        "*.mopac.aux",
+        "*.mopac.arc",
+        "*.mopac.mop",
+        "*.mopac.out",
     )
     to_rm_paths = list()
     for glob in rm_globs:
@@ -1786,7 +1831,6 @@ def run_from_dict(
     if cwd is None:
         cwd = Path(".")
 
-    start_time = datetime.datetime.now()
     print_header()
 
     # Citation
@@ -1826,16 +1870,11 @@ def run_from_dict(
         print()
         check_asserts(run_result, run_dict)
 
-    end_time = datetime.datetime.now()
-    duration = end_time - start_time
-    # Only keep hh:mm:ss
-    duration_hms = str(duration).split(".")[0]
-    print(f"pysisyphus run took {duration_hms} h.")
-
     return run_result
 
 
 def run():
+    start_time = datetime.datetime.now()
     args = parse_args(sys.argv[1:])
 
     # Defaults
@@ -1870,6 +1909,13 @@ def run():
         "restart": args.restart,
     }
     run_result = run_from_dict(run_dict, **run_kwargs)
+
+    end_time = datetime.datetime.now()
+    duration = end_time - start_time
+    # Only keep hh:mm:ss
+    duration_hms = str(duration).split(".")[0]
+    print(f"pysisyphus run took {duration_hms} h.")
+
     return 0
 
 

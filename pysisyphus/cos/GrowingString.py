@@ -441,13 +441,16 @@ class GrowingString(GrowingChainOfStates):
         size_info = f"String={size_str}"
         energies = np.array(self.all_energies[-1])
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL
-        barrier_info = f"(E_max-E_0)={barrier:.1f} kJ/mol"
+        barrier_info = f"(E_hei-E_0)={barrier:.1f} kJ/mol"
         hei_ind = energies.argmax()
+        hei_norm = np.linalg.norm(self.all_true_forces[-1][hei_ind])
+        hei_info = f"norm(forces_true,hei)={hei_norm:.6f} E_h/a_0"
         hei_str = f"HEI={hei_ind+1:02d}/{energies.size:02d}"
 
         strs = (
             size_info,
             hei_str,
             barrier_info,
+            hei_info,
         )
         return "\t" + " ".join(strs)

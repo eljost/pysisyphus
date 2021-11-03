@@ -2,6 +2,7 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords.derivatives import d2q_b
+from pysisyphus.linalg import norm3
 
 
 class Stretch(Primitive):
@@ -14,7 +15,7 @@ class Stretch(Primitive):
     def _calculate(coords3d, indices, gradient=False):
         n, m = indices
         bond = coords3d[m] - coords3d[n]
-        bond_length = np.linalg.norm(bond)
+        bond_length = norm3(bond)
         if gradient:
             bond_normed = bond / bond_length
             row = np.zeros_like(coords3d)

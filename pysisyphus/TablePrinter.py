@@ -24,6 +24,7 @@ class TablePrinter:
         self.fmts = {
             "int": "{:>" + w + "d}",
             "float": "{: >" + w + ".6f}",
+            "float_short": "{: >" + w + ".2f}",
             "str": "{:>" + w + "s}",
         }
         self.fmts.update(fmts_update)
@@ -41,9 +42,13 @@ class TablePrinter:
             + "-" * abs(self.shift_left)
         )
 
-    def print_header(self):
-        print(self.header_str)
+    def print_sep(self):
         print(self.sep)
+
+    def print_header(self, with_sep=True):
+        print(self.header_str)
+        if with_sep:
+            self.print_sep()
 
     def print_row(self, args):
         print(self.conv_str.format(*args))
@@ -56,15 +61,3 @@ class TablePrinter:
             level = 0
         level_prefix = "    " * level
         print(textwrap.indent(text, self.prefix + level_prefix))
-
-
-if __name__ == "__main__":
-    h = "int int float int float str".split()
-    args = [1, 1, 1.0, 3, 1.1453125, "halloo"]
-    T = TablePrinter(header=h, col_fmts=h)
-    T.print_header()
-    T.print_row(args)
-
-    text = "aragawasf garbel\nyololo anaonoasdlo\noi!"
-    T.print(text)
-    T.print_row(args)

@@ -12,6 +12,8 @@ from pysisyphus.optimizers.Optimizer import get_data_model, get_h5_group
 class TSHessianOptimizer(HessianOptimizer):
     """Optimizer to find first-order saddle points."""
 
+    valid_updates = ("bofill", "ts_bfgs", "ts_bfgs_org", "ts_bfgs_rev")
+
     def __init__(
         self,
         geometry,
@@ -25,21 +27,24 @@ class TSHessianOptimizer(HessianOptimizer):
         hessian_recalc_reset=True,
         max_micro_cycles=50,
         trust_radius=0.3,
+        trust_max=0.5,
         augment_bonds=False,
         min_line_search=False,
         max_line_search=False,
+        assert_neg_eigval=False,
         **kwargs,
     ):
 
         assert (
-            hessian_update == "bofill"
-        ), "Bofill update is recommended in a TS-optimization."
+            hessian_update in self.valid_updates
+        ), f"Invalid Hessian update. Please chose from: {self.valid_updates}!"
 
         super().__init__(
             geometry,
             hessian_init=hessian_init,
             hessian_update=hessian_update,
             trust_radius=trust_radius,
+            trust_max=trust_max,
             hessian_recalc_reset=hessian_recalc_reset,
             **kwargs,
         )
@@ -82,6 +87,7 @@ class TSHessianOptimizer(HessianOptimizer):
         self.augment_bonds = augment_bonds and (self.hessian_init == "calc")
         self.min_line_search = min_line_search
         self.max_line_search = max_line_search
+        self.assert_neg_eigval = assert_neg_eigval
 
         self.ts_mode = None
         self.max_micro_cycles = max_micro_cycles
@@ -253,16 +259,17 @@ class TSHessianOptimizer(HessianOptimizer):
         # When we left the convex region of the PES we only compare to other
         # imaginary modes ... is this a bad idea? Maybe we should use all modes
         # for the overlaps?!
-        if self.ts_mode_eigval < 0:
+        if self.ts_mode_eigval < 0 and neg_num > 0:
             infix = "imaginary "
             ovlp_eigvecs = eigvecs[:, :neg_num]
             eigvals = eigvals[:neg_num]
-            # When the eigenvalue corresponding to the TS mode has been negative once,
-            # we should not lose all negative eigenvalues. If this happens something went
-            # wrong and we crash :)
-            assert (
-                neg_num >= 1
-            ), "Need at least 1 negative eigenvalue for TS optimization."
+        # When the eigenvalue corresponding to the TS mode has been negative once,
+        # we should not lose all negative eigenvalues. If this happens something went
+        # wrong and we crash :)
+        elif self.assert_neg_eigval and neg_num == 0:
+            raise AssertionError(
+                "Need at least 1 negative eigenvalue for TS optimization."
+            )
         # Use all eigenvectors for overlaps when the eigenvalue corresponding to the TS
         # mode is still positive.
         else:
@@ -321,9 +328,13 @@ class TSHessianOptimizer(HessianOptimizer):
         if self.max_line_search and self.cur_cycle > 0:
             prev_energy = self.energies[-2]
             prev_gradient = -self.forces[-2]
-            prev_gradient_trans = eigvecs.T.dot(prev_gradient)
-            prev_step = self.steps[-1]
-            prev_step_trans = eigvecs.T.dot(prev_step)
+            try:
+                prev_gradient_trans = eigvecs.T.dot(prev_gradient)
+                prev_step = self.steps[-1]
+                prev_step_trans = eigvecs.T.dot(prev_step)
+            # Will be raised when coordinates were rebuilt and the array shapes differe.
+            except ValueError:
+                return ip_step, ip_gradient_trans
 
             # Max subspace
             # max_energy, max_gradient, max_step = self.do_max_line_search(

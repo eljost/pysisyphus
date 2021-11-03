@@ -4,6 +4,7 @@ import numpy as np
 
 from pysisyphus.intcoords.derivatives import dq_lb, d2q_lb
 from pysisyphus.intcoords.Primitive import Primitive
+from pysisyphus.linalg import cross3, norm3
 
 
 # [1] 10.1080/00268977200102361
@@ -32,8 +33,8 @@ class LinearBend(Primitive):
         # Repeated code to avoid import of intcoords.Bend
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
-        u_norm = np.linalg.norm(u_dash)
-        v_norm = np.linalg.norm(v_dash)
+        u_norm = norm3(u_dash)
+        v_norm = norm3(v_dash)
         u = u_dash / u_norm
         v = v_dash / v_norm
         rad = np.arccos(u.dot(v))
@@ -44,18 +45,18 @@ class LinearBend(Primitive):
     def _get_orthogonal_direction(coords3d, indices, complement=False, cross_vec=None):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
-        u_norm = np.linalg.norm(u_dash)
+        u_norm = norm3(u_dash)
         u = u_dash / u_norm
 
         if cross_vec is None:
             cross_vec = LinearBend._get_cross_vec(coords3d, indices)
         # Generate first orthogonal direction
-        w_dash = np.cross(u, cross_vec)
-        w = w_dash / np.linalg.norm(w_dash)
+        w_dash = cross3(u, cross_vec)
+        w = w_dash / norm3(w_dash)
 
         # Generate second orthogonal direction
         if complement:
-            w = np.cross(u, w)
+            w = cross3(u, w)
         return w
 
     def calculate(self, coords3d, indices=None, gradient=False):
@@ -69,13 +70,13 @@ class LinearBend(Primitive):
         m, o, n = indices
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
-        u_norm = np.linalg.norm(u_dash)
-        v_norm = np.linalg.norm(v_dash)
+        u_norm = norm3(u_dash)
+        v_norm = norm3(v_dash)
         w = LinearBend._get_orthogonal_direction(
             coords3d, indices, complement, cross_vec
         )
 
-        lb_rad = w.dot(np.cross(u_dash, v_dash)) / (u_norm * v_norm)
+        lb_rad = w.dot(cross3(u_dash, v_dash)) / (u_norm * v_norm)
 
         if gradient:
             # Fourth argument is the orthogonal direction

@@ -434,12 +434,18 @@ def plot_gau(gau_fns, num=50):
 def plot_overlaps(h5, thresh=0.1):
     with h5py.File(h5, "r") as handle:
         overlaps = handle["overlap_matrices"][:]
-        ovlp_type = handle["ovlp_type"][()].decode()
-        ovlp_with = handle["ovlp_with"][()].decode()
         roots = handle["roots"][:]
         calculated_roots = handle["calculated_roots"][:]
         ref_cycles = handle["ref_cycles"][:]
         ref_roots = handle["ref_roots"][:]
+        try:
+            ovlp_type = handle.attrs["ovlp_type"]
+            ovlp_with = handle.attrs["ovlp_with"]
+        # The old way is handled below. Newer pysis versions store ovlp_type/ovlp_with
+        # in attrs.
+        except KeyError:
+            ovlp_type = handle["ovlp_type"][()].decode()
+            ovlp_with = handle["ovlp_with"][()].decode()
         try:
             cdd_img_fns = handle["cdd_imgs"][:]
         except KeyError:

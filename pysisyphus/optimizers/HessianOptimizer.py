@@ -2,6 +2,7 @@ from math import sqrt
 import numpy as np
 from scipy.optimize import root_scalar
 
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.helpers import rms
 from pysisyphus.io.hessian import save_hessian
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
@@ -10,17 +11,29 @@ from pysisyphus.optimizers.hessian_updates import (
     flowchart_update,
     damped_bfgs_update,
     bofill_update,
+    ts_bfgs_update,
+    ts_bfgs_update_org,
+    ts_bfgs_update_revised,
 )
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
+def dummy_hessian_update(H, dx, dg):
+    return np.zeros_like(H), "no"
+
+
 class HessianOptimizer(Optimizer):
     hessian_update_funcs = {
-        "none": lambda H, dx, dg: (np.zeros_like(H), "no"),
+        "none": dummy_hessian_update,
+        None: dummy_hessian_update,
+        False: dummy_hessian_update,
         "bfgs": bfgs_update,
         "damped_bfgs": damped_bfgs_update,
         "flowchart": flowchart_update,
         "bofill": bofill_update,
+        "ts_bfgs": ts_bfgs_update,
+        "ts_bfgs_org": ts_bfgs_update_org,
+        "ts_bfgs_rev": ts_bfgs_update_revised,
     }
 
     rfo_dict = {
@@ -50,6 +63,9 @@ class HessianOptimizer(Optimizer):
     ):
         super().__init__(geometry, **kwargs)
 
+        assert not issubclass(type(geometry), ChainOfStates), \
+            "HessianOptimizer can't be used for and ChainOfStates objects!"
+
         self.trust_update = bool(trust_update)
         assert trust_min <= trust_max, "trust_min must be <= trust_max!"
         self.trust_min = float(trust_min)
@@ -69,7 +85,7 @@ class HessianOptimizer(Optimizer):
         # Restricted-step related
         self.alpha0 = alpha0
         self.max_micro_cycles = int(max_micro_cycles)
-        assert max_micro_cycles >= 1
+        assert max_micro_cycles >= 0
         self.rfo_overlaps = rfo_overlaps
 
         assert self.small_eigval_thresh > 0.0, "small_eigval_thresh must be > 0.!"
@@ -86,8 +102,10 @@ class HessianOptimizer(Optimizer):
             and self.hessian_init in ("fischer", "lindh", "simple", "swart")
         ):
             self.hessian_init = "unit"
-            self.log(f"Chosen initial (model) Hessian is incompatible with current "
-                     f"coord_type: {self.geometry.coord_type}!")
+            self.log(
+                f"Chosen initial (model) Hessian is incompatible with current "
+                f"coord_type: {self.geometry.coord_type}!"
+            )
 
         self._prev_eigvec_min = None
         self._prev_eigvec_max = None
@@ -139,6 +157,10 @@ class HessianOptimizer(Optimizer):
             hessian_init = self.hessian_init
 
         self.H, hess_str = get_guess_hessian(self.geometry, hessian_init)
+        if self.hessian_init != "calc" and self.geometry.is_analytical_2d:
+            assert self.H.shape == (3, 3)
+            self.H[2, 2] = 0.0
+
         msg = f"Using {hess_str} Hessian"
         if hess_str == "saved":
             msg += f" from '{hessian_init}'"
@@ -205,7 +227,7 @@ class HessianOptimizer(Optimizer):
             last_step_norm = np.linalg.norm(step)
             self.set_new_trust_radius(coeff, last_step_norm)
             if unexpected_increase:
-                print(
+                self.table.print(
                     f"Unexpected energy increase ({actual_change:.6f} au)! "
                     f"Trust radius: old={old_trust:.4}, new={self.trust_radius:.4}"
                 )
@@ -443,20 +465,30 @@ class HessianOptimizer(Optimizer):
             )
             alpha += alpha_step
             self.log("")
+        # Otherwise, use trust region newton step
         else:
             self.log(
-                "RS algorithm did not produce a desired step length "
-                f"after {self.max_micro_cycles} micro cycles. Using "
-                "simple downscaled step with alpha=1."
+                "RS algorithm did not produce a desired step length in "
+                f"{self.max_micro_cycles} micro cycles. Trying RFO with α=1.0."
             )
             H_aug = self.get_augmented_hessian(eigvals, gradient_, alpha=1.0)
             rfo_step_, eigval_min, nu, _ = self.solve_rfo(H_aug, "min")
             rfo_norm_ = np.linalg.norm(rfo_step_)
+
             # This should always be True if the above algorithm failed but we
-            # keep this line here nonetheless to make it more obvious what
-            # we are doing.
+            # keep this line nonetheless,  to make it more obvious.
             if rfo_norm_ > self.trust_radius:
-                step_ = rfo_step_ / rfo_norm_ * self.trust_radius
+                self.log(
+                    f"Proposed RFO step with norm {rfo_norm_:.4f} is outside trust "
+                    f"radius Δ={self.trust_radius:.4f}. "
+                )
+                step_ = self.get_newton_step_on_trust(
+                    eigvals, eigvecs, gradient, transform=False
+                )
+                # Simple, downscaled RFO step
+                # step_ = rfo_step_ / rfo_norm_ * self.trust_radius
+            else:
+                step_ = rfo_step_
 
         # Transform step back to original basis
         step = eigvecs.dot(step_)
@@ -470,10 +502,14 @@ class HessianOptimizer(Optimizer):
     def get_newton_step(eigvals, eigvecs, gradient):
         return eigvecs.dot(eigvecs.T.dot(gradient) / eigvals)
 
-    def get_newton_step_on_trust(self, eigvals, eigvecs, gradient):
+    def get_newton_step_on_trust(self, eigvals, eigvecs, gradient, transform=True):
+        """Step on trust-radius.
+
+        See Nocedal 4.3 Iterative solutions of the subproblem
+        """
         min_ind = eigvals.argmin()
         min_eigval = eigvals[min_ind]
-        pos_definite = min_eigval > 0.0
+        pos_definite = (eigvals > 0.0).all()
         gradient_trans = eigvecs.T.dot(gradient)
 
         # This will be also be True when we come close to a minimizer,
@@ -496,7 +532,8 @@ class HessianOptimizer(Optimizer):
 
         def finalize_step(shift):
             step = get_step(shift)
-            step = eigvecs.dot(step)
+            if transform:
+                step = eigvecs.dot(step)
             return step
 
         # Simplest case. Positive definite Hessian and predicted step is
@@ -527,28 +564,41 @@ class HessianOptimizer(Optimizer):
 
         BRACKET_END = 1e10
         if not hard_case:
-            bracket_start = 0.0 if pos_definite else -min_eigval - 1e-3
+            bracket_start = 0.0 if pos_definite else -min_eigval + 1e-2
             bracket = (bracket_start, BRACKET_END)
-            res = root_search(bracket)
-            assert res.converged
-            return finalize_step(res.root)
-
-        # Hard case.
-        # First we try the bracket (-b1, ∞)
-        bracket = (-min_eigval, BRACKET_END)
-        res = root_search(bracket)
-        if res.converged:
-            return finalize_step(res.root)
+            try:
+                res = root_search(bracket)
+                assert res.converged
+                return finalize_step(res.root)
+            # ValueError may be raised when the function values for the
+            # initial bracket have the same sign. If so, we continue with
+            # treating it as a hard case.
+            except ValueError:
+                pass
 
         # Now we would try the bracket (-b2, -b1). The resulting step should have
         # a suitable length, but the (shifted) Hessian would have an incorrect
         # eigenvalue spectrum (not positive definite). To solve this we use a
         # different formula to calculate the step.
-        without_first = gradient_trans[1:] / (eigvals[1:] - min_eigval)
-        tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
-        step_trans = [tau] + -without_first.tolist()
-        step = eigvecs.dot(step_trans)
-        return step
+        mask = np.ones_like(gradient_trans)
+        mask[min_ind] = 0
+        mask = mask.astype(bool)
+        without_min = gradient_trans[mask] / (eigvals[mask] - min_eigval)
+        try:
+            tau = sqrt(self.trust_radius ** 2 - (without_min ** 2).sum())
+            step_trans = [tau] + (-without_min).tolist()
+        # Hard case. Search in open interval (endpoints not included)
+        # (-min_eigval, inf).
+        except ValueError:
+            bracket = (-min_eigval + 1e-6, BRACKET_END)
+            res = root_search(bracket)
+            if res.converged:
+                return finalize_step(res.root)
+
+        if not transform:
+            return step_trans
+
+        return eigvecs.dot(step_trans)
 
     @staticmethod
     def quadratic_model(gradient, hessian, step):

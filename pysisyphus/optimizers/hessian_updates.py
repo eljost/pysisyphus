@@ -12,6 +12,12 @@
 #     Nocedal, Wright
 # [6] https://arxiv.org/abs/2006.08877
 #     Goldfarb, 2020
+# [7] https://pubs.acs.org/doi/10.1021/acs.jctc.9b00869
+#     Hermes, Zádor, 2019
+# [8] https://doi.org/10.1002/(SICI)1096-987X(199802)19:3<349::AID-JCC8>3.0.CO;2-T
+#     Bofill, 1998
+# [9] http://dx.doi.org/10.1016/S0166-1280(02)00209-9
+#     Bungay, Poirier
 
 
 import numpy as np
@@ -21,9 +27,7 @@ from pysisyphus.optimizers.closures import bfgs_multiply
 
 def bfgs_update(H, dx, dg):
     first_term = np.outer(dg, dg) / dg.dot(dx)
-    second_term = (H.dot(np.outer(dx, dx)).dot(H)
-                  / dx.dot(H).dot(dx)
-    )
+    second_term = H.dot(np.outer(dx, dx)).dot(H) / dx.dot(H).dot(dx)
     return first_term - second_term, "BFGS"
 
 
@@ -32,19 +36,18 @@ def damped_bfgs_update(H, dx, dg):
     dxdg = dx.dot(dg)
     dxHdx = dx.dot(H).dot(dx)
     theta = 1
-    if dxdg < 0.2*dxHdx:
-        theta = 0.8*dxHdx / (dxHdx - dxdg)
-    r = theta*dg + (1-theta)*H.dot(dx)
+    if dxdg < 0.2 * dxHdx:
+        theta = 0.8 * dxHdx / (dxHdx - dxdg)
+    r = theta * dg + (1 - theta) * H.dot(dx)
 
     first_term = np.outer(r, r) / r.dot(dx)
-    second_term = (H.dot(np.outer(dx, dx)).dot(H)
-                  / dxHdx
-    )
+    second_term = H.dot(np.outer(dx, dx)).dot(H) / dxHdx
     return first_term - second_term, "damped BFGS"
 
 
-def double_damp(s, y, H=None, s_list=None, y_list=None,
-                mu_1=0.2, mu_2=0.2, logger=None):
+def double_damp(
+    s, y, H=None, s_list=None, y_list=None, mu_1=0.2, mu_2=0.2, logger=None
+):
     """Double damped step 's' and gradient differences 'y'.
 
     H is the inverse Hessian!
@@ -90,10 +93,10 @@ def double_damp(s, y, H=None, s_list=None, y_list=None,
 
     theta_1 = 1
     damped_s = ""
-    if sy < mu_1*yHy:
+    if sy < mu_1 * yHy:
         theta_1 = (1 - mu_1) * yHy / (yHy - sy)
-        s = theta_1*s + (1 - theta_1)*Hy
-        if theta_1 < 1.:
+        s = theta_1 * s + (1 - theta_1) * Hy
+        if theta_1 < 1.0:
             damped_s = ", damped s"
     msg = f"damped BFGS\n\ttheta_1={theta_1:.4f} {damped_s}"
 
@@ -103,10 +106,10 @@ def double_damp(s, y, H=None, s_list=None, y_list=None,
         sy = s.dot(y)
         ss = s.dot(s)
         theta_2 = 1
-        if sy < mu_2*ss:
+        if sy < mu_2 * ss:
             theta_2 = (1 - mu_2) * ss / (ss - sy)
-        y = theta_2*y + (1 - theta_2)*s
-        if theta_2 < 1.:
+        y = theta_2 * y + (1 - theta_2) * s
+        if theta_2 < 1.0:
             damped_y = ", damped y"
         msg = "double " + msg + f"\n\ttheta_2={theta_2:.4f} {damped_y}"
 
@@ -122,7 +125,7 @@ def sr1_update(z, dx):
 
 def psb_update(z, dx):
     first_term = (np.outer(dx, z) + np.outer(z, dx)) / dx.dot(dx)
-    sec_term = dx.dot(z) * np.outer(dx, dx) / dx.dot(dx)**2
+    sec_term = dx.dot(z) * np.outer(dx, dx) / dx.dot(dx) ** 2
     return first_term - sec_term, "PSB"
 
 
@@ -164,9 +167,84 @@ def bofill_update(H, dx, dg):
     powell, _ = psb_update(z, dx)
 
     # Bofill mixing-factor
-    mix = z.dot(dx)**2 / (z.dot(z) * dx.dot(dx))
+    mix = z.dot(dx) ** 2 / (z.dot(z) * dx.dot(dx))
 
     # Bofill update
-    bofill_update = (mix * sr1) + (1 - mix)*(powell)
+    bofill_update = (mix * sr1) + (1 - mix) * (powell)
 
     return bofill_update, "Bofill"
+
+
+def ts_bfgs_update(H, dx, dg):
+    """As described in [7]"""
+    dx = dx[:, None]
+    dg = dg[:, None]
+    j = dg - H @ dx
+    jdx = j.T @ dx
+    # Diagonalize Hessian, to construct positive definite version of it
+    w, v = np.linalg.eigh(H)
+    Hdx = np.abs(w) * v @ (v.T @ dx)
+    M = dg @ dg.T + Hdx @ Hdx.T
+    dxTM = dx.T @ M
+    u = np.linalg.solve(dxTM @ dx, dxTM).T
+    juT = j @ u.T
+    ts_bfgs_update = juT + juT.T - jdx * u @ u.T
+    return ts_bfgs_update, "TS-BFGS"
+
+
+def ts_bfgs_update_org(H, dx, dg):
+    """Do not use! Implemented as described in the 1998 bofill paper [8].
+
+    This does not seem to work too well."""
+    dx = dx[:, None]
+    dg = dg[:, None]
+    u = dg
+    j = H @ dx
+    j = u - j
+    # jTdx = float(j.T @ dx)
+    jTdx = j.T @ dx
+    # dxTdx = float(dx.T @ dx)
+    dxTdx = dx.T @ dx
+    # jTj = float(j.T @ j)
+    jTj = j.T @ j
+    phi = jTdx ** 2 / dxTdx / jTj
+    u = phi * dg * dg.T @ dx
+    w, v = np.linalg.eigh(H)
+    u = u + (1 - phi) * np.abs(w) * v @ (v.T @ dx)
+    u = u / (u.T @ dx)
+    juT = j @ u.T
+    ts_bfgs_update = juT + juT.T - jTdx * u @ u.T
+    return ts_bfgs_update, "TS-BFGS"
+
+
+def ts_bfgs_update_revised(H, dx, dg):
+    """TS-BFGS update as described in [9].
+
+    Better than the original formula of Bofill, worse than the implementation
+    in [7]. a is caluclated as described in the footnote 1 on page 38. Eq. (8)
+    looks suspicious as it contains the inverse of a vector?! As also outlined
+    in the paper abs(a) is used (|a| in the paper)."""
+
+    dx = dx[:, None]
+    dg = dg[:, None]
+    dgTdg = dg.T @ dg
+    dgTdx = dg.T @ dx
+    a = (dgTdg - dg.T @ H @ dx) / (dgTdg * dgTdx)
+    a = abs(a)
+
+    # Diagonalize Hessian, to construct positive definite version of it
+    w, v = np.linalg.eigh(H)
+    H_pos_dx = np.abs(w) * v @ (v.T @ dx)
+    # Mixing factor
+    j = dg - H @ dx
+    jTdx = j.T @ dx
+    dxTdx = dx.T @ dx
+    jTj = j.T @ j
+    phi = jTdx ** 2 / dxTdx / jTj
+    u = ((1 - phi) * H_pos_dx + a * phi * dgTdx * dg) / (
+        (1 - phi) * dx.T @ H_pos_dx + phi * a * dgTdx ** 2
+    )
+
+    juT = j @ u.T
+    ts_bfgs_update = juT + juT.T - jTdx * u @ u.T
+    return ts_bfgs_update, "TS-BFGS"

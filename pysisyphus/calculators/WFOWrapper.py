@@ -42,7 +42,7 @@ class WFOWrapper:
         ("ortho", "Orthonormalized overlap matrix")
     ))
 
-    def __init__(self, occ_mo_num, virt_mo_num, conf_thresh=1e-4,
+    def __init__(self, occ_mo_num, virt_mo_num, conf_thresh=1e-3,
                  calc_number=0, out_dir="./", wfow_mem=8000,
                  ncore=0, debug=False):
         try:
@@ -51,13 +51,14 @@ class WFOWrapper:
             self.log("WFOverlap cmd not found in ~/.pysisyphusrc!")
         # Should correspond to the attribute of the parent calculator
         self.calc_number = calc_number
+        self.name = f"WFOWrapper_{self.calc_number}"
+
         self.conf_thresh = conf_thresh
         self.out_dir = Path(out_dir).resolve()
         self.wfow_mem = int(wfow_mem)
         self.ncore = int(ncore)
         self.debug = debug
 
-        self.name = f"WFOWrapper_{self.calc_number}"
         self.log(f"Using -m {self.wfow_mem} for wfoverlap.")
 
         self.mo_inds_list = list()
@@ -72,6 +73,15 @@ class WFOWrapper:
         self.fmt = "{: .10f}"
 
         self.iter_counter = 0
+
+    @property
+    def conf_thresh(self):
+        return self._conf_thresh
+
+    @conf_thresh.setter
+    def conf_thresh(self, conf_thresh):
+        self._conf_thresh = conf_thresh
+        self.log(f"Set CI-coeff threshold to {self.conf_thresh:.4e}")
 
     def log(self, message):
         self.logger.debug(f"{self.name}, " + message)

@@ -2,6 +2,7 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords.derivatives import dq_ld, d2q_ld
+from pysisyphus.linalg import cross3, norm3
 
 
 class LinearDisplacement(Primitive):
@@ -26,24 +27,24 @@ class LinearDisplacement(Primitive):
     def _calculate(coords3d, indices, gradient=False, complement=False, cross_vec=None):
         m, o, n = indices
         w_dash = coords3d[n] - coords3d[m]
-        w = w_dash / np.linalg.norm(w_dash)
+        w = w_dash / norm3(w_dash)
 
         u_dash = coords3d[m] - coords3d[o]
         v_dash = coords3d[n] - coords3d[o]
-        u = u_dash / np.linalg.norm(u_dash)
-        v = v_dash / np.linalg.norm(v_dash)
+        u = u_dash / norm3(u_dash)
+        v = v_dash / norm3(v_dash)
 
         # Vector for cross product to determine first orthogonal direction
         if cross_vec is None:
             cross_vec = LinearDisplacement._get_cross_vec(coords3d, indices)
 
         if complement:
-            cross_vec = np.cross(w, cross_vec)
-        cross_vec /= np.linalg.norm(cross_vec)
+            cross_vec = cross3(w, cross_vec)
+        cross_vec /= norm3(cross_vec)
 
         # Orthogonal direction
-        y = np.cross(w, cross_vec)
-        y /= np.linalg.norm(y)
+        y = cross3(w, cross_vec)
+        y /= norm3(y)
 
         lin_disp = y.dot(u) + y.dot(v)
 
@@ -68,8 +69,8 @@ class LinearDisplacement(Primitive):
         if complement:
             m, _, n = indices
             w_dash = coords3d[n] - coords3d[m]
-            w = w_dash / np.linalg.norm(w_dash)
-            cross_vec = np.cross(w, cross_vec)
+            w = w_dash / norm3(w_dash)
+            cross_vec = cross3(w, cross_vec)
 
         return d2q_ld(*coords3d[indices].flatten(), *cross_vec)
 

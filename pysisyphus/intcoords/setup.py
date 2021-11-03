@@ -8,8 +8,11 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
-from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap
+from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap, Rotations
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
+
+
+BOND_FACTOR = 1.3
 
 
 def get_pair_covalent_radii(atoms):
@@ -19,14 +22,17 @@ def get_pair_covalent_radii(atoms):
     return pair_cov_radii
 
 
-def get_bond_mat(geom, bond_factor=1.3):
+def get_bond_mat(geom, bond_factor=BOND_FACTOR):
     cdm = pdist(geom.coords3d)
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     bond_mat = squareform(cdm <= (pair_cov_radii * bond_factor))
     return bond_mat
 
 
-def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False, return_cbm=False):
+def get_bond_sets(
+    atoms, coords3d, bond_factor=BOND_FACTOR, return_cdm=False, return_cbm=False
+):
+    """I'm sorry, but this function does not return sets, but an int ndarray."""
     cdm = pdist(coords3d)
     # Generate indices corresponding to the atom pairs in the
     # condensed distance matrix cdm.
@@ -44,12 +50,12 @@ def get_bond_sets(atoms, coords3d, bond_factor=1.3, return_cdm=False, return_cbm
     return (bond_inds,) + add_returns
 
 
-def get_fragments(atoms, coords, bond_inds=None):
+def get_fragments(atoms, coords, bond_inds=None, bond_factor=BOND_FACTOR):
     """This misses unconnected single atoms!"""
     coords3d = coords.reshape(-1, 3)
     if bond_inds is None:
         # Bond indices without interfragment bonds and/or hydrogen bonds
-        bond_inds = get_bond_sets(atoms, coords3d)
+        bond_inds = get_bond_sets(atoms, coords3d, bond_factor=bond_factor)
 
     bond_ind_sets = [frozenset(bi) for bi in bond_inds]
     fragments = merge_sets(bond_ind_sets)
@@ -57,7 +63,9 @@ def get_fragments(atoms, coords, bond_inds=None):
     return fragments
 
 
-def connect_fragments(cdm, fragments, max_aux=3.78, aux_factor=1.3, logger=None):
+def connect_fragments(
+    cdm, fragments, max_aux=3.78, aux_factor=BOND_FACTOR, logger=None
+):
     """Determine the smallest interfragment bond for a list
     of fragments and a condensed distance matrix."""
     if len(fragments) > 1:
@@ -342,7 +350,7 @@ CoordInfo = namedtuple(
 def setup_redundant(
     atoms,
     coords3d,
-    factor=1.3,
+    factor=BOND_FACTOR,
     define_prims=None,
     min_deg=15,
     dihed_max_deg=175.0,
@@ -417,8 +425,11 @@ def setup_redundant(
     aux_bonds = list()  # Not defined by default
 
     # Don't use auxilary interfragment bonds for bend detection
-    bonds_for_bends = [bonds, ]
-    # With TRIC we don't need interfragment bends.
+    bonds_for_bends = [
+        bonds,
+    ]
+    # If we use regular redundant internals (not TRIC) we define interfragment
+    # bends.
     if not tric:
         bonds_for_bends += [hydrogen_bonds, interfrag_bonds]
     bonds_for_bends = set([frozenset(bond) for bond in it.chain(*bonds_for_bends)])
@@ -543,12 +554,11 @@ def setup_redundant_from_geom(geom, *args, **kwargs):
 
 
 def get_primitives(coords3d, typed_prims, logger=None):
-    rot_pts = (PrimTypes.ROTATION_A, PrimTypes.ROTATION_B, PrimTypes.ROTATION_C)
     primitives = list()
     for type_, *indices in typed_prims:
         cls = PrimMap[type_]
         cls_kwargs = {"indices": indices}
-        if type_ in rot_pts:
+        if type_ in Rotations:
             cls_kwargs["ref_coords3d"] = coords3d
         primitives.append(cls(**cls_kwargs))
 

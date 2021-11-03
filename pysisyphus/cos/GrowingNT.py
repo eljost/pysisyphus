@@ -21,7 +21,11 @@ class GrowingNT:
         final_geom=None,
         between=None,
         bonds=None,
-        update_r=False,
+        r_update=True,
+        r_update_thresh=1.0,
+        stop_after_ts=False,
+        require_imag_freq=0.0,
+        hessian_at_ts=False,
     ):
         assert geom.coord_type == "cart"
 
@@ -31,7 +35,11 @@ class GrowingNT:
         self.final_geom = final_geom
         self.between = between
         self.bonds = bonds
-        self.update_r = update_r
+        self.r_update = r_update
+        self.r_update_thresh = r_update_thresh
+        self.stop_after_ts = stop_after_ts
+        self.require_imag_freq = require_imag_freq
+        self.hessian_at_ts = hessian_at_ts
 
         self.coord_type = self.geom.coord_type
         if self.final_geom:
@@ -39,20 +47,26 @@ class GrowingNT:
 
         # Determine search direction
         self.r = self.get_r(self.geom, self.final_geom, self.bonds, r)
+        self.r_org = self.r.copy()
         # Determine appropriate step_len from between
         if final_geom and self.between:
             self.step_len = np.linalg.norm(final_geom.coords - geom.coords) / (
                 self.between + 1
             )
 
+        self._initialized = False
         self.images = [self.geom.copy()]
-        self.sp_images = [self.geom.copy()]  # Stationary points
         self.all_energies = list()
-        self.all_forces = list()
+        self.all_real_forces = list()
+        self.sp_images = [self.geom.copy()]  # Stationary points
+        self.ts_images = list()
+        self.min_images = list()
 
-        # Do initial displacement towards final_geom along r
-        step = self.step_len * self.r
-        self.geom.coords += step
+        self.ts_imag_freqs = list()
+
+        # Right now this leads to a gradient calculation in the momement,
+        # this object is constructed, which is bad.
+        self.initialize()
 
     @staticmethod
     def get_r(geom, final_geom, bonds, r):
@@ -105,6 +119,44 @@ class GrowingNT:
     def cart_coords(self):
         return self.geom.cart_coords
 
+    def grow_image(self):
+        self.images[-1] = self.geom.copy()
+        # Update coordinates of newly grown image. Try to use Eq. (6) in [1].
+        if self._initialized and self.final_geom and self.between:
+            m = self.between + 2
+            k = len(self.images) - 1
+            lambda_ = (m - k) / (m + 1 - k)
+            # Adapted from [6] to produce a step instead of new coords
+            step = self.coords * (lambda_ - 1) + (1 - lambda_) * self.final_geom.coords
+        # If no final image is given we just displace along r
+        else:
+            step = self.step_len * self.r
+        self.coords = self.coords + step
+
+        # Calculate energy and forces at newly grown geometry and append new frontier
+        # image.
+        real_forces = self.geom.forces
+        energy = self.geom.energy
+        self.all_energies.append(energy)
+        self.all_real_forces.append(real_forces)
+        self.images.append(self.geom)
+
+    def initialize(self):
+        assert not self._initialized, "GrowingNT.initialize() can only be called once!"
+        # Calculation at initial geometry
+        init_results = self.geom.get_energy_and_forces_at(self.images[0].coords)
+        self.all_energies.append(init_results["energy"])
+        self.all_real_forces.append(init_results["forces"])
+        # Do initial displacement
+        self.grow_image()
+        # Indicate the GrowingNT was properly initialized
+        self._initialized = True
+
+    def calc_hessian_for(self, other_geom):
+        res = self.geom.get_energy_and_cart_hessian_at(other_geom.cart_coords)
+        cart_hessian = res["hessian"]
+        return cart_hessian
+
     @property
     def energy(self):
         return self.geom.energy
@@ -122,46 +174,113 @@ class GrowingNT:
     def get_energy_at(self, coords):
         return self.geom.get_energy_at(coords)
 
+    def get_energy_and_forces_at(self, coords):
+        return self.geom.get_energy_and_forces_at(coords)
+
     def as_xyz(self):
         return self.geom.as_xyz()
 
+    def clear_passed(self):
+        self.passed_min = False
+        self.passed_ts = False
+
     def reparametrize(self):
-        # TODO: use already calculated quantities to decide this
-        real_forces = self.geom.forces  # Unprojected forces
+        """Check if GNT can be grown."""
+
+        # Real, unprojected, forces of the underlying geometry
+        real_forces = self.geom.forces
         energy = self.energy
-        if rms(real_forces) <= self.rms_thresh:
-            self.sp_images.append(self.geom.copy())
+        # Update the last element in all_real_forces and energies with the
+        # current values.
+        self.all_real_forces[-1] = real_forces
+        self.all_energies[-1] = energy
 
-        forces = self.forces  # Projected forces
-        reparametrized = rms(forces) <= self.rms_thresh
-        # Check if we passed a stationary point by comparing energies
-        if reparametrized and len(self.all_energies) > 2:
-            prev_prev_energy, prev_energy = self.all_energies[-3:-1]
-            self.prev_energy_increased = prev_energy > prev_prev_energy
-            sp_passed = energy < prev_energy
-            if sp_passed:
-                self.log(f"Passed stationary point!\n{self.geom.as_xyz()}")
-                self.sp_images.append(self.geom.copy())
-            if sp_passed and self.update_r:
-                self.r = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
-            if len(self.images) == 5:
-                self.r = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
+        # See if we can grow the NT, by checking the convergence of the frontier
+        # image using projected forces.
+        forces = self.forces
+        can_grow = rms(forces) <= self.rms_thresh
 
-        if reparametrized:
-            self.images.append(self.geom.copy())
-            self.all_forces.append(real_forces)
-            self.all_energies.append(energy)
-            step = self.step_len * self.r
-            self.coords = self.coords + step
+        if can_grow:
+            """
+            Check if we passed a stationary point (SP).
+            ^ Energy
+            |
+            | -3     -1     -2
+            |   \    /     /  \
+            |    \  /     /    \
+            |     -2     -3    -1
+            | Minimum       TS
+            """
+            ae = self.all_energies  # Shortcut
+            self.passed_min = len(ae) >= 3 and ae[-3] > ae[-2] < ae[-1]
+            self.passed_ts = len(ae) >= 3 and ae[-3] < ae[-2] > ae[-1]
+            passed_sp = self.passed_min or self.passed_ts
+            if passed_sp:
+                sp_image = self.images[-2].copy()
+                sp_kind = "Minimum" if self.passed_min else "TS"
+                self.sp_images.append(sp_image)
+                self.log(
+                    f"Passed stationary point! It seems to be a {sp_kind}."
+                    f"\n{sp_image.as_xyz()}"
+                )
+                if self.passed_ts:
+                    self.ts_images.append(sp_image)
+                    if self.hessian_at_ts:
+                        sp_hessian = self.calc_hessian_for(sp_image)
+                        nus, *_ = sp_image.get_normal_modes(sp_hessian)
+                        self.log(f"First 5 frequencies: {nus[:5]}")
+                    if self.require_imag_freq < 0.0:
+                        try:
+                            sp_hessian
+                        except NameError:
+                            sp_hessian = self.calc_hessian_for(sp_image)
+                        self.ts_imag_freqs.append(sp_image.get_imag_frequencies(sp_hessian))
+                elif self.passed_min:
+                    self.min_images.append(sp_image)
 
-        self.did_reparametrization = reparametrized
-        return reparametrized
+            # Update direction 'r', if requested
+            r_new = self.get_r(self.geom, self.final_geom, self.bonds, self.r)
+            r_dot = r_new.dot(self.r)
+            r_org_dot = r_new.dot(self.r_org)
+            self.log(f"r.dot(r')={r_dot:.6f} r_org.dot(r')={r_org_dot:.6f}")
+            if (
+                self.r_update
+                and (r_org_dot <= self.r_update_thresh)
+                and self.passed_min
+            ):
+                self.r = r_new
+                self.log("Updated r")
+
+            # Grow new image
+            self.grow_image()
+            assert (
+                len(self.images) == len(self.all_energies) == len(self.all_real_forces)
+            )
+
+        self.did_reparametrization = can_grow
+        return can_grow
+
+    def check_convergence(self, *args, **kwargs):
+        if len(self.ts_images) == 0:
+            return False
+
+        converged = self.stop_after_ts
+        if self.require_imag_freq:
+            converged = converged and self.ts_imag_freqs[-1][0] <= self.require_imag_freq
+        return converged
 
     def get_additional_print(self):
         if self.did_reparametrization:
-            str_ = "Grew Newton trajectory."
+            img_num = len(self.images)
+            str_ = f"Grew Newton trajectory to {img_num} images."
+            if self.passed_min:
+                str_ += f" Passed minimum geometry at image {img_num-1}."
+            elif self.passed_ts:
+                str_ += f" Passed transition state geometry at image {img_num-1}."
         else:
             str_ = None
+
         self.did_reparametrization = False
+        self.clear_passed()
 
         return str_

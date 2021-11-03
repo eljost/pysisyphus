@@ -27,9 +27,9 @@ class Rotation(Primitive):
 
     def __init__(self, indices, *args, ref_coords3d, **kwargs):
         kwargs["cache"] = False
+        kwargs["calc_kwargs"] = ("index", "ref_coords3d")
         super().__init__(indices, *args, **kwargs)
 
-        self.calc_kwargs = ("index", "ref_coords3d")
         self.ref_coords3d = ref_coords3d.reshape(-1, 3).copy()
 
     @staticmethod

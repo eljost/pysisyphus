@@ -14,6 +14,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 ZmXTB = Benchmark("zimmerman_xtb")
 
 
+@pytest.mark.skip
 @using("xtb")
 @pytest.mark.parametrize("fn, geoms, ref_energy", ZmXTB)
 def test_zimmerman_xtb_gsm(fn, geoms, ref_energy, results_bag):

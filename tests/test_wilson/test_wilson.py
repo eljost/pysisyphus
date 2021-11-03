@@ -5,18 +5,23 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_loader
 from pysisyphus.linalg import get_rot_mat
 from pysisyphus.intcoords import (
-    Stretch,
     Bend,
+    Bend2,
+    BondedFragment,
     CartesianX,
     CartesianY,
     CartesianZ,
-    Torsion,
-    OutOfPlane,
+    DistanceFunction,
+    DummyTorsion,
     LinearBend,
     LinearDisplacement,
+    OutOfPlane,
     RotationA,
     RotationB,
     RotationC,
+    Stretch,
+    Torsion,
+    Torsion2,
     TranslationX,
     TranslationY,
     TranslationZ,
@@ -28,6 +33,9 @@ from pysisyphus.intcoords.derivatives import (
     q_a,
     dq_a,
     d2q_a,
+    q_a2,
+    dq_a2,
+    d2q_a2,
     q_d,
     dq_d,
     d2q_d,
@@ -73,8 +81,9 @@ def test_stretch(length):
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-12)
 
 
-@pytest.mark.parametrize("deg", np.linspace(5, 175, num=35))
-def test_bend(deg):
+@pytest.mark.parametrize("bend_cls", (Bend, Bend2))
+@pytest.mark.parametrize("deg", np.linspace(1, 179, num=35))
+def test_bend(bend_cls, deg):
     indices = [1, 0, 2]
 
     zmat_str = f"""
@@ -88,7 +97,7 @@ def test_bend(deg):
 
     # Explicitly implemented
     # Gradient returned in order [0, 1, 2]
-    val, grad = Bend._calculate(coords3d, indices, gradient=True)
+    val, grad = bend_cls._calculate(coords3d, indices, gradient=True)
 
     # Reference values, code generated
     args = coords3d[indices].flatten()
@@ -113,16 +122,20 @@ def test_bend(deg):
     mp_dgrad = mp_d.d2q_a(*args)
 
     # Finite difference reference values
-    ref_dgrad = fin_diff_B(Bend(indices), coords3d)
+    ref_dgrad = fin_diff_B(bend_cls(indices), coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
 
 
 @pytest.mark.parametrize(
+    "tors_cls", (Torsion, Torsion2)
+)
+@pytest.mark.parametrize(
     "dihedral",
     [
         # First derivative fails alread for 1e-3, -1e-3
         # Fails for ~ 180, ~ 0 and ~ -180
+        179.9,
         179,
         140,
         100,
@@ -135,9 +148,10 @@ def test_bend(deg):
         -100,
         -140,
         -179,
+        -179.9,
     ],
 )
-def test_torsion(dihedral):
+def test_torsion(tors_cls, dihedral):
     indices = [3, 2, 0, 1]
     zmat_str = f"""
     C
@@ -149,11 +163,17 @@ def test_torsion(dihedral):
     geom = geom_from_zmat(zmat)
     coords3d = geom.coords3d
 
-    # Explicitly implemented
-    # Gradient returned in order [3, 2, 0, 1]
-    val, grad = Torsion._calculate(coords3d, indices, gradient=True)
-    sign = np.sign(val)
+    val, grad = tors_cls._calculate(coords3d, indices, gradient=True)
 
+    assert val == pytest.approx(np.deg2rad(dihedral))
+
+    tors = tors_cls(indices=indices)
+    ref_grad_ = fin_diff_prim(tors, geom.coords3d)
+    ref_grad = np.zeros_like(geom.coords3d)
+    ref_grad[indices] = ref_grad_.reshape(-1, 3)
+    np.testing.assert_allclose(grad, ref_grad.flatten(), atol=1e-6)
+
+    """
     # Reference values, code generated
     args = coords3d[indices].flatten()
     ref_val = q_d(*args)
@@ -188,6 +208,7 @@ def test_torsion(dihedral):
     ref_dgrad = fin_diff_B(Torsion(indices), coords3d)
     np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-8, err_msg="2nd derivative")
     np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-8, err_msg="2nd derivative")
+    """
 
 
 @pytest.mark.parametrize("deg", np.linspace(165, 180, num=16))
@@ -403,3 +424,65 @@ def test_cartesian():
         cart = cls(indices)
         v = cart.calculate(coords3d)
         assert v == pytest.approx(v_ref[i])
+
+
+def test_bonded_fragment():
+    geom = geom_loader("lib:bonded_frag_test.xyz")
+    coords3d = geom.coords3d
+    h2o = [6, 13, 14]
+    bond = [6, 10]
+    bf = BondedFragment(h2o, bond_indices=bond)
+
+    val, grad = bf.calculate(coords3d, gradient=True)
+    assert val == pytest.approx(6.1693091)
+    grad3d = grad.reshape(-1, 3)
+
+    # Reference gradient returned in order [0, 1, 2, 3]
+    ref_grad3d_ = fin_diff_prim(bf, coords3d).reshape(-1, 3)
+    ref_grad3d = np.zeros_like(grad3d)
+    ref_grad3d[h2o] = ref_grad3d_
+
+    # In this case the gradient only depends on the bonded atom (index 6),
+    # as the 6-10 bond is independent of the other atoms (13, 14) in the fragment.
+    np.testing.assert_allclose(grad3d[bond[0]], ref_grad3d[bond[0]], atol=1e-10)
+
+
+@pytest.mark.parametrize(
+    "fix_inner", [
+        True,
+        False
+])
+def test_dummy_torsion(fix_inner):
+    geom = geom_loader(
+        "lib:h2o.xyz",
+        coord_type="redund",
+        coord_kwargs={
+            "typed_prims": [["DUMMY_TORSION", 2, 0, 1]],
+        },
+    )
+    indices = [2, 0, 1]
+    c3d = geom.coords3d
+    dt = DummyTorsion(indices, fix_inner=fix_inner)
+    val, grad = dt.calculate(c3d, gradient=True)
+    assert val == pytest.approx(np.pi)
+    assert grad.size == geom.cart_coords.size
+    if fix_inner:
+        np.testing.assert_allclose(grad.reshape(-1, 3)[[0, 1]], np.zeros((2, 3)))
+
+
+def test_distance_function():
+    geom = geom_loader("lib:birkholz_rx/18_sn2.trj")[0]
+    coords3d = geom.coords3d
+    indices = [0, 4, 5, 0]
+    coeff = -1
+    df = DistanceFunction(indices, coeff=coeff)
+
+    val, grad = df.calculate(coords3d, gradient=True)
+    assert val == pytest.approx(-1.68855911)
+    grad3d = grad.reshape(-1, 3)
+
+    ref_grad3d_ = fin_diff_prim(df, coords3d).reshape(-1, 3)
+    ref_grad3d = np.zeros_like(grad3d)
+    ref_grad3d[indices[:3]] = ref_grad3d_[:3]
+
+    np.testing.assert_allclose(grad3d, ref_grad3d, atol=1e-8)

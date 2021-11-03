@@ -42,9 +42,11 @@ class IRC:
         displ_length=0.1,
         displ_third_h5=None,
         rms_grad_thresh=1e-3,
+        hard_rms_grad_thresh=None,
         energy_thresh=1e-6,
         force_inflection=True,
         out_dir=".",
+        prefix="",
         dump_fn="irc_data.h5",
         dump_every=5,
     ):
@@ -95,6 +97,9 @@ class IRC:
             Don't indicate convergence before passing an inflection point.
         out_dir : str, optional
             Dump everything into 'out_dir' directory instead of the CWD.
+        prefix : str, optional
+            Short string that is prepended to all files that are created
+            by this class, e.g., trajectories and HDF5 dumps.
         dump_fn : str, optional
             Base name for the HDF5 files.
         dump_every : int, optional
@@ -129,12 +134,14 @@ class IRC:
         self.displ_length = float(displ_length)
         self.displ_third_h5 = displ_third_h5
         self.rms_grad_thresh = float(rms_grad_thresh)
+        self.hard_rms_grad_thresh = hard_rms_grad_thresh
         self.energy_thresh = float(energy_thresh)
         self.force_inflection = force_inflection
         self.out_dir = out_dir
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
+        self.prefix = f"{prefix}_" if prefix else prefix
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
 
@@ -153,7 +160,7 @@ class IRC:
         self.cycle_places = ceil(log(self.max_cycles, 10))
 
     def get_path_for_fn(self, fn):
-        return self.out_dir / fn
+        return self.out_dir / f"{self.prefix}{fn}"
 
     @property
     def coords(self):
@@ -244,8 +251,6 @@ class IRC:
         if self.displ in ("energy", "energy_cubic"):
             actual_energy = self.energy
             actual_lowering = self.ts_energy - actual_energy
-            if actual_lowering < 0.0:
-                print("Displaced geometry is higher in energy compared to TS!")
             diff = self.displ_energy - actual_lowering
 
             def en_str(en):
@@ -256,6 +261,8 @@ class IRC:
                 f"   Actual energy lowering: {en_str(actual_lowering)}\n"
                 f"                        Δ: {en_str(diff)}\n"
             )
+            if actual_lowering < 0.0:
+                print("Displaced geometry is higher in energy compared to TS!")
             sys.stdout.flush()
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(
@@ -482,6 +489,12 @@ class IRC:
             elif self.past_inflection and (rms_grad <= self.rms_grad_thresh):
                 break_msg = "rms(grad) converged!"
                 self.converged = True
+            elif (
+                self.hard_rms_grad_thresh
+                and (not self.past_inflection)
+                and (rms_grad <= self.hard_rms_grad_thresh)
+            ):
+                break_msg = "rms(grad) below hard threshold."
             # TODO: Allow some threshold?
             elif self.energy_increased:
                 break_msg = "Energy increased!"
@@ -491,7 +504,7 @@ class IRC:
 
             dumped = (self.cur_cycle % self.dump_every) == 0
             if dumped:
-                dump_fn = f"{direction}_{self.dump_fn}"
+                dump_fn = self.get_path_for_fn(f"{direction}_{self.dump_fn}")
                 self.dump_data(dump_fn)
 
             if break_msg:
@@ -574,7 +587,7 @@ class IRC:
             self.geometry,
             self.hessian_init,
             cart_gradient=self.ts_gradient,
-            h5_fn=f"hess_init_irc.h5",
+            h5_fn=self.get_path_for_fn(f"hess_init_irc.h5"),
         )
         self.log(f"Initial hessian: {hess_str}")
 

@@ -1,0 +1,10 @@
+geom:
+  fn: lib:methane.xyz
+calc:
+ type: pyscf
+ basis: def2svp
+perf:
+ pal_range: [1, 4, 1]
+ mems: 1000
+ repeat: 2
+ kind: hessian

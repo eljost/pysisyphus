@@ -6,6 +6,7 @@ import numpy as np
 
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.helpers_pure import hash_arr
+from pysisyphus.linalg import norm3
 
 
 class Primitive(metaclass=abc.ABCMeta):
@@ -29,7 +30,7 @@ class Primitive(metaclass=abc.ABCMeta):
 
     @staticmethod
     def parallel(u, v, thresh=1e-6):
-        dot = u.dot(v) / (np.linalg.norm(u) * np.linalg.norm(v))
+        dot = u.dot(v) / (norm3(u) * norm3(v))
         return (1 - abs(dot)) < thresh
 
     @staticmethod
@@ -38,7 +39,7 @@ class Primitive(metaclass=abc.ABCMeta):
         # Select initial vector for cross product, similar to
         # geomeTRIC. It must NOT be parallel to u and/or v.
         x_dash = coords3d[n] - coords3d[m]
-        x = x_dash / np.linalg.norm(x_dash)
+        x = x_dash / norm3(x_dash)
         cross_vecs = np.eye(3)
         min_ind = np.argmin([np.dot(cv, x) ** 2 for cv in cross_vecs])
         return cross_vecs[min_ind]
@@ -61,7 +62,7 @@ class Primitive(metaclass=abc.ABCMeta):
     @staticmethod
     def rho(atoms, coords3d, indices):
         i, j = indices
-        distance = np.linalg.norm(coords3d[i] - coords3d[j])
+        distance = norm3(coords3d[i] - coords3d[j])
         cov_rad_sum = CR[atoms[i].lower()] + CR[atoms[j].lower()]
         return exp(-(distance / cov_rad_sum - 1))
 
