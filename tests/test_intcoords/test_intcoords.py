@@ -59,7 +59,7 @@ def compare_hessians(ref_H, num_H, ref_rms):
     "xyz_fn, coord_type, ref_rms",
     [
         ("lib:hcn_bent.xyz", "cart", 1.2e-6),
-        ("lib:h2o2_rot2.xyz", "redund", 0.00085819),
+        ("lib:h2o2_rot2.xyz", "redund", 0.000877),
     ],
 )
 def test_numhess(xyz_fn, coord_type, ref_rms):
