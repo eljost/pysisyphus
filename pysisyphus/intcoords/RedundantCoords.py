@@ -13,7 +13,6 @@ from operator import itemgetter
 import numpy as np
 
 from pysisyphus.linalg import svd_inv
-from pysisyphus.intcoords import Torsion
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.update import transform_int_step
 from pysisyphus.intcoords.eval import (
