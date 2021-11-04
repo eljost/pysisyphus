@@ -58,11 +58,11 @@ class ConicalIntersection(Calculator):
     Based on [1].
     """
 
-    def __init__(self, calc1, calc2, **kwargs):
+    def __init__(self, calculator1, calculator2, **kwargs):
         super().__init__(**kwargs)
 
-        self.calc1 = calc1
-        self.calc2 = calc2
+        self.calculator1 = calculator1
+        self.calculator2 = calculator2
 
         self.x_prev = None
         self.y_prev = None
@@ -70,7 +70,7 @@ class ConicalIntersection(Calculator):
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
         """Energy of calculator 1."""
-        return self.calc1.get_energy(atoms, coords, **prepare_kwargs)
+        return self.calculator1.get_energy(atoms, coords, **prepare_kwargs)
 
     def get_ci_quantities(self, atoms, coords, **prepare_kwargs):
         """Relavent quantities including branching plane and projector P."""
@@ -82,11 +82,11 @@ class ConicalIntersection(Calculator):
         else:
             self.log(f"Calculating CI quantities for hash='{hash_}'.")
 
-        res1 = self.calc1.get_forces(atoms, coords, **prepare_kwargs)
+        res1 = self.calculator1.get_forces(atoms, coords, **prepare_kwargs)
         energy1 = res1["energy"]
         gradient1 = -res1["forces"]
 
-        res2 = self.calc2.get_forces(atoms, coords, **prepare_kwargs)
+        res2 = self.calculator2.get_forces(atoms, coords, **prepare_kwargs)
         energy2 = res2["energy"]
         gradient2 = -res2["forces"]
 
@@ -155,8 +155,12 @@ class ConicalIntersection(Calculator):
         """Projected Hessian."""
         ciq = self.get_ci_quantities(atoms, coords, **prepare_kwargs)
 
-        hessian1 = self.calc1.get_hessian(atoms, coords, **prepare_kwargs)["hessian"]
-        hessian2 = self.calc2.get_hessian(atoms, coords, **prepare_kwargs)["hessian"]
+        hessian1 = self.calculator1.get_hessian(atoms, coords, **prepare_kwargs)[
+            "hessian"
+        ]
+        hessian2 = self.calculator2.get_hessian(atoms, coords, **prepare_kwargs)[
+            "hessian"
+        ]
         hessian_mean = (hessian1 + hessian2) / 2
         hessian_proj = ciq.P.dot(hessian_mean).dot(ciq.P)
 

@@ -73,6 +73,7 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 CALC_DICT = {
     "afir": AFIR,
     "composite": Composite,
+    "conical": ConicalIntersection,
     "dftb+": DFTBp,
     "dimer": Dimer,
     "ext": ExternalPotential,
@@ -181,18 +182,27 @@ def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None):
         iter_dict = dict()
 
     index = 0
+    # Maps YAML input to actual Calculator-class arguments
+    calc_map = {
+        "calc": "calculator",
+        # calc1/calc2 are used for the conical intersection calculator
+        "calc1": "calculator1",
+        "calc2": "calculator2",
+    }
 
     def calc_getter(**add_kwargs):
         nonlocal index
 
         # Some calculators are just wrappers, modifying forces from actual calculators,
-        # e.g. AFIR and Dimer. If we find the 'calc' key in 'calc_kwargs' we create the
-        # actual calculator and assign it to the 'calculator' key in calc_kwargs.
-        if "calc" in calc_kwargs:
-            actual_kwargs = calc_kwargs.pop("calc")
-            actual_key = actual_kwargs.pop("type")
-            actual_calc = get_calc_closure(base_name, actual_key, actual_kwargs)()
-            calc_kwargs["calculator"] = actual_calc
+        # e.g. AFIR and Dimer. If we find the one of the keys in 'calc_map' in 'calc_kwargs'
+        # we create the actual calculator and assign it to the corresponding value in
+        # 'calc_map'.
+        for key, val in calc_map.items():
+            if key in calc_kwargs:
+                actual_kwargs = calc_kwargs.pop(key)
+                actual_key = actual_kwargs.pop("type")
+                actual_calc = get_calc_closure(base_name, actual_key, actual_kwargs)()
+                calc_kwargs[val] = actual_calc
 
         kwargs_copy = copy.deepcopy(calc_kwargs)
         kwargs_copy["base_name"] = base_name
