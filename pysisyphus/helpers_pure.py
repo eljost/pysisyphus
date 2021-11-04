@@ -1,6 +1,7 @@
 import collections.abc
 from enum import Enum
 import itertools as it
+import json
 import logging
 from pathlib import Path
 import time
@@ -345,3 +346,30 @@ def approx_float(
     rel_tol = rel_tol * expected
     tolerance = max(abs_tol, rel_tol)
     return abs(num - expected) <= tolerance
+
+
+_CONV_FUNCS = {
+    # First item in value converts to JSON dumpable type,
+    # second items converts from JSON to original type.
+    "energy": (lambda en: float(en), lambda en: float(en)),
+    "forces": (
+        lambda forces: forces.tolist(),
+        lambda forces: np.array(forces, dtype=float).flatten(),
+    ),
+    "hessian": (
+        lambda hessian: hessian.tolist(),
+        lambda hessian: np.array(hessian, dtype=float),
+    ),
+}
+
+
+def results_to_json(results):
+    conv_results = {key: _CONV_FUNCS[key][0](val) for key, val in results.items()}
+    return json.dumps(conv_results)
+
+
+def json_to_results(as_json):
+    results = {
+        key: _CONV_FUNCS[key][1](val) for key, val in json.loads(as_json).items()
+    }
+    return results
