@@ -494,12 +494,21 @@ def run_tsopt_from_cos(
 
 
 def run_calculations(
-    geoms, calc_getter, path, calc_key, calc_kwargs, scheduler=None, assert_track=False
+    geoms,
+    calc_getter,
+    path,
+    calc_key,
+    calc_kwargs,
+    scheduler=None,
+    assert_track=False,
+    run_func=None,
 ):
     print(highlight_text("Running calculations"))
 
+    func_name = "run_calculation" if run_func is None else run_func
+
     def par_calc(geom):
-        return geom.calculator.run_calculation(geom.atoms, geom.coords)
+        return getattr(geom.calculator, func_name)(geom.atoms, geom.coords)
 
     for geom in geoms:
         geom.set_calculator(calc_getter())
@@ -521,12 +530,12 @@ def run_calculations(
 
             start = time.time()
             print(geom)
-            results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+            results = getattr(geom.calculator, func_name)(geom.atoms, geom.cart_coords)
             as_json = results_to_json(results)
             calc = geom.calculator
             # Decrease counter, because it will be increased by 1, w.r.t to the
             # calculation.
-            json_fn = calc.make_fn("results", counter=calc.calc_counter-1)
+            json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
             with open(json_fn, "w") as handle:
                 handle.write(as_json)
 
@@ -1331,6 +1340,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Prepare calculator
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
+    calc_run_func = calc_kwargs.pop("run_func", None)
     calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir)
     if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
@@ -1585,7 +1595,13 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Fallback when no specific job type was specified
     else:
         calced_geoms, calced_results = run_calculations(
-            geoms, calc_getter, yaml_dir, calc_key, calc_kwargs, scheduler
+            geoms,
+            calc_getter,
+            yaml_dir,
+            calc_key,
+            calc_kwargs,
+            scheduler,
+            run_func=calc_run_func,
         )
 
     # We can't use locals() in the dict comprehension, as it runs in its own

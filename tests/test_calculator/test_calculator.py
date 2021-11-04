@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from pysisyphus.helpers_pure import results_to_json, json_to_results
 from pysisyphus.run import run_from_dict
@@ -22,7 +23,15 @@ def test_results_to_json():
 
 
 @using("pyscf")
-def test_calculator_dump():
+@pytest.mark.parametrize(
+    "run_func", (
+        None,
+        "get_energy",
+        "get_forces",
+        "get_hessian",
+    )
+)
+def test_calculator_dump(run_func):
     run_dict = {
         "geom": {
             "fn": "lib:h2o.xyz",
@@ -30,6 +39,7 @@ def test_calculator_dump():
         "calc": {
             "type": "pyscf",
             "basis": "sto3g",
+            "run_func": run_func,
         },
     }
     _ = run_from_dict(run_dict)
