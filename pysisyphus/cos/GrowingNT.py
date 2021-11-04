@@ -201,7 +201,7 @@ class GrowingNT:
         can_grow = rms(forces) <= self.rms_thresh
 
         if can_grow:
-            """
+            r"""
             Check if we passed a stationary point (SP).
             ^ Energy
             |

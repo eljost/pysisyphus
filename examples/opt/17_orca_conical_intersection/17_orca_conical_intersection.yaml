@@ -1,0 +1,30 @@
+geom:
+ type: redund
+ fn: |
+  6
+
+  C       0.595500     -0.010400     -0.000200
+  C      -0.831300      0.167200      0.001500
+  H      -1.381800      0.227800      0.963400
+  H       1.265100      0.874800      0.006800
+  H      -1.382200      0.243700     -0.959100
+  H       1.027500     -1.033000     -0.008800
+calc:
+ type: conical
+ calc1: 
+  type: orca5
+  keywords: b3lyp def2-svp
+  pal: 6
+  calc_number: 0
+ calc2:
+  type: orca5
+  keywords: b3lyp def2-svp
+  blocks: "%tddft iroot 1 nroots 1 end"
+  pal: 6
+  numfreq: True
+  calc_number: 1
+opt:
+ thresh: gau
+ #trust_update: False
+assert:
+ opt_geom.energy: -78.25079843

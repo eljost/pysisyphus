@@ -359,12 +359,25 @@ def setup_redundant(
     min_weight=None,
     tric=False,
     interfrag_hbonds=True,
+    freeze_atoms=None,
     logger=None,
 ):
     if define_prims is None:
         define_prims = list()
+    if freeze_atoms is None:
+        freeze_atoms = list()
 
-    log(logger, f"Detecting primitive internals for {len(atoms)} atoms.")
+    log(
+        logger,
+        f"Detecting primitive internals for {len(atoms)} atoms.\n"
+        f"Excluding {len(freeze_atoms)} frozen atoms from the internal coordinate setup.",
+    )
+    mask = np.ones_like(atoms, dtype=bool)
+    mask[freeze_atoms] = False
+    atoms = [atom for mobile, atom in zip(mask, atoms) if mobile]
+    coords3d = coords3d[mask]
+    # Maps (different) indices of mobile atoms back to their original indices
+    freeze_map = {sub_ind: org_ind for sub_ind, org_ind in enumerate(np.where(mask)[0])}
 
     def keep_coord(prim_cls, prim_inds):
         return (
@@ -488,12 +501,6 @@ def setup_redundant(
         PrimTypes.LINEAR_BEND_COMPLEMENT: "linear_bend_complements",
         PrimTypes.PROPER_DIHEDRAL: "proper_dihedrals",
         PrimTypes.IMPROPER_DIHEDRAL: "improper_dihedrals",
-        # PrimTypes.TRANSLATION_X: "translation_inds",
-        # PrimTypes.TRANSLATION_Y: "translation_inds",
-        # PrimTypes.TRANSLATION_Z: "translation_inds",
-        # PrimTypes.ROTATION_A: "rotation_inds",
-        # PrimTypes.ROTATION_B: "rotation_inds",
-        # PrimTypes.ROTATION_C: "rotation_inds",
     }
     for type_, *indices in define_prims:
         try:
@@ -502,33 +509,51 @@ def setup_redundant(
             key = define_map[PrimTypes(type_)]
         locals()[key].append(tuple(indices))
 
+    def make_tp(prim_type, *indices):
+        """Map possibly modified indices to their original indices.
+
+        With frozen atoms, the indices used to set up internal coordinates do
+        not correspond to the actual indices. Here we map them back.
+        """
+        org_indices = [freeze_map[ind] for ind in indices]
+        return (prim_type, *org_indices)
+
+    # Shortcut for PrimTypes Enum
     pt = PrimTypes
+    # Create actual typed prims with the desired indices
     typed_prims = (
         # Bonds, two indices
-        [(pt.BOND, *bond) for bond in bonds]
-        + [(pt.AUX_BOND, *abond) for abond in aux_bonds]
-        + [(pt.HYDROGEN_BOND, *hbond) for hbond in hydrogen_bonds]
-        + [(pt.INTERFRAG_BOND, *ifbond) for ifbond in interfrag_bonds]
-        + [(pt.AUX_INTERFRAG_BOND, *aifbond) for aifbond in aux_interfrag_bonds]
+        [make_tp(pt.BOND, *bond) for bond in bonds]
+        + [make_tp(pt.AUX_BOND, *abond) for abond in aux_bonds]
+        + [make_tp(pt.HYDROGEN_BOND, *hbond) for hbond in hydrogen_bonds]
+        + [make_tp(pt.INTERFRAG_BOND, *ifbond) for ifbond in interfrag_bonds]
+        + [make_tp(pt.AUX_INTERFRAG_BOND, *aifbond) for aifbond in aux_interfrag_bonds]
         # Bends, three indices
-        + [(pt.BEND, *bend) for bend in bends]
-        + [(pt.LINEAR_BEND, *lbend) for lbend in linear_bends]
-        + [(pt.LINEAR_BEND_COMPLEMENT, *lbendc) for lbendc in linear_bend_complements]
+        + [make_tp(pt.BEND, *bend) for bend in bends]
+        + [make_tp(pt.LINEAR_BEND, *lbend) for lbend in linear_bends]
+        + [
+            make_tp(pt.LINEAR_BEND_COMPLEMENT, *lbendc)
+            for lbendc in linear_bend_complements
+        ]
         # Dihedral, four indices
-        + [(pt.PROPER_DIHEDRAL, *pdihedral) for pdihedral in proper_dihedrals]
-        + [(pt.IMPROPER_DIHEDRAL, *idihedral) for idihedral in improper_dihedrals]
+        + [make_tp(pt.PROPER_DIHEDRAL, *pdihedral) for pdihedral in proper_dihedrals]
+        + [
+            make_tp(pt.IMPROPER_DIHEDRAL, *idihedral)
+            for idihedral in improper_dihedrals
+        ]
     )
+    # Translational and rotational coordinates result in 3 different coordinates each
     for frag in translation_inds:
         typed_prims += [
-            (pt.TRANSLATION_X, *frag),
-            (pt.TRANSLATION_Y, *frag),
-            (pt.TRANSLATION_Z, *frag),
+            make_tp(pt.TRANSLATION_X, *frag),
+            make_tp(pt.TRANSLATION_Y, *frag),
+            make_tp(pt.TRANSLATION_Z, *frag),
         ]
     for frag in rotation_inds:
         typed_prims += [
-            (pt.ROTATION_A, *frag),
-            (pt.ROTATION_B, *frag),
-            (pt.ROTATION_C, *frag),
+            make_tp(pt.ROTATION_A, *frag),
+            make_tp(pt.ROTATION_B, *frag),
+            make_tp(pt.ROTATION_C, *frag),
         ]
 
     coord_info = CoordInfo(

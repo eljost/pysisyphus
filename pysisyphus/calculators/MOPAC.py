@@ -135,7 +135,7 @@ class MOPAC(Calculator):
     @staticmethod
     @file_or_str(".aux", method=False)
     def parse_energy_from_aux(text):
-        energy_re = "HEAT_OF_FORMATION:KCAL/MOL=([\d\-D+\.]+)"
+        energy_re = r"HEAT_OF_FORMATION:KCAL/MOL=([\d\-D+\.]+)"
         mobj = re.search(energy_re, text)
         energy = float(mobj[1].replace("D", "E")) / AU2KCALMOL
 
@@ -148,7 +148,7 @@ class MOPAC(Calculator):
         text = self.read_aux(path)
         # grad_re = "GRADIENTS:KCAL.+$\s+(.+)$"
         # mobj = re.search(grad_re, text, re.MULTILINE)
-        grad_re = "GRADIENTS:KCAL/MOL/ANGSTROM\[\d+]=\s+(.+)\s+OVERLAP_MATRIX"
+        grad_re = r"GRADIENTS:KCAL/MOL/ANGSTROM\[\d+]=\s+(.+)\s+OVERLAP_MATRIX"
         mobj = re.search(grad_re, text, re.DOTALL)
         # Gradients are given in kcal*mol/angstrom
         gradients = np.array(mobj[1].split(), dtype=float)
@@ -170,7 +170,7 @@ class MOPAC(Calculator):
     def parse_hessian_from_aux(text):
         # Parse employed masses, as the given hessian is mass-weighted
         # and we have to un-weigh it.
-        mass_re = re.compile("ISOTOPIC_MASSES\[(\d+)\]=\s*(.+?)ROTAT_CONSTS", re.DOTALL)
+        mass_re = re.compile(r"ISOTOPIC_MASSES\[(\d+)\]=\s*(.+?)ROTAT_CONSTS", re.DOTALL)
         # mobj = re.search(mass_re, text, re.MULTILINE)
         mass_mobj = mass_re.search(text)
         masses = np.array(mass_mobj[2].strip().split(), dtype=float)
@@ -179,7 +179,7 @@ class MOPAC(Calculator):
         # For N atoms we expect 3N cartesian coordinates
         coord_num = masses.size * 3
 
-        hess_re = " #  Lower half triangle only\s+([\s\.\-\d]+)\s+NORMAL_MODE"
+        hess_re = r" #  Lower half triangle only\s+([\s\.\-\d]+)\s+NORMAL_MODE"
         tril_hess = re.search(hess_re, text)[1].strip().split()
         tril_hess = np.array(tril_hess, dtype=float)
         assert tril_hess.size == sum(range(coord_num + 1))

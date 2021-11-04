@@ -215,15 +215,14 @@ def report_isotopes(geom, affect_str):
 
 def report_frozen_atoms(geom):
     if hasattr(geom, "freeze_atoms") and len(geom.freeze_atoms) > 0:
-        print(f"Frozen atoms were requested:")
+        print(f"Coordinates of {len(geom.freeze_atoms)} atoms are frozen:")
         atoms = geom.atoms
         coords3d = geom.coords3d * BOHR2ANG
         fmt = " >12.8f"
-        print(f"\t{len(geom.freeze_atoms)}\n")
         for atom_ind in geom.freeze_atoms:
             atom = atoms[atom_ind]
             x, y, z = coords3d[atom_ind]
-            print(f"\t{atom} {x:{fmt}} {y:{fmt}} {z:{fmt}}")
+            print(f"\t{atom_ind:03d} {atom} {x:{fmt}} {y:{fmt}} {z:{fmt}}")
         print()
 
 

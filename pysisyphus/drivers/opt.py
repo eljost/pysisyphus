@@ -128,7 +128,7 @@ def run_opt(
     print(highlight_text(f"Running {title}", level=level))
     print(f"\n   Input geometry: {geom.describe()}")
     print(f"Coordinate system: {geom.coord_type}")
-    print(f"        Optimizer: {opt_key}")
+    print(f"        Optimizer: {opt_key}\n")
     report_frozen_atoms(geom)
     print()
 
