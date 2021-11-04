@@ -53,6 +53,7 @@ from pysisyphus.helpers_pure import (
     recursive_update,
     highlight_text,
     approx_float,
+    results_to_json
 )
 from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
@@ -521,6 +522,13 @@ def run_calculations(
             start = time.time()
             print(geom)
             results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+            as_json = results_to_json(results)
+            calc = geom.calculator
+            # Decrease counter, because it will be increased by 1, w.r.t to the
+            # calculation.
+            json_fn = calc.make_fn("results", counter=calc.calc_counter-1)
+            with open(json_fn, "w") as handle:
+                handle.write(as_json)
 
             hess_keys = [
                 key
