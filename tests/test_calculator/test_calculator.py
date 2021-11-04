@@ -1,11 +1,9 @@
-import os
 from pathlib import Path
 
 import numpy as np
 
-from pysisyphus.calculators import XTB
-from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import results_to_json, json_to_results
+from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
 
@@ -23,15 +21,16 @@ def test_results_to_json():
         np.testing.assert_allclose(val, ref_val)
 
 
-@using("xtb")
+@using("pyscf")
 def test_calculator_dump():
-    geom = geom_loader("lib:h2o.xyz")
-    calc = XTB(dump=True)
-    json_fn = calc.make_fn("results")
-    try:
-        os.remove(json_fn)
-    except FileNotFoundError:
-        pass
-    geom.set_calculator(calc)
-    geom.forces
-    assert json_fn.exists()
+    run_dict = {
+        "geom": {
+            "fn": "lib:h2o.xyz",
+        },
+        "calc": {
+            "type": "pyscf",
+            "basis": "sto3g",
+        },
+    }
+    _ = run_from_dict(run_dict)
+    assert Path("calculator_000.000.results").exists()

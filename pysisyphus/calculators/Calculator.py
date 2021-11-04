@@ -29,7 +29,6 @@ class Calculator:
         retry_calc=1,
         last_calc_cycle=None,
         clean_after=True,
-        dump=False,
         out_dir="./",
     ):
         """Base-class of all calculators.
@@ -61,8 +60,6 @@ class Calculator:
         clean_after : bool
             Delete temporary directory were calculations were executed
             after a calculation.
-        dump : bool, default=False
-            Whether the calculated results are dumped to a HDF5 file.
         out_dir : str
             Path that is prepended to generated filenames.
         """
@@ -95,7 +92,6 @@ class Calculator:
             self.reattach(int(last_calc_cycle))
             self.log(f"Set {self.calc_counter} for this calculation")
         self.clean_after = clean_after
-        self.dump = dump
 
         self.inp_fn = "calc.inp"
         self.out_fn = "calc.out"
@@ -170,7 +166,7 @@ class Calculator:
             Filename.
         """
 
-        if not counter:
+        if counter is None:
             counter = self.calc_counter
         fn = self.out_dir / f"{self.name}.{counter:03d}.{name}"
         if return_str:
@@ -460,11 +456,6 @@ class Calculator:
             results = self.parser_funcs[calc](path, **parser_kwargs)
             if keep:
                 self.keep(path)
-            if self.dump:
-                as_json = results_to_json(results)
-                json_fn = self.make_fn("results")
-                with open(json_fn, "w") as handle:
-                    handle.write(as_json)
         except Exception as err:
             print("Crashed input:")
             print(inp)
