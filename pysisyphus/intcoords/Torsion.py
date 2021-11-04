@@ -4,7 +4,7 @@ import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
 from pysisyphus.intcoords import Bend
-from pysisyphus.intcoords.derivatives import d2q_d
+from pysisyphus.intcoords.derivatives import d2q_d2
 from pysisyphus.linalg import cross3, norm3
 
 
@@ -98,4 +98,4 @@ class Torsion(Primitive):
     @staticmethod
     def _jacobian(coords3d, indices):
         sign = np.sign(Torsion._calculate(coords3d, indices))
-        return sign * d2q_d(*coords3d[indices].flatten())
+        return sign * d2q_d2(*coords3d[indices].flatten())

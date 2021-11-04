@@ -84,40 +84,23 @@ def test_get_fragments():
 
 
 @using("pyscf")
-def test_backtransform_hessian():
-    geom = geom_loader("lib:azetidine_hf_321g_opt.xyz", coord_type="redund")
-
-    H_fn = "H"
-    cH_fn = "cH"
-    f_fn = "f"
-    cf_fn = "cf"
+@pytest.mark.parametrize(
+    "fn, atol", (
+        ("lib:azetidine_hf_321g_opt.xyz", 1.5e-7),
+        ("lib:ethene_hf321g_opt.xyz", 2e-9),
+    )
+)
+def test_backtransform_hessian(fn, atol):
+    geom = geom_loader(fn, coord_type="redund")
 
     calc = PySCF(basis="321g", pal=2)
     geom.set_calculator(calc)
-    f = geom.forces
-    np.savetxt(f_fn, f)
-    cf = geom.cart_forces
-    np.savetxt(cf_fn, cf)
-    H = geom.hessian
-    np.savetxt(H_fn, H)
-    cH = geom.cart_hessian
-    np.savetxt(cH_fn, cH)
+    forces_int = geom.forces
+    H_int = geom.hessian
 
-    f_ref = np.loadtxt(f_fn)
-    cf_ref = np.loadtxt(cf_fn)
-    H_ref = np.loadtxt(H_fn)
-    cH_ref = np.loadtxt(cH_fn)
-
-    # norm = np.linalg.norm(cf_ref)
-    # print(f"norm(cart. forces)={norm:.6f}")
-
-    int_ = geom.internal
-    int_gradient_ref = -f_ref
-    H = int_.transform_hessian(cH_ref, int_gradient_ref)
-    np.testing.assert_allclose(H, H_ref)
-
-    cH = int_.backtransform_hessian(H, int_gradient_ref)
-    np.testing.assert_allclose(cH, cH_ref, atol=1.5e-7)
+    gradient_int = -forces_int
+    H_cart = geom.internal.backtransform_hessian(H_int, gradient_int)
+    np.testing.assert_allclose(H_cart, geom.cart_hessian, atol=atol)
 
 
 def check_typed_prims_for_geom(geom, typed_prims=None):
