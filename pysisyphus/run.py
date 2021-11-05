@@ -89,6 +89,7 @@ CALC_DICT = {
     "orca5": ORCA5,
     "psi4": Psi4,
     "pyxtb": PyXTB,
+    "remote": Remote,
     "turbomole": Turbomole,
     "xtb": XTB,
 }
@@ -496,9 +497,6 @@ def run_tsopt_from_cos(
 def run_calculations(
     geoms,
     calc_getter,
-    path,
-    calc_key,
-    calc_kwargs,
     scheduler=None,
     assert_track=False,
     run_func=None,
@@ -1595,13 +1593,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Fallback when no specific job type was specified
     else:
         calced_geoms, calced_results = run_calculations(
-            geoms,
-            calc_getter,
-            yaml_dir,
-            calc_key,
-            calc_kwargs,
-            scheduler,
-            run_func=calc_run_func,
+            geoms, calc_getter, scheduler, run_func=calc_run_func
         )
 
     # We can't use locals() in the dict comprehension, as it runs in its own
