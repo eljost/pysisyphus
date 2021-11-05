@@ -23,6 +23,7 @@ __all__ = [
     "Psi4",
     "PyPsi4",
     "PyXTB",
+    "Remote",
     "TIP3P",
     "Turbomole",
     "TransTorque",
@@ -52,6 +53,7 @@ from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.ORCA5 import ORCA5
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
+from pysisyphus.calculators.Remote import Remote
 from pysisyphus.calculators.TIP3P import TIP3P
 from pysisyphus.calculators.TransTorque import TransTorque
 from pysisyphus.calculators.Turbomole import Turbomole

@@ -33,6 +33,7 @@ setup(
         "dask",
         "distributed",
         "h5py",
+        "fabric",
         "jinja2",
         "matplotlib",
         "numpy",
