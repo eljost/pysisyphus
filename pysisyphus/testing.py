@@ -1,7 +1,10 @@
 import importlib
-
-import pytest
 import shutil
+
+try:
+    import pytest
+except ModuleNotFoundError:
+    print("pytest package could not be imported.")
 
 from pysisyphus.config import Config, DEFAULTS
 
@@ -42,7 +45,14 @@ def module_available(calculator):
     return available
 
 
-def using(calculator):
+class DummyMark:
+
+    def __init__(self, available):
+        self.args = (available, )
+
+
+def using(calculator, set_pytest_mark=True):
+    """Calling disabling set_pytest_mark avoids a runtime dependency on pytest."""
     calculator = calculator.lower()
 
     if calculator not in _using_cache:
@@ -70,16 +80,14 @@ def using(calculator):
             available = module_available(calculator)
 
         reason = _reason.format(calculator)
-        _using_cache[calculator] = pytest.mark.skipif(not available, reason=reason)
+        if set_pytest_mark:
+            mark = pytest.mark.skipif(not available, reason=reason)
+        else:
+            mark = DummyMark(available)
+        _using_cache[calculator] = mark
     return _using_cache[calculator]
 
 
-def available(calculator):
+def available(calculator, **kwargs):
     # True when skipif is False
-    return not using(calculator).args[0]
-
-
-using_pyscf = using("pyscf")
-using_gaussian16 = using("gaussian16")
-using_turbomole = using("turbomole")
-using_qcengine = using("qcengine")
+    return not using(calculator, **kwargs).args[0]

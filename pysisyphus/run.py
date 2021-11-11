@@ -18,7 +18,6 @@ from distributed import Client
 from natsort import natsorted
 import numpy as np
 import scipy as sp
-import pytest
 import yaml
 
 from pysisyphus.calculators import *
@@ -53,6 +52,7 @@ from pysisyphus.helpers_pure import (
     merge_sets,
     recursive_update,
     highlight_text,
+    approx_float,
 )
 from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
@@ -1598,7 +1598,7 @@ def check_asserts(results, run_dict):
     matches = list()
     for i, ((obj, attr), ref_val) in enumerate(zip(objs_attrs, ref_vals)):
         cur_val = getattr(getattr(results, obj), attr)
-        matched = cur_val == pytest.approx(ref_val)
+        matched = approx_float(cur_val, ref_val)
         print(f"{i:02d}: {obj}.{attr}")
         print(f"\tReference: {ref_val}")
         print(f"\t  Current: {cur_val}")

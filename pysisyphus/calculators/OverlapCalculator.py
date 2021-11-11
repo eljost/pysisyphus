@@ -86,10 +86,10 @@ class OverlapCalculator(Calculator):
             "Falling back to 'cdds: {2}'! Consider defining the {1} "
             "command in '.pysisyphusrc'."
         )
-        if (self.cdds == "render") and (not available("jmol")):
+        if (self.cdds == "render") and (not available("jmol", set_pytest_mark=False)):
             print(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
-        if (self.cdds == "calc") and (not available("mwfn")):
+        if (self.cdds == "calc") and (not available("mwfn", set_pytest_mark=False)):
             print(msg.format(self.cdds, "Multiwfn", None))
             self.cdds = None
         assert self.cdds in self.VALID_CDDS

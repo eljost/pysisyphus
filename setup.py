@@ -37,7 +37,6 @@ setup(
         "matplotlib",
         "numpy",
         "natsort",
-        "pytest",
         "pyyaml",
         "rmsd",
         "scipy",
@@ -52,6 +51,7 @@ setup(
         "pyscf": ["pyscf", ],
         # If you want to build the documentation
         "sphinx": ["sphinx", "sphinx-rtd-theme"],
+        "pytest": ["pytest", ]
     },
     entry_points={
         "console_scripts": [

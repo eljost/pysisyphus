@@ -6,13 +6,13 @@ from pysisyphus.helpers import do_final_hessian, geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.run import run_from_dict
-from pysisyphus.testing import using_gaussian16, using_pyscf, using
+from pysisyphus.testing import using
 
 
 init_logging()
 
 
-@using_gaussian16
+@using("gaussian16")
 def test_energy():
     geom = geom_loader("lib:alkyl17_sto3g_opt.xyz")
 
@@ -82,7 +82,7 @@ def test_energy():
             },
             -153.07432042299052,
             0.03768246934785125,
-            marks=using_gaussian16,
+            marks=using("gaussian16"),
         ),
         # The following two tests should yield identical results
         pytest.param(
@@ -92,7 +92,7 @@ def test_energy():
             },
             -152.4529060634755,
             0.018462670668992546,
-            marks=using_gaussian16,
+            marks=using("gaussian16"),
         ),
         pytest.param(
             {
@@ -101,7 +101,7 @@ def test_energy():
             },
             -152.4529060634755,
             0.01839279960703439,
-            marks=using_pyscf,
+            marks=using("pyscf"),
         ),
     ],
 )
@@ -144,14 +144,14 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
     "calc_key, embedding, ref_energy, ref_force_norm",
     [
         # No embedding
-        pytest.param("g16", None, -582.392035, 0.085568849, marks=using_gaussian16),
-        pytest.param("pyscf", None, -582.392035, 0.078387703, marks=using_pyscf),
+        pytest.param("g16", None, -582.392035, 0.085568849, marks=using("gaussian16")),
+        pytest.param("pyscf", None, -582.392035, 0.078387703, marks=using("pyscf")),
         # Electronic embedding
         pytest.param(
-            "g16", "electronic", -582.3997769406087, 0.08582761, marks=using_gaussian16
+            "g16", "electronic", -582.3997769406087, 0.08582761, marks=using("gaussian16")
         ),
         pytest.param(
-            "pyscf", "electronic", -582.3997769406087, 0.07861744, marks=using_pyscf
+            "pyscf", "electronic", -582.3997769406087, 0.07861744, marks=using("pyscf")
         ),
     ],
 )
@@ -206,7 +206,7 @@ def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     assert np.linalg.norm(forces) == pytest.approx(ref_force_norm)
 
 
-@using_gaussian16
+@using("gaussian16")
 def test_oniom_13_coupling():
     geom = geom_loader("lib:oniom_13_coupling_example.xyz")
 
@@ -251,7 +251,7 @@ def test_oniom_13_coupling():
     assert geom.energy == pytest.approx(-77.420587)
 
 
-@using_gaussian16
+@using("gaussian16")
 def test_acetaldehyde_opt():
     """
     From https://doi.org/10.1016/S0166-1280(98)00475-8
@@ -292,7 +292,7 @@ def test_acetaldehyde_opt():
     assert nus[-3] == pytest.approx(3560.9944)
 
 
-@using_gaussian16
+@using("gaussian16")
 def test_yaml_oniom():
 
     run_dict = {
@@ -333,7 +333,7 @@ def test_yaml_oniom():
     assert res.opt_geom.energy == pytest.approx(-153.07526171)
 
 
-@using_pyscf
+@using("pyscf")
 def test_oniom3():
     run_dict = {
         "geom": {
@@ -390,7 +390,7 @@ def test_oniom3():
 
 
 @pytest.mark.skip
-@using_pyscf
+@using("pyscf")
 def test_oniomopt_water_dimer():
     run_dict = {
         "xyz": "lib:water_dimer_oniomopt_test.pdb",
@@ -435,7 +435,7 @@ def test_oniomopt_water_dimer():
 
 
 @pytest.mark.skip
-@using_pyscf
+@using("pyscf")
 def test_oniom_microiters():
     run_dict = {
         "xyz": "lib:oniom_microiters_test.pdb",

@@ -328,3 +328,20 @@ def touch(fn):
         Path(fn).touch()
     except IsADirectoryError:
         pass
+
+
+def approx_float(
+    num: float, expected: float, abs_tol: float = 1e-6, rel_tol: float = 1e-12
+) -> bool:
+    def pos_or_none(num, name):
+        assert (num > 0.0) or (num is None), f"{name} must be positive or None!"
+
+    pos_or_none(abs_tol, "Absolute tolerance")
+    pos_or_none(rel_tol, "Relative tolerance")
+    assert abs_tol or rel_tol
+
+    if rel_tol is None:
+        rel_tol = 0.0
+    rel_tol = rel_tol * expected
+    tolerance = max(abs_tol, rel_tol)
+    return abs(num - expected) <= tolerance

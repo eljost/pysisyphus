@@ -5,7 +5,7 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 # from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.intcoords.augment_bonds import augment_bonds
-from pysisyphus.testing import using_pyscf
+from pysisyphus.testing import using
 from pysisyphus.tsoptimizers import *
 
 
@@ -21,7 +21,7 @@ BakerTSBm = Benchmark(
 )
 
 
-@using_pyscf
+@using("pyscf")
 @pytest.mark.parametrize("fn, geom, ref_energy", BakerTSBm)
 def test_baker_tsopt(fn, geom, ref_energy, results_bag):
     geom = augment_bonds(geom)
@@ -71,7 +71,7 @@ def test_baker_tsopt_synthesis(fixture_store):
     print(f"Converged: {converged}/{len(bags)}")
 
 
-@using_pyscf
+@using("pyscf")
 @pytest.mark.parametrize(
     "proj, ref_cycle",
     [
