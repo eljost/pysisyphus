@@ -1,15 +1,15 @@
-{ fetchPypi, fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper,
- # Python dependencies
- autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pyyaml, rmsd, scipy,
- sympy, scikit-learn, qcengine, ase, xtb-python, openbabel-bindings,
- # Runtime dependencies
- runtimeShell, jmol ? null, multiwfn ? null, xtb ? null, openmolcas ? null,
- pyscf ? null, psi4 ? null, wfoverlap ? null, nwchem ? null, orca ? null,
- turbomole ? null, gaussian ? null, gamess-us ? null, cfour ? null, molpro ? null,
- # Test dependencies
- openssh, pytest
- # Configuration
- fullTest ? false
+{ fetchPypi, fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper
+  # Python dependencies
+, autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pyyaml, rmsd, scipy
+, sympy, scikit-learn, qcengine, ase, xtb-python, openbabel-bindings
+  # Runtime dependencies
+, runtimeShell, jmol ? null, multiwfn ? null, xtb ? null, openmolcas ? null
+, pyscf ? null, psi4 ? null, wfoverlap ? null, nwchem ? null, orca ? null
+, turbomole ? null, gaussian ? null, gamess-us ? null, cfour ? null, molpro ? null
+  # Test dependencies
+, openssh, pytest
+  # Configuration
+, fullTest ? false
 }:
 let
   psi4Wrapper = writeScript "psi4.sh" ''
@@ -104,15 +104,20 @@ in
 
     checkInputs = [ pytest openssh ];
 
-    checkPhase = ''
+    preCheck = ''
       export PYSISRC=${pysisrc}
       export PATH=$PATH:${binSearchPath}
       export OMPI_MCA_rmaps_base_oversubscribe=1
-      echo $PYSISRC
+    '';
+    checkPhase = ''
+      runHook preCheck
+
       ${if fullTest
           then "pytest -v tests --disable-warnings"
           else "pytest -v --pyargs pysisyphus.tests --disable-warnings"
       }
+
+      runHook postCheck
     '';
 
     postInstall = if lib.lists.all (x: x == null) [ gaussian openmolcas orca psi4 xtb multiwfn jmol ]
