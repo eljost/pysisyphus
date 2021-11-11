@@ -1,13 +1,13 @@
 { fetchPypi, fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper,
  # Python dependencies
- autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pytest, pyyaml, rmsd, scipy,
+ autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pyyaml, rmsd, scipy,
  sympy, scikit-learn, qcengine, ase, xtb-python, openbabel-bindings,
  # Runtime dependencies
  runtimeShell, jmol ? null, multiwfn ? null, xtb ? null, openmolcas ? null,
  pyscf ? null, psi4 ? null, wfoverlap ? null, nwchem ? null, orca ? null,
  turbomole ? null, gaussian ? null, gamess-us ? null, cfour ? null, molpro ? null,
  # Test dependencies
- openssh,
+ openssh, pytest
  # Configuration
  fullTest ? false
 }:
@@ -58,7 +58,7 @@ let
 in
   buildPythonPackage rec {
     pname = "pysisyphus";
-    version = "0.7.2";
+    version = "0.7.4";
 
     nativeBuildInputs = [ makeWrapper ];
 
@@ -79,7 +79,6 @@ in
       qcengine
       ase
       openbabel-bindings
-      pytest  # Also required for normal execution
       openssh
     ] # Syscalls
       ++ lists.optional (xtb-python != null) xtb-python
