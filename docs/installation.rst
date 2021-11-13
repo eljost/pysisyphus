@@ -33,7 +33,7 @@ do any development work this is the preferred way of installing pysisyphus.
 
     pip install pysisyphus
     # Installation of additional optional dependencies is also possible
-    # pip install pysisyphus[qcengine,ase,pyscf,sphinx]
+    # pip install pysisyphus[qcengine,ase,pyscf,sphinx,pytest]
 
 For Ubuntu 20.04 LTS it was observed that the `setuptools` must be upgraded to
 version >= 0.45, prior to the installation of pysisyphus.
@@ -190,5 +190,5 @@ Example runmopac.sh
 Verifying Installation
 ==================================
 By executing :code:`pytest -v --pyargs pysisyphus.tests` a series of quick tests can be
-executed, verifing successful calculator setup. Running these tests requires `pyscf` to be
-present (`pip install pyscf`).
+executed, verifing successful calculator setup. Running these tests requires `pyscf` and
+`pytest` to be present (`pip install pyscf pytest`).

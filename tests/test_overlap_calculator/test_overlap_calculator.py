@@ -21,7 +21,7 @@ from pysisyphus.testing import using
 )
 def test_cdds_fallback(cdds, fallback, no_mwfn, no_jmol, monkeypatch):
     # Disable Mwfn/Jmol as requested
-    def mock_available(calculator):
+    def mock_available(calculator, set_pytest_mark=False):
         if (calculator == "mwfn") and no_mwfn:
             return False
         if (calculator == "jmol") and no_jmol:

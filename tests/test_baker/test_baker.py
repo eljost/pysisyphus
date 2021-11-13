@@ -4,7 +4,7 @@ from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators.PySCF import PySCF
 # from pysisyphus.helpers_pure import filter_fixture_store
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
-from pysisyphus.testing import using_pyscf
+from pysisyphus.testing import using
 
 
 def calc_getter(charge, mult):
@@ -14,7 +14,7 @@ def calc_getter(charge, mult):
 BakerBm = Benchmark("baker", coord_type="redund", calc_getter=calc_getter)
 
 
-@using_pyscf
+@using("pyscf")
 @pytest.mark.parametrize("fn, geom, ref_energy", BakerBm)
 def test_baker_gs_opt(fn, geom, ref_energy, results_bag):
     opt_kwargs = {

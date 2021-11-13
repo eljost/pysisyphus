@@ -3,10 +3,10 @@ import pytest
 
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
-from pysisyphus.testing import using_pyscf
+from pysisyphus.testing import using
 
 
-@using_pyscf
+@using("pyscf")
 def test_mulliken_charges():
     geom = geom_loader("lib:oniom_ee_model_system.xyz", coord_type="redund")
 

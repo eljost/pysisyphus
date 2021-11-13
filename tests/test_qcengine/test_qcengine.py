@@ -6,12 +6,12 @@ try:
 except ImportError:
     print("QCEngine import failed. Did you install it?")
 from pysisyphus.helpers import geom_loader
-from pysisyphus.testing import using_turbomole, using_qcengine, using
+from pysisyphus.testing import using
 from pysisyphus.calculators import Turbomole
 
 
-@using_turbomole
-@using_qcengine
+@using("turbomole")
+@using("qcengine")
 def test_qcengine_turbomole():
     geom = geom_loader("lib:h2o_guess.xyz")
 
@@ -65,7 +65,7 @@ def test_turbomole_hessian_compare(this_dir):
 
 
 @using("mopac")
-@using_qcengine
+@using("qcengine")
 def test_qcengine_mopac():
     geom = geom_loader("lib:h2o_guess.xyz")
 
@@ -89,7 +89,7 @@ def test_qcengine_mopac():
 
 
 @using("openmm")
-@using_qcengine
+@using("qcengine")
 def test_qcengine_openmm():
     """
     conda install -c omnia -c conda-forge openmm
@@ -123,7 +123,7 @@ def test_qcengine_openmm():
 
 
 @using("gamess")
-@using_qcengine
+@using("qcengine")
 def test_qcengine_gamess():
     geom = geom_loader("lib:h2o.xyz")
 
