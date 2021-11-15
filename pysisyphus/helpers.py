@@ -30,7 +30,6 @@ from pysisyphus.io import (
 )
 from pysisyphus.thermo import (
     can_thermoanalysis,
-    get_thermoanalysis,
     print_thermoanalysis,
 )
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
@@ -470,7 +469,7 @@ def do_final_hessian(
 
     thermo = None
     if can_thermoanalysis:
-        thermo = get_thermoanalysis(geom, T=T)
+        thermo = geom.get_thermoanalysis(geom, T=T)
         if print_thermo:
             print_thermoanalysis(thermo, geom=geom)
 

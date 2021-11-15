@@ -203,6 +203,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         )
         col_fmts = "int float float float float float float_short".split()
         self.table = TablePrinter(header, col_fmts, width=12)
+        self.is_converged = False
 
     def get_path_for_fn(self, fn, with_prefix=True):
         prefix = self.prefix if with_prefix else ""

@@ -39,30 +39,6 @@ def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1", return_ge
         return thermo
 
 
-def get_thermoanalysis(geom, T=298.15, point_group="c1"):
-    hessian = geom.cart_hessian
-    energy = geom.energy
-    vibfreqs, *_ = geom.get_normal_modes(hessian)
-    try:
-        mult = geom.calculator.mult
-    except AttributeError:
-        mult = 1
-        print(f"Multiplicity could not be determined! Using 2S+1 = {mult}.")
-
-    thermo_dict = {
-        "masses": geom.masses,
-        "vibfreqs": vibfreqs,
-        "coords3d": geom.coords3d,
-        "energy": energy,
-        "mult": mult,
-    }
-
-    qcd = QCData(thermo_dict, point_group=point_group)
-    thermo = thermochemistry(qcd, temperature=T)
-
-    return thermo
-
-
 THERMO_TPL = jinja2.Template(
     """
 {% if geom -%}
