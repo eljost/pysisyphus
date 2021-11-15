@@ -11,6 +11,12 @@ import numpy as np
 from scipy.spatial.distance import pdist
 import rmsd
 
+try:
+    from thermoanalysis.QCData import QCData
+    from thermoanalysis.thermo import thermochemistry
+except ModuleNotFoundError:
+    pass
+
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import (
     MASS_DICT,
@@ -994,6 +1000,37 @@ class Geometry:
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
         vibfreqs, eigvals, *_ = self.get_normal_modes(hessian)
         return vibfreqs[eigvals < thresh]
+
+    def get_thermoanalysis(
+        self, energy=None, cart_hessian=None, T=298.15, point_group="c1"
+    ):
+        if cart_hessian is None:
+            cart_hessian = self.cart_hessian
+            # Delte any supplied energy value when a Hessian calculation is carried out
+            energy = None
+
+        if energy is None:
+            energy = self.energy
+
+        vibfreqs, *_ = self.get_normal_modes(cart_hessian)
+        try:
+            mult = self.calculator.mult
+        except AttributeError:
+            mult = 1
+            print(f"Multiplicity could not be determined! Using 2S+1 = {mult}.")
+
+        thermo_dict = {
+            "masses": self.masses,
+            "vibfreqs": vibfreqs,
+            "coords3d": self.coords3d,
+            "energy": energy,
+            "mult": mult,
+        }
+
+        qcd = QCData(thermo_dict, point_group=point_group)
+        thermo = thermochemistry(qcd, temperature=T)
+
+        return thermo
 
     def get_trans_rot_projector(self):
         return get_trans_rot_projector(self.cart_coords, masses=self.masses)
