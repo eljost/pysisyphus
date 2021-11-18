@@ -8,6 +8,9 @@ DEFAULTS = {
     "mwfn": "Multiwfn",
     "jmol": "jmol",
     "packmol": "packmol",
+    "formchk": "formchk",
+    "unfchk": "unfchk",
+    "rwfdump": "rwfdump",
 }
 
 

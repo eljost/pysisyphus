@@ -11,6 +11,7 @@ import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import AU2EV, BOHR2ANG
+from pysisyphus.helpers_pure import file_or_str
 
 
 class Gaussian16(OverlapCalculator):
@@ -98,6 +99,7 @@ class Gaussian16(OverlapCalculator):
         self.base_cmd = self.get_cmd("cmd")
         self.formchk_cmd = self.get_cmd("formchk_cmd")
         self.unfchk_cmd = self.get_cmd("unfchk_cmd")
+        self.rwfdump_cmd = self.get_cmd("rwfdump_cmd")
 
     def make_exc_str(self):
         # Ground state calculation
@@ -200,8 +202,9 @@ class Gaussian16(OverlapCalculator):
         subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
         self.log("Created .fchk")
 
-    def run_rwfdump(self, path, rwf_index):
-        chk_path = path / self.chk_fn
+    def run_rwfdump(self, path, rwf_index, chk_path=None):
+        if chk_path is None:
+            chk_path = path / self.chk_fn
         dump_fn = path / f"{self.dump_base_fn}_dump_{rwf_index}"
         cmd = f"rwfdump {chk_path} {dump_fn} {rwf_index}".split()
         subprocess.run(cmd)
@@ -217,7 +220,7 @@ class Gaussian16(OverlapCalculator):
         self.make_fchk(path)
         if self.track:
             self.run_rwfdump(path, "635r")
-            self.nmos, self.roots = self.parse_log(path)
+            self.nmos, self.roots = self.parse_log(path + self.out_fn)
 
     def parse_keyword(self, text):
         word = pp.Word(pp.alphanums + "-" + "/")
@@ -373,19 +376,12 @@ class Gaussian16(OverlapCalculator):
         exc_energies /= AU2EV
         return exc_energies
 
-    def parse_log(self, path):
-        self.log(f"Parsing {self.out_fn}")
+    @file_or_str(".log", method=True)
+    def parse_log(self, text):
 
         def parse(text, regex, func):
             mobj = re.search(regex, text)
             return func(mobj[1])
-
-        if path.is_dir():
-            log_path = path / self.out_fn
-        else:
-            log_path = path
-        with open(log_path) as handle:
-            text = handle.read()
 
         # Depending on wether we did the calculation with td=read or not
         # roots will be at a different value. Without reading the CI coeffs
