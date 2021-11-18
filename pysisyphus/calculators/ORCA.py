@@ -16,7 +16,7 @@ from pysisyphus.helpers_pure import file_or_str
 def make_sym_mat(table_block):
     mat_size = int(table_block[1])
     # Orca prints blocks of 5 columns
-    arr = np.array(table_block[2:], dtype=np.float)
+    arr = np.array(table_block[2:], dtype=float)
     assert arr.size == mat_size ** 2
     block_size = 5 * mat_size
     cbs = [

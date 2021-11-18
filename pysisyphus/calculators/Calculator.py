@@ -111,10 +111,7 @@ class Calculator:
         try:
             return Config[self.conf_key][key]
         except KeyError:
-            print(
-                f"Failed to load key '{key}' from section '{self.conf_key}'. Exiting!"
-            )
-            sys.exit()
+            print(f"Failed to load key '{key}' from section '{self.conf_key}'!")
 
     @property
     def name(self):

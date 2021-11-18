@@ -1737,6 +1737,7 @@ def do_clean(force=False):
         "RUN.yaml",
         "middle_for_preopt.trj",
         "relaxed_scan.trj",
+        "too_similar.trj",
         # MDP
         "mdp_ee_ascent.trj",
         "mdp_ee_fin_*.trj",
