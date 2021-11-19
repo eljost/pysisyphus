@@ -5,7 +5,6 @@ from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 from pysisyphus.thermo import (
-    get_thermoanalysis,
     print_thermoanalysis,
     get_thermoanalysis_from_hess_h5,
 )
@@ -32,7 +31,7 @@ def hcn_geom():
 @using("thermoanalysis")
 def test_get_thermoanalysis(hcn_geom):
     hcn_geom.set_calculator(PySCF(basis="sto3g", verbose=0, pal=2))
-    thermo = get_thermoanalysis(hcn_geom)
+    thermo = hcn_geom.get_thermoanalysis()
     print_thermoanalysis(thermo)
 
     assert thermo.dG == pytest.approx(-0.002, abs=1e-5)
@@ -42,7 +41,7 @@ def test_get_thermoanalysis(hcn_geom):
 @using("thermoanalysis")
 def test_hcn_thermo(hcn_geom):
     hcn_geom.set_calculator(ORCA(keywords="HF sto-3g"))
-    thermo = get_thermoanalysis(hcn_geom)
+    thermo = hcn_geom.get_thermoanalysis()
     print_thermoanalysis(thermo, geom=hcn_geom)
 
     assert thermo.dG == pytest.approx(-0.002, abs=1e-5)

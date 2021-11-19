@@ -529,13 +529,18 @@ def run_calculations(
             start = time.time()
             print(geom)
             results = getattr(geom.calculator, func_name)(geom.atoms, geom.cart_coords)
-            as_json = results_to_json(results)
-            calc = geom.calculator
-            # Decrease counter, because it will be increased by 1, w.r.t to the
-            # calculation.
-            json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
-            with open(json_fn, "w") as handle:
-                handle.write(as_json)
+            # results dict of MultiCalc will contain keys that can be dumped yet. So
+            # we skip the JSON dumping when KeyError is raised.
+            try:
+                as_json = results_to_json(results)
+                calc = geom.calculator
+                # Decrease counter, because it will be increased by 1, w.r.t to the
+                # calculation.
+                json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
+                with open(json_fn, "w") as handle:
+                    handle.write(as_json)
+            except KeyError:
+                print("Skipped JSON dump of calculation results!")
 
             hess_keys = [
                 key
