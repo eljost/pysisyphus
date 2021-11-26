@@ -562,11 +562,14 @@ class Gaussian16(OverlapCalculator):
         }
         return results
 
-    def parse_double_mol(self, path):
+    def parse_double_mol(self, path, out_fn=None):
         def repl_double(s, loc, toks):
             return toks[0].replace("D", "E")
 
-        with open(path / self.out_fn) as handle:
+        if out_fn is None:
+            out_fn = self.out_fn
+
+        with open(path / out_fn) as handle:
             text = handle.read()
         # Number of basis functions in the double molecule
         nbas = int(re.search(r"NBasis =\s*(\d+)", text)[1])
@@ -589,7 +592,7 @@ class Gaussian16(OverlapCalculator):
         )
 
 
-        result = parser.parseFile(path / self.out_fn)
+        result = parser.parseFile(path / out_fn)
         pp.ParserElement.setDefaultWhitespaceChars(backup_white)
 
         # The full double molecule overlap matrix (square)
