@@ -729,6 +729,10 @@ class ORCA(OverlapCalculator):
         for tmp in tmp_fns:
             os.remove(tmp)
             self.log(f"Removed '{tmp}'")
+        # try:
+            # os.remove(path / "orca.gbw")
+        # except FileNotFoundError:
+            # pass
 
     def __str__(self):
         return f"ORCA({self.name})"
