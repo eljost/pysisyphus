@@ -1180,6 +1180,10 @@ class Geometry:
         sub_geom = Geometry(sub_atoms, sub_coords.flatten(), coord_type=coord_type)
         return sub_geom
 
+    def get_subgeom_without(self, indices, **kwargs):
+        with_indices = [ind for ind, _ in enumerate(self.atoms) if ind not in indices]
+        return self.get_subgeom(with_indices, **kwargs)
+
     def rmsd(self, geom):
         return rmsd.kabsch_rmsd(
             self.coords3d - self.centroid, geom.coords3d - geom.centroid
