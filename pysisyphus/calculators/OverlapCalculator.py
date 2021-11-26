@@ -187,8 +187,10 @@ class OverlapCalculator(Calculator):
     @staticmethod
     def get_mo_norms(mo_coeffs, ao_ovlp):
         """MOs are in rows."""
-        # return np.diag(mo_coeffs.dot(ao_ovlp).dot(mo_coeffs.T))
-        return np.einsum("ki,kj,ij->k", mo_coeffs, mo_coeffs, ao_ovlp)
+        # einsum-call is extremely slow
+        # mo_norms = np.einsum("ki,kj,ij->k", mo_coeffs, mo_coeffs, ao_ovlp)
+        mo_norms = np.diag(mo_coeffs.dot(ao_ovlp).dot(mo_coeffs.T))
+        return mo_norms
 
     @staticmethod
     def renorm_mos(mo_coeffs, ao_ovlp):
@@ -306,7 +308,7 @@ class OverlapCalculator(Calculator):
         ao_ovlp : ndarray, shape(AOs1, AOs2)
             Double molcule AO overlaps.
         """
-        states, occ, virt = ci_coeffs1.shape
+        states1, occ, _ = ci_coeffs1.shape
         ci_full1 = self.blowup_ci_coeffs(ci_coeffs1)
         ci_full2 = self.blowup_ci_coeffs(ci_coeffs2)
 
@@ -314,11 +316,14 @@ class OverlapCalculator(Calculator):
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
 
-        overlaps = [
-            np.sum(S_MO_occ.dot(state1).dot(S_MO) * state2)
-            for state1, state2 in it.product(ci_full1, ci_full2)
-        ]
-        overlaps = np.array(overlaps).reshape(states, -1)
+        overlaps = list()
+        for state1 in ci_full1:
+            precontr = S_MO_occ.dot(state1).dot(S_MO)
+            for state2 in ci_full2:
+                overlaps.append(
+                    np.sum(precontr * state2)
+                )
+        overlaps = np.array(overlaps).reshape(states1, -1)
 
         return overlaps
 
