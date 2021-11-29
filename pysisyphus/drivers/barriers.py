@@ -123,6 +123,8 @@ def do_endopt_ts_barriers(
         print(
             f"Standard-state correction (gas->solution): {ssc*AU2KJPERMOL:.2} kJ mol⁻¹\n"
         )
+    if solv_calc_getter is not None:
+        print("Including solvent correction (dG_solv = E_solv - E_gas)")
 
 
     def print_geoms_fns(geoms, fns):
