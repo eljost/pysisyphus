@@ -8,12 +8,13 @@ try:
 except ModuleNotFoundError:
     can_thermoanalysis = False
 
+from pysisyphus.config import T_DEFAULT
 from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.Geometry import Geometry
 
 
-def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1", return_geom=False):
+def get_thermoanalysis_from_hess_h5(h5_fn, T=T_DEFAULT, point_group="c1", return_geom=False):
     with h5py.File(h5_fn, "r") as handle:
         masses = handle["masses"][:]
         vibfreqs = handle["vibfreqs"][:]

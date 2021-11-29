@@ -199,7 +199,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.restarted = True
 
         header = (
-            "cycle Δ(energy) max(force) rms(force) max(step) rms(step) s/cycle".split()
+            "cycle Δ(energy) max(|force|) rms(force) max(|step|) rms(step) s/cycle".split()
         )
         col_fmts = "int float float float float float float_short".split()
         self.table = TablePrinter(header, col_fmts, width=12)

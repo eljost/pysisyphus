@@ -3,12 +3,14 @@ from enum import Enum
 import itertools as it
 import json
 import logging
+import math
 from pathlib import Path
 import time
 
 import numpy as np
 
-from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG
+from pysisyphus.config import p_DEFAULT, T_DEFAULT
+from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG, R, AU2KJPERMOL
 
 
 """Functions defined here don't import anything from pysisyphus, besides
@@ -373,3 +375,12 @@ def json_to_results(as_json):
         key: _CONV_FUNCS[key][1](val) for key, val in json.loads(as_json).items()
     }
     return results
+
+
+def standard_state_corr(T=T_DEFAULT, p=p_DEFAULT, n=1):
+    """dG for change of standard state from gas to solution of 1 mol/l"""
+    Vm = n * R * T / p  # in m³
+    Vm_litres = Vm * 1000
+    dG = R * T * math.log(Vm_litres) / 1000  # kJ mol⁻¹
+    dG_au = dG / AU2KJPERMOL
+    return dG_au

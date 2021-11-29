@@ -21,6 +21,7 @@ import scipy as sp
 import yaml
 
 from pysisyphus.calculators import *
+from pysisyphus.config import T_DEFAULT, p_DEFAULT
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
@@ -53,7 +54,7 @@ from pysisyphus.helpers_pure import (
     recursive_update,
     highlight_text,
     approx_float,
-    results_to_json
+    results_to_json,
 )
 from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
@@ -877,6 +878,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         fragments = list()
         fragment_names = list()
 
+        # Detect separate fragments if requested.
         if separate_fragments:
             bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
             # Sort atom indices, so the atoms don't become totally scrambled.
@@ -896,7 +898,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         # one fragment is present, which would result in twice the same optimization.
         skip_one_frag = separate_fragments and len(fragments) == 1
         if total and not skip_one_frag:
-            # Atom indices of the fragment atoms
+            # Dummy fragment containing all atom indices.
             fragments.extend(
                 [
                     range(len(atoms)),
@@ -1031,29 +1033,30 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=Non
     print("\t", yaml_fn)
 
 
-def get_defaults(conf_dict):
+def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     # Defaults
     dd = {
-        "interpol": None,
-        "cos": None,
+        "assert": None,
+        "barrier": None,
         "calc": {
             "pal": 1,
         },
+        "cos": None,
+        "endopt": None,
+        "geom": None,
+        "glob": None,
+        "interpol": None,
+        "irc": None,
+        "md": None,
+        "mdp": None,
+        "opt": None,
+        "perf": None,
         "precontr": None,
         "preopt": None,
-        "endopt": None,
         "scan": None,
-        "opt": None,
-        "tsopt": None,
-        "glob": None,
         "stocastic": None,
         "shake": None,
-        "irc": None,
-        "assert": None,
-        "geom": None,
-        "mdp": None,
-        "md": None,
-        "perf": None,
+        "tsopt": None,
     }
 
     mol_opt_defaults = {
@@ -1062,7 +1065,8 @@ def get_defaults(conf_dict):
         "overachieve_factor": 3,
         "type": "rfo",
         "do_hess": False,
-        "T": 298.15,
+        "T": T_default,
+        "p": p_default,
     }
     cos_opt_defaults = {
         "type": "qm",
@@ -1102,7 +1106,7 @@ def get_defaults(conf_dict):
             "dump": True,
             "overachieve_factor": 3,
             "h5_group_name": "tsopt",
-            "T": 298.15,
+            "T": T_default,
             "prefix": "ts",
         }
         if "cos" in conf_dict:
@@ -1142,6 +1146,14 @@ def get_defaults(conf_dict):
             }
         )
 
+    if "barriers" in conf_dict:
+        dd["barriers"] = {
+            "T": T_default,
+            "p": p_default,
+            "solv_calc": {},
+            "do_standard_state_corr": True,
+        }
+
     if "shake" in conf_dict:
         dd["shake"] = {
             "scale": 0.1,
@@ -1174,7 +1186,7 @@ def get_defaults(conf_dict):
         dd["scan"]["opt"]["dump"] = False
 
     if "md" in conf_dict:
-        md_T = 298.15
+        md_T = T_default,
         dd["md"] = {
             "T": md_T,
             "T_init_vel": md_T,
@@ -1231,6 +1243,7 @@ def setup_run_dict(run_dict):
     for key in key_set & set(
         (
             "assert",
+            "barriers",
             "calc",
             "cos",
             "endopt",
@@ -1368,6 +1381,14 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         act_calc_getter = get_calc_closure(
             "act_calculator", act_calc_key, act_calc_kwargs
         )
+    try:
+        solv_calc_kwargs = run_dict["barriers"].pop("solv_calc")
+        solv_calc_key = solv_calc_kwargs.pop("type")
+        solv_calc_getter = get_calc_closure(
+            "solv_calculator", solv_calc_key, solv_calc_kwargs
+        )
+    except KeyError:
+        solv_calc_getter = None
 
     ##################
     # GEOMETRY SETUP #
@@ -1536,6 +1557,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         if ran_irc and run_dict["endopt"]:
             do_thermo = run_dict["endopt"].get("do_hess", False) and can_thermoanalysis
             T = run_dict["endopt"]["T"]
+            p = run_dict["endopt"]["p"]
             # Order is forward, backward, downhill
             endopt_results = run_endopt(
                 geom, irc, endopt_key, endopt_kwargs, calc_getter
@@ -1568,15 +1590,25 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             # be cases when irc_geom does not have a calculator. If it can be ensured
             # that irc_geoms always has a calculator, then this restriction could be
             # lifted.
-            if not (do_thermo and (irc.hessian_init != "calc")):
+            analytical_irc_hessian = (
+                irc.hessian_init == "calc" or irc.hessian_init.endswith(".h5")
+            )
+            if (not do_thermo) or (do_thermo and analytical_irc_hessian):
+                barrier_kwargs = {
+                    "do_thermo": do_thermo,
+                    "T": T,
+                    "p": p,
+                    "solv_calc_getter": solv_calc_getter,
+                }
+                barrier_kwargs_ = run_dict.get("barriers", {})
+                barrier_kwargs.update(barrier_kwargs_)
                 do_endopt_ts_barriers(
                     irc_geom,
                     left_geoms,
                     right_geoms,
                     left_fns=left_fns,
                     right_fns=right_fns,
-                    do_thermo=do_thermo,
-                    T=T,
+                    **barrier_kwargs,
                 )
             else:
                 print("Barriers with IRC hessian_init != 'calc' not yet implemented!")

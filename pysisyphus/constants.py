@@ -28,6 +28,7 @@ FS2AU = 0.9682885864793366
 # Boltzman constant, (m² kg s⁻² K⁻¹) or just (J / K)
 KB = spc.Boltzmann
 KBAU = KB / AU2J
+R = spc.gas_constant
 # Atomic mass unit to kg
 AMU2KG = spc.value("atomic mass constant")
 # Atomic unit of time to second

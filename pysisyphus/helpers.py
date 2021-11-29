@@ -12,6 +12,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
+from pysisyphus.config import T_DEFAULT
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import (
@@ -412,7 +413,7 @@ def do_final_hessian(
     save_hessian=True,
     write_imag_modes=False,
     prefix="",
-    T=298.15,
+    T=T_DEFAULT,
     print_thermo=False,
     out_dir=None,
 ):
