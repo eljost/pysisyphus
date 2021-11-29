@@ -4,6 +4,8 @@ from pathlib import Path
 import sys
 
 
+T_DEFAULT = 298.15  # Kelvin
+p_DEFAULT = 101325  # Pascal
 DEFAULTS = {
     "mwfn": "Multiwfn",
     "jmol": "jmol",

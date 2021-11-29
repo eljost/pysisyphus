@@ -17,6 +17,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+from pysisyphus.config import T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import (
     MASS_DICT,
@@ -1002,7 +1003,7 @@ class Geometry:
         return vibfreqs[eigvals < thresh]
 
     def get_thermoanalysis(
-        self, energy=None, cart_hessian=None, T=298.15, point_group="c1"
+        self, energy=None, cart_hessian=None, T=T_DEFAULT, point_group="c1"
     ):
         if cart_hessian is None:
             cart_hessian = self.cart_hessian

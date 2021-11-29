@@ -6,6 +6,7 @@ import shutil
 import numpy as np
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.config import T_DEFAULT, p_DEFAULT
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import do_final_hessian
 from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
@@ -122,7 +123,8 @@ def run_opt(
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
-    T = opt_kwargs.pop("T", 298.15)
+    T = opt_kwargs.pop("T", T_DEFAULT)
+    p = opt_kwargs.pop("p", p_DEFAULT)
 
     opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
     print(highlight_text(f"Running {title}", level=level))
