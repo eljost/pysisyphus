@@ -4,8 +4,10 @@ from pysisyphus.helpers_pure import standard_state_corr
 from pysisyphus.io.hessian import geom_from_hessian
 from pysisyphus.run import run_from_dict
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
+from pysisyphus.testing import using
 
 
+@using("xtb")
 @pytest.mark.parametrize(
     "do_hess",
     (
@@ -86,10 +88,11 @@ def solv_calc_getter(*args):
     return DummyCalc()
 
 
-@pytest.mark.parametrize("do_standard_state_corr", [True, False])
-@pytest.mark.parametrize("solv_calc_getter", [None, solv_calc_getter])
+@pytest.mark.parametrize("do_standard_state_corr", (True, False))
+@pytest.mark.parametrize("solv_calc_getter", (None, solv_calc_getter))
+@pytest.mark.parametrize("do_thermo", (True, False))
 def test_do_endopt_ts_barriers(
-    do_standard_state_corr, solv_calc_getter, left_geoms, right_geoms, ts_geom
+    do_standard_state_corr, solv_calc_getter, do_thermo, left_geoms, right_geoms, ts_geom
 ):
 
     do_endopt_ts_barriers(
@@ -98,4 +101,5 @@ def test_do_endopt_ts_barriers(
         right_geoms,
         do_standard_state_corr=do_standard_state_corr,
         solv_calc_getter=solv_calc_getter,
+        do_thermo=do_thermo,
     )
