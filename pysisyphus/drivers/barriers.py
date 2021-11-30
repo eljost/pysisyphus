@@ -1,3 +1,5 @@
+from time import time
+
 import numpy as np
 
 from pysisyphus.config import T_DEFAULT, p_DEFAULT
@@ -22,7 +24,7 @@ def do_endopt_ts_barriers(
     print()
 
     # Only allow standard state correction when solvent calculator is specified.
-    do_ssc = do_standard_state_corr and solv_calc_getter
+    do_ssc = do_standard_state_corr and (solv_calc_getter is not None)
     ssc = standard_state_corr(T=T, p=p) if do_ssc else 0.0
 
     if right_geoms is None:
@@ -38,13 +40,15 @@ def do_endopt_ts_barriers(
     def drop_total_geom(geoms):
         atom_nums = [len(geom.atoms) for geom in geoms]
         tot_atom_num = sum(atom_nums)
+        total_geom = None
         if tot_atom_num > ts_atom_num:
             total_ind = atom_nums.index(max(atom_nums))
+            total_geom = geoms[total_ind]
             geoms = [geom for i, geom in enumerate(geoms) if i != total_ind]
-        return geoms
+        return geoms, total_geom
 
-    right_geoms = drop_total_geom(right_geoms)
-    left_geoms = drop_total_geom(left_geoms)
+    left_geoms, left_total_geom = drop_total_geom(left_geoms)
+    right_geoms, right_total_geom = drop_total_geom(right_geoms)
 
     def tot_atom_num(geoms):
         return sum([len(geom.atoms) for geom in geoms])
@@ -55,7 +59,6 @@ def do_endopt_ts_barriers(
 
     # Gibbs free energies
     if do_thermo:
-        print(f"Including thermochemical corrections at {T:.2f} K.\n")
         en_key = "free energy"
 
         def get_thermo(geom, title):
@@ -74,7 +77,6 @@ def do_endopt_ts_barriers(
         right_energies = [thermo.G for thermo in right_thermos]
     # Electronic energies only
     else:
-        print("Thermochemical corrections are NOT included!")
         en_key = "energy"
 
         ts_energy = ts_geom.energy
@@ -83,9 +85,14 @@ def do_endopt_ts_barriers(
     print()
 
     def get_solv_correction(geom):
+        atom_num = len(geom.atoms)
+        print(f"Solvated energy calculation for {atom_num} atoms ...", end="")
+        start = time()
         solv_energy = solv_calc_getter().get_energy(geom.atoms, geom.cart_coords)[
             "energy"
         ]
+        dur = time() - start
+        print(f" finished in {dur:.1f} s.")
         # Add standard state correction. ssc will be 0.0 if, disabled.
         return (solv_energy - geom.energy) + ssc
 
@@ -95,6 +102,7 @@ def do_endopt_ts_barriers(
         right_solv_corrs = [get_solv_correction(geom) for geom in right_geoms]
         left_solv_corr = sum(left_solv_corrs)
         right_solv_corr = sum(right_solv_corrs)
+        print()
     else:
         ts_solv_corr = left_solv_corr = right_solv_corr = 0.0
 
@@ -119,12 +127,13 @@ def do_endopt_ts_barriers(
 
     print(highlight_text("Barriers", level=1))
     print()
-    if do_ssc:
-        print(
-            f"Standard-state correction (gas->solution): {ssc*AU2KJPERMOL:.2} kJ mol⁻¹"
-        )
-    if solv_calc_getter is not None:
-        print("Including solvent correction (dG_solv = E_solv - E_gas)")
+    print(f"Temperature: {T:.2f} K")
+    print(f"Pressure: {p:.1f} Pa\n")
+
+    print("Corrections:")
+    print(f"Change of standard-state: {do_ssc}, {ssc*AU2KJPERMOL:.2} kJ mol⁻¹")
+    print(f"                 Solvent: {solv_calc_getter is not None}")
+    print(f"         Thermochemistry: {do_thermo}")
     print()
 
 
@@ -132,10 +141,13 @@ def do_endopt_ts_barriers(
         for i, (geom, fn) in enumerate(zip(geoms, fns)):
             print(f"\t{i}: {fn} ({geom}, {len(geom.atoms)} atoms)")
 
-    print("Left geometries:")
+    def get_geom_key(geoms): return "geometry" if len(geoms) == 1 else "geometries"
+    print(f"Left {get_geom_key(left_geoms)}:")
     print_geoms_fns(left_geoms, left_fns)
+    print("TS geometry:")
+    print_geoms_fns((ts_geom, ), ("", ))
     if right_geoms:
-        print("Right geometries:")
+        print(f"Right {get_geom_key(right_geoms)}:")
         print_geoms_fns(right_geoms, right_fns)
     print()
 
