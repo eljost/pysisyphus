@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
+import argparse
 import os
 from pathlib import Path
 import shutil
+import sys
 import tempfile
 
 import luigi
+from luigi.tools.deps_tree import print_tree
 import psutil
+import yaml
 
 from pysisyphus.calculators import ORCA5, XTB
 from pysisyphus.drivers.pka import direct_cycle
@@ -67,6 +71,8 @@ class InputGeometry(Params, luigi.Task):
         # Derive initial geometry of the base from the optimized acid
         if self.is_base:
             acid_geom = geom_loader(self.input()[0].path)
+            # Be sure that it is actually an H atom.
+            assert acid_geom.atoms[self.h_ind].lower() == "h"
             geom = acid_geom.get_subgeom_without((self.h_ind,))
         else:
             geom = geom_queue[self.id_]
@@ -125,6 +131,9 @@ class SolvEnergy(Params, luigi.Task):
 
 
 class DirectCycle(Params, luigi.Task):
+    def output(self):
+        return luigi.LocalTarget(self.get_path("pka"))
+
     def requires(self):
         return (
             Minimization(self.id_, self.name, self.h_ind, is_base=False),
@@ -145,22 +154,52 @@ class DirectCycle(Params, luigi.Task):
             base_solv_en = float(handle.read())
         pKa = direct_cycle(acid_h5, base_h5, acid_solv_en, base_solv_en)
         print(f"@@@ pka={pKa:.4f}")
+        with self.output().open("w") as handle:
+            handle.write(str(pKa))
 
+
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("yaml")
+    return parser.parse_args(args) 
 
 def run():
+    args = parse_args(sys.argv[1:])
+
+    with open(args.yaml) as handle:
+        run_dict = yaml.load(handle.read(), Loader=yaml.SafeLoader)
+
+    inputs = list()
+    for acid, acid_dict in run_dict["acids"].items():
+        fn = acid_dict["fn"]
+        h_ind = acid_dict["h_ind"]
+        assert Path(fn).exists(), \
+            f"File '{fn}' does not exist!"
+        geom = geom_loader(fn)
+        assert geom.atoms[h_ind].lower() == "h", \
+            f"Atom at index {h_ind} in '{fn}' is not a hydrogen atom!"
+        print(f"Checked {acid}.")
+        inputs.append((fn, h_ind))
+
     global geom_queue
-    inputs = (
-        ("formicacid.xyz", 4),
-        ("aceticacid.xyz", 7),
-    )
+    geom_queue = [geom_loader(fn) for fn, _ in inputs]
+
     pal = psutil.cpu_count(logical=False)
     calc_cls = ORCA5
-    gas_kwargs = {"keywords": "b97-3c"}
-    solv_kwargs = {
-        "keywords": "b97-3c cpcm(water)",
-        "blocks": '%cpcm smd true smdsolvent "water" end',
+    rdc = run_dict["calc"]
+    gas_calc_cls = rdc.pop("type")
+    gas_kwargs = rdc#run_dict["calc"]
+    rdsc  = run_dict["solv_calc"]
+    solv_calc_cls = rdsc.pop("type")
+    solv_kwargs = rdsc
+    assert gas_calc_cls == solv_calc_cls
+    calc_dict = {
+        "orca5": ORCA5,
+        "xtb": XTB,
     }
-    geom_queue = [geom_loader(fn) for fn, _ in inputs]
+    calc_cls = calc_dict[gas_calc_cls]
+
     cycles = list()
     for id_, (fn, h_ind) in enumerate(inputs):
         name = Path(fn).stem
@@ -183,6 +222,8 @@ def run():
             base_name="solv",
             **solv_kwargs,
         )
+
+    print(print_tree(cycles[0], indent="", last=True))
 
     luigi.build(
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=False),)
