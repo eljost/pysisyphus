@@ -96,21 +96,47 @@ class Minimization(Params, luigi.Task):
         geom.set_calculator(
             get_calc(charge=self.calc_charge(), out_dir=self.qm_out_dir)
         )
+        final_hess_fn = "final_hessian.h5"
+
         with tempfile.TemporaryDirectory() as tmp_dir:
-            opt = RFOptimizer(
-                geom,
-                dump=True,
-                overachieve_factor=4.0,
-                out_dir=tmp_dir,
-                thresh="gau",
-            )
-            opt.run()
-            #
-            xyz_out, hess_out = self.output()
-            with xyz_out.open("w") as handle:
-                handle.write(geom.as_xyz())
-            do_final_hessian(geom, out_dir=tmp_dir)
-            self.backup_from_dir(tmp_dir, "final_hessian.h5", hess_out.path)
+            tmp_dir = Path(tmp_dir)
+            opt_kwargs_ = {
+                "dump": True,
+                "overachieve_factor": 4.0,
+                "thresh": "gau",
+                "out_dir": tmp_dir,
+            }
+            # Iterate until no imaginary frequencies are present
+            for i in range(5):
+                opt_kwargs = opt_kwargs_.copy()
+                if i > 0:
+                    opt_kwargs["hessian_init"] = tmp_dir / final_hess_fn
+
+                opt = RFOptimizer(
+                    geom,
+                    **opt_kwargs,
+                )
+                opt.run()
+                #
+                xyz_out, hess_out = self.output()
+                with xyz_out.open("w") as handle:
+                    handle.write(geom.as_xyz())
+                hess_result = do_final_hessian(geom, out_dir=tmp_dir)
+                if len(hess_result.neg_eigvals) == 0:
+                    self.backup_from_dir(tmp_dir, final_hess_fn, hess_out.path)
+                    break
+                else:
+                    suffix = f".{i:02d}"
+                    self.backup_from_dir(tmp_dir, final_hess_fn, hess_out.path + suffix)
+                    self.backup_from_dir(tmp_dir, "final_geometry.xyz", xyz_out.path + suffix)
+                    # Delete everything in tmp_dir, besides final_hess_fn, as it will be
+                    # reused.
+                    files = [f for f in tmp_dir.glob("./*") if f.is_file()
+                            and f.name != final_hess_fn]
+                    for f in files:
+                        os.remove(f)
+            else:
+                raise Exception("Minimization failed!")
 
 
 class SolvEnergy(Params, luigi.Task):
@@ -162,7 +188,8 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("yaml")
-    return parser.parse_args(args) 
+    return parser.parse_args(args)
+
 
 def run():
     args = parse_args(sys.argv[1:])
@@ -174,23 +201,24 @@ def run():
     for acid, acid_dict in run_dict["acids"].items():
         fn = acid_dict["fn"]
         h_ind = acid_dict["h_ind"]
-        assert Path(fn).exists(), \
-            f"File '{fn}' does not exist!"
+        assert Path(fn).exists(), f"File '{fn}' does not exist!"
         geom = geom_loader(fn)
-        assert geom.atoms[h_ind].lower() == "h", \
-            f"Atom at index {h_ind} in '{fn}' is not a hydrogen atom!"
+        assert (
+            geom.atoms[h_ind].lower() == "h"
+        ), f"Atom at index {h_ind} in '{fn}' is not a hydrogen atom!"
         print(f"Checked {acid}.")
         inputs.append((fn, h_ind))
 
     global geom_queue
     geom_queue = [geom_loader(fn) for fn, _ in inputs]
 
+    # Calculator setup
     pal = psutil.cpu_count(logical=False)
     calc_cls = ORCA5
     rdc = run_dict["calc"]
     gas_calc_cls = rdc.pop("type")
-    gas_kwargs = rdc#run_dict["calc"]
-    rdsc  = run_dict["solv_calc"]
+    gas_kwargs = rdc
+    rdsc = run_dict["solv_calc"]
     solv_calc_cls = rdsc.pop("type")
     solv_kwargs = rdsc
     assert gas_calc_cls == solv_calc_cls
