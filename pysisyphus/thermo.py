@@ -50,7 +50,7 @@ Pressure          : {{ thermo.p }} Pa
 Total Mass        : {{ "%0.4f" % thermo.M }} amu
 
 ! Symmetry is currently not supported in pysisyphus. !
-! If not specified c1 and σ = 1 are assumed.         !
+! If not given otherwise, c1 and σ = 1 are assumed.  !
 Point Group       : {{ thermo.point_group }}
 Symmetry Number σ : {{ thermo.sym_num }}  
 
