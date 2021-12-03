@@ -887,7 +887,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             # this ever occurs and someone complains :)
             assert len(fragments) < 10, "Something probably went wrong"
             fragment_names.extend(
-                [f"{base_name}_frag{i:03d}" for i, _ in enumerate(fragments)]
+                [f"{base_name}_frag{i:02d}" for i, _ in enumerate(fragments)]
             )
             print(f"Found {len(fragments)} fragment(s) at {base_name}")
             for frag_name, frag in zip(fragment_names, fragments):
