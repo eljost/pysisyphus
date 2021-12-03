@@ -95,10 +95,14 @@ def test_do_endopt_ts_barriers(
     do_standard_state_corr, solv_calc_getter, do_thermo, left_geoms, right_geoms, ts_geom
 ):
 
+    left_fns = ["forward_end_frag_000.xyz"]
+    right_fns = ["backward_end_frag_000.xyz", "backward_end_frag_001.xyz"]
     do_endopt_ts_barriers(
         ts_geom,
         left_geoms,
         right_geoms,
+        left_fns=left_fns,
+        right_fns=right_fns,
         do_standard_state_corr=do_standard_state_corr,
         solv_calc_getter=solv_calc_getter,
         do_thermo=do_thermo,
