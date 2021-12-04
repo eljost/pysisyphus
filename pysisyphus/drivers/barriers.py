@@ -149,6 +149,7 @@ def do_endopt_ts_barriers(
         tp = TablePrinter(header, col_fmts, width=width, sub_underline=False)
         tp.print_header()
         for fn, row in zip(all_fns, table.T):
+            fn = str(fn)  # fns may be PosixPath etc.
             fn_cut = fn[:6] + "..." + fn[-6:] if (len(fn) > width) else fn
             tp.print_row((fn_cut, *row))
         print()

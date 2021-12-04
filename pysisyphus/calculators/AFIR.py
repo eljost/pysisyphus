@@ -92,7 +92,6 @@ class AFIR(Calculator):
         h5_group_name="afir",
         **kwargs,
     ):
-        kwargs["dump"] = dump
         super().__init__(**kwargs)
 
         self.calculator = calculator
@@ -112,6 +111,7 @@ class AFIR(Calculator):
         # assert self.rho in (-1, 1)  # TODO: reactivate this
         self.p = p
         self.ignore_hydrogen = ignore_hydrogen
+        self.dump = dump
         self.h5_fn = h5_fn
         self.h5_group_name = h5_group_name
         # We can't initialize the HDF5 group as we don't know the shape of
