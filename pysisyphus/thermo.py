@@ -4,17 +4,20 @@ import jinja2
 try:
     from thermoanalysis.QCData import QCData
     from thermoanalysis.thermo import thermochemistry
+
     can_thermoanalysis = True
 except ModuleNotFoundError:
     can_thermoanalysis = False
 
-from pysisyphus.config import T_DEFAULT
-from pysisyphus.constants import AU2KJPERMOL
+from pysisyphus.config import p_DEFAULT, T_DEFAULT
+from pysisyphus.constants import AU2KJPERMOL, AU2KCALPERMOL
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.Geometry import Geometry
 
 
-def get_thermoanalysis_from_hess_h5(h5_fn, T=T_DEFAULT, point_group="c1", return_geom=False):
+def get_thermoanalysis_from_hess_h5(
+    h5_fn, T=T_DEFAULT, p=p_DEFAULT, point_group="c1", return_geom=False
+):
     with h5py.File(h5_fn, "r") as handle:
         masses = handle["masses"][:]
         vibfreqs = handle["vibfreqs"][:]
@@ -32,7 +35,7 @@ def get_thermoanalysis_from_hess_h5(h5_fn, T=T_DEFAULT, point_group="c1", return
     }
 
     qcd = QCData(thermo_dict, point_group=point_group)
-    thermo = thermochemistry(qcd, temperature=T)
+    thermo = thermochemistry(qcd, temperature=T, pressure=p)
     if return_geom:
         geom = Geometry(atoms=atoms, coords=coords3d)
         return thermo, geom
@@ -103,13 +106,19 @@ Symmetry Number σ : {{ thermo.sym_num }}
 )
 
 
-def print_thermoanalysis(thermo, geom=None, level=0, title=None):
+def print_thermoanalysis(thermo, geom=None, unit="joule", level=0, title=None):
     """Print thermochemical analysis."""
 
+    units = {
+        "calorie": ("kcal mol⁻¹", AU2KCALPERMOL),
+        "joule": ("kJ mol⁻¹", AU2KJPERMOL),
+    }
+    unit_key, unit_conv = units[unit]
+
     def fmt(key, hartree):
-        """Output key & energy in Hartree and kJ/mol."""
-        kjm = hartree * AU2KJPERMOL
-        return f"{key:<18}: {hartree: >16.8f} Eh ({kjm: >18.2f} kJ/mol)"
+        """Output key & energy in Hartree and the chosen unit."""
+        kjm = hartree * unit_conv
+        return f"{key:<18}: {hartree: >16.8f} Eh ({kjm: >18.2f} {unit_key})"
 
     # Separator
     sep = "+-----------------------------------------------------------------+"

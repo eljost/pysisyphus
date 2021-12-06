@@ -92,6 +92,7 @@ def do_endopt_ts_barriers(
         right_dGs = zeros(right_geoms)
 
     def get_solv_correction(geom, fn=None):
+        fn = str(fn)
         if fn is not None:
             infix = f"'{fn: >20s}'"
         else:
