@@ -29,7 +29,7 @@ class Calculator:
         retry_calc=1,
         last_calc_cycle=None,
         clean_after=True,
-        out_dir="./",
+        out_dir="./qm_calcs",
     ):
         """Base-class of all calculators.
 
