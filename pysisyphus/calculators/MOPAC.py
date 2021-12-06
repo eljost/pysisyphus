@@ -3,7 +3,7 @@ import textwrap
 
 import numpy as np
 
-from pysisyphus.constants import BOHR2ANG, AU2KCALMOL
+from pysisyphus.constants import BOHR2ANG, AU2KCALPERMOL
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.helpers_pure import file_or_str
 
@@ -137,7 +137,7 @@ class MOPAC(Calculator):
     def parse_energy_from_aux(text):
         energy_re = r"HEAT_OF_FORMATION:KCAL/MOL=([\d\-D+\.]+)"
         mobj = re.search(energy_re, text)
-        energy = float(mobj[1].replace("D", "E")) / AU2KCALMOL
+        energy = float(mobj[1].replace("D", "E")) / AU2KCALPERMOL
 
         result = {
             "energy": energy,
@@ -153,7 +153,7 @@ class MOPAC(Calculator):
         # Gradients are given in kcal*mol/angstrom
         gradients = np.array(mobj[1].split(), dtype=float)
         # Convert to hartree/bohr
-        gradients = gradients / AU2KCALMOL / BOHR2ANG
+        gradients = gradients / AU2KCALPERMOL / BOHR2ANG
 
         forces = -gradients
         result = {

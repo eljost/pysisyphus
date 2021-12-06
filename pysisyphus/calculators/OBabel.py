@@ -7,7 +7,7 @@ except ModuleNotFoundError:
     pass
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL, AU2KCALMOL
+from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL, AU2KCALPERMOL
 
 
 def _getpluginnames(ptype):
@@ -23,7 +23,7 @@ def _getplugins(findplugin, names):
 class OBabel(Calculator):
     conv_dict = {
         "kj/mol": AU2KJPERMOL,
-        "kcal/mol": AU2KCALMOL,
+        "kcal/mol": AU2KCALPERMOL,
     }
 
     def __init__(self, ff="gaff", mol=None, **kwargs):

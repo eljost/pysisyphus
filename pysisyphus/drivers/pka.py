@@ -1,6 +1,6 @@
 from math import log
 
-from pysisyphus.constants import AU2KCALMOL, KBAU
+from pysisyphus.constants import AU2KCALPERMOL, KBAU
 from pysisyphus.io import geom_from_hessian
 
 def direct_cycle(
@@ -24,7 +24,7 @@ def direct_cycle(
     G_aq_base = G_aq_from_hessian(base_h5, base_solv_en)
 
     if G_aq_H is None:
-        G_aq_H = (G_gas_H + dG_solv_H) / AU2KCALMOL
+        G_aq_H = (G_gas_H + dG_solv_H) / AU2KCALPERMOL
 
     dG_aq = G_aq_H + G_aq_base - G_aq_acid
     corr = KBAU * T * log(24.46)

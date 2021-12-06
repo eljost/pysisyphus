@@ -18,7 +18,7 @@ AU2J = spc.value("Hartree energy")
 # Hartree to kJ / mol
 AU2KJPERMOL = AU2J / 1000 * spc.Avogadro
 # Hartree to kcal mol⁻¹
-AU2KCALMOL = AU2KJPERMOL / spc.calorie
+AU2KCALPERMOL = AU2KJPERMOL / spc.calorie
 # Hartree to eV
 AU2EV = spc.value("Hartree energy in eV")
 # eV/Å -> Hartree/Bohr

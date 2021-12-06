@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-from pysisyphus.constants import AU2KCALMOL
 from pysisyphus.calculators import ORCA, Composite
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_loader
