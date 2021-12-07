@@ -219,14 +219,13 @@ class DirectCycle(Params, luigi.Task):
             acid_solv_en = float(handle.read())
         with open(base_solv_fn.path) as handle:
             base_solv_en = float(handle.read())
-        G_aq_H = -6.28 + (-265.9)
+        G_aq_H = -6.28 + (-265.9)  # corresponds to the default
         pKa = direct_cycle(acid_h5, base_h5, acid_solv_en, base_solv_en, G_aq_H=G_aq_H)
-        print(f"@@@ pka={pKa:.4f}")
+        print(f"@@@ {self.name}: pka={pKa:.4f}")
 
         G_acid_aq = G_aq_from_h5_hessian(acid_h5, acid_solv_en)
         G_base_aq = G_aq_from_h5_hessian(base_h5, base_solv_en)
         G_diss_aq = G_base_aq - G_acid_aq
-        print(f"@@@ G_diss_aq={G_diss_aq:.6f} au")
 
         results = {
             "name": self.name,
@@ -234,10 +233,31 @@ class DirectCycle(Params, luigi.Task):
             "G_acid_aq": G_acid_aq,
             "G_base_aq": G_base_aq,
             "G_diss_aq": G_diss_aq,
-            "pKa": pKa,
+            "pKa_calc": pKa,
         }
         with self.output().open("w") as handle:
             yaml.dump(results, handle)
+
+
+class DirectCycler(luigi.WrapperTask):
+    yaml_inp = luigi.Parameter()
+
+    def requires(self):
+        with open(self.yaml_inp) as handle:
+            run_dict = yaml.load(handle.read(), Loader=yaml.SafeLoader)
+
+        for id_, (acid, acid_dict) in enumerate(run_dict["acids"].items()):
+            fn = acid_dict["fn"]
+            h_ind = acid_dict["h_ind"]
+            name = Path(fn).stem
+            yield DirectCycle(id_=id_, name=name, h_ind=h_ind)
+
+    def run(self):
+        for dc in self.input():
+            with dc.open() as handle:
+                results = yaml.load(handle, Loader=yaml.SafeLoader)
+                pKa_calc = results["pKa_calc"]
+            print("@@@", dc.path, pKa_calc)
 
 
 def parse_args(args):
@@ -319,7 +339,8 @@ def run():
     luigi.build(
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=False),)
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=True), )
-        cycles,
+        # cycles,
+        (DirectCycler(args.yaml), ),
         local_scheduler=True,
     )
 
