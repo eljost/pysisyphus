@@ -357,7 +357,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         except TypeError:
             pass
 
-        if self.cur_cycle % 10 == 0:
+        if (self.cur_cycle > 1) and (self.cur_cycle % 10 == 0):
             self.table.print_sep()
 
         self.table.print_row(
