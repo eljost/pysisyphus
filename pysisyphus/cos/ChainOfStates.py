@@ -1,5 +1,6 @@
 from copy import copy
 import logging
+import sys
 
 from distributed import Client
 import numpy as np
@@ -27,7 +28,9 @@ class ChainOfStates:
         climb_rms=5e-3,
         climb_lanczos=False,
         climb_lanczos_rms=5e-3,
+        climb_fixed=True,
         scheduler=None,
+        progress=False,
     ):
 
         assert len(images) >= 2, "Need at least 2 images!"
@@ -38,9 +41,11 @@ class ChainOfStates:
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
+        self.climb_fixed = climb_fixed
         # Must not be lower than climb_rms
         self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.scheduler = scheduler
+        self.progress = progress
 
         self._coords = None
         self._forces = None
@@ -62,6 +67,7 @@ class ChainOfStates:
         if self.started_climbing:
             self.log("Will start climbing immediately.")
         self.started_climbing_lanczos = False
+        self.fixed_climb_indices = None
 
         img0 = self.images[0]
         self.image_atoms = copy(img0.atoms)
@@ -233,7 +239,14 @@ class ChainOfStates:
             self.set_images(image_indices, client.gather(image_futures))
         # Serial calculation
         else:
-            [image.calc_energy_and_forces() for image in images_to_calculate]
+            for image in images_to_calculate:
+                image.calc_energy_and_forces()
+                # Poor mans progress bar ;)
+                if self.progress:
+                    print(".", end="")
+                    sys.stdout.flush()
+            if self.progress:
+                print("\r", end="")
         self.set_zero_forces_for_fixed_images()
         self.counter += 1
 
@@ -435,6 +448,10 @@ class ChainOfStates:
                 msg = "Starting to climb in next iteration."
                 self.log(msg)
                 print(msg)
+                # Determine climbing index/indices once for all times,
+                # if requested.
+                if self.climb_fixed:
+                    self.fixed_climb_indices = self.get_climbing_indices()
 
         already_climbing_lanczos = self.started_climbing_lanczos
         if (
@@ -489,9 +506,13 @@ class ChainOfStates:
         hei_index = self.get_hei_index()
 
         move_inds = self.moving_indices
-        # Don't climb it not yet enabled or requested.
+        # Don't climb if not yet enabled or requested.
         if not (self.climb and self.started_climbing):
             climb_indices = tuple()
+        elif self.fixed_climb_indices is not None:
+            climb_indices = self.fixed_climb_indices
+            _ = "index" if len(climb_indices) == 1 else "indices"
+            self.log(f"Returning fixed climbing {_}.")
         # Do one image climbing (C1) neb if explicitly requested or
         # the HEI is the first or last item in moving_indices.
         elif self.climb == "one" or ((hei_index == 1) or (hei_index == move_inds[-1])):
