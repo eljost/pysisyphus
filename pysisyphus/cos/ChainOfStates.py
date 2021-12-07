@@ -448,10 +448,9 @@ class ChainOfStates:
                 msg = "Starting to climb in next iteration."
                 self.log(msg)
                 print(msg)
-                # Determine climbing index/indices once for all times,
-                # if requested.
-                if self.climb_fixed:
-                    self.fixed_climb_indices = self.get_climbing_indices()
+        # Determine climbing index/indices if not set, but requested.
+        if already_climbing and self.climb_fixed and (self.fixed_climb_indices is None):
+            self.fixed_climb_indices = self.get_climbing_indices()
 
         already_climbing_lanczos = self.started_climbing_lanczos
         if (
