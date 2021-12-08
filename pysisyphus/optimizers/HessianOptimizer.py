@@ -48,6 +48,7 @@ class HessianOptimizer(Optimizer):
         trust_update=True,
         trust_min=0.1,
         trust_max=1,
+        max_energy_incr=None,
         hessian_update="bfgs",
         hessian_init="fischer",
         hessian_recalc=None,

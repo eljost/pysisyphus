@@ -159,8 +159,10 @@ class Rotation(Primitive):
         return v[index]
 
     @staticmethod
-    def _jacobian(coords3d, indices):
-        raise Exception("Not implemented!")
+    def _jacobian(coords3d, indices, index=0, ref_coords3d=None):
+        """Not implemented!"""
+        size = len(indices) * 3
+        return np.zeros(size * size)
 
 
 class RotationA(Rotation):
