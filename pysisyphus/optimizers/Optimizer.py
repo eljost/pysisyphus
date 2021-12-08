@@ -15,6 +15,7 @@ from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 from pysisyphus.TablePrinter import TablePrinter
+from pysisyphus.optimizers.exceptions import ZeroStepLength
 
 
 def get_data_model(geometry, is_cos, max_cycles):
@@ -80,6 +81,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         thresh="gau_loose",
         max_step=0.04,
         max_cycles=100,
+        min_step_norm=1e-8,
         rms_force=None,
         rms_force_only=False,
         max_force_only=False,
@@ -104,6 +106,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.geometry = geometry
         self.thresh = thresh
         self.max_step = max_step
+        self.min_step_norm = min_step_norm
         self.rms_force_only = rms_force_only
         self.max_force_only = max_force_only
         self.converge_to_geom_rms_thresh = converge_to_geom_rms_thresh
@@ -198,9 +201,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.set_restart_info(restart_info)
             self.restarted = True
 
-        header = (
-            "cycle Δ(energy) max(|force|) rms(force) max(|step|) rms(step) s/cycle".split()
-        )
+        header = "cycle Δ(energy) max(|force|) rms(force) max(|step|) rms(step) s/cycle".split()
         col_fmts = "int float float float float float float_short".split()
         self.table = TablePrinter(header, col_fmts, width=12)
         self.is_converged = False
@@ -577,13 +578,16 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.image_nums.append(image_num)
 
             step = self.optimize()
-            self.log(f"norm(step)={np.linalg.norm(step):.6f} au (rad)")
+            step_norm = np.linalg.norm(step)
+            self.log(f"norm(step)={step_norm:.6f} au (rad)")
 
             if step is None:
                 # Remove the previously added coords
                 self.coords.pop(-1)
                 self.cart_coords.pop(-1)
                 continue
+            elif step_norm <= self.min_step_norm:
+                raise ZeroStepLength
 
             if self.is_cos:
                 self.tangents.append(self.geometry.get_tangents().flatten())
@@ -687,7 +691,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.log(f"Tried to delete '{self.current_fn}'. Couldn't find it.")
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
-        self.table.print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
+        self.table.print(
+            f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'"
+        )
         self.postprocess_opt()
         sys.stdout.flush()
 
