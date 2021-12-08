@@ -265,10 +265,11 @@ class IRC:
             print(
                 f"Requested energy lowering: {en_str(self.displ_energy)}\n"
                 f"   Actual energy lowering: {en_str(actual_lowering)}\n"
-                f"                        Δ: {en_str(diff)}\n"
+                f"                        Δ: {en_str(diff)}"
             )
             if actual_lowering < 0.0:
                 print("Displaced geometry is higher in energy compared to TS!")
+            print("\n")
             sys.stdout.flush()
         initial_step_length = np.linalg.norm(initial_step)
         self.logger.info(
