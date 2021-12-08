@@ -17,6 +17,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+from pysisyphus import logger
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import (
@@ -1018,7 +1019,10 @@ class Geometry:
             mult = self.calculator.mult
         except AttributeError:
             mult = 1
-            print(f"Multiplicity could not be determined! Using 2S+1 = {mult}.")
+            logger.debug(
+                "Multiplicity for electronic entropy could not be determined! "
+                f"Using 2S+1 = {mult}."
+            )
 
         thermo_dict = {
             "masses": self.masses,
