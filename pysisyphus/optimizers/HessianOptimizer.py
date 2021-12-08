@@ -16,6 +16,7 @@ from pysisyphus.optimizers.hessian_updates import (
     ts_bfgs_update_revised,
 )
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.exceptions import OptimizationError
 
 
 def dummy_hessian_update(H, dx, dg):
@@ -64,13 +65,15 @@ class HessianOptimizer(Optimizer):
     ):
         super().__init__(geometry, **kwargs)
 
-        assert not issubclass(type(geometry), ChainOfStates), \
-            "HessianOptimizer can't be used for and ChainOfStates objects!"
+        assert not issubclass(
+            type(geometry), ChainOfStates
+        ), "HessianOptimizer can't be used for and ChainOfStates objects!"
 
         self.trust_update = bool(trust_update)
         assert trust_min <= trust_max, "trust_min must be <= trust_max!"
         self.trust_min = float(trust_min)
         self.trust_max = float(trust_max)
+        self.max_energy_incr = max_energy_incr
         # Constrain initial trust radius if trust_max > trust_radius
         self.trust_radius = min(trust_radius, trust_max)
         self.log(f"Initial trust radius: {self.trust_radius:.6f}")
@@ -219,6 +222,8 @@ class HessianOptimizer(Optimizer):
         old_trust = self.trust_radius
         if unexpected_increase:
             self.log(f"Energy increased by {actual_change:.6f} au!")
+            if self.max_energy_incr and (actual_change > self.max_energy_incr):
+                raise OptimizationError("Actual energy change too high!")
         coeff = actual_change / predicted_change
         self.log(f"\tPredicted change: {predicted_change:.4e} au")
         self.log(f"\tActual change: {actual_change:.4e} au")
