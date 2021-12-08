@@ -35,7 +35,7 @@ class IRC:
         downhill=False,
         forward=True,
         backward=True,
-        mode=0,
+        root=0,
         hessian_init=None,
         displ="energy",
         displ_energy=1e-3,
@@ -44,6 +44,7 @@ class IRC:
         rms_grad_thresh=1e-3,
         hard_rms_grad_thresh=None,
         energy_thresh=1e-6,
+        imag_below=0.0,
         force_inflection=True,
         out_dir=".",
         prefix="",
@@ -68,7 +69,7 @@ class IRC:
             Integrate IRC in positive s direction.
         backward : bool, default=True
             Integrate IRC in negative s direction.
-        mode : int, default=0
+        root : int, default=0
             Use n-th root for initial displacement from TS.
         hessian_init : str, default=None
             Path to Hessian HDF5 file, e.g., from a previous TS calculation.
@@ -93,6 +94,9 @@ class IRC:
         energy_thresh : float, default=1e-6,
             Signal convergence when the energy difference between two points
             is equal to or less than 'energy_thresh'.
+        imag_below : float, default=0.0
+            Require the wavenumber of the imaginary mode to be below the
+            given threshold.
         force_inflection : bool, optional
             Don't indicate convergence before passing an inflection point.
         out_dir : str, optional
@@ -122,7 +126,7 @@ class IRC:
         # Disable forward/backward when downhill is set
         self.forward = not self.downhill and forward
         self.backward = not self.downhill and backward
-        self.mode = mode
+        self.root = root
         if hessian_init is None:
             hessian_init = "calc" if not self.downhill else "unit"
         self.hessian_init = hessian_init
@@ -136,6 +140,8 @@ class IRC:
         self.rms_grad_thresh = float(rms_grad_thresh)
         self.hard_rms_grad_thresh = hard_rms_grad_thresh
         self.energy_thresh = float(energy_thresh)
+        assert imag_below <= 0.0
+        self.imag_below = imag_below
         self.force_inflection = force_inflection
         self.out_dir = out_dir
         self.out_dir = Path(self.out_dir)
@@ -305,24 +311,28 @@ class IRC:
         mw_cart_displs = P.T.dot(eigvecs)
         cart_displs = self.geometry.mm_sqrt_inv.dot(mw_cart_displs)
         nus = eigval_to_wavenumber(eigvals)
-
+        nu_root = nus[self.root]
+        assert nu_root <= self.imag_below, (
+            f"Wavenumber {nu_root:.2f} cm⁻¹ of imaginary mode {self.root} is above "
+            f"the threshold of {self.imag_below:.2f} cm⁻¹."
+        )
         neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
 
-        min_eigval = eigvals[self.mode]
-        min_nu = nus[self.mode]
+        min_eigval = eigvals[self.root]
+        min_nu = nus[self.root]
         min_msg = (
-            f"Transition vector is mode {self.mode} with wavenumber {min_nu:.2f} cm⁻¹."
+            f"Transition vector is mode {self.root} with wavenumber {min_nu:.2f} cm⁻¹."
         )
         # Doing it this way hurts ... I'll have to improve my logging game...
         self.log(min_msg)
         print(min_msg)
 
         # Mass-weighted
-        mw_trans_vec = mw_cart_displs[:, self.mode]
+        mw_trans_vec = mw_cart_displs[:, self.root]
         self.mw_transition_vector = mw_trans_vec
         # Not mass-weighted
-        trans_vec = cart_displs[:, self.mode]
+        trans_vec = cart_displs[:, self.root]
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
 
         if self.downhill:
@@ -363,7 +373,7 @@ class IRC:
                 save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
                 mw_step_plus, mw_step_minus = cubic_displ(
                     proj_hessian,
-                    eigvecs[:, self.mode],
+                    eigvecs[:, self.root],
                     min_eigval,
                     Gv,
                     -self.displ_energy,
@@ -578,11 +588,6 @@ class IRC:
             f"\t rms(grad)={ts_grad_rms:.6f}"
         )
 
-        print(
-            "IRC length in mw. coords, max(|grad|) and rms(grad) in "
-            "unweighted coordinates."
-        )
-
         self.init_hessian, hess_str = get_guess_hessian(
             self.geometry,
             self.hessian_init,
@@ -598,6 +603,11 @@ class IRC:
         # actual IRC integrator (e.g. EulerPC and LQA need a Hessian).
         if not self.downhill:
             self.init_displ_plus, self.init_displ_minus = self.initial_displacement()
+
+        print(
+            "IRC length in mw. coords, max(|grad|) and rms(grad) in "
+            "unweighted coordinates."
+        )
 
         if self.forward:
             print("\n" + highlight_text("IRC - Forward") + "\n")

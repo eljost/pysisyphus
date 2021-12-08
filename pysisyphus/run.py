@@ -1186,7 +1186,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
         dd["scan"]["opt"]["dump"] = False
 
     if "md" in conf_dict:
-        md_T = T_default,
+        md_T = T_default
         dd["md"] = {
             "T": md_T,
             "T_init_vel": md_T,
