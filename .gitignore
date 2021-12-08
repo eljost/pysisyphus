@@ -146,3 +146,8 @@ fabfile.py
 *gaussian16.com
 
 result
+*.chkfile
+*.h5
+RUN.yaml
+cur_out
+*.fail_*
