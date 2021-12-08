@@ -56,8 +56,11 @@ class Params(luigi.Config):
 
     def get_calc(self):
         return XTB(
-            pal = psutil.cpu_count(logical=False),
-            quiet=True, retry_etemp=1000, gbsa="methanol", out_dir=self.get_path("qm_calcs/")
+            pal=psutil.cpu_count(logical=False),
+            quiet=True,
+            retry_etemp=1000,
+            gbsa="methanol",
+            out_dir=self.get_path("qm_calcs/"),
         )
 
     def backup_from_dir(self, dir_, fn, dest_fn=None):
@@ -126,8 +129,13 @@ class TSOpt(Params, luigi.Task):
 
     def run(self):
         print(highlight_text(f"TSOPT {self.key}"))
-        geom = geom_loader(self.input().path, coord_type="redund",
-                coord_kwargs={"rebuild": False,})
+        geom = geom_loader(
+            self.input().path,
+            coord_type="redund",
+            coord_kwargs={
+                "rebuild": False,
+            },
+        )
         geom.set_calculator(self.get_calc())
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -141,6 +149,7 @@ class TSOpt(Params, luigi.Task):
                 hessian_recalc=5,
                 trust_max=0.3,
                 overachieve_factor=3.0,
+                max_energy_incr=0.25,
             )
             tsopt.run()
             self.backup_from_dir(tmp_dir, "ts_optimization.trj")
@@ -263,7 +272,8 @@ class ReactionPath(Params, luigi.Task):
 
         minimum, first_endopt, tsopt, last_endopt = self.input()
         ref_geom, first_geom, last_geom = [
-            geom_loader(target.path) for target in (minimum, first_endopt[0], last_endopt[0])
+            geom_loader(target.path)
+            for target in (minimum, first_endopt[0], last_endopt[0])
         ]
         first_rmsd = ref_geom.rmsd(first_geom)
         last_rmsd = ref_geom.rmsd(last_geom)
