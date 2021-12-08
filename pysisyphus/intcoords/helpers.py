@@ -3,7 +3,7 @@ import numpy as np
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
-from pysisyphus.intcoords.setup import get_bond_sets
+from pysisyphus.intcoords.setup import get_bond_sets, BOND_FACTOR
 from pysisyphus.intcoords.Stretch import Stretch
 
 
@@ -159,3 +159,8 @@ def get_weighted_bond_mode_getter(
         return bonds
 
     return func
+
+
+def get_bond_difference(geom1, geom2, bond_factor=BOND_FACTOR):
+    bonds1 = get_bond_sets(geom1.atoms, geom1.coords3d, bond_factor=BOND_FACTOR)
+    bonds = get_bond_sets(geom2.atoms, geom2.coords3d, bond_factor=BOND_FACTOR)
