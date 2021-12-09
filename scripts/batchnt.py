@@ -55,8 +55,11 @@ class Params(luigi.Config):
 
     def get_calc(self):
         return XTB(
-            pal = psutil.cpu_count(logical=False),
-            quiet=True, retry_etemp=1000, gbsa="methanol", out_dir=self.get_path("qm_calcs/")
+            pal=psutil.cpu_count(logical=False),
+            quiet=True,
+            retry_etemp=1000,
+            gbsa="methanol",
+            out_dir=self.get_path("qm_calcs/"),
         )
 
     def backup_from_dir(self, dir_, fn, dest_fn=None):
@@ -121,8 +124,10 @@ class TSOpt(Params, luigi.Task):
 
     def run(self):
         bond = BONDS[self.id_]
-        geom = geom_loader(self.input().path, coord_type="redund",
-                coord_kwargs={"define_prims": [["BOND", *bond]]
+        geom = geom_loader(
+            self.input().path,
+            coord_type="redund",
+            coord_kwargs={"define_prims": [["BOND", *bond]]},
         )
         geom.set_calculator(self.get_calc())
 
