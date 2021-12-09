@@ -14,6 +14,7 @@ from scipy.interpolate import splrep, splev
 
 from pysisyphus.constants import AU2KJPERMOL, AU2EV
 from pysisyphus.dynamics import Gaussian
+from pysisyphus.io import parse_xyz
 from pysisyphus.peakdetect import peakdetect
 from pysisyphus.wrapper.jmol import render_cdd_cube
 
@@ -715,6 +716,9 @@ def parse_args(args):
     group.add_argument("--md", action="store_true", help="Plot MD.")
     group.add_argument("--gau", nargs="*")
     group.add_argument("--scan", action="store_true")
+    group.add_argument(
+        "--trj", help="Plot energy values from the comments of a " ".trj file."
+    )
 
     return parser.parse_args(args)
 
@@ -883,6 +887,27 @@ def plot_scan(h5_fn="scan.h5"):
     plt.show()
 
 
+def plot_trj_energies(trj):
+    """Parse comments of .xyz/.trj as energies and plot."""
+    atoms_coords, comments = parse_xyz(trj, with_comment=True)
+    try:
+        energies = np.array(comments, dtype=float)
+    except ValueError as err:
+        print("Could not convert comments to energies!\n")
+        raise err
+    energies -= energies.min()
+    energies *= AU2KJPERMOL
+    fig, ax = plt.subplots()
+    ax.plot(energies)
+    highlights = [0, energies.argmax(), energies.size-1]
+    highlight_ens = energies[highlights]
+    ax.scatter(highlights,  highlight_ens, s=50)
+    ax.set_xlabel("Step")
+    ax.set_ylabel(UNIT_DEKJMOL)
+    ax.set_title(trj)
+    plt.show()
+
+
 def list_h5_groups(h5_fn):
     with h5py.File(h5_fn, "r") as handle:
         groups = list(handle.keys())
@@ -929,6 +954,8 @@ def run():
         plot_scan()
     elif args.render_cdds:
         render_cdds(h5=h5_fn)
+    elif args.trj:
+        plot_trj_energies(args.trj)
 
 
 if __name__ == "__main__":

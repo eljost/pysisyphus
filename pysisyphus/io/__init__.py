@@ -18,5 +18,5 @@ from pysisyphus.io.hessian import save_hessian, save_third_deriv, geom_from_hess
 from pysisyphus.io.molden import geoms_from_molden
 from pysisyphus.io.pdb import geom_from_pdb
 from pysisyphus.io.pubchem import geom_from_pubchem_name
-from pysisyphus.io.xyz import geoms_from_xyz, geoms_from_inline_xyz
+from pysisyphus.io.xyz import geoms_from_xyz, geoms_from_inline_xyz, parse_xyz
 from pysisyphus.io.zmat import geom_from_zmat, geom_from_zmat_fn
