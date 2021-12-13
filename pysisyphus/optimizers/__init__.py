@@ -3,6 +3,7 @@ import logging
 __all__ = [
     "BFGS",
     "ConjugateGradient",
+    "CubicNewton",
     "FIRE",
     "LBFGS",
     "MicroOptimizer",
@@ -17,6 +18,7 @@ __all__ = [
     "StabilizedQNMethod",
 ]
 
+from pysisyphus.optimizers.CubicNewton import CubicNewton
 from pysisyphus.optimizers.ONIOMOpt import ONIOMOpt
 from pysisyphus.optimizers.MicroOptimizer import MicroOptimizer
 
