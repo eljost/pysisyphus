@@ -228,17 +228,14 @@ class HessianOptimizer(Optimizer):
         self.log(f"\tPredicted change: {predicted_change:.4e} au")
         self.log(f"\tActual change: {actual_change:.4e} au")
         self.log(f"\tCoefficient: {coeff:.2%}")
-        if self.trust_update:
-            step = self.steps[-1]
-            last_step_norm = np.linalg.norm(step)
-            self.set_new_trust_radius(coeff, last_step_norm)
-            if unexpected_increase:
-                self.table.print(
-                    f"Unexpected energy increase ({actual_change:.6f} au)! "
-                    f"Trust radius: old={old_trust:.4}, new={self.trust_radius:.4}"
-                )
-        else:
-            self.log("\tSkipped trust radius update")
+        step = self.steps[-1]
+        last_step_norm = np.linalg.norm(step)
+        self.set_new_trust_radius(coeff, last_step_norm)
+        if unexpected_increase:
+            self.table.print(
+                f"Unexpected energy increase ({actual_change:.6f} au)! "
+                f"Trust radius: old={old_trust:.4}, new={self.trust_radius:.4}"
+            )
 
     def set_new_trust_radius(self, coeff, last_step_norm):
         # Nocedal, Numerical optimization Chapter 4, Algorithm 4.1
@@ -401,7 +398,8 @@ class HessianOptimizer(Optimizer):
             and len(self.energies) > 1
         )
         if can_update:
-            self.update_trust_radius()
+            if self.trust_update:
+                self.update_trust_radius()
             self.update_hessian()
 
         H = self.H
