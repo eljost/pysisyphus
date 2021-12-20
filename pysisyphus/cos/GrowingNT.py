@@ -2,6 +2,8 @@
 #     Quapp, 2005
 
 import logging
+import os
+from pathlib import Path
 
 import numpy as np
 
@@ -26,6 +28,8 @@ class GrowingNT:
         stop_after_ts=False,
         require_imag_freq=0.0,
         hessian_at_ts=False,
+        out_dir=".",
+        dump=True,
     ):
         assert geom.coord_type == "cart"
 
@@ -40,6 +44,11 @@ class GrowingNT:
         self.stop_after_ts = stop_after_ts
         self.require_imag_freq = require_imag_freq
         self.hessian_at_ts = hessian_at_ts
+        self.out_dir = Path(out_dir)
+        self.dump = dump
+
+        if not self.out_dir.exists():
+            os.mkdir(self.out_dir)
 
         self.coord_type = self.geom.coord_type
         if self.final_geom:
@@ -67,6 +76,12 @@ class GrowingNT:
         # Right now this leads to a gradient calculation in the momement,
         # this object is constructed, which is bad.
         self.initialize()
+
+        if self.dump:
+            self.trj_fn = self.get_path("newton_trajectory.trj")
+
+    def get_path(self, fn):
+        return self.out_dir / fn
 
     @staticmethod
     def get_r(geom, final_geom, bonds, r):
@@ -201,6 +216,10 @@ class GrowingNT:
         can_grow = rms(forces) <= self.rms_thresh
 
         if can_grow:
+            if self.dump:
+                with open(self.trj_fn, "w") as handle:
+                    handle.write("\n".join([geom.as_xyz() for geom in self.images]))
+
             r"""
             Check if we passed a stationary point (SP).
             ^ Energy
