@@ -309,16 +309,9 @@ class ORCA(OverlapCalculator):
             proc.wait()
             shutil.copy(path / "orca.molden.input", path / "orca.molden")
 
-    def parse_hessian(self, path):
-        results = {}
-        hessian_fn = glob.glob(os.path.join(path, "*.hess"))
-        assert len(hessian_fn) == 1
-        hessian_fn = hessian_fn[0]
-        if not hessian_fn:
-            raise Exception("ORCA calculation failed.")
-        with open(hessian_fn) as handle:
-            text = handle.read()
-
+    @staticmethod
+    @file_or_str(".hess", method=False)
+    def parse_hess_file(text):
         integer = pp.Word(pp.nums)
         float_ = pp.Word(pp.nums + ".-")
         plus = pp.Literal("+")
@@ -331,7 +324,7 @@ class ORCA(OverlapCalculator):
         scientific_block = table_header_line + pp.OneOrMore(scientific_line)
         float_line = pp.Suppress(integer) + float_
         comment_line = pp.Literal("#") + pp.restOfLine
-        mass_xyz_line = pp.Word(pp.alphas) + float_ + pp.Group(pp.OneOrMore(float_))
+        mass_xyz_line = pp.Group(pp.Word(pp.alphas) + float_ + pp.Group(pp.OneOrMore(float_)))
 
         block_name = pp.Word(pp.alphas + "$_")
         block_length = integer
@@ -365,7 +358,18 @@ class ORCA(OverlapCalculator):
             + atoms
         )
         parsed = parser.parseString(text)
-        results["hessian"] = make_sym_mat(parsed["hessian"])
+        return parsed
+
+    def parse_hessian(self, path):
+        hessian_fn = glob.glob(os.path.join(path, "*.hess"))
+        assert len(hessian_fn) == 1
+        hessian_fn = hessian_fn[0]
+        if not hessian_fn:
+            raise Exception("ORCA calculation failed.")
+        with open(hessian_fn) as handle:
+            text = handle.read()
+
+        parsed = ORCA.parse_hess_file(hessian_fn)
 
         # logging.warning("Hacky orca energy parsing in orca hessian calculation!")
         orca_log_fn = os.path.join(path, self.out_fn)
@@ -375,7 +379,11 @@ class ORCA(OverlapCalculator):
         energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, log_text)
         energy = float(energy_mobj.groups()[0])
-        results["energy"] = energy
+
+        results = {
+            "energy": energy,
+            "hessian": make_sym_mat(parsed["hessian"]),
+        }
 
         return results
 
