@@ -1837,7 +1837,7 @@ def do_clean(force=False):
 
 def print_header():
     """Generated from https://asciiartgen.now.sh/?s=pysisyphus&style=colossal"""
-    logo = """                           d8b                            888
+    normal_logo = """                           d8b                            888
                            Y8P                            888
                                                           888
 88888b.  888  888 .d8888b  888 .d8888b  888  888 88888b.  88888b.  888  888 .d8888b
@@ -1848,6 +1848,28 @@ def print_header():
 888           888                            888 888
 888      Y8b d88P                       Y8b d88P 888
 888       "Y88P"                         "Y88P"  888                            """
+
+    xmas_logo = """
+                                   \|/
+                           d8b    --o--                   888              X
+                  x        Y8P     /|\                    888
+                                                          888
+88888b.  888  888 .d8888b  888 .d8888b  888  888 88888b.  88888b.  888  888 .d8888b
+888 "88b 888  888 88K      888 88K      888  888 888 "88b 888 "88b 888  888 88K
+888  888 888  888 "Y8888b. 888 "Y8888b. 888  888 888  888 888  888 888  888 "Y8888b.
+888 d88P Y88b 888      X88 888      X88 Y88b 888 888 d88P 888  888 Y88b 888      X88
+88888P"   "Y88888  88888P' 888  88888P'  "Y88888 88888P"  888  888  "Y88888  88888P'
+888  |        888   |  |    |     |          888 888       |    |              |
+888  O   Y8b d88P   o  |    X    / \    Y8b d88P 888       x   / \             O
+888       "Y88P"       O         \_/     "Y88P"  888           \_/              
+            |                         x           |                      \|/
+   X        |                        xox          O                     --X--
+            O                         x                                  /|\\
+"""
+    now = datetime.datetime.now()
+    today = now.date()
+    xmas = (today.month == 12) and (today.day <= 24)
+    logo = xmas_logo if xmas else normal_logo
     version = f"Version {get_versions()['version']}"
     vi = sys.version_info
     sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
@@ -1856,7 +1878,7 @@ def print_header():
     print(
         f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
         f"Git commit {get_versions()['full-revisionid']}\n"
-        f"Executed at {datetime.datetime.now().strftime('%c')} on '{platform.node()}'\n"
+        f"Executed at {now.strftime('%c')} on '{platform.node()}'\n"
         f"Platform: {platform.platform()}\n"
         f"Interpreter: {sys.executable}\n"
     )
