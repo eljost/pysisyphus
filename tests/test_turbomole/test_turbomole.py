@@ -41,6 +41,20 @@ def test_turbomole_hessian(geom, this_dir):
     np.testing.assert_allclose(nus[-3:], ref_nus, atol=1e-2)
 
 
+def test_turbomole_big_hessian_parsing(this_dir):
+    geom = geom_loader("lib:ch4_12.xyz")
+    control_path = this_dir / "control_path_big_hess"
+    turbo_kwargs = {
+        "control_path": control_path,
+    }
+    calc = Turbomole(**turbo_kwargs)
+    geom.set_calculator(calc)
+    results = calc.parse_hessian(path=control_path)
+
+    hessian = results["hessian"]
+    assert hessian.size == 180 ** 2
+
+
 @using("turbomole")
 @pytest.mark.parametrize(
     "control_path, ref_energy",
@@ -93,6 +107,7 @@ def test_h2o_forces(control_path, ref_energy, ref_force_norm, geom, this_dir):
     assert energy == pytest.approx(ref_energy)
 
 
+@pytest.mark.skip
 @using("turbomole")
 def test_turbomole_cos(this_dir):
     def calc_getter(charge, mult):
@@ -115,9 +130,9 @@ def test_turbomole_cos(this_dir):
     start, _, end = geoms
     images = (start, end)
     cos_kwargs = {
-            "calc_getter": gs_calc_getter,
-            "max_nodes": 9,
-            "climb": True,
+        "calc_getter": gs_calc_getter,
+        "max_nodes": 9,
+        "climb": True,
     }
     cos = GrowingString(images, calc_getter=gs_calc_getter, max_nodes=9, climb=True)
     opt_kwargs = {

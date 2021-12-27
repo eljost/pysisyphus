@@ -1,4 +1,4 @@
-import itertools as it
+from math import sqrt
 import os
 from pathlib import Path
 import re
@@ -475,14 +475,19 @@ class Turbomole(OverlapCalculator):
             fn = path / "nprhessian"
 
         with open(fn) as handle:
-            lines = [l.strip() for l in handle.readlines()]
-        assert lines[0] == "$nprhessian"
-        assert lines[-1] == "$end"
+            text = handle.read()
 
-        hess_lines = [line.split()[2:] for line in lines[1:-1]]
-        atom_num = int(lines[-2].split()[0])
-        hessian = np.array(list(it.chain(*hess_lines)), dtype=float)
-        hessian = hessian.reshape(atom_num, atom_num)
+        split = text.strip().split()
+        assert split[0] == "$nprhessian"
+        assert split[-1] == "$end"
+
+        def is_float(str_):
+            return "." in str_
+
+        hess_items = [item for item in split if is_float(item)]
+        coord_num = int(sqrt(len(hess_items)))
+        assert coord_num ** 2 == len(hess_items)
+        hessian = np.array(hess_items, dtype=float).reshape(-1, coord_num)
 
         energy = self.parse_energy(path)["energy"]
 
