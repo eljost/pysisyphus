@@ -140,6 +140,7 @@ def test_thresh_never():
 
     opt_kwargs = {
         "thresh": "never",
+        "assert_min_step": False,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     # Restrict max_cycles; will crash otherwise, as the BFGS upadte becomes
