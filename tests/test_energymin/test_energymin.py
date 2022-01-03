@@ -38,22 +38,24 @@ def test_energy_min_calc(calc_cls, ref_energy):
 
 @pytest.mark.skip
 def test_energy_min_cos():
-    image1 = geom_loader("lib:ethene.xyz")
-    image2 = geom_loader("lib:ethene_rot.xyz")
+    image1 = geom_loader("lib:ethene_b3lyp_631gd.xyz")
+    image2 = geom_loader("lib:ethene_rot_b3lyp_631gd.xyz")
 
     images = interpolate(image1, image2, between=9, kind="redund")
     images = [image.copy(coord_type="cart") for image in images]
-    print(images)
 
     def get_calculator():
-        calc1 = PySCF(basis="631g*", xc="b3lyp", mult=1, pal=2)
-        calc2 = PySCF(basis="631g*", xc="b3lyp", mult=3, pal=2)
+        calc1 = PySCF(basis="631g*", xc="b3lyp", mult=1, pal=4)
+        calc2 = PySCF(basis="631g*", xc="b3lyp", mult=3, pal=4)
         calc = EnergyMin(calc1, calc2)
         return calc
 
     for image in images:
         image.set_calculator(get_calculator())
 
-    cos = NEB(images)
-    opt = LBFGS(cos, dump=True, max_cycles=10)
+    cos = NEB(images, progress=True)
+    opt = LBFGS(cos, dump=True, max_step=0.1, align=True)
     opt.run()
+
+    assert opt.is_converged
+    assert opt.cur_cycle == 3

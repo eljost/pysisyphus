@@ -1,3 +1,6 @@
+# [1] https://doi.org/10.1063/5.0021923
+#     Extending NEB method to reaction pathways involving multiple spin states
+#     Zhao et al, 2020
 from pysisyphus.calculators.Calculator import Calculator
 
 
