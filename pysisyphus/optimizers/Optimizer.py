@@ -82,6 +82,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         max_step=0.04,
         max_cycles=100,
         min_step_norm=1e-8,
+        assert_min_step=True,
         rms_force=None,
         rms_force_only=False,
         max_force_only=False,
@@ -107,6 +108,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.thresh = thresh
         self.max_step = max_step
         self.min_step_norm = min_step_norm
+        self.assert_min_step = assert_min_step
         self.rms_force_only = rms_force_only
         self.max_force_only = max_force_only
         self.converge_to_geom_rms_thresh = converge_to_geom_rms_thresh
@@ -616,7 +618,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.table.print("Converged!")
                 break
             # Allow convergence, before checking for too small steps
-            elif step_norm <= self.min_step_norm:
+            elif self.assert_min_step and (step_norm <= self.min_step_norm):
                 raise ZeroStepLength
 
             # Update coordinates
