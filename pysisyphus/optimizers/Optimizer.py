@@ -586,8 +586,6 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.coords.pop(-1)
                 self.cart_coords.pop(-1)
                 continue
-            elif step_norm <= self.min_step_norm:
-                raise ZeroStepLength
 
             if self.is_cos:
                 self.tangents.append(self.geometry.get_tangents().flatten())
@@ -617,6 +615,9 @@ class Optimizer(metaclass=abc.ABCMeta):
             if self.is_converged:
                 self.table.print("Converged!")
                 break
+            # Allow convergence, before checking for too small steps
+            elif step_norm <= self.min_step_norm:
+                raise ZeroStepLength
 
             # Update coordinates
             new_coords = self.geometry.coords.copy() + step
