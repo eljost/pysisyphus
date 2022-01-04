@@ -421,13 +421,6 @@ class Geometry:
             layers = (None,)
         return layers
 
-    def clear(self):
-        """Reset the object state."""
-
-        self._energy = None
-        self._forces = None
-        self._hessian = None
-
     def del_atoms(self, inds, **kwargs):
         atoms = [atom for i, atom in enumerate(self.atoms) if not (i in inds)]
         c3d = self.coords3d
@@ -1102,6 +1095,16 @@ class Geometry:
 
     def zero_frozen_forces(self, cart_forces):
         cart_forces.reshape(-1, 3)[self.freeze_atoms] = 0.0
+
+    def clear(self):
+        """Reset the object state."""
+
+        self._energy = None
+        self._forces = None
+        self._hessian = None
+        self.true_forces = None
+        self.true_energy = None
+        self.all_energies = None
 
     def set_results(self, results):
         """Save the results from a dictionary.

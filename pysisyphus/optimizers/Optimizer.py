@@ -543,7 +543,6 @@ class Optimizer(metaclass=abc.ABCMeta):
             # Check if something considerably changed in the optimization,
             # e.g. new images were added/interpolated. Then the optimizer
             # should be reset.
-            reset_flag = False
             if self.cur_cycle > 0 and self.is_cos:
                 reset_flag = self.geometry.prepare_opt_cycle(
                     self.coords[-1], self.energies[-1], self.forces[-1]
@@ -553,6 +552,8 @@ class Optimizer(metaclass=abc.ABCMeta):
                 reset_flag = reset_flag or (
                     self.geometry.coords.size != self.coords[-1].size
                 )
+            else:
+                reset_flag = False
 
             if reset_flag:
                 self.reset()

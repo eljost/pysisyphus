@@ -16,12 +16,18 @@ from pysisyphus.cos.ChainOfStates import ChainOfStates
 
 
 class NEB(ChainOfStates):
-
-    def __init__(self, images, variable_springs=False,
-                 k_max=0.3, k_min=0.1, perp_spring_forces=None, **kwargs):
+    def __init__(
+        self,
+        images,
+        variable_springs=False,
+        k_max=0.3,
+        k_min=0.1,
+        perp_spring_forces=None,
+        **kwargs,
+    ):
         super(NEB, self).__init__(images, **kwargs)
 
-        assert(k_max >= k_min), "k_max must be bigger or equal to k_min!"
+        assert k_max >= k_min, "k_max must be bigger or equal to k_min!"
         self.variable_springs = variable_springs
         self.k_max = k_max
         self.k_min = k_min
@@ -32,25 +38,24 @@ class NEB(ChainOfStates):
 
     def update_springs(self):
         # Check if there are enough springs
-        if (len(self.k) != len(self.images)-1):
-            self.k = np.full(len(self.images)-1, self.k_min)
+        if len(self.k) != len(self.images) - 1:
+            self.k = np.full(len(self.images) - 1, self.k_min)
         if self.variable_springs:
             self.set_variable_springs()
 
     def set_variable_springs(self):
         shifted_energies = self.energy - self.energy.min()
         energy_max = max(shifted_energies)
-        energy_ref = .85 * energy_max
+        energy_ref = 0.85 * energy_max
         for i in range(len(self.k)):
             # The ith spring connects images i-1 and i.
             e_i = i + 1
-            ith_energy = max(shifted_energies[e_i], shifted_energies[e_i-1])
+            ith_energy = max(shifted_energies[e_i], shifted_energies[e_i - 1])
             if ith_energy < energy_ref:
                 self.k[i] = self.k_min
             else:
-                self.k[i] = (self.k_max - self.delta_k
-                             * (energy_max - ith_energy)
-                             / (energy_max - energy_ref)
+                self.k[i] = self.k_max - self.delta_k * (energy_max - ith_energy) / (
+                    energy_max - energy_ref
                 )
         self.log("updated springs: " + self.fmt_k())
 
@@ -70,14 +75,14 @@ class NEB(ChainOfStates):
         if (i == 0) or (i == len(self.images) - 1):
             # We can't use the last image index because there is one
             # spring less than there are images.
-            spring_index = min(i, len(self.images)-2)
+            spring_index = min(i, len(self.images) - 2)
             return self.k[spring_index] * self.get_tangent(i)
 
-        prev_coords = self.images[i-1].coords
+        prev_coords = self.images[i - 1].coords
         ith_coords = self.images[i].coords
-        next_coords = self.images[i+1].coords
-        spring_forces = (
-            self.k[i] * (next_coords-ith_coords) - (ith_coords-prev_coords)
+        next_coords = self.images[i + 1].coords
+        spring_forces = self.k[i] * (next_coords - ith_coords) - (
+            ith_coords - prev_coords
         )
         return spring_forces
 
@@ -87,11 +92,13 @@ class NEB(ChainOfStates):
             return self.zero_vec.copy()
         forces = self.images[i].forces
         tangent = self.get_tangent(i)
-        perp_forces = forces - forces.dot(tangent)*tangent
+        perp_forces = forces - forces.dot(tangent) * tangent
         spring_forces = self.get_spring_forces(i)
         tangent = self.get_tangent(i)
-        perp_spring_forces = spring_forces - spring_forces.dot(tangent)*tangent
-        dneb_forces = perp_spring_forces - perp_spring_forces.dot(perp_forces)*perp_forces
+        perp_spring_forces = spring_forces - spring_forces.dot(tangent) * tangent
+        dneb_forces = (
+            perp_spring_forces - perp_spring_forces.dot(perp_forces) * perp_forces
+        )
         perp_norm = np.linalg.norm(perp_forces)
         perp_spring_norm = np.linalg.norm(perp_spring_forces)
 
@@ -103,7 +110,7 @@ class NEB(ChainOfStates):
         #
         # If the perpendicular spring force is much bigger than the
         # perpendicular force the DNEB forces is nearly fully quenched.
-        dneb_factor = 2/np.pi * np.arctan2(perp_norm**2, perp_spring_norm**2)
+        dneb_factor = 2 / np.pi * np.arctan2(perp_norm ** 2, perp_spring_norm ** 2)
         dneb_forces_quenched = dneb_factor * dneb_forces
 
         # An alternative switchting function is given in [5], Eq. (10)
@@ -121,15 +128,19 @@ class NEB(ChainOfStates):
         if (i == 0) or (i == len(self.images) - 1):
             # We can't use the last image index because there is one
             # spring less than there are images.
-            spring_index = min(i, len(self.images)-2)
+            spring_index = min(i, len(self.images) - 2)
             return self.k[spring_index] * self.get_tangent(i)
 
-        prev_coords = self.images[i-1].coords
+        prev_coords = self.images[i - 1].coords
         ith_coords = self.images[i].coords
-        next_coords = self.images[i+1].coords
-        return (self.k[i] * (np.linalg.norm(next_coords-ith_coords)
-                             - np.linalg.norm(ith_coords-prev_coords)
-               ) * self.get_tangent(i)
+        next_coords = self.images[i + 1].coords
+        return (
+            self.k[i]
+            * (
+                np.linalg.norm(next_coords - ith_coords)
+                - np.linalg.norm(ith_coords - prev_coords)
+            )
+            * self.get_tangent(i)
         )
 
     # See https://stackoverflow.com/a/15786149
@@ -137,17 +148,27 @@ class NEB(ChainOfStates):
     @ChainOfStates.forces.getter
     def forces(self):
         if self._forces is None:
-            self.calculate_forces()
+            org_results = self.calculate_forces()
 
         self.update_springs()
 
         indices = range(len(self.images))
         total_forces = np.array(
-            [self.get_parallel_forces(i) + self.get_perpendicular_forces(i)
-             + self.get_quenched_dneb_forces(i)
-             for i in indices]
+            [
+                self.get_parallel_forces(i)
+                + self.get_perpendicular_forces(i)
+                + self.get_quenched_dneb_forces(i)
+                for i in indices
+            ]
         )
         total_forces = self.set_climbing_forces(total_forces)
-        self._forces = np.array(total_forces).flatten()
+        total_forces[self.org_forces_indices] = org_results["forces"][
+            self.org_forces_indices
+        ]
+        if self.org_forces_indices:
+            self.log(
+                f"Returning unrpojected original forces for image(s): {self.org_forces_indices}."
+            )
+        self._forces = total_forces.flatten()
 
         return self._forces

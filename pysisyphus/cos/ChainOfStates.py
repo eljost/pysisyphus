@@ -29,6 +29,7 @@ class ChainOfStates:
         climb_lanczos=False,
         climb_lanczos_rms=5e-3,
         climb_fixed=True,
+        energy_min_mix=False,
         scheduler=None,
         progress=False,
     ):
@@ -42,6 +43,7 @@ class ChainOfStates:
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
         self.climb_fixed = climb_fixed
+        self.energy_min_mix = energy_min_mix
         # Must not be lower than climb_rms
         self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.scheduler = scheduler
@@ -68,6 +70,8 @@ class ChainOfStates:
             self.log("Will start climbing immediately.")
         self.started_climbing_lanczos = False
         self.fixed_climb_indices = None
+        # Use original forces for these images
+        self.org_forces_indices = list()
 
         img0 = self.images[0]
         self.image_atoms = copy(img0.atoms)
@@ -135,11 +139,11 @@ class ChainOfStates:
 
     # @property
     # def freeze_atoms(self):
-        # image_freeze_atoms = [image.freeze_atoms for image in self.images]
-        # lens = [len(fa) for fa in image_freeze_atoms]
-        # len0 = lens[0]
-        # assert all([len_ == len0 for len_ in lens])
-        # return image_freeze_atoms[0]
+    # image_freeze_atoms = [image.freeze_atoms for image in self.images]
+    # lens = [len(fa) for fa in image_freeze_atoms]
+    # len0 = lens[0]
+    # assert all([len_ == len0 for len_ in lens])
+    # return image_freeze_atoms[0]
 
     @property
     def atoms(self):
@@ -250,10 +254,40 @@ class ChainOfStates:
         self.set_zero_forces_for_fixed_images()
         self.counter += 1
 
+        if self.energy_min_mix:
+            # Will be None for calculators that already mix
+            all_energies = np.array([image.all_energies for image in self.images])
+            energy_diffs = np.diff(all_energies, axis=1).flatten()
+            calc_inds = all_energies.argmin(axis=1)
+            print("calc_inds", calc_inds, ";", len(calc_inds), "images")
+            mix_at = []
+            for i, calc_ind in enumerate(calc_inds[:-1]):
+                next_ind = calc_inds[i + 1]
+                if (
+                    (calc_ind != next_ind)
+                    and (i not in self.org_forces_indices)
+                    and (i + 1 not in self.org_forces_indices)
+                ):
+                    min_diff_offset = energy_diffs[[i, i + 1]].argmin()
+                    mix_at.append(i + min_diff_offset)
+
+            for ind in mix_at:
+                self.images[ind].calculator.mix = True
+                # Recalculate correct energy and forces
+                print(f"Switch after calc_ind={calc_ind} at index {ind}. Recalculating.")
+                self.images[ind].calc_energy_and_forces()
+                self.org_forces_indices.append(ind)
+                calc_ind = calc_inds[ind]
+
         energies = [image.energy for image in self.images]
-        forces = [image.forces for image in self.images]
+        forces = np.array([image.forces for image in self.images])
         self.all_energies.append(energies)
         self.all_true_forces.append(forces)
+
+        return {
+            "energies": energies,
+            "forces": forces,
+        }
 
     @property
     def forces(self):
@@ -274,7 +308,7 @@ class ChainOfStates:
         return np.array(perp_forces).flatten()
 
     def get_perpendicular_forces(self, i):
-        """ [1] Eq. 12"""
+        """[1] Eq. 12"""
         # Our goal in optimizing a ChainOfStates is minimizing the
         # perpendicular force. Always return zero perpendicular
         # forces for fixed images, so that they don't interfere
@@ -322,7 +356,7 @@ class ChainOfStates:
             self.log("Zeroed forces on fixed last image.")
 
     def get_tangent(self, i, kind="upwinding", lanczos_guess=None):
-        """ [1] Equations (8) - (11)"""
+        """[1] Equations (8) - (11)"""
 
         tangent_kinds = ("upwinding", "simple", "bisect", "lanczos")
         assert kind in tangent_kinds, "Invalid kind! Valid kinds are: {tangent_kinds}"
