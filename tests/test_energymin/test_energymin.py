@@ -36,26 +36,45 @@ def test_energy_min_calc(calc_cls, ref_energy):
     assert energy == pytest.approx(ref_energy)
 
 
-@pytest.mark.skip
-def test_energy_min_cos():
-    image1 = geom_loader("lib:ethene_b3lyp_631gd.xyz")
-    image2 = geom_loader("lib:ethene_rot_b3lyp_631gd.xyz")
+# @pytest.mark.skip
+@pytest.mark.parametrize(
+    "fn1, fn2, calc_getter, cur_cycle",
+    (
+        (
+            "lib:ethene_b3lyp_631gd.xyz",
+            "lib:ethene_rot_b3lyp_631gd.xyz",
+            lambda mult: PySCF(basis="631g*", xc="b3lyp", mult=mult, pal=4),
+            3,
+        ),
+        # Singlet is always more favorable for XTB
+        # (
+            # "lib:ethene_xtb.xyz",
+            # "lib:ethene_rot_xtb.xyz",
+            # lambda mult: XTB(mult=mult, pal=2),
+            # 3,
+        # ),
+    ),
+)
+def test_energy_min_cos(fn1, fn2, calc_getter, cur_cycle):
+    image1 = geom_loader(fn1)
+    image2 = geom_loader(fn2)
 
-    images = interpolate(image1, image2, between=9, kind="redund")
+    between = 10
+    images = interpolate(image1, image2, between=between, kind="redund")
     images = [image.copy(coord_type="cart") for image in images]
 
     def get_calculator():
-        calc1 = PySCF(basis="631g*", xc="b3lyp", mult=1, pal=4)
-        calc2 = PySCF(basis="631g*", xc="b3lyp", mult=3, pal=4)
+        calc1 = calc_getter(mult=1)
+        calc2 = calc_getter(mult=3)
         calc = EnergyMin(calc1, calc2)
         return calc
 
     for image in images:
         image.set_calculator(get_calculator())
 
-    cos = NEB(images, progress=True)
+    cos = NEB(images, progress=True, energy_min_mix=True)
     opt = LBFGS(cos, dump=True, max_step=0.1, align=True)
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 3
+    assert opt.cur_cycle == cur_cycle

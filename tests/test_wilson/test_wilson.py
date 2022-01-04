@@ -283,7 +283,7 @@ def test_outofplane(dz):
 
     # Reference gradient returned in order [0, 1, 2, 3]
     ref_grad = fin_diff_prim(oop, geom.coords3d)
-    np.testing.assert_allclose(grad, ref_grad, atol=1e-10, rtol=1e-6)
+    np.testing.assert_allclose(grad, ref_grad, atol=1e-6)
 
     # Code generated 2nd derivative
     dgrad = oop.jacobian(coords3d)
