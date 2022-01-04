@@ -36,7 +36,7 @@ def test_energy_min_calc(calc_cls, ref_energy):
     assert energy == pytest.approx(ref_energy)
 
 
-# @pytest.mark.skip
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "fn1, fn2, calc_getter, cur_cycle",
     (
@@ -72,7 +72,7 @@ def test_energy_min_cos(fn1, fn2, calc_getter, cur_cycle):
     for image in images:
         image.set_calculator(get_calculator())
 
-    cos = NEB(images, progress=True, energy_min_mix=True)
+    cos = NEB(images, progress=True, energy_min_mix=False)
     opt = LBFGS(cos, dump=True, max_step=0.1, align=True)
     opt.run()
 
