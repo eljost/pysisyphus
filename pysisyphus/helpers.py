@@ -12,7 +12,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.config import T_DEFAULT
+from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import (
