@@ -181,7 +181,7 @@ def test_thermostat():
     fig, (ax0, ax1) = plt.subplots(nrows=2)
     ax0.plot(E_tot)
     ax0.axhline(E_tot.mean())
-    ax0.set_title("$\Delta$E$_{tot}$ / kJ mol⁻¹")
+    ax0.set_title(r"$\Delta$E$_{tot}$ / kJ mol⁻¹")
 
     ax1.plot(T)
     T_mean = T.mean()

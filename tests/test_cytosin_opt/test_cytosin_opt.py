@@ -33,7 +33,7 @@ def this_dir(request):
         # ),
         pytest.param(PySCF,
             {"basis": "sto-3g"},
-            marks=(using("pyscf"), pytest.mark.pyscf)),
+            marks=using("pyscf")),
         pytest.param(Turbomole,
             {"control_path": "./control_path_hf_sto3g_gs"},
             marks=using("turbomole")),
@@ -88,7 +88,7 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
             {"xc": "pbe0", "method": "tddft", "basis": "def2SVP",
              "nstates": 2, "root": 1},
             # Skip for now, as this takes 30 min in the CI
-            marks=(using("pyscf"), pytest.mark.pyscf, pytest.mark.skip),
+            marks=(using("pyscf"), pytest.mark.skip),
         )
 ])
 def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):

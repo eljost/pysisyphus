@@ -68,7 +68,7 @@ def geom_from_zmat(
             coords3d[i, 0] = r
         # Angle in xy-plane from polar coordinates
         elif i == 2:
-            """
+            r"""
             M       P <- add
              \     /
               u   v
@@ -100,7 +100,7 @@ def geom_from_zmat(
             y = r * sin_theta * cos_phi
             z = r * sin_theta * sin_phi
 
-            """
+            r"""
             M <- add      N
              \           /
               u         v

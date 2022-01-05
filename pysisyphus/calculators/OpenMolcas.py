@@ -35,7 +35,7 @@ class OpenMolcas(Calculator):
 
         self.inp_fn = "openmolcas.in"
         self.out_fn = "openmolcas.out"
-        self.float_regex = "([\d\.\-E]+)"
+        self.float_regex = r"([\d\.\-E]+)"
 
         self.openmolcas_input = """
         >> copy {inporb}  $Project.RasOrb
@@ -162,7 +162,7 @@ class OpenMolcas(Calculator):
 
     def parse_energies(self, text):
         # Energy of root for which gradient was computed
-        energy_regex = "RASSCF state energy =\s*" + self.float_regex
+        energy_regex = r"RASSCF state energy =\s*" + self.float_regex
         energy = float(re.search(energy_regex, text).groups()[0])
 
         # All state average energies
@@ -179,9 +179,9 @@ class OpenMolcas(Calculator):
             text = handle.read()
 
         # Search for the block containing the gradient table
-        regex = "Molecular gradients(.+?)--- Stop Module:\s*alaska"
+        regex = r"Molecular gradients(.+?)--- Stop Module:\s*alaska"
         floats = [self.float_regex for i in range(3)]
-        line_regex = "([A-Z\d]+)\s*" + "\s*".join(floats)
+        line_regex = r"([A-Z\d]+)\s*" + "\s*".join(floats)
 
         mobj = re.search(regex, text, re.DOTALL)
         gradient = list()
@@ -209,8 +209,8 @@ class OpenMolcas(Calculator):
         gradient_fn = path / self.out_fn
         with open(gradient_fn) as handle:
             text = handle.read()
-        track_re = "Initial root:\s*(\d+)\s*Overlaps with current " \
-                   "states:(.+)New root:\s*(\d+)"
+        track_re = r"Initial root:\s*(\d+)\s*Overlaps with current " \
+                   r"states:(.+)New root:\s*(\d+)"
         #overlap_re = "OVERLAP MATRIX FOR THE ORIGINAL STATES:(.+?)##"
         mobj = re.search(track_re, text, re.DOTALL)
 

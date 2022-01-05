@@ -442,6 +442,9 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
         mu_Pm = np.zeros_like(r0Pm)
         N = Ns[m]
         for n, rfrag in enumerate(rfrag_lists):
+            # Skip rotation of 1-atom fragments
+            if len(rfrag) == 1:
+                continue
             CPmn = CP[(m, n)]
             RPmRn = get_rot_mat(
                 punion.coords3d[CPmn], runion.coords3d[CPmn], center=True

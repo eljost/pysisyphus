@@ -121,7 +121,7 @@ class ORCA(OverlapCalculator):
                 self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
-        self.triplets = bool(re.search("triplets\s+true", self.blocks))
+        self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
@@ -641,7 +641,7 @@ class ORCA(OverlapCalculator):
     @file_or_str(".out", method=False)
     def parse_atoms_coords(text):
         ac_re = re.compile(
-            "CARTESIAN COORDINATES \(ANGSTROEM\)\s+\-{33}(.+?)\s+\-{28}", re.DOTALL
+            r"CARTESIAN COORDINATES \(ANGSTROEM\)\s+\-{33}(.+?)\s+\-{28}", re.DOTALL
         )
         mobj = ac_re.search(text)
         atoms_coords = mobj.group(1).strip().split()
@@ -654,13 +654,13 @@ class ORCA(OverlapCalculator):
     @staticmethod
     @file_or_str(".out", method=False)
     def parse_engrad_info(text):
-        soi_re = re.compile("State of interest\s+\.{3}\s+(\d+)")
+        soi_re = re.compile(r"State of interest\s+\.{3}\s+(\d+)")
         try:
             root = soi_re.search(text).group(1)
             root = int(root)
         except AttributeError:
             root = None
-        triplets = bool(re.search("triplets\s+true", text))
+        triplets = bool(re.search(r"triplets\s+true", text))
         return root, triplets
 
     def parse_mo_numbers(self, out_fn):

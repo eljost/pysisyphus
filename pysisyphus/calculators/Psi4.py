@@ -169,7 +169,7 @@ class Psi4(Calculator):
     def parse_energy(self, path):
         with open(path / "psi4.out") as handle:
             text = handle.read()
-        en_regex = re.compile("PARSE ENERGY: ([\d\-\.]+)")
+        en_regex = re.compile(r"PARSE ENERGY: ([\d\-\.]+)")
         mobj = en_regex.search(text)
         result = {
             "energy": float(mobj[1])
