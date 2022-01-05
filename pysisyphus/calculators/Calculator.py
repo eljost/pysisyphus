@@ -4,14 +4,12 @@ from pathlib import Path
 import platform
 import shutil
 import subprocess
-import sys
 import tempfile
 
 from natsort import natsorted
 
 from pysisyphus.config import Config
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers_pure import results_to_json
 
 
 class Calculator:

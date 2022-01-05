@@ -5,7 +5,6 @@ import re
 import sys
 
 import numpy as np
-import pyparsing as pp
 
 from pysisyphus.calculators import ORCA
 from pysisyphus.calculators.ORCA import make_sym_mat

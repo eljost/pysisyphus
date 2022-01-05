@@ -9,7 +9,6 @@ import shutil
 import tempfile
 
 import h5py
-import itertools as it
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator

@@ -171,7 +171,6 @@ def do_endopt_ts_barriers(
     gas_table = np.stack(to_stack)
     print("All tabulated quantities are given in au.\n")
     print_table(gas_table, gas_titles)
-    full_table = gas_table.copy()
     full_titles = gas_titles
 
     if solv_calc_getter is not None:
@@ -191,13 +190,11 @@ def do_endopt_ts_barriers(
         if do_ssc:
             print("dG_solv includes a correction for change of standard state.\n")
         print_table(solv_table, solv_titles)
-        full_table = np.concatenate((full_table, solv_table[1:]), axis=0)
         full_titles += solv_titles[2:]
 
     energies_corr = np.array(energies_corr)
     energies_corr -= energies_corr.min()
     min_ind = energies_corr.argmin()
-    energies_corr_au = energies_corr.copy()
     energies_corr *= AU2KJPERMOL
 
     print(highlight_text("Barriers", level=1))

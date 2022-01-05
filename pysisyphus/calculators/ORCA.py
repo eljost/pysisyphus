@@ -366,8 +366,6 @@ class ORCA(OverlapCalculator):
         hessian_fn = hessian_fn[0]
         if not hessian_fn:
             raise Exception("ORCA calculation failed.")
-        with open(hessian_fn) as handle:
-            text = handle.read()
 
         parsed = ORCA.parse_hess_file(hessian_fn)
 
