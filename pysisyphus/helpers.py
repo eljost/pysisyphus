@@ -414,6 +414,7 @@ def do_final_hessian(
     write_imag_modes=False,
     prefix="",
     T=T_DEFAULT,
+    p=p_DEFAULT,
     print_thermo=False,
     out_dir=None,
 ):
@@ -470,7 +471,7 @@ def do_final_hessian(
 
     thermo = None
     if can_thermoanalysis:
-        thermo = geom.get_thermoanalysis(geom, T=T)
+        thermo = geom.get_thermoanalysis(geom, T=T, p=p)
         if print_thermo:
             print_thermoanalysis(thermo, geom=geom)
 

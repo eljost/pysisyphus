@@ -168,7 +168,7 @@ def run_opt(
         print()
         prefix = opt_kwargs.get("prefix", "")
         do_final_hessian(
-            geom, write_imag_modes=True, prefix=prefix, T=T, print_thermo=print_thermo
+            geom, write_imag_modes=True, prefix=prefix, T=T, p=p, print_thermo=print_thermo
         )
     print()
 
