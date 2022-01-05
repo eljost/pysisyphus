@@ -12,7 +12,7 @@ class DummyTorsion(Torsion):
 
     @staticmethod
     def get_fourth_coords(coords3d, indices, r=1.889, theta=90):
-        """
+        r"""
         M       N <- add
          \     /
           u   v

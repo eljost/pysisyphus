@@ -76,7 +76,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     fn = str(fn)
     org_fn = fn
 
-    split_ = re.split("\[(-?\d+)\]$", fn)
+    split_ = re.split(r"\[(-?\d+)\]$", fn)
     fn = split_.pop(0)
     if split_:
         index = int(split_.pop(0))
@@ -238,7 +238,7 @@ def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
 
 def slugify_worker(dask_worker):
     slug = re.sub("tcp://", "host_", dask_worker)
-    slug = re.sub("\.", "_", slug)
+    slug = re.sub(r"\.", "_", slug)
     slug = re.sub(":", "-", slug)
     return slug
 

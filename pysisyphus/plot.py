@@ -29,7 +29,7 @@ def get_force_unit(coord_type):
     return force_unit
 
 
-UNIT_DEKJMOL = "$\Delta$E / kJ mol⁻¹"
+UNIT_DEKJMOL = r"$\Delta$E / kJ mol⁻¹"
 
 
 def spline_plot_cycles(cart_coords, energies):
@@ -323,7 +323,7 @@ def plot_all_energies(h5):
         ax.plot(steps, state, "o-", label=f"State {i:03d}")
     ax.legend(loc="lower center", ncol=3)
     ax.set_xlabel("Cycle")
-    ax.set_ylabel("$\Delta$E / eV")
+    ax.set_ylabel(r"$\Delta$E / eV")
     root_ens = [s[r] for s, r in zip(energies, roots)]
     ax.plot(steps, root_ens, "--k")
     plt.show()
@@ -351,7 +351,7 @@ def plot_md(h5_group="run"):
     ens -= mean
     ax0.plot(dts, ens)
     ax0.axhline(0, ls="--", c="k")
-    ax0.set_ylabel("$E - \overline{E}$ / kJ mol⁻¹")
+    ax0.set_ylabel(r"$E - \overline{E}$ / kJ mol⁻¹")
     ax0.set_title("Energy")
 
     ens_conserved *= AU2KJPERMOL
@@ -359,7 +359,7 @@ def plot_md(h5_group="run"):
     ens_conserved -= mean_conserved
     ax1.plot(dts, ens_conserved)
     ax1.axhline(0, ls="--", c="k")
-    ax1.set_ylabel("$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / kJ mol⁻¹")
+    ax1.set_ylabel(r"$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / kJ mol⁻¹")
     ax1.set_title("Conserved quantity")
 
     ax2.plot(dts, Ts, label="Current")
@@ -367,7 +367,7 @@ def plot_md(h5_group="run"):
     ax2.axhline(T_target, ls="--", c="k", label="Target")
     ax2.legend()
     ax2.set_title(f"mean(T) = {Ts.mean():.2f} K")
-    ax2.set_xlabel("$\Delta t$ / fs")
+    ax2.set_xlabel(r"$\Delta t$ / fs")
     ax2.set_ylabel("T / K")
 
     plt.tight_layout()
@@ -413,7 +413,7 @@ def plot_gau(gau_fns, num=50):
         ens -= ens.min()
         ax.plot(grid, ens)
         ax.set_xlabel(f"CV0, {gau_fns[0]}")
-        ax.set_ylabel("$\Delta F$ / kJ mol⁻¹")
+        ax.set_ylabel(r"$\Delta F$ / kJ mol⁻¹")
     elif len(gau_fns) == 2:
         grid0, grid1 = grids
         X, Y = np.meshgrid(grid0, grid1)
@@ -882,7 +882,7 @@ def plot_scan(h5_fn="scan.h5"):
         fig, ax = plt.subplots()
         ax.plot(ens, "o-")
         ax.set_xlabel("Scan point")
-        ax.set_ylabel("$\Delta E$ / kJ mol⁻¹")
+        ax.set_ylabel(r"$\Delta E$ / kJ mol⁻¹")
         ax.set_title(group)
     plt.show()
 

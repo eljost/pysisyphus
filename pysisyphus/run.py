@@ -1849,7 +1849,7 @@ def print_header():
 888      Y8b d88P                       Y8b d88P 888
 888       "Y88P"                         "Y88P"  888                            """
 
-    xmas_logo = """
+    xmas_logo = r"""
                                    \|/
                            d8b    --o--                   888              X
                   x        Y8P     /|\                    888

@@ -1,12 +1,13 @@
 import importlib
 import shutil
 
+from pysisyphus.config import Config, DEFAULTS
+from pysisyphus import logger
+
 try:
     import pytest
 except ModuleNotFoundError:
-    print("pytest package could not be imported.")
-
-from pysisyphus.config import Config, DEFAULTS
+    logger.warning("pytest package could not be imported.")
 
 
 """Inspired by
