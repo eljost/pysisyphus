@@ -250,8 +250,9 @@ class PySCF(OverlapCalculator):
         gs_energy = gs_mf.e_tot
         mo_coeffs = gs_mf.mo_coeff.T
 
+        first_Y = exc_mf.xy[0][1]
         # In TDA calculations Y is just the integer 0.
-        if exc_mf.xy[0][1] == 0:
+        if isinstance(first_Y, int)  and (first_Y == 0):
             X = np.array([state[0] for state in exc_mf.xy])
             Y = np.zeros_like(X)
         # In TD-DFT calculations the Y vectors is also present
