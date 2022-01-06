@@ -6,6 +6,7 @@ import sys
 
 T_DEFAULT = 298.15  # Kelvin
 p_DEFAULT = 101325  # Pascal
+OUT_DIR_DEFAULT = "qm_calcs"
 
 DEFAULTS = {
     "mwfn": "Multiwfn",

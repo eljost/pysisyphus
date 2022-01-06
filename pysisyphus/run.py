@@ -21,7 +21,7 @@ import scipy as sp
 import yaml
 
 from pysisyphus.calculators import *
-from pysisyphus.config import T_DEFAULT, p_DEFAULT
+from pysisyphus.config import OUT_DIR_DEFAULT, p_DEFAULT, T_DEFAULT
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
@@ -1357,7 +1357,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_run_func = calc_kwargs.pop("run_func", None)
-    calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir)
+    calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir / OUT_DIR_DEFAULT)
     if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
