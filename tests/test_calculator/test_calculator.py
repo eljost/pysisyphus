@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import numpy as np
@@ -24,14 +25,22 @@ def test_results_to_json():
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "run_func", (
+    "run_func",
+    (
         None,
         "get_energy",
         "get_forces",
         "get_hessian",
-    )
+    ),
 )
 def test_calculator_dump(run_func):
+    out_dir = Path(".")
+    out_fn = "calculator_000.000.results"
+    try:
+        os.remove(out_dir / out_fn)
+    except FileNotFoundError:
+        pass
+
     run_dict = {
         "geom": {
             "fn": "lib:h2o.xyz",
@@ -40,7 +49,8 @@ def test_calculator_dump(run_func):
             "type": "pyscf",
             "basis": "sto3g",
             "run_func": run_func,
+            "out_dir": out_dir,
         },
     }
     _ = run_from_dict(run_dict)
-    assert Path("calculator_000.000.results").exists()
+    assert (out_dir / out_fn).exists()
