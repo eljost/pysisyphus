@@ -8,7 +8,7 @@ import tempfile
 
 from natsort import natsorted
 
-from pysisyphus.config import Config
+from pysisyphus.config import Config, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 
 
@@ -27,7 +27,7 @@ class Calculator:
         retry_calc=1,
         last_calc_cycle=None,
         clean_after=True,
-        out_dir="./qm_calcs",
+        out_dir=OUT_DIR_DEFAULT,
     ):
         """Base-class of all calculators.
 
