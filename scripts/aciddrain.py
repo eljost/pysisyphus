@@ -145,7 +145,14 @@ class Minimization(Params, luigi.Task):
             for i in range(5):
                 opt_kwargs = opt_kwargs_.copy()
                 if i > 0:
-                    opt_kwargs["hessian_init"] = tmp_dir / final_hess_fn
+                    opt_kwargs.update(
+                        {
+                            "hessian_init": tmp_dir / final_hess_fn,
+                            # Disable overachieve factor to avoid convergence
+                            # in the first cycle
+                            "overachieve_factor": 0.0,
+                        }
+                    )
 
                 opt = RFOptimizer(
                     geom,
@@ -340,7 +347,7 @@ def run():
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=False),)
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=True), )
         # cycles,
-        (DirectCycler(args.yaml), ),
+        (DirectCycler(args.yaml),),
         local_scheduler=True,
     )
 
