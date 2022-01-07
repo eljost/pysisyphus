@@ -3,14 +3,12 @@ import logging
 from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
 from pysisyphus.tsoptimizers.TRIM import TRIM
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
-from pysisyphus.tsoptimizers.dimer import dimer_method
 
 __all__ = [
     "RSPRFOptimizer",
     "TRIM",
     "RSIRFOptimizer",
     "TSHessianOptimizer",
-    "dimer_method",
 ]
 
 
