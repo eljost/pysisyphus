@@ -24,7 +24,6 @@ OPT_DICT = {
     "lbfgs": LBFGS.LBFGS,
     "micro": MicroOptimizer,
     "nc": NCOptimizer.NCOptimizer,
-    "oniom": ONIOMOpt,
     "plbfgs": PreconLBFGS.PreconLBFGS,
     "psd": PreconSteepestDescent.PreconSteepestDescent,
     "qm": QuickMin.QuickMin,
