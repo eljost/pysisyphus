@@ -34,7 +34,6 @@ OPT_DICT = {
 }
 
 TSOPT_DICT = {
-    "dimer": dimer_method,
     "rsprfo": RSPRFOptimizer,
     "trim": TRIM,
     "rsirfo": RSIRFOptimizer,
