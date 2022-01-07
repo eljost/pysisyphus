@@ -8,7 +8,6 @@ __all__ = [
     "LBFGS",
     "MicroOptimizer",
     "NCOptimizer",
-    "ONIOMOpt",
     "PreconLBFGS",
     "PreconSteepestDescent",
     "QuickMin",
@@ -19,7 +18,6 @@ __all__ = [
 ]
 
 from pysisyphus.optimizers.CubicNewton import CubicNewton
-from pysisyphus.optimizers.ONIOMOpt import ONIOMOpt
 from pysisyphus.optimizers.MicroOptimizer import MicroOptimizer
 
 logger = logging.getLogger("optimizer")
