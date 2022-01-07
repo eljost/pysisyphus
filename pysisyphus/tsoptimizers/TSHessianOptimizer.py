@@ -1,3 +1,4 @@
+import h5py
 import numpy as np
 
 from pysisyphus.helpers_pure import log
@@ -52,7 +53,9 @@ class TSHessianOptimizer(HessianOptimizer):
         self.root = int(root)
         self.hessian_ref = hessian_ref
         try:
-            self.hessian_ref = np.loadtxt(self.hessian_ref)
+            import pdb; pdb.set_trace()  # fmt: skip
+            with h5py.File(self.hessian_ref, "r") as handle:
+                self.hessian_ref = handle["hessian"][:]
             _ = self.geometry.coords.size
             expected_shape = (_, _)
             shape = self.hessian_ref.shape
@@ -65,7 +68,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 f"Tried to load reference Hessian from '{self.hessian_ref}' "
                 "but the file could not be found."
             )
-        except ValueError as err:
+        except (ValueError, TypeError) as err:
             self.log(f"No reference Hessian provided.")
 
         # Select initial root according to highest contribution of 'prim_coord'
