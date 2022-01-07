@@ -12,9 +12,11 @@ from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
 
 from pysisyphus.optimizers.BFGS import BFGS
+from pysisyphus.optimizers.closures import lbfgs_closure, modified_broyden_closure
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.NCOptimizer import NCOptimizer
+from pysisyphus.optimizers.restrict_step import scale_by_max_step
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.RSA import RSA
 from pysisyphus.optimizers.StabilizedQNMethod import StabilizedQNMethod
@@ -151,3 +153,33 @@ def test_thresh_never():
     assert geom.energy == pytest.approx(0.98555442)
     norm = np.linalg.norm(geom.forces)
     assert norm == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    "closure_func",
+    (
+        lbfgs_closure,
+        pytest.param(modified_broyden_closure, marks=pytest.mark.skip),
+    ),
+)
+def test_opt_closure(closure_func):
+    ref_coords = np.array((-1.05280566, 1.02776684, 0.0))
+    geom = AnaPot.get_geom((-0.8, 1.4, 0.0))
+
+    def forces_getter(coords):
+        return geom.get_energy_and_cart_forces_at(coords)["forces"]
+
+    def restrict_step(coords, step):
+        return scale_by_max_step(step, 0.1)
+
+    step_func = closure_func(forces_getter, restrict_step=restrict_step)
+    for _ in range(50):
+        step, forces = step_func(geom.coords)
+        force_norm = np.linalg.norm(forces)
+        if force_norm <= 1e-3:
+            print("Converged")
+            break
+        geom.coords = geom.coords + step
+    else:
+        raise AssertionError
+    assert np.linalg.norm(geom.coords - ref_coords) == pytest.approx(0.0, abs=1e-8)
