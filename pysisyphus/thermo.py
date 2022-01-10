@@ -64,6 +64,8 @@ Symmetry Number σ : {{ thermo.sym_num }}
  {{ "\t%04d" % loop.index }}: {{ nu }} cm⁻¹
 {% endfor -%}
 {{ sep }}
+{% if is_ts %}This should be a TS.{% endif %}
+Expected {{ expected }} real normal modes, found {{ nus|length}}.
 
 +
 | Inner energy U = U_el + U_vib + U_rot + U_trans
@@ -106,7 +108,9 @@ Symmetry Number σ : {{ thermo.sym_num }}
 )
 
 
-def print_thermoanalysis(thermo, geom=None, unit="joule", level=0, title=None):
+def print_thermoanalysis(
+    thermo, geom=None, is_ts=False, unit="joule", level=0, title=None
+):
     """Print thermochemical analysis."""
 
     units = {
@@ -123,8 +127,20 @@ def print_thermoanalysis(thermo, geom=None, unit="joule", level=0, title=None):
     # Separator
     sep = "+-----------------------------------------------------------------+"
 
+    sub_modes = 5 if thermo.linear else 6
+    # Expect one real mode less if it is a TS
+    sub_modes += -1 if is_ts else 0
+    expected = 3 * thermo.atom_num - sub_modes
     nus = [f"{nu: >8.2f}" for nu in thermo.wavenumbers]
-    rendered = THERMO_TPL.render(geom=geom, thermo=thermo, nus=nus, sep=sep, fmt=fmt)
+    rendered = THERMO_TPL.render(
+        geom=geom,
+        thermo=thermo,
+        nus=nus,
+        expected=expected,
+        is_ts=is_ts,
+        sep=sep,
+        fmt=fmt,
+    )
 
     if title is None:
         title = ""

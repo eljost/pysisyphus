@@ -412,6 +412,7 @@ def do_final_hessian(
     geom,
     save_hessian=True,
     write_imag_modes=False,
+    is_ts=False,
     prefix="",
     T=T_DEFAULT,
     p=p_DEFAULT,
@@ -473,7 +474,7 @@ def do_final_hessian(
     if can_thermoanalysis:
         thermo = geom.get_thermoanalysis(geom, T=T, p=p)
         if print_thermo:
-            print_thermoanalysis(thermo, geom=geom)
+            print_thermoanalysis(thermo, geom=geom, is_ts=is_ts)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,

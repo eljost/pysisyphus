@@ -72,13 +72,13 @@ def do_endopt_ts_barriers(
     if do_thermo:
         en_key = "free energy"
 
-        def get_thermo(geom, title):
+        def get_thermo(geom, title, is_ts=False):
             thermo = geom.get_thermoanalysis(geom, T=T, p=p)
             print_thermoanalysis(thermo, geom=geom, level=1, title=title)
             print()
             return thermo
 
-        ts_thermo = get_thermo(ts_geom, "TS")
+        ts_thermo = get_thermo(ts_geom, "TS", is_ts=True)
         ts_dG = ts_thermo.dG
         left_thermos = [get_thermo(geom, fn) for geom, fn in zip(left_geoms, left_fns)]
         left_dGs = [thermo.dG for thermo in left_thermos]

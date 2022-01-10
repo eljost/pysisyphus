@@ -110,6 +110,7 @@ def run_opt(
     level=0,
 ):
     is_cos = issubclass(type(geom), ChainOfStates)
+    is_tsopt = opt_key in TSOPT_DICT
 
     if is_cos:
         for image in geom.images:
@@ -166,7 +167,13 @@ def run_opt(
         print()
         prefix = opt_kwargs.get("prefix", "")
         do_final_hessian(
-            geom, write_imag_modes=True, prefix=prefix, T=T, p=p, print_thermo=print_thermo
+            geom,
+            write_imag_modes=True,
+            prefix=prefix,
+            T=T,
+            p=p,
+            print_thermo=print_thermo,
+            is_ts=is_tsopt,
         )
     print()
 
