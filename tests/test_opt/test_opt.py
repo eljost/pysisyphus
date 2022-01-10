@@ -159,7 +159,8 @@ def test_thresh_never():
     "closure_func",
     (
         lbfgs_closure,
-        pytest.param(modified_broyden_closure, marks=pytest.mark.skip),
+        # pytest.param(modified_broyden_closure, marks=pytest.mark.skip),
+        modified_broyden_closure,
     ),
 )
 def test_opt_closure(closure_func):
@@ -176,10 +177,11 @@ def test_opt_closure(closure_func):
     for _ in range(50):
         step, forces = step_func(geom.coords)
         force_norm = np.linalg.norm(forces)
-        if force_norm <= 1e-3:
+        print(_, force_norm)
+        if force_norm <= 1e-6:
             print("Converged")
             break
         geom.coords = geom.coords + step
     else:
         raise AssertionError
-    assert np.linalg.norm(geom.coords - ref_coords) == pytest.approx(0.0, abs=1e-8)
+    assert np.linalg.norm(geom.coords - ref_coords) == pytest.approx(0.0, abs=1e-4)
