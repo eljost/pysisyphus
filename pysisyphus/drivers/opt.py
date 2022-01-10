@@ -168,7 +168,7 @@ def run_opt(
             )
         sys.stdout.flush()
 
-        print(f"\nGeometry after optimization {i}:\n{geom.as_xyz()}")
+        print(f"\nGeometry after optimization cycle {i}:\n{geom.as_xyz()}")
 
         # Displace along imaginary modes
         for j, (nu, imag_displ) in enumerate(zip(imag_nus, imag_displs)):
@@ -176,7 +176,7 @@ def run_opt(
             new_cart_coords = geom.cart_coords + step
             geom.cart_coords = new_cart_coords
 
-        print(f"\nDisplaced geometry for optimization {i+1}:\n{geom.as_xyz()}\n")
+        print(f"\nDisplaced geometry for optimization cycle {i+1}:\n{geom.as_xyz()}\n")
 
     # ChainOfStates specific
     if is_cos and (not opt.stopped):
