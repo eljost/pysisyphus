@@ -48,7 +48,7 @@ def get_update_mu_reg(
         log(f"Trial energy: {trial_energy:.8f}")
         act_change = cur_energy - trial_energy
         log(f"   Actual change: {act_change: .8f}")
-        pred_change = -1/2 * cur_grad.dot(step)
+        pred_change = -1 / 2 * cur_grad.dot(step)
         log(f"Predicted change: {pred_change: .8f}")
         r = act_change / pred_change
         log(f"Ratio r={r:.8f}")
@@ -251,7 +251,9 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
         if len(dxs) > 0:
             # Calculate gamma
             dF_F = [dF_k.dot(F) for dF_k in dFs]
-            gammas = np.linalg.solve(a, dF_F)[:, None]
+            # Use least squares to avoid crashes with singular matrices
+            gammas, *_ = np.linalg.lstsq(a, dF_F, rcond=None)
+            gammas = gammas[:, None]
             _ = np.array(dxs) - beta * np.array(dFs)
             # Substract step correction
             dx = dx - np.sum(gammas * _, axis=0)
