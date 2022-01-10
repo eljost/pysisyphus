@@ -4,6 +4,7 @@ import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.drivers import run_opt
 from pysisyphus.helpers import geom_loader
 from pysisyphus.tsoptimizers import *
 from pysisyphus.testing import using
@@ -68,3 +69,14 @@ def test_hessian_ref(this_dir):
 
     assert opt.is_converged
     assert geom.energy == pytest.approx(-92.2460426792319)
+
+
+def test_iterative_tsopt():
+    geom = geom_loader("lib:hcn_iso_pm6_near_ts.xyz", coord_type="cart")
+    def calc_getter():
+        return PySCF(basis="321g")
+    opt_kwargs = {
+        "thresh": "gau_loose",
+    }
+    opt_result = run_opt(geom, calc_getter, "rsprfo", opt_kwargs, iterative=True)
+    assert opt_result.opt.is_converged
