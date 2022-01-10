@@ -14,7 +14,7 @@ from pysisyphus.run import run_from_dict
 @using("thermoanalysis")
 def test_thermoanalysis(this_dir):
     hess_fn = this_dir / "h2o_hessian.h5"
-    thermo = get_thermoanalysis_from_hess_h5(this_dir / "h2o_hessian.h5")
+    thermo = get_thermoanalysis_from_hess_h5(hess_fn)
 
     assert thermo.M == pytest.approx(18.01528)
     assert thermo.dG == pytest.approx(0.002279584)
