@@ -60,12 +60,12 @@ Symmetry Number σ : {{ thermo.sym_num }}
 +
 | Normal Mode Frequencies
 {{ sep }}
-{% for nu in nus -%}
- {{ "\t%04d" % loop.index }}: {{ nu }} cm⁻¹
+{% for nu in all_nus -%}
+ {{ "\t%04d" % loop.index }}: {{ nu }}
 {% endfor -%}
 {{ sep }}
 {% if is_ts %}This should be a TS.{% endif %}
-Expected {{ expected }} real normal modes, found {{ nus|length}}.
+Expected {{ expected }} real normal modes, found {{ real_nus|length}}.
 
 +
 | Inner energy U = U_el + U_vib + U_rot + U_trans
@@ -131,11 +131,18 @@ def print_thermoanalysis(
     # Expect one real mode less if it is a TS
     sub_modes += -1 if is_ts else 0
     expected = 3 * thermo.atom_num - sub_modes
-    nus = [f"{nu: >8.2f}" for nu in thermo.wavenumbers]
+
+    def fmt_nus(nus):
+        return [f"{nu: >8.2f} cm⁻¹" + (", excluded" if nu < 0.0 else "") for nu in nus]
+
+    imag_nus = fmt_nus(thermo.imag_wavenumbers)
+    real_nus = fmt_nus(thermo.wavenumbers)
+    all_nus = imag_nus + real_nus
     rendered = THERMO_TPL.render(
         geom=geom,
         thermo=thermo,
-        nus=nus,
+        all_nus=all_nus,
+        real_nus=real_nus,
         expected=expected,
         is_ts=is_ts,
         sep=sep,
