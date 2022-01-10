@@ -58,13 +58,12 @@ def test_tshessianoptimizer_kwargs(kwargs):
 
 
 @using("pyscf")
-@pytest.mark.skip
 def test_hessian_ref(this_dir):
-    geom = geom_loader("lib:baker_ts/01_hcn.xyz", coord_type="cart")
+    geom = geom_loader("lib:hcn_iso_pm6_near_ts.xyz", coord_type="cart")
     geom.set_calculator(PySCF(basis="321g"))
 
     hessian_ref = this_dir / "inp_hessian_ref.h5"
-    opt = RSPRFOptimizer(geom, hessian_ref=hessian_ref)
+    opt = RSPRFOptimizer(geom, hessian_ref=hessian_ref, thresh="gau")
     opt.run()
 
     assert opt.is_converged
