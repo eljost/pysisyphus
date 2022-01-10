@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from math import floor, ceil
 from pathlib import Path
 import shutil
+import sys
 
 import numpy as np
 
@@ -103,6 +104,10 @@ def run_opt(
     calc_getter,
     opt_key,
     opt_kwargs,
+    iterative=False,
+    iterative_max_cycles=5,
+    iterative_thresh=-10,
+    iterative_scale=1.00,
     cart_hessian=None,
     print_thermo=False,
     title="Optimization",
@@ -111,6 +116,8 @@ def run_opt(
 ):
     is_cos = issubclass(type(geom), ChainOfStates)
     is_tsopt = opt_key in TSOPT_DICT
+    # Disallow iterative optimizations for COS objects
+    is_iterative = (not is_cos) and (iterative or opt_kwargs.pop("iterative", False))
 
     if is_cos:
         for image in geom.images:
@@ -125,15 +132,51 @@ def run_opt(
     T = opt_kwargs.pop("T", T_DEFAULT)
     p = opt_kwargs.pop("p", p_DEFAULT)
 
-    opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
-    print(highlight_text(f"Running {title}", level=level))
-    print(f"\n   Input geometry: {geom.describe()}")
-    print(f"Coordinate system: {geom.coord_type}")
-    print(f"        Optimizer: {opt_key}\n")
-    report_frozen_atoms(geom)
-    print()
+    for i in range(iterative_max_cycles):
+        opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
+        print(highlight_text(f"Running {title}", level=level))
+        print(f"\n   Input geometry: {geom.describe()}")
+        print(f"Coordinate system: {geom.coord_type}")
+        print(f"        Optimizer: {opt_key}\n")
+        report_frozen_atoms(geom)
+        print()
+        opt.run()
 
-    opt.run()
+        # Only do 1 cycle in non-iterative optimizations
+        if not is_iterative:
+            break
+
+        # Determine imaginary modes for subsequent displacements
+        nus, *_, cart_displs = geom.get_normal_modes()
+        first = min(5, len(nus))
+        below_thresh = nus < iterative_thresh
+        # Never displace along transition vector in ts-optimizations. Just skip it.
+        if is_tsopt:
+            below_thresh[0] = False
+        imag_nus = nus[below_thresh]
+        imag_displs = cart_displs[:, below_thresh].T
+
+        if len(imag_nus) == 0:
+            print(f"Iterative optimization converged in cycle {i}.")
+            break
+
+        print(f"\nFirst {first} smallest normal mode frequencies:")
+        for j, nu in enumerate(nus[:first]):
+            print(
+                f"\t{j:02d}: {nu:8.2f} cm⁻¹"
+                + (", below threshold" if (nu < iterative_thresh) else "")
+            )
+        sys.stdout.flush()
+
+        print(f"\nGeometry after optimization {i}:\n{geom.as_xyz()}")
+
+        # Displace along imaginary modes
+        for j, (nu, imag_displ) in enumerate(zip(imag_nus, imag_displs)):
+            step = iterative_scale * imag_displ
+            new_cart_coords = geom.cart_coords + step
+            geom.cart_coords = new_cart_coords
+
+        print(f"\nDisplaced geometry for optimization {i+1}:\n{geom.as_xyz()}\n")
 
     # ChainOfStates specific
     if is_cos and (not opt.stopped):
