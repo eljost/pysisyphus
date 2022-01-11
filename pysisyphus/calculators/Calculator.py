@@ -10,6 +10,7 @@ from natsort import natsorted
 
 from pysisyphus.config import Config, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.helpers_pure import check_mem
 
 
 class Calculator:
@@ -62,22 +63,21 @@ class Calculator:
             Path that is prepended to generated filenames.
         """
 
+        self.logger = logging.getLogger("calculator")
+
         self.calc_number = calc_number
         self.charge = int(charge)
         self.mult = int(mult)
         self.base_name = base_name
         self.pal = int(pal)
-        self.mem = int(mem)
+        assert self.pal > 0, "pal must be a non-negative integer!"
+        self.mem = check_mem(int(mem), pal, logger=self.logger)
         # Disasble retries if check_termination method is not implemented
         self.retry_calc = int(retry_calc) if hasattr(self, "check_termination") else 0
         assert self.retry_calc >= 0
         self.out_dir = Path(out_dir).resolve()
         if not self.out_dir.exists():
             os.mkdir(self.out_dir)
-
-        assert pal > 0, "pal must be a non-negative integer!"
-
-        self.logger = logging.getLogger("calculator")
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.

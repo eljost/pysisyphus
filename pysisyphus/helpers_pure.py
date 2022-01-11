@@ -8,6 +8,7 @@ from pathlib import Path
 import time
 
 import numpy as np
+import psutil
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG, R, AU2KJPERMOL
@@ -384,3 +385,20 @@ def standard_state_corr(T=T_DEFAULT, p=p_DEFAULT, n=1):
     dG = R * T * math.log(Vm_litres) / 1000  # kJ mol⁻¹
     dG_au = dG / AU2KJPERMOL
     return dG_au
+
+
+def check_mem(mem, pal, avail_frac=0.85, logger=None):
+    virt_mem = psutil.virtual_memory()
+    mb_available = virt_mem.available * avail_frac / 1024 / 1024
+    mb_requested = mem * pal
+    if mb_requested > mb_available:
+        mb_corr = int(mb_available / pal)
+        log(
+            logger,
+            f"Too much memory requested ({pal}*{mem} MB = {pal*mem} MB! "
+            f"Returning corrected value of mem_corr = {mb_corr} MB.",
+        )
+    else:
+        mb_corr = mem
+
+    return mb_corr

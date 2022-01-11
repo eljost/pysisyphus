@@ -38,6 +38,7 @@ setup(
         "matplotlib",
         "numpy",
         "natsort",
+        "psutil",
         "pyyaml",
         "rmsd",
         "scipy",
