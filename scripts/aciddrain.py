@@ -136,7 +136,6 @@ class Minimization(Params, luigi.Task):
             tmp_dir = Path(tmp_dir)
             opt_kwargs_ = {
                 "dump": True,
-                "overachieve_factor": 4.0,
                 "thresh": "gau",
                 "out_dir": tmp_dir,
                 "max_cycles": 250,
