@@ -148,7 +148,6 @@ def run_opt(
 
         # Determine imaginary modes for subsequent displacements
         nus, *_, cart_displs = geom.get_normal_modes()
-        first = min(5, len(nus))
         below_thresh = nus < iterative_thresh
         # Never displace along transition vector in ts-optimizations. Just skip it.
         if is_tsopt:
@@ -160,12 +159,9 @@ def run_opt(
             print(f"Iterative optimization converged in cycle {i}.")
             break
 
-        print(f"\nFirst {first} smallest normal mode frequencies:")
-        for j, nu in enumerate(nus[:first]):
-            print(
-                f"\t{j:02d}: {nu:8.2f} cm⁻¹"
-                + (", below threshold" if (nu < iterative_thresh) else "")
-            )
+        print(f"\nImaginary modes below threshold of {iterative_thresh:.2f} cm⁻¹:")
+        for j, nu in enumerate(nus[below_thresh]):
+            print(f"\t{j:02d}: {nu:8.2f} cm⁻¹")
         sys.stdout.flush()
 
         print(f"\nGeometry after optimization cycle {i}:\n{geom.as_xyz()}")

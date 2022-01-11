@@ -1061,8 +1061,8 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
 
     mol_opt_defaults = {
         "dump": True,
-        "max_cycles": 100,
-        "overachieve_factor": 3,
+        "max_cycles": 150,
+        "overachieve_factor": 5,
         "type": "rfo",
         "do_hess": False,
         "T": T_default,
@@ -1101,14 +1101,14 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
         }
 
     if "tsopt" in conf_dict:
-        dd["tsopt"] = {
-            "type": "rsprfo",
-            "dump": True,
-            "overachieve_factor": 3,
-            "h5_group_name": "tsopt",
-            "T": T_default,
-            "prefix": "ts",
-        }
+        dd["tsopt"] = mol_opt_defaults.copy()
+        dd["tsopt"].update(
+            {
+                "type": "rsprfo",
+                "h5_group_name": "tsopt",
+                "prefix": "ts",
+            }
+        )
         if "cos" in conf_dict:
             dd["tsopt"]["geom"] = get_opt_geom_defaults()
 
