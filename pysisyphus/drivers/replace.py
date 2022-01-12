@@ -1,5 +1,11 @@
+import argparse
+import sys
+
 from pysisyphus.calculators.OBabel import OBabel
+from pysisyphus.config import LIB_DIR
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure import chunks
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.linalg import get_rot_mat_for_coords
 from pysisyphus.optimizers.LBFGS import LBFGS
@@ -9,7 +15,6 @@ def get_bond_subgeom(geom, ind, invert=False):
     bond_inds = get_bond_sets(geom.atoms, geom.coords3d)
     # Determine bonds that are connected to atom 'ind' in 'geom'
     conn_bond_inds = [bond for bond in bond_inds if ind in bond]
-    print(conn_bond_inds)
     assert len(conn_bond_inds) == 1
     ind0, ind1 = conn_bond_inds[0]
     # Index of atom to which 'ind' is connected
@@ -101,7 +106,29 @@ def replace_atom(geom, ind, repl_geom, repl_ind, return_full=True, opt=False):
     return return_geom
 
 
+REPLACEMENTS = {
+    "OMe": ("methanol.xyz", 4),
+    "OEt": ("ethanol.xyz", 8),
+}
+
+
+def normalize_replacements(replacements):
+    replacements = list(replacements)
+    for i, repl in enumerate(replacements):
+        if isinstance(repl[1] , str):
+            ind, repl_key = repl
+            repl_fn, repl_ind = REPLACEMENTS[repl_key]
+            repl_geom = geom_loader(LIB_DIR / "replacements" / repl_fn)
+            replacements[i] = (ind, repl_ind, repl_geom)
+        elif len(repl) == 3:
+            continue
+        else:
+            raise Exception("Invalid replacements!")
+    return replacements
+
+
 def replace_atoms(geom, replacements, opt=False):
+    replacements = normalize_replacements(replacements)
     repl_frags = list()
     del_inds = list()
     for ind, repl_ind, repl_geom in replacements:
@@ -118,3 +145,38 @@ def replace_atoms(geom, replacements, opt=False):
         union = run_opt(union, freeze_inds)
 
     return union
+
+
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("geom_fn")
+    parser.add_argument("replacements", nargs="+")
+    parser.add_argument("--opt", action="store_true")
+    parser.add_argument("--jmol", action="store_true")
+    parser.add_argument("--out_fn", type=str, default="union.xyz")
+
+    return parser.parse_args(args)
+
+
+def run():
+    args = parse_args(sys.argv[1:])
+    geom_fn = args.geom_fn
+    replacements_ = args.replacements
+    opt = args.opt
+    jmol = args.jmol
+    out_fn = args.out_fn
+
+    assert len(replacements_) % 2 == 0
+    replacements = [(int(ind), key) for ind, key in chunks(replacements_, 2)]
+
+    geom = geom_loader(geom_fn)
+    union = replace_atoms(geom, replacements, opt=opt)
+    print(union.as_xyz())
+
+    if union:
+        with open(out_fn, "w") as handle:
+            handle.write(union.as_xyz())
+        print(f"Saved new geometry to '{out_fn}'.")
+    if jmol:
+        union.jmol()

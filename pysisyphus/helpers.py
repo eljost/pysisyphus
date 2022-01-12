@@ -12,7 +12,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
-from pysisyphus.config import p_DEFAULT, T_DEFAULT
+from pysisyphus.config import p_DEFAULT, T_DEFAULT, LIB_DIR
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import (
@@ -34,9 +34,6 @@ from pysisyphus.thermo import (
     print_thermoanalysis,
 )
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
-
-
-THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 
 
 def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
@@ -97,7 +94,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     func = funcs[ext]
 
     if fn.startswith("lib:"):
-        fn = str(THIS_DIR / "geom_library/" / fn[4:])
+        fn = str(LIB_DIR / fn[4:])
     elif fn.startswith("pubchem:"):
         func = geom_from_pubchem_name
         fn = fn[8:]

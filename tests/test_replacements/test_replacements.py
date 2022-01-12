@@ -25,7 +25,9 @@ def test_sature_methane(opt):
     union = replace_atoms(geom, replacements, opt=opt)
     assert len(union.atoms) == 17
 
+
 def test_replace_atom_with_atom():
     geom = geom_loader("lib:methane.xyz")
-    repl_geom = Geometry(("I", ), (0.0, 0.0, 0.0))
+    repl_geom = Geometry(("I",), (0.0, 0.0, 0.0))
     union = replace_atom(geom, 3, repl_geom, 0)
+    assert union.atoms[3] == "I"
