@@ -4,6 +4,9 @@ from pathlib import Path
 import sys
 
 
+
+CONFIG_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
+LIB_DIR = CONFIG_DIR / "geom_library"
 T_DEFAULT = 298.15  # Kelvin
 p_DEFAULT = 101325  # Pascal
 OUT_DIR_DEFAULT = "qm_calcs"

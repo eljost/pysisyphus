@@ -64,6 +64,7 @@ setup(
             "pysispack = pysisyphus.pack:run",
             "pysisthermo = pysisyphus.drivers.thermo:run_thermo",
             "pysismerge = pysisyphus.drivers.merge:run_merge",
+            "pysisreplace = pysisyphus.drivers.replace:run",
         ]
     },
 )

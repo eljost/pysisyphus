@@ -391,14 +391,12 @@ def check_mem(mem, pal, avail_frac=0.85, logger=None):
     virt_mem = psutil.virtual_memory()
     mb_available = virt_mem.available * avail_frac / 1024 / 1024
     mb_requested = mem * pal
+    msg = f"{mb_available:.2f} MB memory available, {mb_requested:.2f} MB requested."
     if mb_requested > mb_available:
         mb_corr = int(mb_available / pal)
-        log(
-            logger,
-            f"Too much memory requested ({pal}*{mem} MB = {pal*mem} MB! "
-            f"Returning corrected value of mem_corr = {mb_corr} MB.",
-        )
+        msg += f" Too much memory requested. Using smaller value of {mb_corr} MB."
     else:
         mb_corr = mem
+    log(logger, msg)
 
     return mb_corr
