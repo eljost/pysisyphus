@@ -990,6 +990,7 @@ class Geometry:
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
         mw_cart_displs = P.T.dot(eigvecs)
         cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
+        cart_displs /= np.linalg.norm(cart_displs, axis=0)
         return eigval_to_wavenumber(eigvals), eigvals, mw_cart_displs, cart_displs
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
@@ -1063,6 +1064,10 @@ class Geometry:
     def get_energy_at(self, coords):
         coords = self.get_temporary_coords(coords)
         return self.calculator.get_energy(self.atoms, coords)["energy"]
+
+    def get_energy_at_cart_coords(self, cart_coords):
+        self.assert_cart_coords(cart_coords)
+        return self.calculator.get_energy(self.atoms, cart_coords)["energy"]
 
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
