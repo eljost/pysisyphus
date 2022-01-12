@@ -19,6 +19,7 @@ geom:
   H -0.90700558  0.60553768 -0.36207329
   H -1.37352496 -1.78770501  0.13248664
 calc:
+ #type: xtb
  type: orca5
  keywords: b97-3c tightscf
  pal: 6
@@ -30,3 +31,6 @@ opt:
  do_hess: True
  iterative: True
  overachieve_factor: 0.0
+assert:
+ opt_geom.energy: -433.47145310  # orca5
+ #opt_geom.energy: -26.835455237426  # xtb

@@ -14,6 +14,7 @@ from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
 from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.tsoptimizers import *
 
@@ -106,8 +107,8 @@ def run_opt(
     opt_kwargs,
     iterative=False,
     iterative_max_cycles=5,
-    iterative_thresh=-10,
-    iterative_scale=1.00,
+    iterative_thresh=-15,
+    iterative_scale=2.00,
     cart_hessian=None,
     print_thermo=False,
     title="Optimization",
@@ -132,8 +133,13 @@ def run_opt(
     T = opt_kwargs.pop("T", T_DEFAULT)
     p = opt_kwargs.pop("p", p_DEFAULT)
 
+    opt_cls = get_opt_cls(opt_key)
     for i in range(iterative_max_cycles):
-        opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
+        # Modify hessian_init in later cycles, te reuse the calculated Hessian
+        # from the final geometry of the previous optimization.
+        if (i > 0) and issubclass(opt_cls, HessianOptimizer):
+            opt_kwargs["hessian_init"] = "calc"
+        opt = opt_cls(geom, **opt_kwargs)
         print(highlight_text(f"Running {title}", level=level))
         print(f"\n   Input geometry: {geom.describe()}")
         print(f"Coordinate system: {geom.coord_type}")
