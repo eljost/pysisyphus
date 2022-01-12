@@ -20,7 +20,7 @@ def get_guess(vec, masses_rep, rng, scale=1e-1):
     "precon, ref_cyc, ref_nu",
     [
         (True, 1, 1690.976973),
-        (False, 3, 1690.970311),
+        (False, 3, 1690.977619),
     ],
 )
 def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
