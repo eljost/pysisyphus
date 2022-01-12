@@ -19,8 +19,7 @@ geom:
   H -0.90700558  0.60553768 -0.36207329
   H -1.37352496 -1.78770501  0.13248664
 calc:
- type: orca5
- keywords: b97-3c tightscf
+ type: xtb
  pal: 6
  mem: 1500
  charge: -1
@@ -31,4 +30,4 @@ opt:
  iterative: True
  overachieve_factor: 0.0
 assert:
- opt_geom.energy: -433.47145310  # orca5
+ opt_geom.energy: -26.83545523742
