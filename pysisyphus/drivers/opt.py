@@ -11,6 +11,7 @@ from pysisyphus.config import T_DEFAULT, p_DEFAULT
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import do_final_hessian
 from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
+from pysisyphus.io import save_hessian
 from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -164,6 +165,10 @@ def run_opt(
         if len(imag_nus) == 0:
             print(f"Iterative optimization converged in cycle {i}.")
             break
+
+        h5_fn = f"hess_calc_iter_{i:02d}.h5"
+        save_hessian(h5_fn, geom)
+        print(f"Saved HDF5-Hessian to {h5_fn}.")
 
         print(f"\nImaginary modes below threshold of {iterative_thresh:.2f} cm⁻¹:")
         for j, nu in enumerate(nus[below_thresh]):
