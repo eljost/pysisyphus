@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+from pysisyphus import logger
+from pysisyphus.calculators import XTB
 from pysisyphus.calculators.OBabel import OBabel
 from pysisyphus.config import LIB_DIR
 from pysisyphus.Geometry import Geometry
@@ -24,14 +26,18 @@ def get_bond_subgeom(geom, ind, invert=False):
     return geom.get_subgeom(conn_bond_ind), anchor_ind
 
 
-def run_opt(geom, freeze_inds, ff="uff"):
-    from openbabel import pybel
+def run_opt(geom, freeze_inds, ff="uff", charge=0, mult=1):
+    try:
+        from openbabel import pybel
 
-    # Create pybel.Molecule/OBMol to set the missing bonds
-    mol = pybel.readstring("xyz", geom.as_xyz())
+        # Create pybel.Molecule/OBMol to set the missing bonds
+        mol = pybel.readstring("xyz", geom.as_xyz())
+        # Use modified pybel.Molecule
+        calc = OBabel(mol=mol, ff=ff)
+    except ImportError:
+        logger.warning("Could not import openbabel. Trying fallback to GFN2-xTB.")
+        calc = XTB(charge=charge, mult=mult, pal=2)
 
-    # Use modified pybel.Molecule
-    calc = OBabel(mol=mol, ff=ff)
     frozen_geom = geom.copy()
     # Only some atoms
     frozen_geom.freeze_atoms = freeze_inds
@@ -43,7 +49,16 @@ def run_opt(geom, freeze_inds, ff="uff"):
     return frozen_geom
 
 
-def replace_atom(geom, ind, repl_geom, repl_ind, return_full=True, opt=False):
+def replace_atom(
+    geom,
+    ind,
+    repl_geom,
+    repl_ind,
+    return_full=True,
+    opt=False,
+    charge=0,
+    mult=1,
+):
     """Replace atom with fragment."""
 
     geom = geom.copy(coord_type="cart")
@@ -89,7 +104,7 @@ def replace_atom(geom, ind, repl_geom, repl_ind, return_full=True, opt=False):
     union = geom_ + repl_geom_
     if opt:
         freeze_inds = [ind for ind, _ in enumerate(geom_.atoms)]
-        union = run_opt(union, freeze_inds)
+        union = run_opt(union, freeze_inds, charge=charge, mult=mult)
         # Update coords in 'repl_geom' with optimized coordinates
         repl_geom_.coords3d = union.coords3d[len(freeze_inds) :]
 
@@ -106,16 +121,21 @@ def replace_atom(geom, ind, repl_geom, repl_ind, return_full=True, opt=False):
     return return_geom
 
 
+# Located in ../geom_library/replacements/
 REPLACEMENTS = {
     "OMe": ("methanol.xyz", 4),
     "OEt": ("ethanol.xyz", 8),
+    "OH": ("water.xyz", 1),
+    "F": ("hf.xyz", 1),
+    "Cl": ("hcl.xyz", 1),
+    "Br": ("hbr.xyz", 1),
 }
 
 
 def normalize_replacements(replacements):
     replacements = list(replacements)
     for i, repl in enumerate(replacements):
-        if isinstance(repl[1] , str):
+        if isinstance(repl[1], str):
             ind, repl_key = repl
             repl_fn, repl_ind = REPLACEMENTS[repl_key]
             repl_geom = geom_loader(LIB_DIR / "replacements" / repl_fn)
@@ -127,7 +147,7 @@ def normalize_replacements(replacements):
     return replacements
 
 
-def replace_atoms(geom, replacements, opt=False):
+def replace_atoms(geom, replacements, opt=False, charge=0, mult=1):
     replacements = normalize_replacements(replacements)
     repl_frags = list()
     del_inds = list()
@@ -155,6 +175,8 @@ def parse_args(args):
     parser.add_argument("--opt", action="store_true")
     parser.add_argument("--jmol", action="store_true")
     parser.add_argument("--out_fn", type=str, default="union.xyz")
+    parser.add_argument("--charge", type=int, default=0)
+    parser.add_argument("--mult", type=int, default=1)
 
     return parser.parse_args(args)
 
@@ -166,12 +188,14 @@ def run():
     opt = args.opt
     jmol = args.jmol
     out_fn = args.out_fn
+    charge = args.charge
+    mult = args.mult
 
     assert len(replacements_) % 2 == 0
     replacements = [(int(ind), key) for ind, key in chunks(replacements_, 2)]
 
     geom = geom_loader(geom_fn)
-    union = replace_atoms(geom, replacements, opt=opt)
+    union = replace_atoms(geom, replacements, opt=opt, charge=charge, mult=mult)
     print(union.as_xyz())
 
     if union:
