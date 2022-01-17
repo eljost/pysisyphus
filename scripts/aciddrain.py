@@ -13,6 +13,7 @@ import yaml
 
 from pysisyphus.calculators import ORCA5, XTB
 from pysisyphus.drivers.pka import direct_cycle, G_aq_from_h5_hessian
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.helpers import geom_loader, do_final_hessian
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
@@ -22,7 +23,7 @@ class Params(luigi.Config):
     name = luigi.Parameter()
     h_ind = luigi.IntParameter()
     is_base = luigi.BoolParameter(default=False)
-    charge = luigi.IntParameter(default=0)
+    charge = luigi.IntParameter()
     base = luigi.Parameter(default="out")
 
     @property
@@ -62,7 +63,9 @@ class InputGeometry(Params, luigi.Task):
 
     def requires(self):
         if self.is_base:
-            return Minimization(self.id_, self.name, self.h_ind, is_base=False)
+            return Minimization(
+                self.id_, self.name, self.h_ind, is_base=False, charge=self.charge
+            )
         else:
             return None
 
@@ -85,9 +88,10 @@ class PreMinimization(Params, luigi.Task):
         return luigi.LocalTarget(self.get_path("preopt.xyz"))
 
     def requires(self):
-        return InputGeometry(self.id_, self.name, self.h_ind, self.is_base)
+        return InputGeometry(self.id_, self.name, self.h_ind, self.is_base, self.charge)
 
     def run(self):
+        print(highlight_text(f"Pre-Minimization {self.key}"))
         geom = geom_loader(self.input().path, coord_type="redund")
         geom.set_calculator(
             get_xtb_calc(charge=self.calc_charge(), out_dir=self.qm_out_dir)
@@ -120,10 +124,14 @@ class Minimization(Params, luigi.Task):
         # Maybe some cycles could be saved when the base is also pre-
         # optimized, but things could also go wrong.
         if self.is_base:
-            return InputGeometry(self.id_, self.name, self.h_ind, self.is_base)
+            return InputGeometry(
+                self.id_, self.name, self.h_ind, self.is_base, self.charge
+            )
         # Only preoptimize initial acid geometry, not the base.
         else:
-            return PreMinimization(self.id_, self.name, self.h_ind, self.is_base)
+            return PreMinimization(
+                self.id_, self.name, self.h_ind, self.is_base, self.charge
+            )
 
     def run(self):
         geom = geom_loader(self.input().path, coord_type="redund")
@@ -142,12 +150,14 @@ class Minimization(Params, luigi.Task):
             }
             # Iterate until no imaginary frequencies are present
             for i in range(5):
+                base_infix = " base" if self.is_base else ""
+                print(highlight_text(f"Minimization {self.key}{base_infix}, cycle {i}"))
                 opt_kwargs = opt_kwargs_.copy()
                 if i > 0:
                     opt_kwargs.update(
                         {
                             "hessian_init": tmp_dir / final_hess_fn,
-                            # Disable overachieve factor to avoid convergence
+                            # Disable overachieve factor to avoid immediate convergence
                             # in the first cycle
                             "overachieve_factor": 0.0,
                         }
@@ -191,7 +201,7 @@ class SolvEnergy(Params, luigi.Task):
         return luigi.LocalTarget(self.get_path("solv_energy"))
 
     def requires(self):
-        return Minimization(self.id_, self.name, self.h_ind, self.is_base)
+        return Minimization(self.id_, self.name, self.h_ind, self.is_base, self.charge)
 
     def run(self):
         geom = geom_loader(self.input()[0].path)
@@ -204,15 +214,25 @@ class SolvEnergy(Params, luigi.Task):
 
 
 class DirectCycle(Params, luigi.Task):
+    pka_exp = luigi.FloatParameter()
+
     def output(self):
         return luigi.LocalTarget(self.get_path("summary.yaml"))
 
     def requires(self):
         return (
-            Minimization(self.id_, self.name, self.h_ind, is_base=False),
-            Minimization(self.id_, self.name, self.h_ind, is_base=True),
-            SolvEnergy(self.id_, self.name, self.h_ind, is_base=False),
-            SolvEnergy(self.id_, self.name, self.h_ind, is_base=True),
+            Minimization(
+                self.id_, self.name, self.h_ind, is_base=False, charge=self.charge
+            ),
+            Minimization(
+                self.id_, self.name, self.h_ind, is_base=True, charge=self.charge
+            ),
+            SolvEnergy(
+                self.id_, self.name, self.h_ind, is_base=False, charge=self.charge
+            ),
+            SolvEnergy(
+                self.id_, self.name, self.h_ind, is_base=True, charge=self.charge
+            ),
         )
 
     def run(self):
@@ -226,8 +246,8 @@ class DirectCycle(Params, luigi.Task):
         with open(base_solv_fn.path) as handle:
             base_solv_en = float(handle.read())
         G_aq_H = -6.28 + (-265.9)  # corresponds to the default
-        pKa = direct_cycle(acid_h5, base_h5, acid_solv_en, base_solv_en, G_aq_H=G_aq_H)
-        print(f"@@@ {self.name}: pka={pKa:.4f}")
+        pka = direct_cycle(acid_h5, base_h5, acid_solv_en, base_solv_en, G_aq_H=G_aq_H)
+        print(f"@@@ {self.name}: pKa={pka:.4f}")
 
         G_acid_aq = G_aq_from_h5_hessian(acid_h5, acid_solv_en)
         G_base_aq = G_aq_from_h5_hessian(base_h5, base_solv_en)
@@ -239,13 +259,14 @@ class DirectCycle(Params, luigi.Task):
             "G_acid_aq": G_acid_aq,
             "G_base_aq": G_base_aq,
             "G_diss_aq": G_diss_aq,
-            "pKa_calc": pKa,
+            "pka_calc": pka,
+            "pka_exp": self.pka_exp,
         }
         with self.output().open("w") as handle:
             yaml.dump(results, handle)
 
 
-class DirectCycler(luigi.WrapperTask):
+class DirectCycler(luigi.Task):
     yaml_inp = luigi.Parameter()
 
     def requires(self):
@@ -255,15 +276,38 @@ class DirectCycler(luigi.WrapperTask):
         for id_, (acid, acid_dict) in enumerate(run_dict["acids"].items()):
             fn = acid_dict["fn"]
             h_ind = acid_dict["h_ind"]
+            charge = acid_dict.get("charge", 0)
             name = Path(fn).stem
-            yield DirectCycle(id_=id_, name=name, h_ind=h_ind)
+            pka_exp = acid_dict["pka_exp"]
+            yield DirectCycle(
+                id_=id_, name=name, h_ind=h_ind, charge=charge, pka_exp=pka_exp
+            )
+
+    def output(self):
+        return luigi.LocalTarget("summary.yaml")
 
     def run(self):
+        summary = {}
         for dc in self.input():
             with dc.open() as handle:
                 results = yaml.load(handle, Loader=yaml.SafeLoader)
-                pKa_calc = results["pKa_calc"]
-            print("@@@", dc.path, pKa_calc)
+
+            name = results["name"]
+            pka_calc = results["pka_calc"]
+            pka_exp = results["pka_exp"]
+            h_ind = results["h_ind"]
+            summary[name] = {
+                "h_ind": h_ind,
+                "pka_exp": pka_exp,
+                "pka_calc": pka_calc,
+            }
+            pka_diff = pka_calc - pka_exp
+            print(
+                f"@@@\t{dc.path} pkas: calc={pka_calc:.2f}, exp={pka_exp:.2}, Δ={pka_diff:.2f}"
+            )
+
+        with self.output().open("w") as handle:
+            yaml.dump(summary, handle)
 
 
 def parse_args(args):
@@ -310,11 +354,6 @@ def run():
     }
     calc_cls = calc_dict[gas_calc_cls]
 
-    cycles = list()
-    for id_, (fn, h_ind) in enumerate(inputs):
-        name = Path(fn).stem
-        cycles.append(DirectCycle(id_=id_, name=name, h_ind=h_ind))
-
     global get_calc
 
     def get_calc(charge, out_dir):
@@ -338,14 +377,9 @@ def run():
     def get_xtb_calc(charge, out_dir):
         return XTB(pal=pal, charge=charge, out_dir=out_dir, base_name="xtb")
 
-    # from luigi.tools.deps_tree import print_tree
-    # for cycle in cycles:
-    # print(print_tree(cycle, indent="", last=True))
-
     luigi.build(
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=False),)
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=True), )
-        # cycles,
         (DirectCycler(args.yaml),),
         local_scheduler=True,
     )
