@@ -408,6 +408,7 @@ def run_lfer(yaml_inp):
     ax0.plot(lims, lims, c="k", ls="--")
     ax0.set_xlabel("pKa experimental")
     ax0.set_ylabel("pKa calcualted")
+    ax0.set_title("experimental vs. calculated")
 
     # Linear regression
     res = linregress(calcs, exps)
@@ -426,6 +427,7 @@ def run_lfer(yaml_inp):
     ax1.plot(xs, ys, c="k", ls="--", label="Fit")
     ax1.set_xlabel("pKa calculated")
     ax1.set_ylabel("pKa experimental")
+    ax1.set_title("LFER")
 
     for ax in (ax0, ax1):
         ax.set_xlim(lims)
