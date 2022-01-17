@@ -181,7 +181,7 @@ class OpenMolcas(Calculator):
         # Search for the block containing the gradient table
         regex = r"Molecular gradients(.+?)--- Stop Module:\s*alaska"
         floats = [self.float_regex for i in range(3)]
-        line_regex = r"([A-Z\d]+)\s*" + "\s*".join(floats)
+        line_regex = r"([A-Z\d]+)\s*" + r"\s*".join(floats)
 
         mobj = re.search(regex, text, re.DOTALL)
         gradient = list()
