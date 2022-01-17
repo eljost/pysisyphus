@@ -10,6 +10,9 @@ import tempfile
 import luigi
 import psutil
 import yaml
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import linregress
 
 from pysisyphus.calculators import ORCA5, XTB
 from pysisyphus.drivers.pka import direct_cycle, G_aq_from_h5_hessian
@@ -314,13 +317,14 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("yaml")
+    action_group = parser.add_mutually_exclusive_group(required=True)
+    action_group.add_argument("--lfer", action="store_true")
+    action_group.add_argument("--pka", action="store_true")
     return parser.parse_args(args)
 
 
-def run():
-    args = parse_args(sys.argv[1:])
-
-    with open(args.yaml) as handle:
+def run_pka(yaml_inp):
+    with open(yaml_inp) as handle:
         run_dict = yaml.load(handle.read(), Loader=yaml.SafeLoader)
 
     inputs = list()
@@ -380,9 +384,65 @@ def run():
     luigi.build(
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=False),)
         # (Minimization(id_=0, name="formicacid", h_ind=4, is_base=True), )
-        (DirectCycler(args.yaml),),
+        (DirectCycler(yaml_inp),),
         local_scheduler=True,
     )
+
+
+def run_lfer(yaml_inp):
+    with open(yaml_inp) as handle:
+        run_dict = yaml.load(handle.read(), Loader=yaml.SafeLoader)
+    names = list()
+    exps = list()
+    calcs = list()
+    for name, values in run_dict.items():
+        names.append(name)
+        exps.append(values["pka_exp"])
+        calcs.append(values["pka_calc"])
+    min_ = min(min(exps), min(calcs)) - 1
+    max_ = max(max(exps), max(calcs)) + 1
+    lims = (min_, max_)
+
+    fig, (ax0, ax1) = plt.subplots(ncols=2)
+    ax0.scatter(exps, calcs, s=30)
+    ax0.plot(lims, lims, c="k", ls="--")
+    ax0.set_xlabel("pKa experimental")
+    ax0.set_ylabel("pKa calcualted")
+
+    # Linear regression
+    res = linregress(calcs, exps)
+    print("pka_calc,corr = m * pka_calc + n")
+    print(f"m={res.slope}")
+    print(f"n={res.intercept}")
+    print(f"f(x)={res.slope:.6f}*x + {res.intercept:.6f}")
+
+    def linfit(xs):
+        return res.slope * xs + res.intercept
+
+    xs = np.linspace(min(calcs), max(calcs), num=100)
+    ys = linfit(xs)
+
+    ax1.scatter(calcs, exps, s=30)
+    ax1.plot(xs, ys, c="k", ls="--", label="Fit")
+    ax1.set_xlabel("pKa calculated")
+    ax1.set_ylabel("pKa experimental")
+
+    for ax in (ax0, ax1):
+        ax.set_xlim(lims)
+        ax.set_ylim(lims)
+    ax1.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def run():
+    args = parse_args(sys.argv[1:])
+
+    if args.pka:
+        run_pka(args.yaml)
+    elif args.lfer:
+        run_lfer(args.yaml)
 
 
 if __name__ == "__main__":
