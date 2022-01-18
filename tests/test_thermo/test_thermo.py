@@ -97,4 +97,4 @@ def test_irc_h5(this_dir, id_, dG_ref):
     geom = geom_from_hessian(h5)
     thermo = geom.get_thermoanalysis()
     print_thermoanalysis(thermo)
-    assert thermo.dG == pytest.approx(dG_ref, abs=2e-3)
+    assert thermo.dG == pytest.approx(dG_ref, abs=2.5e-3)

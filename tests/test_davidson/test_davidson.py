@@ -19,8 +19,8 @@ def get_guess(vec, masses_rep, rng, scale=1e-1):
 @pytest.mark.parametrize(
     "precon, ref_cyc, ref_nu",
     [
-        (True, 1, 1690.976973),
-        (False, 3, 1690.977619),
+        (True, 2, 1692.14866799),
+        (False, 4, 1692.1484062),
     ],
 )
 def test_block_davidson_acet(precon, ref_cyc, ref_nu, this_dir):
