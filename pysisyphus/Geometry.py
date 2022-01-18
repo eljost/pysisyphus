@@ -34,7 +34,6 @@ from pysisyphus.intcoords.exceptions import (
     DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
-from pysisyphus.linalg import orthogonalize_against
 from pysisyphus.xyzloader import make_xyz_str
 
 
