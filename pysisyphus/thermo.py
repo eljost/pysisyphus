@@ -56,16 +56,17 @@ Total Mass        : {{ "%0.4f" % thermo.M }} amu
 ! If not given otherwise, c1 and σ = 1 are assumed.  !
 Point Group       : {{ thermo.point_group }}
 Symmetry Number σ : {{ thermo.sym_num }}  
+Linear            : {{ thermo.linear }}
 
 +
 | Normal Mode Frequencies
 {{ sep }}
-{% for nu in all_nus -%}
+{% for nu in used_nus -%}
  {{ "\t%04d" % loop.index }}: {{ nu }}
 {% endfor -%}
 {{ sep }}
 {% if is_ts %}This should be a TS.{% endif %}
-Expected {{ expected }} real normal modes, found {{ real_nus|length}}.
+Expected {{ expected }} normal modes, got {{ used_nus|length}}.
 
 +
 | Inner energy U = U_el + U_vib + U_rot + U_trans
@@ -135,14 +136,11 @@ def print_thermoanalysis(
     def fmt_nus(nus):
         return [f"{nu: >8.2f} cm⁻¹" + (", excluded" if nu < 0.0 else "") for nu in nus]
 
-    imag_nus = fmt_nus(thermo.imag_wavenumbers)
-    real_nus = fmt_nus(thermo.wavenumbers)
-    all_nus = imag_nus + real_nus
     rendered = THERMO_TPL.render(
         geom=geom,
         thermo=thermo,
-        all_nus=all_nus,
-        real_nus=real_nus,
+        org_nus=thermo.org_wavenumbers,
+        used_nus=fmt_nus(thermo.wavenumbers),
         expected=expected,
         is_ts=is_ts,
         sep=sep,

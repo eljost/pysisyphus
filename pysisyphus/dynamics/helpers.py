@@ -223,8 +223,8 @@ def get_mb_velocities(masses, cart_coords, T, remove_com_v=True, remove_rot_v=Tr
 
     if remove_rot_v:
         # Right now this also removes the translational components
-        P_ortho = get_trans_rot_projector(cart_coords, masses, orthogonal=True)
-        v = P_ortho.dot(v.flatten()).reshape(-1, 3)
+        P = get_trans_rot_projector(cart_coords, masses, full=True)
+        v = P.dot(v.flatten()).reshape(-1, 3)
         fixed_dof = 6
 
     # In Bohr/fs
