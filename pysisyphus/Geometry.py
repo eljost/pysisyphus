@@ -57,8 +57,8 @@ def inertia_tensor(coords3d, masses):
     return I
 
 
-def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-8):
-    """Orthonormal vectors describing translation and rotation.
+def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
+    """Vectors describing translation and rotation.
 
     These vectors are used for the Eckart projection by constructing
     a projector from them.
@@ -122,26 +122,16 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-8):
     # Drop vectors with vanishing norms
     rot_vecs = rot_vecs[np.linalg.norm(rot_vecs, axis=1) > rot_thresh]
     tr_vecs = np.concatenate((trans_vecs, rot_vecs), axis=0)
-    # Normalize & orthogonalize using QR-decomposition
-    tr_vecs = np.linalg.qr(tr_vecs.T)[0].T
-
     return tr_vecs
 
 
-def get_trans_rot_projector(cart_coords, masses, orthogonal=False):
+def get_trans_rot_projector(cart_coords, masses, full=False):
     tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
-    tr_num = tr_vecs.shape[0]
-
-    # Spanning the whole space
-    basis = np.identity(cart_coords.size)
-    # Project out translation & rotation vectors
-    basis = orthogonalize_against(basis, tr_vecs)
-    if orthogonal:
-        return basis
-
-    w, v = np.linalg.eigh(basis.dot(basis.T))
-    norm_vecs = v.T[tr_num:] / np.sqrt(w[tr_num:, None])
-    P = norm_vecs.dot(basis)
+    U, s, _ = np.linalg.svd(tr_vecs.T)
+    if full:
+        P = U.T
+    else:
+        P = U[:, s.size :].T
     return P
 
 
@@ -1026,14 +1016,14 @@ class Geometry:
         }
 
         qcd = QCData(thermo_dict, point_group=point_group)
-        thermo = thermochemistry(qcd, temperature=T, pressure=p)
+        thermo = thermochemistry(
+            qcd, temperature=T, pressure=p, invert_imags=-15.0, cutoff=25.0
+        )
 
         return thermo
 
     def get_trans_rot_projector(self, full=False):
-        return get_trans_rot_projector(
-            self.cart_coords, masses=self.masses, orthogonal=full
-        )
+        return get_trans_rot_projector(self.cart_coords, masses=self.masses, full=full)
 
     def eckart_projection(self, mw_hessian, return_P=False, full=False):
         P = self.get_trans_rot_projector(full=full)

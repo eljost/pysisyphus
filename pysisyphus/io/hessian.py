@@ -16,10 +16,10 @@ def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
         mult = geom.calculator.mult
 
     if len(geom.atoms) > 1:
-        hessian = geom.eckart_projection(geom.mass_weigh_hessian(cart_hessian))
+        proj_hessian = geom.eckart_projection(geom.mass_weigh_hessian(cart_hessian))
     else:
-        hessian = cart_hessian
-    eigvals, eigvecs = np.linalg.eigh(hessian)
+        proj_hessian = cart_hessian
+    eigvals, _ = np.linalg.eigh(proj_hessian)
     vibfreqs = eigval_to_wavenumber(eigvals)
 
     masses = geom.masses
