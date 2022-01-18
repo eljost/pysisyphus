@@ -20,6 +20,7 @@ import numpy as np
 import scipy as sp
 import yaml
 
+from pysisyphus import __version__ as version
 from pysisyphus.calculators import *
 from pysisyphus.config import OUT_DIR_DEFAULT, p_DEFAULT, T_DEFAULT
 from pysisyphus.cos import *
@@ -68,7 +69,6 @@ from pysisyphus.io import save_hessian
 from pysisyphus.stocastic import *
 from pysisyphus.thermo import can_thermoanalysis
 from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
-from pysisyphus._version import get_versions
 from pysisyphus.xyzloader import write_geoms_to_trj
 
 
@@ -1291,7 +1291,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
     # Dump run_dict
     run_dict_copy = run_dict.copy()
-    run_dict_copy["version"] = get_versions()["version"]
+    run_dict_copy["version"] = version
     with open("RUN.yaml", "w") as handle:
         yaml.dump(run_dict_copy, handle)
 
@@ -1870,14 +1870,13 @@ def print_header():
     today = now.date()
     xmas = (today.month == 12) and (today.day <= 24)
     logo = xmas_logo if xmas else normal_logo
-    version = f"Version {get_versions()['version']}"
+    version_str = f"Version {version}"
     vi = sys.version_info
     sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
     npv = np.__version__  # Numpy
     spv = sp.__version__  # SciPy
     print(
-        f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
-        f"Git commit {get_versions()['full-revisionid']}\n"
+        f"{logo}\n\n{version_str} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
         f"Executed at {now.strftime('%c')} on '{platform.node()}'\n"
         f"Platform: {platform.platform()}\n"
         f"Interpreter: {sys.executable}\n"

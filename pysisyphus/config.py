@@ -3,8 +3,6 @@ import os
 from pathlib import Path
 import sys
 
-
-
 CONFIG_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 LIB_DIR = CONFIG_DIR / "geom_library"
 T_DEFAULT = 298.15  # Kelvin
