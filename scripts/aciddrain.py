@@ -403,7 +403,7 @@ def run_lfer(yaml_inp):
     max_ = max(max(exps), max(calcs)) + 1
     lims = (min_, max_)
 
-    fig, (ax0, ax1) = plt.subplots(ncols=2)
+    _, (ax0, ax1) = plt.subplots(ncols=2)
     ax0.scatter(exps, calcs, s=30)
     ax0.plot(lims, lims, c="k", ls="--")
     ax0.set_xlabel("pKa experimental")
