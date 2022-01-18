@@ -122,10 +122,8 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-8):
     # Drop vectors with vanishing norms
     rot_vecs = rot_vecs[np.linalg.norm(rot_vecs, axis=1) > rot_thresh]
     tr_vecs = np.concatenate((trans_vecs, rot_vecs), axis=0)
-
-    # Normalize & orthogonalize
-    tr_vecs /= np.linalg.norm(tr_vecs, axis=1)[:, None]
-    tr_vecs = gram_schmidt(tr_vecs)
+    # Normalize & orthogonalize using QR-decomposition
+    tr_vecs = np.linalg.qr(tr_vecs.T)[0].T
 
     return tr_vecs
 
@@ -991,7 +989,8 @@ class Geometry:
         mw_cart_displs = P.T.dot(eigvecs)
         cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
         cart_displs /= np.linalg.norm(cart_displs, axis=0)
-        return eigval_to_wavenumber(eigvals), eigvals, mw_cart_displs, cart_displs
+        nus = eigval_to_wavenumber(eigvals)
+        return nus, eigvals, mw_cart_displs, cart_displs
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
         vibfreqs, eigvals, *_ = self.get_normal_modes(hessian)
