@@ -34,7 +34,7 @@ from pysisyphus.intcoords.exceptions import (
     DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
-from pysisyphus.linalg import gram_schmidt, orthogonalize_against
+from pysisyphus.linalg import orthogonalize_against
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -978,13 +978,13 @@ class Geometry:
         if valid:
             self.cart_hessian = hessian
 
-    def get_normal_modes(self, cart_hessian=None):
+    def get_normal_modes(self, cart_hessian=None, full=False):
         """Normal mode wavenumbers, eigenvalues and Cartesian displacements Hessian."""
         if cart_hessian is None:
             cart_hessian = self.cart_hessian
 
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
-        proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True)
+        proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True, full=full)
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
         mw_cart_displs = P.T.dot(eigvecs)
         cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
@@ -1030,11 +1030,13 @@ class Geometry:
 
         return thermo
 
-    def get_trans_rot_projector(self):
-        return get_trans_rot_projector(self.cart_coords, masses=self.masses)
+    def get_trans_rot_projector(self, full=False):
+        return get_trans_rot_projector(
+            self.cart_coords, masses=self.masses, orthogonal=full
+        )
 
-    def eckart_projection(self, mw_hessian, return_P=False):
-        P = self.get_trans_rot_projector()
+    def eckart_projection(self, mw_hessian, return_P=False, full=False):
+        P = self.get_trans_rot_projector(full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
         if return_P:
             return proj_hessian, P
