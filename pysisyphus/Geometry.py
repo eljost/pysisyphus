@@ -121,6 +121,7 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
     # Drop vectors with vanishing norms
     rot_vecs = rot_vecs[np.linalg.norm(rot_vecs, axis=1) > rot_thresh]
     tr_vecs = np.concatenate((trans_vecs, rot_vecs), axis=0)
+    tr_vecs = np.linalg.qr(tr_vecs.T)[0].T
     return tr_vecs
 
 
@@ -128,7 +129,9 @@ def get_trans_rot_projector(cart_coords, masses, full=False):
     tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
     U, s, _ = np.linalg.svd(tr_vecs.T)
     if full:
-        P = U.T
+        P = np.eye(cart_coords.size)
+        for tr_vec in tr_vecs:
+            P -= np.outer(tr_vec, tr_vec)
     else:
         P = U[:, s.size :].T
     return P

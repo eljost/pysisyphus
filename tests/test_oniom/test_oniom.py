@@ -385,8 +385,7 @@ def test_oniom3():
     geom = res.opt_geom
     res = do_final_hessian(geom, save_hessian=False)
     nus = res.nus
-    assert nus[-1] == pytest.approx(3747.5594141, abs=1e-2)
-    assert nus[-5] == pytest.approx(3563.8997581, abs=1e-2)
+    np.testing.assert_allclose(nus[[-1, -5]], (3750.1537948, 3566.366994), atol=1e-2)
 
 
 @pytest.mark.skip
