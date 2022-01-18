@@ -11,7 +11,7 @@ import numpy as np
 import psutil
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
-from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG, R, AU2KJPERMOL
+from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG, C, R, AU2KJPERMOL, NA
 
 
 """Functions defined here don't import anything from pysisyphus, besides
@@ -22,9 +22,14 @@ HASH_PREC = 4
 
 
 def eigval_to_wavenumber(ev):
-    conv = AU2J / (AMU2KG * BOHR2M ** 2)
-
-    return np.sign(ev) * np.sqrt(np.abs(ev) * conv) / (2 * np.pi * 3e10)
+    # This approach seems numerically more unstable
+    # conv = AU2J / (AMU2KG * BOHR2M ** 2) / (2 * np.pi * 3e10)**2
+    # w2nu = np.sign(ev) * np.sqrt(np.abs(ev) * conv)
+    # The two lines below are adopted from Psi4 and seem more stable,
+    # compared to the approach above.
+    conv = np.sqrt(NA * AU2J * 1.0e19) / (2 * np.pi * C * BOHR2ANG)
+    w2nu = np.sign(ev) * np.sqrt(np.abs(ev)) * conv
+    return w2nu
 
 
 def hash_arr(arr, precision=HASH_PREC):
