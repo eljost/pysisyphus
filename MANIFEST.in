@@ -1,5 +1,0 @@
-include pysisyphus/_version.py
-include pysisyphus/tests/h2o_input.RasOrb
-recursive-include pysisyphus/db/guess *.xyz
-recursive-include pysisyphus/db/levels/*/ *.xyz
-recursive-include pysisyphus/geom_library *.xyz *.trj *.pdb
