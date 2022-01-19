@@ -128,9 +128,6 @@ def connect_fragments(
 
 def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
     tmp_sets = [frozenset(bi) for bi in bond_inds]
-    # Check for hydrogen bonds as described in [1] A.1 .
-    # Find hydrogens bonded to small electronegative atoms X = (N, O
-    # F, P, S, Cl).
     hydrogen_inds = [i for i, a in enumerate(atoms) if a.lower() == "h"]
     x_inds = [i for i, a in enumerate(atoms) if a.lower() in "n o f p s cl".split()]
     hydrogen_bond_inds = list()
@@ -139,17 +136,20 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
         if as_set not in tmp_sets:
             continue
         # Check if distance of H to another electronegative atom Y is
-        # greater than the sum of their covalent radii but smaller than
-        # the 0.9 times the sum of their van der Waals radii. If the
+        # greater than (1.1 * sum of their covalent radii) but smaller than
+        # (0.9 * sum of their van der Waals radii). If the
         # angle X-H-Y is greater than 90° a hydrogen bond is asigned.
         y_inds = set(x_inds) - set((x_ind,))
         for y_ind in y_inds:
             y_atom = atoms[y_ind].lower()
             cov_rad_sum = CR["h"] + CR[y_atom]
             distance = Stretch._calculate(coords3d, (h_ind, y_ind))
-            vdw = 0.9 * (VDW_RADII["h"] + VDW_RADII[y_atom])
+            vdw_rad_sum = VDW_RADII["h"] + VDW_RADII[y_atom]
             angle = Bend._calculate(coords3d, (x_ind, h_ind, y_ind))
-            if (cov_rad_sum < distance < vdw) and (angle > np.pi / 2):
+            if (
+                (1.1*cov_rad_sum < distance < 0.9*vdw_rad_sum)
+                and (angle > np.pi / 2)
+            ):
                 hydrogen_bond_inds.append((h_ind, y_ind))
                 log(
                     logger,
@@ -359,6 +359,7 @@ def setup_redundant(
     min_weight=None,
     tric=False,
     interfrag_hbonds=True,
+    hbond_angles=False,
     freeze_atoms=None,
     logger=None,
 ):
@@ -444,7 +445,9 @@ def setup_redundant(
     # If we use regular redundant internals (not TRIC) we define interfragment
     # bends.
     if not tric:
-        bonds_for_bends += [hydrogen_bonds, interfrag_bonds]
+        bonds_for_bends += [interfrag_bonds]
+        if hbond_angles:
+            bonds_for_bends += [hydrogen_bonds]
     bonds_for_bends = set([frozenset(bond) for bond in it.chain(*bonds_for_bends)])
 
     # Bends

@@ -527,6 +527,13 @@ class Geometry:
                 coords3d = exception.coords3d.copy()
                 coord_class = self.coord_types[self.coord_type]
                 self.internal = coord_class(
+                    # Instead of using only the remaining, valid typed_prims
+                    # we could look for an entirely new set of typed_prims.
+                    # 
+                    # But when we do this and we end up with more coordinates
+                    # than before, this will lead to problems with the HDF5 dump.
+                    # No problems arise when fewer coordinates are used
+                    # (valid_typed_prims <= self.internal.typed_prims).
                     self.atoms, coords3d, typed_prims=valid_typed_prims
                 )
                 self._coords = coords3d.flatten()

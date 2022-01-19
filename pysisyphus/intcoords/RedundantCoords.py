@@ -66,6 +66,7 @@ class RedundantCoords:
         svd_inv_thresh=3.16e-4,
         recalc_B=False,
         tric=False,
+        hbond_angles=False,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -96,6 +97,7 @@ class RedundantCoords:
         self.svd_inv_thresh = svd_inv_thresh
         self.recalc_B = recalc_B
         self.tric = tric
+        self.hbond_angles = hbond_angles
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -519,6 +521,7 @@ class RedundantCoords:
             lb_min_deg=self.lb_min_deg,
             min_weight=self.min_weight if self.weighted else None,
             tric=self.tric,
+            hbond_angles=self.hbond_angles,
             freeze_atoms=self.freeze_atoms if self.freeze_atoms_exclude else None,
             logger=self.logger,
         )
