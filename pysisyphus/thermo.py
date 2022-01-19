@@ -130,7 +130,7 @@ def print_thermoanalysis(
 
     sub_modes = 5 if thermo.linear else 6
     # Expect one real mode less if it is a TS
-    sub_modes += -1 if is_ts else 0
+    sub_modes += 1 if is_ts else 0
     expected = 3 * thermo.atom_num - sub_modes
 
     def fmt_nus(nus):

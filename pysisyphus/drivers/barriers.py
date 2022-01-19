@@ -18,6 +18,7 @@ def do_endopt_ts_barriers(
     do_thermo=False,
     T=T_DEFAULT,
     p=p_DEFAULT,
+    calc_getter=None,
     solv_calc_getter=None,
     do_standard_state_corr=False,
 ):
@@ -59,11 +60,30 @@ def do_endopt_ts_barriers(
     right_tot_atom_num = tot_atom_num(right_geoms)
     assert (right_tot_atom_num == ts_atom_num) or (right_tot_atom_num == 0)
 
-    # Electronic energies are always present
+    def get_energy(geom, base_name):
+        try:
+            energy = geom.energy
+        except AttributeError:
+            try:
+                geom.set_calculator(calc_getter(base_name=base_name))
+            except TypeError:
+                raise Exception(
+                    f"Energy isn't set at '{base_name}' geometry "
+                    "and no 'calc_getter' was supplied!\nPlease either set "
+                    "the desired quantities (energy/(Hessian)) or supply "
+                    "a 'calc_getter' to calculate them."
+                )
+        return geom.energy
+
+    def get_energies(geoms, base_name):
+        return [
+            get_energy(geom, f"{base_name}_{i:02d}") for i, geom in enumerate(geoms)
+        ]
+
     en_key = "energy"
-    ts_energy = ts_geom.energy
-    left_energies = [geom.energy for geom in left_geoms]
-    right_energies = [geom.energy for geom in right_geoms]
+    ts_energy = get_energy(ts_geom, "ts")
+    left_energies = get_energies(left_geoms, "left")
+    right_energies = get_energies(right_geoms, "right")
 
     def zeros(geoms):
         return np.zeros(len(geoms))
@@ -74,7 +94,7 @@ def do_endopt_ts_barriers(
 
         def get_thermo(geom, title, is_ts=False):
             thermo = geom.get_thermoanalysis(geom, T=T, p=p)
-            print_thermoanalysis(thermo, geom=geom, level=1, title=title)
+            print_thermoanalysis(thermo, geom=geom, is_ts=is_ts, level=1, title=title)
             print()
             return thermo
 

@@ -848,8 +848,8 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
     print()
 
 
-def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
-    print(highlight_text(f"Optimizing IRC ends"))
+def run_endopt(irc, endopt_key, endopt_kwargs, calc_getter):
+    print(highlight_text(f"Optimizing reaction path ends"))
 
     # Gather geometries that shall be optimized and appropriate keys.
     to_opt = list()
@@ -870,7 +870,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     total = separate_fragments in ("total", False)
 
     # Convert to array for easy indexing with the fragment lists
-    atoms = np.array(geom.atoms)
+    atoms = np.array(irc.atoms)
     fragments_to_opt = list()
     # Expand endpoints into fragments if requested
     for coords, key in to_opt:
@@ -961,6 +961,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
                 endopt_key,
                 opt_kwargs,
                 title=f"{name} Optimization",
+                level=1,
             )
         except Exception:
             print("Optimization crashed!")
@@ -1554,15 +1555,32 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         # ENDOPT #
         ##########
 
-        # Only run 'endopt' when a previous IRC calculation was done
-        if ran_irc and run_dict["endopt"]:
+        # Run 'endopt' when a previous IRC calculation was done
+        # if ran_irc and run_dict["endopt"]:
+        if run_dict["endopt"]:
+            if not ran_irc:
+
+                _, irc_geom, _ = geoms  # IRC geom should correspond to the TS
+
+                class DummyIRC:
+                    def __init__(self, geoms):
+                        first, _, last = geoms
+                        self.atoms = copy.copy(first.atoms)
+                        self.forward = True
+                        self.backward = True
+                        self.downhill = False
+                        self.all_coords = [
+                            geom.cart_coords.copy() for geom in (first, last)
+                        ]
+                        self.hessian_init = "dummy"
+
+                irc = DummyIRC(geoms)
+
             do_thermo = run_dict["endopt"].get("do_hess", False) and can_thermoanalysis
             T = run_dict["endopt"]["T"]
             p = run_dict["endopt"]["p"]
             # Order is forward, backward, downhill
-            endopt_results = run_endopt(
-                geom, irc, endopt_key, endopt_kwargs, calc_getter
-            )
+            endopt_results = run_endopt(irc, endopt_key, endopt_kwargs, calc_getter)
 
             # Determine "left" and "right" geoms
             # Only downhill
@@ -1586,33 +1604,24 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
                 end_fns = left_fns + right_fns
                 do_rmsds(xyz, geoms, end_fns, end_geoms)
 
-            # Try to compute barriers. Skip barriers if thermochemistry is requsted,
-            # but no analytical Hessian is avaialble for irc_geom, because there may
-            # be cases when irc_geom does not have a calculator. If it can be ensured
-            # that irc_geoms always has a calculator, then this restriction could be
-            # lifted.
-            analytical_irc_hessian = (
-                irc.hessian_init == "calc" or irc.hessian_init.endswith(".h5")
+            # Try to compute barriers.
+            barrier_kwargs = {
+                "do_thermo": do_thermo,
+                "T": T,
+                "p": p,
+                "calc_getter": calc_getter,
+                "solv_calc_getter": solv_calc_getter,
+            }
+            barrier_kwargs_ = run_dict.get("barriers", {})
+            barrier_kwargs.update(barrier_kwargs_)
+            do_endopt_ts_barriers(
+                irc_geom,
+                left_geoms,
+                right_geoms,
+                left_fns=left_fns,
+                right_fns=right_fns,
+                **barrier_kwargs,
             )
-            if (not do_thermo) or (do_thermo and analytical_irc_hessian):
-                barrier_kwargs = {
-                    "do_thermo": do_thermo,
-                    "T": T,
-                    "p": p,
-                    "solv_calc_getter": solv_calc_getter,
-                }
-                barrier_kwargs_ = run_dict.get("barriers", {})
-                barrier_kwargs.update(barrier_kwargs_)
-                do_endopt_ts_barriers(
-                    irc_geom,
-                    left_geoms,
-                    right_geoms,
-                    left_fns=left_fns,
-                    right_fns=right_fns,
-                    **barrier_kwargs,
-                )
-            else:
-                print("Barriers with IRC hessian_init != 'calc' not yet implemented!")
 
             # Dump TS and endopt geoms to .trj. But only when we did not optimize
             # separate fragments.
