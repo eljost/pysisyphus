@@ -5,7 +5,13 @@ from pysisyphus.testing import using
 
 
 @using("pyscf")
-def test_run_geom_section_union():
+@pytest.mark.parametrize(
+    "hbond_angles, prim_len_ref", (
+        (True, 56),
+        (False, 42),
+    )
+)
+def test_run_geom_section_union(hbond_angles, prim_len_ref):
     ref_energy = -160.7433945831947
 
     def run_assert(run_dict, prim_len):
@@ -20,6 +26,9 @@ def test_run_geom_section_union():
             "geom": {
                 "type": "redund",
                 "fn": "lib:test_union_ts_001.xyz",
+                "coord_kwargs": {
+                    "hbond_angles": hbond_angles,
+                }
             },
             "calc": {
                 "type": "pyscf",
@@ -27,7 +36,7 @@ def test_run_geom_section_union():
             },
         }
 
-    run_assert(get_run_dict(), prim_len=56)
+    run_assert(get_run_dict(), prim_len=prim_len_ref)
 
     # Use union of internal coordinates from the two geometries
     # in the .trj file.
