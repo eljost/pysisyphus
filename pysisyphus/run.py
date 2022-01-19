@@ -21,6 +21,7 @@ import scipy as sp
 import yaml
 
 from pysisyphus import __version__
+from pysisyphus.version import version_tuple
 from pysisyphus.calculators import *
 from pysisyphus.config import OUT_DIR_DEFAULT, p_DEFAULT, T_DEFAULT
 from pysisyphus.cos import *
@@ -1871,12 +1872,19 @@ def print_header():
     xmas = (today.month == 12) and (today.day <= 24)
     logo = xmas_logo if xmas else normal_logo
     version = f"Version {__version__}"
+    try:
+        commit = re.compile(r"g(\w+)\.").search(version).group(1)
+        commit_line = f"Git commit {commit}\n"
+    # Raised when regex search failed
+    except AttributeError:
+        commit_line = ""
     vi = sys.version_info
     sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
     npv = np.__version__  # Numpy
     spv = sp.__version__  # SciPy
     print(
         f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
+        f"{commit_line}"
         f"Executed at {now.strftime('%c')} on '{platform.node()}'\n"
         f"Platform: {platform.platform()}\n"
         f"Interpreter: {sys.executable}\n"
