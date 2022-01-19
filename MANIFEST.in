@@ -1,4 +1,3 @@
-include versioneer.py
 include pysisyphus/_version.py
 include pysisyphus/tests/h2o_input.RasOrb
 recursive-include pysisyphus/db/guess *.xyz

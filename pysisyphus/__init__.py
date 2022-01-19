@@ -1,12 +1,7 @@
-from importlib.metadata import version, PackageNotFoundError
 import logging
 import sys
 
-try:
-    __version__ = version("pysisyphus")
-except PackageNotFoundError:
-    # package is not installed
-    pass
+from .version import version as __version__
 
 logger = logging.getLogger("pysisyphus")
 logger.setLevel(logging.DEBUG)
