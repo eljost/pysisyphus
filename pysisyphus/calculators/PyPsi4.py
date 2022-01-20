@@ -19,7 +19,7 @@ class PyPsi4(Calculator):
         self.meth_bas = f"{self.method}/{self.basis}"
 
         psi4.core.be_quiet()
-        psi4.set_memory(f"{mem} MB")
+        psi4.set_memory(f"{self.pal*self.mem} MB")
 
     def get_forces(self, atoms, coords):
         xyz = make_xyz_str(atoms, coords.reshape(-1, 3) * BOHR2ANG)
