@@ -111,7 +111,7 @@ def do_endopt_ts_barriers(
         left_dGs = zeros(left_geoms)
         right_dGs = zeros(right_geoms)
 
-    def get_solv_correction(geom, fn=None):
+    def get_solv_correction(geom, fn=None, name=None):
         fn = str(fn)
         if fn is not None:
             infix = f"'{fn: >20s}'"
@@ -121,22 +121,30 @@ def do_endopt_ts_barriers(
 
         print(f"Solvated calculation for {infix} ...", end="")
         start = time()
-        solv_energy = solv_calc_getter().get_energy(geom.atoms, geom.cart_coords)[
-            "energy"
-        ]
+        solv_calc_kwargs = {}
+        if name is not None:
+            solv_calc_kwargs["base_name"] = f"solv_{name}"
+        solv_energy = solv_calc_getter(**solv_calc_kwargs).get_energy(
+            geom.atoms, geom.cart_coords
+        )["energy"]
         dur = time() - start
         print(f" finished in {dur:.1f} s.")
         # Add standard state correction. ssc will be 0.0 if, disabled.
         return solv_energy, (solv_energy - geom.energy) + ssc
 
+    def get_solv_corrections(geoms, fns, name):
+        return zip(
+            *[get_solv_correction(geom, fn, name) for geom, fn in zip(geoms, fns)]
+        )
+
     if solv_calc_getter is not None:
         print(highlight_text("Calculations with solvent model", level=1) + "\n")
-        ts_solv_energy, ts_solv_corr = get_solv_correction(ts_geom, ts_fn)
-        left_solv_energies, left_solv_corrs = zip(
-            *[get_solv_correction(geom, fn) for geom, fn in zip(left_geoms, left_fns)]
+        ts_solv_energy, ts_solv_corr = get_solv_correction(ts_geom, ts_fn, "ts")
+        left_solv_energies, left_solv_corrs = get_solv_corrections(
+            left_geoms, left_fns, "left"
         )
-        right_solv_energies, right_solv_corrs = zip(
-            *[get_solv_correction(geom, fn) for geom, fn in zip(right_geoms, right_fns)]
+        right_solv_energies, right_solv_corrs = get_solv_corrections(
+            right_geoms, right_fns, "right"
         )
         print()
     # Use zeros, so we can add the term later.
