@@ -170,7 +170,9 @@ class MOPAC(Calculator):
     def parse_hessian_from_aux(text):
         # Parse employed masses, as the given hessian is mass-weighted
         # and we have to un-weigh it.
-        mass_re = re.compile(r"ISOTOPIC_MASSES\[(\d+)\]=\s*(.+?)ROTAT_CONSTS", re.DOTALL)
+        mass_re = re.compile(
+            r"ISOTOPIC_MASSES\[(\d+)\]=\s*(.+?)ROTAT_CONSTS", re.DOTALL
+        )
         # mobj = re.search(mass_re, text, re.MULTILINE)
         mass_mobj = mass_re.search(text)
         masses = np.array(mass_mobj[2].strip().split(), dtype=float)

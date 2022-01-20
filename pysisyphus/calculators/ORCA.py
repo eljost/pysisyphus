@@ -92,7 +92,6 @@ class ORCA(OverlapCalculator):
         self.keywords = keywords.lower()
         self.blocks = blocks.lower()
         self.gbw = gbw
-        self.mem = int(mem)
         self.do_stable = bool(do_stable)
         self.freq_keyword = "numfreq" if numfreq else "freq"
 
@@ -324,7 +323,9 @@ class ORCA(OverlapCalculator):
         scientific_block = table_header_line + pp.OneOrMore(scientific_line)
         float_line = pp.Suppress(integer) + float_
         comment_line = pp.Literal("#") + pp.restOfLine
-        mass_xyz_line = pp.Group(pp.Word(pp.alphas) + float_ + pp.Group(pp.OneOrMore(float_)))
+        mass_xyz_line = pp.Group(
+            pp.Word(pp.alphas) + float_ + pp.Group(pp.OneOrMore(float_))
+        )
 
         block_name = pp.Word(pp.alphas + "$_")
         block_length = integer
@@ -736,9 +737,9 @@ class ORCA(OverlapCalculator):
             os.remove(tmp)
             self.log(f"Removed '{tmp}'")
         # try:
-            # os.remove(path / "orca.gbw")
+        # os.remove(path / "orca.gbw")
         # except FileNotFoundError:
-            # pass
+        # pass
 
     def __str__(self):
         return f"ORCA({self.name})"

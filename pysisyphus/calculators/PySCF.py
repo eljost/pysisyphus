@@ -53,7 +53,6 @@ class PySCF(OverlapCalculator):
             self.multisteps[self.method] = ("scf", self.method)
         if self.xc and self.method != "tddft":
             self.method = "dft"
-        self.mem = mem
         self.root = root
         self.nstates = nstates
         if self.method == "tddft":
@@ -252,7 +251,7 @@ class PySCF(OverlapCalculator):
 
         first_Y = exc_mf.xy[0][1]
         # In TDA calculations Y is just the integer 0.
-        if isinstance(first_Y, int)  and (first_Y == 0):
+        if isinstance(first_Y, int) and (first_Y == 0):
             X = np.array([state[0] for state in exc_mf.xy])
             Y = np.zeros_like(X)
         # In TD-DFT calculations the Y vectors is also present

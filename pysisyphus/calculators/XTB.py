@@ -81,7 +81,6 @@ class XTB(Calculator):
             ), "Using 'etemp' and 'retry_etemp' simultaneously is not possible!"
         self.topo = topo
         self.topo_update = topo_update
-        self.mem = mem
         self.quiet = quiet
 
         self.topo_used = 0
