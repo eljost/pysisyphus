@@ -26,17 +26,23 @@ def get_bond_subgeom(geom, ind, invert=False):
     return geom.get_subgeom(conn_bond_ind), anchor_ind
 
 
-def run_opt(geom, freeze_inds, ff="uff", charge=0, mult=1):
-    try:
-        from openbabel import pybel
+def run_opt(geom, freeze_inds, ff="uff", use_xtb=False, charge=0, mult=1):
+    def get_xtb_calc():
+        return XTB(charge=charge, mult=mult, pal=2)
 
-        # Create pybel.Molecule/OBMol to set the missing bonds
-        mol = pybel.readstring("xyz", geom.as_xyz())
-        # Use modified pybel.Molecule
-        calc = OBabel(mol=mol, ff=ff)
-    except ImportError:
-        logger.warning("Could not import openbabel. Trying fallback to GFN2-xTB.")
-        calc = XTB(charge=charge, mult=mult, pal=2)
+    if not use_xtb:
+        try:
+            from openbabel import pybel
+
+            # Create pybel.Molecule/OBMol to set the missing bonds
+            mol = pybel.readstring("xyz", geom.as_xyz())
+            # Use modified pybel.Molecule
+            calc = OBabel(mol=mol, ff=ff)
+        except ImportError:
+            logger.warning("Could not import openbabel. Trying fallback to GFN2-xTB.")
+            calc = get_xtb_calc()
+    else:
+        calc = get_xtb_calc()
 
     frozen_geom = geom.copy()
     # Only some atoms
@@ -56,6 +62,7 @@ def replace_atom(
     repl_ind,
     return_full=True,
     opt=False,
+    use_xtb=False,
     charge=0,
     mult=1,
 ):
@@ -104,7 +111,7 @@ def replace_atom(
     union = geom_ + repl_geom_
     if opt:
         freeze_inds = [ind for ind, _ in enumerate(geom_.atoms)]
-        union = run_opt(union, freeze_inds, charge=charge, mult=mult)
+        union = run_opt(union, freeze_inds, use_xtb=use_xtb, charge=charge, mult=mult)
         # Update coords in 'repl_geom' with optimized coordinates
         repl_geom_.coords3d = union.coords3d[len(freeze_inds) :]
 
@@ -147,12 +154,12 @@ def normalize_replacements(replacements):
     return replacements
 
 
-def replace_atoms(geom, replacements, opt=False, charge=0, mult=1):
+def replace_atoms(geom, replacements, opt=False, use_xtb=False, charge=0, mult=1):
     replacements = normalize_replacements(replacements)
     repl_frags = list()
     del_inds = list()
     for ind, repl_ind, repl_geom in replacements:
-        repl_frag = replace_atom(geom, ind, repl_geom, repl_ind, False, opt=opt)
+        repl_frag = replace_atom(geom, ind, repl_geom, repl_ind, False, opt=opt, use_xtb=use_xtb)
         repl_frags.append(repl_frag)
         del_inds.append(ind)
     org_atom_num = len(geom.atoms)
@@ -162,7 +169,7 @@ def replace_atoms(geom, replacements, opt=False, charge=0, mult=1):
 
     if opt:
         freeze_inds = [ind for ind in range(org_atom_num - len(del_inds))]
-        union = run_opt(union, freeze_inds)
+        union = run_opt(union, freeze_inds, use_xtb=use_xtb)
 
     return union
 
@@ -177,6 +184,7 @@ def parse_args(args):
     parser.add_argument("--out_fn", type=str, default="union.xyz")
     parser.add_argument("--charge", type=int, default=0)
     parser.add_argument("--mult", type=int, default=1)
+    parser.add_argument("--xtb", action="store_true")
 
     return parser.parse_args(args)
 
@@ -190,12 +198,13 @@ def run():
     out_fn = args.out_fn
     charge = args.charge
     mult = args.mult
+    xtb = args.xtb
 
     assert len(replacements_) % 2 == 0
     replacements = [(int(ind), key) for ind, key in chunks(replacements_, 2)]
 
     geom = geom_loader(geom_fn)
-    union = replace_atoms(geom, replacements, opt=opt, charge=charge, mult=mult)
+    union = replace_atoms(geom, replacements, opt=opt, charge=charge, mult=mult, use_xtb=xtb)
     print(union.as_xyz())
 
     if union:
