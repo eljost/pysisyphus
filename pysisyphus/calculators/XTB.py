@@ -34,7 +34,6 @@ class XTB(Calculator):
         retry_etemp=None,
         topo=None,
         topo_update=None,
-        mem=1000,
         quiet=False,
         **kwargs,
     ):

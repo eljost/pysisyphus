@@ -10,7 +10,7 @@ from pysisyphus.xyzloader import make_xyz_str
 
 
 class PyPsi4(Calculator):
-    def __init__(self, method, basis, mem=2000, **kwargs):
+    def __init__(self, method, basis, **kwargs):
         super().__init__(**kwargs)
 
         self.method = method

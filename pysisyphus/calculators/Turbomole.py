@@ -21,9 +21,7 @@ class Turbomole(OverlapCalculator):
 
     conf_key = "turbomole"
 
-    def __init__(
-        self, control_path, root=None, double_mol_path=None, mem=1000, **kwargs
-    ):
+    def __init__(self, control_path, root=None, double_mol_path=None, **kwargs):
         super().__init__(**kwargs)
 
         self.control_path = Path(control_path)

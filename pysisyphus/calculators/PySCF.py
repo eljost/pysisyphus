@@ -36,7 +36,6 @@ class PySCF(OverlapCalculator):
         basis,
         xc=None,
         method="scf",
-        mem=2000,
         root=None,
         nstates=None,
         auxbasis=None,

@@ -17,7 +17,6 @@ class Psi4(Calculator):
         to_set=None,
         pcm="iefpcm",
         solvent=None,
-        mem=2000,
         write_fchk=False,
         **kwargs,
     ):

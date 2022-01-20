@@ -56,7 +56,6 @@ class ORCA(OverlapCalculator):
         gbw=None,
         do_stable=False,
         numfreq=False,
-        mem=2000,
         **kwargs,
     ):
         """ORCA calculator.

@@ -21,7 +21,6 @@ class Gaussian16(OverlapCalculator):
     def __init__(
         self,
         route,
-        mem=3500,
         gbs="",
         gen="",
         keep_chk=False,
