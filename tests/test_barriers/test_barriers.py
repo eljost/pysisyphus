@@ -27,7 +27,7 @@ def test_endopt_total(do_hess):
         },
         "irc": {
             "type": "eulerpc",
-            "hessian_init": "hess_init_irc.h5",
+            "hessian_init": "inp_hess_init_irc.h5",
         },
         "endopt": {
             "fragments": "total",
@@ -80,7 +80,7 @@ def right_geoms(this_dir):
     ]
 
 
-def solv_calc_getter(*args):
+def solv_calc_getter(*args, **kwargs):
     class DummyCalc:
         def get_energy(self, atoms, coords):
             return {"energy": 0.0}
