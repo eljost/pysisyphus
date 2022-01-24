@@ -10,7 +10,7 @@ from natsort import natsorted
 
 from pysisyphus.config import Config, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.helpers_pure import check_mem
+from pysisyphus import helpers_pure
 
 
 class Calculator:
@@ -25,6 +25,7 @@ class Calculator:
         base_name="calculator",
         pal=1,
         mem=1000,
+        check_mem=True,
         retry_calc=1,
         last_calc_cycle=None,
         clean_after=True,
@@ -52,6 +53,8 @@ class Calculator:
         mem : int, default=1000
             Mememory per core in MB. The total amount of memory is given as
             mem*pal.
+        check_mem : bool, default=True
+            Whether to adjust the requested memory if too much is requested.
         retry_calc : int, default=0
             Number of additional retries when calculation failed.
         last_calc_cycle : int
@@ -71,7 +74,9 @@ class Calculator:
         self.base_name = base_name
         self.pal = int(pal)
         assert self.pal > 0, "pal must be a non-negative integer!"
-        self.mem = check_mem(int(mem), pal, logger=self.logger)
+        if check_mem:
+            mem = helpers_pure.check_mem(int(mem), pal, logger=self.logger)
+        self.mem = mem
         # Disasble retries if check_termination method is not implemented
         self.retry_calc = int(retry_calc) if hasattr(self, "check_termination") else 0
         assert self.retry_calc >= 0

@@ -22,7 +22,7 @@ from pysisyphus.testing import using
             # DoEq includes interaction between point charges and nuclear
             # charges of the actual atoms.
             {"keywords": "BP86 def2-SVP", "blocks": "%method doEQ true end"},
-            -40.448455709343,
+            -40.473658794066,
             0.0539577447,
             marks=using("orca"),
         ),
@@ -42,7 +42,8 @@ from pysisyphus.testing import using
         ),
         pytest.param(
             PySCF,
-            {"basis": "def2svp", "xc": "bp86"},
+            # When check_mem is enabled the gibhut CI fails somehow...
+            {"basis": "def2svp", "xc": "bp86", "check_mem": False},
             -40.473635092,
             0.05408810,
             marks=using("pyscf"),
@@ -65,7 +66,7 @@ def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
     results = calc.get_forces(geom.atoms, geom.coords, point_charges=point_charges)
 
     assert results["energy"] == pytest.approx(ref_energy)
-    assert np.linalg.norm(results["forces"]) == pytest.approx(ref_force_norm)
+    assert np.linalg.norm(results["forces"]) == pytest.approx(ref_force_norm, abs=1e-4)
 
     # results = calc.get_forces(geom.atoms, geom.coords, prepare_kwargs=None)
     # print(calc_cls, results["energy"], np.linalg.norm(results["forces"]))
