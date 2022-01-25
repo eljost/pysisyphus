@@ -4,7 +4,7 @@
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.constants import AU2KCALPERMOL
+from pysisyphus.constants import AU2KCALPERMOL, AU2KJPERMOL
 
 
 class EnergyMin(Calculator):
@@ -32,8 +32,9 @@ class EnergyMin(Calculator):
             )
             energy_diff = en_i - en_j
             assert energy_diff > 0.0
-            self.log(f"Mix mode, ΔE={energy_diff:.6f} au")
-            print(f"energy diff={energy_diff*2625.499:.2f} kJ mol⁻¹")
+            self.log(
+                f"Mix mode, ΔE={energy_diff:.6f} au ({energy_diff*AU2KJPERMOL:.2f} kJ mol⁻¹)"
+            )
             energy_diff_sq = energy_diff ** 2
             denom = energy_diff + alpha
             energy = (en_i + en_j) / 2 + sigma * energy_diff_sq / denom
@@ -59,10 +60,11 @@ class EnergyMin(Calculator):
         en1_or_en2 = ("calc1", "calc2")[min_ind]
         results = (results1, results2)[min_ind]
         results["all_energies"] = all_energies
+        en_diff_kJ = abs(energy1 - energy2) * AU2KJPERMOL
 
         self.log(
             f"energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, returning "
-            f"results for {en1_or_en2}."
+            f"results for {en1_or_en2}, {en_diff_kJ:.2f} kJ mol⁻¹ lower."
         )
         return results
 

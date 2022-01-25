@@ -79,6 +79,7 @@ CALC_DICT = {
     "conical": ConicalIntersection,
     "dftb+": DFTBp,
     "dimer": Dimer,
+    "energymin": EnergyMin,
     "ext": ExternalPotential,
     "g09": Gaussian09,
     "g16": Gaussian16,
