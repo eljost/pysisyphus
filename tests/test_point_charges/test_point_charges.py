@@ -46,7 +46,7 @@ from pysisyphus.testing import using
             {"basis": "def2svp", "xc": "bp86", "check_mem": False},
             -40.473635092,
             0.05408810,
-            marks=using("pyscf"),
+            marks=(using("pyscf"), pytest.mark.skip),
         ),
     ],
 )
