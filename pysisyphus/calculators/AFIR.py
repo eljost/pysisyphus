@@ -97,18 +97,9 @@ class AFIR(Calculator):
         self.calculator = calculator
         self.fragment_indices = fragment_indices
         assert len(self.fragment_indices) > 0
-        # gamma is expected to be given in kJ/mol. convert it to au.
-        try:
-            self.gamma = gamma / AU2KJPERMOL
-        except TypeError:
-            self.gamma = np.array(gamma) / AU2KJPERMOL
-        # assert self.gamma > 0  # TODO: reactivate this
-
-        try:
-            self.rho = int(rho)
-        except TypeError:
-            self.rho = np.array(rho)
-        # assert self.rho in (-1, 1)  # TODO: reactivate this
+        self.gamma = np.atleast_1d(gamma).astype(float)
+        self.rho = np.atleast_1d(rho).astype(int)
+        np.testing.assert_allclose(np.abs(self.rho), np.ones_like(self.rho))
         self.p = p
         self.ignore_hydrogen = ignore_hydrogen
         self.dump = dump
