@@ -71,6 +71,7 @@ from pysisyphus.stocastic import *
 from pysisyphus.thermo import can_thermoanalysis
 from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
 from pysisyphus.xyzloader import write_geoms_to_trj
+from pysisyphus.yaml_mods import get_loader
 
 
 CALC_DICT = {
@@ -1987,7 +1988,7 @@ def run():
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         try:
-            run_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
+            run_dict = yaml.load(yaml_str, Loader=get_loader())
             assert type(run_dict) == type(dict())
         except (AssertionError, yaml.parser.ParserError) as err:
             print(err)
