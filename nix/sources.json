@@ -5,10 +5,10 @@
         "homepage": null,
         "owner": "markuskowa",
         "repo": "NixOS-QChem",
-        "rev": "3abdd090e6c652496ea415a9b599ed083e1c773c",
-        "sha256": "0w2n90cwjzbz2qnwh2wg8h02nsykcv21cl5spajyii69qhhv2zk7",
+        "rev": "9650ce599d05da30ba1c16077d9cfc28594b71ff",
+        "sha256": "0g4vxr23kmy7lilwwivaxvadapdxmrd2xdfn24qbh467is4pg824",
         "type": "tarball",
-        "url": "https://github.com/markuskowa/NixOS-QChem/archive/3abdd090e6c652496ea415a9b599ed083e1c773c.tar.gz",
+        "url": "https://github.com/markuskowa/NixOS-QChem/archive/9650ce599d05da30ba1c16077d9cfc28594b71ff.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -17,10 +17,10 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f096b7122ab08e93c8b052c92461ca71b80c0cc8",
-        "sha256": "00k0072wi46afspy3d2xfh12x1z68jbxay4s5x6cp03b5r4rdp6j",
+        "rev": "b05d2077ebe219f6a47825767f8bab5c6211d200",
+        "sha256": "02jvk5rh05qbsgf2qffd6vw9w0z9n3kablgi1ff2a794s9rc8q4s",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/f096b7122ab08e93c8b052c92461ca71b80c0cc8.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/b05d2077ebe219f6a47825767f8bab5c6211d200.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
