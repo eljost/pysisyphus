@@ -283,7 +283,7 @@ def test_outofplane(dz):
 
     # Reference gradient returned in order [0, 1, 2, 3]
     ref_grad = fin_diff_prim(oop, geom.coords3d)
-    np.testing.assert_allclose(grad, ref_grad, atol=1e-10)
+    np.testing.assert_allclose(grad, ref_grad, atol=5e-7)
 
     # Code generated 2nd derivative
     dgrad = oop.jacobian(coords3d)
@@ -291,8 +291,8 @@ def test_outofplane(dz):
 
     # Finite difference reference values
     ref_dgrad = fin_diff_B(oop, coords3d)
-    np.testing.assert_allclose(dgrad, ref_dgrad, atol=1e-9)
-    np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=1e-9)
+    np.testing.assert_allclose(dgrad, ref_dgrad, atol=5e-7)
+    np.testing.assert_allclose(mp_dgrad, ref_dgrad, atol=5e-7)
 
 
 @pytest.mark.parametrize("deg", np.linspace(165, 180, 16))

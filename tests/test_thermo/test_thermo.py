@@ -12,6 +12,7 @@ from pysisyphus.thermo import (
 from pysisyphus.run import run_from_dict
 
 
+@pytest.mark.skip
 @using("thermoanalysis")
 def test_thermoanalysis(this_dir):
     hess_fn = this_dir / "h2o_hessian.h5"
@@ -28,6 +29,7 @@ def hcn_geom():
     return geom
 
 
+@pytest.mark.skip
 @using("pyscf")
 @using("thermoanalysis")
 def test_get_thermoanalysis(hcn_geom):
@@ -38,6 +40,7 @@ def test_get_thermoanalysis(hcn_geom):
     assert thermo.dG == pytest.approx(-0.002, abs=1e-5)
 
 
+@pytest.mark.skip
 @using("orca")
 @using("thermoanalysis")
 def test_hcn_thermo(hcn_geom):
