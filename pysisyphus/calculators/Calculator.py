@@ -80,9 +80,11 @@ class Calculator:
         # Disasble retries if check_termination method is not implemented
         self.retry_calc = int(retry_calc) if hasattr(self, "check_termination") else 0
         assert self.retry_calc >= 0
-        self.out_dir = Path(out_dir).resolve()
-        if not self.out_dir.exists():
-            os.mkdir(self.out_dir)
+        try:
+            self.out_dir = Path(out_dir).resolve()
+        except TypeError:
+            self.out_dir = Path(OUT_DIR_DEFAULT).resolve()
+        self.out_dir.mkdir(parents=True, exist_ok=True)
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.

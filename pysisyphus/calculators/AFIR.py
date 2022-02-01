@@ -2,6 +2,7 @@
 # [2] https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.23481
 # [3] https://onlinelibrary.wiley.com/doi/epdf/10.1002/tcr.201600043
 
+from dataclasses import dataclass
 import itertools as it
 
 import autograd
@@ -15,6 +16,15 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import complete_fragments
 from pysisyphus.helpers_pure import log
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
+
+
+@dataclass
+class AFIRPath:
+    atoms: tuple
+    cart_coords: np.ndarray
+    energies: np.ndarray
+    forces: np.ndarray
+    opt_is_converged: bool
 
 
 def get_data_model(atoms, max_cycles):
@@ -87,6 +97,7 @@ class AFIR(Calculator):
         rho=1,
         p=6,
         ignore_hydrogen=True,
+        complete_fragments=True,
         dump=True,
         h5_fn="afir.h5",
         h5_group_name="afir",
@@ -102,8 +113,9 @@ class AFIR(Calculator):
         np.testing.assert_allclose(np.abs(self.rho), np.ones_like(self.rho))
         self.p = p
         self.ignore_hydrogen = ignore_hydrogen
+        self.complete_fragments = complete_fragments
         self.dump = dump
-        self.h5_fn = h5_fn
+        self.h5_fn = self.out_dir / h5_fn
         self.h5_group_name = h5_group_name
         # We can't initialize the HDF5 group as we don't know the shape of
         # atoms/coords yet. So we wait until after the first calculation.
@@ -152,7 +164,7 @@ class AFIR(Calculator):
         geom = Geometry(atoms, coords)
         for i, frag in enumerate(self.fragment_indices):
             frag_geom = geom.get_subgeom(frag)
-            fn = f"frag_geom_{i:02d}.xyz"
+            fn = self.make_fn(f"frag_geom_{i:02d}.xyz")
             with open(fn, "w") as handle:
                 handle.write(frag_geom.as_xyz())
             self.log(f"Wrote geometry of fragment {i:02d} to {fn}.")
@@ -177,7 +189,8 @@ class AFIR(Calculator):
 
         self.log("Setting atoms on AFIR calculator")
         self.atoms = atoms
-        self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
+        if self.complete_fragments:
+            self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
         self.log_fragments()
         self.write_fragment_geoms(atoms, coords)
 
@@ -230,7 +243,8 @@ class AFIR(Calculator):
         self.set_atoms_and_funcs(atoms, coords)
 
         true_energy = self.calculator.get_energy(atoms, coords)["energy"]
-        afir_energy = self.afir_func(coords.reshape(-1, 3))
+        coords3d = coords.reshape(-1, 3)
+        afir_energy = sum([afir_func(coords3d) for afir_func in self.afir_funcs])
         self.log()
 
         results = {
@@ -258,9 +272,13 @@ class AFIR(Calculator):
 
         true_norm = np.linalg.norm(true_forces)
         afir_norm = np.linalg.norm(afir_forces)
-        self.log(f"norm(true_forces)={true_norm:.6f} au/bohr")
-        self.log(f"norm(afir_forces)={afir_norm:.6f} au/bohr")
-        self.log()
+        self.log(
+            f"\ntrue_energy={true_energy:.6f} au\n"
+            f"afir_energy={afir_energy:.6f} au\n"
+            f" sum_energy={true_energy+afir_energy:.6f} au\n"
+            f"norm(true_forces)={true_norm:.6f} au/bohr\n"
+            f"norm(afir_forces)={afir_norm:.6f} au/bohr\n"
+        )
 
         results = {
             "energy": true_energy + afir_energy,
