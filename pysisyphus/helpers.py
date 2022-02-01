@@ -294,7 +294,7 @@ def check_for_end_sign(check_user=True, cwd="."):
     signs = (
         "stop",
         "converged",
-        "exit"
+        "exit",
     )
     sign_found = False
     cur_user = getpass.getuser()
@@ -305,7 +305,6 @@ def check_for_end_sign(check_user=True, cwd="."):
             return True
         else:
             return path.owner() == cur_user
-
 
     for sign in signs:
         sign_path = cwd / sign
@@ -393,7 +392,7 @@ def pick_image_inds(cart_coords, images: int):
             image_inds.append(i)
             target_cd = next(target_cds)
 
-    image_inds.append(len(cart_coords)-1)
+    image_inds.append(len(cart_coords) - 1)
     return image_inds
 
 
@@ -492,7 +491,9 @@ def do_final_hessian(
             imag_fns.append(trj_fn)
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
-            print(f"Wrote imaginary mode with ṽ={imag_mode.nu: >10.2f} cm⁻¹ to '{trj_fn}'")
+            print(
+                f"Wrote imaginary mode with ṽ={imag_mode.nu: >10.2f} cm⁻¹ to '{trj_fn}'"
+            )
         print()
 
     thermo = None
