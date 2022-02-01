@@ -405,7 +405,6 @@ def run_lfer(yaml_inp):
 
     _, (ax0, ax1) = plt.subplots(ncols=2)
     ax0.scatter(exps, calcs, s=30)
-    ax0.plot(lims, lims, c="k", ls="--")
     ax0.set_xlabel("pKa experimental")
     ax0.set_ylabel("pKa calcualted")
     ax0.set_title("experimental vs. calculated")
@@ -420,19 +419,21 @@ def run_lfer(yaml_inp):
     def linfit(xs):
         return res.slope * xs + res.intercept
 
-    xs = np.linspace(min(calcs), max(calcs), num=100)
-    ys = linfit(xs)
+    fmt = " >6.2f"
+    for name, exp_, calc in zip(names, exps, calcs):
+        calc_corr = linfit(calc)
+        print(f"{name: >32s}: exp={exp_:{fmt}} calc={calc:{fmt}} corr={calc_corr:{fmt}}")
 
-    ax1.scatter(calcs, exps, s=30)
-    ax1.plot(xs, ys, c="k", ls="--", label="Fit")
-    ax1.set_xlabel("pKa calculated")
+    calc_corr = linfit(np.array(calcs))
+    ax1.scatter(exps, calc_corr, s=30)
+    ax1.set_xlabel("pKa calculated, LFER corrected")
     ax1.set_ylabel("pKa experimental")
     ax1.set_title("LFER")
 
     for ax in (ax0, ax1):
+        ax.plot(lims, lims, c="k", ls="--")
         ax.set_xlim(lims)
         ax.set_ylim(lims)
-    ax1.legend()
 
     plt.tight_layout()
     plt.show()
