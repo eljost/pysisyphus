@@ -289,18 +289,28 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
 
 
-def check_for_end_sign():
+def check_for_end_sign(check_user=True, cwd="."):
     signs = (
         "stop",
         "converged",
         "exit"
     )
     sign_found = False
+    cur_user = os.getlogin()
+    cwd = Path(cwd)
+
+    def sign_owner(path):
+        if not check_user:
+            return True
+        else:
+            return path.owner() == cur_user
+
 
     for sign in signs:
-        if os.path.exists(sign):
+        sign_path = cwd / sign
+        if sign_path.exists() and sign_owner(sign_path):
             print(f"Found sign '{sign}'. Ending run.")
-            os.remove(sign)
+            os.remove(sign_path)
             sign_found = sign
 
             if sign == "exit":
@@ -367,6 +377,23 @@ def get_coords_diffs(coords, align=False):
     cds = np.cumsum(cds)
     cds /= cds.max()
     return cds
+
+
+def pick_image_inds(cart_coords, images: int):
+    """Pick approx. evenly distributed images from given Cartesian coordinates."""
+    cds = get_coords_diffs(cart_coords, align=True)
+    target_cds = iter(np.linspace(0, 1, num=images))
+    target_cd = next(target_cds)
+    image_inds = list()
+    for i, cd in enumerate(cds):
+        if len(image_inds) == (images - 1):
+            break
+        if cd >= target_cd:
+            image_inds.append(i)
+            target_cd = next(target_cds)
+
+    image_inds.append(len(cart_coords)-1)
+    return image_inds
 
 
 def shake_coords(coords, scale=0.1, seed=None):
