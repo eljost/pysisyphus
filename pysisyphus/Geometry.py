@@ -9,6 +9,7 @@ import sys
 import h5py
 import numpy as np
 from scipy.spatial.distance import pdist
+from scipy.spatial.transform import Rotation
 import rmsd
 
 try:
@@ -529,12 +530,14 @@ class Geometry:
                 self.internal = coord_class(
                     # Instead of using only the remaining, valid typed_prims
                     # we could look for an entirely new set of typed_prims.
-                    # 
+                    #
                     # But when we do this and we end up with more coordinates
                     # than before, this will lead to problems with the HDF5 dump.
                     # No problems arise when fewer coordinates are used
                     # (valid_typed_prims <= self.internal.typed_prims).
-                    self.atoms, coords3d, typed_prims=valid_typed_prims
+                    self.atoms,
+                    coords3d,
+                    typed_prims=valid_typed_prims,
                 )
                 self._coords = coords3d.flatten()
                 raise RebuiltInternalsException(
@@ -714,6 +717,9 @@ class Geometry:
             Geometric center of the Geometry.
         """
         return self.coords3d.mean(axis=0)
+
+    def center(self):
+        self.coords3d - self.centroid[None, :]
 
     @property
     def mw_coords(self):
@@ -1220,10 +1226,10 @@ class Geometry:
             atoms.append(atom)
         return atoms
 
-    def jmol(self):
+    def jmol(self, cart_coords=None):
         """Show geometry in jmol."""
         tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
-        tmp_xyz.write(self.as_xyz().encode("utf-8"))
+        tmp_xyz.write(self.as_xyz(cart_coords=cart_coords).encode("utf-8"))
         tmp_xyz.flush()
         jmol_cmd = "jmol"
         try:
@@ -1301,6 +1307,25 @@ class Geometry:
 
     def describe(self):
         return f"Geometry({self.sum_formula}, {len(self.atoms)} atoms)"
+
+    def approximate_radius(self):
+        """Approximate molecule radius from the biggest atom distance along an axis."""
+        coords3d = self.coords3d - self.centroid[None, :]
+        mins = coords3d.min(axis=0)
+        maxs = coords3d.max(axis=0)
+        dists = maxs - mins
+        max_dist = dists.max()
+        return max_dist
+
+    def rotate(self, copy=False):
+        if copy:
+            geom = self.copy()
+        else:
+            geom = self
+
+        rot = Rotation.random()
+        geom.coords3d = rot.apply(geom.coords3d)
+        return geom
 
     def __str__(self):
         name = ""
