@@ -200,6 +200,9 @@ def run():
     mult = args.mult
     xtb = args.xtb
 
+    # Activate opt when xtb is given
+    opt = opt or xtb
+
     assert len(replacements_) % 2 == 0
     replacements = [(int(ind), key) for ind, key in chunks(replacements_, 2)]
 
