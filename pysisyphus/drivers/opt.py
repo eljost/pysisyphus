@@ -105,7 +105,7 @@ def run_opt(
     geom,
     calc_getter,
     opt_key,
-    opt_kwargs,
+    opt_kwargs=None,
     iterative=False,
     iterative_max_cycles=5,
     iterative_thresh=-15,
@@ -119,6 +119,8 @@ def run_opt(
     is_cos = issubclass(type(geom), ChainOfStates)
     is_tsopt = opt_key in TSOPT_DICT
     # Disallow iterative optimizations for COS objects
+    if opt_kwargs is None:
+        opt_kwargs = dict()
     is_iterative = (not is_cos) and (iterative or opt_kwargs.pop("iterative", False))
 
     if is_cos:
