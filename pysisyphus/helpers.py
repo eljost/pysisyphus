@@ -1,4 +1,5 @@
 from collections import namedtuple
+import getpass
 import itertools as it
 import logging
 from math import log
@@ -296,7 +297,7 @@ def check_for_end_sign(check_user=True, cwd="."):
         "exit"
     )
     sign_found = False
-    cur_user = os.getlogin()
+    cur_user = getpass.getuser()
     cwd = Path(cwd)
 
     def sign_owner(path):
