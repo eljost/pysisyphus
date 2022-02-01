@@ -1418,7 +1418,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # first & last image(s) |
     # -----------------------+
 
-    if run_dict["preopt"]:
+    # Preoptimization only makes sense with a subsequent COS run.
+    if run_dict["preopt"] and run_run["cos"]:
+        assert len(geoms) > 1
         first_opt_result, last_opt_result = run_preopt(
             geoms[0],
             geoms[-1],
@@ -1426,7 +1428,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             preopt_key,
             preopt_kwargs,
         )
-        # Update with (pre)optimized geometries
+        # Update with (pre)optimized geometries. 'preopt_first_geom'/'preopt_last_geom'
+        # are assigned here so they can later be assigned to 'run_result':
         geoms[0] = preopt_first_geom = first_opt_result.geom.copy(coord_type=coord_type)
         geoms[-1] = preopt_last_geom = last_opt_result.geom.copy(coord_type=coord_type)
 
