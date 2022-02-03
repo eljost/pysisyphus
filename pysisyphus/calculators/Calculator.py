@@ -8,7 +8,7 @@ import tempfile
 
 from natsort import natsorted
 
-from pysisyphus.config import Config, OUT_DIR_DEFAULT
+from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus import helpers_pure
 
@@ -108,13 +108,10 @@ class Calculator:
         self.backup_dir = None
 
     def get_cmd(self, key):
-        assert self.conf_key, (
-            "Tried loading a cmd from the config file but no conf_key "
-            "was specified in the Calculator!"
-        )
+        assert self.conf_key, "'conf_key'-attribute is missing for this calculator!"
 
         try:
-            return Config[self.conf_key][key]
+            return get_cmd(self.conf_key, use_defaults=True)
         except KeyError:
             print(f"Failed to load key '{key}' from section '{self.conf_key}'!")
 
