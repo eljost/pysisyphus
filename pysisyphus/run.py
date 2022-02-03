@@ -1419,7 +1419,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # -----------------------+
 
     # Preoptimization only makes sense with a subsequent COS run.
-    if run_dict["preopt"] and run_run["cos"]:
+    if run_dict["preopt"] and run_dict["cos"]:
         assert len(geoms) > 1
         first_opt_result, last_opt_result = run_preopt(
             geoms[0],
