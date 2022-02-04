@@ -1896,12 +1896,14 @@ def print_header():
     sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
     npv = np.__version__  # Numpy
     spv = sp.__version__  # SciPy
+    cwd = Path(".").resolve()
     print(
         f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
         f"{commit_line}"
         f"Executed at {now.strftime('%c')} on '{platform.node()}'\n"
         f"Platform: {platform.platform()}\n"
         f"Interpreter: {sys.executable}\n"
+        f"Current working directory: {cwd}\n"
     )
 
 
