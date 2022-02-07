@@ -1,5 +1,3 @@
 {
-  pysisyphusWrapped = import ./default.nix {
-    fullTest = true;
-  };
+  pysisyphusWrapped = (import ./default.nix).override { fullTest = true; };
 }

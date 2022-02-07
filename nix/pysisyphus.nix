@@ -1,14 +1,26 @@
 { fetchPypi, fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper
-  # Python dependencies
-, autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pyyaml, rmsd, scipy
-, sympy, scikit-learn, qcengine, ase, xtb-python, openbabel-bindings
-  # Runtime dependencies
-, runtimeShell, jmol ? null, multiwfn ? null, xtb ? null, openmolcas ? null
-, pyscf ? null, psi4 ? null, wfoverlap ? null, nwchem ? null, orca ? null
-, turbomole ? null, gaussian ? null, gamess-us ? null, cfour ? null, molpro ? null
-  # Test dependencies
-, openssh, pytest
-  # Configuration
+, pytestCheckHook, nix-gitignore
+# Python dependencies
+, autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pytest, pyyaml, rmsd, scipy
+, sympy, scikit-learn, qcengine, ase, xtb-python, openbabel-bindings, pyscf
+# Runtime dependencies
+, runtimeShell
+, jmol, enableJmol ? true
+, multiwfn, enableMultiwfn ? false
+, xtb, enableXtb ? true
+, openmolcas, enableOpenmolcas ? true
+, psi4, enablePsi4 ? true
+, wfoverlap, enableWfoverlap ? true
+, nwchem, enableNwchem ? true
+, orca, enableOrca ? false
+, turbomole, enableTurbomole ? false
+, gaussian, enableGaussian ? false
+, cfour, enableCfour ? false
+, molpro, enableMolpro ? false
+, gamess-us, enableGamess ? false
+# Test dependencies
+, openssh
+# Configuration
 , fullTest ? false
 }:
 let
@@ -23,15 +35,16 @@ let
         formchk_cmd = "${gaussian}/bin/formchk";
         unfchk_cmd = "${gaussian}/bin/unfchk";
       };
-      text = with lib.lists; lib.generators.toINI {} (builtins.listToAttrs ([ ]
-        ++ optional (openmolcas != null) { name = "openmolcas"; value.cmd = "${openmolcas}/bin/pymolcas"; }
-        ++ optional (psi4 != null) { name = "psi4"; value.cmd = "${psi4Wrapper}"; }
-        ++ optional (wfoverlap != null) { name = "wfoverlap"; value.cmd = "${wfoverlap}/bin/wfoverlap.x"; }
-        ++ optional (multiwfn != null) { name = "multiwfn"; value.cmd = "${multiwfn}/bin/Multiwfn"; }
-        ++ optional (jmol != null) { name = "jmol"; value.cmd = "${jmol}/bin/jmol"; }
-        ++ optional (xtb != null) { name = "xtb"; value.cmd = "${xtb}/bin/xtb"; }
-        ++ optional (gaussian != null) { name = "gaussian16"; value = gaussian16Conf; }
-        ++ optional (orca != null) { name = "orca"; value.cmd = "${orca}/bin/orca"; }
+      text = lib.generators.toINI {} (builtins.listToAttrs ([ ]
+        ++ lib.optional enableOpenmolcas { name = "openmolcas"; value.cmd = "${openmolcas}/bin/pymolcas"; }
+        ++ lib.optional enablePsi4 { name = "psi4"; value.cmd = "${psi4Wrapper}"; }
+        ++ lib.optional enableWfoverlap { name = "wfoverlap"; value.cmd = "${wfoverlap}/bin/wfoverlap.x"; }
+        ++ lib.optional enableMultiwfn { name = "multiwfn"; value.cmd = "${multiwfn}/bin/Multiwfn"; }
+        ++ lib.optional enableJmol { name = "jmol"; value.cmd = "${jmol}/bin/jmol"; }
+        ++ lib.optional enableXtb { name = "xtb"; value.cmd = "${xtb}/bin/xtb"; }
+        ++ lib.optional enableGaussian { name = "gaussian16"; value = gaussian16Conf; }
+        ++ lib.optional enableOrca { name = "orca"; value.cmd = "${orca}/bin/orca"; }
+        ++ lib.optional enableGamess { name = "gamess"; value.cmd = "${gamess-us}/bin/rungms"; }
       ));
     in
       writeTextFile {
@@ -39,20 +52,20 @@ let
         name = "pysisrc";
       };
 
-  binSearchPath = with lib; makeSearchPath "bin" ([ ]
-    ++ lists.optional (jmol != null) jmol
-    ++ lists.optional (multiwfn != null) multiwfn
-    ++ lists.optional (xtb != null) xtb
-    ++ lists.optional (openmolcas != null) openmolcas
-    ++ lists.optional (pyscf != null) pyscf
-    ++ lists.optional (psi4 != null) psi4
-    ++ lists.optional (wfoverlap != null) wfoverlap
-    ++ lists.optional (nwchem != null) nwchem
-    ++ lists.optional (orca != null) orca
-    ++ lists.optional (turbomole != null) turbomole
-    ++ lists.optional (gaussian != null) gaussian
-    ++ lists.optional (cfour != null) cfour
-    ++ lists.optional (molpro != null) molpro
+  binSearchPath = lib.makeSearchPath "bin" ([ ]
+    ++ lib.optional enableJmol jmol
+    ++ lib.optional enableMultiwfn multiwfn
+    ++ lib.optional enableXtb xtb
+    ++ lib.optional enableOpenmolcas openmolcas
+    ++ lib.optional enablePsi4 psi4
+    ++ lib.optional enableWfoverlap wfoverlap
+    ++ lib.optional enableNwchem nwchem
+    ++ lib.optional enableOrca orca
+    ++ lib.optional enableTurbomole turbomole
+    ++ lib.optional enableGaussian gaussian
+    ++ lib.optional enableCfour cfour
+    ++ lib.optional enableMolpro molpro
+    ++ lib.optional enableGamess gamess-us
   );
 
 in
@@ -62,7 +75,7 @@ in
 
     nativeBuildInputs = [ makeWrapper ];
 
-    propagatedBuildInputs = with lib; [
+    propagatedBuildInputs = [
       autograd
       dask
       distributed
@@ -80,61 +93,73 @@ in
       ase
       openbabel-bindings
       openssh
+      pyscf
     ] # Syscalls
-      ++ lists.optional (xtb-python != null) xtb-python
-      ++ lists.optional (jmol != null) jmol
-      ++ lists.optional (multiwfn != null) multiwfn
-      ++ lists.optional (xtb != null) xtb
-      ++ lists.optional (openmolcas != null) openmolcas
-      ++ lists.optional (pyscf != null) pyscf
-      ++ lists.optional (psi4 != null) psi4
-      ++ lists.optional (wfoverlap != null) wfoverlap
-      ++ lists.optional (nwchem != null) nwchem
-      ++ lists.optional (orca != null) orca
-      ++ lists.optional (turbomole != null) turbomole
-      ++ lists.optional (gaussian != null) gaussian
-      ++ lists.optional (cfour != null) cfour
-      ++ lists.optional (molpro != null) molpro
+      ++ lib.optional enableXtb xtb-python
+      ++ lib.optional enableXtb xtb
+      ++ lib.optional enableJmol jmol
+      ++ lib.optional enableMultiwfn multiwfn
+      ++ lib.optional enableOpenmolcas openmolcas
+      ++ lib.optional enablePsi4 psi4
+      ++ lib.optional enableWfoverlap wfoverlap
+      ++ lib.optional enableNwchem nwchem
+      ++ lib.optional enableOrca orca
+      ++ lib.optional enableTurbomole turbomole
+      ++ lib.optional enableGaussian gaussian
+      ++ lib.optional enableCfour cfour
+      ++ lib.optional enableMolpro molpro
+      ++ lib.optional enableGamess gamess-us
     ;
 
-    src = lib.cleanSource ../.;
+    src = nix-gitignore.gitignoreSource [] ../.;
 
-    # Requires at least PySCF
-    doCheck = pyscf != null;
+    format = "pyproject";
 
-    checkInputs = [ pytest openssh ];
+    checkInputs = [ openssh pytestCheckHook ];
 
     preCheck = ''
       export PYSISRC=${pysisrc}
       export PATH=$PATH:${binSearchPath}
       export OMPI_MCA_rmaps_base_oversubscribe=1
     '';
-    checkPhase = ''
-      runHook preCheck
 
-      ${if fullTest
-          then "pytest -v tests --disable-warnings"
-          else "pytest -v --pyargs pysisyphus.tests --disable-warnings"
-      }
+    pytestFlagsArray = if fullTest
+      then [ "-v tests" ]
+      else [ "-v --pyargs pysisyphus.tests"]
+    ;
 
-      runHook postCheck
-    '';
-
-    postInstall = if lib.lists.all (x: x == null) [ gaussian openmolcas orca psi4 xtb multiwfn jmol ]
-      then "" else ''
+    postInstall = ''
       mkdir -p $out/share/pysisyphus
       cp ${pysisrc} $out/share/pysisyphus/pysisrc
       for exe in $out/bin/*; do
         wrapProgram $exe \
-          --prefix PATH : ${binSearchPath} \
-          --set-default "PYSISRC" "$out/share/pysisyphus/pysisrc"
+          ${if binSearchPath == "" then "" else "--prefix PATH : ${binSearchPath}"} \
+          --set-default PYSISRC $out/share/pysisyphus/pysisrc \
+          --set SCRATCH "./"
       done
     '';
+
+    passthru = { inherit
+      enableXtb
+      enableJmol
+      enableMultiwfn
+      enableOpenmolcas
+      enablePsi4
+      enableWfoverlap
+      enableNwchem
+      enableOrca
+      enableTurbomole
+      enableGaussian
+      enableCfour
+      enableMolpro
+      enableGamess
+      ;
+    };
 
     meta = with lib; {
       description = "Python suite for optimization of stationary points on ground- and excited states PES and determination of reaction paths";
       homepage = "https://github.com/eljost/pysisyphus";
-      license = licenses.gpl3;
+      license = licenses.gpl3Plus;
       platforms = platforms.linux;
       maintainers = [ maintainers.sheepforce ];
     };

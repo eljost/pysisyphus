@@ -1,9 +1,23 @@
-{ fullTest ? false
-, postOverlays ? []
-} :
+let pkgs = import ./pkgs.nix;
 
-let pkgs = import ./pkgs.nix { inherit postOverlays; };
 in with pkgs; qchem.python3.pkgs.callPackage ./pysisyphus.nix {
+  # Enable quantum chemistry codes by setting them to true.
+  # The default settings in ./pysisyphus.nix enable only free codes
+  #enableJmol = true;
+  #enableMultiwfn = true;
+  #enableXtb = true;
+  #enableOpenmolcas = true;
+  #enablePsi4 = true;
+  #enableWfoverlap = true;
+  #enableNwchem = true;
+  #enableOrca = true;
+  #enableTurbomole = true;
+  #enableGaussian = true;
+  #enableCfour = true;
+  #enableMolpro = true;
+  #enableGamess = true;
+
+  # Usually no need to change.
   multiwfn = qchem.multiwfn;
   xtb = qchem.xtb;
   openmolcas = qchem.molcas;
@@ -15,7 +29,5 @@ in with pkgs; qchem.python3.pkgs.callPackage ./pysisyphus.nix {
   gaussian = qchem.gaussian;
   cfour = qchem.cfour;
   molpro = qchem.molpro;
-
-  # Perform full testing?
-  inherit fullTest;
+  gamess-us = qchem.gamess-us.override { enableMpi = false; };
 }

@@ -20,16 +20,31 @@ Please follow the installation instructions in the `nix manual`_ to set up a wor
 Configuration
 =============
 
-Typically no, or only very few, adjustements are necessary.
+Typically no, or only very few, adjustments are necessary.
+In :code:`nix/pkgs.nix` the following options can be changed:
 
 - :code:`optAVX` can be used to enable/disable AVX tunings in underlying quantum chemistry packages.
-- :code:`licMolpro` can be set to a molpro license token to enable the Molpro package.
 - :code:`optpath` can be set and point to the top-level installation directory of a Gaussian installation.
+
+The :code:`postOverlays` attribute can be used to further customise the underlying package sets, i.e. switching to MKL as a BLAS/LAPACK implementation.
+See the comments in code:`nix/pkgs.nix`.
+
+Additional, proprietary quantum chemistry codes can be enabled by uncommenting the :code:`enable*` lines in `nix/default.nix`.
 
 For more details on the configuration options see the NixOS-QChem_ repository.
 
-The :code:`postOverlays` attribute can be used to further customise the underlying package sets.
+Caching
+=======
 
+The build time can be reduced drastically, if the quantum chemistry codes are fetched from a binary cache.
+
+NixOS-QChem_ overlay provides a binary cache on Cachix.
+
+If you are allowed to add binary cache in nix, you may simply execute:
+
+.. code-block:: bash
+
+    nix-shell -p cachix --run "cachix use nix-qchem"
 
 Installation
 ============
@@ -48,9 +63,7 @@ and build the nix-derivation
 
     cd pysisyphus/nix
     # Executing nix-build for the first time may take a while as your local Nix store
-    # will be populated.
-    # Please grab a coffee while the command runs or start your own coffee plantation
-    # and return after you picked your first crop of coffee berries ☕.
+    # will be populated. Caching can speed this up.
     nix-build
 
 You will likely depend on closed source software (ORCA, Turbomole, Gaussian, ...) , which is not freely redistributable. If the binary/source archives of these programs are missing from the Nix-store, the installation process will interrupt and tell you how to provide the required files. So it's a good idea to investigate the output of `nix-build` from time to time check, if manual intervention is required.
@@ -73,19 +86,6 @@ or launch a interactive `nix-shell`_ with pysisyphus by
 from within the pysisyphus repository.
 
 Do not be confused if the commands of the underlying quantum chemistry codes are not available. They are made available to directly to the pysisyphus entry point, but not necessarily to your shell.
-
-Static Pysisyphus
-=================
-
-Using `Nix Bundle`, it is possible to obtain fully self-contained archives, that run independent of Nix and the linux distribution.
-
-These archives can be build using
-
-.. code-block:: bash
-
-  cd nix && ./bundle.sh
-
-and come by default with the open source quantum chemistry codes. If others are required, you may point the :code:`PYSISRC` environment variable to a pysisyphus rc, where e.g. Gaussian is configured.
 
 .. _`Nix package manager`: https://nixos.org/download.html
 .. _`NixOS-QChem`: https://github.com/markuskowa/NixOS-QChem
