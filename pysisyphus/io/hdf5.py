@@ -6,8 +6,7 @@ def init_h5_group(f, group_name, data_model):
     group = f.create_group(group_name)
     # Create (resizable) datasets by using None in maxshape
     for key, shape in data_model.items():
-        assert len(shape) <= 2, "3D not yet supported"
-        maxshape = (None, ) if (len(shape) == 1) else (None, shape[-1])
+        maxshape = (None, ) if (len(shape) == 1) else (None, *shape[1:])
         group.create_dataset(key, shape, maxshape=maxshape)
 
 
