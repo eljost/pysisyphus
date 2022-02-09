@@ -74,7 +74,6 @@ def run_mc_afir_paths(geoms, calc_getter, num=5, gamma=None, t=None, T=298.15):
         fragments.append(np.arange(atom_num) + i)
         i += atom_num
 
-    unions = list()
     unions = [generate_random_union(geoms, copy=True) for _ in range(num)]
     # with open("unions.trj", "w") as handle:
     # handle.write("\n".join([union.as_xyz() for union in unions]))

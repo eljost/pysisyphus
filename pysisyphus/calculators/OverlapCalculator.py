@@ -860,7 +860,7 @@ class OverlapCalculator(Calculator):
         # Cycle, states, occ, virt
         ci_coeffs = self.ci_coeff_list[cycle]
         exc_energies = (energies[1:] - energies[0]) * AU2EV
-        above_thresh = np.abs(ci_coeffs) > thresh
+        # above_thresh = np.abs(ci_coeffs) > thresh
         _, occ_mos, virt_mos = ci_coeffs.shape
 
         exc_str = ""

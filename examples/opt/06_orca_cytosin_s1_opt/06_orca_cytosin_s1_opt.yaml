@@ -1,7 +1,6 @@
-opt:
- type: rfo
- overachieve_factor: 2
- thresh: gau
+geom:
+ type: redund
+ fn: lib:cytosin.xyz
 calc:
  type: orca
  keywords: pbe0 def2-svp rijcosx def2/J def2-svp/C
@@ -13,9 +12,10 @@ calc:
  pal: 6
  mem: 1500
  cdds: render
-geom:
- type: redund
- fn: cytosin.xyz
+opt:
+ type: rfo
+ overachieve_factor: 2
+ thresh: gau
 assert:
- opt_geom.energy: -394.06152976
+ opt_geom.energy: -394.0613165
  opt.cur_cycle: 7

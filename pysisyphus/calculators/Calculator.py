@@ -10,6 +10,7 @@ from natsort import natsorted
 
 from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus import logger
 from pysisyphus import helpers_pure
 
 
@@ -113,7 +114,7 @@ class Calculator:
         try:
             return get_cmd(self.conf_key, use_defaults=True)
         except KeyError:
-            print(f"Failed to load key '{key}' from section '{self.conf_key}'!")
+            logger.debug(f"Failed to load key '{key}' from section '{self.conf_key}'!")
 
     @property
     def name(self):

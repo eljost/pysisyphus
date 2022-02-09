@@ -1,3 +1,4 @@
+from pathlib import Path
 from time import time
 
 import numpy as np
@@ -62,7 +63,7 @@ def do_endopt_ts_barriers(
 
     def get_energy(geom, base_name):
         try:
-            energy = geom.energy
+            geom.energy
         except AttributeError:
             try:
                 geom.set_calculator(calc_getter(base_name=base_name))
@@ -114,7 +115,7 @@ def do_endopt_ts_barriers(
     def get_solv_correction(geom, fn=None, name=None):
         fn = str(fn)
         if fn is not None:
-            infix = f"'{fn: >20s}'"
+            infix = f"'{Path(fn).name: >40s}'"
         else:
             atom_num = len(geom.atoms)
             infix = f"{atom_num} atoms"
@@ -238,7 +239,8 @@ def do_endopt_ts_barriers(
 
     def print_geoms_fns(geoms, fns):
         for i, (geom, fn) in enumerate(zip(geoms, fns)):
-            print(f"\t{i}: {fn} ({geom}, {len(geom.atoms)} atoms)")
+            fn_name = Path(fn).name
+            print(f"\t{i}: {fn_name} ({geom}, {len(geom.atoms)} atoms)")
 
     def get_geom_key(geoms):
         return "geometry" if len(geoms) == 1 else "geometries"

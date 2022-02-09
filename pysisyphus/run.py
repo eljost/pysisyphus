@@ -21,7 +21,6 @@ import scipy as sp
 import yaml
 
 from pysisyphus import __version__
-from pysisyphus.version import version_tuple
 from pysisyphus.calculators import *
 from pysisyphus.config import OUT_DIR_DEFAULT, p_DEFAULT, T_DEFAULT
 from pysisyphus.cos import *

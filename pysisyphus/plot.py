@@ -13,6 +13,7 @@ import numpy as np
 from scipy.interpolate import splrep, splev
 
 from pysisyphus.constants import AU2KJPERMOL, AU2EV
+from pysisyphus.config import OUT_DIR_DEFAULT
 from pysisyphus.dynamics import Gaussian
 from pysisyphus.io import parse_xyz
 from pysisyphus.peakdetect import peakdetect
@@ -923,7 +924,13 @@ def list_h5_groups(h5_fn):
 def run():
     args = parse_args(sys.argv[1:])
 
-    h5_fn = args.h5_fn
+    h5_fn = Path(args.h5_fn)
+
+    if args.all_energies or args.overlaps:
+        if not h5_fn.exists():
+            if (tmp_fn := Path(OUT_DIR_DEFAULT) / h5_fn).exists():
+                h5_fn  = tmp_fn
+                print(f"Loading overlap data from '{h5_fn}'.")
 
     # Optimization
     if args.h5_list:
@@ -944,12 +951,13 @@ def run():
     # Overlap calculator related
     elif args.all_energies:
         plot_all_energies(h5=h5_fn)
+    elif args.overlaps:
+        plot_overlaps(h5=h5_fn)
+    # MD related
     elif args.md:
         plot_md()
     elif args.gau:
         plot_gau(args.gau)
-    elif args.overlaps:
-        plot_overlaps(h5=h5_fn)
     elif args.scan:
         plot_scan()
     elif args.render_cdds:
