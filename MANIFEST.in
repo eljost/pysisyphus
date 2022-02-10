@@ -1,0 +1,4 @@
+include pysisyphus/tests/h2o_input.RasOrb
+recursive-include pysisyphus/db/guess *.xyz
+recursive-include pysisyphus/db/levels/*/ *.xyz
+graft pysisyphus/geom_library

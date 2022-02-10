@@ -100,7 +100,6 @@ ENV/
 # mypy
 .mypy_cache/
 *.swp
-*.trj
 
 tests/i18i19/*
 config.ini
