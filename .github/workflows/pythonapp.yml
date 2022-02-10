@@ -5,9 +5,10 @@ on:
         paths-ignore:
             - "docs/**"
             - "examples/**"
+            - "scripts/**"
+            - "nix/**"
             - "tests_staging/**"
             - "deprecated/**"
-            - "scripts/**"
     workflow_dispatch:
     schedule:
         - cron: '0 */12 * * *'
