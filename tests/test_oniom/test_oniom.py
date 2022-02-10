@@ -343,6 +343,7 @@ def test_yaml_oniom():
     assert res.opt_geom.energy == pytest.approx(-153.07526171)
 
 
+@pytest.mark.skip_ci
 @using("pyscf")
 def test_oniom3():
     run_dict = {

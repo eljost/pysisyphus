@@ -77,8 +77,8 @@ def test_baker_tsopt_synthesis(fixture_store):
 @pytest.mark.parametrize(
     "proj, ref_cycle",
     [
-        (True, 14),
-        pytest.param(False, 12),
+        pytest.param(True, 14, marks=pytest.mark.skip_ci),
+        pytest.param(False, 12, marks=pytest.mark.skip_ci),
     ],
 )
 def test_diels_alder_ts(ref_cycle, proj):

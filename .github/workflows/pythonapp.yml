@@ -49,7 +49,7 @@ jobs:
         --cov=pysisyphus --cov-config .coveragerc --cov-report xml --cov-report term
         --show-capture=no
         --durations=0
-        -m "not benchmark"
+        -m "not benchmark and not skip_ci"
         tests
     - name: Upload coverage to codecov
       uses: codecov/codecov-action@v2
