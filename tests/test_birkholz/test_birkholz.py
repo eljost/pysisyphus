@@ -7,6 +7,7 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
 
+@pytest.mark.benchmark
 @using("xtb")
 @pytest.mark.parametrize(
     "xyz_fn, charge, mult", [
@@ -58,6 +59,7 @@ def test_birkholz_set(xyz_fn, charge, mult, results_bag):
     assert opt.is_converged
 
 
+@pytest.mark.benchmark
 # @filter_fixture_store("test_birkholz_set")
 def test_birkholz_set_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
