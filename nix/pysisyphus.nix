@@ -129,9 +129,10 @@ in
 
     pytestFlagsArray = [ 
       "-v" 
-      "tests"
       "--show-capture=no"
       " --durations=0"
+      "-m 'not benchmark'"
+      "tests"
     ];
 
     postInstall = ''
