@@ -43,8 +43,13 @@ jobs:
       run: |
         pip install git+https://github.com/eljost/thermoanalysis.git
     - name: Test with pytest
-      run: |
-        pytest -v --cov=pysisyphus --cov-config .coveragerc --cov-report xml --cov-report term tests --show-capture=no  --durations=0
+      run: >
+        pytest -v
+        --cov=pysisyphus --cov-config .coveragerc --cov-report xml --cov-report term
+        --show-capture=no
+        --durations=0
+        -m "not benchmark"
+        tests
     - name: Upload coverage to codecov
       uses: codecov/codecov-action@v2
       with:

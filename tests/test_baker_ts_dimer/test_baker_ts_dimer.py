@@ -20,6 +20,7 @@ BakerTSBm = Benchmark(
 )
 
 
+@pytest.mark.benchmark
 @using("pyscf")
 @pytest.mark.parametrize("fn, geom, charge, mult, ref_energy", BakerTSBm.geom_iter)
 def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_dir):
@@ -81,6 +82,7 @@ def test_baker_ts_dimer(fn, geom, charge, mult, ref_energy, results_bag, this_di
     )
 
 
+@pytest.mark.benchmark
 # @filter_fixture_store("test_baker_ts_dimer")
 def test_baker_ts_dimer_synthesis(fixture_store):
     converged = 0

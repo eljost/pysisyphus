@@ -21,6 +21,7 @@ BakerTSBm = Benchmark(
 )
 
 
+@pytest.mark.benchmark
 @using("pyscf")
 @pytest.mark.parametrize("fn, geom, ref_energy", BakerTSBm)
 def test_baker_tsopt(fn, geom, ref_energy, results_bag):
@@ -47,6 +48,7 @@ def test_baker_tsopt(fn, geom, ref_energy, results_bag):
     assert geom.energy == pytest.approx(ref_energy)
 
 
+@pytest.mark.benchmark
 # @filter_fixture_store("test_baker_tsopt")
 def test_baker_tsopt_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
