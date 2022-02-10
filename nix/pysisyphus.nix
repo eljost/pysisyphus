@@ -1,8 +1,8 @@
 { fetchPypi, fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper
 , pytestCheckHook, nix-gitignore
 # Python dependencies
-, autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pytest, pyyaml, rmsd, scipy
-, sympy, scikit-learn, qcengine, ase, xtb-python, openbabel-bindings, pyscf
+, setuptools-scm, autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pyyaml, rmsd, scipy
+, sympy, scikit-learn, Fabric, psutils, qcengine, ase, xtb-python, openbabel-bindings, pyscf
 # Runtime dependencies
 , runtimeShell
 , jmol, enableJmol ? true
@@ -73,7 +73,7 @@ in
     pname = "pysisyphus";
     version = "0.7.4";
 
-    nativeBuildInputs = [ makeWrapper ];
+    nativeBuildInputs = [ makeWrapper setuptools-scm ];
 
     propagatedBuildInputs = [
       autograd
@@ -89,6 +89,8 @@ in
       scipy
       sympy
       scikit-learn
+      Fabric
+      psutils
       qcengine
       ase
       openbabel-bindings
@@ -115,6 +117,8 @@ in
 
     format = "pyproject";
 
+    preBuild = "export SETUPTOOLS_SCM_PRETEND_VERSION=${version}";
+
     checkInputs = [ openssh pytestCheckHook ];
 
     preCheck = ''
@@ -123,10 +127,12 @@ in
       export OMPI_MCA_rmaps_base_oversubscribe=1
     '';
 
-    pytestFlagsArray = if fullTest
-      then [ "-v tests" ]
-      else [ "-v --pyargs pysisyphus.tests"]
-    ;
+    pytestFlagsArray = [ 
+      "-v" 
+      "tests"
+      "--show-capture=no"
+      " --durations=0"
+    ];
 
     postInstall = ''
       mkdir -p $out/share/pysisyphus
