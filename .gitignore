@@ -150,3 +150,12 @@ result
 RUN.yaml
 cur_out
 *.fail_*
+
+
+!tests/test_barriers/*.h5
+!tests/test_hessian_updates/*.h5
+!tests/test_pka/*.h5
+!tests/test_overlap_calculator/*.h5
+!tests/test_save_hessian/*.h5
+!tests/test_turbomole/control_path_big_hess
+!tests/test_tsopt/test_hessian_ref.h5

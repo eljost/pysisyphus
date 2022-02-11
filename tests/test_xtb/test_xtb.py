@@ -36,8 +36,8 @@ def test_xtb_hessian(geom):
 
     w, v = np.linalg.eigh(Hmw)
     nus = eigval_to_wavenumber(w)
-    assert nus[0] == pytest.approx(-571.7752565)
-    assert nus[-1] == pytest.approx(1554.950531)
+    assert nus[0] == pytest.approx(-572.1710873)
+    assert nus[-1] == pytest.approx(1556.0269008)
 
 
 @using("xtb")

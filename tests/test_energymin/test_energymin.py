@@ -16,10 +16,10 @@ init_logging()
 @pytest.mark.parametrize(
     "calc_cls, ref_energy",
     [
-        pytest.param(XTB, -6.27036401645, marks=using("xtb")),
+        pytest.param(XTB, -6.27121126, marks=using("xtb")),
         pytest.param(
             lambda **kwargs: PySCF(basis="sto3g", **kwargs),
-            -77.07214828,
+            -77.07357762,
             marks=using("pyscf"),
         ),
     ],

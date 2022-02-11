@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from pysisyphus.helpers_pure import standard_state_corr
@@ -15,7 +17,7 @@ from pysisyphus.testing import using
         True,
     ),
 )
-def test_endopt_total(do_hess):
+def test_endopt_total(do_hess, this_dir):
     # ed, ts, prod = geom_loader("lib:xtb_rx/07_dacp_eth.trj")
     # print(geoms)
     run_dict = {
@@ -27,7 +29,7 @@ def test_endopt_total(do_hess):
         },
         "irc": {
             "type": "eulerpc",
-            "hessian_init": "inp_hess_init_irc.h5",
+            "hessian_init": this_dir / "inp_hess_init_irc.h5",
         },
         "endopt": {
             "fragments": "total",
@@ -52,9 +54,6 @@ def test_standard_state_corr():
     p = 101325
     dG = standard_state_corr(T=T, p=p)
     assert dG == pytest.approx(0.003018805)
-
-
-from pathlib import Path
 
 
 @pytest.fixture
@@ -92,7 +91,12 @@ def solv_calc_getter(*args, **kwargs):
 @pytest.mark.parametrize("solv_calc_getter", (None, solv_calc_getter))
 @pytest.mark.parametrize("do_thermo", (True, False))
 def test_do_endopt_ts_barriers(
-    do_standard_state_corr, solv_calc_getter, do_thermo, left_geoms, right_geoms, ts_geom
+    do_standard_state_corr,
+    solv_calc_getter,
+    do_thermo,
+    left_geoms,
+    right_geoms,
+    ts_geom,
 ):
 
     left_fns = ["forward_end_frag_000.xyz"]

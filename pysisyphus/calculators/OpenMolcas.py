@@ -168,7 +168,7 @@ class OpenMolcas(Calculator):
         # All state average energies
         root_re = "RASSCF root number.+Total energy.+?" + self.float_regex
         matches = re.findall(root_re, text)
-        sa_energies = np.array(matches, dtype=np.float)
+        sa_energies = np.array(matches, dtype=float)
 
         return energy, sa_energies
 
@@ -192,7 +192,7 @@ class OpenMolcas(Calculator):
                 continue
             # Discard first column (atom+number)
             gradient.append(mobj.groups()[1:])
-        gradient = np.array(gradient, dtype=np.float).flatten()
+        gradient = np.array(gradient, dtype=float).flatten()
 
         if self.track and self.calc_counter > 0:
             self.parse_rassi_track(path)

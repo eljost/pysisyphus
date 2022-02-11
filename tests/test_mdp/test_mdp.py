@@ -62,6 +62,7 @@ def test_muller_brown_mdp():
     # plt.show()
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 def test_so3hcl_yaml_mdp():
     """See

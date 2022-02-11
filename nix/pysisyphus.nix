@@ -131,7 +131,7 @@ in
       "-v" 
       "--show-capture=no"
       " --durations=0"
-      "-m 'not benchmark'"
+      "-m 'not benchmark and not skip_ci'"
       "tests"
     ];
 

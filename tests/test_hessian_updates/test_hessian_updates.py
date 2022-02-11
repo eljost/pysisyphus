@@ -66,7 +66,7 @@ def test_no_hessian_update(hessian_update):
     ),
 )
 def test_ts_hessian_update(this_dir, hessian_update):
-    geom = geom_loader(this_dir / "tsbfgs_init.xyz", coord_type="redund")
+    geom = geom_loader("lib:tsbfgs_init.xyz", coord_type="redund")
     calc = XTB(pal=6)
 
     geom.set_calculator(calc)

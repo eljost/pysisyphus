@@ -56,7 +56,7 @@ class EnergyMin(Calculator):
                 self.log(f"norm(mixed forces)={np.linalg.norm(forces):.6f} au a0⁻¹")
             return results
 
-        min_ind = [1, 0][energy1 < energy2]
+        min_ind = [1, 0][int(energy1 < energy2)]
         en1_or_en2 = ("calc1", "calc2")[min_ind]
         results = (results1, results2)[min_ind]
         results["all_energies"] = all_energies

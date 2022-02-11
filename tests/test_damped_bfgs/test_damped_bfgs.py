@@ -21,6 +21,7 @@ def test_bfgs_multiply_empty_lists():
     np.testing.assert_allclose(Hf, forces)
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 @pytest.mark.parametrize(
     "opt_cls, _opt_kwargs, ref_cycle", [
