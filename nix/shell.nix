@@ -1,7 +1,8 @@
-let
-  pkgs = import ./pkgs.nix;
-  pysis = { pysisyphus = import ./default.nix { inherit fullTest; }; };
-  allPkgs = pkgs // pysis;
-in with allPkgs; mkShell {
-  buildInputs = [ python3.pkgs.qcengine qchem.gamess-us ];
+let pkgs = import ./pkgs.nix;
+in with pkgs; mkShell {
+  buildInputs = [ python3.pkgs.pysisyphus ]
+    ++ python3.pkgs.pysisyphus.nativeBuildInputs
+    ++ python3.pkgs.pysisyphus.buildInputs
+    ++ python3.pkgs.pysisyphus.propagatedBuildInputs
+  ;
 }
