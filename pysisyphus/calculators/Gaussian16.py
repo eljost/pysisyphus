@@ -528,7 +528,7 @@ class Gaussian16(OverlapCalculator):
 
     def parse_force(self, path):
         results = {}
-        keys = ("Total Energy", "SCF Energy", "Cartesian Gradient")
+        keys = ("SCF Energy", "Total Energy", "Cartesian Gradient")
         fchk_path = Path(path) / f"{self.fn_base}.fchk"
         fchk_dict = self.parse_fchk(fchk_path, keys)
         results["energy"] = fchk_dict["SCF Energy"]
