@@ -57,7 +57,11 @@ def do_endopt_ts_barriers(
     def tot_atom_num(geoms):
         return sum([len(geom.atoms) for geom in geoms])
 
-    assert tot_atom_num(left_geoms) == ts_atom_num
+    left_atom_num = tot_atom_num(left_geoms)
+    assert left_atom_num == ts_atom_num, (
+        f"Atom number mismatch between TS ({ts_atom_num} atoms) and "
+        f"left side ({left_atom_num} atoms)! Aborting barrier calculation"
+    )
     right_tot_atom_num = tot_atom_num(right_geoms)
     assert (right_tot_atom_num == ts_atom_num) or (right_tot_atom_num == 0)
 

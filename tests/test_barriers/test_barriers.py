@@ -1,7 +1,6 @@
-from pathlib import Path
-
 import pytest
 
+from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import standard_state_corr
 from pysisyphus.io.hessian import geom_from_hessian
 from pysisyphus.run import run_from_dict
@@ -111,3 +110,17 @@ def test_do_endopt_ts_barriers(
         solv_calc_getter=solv_calc_getter,
         do_thermo=do_thermo,
     )
+
+
+def test_wrong_atom_num():
+    ts_geom = geom_loader("lib:benzene.xyz")
+    # Delete one atom, so the numbers dont match
+    cut_geom = ts_geom.get_subgeom(range(len(ts_geom.atoms)-1))
+    left_geoms = (cut_geom, )
+    right_geoms = ()
+    with pytest.raises(AssertionError):
+        do_endopt_ts_barriers(
+                ts_geom,
+                left_geoms,
+                right_geoms
+        )
