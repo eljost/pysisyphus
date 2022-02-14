@@ -6,12 +6,12 @@ from pathlib import Path
 import shutil
 import sys
 
+
 CONFIG_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 LIB_DIR = CONFIG_DIR / "geom_library"
 T_DEFAULT = 298.15  # Kelvin
 p_DEFAULT = 101325  # Pascal
 OUT_DIR_DEFAULT = "qm_calcs"
-
 DEFAULTS = {
     # .pysisyphusrc key: command
     "mwfn": "Multiwfn",
@@ -107,4 +107,5 @@ def run_detect_paths():
         with open(out, "w") as handle:
             handle.write(config_text)
     else:
+        print("\nExample .pysisyphusrc:\n")
         print(config_text)
