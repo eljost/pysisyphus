@@ -35,6 +35,8 @@ from pysisyphus.intcoords.exceptions import (
     DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
+from pysisyphus.intcoords.setup import BOND_FACTOR
+from pysisyphus.intcoords.setup_fast import find_bonds
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -1326,6 +1328,14 @@ class Geometry:
         rot = Rotation.random()
         geom.coords3d = rot.apply(geom.coords3d)
         return geom
+
+    @property
+    def bond_sets(self, bond_factor=BOND_FACTOR):
+        bonds = find_bonds(
+            self.atoms, self.coords3d, self.covalent_radii, bond_factor=bond_factor
+        )
+        bond_sets = set([frozenset(b) for b in bonds])
+        return bond_sets
 
     def __str__(self):
         name = ""

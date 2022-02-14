@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords import Stretch
 
@@ -52,3 +53,15 @@ def test_rotate():
     geom = geom_loader("lib:h2o.xyz")
     for _ in range(3):
         geom.rotate()
+
+
+def test_bond_sets():
+    geom = geom_loader("lib:benzene.xyz")
+    bond_sets = geom.bond_sets
+    assert len(bond_sets) == 12
+
+
+def test_anapot_bond_sets():
+    geom = AnaPot().get_minima()[0]
+    bond_sets = geom.bond_sets
+    assert len(bond_sets) == 0

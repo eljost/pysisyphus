@@ -46,6 +46,7 @@ class IRC:
         energy_thresh=1e-6,
         imag_below=0.0,
         force_inflection=True,
+        check_bonds=True,
         out_dir=".",
         prefix="",
         dump_fn="irc_data.h5",
@@ -99,6 +100,8 @@ class IRC:
             given threshold.
         force_inflection : bool, optional
             Don't indicate convergence before passing an inflection point.
+        check_bonds : bool, optional, default=True
+            Report whether bonds are formed/broken along the IRC, w.r.t the TS.
         out_dir : str, optional
             Dump everything into 'out_dir' directory instead of the CWD.
         prefix : str, optional
@@ -143,6 +146,7 @@ class IRC:
         assert imag_below <= 0.0
         self.imag_below = imag_below
         self.force_inflection = force_inflection
+        self.check_bonds = check_bonds
         self.out_dir = out_dir
         self.out_dir = Path(self.out_dir)
         if not self.out_dir.exists():
@@ -150,6 +154,10 @@ class IRC:
         self.prefix = f"{prefix}_" if prefix else prefix
         self.dump_fn = dump_fn
         self.dump_every = int(dump_every)
+
+        # Determine bonds at TS
+        self.ts_bond_sets = self.geometry.bond_sets
+        self.ref_bond_sets = {}
 
         self._m_sqrt = np.sqrt(self.geometry.masses_rep)
         self.all_energies = list()
@@ -230,6 +238,8 @@ class IRC:
         # Mass-weighted
         self.irc_mw_coords = list()
         self.irc_mw_gradients = list()
+
+        self.ref_bond_sets = self.ts_bond_sets.copy()
 
         # Over the course of the IRC the hessian may get updated.
         # Copying the initial hessian here ensures a clean start in combined
@@ -427,6 +437,19 @@ class IRC:
         self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
         return conv_fact
 
+    def report_bonds(self, prefix, bonds):
+        if len(bonds) == 0:
+            return
+
+        plural = "s" if len(bonds) > 1 else ""
+        bond_strs = list()
+        for from_, to_ in bonds:
+            from_atom = self.atoms[from_]
+            to_atom = self.atoms[to_]
+            bond_strs.append(f"[{from_atom}{from_}-{to_atom}{to_}]")
+        bonds_str = ", ".join(bond_strs)
+        self.table.print(f"Bond{plural} {prefix}: {bonds_str}")
+
     def irc(self, direction):
         self.log(highlight_text(f"IRC {direction}", level=1))
         self.cur_direction = direction
@@ -489,6 +512,17 @@ class IRC:
                 self.table.print(add_info)
             except AttributeError:
                 pass
+
+            if self.check_bonds:
+                cur_bond_sets = self.geometry.bond_sets
+                formed = cur_bond_sets - self.ref_bond_sets
+                broken = self.ref_bond_sets - cur_bond_sets
+                self.report_bonds("formed", formed)
+                self.report_bonds("broken", broken)
+                # Update bond sets to avoid repeated reporting of bond topology changes
+                self.ref_bond_sets -= broken
+                self.ref_bond_sets |= formed  # union
+
             last_energy = self.irc_energies[-2]
             this_energy = self.irc_energies[-1]
 
