@@ -48,21 +48,23 @@ Config = configparser.ConfigParser()
 read_fns = Config.read(config_fn)
 
 
-def get_cmd(key, use_defaults=True):
+def get_cmd(section, key="cmd", use_defaults=True):
     try:
-        cmd = Config[key]["cmd"]
+        cmd = Config[section][key]
     except KeyError:
+        # Try if default command as given above is available on PATH via 'which'.
         if use_defaults:
             try:
                 cmd = shutil.which(DEFAULTS[key])
             except KeyError:
                 cmd = None
+
     if not cmd:
         print(
-            f"Failed to load key 'cmd' from section '{key}' "
+            f"Failed to load key '{key}' from section '{section}' "
             "in ~/.pysisyphusrc and no default was specified."
         )
-        sys.exit()
+        cmd = None
     return cmd
 
 

@@ -58,7 +58,7 @@ class MOPAC(Calculator):
             "hessian": self.parse_hessian,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
         """
         1SCF: Do only SCF

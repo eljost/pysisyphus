@@ -114,7 +114,7 @@ class XTB(Calculator):
             "calc": self.parse_energy,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
     def reattach(self, last_calc_cycle):
         pass

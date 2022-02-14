@@ -11,8 +11,8 @@ class Gaussian09(Gaussian16):
         self.inp_fn = f"{self.fn_base}.com"
         self.out_fn = f"{self.fn_base}.log"
         self.chk_fn = f"{self.fn_base}.chk"
-        self.base_cmd = self.get_cmd("cmd")
-        self.formchk_cmd = self.get_cmd("formchk_cmd")
+        self.base_cmd = self.get_cmd()
+        self.formchk_cmd = self.get_cmd("formchk")
 
     def __str__(self):
         return "Gaussian09 calculator"

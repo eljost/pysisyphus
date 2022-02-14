@@ -67,7 +67,7 @@ class DFTBp(OverlapCalculator):
         )
         self.root = root
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
         self.gen_geom_fn = "geometry.gen"
         self.inp_fn = "dftb_in.hsd"
         self.out_fn = "dftb.out"

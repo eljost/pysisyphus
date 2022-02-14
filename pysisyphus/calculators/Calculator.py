@@ -108,11 +108,11 @@ class Calculator:
         self.last_run_path = None
         self.backup_dir = None
 
-    def get_cmd(self, key):
+    def get_cmd(self, key="cmd"):
         assert self.conf_key, "'conf_key'-attribute is missing for this calculator!"
 
         try:
-            return get_cmd(self.conf_key, use_defaults=True)
+            return get_cmd(section=self.conf_key, key=key, use_defaults=True)
         except KeyError:
             logger.debug(f"Failed to load key '{key}' from section '{self.conf_key}'!")
 

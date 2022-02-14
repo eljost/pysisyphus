@@ -39,7 +39,7 @@ class Psi4(Calculator):
             "hessian": self.parse_hessian,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
         self.inp = textwrap.dedent(
             """

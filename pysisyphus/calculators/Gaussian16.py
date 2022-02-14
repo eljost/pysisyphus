@@ -102,9 +102,9 @@ class Gaussian16(OverlapCalculator):
         }
 
         self.base_cmd = self.get_cmd("cmd")
-        self.formchk_cmd = self.get_cmd("formchk_cmd")
-        self.unfchk_cmd = self.get_cmd("unfchk_cmd")
-        self.rwfdump_cmd = self.get_cmd("rwfdump_cmd")
+        self.formchk_cmd = self.get_cmd("formchk")
+        self.unfchk_cmd = self.get_cmd("unfchk")
+        self.rwfdump_cmd = self.get_cmd("rwfdump")
 
     def make_exc_str(self):
         # Ground state calculation

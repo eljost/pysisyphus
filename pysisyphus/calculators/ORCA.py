@@ -145,7 +145,7 @@ class ORCA(OverlapCalculator):
             "stable": self.parse_stable,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
     def reattach(self, last_calc_cycle):
         # Use the latest .gbw
