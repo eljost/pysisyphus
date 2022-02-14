@@ -1,4 +1,4 @@
-{ fetchPypi, fetchFromGitHub, buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper
+{ buildPythonPackage, lib, writeTextFile, writeScript, makeWrapper
 , pytestCheckHook, nix-gitignore
 # Python dependencies
 , setuptools-scm, autograd, dask, distributed, h5py, jinja2, matplotlib, numpy, natsort, pyyaml, rmsd, scipy
@@ -8,7 +8,7 @@
 , jmol, enableJmol ? true
 , multiwfn, enableMultiwfn ? false
 , xtb, enableXtb ? true
-, openmolcas, enableOpenmolcas ? true
+, molcas, enableMolcas ? true
 , psi4, enablePsi4 ? true
 , wfoverlap, enableWfoverlap ? true
 , nwchem, enableNwchem ? true
@@ -20,8 +20,6 @@
 , gamess-us, enableGamess ? false
 # Test dependencies
 , openssh
-# Configuration
-, fullTest ? false
 }:
 let
   psi4Wrapper = writeScript "psi4.sh" ''
@@ -36,7 +34,7 @@ let
         unfchk_cmd = "${gaussian}/bin/unfchk";
       };
       text = lib.generators.toINI {} (builtins.listToAttrs ([ ]
-        ++ lib.optional enableOpenmolcas { name = "openmolcas"; value.cmd = "${openmolcas}/bin/pymolcas"; }
+        ++ lib.optional enableMolcas { name = "openmolcas"; value.cmd = "${molcas}/bin/pymolcas"; }
         ++ lib.optional enablePsi4 { name = "psi4"; value.cmd = "${psi4Wrapper}"; }
         ++ lib.optional enableWfoverlap { name = "wfoverlap"; value.cmd = "${wfoverlap}/bin/wfoverlap.x"; }
         ++ lib.optional enableMultiwfn { name = "multiwfn"; value.cmd = "${multiwfn}/bin/Multiwfn"; }
@@ -56,7 +54,7 @@ let
     ++ lib.optional enableJmol jmol
     ++ lib.optional enableMultiwfn multiwfn
     ++ lib.optional enableXtb xtb
-    ++ lib.optional enableOpenmolcas openmolcas
+    ++ lib.optional enableMolcas molcas
     ++ lib.optional enablePsi4 psi4
     ++ lib.optional enableWfoverlap wfoverlap
     ++ lib.optional enableNwchem nwchem
@@ -101,7 +99,7 @@ in
       ++ lib.optional enableXtb xtb
       ++ lib.optional enableJmol jmol
       ++ lib.optional enableMultiwfn multiwfn
-      ++ lib.optional enableOpenmolcas openmolcas
+      ++ lib.optional enableMolcas molcas
       ++ lib.optional enablePsi4 psi4
       ++ lib.optional enableWfoverlap wfoverlap
       ++ lib.optional enableNwchem nwchem
@@ -123,17 +121,20 @@ in
 
     preCheck = ''
       export PYSISRC=${pysisrc}
+      cat ${pysisrc}
       export PATH=$PATH:${binSearchPath}
       export OMPI_MCA_rmaps_base_oversubscribe=1
     '';
 
-    pytestFlagsArray = [ 
-      "-v" 
+    pytestFlagsArray = [
+      "-v"
       "--show-capture=no"
       " --durations=0"
       "-m 'not benchmark and not skip_ci'"
       "tests"
     ];
+
+    pythonImportsCheck = [ "pysisyphus" ];
 
     postInstall = ''
       mkdir -p $out/share/pysisyphus
@@ -150,7 +151,7 @@ in
       enableXtb
       enableJmol
       enableMultiwfn
-      enableOpenmolcas
+      enableMolcas
       enablePsi4
       enableWfoverlap
       enableNwchem
