@@ -1,22 +1,60 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  NIXQC_SRCURL: http://sol/nix-src
+  NIXQC_AVX: 0
+  NIXPKGS_ALLOW_UNFREE: 1
+
 stages:
   - build
+  - test
+  - distribute
 
-before_script:
-  - export NIX_PATH=nixpkgs=/root/.nix-defexpr/channels/nixpkgs
-  # Install dependencies
-  - nix-env -iA nixpkgs.bash nixpkgs.git nixpkgs.niv nixpkgs.openssh;
-  - export NIXPKGS_ALLOW_UNFREE=1;
-  # QChem configuration for external packages and tuning.
-  - export NIXQC_SRCURL=http://sol/nix-src
-  - export NIXQC_AVX=1
-
-# Reproducible nix build with everything pinned and all dependencies build.
-pysisyphusBuild:
+nix build:
   stage: build
+  tags:
+    - nix
+  script:
+    - |
+      nix-build -E "(import ./nix/default.nix).overrideAttrs (oldAttrs: {
+        doCheck = false;
+        doInstallCheck = false;
+      })"
+
+nix shell:
+  stage: build
+  tags:
+    - nix
+  script:
+    - nix-shell ./nix/shell.nix --run ""
+
+nix test:
+  stage: test
   tags:
     - nix
     - turbomole
     - orca
+    - gamess
   script:
-    - cd nix
-    - nix-build --arg fullTest false
+    - |
+      nix-build -E "(import ./nix/default.nix).override {
+        enableOrca = true;
+        enableTurbomole = true;
+        enableGamess = true;
+        enableMultiwfn = true;
+      }"
+
+container:
+  stage: distribute
+  tags:
+    - nix
+  before_script:
+    - unset NIXPKGS_ALLOW_UNFREE
+  script:
+    - nix-build ./nix/container.nix
+  after_script:
+    - cp result pysisyphus.tar.gz
+    - cp result-2 pysisyphus.sif
+  artifacts:
+    paths:
+      - pysisyphus.tar.gz
+      - pysisyphus.sif
