@@ -128,10 +128,10 @@ class OverlapCalculator(Calculator):
 
         jmol_cmd = get_cmd("jmol")
         mwfn_cmd = get_cmd("mwfn")
-        if (self.cdds == "render") and (jmol_cmd is None):
+        if (self.cdds == "render") and not jmol_cmd:
             logger.debug(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
-        if (self.cdds == "calc") and (mwfn_cmd is None):
+        if (self.cdds in ("calc", "render")) and not mwfn_cmd:
             logger.debug(msg.format(self.cdds, "Multiwfn", None))
             self.cdds = None
         self.log(f"cdds: {self.cdds}, jmol={jmol_cmd}, mwfn={mwfn_cmd}")
@@ -431,7 +431,7 @@ class OverlapCalculator(Calculator):
         normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
         # u, s, vh = np.linalg.svd(state_ci_coeffs)
         u, s, vh = np.linalg.svd(normed)
-        lambdas = s ** 2
+        lambdas = s**2
         self.log("Normalized transition density vector to 1.")
         self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
         lambdas_str = np.array2string(lambdas[:3], precision=4, suppress_small=True)
@@ -618,7 +618,7 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_nto = lambdas.sum() ** 2 / (lambdas ** 2).sum()
+            pr_nto = lambdas.sum() ** 2 / (lambdas**2).sum()
             if self.pr_nto:
                 use_ntos = int(np.round(pr_nto))
                 self.log(f"PR_NTO={pr_nto:.2f}")
