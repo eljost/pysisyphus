@@ -49,20 +49,31 @@ read_fns = Config.read(config_fn)
 
 
 def get_cmd(section, key="cmd", use_defaults=True):
+    cmd = None
+    msg = f" and no default cmd was specified for '{section}'."
+
+    # First we try to load the command from .pysisyphusrc
     try:
         cmd = Config[section][key]
+        msg = "."
+    # When the command is not available on .pysisyphusrc we check the defaults
     except KeyError:
-        # Try if default command as given above is available on PATH via 'which'.
         if use_defaults:
             try:
-                cmd = shutil.which(DEFAULTS[key])
+                # As key will basically always 'cmd' but the DEFAULTS dict
+                # contains the section we use 'section' to look up the default command.
+                default_cmd = DEFAULTS[section]
+                cmd = shutil.which(default_cmd)
+                # 'msg' will only be printed when 'cmd' is None, so the msg is
+                # always negative.
+                msg = f" and default cmd='{default_cmd}' was not found."
             except KeyError:
-                cmd = None
+                pass
 
-    if not cmd:
+    if cmd is None:
         print(
             f"Failed to load key '{key}' from section '{section}' "
-            "in ~/.pysisyphusrc and no default was specified."
+            f"in ~/.pysisyphusrc{msg}"
         )
         cmd = None
     return cmd
