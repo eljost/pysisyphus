@@ -6,7 +6,8 @@ Preparing an environment
 
 It is good idea to install `pysisyphus` into a separate python environment,
 whether it is an `Anaconda <https://www.anaconda.com/>`_ environment or a
-`virtualenv <https://docs.python.org/3/library/venv.html>`_ environment.
+`virtualenv <https://docs.python.org/3/library/venv.html>`_ environment,
+derived from the system python installation or a pyenv installation (preferred).
 
 .. code-block:: bash
 
@@ -31,15 +32,16 @@ do any development work this is the preferred way of installing pysisyphus.
 
 .. code-block:: bash
 
-    pip install pysisyphus
+    python -m pip install pysisyphus
     # Installation of additional optional dependencies is also possible
-    # pip install pysisyphus[qcengine,ase,pyscf,sphinx,pytest]
+    # python -m pip install pysisyphus[test]
 
-For Ubuntu 20.04 LTS it was observed that the `setuptools` must be upgraded to
-version >= 0.45, prior to the installation of pysisyphus.
+If you run into any problems please make sure that your pip version is recent enough.
+A pip upgrade is achieved via:
 
 .. code-block:: bash
-   pip install --upgrade setuptools
+
+   python -m pip install --upgrade pip
 
 Installation from source
 ========================
@@ -52,10 +54,10 @@ the code after installation (develop) do an editable (-e) installation with pip.
     git clone https://github.com/eljost/pysisyphus.git $install_dir
     cd $install_dir
     # Install with -e if you want an editable installation
-    pip install [-e] .
+    python -m pip install [-e] .
     # Installation of extras is also possible. 'sphinx' is only needed if you
     # want to build the documentation.
-    # pip install [-e] .[qcengine,ase,pyscf,sphinx]
+    # python -m pip install [-e] .[test]
 
 With an editable installation it is also easy to use other branches, besides the `master`
 branch, e.g., the `dev` branch to test out a new feature.
