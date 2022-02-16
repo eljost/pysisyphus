@@ -228,7 +228,7 @@ class Gaussian16(OverlapCalculator):
         self.make_fchk(path)
         if self.track:
             self.run_rwfdump(path, "635r")
-            self.nmos, self.roots = self.parse_log(path + self.out_fn)
+            self.nmos, self.roots = self.parse_log(path / self.out_fn)
 
     def parse_keyword(self, text):
         word = pp.Word(pp.alphanums + "-" + "/")
