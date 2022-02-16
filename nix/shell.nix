@@ -1,8 +1,12 @@
 let pkgs = import ./pkgs.nix;
+    pysisyphus = pkgs.python3.pkgs.pysisyphus.overrideAttrs (_: {
+      doCheck = false;
+      doInstallCheck = false;
+    });
 in with pkgs; mkShell {
-  buildInputs = [ python3.pkgs.pysisyphus ]
-    ++ python3.pkgs.pysisyphus.nativeBuildInputs
-    ++ python3.pkgs.pysisyphus.buildInputs
-    ++ python3.pkgs.pysisyphus.propagatedBuildInputs
+  buildInputs = [pysisyphus ]
+    ++ pysisyphus.nativeBuildInputs
+    ++ pysisyphus.buildInputs
+    ++ pysisyphus.propagatedBuildInputs
   ;
 }
