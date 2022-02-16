@@ -5,10 +5,10 @@
         "homepage": null,
         "owner": "markuskowa",
         "repo": "NixOS-QChem",
-        "rev": "d9c72e7b6c1f63c2a67fc28e94450d0b41e7e793",
-        "sha256": "01ypxxb7vcgzfdccyq9h46r9xwawx1qcc501qqjx647ynynhly2w",
+        "rev": "d1f5da50211678c7a7d8544bbc7ae9bea02ffb63",
+        "sha256": "1qc279282znifk5vpaq5pwqb4fjzj3xb2zbdwzcnvy8dbywzihdj",
         "type": "tarball",
-        "url": "https://github.com/markuskowa/NixOS-QChem/archive/d9c72e7b6c1f63c2a67fc28e94450d0b41e7e793.tar.gz",
+        "url": "https://github.com/markuskowa/NixOS-QChem/archive/d1f5da50211678c7a7d8544bbc7ae9bea02ffb63.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
