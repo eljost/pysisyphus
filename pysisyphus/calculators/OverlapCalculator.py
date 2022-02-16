@@ -14,10 +14,10 @@ import numpy as np
 from pysisyphus import logger
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
+from pysisyphus.config import get_cmd
 from pysisyphus.constants import AU2EV
 from pysisyphus.helpers_pure import describe
 from pysisyphus.io.hdf5 import get_h5_group
-from pysisyphus.testing import available
 from pysisyphus.wrapper.mwfn import make_cdd
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
 
@@ -117,20 +117,24 @@ class OverlapCalculator(Calculator):
         self.pr_nto = pr_nto
         self.nto_thresh = nto_thresh
         self.cdds = cdds
-        # When calculation/rendering of charge density differences is requested
-        # check if the appropriate programs are available. If not, we fallback
-        # to a more sensible command and print a warning.
+        # When calculation/rendering of charge density differences (CDDs) is
+        # requested check fore the required programs (Multiwfn/Jmol). If they're
+        # not available, we fallback to a more sensible command and print a warning.
         msg = (
             "'cdds: {0}' requested, but {1} was not found! "
             "Falling back to 'cdds: {2}'!\nConsider defining the {1} "
             "command in '.pysisyphusrc'."
         )
-        if (self.cdds == "render") and (not available("jmol", set_pytest_mark=False)):
+
+        jmol_cmd = get_cmd("jmol")
+        mwfn_cmd = get_cmd("mwfn")
+        if (self.cdds == "render") and (jmol_cmd is None):
             logger.debug(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
-        if (self.cdds == "calc") and (not available("mwfn", set_pytest_mark=False)):
+        if (self.cdds == "calc") and (mwfn_cmd is None):
             logger.debug(msg.format(self.cdds, "Multiwfn", None))
             self.cdds = None
+        self.log(f"cdds: {self.cdds}, jmol={jmol_cmd}, mwfn={mwfn_cmd}")
         assert self.cdds in self.VALID_CDDS
         self.orient = orient
         self.dump_fn = self.out_dir / dump_fn
