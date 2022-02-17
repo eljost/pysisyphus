@@ -1,6 +1,6 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  NIXQC_SRCURL: http://sol/nix-src
+  NIXQC_SRCURL: http://kashyyyk:8888/nix-src
   NIXQC_AVX: 0
   NIXPKGS_ALLOW_UNFREE: 1
 
