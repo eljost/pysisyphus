@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 import argparse
+import itertools as it
 import sys
 
+from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_loader
-from pysisyphus.helpers_pure import full_expand
+from pysisyphus.helpers_pure import full_expand, highlight_text
 from pysisyphus.intcoords.setup import get_fragments, get_bond_sets
 
 
@@ -13,8 +15,25 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("fn")
-    parser.add_argument("bonds", type=int, nargs="+")
-
+    break_group = parser.add_mutually_exclusive_group(required=True)
+    break_group.add_argument(
+        "--bonds",
+        type=int,
+        nargs="+",
+        help="List of pairs of atom indices. Each pair is a bond that "
+        "is broken, to generate the fragments.",
+    )
+    break_group.add_argument(
+        "--bonds-from",
+        type=int,
+        nargs="+",
+        help="List of atom indices. Break all bonds involving any of this atoms.",
+    )
+    break_group.add_argument(
+        "--tmc",
+        action="store_true",
+        help="Break all bonds involving transition metal atoms.",
+    )
     return parser.parse_args(args)
 
 
@@ -51,24 +70,62 @@ def compress(inds, check=True):
 
 
 def run():
+    print(highlight_text("frag.py") + "\n")
     args = parse_args(sys.argv[1:])
 
     geom = geom_loader(args.fn)
-    rm_bonds_ = args.bonds
-    assert (len(rm_bonds_) > 0) and (len(rm_bonds_) % 2) == 0
-    rm_bonds = list()
-    for i in range(len(rm_bonds_) // 2):
-        rm_bond = rm_bonds_[2 * i : 2 * i + 2]
-        rm_bond.sort()
-        rm_bonds.append(rm_bond)
-    print(rm_bonds)
 
+    # Determine bond topology
     bonds = get_bond_sets(geom.atoms, geom.coords3d).tolist()
+
+    rm_bonds_from = set()
+    if rm_bonds_ := args.bonds:
+        # At least one bond must be present and the atom indices must be given in pairs
+        assert (len(rm_bonds_) > 0) and (len(rm_bonds_) % 2) == 0
+        rm_bonds = list()
+        for i in range(len(rm_bonds_) // 2):
+            rm_bond = rm_bonds_[2 * i : 2 * i + 2]
+            rm_bond.sort()
+            rm_bonds.append(rm_bond)
+    elif args.bonds_from:
+        rm_bonds_from = set(args.bonds_from)
+    elif args.tmc:
+        print("Delete all bonds involving transition metals")
+        trans_metal_nums = it.chain(
+            #       3d             4d             5d             6d
+            *(range(21, 31), range(39, 49), range(57, 81), range(89, 113))
+        )
+
+        def is_trans_metal(atomic_num):
+            return atomic_num in trans_metal_nums
+
+        atom_nums = [ATOMIC_NUMBERS[atom.lower()] for atom in geom.atoms]
+        trans_metal_atoms = [
+            i for i, atom_num in enumerate(atom_nums) if is_trans_metal(atom_num)
+        ]
+        rm_bonds_from = set(trans_metal_atoms)
+    else:
+        raise Exception("How did I get here?")
+
+    if rm_bonds_from:
+        rm_atoms = [geom.atoms[i] for i in rm_bonds_from]
+        rm_str = ", ".join([f"{i}{atom}" for i, atom in zip(rm_bonds_from, rm_atoms)])
+        print(f"Delete all bonds involving atoms: {rm_str}")
+        rm_bonds = [bond for bond in bonds if rm_bonds_from & set(bond)]
+    print()
+
+    assert rm_bonds
+
+    print(f"{len(rm_bonds)} bond(s) to be deleted:")
+    for i, bond in enumerate(rm_bonds):
+        print(f"\t{i:02d}: {bond}")
+
     for rm_bond in rm_bonds:
         try:
             bonds.remove(rm_bond)
         except ValueError:
             print(f"Bond {rm_bond} not in detected bonds!")
+    print()
 
     fragments = get_fragments(geom.atoms, geom.coords, bond_inds=bonds)
     print(f"Found {len(fragments)} fragments")

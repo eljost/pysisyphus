@@ -1,6 +1,3 @@
-# from pysisyphus.constants import ANG2BOHR
-
-
 # Taken from periodictable-1.5.0
 MASS_DICT = {
     'x': 1, # dummy atom
