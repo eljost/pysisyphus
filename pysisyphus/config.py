@@ -7,6 +7,9 @@ import shutil
 import sys
 
 
+from pysisyphus import logger
+
+
 CONFIG_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 LIB_DIR = CONFIG_DIR / "geom_library"
 T_DEFAULT = 298.15  # Kelvin
@@ -50,7 +53,7 @@ read_fns = Config.read(config_fn)
 
 def get_cmd(section, key="cmd", use_defaults=True):
     cmd = None
-    msg = f" and no default cmd was specified for '{section}'."
+    msg = f" and no default was specified for '{section}'."
 
     # First we try to load the command from .pysisyphusrc
     try:
@@ -59,20 +62,19 @@ def get_cmd(section, key="cmd", use_defaults=True):
     # When the command is not available on .pysisyphusrc we check the defaults
     except KeyError:
         if use_defaults:
+            default_key = section if key == "cmd" else key
             try:
-                # As key will basically always 'cmd' but the DEFAULTS dict
-                # contains the section we use 'section' to look up the default command.
-                default_cmd = DEFAULTS[section]
+                default_cmd = DEFAULTS[default_key]
                 cmd = shutil.which(default_cmd)
                 # 'msg' will only be printed when 'cmd' is None, so the msg is
                 # always negative.
-                msg = f" and default cmd='{default_cmd}' was not found."
+                msg = f" and default cmd='{default_cmd}' was not found in $PATH."
             except KeyError:
                 pass
 
     if cmd is None:
-        print(
-            f"Failed to load key '{key}' from section '{section}' "
+        logger.warning(
+            f"Failed to load '{key}' from [{section}] "
             f"in ~/.pysisyphusrc{msg}"
         )
         cmd = None

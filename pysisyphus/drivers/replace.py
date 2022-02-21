@@ -130,6 +130,7 @@ def replace_atom(
 
 # Located in ../geom_library/replacements/
 REPLACEMENTS = {
+    "Ph": ("benzene.xyz", 8),
     "OMe": ("methanol.xyz", 4),
     "OEt": ("ethanol.xyz", 8),
     "OH": ("water.xyz", 1),

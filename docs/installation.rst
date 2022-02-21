@@ -90,8 +90,9 @@ Depending on the software different choices were made how it is registered. An e
     [gaussian16]
     # Cmds to execute. Please ensure that the binaries are found in your $PATH.
     cmd=g16
-    formchk_cmd=formchk
-    unfchk_cmd=unfchk
+    formchk=formchk
+    unfchk=unfchk
+    rwfdump=rwfdump
 
     [openmolcas]
     # Cmd to execute. Please ensure that pymolcas is on your $PATH.
