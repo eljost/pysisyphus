@@ -91,10 +91,10 @@ def run():
         rm_bonds_from = set(args.bonds_from)
     elif args.tmc:
         print("Delete all bonds involving transition metals")
-        trans_metal_nums = it.chain(
+        trans_metal_nums = list(it.chain(
             #       3d             4d             5d             6d
             *(range(21, 31), range(39, 49), range(57, 81), range(89, 113))
-        )
+        ))
 
         def is_trans_metal(atomic_num):
             return atomic_num in trans_metal_nums
