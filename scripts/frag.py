@@ -169,5 +169,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-    # res = compress((10, 11, 12, 13, 17, 18, 19, 26))
-    # print(res)
