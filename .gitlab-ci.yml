@@ -15,7 +15,7 @@ nix build:
     - nix
   script:
     - |
-      nix-build -E "(import ./nix/default.nix).overrideAttrs (oldAttrs: {
+      nix-build -E "(import ./nix/default.nix).pysisyphus.overrideAttrs (oldAttrs: {
         doCheck = false;
         doInstallCheck = false;
       })"
@@ -36,7 +36,7 @@ nix test:
     - gamess
   script:
     - |
-      nix-build -E "(import ./nix/default.nix).override {
+      nix-build -E "(import ./nix/default.nix).pysisyphus.override {
         enableOrca = true;
         enableTurbomole = true;
         enableGamess = true;
