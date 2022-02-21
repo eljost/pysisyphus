@@ -721,7 +721,7 @@ class Geometry:
         return self.coords3d.mean(axis=0)
 
     def center(self):
-        self.coords3d - self.centroid[None, :]
+        self.coords3d -= self.centroid[None, :]
 
     @property
     def mw_coords(self):
