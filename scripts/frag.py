@@ -128,16 +128,27 @@ def run():
     print()
 
     fragments = get_fragments(geom.atoms, geom.coords, bond_inds=bonds)
+    single_atom_frags = set(range(len(geom.atoms))) - set(it.chain(*fragments))
+    if single_atom_frags:
+        print(f"Found {len(single_atom_frags)} single atom fragments.")
+    fragments += [
+        [
+            single_atom,
+        ]
+        for single_atom in single_atom_frags
+    ]
     print(f"Found {len(fragments)} fragments")
 
     atoms = geom.atoms
     dummy_atoms = ["X"] * len(atoms)
     coords3d = geom.coords3d
     xyzs = list()
+    frags_compressed = list()
     for i, frag in enumerate(fragments):
-        comped = compress(frag)
-        print(f"{len(frag)} atoms, compressed:\n\t{comped}")
-        # frag_atoms = [atoms[i] for i in frag]
+        compressed = compress(frag, check=True)
+        frags_compressed.append(compressed)
+        sop = "s" if len(frag) > 1 else ""
+        print(f"{len(frag)} atom{sop}, compressed:\n\t{compressed}")
         frag_atoms = dummy_atoms.copy()
         for j in frag:
             frag_atoms[j] = atoms[j]
@@ -147,6 +158,11 @@ def run():
         with open(fn, "w") as handle:
             handle.write(as_xyz)
         xyzs.append(as_xyz)
+
+    # Do a round trip to see if all fragments add up to the total number of atoms
+    expanded = set(full_expand(",".join(frags_compressed)))
+    assert len(expanded) == len(geom.atoms)
+
     with open("fragments.trj", "w") as handle:
         handle.write("\n".join(xyzs))
 
