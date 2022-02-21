@@ -24,6 +24,8 @@ nix shell:
   stage: build
   tags:
     - nix
+  before_script:
+    - nix-env -f ./nix/pkgs.nix -iA bash
   script:
     - nix-shell ./nix/shell.nix --run ""
 
