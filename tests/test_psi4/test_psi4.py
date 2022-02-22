@@ -40,7 +40,7 @@ def test_hessian(azetidine):
     H = azetidine.eckart_projection(H)
     w, v = np.linalg.eigh(H)
     nus = eigval_to_wavenumber(w)
-    ref_nus = np.array((3278.33113, 3320.16889, 3714.42723))
+    ref_nus = np.array((3280.600842, 3322.467577, 3716.999024))
     np.testing.assert_allclose(nus[-3:], ref_nus, atol=1e-4)
 
 

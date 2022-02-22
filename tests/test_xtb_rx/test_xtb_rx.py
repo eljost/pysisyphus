@@ -18,6 +18,7 @@ Bh = Benchmark(
 )
 
 
+@pytest.mark.benchmark
 @using("xtb")
 @pytest.mark.parametrize("fn, geoms, charge, mult, ref_energy", Bh.geom_iter)
 def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
@@ -141,6 +142,7 @@ def test_xtb_rx(fn, geoms, charge, mult, ref_energy, results_bag):
         write_geoms_to_trj(ts_geoms, ts_fns)
 
 
+@pytest.mark.benchmark
 @using("xtb")
 # @filter_fixture_store("test_xtb_rx")
 def test_xtb_rx_synthesis(fixture_store):

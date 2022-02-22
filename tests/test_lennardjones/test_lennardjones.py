@@ -14,7 +14,7 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 def test_lennard_jones():
     atoms = Icosahedron("Ar", noshells=2, latticeconstant=3)
-    atoms.set_calculator(ase_LJ())
+    atoms.calc = ase_LJ()
     ase_forces = atoms.get_forces()
     ase_energy = atoms.get_potential_energy()
 

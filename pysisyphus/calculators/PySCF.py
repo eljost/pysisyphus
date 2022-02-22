@@ -36,7 +36,6 @@ class PySCF(OverlapCalculator):
         basis,
         xc=None,
         method="scf",
-        mem=2000,
         root=None,
         nstates=None,
         auxbasis=None,
@@ -53,7 +52,6 @@ class PySCF(OverlapCalculator):
             self.multisteps[self.method] = ("scf", self.method)
         if self.xc and self.method != "tddft":
             self.method = "dft"
-        self.mem = mem
         self.root = root
         self.nstates = nstates
         if self.method == "tddft":
@@ -250,14 +248,15 @@ class PySCF(OverlapCalculator):
         gs_energy = gs_mf.e_tot
         mo_coeffs = gs_mf.mo_coeff.T
 
-        # Shape = (nstates, 2 (X,Y), occ, virt)
-        ci_coeffs = np.array(exc_mf.xy)
+        first_Y = exc_mf.xy[0][1]
         # In TDA calculations Y is just the integer 0.
-        if ci_coeffs.ndim == 2:
+        if isinstance(first_Y, int) and (first_Y == 0):
             X = np.array([state[0] for state in exc_mf.xy])
             Y = np.zeros_like(X)
         # In TD-DFT calculations the Y vectors is also present
         else:
+            # Shape = (nstates, 2 (X,Y), occ, virt)
+            ci_coeffs = np.array(exc_mf.xy)
             X = ci_coeffs[:, 0]
             Y = ci_coeffs[:, 1]
 

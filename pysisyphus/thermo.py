@@ -4,16 +4,20 @@ import jinja2
 try:
     from thermoanalysis.QCData import QCData
     from thermoanalysis.thermo import thermochemistry
+
     can_thermoanalysis = True
 except ModuleNotFoundError:
     can_thermoanalysis = False
 
-from pysisyphus.constants import AU2KJPERMOL
+from pysisyphus.config import p_DEFAULT, T_DEFAULT
+from pysisyphus.constants import AU2KJPERMOL, AU2KCALPERMOL
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.Geometry import Geometry
 
 
-def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1", return_geom=False):
+def get_thermoanalysis_from_hess_h5(
+    h5_fn, T=T_DEFAULT, p=p_DEFAULT, point_group="c1", return_geom=False
+):
     with h5py.File(h5_fn, "r") as handle:
         masses = handle["masses"][:]
         vibfreqs = handle["vibfreqs"][:]
@@ -31,36 +35,12 @@ def get_thermoanalysis_from_hess_h5(h5_fn, T=298.15, point_group="c1", return_ge
     }
 
     qcd = QCData(thermo_dict, point_group=point_group)
-    thermo = thermochemistry(qcd, temperature=T)
+    thermo = thermochemistry(qcd, temperature=T, pressure=p)
     if return_geom:
         geom = Geometry(atoms=atoms, coords=coords3d)
         return thermo, geom
     else:
         return thermo
-
-
-def get_thermoanalysis(geom, T=298.15, point_group="c1"):
-    hessian = geom.cart_hessian
-    energy = geom.energy
-    vibfreqs, *_ = geom.get_normal_modes(hessian)
-    try:
-        mult = geom.calculator.mult
-    except AttributeError:
-        mult = 1
-        print(f"Multiplicity could not be determined! Using 2S+1 = {mult}.")
-
-    thermo_dict = {
-        "masses": geom.masses,
-        "vibfreqs": vibfreqs,
-        "coords3d": geom.coords3d,
-        "energy": energy,
-        "mult": mult,
-    }
-
-    qcd = QCData(thermo_dict, point_group=point_group)
-    thermo = thermochemistry(qcd, temperature=T)
-
-    return thermo
 
 
 THERMO_TPL = jinja2.Template(
@@ -73,17 +53,20 @@ Pressure          : {{ thermo.p }} Pa
 Total Mass        : {{ "%0.4f" % thermo.M }} amu
 
 ! Symmetry is currently not supported in pysisyphus. !
-! If not specified c1 and σ = 1 are assumed.         !
+! If not given otherwise, c1 and σ = 1 are assumed.  !
 Point Group       : {{ thermo.point_group }}
 Symmetry Number σ : {{ thermo.sym_num }}  
+Linear            : {{ thermo.linear }}
 
 +
 | Normal Mode Frequencies
 {{ sep }}
-{% for nu in nus -%}
- {{ "\t%04d" % loop.index }}: {{ nu }} cm⁻¹
+{% for nu in used_nus -%}
+ {{ "\t%04d" % loop.index }}: {{ nu }}
 {% endfor -%}
 {{ sep }}
+{% if is_ts %}This should be a TS.{% endif %}
+Expected {{ expected }} normal modes, got {{ used_nus|length}}.
 
 +
 | Inner energy U = U_el + U_vib + U_rot + U_trans
@@ -126,19 +109,43 @@ Symmetry Number σ : {{ thermo.sym_num }}
 )
 
 
-def print_thermoanalysis(thermo, geom=None, level=0, title=None):
+def print_thermoanalysis(
+    thermo, geom=None, is_ts=False, unit="joule", level=0, title=None
+):
     """Print thermochemical analysis."""
 
+    units = {
+        "calorie": ("kcal mol⁻¹", AU2KCALPERMOL),
+        "joule": ("kJ mol⁻¹", AU2KJPERMOL),
+    }
+    unit_key, unit_conv = units[unit]
+
     def fmt(key, hartree):
-        """Output key & energy in Hartree and kJ/mol."""
-        kjm = hartree * AU2KJPERMOL
-        return f"{key:<18}: {hartree: >16.8f} Eh ({kjm: >18.2f} kJ/mol)"
+        """Output key & energy in Hartree and the chosen unit."""
+        kjm = hartree * unit_conv
+        return f"{key:<18}: {hartree: >16.8f} Eh ({kjm: >18.2f} {unit_key})"
 
     # Separator
     sep = "+-----------------------------------------------------------------+"
 
-    nus = [f"{nu: >8.2f}" for nu in thermo.wavenumbers]
-    rendered = THERMO_TPL.render(geom=geom, thermo=thermo, nus=nus, sep=sep, fmt=fmt)
+    sub_modes = 5 if thermo.linear else 6
+    # Expect one real mode less if it is a TS
+    sub_modes += 1 if is_ts else 0
+    expected = 3 * thermo.atom_num - sub_modes
+
+    def fmt_nus(nus):
+        return [f"{nu: >8.2f} cm⁻¹" + (", excluded" if nu < 0.0 else "") for nu in nus]
+
+    rendered = THERMO_TPL.render(
+        geom=geom,
+        thermo=thermo,
+        org_nus=thermo.org_wavenumbers,
+        used_nus=fmt_nus(thermo.wavenumbers),
+        expected=expected,
+        is_ts=is_ts,
+        sep=sep,
+        fmt=fmt,
+    )
 
     if title is None:
         title = ""

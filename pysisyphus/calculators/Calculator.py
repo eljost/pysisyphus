@@ -4,13 +4,14 @@ from pathlib import Path
 import platform
 import shutil
 import subprocess
-import sys
 import tempfile
 
 from natsort import natsorted
 
-from pysisyphus.config import Config
+from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus import logger
+from pysisyphus import helpers_pure
 
 
 class Calculator:
@@ -25,10 +26,11 @@ class Calculator:
         base_name="calculator",
         pal=1,
         mem=1000,
+        check_mem=True,
         retry_calc=1,
         last_calc_cycle=None,
         clean_after=True,
-        out_dir="./",
+        out_dir=OUT_DIR_DEFAULT,
     ):
         """Base-class of all calculators.
 
@@ -52,6 +54,8 @@ class Calculator:
         mem : int, default=1000
             Mememory per core in MB. The total amount of memory is given as
             mem*pal.
+        check_mem : bool, default=True
+            Whether to adjust the requested memory if too much is requested.
         retry_calc : int, default=0
             Number of additional retries when calculation failed.
         last_calc_cycle : int
@@ -63,22 +67,25 @@ class Calculator:
             Path that is prepended to generated filenames.
         """
 
+        self.logger = logging.getLogger("calculator")
+
         self.calc_number = calc_number
         self.charge = int(charge)
         self.mult = int(mult)
         self.base_name = base_name
         self.pal = int(pal)
-        self.mem = int(mem)
+        assert self.pal > 0, "pal must be a non-negative integer!"
+        if check_mem:
+            mem = helpers_pure.check_mem(int(mem), pal, logger=self.logger)
+        self.mem = mem
         # Disasble retries if check_termination method is not implemented
         self.retry_calc = int(retry_calc) if hasattr(self, "check_termination") else 0
         assert self.retry_calc >= 0
-        self.out_dir = Path(out_dir).resolve()
-        if not self.out_dir.exists():
-            os.mkdir(self.out_dir)
-
-        assert pal > 0, "pal must be a non-negative integer!"
-
-        self.logger = logging.getLogger("calculator")
+        try:
+            self.out_dir = Path(out_dir).resolve()
+        except TypeError:
+            self.out_dir = Path(OUT_DIR_DEFAULT).resolve()
+        self.out_dir.mkdir(parents=True, exist_ok=True)
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
@@ -101,19 +108,13 @@ class Calculator:
         self.last_run_path = None
         self.backup_dir = None
 
-    def get_cmd(self, key):
-        assert self.conf_key, (
-            "Tried loading a cmd from the config file but no conf_key "
-            "was specified in the Calculator!"
-        )
+    def get_cmd(self, key="cmd"):
+        assert self.conf_key, "'conf_key'-attribute is missing for this calculator!"
 
         try:
-            return Config[self.conf_key][key]
+            return get_cmd(section=self.conf_key, key=key, use_defaults=True)
         except KeyError:
-            print(
-                f"Failed to load key '{key}' from section '{self.conf_key}'. Exiting!"
-            )
-            sys.exit()
+            logger.debug(f"Failed to load key '{key}' from section '{self.conf_key}'!")
 
     @property
     def name(self):
@@ -165,7 +166,7 @@ class Calculator:
             Filename.
         """
 
-        if not counter:
+        if counter is None:
             counter = self.calc_counter
         fn = self.out_dir / f"{self.name}.{counter:03d}.{name}"
         if return_str:

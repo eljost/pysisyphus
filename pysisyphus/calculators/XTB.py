@@ -34,7 +34,6 @@ class XTB(Calculator):
         retry_etemp=None,
         topo=None,
         topo_update=None,
-        mem=1000,
         quiet=False,
         **kwargs,
     ):
@@ -81,7 +80,6 @@ class XTB(Calculator):
             ), "Using 'etemp' and 'retry_etemp' simultaneously is not possible!"
         self.topo = topo
         self.topo_update = topo_update
-        self.mem = mem
         self.quiet = quiet
 
         self.topo_used = 0
@@ -116,7 +114,7 @@ class XTB(Calculator):
             "calc": self.parse_energy,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
     def reattach(self, last_calc_cycle):
         pass

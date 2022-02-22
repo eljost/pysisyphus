@@ -8,11 +8,10 @@ import pytest
 """
 
 
-FixtureStore = OrderedDict()
+FixtureStore = OrderedDict((("results_bag", dict()),))
 
 
 class ResultsBag(dict):
-    
     def __setattr__(self, key, value):
         self[key] = value
 
@@ -27,7 +26,7 @@ class ResultsBag(dict):
 def results_bag(request):
     bag = ResultsBag()
     test_name = request._pyfuncitem.name
-    FixtureStore.setdefault("results_bag", dict())[test_name] = bag
+    FixtureStore["results_bag"][test_name] = bag
     return bag
 
 
@@ -43,14 +42,14 @@ def this_dir(request):
 
 
 # def pytest_collection_modifyitems(session, config, items):
-    # modified = list()
-    # synths = dict()
-    # for i, item in enumerate(items):
-        # name = item.name
-        # if "synthesis" in name:
-            # base_name = name.split("_synthesis")[0]
-            # synths[base_name] = name
-        # else:
-            # modified.append(item)
-    # import pdb; pdb.set_trace()
-    # print("Hallo")
+# modified = list()
+# synths = dict()
+# for i, item in enumerate(items):
+# name = item.name
+# if "synthesis" in name:
+# base_name = name.split("_synthesis")[0]
+# synths[base_name] = name
+# else:
+# modified.append(item)
+# import pdb; pdb.set_trace()
+# print("Hallo")

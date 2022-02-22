@@ -1,4 +1,5 @@
 from collections import namedtuple
+import getpass
 import itertools as it
 import logging
 from math import log
@@ -12,6 +13,7 @@ import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
+from pysisyphus.config import p_DEFAULT, T_DEFAULT, LIB_DIR
 from pysisyphus.constants import ANG2BOHR, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import (
@@ -30,13 +32,9 @@ from pysisyphus.io import (
 )
 from pysisyphus.thermo import (
     can_thermoanalysis,
-    get_thermoanalysis,
     print_thermoanalysis,
 )
 from pysisyphus.xyzloader import parse_xyz_file, parse_trj_file, make_trj_str
-
-
-THIS_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 
 
 def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
@@ -76,7 +74,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     fn = str(fn)
     org_fn = fn
 
-    split_ = re.split("\[(-?\d+)\]$", fn)
+    split_ = re.split(r"\[(-?\d+)\]$", fn)
     fn = split_.pop(0)
     if split_:
         index = int(split_.pop(0))
@@ -97,7 +95,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     func = funcs[ext]
 
     if fn.startswith("lib:"):
-        fn = str(THIS_DIR / "geom_library/" / fn[4:])
+        fn = str(LIB_DIR / fn[4:])
     elif fn.startswith("pubchem:"):
         func = geom_from_pubchem_name
         fn = fn[8:]
@@ -238,7 +236,7 @@ def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
 
 def slugify_worker(dask_worker):
     slug = re.sub("tcp://", "host_", dask_worker)
-    slug = re.sub("\.", "_", slug)
+    slug = re.sub(r"\.", "_", slug)
     slug = re.sub(":", "-", slug)
     return slug
 
@@ -292,18 +290,27 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
 
 
-def check_for_end_sign():
+def check_for_end_sign(check_user=True, cwd="."):
     signs = (
         "stop",
         "converged",
-        "exit"
+        "exit",
     )
     sign_found = False
+    cur_user = getpass.getuser()
+    cwd = Path(cwd)
+
+    def sign_owner(path):
+        if not check_user:
+            return True
+        else:
+            return path.owner() == cur_user
 
     for sign in signs:
-        if os.path.exists(sign):
+        sign_path = cwd / sign
+        if sign_path.exists() and sign_owner(sign_path):
             print(f"Found sign '{sign}'. Ending run.")
-            os.remove(sign)
+            os.remove(sign_path)
             sign_found = sign
 
             if sign == "exit":
@@ -372,6 +379,23 @@ def get_coords_diffs(coords, align=False):
     return cds
 
 
+def pick_image_inds(cart_coords, images: int):
+    """Pick approx. evenly distributed images from given Cartesian coordinates."""
+    cds = get_coords_diffs(cart_coords, align=True)
+    target_cds = iter(np.linspace(0, 1, num=images))
+    target_cd = next(target_cds)
+    image_inds = list()
+    for i, cd in enumerate(cds):
+        if len(image_inds) == (images - 1):
+            break
+        if cd >= target_cd:
+            image_inds.append(i)
+            target_cd = next(target_cds)
+
+    image_inds.append(len(cart_coords) - 1)
+    return image_inds
+
+
 def shake_coords(coords, scale=0.1, seed=None):
     if seed:
         np.random.seed(seed)
@@ -412,8 +436,10 @@ def do_final_hessian(
     geom,
     save_hessian=True,
     write_imag_modes=False,
+    is_ts=False,
     prefix="",
-    T=298.15,
+    T=T_DEFAULT,
+    p=p_DEFAULT,
     print_thermo=False,
     out_dir=None,
 ):
@@ -465,14 +491,16 @@ def do_final_hessian(
             imag_fns.append(trj_fn)
             with open(trj_fn, "w") as handle:
                 handle.write(imag_mode.trj_str)
-            print(f"Wrote imaginary mode with ṽ={imag_mode.nu: >10.2f} cm⁻¹ to '{trj_fn}'")
+            print(
+                f"Wrote imaginary mode with ṽ={imag_mode.nu: >10.2f} cm⁻¹ to '{trj_fn}'"
+            )
         print()
 
     thermo = None
     if can_thermoanalysis:
-        thermo = get_thermoanalysis(geom, T=T)
+        thermo = geom.get_thermoanalysis(geom, T=T, p=p)
         if print_thermo:
-            print_thermoanalysis(thermo, geom=geom)
+            print_thermoanalysis(thermo, geom=geom, is_ts=is_ts)
 
     res = FinalHessianResult(
         neg_eigvals=neg_eigvals,

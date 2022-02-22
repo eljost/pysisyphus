@@ -11,34 +11,43 @@ import pyparsing as pp
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import AU2EV, BOHR2ANG
+from pysisyphus.helpers_pure import file_or_str
 
 
 class Gaussian16(OverlapCalculator):
 
     conf_key = "gaussian16"
 
-    def __init__(self, route, mem=3500, gbs="", gen="",
-                 keep_chk=False, stable="", fchk=None, **kwargs):
+    def __init__(
+        self,
+        route,
+        gbs="",
+        gen="",
+        keep_chk=False,
+        stable="",
+        fchk=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.route = route.lower()
-        self.mem = mem
         invalid_keywords = ("symmetry", "nosymm", "force", "opt", "freq", "irc")
-        assert all([kw not in self.route for kw in invalid_keywords])
+        invalid_kws_given = [kw for kw in invalid_keywords if kw in self.route]
+        assert (
+            not invalid_kws_given
+        ), f"Invalid keywords given in route: {invalid_kws_given}. Please remove them."
         self.gbs = gbs
-        assert "@" not in gbs, "Give only the path to the .gbs file, " \
-                               "without the @!"
+        assert "@" not in gbs, "Give only the path to the .gbs file, " "without the @!"
         self.gen = gen
         self.keep_chk = keep_chk
         self.stable = stable
         self.fchk = fchk
 
-        keywords = {kw: option
-                    for kw, option in [self.parse_keyword(kw)
-                                       for kw in self.route.split()]
+        keywords = {
+            kw: option
+            for kw, option in [self.parse_keyword(kw) for kw in self.route.split()]
         }
-        exc_keyword = [key for key in "td tda cis".split()
-                       if key in keywords]
+        exc_keyword = [key for key in "td tda cis".split() if key in keywords]
         self.root = None
         self.nstates = None
         if exc_keyword:
@@ -51,11 +60,11 @@ class Gaussian16(OverlapCalculator):
                 self.root = 1
                 self.log("No explicit root was specified! Using root=1 as default!")
             # Collect remaining options if specified
-            self.exc_args = {k:v for k, v in exc_dict.items()
-                             if k not in ("nstates", "root")}
+            self.exc_args = {
+                k: v for k, v in exc_dict.items() if k not in ("nstates", "root")
+            }
             # Delete exc keyword, as we build it later on
             self.route = re.sub(r"((?:td|cis|tda).+?(:?\s|$))", "", self.route)
-
 
         self.to_keep = ("com", "fchk", "log", "dump_635r", "input.xyz")
         if self.keep_chk:
@@ -96,8 +105,13 @@ class Gaussian16(OverlapCalculator):
         }
 
         self.base_cmd = self.get_cmd("cmd")
-        self.formchk_cmd = self.get_cmd("formchk_cmd")
-        self.unfchk_cmd = self.get_cmd("unfchk_cmd")
+        self.formchk_cmd = self.get_cmd("formchk")
+        self.unfchk_cmd = self.get_cmd("unfchk")
+        self.rwfdump_cmd = self.get_cmd("rwfdump")
+        self.log(
+            f"Using commands: g16={self.base_cmd}, formchk={self.formchk_cmd}, "
+            f"unfchk={self.unfchk_cmd}, rwfdump={self.rwfdump_cmd}"
+        )
 
     def make_exc_str(self):
         # Ground state calculation
@@ -106,8 +120,7 @@ class Gaussian16(OverlapCalculator):
         root = f"root={self.root}"
         nstates = f"nstates={self.nstates}"
         pair2str = lambda k, v: f"{k}" + (f"={v}" if v else "")
-        arg_str = ",".join([pair2str(k, v)
-                            for k, v  in self.exc_args.items()])
+        arg_str = ",".join([pair2str(k, v) for k, v in self.exc_args.items()])
         exc_str = f"{self.exc_key}=({root},{nstates},{arg_str})"
         return exc_str
 
@@ -128,9 +141,9 @@ class Gaussian16(OverlapCalculator):
         # DISABLED for now, as gaussian also resorts the states
         # internally, which then messes up our internal numbering
         # of states.
-            # shutil.copy(self.chk, new_chk)
-            # reuse_str += " td=read"
-            # self.log("Using td=read")
+        # shutil.copy(self.chk, new_chk)
+        # reuse_str += " td=read"
+        # self.log("Using td=read")
 
         return reuse_str
 
@@ -140,8 +153,9 @@ class Gaussian16(OverlapCalculator):
         else:
             return ""
 
-    def prepare_input(self, atoms, coords, calc_type,
-                      did_stable=False, point_charges=None):
+    def prepare_input(
+        self, atoms, coords, calc_type, did_stable=False, point_charges=None
+    ):
         path = self.prepare_path(use_in_run=True)
         xyz_str = self.prepare_xyz_string(atoms, coords)
         with open(path / "input.xyz", "w") as handle:
@@ -150,7 +164,7 @@ class Gaussian16(OverlapCalculator):
         coords = self.prepare_coords(atoms, coords)
         kwargs = {
             "pal": self.pal,
-            "mem": self.pal*self.mem,
+            "mem": self.pal * self.mem,
             "chk_link0": f"%chk={self.chk_fn}",
             "add_link0": "",
             "route": self.route,
@@ -186,7 +200,7 @@ class Gaussian16(OverlapCalculator):
         if point_charges is not None:
             kwargs["route"] += " charge"
             point_charges = point_charges.copy()
-            point_charges[:,:3] *= BOHR2ANG
+            point_charges[:, :3] *= BOHR2ANG
             with io.StringIO() as handle:
                 np.savetxt(handle, point_charges, fmt="%16.10f")
                 pc_str = handle.getvalue()
@@ -200,8 +214,9 @@ class Gaussian16(OverlapCalculator):
         subprocess.run(cmd, stdout=subprocess.PIPE, cwd=path)
         self.log("Created .fchk")
 
-    def run_rwfdump(self, path, rwf_index):
-        chk_path = path / self.chk_fn
+    def run_rwfdump(self, path, rwf_index, chk_path=None):
+        if chk_path is None:
+            chk_path = path / self.chk_fn
         dump_fn = path / f"{self.dump_base_fn}_dump_{rwf_index}"
         cmd = f"rwfdump {chk_path} {dump_fn} {rwf_index}".split()
         subprocess.run(cmd)
@@ -217,7 +232,7 @@ class Gaussian16(OverlapCalculator):
         self.make_fchk(path)
         if self.track:
             self.run_rwfdump(path, "635r")
-            self.nmos, self.roots = self.parse_log(path)
+            self.nmos, self.roots = self.parse_log(path / self.out_fn)
 
     def parse_keyword(self, text):
         word = pp.Word(pp.alphanums + "-" + "/")
@@ -237,9 +252,7 @@ class Gaussian16(OverlapCalculator):
             + pp.Suppress(pp.Optional(")"))
         ).setResultsName("options")
 
-        parser = (
-            keyword + pp.Optional(options, default=[])
-        )
+        parser = keyword + pp.Optional(options, default=[])
 
         result = parser.parseString(text)
         as_dict = result.asDict()
@@ -260,9 +273,15 @@ class Gaussian16(OverlapCalculator):
         # Start with Empty so we can progessively build the
         # parser for all keys.
         parser = pp.Empty()
+
         def parser_for_key(key):
-            return pp.Group(pp.Suppress(pp.SkipTo(key)) + key + pp.restOfLine
-                            + pp.ZeroOrMore(float_))
+            return pp.Group(
+                pp.Suppress(pp.SkipTo(key))
+                + key
+                + pp.restOfLine
+                + pp.ZeroOrMore(float_)
+            )
+
         for key in keys:
             parser += parser_for_key(key)
         results = parser.parseString(text)
@@ -290,8 +309,9 @@ class Gaussian16(OverlapCalculator):
             is_stable = self.run_stable(atoms, coords)
             self.log(f"Wavefunction is now stable: {is_stable}")
             did_stable = True
-        inp = self.prepare_input(atoms, coords, "force",
-                                 did_stable=did_stable, **prepare_kwargs)
+        inp = self.prepare_input(
+            atoms, coords, "force", did_stable=did_stable, **prepare_kwargs
+        )
         kwargs = {
             "calc": "force",
         }
@@ -342,8 +362,9 @@ class Gaussian16(OverlapCalculator):
         if self.track:
             self.store_overlap_data(atoms, coords)
             self.track_root()
-            self.log("This track_root() call is a bit superfluous as the "
-                     "as the result is ignored :)"
+            self.log(
+                "This track_root() call is a bit superfluous as the "
+                "as the result is ignored :)"
             )
         return results
 
@@ -353,10 +374,10 @@ class Gaussian16(OverlapCalculator):
         double_coords = np.hstack((coords1, coords2))
         inp = self.prepare_input(double_atoms, double_coords, "double_mol")
         kwargs = {
-                "calc": "double_mol",
-                "keep": False,
-                "inc_counter": False,
-                "run_after": False,
+            "calc": "double_mol",
+            "keep": False,
+            "inc_counter": False,
+            "run_after": False,
         }
         double_mol_ovlps = self.run(inp, **kwargs)
         return double_mol_ovlps
@@ -373,19 +394,11 @@ class Gaussian16(OverlapCalculator):
         exc_energies /= AU2EV
         return exc_energies
 
-    def parse_log(self, path):
-        self.log(f"Parsing {self.out_fn}")
-
+    @file_or_str(".log", method=True)
+    def parse_log(self, text):
         def parse(text, regex, func):
             mobj = re.search(regex, text)
             return func(mobj[1])
-
-        if path.is_dir():
-            log_path = path / self.out_fn
-        else:
-            log_path = path
-        with open(log_path) as handle:
-            text = handle.read()
 
         # Depending on wether we did the calculation with td=read or not
         # roots will be at a different value. Without reading the CI coeffs
@@ -411,13 +424,14 @@ class Gaussian16(OverlapCalculator):
         a_core = a_occ - a_act
         b_core = b_occ - b_act
 
-        NMOs = namedtuple("NMOs", "a_core, a_occ a_act a_vir "
-                                  "b_core b_occ b_act b_vir "
-                                  "restricted")
+        NMOs = namedtuple(
+            "NMOs",
+            "a_core, a_occ a_act a_vir " "b_core b_occ b_act b_vir " "restricted",
+        )
 
-        nmos = NMOs(a_core, a_occ, a_act, a_vir,
-                    b_core, b_occ, b_act, b_vir,
-                    restricted)
+        nmos = NMOs(
+            a_core, a_occ, a_act, a_vir, b_core, b_occ, b_act, b_vir, restricted
+        )
         self.log(str(nmos))
         return nmos, roots
 
@@ -432,9 +446,11 @@ class Gaussian16(OverlapCalculator):
         tmp = np.array(arr_str.split()[12:], dtype=np.float64)
 
         # the core electrons are frozen in TDDFT/TDA
-        expected = (nmos.a_act*nmos.a_vir + nmos.b_act*nmos.b_vir) * roots * 2
-        self.log(f"Expecting {expected} ci coefficients in {dump_path}. "
-                 f"There are {tmp.size} items (including eigenvalues).")
+        expected = (nmos.a_act * nmos.a_vir + nmos.b_act * nmos.b_vir) * roots * 2
+        self.log(
+            f"Expecting {expected} ci coefficients in {dump_path}. "
+            f"There are {tmp.size} items (including eigenvalues)."
+        )
         coeffs = tmp[:expected]
         # 1. dim: X+Y, X-Y -> 2
         # 2. dim: roots -> variable, usually higher than Nstates as gaussian
@@ -470,13 +486,13 @@ class Gaussian16(OverlapCalculator):
         # and beta part are identical. So we only keep the alpha part.
         if self.nmos.restricted:
             # Drop beta part and restrict to the requested states
-            X = X[:self.nstates, 0, :]
-            Y = Y[:self.nstates, 0, :]
+            X = X[: self.nstates, 0, :]
+            Y = Y[: self.nstates, 0, :]
 
         X_full = np.zeros((self.nstates, nmos.a_occ, nmos.a_vir))
-        X_full[:, nmos.a_core:] = X.reshape(-1, nmos.a_act, nmos.a_vir)
+        X_full[:, nmos.a_core :] = X.reshape(-1, nmos.a_act, nmos.a_vir)
         Y_full = np.zeros((self.nstates, nmos.a_occ, nmos.a_vir))
-        Y_full[:, nmos.a_core:] = Y.reshape(-1, nmos.a_act, nmos.a_vir)
+        Y_full[:, nmos.a_core :] = Y.reshape(-1, nmos.a_act, nmos.a_vir)
 
         return X_full, Y_full
 
@@ -501,7 +517,7 @@ class Gaussian16(OverlapCalculator):
             "SCF Energy",
             "Alpha Orbital Energies",
             "Alpha MO coefficients",
-            "ETran state values"
+            "ETran state values",
         )
         scf_key, mo_energies_key, mo_key, exc_key = keys
         fchk_dict = self.parse_fchk(self.fchk, keys=keys)
@@ -511,15 +527,15 @@ class Gaussian16(OverlapCalculator):
 
         gs_energy = fchk_dict[scf_key]
         exc_data = fchk_dict[exc_key].reshape(-1, 16)
-        exc_energies = exc_data[:,0]
-        all_energies = np.zeros(len(exc_energies)+1)
+        exc_energies = exc_data[:, 0]
+        all_energies = np.zeros(len(exc_energies) + 1)
         all_energies[0] = gs_energy
         all_energies[1:] += exc_energies
         return mo_coeffs, X, Y, all_energies
 
     def parse_force(self, path):
         results = {}
-        keys = ("Total Energy", "SCF Energy", "Cartesian Gradient")
+        keys = ("SCF Energy", "Total Energy", "Cartesian Gradient")
         fchk_path = Path(path) / f"{self.fn_base}.fchk"
         fchk_dict = self.parse_fchk(fchk_path, keys)
         results["energy"] = fchk_dict["SCF Energy"]
@@ -531,13 +547,13 @@ class Gaussian16(OverlapCalculator):
             exc_energies = self.parse_tddft(path)
             # G16 root input is 1 based, so we substract 1 to get
             # the right index here.
-            root_exc_en = exc_energies[self.root-1]
+            root_exc_en = exc_energies[self.root - 1]
             gs_energy = fchk_dict["SCF Energy"]
             # Add excitation energy to ground state energy.
             results["energy"] += root_exc_en
             # Create a new array including the ground state energy
             # to save the energies of all states.
-            all_ens = np.full(len(exc_energies)+1, gs_energy)
+            all_ens = np.full(len(exc_energies) + 1, gs_energy)
             all_ens[1:] += exc_energies
             results["all_energies"] = all_ens
 
@@ -566,11 +582,14 @@ class Gaussian16(OverlapCalculator):
         }
         return results
 
-    def parse_double_mol(self, path):
+    def parse_double_mol(self, path, out_fn=None):
         def repl_double(s, loc, toks):
             return toks[0].replace("D", "E")
 
-        with open(path / self.out_fn) as handle:
+        if out_fn is None:
+            out_fn = self.out_fn
+
+        with open(path / out_fn) as handle:
             text = handle.read()
         # Number of basis functions in the double molecule
         nbas = int(re.search(r"NBasis =\s*(\d+)", text)[1])
@@ -578,7 +597,7 @@ class Gaussian16(OverlapCalculator):
         # Gaussian prints columns of a triangular matrix including
         # the diagonal
         backup_white = pp.ParserElement.DEFAULT_WHITE_CHARS
-        pp.ParserElement.setDefaultWhitespaceChars(' \t')
+        pp.ParserElement.setDefaultWhitespaceChars(" \t")
         int_ = pp.Suppress(pp.Word(pp.nums))
 
         float_ = pp.Word(pp.nums + ".D+-").setParseAction(repl_double)
@@ -588,12 +607,11 @@ class Gaussian16(OverlapCalculator):
 
         block = pp.Group(header + pp.OneOrMore(~header + line))
 
-        parser = (pp.Suppress(pp.SkipTo("*** Overlap *** \n", include=True))
-                  + pp.OneOrMore(block).setResultsName("blocks")
-        )
+        parser = pp.Suppress(
+            pp.SkipTo("*** Overlap *** \n", include=True)
+        ) + pp.OneOrMore(block).setResultsName("blocks")
 
-
-        result = parser.parseFile(path / self.out_fn)
+        result = parser.parseFile(path / out_fn)
         pp.ParserElement.setDefaultWhitespaceChars(backup_white)
 
         # The full double molecule overlap matrix (square)
@@ -603,7 +621,7 @@ class Gaussian16(OverlapCalculator):
             """Returns the indices as required to assign the matrix
             printed by Gaussian. Gaussian prints a lower triangle
             matrix in blocks of five columns each."""
-            start_row = block_ind*cols
+            start_row = block_ind * cols
             start_col = start_row
             inds = list()
             for row in range(start_row, nbas):
@@ -640,7 +658,7 @@ class Gaussian16(OverlapCalculator):
         elif path is not None:
             fchk_path = Path(path) / f"{self.fn_base}.fchk"
 
-        keys = ("Mulliken Charges", )
+        keys = ("Mulliken Charges",)
         fchk_dict = self.parse_fchk(fchk_path, keys=keys)
         charges = np.array(fchk_dict["Mulliken Charges"])
 

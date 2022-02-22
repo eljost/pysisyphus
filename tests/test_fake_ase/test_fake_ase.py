@@ -17,8 +17,8 @@ def test_fake_ase():
     # ASE atoms, ASE calculator
     atoms_ase = atoms_pysis.copy()
 
-    atoms_pysis.set_calculator(ase_calc)
-    atoms_ase.set_calculator(ase_LJ())
+    atoms_pysis.calc = ase_calc
+    atoms_ase.calc = ase_LJ()
 
     pysis_forces = atoms_pysis.get_forces()
     ase_forces = atoms_ase.get_forces()
@@ -27,7 +27,7 @@ def test_fake_ase():
 
 def test_fake_ase_opt():
     atoms = Icosahedron("Ar", noshells=2, latticeconstant=3)
-    atoms.set_calculator(FakeASE(LennardJones()))
+    atoms.calc = FakeASE(LennardJones())
 
     dyn = BFGS(atoms)
     dyn.run(fmax=0.0005)

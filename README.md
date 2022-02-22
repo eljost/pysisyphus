@@ -1,10 +1,10 @@
-# pysisyphus
+![pysisyphus logo](resources/logo_small.png)
+
 [![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=master)](https://pysisyphus.readthedocs.io/en/master/?badge=master)
 [![build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)](https://github.com/eljost/pysisyphus/actions)
 [![codecov](https://codecov.io/gh/eljost/pysisyphus/branch/master/graph/badge.svg)](https://codecov.io/gh/eljost/pysisyphus)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![DOI](https://zenodo.org/badge/96281078.svg)](https://zenodo.org/badge/latestdoi/96281078)
-[![Join the chat at https://gitter.im/eljost/pysisyphus](https://badges.gitter.im/eljost/pysisyphus.svg)](https://gitter.im/eljost/pysisyphus?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![built with nix](https://builtwithnix.org/badge.svg)](https://builtwithnix.org)
 
 `pysisyphus` is a software-suite for the exploration of potential energy surfaces in ground-

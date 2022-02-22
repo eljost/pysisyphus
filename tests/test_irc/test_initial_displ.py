@@ -47,3 +47,37 @@ def test_hcn_initial_displ(displ):
     geom.set_calculator(PySCF(pal=2, basis="sto3g"))
     irc = EulerPC(geom, displ=displ, max_cycles=1)
     irc.run()
+
+
+def plot_quadratic_cubic_displacement():
+    import matplotlib.pyplot as plt
+
+    from pysisyphus.irc.initial_displ import get_curv_vec
+
+    ts_coords = (0.61173113, 1.49297317, 0.0)
+    geom = AnaPot.get_geom(ts_coords)
+
+    step_plus, step_minus, res = cubic_displ_for_geom(geom)
+
+    H = geom.mw_hessian
+    w, v = np.linalg.eigh(H)
+    w0 = w[0]
+    v0 = v[:, 0]
+    v1 = get_curv_vec(H, res.G_vec, v0, w0)
+
+    def step(ds):
+        return ds * v0 + ds ** 2 * v1 / 2
+
+    lim = 1.5
+    x0 = geom.mw_coords
+    quad_steps = np.array([-lim * v0, lim * v0]) + x0
+    third_steps = np.array([step(ds) for ds in np.linspace(-lim, lim)]) + x0
+
+    calc = geom.calculator
+    calc.plot()
+    ax = calc.ax
+    ax.plot(*quad_steps.T[:2], lw=3, label="2nd derivs.")
+    ax.plot(*third_steps.T[:2], lw=3, label="3rd derivs.")
+    ax.legend()
+    calc.fig.savefig("third_derivs.pdf")
+    plt.show()

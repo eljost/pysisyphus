@@ -66,7 +66,7 @@ def test_no_hessian_update(hessian_update):
     ),
 )
 def test_ts_hessian_update(this_dir, hessian_update):
-    geom = geom_loader(this_dir / "tsbfgs_init.xyz", coord_type="redund")
+    geom = geom_loader("lib:tsbfgs_init.xyz", coord_type="redund")
     calc = XTB(pal=6)
 
     geom.set_calculator(calc)
@@ -79,3 +79,27 @@ def test_ts_hessian_update(this_dir, hessian_update):
     opt.run()
     assert opt.is_converged
     assert geom.energy == pytest.approx(-17.81225910)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "hessian_update",
+    (
+        "ts_bfgs",
+        "ts_bfgs_org",
+        "ts_bfgs_rev",
+    ),
+)
+def test_ts_hessian_update_hcn(hessian_update):
+    geom = geom_loader("lib:hcn_iso_pm6_near_ts.xyz", coord_type="redund")
+    calc = PySCF(basis="321g", pal=2)
+
+    geom.set_calculator(calc)
+
+    opt = RSIRFOptimizer(
+        geom,
+        hessian_update=hessian_update,
+    )
+    opt.run()
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(-92.24603904)

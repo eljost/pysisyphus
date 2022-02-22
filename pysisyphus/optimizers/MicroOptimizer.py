@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+import sys
 
 import numpy as np
 
@@ -55,6 +56,7 @@ class MicroOptimizer:
                 [f"{k}={v}" for k, v in kwargs.items()]
             )
             self.log(msg)
+        self.is_converged = False
 
     def log(self, msg):
         self.logger.debug(msg)
@@ -72,6 +74,7 @@ class MicroOptimizer:
             energy = results["energy"]
             rms = np.sqrt(np.mean(forces ** 2))
             print(f"{self.cur_cycle:03d} rms(f)={rms:.6f}")
+            sys.stdout.flush()
             if self.rms_force and rms <= self.rms_force:
                 print("Converged!")
                 self.is_converged = True
@@ -79,7 +82,7 @@ class MicroOptimizer:
 
             self.take_step(energy, forces)
 
-    def take_step(self, energy, forces):
+    def take_step(self, energy, forces, return_step=False):
         self.log(
             f"Cycle {self.cur_cycle:03d}, energy={energy:.6f} au, "
             f"norm(forces)={np.linalg.norm(forces):.6f}"
@@ -118,8 +121,20 @@ class MicroOptimizer:
         self.prev_step = step
         self.prev_energy = energy
         self.prev_forces = forces
-        new_coords = self.geometry.coords + step
-        self.geometry.coords = new_coords
+        if return_step:
+            return step
+        else:
+            new_coords = self.geometry.coords + step
+            self.geometry.coords = new_coords
+
+    def optimize(self):
+        if not hasattr(self, "cur_cycle"):
+            self.cur_cycle = 0
+        step = self.take_step(
+            self.geometry.energy, self.geometry.forces, return_step=True
+        )
+        self.cur_cycle += 1
+        return step
 
     def sd_step(self, forces):
         step = forces

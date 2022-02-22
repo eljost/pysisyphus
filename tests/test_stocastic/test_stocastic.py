@@ -27,6 +27,7 @@ def test_atoms_are_too_close():
     assert inds == [6, 9, 14, 19, 20, 23, 28]
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 def test_kick():
     geom = geom_loader("lib:benzene_and_chlorine.xyz")
@@ -44,6 +45,7 @@ def test_kick():
     assert min(stoc.new_energies) == pytest.approx(-24.9688182)
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 def test_benz_chlorine_fragment_kick():
     geom = geom_loader("lib:benzene_and_chlorine.xyz")
@@ -63,6 +65,7 @@ def test_benz_chlorine_fragment_kick():
     assert min(stoc.new_energies) == pytest.approx(-24.9911479)
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 def test_benz_no_plus_fragment_kick():
     geom = geom_loader("lib:benzene_and_no.xyz")
@@ -87,6 +90,7 @@ def test_benz_no_plus_fragment_kick():
     assert min(stoc.new_energies) == pytest.approx(-22.3727376)
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 def test_toluene():
     geom = geom_loader("lib:toluene_and_cl2.xyz")
@@ -138,7 +142,7 @@ def test_rastrigin():
 
 
 # Takes 30 min in the CI which is way too much for a rarely used feature
-@pytest.mark.skip
+@pytest.mark.skip_ci
 @using("pyscf")
 def test_pyscf_stocastic():
     geom = geom_loader("lib:benzene_and_no.xyz")

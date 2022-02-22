@@ -12,23 +12,25 @@ from pysisyphus.testing import using
 
 
 @pytest.mark.parametrize(
-    "cdds, fallback, no_mwfn, no_jmol", [
-        (None    , None  , False, False),
-        ("calc"  , None  , True , False),
-        ("render", "calc", False, True),
-        ("render", None  , True , True),
-    ]
+    "cdds, fallback, mwfn, jmol",
+    [
+        (None, None, True, True),
+        ("calc", None, False, True),
+        ("render", "calc", True, False),
+        ("render", None, False, False),
+    ],
 )
-def test_cdds_fallback(cdds, fallback, no_mwfn, no_jmol, monkeypatch):
+def test_cdds_fallback(cdds, fallback, mwfn, jmol, monkeypatch):
     # Disable Mwfn/Jmol as requested
-    def mock_available(calculator, set_pytest_mark=False):
-        if (calculator == "mwfn") and no_mwfn:
-            return False
-        if (calculator == "jmol") and no_jmol:
-            return False
-        return True
-    monkeypatch.setattr(pysisyphus.calculators.OverlapCalculator,
-                        "available", mock_available)
+    def mock_get_cmd(calculator):
+        return {
+            "jmol": jmol,
+            "mwfn": mwfn,
+        }[calculator]
+
+    monkeypatch.setattr(
+        pysisyphus.calculators.OverlapCalculator, "get_cmd", mock_get_cmd
+    )
 
     calc_kwargs = {
         "cdds": cdds,
@@ -66,6 +68,7 @@ def test_mwfn_crash_fallback(water, monkeypatch):
     # Mock method to ensure the CDD calculation always crashes.
     def mock_calc_cdd_cube(*args):
         raise Exception("Mocked Multiwfn crash!")
+
     monkeypatch.setattr(OverlapCalculator, "calc_cdd_cube", mock_calc_cdd_cube)
 
     energy = water.energy
@@ -78,10 +81,11 @@ def test_mwfn_crash_fallback(water, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "h5_fn", [
+    "h5_fn",
+    [
         "cytosin_orca_overlap_data.h5",
         "cytosin_trip_orca_overlap_data.h5",
-    ]
+    ],
 )
 def test_tden_self_overlap(h5_fn, this_dir):
     with h5py.File(this_dir / h5_fn, "r") as handle:
@@ -93,23 +97,23 @@ def test_tden_self_overlap(h5_fn, this_dir):
     def tden_self_overlap(mo_coeffs, ci_coeffs):
         ao_ovlp = calc.get_sao_from_mo_coeffs(mo_coeffs)
 
-        ci_norm = np.linalg.norm(ci_coeffs, axis=(1,2))
+        ci_norm = np.linalg.norm(ci_coeffs, axis=(1, 2))
         mo_norm = calc.get_mo_norms(mo_coeffs, ao_ovlp)
 
         ci_coeffs = ci_coeffs / ci_norm[:, None, None]
         mo_coeffs = calc.renorm_mos(mo_coeffs, ao_ovlp)
 
-        ci_norm = np.linalg.norm(ci_coeffs, axis=(1,2))
+        ci_norm = np.linalg.norm(ci_coeffs, axis=(1, 2))
         mo_norm = calc.get_mo_norms(mo_coeffs, ao_ovlp)
         # print(f"norm(CI): {ci_norm}")
         # print(f"norm(MOs): {describe(mo_norm)}")
 
-        overlaps = calc.tden_overlaps(mo_coeffs, ci_coeffs, mo_coeffs, ci_coeffs, ao_ovlp)
+        overlaps = calc.tden_overlaps(
+            mo_coeffs, ci_coeffs, mo_coeffs, ci_coeffs, ao_ovlp
+        )
         return overlaps
 
     for i, (moc, cic) in enumerate(zip(mo_coeffs, ci_coeffs)):
         ovlps = tden_self_overlap(moc, cic)
         I = np.eye(ovlps.shape[0])
         np.testing.assert_allclose(ovlps, I, atol=5e-5)
-
-

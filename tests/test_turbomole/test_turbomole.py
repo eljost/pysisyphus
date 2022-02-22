@@ -31,13 +31,9 @@ def test_turbomole_hessian(geom, this_dir):
     nus = eigval_to_wavenumber(w)
     print("nus / cm⁻¹:", nus)
 
-    # # Turbomole reference values
+    # Turbomole reference values
     # turbo_ref_nus = np.array((1607.81, 3684.62, 3783.64))
-
-    # I get slightly different values; probably from using different masses and
-    # (slightly) different conversion factors when going from eigenvalues to
-    # wavenumbers.
-    ref_nus = np.array((1606.87, 3681.92, 3780.74))
+    ref_nus = np.array((1607.984768, 3684.472251, 3783.356437))
     np.testing.assert_allclose(nus[-3:], ref_nus, atol=1e-2)
 
 

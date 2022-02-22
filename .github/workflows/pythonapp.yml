@@ -5,9 +5,10 @@ on:
         paths-ignore:
             - "docs/**"
             - "examples/**"
+            - "scripts/**"
+            - "nix/**"
             - "tests_staging/**"
             - "deprecated/**"
-            - "scripts/**"
     workflow_dispatch:
     schedule:
         - cron: '0 */12 * * *'
@@ -18,18 +19,20 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/cache@v1
+    - uses: actions/cache@v2
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v1
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
       with:
-        python-version: 3.8
-    - name: Install dependencies
+        python-version: 3.9.9
+    - name: Upgrade pip
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+    - name: Install pysisyphus and dependencies required for testing
+      run: |
+        python -m pip install -e .[test] -r test-requirements.txt
     - name: Lint with flake8
       run: |
         pip install flake8
@@ -37,22 +40,19 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Install ASE
-      run: |
-        pip install ase
-    - name: Install pyscf
-      run: |
-        pip install pyscf
     - name: Install thermoanalysis
       run: |
         pip install git+https://github.com/eljost/thermoanalysis.git
     - name: Test with pytest
-      run: |
-        pip install pytest pytest-cov
-        pytest -v --cov=pysisyphus --cov-config .coveragerc --cov-report xml --cov-report term tests --show-capture=no  --durations=0
+      run: >
+        pytest -v
+        --cov=pysisyphus --cov-config .coveragerc --cov-report xml --cov-report term
+        --show-capture=no
+        --durations=0
+        -m "not benchmark and not skip_ci"
+        tests
     - name: Upload coverage to codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v2
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         flags: unittests

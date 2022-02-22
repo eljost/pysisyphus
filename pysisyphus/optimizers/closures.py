@@ -48,7 +48,7 @@ def get_update_mu_reg(
         log(f"Trial energy: {trial_energy:.8f}")
         act_change = cur_energy - trial_energy
         log(f"   Actual change: {act_change: .8f}")
-        pred_change = -1/2 * cur_grad.dot(step)
+        pred_change = -1 / 2 * cur_grad.dot(step)
         log(f"Predicted change: {pred_change: .8f}")
         r = act_change / pred_change
         log(f"Ratio r={r:.8f}")
@@ -171,42 +171,7 @@ def bfgs_multiply(
     return r
 
 
-def lbfgs_closure(first_force, force_getter, m=10, restrict_step=None):
-    s_list = list()
-    y_list = list()
-    forces = [
-        first_force,
-    ]
-    cur_cycle = 0
-
-    if restrict_step is None:
-        restrict_step = lambda x, dx: dx
-
-    def lbfgs(x, *getter_args):
-        nonlocal cur_cycle
-        nonlocal s_list
-        nonlocal y_list
-
-        prev_forces = forces[-1]
-        step = bfgs_multiply(s_list, y_list, prev_forces)
-        step = restrict_step(x, step)
-        new_x = x + step
-        new_forces = force_getter(new_x, *getter_args)
-        s = new_x - x
-        s_list.append(s)
-        y = prev_forces - new_forces
-        y_list.append(y)
-        forces.append(new_forces)
-        # Only keep last m cycles
-        s_list = s_list[-m:]
-        y_list = y_list[-m:]
-        cur_cycle += 1
-        return new_x, step, new_forces
-
-    return lbfgs
-
-
-def lbfgs_closure_(force_getter, M=10, beta=1, restrict_step=None):
+def lbfgs_closure(force_getter, M=10, beta=1, restrict_step=None):
     x_list = list()
     s_list = list()
     y_list = list()
@@ -286,7 +251,9 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
         if len(dxs) > 0:
             # Calculate gamma
             dF_F = [dF_k.dot(F) for dF_k in dFs]
-            gammas = np.linalg.solve(a, dF_F)[:, None]
+            # Use least squares to avoid crashes with singular matrices
+            gammas, *_ = np.linalg.lstsq(a, dF_F, rcond=None)
+            gammas = gammas[:, None]
             _ = np.array(dxs) - beta * np.array(dFs)
             # Substract step correction
             dx = dx - np.sum(gammas * _, axis=0)

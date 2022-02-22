@@ -92,6 +92,23 @@ def get_rot_mat(abc=None):
     return R
 
 
+def get_rot_mat_for_coords(coords3d_1, coords3d_2):
+    coords3d_1 = coords3d_1.copy()
+    coords3d_2 = coords3d_2.copy()
+    centroid_1 = coords3d_1.mean(axis=0)
+    centroid_2 = coords3d_2.mean(axis=0)
+    coords3d_1 -= centroid_1[None, :]
+    coords3d_2 -= centroid_2[None, :]
+
+    tmp = coords3d_2.T.dot(coords3d_1)
+    U, W, Vt = np.linalg.svd(tmp)
+    rot_mat = U.dot(Vt)
+    if np.linalg.det(rot_mat) < 0:
+        U[:, -1] *= -1
+        rot_mat = U.dot(Vt)
+    return coords3d_1, coords3d_2, rot_mat
+
+
 def eigvec_grad(w, v, ind, mat_grad):
     """Gradient of 'ind'-th eigenvector.
 

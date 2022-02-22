@@ -21,6 +21,7 @@ Bh = Benchmark(
 )
 
 
+@pytest.mark.benchmark
 @using("xtb")
 @pytest.mark.parametrize("fn, geoms, charge, mult, ref_energy", Bh.geom_iter)
 def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):

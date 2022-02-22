@@ -2,10 +2,11 @@ import sys
 import time
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.calculators import ORCA, XTB
+from pysisyphus.calculators import ORCA, XTB, ORCA5
 
 CALC_CLASSES = {
     "orca": ORCA.ORCA,
+    "orca5": ORCA5.ORCA5,
     "xtb": XTB.XTB,
 }
 

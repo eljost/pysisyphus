@@ -5,6 +5,9 @@
 geom:
  type: dlc
  fn: [min_xtbopt.xyz, prod_xtbopt.xyz]
+calc:
+ type: xtb
+ pal: 6
 preopt:
 cos:
  type: gs
@@ -23,6 +26,9 @@ irc:
  type: eulerpc
  rms_grad_thresh: 0.0005
 endopt:
-calc:
- type: xtb
- pal: 6
+barriers:
+ solv_calc:
+  type: xtb
+  gbsa: water
+  pal: 6
+ do_standard_state_corr: True

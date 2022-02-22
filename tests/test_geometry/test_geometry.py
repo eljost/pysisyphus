@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 
+from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.helpers import geom_loader
+from pysisyphus.intcoords import Stretch
 
 
 @pytest.fixture
@@ -38,3 +40,28 @@ def test_fd_coords3d_gen():
     geom = geom_loader("lib:h2o.xyz")
     fd_coords3d = list(geom.fd_coords3d_gen())
     assert len(fd_coords3d) == geom.coords3d.size
+
+
+def test_approximate_radius():
+    geom = geom_loader("lib:h2o.xyz")
+    radius = geom.approximate_radius()
+    # max distance is H-H distance
+    assert  radius == pytest.approx(Stretch._calculate(geom.coords3d, [1, 2]))
+
+
+def test_rotate():
+    geom = geom_loader("lib:h2o.xyz")
+    for _ in range(3):
+        geom.rotate()
+
+
+def test_bond_sets():
+    geom = geom_loader("lib:benzene.xyz")
+    bond_sets = geom.bond_sets
+    assert len(bond_sets) == 12
+
+
+def test_anapot_bond_sets():
+    geom = AnaPot().get_minima()[0]
+    bond_sets = geom.bond_sets
+    assert len(bond_sets) == 0

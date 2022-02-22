@@ -9,8 +9,17 @@ import sys
 import h5py
 import numpy as np
 from scipy.spatial.distance import pdist
+from scipy.spatial.transform import Rotation
 import rmsd
 
+try:
+    from thermoanalysis.QCData import QCData
+    from thermoanalysis.thermo import thermochemistry
+except ModuleNotFoundError:
+    pass
+
+from pysisyphus import logger
+from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import (
     MASS_DICT,
@@ -26,7 +35,8 @@ from pysisyphus.intcoords.exceptions import (
     DifferentCoordLengthsException,
 )
 from pysisyphus.intcoords.helpers import get_tangent
-from pysisyphus.linalg import gram_schmidt, orthogonalize_against
+from pysisyphus.intcoords.setup import BOND_FACTOR
+from pysisyphus.intcoords.setup_fast import find_bonds
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -49,8 +59,8 @@ def inertia_tensor(coords3d, masses):
     return I
 
 
-def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-8):
-    """Orthonormal vectors describing translation and rotation.
+def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
+    """Vectors describing translation and rotation.
 
     These vectors are used for the Eckart projection by constructing
     a projector from them.
@@ -114,28 +124,19 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-8):
     # Drop vectors with vanishing norms
     rot_vecs = rot_vecs[np.linalg.norm(rot_vecs, axis=1) > rot_thresh]
     tr_vecs = np.concatenate((trans_vecs, rot_vecs), axis=0)
-
-    # Normalize & orthogonalize
-    tr_vecs /= np.linalg.norm(tr_vecs, axis=1)[:, None]
-    tr_vecs = gram_schmidt(tr_vecs)
-
+    tr_vecs = np.linalg.qr(tr_vecs.T)[0].T
     return tr_vecs
 
 
-def get_trans_rot_projector(cart_coords, masses, orthogonal=False):
+def get_trans_rot_projector(cart_coords, masses, full=False):
     tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
-    tr_num = tr_vecs.shape[0]
-
-    # Spanning the whole space
-    basis = np.identity(cart_coords.size)
-    # Project out translation & rotation vectors
-    basis = orthogonalize_against(basis, tr_vecs)
-    if orthogonal:
-        return basis
-
-    w, v = np.linalg.eigh(basis.dot(basis.T))
-    norm_vecs = v.T[tr_num:] / np.sqrt(w[tr_num:, None])
-    P = norm_vecs.dot(basis)
+    U, s, _ = np.linalg.svd(tr_vecs.T)
+    if full:
+        P = np.eye(cart_coords.size)
+        for tr_vec in tr_vecs:
+            P -= np.outer(tr_vec, tr_vec)
+    else:
+        P = U[:, s.size :].T
     return P
 
 
@@ -413,13 +414,6 @@ class Geometry:
             layers = (None,)
         return layers
 
-    def clear(self):
-        """Reset the object state."""
-
-        self._energy = None
-        self._forces = None
-        self._hessian = None
-
     def del_atoms(self, inds, **kwargs):
         atoms = [atom for i, atom in enumerate(self.atoms) if not (i in inds)]
         c3d = self.coords3d
@@ -536,7 +530,16 @@ class Geometry:
                 coords3d = exception.coords3d.copy()
                 coord_class = self.coord_types[self.coord_type]
                 self.internal = coord_class(
-                    self.atoms, coords3d, typed_prims=valid_typed_prims
+                    # Instead of using only the remaining, valid typed_prims
+                    # we could look for an entirely new set of typed_prims.
+                    #
+                    # But when we do this and we end up with more coordinates
+                    # than before, this will lead to problems with the HDF5 dump.
+                    # No problems arise when fewer coordinates are used
+                    # (valid_typed_prims <= self.internal.typed_prims).
+                    self.atoms,
+                    coords3d,
+                    typed_prims=valid_typed_prims,
                 )
                 self._coords = coords3d.flatten()
                 raise RebuiltInternalsException(
@@ -716,6 +719,9 @@ class Geometry:
             Geometric center of the Geometry.
         """
         return self.coords3d.mean(axis=0)
+
+    def center(self):
+        self.coords3d -= self.centroid[None, :]
 
     @property
     def mw_coords(self):
@@ -979,27 +985,65 @@ class Geometry:
         if valid:
             self.cart_hessian = hessian
 
-    def get_normal_modes(self, cart_hessian=None):
+    def get_normal_modes(self, cart_hessian=None, full=False):
         """Normal mode wavenumbers, eigenvalues and Cartesian displacements Hessian."""
         if cart_hessian is None:
             cart_hessian = self.cart_hessian
 
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
-        proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True)
+        proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True, full=full)
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
         mw_cart_displs = P.T.dot(eigvecs)
         cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
-        return eigval_to_wavenumber(eigvals), eigvals, mw_cart_displs, cart_displs
+        cart_displs /= np.linalg.norm(cart_displs, axis=0)
+        nus = eigval_to_wavenumber(eigvals)
+        return nus, eigvals, mw_cart_displs, cart_displs
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
         vibfreqs, eigvals, *_ = self.get_normal_modes(hessian)
         return vibfreqs[eigvals < thresh]
 
-    def get_trans_rot_projector(self):
-        return get_trans_rot_projector(self.cart_coords, masses=self.masses)
+    def get_thermoanalysis(
+        self, energy=None, cart_hessian=None, T=T_DEFAULT, p=p_DEFAULT, point_group="c1"
+    ):
+        if cart_hessian is None:
+            cart_hessian = self.cart_hessian
+            # Delte any supplied energy value when a Hessian calculation is carried out
+            energy = None
 
-    def eckart_projection(self, mw_hessian, return_P=False):
-        P = self.get_trans_rot_projector()
+        if energy is None:
+            energy = self.energy
+
+        vibfreqs, *_ = self.get_normal_modes(cart_hessian)
+        try:
+            mult = self.calculator.mult
+        except AttributeError:
+            mult = 1
+            logger.debug(
+                "Multiplicity for electronic entropy could not be determined! "
+                f"Using 2S+1 = {mult}."
+            )
+
+        thermo_dict = {
+            "masses": self.masses,
+            "vibfreqs": vibfreqs,
+            "coords3d": self.coords3d,
+            "energy": energy,
+            "mult": mult,
+        }
+
+        qcd = QCData(thermo_dict, point_group=point_group)
+        thermo = thermochemistry(
+            qcd, temperature=T, pressure=p, invert_imags=-15.0, cutoff=25.0
+        )
+
+        return thermo
+
+    def get_trans_rot_projector(self, full=False):
+        return get_trans_rot_projector(self.cart_coords, masses=self.masses, full=full)
+
+    def eckart_projection(self, mw_hessian, return_P=False, full=False):
+        P = self.get_trans_rot_projector(full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
         if return_P:
             return proj_hessian, P
@@ -1028,6 +1072,10 @@ class Geometry:
     def get_energy_at(self, coords):
         coords = self.get_temporary_coords(coords)
         return self.calculator.get_energy(self.atoms, coords)["energy"]
+
+    def get_energy_at_cart_coords(self, cart_coords):
+        self.assert_cart_coords(cart_coords)
+        return self.calculator.get_energy(self.atoms, cart_coords)["energy"]
 
     def get_energy_and_forces_at(self, coords):
         """Calculate forces and energies at the given coordinates.
@@ -1060,6 +1108,16 @@ class Geometry:
 
     def zero_frozen_forces(self, cart_forces):
         cart_forces.reshape(-1, 3)[self.freeze_atoms] = 0.0
+
+    def clear(self):
+        """Reset the object state."""
+
+        self._energy = None
+        self._forces = None
+        self._hessian = None
+        self.true_forces = None
+        self.true_energy = None
+        self.all_energies = None
 
     def set_results(self, results):
         """Save the results from a dictionary.
@@ -1143,6 +1201,10 @@ class Geometry:
         sub_geom = Geometry(sub_atoms, sub_coords.flatten(), coord_type=coord_type)
         return sub_geom
 
+    def get_subgeom_without(self, indices, **kwargs):
+        with_indices = [ind for ind, _ in enumerate(self.atoms) if ind not in indices]
+        return self.get_subgeom(with_indices, **kwargs)
+
     def rmsd(self, geom):
         return rmsd.kabsch_rmsd(
             self.coords3d - self.centroid, geom.coords3d - geom.centroid
@@ -1166,10 +1228,10 @@ class Geometry:
             atoms.append(atom)
         return atoms
 
-    def jmol(self):
+    def jmol(self, cart_coords=None):
         """Show geometry in jmol."""
         tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
-        tmp_xyz.write(self.as_xyz().encode("utf-8"))
+        tmp_xyz.write(self.as_xyz(cart_coords=cart_coords).encode("utf-8"))
         tmp_xyz.flush()
         jmol_cmd = "jmol"
         try:
@@ -1247,6 +1309,33 @@ class Geometry:
 
     def describe(self):
         return f"Geometry({self.sum_formula}, {len(self.atoms)} atoms)"
+
+    def approximate_radius(self):
+        """Approximate molecule radius from the biggest atom distance along an axis."""
+        coords3d = self.coords3d - self.centroid[None, :]
+        mins = coords3d.min(axis=0)
+        maxs = coords3d.max(axis=0)
+        dists = maxs - mins
+        max_dist = dists.max()
+        return max_dist
+
+    def rotate(self, copy=False):
+        if copy:
+            geom = self.copy()
+        else:
+            geom = self
+
+        rot = Rotation.random()
+        geom.coords3d = rot.apply(geom.coords3d)
+        return geom
+
+    @property
+    def bond_sets(self, bond_factor=BOND_FACTOR):
+        bonds = find_bonds(
+            self.atoms, self.coords3d, self.covalent_radii, bond_factor=bond_factor
+        )
+        bond_sets = set([frozenset(b) for b in bonds])
+        return bond_sets
 
     def __str__(self):
         name = ""

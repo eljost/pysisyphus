@@ -15,6 +15,7 @@ from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 from pysisyphus.TablePrinter import TablePrinter
+from pysisyphus.optimizers.exceptions import ZeroStepLength
 
 
 def get_data_model(geometry, is_cos, max_cycles):
@@ -46,6 +47,9 @@ def get_data_model(geometry, is_cos, max_cycles):
         "coords": _2d,
         "energies": _energy,
         "forces": _2d,
+        # AFIR related
+        "true_energies": _energy,
+        "true_forces": _2d_cart,
         "steps": _2d,
         # Convergence related
         "max_forces": _1d,
@@ -80,6 +84,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         thresh="gau_loose",
         max_step=0.04,
         max_cycles=100,
+        min_step_norm=1e-8,
+        assert_min_step=True,
         rms_force=None,
         rms_force_only=False,
         max_force_only=False,
@@ -104,6 +110,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.geometry = geometry
         self.thresh = thresh
         self.max_step = max_step
+        self.min_step_norm = min_step_norm
+        self.assert_min_step = assert_min_step
         self.rms_force_only = rms_force_only
         self.max_force_only = max_force_only
         self.converge_to_geom_rms_thresh = converge_to_geom_rms_thresh
@@ -143,15 +151,16 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # Setting some default values
         self.resetted = False
-        self.out_dir = out_dir
+        try:
+            out_dir = Path(out_dir)
+        except TypeError:
+            out_dir = Path(".")
+        self.out_dir = out_dir.resolve()
+        self.out_dir.mkdir(parents=True, exist_ok=True)
 
         if self.is_cos:
             moving_image_num = len(self.geometry.moving_indices)
             print(f"Path with {moving_image_num} moving images.")
-
-        self.out_dir = Path(self.out_dir)
-        if not self.out_dir.exists():
-            os.mkdir(self.out_dir)
 
         # Don't use prefix for this fn, as different optimizations
         # can be distinguished according to their group in the HDF5 file.
@@ -198,11 +207,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.set_restart_info(restart_info)
             self.restarted = True
 
-        header = (
-            "cycle Δ(energy) max(force) rms(force) max(step) rms(step) s/cycle".split()
-        )
+        header = "cycle Δ(energy) max(|force|) rms(force) max(|step|) rms(step) s/cycle".split()
         col_fmts = "int float float float float float float_short".split()
         self.table = TablePrinter(header, col_fmts, width=12)
+        self.is_converged = False
 
     def get_path_for_fn(self, fn, with_prefix=True):
         prefix = self.prefix if with_prefix else ""
@@ -356,7 +364,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         except TypeError:
             pass
 
-        if self.cur_cycle % 10 == 0:
+        if (self.cur_cycle > 1) and (self.cur_cycle % 10 == 0):
             self.table.print_sep()
 
         self.table.print_row(
@@ -575,8 +583,19 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.image_inds.append(image_inds)
             self.image_nums.append(image_num)
 
+            # Here the actual step is obtained from the actual optimizer class.
             step = self.optimize()
-            self.log(f"norm(step)={np.linalg.norm(step):.6f} au (rad)")
+            step_norm = np.linalg.norm(step)
+            self.log(f"norm(step)={step_norm:.6f} au (rad)")
+            for source, target in (
+                ("true_energy", "true_energies"),
+                ("true_forces", "true_forces"),
+            ):
+                try:
+                    if (value := getattr(self.geometry, source)) is not None:
+                        getattr(self, target).append(value)
+                except AttributeError:
+                    pass
 
             if step is None:
                 # Remove the previously added coords
@@ -612,6 +631,9 @@ class Optimizer(metaclass=abc.ABCMeta):
             if self.is_converged:
                 self.table.print("Converged!")
                 break
+            # Allow convergence, before checking for too small steps
+            elif self.assert_min_step and (step_norm <= self.min_step_norm):
+                raise ZeroStepLength
 
             # Update coordinates
             new_coords = self.geometry.coords.copy() + step
@@ -686,7 +708,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.log(f"Tried to delete '{self.current_fn}'. Couldn't find it.")
         with open(self.final_fn, "w") as handle:
             handle.write(self.geometry.as_xyz())
-        self.table.print(f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'")
+        self.table.print(
+            f"Wrote final, hopefully optimized, geometry to '{self.final_fn.name}'"
+        )
         self.postprocess_opt()
         sys.stdout.flush()
 

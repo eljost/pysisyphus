@@ -7,6 +7,7 @@ from pysisyphus.calculators.XTB import XTB
 from pysisyphus.calculators.PySCF import PySCF
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 @pytest.mark.parametrize("recalc_B", [True, False])
 def test_tric_solvated_sulfate(recalc_B):
@@ -32,11 +33,12 @@ def test_tric_solvated_sulfate(recalc_B):
     assert opt.is_converged
     assert geom.energy <= -167.54
 
+
 @using("pyscf")
 def test_tric_two_waters():
     geom = geom_loader("lib:water_dimer_oniomopt_test.pdb", coord_type="tric")
     # for i, tp in enumerate(geom.internal.typed_prims):
-        # print(i, tp)
+    # print(i, tp)
     calc = PySCF(basis="sto3g", pal=2, verbose=0)
     geom.set_calculator(calc)
     opt = RFOptimizer(geom, dump=True)

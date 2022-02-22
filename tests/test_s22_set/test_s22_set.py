@@ -14,6 +14,7 @@ from pysisyphus.testing import using
 S22Bm = Benchmark("s22", coord_type="redund")
 
 
+@pytest.mark.benchmark
 @using("orca")
 @pytest.mark.parametrize("fn, geom, charge, mult, ref_energy", S22Bm.geom_iter)
 def test_s22_set(fn, geom, charge, mult, ref_energy, this_dir):

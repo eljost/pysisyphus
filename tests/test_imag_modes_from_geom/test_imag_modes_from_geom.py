@@ -14,7 +14,7 @@ def test_imag_modes_from_geom(this_dir):
     assert len(imag_modes) == 1
 
     imag_mode = imag_modes[0]
-    assert imag_mode.nu == pytest.approx(-1425.22063)
+    assert imag_mode.nu == pytest.approx(-1426.207289152)
 
     with open("imag_mode.trj", "w") as handle:
         handle.write(imag_mode.trj_str)

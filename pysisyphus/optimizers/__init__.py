@@ -3,11 +3,11 @@ import logging
 __all__ = [
     "BFGS",
     "ConjugateGradient",
+    "CubicNewton",
     "FIRE",
     "LBFGS",
     "MicroOptimizer",
     "NCOptimizer",
-    "ONIOMOpt",
     "PreconLBFGS",
     "PreconSteepestDescent",
     "QuickMin",
@@ -17,7 +17,7 @@ __all__ = [
     "StabilizedQNMethod",
 ]
 
-from pysisyphus.optimizers.ONIOMOpt import ONIOMOpt
+from pysisyphus.optimizers.CubicNewton import CubicNewton
 from pysisyphus.optimizers.MicroOptimizer import MicroOptimizer
 
 logger = logging.getLogger("optimizer")

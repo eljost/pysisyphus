@@ -85,10 +85,11 @@ def test_get_fragments():
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "fn, atol", (
+    "fn, atol",
+    (
         ("lib:azetidine_hf_321g_opt.xyz", 1.5e-7),
         ("lib:ethene_hf321g_opt.xyz", 2e-9),
-    )
+    ),
 )
 def test_backtransform_hessian(fn, atol):
     geom = geom_loader(fn, coord_type="redund")
@@ -199,7 +200,7 @@ def test_opt_linear_dihedrals():
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 14
+    assert opt.cur_cycle == 13
     assert geom.energy == pytest.approx(-10.48063133)
 
 
@@ -265,17 +266,28 @@ def test_dummy_torsion():
 
 
 @pytest.mark.parametrize(
-    "freeze_atoms, tp_num", (
+    "freeze_atoms, tp_num",
+    (
         (None, 319),
         ([0, 1, 2] + list(range(8, 106)), 16),
-    )
+    ),
 )
 def test_frozen_atom_setup(freeze_atoms, tp_num):
     geom = geom_loader(
-        "lib:frozen_atom_internal_setup.xyz", coord_type="tric", freeze_atoms=freeze_atoms,
+        "lib:frozen_atom_internal_setup.xyz",
+        coord_type="tric",
+        freeze_atoms=freeze_atoms,
         coord_kwargs={
             "freeze_atoms_exclude": True,
-        }
+        },
     )
     # geom.internal.print_typed_prims()
     assert len(geom.coords) == tp_num
+
+
+def test_hydrogen_bonds():
+    geom = geom_loader("lib:hydrogen_bond_test.xyz", coord_type="redund")
+    typed_prims = geom.internal.typed_prims
+    h_bonds = [tp for tp in typed_prims if tp[0] == PrimTypes.HYDROGEN_BOND]
+    h_bond_ref = set([frozenset(inds) for inds in ((6, 27), (43, 56), (15, 42))])
+    assert set([frozenset(inds) for _, *inds in h_bonds]) == h_bond_ref

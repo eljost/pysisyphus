@@ -3,7 +3,7 @@ import textwrap
 
 import numpy as np
 
-from pysisyphus.constants import BOHR2ANG, AU2KCALMOL
+from pysisyphus.constants import BOHR2ANG, AU2KCALPERMOL
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.helpers_pure import file_or_str
 
@@ -58,7 +58,7 @@ class MOPAC(Calculator):
             "hessian": self.parse_hessian,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
         """
         1SCF: Do only SCF
@@ -137,7 +137,7 @@ class MOPAC(Calculator):
     def parse_energy_from_aux(text):
         energy_re = r"HEAT_OF_FORMATION:KCAL/MOL=([\d\-D+\.]+)"
         mobj = re.search(energy_re, text)
-        energy = float(mobj[1].replace("D", "E")) / AU2KCALMOL
+        energy = float(mobj[1].replace("D", "E")) / AU2KCALPERMOL
 
         result = {
             "energy": energy,
@@ -153,7 +153,7 @@ class MOPAC(Calculator):
         # Gradients are given in kcal*mol/angstrom
         gradients = np.array(mobj[1].split(), dtype=float)
         # Convert to hartree/bohr
-        gradients = gradients / AU2KCALMOL / BOHR2ANG
+        gradients = gradients / AU2KCALPERMOL / BOHR2ANG
 
         forces = -gradients
         result = {
@@ -170,7 +170,9 @@ class MOPAC(Calculator):
     def parse_hessian_from_aux(text):
         # Parse employed masses, as the given hessian is mass-weighted
         # and we have to un-weigh it.
-        mass_re = re.compile(r"ISOTOPIC_MASSES\[(\d+)\]=\s*(.+?)ROTAT_CONSTS", re.DOTALL)
+        mass_re = re.compile(
+            r"ISOTOPIC_MASSES\[(\d+)\]=\s*(.+?)ROTAT_CONSTS", re.DOTALL
+        )
         # mobj = re.search(mass_re, text, re.MULTILINE)
         mass_mobj = mass_re.search(text)
         masses = np.array(mass_mobj[2].strip().split(), dtype=float)

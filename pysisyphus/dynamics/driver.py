@@ -3,6 +3,7 @@ import logging
 
 import numpy as np
 
+from pysisyphus.config import T_DEFAULT
 from pysisyphus.constants import FORCE2ACC
 from pysisyphus.dynamics.helpers import (
     kinetic_energy_from_velocities,
@@ -58,7 +59,7 @@ def md(
     dt,
     remove_com_v=True,
     thermostat=None,
-    T=298.15,
+    T=T_DEFAULT,
     timecon=100,
     term_funcs=None,
     constraints=None,

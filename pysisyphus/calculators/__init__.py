@@ -7,6 +7,7 @@ __all__ = [
     "ConicalIntersection",
     "DFTBp",
     "Dimer",
+    "EnergyMin",
     "ExternalPotential",
     "FakeASE",
     "Gaussian09",
@@ -23,6 +24,7 @@ __all__ = [
     "Psi4",
     "PyPsi4",
     "PyXTB",
+    "Remote",
     "TIP3P",
     "Turbomole",
     "TransTorque",
@@ -36,6 +38,7 @@ from pysisyphus.calculators.Composite import Composite
 from pysisyphus.calculators.ConicalIntersection import ConicalIntersection
 from pysisyphus.calculators.DFTBp import DFTBp
 from pysisyphus.calculators.Dimer import Dimer
+from pysisyphus.calculators.EnergyMin import EnergyMin
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian09 import Gaussian09
@@ -52,6 +55,7 @@ from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.ORCA5 import ORCA5
 from pysisyphus.calculators.PyPsi4 import PyPsi4
 from pysisyphus.calculators.PyXTB import PyXTB
+from pysisyphus.calculators.Remote import Remote
 from pysisyphus.calculators.TIP3P import TIP3P
 from pysisyphus.calculators.TransTorque import TransTorque
 from pysisyphus.calculators.Turbomole import Turbomole

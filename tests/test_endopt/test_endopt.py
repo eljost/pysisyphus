@@ -33,15 +33,16 @@ def gen_all_coords(ts):
 @dataclass
 class IRCDummy:
     all_coords: list
+    atoms: tuple
     forward: bool = True
     backward: bool = True
     downhill: bool = False
 
 
 @pytest.fixture
-def irc(this_dir):
+def irc(this_dir, ts):
     all_coords = np.loadtxt(this_dir / "all_coords")
-    irc_ = IRCDummy(all_coords)
+    irc_ = IRCDummy(all_coords, ts.atoms)
     return irc_
 
 
@@ -62,7 +63,7 @@ def test_endopt(fragments, geoms_expected, ts, irc):
             "type": "redund",
         }
     }
-    opt_results = run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter)
+    opt_results = run_endopt(irc, endopt_key, endopt_kwargs, calc_getter)
 
     flattened = list(it.chain(*opt_results))
     assert len(flattened) == geoms_expected

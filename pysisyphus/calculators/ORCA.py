@@ -16,7 +16,7 @@ from pysisyphus.helpers_pure import file_or_str
 def make_sym_mat(table_block):
     mat_size = int(table_block[1])
     # Orca prints blocks of 5 columns
-    arr = np.array(table_block[2:], dtype=np.float)
+    arr = np.array(table_block[2:], dtype=float)
     assert arr.size == mat_size ** 2
     block_size = 5 * mat_size
     cbs = [
@@ -56,7 +56,6 @@ class ORCA(OverlapCalculator):
         gbw=None,
         do_stable=False,
         numfreq=False,
-        mem=2000,
         **kwargs,
     ):
         """ORCA calculator.
@@ -92,7 +91,6 @@ class ORCA(OverlapCalculator):
         self.keywords = keywords.lower()
         self.blocks = blocks.lower()
         self.gbw = gbw
-        self.mem = int(mem)
         self.do_stable = bool(do_stable)
         self.freq_keyword = "numfreq" if numfreq else "freq"
 
@@ -121,7 +119,7 @@ class ORCA(OverlapCalculator):
                 self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
-        self.triplets = bool(re.search("triplets\s+true", self.blocks))
+        self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
 
@@ -147,7 +145,7 @@ class ORCA(OverlapCalculator):
             "stable": self.parse_stable,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
     def reattach(self, last_calc_cycle):
         # Use the latest .gbw
@@ -309,16 +307,9 @@ class ORCA(OverlapCalculator):
             proc.wait()
             shutil.copy(path / "orca.molden.input", path / "orca.molden")
 
-    def parse_hessian(self, path):
-        results = {}
-        hessian_fn = glob.glob(os.path.join(path, "*.hess"))
-        assert len(hessian_fn) == 1
-        hessian_fn = hessian_fn[0]
-        if not hessian_fn:
-            raise Exception("ORCA calculation failed.")
-        with open(hessian_fn) as handle:
-            text = handle.read()
-
+    @staticmethod
+    @file_or_str(".hess", method=False)
+    def parse_hess_file(text):
         integer = pp.Word(pp.nums)
         float_ = pp.Word(pp.nums + ".-")
         plus = pp.Literal("+")
@@ -331,7 +322,9 @@ class ORCA(OverlapCalculator):
         scientific_block = table_header_line + pp.OneOrMore(scientific_line)
         float_line = pp.Suppress(integer) + float_
         comment_line = pp.Literal("#") + pp.restOfLine
-        mass_xyz_line = pp.Word(pp.alphas) + float_ + pp.Group(pp.OneOrMore(float_))
+        mass_xyz_line = pp.Group(
+            pp.Word(pp.alphas) + float_ + pp.Group(pp.OneOrMore(float_))
+        )
 
         block_name = pp.Word(pp.alphas + "$_")
         block_length = integer
@@ -365,7 +358,16 @@ class ORCA(OverlapCalculator):
             + atoms
         )
         parsed = parser.parseString(text)
-        results["hessian"] = make_sym_mat(parsed["hessian"])
+        return parsed
+
+    def parse_hessian(self, path):
+        hessian_fn = glob.glob(os.path.join(path, "*.hess"))
+        assert len(hessian_fn) == 1
+        hessian_fn = hessian_fn[0]
+        if not hessian_fn:
+            raise Exception("ORCA calculation failed.")
+
+        parsed = ORCA.parse_hess_file(hessian_fn)
 
         # logging.warning("Hacky orca energy parsing in orca hessian calculation!")
         orca_log_fn = os.path.join(path, self.out_fn)
@@ -375,7 +377,11 @@ class ORCA(OverlapCalculator):
         energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
         energy_mobj = re.search(energy_re, log_text)
         energy = float(energy_mobj.groups()[0])
-        results["energy"] = energy
+
+        results = {
+            "energy": energy,
+            "hessian": make_sym_mat(parsed["hessian"]),
+        }
 
         return results
 
@@ -635,7 +641,7 @@ class ORCA(OverlapCalculator):
     @file_or_str(".out", method=False)
     def parse_atoms_coords(text):
         ac_re = re.compile(
-            "CARTESIAN COORDINATES \(ANGSTROEM\)\s+\-{33}(.+?)\s+\-{28}", re.DOTALL
+            r"CARTESIAN COORDINATES \(ANGSTROEM\)\s+\-{33}(.+?)\s+\-{28}", re.DOTALL
         )
         mobj = ac_re.search(text)
         atoms_coords = mobj.group(1).strip().split()
@@ -648,13 +654,13 @@ class ORCA(OverlapCalculator):
     @staticmethod
     @file_or_str(".out", method=False)
     def parse_engrad_info(text):
-        soi_re = re.compile("State of interest\s+\.{3}\s+(\d+)")
+        soi_re = re.compile(r"State of interest\s+\.{3}\s+(\d+)")
         try:
             root = soi_re.search(text).group(1)
             root = int(root)
         except AttributeError:
             root = None
-        triplets = bool(re.search("triplets\s+true", text))
+        triplets = bool(re.search(r"triplets\s+true", text))
         return root, triplets
 
     def parse_mo_numbers(self, out_fn):
@@ -729,6 +735,10 @@ class ORCA(OverlapCalculator):
         for tmp in tmp_fns:
             os.remove(tmp)
             self.log(f"Removed '{tmp}'")
+        # try:
+        # os.remove(path / "orca.gbw")
+        # except FileNotFoundError:
+        # pass
 
     def __str__(self):
         return f"ORCA({self.name})"

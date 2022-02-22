@@ -22,8 +22,8 @@ import numpy as np
         ("lindh", 24),
         ("simple", 22),
         ("swart", 15),
-        pytest.param("xtb", 17, marks=[using("pyscf"), using("xtb")]),
-        pytest.param("xtb1", 16, marks=[using("pyscf"), using("xtb")]),
+        pytest.param("xtb", 21, marks=[using("pyscf"), using("xtb")]),
+        pytest.param("xtb1", 19, marks=[using("pyscf"), using("xtb")]),
     ],
 )
 def test_guess_hessians(hessian_init, ref_cycle):

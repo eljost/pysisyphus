@@ -1,13 +1,17 @@
 import collections.abc
 from enum import Enum
 import itertools as it
+import json
 import logging
+import math
 from pathlib import Path
 import time
 
 import numpy as np
+import psutil
 
-from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG
+from pysisyphus.config import p_DEFAULT, T_DEFAULT
+from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG, C, R, AU2KJPERMOL, NA
 
 
 """Functions defined here don't import anything from pysisyphus, besides
@@ -18,9 +22,14 @@ HASH_PREC = 4
 
 
 def eigval_to_wavenumber(ev):
-    conv = AU2J / (AMU2KG * BOHR2M ** 2)
-
-    return np.sign(ev) * np.sqrt(np.abs(ev) * conv) / (2 * np.pi * 3e10)
+    # This approach seems numerically more unstable
+    # conv = AU2J / (AMU2KG * BOHR2M ** 2) / (2 * np.pi * 3e10)**2
+    # w2nu = np.sign(ev) * np.sqrt(np.abs(ev) * conv)
+    # The two lines below are adopted from Psi4 and seem more stable,
+    # compared to the approach above.
+    conv = np.sqrt(NA * AU2J * 1.0e19) / (2 * np.pi * C * BOHR2ANG)
+    w2nu = np.sign(ev) * np.sqrt(np.abs(ev)) * conv
+    return w2nu
 
 
 def hash_arr(arr, precision=HASH_PREC):
@@ -345,3 +354,54 @@ def approx_float(
     rel_tol = rel_tol * expected
     tolerance = max(abs_tol, rel_tol)
     return abs(num - expected) <= tolerance
+
+
+_CONV_FUNCS = {
+    # First item in value converts to JSON dumpable type,
+    # second items converts from JSON to original type.
+    "energy": (lambda en: float(en), lambda en: float(en)),
+    "forces": (
+        lambda forces: forces.tolist(),
+        lambda forces: np.array(forces, dtype=float).flatten(),
+    ),
+    "hessian": (
+        lambda hessian: hessian.tolist(),
+        lambda hessian: np.array(hessian, dtype=float),
+    ),
+}
+
+
+def results_to_json(results):
+    conv_results = {key: _CONV_FUNCS[key][0](val) for key, val in results.items()}
+    return json.dumps(conv_results)
+
+
+def json_to_results(as_json):
+    results = {
+        key: _CONV_FUNCS[key][1](val) for key, val in json.loads(as_json).items()
+    }
+    return results
+
+
+def standard_state_corr(T=T_DEFAULT, p=p_DEFAULT, n=1):
+    """dG for change of standard state from gas to solution of 1 mol/l"""
+    Vm = n * R * T / p  # in m³
+    Vm_litres = Vm * 1000
+    dG = R * T * math.log(Vm_litres) / 1000  # kJ mol⁻¹
+    dG_au = dG / AU2KJPERMOL
+    return dG_au
+
+
+def check_mem(mem, pal, avail_frac=0.85, logger=None):
+    virt_mem = psutil.virtual_memory()
+    mb_available = virt_mem.available * avail_frac / 1024 / 1024
+    mb_requested = mem * pal
+    msg = f"{mb_available:.2f} MB memory available, {mb_requested:.2f} MB requested."
+    if mb_requested > mb_available:
+        mb_corr = int(mb_available / pal)
+        msg += f" Too much memory requested. Using smaller value of {mb_corr} MB."
+    else:
+        mb_corr = mem
+    log(logger, msg)
+
+    return mb_corr

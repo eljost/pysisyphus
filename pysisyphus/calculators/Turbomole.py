@@ -21,17 +21,14 @@ class Turbomole(OverlapCalculator):
 
     conf_key = "turbomole"
 
-    def __init__(
-        self, control_path, root=None, double_mol_path=None, mem=1000, **kwargs
-    ):
-        super(Turbomole, self).__init__(**kwargs)
+    def __init__(self, control_path, root=None, double_mol_path=None, **kwargs):
+        super().__init__(**kwargs)
 
         self.control_path = Path(control_path)
         self.root = root
         self.double_mol_path = double_mol_path
         if self.double_mol_path:
             self.double_mol_path = Path(self.double_mol_path)
-        self.mem = int(mem)
 
         # Check if the overlap matrix will be printed and assert
         # that no SCF iterations are done.

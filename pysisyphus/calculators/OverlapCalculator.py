@@ -4,24 +4,54 @@
 #     Garcia, Campetella, 2019
 
 from collections import namedtuple
-from pathlib import Path
+from pathlib import Path, PosixPath
 import shutil
 import tempfile
 
 import h5py
-import itertools as it
 import numpy as np
 
+from pysisyphus import logger
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
+from pysisyphus.config import get_cmd
 from pysisyphus.constants import AU2EV
 from pysisyphus.helpers_pure import describe
+from pysisyphus.io.hdf5 import get_h5_group
 from pysisyphus.wrapper.mwfn import make_cdd
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
-from pysisyphus.testing import available
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
+
+
+def get_data_model(
+    exc_state_num, occ_mo_num, virt_mo_num, ovlp_type, atoms, max_cycles
+):
+    mo_num = occ_mo_num + virt_mo_num
+    state_num = exc_state_num + 1  # including GS
+    _1d = (max_cycles,)
+    ovlp_state_num = state_num if ovlp_type == "wfow" else exc_state_num
+
+    data_model = {
+        "mo_coeffs": (max_cycles, mo_num, mo_num),
+        "ci_coeffs": (max_cycles, exc_state_num, occ_mo_num, virt_mo_num),
+        "coords": (max_cycles, len(atoms) * 3),
+        "all_energies": (
+            max_cycles,
+            state_num,
+        ),
+        "calculated_roots": _1d,
+        "roots": _1d,
+        "root_flips": _1d,
+        "row_inds": _1d,
+        "ref_cycles": _1d,
+        "ref_roots": _1d,
+        "overlap_matrices": (max_cycles, ovlp_state_num, ovlp_state_num),
+        "cdd_cubes": _1d,
+        "cdd_imgs": _1d,
+    }
+    return data_model
 
 
 class OverlapCalculator(Calculator):
@@ -37,6 +67,14 @@ class OverlapCalculator(Calculator):
     ]  # lgtm [py/non-iterable-in-for-loop]
     VALID_CDDS = (None, "calc", "render")
     VALID_XY = ("X", "X+Y", "X-Y")
+    H5_MAP = {
+        "mo_coeffs": "mo_coeff_list",
+        "ci_coeffs": "ci_coeff_list",
+        "coords": "coords_list",
+        "all_energies": "all_energies_list",
+        "roots": "roots_list",
+        "ref_roots": "reference_roots",
+    }
 
     def __init__(
         self,
@@ -53,6 +91,7 @@ class OverlapCalculator(Calculator):
         cdds=None,
         orient="",
         dump_fn="overlap_data.h5",
+        h5_dump=False,
         ncore=0,
         conf_thresh=1e-3,
         dyn_roots=0,
@@ -78,23 +117,28 @@ class OverlapCalculator(Calculator):
         self.pr_nto = pr_nto
         self.nto_thresh = nto_thresh
         self.cdds = cdds
-        # When calculation/rendering of charge density differences is requested
-        # check if the appropriate programs are available. If not, we fallback
-        # to a more sensible command and print a warning.
+        # When calculation/rendering of charge density differences (CDDs) is
+        # requested check fore the required programs (Multiwfn/Jmol). If they're
+        # not available, we fallback to a more sensible command and print a warning.
         msg = (
             "'cdds: {0}' requested, but {1} was not found! "
-            "Falling back to 'cdds: {2}'! Consider defining the {1} "
+            "Falling back to 'cdds: {2}'!\nConsider defining the {1} "
             "command in '.pysisyphusrc'."
         )
-        if (self.cdds == "render") and (not available("jmol", set_pytest_mark=False)):
-            print(msg.format(self.cdds, "Jmol", "calc"))
+
+        jmol_cmd = get_cmd("jmol")
+        mwfn_cmd = get_cmd("mwfn")
+        if (self.cdds == "render") and not jmol_cmd:
+            logger.debug(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
-        if (self.cdds == "calc") and (not available("mwfn", set_pytest_mark=False)):
-            print(msg.format(self.cdds, "Multiwfn", None))
+        if (self.cdds in ("calc", "render")) and not mwfn_cmd:
+            logger.debug(msg.format(self.cdds, "Multiwfn", None))
             self.cdds = None
+        self.log(f"cdds: {self.cdds}, jmol={jmol_cmd}, mwfn={mwfn_cmd}")
         assert self.cdds in self.VALID_CDDS
         self.orient = orient
         self.dump_fn = self.out_dir / dump_fn
+        self.h5_dump = h5_dump
         self.ncore = int(ncore)
         self.conf_thresh = float(conf_thresh)
         self.dyn_roots = int(dyn_roots)
@@ -148,6 +192,41 @@ class OverlapCalculator(Calculator):
             if self.ovlp_with == "adapt":
                 self.log(f"Adapt args: {self.adapt_args}")
 
+        self.h5_fn = self.out_dir / "ovlp_data.h5"
+        self.h5_group_name = self.name
+        # We can't initialize the HDF5 group as we don't know the shape of
+        # atoms/coords yet. So we wait until after the first calculation.
+        self.h5_cycles = 50
+
+        self._data_model = None
+        self._h5_initialized = False
+
+    def get_h5_group(self):
+        if not self._h5_initialized:
+            reset = True
+            self._h5_initialized = True
+        else:
+            reset = False
+        h5_group = get_h5_group(
+            self.h5_fn, self.h5_group_name, self.data_model, reset=reset
+        )
+        return h5_group
+
+    @property
+    def data_model(self):
+        if self._data_model is None:
+            max_cycles = self.h5_cycles
+            exc_state_num, occ_mo_num, virt_mo_num = self.ci_coeff_list[0].shape
+            self._data_model = get_data_model(
+                exc_state_num,
+                occ_mo_num,
+                virt_mo_num,
+                self.ovlp_type,
+                self.atoms,
+                max_cycles,
+            )
+        return self._data_model
+
     @property
     def roots_number(self):
         return self.root + self.dyn_roots
@@ -187,8 +266,10 @@ class OverlapCalculator(Calculator):
     @staticmethod
     def get_mo_norms(mo_coeffs, ao_ovlp):
         """MOs are in rows."""
-        # return np.diag(mo_coeffs.dot(ao_ovlp).dot(mo_coeffs.T))
-        return np.einsum("ki,kj,ij->k", mo_coeffs, mo_coeffs, ao_ovlp)
+        # einsum-call is extremely slow
+        # mo_norms = np.einsum("ki,kj,ij->k", mo_coeffs, mo_coeffs, ao_ovlp)
+        mo_norms = np.diag(mo_coeffs.dot(ao_ovlp).dot(mo_coeffs.T))
+        return mo_norms
 
     @staticmethod
     def renorm_mos(mo_coeffs, ao_ovlp):
@@ -306,7 +387,7 @@ class OverlapCalculator(Calculator):
         ao_ovlp : ndarray, shape(AOs1, AOs2)
             Double molcule AO overlaps.
         """
-        states, occ, virt = ci_coeffs1.shape
+        states1, occ, _ = ci_coeffs1.shape
         ci_full1 = self.blowup_ci_coeffs(ci_coeffs1)
         ci_full2 = self.blowup_ci_coeffs(ci_coeffs2)
 
@@ -314,11 +395,12 @@ class OverlapCalculator(Calculator):
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
 
-        overlaps = [
-            np.sum(S_MO_occ.dot(state1).dot(S_MO) * state2)
-            for state1, state2 in it.product(ci_full1, ci_full2)
-        ]
-        overlaps = np.array(overlaps).reshape(states, -1)
+        overlaps = list()
+        for state1 in ci_full1:
+            precontr = S_MO_occ.dot(state1).dot(S_MO)
+            for state2 in ci_full2:
+                overlaps.append(np.sum(precontr * state2))
+        overlaps = np.array(overlaps).reshape(states1, -1)
 
         return overlaps
 
@@ -349,7 +431,7 @@ class OverlapCalculator(Calculator):
         normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
         # u, s, vh = np.linalg.svd(state_ci_coeffs)
         u, s, vh = np.linalg.svd(normed)
-        lambdas = s ** 2
+        lambdas = s**2
         self.log("Normalized transition density vector to 1.")
         self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
         lambdas_str = np.array2string(lambdas[:3], precision=4, suppress_small=True)
@@ -425,6 +507,34 @@ class OverlapCalculator(Calculator):
         raise Exception("Implement me!")
 
     def dump_overlap_data(self):
+        if self.h5_dump:
+            h5_group = self.get_h5_group()
+
+            h5_group.attrs["ovlp_type"] = self.ovlp_type
+            h5_group.attrs["ovlp_with"] = self.ovlp_with
+            h5_group.attrs["orient"] = self.orient
+            h5_group.attrs["atoms"] = np.string_(self.atoms)
+
+            for key, shape in self.data_model.items():
+                try:
+                    mapped_key = self.H5_MAP[key]
+                except KeyError:
+                    mapped_key = key
+                value = getattr(self, mapped_key)
+                # Skip this value if the underlying list is empty
+                if not value:
+                    continue
+                cur_cycle = self.calc_counter
+                cur_value = value[-1]
+                # the CDD strings are currently not yet handled properly
+                if type(cur_value) == PosixPath:
+                    cur_value = str(cur_value)
+                    continue
+                if len(shape) > 1:
+                    h5_group[key][cur_cycle, : len(cur_value)] = cur_value
+                else:
+                    h5_group[key][cur_cycle] = cur_value
+
         data_dict = {
             "mo_coeffs": np.array(self.mo_coeff_list, dtype=float),
             "ci_coeffs": np.array(self.ci_coeff_list, dtype=float),
@@ -508,7 +618,7 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_nto = lambdas.sum() ** 2 / (lambdas ** 2).sum()
+            pr_nto = lambdas.sum() ** 2 / (lambdas**2).sum()
             if self.pr_nto:
                 use_ntos = int(np.round(pr_nto))
                 self.log(f"PR_NTO={pr_nto:.2f}")
@@ -528,28 +638,6 @@ class OverlapCalculator(Calculator):
         """Assure consistent array shapes when the number of calculated
         roots changed."""
         raise Exception("This method is not functional right now!")
-
-        # # We only have to update the first dimension
-        # to_update = (
-        # "all_energies_list",
-        # "overlap_matrices",
-        # "ci_coeff_list",
-        # )
-        # for name in to_update:
-        # arr_list = getattr(self, name)
-        # first_dims = [arr.shape[0] for arr in arr_list]
-        # max_ = max(first_dims)
-        # print(f"name: {name} first_dims: {first_dims}")
-
-        # try:
-        # # With dyn_root > 0 the size of all_ens may be different from cycle to
-        # # cycle. Here we assure that the stored array will always have the same
-        # # size and shape as the first array in the list.
-        # all_ens_zero = np.full_like(self.all_energies_list[0], np.nan, dtype=float)
-        # all_ens_zero[:all_ens.size] = all_ens
-        # all_ens = all_ens_zero
-        # except IndexError:
-        # pass
 
     def set_wfow(self, ci_coeffs):
         occ_mo_num, virt_mo_num = ci_coeffs[0].shape
@@ -625,7 +713,8 @@ class OverlapCalculator(Calculator):
         if ovlp_type is None:
             ovlp_type = self.ovlp_type
 
-        # Nothing to compare to if only one calculation was done yet
+        # Nothing to compare to if only one calculation was done yet.
+        # Nonetheless, dump the first cycle to HDF5.
         if len(self.ci_coeff_list) < 2:
             self.dump_overlap_data()
             self.log(
@@ -775,7 +864,7 @@ class OverlapCalculator(Calculator):
         # Cycle, states, occ, virt
         ci_coeffs = self.ci_coeff_list[cycle]
         exc_energies = (energies[1:] - energies[0]) * AU2EV
-        above_thresh = np.abs(ci_coeffs) > thresh
+        # above_thresh = np.abs(ci_coeffs) > thresh
         _, occ_mos, virt_mos = ci_coeffs.shape
 
         exc_str = ""

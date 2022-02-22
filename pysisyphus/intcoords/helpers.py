@@ -3,7 +3,7 @@ import numpy as np
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
-from pysisyphus.intcoords.setup import get_bond_sets
+from pysisyphus.intcoords.setup import get_bond_sets, BOND_FACTOR
 from pysisyphus.intcoords.Stretch import Stretch
 
 
@@ -159,3 +159,58 @@ def get_weighted_bond_mode_getter(
         return bonds
 
     return func
+
+
+def get_bond_difference(geom1, geom2, bond_factor=BOND_FACTOR):
+    """Return formed and broken bonds when going from geom1 to geom2."""
+
+    assert geom1.atoms == geom2.atoms
+
+    def as_sets(geom):
+        bonds = get_bond_sets(geom.atoms, geom.coords3d, bond_factor=BOND_FACTOR)
+        return set([frozenset(b) for b in bonds.tolist()])
+
+    def as_lists(bonds):
+        return [list(b) for b in bonds]
+
+    bonds1 = as_sets(geom1)
+    bonds2 = as_sets(geom2)
+    formed = as_lists(bonds2 - bonds1)
+    broken = as_lists(bonds1 - bonds2)
+    return formed, broken
+
+
+def verbose_bond_difference(formed, broken, key1, key2, atoms=None):
+    def atom_bonds(bonds):
+        if len(bonds) == 0:
+            ab = ""
+        elif atoms is not None:
+            ab = [f"{atoms[from_]}{from_}-{atoms[to_]}{to_}" for from_, to_ in bonds]
+        else:
+            ab = bonds
+        return ab
+
+    def pos(bonds):
+        """Plural or singular?"""
+        return ("", "is") if (len(bonds) == 1) else ("s", "are")
+
+    sf, verbf = pos(formed)
+    sb, verbb = pos(broken)
+
+    # return (
+    # f"{key1}->{key2}: "
+    # f"{len(formed)} bond{sf} formed {atom_bonds(formed)}, "
+    # f"{len(broken)} bond{sb} broken {atom_bonds(broken)}."
+    # )
+    return (
+        f"{len(formed)} bond{sf} formed {atom_bonds(formed)}",
+        f"{len(broken)} bond{sb} broken {atom_bonds(broken)}",
+    )
+
+
+def get_bond_differences_verbose(
+    geom1, geom2, bond_factor=BOND_FACTOR, key1="geom1", key2="geom2"
+):
+    formed, broken = get_bond_difference(geom1, geom2, BOND_FACTOR)
+    fverb, bverb = verbose_bond_difference(formed, broken, key1, key2, atoms=geom1.atoms)
+    return formed, broken, fverb, bverb

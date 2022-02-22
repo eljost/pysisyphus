@@ -10,8 +10,16 @@ class Psi4(Calculator):
 
     conf_key = "psi4"
 
-    def __init__(self, method, basis, to_set=None, pcm="iefpcm",
-                 solvent=None, mem=2000, write_fchk=False, **kwargs):
+    def __init__(
+        self,
+        method,
+        basis,
+        to_set=None,
+        pcm="iefpcm",
+        solvent=None,
+        write_fchk=False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.method = method
@@ -20,7 +28,6 @@ class Psi4(Calculator):
         self.pcm = pcm
         self.solvent = solvent
         self.write_fchk = write_fchk
-        self.mem = mem
 
         self.inp_fn = "psi4.inp"
         self.out_fn = "psi4.out"
@@ -32,9 +39,10 @@ class Psi4(Calculator):
             "hessian": self.parse_hessian,
         }
 
-        self.base_cmd = self.get_cmd("cmd")
+        self.base_cmd = self.get_cmd()
 
-        self.inp = textwrap.dedent("""
+        self.inp = textwrap.dedent(
+            """
         molecule mol{{
           {xyz}
           {charge} {mult}
@@ -51,15 +59,15 @@ class Psi4(Calculator):
         {method}
 
         {fchk}
-        """)
+        """
+        )
 
     def get_fchk_str(self):
         fchk_str = ""
         if self.write_fchk:
             fchk_fn = self.make_fn("wfn.fchk")
             fchk_str = (
-                "fchk_writer = psi4.FCHKWriter(wfn)\n"
-                f"fchk_writer.write('{fchk_fn}')"
+                "fchk_writer = psi4.FCHKWriter(wfn)\n" f"fchk_writer.write('{fchk_fn}')"
             )
         return fchk_str
 
@@ -70,17 +78,17 @@ class Psi4(Calculator):
             "energy": "E, wfn = energy('{}', return_wfn=True)",
             # Right now we don't need the wavefunction
             # "grad": "G, wfn = gradient('{}', return_wfn=True)\n" \
-                    # "G_arr = np.array(G)\n" \
-                    # "np.save('grad', G_arr)",
+            # "G_arr = np.array(G)\n" \
+            # "np.save('grad', G_arr)",
             # "hessian": "H, wfn = hessian('{}', return_wfn=True)\n" \
-                       # "H_arr = np.array(H)\n" \
-                       # "np.save('hessian', H_arr)",
-            "grad": "G, wfn = gradient('{}', return_wfn=True)\n" \
-                    "G_arr = np.array(G)\n" \
-                    "np.save('grad', G_arr)",
-            "hessian": "H, wfn = hessian('{}', return_wfn=True)\n" \
-                       "H_arr = np.array(H)\n" \
-                       "np.save('hessian', H_arr)",
+            # "H_arr = np.array(H)\n" \
+            # "np.save('hessian', H_arr)",
+            "grad": "G, wfn = gradient('{}', return_wfn=True)\n"
+            "G_arr = np.array(G)\n"
+            "np.save('grad', G_arr)",
+            "hessian": "H, wfn = hessian('{}', return_wfn=True)\n"
+            "H_arr = np.array(H)\n"
+            "np.save('hessian', H_arr)",
         }
         method = calc_types[calc_type].format(self.method)
         wfn_path = self.make_fn("wfn.npy")
@@ -95,27 +103,33 @@ class Psi4(Calculator):
         if isinstance(basis, dict):
             # Check if a global basis is given for all atoms. This must come
             # first, otherwise Psi4 throws an error.
-            basis_lines = ["basis {", ]
+            basis_lines = [
+                "basis {",
+            ]
             try:
                 basis_lines.append(f"assign {basis['assign']}")
             except KeyError:
                 pass
             # Add remaining lines
             basis_lines.extend(
-                [f"assign {atms} {bas}" for atms, bas in basis.items()
-                 if atms != "assign"]
+                [
+                    f"assign {atms} {bas}"
+                    for atms, bas in basis.items()
+                    if atms != "assign"
+                ]
             )
             basis_lines.append("}")
 
             basis = "\n".join(basis_lines)
         # Use set when self.basis is a string
         else:
-            basis =  f"set basis {basis}"
+            basis = f"set basis {basis}"
 
         # PCM section
         pcm = ""
         if self.solvent:
-            pcm = textwrap.dedent(f"""
+            pcm = textwrap.dedent(
+                f"""
             set pcm true
 
             pcm = {{
@@ -128,19 +142,20 @@ class Psi4(Calculator):
                     Type = GePol
                 }}
             }}
-            """)
+            """
+            )
 
         inp = self.inp.format(
-                xyz=xyz,
-                charge=self.charge,
-                mult=self.mult,
-                basis=basis,
-                to_set=set_strs,
-                pcm=pcm,
-                method=method,
-                pal=self.pal,
-                mem=self.mem,
-                fchk=self.get_fchk_str(),
+            xyz=xyz,
+            charge=self.charge,
+            mult=self.mult,
+            basis=basis,
+            to_set=set_strs,
+            pcm=pcm,
+            method=method,
+            pal=self.pal,
+            mem=self.mem,
+            fchk=self.get_fchk_str(),
         )
         # inp = "\n".join([line.strip() for line in inp.split("\n")])
         return inp
@@ -169,11 +184,9 @@ class Psi4(Calculator):
     def parse_energy(self, path):
         with open(path / "psi4.out") as handle:
             text = handle.read()
-        en_regex = re.compile("PARSE ENERGY: ([\d\-\.]+)")
+        en_regex = re.compile(r"PARSE ENERGY: ([\d\-\.]+)")
         mobj = en_regex.search(text)
-        result = {
-            "energy": float(mobj[1])
-        }
+        result = {"energy": float(mobj[1])}
         return result
 
     def parse_grad(self, path):

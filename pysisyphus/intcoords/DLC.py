@@ -68,7 +68,10 @@ class DLC(RedundantCoords):
     def transform_hessian(self, cart_hessian, int_gradient=None):
         """Transform Cartesian Hessian to DLC."""
         # Transform the DLC gradient to primitive coordinates
-        prim_gradient = (self.U * int_gradient).sum(axis=1)
+        if int_gradient is not None:
+            prim_gradient = (self.U * int_gradient).sum(axis=1)
+        else:
+            prim_gradient = None
         H = super().transform_hessian(cart_hessian, prim_gradient)
         return self.U.T.dot(H).dot(self.U)
 

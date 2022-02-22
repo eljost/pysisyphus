@@ -14,6 +14,7 @@ def calc_getter(charge, mult):
 BakerBm = Benchmark("baker", coord_type="redund", calc_getter=calc_getter)
 
 
+@pytest.mark.benchmark
 @using("pyscf")
 @pytest.mark.parametrize("fn, geom, ref_energy", BakerBm)
 def test_baker_gs_opt(fn, geom, ref_energy, results_bag):
@@ -32,6 +33,7 @@ def test_baker_gs_opt(fn, geom, ref_energy, results_bag):
 
 
 # @filter_fixture_store("test_baker_gs_opt")
+@pytest.mark.benchmark
 def test_baker_gs_opt_synthesis(fixture_store):
     for i, fix in enumerate(fixture_store):
         print(i, fix)

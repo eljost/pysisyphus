@@ -1,12 +1,13 @@
 import importlib
 import shutil
 
+from pysisyphus.config import Config, DEFAULTS
+from pysisyphus import logger
+
 try:
     import pytest
 except ModuleNotFoundError:
-    print("pytest package could not be imported.")
-
-from pysisyphus.config import Config, DEFAULTS
+    logger.warning("pytest package could not be imported.")
 
 
 """Inspired by
@@ -80,10 +81,11 @@ def using(calculator, set_pytest_mark=True):
             available = module_available(calculator)
 
         reason = _reason.format(calculator)
+        skipif = not available
         if set_pytest_mark:
-            mark = pytest.mark.skipif(not available, reason=reason)
+            mark = pytest.mark.skipif(skipif, reason=reason)
         else:
-            mark = DummyMark(available)
+            mark = DummyMark(skipif)
         _using_cache[calculator] = mark
     return _using_cache[calculator]
 

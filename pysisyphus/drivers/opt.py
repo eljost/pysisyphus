@@ -2,16 +2,20 @@ from dataclasses import dataclass
 from math import floor, ceil
 from pathlib import Path
 import shutil
+import sys
 
 import numpy as np
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.config import T_DEFAULT, p_DEFAULT
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import do_final_hessian
 from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
+from pysisyphus.io import save_hessian
 from pysisyphus.modefollow import NormalMode, geom_davidson
 from pysisyphus.optimizers import *
 from pysisyphus.optimizers.Optimizer import Optimizer
+from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update
 from pysisyphus.tsoptimizers import *
 
@@ -23,7 +27,6 @@ OPT_DICT = {
     "lbfgs": LBFGS.LBFGS,
     "micro": MicroOptimizer,
     "nc": NCOptimizer.NCOptimizer,
-    "oniom": ONIOMOpt,
     "plbfgs": PreconLBFGS.PreconLBFGS,
     "psd": PreconSteepestDescent.PreconSteepestDescent,
     "qm": QuickMin.QuickMin,
@@ -34,7 +37,6 @@ OPT_DICT = {
 }
 
 TSOPT_DICT = {
-    "dimer": dimer_method,
     "rsprfo": RSPRFOptimizer,
     "trim": TRIM,
     "rsirfo": RSIRFOptimizer,
@@ -103,7 +105,11 @@ def run_opt(
     geom,
     calc_getter,
     opt_key,
-    opt_kwargs,
+    opt_kwargs=None,
+    iterative=False,
+    iterative_max_cycles=5,
+    iterative_thresh=-15,
+    iterative_scale=2.00,
     cart_hessian=None,
     print_thermo=False,
     title="Optimization",
@@ -111,6 +117,11 @@ def run_opt(
     level=0,
 ):
     is_cos = issubclass(type(geom), ChainOfStates)
+    is_tsopt = opt_key in TSOPT_DICT
+    # Disallow iterative optimizations for COS objects
+    if opt_kwargs is None:
+        opt_kwargs = dict()
+    is_iterative = (not is_cos) and (iterative or opt_kwargs.pop("iterative", False))
 
     if is_cos:
         for image in geom.images:
@@ -122,17 +133,59 @@ def run_opt(
 
     do_hess = opt_kwargs.pop("do_hess", False)
     do_davidson = opt_kwargs.pop("do_davidson", False)
-    T = opt_kwargs.pop("T", 298.15)
+    T = opt_kwargs.pop("T", T_DEFAULT)
+    p = opt_kwargs.pop("p", p_DEFAULT)
 
-    opt = get_opt_cls(opt_key)(geom, **opt_kwargs)
-    print(highlight_text(f"Running {title}", level=level))
-    print(f"\n   Input geometry: {geom.describe()}")
-    print(f"Coordinate system: {geom.coord_type}")
-    print(f"        Optimizer: {opt_key}\n")
-    report_frozen_atoms(geom)
-    print()
+    opt_cls = get_opt_cls(opt_key)
+    for i in range(iterative_max_cycles):
+        # Modify hessian_init in later cycles, te reuse the calculated Hessian
+        # from the final geometry of the previous optimization.
+        if (i > 0) and issubclass(opt_cls, HessianOptimizer):
+            opt_kwargs["hessian_init"] = "calc"
+        opt = opt_cls(geom, **opt_kwargs)
+        print(highlight_text(f"Running {title}", level=level))
+        print(f"\n   Input geometry: {geom.describe()}")
+        print(f"Coordinate system: {geom.coord_type}")
+        print(f"        Optimizer: {opt_key}\n")
+        report_frozen_atoms(geom)
+        print()
+        opt.run()
 
-    opt.run()
+        # Only do 1 cycle in non-iterative optimizations
+        if not is_iterative:
+            break
+
+        # Determine imaginary modes for subsequent displacements
+        nus, *_, cart_displs = geom.get_normal_modes()
+        below_thresh = nus < iterative_thresh
+        # Never displace along transition vector in ts-optimizations. Just skip it.
+        if is_tsopt:
+            below_thresh[0] = False
+        imag_nus = nus[below_thresh]
+        imag_displs = cart_displs[:, below_thresh].T
+
+        if len(imag_nus) == 0:
+            print(f"Iterative optimization converged in cycle {i}.")
+            break
+
+        h5_fn = f"hess_calc_iter_{i:02d}.h5"
+        save_hessian(h5_fn, geom)
+        print(f"Saved HDF5-Hessian to {h5_fn}.")
+
+        print(f"\nImaginary modes below threshold of {iterative_thresh:.2f} cm⁻¹:")
+        for j, nu in enumerate(nus[below_thresh]):
+            print(f"\t{j:02d}: {nu:8.2f} cm⁻¹")
+        sys.stdout.flush()
+
+        print(f"\nGeometry after optimization cycle {i}:\n{geom.as_xyz()}")
+
+        # Displace along imaginary modes
+        for j, (nu, imag_displ) in enumerate(zip(imag_nus, imag_displs)):
+            step = iterative_scale * imag_displ
+            new_cart_coords = geom.cart_coords + step
+            geom.cart_coords = new_cart_coords
+
+        print(f"\nDisplaced geometry for optimization cycle {i+1}:\n{geom.as_xyz()}\n")
 
     # ChainOfStates specific
     if is_cos and (not opt.stopped):
@@ -166,7 +219,13 @@ def run_opt(
         print()
         prefix = opt_kwargs.get("prefix", "")
         do_final_hessian(
-            geom, write_imag_modes=True, prefix=prefix, T=T, print_thermo=print_thermo
+            geom,
+            write_imag_modes=True,
+            prefix=prefix,
+            T=T,
+            p=p,
+            print_thermo=print_thermo,
+            is_ts=is_tsopt,
         )
     print()
 

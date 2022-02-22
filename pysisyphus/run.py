@@ -20,7 +20,9 @@ import numpy as np
 import scipy as sp
 import yaml
 
+from pysisyphus import __version__
 from pysisyphus.calculators import *
+from pysisyphus.config import OUT_DIR_DEFAULT, p_DEFAULT, T_DEFAULT
 from pysisyphus.cos import *
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 from pysisyphus.color import bool_color
@@ -53,6 +55,7 @@ from pysisyphus.helpers_pure import (
     recursive_update,
     highlight_text,
     approx_float,
+    results_to_json,
 )
 from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
@@ -66,8 +69,8 @@ from pysisyphus.io import save_hessian
 from pysisyphus.stocastic import *
 from pysisyphus.thermo import can_thermoanalysis
 from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
-from pysisyphus._version import get_versions
 from pysisyphus.xyzloader import write_geoms_to_trj
+from pysisyphus.yaml_mods import get_loader
 
 
 CALC_DICT = {
@@ -76,6 +79,7 @@ CALC_DICT = {
     "conical": ConicalIntersection,
     "dftb+": DFTBp,
     "dimer": Dimer,
+    "energymin": EnergyMin,
     "ext": ExternalPotential,
     "g09": Gaussian09,
     "g16": Gaussian16,
@@ -88,6 +92,7 @@ CALC_DICT = {
     "orca5": ORCA5,
     "psi4": Psi4,
     "pyxtb": PyXTB,
+    "remote": Remote,
     "turbomole": Turbomole,
     "xtb": XTB,
 }
@@ -493,12 +498,18 @@ def run_tsopt_from_cos(
 
 
 def run_calculations(
-    geoms, calc_getter, path, calc_key, calc_kwargs, scheduler=None, assert_track=False
+    geoms,
+    calc_getter,
+    scheduler=None,
+    assert_track=False,
+    run_func=None,
 ):
     print(highlight_text("Running calculations"))
 
+    func_name = "run_calculation" if run_func is None else run_func
+
     def par_calc(geom):
-        return geom.calculator.run_calculation(geom.atoms, geom.coords)
+        return getattr(geom.calculator, func_name)(geom.atoms, geom.coords)
 
     for geom in geoms:
         geom.set_calculator(calc_getter())
@@ -520,7 +531,19 @@ def run_calculations(
 
             start = time.time()
             print(geom)
-            results = geom.calculator.run_calculation(geom.atoms, geom.cart_coords)
+            results = getattr(geom.calculator, func_name)(geom.atoms, geom.cart_coords)
+            # results dict of MultiCalc will contain keys that can be dumped yet. So
+            # we skip the JSON dumping when KeyError is raised.
+            try:
+                as_json = results_to_json(results)
+                calc = geom.calculator
+                # Decrease counter, because it will be increased by 1, w.r.t to the
+                # calculation.
+                json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
+                with open(json_fn, "w") as handle:
+                    handle.write(as_json)
+            except KeyError:
+                print("Skipped JSON dump of calculation results!")
 
             hess_keys = [
                 key
@@ -826,8 +849,8 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
     print()
 
 
-def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
-    print(highlight_text(f"Optimizing IRC ends"))
+def run_endopt(irc, endopt_key, endopt_kwargs, calc_getter):
+    print(highlight_text(f"Optimizing reaction path ends"))
 
     # Gather geometries that shall be optimized and appropriate keys.
     to_opt = list()
@@ -848,7 +871,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
     total = separate_fragments in ("total", False)
 
     # Convert to array for easy indexing with the fragment lists
-    atoms = np.array(geom.atoms)
+    atoms = np.array(irc.atoms)
     fragments_to_opt = list()
     # Expand endpoints into fragments if requested
     for coords, key in to_opt:
@@ -857,6 +880,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         fragments = list()
         fragment_names = list()
 
+        # Detect separate fragments if requested.
         if separate_fragments:
             bond_sets = to_frozensets(get_bond_sets(atoms.tolist(), c3d))
             # Sort atom indices, so the atoms don't become totally scrambled.
@@ -865,7 +889,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
             # this ever occurs and someone complains :)
             assert len(fragments) < 10, "Something probably went wrong"
             fragment_names.extend(
-                [f"{base_name}_frag{i:03d}" for i, _ in enumerate(fragments)]
+                [f"{base_name}_frag{i:02d}" for i, _ in enumerate(fragments)]
             )
             print(f"Found {len(fragments)} fragment(s) at {base_name}")
             for frag_name, frag in zip(fragment_names, fragments):
@@ -876,7 +900,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
         # one fragment is present, which would result in twice the same optimization.
         skip_one_frag = separate_fragments and len(fragments) == 1
         if total and not skip_one_frag:
-            # Atom indices of the fragment atoms
+            # Dummy fragment containing all atom indices.
             fragments.extend(
                 [
                     range(len(atoms)),
@@ -938,6 +962,7 @@ def run_endopt(geom, irc, endopt_key, endopt_kwargs, calc_getter):
                 endopt_key,
                 opt_kwargs,
                 title=f"{name} Optimization",
+                level=1,
             )
         except Exception:
             print("Optimization crashed!")
@@ -1011,38 +1036,40 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=Non
     print("\t", yaml_fn)
 
 
-def get_defaults(conf_dict):
+def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     # Defaults
     dd = {
-        "interpol": None,
-        "cos": None,
+        "assert": None,
+        "barrier": None,
         "calc": {
             "pal": 1,
         },
+        "cos": None,
+        "endopt": None,
+        "geom": None,
+        "glob": None,
+        "interpol": None,
+        "irc": None,
+        "md": None,
+        "mdp": None,
+        "opt": None,
+        "perf": None,
         "precontr": None,
         "preopt": None,
-        "endopt": None,
         "scan": None,
-        "opt": None,
-        "tsopt": None,
-        "glob": None,
         "stocastic": None,
         "shake": None,
-        "irc": None,
-        "assert": None,
-        "geom": None,
-        "mdp": None,
-        "md": None,
-        "perf": None,
+        "tsopt": None,
     }
 
     mol_opt_defaults = {
         "dump": True,
-        "max_cycles": 100,
-        "overachieve_factor": 3,
+        "max_cycles": 150,
+        "overachieve_factor": 5,
         "type": "rfo",
         "do_hess": False,
-        "T": 298.15,
+        "T": T_default,
+        "p": p_default,
     }
     cos_opt_defaults = {
         "type": "qm",
@@ -1077,14 +1104,14 @@ def get_defaults(conf_dict):
         }
 
     if "tsopt" in conf_dict:
-        dd["tsopt"] = {
-            "type": "rsprfo",
-            "dump": True,
-            "overachieve_factor": 3,
-            "h5_group_name": "tsopt",
-            "T": 298.15,
-            "prefix": "ts",
-        }
+        dd["tsopt"] = mol_opt_defaults.copy()
+        dd["tsopt"].update(
+            {
+                "type": "rsprfo",
+                "h5_group_name": "tsopt",
+                "prefix": "ts",
+            }
+        )
         if "cos" in conf_dict:
             dd["tsopt"]["geom"] = get_opt_geom_defaults()
 
@@ -1122,6 +1149,14 @@ def get_defaults(conf_dict):
             }
         )
 
+    if "barriers" in conf_dict:
+        dd["barriers"] = {
+            "T": T_default,
+            "p": p_default,
+            "solv_calc": {},
+            "do_standard_state_corr": True,
+        }
+
     if "shake" in conf_dict:
         dd["shake"] = {
             "scale": 0.1,
@@ -1154,7 +1189,7 @@ def get_defaults(conf_dict):
         dd["scan"]["opt"]["dump"] = False
 
     if "md" in conf_dict:
-        md_T = 298.15
+        md_T = T_default
         dd["md"] = {
             "T": md_T,
             "T_init_vel": md_T,
@@ -1211,6 +1246,7 @@ def setup_run_dict(run_dict):
     for key in key_set & set(
         (
             "assert",
+            "barriers",
             "calc",
             "cos",
             "endopt",
@@ -1258,7 +1294,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
     # Dump run_dict
     run_dict_copy = run_dict.copy()
-    run_dict_copy["version"] = get_versions()["version"]
+    run_dict_copy["version"] = __version__
     with open("RUN.yaml", "w") as handle:
         yaml.dump(run_dict_copy, handle)
 
@@ -1323,7 +1359,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Prepare calculator
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
-    calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir)
+    calc_run_func = calc_kwargs.pop("run_func", None)
+    calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir / OUT_DIR_DEFAULT)
     if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
@@ -1347,6 +1384,14 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         act_calc_getter = get_calc_closure(
             "act_calculator", act_calc_key, act_calc_kwargs
         )
+    try:
+        solv_calc_kwargs = run_dict["barriers"].pop("solv_calc")
+        solv_calc_key = solv_calc_kwargs.pop("type")
+        solv_calc_getter = get_calc_closure(
+            "solv_calculator", solv_calc_key, solv_calc_kwargs
+        )
+    except KeyError:
+        solv_calc_getter = None
 
     ##################
     # GEOMETRY SETUP #
@@ -1372,7 +1417,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # first & last image(s) |
     # -----------------------+
 
-    if run_dict["preopt"]:
+    # Preoptimization only makes sense with a subsequent COS run.
+    if run_dict["preopt"] and run_dict["cos"]:
+        assert len(geoms) > 1
         first_opt_result, last_opt_result = run_preopt(
             geoms[0],
             geoms[-1],
@@ -1380,7 +1427,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             preopt_key,
             preopt_kwargs,
         )
-        # Update with (pre)optimized geometries
+        # Update with (pre)optimized geometries. 'preopt_first_geom'/'preopt_last_geom'
+        # are assigned here so they can later be assigned to 'run_result':
         geoms[0] = preopt_first_geom = first_opt_result.geom.copy(coord_type=coord_type)
         geoms[-1] = preopt_last_geom = last_opt_result.geom.copy(coord_type=coord_type)
 
@@ -1511,14 +1559,32 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         # ENDOPT #
         ##########
 
-        # Only run 'endopt' when a previous IRC calculation was done
-        if ran_irc and run_dict["endopt"]:
+        # Run 'endopt' when a previous IRC calculation was done
+        # if ran_irc and run_dict["endopt"]:
+        if run_dict["endopt"]:
+            if not ran_irc:
+
+                _, irc_geom, _ = geoms  # IRC geom should correspond to the TS
+
+                class DummyIRC:
+                    def __init__(self, geoms):
+                        first, _, last = geoms
+                        self.atoms = copy.copy(first.atoms)
+                        self.forward = True
+                        self.backward = True
+                        self.downhill = False
+                        self.all_coords = [
+                            geom.cart_coords.copy() for geom in (first, last)
+                        ]
+                        self.hessian_init = "dummy"
+
+                irc = DummyIRC(geoms)
+
             do_thermo = run_dict["endopt"].get("do_hess", False) and can_thermoanalysis
             T = run_dict["endopt"]["T"]
+            p = run_dict["endopt"]["p"]
             # Order is forward, backward, downhill
-            endopt_results = run_endopt(
-                geom, irc, endopt_key, endopt_kwargs, calc_getter
-            )
+            endopt_results = run_endopt(irc, endopt_key, endopt_kwargs, calc_getter)
 
             # Determine "left" and "right" geoms
             # Only downhill
@@ -1542,23 +1608,24 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
                 end_fns = left_fns + right_fns
                 do_rmsds(xyz, geoms, end_fns, end_geoms)
 
-            # Try to compute barriers. Skip barriers if thermochemistry is requsted,
-            # but no analytical Hessian is avaialble for irc_geom, because there may
-            # be cases when irc_geom does not have a calculator. If it can be ensured
-            # that irc_geoms always has a calculator, then this restriction could be
-            # lifted.
-            if not (do_thermo and (irc.hessian_init != "calc")):
-                do_endopt_ts_barriers(
-                    irc_geom,
-                    left_geoms,
-                    right_geoms,
-                    left_fns=left_fns,
-                    right_fns=right_fns,
-                    do_thermo=do_thermo,
-                    T=T,
-                )
-            else:
-                print("Barriers with IRC hessian_init != 'calc' not yet implemented!")
+            # Try to compute barriers.
+            barrier_kwargs = {
+                "do_thermo": do_thermo,
+                "T": T,
+                "p": p,
+                "calc_getter": calc_getter,
+                "solv_calc_getter": solv_calc_getter,
+            }
+            barrier_kwargs_ = run_dict.get("barriers", {})
+            barrier_kwargs.update(barrier_kwargs_)
+            do_endopt_ts_barriers(
+                irc_geom,
+                left_geoms,
+                right_geoms,
+                left_fns=left_fns,
+                right_fns=right_fns,
+                **barrier_kwargs,
+            )
 
             # Dump TS and endopt geoms to .trj. But only when we did not optimize
             # separate fragments.
@@ -1577,7 +1644,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Fallback when no specific job type was specified
     else:
         calced_geoms, calced_results = run_calculations(
-            geoms, calc_getter, yaml_dir, calc_key, calc_kwargs, scheduler
+            geoms, calc_getter, scheduler, run_func=calc_run_func
         )
 
     # We can't use locals() in the dict comprehension, as it runs in its own
@@ -1721,6 +1788,7 @@ def do_clean(force=False):
         "RUN.yaml",
         "middle_for_preopt.trj",
         "relaxed_scan.trj",
+        "too_similar.trj",
         # MDP
         "mdp_ee_ascent.trj",
         "mdp_ee_fin_*.trj",
@@ -1783,7 +1851,7 @@ def do_clean(force=False):
 
 def print_header():
     """Generated from https://asciiartgen.now.sh/?s=pysisyphus&style=colossal"""
-    logo = """                           d8b                            888
+    normal_logo = """                           d8b                            888
                            Y8P                            888
                                                           888
 88888b.  888  888 .d8888b  888 .d8888b  888  888 88888b.  88888b.  888  888 .d8888b
@@ -1794,17 +1862,47 @@ def print_header():
 888           888                            888 888
 888      Y8b d88P                       Y8b d88P 888
 888       "Y88P"                         "Y88P"  888                            """
-    version = f"Version {get_versions()['version']}"
+
+    xmas_logo = r"""
+                                   \|/
+                           d8b    --o--                   888              X
+                  x        Y8P     /|\                    888
+                                                          888
+88888b.  888  888 .d8888b  888 .d8888b  888  888 88888b.  88888b.  888  888 .d8888b
+888 "88b 888  888 88K      888 88K      888  888 888 "88b 888 "88b 888  888 88K
+888  888 888  888 "Y8888b. 888 "Y8888b. 888  888 888  888 888  888 888  888 "Y8888b.
+888 d88P Y88b 888      X88 888      X88 Y88b 888 888 d88P 888  888 Y88b 888      X88
+88888P"   "Y88888  88888P' 888  88888P'  "Y88888 88888P"  888  888  "Y88888  88888P'
+888  |        888   |  |    |     |          888 888       |    |              |
+888  O   Y8b d88P   o  |    X    / \    Y8b d88P 888       x   / \             O
+888       "Y88P"       O         \_/     "Y88P"  888           \_/              
+            |                         x           |                      \|/
+   X        |                        xox          O                     --X--
+            O                         x                                  /|\\
+"""
+    now = datetime.datetime.now()
+    today = now.date()
+    xmas = (today.month == 12) and (today.day <= 24)
+    logo = xmas_logo if xmas else normal_logo
+    version = f"Version {__version__}"
+    try:
+        commit = re.compile(r"g(\w+)\.").search(version).group(1)
+        commit_line = f"Git commit {commit}\n"
+    # Raised when regex search failed
+    except AttributeError:
+        commit_line = ""
     vi = sys.version_info
     sv = f"{vi.major}.{vi.minor}.{vi.micro}"  # Python
     npv = np.__version__  # Numpy
     spv = sp.__version__  # SciPy
+    cwd = Path(".").resolve()
     print(
         f"{logo}\n\n{version} (Python {sv}, NumPy {npv}, SciPy {spv})\n"
-        f"Git commit {get_versions()['full-revisionid']}\n"
-        f"Executed at {datetime.datetime.now().strftime('%c')} on '{platform.node()}'\n"
+        f"{commit_line}"
+        f"Executed at {now.strftime('%c')} on '{platform.node()}'\n"
         f"Platform: {platform.platform()}\n"
         f"Interpreter: {sys.executable}\n"
+        f"Current working directory: {cwd}\n"
     )
 
 
@@ -1894,7 +1992,7 @@ def run():
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         try:
-            run_dict = yaml.load(yaml_str, Loader=yaml.SafeLoader)
+            run_dict = yaml.load(yaml_str, Loader=get_loader())
             assert type(run_dict) == type(dict())
         except (AssertionError, yaml.parser.ParserError) as err:
             print(err)

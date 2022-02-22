@@ -59,6 +59,7 @@ def test_menthone(opt_cls, precon, ref_cycles):
     assert opt.cur_cycle == ref_cycles
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 @pytest.mark.parametrize(
     "precon, precon_kind, ref_cycle", [

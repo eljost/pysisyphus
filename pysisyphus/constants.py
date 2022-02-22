@@ -18,7 +18,7 @@ AU2J = spc.value("Hartree energy")
 # Hartree to kJ / mol
 AU2KJPERMOL = AU2J / 1000 * spc.Avogadro
 # Hartree to kcal mol⁻¹
-AU2KCALMOL = AU2KJPERMOL / spc.calorie
+AU2KCALPERMOL = AU2KJPERMOL / spc.calorie
 # Hartree to eV
 AU2EV = spc.value("Hartree energy in eV")
 # eV/Å -> Hartree/Bohr
@@ -28,12 +28,16 @@ FS2AU = 0.9682885864793366
 # Boltzman constant, (m² kg s⁻² K⁻¹) or just (J / K)
 KB = spc.Boltzmann
 KBAU = KB / AU2J
+# Ideal gas constant
+R = spc.gas_constant
 # Atomic mass unit to kg
 AMU2KG = spc.value("atomic mass constant")
 # Atomic unit of time to second
 AU2SEC = spc.value("atomic unit of time")
 M_E = spc.electron_mass
 AMU2AU = AMU2KG / M_E
+# Avogadro constant
+NA = spc.Avogadro
 
 ##############
 # MD related #
