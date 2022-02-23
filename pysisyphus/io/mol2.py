@@ -5,8 +5,10 @@ import numpy as np
 
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers_pure import file_or_str
 
 
+@file_or_str(".mol2")
 def parse_mol2(text):
     molecule = (
         pp.CaselessLiteral("@<TRIPOS>MOLECULE")

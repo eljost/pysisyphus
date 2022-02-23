@@ -24,6 +24,7 @@ from pysisyphus.helpers_pure import (
 from pysisyphus.io import (
     geom_from_cjson,
     geom_from_crd,
+    geom_from_mol2,
     geom_from_pdb,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
@@ -83,6 +84,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     ext = "" if "\n" in fn else Path(fn).suffix
 
     funcs = {
+        ".mol2": geom_from_mol2,
         ".crd": geom_from_crd,
         ".xyz": geom_from_xyz_file,
         ".trj": geoms_from_trj,
@@ -404,7 +406,7 @@ def shake_coords(coords, scale=0.1, seed=None):
 
 
 def rms(arr):
-    return np.sqrt(np.mean(arr ** 2))
+    return np.sqrt(np.mean(arr**2))
 
 
 def complete_fragments(atoms, fragments):
