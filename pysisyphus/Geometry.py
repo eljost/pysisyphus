@@ -639,7 +639,7 @@ class Geometry:
 
         # Prepend (new) energy, if present
         if self._energy:
-            en_str = f"{self._energy: >{en_width}.8f}, "
+            en_str = f"{self._energy: >{en_width}.8f} , "
         else:
             en_str = ""
         return f"{en_str}{self._comment}"
