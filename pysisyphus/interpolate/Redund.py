@@ -11,8 +11,8 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 class Redund(Interpolator):
-    def __init__(self, geoms, between, align=True):
-        super().__init__(geoms, between, align)
+    def __init__(self, *args, align=True, **kwargs):
+        super().__init__(*args, align=align, **kwargs)
 
         self.geoms = [
             Geometry(geom.atoms, geom.cart_coords, coord_type="redund")

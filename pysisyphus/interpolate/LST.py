@@ -12,8 +12,8 @@ from pysisyphus.interpolate.Interpolator import Interpolator
 
 class LST(Interpolator):
 
-    def __init__(self, geoms, between, align=True, gtol=1e-4, silent=False):
-        super().__init__(geoms, between, align)
+    def __init__(self, *args, align=True, gtol=1e-4, silent=False, **kwargs):
+        super().__init__(*args, align=align, **kwargs)
 
         self.gtol = float(gtol)
         self.silent = silent
