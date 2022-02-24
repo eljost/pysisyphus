@@ -23,7 +23,10 @@ class Redund(Interpolator):
         write_geoms_to_trj(geoms, out_fn)
         print(f"Dumped interpolation progress to '{out_fn}'.")
 
-    def interpolate(self, initial_geom, final_geom, typed_prims=None):
+    def interpolate(
+        self, initial_geom, final_geom, interpolate_only=0, extrapolate=False,
+        typed_prims=None,
+    ):
         print(f"No. of primitives at initial structure: {initial_geom.coords.size}")
         print(f"No. of primitives at final structure: {final_geom.coords.size}")
 
@@ -63,7 +66,8 @@ class Redund(Interpolator):
         def restart(new_geom):
             return self.restart_interpolate(initial_geom, final_geom, geoms, new_geom)
 
-        for i in range(self.between):
+        interpolations = interpolate_only if interpolate_only else self.between
+        for i in range(interpolations):
             print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
             # Try to use the target primtive internals (final_prims) to calculate
@@ -78,6 +82,8 @@ class Redund(Interpolator):
             except DifferentPrimitivesException:
                 # return self.restart_interpolate(initial_geom, final_geom, new_geom)
                 return restart(new_geom)
+            if extrapolate:
+                prim_tangent *= -1
 
             step = self.step_along_tangent(new_geom, prim_tangent, approx_step_size)
             try:
