@@ -30,7 +30,6 @@ class Interpolator:
         # Don't try to align one atom species
         self.align = align and not one_atom_geom
 
-
         assert len(geoms) >= 2, "Need at least two geometries to interpolate!"
 
         # Check for consistent atom ordering
