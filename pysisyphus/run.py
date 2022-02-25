@@ -79,6 +79,7 @@ CALC_DICT = {
     "conical": ConicalIntersection,
     "dftb+": DFTBp,
     "dimer": Dimer,
+    "dummy": lambda *args, **kwargs: None,
     "energymin": EnergyMin,
     "ext": ExternalPotential,
     "g09": Gaussian09,
@@ -1078,8 +1079,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     }
     if "interpol" in conf_dict:
         dd["interpol"] = {
-            "type": "linear",
-            "between": 5,
+            "align": True,
         }
 
     if "cos" in conf_dict:
@@ -1298,12 +1298,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     with open("RUN.yaml", "w") as handle:
         yaml.dump(run_dict_copy, handle)
 
-    if run_dict["interpol"]:
-        interpolate = run_dict["interpol"]["type"]
-        between = run_dict["interpol"]["between"]
-    else:
-        interpolate = None
-        between = 0
+    interpol_kwargs = run_dict["interpol"]
+
     # Preoptimization prior to COS optimization
     if run_dict["preopt"]:
         preopt_key = run_dict["preopt"].pop("type")
@@ -1334,23 +1330,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     xyz = geom_kwargs.pop("fn")
     coord_type = geom_kwargs.pop("type")
     union = geom_kwargs.pop("union", None)
-
-    if restart:
-        print("Trying to restart calculation. Skipping interpolation.")
-        between = 0
-        # Load geometries of latest cycle
-        cwd = Path(".")
-        trjs = [str(trj) for trj in cwd.glob("cycle_*.trj")]
-        if len(trjs) == 0:
-            print("Can't restart. Found no previous coordinates.")
-            sys.exit()
-        xyz = natsorted(trjs)[-1]
-        last_cycle = int(re.search(r"(\d+)", xyz)[0])
-        print(f"Last cycle was {last_cycle}.")
-        print(f"Using '{xyz}' as input geometries.")
-        opt_kwargs["last_cycle"] = last_cycle
-        last_calc_cycle = get_last_calc_cycle()
-        run_dict["calc"]["last_calc_cycle"] = last_calc_cycle
 
     ####################
     # CALCULATOR SETUP #
@@ -1432,12 +1411,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         geoms[0] = preopt_first_geom = first_opt_result.geom.copy(coord_type=coord_type)
         geoms[-1] = preopt_last_geom = last_opt_result.geom.copy(coord_type=coord_type)
 
-    # Interpolate. Will return the original geometries for between = 0
-    geoms = interpolate_all(geoms, between=between, kind=interpolate, align=True)
-    # Recreate geometries with desired coordinate type and keyword arguments
-    geoms = standardize_geoms(geoms, coord_type, geom_kwargs, union=union)
-
-    if between and len(geoms) > 1:
+    if interpol_kwargs is not None:
+        # Interpolate. Will return the original geometries for between = 0
+        geoms = interpolate_all(geoms, **interpol_kwargs)
+        # Recreate geometries with desired coordinate type and keyword arguments
+        geoms = standardize_geoms(geoms, coord_type, geom_kwargs, union=union)
         dump_geoms(geoms, "interpolated")
 
     # Create COS objects and supply a function that yields new Calculators,

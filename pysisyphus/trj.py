@@ -160,7 +160,31 @@ def parse_args(args):
     interpolate_group.add_argument(
         "--redund", action="store_true", help="Interpolate in internal coordinates."
     )
-
+    parser.add_argument(
+        "--extrapolate",
+        type=int,
+        default=0,
+        help="Number of geometries to extrapolate before and after initial and "
+        "final geometries.",
+    )
+    parser.add_argument(
+        "--extrapolate-before",
+        type=int,
+        default=0,
+        help="Number of geometries to extrapolate before the initial geometry.",
+    )
+    parser.add_argument(
+        "--extrapolate-after",
+        type=int,
+        default=0,
+        help="Number of geometries to extrapolate after the final geometry.",
+    )
+    parser.add_argument(
+        "--extrapolate-damp",
+        type=float,
+        default=1.0,
+        help="Factor to increase (> 1.0) or damp (< 1.0) extrapolation step size.",
+    )
     parser.add_argument(
         "--noipalign",
         action="store_false",
@@ -227,11 +251,9 @@ def get_geoms(
     geom_kwargs=None,
     union=False,
     same_prims=True,
-    # Interpolation related
-    interpolate=None,
-    interpolate_align=True,
-    between=0,
     quiet=False,
+    # Interpolation related
+    interpol_kwargs=None,
 ):
     """Returns a list of Geometry objects in the given coordinate system
     and interpolates if necessary."""
@@ -249,11 +271,6 @@ def get_geoms(
         ), f"Got {len(union_geoms)} geometries for 'union'! Please give only two!"
         geom_kwargs["coord_kwargs"]["typed_prims"] = form_coordinate_union(*union_geoms)
 
-    assert interpolate in list(INTERPOLATE.keys()) + [None], (
-        f"Unsupported type: '{interpolate}' given. Valid arguments are "
-        f"{list(INTERPOLATE.keys())}'"
-    )
-
     geoms = read_geoms(
         xyz_fns,
         coord_type=coord_type,
@@ -269,19 +286,24 @@ def get_geoms(
     # [atoms_str == atoms_0_str for atoms_str in atoms_strs]
     # ), "Atom ordering/numbering in the geometries is inconsistent!"
 
-    # Dont try to align 1-atom species
-    interpolate_align = interpolate_align and len(geoms[0].atoms) > 1
-
     # TODO:
     # Multistep interpolation (when more than two geometries are specified)
     # in internal coordinates may lead to a different number of defined coordinates.
     # Maybe the union between geom0 and geom1 contains 6 internals and the union
     # betweeen geom1 and geom2 contains 8 primtives. Then the number of coordinates
     # at all images in the final list may be non-constant.
-    if interpolate:
-        interpolate_class = INTERPOLATE[interpolate]
-        interpolator = interpolate_class(geoms, between, align=interpolate_align)
+    try:
+        interpol_type = interpol_kwargs.pop("type")
+        interpol_cls = INTERPOLATE[interpol_type]
+        interpolator = interpol_cls(geoms, **interpol_kwargs)
         geoms = interpolator.interpolate_all()
+    except AttributeError:
+        pass
+    except KeyError:
+        print(
+            f"Unsupported type: '{interpol_type}' given. Valid arguments are "
+            f"{list(INTERPOLATE.keys())}'"
+        )
 
     # Recreate Geometries so they have the correct coord_type. There may
     # be a difference between the coord_type used for interpolation and
@@ -630,22 +652,30 @@ def run():
     args = parse_args(sys.argv[1:])
 
     if args.idpp:
-        interpolate = "idpp"
+        interpol_type = "idpp"
     elif args.lst:
-        interpolate = "lst"
+        interpol_type = "lst"
     elif args.redund:
-        interpolate = "redund"
+        interpol_type = "redund"
     elif args.between:
-        interpolate = "linear"
+        interpol_type = "linear"
     else:
-        interpolate = None
+        interpol_type = None
+
+    interpol_kwargs = {
+        "type": interpol_type,
+        "between": args.between,
+        "align": args.noipalign,
+        "extrapolate": args.extrapolate,
+        "extrapolate_before": args.extrapolate_before,
+        "extrapolate_after": args.extrapolate_after,
+        "extrapolate_damp": args.extrapolate_damp,
+    }
 
     # Read supplied files and create Geometry objects
     geoms = get_geoms(
         args.fns,
-        interpolate=interpolate,
-        between=args.between,
-        interpolate_align=args.noipalign,
+        interpol_kwargs=interpol_kwargs,
     )
 
     to_dump = geoms

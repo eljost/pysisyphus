@@ -36,13 +36,14 @@ def test_oxygen_extrapolate(interpol_cls):
 )
 def test_diels_alder_extrapolate(interpol_cls, label):
     between = 5
-    extrapolate = 2
+    extrapolate = 4
     geoms = geom_loader("lib:diels_alder_extrapol.trj")
     interpolator = interpol_cls(
-        geoms, between=between, extrapolate=extrapolate, align=False
+        geoms, between=between, extrapolate=extrapolate, extrapolate_damp=0.5,
+        align=False
     )
     geoms = interpolator.interpolate_all()
     assert len(geoms) == (between + 2 + 2 * extrapolate)
-    # fn = f"diels_alder_interpolated_{label}.trj"
-    # interpolator.all_geoms_to_trj(fn)
+    fn = f"diels_alder_interpolated_{label}.trj"
+    interpolator.all_geoms_to_trj(fn)
     # plot_da(fn, label)

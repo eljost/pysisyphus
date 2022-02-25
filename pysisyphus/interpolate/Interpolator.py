@@ -13,6 +13,7 @@ class Interpolator:
         extrapolate=0,
         extrapolate_before=0,
         extrapolate_after=0,
+        extrapolate_damp=1.0,
         align=False,
     ):
         self.geoms = geoms
@@ -24,7 +25,11 @@ class Interpolator:
         self.extrapolate_after = (
             extrapolate_after if extrapolate_after else self.extrapolate
         )
-        self.align = align
+        self.extrapolate_damp = extrapolate_damp
+        one_atom_geom = any([len(geom.atoms) == 1 for geom in geoms])
+        # Don't try to align one atom species
+        self.align = align and not one_atom_geom
+
 
         assert len(geoms) >= 2, "Need at least two geometries to interpolate!"
 
@@ -95,8 +100,11 @@ class Interpolator:
         step = (final_geom.coords - initial_geom.coords) / (self.between + 1)
         if extrapolate:
             step *= -1
-        # initial + i*step
+            step *= self.extrapolate_damp
+        # When we extrapolate we probably want a number of geometries that is
+        # different from self.between
         interpolations = interpolate_only if interpolate_only else self.between
+        # initial + i*step
         i_array = np.arange(1, interpolations + 1)
         new_coords = initial_coords + i_array[:, None] * step
         return [Geometry(self.atoms, nc) for nc in new_coords]

@@ -36,12 +36,15 @@ class Redund(Interpolator):
         else:
             print(f"Using supplied primitive internals ({len(typed_prims)}).")
 
+        # Recreate geometries with consistent set of internal coordinates
+
         geom1 = Geometry(
             initial_geom.atoms,
             initial_geom.cart_coords,
             coord_type="redund",
             coord_kwargs={
                 "typed_prims": typed_prims,
+                "recalc_B": True,
             },
         )
         geom2 = Geometry(
@@ -50,6 +53,7 @@ class Redund(Interpolator):
             coord_type="redund",
             coord_kwargs={
                 "typed_prims": typed_prims,
+                "recalc_B": True,
             },
         )
 
@@ -84,6 +88,7 @@ class Redund(Interpolator):
                 return restart(new_geom)
             if extrapolate:
                 prim_tangent *= -1
+                approx_step_size *= self.extrapolate_damp
 
             step = self.step_along_tangent(new_geom, prim_tangent, approx_step_size)
             try:
