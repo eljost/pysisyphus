@@ -8,6 +8,7 @@ __all__ = [
     "DFTBp",
     "Dimer",
     "EnergyMin",
+    "EGO",
     "ExternalPotential",
     "FakeASE",
     "Gaussian09",
@@ -39,6 +40,7 @@ from pysisyphus.calculators.ConicalIntersection import ConicalIntersection
 from pysisyphus.calculators.DFTBp import DFTBp
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.EnergyMin import EnergyMin
+from pysisyphus.calculators.EGO import EGO
 from pysisyphus.calculators.ExternalPotential import ExternalPotential
 from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian09 import Gaussian09
