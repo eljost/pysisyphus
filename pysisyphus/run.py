@@ -1298,8 +1298,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     with open("RUN.yaml", "w") as handle:
         yaml.dump(run_dict_copy, handle)
 
-    interpol_kwargs = run_dict["interpol"]
-
+    if run_dict["interpol"]:
+        interpol_key = run_dict["interpol"].pop("type")
+        interpol_kwargs = run_dict["interpol"]
     # Preoptimization prior to COS optimization
     if run_dict["preopt"]:
         preopt_key = run_dict["preopt"].pop("type")
@@ -1411,12 +1412,13 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         geoms[0] = preopt_first_geom = first_opt_result.geom.copy(coord_type=coord_type)
         geoms[-1] = preopt_last_geom = last_opt_result.geom.copy(coord_type=coord_type)
 
-    if interpol_kwargs is not None:
+    if run_dict["interpol"]:
         # Interpolate. Will return the original geometries for between = 0
-        geoms = interpolate_all(geoms, **interpol_kwargs)
-        # Recreate geometries with desired coordinate type and keyword arguments
-        geoms = standardize_geoms(geoms, coord_type, geom_kwargs, union=union)
+        geoms = interpolate_all(geoms, kind=interpol_key, **interpol_kwargs)
         dump_geoms(geoms, "interpolated")
+
+    # Recreate geometries with desired coordinate type and keyword arguments
+    geoms = standardize_geoms(geoms, coord_type, geom_kwargs, union=union)
 
     # Create COS objects and supply a function that yields new Calculators,
     # as needed for growing COS classes, where images are added over time.
