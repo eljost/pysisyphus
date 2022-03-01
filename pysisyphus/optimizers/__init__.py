@@ -5,6 +5,7 @@ __all__ = [
     "ConjugateGradient",
     "CubicNewton",
     "FIRE",
+    "LayerOpt",
     "LBFGS",
     "MicroOptimizer",
     "NCOptimizer",

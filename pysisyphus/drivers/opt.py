@@ -24,6 +24,7 @@ OPT_DICT = {
     "bfgs": BFGS.BFGS,
     "cg": ConjugateGradient.ConjugateGradient,
     "fire": FIRE.FIRE,
+    "layer": LayerOpt.LayerOpt,
     "lbfgs": LBFGS.LBFGS,
     "micro": MicroOptimizer,
     "nc": NCOptimizer.NCOptimizer,
