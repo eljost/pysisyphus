@@ -1,8 +1,10 @@
 import pytest
 
 from pysisyphus.drivers.pka import direct_cycle
+from pysisyphus.testing import using
 
 
+@using("thermoanalysis")
 def test_direct_cycle(this_dir):
     acid_h5 = this_dir / "formic_opt_hessian.h5"
     base_h5 = this_dir / "formic_base_opt_hessian.h5"

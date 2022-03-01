@@ -45,6 +45,8 @@ def test_print_capabilities(retry_geom):
     retry_geom.calculator.print_capabilities()
 
 
+# Disabled for now as it uses 'pidof' which may not be available in Nix
+@pytest.mark.skip
 @using("orca")
 def test_orca_restart():
     """Spawn two threads. One executes ORCA with retry_calc=1, the other thread
@@ -84,11 +86,12 @@ def test_orca_restart():
 
 
 @using("orca")
-def test_orca_parse_triplet_enrgies():
+def test_orca_parse_triplet_energies():
     out_fn = "orca_tddft_triplets.out"
     calc = ORCA("")
+    calc.root = 1
     calc.do_tddft = True
     calc.out = out_fn
     ens = calc.parse_all_energies(triplets=True)
-    ref_ens = [-394.03420332, -393.90708832, -393.87839532]
+    ref_ens = (-394.21337084, -394.086255836, -394.05756284)
     np.testing.assert_allclose(ens, ref_ens)

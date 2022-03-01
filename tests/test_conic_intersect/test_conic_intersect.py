@@ -46,7 +46,7 @@ def calc():
                 "thresh": "gau",
                 "trust_update": False,
             },
-            -78.24700459105,
+            -78.2487951,
         ),
     ],
 )

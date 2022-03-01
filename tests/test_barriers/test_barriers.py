@@ -88,7 +88,13 @@ def solv_calc_getter(*args, **kwargs):
 
 @pytest.mark.parametrize("do_standard_state_corr", (True, False))
 @pytest.mark.parametrize("solv_calc_getter", (None, solv_calc_getter))
-@pytest.mark.parametrize("do_thermo", (True, False))
+@pytest.mark.parametrize(
+    "do_thermo",
+    (
+        pytest.param(True, marks=using("thermoanalysis")),
+        False,
+    ),
+)
 def test_do_endopt_ts_barriers(
     do_standard_state_corr,
     solv_calc_getter,
@@ -115,12 +121,8 @@ def test_do_endopt_ts_barriers(
 def test_wrong_atom_num():
     ts_geom = geom_loader("lib:benzene.xyz")
     # Delete one atom, so the numbers dont match
-    cut_geom = ts_geom.get_subgeom(range(len(ts_geom.atoms)-1))
-    left_geoms = (cut_geom, )
+    cut_geom = ts_geom.get_subgeom(range(len(ts_geom.atoms) - 1))
+    left_geoms = (cut_geom,)
     right_geoms = ()
     with pytest.raises(AssertionError):
-        do_endopt_ts_barriers(
-                ts_geom,
-                left_geoms,
-                right_geoms
-        )
+        do_endopt_ts_barriers(ts_geom, left_geoms, right_geoms)

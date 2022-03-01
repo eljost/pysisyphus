@@ -2,11 +2,9 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators import ORCA, Composite
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.testing import using
-from pysisyphus.run import run_from_dict
 
 try:
     from thermoanalysis.QCData import QCData
@@ -56,6 +54,7 @@ def hydrogen_bde(geom, mult, diss_geom, diss_mult, calc_getter, thermo_calc_gett
     return bde
 
 
+@using("thermoanalysis")
 @using("orca")
 @pytest.mark.parametrize(
     "low_keywords", [

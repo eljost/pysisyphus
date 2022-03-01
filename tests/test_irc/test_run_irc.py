@@ -40,5 +40,4 @@ def test_run_irc_opt_ends(fragments, opt_geom_num):
         },
     }
     fw_results, bw_results, _ = run_endopt(irc, endopt_key, endopt_kwargs, calc_getter)
-    import pdb; pdb.set_trace()  # fmt: skip
     assert len(fw_results) + len(bw_results) == opt_geom_num

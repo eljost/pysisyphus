@@ -9,7 +9,7 @@ from pysisyphus.testing import using
 @using("orca")
 def test_orca_stable():
     init_logging()
-    geom = geom_loader("ozone.xyz")
+    geom = geom_loader("lib:ozone.xyz")
 
     orca_kwargs = {
         "keywords": "UHF def2-SVP",

@@ -13,11 +13,6 @@ from pysisyphus.testing import using
 init_logging()
 
 
-@pytest.fixture
-def this_dir(request):
-    return Path(request.module.__file__).parents[0]
-
-
 @pytest.mark.parametrize(
     "calc_cls, calc_kwargs_",
     [
@@ -48,11 +43,10 @@ def test_cytosin_gs_opt(calc_cls, calc_kwargs_, this_dir):
     }
     calc_kwargs.update(calc_kwargs_)
 
-    calc = calc_cls(**calc_kwargs)
-
     if "control_path" in calc_kwargs:
         calc_kwargs["control_path"] = this_dir / calc_kwargs["control_path"]
 
+    calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)
 
     opt_kwargs = {

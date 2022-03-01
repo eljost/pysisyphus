@@ -72,6 +72,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 f"Tried to load reference Hessian from '{self.hessian_ref}' "
                 "but the file could not be found."
             )
+            self.hessian_ref = None
         except (ValueError, TypeError) as err:
             self.log(f"No reference Hessian provided.")
 

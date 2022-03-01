@@ -34,6 +34,7 @@ def test_qcengine_turbomole():
     assert norm == pytest.approx(0.11354367)
 
 
+@pytest.mark.skip
 @using("turbomole")
 @using("qcengine")
 def test_turbomole_hessian_compare(this_dir):
@@ -122,6 +123,7 @@ def test_qcengine_openmm():
     # opt.run()
 
 
+@pytest.mark.skip
 @using("gamess")
 @using("qcengine")
 def test_qcengine_gamess():
