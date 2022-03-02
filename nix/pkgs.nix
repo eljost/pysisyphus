@@ -12,7 +12,7 @@ let
     };
   nixpkgs = import sources.nixpkgs {
     overlays = [ qchemOverlay pysisOverlay postOverlay ];
-    allowUnfree = false; # Change to true if you want to use proprietary software
+    allowUnfree = true; # Change to true if you want to use proprietary software
     qchem-config = {
       optAVX = false; # Change to true if your CPU supports at least AVX2 (Haswell upwards)
       useCuda = false;
