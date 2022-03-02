@@ -98,6 +98,7 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
 
 
 def calc_ipi_client(addr, atoms, calc, **kwargs):
+    assert calc is not None, "Supplied calculator must not be None!"
     def forces_getter(coords):
         results = calc.get_forces(atoms, coords)
         forces = results["forces"]
