@@ -80,6 +80,13 @@ class Layers:
             # geom_kwargs = layer.get("geom", dict())
             # coord_type = geom_kwargs
 
+            # Calculator
+            try:
+                address = layer["address"]
+                calc = IPIServer(address=address)
+            except KeyError:
+                pass
+
             # Geometry
             def get_geom_getter():
                 # coord_type = "redund" if (i == 0) else "cart"
@@ -204,6 +211,10 @@ class LayerOpt(Optimizer):
         else:
             layers = Layers.from_oniom_calculator(**layers_kwargs)
         self.layers = layers
+
+    @property
+    def layer_num(self):
+        return len(self.layers)
 
     @property
     def layer_num(self):
