@@ -70,7 +70,7 @@ class CartesianCoords:
         self.coords3d += full_step
         return full_step.flatten()
 
-    def project_hessian(hessian):
+    def project_hessian(self, hessian):
         return hessian
 
     @property

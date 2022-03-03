@@ -6,7 +6,9 @@ import numpy as np
 from pysisyphus.socket_helper import send_closure, recv_closure, get_fmts
 
 
-def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
+def ipi_client(
+    addr, atoms, energy_getter, forces_getter, hessian_getter=None, hdrlen=12
+):
     atom_num = len(atoms)
     # Number of entries in a Caretsian forces/coords vector
     cartesians = 3 * atom_num
@@ -71,6 +73,11 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
             send_msg("HAVEDATA")
             get_what = recv_msg()
             # Acutal QC calculations
+            if get_what == "GETENERGY":
+                energy = energy_getter(coords)
+                print(f"Calculated energy: {energy:.6f}, counter={counter}")
+                send_msg("ENERGYREADY")
+                send_msg(energy, "float")
             if get_what == "GETFORCE":
                 forces, energy = forces_getter(coords)
                 print(f"Calculated energy & forces: {energy:.6f}, counter={counter}")
@@ -97,18 +104,30 @@ def ipi_client(addr, atoms, forces_getter, hessian_getter=None, hdrlen=12):
             raise err
 
 
-def calc_ipi_client(addr, atoms, calc, **kwargs):
+def calc_ipi_client(addr, atoms, calc, queue=None, **kwargs):
     assert calc is not None, "Supplied calculator must not be None!"
+
+    def energy_getter(coords):
+        if queue is not None:
+            queue.put(("energy", coords))
+        results = calc.get_energy(atoms, coords)
+        energy = results["energy"]
+        return energy
+
     def forces_getter(coords):
+        if queue is not None:
+            queue.put(("forces", coords))
         results = calc.get_forces(atoms, coords)
         forces = results["forces"]
         energy = results["energy"]
         return forces, energy
 
     def hessian_getter(coords):
+        if queue is not None:
+            queue.put(("hessian", coords))
         results = calc.get_hessian(atoms, coords)
         hessian = results["hessian"]
         energy = results["energy"]
         return hessian, energy
 
-    ipi_client(addr, atoms, forces_getter, hessian_getter, **kwargs)
+    ipi_client(addr, atoms, energy_getter, forces_getter, hessian_getter, **kwargs)

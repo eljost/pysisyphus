@@ -167,8 +167,15 @@ def expand(to_expand):
 
 
 def full_expand(to_expand):
-    split = to_expand.strip().split(",")
-    return list(it.chain(*[expand(te) for te in split]))
+    try:
+        split = to_expand.strip().split(",")
+        expanded = list(it.chain(*[expand(te) for te in split]))
+    except AttributeError:
+        try:
+            expanded = list(to_expand)
+        except TypeError:
+            expanded = [to_expand, ]
+    return expanded
 
 
 def file_or_str(*args, method=False):
