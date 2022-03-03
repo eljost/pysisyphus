@@ -510,6 +510,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         if not self.restarted:
             prep_start_time = time.time()
             self.prepare_opt()
+            self.log(f"{self.geometry.coords.size} degrees of freedom.")
             prep_end_time = time.time()
             prep_time = prep_end_time - prep_start_time
             print(f"Spent {prep_time:.1f} s preparing the first cycle.")
