@@ -13,6 +13,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import full_expand
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.LBFGS import LBFGS
+from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 """
