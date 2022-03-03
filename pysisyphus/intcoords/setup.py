@@ -361,24 +361,33 @@ def setup_redundant(
     interfrag_hbonds=True,
     hbond_angles=False,
     freeze_atoms=None,
+    define_for=None,
     logger=None,
 ):
     if define_prims is None:
         define_prims = list()
     if freeze_atoms is None:
         freeze_atoms = list()
+    if define_for is None:
+        define_for = list()
 
     log(
         logger,
         f"Detecting primitive internals for {len(atoms)} atoms.\n"
         f"Excluding {len(freeze_atoms)} frozen atoms from the internal coordinate setup.",
     )
-    mask = np.ones_like(atoms, dtype=bool)
-    mask[freeze_atoms] = False
-    atoms = [atom for mobile, atom in zip(mask, atoms) if mobile]
-    coords3d = coords3d[mask]
+    # By default all atomes are used to generate coordinates
+    use_atoms = np.ones_like(atoms, dtype=bool)
+    # Only use atoms in 'define_for' to generate internal coordinates
+    if define_for:
+        use_atoms[:] = False  # Disable/mask all others
+        use_atoms[define_for] = True
+    else:
+        use_atoms[freeze_atoms] = False
+    atoms = [atom for mobile, atom in zip(use_atoms, atoms) if mobile]
+    coords3d = coords3d[use_atoms]
     # Maps (different) indices of mobile atoms back to their original indices
-    freeze_map = {sub_ind: org_ind for sub_ind, org_ind in enumerate(np.where(mask)[0])}
+    freeze_map = {sub_ind: org_ind for sub_ind, org_ind in enumerate(np.where(use_atoms)[0])}
 
     def keep_coord(prim_cls, prim_inds):
         return (
