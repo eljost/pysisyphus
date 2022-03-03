@@ -20,6 +20,8 @@ __all__ = [
     "TranslationY",
     "TranslationZ",
     "DLC",
+    "CartesianCoords",
+    "MWCartesianCoords",
     "RedundantCoords",
     "TRIC",
 ]
@@ -31,6 +33,7 @@ from pysisyphus.intcoords.BondedFragment import BondedFragment
 from pysisyphus.intcoords.Cartesian import CartesianX, CartesianY, CartesianZ
 from pysisyphus.intcoords.DistanceFunction import DistanceFunction
 from pysisyphus.intcoords.DummyTorsion import DummyTorsion
+from pysisyphus.intcoords.CartesianCoords import CartesianCoords, MWCartesianCoords
 from pysisyphus.intcoords.LinearBend import LinearBend
 from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
 from pysisyphus.intcoords.OutOfPlane import OutOfPlane

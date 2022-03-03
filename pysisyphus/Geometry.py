@@ -28,7 +28,13 @@ from pysisyphus.elem_data import (
     COVALENT_RADII as CR,
 )
 from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand
-from pysisyphus.intcoords import DLC, RedundantCoords, TRIC
+from pysisyphus.intcoords import (
+    DLC,
+    RedundantCoords,
+    TRIC,
+    CartesianCoords,
+    MWCartesianCoords,
+)
 from pysisyphus.intcoords.exceptions import (
     NeedNewInternalsException,
     RebuiltInternalsException,
@@ -147,6 +153,8 @@ class Geometry:
         "redund": RedundantCoords,
         "dlc": DLC,
         "tric": TRIC,
+        "cartesian": CartesianCoords,
+        "mwcartesian": MWCartesianCoords,
     }
 
     def __init__(
@@ -205,6 +213,10 @@ class Geometry:
         if fragments is None:
             fragments = dict()
         self.fragments = fragments
+        self.coord_type = coord_type
+        if coord_kwargs is None:
+            coord_kwargs = dict()
+        self.coord_kwargs = coord_kwargs
         if isotopes is None:
             isotopes = list()
         self.isotopes = isotopes
@@ -213,33 +225,6 @@ class Geometry:
         elif type(freeze_atoms) is str:
             freeze_atoms = full_expand(freeze_atoms)
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
-
-        assert all(self.freeze_atoms >= 0) and (
-            (self.freeze_atoms.size == 0) or (self.freeze_atoms.max() < len(self.atoms))
-        )
-
-        if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
-            print(
-                "coord_type is set to 'cart' but coord_kwargs were given. "
-                "This is probably not intended. Exiting!"
-            )
-            sys.exit()
-        self.coord_type = coord_type
-        coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
-        coord_class = self.coord_types[self.coord_type]
-        if coord_class:
-            assert (
-                coords.size != 3
-            ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            if (self.freeze_atoms is not None) and ("freeze_atoms" not in coord_kwargs):
-                coord_kwargs["freeze_atoms"] = freeze_atoms
-            self.internal = coord_class(
-                atoms,
-                self.coords3d.copy(),
-                **coord_kwargs,
-            )
-        else:
-            self.internal = None
         self.comment = comment
         self.name = name
 
@@ -248,6 +233,42 @@ class Geometry:
         self._forces = None
         self._hessian = None
         self.calculator = None
+
+        assert (
+            # Negative atom indices are not allowed.
+            all(self.freeze_atoms >= 0)
+            and (
+                # Allow an empty array, no frozen atoms.
+                (self.freeze_atoms.size == 0)
+                # Or check that the biggest index is still in the valid range
+                or (self.freeze_atoms.max() < len(self.atoms))
+            )
+        ), f"'freeze_atoms' must all be >= 0 and < {len(self.atoms)}!"
+
+        # Disallow any coord_kwargs with coord_type == 'cart'
+        if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
+            print(
+                "coord_type is set to 'cart' but coord_kwargs were given. "
+                "This is probably not intended. Exiting!"
+            )
+            sys.exit()
+
+        # Coordinate systems are handled below
+        coord_class = self.coord_types[self.coord_type]
+        if coord_class:
+            assert (
+                coords.size != 3
+            ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
+            if (len(self.freeze_atoms) > 0) and ("freeze_atoms" not in coord_kwargs):
+                coord_kwargs["freeze_atoms"] = freeze_atoms
+            self.internal = coord_class(
+                atoms,
+                self.coords3d.copy(),
+                masses=self.masses,
+                **coord_kwargs,
+            )
+        else:
+            self.internal = None
 
     @property
     def sum_formula(self):
@@ -651,7 +672,9 @@ class Geometry:
     @property
     def masses(self):
         if self._masses is None:
+            # Lookup tabuled masses in internal database
             masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+            # Use (different) isotope masses if requested
             for atom_index, iso_mass in self.isotopes:
                 if "." not in str(iso_mass):
                     atom = self.atoms[atom_index].lower()
@@ -671,7 +694,13 @@ class Geometry:
     @masses.setter
     def masses(self, masses):
         assert len(masses) == len(self.atoms)
-        self._masses = np.array(masses, dtype=float)
+        masses = np.array(masses, dtype=float)
+        self._masses = masses
+        # Also try to propagate updated masses to the internal coordiante object
+        try:
+            self.internal.masses = masses
+        except AttributeError:
+            pass
 
     @property
     def masses_rep(self):

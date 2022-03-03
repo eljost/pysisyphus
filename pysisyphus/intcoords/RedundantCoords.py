@@ -47,12 +47,14 @@ class RedundantCoords:
         self,
         atoms,
         coords3d,
+        masses=None,
         bond_factor=1.3,
         typed_prims=None,
         define_prims=None,
         constrain_prims=None,
         freeze_atoms=None,
         freeze_atoms_exclude=False,
+        define_for=None,
         bonds_only=False,
         check_bends=True,
         rebuild=True,
@@ -70,6 +72,7 @@ class RedundantCoords:
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
+        self.masses = masses
         self.bond_factor = bond_factor
         if typed_prims is not None:
             typed_prims = normalize_prim_inputs(typed_prims)
@@ -81,6 +84,7 @@ class RedundantCoords:
             freeze_atoms = list()
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
         self.freeze_atoms_exclude = freeze_atoms_exclude
+        self.define_for = define_for
         # Constrain primitives
         if constrain_prims is None:
             constrain_prims = list()
@@ -523,6 +527,7 @@ class RedundantCoords:
             tric=self.tric,
             hbond_angles=self.hbond_angles,
             freeze_atoms=self.freeze_atoms if self.freeze_atoms_exclude else None,
+            define_for=self.define_for,
             logger=self.logger,
         )
 
