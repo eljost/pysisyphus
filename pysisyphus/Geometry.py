@@ -256,9 +256,6 @@ class Geometry:
         # Coordinate systems are handled below
         coord_class = self.coord_types[self.coord_type]
         if coord_class:
-            assert (
-                coords.size != 3
-            ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
             if (len(self.freeze_atoms) > 0) and ("freeze_atoms" not in coord_kwargs):
                 coord_kwargs["freeze_atoms"] = freeze_atoms
             self.internal = coord_class(
