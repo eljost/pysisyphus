@@ -265,8 +265,8 @@ class AnaPotBase(Calculator):
             plt.show()
 
     @classmethod
-    def get_geom(cls, coords, atoms=("X",), V_str=None):
-        geom = Geometry(atoms, coords)
+    def get_geom(cls, coords, atoms=("X",), V_str=None, **geom_kwargs):
+        geom = Geometry(atoms, coords, **geom_kwargs)
         if V_str:
             geom.set_calculator(cls(V_str=V_str))
         else:
@@ -291,11 +291,11 @@ class AnaPotBase(Calculator):
             geom.set_calculator(self)
         return geoms
 
-    def get_minima(self):
-        return [self.get_geom(coords) for coords in self.minima]
+    def get_minima(self, **geom_kwargs):
+        return [self.get_geom(coords, **geom_kwargs) for coords in self.minima]
 
-    def get_saddle(self, i=None):
+    def get_saddle(self, i=None, **geom_kwargs):
         if i is not None:
-            return self.get_geom(self.saddles[i])
+            return self.get_geom(self.saddles[i], **geom_kwargs)
         else:
-            return [self.get_geom(coords) for coords in self.saddles]
+            return [self.get_geom(coords, **geom_kwargs) for coords in self.saddles]
