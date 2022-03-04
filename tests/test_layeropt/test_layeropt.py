@@ -9,6 +9,7 @@ from pysisyphus.calculators import ONIOM
 from pysisyphus.calculators.IPIClient import calc_ipi_client
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
+from pysisyphus.testing import using
 
 
 init_logging()
@@ -32,6 +33,8 @@ assert:
 """
 
 
+@using("xtb")
+@using("orca")
 def test_ethanal_oniom_layeropt():
     fn = "lib:acetaldehyd_oniom.xyz"
     indices = [4, 5, 6]  # 0 is link atom host
