@@ -97,12 +97,12 @@ class HessianOptimizer(Optimizer):
             self.hessian_recalc_in = None
             self.adapt_norm = None
             self.predicted_energy_changes = list()
-
-        # Disallow model Hessians that rely on internal coordinates for
-        # optimizations in Cartesians.
         if (
-            not hasattr(self.geometry, "internal")
-            or (self.geometry.internal is None)
+            self.hessian_init not in ("calc", "xtb", "xtb1", "xtbff")
+            and (
+                not hasattr(self.geometry, "internal")
+                or (self.geometry.internal is None)
+            )
             and self.hessian_init in ("fischer", "lindh", "simple", "swart")
         ):
             self.hessian_init = "unit"
@@ -144,6 +144,10 @@ class HessianOptimizer(Optimizer):
         self.prepare_opt(hessian_init)
 
     def save_hessian(self):
+        # Don't try to save Hessians of analytical potentials
+        if self.geometry.is_analytical_2d:
+            return
+
         h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle}.h5")
         # Save the cartesian hessian, as it is independent of the
         # actual coordinate system that is used.
@@ -430,15 +434,15 @@ class HessianOptimizer(Optimizer):
 
     def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, gradient):
         # Derivative of the squared step w.r.t. alpha
-        numer = gradient ** 2
+        numer = gradient**2
         denom = (eigvals - rfo_eigval * cur_alpha) ** 3
         quot = np.sum(numer / denom)
         self.log(f"quot={quot:.6f}")
-        dstep2_dalpha = 2 * rfo_eigval / (1 + step_norm ** 2 * cur_alpha) * quot
+        dstep2_dalpha = 2 * rfo_eigval / (1 + step_norm**2 * cur_alpha) * quot
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
         alpha_step = (
-            2 * (self.trust_radius * step_norm - step_norm ** 2) / dstep2_dalpha
+            2 * (self.trust_radius * step_norm - step_norm**2) / dstep2_dalpha
         )
         self.log(f"alpha_step={alpha_step:.4f}")
         assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
@@ -589,7 +593,7 @@ class HessianOptimizer(Optimizer):
         mask = mask.astype(bool)
         without_min = gradient_trans[mask] / (eigvals[mask] - min_eigval)
         try:
-            tau = sqrt(self.trust_radius ** 2 - (without_min ** 2).sum())
+            tau = sqrt(self.trust_radius**2 - (without_min**2).sum())
             step_trans = [tau] + (-without_min).tolist()
         # Hard case. Search in open interval (endpoints not included)
         # (-min_eigval, inf).
