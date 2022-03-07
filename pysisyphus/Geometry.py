@@ -1069,6 +1069,10 @@ class Geometry:
         return get_trans_rot_projector(self.cart_coords, masses=self.masses, full=full)
 
     def eckart_projection(self, mw_hessian, return_P=False, full=False):
+        # Must not project analytical 2d potentials.
+        if self.is_analytical_2d:
+            return mw_hessian
+
         P = self.get_trans_rot_projector(full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
         if return_P:
