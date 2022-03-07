@@ -4,90 +4,124 @@
 # [2] https://doi.org/10.1021/ct100658y
 #     Locating Instantons in Many Degrees of Freedom
 #     Rommel, Goumans, Kästner, 2011
+# [3] https://aip.scitation.org/doi/full/10.1063/1.4932362
+#     Ring-polymer instanton theory of electron transofer in the
+#     nonadiabatic limit
+#     Richardson, 2015
 import numpy as np
+import scipy as sp
 
-from pysisyphus.config import T_DEFAULT
-from pysisyphus.constants import AU2SEC, AU2J, HBAR, KBAU
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers_pure import eigval_to_wavenumber
+
+
+def T_crossover_from_eigval(eigval):
+    nu = eigval_to_wavenumber(eigval)  # in cm⁻¹
+    nu_m = 100 * abs(nu)  # in m⁻¹
+    freq = nu_m * sp.constants.speed_of_light
+    T_c = sp.constants.Planck / sp.constants.Boltzmann * freq
+    return T_c
+
+
+def T_crossover_from_ts(ts_geom):
+    mw_hessian = ts_geom.mw_hessian
+    proj_hessian = ts_geom.eckart_projection(mw_hessian, full=True)
+    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+    T_c = T_crossover_from_eigval(eigvals[0])
+    return T_c
 
 
 class Instanton:
-    def __init__(
-        self, calc_getter, P, T=T_DEFAULT, ts_geom=None, other_instanton=None, dr=0.4
-    ):
+    def __init__(self, images, calc_getter, T):
+        self.images = images
         self.calc_getter = calc_getter
-        self.P = P
+        for image in self.images:
+            image.set_calculator(calc_getter())
         self.T = T
-        self.ts_geom = ts_geom
-        self.other_instanton = other_instanton
-        assert self.ts_geom or self.other_instanton
-        self.dr = 0.4
 
-        if self.ts_geom:
-            assert self.ts_geom.coord_type == "mwcartesian"
+        # Pre-calculate action prefactors for the given temperature
+        beta = 1 / (sp.constants.Boltzmann * self.T)  # Joule
+        beta_hbar = beta * sp.constants.hbar  # seconds
+        beta_hbar_fs = beta_hbar * 1e15  # fs
+        self.beta_hbar = beta_hbar_fs
+        self.P_over_beta_hbar = self.P / self.beta_hbar
+        self.P_bh = self.P_over_beta_hbar
+        """The Instanton is periodic: the first image is connected to the
+        last image.
+        At k=0 the index k-1 will be -1, which points to the last image.
 
-        hbar_au = HBAR / AU2SEC / AU2J
-        self.beta_hbar = 1 / (self.T * KBAU) * hbar_au
-        # Instanton is periodic; so the first image is connected to the
-        # last. We start at k=0, so k-1 will be -1, which points to the
-        # last image.
+        Below we pre-calculate some indices (assuming N images).
+            unshifted indices ks: k = {0, 1, .. , N-1}
+            shifted indices ksm1: k-1 = {-1, 0, 1, .. , N-2}
+            shifted indices ksp1: k+1 = {1, 2, .. , N-1, 0}
+        """
         self.ks = np.arange(self.P)
         self.ksm1 = self.ks - 1
         self.ksp1 = self.ks + 1
-        self.ksp1[-1] = 0
-        self.P_over_beta_hbar = self.P / self.beta_hbar
-        self.P_bh = self.P_over_beta_hbar
+        self.ksp1[-1] = 0  # k+1 for the last image points to the first image
 
-    def prepare_from_ts_geom(self):
-        self.ts_atoms = self.ts_geom.atoms
-        self.ts_coords = self.ts_geom.coords
-        mw_hessian = self.ts_geom.mw_hessian
-        if self.ts_geom.is_analytical_2d:
-            proj_hessian = mw_hessian
+        self.coord_type = "mwcartesian"
+        self.internal = None
+
+    @property
+    def P(self):
+        return len(self.images)
+
+    @classmethod
+    def from_ts(cls, ts_geom, P, dr=0.4, delta_T=25, cart_hessian=None, **kwargs):
+        atoms = ts_geom.atoms
+        ts_coords = ts_geom.coords
+
+        if cart_hessian is None:
+            mw_hessian = ts_geom.mw_hessian
         else:
-            proj_hessian = self.ts_geom.eckart_projection(mw_hessian, full=True)
-        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-        imag_mode = eigvecs[:, 0]
-        # TODO: calculate crossover Temperature here, if no T is given
-        is_ = np.arange(self.P) + 1
-        cos_ = np.cos((is_ - 0.5) / self.P * np.pi)
-        all_mw_coords = self.ts_coords + self.dr * cos_[:, None] * imag_mode
-        all_coords = all_mw_coords / np.sqrt(self.ts_geom.masses_rep)
-        geoms = list()
-        # self.ts_geom.jmol()
-        for coords in all_coords:
-            geom = Geometry(self.ts_atoms, coords, coord_type="mwcartesian")
-            calc = self.calc_getter()
-            geom.set_calculator(calc)
-            # geom.jmol()
-            geoms.append(geom)
-        # TODO: align geometries?!
-        return geoms
+            mw_hessian = ts_geom.mass_weigh_hessian(cart_hessian)
 
-    def prepare(self):
-        if self.ts_geom:
-            geoms = self.prepare_from_ts_geom()
-        self.images = geoms
+        proj_hessian = ts_geom.eckart_projection(mw_hessian, full=True)
+        eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+        # Use crossover temperature with a little offset (delta_T) if no T is given.
+        try:
+            kwargs["T"]
+        except KeyError:
+            T_c = T_crossover_from_eigval(eigvals[0])
+            kwargs["T"] = T_c - delta_T
+        imag_mode = eigvecs[:, 0]
+        cosines = np.cos((np.arange(P) + 1 - 0.5) / P * np.pi)
+        image_mw_coords = ts_coords + dr * cosines[:, None] * imag_mode
+        image_coords = image_mw_coords / np.sqrt(ts_geom.masses_rep)
+        images = [
+            Geometry(atoms, coords, coord_type="mwcartesian") for coords in image_coords
+        ]
+        instanton = Instanton(images, **kwargs)
+        return instanton
+
+    @classmethod
+    def from_instanton(cls, other, **kwargs):
+        images = other.images
+        instanton = Instanton(images, **kwargs)
+        return instanton
 
     def as_xyz(self):
         return "\n".join([geom.as_xyz() for geom in self.images])
 
-    def kin_grad(self, image_coords, inds1, inds2):
-        """d ||image_coords[inds1]-image_coords[inds2]||_2 / d inds1"""
-        diffs = image_coords[inds1] - image_coords[inds2]
-        dists = np.linalg.norm(diffs, axis=1)
-        grad = (diffs / dists[:, None]).flatten()
-        return grad
+    @property
+    def coords(self):
+        return np.ravel([image.coords for image in self.images])
 
-    def action(self, energies=None):
-        if energies is None:
-            energies = [image.energy for image in self.images]
+    @coords.setter
+    def coords(self, coords):
+        coords = coords.reshape(len(self.images), -1)
+        for img_coords, image in zip(coords, self.images):
+            image.coords = img_coords
 
+    def action(self):
+        """Action in au / fs, Hartree per femtosecond."""
         all_coords = np.array([image.coords for image in self.images])
         diffs = all_coords[self.ks] - all_coords[self.ksm1]
         dists = np.linalg.norm(diffs, axis=1)
-        S_0 = self.P_bh * dists.sum()
+        S_0 = self.P_bh * (dists**2).sum()
 
+        energies = [image.energy for image in self.images]
         S_pot = 1 / self.P_bh * sum(energies)
         S_E = S_0 / 2 + S_pot
         results = {
@@ -101,7 +135,7 @@ class Instanton:
         first term in Eq. 6 in [2].) It boils down to the derivative of a sum
         of vector norms
 
-            d     sum_k||y_k - y_(k-1)||_2
+            d     sum_k (||y_k - y_(k-1)||_2)²
             ---
             d y_k
 
@@ -109,48 +143,109 @@ class Instanton:
         care has to be taken to recognize, that y_k appears two times in the sum.
         It appears in the first summand for k and in the second summand for k+1.
 
-                                           1. term                 2. term
-            sum_k||y_k - y_(k-1)||_2 = ||y_k - y_(k-1)||_2 + ||y_(k+1) - y_k||_2
-                                       + ... and so on
+            sum_k (||y_k - y_(k-1)||_2)²
+                        1. term                 2. term
+                = (||y_k - y_(k-1)||_2)² + (||y_(k+1) - y_k||_2)² + ... and so on
 
         The derivative of the first term is
 
-            (y_k - y_(k-1)) / ||y_k - y_(k-1)||_2
+            2 * (y_k - y_(k-1))
 
         and the derivative of the second term is
 
-            -(y_(k+1) - y_k)) / ||y_(k+1) - y_k)||_2
+            -2 * (y_(k+1) - y_k))
 
         which is equal to
 
-            (y_k - y_(k+1)) / ||y_(k+1) - y_k)||_2 .
+            2 * (y_k - y_(k+1)) .
 
-        By using the fact that ||a-b||_2 == ||b-a||_2 we can use self.kin_grad
-        for both terms by calling it with ks and ks+1 for the 2nd term, as this
-        switches the signs.
+        To summarize:
+
+            d     sum_k(||y_k - y_(k-1)||_2)²
+            ---
+            d y_k
+
+            =   2 * (2 * y_k - y_(k-1) - y_(k+1)) .
         """
-        all_coords = np.array([image.coords for image in self.images])
-        # Grad of 1. term
-        kin_grad = self.kin_grad(all_coords, self.ks, self.ksm1)
-        # Grad of 2. term
-        kin_grad += self.kin_grad(all_coords, self.ks, self.ksp1)
+        image_coords = np.array([image.coords for image in self.images])
+        kin_grad = (
+            2
+            * (
+                2 * image_coords  # y_k
+                - image_coords[self.ksm1]  # y_(k-1)
+                - image_coords[self.ksp1]  # y_(k+1)
+            ).flatten()
+        )
         kin_grad *= self.P_bh
         pot_grad = np.array([image.gradient for image in self.images]).flatten()
         pot_grad /= self.P_bh
         gradient = kin_grad / 2 + pot_grad
+        # gradient = pot_grad
+        # gradient = kin_grad
+        # gradient = kin_grad / 2
         results = {
             "gradient": gradient,
         }
-        energies = [image.energy for image in self.images]
-        results.update(self.action(energies=energies))
+        results.update(self.action())
+        return results
+
+    def action_hessian(self):
+        image_hessians = [image.hessian for image in self.images]
+        pot_hess = sp.linalg.block_diag(*image_hessians)
+        pot_hess /= self.P_bh
+        coord_num = pot_hess.shape[0]
+        zeroes = np.zeros((coord_num, coord_num))
+        image_coord_num = self.images[0].coords.size
+        inds = np.arange(coord_num).reshape(-1, image_coord_num)
+        ks = inds[self.ks].flatten()
+        ksm1 = inds[self.ksm1].flatten()
+        ksp1 = inds[self.ksp1].flatten()
+        km = zeroes.copy()
+        km[ks, ksm1] = 1.0
+        kp = zeroes.copy()
+        kp[ks, ksp1] = 1.0
+        kin_hess = 4 * np.eye(coord_num) - 2 * km - 2 * kp  # y_k  # y_k-1  # y_k+1
+        kin_hess *= self.P_bh
+        hessian = kin_hess / 2 + pot_hess
+        # hessian = pot_hess
+        # hessian = kin_hess / 2
+        results = {
+            "hessian": hessian,
+        }
+        results.update(self.action())
         return results
 
     @property
-    def coords(self):
-        return np.array(([image.coords for image in self.images]))
+    def energy(self):
+        return self.action()["action"]
 
-    @coords.setter
-    def coords(self, coords):
-        coords = coords.reshape(len(self.images), -1)
-        for img_coords, image in zip(coords, self.images):
-            image.coords = img_coords
+    @property
+    def gradient(self):
+        return self.action_gradient()["gradient"]
+
+    @property
+    def forces(self):
+        return -self.gradient
+
+    @property
+    def hessian(self):
+        return self.action_hessian()["hessian"]
+
+    @property
+    def cart_hessian(self):
+        return sp.linalg.block_diag(*[image.cart_hessian for image in self.images])
+
+    @property
+    def cart_coords(self):
+        return np.ravel([image.cart_coords for image in self.images])
+
+    @property
+    def cart_forces(self):
+        return np.ravel([image.cart_forces for image in self.images])
+
+    @property
+    def cart_hessian(self):
+        return sp.linalg.block_diag(*[image.cart_forces for image in self.images])
+
+    def is_analytical_2d(self):
+        return self.images[0].is_analytical_2d
