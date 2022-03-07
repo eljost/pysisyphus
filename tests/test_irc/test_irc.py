@@ -237,7 +237,7 @@ def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
 )
 def test_mb_gs2(step_length):
     calc = MullerBrownPot()
-    geom = calc.get_saddle(0)
+    geom = calc.get_saddles(i=0)
 
     irc_kwargs = {
         "step_length": step_length,
