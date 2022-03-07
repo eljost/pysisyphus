@@ -128,7 +128,7 @@ def test_sequential_cooling():
         init.append(inst.coords.copy())
         opt = RSIRFOptimizer(
             inst, hessian_init="calc", hessian_recalc=5
-        )  # , dump=True)
+        )
         opt.run()
         fin.append(inst.coords.copy())
 
