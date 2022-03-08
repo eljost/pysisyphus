@@ -19,7 +19,12 @@ def T_crossover_from_eigval(eigval):
     nu = eigval_to_wavenumber(eigval)  # in cm⁻¹
     nu_m = 100 * abs(nu)  # in m⁻¹
     freq = nu_m * sp.constants.speed_of_light
-    T_c = sp.constants.Planck / sp.constants.Boltzmann * freq
+    # In papers the crossover temperature is usually defined with the angular
+    # frequency nu*2*pi. When using the "normal" frequency we don't have to
+    # divide by 2*pi. Both approaches obviously yield the same T_c.
+    # ang_freq = freq * 2 * np.pi
+    # T_c_ = sp.constants.hbar * ang_freq / (sp.constants.Boltzmann * 2 * np.pi)
+    T_c = sp.constants.hbar * freq / (sp.constants.Boltzmann)
     return T_c
 
 

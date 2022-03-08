@@ -18,6 +18,7 @@ from pysisyphus.helpers_pure import (
     report_isotopes,
 )
 from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd, cubic_displ_for_h5
+from pysisyphus.irc.Instanton import T_crossover_from_eigval
 from pysisyphus.io import save_third_deriv
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
@@ -332,8 +333,10 @@ class IRC:
 
         min_eigval = eigvals[self.root]
         min_nu = nus[self.root]
+        T_c = T_crossover_from_eigval(min_eigval)
         min_msg = (
-            f"Transition vector is mode {self.root} with wavenumber {min_nu:.2f} cm⁻¹."
+            f"Transition vector is mode {self.root} with wavenumber {min_nu:.2f} cm⁻¹.\n"
+            f"Crossover temperature T_c: {T_c:.2f} K"
         )
         # Doing it this way hurts ... I'll have to improve my logging game...
         self.log(min_msg)
