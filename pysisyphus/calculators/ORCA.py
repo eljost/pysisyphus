@@ -17,7 +17,7 @@ def make_sym_mat(table_block):
     mat_size = int(table_block[1])
     # Orca prints blocks of 5 columns
     arr = np.array(table_block[2:], dtype=float)
-    assert arr.size == mat_size ** 2
+    assert arr.size == mat_size**2
     block_size = 5 * mat_size
     cbs = [
         arr[i * block_size : (i + 1) * block_size].reshape(mat_size, -1)
@@ -35,14 +35,20 @@ def save_orca_pc_file(point_charges, pc_fn, hardness=None):
     shape = point_charges.shape
     if hardness is not None:
         shape = shape[0], shape[1] + 1
-    _ = np.zeros_like(point_charges)
-    _ = np.zeros(shape)
-    _[:, 0] = point_charges[:, 3]
-    _[:, 1:4] = point_charges[:, :3]
+    point_charges_orca = np.zeros_like(point_charges)
+    point_charges_orca = np.zeros(shape)
+    point_charges_orca[:, 0] = point_charges[:, 3]
+    point_charges_orca[:, 1:4] = point_charges[:, :3]
 
     if hardness:
-        _[:, 4] = hardness
-    np.savetxt(pc_fn, _, fmt="%16.10f", header=str(len(point_charges)), comments="")
+        point_charges_orca[:, 4] = hardness
+    np.savetxt(
+        pc_fn,
+        point_charges_orca,
+        fmt="%16.10f",
+        header=str(len(point_charges)),
+        comments="",
+    )
 
 
 class ORCA(OverlapCalculator):
@@ -550,13 +556,13 @@ class ORCA(OverlapCalculator):
             # print('Number of Operators: {}'.format(operators))
             # print('Basis Dimension: {}'.format(dimension))
 
-            coeffs_fmt = "<" + dimension ** 2 * "d"
+            coeffs_fmt = "<" + dimension**2 * "d"
 
             assert operators == 1, "Unrestricted case is not implemented!"
 
             for i in range(operators):
                 # print('\nOperator: {}'.format(i))
-                coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension ** 2))
+                coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension**2))
                 occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
                 energies = struct.iter_unpack("<d", handle.read(8 * dimension))
                 irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
@@ -599,7 +605,7 @@ class ORCA(OverlapCalculator):
 
         tot_offset = offset + 4 + 4
         start = gbw_bytes[:tot_offset]
-        end = gbw_bytes[tot_offset + 8 * dimension ** 2 :]
+        end = gbw_bytes[tot_offset + 8 * dimension**2 :]
         # Construct new gbw content by replacing the MO coefficients in the middle
         mod_gbw_bytes = start + mo_coeffs.T.tobytes() + end
 
