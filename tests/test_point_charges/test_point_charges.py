@@ -50,8 +50,11 @@ from pysisyphus.testing import using
         ),
     ],
 )
-def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm):
+def test_with_point_charges(calc_cls, calc_kwargs, ref_energy, ref_force_norm, this_dir):
     geom = geom_loader("lib:methane_bp86_def2svp_opt.xyz")
+
+    if "control_path" in calc_kwargs:
+        calc_kwargs["control_path"] = this_dir / calc_kwargs["control_path"]
 
     calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)

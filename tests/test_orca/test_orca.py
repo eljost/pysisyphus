@@ -86,8 +86,8 @@ def test_orca_restart():
 
 
 @using("orca")
-def test_orca_parse_triplet_energies():
-    out_fn = "orca_tddft_triplets.out"
+def test_orca_parse_triplet_energies(this_dir):
+    out_fn = this_dir / "orca_tddft_triplets.out"
     calc = ORCA("")
     calc.root = 1
     calc.do_tddft = True
