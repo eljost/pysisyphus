@@ -4,6 +4,8 @@ import scipy.constants as spc
 C = spc.c
 # ħ = h / 2π in J/s
 HBAR = spc.hbar
+# h
+PLANCK = spc.Planck
 # Conversion factor for momentum in SI to atomic units
 P_AU = spc.value("atomic unit of momentum")
 
