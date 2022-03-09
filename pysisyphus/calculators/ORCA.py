@@ -620,7 +620,7 @@ class ORCA(OverlapCalculator):
         all_energies = [gs_energy]
 
         if self.do_tddft:
-            scf_re = re.compile("E\(SCF\)\s+=\s*([\d\-\.]+) Eh")
+            scf_re = re.compile(r"E\(SCF\)\s+=\s*([\d\-\.]+) Eh")
             scf_mobj = scf_re.search(text)
             scf_en = float(scf_mobj.group(1))
             gs_energy = scf_en
