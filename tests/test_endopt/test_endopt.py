@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import itertools as it
 
 import numpy as np
@@ -6,6 +5,7 @@ import pytest
 
 from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators import XTB
+from pysisyphus.irc.IRCDummy import IRCDummy
 from pysisyphus.run import run_endopt
 from pysisyphus.testing import using
 
@@ -28,15 +28,6 @@ def gen_all_coords(ts):
     irc = EulerPC(ts, rms_grad_thresh=5e-4, hessian_recalc=10)
     irc.run()
     np.savetxt("all_coords", irc.all_coords)
-
-
-@dataclass
-class IRCDummy:
-    all_coords: list
-    atoms: tuple
-    forward: bool = True
-    backward: bool = True
-    downhill: bool = False
 
 
 @pytest.fixture
