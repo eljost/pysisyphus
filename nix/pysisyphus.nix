@@ -30,14 +30,15 @@ let
     let
       gaussian16Conf = {
         cmd = "${gaussian}/bin/g16";
-        formchk_cmd = "${gaussian}/bin/formchk";
-        unfchk_cmd = "${gaussian}/bin/unfchk";
+        formchk = "${gaussian}/bin/formchk";
+        unfchk = "${gaussian}/bin/unfchk";
+        rwfdump = "${gaussian}/bin/rwfdump";
       };
       text = lib.generators.toINI {} (builtins.listToAttrs ([ ]
         ++ lib.optional enableMolcas { name = "openmolcas"; value.cmd = "${molcas}/bin/pymolcas"; }
         ++ lib.optional enablePsi4 { name = "psi4"; value.cmd = "${psi4Wrapper}"; }
         ++ lib.optional enableWfoverlap { name = "wfoverlap"; value.cmd = "${wfoverlap}/bin/wfoverlap.x"; }
-        ++ lib.optional enableMultiwfn { name = "multiwfn"; value.cmd = "${multiwfn}/bin/Multiwfn"; }
+        ++ lib.optional enableMultiwfn { name = "mwfn"; value.cmd = "${multiwfn}/bin/Multiwfn"; }
         ++ lib.optional enableJmol { name = "jmol"; value.cmd = "${jmol}/bin/jmol"; }
         ++ lib.optional enableXtb { name = "xtb"; value.cmd = "${xtb}/bin/xtb"; }
         ++ lib.optional enableGaussian { name = "gaussian16"; value = gaussian16Conf; }

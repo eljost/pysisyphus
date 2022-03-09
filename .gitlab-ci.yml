@@ -11,6 +11,8 @@ stages:
 
 nix build:
   stage: build
+  before_script:
+    - nix-env -f ./nix/pkgs.nix -iA bash cachix
   tags:
     - nix
   script:
@@ -19,15 +21,26 @@ nix build:
         doCheck = false;
         doInstallCheck = false;
       })"
+  after_script:
+    - |
+      if [ -n "$CACHIX_AUTH_TOKEN" ]; then
+        realpath result | cachix push pysisyphus
+      fi
+
 
 nix shell:
   stage: build
   tags:
     - nix
   before_script:
-    - nix-env -f ./nix/pkgs.nix -iA bash
+    - nix-env -f ./nix/pkgs.nix -iA bash cachix
   script:
     - nix-shell ./nix/shell.nix --run ""
+  after_script:
+    - |
+      if [ -n "$CACHIX_AUTH_TOKEN" ]; then
+        nix-build ./nix/shell.nix -A inputDerivation | cachix push pysisyphus
+      fi
 
 nix test:
   stage: test
