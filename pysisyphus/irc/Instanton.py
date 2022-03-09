@@ -8,10 +8,14 @@
 #     Ring-polymer instanton theory of electron transofer in the
 #     nonadiabatic limit
 #     Richardson, 2015
+import logging
+
 import numpy as np
 import scipy as sp
 
+from pysisyphus import logger as pysis_logger
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import align_coords, get_coords_diffs
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 
 
@@ -34,6 +38,17 @@ def T_crossover_from_ts(ts_geom):
     eigvals, eigvecs = np.linalg.eigh(proj_hessian)
     T_c = T_crossover_from_eigval(eigvals[0])
     return T_c
+
+
+logger = pysis_logger.getChild("instanton")
+logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler("instanton.log", mode="w", delay=True)
+logger.addHandler(file_handler)
+
+
+def log_progress(val, key, i):
+    logger.debug(f"Calculated {key} at image {i}")
+    return val
 
 
 class Instanton:
@@ -74,6 +89,7 @@ class Instanton:
 
     @classmethod
     def from_ts(cls, ts_geom, P, dr=0.4, delta_T=25, cart_hessian=None, **kwargs):
+        assert ts_geom.coord_type == "mwcartesian"
         atoms = ts_geom.atoms
         ts_coords = ts_geom.coords
 
@@ -94,6 +110,8 @@ class Instanton:
         cosines = np.cos((np.arange(P) + 1 - 0.5) / P * np.pi)
         image_mw_coords = ts_coords + dr * cosines[:, None] * imag_mode
         image_coords = image_mw_coords / np.sqrt(ts_geom.masses_rep)
+        if not ts_geom.is_analytical_2d:
+            align_coords(image_coords)
         images = [
             Geometry(atoms, coords, coord_type="mwcartesian") for coords in image_coords
         ]
@@ -182,7 +200,12 @@ class Instanton:
             ).flatten()
         )
         kin_grad *= self.P_bh
-        pot_grad = np.array([image.gradient for image in self.images]).flatten()
+        pot_grad = np.array(
+            [
+                log_progress(image.gradient, "gradient", i)
+                for i, image in enumerate(self.images)
+            ]
+        ).flatten()
         pot_grad /= self.P_bh
         gradient = kin_grad / 2 + pot_grad
         # gradient = pot_grad
@@ -195,7 +218,10 @@ class Instanton:
         return results
 
     def action_hessian(self):
-        image_hessians = [image.hessian for image in self.images]
+        image_hessians = [
+            log_progress(image.hessian, "hessian", i)
+            for i, image in enumerate(self.images)
+        ]
         pot_hess = sp.linalg.block_diag(*image_hessians)
         pot_hess /= self.P_bh
         coord_num = pot_hess.shape[0]
@@ -254,3 +280,14 @@ class Instanton:
 
     def is_analytical_2d(self):
         return self.images[0].is_analytical_2d
+
+    @property
+    def path_length(self):
+        image_coords3d = [image.coords3d for image in self.images]
+        coord_diffs = get_coords_diffs(image_coords3d, align=False, normalize=False)
+        length = coord_diffs.sum()
+        return length
+
+    def get_additional_print(self):
+        length = self.path_length
+        return f"\t\tInstanton length={length:.2f} √a̅m̅u̅·au"

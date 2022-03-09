@@ -367,7 +367,7 @@ def get_geom_getter(ref_geom, calc_setter):
     return geom_from_coords
 
 
-def get_coords_diffs(coords, align=False):
+def get_coords_diffs(coords, align=False, normalize=True):
     if align:
         coords = align_coords(coords)
     cds = [
@@ -377,7 +377,8 @@ def get_coords_diffs(coords, align=False):
         diff = np.linalg.norm(coords[i + 1] - coords[i])
         cds.append(diff)
     cds = np.cumsum(cds)
-    cds /= cds.max()
+    if normalize:
+        cds /= cds.max()
     return cds
 
 

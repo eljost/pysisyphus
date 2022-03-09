@@ -9,26 +9,6 @@ from pysisyphus.irc.Instanton import Instanton
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 
 
-# def test_instanton():
-# geom = geom_loader("ts_opt.xyz", coord_type="mwcartesian")
-
-# def calc_getter():
-# calc = XTB(pal=6)
-# return calc
-
-# geom.set_calculator(calc_getter())
-
-# inst = Instanton(calc_getter=calc_getter, P=10, ts_geom=geom)
-# inst.prepare()
-
-# with open("instanton.trj", "w") as handle:
-# handle.write(inst.as_xyz())
-
-# S_E = inst.action()["action"]
-# print(S_E)
-# assert S_E == pytest.approx(-17526.147664638425)
-
-
 def fin_diff(inst, fun_name, key, deriv_arr, dr=1e-6):
     dr = 1e-6
     coords = inst.coords.copy()
@@ -66,7 +46,7 @@ def test_instanton_action():
 
     res = inst.action_gradient()
     action = res["action"]
-    assert action == pytest.approx(7.154660902314311, abs=1e-4)
+    assert action == pytest.approx(12.09601)
 
     grad_res = inst.action_gradient()
     gradient = grad_res["gradient"]
@@ -147,7 +127,7 @@ def test_sequential_cooling():
         inst = Instanton.from_instanton(inst, calc_getter=calc_getter, T=T)
         init.append(inst.coords.copy())
         opt = RSIRFOptimizer(
-            inst, hessian_init="calc", hessian_recalc=3
+            inst, hessian_init="calc", hessian_recalc=5
         )  # , dump=True)
         opt.run()
         fin.append(inst.coords.copy())
