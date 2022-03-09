@@ -286,7 +286,7 @@ def test_hcn_iso_gs2(step_length):
 )
 def test_mb_eulerpc(step_length):
     calc = MullerBrownPot()
-    geom = calc.get_saddle(0)
+    geom = calc.get_saddles(0)
 
     irc_kwargs = {
         "step_length": step_length,
