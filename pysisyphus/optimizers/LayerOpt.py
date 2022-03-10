@@ -1,3 +1,11 @@
+# [1] https://doi.org/10.1002/jcc.10156
+#     Geometry optimization with QM/MM, ONIOM, and other combined methods.
+#     I. Microiterations and constraints
+#     Vreven, Morokuma, Farkas, Schlegel, Frisch, 2003
+# [2] https://doi.org/10.1039/A909486E
+#     Linear scaling geometry optimisation and transition state search
+#     in hybrid delocalised internal coordinates
+#     Billeter, Turner, Thiel, 2000
 import numpy as np
 
 from pysisyphus.calculators import IPIServer
@@ -14,7 +22,6 @@ TODO: allow setting user-chosen optimizer.
 
 
 class Layers:
-
     def __init__(self, geometry, layers, opt_thresh):
         self.geometry = geometry
         self.layers = layers
@@ -58,8 +65,12 @@ class Layers:
                 # the whole system.
                 if i == 0:
                     geometry.set_calculator(calc)
+            # If no address is given, we assume that pysisyphus' ONIOM calculator
+            # is used.
             except KeyError as err:
-                print("Currently, a socket address for an IPI-protol client is mandatory!")
+                print(
+                    "Currently, a socket address for an IPI-protol client is mandatory!"
+                )
                 raise err
 
             # Geometry
@@ -68,7 +79,8 @@ class Layers:
                 # Don't freeze anything in layer 0; but use only the
                 # mobile atoms to define internal coordinates.
                 freeze_atoms = all_indices[layer_mask] if i != 0 else None
-                coord_kwargs = ({
+                coord_kwargs = (
+                    {
                         "define_for": indices,
                     }
                     if i == 0
@@ -114,6 +126,7 @@ class Layers:
                     # RFO
                     # "hessian_init": "unit",
                 }
+
                 def get_opt(geom, forces=None):
                     opt_kwargs = _opt_kwargs.copy()
                     opt = LBFGS(geom, **opt_kwargs)
@@ -171,20 +184,26 @@ class LayerOpt(Optimizer):
                 break
             opt.run()
             coords3d_cur[indices] = geom.coords3d[indices]
-            # geom.jmol()
 
         ####################
         # Relax last layer #
         ####################
 
         # 'geom' and 'indices' for the last layer were defined in the for-loop
-        # above, before breaking out.
+        # above, before breaking from the loop.
+        #
+        # Calculate forces and energy of the last layer. This have to be the "true"
+        # ONIOM forces of the system, containing all contributions. That's why we
+        # also save them as the true forces in the optimizer.
         cart_forces = geom.cart_forces
-        # print(cart_forces.reshape(-1, 3))
         energy = geom.energy
         self.energies.append(energy)
         self.forces.append(cart_forces.copy())
 
+        # Also store relevant quantities in the optimizer of the last layer, so
+        # stuff like Hessian updates are possible. These quantities are usually
+        # stored in the big optimization-loop in Optimizer.run(). As run() is
+        # never called for the last optimizer we have to store them manually.
         opt.coords.append(geom.coords.copy())
         opt.cart_coords.append(geom.cart_coords.copy())
 
