@@ -58,18 +58,18 @@ nix test:
         enableMultiwfn = true;
       }"
 
-container:
-  stage: distribute
-  tags:
-    - nix
-  before_script:
-    - unset NIXPKGS_ALLOW_UNFREE
-  script:
-    - nix-build ./nix/container.nix
-  after_script:
-    - cp result pysisyphus.tar.gz
-    - cp result-2 pysisyphus.sif
-  artifacts:
-    paths:
-      - pysisyphus.tar.gz
-      - pysisyphus.sif
+#container:
+  #stage: distribute
+  #tags:
+    #- nix
+  #before_script:
+    #- unset NIXPKGS_ALLOW_UNFREE
+  #script:
+    #- nix-build ./nix/container.nix
+  #after_script:
+    #- cp result pysisyphus.tar.gz
+    #- cp result-2 pysisyphus.sif
+  #artifacts:
+    #paths:
+      #- pysisyphus.tar.gz
+      #- pysisyphus.sif
