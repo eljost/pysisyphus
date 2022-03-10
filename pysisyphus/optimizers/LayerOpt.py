@@ -5,7 +5,6 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import full_expand
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.LBFGS import LBFGS
-from pysisyphus.optimizers.PreconLBFGS import PreconLBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 """
@@ -14,67 +13,68 @@ TODO: allow setting user-chosen optimizer.
 """
 
 
-class LayerOpt(Optimizer):
-    def __init__(
-        self,
-        geometry,
-        layers,
-        **kwargs,
-    ):
-        super().__init__(geometry, **kwargs)
-        assert geometry.coord_type == "cart"
+class Layers:
 
+    def __init__(self, geometry, layers, opt_thresh):
+        self.geometry = geometry
         self.layers = layers
+        self.opt_thresh = opt_thresh
 
         atoms = geometry.atoms
         all_indices = np.arange(len(geometry.atoms))
+        # Boolean array; every item corresponds to an atom in the total system.
         freeze_mask = np.full_like(all_indices, True, dtype=bool)
 
-        self.layer_indices = list()
-        self.layer_get_geoms = list()
-        self.layer_get_opts = list()
+        self.indices = list()
+        self.geom_getters = list()
+        self.opt_getters = list()
 
-        # Iterate in reverse order from smallest (lowest) layer to biggest (highest) layer.
         indices_below = set()
-        self.handle = open("model.trj", "w")
+        # Iterate in reverse order from smallest (lowest) layer to biggest (highest) layer.
+        # to setup geom_getter and opt_getter.
         for i, layer in enumerate(layers[::-1]):
             try:
                 indices = full_expand(layer["indices"])
-            # Allow missing indices. Then the indices for the whole system are assumed.
+            # Allow missing 'indices' key. Then it is assumed that this layer contains the
+            # whole system.
             except KeyError:
+                assert i != 0, "Found whole system in layer 0. I don't like that!"
                 indices = all_indices
-            # Drop indices from layer layers
+            # Drop indices from layers below ...
             indices = sorted(set(indices) - indices_below)
+            # ... and update 'indices_below' for the next layer
             indices_below.update(set(indices))
-            self.layer_indices.append(indices)
+            self.indices.append(indices)
+            # Set up mask that indicates which atoms to freeze in the current layer (
+            # all atoms that are not in the current layer.)
             layer_mask = freeze_mask.copy()
-            # Don't freeze current layer
             layer_mask[indices] = False
 
             try:
                 address = layer["address"]
                 calc = IPIServer(address=address)
+                # When calculating layer 0 we have access to the true energy of the system.
+                # So we assign the calculator of layer0 to the actual geometry containing
+                # the whole system.
                 if i == 0:
-                    self.geometry.set_calculator(calc)
+                    geometry.set_calculator(calc)
             except KeyError as err:
-                print("Currently, a socket address is mandatory!")
+                print("Currently, a socket address for an IPI-protol client is mandatory!")
                 raise err
 
             # Geometry
             def get_geom_getter():
                 coord_type = "redund" if (i == 0) else "cart"
+                # Don't freeze anything in layer 0; but use only the
+                # mobile atoms to define internal coordinates.
                 freeze_atoms = all_indices[layer_mask] if i != 0 else None
-                layer_calc = calc
-                coord_kwargs = (
-                    {
+                coord_kwargs = ({
                         "define_for": indices,
                     }
                     if i == 0
-                    else {}
+                    else {}  # no coord_kwargs for higher layers
                 )
-                # freeze_atoms = None
-                # coord_type = "redund"
-                # coord_kwargs = {"define_for": indices}
+                layer_calc = calc
 
                 def get_geom(coords3d):
                     geom = Geometry(
@@ -90,60 +90,32 @@ class LayerOpt(Optimizer):
                 return get_geom
 
             get_geom = get_geom_getter()
+            # Use a persistent Geometry for the layer 0. Overwrite the function
+            # above with a definition that always returns the same geometry.
             if i == 0:
-                geom = get_geom(self.geometry.coords3d)
+                geom = get_geom(geometry.coords3d)
 
                 def get_geom(coords3d):
-                    self.handle.write(geom.as_xyz() + "\n")
-                    self.handle.flush()
                     geom.coords3d = coords3d
                     return geom
 
-            self.layer_get_geoms.append(get_geom)
+            self.geom_getters.append(get_geom)
 
             # Optimizer
             def get_opt_getter():
-                layer_indices = indices
-                rms_force_thresh = self.convergence["rms_force_thresh"]
-                key = f"layer{i}"
                 _opt_kwargs = {
-                    "prefix": key,
-                    "max_cycles": 150,
-                    # "thresh": "gau",
-                    "thresh": self.thresh,
-                    "line_search": True,
-                    "align": False,
+                    "max_cycles": 250,
+                    "thresh": self.opt_thresh,
                     "overachieve_factor": 2,
+                    # LBFGS
+                    "line_search": True,
                     "keep_last": 15,
-                    # "max_cycles": 50,
-                    # "mu_reg": 0.1,
+                    "align": False,
+                    # RFO
+                    # "hessian_init": "unit",
                 }
-                # opt_kwargs = {
-                # "max_cycles": 150,
-                # "thresh": self.thresh,
-                # "overachieve_factor": 2,
-                # "hessian_init": "unit",
-                # }
                 def get_opt(geom, forces=None):
                     opt_kwargs = _opt_kwargs.copy()
-                    # if forces is not None:
-                        # forces_thresh = forces.reshape(-1, 3)[layer_mask].flatten()
-                        # rms = np.sqrt(np.mean(forces_thresh ** 2))
-                        # fact = 10
-                        # if (rms / fact) > rms_force_thresh:
-                            # opt_kwargs.update(
-                                # {
-                                    # "rms_force": 1 * rms_force_thresh,
-                                    # "rms_force_only": True,
-                                # }
-                            # )
-                    # else:
-                        # opt_kwargs.update(
-                            # {
-                                # "rms_force": rms_force_thresh,
-                                # "rms_force_only": True,
-                            # }
-                        # )
                     opt = LBFGS(geom, **opt_kwargs)
                     # opt = RFOptimizer(geom, **opt_kwargs)
                     return opt
@@ -158,11 +130,27 @@ class LayerOpt(Optimizer):
                 def get_opt(geom, forces):
                     return model_opt
 
-            self.layer_get_opts.append(get_opt)
+            self.opt_getters.append(get_opt)
 
-        self.layer_indices = self.layer_indices[::-1]
-        self.layer_get_geoms = self.layer_get_geoms[::-1]
-        self.layer_get_opts = self.layer_get_opts[::-1]
+        self.indices = self.indices[::-1]
+        self.geom_getters = self.geom_getters[::-1]
+        self.opt_getters = self.opt_getters[::-1]
+
+    def __len__(self):
+        return len(self.layers)
+
+
+class LayerOpt(Optimizer):
+    def __init__(
+        self,
+        geometry,
+        layers,
+        **kwargs,
+    ):
+        super().__init__(geometry, **kwargs)
+        assert geometry.coord_type == "cart"
+
+        self.layers = Layers(self.geometry, layers, opt_thresh=self.thresh)
 
     @property
     def layer_num(self):
@@ -172,7 +160,7 @@ class LayerOpt(Optimizer):
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
         for i, (indices, get_geom, get_opt) in enumerate(
-            zip(self.layer_indices, self.layer_get_geoms, self.layer_get_opts)
+            zip(self.layers.indices, self.layers.geom_getters, self.layers.opt_getters)
         ):
             geom = get_geom(coords3d_cur)
             get_opt_kwargs = {

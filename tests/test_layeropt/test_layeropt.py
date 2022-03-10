@@ -104,7 +104,7 @@ def test_ethanal_oniom_layeropt():
                 executor.submit(task) for task in (run_pysis, layer0sock, layer1sock)
             ]
 
-        print(coords_queue.get())
+        final_coords = coords_queue.get()
 
 
 if __name__ == "__main__":
