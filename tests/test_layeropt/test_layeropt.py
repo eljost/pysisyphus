@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 import time
 
+import pytest
+
 from pysisyphus.calculators import ONIOM
 from pysisyphus.calculators.IPIClient import calc_ipi_client
 from pysisyphus.helpers import geom_loader
