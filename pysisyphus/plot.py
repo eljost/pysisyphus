@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import splrep, splev
 
-from pysisyphus.constants import AU2KJPERMOL, AU2EV
+from pysisyphus.constants import AU2KJPERMOL, AU2KCALPERMOL, AU2EV
 from pysisyphus.config import OUT_DIR_DEFAULT
 from pysisyphus.dynamics import Gaussian
 from pysisyphus.io import parse_xyz
@@ -21,6 +21,16 @@ from pysisyphus.wrapper.jmol import render_cdd_cube
 
 
 CDD_PNG_FNS = "cdd_png_fns"
+"""
+Default to kJ mol⁻¹. DE_LABEL and get_en_conv will be overwritten when
+run() is executed. Both are still defined here, to make the functions
+from plot.py importable.
+"""
+DE_LABEL = r"$\Delta$E / kJ mol⁻¹"
+
+
+def get_en_conv():
+    return AU2KJPERMOL, "kJ mol⁻¹"
 
 
 def get_force_unit(coord_type):
@@ -28,9 +38,6 @@ def get_force_unit(coord_type):
     if coord_type != "cart":
         force_unit += " (rad)⁻¹"
     return force_unit
-
-
-UNIT_DEKJMOL = r"$\Delta$E / kJ mol⁻¹"
 
 
 def spline_plot_cycles(cart_coords, energies):
@@ -74,7 +81,8 @@ def spline_plot_cycles(cart_coords, energies):
     # Always draw a line at the minimum y=0
     ax.axhline(y=0, **kwargs)
     ax.set_xlabel("Image")
-    ax.set_ylabel(UNIT_DEKJMOL)
+    _, en_unit = get_en_conv()
+    ax.set_ylabel(DE_LABEL)
 
     return fig, ax
 
@@ -86,7 +94,7 @@ def plot_cycle(cart_coords, energies):
     xs = np.arange(len(last_energies))
     ax.plot(xs, last_energies, "o-")
     ax.set_xlabel("Image")
-    ax.set_ylabel(UNIT_DEKJMOL)
+    ax.set_ylabel(DE_LABEL)
     ax.set_title(f"COS image energies, (last) cycle {len(energies)-1}")
 
     first_image_en = last_energies[0]
@@ -105,9 +113,10 @@ def plot_cycle(cart_coords, energies):
     print(f"\tHighest energy image (HEI) at index {max_en_ind} (0-based)")
 
     first_barr = max_en - first_image_en
-    print(f"\tBarrier between first image and HEI: {first_barr:.1f} kJ mol⁻¹")
+    _, en_unit = get_en_conv()
+    print(f"\tBarrier between first image and HEI: {first_barr:.1f} {en_unit}")
     last_barr = max_en - last_image_en
-    print(f"\tBarrier between last image and HEI: {last_barr:.1f} kJ mol⁻¹")
+    print(f"\tBarrier between last image and HEI: {last_barr:.1f} {en_unit}")
 
     return fig, ax
 
@@ -127,7 +136,7 @@ def anim_cos(cart_coords, energies):
     y_max = max_ - min_
     ax.set_ylim(0, y_max)
     ax.set_xlabel("Coordinate differences / Bohr")
-    ax.set_ylabel(UNIT_DEKJMOL)
+    ax.set_ylabel(DE_LABEL)
 
     def update_func(i):
         fig.suptitle("Cycle {}".format(i))
@@ -179,10 +188,11 @@ def load_h5(h5_fn, h5_group, datasets=None, attrs=None):
             except KeyError:
                 print(f"Could not load attribute '{a}' from HDF5 file.")
 
+    en_conv, _ = get_en_conv()
     if "energies" in _datasets:
         ens = _datasets["energies"]
         ens -= ens.min()
-        ens *= AU2KJPERMOL
+        ens *= en_conv
 
     try:
         # We can't use coord_size because coord_type may be != cart and then
@@ -347,20 +357,21 @@ def plot_md(h5_group="run"):
 
     _, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
     dts = steps * dt
-    ens *= AU2KJPERMOL
+    en_conv, en_unit = get_en_conv()
+    ens *= en_conv
     mean = ens.mean()
     ens -= mean
     ax0.plot(dts, ens)
     ax0.axhline(0, ls="--", c="k")
-    ax0.set_ylabel(r"$E - \overline{E}$ / kJ mol⁻¹")
+    ax0.set_ylabel(r"$E - \overline{E}$ / " + en_unit)
     ax0.set_title("Energy")
 
-    ens_conserved *= AU2KJPERMOL
+    ens_conserved *= en_conv
     mean_conserved = ens_conserved.mean()
     ens_conserved -= mean_conserved
     ax1.plot(dts, ens_conserved)
     ax1.axhline(0, ls="--", c="k")
-    ax1.set_ylabel(r"$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / kJ mol⁻¹")
+    ax1.set_ylabel(r"$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / {en_unit}")
     ax1.set_title("Conserved quantity")
 
     ax2.plot(dts, Ts, label="Current")
@@ -408,20 +419,21 @@ def plot_gau(gau_fns, num=50):
 
     fig, ax = plt.subplots()
 
+    en_conv, en_unit = get_en_conv()
     if len(gau_fns) == 1:
         grid = grids[0]
-        ens = -np.array([eval_gaussians(x) for x in grid[:, None]]) * AU2KJPERMOL
+        ens = -np.array([eval_gaussians(x) for x in grid[:, None]]) * en_conv
         ens -= ens.min()
         ax.plot(grid, ens)
         ax.set_xlabel(f"CV0, {gau_fns[0]}")
-        ax.set_ylabel(r"$\Delta F$ / kJ mol⁻¹")
+        ax.set_ylabel(rf"$\Delta F$ / {en_unit}")
     elif len(gau_fns) == 2:
         grid0, grid1 = grids
         X, Y = np.meshgrid(grid0, grid1)
         xy_flat = np.stack((X.flatten(), Y.flatten()), axis=1)
         ens = (
             -np.array([eval_gaussians(xy) for xy in xy_flat]).reshape(num, num)
-            * AU2KJPERMOL
+            * en_conv
         )
         ens -= ens.min()
         levels = np.linspace(ens.min(), 0.75 * ens.max(), num=15)
@@ -617,9 +629,10 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
         afir_forces = group["forces"][:cycles]
         true_forces = group["true_forces"][:cycles]
 
-    afir_ens *= AU2KJPERMOL
+    en_conv, en_unit = get_en_conv()
+    afir_ens *= en_conv
     afir_ens -= afir_ens.min()
-    true_ens *= AU2KJPERMOL
+    true_ens *= en_conv
     true_ens -= true_ens.min()
     afir_forces = np.linalg.norm(afir_forces, axis=1)
     true_forces = np.linalg.norm(true_forces, axis=1)
@@ -641,7 +654,7 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
     en_ax.legend(lines, labels, loc=0)
 
     en_ax.set_title("Energies")
-    en_ax.set_ylabel(UNIT_DEKJMOL)
+    en_ax.set_ylabel(DE_LABEL)
 
     forces_ax.set_title("||Forces||")
     l1 = forces_ax.plot(afir_forces, style1, label="AFIR")
@@ -655,11 +668,12 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
     labels = [l.get_label() for l in lines]
     forces_ax.legend(lines, labels, loc=0)
     forces_ax.set_xlabel("Cycle")
+    forces_ax.set_ylabel("$E_h$ Bohr⁻¹")
 
     peak_inds, _ = peakdetect(true_ens, lookahead=2)
     if peak_inds:
-        print(f"Peaks:")
-        print("\tCycle: Energy / kJ mol⁻¹")
+        print("Peaks:")
+        print(f"\tCycle: Energy / {en_unit}")
         print()
         for at, energy in peak_inds:
             print(f"\t{at}: {energy:.2f}")
@@ -687,6 +701,9 @@ def parse_args(args):
     parser.add_argument("--h5_fn", default="overlap_data.h5")
     parser.add_argument("--h5_group", default="opt", help="HDF5 group to plot.")
     parser.add_argument("--orient", default="")
+    parser.add_argument(
+        "--kcal", action="store_true", help="Use kcal mol⁻¹ instead of kJ mol⁻¹."
+    )
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
@@ -752,8 +769,9 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
         max_force_thresh = group.attrs["max_force_thresh"]
         rms_force_thresh = group.attrs["rms_force_thresh"]
 
+    en_conv, en_unit = get_en_conv()
     ens -= ens.min()
-    ens *= AU2KJPERMOL
+    ens *= en_conv
     if is_cos:
         text = textwrap.wrap(
             "COS optimization detected. Plotting total energy of all images "
@@ -773,7 +791,7 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
     fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
 
     ax0.plot(ens, **ax_kwargs)
-    ax0.set_ylabel(UNIT_DEKJMOL)
+    ax0.set_ylabel(DE_LABEL)
 
     ax1.plot(max_forces, **ax_kwargs)
     ax1.axhline(max_force_thresh, c="k", ls="--", label="Threshold")
@@ -825,8 +843,9 @@ def plot_irc_h5(h5, title=None):
     assert all([size == size0 for size in sizes])
     print(f"\tFound {size0} IRC points")
 
+    en_conv, en_unit = get_en_conv()
     energies -= energies[0]
-    energies *= AU2KJPERMOL
+    energies *= en_conv
 
     cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
     rms_grads = np.sqrt(np.mean(gradients ** 2, axis=1))
@@ -841,7 +860,7 @@ def plot_irc_h5(h5, title=None):
 
     ax0.plot(cds, energies, **plt_kwargs)
     ax0.set_title("energy change")
-    ax0.set_ylabel(UNIT_DEKJMOL)
+    ax0.set_ylabel(DE_LABEL)
 
     ax1.plot(cds, rms_grads, **plt_kwargs)
     ax1.axhline(rms_grad_thresh, linestyle="--", color="k")
@@ -877,13 +896,14 @@ def plot_scan(h5_fn="scan.h5"):
             energies.append(group["energies"][:])
     print(f"Found {len(groups)} groups in '{h5_fn}'.")
 
+    en_conv, _ = get_en_conv
     for group, ens in zip(groups, energies):
         ens -= ens.min()
-        ens *= AU2KJPERMOL
+        ens *= en_conv
         fig, ax = plt.subplots()
         ax.plot(ens, "o-")
         ax.set_xlabel("Scan point")
-        ax.set_ylabel(r"$\Delta E$ / kJ mol⁻¹")
+        ax.set_ylabel(DE_LABEL)
         ax.set_title(group)
     plt.show()
 
@@ -896,15 +916,16 @@ def plot_trj_energies(trj):
     except ValueError as err:
         print("Could not convert comments to energies!\n")
         raise err
+    en_conv, en_unit = get_en_conv()
     energies -= energies.min()
-    energies *= AU2KJPERMOL
+    energies *= en_conv
     fig, ax = plt.subplots()
     ax.plot(energies)
-    highlights = [0, energies.argmax(), energies.size-1]
+    highlights = [0, energies.argmax(), energies.size - 1]
     highlight_ens = energies[highlights]
-    ax.scatter(highlights,  highlight_ens, s=50)
+    ax.scatter(highlights, highlight_ens, s=50)
     ax.set_xlabel("Step")
-    ax.set_ylabel(UNIT_DEKJMOL)
+    ax.set_ylabel(DE_LABEL)
     ax.set_title(trj)
     plt.show()
 
@@ -926,10 +947,22 @@ def run():
 
     h5_fn = Path(args.h5_fn)
 
+    global get_en_conv
+
+    def get_en_conv():
+        if args.kcal:
+            conv, label = AU2KCALPERMOL, "kcal mol⁻¹"
+        else:
+            conv, label = AU2KJPERMOL, "kJ mol⁻¹"
+        return conv, label
+
+    global DE_LABEL
+    DE_LABEL = rf"$\Delta$E / {get_en_conv()[1]}"
+
     if args.all_energies or args.overlaps:
         if not h5_fn.exists():
             if (tmp_fn := Path(OUT_DIR_DEFAULT) / h5_fn).exists():
-                h5_fn  = tmp_fn
+                h5_fn = tmp_fn
                 print(f"Loading overlap data from '{h5_fn}'.")
 
     # Optimization
