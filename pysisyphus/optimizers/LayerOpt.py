@@ -76,6 +76,10 @@ class Layers:
                     )
                     raise err
 
+            # CONTINUE
+            # geom_kwargs = layer.get("geom", dict())
+            # coord_type = geom_kwargs
+
             # Geometry
             def get_geom_getter():
                 # coord_type = "redund" if (i == 0) else "cart"
@@ -142,6 +146,9 @@ class Layers:
             get_opt = get_opt_getter()
             if i == 0:
                 model_opt = RFOptimizer(geom, thresh="never")
+                # CONTINUE
+                # from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
+                # model_opt = RSPRFOptimizer(geom, thresh="never")
                 model_opt.prepare_opt()  # TODO: do this outside of constructor
 
                 def get_opt(geom, forces):

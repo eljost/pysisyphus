@@ -33,6 +33,7 @@ assert:
 """
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 @using("orca")
 def test_ethanal_oniom_layeropt():
