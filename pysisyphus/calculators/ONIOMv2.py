@@ -131,16 +131,17 @@ def atom_inds_to_cart_inds(atom_inds):
 
 
 class ModelDummyCalc:
-    def __init__(self, model):  # , all_atoms, all_coords):
+    def __init__(self, model, cap=False):  # , all_atoms, all_coords):
         self.model = model
+        self.cap = cap
 
     def get_energy(self, atoms, coords):
-        energy = self.model.get_energy(atoms, coords, cap=False)
+        energy = self.model.get_energy(atoms, coords, cap=self.cap)
         results = {"energy": energy}
         return results
 
     def get_forces(self, atoms, coords):
-        energy, forces = self.model.get_forces(atoms, coords, cap=False)
+        energy, forces = self.model.get_forces(atoms, coords, cap=self.cap)
         forces_ = np.zeros((len(atoms), 3))
         forces_[: len(atoms) - len(self.model.links)] = forces.reshape(-1, 3)[
             self.model.atom_inds
@@ -339,7 +340,9 @@ class Model:
             jac_data += (ones - g).tolist()
 
             try:
-                parent_cols = (self.parent_atom_inds.index(parent_ind) * 3 + stencil).tolist()
+                parent_cols = (
+                    self.parent_atom_inds.index(parent_ind) * 3 + stencil
+                ).tolist()
                 jac_rows += rows
                 jac_cols += parent_cols
                 jac_data += np.full_like(parent_cols, g, dtype=float).tolist()
@@ -452,7 +455,9 @@ class Model:
         # Calculate correction if parent layer is present and it is requested
         if (self.parent_calc is not None) and parent_correction:
             self.log("Calculation at parent layer level")
-            parent_results = self.parent_calc.get_hessian(catoms, ccoords, **prepare_kwargs)
+            parent_results = self.parent_calc.get_hessian(
+                catoms, ccoords, **prepare_kwargs
+            )
             parent_hessian = parent_results["hessian"]
             parent_energy = parent_results["energy"]
 
@@ -502,15 +507,19 @@ class Model:
     def as_geom(self, all_atoms, all_coords):
         capped_atoms, capped_coords3d = self.capped_atoms_coords(all_atoms, all_coords)
         geom = Geometry(capped_atoms, capped_coords3d)
-        dummy_calc = ModelDummyCalc(self)
+        dummy_calc = self.as_calculator()
         geom.set_calculator(dummy_calc)
         return geom
 
+    def as_calculator(self, cap=False):
+        return ModelDummyCalc(self, cap=cap)
+
     def __str__(self):
-        return (
-            f"Model({self.name}, {len(self.atom_inds)} atoms, "
-            f"level={self.calc_level}, parent_level={self.parent_calc_level})"
-        )
+        # return (
+            # f"Model({self.name}, {len(self.atom_inds)} atoms, "
+            # f"level={self.calc_level}, parent_level={self.parent_calc_level})"
+        # )
+        return f"{self.name}_{self.calc_level}"
 
     def __repr__(self):
         return self.__str__()
@@ -742,59 +751,48 @@ class ONIOM(Calculator):
             cur_calc_num += 1
             return calc
 
-        # Create models and required calculators
+        # Create models and required calculators.
         self.models = list()
         self.layers = [list() for _ in layers]
-        for model in model_keys[1:]:
-            parent_layer_ind = self.model_parent_layers[model]
-            parent_layer = layers[parent_layer_ind]
-            parent_calc_keys = set([models[model]["calc"] for model in parent_layer])
-            assert len(parent_calc_keys) == 1, (
-                "It seems you are trying to run a multicenter ONIOM setup in "
-                "an intermediate layer with different calculators. This is "
-                "not supported right now."
-            )
-
-            parent = parent_layer[0]
-            model_calc_key = models[model]["calc"]
-            parent_calc_key = models[parent]["calc"]
-
-            model_base_name = f"{model}_{model_calc_key}"
+        for model_key in model_keys:
+            model_calc_key = models[model_key]["calc"]
+            model_base_name = f"{model_key}_{model_calc_key}"
             model_calc = get_calc(model_calc_key, base_name=model_base_name)
-            parent_base_name = f"{model}_parent"
-            parent_calc = get_calc(parent_calc_key, base_name=parent_base_name)
+            # Update parent information
+            try:
+                parent_layer_ind = self.model_parent_layers[model_key]
+                parent_layer = layers[parent_layer_ind]
+                parent_calc_keys = set(
+                    [models[model_key]["calc"] for model_key in parent_layer]
+                )
+                assert len(parent_calc_keys) == 1, (
+                    "It seems you are trying to run a multicenter ONIOM setup in "
+                    "an intermediate layer with different calculators. This is "
+                    "not supported right now."
+                )
+                parent_name = parent_layer[0]
+                parent_calc_key = models[parent_name]["calc"]
+                parent_base_name = f"{model}_parent"
+                parent_calc = get_calc(parent_calc_key, base_name=parent_base_name)
+                parent_atom_inds = models[parent_name]["inds"]
+            except KeyError:
+                parent_name = parent_calc_key = parent_calc = parent_atom_inds = None
+                parent_layer_ind = -1
 
             model = Model(
-                name=model,
+                name=model_key,
                 calc_level=model_calc_key,
                 calc=model_calc,
-                parent_name=parent,
+                atom_inds=models[model_key]["inds"],
+                use_link_atoms=self.use_link_atoms,
+                #
+                parent_name=parent_name,
                 parent_calc_level=parent_calc_key,
                 parent_calc=parent_calc,
-                atom_inds=models[model]["inds"],
-                parent_atom_inds=models[parent]["inds"],
-                use_link_atoms=self.use_link_atoms,
+                parent_atom_inds=parent_atom_inds,
             )
             self.models.append(model)
             self.layers[parent_layer_ind + 1].append(model)
-
-        # All real model
-        real_calc = get_calc(real_key)
-        real_model = Model(
-            name=real_key,
-            calc_level=real_key,
-            calc=real_calc,
-            parent_name=None,
-            parent_calc_level=None,
-            parent_calc=None,
-            atom_inds=list(range(len(geom.atoms))),
-            parent_atom_inds=None,
-        )
-        self.models.insert(0, real_model)
-        self.layers[0].append(real_model)
-
-        # Reverse order of models so the first model is the real system
-        # self.models = self.models[::-1]
 
         self.log("Created all ONIOM layers:")
         for model in self.models:
@@ -855,11 +853,11 @@ class ONIOM(Calculator):
 
                 # Enable for debugging
                 # if len(layer) == 1:
-                    # model = layer[0]
-                    # tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
-                    # render_geom_and_charges(
-                        # Geometry(tmp_atoms, tmp_coords), point_charges
-                    # )
+                # model = layer[0]
+                # tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
+                # render_geom_and_charges(
+                # Geometry(tmp_atoms, tmp_coords), point_charges
+                # )
 
             results = [
                 getattr(model, method)(atoms, coords, point_charges=point_charges)

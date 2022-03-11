@@ -22,7 +22,7 @@ TODO: allow setting user-chosen optimizer.
 
 
 class Layers:
-    def __init__(self, geometry, layers, opt_thresh):
+    def __init__(self, geometry, opt_thresh, layers=None):
         self.geometry = geometry
         self.layers = layers
         self.opt_thresh = opt_thresh
@@ -68,10 +68,14 @@ class Layers:
             # If no address is given, we assume that pysisyphus' ONIOM calculator
             # is used.
             except KeyError as err:
-                print(
-                    "Currently, a socket address for an IPI-protol client is mandatory!"
-                )
-                raise err
+                try:
+                    model = layer["model"]
+                except KeyError:
+                    print(
+                        "Currently, a socket address for an IPI-protol client is mandatory!"
+                    )
+                    raise err
+                calc = model.as_calculator(cap=True)
 
             # Geometry
             def get_geom_getter():
@@ -149,6 +153,24 @@ class Layers:
         self.geom_getters = self.geom_getters[::-1]
         self.opt_getters = self.opt_getters[::-1]
 
+    @classmethod
+    def from_oniom_calculator(cls, geometry, oniom_calc=None, **kwargs):
+        calc = geometry.calculator
+        if calc is None:
+            calc = oniom_calc
+        layers = list()
+        for models in calc.layers:
+            assert len(models) == 1, "Multicenter-ONIOM is not yet supported!"
+            model = models[0]
+            link_hosts = [link.parent_ind for link in model.links]
+            indices = model.atom_inds + link_hosts
+            layer = {
+                    "model": model,
+                    "indices": indices,
+            }
+            layers.append(layer)
+        return Layers(geometry, layers=layers, **kwargs)
+
     def __len__(self):
         return len(self.layers)
 
@@ -157,13 +179,23 @@ class LayerOpt(Optimizer):
     def __init__(
         self,
         geometry,
-        layers,
+        layers=None,
         **kwargs,
     ):
         super().__init__(geometry, **kwargs)
         assert geometry.coord_type == "cart"
 
-        self.layers = Layers(self.geometry, layers, opt_thresh=self.thresh)
+        layers_kwargs = {
+            "geometry": self.geometry,
+            "opt_thresh": self.thresh,
+        }
+        if layers is not None:
+            layers_kwargs["layers"] = layers
+            layers = Layers(**layers_kwargs)
+        # Construct layers from ONIOM calculator
+        else:
+            layers = Layers.from_oniom_calculator(**layers_kwargs)
+        self.layers = layers
 
     @property
     def layer_num(self):
