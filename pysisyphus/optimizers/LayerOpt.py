@@ -69,17 +69,17 @@ class Layers:
             # is used.
             except KeyError as err:
                 try:
-                    model = layer["model"]
+                    calc = layer["layer_calc"]
                 except KeyError:
                     print(
                         "Currently, a socket address for an IPI-protol client is mandatory!"
                     )
                     raise err
-                calc = model.as_calculator(cap=True)
 
             # Geometry
             def get_geom_getter():
-                coord_type = "redund" if (i == 0) else "cart"
+                # coord_type = "redund" if (i == 0) else "cart"
+                coord_type = "redund" if (i == 0) else "cartesian"
                 # Don't freeze anything in layer 0; but use only the
                 # mobile atoms to define internal coordinates.
                 freeze_atoms = all_indices[layer_mask] if i != 0 else None
@@ -159,13 +159,14 @@ class Layers:
         if calc is None:
             calc = oniom_calc
         layers = list()
-        for models in calc.layers:
-            assert len(models) == 1, "Multicenter-ONIOM is not yet supported!"
-            model = models[0]
+        for i, layer in enumerate(calc.layers):
+            assert len(layer) == 1, "Multicenter-ONIOM is not yet supported!"
+            model = layer[0]
             link_hosts = [link.parent_ind for link in model.links]
             indices = model.atom_inds + link_hosts
+            layer_calc = calc.get_layer_calc(i)
             layer = {
-                    "model": model,
+                    "layer_calc": layer_calc,
                     "indices": indices,
             }
             layers.append(layer)

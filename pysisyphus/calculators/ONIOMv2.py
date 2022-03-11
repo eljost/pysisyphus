@@ -46,7 +46,6 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import full_expand
 from pysisyphus.intcoords.setup import get_bond_sets
 from pysisyphus.intcoords.setup_fast import get_bond_vec_getter
-from pysisyphus.wrapper.jmol import render_geom_and_charges
 
 
 CALC_DICT = {
@@ -141,8 +140,12 @@ class ModelDummyCalc:
         return results
 
     def get_forces(self, atoms, coords):
+        # if self.parent_name is not None:
+        # raise Exception("Currently, this does not work for Models with a parent!")
         energy, forces = self.model.get_forces(atoms, coords, cap=self.cap)
         forces_ = np.zeros((len(atoms), 3))
+        # The redistribution below only works withouth parent, as otherwise
+        # the numer of atoms on the RHS and LHS differ.
         forces_[: len(atoms) - len(self.model.links)] = forces.reshape(-1, 3)[
             self.model.atom_inds
         ]
@@ -516,8 +519,8 @@ class Model:
 
     def __str__(self):
         # return (
-            # f"Model({self.name}, {len(self.atom_inds)} atoms, "
-            # f"level={self.calc_level}, parent_level={self.parent_calc_level})"
+        # f"Model({self.name}, {len(self.atom_inds)} atoms, "
+        # f"level={self.calc_level}, parent_level={self.parent_calc_level})"
         # )
         return f"{self.name}_{self.calc_level}"
 
@@ -612,6 +615,86 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
             (kept_coords_point_charges, all_redist_coords_charges), axis=0
         )
     return kept_coords_point_charges
+
+
+class LayerCalc:
+    def __init__(self, models, parent_layer_calc=None):
+        self.models = models
+        self.parent_layer_calc = parent_layer_calc
+
+        self.models_str = ", ".join([str(model) for model in self.models])
+
+    def run_calculations(self, atoms, coords, method):
+        results = [getattr(model, method)(atoms, coords) for model in self.models]
+        return results
+
+    @staticmethod
+    def energy_from_results(model_energies, parent_energy=None):
+        energy = sum(model_energies)
+        if parent_energy is not None:
+            energy += parent_energy
+        return energy
+
+    def do_parent(self, with_parent):
+        return self.parent_layer_calc is not None and with_parent
+
+    def get_energy(self, atoms, coords, with_parent=True):
+        model_energies = self.run_calculations(atoms, coords, "get_energy")
+        if self.do_parent(with_parent):
+            parent_result = self.parent_layer_calc.get_energy(
+                atoms, coords, with_parent=True
+            )
+            parent_energy = parent_result["energy"]
+        else:
+            parent_energy = None
+        energy = self.energy_from_results(model_energies, parent_energy)
+        return {"energy": energy}
+
+    def get_forces(self, atoms, coords, with_parent=True):
+        model_ens_forces = self.run_calculations(atoms, coords, "get_forces")
+        model_energies, forces = zip(*model_ens_forces)
+        forces = np.array(forces).sum(axis=0)
+        if self.do_parent(with_parent):
+            parent_result = self.parent_layer_calc.get_forces(
+                atoms, coords, with_parent=True
+            )
+            parent_energy = parent_result["energy"]
+            parent_forces = parent_result["forces"]
+            forces += parent_forces
+        else:
+            parent_energy = None
+        energy = self.energy_from_results(model_energies, parent_energy)
+        results = {
+            "energy": energy,
+            "forces": forces,
+        }
+        return results
+
+    def get_hessian(self, atoms, coords, with_parent=True):
+        model_ens_hessians = self.run_calculations(atoms, coords, "get_hessian")
+        model_energies, hessian = zip(*model_ens_hessians)
+        hessian = np.array(hessian).sum(axis=0)
+        if self.do_parent(with_parent):
+            parent_result = self.parent_layer_calc.get_hessian(
+                atoms, coords, with_parent=True
+            )
+            parent_energy = parent_result["energy"]
+            parent_hessian = parent_result["hessian"]
+            hessian += parent_hessian
+        else:
+            parent_energy = None
+        energy = self.energy_from_results(model_energies, parent_energy)
+        result = {
+            "energy": energy,
+            "hessian": hessian,
+        }
+        return result
+
+    def __str__(self):
+        return f"LayerCalc({self.models_str})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class ONIOM(Calculator):
@@ -831,6 +914,15 @@ class ONIOM(Calculator):
             f"{len(self.models)} models."
         )
 
+        self.layer_calcs = list()
+        for i, layer in enumerate(self.layers):
+            try:
+                parent_layer_calc = self.layer_calcs[-1]
+            except IndexError:
+                parent_layer_calc = None
+            layer_calc = LayerCalc(models=layer, parent_layer_calc=parent_layer_calc)
+            self.layer_calcs.append(layer_calc)
+
     def run_calculations(self, atoms, coords, method):
         self.log(f"{self.embeddings[self.embedding]} ONIOM calculation")
 
@@ -852,6 +944,7 @@ class ONIOM(Calculator):
                 self.log(f"sum(charges)={ee_charge_sum:.4f}")
 
                 # Enable for debugging
+                # from pysisyphus.wrapper.jmol import render_geom_and_charges
                 # if len(layer) == 1:
                 # model = layer[0]
                 # tmp_atoms, tmp_coords = model.capped_atoms_coords(atoms, coords)
@@ -939,6 +1032,9 @@ class ONIOM(Calculator):
             # Drop indices that appear in inner layers
             atom_inds = [i for i in atom_inds if i not in lower_inds]
         return atom_inds
+
+    def get_layer_calc(self, layer_ind):
+        return self.layer_calcs[layer_ind]
 
     def calc_layer(self, atoms, coords, index, parent_correction=True):
         layer = self.layers[index]
