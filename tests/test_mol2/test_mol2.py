@@ -57,4 +57,4 @@ def test_benzene_mol2(benzene_mol2):
         # text = handle.read()
     geom = geom_from_mol2(benzene_mol2)
     assert len(geom.atoms) == 12
-    geom.jmol()
+    # geom.jmol()

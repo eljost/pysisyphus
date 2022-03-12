@@ -37,7 +37,7 @@ def test_ipi_server_client_opt():
         tmp_path = Path(tmp_dir)
 
         def run_pysis():
-            yaml = SERVER_YAML.format(fn=fn, address=address)
+            yaml = SERVER_YAML.format(fn=fn, address=tmp_path / address)
             yaml_fn = "inp.yaml"
             with open(tmp_path / yaml_fn, "w") as handle:
                 handle.write(yaml)
