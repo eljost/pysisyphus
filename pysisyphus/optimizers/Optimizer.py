@@ -240,6 +240,32 @@ class Optimizer(metaclass=abc.ABCMeta):
         conv_dict = {k: v for k, v in zip(keys, threshs)}
         return conv_dict
 
+    def report_conv_thresholds(self):
+        oaf = self.overachieve_factor
+
+        def oa(val):
+            return f", ({val/oaf:.6f})" if oaf > 0.0 else ""
+
+        threshs = (
+            f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)}",
+            f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)}",
+            f"\t max(|step|) <= {self.max_step_thresh:.6f}",
+            f"\t   rms(step) <= {self.rms_step_thresh:.6f}",
+        )
+        if self.rms_force_only:
+            use_threshs = (threshs[1],)
+        elif self.max_force_only:
+            use_threshs = (threshs[0],)
+        else:
+            use_threshs = threshs
+        print(
+            "Convergence thresholds"
+            + (", (overachieved when)" if oaf > 0.0 else "")
+            + ":\n"
+            + "\n".join(use_threshs)
+            + "\n"
+        )
+
     def log(self, message, level=50):
         self.logger.log(level, message)
 
@@ -488,12 +514,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
         int_str = ""
         if self.geometry.coord_type != "cart":
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
+            rms_int_forces = np.sqrt(np.mean(int_forces**2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
@@ -507,15 +533,17 @@ class Optimizer(metaclass=abc.ABCMeta):
         return textwrap.dedent(final_summary.strip())
 
     def run(self):
+        print("If not specified otherwise, all quantities are given in au.\n")
+
         if not self.restarted:
             prep_start_time = time.time()
             self.prepare_opt()
             self.log(f"{self.geometry.coords.size} degrees of freedom.")
             prep_end_time = time.time()
             prep_time = prep_end_time - prep_start_time
+            self.report_conv_thresholds()
             print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
-        print("If not specified otherwise, all quantities are given in au.\n")
         self.table.print_header(with_sep=False)
         self.stopped = False
         # Actual optimization loop
