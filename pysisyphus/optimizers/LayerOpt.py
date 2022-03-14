@@ -19,7 +19,7 @@ from pysisyphus.optimizers.Optimizer import Optimizer
 def get_geom_kwargs(layer_ind, indices, layer_mask):
     if layer_ind == 0:
         geom_kwargs = {
-            "coord_type": "redund",
+            "type": "redund",
             "coord_kwargs": {
                 "define_for": indices,
             },
@@ -27,7 +27,7 @@ def get_geom_kwargs(layer_ind, indices, layer_mask):
     else:
         all_indices = np.arange(layer_mask.size)
         geom_kwargs = {
-            "coord_type": "cartesian",
+            "type": "cartesian",
             "freeze_atoms": all_indices[layer_mask],
         }
     return geom_kwargs
@@ -126,6 +126,7 @@ class Layers:
             # Allow empty "geom:" block
             except TypeError:
                 pass
+            coord_type = geom_kwargs.pop("type")
 
             # Calculator
             try:
@@ -137,7 +138,9 @@ class Layers:
             # Geometry
             def get_geom_getter():
                 def get_geom(coords3d):
-                    geom = Geometry(atoms, coords3d.copy(), **geom_kwargs)
+                    geom = Geometry(
+                        atoms, coords3d.copy(), coord_type=coord_type, **geom_kwargs
+                    )
                     geom.set_calculator(calc)
                     return geom
 
@@ -196,7 +199,10 @@ class Layers:
             calc = oniom_calc
 
         if layers is not None:
-            assert len(layers) == len(calc.layers)
+            assert len(layers) == len(calc.layers), (
+                f"ONIOM calculator has {len(calc.layers)} layers, but only "
+                f"{len(layers)} layer were defined in 'layers:'!"
+            )
 
             layers = list(layers)
             for i, layer in enumerate(layers):
@@ -264,11 +270,7 @@ class LayerOpt(Optimizer):
         ):
             is_last_layer = i == self.layer_num - 1
             geom = get_geom(coords3d_cur)
-            # get_opt_kwargs = {
-            # "forces": self.forces[-1] if self.cur_cycle > 0 else None,
-            # }
-            # opt = get_opt(geom, **get_opt_kwargs)
-            opt = get_opt(geom)  # , **get_opt_kwargs)
+            opt = get_opt(geom)
             if is_last_layer:
                 if self.cur_cycle == 0:
                     opt.prepare_opt()
