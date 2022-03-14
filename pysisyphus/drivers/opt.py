@@ -13,7 +13,7 @@ from pysisyphus.helpers import do_final_hessian
 from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
 from pysisyphus.io import save_hessian
 from pysisyphus.modefollow import NormalMode, geom_davidson
-from pysisyphus.optimizers.cls_map import get_opt_cls, is_tsopt as key_is_tsopt
+from pysisyphus.optimizers.cls_map import get_opt_cls, key_is_tsopt
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update
