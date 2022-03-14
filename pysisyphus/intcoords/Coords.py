@@ -9,7 +9,7 @@ class CoordSys(Protocol):
     def transform_hessian(self, cart_hessian, cart_gradient):
         pass
 
-    def transform_int_step(self, step, **kwargs):
+    def transform_int_step(self, step, update_constraints=False, pure=False):
         pass
 
     def project_hessian(self, hessian):

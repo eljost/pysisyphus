@@ -62,12 +62,15 @@ class CartesianCoords:
         cart_hessian = cart_hessian[self.move_mask_rep][:, self.move_mask_rep]
         return cart_hessian
 
-    def transform_int_step(self, step, **kwargs):
+    def transform_int_step(self, step, update_constraints=False, pure=False):
+        if update_constraints:
+            raise Exception("update_constraints is currently ignored!")
         full_step = self.zero_vec.copy()
         full_step[self.move_mask] = step.reshape(-1, 3)
         if self.mass_weighted:
             full_step /= self.masses_sqrt[:, None]
-        self.coords3d += full_step
+        if not pure:
+            self.coords3d += full_step
         return full_step.flatten()
 
     def project_hessian(self, hessian):
