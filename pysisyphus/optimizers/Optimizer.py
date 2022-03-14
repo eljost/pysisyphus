@@ -246,11 +246,19 @@ class Optimizer(metaclass=abc.ABCMeta):
         def oa(val):
             return f", ({val/oaf:.6f})" if oaf > 0.0 else ""
 
+        internal_coords = self.geometry.coord_type not in (
+            "cart",
+            "cartesian",
+            "mwcartesian",
+        )
+        fu = "E_h a_0⁻¹" + ("(rad⁻¹)" if internal_coords else "")  # forces unit
+        su = "a_0" + ("(rad)" if internal_coords else "")  # step unit
+
         threshs = (
-            f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)}",
-            f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)}",
-            f"\t max(|step|) <= {self.max_step_thresh:.6f}",
-            f"\t   rms(step) <= {self.rms_step_thresh:.6f}",
+            f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}",
+            f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)} {fu}",
+            f"\t max(|step|) <= {self.max_step_thresh:.6f} {su}",
+            f"\t   rms(step) <= {self.rms_step_thresh:.6f} {su}",
         )
         if self.rms_force_only:
             use_threshs = (threshs[1],)
@@ -514,12 +522,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
         int_str = ""
         if self.geometry.coord_type != "cart":
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces**2))
+            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""

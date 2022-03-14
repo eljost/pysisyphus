@@ -91,8 +91,8 @@ class IRC:
             Path to HDF5 file containing 3rd derivative information. Used with
             'displ: energy_cubic'.
         rms_grad_thresh : float, default=1e-3,
-            Convergence is signalled when to root mean square of the gradient
-            is less than or equal to 'rms_grad_thresh'.
+            Convergence is signalled when to root mean square of the unweighted
+            gradient is less than or equal to this value
         energy_thresh : float, default=1e-6,
             Signal convergence when the energy difference between two points
             is equal to or less than 'energy_thresh'.
@@ -605,7 +605,25 @@ class IRC:
         setattr(self, f"{prefix}_cycle", self.cur_cycle)
         self.dump_ends(".", prefix, getattr(self, mw_coords_name))
 
+    def report_conv_thresholds(self):
+        threshs = [
+            f"\t     rms(|gradient|) <= {self.rms_grad_thresh:.6f} E_h a_0⁻¹",
+            f"\t             Δenergy <= {self.energy_thresh:.6f} E_h",
+        ]
+        # Drop hard rms grad item
+        if self.hard_rms_grad_thresh is not None:
+            threshs.insert(
+                1,
+                f"\thard rms(|gradient|) <= {self.hard_rms_grad_thresh:.6f} E_h a_0⁻¹",
+            )
+        print(
+            "Convergence thresholds (non mass-weighted gradient):\n"
+            + "\n".join(threshs)
+            + "\n"
+        )
+
     def run(self):
+        self.report_conv_thresholds()
         # Calculate data at TS and create backup
         self.ts_coords = self.coords.copy()
         self.ts_mw_coords = self.mw_coords.copy()
