@@ -624,6 +624,30 @@ class LayerCalc:
 
         self.models_str = ", ".join([str(model) for model in self.models])
 
+    @property
+    def mult(self):
+        mults = [model.calc.mult for model in self.models]
+        mult0 = mults[0]
+        assert all([mult == mult0 for mult in mults])
+        return mult0
+
+    @mult.setter
+    def mult(self, mult):
+        for model in self.models:
+            model.calc.mult = mult
+
+    @property
+    def charge(self):
+        charges = [model.calc.mult for model in self.models]
+        charge0 = charges[0]
+        assert all([charge == charge0 for charge in charges])
+        return charge0
+
+    @charge.setter
+    def charge(self, charge):
+        for model in self.models:
+            model.calc.charge = charge
+
     def run_calculations(self, atoms, coords, method):
         results = [getattr(model, method)(atoms, coords) for model in self.models]
         return results
@@ -922,6 +946,39 @@ class ONIOM(Calculator):
                 parent_layer_calc = None
             layer_calc = LayerCalc(models=layer, parent_layer_calc=parent_layer_calc)
             self.layer_calcs.append(layer_calc)
+
+    @property
+    def model_iter(self):
+        try:
+            # A layer may contain several models
+            model_iter = it.chain(*[layer for layer in self.layers])
+        except AttributeError:
+            model_iter = list()
+        return model_iter
+
+    @property
+    def mult(self):
+        mults = [model.calc.mult for model in self.model_iter]
+        mult0 = mults[0]
+        assert all([mult == mult0 for mult in mults])
+        return mult0
+
+    @mult.setter
+    def mult(self, mult):
+        for model in self.model_iter:
+            model.calc.mult = mult
+
+    @property
+    def charge(self):
+        charges = [model.calc.mult for model in self.model_iter]
+        charge0 = charges[0]
+        assert all([charge == charge0 for charge in charges])
+        return charge0
+
+    @charge.setter
+    def charge(self, charge):
+        for model in self.model_iter:
+            model.calc.charge = charge
 
     def run_calculations(self, atoms, coords, method):
         self.log(f"{self.embeddings[self.embedding]} ONIOM calculation")
