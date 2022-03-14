@@ -524,7 +524,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         max_cart_forces = np.abs(cart_forces).max()
         rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
         int_str = ""
-        if self.geometry.coord_type != "cart":
+        if self.geometry.coord_type not in ("cart", "cartesian", "mwcartesian"):
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
             rms_int_forces = np.sqrt(np.mean(int_forces ** 2))

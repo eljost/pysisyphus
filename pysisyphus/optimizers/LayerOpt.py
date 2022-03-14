@@ -41,6 +41,11 @@ class Layers:
         self.geom_getters = list()
         self.opt_getters = list()
 
+        # We import 'get_opt_cls' in the constructor, as it relies on dicts, that
+        # contain references to this class (LayerOpt). Trying to import 'get_opt_cls'
+        # at the top of the module will result in an circular import.
+        from pysisyphus.optimizers.cls_map import get_opt_cls
+
         indices_below = set()
         # Iterate in reverse order from smallest (lowest) layer to biggest (highest) layer.
         # to setup geom_getter and opt_getter.
@@ -159,11 +164,10 @@ class Layers:
 
             get_opt = get_opt_getter()
             if i == 0:
-                model_opt = RFOptimizer(geom, thresh="never")
-                # CONTINUE
-                from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
-
-                model_opt = RSPRFOptimizer(geom, thresh="never")
+                # opt_key = "rfo" if ("tsopt" not in layer) else "prfo"
+                opt_key = layer.get("type", "rfo")
+                opt_cls = get_opt_cls(opt_key)
+                model_opt = opt_cls(geom, thresh="never")
                 model_opt.prepare_opt()  # TODO: do this outside of constructor
 
                 def get_opt(geom, forces):

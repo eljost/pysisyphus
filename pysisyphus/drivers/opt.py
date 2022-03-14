@@ -13,43 +13,10 @@ from pysisyphus.helpers import do_final_hessian
 from pysisyphus.helpers_pure import highlight_text, report_frozen_atoms
 from pysisyphus.io import save_hessian
 from pysisyphus.modefollow import NormalMode, geom_davidson
-from pysisyphus.optimizers import *
+from pysisyphus.optimizers.cls_map import get_opt_cls, is_tsopt as key_is_tsopt
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update
-from pysisyphus.tsoptimizers import *
-
-
-OPT_DICT = {
-    "bfgs": BFGS.BFGS,
-    "cg": ConjugateGradient.ConjugateGradient,
-    "fire": FIRE.FIRE,
-    "layers": LayerOpt.LayerOpt,
-    "lbfgs": LBFGS.LBFGS,
-    "micro": MicroOptimizer,
-    "nc": NCOptimizer.NCOptimizer,
-    "plbfgs": PreconLBFGS.PreconLBFGS,
-    "psd": PreconSteepestDescent.PreconSteepestDescent,
-    "qm": QuickMin.QuickMin,
-    "rfo": RFOptimizer.RFOptimizer,
-    "sd": SteepestDescent.SteepestDescent,
-    "sqnm": StabilizedQNMethod.StabilizedQNMethod,
-    "string": StringOptimizer.StringOptimizer,
-}
-
-TSOPT_DICT = {
-    "rsprfo": RSPRFOptimizer,
-    "trim": TRIM,
-    "rsirfo": RSIRFOptimizer,
-}
-
-
-def get_opt_cls(opt_key):
-    try:
-        opt_cls = OPT_DICT[opt_key]
-    except KeyError:
-        opt_cls = TSOPT_DICT[opt_key]
-    return opt_cls
 
 
 def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
@@ -118,7 +85,7 @@ def run_opt(
     level=0,
 ):
     is_cos = issubclass(type(geom), ChainOfStates)
-    is_tsopt = opt_key in TSOPT_DICT
+    is_tsopt = key_is_tsopt(opt_key)
     # Disallow iterative optimizations for COS objects
     if opt_kwargs is None:
         opt_kwargs = dict()
