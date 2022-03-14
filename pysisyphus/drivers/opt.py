@@ -6,6 +6,7 @@ import sys
 
 import numpy as np
 
+from pysisyphus.calculators import Dimer
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.config import T_DEFAULT, p_DEFAULT
 from pysisyphus.Geometry import Geometry
@@ -17,6 +18,7 @@ from pysisyphus.optimizers.cls_map import get_opt_cls, key_is_tsopt
 from pysisyphus.optimizers.Optimizer import Optimizer
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.hessian_updates import bfgs_update
+from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
