@@ -38,6 +38,7 @@ def test_ipi_server_client_opt():
 
         def run_pysis():
             yaml = SERVER_YAML.format(fn=fn, address=tmp_path / address)
+            print(yaml)
             yaml_fn = "inp.yaml"
             with open(tmp_path / yaml_fn, "w") as handle:
                 handle.write(yaml)
@@ -46,7 +47,7 @@ def test_ipi_server_client_opt():
 
         pysis_thread = threading.Thread(target=run_pysis)
         pysis_thread.start()
-        time.sleep(5)
+        time.sleep(10)
 
         geom = geom_loader(fn)
         calc = XTB()

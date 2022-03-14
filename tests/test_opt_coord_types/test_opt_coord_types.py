@@ -26,6 +26,7 @@ def test_opt_coord_type(this_dir):
             "max_cycles": 1,
         },
         "interpol": {
+            "type": "redund",
             "between": 1,
         },
         "cos": {
