@@ -14,13 +14,40 @@ from pysisyphus.calculators import IPIServer, ONIOM
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import full_expand
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.LBFGS import LBFGS
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
-"""
-Require all layers to be defined?
-TODO: allow setting user-chosen optimizer.
-"""
+
+def get_geom_kwargs(layer_ind, indices, layer_mask):
+    if layer_ind == 0:
+        geom_kwargs = {
+            "coord_type": "redund",
+            "coord_kwargs": {
+                "define_for": indices,
+            },
+        }
+    else:
+        all_indices = np.arange(layer_mask.size)
+        geom_kwargs = {
+            "coord_type": "cartesian",
+            "freeze_atoms": all_indices[layer_mask],
+        }
+    return geom_kwargs
+
+
+def get_opt_kwargs(layer_ind, thresh):
+    if layer_ind == 0:
+        opt_kwargs = {
+            "type": "rfo",
+            "thresh": "never",
+        }
+    else:
+        opt_kwargs = {
+            "type": "lbfgs",
+            "max_cycles": 250,
+            "thresh": thresh,
+            "overachieve_factor": 2,
+            "mu_reg": 0.1,
+        }
+    return opt_kwargs
 
 
 class Layers:
@@ -88,9 +115,17 @@ class Layers:
                     )
                     raise err
 
-            # CONTINUE
-            # geom_kwargs = layer.get("geom", dict())
-            # coord_type = geom_kwargs
+            ####################
+            #  Geometry setup  #
+            ####################
+
+            _geom_kwargs = layer.get("geom", dict())
+            geom_kwargs = get_geom_kwargs(i, indices=indices, layer_mask=layer_mask)
+            try:
+                geom_kwargs.update(_geom_kwargs)
+            # Allow empty "geom:" block
+            except TypeError:
+                pass
 
             # Calculator
             try:
@@ -101,29 +136,9 @@ class Layers:
 
             # Geometry
             def get_geom_getter():
-                # coord_type = "redund" if (i == 0) else "cart"
-                coord_type = "redund" if (i == 0) else "cartesian"
-                # Don't freeze anything in layer 0; but use only the
-                # mobile atoms to define internal coordinates.
-                freeze_atoms = all_indices[layer_mask] if i != 0 else None
-                coord_kwargs = (
-                    {
-                        "define_for": indices,
-                    }
-                    if i == 0
-                    else {}  # no coord_kwargs for higher layers
-                )
-                layer_calc = calc
-
                 def get_geom(coords3d):
-                    geom = Geometry(
-                        atoms,
-                        coords3d.copy(),
-                        freeze_atoms=freeze_atoms,
-                        coord_type=coord_type,
-                        coord_kwargs=coord_kwargs,
-                    )
-                    geom.set_calculator(layer_calc)
+                    geom = Geometry(atoms, coords3d.copy(), **geom_kwargs)
+                    geom.set_calculator(calc)
                     return geom
 
                 return get_geom
@@ -140,37 +155,32 @@ class Layers:
 
             self.geom_getters.append(get_geom)
 
-            # Optimizer
-            def get_opt_getter():
-                _opt_kwargs = {
-                    "max_cycles": 250,
-                    "thresh": self.opt_thresh,
-                    "overachieve_factor": 2,
-                    # LBFGS
-                    "line_search": True,
-                    "keep_last": 15,
-                    "align": False,
-                    # RFO
-                    # "hessian_init": "unit",
-                }
+            #####################
+            #  Optimizer setup  #
+            #####################
 
-                def get_opt(geom, forces=None):
-                    opt_kwargs = _opt_kwargs.copy()
-                    opt = LBFGS(geom, **opt_kwargs)
-                    # opt = RFOptimizer(geom, **opt_kwargs)
+            _opt_kwargs = layer.get("opt", dict())
+            opt_kwargs = get_opt_kwargs(i, thresh=self.opt_thresh)
+            try:
+                opt_kwargs.update(_opt_kwargs)
+            # Allow empty "opt:" block
+            except TypeError:
+                pass
+            opt_key = opt_kwargs.pop("type")
+            opt_cls = get_opt_cls(opt_key)
+
+            def get_opt_getter():
+                def get_opt(geom):
+                    opt = opt_cls(geom, **opt_kwargs)
                     return opt
 
                 return get_opt
 
             get_opt = get_opt_getter()
             if i == 0:
-                # opt_key = "rfo" if ("tsopt" not in layer) else "prfo"
-                opt_key = layer.get("type", "rfo")
-                opt_cls = get_opt_cls(opt_key)
-                model_opt = opt_cls(geom, thresh="never")
-                model_opt.prepare_opt()  # TODO: do this outside of constructor
+                model_opt = get_opt(geom)
 
-                def get_opt(geom, forces):
+                def get_opt(geom):
                     return model_opt
 
             self.opt_getters.append(get_opt)
@@ -235,11 +245,7 @@ class LayerOpt(Optimizer):
         if isinstance(self.geometry.calculator, ONIOM):
             layers = Layers.from_oniom_calculator(**layers_kwargs)
         else:
-            # if layers is not None:
-            # layers_kwargs["layers"] = layers
             layers = Layers(**layers_kwargs)
-        # else:
-        # layers = Layers.from_oniom_calculator(**layers_kwargs)
         self.layers = layers
 
     @property
@@ -256,12 +262,16 @@ class LayerOpt(Optimizer):
         for i, (indices, get_geom, get_opt) in enumerate(
             zip(self.layers.indices, self.layers.geom_getters, self.layers.opt_getters)
         ):
+            is_last_layer = i == self.layer_num - 1
             geom = get_geom(coords3d_cur)
-            get_opt_kwargs = {
-                "forces": self.forces[-1] if self.cur_cycle > 0 else None,
-            }
-            opt = get_opt(geom, **get_opt_kwargs)
-            if i == self.layer_num - 1:
+            # get_opt_kwargs = {
+            # "forces": self.forces[-1] if self.cur_cycle > 0 else None,
+            # }
+            # opt = get_opt(geom, **get_opt_kwargs)
+            opt = get_opt(geom)  # , **get_opt_kwargs)
+            if is_last_layer:
+                if self.cur_cycle == 0:
+                    opt.prepare_opt()
                 break
             opt.run()
             coords3d_cur[indices] = geom.coords3d[indices]
