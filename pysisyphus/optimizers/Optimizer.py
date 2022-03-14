@@ -257,15 +257,18 @@ class Optimizer(metaclass=abc.ABCMeta):
         threshs = (
             f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}",
             f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)} {fu}",
-            f"\t max(|step|) <= {self.max_step_thresh:.6f} {su}",
-            f"\t   rms(step) <= {self.rms_step_thresh:.6f} {su}",
         )
         if self.rms_force_only:
             use_threshs = (threshs[1],)
         elif self.max_force_only:
             use_threshs = (threshs[0],)
-        else:
+        elif self.is_cos:
             use_threshs = threshs
+        else:
+            use_threshs = threshs + (
+                f"\t max(|step|) <= {self.max_step_thresh:.6f} {su}",
+                f"\t   rms(step) <= {self.rms_step_thresh:.6f} {su}",
+            )
         print(
             "Convergence thresholds"
             + (", (overachieved when)" if oaf > 0.0 else "")
