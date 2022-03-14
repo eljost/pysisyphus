@@ -6,9 +6,11 @@
 #     Linear scaling geometry optimisation and transition state search
 #     in hybrid delocalised internal coordinates
 #     Billeter, Turner, Thiel, 2000
+from pprint import pprint
+
 import numpy as np
 
-from pysisyphus.calculators import IPIServer
+from pysisyphus.calculators import IPIServer, ONIOM
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import full_expand
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -26,6 +28,9 @@ class Layers:
         self.geometry = geometry
         self.layers = layers
         self.opt_thresh = opt_thresh
+
+        print("Layers:")
+        pprint(self.layers, compact=True)
 
         atoms = geometry.atoms
         all_indices = np.arange(len(geometry.atoms))
@@ -45,7 +50,9 @@ class Layers:
             # Allow missing 'indices' key. Then it is assumed that this layer contains the
             # whole system.
             except KeyError:
-                assert i != 0, "Found whole system in layer 0. I don't like that!"
+                assert (
+                    i != 0
+                ), "Found whole system in highest level layer. I don't like that!"
                 indices = all_indices
             # Drop indices from layers below ...
             indices = sorted(set(indices) - indices_below)
@@ -154,8 +161,9 @@ class Layers:
             if i == 0:
                 model_opt = RFOptimizer(geom, thresh="never")
                 # CONTINUE
-                # from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
-                # model_opt = RSPRFOptimizer(geom, thresh="never")
+                from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
+
+                model_opt = RSPRFOptimizer(geom, thresh="never")
                 model_opt.prepare_opt()  # TODO: do this outside of constructor
 
                 def get_opt(geom, forces):
@@ -168,11 +176,25 @@ class Layers:
         self.opt_getters = self.opt_getters[::-1]
 
     @classmethod
-    def from_oniom_calculator(cls, geometry, oniom_calc=None, **kwargs):
+    def from_oniom_calculator(cls, geometry, oniom_calc=None, layers=None, **kwargs):
         calc = geometry.calculator
         if calc is None:
             calc = oniom_calc
-        layers = list()
+
+        if layers is not None:
+            assert len(layers) == len(calc.layers)
+
+            layers = list(layers)
+            for i, layer in enumerate(layers):
+                if layer is None:
+                    layers[i] = dict()
+                elif isinstance(layer, dict):
+                    pass
+                else:
+                    raise Exception("Layer definition must be empty or dict-like!")
+        else:
+            layers = [dict() for _ in calc.layers]
+
         for i, layer in enumerate(calc.layers):
             assert len(layer) == 1, "Multicenter-ONIOM is not yet supported!"
             model = layer[0]
@@ -180,10 +202,10 @@ class Layers:
             indices = model.atom_inds + link_hosts
             layer_calc = calc.get_layer_calc(i)
             layer = {
-                    "layer_calc": layer_calc,
-                    "indices": indices,
+                "layer_calc": layer_calc,
+                "indices": indices,
             }
-            layers.append(layer)
+            layers[i].update(layer)
         return Layers(geometry, layers=layers, **kwargs)
 
     def __len__(self):
@@ -203,13 +225,17 @@ class LayerOpt(Optimizer):
         layers_kwargs = {
             "geometry": self.geometry,
             "opt_thresh": self.thresh,
+            "layers": layers,
         }
-        if layers is not None:
-            layers_kwargs["layers"] = layers
-            layers = Layers(**layers_kwargs)
         # Construct layers from ONIOM calculator
-        else:
+        if isinstance(self.geometry.calculator, ONIOM):
             layers = Layers.from_oniom_calculator(**layers_kwargs)
+        else:
+            # if layers is not None:
+            # layers_kwargs["layers"] = layers
+            layers = Layers(**layers_kwargs)
+        # else:
+        # layers = Layers.from_oniom_calculator(**layers_kwargs)
         self.layers = layers
 
     @property
