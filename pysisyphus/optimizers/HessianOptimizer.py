@@ -98,12 +98,10 @@ class HessianOptimizer(Optimizer):
             self.adapt_norm = None
             self.predicted_energy_changes = list()
         if (
+            # Allow actually calculated Hessians for all coordinate systems
             self.hessian_init not in ("calc", "xtb", "xtb1", "xtbff")
-            and (
-                not hasattr(self.geometry, "internal")
-                or (self.geometry.internal is None)
-            )
-            and self.hessian_init in ("fischer", "lindh", "simple", "swart")
+            # But disable model Hessian for Cartesian optimizations
+            and self.geometry.coord_type in ("cart", "cartesian", "mwcartesian")
         ):
             self.hessian_init = "unit"
             self.log(

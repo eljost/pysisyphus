@@ -277,7 +277,7 @@ def get_geoms(
         geom_kwargs=geom_kwargs,
     )
     if not quiet:
-        print(f"Read {len(geoms)} geometries.")
+        print(f"Read {len(geoms)} geometr" + ("y" if len(geoms) == 1 else "ies") + ".")
 
     atoms_0 = geoms[0].atoms
     # atoms_strs = [" ".join(geom.atoms).lower() for geom in geoms]
