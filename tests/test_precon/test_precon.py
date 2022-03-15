@@ -16,7 +16,7 @@ from pysisyphus.testing import using
         (PreconSteepestDescent, False, 54),
         (PreconLBFGS, True, 8),
         (PreconLBFGS, False, 7),
-    ]
+    ],
 )
 def test_water_hf_precon_opt(opt_cls, precon, ref_cycles):
     geom = geom_loader("lib:h2o_shaken.xyz")
@@ -39,7 +39,7 @@ def test_water_hf_precon_opt(opt_cls, precon, ref_cycles):
         # (PreconSteepestDescent, False, 15),  # probably takes forever ...
         (PreconLBFGS, True, 6),
         (PreconLBFGS, False, 15),
-    ]
+    ],
 )
 def test_menthone(opt_cls, precon, ref_cycles):
     geom = geom_loader("lib:baker/29_menthone.xyz")
@@ -49,7 +49,7 @@ def test_menthone(opt_cls, precon, ref_cycles):
     opt_kwargs = {
         "max_cycles": 100,
         "precon": precon,
-        "overachieve_factor": 3.,
+        "overachieve_factor": 3.0,
     }
 
     opt = opt_cls(geom, **opt_kwargs)
@@ -62,13 +62,14 @@ def test_menthone(opt_cls, precon, ref_cycles):
 @pytest.mark.skip_ci
 @using("xtb")
 @pytest.mark.parametrize(
-    "precon, precon_kind, ref_cycle", [
+    "precon, precon_kind, ref_cycle",
+    [
         (True, "full", 83),
         (True, "full_fast", 83),
         (True, "bonds", 93),
         (True, "bonds_bends", 83),
         # (False, None, 26),
-    ]
+    ],
 )
 def test_biaryl_precon(precon, precon_kind, ref_cycle):
     geom = geom_loader("lib:split.image_021.xyz")
@@ -79,7 +80,7 @@ def test_biaryl_precon(precon, precon_kind, ref_cycle):
         "max_cycles": 100,
         "precon": precon,
         "precon_kind": precon_kind,
-        "overachieve_factor": 3.,
+        "overachieve_factor": 3.0,
     }
 
     opt = PreconLBFGS(geom, **opt_kwargs)
@@ -90,3 +91,59 @@ def test_biaryl_precon(precon, precon_kind, ref_cycle):
     # Allow higher tolerance without preconditioner
     abs_ = 1e-4 if precon else 2e-3
     assert geom.energy == pytest.approx(-48.73588757, abs=abs_)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "precon_update, ref_cycles",
+    [
+        (1, 14),
+        (5, 15),
+        (10, 19),
+    ],
+)
+def test_precon_update(precon_update, ref_cycles):
+    geom = geom_loader("lib:h2o_shaken.xyz")
+    calc = PySCF(basis="sto3g")
+    geom.set_calculator(calc)
+
+    opt_kwargs = {
+        "thresh": "gau_tight",
+        "max_cycles": 100,
+        "precon_update": precon_update,
+    }
+    opt = PreconSteepestDescent(geom, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycles
+    assert geom.energy == pytest.approx(-74.96590119)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "freeze_atoms, ref_energy", (
+        (None, -149.94124227),
+        ([3, 4, 5], -149.94051828968063),
+    )
+)
+def test_precon_freeze_atoms(freeze_atoms, ref_energy):
+    geom_kwargs = {
+        "coord_type": "cartesian",
+        "freeze_atoms": freeze_atoms,
+    }
+    geom = geom_loader("water_dimer_uff.xyz", **geom_kwargs)
+    calc = PySCF(basis="sto3g")
+    geom.set_calculator(calc)
+
+    opt_kwargs = {
+        "thresh": "gau",
+        "max_cycles": 250,
+        "precon_kind": "full",
+        "precon_update": 50,
+    }
+    opt = PreconLBFGS(geom, **opt_kwargs)
+    opt.run()
+
+    assert opt.is_converged
+    assert geom.energy == pytest.approx(ref_energy)

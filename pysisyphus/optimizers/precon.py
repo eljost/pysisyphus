@@ -104,13 +104,13 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
     valid_kinds = ("full", "full_fast", "bonds", "bonds_bends")
     assert kind in valid_kinds, f"Invalid kind='{kind}'! Valid kinds are: {valid_kinds}"
 
-    atoms = geom.atoms
+    atoms = geom.moving_atoms
     # Default empty lists for coordinates that may be skipped
     # for kind != "full".
     bends = list()
     dihedrals = list()
     if kind == "full":
-        internal = RedundantCoords(atoms, geom.cart_coords)
+        internal = RedundantCoords(atoms, geom.coords, )
         bonds = internal.bond_atom_indices
         bends = internal.bend_atom_indices
         dihedrals = internal.dihedral_atom_indices

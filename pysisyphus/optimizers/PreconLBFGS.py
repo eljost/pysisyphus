@@ -19,7 +19,8 @@ class PreconLBFGS(Optimizer):
         alpha_init=1.0,
         history=7,
         precon=True,
-        precon_update=None,
+        precon_update=1,
+        precon_getter_update=None,
         precon_kind="full",
         max_step_element=None,
         line_search="armijo",
@@ -27,9 +28,10 @@ class PreconLBFGS(Optimizer):
         **kwargs,
     ):
         if precon:
-            assert (
-                geometry.coord_type == "cart"
-            ), "Preconditioning makes only sense with 'coord_type: cart'"
+            assert geometry.coord_type in (
+                "cart",
+                "cartesian",
+            ), "Preconditioning makes only sense with 'coord_type: cart|cartesian'"
         # Set before calling the superclass constructor so we can use the value
         # in _set_opt_restart_info.
         self.history = history
@@ -42,8 +44,10 @@ class PreconLBFGS(Optimizer):
         if self.precon and (self.geometry.cart_coords.size == 3):
             self.precon = None
         self.precon_update = precon_update
+        self.precon_getter_update = precon_getter_update
         self.precon_kind = precon_kind
 
+        self.P = None
         try:
             is_dimer = isinstance(self.geometry.calculator, Dimer)
         # COS objectes may not have a calculator
@@ -96,6 +100,8 @@ class PreconLBFGS(Optimizer):
         if not self.restarted:
             self.grad_diffs = deque(maxlen=self.history)
             self.steps_ = deque(maxlen=self.history)
+            self.f_evals = 0
+            self.df_evals = 0
 
     def get_precon_getter(self):
         return precon_getter(
@@ -150,32 +156,38 @@ class PreconLBFGS(Optimizer):
                 self.log(f"             ΔE={energy-prev_energy:{fmt}} au")
         self.log(f"norm(forces)={norm:.6f}")
 
-        # Steepest descent fallback
-        step = forces
-
-        # Check for preconditioner update
+        # Check for preconditioner getter update
         if (
-            self.precon_update
+            self.precon_getter_update
             and self.cur_cycle > 0
-            and self.cur_cycle % self.precon_update == 0
+            and self.cur_cycle % self.precon_getter_update == 0
         ):
             self.precon_getter = self.get_precon_getter()
+            self.log("Calculated new preconditioner getter")
 
         # If requested, construct preconditioner
-        P = None
-        if self.precon:
-            P = self.precon_getter(self.geometry.coords)
+        if self.precon and (self.cur_cycle % self.precon_update == 0):
+            self.P = self.precon_getter(self.geometry.coords)
             self.log("Calculated new preconditioner P")
-            step = spsolve(P, forces)
 
+        # Determine step direction
+
+        # Preconditioned LBFGS in later cycles
         if self.cur_cycle > 0:
             self.grad_diffs.append(-forces - -self.forces[-2])
             self.steps_.append(self.steps[-1])
-            step = bfgs_multiply(self.steps_, self.grad_diffs, forces, P=P)
+            step = bfgs_multiply(self.steps_, self.grad_diffs, forces, P=self.P)
+        # Preconditioned steepest descent in cycle 0
+        elif self.precon:
+            step = spsolve(self.P, forces)
+        # Steepest descent w/o preconditioner in cycle 0
+        else:
+            step = forces
 
         step_norm = np.linalg.norm(step)
         self.log(f"norm(unscaled step)={step_norm:.6f} au")
 
+        # Determine step length
         if self.line_search_cls is not None:
             kwargs = {
                 "geometry": self.geometry,
@@ -194,6 +206,8 @@ class PreconLBFGS(Optimizer):
                 self.log(
                     f"Evaluated {f_evals} energies and {df_evals} gradients in line search."
                 )
+                self.f_evals += f_evals
+                self.df_evals += df_evals
             except TypeError:
                 self.log("Line search did not converge!")
                 step = self.scale_max_element(step, self.max_step_element)

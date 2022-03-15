@@ -145,7 +145,7 @@ def test_lj_external_potential_opt():
 
     opt_kwargs = {
         "max_cycles": 250,
-        "precon_update": 50,
+        "precon_getter_update": 50,
         "c_stab": 0.5,
     }
     # opt = QuickMin(geom, **opt_kwargs)

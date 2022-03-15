@@ -268,6 +268,10 @@ class Geometry:
             self.internal = None
 
     @property
+    def moving_atoms(self):
+        return [atom for i, atom in enumerate(self.atoms) if i not in self.freeze_atoms]
+
+    @property
     def sum_formula(self):
         return "_".join(
             [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
