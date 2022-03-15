@@ -16,20 +16,17 @@ from pysisyphus.helpers_pure import full_expand
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
-def get_geom_kwargs(layer_ind, indices, layer_mask):
-    if layer_ind == 0:
-        geom_kwargs = {
-            "type": "redund",
-            "coord_kwargs": {
-                "define_for": indices,
-            },
-        }
-    else:
-        all_indices = np.arange(layer_mask.size)
-        geom_kwargs = {
-            "type": "cartesian",
-            "freeze_atoms": all_indices[layer_mask],
-        }
+def get_geom_kwargs(layer_ind, layer_mask):
+    coord_type = "tric" if layer_ind == 0 else "cartesian"
+    all_indices = np.arange(layer_mask.size)
+    freeze_atoms = all_indices[layer_mask]
+    geom_kwargs = {
+        "type": coord_type,
+        "freeze_atoms": freeze_atoms,
+        "coord_kwargs": {
+            "freeze_atoms_exclude": layer_ind == 0,
+        },
+    }
     return geom_kwargs
 
 
@@ -44,7 +41,7 @@ def get_opt_kwargs(layer_ind, thresh):
             "type": "lbfgs",
             "max_cycles": 250,
             "thresh": thresh,
-            "overachieve_factor": 2,
+            "overachieve_factor": 5,
             "mu_reg": 0.1,
         }
     return opt_kwargs
@@ -120,7 +117,7 @@ class Layers:
             ####################
 
             _geom_kwargs = layer.get("geom", dict())
-            geom_kwargs = get_geom_kwargs(i, indices=indices, layer_mask=layer_mask)
+            geom_kwargs = get_geom_kwargs(i, layer_mask=layer_mask)
             try:
                 geom_kwargs.update(_geom_kwargs)
             # Allow empty "geom:" block
@@ -254,6 +251,9 @@ class LayerOpt(Optimizer):
             layers = Layers(**layers_kwargs)
         self.layers = layers
 
+        self.micro_cycles = list()
+        self.micro_cycles_converged = list()
+
     @property
     def layer_num(self):
         return len(self.layers)
@@ -265,6 +265,8 @@ class LayerOpt(Optimizer):
     def optimize(self):
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
+        cur_micro_cycles = list()
+        cur_micro_cycles_converged = list()
         for i, (indices, get_geom, get_opt) in enumerate(
             zip(self.layers.indices, self.layers.geom_getters, self.layers.opt_getters)
         ):
@@ -276,7 +278,11 @@ class LayerOpt(Optimizer):
                     opt.prepare_opt()
                 break
             opt.run()
+            cur_micro_cycles.append(opt.cur_cycle + 1)
+            cur_micro_cycles_converged.append(opt.is_converged)
             coords3d_cur[indices] = geom.coords3d[indices]
+        self.micro_cycles.append(cur_micro_cycles)
+        self.micro_cycles_converged.append(cur_micro_cycles_converged)
 
         ####################
         # Relax last layer #
@@ -308,3 +314,19 @@ class LayerOpt(Optimizer):
 
         full_step = coords3d_cur - coords3d_org
         return full_step.flatten()
+
+    def postprocess_opt(self):
+        coord_types = list()
+        for layer in self.layers.layers:
+            try:
+                coord_type = layer["geom"]["type"]
+                coord_types.append(coord_type)
+            except KeyError:
+                pass
+        micro_sum = np.array(self.micro_cycles).sum()
+        print("\nMicrocycles:")
+        print("\t", end="")
+        pprint(self.micro_cycles)
+        print(f"\t@@@ Σ {micro_sum},", ", ".join(coord_types))
+        print(f"\t@@@ Macrocycles: {self.cur_cycle+1}, converged? {self.is_converged}")
+        print("\t@@@")
