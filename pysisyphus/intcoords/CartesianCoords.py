@@ -1,9 +1,27 @@
+import warnings
+
 import numpy as np
 from numpy.typing import NDArray
 
 
 class CartesianCoords:
-    def __init__(self, atoms, coords3d, masses, freeze_atoms=None, *, mass_weighted=False):
+    def __init__(
+        self,
+        atoms,
+        coords3d,
+        masses,
+        freeze_atoms=None,
+        *,
+        mass_weighted=False,
+        **kwargs,
+    ):
+        for key, val in kwargs.items():
+            # f-string don't seem to work when pytest reports the warnings after a test
+            # run, so we construct to warning before it is issued.
+            msg = (
+                f"Keyword '{key}': '{val}' is not supported by this coordinate system!"
+            )
+            warnings.warn(msg)
         self.atoms = atoms
         self._coords3d = coords3d
         self.atom_num = len(self.atoms)
@@ -82,7 +100,7 @@ class CartesianCoords:
 
     @coords3d.setter
     def coords3d(self, coords3d):
-        self._coords3d = coords3d
+        self._coords3d = coords3d.reshape(-1, 3)
 
     @property
     def typed_prims(self):
@@ -90,7 +108,6 @@ class CartesianCoords:
 
 
 class MWCartesianCoords(CartesianCoords):
-
     def __init__(self, *args, **kwargs):
         kwargs["mass_weighted"] = True
         super().__init__(*args, **kwargs)
