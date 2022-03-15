@@ -1,3 +1,5 @@
+import logging
+
 __all__ = [
     "PrimitiveNotDefinedException",
     "Bend",
@@ -26,6 +28,7 @@ __all__ = [
     "TRIC",
 ]
 
+from pysisyphus import logger as pysis_logger
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.Bend import Bend
 from pysisyphus.intcoords.Bend2 import Bend2
@@ -44,17 +47,11 @@ from pysisyphus.intcoords.Torsion2 import Torsion2
 from pysisyphus.intcoords.Translation import TranslationX, TranslationY, TranslationZ
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords, TRIC
 
-# DLC inherits from RedundantCoords
+# DLC inherits from RedundantCoords, so we import it after RedundantCoords
 from pysisyphus.intcoords.DLC import DLC
 
-import logging
 
-logger = logging.getLogger("internal_coords")
+logger = pysis_logger.getChild("internal_coords")
 logger.setLevel(logging.DEBUG)
-# delay = True prevents creation of empty logfiles
 handler = logging.FileHandler("internal_coords.log", mode="w", delay=True)
-# fmt_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-fmt_str = "%(message)s"
-formatter = logging.Formatter(fmt_str)
-handler.setFormatter(formatter)
 logger.addHandler(handler)
