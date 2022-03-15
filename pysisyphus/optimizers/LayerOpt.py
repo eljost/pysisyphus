@@ -30,20 +30,36 @@ def get_geom_kwargs(layer_ind, layer_mask):
     return geom_kwargs
 
 
-def get_opt_kwargs(layer_ind, thresh):
+def get_opt_kwargs(opt_key, layer_ind, thresh):
+    # Some defaults tailored to LayerOpt
+    opt_defaults = {
+        "lbfgs": {
+            "mu_reg": 0.1,
+        },
+        "plbfgs": {
+            "precon_kind": "full_fast",
+            "precon_update": 50,
+        },
+    }
     if layer_ind == 0:
         opt_kwargs = {
             "type": "rfo",
             "thresh": "never",
         }
     else:
+        if opt_key is None:
+            opt_key = "lbfgs"
+
         opt_kwargs = {
-            "type": "lbfgs",
+            "type": opt_key,
             "max_cycles": 250,
             "thresh": thresh,
             "overachieve_factor": 5,
-            "mu_reg": 0.1,
         }
+        try:
+            opt_kwargs.update(opt_defaults[opt_key])
+        except KeyError:
+            pass
     return opt_kwargs
 
 
@@ -160,7 +176,8 @@ class Layers:
             #####################
 
             _opt_kwargs = layer.get("opt", dict())
-            opt_kwargs = get_opt_kwargs(i, thresh=self.opt_thresh)
+            opt_key = _opt_kwargs.get("type", None)
+            opt_kwargs = get_opt_kwargs(opt_key, i, thresh=self.opt_thresh)
             try:
                 opt_kwargs.update(_opt_kwargs)
             # Allow empty "opt:" block
