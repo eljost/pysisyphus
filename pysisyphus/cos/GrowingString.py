@@ -437,8 +437,8 @@ class GrowingString(GrowingChainOfStates):
     def get_additional_print(self):
         size_str = f"{self.left_size}+{self.right_size}"
         if self.fully_grown:
-            size_str = "Full"
-        size_info = f"String={size_str}"
+            size_str = " Full"
+        size_info = f"String={size_str: >5s}"
         energies = np.array(self.all_energies[-1])
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL
         barrier_info = f"(E_hei-E_0)={barrier:6.1f} kJ/mol"
