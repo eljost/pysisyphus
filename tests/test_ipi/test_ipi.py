@@ -5,6 +5,7 @@ import threading
 import time
 
 import numpy as np
+import pytest
 
 from pysisyphus.calculators import XTB
 from pysisyphus.calculators.IPIClient import calc_ipi_client
@@ -28,6 +29,7 @@ assert:
 """
 
 
+@pytest.mark.skip_ci
 @using("xtb")
 def test_ipi_server_client_opt():
     fn = "lib:h2o.xyz"
