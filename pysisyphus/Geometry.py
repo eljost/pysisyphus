@@ -271,6 +271,14 @@ class Geometry:
     def moving_atoms(self):
         return [atom for i, atom in enumerate(self.atoms) if i not in self.freeze_atoms]
 
+    def moving_atoms_jmol(self):
+        atoms = list()
+        freeze_atoms = self.freeze_atoms
+        for i, atom in enumerate(self.atoms):
+            atom = atom if i not in freeze_atoms else "X"
+            atoms.append(atom)
+        self.jmol(atoms=atoms)
+
     @property
     def sum_formula(self):
         return "_".join(
@@ -1182,7 +1190,7 @@ class Geometry:
             setattr(self, trans[key], results[key])
         self.results = results
 
-    def as_xyz(self, comment="", cart_coords=None):
+    def as_xyz(self, comment="", atoms=None, cart_coords=None):
         """Current geometry as a string in XYZ-format.
 
         Parameters
@@ -1198,13 +1206,15 @@ class Geometry:
         xyz_str : str
             Current geometry as string in XYZ-format.
         """
+        if atoms is None:
+            atoms = self.atoms
         if cart_coords is None:
             cart_coords = self._coords
         cart_coords = cart_coords.copy()
         cart_coords *= BOHR2ANG
         if comment == "":
             comment = self.comment
-        return make_xyz_str(self.atoms, cart_coords.reshape((-1, 3)), comment)
+        return make_xyz_str(atoms, cart_coords.reshape((-1, 3)), comment)
 
     def dump_xyz(self, fn):
         if not fn.lower().endswith(".xyz"):
@@ -1262,10 +1272,10 @@ class Geometry:
             atoms.append(atom)
         return atoms
 
-    def jmol(self, cart_coords=None):
+    def jmol(self, atoms=None, cart_coords=None):
         """Show geometry in jmol."""
         tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
-        tmp_xyz.write(self.as_xyz(cart_coords=cart_coords).encode("utf-8"))
+        tmp_xyz.write(self.as_xyz(atoms=atoms, cart_coords=cart_coords).encode("utf-8"))
         tmp_xyz.flush()
         jmol_cmd = "jmol"
         try:
