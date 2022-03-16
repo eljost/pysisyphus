@@ -118,6 +118,8 @@ class PreconLBFGS(Optimizer):
             "grad_diffs": np.array(self.grad_diffs).tolist(),
             "steps_": np.array(self.steps_).tolist(),
             "precon_kind": self.precon_kind,
+            "f_evals": self.f_evals,
+            "df_evals": self.df_evals,
         }
         return opt_restart_info
 
@@ -132,6 +134,8 @@ class PreconLBFGS(Optimizer):
         self.c_stab = opt_restart_info["c_stab"]
         self.precon_kind = opt_restart_info["precon_kind"]
         self.precon_getter = self.get_precon_getter()
+        self.f_evals = opt_restart_info["f_evals"]
+        self.df_evals = opt_restart_info["df_evals"]
 
     def scale_max_element(self, step, max_step_element):
         max_element = np.abs(step).max()
