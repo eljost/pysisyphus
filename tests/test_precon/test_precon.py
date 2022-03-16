@@ -121,29 +121,21 @@ def test_precon_update(precon_update, ref_cycles):
 
 
 @using("pyscf")
-@pytest.mark.parametrize(
-    "freeze_atoms, ref_energy", (
-        (None, -149.94124227),
-        ([3, 4, 5], -149.94051828968063),
-    )
-)
-def test_precon_freeze_atoms(freeze_atoms, ref_energy):
+def test_precon_freeze_atoms():
     geom_kwargs = {
         "coord_type": "cartesian",
-        "freeze_atoms": freeze_atoms,
+        "freeze_atoms": [0, ],
     }
-    geom = geom_loader("water_dimer_uff.xyz", **geom_kwargs)
+    geom = geom_loader("lib:h2o_shaken.xyz", **geom_kwargs)
     calc = PySCF(basis="sto3g")
     geom.set_calculator(calc)
 
     opt_kwargs = {
         "thresh": "gau",
-        "max_cycles": 250,
         "precon_kind": "full",
-        "precon_update": 50,
     }
     opt = PreconLBFGS(geom, **opt_kwargs)
     opt.run()
 
     assert opt.is_converged
-    assert geom.energy == pytest.approx(ref_energy)
+    assert geom.energy == pytest.approx(-74.96590115)
