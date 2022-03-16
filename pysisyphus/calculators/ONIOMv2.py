@@ -193,6 +193,8 @@ class Model:
         self.capped = False
         self.J = None
 
+        self.log(f"Created model '{self}' with {len(self.atom_inds)} atoms.")
+
     def log(self, message=""):
         logger = logging.getLogger("calculator")
         logger.debug(self.__str__() + " " + message)
@@ -405,8 +407,11 @@ class Model:
 
         self.log("Calculation at layer level")
         results = self.calc.get_forces(catoms, ccoords, **prepare_kwargs)
+        # These forces can contain contributions from link atoms.
         forces = results["forces"]
         energy = results["energy"]
+        # Redistribute link atom forces onto the two link atom hosts using the
+        # Jacobian J. Afterwards, the forces will have the shape of the parent-forces.
         if self.J is not None:
             # forces = forces.dot(self.J)
             # f^T J = (J^T f)^T
@@ -618,9 +623,10 @@ def get_embedding_charges(embedding, layer, parent_layer, coords3d):
 
 
 class LayerCalc:
-    def __init__(self, models, parent_layer_calc=None):
+    def __init__(self, models, total_size, parent_layer_calc=None):
         self.models = models
         self.parent_layer_calc = parent_layer_calc
+        self.total_size = total_size
 
         self.models_str = ", ".join([str(model) for model in self.models])
 
@@ -660,7 +666,7 @@ class LayerCalc:
         return energy
 
     def do_parent(self, with_parent):
-        return self.parent_layer_calc is not None and with_parent
+        return (self.parent_layer_calc is not None) and with_parent
 
     def get_energy(self, atoms, coords, with_parent=True):
         model_energies = self.run_calculations(atoms, coords, "get_energy")
@@ -675,9 +681,15 @@ class LayerCalc:
         return {"energy": energy}
 
     def get_forces(self, atoms, coords, with_parent=True):
-        model_ens_forces = self.run_calculations(atoms, coords, "get_forces")
-        model_energies, forces = zip(*model_ens_forces)
-        forces = np.array(forces).sum(axis=0)
+        full_forces = np.zeros((self.total_size, 3))
+        model_energies = list()
+        for model in self.models:
+            model_energy, model_forces = model.get_forces(
+                atoms, coords, parent_correction=True
+            )
+            model_energies.append(model_energy)
+            full_forces[model.parent_atom_inds] = model_forces.reshape(-1, 3)
+        forces = full_forces.flatten()  # TODO: del me;hack
         if self.do_parent(with_parent):
             parent_result = self.parent_layer_calc.get_forces(
                 atoms, coords, with_parent=True
@@ -695,6 +707,7 @@ class LayerCalc:
         return results
 
     def get_hessian(self, atoms, coords, with_parent=True):
+        raise Exception("Use correct shapes of total system")
         model_ens_hessians = self.run_calculations(atoms, coords, "get_hessian")
         model_energies, hessian = zip(*model_ens_hessians)
         hessian = np.array(hessian).sum(axis=0)
@@ -944,7 +957,11 @@ class ONIOM(Calculator):
                 parent_layer_calc = self.layer_calcs[-1]
             except IndexError:
                 parent_layer_calc = None
-            layer_calc = LayerCalc(models=layer, parent_layer_calc=parent_layer_calc)
+            layer_calc = LayerCalc(
+                models=layer,
+                total_size=len(geom.atoms),
+                parent_layer_calc=parent_layer_calc,
+            )
             self.layer_calcs.append(layer_calc)
 
     @property
@@ -1038,7 +1055,7 @@ class ONIOM(Calculator):
         forces_ = [np.array(f).reshape(-1, 3) for f in forces_]
         energy = sum(energies)
 
-        forces = forces_[0]
+        forces = forces_[0]  # first layer has shape of the total system
         for mdl, f in zip(self.models[1:], forces_[1:]):
             forces[mdl.parent_atom_inds] += f
 
@@ -1053,7 +1070,7 @@ class ONIOM(Calculator):
         energies, hessians = zip(*all_results)
         energy = sum(energies)
 
-        hessian = hessians[0]
+        hessian = hessians[0]  # first layer has shape of the total system
         for mdl, h in zip(self.models[1:], hessians[1:]):
             inds = atom_inds_to_cart_inds(mdl.parent_atom_inds)
             # Keep in mind that we modify hessians[0] in place

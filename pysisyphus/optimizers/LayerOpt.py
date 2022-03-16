@@ -6,13 +6,14 @@
 #     Linear scaling geometry optimisation and transition state search
 #     in hybrid delocalised internal coordinates
 #     Billeter, Turner, Thiel, 2000
+import logging
 from pprint import pprint
 
 import numpy as np
 
 from pysisyphus.calculators import IPIServer, ONIOM
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import full_expand
+from pysisyphus.helpers_pure import full_expand, highlight_text
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
@@ -63,14 +64,18 @@ def get_opt_kwargs(opt_key, layer_ind, thresh):
     return opt_kwargs
 
 
+logger = logging.getLogger("optimizer")
+
+
 class Layers:
     def __init__(self, geometry, opt_thresh, layers=None):
         self.geometry = geometry
         self.layers = layers
         self.opt_thresh = opt_thresh
 
-        print("Layers:")
+        print(highlight_text("Layers", level=1))
         pprint(self.layers, compact=True)
+        print("")
 
         atoms = geometry.atoms
         all_indices = np.arange(len(geometry.atoms))
@@ -150,11 +155,19 @@ class Layers:
 
             # Geometry
             def get_geom_getter():
+                # Rebind the variables here, otherwise the wrong geom_kwargs
+                # and calc will be used, as they are redefined in the next loop cycle.
+                layer_geom_kwargs = geom_kwargs.copy()
+                layer_calc = calc
+
                 def get_geom(coords3d):
                     geom = Geometry(
-                        atoms, coords3d.copy(), coord_type=coord_type, **geom_kwargs
+                        atoms,
+                        coords3d.copy(),
+                        coord_type=coord_type,
+                        **layer_geom_kwargs,
                     )
-                    geom.set_calculator(calc)
+                    geom.set_calculator(layer_calc)
                     return geom
 
                 return get_geom
@@ -187,8 +200,11 @@ class Layers:
             opt_cls = get_opt_cls(opt_key)
 
             def get_opt_getter():
+                layer_opt_kwargs = opt_kwargs
+                layer_opt_cls = opt_cls
+
                 def get_opt(geom):
-                    opt = opt_cls(geom, **opt_kwargs)
+                    opt = layer_opt_cls(geom, **layer_opt_kwargs)
                     return opt
 
                 return get_opt
@@ -287,6 +303,7 @@ class LayerOpt(Optimizer):
         for i, (indices, get_geom, get_opt) in enumerate(
             zip(self.layers.indices, self.layers.geom_getters, self.layers.opt_getters)
         ):
+            print(highlight_text(f"Layer {i}", level=1))
             is_last_layer = i == self.layer_num - 1
             geom = get_geom(coords3d_cur)
             opt = get_opt(geom)
