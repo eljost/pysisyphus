@@ -9,15 +9,23 @@
 
 from math import exp
 import itertools as it
+from typing import Literal, Optional
 
 import h5py
 import numpy as np
+from numpy.typing import ArrayLike
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.PrimTypes import PrimTypes as PT, Bonds, Bends, Dihedrals
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.io.hessian import save_hessian
+
+
+HessInit = Literal[
+    "calc", "unit", "fischer", "lindh", "simple", "swart", "xtb", "xtb1", "xtbff"
+]
 
 
 # See [4], last sentences of III.
@@ -204,7 +212,11 @@ def xtb_hessian(geom, gfn=None):
 
 
 def get_guess_hessian(
-    geometry, hessian_init, int_gradient=None, cart_gradient=None, h5_fn=None
+    geometry: Geometry,
+    hessian_init: HessInit,
+    int_gradient: Optional[ArrayLike] = None,
+    cart_gradient: Optional[ArrayLike] = None,
+    h5_fn: Optional[str] = None,
 ):
     """Obtain/calculate (model) Hessian.
 

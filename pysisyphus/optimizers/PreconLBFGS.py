@@ -1,32 +1,70 @@
 from collections import deque
 from functools import partial
+from typing import Literal, Optional
 
 import numpy as np
 from scipy.sparse.linalg import spsolve
 
 from pysisyphus.calculators import Dimer
 from pysisyphus.cos.GrowingNT import GrowingNT
+from pysisyphus.Geometry import Geometry
 from pysisyphus.line_searches import *
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.precon import precon_getter
+from pysisyphus.optimizers.precon import precon_getter, PreconKind
+
+
+LineSearch = Literal["armijo", "armijo_fg", "strong_wolfe", "hz", None, False]
 
 
 class PreconLBFGS(Optimizer):
     def __init__(
         self,
-        geometry,
-        alpha_init=1.0,
-        history=7,
-        precon=True,
-        precon_update=1,
-        precon_getter_update=None,
-        precon_kind="full",
-        max_step_element=None,
-        line_search="armijo",
-        c_stab=None,
+        geometry: Geometry,
+        alpha_init: float = 1.0,
+        history: int = 7,
+        precon: bool = True,
+        precon_update: int = 1,
+        precon_getter_update: Optional[int] = None,
+        precon_kind: PreconKind = "full",
+        max_step_element: Optional[float] = None,
+        line_search: LineSearch = "armijo",
+        c_stab: Optional[float] = None,
         **kwargs,
-    ):
+    ) -> None:
+        """Preconditioned limited-memory BFGS optimizer.
+
+        See pysisyphus.optimizers.precon for related references.
+
+        Parameters
+        ----------
+        geometry
+            Geometry to be optimized.
+        alpha_init
+            Initial scaling factor for the first trial step in the excplicit line search.
+        history
+            History size. Keep last 'history' steps and gradient differences.
+        precon
+            Wheter to use preconditioning or not.
+        precon_update
+            Recalculate preconditioner P in every n-th cycle with the same topology.
+        precon_getter_update
+            Recalculate topology for preconditioner P in every n-th cycle. It is usually
+            sufficient to only determine the topology once at the beginning.
+        precon_kind
+            What types of primitive internal coordinates to consider in the preconditioner.
+        max_step_element
+            Maximum component of the absolute step vector when no line search is carried out.
+        line_search
+            Whether to use explicit line searches and if so, which kind of line search.
+        c_stab
+            Regularization constant c in (H + cI)⁻¹ in atomic units.
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the Optimizer baseclass.
+        """
         if precon:
             assert geometry.coord_type in (
                 "cart",

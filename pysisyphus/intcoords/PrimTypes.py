@@ -1,4 +1,5 @@
 import itertools as it
+from typing import Iterable, Union
 
 from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (
@@ -57,6 +58,9 @@ class PrimTypes(OrderedEnum):
     # atan2 based bend and torsion
     BEND2 = 28
     PROPER_DIHEDRAL2 = 29
+
+
+PrimTypeLike = Union[PrimTypes, str]
 
 
 # Alias for easier access
