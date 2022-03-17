@@ -25,9 +25,10 @@ jobs:
         with:
           name: pysisyphus
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - run: nix run .#cachix use nix-qchem
       - run: nix flake check
+      - run: nix build
       - run: nix develop --command echo ""
-      - run: nix build .#pysisyphusFull
 
   build:
     runs-on: ubuntu-latest
