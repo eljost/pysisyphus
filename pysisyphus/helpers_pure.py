@@ -174,7 +174,9 @@ def full_expand(to_expand):
         try:
             expanded = list(to_expand)
         except TypeError:
-            expanded = [to_expand, ]
+            expanded = [
+                to_expand,
+            ]
     return expanded
 
 
@@ -210,6 +212,25 @@ def recursive_update(d, u):
     """From https://stackoverflow.com/questions/3232943"""
     if u is None:
         return d
+
+    # Best I can do is ... secretly transform hierarchical input
+    # to old-style flat input.
+    #
+    # Try to transform new-style hierarchical input
+    # to the old-style flat input. If this new-style proves useful
+    # and everything is refactored accordingly the try/except could
+    # be dropped. But now everything is still in the old-style.
+    try:
+        keys = list(u["type"].keys())
+        if len(keys) == 1:
+            key = keys[0]
+            kwargs = u["type"][key]
+            u["type"] = key
+            u.update(kwargs)
+    except KeyError:
+        pass
+    except AttributeError:
+        pass
 
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
