@@ -100,7 +100,7 @@
         devShell = let
           pythonEnv = pkgs.python3.withPackages (p:
             with p;
-            [ ] ++ p.pysisyphus.nativeBuildInputs ++ p.pysisyphus.buildInputs
+            [ pip ] ++ p.pysisyphus.nativeBuildInputs ++ p.pysisyphus.buildInputs
             ++ p.pysisyphus.propagatedBuildInputs);
         in pkgs.mkShell {
           buildInputs = [ pkgs.black pythonEnv ];
