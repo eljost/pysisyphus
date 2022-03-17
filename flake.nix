@@ -35,6 +35,7 @@
         legacyPackages = pkgs;
 
         packages = {
+          default = self.packages."${system}".pysisyphus;
           pysisyphus = pkgs.python3.pkgs.pysisyphus;
 
           pysisyphusLib = self.packages."${system}".pysisyphus;
@@ -97,7 +98,7 @@
           program = "${self.packages."${system}".pysisyphusApp}/bin/pysis";
         };
 
-        devShell = let
+        devShells.default = let
           pythonEnv = pkgs.python3.withPackages (p:
             with p;
             [ pip ] ++ p.pysisyphus.nativeBuildInputs ++ p.pysisyphus.buildInputs
@@ -110,7 +111,10 @@
           '';
         };
 
+        devShell = self.devShells."${system}".default;
+
       }) // {
-        overlay = import ./nix/overlay.nix;
+        overlays.default = import ./nix/overlay.nix;
+        overlay = self.overlays.default;
       };
 }
