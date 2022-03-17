@@ -1,4 +1,3 @@
-from pprint import pprint as pp_
 
 import pyparsing as pp
 import numpy as np
@@ -10,9 +9,17 @@ from pysisyphus.helpers_pure import file_or_str
 
 @file_or_str(".mol2")
 def parse_mol2(text):
+    def get_line_word(*args):
+        return pp.Word(*args).setWhitespaceChars(" \t")
+
+    new_record = pp.CaselessLiteral("@<TRIPOS>")
+
+    # <TRIPOS>MOLECULE
     molecule = (
         pp.CaselessLiteral("@<TRIPOS>MOLECULE")
-        + pp.Word(pp.printables).set_results_name("mol_name")
+        + pp.LineEnd()
+        # comment line/molecule name
+        + pp.OneOrMore(get_line_word(pp.printables)).set_results_name("mol_name")
         + pp.common.integer.set_results_name("num_atoms")
         + pp.Optional(pp.common.integer.set_results_name("num_bonds"))
         + pp.Optional(pp.common.integer.set_results_name("num_subst"))
@@ -24,16 +31,19 @@ def parse_mol2(text):
         + pp.oneOf(
             ("NO_CHARGES", "GASTEIGER", "MMFF94_CHARGES", "USER_CHARGES", "HUCKEL")
         ).set_results_name("charge_type")
-        + pp.Optional(pp.Word(pp.printables).set_results_name("status_bits"))
+        + pp.Optional(
+            ~new_record + pp.Word(pp.printables).set_results_name("status_bits")
+        )
         # Only spaces may not be enough for mol comment
-        + pp.Optional(pp.Word(pp.printables + " ")).set_results_name("mol_comment")
+        + pp.Optional(~new_record + pp.Word(pp.printables + " ")).set_results_name(
+            "mol_comment"
+        )
     )
 
-    def get_line_word(*args):
-        return pp.Word(*args).setWhitespaceChars(" \t")
-
+    # <TRIPOS>ATOM
     atom_data_line = pp.Group(
-        pp.common.integer.set_results_name("atom_id")
+        ~new_record
+        + pp.common.integer.set_results_name("atom_id")
         + pp.Word(pp.alphas).set_results_name("atom_name")
         + pp.Group(pp.common.real + pp.common.real + pp.common.real).set_results_name(
             "xyz"
@@ -48,15 +58,30 @@ def parse_mol2(text):
         atom_data_line
     ).set_results_name("atoms_xyzs")
 
-    parser = molecule + atom
+    # <TRIPOS>BOND
+    bond_data_line = pp.Group(
+        ~new_record
+        + pp.common.integer.set_results_name("bond_id")
+        + pp.common.integer.set_results_name("origin_atom_id")
+        + pp.common.integer.set_results_name("target_atom_id")
+        + pp.Word(pp.printables).set_results_name("bond_type")
+    )
+    bond = pp.CaselessLiteral("@<TRIPOS>BOND") + pp.OneOrMore(
+        bond_data_line
+    ).set_results_name("bond")
+
+    parser = molecule + atom + pp.Optional(bond)
     parser.ignore(pp.helpers.python_style_comment)
 
     result = parser.parseString(text)
     as_dict = result.asDict()
+    # from pprint import pprint as pp_
+    # pp_(as_dict)
+
     atoms = list()
     coords = np.zeros((as_dict["num_atoms"], 3), dtype=float)
     atoms_xyzs = as_dict["atoms_xyzs"]
-    for i, line in enumerate(as_dict["atoms_xyzs"]):
+    for i, line in enumerate(atoms_xyzs):
         assert i + 1 == line["atom_id"]
         atoms.append(line["atom_name"])
         coords[i] = line["xyz"]
