@@ -56,6 +56,7 @@ def get_opt_kwargs(opt_key, layer_ind, thresh):
             "max_cycles": 250,
             "thresh": thresh,
             "overachieve_factor": 5,
+            "prefix": f"layer_{layer_ind:02d}"
         }
         try:
             opt_kwargs.update(opt_defaults[opt_key])
