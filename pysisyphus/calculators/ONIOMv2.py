@@ -626,7 +626,7 @@ class LayerCalc:
     def __init__(self, models, total_size, parent_layer_calc=None):
         self.models = models
         self.parent_layer_calc = parent_layer_calc
-        self.total_size = total_size
+        self.total_size = total_size  # atoms in the total system
 
         self.models_str = ", ".join([str(model) for model in self.models])
 
@@ -689,7 +689,7 @@ class LayerCalc:
             )
             model_energies.append(model_energy)
             full_forces[model.parent_atom_inds] = model_forces.reshape(-1, 3)
-        forces = full_forces.flatten()  # TODO: del me;hack
+        forces = full_forces.flatten()
         if self.do_parent(with_parent):
             parent_result = self.parent_layer_calc.get_forces(
                 atoms, coords, with_parent=True
@@ -707,10 +707,18 @@ class LayerCalc:
         return results
 
     def get_hessian(self, atoms, coords, with_parent=True):
-        raise Exception("Use correct shapes of total system")
-        model_ens_hessians = self.run_calculations(atoms, coords, "get_hessian")
-        model_energies, hessian = zip(*model_ens_hessians)
-        hessian = np.array(hessian).sum(axis=0)
+        hessian = np.zeros((self.total_size*3, self.total_size*3))
+        model_energies = list()
+        for model in self.models:
+            model_energy, model_hessian = model.get_hessian(
+                    atoms, coords, parent_correction=True
+            )
+            model_energies.append(model_energy)
+            try:
+                inds = 3*model.parent_atom_inds[:, None] + np.arange(3)
+                hessian[inds, inds] += model_hessian
+            except TypeError:
+                hessian += model_hessian
         if self.do_parent(with_parent):
             parent_result = self.parent_layer_calc.get_hessian(
                 atoms, coords, with_parent=True
