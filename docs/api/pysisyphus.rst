@@ -78,6 +78,14 @@ pysisyphus.constants module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.detect module
+------------------------
+
+.. automodule:: pysisyphus.detect
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.elem\_data module
 ----------------------------
 
@@ -206,10 +214,26 @@ pysisyphus.trj module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.version module
+-------------------------
+
+.. automodule:: pysisyphus.version
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.xyzloader module
 ---------------------------
 
 .. automodule:: pysisyphus.xyzloader
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.yaml\_mods module
+----------------------------
+
+.. automodule:: pysisyphus.yaml_mods
    :members:
    :undoc-members:
    :show-inheritance:

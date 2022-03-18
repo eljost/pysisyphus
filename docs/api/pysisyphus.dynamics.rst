@@ -60,6 +60,14 @@ pysisyphus.dynamics.rattle module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.dynamics.resamplekin module
+--------------------------------------
+
+.. automodule:: pysisyphus.dynamics.resamplekin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.dynamics.thermostats module
 --------------------------------------
 

@@ -36,30 +36,6 @@ pysisyphus.tsoptimizers.TSHessianOptimizer module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.tsoptimizers.birkholz module
----------------------------------------
-
-.. automodule:: pysisyphus.tsoptimizers.birkholz
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.tsoptimizers.dimer module
-------------------------------------
-
-.. automodule:: pysisyphus.tsoptimizers.dimer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.tsoptimizers.dimerv2 module
---------------------------------------
-
-.. automodule:: pysisyphus.tsoptimizers.dimerv2
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

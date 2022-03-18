@@ -92,6 +92,14 @@ pysisyphus.calculators.Composite module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.ConicalIntersection module
+-------------------------------------------------
+
+.. automodule:: pysisyphus.calculators.ConicalIntersection
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.DFTBp module
 -----------------------------------
 
@@ -112,6 +120,22 @@ pysisyphus.calculators.Dimer module
 -----------------------------------
 
 .. automodule:: pysisyphus.calculators.Dimer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.EGO module
+---------------------------------
+
+.. automodule:: pysisyphus.calculators.EGO
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.EnergyMin module
+---------------------------------------
+
+.. automodule:: pysisyphus.calculators.EnergyMin
    :members:
    :undoc-members:
    :show-inheritance:
@@ -176,6 +200,14 @@ pysisyphus.calculators.IDPPCalculator module
 --------------------------------------------
 
 .. automodule:: pysisyphus.calculators.IDPPCalculator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.IPIClient module
+---------------------------------------
+
+.. automodule:: pysisyphus.calculators.IPIClient
    :members:
    :undoc-members:
    :show-inheritance:
@@ -260,6 +292,22 @@ pysisyphus.calculators.ORCA module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.ORCA5 module
+-----------------------------------
+
+.. automodule:: pysisyphus.calculators.ORCA5
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.OpenMM module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.OpenMM
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.OpenMolcas module
 ----------------------------------------
 
@@ -320,6 +368,14 @@ pysisyphus.calculators.Rastrigin module
 ---------------------------------------
 
 .. automodule:: pysisyphus.calculators.Rastrigin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.Remote module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.Remote
    :members:
    :undoc-members:
    :show-inheritance:
