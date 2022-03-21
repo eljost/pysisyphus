@@ -1,12 +1,9 @@
-let pkgs = import ./pkgs.nix;
-    pysisyphus = pkgs.python3.pkgs.pysisyphus.overrideAttrs (_: {
-      doCheck = false;
-      doInstallCheck = false;
-    });
-in with pkgs; mkShell {
-  buildInputs = [pysisyphus ]
-    ++ pysisyphus.nativeBuildInputs
-    ++ pysisyphus.buildInputs
-    ++ pysisyphus.propagatedBuildInputs
-  ;
-}
+let
+  lock = builtins.fromJSON (builtins.readFile ../flake.lock);
+  flakeCompat = import (fetchGit {
+    url = "https://github.com/edolstra/flake-compat";
+    rev = lock.nodes.flake-compat.locked.rev;
+    ref = "master";
+  }) { src = ./..; };
+
+in flakeCompat.shellNix

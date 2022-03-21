@@ -6,7 +6,7 @@
 # Runtime dependencies
 , runtimeShell
 , jmol, enableJmol ? true
-, multiwfn, enableMultiwfn ? false
+, multiwfn, enableMultiwfn ? true
 , xtb, enableXtb ? true
 , molcas, enableMolcas ? true
 , psi4, enablePsi4 ? true
@@ -149,6 +149,7 @@ in
     '';
 
     passthru = { inherit
+      pysisrc
       enableXtb
       enableJmol
       enableMultiwfn
@@ -171,5 +172,6 @@ in
       license = licenses.gpl3Plus;
       platforms = platforms.linux;
       maintainers = [ maintainers.sheepforce ];
+      mainProgram = "pysis";
     };
   }

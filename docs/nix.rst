@@ -16,76 +16,81 @@ Prerequisites
 =============
 
 Please follow the installation instructions in the `nix manual`_ to set up a working Nix installation on your system.
-
-Configuration
-=============
-
-Typically no, or only very few, adjustments are necessary.
-In :code:`nix/pkgs.nix` the following options can be changed:
-
-- :code:`optAVX` can be used to enable/disable AVX tunings in underlying quantum chemistry packages.
-- :code:`optpath` can be set and point to the top-level installation directory of a Gaussian installation.
-
-The :code:`postOverlays` attribute can be used to further customise the underlying package sets, i.e. switching to MKL as a BLAS/LAPACK implementation.
-See the comments in code:`nix/pkgs.nix`.
-
-Additional, proprietary quantum chemistry codes can be enabled by uncommenting the :code:`enable*` lines in `nix/default.nix`.
-
-For more details on the configuration options see the NixOS-QChem_ repository.
+You may want to enable the :code:`flakes` and :code:`nix-command` features for Nix.
 
 Caching
 =======
 
 The build time can be reduced drastically, if the quantum chemistry codes are fetched from a binary cache.
 
-NixOS-QChem_ overlay provides a binary cache on Cachix.
+Pysisyphus provides a binary cache on Cachix.
 
 If you are allowed to add binary cache in nix, you may simply execute:
 
 .. code-block:: bash
 
-    nix-shell -p cachix --run "cachix use nix-qchem"
+    nix run nixpkgs#cachix use pysisyphus
 
-Installation
-============
+Usage
+=====
 
-The initial build can take some time, as basic computational chemistry packages will be downloaded and build.
+You may use pysisyphus directly via Flakes without cloning any repository or local installation.
+Some examples how to use pysisyphus with nix:
 
-Clone the pysisyphus repository
-
-.. code-block:: bash
-
-    git clone https://github.com/eljost/pysisyphus.git
-
-and build the nix-derivation
+Inspect the structure of pysisyphus' flake:
 
 .. code-block:: bash
 
-    cd pysisyphus/nix
-    # Executing nix-build for the first time may take a while as your local Nix store
-    # will be populated. Caching can speed this up.
-    nix-build
+    nix flake show github:eljost/pysisyphus
 
-You will likely depend on closed source software (ORCA, Turbomole, Gaussian, ...) , which is not freely redistributable. If the binary/source archives of these programs are missing from the Nix-store, the installation process will interrupt and tell you how to provide the required files. So it's a good idea to investigate the output of `nix-build` from time to time check, if manual intervention is required.
-
-Running pysisyphus with Nix
-===========================
-
-You can now make pysisyphus available to your user environment (not recommended) by
+Directly run the :code:`pysis` command on an input :
 
 .. code-block:: bash
 
-    nix-env -f default.nix -i
+  nix run github:eljost/pysisyphus input.yml
 
-or launch a interactive `nix-shell`_ with pysisyphus by
+Start an interactive shell with a pysisyphus installation
 
 .. code-block:: bash
 
-   nix-shell
+  nix shell github:eljost/pysisyphus
 
-from within the pysisyphus repository.
+For developing and hacking pysisyphus and for legacy Nix commands, first lone the pysisyphus repository
 
-Do not be confused if the commands of the underlying quantum chemistry codes are not available. They are made available to directly to the pysisyphus entry point, but not necessarily to your shell.
+.. code-block:: bash
+
+    git clone https://github.com/eljost/pysisyphus.git && cd pysisyphus
+
+You may obtain a development shell for pysisyphus via
+
+.. code-block:: bash
+
+    nix develop
+
+build pysisyphus in the legacy nix style
+
+.. code-block:: bash
+
+    nix-build ./nix/default.nix
+
+or obtain a development legacy-style dev-shell
+
+.. code-block:: bash
+
+    nix-shell ./nix/shell.nix
+
+The Flake also offers options to build pysisyphus with proprietary components such as ORCA or Turbomole, e.g.
+
+.. code-block:: bash
+
+    nix run .#pysisyphusOrca
+
+or build singularity or docker containers:
+
+.. code-block:: bash
+
+    nix build .#pysisyphusSingularity
+
 
 .. _`Nix package manager`: https://nixos.org/download.html
 .. _`NixOS-QChem`: https://github.com/markuskowa/NixOS-QChem

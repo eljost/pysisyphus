@@ -12,12 +12,12 @@ stages:
 nix build:
   stage: build
   before_script:
-    - nix-env -f ./nix/pkgs.nix -iA bash cachix
+    - nix profile install .#bash .#cachix
   tags:
     - nix
   script:
     - |
-      nix-build -E "(import ./nix/default.nix).pysisyphus.overrideAttrs (oldAttrs: {
+      nix-build -E "(import ./nix/pkgs.nix).python3.pkgspysisyphus.overrideAttrs (oldAttrs: {
         doCheck = false;
         doInstallCheck = false;
       })"
@@ -33,13 +33,13 @@ nix shell:
   tags:
     - nix
   before_script:
-    - nix-env -f ./nix/pkgs.nix -iA bash cachix
+    - nix profile install .#bash .#cachix
   script:
-    - nix-shell ./nix/shell.nix --run ""
+    - nix develop --command echo ""
   after_script:
     - |
       if [ -n "$CACHIX_AUTH_TOKEN" ]; then
-        nix-build ./nix/shell.nix -A inputDerivation | cachix push pysisyphus
+        nix develop --profile pysis-profile && cachix push pysisyphus pysis-profile
       fi
 
 nix test:
@@ -51,7 +51,7 @@ nix test:
     - gamess
   script:
     - |
-      nix-build -E "(import ./nix/default.nix).pysisyphus.override {
+      nix-build -E "(import ./nix/pkgs.nix).python3.pkgs.pysisyphus.override {
         enableOrca = true;
         enableTurbomole = true;
         enableGamess = true;
