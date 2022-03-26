@@ -1026,9 +1026,9 @@ class Geometry:
 
         thermo_dict = {
             "masses": self.masses,
-            "vibfreqs": vibfreqs,
+            "wavenumbers": vibfreqs,
             "coords3d": self.coords3d,
-            "energy": energy,
+            "scf_energy": energy,
             "mult": mult,
         }
 
