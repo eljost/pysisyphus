@@ -75,7 +75,7 @@ def test_opt_h2o_do_hess():
     }
     run_result = run_from_dict(run_dict)
     thermo = run_result.opt_geom.get_thermoanalysis(T=T)
-    assert thermo.dG == pytest.approx(-0.00164376)
+    assert thermo.dG == pytest.approx(-0.00405113)
 
 
 @using("thermoanalysis")

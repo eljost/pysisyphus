@@ -28,9 +28,9 @@ def get_thermoanalysis_from_hess_h5(
 
     thermo_dict = {
         "masses": masses,
-        "vibfreqs": vibfreqs,
+        "wavenumbers": vibfreqs,
         "coords3d": coords3d,
-        "energy": energy,
+        "scf_energy": energy,
         "mult": mult,
     }
 
