@@ -150,14 +150,6 @@ pysisyphus.pack module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.pansi module
------------------------
-
-.. automodule:: pysisyphus.pansi
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.peakdetect module
 ----------------------------
 

@@ -1,5 +1,5 @@
-Optimization of Minima
-**********************
+Minimization
+************
 
 Searching for minimum energy geometries of molecules is preferably done using
 second order methods that employ hessian information. Using the plain hessian
@@ -157,7 +157,7 @@ Threshold    max(force) rms(forces) max(step) rms(step) Comment
 `gau`        4.5e-4     3.0e-4      1.8e-3    1.2e-3
 `gau_tight`  1.5e-5     1.0e-5      6.0e-5    4.0e-5
 `gau_vtight` 2.0e-6     1.0e-6      6.0e-6    4.0e-6
-`baker`      3.0e-4     2.0e-4      3.0e-4    2.0e-4    energy difference and step also checked
+`baker`      3.0e-4     2.0e-4      3.0e-4    2.0e-4    energy difference and step are also checked
 `never`      2.0e-6     1.0e-6      6.0e-6    4.0e-6    dummy thresholds; never converges
 ============ ========== =========== ========= ========= =======
 
@@ -165,6 +165,11 @@ Available Optimizers
 ---------------------------
 
 Base class for optimizers that utilize Hessian information.
+
+.. automodule:: pysisyphus.optimizers.Optimizer
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 .. automodule:: pysisyphus.optimizers.HessianOptimizer
     :members:

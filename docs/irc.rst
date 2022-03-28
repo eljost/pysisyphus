@@ -107,7 +107,7 @@ Recommended IRC integrator and default choice.
 Gonzales-Schlegel-2 integrator
 ----------------------------
 
-.. automodule:: pysisyphus.irc.GonzalesSchlegel
+.. automodule:: pysisyphus.irc.GonzalezSchlegel
     :members:
     :undoc-members:
     :show-inheritance:

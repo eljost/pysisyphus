@@ -1,0 +1,112 @@
+# 2-layer ONIOM optimization of Hexaphenylethan. The model
+# system comprises the two carbons of the central ethan moiety.
+# The model system is described GFN2-XTB while the real system is
+# treated using GFN-FF.
+geom:
+ type: cart
+ fn: |
+  68
+
+  C           1.2639    0.6380    0.4785
+  C           2.1638    1.9009    0.1349
+  C           2.4167    2.3403   -1.2006
+  C           3.2096    3.4576   -1.4755
+  C           2.7467    2.7036    1.1595
+  C           3.5368    3.8191    0.8739
+  C           3.7741    4.1922   -0.4416
+  H           2.0100    1.8572   -2.0700
+  H           3.3815    3.7580   -2.5014
+  H           2.5944    2.5089    2.1979
+  H           3.9618    4.4009    1.6820
+  H           4.3848    5.0587   -0.6598
+  C           0.7891    0.0052   -0.8980
+  C          -1.0360   -0.5225   -2.5243
+  C          -0.0432   -1.1375   -3.4197
+  C           1.2448   -1.1452   -3.0690
+  C          -0.6577    0.0144   -1.3528
+  H          -1.4492    0.4671   -0.7765
+  H          -2.0793   -0.4955   -2.8238
+  H          -0.3570   -1.5703   -4.3642
+  C           1.6732   -0.5526   -1.7810
+  H           1.9838   -1.5872   -3.7297
+  H           2.7287   -0.5813   -1.6050
+  C          -0.0387    1.1726    1.2081
+  C          -0.2929    2.5599    1.4341
+  C          -1.0635    0.2863    1.6524
+  C          -2.2174    0.7426    2.2933
+  C          -2.4082    2.0998    2.5118
+  C          -1.4505    3.0060    2.0772
+  H           0.3724    3.3423    1.1178
+  H          -1.0153   -0.7691    1.5014
+  H          -2.9711    0.0356    2.6161
+  H          -1.6065    4.0659    2.2335
+  H          -3.3046    2.4506    3.0066
+  C           2.1016   -0.4883    1.4312
+  C           3.4003   -1.0269    0.6933
+  C           4.4239   -0.1425    0.2420
+  C           5.5730   -0.6012   -0.4056
+  C           3.6509   -2.4147    0.4669
+  C           4.8038   -2.8631   -0.1829
+  C           5.7602   -1.9589   -0.6243
+  H           4.3778    0.9134    0.3928
+  H           6.3259    0.1044   -0.7337
+  H           2.9864   -3.1958    0.7882
+  H           4.9572   -3.9235   -0.3393
+  H           6.6530   -2.3115   -1.1243
+  C           2.5704    0.1468    2.8077
+  C           4.3159    0.7126    4.4630
+  C           3.3714    1.2844    5.3047
+  C           2.0334    1.2840    4.9354
+  C           3.9303    0.1495    3.2436
+  H           4.7333   -0.2864    2.6778
+  H           5.3575    0.6988    4.7582
+  H           3.6749    1.7164    6.2495
+  C           1.6376    0.7248    3.7185
+  H           1.2932    1.7141    5.5981
+  H           0.5868    0.7426    3.5290
+  C           1.2016   -1.7498    1.7785
+  C           0.9537   -2.1874    3.1154
+  C           0.6140   -2.5534    0.7571
+  C          -0.1758   -3.6680    1.0474
+  C          -0.4081   -4.0392    2.3643
+  C           0.1611   -3.3038    3.3950
+  H           1.3648   -1.7032    3.9822
+  H           0.7614   -2.3600   -0.2822
+  H          -0.6047   -4.2504    0.2418
+  H          -0.0069   -3.6027    4.4220
+  H          -1.0186   -4.9050    2.5861
+calc:
+ type: oniom
+ calcs:
+  real:
+   type: xtb
+   gfn: ff
+   pal: 6
+  high:
+   type: xtb
+   pal: 6
+ models:
+  # The "real" does not have to be described, only the "real" system.
+  high:
+   # Use ethan-carbons for the model system
+   inds: [0,34]
+   # Use appropriate calculator for model system.
+   calc: high
+opt:
+ # Use LayerOpt
+ type: layers
+ thresh: gau
+ # When the 'layer' key is present, the user has to provide one
+ # entry per layer in the optimization. When the layer is empty default
+ # values are used. The layers are given from the outmost to the innermost
+ # layer.
+ # In the example above no other arguments for the outmost layer (# real dummy),
+ # while redundant internal coordinates are used for the innermost layer.
+ # 
+ # When pysisyphus own ONIOM implementation is used no additional atom indices
+ # must be given here.
+ layers:
+  - # real dummy
+  - geom:
+     type: redund
+ do_hess: True
