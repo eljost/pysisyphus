@@ -56,7 +56,7 @@ def get_opt_kwargs(opt_key, layer_ind, thresh):
             "max_cycles": 250,
             "thresh": thresh,
             "overachieve_factor": 5,
-            "prefix": f"layer_{layer_ind:02d}"
+            "prefix": f"layer_{layer_ind:02d}",
         }
         try:
             opt_kwargs.update(opt_defaults[opt_key])
@@ -266,10 +266,10 @@ class Layers:
 class LayerOpt(Optimizer):
     def __init__(
         self,
-        geometry,
-        layers=None,
+        geometry: Geometry,
+        layers: dict = None,
         **kwargs,
-    ):
+    ) -> None:
         super().__init__(geometry, **kwargs)
         assert geometry.coord_type == "cart"
 
@@ -289,14 +289,10 @@ class LayerOpt(Optimizer):
         self.micro_cycles_converged = list()
 
     @property
-    def layer_num(self):
+    def layer_num(self) -> int:
         return len(self.layers)
 
-    @property
-    def layer_num(self):
-        return len(self.layers)
-
-    def optimize(self):
+    def optimize(self) -> None:
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
         cur_micro_cycles = list()
@@ -350,7 +346,7 @@ class LayerOpt(Optimizer):
         full_step = coords3d_cur - coords3d_org
         return full_step.flatten()
 
-    def postprocess_opt(self):
+    def postprocess_opt(self) -> None:
         coord_types = list()
         for layer in self.layers.layers:
             try:

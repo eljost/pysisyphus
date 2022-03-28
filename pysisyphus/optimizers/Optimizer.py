@@ -329,8 +329,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             "cartesian",
             "mwcartesian",
         )
-        fu = "E_h a_0⁻¹" + ("(rad⁻¹)" if internal_coords else "")  # forces unit
-        su = "a_0" + ("(rad)" if internal_coords else "")  # step unit
+        fu = "E_h a_0⁻¹" + (" (rad⁻¹)" if internal_coords else "")  # forces unit
+        su = "a_0" + (" (rad)" if internal_coords else "")  # step unit
 
         threshs = (
             f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}",

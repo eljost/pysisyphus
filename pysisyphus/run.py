@@ -15,7 +15,6 @@ import textwrap
 import time
 
 from distributed import Client
-from natsort import natsorted
 import numpy as np
 import scipy as sp
 import yaml
