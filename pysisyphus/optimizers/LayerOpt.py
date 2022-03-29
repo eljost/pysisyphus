@@ -271,7 +271,7 @@ class LayerOpt(Optimizer):
         **kwargs,
     ) -> None:
         super().__init__(geometry, **kwargs)
-        assert geometry.coord_type == "cart"
+        assert geometry.coord_type in ("cart", "cartesian")
 
         layers_kwargs = {
             "geometry": self.geometry,
