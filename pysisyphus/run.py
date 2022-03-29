@@ -78,7 +78,7 @@ CALC_DICT = {
     "conical": ConicalIntersection,
     "dftb+": DFTBp,
     "dimer": Dimer,
-    "dummy": lambda *args, **kwargs: None,
+    "dummy": Dummy,
     "energymin": EnergyMin,
     "ext": ExternalPotential,
     "g09": Gaussian09,
@@ -1042,7 +1042,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
         "assert": None,
         "barrier": None,
         "calc": {
-            "pal": 1,
+            "type": "dummy",
         },
         "cos": None,
         "endopt": None,
