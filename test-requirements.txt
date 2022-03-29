@@ -94,7 +94,7 @@ packaging==21.3
     #   matplotlib
     #   pint
     #   pytest
-paramiko==2.9.2
+paramiko==2.10.1
     # via fabric
 partd==1.2.0
     # via dask
