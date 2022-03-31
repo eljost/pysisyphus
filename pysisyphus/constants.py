@@ -6,6 +6,7 @@ C = spc.c
 HBAR = spc.hbar
 # h
 PLANCK = spc.Planck
+PLANCKAU = 2 * spc.pi  # With ħ_au = 1 and ħ_au=h_au/2π -> h_au = 2π
 # Conversion factor for momentum in SI to atomic units
 P_AU = spc.value("atomic unit of momentum")
 
