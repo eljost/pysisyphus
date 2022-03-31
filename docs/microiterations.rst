@@ -56,7 +56,14 @@ When pysisyphus' native ONIOM calculator is to be used, appropriate input has to
 given in the ``calc:`` section, that is, layer composition and the respective calculators.
 If energies & gradients are sent via sockets and the i-PI-protocol ``calc:`` can be
 left empty but the appropriate socket addresses have to specified later in the ``opt:``
-section (see below).
+section (see below). A separate socket/address is required for each layer.
+
+Independent of the actual layer, pysisyphus always expects vectorial quantities with
+appropriate shapes of the total system. The expected size of a force vector for a
+system comprising ``N`` atoms is ``3N``. Vector components not belonging to frozen
+atoms not belonging to a given layer are ignored and may be zero. **It is expected,
+that the full valid ONIOM forces for the total system are sent with the innermost layer**.
+These forces are then also used to check for optimization convergence.
 
 A layered optimization is requested via ``type: layer`` in the ``opt:`` section. If
 no further input is given, appropriate defaults will be used.
@@ -139,7 +146,6 @@ ethanal is optimized, with the model system comprising the carbonyl group (atoms
 and 6). This introduces a link atom between the two carbons 4 and 0, with carbon 0
 becoming a LAH.
 
-
 .. figure:: _static/microcycle_layers.svg
   :width: 100%
   :scale: 35%
@@ -152,8 +158,12 @@ becoming a LAH.
 
 In contrast to the first example using the native ONIOM implementation the user
 can omit any input in the ``calc:`` section. Now the socket addresses have to given
-for every layer, starting with total system. For the total system the atom indices can
-be omitted, as it is assumed that it comprises all atoms.
+for every layer, starting with the total system. For the total system the atom indices can
+be omitted, as it is assumed that it comprises all atoms. For the remaining layers,
+the indices of all moving atmos including LAHs in higher layers have to be given.
 
 .. literalinclude :: ../examples/opt/22_ipi_layeropt/22_ipi_layeropt.yaml
    :language: yaml
+
+Another sensible choice for optimizing outer layers besides (regularized) L-BFGS may
+be preconditioned L-BFGS (`type: plbfgs`).
