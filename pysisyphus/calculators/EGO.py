@@ -1,4 +1,5 @@
 # [1] http://dx.doi.org/10.1021/acs.jctc.8b00885
+#     Exploring Potential Energy Surface with External Forces
 
 import numpy as np
 
