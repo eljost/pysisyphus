@@ -14,11 +14,65 @@
 #     A Method of Calculating Tunneling Corrections For Eckart Potential Barriers
 #     Brown, 1981
 
+from dataclasses import dataclass
+from typing import Optional
+
+import jinja2
 import numpy as np
 import numpy.typing as npt
 import scipy.integrate as integrate
 
-from pysisyphus.constants import KB, KBAU, PLANCK, PLANCKAU, AU2SEC
+from pysisyphus.constants import AU2KJPERMOL, AU2SEC, C, KB, KBAU, PLANCK, PLANCKAU
+
+
+@dataclass
+class ReactionRates:
+    from_: str
+    barrier: float  # in E_h
+    barrier_si: float  # in kJ mol⁻¹
+    temperature: float  # in K
+    imag_wavenumber: float  # in cm⁻¹
+    imag_frequency: float  # in s⁻¹
+    rate_eyring: float  # in s⁻¹
+    kappa_eyring: float
+    rate_wigner: Optional[float] = None  # in s⁻¹
+    kappa_wigner: Optional[float] = None
+    rate_eckart: Optional[float] = None  # in s⁻¹
+    kappa_eckart: Optional[float] = None
+
+
+RX_RATES_TPL = """
+             From: {{ "{: >18s}".format(rxr.from_) }} to TS
+          Barrier: {{ "{: >18.6f}".format(rxr.barrier) }} E_h ( {{ rxr.barrier_si|f2 }} kJ mol⁻¹)
+      Temperature: {{ "{: >18.2f}".format(rxr.temperature) }} K
+Transition vector:
+       Wavenumber: {{ "{: >18.2f}".format(rxr.imag_wavenumber) }} cm⁻¹
+        Frequency: {{ "{: >18.6e}".format(rxr.imag_frequency) }} s⁻¹
+
+ Type      kappa        rate / s⁻¹         rate / h⁻¹       comment
+--------  --------  ------------------  -----------------  ---------------
+ Eyring    {{ rxr.kappa_eyring|f4 }}   {{ rxr.rate_eyring|e8 }}   {{ (rxr.rate_eyring*3600)|e8}}
+{%- if rxr.rate_wigner %}
+ Wigner    {{ rxr.kappa_wigner|f4 }}   {{ rxr.rate_wigner|e8 }}   {{ (rxr.rate_wigner*3600)|e8 }}    1d tunnel corr.
+{%- endif %}
+{%- if rxr.rate_eckart %}
+ Eckart    {{ rxr.kappa_eckart|f4 }}   {{ rxr.rate_eckart|e8 }}   {{ (rxr.rate_eckart*3600)|e8 }}    1d tunnel corr.
+{%- endif %}
+--------  --------  ------------------  -----------------  ---------------
+"""
+
+
+def render_rx_rates(rx_rates: ReactionRates) -> str:
+    env = jinja2.Environment()
+    env.filters["f2"] = lambda _: f"{_:.2f}"
+    env.filters["f4"] = lambda _: f"{_:.4f}"
+    env.filters["f6"] = lambda _: f"{_:.6f}"
+    env.filters["e8"] = lambda _: f"{_: >16.8e}"
+
+    tpl = env.from_string(RX_RATES_TPL)
+
+    rendered = tpl.render(rxr=rx_rates)
+    return rendered
 
 
 def eyring_rate(
@@ -88,7 +142,7 @@ def harmonic_tst_rate(
     rate
         HTST reaction rate in 1/s.
     """
-    rate_eyring = eyring_rate(barrier_height, temperature, trans_coeff)[0]
+    rate_eyring = eyring_rate(barrier_height, temperature, trans_coeff)
     rate = ts_part_func / rs_part_func * rate_eyring
     return rate
 
@@ -187,7 +241,7 @@ def eckart_corr(
 
     # Integration limits
     E_low = max(0, fw_barrier_height - bw_barrier_height)
-    E_max = 15  # 15 Hartree max
+    E_max = 5  # 5 Hartree max
     kappa, _ = integrate.quad(eckart_func, E_low, E_max)
     # Make kappa unitless again by dividing by kBT, as we integrated over the energy.
     kappa /= kBT
@@ -294,3 +348,75 @@ def eckart_corr_brown(
     alpha2 = alpha(bw_barrier_height)
     kappa = tunl(alpha1, alpha2, u)
     return kappa
+
+
+def get_rates(temperature, reactant_thermos, ts_thermo, product_thermos=None):
+    G_TS = ts_thermo.G
+    imag_wavenumber = ts_thermo.org_wavenumbers[0]
+    assert imag_wavenumber < 0.0
+    imag_frequency = (
+        imag_wavenumber * C * 100
+    )  # Convert from wavenumbers (1/cm) to (1/s)
+    kappa_wigner = wigner_corr(temperature, imag_frequency)
+
+    Gs_reactant = [thermo.G for thermo in reactant_thermos]
+    G_reactant = sum(Gs_reactant)
+    fw_barrier_height = G_TS - G_reactant
+    fw_rate_eyring = eyring_rate(fw_barrier_height, temperature)
+
+    if product_thermos:
+        Gs_product = [thermo.G for thermo in product_thermos]
+        G_product = sum(Gs_product)
+        bw_barrier_height = G_TS - G_product
+        bw_rate_eyring = eyring_rate(bw_barrier_height, temperature)
+        kappa_eckart = eckart_corr(
+            fw_barrier_height, bw_barrier_height, temperature, imag_frequency
+        )
+    else:
+        kappa_eckart = None
+
+    def make_rx_rates(from_, barrier, rate_eyring, kappa_eyring=1.0):
+        kwargs = {}
+        if kappa_wigner and not np.isnan(kappa_wigner):
+            kwargs.update(
+                {
+                    "kappa_wigner": kappa_wigner,
+                    "rate_wigner": kappa_wigner * rate_eyring,
+                }
+            )
+        if kappa_eckart and not np.isnan(kappa_eckart):
+            kwargs.update(
+                {
+                    "kappa_eckart": kappa_eckart,
+                    "rate_eckart": kappa_eckart * rate_eyring,
+                }
+            )
+        rx_rates = ReactionRates(
+            from_=from_,
+            barrier=barrier,
+            barrier_si=barrier * AU2KJPERMOL,
+            temperature=temperature,
+            imag_wavenumber=imag_wavenumber,
+            imag_frequency=imag_frequency,
+            rate_eyring=rate_eyring,
+            kappa_eyring=kappa_eyring,
+            **kwargs,
+        )
+        return rx_rates
+
+    reactant_rx_rates = make_rx_rates("Reactant(s)", fw_barrier_height, fw_rate_eyring)
+    rx_rates = [reactant_rx_rates, ]
+    if product_thermos:
+        product_rx_rates = make_rx_rates("Product(s)", bw_barrier_height, bw_rate_eyring)
+        rx_rates.append(product_rx_rates)
+    return rx_rates
+
+
+def get_rates_for_geoms(temperature, reactant_geoms, ts_geom, product_geoms):
+    def get_thermos(geoms):
+        return [geom.get_thermoanalysis(T=temperature) for geom in geoms]
+
+    reactant_thermos = get_thermos(reactant_geoms)
+    ts_thermo = get_thermos((ts_geom,))[0]
+    product_thermos = get_thermos(product_geoms)
+    return get_rates(temperature, reactant_thermos, ts_thermo, product_thermos)

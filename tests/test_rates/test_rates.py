@@ -8,6 +8,8 @@ from pysisyphus.drivers import (
     eckart_corr,
     eckart_corr_brown,
 )
+from pysisyphus.drivers.rates import get_rates_for_geoms, render_rx_rates
+from pysisyphus.io import geom_from_hessian
 
 
 T = 298.15
@@ -59,3 +61,22 @@ def test_eckart_corr(fw_barrier_height, bw_barrier_height, nu, ref_rate):
     )
     # Gives slightly different results
     assert kappa_brown == pytest.approx(ref_rate, abs=5e-3)
+
+
+@pytest.mark.parametrize(
+    "with_product",
+    (True, False),
+)
+def test_rx_rates(with_product, this_dir):
+    reactant = geom_from_hessian(this_dir / "peroxyl_r1_h5s/reactant.h5")
+    product = geom_from_hessian(this_dir / "peroxyl_r1_h5s/product.h5")
+    ts_geom = geom_from_hessian(this_dir / "peroxyl_r1_h5s/ts.h5")
+    reactant_geoms = (reactant,)
+    if with_product:
+        product_geoms = (product,)
+    else:
+        product_geoms = tuple()
+
+    rx_rates = get_rates_for_geoms(T, reactant_geoms, ts_geom, product_geoms)
+    for rxr in rx_rates:
+        print(render_rx_rates(rxr))
