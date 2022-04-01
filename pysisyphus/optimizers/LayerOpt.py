@@ -13,7 +13,7 @@ import numpy as np
 
 from pysisyphus.calculators import IPIServer, ONIOM
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import full_expand, highlight_text
+from pysisyphus.helpers_pure import full_expand, highlight_text, recursive_update
 from pysisyphus.optimizers.Optimizer import Optimizer
 
 
@@ -139,6 +139,7 @@ class Layers:
             ####################
 
             _geom_kwargs = layer.get("geom", dict())
+            _geom_kwargs = recursive_update({}, _geom_kwargs)
             geom_kwargs = get_geom_kwargs(i, layer_mask=layer_mask)
             try:
                 geom_kwargs.update(_geom_kwargs)
@@ -190,6 +191,7 @@ class Layers:
             #####################
 
             _opt_kwargs = layer.get("opt", dict())
+            _opt_kwargs = recursive_update({}, _opt_kwargs)
             opt_key = _opt_kwargs.get("type", None)
             opt_kwargs = get_opt_kwargs(opt_key, i, thresh=self.opt_thresh)
             try:

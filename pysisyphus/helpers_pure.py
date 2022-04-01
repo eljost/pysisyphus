@@ -209,7 +209,10 @@ def file_or_str(*args, method=False):
 
 
 def recursive_update(d, u):
-    """From https://stackoverflow.com/questions/3232943"""
+    """Recursive update of d with keys/values from u.
+
+    From https://stackoverflow.com/questions/3232943
+    """
     if u is None:
         return d
 
@@ -226,7 +229,13 @@ def recursive_update(d, u):
             key = keys[0]
             kwargs = u["type"][key]
             u["type"] = key
-            u.update(kwargs)
+            try:
+                u.update(kwargs)
+            # Raised when kwargs is None, e.g., the input is hierarchical,
+            # but no further keywords are provided for the given type.
+            except TypeError:
+                pass
+    # Raised when u has no "type" key
     except KeyError:
         pass
     except AttributeError:
