@@ -150,7 +150,10 @@ class Layers:
 
             # Calculator
             try:
-                address = layer["address"]
+                try:
+                    address = layer["address"]
+                except KeyError:
+                    address = layer["calc"]["address"]
                 calc = IPIServer(address=address)
             except KeyError:
                 pass
