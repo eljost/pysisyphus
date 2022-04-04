@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 
 import numpy as np
 import scipy as sp
@@ -443,6 +444,7 @@ def do_final_hessian(
     prefix="",
     T=T_DEFAULT,
     p=p_DEFAULT,
+    ev_thresh=-1e-6,
     print_thermo=False,
     out_dir=None,
 ):
@@ -455,15 +457,16 @@ def do_final_hessian(
 
     report_isotopes(geom, "the_frequencies")
 
-    # TODO: Add cartesian_hessian property to Geometry to avoid
-    # accessing a "private" attribute.
+    start = time.time()
+    print("... started Hessian calculation")
     hessian = geom.cart_hessian
+    dur = time.time() - start
+    print(f"... calculation took {dur/60:.2f} min")
     print("... mass-weighing cartesian hessian")
     mw_hessian = geom.mass_weigh_hessian(hessian)
     print("... doing Eckart-projection")
     proj_hessian = geom.eckart_projection(mw_hessian)
-    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-    ev_thresh = -1e-6
+    eigvals, _ = np.linalg.eigh(proj_hessian)
 
     neg_inds = eigvals < ev_thresh
     neg_eigvals = eigvals[neg_inds]
@@ -471,7 +474,6 @@ def do_final_hessian(
     eigval_str = np.array2string(eigvals[:10], precision=4)
     print()
     print("First 10 eigenvalues", eigval_str)
-    # print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
     if neg_num > 0:
         wavenumbers = eigval_to_wavenumber(neg_eigvals)
         wavenum_str = np.array2string(wavenumbers, precision=2)
