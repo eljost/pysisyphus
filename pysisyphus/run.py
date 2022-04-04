@@ -964,8 +964,8 @@ def run_endopt(irc, endopt_key, endopt_kwargs, calc_getter):
                 title=f"{name} Optimization",
                 level=1,
             )
-        except Exception:
-            print("Optimization crashed!")
+        except Exception as err:
+            print(f"{err}\nOptimization crashed!")
             continue
         final_fn = opt_result.opt.final_fn
         opt_fn = f"{name}_opt.xyz"
