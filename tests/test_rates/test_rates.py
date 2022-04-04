@@ -10,6 +10,7 @@ from pysisyphus.drivers import (
 )
 from pysisyphus.drivers.rates import get_rates_for_geoms, render_rx_rates
 from pysisyphus.io import geom_from_hessian
+from pysisyphus.testing import using
 
 
 T = 298.15
@@ -63,6 +64,7 @@ def test_eckart_corr(fw_barrier_height, bw_barrier_height, nu, ref_rate):
     assert kappa_brown == pytest.approx(ref_rate, abs=5e-3)
 
 
+@using("thermoanalysis")
 @pytest.mark.parametrize(
     "with_product",
     (True, False),
