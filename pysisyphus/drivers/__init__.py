@@ -7,8 +7,9 @@ from pysisyphus.drivers.perf import run_perf, print_perf_results
 from pysisyphus.drivers.rates import (
     eyring_rate,
     harmonic_tst_rate,
-    wigner_corr,
+    bell_corr,
     eckart_corr,
     eckart_corr_brown,
+    wigner_corr,
 )
 from pysisyphus.drivers.replace import replace_atoms

@@ -15,6 +15,7 @@
 #     Brown, 1981
 
 from dataclasses import dataclass
+from math import sin
 from typing import Optional
 
 import jinja2
@@ -37,6 +38,8 @@ class ReactionRates:
     kappa_eyring: float
     rate_wigner: Optional[float] = None  # in s⁻¹
     kappa_wigner: Optional[float] = None
+    rate_bell: Optional[float] = None  # in s⁻¹
+    kappa_bell: Optional[float] = None
     rate_eckart: Optional[float] = None  # in s⁻¹
     kappa_eckart: Optional[float] = None
 
@@ -54,6 +57,9 @@ Transition vector:
  Eyring    {{ rxr.kappa_eyring|f4 }}   {{ rxr.rate_eyring|e8 }}   {{ (rxr.rate_eyring*3600)|e8}}
 {%- if rxr.rate_wigner %}
  Wigner    {{ rxr.kappa_wigner|f4 }}   {{ rxr.rate_wigner|e8 }}   {{ (rxr.rate_wigner*3600)|e8 }}    1d tunnel corr.
+{%- endif %}
+{%- if rxr.rate_bell %}
+   Bell    {{ rxr.kappa_bell|f4 }}   {{ rxr.rate_bell|e8 }}   {{ (rxr.rate_bell*3600)|e8 }}    1d tunnel corr.
 {%- endif %}
 {%- if rxr.rate_eckart %}
  Eckart    {{ rxr.kappa_eckart|f4 }}   {{ rxr.rate_eckart|e8 }}   {{ (rxr.rate_eckart*3600)|e8 }}    1d tunnel corr.
@@ -169,6 +175,33 @@ def wigner_corr(
         Unitless tunneling correction according to Wigner.
     """
     kappa = 1 + 1 / 24 * (PLANCK * abs(imag_frequency) / (KB * temperature)) ** 2
+    return kappa
+
+
+def bell_corr(
+    temperature: float,
+    imag_frequency: float,
+) -> float:
+    """Tunneling correction according to Bell.
+
+    See https://onlinelibrary.wiley.com/doi/10.1002/anie.201708489 eq. (1) and
+    eq. (2).
+
+    Parameters
+    ----------
+    temperature
+        Temperature in Kelvin.
+    imag_frequency
+        Imaginary frequency in 1/s.
+
+    Returns
+    -------
+    kappa
+        Unitless tunneling correction according to Bell. Negative kappas are
+        meaningless.
+    """
+    u = (PLANCK * abs(imag_frequency) / (KB * temperature))
+    kappa = (u / 2) / sin(u / 2)
     return kappa
 
 
@@ -358,6 +391,7 @@ def get_rates(temperature, reactant_thermos, ts_thermo, product_thermos=None):
         imag_wavenumber * C * 100
     )  # Convert from wavenumbers (1/cm) to (1/s)
     kappa_wigner = wigner_corr(temperature, imag_frequency)
+    kappa_bell = bell_corr(temperature, imag_frequency)
 
     Gs_reactant = [thermo.G for thermo in reactant_thermos]
     G_reactant = sum(Gs_reactant)
@@ -382,6 +416,13 @@ def get_rates(temperature, reactant_thermos, ts_thermo, product_thermos=None):
                 {
                     "kappa_wigner": kappa_wigner,
                     "rate_wigner": kappa_wigner * rate_eyring,
+                }
+            )
+        if kappa_bell and kappa_bell > 0.0:
+            kwargs.update(
+                {
+                    "kappa_bell": kappa_bell,
+                    "rate_bell": kappa_bell * rate_eyring,
                 }
             )
         if kappa_eckart and not np.isnan(kappa_eckart):

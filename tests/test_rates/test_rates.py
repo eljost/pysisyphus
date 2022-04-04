@@ -4,9 +4,10 @@ from pysisyphus.constants import AU2KJPERMOL, C
 from pysisyphus.drivers import (
     eyring_rate,
     harmonic_tst_rate,
-    wigner_corr,
+    bell_corr,
     eckart_corr,
     eckart_corr_brown,
+    wigner_corr,
 )
 from pysisyphus.drivers.rates import get_rates_for_geoms, render_rx_rates
 from pysisyphus.io import geom_from_hessian
@@ -34,6 +35,20 @@ def test_wigner_corr():
     imag_frequency = -1.6e13
     kappa = wigner_corr(temperature=298.15, imag_frequency=imag_frequency)
     assert kappa == pytest.approx(1.276379)
+
+
+@pytest.mark.parametrize(
+    "nu, T, kappa_ref",
+    (
+        (572, 272, 1.52),
+        (742, 420, 1.33),
+        (1000, 225, -57.44),
+    ),
+)
+def test_bell_corr(nu, T, kappa_ref):
+    imag_frequency = nu * C * 100
+    kappa = bell_corr(temperature=T, imag_frequency=imag_frequency)
+    assert kappa == pytest.approx(kappa_ref, abs=1e-2)
 
 
 @pytest.mark.parametrize(
