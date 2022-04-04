@@ -44,14 +44,6 @@ pysisyphus.intcoords.CartesianCoords module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.intcoords.CartesianSys module
-----------------------------------------
-
-.. automodule:: pysisyphus.intcoords.CartesianSys
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.intcoords.Coords module
 ----------------------------------
 
@@ -240,14 +232,6 @@ pysisyphus.intcoords.setup module
 ---------------------------------
 
 .. automodule:: pysisyphus.intcoords.setup
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.intcoords.setup\_fail module
----------------------------------------
-
-.. automodule:: pysisyphus.intcoords.setup_fail
    :members:
    :undoc-members:
    :show-inheritance:

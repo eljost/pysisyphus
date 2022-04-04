@@ -36,14 +36,6 @@ pysisyphus.optimizers.CubicNewton module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.optimizers.DummyOptimizer module
--------------------------------------------
-
-.. automodule:: pysisyphus.optimizers.DummyOptimizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.optimizers.FIRE module
 ---------------------------------
 
@@ -232,14 +224,6 @@ pysisyphus.optimizers.restrict\_step module
 -------------------------------------------
 
 .. automodule:: pysisyphus.optimizers.restrict_step
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.optimizers.sella\_updates module
--------------------------------------------
-
-.. automodule:: pysisyphus.optimizers.sella_updates
    :members:
    :undoc-members:
    :show-inheritance:

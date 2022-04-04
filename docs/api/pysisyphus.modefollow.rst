@@ -4,14 +4,6 @@ pysisyphus.modefollow package
 Submodules
 ----------
 
-pysisyphus.modefollow.Modes module
-----------------------------------
-
-.. automodule:: pysisyphus.modefollow.Modes
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.modefollow.NormalMode module
 ---------------------------------------
 

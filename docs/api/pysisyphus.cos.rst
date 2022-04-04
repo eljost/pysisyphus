@@ -36,14 +36,6 @@ pysisyphus.cos.FreezingString module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.cos.GNTbackup module
--------------------------------
-
-.. automodule:: pysisyphus.cos.GNTbackup
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.cos.GrowingChainOfStates module
 ------------------------------------------
 

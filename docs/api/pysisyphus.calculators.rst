@@ -124,6 +124,14 @@ pysisyphus.calculators.Dimer module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.Dummy module
+-----------------------------------
+
+.. automodule:: pysisyphus.calculators.Dummy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.EGO module
 ---------------------------------
 

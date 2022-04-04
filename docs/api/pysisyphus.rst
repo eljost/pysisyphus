@@ -13,7 +13,6 @@ Subpackages
    pysisyphus.db
    pysisyphus.drivers
    pysisyphus.dynamics
-   pysisyphus.geom_library
    pysisyphus.intcoords
    pysisyphus.interpolate
    pysisyphus.io
@@ -74,14 +73,6 @@ pysisyphus.constants module
 ---------------------------
 
 .. automodule:: pysisyphus.constants
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.detect module
-------------------------
-
-.. automodule:: pysisyphus.detect
    :members:
    :undoc-members:
    :show-inheritance:
