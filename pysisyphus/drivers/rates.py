@@ -24,6 +24,7 @@ import numpy.typing as npt
 import scipy.integrate as integrate
 
 from pysisyphus.constants import AU2KJPERMOL, AU2SEC, C, KB, KBAU, PLANCK, PLANCKAU
+from pysisyphus.io import geom_from_hessian
 
 
 @dataclass
@@ -52,23 +53,27 @@ Transition vector:
        Wavenumber: {{ "{: >18.2f}".format(rxr.imag_wavenumber) }} cm⁻¹
         Frequency: {{ "{: >18.6e}".format(rxr.imag_frequency) }} s⁻¹
 
- Type      kappa        rate / s⁻¹         rate / h⁻¹       comment
---------  --------  ------------------  -----------------  ---------------
- Eyring    {{ rxr.kappa_eyring|f4 }}   {{ rxr.rate_eyring|e8 }}   {{ (rxr.rate_eyring*3600)|e8}}
+ Type        kappa        rate / s⁻¹     rate / h⁻¹       comment
+ -------  ------------ -------------- -------------- ------------------
+ {{ rate_line("Eyring", rxr.kappa_eyring, rxr.rate_eyring) }}
 {%- if rxr.rate_wigner %}
- Wigner    {{ rxr.kappa_wigner|f4 }}   {{ rxr.rate_wigner|e8 }}   {{ (rxr.rate_wigner*3600)|e8 }}    1d tunnel corr.
+ {{ rate_line("Wigner", rxr.kappa_wigner, rxr.rate_wigner, "1d tunnel corr.") }}
 {%- endif %}
 {%- if rxr.rate_bell %}
-   Bell    {{ rxr.kappa_bell|f4 }}   {{ rxr.rate_bell|e8 }}   {{ (rxr.rate_bell*3600)|e8 }}    1d tunnel corr.
+ {{ rate_line("Bell", rxr.kappa_bell, rxr.rate_bell, "1d tunnel corr.") }}
 {%- endif %}
 {%- if rxr.rate_eckart %}
- Eckart    {{ rxr.kappa_eckart|f4 }}   {{ rxr.rate_eckart|e8 }}   {{ (rxr.rate_eckart*3600)|e8 }}    1d tunnel corr.
+ {{ rate_line("Eckart", rxr.kappa_eckart, rxr.rate_eckart, "1d tunnel corr.") }}
 {%- endif %}
---------  --------  ------------------  -----------------  ---------------
+ -------  ------------ -------------- -------------- ------------------
 """
 
 
 def render_rx_rates(rx_rates: ReactionRates) -> str:
+    def rate_line(name, kappa, rate, comment=""):
+        rate_h = rate * 3600
+        return f"{name: <12s} {kappa: >8.4f} {rate: >12.8e} {rate_h: >12.8e} {comment: >18s}"
+
     env = jinja2.Environment()
     env.filters["f2"] = lambda _: f"{_:.2f}"
     env.filters["f4"] = lambda _: f"{_:.4f}"
@@ -77,7 +82,7 @@ def render_rx_rates(rx_rates: ReactionRates) -> str:
 
     tpl = env.from_string(RX_RATES_TPL)
 
-    rendered = tpl.render(rxr=rx_rates)
+    rendered = tpl.render(rxr=rx_rates, rate_line=rate_line)
     return rendered
 
 
@@ -200,7 +205,7 @@ def bell_corr(
         Unitless tunneling correction according to Bell. Negative kappas are
         meaningless.
     """
-    u = (PLANCK * abs(imag_frequency) / (KB * temperature))
+    u = PLANCK * abs(imag_frequency) / (KB * temperature)
     kappa = (u / 2) / sin(u / 2)
     return kappa
 
@@ -274,8 +279,8 @@ def eckart_corr(
 
     # Integration limits
     E_low = max(0, fw_barrier_height - bw_barrier_height)
-    E_max = 5  # 5 Hartree max
-    kappa, _ = integrate.quad(eckart_func, E_low, E_max)
+    E_max = 1  # 1 Hartree max
+    kappa, _ = integrate.quad(eckart_func, E_low, E_max, limit=250)
     # Make kappa unitless again by dividing by kBT, as we integrated over the energy.
     kappa /= kBT
     return kappa
@@ -446,9 +451,13 @@ def get_rates(temperature, reactant_thermos, ts_thermo, product_thermos=None):
         return rx_rates
 
     reactant_rx_rates = make_rx_rates("Reactant(s)", fw_barrier_height, fw_rate_eyring)
-    rx_rates = [reactant_rx_rates, ]
+    rx_rates = [
+        reactant_rx_rates,
+    ]
     if product_thermos:
-        product_rx_rates = make_rx_rates("Product(s)", bw_barrier_height, bw_rate_eyring)
+        product_rx_rates = make_rx_rates(
+            "Product(s)", bw_barrier_height, bw_rate_eyring
+        )
         rx_rates.append(product_rx_rates)
     return rx_rates
 
@@ -461,3 +470,11 @@ def get_rates_for_geoms(temperature, reactant_geoms, ts_geom, product_geoms):
     ts_thermo = get_thermos((ts_geom,))[0]
     product_thermos = get_thermos(product_geoms)
     return get_rates(temperature, reactant_thermos, ts_thermo, product_thermos)
+
+
+def get_rates_for_hessians(temperature, reactant_h5s, ts_h5, product_h5s):
+    reactant_geoms = [geom_from_hessian(h5) for h5 in reactant_h5s]
+    product_geoms = [geom_from_hessian(h5) for h5 in product_h5s]
+    ts_geom = geom_from_hessian(ts_h5)
+    rates = get_rates_for_geoms(temperature, reactant_geoms, ts_geom, product_geoms)
+    return rates
