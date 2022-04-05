@@ -167,3 +167,18 @@ the indices of all moving atmos including LAHs in higher layers have to be given
 
 Another sensible choice for optimizing outer layers besides (regularized) L-BFGS may
 be preconditioned L-BFGS (`type: plbfgs`).
+
+.. automodule:: pysisyphus.optimizers.LayerOpt
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: pysisyphus.optimizers.LBFGS
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: pysisyphus.optimizers.PreconLBFGS
+    :members:
+    :undoc-members:
+    :show-inheritance:
