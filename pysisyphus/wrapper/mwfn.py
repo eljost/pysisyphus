@@ -4,7 +4,10 @@ from pathlib import Path
 import shutil
 from subprocess import PIPE, Popen
 
+import numpy as np
+
 from pysisyphus.config import get_cmd
+from pysisyphus.constants import AU2EV
 
 
 logger = logging.getLogger("mwfn")
@@ -24,8 +27,9 @@ def call_mwfn(inp_fn, stdin, cwd=None):
     mwfn_cmd = get_cmd("mwfn")
     cmd = [mwfn_cmd, inp_fn]
     log(f"\n{mwfn_cmd} {inp_fn} {wrap_stdin(stdin)}")
-    proc = Popen(cmd, universal_newlines=True,
-                 stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=cwd)
+    proc = Popen(
+        cmd, universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=cwd
+    )
     stdout, stderr = proc.communicate(stdin)
     proc.terminate()
     return stdout, stderr
@@ -50,10 +54,12 @@ def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
         Quality of the cube. (1=low, 2=medium, 3=high).
     """
 
-    assert quality in (1,2,3)
+    assert quality in (1, 2, 3)
 
-    msg = f"Requested CDD calculation from Multiwfn for state {state} using " \
-          f"{inp_fn} and {log_fn}"
+    msg = (
+        f"Requested CDD calculation from Multiwfn for state {state} using "
+        f"{inp_fn} and {log_fn}"
+    )
     log(msg)
 
     stdin = f"""18
@@ -94,3 +100,23 @@ def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
         except FileNotFoundError:
             pass
     return new_paths
+
+
+def get_mwfn_exc_str(energies, ci_coeffs, thresh=1e-3):
+    exc_energies = (energies[1:] - energies[0]) * AU2EV
+    # states, occ, virt
+    _, occ_mos, _ = ci_coeffs.shape
+
+    exc_str = ""
+    mult = 1
+    log(f"Using dummy multiplicity={mult} in get_mwfn_exc_str")
+    for root_, (root_ci_coeffs, exc_en) in enumerate(zip(ci_coeffs, exc_energies), 1):
+        exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
+        for (occ, virt), coeff in np.ndenumerate(root_ci_coeffs):
+            if abs(coeff) < thresh:
+                continue
+            occ_mo = occ + 1
+            virt_mo = occ_mos + 1 + virt
+            exc_str += f"{occ_mo:>8d} -> {virt_mo}       {coeff: .5f}\n"
+        exc_str += "\n"
+    return exc_str

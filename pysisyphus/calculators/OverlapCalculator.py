@@ -15,10 +15,9 @@ from pysisyphus import logger
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.config import get_cmd
-from pysisyphus.constants import AU2EV
 from pysisyphus.helpers_pure import describe
 from pysisyphus.io.hdf5 import get_h5_group
-from pysisyphus.wrapper.mwfn import make_cdd
+from pysisyphus.wrapper.mwfn import make_cdd, get_mwfn_exc_str
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
 
 
@@ -431,7 +430,7 @@ class OverlapCalculator(Calculator):
         normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
         # u, s, vh = np.linalg.svd(state_ci_coeffs)
         u, s, vh = np.linalg.svd(normed)
-        lambdas = s**2
+        lambdas = s ** 2
         self.log("Normalized transition density vector to 1.")
         self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
         lambdas_str = np.array2string(lambdas[:3], precision=4, suppress_small=True)
@@ -618,7 +617,7 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_nto = lambdas.sum() ** 2 / (lambdas**2).sum()
+            pr_nto = lambdas.sum() ** 2 / (lambdas ** 2).sum()
             if self.pr_nto:
                 use_ntos = int(np.round(pr_nto))
                 self.log(f"PR_NTO={pr_nto:.2f}")
@@ -859,30 +858,6 @@ class OverlapCalculator(Calculator):
         # True if a root flip occured
         return root_flip
 
-    def get_mwfn_exc_str(self, cycle, thresh=1e-3):
-        energies = self.all_energies_list[cycle]
-        # Cycle, states, occ, virt
-        ci_coeffs = self.ci_coeff_list[cycle]
-        exc_energies = (energies[1:] - energies[0]) * AU2EV
-        # above_thresh = np.abs(ci_coeffs) > thresh
-        _, occ_mos, virt_mos = ci_coeffs.shape
-
-        exc_str = ""
-        mult = 1
-        self.log(f"Using dummy multiplicity={mult} in get_mwfn_exc_str")
-        for root_, (root_ci_coeffs, exc_en) in enumerate(
-            zip(ci_coeffs, exc_energies), 1
-        ):
-            exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
-            for (occ, virt), coeff in np.ndenumerate(root_ci_coeffs):
-                if abs(coeff) < thresh:
-                    continue
-                occ_mo = occ + 1
-                virt_mo = occ_mos + 1 + virt
-                exc_str += f"{occ_mo:>8d} -> {virt_mo}       {coeff: .5f}\n"
-            exc_str += "\n"
-        return exc_str
-
     def calc_cdd_cube(self, root, cycle=-1):
         # Check if Calculator provides an input file (.fchk/.molden) for Mwfn
         if not hasattr(self, "mwfn_wf"):
@@ -892,7 +867,9 @@ class OverlapCalculator(Calculator):
             )
         if cycle != -1:
             self.log("'cycle' argument to make_cdd_cube is currently ignored!")
-        exc_str = self.get_mwfn_exc_str(cycle)
+        energies = self.all_energies_list[cycle]
+        ci_coeffs = self.ci_coeff_list[cycle]
+        exc_str = get_mwfn_exc_str(energies, ci_coeffs)
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             exc_path = tmp_path / "exc_input"
