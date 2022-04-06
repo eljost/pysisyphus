@@ -1,5 +1,3 @@
-import logging
-
 __all__ = [
     "PrimitiveNotDefinedException",
     "Bend",
@@ -30,7 +28,6 @@ __all__ = [
     "HybridRedundantCoords",
 ]
 
-from pysisyphus import logger as pysis_logger
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.Bend import Bend
 from pysisyphus.intcoords.Bend2 import Bend2
@@ -51,9 +48,3 @@ from pysisyphus.intcoords.RedundantCoords import RedundantCoords, TRIC, HybridRe
 
 # DLC inherits from RedundantCoords, so we import it after RedundantCoords
 from pysisyphus.intcoords.DLC import DLC, HDLC
-
-
-logger = pysis_logger.getChild("internal_coords")
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler("internal_coords.log", mode="w", delay=True)
-logger.addHandler(handler)

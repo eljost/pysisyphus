@@ -6,7 +6,6 @@
 # [5] https://doi.org/10.1063/1.462844 , Pulay 1992
 
 import itertools as it
-import logging
 import math
 from operator import itemgetter
 
@@ -20,6 +19,7 @@ from pysisyphus.intcoords.eval import (
     check_primitives,
 )
 
+from pysisyphus.intcoords.logging import logger
 from pysisyphus.intcoords.PrimTypes import (
     normalize_prim_inputs,
     PrimTypes,
@@ -107,7 +107,7 @@ class RedundantCoords:
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
-        self.logger = logging.getLogger("internal_coords")
+        self.logger = logger
 
         if self.weighted:
             self.log(
@@ -175,6 +175,7 @@ class RedundantCoords:
         self._cartesian_inds = list()
         self._outofplane_inds = list()
         self._dummycoord_inds = list()
+        self._cartesian_inds = list()
 
         self._bond_atom_inds = list()
         self._bend_atom_inds = list()
@@ -205,6 +206,8 @@ class RedundantCoords:
                 append_to = self._outofplane_inds
             elif pt in DummyCoords:
                 append_to = self._dummycoord_inds
+            elif pt in Cartesians:
+                append_to = self._cartesian_inds
             else:
                 raise Exception("Unhandled PrimType!")
             append_to.append(i)
