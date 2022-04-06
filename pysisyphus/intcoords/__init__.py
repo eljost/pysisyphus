@@ -22,10 +22,12 @@ __all__ = [
     "TranslationY",
     "TranslationZ",
     "DLC",
+    "HDLC",
     "CartesianCoords",
     "MWCartesianCoords",
     "RedundantCoords",
     "TRIC",
+    "HybridRedundantCoords",
 ]
 
 from pysisyphus import logger as pysis_logger
@@ -45,10 +47,10 @@ from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.intcoords.Torsion import Torsion
 from pysisyphus.intcoords.Torsion2 import Torsion2
 from pysisyphus.intcoords.Translation import TranslationX, TranslationY, TranslationZ
-from pysisyphus.intcoords.RedundantCoords import RedundantCoords, TRIC
+from pysisyphus.intcoords.RedundantCoords import RedundantCoords, TRIC, HybridRedundantCoords
 
 # DLC inherits from RedundantCoords, so we import it after RedundantCoords
-from pysisyphus.intcoords.DLC import DLC
+from pysisyphus.intcoords.DLC import DLC, HDLC
 
 
 logger = pysis_logger.getChild("internal_coords")

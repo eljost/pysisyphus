@@ -342,7 +342,7 @@ CoordInfo = namedtuple(
     "bends linear_bends linear_bend_complements "
     # "dihedrals typed_prims fragments cdm cbm".split(),
     "proper_dihedrals improper_dihedrals "
-    "translation_inds rotation_inds "
+    "translation_inds rotation_inds cartesian_inds "
     "typed_prims fragments".split(),
 )
 
@@ -358,6 +358,7 @@ def setup_redundant(
     lb_max_bonds=4,
     min_weight=None,
     tric=False,
+    hybrid=False,
     interfrag_hbonds=True,
     hbond_angles=False,
     freeze_atoms=None,
@@ -500,6 +501,11 @@ def setup_redundant(
     if tric:
         improper_dihedrals = []
 
+    cartesian_inds = []
+    if hybrid:
+        cartesian_inds = [i for i, _ in enumerate(atoms)]
+
+
     # Additional primitives to be defined. The values define the lists, to which
     # the respective coordinate(s) will be appended.
     define_map = {
@@ -553,6 +559,9 @@ def setup_redundant(
             make_tp(pt.IMPROPER_DIHEDRAL, *idihedral)
             for idihedral in improper_dihedrals
         ]
+        + [make_tp(pt.CARTESIAN_X, cind) for cind in cartesian_inds]
+        + [make_tp(pt.CARTESIAN_Y, cind) for cind in cartesian_inds]
+        + [make_tp(pt.CARTESIAN_Z, cind) for cind in cartesian_inds]
     )
     # Translational and rotational coordinates result in 3 different coordinates each
     for frag in translation_inds:
@@ -580,6 +589,7 @@ def setup_redundant(
         improper_dihedrals=improper_dihedrals,
         translation_inds=translation_inds,
         rotation_inds=rotation_inds,
+        cartesian_inds=cartesian_inds,
         typed_prims=typed_prims,
         fragments=fragments,
     )

@@ -81,7 +81,7 @@ class DLC(RedundantCoords):
     def transform_int_step(self, step, *args, **kwargs):
         """As the transformation is done in primitive internal coordinates
         we convert the DLC back to primitive coordinates."""
-        prim_step = (step*self.U).sum(axis=1)
+        prim_step = (step * self.U).sum(axis=1)
         return super().transform_int_step(prim_step, *args, **kwargs)
 
     def get_active_set(self, B, inv_thresh=None):
@@ -111,18 +111,20 @@ class DLC(RedundantCoords):
             #
             # To stay consistent with the SVD, we derive the eigenvalue threshold from
             # the SVD threshold.
-            inv_thresh = self.svd_inv_thresh**2
+            inv_thresh = self.svd_inv_thresh ** 2
 
         if self.full_set:
             use_inds = np.full_like(eigvals, False, dtype=bool)
-            dof = 3*len(self.atoms) - 6
+            dof = 3 * len(self.atoms) - 6
             use_inds[-dof:] = True
         else:
             use_inds = np.abs(eigvals) > inv_thresh
         use_eigvals = eigvals[use_inds]
         min_eigval = use_eigvals.min()
-        self.log(f"Diagonalizing G yielded {use_inds.sum()} DLCs. Smallest eigenvalue "
-                 f"is {min_eigval:.4e}")
+        self.log(
+            f"Diagonalizing G yielded {use_inds.sum()} DLCs. Smallest eigenvalue "
+            f"is {min_eigval:.4e}"
+        )
         return eigvectors[:, use_inds]
 
     def set_active_set(self):
@@ -168,14 +170,18 @@ class DLC(RedundantCoords):
         """
         prim_indices = [self.get_index_of_typed_prim(tp) for tp in typed_prims]
         not_defined = [
-            tp
-            for tp, prim_ind in zip(typed_prims, prim_indices)
-            if prim_ind is None
+            tp for tp, prim_ind in zip(typed_prims, prim_indices) if prim_ind is None
         ]
         assert (
             None not in prim_indices
         ), f"Some primitive internals are not defined ({not_defined})!"
-        projected_primitives = np.array([
-            self.project_primitive_on_active_set(pi) for pi in prim_indices
-        ]).T
+        projected_primitives = np.array(
+            [self.project_primitive_on_active_set(pi) for pi in prim_indices]
+        ).T
         self.constraints = projected_primitives
+
+
+class HDLC(DLC):
+    def __init__(self, *args, **kwargs):
+        kwargs["hybrid"] = True
+        super().__init__(*args, **kwargs)

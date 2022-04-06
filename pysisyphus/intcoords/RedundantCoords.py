@@ -68,6 +68,7 @@ class RedundantCoords:
         svd_inv_thresh=3.16e-4,
         recalc_B=False,
         tric=False,
+        hybrid=False,
         hbond_angles=False,
     ):
         self.atoms = atoms
@@ -101,6 +102,7 @@ class RedundantCoords:
         self.svd_inv_thresh = svd_inv_thresh
         self.recalc_B = recalc_B
         self.tric = tric
+        self.hybrid = hybrid
         self.hbond_angles = hbond_angles
 
         self._B_prim = None
@@ -525,6 +527,7 @@ class RedundantCoords:
             lb_min_deg=self.lb_min_deg,
             min_weight=self.min_weight if self.weighted else None,
             tric=self.tric,
+            hybrid=self.hybrid,
             hbond_angles=self.hbond_angles,
             freeze_atoms=self.freeze_atoms if self.freeze_atoms_exclude else None,
             define_for=self.define_for,
@@ -597,4 +600,10 @@ class TRIC(RedundantCoords):
     def __init__(self, *args, **kwargs):
         kwargs["tric"] = True
         kwargs["recalc_B"] = True
+        super().__init__(*args, **kwargs)
+
+
+class HybridRedundantCoords(RedundantCoords):
+    def __init__(self, *args, **kwargs):
+        kwargs["hybrid"] = True
         super().__init__(*args, **kwargs)

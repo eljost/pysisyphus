@@ -291,3 +291,17 @@ def test_hydrogen_bonds():
     h_bonds = [tp for tp in typed_prims if tp[0] == PrimTypes.HYDROGEN_BOND]
     h_bond_ref = set([frozenset(inds) for inds in ((6, 27), (43, 56), (15, 42))])
     assert set([frozenset(inds) for _, *inds in h_bonds]) == h_bond_ref
+
+
+@pytest.mark.parametrize(
+    "coord_type, tp_num",
+    (
+        ("redund", 3),
+        ("hredund", 12),
+        ("dlc", 3),
+        ("hdlc", 12),
+    ),
+)
+def test_hybrid_internals(coord_type, tp_num):
+    geom = geom_loader("lib:h2o.xyz", coord_type=coord_type)
+    assert len(geom.internal.typed_prims) == tp_num

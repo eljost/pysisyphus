@@ -30,8 +30,10 @@ from pysisyphus.elem_data import (
 from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand
 from pysisyphus.intcoords import (
     DLC,
+    HDLC,
     RedundantCoords,
     TRIC,
+    HybridRedundantCoords,
     CartesianCoords,
     MWCartesianCoords,
 )
@@ -151,7 +153,9 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
+        "hredund": HybridRedundantCoords,
         "dlc": DLC,
+        "hdlc": HDLC,
         "tric": TRIC,
         "cartesian": CartesianCoords,
         "mwcartesian": MWCartesianCoords,
