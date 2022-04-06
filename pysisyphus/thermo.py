@@ -59,7 +59,7 @@ Symmetry Number σ : {{ thermo.sym_num }}
 Linear            : {{ thermo.linear }}
 
 +
-| Normal Mode Frequencies
+| Normal Mode Wavenumbers
 {{ sep }}
 {% for nu in used_nus -%}
  {{ "\t%04d" % loop.index }}: {{ nu }}
