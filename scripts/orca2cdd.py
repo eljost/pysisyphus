@@ -182,8 +182,6 @@ def run():
     thresh = args.thresh
     exc_only = args.exc_only
 
-    assert min(states) > 0, "'states' input must be all positive and > 0!"
-
     Xs, Ys, trip_Xs, trip_Ys = parse_cis(cis)
     triplets = trip_Xs is not None
     energies = np.arange(Xs.shape[0] + 1)
@@ -197,6 +195,8 @@ def run():
         return
 
     assert wfn
+    assert min(states) > 0, "'states' input must be all positive and > 0!"
+
     if wfn.endswith(".gbw"):
         wfn = gbw2molden(wfn)
 

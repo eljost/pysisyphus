@@ -148,16 +148,6 @@ class Layers:
                 pass
             coord_type = geom_kwargs.pop("type")
 
-            # Calculator
-            try:
-                try:
-                    address = layer["address"]
-                except KeyError:
-                    address = layer["calc"]["address"]
-                calc = IPIServer(address=address)
-            except KeyError:
-                pass
-
             # Geometry
             def get_geom_getter():
                 # Rebind the variables here, otherwise the wrong geom_kwargs
