@@ -18,12 +18,12 @@ def parse_args(args):
         "charge density difference (CDD) cube generation using "
         "(ORCA), pysisyphus and Multiwfn. The orca_2mkl tool is required "
         "when this script is called with a .gbw file. Pysisyphus and Multiwfn "
-        "are required always. Currently, only the X-vector is used for CDD generation."
+        "are required always."
     )
-    parser.add_argument("wfn", help="ORCA .gbw or molden file.")
     parser.add_argument("cis", help="ORCA .cis file.")
+    parser.add_argument("--wfn", help="ORCA .gbw or molden file.")
     parser.add_argument(
-        "states", type=int, nargs="+", help="State indices, for which to create CDDs."
+        "--states", type=int, nargs="+", help="State indices, for which to create CDDs."
     )
     parser.add_argument(
         "--elhole", action="store_true", help="Calculate electron & hole cubes."
@@ -175,8 +175,8 @@ def write_exc_file(fn, energies, Xs, Ys, thresh):
 def run():
     args = parse_args(sys.argv[1:])
 
-    wfn = args.wfn
     cis = args.cis
+    wfn = args.wfn
     states = args.states
     elhole = args.elhole
     thresh = args.thresh
@@ -184,19 +184,9 @@ def run():
 
     assert min(states) > 0, "'states' input must be all positive and > 0!"
 
-    if wfn.endswith(".gbw"):
-        wfn = gbw2molden(wfn)
-
     Xs, Ys, trip_Xs, trip_Ys = parse_cis(cis)
     triplets = trip_Xs is not None
-
-    states_available = set(range(1, len(Xs) + 1))
-    missing_states = set(states) - set(states_available)
-    assert (
-        len(missing_states) == 0
-    ), f"Requested states {missing_states} are not available in '{cis}'."
     energies = np.arange(Xs.shape[0] + 1)
-
     exc_fn = write_exc_file("sing_exc", energies, Xs, Ys, thresh)
     if triplets:
         print(f"Found singlet->triplet excitations in {cis}.")
@@ -205,6 +195,16 @@ def run():
     if exc_only:
         print("Exiting after excitation file generation.")
         return
+
+    assert wfn
+    if wfn.endswith(".gbw"):
+        wfn = gbw2molden(wfn)
+
+    states_available = set(range(1, len(Xs) + 1))
+    missing_states = set(states) - set(states_available)
+    assert (
+        len(missing_states) == 0
+    ), f"Requested states {missing_states} are not available in '{cis}'."
 
     all_cubes = list()
     i = 0
