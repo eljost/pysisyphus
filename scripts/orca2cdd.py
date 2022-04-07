@@ -34,7 +34,7 @@ def parse_args(args):
 def gbw2molden(gbw):
     pgbw = Path(gbw)
     no_ext = pgbw.stem
-    cmd = f"orca_2mkl {no_ext} orca -molden".split()
+    cmd = f"orca_2mkl {no_ext} -molden".split()
     _ = subprocess.check_output(
         cmd,
         universal_newlines=True,
@@ -166,10 +166,17 @@ def run():
     states = args.states
     elhole = args.elhole
 
+    assert min(states) > 0, \
+        "'states' input must be all positive and > 0!"
+
     if wfn.endswith(".gbw"):
         wfn = gbw2molden(wfn)
 
     Xs, Ys, energies = parse_cis(cis)
+    states_available = set(range(1, len(Xs)+1))
+    missing_states = set(states) - set(states_available)
+    assert len(missing_states) == 0, \
+        f"Requested states {missing_states} are not available in '{cis}'."
     energies = np.array(energies)
 
     exc_str = get_mwfn_exc_str(energies, Xs)
