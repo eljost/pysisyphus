@@ -429,8 +429,10 @@ class GrowingString(GrowingChainOfStates):
             self.reparam_in = self.reparam_every_full if self.fully_grown \
                               else self.reparam_every
             reparametrized = True
-            with open("reparametrized.trj", "w") as handle:
-                handle.write(self.as_xyz())
+            # Writing is deactivated, as this does not respect an out_dir or
+            # something similar.
+            # with open("reparametrized.trj", "w") as handle:
+                # handle.write(self.as_xyz())
 
         return reparametrized
 

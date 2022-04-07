@@ -128,7 +128,7 @@ class StringOptimizer(Optimizer):
         # We try to calculated an improved step it via conjugate gradient.
         previous_step_with_same_size = (self.cur_cycle > 0) and (not string_size_changed)
         lbfgs_lists_empty = (len(self.s_list) == 0) and (len(self.y_list) == 0)
-        if (previous_step_with_same_size and lbfgs_lists_empty:
+        if previous_step_with_same_size and lbfgs_lists_empty:
             prev_forces = self.forces[-2]
             # Fletcher-Reeves
             kind = "Fletcher-Reeves"

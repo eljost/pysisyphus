@@ -767,7 +767,7 @@ def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
             print(f"Problem in preoptimization of {key}. Exiting!")
             sys.exit()
         print(f"Preoptimization of {key} geometry converged!")
-        opt_fn = f"{key}_preopt.xyz"
+        opt_fn = opt.get_path_for_fn(f"{key}_preopt.xyz")
         shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
 
