@@ -41,7 +41,7 @@ def call_mwfn(inp_fn, stdin, cwd=None):
     return stdout, stderr
 
 
-def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
+def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2, prefix="S"):
     """Create CDD cube in cwd.
 
     Parameters
@@ -101,7 +101,7 @@ def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
     for fn in cube_fns:
         old_path = cwd / fn
         root, ext = os.path.splitext(fn)
-        new_path = cwd / f"S_{state:03d}_{root}{ext}"
+        new_path = cwd / f"{prefix}_{state:03d}_{root}{ext}"
         try:
             shutil.copy(old_path, new_path)
             os.remove(old_path)

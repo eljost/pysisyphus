@@ -25,10 +25,13 @@ def parse_args(args):
     parser.add_argument(
         "states", type=int, nargs="+", help="State indices, for which to create CDDs."
     )
-    parser.add_argument("--elhole", action="store_true",
-        help="Calculate electron & hole cubes."
+    parser.add_argument(
+        "--elhole", action="store_true", help="Calculate electron & hole cubes."
     )
     parser.add_argument("--thresh", type=float, default=1e-2)
+    parser.add_argument(
+        "--exc-only", action="store_true", help="Only generate excitation file."
+    )
     return parser.parse_args(args)
 
 
@@ -151,9 +154,22 @@ def parse_cis(cis):
     if triplets:
         assert (len(Xs) % 2) == 0
         states = len(Xs) // 2
-        Xs = Xs[states:]
-        Ys = Ys[states:]
-    return Xs, Ys
+        trip_Xs = Xs[states:]
+        trip_Ys = Ys[states:]
+        Xs = Xs[:states]
+        Ys = Ys[:states]
+    else:
+        trip_Xs = None
+        trip_Ys = None
+    return Xs, Ys, trip_Xs, trip_Ys
+
+
+def write_exc_file(fn, energies, Xs, Ys, thresh):
+    exc_str = get_mwfn_exc_str(energies, ci_coeffs=Xs, dexc_ci_coeffs=Ys, thresh=thresh)
+    with open(fn, "w") as handle:
+        handle.write(exc_str)
+    print(f"Wrote excitation-data to '{fn}'.")
+    return fn
 
 
 def run():
@@ -164,35 +180,47 @@ def run():
     states = args.states
     elhole = args.elhole
     thresh = args.thresh
+    exc_only = args.exc_only
 
-    assert min(states) > 0, \
-        "'states' input must be all positive and > 0!"
+    assert min(states) > 0, "'states' input must be all positive and > 0!"
 
     if wfn.endswith(".gbw"):
         wfn = gbw2molden(wfn)
 
-    Xs, Ys = parse_cis(cis)
-    states_available = set(range(1, len(Xs)+1))
+    Xs, Ys, trip_Xs, trip_Ys = parse_cis(cis)
+    triplets = trip_Xs is not None
+
+    states_available = set(range(1, len(Xs) + 1))
     missing_states = set(states) - set(states_available)
-    assert len(missing_states) == 0, \
-        f"Requested states {missing_states} are not available in '{cis}'."
+    assert (
+        len(missing_states) == 0
+    ), f"Requested states {missing_states} are not available in '{cis}'."
     energies = np.arange(Xs.shape[0] + 1)
 
-    exc_str = get_mwfn_exc_str(energies, ci_coeffs=Xs, dexc_ci_coeffs=Ys, thresh=thresh)
-    exc_fn = "exc"
-    with open(exc_fn, "w") as handle:
-        handle.write(exc_str)
-    print(f"Wrote excitations data to '{exc_fn}'.")
+    exc_fn = write_exc_file("sing_exc", energies, Xs, Ys, thresh)
+    if triplets:
+        print(f"Found singlet->triplet excitations in {cis}.")
+        trip_exc_fn = write_exc_file("trip_exc", energies, trip_Xs, trip_Ys, thresh)
+
+    if exc_only:
+        print("Exiting after excitation file generation.")
+        return
 
     all_cubes = list()
     i = 0
     print("Generating cubes by calling Multiwfn:")
     for state in states:
+        state_cubes = list()
         cubes = make_cdd(wfn, state, exc_fn, keep=elhole)
-        all_cubes.extend(cubes)
-        for j, cube in enumerate(cubes, i):
+        state_cubes.extend(cubes)
+        if triplets:
+            trip_cubes = make_cdd(wfn, state, trip_exc_fn, keep=elhole, prefix="ST")
+            state_cubes.extend(trip_cubes)
+
+        for j, cube in enumerate(state_cubes, i):
             print(f"\t{j:03d}: {cube}")
-        i += j+1
+        i += len(state_cubes)
+        all_cubes.extend(state_cubes)
 
 
 if __name__ == "__main__":
