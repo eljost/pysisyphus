@@ -188,6 +188,7 @@ def run_opt(
     elif do_hess and (not opt.stopped):
         print()
         prefix = opt_kwargs.get("prefix", "")
+        out_dir = opt_kwargs.get("out_dir", None)
         do_final_hessian(
             geom,
             write_imag_modes=True,
@@ -196,6 +197,7 @@ def run_opt(
             p=p,
             print_thermo=print_thermo,
             is_ts=is_tsopt,
+            out_dir=out_dir,
         )
     print()
 

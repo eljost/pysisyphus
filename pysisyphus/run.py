@@ -475,6 +475,7 @@ def run_tsopt_from_cos(
         copy_final_geom="ts_opt.xyz",
     )
     ts_geom = opt_result.geom
+    ts_opt = opt_result.opt
 
     # Restore original calculator for Dimer calculations
     if tsopt_key == "dimer":
@@ -482,7 +483,8 @@ def run_tsopt_from_cos(
 
     print(f"Optimized TS coords:")
     print(ts_geom.as_xyz())
-    ts_opt_fn = "ts_opt.xyz"
+    # Include ts_ prefix
+    ts_opt_fn = ts_opt.get_path_for_fn("opt.xyz")
     with open(ts_opt_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
     print(f"Wrote TS geometry to '{ts_opt_fn}\n'")

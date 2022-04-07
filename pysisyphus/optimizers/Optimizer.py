@@ -762,8 +762,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 # transformation is done iteratively.
                 self.steps[-1] = self.geometry.coords - self.coords[-1]
             except RebuiltInternalsException as exception:
-                print("Rebuilt internal coordinates")
-                with open("rebuilt_primitives.xyz", "w") as handle:
+                print("Rebuilt internal coordinates!")
+                rebuilt_fn = self.get_path_for_fn("rebuilt_primitives.xyz")
+                with open(rebuilt_fn, "w") as handle:
                     handle.write(self.geometry.as_xyz())
                 if self.is_cos:
                     for image in self.geometry.images:
