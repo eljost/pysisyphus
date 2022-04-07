@@ -2,7 +2,11 @@ import numpy as np
 from scipy.interpolate import splprep, splev
 
 from pysisyphus.constants import AU2KJPERMOL
-from pysisyphus.intcoords.exceptions import DifferentCoordLengthsException, DifferentPrimitivesException
+from pysisyphus.intcoords.exceptions import (
+    DifferentCoordLengthsException,
+    DifferentPrimitivesException,
+    RebuiltInternalsException,
+)
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
@@ -14,11 +18,21 @@ from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 
 class GrowingString(GrowingChainOfStates):
-
-    def __init__(self, images, calc_getter, perp_thresh=0.05, param="equi",
-                 reparam_every=2, reparam_every_full=3, reparam_tol=None,
-                 reparam_check="rms", max_micro_cycles=5, reset_dlc=True,
-                 climb=False, **kwargs):
+    def __init__(
+        self,
+        images,
+        calc_getter,
+        perp_thresh=0.05,
+        param="equi",
+        reparam_every=2,
+        reparam_every_full=3,
+        reparam_tol=None,
+        reparam_check="rms",
+        max_micro_cycles=5,
+        reset_dlc=True,
+        climb=False,
+        **kwargs,
+    ):
         assert len(images) >= 2, "Need at least 2 images for GrowingString."
         if len(images) > 2:
             images = [images[0], images[-1]]
@@ -31,8 +45,9 @@ class GrowingString(GrowingChainOfStates):
         self.param = param
         self.reparam_every = int(reparam_every)
         self.reparam_every_full = int(reparam_every_full)
-        assert self.reparam_every >= 1 and self.reparam_every_full >= 1, \
-            "reparam_every and reparam_every_full must be positive integers!"
+        assert (
+            self.reparam_every >= 1 and self.reparam_every_full >= 1
+        ), "reparam_every and reparam_every_full must be positive integers!"
         if reparam_tol is not None:
             self.reparam_tol = float(reparam_tol)
             assert self.reparam_tol > 0
@@ -41,17 +56,21 @@ class GrowingString(GrowingChainOfStates):
         self.log(f"Using reparametrization tolerance of {self.reparam_tol:.4f}")
         self.reparam_check = reparam_check
         assert self.reparam_check in ("norm", "rms")
-        self.max_micro_cycles= int(max_micro_cycles)
+        self.max_micro_cycles = int(max_micro_cycles)
         self.reset_dlc = bool(reset_dlc)
 
         left_img, right_img = self.images
 
-        self.left_string = [left_img, ]
-        self.right_string = [right_img, ]
+        self.left_string = [
+            left_img,
+        ]
+        self.right_string = [
+            right_img,
+        ]
 
         # The desired spacing of the nodes in the final string on the
         # normalized arclength.
-        self.sk = 1 / (self.max_nodes+1)
+        self.sk = 1 / (self.max_nodes + 1)
 
         self.reparam_in = reparam_every
         self._tangents = None
@@ -66,8 +85,9 @@ class GrowingString(GrowingChainOfStates):
         self.new_image_inds = list()
 
     def get_cur_param_density(self, kind=None):
-        diffs = [image - self.images[max(i-1, 0)]
-                 for i, image in enumerate(self.images)]
+        diffs = [
+            image - self.images[max(i - 1, 0)] for i, image in enumerate(self.images)
+        ]
         norms = np.linalg.norm(diffs, axis=1)
         param_density = np.cumsum(norms)
         self.log(f"Current string length={param_density[-1]:.6f}")
@@ -83,10 +103,12 @@ class GrowingString(GrowingChainOfStates):
             weights = mean_energies - prev_energies.min()
             # This damps everything a bit.
             weights = np.sqrt(weights)
-            param_density = [0, ]
+            param_density = [
+                0,
+            ]
             for weight, diff in zip(weights, norms[1:]):
-                assert weight > 0.
-                param_density.append(param_density[-1] + weight*diff)
+                assert weight > 0.0
+                param_density.append(param_density[-1] + weight * diff)
 
         param_density = np.array(param_density)
         param_density /= param_density[-1]
@@ -95,14 +117,18 @@ class GrowingString(GrowingChainOfStates):
 
     def reset_geometries(self, ref_geometry):
         ref_typed_prims = ref_geometry.internal.typed_prims
-        self.log(f"Resetting image primitives. Got {len(ref_typed_prims)} typed primitives.")
+        self.log(
+            f"Resetting image primitives. Got {len(ref_typed_prims)} typed primitives."
+        )
         for i in range(3):
             self.log(f"\tMicro cycle {i:d}")
             intersect = set(self.images[0].internal.typed_prims)
             for j, image in enumerate(self.images):
                 image.reset_coords(ref_typed_prims)
                 new_typed_prims = set(image.internal.typed_prims)
-                self.log(f"\tImage {j:02d} now has {len(new_typed_prims)} typed primitives.")
+                self.log(
+                    f"\tImage {j:02d} now has {len(new_typed_prims)} typed primitives."
+                )
                 intersect = intersect & new_typed_prims
 
             if intersect == set(ref_typed_prims):
@@ -112,10 +138,21 @@ class GrowingString(GrowingChainOfStates):
         else:
             raise Exception("Too many reset cycles!")
 
+    def set_coords(self, image, coords):
+        try:
+            image.coords = coords
+        except RebuiltInternalsException:
+            print("Rebuilt internal coordinates!")
+            self.reset_geometries(image)
+
     def get_new_image(self, ref_index):
         """Get new image by taking a step from self.images[ref_index] towards
         the center of the string."""
-        new_img = self.images[ref_index].copy(coord_kwargs={"check_bends": True,})
+        new_img = self.images[ref_index].copy(
+            coord_kwargs={
+                "check_bends": True,
+            }
+        )
 
         if ref_index <= self.lf_ind:
             tangent_ind = ref_index + 1
@@ -156,14 +193,16 @@ class GrowingString(GrowingChainOfStates):
         step = step_length * distance
 
         new_coords = new_img.coords + step
-        new_img.coords = new_coords
+        self.set_coords(new_img, new_coords)
+
         new_img.set_calculator(self.calc_getter())
         ref_calc = self.images[ref_index].calculator
         try:
             chkfiles = ref_calc.get_chkfiles()
             new_img.calculator.set_chkfiles(chkfiles)
-            self.log( "Set checkfiles from calculator of node "
-                     f"{ref_index:02d} on calculator of new node."
+            self.log(
+                "Set checkfiles from calculator of node "
+                f"{ref_index:02d} on calculator of new node."
             )
         except AttributeError:
             self.log("Calculator doesn't support 'get/set_chkfiles()'")
@@ -197,17 +236,17 @@ class GrowingString(GrowingChainOfStates):
     @property
     def lf_ind(self):
         """Index of the left frontier node in self.images."""
-        return len(self.left_string)-1
+        return len(self.left_string) - 1
 
     @property
     def rf_ind(self):
         """Index of the right frontier node in self.images."""
-        return self.lf_ind+1
+        return self.lf_ind + 1
 
     @property
     def full_string_image_inds(self):
         left_inds = np.arange(self.left_size)
-        right_inds = np.arange(self.max_nodes+2)[-self.right_size:]
+        right_inds = np.arange(self.max_nodes + 2)[-self.right_size :]
         image_inds = np.concatenate((left_inds, right_inds))
         return image_inds
 
@@ -224,8 +263,11 @@ class GrowingString(GrowingChainOfStates):
         # To use splprep we have to transpose the coords.
         transp_coords = reshaped.transpose()
         # Spline in batches as scipy can't handle > 11 rows at once
-        tcks, us = zip(*[splprep(transp_coords[i:i+9], s=0, k=3, u=u)
-                         for i in range(0, len(transp_coords), 9)]
+        tcks, us = zip(
+            *[
+                splprep(transp_coords[i : i + 9], s=0, k=3, u=u)
+                for i in range(0, len(transp_coords), 9)
+            ]
         )
         return tcks, us
 
@@ -275,15 +317,19 @@ class GrowingString(GrowingChainOfStates):
                 self.log(f"\t... shifting {rl} towards image {tangent_ind}")
                 distance = -(reparam_image - tangent_image)
 
-                param_dens_diff = abs(cur_param_density[tangent_ind] - cur_param_density[i])
+                param_dens_diff = abs(
+                    cur_param_density[tangent_ind] - cur_param_density[i]
+                )
                 step_length = abs(diff) / param_dens_diff
                 step = step_length * distance
                 reparam_coords = reparam_image.coords + step
-                reparam_image.coords = reparam_coords
+                self.set_coords(reparam_image, reparam_coords)
                 cur_param_density = self.get_cur_param_density()
             else:
-                self.log(f"Reparametrization of node {i} did not converge after "
-                         f"{self.max_micro_cycles} cycles. Breaking!")
+                self.log(
+                    f"Reparametrization of node {i} did not converge after "
+                    f"{self.max_micro_cycles} cycles. Breaking!"
+                )
                 break
 
         cpd_str = np.array2string(cur_param_density, precision=4)
@@ -299,19 +345,19 @@ class GrowingString(GrowingChainOfStates):
         # Over time the string size will equilibrate and the desired parametrization
         # density will actually be realized.
         # try:
-            # # Dont check climbing images
-            # np.testing.assert_allclose(
-                # np.delete(cur_param_density, climbing_indices),
-                # np.delete(desired_param_density, climbing_indices),
-                # atol=self.reparam_tol
-            # )
+        # # Dont check climbing images
+        # np.testing.assert_allclose(
+        # np.delete(cur_param_density, climbing_indices),
+        # np.delete(desired_param_density, climbing_indices),
+        # atol=self.reparam_tol
+        # )
         # except AssertionError as err:
-            # trj_str = self.as_xyz()
-            # fn = "failed_reparametrization.trj"
-            # with open(fn, "w") as handle:
-                # handle.write(trj_str)
-            # print(f"Wrote coordinates of failed reparametrization to '{fn}'")
-            # raise err
+        # trj_str = self.as_xyz()
+        # fn = "failed_reparametrization.trj"
+        # with open(fn, "w") as handle:
+        # handle.write(trj_str)
+        # print(f"Wrote coordinates of failed reparametrization to '{fn}'")
+        # raise err
 
         # Regenerate active set after reparametrization
         if self.reset_dlc and not self.fully_grown:
@@ -323,7 +369,7 @@ class GrowingString(GrowingChainOfStates):
     def get_tangent(self, i):
         # Simple tangent, pointing at each other, for the frontier images.
         if not self.fully_grown and i in (self.lf_ind, self.rf_ind):
-            next_ind = i+1 if (i <= self.lf_ind) else i-1
+            next_ind = i + 1 if (i <= self.lf_ind) else i - 1
             tangent = self.images[next_ind] - self.images[i]
             tangent /= np.linalg.norm(tangent)
         else:
@@ -361,22 +407,26 @@ class GrowingString(GrowingChainOfStates):
         self.new_image_inds = list()
         # Check if new images can be added for incomplete strings.
         if not self.fully_grown:
-            perp_forces  = self.perp_forces_list[-1].reshape(len(self.images), -1)
+            perp_forces = self.perp_forces_list[-1].reshape(len(self.images), -1)
             # Calculate norm and rms of the perpendicular force for every
             # node/image on the string.
             to_check = {
                 "norm": np.linalg.norm(perp_forces, axis=1),
-                "rms": np.sqrt(np.mean(perp_forces**2, axis=1)),
+                "rms": np.sqrt(np.mean(perp_forces ** 2, axis=1)),
             }
-            self.log(f"Checking frontier node convergence, threshold={self.perp_thresh:.6f}")
+            self.log(
+                f"Checking frontier node convergence, threshold={self.perp_thresh:.6f}"
+            )
             # We can add a new node if the norm/rms of the perpendicular force is below
             # the threshold.
             def converged(i):
                 cur_val = to_check[self.reparam_check][i]
                 is_converged = cur_val <= self.perp_thresh
                 conv_str = ", converged" if is_converged else ""
-                self.log(f"\tnode {i:02d}: {self.reparam_check}(perp_forces)={cur_val:.6f}"
-                         f"{conv_str}")
+                self.log(
+                    f"\tnode {i:02d}: {self.reparam_check}(perp_forces)={cur_val:.6f}"
+                    f"{conv_str}"
+                )
                 return is_converged
 
             # New images are added with the same coordinates as the frontier image.
@@ -406,15 +456,18 @@ class GrowingString(GrowingChainOfStates):
             f"Current string size is {self.left_size}+{self.right_size}="
             f"{self.string_size}. There are still {self.nodes_missing} "
             "nodes to be grown."
-            if not self.fully_grown else "String is fully grown."
+            if not self.fully_grown
+            else "String is fully grown."
         )
 
         if self.reparam_in > 0:
-            self.log("Skipping reparametrization. Next reparametrization in "
-                     f"{self.reparam_in} cycles.")
+            self.log(
+                "Skipping reparametrization. Next reparametrization in "
+                f"{self.reparam_in} cycles."
+            )
         else:
             # Prepare image reparametrization
-            desired_param_density = self.sk*self.full_string_image_inds
+            desired_param_density = self.sk * self.full_string_image_inds
             pd_str = np.array2string(desired_param_density, precision=4)
             self.log(f"Desired param density: {pd_str}")
 
@@ -426,13 +479,14 @@ class GrowingString(GrowingChainOfStates):
             else:
                 raise Exception("How did you get here?")
 
-            self.reparam_in = self.reparam_every_full if self.fully_grown \
-                              else self.reparam_every
+            self.reparam_in = (
+                self.reparam_every_full if self.fully_grown else self.reparam_every
+            )
             reparametrized = True
             # Writing is deactivated, as this does not respect an out_dir or
             # something similar.
             # with open("reparametrized.trj", "w") as handle:
-                # handle.write(self.as_xyz())
+            # handle.write(self.as_xyz())
 
         return reparametrized
 
