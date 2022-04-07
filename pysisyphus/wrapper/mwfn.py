@@ -8,6 +8,7 @@ import numpy as np
 
 from pysisyphus.config import get_cmd
 from pysisyphus.constants import AU2EV
+from pysisyphus.wrapper.exceptions import SegfaultException
 
 
 logger = logging.getLogger("mwfn")
@@ -31,6 +32,11 @@ def call_mwfn(inp_fn, stdin, cwd=None):
         cmd, universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=cwd
     )
     stdout, stderr = proc.communicate(stdin)
+    if "segmentation fault occurred":
+        raise SegfaultException(
+            "Multiwfn segfaulted! Multiwfn seems to have problems "
+            "with systems >= 1000 basis functions. Maybe your system is too big."
+        )
     proc.terminate()
     return stdout, stderr
 
