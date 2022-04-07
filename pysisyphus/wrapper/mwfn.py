@@ -32,7 +32,7 @@ def call_mwfn(inp_fn, stdin, cwd=None):
         cmd, universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=cwd
     )
     stdout, stderr = proc.communicate(stdin)
-    if "segmentation fault occurred":
+    if "segmentation fault occurred" in stderr:
         raise SegfaultException(
             "Multiwfn segfaulted! Multiwfn seems to have problems "
             "with systems >= 1000 basis functions. Maybe your system is too big."
@@ -72,7 +72,6 @@ def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
     1
     {log_fn}
     {state}
-
     1
     {quality}
     10
@@ -80,6 +79,10 @@ def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
     11
     1
     15
+    0
+    0
+    0
+    q
     """
     stdout, stderr = call_mwfn(inp_fn, stdin, cwd=cwd)
 
@@ -108,7 +111,9 @@ def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2):
     return new_paths
 
 
-def get_mwfn_exc_str(energies, ci_coeffs, thresh=1e-3):
+def get_mwfn_exc_str(energies, ci_coeffs, dexc_ci_coeffs=None, thresh=1e-3):
+    assert len(energies) == (len(ci_coeffs) + 1), \
+        "Found too few energies. Is the GS energy missing?"
     exc_energies = (energies[1:] - energies[0]) * AU2EV
     # states, occ, virt
     _, occ_mos, _ = ci_coeffs.shape
@@ -116,13 +121,29 @@ def get_mwfn_exc_str(energies, ci_coeffs, thresh=1e-3):
     exc_str = ""
     mult = 1
     log(f"Using dummy multiplicity={mult} in get_mwfn_exc_str")
-    for root_, (root_ci_coeffs, exc_en) in enumerate(zip(ci_coeffs, exc_energies), 1):
-        exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
-        for (occ, virt), coeff in np.ndenumerate(root_ci_coeffs):
+    if dexc_ci_coeffs is None:
+        dexc_ci_coeffs = [None] * ci_coeffs.shape[0]
+
+    def get_exc_lines(ci_coeffs, arrow):
+        exc_lines = list()
+        for (occ, virt), coeff in np.ndenumerate(ci_coeffs):
             if abs(coeff) < thresh:
                 continue
             occ_mo = occ + 1
             virt_mo = occ_mos + 1 + virt
-            exc_str += f"{occ_mo:>8d} -> {virt_mo}       {coeff: .5f}\n"
-        exc_str += "\n"
+            exc_line = f"{occ_mo:>8d} {arrow} {virt_mo}       {coeff: .5f}"
+            exc_lines.append(exc_line)
+        return exc_lines
+
+    for root_, (root_ci_coeffs, root_dexc_ci_coeffs, exc_en) in enumerate(
+        zip(ci_coeffs, dexc_ci_coeffs, exc_energies), 1
+    ):
+        exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
+        # Excitations (X vector)
+        exc_lines = get_exc_lines(root_ci_coeffs, "->")
+        # De-Excitations (Y vector), if present
+        if root_dexc_ci_coeffs is not None:
+            exc_lines += get_exc_lines(root_dexc_ci_coeffs, "<-")
+        exc_str += "\n".join(exc_lines)
+        exc_str += "\n\n"
     return exc_str

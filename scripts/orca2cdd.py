@@ -28,6 +28,7 @@ def parse_args(args):
     parser.add_argument("--elhole", action="store_true",
         help="Calculate electron & hole cubes."
     )
+    parser.add_argument("--thresh", type=float, default=1e-2)
     return parser.parse_args(args)
 
 
@@ -51,8 +52,6 @@ def parse_cis(cis):
         Adapted from TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
         https://sourceforge.net/p/theodore-qc
     """
-    energies = list()
-
     cis_handle = open(cis, "rb")
     # self.log(f"Parsing CI vectors from {cis_handle}")
 
@@ -113,7 +112,6 @@ def parse_cis(cis):
             iroot = iroot_triplets
 
         ene, d3 = struct.unpack("dd", cis_handle.read(16))
-        energies.append(ene)
         # self.log(f"ivec={ivec}, nele={nele}, mult={mult}, iroot={iroot}")
         # Then come nact * nvirt 8-byte doubles with the coefficients
         coeffs = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
@@ -155,7 +153,7 @@ def parse_cis(cis):
         states = len(Xs) // 2
         Xs = Xs[states:]
         Ys = Ys[states:]
-    return Xs, Ys, energies
+    return Xs, Ys
 
 
 def run():
@@ -165,6 +163,7 @@ def run():
     cis = args.cis
     states = args.states
     elhole = args.elhole
+    thresh = args.thresh
 
     assert min(states) > 0, \
         "'states' input must be all positive and > 0!"
@@ -172,25 +171,27 @@ def run():
     if wfn.endswith(".gbw"):
         wfn = gbw2molden(wfn)
 
-    Xs, Ys, energies = parse_cis(cis)
+    Xs, Ys = parse_cis(cis)
     states_available = set(range(1, len(Xs)+1))
     missing_states = set(states) - set(states_available)
     assert len(missing_states) == 0, \
         f"Requested states {missing_states} are not available in '{cis}'."
-    energies = np.array(energies)
+    energies = np.arange(Xs.shape[0] + 1)
 
-    exc_str = get_mwfn_exc_str(energies, Xs)
+    exc_str = get_mwfn_exc_str(energies, ci_coeffs=Xs, dexc_ci_coeffs=Ys, thresh=thresh)
     exc_fn = "exc"
     with open(exc_fn, "w") as handle:
         handle.write(exc_str)
+    print(f"Wrote excitations data to '{exc_fn}'.")
 
     all_cubes = list()
     i = 0
+    print("Generating cubes by calling Multiwfn:")
     for state in states:
         cubes = make_cdd(wfn, state, exc_fn, keep=elhole)
         all_cubes.extend(cubes)
         for j, cube in enumerate(cubes, i):
-            print(f"{j:03d}: {cube}")
+            print(f"\t{j:03d}: {cube}")
         i += j+1
 
 
