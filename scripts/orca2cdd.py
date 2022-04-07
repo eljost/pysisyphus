@@ -25,6 +25,9 @@ def parse_args(args):
     parser.add_argument(
         "states", type=int, nargs="+", help="State indices, for which to create CDDs."
     )
+    parser.add_argument("--elhole", action="store_true",
+        help="Calculate electron & hole cubes."
+    )
     return parser.parse_args(args)
 
 
@@ -161,6 +164,7 @@ def run():
     wfn = args.wfn
     cis = args.cis
     states = args.states
+    elhole = args.elhole
 
     if wfn.endswith(".gbw"):
         wfn = gbw2molden(wfn)
@@ -173,11 +177,14 @@ def run():
     with open(exc_fn, "w") as handle:
         handle.write(exc_str)
 
-    cubes = list()
+    all_cubes = list()
+    i = 0
     for state in states:
-        cube = make_cdd(wfn, state, exc_fn)[0]
-        cubes.append(cube)
-        print(f"Created '{cube}'.")
+        cubes = make_cdd(wfn, state, exc_fn, keep=elhole)
+        all_cubes.extend(cubes)
+        for j, cube in enumerate(cubes, i):
+            print(f"{j:03d}: {cube}")
+        i += j+1
 
 
 if __name__ == "__main__":
