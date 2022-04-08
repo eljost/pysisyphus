@@ -31,7 +31,7 @@ opt:
     address: {address1}
  thresh: gau
 assert:
- opt_geom.energy: -115.53522653
+ opt_geom.energy: -115.535231
 """
 
 
