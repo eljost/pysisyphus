@@ -9,10 +9,13 @@ stages:
   - test
   - distribute
 
+before_script:
+  - mkdir -p ~/.config/nix
+  - echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
+  - nix-env -f ./nix/pkgs.nix -iA bash cachix
+
 nix build:
   stage: build
-  before_script:
-    - nix profile install .#bash .#cachix
   tags:
     - nix
   script:
@@ -32,8 +35,6 @@ nix shell:
   stage: build
   tags:
     - nix
-  before_script:
-    - nix profile install .#bash .#cachix
   script:
     - nix develop --command echo ""
   after_script:
