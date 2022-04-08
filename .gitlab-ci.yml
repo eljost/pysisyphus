@@ -20,7 +20,7 @@ nix build:
     - nix
   script:
     - |
-      nix-build -E "(import ./nix/pkgs.nix).python3.pkgspysisyphus.overrideAttrs (oldAttrs: {
+      nix-build -E "(import ./nix/pkgs.nix).python3.pkgs.pysisyphus.overrideAttrs (oldAttrs: {
         doCheck = false;
         doInstallCheck = false;
       })"
