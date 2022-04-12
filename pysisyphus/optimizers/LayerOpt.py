@@ -116,8 +116,17 @@ class Layers:
             layer_mask[indices] = False
 
             try:
-                address = layer["address"]
-                calc = IPIServer(address=address)
+                try:
+                    calc_kwargs = {
+                        "address": layer["address"],
+                    }
+                except KeyError:
+                    _calc_kwargs = layer["calc"]
+                    calc_kwargs = recursive_update({}, _calc_kwargs)
+                    # The popped calc key is currently unused as using an IPIServer is
+                    # mandatory.
+                    calc_key = calc_kwargs.pop("type", None)
+                calc = IPIServer(**calc_kwargs)
                 # When calculating layer 0 we have access to the true energy of the system.
                 # So we assign the calculator of layer0 to the actual geometry containing
                 # the whole system.
