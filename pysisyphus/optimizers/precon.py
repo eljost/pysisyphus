@@ -109,7 +109,7 @@ def precon_getter(geom, c_stab=0.0103, kind="full", logger=None):
     assert kind in valid_kinds, f"Invalid kind='{kind}'! Valid kinds are: {valid_kinds}"
 
     atoms = geom.moving_atoms
-    if geom.freeze_atoms:
+    if len(geom.freeze_atoms) > 0:
         assert (
             kind == "full"
         ), "Preconditioning with frozen atoms is only supported for kind='full'"
