@@ -11,6 +11,11 @@ from operator import itemgetter
 
 import numpy as np
 
+from pysisyphus.config import (
+        BEND_MIN_DEG,
+        LB_MIN_DEG,
+        DIHED_MAX_DEG,
+)
 from pysisyphus.linalg import svd_inv
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.update import transform_int_step
@@ -58,9 +63,9 @@ class RedundantCoords:
         bonds_only=False,
         check_bends=True,
         rebuild=True,
-        bend_min_deg=15,
-        dihed_max_deg=175.0,
-        lb_min_deg=175.0,
+        bend_min_deg=BEND_MIN_DEG,
+        dihed_max_deg=DIHED_MAX_DEG,
+        lb_min_deg=LB_MIN_DEG,
         weighted=False,
         min_weight=0.3,
         # Corresponds to a threshold of 1e-7 for eigenvalues of G, as proposed by
@@ -571,9 +576,11 @@ class RedundantCoords:
             self.prim_coords,
             self.Bt_inv_prim,
             self.primitives,
-            self.dihedral_indices,
-            self.rotation_indices,
+            typed_prims=self.typed_prims,
             check_dihedrals=self.rebuild,
+            check_bends=self.rebuild,
+            bend_min_deg=self.bend_min_deg,
+            bend_max_deg=self.lb_min_deg,
             freeze_atoms=self.freeze_atoms,
             constrained_inds=self.constrained_indices,
             update_constraints=update_constraints,

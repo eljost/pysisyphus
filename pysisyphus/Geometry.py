@@ -556,6 +556,7 @@ class Geometry:
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
                 invalid_inds = exception.invalid_inds
+                # Check if the remaining internal coordinates are valid
                 valid_typed_prims = [
                     typed_prim
                     for i, typed_prim in enumerate(self.internal.typed_prims)
@@ -573,7 +574,16 @@ class Geometry:
                     # (valid_typed_prims <= self.internal.typed_prims).
                     self.atoms,
                     coords3d,
-                    typed_prims=valid_typed_prims,
+                    # With typed prims, only the remaining, valid typed_prims
+                    # will be defined for the new geometry.
+                    #
+                    # typed_prims=valid_typed_prims,
+                    #
+                    # With 'define_prims' the remaining, valid typed_prims
+                    # will be used, together with newly determined internal
+                    # coordinates. This supports, e.g., the switch from a simple
+                    # bend to a linear bend and its complement.
+                    define_prims=valid_typed_prims,
                 )
                 self._coords = coords3d.flatten()
                 raise RebuiltInternalsException(

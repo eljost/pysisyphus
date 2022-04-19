@@ -7,7 +7,9 @@ import logging
 import math
 from pathlib import Path
 from typing import List, Tuple
+import re
 import time
+from typing import Optional
 
 import numpy as np
 import psutil
@@ -457,3 +459,52 @@ def find_closest_sequence(str_: str, comp_strs: List[str]) -> Tuple[str, float]:
     max_ratio = ratios[argmax]
     best_match = comp_strs[argmax]
     return (best_match, max_ratio)
+
+
+def increment_fn(org_fn: str, suffix: Optional[str]=None) -> str:
+    """
+    Append, or increase a suffixed counter on a given filename.
+    If no counter is present it will be set to zero. Otherwise
+    it is incremented by one.
+
+    >>> increment_fn("opt", "rebuilt")
+    'opt_rebuilt_000'
+    >>> increment_fn("opt")
+    'opt_000'
+    >>> increment_fn("opt_rebuilt_000", "rebuilt")
+    'opt_rebuilt_001'
+
+    Parameters
+    ----------
+    org_fn
+        The original, unaltered filename.
+    suffix
+        Optional suffix to be append.
+
+    Returns
+    -------
+    incr_fn
+        Modified filename with optional suffix and incremented counter.
+    """
+    if suffix is not None and len(suffix) > 0:
+        suffix = f"_{suffix}"
+    else:
+        suffix = ""
+
+    # Check if prefix is present
+    regex = re.compile(rf"(.+)({suffix}_(\d+))")
+    if mobj := regex.match(org_fn):
+        org_fn, _, counter = mobj.groups()
+        counter = int(counter)
+        counter += 1
+    else:
+        counter = 0
+
+    incr_fn = f"{org_fn}{suffix}_{counter:03d}"
+    return incr_fn
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()

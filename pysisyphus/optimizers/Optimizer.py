@@ -603,12 +603,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
         int_str = ""
         if self.geometry.coord_type not in ("cart", "cartesian", "mwcartesian"):
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
+            rms_int_forces = np.sqrt(np.mean(int_forces**2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
@@ -770,6 +770,16 @@ class Optimizer(metaclass=abc.ABCMeta):
                     for image in self.geometry.images:
                         image.reset_coords(exception.typed_prims)
                 self.reset()
+
+                if self.dump:
+                    self.data_model = get_data_model(
+                        self.geometry, self.is_cos, self.max_cycles
+                    )
+                    self.h5_group_name += "_rebuilt"
+                    h5_group = get_h5_group(
+                        self.h5_fn, self.h5_group_name, self.data_model, reset=True,
+                    )
+                    h5_group.file.close()
 
             # Coordinates may be updated here.
             if (self.reparam_when == "after") and hasattr(

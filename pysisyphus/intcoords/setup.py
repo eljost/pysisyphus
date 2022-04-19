@@ -146,9 +146,8 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
             distance = Stretch._calculate(coords3d, (h_ind, y_ind))
             vdw_rad_sum = VDW_RADII["h"] + VDW_RADII[y_atom]
             angle = Bend._calculate(coords3d, (x_ind, h_ind, y_ind))
-            if (
-                (1.1*cov_rad_sum < distance < 0.9*vdw_rad_sum)
-                and (angle > np.pi / 2)
+            if (1.1 * cov_rad_sum < distance < 0.9 * vdw_rad_sum) and (
+                angle > np.pi / 2
             ):
                 hydrogen_bond_inds.append((h_ind, y_ind))
                 log(
@@ -388,7 +387,9 @@ def setup_redundant(
     atoms = [atom for mobile, atom in zip(use_atoms, atoms) if mobile]
     coords3d = coords3d[use_atoms]
     # Maps (different) indices of mobile atoms back to their original indices
-    freeze_map = {sub_ind: org_ind for sub_ind, org_ind in enumerate(np.where(use_atoms)[0])}
+    freeze_map = {
+        sub_ind: org_ind for sub_ind, org_ind in enumerate(np.where(use_atoms)[0])
+    }
 
     def keep_coord(prim_cls, prim_inds):
         return (
@@ -505,9 +506,16 @@ def setup_redundant(
     if hybrid:
         cartesian_inds = [i for i, _ in enumerate(atoms)]
 
+    """
+    When additional primitives are given in 'define_prims', we want to append
+    them to the correct lists, that may contain already some primitive internals
+    detected by our algorithms. Here we define a map between the PrimTypes and the
+    present lists.
+    """
+    defined_cartesians = list()
+    defined_translations = list()
+    defined_rotations = list()
 
-    # Additional primitives to be defined. The values define the lists, to which
-    # the respective coordinate(s) will be appended.
     define_map = {
         PrimTypes.BOND: "bonds",
         PrimTypes.AUX_BOND: "aux_bonds",
@@ -520,11 +528,27 @@ def setup_redundant(
         PrimTypes.PROPER_DIHEDRAL: "proper_dihedrals",
         PrimTypes.IMPROPER_DIHEDRAL: "improper_dihedrals",
     }
+    unmapped_typed_prims = list()
     for type_, *indices in define_prims:
         try:
             key = define_map[type_]
         except KeyError:
-            key = define_map[PrimTypes(type_)]
+            try:
+                key = define_map[PrimTypes(type_)]
+            except KeyError:
+                """
+                With the current approach, some primitives in 'define_prims' can't
+                be mapped to their respective lists, e.g., given CARTESIAN_X/Y/Z.
+                Currently, every item in 'cartesian_inds' is expanded to three
+                Cartesians (X/Y/Z). When only the X-component is to be defined, adding
+                only the atom index to the list would result in all three components
+                to be generated.
+
+                So instead of adding them to their respective lists we keep them in
+                'unmapped_typed_prims' and use them later as is.
+                """
+                unmapped_typed_prims.append((type_, *indices))
+                continue
         locals()[key].append(tuple(indices))
 
     def make_tp(prim_type, *indices):
@@ -562,7 +586,9 @@ def setup_redundant(
         + [make_tp(pt.CARTESIAN_X, cind) for cind in cartesian_inds]
         + [make_tp(pt.CARTESIAN_Y, cind) for cind in cartesian_inds]
         + [make_tp(pt.CARTESIAN_Z, cind) for cind in cartesian_inds]
+        + [make_tp(pt.CARTESIAN_Z, cind) for cind in cartesian_inds]
     )
+
     # Translational and rotational coordinates result in 3 different coordinates each
     for frag in translation_inds:
         typed_prims += [
@@ -576,6 +602,9 @@ def setup_redundant(
             make_tp(pt.ROTATION_B, *frag),
             make_tp(pt.ROTATION_C, *frag),
         ]
+    typed_prims += unmapped_typed_prims
+    # Drop duplicated typed_prims
+    typed_prims = tuple(set(typed_prims))
 
     coord_info = CoordInfo(
         bonds=bonds,

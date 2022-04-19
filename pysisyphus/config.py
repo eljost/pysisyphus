@@ -15,6 +15,9 @@ LIB_DIR = CONFIG_DIR / "geom_library"
 T_DEFAULT = 298.15  # Kelvin
 p_DEFAULT = 101325  # Pascal
 OUT_DIR_DEFAULT = "qm_calcs"
+BEND_MIN_DEG = 15
+LB_MIN_DEG = 175
+DIHED_MAX_DEG = 175
 DEFAULTS = {
     # .pysisyphusrc key: command
     "mwfn": "Multiwfn",

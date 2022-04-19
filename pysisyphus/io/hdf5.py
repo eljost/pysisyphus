@@ -6,7 +6,7 @@ def init_h5_group(f, group_name, data_model):
     group = f.create_group(group_name)
     # Create (resizable) datasets by using None in maxshape
     for key, shape in data_model.items():
-        maxshape = (None, ) if (len(shape) == 1) else (None, *shape[1:])
+        maxshape = (None,) if (len(shape) == 1) else (None, *shape[1:])
         group.create_dataset(key, shape, maxshape=maxshape)
 
 
@@ -28,7 +28,7 @@ def get_h5_group(fn, group_name, data_model=None, reset=False):
     try:
         compatible = [group[key].shape == shape for key, shape in data_model.items()]
     except KeyError:
-        compatible = (False, )
+        compatible = (False,)
     compatible = all(compatible)
     if (not compatible) or reset:
         del f[group_name]
