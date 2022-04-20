@@ -50,6 +50,7 @@ from pysisyphus.helpers import (
     get_tangent_trj_str,
 )
 from pysisyphus.helpers_pure import (
+    find_closest_sequence,
     merge_sets,
     recursive_update,
     highlight_text,
@@ -69,7 +70,7 @@ from pysisyphus.stocastic import *
 from pysisyphus.thermo import can_thermoanalysis
 from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
 from pysisyphus.xyzloader import write_geoms_to_trj
-from pysisyphus.yaml_mods import get_loader
+from pysisyphus.yaml_mods import get_loader, UNITS
 
 
 CALC_DICT = {
@@ -1973,7 +1974,19 @@ def run():
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         try:
-            run_dict = yaml.load(yaml_str, Loader=get_loader())
+            loader = get_loader()
+            try:
+                run_dict = yaml.load(yaml_str, Loader=loader)
+            except yaml.constructor.ConstructorError as err:
+                mobj = re.compile("for the tag '\!(\w+)'").search(err.problem)
+                if mobj:
+                    err_unit = mobj.group(1)
+                    best_match, _ = find_closest_sequence(err_unit, UNITS)
+                    print(
+                        f"Unknown unit!\nKnown units are\n'{UNITS}'.\n"
+                        f"Did you mean '{best_match}', instead of '{err_unit}'?\n"
+                    )
+                raise err
             assert type(run_dict) == type(dict())
         except (AssertionError, yaml.parser.ParserError) as err:
             print(err)

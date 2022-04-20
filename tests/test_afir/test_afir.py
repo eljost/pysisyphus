@@ -5,8 +5,10 @@ from pysisyphus.calculators.AFIR import AFIR
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import XTB
 from pysisyphus.constants import AU2KJPERMOL
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
+from pysisyphus.linalg import finite_difference_hessian
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
 
@@ -80,3 +82,28 @@ def test_three_frag_afir():
     c3d = geom.coords3d
     assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.6235122)
     assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.8615080)
+
+
+@using("pyscf")
+def test_afir_hessian():
+    atoms = ("N", "N")
+    coords = np.zeros((2, 3))
+    coords[1, 2] = 3.0
+    geom = Geometry(atoms, coords)
+
+    calc = PySCF(basis="sto3g")
+    afir_calc = AFIR(
+        calc,
+        fragment_indices=[[0]],
+        gamma=100 / AU2KJPERMOL,
+    )
+    geom.set_calculator(afir_calc)
+
+    afir_hess = geom.hessian
+
+    def grad_func(coords):
+        return -geom.get_energy_and_forces_at(coords)["forces"]
+
+    fd_hessian = finite_difference_hessian(geom.coords, grad_func)
+    np.set_printoptions(suppress=True, precision=4)
+    np.testing.assert_allclose(afir_hess, fd_hessian, atol=1e-4)

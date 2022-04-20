@@ -1,0 +1,33 @@
+# Example (R1) from
+#   https://aip.scitation.org/doi/pdf/10.1063/1.3457903
+# See Fig. 3 and Fig. 4.
+geom:
+ type: cartesian  # 'redund' is also possible for internal coordinates
+ fn: lib:ohch3f_anion_cs.xyz
+calc:
+ # Request AFIR calculation.
+ type: afir
+ # Actual calculator that provides energies and its derivatives.
+ calc:
+  type: orca
+  keywords: b3lyp def2-svp tightscf
+  pal: 6
+  charge: -1
+  mult: 1
+ # Specify the OH- as one fragment. The remaining atoms not specified
+ # here will be automatically assigned to another fragment.
+ fragment_indices: [[5, 6]]
+ # Collision energy parameter γ in kJ mol⁻¹. Without the constructor
+ # !kJpermol an energy in Hartree is expected.
+ gamma: !kJpermol 100
+ # Push fragments together; -1 would pull them apart.
+ rho: 1
+ # Ignore hydrogens in calculation of the artificial potential.
+ ignore_hydrogen: True
+opt:
+ # AFIR Hessian is also supported. If this is enabled it will converge
+ # to a slightly different energy.
+ #hessian_init: calc
+ trust_max: 0.3
+assert:
+ opt_geom.energy: -215.19277030

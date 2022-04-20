@@ -1,6 +1,8 @@
 from math import cos, sin, sqrt
+from typing import Callable, Literal
 
 import numpy as np
+import numpy.typing as npt
 
 
 def gram_schmidt(vecs, thresh=1e-8):
@@ -40,13 +42,13 @@ def orthogonalize_against(mat, vecs, max_cycles=5, thresh=1e-10):
 
             # Remaining overlap
             overlap = np.sum(np.dot(vecs, row))
-            max_overlap = max(overlap, max_overlap)        
+            max_overlap = max(overlap, max_overlap)
 
         if max_overlap < thresh:
             break
     else:
         raise Exception(f"Orthogonalization did not succeed in {max_cycles} cycles!")
-    
+
     return omat
 
 
@@ -142,4 +144,46 @@ def cross3(a, b):
 
 def norm3(a):
     """5x as fas as np.linalg.norm for a 1d array of size 3."""
-    return sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
+    return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
+
+
+def finite_difference_hessian(
+    coords: npt.NDArray[float],
+    grad_func: Callable[[npt.NDArray[float]], npt.NDArray[float]],
+    step_size: float = 1e-2,
+    acc: Literal[2, 4] = 2,
+) -> npt.NDArray[float]:
+    """Numerical Hessian from central finite gradient differences.
+
+    See central differences in
+      https://en.wikipedia.org/wiki/Finite_difference_coefficient
+    for the different accuracies.
+    """
+    accuracies = {
+        2: ((-0.5, -1), (0.5, 1)),  # 2 calculations
+        4: ((1 / 12, -2), (-2 / 3, -1), (2 / 3, 1), (-1 / 12, 2)),  # 4 calculations
+    }
+    accs_avail = list(accuracies.keys())
+    assert acc in accs_avail
+
+    size = coords.size
+    fd_hessian = np.zeros((size, size))
+    zero_step = np.zeros(size)
+
+    coeffs = accuracies[acc]
+    for i, _ in enumerate(coords):
+        step = zero_step.copy()
+        step[i] = step_size
+
+        def get_grad(factor, displ):
+            displ_coords = coords + step * displ
+            grad = grad_func(displ_coords)
+            return factor * grad
+
+        grads = [get_grad(factor, displ) for factor, displ in coeffs]
+        fd = np.sum(grads, axis=0) / step_size
+        fd_hessian[i] = fd
+
+    # Symmetrize
+    fd_hessian = (fd_hessian + fd_hessian.T) / 2
+    return fd_hessian

@@ -18,6 +18,7 @@ _UNIT_MAP = {
     "nm": 1 / BOHR2M * 1e9,
 }
 _UNITS = list(_UNIT_MAP.keys())
+UNITS = _UNITS
 
 
 def get_constructor(unit):

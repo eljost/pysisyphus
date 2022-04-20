@@ -1,17 +1,19 @@
 import collections.abc
+from difflib import SequenceMatcher
 from enum import Enum
 import itertools as it
 import json
 import logging
 import math
 from pathlib import Path
+from typing import List, Tuple
 import time
 
 import numpy as np
 import psutil
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
-from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG, C, R, AU2KJPERMOL, NA
+from pysisyphus.constants import AU2J, BOHR2ANG, C, R, AU2KJPERMOL, NA
 
 
 """Functions defined here don't import anything from pysisyphus, besides
@@ -442,3 +444,16 @@ def check_mem(mem, pal, avail_frac=0.85, logger=None):
     log(logger, msg)
 
     return mb_corr
+
+
+def get_ratio(str_: str, comp_str: str) -> str:
+    """See https://stackoverflow.com/a/17388505"""
+    return SequenceMatcher(None, str_, comp_str).ratio()
+
+
+def find_closest_sequence(str_: str, comp_strs: List[str]) -> Tuple[str, float]:
+    ratios = [get_ratio(str_, comp_str) for comp_str in comp_strs]
+    argmax = np.argmax(ratios)
+    max_ratio = ratios[argmax]
+    best_match = comp_strs[argmax]
+    return (best_match, max_ratio)

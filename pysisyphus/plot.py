@@ -620,14 +620,23 @@ def render_cdds(h5):
 
 def plot_afir(h5_fn="afir.h5", h5_group="afir"):
 
-    with h5py.File(h5_fn, "r") as handle:
-        group = handle[h5_group]
+    h5_fns = (h5_fn, Path(OUT_DIR_DEFAULT) / h5_fn)
+    for h5_fn in h5_fns:
+        print(f"Trying to open '{h5_fn}' ... ", end="")
+        try:
+            with h5py.File(h5_fn, "r") as handle:
+                group = handle[h5_group]
+                cycles = group.attrs["cur_cycle"] + 1
+                afir_ens = group["energy"][:cycles]
+                true_ens = group["true_energy"][:cycles]
+                afir_forces = group["forces"][:cycles]
+                true_forces = group["true_forces"][:cycles]
+            print("done.")
+            break
+        except FileNotFoundError:
+            print("file not found.")
+            continue
 
-        cycles = group.attrs["cur_cycle"] + 1
-        afir_ens = group["energy"][:cycles]
-        true_ens = group["true_energy"][:cycles]
-        afir_forces = group["forces"][:cycles]
-        true_forces = group["true_forces"][:cycles]
 
     en_conv, en_unit = get_en_conv()
     afir_ens *= en_conv

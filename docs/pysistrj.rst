@@ -1,4 +1,4 @@
-Working with geometries
+Working with Geometries
 ***********************
 **TBD**
 

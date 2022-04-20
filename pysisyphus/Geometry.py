@@ -1161,8 +1161,9 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
-        self.true_forces = None
         self.true_energy = None
+        self.true_forces = None
+        self.true_hessian = None
         self.all_energies = None
 
     def set_results(self, results):
@@ -1180,8 +1181,9 @@ class Geometry:
             "forces": "cart_forces",
             "hessian": "cart_hessian",
             # True properties in AFIR calculations
-            "true_forces": "true_forces",
             "true_energy": "true_energy",
+            "true_forces": "true_forces",
+            "true_hessian": "true_hessian",
             # Overlap calculator; includes excited states
             "all_energies": "all_energies",
         }
