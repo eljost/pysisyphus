@@ -1,23 +1,21 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  NIXQC_SRCURL: http://kashyyyk:8888/nix-src
-  NIXQC_AVX: 0
-  NIXPKGS_ALLOW_UNFREE: 1
+
+image: nixos/nix:2.7.0-amd64
 
 stages:
   - build
   - test
   - distribute
 
-before_script:
+.before_nix: &before_nix
   - mkdir -p ~/.config/nix
   - echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
-  - nix-env -f ./nix/pkgs.nix -iA bash cachix
+  - nix run .#cachix use pysisyphus
 
 nix build:
   stage: build
-  tags:
-    - nix
+  before_script: *before_nix
   script:
     - |
       nix-build -E "(import ./nix/pkgs.nix).python3.pkgs.pysisyphus.overrideAttrs (oldAttrs: {
@@ -33,8 +31,7 @@ nix build:
 
 nix shell:
   stage: build
-  tags:
-    - nix
+  before_script: *before_nix
   script:
     - nix develop --command echo ""
   after_script:
@@ -46,10 +43,15 @@ nix shell:
 nix test:
   stage: test
   tags:
-    - nix
+    - kashyyyk
     - turbomole
     - orca
     - gamess
+  before_script:
+    - *before_nix
+    - nix store prefetch-file http://kashyyyk:8888/nix-src/turbolinux751.tar.gz
+    - nix store prefetch-file http://kashyyyk:8888/nix-src/orca_5_0_3_linux_x86-64_shared_openmpi411.tar.xz
+    - nix store prefetch-file http://kashyyyk:8888/nix-src/gamess-us-2021R2P1.tar.gz
   script:
     - |
       nix-build -E "(import ./nix/pkgs.nix).python3.pkgs.pysisyphus.override {
