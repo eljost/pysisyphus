@@ -23,7 +23,7 @@ class LBFGS(Optimizer):
         gamma_mult: bool = False,
         line_search: bool = False,
         mu_reg: Optional[float] = None,
-        max_mu_reg_adaptions: int = 5,
+        max_mu_reg_adaptions: int = 10,
         control_step: bool = True,
         **kwargs,
     ) -> None:

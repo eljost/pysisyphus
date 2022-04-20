@@ -14,8 +14,8 @@ def assert_hessians(geom):
     def grad_func(coords):
         return -geom.get_energy_and_forces_at(coords)["forces"]
 
-    fd_hessian = finite_difference_hessian(geom.coords, grad_func, acc=2)
-    np.testing.assert_allclose(hessian, fd_hessian, atol=5e-4)
+    fd_hessian = finite_difference_hessian(geom.coords, grad_func, acc=4)
+    np.testing.assert_allclose(hessian, fd_hessian, atol=1.6e-4)
 
 
 def test_fd_hessian():
