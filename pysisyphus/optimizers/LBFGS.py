@@ -4,6 +4,7 @@ import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import fit_rigid
+from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.optimizers.closures import bfgs_multiply, get_update_mu_reg
 from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -147,7 +148,7 @@ class LBFGS(Optimizer):
             self.log(f"      Energy={energy: >24.6f} au")
         self.log(f"norm(forces)={norm: >24.6f} au / bohr (rad)")
 
-        if self.cur_cycle > 0:
+        if self.cur_cycle > 0 and (self.forces[-2].size == forces.size):
             y = self.forces[-2] - forces
             s = self.steps[-1]
             if self.double_damp:

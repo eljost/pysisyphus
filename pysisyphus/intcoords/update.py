@@ -80,6 +80,8 @@ def update_internals(
         # Update values
         for dihed, new_val in zip(dihedrals, new_dihedrals):
             dihed.val = new_val
+
+    invalid_inds = list()
     # See if dihedrals became invalid (collinear atoms)
     if check_dihedrals:
         are_valid = [dihedral_valid(new_coords3d, prim.inds) for prim in dihedrals]

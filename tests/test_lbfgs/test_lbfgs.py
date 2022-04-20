@@ -54,10 +54,14 @@ def test_regularized_lbfgs(mu_reg):
 
 
 @using("pyscf")
-@pytest.mark.parametrize("coord_type", ["cart", "redund"])
+@pytest.mark.parametrize("coord_type", ["cartesian", "redund"])
 @pytest.mark.parametrize("mu_reg", [None, 0.05, 0.1, 0.15])
 def test_regularized_lbfgs_from_ts(coord_type, mu_reg):
-    geom = geom_loader("lib:hcn_iso_pm6_near_ts.xyz", coord_type=coord_type)
+    geom = geom_loader(
+        "lib:hcn_iso_pm6_near_ts.xyz",
+        coord_type=coord_type,
+        coord_kwargs={"rebuild": False},
+    )
     geom.set_calculator(PySCF(basis="sto3g", verbose=0, pal=2))
     opt_kwargs = {
         "mu_reg": mu_reg,
