@@ -160,25 +160,25 @@ class Psi4(Calculator):
         # inp = "\n".join([line.strip() for line in inp.split("\n")])
         return inp
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         calc_type = "energy"
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="energy")
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         calc_type = "grad"
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="grad")
         return results
 
-    def get_hessian(self, atoms, coords):
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         calc_type = "hessian"
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc="hessian")
         return results
 
-    def run_calculation(self, atoms, coords):
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords)
 
     def parse_energy(self, path):

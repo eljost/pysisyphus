@@ -161,7 +161,7 @@ def test_check_typed_prims_invalid_dihedral():
     """
     geom = geom_from_zmat_str(h2o2_zmat, **geom_kwargs)
     typed_prims = geom.internal.typed_prims
-    bend013 = typed_prims[4]
+    bend013 = typed_prims[3]
     dihedral = typed_prims[-1]
     assert bend013[0] == PrimTypes.BEND
     assert dihedral[0] == PrimTypes.PROPER_DIHEDRAL
