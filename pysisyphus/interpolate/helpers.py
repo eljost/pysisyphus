@@ -23,11 +23,11 @@ def interpolate(initial_geom, final_geom, between, kind="linear",
         return interpolator.interpolate_all()
 
 
-def interpolate_all(geoms, between, kind="linear", align=False):
+def interpolate_all(geoms, between, kind="linear", align=False, **interpol_kwargs):
     if (between == 0) or (kind is None):
         return geoms
 
     interpolate_class = INTERPOLATE[kind]
-    interpolator = interpolate_class(geoms, between, align=align)
+    interpolator = interpolate_class(geoms, between, align=align, **interpol_kwargs)
 
     return interpolator.interpolate_all()

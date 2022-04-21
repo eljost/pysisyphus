@@ -1,12 +1,15 @@
+from typing import Optional
+
 import h5py
 import numpy as np
 
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.augment_bonds import augment_bonds
 from pysisyphus.intcoords.PrimTypes import normalize_prim_input, normalize_prim_inputs
 from pysisyphus.optimizers import poly_fit
-from pysisyphus.optimizers.guess_hessians import ts_hessian
-from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
+from pysisyphus.optimizers.guess_hessians import ts_hessian, HessInit
+from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer, HessUpdate
 from pysisyphus.optimizers.Optimizer import get_data_model, get_h5_group
 
 
@@ -17,24 +20,76 @@ class TSHessianOptimizer(HessianOptimizer):
 
     def __init__(
         self,
-        geometry,
-        root=0,
-        hessian_ref=None,
+        geometry: Geometry,
+        root: int = 0,
+        hessian_ref: Optional[str] = None,
         prim_coord=None,
         rx_coords=None,
         rx_mode=None,
-        hessian_init="calc",
-        hessian_update="bofill",
-        hessian_recalc_reset=True,
-        max_micro_cycles=50,
-        trust_radius=0.3,
-        trust_max=0.5,
-        augment_bonds=False,
-        min_line_search=False,
-        max_line_search=False,
-        assert_neg_eigval=False,
+        hessian_init: HessInit = "calc",
+        hessian_update: HessUpdate = "bofill",
+        hessian_recalc_reset: bool = True,
+        max_micro_cycles: int = 50,
+        trust_radius: float = 0.3,
+        trust_max: float = 0.5,
+        augment_bonds: bool = False,
+        min_line_search: bool = False,
+        max_line_search: bool = False,
+        assert_neg_eigval: bool = False,
         **kwargs,
-    ):
+    ) -> None:
+        """Baseclass for transition state optimizers utilizing Hessian information.
+
+        Several arguments expect a typed primitive or an iterable of typed primitives.
+        A typed primitive is specified as (PrimType, int, int, ...), e.g., for a bond
+        between atoms 0 and 1: (BOND, 0, 1) or for a bend between the atom triple 0, 1, 2
+        as (BEND, 0, 1, 2).
+
+        Parameters
+        ----------
+        geometry
+            Geometry to be optimized.
+        root
+            Index of imaginary mode to maximize along.
+        hessian_ref
+            Filename pointing to a pysisyphus HDF5 Hessian.
+        prim_coord : typed_prim
+            Select initial root/imaginary mode by overlap with this internal coordinate.
+        rx_coords : iterable of (typed_prim)
+            Construct imaginary mode comprising the given typed prims by modifying
+            a model Hessian.
+        rx_mode : iterable of (typed_prim, phase_factor)
+            Select initial root by overlap with a mode constructed from the given
+            typed primitives.
+        hessian_init
+            Type of initial model Hessian.
+        hessian_update
+            Type of Hessian update. Defaults to BFGS for minimizations and Bofill
+            for saddle point searches.
+        hessian_recalc_reset
+            Whether to skip Hessian recalculation after reset. Undocumented.
+        max_micro_cycles
+            Maximum number of RS iterations.
+        trust_radius
+            Initial trust radius in whatever unit the optimization is carried out.
+        trust_max
+            Maximum trust radius.
+        augment_bonds
+            Try to derive additional streching coordinates from the imaginary mode.
+        min_line_search
+            Carry out line search along the imaginary mode.
+        max_line_search
+            Carry out line search in the subspace that is minimized.
+        assert_neg_eigval
+            Check for the existences for at least one significant negative eigenvalue.
+            If enabled and no negative eigenvalue is present the optimization will be
+            aborted.
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the HessianOptimizer/Optimizer baseclass.
+        """
 
         assert (
             hessian_update in self.valid_updates

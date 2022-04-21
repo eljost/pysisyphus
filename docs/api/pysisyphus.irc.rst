@@ -60,6 +60,22 @@ pysisyphus.irc.IRC module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.irc.IRCDummy module
+------------------------------
+
+.. automodule:: pysisyphus.irc.IRCDummy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.irc.Instanton module
+-------------------------------
+
+.. automodule:: pysisyphus.irc.Instanton
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.irc.LQA module
 -------------------------
 

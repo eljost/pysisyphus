@@ -1,8 +1,3 @@
-.. pysisyphus documentation master file, created by
-   sphinx-quickstart on Thu May 24 09:59:07 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to pysisyphus documentation!
 ======================================
 
@@ -35,6 +30,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    coordinate_systems.rst
    calculators.rst
    min_optimization.rst
+   microiterations.rst
    scans.rst
    es_optimization.rst
    chainofstates.rst

@@ -12,6 +12,22 @@ pysisyphus.intcoords.Bend module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.Bend2 module
+---------------------------------
+
+.. automodule:: pysisyphus.intcoords.Bend2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.BondedFragment module
+------------------------------------------
+
+.. automodule:: pysisyphus.intcoords.BondedFragment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.intcoords.Cartesian module
 -------------------------------------
 
@@ -20,10 +36,42 @@ pysisyphus.intcoords.Cartesian module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.CartesianCoords module
+-------------------------------------------
+
+.. automodule:: pysisyphus.intcoords.CartesianCoords
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.Coords module
+----------------------------------
+
+.. automodule:: pysisyphus.intcoords.Coords
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.intcoords.DLC module
 -------------------------------
 
 .. automodule:: pysisyphus.intcoords.DLC
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.DistanceFunction module
+--------------------------------------------
+
+.. automodule:: pysisyphus.intcoords.DistanceFunction
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.DummyTorsion module
+----------------------------------------
+
+.. automodule:: pysisyphus.intcoords.DummyTorsion
    :members:
    :undoc-members:
    :show-inheritance:
@@ -100,6 +148,14 @@ pysisyphus.intcoords.Torsion module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.Torsion2 module
+------------------------------------
+
+.. automodule:: pysisyphus.intcoords.Torsion2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.intcoords.Translation module
 ---------------------------------------
 
@@ -164,14 +220,6 @@ pysisyphus.intcoords.helpers module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.intcoords.lindisp module
------------------------------------
-
-.. automodule:: pysisyphus.intcoords.lindisp
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.intcoords.mp\_derivatives module
 -------------------------------------------
 
@@ -184,14 +232,6 @@ pysisyphus.intcoords.setup module
 ---------------------------------
 
 .. automodule:: pysisyphus.intcoords.setup
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.intcoords.setup\_fail module
----------------------------------------
-
-.. automodule:: pysisyphus.intcoords.setup_fail
    :members:
    :undoc-members:
    :show-inheritance:

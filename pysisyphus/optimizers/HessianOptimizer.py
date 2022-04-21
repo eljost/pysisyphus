@@ -1,11 +1,18 @@
 from math import sqrt
+from typing import Literal, Optional
+
 import numpy as np
 from scipy.optimize import root_scalar
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import rms
 from pysisyphus.io.hessian import save_hessian
-from pysisyphus.optimizers.guess_hessians import get_guess_hessian, xtb_hessian
+from pysisyphus.optimizers.guess_hessians import (
+    get_guess_hessian,
+    xtb_hessian,
+    HessInit,
+)
 from pysisyphus.optimizers.hessian_updates import (
     bfgs_update,
     flowchart_update,
@@ -23,19 +30,33 @@ def dummy_hessian_update(H, dx, dg):
     return np.zeros_like(H), "no"
 
 
+HESS_UPDATE_FUNCS = {
+    "none": dummy_hessian_update,
+    None: dummy_hessian_update,
+    False: dummy_hessian_update,
+    "bfgs": bfgs_update,
+    "damped_bfgs": damped_bfgs_update,
+    "flowchart": flowchart_update,
+    "bofill": bofill_update,
+    "ts_bfgs": ts_bfgs_update,
+    "ts_bfgs_org": ts_bfgs_update_org,
+    "ts_bfgs_rev": ts_bfgs_update_revised,
+}
+HessUpdate = Literal[
+    "none",
+    None,
+    False,
+    "bfgs",
+    "damped_bfgs",
+    "flowchart",
+    "bofill",
+    "ts_bfgs",
+    "ts_bfgs_org",
+    "ts_bfgs_rev",
+]
+
+
 class HessianOptimizer(Optimizer):
-    hessian_update_funcs = {
-        "none": dummy_hessian_update,
-        None: dummy_hessian_update,
-        False: dummy_hessian_update,
-        "bfgs": bfgs_update,
-        "damped_bfgs": damped_bfgs_update,
-        "flowchart": flowchart_update,
-        "bofill": bofill_update,
-        "ts_bfgs": ts_bfgs_update,
-        "ts_bfgs_org": ts_bfgs_update_org,
-        "ts_bfgs_rev": ts_bfgs_update_revised,
-    }
 
     rfo_dict = {
         "min": (0, "min"),
@@ -44,25 +65,73 @@ class HessianOptimizer(Optimizer):
 
     def __init__(
         self,
-        geometry,
-        trust_radius=0.5,
-        trust_update=True,
-        trust_min=0.1,
-        trust_max=1,
-        max_energy_incr=None,
-        hessian_update="bfgs",
-        hessian_init="fischer",
-        hessian_recalc=None,
-        hessian_recalc_adapt=None,
-        hessian_xtb=False,
-        hessian_recalc_reset=False,
-        small_eigval_thresh=1e-8,
-        line_search=False,
-        alpha0=1.0,
-        max_micro_cycles=25,
-        rfo_overlaps=False,
+        geometry: Geometry,
+        trust_radius: float = 0.5,
+        trust_update: bool = True,
+        trust_min: float = 0.1,
+        trust_max: float = 1,
+        max_energy_incr: Optional[float] = None,
+        hessian_update: HessUpdate = "bfgs",
+        hessian_init: HessInit = "fischer",
+        hessian_recalc: Optional[int] = None,
+        hessian_recalc_adapt: Optional[float] = None,
+        hessian_xtb: bool = False,
+        hessian_recalc_reset: bool = False,
+        small_eigval_thresh: float = 1e-8,
+        line_search: bool = False,
+        alpha0: float = 1.0,
+        max_micro_cycles: int = 25,
+        rfo_overlaps: bool = False,
         **kwargs,
-    ):
+    ) -> None:
+        """Baseclass for optimizers utilizing Hessian information.
+
+        Parameters
+        ----------
+        geometry
+            Geometry to be optimized.
+        trust_radius
+            Initial trust radius in whatever unit the optimization is carried out.
+        trust_update
+            Whether to update the trust radius throughout the optimization.
+        trust_min
+            Minimum trust radius.
+        trust_max
+            Maximum trust radius.
+        max_energy_incr
+            Maximum allowed energy increased after a faulty step. Optimization is
+            aborted when the threshold is exceeded.
+        hessian_update
+            Type of Hessian update. Defaults to BFGS for minimizations and Bofill
+            for saddle point searches.
+        hessian_init
+            Type of initial model Hessian.
+        hessian_recalc
+            Recalculate exact Hessian every n-th cycle instead of updating it.
+        hessian_recalc_adapt
+            Use a more flexible scheme to determine Hessian recalculation. Undocumented.
+        hessian_xtb
+            Recalculate the Hessian at the GFN2-XTB level of theory.
+        hessian_recalc_reset
+            Whether to skip Hessian recalculation after reset. Undocumented.
+        small_eigval_thresh
+            Threshold for small eigenvalues. Eigenvectors belonging to eigenvalues
+            below this threshold are discardewd.
+        line_search
+            Whether to carry out a line search. Not implemented by a subclassing
+            optimizers.
+        alpha0
+            Initial alpha for restricted-step (RS) procedure.
+        max_micro_cycles
+            Maximum number of RS iterations.
+        rfo_overlaps
+            Enable mode-following in RS procedure.
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the Optimizer baseclass.
+        """
         super().__init__(geometry, **kwargs)
 
         assert not issubclass(
@@ -78,7 +147,7 @@ class HessianOptimizer(Optimizer):
         self.trust_radius = min(trust_radius, trust_max)
         self.log(f"Initial trust radius: {self.trust_radius:.6f}")
         self.hessian_update = hessian_update
-        self.hessian_update_func = self.hessian_update_funcs[hessian_update]
+        self.hessian_update_func = HESS_UPDATE_FUNCS[hessian_update]
         self.hessian_init = hessian_init
         self.hessian_recalc = hessian_recalc
         self.hessian_recalc_adapt = hessian_recalc_adapt
@@ -97,13 +166,11 @@ class HessianOptimizer(Optimizer):
             self.hessian_recalc_in = None
             self.adapt_norm = None
             self.predicted_energy_changes = list()
-
-        # Disallow model Hessians that rely on internal coordinates for
-        # optimizations in Cartesians.
         if (
-            not hasattr(self.geometry, "internal")
-            or (self.geometry.internal is None)
-            and self.hessian_init in ("fischer", "lindh", "simple", "swart")
+            # Allow actually calculated Hessians for all coordinate systems
+            self.hessian_init not in ("calc", "xtb", "xtb1", "xtbff")
+            # But disable model Hessian for Cartesian optimizations
+            and self.geometry.coord_type in ("cart", "cartesian", "mwcartesian")
         ):
             self.hessian_init = "unit"
             self.log(
@@ -144,6 +211,10 @@ class HessianOptimizer(Optimizer):
         self.prepare_opt(hessian_init)
 
     def save_hessian(self):
+        # Don't try to save Hessians of analytical potentials
+        if self.geometry.is_analytical_2d:
+            return
+
         h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle}.h5")
         # Save the cartesian hessian, as it is independent of the
         # actual coordinate system that is used.

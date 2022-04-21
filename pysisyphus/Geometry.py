@@ -28,7 +28,15 @@ from pysisyphus.elem_data import (
     COVALENT_RADII as CR,
 )
 from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand
-from pysisyphus.intcoords import DLC, RedundantCoords, TRIC
+from pysisyphus.intcoords import (
+    DLC,
+    HDLC,
+    RedundantCoords,
+    TRIC,
+    HybridRedundantCoords,
+    CartesianCoords,
+    MWCartesianCoords,
+)
 from pysisyphus.intcoords.exceptions import (
     NeedNewInternalsException,
     RebuiltInternalsException,
@@ -145,8 +153,12 @@ class Geometry:
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
+        "hredund": HybridRedundantCoords,
         "dlc": DLC,
+        "hdlc": HDLC,
         "tric": TRIC,
+        "cartesian": CartesianCoords,
+        "mwcartesian": MWCartesianCoords,
     }
 
     def __init__(
@@ -205,6 +217,10 @@ class Geometry:
         if fragments is None:
             fragments = dict()
         self.fragments = fragments
+        self.coord_type = coord_type
+        if coord_kwargs is None:
+            coord_kwargs = dict()
+        self.coord_kwargs = coord_kwargs
         if isotopes is None:
             isotopes = list()
         self.isotopes = isotopes
@@ -213,33 +229,6 @@ class Geometry:
         elif type(freeze_atoms) is str:
             freeze_atoms = full_expand(freeze_atoms)
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
-
-        assert all(self.freeze_atoms >= 0) and (
-            (self.freeze_atoms.size == 0) or (self.freeze_atoms.max() < len(self.atoms))
-        )
-
-        if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
-            print(
-                "coord_type is set to 'cart' but coord_kwargs were given. "
-                "This is probably not intended. Exiting!"
-            )
-            sys.exit()
-        self.coord_type = coord_type
-        coord_kwargs = coord_kwargs if coord_kwargs is not None else {}
-        coord_class = self.coord_types[self.coord_type]
-        if coord_class:
-            assert (
-                coords.size != 3
-            ), "Only 'coord_type': 'cart' makes sense for coordinates of length 3!"
-            if (self.freeze_atoms is not None) and ("freeze_atoms" not in coord_kwargs):
-                coord_kwargs["freeze_atoms"] = freeze_atoms
-            self.internal = coord_class(
-                atoms,
-                self.coords3d.copy(),
-                **coord_kwargs,
-            )
-        else:
-            self.internal = None
         self.comment = comment
         self.name = name
 
@@ -248,6 +237,51 @@ class Geometry:
         self._forces = None
         self._hessian = None
         self.calculator = None
+
+        assert (
+            # Negative atom indices are not allowed.
+            all(self.freeze_atoms >= 0)
+            and (
+                # Allow an empty array, no frozen atoms.
+                (self.freeze_atoms.size == 0)
+                # Or check that the biggest index is still in the valid range
+                or (self.freeze_atoms.max() < len(self.atoms))
+            )
+        ), f"'freeze_atoms' must all be >= 0 and < {len(self.atoms)}!"
+
+        # Disallow any coord_kwargs with coord_type == 'cart'
+        if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
+            print(
+                "coord_type is set to 'cart' but coord_kwargs were given. "
+                "This is probably not intended. Exiting!"
+            )
+            sys.exit()
+
+        # Coordinate systems are handled below
+        coord_class = self.coord_types[self.coord_type]
+        if coord_class:
+            if (len(self.freeze_atoms) > 0) and ("freeze_atoms" not in coord_kwargs):
+                coord_kwargs["freeze_atoms"] = freeze_atoms
+            self.internal = coord_class(
+                atoms,
+                self.coords3d.copy(),
+                masses=self.masses,
+                **coord_kwargs,
+            )
+        else:
+            self.internal = None
+
+    @property
+    def moving_atoms(self):
+        return [atom for i, atom in enumerate(self.atoms) if i not in self.freeze_atoms]
+
+    def moving_atoms_jmol(self):
+        atoms = list()
+        freeze_atoms = self.freeze_atoms
+        for i, atom in enumerate(self.atoms):
+            atom = atom if i not in freeze_atoms else "X"
+            atoms.append(atom)
+        self.jmol(atoms=atoms)
 
     @property
     def sum_formula(self):
@@ -522,6 +556,7 @@ class Geometry:
                 coords = self._coords + cart_step
             except NeedNewInternalsException as exception:
                 invalid_inds = exception.invalid_inds
+                # Check if the remaining internal coordinates are valid
                 valid_typed_prims = [
                     typed_prim
                     for i, typed_prim in enumerate(self.internal.typed_prims)
@@ -539,7 +574,16 @@ class Geometry:
                     # (valid_typed_prims <= self.internal.typed_prims).
                     self.atoms,
                     coords3d,
-                    typed_prims=valid_typed_prims,
+                    # With typed prims, only the remaining, valid typed_prims
+                    # will be defined for the new geometry.
+                    #
+                    # typed_prims=valid_typed_prims,
+                    #
+                    # With 'define_prims' the remaining, valid typed_prims
+                    # will be used, together with newly determined internal
+                    # coordinates. This supports, e.g., the switch from a simple
+                    # bend to a linear bend and its complement.
+                    define_prims=valid_typed_prims,
                 )
                 self._coords = coords3d.flatten()
                 raise RebuiltInternalsException(
@@ -651,7 +695,9 @@ class Geometry:
     @property
     def masses(self):
         if self._masses is None:
+            # Lookup tabuled masses in internal database
             masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+            # Use (different) isotope masses if requested
             for atom_index, iso_mass in self.isotopes:
                 if "." not in str(iso_mass):
                     atom = self.atoms[atom_index].lower()
@@ -671,7 +717,13 @@ class Geometry:
     @masses.setter
     def masses(self, masses):
         assert len(masses) == len(self.atoms)
-        self._masses = np.array(masses, dtype=float)
+        masses = np.array(masses, dtype=float)
+        self._masses = masses
+        # Also try to propagate updated masses to the internal coordiante object
+        try:
+            self.internal.masses = masses
+        except AttributeError:
+            pass
 
     @property
     def masses_rep(self):
@@ -1043,6 +1095,10 @@ class Geometry:
         return get_trans_rot_projector(self.cart_coords, masses=self.masses, full=full)
 
     def eckart_projection(self, mw_hessian, return_P=False, full=False):
+        # Must not project analytical 2d potentials.
+        if self.is_analytical_2d:
+            return mw_hessian
+
         P = self.get_trans_rot_projector(full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
         if return_P:
@@ -1115,8 +1171,9 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
-        self.true_forces = None
         self.true_energy = None
+        self.true_forces = None
+        self.true_hessian = None
         self.all_energies = None
 
     def set_results(self, results):
@@ -1134,8 +1191,9 @@ class Geometry:
             "forces": "cart_forces",
             "hessian": "cart_hessian",
             # True properties in AFIR calculations
-            "true_forces": "true_forces",
             "true_energy": "true_energy",
+            "true_forces": "true_forces",
+            "true_hessian": "true_hessian",
             # Overlap calculator; includes excited states
             "all_energies": "all_energies",
         }
@@ -1148,7 +1206,7 @@ class Geometry:
             setattr(self, trans[key], results[key])
         self.results = results
 
-    def as_xyz(self, comment="", cart_coords=None):
+    def as_xyz(self, comment="", atoms=None, cart_coords=None):
         """Current geometry as a string in XYZ-format.
 
         Parameters
@@ -1164,13 +1222,15 @@ class Geometry:
         xyz_str : str
             Current geometry as string in XYZ-format.
         """
+        if atoms is None:
+            atoms = self.atoms
         if cart_coords is None:
             cart_coords = self._coords
         cart_coords = cart_coords.copy()
         cart_coords *= BOHR2ANG
         if comment == "":
             comment = self.comment
-        return make_xyz_str(self.atoms, cart_coords.reshape((-1, 3)), comment)
+        return make_xyz_str(atoms, cart_coords.reshape((-1, 3)), comment)
 
     def dump_xyz(self, fn):
         if not fn.lower().endswith(".xyz"):
@@ -1228,10 +1288,10 @@ class Geometry:
             atoms.append(atom)
         return atoms
 
-    def jmol(self, cart_coords=None):
+    def jmol(self, atoms=None, cart_coords=None):
         """Show geometry in jmol."""
         tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
-        tmp_xyz.write(self.as_xyz(cart_coords=cart_coords).encode("utf-8"))
+        tmp_xyz.write(self.as_xyz(atoms=atoms, cart_coords=cart_coords).encode("utf-8"))
         tmp_xyz.flush()
         jmol_cmd = "jmol"
         try:

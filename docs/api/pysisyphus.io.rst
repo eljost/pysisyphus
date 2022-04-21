@@ -12,6 +12,14 @@ pysisyphus.io.cjson module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.io.crd module
+------------------------
+
+.. automodule:: pysisyphus.io.crd
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.io.hdf5 module
 -------------------------
 
@@ -24,6 +32,14 @@ pysisyphus.io.hessian module
 ----------------------------
 
 .. automodule:: pysisyphus.io.hessian
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.io.mol2 module
+-------------------------
+
+.. automodule:: pysisyphus.io.mol2
    :members:
    :undoc-members:
    :show-inheritance:

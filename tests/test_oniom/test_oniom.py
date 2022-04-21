@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.ONIOMv2 import ONIOM
+from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import do_final_hessian, geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -565,17 +566,8 @@ def test_composite_oniom(fn, mult, high_inds, ref_energy):
     assert geom._energy == pytest.approx(ref_energy)
 
 
-@using("pyscf")
-@pytest.mark.parametrize(
-    "embedding, ref_energy",
-    [
-        ("", -151.8130757),
-        ("electronic", -151.817564),
-        ("electronic_rc", -151.814822),
-        ("electronic_rcd", -151.817018),
-    ],
-)
-def test_oniom_ee_charge_distribution(embedding, ref_energy):
+@pytest.fixture
+def pyscf_acetaldehyd_getter():
     geom = geom_loader("lib:acetaldehyd_oniom.xyz", coord_type="redund")
 
     calcs = {
@@ -597,8 +589,62 @@ def test_oniom_ee_charge_distribution(embedding, ref_energy):
         },
     }
 
-    oniom = ONIOM(calcs, models, geom, layers=None, embedding=embedding)
-    geom.set_calculator(oniom)
+    def get_oniom(**kwargs):
+        oniom = ONIOM(calcs, models, geom, layers=None, **kwargs)
+        geom.set_calculator(oniom)
+        return geom
 
+    return get_oniom
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "embedding, ref_energy",
+    [
+        ("", -151.8130757),
+        ("electronic", -151.817564),
+        ("electronic_rc", -151.814822),
+        ("electronic_rcd", -151.817018),
+    ],
+)
+def test_oniom_ee_charge_distribution(embedding, ref_energy, pyscf_acetaldehyd_getter):
+    geom = pyscf_acetaldehyd_getter(embedding=embedding)
     en = geom.energy
     assert en == pytest.approx(ref_energy)
+
+
+@using("pyscf")
+def test_layer_calc(pyscf_acetaldehyd_getter):
+    geom = pyscf_acetaldehyd_getter()
+    calc = geom.calculator
+
+    real_calc = PySCF(basis="sto3g")
+    args = geom.atoms, geom.cart_coords
+    #  Reference energies
+    real_low_en = real_calc.get_energy(*args)["energy"]
+    oniom_en = geom.energy
+    ref_energies = (real_low_en, oniom_en)
+    # Reference forces
+    real_low_forces = real_calc.get_forces(*args)["forces"]
+    oniom_forces = geom.cart_forces
+    ref_forces = (real_low_forces, oniom_forces)
+    # Reference hessians
+    real_low_hessian = real_calc.get_hessian(*args)["hessian"]
+    oniom_hessian = geom.cart_hessian
+    ref_hessians = (real_low_hessian, oniom_hessian)
+    energies = list()
+    all_forces = list()
+    all_hessians = list()
+    for i, _ in enumerate(calc.layers):
+        lcalc = calc.get_layer_calc(i)
+        energy = lcalc.get_energy(*args)["energy"]
+        energies.append(energy)
+        forces = lcalc.get_forces(*args)["forces"]
+        all_forces.append(forces)
+        hessian = lcalc.get_hessian(*args)["hessian"]
+        all_hessians.append(hessian)
+    np.testing.assert_allclose(energies, ref_energies)
+    # When using XTB instea of PySCF we don't have to increase the
+    # tolerance. There seem to be some numerical instabilities in PySCF.
+    np.testing.assert_allclose(all_forces, ref_forces, atol=1e-7)
+    np.testing.assert_allclose(all_hessians, ref_hessians, atol=2e-7)

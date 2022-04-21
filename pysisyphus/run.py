@@ -15,7 +15,6 @@ import textwrap
 import time
 
 from distributed import Client
-from natsort import natsorted
 import numpy as np
 import scipy as sp
 import yaml
@@ -51,6 +50,7 @@ from pysisyphus.helpers import (
     get_tangent_trj_str,
 )
 from pysisyphus.helpers_pure import (
+    find_closest_sequence,
     merge_sets,
     recursive_update,
     highlight_text,
@@ -70,7 +70,7 @@ from pysisyphus.stocastic import *
 from pysisyphus.thermo import can_thermoanalysis
 from pysisyphus.trj import get_geoms, dump_geoms, standardize_geoms
 from pysisyphus.xyzloader import write_geoms_to_trj
-from pysisyphus.yaml_mods import get_loader
+from pysisyphus.yaml_mods import get_loader, UNITS
 
 
 CALC_DICT = {
@@ -79,6 +79,7 @@ CALC_DICT = {
     "conical": ConicalIntersection,
     "dftb+": DFTBp,
     "dimer": Dimer,
+    "dummy": Dummy,
     "energymin": EnergyMin,
     "ext": ExternalPotential,
     "g09": Gaussian09,
@@ -475,6 +476,7 @@ def run_tsopt_from_cos(
         copy_final_geom="ts_opt.xyz",
     )
     ts_geom = opt_result.geom
+    ts_opt = opt_result.opt
 
     # Restore original calculator for Dimer calculations
     if tsopt_key == "dimer":
@@ -482,7 +484,8 @@ def run_tsopt_from_cos(
 
     print(f"Optimized TS coords:")
     print(ts_geom.as_xyz())
-    ts_opt_fn = "ts_opt.xyz"
+    # Include ts_ prefix
+    ts_opt_fn = ts_opt.get_path_for_fn("opt.xyz")
     with open(ts_opt_fn, "w") as handle:
         handle.write(ts_geom.as_xyz())
     print(f"Wrote TS geometry to '{ts_opt_fn}\n'")
@@ -767,7 +770,7 @@ def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
             print(f"Problem in preoptimization of {key}. Exiting!")
             sys.exit()
         print(f"Preoptimization of {key} geometry converged!")
-        opt_fn = f"{key}_preopt.xyz"
+        opt_fn = opt.get_path_for_fn(f"{key}_preopt.xyz")
         shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
 
@@ -964,8 +967,8 @@ def run_endopt(irc, endopt_key, endopt_kwargs, calc_getter):
                 title=f"{name} Optimization",
                 level=1,
             )
-        except Exception:
-            print("Optimization crashed!")
+        except Exception as err:
+            print(f"{err}\nOptimization crashed!")
             continue
         final_fn = opt_result.opt.final_fn
         opt_fn = f"{name}_opt.xyz"
@@ -1042,7 +1045,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
         "assert": None,
         "barrier": None,
         "calc": {
-            "pal": 1,
+            "type": "dummy",
         },
         "cos": None,
         "endopt": None,
@@ -1078,8 +1081,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     }
     if "interpol" in conf_dict:
         dd["interpol"] = {
-            "type": "linear",
-            "between": 5,
+            "align": True,
         }
 
     if "cos" in conf_dict:
@@ -1299,11 +1301,8 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         yaml.dump(run_dict_copy, handle)
 
     if run_dict["interpol"]:
-        interpolate = run_dict["interpol"]["type"]
-        between = run_dict["interpol"]["between"]
-    else:
-        interpolate = None
-        between = 0
+        interpol_key = run_dict["interpol"].pop("type")
+        interpol_kwargs = run_dict["interpol"]
     # Preoptimization prior to COS optimization
     if run_dict["preopt"]:
         preopt_key = run_dict["preopt"].pop("type")
@@ -1334,23 +1333,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     xyz = geom_kwargs.pop("fn")
     coord_type = geom_kwargs.pop("type")
     union = geom_kwargs.pop("union", None)
-
-    if restart:
-        print("Trying to restart calculation. Skipping interpolation.")
-        between = 0
-        # Load geometries of latest cycle
-        cwd = Path(".")
-        trjs = [str(trj) for trj in cwd.glob("cycle_*.trj")]
-        if len(trjs) == 0:
-            print("Can't restart. Found no previous coordinates.")
-            sys.exit()
-        xyz = natsorted(trjs)[-1]
-        last_cycle = int(re.search(r"(\d+)", xyz)[0])
-        print(f"Last cycle was {last_cycle}.")
-        print(f"Using '{xyz}' as input geometries.")
-        opt_kwargs["last_cycle"] = last_cycle
-        last_calc_cycle = get_last_calc_cycle()
-        run_dict["calc"]["last_calc_cycle"] = last_calc_cycle
 
     ####################
     # CALCULATOR SETUP #
@@ -1432,13 +1414,13 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         geoms[0] = preopt_first_geom = first_opt_result.geom.copy(coord_type=coord_type)
         geoms[-1] = preopt_last_geom = last_opt_result.geom.copy(coord_type=coord_type)
 
-    # Interpolate. Will return the original geometries for between = 0
-    geoms = interpolate_all(geoms, between=between, kind=interpolate, align=True)
+    if run_dict["interpol"]:
+        # Interpolate. Will return the original geometries for between = 0
+        geoms = interpolate_all(geoms, kind=interpol_key, **interpol_kwargs)
+        dump_geoms(geoms, "interpolated")
+
     # Recreate geometries with desired coordinate type and keyword arguments
     geoms = standardize_geoms(geoms, coord_type, geom_kwargs, union=union)
-
-    if between and len(geoms) > 1:
-        dump_geoms(geoms, "interpolated")
 
     # Create COS objects and supply a function that yields new Calculators,
     # as needed for growing COS classes, where images are added over time.
@@ -1992,7 +1974,19 @@ def run():
         with open(args.yaml) as handle:
             yaml_str = handle.read()
         try:
-            run_dict = yaml.load(yaml_str, Loader=get_loader())
+            loader = get_loader()
+            try:
+                run_dict = yaml.load(yaml_str, Loader=loader)
+            except yaml.constructor.ConstructorError as err:
+                mobj = re.compile("for the tag '\!(\w+)'").search(err.problem)
+                if mobj:
+                    err_unit = mobj.group(1)
+                    best_match, _ = find_closest_sequence(err_unit, UNITS)
+                    print(
+                        f"Unknown unit!\nKnown units are\n'{UNITS}'.\n"
+                        f"Did you mean '{best_match}', instead of '{err_unit}'?\n"
+                    )
+                raise err
             assert type(run_dict) == type(dict())
         except (AssertionError, yaml.parser.ParserError) as err:
             print(err)

@@ -12,8 +12,8 @@ from pysisyphus.interpolate.Interpolator import Interpolator
 
 class LST(Interpolator):
 
-    def __init__(self, geoms, between, align=True, gtol=1e-4, silent=False):
-        super().__init__(geoms, between, align)
+    def __init__(self, *args, align=True, gtol=1e-4, silent=False, **kwargs):
+        super().__init__(*args, align=align, **kwargs)
 
         self.gtol = float(gtol)
         self.silent = silent
@@ -33,7 +33,7 @@ class LST(Interpolator):
         )
         return first_term + second_term
 
-    def interpolate(self, initial_geom, final_geom):
+    def interpolate(self, initial_geom, final_geom, **kwargs):
         coords3d = np.array((initial_geom.coords3d, final_geom.coords3d))
         # Calculate the condensed distances matrices
         pdists = [pdist(c3d) for c3d in coords3d]

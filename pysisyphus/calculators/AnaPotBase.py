@@ -15,6 +15,7 @@ class AnaPotBase(Calculator):
     def __init__(
         self,
         V_str,
+        scale=1.0,
         xlim=(-1, 1),
         ylim=(-1, 1),
         levels=None,
@@ -22,9 +23,13 @@ class AnaPotBase(Calculator):
         minima=None,
         saddles=None,
     ):
-        super(AnaPotBase, self).__init__()
+        super().__init__()
+        self.V_str = V_str
+        self.scale = scale
         self.xlim = xlim
         self.ylim = ylim
+        if levels is not None:
+            levels = levels * self.scale
         self.levels = levels
         if minima is None:
             minima = list()
@@ -69,8 +74,10 @@ class AnaPotBase(Calculator):
     def get_energy(self, atoms, coords):
         self.energy_calcs += 1
         x, y, z = coords
-        energy = self.V(x, y)
-        return {"energy": energy}
+        energy = self.scale * self.V(x, y)
+        return {
+            "energy": energy,
+        }
 
     def get_forces(self, atoms, coords):
         self.forces_calcs += 1
@@ -78,9 +85,11 @@ class AnaPotBase(Calculator):
         dVdx = self.dVdx(x, y)
         dVdy = self.dVdy(x, y)
         dVdz = np.zeros_like(dVdx)
-        forces = -np.array((dVdx, dVdy, dVdz))
-        results = self.get_energy(atoms, coords)
-        results["forces"] = forces
+        forces = self.scale * -np.array((dVdx, dVdy, dVdz))
+        results = {
+            "forces": forces,
+        }
+        results.update(self.get_energy(atoms, coords))
         return results
 
     def get_hessian(self, atoms, coords):
@@ -89,9 +98,13 @@ class AnaPotBase(Calculator):
         dVdxdx = self.dVdxdx(x, y)
         dVdxdy = self.dVdxdy(x, y)
         dVdydy = self.dVdydy(x, y)
-        hessian = np.array(((dVdxdx, dVdxdy, 0), (dVdxdy, dVdydy, 0), (0, 0, 0)))
-        results = self.get_forces(atoms, coords)
-        results["hessian"] = hessian
+        hessian = self.scale * np.array(
+            ((dVdxdx, dVdxdy, 0), (dVdxdy, dVdydy, 0), (0, 0, 0))
+        )
+        results = {
+            "hessian": hessian,
+        }
+        results.update(self.get_energy(atoms, coords))
         return results
 
     def statistics(self):
@@ -171,7 +184,7 @@ class AnaPotBase(Calculator):
             self.ax.set_zlim(*zlim)
 
         if colorbar:
-            cb = self.fig.colorbar(surf, shrink=.45, pad=0.0)
+            cb = self.fig.colorbar(surf, shrink=0.45, pad=0.0)
             cb.set_label("f(x,y)")
 
         if init_view:
@@ -265,12 +278,18 @@ class AnaPotBase(Calculator):
             plt.show()
 
     @classmethod
-    def get_geom(cls, coords, atoms=("X",), V_str=None):
-        geom = Geometry(atoms, coords)
+    def get_geom(
+        cls, coords, atoms=("X",), V_str=None, calc_kwargs=None, geom_kwargs=None
+    ):
+        if calc_kwargs is None:
+            calc_kwargs = dict()
+        if geom_kwargs is None:
+            geom_kwargs = dict()
+
+        geom = Geometry(atoms, coords, **geom_kwargs)
         if V_str:
-            geom.set_calculator(cls(V_str=V_str))
-        else:
-            geom.set_calculator(cls())
+            calc_kwargs["V_str"] = V_str
+        geom.set_calculator(cls(**calc_kwargs))
         return geom
 
     def get_path(self, num, minima_inds=None):
@@ -291,11 +310,28 @@ class AnaPotBase(Calculator):
             geom.set_calculator(self)
         return geoms
 
-    def get_minima(self):
-        return [self.get_geom(coords) for coords in self.minima]
-
-    def get_saddle(self, i=None):
+    def get_geoms_from_stored_coords(
+        self, coords_list, i=None, calc_kwargs=None, geom_kwargs=None
+    ):
+        if calc_kwargs is None:
+            calc_kwargs = dict()
+        if geom_kwargs is None:
+            geom_kwargs = dict()
+        geoms = [
+            self.get_geom(coords, calc_kwargs=calc_kwargs, geom_kwargs=geom_kwargs)
+            for coords in coords_list
+        ]
         if i is not None:
-            return self.get_geom(self.saddles[i])
+            return geoms[i]
         else:
-            return [self.get_geom(coords) for coords in self.saddles]
+            return geoms
+
+    def get_minima(self, i=None, calc_kwargs=None, geom_kwargs=None):
+        return self.get_geoms_from_stored_coords(
+            self.minima, i=i, calc_kwargs=calc_kwargs, geom_kwargs=geom_kwargs
+        )
+
+    def get_saddles(self, i=None, calc_kwargs=None, geom_kwargs=None):
+        return self.get_geoms_from_stored_coords(
+            self.saddles, i=i, calc_kwargs=calc_kwargs, geom_kwargs=geom_kwargs
+        )

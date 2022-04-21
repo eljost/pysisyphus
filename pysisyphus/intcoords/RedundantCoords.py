@@ -6,12 +6,16 @@
 # [5] https://doi.org/10.1063/1.462844 , Pulay 1992
 
 import itertools as it
-import logging
 import math
 from operator import itemgetter
 
 import numpy as np
 
+from pysisyphus.config import (
+        BEND_MIN_DEG,
+        LB_MIN_DEG,
+        DIHED_MAX_DEG,
+)
 from pysisyphus.linalg import svd_inv
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.update import transform_int_step
@@ -20,6 +24,7 @@ from pysisyphus.intcoords.eval import (
     check_primitives,
 )
 
+from pysisyphus.intcoords.logging import logger
 from pysisyphus.intcoords.PrimTypes import (
     normalize_prim_inputs,
     PrimTypes,
@@ -47,18 +52,20 @@ class RedundantCoords:
         self,
         atoms,
         coords3d,
+        masses=None,
         bond_factor=1.3,
         typed_prims=None,
         define_prims=None,
         constrain_prims=None,
         freeze_atoms=None,
         freeze_atoms_exclude=False,
+        define_for=None,
         bonds_only=False,
         check_bends=True,
         rebuild=True,
-        bend_min_deg=15,
-        dihed_max_deg=175.0,
-        lb_min_deg=175.0,
+        bend_min_deg=BEND_MIN_DEG,
+        dihed_max_deg=DIHED_MAX_DEG,
+        lb_min_deg=LB_MIN_DEG,
         weighted=False,
         min_weight=0.3,
         # Corresponds to a threshold of 1e-7 for eigenvalues of G, as proposed by
@@ -66,10 +73,12 @@ class RedundantCoords:
         svd_inv_thresh=3.16e-4,
         recalc_B=False,
         tric=False,
+        hybrid=False,
         hbond_angles=False,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
+        self.masses = masses
         self.bond_factor = bond_factor
         if typed_prims is not None:
             typed_prims = normalize_prim_inputs(typed_prims)
@@ -81,6 +90,7 @@ class RedundantCoords:
             freeze_atoms = list()
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
         self.freeze_atoms_exclude = freeze_atoms_exclude
+        self.define_for = define_for
         # Constrain primitives
         if constrain_prims is None:
             constrain_prims = list()
@@ -97,11 +107,12 @@ class RedundantCoords:
         self.svd_inv_thresh = svd_inv_thresh
         self.recalc_B = recalc_B
         self.tric = tric
+        self.hybrid = hybrid
         self.hbond_angles = hbond_angles
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
-        self.logger = logging.getLogger("internal_coords")
+        self.logger = logger
 
         if self.weighted:
             self.log(
@@ -169,6 +180,7 @@ class RedundantCoords:
         self._cartesian_inds = list()
         self._outofplane_inds = list()
         self._dummycoord_inds = list()
+        self._cartesian_inds = list()
 
         self._bond_atom_inds = list()
         self._bend_atom_inds = list()
@@ -199,6 +211,8 @@ class RedundantCoords:
                 append_to = self._outofplane_inds
             elif pt in DummyCoords:
                 append_to = self._dummycoord_inds
+            elif pt in Cartesians:
+                append_to = self._cartesian_inds
             else:
                 raise Exception("Unhandled PrimType!")
             append_to.append(i)
@@ -521,8 +535,10 @@ class RedundantCoords:
             lb_min_deg=self.lb_min_deg,
             min_weight=self.min_weight if self.weighted else None,
             tric=self.tric,
+            hybrid=self.hybrid,
             hbond_angles=self.hbond_angles,
             freeze_atoms=self.freeze_atoms if self.freeze_atoms_exclude else None,
+            define_for=self.define_for,
             logger=self.logger,
         )
 
@@ -560,9 +576,11 @@ class RedundantCoords:
             self.prim_coords,
             self.Bt_inv_prim,
             self.primitives,
-            self.dihedral_indices,
-            self.rotation_indices,
+            typed_prims=self.typed_prims,
             check_dihedrals=self.rebuild,
+            check_bends=self.rebuild,
+            bend_min_deg=self.bend_min_deg,
+            bend_max_deg=self.lb_min_deg,
             freeze_atoms=self.freeze_atoms,
             constrained_inds=self.constrained_indices,
             update_constraints=update_constraints,
@@ -592,4 +610,10 @@ class TRIC(RedundantCoords):
     def __init__(self, *args, **kwargs):
         kwargs["tric"] = True
         kwargs["recalc_B"] = True
+        super().__init__(*args, **kwargs)
+
+
+class HybridRedundantCoords(RedundantCoords):
+    def __init__(self, *args, **kwargs):
+        kwargs["hybrid"] = True
         super().__init__(*args, **kwargs)

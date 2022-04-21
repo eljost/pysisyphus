@@ -48,6 +48,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
+    'sphinx_autodoc_typehints',
     'sphinx.ext.autosummary',
     'sphinx.ext.autosectionlabel',
 ]
@@ -165,7 +166,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'pysisyphus', 'pysisyphus Documentation',
-     author, 'pysisyphus', 'One line description of project.',
+     author, 'pysisyphus', 'External optimizer for PES exploration.',
      'Miscellaneous'),
 ]
 
@@ -174,6 +175,8 @@ texinfo_documents = [
 
 autosummary_generate = True
 autodoc_default_flags = ['members', ]
+
+typehints_defaults = "comma"
 
 napoleon_google_docstring = False
 napoleon_include_init_with_doc = True

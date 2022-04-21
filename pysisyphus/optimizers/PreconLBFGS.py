@@ -1,35 +1,75 @@
 from collections import deque
 from functools import partial
+from typing import Literal, Optional
 
 import numpy as np
 from scipy.sparse.linalg import spsolve
 
 from pysisyphus.calculators import Dimer
 from pysisyphus.cos.GrowingNT import GrowingNT
+from pysisyphus.Geometry import Geometry
 from pysisyphus.line_searches import *
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
-from pysisyphus.optimizers.precon import precon_getter
+from pysisyphus.optimizers.precon import precon_getter, PreconKind
+
+
+LineSearch = Literal["armijo", "armijo_fg", "strong_wolfe", "hz", None, False]
 
 
 class PreconLBFGS(Optimizer):
     def __init__(
         self,
-        geometry,
-        alpha_init=1.0,
-        history=7,
-        precon=True,
-        precon_update=None,
-        precon_kind="full",
-        max_step_element=None,
-        line_search="armijo",
-        c_stab=None,
+        geometry: Geometry,
+        alpha_init: float = 1.0,
+        history: int = 7,
+        precon: bool = True,
+        precon_update: int = 1,
+        precon_getter_update: Optional[int] = None,
+        precon_kind: PreconKind = "full",
+        max_step_element: Optional[float] = None,
+        line_search: LineSearch = "armijo",
+        c_stab: Optional[float] = None,
         **kwargs,
-    ):
+    ) -> None:
+        """Preconditioned limited-memory BFGS optimizer.
+
+        See pysisyphus.optimizers.precon for related references.
+
+        Parameters
+        ----------
+        geometry
+            Geometry to be optimized.
+        alpha_init
+            Initial scaling factor for the first trial step in the excplicit line search.
+        history
+            History size. Keep last 'history' steps and gradient differences.
+        precon
+            Wheter to use preconditioning or not.
+        precon_update
+            Recalculate preconditioner P in every n-th cycle with the same topology.
+        precon_getter_update
+            Recalculate topology for preconditioner P in every n-th cycle. It is usually
+            sufficient to only determine the topology once at the beginning.
+        precon_kind
+            What types of primitive internal coordinates to consider in the preconditioner.
+        max_step_element
+            Maximum component of the absolute step vector when no line search is carried out.
+        line_search
+            Whether to use explicit line searches and if so, which kind of line search.
+        c_stab
+            Regularization constant c in (H + cI)⁻¹ in atomic units.
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the Optimizer baseclass.
+        """
         if precon:
-            assert (
-                geometry.coord_type == "cart"
-            ), "Preconditioning makes only sense with 'coord_type: cart'"
+            assert geometry.coord_type in (
+                "cart",
+                "cartesian",
+            ), "Preconditioning makes only sense with 'coord_type: cart|cartesian'"
         # Set before calling the superclass constructor so we can use the value
         # in _set_opt_restart_info.
         self.history = history
@@ -42,8 +82,10 @@ class PreconLBFGS(Optimizer):
         if self.precon and (self.geometry.cart_coords.size == 3):
             self.precon = None
         self.precon_update = precon_update
+        self.precon_getter_update = precon_getter_update
         self.precon_kind = precon_kind
 
+        self.P = None
         try:
             is_dimer = isinstance(self.geometry.calculator, Dimer)
         # COS objectes may not have a calculator
@@ -96,6 +138,8 @@ class PreconLBFGS(Optimizer):
         if not self.restarted:
             self.grad_diffs = deque(maxlen=self.history)
             self.steps_ = deque(maxlen=self.history)
+            self.f_evals = 0
+            self.df_evals = 0
 
     def get_precon_getter(self):
         return precon_getter(
@@ -112,6 +156,8 @@ class PreconLBFGS(Optimizer):
             "grad_diffs": np.array(self.grad_diffs).tolist(),
             "steps_": np.array(self.steps_).tolist(),
             "precon_kind": self.precon_kind,
+            "f_evals": self.f_evals,
+            "df_evals": self.df_evals,
         }
         return opt_restart_info
 
@@ -126,6 +172,8 @@ class PreconLBFGS(Optimizer):
         self.c_stab = opt_restart_info["c_stab"]
         self.precon_kind = opt_restart_info["precon_kind"]
         self.precon_getter = self.get_precon_getter()
+        self.f_evals = opt_restart_info["f_evals"]
+        self.df_evals = opt_restart_info["df_evals"]
 
     def scale_max_element(self, step, max_step_element):
         max_element = np.abs(step).max()
@@ -150,32 +198,38 @@ class PreconLBFGS(Optimizer):
                 self.log(f"             ΔE={energy-prev_energy:{fmt}} au")
         self.log(f"norm(forces)={norm:.6f}")
 
-        # Steepest descent fallback
-        step = forces
-
-        # Check for preconditioner update
+        # Check for preconditioner getter update
         if (
-            self.precon_update
+            self.precon_getter_update
             and self.cur_cycle > 0
-            and self.cur_cycle % self.precon_update == 0
+            and self.cur_cycle % self.precon_getter_update == 0
         ):
             self.precon_getter = self.get_precon_getter()
+            self.log("Calculated new preconditioner getter")
 
         # If requested, construct preconditioner
-        P = None
-        if self.precon:
-            P = self.precon_getter(self.geometry.coords)
+        if self.precon and (self.cur_cycle % self.precon_update == 0):
+            self.P = self.precon_getter(self.geometry.coords)
             self.log("Calculated new preconditioner P")
-            step = spsolve(P, forces)
 
+        # Determine step direction
+
+        # Preconditioned LBFGS in later cycles
         if self.cur_cycle > 0:
             self.grad_diffs.append(-forces - -self.forces[-2])
             self.steps_.append(self.steps[-1])
-            step = bfgs_multiply(self.steps_, self.grad_diffs, forces, P=P)
+            step = bfgs_multiply(self.steps_, self.grad_diffs, forces, P=self.P)
+        # Preconditioned steepest descent in cycle 0
+        elif self.precon:
+            step = spsolve(self.P, forces)
+        # Steepest descent w/o preconditioner in cycle 0
+        else:
+            step = forces
 
         step_norm = np.linalg.norm(step)
         self.log(f"norm(unscaled step)={step_norm:.6f} au")
 
+        # Determine step length
         if self.line_search_cls is not None:
             kwargs = {
                 "geometry": self.geometry,
@@ -194,6 +248,8 @@ class PreconLBFGS(Optimizer):
                 self.log(
                     f"Evaluated {f_evals} energies and {df_evals} gradients in line search."
                 )
+                self.f_evals += f_evals
+                self.df_evals += df_evals
             except TypeError:
                 self.log("Line search did not converge!")
                 step = self.scale_max_element(step, self.max_step_element)

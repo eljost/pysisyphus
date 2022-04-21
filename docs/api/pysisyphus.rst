@@ -13,7 +13,6 @@ Subpackages
    pysisyphus.db
    pysisyphus.drivers
    pysisyphus.dynamics
-   pysisyphus.geom_library
    pysisyphus.intcoords
    pysisyphus.interpolate
    pysisyphus.io
@@ -142,14 +141,6 @@ pysisyphus.pack module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.pansi module
------------------------
-
-.. automodule:: pysisyphus.pansi
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.peakdetect module
 ----------------------------
 
@@ -206,10 +197,26 @@ pysisyphus.trj module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.version module
+-------------------------
+
+.. automodule:: pysisyphus.version
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.xyzloader module
 ---------------------------
 
 .. automodule:: pysisyphus.xyzloader
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.yaml\_mods module
+----------------------------
+
+.. automodule:: pysisyphus.yaml_mods
    :members:
    :undoc-members:
    :show-inheritance:

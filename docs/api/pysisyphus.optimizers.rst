@@ -28,6 +28,14 @@ pysisyphus.optimizers.ConjugateGradient module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.optimizers.CubicNewton module
+----------------------------------------
+
+.. automodule:: pysisyphus.optimizers.CubicNewton
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.optimizers.FIRE module
 ---------------------------------
 
@@ -52,6 +60,14 @@ pysisyphus.optimizers.LBFGS module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.optimizers.LayerOpt module
+-------------------------------------
+
+.. automodule:: pysisyphus.optimizers.LayerOpt
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.optimizers.MicroOptimizer module
 -------------------------------------------
 
@@ -64,14 +80,6 @@ pysisyphus.optimizers.NCOptimizer module
 ----------------------------------------
 
 .. automodule:: pysisyphus.optimizers.NCOptimizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.optimizers.ONIOMOpt module
--------------------------------------
-
-.. automodule:: pysisyphus.optimizers.ONIOMOpt
    :members:
    :undoc-members:
    :show-inheritance:
@@ -152,6 +160,22 @@ pysisyphus.optimizers.closures module
 -------------------------------------
 
 .. automodule:: pysisyphus.optimizers.closures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.optimizers.cls\_map module
+-------------------------------------
+
+.. automodule:: pysisyphus.optimizers.cls_map
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.optimizers.exceptions module
+---------------------------------------
+
+.. automodule:: pysisyphus.optimizers.exceptions
    :members:
    :undoc-members:
    :show-inheritance:

@@ -224,8 +224,8 @@ class IPIServer(Calculator):
     # else:
     # result = self.listen_for(atoms, coords)
 
-    def get_coords(self, atoms, coords):
-        return self.listen_for(atoms, coords, kind="coords")
+    # def get_coords(self, atoms, coords):
+        # return self.listen_for(atoms, coords, kind="coords")
 
     def get_forces(self, atoms, coords):
         return self.listen_for(atoms, coords, kind="forces")

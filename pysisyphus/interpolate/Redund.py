@@ -11,8 +11,8 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 class Redund(Interpolator):
-    def __init__(self, geoms, between, align=True):
-        super().__init__(geoms, between, align)
+    def __init__(self, *args, align=True, **kwargs):
+        super().__init__(*args, align=align, **kwargs)
 
         self.geoms = [
             Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
@@ -23,7 +23,10 @@ class Redund(Interpolator):
         write_geoms_to_trj(geoms, out_fn)
         print(f"Dumped interpolation progress to '{out_fn}'.")
 
-    def interpolate(self, initial_geom, final_geom, typed_prims=None):
+    def interpolate(
+        self, initial_geom, final_geom, interpolate_only=0, extrapolate=False,
+        typed_prims=None,
+    ):
         print(f"No. of primitives at initial structure: {initial_geom.coords.size}")
         print(f"No. of primitives at final structure: {final_geom.coords.size}")
 
@@ -33,12 +36,15 @@ class Redund(Interpolator):
         else:
             print(f"Using supplied primitive internals ({len(typed_prims)}).")
 
+        # Recreate geometries with consistent set of internal coordinates
+
         geom1 = Geometry(
             initial_geom.atoms,
             initial_geom.cart_coords,
             coord_type="redund",
             coord_kwargs={
                 "typed_prims": typed_prims,
+                "recalc_B": True,
             },
         )
         geom2 = Geometry(
@@ -47,6 +53,7 @@ class Redund(Interpolator):
             coord_type="redund",
             coord_kwargs={
                 "typed_prims": typed_prims,
+                "recalc_B": True,
             },
         )
 
@@ -63,7 +70,8 @@ class Redund(Interpolator):
         def restart(new_geom):
             return self.restart_interpolate(initial_geom, final_geom, geoms, new_geom)
 
-        for i in range(self.between):
+        interpolations = interpolate_only if interpolate_only else self.between
+        for i in range(interpolations):
             print(f"Interpolating {i+1:03d}/{self.between:03d}")
             new_geom = geoms[-1].copy()
             # Try to use the target primtive internals (final_prims) to calculate
@@ -78,6 +86,9 @@ class Redund(Interpolator):
             except DifferentPrimitivesException:
                 # return self.restart_interpolate(initial_geom, final_geom, new_geom)
                 return restart(new_geom)
+            if extrapolate:
+                prim_tangent *= -1
+                approx_step_size *= self.extrapolate_damp
 
             step = self.step_along_tangent(new_geom, prim_tangent, approx_step_size)
             try:

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 
 import numpy as np
 import scipy as sp
@@ -24,6 +25,7 @@ from pysisyphus.helpers_pure import (
 from pysisyphus.io import (
     geom_from_cjson,
     geom_from_crd,
+    geom_from_mol2,
     geom_from_pdb,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
@@ -83,6 +85,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
     ext = "" if "\n" in fn else Path(fn).suffix
 
     funcs = {
+        ".mol2": geom_from_mol2,
         ".crd": geom_from_crd,
         ".xyz": geom_from_xyz_file,
         ".trj": geoms_from_trj,
@@ -365,7 +368,7 @@ def get_geom_getter(ref_geom, calc_setter):
     return geom_from_coords
 
 
-def get_coords_diffs(coords, align=False):
+def get_coords_diffs(coords, align=False, normalize=True):
     if align:
         coords = align_coords(coords)
     cds = [
@@ -375,7 +378,8 @@ def get_coords_diffs(coords, align=False):
         diff = np.linalg.norm(coords[i + 1] - coords[i])
         cds.append(diff)
     cds = np.cumsum(cds)
-    cds /= cds.max()
+    if normalize:
+        cds /= cds.max()
     return cds
 
 
@@ -404,7 +408,7 @@ def shake_coords(coords, scale=0.1, seed=None):
 
 
 def rms(arr):
-    return np.sqrt(np.mean(arr ** 2))
+    return np.sqrt(np.mean(arr**2))
 
 
 def complete_fragments(atoms, fragments):
@@ -440,6 +444,7 @@ def do_final_hessian(
     prefix="",
     T=T_DEFAULT,
     p=p_DEFAULT,
+    ev_thresh=-1e-6,
     print_thermo=False,
     out_dir=None,
 ):
@@ -452,15 +457,16 @@ def do_final_hessian(
 
     report_isotopes(geom, "the_frequencies")
 
-    # TODO: Add cartesian_hessian property to Geometry to avoid
-    # accessing a "private" attribute.
+    start = time.time()
+    print("... started Hessian calculation")
     hessian = geom.cart_hessian
+    dur = time.time() - start
+    print(f"... calculation took {dur/60:.2f} min")
     print("... mass-weighing cartesian hessian")
     mw_hessian = geom.mass_weigh_hessian(hessian)
     print("... doing Eckart-projection")
     proj_hessian = geom.eckart_projection(mw_hessian)
-    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-    ev_thresh = -1e-6
+    eigvals, _ = np.linalg.eigh(proj_hessian)
 
     neg_inds = eigvals < ev_thresh
     neg_eigvals = eigvals[neg_inds]
@@ -468,7 +474,6 @@ def do_final_hessian(
     eigval_str = np.array2string(eigvals[:10], precision=4)
     print()
     print("First 10 eigenvalues", eigval_str)
-    # print(f"Self found {neg_num} eigenvalue(s) < {ev_thresh}.")
     if neg_num > 0:
         wavenumbers = eigval_to_wavenumber(neg_eigvals)
         wavenum_str = np.array2string(wavenumbers, precision=2)

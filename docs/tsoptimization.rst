@@ -202,14 +202,7 @@ Trust-Region Image-Function Method
 TS-Optimization without hessian information
 ===========================================
 
-Old Dimer method
-----------------
-
-.. automodule:: pysisyphus.tsoptimizers.dimer
-    :members:
-    :undoc-members:
-
-New Dimer method
+Dimer method
 ----------------
 
 .. automodule:: pysisyphus.calculators.Dimer

@@ -161,7 +161,7 @@ def test_check_typed_prims_invalid_dihedral():
     """
     geom = geom_from_zmat_str(h2o2_zmat, **geom_kwargs)
     typed_prims = geom.internal.typed_prims
-    bend013 = typed_prims[4]
+    bend013 = (PrimTypes.BEND, 0, 1, 3)
     dihedral = typed_prims[-1]
     assert bend013[0] == PrimTypes.BEND
     assert dihedral[0] == PrimTypes.PROPER_DIHEDRAL
@@ -291,3 +291,17 @@ def test_hydrogen_bonds():
     h_bonds = [tp for tp in typed_prims if tp[0] == PrimTypes.HYDROGEN_BOND]
     h_bond_ref = set([frozenset(inds) for inds in ((6, 27), (43, 56), (15, 42))])
     assert set([frozenset(inds) for _, *inds in h_bonds]) == h_bond_ref
+
+
+@pytest.mark.parametrize(
+    "coord_type, tp_num",
+    (
+        ("redund", 3),
+        ("hredund", 12),
+        ("dlc", 3),
+        ("hdlc", 12),
+    ),
+)
+def test_hybrid_internals(coord_type, tp_num):
+    geom = geom_loader("lib:h2o.xyz", coord_type=coord_type)
+    assert len(geom.internal.typed_prims) == tp_num

@@ -5,11 +5,13 @@ from pathlib import Path
 import sys
 import textwrap
 import time
+from typing import Literal, Optional
 
 import numpy as np
 import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import check_for_end_sign, get_coords_diffs
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
@@ -66,46 +68,122 @@ def get_data_model(geometry, is_cos, max_cycles):
     return data_model
 
 
-class Optimizer(metaclass=abc.ABCMeta):
-    CONV_THRESHS = {
-        #              max_force, rms_force, max_step, rms_step
-        "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
-        "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
-        "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
-        "gau_vtight": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
-        "baker": (3.0e-4, 2.0e-4, 3.0e-4, 2.0e-4),
-        # Dummy thresholds
-        "never": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
-    }
+CONV_THRESHS = {
+    #              max_force, rms_force, max_step, rms_step
+    "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
+    "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
+    "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
+    "gau_vtight": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
+    "baker": (3.0e-4, 2.0e-4, 3.0e-4, 2.0e-4),
+    # Dummy thresholds
+    "never": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
+}
+Thresh = Literal["gau_loose", "gau", "gau_tight", "gau_vtight", "baker", "never"]
 
+
+class Optimizer(metaclass=abc.ABCMeta):
     def __init__(
         self,
-        geometry,
-        thresh="gau_loose",
-        max_step=0.04,
-        max_cycles=100,
-        min_step_norm=1e-8,
-        assert_min_step=True,
-        rms_force=None,
-        rms_force_only=False,
-        max_force_only=False,
-        converge_to_geom_rms_thresh=0.05,
-        align=False,
-        dump=False,
-        dump_restart=None,
-        prefix="",
-        reparam_thresh=1e-3,
-        reparam_check_rms=True,
-        reparam_when="after",
-        overachieve_factor=0.0,
+        geometry: Geometry,
+        thresh: Thresh = "gau_loose",
+        max_step: float = 0.04,
+        max_cycles: int = 100,
+        min_step_norm: float = 1e-8,
+        assert_min_step: bool = True,
+        rms_force: Optional[float] = None,
+        rms_force_only: bool = False,
+        max_force_only: bool = False,
+        converge_to_geom_rms_thresh: float = 0.05,
+        align: bool = False,
+        dump: bool = False,
+        dump_restart: bool = False,
+        prefix: str = "",
+        reparam_thresh: float = 1e-3,
+        reparam_check_rms: bool = True,
+        reparam_when: Optional[Literal["before", "after"]] = "after",
+        overachieve_factor: float = 0.0,
         restart_info=None,
-        check_coord_diffs=True,
-        coord_diff_thresh=0.01,
-        out_dir=".",
-        h5_fn="optimization.h5",
-        h5_group_name="opt",
-    ):
-        assert thresh in self.CONV_THRESHS.keys()
+        check_coord_diffs: bool = True,
+        coord_diff_thresh: float = 0.01,
+        out_dir: str = ".",
+        h5_fn: str = "optimization.h5",
+        h5_group_name: str = "opt",
+    ) -> None:
+        """Optimizer baseclass. Meant to be subclassed.
+
+        Parameters
+        ----------
+        geometry
+            Geometry to be optimized.
+        thresh
+            Convergence threshold.
+        max_step
+            Maximum absolute component of the allowed step vector. Utilized in
+            optimizers that don't support a trust region or line search.
+        max_cycles
+            Maximum number of allowed optimization cycles.
+        min_step_norm
+            Minimum norm of an allowed step. If the step norm drops below
+            this value a ZeroStepLength-exception is raised. The unit depends
+            on the coordinate system of the supplied geometry.
+        assert_min_step
+            Flag that controls whether the norm of the proposed step is check
+            for being too small.
+        rms_force
+            Root-mean-square of the force from which user-defined thresholds
+            are derived. When 'rms_force' is given 'thresh' is ignored.
+        rms_force_only
+            When set, convergence is signalled only based on rms(forces).
+        max_force_only
+            When set, convergence is signalled only based on max(|forces|).
+        converge_to_geom_rms_thresh
+            Threshold for the RMSD with another geometry. When the RMSD drops
+            below this threshold convergence is signalled. Only used with
+            Growing Newton trajectories.
+        align
+            Flag that controls whether the geometry is aligned in every step
+            onto the coordinates of the previous step. Must not be used with
+            internal coordinates.
+        dump
+            Flag to control dumping/writing of optimization progress to the
+            filesystem
+        dump_restart
+            Flag to control whether restart information is dumped to the
+            filesystem.
+        prefix
+            Short string that is prepended to several files created by
+            the optimizer. Allows distinguishing several optimizations carried
+            out in the same directory.
+        reparam_thresh
+            Controls the minimal allowed similarity between coordinates
+            after two successive reparametrizations. Convergence is signalled
+            if the coordinates did not change significantly.
+        reparam_check_rms
+            Whether to check for (too) similar coordinates after reparametrization.
+        reparam_when
+            Reparametrize before or after calculating the step. Can also be turned
+            off by setting it to None.
+        overachieve_factor
+            Signal convergence when max(forces) and rms(forces) fall below the
+            chosen threshold, divided by this factor. Convergence of max(step) and
+            rms(step) is ignored.
+        restart_info
+            Restart information. Undocumented.
+        check_coord_diffs
+            Whether coordinates of chain-of-sates images are checked for being
+            too similar.
+        coord_diff_thresh
+            Unitless threshold for similary checking of COS image coordinates.
+            The first image is assigned 0, the last image is assigned to 1.
+        out_dir
+            String poiting to a directory where optimization progress is
+            dumped.
+        h5_fn
+            Basename of the HDF5 file used for dumping.
+        h5_group_name
+            Groupname used for dumping of this optimization.
+        """
+        assert thresh in CONV_THRESHS.keys()
 
         self.geometry = geometry
         self.thresh = thresh
@@ -218,7 +296,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
     def make_conv_dict(self, key, rms_force=None):
         if not rms_force:
-            threshs = self.CONV_THRESHS[key]
+            threshs = CONV_THRESHS[key]
         else:
             print(
                 "Deriving convergence threshold from supplied "
@@ -239,6 +317,43 @@ class Optimizer(metaclass=abc.ABCMeta):
             keys += ["max_step_thresh", "rms_step_thresh"]
         conv_dict = {k: v for k, v in zip(keys, threshs)}
         return conv_dict
+
+    def report_conv_thresholds(self):
+        oaf = self.overachieve_factor
+
+        def oa(val):
+            return f", ({val/oaf:.6f})" if oaf > 0.0 else ""
+
+        internal_coords = self.geometry.coord_type not in (
+            "cart",
+            "cartesian",
+            "mwcartesian",
+        )
+        fu = "E_h a_0⁻¹" + (" (rad⁻¹)" if internal_coords else "")  # forces unit
+        su = "a_0" + (" (rad)" if internal_coords else "")  # step unit
+
+        threshs = (
+            f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}",
+            f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)} {fu}",
+        )
+        if self.rms_force_only:
+            use_threshs = (threshs[1],)
+        elif self.max_force_only:
+            use_threshs = (threshs[0],)
+        elif self.is_cos:
+            use_threshs = threshs
+        else:
+            use_threshs = threshs + (
+                f"\t max(|step|) <= {self.max_step_thresh:.6f} {su}",
+                f"\t   rms(step) <= {self.rms_step_thresh:.6f} {su}",
+            )
+        print(
+            "Convergence thresholds"
+            + (", (overachieved when)" if oaf > 0.0 else "")
+            + ":\n"
+            + "\n".join(use_threshs)
+            + "\n"
+        )
 
     def log(self, message, level=50):
         self.logger.log(level, message)
@@ -488,12 +603,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
         int_str = ""
-        if self.geometry.coord_type != "cart":
+        if self.geometry.coord_type not in ("cart", "cartesian", "mwcartesian"):
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
+            rms_int_forces = np.sqrt(np.mean(int_forces**2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
@@ -507,14 +622,17 @@ class Optimizer(metaclass=abc.ABCMeta):
         return textwrap.dedent(final_summary.strip())
 
     def run(self):
+        print("If not specified otherwise, all quantities are given in au.\n")
+
         if not self.restarted:
             prep_start_time = time.time()
             self.prepare_opt()
+            self.log(f"{self.geometry.coords.size} degrees of freedom.")
             prep_end_time = time.time()
             prep_time = prep_end_time - prep_start_time
+            self.report_conv_thresholds()
             print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
-        print("If not specified otherwise, all quantities are given in au.\n")
         self.table.print_header(with_sep=False)
         self.stopped = False
         # Actual optimization loop
@@ -644,13 +762,24 @@ class Optimizer(metaclass=abc.ABCMeta):
                 # transformation is done iteratively.
                 self.steps[-1] = self.geometry.coords - self.coords[-1]
             except RebuiltInternalsException as exception:
-                print("Rebuilt internal coordinates")
-                with open("rebuilt_primitives.xyz", "w") as handle:
+                print("Rebuilt internal coordinates!")
+                rebuilt_fn = self.get_path_for_fn("rebuilt_primitives.xyz")
+                with open(rebuilt_fn, "w") as handle:
                     handle.write(self.geometry.as_xyz())
                 if self.is_cos:
                     for image in self.geometry.images:
                         image.reset_coords(exception.typed_prims)
                 self.reset()
+
+                if self.dump:
+                    self.data_model = get_data_model(
+                        self.geometry, self.is_cos, self.max_cycles
+                    )
+                    self.h5_group_name += "_rebuilt"
+                    h5_group = get_h5_group(
+                        self.h5_fn, self.h5_group_name, self.data_model, reset=True,
+                    )
+                    h5_group.file.close()
 
             # Coordinates may be updated here.
             if (self.reparam_when == "after") and hasattr(

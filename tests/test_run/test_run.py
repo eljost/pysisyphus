@@ -1,3 +1,4 @@
+import yaml
 from pprint import pprint
 
 import numpy as np
@@ -108,12 +109,12 @@ def test_run_dimer_irc():
                 "basis": "321g",
                 "pal": 2,
                 "verbose": 0,
-            }
+            },
         },
         "geom": {
             "type": "cart",
             "fn": "lib:hcn_ts_hf_321g.xyz",
-        }
+        },
     }
     results = run_from_dict(run_dict)
 
@@ -144,7 +145,7 @@ def test_run_irc_constrained_endopt(this_dir):
         "geom": {
             "type": "cart",
             "fn": str(this_dir / "ts_inp_run_constrained_endopt.xyz"),
-            "isotopes": [[constrain_ind, 1e9]]
+            "isotopes": [[constrain_ind, 1e9]],
         },
         "calc": {
             "type": "pyscf",
@@ -171,3 +172,30 @@ def test_run_irc_constrained_endopt(this_dir):
     for end_geom in results.end_geoms:
         c3d = end_geom.coords3d
         np.testing.assert_allclose(c3d[constrain_ind], ref_c3d[constrain_ind])
+
+
+@using("pyscf")
+def test_new_style_yaml():
+    run_dict = yaml.safe_load(
+        """
+    geom:
+     type:
+      tric:
+       coord_kwargs:
+        define_prims: [[BEND, 2, 0, 1]]
+     fn: lib:h2o.xyz
+    calc:
+     type:
+      pyscf:
+       basis: sto3g
+     pal: 6
+    opt:
+     type:
+      rfo:
+       hessian_init: fischer
+       hessian_update: bfgs
+     thresh: gau
+     """
+    )
+    results = run_from_dict(run_dict)
+    assert results.opt_geom.energy == pytest.approx(-74.965901183)

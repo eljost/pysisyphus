@@ -1,17 +1,21 @@
 import collections.abc
+from difflib import SequenceMatcher
 from enum import Enum
 import itertools as it
 import json
 import logging
 import math
 from pathlib import Path
+from typing import List, Tuple
+import re
 import time
+from typing import Optional
 
 import numpy as np
 import psutil
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
-from pysisyphus.constants import AU2J, AMU2KG, BOHR2M, BOHR2ANG, C, R, AU2KJPERMOL, NA
+from pysisyphus.constants import AU2J, BOHR2ANG, C, R, AU2KJPERMOL, NA
 
 
 """Functions defined here don't import anything from pysisyphus, besides
@@ -167,8 +171,17 @@ def expand(to_expand):
 
 
 def full_expand(to_expand):
-    split = to_expand.strip().split(",")
-    return list(it.chain(*[expand(te) for te in split]))
+    try:
+        split = to_expand.strip().split(",")
+        expanded = list(it.chain(*[expand(te) for te in split]))
+    except AttributeError:
+        try:
+            expanded = list(to_expand)
+        except TypeError:
+            expanded = [
+                to_expand,
+            ]
+    return expanded
 
 
 def file_or_str(*args, method=False):
@@ -200,9 +213,37 @@ def file_or_str(*args, method=False):
 
 
 def recursive_update(d, u):
-    """From https://stackoverflow.com/questions/3232943"""
+    """Recursive update of d with keys/values from u.
+
+    From https://stackoverflow.com/questions/3232943
+    """
     if u is None:
         return d
+
+    # Best I can do is ... secretly transform hierarchical input
+    # to old-style flat input.
+    #
+    # Try to transform new-style hierarchical input
+    # to the old-style flat input. If this new-style proves useful
+    # and everything is refactored accordingly the try/except could
+    # be dropped. But now everything is still in the old-style.
+    try:
+        keys = list(u["type"].keys())
+        if len(keys) == 1:
+            key = keys[0]
+            kwargs = u["type"][key]
+            u["type"] = key
+            try:
+                u.update(kwargs)
+            # Raised when kwargs is None, e.g., the input is hierarchical,
+            # but no further keywords are provided for the given type.
+            except TypeError:
+                pass
+    # Raised when u has no "type" key
+    except KeyError:
+        pass
+    except AttributeError:
+        pass
 
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
@@ -405,3 +446,65 @@ def check_mem(mem, pal, avail_frac=0.85, logger=None):
     log(logger, msg)
 
     return mb_corr
+
+
+def get_ratio(str_: str, comp_str: str) -> str:
+    """See https://stackoverflow.com/a/17388505"""
+    return SequenceMatcher(None, str_, comp_str).ratio()
+
+
+def find_closest_sequence(str_: str, comp_strs: List[str]) -> Tuple[str, float]:
+    ratios = [get_ratio(str_, comp_str) for comp_str in comp_strs]
+    argmax = np.argmax(ratios)
+    max_ratio = ratios[argmax]
+    best_match = comp_strs[argmax]
+    return (best_match, max_ratio)
+
+
+def increment_fn(org_fn: str, suffix: Optional[str]=None) -> str:
+    """
+    Append, or increase a suffixed counter on a given filename.
+    If no counter is present it will be set to zero. Otherwise
+    it is incremented by one.
+
+    >>> increment_fn("opt", "rebuilt")
+    'opt_rebuilt_000'
+    >>> increment_fn("opt")
+    'opt_000'
+    >>> increment_fn("opt_rebuilt_000", "rebuilt")
+    'opt_rebuilt_001'
+
+    Parameters
+    ----------
+    org_fn
+        The original, unaltered filename.
+    suffix
+        Optional suffix to be append.
+
+    Returns
+    -------
+    incr_fn
+        Modified filename with optional suffix and incremented counter.
+    """
+    if suffix is not None and len(suffix) > 0:
+        suffix = f"_{suffix}"
+    else:
+        suffix = ""
+
+    # Check if prefix is present
+    regex = re.compile(rf"(.+)({suffix}_(\d+))")
+    if mobj := regex.match(org_fn):
+        org_fn, _, counter = mobj.groups()
+        counter = int(counter)
+        counter += 1
+    else:
+        counter = 0
+
+    incr_fn = f"{org_fn}{suffix}_{counter:03d}"
+    return incr_fn
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()

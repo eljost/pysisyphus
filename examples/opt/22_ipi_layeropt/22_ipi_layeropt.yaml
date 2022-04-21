@@ -1,0 +1,18 @@
+geom:
+ type: cartesian
+ fn: lib:acetaldehyd_oniom.xyz
+calc:
+opt:
+ type: layers
+ layers:
+  # Atom indices of the total system / (first layer) don't have to be
+  # specified.
+  - address: ./layer0sock
+  # Optimize atoms of the model system [4, 5, 6] and the link atom host 0.
+  - indices: [0,4,5,6]
+    address: ./layer1sock
+ thresh: gau
+# The assert: section can be left out in actual inputs,
+# it is here for testing purposes.
+assert:
+ opt_geom.energy: -115.53522653

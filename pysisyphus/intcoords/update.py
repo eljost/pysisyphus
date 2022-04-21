@@ -1,9 +1,11 @@
 import numpy as np
 
+from pysisyphus.config import BEND_MIN_DEG, LB_MIN_DEG
 from pysisyphus.helpers_pure import log
 from pysisyphus.intcoords.eval import eval_primitives
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
-from pysisyphus.intcoords.valid import dihedral_valid
+from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
+from pysisyphus.intcoords.PrimTypes import Bends, Dihedrals, Rotations
 
 
 def correct_dihedrals(new_dihedrals, old_dihedrals):
@@ -45,7 +47,11 @@ def update_internals(
     primitives,
     dihedral_inds,
     rotation_inds,
+    bend_inds,
     check_dihedrals=False,
+    check_bends=False,
+    bend_min_deg=BEND_MIN_DEG,
+    bend_max_deg=LB_MIN_DEG,
     rotation_thresh=0.9,
     logger=None,
 ):
@@ -61,8 +67,6 @@ def update_internals(
         raise NeedNewInternalsException(new_coords3d)
 
     dihedrals = [prim_internals[i] for i in dihedral_inds]
-    if len(dihedrals) == 0:
-        return prim_internals
 
     dihedral_diffs = internal_diffs[dihedral_inds]
 
@@ -76,6 +80,8 @@ def update_internals(
         # Update values
         for dihed, new_val in zip(dihedrals, new_dihedrals):
             dihed.val = new_val
+
+    invalid_inds = list()
     # See if dihedrals became invalid (collinear atoms)
     if check_dihedrals:
         are_valid = [dihedral_valid(new_coords3d, prim.inds) for prim in dihedrals]
@@ -86,16 +92,35 @@ def update_internals(
         invalid_inds = [
             i + first_dihedral for i, is_valid in enumerate(are_valid) if not is_valid
         ]
-        if len(invalid_inds) > 0:
-            invalid_prims = [primitives[i] for i in invalid_inds]
-            invalid_msg = ", ".join([str(tp) for tp in invalid_prims])
-            log(logger, "Dihedral(s) became invalid! Need new internal coordinates!")
-            log(logger, f"Invalid primitives: {invalid_msg}")
-            raise NeedNewInternalsException(
-                new_coords3d, invalid_inds=invalid_inds, invalid_prims=invalid_prims
-            )
+
+    if check_bends and len(bend_inds) > 0:
+        bends = [prim_internals[i] for i in bend_inds]
+        are_valid = [
+            bend_valid(new_coords3d, prim.inds, bend_min_deg, bend_max_deg)
+            for prim in bends
+        ]
+        first_bend = bend_inds[0]
+        invalid_inds = [
+            i + first_bend for i, is_valid in enumerate(are_valid) if not is_valid
+        ]
+
+    if len(invalid_inds) > 0:
+        invalid_prims = [primitives[i] for i in invalid_inds]
+        invalid_msg = ", ".join([str(tp) for tp in invalid_prims])
+        log(logger, "Internal coordinate(s) became invalid! Need new internal coordinates!")
+        log(logger, f"Invalid primitives: {invalid_msg}")
+        raise NeedNewInternalsException(
+            new_coords3d, invalid_inds=invalid_inds, invalid_prims=invalid_prims
+        )
 
     return prim_internals
+
+
+def inds_from_prim_types(typed_prims, prim_types):
+    inds = [
+        i for i, (prim_type, *inds) in enumerate(typed_prims) if prim_type in prim_types
+    ]
+    return inds
 
 
 def transform_int_step(
@@ -104,9 +129,14 @@ def transform_int_step(
     cur_internals,
     Bt_inv_prim,
     primitives,
-    dihedral_inds,
-    rotation_inds,
+    typed_prims=None,
+    dihedral_inds=None,
+    rotation_inds=None,
+    bend_inds=None,
     check_dihedrals=False,
+    check_bends=False,
+    bend_min_deg=BEND_MIN_DEG,
+    bend_max_deg=LB_MIN_DEG,
     freeze_atoms=None,
     constrained_inds=None,
     update_constraints=False,
@@ -117,6 +147,18 @@ def transform_int_step(
 ):
     """Transformation is done in primitive internals, so int_step must be given
     in primitive internals and not in DLC!"""
+
+    # If an iterable of typed prims is given we can derive bend/dihedral/rotation
+    # indices from them.
+    if typed_prims is not None:
+        if dihedral_inds is None:
+            dihedral_inds = inds_from_prim_types(typed_prims, Dihedrals)
+
+        if bend_inds is None:
+            bend_inds = inds_from_prim_types(typed_prims, Bends)
+
+        if rotation_inds is None:
+            rotation_inds = inds_from_prim_types(typed_prims, Rotations)
 
     if freeze_atoms is None:
         freeze_atoms = list()
@@ -143,7 +185,7 @@ def transform_int_step(
         cart_step = Bt_inv_prim.T.dot(remaining_int_step)
         # Remove step from frozen atoms.
         cart_step.reshape(-1, 3)[freeze_atoms] = 0.0
-        cart_rms = np.sqrt(np.mean(cart_step ** 2))
+        cart_rms = np.sqrt(np.mean(cart_step**2))
         # Update cartesian coordinates
         new_cart_coords += cart_step
         # Determine new internal coordinates
@@ -153,7 +195,11 @@ def transform_int_step(
             primitives,
             dihedral_inds,
             rotation_inds,
+            bend_inds,
             check_dihedrals=check_dihedrals,
+            check_bends=check_bends,
+            bend_min_deg=bend_min_deg,
+            bend_max_deg=bend_max_deg,
             logger=logger,
         )
         new_internals = [prim.val for prim in new_prim_ints]
@@ -171,7 +217,7 @@ def transform_int_step(
             remaining_int_step, Bt_inv_prim
         )
         remaining_int_step = target_internals - new_internals
-        internal_rms = np.sqrt(np.mean(remaining_int_step ** 2))
+        internal_rms = np.sqrt(np.mean(remaining_int_step**2))
         log(
             logger,
             f"Cycle {i}: rms(Δcart)={cart_rms:1.4e}, rms(Δint.) = {internal_rms:1.5e}",

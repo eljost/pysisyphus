@@ -121,6 +121,7 @@ in
     checkInputs = [ openssh pytestCheckHook ];
 
     preCheck = ''
+      export OMP_NUM_THREADS=1
       export PYSISRC=${pysisrc}
       cat ${pysisrc}
       export PATH=$PATH:${binSearchPath}

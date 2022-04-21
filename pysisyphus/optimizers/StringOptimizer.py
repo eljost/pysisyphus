@@ -123,18 +123,22 @@ class StringOptimizer(Optimizer):
         step = bfgs_multiply(self.s_list, self.y_list, forces, gamma_mult=self.gamma_mult,
                              inds=self.inds, cur_size=cur_size, logger=self.logger)
 
-        # When keep_last == 0 or LBFGS is not yet enabled then s_list and y_list will
-        # be empty and step will be a simple SD step. We try to improve it via CG.
-        if ((self.keep_last == 0 and self.cur_cycle > 0 and not string_size_changed)
-            and (len(self.s_list) == 0 and len(self.y_list) == 0)):
+        # When LBFGS is not yet enabled then s_list and y_list will
+        # be empty and the step from bfgs_multiply will be a simple SD step.
+        # We try to calculated an improved step it via conjugate gradient.
+        previous_step_with_same_size = (self.cur_cycle > 0) and (not string_size_changed)
+        lbfgs_lists_empty = (len(self.s_list) == 0) and (len(self.y_list) == 0)
+        if previous_step_with_same_size and lbfgs_lists_empty:
             prev_forces = self.forces[-2]
             # Fletcher-Reeves
+            kind = "Fletcher-Reeves"
             beta = forces.dot(forces) / prev_forces.dot(prev_forces)
             # Polak-Ribiere
+            # kind = "Polak-Ribiere"
             # beta = forces.dot(forces - prev_forces) / prev_forces.dot(prev_forces)
             beta = min(beta, 1)
             step = forces + beta*self.steps[-1]
-            self.log(f"Conjugate gradient correction, β={beta:.6f}")
+            self.log(f"{kind} conjugate gradient correction, β={beta:.6f}")
 
         if self.scale_step == "global":
             step = scale_by_max_step(step, self.max_step)

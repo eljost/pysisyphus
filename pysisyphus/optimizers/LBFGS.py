@@ -1,5 +1,8 @@
+from typing import Optional
+
 import numpy as np
 
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import fit_rigid
 from pysisyphus.optimizers.closures import bfgs_multiply, get_update_mu_reg
 from pysisyphus.optimizers.hessian_updates import double_damp
@@ -8,25 +11,59 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 from pysisyphus.optimizers.poly_fit import poly_line_search
 
 
-# See pysisyphus.optimizers.hessian_updates for double damping ref.
-
-
 class LBFGS(Optimizer):
     def __init__(
         self,
-        geometry,
-        keep_last=7,
-        beta=1,
-        max_step=0.2,
-        double_damp=True,
-        gamma_mult=False,
-        line_search=False,
-        mu_reg=None,
-        max_mu_reg_adaptions=5,
-        control_step=True,
+        geometry: Geometry,
+        keep_last: int = 7,
+        beta: float = 1,
+        max_step: float = 0.2,
+        double_damp: bool = True,
+        gamma_mult: bool = False,
+        line_search: bool = False,
+        mu_reg: Optional[float] = None,
+        max_mu_reg_adaptions: int = 10,
+        control_step: bool = True,
         **kwargs,
-    ):
-        """[1] Nocedal, Wright - Numerical Optimization, 2006"""
+    ) -> None:
+        """Limited-memory BFGS optimizer.
+
+        See [1] Nocedal, Wright - Numerical Optimization, 2006 for a general
+        discussion of LBFGS. See pysisyphus.optimizers.hessian_updates for
+        the references related to double damping and pysisyphus.optimizers.closures
+        for references related to regularized LBFGS.
+
+        Parameters
+        ----------
+        geometry
+            Geometry to be optimized.
+        keep_last
+            History size. Keep last 'keep_last' steps and gradient differences.
+        beta
+            Force constant β in -(H + βI)⁻¹g.
+        max_step
+            Upper limit for the absolute component of the step vector in whatever
+            unit the optimization is carried out.
+        double_damp
+            Use double damping procedure to modify steps s and gradient differences y
+            to ensure sy > 0.
+        gamma_mult
+            Estimate β from previous cycle. Eq. (7.20) in [1]. See 'beta' argument.
+        line_search
+            Enable implicit linesearches.
+        mu_reg
+            Initial guess for regularization constant in regularized LBFGS.
+        max_mu_reg_adaptions
+            Maximum number of trial steps in regularized LBFGS.
+        control_step
+            Wheter to scale down the proposed step its biggest absolute component
+            is equal to or below 'max_step'
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the Optimizer baseclass.
+        """
 
         self.coord_diffs = list()
         self.grad_diffs = list()
@@ -110,7 +147,7 @@ class LBFGS(Optimizer):
             self.log(f"      Energy={energy: >24.6f} au")
         self.log(f"norm(forces)={norm: >24.6f} au / bohr (rad)")
 
-        if self.cur_cycle > 0:
+        if self.cur_cycle > 0 and (self.forces[-2].size == forces.size):
             y = self.forces[-2] - forces
             s = self.steps[-1]
             if self.double_damp:
@@ -131,11 +168,7 @@ class LBFGS(Optimizer):
         ip_gradient, ip_step = None, None
         if self.line_search and (self.cur_cycle > 0):
             ip_energy, ip_gradient, ip_step = poly_line_search(
-                energy,
-                self.energies[-2],
-                -forces,
-                -self.forces[-2],
-                self.steps[-1]
+                energy, self.energies[-2], -forces, -self.forces[-2], self.steps[-1]
             )
         # Use the interpolated gradient for the step if interpolation succeeded
         if (ip_gradient is not None) and (ip_step is not None):

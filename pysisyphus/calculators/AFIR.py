@@ -4,18 +4,20 @@
 
 from dataclasses import dataclass
 import itertools as it
+from typing import List
 
 import autograd
 import autograd.numpy as anp
 import numpy as np
+import numpy.typing as npt
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.elem_data import COVALENT_RADII
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import complete_fragments
 from pysisyphus.helpers_pure import log
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
+from pysisyphus.linalg import finite_difference_hessian
 
 
 @dataclass
@@ -31,13 +33,16 @@ def get_data_model(atoms, max_cycles):
     coord_size = 3 * len(atoms)
     _1d = (max_cycles,)
     _2d = (max_cycles, coord_size)
+    _3d = (max_cycles, coord_size, coord_size)
 
     data_model = {
         "cart_coords": _2d,
         "energy": _1d,
         "forces": _2d,
+        "hessian": _3d,
         "true_energy": _1d,
         "true_forces": _2d,
+        "true_hessian": _3d,
     }
 
     return data_model
@@ -91,21 +96,84 @@ def afir_closure(
 class AFIR(Calculator):
     def __init__(
         self,
-        calculator,
-        fragment_indices,
-        gamma,
-        rho=1,
-        p=6,
-        ignore_hydrogen=True,
-        complete_fragments=True,
-        dump=True,
-        h5_fn="afir.h5",
-        h5_group_name="afir",
+        calculator: Calculator,
+        fragment_indices: List[List[int]],
+        gamma: npt.ArrayLike,
+        rho: npt.ArrayLike = 1,
+        p: int = 6,
+        ignore_hydrogen: bool = True,
+        complete_fragments: bool = True,
+        dump: bool = True,
+        h5_fn: str = "afir.h5",
+        h5_group_name: str = "afir",
         **kwargs,
     ):
+        """
+        Artifical Force Induced Reaction calculator.
+
+        Currently, there are no automated drivers to run large-scale AFIR calculations
+        with many different initial orientations and/or increasing collision energy
+        parameter γ. Nontheless, selected AFIR calculations can be carried out by hand.
+        After convergence, artificial potential & forces, as well as real energies
+        and forces can be plotted with 'pysisplot --afir'. The highest energy point
+        along the AFIR path can then be selected for a subsequent TS-optimization,
+        e.g. via 'pysistrj --get [index] optimzation.trj'.
+
+        Future versions of pysisyphus may provide drivers for more automatted
+        AFIR calculations.
+
+        Parameters
+        ----------
+        calculator
+            Actual QC calculator that provides energies and its derivatives,
+            that are modified by the AFIR calculator, e.g., ORCA or Psi4.
+        fragment_indices
+            List of lists of integers, specifying the separate fragments. If
+            the indices in theses lists don't comprise all atoms in the molecule,
+            the reamining indices will be added as a separate fragment. If a AFIR
+            calculation is carried out with 2 fragments and 'complete_fragments' is
+            True (see below) it is enough to specify only
+            the indices of one fragment, e.g., for a system of 10 atoms
+            'fragment_indices=[[0,1,2,3]]' is enough. The second system will be set
+            up automatically with indices [4,5,6,7,8,9].
+        gamma
+            Collision energy parameter γ in au. For 2 fragments it can be a single
+            integer, while for > 2 fragments a list of gammas must be given, specifying
+            the pair-wise collision energy parameters. For 3 fragments 3 gammas must be
+            given [γ_01, γ_02, γ_12], for 4 fragments 6 gammas would be required
+            [γ_01, γ_02, γ_03, γ_12, γ_13, γ_23] and so on.
+        rho
+            Direction of the artificial force, either 1 or -1. The same comments
+            as for gamma apply. For 2 fragments a single integer is enough, for
+            > 2 fragments a list of rhos must be given (see above).  For rho=1
+            fragments are pushed together, for rho=-1 fragments are pulled apart.
+        p
+            Exponent p used in the calculation of the weight function ω. Defaults
+            to 6 and probably does not have to be changed.
+        ignore_hydrogen
+            Whether hydrogens are ignored in the calculation of the artificial force.
+        complete_fragments
+            Whether an incomplete specification in 'fragment_indices' is automatically
+            completed.
+        dump
+            Whether an HDF5 file is created.
+        h5_fn
+            Filename of the HDF5 file used for dumping.
+        h5_group_name
+            HDF5 group name used for dumping.
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the Calculator baseclass.
+        """
         super().__init__(**kwargs)
 
         self.calculator = calculator
+        # Update own charge and multiplicity with values from the wrapped
+        # calculator.
+        self.charge = calculator.charge
+        self.mult = calculator.mult
         self.fragment_indices = fragment_indices
         assert len(self.fragment_indices) > 0
         self.gamma = np.atleast_1d(gamma).astype(float)
@@ -126,6 +194,34 @@ class AFIR(Calculator):
             self.log("No artificial force contribution from hydrogens!")
         self.atoms = None
         self.calc_counter = 0
+
+    """We try to keep charge and multiplicity consistent between the AFIR
+    calculator and the actual wrapped calculator. But we will always return
+    the charge and multiplicity of the underlying calculator."""
+
+    @property
+    def charge(self):
+        return self.calculator.charge
+
+    @charge.setter
+    def charge(self, charge):
+        try:
+            self.calculator.charge = charge
+        except AttributeError:
+            pass
+        self._charge = charge
+
+    @property
+    def mult(self):
+        return self.calculator.mult
+
+    @mult.setter
+    def mult(self, mult):
+        try:
+            self.calculator.mult = mult
+        except AttributeError:
+            pass
+        self._mult = mult
 
     def init_h5_group(self, atoms, max_cycles=None):
         if max_cycles is None:
@@ -190,7 +286,9 @@ class AFIR(Calculator):
         self.log("Setting atoms on AFIR calculator")
         self.atoms = atoms
         if self.complete_fragments:
-            self.fragment_indices = complete_fragments(self.atoms, self.fragment_indices)
+            self.fragment_indices = complete_fragments(
+                self.atoms, self.fragment_indices
+            )
         self.log_fragments()
         self.write_fragment_geoms(atoms, coords)
 
@@ -239,11 +337,13 @@ class AFIR(Calculator):
             self.afir_grad_funcs.append(afir_grad_func)
         self.log("Created and set AFIR function & gradient function.")
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         self.set_atoms_and_funcs(atoms, coords)
 
-        true_energy = self.calculator.get_energy(atoms, coords)["energy"]
+        true_results = self.calculator.get_energy(atoms, coords, **prepare_kwargs)
+        true_energy = true_results["energy"]
         coords3d = coords.reshape(-1, 3)
+        # Iterate over all fragment pairs
         afir_energy = sum([afir_func(coords3d) for afir_func in self.afir_funcs])
         self.log()
 
@@ -256,18 +356,20 @@ class AFIR(Calculator):
         self.calc_counter += 1
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         self.set_atoms_and_funcs(atoms, coords)
 
-        coords3d = coords.reshape(-1, 3)
-        results = self.calculator.get_forces(atoms, coords)
-        true_energy = results["energy"]
-        true_forces = results["forces"]
+        true_results = self.calculator.get_forces(atoms, coords, **prepare_kwargs)
+        true_energy = true_results["energy"]
+        true_forces = true_results["forces"]
 
+        coords3d = coords.reshape(-1, 3)
         afir_energy = 0.0
         afir_forces = np.zeros_like(coords)
+        # Iterate over all fragment pairs
         for afir_func, afir_grad_func in zip(self.afir_funcs, self.afir_grad_funcs):
             afir_energy += afir_func(coords3d)
+            # Add negative of the gradient (the force)
             afir_forces += -afir_grad_func(coords3d).flatten()
 
         true_norm = np.linalg.norm(true_forces)
@@ -284,6 +386,43 @@ class AFIR(Calculator):
             "energy": true_energy + afir_energy,
             "forces": true_forces + afir_forces,
             "true_forces": true_forces,
+            "true_energy": true_energy,
+        }
+        if self.dump:
+            self.dump_h5(atoms, coords, results)
+        self.calc_counter += 1
+        return results
+
+    def afir_fd_hessian_wrapper(self, coords3d, afir_grad_func):
+        coords = coords3d.flatten()
+
+        def grad_func(coords):
+            afir_grad = afir_grad_func(coords.reshape(-1, 3))
+            return afir_grad.flatten()
+
+        fd_hessian = finite_difference_hessian(coords, grad_func, acc=4)
+        return fd_hessian
+
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
+        self.set_atoms_and_funcs(atoms, coords)
+
+        true_results = self.calculator.get_hessian(atoms, coords, **prepare_kwargs)
+        true_energy = true_results["energy"]
+        true_hessian = true_results["hessian"]
+
+        coords3d = coords.reshape(-1, 3)
+        afir_energy = 0.0
+        afir_hessian = np.zeros_like(true_hessian)
+        # Iterate over all fragment pairs
+        for afir_func, afir_grad_func in zip(self.afir_funcs, self.afir_grad_funcs):
+            afir_energy += afir_func(coords3d)
+            # AFIR Hessian from finite differences
+            afir_hessian += self.afir_fd_hessian_wrapper(coords3d, afir_grad_func)
+
+        results = {
+            "energy": true_energy + afir_energy,
+            "hessian": true_hessian + afir_hessian,
+            "true_hessian": true_hessian,
             "true_energy": true_energy,
         }
         if self.dump:

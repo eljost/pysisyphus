@@ -15,7 +15,7 @@ from pysisyphus.interpolate.Interpolator import Interpolator
 
 class IDPP(Interpolator):
 
-    def interpolate(self, initial_geom, final_geom):
+    def interpolate(self, initial_geom, final_geom, **kwargs):
         # Do an initial linear interpolation to generate all geometries/images
         # that will be refined later by IDPP interpolation.
         linear_interpol = super().interpolate(initial_geom, final_geom)

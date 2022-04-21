@@ -151,6 +151,8 @@ RUN.yaml
 cur_out
 *.fail_*
 
+version.py
+
 !tests/test_barriers/*.h5
 !tests/test_hessian_updates/*.h5
 !tests/test_pka/*.h5
@@ -167,3 +169,5 @@ cur_out
 !tests/test_xtb/xtb_crash.out
 !tests/test_turbomole/control_path_big_hess/*
 !tests/test_tsopt/inp_hessian_ref.h5
+!tests/test_rates/peroxyl_r1_h5s/*.h5
+!tests/test_integrals/methane_def2svp_aomix.in

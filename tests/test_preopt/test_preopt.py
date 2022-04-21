@@ -50,6 +50,6 @@ def test_preopt(coord_type, cos_type, this_dir):
     # assert results.cos.images[-1].energy == pytest.approx(last_en)
 
     first_ref = geom_loader(this_dir / "ref_first_preopt.xyz")
-    assert first_ref.rmsd(results.cos.images[0]) <= 1e-6
+    assert first_ref.rmsd(results.cos.images[0]) <= 1e-4
     last_ref = geom_loader(this_dir / "ref_last_preopt.xyz")
-    assert last_ref.rmsd(results.cos.images[-1]) <= 1e-6
+    assert last_ref.rmsd(results.cos.images[-1]) <= 1e-4

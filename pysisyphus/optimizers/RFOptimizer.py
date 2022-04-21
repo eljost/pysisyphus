@@ -6,6 +6,7 @@
 
 import numpy as np
 
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import rms
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.poly_fit import poly_line_search
@@ -15,19 +16,47 @@ from pysisyphus.optimizers.gdiis import gdiis, gediis
 class RFOptimizer(HessianOptimizer):
     def __init__(
         self,
-        geom,
-        line_search=True,
-        gediis=False,
-        gdiis=True,
-        gdiis_thresh=2.5e-3,
-        gediis_thresh=1e-2,
-        gdiis_test_direction=True,
-        max_micro_cycles=0,
-        adapt_step_func=False,
-        *args,
+        geometry: Geometry,
+        line_search: bool = True,
+        gediis: bool = False,
+        gdiis: bool = True,
+        gdiis_thresh: float = 2.5e-3,
+        gediis_thresh: float = 1e-2,
+        gdiis_test_direction: bool = True,
+        max_micro_cycles: int = 0,
+        adapt_step_func: bool = False,
         **kwargs,
-    ):
-        super().__init__(geom, max_micro_cycles=max_micro_cycles, *args, **kwargs)
+    ) -> None:
+        """
+        Rational function Optimizer.
+
+        Parameters
+        ----------
+        geometry
+            Geometry to be optimized.
+        line_search
+            Whether to carry out implicit line searches.
+        gediis
+            Whether to enable GEDIIS.
+        gdiis
+            Whether to enable GDIIS.
+        gdiis_thresh
+            Threshold for rms(forces) to enable GDIIS.
+        gediis_thresh
+            Threshold for rms(step) to enable GEDIIS.
+        gdiis_test_direction
+            Whether to the overlap of the RFO step and the GDIIS step.
+        max_micro_cycles
+            Number of restricted-step microcycles. Disabled by default.
+        adapt_step_func
+            Whether to switch between shifted Newton and RFO-steps.
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the Optimizer/HessianOptimizer baseclass.
+        """
+        super().__init__(geometry, max_micro_cycles=max_micro_cycles, **kwargs)
 
         self.line_search = line_search
         self.gediis = gediis
@@ -99,8 +128,14 @@ class RFOptimizer(HessianOptimizer):
         # Try line search if GDIIS failed or not requested
         if self.line_search and (diis_result is None) and (not resetted):
             ip_energy, ip_gradient, ip_step = poly_line_search(
-                energy, self.energies[-2], gradient, -self.forces[-2], self.steps[-1],
-                cubic_max_x=-1, quartic_max_x=2, logger=self.logger
+                energy,
+                self.energies[-2],
+                gradient,
+                -self.forces[-2],
+                self.steps[-1],
+                cubic_max_x=-1,
+                quartic_max_x=2,
+                logger=self.logger,
             )
             self.successful_line_search += 1 if ip_gradient is not None else 0
 
