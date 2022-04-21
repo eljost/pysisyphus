@@ -1,3 +1,8 @@
+# [1] https://doi.org/10.1002/jcc.23481
+#     Exploring transition state structures for intramolecular pathways
+#     by the artificial force induced reaction method
+#     Maeda, Morokuma et al, 2013
+
 import itertools as it
 from functools import reduce
 from pathlib import Path
@@ -15,6 +20,14 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import pick_image_inds
 from pysisyphus.intcoords.helpers import get_bond_difference
 from pysisyphus.intcoords.setup_fast import find_bonds
+
+
+##########################
+#                        #
+#  Multi-component AFIR  #
+#       MC-AFIR          #
+#                        #
+##########################
 
 
 def generate_random_union(geoms, offset=1.0, copy=True):
@@ -285,10 +298,16 @@ def automatic_fragmentation(
 
 
 def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
+    """Create perturbed geometry, determine fragments and set AFIR calculator."""
+    # Move target atoms closer together along distance vector (decrease distance)
     tmp_coords3d = decrease_distance(geom.coords3d, m, n)
+    # Optimize remaining coordinates using least-squares, while keeping target
+    # atom pair fixed.
     _, opt_coords3d = lstsqs_with_reference(tmp_coords3d, geom.coords3d, (m, n))
+    # Determine fragments, using the automated fragmentation
     frag1, frag2 = automatic_fragmentation(geom.atoms, opt_coords3d, [m], [n])
     fragment_indices = [list(frag) for frag in (frag1, frag2)]
+    # Set lstsq-optimized coordinates and created wrapped calculator
     geom.coords3d = opt_coords3d
     calc = calc_getter()
     afir_defaults = {
@@ -298,6 +317,8 @@ def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
         "ignore_hydrogen": False,
     }
     afir_kwargs = afir_kwargs.copy()
+    # Force the use of the determined fragment_indices, by override any
+    # potential user input.
     afir_kwargs.update(afir_defaults)
     afir_calc = AFIR(**afir_kwargs)
     geom.set_calculator(afir_calc)
