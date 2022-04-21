@@ -1,5 +1,5 @@
 import itertools as it
-from typing import Iterable, Union
+from typing import Union
 
 from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (

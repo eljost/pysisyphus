@@ -4,7 +4,6 @@ import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import fit_rigid
-from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.optimizers.closures import bfgs_multiply, get_update_mu_reg
 from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.Optimizer import Optimizer

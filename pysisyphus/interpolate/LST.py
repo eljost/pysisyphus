@@ -33,7 +33,7 @@ class LST(Interpolator):
         )
         return first_term + second_term
 
-    def interpolate(self, initial_geom, final_geom):
+    def interpolate(self, initial_geom, final_geom, **kwargs):
         coords3d = np.array((initial_geom.coords3d, final_geom.coords3d))
         # Calculate the condensed distances matrices
         pdists = [pdist(c3d) for c3d in coords3d]

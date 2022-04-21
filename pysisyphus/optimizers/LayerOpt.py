@@ -125,7 +125,7 @@ class Layers:
                     calc_kwargs = recursive_update({}, _calc_kwargs)
                     # The popped calc key is currently unused as using an IPIServer is
                     # mandatory.
-                    calc_key = calc_kwargs.pop("type", None)
+                    _ = calc_kwargs.pop("type", None)
                 calc = IPIServer(**calc_kwargs)
                 # When calculating layer 0 we have access to the true energy of the system.
                 # So we assign the calculator of layer0 to the actual geometry containing

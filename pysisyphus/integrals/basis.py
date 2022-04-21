@@ -176,11 +176,10 @@ class Shells:
                 Lb, B, dB, bb, normsb = shell_b.as_tuple()
                 shape = get_shell_shape(La, Lb)
                 ss = ovlp(La, Lb, aa[:, None], A, bb[None, :], B)
-                ss_ = ss.copy()
                 ss *= dA[None, :, None] * dB[None, None, :]
-                sss = ss.reshape(*shape, len(dA), len(dB))
-                sss *= normsa[:, None, :, None] * normsb[None, :, None, :]
-                ss = sss.sum(axis=(2, 3)).reshape(shape)
+                ss = ss.reshape(*shape, len(dA), len(dB))
+                ss *= normsa[:, None, :, None] * normsb[None, :, None, :]
+                ss = ss.sum(axis=(2, 3)).reshape(shape)
                 row.append(ss)
             rows.append(row)
         S = np.block(rows)
