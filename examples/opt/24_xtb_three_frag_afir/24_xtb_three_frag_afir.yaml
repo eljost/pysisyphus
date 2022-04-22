@@ -29,7 +29,7 @@ calc:
  gamma: !kJpermol 150
  # The same goes for rho, which defaults to 1 (push fragments together).
  # Specify either 1 or 3.
- rho: [1, 1, 1]
+ # rho: [1, 1, 1]
  rho: 1
  # Don't ignore hydrogens in this case
  ignore_hydrogen: False
