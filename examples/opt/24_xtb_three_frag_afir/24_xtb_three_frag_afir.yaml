@@ -1,0 +1,41 @@
+geom:
+ type: redund
+ #fn: lib:afir3test.xyz
+ fn: |
+  14
+  
+  O -1.42251345  1.89751355 -0.48791645
+  H -2.37452979  1.78312465 -0.45011182
+  H -1.16891057  2.35354899  0.32738113
+  C  0.12602402  0.99030397  2.41432353
+  O -0.49877238  1.97405107  2.10769055
+  H  1.22519911  0.96463890  2.39303003
+  H -0.35082721  0.10386542  2.85386262
+  C  1.67706883  0.39547311 -1.23688425
+  C  1.30017498 -0.28485629 -0.16835752
+  O  0.09680096 -0.17400771  0.44550280
+  H -0.45360176  0.48242701 -0.04661166
+  H  2.64490515  0.24947605 -1.67642439
+  H  1.02185059  1.11402025 -1.69956988
+  H  1.93251699 -1.01222489  0.32306883
+calc:
+ type: afir
+ fragment_indices: [[0, 1, 2], [3, 4, 5, 6]]
+ # For 3 fragments, 3 pairwise interactions occur
+ # [0-1, 0-2, 1-2]
+ # So either 1 gamma (then the same gamma is used for all interactions)
+ # or 3 gammas can be specified.
+ # gamma: !kJpermol [150, 150, 150]
+ gamma: !kJpermol 150
+ # The same goes for rho, which defaults to 1 (push fragments together).
+ # Specify either 1 or 3.
+ rho: [1, 1, 1]
+ rho: 1
+ # Don't ignore hydrogens in this case
+ ignore_hydrogen: False
+ calc:
+  type: xtb
+  pal: 6
+opt:
+assert:
+ opt_geom.energy: -22.575096767605256
