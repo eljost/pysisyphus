@@ -1,6 +1,8 @@
 from pysisyphus.constants import AU2KJPERMOL, AU2KCALPERMOL, AU2EV, ANG2BOHR, BOHR2M
 
+import numpy as np
 import yaml
+from yaml.constructor import ConstructorError
 
 _UNIT_MAP = {
     # Energies are converted to Hartree (E_h)
@@ -25,7 +27,11 @@ def get_constructor(unit):
     conv = _UNIT_MAP[unit]
 
     def constructor(loader, node):
-        return float(loader.construct_scalar(node)) * conv
+        try:
+            data = float(loader.construct_scalar(node)) * conv
+        except ConstructorError:
+            data = np.array(loader.construct_sequence(node), dtype=float) * conv
+        return data
 
     return constructor
 
