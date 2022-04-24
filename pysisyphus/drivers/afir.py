@@ -8,14 +8,26 @@ from functools import reduce
 from pathlib import Path
 
 import numpy as np
+from scipy.spatial.distance import pdist
+from scipy.optimize import least_squares
 
 from pysisyphus.calculators.AFIR import AFIR, AFIRPath
 from pysisyphus.config import OUT_DIR_DEFAULT
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.drivers.opt import run_opt
+from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import pick_image_inds
 from pysisyphus.intcoords.helpers import get_bond_difference
+from pysisyphus.intcoords.setup_fast import find_bonds
+
+
+##########################
+#                        #
+#  Multi-component AFIR  #
+#       MC-AFIR          #
+#                        #
+##########################
 
 
 ##########################
