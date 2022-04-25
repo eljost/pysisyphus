@@ -64,7 +64,7 @@ class EnergyMin(Calculator):
 
         self.log(
             f"energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, returning "
-            f"results for {en1_or_en2}, {en_diff_kJ:.2f} kJ mol⁻¹ lower."
+            f"results for {en1_or_en2}, {en_diff_kJ: >12.2f} kJ mol⁻¹ lower."
         )
         self.calc_counter += 1
         return results
@@ -77,3 +77,23 @@ class EnergyMin(Calculator):
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
         return self.do_calculations("get_hessian", atoms, coords, **prepare_kwargs)
+
+    def get_chkfiles(self):
+        chkfiles = {}
+        for key in ("calc1", "calc2"):
+            try:
+                chkfiles[key] = getattr(self, key).get_chkfiles()
+            except AttributeError:
+                pass
+        return chkfiles
+
+    def set_chkfiles(self, chkfiles):
+        for key in ("calc1", "calc2"):
+            try:
+                getattr(self, key).set_chkfiles(chkfiles[key])
+                msg = f"Set chkfile on '{key}'"
+            except KeyError:
+                msg = f"Found no information for '{key}' in chkfiles!"
+            except AttributeError:
+                msg = f"Setting chkfiles is not supported by '{key}'"
+            self.log(msg)

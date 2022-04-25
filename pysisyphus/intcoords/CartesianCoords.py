@@ -22,7 +22,9 @@ class CartesianCoords(CoordSys):
             # f-string don't seem to work when pytest reports the warnings after a test
             # run, so we construct to warning before it is issued.
             msg = (
-                f"Keyword '{key}': '{val}' is not supported by this coordinate system!"
+                # Also printing the value is too much
+                # f"Keyword '{key}': '{val}' is not supported by this coordinate system!"
+                f"Keyword '{key}' is not supported by this coordinate system!"
             )
             warnings.warn(msg)
         self.atoms = atoms

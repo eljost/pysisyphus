@@ -94,6 +94,7 @@ def run_opt(
     is_iterative = (not is_cos) and (iterative or opt_kwargs.pop("iterative", False))
 
     if is_cos:
+        # Set calculators on all images
         for image in geom.images:
             image.set_calculator(calc_getter())
             title = str(geom)
@@ -105,6 +106,7 @@ def run_opt(
     do_davidson = opt_kwargs.pop("do_davidson", False)
     T = opt_kwargs.pop("T", T_DEFAULT)
     p = opt_kwargs.pop("p", p_DEFAULT)
+    propagate = opt_kwargs.pop("propagate", False)
 
     opt_cls = get_opt_cls(opt_key)
     for i in range(iterative_max_cycles):
@@ -119,6 +121,22 @@ def run_opt(
         print(f"        Optimizer: {opt_key}\n")
         report_frozen_atoms(geom)
         print()
+
+        # Try to propagate chkfiles along calculators in COS optimizations
+        if propagate and is_cos:
+            print("Propagating chkfiles along COS")
+            for i, image in enumerate(geom.images):
+                image.energy
+                cur_calc = image.calculator
+                try:
+                    next_calc = geom.images[i + 1].calculator
+                except IndexError:
+                    pass
+                try:
+                    next_calc.set_chkfiles(cur_calc.get_chkfiles())
+                except AttributeError:
+                    break
+
         opt.run()
 
         # Only do 1 cycle in non-iterative optimizations
