@@ -183,36 +183,45 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None):
+def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None, index=None):
     if iter_dict is None:
         iter_dict = dict()
 
-    index = 0
+    if index is None:
+        index = 0
     # Maps YAML input to actual Calculator-class arguments
     calc_map = {
-        "calc": "calculator",
-        # calc1/calc2 are used for the conical intersection calculator
-        "calc1": "calculator1",
-        "calc2": "calculator2",
+        "calculator": "calculator",
+        "calc": "calculator",  # shortcut for 'calculator'
+        # calc1/calc2 are used for ConicalIntersection and EnergyMin.
+        "calculator1": "calculator1",
+        "calc1": "calculator1",  # shortcut for 'calculator1'
+        "calcualtor2": "calculator2",
+        "calc2": "calculator2",  # shortcut for 'calculator2'
     }
 
     def calc_getter(**add_kwargs):
         nonlocal index
 
+        kwargs_copy = copy.deepcopy(calc_kwargs)
+
         # Some calculators are just wrappers, modifying forces from actual calculators,
-        # e.g. AFIR and Dimer. If we find the one of the keys in 'calc_map' in 'calc_kwargs'
+        # e.g. AFIR and Dimer. If we find one of the keys in 'calc_map' in 'calc_kwargs'
         # we create the actual calculator and assign it to the corresponding value in
         # 'calc_map'.
         for key, val in calc_map.items():
-            if key in calc_kwargs:
+            if key in kwargs_copy:
                 # Use different base_name to distinguish the calculator(s)
-                key_base_name = val
-                actual_kwargs = calc_kwargs.pop(key)
+                actual_base_name = val
+                actual_kwargs = kwargs_copy.pop(key)
                 actual_key = actual_kwargs.pop("type")
-                actual_calc = get_calc_closure(key_base_name, actual_key, actual_kwargs)()
-                calc_kwargs[val] = actual_calc
+                # Pass 'index' to arguments, to avoid recreating calculators with
+                # the same name.
+                actual_calc = get_calc_closure(
+                    actual_base_name, actual_key, actual_kwargs, index=index
+                )()
+                kwargs_copy[val] = actual_calc
 
-        kwargs_copy = copy.deepcopy(calc_kwargs)
         kwargs_copy["base_name"] = base_name
         kwargs_copy.update(add_kwargs)
         kwargs_copy["calc_number"] = index
