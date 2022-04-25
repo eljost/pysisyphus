@@ -24,7 +24,7 @@ from pysisyphus.intcoords.eval import (
     check_primitives,
 )
 
-from pysisyphus.intcoords.logging import logger
+from pysisyphus.intcoords.logging_conf import logger
 from pysisyphus.intcoords.PrimTypes import (
     normalize_prim_inputs,
     PrimTypes,
