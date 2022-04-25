@@ -16,7 +16,7 @@ from pysisyphus.modefollow import geom_lanczos
 
 class ChainOfStates:
     logger = logging.getLogger("cos")
-    valid_coord_types = "cart dlc".split()
+    valid_coord_types = ("cart", "cartesian", "dlc")
 
     def __init__(
         self,
@@ -186,7 +186,7 @@ class ChainOfStates:
         Then tries to set cartesian coordinate as self.images[i].coords
         which will raise an error when coord_type != "cart".
         """
-        assert self.images[i].coord_type == "cart", (
+        assert self.images[i].coord_type in ("cart", "cartesian"), (
             "ChainOfStates.set_coords_at() has to be reworked to support "
             "internal coordiantes. Try to set 'align: False' in the 'opt' "
             "section of the .yaml input file."

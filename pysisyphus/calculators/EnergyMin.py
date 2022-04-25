@@ -66,6 +66,7 @@ class EnergyMin(Calculator):
             f"energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, returning "
             f"results for {en1_or_en2}, {en_diff_kJ:.2f} kJ mol⁻¹ lower."
         )
+        self.calc_counter += 1
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):

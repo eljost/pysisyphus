@@ -312,7 +312,7 @@ class Geometry:
 
     def __sub__(self, other):
         self.assert_compatibility(other)
-        if self.coord_type == "cart":
+        if self.coord_type in ("cart", "cartesian"):
             diff = self.coords - other.coords
         elif self.coord_type in ("redund", "dlc"):
             # Take periodicity of dihedrals into account by calling

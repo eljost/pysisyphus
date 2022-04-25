@@ -205,9 +205,11 @@ def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None):
         # 'calc_map'.
         for key, val in calc_map.items():
             if key in calc_kwargs:
+                # Use different base_name to distinguish the calculator(s)
+                key_base_name = val
                 actual_kwargs = calc_kwargs.pop(key)
                 actual_key = actual_kwargs.pop("type")
-                actual_calc = get_calc_closure(base_name, actual_key, actual_kwargs)()
+                actual_calc = get_calc_closure(key_base_name, actual_key, actual_kwargs)()
                 calc_kwargs[val] = actual_calc
 
         kwargs_copy = copy.deepcopy(calc_kwargs)
