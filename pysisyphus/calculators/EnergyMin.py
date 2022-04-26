@@ -1,10 +1,16 @@
 # [1] https://doi.org/10.1063/5.0021923
 #     Extending NEB method to reaction pathways involving multiple spin states
 #     Zhao et al, 2020
+# [2] https://doi.org/10.1021/jp0761618
+#     Optimizing Conical Intersections without Derivative Coupling Vectors:
+#     Application to Multistate Multireference Second-Order Perturbation Theory
+#     Levine, Coe, Martinez 2008
+
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.constants import AU2KCALPERMOL, AU2KJPERMOL
+from pysisyphus.constants import AU2KJPERMOL
+from pysisyphus.helpers import norm_max_rms
 
 
 class EnergyMin(Calculator):
@@ -12,6 +18,9 @@ class EnergyMin(Calculator):
         self,
         calculator1: Calculator,
         calculator2: Calculator,
+        mix: bool = False,
+        alpha: float = 0.02,  # Hartree
+        sigma: float = 3.5,  # Unitless; default for ethene case in [1]
         min_energy_diff: float = 0.0,
         check_after: int = 0,
         **kwargs,
@@ -29,6 +38,16 @@ class EnergyMin(Calculator):
             Wrapped QC calculator that provides energies and its derivatives.
         calculator2
             Wrapped QC calculator that provides energies and its derivatives.
+        mix
+            Enable mixing of both forces, according to the approach outlined
+            in [2]. Can be used to optimize guesses for MECPs.
+            Pass
+        alpha
+            Smoothing parameter in Hartree. See [2] for a discussion.
+        sigma
+            Unitless gap size parameter. The final gap becomes
+            smaller for bigga sigmas. Has to be adapted for each case. See
+            [2] for a discussion (p. 407 right column and p. 408 left column.)
         min_energy_diff
             Energy difference in Hartree. When set to a value != 0 and the
             energy difference between both
@@ -50,11 +69,13 @@ class EnergyMin(Calculator):
         super().__init__(**kwargs)
         self.calc1 = calculator1
         self.calc2 = calculator2
+        self.alpha = alpha
+        self.sigma = sigma
         self.min_energy_diff = float(min_energy_diff)
         self.check_after = int(check_after)
         assert self.check_after >= 0, "'check_after' must not be negative!"
 
-        self.mix = False
+        self.mix = mix
         self.recalc_in = self.check_after
         self.fixed_calc = None
 
@@ -70,6 +91,7 @@ class EnergyMin(Calculator):
             )
             results = run_calculation(self.fixed_calc)
             self.recalc_in -= 1
+            self.calc_counter += 1
             return results
         elif (self.fixed_calc is not None) and self.recalc_in == 0:
             self.log(f"Unset fixed calculator {self.calc1}.")
@@ -98,21 +120,20 @@ class EnergyMin(Calculator):
 
         # Mixed forces to optimize crossing points
         if self.mix:
-            alpha = 0.02 / AU2KCALPERMOL
-            sigma = 3.5 / AU2KCALPERMOL
             # Must be positive, so substract lower energy from higher energy.
             # I is the higher state, j the lower one.
             en_i, en_j = (
                 (energy2, energy1) if (energy1 < energy2) else (energy1, energy2)
             )
             energy_diff = en_i - en_j
+            energy_diff_kJ = energy_diff * AU2KJPERMOL
             assert energy_diff > 0.0
             self.log(
-                f"Mix mode, ΔE={energy_diff:.6f} au ({energy_diff*AU2KJPERMOL:.2f} kJ mol⁻¹)"
+                f"Mix mode, ΔE={energy_diff:.6f} au ({energy_diff_kJ:.2f} kJ mol⁻¹)"
             )
             energy_diff_sq = energy_diff**2
-            denom = energy_diff + alpha
-            energy = (en_i + en_j) / 2 + sigma * energy_diff_sq / denom
+            denom = energy_diff + self.alpha
+            energy = (en_i + en_j) / 2 + self.sigma * energy_diff_sq / denom
             results = {
                 "energy": energy,
                 "all_energies": all_energies,
@@ -124,11 +145,25 @@ class EnergyMin(Calculator):
                 forces_i, forces_j = (
                     (forces2, forces1) if (energy1 < energy2) else (forces1, forces2)
                 )
-                forces = (forces_i + forces_j) / 2 + sigma * (
-                    energy_diff_sq + 2 * alpha * energy_diff
-                ) / denom**2 * (forces_j - forces_i)
+                # There seems to be a typo in Eq. (8) in [1]; the final term
+                # should be (dV_J - dV_I) instead of the (dV_I - dV_J).
+                # The formula is correct though, in the original publication
+                # (Eq. (7) in [2]).
+                forces = (forces_i + forces_j) / 2 + self.sigma * (
+                    energy_diff_sq + 2 * self.alpha * energy_diff
+                ) / denom**2 * (forces_i - forces_j)
                 results["forces"] = forces
-                self.log(f"norm(mixed forces)={np.linalg.norm(forces):.6f} au a0⁻¹")
+                for key, forces in (
+                    ("mixed forces", forces),
+                    ("forces1", forces1),
+                    ("forces2", forces2),
+                ):
+                    norm, max_, rms_ = norm_max_rms(forces)
+                    self.log(
+                        f"{key: >14s}: (norm={norm:.4f}, max(|{key: >14s}|)={max_:.4f}, "
+                        f"rms={rms_:.4f}) au a0⁻¹"
+                    )
+            self.calc_counter += 1
             return results
         # Mixed forces end
 
@@ -140,7 +175,8 @@ class EnergyMin(Calculator):
             # When the actual difference is above to minimum differences
             # or
             # no calculator is fixed yet
-            (energy_diff > self.min_energy_diff) or (self.fixed_calc is None)
+            (energy_diff > self.min_energy_diff)
+            or (self.fixed_calc is None)
         ):
             self.fixed_calc = (self.calc1, self.calc2)[min_ind]
             self.recalc_in = self.check_after

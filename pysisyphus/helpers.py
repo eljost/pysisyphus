@@ -411,6 +411,13 @@ def rms(arr):
     return np.sqrt(np.mean(arr**2))
 
 
+def norm_max_rms(arr):
+    norm = np.linalg.norm(arr)
+    max_ = np.max(np.abs(arr))
+    rms_ = rms(arr)
+    return norm, max_, rms_
+
+
 def complete_fragments(atoms, fragments):
     lengths = [len(frag) for frag in fragments]
 

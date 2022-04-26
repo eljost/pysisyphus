@@ -259,7 +259,6 @@ class ChainOfStates:
             all_energies = np.array([image.all_energies for image in self.images])
             energy_diffs = np.diff(all_energies, axis=1).flatten()
             calc_inds = all_energies.argmin(axis=1)
-            print("calc_inds", calc_inds, ";", len(calc_inds), "images")
             mix_at = []
             for i, calc_ind in enumerate(calc_inds[:-1]):
                 next_ind = calc_inds[i + 1]
