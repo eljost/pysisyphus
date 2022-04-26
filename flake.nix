@@ -18,7 +18,7 @@
   nixConfig = {
     # Custom prompt in nix develop shell
     bash-prompt = ''\[\e[0;1;38;5;215m\]pysisyphus\[\e[0;1m\]:\[\e[0;1;38;5;75m\]\w\[\e[0;1m\]$ \[\e[0m\]'';    
-    subtituters = [ "https://pysisyphus.cachix.org" ];
+    subtituters = [ "https://pysisyphus.cachix.org" "https://cache.nixos.org" ];
   };
 
   outputs = { self, nixpkgs, qchem, flake-utils, ... }:
