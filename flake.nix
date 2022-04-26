@@ -119,6 +119,9 @@
 
         devShell = self.devShells."${system}".default;
 
+        hydraJobs = {
+          pysisyphus = self.packages.x86_64-linux.pysisyphus;
+        };
       }) // {
         overlays.default = import ./nix/overlay.nix;
         overlay = self.overlays.default;
