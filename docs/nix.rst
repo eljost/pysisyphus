@@ -25,7 +25,9 @@ The build time can be reduced drastically, if the quantum chemistry codes are fe
 
 Pysisyphus provides a binary cache on Cachix.
 
-If you are allowed to add binary cache in nix, you may simply execute:
+Nix >= 2.6.0 with flakes directly supports the binary cache without further action required.
+
+Alternatively, if you are allowed to add binary caches in nix, you may simply execute:
 
 .. code-block:: bash
 
