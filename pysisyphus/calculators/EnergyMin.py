@@ -16,12 +16,32 @@ class EnergyMin(Calculator):
         self.mix = False
 
     def do_calculations(self, name, atoms, coords, **prepare_kwargs):
-        results1 = getattr(self.calc1, name)(atoms, coords, **prepare_kwargs)
-        results2 = getattr(self.calc2, name)(atoms, coords, **prepare_kwargs)
+        def run_calculation(calc, name):
+            results = getattr(calc, name)(atoms, coords, **prepare_kwargs)
+            return results
+
+        # Avoid unnecessary costly Hessian calculations; decide which Hessian
+        # to calculate from previous energy calculation.
+        if name == "get_hessian":
+            tmp_energy1 = run_calculation(self.calc1, "get_energy")["energy"]
+            tmp_energy2 = run_calculation(self.calc2, "get_energy")["energy"]
+            if tmp_energy1 <= tmp_energy2:
+                results1 = run_calculation(self.calc1, name)
+                results2 = {"energy": tmp_energy2}
+                self.log("Skipped Hessian calculation for calc2.")
+            else:
+                results1 = {"energy": tmp_energy1}
+                results2 = run_calculation(self.calc2, name)
+                self.log("Skipped Hessian calculation for calc1.")
+        # Do both full calculation otherwise
+        else:
+            results1 = run_calculation(self.calc1, name)
+            results2 = run_calculation(self.calc2, name)
         energy1 = results1["energy"]
         energy2 = results2["energy"]
         all_energies = np.array((energy1, energy2))
 
+        # Mixed forces to optimize crossing points
         if self.mix:
             alpha = 0.02 / AU2KCALPERMOL
             sigma = 3.5 / AU2KCALPERMOL
@@ -35,7 +55,7 @@ class EnergyMin(Calculator):
             self.log(
                 f"Mix mode, ΔE={energy_diff:.6f} au ({energy_diff*AU2KJPERMOL:.2f} kJ mol⁻¹)"
             )
-            energy_diff_sq = energy_diff ** 2
+            energy_diff_sq = energy_diff**2
             denom = energy_diff + alpha
             energy = (en_i + en_j) / 2 + sigma * energy_diff_sq / denom
             results = {
@@ -51,10 +71,11 @@ class EnergyMin(Calculator):
                 )
                 forces = (forces_i + forces_j) / 2 + sigma * (
                     energy_diff_sq + 2 * alpha * energy_diff
-                ) / denom ** 2 * (forces_j - forces_i)
+                ) / denom**2 * (forces_j - forces_i)
                 results["forces"] = forces
                 self.log(f"norm(mixed forces)={np.linalg.norm(forces):.6f} au a0⁻¹")
             return results
+        # Mixed forces end
 
         min_ind = [1, 0][int(energy1 < energy2)]
         en1_or_en2 = ("calc1", "calc2")[min_ind]
