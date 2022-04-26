@@ -274,7 +274,9 @@ class ChainOfStates:
             for ind in mix_at:
                 self.images[ind].calculator.mix = True
                 # Recalculate correct energy and forces
-                print(f"Switch after calc_ind={calc_ind} at index {ind}. Recalculating.")
+                print(
+                    f"Switch after calc_ind={calc_ind} at index {ind}. Recalculating."
+                )
                 self.images[ind].calc_energy_and_forces()
                 self.org_forces_indices.append(ind)
                 calc_ind = calc_inds[ind]
@@ -355,8 +357,21 @@ class ChainOfStates:
             self.images[-1].cart_forces = zero_forces
             self.log("Zeroed forces on fixed last image.")
 
-    def get_tangent(self, i, kind="upwinding", lanczos_guess=None):
+    def get_tangent(
+        self, i, kind="upwinding", lanczos_guess=None, disable_lanczos=False
+    ):
         """[1] Equations (8) - (11)"""
+
+        # Converge to lowest curvature mode at the climbing image.
+        # In the current implementation the given kind may be overwritten when
+        # Lanczos iterations are enabled and there are climbing images. By
+        # setting 'disable_lanczos=True' the provided kind is never overwritten.
+        if (
+            not disable_lanczos
+            and self.started_climbing_lanczos
+            and (i in self.get_climbing_indices())
+        ):
+            kind = "lanczos"
 
         tangent_kinds = ("upwinding", "simple", "bisect", "lanczos")
         assert kind in tangent_kinds, "Invalid kind! Valid kinds are: {tangent_kinds}"

@@ -375,13 +375,6 @@ class GrowingString(GrowingChainOfStates):
         else:
             tangent = super().get_tangent(i, kind="upwinding")
 
-        # Converge exact mode at climbing image if requested. Use the upwinding
-        # tangent as guess.
-        if self.started_climbing_lanczos and (i in self.get_climbing_indices()):
-            # tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=tangent)
-            # By using guess=None the previous Lanczos will automatically be
-            # used as guess.
-            tangent = super().get_tangent(i, kind="lanczos", lanczos_guess=None)
         return tangent
 
     @ChainOfStates.forces.getter
@@ -412,7 +405,7 @@ class GrowingString(GrowingChainOfStates):
             # node/image on the string.
             to_check = {
                 "norm": np.linalg.norm(perp_forces, axis=1),
-                "rms": np.sqrt(np.mean(perp_forces ** 2, axis=1)),
+                "rms": np.sqrt(np.mean(perp_forces**2, axis=1)),
             }
             self.log(
                 f"Checking frontier node convergence, threshold={self.perp_thresh:.6f}"
