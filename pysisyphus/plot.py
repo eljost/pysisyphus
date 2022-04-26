@@ -250,14 +250,17 @@ def plot_cos_energies(h5_fn="optimization.h5", h5_group="opt"):
     plt.show()
 
 
-def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
+def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
     results = load_h5(
         h5_fn,
         h5_group,
-        datasets=("forces",),
+        datasets=("energies", "forces",),
         attrs=("is_cos", "coord_type", "max_force_thresh", "rms_force_thresh"),
     )
-    forces = results["forces"]
+    cycles = len(results["energies"])
+    last_cycles = np.arange(cycles)[-last:]
+    energies = results["energies"][-last:]
+    forces = results["forces"][-last:]
     coord_type = results["coord_type"]
 
     assert results["is_cos"]
@@ -265,15 +268,26 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt"):
     last_axis = forces.ndim - 1
     max_ = np.nanmax(np.abs(forces), axis=last_axis)
     rms = np.sqrt(np.mean(forces ** 2, axis=last_axis))
-
+    hei_indices = energies.argmax(axis=1)
     force_unit = get_force_unit(coord_type)
+
+    fmt = ".6f"
+    print("HEI forces in E_h / a0")
+    for i, hei_index in enumerate(hei_indices):
+        cycle = last_cycles[i]
+        hei_max = max_[i, hei_index]
+        hei_rms = rms[i, hei_index]
+        print(f"\tCycle {cycle:03d}: max(forces)={hei_max:{fmt}}, rms(forces)={hei_rms:{fmt}}")
 
     fig, (ax0, ax1) = plt.subplots(sharex=True, nrows=2)
 
     def plot(ax, data, title):
-        colors = matplotlib.cm.Greys(np.linspace(0, 1, num=data.shape[0]))
-        for row, color in zip(data, colors):
-            ax.plot(row, "o-", color=color)
+        num = data.shape[0]
+        alphas = np.linspace(0.125, 1, num=num)
+        colors = matplotlib.cm.Greys(np.linspace(0, 1, num=num))
+        colors[-1] = (1., 0., 0., 1.)  # use red for latest cycle
+        for row, color, alpha in zip(data, colors, alphas):
+            ax.plot(row, "o-", color=color, alpha=alpha)
             ax.set_ylabel(force_unit)
         ax.set_yscale("log")
         if title:
