@@ -8,17 +8,72 @@ from pysisyphus.constants import AU2KCALPERMOL, AU2KJPERMOL
 
 
 class EnergyMin(Calculator):
-    def __init__(self, calculator1, calculator2, **kwargs):
+    def __init__(
+        self,
+        calculator1: Calculator,
+        calculator2: Calculator,
+        min_energy_diff: float = 0.0,
+        check_after: int = 0,
+        **kwargs,
+    ):
+        """
+        Use energy and derivatives of the calculator with lower energy.
+
+        This calculators carries out two calculations with different settings
+        and returns the results of the lower energy one. This can be used
+        to consider flips between a singlet and a triplet PES etc.
+
+        Parameters
+        ----------
+        calculator1
+            Wrapped QC calculator that provides energies and its derivatives.
+        calculator2
+            Wrapped QC calculator that provides energies and its derivatives.
+        min_energy_diff
+            Energy difference in Hartree. When set to a value != 0 and the
+            energy difference between both
+            calculators drops below this value, execution of both calculations
+            is diabled for 'check_after' cycles. In these cycles the calculator choice
+            remains fixed. After 'check_after' cycles, both energies
+            will be calculated and it is checked, if the previous calculator
+            choice remains valid.
+            In conjunction with 'check_after' both arguments can be used to
+            save computational ressources.
+        check_after
+            Amount of cycles in which the calculator choice remains fixed.
+
+        Other Parameters
+        ----------------
+        **kwargs
+            Keyword arguments passed to the Calculator baseclass.
+        """
         super().__init__(**kwargs)
         self.calc1 = calculator1
         self.calc2 = calculator2
+        self.min_energy_diff = float(min_energy_diff)
+        self.check_after = int(check_after)
+        assert self.check_after >= 0, "'check_after' must not be negative!"
 
         self.mix = False
+        self.recalc_in = self.check_after
+        self.fixed_calc = None
 
     def do_calculations(self, name, atoms, coords, **prepare_kwargs):
-        def run_calculation(calc, name):
+        def run_calculation(calc, name=name):
             results = getattr(calc, name)(atoms, coords, **prepare_kwargs)
             return results
+
+        if (self.fixed_calc is not None) and self.recalc_in > 0:
+            self.log(
+                f"Used fixed calculator '{self.fixed_calc}'. Re-checking both "
+                f"calculators in {self.recalc_in} cycles."
+            )
+            results = run_calculation(self.fixed_calc)
+            self.recalc_in -= 1
+            return results
+        elif (self.fixed_calc is not None) and self.recalc_in == 0:
+            self.log(f"Unset fixed calculator {self.calc1}.")
+            self.fixed_calc = None
 
         # Avoid unnecessary costly Hessian calculations; decide which Hessian
         # to calculate from previous energy calculation.
@@ -26,13 +81,13 @@ class EnergyMin(Calculator):
             tmp_energy1 = run_calculation(self.calc1, "get_energy")["energy"]
             tmp_energy2 = run_calculation(self.calc2, "get_energy")["energy"]
             if tmp_energy1 <= tmp_energy2:
-                results1 = run_calculation(self.calc1, name)
+                results1 = run_calculation(self.calc1)
                 results2 = {"energy": tmp_energy2}
-                self.log("Skipped Hessian calculation for calc2.")
+                self.log("Calculated Hessian for calc1, skipped it for calc2.")
             else:
                 results1 = {"energy": tmp_energy1}
-                results2 = run_calculation(self.calc2, name)
-                self.log("Skipped Hessian calculation for calc1.")
+                results2 = run_calculation(self.calc2)
+                self.log("Calculated Hessian for calc2, skipped it for calc1.")
         # Do both full calculation otherwise
         else:
             results1 = run_calculation(self.calc1, name)
@@ -79,13 +134,26 @@ class EnergyMin(Calculator):
 
         min_ind = [1, 0][int(energy1 < energy2)]
         en1_or_en2 = ("calc1", "calc2")[min_ind]
+        energy_diff = energy1 - energy2
+        # Try to fix calculator, if requested
+        if (self.min_energy_diff and self.check_after) and (
+            # When the actual difference is above to minimum differences
+            # or
+            # no calculator is fixed yet
+            (energy_diff > self.min_energy_diff) or (self.fixed_calc is None)
+        ):
+            self.fixed_calc = (self.calc1, self.calc2)[min_ind]
+            self.recalc_in = self.check_after
+            self.log(
+                f"Fixed calculator choice ({en1_or_en2}) for {self.recalc_in} cycles."
+            )
         results = (results1, results2)[min_ind]
         results["all_energies"] = all_energies
-        en_diff_kJ = abs(energy1 - energy2) * AU2KJPERMOL
+        energy_diff_kJ = abs(energy_diff) * AU2KJPERMOL
 
         self.log(
             f"energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, returning "
-            f"results for {en1_or_en2}, {en_diff_kJ: >12.2f} kJ mol⁻¹ lower."
+            f"results for {en1_or_en2}, {energy_diff_kJ: >10.2f} kJ mol⁻¹ lower."
         )
         self.calc_counter += 1
         return results
@@ -99,7 +167,7 @@ class EnergyMin(Calculator):
     def get_hessian(self, atoms, coords, **prepare_kwargs):
         return self.do_calculations("get_hessian", atoms, coords, **prepare_kwargs)
 
-    def get_chkfiles(self):
+    def get_chkfiles(self) -> dict:
         chkfiles = {}
         for key in ("calc1", "calc2"):
             try:
@@ -108,7 +176,7 @@ class EnergyMin(Calculator):
                 pass
         return chkfiles
 
-    def set_chkfiles(self, chkfiles):
+    def set_chkfiles(self, chkfiles: dict):
         for key in ("calc1", "calc2"):
             try:
                 getattr(self, key).set_chkfiles(chkfiles[key])
