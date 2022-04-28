@@ -18,14 +18,18 @@ except ModuleNotFoundError:
     pass
 
 
-def calcs_from_dict(calc_dict, base_name, charge, mult, pal, mem):
+def calcs_from_dict(calc_dict, base_name, calc_number, charge, mult, pal, mem):
     keys_calcs = {}
     calc_kwargs_ = {
+        "calc_number": calc_number,
         "charge": charge,
         "mult": mult,
         "pal": pal,
         "mem": mem,
     }
+    # Try to distinguish the calculators according to their base_name. If no
+    # base_name is given we rely on the calc_number.
+    base_name = base_name if base_name != "" else f"{calc_number:03d}"
     for i, (key, kwargs) in enumerate(calc_dict.items()):
         calc_kwargs = calc_kwargs_.copy()
         calc_kwargs["base_name"] = f"{base_name}_{key}"
@@ -46,7 +50,13 @@ class MultiCalc(Calculator):
             key: calc_dict.pop("do_hess", False) for key, calc_dict in calcs.items()
         }
         self.keys_calcs = calcs_from_dict(
-            calcs, self.base_name, self.charge, self.mult, self.pal, self.mem
+            calcs,
+            self.base_name,
+            self.calc_number,
+            self.charge,
+            self.mult,
+            self.pal,
+            self.mem,
         )
         max_len = max([len(key) for key in self.keys_calcs.keys()])
         self.max_fmt = f" >{max_len+2}"
