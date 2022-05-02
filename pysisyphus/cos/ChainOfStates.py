@@ -87,6 +87,14 @@ class ChainOfStates:
         except AttributeError:
             self.typed_prims = None
 
+    @property
+    def calculator(self):
+        try:
+            calc = self.images[0].calculator
+        except IndexError:
+            calc = None
+        return calc
+
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
 
