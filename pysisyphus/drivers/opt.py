@@ -117,8 +117,11 @@ def run_opt(
         opt = opt_cls(geom, **opt_kwargs)
         print(highlight_text(f"Running {title}", level=level))
         print(f"\n   Input geometry: {geom.describe()}")
-        print(f"Coordinate system: {geom.coord_type}")
-        print(f"        Optimizer: {opt_key}\n")
+        print(f"  Coordinate system: {geom.coord_type}")
+        print(f"         Calculator: {geom.calculator}")
+        print(f"             Charge: {geom.calculator.charge}")
+        print(f"       Multiplicity: {geom.calculator.mult}")
+        print(f"          Optimizer: {opt_key}\n")
         report_frozen_atoms(geom)
         print()
 
