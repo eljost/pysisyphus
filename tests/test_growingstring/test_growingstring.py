@@ -183,6 +183,7 @@ def test_climb_lanczos():
         "climb": True,
         "climb_rms": 0.2,
         "climb_lanczos": True,
+        "climb_lanczos_rms": 0.2,
     }
     gs = GrowingString(geoms, lambda: AnaPot(), **gs_kwargs)
 

@@ -16,7 +16,7 @@ from pysisyphus.modefollow import geom_lanczos
 
 class ChainOfStates:
     logger = logging.getLogger("cos")
-    valid_coord_types = "cart dlc".split()
+    valid_coord_types = ("cart", "cartesian", "dlc")
 
     def __init__(
         self,
@@ -86,6 +86,14 @@ class ChainOfStates:
             self.typed_prims = img0.internal.typed_prims
         except AttributeError:
             self.typed_prims = None
+
+    @property
+    def calculator(self):
+        try:
+            calc = self.images[0].calculator
+        except IndexError:
+            calc = None
+        return calc
 
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
@@ -186,7 +194,7 @@ class ChainOfStates:
         Then tries to set cartesian coordinate as self.images[i].coords
         which will raise an error when coord_type != "cart".
         """
-        assert self.images[i].coord_type == "cart", (
+        assert self.images[i].coord_type in ("cart", "cartesian"), (
             "ChainOfStates.set_coords_at() has to be reworked to support "
             "internal coordiantes. Try to set 'align: False' in the 'opt' "
             "section of the .yaml input file."
@@ -259,7 +267,6 @@ class ChainOfStates:
             all_energies = np.array([image.all_energies for image in self.images])
             energy_diffs = np.diff(all_energies, axis=1).flatten()
             calc_inds = all_energies.argmin(axis=1)
-            print("calc_inds", calc_inds, ";", len(calc_inds), "images")
             mix_at = []
             for i, calc_ind in enumerate(calc_inds[:-1]):
                 next_ind = calc_inds[i + 1]
@@ -274,7 +281,9 @@ class ChainOfStates:
             for ind in mix_at:
                 self.images[ind].calculator.mix = True
                 # Recalculate correct energy and forces
-                print(f"Switch after calc_ind={calc_ind} at index {ind}. Recalculating.")
+                print(
+                    f"Switch after calc_ind={calc_ind} at index {ind}. Recalculating."
+                )
                 self.images[ind].calc_energy_and_forces()
                 self.org_forces_indices.append(ind)
                 calc_ind = calc_inds[ind]
@@ -355,8 +364,21 @@ class ChainOfStates:
             self.images[-1].cart_forces = zero_forces
             self.log("Zeroed forces on fixed last image.")
 
-    def get_tangent(self, i, kind="upwinding", lanczos_guess=None):
+    def get_tangent(
+        self, i, kind="upwinding", lanczos_guess=None, disable_lanczos=False
+    ):
         """[1] Equations (8) - (11)"""
+
+        # Converge to lowest curvature mode at the climbing image.
+        # In the current implementation the given kind may be overwritten when
+        # Lanczos iterations are enabled and there are climbing images. By
+        # setting 'disable_lanczos=True' the provided kind is never overwritten.
+        if (
+            not disable_lanczos
+            and self.started_climbing_lanczos
+            and (i in self.get_climbing_indices())
+        ):
+            kind = "lanczos"
 
         tangent_kinds = ("upwinding", "simple", "bisect", "lanczos")
         assert kind in tangent_kinds, "Invalid kind! Valid kinds are: {tangent_kinds}"

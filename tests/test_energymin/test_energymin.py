@@ -36,28 +36,17 @@ def test_energy_min_calc(calc_cls, ref_energy):
     assert energy == pytest.approx(ref_energy)
 
 
-@pytest.mark.skip
-@pytest.mark.parametrize(
-    "fn1, fn2, calc_getter, cur_cycle",
-    (
-        (
-            "lib:ethene_b3lyp_631gd.xyz",
-            "lib:ethene_rot_b3lyp_631gd.xyz",
-            lambda mult: PySCF(basis="631g*", xc="b3lyp", mult=mult, pal=4),
-            3,
-        ),
-        # Singlet is always more favorable for XTB
-        # (
-            # "lib:ethene_xtb.xyz",
-            # "lib:ethene_rot_xtb.xyz",
-            # lambda mult: XTB(mult=mult, pal=2),
-            # 3,
-        # ),
-    ),
-)
-def test_energy_min_cos(fn1, fn2, calc_getter, cur_cycle):
+# @pytest.mark.skip
+@using("pyscf")
+@pytest.mark.parametrize("energy_min_mix, ref_cycle", ((True, 7), (False, 3)))
+def test_energy_min_cos(energy_min_mix, ref_cycle):
+    fn1 = "lib:ethene_b3lyp_631gd.xyz"
+    fn2 = "lib:ethene_rot_b3lyp_631gd.xyz"
     image1 = geom_loader(fn1)
     image2 = geom_loader(fn2)
+
+    def calc_getter(mult):
+        return PySCF(basis="631g*", xc="b3lyp", mult=mult, pal=8)
 
     between = 10
     images = interpolate(image1, image2, between=between, kind="redund")
@@ -72,9 +61,10 @@ def test_energy_min_cos(fn1, fn2, calc_getter, cur_cycle):
     for image in images:
         image.set_calculator(get_calculator())
 
-    cos = NEB(images, progress=True, energy_min_mix=False)
-    opt = LBFGS(cos, dump=True, max_step=0.1, align=True)
+    h5_group_name = "mix_opt" if energy_min_mix else "opt"
+    cos = NEB(images, progress=True, energy_min_mix=energy_min_mix)
+    opt = LBFGS(cos, dump=True, max_step=0.1, align=True, h5_group_name=h5_group_name)
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == cur_cycle
+    assert opt.cur_cycle == ref_cycle
