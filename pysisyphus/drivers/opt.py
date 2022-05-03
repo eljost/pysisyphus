@@ -128,11 +128,11 @@ def run_opt(
         # Try to propagate chkfiles along calculators in COS optimizations
         if propagate and is_cos:
             print("Propagating chkfiles along COS")
-            for i, image in enumerate(geom.images):
+            for j, image in enumerate(geom.images):
                 image.energy
                 cur_calc = image.calculator
                 try:
-                    next_calc = geom.images[i + 1].calculator
+                    next_calc = geom.images[j + 1].calculator
                 except IndexError:
                     pass
                 try:

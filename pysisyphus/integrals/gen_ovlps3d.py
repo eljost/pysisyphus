@@ -243,11 +243,9 @@ def run():
                     Le_tot,
                     (Cx, Cy, Cz),
                 )
-            )
-            mm_exprs = mm_exprs.xreplace(A_map).xreplace(B_map).xreplace(C_map)
+            ).xreplace(A_map).xreplace(B_map).xreplace(C_map)
             argument_sequence = (a, A, b, B)
             args = ", ".join((map(str, argument_sequence)))
-            py_name = f"{name}.py"
             comment = (
                 f"Cartesian 3d {shell_ovlp} overlap.\n\n"
                 f"Generated code; DO NOT modify by hand!"
