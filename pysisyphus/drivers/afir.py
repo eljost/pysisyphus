@@ -30,14 +30,6 @@ from pysisyphus.intcoords.setup_fast import find_bonds
 ##########################
 
 
-##########################
-#                        #
-#  Multi-component AFIR  #
-#       MC-AFIR          #
-#                        #
-##########################
-
-
 def generate_random_union(geoms, offset=1.0, copy=True):
     assert 2 <= len(geoms) <= 6
     # Center, rotate and displace from origin acoording to approximate radius

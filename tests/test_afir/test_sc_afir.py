@@ -111,7 +111,8 @@ def test_sc_afir_claisen(calc_cls, calc_kwargs, ref_cc_dist, ref_oc_dist, geom):
         "dump": True,
         "thresh": "gau",
         "hessian_init": "calc",
-        "hessian_recalc": 10,
+        "hessian_recalc": 50,
+        "trust_max": 0.2,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
