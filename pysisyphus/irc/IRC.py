@@ -11,6 +11,7 @@ import h5py
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import check_for_end_sign, rms
 from pysisyphus.helpers_pure import (
     highlight_text,
@@ -98,7 +99,7 @@ class IRC:
             is equal to or less than 'energy_thresh'.
         imag_below : float, default=0.0
             Require the wavenumber of the imaginary mode to be below the
-            given threshold.
+            given threshold. If given, it should be a negative number.
         force_inflection : bool, optional
             Don't indicate convergence before passing an inflection point.
         check_bonds : bool, optional, default=True
@@ -772,3 +773,11 @@ class IRC:
         with h5py.File(dump_fn, "w") as handle:
             for key, val in data_dict.items():
                 handle.create_dataset(name=key, dtype=val.dtype, data=val)
+
+    def get_endpoint_and_ts_geoms(self):
+        assert not self.downhill, "Downhill is not yet handled"
+        first = self.all_coords[0]
+        last = self.all_coords[-1]
+        ts = self.ts_coords.copy()
+        geoms = [Geometry(self.atoms, coords) for coords in (first, ts, last)]
+        return geoms
