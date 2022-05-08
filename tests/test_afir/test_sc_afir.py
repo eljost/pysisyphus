@@ -5,7 +5,9 @@ from pysisyphus.calculators import ORCA, XTB
 from pysisyphus.constants import AU2KJPERMOL, ANG2BOHR
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.drivers.afir import (
+    coordinates_similar,
     decrease_distance,
+    determine_target_pairs_for_geom,
     lstsqs_with_reference,
     weight_function,
     find_candidates,
@@ -107,12 +109,16 @@ def test_sc_afir_claisen(calc_cls, calc_kwargs, ref_cc_dist, ref_oc_dist, geom):
 
     prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs)
 
+    afir_calc = geom.calculator
+
     opt_kwargs = {
         "dump": True,
         "thresh": "gau",
         "hessian_init": "calc",
         "hessian_recalc": 50,
         "trust_max": 0.2,
+        "fragments": afir_calc.fragment_indices,
+        "monitor_frag_dists": 5,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
@@ -124,3 +130,26 @@ def test_sc_afir_claisen(calc_cls, calc_kwargs, ref_cc_dist, ref_oc_dist, geom):
 
     assert_dist(m, n, ref_cc_dist)
     assert_dist(1, 2, ref_oc_dist)
+
+
+@pytest.mark.parametrize(
+    "ref_coords3d, ref_return",
+    (
+        (
+            [
+                geom_loader("lib:claisen_scfafir_paper_ref_opt.xyz").coords3d,
+            ],
+            0,
+        ),
+        ([], -1),
+    ),
+)
+def test_coordinates_similar(ref_coords3d, ref_return):
+    test_coords3d = geom_loader("lib:claisen_scfafir_paper_ref_opt.xyz").coords3d
+    return_ = coordinates_similar(test_coords3d, ref_coords3d)
+    assert return_ == ref_return
+
+
+def test_determine_target_pairs(geom):
+    target_pairs = determine_target_pairs_for_geom(geom, min_=1.25, max_=5.0)
+    assert len(target_pairs) == 64
