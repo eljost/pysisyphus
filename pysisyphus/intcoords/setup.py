@@ -17,7 +17,7 @@ BOND_FACTOR = 1.3
 
 def get_pair_covalent_radii(atoms):
     atoms = [a.lower() for a in atoms]
-    cov_radii = np.array([CR[a] for a in atoms])
+    cov_radii = np.array([CR[a.lower()] for a in atoms])
     pair_cov_radii = np.array([r1 + r2 for r1, r2 in it.combinations(cov_radii, 2)])
     return pair_cov_radii
 
