@@ -13,6 +13,7 @@ import numpy as np
 
 from pysisyphus.calculators import IPIServer, ONIOM
 from pysisyphus.Geometry import Geometry
+from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.helpers_pure import full_expand, highlight_text, recursive_update
 from pysisyphus.optimizers.Optimizer import Optimizer
 
@@ -344,7 +345,11 @@ class LayerOpt(Optimizer):
         # Calculate one step
         int_step = opt.optimize()
         opt.steps.append(int_step)
-        geom.coords = geom.coords + int_step
+        try:
+            geom.coords = geom.coords + int_step
+        except RebuiltInternalsException:
+            geom.reset_coords()
+            opt.reset()
         coords3d_cur[indices] = geom.coords3d[indices]
 
         full_step = coords3d_cur - coords3d_org

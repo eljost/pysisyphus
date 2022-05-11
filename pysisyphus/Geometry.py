@@ -600,7 +600,7 @@ class Geometry:
         # have been performed yet.
         self.clear()
 
-    def reset_coords(self, new_typed_prims):
+    def reset_coords(self, new_typed_prims=None):
         if self.coord_type == "cart":
             return
 
