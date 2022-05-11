@@ -10,6 +10,7 @@ from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.calculators.LEPSBase import LEPSBase
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
+from pysisyphus.calculators.VRIPot import VRIPot
 
 from pysisyphus.optimizers.BFGS import BFGS
 from pysisyphus.optimizers.closures import lbfgs_closure, modified_broyden_closure
@@ -34,6 +35,7 @@ from pysisyphus.optimizers.StabilizedQNMethod import StabilizedQNMethod
         (LEPSBase, (1.31, 0.82, 0.0), 27, (0.74200064, 7.17588688, 0.0)),
         (MullerBrownPot, (-0.69, 0.55, 0.0), 12, (-0.05, 0.4667, 0.0)),
         (Rosenbrock, (-1.00, 1.00, 0.0), 43, (1.0, 1.0, 0.0)),
+        (VRIPot, (-0.125, 0, 0.0), 8, (-1.0, 0.0, 0.0)),
     ],
 )
 def test_rfoptimizer(calc_cls, start, ref_cycle, ref_coords):
