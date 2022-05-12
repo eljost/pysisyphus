@@ -94,7 +94,7 @@ def test_least_squares_opt(geom):
             marks=(using("orca"), pytest.mark.skip_ci),
         ),
         pytest.param(
-            XTB, {"pal": 1}, 1.45709 * ANG2BOHR, 4.52108 * ANG2BOHR, marks=using("xtb")
+            XTB, {"pal": 1}, 2.76345, 8.532, marks=using("xtb")
         ),
     ),
 )
