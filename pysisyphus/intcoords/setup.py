@@ -8,6 +8,7 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
+from pysisyphus.intcoords.setup_fast import find_bonds as find_bonds_fast
 from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap, Rotations
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
@@ -156,6 +157,58 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
                     f"({atoms[h_ind]}) and {y_ind} ({atoms[y_ind]})",
                 )
 
+    return hydrogen_bond_inds
+
+
+def get_hydrogen_bond_inds_v2(atoms, coords3d, bond_inds, logger=None):
+    def to_set(iterable):
+        return {frozenset(_) for _ in iterable}
+
+    atoms_lower = [atom.lower() for atom in atoms]
+    # Determine Hydrogen indices
+    org_h_inds = {i for i, atom in enumerate(atoms_lower) if atom == "h"}
+
+    org_bond_sets = to_set(bond_inds)
+    # Determine Hydrogen bonding partners in original bond set
+    org_h_partners = dict()
+    for org_bond in org_bond_sets:
+        if h_set := org_bond & org_h_inds:
+            (x_ind,) = org_bond - h_set
+            (h_ind,) = h_set
+            org_h_partners.setdefault(h_ind, list()).append(x_ind)
+
+    hx = {"h", "n", "o", "f", "p", "s", "cl"}
+    # Determine indices of potential hydrogen bond acceptors and hydrogen to
+    # carry out a search for bonds with a bigger bond factor.
+    hx_inds = [i for i, atom in enumerate(atoms) if atom.lower() in hx]
+    hx_atoms = [atoms[i] for i in hx_inds]
+    hx_map = {j: i for j, i in enumerate(hx_inds)}
+    # See pysisyphus.elemdata.HBOND_FACTORS
+    hx_coords3d = coords3d[hx_inds]
+    # Search bonds with KDTree
+    h_bonds = find_bonds_fast(hx_atoms, hx_coords3d, bond_factor=2.3)
+    h_bonds = to_set(h_bonds)
+    # Map back to original indices. Until now the indices were only in the basis
+    # of the reduced number of atoms.
+    h_bonds = {frozenset((hx_map[i], hx_map[j])) for i, j in h_bonds}
+    # Drop h_bonds that were already defined as "normal" bonds
+    h_bonds = h_bonds - org_bond_sets
+
+    hydrogen_bond_inds = list()
+    # h_bonds can still contain XX and HH bonds
+    for h_bond in h_bonds:
+        hi = h_bond & org_h_inds
+        # Skip XX and HH. We are only interest in 'h_bond' with one hydrogen.
+        if len(hi) in (0, 2):
+            continue
+        (h_ind,) = hi
+        (y_partner,) = h_bond - hi
+        v = coords3d[y_partner] - coords3d[h_ind]
+        for x_partner in org_h_partners[h_ind]:
+            u = coords3d[x_partner] - coords3d[h_ind]
+            # > 90°
+            if u.dot(v) < 0.0:
+                hydrogen_bond_inds.append((h_ind, y_partner))
     return hydrogen_bond_inds
 
 

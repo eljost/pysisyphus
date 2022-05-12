@@ -29,7 +29,9 @@ def get_max_bond_dists(atoms, bond_factor, covalent_radii=None):
     return max_bond_dists
 
 
-def find_bonds(atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR):
+def find_bonds(
+    atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR, min_dist=0.1
+):
     atoms = [atom.lower() for atom in atoms]
     c3d = coords3d.reshape(-1, 3)
     if covalent_radii is None:
@@ -44,7 +46,7 @@ def find_bonds(atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR):
     for i, (atom, bonds, dists_) in enumerate(zip(atoms, res, dists)):
         fsets = [frozenset((atom, atoms[a])) for a in bonds]
         ref_dists = np.array([max_bond_dists[fset] for fset in fsets])
-        keep = np.logical_and(dists_ <= ref_dists, 0.1 <= dists_)
+        keep = np.logical_and(dists_ <= ref_dists, min_dist <= dists_)
         for to_ in bonds[keep]:
             bonds_.append(frozenset((i, to_)))
     bonds = np.array([tuple((from_, to_)) for from_, to_ in set(bonds_)])
