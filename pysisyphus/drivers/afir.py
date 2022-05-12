@@ -366,9 +366,10 @@ def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
 
 def coordinates_similar(
     test_coords3d: NDArray, ref_coords3d: List[NDArray], rmsd_thresh: float = 1e-2
-) -> bool:
+) -> Tuple[bool, int]:
+    # When the reference coordinates are an empty list.
     if len(ref_coords3d) == 0:
-        return False
+        return False, -1
     test_centered3d = test_coords3d - test_coords3d.mean(axis=0)[None, :]
     for i, rcoords3d in enumerate(ref_coords3d):
         ref_centered3d = rcoords3d - rcoords3d.mean(axis=0)[None, :]
@@ -376,8 +377,8 @@ def coordinates_similar(
         if rmsd_ <= rmsd_thresh:
             break
     else:
-        return False
-    return True
+        return False, -1
+    return True, i
 
 
 def geom_similar(test_geom: Geometry, ref_geoms: List[Geometry], **kwargs) -> bool:

@@ -139,9 +139,9 @@ def test_sc_afir_claisen(calc_cls, calc_kwargs, ref_cc_dist, ref_oc_dist, geom):
             [
                 geom_loader("lib:claisen_scfafir_paper_ref_opt.xyz").coords3d,
             ],
-            0,
+            (True, 0),
         ),
-        ([], -1),
+        ([], (False, -1)),
     ),
 )
 def test_coordinates_similar(ref_coords3d, ref_return):
