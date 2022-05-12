@@ -577,13 +577,18 @@ class Geometry:
                     # With typed prims, only the remaining, valid typed_prims
                     # will be defined for the new geometry.
                     #
+                    # Currently disabled.
+                    #
                     # typed_prims=valid_typed_prims,
                     #
                     # With 'define_prims' the remaining, valid typed_prims
                     # will be used, together with newly determined internal
                     # coordinates. This supports, e.g., the switch from a simple
                     # bend to a linear bend and its complement.
+                    #
+                    # Currently the default.
                     define_prims=valid_typed_prims,
+                    **self.coord_kwargs,
                 )
                 self._coords = coords3d.flatten()
                 raise RebuiltInternalsException(
