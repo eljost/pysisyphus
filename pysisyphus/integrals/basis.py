@@ -1,15 +1,16 @@
+import itertools as it
 from typing import Literal, Union, Tuple
+
 
 import numpy as np
 from numpy.typing import NDArray
+import scipy as sp
 from scipy.special import factorial2
 
 
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.integrals import ovlps3d
 
-
-Ls = Literal["s", "p", "d", "f", "g", "h"]
-L_Inp = Union[int, Ls]
 
 L_MAP = {
     "s": 0,
@@ -20,6 +21,9 @@ L_MAP = {
     "h": 5,
 }
 L_SIZE = {l: (l + 1) * (l + 2) // 2 for l in L_MAP.values()}
+
+Ls = Literal["s", "p", "d", "f", "g", "h"]
+L_Inp = Union[int, Ls]
 
 
 def get_l(l_inp: L_Inp) -> int:
@@ -42,6 +46,24 @@ def canonical_order(L):
         for n in range(i + 1):
             m = i - n
             inds.append((l, m, n))
+    return inds
+
+
+def cca_order(l):
+    inds = [
+        (l, 0, 0),
+    ]
+    a = l
+    b = c = 0
+    for i in range(((l + 1) * (l + 2) // 2) - 1):
+        if c < l - a:
+            b -= 1
+            c += 1
+        else:
+            a -= 1
+            c = 0
+            b = l - a
+        inds.append((a, b, c))
     return inds
 
 
@@ -136,9 +158,6 @@ class Shell:
         return self.__str__()
 
 
-import itertools as it
-from pysisyphus.integrals import ovlps3d
-
 Ls = (0, 1, 2)
 Smap = {(la, lb): getattr(ovlps3d, f"ovlp3d_{la}{lb}") for la, lb in it.product(Ls, Ls)}
 
@@ -164,9 +183,29 @@ class Shells:
         shells = parse_aomix(text)
         return shells
 
+    @staticmethod
+    @file_or_str(".json")
+    def from_orca_json(text):
+        from pysisyphus.io.orca import parse_json_shells
+
+        shells = parse_json(text)
+        return shells
+
     def get_S_cart(self, other=None) -> NDArray:
         shells_a = self.shells
         shells_b = shells_a if other is None else other
+
+        P = [
+            [[1]],
+            [[1]],
+            # [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
+            [[0, 0, 1], [1, 0, 0], [0, 1, 0]],
+            [[1]],
+            [[1]],
+            [[1]],
+            [[1]],
+        ]
+        P = sp.linalg.block_diag(*P)
 
         rows = list()
         for shell_a in shells_a:
@@ -183,6 +222,7 @@ class Shells:
                 row.append(ss)
             rows.append(row)
         S = np.block(rows)
+        S = P.dot(S).dot(P.T)
         return S
 
     @property
