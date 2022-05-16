@@ -39,6 +39,7 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ qchem.overlays.default (import ./nix/overlay.nix) ];
+          config.allowUnfree = true;
         };
       in {
 
