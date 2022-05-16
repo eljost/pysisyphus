@@ -187,13 +187,13 @@ class AFIR(Calculator):
         self.h5_group_name = h5_group_name
         # We can't initialize the HDF5 group as we don't know the shape of
         # atoms/coords yet. So we wait until after the first calculation.
-        self.h5_group = None
         self.h5_cycles = 50
 
         if self.ignore_hydrogen:
             self.log("No artificial force contribution from hydrogens!")
         self.atoms = None
         self.calc_counter = 0
+        self.h5_group_initialized = False
 
     """We try to keep charge and multiplicity consistent between the AFIR
     calculator and the actual wrapped calculator. But we will always return
@@ -227,28 +227,33 @@ class AFIR(Calculator):
         if max_cycles is None:
             max_cycles = self.h5_cycles
         self.data_model = get_data_model(atoms, max_cycles)
-        self.h5_group = get_h5_group(
+        h5_group = get_h5_group(
             self.h5_fn, self.h5_group_name, self.data_model, reset=True
         )
+        self.h5_group_initialized = True
+        return h5_group
 
     def dump_h5(self, atoms, coords, results):
         # Initialize if not done yet
-        if self.h5_group is None:
-            self.init_h5_group(atoms)
-            # Write atoms once
-            self.h5_group.attrs["atoms"] = atoms
+        if not self.h5_group_initialized:
+            h5_group = self.init_h5_group(atoms)
+            # Write atoms only once
+            h5_group.attrs["atoms"] = atoms
+
+        h5_group = get_h5_group(self.h5_fn, self.h5_group_name)
 
         # Check if HDF5 datasets have to be resized
-        cur_max_cycles = self.h5_group["cart_coords"].shape[0]
+        cur_max_cycles = h5_group["cart_coords"].shape[0]
         need_resize = self.calc_counter > cur_max_cycles - 5
         if need_resize:
             new_max_cycles = cur_max_cycles + self.h5_cycles
-            resize_h5_group(self.h5_group, max_cycles=new_max_cycles)
+            resize_h5_group(h5_group, max_cycles=new_max_cycles)
 
         for k, v in results.items():
-            self.h5_group[k][self.calc_counter] = v
-        self.h5_group["cart_coords"][self.calc_counter] = coords
-        self.h5_group.attrs["cur_cycle"] = self.calc_counter
+            h5_group[k][self.calc_counter] = v
+        h5_group["cart_coords"][self.calc_counter] = coords
+        h5_group.attrs["cur_cycle"] = self.calc_counter
+        h5_group.file.close()
 
     def log_fragments(self):
         self.log(f"Using {len(self.fragment_indices)} fragments")

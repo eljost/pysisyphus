@@ -1,4 +1,7 @@
+from typing import List
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.intcoords.exceptions import DifferentPrimitivesException
@@ -212,5 +215,21 @@ def get_bond_differences_verbose(
     geom1, geom2, bond_factor=BOND_FACTOR, key1="geom1", key2="geom2"
 ):
     formed, broken = get_bond_difference(geom1, geom2, BOND_FACTOR)
-    fverb, bverb = verbose_bond_difference(formed, broken, key1, key2, atoms=geom1.atoms)
+    fverb, bverb = verbose_bond_difference(
+        formed, broken, key1, key2, atoms=geom1.atoms
+    )
     return formed, broken, fverb, bverb
+
+
+def interfragment_distance(
+    frag1: List[int], frag2: List[int], coords3d: NDArray
+) -> float:
+    def mean_coords(frag):
+        frag_coords = coords3d[frag]
+        mean = frag_coords.mean(axis=0)
+        return mean
+
+    frag1_mean = mean_coords(frag1)
+    frag2_mean = mean_coords(frag2)
+    interfrag_dist = float(np.linalg.norm(frag1_mean - frag2_mean))
+    return interfrag_dist

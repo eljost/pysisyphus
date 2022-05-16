@@ -408,7 +408,7 @@ def shake_coords(coords, scale=0.1, seed=None):
 
 
 def rms(arr):
-    return np.sqrt(np.mean(arr**2))
+    return np.sqrt(np.mean(arr ** 2))
 
 
 def norm_max_rms(arr):
@@ -419,10 +419,6 @@ def norm_max_rms(arr):
 
 
 def complete_fragments(atoms, fragments):
-    lengths = [len(frag) for frag in fragments]
-
-    frag_atoms = sum(lengths)
-
     all_inds = set(range(len(atoms)))
     frag_inds = set(it.chain(*fragments))
     rest_inds = all_inds - frag_inds
@@ -583,3 +579,15 @@ def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
         )
 
     return imag_modes
+
+
+def simple_peaks(data):
+    peaks = list()
+    for i, cur in enumerate(data[1:-1], 1):
+        prev_ = data[i - 1]
+        next_ = data[i + 1]
+        if prev_ < cur > next_:
+            peaks.append(i)
+    peaks = np.array(peaks, dtype=int)
+    vals = np.array(data)[peaks]
+    return peaks, vals

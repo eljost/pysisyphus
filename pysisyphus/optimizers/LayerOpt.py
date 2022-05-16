@@ -13,6 +13,7 @@ import numpy as np
 
 from pysisyphus.calculators import IPIServer, ONIOM
 from pysisyphus.Geometry import Geometry
+from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.helpers_pure import full_expand, highlight_text, recursive_update
 from pysisyphus.optimizers.Optimizer import Optimizer
 
@@ -158,20 +159,24 @@ class Layers:
             coord_type = geom_kwargs.pop("type")
 
             # Geometry
-            def get_geom_getter():
+            def get_geom_getter(persistent_geom=None):
                 # Rebind the variables here, otherwise the wrong geom_kwargs
                 # and calc will be used, as they are redefined in the next loop cycle.
                 layer_geom_kwargs = geom_kwargs.copy()
                 layer_calc = calc
 
                 def get_geom(coords3d):
-                    geom = Geometry(
-                        atoms,
-                        coords3d.copy(),
-                        coord_type=coord_type,
-                        **layer_geom_kwargs,
-                    )
-                    geom.set_calculator(layer_calc)
+                    if persistent_geom is not None:
+                        geom = persistent_geom
+                        geom.coords3d = coords3d
+                    else:
+                        geom = Geometry(
+                            atoms,
+                            coords3d.copy(),
+                            coord_type=coord_type,
+                            **layer_geom_kwargs,
+                        )
+                        geom.set_calculator(layer_calc)
                     return geom
 
                 return get_geom
@@ -180,11 +185,8 @@ class Layers:
             # Use a persistent Geometry for the layer 0. Overwrite the function
             # above with a definition that always returns the same geometry.
             if i == 0:
-                geom = get_geom(geometry.coords3d)
-
-                def get_geom(coords3d):
-                    geom.coords3d = coords3d
-                    return geom
+                geom0 = get_geom(geometry.coords3d)
+                get_geom = get_geom_getter(geom0)
 
             self.geom_getters.append(get_geom)
 
@@ -216,7 +218,7 @@ class Layers:
 
             get_opt = get_opt_getter()
             if i == 0:
-                model_opt = get_opt(geom)
+                model_opt = get_opt(geom0)
 
                 def get_opt(geom):
                     return model_opt
@@ -344,7 +346,11 @@ class LayerOpt(Optimizer):
         # Calculate one step
         int_step = opt.optimize()
         opt.steps.append(int_step)
-        geom.coords = geom.coords + int_step
+        try:
+            geom.coords = geom.coords + int_step
+        except RebuiltInternalsException:
+            geom.reset_coords()
+            opt.reset()
         coords3d_cur[indices] = geom.coords3d[indices]
 
         full_step = coords3d_cur - coords3d_org

@@ -115,8 +115,8 @@ def run_opt(
         if (i > 0) and issubclass(opt_cls, HessianOptimizer):
             opt_kwargs["hessian_init"] = "calc"
         opt = opt_cls(geom, **opt_kwargs)
-        print(highlight_text(f"Running {title}", level=level))
-        print(f"\n   Input geometry: {geom.describe()}")
+        print(highlight_text(f"Running {title}", level=level) + "\n")
+        print(f"     Input geometry: {geom.describe()}")
         print(f"  Coordinate system: {geom.coord_type}")
         print(f"         Calculator: {geom.calculator}")
         print(f"             Charge: {geom.calculator.charge}")

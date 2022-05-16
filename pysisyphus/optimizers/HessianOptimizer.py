@@ -1,4 +1,5 @@
 from math import sqrt
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
@@ -166,9 +167,11 @@ class HessianOptimizer(Optimizer):
             self.hessian_recalc_in = None
             self.adapt_norm = None
             self.predicted_energy_changes = list()
+        hessian_init_exists = Path(self.hessian_init).exists()
         if (
             # Allow actually calculated Hessians for all coordinate systems
-            self.hessian_init not in ("calc", "xtb", "xtb1", "xtbff")
+            not hessian_init_exists
+            and self.hessian_init not in ("calc", "xtb", "xtb1", "xtbff")
             # But disable model Hessian for Cartesian optimizations
             and self.geometry.coord_type in ("cart", "cartesian", "mwcartesian")
         ):

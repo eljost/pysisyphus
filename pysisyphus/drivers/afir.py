@@ -6,28 +6,26 @@
 import itertools as it
 from functools import reduce
 from pathlib import Path
+from typing import List, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
+from rmsd import kabsch_rmsd
 from scipy.spatial.distance import pdist
 from scipy.optimize import least_squares
 
 from pysisyphus.calculators.AFIR import AFIR, AFIRPath
 from pysisyphus.config import OUT_DIR_DEFAULT
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.drivers.opt import run_opt
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import pick_image_inds
 from pysisyphus.intcoords.helpers import get_bond_difference
+from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.intcoords.setup_fast import find_bonds
-
-
-##########################
-#                        #
-#  Multi-component AFIR  #
-#       MC-AFIR          #
-#                        #
-##########################
+from pysisyphus.xyzloader import make_xyz_str
 
 
 ##########################
@@ -275,6 +273,8 @@ def automatic_fragmentation(
         to_keep = set()
         for candidate in candidates:
             for partner in partners:
+                if candidate == partner:
+                    break
                 weight = w(candidate, partner)
                 if weight > max_weight:
                     break
@@ -302,18 +302,22 @@ def automatic_fragmentation(
         # Step 6 in [1].
         frag1.update(f1_candidates)
         frag2.update(f2_candidates)
+        assert frag1.isdisjoint(frag2), "Overlapping fragments detected!"  # Sanity check
     return frag1, frag2
 
 
 def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
     """Create perturbed geometry, determine fragments and set AFIR calculator."""
+    atoms = geom.atoms
+    org_coords3d = geom.coords3d.copy()
+
     # Move target atoms closer together along distance vector (decrease distance)
-    tmp_coords3d = decrease_distance(geom.coords3d, m, n)
+    decr_coords3d = decrease_distance(geom.coords3d, m, n)
     # Optimize remaining coordinates using least-squares, while keeping target
     # atom pair fixed.
-    _, opt_coords3d = lstsqs_with_reference(tmp_coords3d, geom.coords3d, (m, n))
+    _, opt_coords3d = lstsqs_with_reference(decr_coords3d.copy(), geom.coords3d, (m, n))
     # Determine fragments, using the automated fragmentation
-    frag1, frag2 = automatic_fragmentation(geom.atoms, opt_coords3d, [m], [n])
+    frag1, frag2 = automatic_fragmentation(atoms, opt_coords3d, [m], [n])
     fragment_indices = [list(frag) for frag in (frag1, frag2)]
     # Set lstsq-optimized coordinates and created wrapped calculator
     geom.coords3d = opt_coords3d
@@ -322,7 +326,7 @@ def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
         "calculator": calc,
         "fragment_indices": fragment_indices,
         "complete_fragments": False,
-        "ignore_hydrogen": False,
+        # "ignore_hydrogen": False,  # I'm still not sure about this ...
     }
     afir_kwargs = afir_kwargs.copy()
     # Force the use of the determined fragment_indices, by override any
@@ -330,3 +334,77 @@ def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
     afir_kwargs.update(afir_defaults)
     afir_calc = AFIR(**afir_kwargs)
     geom.set_calculator(afir_calc)
+
+    def set_atoms(inds, atom_type="X", mod_atoms=None):
+        if mod_atoms is None:
+            mod_atoms = list(atoms)
+        for i in inds:
+            mod_atoms[i] = atom_type
+        return mod_atoms
+
+    atoms_target = set_atoms((m, n))
+    atoms_fragments = set_atoms(frag1)
+    atoms_fragments = set_atoms(frag2, atom_type="Q", mod_atoms=atoms_fragments)
+
+    atoms_coords3d = {
+        "original": (atoms, org_coords3d),
+        "original w/ target atoms": (atoms_target, org_coords3d),
+        "decreased distance": (atoms, decr_coords3d),
+        "decreased distance w/ target atoms": (atoms_target, decr_coords3d),
+        "lstsq optimized": (atoms, opt_coords3d),
+        "lstsq optimized w/ target atoms": (atoms_target, opt_coords3d),
+        "lstsq optimized w/ fragments": (atoms_fragments, opt_coords3d),
+    }
+    trj = "\n".join(
+        [
+            make_xyz_str(atoms, BOHR2ANG * coords3d, comment=key)
+            for key, (atoms, coords3d) in atoms_coords3d.items()
+        ]
+    )
+    return trj
+
+
+def coordinates_similar(
+    test_coords3d: NDArray, ref_coords3d: List[NDArray], rmsd_thresh: float = 1e-2
+) -> Tuple[bool, int]:
+    # When the reference coordinates are an empty list.
+    if len(ref_coords3d) == 0:
+        return False, -1
+    test_centered3d = test_coords3d - test_coords3d.mean(axis=0)[None, :]
+    for i, rcoords3d in enumerate(ref_coords3d):
+        ref_centered3d = rcoords3d - rcoords3d.mean(axis=0)[None, :]
+        rmsd_ = kabsch_rmsd(test_centered3d, ref_centered3d)
+        if rmsd_ <= rmsd_thresh:
+            break
+    else:
+        return False, -1
+    return True, i
+
+
+def geom_similar(test_geom: Geometry, ref_geoms: List[Geometry], **kwargs) -> bool:
+    return coordinates_similar(
+        test_geom.coords3d, [geom.coords3d for geom in ref_geoms], **kwargs
+    )
+
+
+def determine_target_pairs(
+    atoms: Tuple[str], coords3d: NDArray, min_: float = 1.25, max_: float = 5.0
+) -> List[Tuple[int]]:
+    """Determine possible target m, n atom pairs for SC-AFIR calculations."""
+    pair_cov_radii = get_pair_covalent_radii(atoms)
+    pair_dists = pdist(coords3d)
+    quots = pair_dists / pair_cov_radii
+    pair_inds = it.combinations(range(len(atoms)), 2)
+    target_pairs = list()
+    for pair_ind, quot in zip(pair_inds, quots):
+        if not (min_ <= quot <= max_):
+            continue
+        target_pairs.append(pair_ind)
+    return target_pairs
+
+
+def determine_target_pairs_for_geom(geom: Geometry, **kwargs) -> List[Tuple[int]]:
+    """Determine possible target m, n atom pairs for SC-AFIR calculations
+    from geom."""
+    target_pairs = determine_target_pairs(geom.atoms, geom.coords3d, **kwargs)
+    return target_pairs

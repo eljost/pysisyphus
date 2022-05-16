@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import textwrap
 import time
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 import yaml
@@ -15,6 +15,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import check_for_end_sign, get_coords_diffs
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
+from pysisyphus.intcoords.helpers import interfragment_distance
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.optimizers.exceptions import ZeroStepLength
@@ -105,6 +106,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         restart_info=None,
         check_coord_diffs: bool = True,
         coord_diff_thresh: float = 0.01,
+        fragments: Optional[Tuple] = None,
+        monitor_frag_dists: int = 0,
         out_dir: str = ".",
         h5_fn: str = "optimization.h5",
         h5_group_name: str = "opt",
@@ -175,6 +178,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         coord_diff_thresh
             Unitless threshold for similary checking of COS image coordinates.
             The first image is assigned 0, the last image is assigned to 1.
+        fragments
+            Tuple of lists containing atom indices, defining two fragments.
+        monitor_frag_dists
+            Monitor fragment distances for N cycles. The optimization is terminated
+            when the interfragment distances falls below the initial value after N
+            cycles.
         out_dir
             String poiting to a directory where optimization progress is
             dumped.
@@ -227,7 +236,18 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.converge_to_geom = None
         self.max_cycles = max_cycles
 
+        self.fragments = fragments
+        self.monitor_frag_dists = monitor_frag_dists
+        if self.monitor_frag_dists:
+            assert (
+                len(self.fragments) == 2
+            ), "Interfragment monitoring requires two fragments!"
+            assert all(
+                [len(frag) > 0 for frag in self.fragments]
+            ), "Fragments must not be empty!"
         # Setting some default values
+        self.monitor_frag_dists_counter = self.monitor_frag_dists
+        self.interfrag_dists = list()
         self.resetted = False
         try:
             out_dir = Path(out_dir)
@@ -603,12 +623,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
         int_str = ""
         if self.geometry.coord_type not in ("cart", "cartesian", "mwcartesian"):
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces**2))
+            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
@@ -777,7 +797,10 @@ class Optimizer(metaclass=abc.ABCMeta):
                     )
                     self.h5_group_name += "_rebuilt"
                     h5_group = get_h5_group(
-                        self.h5_fn, self.h5_group_name, self.data_model, reset=True,
+                        self.h5_fn,
+                        self.h5_group_name,
+                        self.data_model,
+                        reset=True,
                     )
                     h5_group.file.close()
 
@@ -808,6 +831,23 @@ class Optimizer(metaclass=abc.ABCMeta):
                         "reparametrization. Signalling convergence!"
                     )
                     break
+
+            # Alternative: calcualte overlap of AFIR force and step. If this
+            # overlap is negative the step is taken against the AFIR force.
+            if self.monitor_frag_dists_counter > 0:
+                interfrag_dist = interfragment_distance(
+                    *self.fragments, self.geometry.coords3d
+                )
+                try:
+                    prev_interfrag_dist = self.interfrag_dists[-1]
+                    if interfrag_dist > prev_interfrag_dist:
+                        print("Interfragment distances increased!")
+                        self.stopped = True  # Can't use := in if clause
+                        break
+                except IndexError:
+                    pass
+                self.interfrag_dists.append(interfrag_dist)
+                self.monitor_frag_dists_counter -= 1
 
             sys.stdout.flush()
             sign = check_for_end_sign()

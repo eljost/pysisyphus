@@ -17,7 +17,7 @@ BOND_FACTOR = 1.3
 
 def get_pair_covalent_radii(atoms):
     atoms = [a.lower() for a in atoms]
-    cov_radii = np.array([CR[a] for a in atoms])
+    cov_radii = np.array([CR[a.lower()] for a in atoms])
     pair_cov_radii = np.array([r1 + r2 for r1, r2 in it.combinations(cov_radii, 2)])
     return pair_cov_radii
 
@@ -390,6 +390,7 @@ def setup_redundant(
     freeze_map = {
         sub_ind: org_ind for sub_ind, org_ind in enumerate(np.where(use_atoms)[0])
     }
+    mobile_org_inds = set(freeze_map.values())
 
     def keep_coord(prim_cls, prim_inds):
         return (
@@ -557,7 +558,19 @@ def setup_redundant(
         With frozen atoms, the indices used to set up internal coordinates do
         not correspond to the actual indices. Here we map them back.
         """
-        org_indices = [freeze_map[ind] for ind in indices]
+        try:
+            org_indices = [freeze_map[ind] for ind in indices]
+            """The given 'indices' may not be present in freeze_map. This can happen,
+            when coordinates are rebuilt, frozen atoms are excluded from using them
+            in the coordinate definition and a previous set of coordinates ALREADY
+            using the original indices is supplied."""
+        except KeyError as error:
+            """In such a case we check if the given coordinates are already fully
+            defined in terms of original indices. If so, we use them as is."""
+            if set(indices) < mobile_org_inds:
+                org_indices = indices
+            else:
+                raise error
         return (prim_type, *org_indices)
 
     # Shortcut for PrimTypes Enum
