@@ -17,7 +17,7 @@
 
   nixConfig = {
     # Custom prompt in nix develop shell
-    bash-prompt = ''\[\e[0;1;38;5;215m\]pysisyphus\[\e[0;1m\]:\[\e[0;1;38;5;75m\]\w\[\e[0;1m\]$ \[\e[0m\]'';    
+    bash-prompt = ''\[\e[0;1;38;5;215m\]pysisyphus\[\e[0;1m\]:\[\e[0;1;38;5;75m\]\w\[\e[0;1m\]$ \[\e[0m\]'';
     extra-subtituters = [ "https://pysisyphus.cachix.org" ];
   };
 
@@ -25,9 +25,9 @@
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
 
       let
-        pkgs = import nixpkgs {
+        qchemPkgs = import (qchem.inputs.nixpkgs) {
           inherit system;
-          overlays = [ qchem.overlay (import ./nix/overlay.nix) ];
+          overlays = [ qchem.overlays.default ];
           config = {
             allowUnfree = true;
             qchem-config = {
@@ -36,13 +36,20 @@
             };
           };
         };
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ qchem.overlays.default (import ./nix/overlay.nix) ];
+        };
       in {
 
         legacyPackages = pkgs;
 
         packages = {
           default = self.packages."${system}".pysisyphus;
-          pysisyphus = pkgs.python3.pkgs.pysisyphus;
+          pysisyphus = pkgs.python3.pkgs.pysisyphus.override {
+            inherit (qchem.packages."${system}") multiwfn xtb molcas psi4 wfoverlap nwchem;
+            inherit (qchemPkgs.qchem) orca turbomole gaussian cfour molpro gamess-us;
+          };
 
           pysisyphusLib = self.packages."${system}".pysisyphus;
 
