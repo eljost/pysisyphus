@@ -34,6 +34,11 @@ from sympy import (
 from sympy.codegen.ast import Assignment
 from sympy.printing.numpy import NumPyPrinter
 
+try:
+    from pysisyphus.config import L_MAX
+except ModuleNotFoundError:
+    L_MAX = 4
+
 
 def make_py_func(exprs, args=None, name=None, comment=""):
     if args is None:
@@ -171,7 +176,7 @@ class Overlap3dShell(Function):
         return exprs
 
 
-def run():
+def run(l_max=L_MAX):
     def get_center(i):
         symbs = [Symbol(str(i) + ind) for ind in ("x", "y", "z")]
         return Array([*symbs])
@@ -205,8 +210,6 @@ def run():
     B, B_map = get_map("B", center_B)
     C, C_map = get_map("C", center_C)
 
-
-    max_L = 3
     L_map = {
         0: "s",
         1: "p",
@@ -217,8 +220,8 @@ def run():
     }
     Le_tot = 1
     py_funcs = list()
-    for La_tot in range(max_L):
-        for Lb_tot in range(max_L):
+    for La_tot in range(l_max + 1):
+        for Lb_tot in range(l_max + 1):
             shell_a = L_map[La_tot]
             shell_b = L_map[Lb_tot]
             shell_ovlp = f"({shell_a}{shell_b})"
@@ -231,19 +234,23 @@ def run():
             exprs = exprs.xreplace(A_map).xreplace(B_map)
             dur = time.time() - start
             print(f"finished in {dur:.2f} s!")
-
-            mm_exprs = Array(
-                Multipole3dShell(
-                    La_tot,
-                    Lb_tot,
-                    a,
-                    b,
-                    (Ax, Ay, Az),
-                    (Bx, By, Bz),
-                    Le_tot,
-                    (Cx, Cy, Cz),
-                )
-            ).xreplace(A_map).xreplace(B_map).xreplace(C_map)
+            # mm_exprs = (
+                # Array(
+                    # Multipole3dShell(
+                        # La_tot,
+                        # Lb_tot,
+                        # a,
+                        # b,
+                        # (Ax, Ay, Az),
+                        # (Bx, By, Bz),
+                        # Le_tot,
+                        # (Cx, Cy, Cz),
+                    # )
+                # )
+                # .xreplace(A_map)
+                # .xreplace(B_map)
+                # .xreplace(C_map)
+            # )
             argument_sequence = (a, A, b, B)
             args = ", ".join((map(str, argument_sequence)))
             comment = (

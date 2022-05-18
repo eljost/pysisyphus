@@ -2,7 +2,7 @@ import json
 
 import numpy as np
 
-from pysisyphus.integrals import get_l, Shell, Shells
+from pysisyphus.integrals import get_l, Shell, ORCAShells
 
 
 def parse_json_shells(text):
@@ -26,5 +26,5 @@ def parse_json_shells(text):
                 center_ind=center_ind,
             )
             _shells.append(shell)
-    shells = Shells(_shells)
+    shells = ORCAShells(_shells)
     return shells

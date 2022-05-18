@@ -8,8 +8,11 @@ import scipy as sp
 from scipy.special import factorial2
 
 
+from pysisyphus.config import L_MAX
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.integrals.helpers import canonical_order
 from pysisyphus.integrals import ovlps3d
+from pysisyphus.integrals.cart2sph import cart2sph_coeffs
 
 
 L_MAP = {
@@ -37,34 +40,6 @@ def get_l(l_inp: L_Inp) -> int:
 
 def get_shell_shape(La, Lb):
     return (L_SIZE[La], L_SIZE[Lb])
-
-
-def canonical_order(L):
-    inds = list()
-    for i in range(L + 1):
-        l = L - i
-        for n in range(i + 1):
-            m = i - n
-            inds.append((l, m, n))
-    return inds
-
-
-def cca_order(l):
-    inds = [
-        (l, 0, 0),
-    ]
-    a = l
-    b = c = 0
-    for i in range(((l + 1) * (l + 2) // 2) - 1):
-        if c < l - a:
-            b -= 1
-            c += 1
-        else:
-            a -= 1
-            c = 0
-            b = l - a
-        inds.append((a, b, c))
-    return inds
 
 
 def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
@@ -158,7 +133,7 @@ class Shell:
         return self.__str__()
 
 
-Ls = (0, 1, 2)
+Ls = list(range(L_MAX + 1))
 Smap = {(la, lb): getattr(ovlps3d, f"ovlp3d_{la}{lb}") for la, lb in it.product(Ls, Ls)}
 
 
@@ -168,11 +143,17 @@ def ovlp(la_tot, lb_tot, a, A, b, B):
 
 
 class Shells:
-    def __init__(self, shells):
+    def __init__(self, shells, ordering="native"):
         self.shells = shells
+        self.ordering = ordering
+        assert ordering in ("pysis", "native")
 
     def __len__(self):
         return len(self.shells)
+
+    @property
+    def l_max(self):
+        return max([shell.L for shell in self.shells])
 
     @staticmethod
     @file_or_str(".in")
@@ -186,26 +167,25 @@ class Shells:
     @staticmethod
     @file_or_str(".json")
     def from_orca_json(text):
+        # import here, to avoid cyclic imports
         from pysisyphus.io.orca import parse_json_shells
 
-        shells = parse_json(text)
+        shells = parse_json_shells(text)
         return shells
+
+    @property
+    def cart2sph_coeffs(self):
+        cart2sph = cart2sph_coeffs(self.l_max)
+        C = sp.linalg.block_diag(*[cart2sph[shell.L] for shell in self.shells])
+        return C
+
+    @property
+    def P_sph(self):
+        return sp.linalg.block_diag(*[self.sph_Ps[shell.L] for shell in self.shells])
 
     def get_S_cart(self, other=None) -> NDArray:
         shells_a = self.shells
         shells_b = shells_a if other is None else other
-
-        P = [
-            [[1]],
-            [[1]],
-            # [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
-            [[0, 0, 1], [1, 0, 0], [0, 1, 0]],
-            [[1]],
-            [[1]],
-            [[1]],
-            [[1]],
-        ]
-        P = sp.linalg.block_diag(*P)
 
         rows = list()
         for shell_a in shells_a:
@@ -222,9 +202,55 @@ class Shells:
                 row.append(ss)
             rows.append(row)
         S = np.block(rows)
-        S = P.dot(S).dot(P.T)
         return S
+
+    def get_S_sph(self, other=None) -> NDArray:
+        S_cart = self.get_S_cart(other=other)
+        shells_b = self if other is None else other
+        C_a = self.cart2sph_coeffs
+        C_b = shells_b.cart2sph_coeffs
+        S_sph = C_a.dot(S_cart).dot(C_b.T)  # Cartsian -> Spherical conversion
+        S_sph = self.P_sph.dot(S_sph).dot(shells_b.P_sph.T)  # Reorder
+        return S_sph
 
     @property
     def S_cart(self):
         return self.get_S_cart()
+
+    @property
+    def S_sph(self):
+        return self.get_S_sph()
+
+
+class ORCAShells(Shells):
+    sph_Ps = {
+        0: [[1]],  # s
+        1: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],  # p  pz px py
+        2: [
+            [0, 0, 1, 0, 0],  # dz²
+            [0, 1, 0, 0, 0],  # dxz
+            [0, 0, 0, 1, 0],  # dyz
+            [1, 0, 0, 0, 0],  # dx² - y²
+            [0, 0, 0, 0, 1],  # dxy
+        ],
+        3: [
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0],
+            [-1, 0, 0, 0, 0, 0, 0],  # ORCA, why you do this to me?
+            [0, 0, 0, 0, 0, 0, -1],
+        ],
+        4: [
+            [0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, -1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, -1, 0],
+            [-1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, -1],
+        ],
+    }

@@ -1,1 +1,1 @@
-from pysisyphus.integrals.basis import get_l, Shell, Shells
+from pysisyphus.integrals.basis import get_l, ORCAShells, Shell, Shells

@@ -18,6 +18,7 @@ OUT_DIR_DEFAULT = "qm_calcs"
 BEND_MIN_DEG = 15
 LB_MIN_DEG = 175
 DIHED_MAX_DEG = 175
+L_MAX = 4
 DEFAULTS = {
     # .pysisyphusrc key: command
     "mwfn": "Multiwfn",
