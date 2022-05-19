@@ -1,7 +1,7 @@
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.integrals import get_l, Shell, Shells
+from pysisyphus.wavefunction import get_l, Shell, Shells
 
 
 def parse_aomix(text):

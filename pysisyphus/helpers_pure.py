@@ -461,7 +461,7 @@ def find_closest_sequence(str_: str, comp_strs: List[str]) -> Tuple[str, float]:
     return (best_match, max_ratio)
 
 
-def increment_fn(org_fn: str, suffix: Optional[str]=None) -> str:
+def increment_fn(org_fn: str, suffix: Optional[str] = None) -> str:
     """
     Append, or increase a suffixed counter on a given filename.
     If no counter is present it will be set to zero. Otherwise

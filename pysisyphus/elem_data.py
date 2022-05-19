@@ -1,3 +1,6 @@
+import numpy as np
+
+
 # Taken from periodictable-1.5.0
 MASS_DICT = {
     "x": 1,  # dummy atom
@@ -3351,3 +3354,7 @@ ATOMIC_NUMBERS = {
 
 VALID_ATOMS = set(ATOMIC_NUMBERS.keys())
 INV_ATOMIC_NUMBERS = {num: elem for elem, num in ATOMIC_NUMBERS.items()}
+
+
+def nuc_charges_for_atoms(atoms):
+    return np.array([ATOMIC_NUMBERS[atom.lower()] for atom in atoms])
