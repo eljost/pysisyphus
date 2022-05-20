@@ -3,7 +3,10 @@ import pytest
 
 from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.wavefunction import Wavefunction
-from pysisyphus.wavefunction.pop_analysis import mulliken_from_wf
+from pysisyphus.wavefunction.pop_analysis import (
+    mulliken_charges_from_wf,
+    iao_charges_from_wf,
+)
 
 
 @pytest.mark.parametrize(
@@ -25,9 +28,26 @@ def test_orca_json(fn, unrestricted):
 )
 def test_orca_mulliken(fn):
     wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
-    charges = mulliken_from_wf(wf)
+    charges = mulliken_charges_from_wf(wf)
     np.testing.assert_allclose(
         charges,
         (-0.27748112, 0.06937027, 0.06937027, 0.06937027, 0.06937027),
+        atol=2e-5,
+    )
+
+
+@pytest.mark.parametrize(
+    "fn",
+    (
+        "iao_ref.json",
+        "iao_ref_uhf.json",
+    ),
+)
+def test_orca_iao(fn):
+    wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
+    charges = iao_charges_from_wf(wf)
+    np.testing.assert_allclose(
+        charges,
+        (-0.523749, 0.130937, 0.130937, 0.130937, 0.130937),
         atol=2e-5,
     )

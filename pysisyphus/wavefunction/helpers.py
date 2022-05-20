@@ -1,3 +1,5 @@
+import numpy as np
+
 from enum import IntEnum
 
 
@@ -17,6 +19,7 @@ def canonical_order(L):
 
 
 def cca_order(l):
+    """Same as canonical_order()."""
     inds = [
         (l, 0, 0),
     ]
@@ -32,3 +35,11 @@ def cca_order(l):
             b = l - a
         inds.append((a, b, c))
     return inds
+
+
+def symmetric_orthogonalization(mat, S, thresh=1e-6):
+    w, v = np.linalg.eigh(mat.T.dot(S).dot(mat))
+    mask = w >= thresh
+    w_isqrt = np.sqrt(w[mask])
+    S_isqrt = (v[:, mask] / w_isqrt).dot(v[:, mask].T)
+    return mat.dot(S_isqrt)

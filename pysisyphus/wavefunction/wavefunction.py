@@ -52,17 +52,23 @@ class Wavefunction:
         wf = wavefunction_from_json(text)
         return wf
 
-    def _P(self, C, occ):
-        C_occ = C[:, :occ]
-        P = C_occ @ C_occ.T
-        return P
+    @property
+    def C_occ(self):
+        C = self.C
+        occ = self.occ
+        if self.unrestricted:
+            C_occ = [C[i, :, :occ] for i, occ in enumerate(occ)]
+        else:
+            C_occ = self.C[:, : occ[0]]
+        return C_occ
 
     @property
     def P(self):
         if self.unrestricted:
-            P = np.array([self._P(self.C[i], self.occ[i]) for i in range(2)])
+            P = np.array([C_occ @ C_occ.T for C_occ in self.C_occ])
         else:
-            P = 2 * self._P(self.C, self.occ[0])
+            C_occ = self.C_occ
+            P = 2 * C_occ @ C_occ.T
         return P
 
     @property
@@ -71,6 +77,12 @@ class Wavefunction:
         return {
             BFType.CARTESIAN: self.shells.S_cart,
             BFType.PURE_SPHERICAL: self.shells.S_sph,
+        }[self.bf_type]
+
+    def S_with(self, other):
+        return {
+            BFType.CARTESIAN: self.shells.get_S_cart(other),
+            BFType.PURE_SPHERICAL: self.shells.get_S_sph(other),
         }[self.bf_type]
 
     @property

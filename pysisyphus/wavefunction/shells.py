@@ -9,6 +9,7 @@ from scipy.special import factorial2
 
 
 from pysisyphus.config import L_MAX
+from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.helpers import canonical_order
 from pysisyphus.wavefunction import ovlps3d
@@ -90,11 +91,12 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
 
 
 class Shell:
-    def __init__(self, L, center, coeffs, exps, center_ind=None):
+    def __init__(self, L, atomic_num, center, coeffs, exps, center_ind=None):
         self.L = get_l(L)
-        self.center = np.array(center)
-        self.coeffs = np.array(coeffs)
-        self.exps = np.array(exps)
+        self.atomic_num = atomic_num
+        self.center = np.array(center, dtype=float)
+        self.coeffs = np.array(coeffs, dtype=float)
+        self.exps = np.array(exps, dtype=float)
         assert self.coeffs.size == self.exps.size
         assert self.coeffs.shape == self.exps.shape
         self.center_ind = center_ind
@@ -143,6 +145,8 @@ def ovlp(la_tot, lb_tot, a, A, b, B):
 
 
 class Shells:
+    sph_Ps = {l: np.eye(2*l+1) for l in range(L_MAX)}
+
     def __init__(self, shells, ordering="native"):
         self.shells = shells
         self.ordering = ordering
@@ -151,9 +155,36 @@ class Shells:
     def __len__(self):
         return len(self.shells)
 
+    def print_shells(self):
+        for shell in self.shells:
+            print(shell)
+
     @property
     def l_max(self):
         return max([shell.L for shell in self.shells])
+
+    @property
+    def atoms_coords3d(self):
+        atoms = list()
+        coords3d = list()
+        center_inds = list()
+        for shell in self.shells:
+            center_ind = shell.center_ind
+            if center_ind in center_inds:
+                continue
+            else:
+                center_inds.append(center_ind)
+            atom = INV_ATOMIC_NUMBERS[shell.atomic_num]
+            atoms.append(atom)
+            center = shell.center
+            coords3d.append(center)
+        coords3d = np.array(coords3d)
+        return atoms, coords3d
+
+    def from_basis(self, basis, **kwargs):
+        from pysisyphus.wavefunction.read_minao import shells_with_basis  # TMP
+        atoms, coords3d = self.atoms_coords3d
+        return shells_with_basis(atoms, coords3d, **kwargs)
 
     @staticmethod
     @file_or_str(".in")

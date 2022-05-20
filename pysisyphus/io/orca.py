@@ -17,12 +17,14 @@ def shells_from_json(text):
         center = np.array(atom["Coords"])
         center_ind = atom["Idx"]
         bfs = atom["BasisFunctions"]
+        atomic_num = atom["ElementNumber"]
         for bf in bfs:
             exps = np.array(bf["Exponents"])
             coeffs = np.array(bf["Coefficients"])
             L = get_l(bf["Shell"])
             shell = Shell(
                 L=L,
+                atomic_num=atomic_num,
                 center=center,
                 coeffs=coeffs,
                 exps=exps,
