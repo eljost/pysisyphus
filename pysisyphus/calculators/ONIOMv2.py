@@ -81,7 +81,7 @@ def get_g_value(atom, parent_atom, link_atom):
     return g
 
 
-def cap_fragment(atoms, coords, fragment, link_atom="H", g=0.709):
+def cap_fragment(atoms, coords, fragment, link_atom="H", g=None):
     coords3d = coords.reshape(-1, 3)
 
     fragment_set = set(fragment)
