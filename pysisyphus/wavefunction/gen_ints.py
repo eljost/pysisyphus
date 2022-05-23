@@ -11,11 +11,13 @@ CSE and code generation
 http://www.sympy.org/scipy-2017-codegen-tutorial/notebooks/07-the-hard-way.html
 """
 
+import argparse
 import itertools as it
 import os
 from pathlib import Path
 import random
 import string
+import sys
 import textwrap
 import time
 
@@ -40,7 +42,17 @@ except ModuleNotFoundError:
     L_MAX = 4
 
 
-def make_py_func(exprs, args=None, name=None, comment=""):
+L_MAP = {
+    0: "s",
+    1: "p",
+    2: "d",
+    3: "f",
+    4: "g",
+    5: "h",
+}
+
+
+def make_py_func(exprs, args=None, name=None, doc_str=""):
     if args is None:
         args = list()
     # Generate random name, if no name was supplied
@@ -60,8 +72,8 @@ def make_py_func(exprs, args=None, name=None, comment=""):
     tpl = Template(
         """
     def {{ name }}({{ args }}):
-        {% if comment %}
-        \"\"\"{{ comment }}\"\"\"
+        {% if doc_str %}
+        \"\"\"{{ doc_str }}\"\"\"
         {% endif %}
 
         {% for line in py_lines %}
@@ -83,7 +95,7 @@ def make_py_func(exprs, args=None, name=None, comment=""):
             py_lines=py_lines,
             return_val=return_val,
             n_return_vals=len(reduced),
-            comment=comment,
+            doc_str=doc_str,
             arg_strs=arg_strs,
         )
     ).strip()
@@ -176,91 +188,39 @@ class Overlap3dShell(Function):
         return exprs
 
 
-def run(l_max=L_MAX):
-    def get_center(i):
-        symbs = [Symbol(str(i) + ind) for ind in ("x", "y", "z")]
-        return Array([*symbs])
+def get_center(i):
+    symbs = [Symbol(str(i) + ind) for ind in ("x", "y", "z")]
+    return Array([*symbs])
 
-    def get_map(i, center_i):
-        array = IndexedBase(i, shape=3)
-        array_map = dict(zip(center_i, array))
-        return array, array_map
 
-    out_dir = Path("ovl_gen")
-    try:
-        os.mkdir(out_dir)
-    except FileExistsError:
-        pass
+def get_map(i, center_i):
+    array = IndexedBase(i, shape=3)
+    array_map = dict(zip(center_i, array))
+    return array, array_map
 
-    # Cartesian basis function centers A and B ...
-    center_A = get_center("A")
-    center_B = get_center("B")
-    center_C = get_center("C")
-    # ... and the actual Cartesian components of the centers..
-    Ax, Ay, Az = center_A
-    Bx, By, Bz = center_B
-    Cx, Cy, Cz = center_C
-    # Orbital exponents a and b.
-    a, b, e = symbols("a b e")
 
-    # These maps will be used to convert {Ax, Ay, ...} to array quantities
-    # in the generated code. This way an iterable/np.ndarray can be used as
-    # function argument instead of (Ax, Ay, Az, Bx, By, Bz).
-    A, A_map = get_map("A", center_A)
-    B, B_map = get_map("B", center_B)
-    C, C_map = get_map("C", center_C)
+def gen_integrals_exprs(int_func, L_maxs, kind):
+    ranges = [range(L + 1) for L in L_maxs]
+    for L_tots in it.product(*ranges):
+        start = time.time()
+        print(f"Generating {L_tots} {kind} ... ", end="")
+        exprs = int_func(*L_tots)
+        dur = time.time() - start
+        print(f"finished in {dur:.2f} s!")
+        yield exprs, L_tots
 
-    L_map = {
-        0: "s",
-        1: "p",
-        2: "d",
-        3: "f",
-        4: "g",
-        5: "h",
-    }
-    Le_tot = 1
+
+def render_py_funcs(exprs_Ls, args, base_name, doc_func):
+    args = ", ".join((map(str, args)))
+
     py_funcs = list()
-    for La_tot in range(l_max + 1):
-        for Lb_tot in range(l_max + 1):
-            shell_a = L_map[La_tot]
-            shell_b = L_map[Lb_tot]
-            shell_ovlp = f"({shell_a}{shell_b})"
-            name = f"ovlp3d_{La_tot}{Lb_tot}"
-            print(f"Generating {shell_ovlp} shell '{name}' ... ", end="")
-            start = time.time()
-            exprs = Array(
-                Overlap3dShell(La_tot, Lb_tot, a, b, (Ax, Ay, Az), (Bx, By, Bz))
-            )
-            exprs = exprs.xreplace(A_map).xreplace(B_map)
-            dur = time.time() - start
-            print(f"finished in {dur:.2f} s!")
-            # mm_exprs = (
-                # Array(
-                    # Multipole3dShell(
-                        # La_tot,
-                        # Lb_tot,
-                        # a,
-                        # b,
-                        # (Ax, Ay, Az),
-                        # (Bx, By, Bz),
-                        # Le_tot,
-                        # (Cx, Cy, Cz),
-                    # )
-                # )
-                # .xreplace(A_map)
-                # .xreplace(B_map)
-                # .xreplace(C_map)
-            # )
-            argument_sequence = (a, A, b, B)
-            args = ", ".join((map(str, argument_sequence)))
-            comment = (
-                f"Cartesian 3d {shell_ovlp} overlap.\n\n"
-                f"Generated code; DO NOT modify by hand!"
-            )
-            py_func = make_py_func(exprs, args=args, name=name, comment=comment)
-            py_funcs.append(py_func)
+    for expr, L_tots in exprs_Ls:
+        doc_str = doc_func(L_tots)
+        doc_str += "\n\nGenerated code; DO NOT modify by hand!"
+        name = base_name + "_" + "".join(str(l) for l in L_tots)
+        py_func = make_py_func(expr, args=args, name=name, doc_str=doc_str)
+        py_funcs.append(py_func)
 
-    py_name = out_dir / "ovlps3d.py"
     py_funcs_joined = "\n\n".join(py_funcs)
     np_tpl = Template(
         "import numpy\n\n{{ py_funcs }}",
@@ -276,9 +236,103 @@ def run(l_max=L_MAX):
     except ModuleNotFoundError:
         print("Skipped formatting with black, as it is not installed!")
 
+    return np_rendered
+
+
+def write_py(out_dir, name, py_rendered):
+    py_name = out_dir / name
     with open(py_name, "w") as handle:
-        handle.write(np_rendered)
-    print(f"Wrote '{py_name}'.")
+        handle.write(py_rendered)
+    print(f"Wrote '{name}'.")
+
+
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--lmax", default=L_MAX, type=int)
+
+    return parser.parse_args()
+
+
+def run():
+    args = parse_args(sys.argv[1:])
+
+    l_max = args.lmax
+    out_dir = Path("gen_ints")
+    try:
+        os.mkdir(out_dir)
+    except FileExistsError:
+        pass
+
+    # Cartesian basis function centers A and B.
+    center_A = get_center("A")
+    center_B = get_center("B")
+    center_C = get_center("C")
+    # Cartesian components (x, y, z) of the centers A and B.
+    Ax, Ay, Az = center_A
+    Bx, By, Bz = center_B
+    # Orbital exponents a and b.
+    a, b = symbols("a b")
+
+    # Multipole moment integral center
+    Cx, Cy, Cz = center_C
+
+    # These maps will be used to convert {Ax, Ay, ...} to array quantities
+    # in the generated code. This way an iterable/np.ndarray can be used as
+    # function argument instead of (Ax, Ay, Az, Bx, By, Bz).
+    A, A_map = get_map("A", center_A)
+    B, B_map = get_map("B", center_B)
+    C, C_map = get_map("C", center_C)
+
+    def ovlp_func(La_tot, Lb_tot):
+        return (
+            Array(Overlap3dShell(La_tot, Lb_tot, a, b, (Ax, Ay, Az), (Bx, By, Bz)))
+            .xreplace(A_map)
+            .xreplace(B_map)
+        )
+
+    def ovlp_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian 3D ({shell_a}{shell_b}) overlap integral."
+
+    def dipole_func(La_tot, Lb_tot, Le_tot=1):
+        return (
+            Array(
+                Multipole3dShell(
+                    La_tot,
+                    Lb_tot,
+                    a,
+                    b,
+                    (Ax, Ay, Az),
+                    (Bx, By, Bz),
+                    Le_tot,
+                    (Cx, Cy, Cz),
+                )
+            )
+            .xreplace(A_map)
+            .xreplace(B_map)
+            .xreplace(C_map)
+        )
+
+    def dipole_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian 3D ({shell_a}{shell_b}) dipole moment integral."
+
+    ovlp_ints_Ls = gen_integrals_exprs(ovlp_func, (l_max, l_max), "overlap")
+    ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
+    write_py(out_dir, "ovlps3d.py", ovlp_rendered)
+    print()
+
+    dipole_ints_Ls = gen_integrals_exprs(dipole_func, (l_max, l_max), "dipole moment")
+    dipole_rendered = render_py_funcs(
+        dipole_ints_Ls, (a, A, b, B, C), "dipole3d", dipole_doc_func
+    )
+    write_py(out_dir, "dipoles3d.py", dipole_rendered)
+    print()
 
 
 if __name__ == "__main__":

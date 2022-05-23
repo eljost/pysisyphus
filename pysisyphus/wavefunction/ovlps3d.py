@@ -2,7 +2,7 @@ import numpy
 
 
 def ovlp3d_00(a, A, b, B):
-    """Cartesian 3d (ss) overlap.
+    """Cartesian 3D (ss) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -23,7 +23,7 @@ def ovlp3d_00(a, A, b, B):
 
 
 def ovlp3d_01(a, A, b, B):
-    """Cartesian 3d (sp) overlap.
+    """Cartesian 3D (sp) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -49,7 +49,7 @@ def ovlp3d_01(a, A, b, B):
 
 
 def ovlp3d_02(a, A, b, B):
-    """Cartesian 3d (sd) overlap.
+    """Cartesian 3D (sd) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -87,7 +87,7 @@ def ovlp3d_02(a, A, b, B):
 
 
 def ovlp3d_03(a, A, b, B):
-    """Cartesian 3d (sf) overlap.
+    """Cartesian 3D (sf) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -139,7 +139,7 @@ def ovlp3d_03(a, A, b, B):
 
 
 def ovlp3d_04(a, A, b, B):
-    """Cartesian 3d (sg) overlap.
+    """Cartesian 3D (sg) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -200,7 +200,7 @@ def ovlp3d_04(a, A, b, B):
 
 
 def ovlp3d_10(a, A, b, B):
-    """Cartesian 3d (ps) overlap.
+    """Cartesian 3D (ps) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -226,7 +226,7 @@ def ovlp3d_10(a, A, b, B):
 
 
 def ovlp3d_11(a, A, b, B):
-    """Cartesian 3d (pp) overlap.
+    """Cartesian 3D (pp) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -275,7 +275,7 @@ def ovlp3d_11(a, A, b, B):
 
 
 def ovlp3d_12(a, A, b, B):
-    """Cartesian 3d (pd) overlap.
+    """Cartesian 3D (pd) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -346,7 +346,7 @@ def ovlp3d_12(a, A, b, B):
 
 
 def ovlp3d_13(a, A, b, B):
-    """Cartesian 3d (pf) overlap.
+    """Cartesian 3D (pf) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -440,7 +440,7 @@ def ovlp3d_13(a, A, b, B):
 
 
 def ovlp3d_14(a, A, b, B):
-    """Cartesian 3d (pg) overlap.
+    """Cartesian 3D (pg) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -571,7 +571,7 @@ def ovlp3d_14(a, A, b, B):
 
 
 def ovlp3d_20(a, A, b, B):
-    """Cartesian 3d (ds) overlap.
+    """Cartesian 3D (ds) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -609,7 +609,7 @@ def ovlp3d_20(a, A, b, B):
 
 
 def ovlp3d_21(a, A, b, B):
-    """Cartesian 3d (dp) overlap.
+    """Cartesian 3D (dp) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -684,7 +684,7 @@ def ovlp3d_21(a, A, b, B):
 
 
 def ovlp3d_22(a, A, b, B):
-    """Cartesian 3d (dd) overlap.
+    """Cartesian 3D (dd) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -793,7 +793,7 @@ def ovlp3d_22(a, A, b, B):
 
 
 def ovlp3d_23(a, A, b, B):
-    """Cartesian 3d (df) overlap.
+    """Cartesian 3D (df) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -953,7 +953,7 @@ def ovlp3d_23(a, A, b, B):
 
 
 def ovlp3d_24(a, A, b, B):
-    """Cartesian 3d (dg) overlap.
+    """Cartesian 3D (dg) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -1164,7 +1164,7 @@ def ovlp3d_24(a, A, b, B):
 
 
 def ovlp3d_30(a, A, b, B):
-    """Cartesian 3d (fs) overlap.
+    """Cartesian 3D (fs) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -1216,7 +1216,7 @@ def ovlp3d_30(a, A, b, B):
 
 
 def ovlp3d_31(a, A, b, B):
-    """Cartesian 3d (fp) overlap.
+    """Cartesian 3D (fp) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -1314,7 +1314,7 @@ def ovlp3d_31(a, A, b, B):
 
 
 def ovlp3d_32(a, A, b, B):
-    """Cartesian 3d (fd) overlap.
+    """Cartesian 3D (fd) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -1477,7 +1477,7 @@ def ovlp3d_32(a, A, b, B):
 
 
 def ovlp3d_33(a, A, b, B):
-    """Cartesian 3d (ff) overlap.
+    """Cartesian 3D (ff) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -1713,7 +1713,7 @@ def ovlp3d_33(a, A, b, B):
 
 
 def ovlp3d_34(a, A, b, B):
-    """Cartesian 3d (fg) overlap.
+    """Cartesian 3D (fg) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -2029,7 +2029,7 @@ def ovlp3d_34(a, A, b, B):
 
 
 def ovlp3d_40(a, A, b, B):
-    """Cartesian 3d (gs) overlap.
+    """Cartesian 3D (gs) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -2090,7 +2090,7 @@ def ovlp3d_40(a, A, b, B):
 
 
 def ovlp3d_41(a, A, b, B):
-    """Cartesian 3d (gp) overlap.
+    """Cartesian 3D (gp) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -2221,7 +2221,7 @@ def ovlp3d_41(a, A, b, B):
 
 
 def ovlp3d_42(a, A, b, B):
-    """Cartesian 3d (gd) overlap.
+    """Cartesian 3D (gd) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -2438,7 +2438,7 @@ def ovlp3d_42(a, A, b, B):
 
 
 def ovlp3d_43(a, A, b, B):
-    """Cartesian 3d (gf) overlap.
+    """Cartesian 3D (gf) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
@@ -2757,7 +2757,7 @@ def ovlp3d_43(a, A, b, B):
 
 
 def ovlp3d_44(a, A, b, B):
-    """Cartesian 3d (gg) overlap.
+    """Cartesian 3D (gg) overlap integral.
 
     Generated code; DO NOT modify by hand!"""
 
