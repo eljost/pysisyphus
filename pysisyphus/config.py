@@ -11,6 +11,7 @@ from pysisyphus import logger
 
 
 CONFIG_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
+BASIS_LIB_DIR = Path(CONFIG_DIR / "basis_library")
 LIB_DIR = Path(CONFIG_DIR / "geom_library")
 WF_LIB_DIR = Path(CONFIG_DIR / "wf_library")
 T_DEFAULT = 298.15  # Kelvin

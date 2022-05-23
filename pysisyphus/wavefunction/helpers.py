@@ -1,6 +1,35 @@
+from typing import Literal, Union
+
 import numpy as np
 
 from enum import IntEnum
+
+
+L_MAP = {
+    "s": 0,
+    "p": 1,
+    "d": 2,
+    "f": 3,
+    "g": 4,
+    "h": 5,
+}
+L_SIZE = {l: (l + 1) * (l + 2) // 2 for l in L_MAP.values()}
+
+Ls = Literal["s", "p", "d", "f", "g", "h"]
+L_Inp = Union[int, Ls]
+
+
+def get_l(l_inp: L_Inp) -> int:
+    """Convert shell label to angular moment quantum number l."""
+    try:
+        l = L_MAP[l_inp.lower()]
+    except (KeyError, AttributeError):
+        l = int(l_inp)
+    return l
+
+
+def get_shell_shape(La, Lb):
+    return (L_SIZE[La], L_SIZE[Lb])
 
 
 class BFType(IntEnum):

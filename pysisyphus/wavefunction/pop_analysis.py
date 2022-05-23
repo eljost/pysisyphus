@@ -69,6 +69,11 @@ def make_iaos(
 
 
 def iao_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
+    """IAO charges.
+
+    Extension to ES is given here:
+        https://chemistry.stackexchange.com/a/75913
+    """
     S_org = wf.S
     C_occ = wf.C_occ
     minao_shells = wf.shells.from_basis("minao")

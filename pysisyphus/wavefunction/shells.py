@@ -1,5 +1,5 @@
 import itertools as it
-from typing import Literal, Union, Tuple
+from typing import Tuple
 
 
 import numpy as np
@@ -11,36 +11,9 @@ from scipy.special import factorial2
 from pysisyphus.config import L_MAX
 from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
 from pysisyphus.helpers_pure import file_or_str
-from pysisyphus.wavefunction.helpers import canonical_order
+from pysisyphus.wavefunction.helpers import canonical_order, get_l, get_shell_shape
 from pysisyphus.wavefunction import ovlps3d
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
-
-
-L_MAP = {
-    "s": 0,
-    "p": 1,
-    "d": 2,
-    "f": 3,
-    "g": 4,
-    "h": 5,
-}
-L_SIZE = {l: (l + 1) * (l + 2) // 2 for l in L_MAP.values()}
-
-Ls = Literal["s", "p", "d", "f", "g", "h"]
-L_Inp = Union[int, Ls]
-
-
-def get_l(l_inp: L_Inp) -> int:
-    """Convert shell label to angular moment quantum number l."""
-    try:
-        l = L_MAP[l_inp.lower()]
-    except (KeyError, AttributeError):
-        l = int(l_inp)
-    return l
-
-
-def get_shell_shape(La, Lb):
-    return (L_SIZE[La], L_SIZE[Lb])
 
 
 def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
@@ -145,7 +118,7 @@ def ovlp(la_tot, lb_tot, a, A, b, B):
 
 
 class Shells:
-    sph_Ps = {l: np.eye(2*l+1) for l in range(L_MAX)}
+    sph_Ps = {l: np.eye(2 * l + 1) for l in range(L_MAX)}
 
     def __init__(self, shells, ordering="native"):
         self.shells = shells
@@ -181,10 +154,11 @@ class Shells:
         coords3d = np.array(coords3d)
         return atoms, coords3d
 
-    def from_basis(self, basis, **kwargs):
-        from pysisyphus.wavefunction.read_minao import shells_with_basis  # TMP
+    def from_basis(self, name, **kwargs):
+        from pysisyphus.wavefunction.Basis import shells_with_basis
+
         atoms, coords3d = self.atoms_coords3d
-        return shells_with_basis(atoms, coords3d, **kwargs)
+        return shells_with_basis(atoms, coords3d, name=name, **kwargs)
 
     @staticmethod
     @file_or_str(".in")
@@ -203,7 +177,7 @@ class Shells:
 
         shells = shells_from_json(text)
         return shells
-    
+
     def _ao_center_iter(self, func):
         i = 0
         for shell in self.shells:
@@ -217,7 +191,7 @@ class Shells:
 
     @property
     def sph_ao_centers(self):
-        return self._ao_center_iter(lambda l: range(2*l + 1))
+        return self._ao_center_iter(lambda l: range(2 * l + 1))
 
     @property
     def cart2sph_coeffs(self):
