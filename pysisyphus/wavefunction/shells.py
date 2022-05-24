@@ -12,7 +12,7 @@ from pysisyphus.config import L_MAX
 from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.helpers import canonical_order, get_l, get_shell_shape
-from pysisyphus.wavefunction import ovlps3d
+from pysisyphus.wavefunction import dipoles3d, ovlps3d
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
 
@@ -109,12 +109,28 @@ class Shell:
 
 
 Ls = list(range(L_MAX + 1))
-Smap = {(la, lb): getattr(ovlps3d, f"ovlp3d_{la}{lb}") for la, lb in it.product(Ls, Ls)}
+
+
+def get_map(module, func_base_name):
+    """Return dict that holds the different integrals functions."""
+    return {
+        (la, lb): getattr(module, f"{func_base_name}_{la}{lb}")
+        for la, lb in it.product(Ls, Ls)
+    }
+
+
+Smap = get_map(ovlps3d, "ovlp3d")  # Overlap integrals
+DPMmap = get_map(dipoles3d, "dipole3d")  # Dipole moments
 
 
 def ovlp(la_tot, lb_tot, a, A, b, B):
     func = Smap[(la_tot, lb_tot)]
     return func(a, A, b, B)
+
+
+def dpm(la_tot, lb_tot, a, A, b, B, C):
+    func = DPMmap[(la_tot, lb_tot)]
+    return func(a, A, b, B, C)
 
 
 class Shells:
@@ -214,10 +230,15 @@ class Shells:
             for shell_b in shells_b.shells:
                 Lb, B, dB, bb, normsb = shell_b.as_tuple()
                 shape = get_shell_shape(La, Lb)
+                # Overlap over primitives, shape: (product(*shape), prims_a, prims_b)
                 ss = ovlp(La, Lb, aa[:, None], A, bb[None, :], B)
-                ss *= dA[None, :, None] * dB[None, None, :]
+                # Contraction coefficients
+                # ss *= dA[None, :, None] * dB[None, None, :]
+                ss *= dA[:, None] * dB[None, :]
                 ss = ss.reshape(*shape, len(dA), len(dB))
+                # Normalization
                 ss *= normsa[:, None, :, None] * normsb[None, :, None, :]
+                # Contract primitives, shape: shape
                 ss = ss.sum(axis=(2, 3)).reshape(shape)
                 row.append(ss)
             rows.append(row)
@@ -241,6 +262,41 @@ class Shells:
     @property
     def S_sph(self):
         return self.get_S_sph()
+
+    def get_dipole_ints_cart(self, origin):
+        shells_a = self
+        shells_b = shells_a
+
+        rows_x = list()
+        rows_y = list()
+        rows_z = list()
+        for shell_a in shells_a.shells:
+            La, A, dA, aa, normsa = shell_a.as_tuple()
+            row_x = list()
+            row_y = list()
+            row_z = list()
+            for shell_b in shells_b.shells:
+                Lb, B, dB, bb, normsb = shell_b.as_tuple()
+                shape = (*get_shell_shape(La, Lb), 3)
+                dp = dpm(La, Lb, aa[:, None], A, bb[None, :], B, C=origin)
+                dp *= dA[:, None] * dB[None, :]
+                dp = dp.reshape(*shape, len(dA), len(dB))
+                dp *= normsa[:, None, None, :, None] * normsb[None, :, None, None, :]
+                # Shape: (*shape, 3)
+                dp = dp.sum(axis=(3, 4)).reshape(shape)
+                dp_x = dp[:, :, 0]
+                dp_y = dp[:, :, 1]
+                dp_z = dp[:, :, 2]
+                row_x.append(dp_x)
+                row_y.append(dp_y)
+                row_z.append(dp_z)
+            rows_x.append(row_x)
+            rows_y.append(row_y)
+            rows_z.append(row_z)
+        DP_x = np.block(rows_x)
+        DP_y = np.block(rows_y)
+        DP_z = np.block(rows_z)
+        return DP_x, DP_y, DP_z
 
 
 class ORCAShells(Shells):

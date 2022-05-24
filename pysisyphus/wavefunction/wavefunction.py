@@ -73,7 +73,7 @@ class Wavefunction:
 
     @property
     def S(self):
-        # Check what type of integrals are
+        # Check what type of basis functions we are using.
         return {
             BFType.CARTESIAN: self.shells.S_cart,
             BFType.PURE_SPHERICAL: self.shells.S_sph,

@@ -71,3 +71,11 @@ def test_cross(this_dir):
     tzvpp = Shells.from_orca_json(WF_LIB_DIR / "orca_ch4_tzvpp.json")
     S_sph = sto3g.get_S_sph(tzvpp)
     assert S_sph.shape == (9, 87)
+
+
+@pytest.mark.skip
+def test_orca_dipole_integrals():
+    fn = WF_LIB_DIR / "orca_ch4_sto3g.json"
+    shells = Shells.from_orca_json(fn)
+    C = np.array((0., 0., 0.))
+    shells.get_dipole_ints_cart(C)

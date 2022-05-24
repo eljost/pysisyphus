@@ -145,7 +145,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X ** 2)
+            return sqrt(pi / p) * exp(-mu * X**2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -210,7 +210,7 @@ def gen_integrals_exprs(int_func, L_maxs, kind):
         yield exprs, L_tots
 
 
-def render_py_funcs(exprs_Ls, args, base_name, doc_func):
+def render_py_funcs(exprs_Ls, args, base_name, doc_func, comment=""):
     args = ", ".join((map(str, args)))
 
     py_funcs = list()
@@ -220,14 +220,17 @@ def render_py_funcs(exprs_Ls, args, base_name, doc_func):
         name = base_name + "_" + "".join(str(l) for l in L_tots)
         py_func = make_py_func(expr, args=args, name=name, doc_str=doc_str)
         py_funcs.append(py_func)
-
     py_funcs_joined = "\n\n".join(py_funcs)
+
+    if comment != "":
+        comment = f'"""\n{comment}\n"""\n\n'
+
     np_tpl = Template(
-        "import numpy\n\n{{ py_funcs }}",
+        "import numpy\n\n{{ comment }}{{ py_funcs }}",
         trim_blocks=True,
         lstrip_blocks=True,
     )
-    np_rendered = np_tpl.render(py_funcs=py_funcs_joined)
+    np_rendered = np_tpl.render(comment=comment, py_funcs=py_funcs_joined)
     np_rendered = textwrap.dedent(np_rendered)
     try:
         from black import format_str, FileMode
@@ -249,7 +252,17 @@ def write_py(out_dir, name, py_rendered):
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--lmax", default=L_MAX, type=int)
+    parser.add_argument(
+        "--lmax",
+        default=L_MAX,
+        type=int,
+        help="Generate 1e-integrals up to this maximum angular momentum.",
+    )
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Write out generated integrals to the current directory, potentially overwriting the present modules.",
+    )
 
     return parser.parse_args()
 
@@ -258,7 +271,7 @@ def run():
     args = parse_args(sys.argv[1:])
 
     l_max = args.lmax
-    out_dir = Path("gen_ints")
+    out_dir = Path("gen_ints" if not args.write else ".")
     try:
         os.mkdir(out_dir)
     except FileExistsError:
@@ -320,7 +333,24 @@ def run():
         La_tot, Lb_tot = L_tots
         shell_a = L_MAP[La_tot]
         shell_b = L_MAP[Lb_tot]
-        return f"Cartesian 3D ({shell_a}{shell_b}) dipole moment integral."
+        return (
+            f"Cartesian 3D ({shell_a}{shell_b}) dipole moment integral.\n"
+            "The origin is at C."
+        )
+
+    dipole_comment = """
+    Dipole integrals are given in the order:
+    for bf_a in basis_functions_a:
+        for bf_b in basis_functions_b:
+            for cart_dir in (x, y, z):
+                dipole_integrals(bf_a, bf_b, cart_dir)
+
+    So for <s_a|μ|s_b> it will be:
+
+        <s_a|x|s_b>
+        <s_a|y|s_b>
+        <s_a|z|s_b>
+    """
 
     ovlp_ints_Ls = gen_integrals_exprs(ovlp_func, (l_max, l_max), "overlap")
     ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
@@ -329,7 +359,11 @@ def run():
 
     dipole_ints_Ls = gen_integrals_exprs(dipole_func, (l_max, l_max), "dipole moment")
     dipole_rendered = render_py_funcs(
-        dipole_ints_Ls, (a, A, b, B, C), "dipole3d", dipole_doc_func
+        dipole_ints_Ls,
+        (a, A, b, B, C),
+        "dipole3d",
+        dipole_doc_func,
+        comment=dipole_comment,
     )
     write_py(out_dir, "dipoles3d.py", dipole_rendered)
     print()
