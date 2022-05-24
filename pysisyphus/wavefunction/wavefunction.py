@@ -32,7 +32,12 @@ class Wavefunction:
         self.occ = occ
         if not self.unrestricted:
             assert self.occ[0] == self.occ[1]
-        self.C = C
+        self.C = np.array(C)
+        # Always keep α and β coefficients separate. If we get only one set
+        # of MO coefficients (one square matrix with ndim == 2) we assume a
+        # restricted calculation and use the same set for alpha and beta electrons.
+        if C.ndim == 2:
+            self.C = np.array((self.C, self.C.copy()))
         self.bf_type = bf_type
         self.shells = shells
 
@@ -54,21 +59,14 @@ class Wavefunction:
 
     @property
     def C_occ(self):
-        C = self.C
-        occ = self.occ
-        if self.unrestricted:
-            C_occ = [C[i, :, :occ] for i, occ in enumerate(occ)]
-        else:
-            C_occ = self.C[:, : occ[0]]
-        return C_occ
+        occ_a, occ_b = self.occ
+        C_a, C_b = self.C
+        return np.array((C_a[:, :occ_a], C_b[:, :occ_b]))
 
     @property
     def P(self):
-        if self.unrestricted:
-            P = np.array([C_occ @ C_occ.T for C_occ in self.C_occ])
-        else:
-            C_occ = self.C_occ
-            P = 2 * C_occ @ C_occ.T
+        P = np.array([C_occ @ C_occ.T for C_occ in self.C_occ])
+        # Restricted density matrix: P = 2 * C_occ @ C_occ.T
         return P
 
     @property
@@ -94,3 +92,29 @@ class Wavefunction:
             }[self.bf_type]
         )
         return ao_centers
+
+    def dipole_moment(self, origin: Optional[NDArray] = None) -> NDArray[float]:
+        # Make a copy, as the origin may be != (0., 0., 0.) and is substracted later on.
+        coords3d = self.coords.reshape(-1, 3).copy()
+        nuc_charges = self.nuc_charges
+        tot_charge = nuc_charges.sum()
+
+        if origin is None:
+            # Center of charge by default
+            origin = np.sum(coords3d * nuc_charges[:, None], axis=0) / tot_charge
+
+        origin = np.array(origin, dtype=float)
+        coords3d -= origin[None, :]
+
+        dipole_ints = {
+            BFType.CARTESIAN: self.shells.get_dipole_ints_cart,
+            BFType.PURE_SPHERICAL: self.shells.get_dipole_ints_sph,
+        }[self.bf_type](origin)
+
+        electronic = np.sum(
+            [np.einsum("xij,ji->x", dipole_ints, P) for P in self.P], axis=0
+        )
+        nuclear = np.einsum("i,ix->x", nuc_charges, coords3d)
+        molecular = nuclear - electronic
+
+        return molecular

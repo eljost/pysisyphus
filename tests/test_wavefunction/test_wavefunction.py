@@ -51,3 +51,16 @@ def test_orca_iao(fn):
         (-0.523749, 0.130937, 0.130937, 0.130937, 0.130937),
         atol=2e-5,
     )
+
+
+@pytest.mark.parametrize(
+    "fn, ref_dip_mom",
+    (
+        ("orca_dipmom.json", (0.65100, -0.15774, -0.67608)),
+        ("orca_dipmom_uhf.json", (0.00000, 0.00000, -0.34612)),
+    ),
+)
+def test_orca_dipole_moments(fn, ref_dip_mom):
+    wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
+    dip_mom = wf.dipole_moment()
+    np.testing.assert_allclose(dip_mom, ref_dip_mom, atol=1e-5)

@@ -71,7 +71,7 @@ def make_iaos(
 def iao_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
     """IAO charges.
 
-    Extension to ES is given here:
+    Extension to ES is described here:
         https://chemistry.stackexchange.com/a/75913
     """
     S_org = wf.S
@@ -86,10 +86,8 @@ def iao_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
         P_iao = C_iao @ C_iao.T
         return P_iao
 
-    if wf.unrestricted:
-        P_iao = np.array([get_iao_P(c_occ) for c_occ in C_occ])
-    else:
-        P_iao = 2 * get_iao_P(C_occ)
+    # Always assume separate α C_occ and β C_occ matrices.
+    P_iao = np.array([get_iao_P(c_occ) for c_occ in C_occ])
 
     minao_ao_centers = list(minao_shells.sph_ao_centers)
     return mulliken_charges(

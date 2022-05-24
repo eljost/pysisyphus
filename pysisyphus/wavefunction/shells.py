@@ -296,7 +296,21 @@ class Shells:
         DP_x = np.block(rows_x)
         DP_y = np.block(rows_y)
         DP_z = np.block(rows_z)
-        return DP_x, DP_y, DP_z
+        return np.array((DP_x, DP_y, DP_z))
+
+    def get_dipole_ints_sph(self, origin) -> NDArray:
+        dp_cart = self.get_dipole_ints_cart(origin)
+        shells_b = self
+        C_a = self.cart2sph_coeffs
+        C_b = shells_b.cart2sph_coeffs
+        dp_sph = list()
+        for dp in dp_cart:
+            dp_ = C_a.dot(dp).dot(C_b.T)  # Cartsian -> Spherical conversion
+            if self.ordering == "native":
+                dp_ = self.P_sph.dot(dp_).dot(shells_b.P_sph.T)  # Reorder
+            dp_sph.append(dp_)
+        dp_sph = np.array(dp_sph)
+        return dp_sph
 
 
 class ORCAShells(Shells):
