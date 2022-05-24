@@ -586,6 +586,7 @@ class ORCA(OverlapCalculator):
                 # print('Core')
                 # for core in cores:
                 # print('{}'.format(*core))
+            # MOs are returned in rows
             return coeffs, energies
 
     @staticmethod

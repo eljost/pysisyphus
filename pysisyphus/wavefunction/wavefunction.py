@@ -49,6 +49,10 @@ class Wavefunction:
     def nuc_charges(self):
         return nuc_charges_for_atoms(self.atoms)
 
+    @property
+    def masses(self):
+        return np.ones(len(self.atoms))
+
     @staticmethod
     @file_or_str(".json")
     def from_orca_json(text):
@@ -93,24 +97,49 @@ class Wavefunction:
         )
         return ao_centers
 
-    def dipole_moment(self, origin: Optional[NDArray] = None) -> NDArray[float]:
-        # Make a copy, as the origin may be != (0., 0., 0.) and is substracted later on.
+    def get_origin(self, kind="coc"):
+        kind = kind.lower()
+        assert kind in ("com", "coc")
+
+        if kind == "com":
+            raise Exception("Masses are not yet implemented!")
+
         coords3d = self.coords.reshape(-1, 3).copy()
-        nuc_charges = self.nuc_charges
-        tot_charge = nuc_charges.sum()
+        _factors = {
+            "coc": self.nuc_charges,  # Center of charge
+            "com": self.masses,  # Center of mass
+        }
+        factors = _factors[kind]
+        tot_factors = factors.sum()
 
+        return np.sum(coords3d * factors[:, None], axis=0) / tot_factors
+
+    def dipole_ints(
+        self, origin: Optional[NDArray] = None, kind="coc"
+    ) -> NDArray[float]:
         if origin is None:
-            # Center of charge by default
-            origin = np.sum(coords3d * nuc_charges[:, None], axis=0) / tot_charge
-
-        origin = np.array(origin, dtype=float)
-        coords3d -= origin[None, :]
+            origin = self.get_origin(kind=kind)
 
         dipole_ints = {
             BFType.CARTESIAN: self.shells.get_dipole_ints_cart,
             BFType.PURE_SPHERICAL: self.shells.get_dipole_ints_sph,
         }[self.bf_type](origin)
+        return dipole_ints
 
+    def dipole_moment(
+        self, origin: Optional[NDArray] = None, kind="coc"
+    ) -> NDArray[float]:
+        # Make a copy, as the coordinates must be give w.r.t. the origin, which
+        # may be != (0., 0., 0.).
+        coords3d = self.coords.reshape(-1, 3).copy()
+        nuc_charges = self.nuc_charges
+
+        if origin is None:
+            origin = self.get_origin(kind=kind)
+
+        origin = np.array(origin, dtype=float)
+        coords3d -= origin[None, :]
+        dipole_ints = self.dipole_ints(origin)
         electronic = np.sum(
             [np.einsum("xij,ji->x", dipole_ints, P) for P in self.P], axis=0
         )
@@ -118,3 +147,17 @@ class Wavefunction:
         molecular = nuclear - electronic
 
         return molecular
+
+    def transition_dipole_moment(self, trans_dens):
+        origin = self.get_origin(kind="coc")
+        dipole_ints = self.dipole_ints(origin)
+        """
+        This assert could be lifted/removed to handle an array of multiple transition
+        densities at once, e.g., to avoid repeated recalculation of the dipole integrals.
+        """
+        assert trans_dens.ndim == 2
+        occ, _ = trans_dens.shape
+        Ca, _ = self.C
+        trans_dens_ao = Ca[:occ].T @ trans_dens @ Ca[occ:]
+        tdm = np.einsum("xij,ji->x", dipole_ints, trans_dens_ao)
+        return tdm

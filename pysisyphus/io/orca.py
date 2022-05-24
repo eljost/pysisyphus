@@ -63,6 +63,7 @@ def wavefunction_from_json(text):
         C = np.transpose(C, (0, 2, 1))
     else:
         C = C.T
+    # C array contains MOs in columns.
     occ_a = occ_b = int(occ) // 2
 
     shells = shells_from_json(text)

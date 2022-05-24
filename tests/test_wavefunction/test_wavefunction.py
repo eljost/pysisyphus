@@ -64,3 +64,25 @@ def test_orca_dipole_moments(fn, ref_dip_mom):
     wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
     dip_mom = wf.dipole_moment()
     np.testing.assert_allclose(dip_mom, ref_dip_mom, atol=1e-5)
+
+
+@pytest.mark.skip
+def test_transition_dipole_moments():
+    fn = "/home/johannes/tmp/281_orca_tda_ref/qm_calcs/overlap_data.h5"
+    import h5py
+
+    with h5py.File(fn) as handle:
+        C = handle["mo_coeffs"][:]
+        CI = handle["ci_coeffs"][:]
+    step = 0
+
+    C = C[step]
+    CI = CI[step]
+    print(C.shape, CI.shape)
+    wf = Wavefunction.from_orca_json(
+        "/home/johannes/tmp/281_orca_tda_ref/qm_calcs/calculator_000.000.orca.json"
+    )
+    S1, S2, S3 = CI
+    for i, Si in enumerate(CI):
+        tdms = wf.transition_dipole_moment(Si)
+        print(f"{i}: {tdms}")
