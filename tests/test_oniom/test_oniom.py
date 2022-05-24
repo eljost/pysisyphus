@@ -91,8 +91,8 @@ def test_energy():
                 "real": {"type": "g16", "route": "hf sto-3g"},
                 "high": {"type": "g16", "route": "b3lyp 3-21g"},
             },
-            -152.4529060634755,
-            0.018462670668992546,
+            -152.4545063960854,
+            0.02328689431183379,
             marks=using("gaussian16"),
         ),
         pytest.param(
@@ -100,8 +100,8 @@ def test_energy():
                 "real": {"type": "pyscf", "basis": "sto3g"},
                 "high": {"type": "pyscf", "xc": "b3lypg", "basis": "321g"},
             },
-            -152.4529060634755,
-            0.01839279960703439,
+            -152.4545063960854,
+            0.02328689431183379,
             marks=using("pyscf"),
         ),
     ],
@@ -601,10 +601,10 @@ def pyscf_acetaldehyd_getter():
 @pytest.mark.parametrize(
     "embedding, ref_energy",
     [
-        ("", -151.8130757),
-        ("electronic", -151.817564),
-        ("electronic_rc", -151.814822),
-        ("electronic_rcd", -151.817018),
+        ("", -151.81221275),
+        ("electronic", -151.82072680065824),
+        ("electronic_rc", -151.81471998946233),
+        ("electronic_rcd", -151.81767523122525),
     ],
 )
 def test_oniom_ee_charge_distribution(embedding, ref_energy, pyscf_acetaldehyd_getter):
@@ -646,5 +646,5 @@ def test_layer_calc(pyscf_acetaldehyd_getter):
     np.testing.assert_allclose(energies, ref_energies)
     # When using XTB instea of PySCF we don't have to increase the
     # tolerance. There seem to be some numerical instabilities in PySCF.
-    np.testing.assert_allclose(all_forces, ref_forces, atol=1e-7)
+    np.testing.assert_allclose(all_forces, ref_forces, atol=2e-7)
     np.testing.assert_allclose(all_hessians, ref_hessians, atol=2e-7)
