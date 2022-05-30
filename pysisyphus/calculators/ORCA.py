@@ -51,6 +51,149 @@ def save_orca_pc_file(point_charges, pc_fn, hardness=None):
     )
 
 
+def parse_orca_cis(cis_fn):
+    """
+    Read binary CI vector file from ORCA.
+        Loosly based on TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
+        https://sourceforge.net/p/theodore-qc
+    """
+    cis_handle = open(cis_fn, "rb")
+    # self.log(f"Parsing CI vectors from {cis_handle}")
+
+    # The header consists of 9 4-byte integers, the first 5 of which give useful info.
+    nvec = struct.unpack("i", cis_handle.read(4))[0]
+    # [0] index of first alpha occ,  is equal to number of frozen alphas
+    # [1] index of last  alpha occ
+    # [2] index of first alpha virt
+    # [3] index of last  alpha virt, header[3]+1 is equal to number of bfs
+    # [4] index of first beta  occ,  for restricted equal to -1
+    # [5] index of last  beta  occ,  for restricted equal to -1
+    # [6] index of first beta  virt, for restricted equal to -1
+    # [7] index of last  beta  virt, for restricted equal to -1
+    header = [struct.unpack("i", cis_handle.read(4))[0] for i in range(8)]
+
+    def parse_header(header):
+        first_occ, last_occ, first_virt, last_virt = header
+        frozen = first_occ
+        occupied = last_occ + 1
+        active = occupied - frozen
+        mo_num = last_virt + 1
+        virtual = mo_num - first_virt
+        return frozen, active, occupied, virtual
+
+    a_frozen, a_active, a_occupied, a_virtual = parse_header(header[:4])
+    b_header = parse_header(header[4:])
+    unrestricted = all([bh != -1 for bh in (b_header)])
+    b_frozen, b_active, b_occupied, b_virtual = b_header
+    a_lenci = a_active * a_virtual
+    b_lenci = b_active * b_virtual
+
+    # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
+    # X+Y of 2, X-Y of 2, ...
+    prev_root = -1
+    prev_mult = 1
+    iroot_triplets = 0
+
+    # Flags that may later be set to True
+    triplets = False
+    tda = False
+    Xs_a = list()
+    Ys_a = list()
+    Xs_b = list()
+    Ys_b = list()
+
+    def parse_coeffs(lenci, frozen, occupied, virtual):
+        coeffs = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
+        coeffs = np.array(coeffs).reshape(-1, virtual)
+        # create full array, i.e nocc x nvirt
+        coeffs_full = np.zeros((occupied, virtual))
+        coeffs_full[frozen:] = coeffs
+        return coeffs_full
+
+    def handle_X_Y(root_updated, Xs, Ys, coeffs):
+        # When the root was not incremented compared to the previous root we have
+        # just parsed X-Y (and parsed X+Y before.)
+        #
+        # We can recover the separate X and Y vectors by first computing X as
+        #   X = (X + Y + X - Y) / 2
+        # and then
+        #   Y = X + Y - X
+        if root_updated:
+            X_plus_Y = Xs[-1]  # Parsed in previous cycle
+            X_minus_Y = coeffs  # Parsed in current cycle
+            X = 0.5 * (X_plus_Y + X_minus_Y)
+            Y = X_plus_Y - X
+            # Update the X and Y vectors that were already saved with their correct values.
+            Xs[-1] = X
+            Ys[-1] = Y
+        # When the root was incremented we either have a TDA calculation without Y or
+        # we parsed X-Y in the previous cycle and now moved to a new root.
+        else:
+            Xs.append(coeffs)
+            Ys.append(np.zeros_like(coeffs))
+
+    for ivec in range(nvec):
+        # Header of each vector, contains 6 4-byte ints.
+        nele, _, mult, _, iroot, _ = struct.unpack("iiiiii", cis_handle.read(24))
+        # 2 x 8 bytes unknown?!
+        ene, _ = struct.unpack("dd", cis_handle.read(16))
+
+        # Will evaluate True only once when triplets were requested.
+        if prev_mult != mult:
+            triplets = True
+            prev_root = -1
+
+        # When we encounter the second "state" we can decide if it is a TDA
+        # calculation (without Y-vector).
+        if (ivec == 1) and (iroot == prev_root + 1):
+            tda = True
+
+        if triplets:
+            iroot = iroot_triplets
+
+        root_updated = prev_root == iroot
+
+        # self.log(f"{ivec=}, {nele=}, {mult=}, {iroot=}, {root_updated=}")
+        # Then come nact * nvirt 8-byte doubles with the coefficients
+        coeffs_a = parse_coeffs(a_lenci, a_frozen, a_occupied, a_virtual)
+        handle_X_Y(root_updated, Xs_a, Ys_a, coeffs_a)
+        if unrestricted:
+            coeffs_b = parse_coeffs(b_lenci, b_frozen, b_occupied, b_virtual)
+            handle_X_Y(root_updated, Xs_b, Ys_b, coeffs_b)
+
+        # Somehow ORCA stops to update iroot correctly after the singlet states.
+        if (mult == 3) and (tda or (ivec % 2) == 1):
+            iroot_triplets += 1
+
+        prev_root = iroot
+        prev_mult = mult
+    cis_handle.close()
+
+    Xs_a, Ys_a, Xs_b, Ys_b = [np.array(_) for _ in (Xs_a, Ys_a, Xs_b, Ys_b)]
+
+    def handle_triplets(Xs, Ys):
+        assert (len(Xs) % 2) == 0
+        states = len(Xs) // 2
+        Xs = Xs[states:]
+        Ys = Ys[states:]
+        return Xs, Ys
+
+    # Only return triplet states if present
+    if triplets:
+        Xs_a, Ys_a = handle_triplets(Xs_a, Ys_a)
+        assert len(Xs_b) == 0
+        assert len(Ys_b) == 0
+
+    # Beta part will be empty
+    if not unrestricted:
+        assert len(Xs_b) == 0
+        assert len(Ys_b) == 0
+        Xs_b = np.zeros_like(Xs_a)
+        Ys_b = np.zeros_like(Xs_b)
+
+    return Xs_a, Ys_a, Xs_b, Ys_b
+
+
 class ORCA(OverlapCalculator):
 
     conf_key = "orca"
@@ -424,113 +567,11 @@ class ORCA(OverlapCalculator):
         return results
 
     def parse_cis(self, cis):
+        """Simple wrapper of external function.
+
+        Currently, only returns Xα and Yα.
         """
-        Read binary CI vector file from ORCA.
-            Adapted from TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
-            https://sourceforge.net/p/theodore-qc
-        """
-        cis_handle = open(cis, "rb")
-        self.log(f"Parsing CI vectors from {cis_handle}")
-
-        # the header consists of 9 4-byte integers, the first 5
-        # of which give useful info.
-        nvec = struct.unpack("i", cis_handle.read(4))[0]
-        # header array contains:
-        # [0] index of first alpha occ,  is equal to number of frozen alphas
-        # [1] index of last  alpha occ
-        # [2] index of first alpha virt
-        # [3] index of last  alpha virt, header[3]+1 is equal to number of bfs
-        # [4] index of first beta  occ,  for restricted equal to -1
-        # [5] index of last  beta  occ,  for restricted equal to -1
-        # [6] index of first beta  virt, for restricted equal to -1
-        # [7] index of last  beta  virt, for restricted equal to -1
-        header = [struct.unpack("i", cis_handle.read(4))[0] for i in range(8)]
-
-        # Assert that all flags regarding unrestricted calculations are -1
-        if any([flag != -1 for flag in header[4:8]]):
-            raise Exception("parse_cis, no support for unrestricted MOs")
-
-        nfrzc = header[0]
-        nocc = header[1] + 1
-        nact = nocc - nfrzc
-        nmo = header[3] + 1
-        nvir = nmo - header[2]
-        lenci = nact * nvir
-        self.log(f"nmo = {nmo}, nocc = {nocc}, nact = {nact}, nvir = {nvir}")
-
-        # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
-        # X+Y of 2, X-Y of 2, ...
-        prev_root = -1
-        prev_mult = 1
-        iroot_triplets = 0
-
-        # Flags that may later be set to True
-        triplets = False
-        tda = False
-        Xs = list()
-        Ys = list()
-
-        for ivec in range(nvec):
-            # header of each vector
-            # contains 6 4-byte ints, then 1 8-byte double, then 8 byte unknown
-            nele, d1, mult, d2, iroot, d3 = struct.unpack("iiiiii", cis_handle.read(24))
-
-            # Will evaluate True only once when triplets were requested.
-            if prev_mult != mult:
-                triplets = True
-                prev_root = -1
-
-            # When we encounter the second "state" we can decide if it is a TDA
-            # calculation (without Y-vector).
-            if (ivec == 1) and (iroot == prev_root + 1):
-                tda = True
-
-            if triplets:
-                iroot = iroot_triplets
-
-            ene, d3 = struct.unpack("dd", cis_handle.read(16))
-            self.log(f"ivec={ivec}, nele={nele}, mult={mult}, iroot={iroot}")
-            # Then come nact * nvirt 8-byte doubles with the coefficients
-            coeffs = struct.unpack(lenci * "d", cis_handle.read(lenci * 8))
-            coeffs = np.array(coeffs).reshape(-1, nvir)
-            # create full array, i.e nocc x nvirt
-            coeffs_full = np.zeros((nocc, nvir))
-            coeffs_full[nfrzc:] = coeffs
-
-            # In this case, we have a non-TDA state, where Y is present!
-            # We can recover the original X and Y by first computing X as
-            #   X = (X+Y + X-Y) / 2
-            # and then
-            #   Y = X+Y - X
-            if prev_root == iroot:
-                X_plus_Y = Xs[-1]
-                X_minus_Y = coeffs_full
-                X = 0.5 * (X_plus_Y + X_minus_Y)
-                Y = X_plus_Y - X
-                Xs[-1] = X
-                Ys[-1] = Y
-            else:
-                Xs.append(coeffs_full)
-                Ys.append(np.zeros_like(coeffs_full))
-
-            # Somehow ORCA stops to update iroot correctly after the singlet states.
-            if (mult == 3) and (tda or (ivec % 2) == 1):
-                iroot_triplets += 1
-
-            prev_root = iroot
-            prev_mult = mult
-        cis_handle.close()
-
-        Xs = np.array(Xs)
-        Ys = np.array(Ys)
-
-        # Only return triplet states if present
-        if triplets:
-            assert (len(Xs) % 2) == 0
-            states = len(Xs) // 2
-            Xs = Xs[states:]
-            Ys = Ys[states:]
-        return Xs, Ys
+        return parse_orca_cis(cis)[:2]
 
     def parse_gbw(self, gbw_fn):
         """Adapted from
