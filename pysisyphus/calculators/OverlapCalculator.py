@@ -20,6 +20,7 @@ from pysisyphus.io.hdf5 import get_h5_group
 from pysisyphus.wrapper.mwfn import make_cdd, get_mwfn_exc_str
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
 
+from scipy.optimize import linear_sum_assignment
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
 
@@ -96,6 +97,7 @@ class OverlapCalculator(Calculator):
         dyn_roots=0,
         mos_ref="cur",
         mos_renorm=True,
+        min_cost=False,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -199,6 +201,7 @@ class OverlapCalculator(Calculator):
 
         self._data_model = None
         self._h5_initialized = False
+        self.min_cost = min_cost
 
     def get_h5_group(self):
         if not self._h5_initialized:
@@ -704,7 +707,7 @@ class OverlapCalculator(Calculator):
             self.set_ntos(mo_coeffs, ci_coeffs)
 
         # self.update_array_dims()
-
+        
     def track_root(self, ovlp_type=None):
         """Check if a root flip occured occured compared to the previous cycle
         by calculating the overlap matrix wrt. a reference cycle."""
@@ -770,12 +773,35 @@ class OverlapCalculator(Calculator):
         self.ref_cycles.append(self.ref_cycle)
         self.log(
             f"Reference is cycle {self.ref_cycle}, root {ref_root}. "
-            f"Analyzing row {row_ind} of the overlap matrix."
         )
-
-        ref_root_row = overlaps[row_ind]
-        new_root = ref_root_row.argmax()
-        max_overlap = ref_root_row[new_root]
+        
+        # functionality name from 10.1021/acs.jctc.0c00295
+        # idea developed independently
+        if self.min_cost:
+            # match all excited state of the current and the reference step
+            # to make the assignment more reasonable and omit potential
+            # double assignments from rows being treated isolated
+            self.log(
+                "Analyzing full overlap matrix and find most reasonable"
+                "root based on Kuhn-Munkres algorithm"
+            )
+            row_inds, col_inds = linear_sum_assignment(1.0 - overlaps)
+            ref_root_row = overlaps[row_ind]
+            new_root = col_inds[row_ind]
+            if ref_root_row.argmax() != new_root:
+                self.log(
+                    "NOTE: New best root is not root of highest overlap because "
+                    "another row mapping to the same state had a higher "
+                    "overlap."
+                )
+            max_overlap = ref_root_row[new_root]
+        else:
+            # match the best root row wise
+            self.log(f"Analyzing row {row_ind} of the overlap matrix.")
+            ref_root_row = overlaps[row_ind]
+            new_root = ref_root_row.argmax()
+            max_overlap = ref_root_row[new_root]
+            
         if self.ovlp_type == "wf":
             new_root -= 1
         prev_root = self.root
