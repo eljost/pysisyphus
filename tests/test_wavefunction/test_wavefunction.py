@@ -1,3 +1,4 @@
+import h5py
 import numpy as np
 import pytest
 
@@ -66,23 +67,25 @@ def test_orca_dipole_moments(fn, ref_dip_mom):
     np.testing.assert_allclose(dip_mom, ref_dip_mom, atol=1e-5)
 
 
-@pytest.mark.skip
-def test_transition_dipole_moments():
-    fn = "/home/johannes/tmp/281_orca_tda_ref/qm_calcs/overlap_data.h5"
-    import h5py
+def test_transition_dipole_moments(this_dir):
+    def get_fn(fn):
+        return this_dir / "ch4_3states" / fn
 
-    with h5py.File(fn) as handle:
-        C = handle["mo_coeffs"][:]
-        CI = handle["ci_coeffs"][:]
+    wf = Wavefunction.from_orca_json(get_fn("tda.json"))
+
     step = 0
+    fn = get_fn("tda_overlap_data.h5")
+    with h5py.File(fn) as handle:
+        all_ens = handle["all_energies"][step]
+        CI = handle["ci_coeffs"][step]
+    exc_ens = all_ens[1:] - all_ens[0]
 
-    C = C[step]
-    CI = CI[step]
-    print(C.shape, CI.shape)
-    wf = Wavefunction.from_orca_json(
-        "/home/johannes/tmp/281_orca_tda_ref/qm_calcs/calculator_000.000.orca.json"
-    )
-    S1, S2, S3 = CI
-    for i, Si in enumerate(CI):
-        tdms = wf.transition_dipole_moment(Si)
-        print(f"{i}: {tdms}")
+    tdms = wf.transition_dipole_moment(CI, restricted=True)
+    fosc = wf.oscillator_strength(exc_ens, tdms)
+    fmt = " .6f"
+    for i, (f, tdm) in enumerate(zip(fosc, tdms)):
+        x, y, z = tdm
+        tot = (tdm ** 2).sum()
+        print(f"{i}: {f=:{fmt}} {x:{fmt}} {y:{fmt}} {z:{fmt}}, tot={tot:{fmt}}")
+
+    np.testing.assert_allclose(fosc, (0.506552, 0.506805, 0.506498), atol=1e-6)
