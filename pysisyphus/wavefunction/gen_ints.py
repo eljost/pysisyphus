@@ -178,6 +178,13 @@ class Multipole3dShell(Function):
         return exprs
 
 
+class Overlap1d(Function):
+    @classmethod
+    def eval(cls, i, j, a, b, A, B):
+        # import pdb; pdb.set_trace()  # fmt: skip
+        return Multipole1d(i, j, a, b, A, B, 0, (0.0, 0.0, 0.0))
+
+
 class Overlap3dShell(Function):
     """Whole shell of 3d overlap integrals for a given L pair
     over primitive gaussians."""
@@ -185,6 +192,65 @@ class Overlap3dShell(Function):
     @classmethod
     def eval(cls, La_tot, Lb_tot, a, b, A, B):
         exprs = Multipole3dShell(La_tot, Lb_tot, a, b, A, B)
+        return exprs
+
+
+class Kinetic1d(Function):
+    @classmethod
+    def eval(cls, i, j, a, b, A, B):
+        if i < 0 or j < 0:
+            return 0
+
+        p = a + b
+        P = (a * A + b * B) / p
+
+        def recur(i, j):
+            """Simple wrapper to pass all required arguments."""
+            return Kinetic1d(i, j, a, b, A, B)
+
+        def recur_rel(i, j, X, exponent):
+            return X * recur(i, j) + 1 / (2 * p) * (
+                i * recur(i - 1, j) + j * recur(i, j - 1)
+            )
+
+        def recur_ovlp(i, j):
+            return Overlap1d(i, j, a, b, A, B)
+
+        # Base case
+        if i == 0 and j == 0:
+            X = P - A
+            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
+                i, j, a, b, A, B
+            )
+        # Decrement i
+        elif i > 0:
+            X = P - A
+            # Eq. (9.3.41)
+            return recur_rel(i - 1, j, X, a) + b / p * (
+                2 * a * recur_ovlp(i, j) - i * recur_ovlp(i - 2, j)
+            )
+        # Decrement j
+        elif j > 0:
+            X = P - B
+            # Eq. (9.3.41)
+            return recur_rel(i, j - 1, X, b) + a / p * (
+                2 * b * recur_ovlp(i, j) - j * recur_ovlp(i, j - 2)
+            )
+
+
+class Kinetic3d(Function):
+    @classmethod
+    def eval(cls, La, Lb, a, b, A, B):
+        x, y, z = [Kinetic1d(La[i], Lb[i], a, b, A[i], B[i]) for i in range(3)]
+        return x * y * z
+
+
+class Kinetic3dShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, a, b, A, B):
+        exprs = [
+            Kinetic3d(La, Lb, a, b, A, B) for La, Lb in shell_iter((La_tot, Lb_tot))
+        ]
         return exprs
 
 
@@ -352,9 +418,22 @@ def run():
         <s_a|z|s_b>
     """
 
+    def kinetic_func(La_tot, Lb_tot):
+        return (
+            Array(Kinetic3dShell(La_tot, Lb_tot, a, b, (Ax, Ay, Az), (Bx, By, Bz)))
+            .xreplace(A_map)
+            .xreplace(B_map)
+        )
+
+    def kinetic_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian 3D ({shell_a}{shell_b}) kinetic energy integral."
+
     ovlp_ints_Ls = gen_integrals_exprs(ovlp_func, (l_max, l_max), "overlap")
     ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
-    write_py(out_dir, "ovlps3d.py", ovlp_rendered)
+    write_py(out_dir, "ovlp3d.py", ovlp_rendered)
     print()
 
     dipole_ints_Ls = gen_integrals_exprs(dipole_func, (l_max, l_max), "dipole moment")
@@ -365,7 +444,14 @@ def run():
         dipole_doc_func,
         comment=dipole_comment,
     )
-    write_py(out_dir, "dipoles3d.py", dipole_rendered)
+    write_py(out_dir, "dipole3d.py", dipole_rendered)
+    print()
+
+    kinetic_ints_Ls = gen_integrals_exprs(kinetic_func, (l_max, l_max), "kinetic")
+    kinetic_rendered = render_py_funcs(
+        kinetic_ints_Ls, (a, A, b, B), "kinetic3d", kinetic_doc_func
+    )
+    write_py(out_dir, "kinetic3d.py", kinetic_rendered)
     print()
 
 
