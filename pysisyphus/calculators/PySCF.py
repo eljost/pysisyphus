@@ -9,6 +9,7 @@ from pyscf.dft import xcfun
 # from pyscf.lib.chkfile import save_mol
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.helpers import geom_loader
 
 
 class PySCF(OverlapCalculator):
@@ -69,6 +70,12 @@ class PySCF(OverlapCalculator):
         self.unrestricted = self.mult > 1
 
         lib.num_threads(self.pal)
+
+    @staticmethod
+    def geom_from_fn(fn, **kwargs):
+        geom = geom_loader(fn)
+        geom.set_calculator(PySCF(**kwargs))
+        return geom
 
     def get_driver(self, step, mol=None, mf=None):
         if mol and (step == "dft"):

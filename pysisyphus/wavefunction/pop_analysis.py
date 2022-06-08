@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -9,25 +9,20 @@ from pysisyphus.wavefunction import Wavefunction
 
 
 def mulliken_charges(
-    P: NDArray[float],
+    P: Tuple[NDArray[float]],
     S: NDArray[float],
-    atom_num: int,
     nuc_charges: NDArray[int],
     ao_centers: List[int],
 ) -> NDArray[float]:
     def mulliken_atom_pops(P: NDArray[float], S: NDArray[float]) -> NDArray[float]:
         mo_populations = np.einsum("ij,ji->i", P, S)
-        atom_populations = np.zeros(atom_num)
+        atom_populations = np.zeros(len(nuc_charges))
         for i, center in enumerate(ao_centers):
             atom_populations[center] += mo_populations[i]
         return atom_populations
 
-    if P.ndim == 3:
-        atom_populations_a = mulliken_atom_pops(P[0], S)
-        atom_populations_b = mulliken_atom_pops(P[1], S)
-    else:
-        atom_populations_a = mulliken_atom_pops(P, S) / 2
-        atom_populations_b = atom_populations_a
+    atom_populations_a = mulliken_atom_pops(P[0], S)
+    atom_populations_b = mulliken_atom_pops(P[1], S)
 
     charges = nuc_charges - atom_populations_a - atom_populations_b
     return charges
@@ -37,7 +32,6 @@ def mulliken_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
     return mulliken_charges(
         P=wf.P,
         S=wf.S,
-        atom_num=wf.atom_num,
         nuc_charges=wf.nuc_charges,
         ao_centers=wf.ao_centers,
     )
@@ -93,7 +87,6 @@ def iao_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
     return mulliken_charges(
         P=P_iao,
         S=np.eye(len(minao_ao_centers)),
-        atom_num=wf.atom_num,
         nuc_charges=wf.nuc_charges,
         ao_centers=minao_ao_centers,
     )

@@ -91,7 +91,7 @@ def parse_orca_cis(cis_fn):
     # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
     # X+Y of 2, X-Y of 2, ...
     prev_root = -1
-    prev_mult = 1
+    prev_mult = None
     iroot_triplets = 0
 
     # Flags that may later be set to True
@@ -135,6 +135,10 @@ def parse_orca_cis(cis_fn):
     for ivec in range(nvec):
         # Header of each vector, contains 6 4-byte ints.
         nele, _, mult, _, iroot, _ = struct.unpack("iiiiii", cis_handle.read(24))
+
+        if prev_mult is None:
+            prev_mult = mult
+
         # 2 x 8 bytes unknown?!
         ene, _ = struct.unpack("dd", cis_handle.read(16))
 

@@ -6,28 +6,34 @@
 #     Ab initio calculation and display of the rotary strength tensor in
 #     the random phase approximation. Method and model studies.
 #     Pedersen, Hansen, 1995
+# [3] https://pubs.acs.org/doi/pdf/10.1021/j100180a030.
+#     Toward a Systematic Molecular Orbital Theory for Excited States
+#     Foresman, Head-Gordon, Pople, Frisch, 1991
 
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.elem_data import nuc_charges_for_atoms
+from pysisyphus.elem_data import nuc_charges_for_atoms, MASS_DICT
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.shells import Shells
 from pysisyphus.wavefunction.helpers import BFType
 
 
+Center = Literal["coc", "com"]
+
+
 class Wavefunction:
     def __init__(
         self,
-        atoms,
-        coords,
+        atoms: Tuple[str],
+        coords: NDArray[float],
         charge: int,
         mult: int,
         unrestricted: bool,
         occ: Tuple[int],
-        C: NDArray,
+        C: NDArray[float],
         bf_type: BFType,
         shells: Optional[Shells] = None,
     ):
@@ -37,6 +43,8 @@ class Wavefunction:
 
         self.charge = charge
         self.mult = mult
+        if self.mult != 1:
+            unrestricted = True
         self.unrestricted = unrestricted
         self.occ = occ
         if not self.unrestricted:
@@ -51,9 +59,15 @@ class Wavefunction:
         self.bf_type = bf_type
         self.shells = shells
 
+        self._masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+
     @property
     def atom_num(self):
         return len(self.atoms)
+
+    @property
+    def masses(self):
+        return self._masses
 
     @property
     def nuc_charges(self):
@@ -62,6 +76,10 @@ class Wavefunction:
     @property
     def masses(self):
         return np.ones(len(self.atoms))
+
+    @property
+    def mo_num(self):
+        return self.C.shape[1]
 
     @staticmethod
     @file_or_str(".json")
@@ -75,13 +93,31 @@ class Wavefunction:
     def C_occ(self):
         occ_a, occ_b = self.occ
         C_a, C_b = self.C
-        return np.array((C_a[:, :occ_a], C_b[:, :occ_b]))
+        return C_a[:, :occ_a], C_b[:, :occ_b]
 
     @property
     def P(self):
-        P = np.array([C_occ @ C_occ.T for C_occ in self.C_occ])
-        # Restricted density matrix: P = 2 * C_occ @ C_occ.T
-        return P
+        return [C_occ @ C_occ.T for C_occ in self.C_occ]
+
+    def P_exc(self, trans_dens):
+        """
+        Eqs. (2.25) and (2.26) in [3].
+        """
+        trans_dens *= 2 ** 0.5 / 2
+        occ_a, occ_b = self.occ
+        assert occ_a == occ_b
+        occ = occ_a
+        occupations = np.zeros(self.mo_num)
+        occupations[:occ_a] = 2
+        P = np.diag(occupations)
+        dP_oo = -np.einsum("ia,ja->ij", trans_dens, trans_dens)
+        dP_vv = np.einsum("ia,ic->ac", trans_dens, trans_dens)
+        P[:occ, :occ] += 2 * dP_oo
+        P[occ:, occ:] += 2 * dP_vv
+        C, _ = self.C
+        # The density matric is currently still in the MO basis. Transform
+        # it to the AO basis and return.
+        return C @ P @ C.T
 
     @property
     def S(self):
@@ -111,9 +147,6 @@ class Wavefunction:
         kind = kind.lower()
         assert kind in ("com", "coc")
 
-        if kind == "com":
-            raise Exception("Masses are not yet implemented!")
-
         coords3d = self.coords.reshape(-1, 3).copy()
         _factors = {
             "coc": self.nuc_charges,  # Center of charge
@@ -125,7 +158,7 @@ class Wavefunction:
         return np.sum(coords3d * factors[:, None], axis=0) / tot_factors
 
     def dipole_ints(
-        self, origin: Optional[NDArray] = None, kind="coc"
+        self, origin: Optional[NDArray] = None, kind: Center = "coc"
     ) -> NDArray[float]:
         if origin is None:
             origin = self.get_origin(kind=kind)
@@ -137,21 +170,28 @@ class Wavefunction:
         return dipole_ints
 
     def dipole_moment(
-        self, origin: Optional[NDArray] = None, kind="coc"
+        self,
+        P: NDArray[float] = None,
+        origin: Optional[NDArray] = None,
+        kind: Center = "coc",
     ) -> NDArray[float]:
         # Make a copy, as the coordinates must be give w.r.t. the origin, which
         # may be != (0., 0., 0.).
         coords3d = self.coords.reshape(-1, 3).copy()
         nuc_charges = self.nuc_charges
 
+        if P is None:
+            P = self.P
+
         if origin is None:
             origin = self.get_origin(kind=kind)
 
+        # origin = (-1.487808,  3.034774,  0.292895)
         origin = np.array(origin, dtype=float)
         coords3d -= origin[None, :]
         dipole_ints = self.dipole_ints(origin)
         electronic = np.sum(
-            [np.einsum("xij,ji->x", dipole_ints, P) for P in self.P], axis=0
+            [np.einsum("xij,ji->x", dipole_ints, P_) for P_ in P], axis=0
         )
         nuclear = np.einsum("i,ix->x", nuc_charges, coords3d)
         molecular = nuclear - electronic
@@ -159,121 +199,86 @@ class Wavefunction:
         return molecular
 
     def transition_dipole_moment(
-        self, trans_dens: NDArray[float], renorm: bool = True
-    ) -> NDArray[float]:
-        """
-        Eq. (33) in [1].
-
-        X+Y for hermitian operators, X-Y for anti-hermitian operators.
-        """
-        origin = self.get_origin(kind="coc")
-        dipole_ints = self.dipole_ints(origin)
-        trans_dens = np.atleast_3d(trans_dens)
-
-        # The 'tdm' formula in get_tdm assumes a norm of 0.5 for the transition
-        # density matrices.
-        if renorm:
-            norms = np.linalg.norm(trans_dens, axis=(1, 2))
-            factors = 0.5 / norms
-        else:
-            factors = np.ones(trans_dens.shape[0])
-
-        def get_tdm(C: NDArray[float], occ: NDArray[int]) -> NDArray[float]:
-            # Transform transition density matrix from MO to AO representation.
-            # shape in MO basis: (occ, virt), shape in AO basis (nbf, nbf).
-            # trans_dens_ao = C[None, :, :occ] @ trans_dens #@ C[None, :, occ:].T
-            trans_dens_ao = C[None, :, :occ] @ trans_dens @ C[:, occ:].T
-            # Then contract with dipole integrals. See Eq. (18) in [2].
-            # 'factors' is used to take the normalization (or lack of) of the
-            # transition density matrix into account.
-            #
-            # x   : Cartesian direction
-            # n   : State index
-            # i, j: AO indices
-            tdm = 2 ** 0.5 * np.einsum(
-                "xij,n,nji->nx", dipole_ints, factors, trans_dens_ao
-            )
-            return tdm
-
-        # Transitions between α -> α and β -> β
-        tdms = [get_tdm(C, occ) for C, occ in zip(self.C, self.occ)]
-        tdm = np.sum(tdms, axis=0)
-        return tdm
-
-    def oscillator_strength(
-        self, exc_ens: NDArray[float], trans_moms: NDArray[float]
-    ) -> NDArray[float]:
-        exc_ens = np.atleast_1d(exc_ens)
-        trans_moms = np.atleast_2d(trans_moms)
-        fosc = 2 / 3 * (exc_ens[:, None] * trans_moms ** 2).sum(axis=0)
-        return fosc
-
-    def transition_dipole_moment(
         self,
-        trans_dens: NDArray[float],
-        renorm: bool = True,
-        restricted=False,
+        # trans_dens: NDArray[float],
+        trans_dens_a: NDArray[float],
+        trans_dens_b: NDArray[float] = None,
     ) -> NDArray[float]:
         """
+        Transition dipole moments from transition density matrices.
+
         Eq. (33) in [1].
 
-        X+Y for hermitian operators, X-Y for anti-hermitian operators.
+        Parameters
+        ----------
+        trans_dens_a
+            Numpy array containing transition density matrices of shape
+            (nstates, occ, virt) or (occ, virt) in the α-electron space.
+        trans_dens_b
+            See trans_dens_a. Optional. If not provided, trans_dens_a is used.
+
+        Returns
+        -------
+        tdms
+            Numpy array of shape (nstates, 3) containing the Cartesian transition
+            dipole moments in the length gauge.
         """
+
         origin = self.get_origin(kind="coc")
         dipole_ints = self.dipole_ints(origin)
 
-        # Bring into '(nstates, a/b, act, virt)' shape.
-        if restricted:
-            *nstates, act, virt = trans_dens.shape
-            assert len(nstates) in (0, 1)
-            nstates = nstates[0]
-            if nstates == 0:
-                nstates = 1
-            # Repeat last two axes
-            _ = np.empty((nstates, 2, act, virt))
-            _[:, 0] = trans_dens
-            _[:, 1] = trans_dens
-            # trans_dens is now 4d
-            trans_dens = _
+        # Deal with unrestricted transition density matrices that contain
+        # only one state.
+        def atleast_3d(tden):
+            if tden.ndim == 2:
+                tden = tden[None, :]
+            return tden
 
-        # Deal with unrestricted transition density matrices
-        if trans_dens.ndim == 3:
-            trans_dens = trans_dens[None, :]
+        trans_dens_a = atleast_3d(trans_dens_a)
+        if trans_dens_b is None:
+            trans_dens_a = 1 / 2 ** 0.5 * trans_dens_a
+            trans_dens_b = trans_dens_a
+        trans_dens_b = atleast_3d(trans_dens_b)
 
-        assert trans_dens.ndim == 4
+        # Expected shape: (nstates, occ, virt)
+        assert trans_dens_a.ndim == trans_dens_b.ndim == 3
 
         def get_tdm(
             C: NDArray[float], occ: NDArray[int], trans_dens: NDArray[float]
         ) -> NDArray[float]:
-            # The 'tdm' formula in get_tdm assumes a norm of 0.5 for the transition
-            # density matrices.
-            if renorm:
-                norms = np.linalg.norm(trans_dens, axis=(1, 2))
-                factors = 0.5 / norms
-            else:
-                factors = np.ones(trans_dens.shape[0])
-
-            # Transform transition density matrix from MO to AO representation.
-            # shape in MO basis: (occ, virt), shape in AO basis (nbf, nbf).
-            # trans_dens_ao = C[None, :, :occ] @ trans_dens #@ C[None, :, occ:].T
-            trans_dens_ao = C[None, :, :occ] @ trans_dens @ C[:, occ:].T
+            dipole_ints_mo = np.einsum(
+                "jl,ilm,mk->ijk", C[:, :occ].T, dipole_ints, C[:, occ:]
+            )
 
             # Then contract with dipole integrals. See Eq. (18) in [2].
-            # 'factors' is used to take the normalization (or lack of) of the
-            # transition density matrix into account.
             #
-            # x   : Cartesian direction
-            # n   : State index
-            # i, j: AO indices
-            tdm = 2 ** 0.5 * np.einsum(
-                "xij,n,nji->nx", dipole_ints, factors, trans_dens_ao
-            )
+            # j : Cartesian direction
+            # k : occ. MO space
+            # l : virt. MO space
+            # i : Excited state number
+            tdm = np.einsum("jkl,ikl->ij", dipole_ints_mo, trans_dens)
             return tdm
 
         # Transitions between α -> α and β -> β
         C_a, C_b = self.C
         occ_a, occ_b = self.occ
-        tdms_a = get_tdm(C_a, occ_a, trans_dens[:, 0])
-        tdms_b = get_tdm(C_b, occ_b, trans_dens[:, 1])
+        tdms_a = get_tdm(C_a, occ_a, trans_dens_a)
+        tdms_b = get_tdm(C_b, occ_b, trans_dens_b)
         tdms = tdms_a + tdms_b
         return tdms
+
+    def oscillator_strength(
+        self, exc_ens: NDArray[float], trans_moms: NDArray[float]
+    ) -> NDArray[float]:
+        exc_ens = np.atleast_1d(exc_ens)
+        if trans_moms.ndim == 1:
+            trans_moms = trans_moms[None, :]
+        fosc = 2 / 3 * exc_ens * (trans_moms ** 2).sum(axis=1)
+        return fosc
+
+    def __str__(self):
+        is_restricted = "unrestricted" if self.unrestricted else "restricted"
+        return (
+            f"Wavefunction({self.atom_num} atoms, charge={self.charge}, {is_restricted}, "
+            f"mult={self.mult})"
+        )

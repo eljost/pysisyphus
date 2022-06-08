@@ -50,21 +50,41 @@ def wavefunction_from_json(text):
         atoms.append(atom_label)
         coords.append(atom_coords)
 
-    unrestricted = mol["HFTyp"] == "UHF"
-    occ = 0
+    unrestricted = (mol["HFTyp"] == "UHF") or (mult != 1)
+    occ_a = 0
+    occ_b = 0
     mos = mol["MolecularOrbitals"]["MOs"]
-    C = list()
+    Ca = list()
+    Cb = list()
+
+    passed_a = False
+    prev_occ = -1
     for mo in mos:
-        occ += mo["Occupancy"]
-        C.append(mo["MOCoefficients"])
-    C = np.array(C)
-    if unrestricted:
-        C = C.reshape(2, C.shape[-1], -1)
-        C = np.transpose(C, (0, 2, 1))
-    else:
-        C = C.T
-    # C array contains MOs in columns.
-    occ_a = occ_b = int(occ) // 2
+        occ = mo["Occupancy"]
+        if (occ % 1) != 0.0:
+            raise Exception("Fractional occupations are not handled!")
+        occ = int(occ)
+
+        if not passed_a and (prev_occ == 0) and (occ == 1):
+            passed_a = True
+
+        mo_coeffs = mo["MOCoefficients"]
+        if passed_a:
+            occ_b += occ
+            Cb.append(mo_coeffs)
+        else:
+            occ_a += occ
+            Ca.append(mo_coeffs)
+        prev_occ = occ
+
+    # MOs must be in columns
+    Ca = np.array(Ca).T
+    Cb = np.array(Cb).T
+    # Restricted calculation
+    if Cb.size == 0:
+        Cb = Ca.copy()
+        occ_a = occ_b = occ_a // 2
+    C = np.stack((Ca, Cb))
 
     shells = shells_from_json(text)
 
