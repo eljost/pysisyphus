@@ -28,6 +28,7 @@ from sympy import (
     exp,
     Function,
     IndexedBase,
+    Matrix,
     pi,
     sqrt,
     Symbol,
@@ -64,7 +65,9 @@ def make_py_func(exprs, args=None, name=None, doc_str=""):
 
     repls, reduced = cse(list(exprs))
 
-    print_func = NumPyPrinter().doprint
+    # This allows using the 'boys' function without producing an error
+    print_settings = {"allow_unknown_functions": True, }
+    print_func = NumPyPrinter(print_settings).doprint
     assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
     py_lines = [print_func(as_) for as_ in assignments]
     return_val = print_func(reduced)
@@ -181,7 +184,6 @@ class Multipole3dShell(Function):
 class Overlap1d(Function):
     @classmethod
     def eval(cls, i, j, a, b, A, B):
-        # import pdb; pdb.set_trace()  # fmt: skip
         return Multipole1d(i, j, a, b, A, B, 0, (0.0, 0.0, 0.0))
 
 
@@ -208,7 +210,7 @@ class Kinetic1d(Function):
             """Simple wrapper to pass all required arguments."""
             return Kinetic1d(i, j, a, b, A, B)
 
-        def recur_rel(i, j, X, exponent):
+        def recur_rel(i, j, X):
             return X * recur(i, j) + 1 / (2 * p) * (
                 i * recur(i - 1, j) + j * recur(i, j - 1)
             )
@@ -226,14 +228,14 @@ class Kinetic1d(Function):
         elif i > 0:
             X = P - A
             # Eq. (9.3.41)
-            return recur_rel(i - 1, j, X, a) + b / p * (
+            return recur_rel(i - 1, j, X) + b / p * (
                 2 * a * recur_ovlp(i, j) - i * recur_ovlp(i - 2, j)
             )
         # Decrement j
         elif j > 0:
             X = P - B
             # Eq. (9.3.41)
-            return recur_rel(i, j - 1, X, b) + a / p * (
+            return recur_rel(i, j - 1, X) + a / p * (
                 2 * b * recur_ovlp(i, j) - j * recur_ovlp(i, j - 2)
             )
 
@@ -254,9 +256,65 @@ class Kinetic3dShell(Function):
         return exprs
 
 
+boys = Function("boys")
+
+
+class Coulomb(Function):
+    """Nucleus at C."""
+
+    @classmethod
+    def eval(cls, i, j, k, l, m, n, N, a, b, A, B, C):
+        ang_moms = (i, j, k, l, m, n)
+        if any([am < 0 for am in ang_moms]):
+            return 0
+
+        p = a + b
+        P = (a * A + b * B) / p
+        mu = (a * b) / p
+        X_PC = P - C
+
+        args = (i, k, l, m, n, N)
+
+        def decr(arg):
+            pass
+
+        def recur(i, j, k, l, m, n, N):
+            """Simple wrapper to pass all required arguments."""
+            return Coulomb(i, j, k, l, m, n, N, a, b, A, B, C)
+
+        def recur_rel(i, j, l, m, n, N, X):
+            # return X * recur(i, j) + 1 / (2 * p) * (
+                # i * recur(i - 1, j) + j * recur(i, j - 1)
+            # )
+            return - X_PC * recur()
+
+        # Base case
+        if all([am == 0 for am in ang_moms]):
+            X_AB = A - B
+            r2_AB = X_AB.dot(X_AB)
+            r2_PC = X_PC.dot(X_PC)
+            K = sym.exp(-mu * r2_PC)
+            return 2 * pi / p * K * boys(N, p * r2_PC)
+        # Decrement i
+        elif i > 0:
+            pass
+        # Decrement j
+        elif j > 0:
+            pass
+        # Decrement j
+        elif k > 0:
+            pass
+        elif l > 0:
+            pass
+        elif m > 0:
+            pass
+        elif n > 0:
+            pass
+
+
 def get_center(i):
     symbs = [Symbol(str(i) + ind) for ind in ("x", "y", "z")]
-    return Array([*symbs])
+    return Matrix([*symbs]).T  # Return column vector
 
 
 def get_map(i, center_i):
@@ -456,4 +514,28 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    # run()
+
+    import sympy as sym
+    center_A = get_center("A")
+    center_B = get_center("B")
+    center_C = get_center("C")
+    # Cartesian components (x, y, z) of the centers A and B.
+    # Orbital exponents a and b.
+    a, b = symbols("a b")
+    # These maps will be used to convert {Ax, Ay, ...} to array quantities
+    # in the generated code. This way an iterable/np.ndarray can be used as
+    # function argument instead of (Ax, Ay, Az, Bx, By, Bz).
+    A, A_map = get_map("A", center_A)
+    B, B_map = get_map("B", center_B)
+    C, C_map = get_map("C", center_C)
+    i, j, k, l, m, n = sym.symbols("i:n", integer=True)
+    # def eval(cls, i, j, k, l, m, n, a, b, A, B, C):
+    N = 0
+    coul = Coulomb(0, 0, 0, 0, 0, 0, N, a, b, center_A, center_B, center_C)
+    coul = coul.xreplace(A_map).xreplace(B_map).xreplace(C_map)
+    # import pdb; pdb.set_trace()  # fmt: skip
+    args = (i,  j, k, l, m, n, N, a, b)
+    args = ", ".join((map(str, args)))
+    pf = make_py_func([coul], args=args, name="coulomb")
+    print(pf)
