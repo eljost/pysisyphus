@@ -12,6 +12,7 @@ http://www.sympy.org/scipy-2017-codegen-tutorial/notebooks/07-the-hard-way.html
 """
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import itertools as it
 import os
 from pathlib import Path
@@ -150,7 +151,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X ** 2)
+            return sqrt(pi / p) * exp(-mu * X**2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -223,7 +224,7 @@ class Kinetic1d(Function):
         # Base case
         if i == 0 and j == 0:
             X = P - A
-            return (a - 2 * a ** 2 * (X ** 2 + 1 / (2 * p))) * Overlap1d(
+            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
                 i, j, a, b, A, B
             )
         # Decrement i
@@ -245,8 +246,9 @@ class Kinetic1d(Function):
 class Kinetic3d(Function):
     @classmethod
     def eval(cls, La, Lb, a, b, A, B):
-        x, y, z = [Kinetic1d(La[i], Lb[i], a, b, A[i], B[i]) for i in range(3)]
-        return x * y * z
+        Tx, Ty, Tz = [Kinetic1d(La[i], Lb[i], a, b, A[i], B[i]) for i in range(3)]
+        Sx, Sy, Sz = [Overlap1d(La[i], Lb[i], a, b, A[i], B[i]) for i in range(3)]
+        return Tx * Sy * Sz + Sx * Ty * Sz + Sx * Sy * Tz
 
 
 class Kinetic3dShell(Function):
@@ -258,6 +260,8 @@ class Kinetic3dShell(Function):
         return exprs
 
 
+# Placeholder for the Boys-function. The actual Boys-function will be
+# imported in the generated python module.
 boys = Function("boys")
 
 
@@ -275,7 +279,7 @@ class Coulomb(Function):
         mu = (a * b) / p
         X_PC = P - C
 
-        def recur(*inds, N):
+        def recur(N, *inds):
             """Simple wrapper to pass all required arguments."""
             return Coulomb(*inds, N, a, b, A, B, C)
 
@@ -295,6 +299,7 @@ class Coulomb(Function):
                 X = P - A
             else:
                 X = P - B
+            X = X.norm()
 
             ind_pairs = {
                 "i": (i - 1, j),
@@ -319,34 +324,29 @@ class Coulomb(Function):
             N_plus = N + 1
 
             return (
-                X * recur(*decr_inds, N)
+                X * recur(N, *decr_inds)
                 + (1 / (2 * p))
                 * (
-                    left_ind * recur(*decr2_inds, N)
-                    + right_ind * recur(*decr_inds_complement, N)
+                    left_ind * recur(N, *decr2_inds)
+                    + right_ind * recur(N, *decr_inds_complement)
                 )
-                - X_PC * recur(*decr_inds, N_plus)
+                - X_PC.norm() * recur(N_plus, *decr_inds)
                 - (1 / (2 * p))
                 * (
-                    left_ind * recur(*decr2_inds, N_plus)
-                    + right_ind * recur(*decr_inds_complement, N_plus)
+                    left_ind * recur(N_plus, *decr2_inds)
+                    + right_ind * recur(N_plus, *decr_inds_complement)
                 )
             )
 
         # Base case
         if all([am == 0 for am in ang_moms]):
-            X_AB = A - B
-            r2_AB = X_AB.dot(X_AB)
             r2_PC = X_PC.dot(X_PC)
-            K = sym.exp(-mu * r2_PC)
+            K = exp(-mu * r2_PC)
             return 2 * pi / p * K * boys(N, p * r2_PC)
-        # Decrement i
         elif i > 0:
             return decr("i")
-        # Decrement j
         elif j > 0:
             return decr("j")
-        # Decrement j
         elif k > 0:
             return decr("k")
         elif l > 0:
@@ -357,8 +357,18 @@ class Coulomb(Function):
             return decr("n")
 
 
+class CoulombShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, a, b, A, B, C=(0.0, 0.0, 0.0)):
+        exprs = [
+            Coulomb(*La, *Lb, 0, a, b, A, B, C)
+            for La, Lb in shell_iter((La_tot, Lb_tot))
+        ]
+        return exprs
+
+
 def get_center(i):
-    symbs = [Symbol(str(i) + ind) for ind in ("x", "y", "z")]
+    symbs = [Symbol(str(i) + ind, real=True) for ind in ("x", "y", "z")]
     return Matrix([*symbs]).T  # Return column vector
 
 
@@ -368,15 +378,31 @@ def get_map(i, center_i):
     return array, array_map
 
 
+# def gen_integrals_exprs(int_func, L_maxs, kind):
+# ranges = [range(L + 1) for L in L_maxs]
+# for L_tots in it.product(*ranges):
+# start = time.time()
+# print(f"Generating {L_tots} {kind} ... ", end="")
+# exprs = int_func(*L_tots)
+# dur = time.time() - start
+# print(f"finished in {dur:.2f} s!")
+# yield exprs, L_tots
+
+
 def gen_integrals_exprs(int_func, L_maxs, kind):
     ranges = [range(L + 1) for L in L_maxs]
-    for L_tots in it.product(*ranges):
+
+    def gen_exprs(L_tots):
         start = time.time()
-        print(f"Generating {L_tots} {kind} ... ", end="")
+        print(f"Generating {L_tots} {kind} ...")
         exprs = int_func(*L_tots)
         dur = time.time() - start
-        print(f"finished in {dur:.2f} s!")
-        yield exprs, L_tots
+        print(f"\tfinished {L_tots} {kind} in {dur:.2f} s!")
+        return exprs, L_tots
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = executor.map(gen_exprs, it.product(*ranges))
+    return futures
 
 
 def render_py_funcs(exprs_Ls, args, base_name, doc_func, comment=""):
@@ -432,6 +458,11 @@ def parse_args(args):
         action="store_true",
         help="Write out generated integrals to the current directory, potentially overwriting the present modules.",
     )
+    parser.add_argument(
+        "--out-dir",
+        default="gen_ints",
+        help="Directory, where the generated integrals are written.",
+    )
 
     return parser.parse_args()
 
@@ -440,7 +471,7 @@ def run():
     args = parse_args(sys.argv[1:])
 
     l_max = args.lmax
-    out_dir = Path("gen_ints" if not args.write else ".")
+    out_dir = Path(args.out_dir if not args.write else ".")
     try:
         os.mkdir(out_dir)
     except FileExistsError:
@@ -454,7 +485,7 @@ def run():
     Ax, Ay, Az = center_A
     Bx, By, Bz = center_B
     # Orbital exponents a and b.
-    a, b = symbols("a b")
+    a, b = symbols("a b", real=True)
 
     # Multipole moment integral center
     Cx, Cy, Cz = center_C
@@ -534,6 +565,20 @@ def run():
         shell_b = L_MAP[Lb_tot]
         return f"Cartesian 3D ({shell_a}{shell_b}) kinetic energy integral."
 
+    def coulomb_func(La_tot, Lb_tot):
+        return (
+            Array(CoulombShell(La_tot, Lb_tot, a, b, center_A, center_B, center_C))
+            .xreplace(A_map)
+            .xreplace(B_map)
+            .xreplace(C_map)
+        )
+
+    def coulomb_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
+
     ovlp_ints_Ls = gen_integrals_exprs(ovlp_func, (l_max, l_max), "overlap")
     ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
     write_py(out_dir, "ovlp3d.py", ovlp_rendered)
@@ -557,31 +602,13 @@ def run():
     write_py(out_dir, "kinetic3d.py", kinetic_rendered)
     print()
 
+    coulomb_ints_Ls = gen_integrals_exprs(coulomb_func, (l_max, l_max), "coulomb")
+    coulomb_rendered = render_py_funcs(
+        coulomb_ints_Ls, (a, A, b, B, C), "coulomb", coulomb_doc_func
+    )
+    write_py(out_dir, "coulomb.py", coulomb_rendered)
+    print()
+
 
 if __name__ == "__main__":
-    # run()
-
-    import sympy as sym
-
-    center_A = get_center("A")
-    center_B = get_center("B")
-    center_C = get_center("C")
-    # Cartesian components (x, y, z) of the centers A and B.
-    # Orbital exponents a and b.
-    a, b = symbols("a b")
-    # These maps will be used to convert {Ax, Ay, ...} to array quantities
-    # in the generated code. This way an iterable/np.ndarray can be used as
-    # function argument instead of (Ax, Ay, Az, Bx, By, Bz).
-    A, A_map = get_map("A", center_A)
-    B, B_map = get_map("B", center_B)
-    C, C_map = get_map("C", center_C)
-    i, j, k, l, m, n = sym.symbols("i:n", integer=True)
-    # def eval(cls, i, j, k, l, m, n, a, b, A, B, C):
-    N = 0
-    coul = Coulomb(1, 0, 0, 0, 0, 0, N, a, b, center_A, center_B, center_C)
-    coul = coul.xreplace(A_map).xreplace(B_map).xreplace(C_map)
-    # import pdb; pdb.set_trace()  # fmt: skip
-    args = (i, j, k, l, m, n, N, a, b)
-    args = ", ".join((map(str, args)))
-    pf = make_py_func([coul], args=args, name="coulomb")
-    print(pf)
+    run()
