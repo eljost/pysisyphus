@@ -477,7 +477,6 @@ class OverlapCalculator(Calculator):
                 ntos_j = l_j * n_j.ntos
                 ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
                 ovlps[i, j] = ovlp
-                ovlps[j, i] = ovlp
         return ovlps
 
     def nto_org_overlaps(self, ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
@@ -498,7 +497,6 @@ class OverlapCalculator(Calculator):
                     l_i_big[:, None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T))
                 )
                 ovlps[i, j] = ovlp
-                ovlps[j, i] = ovlp
         return ovlps
 
     def get_top_differences(self, indices=None, ao_ovlp=None):
