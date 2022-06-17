@@ -475,7 +475,7 @@ class OverlapCalculator(Calculator):
             n_i = ntos_1[i]
             l_i = n_i.lambdas[:, None]
             ntos_i = l_i * n_i.ntos
-            for j in range(i, states2):
+            for j in range(states2):
                 n_j = ntos_2[j]
                 l_j = n_j.lambdas[:, None]
                 ntos_j = l_j * n_j.ntos
@@ -493,7 +493,7 @@ class OverlapCalculator(Calculator):
             l_i = n_i.lambdas[:, None]
             ntos_i = n_i.ntos[(l_i >= nto_thresh).flatten()]
             l_i_big = l_i[l_i >= nto_thresh]
-            for j in range(i, states_2):
+            for j in range(states_2):
                 n_j = ntos_2[j]
                 l_j = n_j.lambdas[:, None]
                 ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
@@ -578,6 +578,8 @@ class OverlapCalculator(Calculator):
             "ci_coeffs": np.array(self.ci_coeff_list, dtype=float),
             "coords": np.array(self.coords_list, dtype=float),
             "all_energies": np.array(self.all_energies_list, dtype=float),
+            "X": np.array(self.X_list, dtype=float),
+            "Y": np.array(self.Y_list, dtype=float),
         }
         if self.root:
             root_dict = {
@@ -677,11 +679,6 @@ class OverlapCalculator(Calculator):
             ntos_for_cycle.append(ntos)
         self.nto_list.append(ntos_for_cycle)
 
-    def update_array_dims(self):
-        """Assure consistent array shapes when the number of calculated
-        roots changed."""
-        raise Exception("This method is not functional right now!")
-
     def set_wfow(self, ci_coeffs):
         occ_mo_num, virt_mo_num = ci_coeffs[0].shape
         try:
@@ -751,8 +748,6 @@ class OverlapCalculator(Calculator):
         # Also store NTOs if requested
         if self.ovlp_type in ("nto", "nto_org"):
             self.set_ntos(mo_coeffs, ci_coeffs)
-
-        # self.update_array_dims()
 
     def track_root(self, ovlp_type=None):
         """Check if a root flip occured occured compared to the previous cycle
