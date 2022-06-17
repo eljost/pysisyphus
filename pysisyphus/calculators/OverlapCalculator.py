@@ -36,6 +36,8 @@ def get_data_model(
     data_model = {
         "mo_coeffs": (max_cycles, mo_num, mo_num),
         "ci_coeffs": (max_cycles, exc_state_num, occ_mo_num, virt_mo_num),
+        "X": (max_cycles, exc_state_num, occ_mo_num, virt_mo_num),
+        "Y": (max_cycles, exc_state_num, occ_mo_num, virt_mo_num),
         "coords": (max_cycles, len(atoms) * 3),
         "all_energies": (
             max_cycles,
@@ -155,6 +157,8 @@ class OverlapCalculator(Calculator):
         self.wfow = None
         self.mo_coeff_list = list()
         self.ci_coeff_list = list()
+        self.X_list = list()
+        self.Y_list = list()
         self.nto_list = list()
         self.coords_list = list()
         # This list will hold the root indices at the beginning of the cycle
@@ -505,12 +509,23 @@ class OverlapCalculator(Calculator):
         S_MO = C_ref @ ao_ovlp @ C_cur.T  # Currently MOs are given in rows
 
         ref, cur = self.get_indices(indices)
+        fact = 1 / 2 ** 0.5
         # Reference step
-        Xs_ref = 1 / 2 ** 0.5 * self.ci_coeff_list[ref]
-        Ys_ref = np.zeros_like(Xs_ref)  # Dummy deexcitation vectors
+        Xs_ref = fact * self.X_list[ref]
+        Ys_ref = fact * self.Y_list[ref]
         # Current step
-        Xs_cur = 1 / 2 ** 0.5 * self.ci_coeff_list[cur]
-        Ys_cur = np.zeros_like(Xs_cur)  # Dummy deexcitation vectors
+        Xs_cur = fact * self.X_list[cur]
+        Ys_cur = fact * self.Y_list[cur]
+
+        def log_norm(mat, title):
+            norms = np.linalg.norm(mat, axis=(1, 2))
+            norms_str = ", ".join([f"{n:.4f}" for n in norms])
+            self.log(f"norms({title}) = ({norms_str})")
+
+        log_norm(Xs_ref, "Xs_ref")
+        log_norm(Ys_ref, "Ys_ref")
+        log_norm(Xs_cur, "Xs_cur")
+        log_norm(Ys_cur, "Ys_cur")
 
         states_A = Xs_ref.shape[0]
         states_B = Xs_cur.shape[0]
@@ -611,6 +626,11 @@ class OverlapCalculator(Calculator):
                 root_info = True
             except KeyError:
                 print(f"Couldn't find root information in '{h5_fn}'.")
+            try:
+                calc.X_list = handle["X"][:]
+                calc.Y_list = handle["Y"][:]
+            except KeyError:
+                print(f"Couldn't find X and Y vectors in '{h5_fn}'.")
 
         calc.ovlp_type = ovlp_type
         calc.ovlp_with = ovlp_with
@@ -685,6 +705,9 @@ class OverlapCalculator(Calculator):
             overlap_data = self.prepare_overlap_data(path)
         mo_coeffs, X, Y, all_ens = overlap_data
 
+        assert mo_coeffs.ndim == 2
+        assert all([mat.ndim == 3 for mat in (X, Y)])
+
         ao_ovlp = self.get_sao_from_mo_coeffs(mo_coeffs)
         mo_coeffs = self.renorm_mos(mo_coeffs, ao_ovlp)
         if self.XY == "X":
@@ -697,6 +720,8 @@ class OverlapCalculator(Calculator):
             raise Exception(
                 f"Invalid 'XY' value. Allowed values are: '{self.VALID_XY}'!"
             )
+        self.X_list.append(X.copy())
+        self.Y_list.append(Y.copy())
 
         # Norm (X+Y) to 1 for every state
         ci_norms = np.linalg.norm(ci_coeffs, axis=(1, 2))

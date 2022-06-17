@@ -315,7 +315,7 @@ def plot_all_energies(h5):
         flips = handle["root_flips"][:]
         ovlp_type = handle.attrs["ovlp_type"]
         ovlp_with = handle.attrs["ovlp_with"]
-    print(f"Overlap type: {ovlp_type}, overlaps with: {ovlp_with}.")
+    print(f"Overlap type: '{ovlp_type}', overlaps with: '{ovlp_with}'.")
     print(f"Found a total of {len(roots)} steps.")
     print(f"{flips} root flips occured.")
 
