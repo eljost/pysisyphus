@@ -564,32 +564,29 @@ class Geometry:
                 ]
                 coords3d = exception.coords3d.copy()
                 coord_class = self.coord_types[self.coord_type]
-                self.internal = coord_class(
-                    # Instead of using only the remaining, valid typed_prims
-                    # we could look for an entirely new set of typed_prims.
-                    #
-                    # But when we do this and we end up with more coordinates
-                    # than before, this will lead to problems with the HDF5 dump.
-                    # No problems arise when fewer coordinates are used
-                    # (valid_typed_prims <= self.internal.typed_prims).
-                    self.atoms,
-                    coords3d,
-                    # With typed prims, only the remaining, valid typed_prims
-                    # will be defined for the new geometry.
-                    #
-                    # Currently disabled.
-                    #
-                    # typed_prims=valid_typed_prims,
-                    #
-                    # With 'define_prims' the remaining, valid typed_prims
-                    # will be used, together with newly determined internal
-                    # coordinates. This supports, e.g., the switch from a simple
-                    # bend to a linear bend and its complement.
-                    #
-                    # Currently the default.
-                    define_prims=valid_typed_prims,
-                    **self.coord_kwargs,
-                )
+                coord_kwargs = self.coord_kwargs.copy()
+                """Instead of using only the remaining, valid typed_prims
+                we could look for an entirely new set of typed_prims.
+                
+                But when we do this and we end up with more coordinates
+                than before, this will lead to problems with the HDF5 dump.
+                
+                No problems arise when fewer coordinates are used
+                (valid_typed_prims <= self.internal.typed_prims).
+                With typed prims, only the remaining, valid typed_prims
+                will be defined for the new geometry.
+                
+                coord_kwargs["typed_prims"] = valid_typed_prims # Currently disabled
+                
+                With 'define_prims' the remaining, valid typed_prims
+                will be used, together with newly determined internal
+                coordinates. This supports, e.g., the switch from a simple
+                bend to a linear bend and its complement.
+                
+                Currently the default."""
+                coord_kwargs["define_prims"] = valid_typed_prims
+
+                self.internal = coord_class(self.atoms, coords3d, **coord_kwargs)
                 self._coords = coords3d.flatten()
                 raise RebuiltInternalsException(
                     typed_prims=self.internal.typed_prims.copy()
