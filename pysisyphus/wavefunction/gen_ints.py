@@ -66,7 +66,9 @@ def make_py_func(exprs, args=None, name=None, doc_str=""):
     repls, reduced = cse(list(exprs))
 
     # This allows using the 'boys' function without producing an error
-    print_settings = {"allow_unknown_functions": True, }
+    print_settings = {
+        "allow_unknown_functions": True,
+    }
     print_func = NumPyPrinter(print_settings).doprint
     assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
     py_lines = [print_func(as_) for as_ in assignments]
@@ -148,7 +150,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X**2)
+            return sqrt(pi / p) * exp(-mu * X ** 2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -221,7 +223,7 @@ class Kinetic1d(Function):
         # Base case
         if i == 0 and j == 0:
             X = P - A
-            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
+            return (a - 2 * a ** 2 * (X ** 2 + 1 / (2 * p))) * Overlap1d(
                 i, j, a, b, A, B
             )
         # Decrement i
@@ -273,20 +275,63 @@ class Coulomb(Function):
         mu = (a * b) / p
         X_PC = P - C
 
-        args = (i, k, l, m, n, N)
-
-        def decr(arg):
-            pass
-
-        def recur(i, j, k, l, m, n, N):
+        def recur(*inds, N):
             """Simple wrapper to pass all required arguments."""
-            return Coulomb(i, j, k, l, m, n, N, a, b, A, B, C)
+            return Coulomb(*inds, N, a, b, A, B, C)
 
-        def recur_rel(i, j, l, m, n, N, X):
-            # return X * recur(i, j) + 1 / (2 * p) * (
-                # i * recur(i - 1, j) + j * recur(i, j - 1)
-            # )
-            return - X_PC * recur()
+        str_args = [str(arg) for arg in ("i", "j", "k", "l", "m", "n")]
+        decr_map = {str_ind: index for index, str_ind in enumerate(str_args)}
+        decr_complements = {
+            "i": "j",
+            "j": "i",
+            "k": "l",
+            "l": "k",
+            "m": "n",
+            "n": "m",
+        }
+
+        def decr(str_arg):
+            if str_arg in ("i", "k", "m"):
+                X = P - A
+            else:
+                X = P - B
+
+            ind_pairs = {
+                "i": (i - 1, j),
+                "j": (i, j - 1),
+                "k": (k - 1, l),
+                "l": (k, l - 1),
+                "m": (m - 1, n),
+                "n": (m, n - 1),
+            }
+            ind_pair = ind_pairs[str_arg]
+            left_ind, right_ind = ind_pair
+
+            decr_inds = [i, j, k, l, m, n]
+            decr_inds_complement = decr_inds.copy()
+            complement = decr_complements[str_arg]
+            complement_ind = decr_map[complement]
+            decr_inds_complement[complement_ind] -= 1
+            decr_ind = decr_map[str_arg]
+            decr_inds[decr_ind] -= 1
+            decr2_inds = decr_inds.copy()
+            decr2_inds[decr_ind] -= 1
+            N_plus = N + 1
+
+            return (
+                X * recur(*decr_inds, N)
+                + (1 / (2 * p))
+                * (
+                    left_ind * recur(*decr2_inds, N)
+                    + right_ind * recur(*decr_inds_complement, N)
+                )
+                - X_PC * recur(*decr_inds, N_plus)
+                - (1 / (2 * p))
+                * (
+                    left_ind * recur(*decr2_inds, N_plus)
+                    + right_ind * recur(*decr_inds_complement, N_plus)
+                )
+            )
 
         # Base case
         if all([am == 0 for am in ang_moms]):
@@ -297,19 +342,19 @@ class Coulomb(Function):
             return 2 * pi / p * K * boys(N, p * r2_PC)
         # Decrement i
         elif i > 0:
-            pass
+            return decr("i")
         # Decrement j
         elif j > 0:
-            pass
+            return decr("j")
         # Decrement j
         elif k > 0:
-            pass
+            return decr("k")
         elif l > 0:
-            pass
+            return decr("l")
         elif m > 0:
-            pass
+            return decr("m")
         elif n > 0:
-            pass
+            return decr("n")
 
 
 def get_center(i):
@@ -517,6 +562,7 @@ if __name__ == "__main__":
     # run()
 
     import sympy as sym
+
     center_A = get_center("A")
     center_B = get_center("B")
     center_C = get_center("C")
@@ -532,10 +578,10 @@ if __name__ == "__main__":
     i, j, k, l, m, n = sym.symbols("i:n", integer=True)
     # def eval(cls, i, j, k, l, m, n, a, b, A, B, C):
     N = 0
-    coul = Coulomb(0, 0, 0, 0, 0, 0, N, a, b, center_A, center_B, center_C)
+    coul = Coulomb(1, 0, 0, 0, 0, 0, N, a, b, center_A, center_B, center_C)
     coul = coul.xreplace(A_map).xreplace(B_map).xreplace(C_map)
     # import pdb; pdb.set_trace()  # fmt: skip
-    args = (i,  j, k, l, m, n, N, a, b)
+    args = (i, j, k, l, m, n, N, a, b)
     args = ", ".join((map(str, args)))
     pf = make_py_func([coul], args=args, name="coulomb")
     print(pf)
