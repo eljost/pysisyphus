@@ -19,6 +19,7 @@ from pysisyphus.helpers_pure import describe
 from pysisyphus.io.hdf5 import get_h5_group
 from pysisyphus.wrapper.mwfn import make_cdd, get_mwfn_exc_str
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
+from pysisyphus.wavefunction.es_overlaps import rAB as top_rAB
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -60,6 +61,7 @@ class OverlapCalculator(Calculator):
         "nto": "natural transition orbital overlap",
         # As described in 10.1002/jcc.25800
         "nto_org": "original natural transition orbital overlap",
+        "top": "transition orbital pair overlap",
     }
     VALID_KEYS = [
         k for k in OVLP_TYPE_VERBOSE.keys()
@@ -499,6 +501,30 @@ class OverlapCalculator(Calculator):
                 ovlps[j, i] = ovlp
         return ovlps
 
+    def get_top_differences(self, indices=None, ao_ovlp=None):
+        """Transition orbital pair."""
+        C_ref, C_cur, ao_ovlp = self.get_orbital_matrices(indices, ao_ovlp)
+        S_MO = C_ref @ ao_ovlp @ C_cur.T  # Currently MOs are given in rows
+
+        ref, cur = self.get_indices(indices)
+        # Reference step
+        Xs_ref = 1 / 2 ** 0.5 * self.ci_coeff_list[ref]
+        Ys_ref = np.zeros_like(Xs_ref)  # Dummy deexcitation vectors
+        # Current step
+        Xs_cur = 1 / 2 ** 0.5 * self.ci_coeff_list[cur]
+        Ys_cur = np.zeros_like(Xs_cur)  # Dummy deexcitation vectors
+
+        states_A = Xs_ref.shape[0]
+        states_B = Xs_cur.shape[0]
+
+        rs = list()
+        for XAi, YAi in zip(Xs_ref, Ys_ref):
+            for XBj, YBj in zip(Xs_cur, Ys_cur):
+                r = top_rAB(XAi, YAi, XBj, YBj, S_MO)
+                rs.append(r)
+        rs = np.array(rs).reshape(states_A, states_B)
+        return rs
+
     def prepare_overlap_data(self, path):
         """Implement calculator specific parsing of MO coefficients and CI
         coefficients here. Should return a filename pointing to TURBOMOLE
@@ -743,6 +769,9 @@ class OverlapCalculator(Calculator):
             overlaps = self.get_nto_overlaps(ao_ovlp=ao_ovlp)
         elif ovlp_type == "nto_org":
             overlaps = self.get_nto_overlaps(ao_ovlp=ao_ovlp, org=True)
+        elif ovlp_type == "top":
+            top_rs = self.get_top_differences(ao_ovlp=ao_ovlp)
+            overlaps = 1 - top_rs
         else:
             raise Exception(
                 "Invalid overlap type key! Use one of " + ", ".join(self.VALID_KEYS)

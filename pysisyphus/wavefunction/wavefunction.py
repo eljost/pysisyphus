@@ -129,9 +129,18 @@ class Wavefunction:
 
     def S_with(self, other):
         return {
-            BFType.CARTESIAN: self.shells.get_S_cart(other),
-            BFType.PURE_SPHERICAL: self.shells.get_S_sph(other),
+            BFType.CARTESIAN: self.shells.get_S_cart(other.shells),
+            BFType.PURE_SPHERICAL: self.shells.get_S_sph(other.shells),
         }[self.bf_type]
+
+    def S_MO_with(self, other):
+        assert (not self.unrestricted) and (
+            self.mult == 1
+        ), "Currently only Cα is considered!"
+        S_AO = self.S_with(other)
+        C = self.C[0]
+        C_other = other.C[0]
+        return C.T @ S_AO @ C_other
 
     @property
     def ao_centers(self):
