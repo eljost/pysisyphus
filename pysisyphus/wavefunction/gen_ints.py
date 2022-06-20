@@ -13,6 +13,7 @@ http://www.sympy.org/scipy-2017-codegen-tutorial/notebooks/07-the-hard-way.html
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import functools
 import itertools as it
 import os
 from pathlib import Path
@@ -131,6 +132,7 @@ class Multipole1d(Function):
     """
 
     @classmethod
+    @functools.cache
     def eval(cls, i, j, a, b, A, B, e, C):
         if i.is_negative or j.is_negative or e.is_negative:
             return 0
@@ -151,7 +153,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X**2)
+            return sqrt(pi / p) * exp(-mu * X ** 2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -181,6 +183,7 @@ class Multipole3dShell(Function):
             Multipole3d(La, Lb, a, b, A, B, Le, C)
             for La, Lb, Le in shell_iter((La_tot, Lb_tot, Le_tot))
         ]
+        # print(Multipole1d.eval.cache_info())
         return exprs
 
 
@@ -197,11 +200,13 @@ class Overlap3dShell(Function):
     @classmethod
     def eval(cls, La_tot, Lb_tot, a, b, A, B):
         exprs = Multipole3dShell(La_tot, Lb_tot, a, b, A, B)
+        # print(Multipole1d.eval.cache_info())
         return exprs
 
 
 class Kinetic1d(Function):
     @classmethod
+    @functools.cache
     def eval(cls, i, j, a, b, A, B):
         if i < 0 or j < 0:
             return 0
@@ -224,7 +229,7 @@ class Kinetic1d(Function):
         # Base case
         if i == 0 and j == 0:
             X = P - A
-            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
+            return (a - 2 * a ** 2 * (X ** 2 + 1 / (2 * p))) * Overlap1d(
                 i, j, a, b, A, B
             )
         # Decrement i
@@ -269,6 +274,7 @@ class Coulomb(Function):
     """Nucleus at C."""
 
     @classmethod
+    @functools.cache
     def eval(cls, i, j, k, l, m, n, N, a, b, A, B, C):
         ang_moms = (i, j, k, l, m, n)
         if any([am < 0 for am in ang_moms]):
@@ -364,6 +370,7 @@ class CoulombShell(Function):
             Coulomb(*La, *Lb, 0, a, b, A, B, C)
             for La, Lb in shell_iter((La_tot, Lb_tot))
         ]
+        # print(Coulomb.eval.cache_info())
         return exprs
 
 
@@ -378,20 +385,10 @@ def get_map(i, center_i):
     return array, array_map
 
 
-# def gen_integrals_exprs(int_func, L_maxs, kind):
-# ranges = [range(L + 1) for L in L_maxs]
-# for L_tots in it.product(*ranges):
-# start = time.time()
-# print(f"Generating {L_tots} {kind} ... ", end="")
-# exprs = int_func(*L_tots)
-# dur = time.time() - start
-# print(f"finished in {dur:.2f} s!")
-# yield exprs, L_tots
-
-
 def gen_integrals_exprs(int_func, L_maxs, kind):
     ranges = [range(L + 1) for L in L_maxs]
 
+    """
     def gen_exprs(L_tots):
         start = time.time()
         print(f"Generating {L_tots} {kind} ...")
@@ -403,9 +400,25 @@ def gen_integrals_exprs(int_func, L_maxs, kind):
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = executor.map(gen_exprs, it.product(*ranges))
     return futures
+    """
+
+    for L_tots in it.product(*ranges):
+        start = time.time()
+        print(f"Generating {L_tots} {kind} ... ", end="")
+        exprs = int_func(*L_tots)
+        dur = time.time() - start
+        print(f"finished in {dur:.2f} s!")
+        sys.stdout.flush()
+        yield exprs, L_tots
 
 
-def render_py_funcs(exprs_Ls, args, base_name, doc_func, comment=""):
+def render_py_funcs(exprs_Ls, args, base_name, doc_func, add_imports=None, comment=""):
+    if add_imports is None:
+        add_imports = ()
+    add_imports_str = "\n".join(add_imports)
+    if add_imports:
+        add_imports_str += "\n\n"
+
     args = ", ".join((map(str, args)))
 
     py_funcs = list()
@@ -421,11 +434,13 @@ def render_py_funcs(exprs_Ls, args, base_name, doc_func, comment=""):
         comment = f'"""\n{comment}\n"""\n\n'
 
     np_tpl = Template(
-        "import numpy\n\n{{ comment }}{{ py_funcs }}",
+        "import numpy\n\n{{ add_imports }}{{ comment }}{{ py_funcs }}",
         trim_blocks=True,
         lstrip_blocks=True,
     )
-    np_rendered = np_tpl.render(comment=comment, py_funcs=py_funcs_joined)
+    np_rendered = np_tpl.render(
+        comment=comment, add_imports=add_imports_str, py_funcs=py_funcs_joined
+    )
     np_rendered = textwrap.dedent(np_rendered)
     try:
         from black import format_str, FileMode
@@ -441,7 +456,7 @@ def write_py(out_dir, name, py_rendered):
     py_name = out_dir / name
     with open(py_name, "w") as handle:
         handle.write(py_rendered)
-    print(f"Wrote '{name}'.")
+    print(f"Wrote '{py_name}'.")
 
 
 def parse_args(args):
@@ -604,7 +619,11 @@ def run():
 
     coulomb_ints_Ls = gen_integrals_exprs(coulomb_func, (l_max, l_max), "coulomb")
     coulomb_rendered = render_py_funcs(
-        coulomb_ints_Ls, (a, A, b, B, C), "coulomb", coulomb_doc_func
+        coulomb_ints_Ls,
+        (a, A, b, B, C),
+        "coulomb",
+        coulomb_doc_func,
+        add_imports=("from pysisyphus.wavefunction.boys import neville_boys as boys",),
     )
     write_py(out_dir, "coulomb.py", coulomb_rendered)
     print()
