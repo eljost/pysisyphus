@@ -71,3 +71,39 @@ def test_cross(this_dir):
     tzvpp = Shells.from_orca_json(WF_LIB_DIR / "orca_ch4_tzvpp.json")
     S_sph = sto3g.get_S_sph(tzvpp)
     assert S_sph.shape == (9, 87)
+
+
+@pytest.mark.parametrize(
+    "fn",
+    (
+        "orca_h2o_sto3g.json",
+        "orca_h2o_def2svp.json",
+    ),
+)
+def test_orca_one_el_integrals(fn):
+    fn = WF_LIB_DIR / fn
+    shells = Shells.from_orca_json(fn)
+    V = shells.V_sph
+    T = shells.T_sph
+    H = T + V
+
+    """
+    with np.printoptions(suppress=True, precision=5, linewidth=140):
+        print()
+        print("H=T+V")
+        print(H)
+        print()
+        print("T")
+        print(T)
+        print("V")
+        print(V)
+    """
+
+    with open(fn) as handle:
+        ref_data = json.load(handle)["Molecule"]
+
+    T_ref = ref_data["T-Matrix"]
+    np.testing.assert_allclose(T, T_ref, atol=1e-8)
+
+    H_ref = ref_data["H-Matrix"]
+    np.testing.assert_allclose(H, H_ref, atol=1e-8)

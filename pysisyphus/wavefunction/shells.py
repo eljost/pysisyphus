@@ -9,10 +9,12 @@ from scipy.special import factorial2
 
 
 from pysisyphus.config import L_MAX
-from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
+from pysisyphus.elem_data import INV_ATOMIC_NUMBERS, nuc_charges_for_atoms
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.helpers import canonical_order, get_l, get_shell_shape
-from pysisyphus.wavefunction import dipoles3d, ovlps3d
+from pysisyphus.wavefunction import coulomb3d, dipole3d, kinetic3d, ovlp3d
+
+# from pysisyphus.wavefunction.devel_ints import coulomb3d, dipole3d, kinetic3d, ovlp3d
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
 
@@ -102,7 +104,7 @@ class Shell:
 
     def __str__(self):
         center_str = f", at atom {self.center_ind}" if self.center_ind else ""
-        return f"Shell(L={self.L}, {self.contr_depth} pGTO(s){center_str})"
+        return f"Shell(L={self.L}, {self.contr_depth} pGTO{center_str})"
 
     def __repr__(self):
         return self.__str__()
@@ -119,16 +121,32 @@ def get_map(module, func_base_name):
     }
 
 
-Smap = get_map(ovlps3d, "ovlp3d")  # Overlap integrals
-DPMmap = get_map(dipoles3d, "dipole3d")  # Dipole moments
+Smap = get_map(ovlp3d, "ovlp3d")  # Overlap integrals
+Tmap = get_map(kinetic3d, "kinetic3d")  # Kinetic energy integrals
+Vmap = get_map(coulomb3d, "coulomb3d")  # 1el Coulomb integrals
+DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
 
 
 def ovlp(la_tot, lb_tot, a, A, b, B):
+    """Wrapper for overlap integrals."""
     func = Smap[(la_tot, lb_tot)]
     return func(a, A, b, B)
 
 
+def kinetic(la_tot, lb_tot, a, A, b, B):
+    """Wrapper for kinetic energy integrals."""
+    func = Tmap[(la_tot, lb_tot)]
+    return func(a, A, b, B)
+
+
+def coulomb(la_tot, lb_tot, a, A, b, B, C):
+    """Wrapper for 1el Coulomb integrals."""
+    func = Vmap[(la_tot, lb_tot)]
+    return func(a, A, b, B, C)
+
+
 def dpm(la_tot, lb_tot, a, A, b, B, C):
+    """Wrapper for linear moment integrals."""
     func = DPMmap[(la_tot, lb_tot)]
     return func(a, A, b, B, C)
 
@@ -169,6 +187,10 @@ class Shells:
             coords3d.append(center)
         coords3d = np.array(coords3d)
         return atoms, coords3d
+
+    @property
+    def get_cart_bf_num(self):
+        return sum([shell.size() for shell in self.shells])
 
     def from_basis(self, name, **kwargs):
         from pysisyphus.wavefunction.Basis import shells_with_basis
@@ -219,41 +241,63 @@ class Shells:
     def P_sph(self):
         return sp.linalg.block_diag(*[self.sph_Ps[shell.L] for shell in self.shells])
 
-    def get_S_cart(self, other=None) -> NDArray:
+    def get_1el_ints_cart(self, int_func, other=None, add_args=None) -> NDArray:
         shells_a = self
         shells_b = shells_a if other is None else other
+
+        if add_args is None:
+            add_args = {}
 
         rows = list()
         for shell_a in shells_a.shells:
             La, A, dA, aa, normsa = shell_a.as_tuple()
             row = list()
+            # if La > 0:
+            # import pdb; pdb.set_trace()  # fmt: skip
             for shell_b in shells_b.shells:
                 Lb, B, dB, bb, normsb = shell_b.as_tuple()
                 shape = get_shell_shape(La, Lb)
-                # Overlap over primitives, shape: (product(*shape), prims_a, prims_b)
-                ss = ovlp(La, Lb, aa[:, None], A, bb[None, :], B)
+                # Integral over primitives, shape: (product(*shape), prims_a, prims_b)
+                pints = int_func(La, Lb, aa[:, None], A, bb[None, :], B, **add_args)
                 # Contraction coefficients
-                # ss *= dA[None, :, None] * dB[None, None, :]
-                ss *= dA[:, None] * dB[None, :]
-                ss = ss.reshape(*shape, len(dA), len(dB))
+                pints *= dA[:, None] * dB[None, :]
+                pints = pints.reshape(*shape, len(dA), len(dB))
                 # Normalization
-                ss *= normsa[:, None, :, None] * normsb[None, :, None, :]
+                pints *= normsa[:, None, :, None] * normsb[None, :, None, :]
                 # Contract primitives, shape: shape
-                ss = ss.sum(axis=(2, 3)).reshape(shape)
-                row.append(ss)
+                cints = pints.sum(axis=(2, 3)).reshape(shape)
+                row.append(cints)
             rows.append(row)
-        S = np.block(rows)
-        return S
+        int_matrix = np.block(rows)
+        return int_matrix
 
-    def get_S_sph(self, other=None) -> NDArray:
-        S_cart = self.get_S_cart(other=other)
+    def get_1el_ints_sph(
+        self, int_func=None, int_matrix=None, other=None, **kwargs
+    ) -> NDArray:
+        if int_matrix is None:
+            int_matrix = self.get_1el_ints_cart(int_func, other=other, **kwargs)
+
         shells_b = self if other is None else other
         C_a = self.cart2sph_coeffs
         C_b = shells_b.cart2sph_coeffs
-        S_sph = C_a.dot(S_cart).dot(C_b.T)  # Cartsian -> Spherical conversion
+        int_matrix_sph = C_a.dot(int_matrix).dot(
+            C_b.T
+        )  # Cartsian -> Spherical conversion
         if self.ordering == "native":
-            S_sph = self.P_sph.dot(S_sph).dot(shells_b.P_sph.T)  # Reorder
-        return S_sph
+            int_matrix_sph = self.P_sph.dot(int_matrix_sph).dot(
+                shells_b.P_sph.T
+            )  # Reorder
+        return int_matrix_sph
+
+    #####################
+    # Overlap integrals #
+    #####################
+
+    def get_S_cart(self, other=None) -> NDArray:
+        return self.get_1el_ints_cart(ovlp, other=other)
+
+    def get_S_sph(self, other=None) -> NDArray:
+        return self.get_1el_ints_sph(ovlp, other=other)
 
     @property
     def S_cart(self):
@@ -262,6 +306,58 @@ class Shells:
     @property
     def S_sph(self):
         return self.get_S_sph()
+
+    ############################
+    # Kinetic energy integrals #
+    ############################
+
+    def get_T_cart(self, other=None) -> NDArray:
+        return self.get_1el_ints_cart(kinetic, other=other)
+
+    def get_T_sph(self, other=None) -> NDArray:
+        return self.get_1el_ints_sph(kinetic, other=other)
+
+    @property
+    def T_cart(self):
+        return self.get_T_cart()
+
+    @property
+    def T_sph(self):
+        return self.get_T_sph()
+
+    ################################
+    # Nuclear attraction integrals #
+    ################################
+
+    def get_V_cart(self) -> NDArray:
+        atoms, coords3d = self.atoms_coords3d
+        charges = nuc_charges_for_atoms(atoms)
+        cart_bf_num = self.get_cart_bf_num
+        V_nuc = np.zeros((cart_bf_num, cart_bf_num))
+        # Loop over all cores and add the contributions
+        for C, Z in zip(coords3d, charges):
+            V_nuc += -Z * self.get_1el_ints_cart(
+                coulomb,
+                add_args={
+                    "C": C,
+                },
+            )
+        return V_nuc
+
+    def get_V_sph(self) -> NDArray:
+        return self.get_1el_ints_sph(int_func=None, int_matrix=self.V_cart)
+
+    @property
+    def V_cart(self):
+        return self.get_V_cart()
+
+    @property
+    def V_sph(self):
+        return self.get_V_sph()
+
+    ###########################
+    # Dipole moment integrals #
+    ###########################
 
     def get_dipole_ints_cart(self, origin):
         shells_a = self

@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 
-"""
-https://stackoverflow.com/questions/39536540/substitute-function-call-with-sympy
-https://stackoverflow.com/questions/36197283/recursive-substitution-in-sympy
-
-Functions module
-http://docs.sympy.org/latest/modules/functions/index.html
-
-CSE and code generation
-http://www.sympy.org/scipy-2017-codegen-tutorial/notebooks/07-the-hard-way.html
-"""
+# [1] https://doi.org/10.1063/1.450106
+#     Efficient recursive computation of molecular integrals over Cartesian
+#     Gaussian functions
+#     Obara, Saika, 1986
+# [2] https://doi.org/10.1002/9781119019572
+#     Molecular Electronic-Structure Theory
+#     Helgaker, Jørgensen, Olsen
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +21,7 @@ import textwrap
 import time
 
 from jinja2 import Template
+import numpy as np
 from sympy import (
     Array,
     cse,
@@ -275,92 +273,72 @@ class Coulomb(Function):
 
     @classmethod
     @functools.cache
-    def eval(cls, i, j, k, l, m, n, N, a, b, A, B, C):
-        ang_moms = (i, j, k, l, m, n)
+    def eval(cls, i, k, m, j, l, n, N, a, b, A, B, C):
+        ang_moms = (i, k, m, j, l, n)
         if any([am < 0 for am in ang_moms]):
             return 0
 
         p = a + b
         P = (a * A + b * B) / p
         mu = (a * b) / p
+        X_AB = A - B
         X_PC = P - C
 
         def recur(N, *inds):
             """Simple wrapper to pass all required arguments."""
             return Coulomb(*inds, N, a, b, A, B, C)
 
-        str_args = [str(arg) for arg in ("i", "j", "k", "l", "m", "n")]
-        decr_map = {str_ind: index for index, str_ind in enumerate(str_args)}
-        decr_complements = {
-            "i": "j",
-            "j": "i",
-            "k": "l",
-            "l": "k",
-            "m": "n",
-            "n": "m",
-        }
+        def decr(to_decr, decr_ind):
+            one = np.zeros(3, dtype=int)
+            one[decr_ind] = 1
 
-        def decr(str_arg):
-            if str_arg in ("i", "k", "m"):
+            def Ni(inds):
+                return inds[decr_ind]
+
+            bra = np.array((i, k, m), dtype=int)
+            ket = np.array((j, l, n), dtype=int)
+
+            if to_decr == "bra":
                 X = P - A
+                bra[decr_ind] -= 1
             else:
                 X = P - B
-            X = X.norm()
+                ket[decr_ind] -= 1
 
-            ind_pairs = {
-                "i": (i - 1, j),
-                "j": (i, j - 1),
-                "k": (k - 1, l),
-                "l": (k, l - 1),
-                "m": (m - 1, n),
-                "n": (m, n - 1),
-            }
-            ind_pair = ind_pairs[str_arg]
-            left_ind, right_ind = ind_pair
-
-            decr_inds = [i, j, k, l, m, n]
-            decr_inds_complement = decr_inds.copy()
-            complement = decr_complements[str_arg]
-            complement_ind = decr_map[complement]
-            decr_inds_complement[complement_ind] -= 1
-            decr_ind = decr_map[str_arg]
-            decr_inds[decr_ind] -= 1
-            decr2_inds = decr_inds.copy()
-            decr2_inds[decr_ind] -= 1
-            N_plus = N + 1
+            bra_decr = bra - one
+            ket_decr = ket - one
 
             return (
-                X * recur(N, *decr_inds)
-                + (1 / (2 * p))
-                * (
-                    left_ind * recur(N, *decr2_inds)
-                    + right_ind * recur(N, *decr_inds_complement)
-                )
-                - X_PC.norm() * recur(N_plus, *decr_inds)
-                - (1 / (2 * p))
-                * (
-                    left_ind * recur(N_plus, *decr2_inds)
-                    + right_ind * recur(N_plus, *decr_inds_complement)
-                )
+                X[decr_ind] * recur(N, *bra, *ket)
+                - X_PC[decr_ind] * recur(N + 1, *bra, *ket)
+                + 1
+                / (2 * p)
+                * Ni(bra)
+                * (recur(N, *bra_decr, *ket) - recur(N + 1, *bra_decr, *ket))
+                + 1
+                / (2 * p)
+                * Ni(ket)
+                * (recur(N, *bra, *ket_decr) - recur(N + 1, *bra, *ket_decr))
             )
 
         # Base case
         if all([am == 0 for am in ang_moms]):
             r2_PC = X_PC.dot(X_PC)
-            K = exp(-mu * r2_PC)
+            r2_AB = X_AB.dot(X_AB)
+            K = exp(-mu * r2_AB)
             return 2 * pi / p * K * boys(N, p * r2_PC)
         elif i > 0:
-            return decr("i")
+            return decr("bra", 0)
         elif j > 0:
-            return decr("j")
+            return decr("ket", 0)
         elif k > 0:
-            return decr("k")
+            return decr("bra", 1)
         elif l > 0:
-            return decr("l")
+            return decr("ket", 1)
         elif m > 0:
-            return decr("m")
+            return decr("bra", 2)
         elif n > 0:
-            return decr("n")
+            return decr("ket", 2)
 
 
 class CoulombShell(Function):
@@ -475,7 +453,7 @@ def parse_args(args):
     )
     parser.add_argument(
         "--out-dir",
-        default="gen_ints",
+        default="devel_ints",
         help="Directory, where the generated integrals are written.",
     )
 
@@ -617,15 +595,15 @@ def run():
     write_py(out_dir, "kinetic3d.py", kinetic_rendered)
     print()
 
-    coulomb_ints_Ls = gen_integrals_exprs(coulomb_func, (l_max, l_max), "coulomb")
+    coulomb_ints_Ls = gen_integrals_exprs(coulomb_func, (l_max, l_max), "coulomb3d")
     coulomb_rendered = render_py_funcs(
         coulomb_ints_Ls,
         (a, A, b, B, C),
-        "coulomb",
+        "coulomb3d",
         coulomb_doc_func,
-        add_imports=("from pysisyphus.wavefunction.boys import neville_boys as boys",),
+        add_imports=("from pysisyphus.wavefunction.boys import boys",),
     )
-    write_py(out_dir, "coulomb.py", coulomb_rendered)
+    write_py(out_dir, "coulomb3d.py", coulomb_rendered)
     print()
 
 
