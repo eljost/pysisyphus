@@ -66,6 +66,35 @@ def cca_order(l):
     return inds
 
 
+def cart2ang_moms(cart):
+    """Translate 'xxx' to (3, 0, 0) etc."""
+
+    ang_moms = np.zeros(3, dtype=int)
+    for char in cart:
+        # x: 120, y: 121, z: 122
+        ang_moms[ord(char.lower()) - 120] += 1
+    return tuple(ang_moms)
+
+
+def permut_for_order(cart_orders, pysis_order_func=cca_order):
+    """Create permutation matrices to reorder Cartesian integrals."""
+    Ps = dict()
+    for cart_order in cart_orders:
+        lengths = [len(_) for _ in cart_order]
+        l0 = lengths[0]
+        assert all([length == l0 for length in lengths])
+        other_order = [cart2ang_moms(_) for _ in cart_order]
+        pysis_order = pysis_order_func(l0)
+
+        num = len(pysis_order)
+        P = np.zeros((num, num), dtype=int)
+        for i, po in enumerate(other_order):
+            ind = pysis_order.index(po)
+            P[i, ind] = 1
+        Ps[l0] = P
+    return Ps
+
+
 def symmetric_orthogonalization(mat, S, thresh=1e-6):
     w, v = np.linalg.eigh(mat.T.dot(S).dot(mat))
     mask = w >= thresh

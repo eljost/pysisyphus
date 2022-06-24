@@ -1,4 +1,6 @@
+from jinja2 import Template
 import itertools as it
+import textwrap
 from typing import Tuple
 
 
@@ -11,7 +13,12 @@ from scipy.special import factorial2
 from pysisyphus.config import L_MAX
 from pysisyphus.elem_data import INV_ATOMIC_NUMBERS, nuc_charges_for_atoms
 from pysisyphus.helpers_pure import file_or_str
-from pysisyphus.wavefunction.helpers import canonical_order, get_l, get_shell_shape
+from pysisyphus.wavefunction.helpers import (
+    canonical_order,
+    get_l,
+    get_shell_shape,
+    permut_for_order,
+)
 from pysisyphus.wavefunction import coulomb3d, dipole3d, kinetic3d, ovlp3d
 
 # from pysisyphus.wavefunction.devel_ints import coulomb3d, dipole3d, kinetic3d, ovlp3d
@@ -94,6 +101,9 @@ class Shell:
     def as_tuple(self):
         return (self.L, self.center, self.coeffs, self.exps, self.norms)
 
+    def exps_coeffs_iter(self):
+        return zip(self.exps, self.coeffs)
+
     @property
     def contr_depth(self):
         return self.coeffs.size
@@ -159,6 +169,11 @@ class Shells:
         self.ordering = ordering
         assert ordering in ("pysis", "native")
 
+        try:
+            self.cart_Ps = permut_for_order(self.cart_order)
+        except AttributeError:
+            pass
+
     def __len__(self):
         return len(self.shells)
 
@@ -216,6 +231,41 @@ class Shells:
         shells = shells_from_json(text)
         return shells
 
+    @staticmethod
+    @file_or_str(".fchk")
+    def from_fchk(text):
+        # import here, to avoid cyclic imports
+        from pysisyphus.io.fchk import shells_from_fchk
+
+        shells = shells_from_fchk(text)
+        return shells
+
+    def center_shell_iter(self):
+        sorted_shells = sorted(self.shells, key=lambda shell: shell.center_ind)
+        return it.groupby(sorted_shells, key=lambda shell: shell.center_ind)
+
+    def as_gau_gbs(self) -> str:
+        def dfmt(num):
+            return f"{num: 12.10e}".replace("e", "D")
+
+        gbs_tpl = Template(
+            """
+        {% for center_ind, shells in center_shell_iter %}
+            {{ center_ind+1 }} 0
+        {%- for shell in shells %}
+        {{ ("S", "P", "D", "F", "G")[shell.L] }}   {{ shell.exps.size}}    1.00 0.000000000000
+            {%- for exp_, coeff in shell.exps_coeffs_iter() %}
+            {{ dfmt(exp_) }} {{ dfmt(coeff) }}
+            {%- endfor -%}
+        {% endfor %}
+         ****
+        {%- endfor %}
+        """
+        )
+        rendered = gbs_tpl.render(center_shell_iter=self.center_shell_iter(), dfmt=dfmt)
+        rendered = textwrap.dedent(rendered)
+        return rendered
+
     def _ao_center_iter(self, func):
         i = 0
         for shell in self.shells:
@@ -241,7 +291,13 @@ class Shells:
     def P_sph(self):
         return sp.linalg.block_diag(*[self.sph_Ps[shell.L] for shell in self.shells])
 
-    def get_1el_ints_cart(self, int_func, other=None, add_args=None) -> NDArray:
+    @property
+    def P_cart(self):
+        return sp.linalg.block_diag(*[self.cart_Ps[shell.L] for shell in self.shells])
+
+    def get_1el_ints_cart(
+        self, int_func, other=None, add_args=None, can_reorder: bool = True
+    ) -> NDArray:
         shells_a = self
         shells_b = shells_a if other is None else other
 
@@ -252,8 +308,6 @@ class Shells:
         for shell_a in shells_a.shells:
             La, A, dA, aa, normsa = shell_a.as_tuple()
             row = list()
-            # if La > 0:
-            # import pdb; pdb.set_trace()  # fmt: skip
             for shell_b in shells_b.shells:
                 Lb, B, dB, bb, normsb = shell_b.as_tuple()
                 shape = get_shell_shape(La, Lb)
@@ -269,24 +323,31 @@ class Shells:
                 row.append(cints)
             rows.append(row)
         int_matrix = np.block(rows)
+        # Reordering will be disabled, when spherical integrals are desired. They
+        # are reordered outside of this function. Reordering them already here
+        # would mess up the results after the 2nd reordering.
+        if can_reorder and self.ordering == "native":
+            int_matrix = self.P_cart.dot(int_matrix).dot(shells_b.P_cart.T)
         return int_matrix
 
     def get_1el_ints_sph(
         self, int_func=None, int_matrix=None, other=None, **kwargs
     ) -> NDArray:
         if int_matrix is None:
-            int_matrix = self.get_1el_ints_cart(int_func, other=other, **kwargs)
+            # Disallow reordering of the Cartesian integrals
+            int_matrix = self.get_1el_ints_cart(
+                int_func, other=other, can_reorder=False, **kwargs
+            )
 
         shells_b = self if other is None else other
         C_a = self.cart2sph_coeffs
         C_b = shells_b.cart2sph_coeffs
-        int_matrix_sph = C_a.dot(int_matrix).dot(
-            C_b.T
-        )  # Cartsian -> Spherical conversion
+        # Cartsian -> Spherical conversion
+        int_matrix_sph = C_a.dot(int_matrix).dot(C_b.T)
+        # Reorder to the native ordering of the respective program/format, e.g.
+        # ORCA or .fchk.
         if self.ordering == "native":
-            int_matrix_sph = self.P_sph.dot(int_matrix_sph).dot(
-                shells_b.P_sph.T
-            )  # Reorder
+            int_matrix_sph = self.P_sph.dot(int_matrix_sph).dot(shells_b.P_sph.T)
         return int_matrix_sph
 
     #####################
@@ -329,7 +390,7 @@ class Shells:
     # Nuclear attraction integrals #
     ################################
 
-    def get_V_cart(self) -> NDArray:
+    def get_V_cart(self, **kwargs) -> NDArray:
         atoms, coords3d = self.atoms_coords3d
         charges = nuc_charges_for_atoms(atoms)
         cart_bf_num = self.get_cart_bf_num
@@ -341,11 +402,13 @@ class Shells:
                 add_args={
                     "C": C,
                 },
+                **kwargs,
             )
         return V_nuc
 
     def get_V_sph(self) -> NDArray:
-        return self.get_1el_ints_sph(int_func=None, int_matrix=self.V_cart)
+        V_cart = self.get_V_cart(can_reorder=False)
+        return self.get_1el_ints_sph(int_func=None, int_matrix=V_cart)
 
     @property
     def V_cart(self):
@@ -408,11 +471,14 @@ class Shells:
         dp_sph = np.array(dp_sph)
         return dp_sph
 
+    def __str__(self):
+        return f"{self.__class__.__name__}({len(self.shells)} shells)"
+
 
 class ORCAShells(Shells):
     sph_Ps = {
         0: [[1]],  # s
-        1: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],  # p  pz px py
+        1: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],  # pz px py
         2: [
             [0, 0, 1, 0, 0],  # dz²
             [0, 1, 0, 0, 0],  # dxz
@@ -441,3 +507,73 @@ class ORCAShells(Shells):
             [0, 0, 0, 0, 0, 0, 0, 0, -1],  # sign flip
         ],
     }
+
+
+class FCHKShells(Shells):
+    cart_order = (
+        ("",),
+        ("x", "y", "z"),
+        ("xx", "yy", "zz", "xy", "xz", "yz"),
+        ("xxx", "yyy", "zzz", "xyy", "xxy", "xxz", "xzz", "yzz", "yyz", "xyz"),
+        (
+            "zzzz",
+            "yzzz",
+            "yyzz",
+            "yyyz",
+            "yyyy",
+            "xzzz",
+            "xyzz",
+            "xyyz",
+            "xyyy",
+            "xxzz",
+            "xxyz",
+            "xxyy",
+            "xxxz",
+            "xxxy",
+            "xxxx",
+        ),
+    )
+
+    sph_Ps = {
+        0: [[1]],  # s
+        1: [[1, 0, 0], [0, 0, 1], [0, 1, 0]],  # px pz py
+        2: [
+            [0, 0, 1, 0, 0],  # dz²
+            [0, 1, 0, 0, 0],  # dxz
+            [0, 0, 0, 1, 0],  # dyz
+            [1, 0, 0, 0, 0],  # dx² - y²
+            [0, 0, 0, 0, 1],  # dxy
+        ],
+        # Similar to ORCA, but w/o the sign flips ;)
+        3: [
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0],
+            [1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1],
+        ],
+        4: [
+            [0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1],
+        ],
+    }
+
+
+# class MolsocShells(Shells):
+# """See SI of PySOC paper."""
+
+# cart_order = (
+# ("",),
+# ("x", "y", "z"),
+# ("xx", "xy", "xz", "yy", "yz", "zz"),
+# ("xxx", "xxy", "xxz", "xyy", "xyz", "xzz", "yyy", "yyz", "yzz", "zzz"),
+# )

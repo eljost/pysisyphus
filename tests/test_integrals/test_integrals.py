@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.config import WF_LIB_DIR
+from pysisyphus.io.fchk import parse_fchk
 from pysisyphus.wavefunction import get_l, Shells
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs_for
 
@@ -107,3 +108,25 @@ def test_orca_one_el_integrals(fn):
 
     H_ref = ref_data["H-Matrix"]
     np.testing.assert_allclose(H, H_ref, atol=1e-8)
+
+
+@pytest.mark.parametrize(
+    "fchk",
+    (
+        "g16_ch4_qzvpp.fchk",
+    ),
+)
+def test_fchk_overlaps(fchk):
+    shells = Shells.from_fchk(WF_LIB_DIR / fchk)
+    # Recover reference overlap matrix from MO coefficients
+    data = parse_fchk(WF_LIB_DIR / fchk)
+    C = np.array(data["Alpha MO coefficients"], dtype=float)
+    bf_num = int(np.sqrt(C.size))
+    # Transpose, so MOs are in columns
+    C = C.reshape(-1, bf_num).T
+    C_inv = np.linalg.pinv(C, rcond=1e-8)
+    S_ref = C_inv.T @ C_inv
+    S = shells.S_sph
+    if S.shape != S_ref.shape:
+        S = shells.S_cart
+    np.testing.assert_allclose(S, S_ref, atol=5e-8)
