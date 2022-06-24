@@ -72,7 +72,7 @@ def iao_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
     C_occ = wf.C_occ
     minao_shells = wf.shells.from_basis("minao")
     S_minao = minao_shells.S_sph  # Overlaps in MINAO basis
-    S_cross = wf.S_with(minao_shells)  # Overlap between original and MINAO  basis
+    S_cross = wf.S_with_shells(minao_shells)  # Overlap between original and MINAO  basis
 
     def get_iao_P(C_occ: NDArray[float]):
         iaos = make_iaos(C_occ, S_org, S_minao, S_cross)

@@ -123,15 +123,19 @@ class Wavefunction:
     def S(self):
         # Check what type of basis functions we are using.
         return {
-            BFType.CARTESIAN: self.shells.S_cart,
-            BFType.PURE_SPHERICAL: self.shells.S_sph,
-        }[self.bf_type]
+            BFType.CARTESIAN: lambda: self.shells.S_cart,
+            BFType.PURE_SPHERICAL: lambda: self.shells.S_sph,
+        }[self.bf_type]()
+
+    def S_with_shells(self, other_shells):
+        return {
+            BFType.CARTESIAN: lambda: self.shells.get_S_cart(other_shells),
+            BFType.PURE_SPHERICAL: lambda: self.shells.get_S_sph(other_shells),
+        }[self.bf_type]()
 
     def S_with(self, other):
-        return {
-            BFType.CARTESIAN: self.shells.get_S_cart(other.shells),
-            BFType.PURE_SPHERICAL: self.shells.get_S_sph(other.shells),
-        }[self.bf_type]
+        other_shells = other.shells
+        return self.S_with_shells(other_shells)
 
     def S_MO_with(self, other):
         assert (not self.unrestricted) and (
@@ -146,9 +150,9 @@ class Wavefunction:
     def ao_centers(self):
         ao_centers = list(
             {
-                BFType.CARTESIAN: self.shells.cart_ao_centers,
-                BFType.PURE_SPHERICAL: self.shells.sph_ao_centers,
-            }[self.bf_type]
+                BFType.CARTESIAN: lambda: self.shells.cart_ao_centers,
+                BFType.PURE_SPHERICAL: lambda: self.shells.sph_ao_centers,
+            }[self.bf_type]()
         )
         return ao_centers
 
@@ -173,8 +177,8 @@ class Wavefunction:
             origin = self.get_origin(kind=kind)
 
         dipole_ints = {
-            BFType.CARTESIAN: self.shells.get_dipole_ints_cart,
-            BFType.PURE_SPHERICAL: self.shells.get_dipole_ints_sph,
+            BFType.CARTESIAN: lambda *args: self.shells.get_dipole_ints_cart(*args),
+            BFType.PURE_SPHERICAL: lambda *args: self.shells.get_dipole_ints_sph(*args),
         }[self.bf_type](origin)
         return dipole_ints
 

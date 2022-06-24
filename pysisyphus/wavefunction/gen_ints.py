@@ -352,6 +352,131 @@ class CoulombShell(Function):
         return exprs
 
 
+class SpinOrbit(Function):
+    """1-electron spin-orbit interaction integral for Cartesian direction μ."""
+
+    @classmethod
+    @functools.cache
+    def eval(cls, i, k, m, j, l, n, N, mu, a, b, A, B, C):
+        ang_moms = (i, k, m, j, l, n)
+        if any([am < 0 for am in ang_moms]):
+            return 0
+
+        p = a + b
+        P = (a * A + b * B) / p
+        X_PC = P - C
+
+        def coulomb(N, *inds):
+            return Coulomb(*inds, N, a, b, A, B, C)
+
+        def recur(N, *inds):
+            """Simple wrapper to pass all required arguments."""
+            return SpinOrbit(*inds, N, mu, a, b, A, B, C)
+
+        def decr(to_decr, decr_ind):
+            one = np.zeros(3, dtype=int)
+            one[decr_ind] = 1
+
+            def Ni(inds):
+                return inds[decr_ind]
+
+            bra = np.array((i, k, m), dtype=int)
+            ket = np.array((j, l, n), dtype=int)
+
+            if to_decr == "bra":
+                X = P - A
+                bra[decr_ind] -= 1
+            else:
+                X = P - B
+                ket[decr_ind] -= 1
+
+            bra_decr = bra - one
+            ket_decr = ket - one
+
+            expr = (
+                # The initial part of this recursion is the same as for the 1-electron
+                # Coulomb integrals.
+                X[decr_ind] * recur(N, *bra, *ket)
+                - X_PC[decr_ind] * recur(N + 1, *bra, *ket)
+                + 1
+                / (2 * p)
+                * Ni(bra)
+                * (recur(N, *bra_decr, *ket) - recur(N + 1, *bra_decr, *ket))
+                + 1
+                / (2 * p)
+                * Ni(ket)
+                * (recur(N, *bra, *ket_decr) - recur(N + 1, *bra, *ket_decr))
+                # From here on, the recursion differs.
+            )
+
+            if to_decr == "bra":
+                X = B - C
+                exponent = b
+            else:
+                X = A - C
+                exponent = a
+            # Second to line in Eq. (A34) in [1]
+            expr += 2 * exponent * Matrix(one).cross(X)[mu] * coulomb(N + 1, *bra, *ket)
+            # Last line in Eq. (A34) in [1]
+            for k_ in range(
+                3
+            ):  # Use k_ instead of k, as this is already an angular momentum
+                one_k = np.zeros(3, dtype=int)
+                one_k[k_] = 1
+                one_ind = np.cross(one, one_k)[mu]
+                if to_decr == "bra":
+                    expr += ket[k] * one_ind * coulomb(N + 1, *bra, *(ket - one_k))
+                else:
+                    expr += bra[k] * one_ind * coulomb(N + 1, *(bra - one_k), *ket)
+            return expr
+
+        # Base case
+        if all([am == 0 for am in ang_moms]):
+            AC = A - C
+            BC = B - C
+            ACxBC = AC.cross(BC)
+            return 4 * p * ACxBC[m] * coulomb(N + 1, 0, 0, 0, 0, 0, 0)
+        elif i > 0:
+            return decr("bra", 0)
+        elif j > 0:
+            return decr("ket", 0)
+        elif k > 0:
+            return decr("bra", 1)
+        elif l > 0:
+            return decr("ket", 1)
+        elif m > 0:
+            return decr("bra", 2)
+        elif n > 0:
+            return decr("ket", 2)
+
+
+class SpinOrbitShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, a, b, A, B, C=(0.0, 0.0, 0.0)):
+        exprs = list()
+        for La, Lb in shell_iter((La_tot, Lb_tot)):
+            for mu in range(3):
+                exprs.extend(
+                    [
+                        SpinOrbit(*La, *Lb, 0, mu, a, b, A, B, C)
+                        for La, Lb in shell_iter((La_tot, Lb_tot))
+                    ]
+                )
+        # print(SpinOrbit.eval.cache_info())
+        return exprs
+
+
+class SpinOrbitShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, a, b, A, B, C=(0.0, 0.0, 0.0)):
+        exprs = [
+            SpinOrbit(*La, *Lb, 0, mu, a, b, A, B, C)
+            for (La, Lb), mu in it.product(shell_iter((La_tot, Lb_tot)), range(3))
+        ]
+        # print(SpinOrbit.eval.cache_info())
+        return exprs
+
+
 def get_center(i):
     symbs = [Symbol(str(i) + ind, real=True) for ind in ("x", "y", "z")]
     return Matrix([*symbs]).T  # Return column vector
@@ -572,6 +697,20 @@ def run():
         shell_b = L_MAP[Lb_tot]
         return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
 
+    def so1el_func(La_tot, Lb_tot):
+        return (
+            Array(SpinOrbitShell(La_tot, Lb_tot, a, b, center_A, center_B, center_C))
+            .xreplace(A_map)
+            .xreplace(B_map)
+            .xreplace(C_map)
+        )
+
+    def so1el_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian ({shell_a}{shell_b}) 1-electron spin-orbit-interaction integral."
+
     ovlp_ints_Ls = gen_integrals_exprs(ovlp_func, (l_max, l_max), "overlap")
     ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
     write_py(out_dir, "ovlp3d.py", ovlp_rendered)
@@ -595,15 +734,28 @@ def run():
     write_py(out_dir, "kinetic3d.py", kinetic_rendered)
     print()
 
+    boys_import = ("from pysisyphus.wavefunction.boys import boys",)
+
     coulomb_ints_Ls = gen_integrals_exprs(coulomb_func, (l_max, l_max), "coulomb3d")
     coulomb_rendered = render_py_funcs(
         coulomb_ints_Ls,
         (a, A, b, B, C),
         "coulomb3d",
         coulomb_doc_func,
-        add_imports=("from pysisyphus.wavefunction.boys import boys",),
+        add_imports=boys_import,
     )
     write_py(out_dir, "coulomb3d.py", coulomb_rendered)
+    print()
+
+    so1el_ints_Ls = gen_integrals_exprs(so1el_func, (l_max, l_max), "so1el")
+    coulomb_rendered = render_py_funcs(
+        so1el_ints_Ls,
+        (a, A, b, B, C),
+        "so1el",
+        so1el_doc_func,
+        add_imports=boys_import,
+    )
+    write_py(out_dir, "so1el.py", coulomb_rendered)
     print()
 
 
