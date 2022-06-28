@@ -7,9 +7,12 @@
 # [2] https://doi.org/10.1002/9781119019572
 #     Molecular Electronic-Structure Theory
 #     Helgaker, Jørgensen, Olsen
+# [3] https://doi.org/10.1021/acs.jctc.7b00788
+#     LIBRETA: Computerized Optimization and Code Synthesis for
+#     Electron Repulsion Integral Evaluation
+#     Jun Zhang
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
 import functools
 import itertools as it
 import os
@@ -53,7 +56,7 @@ L_MAP = {
 }
 
 
-def make_py_func(exprs, args=None, name=None, doc_str=""):
+def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
     if args is None:
         args = list()
     # Generate random name, if no name was supplied
@@ -62,8 +65,6 @@ def make_py_func(exprs, args=None, name=None, doc_str=""):
             [random.choice(string.ascii_letters) for i in range(8)]
         )
     arg_strs = [arg.strip() for arg in args.split(",")]
-
-    repls, reduced = cse(list(exprs))
 
     # This allows using the 'boys' function without producing an error
     print_settings = {
@@ -151,7 +152,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X ** 2)
+            return sqrt(pi / p) * exp(-mu * X**2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -227,7 +228,7 @@ class Kinetic1d(Function):
         # Base case
         if i == 0 and j == 0:
             X = P - A
-            return (a - 2 * a ** 2 * (X ** 2 + 1 / (2 * p))) * Overlap1d(
+            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
                 i, j, a, b, A, B
             )
         # Decrement i
@@ -352,6 +353,168 @@ class CoulombShell(Function):
         return exprs
 
 
+class ERI(Function):
+    """Variables named according to libreta paper [3]."""
+
+    @classmethod
+    def eval(
+        cls, ia, ja, ka, ib, jb, kb, ic, jc, kc, id_, jd, kd, N, a, b, c, d, A, B, C, D
+    ):
+        ang_moms = np.array(
+            (ia, ja, ka, ib, jb, kb, ic, jc, kc, id_, jd, kd), dtype=int
+        )
+        ang_moms2d = ang_moms.reshape(-1, 3)
+
+        if any([am < 0 for am in ang_moms]):
+            return 0
+
+        AB = A - B
+        xi = a + b
+        P = (a * A + b * B) / xi  # Eq. (5)
+
+        CD = C - D
+        zeta = c + d
+        Q = (c * C + d * D) / zeta  # Eq. (6)
+
+        theta = xi * zeta / (xi + zeta)  # Eq. (7)
+
+        def recur(N, *ang_moms):
+            """Simple wrapper to pass all required arguments."""
+            return ERI(*ang_moms, N, a, b, c, d, A, B, C, D)
+
+        def recur_hrr(bra_or_ket, cart_ind):
+            """Horizontal recursion relation to transfer angmoms in bra or ket.
+
+            (a, b+1_x|cd) = (a + 1_x,b|cd) + X_AB (ab|cd)
+            (ab|c, d + 1_x) = (ab|c + 1_x, d) + X_CD (ab|cd)
+            """
+            if bra_or_ket == "bra":
+                XYZ = AB
+                incr_ind = 0
+            else:
+                XYZ = CD
+                incr_ind = 2
+
+            decr_ind = incr_ind + 1
+            incr_ang_moms = ang_moms2d.copy()
+            incr_ang_moms[incr_ind, cart_ind] += 1  # Increase in left orbital
+            incr_ang_moms[decr_ind, cart_ind] -= 1  # Decrease in right orbital
+            incr_ang_moms = incr_ang_moms.flatten()
+            decr_ang_moms = ang_moms2d.copy()
+            decr_ang_moms[decr_ind, cart_ind] -= 1
+            decr_ang_moms = decr_ang_moms.flatten()
+
+            return recur(N, *incr_ang_moms) + XYZ[cart_ind] * recur(N, *decr_ang_moms)
+
+        def recur_vrr(bra_or_ket, cart_ind):
+            assert (ib, jb, kb) == (0, 0, 0)
+            assert (id_, jd, kd) == (0, 0, 0)
+
+            if bra_or_ket == "bra":
+                XYZ = P - A
+                decr_ind = 0
+                decr_also_ind = 2
+                exp1, exp2 = zeta, xi
+                am1 = (ia, ja, ka)[cart_ind] - 1
+                am2 = (ic, jc, kc)[cart_ind]
+                sign = -1
+            else:
+                XYZ = Q - C
+                decr_ind = 2
+                decr_also_ind = 0
+                exp1, exp2 = xi, zeta
+                am1 = (ic, jc, kc)[cart_ind] - 1
+                am2 = (ia, ja, ka)[cart_ind]
+                sign = 1
+
+            decr_ang_moms = ang_moms2d.copy()
+            decr_ang_moms[decr_ind, cart_ind] -= 1
+            decr_ang_moms = decr_ang_moms.flatten()
+            decr2_ang_moms = ang_moms2d.copy()
+            decr2_ang_moms[decr_ind, cart_ind] -= 2  # Further decrease angular momentum
+            decr2_ang_moms = decr2_ang_moms.flatten()
+            decr_also_ang_moms = ang_moms2d.copy()
+            decr_also_ang_moms[decr_also_ind, cart_ind] -= 1
+            decr_also_ang_moms = decr_also_ang_moms.flatten()
+
+            denom = xi + zeta
+            quot = exp1 / denom
+            PQ = P - Q
+
+            return (
+                XYZ[cart_ind] * recur(N, *decr_ang_moms)
+                + sign * quot * PQ[cart_ind] * recur(N + 1, *decr_ang_moms)
+                + am1
+                / (2 * exp2)
+                * (recur(N, *decr2_ang_moms) - quot * recur(N + 1, *decr2_ang_moms))
+                + am2 / (2 * denom) * recur(N + 1, *decr_also_ang_moms)
+            )
+
+        # Base case
+        if all([am == 0 for am in ang_moms]):
+            RAB2 = AB.dot(AB)
+            RCD2 = CD.dot(CD)
+            Kab = exp(-(a * b) / xi * RAB2)
+            Kcd = exp(-(c * d) / zeta * RCD2)
+
+            PQ = P - Q
+            RPQ2 = PQ.dot(PQ)
+
+            return (
+                2
+                * pi ** (5 / 2)
+                / (xi * zeta + sqrt(xi + zeta))
+                * Kab
+                * Kcd
+                * boys(N, theta * RPQ2)
+            )  # Eq. (8) [ss|ss]^N
+        #
+        # Horizontal recursion relation to reduce angular momentum.
+        #
+        # Bra, basis func. with exp. b, centered at B with Lb_tot = (ib + jb + kb)
+        elif ib > 0:
+            return recur_hrr("bra", 0)
+        elif jb > 0:
+            return recur_hrr("bra", 1)
+        elif kb > 0:
+            return recur_hrr("bra", 2)
+        # Ket, basis func. with exp. d, centered at D with Ld_tot = (id_ + jd + kd)
+        elif id_ > 0:
+            return recur_hrr("ket", 0)
+        elif jd > 0:
+            return recur_hrr("ket", 1)
+        elif kd > 0:
+            return recur_hrr("ket", 2)
+        #
+        # Vertical recursion relation to reduce angular momentum.
+        #
+        # Bra, basis func. with exp. a, centered at A with La_tot = (ia + ja + ka)
+        elif ia > 0:
+            return recur_vrr("bra", 0)
+        elif ja > 0:
+            return recur_vrr("bra", 1)
+        elif ka > 0:
+            return recur_vrr("bra", 2)
+        # Ket, basis func. with exp. c, centered at C with Lc_tot = (ic + jc + kc)
+        elif ic > 0:
+            return recur_vrr("ket", 0)
+        elif jc > 0:
+            return recur_vrr("ket", 1)
+        elif kc > 0:
+            return recur_vrr("ket", 1)
+
+
+class ERIShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, Lc_tot, Ld_tot, a, b, c, d, A, B, C, D):
+        exprs = [
+            ERI(*La, *Lb, *Lc, *Ld, 0, a, b, c, d, A, B, C, D)
+            for La, Lb, Lc, Ld in shell_iter((La_tot, Lb_tot, Lc_tot, Ld_tot))
+        ]
+        # print(ERI.eval.cache_info())
+        return exprs
+
+
 class SpinOrbit(Function):
     """1-electron spin-orbit interaction integral for Cartesian direction μ."""
 
@@ -425,9 +588,9 @@ class SpinOrbit(Function):
                 one_k[k_] = 1
                 one_ind = np.cross(one, one_k)[mu]
                 if to_decr == "bra":
-                    expr += ket[k] * one_ind * coulomb(N + 1, *bra, *(ket - one_k))
+                    expr += ket[k_] * one_ind * coulomb(N + 1, *bra, *(ket - one_k))
                 else:
-                    expr += bra[k] * one_ind * coulomb(N + 1, *(bra - one_k), *ket)
+                    expr += bra[k_] * one_ind * coulomb(N + 1, *(bra - one_k), *ket)
             return expr
 
         # Base case
@@ -453,22 +616,6 @@ class SpinOrbit(Function):
 class SpinOrbitShell(Function):
     @classmethod
     def eval(cls, La_tot, Lb_tot, a, b, A, B, C=(0.0, 0.0, 0.0)):
-        exprs = list()
-        for La, Lb in shell_iter((La_tot, Lb_tot)):
-            for mu in range(3):
-                exprs.extend(
-                    [
-                        SpinOrbit(*La, *Lb, 0, mu, a, b, A, B, C)
-                        for La, Lb in shell_iter((La_tot, Lb_tot))
-                    ]
-                )
-        # print(SpinOrbit.eval.cache_info())
-        return exprs
-
-
-class SpinOrbitShell(Function):
-    @classmethod
-    def eval(cls, La_tot, Lb_tot, a, b, A, B, C=(0.0, 0.0, 0.0)):
         exprs = [
             SpinOrbit(*La, *Lb, 0, mu, a, b, A, B, C)
             for (La, Lb), mu in it.product(shell_iter((La_tot, Lb_tot)), range(3))
@@ -488,31 +635,43 @@ def get_map(i, center_i):
     return array, array_map
 
 
-def gen_integrals_exprs(int_func, L_maxs, kind):
+def gen_integral_exprs(
+    int_func,
+    L_maxs,
+    kind,
+    maps=None,
+):
+    if maps is None:
+        maps = list()
+
     ranges = [range(L + 1) for L in L_maxs]
 
-    """
-    def gen_exprs(L_tots):
-        start = time.time()
-        print(f"Generating {L_tots} {kind} ...")
-        exprs = int_func(*L_tots)
-        dur = time.time() - start
-        print(f"\tfinished {L_tots} {kind} in {dur:.2f} s!")
-        return exprs, L_tots
-
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = executor.map(gen_exprs, it.product(*ranges))
-    return futures
-    """
-
     for L_tots in it.product(*ranges):
+        time_str = time.strftime("%H:%M:%S")
         start = time.time()
-        print(f"Generating {L_tots} {kind} ... ", end="")
-        exprs = int_func(*L_tots)
-        dur = time.time() - start
-        print(f"finished in {dur:.2f} s!")
+        print(f"{time_str} - Generating {L_tots} {kind} ... ", end="")
         sys.stdout.flush()
-        yield exprs, L_tots
+        # Generate actual expressions
+        exprs = int_func(*L_tots)
+
+        # Common subexpression elimination
+        repls, reduced = cse(list(exprs))
+
+        for i, red in enumerate(reduced):
+            reduced[i] = functools.reduce(
+                lambda red, map_: red.xreplace(map_), maps, red
+            )
+
+        for i, (lhs, rhs) in enumerate(repls):
+            repls[i] = (
+                lhs,
+                functools.reduce(lambda rhs, map_: rhs.xreplace(map_), maps, rhs),
+            )
+
+        dur = time.time() - start
+        print(f"finished in {dur: >8.2f} s!")
+        sys.stdout.flush()
+        yield (repls, reduced), L_tots
 
 
 def render_py_funcs(exprs_Ls, args, base_name, doc_func, add_imports=None, comment=""):
@@ -525,11 +684,11 @@ def render_py_funcs(exprs_Ls, args, base_name, doc_func, add_imports=None, comme
     args = ", ".join((map(str, args)))
 
     py_funcs = list()
-    for expr, L_tots in exprs_Ls:
+    for (repls, reduced), L_tots in exprs_Ls:
         doc_str = doc_func(L_tots)
         doc_str += "\n\nGenerated code; DO NOT modify by hand!"
         name = base_name + "_" + "".join(str(l) for l in L_tots)
-        py_func = make_py_func(expr, args=args, name=name, doc_str=doc_str)
+        py_func = make_py_func(repls, reduced, args=args, name=name, doc_str=doc_str)
         py_funcs.append(py_func)
     py_funcs_joined = "\n\n".join(py_funcs)
 
@@ -599,14 +758,16 @@ def run():
     center_A = get_center("A")
     center_B = get_center("B")
     center_C = get_center("C")
-    # Cartesian components (x, y, z) of the centers A and B.
+    center_D = get_center("D")
+
+    # Cartesian components (x, y, z) of the centers A, B, C and D.
     Ax, Ay, Az = center_A
     Bx, By, Bz = center_B
-    # Orbital exponents a and b.
-    a, b = symbols("a b", real=True)
-
-    # Multipole moment integral center
     Cx, Cy, Cz = center_C
+    Dx, Dy, Dz = center_D
+
+    # Orbital exponents a, b, c, d.
+    a, b, c, d = symbols("a b c d", real=True)
 
     # These maps will be used to convert {Ax, Ay, ...} to array quantities
     # in the generated code. This way an iterable/np.ndarray can be used as
@@ -614,13 +775,11 @@ def run():
     A, A_map = get_map("A", center_A)
     B, B_map = get_map("B", center_B)
     C, C_map = get_map("C", center_C)
+    D, D_map = get_map("D", center_D)
 
-    def ovlp_func(La_tot, Lb_tot):
-        return (
-            Array(Overlap3dShell(La_tot, Lb_tot, a, b, (Ax, Ay, Az), (Bx, By, Bz)))
-            .xreplace(A_map)
-            .xreplace(B_map)
-        )
+    #####################
+    # Overlap integrals #
+    #####################
 
     def ovlp_doc_func(L_tots):
         La_tot, Lb_tot = L_tots
@@ -628,24 +787,19 @@ def run():
         shell_b = L_MAP[Lb_tot]
         return f"Cartesian 3D ({shell_a}{shell_b}) overlap integral."
 
-    def dipole_func(La_tot, Lb_tot, Le_tot=1):
-        return (
-            Array(
-                Multipole3dShell(
-                    La_tot,
-                    Lb_tot,
-                    a,
-                    b,
-                    (Ax, Ay, Az),
-                    (Bx, By, Bz),
-                    Le_tot,
-                    (Cx, Cy, Cz),
-                )
-            )
-            .xreplace(A_map)
-            .xreplace(B_map)
-            .xreplace(C_map)
-        )
+    ovlp_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot: Overlap3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
+        (l_max, l_max),
+        "overlap",
+        (A_map, B_map),
+    )
+    ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
+    write_py(out_dir, "ovlp3d.py", ovlp_rendered)
+    print()
+
+    ###########################
+    # Dipole moment integrals #
+    ###########################
 
     def dipole_doc_func(L_tots):
         La_tot, Lb_tot = L_tots
@@ -670,53 +824,15 @@ def run():
         <s_a|z|s_b>
     """
 
-    def kinetic_func(La_tot, Lb_tot):
-        return (
-            Array(Kinetic3dShell(La_tot, Lb_tot, a, b, (Ax, Ay, Az), (Bx, By, Bz)))
-            .xreplace(A_map)
-            .xreplace(B_map)
-        )
+    dipole_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot: Multipole3dShell(
+            La_tot, Lb_tot, a, b, center_A, center_B, 1, center_C
+        ),
+        (l_max, l_max),
+        "dipole moment",
+        (A_map, B_map, C_map),
+    )
 
-    def kinetic_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return f"Cartesian 3D ({shell_a}{shell_b}) kinetic energy integral."
-
-    def coulomb_func(La_tot, Lb_tot):
-        return (
-            Array(CoulombShell(La_tot, Lb_tot, a, b, center_A, center_B, center_C))
-            .xreplace(A_map)
-            .xreplace(B_map)
-            .xreplace(C_map)
-        )
-
-    def coulomb_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
-
-    def so1el_func(La_tot, Lb_tot):
-        return (
-            Array(SpinOrbitShell(La_tot, Lb_tot, a, b, center_A, center_B, center_C))
-            .xreplace(A_map)
-            .xreplace(B_map)
-            .xreplace(C_map)
-        )
-
-    def so1el_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return f"Cartesian ({shell_a}{shell_b}) 1-electron spin-orbit-interaction integral."
-
-    ovlp_ints_Ls = gen_integrals_exprs(ovlp_func, (l_max, l_max), "overlap")
-    ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
-    write_py(out_dir, "ovlp3d.py", ovlp_rendered)
-    print()
-
-    dipole_ints_Ls = gen_integrals_exprs(dipole_func, (l_max, l_max), "dipole moment")
     dipole_rendered = render_py_funcs(
         dipole_ints_Ls,
         (a, A, b, B, C),
@@ -727,16 +843,48 @@ def run():
     write_py(out_dir, "dipole3d.py", dipole_rendered)
     print()
 
-    kinetic_ints_Ls = gen_integrals_exprs(kinetic_func, (l_max, l_max), "kinetic")
+    ############################
+    # Kinetic energy integrals #
+    ############################
+
+    def kinetic_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian 3D ({shell_a}{shell_b}) kinetic energy integral."
+
+    kinetic_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot: Kinetic3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
+        (l_max, l_max),
+        "kinetic",
+        (A_map, B_map),
+    )
     kinetic_rendered = render_py_funcs(
         kinetic_ints_Ls, (a, A, b, B), "kinetic3d", kinetic_doc_func
     )
     write_py(out_dir, "kinetic3d.py", kinetic_rendered)
     print()
 
+    #########################
+    # 1el Coulomb Integrals #
+    #########################
+
+    def coulomb_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
+
     boys_import = ("from pysisyphus.wavefunction.boys import boys",)
 
-    coulomb_ints_Ls = gen_integrals_exprs(coulomb_func, (l_max, l_max), "coulomb3d")
+    coulomb_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot: CoulombShell(
+            La_tot, Lb_tot, a, b, center_A, center_B, center_C
+        ),
+        (l_max, l_max),
+        "coulomb3d",
+        (A_map, B_map, C_map),
+    )
     coulomb_rendered = render_py_funcs(
         coulomb_ints_Ls,
         (a, A, b, B, C),
@@ -747,15 +895,78 @@ def run():
     write_py(out_dir, "coulomb3d.py", coulomb_rendered)
     print()
 
-    so1el_ints_Ls = gen_integrals_exprs(so1el_func, (l_max, l_max), "so1el")
-    coulomb_rendered = render_py_funcs(
+    ####################################
+    # Spin-orbit interaction integrals #
+    ####################################
+
+    def so1el_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return f"Cartesian ({shell_a}{shell_b}) 1-electron spin-orbit-interaction integral."
+
+    so1el_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot: SpinOrbitShell(
+            La_tot, Lb_tot, a, b, center_A, center_B, center_C
+        ),
+        (l_max, l_max),
+        "so1el",
+        (A_map, B_map, C_map),
+    )
+
+    so1el_rendered = render_py_funcs(
         so1el_ints_Ls,
         (a, A, b, B, C),
         "so1el",
         so1el_doc_func,
         add_imports=boys_import,
     )
-    write_py(out_dir, "so1el.py", coulomb_rendered)
+    write_py(out_dir, "so1el.py", so1el_rendered)
+    print()
+
+    #########################
+    # 2el Coulomb Integrals #
+    #########################
+
+    def eri_doc_func(L_tots):
+        La_tot, Lb_tot, Lc_tot, Ld_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        shell_c = L_MAP[Lc_tot]
+        shell_d = L_MAP[Ld_tot]
+        return (
+            f"Cartesian [{shell_a}{shell_b}|{shell_c}{shell_d}] "
+            "2-electron electron repulsion integral."
+        )
+
+    eri_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot, Lc_tot, Ld_tot: ERIShell(
+            La_tot,
+            Lb_tot,
+            Lc_tot,
+            Ld_tot,
+            a,
+            b,
+            c,
+            d,
+            center_A,
+            center_B,
+            center_C,
+            center_D,
+        ),
+        # (l_max, l_max, l_max, l_max),
+        (2, 2, 2, 2),  # Stop at [dd|dd] for now
+        "eri",
+        (A_map, B_map, C_map, D_map),
+    )
+    eri_rendered = render_py_funcs(
+        eri_ints_Ls,
+        (a, A, b, B, c, C, d, D),
+        "eri",
+        eri_doc_func,
+        add_imports=boys_import,
+    )
+    write_py(out_dir, "eri.py", eri_rendered)
     print()
 
 

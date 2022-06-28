@@ -123,18 +123,20 @@ class Shell:
 Ls = list(range(L_MAX + 1))
 
 
-def get_map(module, func_base_name):
+def get_map(module, func_base_name, Ls_num=2):
     """Return dict that holds the different integrals functions."""
-    return {
-        (la, lb): getattr(module, f"{func_base_name}_{la}{lb}")
-        for la, lb in it.product(Ls, Ls)
-    }
+    func_map = dict()
+    for ls in it.product(*[Ls for _ in range(Ls_num)]):
+        ls_str = "".join([str(l) for l in ls])
+        func_map[ls] = getattr(module, f"{func_base_name}_{ls_str}")
+    return func_map
 
 
 Smap = get_map(ovlp3d, "ovlp3d")  # Overlap integrals
 Tmap = get_map(kinetic3d, "kinetic3d")  # Kinetic energy integrals
 Vmap = get_map(coulomb3d, "coulomb3d")  # 1el Coulomb integrals
 DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
+# ERImap = get_map(eri, "eri", 4)  # Dipole moments integrals
 
 
 def ovlp(la_tot, lb_tot, a, A, b, B):
@@ -159,6 +161,12 @@ def dpm(la_tot, lb_tot, a, A, b, B, C):
     """Wrapper for linear moment integrals."""
     func = DPMmap[(la_tot, lb_tot)]
     return func(a, A, b, B, C)
+
+
+def eri(la_tot, lb_tot, lc_tot, ld_tot, a, A, b, B, c, C, d, D):
+    """Wrapper for electron repulsion integrals."""
+    func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
+    return func(a, A, b, B, c, C, d, D)
 
 
 class Shells:
@@ -471,6 +479,14 @@ class Shells:
         dp_sph = np.array(dp_sph)
         return dp_sph
 
+    #######################################
+    # Electron repulsion integrals - ERIs #
+    #######################################
+
+    def get_eri_cart(self):
+        shells_a = shells_b = shells_c = shells_d = self
+        pass
+
     def __str__(self):
         return f"{self.__class__.__name__}({len(self.shells)} shells)"
 
@@ -566,14 +582,3 @@ class FCHKShells(Shells):
             [0, 0, 0, 0, 0, 0, 0, 0, 1],
         ],
     }
-
-
-# class MolsocShells(Shells):
-# """See SI of PySOC paper."""
-
-# cart_order = (
-# ("",),
-# ("x", "y", "z"),
-# ("xx", "xy", "xz", "yy", "yz", "zz"),
-# ("xxx", "xxy", "xxz", "xyy", "xyz", "xzz", "yyy", "yyz", "yzz", "zzz"),
-# )

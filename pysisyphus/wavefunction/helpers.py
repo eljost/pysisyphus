@@ -28,8 +28,8 @@ def get_l(l_inp: L_Inp) -> int:
     return l
 
 
-def get_shell_shape(La, Lb):
-    return (L_SIZE[La], L_SIZE[Lb])
+def get_shell_shape(*Ls):
+    return [L_SIZE[L] for L in Ls]
 
 
 class BFType(IntEnum):
