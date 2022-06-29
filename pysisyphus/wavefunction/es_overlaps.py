@@ -1,5 +1,4 @@
-from collections.abc import Sequence
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Sequence, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

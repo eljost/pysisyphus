@@ -600,7 +600,14 @@ class OverlapCalculator(Calculator):
 
         with h5py.File(self.dump_fn, "w") as handle:
             for key, val in data_dict.items():
-                handle.create_dataset(name=key, dtype=val.dtype, data=val)
+                if key in ("ci_coeffs", "X", "Y"):
+                    add_kwargs = {
+                        "compression": "gzip",
+                        "compression_opts": 9,
+                    }
+                else:
+                    add_kwargs = {}
+                handle.create_dataset(name=key, dtype=val.dtype, data=val, **add_kwargs)
             handle.attrs["ovlp_type"] = self.ovlp_type
             handle.attrs["ovlp_with"] = self.ovlp_with
             handle.attrs["orient"] = self.orient
