@@ -163,10 +163,10 @@ def dpm(la_tot, lb_tot, a, A, b, B, C):
     return func(a, A, b, B, C)
 
 
-def eri(la_tot, lb_tot, lc_tot, ld_tot, a, A, b, B, c, C, d, D):
-    """Wrapper for electron repulsion integrals."""
-    func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
-    return func(a, A, b, B, c, C, d, D)
+# def eri(la_tot, lb_tot, lc_tot, ld_tot, a, A, b, B, c, C, d, D):
+    # """Wrapper for electron repulsion integrals."""
+    # func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
+    # return func(a, A, b, B, c, C, d, D)
 
 
 class Shells:
