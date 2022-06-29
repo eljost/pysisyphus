@@ -1,6 +1,9 @@
 import itertools as it
-from typing import Union
+from typing import Union, Sequence
 
+import numpy as np
+
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (
     Bend,
@@ -209,6 +212,7 @@ def normalize_prim_input(prim_inp):
         return []
 
     prim_type, *indices = prim_inp
+    indices = list(map(int, indices))
 
     # Nothing to do
     if isinstance(prim_type, PrimTypes):
@@ -246,3 +250,17 @@ def prims_from_prim_inputs(prim_inps):
     norm_prim_inps = normalize_prim_inputs(prim_inps)
     prims = [PrimMap[prim_type](indices) for prim_type, *indices in norm_prim_inps]
     return prims
+
+
+def prim_for_human(prim_type: PrimTypes, val: Sequence[int]):
+    if prim_type in Bonds:
+        val_conv = val * BOHR2ANG
+        unit = " Å"
+    elif prim_type in Bends:
+        unit = "°"
+        val_conv = np.rad2deg(val)
+    else:
+        val_conv = val
+        unit = ""
+    return val_conv, unit
+

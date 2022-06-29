@@ -13,10 +13,11 @@ from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.setup import get_fragments
-from pysisyphus.intcoords.PrimTypes import Bonds
+from pysisyphus.intcoords.PrimTypes import prim_for_human
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
+from pysisyphus.intcoords.PrimTypes import normalize_prim_input, PrimMap
 from pysisyphus.io.pdb import geom_to_pdb_str
 from pysisyphus.stocastic.align import match_geom_atoms
 
@@ -115,7 +116,11 @@ def parse_args(args):
     action_group.add_argument(
         "--internals",
         action="store_true",
-        help="Print automatically generated internals.",
+        help="Print automatically generated internal coordinates.",
+    )
+    action_group.add_argument(
+        "--internal-val", nargs="+",
+        help="Print value(s) of given internal coordinate.",
     )
     action_group.add_argument(
         "--get", type=int, help="Get n-th geometry. Expects 0-based index input."
@@ -300,10 +305,11 @@ def get_geoms(
     except AttributeError:
         pass
     except KeyError:
-        print(
-            f"Unsupported type: '{interpol_type}' given. Valid arguments are "
-            f"{list(INTERPOLATE.keys())}'"
-        )
+        if interpol_type is not None:
+            print(
+                f"Unsupported type: '{interpol_type}' given. Valid arguments are "
+                f"{list(INTERPOLATE.keys())}'"
+            )
 
     # Recreate Geometries so they have the correct coord_type. There may
     # be a difference between the coord_type used for interpolation and
@@ -545,12 +551,7 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
 
             if prev_len is None:
                 prev_len = len(inds)
-            if pt in Bonds:
-                val *= BOHR2ANG
-                unit = " Å"
-            else:
-                unit = "°"
-                val = np.rad2deg(val)
+            val, unit = prim_for_human(pt, val)
 
             if len_ > prev_len:
                 prim_counter = 0
@@ -567,6 +568,18 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
 
         print(f"Printed {j+1} primitive internals.")
         print()
+
+
+def print_internal_vals(geoms, typed_prim):
+    (prim_type, *indices),  = normalize_prim_input(typed_prim)
+    prim = PrimMap[prim_type](indices)
+
+    indices_str = ", ".join(map(str, indices))
+    print(f"Values for coordinate ({prim_type}, {indices_str})")
+    for i, geom in enumerate(geoms):
+        val = prim.calculate(geom.coords3d)
+        val_conv, unit = prim_for_human(prim_type, val)
+        print(f"{i:03d}: {val:.6f} (au), ({val_conv:.4f} {unit})")
 
 
 def get(geoms, index):
@@ -743,6 +756,9 @@ def run():
             return
     elif args.internals:
         print_internals(geoms, args.atoms, args.add_prims)
+        return
+    elif args.internal_val:
+        print_internal_vals(geoms, args.internal_val)
         return
     elif args.fragsort:
         to_dump = frag_sort(geoms)
