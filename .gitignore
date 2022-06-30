@@ -186,3 +186,4 @@ version.py
 !tests/test_wavefunction/ch4_3states/*
 !tests/test_wavefunction/h2o2/*
 !tests/test_wavefunction/h2o2_anion/*
+!pysisyphus/wf_library/*

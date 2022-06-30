@@ -844,6 +844,8 @@ class Geometry:
                 break
 
     def reparametrize(self):
+        # Currently, self.calculator.get_coords is only implemented by the
+        # IPIPServer, but it is deactivated there.
         try:
             # TODO: allow skipping the update
             results = self.calculator.get_coords(self.atoms, self.cart_coords)
