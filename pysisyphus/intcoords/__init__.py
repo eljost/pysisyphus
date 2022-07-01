@@ -5,6 +5,7 @@ __all__ = [
     "CartesianX",
     "CartesianY",
     "CartesianZ",
+    "DummyImproper",
     "DummyTorsion",
     "DistanceFunction",
     "LinearBend",
@@ -34,6 +35,7 @@ from pysisyphus.intcoords.Bend2 import Bend2
 from pysisyphus.intcoords.BondedFragment import BondedFragment
 from pysisyphus.intcoords.Cartesian import CartesianX, CartesianY, CartesianZ
 from pysisyphus.intcoords.DistanceFunction import DistanceFunction
+from pysisyphus.intcoords.DummyImproper import DummyImproper
 from pysisyphus.intcoords.DummyTorsion import DummyTorsion
 from pysisyphus.intcoords.CartesianCoords import CartesianCoords, MWCartesianCoords
 from pysisyphus.intcoords.LinearBend import LinearBend

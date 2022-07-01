@@ -9,6 +9,7 @@ from pysisyphus.intcoords import (
     Bend,
     Bend2,
     BondedFragment,
+    DummyImproper,
     DummyTorsion,
     DistanceFunction,
     CartesianX,
@@ -61,6 +62,7 @@ class PrimTypes(OrderedEnum):
     # atan2 based bend and torsion
     BEND2 = 28
     PROPER_DIHEDRAL2 = 29
+    DUMMY_IMPROPER = 30
 
 
 PrimTypeLike = Union[PrimTypes, str]
@@ -112,7 +114,12 @@ LinearBends = (
     PT.LINEAR_DISPLACEMENT,
     PT.LINEAR_DISPLACEMENT_COMPLEMENT,
 )
-Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL, PT.PROPER_DIHEDRAL2)
+Dihedrals = (
+    PT.PROPER_DIHEDRAL,
+    PT.IMPROPER_DIHEDRAL,
+    PT.PROPER_DIHEDRAL2,
+    PT.DUMMY_IMPROPER,
+)
 OutOfPlanes = (PT.OUT_OF_PLANE,)
 Cartesians = (PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z)
 Rotations = (PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C)
@@ -184,6 +191,10 @@ PrimMap = {
         periodic=True,
     ),
     PT.DISTANCE_FUNCTION: get_dist_func(),
+    PT.DUMMY_IMPROPER: lambda indices: DummyImproper(
+        indices,
+        periodic=True,
+    ),
 }
 
 
@@ -263,4 +274,3 @@ def prim_for_human(prim_type: PrimTypes, val: Sequence[int]):
         val_conv = val
         unit = ""
     return val_conv, unit
-
