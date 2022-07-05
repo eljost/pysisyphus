@@ -80,7 +80,7 @@ class RFOptimizer(HessianOptimizer):
 
         # Right everything is in place to check for convergence.  If all values are below
         # the thresholds, there is no need to do additional inter/extrapolations.
-        if self.check_convergence(ref_step):
+        if self.check_convergence(ref_step)[0]:  # Drop conv_info
             self.log("Convergence achieved! Skipping inter/extrapolation.")
             return ref_step
 
