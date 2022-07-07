@@ -1,5 +1,6 @@
 from pysisyphus.optimizers import (
     BFGS,
+    CubicNewton,
     ConjugateGradient,
     FIRE,
     LayerOpt,
@@ -24,6 +25,7 @@ from pysisyphus.tsoptimizers import (
 OPT_DICT = {
     "bfgs": BFGS.BFGS,
     "cg": ConjugateGradient.ConjugateGradient,
+    "cnewton": CubicNewton,
     "fire": FIRE.FIRE,
     "layers": LayerOpt.LayerOpt,
     "lbfgs": LBFGS.LBFGS,
