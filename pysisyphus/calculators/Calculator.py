@@ -12,6 +12,7 @@ from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus import logger
 from pysisyphus import helpers_pure
+from pysisyphus.helpers import geom_loader
 
 
 class Calculator:
@@ -115,6 +116,13 @@ class Calculator:
             return get_cmd(section=self.conf_key, key=key, use_defaults=True)
         except KeyError:
             logger.debug(f"Failed to load key '{key}' from section '{self.conf_key}'!")
+
+    @classmethod
+    def geom_from_fn(cls, fn, **kwargs):
+        geom = geom_loader(fn)
+        calc = cls(**kwargs)
+        geom.set_calculator(calc)
+        return geom
 
     @property
     def name(self):
