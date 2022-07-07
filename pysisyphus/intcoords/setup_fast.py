@@ -100,14 +100,13 @@ def get_bond_vec_getter(
     return get_bond_vecs
 
 
-def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
+def get_bend_candidates(bonds):
     bond_dict = {}
     bonds = [tuple(bond) for bond in bonds]
     for from_, to_ in bonds:
         bond_dict.setdefault(from_, list()).append(to_)
         bond_dict.setdefault(to_, list()).append(from_)
 
-    bend_set = set()
     for bond in bonds:
         from_, to_ = bond
         from_neighs = set(bond_dict[from_]) - set((to_,))
@@ -115,14 +114,19 @@ def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
         bend_candidates = [(neigh,) + bond for neigh in from_neighs] + [
             bond + (neigh,) for neigh in to_neighs
         ]
-        for indices in bend_candidates:
-            if (
-                (not bend_valid(coords3d, indices, min_deg, max_deg))
-                or (indices in bend_set)
-                or (indices[::-1] in bend_set)
-            ):
-                continue
-            bend_set.add(indices)
+        yield from bend_candidates
+
+
+def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
+    bend_set = set()
+    for indices in get_bend_candidates(bonds):
+        if (
+            (not bend_valid(coords3d, indices, min_deg, max_deg))
+            or (indices in bend_set)
+            or (indices[::-1] in bend_set)
+        ):
+            continue
+        bend_set.add(indices)
     return [list(bend) for bend in bend_set]
 
 
