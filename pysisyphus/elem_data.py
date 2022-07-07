@@ -1,3 +1,5 @@
+import itertools as it
+
 import numpy as np
 
 
@@ -3358,3 +3360,19 @@ INV_ATOMIC_NUMBERS = {num: elem for elem, num in ATOMIC_NUMBERS.items()}
 
 def nuc_charges_for_atoms(atoms):
     return np.array([ATOMIC_NUMBERS[atom.lower()] for atom in atoms])
+
+
+def get_tm_indices(atoms):
+    trans_metal_nums = list(it.chain(
+        #       3d             4d             5d             6d
+        *(range(21, 31), range(39, 49), range(57, 81), range(89, 113))
+    ))
+
+    def is_trans_metal(atomic_num):
+        return atomic_num in trans_metal_nums
+
+    atom_nums = [ATOMIC_NUMBERS[atom.lower()] for atom in atoms]
+    tm_indices = [
+        i for i, atom_num in enumerate(atom_nums) if is_trans_metal(atom_num)
+    ]
+    return tm_indices

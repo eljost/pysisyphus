@@ -33,6 +33,7 @@ from pysisyphus.intcoords import (
     HDLC,
     RedundantCoords,
     TRIC,
+    TMTRIC,
     HybridRedundantCoords,
     CartesianCoords,
     MWCartesianCoords,
@@ -157,6 +158,7 @@ class Geometry:
         "dlc": DLC,
         "hdlc": HDLC,
         "tric": TRIC,
+        "tmtric": TMTRIC,
         "cartesian": CartesianCoords,
         "mwcartesian": MWCartesianCoords,
     }

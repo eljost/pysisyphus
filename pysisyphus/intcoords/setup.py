@@ -1,5 +1,6 @@
 from collections import namedtuple
 import itertools as it
+from typing import Optional
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
@@ -415,6 +416,7 @@ def setup_redundant(
     hbond_angles=False,
     freeze_atoms=None,
     define_for=None,
+    rm_for_frag: Optional[set] = None,
     logger=None,
 ):
     if define_prims is None:
@@ -423,6 +425,10 @@ def setup_redundant(
         freeze_atoms = list()
     if define_for is None:
         define_for = list()
+    if rm_for_frag is None:
+        rm_for_frag = set()
+
+    rm_for_frag
 
     log(
         logger,
@@ -465,13 +471,14 @@ def setup_redundant(
     )
     bonds = [tuple(bond) for bond in bonds]
     bonds = keep_coords(bonds, Stretch)
+    bonds = [bond for bond in bonds if rm_for_frag.isdisjoint(set(bond))]
 
     # Fragments
-    fragments = merge_sets(bonds)
+    fragments = merge_sets(bonds) + [frozenset((rmed_atom, )) for rmed_atom in rm_for_frag]
     # Check for unbonded single atoms and create fragments for them.
     bonded_set = set(tuple(np.ravel(bonds)))
     unbonded_set = set(range(len(atoms))) - bonded_set
-    fragments.extend([frozenset((atom,)) for atom in unbonded_set])
+    # fragments.extend([frozenset((atom,)) for atom in unbonded_set])
 
     interfrag_bonds = list()
     aux_interfrag_bonds = list()
@@ -481,7 +488,7 @@ def setup_redundant(
     # interfragment coordinates.
     if tric:
         translation_inds = [list(fragment) for fragment in fragments]
-        rotation_inds = [list(fragment) for fragment in fragments]
+        rotation_inds = [list(fragment) for fragment in fragments if len(fragment) > 1]
     # Without TRIC we have to somehow connect all fragments.
     else:
         interfrag_bonds, aux_interfrag_bonds = connect_fragments(
