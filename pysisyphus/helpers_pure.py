@@ -12,6 +12,7 @@ import time
 from typing import Optional
 
 import numpy as np
+from numpy.typing import NDArray
 import psutil
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
@@ -504,7 +505,41 @@ def increment_fn(org_fn: str, suffix: Optional[str] = None) -> str:
     return incr_fn
 
 
-if __name__ == "__main__":
-    import doctest
+def get_box(coords3d, offset=0.0):
+    mins = coords3d.min(axis=0)
+    maxs = coords3d.max(axis=0)
+    box = np.stack((mins, maxs), axis=1)
+    box[:, 0] -= offset
+    box[:, 1] += offset
+    return box
 
-    doctest.testmod()
+
+def molecular_volume(
+    coords3d: NDArray[float],
+    vdw_radii: NDArray[float],
+    n_trial: int = 10_000,
+    offset: float = 1.0,
+) -> Tuple[float, float, float]:
+    """Monte-Carlo estimate of molecular volume using Van der Waals spheres.
+    Cartesian coordinates and VdW-radii are expected in Bohr!
+    """
+    box = get_box(coords3d, offset=offset)
+    edges = np.diff(box, axis=1).flatten()
+    box_volume = abs(np.prod(edges))
+    # print(f"Box with volume {box_volume:.2f} a0³ and dimensions\n{box}")
+
+    def trial_points(n):
+        tps = np.random.rand(n, 3)
+        box_min = box[:, 0]
+        return box_min + tps * edges
+
+    tps = trial_points(n=n_trial)
+
+    dists = np.linalg.norm(coords3d[:, None, :] - tps, axis=2)
+    below_radius = dists <= vdw_radii[:, None]
+    below_radius = below_radius.sum()
+    ratio = below_radius / n_trial
+    mol_vol = ratio * box_volume  # a0³ / Molecule
+    mol_vol_ang3 = mol_vol * BOHR2ANG ** 3  # Å³ / Molecule
+    molar_vol = mol_vol_ang3 * NA * 1e-24  # l/mol
+    return mol_vol, mol_vol_ang3, molar_vol

@@ -26,8 +26,9 @@ from pysisyphus.elem_data import (
     ISOTOPE_DICT,
     ATOMIC_NUMBERS,
     COVALENT_RADII as CR,
+    VDW_RADII as VDWR,
 )
-from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand
+from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand, molecular_volume
 from pysisyphus.intcoords import (
     DLC,
     HDLC,
@@ -808,6 +809,15 @@ class Geometry:
     @property
     def covalent_radii(self):
         return np.array([CR[a.lower()] for a in self.atoms])
+
+    @property
+    def vdw_radii(self):
+        return np.array([VDWR[a.lower()] for a in self.atoms])
+
+    @property
+    def vdw_volume(self):
+        V_au, *_ = molecular_volume(self.coords3d, self.vdw_radii)
+        return V_au
 
     @property
     def inertia_tensor(self):
