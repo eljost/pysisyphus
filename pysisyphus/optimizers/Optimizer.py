@@ -409,7 +409,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             + (", (overachieved when)" if oaf > 0.0 else "")
             + ":\n"
             + "\n".join(use_threshs)
-            + f"\n\t'{self.table.mark}' indicates convergence"
+            + f"\n\t'Superscript {self.table.mark}' indicates convergence"
             + "\n"
         )
 

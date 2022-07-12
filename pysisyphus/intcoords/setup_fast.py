@@ -101,14 +101,17 @@ def get_bond_vec_getter(
 
 
 def get_bend_candidates(bonds):
+    """Also yields duplicates [a, b, c] and [c, b, a]."""
     bond_dict = {}
     bonds = [tuple(bond) for bond in bonds]
+    # Construct a dictionary holding neighbours for a given atom.
     for from_, to_ in bonds:
         bond_dict.setdefault(from_, list()).append(to_)
         bond_dict.setdefault(to_, list()).append(from_)
 
     for bond in bonds:
         from_, to_ = bond
+        # Look up neighbours of from_ and to_ in the dictionary
         from_neighs = set(bond_dict[from_]) - set((to_,))
         to_neighs = set(bond_dict[to_]) - set((from_,))
         bend_candidates = [(neigh,) + bond for neigh in from_neighs] + [

@@ -365,7 +365,7 @@ def standardize_geoms(geoms, coord_type, geom_kwargs, same_prims=True, union=Fal
             len(union_geoms) == 2
         ), f"Got {len(union_geoms)} geometries for 'union'! Please supply only two!"
         geom_kwargs["coord_kwargs"]["typed_prims"] = form_coordinate_union(*union_geoms)
-    elif same_prims and (len(geoms)) > 1 and (coord_type != "cart"):
+    elif same_prims and (len(geoms)) > 1 and (coord_type not in ("cart", "cartesian")):
         # Use 'tric', if requested; otherwise always use 'redund'
         sp_coord_type = "tric" if coord_type == "tric" else "redund"
         geom_0 = geoms[0].copy(coord_type=sp_coord_type)
