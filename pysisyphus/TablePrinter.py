@@ -57,7 +57,7 @@ class TablePrinter:
 
     def print_row(self, args, marks=None):
         if marks is None:
-            marks = [" " for _ in args]
+            marks = ["" for _ in args]
         marked_args = list()
         for arg, to_mark in zip(args, marks):
             marked_args.append(arg)
