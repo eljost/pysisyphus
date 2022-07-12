@@ -82,7 +82,6 @@ def test_birkholz_rx_gsm(fn, geoms, charge, mult, ref_energy, results_bag):
             },
             "cos": {
                 "type": "gs",
-                # "fix_ends": True,
                 # "max_nodes": 11,
                 # "reparam_check": "rms",
                 # "perp_thresh": 0.075,

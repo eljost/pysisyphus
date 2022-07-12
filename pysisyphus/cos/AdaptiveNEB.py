@@ -169,7 +169,6 @@ class AdaptiveNEB(NEB):
         else:
             self.fix_first = False
             self.fix_last = False
-            self.fix_ends = False
             self.log("First and last image are now free to move.")
         prev_index = hei_index - 1
         next_index = hei_index + 1

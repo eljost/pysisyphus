@@ -1098,7 +1098,8 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     if "cos" in conf_dict:
         dd["cos"] = {
             "type": "neb",
-            "fix_ends": True,
+            "fix_first": True,
+            "fix_last": True,
         }
         dd["opt"] = cos_opt_defaults.copy()
     # Use a different, more powerful, optimizer when we are not dealing

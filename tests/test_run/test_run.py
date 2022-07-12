@@ -19,7 +19,6 @@ def test_diels_alder_growing_string():
         },
         "cos": {
             "type": "gs",
-            "fix_ends": True,
             "max_nodes": 8,
             "reparam_check": "rms",
             "climb": True,
