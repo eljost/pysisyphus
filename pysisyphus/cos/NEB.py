@@ -147,11 +147,11 @@ class NEB(ChainOfStates):
     # This way we can reuse the parents setter.
     @ChainOfStates.forces.getter
     def forces(self):
-        if self._forces is None:
-            org_results = self.calculate_forces()
+        if self._forces is not None:
+            return self._forces
 
+        org_results = self.calculate_forces()
         self.update_springs()
-
         indices = range(len(self.images))
         total_forces = np.array(
             [
