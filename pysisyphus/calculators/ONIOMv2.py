@@ -995,7 +995,7 @@ class ONIOM(Calculator):
 
     @property
     def charge(self):
-        charges = [model.calc.mult for model in self.model_iter]
+        charges = [model.calc.charge for model in self.model_iter]
         charge0 = charges[0]
         assert all([charge == charge0 for charge in charges])
         return charge0
