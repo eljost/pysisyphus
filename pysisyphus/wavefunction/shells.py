@@ -73,15 +73,15 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
 
 
 class Shell:
-    def __init__(self, L, atomic_num, center, coeffs, exps, center_ind=None):
+    def __init__(self, L, center, coeffs, exps, center_ind=None, atomic_num=None):
         self.L = get_l(L)
-        self.atomic_num = atomic_num
         self.center = np.array(center, dtype=float)
         self.coeffs = np.array(coeffs, dtype=float)
         self.exps = np.array(exps, dtype=float)
         assert self.coeffs.size == self.exps.size
         assert self.coeffs.shape == self.exps.shape
         self.center_ind = center_ind
+        self.atomic_num = atomic_num
 
         self._norms = None
 
@@ -164,9 +164,9 @@ def dpm(la_tot, lb_tot, a, A, b, B, C):
 
 
 # def eri(la_tot, lb_tot, lc_tot, ld_tot, a, A, b, B, c, C, d, D):
-    # """Wrapper for electron repulsion integrals."""
-    # func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
-    # return func(a, A, b, B, c, C, d, D)
+# """Wrapper for electron repulsion integrals."""
+# func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
+# return func(a, A, b, B, c, C, d, D)
 
 
 class Shells:
@@ -204,7 +204,11 @@ class Shells:
                 continue
             else:
                 center_inds.append(center_ind)
-            atom = INV_ATOMIC_NUMBERS[shell.atomic_num]
+            try:
+                atom = INV_ATOMIC_NUMBERS[shell.atomic_num]
+            # Use dummy atom when atomic_num is not set / None
+            except KeyError:
+                atom = "X"
             atoms.append(atom)
             center = shell.center
             coords3d.append(center)
