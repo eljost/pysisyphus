@@ -98,6 +98,18 @@ class Shell:
             self._norms = np.array(norms)
         return self._norms
 
+    def _ao_iter(self, func):
+        for ang_mom in func(self.L):
+            yield self, ang_mom
+
+    @property
+    def cart_ao_iter(self):
+        return self._ao_iter(canonical_order)
+
+    @property
+    def sph_ao_iter(self):
+        return self._ao_iter(lambda l: range(2 * l + 1))
+
     def as_tuple(self):
         return (self.L, self.center, self.coeffs, self.exps, self.norms)
 
@@ -164,9 +176,9 @@ def dpm(la_tot, lb_tot, a, A, b, B, C):
 
 
 # def eri(la_tot, lb_tot, lc_tot, ld_tot, a, A, b, B, c, C, d, D):
-    # """Wrapper for electron repulsion integrals."""
-    # func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
-    # return func(a, A, b, B, c, C, d, D)
+# """Wrapper for electron repulsion integrals."""
+# func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
+# return func(a, A, b, B, c, C, d, D)
 
 
 class Shells:
@@ -216,10 +228,10 @@ class Shells:
         return sum([shell.size() for shell in self.shells])
 
     def from_basis(self, name, **kwargs):
-        from pysisyphus.wavefunction.Basis import shells_with_basis
+        from pysisyphus.wavefunction.Basis import shells_from_basis
 
         atoms, coords3d = self.atoms_coords3d
-        return shells_with_basis(atoms, coords3d, name=name, **kwargs)
+        return shells_from_basis(atoms, coords3d, name=name, **kwargs)
 
     @staticmethod
     @file_or_str(".in")
@@ -274,12 +286,22 @@ class Shells:
         rendered = textwrap.dedent(rendered)
         return rendered
 
+    @property
+    def cart_ao_iter(self):
+        for shell in self.shells:
+            for shell, am in shell.cart_ao_iter:
+                yield shell, am
+
+    @property
+    def sph_ao_iter(self):
+        for shell in self.shells:
+            for shell, am in shell.sph_ao_iter:
+                yield shell, am
+
     def _ao_center_iter(self, func):
-        i = 0
         for shell in self.shells:
             for _ in func(shell.L):
                 yield shell.center_ind
-                i += 0
 
     @property
     def cart_ao_centers(self):

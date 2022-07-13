@@ -1,0 +1,308 @@
+{
+    "molssi_bse_schema": {
+        "schema_type": "complete",
+        "schema_version": "0.1"
+    },
+    "revision_description": "Data from Gaussian09",
+    "revision_date": "2018-06-19",
+    "elements": {
+        "1": {
+            "references": [
+                {
+                    "reference_description": "STO-6G Minimal Basis (6 functions/AO)",
+                    "reference_keys": [
+                        "hehre1969a"
+                    ]
+                }
+            ],
+            "electron_shells": [
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        0
+                    ],
+                    "exponents": [
+                        "0.3552322122E+02",
+                        "0.6513143725E+01",
+                        "0.1822142904E+01",
+                        "0.6259552659E+00",
+                        "0.2430767471E+00",
+                        "0.1001124280E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "0.9163596281E-02",
+                            "0.4936149294E-01",
+                            "0.1685383049E+00",
+                            "0.3705627997E+00",
+                            "0.4164915298E+00",
+                            "0.1303340841E+00"
+                        ]
+                    ]
+                }
+            ]
+        },
+        "6": {
+            "references": [
+                {
+                    "reference_description": "STO-6G Minimal Basis (6 functions/AO)",
+                    "reference_keys": [
+                        "hehre1969a"
+                    ]
+                }
+            ],
+            "electron_shells": [
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        0
+                    ],
+                    "exponents": [
+                        "0.3049723950E+02",
+                        "0.6036199601E+01",
+                        "0.1876046337E+01",
+                        "0.7217826470E+00",
+                        "0.3134706954E+00",
+                        "0.1436865550E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "-0.1325278809E-01",
+                            "-0.4699171014E-01",
+                            "-0.3378537151E-01",
+                            "0.2502417861E+00",
+                            "0.5951172526E+00",
+                            "0.2407061763E+00"
+                        ]
+                    ]
+                },
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        1
+                    ],
+                    "exponents": [
+                        "0.3049723950E+02",
+                        "0.6036199601E+01",
+                        "0.1876046337E+01",
+                        "0.7217826470E+00",
+                        "0.3134706954E+00",
+                        "0.1436865550E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "0.3759696623E-02",
+                            "0.3767936984E-01",
+                            "0.1738967435E+00",
+                            "0.4180364347E+00",
+                            "0.4258595477E+00",
+                            "0.1017082955E+00"
+                        ]
+                    ]
+                }
+            ]
+        },
+        "7": {
+            "references": [
+                {
+                    "reference_description": "STO-6G Minimal Basis (6 functions/AO)",
+                    "reference_keys": [
+                        "hehre1969a"
+                    ]
+                }
+            ],
+            "electron_shells": [
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        0
+                    ],
+                    "exponents": [
+                        "0.3919880787E+02",
+                        "0.7758467071E+01",
+                        "0.2411325783E+01",
+                        "0.9277239437E+00",
+                        "0.4029111410E+00",
+                        "0.1846836552E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "-0.1325278809E-01",
+                            "-0.4699171014E-01",
+                            "-0.3378537151E-01",
+                            "0.2502417861E+00",
+                            "0.5951172526E+00",
+                            "0.2407061763E+00"
+                        ]
+                    ]
+                },
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        1
+                    ],
+                    "exponents": [
+                        "0.3919880787E+02",
+                        "0.7758467071E+01",
+                        "0.2411325783E+01",
+                        "0.9277239437E+00",
+                        "0.4029111410E+00",
+                        "0.1846836552E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "0.3759696623E-02",
+                            "0.3767936984E-01",
+                            "0.1738967435E+00",
+                            "0.4180364347E+00",
+                            "0.4258595477E+00",
+                            "0.1017082955E+00"
+                        ]
+                    ]
+                }
+            ]
+        },
+        "8": {
+            "references": [
+                {
+                    "reference_description": "STO-6G Minimal Basis (6 functions/AO)",
+                    "reference_keys": [
+                        "hehre1969a"
+                    ]
+                }
+            ],
+            "electron_shells": [
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        0
+                    ],
+                    "exponents": [
+                        "0.5218776196E+02",
+                        "0.1032932006E+02",
+                        "0.3210344977E+01",
+                        "0.1235135428E+01",
+                        "0.5364201581E+00",
+                        "0.2458806060E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "-0.1325278809E-01",
+                            "-0.4699171014E-01",
+                            "-0.3378537151E-01",
+                            "0.2502417861E+00",
+                            "0.5951172526E+00",
+                            "0.2407061763E+00"
+                        ]
+                    ]
+                },
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        1
+                    ],
+                    "exponents": [
+                        "0.5218776196E+02",
+                        "0.1032932006E+02",
+                        "0.3210344977E+01",
+                        "0.1235135428E+01",
+                        "0.5364201581E+00",
+                        "0.2458806060E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "0.3759696623E-02",
+                            "0.3767936984E-01",
+                            "0.1738967435E+00",
+                            "0.4180364347E+00",
+                            "0.4258595477E+00",
+                            "0.1017082955E+00"
+                        ]
+                    ]
+                }
+            ]
+        },
+        "9": {
+            "references": [
+                {
+                    "reference_description": "STO-6G Minimal Basis (6 functions/AO)",
+                    "reference_keys": [
+                        "hehre1969a"
+                    ]
+                }
+            ],
+            "electron_shells": [
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        0
+                    ],
+                    "exponents": [
+                        "0.6703228091E+02",
+                        "0.1326743777E+02",
+                        "0.4123509771E+01",
+                        "0.1586462839E+01",
+                        "0.6890018919E+00",
+                        "0.3158199784E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "-0.1325278809E-01",
+                            "-0.4699171014E-01",
+                            "-0.3378537151E-01",
+                            "0.2502417861E+00",
+                            "0.5951172526E+00",
+                            "0.2407061763E+00"
+                        ]
+                    ]
+                },
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        1
+                    ],
+                    "exponents": [
+                        "0.6703228091E+02",
+                        "0.1326743777E+02",
+                        "0.4123509771E+01",
+                        "0.1586462839E+01",
+                        "0.6890018919E+00",
+                        "0.3158199784E+00"
+                    ],
+                    "coefficients": [
+                        [
+                            "0.3759696623E-02",
+                            "0.3767936984E-01",
+                            "0.1738967435E+00",
+                            "0.4180364347E+00",
+                            "0.4258595477E+00",
+                            "0.1017082955E+00"
+                        ]
+                    ]
+                }
+            ]
+        }
+    },
+    "version": "1",
+    "function_types": [
+        "gto"
+    ],
+    "names": [
+        "STO-6G"
+    ],
+    "tags": [],
+    "family": "sto",
+    "description": "STO-6G Minimal Basis (6 functions/AO)",
+    "role": "orbital",
+    "auxiliaries": {},
+    "name": "STO-6G"
+}

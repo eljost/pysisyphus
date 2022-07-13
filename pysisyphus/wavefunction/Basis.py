@@ -1,9 +1,11 @@
+from functools import singledispatch
 import json
 
 import numpy as np
 
 from pysisyphus.config import BASIS_LIB_DIR
 from pysisyphus.elem_data import ATOMIC_NUMBERS
+from pysisyphus.Geometry import Geometry
 from pysisyphus.wavefunction import Shell, Shells
 
 
@@ -15,7 +17,8 @@ def basis_from_file(name):
     return elements
 
 
-def shells_with_basis(atoms, coords, basis=None, name=None, **kwargs):
+@singledispatch
+def shells_from_basis(atoms, coords, basis=None, name=None, **kwargs):
     assert (basis is not None) or (name is not None)
     if name is not None:
         basis = basis_from_file(name)
@@ -35,6 +38,11 @@ def shells_with_basis(atoms, coords, basis=None, name=None, **kwargs):
                 shells.append(shell)
     shells = Shells(shells, **kwargs)
     return shells
+
+
+@shells_from_basis.register
+def _(geom: Geometry, *args, **kwargs):
+    return shells_from_basis(geom.atoms, geom.coords, *args, **kwargs)
 
 
 class Basis:
