@@ -814,9 +814,8 @@ class Geometry:
     def vdw_radii(self):
         return np.array([VDWR[a.lower()] for a in self.atoms])
 
-    @property
-    def vdw_volume(self):
-        V_au, *_ = molecular_volume(self.coords3d, self.vdw_radii)
+    def vdw_volume(self, **kwargs):
+        V_au, *_ = molecular_volume(self.coords3d, self.vdw_radii, **kwargs)
         return V_au
 
     @property
