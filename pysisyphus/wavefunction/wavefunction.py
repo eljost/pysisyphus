@@ -16,6 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pysisyphus.elem_data import nuc_charges_for_atoms, MASS_DICT
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.shells import Shells
 from pysisyphus.wavefunction.helpers import BFType
@@ -87,6 +88,14 @@ class Wavefunction:
         from pysisyphus.io.orca import wavefunction_from_json
 
         wf = wavefunction_from_json(text)
+        return wf
+
+    @staticmethod
+    @file_or_str(".json")
+    def from_orca_molden(text):
+        from pysisyphus.io.orca import wavefunction_from_molden
+
+        wf = wavefunction_from_molden(text)
         return wf
 
     @property
@@ -288,6 +297,9 @@ class Wavefunction:
             trans_moms = trans_moms[None, :]
         fosc = 2 / 3 * exc_ens * (trans_moms ** 2).sum(axis=1)
         return fosc
+
+    def as_geom(self):
+        return Geometry(self.atoms, self.coords)
 
     def __str__(self):
         is_restricted = "unrestricted" if self.unrestricted else "restricted"
