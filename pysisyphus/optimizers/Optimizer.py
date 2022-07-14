@@ -465,13 +465,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         except AttributeError:
             geom_converged = False
 
-        # One may return after this comment, but not before!
+        converged_to_geom = False
         if self.converge_to_geom is not None:
             rmsd = np.sqrt(
                 np.mean((self.converge_to_geom.coords - self.geometry.coords) ** 2)
             )
-            converged = rmsd < self.converge_to_geom_rms_thresh
-            return converged
+            converged_to_geom = rmsd < self.converge_to_geom_rms_thresh
 
         this_cycle = {
             "max_force_thresh": max_force,
@@ -496,6 +495,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             "max_step_converged": check("max_step_thresh"),
             "rms_step_converged": check("rms_step_thresh"),
         }
+        conv_info = ConvInfo(self.cur_cycle, **convergence)
 
         # Check if force convergence is overachieved
         overachieved = False
@@ -522,8 +522,11 @@ class Optimizer(metaclass=abc.ABCMeta):
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
             converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
-        conv_info = ConvInfo(self.cur_cycle, **convergence)
-        return any((converged, overachieved, geom_converged)) and not_never, conv_info
+        return (
+            any((converged_to_geom, converged, overachieved, geom_converged))
+            and not_never,
+            conv_info,
+        )
 
     def print_opt_progress(self, conv_info):
         try:
