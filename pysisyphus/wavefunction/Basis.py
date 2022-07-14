@@ -31,7 +31,14 @@ def shells_with_basis(atoms, coords, basis=None, name=None, **kwargs):
             L = L[0]
             exponents = bshell["exponents"]
             for coeffs in bshell["coefficients"]:
-                shell = Shell(L, Zs, c3d, coeffs, exponents, i)
+                shell = Shell(
+                    L=L,
+                    center=c3d,
+                    coeffs=coeffs,
+                    exps=exponents,
+                    atomic_num=Zs,
+                    center_ind=i,
+                )
                 shells.append(shell)
     shells = Shells(shells, **kwargs)
     return shells

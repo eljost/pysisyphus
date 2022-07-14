@@ -113,7 +113,10 @@ class Shell:
         return (L + 1) * (L + 2) // 2
 
     def __str__(self):
-        center_str = f", at atom {self.center_ind}" if self.center_ind else ""
+        try:
+            center_str = f", at atom {self.center_ind}"
+        except AttributeError:
+            center_str = ""
         return f"Shell(L={self.L}, {self.contr_depth} pGTO{center_str})"
 
     def __repr__(self):
@@ -175,6 +178,12 @@ class Shells:
     def __init__(self, shells, ordering="native"):
         self.shells = shells
         self.ordering = ordering
+        """
+        'native' refers to the original ordering, as used in the QC program. The
+        ordering will be reflected in the MO coefficient ordering. With 'native'
+        the integrals calculated by pysisyphus must be reorderd, to match the native
+        ordering of the MO coefficients.
+        """
         assert ordering in ("pysis", "native")
 
         try:
@@ -492,7 +501,7 @@ class Shells:
         pass
 
     def __str__(self):
-        return f"{self.__class__.__name__}({len(self.shells)} shells)"
+        return f"{self.__class__.__name__}({len(self.shells)} shells, ordering={self.ordering})"
 
 
 class ORCAShells(Shells):
@@ -584,5 +593,39 @@ class FCHKShells(Shells):
             [0, 0, 0, 0, 0, 0, 0, 1, 0],
             [1, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 1],
+        ],
+    }
+
+
+class MoldenShells(Shells):
+    sph_Ps = {
+        0: [[1]],  # s
+        1: [[1, 0, 0], [0, 0, 1], [0, 1, 0]],  # px, py, pz
+        2: [
+            [0, 0, 1, 0, 0],  # dz²
+            [0, 1, 0, 0, 0],  # dxz
+            [0, 0, 0, 1, 0],  # dyz
+            [1, 0, 0, 0, 0],  # dx² - y²
+            [0, 0, 0, 0, 1],  # dxy
+        ],
+        3: [
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0],
+            [-1, 0, 0, 0, 0, 0, 0],  # ORCA, why you do this to me?
+            [0, 0, 0, 0, 0, 0, -1],  # sign flip, as line abo ve
+        ],
+        4: [
+            [0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, -1, 0, 0, 0, 0, 0, 0, 0],  # sign flip
+            [0, 0, 0, 0, 0, 0, 0, -1, 0],  # sign flip
+            [-1, 0, 0, 0, 0, 0, 0, 0, 0],  # sign flip
+            [0, 0, 0, 0, 0, 0, 0, 0, -1],  # sign flip
         ],
     }

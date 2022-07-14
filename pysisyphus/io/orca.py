@@ -1,12 +1,17 @@
+# [1] 10.1016/j.comptc.2014.10.002
+#     JANPA: An open source cross-platform implementation of the
+#     Natural Population Analysis on the Java platform
+#     Nikolaienko, Bulavin, Hovorun, 2014
+
 import json
 
 import numpy as np
-from scipy.special import factorial2
+from scipy.special import factorial2, gamma
 
 from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.io.molden import parse_molden
-from pysisyphus.wavefunction import get_l, Shell, ORCAShells, Wavefunction
+from pysisyphus.wavefunction import get_l, MoldenShells, Shell, ORCAShells, Wavefunction
 from pysisyphus.wavefunction.helpers import BFType, get_l
 
 
@@ -27,11 +32,11 @@ def shells_from_json(text):
             L = get_l(bf["Shell"])
             shell = Shell(
                 L=L,
-                atomic_num=atomic_num,
                 center=center,
                 coeffs=coeffs,
                 exps=exps,
                 center_ind=center_ind,
+                atomic_num=atomic_num,
             )
             _shells.append(shell)
     shells = ORCAShells(_shells)
@@ -119,6 +124,34 @@ def parse_molden_atoms(data):
     return atoms, coords, nuc_charges
 
 
+def radial_integral(l, exponent):
+    """
+    Integrates
+        (r r**l * exp(-exponent * r**2))**2 dr from r=0 to r=oo
+    as described in the SI of the JANPA paper [1] (see top of page 8,
+    second integral in the square root.
+
+    In my opinion, the integrals lacks a factor 'r'. Below, some sympy code
+    can be found to solve this integral (including 1*r).
+
+    import sympy as sym
+    r, z = sym.symbols("r z", positive=True)
+    l = sym.symbols("l", integer=True, positive=True)
+    sym.integrate((r * r**l * sym.exp(-z*r**2))**2, (r, 0, sym.oo))
+
+    The 'solved' integral on page 8 is correct again.
+
+     ∞
+     ⌠
+     ⎮              2
+     ⎮  2  2⋅l  -2⋅r ⋅z
+     ⎮ r ⋅r   ⋅ℯ        dr = (2*z)**(-l - 1/2)*gamma(l + 3/2)/(4*z)
+     ⌡
+     0
+    """
+    return (2 * exponent) ** (-l - 1 / 2) * gamma(l + 3 / 2) / (4 * exponent)
+
+
 @file_or_str(".molden", ".input")
 def shells_from_molden(text):
     data = parse_molden(text, with_mos=False)
@@ -127,15 +160,24 @@ def shells_from_molden(text):
     atomic_numbers = [ATOMIC_NUMBERS[atom.lower()] for atom in atoms]
     coords3d = coords.reshape(-1, 3)
 
+    dividers = {
+        0: 1,
+        1: 1,
+        2: 3,
+        3: 15,
+        4: 35,
+    }
+
     def fix_contr_coeffs(l, coeffs, exponents):
+        """Fix contraction coefficients. Based on equations found in the SI
+        of the JANPA paper [1]."""
         l = get_l(l)
-        N = (
-            (2 ** (l + 0.75) * exponents ** (l / 2 + 0.75))
-            / np.pi ** 0.75
-            / np.sqrt(factorial2(2 * l - 1))
-        )
-        fixed_coeffs = coeffs / N
-        return fixed_coeffs
+        divider = dividers[l]
+        rad_ints = radial_integral(l, exponents)
+        norms2 = rad_ints * 4 * np.pi / (2 * l + 1) / divider
+        norms = np.sqrt(norms2)
+        normed_coeffs = coeffs * norms
+        return normed_coeffs
 
     _shells = list()
     for (atom_gtos, center, atomic_num) in zip(data["gto"], coords3d, atomic_numbers):
@@ -154,9 +196,8 @@ def shells_from_molden(text):
                 atomic_num=atomic_num,
             )
             _shells.append(shell)
-    from pysisyphus.wavefunction.shells import ORCAMoldenShells
-    # shells = ORCAShells(_shells)
-    shells = ORCAMoldenShells(_shells)
+
+    shells = MoldenShells(_shells)
     return shells
 
 
@@ -199,7 +240,8 @@ def wavefunction_from_molden(text):
     C = np.stack((Ca, Cb))
 
     charge = nuc_charge - (occ_a + occ_b)
-    mult = (occ_a - occ_b) * 2 + 1
+    # Multiplicity = (2S + 1), S = number of unpaired elecs. * 0.5
+    mult = (occ_a - occ_b) + 1
     unrestricted = set(spins) == {"Alpha", "Beta"}
 
     shells = shells_from_molden(text)
