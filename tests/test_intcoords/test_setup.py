@@ -3,6 +3,8 @@ import numpy as np
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords import RedundantCoords
+from pysisyphus.intcoords.setup import setup_redundant
+from pysisyphus.helpers_pure import get_cubic_crystal
 
 
 def get_chain(num):
@@ -53,3 +55,10 @@ def test_setup():
         internal = RedundantCoords(geom.atoms, geom.coords3d)
         tps = len(internal.typed_prims)
         print(f"{num=}, {tps=}")
+
+
+def test_cubic_crystal():
+    atoms, coords3d = get_cubic_crystal(8.3, n=1)
+    coord_info = setup_redundant(atoms, coords3d)
+    assert len(coord_info.bonds) == 0
+    assert len(coord_info.interfrag_bonds) == 54

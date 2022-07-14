@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
+from sklearn.cluster import KMeans
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
@@ -69,7 +70,9 @@ def connect_fragments(
     cdm, fragments, max_aux=3.78, aux_factor=BOND_FACTOR, logger=None
 ):
     """Determine the smallest interfragment bond for a list
-    of fragments and a condensed distance matrix."""
+    of fragments and a condensed distance matrix. For more than a few fragments
+    this function performs poorly, as each fragment is connected to all reamaining
+    fragments, leading to an explosion of bonds, bends and dihedrals."""
     if len(fragments) > 1:
         log(
             logger,
@@ -126,6 +129,63 @@ def connect_fragments(
     # generate interfragment distances. So we get a full matrix with
     # the original indices but only the required distances.
     return interfrag_inds, aux_interfrag_inds
+
+
+def connect_fragments_kmeans(
+    cdm, fragments, max_aux=3.78, aux_factor=BOND_FACTOR, logger=None
+):
+    """Determine the smallest interfragment bond for a list
+    of fragments and a condensed distance matrix."""
+    if len(fragments) > 1:
+        log(
+            logger,
+            f"Detected {len(fragments)} fragments. Generating interfragment bonds.",
+        )
+    dist_mat = squareform(cdm)
+    interfrag_inds = list()
+    interfrag_dists = list()
+    for frag1, frag2 in it.combinations(fragments, 2):
+        # log(logger, f"\tConnecting {len(frag1)} atom and {len(frag2)} atom fragment")
+        inds = [(i1, i2) for i1, i2 in it.product(frag1, frag2)]
+        distances = np.array([dist_mat[ind] for ind in inds])
+
+        # Determine minimum distance bond
+        min_ind = distances.argmin()
+        min_dist = distances[min_ind]
+        interfrag_dists.append(min_dist)
+        interfrag_bond = tuple(inds[min_ind])
+        interfrag_inds.append(interfrag_bond)
+        # log(logger, f"\tMinimum distance bond: {interfrag_bond}, {min_dist:.4f} au")
+
+    """
+    The code below tries to determine a reasonable distance, to define
+    interfragment bonds. We don't want to use all interfragment bonds defined
+    above, as this would connect all fragments to each other, resulting in an
+    explosion of the number of internal coordinates.
+
+    Here we try to cluster the interfragment distances, until one cluster center
+    comes close to the scaled minimum interfragment distance. We then use this
+    distance to filter all interfragment bonds.
+    """
+    min_scale = 1.2
+    if len(fragments) > 2:
+        dists = np.reshape(interfrag_dists, (-1, 1))
+        min_dist = dists.min()
+
+        for n_clusters in range(2, 10):
+            kmeans = KMeans(n_clusters=n_clusters)
+            clustering = kmeans.fit_predict(dists)
+            min_center = kmeans.cluster_centers_.min()
+
+            if min_center <= (min_scale * min_dist):
+                break
+        else:
+            raise Exception("Not handled!")
+
+        interfrag_inds = np.array(interfrag_inds)
+        mask = (dists <= min_scale * min_center).flatten()
+        interfrag_inds = interfrag_inds[mask]
+    return interfrag_inds, list()
 
 
 def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
@@ -474,11 +534,18 @@ def setup_redundant(
     bonds = [bond for bond in bonds if rm_for_frag.isdisjoint(set(bond))]
 
     # Fragments
-    fragments = merge_sets(bonds) + [frozenset((rmed_atom, )) for rmed_atom in rm_for_frag]
+    fragments = merge_sets(bonds) + [
+        frozenset((rmed_atom,)) for rmed_atom in rm_for_frag
+    ]
     # Check for unbonded single atoms and create fragments for them.
     bonded_set = set(tuple(np.ravel(bonds)))
     unbonded_set = set(range(len(atoms))) - bonded_set
-    # fragments.extend([frozenset((atom,)) for atom in unbonded_set])
+    log(
+        logger,
+        f"Merging bonded atoms yielded {len(fragments)} fragment(s) and "
+        f"{len(unbonded_set)} atoms.",
+    )
+    fragments.extend([frozenset((atom,)) for atom in unbonded_set])
 
     interfrag_bonds = list()
     aux_interfrag_bonds = list()
@@ -488,10 +555,11 @@ def setup_redundant(
     # interfragment coordinates.
     if tric:
         translation_inds = [list(fragment) for fragment in fragments]
+        # Exclude rotational coordinates for atomic species (1 atom)
         rotation_inds = [list(fragment) for fragment in fragments if len(fragment) > 1]
     # Without TRIC we have to somehow connect all fragments.
     else:
-        interfrag_bonds, aux_interfrag_bonds = connect_fragments(
+        interfrag_bonds, aux_interfrag_bonds = connect_fragments_kmeans(
             cdm, fragments, logger=logger
         )
 
@@ -509,7 +577,6 @@ def setup_redundant(
     ]
     bonds = [bond for bond in bonds if set(bond) not in hydrogen_set]
     aux_bonds = list()  # Not defined by default
-
     # Don't use auxilary interfragment bonds for bend detection
     bonds_for_bends = [
         bonds,

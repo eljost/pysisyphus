@@ -543,3 +543,15 @@ def molecular_volume(
     mol_vol_ang3 = mol_vol * BOHR2ANG ** 3  # Å³ / Molecule
     molar_vol = mol_vol_ang3 * NA * 1e-24  # l/mol
     return mol_vol, mol_vol_ang3, molar_vol
+
+
+def get_cubic_crystal(l, n=2, atom="Na"):
+    coords3d = list()
+    atoms = list()
+    for xn in range(-n, n+1):
+        for yn in range(-n, n+1):
+            for zn in range(-n, n+1):
+                coords3d.append((l*xn, l*yn, l*zn))
+                atoms.append(atom)
+    coords3d = np.array(coords3d)
+    return atoms, coords3d
