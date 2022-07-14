@@ -389,10 +389,16 @@ class Optimizer(metaclass=abc.ABCMeta):
         fu = "E_h a_0⁻¹" + (" (rad⁻¹)" if internal_coords else "")  # forces unit
         su = "a_0" + (" (rad)" if internal_coords else "")  # step unit
 
-        threshs = (
-            f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}",
-            f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)} {fu}",
-        )
+        try:
+            rms_thresh = f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}"
+        except AttributeError:
+            rms_thresh = None
+        try:
+            max_thresh = f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)} {fu}"
+        except AttributeError:
+            max_thresh = None
+        threshs = (rms_thresh, max_thresh)
+
         if self.rms_force_only:
             use_threshs = (threshs[1],)
         elif self.max_force_only:
