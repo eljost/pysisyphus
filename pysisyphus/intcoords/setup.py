@@ -132,7 +132,13 @@ def connect_fragments(
 
 
 def connect_fragments_kmeans(
-    cdm, fragments, max_aux=3.78, aux_factor=BOND_FACTOR, logger=None
+    cdm,
+    fragments,
+    max_aux=3.78,
+    aux_factor=BOND_FACTOR,
+    min_dist_thresh=5.0,
+    min_scale=1.2,
+    logger=None,
 ):
     """Determine the smallest interfragment bond for a list
     of fragments and a condensed distance matrix."""
@@ -145,17 +151,20 @@ def connect_fragments_kmeans(
     interfrag_inds = list()
     interfrag_dists = list()
     for frag1, frag2 in it.combinations(fragments, 2):
-        # log(logger, f"\tConnecting {len(frag1)} atom and {len(frag2)} atom fragment")
-        inds = [(i1, i2) for i1, i2 in it.product(frag1, frag2)]
-        distances = np.array([dist_mat[ind] for ind in inds])
+        log(logger, f"\tConnecting {len(frag2)}-atom and {len(frag2)}-atom fragments.")
+        # Pairs of possible interfragment bonds
+        inds = np.array([(i1, i2) for i1, i2 in it.product(frag1, frag2)], dtype=int)
+        distances = np.array([dist_mat[i, j] for i, j in inds])
 
         # Determine minimum distance bond
         min_ind = distances.argmin()
         min_dist = distances[min_ind]
-        interfrag_dists.append(min_dist)
-        interfrag_bond = tuple(inds[min_ind])
-        interfrag_inds.append(interfrag_bond)
-        # log(logger, f"\tMinimum distance bond: {interfrag_bond}, {min_dist:.4f} au")
+        # But also consider other bonds with reasonable lengths.
+        # Here we could also use min_dist_thresh instead of a scaled min_dist.
+        interfrag_thresh = min_scale * min_dist
+        mask = distances <= interfrag_thresh
+        interfrag_dists.extend(distances[mask])
+        interfrag_inds.extend(inds[mask])
 
     """
     The code below tries to determine a reasonable distance, to define
@@ -167,7 +176,6 @@ def connect_fragments_kmeans(
     comes close to the scaled minimum interfragment distance. We then use this
     distance to filter all interfragment bonds.
     """
-    min_scale = 1.2
     if len(fragments) > 2:
         dists = np.reshape(interfrag_dists, (-1, 1))
         min_dist = dists.min()
@@ -183,7 +191,11 @@ def connect_fragments_kmeans(
             raise Exception("Not handled!")
 
         interfrag_inds = np.array(interfrag_inds)
-        mask = (dists <= min_scale * min_center).flatten()
+        mask = dists <= min_scale * min_center
+        # We also use interfragment bonds that still have a reasonable length.
+        if (min_dist_thresh is not None) and (min_dist_thresh > 0.0):
+            mask |= dists <= min_dist_thresh
+        mask = mask.flatten()
         interfrag_inds = interfrag_inds[mask]
     return interfrag_inds, list()
 
