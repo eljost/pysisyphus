@@ -62,7 +62,7 @@ def test_ohch3f_anion(calc_cls, calc_kwargs, ref_cycle, ccl_dist, oc_dist):
 
 @using("xtb")
 def test_three_frag_afir():
-    geom = geom_loader("lib:afir3test.xyz", coord_type="redund")
+    geom = geom_loader("lib:afir3test.xyz", coord_type="tric")
     fragment_indices = [
         (0, 1, 2),
         (3, 4, 5, 6),
