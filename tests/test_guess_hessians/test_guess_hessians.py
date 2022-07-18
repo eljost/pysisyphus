@@ -85,8 +85,8 @@ def test_ts_hessian():
 @pytest.mark.parametrize(
     "tsopt_cls, ref_cycle",
     [
-        # (RSPRFOptimizer, 10),
-        (RSIRFOptimizer, 15),
+        # (RSPRFOptimizer, 12),
+        (RSIRFOptimizer, 11),
     ],
 )
 def test_ts_hessian_opt(tsopt_cls, ref_cycle):
