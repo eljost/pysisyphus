@@ -144,10 +144,10 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
 @pytest.mark.parametrize(
     "calc_key, embedding, ref_energy, ref_force_norm",
     [
-        # No embedding
+        # No embedding, G16 ||forces||_2 value is still for redund
         pytest.param("g16", None, -582.392035, 0.085568849, marks=using("gaussian16")),
-        pytest.param("pyscf", None, -582.392035, 0.091343338, marks=using("pyscf")),
-        # Electronic embedding
+        pytest.param("pyscf", None, -582.392035, 0.1587844, marks=using("pyscf")),
+        # Electronic embedding, G16 ||forces||_2 value is still for redund
         pytest.param(
             "g16",
             "electronic",
@@ -156,17 +156,17 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
             marks=using("gaussian16"),
         ),
         pytest.param(
-            "pyscf", "electronic", -582.3997769406087, 0.091492816, marks=using("pyscf")
+            "pyscf", "electronic", -582.3997769406087, 0.1594622, marks=using("pyscf")
         ),
     ],
 )
 def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     geom = geom_loader(
         "lib:oniom_ee_model_system.xyz",
-        coord_type="redund",
-        coord_kwargs={
-            "hbond_angles": True,
-        },
+        # coord_type="redund",
+        # coord_kwargs={
+            # "hbond_angles": True,
+        # },
     )
 
     all_ = set(range(len(geom.atoms)))
