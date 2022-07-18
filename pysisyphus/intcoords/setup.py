@@ -1,3 +1,8 @@
+# [1] http://link.aip.org/link/doi/10.1063/1.1515483
+#     The efficient optimization of molecular geometries using redundant internal
+#     coordinates
+#     Bakken, Helgaker, 2002
+
 from collections import namedtuple
 import itertools as it
 from typing import Optional
@@ -134,8 +139,8 @@ def connect_fragments(
 def connect_fragments_kmeans(
     cdm,
     fragments,
-    max_aux=3.78,
-    aux_factor=BOND_FACTOR,
+    aux_below_thresh=3.7807,  # 2 Å
+    aux_add_dist=2.8356,  # 1 Å
     min_dist_thresh=5.0,
     min_scale=1.2,
     logger=None,
@@ -150,6 +155,7 @@ def connect_fragments_kmeans(
     dist_mat = squareform(cdm)
     interfrag_inds = list()
     interfrag_dists = list()
+    aux_interfrag_inds = list()
     for frag1, frag2 in it.combinations(fragments, 2):
         log(logger, f"\tConnecting {len(frag2)}-atom and {len(frag2)}-atom fragments.")
         # Pairs of possible interfragment bonds
@@ -159,12 +165,20 @@ def connect_fragments_kmeans(
         # Determine minimum distance bond
         min_ind = distances.argmin()
         min_dist = distances[min_ind]
-        # But also consider other bonds with reasonable lengths.
-        # Here we could also use min_dist_thresh instead of a scaled min_dist.
-        interfrag_thresh = min_scale * min_dist
-        mask = distances <= interfrag_thresh
-        interfrag_dists.extend(distances[mask])
-        interfrag_inds.extend(inds[mask])
+        interfrag_inds.append(inds[min_ind])
+        interfrag_dists.append(min_dist)
+        """
+        But also consider other bonds with reasonable lengths as auxiliary interfrag bonds.
+        Contrary to [1] we don't use a scaled minimum interfragment distances (MID),
+        but just add a fixed value to the MID. Scaling a possibly big MID would
+        probably include too many coordinates.
+        """
+        aux_mask = np.logical_and(
+            distances <= aux_below_thresh,
+            distances <= (min_dist + aux_add_dist),
+        )
+        aux_inds = inds[aux_mask]
+        aux_interfrag_inds.extend(aux_inds)
 
     """
     The code below tries to determine a reasonable distance, to define
@@ -197,7 +211,7 @@ def connect_fragments_kmeans(
             mask |= dists <= min_dist_thresh
         mask = mask.flatten()
         interfrag_inds = interfrag_inds[mask]
-    return interfrag_inds, list()
+    return interfrag_inds, aux_interfrag_inds
 
 
 def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
