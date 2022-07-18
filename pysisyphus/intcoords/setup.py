@@ -139,29 +139,56 @@ def connect_fragments(
 def connect_fragments_kmeans(
     cdm,
     fragments,
+    atoms,
     aux_below_thresh=3.7807,  # 2 Å
-    aux_add_dist=2.8356,  # 1 Å
+    aux_add_dist=2.8356,  # 1.5 Å
+    aux_keep=5,
+    aux_no_hh=True,
     min_dist_thresh=5.0,
     min_scale=1.2,
     logger=None,
 ):
-    """Determine the smallest interfragment bond for a list
-    of fragments and a condensed distance matrix."""
+    """Generate (auxiliary) interfragment bonds.
+
+    In the a first step, minimum distance interfragment bonds (IFBs) are determined between
+    all possible fragment pairs. Similarly, possible auxiliary IFBs are determined.
+    Candidates for auxiliary IFBs are:
+        IFB <= aux_below_thresh, default 2 Å
+        IFB <= (minimum distance IFB + aux_add_dist), default 1.5 Å
+    By default, only the first aux_keep (default = 5) auxiliary IFBs are kept.
+
+    Connecting all fragments can lead to bonds between very distant atoms. If more than
+    two fragments are present we cluster the minimum distance IFB distances using KMeans,
+    to determine a reasonable length for valid IFBs. We start out with two clusters and
+    increase the number of cluster until the center of one cluster is around the scaled
+    global minimum distance between the fragments. The center of this cluster is then used
+    as a cutoff vor valid IFBs.
+
+    After pruning all possible IFBs we can determine the fragment pairs, that are actually
+    connected. This information is then used to also prune possible interfragment bonds.
+    Only auxiliary IFBs between fragments that are actually connected via IFBs are kept.
+    """
+    atoms = [atom.lower() for atom in atoms]
     if len(fragments) > 1:
         log(
             logger,
             f"Detected {len(fragments)} fragments. Generating interfragment bonds.",
         )
     dist_mat = squareform(cdm)
+
+    frag_pairs = list()
     interfrag_inds = list()
     interfrag_dists = list()
-    aux_interfrag_inds = list()
-    for frag1, frag2 in it.combinations(fragments, 2):
-        log(logger, f"\tConnecting {len(frag2)}-atom and {len(frag2)}-atom fragments.")
+    aux_dict = dict()
+    for i, j in it.combinations(range(len(fragments)), 2):
+        frag1 = fragments[i]
+        frag2 = fragments[j]
+        log(logger, f"\tConnecting {len(frag1)}-atom and {len(frag2)}-atom fragments.")
         # Pairs of possible interfragment bonds
         inds = np.array([(i1, i2) for i1, i2 in it.product(frag1, frag2)], dtype=int)
-        distances = np.array([dist_mat[i, j] for i, j in inds])
+        distances = np.array([dist_mat[k, l] for k, l in inds])
 
+        frag_pairs.append((i, j))
         # Determine minimum distance bond
         min_ind = distances.argmin()
         min_dist = distances[min_ind]
@@ -173,12 +200,29 @@ def connect_fragments_kmeans(
         but just add a fixed value to the MID. Scaling a possibly big MID would
         probably include too many coordinates.
         """
-        aux_mask = np.logical_and(
-            distances <= aux_below_thresh,
-            distances <= (min_dist + aux_add_dist),
+        if aux_no_hh:
+            is_hh = np.array(
+                [(atoms[k] == "h") and (atoms[k] == atoms[l]) for k, l in inds]
+            )
+        else:
+            is_hh = np.zeros(len(inds))
+
+        aux_mask = np.logical_or(
+                distances <= aux_below_thresh,
+                distances <= (min_dist + aux_add_dist),
         )
+        aux_mask = np.logical_and(aux_mask, ~is_hh)
+        # Don't include interfragment bond
+        aux_mask[min_ind] = False
         aux_inds = inds[aux_mask]
-        aux_interfrag_inds.extend(aux_inds)
+
+        if aux_keep >= 0:
+            aux_dists = distances[aux_mask]
+            aux_keep_inds = aux_dists.argsort()[:aux_keep]
+            aux_inds = aux_inds[aux_keep_inds]
+
+        aux_dict[(i, j)] = aux_inds
+    frag_pairs = np.array(frag_pairs, dtype=int)
 
     """
     The code below tries to determine a reasonable distance, to define
@@ -211,6 +255,16 @@ def connect_fragments_kmeans(
             mask |= dists <= min_dist_thresh
         mask = mask.flatten()
         interfrag_inds = interfrag_inds[mask]
+        conn_frags_mask = mask
+    else:
+        conn_frags_mask = np.ones(len(frag_pairs), dtype=bool)
+
+    # Only keep auxiliary interfragment bonds between actually connected fragments
+    actually_connected_frags = frag_pairs[conn_frags_mask]
+    aux_interfrag_inds = list(
+        it.chain(*[aux_dict[(i, j)] for i, j in actually_connected_frags])
+    )
+    aux_interfrag_inds = np.array(aux_interfrag_inds, dtype=int)
     return interfrag_inds, aux_interfrag_inds
 
 
@@ -586,7 +640,7 @@ def setup_redundant(
     # Without TRIC we have to somehow connect all fragments.
     else:
         interfrag_bonds, aux_interfrag_bonds = connect_fragments_kmeans(
-            cdm, fragments, logger=logger
+            cdm, fragments, atoms, logger=logger
         )
 
     # Hydrogen bonds
