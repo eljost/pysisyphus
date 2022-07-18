@@ -1249,6 +1249,28 @@ def get_last_calc_cycle():
     return last_calc_cycle
 
 
+VALID_KEYS = {
+    "assert",
+    "barriers",
+    "calc",
+    "cos",
+    "endopt",
+    "geom",
+    "interpol",
+    "irc",
+    "md",
+    "mdp",
+    "opt",
+    "perf",
+    "precontr",
+    "preopt",
+    "scan",
+    "shake",
+    "stocastic",
+    "tsopt",
+}
+
+
 def setup_run_dict(run_dict):
     org_dict = run_dict.copy()
 
@@ -1257,28 +1279,10 @@ def setup_run_dict(run_dict):
     # Update nested entries that are dicts by themselves
     # Take care to insert a , after the string!
     key_set = set(org_dict.keys())
-    for key in key_set & set(
-        (
-            "assert",
-            "barriers",
-            "calc",
-            "cos",
-            "endopt",
-            "geom",
-            "interpol",
-            "irc",
-            "md",
-            "mdp",
-            "opt",
-            "perf",
-            "precontr",
-            "preopt",
-            "scan",
-            "shake",
-            "stocastic",
-            "tsopt",
-        )
-    ):
+    assert (
+        key_set <= VALID_KEYS
+    ), f"Found invalid keys in YAML input: {key_set - VALID_KEYS}"
+    for key in key_set & VALID_KEYS:
         try:
             # Recursive update, because there may be nested dicts
             recursive_update(run_dict[key], org_dict[key])

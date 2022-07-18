@@ -6,7 +6,7 @@ calc:
  type: xtb
  charge: 0
  mult: 1
- pal: 2
+ pal: 1
 geom:
  type: redund
  fn: cytosin.xyz
@@ -15,5 +15,5 @@ shake:
 assert:
  # Test against xtb 6.3.2
  opt.is_converged: True
- opt.cur_cycle: 8
- opt_geom.energy: -23.9636197588
+ opt.cur_cycle: 7
+ opt_geom.energy: -23.963621
