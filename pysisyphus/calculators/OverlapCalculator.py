@@ -236,12 +236,6 @@ class OverlapCalculator(Calculator):
     def roots_number(self):
         return self.root + self.dyn_roots
 
-    def blowup_ci_coeffs(self, ci_coeffs):
-        states, occ, virt = ci_coeffs.shape
-        full = np.zeros((states, occ, occ + virt))
-        full[:, :, occ:] = ci_coeffs
-        return full
-
     def get_indices(self, indices=None):
         """
         A new root is determined by selecting the overlap matrix row
@@ -393,17 +387,16 @@ class OverlapCalculator(Calculator):
             Double molcule AO overlaps.
         """
         states1, occ, _ = ci_coeffs1.shape
-        ci_full1 = self.blowup_ci_coeffs(ci_coeffs1)
-        ci_full2 = self.blowup_ci_coeffs(ci_coeffs2)
 
         # MO overlaps
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
+        S_MO_vir = S_MO[occ:, occ:]
 
         overlaps = list()
-        for state1 in ci_full1:
-            precontr = S_MO_occ.dot(state1).dot(S_MO)
-            for state2 in ci_full2:
+        for state1 in ci_coeffs1:
+            precontr = S_MO_occ.dot(state1).dot(S_MO_vir)
+            for state2 in ci_coeffs2:
                 overlaps.append(np.sum(precontr * state2))
         overlaps = np.array(overlaps).reshape(states1, -1)
 
@@ -436,7 +429,7 @@ class OverlapCalculator(Calculator):
         normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
         # u, s, vh = np.linalg.svd(state_ci_coeffs)
         u, s, vh = np.linalg.svd(normed)
-        lambdas = s ** 2
+        lambdas = s**2
         self.log("Normalized transition density vector to 1.")
         self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
         lambdas_str = np.array2string(lambdas[:3], precision=4, suppress_small=True)
@@ -509,7 +502,7 @@ class OverlapCalculator(Calculator):
         S_MO = C_ref @ ao_ovlp @ C_cur.T  # Currently MOs are given in rows
 
         ref, cur = self.get_indices(indices)
-        fact = 1 / 2 ** 0.5
+        fact = 1 / 2**0.5
         # Reference step
         Xs_ref = fact * self.X_list[ref]
         Ys_ref = fact * self.Y_list[ref]
@@ -670,7 +663,7 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_nto = lambdas.sum() ** 2 / (lambdas ** 2).sum()
+            pr_nto = lambdas.sum() ** 2 / (lambdas**2).sum()
             if self.pr_nto:
                 use_ntos = int(np.round(pr_nto))
                 self.log(f"PR_NTO={pr_nto:.2f}")
