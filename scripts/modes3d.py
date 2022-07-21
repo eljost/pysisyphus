@@ -169,6 +169,15 @@ def parse_args(args):
 
     parser.add_argument("fn")
     parser.add_argument("--delay", type=float, default=0.025)
+    parser.add_argument(
+        "--bonds",
+        type=int,
+        nargs="+",
+        default=None,
+        help="List of pairwise integers, defining bonds. Number of given "
+        "indices must be divisible by 2. These bonds are then used instead of "
+        "the automatically defined ones.",
+    )
     return parser.parse_args(args)
 
 
@@ -177,11 +186,18 @@ def run():
 
     fn = args.fn
     delay = args.delay
+    bonds = args.bonds
 
     if fn.endswith(".h5"):
         geoms, cycler, trj_coords = from_h5_hessian(fn)
     else:
         geoms, cycler, trj_coords = from_geom(fn)
+
+    if bonds is None:
+        bonds = [geom.internal.bond_atom_indices for geom in geoms]
+    else:
+        assert len(bonds) % 2 == 0
+        bonds = np.array(bonds, dtype=int).reshape(1, -1, 2)
 
     window.title = "pysisyphus molecule viewer"
     window.borderless = False
@@ -194,7 +210,7 @@ def run():
     geom = geoms[0]
     spheres = render_atoms(geom.atoms, geom.coords3d)
     cylinders = [
-        render_bonds(geom.coords3d, geom.internal.bond_atom_indices) for geom in geoms
+        render_bonds(geom.coords3d, bonds_) for (geom, bonds_) in zip(geoms, bonds)
     ]
     cur_cylinders = cylinders[0]
 
