@@ -66,7 +66,11 @@ def test_no_hessian_update(hessian_update):
     ),
 )
 def test_ts_hessian_update(this_dir, hessian_update):
-    geom = geom_loader("lib:tsbfgs_init.xyz", coord_type="redund")
+    geom = geom_loader(
+        "lib:tsbfgs_init.xyz",
+        coord_type="redund",
+        coord_kwargs={"define_prims": [["BOND", 0, 10]]},
+    )
     calc = XTB(pal=6)
 
     geom.set_calculator(calc)
