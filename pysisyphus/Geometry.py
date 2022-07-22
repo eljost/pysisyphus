@@ -1303,16 +1303,33 @@ class Geometry:
             atoms.append(atom)
         return atoms
 
-    def jmol(self, atoms=None, cart_coords=None):
-        """Show geometry in jmol."""
+    def tmp_xyz_handle(self, atoms=None, cart_coords=None):
         tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
         tmp_xyz.write(self.as_xyz(atoms=atoms, cart_coords=cart_coords).encode("utf-8"))
         tmp_xyz.flush()
+        return tmp_xyz
+
+    def jmol(self, atoms=None, cart_coords=None):
+        """Show geometry in jmol."""
+        tmp_xyz = self.tmp_xyz_handle(atoms, cart_coords)
         jmol_cmd = "jmol"
         try:
             subprocess.run([jmol_cmd, tmp_xyz.name])
         except FileNotFoundError:
             print(f"'{jmol_cmd}' seems not to be on your path!")
+        tmp_xyz.close()
+
+    def modes3d(self):
+        try:
+            bonds = self.internal.bond_atom_indices#find_bonds(geom)
+        except AttributeError:
+            pass
+
+        bonds_str = " ".join(map(str, it.chain(*bonds)))
+        tmp_xyz = self.tmp_xyz_handle()
+        subprocess.run(
+            f"modes3d.py {tmp_xyz.name} --bonds {bonds_str}", shell=True
+        )
         tmp_xyz.close()
 
     def as_ase_atoms(self):
