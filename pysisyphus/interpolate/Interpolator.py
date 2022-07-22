@@ -53,6 +53,7 @@ class Interpolator:
         all_geoms = list()
 
         if self.extrapolate_before:
+            print("Extrapolating before")
             geoms_extrapol_before = self.interpolate(
                 self.geoms[0],
                 self.geoms[1],
@@ -60,6 +61,8 @@ class Interpolator:
                 extrapolate=True,
             )
             all_geoms += geoms_extrapol_before[::-1]
+
+        print("Interpolating between")
         # Interpolate between all pairs of geometries
         for i, initial_geom in enumerate(self.geoms[:-1]):
             final_geom = self.geoms[i + 1]
@@ -76,6 +79,7 @@ class Interpolator:
         # ((i+1)-th) geometry at the end.
         all_geoms.append(self.geoms[-1])
 
+        print("Extrapolate between")
         if self.extrapolate_after:
             geoms_extrapol_after = self.interpolate(
                 self.geoms[-1],

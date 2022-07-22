@@ -24,7 +24,11 @@ class Redund(Interpolator):
         print(f"Dumped interpolation progress to '{out_fn}'.")
 
     def interpolate(
-        self, initial_geom, final_geom, interpolate_only=0, extrapolate=False,
+        self,
+        initial_geom,
+        final_geom,
+        interpolate_only=0,
+        extrapolate=False,
         typed_prims=None,
     ):
         print(f"No. of primitives at initial structure: {initial_geom.coords.size}")
@@ -68,11 +72,20 @@ class Redund(Interpolator):
         ]
 
         def restart(new_geom):
-            return self.restart_interpolate(initial_geom, final_geom, geoms, new_geom)
+            interpolate_kwargs = {
+                "initial_geom": initial_geom,
+                "final_geom": final_geom,
+                "extrapolate": extrapolate,
+                "interpolate_only": interpolate_only,
+            }
+            return self.restart_interpolate(geoms, new_geom, interpolate_kwargs)
+
+        # initial_geom, final_geom, geoms, new_geom)
 
         interpolations = interpolate_only if interpolate_only else self.between
+        ip_ex = "Extrapolating" if extrapolate else "Interpolating"
         for i in range(interpolations):
-            print(f"Interpolating {i+1:03d}/{self.between:03d}")
+            print(f"{ip_ex} {i+1:03d}/{interpolations:03d}")
             new_geom = geoms[-1].copy()
             # Try to use the target primtive internals (final_prims) to calculate
             # a tangent at the current, new geometry. As some primitives may be
@@ -111,7 +124,8 @@ class Redund(Interpolator):
         print()
         return geoms[1:]
 
-    def restart_interpolate(self, initial_geom, final_geom, geoms, new_geom):
+    # def restart_interpolate(self, initial_geom, final_geom, geoms, new_geom):
+    def restart_interpolate(self, geoms, new_geom, interpolate_kwargs):
         new_typed_prims = new_geom.internal.typed_prims
         print(
             f"Encountered breakdown of current primitive internals.\n"
@@ -120,7 +134,7 @@ class Redund(Interpolator):
         self.dump_progress(geoms, out_fn=f"redund_interpol_fail.trj")
         print()
         # Recursive call with reduced set of primitive internals
-        return self.interpolate(initial_geom, final_geom, typed_prims=new_typed_prims)
+        return self.interpolate(**interpolate_kwargs, typed_prims=new_typed_prims)
 
     def step_along_tangent(self, geom, prim_tangent, step_size):
         # Form active set
