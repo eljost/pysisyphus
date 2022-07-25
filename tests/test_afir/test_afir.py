@@ -80,8 +80,8 @@ def test_three_frag_afir():
     assert geom.energy == pytest.approx(-22.5800216)
 
     c3d = geom.coords3d
-    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.61026, abs=1e-5)
-    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.79707, abs=1e-5)
+    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.61026, abs=1e-3)
+    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.79707, abs=1e-3)
 
 
 @using("pyscf")
