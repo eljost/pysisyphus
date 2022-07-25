@@ -4,7 +4,7 @@
 import numpy as np
 
 from pysisyphus.intcoords.Primitive import Primitive
-from pysisyphus.linalg import eigvec_grad
+from pysisyphus.linalg import eigvec_grad, rot_quaternion
 
 
 def compare_to_geometric(c3d, ref_c3d, dR, dF, dqdx, dvdx, atol=1e-14):
@@ -37,39 +37,9 @@ class Rotation(Primitive):
         return 1
 
     @staticmethod
-    def to_origin(coords3d, indices):
-        return coords3d[indices] - coords3d[indices].mean(axis=0)
-
-    @staticmethod
     def _calculate(coords3d, indices, gradient=False, index=0, ref_coords3d=None):
-        # Translate to origin by removing centroid
-        c3d = Rotation.to_origin(coords3d, indices)
-        ref_c3d = Rotation.to_origin(ref_coords3d, indices)
+        w, v_, c3d, ref_c3d = rot_quaternion(coords3d[indices], ref_coords3d[indices])
 
-        # Setup correlation matrix
-        R = c3d.T.dot(ref_c3d)
-
-        # Setup F matrix, Eq. (6) in [1]
-        F = np.zeros((4, 4))
-        R11, R12, R13, R21, R22, R23, R31, R32, R33 = R.flatten()
-        # Fill only upper triangular part.
-        F[0, 0] = R11 + R22 + R33
-        F[0, 1] = R23 - R32
-        F[0, 2] = R31 - R13
-        F[0, 3] = R12 - R21
-        #
-        F[1, 1] = R11 - R22 - R33
-        F[1, 2] = R12 + R21
-        F[1, 3] = R13 + R31
-        #
-        F[2, 2] = -R11 + R22 - R33
-        F[2, 3] = R23 + R32
-        #
-        F[3, 3] = -R11 - R22 + R33
-        # Eigenvalues, eigenvectors of upper triangular part.
-        w, v_ = np.linalg.eigh(F, UPLO="U")
-        # Quaternion corresponds to biggest (last) eigenvalue.
-        # np.linalg.eigh already returns sorted eigenvalues.
         quat = v_[:, -1]
         # Eigenvector sign is ambigous. Force first item to be positive,
         # similar to geomeTRIC code.
@@ -88,8 +58,8 @@ class Rotation(Primitive):
         #   output: lim v(x) for x -> 1 becomes 2.
         q0 = quat[0]
         if abs(q0 - 1.0) <= 1e-8:
-            prefac = 2 - 2/3 *(q0-1)
-            dvdq0 = -2/3
+            prefac = 2 - 2 / 3 * (q0 - 1)
+            dvdq0 = -2 / 3
         else:
             arccos_q0 = np.arccos(q0)
             diff = 1 - q0 ** 2
