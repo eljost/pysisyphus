@@ -201,12 +201,12 @@ def connect_fragments_kmeans(
         but just add a fixed value to the MID. Scaling a possibly big MID would
         probably include too many coordinates.
         """
-        if aux_no_hh:
-            is_hh = np.array(
-                [(atoms[k] == "h") and (atoms[k] == atoms[l]) for k, l in inds]
-            )
-        else:
-            is_hh = np.zeros(len(inds))
+        # if aux_no_hh:
+        # is_hh = np.array(
+        # [(atoms[k] == "h") and (atoms[k] == atoms[l]) for k, l in inds]
+        # )
+        # else:
+        # is_hh = np.zeros(len(inds))
 
         aux_mask = np.logical_or(
             distances <= aux_below_thresh,
@@ -242,7 +242,7 @@ def connect_fragments_kmeans(
 
         for n_clusters in range(2, 10):
             kmeans = KMeans(n_clusters=n_clusters)
-            clustering = kmeans.fit_predict(dists)
+            _ = kmeans.fit_predict(dists)
             min_center = kmeans.cluster_centers_.min()
 
             if min_center <= (min_scale * min_dist):

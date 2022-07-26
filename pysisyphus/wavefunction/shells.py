@@ -497,7 +497,7 @@ class Shells:
     #######################################
 
     def get_eri_cart(self):
-        shells_a = shells_b = shells_c = shells_d = self
+        # shells_a = shells_b = shells_c = shells_d = self
         pass
 
     def __str__(self):

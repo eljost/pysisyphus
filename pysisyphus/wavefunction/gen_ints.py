@@ -26,7 +26,6 @@ import time
 from jinja2 import Template
 import numpy as np
 from sympy import (
-    Array,
     cse,
     exp,
     Function,
@@ -761,10 +760,10 @@ def run():
     center_D = get_center("D")
 
     # Cartesian components (x, y, z) of the centers A, B, C and D.
-    Ax, Ay, Az = center_A
-    Bx, By, Bz = center_B
-    Cx, Cy, Cz = center_C
-    Dx, Dy, Dz = center_D
+    # Ax, Ay, Az = center_A
+    # Bx, By, Bz = center_B
+    # Cx, Cy, Cz = center_C
+    # Dx, Dy, Dz = center_D
 
     # Orbital exponents a, b, c, d.
     a, b, c, d = symbols("a b c d", real=True)
