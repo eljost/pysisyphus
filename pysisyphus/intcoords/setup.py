@@ -169,7 +169,7 @@ def connect_fragments_kmeans(
     connected. This information is then used to also prune possible interfragment bonds.
     Only auxiliary IFBs between fragments that are actually connected via IFBs are kept.
     """
-    atoms = [atom.lower() for atom in atoms]
+    # atoms = [atom.lower() for atom in atoms]
     if len(fragments) > 1:
         log(
             logger,

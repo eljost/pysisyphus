@@ -20,7 +20,8 @@ def parse_fchk(text):
 
     cur_keyword = None
     lines = text.strip().split("\n")
-    title1, title2, *lines = lines
+    # title1, titl2 are not used
+    _, _, *lines = lines
 
     conv_funcs = {
         "R": lambda line: [float(_) for _ in line.split()],

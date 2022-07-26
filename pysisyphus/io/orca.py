@@ -6,7 +6,7 @@
 import json
 
 import numpy as np
-from scipy.special import factorial2, gamma
+from scipy.special import gamma
 
 from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.helpers_pure import file_or_str
