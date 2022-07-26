@@ -23,3 +23,15 @@ comment:
   layout: "reach,diff,flags,tree"
   behavior: default
   require_changes: no
+
+ignore:
+  # Code generated molecular integrals
+  - "pysisyphus/wavefunction/eri.py"
+  - "pysisyphus/wavefunction/coulomb3d.py"
+  - "pysisyphus/wavefunction/dipole3d.py"
+  - "pysisyphus/wavefunction/kinetic3d.py"
+  - "pysisyphus/wavefunction/ovlp3d.py"
+  - "pysisyphus/wavefunction/so1el.py"
+  # Code generated internal coordinate derivatives
+  - "pysisyphus/intcoords/derivatives.py"
+  - "pysisyphus/intcoords/mp_derivatives.py"
