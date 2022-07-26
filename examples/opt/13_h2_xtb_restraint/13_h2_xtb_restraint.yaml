@@ -17,7 +17,7 @@ calc:
      # whereas the second argument is a force constant (in atomic units; actual units
      # depend on the coordinate). Optionally a reference value (third argument) can be
      # given. If omitted, the initial coordinate value is used as reference value.
-     restraints: [[[BOND, 0, 1], 10, 3.0]]
+     restraints: [[[BOND, 0, 1], 0.15, 3.0]]
      # The commented out input below would restrain the bond at its initial value.
      #restraints: [[[BOND, 0, 1], 10]]
      # Multiple restraints are specified as given below. As H2 has only two atoms
