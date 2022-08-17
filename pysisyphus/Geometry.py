@@ -1248,6 +1248,7 @@ class Geometry:
         return make_xyz_str(atoms, cart_coords.reshape((-1, 3)), comment)
 
     def dump_xyz(self, fn):
+        fn = str(fn)
         if not fn.lower().endswith(".xyz"):
             fn = fn + ".xyz"
         with open(fn, "w") as handle:
@@ -1411,13 +1412,13 @@ class Geometry:
         max_dist = dists.max()
         return max_dist
 
-    def rotate(self, copy=False):
+    def rotate(self, copy=False, rng=None):
         if copy:
             geom = self.copy()
         else:
             geom = self
 
-        rot = Rotation.random()
+        rot = Rotation.random(random_state=rng)
         geom.coords3d = rot.apply(geom.coords3d)
         return geom
 
