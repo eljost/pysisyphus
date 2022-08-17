@@ -170,7 +170,7 @@ def get_bond_difference(geom1, geom2, bond_factor=BOND_FACTOR):
     assert geom1.atoms == geom2.atoms
 
     def as_sets(geom):
-        bonds = get_bond_sets(geom.atoms, geom.coords3d, bond_factor=BOND_FACTOR)
+        bonds = get_bond_sets(geom.atoms, geom.coords3d, bond_factor=bond_factor)
         return set([frozenset(b) for b in bonds.tolist()])
 
     def as_lists(bonds):

@@ -293,12 +293,18 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
 
 
-def check_for_end_sign(check_user=True, cwd="."):
+def check_for_end_sign(check_user=True, cwd=".", add_signs=None):
+    if add_signs is None:
+        add_signs = tuple()
+    elif type(add_signs) == str:
+        add_signs = (add_signs, )
+    else:
+        add_signs = tuple(add_signs)
     signs = (
         "stop",
         "converged",
         "exit",
-    )
+    ) + add_signs
     sign_found = False
     cur_user = getpass.getuser()
     cwd = Path(cwd)
