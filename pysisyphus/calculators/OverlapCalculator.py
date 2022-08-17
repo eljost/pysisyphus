@@ -386,20 +386,28 @@ class OverlapCalculator(Calculator):
         ao_ovlp : ndarray, shape(AOs1, AOs2)
             Double molcule AO overlaps.
         """
-        states1, occ, _ = ci_coeffs1.shape
-
-        # MO overlaps
+        # Total number of molecular orbitals for ci_coeffs1 and ci_coeffs2 (occ + virt)
+        nmo1, nmo2 = [
+            sum(ci_coeffs.shape[1:]) for ci_coeffs in (ci_coeffs1, ci_coeffs2)
+        ]
+        assert ao_ovlp.shape == (nmo1, nmo2)
+        _, occ, _ = ci_coeffs1.shape
+        # MO overlaps, and the respective sub-matrices (occ x occ), (virt x virt)
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
         S_MO_occ = S_MO[:occ, :occ]
         S_MO_vir = S_MO[occ:, occ:]
 
-        overlaps = list()
-        for state1 in ci_coeffs1:
-            precontr = S_MO_occ.dot(state1).dot(S_MO_vir)
-            for state2 in ci_coeffs2:
-                overlaps.append(np.sum(precontr * state2))
-        overlaps = np.array(overlaps).reshape(states1, -1)
+        # Thanks Philipp and Klaus!
+        overlaps = np.zeros((ci_coeffs1.shape[0], ci_coeffs2.shape[0]))
+        for i, state1 in enumerate(ci_coeffs1):
+            precontr = S_MO_vir.T @ state1.T @ S_MO_occ
+            for j, state2 in enumerate(ci_coeffs2):
+                overlaps[i, j] = np.trace(precontr @ state2)
 
+        # overlaps = np.einsum(
+        # "mil,ij,njk,kl->mn", ci_coeffs1, S_MO_occ, ci_coeffs2, S_MO_vir.T,
+        # optimize=['einsum_path', (0, 3), (1, 2), (0, 1)],
+        # )
         return overlaps
 
     def get_tden_overlaps(self, indices=None, ao_ovlp=None):
@@ -429,7 +437,7 @@ class OverlapCalculator(Calculator):
         normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
         # u, s, vh = np.linalg.svd(state_ci_coeffs)
         u, s, vh = np.linalg.svd(normed)
-        lambdas = s**2
+        lambdas = s ** 2
         self.log("Normalized transition density vector to 1.")
         self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
         lambdas_str = np.array2string(lambdas[:3], precision=4, suppress_small=True)
@@ -502,7 +510,7 @@ class OverlapCalculator(Calculator):
         S_MO = C_ref @ ao_ovlp @ C_cur.T  # Currently MOs are given in rows
 
         ref, cur = self.get_indices(indices)
-        fact = 1 / 2**0.5
+        fact = 1 / 2 ** 0.5
         # Reference step
         Xs_ref = fact * self.X_list[ref]
         Ys_ref = fact * self.Y_list[ref]
@@ -663,7 +671,7 @@ class OverlapCalculator(Calculator):
                 sn_ci_coeffs,
                 mo_coeffs,
             )
-            pr_nto = lambdas.sum() ** 2 / (lambdas**2).sum()
+            pr_nto = lambdas.sum() ** 2 / (lambdas ** 2).sum()
             if self.pr_nto:
                 use_ntos = int(np.round(pr_nto))
                 self.log(f"PR_NTO={pr_nto:.2f}")
@@ -707,6 +715,16 @@ class OverlapCalculator(Calculator):
 
         ao_ovlp = self.get_sao_from_mo_coeffs(mo_coeffs)
         mo_coeffs = self.renorm_mos(mo_coeffs, ao_ovlp)
+
+        X_norms, Y_norms = [np.linalg.norm(mat, axis=(1, 2)) for mat in (X, Y)]
+        ci_norms = np.sqrt(X_norms ** 2 - Y_norms ** 2)
+        X /= ci_norms[:, None, None]
+        Y /= ci_norms[:, None, None]
+        X_renorms, Y_renorms = [np.linalg.norm(mat, axis=(1, 2)) for mat in (X, Y)]
+        ci_renorms = np.sqrt(X_renorms ** 2 - Y_renorms ** 2)
+        self.X_list.append(X.copy())
+        self.Y_list.append(Y.copy())
+
         if self.XY == "X":
             ci_coeffs = X
         elif self.XY == "X+Y":
@@ -717,17 +735,9 @@ class OverlapCalculator(Calculator):
             raise Exception(
                 f"Invalid 'XY' value. Allowed values are: '{self.VALID_XY}'!"
             )
-        self.X_list.append(X.copy())
-        self.Y_list.append(Y.copy())
+        self.log(f"CI-vector norms: {ci_renorms}")
 
-        # Norm (X+Y) to 1 for every state
-        ci_norms = np.linalg.norm(ci_coeffs, axis=(1, 2))
-        ci_coeffs /= ci_norms[:, None, None]
-
-        ci_norms = np.linalg.norm(ci_coeffs, axis=(1, 2))
-        self.log(f"CI-vector norms: {ci_norms}")
-
-        # Don't create the object when we use a different ovlp method.
+        # Don't create the wf-object when we use a different ovlp method.
         if (self.ovlp_type == "wf") and (self.wfow is None):
             self.set_wfow(ci_coeffs)
 
