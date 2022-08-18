@@ -3,6 +3,7 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import KB, AU2J
+from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.PrimTypes import prims_from_prim_inputs
 from pysisyphus.intcoords.update import correct_dihedrals
 from pysisyphus.intcoords import Torsion
@@ -129,8 +130,20 @@ class Restraint:
 
 
 class RMSD:
-    def __init__(self, geom, k, beta=0.5):
-        """Restrain to reference geometry."""
+    def __init__(self, geom: Geometry, k: float, beta: float=0.5):
+        """Restrain to reference geometry.
+
+        Parameters
+        ----------
+
+        geom:
+            Reference geometry for RMSD calculation.
+        k:
+            Gaussian height. Should be a negative number if the system under study should
+            stay close to the reference geometry.
+        b:
+            Gaussian width in inverse units of lengths.
+        """
 
         self.k = k
         self.beta = beta

@@ -73,7 +73,7 @@ class StringOptimizer(Optimizer):
             self.stop_in -= 1
             # Don't print this message if stop_in was disabled in the first place (< 0).
             if self.stop_in >= 0:
-                self.log(f"String is fully grown. Stopping in {self.stop_in} cycles.")
+                self.log(f"String is fully grown. Stopping in {self.stop_in} cycle(s).")
 
         fully_grown = self.geometry.fully_grown
         full_stop = fully_grown and (self.stop_in == 0)

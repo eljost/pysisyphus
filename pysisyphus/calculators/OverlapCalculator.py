@@ -112,6 +112,10 @@ class OverlapCalculator(Calculator):
         self.double_mol = double_mol
         assert ovlp_with in ("previous", "first", "adapt")
         self.ovlp_with = ovlp_with
+        assert (self.ovlp_type, self.ovlp_with) != (
+            "top",
+            "adapat",
+        ), "ovlp_type: top and ovlp_with: adapat are not yet compatible"
         self.XY = XY
         assert self.XY in self.VALID_XY
         self.adapt_args = np.abs(adapt_args, dtype=float)

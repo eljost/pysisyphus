@@ -256,6 +256,13 @@ LogFermi
     :members:
     :undoc-members:
 
+RMSD
+----
+
+.. automodule:: pysisyphus.calculators.ExternalPotential.RMSD
+    :members:
+    :undoc-members:
+
 AFIR
 ----
 .. automodule:: pysisyphus.calculators.AFIR

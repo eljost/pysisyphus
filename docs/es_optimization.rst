@@ -67,6 +67,7 @@ below.
      #  tden: Transition density matrix overlaps.
      #  nto: Natural transition orbital overlaps.
      #  nto_org: Natural transition orbital overlaps as described by García.
+     #  top: Transition orbital projection
      ovlp_type: wf
      # Controls the reference cycle that is used in the overlap calculation. The default
      # 'adapt' is recommended.
