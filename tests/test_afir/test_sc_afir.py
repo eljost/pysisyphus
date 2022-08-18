@@ -8,6 +8,7 @@ from pysisyphus.drivers.afir import (
     coordinates_similar,
     decrease_distance,
     determine_target_pairs_for_geom,
+    generate_random_union_ref,
     lstsqs_with_reference,
     weight_function,
     find_candidates,
@@ -130,7 +131,7 @@ def test_sc_afir_claisen(calc_cls, calc_kwargs, ref_cc_dist, ref_oc_dist, geom):
     def assert_dist(i, j, ref_dist):
         dist = Stretch([i, j]).calculate(geom.coords3d)
         print(dist, dist / ANG2BOHR)
-        assert dist == pytest.approx(ref_dist, abs=1e-2)
+        assert dist == pytest.approx(ref_dist, abs=2e-2)
 
     assert_dist(m, n, ref_cc_dist)
     assert_dist(1, 2, ref_oc_dist)
@@ -157,3 +158,11 @@ def test_coordinates_similar(ref_coords3d, ref_return):
 def test_determine_target_pairs(geom):
     target_pairs = determine_target_pairs_for_geom(geom, min_=1.25, max_=5.0)
     assert len(target_pairs) == 64
+
+
+def test_random_union():
+    geom = geom_loader("lib:h2o.xyz")
+    n = 5
+    geoms = [geom] * n
+    union = generate_random_union_ref(geoms)
+    assert len(union.atoms) == n * len(geom.atoms)

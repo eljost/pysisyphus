@@ -2,11 +2,18 @@
 #     Exploring transition state structures for intramolecular pathways
 #     by the artificial force induced reaction method
 #     Maeda, Morokuma et al, 2013
+# [2] https://pubs.acs.org/doi/10.1021/ct200290m
+#     Finding Reaction Pathways of Type A + B → X: Toward Systematic
+#     Prediction of Reaction Mechanisms
+#     Maeda, Morokuma, 2011
 
+from dataclasses import dataclass
 import itertools as it
 from functools import reduce
+import os
 from pathlib import Path
-from typing import List, Tuple
+import shutil
+from typing import Callable, List, Tuple, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -14,18 +21,76 @@ from rmsd import kabsch_rmsd
 from scipy.spatial.distance import pdist
 from scipy.optimize import least_squares
 
-from pysisyphus.calculators.AFIR import AFIR, AFIRPath
+from pysisyphus.calculators import AFIR, HardSphere
+
+# from pysisyphus.calculators.AFIR import AFIR
 from pysisyphus.config import OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.drivers.opt import run_opt
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import pick_image_inds
+from pysisyphus.helpers import pick_image_inds, check_for_end_sign
 from pysisyphus.intcoords.helpers import get_bond_difference
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.intcoords.setup_fast import find_bonds
+from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.xyzloader import make_xyz_str
+
+
+@dataclass
+class AFIRPath:
+    atoms: tuple
+    cart_coords: np.ndarray
+    energies: np.ndarray
+    forces: np.ndarray
+    charge: int
+    mult: int
+    opt_is_converged: Optional[bool] = None
+    gamma: Optional[float] = None
+    # gammas: List[float] = None
+    # opts_are_converged: List[bool] = None
+    path_indices: Optional[List[int]] = None
+
+    def compatible(self, other):
+        check = ("atoms", "charge", "mult")
+        return all([getattr(self, name) == getattr(other, name) for name in check])
+
+    def __add__(self, other):
+        """This assumes that the first item in other.cart_coords is the same as the
+        last item of self.cart_coords."""
+        assert self.compatible(other)
+
+        def conc(name):
+            return np.concatenate(
+                (getattr(self, name), getattr(other, name)[1:]), axis=0
+            )
+
+        cart_coords = conc("cart_coords")
+        energies = conc("energies")
+        forces = conc("forces")
+
+        if self.path_indices is None:
+            path_indices = [0] * len(self.cart_coords)
+        else:
+            path_indices = self.path_indices
+        path_indices += [path_indices[-1] + 1] * (len(other.cart_coords) - 1)
+
+        return AFIRPath(
+            atoms=self.atoms,
+            cart_coords=cart_coords,
+            energies=energies,
+            forces=forces,
+            charge=self.charge,
+            mult=self.mult,
+            path_indices=path_indices,
+        )
+
+    def dump_trj(self, fn):
+        geom = Geometry(self.atoms, self.cart_coords[0])
+        xyzs = [geom.as_xyz(cart_coords=cc) for cc in self.cart_coords]
+        with open(fn, "w") as handle:
+            handle.write("\n".join(xyzs))
 
 
 ##########################
@@ -36,27 +101,180 @@ from pysisyphus.xyzloader import make_xyz_str
 ##########################
 
 
-def generate_random_union(geoms, offset=1.0, copy=True):
-    assert 2 <= len(geoms) <= 6
-    # Center, rotate and displace from origin acoording to approximate radius
-    # and an offset.
-    # Displace along +x, -x, +y, -y, +z, -z. Affords at max 6 fragments.
+def generate_random_union(geoms, offset=2.0, copy=True, rng=None):
+    """Unite fragments into one Geometry with random fragment orientations.
+
+    Center, rotate and translate from origin acoording to approximate radius
+    and an offset.
+    Displace along +x, -x, +y, -y, +z, -z.
+
+    Results for > 3 fragments don't look so pretty ;).
+    """
+
     axis_inds = (0, 0, 1, 1, 2, 2)
+    axis_inds_num = len(axis_inds)
+    axis_translations = np.zeros(axis_inds_num)
     randomized = list()
     for i, geom in enumerate(geoms):
+        i_mod = i % axis_inds_num
         if copy:
             geom = geom.copy()
         geom.center()
-        geom.rotate()
-        step_size = geom.approximate_radius() + offset
+        geom.rotate(rng=rng)
+        axis = axis_inds[i_mod]
+        step_size = axis_translations[i_mod] + geom.approximate_radius() + offset
+        axis_translations[i_mod] = step_size
         step = np.zeros(3)
-        axis = axis_inds[i]
         # Alternate between negative and positive direction along x/y/z
         step[axis] = (-1) ** i * step_size
         geom.coords3d += step[None, :]
         randomized.append(geom)
     union = reduce(lambda geom1, geom2: geom1 + geom2, randomized)
     return union
+
+
+def generate_random_union_ref(geoms, copy=True, rng=None, opt_kwargs=None):
+    if copy:
+        geoms = [geom.copy() for geom in geoms]
+
+    if rng is None:
+        rng = np.random.default_rng()
+
+    if opt_kwargs is None:
+        opt_kwargs = {}
+
+    # Random rotations
+    for geom in geoms:
+        geom.center()
+        geom.rotate(rng=rng)
+
+    # HardSphere optimization to fix overlapping fragments
+    #
+    # Set up fragment lists.
+    fragments = list()
+    for geom in geoms:
+        geom_inds = np.arange(len(geom.atoms))
+        try:
+            geom_inds += fragments[-1][-1] + 1
+        except IndexError:
+            pass
+        fragments.append(geom_inds.tolist())
+    union = reduce(lambda geom1, geom2: geom1 + geom2, geoms)
+    calc = HardSphere(union, frags=fragments, permutations=False, kappa=1.0)
+    union.set_calculator(calc)
+    _opt_kwargs = {
+        "max_step": 0.2,
+        "max_cycles": 500,
+    }
+    _opt_kwargs.update(opt_kwargs)
+    opt = FIRE(union, **_opt_kwargs)
+    opt.run()
+    if not opt.is_converged:
+        union = None
+    else:
+        # Remove HardSphere calculator
+        union.clear()
+        del union.calculator
+
+    return union
+
+
+def opt_afir_path(geom, calc_getter, fragments, gamma, out_dir=None):
+    if out_dir is None:
+        out_dir = "."
+    out_dir = Path(out_dir)
+
+    actual_calc = calc_getter(out_dir=out_dir / OUT_DIR_DEFAULT)
+
+    def afir_calc_getter():
+        afir_calc = AFIR(
+            actual_calc, fragment_indices=fragments, gamma=gamma, out_dir=out_dir
+        )
+        return afir_calc
+
+    opt_kwargs = {
+        "dump": True,
+        "out_dir": out_dir,
+        "prefix": "afir",
+        "max_cycles": 200,
+    }
+    opt_result = run_opt(geom, afir_calc_getter, opt_key="rfo", opt_kwargs=opt_kwargs)
+    opt = opt_result.opt
+
+    afir_path = AFIRPath(
+        atoms=geom.atoms,
+        cart_coords=np.array(opt.cart_coords),
+        energies=np.array(opt.true_energies),
+        forces=np.array(opt.true_forces),
+        opt_is_converged=opt.is_converged,
+        charge=actual_calc.charge,
+        mult=actual_calc.mult,
+        gamma=gamma,
+    )
+
+    return afir_path
+
+
+def run_afir_path(geom, calc_getter, fragments, out_dir, gamma_max, gamma_limit):
+    ref_calc = calc_getter()
+    ref_energy = ref_calc.get_energy(geom.atoms, geom.cart_coords)["energy"]
+    geom_backup = geom.copy()
+
+    gamma_0 = gamma_limit * np.random.rand(1)[0] * gamma_max
+    gamma_inrc = 0.1 * gamma_max
+
+    afir_paths = list()
+    best_afir_path = None
+    lowest_barrier = None
+    gamma = gamma_0
+    # Minimize AFIR functions until gamma exceeds gamma_max.
+    while gamma <= gamma_max:
+        print(f"\t@@@ run with {gamma=:.6f}, {gamma_max=:.6f}")
+        afir_path = opt_afir_path(
+            geom, calc_getter, fragments, gamma=gamma, out_dir=out_dir
+        )
+        afir_paths.append(afir_path)
+        true_energies = afir_path.energies
+
+        # Check for changes in bond topology by comparing the result of the current
+        # minimization to the initial geometry.
+        formed, broken = get_bond_difference(geom_backup, geom, bond_factor=1.2)
+        if formed or broken:
+            max_energy = true_energies.max()
+            barrier = max_energy - ref_energy
+
+            # Always store the first path that leads to a change in bond topology.
+            if lowest_barrier is None:
+                best_afir_path = afir_path
+                lowest_barrier = barrier
+
+            # Break when a path with a lower or higher barrier is detected. This
+            # should happen in the cycle after the first change in bond toplogy was
+            # detected.
+            if barrier < lowest_barrier:
+                best_afir_path = afir_path
+                lowest_barrier = barrier
+                break
+            elif barrier > lowest_barrier:
+                break
+        else:
+            barrier = None
+
+        # Update values for next cycle
+        gamma += gamma_inrc
+
+    # Construct TS guess from highest energy point along the AFIR path.
+    if best_afir_path:
+        guess_ind = best_afir_path.energies.argmax()
+        guess_coords = best_afir_path.cart_coords[guess_ind]
+        ts_guess = Geometry(geom.atoms, guess_coords)
+        ts_guess.dump_xyz(out_dir / "ts_guess.xyz")
+        afir_path_merged = reduce(lambda ap1, ap2: ap1 + ap2, afir_paths)
+    else:
+        ts_guess = None
+        afir_path_merged = None
+
+    return ts_guess, afir_path_merged
 
 
 def relax_afir_path(atoms, cart_coords, calc_getter, images=15, out_dir=None):
@@ -87,8 +305,17 @@ def relax_afir_path(atoms, cart_coords, calc_getter, images=15, out_dir=None):
     run_opt(cos, calc_getter, opt_key="lbfgs", opt_kwargs=cos_opt_kwargs)
 
 
-def run_mc_afir_paths(geoms, calc_getter, num=5, gamma=None, t=None, T=298.15):
-    assert gamma or t, "Either parameter gamme of time t must be given!"
+def run_mc_afir_paths(
+    geoms: List,
+    calc_getter: Callable,
+    gamma_max: float,
+    N_max: int = 5,
+    N_sample: int = 0,
+    seed: Optional[int] = None,
+    gamma_limit: float = 1.0,
+    rmsd_thresh: float = 0.25,
+):
+    rng = np.random.default_rng(seed)
 
     # Set up list of fragments
     i = 0
@@ -98,60 +325,61 @@ def run_mc_afir_paths(geoms, calc_getter, num=5, gamma=None, t=None, T=298.15):
         fragments.append(np.arange(atom_num) + i)
         i += atom_num
 
-    unions = [generate_random_union(geoms, copy=True) for _ in range(num)]
-    # with open("unions.trj", "w") as handle:
-    # handle.write("\n".join([union.as_xyz() for union in unions]))
+    # unions = [generate_random_union(geoms, copy=True, rng=rng) for _ in range(num)]
+    # out_dirs = [Path(f"out_{i:03d}") for i in range(num)]
+    # for i, (union, out_dir) in enumerate(zip(unions, out_dirs)):
+    # ts_guess = run_afir_path(union, calc_getter, fragments, out_dir, gamma_max, gamma_limit)
+    # if ts_guess is not None:
+    # ts_guesses.append(ts_guess)
 
+    ts_guesses = list()
     afir_paths = list()
-    for i, union in enumerate(unions):
-        out_dir = Path(f"out_{i:03d}")
+    N = 0
+    N_0 = 0
+    stop_sign = "afir_stop"
+    fmt = " >4d"
+    while (N - N_0 <= N_max) or (0 < len(ts_guesses) <= N_sample):
+        union = generate_random_union(geoms, copy=True, rng=rng)
+        out_dir = Path(f"out_{N:03d}")
 
-        union_backup = union.copy()
-        # Preoptimize union, so we start from an actual minimum
-        union_opt_kwargs = {
-            "prefix": "union",
-            "out_dir": out_dir,
-        }
-        run_opt(union, calc_getter, opt_key="rfo", opt_kwargs=union_opt_kwargs)
+        if out_dir.exists():
+            dir_contents = os.listdir(out_dir)
+            for fn in dir_contents:
+                fn = out_dir / fn
+                try:
+                    os.remove(fn)
+                except IsADirectoryError:
+                    shutil.rmtree(fn)
+        else:
+            os.mkdir(out_dir)
 
-        afir_path = multicomponent_afir(
-            union, calc_getter, fragments, gamma=gamma, out_dir=out_dir
+        print("\t@@@ new afir run")
+        ts_guess, afir_path = run_afir_path(
+            union, calc_getter, fragments, out_dir, gamma_max, gamma_limit
         )
-        afir_paths.append(afir_path)
-        formed, broken = get_bond_difference(union, union_backup)
-        if formed or broken:
-            relax_afir_path(
-                union.atoms, afir_path.cart_coords, calc_getter, out_dir=out_dir
-            )
+        if ts_guess is not None:
+            try:
+                rmsds = [ts_guess.rmsd(guess) for guess in ts_guesses]
+                min_rmsd = min(rmsds)
+            except ValueError:
+                min_rmsd = rmsd_thresh  # Always add first guess
 
-
-def multicomponent_afir(geom, calc_getter, fragments, gamma, out_dir=None):
-    actual_calc = calc_getter(out_dir=out_dir / OUT_DIR_DEFAULT)
-
-    def afir_calc_getter():
-        afir_calc = AFIR(
-            actual_calc, fragment_indices=fragments, gamma=gamma, out_dir=out_dir
+            if min_rmsd >= rmsd_thresh:
+                print(f"@@@ rmsds different enough! {min_rmsd=:.6f} au")
+                ts_guesses.append(ts_guess)
+                afir_paths.append(afir_path)
+                N_0 = N
+            else:
+                print("@@@ rmsds too similar!")
+        print(
+            f"@@@ {N_0=:{fmt}}, {N=:{fmt}}, {N-N_0=:{fmt}}, {N_max=:{fmt}}, {len(ts_guesses)=:{fmt}}"
         )
-        return afir_calc
-
-    opt_kwargs = {
-        "dump": True,
-        "out_dir": out_dir,
-        "prefix": "afir",
-        "max_cycles": 200,
-    }
-    opt_result = run_opt(geom, afir_calc_getter, opt_key="rfo", opt_kwargs=opt_kwargs)
-    opt = opt_result.opt
-
-    afir_path = AFIRPath(
-        atoms=geom.atoms,
-        cart_coords=np.array(opt.cart_coords),
-        energies=np.array(opt.true_energies),
-        forces=np.array(opt.true_forces),
-        opt_is_converged=opt.is_converged,
-    )
-
-    return afir_path
+        sign = check_for_end_sign(add_signs=(stop_sign,))
+        if sign == stop_sign:
+            print(f"Found sign '{stop_sign}'. Breaking!")
+            break
+        N += 1
+    return ts_guesses, afir_paths
 
 
 def analyze_afir_path(energies):
@@ -190,7 +418,7 @@ def analyze_afir_path(energies):
 ###########################
 
 
-def decrease_distance(coords3d, m, n, frac=0.9):
+def decrease_distance(coords3d, m, n, frac=0.8):
     c3d_m = coords3d[m]
     c3d_n = coords3d[n]
     dist_vec = c3d_n - c3d_m
@@ -234,7 +462,7 @@ def lstsqs_with_reference(coords3d, ref_coords3d, freeze_atoms=None):
 def weight_function(atoms, coords3d, i, j, p=6):
     cr_sum = sum([CR[atoms[k].lower()] for k in (i, j)])
     r_ij = np.linalg.norm(coords3d[i] - coords3d[j])
-    omega = (cr_sum / r_ij) ** 6
+    omega = (cr_sum / r_ij) ** p
     return omega
 
 
@@ -302,7 +530,9 @@ def automatic_fragmentation(
         # Step 6 in [1].
         frag1.update(f1_candidates)
         frag2.update(f2_candidates)
-        assert frag1.isdisjoint(frag2), "Overlapping fragments detected!"  # Sanity check
+        assert frag1.isdisjoint(
+            frag2
+        ), "Overlapping fragments detected!"  # Sanity check
     return frag1, frag2
 
 

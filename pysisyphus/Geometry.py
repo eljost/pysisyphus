@@ -317,9 +317,7 @@ class Geometry:
         for atom in unique_atoms:
             set_atom(atom)
 
-        return "".join(
-            [f"{atom}{num_str}" for atom, num_str in zip(atoms, num_strs)]
-        )
+        return "".join([f"{atom}{num_str}" for atom, num_str in zip(atoms, num_strs)])
 
     def assert_compatibility(self, other):
         """Assert that two Geometries can be substracted from each other.
