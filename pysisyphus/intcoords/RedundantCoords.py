@@ -144,7 +144,8 @@ class RedundantCoords:
             )
         # Use supplied typed_prims
         else:
-            self.typed_prims = typed_prims + self.define_prims
+            unique_typed_prims = set(typed_prims) | set(self.define_prims)
+            self.typed_prims = list(unique_typed_prims)
 
         if self.bonds_only:
             self.typed_prims = self.bond_typed_prims

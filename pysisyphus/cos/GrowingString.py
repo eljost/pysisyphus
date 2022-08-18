@@ -88,6 +88,7 @@ class GrowingString(GrowingChainOfStates):
         diffs = [
             image - self.images[max(i - 1, 0)] for i, image in enumerate(self.images)
         ]
+
         norms = np.linalg.norm(diffs, axis=1)
         param_density = np.cumsum(norms)
         self.log(f"Current string length={param_density[-1]:.6f}")
@@ -120,6 +121,8 @@ class GrowingString(GrowingChainOfStates):
         self.log(
             f"Resetting image primitives. Got {len(ref_typed_prims)} typed primitives."
         )
+        # Do multiple cycles as it may happen, that not all coordinates are valid
+        # at every node.
         for i in range(3):
             self.log(f"\tMicro cycle {i:d}")
             intersect = set(self.images[0].internal.typed_prims)
