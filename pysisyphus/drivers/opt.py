@@ -118,6 +118,7 @@ def run_opt(
         print(highlight_text(f"Running {title}", level=level) + "\n")
         print(f"     Input geometry: {geom.describe()}")
         print(f"  Coordinate system: {geom.coord_type}")
+        print(f"  Coordinate number: {len(geom.coords)}")
         print(f"         Calculator: {geom.calculator}")
         print(f"             Charge: {geom.calculator.charge}")
         print(f"       Multiplicity: {geom.calculator.mult}")

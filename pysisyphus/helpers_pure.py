@@ -548,10 +548,18 @@ def molecular_volume(
 def get_cubic_crystal(l, n=2, atom="Na"):
     coords3d = list()
     atoms = list()
-    for xn in range(-n, n+1):
-        for yn in range(-n, n+1):
-            for zn in range(-n, n+1):
-                coords3d.append((l*xn, l*yn, l*zn))
+    for xn in range(-n, n + 1):
+        for yn in range(-n, n + 1):
+            for zn in range(-n, n + 1):
+                coords3d.append((l * xn, l * yn, l * zn))
                 atoms.append(atom)
     coords3d = np.array(coords3d)
     return atoms, coords3d
+
+
+# Unicode subscript characters for numbers
+_NUM_SUBSCRIPTS = {str(i): chr(int(f"0x208{i}", 16)) for i in range(10)}
+
+
+def to_subscript_num(num):
+    return "".join([_NUM_SUBSCRIPTS[c] for c in str(num)])

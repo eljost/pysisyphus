@@ -28,7 +28,12 @@ from pysisyphus.elem_data import (
     COVALENT_RADII as CR,
     VDW_RADII as VDWR,
 )
-from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand, molecular_volume
+from pysisyphus.helpers_pure import (
+    eigval_to_wavenumber,
+    full_expand,
+    molecular_volume,
+    to_subscript_num,
+)
 from pysisyphus.intcoords import (
     DLC,
     HDLC,
@@ -209,7 +214,7 @@ class Geometry:
         name : str, optional
             Verbose name of the geometry, e.g. methanal or water. Used for printing
         """
-        self.atoms = atoms
+        self.atoms = tuple([atom.capitalize() for atom in atoms])
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords, dtype=float).flatten()
         assert self._coords.size == (3 * len(self.atoms)), (
@@ -288,8 +293,32 @@ class Geometry:
 
     @property
     def sum_formula(self):
-        return "_".join(
-            [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
+        unique_atoms = sorted(set(self.atoms))
+        counter = Counter(self.atoms)
+        atoms = list()
+        num_strs = list()
+
+        def set_atom(atom):
+            atoms.append(atom)
+            num = counter[atom]
+            if num == 1:
+                num_str = ""
+            else:
+                num_str = to_subscript_num(num)
+            num_strs.append(num_str)
+
+        # Hill-System
+        for atom in ("C", "H"):
+            try:
+                unique_atoms.remove(atom)
+                set_atom(atom)
+            except ValueError:
+                pass
+        for atom in unique_atoms:
+            set_atom(atom)
+
+        return "".join(
+            [f"{atom}{num_str}" for atom, num_str in zip(atoms, num_strs)]
         )
 
     def assert_compatibility(self, other):
@@ -1322,15 +1351,13 @@ class Geometry:
 
     def modes3d(self):
         try:
-            bonds = self.internal.bond_atom_indices#find_bonds(geom)
+            bonds = self.internal.bond_atom_indices
+            bonds_str = " --bonds " + " ".join(map(str, it.chain(*bonds)))
         except AttributeError:
-            pass
+            bonds_str = ""
 
-        bonds_str = " ".join(map(str, it.chain(*bonds)))
         tmp_xyz = self.tmp_xyz_handle()
-        subprocess.run(
-            f"modes3d.py {tmp_xyz.name} --bonds {bonds_str}", shell=True
-        )
+        subprocess.run(f"modes3d.py {tmp_xyz.name}{bonds_str}", shell=True)
         tmp_xyz.close()
 
     def as_ase_atoms(self):
