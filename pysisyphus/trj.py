@@ -119,7 +119,8 @@ def parse_args(args):
         help="Print automatically generated internal coordinates.",
     )
     action_group.add_argument(
-        "--internal-val", nargs="+",
+        "--internal-val",
+        nargs="+",
         help="Print value(s) of given internal coordinate.",
     )
     action_group.add_argument(
@@ -359,13 +360,21 @@ def get_geoms(
 
 
 def standardize_geoms(geoms, coord_type, geom_kwargs, same_prims=True, union=False):
+    atoms0 = geoms[0].atoms
+    same_atoms = all([geom.atoms == atoms0 for geom in geoms[1:]])
+
     if union and coord_type != "cart":
         union_geoms = read_geoms(union, coord_type=coord_type)
         assert (
             len(union_geoms) == 2
         ), f"Got {len(union_geoms)} geometries for 'union'! Please supply only two!"
         geom_kwargs["coord_kwargs"]["typed_prims"] = form_coordinate_union(*union_geoms)
-    elif same_prims and (len(geoms)) > 1 and (coord_type not in ("cart", "cartesian")):
+    elif (
+        same_atoms
+        and same_prims
+        and (len(geoms)) > 1
+        and (coord_type not in ("cart", "cartesian"))
+    ):
         # Use 'tric', if requested; otherwise always use 'redund'
         sp_coord_type = "tric" if coord_type == "tric" else "redund"
         geom_0 = geoms[0].copy(coord_type=sp_coord_type)
@@ -571,7 +580,7 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
 
 
 def print_internal_vals(geoms, typed_prim):
-    (prim_type, *indices),  = normalize_prim_input(typed_prim)
+    ((prim_type, *indices),) = normalize_prim_input(typed_prim)
     prim = PrimMap[prim_type](indices)
 
     indices_str = ", ".join(map(str, indices))
