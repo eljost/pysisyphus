@@ -13,7 +13,7 @@ from functools import reduce
 import os
 from pathlib import Path
 import shutil
-from typing import Callable, List, Tuple, Optional
+from typing import Callable, Dict, List, Tuple, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -22,9 +22,7 @@ from scipy.spatial.distance import pdist
 from scipy.optimize import least_squares
 
 from pysisyphus.calculators import AFIR, HardSphere
-
-# from pysisyphus.calculators.AFIR import AFIR
-from pysisyphus.config import OUT_DIR_DEFAULT
+from pysisyphus.config import AFIR_RMSD_THRESH, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.drivers.opt import run_opt
@@ -38,6 +36,9 @@ from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.xyzloader import make_xyz_str
 
 
+AFIR_BOND_FACTOR = 1.2
+
+
 @dataclass
 class AFIRPath:
     atoms: tuple
@@ -48,8 +49,6 @@ class AFIRPath:
     mult: int
     opt_is_converged: Optional[bool] = None
     gamma: Optional[float] = None
-    # gammas: List[float] = None
-    # opts_are_converged: List[bool] = None
     path_indices: Optional[List[int]] = None
 
     def compatible(self, other):
@@ -91,6 +90,33 @@ class AFIRPath:
         xyzs = [geom.as_xyz(cart_coords=cc) for cc in self.cart_coords]
         with open(fn, "w") as handle:
             handle.write("\n".join(xyzs))
+
+
+def analyze_afir_path(energies):
+    energies = np.array(energies)
+    max_ind = energies.argmax()
+
+    local_minima = list()
+    local_maxima = list()
+    stationary_points = list()
+    for i, en in enumerate(energies[1:-1], 1):
+        prev_en = energies[i - 1]
+        next_en = energies[i + 1]
+        if is_minimum := prev_en > en < next_en:
+            local_minima.append(i)
+        if is_ts := prev_en < en > next_en:
+            local_maxima.append(i)
+        if is_minimum or is_ts:
+            stationary_points.append(i)
+
+    if max_ind in stationary_points:
+        ts_ind = np.where(stationary_points == max_ind)[0][0]
+        prev_min_ind = stationary_points[ts_ind - 1]
+        next_min_ind = stationary_points[ts_ind + 1]
+        sp_inds = [prev_min_ind, max_ind, next_min_ind]
+    else:
+        sp_inds = list()
+    return sp_inds
 
 
 ##########################
@@ -179,7 +205,9 @@ def generate_random_union_ref(geoms, copy=True, rng=None, opt_kwargs=None):
     return union
 
 
-def opt_afir_path(geom, calc_getter, fragments, gamma, out_dir=None):
+def opt_afir_path(geom, calc_getter, afir_kwargs, opt_kwargs=None, out_dir=None):
+    if opt_kwargs is None:
+        opt_kwargs = dict()
     if out_dir is None:
         out_dir = "."
     out_dir = Path(out_dir)
@@ -187,18 +215,17 @@ def opt_afir_path(geom, calc_getter, fragments, gamma, out_dir=None):
     actual_calc = calc_getter(out_dir=out_dir / OUT_DIR_DEFAULT)
 
     def afir_calc_getter():
-        afir_calc = AFIR(
-            actual_calc, fragment_indices=fragments, gamma=gamma, out_dir=out_dir
-        )
+        afir_calc = AFIR(actual_calc, out_dir=out_dir, **afir_kwargs)
         return afir_calc
 
-    opt_kwargs = {
+    _opt_kwargs = {
         "dump": True,
         "out_dir": out_dir,
         "prefix": "afir",
         "max_cycles": 200,
     }
-    opt_result = run_opt(geom, afir_calc_getter, opt_key="rfo", opt_kwargs=opt_kwargs)
+    _opt_kwargs.update(opt_kwargs)
+    opt_result = run_opt(geom, afir_calc_getter, opt_key="rfo", opt_kwargs=_opt_kwargs)
     opt = opt_result.opt
 
     afir_path = AFIRPath(
@@ -209,36 +236,72 @@ def opt_afir_path(geom, calc_getter, fragments, gamma, out_dir=None):
         opt_is_converged=opt.is_converged,
         charge=actual_calc.charge,
         mult=actual_calc.mult,
-        gamma=gamma,
+        gamma=afir_kwargs["gamma"],
     )
 
     return afir_path
 
 
-def run_afir_path(geom, calc_getter, fragments, out_dir, gamma_max, gamma_limit):
+def to_sets(iterable):
+    return set([frozenset(i) for i in iterable])
+
+
+def run_afir_path(
+    geom,
+    calc_getter,
+    out_dir,
+    gamma_max,
+    gamma_interval: Tuple[float, float],
+    ignore_bonds=None,
+    bond_factor=AFIR_BOND_FACTOR,
+    afir_kwargs=None,
+    opt_kwargs=None,
+):
+    if ignore_bonds is None:
+        ignore_bonds = list()
+    if afir_kwargs is None:
+        afir_kwargs = dict()
+    if opt_kwargs is None:
+        opt_kwargs = {}
+    ignore_bonds = set([frozenset(bond) for bond in ignore_bonds])
+
     ref_calc = calc_getter()
     ref_energy = ref_calc.get_energy(geom.atoms, geom.cart_coords)["energy"]
     geom_backup = geom.copy()
 
-    gamma_0 = gamma_limit * np.random.rand(1)[0] * gamma_max
+    # By using (1.0, 1.0) as interval we can directly start at gamma_max, e.g.,
+    # in SC-AFIR.
+    gamma_low, gamma_high = gamma_interval
+    assert gamma_high >= gamma_low
+    gamma_spread = gamma_high - gamma_low
+    gamma_0 = (gamma_low + (gamma_spread * np.random.rand(1)[0])) * gamma_max
     gamma_inrc = 0.1 * gamma_max
 
     afir_paths = list()
     best_afir_path = None
     lowest_barrier = None
     gamma = gamma_0
+
     # Minimize AFIR functions until gamma exceeds gamma_max.
     while gamma <= gamma_max:
         print(f"\t@@@ run with {gamma=:.6f}, {gamma_max=:.6f}")
+        _afir_kwargs = afir_kwargs.copy()
+        _afir_kwargs["gamma"] = gamma
         afir_path = opt_afir_path(
-            geom, calc_getter, fragments, gamma=gamma, out_dir=out_dir
+            geom,
+            calc_getter,
+            afir_kwargs=_afir_kwargs,
+            opt_kwargs=opt_kwargs,
+            out_dir=out_dir,
         )
         afir_paths.append(afir_path)
         true_energies = afir_path.energies
 
         # Check for changes in bond topology by comparing the result of the current
         # minimization to the initial geometry.
-        formed, broken = get_bond_difference(geom_backup, geom, bond_factor=1.2)
+        formed, broken = get_bond_difference(geom_backup, geom, bond_factor=bond_factor)
+        formed = to_sets(formed) - ignore_bonds
+        broken = to_sets(broken) - ignore_bonds
         if formed or broken:
             max_energy = true_energies.max()
             barrier = max_energy - ref_energy
@@ -247,7 +310,6 @@ def run_afir_path(geom, calc_getter, fragments, out_dir, gamma_max, gamma_limit)
             if lowest_barrier is None:
                 best_afir_path = afir_path
                 lowest_barrier = barrier
-
             # Break when a path with a lower or higher barrier is detected. This
             # should happen in the cycle after the first change in bond toplogy was
             # detected.
@@ -263,6 +325,8 @@ def run_afir_path(geom, calc_getter, fragments, out_dir, gamma_max, gamma_limit)
         # Update values for next cycle
         gamma += gamma_inrc
 
+    # reduce(lambda ap1, ap2: ap1 + ap2, afir_paths).dump_trj("dumped.trj")
+
     # Construct TS guess from highest energy point along the AFIR path.
     if best_afir_path:
         guess_ind = best_afir_path.energies.argmax()
@@ -273,7 +337,6 @@ def run_afir_path(geom, calc_getter, fragments, out_dir, gamma_max, gamma_limit)
     else:
         ts_guess = None
         afir_path_merged = None
-
     return ts_guess, afir_path_merged
 
 
@@ -312,9 +375,14 @@ def run_mc_afir_paths(
     N_max: int = 5,
     N_sample: int = 0,
     seed: Optional[int] = None,
-    gamma_limit: float = 1.0,
-    rmsd_thresh: float = 0.25,
+    gamma_interval: Tuple[float, float] = (0.0, 1.0),
+    rmsd_thresh: float = AFIR_RMSD_THRESH,
+    afir_kwargs: Optional[Dict] = None,
+    opt_kwargs: Optional[Dict] = None,
 ):
+    if afir_kwargs is None:
+        afir_kwargs = dict()
+
     rng = np.random.default_rng(seed)
 
     # Set up list of fragments
@@ -324,13 +392,7 @@ def run_mc_afir_paths(
         atom_num = len(geom.atoms)
         fragments.append(np.arange(atom_num) + i)
         i += atom_num
-
-    # unions = [generate_random_union(geoms, copy=True, rng=rng) for _ in range(num)]
-    # out_dirs = [Path(f"out_{i:03d}") for i in range(num)]
-    # for i, (union, out_dir) in enumerate(zip(unions, out_dirs)):
-    # ts_guess = run_afir_path(union, calc_getter, fragments, out_dir, gamma_max, gamma_limit)
-    # if ts_guess is not None:
-    # ts_guesses.append(ts_guess)
+    afir_kwargs["fragment_indices"] = fragments
 
     ts_guesses = list()
     afir_paths = list()
@@ -355,7 +417,13 @@ def run_mc_afir_paths(
 
         print("\t@@@ new afir run")
         ts_guess, afir_path = run_afir_path(
-            union, calc_getter, fragments, out_dir, gamma_max, gamma_limit
+            union,
+            calc_getter,
+            out_dir,
+            gamma_max,
+            gamma_interval,
+            afir_kwargs=afir_kwargs,
+            opt_kwargs=opt_kwargs,
         )
         if ts_guess is not None:
             try:
@@ -376,38 +444,9 @@ def run_mc_afir_paths(
         )
         sign = check_for_end_sign(add_signs=(stop_sign,))
         if sign == stop_sign:
-            print(f"Found sign '{stop_sign}'. Breaking!")
             break
         N += 1
     return ts_guesses, afir_paths
-
-
-def analyze_afir_path(energies):
-    energies = np.array(energies)
-    # min_ind = energies.argmin()
-    max_ind = energies.argmax()
-
-    local_minima = list()
-    local_maxima = list()
-    stationary_points = list()
-    for i, en in enumerate(energies[1:-1], 1):
-        prev_en = energies[i - 1]
-        next_en = energies[i + 1]
-        if is_minimum := prev_en > en < next_en:
-            local_minima.append(i)
-        if is_ts := prev_en < en > next_en:
-            local_maxima.append(i)
-        if is_minimum or is_ts:
-            stationary_points.append(i)
-
-    if max_ind in stationary_points:
-        ts_ind = np.where(stationary_points == max_ind)[0][0]
-        prev_min_ind = stationary_points[ts_ind - 1]
-        next_min_ind = stationary_points[ts_ind + 1]
-        sp_inds = [prev_min_ind, max_ind, next_min_ind]
-    else:
-        sp_inds = list()
-    return sp_inds
 
 
 ###########################
@@ -536,10 +575,16 @@ def automatic_fragmentation(
     return frag1, frag2
 
 
-def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
+def prepare_sc_afir(geom, m, n, bond_factor=AFIR_BOND_FACTOR):
     """Create perturbed geometry, determine fragments and set AFIR calculator."""
     atoms = geom.atoms
     org_coords3d = geom.coords3d.copy()
+
+    def bond_sets(coords3d):
+        bonds = find_bonds(atoms, coords3d, bond_factor=bond_factor)
+        return set([frozenset(bond) for bond in bonds.tolist()])
+
+    org_bond_sets = bond_sets(org_coords3d)
 
     # Move target atoms closer together along distance vector (decrease distance)
     decr_coords3d = decrease_distance(geom.coords3d, m, n)
@@ -551,19 +596,16 @@ def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
     fragment_indices = [list(frag) for frag in (frag1, frag2)]
     # Set lstsq-optimized coordinates and created wrapped calculator
     geom.coords3d = opt_coords3d
-    calc = calc_getter()
-    afir_defaults = {
-        "calculator": calc,
+
+    opt_bond_sets = bond_sets(opt_coords3d)
+    broken_bonds = org_bond_sets - opt_bond_sets
+
+    afir_kwargs = {
         "fragment_indices": fragment_indices,
+        # If 'complete_fragments' would be True, all remaining atom indices not
+        # present in 'fragment_indices' would be assigned to a third fragment.
         "complete_fragments": False,
-        # "ignore_hydrogen": False,  # I'm still not sure about this ...
     }
-    afir_kwargs = afir_kwargs.copy()
-    # Force the use of the determined fragment_indices, by override any
-    # potential user input.
-    afir_kwargs.update(afir_defaults)
-    afir_calc = AFIR(**afir_kwargs)
-    geom.set_calculator(afir_calc)
 
     def set_atoms(inds, atom_type="X", mod_atoms=None):
         if mod_atoms is None:
@@ -591,7 +633,66 @@ def prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs):
             for key, (atoms, coords3d) in atoms_coords3d.items()
         ]
     )
-    return trj
+    return trj, afir_kwargs, broken_bonds
+
+
+def determine_target_pairs(
+    atoms: Tuple[str], coords3d: NDArray, min_: float = 1.25, max_: float = 5.0,
+    active_atoms=None,
+) -> List[Tuple[int]]:
+    """Determine possible target m, n atom pairs for SC-AFIR calculations."""
+    if active_atoms is None:
+        active_atoms = range(len(atoms))
+    active_atoms = set(active_atoms)
+
+    pair_cov_radii = get_pair_covalent_radii(atoms)
+    pair_dists = pdist(coords3d)
+    quots = pair_dists / pair_cov_radii
+    pair_inds = it.combinations(range(len(atoms)), 2)
+    target_pairs = list()
+    for pair_ind, quot in zip(pair_inds, quots):
+        if (min_ <= quot <= max_) and (set(pair_ind) & active_atoms):
+            target_pairs.append(pair_ind)
+    return target_pairs
+
+
+def determine_target_pairs_for_geom(geom: Geometry, **kwargs) -> List[Tuple[int]]:
+    """Determine possible target m, n atom pairs for SC-AFIR calculations
+    from geom."""
+    target_pairs = determine_target_pairs(geom.atoms, geom.coords3d, **kwargs)
+    return target_pairs
+
+
+def run_sc_afir_paths(
+    geom: Geometry,
+    calc_getter: Callable,
+    gamma_max: float,
+    N_max: int = 5,
+    N_sample: int = 0,
+    seed: Optional[int] = None,
+    gamma_interval: Tuple[float, float] = (1.0, 1.0),
+    rmsd_thresh: float = AFIR_RMSD_THRESH,
+    afir_kwargs: Optional[Dict] = None,
+    opt_kwargs: Optional[Dict] = None,
+):
+    target_pairs = determine_target_pairs_for_geom(geom)
+    for m, n in target_pairs:
+        trj, _afir_kwargs, broken_bonds = prepare_sc_afir(geom, m, n)
+        # fragments = _afir_kwargs["fragment_indices"]
+        afir_kwargs = afir_kwargs.copy()
+        afir_kwargs.update(_afir_kwargs)
+        out_dir = Path("sc_afir")
+        ts_guess, afir_path = run_afir_path(
+            geom,
+            calc_getter,
+            out_dir,
+            gamma_max,
+            gamma_interval,
+            ignore_bonds=broken_bonds,
+            afir_kwargs=afir_kwargs,
+            opt_kwargs=opt_kwargs,
+        )
+    return [ts_guess], [afir_path]
 
 
 def coordinates_similar(
@@ -617,24 +718,29 @@ def geom_similar(test_geom: Geometry, ref_geoms: List[Geometry], **kwargs) -> bo
     )
 
 
-def determine_target_pairs(
-    atoms: Tuple[str], coords3d: NDArray, min_: float = 1.25, max_: float = 5.0
-) -> List[Tuple[int]]:
-    """Determine possible target m, n atom pairs for SC-AFIR calculations."""
-    pair_cov_radii = get_pair_covalent_radii(atoms)
-    pair_dists = pdist(coords3d)
-    quots = pair_dists / pair_cov_radii
-    pair_inds = it.combinations(range(len(atoms)), 2)
-    target_pairs = list()
-    for pair_ind, quot in zip(pair_inds, quots):
-        if not (min_ <= quot <= max_):
-            continue
-        target_pairs.append(pair_ind)
-    return target_pairs
+def run_afir(afir_key, geoms, calc_getter, afir_kwargs=None, opt_kwargs=None, **kwargs):
+    if afir_key == "sc":
+        assert (
+            len(geoms) == 1
+        ), f"Expected only 1 geometry for SC-AFIR, but got {len(geoms)}!."
+        geoms = geoms[0]
 
+    afir_funcs = {
+        "mc": run_mc_afir_paths,
+        "sc": run_sc_afir_paths,
+    }
+    afir_func = afir_funcs[afir_key]
+    ts_guesses, afir_paths = afir_func(
+        geoms,
+        calc_getter,
+        afir_kwargs=afir_kwargs,
+        opt_kwargs=opt_kwargs,
+        **kwargs,
+    )
 
-def determine_target_pairs_for_geom(geom: Geometry, **kwargs) -> List[Tuple[int]]:
-    """Determine possible target m, n atom pairs for SC-AFIR calculations
-    from geom."""
-    target_pairs = determine_target_pairs(geom.atoms, geom.coords3d, **kwargs)
-    return target_pairs
+    for i, ap in enumerate(afir_paths):
+        ap.dump_trj(f"{i:03d}_ap_dump.trj")
+    ts_guesses_trj = "\n".join([ts_guess.as_xyz() for ts_guess in ts_guesses])
+    with open(f"{afir_key}_ts_guesses.trj", "w") as handle:
+        handle.write(ts_guesses_trj)
+    return ts_guesses, afir_paths

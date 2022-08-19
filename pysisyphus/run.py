@@ -35,6 +35,7 @@ from pysisyphus.dynamics import (
 )
 from pysisyphus.drivers import (
     relaxed_1d_scan,
+    run_afir,
     run_opt,
     run_precontr,
     run_perf,
@@ -1054,6 +1055,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     # Defaults
     dd = {
         "assert": None,
+        "afir": None,
         "barrier": None,
         "calc": {
             "type": "dummy",
@@ -1221,6 +1223,9 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
             "repeat": 3,
         }
 
+    if "afir" in conf_dict:
+        dd["afir"] = {}
+
     return dd
 
 
@@ -1251,6 +1256,7 @@ def get_last_calc_cycle():
 
 VALID_KEYS = {
     "assert",
+    "afir",
     "barriers",
     "calc",
     "cos",
@@ -1343,6 +1349,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     if run_dict["irc"]:
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
+    if run_dict["afir"]:
+        afir_key = run_dict["afir"].pop("type")
+        afir_kwargs = run_dict["afir"]
 
     # Handle geometry input. This section must always be present.
     geom_kwargs = run_dict["geom"]
@@ -1463,6 +1472,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     elif run_dict["perf"]:
         perf_results = run_perf(geom, calc_getter, **run_dict["perf"])
         print_perf_results(perf_results)
+    elif run_dict["afir"]:
+        ts_guesses, afir_paths = run_afir(
+            afir_key, geoms, calc_getter, **afir_kwargs,
+        )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #

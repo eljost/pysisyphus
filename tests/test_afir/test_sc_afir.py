@@ -12,7 +12,7 @@ from pysisyphus.drivers.afir import (
     lstsqs_with_reference,
     weight_function,
     find_candidates,
-    prepare_single_component_afir,
+    prepare_sc_afir,
 )
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
@@ -112,9 +112,13 @@ def test_sc_afir_claisen(calc_cls, calc_kwargs, ref_cc_dist, ref_oc_dist, geom):
         calc = calc_cls(**calc_kwargs)
         return calc
 
-    prepare_single_component_afir(geom, m, n, calc_getter, afir_kwargs)
+    trj, _afir_kwargs, _ = prepare_sc_afir(geom, m, n)
+    afir_kwargs.update(_afir_kwargs)
 
-    afir_calc = geom.calculator
+    calc = calc_getter()
+    from pysisyphus.calculators import AFIR
+    afir_calc = AFIR(calc, **afir_kwargs)
+    geom.set_calculator(afir_calc)
 
     opt_kwargs = {
         "dump": True,
