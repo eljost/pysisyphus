@@ -35,7 +35,7 @@ from pysisyphus.dynamics import (
 )
 from pysisyphus.drivers import (
     relaxed_1d_scan,
-    run_afir,
+    run_afir_paths,
     run_opt,
     run_precontr,
     run_perf,
@@ -1473,7 +1473,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         perf_results = run_perf(geom, calc_getter, **run_dict["perf"])
         print_perf_results(perf_results)
     elif run_dict["afir"]:
-        ts_guesses, afir_paths = run_afir(
+        ts_guesses, afir_paths = run_afir_paths(
             afir_key, geoms, calc_getter, **afir_kwargs,
         )
     # This case will handle most pysisyphus runs. A full run encompasses

@@ -112,7 +112,7 @@ def test_sc_afir_claisen(calc_cls, calc_kwargs, ref_cc_dist, ref_oc_dist, geom):
         calc = calc_cls(**calc_kwargs)
         return calc
 
-    trj, _afir_kwargs, _ = prepare_sc_afir(geom, m, n)
+    geom, _afir_kwargs, broken_bonds, _ = prepare_sc_afir(geom, m, n)
     afir_kwargs.update(_afir_kwargs)
 
     calc = calc_getter()

@@ -563,3 +563,7 @@ _NUM_SUBSCRIPTS = {str(i): chr(int(f"0x208{i}", 16)) for i in range(10)}
 
 def to_subscript_num(num):
     return "".join([_NUM_SUBSCRIPTS[c] for c in str(num)])
+
+
+def to_sets(iterable):
+    return set([frozenset(i) for i in iterable])
