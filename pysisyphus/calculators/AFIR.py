@@ -3,6 +3,7 @@
 # [3] https://onlinelibrary.wiley.com/doi/epdf/10.1002/tcr.201600043
 
 import itertools as it
+from math import isclose
 from typing import List
 
 import autograd
@@ -38,6 +39,10 @@ def get_data_model(atoms, max_cycles):
     return data_model
 
 
+class CovRadiiSumZero(Exception):
+    pass
+
+
 def afir_closure(
     fragment_indices, cov_radii, gamma, rho=1, p=6, prefactor=1.0, logger=None
 ):
@@ -49,6 +54,9 @@ def afir_closure(
 
     inds = np.array(list(it.product(*fragment_indices)))
     cov_rad_sums = cov_radii[inds].sum(axis=1)
+
+    if isclose(cov_rad_sums.sum(), 0.0, abs_tol=1e-10):
+        raise CovRadiiSumZero("Sum of covalent radii is 0.0!")
 
     # 3.8164 Angstrom in Bohr
     R0 = 7.21195

@@ -24,7 +24,8 @@ from scipy.spatial.distance import pdist
 from scipy.optimize import least_squares
 
 from pysisyphus import logger as pysis_logger
-from pysisyphus.calculators import AFIR, HardSphere
+from pysisyphus.calculators.AFIR import AFIR, CovRadiiSumZero
+from pysisyphus.calculators import HardSphere
 from pysisyphus.config import AFIR_RMSD_THRESH, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.cos.NEB import NEB
@@ -375,6 +376,7 @@ def prepare_sc_afir(geom, m, n, bond_factor=AFIR_BOND_FACTOR):
     _, opt_coords3d = lstsqs_with_reference(decr_coords3d.copy(), geom.coords3d, (m, n))
     # Determine fragments, using the automated fragmentation
     frag1, frag2 = automatic_fragmentation(atoms, opt_coords3d, [m], [n])
+    logger.debug(f"Fragments for target pair [{m}, {n}]: ({frag1}, {frag2})")
     fragment_indices = [list(frag) for frag in (frag1, frag2)]
     # Set lstsq-optimized coordinates and created wrapped calculator
     geom.coords3d = opt_coords3d
@@ -495,6 +497,8 @@ def opt_afir_path(geom, calc_getter, afir_kwargs, opt_kwargs=None, out_dir=None)
         "out_dir": out_dir,
         "prefix": "afir",
         "max_cycles": 200,
+        # "hessian_init": "calc",
+        # "hessian_recalc": 50,
     }
     _opt_kwargs.update(opt_kwargs)
     opt_result = run_opt(geom, afir_calc_getter, opt_key="rfo", opt_kwargs=_opt_kwargs)
@@ -569,12 +573,10 @@ def run_afir_path(
     gamma = gamma_0
 
     # Minimize AFIR functions until gamma exceeds gamma_max.
-    logger.info("New AFIR run with γ_max={gamma_max:.4f} au")
+    logger.info(f"New AFIR run with γ_max={gamma_max:.4f} au")
     while gamma <= gamma_max:
         gamma_ratio = gamma / gamma_max
-        logger.info(
-            f"AFIR run with γ={gamma:.4f} au, γ/γ_max={gamma_ratio: >6.2%}"
-        )
+        logger.info(f"AFIR run with γ={gamma:.4f} au, γ/γ_max={gamma_ratio: >6.2%}")
         _afir_kwargs = afir_kwargs.copy()
         _afir_kwargs["gamma"] = gamma
         try:
@@ -585,8 +587,13 @@ def run_afir_path(
                 opt_kwargs=opt_kwargs,
                 out_dir=out_dir,
             )
+        # Can happen in SC-AFIR runs when fragments comprise only hydrogens.
+        except CovRadiiSumZero:
+            logger.warning("Sum of covalent radii is 0.0!")
+            best_afir_path = None
+            break
         except Exception:
-            logger.error("Optimization crashed!\n{traceback.format_exc()}")
+            logger.error(f"Optimization crashed!\n{traceback.format_exc()}")
             best_afir_path = None
             break
 
@@ -681,8 +688,7 @@ def run_mc_afir_paths(
     N = 0
     N_0 = 0
     fmt = " >4d"
-    # Loop until N_max failures
-    while (N - N_0) <= N_max:
+    while True:
         geom, _afir_kwargs, *_ = prepare_mc_afir(geoms, rng=rng)
         afir_kwargs = afir_kwargs.copy()
         afir_kwargs.update(_afir_kwargs)
@@ -698,11 +704,14 @@ def run_mc_afir_paths(
             afir_kwargs=afir_kwargs,
             opt_kwargs=opt_kwargs,
         )
-        ts_guess_is_new = yield ts_guess, afir_path
+        ts_guess_is_new = yield N, ts_guess, afir_path
         if ts_guess_is_new:
             N_0 = N
-        N += 1
+        # Allow up to consecutive N_max failures
+        if (N - N_0) > N_max:
+            break
         logger.debug(f"{N_0=:{fmt}}, {N=:{fmt}}, {N-N_0=:{fmt}}, {N_max=:{fmt}}, ")
+        N += 1
 
 
 def run_sc_afir_paths(
@@ -752,7 +761,7 @@ def run_sc_afir_paths(
             afir_kwargs=afir_kwargs,
             opt_kwargs=_opt_kwargs,
         )
-        ts_guess_is_new = yield ts_guess, afir_path
+        ts_guess_is_new = yield i, ts_guess, afir_path
         i += 1
         # Here, TS optimization & IRC integration could take place, when the TS is new.
 
@@ -797,23 +806,29 @@ def run_afir_paths(
     afir_paths = list()
     stop_sign = "afir_stop"
 
-    ts_guess, afir_path = next(afir_coroutine)
+    i, ts_guess, afir_path = next(afir_coroutine)
     while True:
+        prefix = f"{i:03d}"
+        logger.info(f"AFIR run {prefix}")
+        # Check if we found enough TS guesses
         if N_sample and (len(ts_guesses) >= N_sample):
             break
 
+        # Check similarity of TS guess to previously found TS guesses
         try:
             rmsds = [ts_guess.rmsd(guess) for guess in ts_guesses]
             min_rmsd = min(rmsds)
         except AttributeError:  # Raised when ts_guess is None
             min_rmsd = None
         except ValueError:
-            min_rmsd = rmsd_thresh  # Always add first guess
+            min_rmsd = rmsd_thresh if (ts_guess is not None) else None
 
-        if (min_rmsd is not None) and (ts_guess_is_new := (min_rmsd >= rmsd_thresh)):
+        if ts_guess_is_new := ((min_rmsd is not None) and (min_rmsd >= rmsd_thresh)):
             logger.debug(f"rmsds different enough! {min_rmsd=:.6f} au")
             ts_guesses.append(ts_guess)
             afir_paths.append(afir_path)
+            afir_path.dump_trj(f"{prefix}_afir_path.trj")
+            ts_guess.dump_xyz(f"{prefix}_ts_guess.xyz")
         elif min_rmsd:
             logger.debug(f"rmsds too similar! {min_rmsd=:.6f} au)")
 
@@ -822,13 +837,8 @@ def run_afir_paths(
             break
         logger.info(f"{len(ts_guesses)=: >5d}")
         try:
-            ts_guess, afir_path = afir_coroutine.send(ts_guess_is_new)
+            i, ts_guess, afir_path = afir_coroutine.send(ts_guess_is_new)
         except StopIteration:
             break
 
-    for i, ap in enumerate(afir_paths):
-        ap.dump_trj(f"{i:03d}_ap_dump.trj")
-    ts_guesses_trj = "\n".join([ts_guess.as_xyz() for ts_guess in ts_guesses])
-    with open(f"{afir_key}_ts_guesses.trj", "w") as handle:
-        handle.write(ts_guesses_trj)
     return ts_guesses, afir_paths
