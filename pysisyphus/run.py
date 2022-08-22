@@ -1425,8 +1425,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # -----------------------+
 
     # Preoptimization only makes sense with a subsequent COS run.
-    if run_dict["preopt"] and run_dict["cos"]:
+    if run_dict["preopt"] and (run_dict["cos"] or run_dict["afir"]):
         assert len(geoms) > 1
+        # Preopt should be expanded to support > 2 fragments with AFIR
+        if run_dict["afir"] and len(geoms) > 2:
+            raise Exception("Currently, only the first & last geometry are optimized!")
         first_opt_result, last_opt_result = run_preopt(
             geoms[0],
             geoms[-1],
