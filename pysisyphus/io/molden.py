@@ -3,7 +3,6 @@ import re
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.io.xyz import parse_xyz
 from pysisyphus.helpers_pure import file_or_str
@@ -36,20 +35,16 @@ def parse_molden(text, with_mos=True):
     sci_real = pp.common.sci_real
 
     molden_format = pp.CaselessLiteral("[Molden Format]")
-    title = (
-        pp.CaselessLiteral("[Title]")
-        + pp.LineEnd()
-        + pp.Group(
-            pp.ZeroOrMore(get_line_word(pp.printables)).set_results_name("title")
-        )
-        + pp.LineEnd()
+    atoms_header = pp.CaselessLiteral("[Atoms]")
+    title = pp.CaselessLiteral("[Title]") + pp.Optional(
+        pp.ZeroOrMore(~atoms_header + pp.Word(pp.printables))
     )
 
     # [Atoms]
     # element_name number atomic_number x y z
     unit = pp.one_of("AU Angs", caseless=True)
     atom_symbol = pp.Word(pp.alphas)
-    xyz = pp.Group(real + real + real)
+    xyz = pp.Group(sci_real + sci_real + sci_real)
     atom_line = pp.Group(
         atom_symbol.set_results_name("symbol")
         + int_.set_results_name("number")
@@ -57,7 +52,7 @@ def parse_molden(text, with_mos=True):
         + xyz.set_results_name("xyz")
     )
     atoms = (
-        pp.CaselessLiteral("[Atoms]")
+        atoms_header
         + pp.Optional(unit).set_results_name("unit")
         + pp.OneOrMore(atom_line).set_results_name("atoms")
     )
@@ -77,16 +72,15 @@ def parse_molden(text, with_mos=True):
 
     # [GTO]
     ang_mom = pp.one_of("s p sp d f g h i", caseless=True)
-    pgto = real + real
+    pgto = sci_real + sci_real
     shell = pp.Group(
         ang_mom.set_results_name("ang_mom")
         + int_.set_results_name("contr_depth")
-        + pp.one_of("1.00 1.0").suppress()
-        + pp.OneOrMore(pgto)
-        .set_parse_action(pgto_exps_coeffs)
+        + real.suppress()  # Usually 1.0
+        + pp.OneOrMore(pgto).set_parse_action(pgto_exps_coeffs)
     )
     atom_gtos = pp.Group(
-        int_.set_results_name("number")
+        int_.set_results_name("number")  # Center
         + pp.Literal("0")
         + pp.OneOrMore(shell).set_results_name("shells")
     )
