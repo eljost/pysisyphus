@@ -25,6 +25,7 @@ from pysisyphus.helpers_pure import (
 from pysisyphus.io import (
     geom_from_cjson,
     geom_from_crd,
+    geom_from_hessian,
     geom_from_mol2,
     geom_from_pdb,
     save_hessian as save_h5_hessian,
@@ -92,6 +93,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".pdb": geom_from_pdb,
         ".cjson": geom_from_cjson,
         ".zmat": geom_from_zmat_fn,
+        ".h5": geom_from_hessian,
         "": geoms_from_inline_xyz,
     }
     assert ext in funcs, f"Unknown filetype for '{fn}'!"
