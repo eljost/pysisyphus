@@ -4,6 +4,7 @@ from typing import Callable, Literal, Tuple
 import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
+from scipy.linalg.lapack import dpstrf
 
 
 def gram_schmidt(vecs, thresh=1e-8):
@@ -291,3 +292,37 @@ def rmsd_grad(
 
     grad = (c3d - ref_c3d @ U) / (rmsd * atom_num)
     return rmsd, grad
+
+
+def pivoted_cholesky(A: NDArray, tol: float = -1.0):
+    """Cholesky factorization a real symmetric positive semidefinite matrix.
+    Cholesky factorization is carried out with full pivoting.
+
+    Adapated from PySCF.
+
+    P.T * A * P = L * L.T
+
+    Parameters
+    ----------
+    A
+        Matrix to be factorized.
+    tol
+        User defined tolerance, as outlined in the LAPACK docs.
+
+    Returns
+    -------
+    L
+        Lower or upper triangular matrix.
+    piv
+        Pivot vectors, starting at 0.
+    rank
+        Rank of the factoirzed matrix.
+    """
+
+    N = A.shape[0]
+    L, piv, rank, info = dpstrf(A, tol=tol, lower=True)
+    piv -= 1  # LAPACK returns 1-based indices
+    assert info >= 0
+    L[np.triu_indices(N, k=1)] = 0
+    L[:, rank:] = 0
+    return L, piv, rank

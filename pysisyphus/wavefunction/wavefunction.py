@@ -10,7 +10,7 @@
 #     Toward a Systematic Molecular Orbital Theory for Excited States
 #     Foresman, Head-Gordon, Pople, Frisch, 1991
 
-from typing import Literal, Optional, Tuple
+from typing import Literal, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -105,6 +105,12 @@ class Wavefunction:
         return C_a[:, :occ_a], C_b[:, :occ_b]
 
     @property
+    def C_virt(self):
+        occ_a, occ_b = self.occ
+        C_a, C_b = self.C
+        return C_a[:, occ_a:], C_b[:, occ_b:]
+
+    @property
     def P(self):
         return [C_occ @ C_occ.T for C_occ in self.C_occ]
 
@@ -156,14 +162,20 @@ class Wavefunction:
         return C.T @ S_AO @ C_other
 
     @property
-    def ao_centers(self):
-        ao_centers = list(
+    def ao_centers(self) -> List[int]:
+        return list(
             {
                 BFType.CARTESIAN: lambda: self.shells.cart_ao_centers,
                 BFType.PURE_SPHERICAL: lambda: self.shells.sph_ao_centers,
             }[self.bf_type]()
         )
-        return ao_centers
+
+    @property
+    def ao_center_map(self) -> dict[int, List[int]]:
+        ao_center_map = dict()
+        for i, aoc in enumerate(self.ao_centers):
+            ao_center_map.setdefault(aoc, list()).append(i)
+        return ao_center_map
 
     def get_origin(self, kind="coc"):
         kind = kind.lower()

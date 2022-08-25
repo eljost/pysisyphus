@@ -15,10 +15,10 @@ def mulliken_charges(
     ao_centers: List[int],
 ) -> NDArray[float]:
     def mulliken_atom_pops(P: NDArray[float], S: NDArray[float]) -> NDArray[float]:
-        mo_populations = np.einsum("ij,ji->i", P, S)
+        ao_populations = np.einsum("ij,ji->i", P, S)
         atom_populations = np.zeros(len(nuc_charges))
         for i, center in enumerate(ao_centers):
-            atom_populations[center] += mo_populations[i]
+            atom_populations[center] += ao_populations[i]
         return atom_populations
 
     atom_populations_a = mulliken_atom_pops(P[0], S)
