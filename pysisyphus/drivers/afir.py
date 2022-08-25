@@ -13,6 +13,7 @@ import logging
 from functools import reduce
 import os
 from pathlib import Path
+from pprint import pformat
 import shutil
 import traceback
 from typing import Callable, Dict, List, Tuple, Optional
@@ -496,10 +497,20 @@ def opt_afir_path(geom, calc_getter, afir_kwargs, opt_kwargs=None, out_dir=None)
         "dump": True,
         "out_dir": out_dir,
         "prefix": "afir",
-        "max_cycles": 200,
-        # "hessian_init": "calc",
-        # "hessian_recalc": 50,
+        "max_cycles": 125,
+        "overachieve_factor": 3,
+        "hessian_update": "flowchart",
     }
+    logger.debug(
+        "\n".join(
+            (
+                "afir_kwargs:",
+                "\t" + pformat(afir_kwargs),
+                "opt_kwargs:",
+                "\t" + pformat(_opt_kwargs),
+            )
+        )
+    )
     _opt_kwargs.update(opt_kwargs)
     opt_result = run_opt(geom, afir_calc_getter, opt_key="rfo", opt_kwargs=_opt_kwargs)
     opt = opt_result.opt
@@ -573,10 +584,10 @@ def run_afir_path(
     gamma = gamma_0
 
     # Minimize AFIR functions until gamma exceeds gamma_max.
-    logger.info(f"New AFIR run with γ_max={gamma_max:.4f} au")
+    logger.info(f"New AFIR run with γ_max={gamma_max:.6f} au")
     while gamma <= gamma_max:
         gamma_ratio = gamma / gamma_max
-        logger.info(f"AFIR run with γ={gamma:.4f} au, γ/γ_max={gamma_ratio: >6.2%}")
+        logger.info(f"AFIR run with γ={gamma:.6f} au, γ/γ_max={gamma_ratio: >6.2%}")
         _afir_kwargs = afir_kwargs.copy()
         _afir_kwargs["gamma"] = gamma
         try:
