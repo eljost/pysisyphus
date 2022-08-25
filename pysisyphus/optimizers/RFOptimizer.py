@@ -23,7 +23,7 @@ class RFOptimizer(HessianOptimizer):
         gdiis_thresh: float = 2.5e-3,
         gediis_thresh: float = 1e-2,
         gdiis_test_direction: bool = True,
-        max_micro_cycles: int = 0,
+        max_micro_cycles: int = 25,
         adapt_step_func: bool = False,
         **kwargs,
     ) -> None:
