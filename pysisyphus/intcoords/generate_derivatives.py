@@ -5,6 +5,8 @@
 #   V. Bakken, T. Helgaker, J. Chem. Phys., 117, 20, 2002
 # [1] https://aip.scitation.org/doi/abs/10.1063/1.1515483
 # [2] https://doi.org/10.1002/(SICI)1096-987X(19960115)17:1<49::AID-JCC5>3.0.CO;2-0
+# [3] TRANSITION-STATE OPTIMIZATION METHODS USING INTERNAL COORDINATES
+#     Sandra Rabi, PhD Thesis
 
 from collections import namedtuple
 import itertools as it
@@ -228,7 +230,9 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         U2 = P.position_wrt(O)
         U3 = N.position_wrt(P)
         cross_U2U3 = U2.cross(U3)
-        q_d2 = sym.atan2((U2.magnitude() * U1).dot(cross_U2U3), cross_U2U3.dot(U1.cross(U2)))
+        q_d2 = sym.atan2(
+            (U2.magnitude() * U1).dot(cross_U2U3), cross_U2U3.dot(U1.cross(U2))
+        )
         dx_d2 = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
         args_d2 = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
         func_result_d = make_deriv_funcs(
@@ -240,6 +244,48 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
             use_mpmath=use_mpmath,
         )
         return func_result_d
+
+    def robust_dihedral1():
+        # First component of robust dihedral
+        # See Eq. (3.1) in [3]
+        U = M.position_wrt(O)
+        V = N.position_wrt(P)
+        U_ = U.normalize()
+        V_ = V.normalize()
+        q_rd1 = U_.dot(V_)
+        dx_rd1 = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
+        args_rd1 = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
+        func_result_rd1 = make_deriv_funcs(
+            q_rd1,
+            dx_rd1,
+            args_rd1,
+            ("q_rd1", "dq_rd1", "d2q_rd1"),
+            "RobustTorsion1",
+            use_mpmath=use_mpmath,
+        )
+        return func_result_rd1
+
+    def robust_dihedral2():
+        # Second component of robust dihedral
+        # See Eq. (3.2) in [3]
+        U = M.position_wrt(O)
+        W = P.position_wrt(O)
+        V = N.position_wrt(P)
+        U_ = U.normalize()
+        W_ = W.normalize()
+        V_ = V.normalize()
+        q_rd2 = W_.dot(U_.cross(V_))
+        dx_rd2 = (m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2)
+        args_rd2 = "m0, m1, m2, o0, o1, o2, p0, p1, p2, n0, n1, n2"
+        func_result_rd2 = make_deriv_funcs(
+            q_rd2,
+            dx_rd2,
+            args_rd2,
+            ("q_rd2", "dq_rd2", "d2q_rd2"),
+            "RobustTorsion2",
+            use_mpmath=use_mpmath,
+        )
+        return func_result_rd2
 
     def linear_bend():
         # Linear Bend
@@ -322,6 +368,8 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
             "bend2",
             "dihedral",
             "dihedral2",
+            "robust_dihedral1",
+            "robust_dihedral2",
             "linear_bend",
             "out_of_plane",
             "linear_displacement",
@@ -333,6 +381,8 @@ def generate_wilson(generate=None, out_fn="derivatives.py", use_mpmath=False):
         "bend2": bend2,
         "dihedral": dihedral,
         "dihedral2": dihedral2,
+        "robust_dihedral1": robust_dihedral1,
+        "robust_dihedral2": robust_dihedral2,
         "linear_bend": linear_bend,
         "out_of_plane": out_of_plane,
         "linear_displacement": linear_displacement,

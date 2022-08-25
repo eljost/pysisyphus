@@ -14,6 +14,8 @@ __all__ = [
     "Stretch",
     "Torsion",
     "Torsion2",
+    "RobustTorsion1",
+    "RobustTorsion2",
     "RotationA",
     "RotationB",
     "RotationC",
@@ -43,6 +45,7 @@ from pysisyphus.intcoords.LinearBend import LinearBend
 from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
 from pysisyphus.intcoords.OutOfPlane import OutOfPlane
 from pysisyphus.intcoords.Rotation import RotationA, RotationB, RotationC
+from pysisyphus.intcoords.RobustTorsion import RobustTorsion1, RobustTorsion2
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.intcoords.Torsion import Torsion
 from pysisyphus.intcoords.Torsion2 import Torsion2

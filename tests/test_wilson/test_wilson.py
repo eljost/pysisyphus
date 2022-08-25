@@ -16,6 +16,8 @@ from pysisyphus.intcoords import (
     LinearBend,
     LinearDisplacement,
     OutOfPlane,
+    RobustTorsion1,
+    RobustTorsion2,
     RotationA,
     RotationB,
     RotationC,
@@ -128,7 +130,7 @@ def test_bend(bend_cls, deg):
 
 
 @pytest.mark.parametrize(
-    "tors_cls", (Torsion, Torsion2)
+    "tors_cls", (Torsion, Torsion2, RobustTorsion1, RobustTorsion2)
 )
 @pytest.mark.parametrize(
     "dihedral",
@@ -165,7 +167,8 @@ def test_torsion(tors_cls, dihedral):
 
     val, grad = tors_cls._calculate(coords3d, indices, gradient=True)
 
-    assert val == pytest.approx(np.deg2rad(dihedral))
+    if tors_cls not in (RobustTorsion1, RobustTorsion2):
+        assert val == pytest.approx(np.deg2rad(dihedral))
 
     tors = tors_cls(indices=indices)
     ref_grad_ = fin_diff_prim(tors, geom.coords3d)
