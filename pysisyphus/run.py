@@ -1021,6 +1021,10 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=Non
         print("already exists")
     if "geom" in run_dict:
         xyzs = run_dict["geom"]["fn"]
+        try:
+            xyzs = list(xyzs.values())
+        except AttributeError:
+            pass
     else:
         xyzs = run_dict["xyz"]
     print("Copying:")
