@@ -10,8 +10,10 @@ import pytest
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA
-from pysisyphus.calculators.ORCA import parse_orca_cis
+from pysisyphus.calculators.ORCA import parse_densities, parse_orca_cis
+from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.testing import using
+from pysisyphus.wavefunction import Wavefunction
 
 
 @pytest.fixture
@@ -176,3 +178,59 @@ def test_parse_orca_cis(method, tda, triplets, this_dir):
     print_summary(Xa, Ya, "a")
     print_summary(Xb, Yb, "b")
     print("@")
+
+
+def assert_dens_mats(dens_dict, json_fn):
+    wf = Wavefunction.from_orca_json(json_fn)
+    Pa_ref, Pb_ref = wf.P  # Always unrestricted density matrices
+    P = Pa_ref + Pb_ref  # Electronic density
+    Pr = Pa_ref - Pb_ref  # Spin density
+    np.testing.assert_allclose(P, dens_dict["scfp"], atol=1e-14)
+    if wf.unrestricted:
+        np.testing.assert_allclose(Pr, dens_dict["scfr"], atol=1e-14)
+    return wf
+
+
+@pytest.mark.parametrize(
+    "dens_fn, json_fn",
+    (
+        ("orca_ch4_sto3g_rhf.densities", "orca_ch4_sto3g_rhf.json"),
+        ("orca_ch4_sto3g_uhf.densities", "orca_ch4_sto3g_uhf.json"),
+    ),
+)
+def test_orca_gs_densities(dens_fn, json_fn):
+
+    dens_dict = parse_densities(WF_LIB_DIR / dens_fn)
+    _ = assert_dens_mats(dens_dict, WF_LIB_DIR / json_fn)
+
+
+@pytest.mark.parametrize(
+    "dens_fn, json_fn, ref_dpm",
+    (
+        (
+            "orca_ch4_sto3g_rhf_cis.densities",
+            "orca_ch4_sto3g_rhf_cis.json",
+            (0.00613, 0.00867, -0.00000),
+        ),
+        (
+            "orca_ch4_sto3g_uhf_cis.densities",
+            "orca_ch4_sto3g_uhf_cis.json",
+            (0.0, 0.0, 0.0),
+        ),
+    ),
+)
+def test_orca_es_densities(dens_fn, json_fn, ref_dpm):
+    dens_dict = parse_densities(WF_LIB_DIR / dens_fn)
+    wf = assert_dens_mats(dens_dict, WF_LIB_DIR / json_fn)
+    # ref_dpm = (0.00613, 0.00867, -0.00000)  # From ORCA output
+
+    cisp = dens_dict["cisp"]
+    # Calculate relaxed excited state dipole moment
+    if wf.unrestricted:
+        cisr = dens_dict["cisr"]
+        cispa = (cisp + cisr) / 2
+        cispb = (cisp - cisr) / 2
+    else:
+        cispa = cispb = cisp / 2
+    dpm = wf.dipole_moment((cispa, cispb))
+    np.testing.assert_allclose(dpm, ref_dpm, atol=2e-4)

@@ -1,4 +1,7 @@
 import glob
+import io
+from math import sqrt
+from pathlib import Path
 import os
 import re
 import struct
@@ -198,6 +201,97 @@ def parse_orca_cis(cis_fn):
     return Xs_a, Ys_a, Xs_b, Ys_b
 
 
+def parse_all_energies(text, triplets=False, do_tddft=False):
+    energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
+    energy_mobj = re.search(energy_re, text)
+    gs_energy = float(energy_mobj.groups()[0])
+    all_energies = [gs_energy]
+
+    if do_tddft:
+        scf_re = re.compile(r"E\(SCF\)\s+=\s*([\d\-\.]+) Eh")
+        scf_mobj = scf_re.search(text)
+        scf_en = float(scf_mobj.group(1))
+        gs_energy = scf_en
+        tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([\d\.]+)\s*au")
+        states, exc_ens = zip(
+            *[(int(state), float(en)) for state, en in tddft_re.findall(text)]
+        )
+        if triplets:
+            roots = len(states) // 2
+            exc_ens = exc_ens[-roots:]
+            states = states[-roots:]
+        assert len(exc_ens) == len(set(states))
+        all_energies = np.full(1 + len(exc_ens), gs_energy)
+        all_energies[1:] += exc_ens
+    all_energies = np.array(all_energies)
+    return all_energies
+
+
+def get_name(text: bytes):
+    """Return string that comes before first \x00 character & offset."""
+    until = text.find(b"\x00")
+    return text[:until].decode(), until
+
+
+@file_or_str(".densities", mode="rb")
+def parse_densities(text: bytes):
+    handle = io.BytesIO(text)
+
+    # Determine file size
+    handle.seek(0, 2)
+    file_size = handle.tell()
+    handle.seek(0, 0)
+
+    offset, _ = struct.unpack(
+        "ii", handle.read(8)
+    )  # Don't know about the second integer
+    # print("offset", offset)
+    dens_size = offset - 8
+    assert dens_size % 8 == 0
+    dens_floats = dens_size // 8
+    # print(f"Expecting {dens_floats} density doubles")
+    densities = struct.unpack("d" * dens_floats, handle.read(dens_size))
+    ndens = struct.unpack("i", handle.read(4))[0]
+
+    # Block of 512 bytes meta data. I don't really know what is contained in there.
+    meta = handle.read(512)
+    base_name, _ = get_name(meta)
+
+    # Now multiple 512 byte blocks for each density follow
+    dens_names = list()
+    for i in range(ndens):
+        dens_meta = handle.read(512)
+        dens_name, _ = get_name(dens_meta)
+        dens_names.append(dens_name)
+        # don't know about the first item, 2nd items seems to 0
+        _, _, nao1, nao2 = struct.unpack("iiii", handle.read(16))
+        assert nao1 == nao2
+        _ = struct.unpack("b", handle.read(1))[0]  # 0 byte
+        assert _ == 0
+    dens_exts = [Path(dens_name).suffix[1:] for dens_name in dens_names]
+
+    # Verify that we parsed to whole file
+    assert file_size - handle.tell() == 0
+    handle.close()
+
+    # Construct density matrices
+    assert dens_floats % ndens == 0
+    nao = int(sqrt(dens_floats // ndens))
+    dens_shape = (nao, nao)
+    densities = np.array(densities).reshape(ndens, *dens_shape)
+
+    dens_dict = {dens_ext: dens for dens_ext, dens in zip(dens_exts, densities)}
+    # This check could be removed but I'll keep if for now, so I only deal with
+    # known densities.
+    # scfp : HF/DFT electronic density
+    # scfr : HF/DFT spin density
+    # cisp : TDA/TD-DFT/CIS electronic density
+    # cisr : TDA/TD-DFT/CIS spin density
+    assert set(dens_dict) <= {"scfp", "scfr", "cisp", "cisr"}
+
+    return dens_dict
+
+
 class ORCA(OverlapCalculator):
 
     conf_key = "orca"
@@ -264,6 +358,7 @@ class ORCA(OverlapCalculator):
             "molden:orca.molden",
             "hess",
             "pcgrad",
+            "densities",
         )
         self.do_tddft = False
         if "tddft" in self.blocks:
@@ -659,36 +754,14 @@ class ORCA(OverlapCalculator):
             handle.write(mod_gbw_bytes)
 
     def parse_all_energies(self, text=None, triplets=None):
-        if triplets is None:
-            triplets = self.triplets
-
         if text is None:
             with open(self.out) as handle:
                 text = handle.read()
 
-        energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
-        energy_mobj = re.search(energy_re, text)
-        gs_energy = float(energy_mobj.groups()[0])
-        all_energies = [gs_energy]
+        if triplets is None:
+            triplets = self.triplets
 
-        if self.do_tddft:
-            scf_re = re.compile(r"E\(SCF\)\s+=\s*([\d\-\.]+) Eh")
-            scf_mobj = scf_re.search(text)
-            scf_en = float(scf_mobj.group(1))
-            gs_energy = scf_en
-            tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([\d\.]+)\s*au")
-            states, exc_ens = zip(
-                *[(int(state), float(en)) for state, en in tddft_re.findall(text)]
-            )
-            if triplets:
-                roots = len(states) // 2
-                exc_ens = exc_ens[-roots:]
-                states = states[-roots:]
-            assert len(exc_ens) == len(set(states))
-            all_energies = np.full(1 + len(exc_ens), gs_energy)
-            all_energies[1:] += exc_ens
-        all_energies = np.array(all_energies)
-        return all_energies
+        return parse_all_energies(text, triplets, self.do_tddft)
 
     @staticmethod
     @file_or_str(".out", method=False)
@@ -759,6 +832,7 @@ class ORCA(OverlapCalculator):
         self.out = kept_fns["out"]
         if self.do_tddft:
             self.cis = kept_fns["cis"]
+            self.densities = kept_fns["densities"]
         try:
             self.mwfn_wf = kept_fns["molden"]
         except KeyError:

@@ -185,7 +185,7 @@ def full_expand(to_expand):
     return expanded
 
 
-def file_or_str(*args, method=False):
+def file_or_str(*args, method=False, mode="r"):
     exts = args
 
     def inner_func(func):
@@ -196,7 +196,7 @@ def file_or_str(*args, method=False):
             p = Path(inp)
             looks_like_file = exts and (p.suffix in exts)
             if looks_like_file and p.is_file():
-                with open(p) as handle:
+                with open(p, mode=mode) as handle:
                     inp = handle.read()
             elif looks_like_file and not p.exists():
                 raise FileNotFoundError(
