@@ -25,6 +25,7 @@ from pysisyphus.helpers_pure import (
 from pysisyphus.io import (
     geom_from_cjson,
     geom_from_crd,
+    geom_from_fchk,
     geom_from_hessian,
     geom_from_mol2,
     geom_from_pdb,
@@ -94,6 +95,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".cjson": geom_from_cjson,
         ".zmat": geom_from_zmat_fn,
         ".h5": geom_from_hessian,
+        ".fchk": geom_from_fchk,
         "": geoms_from_inline_xyz,
     }
     assert ext in funcs, f"Unknown filetype for '{fn}'!"
@@ -299,7 +301,7 @@ def check_for_end_sign(check_user=True, cwd=".", add_signs=None):
     if add_signs is None:
         add_signs = tuple()
     elif type(add_signs) == str:
-        add_signs = (add_signs, )
+        add_signs = (add_signs,)
     else:
         add_signs = tuple(add_signs)
     signs = (

@@ -2,6 +2,8 @@ import re
 
 import numpy as np
 
+from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.shells import Shell, FCHKShells
 
@@ -112,3 +114,14 @@ def shells_from_fchk(text):
             append_shell(p_coeffs, L=1)
     shells = FCHKShells(_shells)
     return shells
+
+
+@file_or_str(".fchk")
+def geom_from_fchk(text, **geom_kwargs):
+    data = parse_fchk(text)
+    atomic_numbers = data["Atomic numbers"]
+    coords =  data["Current cartesian coordinates"]
+
+    atoms = [INV_ATOMIC_NUMBERS[Z] for Z in atomic_numbers]
+    geom = Geometry(atoms, coords, **geom_kwargs)
+    return geom
