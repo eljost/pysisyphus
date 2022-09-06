@@ -29,7 +29,8 @@ def test_lennard_jones():
     np.testing.assert_allclose(pysis_forces, ase_forces.flatten(), atol=1e-15)
 
 
-def test_ar_cluster():
+@pytest.mark.parametrize("max_micro_cycles, cur_cycle", ((0, 110), (25, 108)))
+def test_ar_cluster(max_micro_cycles, cur_cycle):
     geom = geom_loader("lib:ar14cluster.xyz")
     geom.set_calculator(LennardJones())
 
@@ -37,9 +38,11 @@ def test_ar_cluster():
         "max_cycles": 150,
         "gediis": True,
         "thresh": "gau_vtight",
+        "max_micro_cycles": max_micro_cycles,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
+    assert geom.energy == pytest.approx(-43.63972413)
     assert opt.is_converged
-    assert opt.cur_cycle == 110
+    assert opt.cur_cycle == cur_cycle

@@ -26,7 +26,7 @@ def test_diels_alder_growing_string():
         },
         "opt": {
             "type": "string",
-            "stop_in_when_full": 3,
+            "stop_in_when_full": 5,
         },
         "tsopt": {
             "type": "rsirfo",
@@ -61,7 +61,7 @@ def test_diels_alder_growing_string():
     assert results.cos_opt.is_converged
     assert results.ts_opt.is_converged
     # assert results.ts_geom._energy == pytest.approx(-231.60321)  # 321g
-    assert results.ts_geom._energy == pytest.approx(-230.036893)  # sto3g
+    assert results.ts_geom._energy == pytest.approx(-230.0365863, abs=2e-3)  # sto3g
     assert isinstance(results.ts_geom, Geometry)
     assert results.irc.forward_is_converged
     assert results.irc.backward_is_converged
