@@ -15,6 +15,7 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.intcoords.PrimTypes import prim_for_human
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
 from pysisyphus.intcoords.PrimTypes import normalize_prim_input, PrimMap
@@ -527,7 +528,7 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
         filter_atoms = list()
 
     for i, geom in enumerate(geoms):
-        print(geom)
+        print(highlight_text(f"{i:03d}: {geom}"))
         atoms = geom.atoms
         atom_num = len(atoms)
         atom_inds = set(range(atom_num))
