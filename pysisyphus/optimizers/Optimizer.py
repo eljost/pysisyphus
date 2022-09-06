@@ -552,6 +552,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.table.print_sep()
 
         marks = [False, *conv_info.get_convergence(), False]
+        try:
+            cycle_time = self.cycle_times[-1]
+        except IndexError:
+            cycle_time = 0.0
         self.table.print_row(
             (
                 self.cur_cycle,
@@ -560,7 +564,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.rms_forces[-1],
                 self.max_steps[-1],
                 self.rms_steps[-1],
-                self.cycle_times[-1],
+                cycle_time,
             ),
             marks=marks,
         )

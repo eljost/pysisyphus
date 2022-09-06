@@ -54,7 +54,7 @@ def get_opt_kwargs(opt_key, layer_ind, thresh):
 
         opt_kwargs = {
             "type": opt_key,
-            "max_cycles": 250,
+            "max_cycles": 1_000,
             "thresh": thresh,
             "overachieve_factor": 5,
             "prefix": f"layer_{layer_ind:02d}",
@@ -217,6 +217,7 @@ class Layers:
                 return get_opt
 
             get_opt = get_opt_getter()
+            # Persistent optimizer for most expensive layer.
             if i == 0:
                 model_opt = get_opt(geom0)
 
@@ -225,6 +226,7 @@ class Layers:
 
             self.opt_getters.append(get_opt)
 
+        # Most expensive layer will come last.
         self.indices = self.indices[::-1]
         self.geom_getters = self.geom_getters[::-1]
         self.opt_getters = self.opt_getters[::-1]
@@ -298,6 +300,13 @@ class LayerOpt(Optimizer):
     def layer_num(self) -> int:
         return len(self.layers)
 
+    @property
+    def model_opt(self):
+        """Return the persistent optimizer belonging to the model system.
+        We don't have to supply any coordinates to the optimizer of the
+        most expensive layer, as it is persistent, as well as the associated geometry."""
+        return self.layers.opt_getters[-1](None)
+
     def optimize(self) -> None:
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
@@ -344,6 +353,7 @@ class LayerOpt(Optimizer):
         opt.cart_coords.append(geom.cart_coords.copy())
 
         # Calculate one step
+        opt.cur_cycle = self.cur_cycle
         int_step = opt.optimize()
         opt.steps.append(int_step)
         try:
@@ -355,6 +365,27 @@ class LayerOpt(Optimizer):
 
         full_step = coords3d_cur - coords3d_org
         return full_step.flatten()
+
+    def check_convergence(self, *args, **kwargs):
+        """Check if we must use the model optimizer to signal convergence."""
+        opt = self.model_opt
+        if opt.thresh != "never":
+            return opt.check_convergence()
+        else:
+            return super().check_convergence(*args, **kwargs)
+
+    def print_opt_progress(self, *args, **kwargs):
+        """Pick the correct method to report opt_progress.
+
+        When the model optimizer decides convergence we also report optimization
+        progress using its data and not the data from LayerOpt, where the total
+        ONIOM gradient is stored."""
+        opt = self.model_opt
+        if opt.thresh != "never":
+            func = opt.print_opt_progress
+        else:
+            func = super().print_opt_progress
+        func(*args, **kwargs)
 
     def postprocess_opt(self) -> None:
         coord_types = list()
