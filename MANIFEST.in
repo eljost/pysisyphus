@@ -4,3 +4,4 @@ recursive-include pysisyphus/db/levels/*/ *.xyz
 graft pysisyphus/geom_library
 graft pysisyphus/wf_library
 graft pysisyphus/basis_library
+include pysisyphus/wavefunction/boys_table_N_64_xasym_27.1_step_0.01.npy
