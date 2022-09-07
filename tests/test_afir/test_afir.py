@@ -69,19 +69,25 @@ def test_three_frag_afir():
     ]
     calc = XTB(pal=1, acc=0.01)
     gamma = 150 / AU2KJPERMOL
-    afir = AFIR(calc, fragment_indices, gamma, ignore_hydrogen=False)
+    afir = AFIR(
+        calc, fragment_indices, gamma, ignore_hydrogen=False, zero_hydrogen=False
+    )
     geom.set_calculator(afir)
 
-    opt = RFOptimizer(geom, dump=True, overachieve_factor=3)
+    opt_kwargs = {
+        # "dump": True,
+        # "reset_on_topo_change": True,
+        # "reset_on_topo_change": False,
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 42
-    assert geom.energy == pytest.approx(-22.5800216)
+    assert geom.energy == pytest.approx(-22.58019, abs=1e-4)
 
     c3d = geom.coords3d
-    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.61026, abs=1e-3)
-    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.79707, abs=1e-3)
+    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.610, abs=1e-3)
+    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.761, abs=1e-3)
 
 
 @using("pyscf")
