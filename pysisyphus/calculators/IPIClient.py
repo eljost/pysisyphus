@@ -109,14 +109,14 @@ def calc_ipi_client(addr, atoms, calc, queue=None, **kwargs):
 
     def energy_getter(coords):
         if queue is not None:
-            queue.put(("energy", coords))
+            queue.put(("coords", coords))
         results = calc.get_energy(atoms, coords)
         energy = results["energy"]
         return energy
 
     def forces_getter(coords):
         if queue is not None:
-            queue.put(("forces", coords))
+            queue.put(("coords", coords))
         results = calc.get_forces(atoms, coords)
         forces = results["forces"]
         energy = results["energy"]
@@ -124,7 +124,7 @@ def calc_ipi_client(addr, atoms, calc, queue=None, **kwargs):
 
     def hessian_getter(coords):
         if queue is not None:
-            queue.put(("hessian", coords))
+            queue.put(("coords", coords))
         results = calc.get_hessian(atoms, coords)
         hessian = results["hessian"]
         energy = results["energy"]

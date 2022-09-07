@@ -58,8 +58,8 @@ def test_dimer(rotation_method, ref_cycle):
 @pytest.mark.parametrize(
     "bonds, ref_cycle",
     [
-        (None, 9),
-        ([[1, 2, -1], [2, 0, 1]], 9),
+        (None, 8),
+        ([[1, 2, -1], [2, 0, 1]], 8),
     ]
 )
 def test_dimer_hcn(bonds, ref_cycle):

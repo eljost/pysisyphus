@@ -62,26 +62,32 @@ def test_ohch3f_anion(calc_cls, calc_kwargs, ref_cycle, ccl_dist, oc_dist):
 
 @using("xtb")
 def test_three_frag_afir():
-    geom = geom_loader("lib:afir3test.xyz", coord_type="redund")
+    geom = geom_loader("lib:afir3test.xyz", coord_type="tric")
     fragment_indices = [
         (0, 1, 2),
         (3, 4, 5, 6),
     ]
-    calc = XTB()
+    calc = XTB(pal=1, acc=0.01)
     gamma = 150 / AU2KJPERMOL
-    afir = AFIR(calc, fragment_indices, gamma, ignore_hydrogen=False)
+    afir = AFIR(
+        calc, fragment_indices, gamma, ignore_hydrogen=False, zero_hydrogen=False
+    )
     geom.set_calculator(afir)
 
-    opt = RFOptimizer(geom, dump=True, overachieve_factor=2)
+    opt_kwargs = {
+        # "dump": True,
+        # "reset_on_topo_change": True,
+        # "reset_on_topo_change": False,
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
     assert opt.is_converged
-    assert opt.cur_cycle == 34
-    assert geom.energy == pytest.approx(-22.575014)
+    assert geom.energy == pytest.approx(-22.58019, abs=1e-4)
 
     c3d = geom.coords3d
-    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.6235122)
-    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.8615080)
+    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.610, abs=1e-3)
+    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.761, abs=1e-3)
 
 
 @using("pyscf")

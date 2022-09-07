@@ -57,6 +57,7 @@ DEFAULT_F = {
     PT.BONDED_FRAGMENT: CART_F,
     PT.DUMMY_TORSION: 0.1,
     PT.DISTANCE_FUNCTION: 0.1,
+    PT.DUMMY_IMPROPER: 0.1,
 }
 
 
@@ -77,7 +78,10 @@ def improved_guess(geom, bond_func, bend_func, dihedral_func):
             f_func = dihedral_func
         else:
             continue
-        new_f = f_func(indices)
+        try:
+            new_f = f_func(indices)
+        except ValueError:
+            new_f = DEFAULT_F[pt]
         H_guess[i, i] = new_f
     return H_guess
 
@@ -253,10 +257,8 @@ def get_guess_hessian(
     }
     try:
         H, hess_str = hess_funcs[hessian_init]()
-        # self.log(f"Using {hess_str} Hessian.")
     except KeyError:
         # Only cartesian hessians can be loaded
-        # self.log(f"Trying to load saved Hessian from '{self.hessian_init}'.")
         if str(hessian_init).endswith(".h5"):
             with h5py.File(hessian_init, "r") as handle:
                 cart_hessian = handle["hessian"][:]

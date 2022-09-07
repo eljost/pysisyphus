@@ -1,4 +1,5 @@
 import abc
+from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
@@ -80,6 +81,28 @@ CONV_THRESHS = {
     "never": (2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6),
 }
 Thresh = Literal["gau_loose", "gau", "gau_tight", "gau_vtight", "baker", "never"]
+
+
+@dataclass(frozen=True)
+class ConvInfo:
+    cur_cycle: int
+    energy_converged: bool
+    max_force_converged: bool
+    rms_force_converged: bool
+    max_step_converged: bool
+    rms_step_converged: bool
+
+    def get_convergence(self):
+        return (
+            self.energy_converged,
+            self.max_force_converged,
+            self.rms_force_converged,
+            self.max_step_converged,
+            self.rms_step_converged,
+        )
+
+    def is_converged(self):
+        return all(self.get_convergence())
 
 
 class Optimizer(metaclass=abc.ABCMeta):
@@ -218,7 +241,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
 
         # Set up convergence thresholds
-        self.convergence = self.make_conv_dict(thresh, rms_force)
+        self.convergence = self.make_conv_dict(
+            thresh, rms_force, rms_force_only, max_force_only
+        )
         for key, value in self.convergence.items():
             setattr(self, key, value)
 
@@ -229,6 +254,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 f"Got threshold {self.thresh}, set 'max_cycles' to {max_cycles} "
                 "and disabled dumping!"
             )
+            self.conv_dict = {}
         try:
             self.converge_to_geom = self.geometry.converge_to_geom
         except AttributeError:
@@ -314,7 +340,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         prefix = self.prefix if with_prefix else ""
         return self.out_dir / (prefix + fn)
 
-    def make_conv_dict(self, key, rms_force=None):
+    def make_conv_dict(
+        self, key, rms_force=None, rms_force_only=False, max_force_only=False
+    ):
         if not rms_force:
             threshs = CONV_THRESHS[key]
         else:
@@ -332,15 +360,24 @@ class Optimizer(metaclass=abc.ABCMeta):
             "max_force_thresh",
             "rms_force_thresh",
         ]
-        # Only used gradient information for CoS optimizations
+        # Only used gradient information for COS optimizations
         if not self.is_cos:
             keys += ["max_step_thresh", "rms_step_thresh"]
+
+        if rms_force_only:
+            self.log("Checking convergence with rms(forces) only!")
+            keys = ["rms_force_thresh"]
+        elif max_force_only:
+            self.log("Checking convergence with max(forces) only!")
+            keys = ["max_force_thresh"]
+
         conv_dict = {k: v for k, v in zip(keys, threshs)}
         return conv_dict
 
     def report_conv_thresholds(self):
         oaf = self.overachieve_factor
 
+        # Overachieved
         def oa(val):
             return f", ({val/oaf:.6f})" if oaf > 0.0 else ""
 
@@ -352,10 +389,16 @@ class Optimizer(metaclass=abc.ABCMeta):
         fu = "E_h a_0⁻¹" + (" (rad⁻¹)" if internal_coords else "")  # forces unit
         su = "a_0" + (" (rad)" if internal_coords else "")  # step unit
 
-        threshs = (
-            f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}",
-            f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)} {fu}",
-        )
+        try:
+            rms_thresh = f"\tmax(|force|) <= {self.max_force_thresh:.6f}{oa(self.max_force_thresh)} {fu}"
+        except AttributeError:
+            rms_thresh = None
+        try:
+            max_thresh = f"\t  rms(force) <= {self.rms_force_thresh:.6f}{oa(self.rms_force_thresh)} {fu}"
+        except AttributeError:
+            max_thresh = None
+        threshs = (rms_thresh, max_thresh)
+
         if self.rms_force_only:
             use_threshs = (threshs[1],)
         elif self.max_force_only:
@@ -372,15 +415,14 @@ class Optimizer(metaclass=abc.ABCMeta):
             + (", (overachieved when)" if oaf > 0.0 else "")
             + ":\n"
             + "\n".join(use_threshs)
+            + f"\n\t'Superscript {self.table.mark}' indicates convergence"
             + "\n"
         )
 
     def log(self, message, level=50):
         self.logger.log(level, message)
 
-    def check_convergence(
-        self, step=None, multiple=1.0, overachieve_factor=None, energy_thresh=1e-6
-    ):
+    def check_convergence(self, step=None, multiple=1.0, overachieve_factor=None):
         """Check if the current convergence of the optimization
         is equal to or below the required thresholds, or a multiple
         thereof. The latter may be used in initiating the climbing image.
@@ -429,16 +471,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         except AttributeError:
             geom_converged = False
 
-        # One may return after this comment, but not before!
+        converged_to_geom = False
         if self.converge_to_geom is not None:
             rmsd = np.sqrt(
                 np.mean((self.converge_to_geom.coords - self.geometry.coords) ** 2)
             )
-            converged = rmsd < self.converge_to_geom_rms_thresh
-            return converged
-
-        if self.thresh == "never":
-            return False
+            converged_to_geom = rmsd < self.converge_to_geom_rms_thresh
 
         this_cycle = {
             "max_force_thresh": max_force,
@@ -447,12 +485,23 @@ class Optimizer(metaclass=abc.ABCMeta):
             "rms_step_thresh": rms_step,
         }
 
-        if self.rms_force_only:
-            self.log("Checking convergence with rms(forces) only!")
-            return rms_force <= self.convergence["rms_force_thresh"]
-        elif self.max_force_only:
-            self.log("Checking convergence with max(forces) only!")
-            return max_force <= self.convergence["max_force_thresh"]
+        def check(key):
+            # Always return True if given key is not checked
+            key_is_checked = key in self.convergence
+            if key_is_checked:
+                result = this_cycle[key] <= getattr(self, key) * multiple
+            else:
+                result = True
+            return result
+
+        convergence = {
+            "energy_converged": True,
+            "max_force_converged": check("max_force_thresh"),
+            "rms_force_converged": check("rms_force_thresh"),
+            "max_step_converged": check("max_step_thresh"),
+            "rms_step_converged": check("rms_step_thresh"),
+        }
+        conv_info = ConvInfo(self.cur_cycle, **convergence)
 
         # Check if force convergence is overachieved
         overachieved = False
@@ -469,12 +518,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             if max_ and rms_:
                 self.log("Force convergence overachieved!")
 
-        converged = all(
-            [
-                this_cycle[key] <= getattr(self, key) * multiple
-                for key in self.convergence.keys()
-            ]
-        )
+        converged = all([val for val in convergence.values()])
+        not_never = self.thresh != "never"
 
         if self.thresh == "baker":
             energy_converged = False
@@ -483,9 +528,13 @@ class Optimizer(metaclass=abc.ABCMeta):
                 prev_energy = self.energies[-2]
                 energy_converged = abs(cur_energy - prev_energy) < 1e-6
             converged = (max_force < 3e-4) and (energy_converged or (max_step < 3e-4))
-        return any((converged, overachieved, geom_converged))
+        return (
+            any((converged_to_geom, converged, overachieved, geom_converged))
+            and not_never,
+            conv_info,
+        )
 
-    def print_opt_progress(self):
+    def print_opt_progress(self, conv_info):
         try:
             energy_diff = self.energies[-1] - self.energies[-2]
         # ValueError: maybe raised when the number of images differ in cycles
@@ -502,6 +551,11 @@ class Optimizer(metaclass=abc.ABCMeta):
         if (self.cur_cycle > 1) and (self.cur_cycle % 10 == 0):
             self.table.print_sep()
 
+        marks = [False, *conv_info.get_convergence(), False]
+        try:
+            cycle_time = self.cycle_times[-1]
+        except IndexError:
+            cycle_time = 0.0
         self.table.print_row(
             (
                 self.cur_cycle,
@@ -510,8 +564,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.rms_forces[-1],
                 self.max_steps[-1],
                 self.rms_steps[-1],
-                self.cycle_times[-1],
-            )
+                cycle_time,
+            ),
+            marks=marks,
         )
         try:
             # Geometries/ChainOfStates objects can also do some printing.
@@ -747,7 +802,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.steps.append(step)
 
             # Convergence check
-            self.is_converged = self.check_convergence()
+            self.is_converged, conv_info = self.check_convergence()
 
             end_time = time.time()
             elapsed_seconds = end_time - start_time
@@ -765,7 +820,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             ):
                 self.dump_restart_info()
 
-            self.print_opt_progress()
+            self.print_opt_progress(conv_info)
             if self.is_converged:
                 self.table.print("Converged!")
                 break

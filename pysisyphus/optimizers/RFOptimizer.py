@@ -23,7 +23,7 @@ class RFOptimizer(HessianOptimizer):
         gdiis_thresh: float = 2.5e-3,
         gediis_thresh: float = 1e-2,
         gdiis_test_direction: bool = True,
-        max_micro_cycles: int = 0,
+        max_micro_cycles: int = 25,
         adapt_step_func: bool = False,
         **kwargs,
     ) -> None:
@@ -80,7 +80,7 @@ class RFOptimizer(HessianOptimizer):
 
         # Right everything is in place to check for convergence.  If all values are below
         # the thresholds, there is no need to do additional inter/extrapolations.
-        if self.check_convergence(ref_step):
+        if self.check_convergence(ref_step)[0]:  # Drop conv_info
             self.log("Convergence achieved! Skipping inter/extrapolation.")
             return ref_step
 

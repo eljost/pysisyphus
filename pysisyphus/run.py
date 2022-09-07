@@ -35,6 +35,7 @@ from pysisyphus.dynamics import (
 )
 from pysisyphus.drivers import (
     relaxed_1d_scan,
+    run_afir_paths,
     run_opt,
     run_precontr,
     run_perf,
@@ -1020,6 +1021,10 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=Non
         print("already exists")
     if "geom" in run_dict:
         xyzs = run_dict["geom"]["fn"]
+        try:
+            xyzs = list(xyzs.values())
+        except AttributeError:
+            pass
     else:
         xyzs = run_dict["xyz"]
     print("Copying:")
@@ -1054,6 +1059,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     # Defaults
     dd = {
         "assert": None,
+        "afir": None,
         "barrier": None,
         "calc": {
             "type": "dummy",
@@ -1098,7 +1104,8 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     if "cos" in conf_dict:
         dd["cos"] = {
             "type": "neb",
-            "fix_ends": True,
+            "fix_first": True,
+            "fix_last": True,
         }
         dd["opt"] = cos_opt_defaults.copy()
     # Use a different, more powerful, optimizer when we are not dealing
@@ -1220,6 +1227,9 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
             "repeat": 3,
         }
 
+    if "afir" in conf_dict:
+        dd["afir"] = {}
+
     return dd
 
 
@@ -1248,6 +1258,29 @@ def get_last_calc_cycle():
     return last_calc_cycle
 
 
+VALID_KEYS = {
+    "assert",
+    "afir",
+    "barriers",
+    "calc",
+    "cos",
+    "endopt",
+    "geom",
+    "interpol",
+    "irc",
+    "md",
+    "mdp",
+    "opt",
+    "perf",
+    "precontr",
+    "preopt",
+    "scan",
+    "shake",
+    "stocastic",
+    "tsopt",
+}
+
+
 def setup_run_dict(run_dict):
     org_dict = run_dict.copy()
 
@@ -1256,28 +1289,10 @@ def setup_run_dict(run_dict):
     # Update nested entries that are dicts by themselves
     # Take care to insert a , after the string!
     key_set = set(org_dict.keys())
-    for key in key_set & set(
-        (
-            "assert",
-            "barriers",
-            "calc",
-            "cos",
-            "endopt",
-            "geom",
-            "interpol",
-            "irc",
-            "md",
-            "mdp",
-            "opt",
-            "perf",
-            "precontr",
-            "preopt",
-            "scan",
-            "shake",
-            "stocastic",
-            "tsopt",
-        )
-    ):
+    assert (
+        key_set <= VALID_KEYS
+    ), f"Found invalid keys in YAML input: {key_set - VALID_KEYS}"
+    for key in key_set & VALID_KEYS:
         try:
             # Recursive update, because there may be nested dicts
             recursive_update(run_dict[key], org_dict[key])
@@ -1338,6 +1353,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     if run_dict["irc"]:
         irc_key = run_dict["irc"].pop("type")
         irc_kwargs = run_dict["irc"]
+    if run_dict["afir"]:
+        afir_key = run_dict["afir"].pop("type")
+        afir_kwargs = run_dict["afir"]
 
     # Handle geometry input. This section must always be present.
     geom_kwargs = run_dict["geom"]
@@ -1411,8 +1429,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # -----------------------+
 
     # Preoptimization only makes sense with a subsequent COS run.
-    if run_dict["preopt"] and run_dict["cos"]:
+    if run_dict["preopt"] and (run_dict["cos"] or run_dict["afir"]):
         assert len(geoms) > 1
+        # Preopt should be expanded to support > 2 fragments with AFIR
+        if run_dict["afir"] and len(geoms) > 2:
+            raise Exception("Currently, only the first & last geometry are optimized!")
         first_opt_result, last_opt_result = run_preopt(
             geoms[0],
             geoms[-1],
@@ -1458,6 +1479,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     elif run_dict["perf"]:
         perf_results = run_perf(geom, calc_getter, **run_dict["perf"])
         print_perf_results(perf_results)
+    elif run_dict["afir"]:
+        ts_guesses, afir_paths = run_afir_paths(
+            afir_key, geoms, calc_getter, **afir_kwargs,
+        )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #

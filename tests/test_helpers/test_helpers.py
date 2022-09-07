@@ -1,6 +1,8 @@
 import numpy as np
+import pytest
 from scipy.spatial.transform import Rotation
 
+from pysisyphus.constants import NA, BOHR2ANG
 from pysisyphus.helpers import align_coords, geom_loader
 from pysisyphus.interpolate import interpolate
 
@@ -56,3 +58,10 @@ def test_align_coords_interpolate():
     # coords_to_trj("aligned.trj", atoms, aligned)
 
     np.testing.assert_allclose(aligned[0], aligned[-1], atol=1e-10)
+
+
+def test_molar_volume():
+    geom = geom_loader("lib:methane.xyz")
+    mol_vol = geom.vdw_volume(n_trial=50_000)
+    mol_vol_si = mol_vol * BOHR2ANG**3 * NA * 1e-24
+    assert mol_vol_si == pytest.approx(17.7, abs=3e-1)

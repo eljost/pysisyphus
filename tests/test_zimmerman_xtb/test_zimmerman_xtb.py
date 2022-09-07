@@ -38,7 +38,6 @@ def test_zimmerman_xtb_gsm(fn, geoms, ref_energy, results_bag):
             },
             "cos": {
                 "type": "gs",
-                "fix_ends": True,
                 "max_nodes": 11,
                 "reparam_check": "rms",
                 # "perp_thresh": 0.075,

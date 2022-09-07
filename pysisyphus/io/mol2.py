@@ -44,7 +44,7 @@ def parse_mol2(text):
     atom_data_line = pp.Group(
         ~new_record
         + pp.common.integer.set_results_name("atom_id")
-        + pp.Word(pp.alphas).set_results_name("atom_name")
+        + pp.Word(pp.alphanums).set_results_name("atom_name")
         + pp.Group(pp.common.real + pp.common.real + pp.common.real).set_results_name(
             "xyz"
         )
@@ -83,8 +83,10 @@ def parse_mol2(text):
     atoms_xyzs = as_dict["atoms_xyzs"]
     for i, line in enumerate(atoms_xyzs):
         assert i + 1 == line["atom_id"]
-        atoms.append(line["atom_name"])
+        atom = line["atom_type"].split(".")[0]
+        atoms.append(atom)
         coords[i] = line["xyz"]
+    assert len(atoms) == len(coords)
 
     coords *= ANG2BOHR
 

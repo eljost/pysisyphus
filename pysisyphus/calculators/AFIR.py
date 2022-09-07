@@ -2,8 +2,8 @@
 # [2] https://onlinelibrary.wiley.com/doi/epdf/10.1002/jcc.23481
 # [3] https://onlinelibrary.wiley.com/doi/epdf/10.1002/tcr.201600043
 
-from dataclasses import dataclass
 import itertools as it
+from math import isclose
 from typing import List
 
 import autograd
@@ -18,15 +18,6 @@ from pysisyphus.helpers import complete_fragments
 from pysisyphus.helpers_pure import log
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 from pysisyphus.linalg import finite_difference_hessian
-
-
-@dataclass
-class AFIRPath:
-    atoms: tuple
-    cart_coords: np.ndarray
-    energies: np.ndarray
-    forces: np.ndarray
-    opt_is_converged: bool
 
 
 def get_data_model(atoms, max_cycles):
@@ -48,6 +39,10 @@ def get_data_model(atoms, max_cycles):
     return data_model
 
 
+class CovRadiiSumZero(Exception):
+    pass
+
+
 def afir_closure(
     fragment_indices, cov_radii, gamma, rho=1, p=6, prefactor=1.0, logger=None
 ):
@@ -59,6 +54,9 @@ def afir_closure(
 
     inds = np.array(list(it.product(*fragment_indices)))
     cov_rad_sums = cov_radii[inds].sum(axis=1)
+
+    if isclose(cov_rad_sums.sum(), 0.0, abs_tol=1e-10):
+        raise CovRadiiSumZero("Sum of covalent radii is 0.0!")
 
     # 3.8164 Angstrom in Bohr
     R0 = 7.21195
@@ -101,7 +99,8 @@ class AFIR(Calculator):
         gamma: npt.ArrayLike,
         rho: npt.ArrayLike = 1,
         p: int = 6,
-        ignore_hydrogen: bool = True,
+        ignore_hydrogen: bool = False,
+        zero_hydrogen: bool = True,
         complete_fragments: bool = True,
         dump: bool = True,
         h5_fn: str = "afir.h5",
@@ -152,6 +151,12 @@ class AFIR(Calculator):
             to 6 and probably does not have to be changed.
         ignore_hydrogen
             Whether hydrogens are ignored in the calculation of the artificial force.
+            All weights between atom pairs containing hydrogen will be set to 0.
+        zero_hydrogen
+            Whether to use 0.0 as covalent radius for  hydrogen in the weight function.
+            Compared to 'ignore_hydrogen', which results in zero weights for all atom
+            pairs involving hydrogen, 'zero_hydrogen' may be non-zero, depending on the
+            covalent radius of the second atom in the pair.
         complete_fragments
             Whether an incomplete specification in 'fragment_indices' is automatically
             completed.
@@ -181,6 +186,7 @@ class AFIR(Calculator):
         np.testing.assert_allclose(np.abs(self.rho), np.ones_like(self.rho))
         self.p = p
         self.ignore_hydrogen = ignore_hydrogen
+        self.zero_hydrogen = zero_hydrogen
         self.complete_fragments = complete_fragments
         self.dump = dump
         self.h5_fn = self.out_dir / h5_fn
@@ -297,8 +303,8 @@ class AFIR(Calculator):
         self.log_fragments()
         self.write_fragment_geoms(atoms, coords)
 
+        hydrogen_inds = [i for i, atom in enumerate(atoms) if atom.lower() == "h"]
         if self.ignore_hydrogen:
-            hydrogen_inds = [i for i, atom in enumerate(atoms) if atom.lower() == "h"]
             fragment_indices = list()
             for i, frag_inds in enumerate(self.fragment_indices):
                 frag_inds_no_h = [j for j in frag_inds if j not in hydrogen_inds]
@@ -307,7 +313,10 @@ class AFIR(Calculator):
                 self.log(f"Ignoring {dropped_hydrogens} hydrogen(s) from fragment {i}.")
             self.fragment_indices = fragment_indices
 
-        self.cov_radii = np.array([COVALENT_RADII[atom.lower()] for atom in atoms])
+        self.cov_radii_org = np.array([COVALENT_RADII[atom.lower()] for atom in atoms])
+        self.cov_radii = self.cov_radii_org.copy()
+        if self.zero_hydrogen:
+            self.cov_radii[hydrogen_inds] = 0.0
         self.log("Set covalent radii")
         self.afir_funcs = list()
         self.afir_grad_funcs = list()
@@ -434,3 +443,9 @@ class AFIR(Calculator):
             self.dump_h5(atoms, coords, results)
         self.calc_counter += 1
         return results
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return f"AFIR({self.calculator})"

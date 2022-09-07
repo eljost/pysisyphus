@@ -12,10 +12,11 @@ from operator import itemgetter
 import numpy as np
 
 from pysisyphus.config import (
-        BEND_MIN_DEG,
-        LB_MIN_DEG,
-        DIHED_MAX_DEG,
+    BEND_MIN_DEG,
+    LB_MIN_DEG,
+    DIHED_MAX_DEG,
 )
+from pysisyphus.elem_data import get_tm_indices
 from pysisyphus.linalg import svd_inv
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.update import transform_int_step
@@ -75,6 +76,7 @@ class RedundantCoords:
         tric=False,
         hybrid=False,
         hbond_angles=False,
+        rm_for_frag=None,
     ):
         self.atoms = atoms
         self.coords3d = np.reshape(coords3d, (-1, 3)).copy()
@@ -109,6 +111,7 @@ class RedundantCoords:
         self.tric = tric
         self.hybrid = hybrid
         self.hbond_angles = hbond_angles
+        self.rm_for_frag = rm_for_frag
 
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
@@ -141,7 +144,8 @@ class RedundantCoords:
             )
         # Use supplied typed_prims
         else:
-            self.typed_prims = typed_prims + self.define_prims
+            unique_typed_prims = set(typed_prims) | set(self.define_prims)
+            self.typed_prims = list(unique_typed_prims)
 
         if self.bonds_only:
             self.typed_prims = self.bond_typed_prims
@@ -539,6 +543,7 @@ class RedundantCoords:
             hbond_angles=self.hbond_angles,
             freeze_atoms=self.freeze_atoms if self.freeze_atoms_exclude else None,
             define_for=self.define_for,
+            rm_for_frag=self.rm_for_frag,
             logger=self.logger,
         )
 
@@ -611,6 +616,13 @@ class TRIC(RedundantCoords):
         kwargs["tric"] = True
         kwargs["recalc_B"] = True
         super().__init__(*args, **kwargs)
+
+
+class TMTRIC(TRIC):
+    def __init__(self, atoms, *args, **kwargs):
+        tm_indices = get_tm_indices(atoms)
+        kwargs.setdefault("rm_for_frag", set()).update(tm_indices)
+        super().__init__(atoms, *args, **kwargs)
 
 
 class HybridRedundantCoords(RedundantCoords):

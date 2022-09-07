@@ -86,11 +86,16 @@ def test_ts_hessian():
     "tsopt_cls, ref_cycle",
     [
         (RSPRFOptimizer, 10),
-        # (RSIRFOptimizer, 12),
+        # (RSIRFOptimizer, 11),
     ],
 )
 def test_ts_hessian_opt(tsopt_cls, ref_cycle):
-    geom = geom_loader("lib:baker_ts/01_hcn.xyz", coord_type="redund")
+    geom = geom_loader(
+        "lib:baker_ts/01_hcn.xyz",
+        coord_type="redund",
+        coord_kwargs={"define_prims": [["BOND", 2, 0]]},
+    )
+    # geom.modes3d()
     geom.set_calculator(PySCF(basis="321g"))
 
     opt_kwargs = {

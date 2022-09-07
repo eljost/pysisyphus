@@ -1,7 +1,8 @@
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.integrals import get_l, Shell, Shells
+from pysisyphus.elem_data import ATOMIC_NUMBERS
+from pysisyphus.wavefunction import get_l, Shell, Shells
 
 
 def parse_aomix(text):
@@ -54,6 +55,7 @@ def parse_aomix(text):
     center_gtos = as_dict["center_gtos"]
     _shells = list()
     for atom_line, cgtos in zip(atom_lines, center_gtos):
+        atomic_num = ATOMIC_NUMBERS[atom_line["atom"].lower()]
         center_ind = cgtos["center"]
         assert atom_line["id"] == center_ind
         center = np.array(atom_line["xyz"])
@@ -64,6 +66,7 @@ def parse_aomix(text):
             L = get_l(cgto["l"])
             shell = Shell(
                 L=L,
+                atomic_num=atomic_num,
                 center=center,
                 coeffs=coeffs,
                 exps=exps,

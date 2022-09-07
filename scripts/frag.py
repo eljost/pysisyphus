@@ -4,7 +4,7 @@ import argparse
 import itertools as it
 import sys
 
-from pysisyphus.elem_data import ATOMIC_NUMBERS
+from pysisyphus.elem_data import get_tm_indices
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import full_expand, highlight_text
@@ -91,18 +91,7 @@ def run():
         rm_bonds_from = set(args.bonds_from)
     elif args.tmc:
         print("Delete all bonds involving transition metals")
-        trans_metal_nums = list(it.chain(
-            #       3d             4d             5d             6d
-            *(range(21, 31), range(39, 49), range(57, 81), range(89, 113))
-        ))
-
-        def is_trans_metal(atomic_num):
-            return atomic_num in trans_metal_nums
-
-        atom_nums = [ATOMIC_NUMBERS[atom.lower()] for atom in geom.atoms]
-        trans_metal_atoms = [
-            i for i, atom_num in enumerate(atom_nums) if is_trans_metal(atom_num)
-        ]
+        trans_metal_atoms = get_tm_indices(geom.atoms)
         rm_bonds_from = set(trans_metal_atoms)
     else:
         raise Exception("How did I get here?")

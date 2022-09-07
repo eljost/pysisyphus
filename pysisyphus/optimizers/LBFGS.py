@@ -4,6 +4,7 @@ import numpy as np
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import fit_rigid
+from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.optimizers.closures import bfgs_multiply, get_update_mu_reg
 from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -191,10 +192,17 @@ class LBFGS(Optimizer):
             )
             if adapt_mu_cycles == self.max_mu_reg_adaptions:
                 raise Exception("Adapation of mu_reg failed! Breaking!")
-            trial_energy = self.geometry.get_energy_at(self.geometry.coords + step)
-            self.mu_reg, recompute_step = self.update_mu_reg(
-                self.mu_reg, energy, trial_energy, -forces, step
-            )
+            try:
+                trial_energy = self.geometry.get_energy_at(self.geometry.coords + step)
+                self.mu_reg, recompute_step = self.update_mu_reg(
+                    self.mu_reg, energy, trial_energy, -forces, step
+                )
+            except NeedNewInternalsException:
+                self.log("Internal coordinate breakdown in linesearch!")
+                # Nothing further is done here, as the coordinates will probably also
+                # breakdown when taking the step, which is then handled.
+                recompute_step = False
+
             # Leave loop if step was accepted
             if not recompute_step:
                 self.log(f"Next μ_reg={self.mu_reg:.6f}")

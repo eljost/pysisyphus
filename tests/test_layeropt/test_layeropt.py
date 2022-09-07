@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from queue import LifoQueue
+from queue import Empty, Queue
 import subprocess
 import tempfile
 import time
@@ -27,9 +27,13 @@ opt:
  type: layers
  layers:
   - address: {address0}
+    geom:
+     type: redund
   - indices: {indices}
     address: {address1}
- thresh: gau
+    geom:
+     type: redund
+ # thresh: gau
 assert:
  opt_geom.energy: -115.535231
 """
@@ -38,7 +42,7 @@ assert:
 @pytest.mark.skip_ci
 @using("xtb")
 @using("orca")
-def test_ethanal_oniom_layeropt():
+def test_ethanal_oniom_layeropt(this_dir):
     fn = "lib:acetaldehyd_oniom.xyz"
     indices = [4, 5, 6]  # 0 is link atom host
     link_hosts = [
@@ -94,7 +98,7 @@ def test_ethanal_oniom_layeropt():
             print(f"Starting {addr}")
             calc_ipi_client(addr, real_geom.atoms, real_geom.calculator)
 
-        coords_queue = LifoQueue(maxsize=0)
+        coords_queue = Queue(maxsize=0)
 
         def layer1sock():
             time.sleep(3)
@@ -103,11 +107,17 @@ def test_ethanal_oniom_layeropt():
             calc_ipi_client(addr, geom.atoms, geom.calculator, queue=coords_queue)
 
         with ThreadPoolExecutor() as executor:
-            _ = [
-                executor.submit(task) for task in (run_pysis, layer0sock, layer1sock)
-            ]
-
-        final_coords = coords_queue.get()
+            _ = [executor.submit(task) for task in (run_pysis, layer0sock, layer1sock)]
+        all_cart_coords = list()
+        while True:
+            try:
+                _, cart_coords = coords_queue.get(False)
+                all_cart_coords.append(cart_coords)
+            except Empty:
+                break
+        xyzs = [geom.as_xyz(cart_coords=cc) for cc in all_cart_coords]
+        with open(this_dir / "optimization.trj", "w") as handle:
+            handle.write("\n".join(xyzs))
 
 
 if __name__ == "__main__":

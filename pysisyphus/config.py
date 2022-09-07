@@ -11,13 +11,17 @@ from pysisyphus import logger
 
 
 CONFIG_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
-LIB_DIR = CONFIG_DIR / "geom_library"
+BASIS_LIB_DIR = Path(CONFIG_DIR / "basis_library")
+LIB_DIR = Path(CONFIG_DIR / "geom_library")
+WF_LIB_DIR = Path(CONFIG_DIR / "wf_library")
 T_DEFAULT = 298.15  # Kelvin
 p_DEFAULT = 101325  # Pascal
 OUT_DIR_DEFAULT = "qm_calcs"
 BEND_MIN_DEG = 15
 LB_MIN_DEG = 175
 DIHED_MAX_DEG = 175
+L_MAX = 4
+AFIR_RMSD_THRESH = 0.25
 DEFAULTS = {
     # .pysisyphusrc key: command
     "mwfn": "Multiwfn",

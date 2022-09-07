@@ -21,7 +21,6 @@ class ChainOfStates:
     def __init__(
         self,
         images,
-        fix_ends=False,
         fix_first=True,
         fix_last=True,
         climb=False,
@@ -36,9 +35,8 @@ class ChainOfStates:
 
         assert len(images) >= 2, "Need at least 2 images!"
         self.images = list(images)
-        self.fix_first = fix_ends or fix_first
-        self.fix_last = fix_ends or fix_last
-        self.fix_ends = fix_ends
+        self.fix_first = fix_first
+        self.fix_last = fix_last
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
@@ -376,7 +374,8 @@ class ChainOfStates:
         if (
             not disable_lanczos
             and self.started_climbing_lanczos
-            and (i in self.get_climbing_indices())
+            # and (i in self.get_climbing_indices())
+            and (i == self.get_hei_index())
         ):
             kind = "lanczos"
 
@@ -501,7 +500,7 @@ class ChainOfStates:
         if self.climb and not already_climbing:
             self.started_climbing = self.check_for_climbing_start(self.climb_rms)
             if self.started_climbing:
-                msg = "Starting to climb in next iteration."
+                msg = "Will use climbing image(s) in next cycle."
                 self.log(msg)
                 print(msg)
         # Determine climbing index/indices if not set, but requested.
@@ -518,7 +517,7 @@ class ChainOfStates:
                 self.climb_lanczos_rms
             )
             if self.started_climbing_lanczos:
-                msg = "Using Lanczos algorithm to converge HEI tangent."
+                msg = "Will use Lanczos algorithm for HEI tangent in next cycle."
                 self.log(msg)
                 print(msg)
 
@@ -576,8 +575,8 @@ class ChainOfStates:
         # is in moving_indices but not the first or last item in this list.
         # elif self.climb != "one" and hei_index in move_inds[1:-1]:
         elif hei_index in move_inds[1:-1]:
-            # climb_indices = (hei_index-1, hei_index+1)
-            climb_indices = (hei_index,)
+            climb_indices = (hei_index - 1, hei_index + 1)
+            # climb_indices = (hei_index,)
         # Don't climb when the HEI is the first or last image of the whole
         # NEB.
         else:

@@ -42,4 +42,4 @@ def test_run_geom_section_union(hbond_angles, prim_len_ref):
     # in the .trj file.
     run_dict = get_run_dict()
     run_dict["geom"]["union"] = "lib:test_union_rx_001.trj"
-    run_assert(run_dict, prim_len=67)
+    run_assert(run_dict, prim_len=89)

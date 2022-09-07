@@ -62,7 +62,6 @@ def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
     geoms = get_geoms()
 
     neb_kwargs = {
-        "fix_ends": True,
         "k_min": 0.01,
     }
     neb_kwargs.update(neb_kwargs_)
@@ -91,7 +90,6 @@ def test_anapot_szts(between, param, ref_cycle):
     geoms = get_geoms()
 
     szts_kwargs = {
-        "fix_ends": True,
         "param": param,
     }
 

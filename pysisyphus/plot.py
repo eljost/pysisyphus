@@ -313,6 +313,9 @@ def plot_all_energies(h5):
         energies = handle["all_energies"][:]
         roots = handle["roots"][:]
         flips = handle["root_flips"][:]
+        ovlp_type = handle.attrs["ovlp_type"]
+        ovlp_with = handle.attrs["ovlp_with"]
+    print(f"Overlap type: '{ovlp_type}', overlaps with: '{ovlp_with}'.")
     print(f"Found a total of {len(roots)} steps.")
     print(f"{flips} root flips occured.")
 
@@ -347,10 +350,12 @@ def plot_all_energies(h5):
     for i, state in enumerate(energies.T):
         ax.plot(steps, state, "o-", label=f"State {i:03d}")
     ax.legend(loc="lower center", ncol=3)
+    ax.set_title(f"'{ovlp_type}' overlaps with '{ovlp_with}'")
     ax.set_xlabel("Cycle")
     ax.set_ylabel(r"$\Delta$E / eV")
     root_ens = [s[r] for s, r in zip(energies, roots)]
     ax.plot(steps, root_ens, "--k")
+    plt.tight_layout()
     plt.show()
 
 

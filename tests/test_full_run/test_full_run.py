@@ -24,7 +24,6 @@ def test_full_run_hf_abstraction():
         },
         "cos": {
             "type": "neb",
-            "fix_ends": True,
         },
         "opt": {
             "type": "qm",

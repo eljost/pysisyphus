@@ -25,6 +25,8 @@ from pysisyphus.helpers_pure import (
 from pysisyphus.io import (
     geom_from_cjson,
     geom_from_crd,
+    geom_from_fchk,
+    geom_from_hessian,
     geom_from_mol2,
     geom_from_pdb,
     save_hessian as save_h5_hessian,
@@ -92,6 +94,8 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".pdb": geom_from_pdb,
         ".cjson": geom_from_cjson,
         ".zmat": geom_from_zmat_fn,
+        ".h5": geom_from_hessian,
+        ".fchk": geom_from_fchk,
         "": geoms_from_inline_xyz,
     }
     assert ext in funcs, f"Unknown filetype for '{fn}'!"
@@ -293,12 +297,18 @@ def match_geoms(ref_geom, geom_to_match, hydrogen=False):
         # coords_to_match[atom] = coords_to_match_for_atom[new_inds]
 
 
-def check_for_end_sign(check_user=True, cwd="."):
+def check_for_end_sign(check_user=True, cwd=".", add_signs=None):
+    if add_signs is None:
+        add_signs = tuple()
+    elif type(add_signs) == str:
+        add_signs = (add_signs,)
+    else:
+        add_signs = tuple(add_signs)
     signs = (
         "stop",
         "converged",
         "exit",
-    )
+    ) + add_signs
     sign_found = False
     cur_user = getpass.getuser()
     cwd = Path(cwd)

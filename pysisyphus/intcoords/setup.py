@@ -1,13 +1,22 @@
+# [1] http://link.aip.org/link/doi/10.1063/1.1515483
+#     The efficient optimization of molecular geometries using redundant internal
+#     coordinates
+#     Bakken, Helgaker, 2002
+
 from collections import namedtuple
 import itertools as it
+from typing import Optional
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
+from sklearn.cluster import KMeans
 
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.config import BEND_MIN_DEG, DIHED_MAX_DEG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
+from pysisyphus.intcoords.setup_fast import find_bonds as find_bonds_fast
 from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap, Rotations
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
@@ -67,7 +76,9 @@ def connect_fragments(
     cdm, fragments, max_aux=3.78, aux_factor=BOND_FACTOR, logger=None
 ):
     """Determine the smallest interfragment bond for a list
-    of fragments and a condensed distance matrix."""
+    of fragments and a condensed distance matrix. For more than a few fragments
+    this function performs poorly, as each fragment is connected to all reamaining
+    fragments, leading to an explosion of bonds, bends and dihedrals."""
     if len(fragments) > 1:
         log(
             logger,
@@ -126,6 +137,223 @@ def connect_fragments(
     return interfrag_inds, aux_interfrag_inds
 
 
+def connect_fragments_kmeans(
+    cdm,
+    fragments,
+    atoms,
+    aux_below_thresh=3.7807,  # 2 Å
+    aux_add_dist=2.8356,  # 1.5 Å
+    aux_keep=5,
+    aux_no_hh=True,
+    min_dist_thresh=5.0,
+    min_scale=1.2,
+    logger=None,
+):
+    """Generate (auxiliary) interfragment bonds.
+
+    In the a first step, minimum distance interfragment bonds (IFBs) are determined between
+    all possible fragment pairs. Similarly, possible auxiliary IFBs are determined.
+    Candidates for auxiliary IFBs are:
+        IFB <= aux_below_thresh, default 2 Å
+        IFB <= (minimum distance IFB + aux_add_dist), default 1.5 Å
+    By default, only the first aux_keep (default = 5) auxiliary IFBs are kept.
+
+    Connecting all fragments can lead to bonds between very distant atoms. If more than
+    two fragments are present we cluster the minimum distance IFB distances using KMeans,
+    to determine a reasonable length for valid IFBs. We start out with two clusters and
+    increase the number of cluster until the center of one cluster is around the scaled
+    global minimum distance between the fragments. The center of this cluster is then used
+    as a cutoff vor valid IFBs.
+
+    After pruning all possible IFBs we can determine the fragment pairs, that are actually
+    connected. This information is then used to also prune possible interfragment bonds.
+    Only auxiliary IFBs between fragments that are actually connected via IFBs are kept.
+    """
+    # atoms = [atom.lower() for atom in atoms]
+    if len(fragments) > 1:
+        log(
+            logger,
+            f"Detected {len(fragments)} fragments. Generating interfragment bonds.",
+        )
+    dist_mat = squareform(cdm)
+
+    frag_pairs = list()
+    interfrag_inds = list()
+    interfrag_dists = list()
+    aux_dict = dict()
+    for i, j in it.combinations(range(len(fragments)), 2):
+        frag1 = fragments[i]
+        frag2 = fragments[j]
+        log(logger, f"\tConnecting {len(frag1)}-atom and {len(frag2)}-atom fragments.")
+        # Pairs of possible interfragment bonds
+        inds = np.array([(i1, i2) for i1, i2 in it.product(frag1, frag2)], dtype=int)
+        distances = np.array([dist_mat[k, l] for k, l in inds])
+
+        frag_pairs.append((i, j))
+        # Determine minimum distance bond
+        min_ind = distances.argmin()
+        min_dist = distances[min_ind]
+        interfrag_inds.append(inds[min_ind])
+        interfrag_dists.append(min_dist)
+        """
+        But also consider other bonds with reasonable lengths as auxiliary interfrag bonds.
+        Contrary to [1] we don't use a scaled minimum interfragment distances (MID),
+        but just add a fixed value to the MID. Scaling a possibly big MID would
+        probably include too many coordinates.
+        """
+        # if aux_no_hh:
+        # is_hh = np.array(
+        # [(atoms[k] == "h") and (atoms[k] == atoms[l]) for k, l in inds]
+        # )
+        # else:
+        # is_hh = np.zeros(len(inds))
+
+        aux_mask = np.logical_or(
+            distances <= aux_below_thresh,
+            distances <= (min_dist + aux_add_dist),
+        )
+        # aux_mask = distances <= 1.1 * min_dist
+        # aux_mask = np.logical_and(aux_mask, ~is_hh)
+        # Don't include interfragment bond
+        aux_mask[min_ind] = False
+        aux_inds = inds[aux_mask]
+
+        if aux_keep >= 0:
+            aux_dists = distances[aux_mask]
+            aux_keep_inds = aux_dists.argsort()[:aux_keep]
+            aux_inds = aux_inds[aux_keep_inds]
+
+        aux_dict[(i, j)] = aux_inds
+    frag_pairs = np.array(frag_pairs, dtype=int)
+
+    """
+    The code below tries to determine a reasonable distance, to define
+    interfragment bonds. We don't want to use all interfragment bonds defined
+    above, as this would connect all fragments to each other, resulting in an
+    explosion of the number of internal coordinates.
+
+    Here we try to cluster the interfragment distances, until one cluster center
+    comes close to the scaled minimum interfragment distance. We then use this
+    distance to filter all interfragment bonds.
+    """
+    if len(fragments) > 2:
+        dists = np.reshape(interfrag_dists, (-1, 1))
+        min_dist = dists.min()
+
+        for n_clusters in range(2, 10):
+            kmeans = KMeans(n_clusters=n_clusters)
+            _ = kmeans.fit_predict(dists)
+            min_center = kmeans.cluster_centers_.min()
+
+            if min_center <= (min_scale * min_dist):
+                break
+        else:
+            raise Exception("Not handled!")
+
+        interfrag_inds = np.array(interfrag_inds)
+        mask = dists <= min_scale * min_center
+        # We also use interfragment bonds that still have a reasonable length.
+        if (min_dist_thresh is not None) and (min_dist_thresh > 0.0):
+            mask |= dists <= min_dist_thresh
+        mask = mask.flatten()
+        interfrag_inds = interfrag_inds[mask]
+        conn_frags_mask = mask
+    else:
+        conn_frags_mask = np.ones(len(frag_pairs), dtype=bool)
+
+    # Only keep auxiliary interfragment bonds between actually connected fragments
+    actually_connected_frags = frag_pairs[conn_frags_mask]
+    aux_interfrag_inds = list(
+        it.chain(*[aux_dict[(i, j)] for i, j in actually_connected_frags])
+    )
+    aux_interfrag_inds = np.array(aux_interfrag_inds, dtype=int)
+    return interfrag_inds, aux_interfrag_inds
+
+
+def connect_fragments_ahlrichs(
+    cdm,
+    fragments,
+    atoms,
+    min_dist_scale=1.1,
+    scale=1.2,
+    avoid_h=False,
+    logger=None,
+):
+    atoms = [atom.lower() for atom in atoms]
+    if len(fragments) > 1:
+        log(
+            logger,
+            f"Detected {len(fragments)} fragments. Generating interfragment bonds.",
+        )
+    dist_mat = squareform(cdm)
+
+    frag_pairs = list()
+    interfrag_inds = list()
+    max_dist = 3.0 / BOHR2ANG
+    all_fragment_inds = [i for i, _ in enumerate(fragments)]
+    # Leave out the first fragment, so we can also handle only 1 fragment here.
+    unconnected_fragment_inds = all_fragment_inds.copy()[1:]
+    h_inds = set([i for i, atom in enumerate(atoms) if atom.lower() == "h"])
+    while True:
+        for i, j in it.product(all_fragment_inds, unconnected_fragment_inds):
+            # Don't try to connect a fragment to itself and don't try to connect
+            # fragments two times, e.g., (0 and 2) as well as (2 and 0).
+            if i >= j:
+                continue
+
+            frag1 = fragments[i]
+            frag2 = fragments[j]
+            log(
+                logger,
+                f"\tConnecting {len(frag1)}-atom and {len(frag2)}-atom fragments.",
+            )
+            # Pairs of possible interfragment bonds
+            inds = np.array(
+                [(i1, i2) for i1, i2 in it.product(frag1, frag2)], dtype=int
+            )
+            distances = np.array([dist_mat[k, l] for k, l in inds])
+
+            frag_pairs.append((i, j))
+            # Determine minimum distance bond
+            min_ind = distances.argmin()
+            min_dist = distances[min_ind]
+
+            if avoid_h:
+                sort_inds = np.argsort(distances, kind="stable")
+                # Try to avoid interfragment bonds involving hydrogen.
+                for (k, dist) in zip(sort_inds, distances[sort_inds]):
+                    if set(inds[k]) & h_inds:
+                        continue
+                    if dist >= 1.5 * min_dist:
+                        break
+                    min_ind = k
+                    min_dist = distances[k]
+                    break
+
+            if min_dist <= max_dist:
+                # Scaling of bigger 'min_dist' values by a fixed factor can lead
+                # to definition of many additional bonds. We restrict the offset
+                # to at most 1 Å.
+                offset = min((min_dist_scale - 1.0) * min_dist, 1.0 / BOHR2ANG)
+                mask = distances <= (min_dist + offset)
+                interfrag_inds.extend(inds[mask])
+                # Indicate that the just connected fragments don't have to be
+                # connected anymore. In the current cycle of the while loop additional
+                # bonds to the just connected fragments can still be defined.
+                unconnected_fragment_inds = [
+                    k for k in unconnected_fragment_inds if k not in (i, j)
+                ]
+        # Leave the outer while loop when all fragments are connected
+        if len(unconnected_fragment_inds) == 0:
+            break
+        # If there are still unconnected fragments present we allow longer
+        # interfragment bonds.
+        max_dist *= scale
+
+    interfrag_inds = np.array(interfrag_inds, dtype=int)
+    return interfrag_inds, list()
+
+
 def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
     tmp_sets = [frozenset(bi) for bi in bond_inds]
     hydrogen_inds = [i for i, a in enumerate(atoms) if a.lower() == "h"]
@@ -156,6 +384,58 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
                     f"({atoms[h_ind]}) and {y_ind} ({atoms[y_ind]})",
                 )
 
+    return hydrogen_bond_inds
+
+
+def get_hydrogen_bond_inds_v2(atoms, coords3d, bond_inds, logger=None):
+    def to_set(iterable):
+        return {frozenset(_) for _ in iterable}
+
+    atoms_lower = [atom.lower() for atom in atoms]
+    # Determine Hydrogen indices
+    org_h_inds = {i for i, atom in enumerate(atoms_lower) if atom == "h"}
+
+    org_bond_sets = to_set(bond_inds)
+    # Determine Hydrogen bonding partners in original bond set
+    org_h_partners = dict()
+    for org_bond in org_bond_sets:
+        if h_set := org_bond & org_h_inds:
+            (x_ind,) = org_bond - h_set
+            (h_ind,) = h_set
+            org_h_partners.setdefault(h_ind, list()).append(x_ind)
+
+    hx = {"h", "n", "o", "f", "p", "s", "cl"}
+    # Determine indices of potential hydrogen bond acceptors and hydrogen to
+    # carry out a search for bonds with a bigger bond factor.
+    hx_inds = [i for i, atom in enumerate(atoms) if atom.lower() in hx]
+    hx_atoms = [atoms[i] for i in hx_inds]
+    hx_map = {j: i for j, i in enumerate(hx_inds)}
+    # See pysisyphus.elemdata.HBOND_FACTORS
+    hx_coords3d = coords3d[hx_inds]
+    # Search bonds with KDTree
+    h_bonds = find_bonds_fast(hx_atoms, hx_coords3d, bond_factor=2.3)
+    h_bonds = to_set(h_bonds)
+    # Map back to original indices. Until now the indices were only in the basis
+    # of the reduced number of atoms.
+    h_bonds = {frozenset((hx_map[i], hx_map[j])) for i, j in h_bonds}
+    # Drop h_bonds that were already defined as "normal" bonds
+    h_bonds = h_bonds - org_bond_sets
+
+    hydrogen_bond_inds = list()
+    # h_bonds can still contain XX and HH bonds
+    for h_bond in h_bonds:
+        hi = h_bond & org_h_inds
+        # Skip XX and HH. We are only interest in 'h_bond' with one hydrogen.
+        if len(hi) in (0, 2):
+            continue
+        (h_ind,) = hi
+        (y_partner,) = h_bond - hi
+        v = coords3d[y_partner] - coords3d[h_ind]
+        for x_partner in org_h_partners[h_ind]:
+            u = coords3d[x_partner] - coords3d[h_ind]
+            # > 90°
+            if u.dot(v) < 0.0:
+                hydrogen_bond_inds.append((h_ind, y_partner))
     return hydrogen_bond_inds
 
 
@@ -351,8 +631,8 @@ def setup_redundant(
     coords3d,
     factor=BOND_FACTOR,
     define_prims=None,
-    min_deg=15,
-    dihed_max_deg=175.0,
+    min_deg=BEND_MIN_DEG,
+    dihed_max_deg=DIHED_MAX_DEG,
     lb_min_deg=None,
     lb_max_bonds=4,
     min_weight=None,
@@ -362,6 +642,7 @@ def setup_redundant(
     hbond_angles=False,
     freeze_atoms=None,
     define_for=None,
+    rm_for_frag: Optional[set] = None,
     logger=None,
 ):
     if define_prims is None:
@@ -370,6 +651,10 @@ def setup_redundant(
         freeze_atoms = list()
     if define_for is None:
         define_for = list()
+    if rm_for_frag is None:
+        rm_for_frag = set()
+
+    rm_for_frag
 
     log(
         logger,
@@ -412,12 +697,20 @@ def setup_redundant(
     )
     bonds = [tuple(bond) for bond in bonds]
     bonds = keep_coords(bonds, Stretch)
+    bonds = [bond for bond in bonds if rm_for_frag.isdisjoint(set(bond))]
 
     # Fragments
-    fragments = merge_sets(bonds)
+    fragments = merge_sets(bonds) + [
+        frozenset((rmed_atom,)) for rmed_atom in rm_for_frag
+    ]
     # Check for unbonded single atoms and create fragments for them.
     bonded_set = set(tuple(np.ravel(bonds)))
     unbonded_set = set(range(len(atoms))) - bonded_set
+    log(
+        logger,
+        f"Merging bonded atoms yielded {len(fragments)} fragment(s) and "
+        f"{len(unbonded_set)} atoms.",
+    )
     fragments.extend([frozenset((atom,)) for atom in unbonded_set])
 
     interfrag_bonds = list()
@@ -428,11 +721,13 @@ def setup_redundant(
     # interfragment coordinates.
     if tric:
         translation_inds = [list(fragment) for fragment in fragments]
-        rotation_inds = [list(fragment) for fragment in fragments]
+        # Exclude rotational coordinates for atomic species (1 atom)
+        rotation_inds = [list(fragment) for fragment in fragments if len(fragment) > 1]
     # Without TRIC we have to somehow connect all fragments.
     else:
-        interfrag_bonds, aux_interfrag_bonds = connect_fragments(
-            cdm, fragments, logger=logger
+        # interfrag_bonds, aux_interfrag_bonds = connect_fragments_kmeans(
+        interfrag_bonds, aux_interfrag_bonds = connect_fragments_ahlrichs(
+            cdm, fragments, atoms, logger=logger
         )
 
     # Hydrogen bonds
@@ -440,16 +735,14 @@ def setup_redundant(
     hydrogen_bonds = get_hydrogen_bond_inds(atoms, coords3d, bonds, logger=logger)
     hydrogen_set = [frozenset(bond) for bond in hydrogen_bonds]
 
-    # Remove newly obtained hydrogen bonds from other lists
-    interfrag_bonds = [
-        bond for bond in interfrag_bonds if set(bond) not in hydrogen_set
-    ]
-    aux_interfrag_bonds = [
-        bond for bond in aux_interfrag_bonds if set(bond) not in hydrogen_set
-    ]
-    bonds = [bond for bond in bonds if set(bond) not in hydrogen_set]
-    aux_bonds = list()  # Not defined by default
+    def remove_h_bonds(bond_list):
+        return [bond for bond in bond_list if set(bond) not in hydrogen_set]
 
+    # Remove newly obtained hydrogen bonds from other lists
+    interfrag_bonds = remove_h_bonds(interfrag_bonds)
+    aux_interfrag_bonds = remove_h_bonds(aux_interfrag_bonds)
+    bonds = remove_h_bonds(bonds)
+    aux_bonds = list()  # Not defined by default
     # Don't use auxilary interfragment bonds for bend detection
     bonds_for_bends = [
         bonds,

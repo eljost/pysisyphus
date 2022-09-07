@@ -91,8 +91,8 @@ def test_energy():
                 "real": {"type": "g16", "route": "hf sto-3g"},
                 "high": {"type": "g16", "route": "b3lyp 3-21g"},
             },
-            -152.4529060634755,
-            0.018462670668992546,
+            -152.4545063960854,
+            0.02328689431183379,
             marks=using("gaussian16"),
         ),
         pytest.param(
@@ -100,8 +100,8 @@ def test_energy():
                 "real": {"type": "pyscf", "basis": "sto3g"},
                 "high": {"type": "pyscf", "xc": "b3lypg", "basis": "321g"},
             },
-            -152.4529060634755,
-            0.01839279960703439,
+            -152.4545063960854,
+            0.02328689431183379,
             marks=using("pyscf"),
         ),
     ],
@@ -144,10 +144,10 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
 @pytest.mark.parametrize(
     "calc_key, embedding, ref_energy, ref_force_norm",
     [
-        # No embedding
+        # No embedding, G16 ||forces||_2 value is still for redund
         pytest.param("g16", None, -582.392035, 0.085568849, marks=using("gaussian16")),
-        pytest.param("pyscf", None, -582.392035, 0.078387703, marks=using("pyscf")),
-        # Electronic embedding
+        pytest.param("pyscf", None, -582.392035, 0.1587844, marks=using("pyscf")),
+        # Electronic embedding, G16 ||forces||_2 value is still for redund
         pytest.param(
             "g16",
             "electronic",
@@ -156,17 +156,17 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
             marks=using("gaussian16"),
         ),
         pytest.param(
-            "pyscf", "electronic", -582.3997769406087, 0.07861744, marks=using("pyscf")
+            "pyscf", "electronic", -582.3997769406087, 0.1594622, marks=using("pyscf")
         ),
     ],
 )
 def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
     geom = geom_loader(
         "lib:oniom_ee_model_system.xyz",
-        coord_type="redund",
-        coord_kwargs={
-            "hbond_angles": True,
-        },
+        # coord_type="redund",
+        # coord_kwargs={
+            # "hbond_angles": True,
+        # },
     )
 
     all_ = set(range(len(geom.atoms)))
@@ -601,10 +601,10 @@ def pyscf_acetaldehyd_getter():
 @pytest.mark.parametrize(
     "embedding, ref_energy",
     [
-        ("", -151.8130757),
-        ("electronic", -151.817564),
-        ("electronic_rc", -151.814822),
-        ("electronic_rcd", -151.817018),
+        ("", -151.81221275),
+        ("electronic", -151.82072680065824),
+        ("electronic_rc", -151.81471998946233),
+        ("electronic_rcd", -151.81767523122525),
     ],
 )
 def test_oniom_ee_charge_distribution(embedding, ref_energy, pyscf_acetaldehyd_getter):
@@ -646,5 +646,5 @@ def test_layer_calc(pyscf_acetaldehyd_getter):
     np.testing.assert_allclose(energies, ref_energies)
     # When using XTB instea of PySCF we don't have to increase the
     # tolerance. There seem to be some numerical instabilities in PySCF.
-    np.testing.assert_allclose(all_forces, ref_forces, atol=1e-7)
+    np.testing.assert_allclose(all_forces, ref_forces, atol=2e-7)
     np.testing.assert_allclose(all_hessians, ref_hessians, atol=2e-7)

@@ -98,7 +98,7 @@ def test_geometry_get_restart_info():
         pytest.param(LBFGS, {"gamma_mult": False, }, 1.36271012e-5, marks=using("pyscf")),
         pytest.param(PreconLBFGS, {}, 9.11439241e-6, marks=using("pyscf")),
         pytest.param(QuickMin, {}, 0.02305389, marks=using("pyscf")),
-        pytest.param(RFOptimizer, {}, 0.00189796616, marks=using("pyscf")),
+        pytest.param(RFOptimizer, {}, 0.0019022348, marks=using("pyscf")),
         pytest.param(SteepestDescent, {}, 0.05535400, marks=using("pyscf")),
     ]
 )

@@ -10,7 +10,10 @@ import pytest
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA
+from pysisyphus.calculators.ORCA import parse_densities, parse_orca_cis
+from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.testing import using
+from pysisyphus.wavefunction import Wavefunction
 
 
 @pytest.fixture
@@ -95,3 +98,139 @@ def test_orca_parse_triplet_energies(this_dir):
     ens = calc.parse_all_energies(triplets=True)
     ref_ens = (-394.21337084, -394.086255836, -394.05756284)
     np.testing.assert_allclose(ens, ref_ens)
+
+
+@pytest.mark.parametrize(
+    "method",
+    ("rhf", "uhf"),
+)
+@pytest.mark.parametrize(
+    "tda",
+    (True, False),
+)
+@pytest.mark.parametrize(
+    "triplets",
+    (True, False),
+)
+def test_parse_orca_cis(method, tda, triplets, this_dir):
+    if (method == "uhf") and triplets:
+        return
+    base_name = "_".join(
+        [method] + (["tda"] if tda else []) + (["triplets"] if triplets else [])
+    )
+    # geom = geom_loader("h2dimer.xyz")
+    # nroots = 2
+    # calc = ORCA(
+    # base_name=base_name,
+    # keywords=f"{method} hf sto-3g",
+    # blocks=f"%tddft tda {tda} nroots {nroots} triplets {triplets} end",
+    # charge=0,
+    # mult=1,
+    # pal=2,
+    # out_dir="parse_cis",
+    # )
+    # geom.set_calculator(calc)
+    # Create before the calculation is carried out the have the correct index
+    # geom.energy  # Calc
+
+    cis_fn = this_dir / "ref_cis" / f"{base_name}_000.000.orca.cis"
+    Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
+
+    ac = Xa ** 2 - Ya ** 2
+    a_sum = np.sum(ac, axis=(1, 2))
+    bc = Xb ** 2 - Yb ** 2
+    b_sum = np.sum(bc, axis=(1, 2))
+
+    Y0 = np.zeros_like(Ya)
+    if method == "rhf":
+        np.testing.assert_allclose(a_sum, np.ones_like(a_sum))
+        np.testing.assert_allclose(b_sum, np.zeros_like(b_sum))
+    elif method == "uhf":
+        half = np.ones_like(a_sum) * 0.5
+        np.testing.assert_allclose(a_sum, half)
+        np.testing.assert_allclose(b_sum, half)
+    else:
+        raise Exception(f"Unknown method='{method}'")
+
+    # Y-matrix is zero for TDA
+    if tda:
+        np.testing.assert_allclose(Ya, Y0)
+        np.testing.assert_allclose(Yb, Y0)
+
+    # β-spin matrices will be 0, as the excitation is from a closed-shell
+    # reference.
+    if triplets:
+        np.testing.assert_allclose(Xb, Y0)
+        np.testing.assert_allclose(Yb, Y0)
+
+    print(f"{method=}, {tda=}, {triplets=}")
+
+    def print_summary(X, Y, aorb):
+        print(f"X{aorb}")
+        print(X)
+        print(f"Y{aorb}")
+        print(Y)
+        norms = X ** 2 - Y ** 2
+        norms_sum = np.sum(norms, axis=(1, 2))
+        print(f"@{method}, {tda=}, {aorb} coeffs, {norms_sum}")
+        print(norms)
+
+    print_summary(Xa, Ya, "a")
+    print_summary(Xb, Yb, "b")
+    print("@")
+
+
+def assert_dens_mats(dens_dict, json_fn):
+    wf = Wavefunction.from_orca_json(json_fn)
+    Pa_ref, Pb_ref = wf.P  # Always unrestricted density matrices
+    P = Pa_ref + Pb_ref  # Electronic density
+    Pr = Pa_ref - Pb_ref  # Spin density
+    np.testing.assert_allclose(P, dens_dict["scfp"], atol=1e-14)
+    if wf.unrestricted:
+        np.testing.assert_allclose(Pr, dens_dict["scfr"], atol=1e-14)
+    return wf
+
+
+@pytest.mark.parametrize(
+    "dens_fn, json_fn",
+    (
+        ("orca_ch4_sto3g_rhf.densities", "orca_ch4_sto3g_rhf.json"),
+        ("orca_ch4_sto3g_uhf.densities", "orca_ch4_sto3g_uhf.json"),
+    ),
+)
+def test_orca_gs_densities(dens_fn, json_fn):
+
+    dens_dict = parse_densities(WF_LIB_DIR / dens_fn)
+    _ = assert_dens_mats(dens_dict, WF_LIB_DIR / json_fn)
+
+
+@pytest.mark.parametrize(
+    "dens_fn, json_fn, ref_dpm",
+    (
+        (
+            "orca_ch4_sto3g_rhf_cis.densities",
+            "orca_ch4_sto3g_rhf_cis.json",
+            (0.00613, 0.00867, -0.00000),
+        ),
+        (
+            "orca_ch4_sto3g_uhf_cis.densities",
+            "orca_ch4_sto3g_uhf_cis.json",
+            (0.0, 0.0, 0.0),
+        ),
+    ),
+)
+def test_orca_es_densities(dens_fn, json_fn, ref_dpm):
+    dens_dict = parse_densities(WF_LIB_DIR / dens_fn)
+    wf = assert_dens_mats(dens_dict, WF_LIB_DIR / json_fn)
+    # ref_dpm = (0.00613, 0.00867, -0.00000)  # From ORCA output
+
+    cisp = dens_dict["cisp"]
+    # Calculate relaxed excited state dipole moment
+    if wf.unrestricted:
+        cisr = dens_dict["cisr"]
+        cispa = (cisp + cisr) / 2
+        cispb = (cisp - cisr) / 2
+    else:
+        cispa = cispb = cisp / 2
+    dpm = wf.dipole_moment((cispa, cispb))
+    np.testing.assert_allclose(dpm, ref_dpm, atol=2e-4)

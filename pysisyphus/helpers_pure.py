@@ -12,6 +12,7 @@ import time
 from typing import Optional
 
 import numpy as np
+from numpy.typing import NDArray
 import psutil
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
@@ -184,7 +185,7 @@ def full_expand(to_expand):
     return expanded
 
 
-def file_or_str(*args, method=False):
+def file_or_str(*args, method=False, mode="r"):
     exts = args
 
     def inner_func(func):
@@ -195,7 +196,7 @@ def file_or_str(*args, method=False):
             p = Path(inp)
             looks_like_file = exts and (p.suffix in exts)
             if looks_like_file and p.is_file():
-                with open(p) as handle:
+                with open(p, mode=mode) as handle:
                     inp = handle.read()
             elif looks_like_file and not p.exists():
                 raise FileNotFoundError(
@@ -461,7 +462,7 @@ def find_closest_sequence(str_: str, comp_strs: List[str]) -> Tuple[str, float]:
     return (best_match, max_ratio)
 
 
-def increment_fn(org_fn: str, suffix: Optional[str]=None) -> str:
+def increment_fn(org_fn: str, suffix: Optional[str] = None) -> str:
     """
     Append, or increase a suffixed counter on a given filename.
     If no counter is present it will be set to zero. Otherwise
@@ -504,7 +505,65 @@ def increment_fn(org_fn: str, suffix: Optional[str]=None) -> str:
     return incr_fn
 
 
-if __name__ == "__main__":
-    import doctest
+def get_box(coords3d, offset=0.0):
+    mins = coords3d.min(axis=0)
+    maxs = coords3d.max(axis=0)
+    box = np.stack((mins, maxs), axis=1)
+    box[:, 0] -= offset
+    box[:, 1] += offset
+    return box
 
-    doctest.testmod()
+
+def molecular_volume(
+    coords3d: NDArray[float],
+    vdw_radii: NDArray[float],
+    n_trial: int = 10_000,
+    offset: float = 1.0,
+) -> Tuple[float, float, float]:
+    """Monte-Carlo estimate of molecular volume using Van der Waals spheres.
+    Cartesian coordinates and VdW-radii are expected in Bohr!
+    """
+    box = get_box(coords3d, offset=offset)
+    edges = np.diff(box, axis=1).flatten()
+    box_volume = abs(np.prod(edges))
+    # print(f"Box with volume {box_volume:.2f} a0³ and dimensions\n{box}")
+
+    def trial_points(n):
+        tps = np.random.rand(n, 3)
+        box_min = box[:, 0]
+        return box_min + tps * edges
+
+    tps = trial_points(n=n_trial)
+
+    dists = np.linalg.norm(coords3d[:, None, :] - tps, axis=2)
+    below_radius = dists <= vdw_radii[:, None]
+    below_radius = below_radius.sum()
+    ratio = below_radius / n_trial
+    mol_vol = ratio * box_volume  # a0³ / Molecule
+    mol_vol_ang3 = mol_vol * BOHR2ANG ** 3  # Å³ / Molecule
+    molar_vol = mol_vol_ang3 * NA * 1e-24  # l/mol
+    return mol_vol, mol_vol_ang3, molar_vol
+
+
+def get_cubic_crystal(l, n=2, atom="Na"):
+    coords3d = list()
+    atoms = list()
+    for xn in range(-n, n + 1):
+        for yn in range(-n, n + 1):
+            for zn in range(-n, n + 1):
+                coords3d.append((l * xn, l * yn, l * zn))
+                atoms.append(atom)
+    coords3d = np.array(coords3d)
+    return atoms, coords3d
+
+
+# Unicode subscript characters for numbers
+_NUM_SUBSCRIPTS = {str(i): chr(int(f"0x208{i}", 16)) for i in range(10)}
+
+
+def to_subscript_num(num):
+    return "".join([_NUM_SUBSCRIPTS[c] for c in str(num)])
+
+
+def to_sets(iterable):
+    return set([frozenset(i) for i in iterable])

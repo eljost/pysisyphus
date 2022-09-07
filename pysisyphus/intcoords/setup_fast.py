@@ -29,7 +29,9 @@ def get_max_bond_dists(atoms, bond_factor, covalent_radii=None):
     return max_bond_dists
 
 
-def find_bonds(atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR):
+def find_bonds(
+    atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR, min_dist=0.1
+):
     atoms = [atom.lower() for atom in atoms]
     c3d = coords3d.reshape(-1, 3)
     if covalent_radii is None:
@@ -44,7 +46,7 @@ def find_bonds(atoms, coords3d, covalent_radii=None, bond_factor=BOND_FACTOR):
     for i, (atom, bonds, dists_) in enumerate(zip(atoms, res, dists)):
         fsets = [frozenset((atom, atoms[a])) for a in bonds]
         ref_dists = np.array([max_bond_dists[fset] for fset in fsets])
-        keep = np.logical_and(dists_ <= ref_dists, 0.1 <= dists_)
+        keep = np.logical_and(dists_ <= ref_dists, min_dist <= dists_)
         for to_ in bonds[keep]:
             bonds_.append(frozenset((i, to_)))
     bonds = np.array([tuple((from_, to_)) for from_, to_ in set(bonds_)])
@@ -98,29 +100,36 @@ def get_bond_vec_getter(
     return get_bond_vecs
 
 
-def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
+def get_bend_candidates(bonds):
+    """Also yields duplicates [a, b, c] and [c, b, a]."""
     bond_dict = {}
     bonds = [tuple(bond) for bond in bonds]
+    # Construct a dictionary holding neighbours for a given atom.
     for from_, to_ in bonds:
         bond_dict.setdefault(from_, list()).append(to_)
         bond_dict.setdefault(to_, list()).append(from_)
 
-    bend_set = set()
     for bond in bonds:
         from_, to_ = bond
+        # Look up neighbours of from_ and to_ in the dictionary
         from_neighs = set(bond_dict[from_]) - set((to_,))
         to_neighs = set(bond_dict[to_]) - set((from_,))
         bend_candidates = [(neigh,) + bond for neigh in from_neighs] + [
             bond + (neigh,) for neigh in to_neighs
         ]
-        for indices in bend_candidates:
-            if (
-                (not bend_valid(coords3d, indices, min_deg, max_deg))
-                or (indices in bend_set)
-                or (indices[::-1] in bend_set)
-            ):
-                continue
-            bend_set.add(indices)
+        yield from bend_candidates
+
+
+def find_bends(coords3d, bonds, min_deg, max_deg, logger=None):
+    bend_set = set()
+    for indices in get_bend_candidates(bonds):
+        if (
+            (not bend_valid(coords3d, indices, min_deg, max_deg))
+            or (indices in bend_set)
+            or (indices[::-1] in bend_set)
+        ):
+            continue
+        bend_set.add(indices)
     return [list(bend) for bend in bend_set]
 
 

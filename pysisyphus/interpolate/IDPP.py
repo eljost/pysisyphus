@@ -36,7 +36,7 @@ class IDPP(Interpolator):
         for i, geom in enumerate(idpp_geoms):
             geom.set_calculator(IDPPCalculator(initial_pd + i * pd_diff))
 
-        neb = NEB(idpp_geoms, fix_ends=True)
+        neb = NEB(idpp_geoms)
         opt_kwargs = {
             "max_cycles": 1000,
             "rms_force": 1e-2,

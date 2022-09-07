@@ -26,13 +26,20 @@ from pysisyphus.elem_data import (
     ISOTOPE_DICT,
     ATOMIC_NUMBERS,
     COVALENT_RADII as CR,
+    VDW_RADII as VDWR,
 )
-from pysisyphus.helpers_pure import eigval_to_wavenumber, full_expand
+from pysisyphus.helpers_pure import (
+    eigval_to_wavenumber,
+    full_expand,
+    molecular_volume,
+    to_subscript_num,
+)
 from pysisyphus.intcoords import (
     DLC,
     HDLC,
     RedundantCoords,
     TRIC,
+    TMTRIC,
     HybridRedundantCoords,
     CartesianCoords,
     MWCartesianCoords,
@@ -157,6 +164,7 @@ class Geometry:
         "dlc": DLC,
         "hdlc": HDLC,
         "tric": TRIC,
+        "tmtric": TMTRIC,
         "cartesian": CartesianCoords,
         "mwcartesian": MWCartesianCoords,
     }
@@ -206,7 +214,7 @@ class Geometry:
         name : str, optional
             Verbose name of the geometry, e.g. methanal or water. Used for printing
         """
-        self.atoms = atoms
+        self.atoms = tuple([atom.capitalize() for atom in atoms])
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords, dtype=float).flatten()
         assert self._coords.size == (3 * len(self.atoms)), (
@@ -285,9 +293,31 @@ class Geometry:
 
     @property
     def sum_formula(self):
-        return "_".join(
-            [f"{atom.title()}{num}" for atom, num in Counter(self.atoms).items()]
-        )
+        unique_atoms = sorted(set(self.atoms))
+        counter = Counter(self.atoms)
+        atoms = list()
+        num_strs = list()
+
+        def set_atom(atom):
+            atoms.append(atom)
+            num = counter[atom]
+            if num == 1:
+                num_str = ""
+            else:
+                num_str = to_subscript_num(num)
+            num_strs.append(num_str)
+
+        # Hill-System
+        for atom in ("C", "H"):
+            try:
+                unique_atoms.remove(atom)
+                set_atom(atom)
+            except ValueError:
+                pass
+        for atom in unique_atoms:
+            set_atom(atom)
+
+        return "".join([f"{atom}{num_str}" for atom, num_str in zip(atoms, num_strs)])
 
     def assert_compatibility(self, other):
         """Assert that two Geometries can be substracted from each other.
@@ -808,6 +838,14 @@ class Geometry:
         return np.array([CR[a.lower()] for a in self.atoms])
 
     @property
+    def vdw_radii(self):
+        return np.array([VDWR[a.lower()] for a in self.atoms])
+
+    def vdw_volume(self, **kwargs):
+        V_au, *_ = molecular_volume(self.coords3d, self.vdw_radii, **kwargs)
+        return V_au
+
+    @property
     def inertia_tensor(self):
         return inertia_tensor(self.coords3d, self.masses)
 
@@ -844,6 +882,8 @@ class Geometry:
                 break
 
     def reparametrize(self):
+        # Currently, self.calculator.get_coords is only implemented by the
+        # IPIPServer, but it is deactivated there.
         try:
             # TODO: allow skipping the update
             results = self.calculator.get_coords(self.atoms, self.cart_coords)
@@ -1235,6 +1275,7 @@ class Geometry:
         return make_xyz_str(atoms, cart_coords.reshape((-1, 3)), comment)
 
     def dump_xyz(self, fn):
+        fn = str(fn)
         if not fn.lower().endswith(".xyz"):
             fn = fn + ".xyz"
         with open(fn, "w") as handle:
@@ -1290,16 +1331,31 @@ class Geometry:
             atoms.append(atom)
         return atoms
 
-    def jmol(self, atoms=None, cart_coords=None):
-        """Show geometry in jmol."""
+    def tmp_xyz_handle(self, atoms=None, cart_coords=None):
         tmp_xyz = tempfile.NamedTemporaryFile(suffix=".xyz")
         tmp_xyz.write(self.as_xyz(atoms=atoms, cart_coords=cart_coords).encode("utf-8"))
         tmp_xyz.flush()
+        return tmp_xyz
+
+    def jmol(self, atoms=None, cart_coords=None):
+        """Show geometry in jmol."""
+        tmp_xyz = self.tmp_xyz_handle(atoms, cart_coords)
         jmol_cmd = "jmol"
         try:
             subprocess.run([jmol_cmd, tmp_xyz.name])
         except FileNotFoundError:
             print(f"'{jmol_cmd}' seems not to be on your path!")
+        tmp_xyz.close()
+
+    def modes3d(self):
+        try:
+            bonds = self.internal.bond_atom_indices
+            bonds_str = " --bonds " + " ".join(map(str, it.chain(*bonds)))
+        except AttributeError:
+            bonds_str = ""
+
+        tmp_xyz = self.tmp_xyz_handle()
+        subprocess.run(f"modes3d.py {tmp_xyz.name}{bonds_str}", shell=True)
         tmp_xyz.close()
 
     def as_ase_atoms(self):
@@ -1381,13 +1437,13 @@ class Geometry:
         max_dist = dists.max()
         return max_dist
 
-    def rotate(self, copy=False):
+    def rotate(self, copy=False, rng=None):
         if copy:
             geom = self.copy()
         else:
             geom = self
 
-        rot = Rotation.random()
+        rot = Rotation.random(random_state=rng)
         geom.coords3d = rot.apply(geom.coords3d)
         return geom
 

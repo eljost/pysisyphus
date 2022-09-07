@@ -3,9 +3,11 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import KB, AU2J
+from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.PrimTypes import prims_from_prim_inputs
 from pysisyphus.intcoords.update import correct_dihedrals
 from pysisyphus.intcoords import Torsion
+from pysisyphus.linalg import rmsd_grad
 
 
 class LogFermi:
@@ -84,7 +86,7 @@ class Restraint:
         self.restraints = list()
 
         for prim_inp, *rest in restraints:
-            prims = prims_from_prim_inputs((prim_inp, ))
+            prims = prims_from_prim_inputs((prim_inp,))
             assert len(prims) == 1
             prim = prims[0]
             force_const = rest.pop(0)
@@ -127,12 +129,50 @@ class Restraint:
         return energy, grad.flatten()
 
 
+class RMSD:
+    def __init__(self, geom: Geometry, k: float, beta: float=0.5):
+        """Restrain to reference geometry.
+
+        Parameters
+        ----------
+
+        geom:
+            Reference geometry for RMSD calculation.
+        k:
+            Gaussian height. Should be a negative number if the system under study should
+            stay close to the reference geometry.
+        b:
+            Gaussian width in inverse units of lengths.
+        """
+
+        self.k = k
+        self.beta = beta
+        self.ref_coords3d = geom.coords3d.copy()
+
+    def calc(self, coords3d, gradient=False):
+        rmsd, grad_ = rmsd_grad(coords3d, self.ref_coords3d)
+
+        k = self.k
+        beta = self.beta
+        energy = k * np.exp(-beta * rmsd ** 2)
+
+        if not gradient:
+            return energy
+
+        grad = -beta * 2 * grad_ * energy
+        return energy, grad.flatten()
+
+    def __repr__(self):
+        return f"RMSD(k={self.k:.4f}, beta={self.beta:.6f})"
+
+
 class ExternalPotential(Calculator):
 
     available_potentials = {
         "logfermi": LogFermi,
         "harmonic_sphere": HarmonicSphere,
         "restraint": Restraint,
+        "rmsd": RMSD,
     }
 
     def __init__(self, calculator=None, potentials=None, geom=None, **kwargs):

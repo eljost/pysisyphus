@@ -1,11 +1,15 @@
 import itertools as it
-from typing import Union
+from typing import Union, Sequence
 
+import numpy as np
+
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import OrderedEnum
 from pysisyphus.intcoords import (
     Bend,
     Bend2,
     BondedFragment,
+    DummyImproper,
     DummyTorsion,
     DistanceFunction,
     CartesianX,
@@ -14,6 +18,8 @@ from pysisyphus.intcoords import (
     LinearBend,
     LinearDisplacement,
     OutOfPlane,
+    RobustTorsion1,
+    RobustTorsion2,
     RotationA,
     RotationB,
     RotationC,
@@ -58,6 +64,9 @@ class PrimTypes(OrderedEnum):
     # atan2 based bend and torsion
     BEND2 = 28
     PROPER_DIHEDRAL2 = 29
+    DUMMY_IMPROPER = 30
+    ROBUST_TORSION1 = 31
+    ROBUST_TORSION2 = 32
 
 
 PrimTypeLike = Union[PrimTypes, str]
@@ -86,6 +95,8 @@ PrimTypeShortcuts = {
     "DIHEDRAL2": [PT.PROPER_DIHEDRAL2],
     "TORSION": [PT.PROPER_DIHEDRAL],
     "TORSION2": [PT.PROPER_DIHEDRAL2],
+    "RTORSION1": [PT.ROBUST_TORSION1],
+    "RTORSION2": [PT.ROBUST_TORSION2],
     # Translation & Rotation coordinates
     "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
     "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
@@ -109,7 +120,14 @@ LinearBends = (
     PT.LINEAR_DISPLACEMENT,
     PT.LINEAR_DISPLACEMENT_COMPLEMENT,
 )
-Dihedrals = (PT.PROPER_DIHEDRAL, PT.IMPROPER_DIHEDRAL, PT.PROPER_DIHEDRAL2)
+Dihedrals = (
+    PT.PROPER_DIHEDRAL,
+    PT.IMPROPER_DIHEDRAL,
+    PT.PROPER_DIHEDRAL2,
+    PT.DUMMY_IMPROPER,
+    PT.ROBUST_TORSION1,
+    PT.ROBUST_TORSION2,
+)
 OutOfPlanes = (PT.OUT_OF_PLANE,)
 Cartesians = (PT.CARTESIAN_X, PT.CARTESIAN_Y, PT.CARTESIAN_Z)
 Rotations = (PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C)
@@ -161,6 +179,8 @@ PrimMap = {
     PT.PROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
     PT.PROPER_DIHEDRAL2: lambda indices: Torsion2(indices, periodic=True),
     PT.IMPROPER_DIHEDRAL: lambda indices: Torsion(indices, periodic=True),
+    PT.ROBUST_TORSION1: lambda indices: RobustTorsion1(indices),
+    PT.ROBUST_TORSION2: lambda indices: RobustTorsion2(indices),
     PT.OUT_OF_PLANE: OutOfPlane,
     PT.LINEAR_DISPLACEMENT: LinearDisplacement,
     PT.LINEAR_DISPLACEMENT_COMPLEMENT: lambda indices: LinearDisplacement(
@@ -181,6 +201,10 @@ PrimMap = {
         periodic=True,
     ),
     PT.DISTANCE_FUNCTION: get_dist_func(),
+    PT.DUMMY_IMPROPER: lambda indices: DummyImproper(
+        indices,
+        periodic=True,
+    ),
 }
 
 
@@ -209,6 +233,7 @@ def normalize_prim_input(prim_inp):
         return []
 
     prim_type, *indices = prim_inp
+    indices = list(map(int, indices))
 
     # Nothing to do
     if isinstance(prim_type, PrimTypes):
@@ -246,3 +271,16 @@ def prims_from_prim_inputs(prim_inps):
     norm_prim_inps = normalize_prim_inputs(prim_inps)
     prims = [PrimMap[prim_type](indices) for prim_type, *indices in norm_prim_inps]
     return prims
+
+
+def prim_for_human(prim_type: PrimTypes, val: Sequence[int]):
+    if prim_type in Bonds:
+        val_conv = val * BOHR2ANG
+        unit = " Å"
+    elif prim_type in Bends:
+        unit = "°"
+        val_conv = np.rad2deg(val)
+    else:
+        val_conv = val
+        unit = ""
+    return val_conv, unit

@@ -1,8 +1,10 @@
 from math import cos, sin, sqrt
-from typing import Callable, Literal
+from typing import Callable, Literal, Tuple
 
 import numpy as np
-import numpy.typing as npt
+from numpy.typing import NDArray
+from scipy.spatial.transform import Rotation
+from scipy.linalg.lapack import dpstrf
 
 
 def gram_schmidt(vecs, thresh=1e-8):
@@ -148,11 +150,11 @@ def norm3(a):
 
 
 def finite_difference_hessian(
-    coords: npt.NDArray[float],
-    grad_func: Callable[[npt.NDArray[float]], npt.NDArray[float]],
+    coords: NDArray[float],
+    grad_func: Callable[[NDArray[float]], NDArray[float]],
     step_size: float = 1e-2,
     acc: Literal[2, 4] = 2,
-) -> npt.NDArray[float]:
+) -> NDArray[float]:
     """Numerical Hessian from central finite gradient differences.
 
     See central differences in
@@ -187,3 +189,140 @@ def finite_difference_hessian(
     # Symmetrize
     fd_hessian = (fd_hessian + fd_hessian.T) / 2
     return fd_hessian
+
+
+def rot_quaternion(coords3d, ref_coords3d):
+    # Translate to origin by removing centroid
+    c3d = coords3d - coords3d.mean(axis=0)
+    ref_c3d = ref_coords3d - ref_coords3d.mean(axis=0)
+
+    # Setup correlation matrix
+    R = c3d.T.dot(ref_c3d)
+
+    # Setup F matrix, Eq. (6) in [1]
+    F = np.zeros((4, 4))
+    R11, R12, R13, R21, R22, R23, R31, R32, R33 = R.flatten()
+    # Fill only upper triangular part.
+    F[0, 0] = R11 + R22 + R33
+    F[0, 1] = R23 - R32
+    F[0, 2] = R31 - R13
+    F[0, 3] = R12 - R21
+    #
+    F[1, 1] = R11 - R22 - R33
+    F[1, 2] = R12 + R21
+    F[1, 3] = R13 + R31
+    #
+    F[2, 2] = -R11 + R22 - R33
+    F[2, 3] = R23 + R32
+    #
+    F[3, 3] = -R11 - R22 + R33
+
+    # Eigenvalues, eigenvectors of upper triangular part.
+    w, v_ = np.linalg.eigh(F, UPLO="U")
+
+    # Quaternion corresponds to biggest (last) eigenvalue.
+    # np.linalg.eigh already returns sorted eigenvalues.
+    return w, v_, c3d, ref_c3d
+
+
+def quaternion_to_rot_mat(q):
+    q0, q1, q2, q3 = q
+    q_ = q0 ** 2 - (q1 ** 2 + q2 ** 2 + q3 ** 2)
+    R = np.zeros((3, 3))
+    R[0, 0] = q_ + 2 * q1 ** 2
+    R[0, 1] = 2 * (q1 * q2 - q0 * q3)
+    R[0, 2] = 2 * (q1 * q3 - q0 * q2)
+    R[1, 0] = 2 * (q1 * q2 + q0 * q3)
+    R[1, 1] = q_ + 2 * q2 ** 2
+    R[1, 2] = 2 * (q2 * q3 - q0 * q1)
+    R[2, 0] = 2 * (q1 * q3 - q0 * q2)
+    R[2, 1] = 2 * (q2 * q3 + q0 * q1)
+    R[2, 2] = q_ + 2 * q3 ** 2
+    return R
+
+
+def rmsd_grad(
+    coords3d: NDArray[float], ref_coords3d: NDArray[float], offset: float = 1e-9
+) -> Tuple[float, NDArray[float]]:
+    """RMSD and gradient between two sets of coordinates from quaternions.
+
+    The gradient is given w.r.t. the coordinates of 'coords3d'.
+
+    Python adaption of
+        ls_rmsd.f90
+    from the xtb repository of the Grimme group, which in turn implements
+        [1] https://doi.org/10.1002/jcc.20110
+    .
+
+    Parameters
+    ----------
+    coords3d
+        Coordinate array of shape (N, 3) with N denoting the number of atoms.
+    ref_coords3d
+        Reference coordinates.
+    offset
+        Small floating-point number that is added to the RMSD, to avoid division
+        by zero.
+
+    Returns
+    -------
+    rmsd
+        RMSD value.
+    rmsd_grad
+        Gradient of the RMSD value w.r.t. to 'coords3d'.
+    """
+    assert coords3d.shape == ref_coords3d.shape
+
+    w, v_, c3d, ref_c3d = rot_quaternion(coords3d, ref_coords3d)
+    quat = v_[:, -1]
+    eigval = w[-1]
+
+    atom_num = coords3d.shape[0]
+    x_norm = np.linalg.norm(c3d) ** 2
+    y_norm = np.linalg.norm(ref_c3d) ** 2
+    rmsd = np.sqrt(max(0.0, ((x_norm + y_norm) - 2.0 * eigval)) / (atom_num)) + offset
+
+    # scipy expects the quaternion
+    #     a + b*i + c*j + d*k
+    # as (i, j, k, a), that is the scalar component must come last.
+    # Currently we have (a, i, j, k), so we have to rearrange before passing the
+    # quaternion to scipy.
+    rot = Rotation.from_quat((*quat[1:], quat[0]))
+    U = rot.as_matrix()
+
+    grad = (c3d - ref_c3d @ U) / (rmsd * atom_num)
+    return rmsd, grad
+
+
+def pivoted_cholesky(A: NDArray, tol: float = -1.0):
+    """Cholesky factorization a real symmetric positive semidefinite matrix.
+    Cholesky factorization is carried out with full pivoting.
+
+    Adapated from PySCF.
+
+    P.T * A * P = L * L.T
+
+    Parameters
+    ----------
+    A
+        Matrix to be factorized.
+    tol
+        User defined tolerance, as outlined in the LAPACK docs.
+
+    Returns
+    -------
+    L
+        Lower or upper triangular matrix.
+    piv
+        Pivot vectors, starting at 0.
+    rank
+        Rank of the factoirzed matrix.
+    """
+
+    N = A.shape[0]
+    L, piv, rank, info = dpstrf(A, tol=tol, lower=True)
+    piv -= 1  # LAPACK returns 1-based indices
+    assert info >= 0
+    L[np.triu_indices(N, k=1)] = 0
+    L[:, rank:] = 0
+    return L, piv, rank

@@ -33,10 +33,14 @@ def do_endopt_ts_barriers(
     if right_geoms is None:
         right_geoms = []
 
-    if left_fns is None:
-        left_fns = ["" for geom in left_geoms]
-    if right_fns is None:
-        right_fns = ["" for geom in right_geoms]
+    def set_fns(fns, geoms):
+        if fns is None:
+            fns = ["" for geom in geoms]
+        else:
+            fns = [Path(fn).name for fn in fns]
+        return fns
+    left_fns = set_fns(left_fns, left_geoms)
+    right_fns = set_fns(right_fns, left_geoms)
     ts_fn = "TS"
 
     ts_atom_num = len(ts_geom.atoms)
@@ -178,13 +182,13 @@ def do_endopt_ts_barriers(
         fns.append("Right")
     max_len = max(len(s) for s in fns)
 
-    def print_table(table, header, width=15):
+    def print_table(table, header, width=17):
         col_fmts = ["str"] + (len(header) - 1) * ["float"]
         tp = TablePrinter(header, col_fmts, width=width, sub_underline=False)
         tp.print_header()
         for fn, row in zip(all_fns, table.T):
             fn = str(fn)  # fns may be PosixPath etc.
-            fn_cut = fn[:6] + "..." + fn[-6:] if (len(fn) > width) else fn
+            fn_cut = fn[:4] + ".." + fn[-11:] if (len(fn) > width) else fn
             tp.print_row((fn_cut, *row))
         print()
 
